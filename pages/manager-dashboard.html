@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manager Dashboard — FinanceTrack</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+  <link rel="stylesheet" href="../css/main.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/manager.css">
+</head>
+<body>
+
+<!-- ── Navigation ────────────────────────────────────────────────── -->
+<nav class="app-nav">
+  <a href="../index.html" class="nav-brand">
+    <div class="nav-logo-icon"><i class="fas fa-chart-line"></i></div>
+    <div class="nav-title">
+      <span class="nav-title-main">FinanceTrack</span>
+      <span class="nav-title-sub">Task Management</span>
+    </div>
+  </a>
+
+  <div class="nav-center">
+    <div class="week-selector">
+      <button class="week-nav-btn" onclick="Manager.prevWeek()" data-tip="Previous week"><i class="fas fa-chevron-left"></i></button>
+      <span class="week-label" id="weekLabel">Loading…</span>
+      <button class="week-nav-btn" onclick="Manager.nextWeek()" data-tip="Next week"><i class="fas fa-chevron-right"></i></button>
+    </div>
+    <span class="week-badge hidden" id="weekBadge">Current</span>
+  </div>
+
+  <div class="nav-right">
+    <div class="nav-user">
+      <div class="nav-avatar" id="navAvatar">?</div>
+      <div class="nav-user-info">
+        <span class="nav-user-name" id="navUserName">Loading…</span>
+        <span class="nav-user-role" id="navUserRole">Section Manager</span>
+      </div>
+    </div>
+    <button class="btn-nav-logout" onclick="Auth.logout()"><i class="fas fa-sign-out-alt"></i> Sign Out</button>
+  </div>
+</nav>
+
+<!-- ── Page wrapper ───────────────────────────────────────────────── -->
+<div class="page-wrapper">
+  <div class="page-container">
+
+    <!-- Alert banner (last day of work week) -->
+    <div id="alertBanner" class="alert-banner warning hidden">
+      <i class="fas fa-exclamation-triangle"></i>
+      <div>
+        <strong>End of Work Week:</strong> Today is the last working day. Please ensure all task statuses and next actions are updated for the director's weekly review.
+      </div>
+      <div class="al-actions">
+        <button class="btn btn-sm" style="background:#92400e;color:white;border-color:#92400e" onclick="document.getElementById('alertBanner').classList.add('hidden')">Dismiss</button>
+      </div>
+    </div>
+
+    <!-- Stats row -->
+    <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#eff6ff;color:#2563eb"><i class="fas fa-tasks"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">Total Tasks</div>
+          <div class="stat-value" id="statTotal">0</div>
+          <div class="stat-sub"><i class="fas fa-calendar-week"></i> This week</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#ecfdf5;color:#059669"><i class="fas fa-check-circle"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">Completed</div>
+          <div class="stat-value" id="statCompleted">0</div>
+          <div class="stat-sub" style="color:#059669"><i class="fas fa-arrow-up"></i> Finished</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#eff6ff;color:#3b82f6"><i class="fas fa-spinner"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">In Progress</div>
+          <div class="stat-value" id="statInProgress">0</div>
+          <div class="stat-sub"><i class="fas fa-clock"></i> Active</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fef2f2;color:#dc2626"><i class="fas fa-exclamation-triangle"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">At Risk</div>
+          <div class="stat-value" id="statDelayed">0</div>
+          <div class="stat-sub" style="color:#dc2626"><i class="fas fa-flag"></i> Needs attention</div>
+        </div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:#fef3c7;color:#d97706"><i class="fas fa-percentage"></i></div>
+        <div class="stat-info">
+          <div class="stat-label">Completion Rate</div>
+          <div class="stat-value" id="statRate">0%</div>
+          <div class="stat-sub"><i class="fas fa-chart-pie"></i> Weekly rate</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Main 2-column layout -->
+    <div class="manager-layout">
+
+      <!-- Left: Task list + charts -->
+      <div class="task-list-area">
+
+        <!-- Controls -->
+        <div class="task-controls">
+          <div class="tabs" role="tablist">
+            <button class="tab-btn active" data-filter="all" onclick="Manager.setFilter('all')">
+              All <span class="tab-count">0</span>
+            </button>
+            <button class="tab-btn" data-filter="in-progress" onclick="Manager.setFilter('in-progress')">
+              In Progress <span class="tab-count">0</span>
+            </button>
+            <button class="tab-btn" data-filter="not-started" onclick="Manager.setFilter('not-started')">
+              Not Started <span class="tab-count">0</span>
+            </button>
+            <button class="tab-btn" data-filter="completed" onclick="Manager.setFilter('completed')">
+              Completed <span class="tab-count">0</span>
+            </button>
+            <button class="tab-btn" data-filter="delayed" onclick="Manager.setFilter('delayed')">
+              Delayed <span class="tab-count">0</span>
+            </button>
+            <button class="tab-btn" data-filter="blocked" onclick="Manager.setFilter('blocked')">
+              Blocked <span class="tab-count">0</span>
+            </button>
+          </div>
+          <div class="search-bar" style="max-width:280px">
+            <i class="fas fa-search search-icon"></i>
+            <input type="text" id="searchInput" placeholder="Search tasks…" autocomplete="off">
+            <button class="search-clear hidden" id="searchClear" onclick="Manager.clearSearch()"><i class="fas fa-times"></i></button>
+          </div>
+        </div>
+
+        <!-- Task cards -->
+        <div class="tasks-list" id="tasksList">
+          <div class="empty-state">
+            <i class="fas fa-circle-notch fa-spin"></i>
+            <h3>Loading tasks…</h3>
+          </div>
+        </div>
+
+        <!-- Charts section -->
+        <div class="charts-row">
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div class="chart-card-title">Task Status Distribution</div>
+              <div class="chart-card-subtitle">This week's breakdown</div>
+            </div>
+            <div class="chart-canvas-wrap" style="height:260px">
+              <canvas id="statusDonutChart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-card-header">
+              <div class="chart-card-title">Weekly Progress Trend</div>
+              <div class="chart-card-subtitle">Last 6 weeks — task completion history</div>
+            </div>
+            <div class="chart-canvas-wrap" style="height:260px">
+              <canvas id="weeklyTrendChart"></canvas>
+            </div>
+          </div>
+        </div>
+
+      </div><!-- /task-list-area -->
+
+      <!-- Right: Sidebar -->
+      <div class="manager-sidebar">
+
+        <!-- Week summary card -->
+        <div class="week-summary-card">
+          <div class="wsc-title"><i class="fas fa-chart-pie"></i> Weekly Summary</div>
+          <div class="wsc-completion-ring">
+            <div class="wsc-ring-wrap" id="wscRing">
+              <!-- SVG ring rendered by JS -->
+            </div>
+          </div>
+          <div class="wsc-stats-grid">
+            <div class="wsc-stat">
+              <span class="wsc-stat-value" id="wscTotal">0</span>
+              <span class="wsc-stat-label">Total</span>
+            </div>
+            <div class="wsc-stat">
+              <span class="wsc-stat-value" id="wscDone">0</span>
+              <span class="wsc-stat-label">Done</span>
+            </div>
+            <div class="wsc-stat">
+              <span class="wsc-stat-value" id="wscInProg">0</span>
+              <span class="wsc-stat-label">Active</span>
+            </div>
+            <div class="wsc-stat">
+              <span class="wsc-stat-value" id="wscDelayed">0</span>
+              <span class="wsc-stat-label">At Risk</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Next actions -->
+        <div class="next-actions-card">
+          <div class="card-header" style="background:var(--bg-hover)">
+            <h3><i class="fas fa-arrow-circle-right" style="color:#f59e0b;margin-right:.5rem"></i>Pending Next Actions</h3>
+          </div>
+          <div id="nextActionsList">
+            <div class="empty-state" style="padding:1.5rem">
+              <i class="fas fa-check-double" style="font-size:1.5rem"></i>
+              <p style="font-size:.8rem;margin-top:.5rem">All caught up!</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Quick add prompt -->
+        <div class="card" style="text-align:center;padding:1.5rem 1.25rem">
+          <i class="fas fa-plus-circle" style="font-size:2rem;color:#2563eb;margin-bottom:.75rem"></i>
+          <h3 style="font-size:.9rem;margin-bottom:.375rem">Add a New Task</h3>
+          <p style="font-size:.8rem;color:var(--text-3);margin-bottom:1rem">Track your weekly activities and monitor progress</p>
+          <button class="btn btn-primary" style="width:100%" onclick="Manager.openNew()">
+            <i class="fas fa-plus"></i> Add Task
+          </button>
+        </div>
+
+      </div><!-- /sidebar -->
+
+    </div><!-- /manager-layout -->
+
+  </div><!-- /page-container -->
+</div><!-- /page-wrapper -->
+
+<!-- ── FAB ────────────────────────────────────────────────────────── -->
+<button class="fab" onclick="Manager.openNew()" data-tip="Add new task">
+  <i class="fas fa-plus"></i>
+</button>
+
+<!-- ── Task Modal ─────────────────────────────────────────────────── -->
+<div class="modal-overlay task-form" id="taskModal">
+  <div class="modal" style="max-width:700px">
+    <div class="modal-header">
+      <h2 id="modalTitle">Add New Task</h2>
+      <button class="modal-close" onclick="Manager._closeModal()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body">
+      <form id="taskForm" class="task-form-grid" onsubmit="e=>e.preventDefault()">
+
+        <!-- Title -->
+        <div class="form-group">
+          <label class="form-label" for="fTitle">Task Title <span class="req">*</span></label>
+          <input type="text" id="fTitle" class="form-control" placeholder="Enter a clear, descriptive task title…">
+          <span class="form-error"></span>
+        </div>
+
+        <!-- Category + Status -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="fCategory">Category</label>
+            <select id="fCategory" class="form-control">
+              <option value="Budget Review">Budget Review</option>
+              <option value="Financial Report">Financial Report</option>
+              <option value="Vendor Payment">Vendor Payment</option>
+              <option value="Audit &amp; Compliance">Audit &amp; Compliance</option>
+              <option value="Treasury Management">Treasury Management</option>
+              <option value="Cash Flow Analysis">Cash Flow Analysis</option>
+              <option value="Financial Forecast">Financial Forecast</option>
+              <option value="Meeting &amp; Communication">Meeting &amp; Communication</option>
+              <option value="System &amp; Process">System &amp; Process</option>
+              <option value="Payroll Processing">Payroll Processing</option>
+              <option value="Reconciliation">Reconciliation</option>
+              <option value="Risk Assessment">Risk Assessment</option>
+              <option value="Other">Other</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fStatus">Status</label>
+            <select id="fStatus" class="form-control">
+              <option value="not-started">Not Started</option>
+              <option value="in-progress" selected>In Progress</option>
+              <option value="completed">Completed</option>
+              <option value="delayed">Delayed</option>
+              <option value="blocked">Blocked</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Priority -->
+        <div class="form-group">
+          <label class="form-label">Priority</label>
+          <div class="radio-group">
+            <input type="radio" name="priority" id="prHigh"   value="high"   class="radio-option">
+            <label for="prHigh"   class="radio-label"><i class="fas fa-arrow-up"></i> High</label>
+            <input type="radio" name="priority" id="prMed"    value="medium" class="radio-option" checked>
+            <label for="prMed"    class="radio-label"><i class="fas fa-minus"></i> Medium</label>
+            <input type="radio" name="priority" id="prLow"    value="low"    class="radio-option">
+            <label for="prLow"    class="radio-label"><i class="fas fa-arrow-down"></i> Low</label>
+          </div>
+        </div>
+
+        <!-- Description -->
+        <div class="form-group">
+          <label class="form-label" for="fDesc">Description</label>
+          <textarea id="fDesc" class="form-control" rows="3" placeholder="Describe the task, scope, and any relevant context…"></textarea>
+        </div>
+
+        <!-- Dates -->
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label" for="fStartDate">Start Date</label>
+            <input type="date" id="fStartDate" class="form-control">
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="fDueDate">Due Date</label>
+            <input type="date" id="fDueDate" class="form-control">
+          </div>
+        </div>
+
+        <!-- Completion -->
+        <div class="form-group">
+          <div class="progress-display">
+            <label class="form-label" style="margin:0">Completion Progress</label>
+            <span id="completionVal">0%</span>
+          </div>
+          <input type="range" id="fCompletion" class="form-range" min="0" max="100" step="5" value="0">
+          <div style="display:flex;justify-content:space-between;font-size:.7rem;color:var(--text-3);margin-top:.25rem">
+            <span>0%</span><span>25%</span><span>50%</span><span>75%</span><span>100%</span>
+          </div>
+        </div>
+
+        <!-- Next Action -->
+        <div class="form-group">
+          <label class="form-label" for="fNextAction">Next Action <span class="req">*</span></label>
+          <textarea id="fNextAction" class="form-control" rows="2" placeholder="What is the immediate next step to advance this task?"></textarea>
+          <span class="form-error"></span>
+        </div>
+
+        <!-- Next Action Date -->
+        <div class="form-group">
+          <label class="form-label" for="fNADate">Next Action Due Date</label>
+          <input type="date" id="fNADate" class="form-control">
+        </div>
+
+        <!-- File attachments -->
+        <div class="form-group">
+          <label class="form-label">Attachments <span class="form-hint" style="text-transform:none;font-size:.72rem;color:var(--text-3);margin-left:.25rem">Max 2 MB per file</span></label>
+          <div class="file-drop-zone" id="fileDropZone" onclick="Manager.handleDropZoneClick()">
+            <i class="fas fa-cloud-upload-alt"></i>
+            <p>Drag &amp; drop files here, or <span>browse</span></p>
+            <p style="font-size:.7rem;margin-top:.25rem">Supports PDF, Word, Excel, images and more</p>
+          </div>
+          <input type="file" id="fileInput" multiple style="display:none" onchange="Manager.handleFileChange(this)">
+          <div class="file-list" id="attachmentList"></div>
+        </div>
+
+        <!-- Notes -->
+        <div class="form-group">
+          <label class="form-label" for="fNotes">Internal Notes</label>
+          <textarea id="fNotes" class="form-control" rows="2" placeholder="Any private notes or comments about this task…"></textarea>
+        </div>
+
+      </form>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Manager._closeModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="Manager.saveTask()">
+        <i class="fas fa-save"></i> Save Task
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm delete dialog ─────────────────────────────────────── -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" style="color:#dc2626"><i class="fas fa-trash-alt"></i></div>
+    <h3 id="confirmTitle">Delete Task?</h3>
+    <p id="confirmMessage">This action cannot be undone.</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" onclick="Confirm.close()">Cancel</button>
+      <button class="btn btn-danger" id="confirmBtn">Delete</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Toast container ────────────────────────────────────────────── -->
+<div id="toastContainer"></div>
+
+<!-- ── Scripts ────────────────────────────────────────────────────── -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="../js/utils.js"></script>
+<script src="../js/data.js"></script>
+<script src="../js/auth.js"></script>
+<script src="../js/charts.js"></script>
+<script src="../js/manager.js"></script>
+
+</body>
+</html>
