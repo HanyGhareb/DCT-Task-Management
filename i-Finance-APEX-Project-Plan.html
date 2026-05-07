@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>i-Finance Task Management — Oracle APEX Project Plan</title>
+<style>
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    color: #1a1a1a;
+    margin: 2.5cm;
+    line-height: 1.4;
+  }
+
+  .cover {
+    text-align: center;
+    margin-bottom: 40pt;
+    padding: 30pt 0;
+    border-bottom: 3pt solid #c74b00;
+  }
+  .cover-logo { font-size: 28pt; font-weight: 700; color: #c74b00; letter-spacing: 1px; }
+  .cover-sub  { font-size: 14pt; color: #e8630a; margin-top: 4pt; }
+  .cover-title { font-size: 20pt; font-weight: 700; color: #1a1a1a; margin-top: 24pt; }
+  .cover-meta  { font-size: 10pt; color: #555; margin-top: 10pt; }
+  .cover-stack {
+    display: inline-block; margin-top: 18pt;
+    background: #fff7ed; border: 1pt solid #fed7aa;
+    border-radius: 6pt; padding: 10pt 20pt;
+    font-size: 10pt; color: #9a3412;
+  }
+  .cover-badge {
+    display: inline-block; margin-top: 10pt;
+    background: #ecfdf5; border: 1pt solid #a7f3d0;
+    border-radius: 4pt; padding: 5pt 14pt;
+    font-size: 9.5pt; color: #065f46; font-weight: 600;
+  }
+
+  h1 {
+    font-size: 16pt; font-weight: 700; color: #c74b00;
+    margin-top: 28pt; margin-bottom: 8pt;
+    border-bottom: 2pt solid #c74b00; padding-bottom: 4pt;
+  }
+  h2 { font-size: 13pt; font-weight: 700; color: #9a3412; margin-top: 18pt; margin-bottom: 6pt; }
+
+  .phase-header {
+    background: #c74b00; color: white;
+    padding: 8pt 12pt; border-radius: 4pt;
+    margin-bottom: 8pt; margin-top: 20pt;
+  }
+  .phase-header .phase-num   { font-size: 9pt; opacity: .75; text-transform: uppercase; letter-spacing: .5px; }
+  .phase-header .phase-title { font-size: 13pt; font-weight: 700; }
+  .phase-header .phase-goal  { font-size: 9.5pt; opacity: .85; margin-top: 2pt; }
+
+  table { width: 100%; border-collapse: collapse; font-size: 10pt; margin-bottom: 14pt; }
+  thead tr { background: #c74b00; color: white; }
+  thead th { padding: 6pt 8pt; text-align: left; font-weight: 600; font-size: 9.5pt; }
+  tbody tr:nth-child(even) { background: #fef3e8; }
+  tbody tr:nth-child(odd)  { background: #ffffff; }
+  tbody td { padding: 5pt 8pt; border-bottom: .5pt solid #f5d0b0; vertical-align: top; }
+  td:first-child { font-weight: 600; color: #c74b00; white-space: nowrap; width: 40pt; }
+
+  .summary-table thead tr { background: #065f46; }
+  .summary-table tbody tr:last-child { background: #c74b00; color: white; font-weight: 700; }
+  .summary-table tbody tr:last-child td { color: white; border-color: #e8630a; }
+
+  .arch-box {
+    background: #f8fafc; border: 1pt solid #cbd5e1;
+    border-radius: 4pt; padding: 12pt 16pt;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 10pt; color: #1e293b; margin: 10pt 0 18pt 0;
+    white-space: pre; line-height: 1.8;
+  }
+
+  .advantage-box {
+    background: #f0fdf4; border-left: 4pt solid #059669;
+    padding: 8pt 12pt; font-size: 10pt; color: #14532d;
+    margin: 10pt 0; border-radius: 0 4pt 4pt 0;
+  }
+  .note-box {
+    background: #fffbeb; border-left: 4pt solid #d97706;
+    padding: 8pt 12pt; font-size: 10pt; color: #78350f;
+    margin: 10pt 0; border-radius: 0 4pt 4pt 0;
+  }
+  .info-box {
+    background: #eff6ff; border-left: 4pt solid #2563eb;
+    padding: 8pt 12pt; font-size: 10pt; color: #1e3a8a;
+    margin: 10pt 0; border-radius: 0 4pt 4pt 0;
+  }
+
+  .comp-table thead tr { background: #1e3a5f; }
+  .comp-table td:first-child { color: #1e3a5f; }
+
+  .page-break { page-break-before: always; }
+
+  .doc-footer {
+    margin-top: 30pt; padding-top: 8pt;
+    border-top: 1pt solid #cbd5e1;
+    font-size: 9pt; color: #94a3b8; text-align: center;
+  }
+
+  .chip {
+    display: inline-block; font-size: .75rem; font-weight: 700;
+    padding: 1pt 5pt; border-radius: 3pt; margin-left: 3pt;
+  }
+  .chip-apex  { background: #fff7ed; color: #c74b00; border: 1pt solid #fed7aa; }
+  .chip-sql   { background: #eff6ff; color: #1d4ed8; border: 1pt solid #bfdbfe; }
+  .chip-plsql { background: #f0fdf4; color: #065f46; border: 1pt solid #a7f3d0; }
+  .chip-da    { background: #fdf4ff; color: #7e22ce; border: 1pt solid #e9d5ff; }
+</style>
+</head>
+<body>
+
+<!-- ── Cover ──────────────────────────────────────────────────────── -->
+<div class="cover">
+  <div class="cover-logo">i-Finance</div>
+  <div class="cover-sub">Task Management Module</div>
+  <div class="cover-title">Project Plan — Oracle APEX</div>
+  <div class="cover-meta">
+    Oracle APEX &nbsp;|&nbsp; Oracle 23ai Free Tier &nbsp;|&nbsp; OCI IAM &nbsp;|&nbsp; Autonomous Database
+  </div>
+  <div class="cover-stack">
+    Browser → Oracle APEX (Autonomous DB) → PL/SQL Packages → Oracle 23ai DB
+  </div>
+  <br>
+  <div class="cover-badge">
+    ✓ APEX is pre-installed on Oracle 23ai Autonomous Database — no separate server needed
+  </div>
+</div>
+
+<!-- ── Overview ───────────────────────────────────────────────────── -->
+<h1>Overview</h1>
+<p>
+  This document outlines the full project plan to build the i-Finance Task Management application
+  using Oracle APEX on Oracle Cloud Infrastructure (OCI) Free Tier.
+  APEX provides a complete low-code development platform — UI, authentication, charts, file handling,
+  and REST APIs — all built-in and hosted directly on the Autonomous Database.
+</p>
+
+<div class="advantage-box">
+  <strong>Key APEX Advantage vs Oracle JET:</strong> Oracle APEX is pre-installed on the Always-Free
+  Autonomous Database. No VM, no Node.js, no build tools, and no ORDS setup required.
+  The entire application — frontend, backend, and database — runs on a single managed service.
+</div>
+
+<h2>Target Architecture</h2>
+<div class="arch-box">Browser (Oracle APEX UI)
+       ↕  HTTPS (port 443)
+Oracle APEX Engine  ──────  Built into Autonomous Database
+       ↕
+PL/SQL Packages (Business Logic)
+       ↕
+Oracle 23ai Tables / Views
+       ↕
+OCI IAM (Identity Domain)  ──  OAuth2/OIDC for authentication</div>
+
+<h2>Approach Comparison — APEX vs Oracle JET</h2>
+<table class="comp-table">
+  <thead><tr><th>Aspect</th><th>Oracle JET</th><th>Oracle APEX</th></tr></thead>
+  <tbody>
+    <tr><td>Infrastructure</td><td>VM + Node.js + ORDS + DB</td><td>Autonomous DB only (APEX built-in)</td></tr>
+    <tr><td>UI Development</td><td>Code all components manually</td><td>Drag-and-drop builder + low-code</td></tr>
+    <tr><td>Charts</td><td>oj-chart (manual config)</td><td>APEX Native Charts (wizard-driven)</td></tr>
+    <tr><td>File Upload</td><td>Fetch API + ORDS endpoint</td><td>File Browse item → BLOB (native)</td></tr>
+    <tr><td>Authentication</td><td>Manual OAuth2 token handling</td><td>Built-in Social Sign-In wizard</td></tr>
+    <tr><td>Deployment</td><td>ojet build + Nginx config</td><td>Export/Import .sql application file</td></tr>
+    <tr><td>Estimated effort</td><td>~11 days</td><td>~8 days</td></tr>
+    <tr><td>Maintenance</td><td>Higher (code-heavy)</td><td>Lower (declarative, Oracle managed)</td></tr>
+  </tbody>
+</table>
+
+<h2>Users &amp; Roles</h2>
+<table>
+  <thead><tr><th>User</th><th>Section</th><th>IAM Group</th><th>APEX Role</th></tr></thead>
+  <tbody>
+    <tr><td>Hashem Al Kabbi</td><td>Finance Division</td><td>ifinance-directors</td><td>DIRECTOR</td></tr>
+    <tr><td>Naser Mohamed Al Khaja</td><td>Finance Operations</td><td>ifinance-managers</td><td>MANAGER</td></tr>
+    <tr><td>Ayesha Abdul Kareem Ameri</td><td>Payables Operations</td><td>ifinance-managers</td><td>MANAGER</td></tr>
+    <tr><td>Shaikha Ghanem Al Ameri</td><td>Financial Planning &amp; Budgeting</td><td>ifinance-managers</td><td>MANAGER</td></tr>
+    <tr><td>Shaikha Ahmed Al Suwaidi</td><td>Revenue Assurance</td><td>ifinance-managers</td><td>MANAGER</td></tr>
+    <tr><td>Noora Saeed Al Ali</td><td>Receivables Operations</td><td>ifinance-managers</td><td>MANAGER</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 1 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<h1>Project Phases</h1>
+
+<div class="phase-header">
+  <div class="phase-num">Phase 1</div>
+  <div class="phase-title">OCI Infrastructure Setup</div>
+  <div class="phase-goal">Goal: Provision Autonomous DB and access APEX — estimated 0.5 day</div>
+</div>
+
+<div class="info-box">
+  Unlike Oracle JET, <strong>no VM is required</strong>. Oracle APEX and ORDS are pre-installed
+  on the Always-Free Autonomous Database. The APEX URL is provided automatically after provisioning.
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>1.1</td><td>Create OCI Compartment</td><td>Isolate all project resources in a dedicated compartment</td></tr>
+    <tr><td>1.2</td><td>Provision Oracle 23ai Autonomous DB (Always Free)</td><td>Select "Transaction Processing" type — APEX is automatically included</td></tr>
+    <tr><td>1.3</td><td>Access APEX Administration</td><td>Use the DB console link: Tools → Oracle APEX → Open APEX</td></tr>
+    <tr><td>1.4</td><td>Create APEX Workspace</td><td>Workspace name: IFINANCE — linked to a new DB schema IFINANCE</td></tr>
+    <tr><td>1.5</td><td>Create Workspace Admin Account</td><td>Set workspace admin credentials for the development team</td></tr>
+    <tr><td>1.6</td><td>Verify APEX URL</td><td>Confirm public HTTPS access to the APEX URL (format: https://&lt;db&gt;.adb.&lt;region&gt;.oraclecloudapps.com/ords/apex)</td></tr>
+    <tr><td>1.7</td><td>Configure custom domain (optional)</td><td>Use OCI DNS + Load Balancer to map a custom domain to the APEX URL</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 2 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 2</div>
+  <div class="phase-title">OCI IAM &amp; APEX Authentication Setup</div>
+  <div class="phase-goal">Goal: Configure identity, roles, and Social Sign-In — estimated 1 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>2.1</td><td>Create IAM Identity Domain</td><td>Use Default domain or create a dedicated domain for the application</td></tr>
+    <tr><td>2.2</td><td>Create IAM Groups</td><td>Create: ifinance-directors, ifinance-managers</td></tr>
+    <tr><td>2.3</td><td>Create IAM Users</td><td>One user per team member — assign to appropriate group</td></tr>
+    <tr><td>2.4</td><td>Register Confidential App in IAM</td><td>OAuth2 Authorization Code + PKCE flow — Redirect URI points to APEX callback URL</td></tr>
+    <tr><td>2.5</td><td>Note Client ID and Client Secret</td><td>Required for APEX Social Sign-In configuration</td></tr>
+    <tr><td>2.6</td><td>Configure APEX Social Sign-In</td><td>In APEX: Shared Components → Authentication Schemes → Social Sign-In → OCI IAM provider</td></tr>
+    <tr><td>2.7</td><td>Map IAM Groups to APEX Roles</td><td>Post-authentication PL/SQL process reads IAM group claims → sets APEX application role (DIRECTOR / MANAGER)</td></tr>
+    <tr><td>2.8</td><td>Create APEX Authorization Schemes</td><td>IS_DIRECTOR: checks APP_USER role = 'DIRECTOR' · IS_MANAGER: checks APP_USER role = 'MANAGER'</td></tr>
+    <tr><td>2.9</td><td>Create APEX Application Users table</td><td>Sync IAM identity to local IFINANCE.USERS table on first login (section, role, color, initials)</td></tr>
+    <tr><td>2.10</td><td>Test full login flow end-to-end</td><td>Login via IAM → APEX session created → role applied → correct dashboard shown</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 3 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 3</div>
+  <div class="phase-title">Database Schema</div>
+  <div class="phase-goal">Goal: Create all tables, views, and supporting objects — estimated 1 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>3.1</td><td>Create USERS table</td><td>USER_ID, NAME, INITIALS, ROLE, TITLE, EMAIL, SECTION, COLOR, GRADIENT, ACTIVE_FLAG, CREATED_AT</td></tr>
+    <tr><td>3.2</td><td>Create TASKS table</td><td>TASK_ID, TITLE, DESCRIPTION, STATUS, PRIORITY, CATEGORY, START_DATE, DUE_DATE, COMPLETION_PCT, NEXT_ACTION, NEXT_ACTION_DATE, NOTES, ASSIGNED_TO (FK→USERS), WEEK_NUMBER, YEAR, CREATED_AT, UPDATED_AT</td></tr>
+    <tr><td>3.3</td><td>Create TASK_ATTACHMENTS table</td><td>ATTACH_ID, TASK_ID (FK), FILE_NAME, MIME_TYPE, FILE_SIZE, FILE_CONTENT (BLOB), UPLOADED_AT, UPLOADED_BY</td></tr>
+    <tr><td>3.4</td><td>Create TASK_TAGS table</td><td>TAG_ID, TASK_ID (FK), TAG_NAME — supports multiple tags per task</td></tr>
+    <tr><td>3.5</td><td>Create sequences &amp; identity columns</td><td>Auto-increment PKs using GENERATED ALWAYS AS IDENTITY (23ai feature)</td></tr>
+    <tr><td>3.6</td><td>Create CREATED_AT / UPDATED_AT triggers</td><td>Before-insert sets CREATED_AT; before-insert-or-update sets UPDATED_AT</td></tr>
+    <tr><td>3.7</td><td>Create indexes</td><td>Indexes on ASSIGNED_TO, WEEK_NUMBER + YEAR, STATUS, ACTIVE_FLAG for report performance</td></tr>
+    <tr><td>3.8</td><td>Create TASK_WEEKLY_STATS view</td><td>Aggregates completion rate, task counts by status per user per week — used by APEX charts and KPI cards</td></tr>
+    <tr><td>3.9</td><td>Create MANAGER_OVERVIEW view</td><td>Cross-section summary for director: total tasks, completion rate, delayed count per manager</td></tr>
+    <tr><td>3.10</td><td>Seed reference data</td><td>Insert initial users, task categories lookup values</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 4 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<div class="phase-header">
+  <div class="phase-num">Phase 4</div>
+  <div class="phase-title">PL/SQL Business Logic Packages</div>
+  <div class="phase-goal">Goal: Encapsulate all data operations — estimated 1 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>4.1</td><td>PKG_TASKS — CRUD</td><td>add_task, update_task, delete_task, get_task — called from APEX page processes</td></tr>
+    <tr><td>4.2</td><td>PKG_TASKS — Queries</td><td>get_by_user_week (REF CURSOR), get_all_week (director), search_tasks — used as Interactive Report source</td></tr>
+    <tr><td>4.3</td><td>PKG_STATS — Weekly stats</td><td>get_week_stats: returns completion rate, by-status counts — used by KPI cards and charts</td></tr>
+    <tr><td>4.4</td><td>PKG_STATS — Trend data</td><td>get_trend (N weeks): returns pipelined table — used by APEX trend chart SQL source</td></tr>
+    <tr><td>4.5</td><td>PKG_STATS — Manager overview</td><td>get_manager_overview (REF CURSOR): all managers summary — used by director dashboard cards</td></tr>
+    <tr><td>4.6</td><td>PKG_AUTH — Session management</td><td>sync_user_from_iam: creates/updates USERS row from IAM JWT claims on each login</td></tr>
+    <tr><td>4.7</td><td>PKG_AUTH — Role resolution</td><td>get_user_role: reads IAM group claim → returns 'DIRECTOR' or 'MANAGER' for APEX session</td></tr>
+    <tr><td>4.8</td><td>PKG_ATTACHMENTS</td><td>get_attachment (returns BLOB for download), delete_attachment — file content stored as BLOB in DB</td></tr>
+    <tr><td>4.9</td><td>PKG_WEEK_UTILS</td><td>get_iso_week (DATE → NUMBER), get_week_label (week+year → VARCHAR2), get_week_dates — used in page computations</td></tr>
+    <tr><td>4.10</td><td>Unit test all packages</td><td>Anonymous PL/SQL test blocks for all public procedures and functions</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 5 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 5</div>
+  <div class="phase-title">APEX Application Setup</div>
+  <div class="phase-goal">Goal: Create application skeleton, theme, navigation, and global settings — estimated 0.5 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>5.1</td><td>Create APEX Application</td><td>Application name: i-Finance Task Management · Theme 42 (Universal Theme) · Language: English</td></tr>
+    <tr><td>5.2</td><td>Configure Authentication Scheme</td><td>Set OCI IAM Social Sign-In as default authentication (configured in Phase 2)</td></tr>
+    <tr><td>5.3</td><td>Set Application Security</td><td>Require authentication on all pages · Session timeout: 8 hours · CSRF protection: enabled</td></tr>
+    <tr><td>5.4</td><td>Define Application Items</td><td>AI_USER_ROLE, AI_USER_ID, AI_WEEK_NUMBER, AI_YEAR, AI_USER_SECTION — stored in session state</td></tr>
+    <tr><td>5.5</td><td>Define Application Computations</td><td>On new session: populate AI_WEEK_NUMBER and AI_YEAR from PKG_WEEK_UTILS.get_iso_week(SYSDATE)</td></tr>
+    <tr><td>5.6</td><td>Configure Navigation Menu</td><td>Two menu entries: My Tasks (manager, hidden for director) · Director Overview (director only, authorization scheme)</td></tr>
+    <tr><td>5.7</td><td>Set Global Page (Page 0)</td><td>i-Finance navbar with app logo, week label, week prev/next buttons, user avatar, sign-out link</td></tr>
+    <tr><td>5.8</td><td>Define Custom CSS &amp; JS</td><td>Upload i-Finance brand colors CSS · Upload any custom Dynamic Action JS helpers to Static Application Files</td></tr>
+    <tr><td>5.9</td><td>Configure Error Handling</td><td>Custom error page template · Friendly error messages for constraint violations</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 6 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<div class="phase-header">
+  <div class="phase-num">Phase 6</div>
+  <div class="phase-title">APEX Pages Development</div>
+  <div class="phase-goal">Goal: Build all application pages — estimated 4 days</div>
+</div>
+
+<div class="info-box">
+  Each page below lists its type, regions, key items, processes, and Dynamic Actions.
+  Chips indicate the implementation type: <span class="chip chip-apex">APEX</span> = builder wizard,
+  <span class="chip chip-sql">SQL</span> = SQL query source,
+  <span class="chip chip-plsql">PL/SQL</span> = PL/SQL process or function,
+  <span class="chip chip-da">DA</span> = Dynamic Action.
+</div>
+
+<h2>Page 1 — Login Page</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.1</td><td>Customize APEX Login page</td><td><span class="chip chip-apex">APEX</span> Replace default login with i-Finance branded layout: logo, app name, tagline</td></tr>
+    <tr><td>6.2</td><td>Add "Sign in with OCI IAM" button</td><td><span class="chip chip-apex">APEX</span> Social Sign-In button redirects to IAM login — primary login method</td></tr>
+    <tr><td>6.3</td><td>Post-login process</td><td><span class="chip chip-plsql">PL/SQL</span> On successful auth: call PKG_AUTH.sync_user_from_iam → set AI_USER_ROLE, AI_USER_ID in session</td></tr>
+    <tr><td>6.4</td><td>Role-based redirect</td><td><span class="chip chip-plsql">PL/SQL</span> After login: if AI_USER_ROLE = 'DIRECTOR' redirect to Page 4, else redirect to Page 2</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 2 — Manager Dashboard</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.5</td><td>Page authorization</td><td><span class="chip chip-apex">APEX</span> Apply IS_MANAGER authorization scheme — director is redirected away</td></tr>
+    <tr><td>6.6</td><td>Week navigation bar</td><td><span class="chip chip-apex">APEX</span> Buttons region: Previous Week / Current Week label / Next Week — update AI_WEEK_NUMBER via Dynamic Action</td></tr>
+    <tr><td>6.7</td><td>Statistics cards region</td><td><span class="chip chip-plsql">PL/SQL</span> PL/SQL Dynamic Content region: calls PKG_STATS.get_week_stats → renders 5 clickable HTML stat cards</td></tr>
+    <tr><td>6.8</td><td>Task list — Classic Report</td><td><span class="chip chip-sql">SQL</span> Source: PKG_TASKS.get_by_user_week — custom row template renders task cards with status, priority, progress bar, completion summary bar</td></tr>
+    <tr><td>6.9</td><td>Task list filter tabs</td><td><span class="chip chip-da">DA</span> Tab buttons (All / In Progress / Completed / Delayed / Blocked) trigger Dynamic Action to refresh report with P2_STATUS_FILTER item</td></tr>
+    <tr><td>6.10</td><td>Task search</td><td><span class="chip chip-da">DA</span> Text item P2_SEARCH → Dynamic Action on change: Submit and refresh task list report region</td></tr>
+    <tr><td>6.11</td><td>Weekly Summary sidebar</td><td><span class="chip chip-plsql">PL/SQL</span> PL/SQL Dynamic Content: SVG progress ring + stats (total, done, in-progress, delayed)</td></tr>
+    <tr><td>6.12</td><td>Next Actions sidebar list</td><td><span class="chip chip-sql">SQL</span> Classic Report: pending tasks with nextAction — custom row template, sorted by priority</td></tr>
+    <tr><td>6.13</td><td>Status distribution chart</td><td><span class="chip chip-apex">APEX</span> Native APEX Chart (Donut) — SQL source: SELECT status, COUNT(*) FROM tasks WHERE week = :AI_WEEK_NUMBER</td></tr>
+    <tr><td>6.14</td><td>Weekly trend chart</td><td><span class="chip chip-apex">APEX</span> Native APEX Chart (Bar) — SQL source: PKG_STATS.get_trend pipelined function — last 6 weeks</td></tr>
+    <tr><td>6.15</td><td>FAB — Add Task button</td><td><span class="chip chip-apex">APEX</span> Floating button → opens Page 3 (Task Modal) in Dialog mode</td></tr>
+    <tr><td>6.16</td><td>Drill-down modal on stat cards</td><td><span class="chip chip-da">DA</span> Click stat card → set P2_DRILL_FILTER → open Page 9 (Drill Modal) as Dialog</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 3 — Task Form (Modal Dialog)</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.17</td><td>Page type &amp; template</td><td><span class="chip chip-apex">APEX</span> Modal Dialog page — Form region on TASKS table</td></tr>
+    <tr><td>6.18</td><td>Form items</td><td><span class="chip chip-apex">APEX</span> P3_TITLE (Text), P3_CATEGORY (Select List), P3_STATUS (Select List), P3_PRIORITY (Radio Group), P3_DESCRIPTION (Textarea), P3_START_DATE / P3_DUE_DATE (Date Picker), P3_COMPLETION_PCT (Range Slider), P3_NEXT_ACTION (Textarea), P3_NEXT_ACTION_DATE (Date Picker), P3_NOTES (Textarea)</td></tr>
+    <tr><td>6.19</td><td>File attachment item</td><td><span class="chip chip-apex">APEX</span> P3_FILE — File Browse item → stores BLOB in TASK_ATTACHMENTS — supports multiple uploads</td></tr>
+    <tr><td>6.20</td><td>Attachments list region</td><td><span class="chip chip-sql">SQL</span> Classic Report below file item: lists existing attachments with Download and Delete links</td></tr>
+    <tr><td>6.21</td><td>Completion % auto-status sync</td><td><span class="chip chip-da">DA</span> When P3_COMPLETION_PCT = 100 → set P3_STATUS = 'COMPLETED' · When = 0 → set P3_STATUS = 'NOT_STARTED'</td></tr>
+    <tr><td>6.22</td><td>Save process</td><td><span class="chip chip-plsql">PL/SQL</span> On Submit: call PKG_TASKS.add_task or PKG_TASKS.update_task — show success toast on close</td></tr>
+    <tr><td>6.23</td><td>Delete process</td><td><span class="chip chip-plsql">PL/SQL</span> Delete button → confirmation dialog → PKG_TASKS.delete_task — close modal and refresh Page 2</td></tr>
+    <tr><td>6.24</td><td>Validation</td><td><span class="chip chip-apex">APEX</span> Required: Title, Next Action · Date: Due Date must be ≥ Start Date</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 4 — Director Dashboard</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.25</td><td>Page authorization</td><td><span class="chip chip-apex">APEX</span> Apply IS_DIRECTOR authorization scheme</td></tr>
+    <tr><td>6.26</td><td>Week navigation bar</td><td><span class="chip chip-apex">APEX</span> Same pattern as Page 2 — updates AI_WEEK_NUMBER session item</td></tr>
+    <tr><td>6.27</td><td>KPI cards region (5 cards)</td><td><span class="chip chip-plsql">PL/SQL</span> PL/SQL Dynamic Content: Total Tasks, Completion Rate, Completed, Delayed/Blocked, Sections On Track — each card clickable to open Page 6 (KPI Drill)</td></tr>
+    <tr><td>6.28</td><td>Overall Status chart</td><td><span class="chip chip-apex">APEX</span> Native APEX Chart (Donut) — all tasks this week by status</td></tr>
+    <tr><td>6.29</td><td>Managers completion chart</td><td><span class="chip chip-apex">APEX</span> Native APEX Chart (Stacked Bar) — one bar per manager, stacked by status</td></tr>
+    <tr><td>6.30</td><td>Completion trend chart</td><td><span class="chip chip-apex">APEX</span> Native APEX Chart (Line) — multi-series, one line per manager, last 6 weeks</td></tr>
+    <tr><td>6.31</td><td>Priority distribution chart</td><td><span class="chip chip-apex">APEX</span> Native APEX Chart (Donut) — all tasks by priority</td></tr>
+    <tr><td>6.32</td><td>Manager cards grid</td><td><span class="chip chip-sql">SQL</span> Cards region — SQL source: MANAGER_OVERVIEW view — custom card template with progress ring, stats, click → Page 5 (Manager Detail)</td></tr>
+    <tr><td>6.33</td><td>All tasks table</td><td><span class="chip chip-apex">APEX</span> Interactive Report — all tasks this week — sortable columns: Section, Title, Status, Priority, Completion, Due Date — click row → Page 7 (Task Detail)</td></tr>
+    <tr><td>6.34</td><td>Export CSV button</td><td><span class="chip chip-apex">APEX</span> Interactive Report built-in CSV download — no custom code needed</td></tr>
+    <tr><td>6.35</td><td>Manage Users button</td><td><span class="chip chip-apex">APEX</span> Button → opens Page 8 (User Management) as Dialog</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 5 — Manager Detail Modal</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.36</td><td>Page type</td><td><span class="chip chip-apex">APEX</span> Modal Dialog — receives P5_MANAGER_ID as parameter from Page 4</td></tr>
+    <tr><td>6.37</td><td>Manager header region</td><td><span class="chip chip-plsql">PL/SQL</span> PL/SQL Dynamic Content: renders manager avatar, name, section, weekly stats (total, done, rate)</td></tr>
+    <tr><td>6.38</td><td>Manager tasks list</td><td><span class="chip chip-sql">SQL</span> Classic Report — all tasks for P5_MANAGER_ID this week — custom row template — click row → opens Page 7 (Task Detail)</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 6 — KPI Drill-Down Modal</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.39</td><td>Page type</td><td><span class="chip chip-apex">APEX</span> Modal Dialog — receives P6_FILTER (all / completed / in-progress / risk / on-track) as parameter</td></tr>
+    <tr><td>6.40</td><td>Modal title computation</td><td><span class="chip chip-plsql">PL/SQL</span> Page title and subtitle set dynamically based on P6_FILTER value</td></tr>
+    <tr><td>6.41</td><td>Filtered tasks list</td><td><span class="chip chip-sql">SQL</span> Classic Report — SQL WHERE clause varies by P6_FILTER — custom row template — click row → opens Page 7</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 7 — Task Full Detail Modal</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.42</td><td>Page type</td><td><span class="chip chip-apex">APEX</span> Modal Dialog (read-only) — receives P7_TASK_ID as parameter</td></tr>
+    <tr><td>6.43</td><td>Manager strip</td><td><span class="chip chip-plsql">PL/SQL</span> PL/SQL Dynamic Content: renders manager avatar, name, section</td></tr>
+    <tr><td>6.44</td><td>Task details display items</td><td><span class="chip chip-apex">APEX</span> Display Only items: Status badge, Priority badge, Completion % progress bar, Description, Start Date, Due Date, Next Action, Notes</td></tr>
+    <tr><td>6.45</td><td>Completion summary bar</td><td><span class="chip chip-plsql">PL/SQL</span> PL/SQL Dynamic Content (for completed tasks): "Completed on Thu 07-May-2026 · Duration: 12 Days · On-Time ✓"</td></tr>
+    <tr><td>6.46</td><td>Attachments list</td><td><span class="chip chip-sql">SQL</span> Classic Report on TASK_ATTACHMENTS — file name, size, download link (blob download URL)</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 8 — User Management Modal</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.47</td><td>Page type &amp; authorization</td><td><span class="chip chip-apex">APEX</span> Modal Dialog — IS_DIRECTOR authorization scheme — only director can access</td></tr>
+    <tr><td>6.48</td><td>Current managers list</td><td><span class="chip chip-sql">SQL</span> Classic Report on USERS — custom row template with avatar, name, section, Active/Disabled badge, Enable/Disable button</td></tr>
+    <tr><td>6.49</td><td>Enable/Disable process</td><td><span class="chip chip-plsql">PL/SQL</span> Toggle ACTIVE_FLAG on USERS table — confirmation dialog for disable action — refresh report after</td></tr>
+    <tr><td>6.50</td><td>Add New Manager form</td><td><span class="chip chip-apex">APEX</span> Form items: P8_NAME, P8_SECTION, P8_TITLE, P8_EMAIL, P8_PASSWORD, P8_INITIALS, P8_COLOR (Radio with color swatches)</td></tr>
+    <tr><td>6.51</td><td>Auto-initials computation</td><td><span class="chip chip-da">DA</span> Dynamic Action on P8_NAME change: JavaScript extracts first + last name initials → sets P8_INITIALS</td></tr>
+    <tr><td>6.52</td><td>Save new manager process</td><td><span class="chip chip-plsql">PL/SQL</span> Validate email uniqueness → INSERT into USERS → refresh managers list → show success message</td></tr>
+    <tr><td>6.53</td><td>Sync new manager to IAM (optional)</td><td><span class="chip chip-plsql">PL/SQL</span> Call OCI IAM REST API to create IAM user and assign to ifinance-managers group</td></tr>
+  </tbody>
+</table>
+
+<h2>Page 9 — Manager Drill-Down Modal (for Page 2)</h2>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>6.54</td><td>Page type</td><td><span class="chip chip-apex">APEX</span> Modal Dialog — receives P9_FILTER (all / completed / in-progress / risk / not-started) — IS_MANAGER authorization</td></tr>
+    <tr><td>6.55</td><td>Filtered task list</td><td><span class="chip chip-sql">SQL</span> Classic Report — current user's tasks for current week filtered by P9_FILTER — uses same task card template as Page 2</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 7 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<div class="phase-header">
+  <div class="phase-num">Phase 7</div>
+  <div class="phase-title">Integration &amp; Testing</div>
+  <div class="phase-goal">Goal: Verify all end-to-end flows — estimated 1 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>7.1</td><td>Full login flow test</td><td>IAM → APEX session → role assigned → correct dashboard → correct data shown</td></tr>
+    <tr><td>7.2</td><td>Manager workflow test</td><td>Add / edit / delete task · attach file · download file · change status · drill-down modal</td></tr>
+    <tr><td>7.3</td><td>Director workflow test</td><td>All KPI drills · task detail · manager detail · CSV export · manage users</td></tr>
+    <tr><td>7.4</td><td>Role enforcement test</td><td>Manager cannot navigate to director pages · Authorization scheme blocks access</td></tr>
+    <tr><td>7.5</td><td>File attachment test</td><td>Upload PDF/Word/image · verify BLOB stored · download file · delete attachment</td></tr>
+    <tr><td>7.6</td><td>Cross-browser test</td><td>Chrome, Edge, Firefox — desktop and mobile (APEX Universal Theme is responsive by default)</td></tr>
+    <tr><td>7.7</td><td>Performance test</td><td>150+ tasks · chart rendering · Interactive Report pagination · APEX session timeout behavior</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 8 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 8</div>
+  <div class="phase-title">Deployment</div>
+  <div class="phase-goal">Goal: Promote to production — estimated 0.5 day</div>
+</div>
+
+<div class="advantage-box">
+  <strong>APEX Deployment Advantage:</strong> No build tools, no server config, no Nginx.
+  Deployment is simply exporting the APEX application as a .sql file and importing it
+  into the target workspace. The Autonomous Database handles HTTPS, scaling, and backups automatically.
+</div>
+
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td>8.1</td><td>Export APEX application</td><td>APEX Builder → Export → Full Application export (.sql file) — includes all pages, regions, processes</td></tr>
+    <tr><td>8.2</td><td>Run DB schema script on production</td><td>Execute DDL scripts for tables, views, indexes, PL/SQL packages on the production schema</td></tr>
+    <tr><td>8.3</td><td>Import APEX application</td><td>APEX Builder → Import → upload .sql file → assign to production workspace</td></tr>
+    <tr><td>8.4</td><td>Update authentication configuration</td><td>Update Social Sign-In Redirect URIs in OCI IAM to point to the production APEX URL</td></tr>
+    <tr><td>8.5</td><td>Configure custom domain (optional)</td><td>OCI DNS + Load Balancer → map custom domain → APEX Autonomous DB URL</td></tr>
+    <tr><td>8.6</td><td>Seed production data</td><td>Insert users, reference data (categories, statuses) into production schema</td></tr>
+    <tr><td>8.7</td><td>Enable OCI Monitoring</td><td>Set up APEX performance monitoring · CPU and storage alerts in OCI console</td></tr>
+    <tr><td>8.8</td><td>Final production smoke test</td><td>All roles, all pages, file upload/download, charts, export on the live production URL</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Summary ────────────────────────────────────────────────────── -->
+<h1>Summary &amp; Effort Estimate</h1>
+<table class="summary-table">
+  <thead><tr><th>Phase</th><th>Description</th><th>Estimated Effort</th></tr></thead>
+  <tbody>
+    <tr><td>Phase 1</td><td>OCI Infrastructure Setup</td><td>0.5 day</td></tr>
+    <tr><td>Phase 2</td><td>OCI IAM &amp; APEX Authentication</td><td>1 day</td></tr>
+    <tr><td>Phase 3</td><td>Database Schema</td><td>1 day</td></tr>
+    <tr><td>Phase 4</td><td>PL/SQL Business Logic Packages</td><td>1 day</td></tr>
+    <tr><td>Phase 5</td><td>APEX Application Setup</td><td>0.5 day</td></tr>
+    <tr><td>Phase 6</td><td>APEX Pages Development (9 pages)</td><td>4 days</td></tr>
+    <tr><td>Phase 7</td><td>Integration &amp; Testing</td><td>1 day</td></tr>
+    <tr><td>Phase 8</td><td>Deployment</td><td>0.5 day</td></tr>
+    <tr><td colspan="2"><strong>Total Estimated Effort</strong></td><td><strong>~9.5 days</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="note-box">
+  <strong>Note on IAM Integration:</strong> OCI IAM Social Sign-In configuration (Phase 2) is the most
+  variable step and depends on your OCI tenancy policy. An alternative is to use APEX built-in
+  authentication (username/password stored in APEX workspace users) which reduces Phase 2 to 0.5 day
+  and brings total effort down to ~8.5 days.
+</div>
+
+<h2>APEX Pages Summary</h2>
+<table>
+  <thead><tr><th>Page</th><th>Name</th><th>Type</th><th>Who Sees It</th></tr></thead>
+  <tbody>
+    <tr><td>0</td><td>Global Page</td><td>Global</td><td>All users</td></tr>
+    <tr><td>1</td><td>Login</td><td>Normal</td><td>Public</td></tr>
+    <tr><td>2</td><td>Manager Dashboard</td><td>Normal</td><td>Managers only</td></tr>
+    <tr><td>3</td><td>Task Form</td><td>Modal Dialog</td><td>Managers only</td></tr>
+    <tr><td>4</td><td>Director Dashboard</td><td>Normal</td><td>Director only</td></tr>
+    <tr><td>5</td><td>Manager Detail</td><td>Modal Dialog</td><td>Director only</td></tr>
+    <tr><td>6</td><td>KPI Drill-Down</td><td>Modal Dialog</td><td>Director only</td></tr>
+    <tr><td>7</td><td>Task Full Detail</td><td>Modal Dialog</td><td>Director only</td></tr>
+    <tr><td>8</td><td>User Management</td><td>Modal Dialog</td><td>Director only</td></tr>
+    <tr><td>9</td><td>Manager Stat Drill-Down</td><td>Modal Dialog</td><td>Managers only</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Footer ─────────────────────────────────────────────────────── -->
+<div class="doc-footer">
+  i-Finance Task Management Module &nbsp;|&nbsp; Oracle APEX / 23ai / OCI &nbsp;|&nbsp; Project Plan
+</div>
+
+</body>
+</html>
