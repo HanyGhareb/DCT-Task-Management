@@ -126,5 +126,40 @@ const Utils = {
     return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); };
   },
 
-  uid() { return '_' + Math.random().toString(36).substr(2,9); }
+  uid() { return '_' + Math.random().toString(36).substr(2,9); },
+
+  // Gradient avatar SVG data-URI — looks like a profile photo placeholder
+  avatarDataUri(user, size = 48) {
+    const gradient = user.gradient || `linear-gradient(135deg,${user.color},${user.color}cc)`;
+    // Parse gradient colors for SVG
+    const m = gradient.match(/#[0-9a-f]{6}/gi) || [user.color, user.color];
+    const c1 = m[0] || '#1e3a5f', c2 = m[1] || c1;
+    const initials = user.initials || '?';
+    const fs = initials.length > 2 ? Math.round(size * 0.28) : Math.round(size * 0.36);
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">
+      <defs>
+        <linearGradient id="ag" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stop-color="${c1}"/>
+          <stop offset="100%" stop-color="${c2}"/>
+        </linearGradient>
+        <clipPath id="cc"><circle cx="${size/2}" cy="${size/2}" r="${size/2}"/></clipPath>
+      </defs>
+      <circle cx="${size/2}" cy="${size/2}" r="${size/2}" fill="url(#ag)"/>
+      <circle cx="${size/2}" cy="${size/2}" r="${size/2 - 1.5}" fill="none" stroke="rgba(255,255,255,0.25)" stroke-width="1.5"/>
+      <text x="50%" y="50%" dy=".36em" text-anchor="middle"
+        font-family="Inter,Arial,sans-serif" font-size="${fs}" font-weight="700"
+        letter-spacing="0.5" fill="white" clip-path="url(#cc)">${escSvg(initials)}</text>
+    </svg>`;
+    return 'data:image/svg+xml,' + encodeURIComponent(svg);
+  },
+
+  // Renders an <img> tag that looks like a profile photo
+  avatarImg(user, size = 40, cssClass = 'nav-avatar') {
+    const src = this.avatarDataUri(user, size * 2); // 2× for retina
+    return `<img src="${src}" width="${size}" height="${size}" alt="${this.escHtml(user.name)}" class="${cssClass}" style="border-radius:50%;object-fit:cover">`;
+  }
 };
+
+function escSvg(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}

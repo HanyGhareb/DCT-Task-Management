@@ -25,8 +25,10 @@ const Manager = {
   // ── Navigation ────────────────────────────────────────────────────
   _setupNav() {
     const u = this.state.user;
-    document.getElementById('navAvatar').textContent  = u.initials;
-    document.getElementById('navAvatar').style.background = u.color;
+    const avatarEl = document.getElementById('navAvatar');
+    if (avatarEl) {
+      avatarEl.outerHTML = Utils.avatarImg(u, 36, 'nav-avatar');
+    }
     document.getElementById('navUserName').textContent = u.name;
     document.getElementById('navUserRole').textContent = u.section;
   },
@@ -152,7 +154,8 @@ const Manager = {
       </div>
       <span class="task-progress-pct">${pct}%</span>
     </div>
-    ${t.nextAction ? `
+    ${isComplete ? this._completionSummaryHTML(t) : ''}
+    ${!isComplete && t.nextAction ? `
     <div class="task-next-action">
       <div class="task-next-action-label"><i class="fas fa-arrow-right"></i>Next Action</div>
       <div class="task-next-action-text">${Utils.escHtml(t.nextAction)}</div>
@@ -505,6 +508,58 @@ const Manager = {
     // Close modal on overlay click
     const overlay = document.getElementById('taskModal');
     if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) this._closeModal(); });
+    const drillModal = document.getElementById('drillModal');
+    if (drillModal) drillModal.addEventListener('click', e => { if (e.target === drillModal) this.closeDrill(); });
+  },
+
+  // ── Drill-down modal ──────────────────────────────────────────────
+  openDrill(filter) {
+    const tasks = this.state.tasks;
+    let filtered, title, sub;
+    if (filter === 'all') {
+      filtered = [...tasks];
+      title = 'All Tasks';
+      sub = `${tasks.length} task${tasks.length !== 1 ? 's' : ''} this week`;
+    } else if (filter === 'risk') {
+      filtered = tasks.filter(t => t.status === 'delayed' || t.status === 'blocked');
+      title = 'At Risk Tasks';
+      sub = `${filtered.length} delayed or blocked task${filtered.length !== 1 ? 's' : ''}`;
+    } else {
+      filtered = tasks.filter(t => t.status === filter);
+      const label = STATUSES[filter]?.label || filter;
+      title = `${label} Tasks`;
+      sub = `${filtered.length} task${filtered.length !== 1 ? 's' : ''}`;
+    }
+    document.getElementById('drillModalTitle').textContent = title;
+    document.getElementById('drillModalSub').textContent = sub + ' · ' + Utils.getWeekLabel(this.state.week, this.state.year);
+    const list = document.getElementById('drillTasksList');
+    if (!list) return;
+    const order = { blocked:0, delayed:1, 'in-progress':2, 'not-started':3, completed:4 };
+    filtered.sort((a,b) => (order[a.status]??5)-(order[b.status]??5));
+    list.innerHTML = filtered.length
+      ? filtered.map(t => this._taskCardHTML(t)).join('')
+      : `<div class="empty-state" style="padding:2rem"><i class="fas fa-clipboard-check" style="font-size:2rem;color:#059669"></i><h3>No tasks here</h3><p>Nothing to show for this filter.</p></div>`;
+    document.getElementById('drillModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  },
+
+  closeDrill() {
+    document.getElementById('drillModal').classList.remove('active');
+    document.body.style.overflow = '';
+  },
+
+  // ── Completion summary bar ────────────────────────────────────────
+  _completionSummaryHTML(t) {
+    const completedDate = t.updatedAt ? t.updatedAt.slice(0, 10) : (t.dueDate || Utils.today());
+    const startDate = t.startDate || (t.createdAt ? t.createdAt.slice(0, 10) : completedDate);
+    const duration = Math.max(1, Math.round((Utils.parseDate(completedDate) - Utils.parseDate(startDate)) / 86400000));
+    const onTime = !t.dueDate || completedDate <= t.dueDate;
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const d = Utils.parseDate(completedDate);
+    const label = `${dayNames[d.getUTCDay()]} ${Utils.formatDate(completedDate, 'DD-MMM-YYYY')}`;
+    return onTime
+      ? `<div class="task-completion-bar ct-on-time"><i class="fas fa-check-circle"></i> Completed on ${label} &nbsp;·&nbsp; Duration: ${duration} Day${duration !== 1 ? 's' : ''} &nbsp;·&nbsp; <strong>On-Time ✓</strong></div>`
+      : `<div class="task-completion-bar ct-late"><i class="fas fa-clock"></i> Completed on ${label} &nbsp;·&nbsp; Duration: ${duration} Day${duration !== 1 ? 's' : ''} &nbsp;·&nbsp; <strong>Late ✗</strong></div>`;
   },
 
   // ── Helpers ───────────────────────────────────────────────────────

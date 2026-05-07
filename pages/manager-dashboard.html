@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Manager Dashboard — FinanceTrack</title>
+  <title>My Tasks — i-Finance Task Management</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -19,8 +19,8 @@
   <a href="../index.html" class="nav-brand">
     <div class="nav-logo-icon"><i class="fas fa-chart-line"></i></div>
     <div class="nav-title">
-      <span class="nav-title-main">FinanceTrack</span>
-      <span class="nav-title-sub">Task Management</span>
+      <span class="nav-title-main">i-Finance</span>
+      <span class="nav-title-sub">Task Management Module</span>
     </div>
   </a>
 
@@ -60,46 +60,46 @@
       </div>
     </div>
 
-    <!-- Stats row -->
+    <!-- Stats row — click any card to drill into those tasks -->
     <div class="stats-grid" style="grid-template-columns:repeat(5,1fr)">
-      <div class="stat-card">
+      <div class="stat-card stat-clickable" onclick="Manager.openDrill('all')" title="View all tasks">
         <div class="stat-icon" style="background:#eff6ff;color:#2563eb"><i class="fas fa-tasks"></i></div>
         <div class="stat-info">
           <div class="stat-label">Total Tasks</div>
           <div class="stat-value" id="statTotal">0</div>
-          <div class="stat-sub"><i class="fas fa-calendar-week"></i> This week</div>
+          <div class="stat-sub"><i class="fas fa-mouse-pointer"></i> Click to view all</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-clickable" onclick="Manager.openDrill('completed')" title="View completed tasks">
         <div class="stat-icon" style="background:#ecfdf5;color:#059669"><i class="fas fa-check-circle"></i></div>
         <div class="stat-info">
           <div class="stat-label">Completed</div>
           <div class="stat-value" id="statCompleted">0</div>
-          <div class="stat-sub" style="color:#059669"><i class="fas fa-arrow-up"></i> Finished</div>
+          <div class="stat-sub" style="color:#059669"><i class="fas fa-mouse-pointer"></i> Click to view</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-clickable" onclick="Manager.openDrill('in-progress')" title="View in-progress tasks">
         <div class="stat-icon" style="background:#eff6ff;color:#3b82f6"><i class="fas fa-spinner"></i></div>
         <div class="stat-info">
           <div class="stat-label">In Progress</div>
           <div class="stat-value" id="statInProgress">0</div>
-          <div class="stat-sub"><i class="fas fa-clock"></i> Active</div>
+          <div class="stat-sub"><i class="fas fa-mouse-pointer"></i> Click to view</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-clickable" onclick="Manager.openDrill('risk')" title="View delayed & blocked tasks">
         <div class="stat-icon" style="background:#fef2f2;color:#dc2626"><i class="fas fa-exclamation-triangle"></i></div>
         <div class="stat-info">
           <div class="stat-label">At Risk</div>
           <div class="stat-value" id="statDelayed">0</div>
-          <div class="stat-sub" style="color:#dc2626"><i class="fas fa-flag"></i> Needs attention</div>
+          <div class="stat-sub" style="color:#dc2626"><i class="fas fa-mouse-pointer"></i> Click to view</div>
         </div>
       </div>
-      <div class="stat-card">
+      <div class="stat-card stat-clickable" onclick="Manager.openDrill('not-started')" title="View not-started tasks">
         <div class="stat-icon" style="background:#fef3c7;color:#d97706"><i class="fas fa-percentage"></i></div>
         <div class="stat-info">
           <div class="stat-label">Completion Rate</div>
           <div class="stat-value" id="statRate">0%</div>
-          <div class="stat-sub"><i class="fas fa-chart-pie"></i> Weekly rate</div>
+          <div class="stat-sub"><i class="fas fa-mouse-pointer"></i> Not started</div>
         </div>
       </div>
     </div>
@@ -367,6 +367,25 @@
       <button class="btn btn-primary" onclick="Manager.saveTask()">
         <i class="fas fa-save"></i> Save Task
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Stat Drill-Down Modal (click a stat card to see filtered tasks) ─ -->
+<div class="modal-overlay" id="drillModal">
+  <div class="modal" style="max-width:780px">
+    <div class="modal-header">
+      <div>
+        <h2 id="drillModalTitle">Tasks</h2>
+        <p id="drillModalSub" style="font-size:.8rem;color:var(--text-3);margin-top:.15rem"></p>
+      </div>
+      <button class="modal-close" onclick="Manager.closeDrill()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="max-height:65vh">
+      <div id="drillTasksList" class="tasks-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Manager.closeDrill()">Close</button>
     </div>
   </div>
 </div>

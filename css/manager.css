@@ -230,6 +230,24 @@
 }
 .att-thumb:hover .att-overlay { opacity: 1; }
 
+/* ── Completion summary bar (for completed tasks) ────────────────── */
+.task-completion-bar {
+  display: flex; align-items: center; gap: .5rem; flex-wrap: wrap;
+  padding: .5rem .875rem; border-radius: var(--r-sm);
+  font-size: .78rem; font-weight: 600; margin-bottom: .75rem;
+  line-height: 1.4;
+}
+.ct-on-time {
+  background: linear-gradient(135deg, #ecfdf5, #d1fae5);
+  border: 1px solid #a7f3d0; color: #065f46;
+}
+.ct-on-time i { color: #059669; }
+.ct-late {
+  background: linear-gradient(135deg, #fef2f2, #fee2e2);
+  border: 1px solid #fca5a5; color: #991b1b;
+}
+.ct-late i { color: #dc2626; }
+
 /* Progress value display */
 .progress-display {
   display: flex; align-items: center; justify-content: space-between;

@@ -5,12 +5,12 @@
 
 // ── Users ──────────────────────────────────────────────────────────
 const USERS = [
-  { id: 'dir1',  name: 'Ahmed Al-Rashidi', initials: 'AR', role: 'director', title: 'Finance Director',             email: 'ahmed@finance.ae',   password: 'admin123', color: '#1e3a5f', section: 'Finance Division'    },
-  { id: 'mgr1',  name: 'Sarah Johnson',    initials: 'SJ', role: 'manager',  title: 'Budgeting & Planning Manager', email: 'sarah@finance.ae',   password: 'pass123',  color: '#7c3aed', section: 'Budgeting & Planning' },
-  { id: 'mgr2',  name: 'Michael Chen',     initials: 'MC', role: 'manager',  title: 'Accounts Payable Manager',     email: 'michael@finance.ae', password: 'pass123',  color: '#2563eb', section: 'Accounts Payable'     },
-  { id: 'mgr3',  name: 'Emma Williams',    initials: 'EW', role: 'manager',  title: 'Financial Reporting Manager',  email: 'emma@finance.ae',    password: 'pass123',  color: '#059669', section: 'Financial Reporting'  },
-  { id: 'mgr4',  name: 'Robert Brown',     initials: 'RB', role: 'manager',  title: 'Treasury Manager',             email: 'robert@finance.ae',  password: 'pass123',  color: '#d97706', section: 'Treasury'             },
-  { id: 'mgr5',  name: 'Lisa Davis',       initials: 'LD', role: 'manager',  title: 'Compliance & Audit Manager',   email: 'lisa@finance.ae',    password: 'pass123',  color: '#dc2626', section: 'Compliance & Audit'   }
+  { id: 'dir1', name: 'Hashem Al Kabbi',            initials: 'HK',  role: 'director', title: 'Finance Manager',                          email: 'hashem@finance.ae',   password: 'admin123', color: '#1e3a5f', gradient: 'linear-gradient(135deg,#0f2040,#1e3a5f)', section: 'Finance Division'              },
+  { id: 'mgr1', name: 'Naser Mohamed Al Khaja',     initials: 'NK',  role: 'manager',  title: 'Finance Operations Manager',               email: 'naser@finance.ae',    password: 'pass123',  color: '#7c3aed', gradient: 'linear-gradient(135deg,#5b21b6,#7c3aed)', section: 'Finance Operations'            },
+  { id: 'mgr2', name: 'Ayesha Abdul Kareem Ameri',  initials: 'AA',  role: 'manager',  title: 'Payables Operations Manager',              email: 'ayesha@finance.ae',   password: 'pass123',  color: '#2563eb', gradient: 'linear-gradient(135deg,#1d4ed8,#2563eb)', section: 'Payables Operations'           },
+  { id: 'mgr3', name: 'Shaikha Ghanem Al Ameri',    initials: 'SGA', role: 'manager',  title: 'Financial Planning & Budgeting Manager',   email: 'shaikha.g@finance.ae',password: 'pass123',  color: '#059669', gradient: 'linear-gradient(135deg,#065f46,#059669)', section: 'Financial Planning & Budgeting'},
+  { id: 'mgr4', name: 'Shaikha Ahmed Al Suwaidi',   initials: 'SA',  role: 'manager',  title: 'Revenue Assurance Manager',                email: 'shaikha.a@finance.ae',password: 'pass123',  color: '#d97706', gradient: 'linear-gradient(135deg,#92400e,#d97706)', section: 'Revenue Assurance'             },
+  { id: 'mgr5', name: 'Noora Saeed Al Ali',         initials: 'NS',  role: 'manager',  title: 'Receivables Operations Manager',           email: 'noora@finance.ae',    password: 'pass123',  color: '#dc2626', gradient: 'linear-gradient(135deg,#991b1b,#dc2626)', section: 'Receivables Operations'        }
 ];
 
 // ── Status config ──────────────────────────────────────────────────
@@ -39,7 +39,7 @@ const CATEGORIES = [
 
 // ── DataStore ──────────────────────────────────────────────────────
 const DataStore = {
-  KEYS: { TASKS: 'ftm_tasks', SESSION: 'ftm_session', SEEDED: 'ftm_seeded' },
+  KEYS: { TASKS: 'ftm_tasks', SESSION: 'ftm_session', SEEDED: 'ftm_seeded_v2' },
 
   init() {
     if (!localStorage.getItem(this.KEYS.SEEDED)) {
@@ -140,40 +140,40 @@ const DataStore = {
     const curY = 2026;
 
     const templates = {
-      mgr1: [
-        { title:'Q2 Budget Variance Analysis',      category:'Budget Review',          priority:'high',   status:'in-progress', pct:65, next:'Compile department responses and finalize variance report for director review',    tags:['Q2','Variance','Critical'] },
-        { title:'FY2026 Mid-Year Budget Revision',  category:'Financial Forecast',     priority:'high',   status:'in-progress', pct:40, next:'Consolidate all department inputs by Thursday EOD',                                 tags:['FY2026','Budget'] },
-        { title:'Department Cost Center Review',    category:'Budget Review',          priority:'medium', status:'completed',   pct:100, next:'Distribute finalized report to all department heads',                              tags:['Monthly','Cost Control'] },
-        { title:'Capital Expenditure Planning',     category:'Meeting & Communication',priority:'medium', status:'not-started', pct:0,  next:'Send meeting invites to IT and Operations and prepare agenda',                     tags:['CapEx','Planning'] },
-        { title:'Budget KPI Dashboard Update',      category:'System & Process',       priority:'low',    status:'delayed',     pct:20, next:'Obtain missing headcount data from HR and update dashboard',                        tags:['KPI','Dashboard'] }
+      mgr1: [ // Finance Operations — Naser Mohamed Al Khaja
+        { title:'Q2 Finance Operations Review',             category:'Financial Report',        priority:'high',   status:'in-progress', pct:65,  next:'Compile department responses and finalize operations review for Finance Manager',  tags:['Q2','Operations','Critical'] },
+        { title:'Staff Performance KPI Tracking',           category:'System & Process',        priority:'high',   status:'in-progress', pct:40,  next:'Consolidate all team KPI data and prepare performance summary by Thursday EOD',   tags:['KPI','Performance'] },
+        { title:'Monthly Operations Cost Review',           category:'Budget Review',           priority:'medium', status:'completed',   pct:100, next:'Distribute finalized cost report to Finance Manager',                             tags:['Monthly','Cost Control'] },
+        { title:'Finance Team Capacity Planning',           category:'Meeting & Communication', priority:'medium', status:'not-started', pct:0,   next:'Send meeting invites and prepare workforce planning agenda',                      tags:['Capacity','Planning'] },
+        { title:'Finance Systems Access Audit',             category:'Audit & Compliance',      priority:'low',    status:'delayed',     pct:20,  next:'Obtain access log reports from IT and complete audit checklist',                  tags:['Systems','Audit'] }
       ],
-      mgr2: [
-        { title:'Vendor Invoice Processing — Batch #47',   category:'Vendor Payment',  priority:'high',   status:'in-progress', pct:55, next:'Process remaining 38 invoices and submit batch for payment authorization',        tags:['Invoices','AED 2.4M'] },
-        { title:'Supplier Payment Run — May 2026',         category:'Vendor Payment',  priority:'high',   status:'in-progress', pct:80, next:'Obtain final authorization from Finance Director before executing payment',         tags:['Payment Run','Monthly'] },
-        { title:'Accounts Payable Aging Report',           category:'Financial Report',priority:'medium', status:'completed',   pct:100, next:'Present AP aging findings in Monday weekly review meeting',                       tags:['AP Aging','Report'] },
-        { title:'Supplier Onboarding — 3 New Vendors',     category:'System & Process',priority:'medium', status:'blocked',     pct:30, next:'Chase legal team for contract finalization before proceeding',                     tags:['New Vendor','Onboarding'] },
-        { title:'Month-End AP Reconciliation',             category:'Reconciliation',  priority:'high',   status:'not-started', pct:0,  next:'Request vendor statements from top 20 suppliers immediately',                     tags:['Month-End','Reconciliation'] }
+      mgr2: [ // Payables Operations — Ayesha Abdul Kareem Ameri
+        { title:'Vendor Invoice Processing — Batch #47',    category:'Vendor Payment',          priority:'high',   status:'in-progress', pct:55,  next:'Process remaining 38 invoices and submit batch for payment authorization',       tags:['Invoices','AED 2.4M'] },
+        { title:'Supplier Payment Run — May 2026',          category:'Vendor Payment',          priority:'high',   status:'in-progress', pct:80,  next:'Obtain final authorization from Finance Manager before executing payment run',    tags:['Payment Run','Monthly'] },
+        { title:'Accounts Payable Aging Report',            category:'Financial Report',        priority:'medium', status:'completed',   pct:100, next:'Present AP aging findings in weekly review meeting',                             tags:['AP Aging','Report'] },
+        { title:'Supplier Onboarding — 3 New Vendors',      category:'System & Process',        priority:'medium', status:'blocked',     pct:30,  next:'Chase legal team for contract finalization before proceeding',                   tags:['New Vendor','Onboarding'] },
+        { title:'Month-End AP Reconciliation',              category:'Reconciliation',          priority:'high',   status:'not-started', pct:0,   next:'Request vendor statements from top 20 suppliers immediately',                    tags:['Month-End','Reconciliation'] }
       ],
-      mgr3: [
-        { title:'April 2026 Monthly Financial Statements', category:'Financial Report',  priority:'high',   status:'in-progress', pct:75, next:'Complete balance sheet notes and submit consolidated statements for review',    tags:['Monthly','IFRS','Statements'] },
-        { title:'Management Reporting Pack — Week 19',     category:'Financial Report',  priority:'high',   status:'completed',   pct:100, next:'Distribute approved reporting pack to senior management team',               tags:['Weekly','Management'] },
-        { title:'IFRS 16 Lease Accounting Update',         category:'Audit & Compliance',priority:'medium', status:'in-progress', pct:50, next:'Review ROU asset calculations with external auditors on Thursday',            tags:['IFRS 16','Leases'] },
-        { title:'Intercompany Reconciliation',             category:'Reconciliation',    priority:'medium', status:'delayed',     pct:25, next:'Follow up with subsidiary finance teams for outstanding confirmations',        tags:['Intercompany','Group'] },
-        { title:'External Audit Support — Q1 Review',     category:'Audit & Compliance',priority:'high',   status:'in-progress', pct:60, next:'Submit remaining PBC items to external auditors by Friday 5pm',               tags:['Audit','Q1 Review'] }
+      mgr3: [ // Financial Planning & Budgeting — Shaikha Ghanem Al Ameri
+        { title:'FY2026 Mid-Year Budget Revision',          category:'Financial Forecast',      priority:'high',   status:'in-progress', pct:75,  next:'Consolidate all department inputs and submit revised budget for review',          tags:['FY2026','Budget','Mid-Year'] },
+        { title:'Q2 Budget Variance Analysis Report',       category:'Budget Review',           priority:'high',   status:'completed',   pct:100, next:'Distribute approved variance report to senior management team',                  tags:['Q2','Variance','Report'] },
+        { title:'Capital Expenditure Planning — H2 2026',  category:'Financial Forecast',      priority:'medium', status:'in-progress', pct:50,  next:'Review CapEx requests from IT and Operations divisions',                         tags:['CapEx','H2 2026'] },
+        { title:'Department Budget Utilization Review',     category:'Budget Review',           priority:'medium', status:'delayed',     pct:25,  next:'Follow up with department heads for outstanding budget clarifications',           tags:['Utilization','Monthly'] },
+        { title:'3-Year Financial Plan Update',             category:'Financial Forecast',      priority:'high',   status:'in-progress', pct:60,  next:'Incorporate macroeconomic assumptions and finalize projections by Friday',       tags:['Strategic','3-Year Plan'] }
       ],
-      mgr4: [
-        { title:'Daily Cash Position Report',          category:'Treasury Management', priority:'high',   status:'completed',   pct:100, next:'Continue daily monitoring and escalate if balance drops below AED 5M threshold', tags:['Daily','Cash Position'] },
-        { title:'FX Hedging Strategy Review',          category:'Treasury Management', priority:'high',   status:'in-progress', pct:45, next:'Obtain bank FX quotations and finalize Q3 hedging proposal',                     tags:['FX','Hedging','Risk'] },
-        { title:'Short-Term Investment Review',        category:'Cash Flow Analysis',  priority:'medium', status:'in-progress', pct:60, next:'Present AED 5M idle cash investment options to Finance Director',                tags:['Investment','Cash Management'] },
-        { title:'13-Week Cash Flow Forecast',          category:'Cash Flow Analysis',  priority:'high',   status:'in-progress', pct:70, next:'Incorporate HR payroll forecast and finalize rolling cash flow model',           tags:['Cash Flow','Forecast'] },
-        { title:'Bank Facility Renewal — Emirates NBD',category:'Treasury Management', priority:'medium', status:'blocked',     pct:35, next:'Await legal review of amended facility agreement terms',                         tags:['Bank','Credit Facility'] }
+      mgr4: [ // Revenue Assurance — Shaikha Ahmed Al Suwaidi
+        { title:'Monthly Revenue Reconciliation — April',   category:'Reconciliation',          priority:'high',   status:'completed',   pct:100, next:'Continue monitoring and escalate revenue variances above AED 100K threshold',   tags:['Revenue','Monthly'] },
+        { title:'Revenue Leakage Analysis — Q2',            category:'Audit & Compliance',      priority:'high',   status:'in-progress', pct:45,  next:'Complete analysis of billing discrepancies and prepare recommendations',         tags:['Leakage','Q2','Critical'] },
+        { title:'Customer Billing Review — Key Accounts',   category:'Financial Report',        priority:'medium', status:'in-progress', pct:60,  next:'Present billing discrepancy findings and recovery plan to Finance Manager',      tags:['Billing','Key Accounts'] },
+        { title:'Revenue KPI Dashboard — Week 19',          category:'System & Process',        priority:'high',   status:'in-progress', pct:70,  next:'Finalize dashboard data inputs and publish weekly revenue KPI report',           tags:['KPI','Dashboard','Revenue'] },
+        { title:'Contract Revenue Recognition Review',      category:'Audit & Compliance',      priority:'medium', status:'blocked',     pct:35,  next:'Await legal sign-off on revenue recognition policy amendments',                  tags:['Contracts','IFRS 15'] }
       ],
-      mgr5: [
-        { title:'Internal Audit — Procurement Process',    category:'Audit & Compliance',priority:'high',   status:'in-progress', pct:55, next:'Complete fieldwork documentation and draft initial audit observations report', tags:['Internal Audit','Procurement'] },
-        { title:'Regulatory Compliance Checklist — Q2',   category:'Audit & Compliance',priority:'high',   status:'in-progress', pct:70, next:'Review completed checklist with legal counsel and submit to director for sign-off', tags:['Regulatory','Q2','Compliance'] },
-        { title:'AML Awareness Training — Finance Dept',  category:'Audit & Compliance',priority:'medium', status:'completed',   pct:100, next:'Submit signed attendance register and completion certificates to HR',          tags:['AML','Training','Compliance'] },
-        { title:'Risk Register Update — Finance Division',category:'Risk Assessment',   priority:'medium', status:'not-started', pct:0,  next:'Schedule risk identification workshop with all section managers',               tags:['Risk','Register'] },
-        { title:'VAT Return Preparation — April 2026',    category:'Audit & Compliance',priority:'high',   status:'delayed',     pct:40, next:'Obtain missing purchase invoices from AP and finalize input VAT calculations',  tags:['VAT','Tax Filing','Urgent'] }
+      mgr5: [ // Receivables Operations — Noora Saeed Al Ali
+        { title:'Customer Outstanding AR Collection Drive',  category:'Reconciliation',         priority:'high',   status:'in-progress', pct:55,  next:'Follow up with top 10 overdue customers and escalate accounts above 90 days',   tags:['AR','Collections','Overdue'] },
+        { title:'Accounts Receivable Aging Report — April', category:'Financial Report',        priority:'high',   status:'in-progress', pct:70,  next:'Review AR aging report with Finance Manager and agree collection targets',      tags:['AR Aging','April','Report'] },
+        { title:'Customer Credit Assessment — 5 Accounts',  category:'Risk Assessment',         priority:'medium', status:'completed',   pct:100, next:'Submit credit assessment recommendations to Finance Manager for approval',       tags:['Credit','Risk'] },
+        { title:'Receivables Process Improvement',          category:'System & Process',        priority:'medium', status:'not-started', pct:0,   next:'Schedule workshop with operations team to map current AR collection process',    tags:['Process','Improvement'] },
+        { title:'Month-End AR Reconciliation',              category:'Reconciliation',          priority:'high',   status:'delayed',     pct:40,  next:'Obtain customer remittance advices and complete sub-ledger reconciliation',      tags:['Month-End','AR','Urgent'] }
       ]
     };
 

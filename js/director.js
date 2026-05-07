@@ -19,10 +19,12 @@ const Director = {
 
   _setupNav() {
     const u = this.state.user;
-    document.getElementById('navAvatar').textContent      = u.initials;
-    document.getElementById('navAvatar').style.background = u.color;
-    document.getElementById('navUserName').textContent    = u.name;
-    document.getElementById('navUserRole').textContent    = u.title;
+    const avatarEl = document.getElementById('navAvatar');
+    if (avatarEl) {
+      avatarEl.outerHTML = Utils.avatarImg(u, 36, 'nav-avatar');
+    }
+    document.getElementById('navUserName').textContent = u.name;
+    document.getElementById('navUserRole').textContent = u.title;
   },
 
   loadWeek(w, y) {
@@ -110,7 +112,7 @@ const Director = {
 <div class="mgr-card" onclick="Director.openManagerDetail('${m.id}')" style="--accent-color:${color}">
   <div class="mgr-card-top">
     <div class="mgr-avatar-wrap">
-      <div class="mgr-avatar" style="background:${color}">${m.initials}</div>
+      ${Utils.avatarImg(m, 46, 'mgr-avatar')}
       <div class="mgr-status-dot" style="background:${delayed>0?'#d97706':'#059669'}"></div>
     </div>
     <div class="mgr-info">
@@ -189,7 +191,7 @@ const Director = {
         return `<tr>
           <td class="td-title">${Utils.escHtml(t.title)}</td>
           <td><div class="td-manager">
-            <div class="avatar td-avatar avatar-sm" style="background:${mgr?.color||'#64748b'}">${mgr?.initials||'?'}</div>
+            ${mgr ? Utils.avatarImg(mgr, 26, 'avatar td-avatar avatar-sm') : '<div class="avatar avatar-sm" style="background:#94a3b8">?</div>'}
             <span>${Utils.escHtml(mgr?.section||'—')}</span>
           </div></td>
           <td><span class="badge ${st.badgeClass}">${st.label}</span></td>
@@ -240,8 +242,8 @@ const Director = {
     const stats = DataStore.getWeekStats(this.state.week, this.state.year, mgrId);
     if (!mgr) return;
 
-    document.getElementById('mdAvatar').textContent      = mgr.initials;
-    document.getElementById('mdAvatar').style.background = mgr.color;
+    const mdAv = document.getElementById('mdAvatar');
+    if (mdAv) mdAv.outerHTML = Utils.avatarImg(mgr, 56, 'avatar mdh-avatar');
     document.getElementById('mdName').textContent        = mgr.name;
     document.getElementById('mdSection').textContent     = mgr.section + ' · ' + Utils.getWeekLabel(this.state.week, this.state.year);
     document.getElementById('mdTotal').textContent       = stats.total;
@@ -259,7 +261,7 @@ const Director = {
           const st  = STATUSES[t.status]||STATUSES['not-started'];
           const pr  = PRIORITIES[t.priority]||PRIORITIES.medium;
           const pct = t.completionPercentage||0;
-          return `<div class="detail-task-row">
+          return `<div class="detail-task-row" onclick="Director.openTaskDetail('${t.id}')" style="cursor:pointer">
             <div class="dtr-left">
               <div class="dtr-title">${Utils.escHtml(t.title)}</div>
               <div class="dtr-meta">${Utils.escHtml(t.category||'')}${t.dueDate?' · Due '+Utils.formatDate(t.dueDate):''}</div>
@@ -282,6 +284,208 @@ const Director = {
   closeDetail() {
     document.getElementById('detailModal').classList.remove('active');
     document.body.style.overflow='';
+  },
+
+  // ── KPI Drill-Down Modal ──────────────────────────────────────────
+  openKPIDrill(filter) {
+    const tasks = this.state.tasks;
+    let filtered, title, sub;
+    if (filter === 'all') {
+      filtered = [...tasks];
+      title = 'All Tasks';
+      sub = `${tasks.length} task${tasks.length !== 1 ? 's' : ''} across all sections`;
+    } else if (filter === 'risk') {
+      filtered = tasks.filter(t => t.status === 'delayed' || t.status === 'blocked');
+      title = 'At Risk Tasks';
+      sub = `${filtered.length} delayed or blocked task${filtered.length !== 1 ? 's' : ''}`;
+    } else if (filter === 'rate') {
+      filtered = [...tasks];
+      const done = tasks.filter(t => t.status === 'completed').length;
+      const rate = tasks.length ? Math.round(done / tasks.length * 100) : 0;
+      title = 'Completion Overview';
+      sub = `${rate}% completion rate · ${done} of ${tasks.length} tasks completed`;
+    } else if (filter === 'on-track') {
+      const onTrackIds = this.state.managersData.filter(m => m.completionRate >= 60).map(m => m.id);
+      filtered = tasks.filter(t => onTrackIds.includes(t.assignedTo));
+      const onTrack = onTrackIds.length;
+      title = `On-Track Sections (${onTrack} of ${this.state.managersData.length})`;
+      sub = `Tasks from sections meeting ≥60% completion target`;
+    } else {
+      filtered = tasks.filter(t => t.status === filter);
+      const label = STATUSES[filter]?.label || filter;
+      title = `${label} Tasks`;
+      sub = `${filtered.length} task${filtered.length !== 1 ? 's' : ''} across all sections`;
+    }
+    document.getElementById('kpiDrillTitle').textContent = title;
+    document.getElementById('kpiDrillSub').textContent = sub + ' · ' + Utils.getWeekLabel(this.state.week, this.state.year);
+    const list = document.getElementById('kpiDrillList');
+    if (!list) return;
+    const order = { blocked:0, delayed:1, 'in-progress':2, 'not-started':3, completed:4 };
+    filtered.sort((a,b) => (order[a.status]??5)-(order[b.status]??5));
+    if (!filtered.length) {
+      list.innerHTML = `<div class="empty-state" style="padding:2rem"><i class="fas fa-clipboard-check" style="font-size:2rem;color:#059669"></i><h3>No tasks</h3><p>Nothing to show for this filter.</p></div>`;
+    } else {
+      list.innerHTML = filtered.map(t => {
+        const mgr = USERS.find(u => u.id === t.assignedTo);
+        const st  = STATUSES[t.status] || STATUSES['not-started'];
+        const pr  = PRIORITIES[t.priority] || PRIORITIES.medium;
+        const pct = t.completionPercentage || 0;
+        return `<div class="detail-task-row" onclick="Director.openTaskDetail('${t.id}')" style="cursor:pointer">
+          <div class="dtr-left">
+            <div class="dtr-title">${Utils.escHtml(t.title)}</div>
+            <div class="dtr-meta">${mgr ? `${Utils.escHtml(mgr.section)} · ` : ''}${Utils.escHtml(t.category||'')}${t.dueDate ? ' · Due ' + Utils.formatDate(t.dueDate) : ''}</div>
+            ${t.nextAction ? `<div class="dtr-next"><i class="fas fa-arrow-right"></i> ${Utils.escHtml(t.nextAction.slice(0,100))}</div>` : ''}
+          </div>
+          <div class="dtr-right">
+            <span class="badge ${st.badgeClass}">${st.label}</span>
+            <span class="badge ${pr.badgeClass}">${pr.label}</span>
+            <div style="font-size:.72rem;color:var(--text-3);text-align:right">${pct}% complete</div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+    document.getElementById('kpiDrillModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  },
+
+  closeKPIDrill() {
+    document.getElementById('kpiDrillModal').classList.remove('active');
+    document.body.style.overflow = '';
+  },
+
+  // ── Full Task Detail Modal ────────────────────────────────────────
+  openTaskDetail(taskId) {
+    const t = DataStore.getTask(taskId);
+    if (!t) return;
+    const mgr = USERS.find(u => u.id === t.assignedTo);
+
+    // Header
+    this._set('tdTitle', t.title);
+    this._set('tdMeta', (t.category || '') + (t.dueDate ? ' · Due ' + Utils.formatDate(t.dueDate) : '') + ' · ' + Utils.getWeekLabel(t.weekNumber, t.year));
+
+    // Manager strip
+    const strip = document.getElementById('tdManagerStrip');
+    if (strip && mgr) {
+      strip.innerHTML = `
+        ${Utils.avatarImg(mgr, 42, 'avatar')}
+        <div>
+          <div style="font-size:.9rem;font-weight:700;color:var(--text-1)">${Utils.escHtml(mgr.name)}</div>
+          <div style="font-size:.75rem;color:var(--text-3)">${Utils.escHtml(mgr.title || mgr.section)}</div>
+        </div>`;
+    }
+
+    // Badge row (status + priority)
+    const badgeRow = document.getElementById('tdBadgeRow');
+    if (badgeRow) {
+      const st = STATUSES[t.status] || STATUSES['not-started'];
+      const pr = PRIORITIES[t.priority] || PRIORITIES.medium;
+      badgeRow.innerHTML = `
+        <span class="badge ${st.badgeClass}" style="font-size:.82rem;padding:.3rem .75rem">${st.label}</span>
+        <span class="badge ${pr.badgeClass}" style="font-size:.82rem;padding:.3rem .75rem">${pr.label}</span>`;
+    }
+
+    // Progress bar
+    const pct = t.completionPercentage || 0;
+    const pFill = document.getElementById('tdProgressFill');
+    if (pFill) { pFill.style.width = pct + '%'; pFill.className = `task-progress-fill ${Utils.progressColor(pct)}`; }
+    this._set('tdProgressPct', pct + '%');
+
+    // Completion summary bar
+    const compBar = document.getElementById('tdCompletionBar');
+    if (compBar) compBar.innerHTML = t.status === 'completed' ? this._completionSummaryHTML(t) : '';
+
+    // Description
+    const descWrap = document.getElementById('tdDescWrap');
+    const descEl   = document.getElementById('tdDesc');
+    if (descEl) {
+      if (t.description) {
+        descEl.innerHTML = Utils.escHtml(t.description).replace(/\n/g,'<br>');
+        if (descWrap) descWrap.style.display = '';
+      } else {
+        if (descWrap) descWrap.style.display = 'none';
+      }
+    }
+
+    // Dates
+    this._set('tdStartDate', Utils.formatDate(t.startDate, 'dddd, MMM DD, YYYY') || '—');
+    this._set('tdDueDate',   Utils.formatDate(t.dueDate,   'dddd, MMM DD, YYYY') || '—');
+
+    // Next action
+    const nextWrap = document.getElementById('tdNextWrap');
+    if (t.nextAction) {
+      this._set('tdNextAction', t.nextAction);
+      this._set('tdNextDate', t.nextActionDate ? 'Target: ' + Utils.formatDate(t.nextActionDate) : '');
+      if (nextWrap) nextWrap.style.display = '';
+    } else {
+      if (nextWrap) nextWrap.style.display = 'none';
+    }
+
+    // Tags
+    const tagsWrap = document.getElementById('tdTagsWrap');
+    const tagsEl   = document.getElementById('tdTags');
+    if (tagsEl) {
+      const tags = t.tags || [];
+      tagsEl.innerHTML = tags.map(tag => `<span class="badge badge-tag"><i class="fas fa-tag"></i>${Utils.escHtml(tag)}</span>`).join('');
+      if (tagsWrap) tagsWrap.style.display = tags.length ? '' : 'none';
+    }
+
+    // Attachments
+    const attList = document.getElementById('tdAttList');
+    const noAtt   = document.getElementById('tdNoAtt');
+    const atts = t.attachments || [];
+    if (attList) {
+      if (atts.length) {
+        attList.innerHTML = atts.map(a => {
+          const { icon, color } = Utils.getFileIcon(a.type);
+          return `<div class="file-item">
+            <i class="fas ${icon} file-item-icon" style="color:${color}"></i>
+            <div class="file-item-info">
+              <div class="file-item-name">${Utils.escHtml(a.name)}</div>
+              <div class="file-item-size">${Utils.formatFileSize(a.size)}</div>
+            </div>
+            ${a.data ? `<div class="file-item-actions"><a class="btn btn-ghost btn-icon btn-sm" href="${a.data}" download="${Utils.escHtml(a.name)}" title="Download"><i class="fas fa-download"></i></a></div>` : ''}
+          </div>`;
+        }).join('');
+        if (noAtt) noAtt.style.display = 'none';
+      } else {
+        attList.innerHTML = '';
+        if (noAtt) noAtt.style.display = '';
+      }
+    }
+
+    // Notes
+    const notesWrap = document.getElementById('tdNotesWrap');
+    const notesEl   = document.getElementById('tdNotes');
+    if (notesEl) {
+      if (t.notes) {
+        notesEl.textContent = t.notes;
+        if (notesWrap) notesWrap.style.display = '';
+      } else {
+        if (notesWrap) notesWrap.style.display = 'none';
+      }
+    }
+
+    document.getElementById('taskDetailModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  },
+
+  closeTaskDetail() {
+    document.getElementById('taskDetailModal').classList.remove('active');
+    document.body.style.overflow = '';
+  },
+
+  // ── Completion summary bar ────────────────────────────────────────
+  _completionSummaryHTML(t) {
+    const completedDate = t.updatedAt ? t.updatedAt.slice(0, 10) : (t.dueDate || Utils.today());
+    const startDate = t.startDate || (t.createdAt ? t.createdAt.slice(0, 10) : completedDate);
+    const duration = Math.max(1, Math.round((Utils.parseDate(completedDate) - Utils.parseDate(startDate)) / 86400000));
+    const onTime = !t.dueDate || completedDate <= t.dueDate;
+    const dayNames = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+    const d = Utils.parseDate(completedDate);
+    const label = `${dayNames[d.getUTCDay()]} ${Utils.formatDate(completedDate, 'DD-MMM-YYYY')}`;
+    return onTime
+      ? `<div class="task-completion-bar ct-on-time" style="margin-bottom:1rem"><i class="fas fa-check-circle"></i> Completed on ${label} &nbsp;·&nbsp; Duration: ${duration} Day${duration !== 1 ? 's' : ''} &nbsp;·&nbsp; <strong>On-Time ✓</strong></div>`
+      : `<div class="task-completion-bar ct-late" style="margin-bottom:1rem"><i class="fas fa-clock"></i> Completed on ${label} &nbsp;·&nbsp; Duration: ${duration} Day${duration !== 1 ? 's' : ''} &nbsp;·&nbsp; <strong>Late ✗</strong></div>`;
   },
 
   // ── Export ────────────────────────────────────────────────────────
@@ -314,6 +518,10 @@ const Director = {
   _setupEvents() {
     const detailModal = document.getElementById('detailModal');
     if (detailModal) detailModal.addEventListener('click', e => { if(e.target===detailModal) this.closeDetail(); });
+    const kpiDrillModal = document.getElementById('kpiDrillModal');
+    if (kpiDrillModal) kpiDrillModal.addEventListener('click', e => { if(e.target===kpiDrillModal) this.closeKPIDrill(); });
+    const taskDetailModal = document.getElementById('taskDetailModal');
+    if (taskDetailModal) taskDetailModal.addEventListener('click', e => { if(e.target===taskDetailModal) this.closeTaskDetail(); });
   },
 
   // ── Helpers ───────────────────────────────────────────────────────
