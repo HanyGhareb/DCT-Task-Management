@@ -51,6 +51,9 @@
     <button class="btn btn-sm btn-accent" onclick="Director.exportCSV()" style="font-size:.75rem">
       <i class="fas fa-file-csv"></i> Export CSV
     </button>
+    <button class="btn btn-sm btn-secondary" onclick="Director.openUserManager()" style="font-size:.75rem">
+      <i class="fas fa-users-cog"></i> Manage Users
+    </button>
     <div class="nav-user">
       <div class="nav-avatar" id="navAvatar">?</div>
       <div class="nav-user-info">
@@ -366,6 +369,86 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="Director.closeTaskDetail()"><i class="fas fa-times"></i> Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Confirm dialog ─────────────────────────────────────────────── -->
+<div class="confirm-overlay" id="confirmOverlay">
+  <div class="confirm-box">
+    <div class="confirm-icon" style="color:#dc2626"><i class="fas fa-exclamation-triangle"></i></div>
+    <h3 id="confirmTitle">Confirm Action</h3>
+    <p id="confirmMessage">Are you sure?</p>
+    <div class="confirm-actions">
+      <button class="btn btn-secondary" onclick="Confirm.close()">Cancel</button>
+      <button class="btn btn-danger" id="confirmBtn">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Manage Users Modal ─────────────────────────────────────────── -->
+<div class="modal-overlay" id="userManagerModal">
+  <div class="modal" style="max-width:680px">
+    <div class="modal-header">
+      <div>
+        <h2><i class="fas fa-users-cog" style="color:#2563eb;margin-right:.5rem"></i>Manage Section Managers</h2>
+        <p style="font-size:.8rem;color:var(--text-3);margin-top:.15rem">Enable or disable accounts · Add new section managers</p>
+      </div>
+      <button class="modal-close" onclick="Director.closeUserManager()"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="modal-body" style="max-height:72vh;overflow-y:auto">
+
+      <!-- Current managers list -->
+      <div style="margin-bottom:1.5rem">
+        <div style="font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-3);margin-bottom:.75rem">
+          <i class="fas fa-user-friends" style="margin-right:.35rem"></i>Current Section Managers
+        </div>
+        <div id="umUsersList" style="display:flex;flex-direction:column;gap:.5rem"></div>
+      </div>
+
+      <!-- Divider -->
+      <div class="divider"><span>Add New Manager</span></div>
+
+      <!-- Add new manager form -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin-top:1rem" id="umAddForm">
+        <div class="form-group">
+          <label class="form-label">Full Name <span class="req">*</span></label>
+          <input type="text" id="umName" class="form-control" placeholder="e.g. Ahmed Mohammed Al Rashidi" oninput="Director._umAutoInitials()">
+          <span class="form-error" id="umNameErr"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Section Name <span class="req">*</span></label>
+          <input type="text" id="umSection" class="form-control" placeholder="e.g. Treasury Management">
+          <span class="form-error" id="umSectionErr"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Job Title</label>
+          <input type="text" id="umTitle" class="form-control" placeholder="e.g. Treasury Manager">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Email Address <span class="req">*</span></label>
+          <input type="email" id="umEmail" class="form-control" placeholder="e.g. ahmed@finance.ae">
+          <span class="form-error" id="umEmailErr"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Password <span class="req">*</span></label>
+          <input type="text" id="umPassword" class="form-control" placeholder="Login password">
+          <span class="form-error" id="umPasswordErr"></span>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Initials <span style="font-weight:400;color:var(--text-3)">(auto-generated)</span></label>
+          <input type="text" id="umInitials" class="form-control" placeholder="e.g. AR" maxlength="3" style="text-transform:uppercase">
+        </div>
+        <div class="form-group" style="grid-column:1/-1">
+          <label class="form-label">Avatar Color</label>
+          <div id="umColorPicker" style="display:flex;gap:.5rem;flex-wrap:wrap;margin-top:.25rem"></div>
+        </div>
+      </div>
+
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="Director.closeUserManager()"><i class="fas fa-times"></i> Cancel</button>
+      <button class="btn btn-primary" onclick="Director.saveNewUser()"><i class="fas fa-user-plus"></i> Add Manager</button>
     </div>
   </div>
 </div>

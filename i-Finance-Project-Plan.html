@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>i-Finance Task Management — Project Plan</title>
+<style>
+  body {
+    font-family: Calibri, Arial, sans-serif;
+    font-size: 11pt;
+    color: #1a1a1a;
+    margin: 2.5cm;
+    line-height: 1.4;
+  }
+
+  /* Cover */
+  .cover {
+    text-align: center;
+    margin-bottom: 40pt;
+    padding: 30pt 0;
+    border-bottom: 3pt solid #1e3a5f;
+  }
+  .cover-logo {
+    font-size: 28pt;
+    font-weight: 700;
+    color: #1e3a5f;
+    letter-spacing: 1px;
+  }
+  .cover-sub {
+    font-size: 14pt;
+    color: #2563eb;
+    margin-top: 4pt;
+  }
+  .cover-title {
+    font-size: 20pt;
+    font-weight: 700;
+    color: #1a1a1a;
+    margin-top: 24pt;
+  }
+  .cover-meta {
+    font-size: 10pt;
+    color: #555;
+    margin-top: 10pt;
+  }
+  .cover-stack {
+    display: inline-block;
+    margin-top: 18pt;
+    background: #eff6ff;
+    border: 1pt solid #bfdbfe;
+    border-radius: 6pt;
+    padding: 10pt 20pt;
+    font-size: 10pt;
+    color: #1e40af;
+  }
+
+  /* Section headings */
+  h1 {
+    font-size: 16pt;
+    font-weight: 700;
+    color: #1e3a5f;
+    margin-top: 28pt;
+    margin-bottom: 8pt;
+    border-bottom: 2pt solid #1e3a5f;
+    padding-bottom: 4pt;
+  }
+  h2 {
+    font-size: 13pt;
+    font-weight: 700;
+    color: #2563eb;
+    margin-top: 18pt;
+    margin-bottom: 6pt;
+  }
+
+  /* Phase header block */
+  .phase-header {
+    background: #1e3a5f;
+    color: white;
+    padding: 8pt 12pt;
+    border-radius: 4pt;
+    margin-bottom: 8pt;
+    margin-top: 20pt;
+  }
+  .phase-header .phase-num {
+    font-size: 9pt;
+    opacity: 0.75;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .phase-header .phase-title {
+    font-size: 13pt;
+    font-weight: 700;
+  }
+  .phase-header .phase-goal {
+    font-size: 9.5pt;
+    opacity: 0.85;
+    margin-top: 2pt;
+  }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 10pt;
+    margin-bottom: 14pt;
+  }
+  thead tr {
+    background: #1e3a5f;
+    color: white;
+  }
+  thead th {
+    padding: 6pt 8pt;
+    text-align: left;
+    font-weight: 600;
+    font-size: 9.5pt;
+  }
+  tbody tr:nth-child(even) { background: #f0f4f8; }
+  tbody tr:nth-child(odd)  { background: #ffffff; }
+  tbody td {
+    padding: 5pt 8pt;
+    border-bottom: 0.5pt solid #dce3ec;
+    vertical-align: top;
+  }
+  td:first-child {
+    font-weight: 600;
+    color: #1e3a5f;
+    white-space: nowrap;
+    width: 40pt;
+  }
+  td.task-id { color: #2563eb; }
+
+  /* Summary table */
+  .summary-table thead tr { background: #065f46; }
+  .summary-table tbody tr:last-child {
+    background: #1e3a5f;
+    color: white;
+    font-weight: 700;
+  }
+  .summary-table tbody tr:last-child td { color: white; border-color: #2563eb; }
+
+  /* Architecture box */
+  .arch-box {
+    background: #f8fafc;
+    border: 1pt solid #cbd5e1;
+    border-radius: 4pt;
+    padding: 12pt 16pt;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 10pt;
+    color: #1e293b;
+    margin: 10pt 0 18pt 0;
+    white-space: pre;
+    line-height: 1.8;
+  }
+
+  /* Note box */
+  .note-box {
+    background: #fffbeb;
+    border-left: 4pt solid #d97706;
+    padding: 8pt 12pt;
+    font-size: 10pt;
+    color: #78350f;
+    margin: 10pt 0;
+    border-radius: 0 4pt 4pt 0;
+  }
+
+  /* Page break */
+  .page-break { page-break-before: always; }
+
+  /* Footer */
+  .doc-footer {
+    margin-top: 30pt;
+    padding-top: 8pt;
+    border-top: 1pt solid #cbd5e1;
+    font-size: 9pt;
+    color: #94a3b8;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<!-- ── Cover ──────────────────────────────────────────────────────── -->
+<div class="cover">
+  <div class="cover-logo">i-Finance</div>
+  <div class="cover-sub">Task Management Module</div>
+  <div class="cover-title">Project Plan</div>
+  <div class="cover-meta">
+    Oracle JET &nbsp;|&nbsp; Oracle 23ai Free Tier &nbsp;|&nbsp; OCI IAM &nbsp;|&nbsp; ORDS REST API
+  </div>
+  <div class="cover-stack">
+    Browser → Oracle JET (OCI VM) → ORDS → Oracle 23ai DB (OCI)
+  </div>
+</div>
+
+<!-- ── Overview ───────────────────────────────────────────────────── -->
+<h1>Overview</h1>
+<p>
+  This document outlines the full project plan to rebuild the i-Finance Task Management web application
+  using Oracle technologies hosted on Oracle Cloud Infrastructure (OCI) Free Tier.
+  The application enables a Finance Director to monitor weekly tasks assigned to five section managers,
+  with drill-down views, file attachments, charts, and real-time cross-user data visibility.
+</p>
+
+<h2>Target Architecture</h2>
+<div class="arch-box">Browser (Oracle JET App)
+       ↕  HTTPS
+Nginx (Reverse Proxy + SSL)  — OCI VM (Ubuntu 22.04)
+       ↕
+ORDS (Oracle REST Data Services)  — OCI VM
+       ↕  JWT Bearer Token validation
+OCI IAM (Identity Domain)  — Authentication &amp; Authorization
+       ↕
+Oracle 23ai Free Tier DB  — OCI Autonomous Database</div>
+
+<h2>Users &amp; Roles</h2>
+<table>
+  <thead><tr><th>User</th><th>Section</th><th>IAM Group</th><th>App Role</th></tr></thead>
+  <tbody>
+    <tr><td>Hashem Al Kabbi</td><td>Finance Division</td><td>ifinance-directors</td><td>Director</td></tr>
+    <tr><td>Naser Mohamed Al Khaja</td><td>Finance Operations</td><td>ifinance-managers</td><td>Manager</td></tr>
+    <tr><td>Ayesha Abdul Kareem Ameri</td><td>Payables Operations</td><td>ifinance-managers</td><td>Manager</td></tr>
+    <tr><td>Shaikha Ghanem Al Ameri</td><td>Financial Planning &amp; Budgeting</td><td>ifinance-managers</td><td>Manager</td></tr>
+    <tr><td>Shaikha Ahmed Al Suwaidi</td><td>Revenue Assurance</td><td>ifinance-managers</td><td>Manager</td></tr>
+    <tr><td>Noora Saeed Al Ali</td><td>Receivables Operations</td><td>ifinance-managers</td><td>Manager</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 1 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<h1>Project Phases</h1>
+
+<div class="phase-header">
+  <div class="phase-num">Phase 1</div>
+  <div class="phase-title">OCI Infrastructure Setup</div>
+  <div class="phase-goal">Goal: Provision and connect all cloud resources — estimated 0.5 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">1.1</td><td>Create OCI Compartment</td><td>Isolate all project resources in one compartment</td></tr>
+    <tr><td class="task-id">1.2</td><td>Provision Oracle 23ai Free DB</td><td>Autonomous DB — note connection string and download wallet</td></tr>
+    <tr><td class="task-id">1.3</td><td>Provision OCI VM</td><td>Ubuntu 22.04, VM.Standard.E2.1.Micro (Always Free)</td></tr>
+    <tr><td class="task-id">1.4</td><td>Configure VCN &amp; Security Lists</td><td>Open ports: 22 (SSH), 80 (HTTP), 443 (HTTPS), 8080 (ORDS)</td></tr>
+    <tr><td class="task-id">1.5</td><td>Assign Static Public IP to VM</td><td>Reserve and attach a static public IP address</td></tr>
+    <tr><td class="task-id">1.6</td><td>Connect VM to Database</td><td>Upload DB wallet to VM, verify connection via SQLPlus</td></tr>
+    <tr><td class="task-id">1.7</td><td>Install software on VM</td><td>Node.js 20 LTS, Oracle JET CLI, ORDS, Nginx, Java 17 (ORDS dependency)</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 2 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 2</div>
+  <div class="phase-title">OCI IAM Setup</div>
+  <div class="phase-goal">Goal: Configure identity, users, roles, and OAuth2 token flow — estimated 1 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">2.1</td><td>Create IAM Identity Domain</td><td>Use Default domain or create a dedicated domain for the app</td></tr>
+    <tr><td class="task-id">2.2</td><td>Create IAM Groups</td><td>Create groups: ifinance-directors, ifinance-managers</td></tr>
+    <tr><td class="task-id">2.3</td><td>Create IAM Users</td><td>One user per team member — assign each to the appropriate group</td></tr>
+    <tr><td class="task-id">2.4</td><td>Register Confidential App in IAM</td><td>OAuth2 Authorization Code + PKCE flow for the JET app</td></tr>
+    <tr><td class="task-id">2.5</td><td>Configure Redirect URIs</td><td>Register JET app URL as allowed redirect URI in IAM</td></tr>
+    <tr><td class="task-id">2.6</td><td>Define App Roles in IAM</td><td>Create roles: director, manager — map each to corresponding IAM group</td></tr>
+    <tr><td class="task-id">2.7</td><td>Configure ORDS OAuth2 with IAM</td><td>ORDS validates IAM-issued JWT tokens on every API call</td></tr>
+    <tr><td class="task-id">2.8</td><td>Test token flow end-to-end</td><td>Obtain token from IAM login, call ORDS endpoint with bearer token, verify claims</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 3 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 3</div>
+  <div class="phase-title">Database Schema</div>
+  <div class="phase-goal">Goal: Design and create all database objects — estimated 1 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">3.1</td><td>Create DB schema/user</td><td>Create IFINANCE schema with appropriate grants and quotas</td></tr>
+    <tr><td class="task-id">3.2</td><td>Create USERS table</td><td>Mirror IAM users — store section, role, display name, color/avatar preferences</td></tr>
+    <tr><td class="task-id">3.3</td><td>Create TASKS table</td><td>All task fields: title, description, status, priority, category, dates, completion %, next action, notes, week number, year</td></tr>
+    <tr><td class="task-id">3.4</td><td>Create TASK_ATTACHMENTS table</td><td>File name, MIME type, file size, BLOB content — foreign key to TASKS</td></tr>
+    <tr><td class="task-id">3.5</td><td>Create TASK_TAGS table</td><td>Many-to-many tags per task</td></tr>
+    <tr><td class="task-id">3.6</td><td>Create sequences &amp; triggers</td><td>Auto-increment PKs; CREATED_AT / UPDATED_AT timestamp triggers</td></tr>
+    <tr><td class="task-id">3.7</td><td>Create indexes</td><td>Indexes on ASSIGNED_TO, WEEK_NUMBER, YEAR, STATUS for query performance</td></tr>
+    <tr><td class="task-id">3.8</td><td>Create TASK_WEEKLY_STATS view</td><td>Pre-aggregated completion stats per manager per week</td></tr>
+    <tr><td class="task-id">3.9</td><td>Create MANAGER_OVERVIEW view</td><td>Director-level cross-section summary — used by KPI cards</td></tr>
+    <tr><td class="task-id">3.10</td><td>Seed reference data</td><td>Insert users (synced with IAM), task categories, status and priority constants</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 4 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<div class="phase-header">
+  <div class="phase-num">Phase 4</div>
+  <div class="phase-title">PL/SQL Business Logic</div>
+  <div class="phase-goal">Goal: Encapsulate all data operations in packages — estimated 1.5 days</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">4.1</td><td>PKG_TASKS — CRUD</td><td>Procedures: add_task, update_task, delete_task, get_task</td></tr>
+    <tr><td class="task-id">4.2</td><td>PKG_TASKS — Queries</td><td>Functions: get_by_user_week, get_by_week_all, search_tasks</td></tr>
+    <tr><td class="task-id">4.3</td><td>PKG_STATS — Weekly stats</td><td>Completion rate, by-status counts, trend over N weeks per manager</td></tr>
+    <tr><td class="task-id">4.4</td><td>PKG_STATS — Manager overview</td><td>Cross-section KPIs for director dashboard</td></tr>
+    <tr><td class="task-id">4.5</td><td>PKG_ATTACHMENTS</td><td>Procedures: upload BLOB, download, delete attachment</td></tr>
+    <tr><td class="task-id">4.6</td><td>PKG_AUTH</td><td>Resolve IAM JWT claim to DB user record — enforce row-level access security</td></tr>
+    <tr><td class="task-id">4.7</td><td>PKG_WEEK_UTILS</td><td>ISO week number calculation in PL/SQL, week label and date range formatting</td></tr>
+    <tr><td class="task-id">4.8</td><td>Unit test all packages</td><td>Test scripts for all public procedures and functions — cover edge cases</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 5 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 5</div>
+  <div class="phase-title">ORDS REST API</div>
+  <div class="phase-goal">Goal: Expose all DB operations as secured REST endpoints — estimated 1.5 days</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">5.1</td><td>REST-enable IFINANCE schema</td><td>Run ORDS.ENABLE_SCHEMA — configure URL prefix</td></tr>
+    <tr><td class="task-id">5.2</td><td>GET /tasks</td><td>Return tasks for current user filtered by week — identity from JWT claim</td></tr>
+    <tr><td class="task-id">5.3</td><td>POST /tasks</td><td>Create new task — validate required fields</td></tr>
+    <tr><td class="task-id">5.4</td><td>PUT /tasks/:id</td><td>Update existing task — enforce ownership check</td></tr>
+    <tr><td class="task-id">5.5</td><td>DELETE /tasks/:id</td><td>Delete task — enforce ownership check</td></tr>
+    <tr><td class="task-id">5.6</td><td>GET /tasks/:id</td><td>Single task full detail including attachments list</td></tr>
+    <tr><td class="task-id">5.7</td><td>GET /stats/weekly</td><td>Manager's own weekly stats — completion rate, by-status counts</td></tr>
+    <tr><td class="task-id">5.8</td><td>GET /stats/overview</td><td>Director-only endpoint — all managers summary for KPI cards</td></tr>
+    <tr><td class="task-id">5.9</td><td>GET /stats/trend</td><td>Completion trend over last N weeks — used by trend chart</td></tr>
+    <tr><td class="task-id">5.10</td><td>POST /attachments</td><td>Upload file as multipart/form-data — store as BLOB</td></tr>
+    <tr><td class="task-id">5.11</td><td>GET /attachments/:id</td><td>Download file — stream BLOB with correct MIME type</td></tr>
+    <tr><td class="task-id">5.12</td><td>DELETE /attachments/:id</td><td>Remove attachment — enforce task ownership</td></tr>
+    <tr><td class="task-id">5.13</td><td>GET /users/me</td><td>Return current user profile resolved from JWT claims</td></tr>
+    <tr><td class="task-id">5.14</td><td>Apply IAM JWT validation</td><td>Configure ORDS privilege and role mapping for all endpoints</td></tr>
+    <tr><td class="task-id">5.15</td><td>Test all endpoints with Postman</td><td>Cover authenticated, unauthenticated, and unauthorized cases</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 6 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<div class="phase-header">
+  <div class="phase-num">Phase 6</div>
+  <div class="phase-title">Oracle JET Application</div>
+  <div class="phase-goal">Goal: Build full frontend using JET components — estimated 4–5 days</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">6.1</td><td>Scaffold JET app</td><td>ojet create ifinance --template=navbar</td></tr>
+    <tr><td class="task-id">6.2</td><td>Configure JET Router</td><td>Routes: login, manager-dashboard, director-dashboard</td></tr>
+    <tr><td class="task-id">6.3</td><td>IAM OAuth2 login flow</td><td>Redirect to IAM login, handle callback, store token securely</td></tr>
+    <tr><td class="task-id">6.4</td><td>Auth service module</td><td>Token storage, silent refresh, logout, role detection from JWT claims</td></tr>
+    <tr><td class="task-id">6.5</td><td>API service module</td><td>Centralised fetch wrapper — auto-injects bearer token, handles 401 refresh</td></tr>
+    <tr><td class="task-id">6.6</td><td>Login page</td><td>IAM redirect button, loading/error states</td></tr>
+    <tr><td class="task-id">6.7</td><td>Shared Nav component</td><td>Avatar, user name, week selector (prev/next), sign-out button</td></tr>
+    <tr><td class="task-id">6.8</td><td>Manager — Stats bar</td><td>5 clickable stat cards — total, completed, in-progress, at-risk, completion rate</td></tr>
+    <tr><td class="task-id">6.9</td><td>Manager — Task list</td><td>oj-list-view with filter tabs and search bar</td></tr>
+    <tr><td class="task-id">6.10</td><td>Manager — Task card</td><td>Custom template: status, priority, progress bar, completion summary bar</td></tr>
+    <tr><td class="task-id">6.11</td><td>Manager — Task modal</td><td>oj-dialog form: all fields, oj-file-picker, client-side validation</td></tr>
+    <tr><td class="task-id">6.12</td><td>Manager — Sidebar</td><td>Weekly summary with oj-progress-circle, next actions list</td></tr>
+    <tr><td class="task-id">6.13</td><td>Manager — Charts</td><td>oj-chart: status distribution donut, 6-week completion trend bar</td></tr>
+    <tr><td class="task-id">6.14</td><td>Manager — Drill-down modal</td><td>oj-dialog showing filtered task list on stat card click</td></tr>
+    <tr><td class="task-id">6.15</td><td>Director — KPI cards</td><td>5 clickable KPI cards with oj-gauge — total, rate, completed, delayed, on-track</td></tr>
+    <tr><td class="task-id">6.16</td><td>Director — Manager cards</td><td>oj-card grid with progress rings — one card per section manager</td></tr>
+    <tr><td class="task-id">6.17</td><td>Director — Charts</td><td>oj-chart: overall status donut, managers bar, trend line, priority donut</td></tr>
+    <tr><td class="task-id">6.18</td><td>Director — Data table</td><td>oj-table: sortable, paginated, all tasks across sections</td></tr>
+    <tr><td class="task-id">6.19</td><td>Director — KPI drill modal</td><td>oj-dialog: cross-section task list filtered by KPI type</td></tr>
+    <tr><td class="task-id">6.20</td><td>Director — Task detail modal</td><td>Full read-only task view: manager strip, badges, progress, dates, attachments</td></tr>
+    <tr><td class="task-id">6.21</td><td>Director — Manager detail modal</td><td>Manager stats + clickable task rows — opens task detail</td></tr>
+    <tr><td class="task-id">6.22</td><td>Role-based routing guard</td><td>Redirect director/manager to correct dashboard after login</td></tr>
+    <tr><td class="task-id">6.23</td><td>Error handling &amp; loading states</td><td>Skeleton loaders, oj-messages for error toasts, retry on API failure</td></tr>
+    <tr><td class="task-id">6.24</td><td>Responsive layout</td><td>JET Flex/Grid layout — works on mobile, tablet, and desktop</td></tr>
+    <tr><td class="task-id">6.25</td><td>CSS theming</td><td>Override JET CSS variables to match i-Finance brand colors (navy/blue)</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 7 ────────────────────────────────────────────────────── -->
+<div class="phase-header">
+  <div class="phase-num">Phase 7</div>
+  <div class="phase-title">Integration &amp; Testing</div>
+  <div class="phase-goal">Goal: Verify all end-to-end flows — estimated 1 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">7.1</td><td>Full login flow test</td><td>IAM login → JWT token → JET app → ORDS call → DB response</td></tr>
+    <tr><td class="task-id">7.2</td><td>Manager workflow test</td><td>Add / edit / delete task, attach file, change status, drill-down modal</td></tr>
+    <tr><td class="task-id">7.3</td><td>Director workflow test</td><td>All KPI drills, task detail modal, manager detail modal, CSV export</td></tr>
+    <tr><td class="task-id">7.4</td><td>Role enforcement test</td><td>Confirm manager cannot access director-only API endpoints</td></tr>
+    <tr><td class="task-id">7.5</td><td>Cross-browser test</td><td>Chrome, Edge, Firefox — desktop and mobile</td></tr>
+    <tr><td class="task-id">7.6</td><td>Performance test</td><td>150+ tasks, chart rendering speed, table pagination, file upload/download</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Phase 8 ────────────────────────────────────────────────────── -->
+<div class="page-break"></div>
+<div class="phase-header">
+  <div class="phase-num">Phase 8</div>
+  <div class="phase-title">Production Deployment</div>
+  <div class="phase-goal">Goal: Live on OCI — secure, stable, and accessible — estimated 0.5 day</div>
+</div>
+<table>
+  <thead><tr><th>#</th><th>Task</th><th>Detail</th></tr></thead>
+  <tbody>
+    <tr><td class="task-id">8.1</td><td>Build JET for production</td><td>ojet build --release — minified and optimised output</td></tr>
+    <tr><td class="task-id">8.2</td><td>Configure Nginx</td><td>Serve JET static files — reverse proxy /ords/* to ORDS on port 8080</td></tr>
+    <tr><td class="task-id">8.3</td><td>SSL certificate</td><td>Let's Encrypt via Certbot — free HTTPS certificate with auto-renewal</td></tr>
+    <tr><td class="task-id">8.4</td><td>Configure custom domain (optional)</td><td>Add DNS A-record pointing to OCI static public IP</td></tr>
+    <tr><td class="task-id">8.5</td><td>ORDS HTTPS configuration</td><td>ORDS runs behind Nginx — SSL terminated at Nginx layer</td></tr>
+    <tr><td class="task-id">8.6</td><td>DB connection pool tuning</td><td>Tune ORDS pool size within Oracle 23ai Free Tier connection limits</td></tr>
+    <tr><td class="task-id">8.7</td><td>Enable OCI monitoring</td><td>Set up CPU, memory, and DB usage alerts in OCI Monitoring service</td></tr>
+    <tr><td class="task-id">8.8</td><td>Final production smoke test</td><td>Verify all roles, all features, file upload/download on the live URL</td></tr>
+  </tbody>
+</table>
+
+<!-- ── Summary ────────────────────────────────────────────────────── -->
+<h1>Summary &amp; Effort Estimate</h1>
+<table class="summary-table">
+  <thead><tr><th>Phase</th><th>Description</th><th>Estimated Effort</th></tr></thead>
+  <tbody>
+    <tr><td>Phase 1</td><td>OCI Infrastructure Setup</td><td>0.5 day</td></tr>
+    <tr><td>Phase 2</td><td>OCI IAM Setup</td><td>1 day</td></tr>
+    <tr><td>Phase 3</td><td>Database Schema</td><td>1 day</td></tr>
+    <tr><td>Phase 4</td><td>PL/SQL Business Logic</td><td>1.5 days</td></tr>
+    <tr><td>Phase 5</td><td>ORDS REST API</td><td>1.5 days</td></tr>
+    <tr><td>Phase 6</td><td>Oracle JET Application</td><td>4–5 days</td></tr>
+    <tr><td>Phase 7</td><td>Integration &amp; Testing</td><td>1 day</td></tr>
+    <tr><td>Phase 8</td><td>Production Deployment</td><td>0.5 day</td></tr>
+    <tr><td colspan="2"><strong>Total Estimated Effort</strong></td><td><strong>~11 days</strong></td></tr>
+  </tbody>
+</table>
+
+<div class="note-box">
+  <strong>Note:</strong> Estimates assume all OCI resources are provisioned and accessible.
+  IAM configuration and ORDS JWT integration (Phases 2 &amp; 5) are the most variable steps
+  and may require additional time depending on Oracle tenancy policies.
+</div>
+
+<!-- ── Footer ─────────────────────────────────────────────────────── -->
+<div class="doc-footer">
+  i-Finance Task Management Module &nbsp;|&nbsp; Oracle JET / 23ai / OCI &nbsp;|&nbsp; Project Plan
+</div>
+
+</body>
+</html>

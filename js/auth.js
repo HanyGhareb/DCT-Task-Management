@@ -5,16 +5,17 @@
 
 const Auth = {
   login(email, password) {
-    const user = USERS.find(u => u.email === email && u.password === password);
+    const user = DataStore.getUsers().find(u => u.email === email && u.password === password);
     if (!user) return { success: false };
+    if (user.active === false) return { success: false, disabled: true };
     this._setSession(user.id);
     this._redirect(user.role);
     return { success: true, user };
   },
 
   quickLogin(userId) {
-    const user = USERS.find(u => u.id === userId);
-    if (!user) return;
+    const user = DataStore.getUsers().find(u => u.id === userId);
+    if (!user || user.active === false) return;
     this._setSession(user.id);
     this._redirect(user.role);
   },
@@ -26,7 +27,7 @@ const Auth = {
 
   getCurrentUser() {
     const id = localStorage.getItem(DataStore.KEYS.SESSION);
-    return USERS.find(u => u.id === id) || null;
+    return DataStore.getUsers().find(u => u.id === id) || null;
   },
 
   isAuthenticated() { return !!this.getCurrentUser(); },

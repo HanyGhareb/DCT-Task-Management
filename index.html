@@ -108,7 +108,7 @@
         </div>
         <div id="loginError" class="login-error hidden">
           <i class="fas fa-exclamation-circle"></i>
-          <span>Invalid email or password. Please try again.</span>
+          <span id="loginErrorMsg">Invalid email or password. Please try again.</span>
         </div>
         <button type="submit" class="btn-login">
           <span>Sign In</span>
@@ -116,63 +116,10 @@
         </button>
       </form>
 
-      <!-- Quick access -->
+      <!-- Quick access (rendered dynamically from DataStore.getUsers()) -->
       <div class="quick-access">
         <div class="qa-divider"><span>Quick Access — Demo Users</span></div>
-        <div class="qa-grid">
-          <!-- Director -->
-          <button class="qa-btn director" onclick="quickLogin('dir1')">
-            <div class="qa-avatar" id="qaAvatar_dir1" style="background:linear-gradient(135deg,#0f2040,#1e3a5f)">HK</div>
-            <div class="qa-info">
-              <span class="qa-name">Hashem Al Kabbi</span>
-              <span class="qa-role">Finance Manager <span style="background:#eff6ff;color:#2563eb;padding:.1rem .4rem;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:.25rem">DIRECTOR</span></span>
-            </div>
-            <i class="fas fa-chevron-right qa-arrow"></i>
-          </button>
-          <!-- Managers -->
-          <div class="qa-managers-grid">
-            <button class="qa-btn" onclick="quickLogin('mgr1')">
-              <div class="qa-avatar" style="background:linear-gradient(135deg,#5b21b6,#7c3aed)">NK</div>
-              <div class="qa-info">
-                <span class="qa-name">Naser M. Al Khaja</span>
-                <span class="qa-role">Finance Operations</span>
-              </div>
-              <i class="fas fa-chevron-right qa-arrow"></i>
-            </button>
-            <button class="qa-btn" onclick="quickLogin('mgr2')">
-              <div class="qa-avatar" style="background:linear-gradient(135deg,#1d4ed8,#2563eb)">AA</div>
-              <div class="qa-info">
-                <span class="qa-name">Ayesha A. Ameri</span>
-                <span class="qa-role">Payables Operations</span>
-              </div>
-              <i class="fas fa-chevron-right qa-arrow"></i>
-            </button>
-            <button class="qa-btn" onclick="quickLogin('mgr3')">
-              <div class="qa-avatar" style="background:linear-gradient(135deg,#065f46,#059669)">SGA</div>
-              <div class="qa-info">
-                <span class="qa-name">Shaikha G. Al Ameri</span>
-                <span class="qa-role">Financial Planning</span>
-              </div>
-              <i class="fas fa-chevron-right qa-arrow"></i>
-            </button>
-            <button class="qa-btn" onclick="quickLogin('mgr4')">
-              <div class="qa-avatar" style="background:linear-gradient(135deg,#92400e,#d97706)">SA</div>
-              <div class="qa-info">
-                <span class="qa-name">Shaikha A. Al Suwaidi</span>
-                <span class="qa-role">Revenue Assurance</span>
-              </div>
-              <i class="fas fa-chevron-right qa-arrow"></i>
-            </button>
-            <button class="qa-btn" onclick="quickLogin('mgr5')">
-              <div class="qa-avatar" style="background:linear-gradient(135deg,#991b1b,#dc2626)">NS</div>
-              <div class="qa-info">
-                <span class="qa-name">Noora S. Al Ali</span>
-                <span class="qa-role">Receivables Operations</span>
-              </div>
-              <i class="fas fa-chevron-right qa-arrow"></i>
-            </button>
-          </div>
-        </div>
+        <div id="qaGrid" class="qa-grid"></div>
       </div>
 
       <div class="login-footer">
@@ -195,6 +142,10 @@
     const password = document.getElementById('password').value;
     const result   = Auth.login(email, password);
     if (!result.success) {
+      const msg = result.disabled
+        ? 'This account has been disabled. Please contact the Finance Director.'
+        : 'Invalid email or password. Please try again.';
+      document.getElementById('loginErrorMsg').textContent = msg;
       document.getElementById('loginError').classList.remove('hidden');
       document.getElementById('password').classList.add('error');
     }
@@ -210,11 +161,55 @@
     icon.className = show ? 'fas fa-eye-slash' : 'fas fa-eye';
   }
 
+  function renderQuickAccess() {
+    const users   = DataStore.getUsers();
+    const director = users.find(u => u.role === 'director');
+    const managers = users.filter(u => u.role === 'manager');
+    const grid = document.getElementById('qaGrid');
+    if (!grid) return;
+
+    const shortName = n => {
+      const p = n.split(' ');
+      return p.length >= 3 ? `${p[0]} ${p[1][0]}. ${p[p.length-1]}` : n;
+    };
+
+    let html = '';
+    if (director) {
+      html += `<button class="qa-btn director" onclick="quickLogin('${director.id}')">
+        <div class="qa-avatar" style="background:${director.gradient}">${director.initials}</div>
+        <div class="qa-info">
+          <span class="qa-name">${Utils.escHtml(director.name)}</span>
+          <span class="qa-role">${Utils.escHtml(director.title)} <span style="background:#eff6ff;color:#2563eb;padding:.1rem .4rem;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:.25rem">DIRECTOR</span></span>
+        </div>
+        <i class="fas fa-chevron-right qa-arrow"></i>
+      </button>`;
+    }
+
+    if (managers.length) {
+      html += '<div class="qa-managers-grid">';
+      managers.forEach(m => {
+        const disabled = m.active === false;
+        html += `<button class="qa-btn${disabled ? ' qa-btn-disabled' : ''}" onclick="${disabled ? '' : `quickLogin('${m.id}')`}" ${disabled ? 'title="Account disabled" style="opacity:.45;cursor:not-allowed"' : ''}>
+          <div class="qa-avatar" style="background:${m.gradient}">${m.initials}</div>
+          <div class="qa-info">
+            <span class="qa-name">${Utils.escHtml(shortName(m.name))}</span>
+            <span class="qa-role">${Utils.escHtml(m.section)}${disabled ? ' <span style="background:#fee2e2;color:#dc2626;padding:.1rem .4rem;border-radius:4px;font-size:.65rem;font-weight:700;margin-left:.25rem">DISABLED</span>' : ''}</span>
+          </div>
+          <i class="fas fa-${disabled ? 'ban' : 'chevron-right'} qa-arrow" style="${disabled ? 'color:#dc2626' : ''}"></i>
+        </button>`;
+      });
+      html += '</div>';
+    }
+    grid.innerHTML = html;
+  }
+
   // Redirect if already logged in
   if (Auth.isAuthenticated()) {
     const u = Auth.getCurrentUser();
     Auth._redirect(u.role);
   }
+
+  renderQuickAccess();
 
   // Remove error on input
   document.getElementById('email').addEventListener('input',    ()=>{ document.getElementById('loginError').classList.add('hidden'); document.getElementById('password').classList.remove('error'); });

@@ -488,6 +488,161 @@ const Director = {
       : `<div class="task-completion-bar ct-late" style="margin-bottom:1rem"><i class="fas fa-clock"></i> Completed on ${label} &nbsp;·&nbsp; Duration: ${duration} Day${duration !== 1 ? 's' : ''} &nbsp;·&nbsp; <strong>Late ✗</strong></div>`;
   },
 
+  // ── User Manager Modal ───────────────────────────────────────────
+  openUserManager() {
+    this._umSelectedColor = USER_COLOR_PRESETS[0];
+    this._renderUsersList();
+    this._renderColorPicker();
+    this._umClearForm();
+    document.getElementById('userManagerModal').classList.add('active');
+    document.body.style.overflow = 'hidden';
+  },
+
+  closeUserManager() {
+    document.getElementById('userManagerModal').classList.remove('active');
+    document.body.style.overflow = '';
+  },
+
+  _renderUsersList() {
+    const managers = DataStore.getUsers().filter(u => u.role === 'manager');
+    const el = document.getElementById('umUsersList');
+    if (!el) return;
+    el.innerHTML = managers.map(m => {
+      const isActive = m.active !== false;
+      return `
+<div style="display:flex;align-items:center;gap:.875rem;padding:.75rem 1rem;border-radius:var(--r-sm);border:1px solid var(--border-light);background:${isActive ? 'var(--bg-card)' : 'var(--bg-hover)'}">
+  ${Utils.avatarImg(m, 36, 'avatar')}
+  <div style="flex:1;min-width:0">
+    <div style="font-size:.875rem;font-weight:700;color:${isActive ? 'var(--text-1)' : 'var(--text-3)'}">${Utils.escHtml(m.name)}</div>
+    <div style="font-size:.73rem;color:var(--text-3)">${Utils.escHtml(m.section)}</div>
+  </div>
+  <div style="display:flex;align-items:center;gap:.625rem;flex-shrink:0">
+    <span style="font-size:.7rem;font-weight:700;padding:.2rem .6rem;border-radius:var(--r-full);${isActive ? 'background:#ecfdf5;color:#059669' : 'background:#fee2e2;color:#dc2626'}">
+      ${isActive ? 'ACTIVE' : 'DISABLED'}
+    </span>
+    <button class="btn btn-sm ${isActive ? 'btn-danger' : 'btn-accent'}" onclick="Director._toggleUser('${m.id}')" style="font-size:.72rem;min-width:76px">
+      <i class="fas fa-${isActive ? 'ban' : 'check-circle'}"></i> ${isActive ? 'Disable' : 'Enable'}
+    </button>
+  </div>
+</div>`;
+    }).join('');
+  },
+
+  _toggleUser(id) {
+    const user = DataStore.getUsers().find(u => u.id === id);
+    if (!user) return;
+    const isActive = user.active !== false;
+    if (isActive) {
+      document.getElementById('confirmTitle').textContent   = 'Disable Account?';
+      document.getElementById('confirmMessage').textContent = `${user.name} will not be able to log in until re-enabled.`;
+      document.getElementById('confirmBtn').textContent     = 'Disable';
+      document.getElementById('confirmBtn').className       = 'btn btn-danger';
+      document.getElementById('confirmBtn').onclick = () => {
+        DataStore.toggleUserActive(id);
+        Confirm.close();
+        this._renderUsersList();
+        this.refresh();
+        Toast.show(`${user.name} has been disabled`, 'warning');
+      };
+    } else {
+      DataStore.toggleUserActive(id);
+      this._renderUsersList();
+      this.refresh();
+      Toast.show(`${user.name} has been re-enabled`, 'success');
+      return;
+    }
+    Confirm.open();
+  },
+
+  _renderColorPicker() {
+    const el = document.getElementById('umColorPicker');
+    if (!el) return;
+    el.innerHTML = USER_COLOR_PRESETS.map((p, i) => `
+<div onclick="Director._umSelectColor(${i})" id="umColor_${i}"
+  style="width:28px;height:28px;border-radius:50%;background:${p.gradient};cursor:pointer;border:2.5px solid ${i===0?'var(--text-1)':'transparent'};transition:transform .15s"
+  title="${p.label}"></div>`).join('');
+  },
+
+  _umSelectColor(idx) {
+    this._umSelectedColor = USER_COLOR_PRESETS[idx];
+    document.querySelectorAll('[id^="umColor_"]').forEach((el, i) => {
+      el.style.border = i === idx ? '2.5px solid var(--text-1)' : '2.5px solid transparent';
+      el.style.transform = i === idx ? 'scale(1.25)' : '';
+    });
+  },
+
+  _umAutoInitials() {
+    const name = document.getElementById('umName').value.trim();
+    const parts = name.split(/\s+/).filter(Boolean);
+    if (!parts.length) return;
+    let initials = parts[0][0].toUpperCase();
+    if (parts.length >= 2) initials += parts[parts.length - 1][0].toUpperCase();
+    document.getElementById('umInitials').value = initials;
+  },
+
+  _umClearForm() {
+    ['umName','umSection','umTitle','umEmail','umPassword','umInitials'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.value = '';
+    });
+    ['umNameErr','umSectionErr','umEmailErr','umPasswordErr'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.textContent = '';
+    });
+    ['umName','umSection','umEmail','umPassword'].forEach(id => {
+      const el = document.getElementById(id); if (el) el.classList.remove('error');
+    });
+  },
+
+  saveNewUser() {
+    let ok = true;
+    const val = id => document.getElementById(id)?.value.trim() || '';
+    const err = (id, errId, msg) => {
+      document.getElementById(id).classList.add('error');
+      document.getElementById(errId).textContent = msg;
+      ok = false;
+    };
+    const clearErr = (id, errId) => {
+      document.getElementById(id).classList.remove('error');
+      document.getElementById(errId).textContent = '';
+    };
+
+    clearErr('umName','umNameErr'); clearErr('umSection','umSectionErr');
+    clearErr('umEmail','umEmailErr'); clearErr('umPassword','umPasswordErr');
+
+    if (!val('umName'))     err('umName',     'umNameErr',     'Full name is required');
+    if (!val('umSection'))  err('umSection',  'umSectionErr',  'Section name is required');
+    if (!val('umEmail'))    err('umEmail',     'umEmailErr',    'Email is required');
+    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val('umEmail')))
+                            err('umEmail',     'umEmailErr',    'Enter a valid email');
+    else {
+      const exists = DataStore.getUsers().find(u => u.email === val('umEmail'));
+      if (exists)           err('umEmail',     'umEmailErr',    'This email is already in use');
+    }
+    if (!val('umPassword')) err('umPassword',  'umPasswordErr', 'Password is required');
+    if (!ok) return;
+
+    const preset = this._umSelectedColor || USER_COLOR_PRESETS[0];
+    const name   = val('umName');
+    const parts  = name.split(/\s+/).filter(Boolean);
+    let initials = val('umInitials').toUpperCase() ||
+      (parts[0][0] + (parts.length > 1 ? parts[parts.length-1][0] : '')).toUpperCase();
+
+    DataStore.addUser({
+      name,
+      initials,
+      title:    val('umTitle') || val('umSection') + ' Manager',
+      email:    val('umEmail'),
+      password: val('umPassword'),
+      section:  val('umSection'),
+      color:    preset.color,
+      gradient: preset.gradient
+    });
+
+    this._umClearForm();
+    this._renderUsersList();
+    this.refresh();
+    Toast.show(`${name} added successfully`, 'success');
+  },
+
   // ── Export ────────────────────────────────────────────────────────
   exportCSV() {
     const tasks = this.state.tasks;
@@ -522,13 +677,14 @@ const Director = {
     if (kpiDrillModal) kpiDrillModal.addEventListener('click', e => { if(e.target===kpiDrillModal) this.closeKPIDrill(); });
     const taskDetailModal = document.getElementById('taskDetailModal');
     if (taskDetailModal) taskDetailModal.addEventListener('click', e => { if(e.target===taskDetailModal) this.closeTaskDetail(); });
+    const userManagerModal = document.getElementById('userManagerModal');
+    if (userManagerModal) userManagerModal.addEventListener('click', e => { if(e.target===userManagerModal) this.closeUserManager(); });
   },
 
   // ── Helpers ───────────────────────────────────────────────────────
   _set(id, val) { const el=document.getElementById(id); if(el) el.textContent=val; }
 };
 
-// Toast (shared with manager.js — included on director page too)
 const Toast = {
   show(msg, type='info') {
     const c = document.getElementById('toastContainer');
@@ -540,6 +696,11 @@ const Toast = {
     c.appendChild(el);
     setTimeout(()=>{ el.style.opacity='0'; el.style.transform='translateX(120%)'; setTimeout(()=>el.remove(),200); },3500);
   }
+};
+
+const Confirm = {
+  open()  { document.getElementById('confirmOverlay').classList.add('active'); },
+  close() { document.getElementById('confirmOverlay').classList.remove('active'); }
 };
 
 document.addEventListener('DOMContentLoaded', ()=> Director.init());

@@ -5,12 +5,24 @@
 
 // ── Users ──────────────────────────────────────────────────────────
 const USERS = [
-  { id: 'dir1', name: 'Hashem Al Kabbi',            initials: 'HK',  role: 'director', title: 'Finance Manager',                          email: 'hashem@finance.ae',   password: 'admin123', color: '#1e3a5f', gradient: 'linear-gradient(135deg,#0f2040,#1e3a5f)', section: 'Finance Division'              },
-  { id: 'mgr1', name: 'Naser Mohamed Al Khaja',     initials: 'NK',  role: 'manager',  title: 'Finance Operations Manager',               email: 'naser@finance.ae',    password: 'pass123',  color: '#7c3aed', gradient: 'linear-gradient(135deg,#5b21b6,#7c3aed)', section: 'Finance Operations'            },
-  { id: 'mgr2', name: 'Ayesha Abdul Kareem Ameri',  initials: 'AA',  role: 'manager',  title: 'Payables Operations Manager',              email: 'ayesha@finance.ae',   password: 'pass123',  color: '#2563eb', gradient: 'linear-gradient(135deg,#1d4ed8,#2563eb)', section: 'Payables Operations'           },
-  { id: 'mgr3', name: 'Shaikha Ghanem Al Ameri',    initials: 'SGA', role: 'manager',  title: 'Financial Planning & Budgeting Manager',   email: 'shaikha.g@finance.ae',password: 'pass123',  color: '#059669', gradient: 'linear-gradient(135deg,#065f46,#059669)', section: 'Financial Planning & Budgeting'},
-  { id: 'mgr4', name: 'Shaikha Ahmed Al Suwaidi',   initials: 'SA',  role: 'manager',  title: 'Revenue Assurance Manager',                email: 'shaikha.a@finance.ae',password: 'pass123',  color: '#d97706', gradient: 'linear-gradient(135deg,#92400e,#d97706)', section: 'Revenue Assurance'             },
-  { id: 'mgr5', name: 'Noora Saeed Al Ali',         initials: 'NS',  role: 'manager',  title: 'Receivables Operations Manager',           email: 'noora@finance.ae',    password: 'pass123',  color: '#dc2626', gradient: 'linear-gradient(135deg,#991b1b,#dc2626)', section: 'Receivables Operations'        }
+  { id: 'dir1', name: 'Hashem Al Kabbi',            initials: 'HK',  role: 'director', title: 'Finance Manager',                          email: 'hashem@finance.ae',   password: 'admin123', color: '#1e3a5f', gradient: 'linear-gradient(135deg,#0f2040,#1e3a5f)', section: 'Finance Division',               active: true },
+  { id: 'mgr1', name: 'Naser Mohamed Al Khaja',     initials: 'NK',  role: 'manager',  title: 'Finance Operations Manager',               email: 'naser@finance.ae',    password: 'pass123',  color: '#7c3aed', gradient: 'linear-gradient(135deg,#5b21b6,#7c3aed)', section: 'Finance Operations',             active: true },
+  { id: 'mgr2', name: 'Ayesha Abdul Kareem Ameri',  initials: 'AA',  role: 'manager',  title: 'Payables Operations Manager',              email: 'ayesha@finance.ae',   password: 'pass123',  color: '#2563eb', gradient: 'linear-gradient(135deg,#1d4ed8,#2563eb)', section: 'Payables Operations',            active: true },
+  { id: 'mgr3', name: 'Shaikha Ghanem Al Ameri',    initials: 'SGA', role: 'manager',  title: 'Financial Planning & Budgeting Manager',   email: 'shaikha.g@finance.ae',password: 'pass123',  color: '#059669', gradient: 'linear-gradient(135deg,#065f46,#059669)', section: 'Financial Planning & Budgeting', active: true },
+  { id: 'mgr4', name: 'Shaikha Ahmed Al Suwaidi',   initials: 'SA',  role: 'manager',  title: 'Revenue Assurance Manager',                email: 'shaikha.a@finance.ae',password: 'pass123',  color: '#d97706', gradient: 'linear-gradient(135deg,#92400e,#d97706)', section: 'Revenue Assurance',              active: true },
+  { id: 'mgr5', name: 'Noora Saeed Al Ali',         initials: 'NS',  role: 'manager',  title: 'Receivables Operations Manager',           email: 'noora@finance.ae',    password: 'pass123',  color: '#dc2626', gradient: 'linear-gradient(135deg,#991b1b,#dc2626)', section: 'Receivables Operations',         active: true }
+];
+
+// Available avatar color presets for new managers
+const USER_COLOR_PRESETS = [
+  { color: '#7c3aed', gradient: 'linear-gradient(135deg,#5b21b6,#7c3aed)',  label: 'Purple'  },
+  { color: '#2563eb', gradient: 'linear-gradient(135deg,#1d4ed8,#2563eb)',  label: 'Blue'    },
+  { color: '#059669', gradient: 'linear-gradient(135deg,#065f46,#059669)',  label: 'Green'   },
+  { color: '#d97706', gradient: 'linear-gradient(135deg,#92400e,#d97706)',  label: 'Amber'   },
+  { color: '#dc2626', gradient: 'linear-gradient(135deg,#991b1b,#dc2626)',  label: 'Red'     },
+  { color: '#0891b2', gradient: 'linear-gradient(135deg,#0e7490,#0891b2)',  label: 'Cyan'    },
+  { color: '#db2777', gradient: 'linear-gradient(135deg,#9d174d,#db2777)',  label: 'Pink'    },
+  { color: '#65a30d', gradient: 'linear-gradient(135deg,#3f6212,#65a30d)',  label: 'Lime'    },
 ];
 
 // ── Status config ──────────────────────────────────────────────────
@@ -39,7 +51,7 @@ const CATEGORIES = [
 
 // ── DataStore ──────────────────────────────────────────────────────
 const DataStore = {
-  KEYS: { TASKS: 'ftm_tasks', SESSION: 'ftm_session', SEEDED: 'ftm_seeded_v2' },
+  KEYS: { TASKS: 'ftm_tasks', SESSION: 'ftm_session', SEEDED: 'ftm_seeded_v2', USERS: 'ftm_users' },
 
   init() {
     if (!localStorage.getItem(this.KEYS.SEEDED)) {
@@ -118,10 +130,48 @@ const DataStore = {
   },
 
   getManagerStats(weekNum, year) {
-    return USERS
-      .filter(u => u.role === 'manager')
+    return this.getUsers()
+      .filter(u => u.role === 'manager' && u.active !== false)
       .map(m => ({ ...m, ...this.getWeekStats(weekNum, year, m.id) }));
   },
+
+  // ── User management ───────────────────────────────────────────────
+  getUsers() {
+    const { overrides, custom } = this._getUserData();
+    return [...USERS, ...custom].map(u => ({
+      ...u,
+      active: overrides.hasOwnProperty(u.id) ? overrides[u.id] : (u.active !== false)
+    }));
+  },
+
+  addUser(payload) {
+    const data = this._getUserData();
+    const user = {
+      ...payload,
+      id: 'mgr_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
+      role: 'manager',
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+    data.custom.push(user);
+    this._saveUserData(data);
+    return user;
+  },
+
+  toggleUserActive(id) {
+    const user = this.getUsers().find(u => u.id === id);
+    if (!user) return;
+    const data = this._getUserData();
+    data.overrides[id] = !user.active;
+    this._saveUserData(data);
+  },
+
+  _getUserData() {
+    try { return JSON.parse(localStorage.getItem(this.KEYS.USERS) || '{"overrides":{},"custom":[]}'); }
+    catch { return { overrides: {}, custom: [] }; }
+  },
+
+  _saveUserData(d) { localStorage.setItem(this.KEYS.USERS, JSON.stringify(d)); },
 
   getWeeklyTrend(userId, numWeeks = 6) {
     const today = new Date();
