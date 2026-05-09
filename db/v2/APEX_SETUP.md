@@ -1,4 +1,4 @@
-# i-Finance V2 — APEX App 200 Configuration Guide
+﻿# i-Finance V2 — APEX App 200 Configuration Guide
 
 ## Sprint 1: Create the APEX Application Shell
 
@@ -24,10 +24,10 @@ In APEX App Builder → Create Application:
 
 | Field | Value |
 |---|---|
-| Name | IFW Custom Auth |
+| Name | DCT Custom Auth |
 | Scheme Type | Custom |
-| Authentication Function Name | `ifw_auth.authenticate` |
-| Post-Authentication Procedure | `ifw_auth.post_login` |
+| Authentication Function Name | `dct_auth.authenticate` |
+| Post-Authentication Procedure | `dct_auth.post_login` |
 | Invalid Session Target | Page 9999 (Login) |
 | Session Not Valid Message | Your session has expired. Please log in again. |
 | Logout URL | apex/f?p=200:9998:&APP_SESSION. |
@@ -66,7 +66,7 @@ In APEX App Builder → Create Application:
 |---|---|
 | Name | Is Platform User |
 | Scheme Type | PL/SQL Function returning Boolean |
-| PL/SQL | `RETURN ifw_auth.has_role(:APP_USER, 'PLATFORM_USER');` |
+| PL/SQL | `RETURN dct_auth.has_role(:APP_USER, 'PLATFORM_USER');` |
 | Error Message | You do not have access to this application. |
 | Evaluate At | Once per Session |
 
@@ -74,35 +74,35 @@ In APEX App Builder → Create Application:
 | Field | Value |
 |---|---|
 | Name | Is SYS_ADMIN |
-| PL/SQL | `RETURN ifw_auth.has_role(:APP_USER, 'SYS_ADMIN');` |
+| PL/SQL | `RETURN dct_auth.has_role(:APP_USER, 'SYS_ADMIN');` |
 | Evaluate At | Once per Session |
 
 ### 4.3 User Admin
 | Field | Value |
 |---|---|
 | Name | Is USER_ADMIN |
-| PL/SQL | `RETURN ifw_auth.has_role(:APP_USER, 'USER_ADMIN') OR ifw_auth.has_role(:APP_USER, 'SYS_ADMIN');` |
+| PL/SQL | `RETURN dct_auth.has_role(:APP_USER, 'USER_ADMIN') OR dct_auth.has_role(:APP_USER, 'SYS_ADMIN');` |
 | Evaluate At | Once per Session |
 
 ### 4.4 Can Manage Users (permission-based)
 | Field | Value |
 |---|---|
 | Name | Can Manage Users |
-| PL/SQL | `RETURN ifw_auth.has_permission(:APP_USER, 'USERS.EDIT');` |
+| PL/SQL | `RETURN dct_auth.has_permission(:APP_USER, 'USERS.EDIT');` |
 | Evaluate At | Always (no cache) |
 
 ### 4.5 Auditor
 | Field | Value |
 |---|---|
 | Name | Is Auditor |
-| PL/SQL | `RETURN ifw_auth.has_role(:APP_USER, 'AUDITOR') OR ifw_auth.has_role(:APP_USER, 'SYS_ADMIN');` |
+| PL/SQL | `RETURN dct_auth.has_role(:APP_USER, 'AUDITOR') OR dct_auth.has_role(:APP_USER, 'SYS_ADMIN');` |
 | Evaluate At | Once per Session |
 
 ### 4.6 Task Director
 | Field | Value |
 |---|---|
 | Name | Is Task Director |
-| PL/SQL | `RETURN ifw_auth.has_role(:APP_USER, 'TASK_DIRECTOR');` |
+| PL/SQL | `RETURN dct_auth.has_role(:APP_USER, 'TASK_DIRECTOR');` |
 | Evaluate At | Once per Session |
 
 ---
@@ -117,14 +117,14 @@ In APEX App Builder → Create Application:
 | Name | Touch Session |
 | Point | On Load: Before Header |
 | Condition | Request is NOT `LOGOUT` |
-| PL/SQL | `ifw_auth.touch_session(V('APP_SESSION'));` |
+| PL/SQL | `dct_auth.touch_session(V('APP_SESSION'));` |
 
 ### 5.2 Refresh Notification Count (every page)
 | Field | Value |
 |---|---|
 | Name | Refresh Notification Count |
 | Point | On Load: Before Header |
-| PL/SQL | `APEX_UTIL.SET_SESSION_STATE('UNREAD_NOTIFICATIONS', ifw_notify.get_unread_count(TO_NUMBER(:USER_ID)));` |
+| PL/SQL | `APEX_UTIL.SET_SESSION_STATE('UNREAD_NOTIFICATIONS', dct_notify.get_unread_count(TO_NUMBER(:USER_ID)));` |
 
 ---
 
@@ -185,7 +185,7 @@ Add entries in this order:
   - Type: Login
   - Username: `P9999_USERNAME`
   - Password: `P9999_PASSWORD`
-  - Authentication Scheme: IFW Custom Auth
+  - Authentication Scheme: DCT Custom Auth
 
 **Quick-login buttons** (for development only — remove in production):
 
@@ -198,12 +198,12 @@ Add buttons that set username/password and submit. Use a conditional display on 
 **Region: Announcement Banner**
 ```sql
 SELECT title_en, body_en, severity
-FROM   ifw_announcements
+FROM   dct_announcements
 WHERE  is_active = 'Y'
   AND  (target_audience = 'ALL'
         OR (target_audience = 'ROLE'
             AND target_role_id IN (
-                SELECT role_id FROM v_ifw_user_active_roles
+                SELECT role_id FROM v_dct_user_active_roles
                 WHERE UPPER(username) = UPPER(:APP_USER)
             ))
   )
@@ -232,7 +232,7 @@ SELECT module_id,
        is_new_tab,
        category,
        display_order
-FROM   v_ifw_module_access
+FROM   v_dct_module_access
 WHERE  UPPER(username) = UPPER(:APP_USER)
   AND  category        = :BIND_CATEGORY
 ORDER  BY display_order
@@ -250,7 +250,7 @@ Render one Cards region per category, arranged in a responsive CSS Grid layout.
 |---|---|
 | APP_NAME | i-Finance V2 |
 | APP_NAME_AR | آي فاينانس V2 |
-| SUPPORT_EMAIL | _(from IFW_SYSTEM_SETTINGS)_ |
+| SUPPORT_EMAIL | _(from DCT_SYSTEM_SETTINGS)_ |
 
 ---
 
@@ -270,7 +270,7 @@ Add these to the Global Page so they render on every page:
 **Process on Load:**
 ```plsql
 BEGIN
-    ifw_auth.close_session(:APP_SESSION);
+    dct_auth.close_session(:APP_SESSION);
     APEX_AUTHENTICATION.LOGOUT(
         p_next_app_id  => 200,
         p_next_page_id => 9999
@@ -283,9 +283,9 @@ END;
 ## Done — Sprint 1 Checklist
 
 - [ ] Run `install.sql` against PROD schema
-- [ ] Verify all 24 IFW_* tables created
+- [ ] Verify all 24 DCT_* tables created
 - [ ] Verify views compile without errors (`SHOW ERRORS`)
-- [ ] Verify IFW_AUTH package compiles (`SHOW ERRORS PACKAGE BODY IFW_AUTH`)
+- [ ] Verify DCT_AUTH package compiles (`SHOW ERRORS PACKAGE BODY DCT_AUTH`)
 - [ ] Verify seed data: 26 modules, 9 roles, 22 permissions
 - [ ] Create APEX App 200 with settings above
 - [ ] Login with ADMIN / iFinance@2026

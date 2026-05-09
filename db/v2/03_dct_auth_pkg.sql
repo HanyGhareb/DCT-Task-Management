@@ -1,6 +1,6 @@
--- =============================================================================
+﻿-- =============================================================================
 -- i-Finance V2 — Authentication & Authorization Package
--- File    : 03_ifw_auth_pkg.sql
+-- File    : 03_dct_auth_pkg.sql
 -- Schema  : PROD
 -- Sprint  : 1 — Foundation
 -- =============================================================================
@@ -8,20 +8,20 @@
 --
 -- APEX Configuration (App 200):
 --   Authentication Scheme Type : Custom
---   Authentication Function    : ifw_auth.authenticate
---   Post-Authentication Proc   : ifw_auth.post_login
+--   Authentication Function    : dct_auth.authenticate
+--   Post-Authentication Proc   : dct_auth.post_login
 --
 -- Adding a new auth scheme later (e.g. OCI IAM):
 --   1. Add new APEX authentication scheme in App 200
 --   2. That scheme handles credential validation externally
 --   3. post_login still fires — no changes needed to this package
---   4. Update IFW_SYSTEM_SETTINGS key DEFAULT_AUTH_METHOD to 'OCI_IAM'
+--   4. Update DCT_SYSTEM_SETTINGS key DEFAULT_AUTH_METHOD to 'OCI_IAM'
 -- =============================================================================
 
 -- =============================================================================
 -- PACKAGE SPEC
 -- =============================================================================
-CREATE OR REPLACE PACKAGE ifw_auth AS
+CREATE OR REPLACE PACKAGE dct_auth AS
 
     -- -------------------------------------------------------------------------
     -- APEX Custom Authentication entry point.
@@ -118,13 +118,13 @@ CREATE OR REPLACE PACKAGE ifw_auth AS
         p_session_id IN VARCHAR2
     );
 
-END ifw_auth;
+END dct_auth;
 /
 
 -- =============================================================================
 -- PACKAGE BODY
 -- =============================================================================
-CREATE OR REPLACE PACKAGE BODY ifw_auth AS
+CREATE OR REPLACE PACKAGE BODY dct_auth AS
 
     -- -------------------------------------------------------------------------
     -- PRIVATE: Hash a plain-text password with SHA-512.
@@ -152,17 +152,17 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         p_error       IN VARCHAR2 DEFAULT NULL
     ) IS
         PRAGMA AUTONOMOUS_TRANSACTION;
-        l_user_id ifw_users.user_id%TYPE;
+        l_user_id dct_users.user_id%TYPE;
     BEGIN
         BEGIN
             SELECT user_id INTO l_user_id
-            FROM   ifw_users
+            FROM   dct_users
             WHERE  UPPER(username) = UPPER(p_username)
             AND    ROWNUM = 1;
         EXCEPTION WHEN NO_DATA_FOUND THEN l_user_id := NULL;
         END;
 
-        INSERT INTO ifw_audit_log (
+        INSERT INTO dct_audit_log (
             username, user_id, apex_session_id,
             action, object_type, object_id,
             status, error_message
@@ -180,10 +180,10 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     -- get_user_id
     -- -------------------------------------------------------------------------
     FUNCTION get_user_id (p_username IN VARCHAR2) RETURN NUMBER IS
-        l_id ifw_users.user_id%TYPE;
+        l_id dct_users.user_id%TYPE;
     BEGIN
         SELECT user_id INTO l_id
-        FROM   ifw_users
+        FROM   dct_users
         WHERE  UPPER(username) = UPPER(p_username)
           AND  is_active = 'Y'
           AND  ROWNUM = 1;
@@ -199,7 +199,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     BEGIN
         SELECT LISTAGG(r.role_code, ',') WITHIN GROUP (ORDER BY r.role_code)
         INTO   l_roles
-        FROM   v_ifw_user_active_roles r
+        FROM   v_dct_user_active_roles r
         WHERE  UPPER(r.username) = UPPER(p_username);
         RETURN l_roles;
     EXCEPTION WHEN OTHERS THEN RETURN NULL;
@@ -213,8 +213,8 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     BEGIN
         SELECT LISTAGG(uo.org_id, ',') WITHIN GROUP (ORDER BY uo.org_id)
         INTO   l_orgs
-        FROM   ifw_user_orgs uo
-        JOIN   ifw_users     u  ON uo.user_id = u.user_id
+        FROM   dct_user_orgs uo
+        JOIN   dct_users     u  ON uo.user_id = u.user_id
         WHERE  UPPER(u.username) = UPPER(p_username)
           AND  TRUNC(SYSDATE) >= TRUNC(uo.start_date)
           AND  (uo.end_date IS NULL OR TRUNC(SYSDATE) <= TRUNC(uo.end_date));
@@ -234,8 +234,8 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         -- Check if this user is currently acting as a delegate for someone
         SELECT u_from.username
         INTO   l_delegator
-        FROM   v_ifw_active_delegations d
-        JOIN   ifw_users u_from ON d.delegator_id = u_from.user_id
+        FROM   v_dct_active_delegations d
+        JOIN   dct_users u_from ON d.delegator_id = u_from.user_id
         WHERE  UPPER(d.delegate_username) = UPPER(p_username)
           AND  ROWNUM = 1;
         RETURN l_delegator;
@@ -256,7 +256,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         l_eff := get_effective_user(p_username);
         SELECT COUNT(*)
         INTO   l_count
-        FROM   v_ifw_user_active_roles
+        FROM   v_dct_user_active_roles
         WHERE  UPPER(username)  = UPPER(l_eff)
           AND  UPPER(role_code) = UPPER(p_role_code);
         RETURN l_count > 0;
@@ -275,7 +275,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         l_eff := get_effective_user(p_username);
         SELECT COUNT(*)
         INTO   l_count
-        FROM   v_ifw_user_permissions
+        FROM   v_dct_user_permissions
         WHERE  UPPER(username)        = UPPER(l_eff)
           AND  UPPER(permission_code) = UPPER(p_permission_code);
         RETURN l_count > 0;
@@ -294,7 +294,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         l_eff := get_effective_user(p_username);
         SELECT COUNT(*)
         INTO   l_count
-        FROM   v_ifw_module_access
+        FROM   v_dct_module_access
         WHERE  UPPER(username)    = UPPER(l_eff)
           AND  UPPER(module_code) = UPPER(p_module_code);
         RETURN l_count > 0;
@@ -310,28 +310,28 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     FUNCTION authenticate (p_username IN VARCHAR2, p_password IN VARCHAR2)
         RETURN BOOLEAN
     IS
-        l_hash     ifw_users.password_hash%TYPE;
-        l_method   ifw_users.auth_method%TYPE;
-        l_active   ifw_users.is_active%TYPE;
+        l_hash     dct_users.password_hash%TYPE;
+        l_method   dct_users.auth_method%TYPE;
+        l_active   dct_users.is_active%TYPE;
         l_result   BOOLEAN := FALSE;
     BEGIN
         -- Fetch user record
         BEGIN
             SELECT password_hash, auth_method, is_active
             INTO   l_hash, l_method, l_active
-            FROM   ifw_users
+            FROM   dct_users
             WHERE  UPPER(username) = UPPER(p_username)
               AND  ROWNUM = 1;
         EXCEPTION
             WHEN NO_DATA_FOUND THEN
-                p_log(p_username, 'LOGIN', 'FAILURE', 'IFW_USERS', p_username,
+                p_log(p_username, 'LOGIN', 'FAILURE', 'DCT_USERS', p_username,
                       'User not found');
                 RETURN FALSE;
         END;
 
         -- Inactive account check
         IF l_active != 'Y' THEN
-            p_log(p_username, 'LOGIN', 'FAILURE', 'IFW_USERS', p_username,
+            p_log(p_username, 'LOGIN', 'FAILURE', 'DCT_USERS', p_username,
                   'Account is inactive');
             RETURN FALSE;
         END IF;
@@ -341,7 +341,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
             WHEN 'DB' THEN
                 -- Validate SHA-512 hash
                 IF l_hash IS NULL THEN
-                    p_log(p_username, 'LOGIN', 'FAILURE', 'IFW_USERS', p_username,
+                    p_log(p_username, 'LOGIN', 'FAILURE', 'DCT_USERS', p_username,
                           'No password set for DB auth user');
                     RETURN FALSE;
                 END IF;
@@ -362,7 +362,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
                 l_result := TRUE;
 
             ELSE
-                p_log(p_username, 'LOGIN', 'FAILURE', 'IFW_USERS', p_username,
+                p_log(p_username, 'LOGIN', 'FAILURE', 'DCT_USERS', p_username,
                       'Unknown auth_method: ' || l_method);
                 RETURN FALSE;
         END CASE;
@@ -371,7 +371,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         IF l_result THEN
             p_log(p_username, 'LOGIN', 'SUCCESS');
         ELSE
-            p_log(p_username, 'LOGIN', 'FAILURE', 'IFW_USERS', p_username,
+            p_log(p_username, 'LOGIN', 'FAILURE', 'DCT_USERS', p_username,
                   'Invalid credentials');
         END IF;
 
@@ -391,7 +391,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     -- -------------------------------------------------------------------------
     PROCEDURE post_login (p_username IN VARCHAR2 DEFAULT NULL) IS
         l_username       VARCHAR2(100);
-        l_user           ifw_users%ROWTYPE;
+        l_user           dct_users%ROWTYPE;
         l_roles          VARCHAR2(4000);
         l_org_ids        VARCHAR2(4000);
         l_is_admin       VARCHAR2(1) := 'N';
@@ -405,7 +405,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         -- Load user record
         BEGIN
             SELECT * INTO l_user
-            FROM   ifw_users
+            FROM   dct_users
             WHERE  UPPER(username) = UPPER(l_username)
               AND  is_active = 'Y';
         EXCEPTION
@@ -431,7 +431,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
 
         -- Unread notification count
         SELECT COUNT(*) INTO l_unread
-        FROM   ifw_notifications
+        FROM   dct_notifications
         WHERE  recipient_user_id = l_user.user_id
           AND  is_read = 'N'
           AND  (expires_at IS NULL OR expires_at > SYSTIMESTAMP);
@@ -439,7 +439,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         -- Active delegation: is this user currently delegating FOR someone?
         BEGIN
             SELECT delegator_username INTO l_delegate_for
-            FROM   v_ifw_active_delegations
+            FROM   v_dct_active_delegations
             WHERE  UPPER(delegate_username) = UPPER(l_username)
               AND  ROWNUM = 1;
         EXCEPTION WHEN NO_DATA_FOUND THEN l_delegate_for := NULL;
@@ -463,7 +463,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         APEX_UTIL.SET_SESSION_STATE('ACTIVE_DELEGATION_FOR', l_delegate_for);
 
         -- Update last login timestamp
-        UPDATE ifw_users
+        UPDATE dct_users
         SET    last_login_at = SYSTIMESTAMP,
                updated_by   = l_username
         WHERE  user_id = l_user.user_id;
@@ -487,7 +487,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     -- -------------------------------------------------------------------------
     PROCEDURE set_password (p_username IN VARCHAR2, p_password IN VARCHAR2) IS
     BEGIN
-        UPDATE ifw_users
+        UPDATE dct_users
         SET    password_hash = hash_password(p_password),
                auth_method   = 'DB',
                updated_by    = SYS_CONTEXT('APEX$SESSION','APP_USER'),
@@ -498,7 +498,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
             RAISE_APPLICATION_ERROR(-20001, 'User not found: ' || p_username);
         END IF;
 
-        p_log(p_username, 'UPDATE', 'SUCCESS', 'IFW_USERS', p_username,
+        p_log(p_username, 'UPDATE', 'SUCCESS', 'DCT_USERS', p_username,
               'Password changed');
         COMMIT;
     END set_password;
@@ -514,11 +514,11 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         p_auth_method IN VARCHAR2 DEFAULT 'DB'
     ) IS
         PRAGMA AUTONOMOUS_TRANSACTION;
-        l_user_id ifw_users.user_id%TYPE;
+        l_user_id dct_users.user_id%TYPE;
     BEGIN
         l_user_id := get_user_id(p_username);
 
-        MERGE INTO ifw_sessions s
+        MERGE INTO dct_sessions s
         USING (SELECT p_session_id AS session_id FROM DUAL) src
         ON    (s.session_id = src.session_id)
         WHEN MATCHED THEN
@@ -539,7 +539,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
         PRAGMA AUTONOMOUS_TRANSACTION;
         l_username VARCHAR2(100);
     BEGIN
-        UPDATE ifw_sessions
+        UPDATE dct_sessions
         SET    logout_at       = SYSTIMESTAMP,
                is_active       = 'N'
         WHERE  session_id      = p_session_id
@@ -556,7 +556,7 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     PROCEDURE touch_session (p_session_id IN VARCHAR2) IS
         PRAGMA AUTONOMOUS_TRANSACTION;
     BEGIN
-        UPDATE ifw_sessions
+        UPDATE dct_sessions
         SET    last_activity_at = SYSTIMESTAMP
         WHERE  session_id       = p_session_id
           AND  is_active        = 'Y';
@@ -564,15 +564,15 @@ CREATE OR REPLACE PACKAGE BODY ifw_auth AS
     EXCEPTION WHEN OTHERS THEN NULL;
     END touch_session;
 
-END ifw_auth;
+END dct_auth;
 /
 
 -- =============================================================================
--- SYNONYM for convenience (optional — lets domain apps call ifw_auth without
+-- SYNONYM for convenience (optional — lets domain apps call dct_auth without
 -- schema prefix if they are in the same schema)
 -- =============================================================================
--- CREATE OR REPLACE PUBLIC SYNONYM ifw_auth FOR prod.ifw_auth;
--- GRANT EXECUTE ON ifw_auth TO PUBLIC;  -- restrict to app schema only in prod
+-- CREATE OR REPLACE PUBLIC SYNONYM dct_auth FOR prod.dct_auth;
+-- GRANT EXECUTE ON dct_auth TO PUBLIC;  -- restrict to app schema only in prod
 
-SHOW ERRORS PACKAGE BODY ifw_auth;
--- End of 03_ifw_auth_pkg.sql
+SHOW ERRORS PACKAGE BODY dct_auth;
+-- End of 03_dct_auth_pkg.sql

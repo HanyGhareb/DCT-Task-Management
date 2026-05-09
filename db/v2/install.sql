@@ -1,4 +1,4 @@
--- =============================================================================
+﻿-- =============================================================================
 -- i-Finance V2 — Master Install Script
 -- File    : install.sql
 -- Sprint  : 1 — Foundation
@@ -24,22 +24,22 @@ WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 PROMPT ============================================================
 PROMPT  Step 1/4 — DDL: Tables, indexes, triggers
 PROMPT ============================================================
-@@01_ifw_ddl.sql
+@@01_dct_ddl.sql
 
 PROMPT ============================================================
 PROMPT  Step 2/4 — Views: Utility + compatibility views
 PROMPT ============================================================
-@@02_ifw_views.sql
+@@02_dct_views.sql
 
 PROMPT ============================================================
-PROMPT  Step 3/4 — Package: IFW_AUTH
+PROMPT  Step 3/4 — Package: DCT_AUTH
 PROMPT ============================================================
-@@03_ifw_auth_pkg.sql
+@@03_dct_auth_pkg.sql
 
 PROMPT ============================================================
 PROMPT  Step 4/4 — Seed data: roles, modules, settings, admin user
 PROMPT ============================================================
-@@04_ifw_seed.sql
+@@04_dct_seed.sql
 
 PROMPT ============================================================
 PROMPT  Sprint 1 install complete.

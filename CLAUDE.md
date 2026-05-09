@@ -1,4 +1,4 @@
-# DCT Task Management — CLAUDE.md
+﻿# DCT Task Management — CLAUDE.md
 
 ## Project Overview
 
@@ -132,7 +132,7 @@ The organization runs 31 Oracle APEX applications under the i-Finance platform. 
 | Content & Utility | f117 (Documents), f119 (UCM) |
 
 **Key shared database objects (used across multiple apps):**
-- `dct_employees_list2` — employee directory, used by nearly all apps
+- `dct_employees` — employee directory, used by nearly all apps
 - `employees_v` — employee view, used by most apps
 - `dct_data_access_assignment` — access control, used by ~12 apps
 - `dct_employees_signatures` — signatures, used by 6 apps
@@ -140,17 +140,17 @@ The organization runs 31 Oracle APEX applications under the i-Finance platform. 
 
 **APEX export location:** `iFinance-20260509T122918Z-3-001/iFinance/` (31 zip files, f100–f9900)
 
-**V2 Master App design proposal:** `ifinance-v2-proposal.md` — architecture, schema (IFW_* tables), PL/SQL packages, page inventory, security model, and build sequence for the new central auth/admin app (App ID 200).
+**V2 Master App design proposal:** `ifinance-v2-proposal.md` — architecture, schema (DCT_* tables), PL/SQL packages, page inventory, security model, and build sequence for the new central auth/admin app (App ID 200).
 
 **V2 Sprint 1 — Database files** (`db/v2/`):
 
 | File | Contents |
 |---|---|
 | `install.sql` | Master install script — runs all 4 steps in order |
-| `01_ifw_ddl.sql` | All 24 IFW_* tables, constraints, indexes, updated_at triggers |
-| `02_ifw_views.sql` | 6 utility views + 2 backward-compatibility views (`dct_data_access_assignment`, `roles`) |
-| `03_ifw_auth_pkg.sql` | `IFW_AUTH` package — authenticate, post_login, has_role, has_permission, session management |
-| `04_ifw_seed.sql` | 26 modules, 9 roles, 22 permissions, role-permission maps, system settings, lookup values, Finance Division org hierarchy, default ADMIN user |
+| `01_dct_ddl.sql` | All 24 `DCT_*` tables, constraints, indexes, updated_at triggers |
+| `02_dct_views.sql` | 6 utility views + 2 backward-compatibility views (`dct_data_access_assignment`, `roles`) |
+| `03_dct_auth_pkg.sql` | `DCT_AUTH` package — authenticate, post_login, has_role, has_permission, session management |
+| `04_dct_seed.sql` | 26 modules, 9 roles, 22 permissions, role-permission maps, system settings, lookup values, Finance Division org hierarchy, default ADMIN user |
 | `APEX_SETUP.md` | Step-by-step APEX App 200 configuration: auth scheme, app items, authorization schemes, navigation, page queries |
 
 ---

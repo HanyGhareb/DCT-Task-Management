@@ -1,4 +1,4 @@
-# i-Finance V2 — Master Application Design Proposal
+﻿# i-Finance V2 — Master Application Design Proposal
 
 **Date:** 2026-05-09  
 **Author:** Design Review  
@@ -23,7 +23,7 @@ Domain apps (HR, Budget, CWIP, Procurement, etc.) remain separate APEX applicati
 |---|---|---|
 | Three overlapping role systems | APEX ACL + `dct_data_access_assignment` + `roles` table — no single source of truth | Inconsistent access control across apps |
 | Each app re-implements approval tables | No shared approval schema | 12+ sets of `_approval_history` tables with no reuse |
-| Menu/role config buried in page SQL | Hard-coded LOV queries pointing directly to `dct_employees_list2` | Cannot change navigation without SQL edits |
+| Menu/role config buried in page SQL | Hard-coded LOV queries pointing directly to `dct_employees` | Cannot change navigation without SQL edits |
 | `person_id` (numeric) ↔ `user_id` (text) mismatch | `dct_data_access_assignment` uses both identifiers inconsistently | Data integrity risks in access queries |
 | No delegation / acting-on-behalf | No table or workflow for covering absent approvers | Approval chains stall when approver is on leave |
 | No centralized audit trail | Each app has its own `_history` table, or none at all | Compliance reporting requires querying 15+ tables |
@@ -74,9 +74,9 @@ Domain apps (HR, Budget, CWIP, Procurement, etc.) remain separate APEX applicati
 
 ## 5. Database Schema Design
 
-### Naming Convention: `IFW_` prefix (i-Finance Workspace)
+### Naming Convention: `DCT_` prefix (i-Finance Workspace)
 
-All V2 tables use the `IFW_` prefix. Standard audit columns on every table:  
+All V2 tables use the `DCT_` prefix. Standard audit columns on every table:  
 `created_by VARCHAR2(100)`, `created_at TIMESTAMP DEFAULT SYSTIMESTAMP`, `updated_by VARCHAR2(100)`, `updated_at TIMESTAMP`
 
 ---
@@ -84,7 +84,7 @@ All V2 tables use the `IFW_` prefix. Standard audit columns on every table:
 ### 5.1 User & Identity
 
 ```sql
-IFW_USERS
+DCT_USERS
   user_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   username         VARCHAR2(100) NOT NULL UNIQUE       -- APEX APP_USER / OCI IAM
   email            VARCHAR2(255) NOT NULL UNIQUE
@@ -93,12 +93,12 @@ IFW_USERS
   last_name        VARCHAR2(100)
   job_title        VARCHAR2(200)
   employee_number  VARCHAR2(50)                        -- Link to HR system
-  person_id        NUMBER                              -- HR numeric key (dct_employees_list2.person_id)
+  person_id        NUMBER                              -- HR numeric key (dct_employees.person_id)
   mobile           VARCHAR2(20)
   photo_url        VARCHAR2(500)
   color_hex        VARCHAR2(7)                         -- Avatar color
   language_pref    VARCHAR2(10) DEFAULT 'EN'           -- EN / AR
-  org_id           NUMBER FK IFW_ORGANIZATIONS         -- Primary org
+  org_id           NUMBER FK DCT_ORGANIZATIONS         -- Primary org
   is_active        VARCHAR2(1) DEFAULT 'Y'
   is_external      VARCHAR2(1) DEFAULT 'N'             -- Freelancers / external users
   deactivated_at   TIMESTAMP
@@ -107,9 +107,9 @@ IFW_USERS
 ```
 
 ```sql
-IFW_USER_PREFERENCES
+DCT_USER_PREFERENCES
   pref_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  user_id          NUMBER NOT NULL FK IFW_USERS
+  user_id          NUMBER NOT NULL FK DCT_USERS
   pref_key         VARCHAR2(100) NOT NULL
   pref_value       VARCHAR2(4000)
   UNIQUE (user_id, pref_key)
@@ -120,14 +120,14 @@ IFW_USER_PREFERENCES
 ### 5.2 Organization Hierarchy
 
 ```sql
-IFW_ORGANIZATIONS
+DCT_ORGANIZATIONS
   org_id           NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   org_code         VARCHAR2(50) NOT NULL UNIQUE
   org_name_en      VARCHAR2(200) NOT NULL
   org_name_ar      VARCHAR2(200)
   org_type         VARCHAR2(50)                        -- DIVISION, SECTION, UNIT, DEPARTMENT
-  parent_org_id    NUMBER FK IFW_ORGANIZATIONS         -- Self-referencing hierarchy
-  head_user_id     NUMBER FK IFW_USERS                 -- Section/Division head
+  parent_org_id    NUMBER FK DCT_ORGANIZATIONS         -- Self-referencing hierarchy
+  head_user_id     NUMBER FK DCT_USERS                 -- Section/Division head
   level_no         NUMBER                              -- Computed depth
   full_path        VARCHAR2(1000)                      -- e.g. Finance/Payables/...
   is_active        VARCHAR2(1) DEFAULT 'Y'
@@ -136,10 +136,10 @@ IFW_ORGANIZATIONS
 ```
 
 ```sql
-IFW_USER_ORGS
+DCT_USER_ORGS
   user_org_id      NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  user_id          NUMBER NOT NULL FK IFW_USERS
-  org_id           NUMBER NOT NULL FK IFW_ORGANIZATIONS
+  user_id          NUMBER NOT NULL FK DCT_USERS
+  org_id           NUMBER NOT NULL FK DCT_ORGANIZATIONS
   assignment_type  VARCHAR2(50)                        -- PRIMARY, SECONDARY, ACTING
   is_primary       VARCHAR2(1) DEFAULT 'N'
   start_date       DATE NOT NULL DEFAULT SYSDATE
@@ -154,7 +154,7 @@ IFW_USER_ORGS
 ### 5.3 Roles & Permissions (RBAC Core)
 
 ```sql
-IFW_ROLES
+DCT_ROLES
   role_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   role_code        VARCHAR2(100) NOT NULL UNIQUE
   role_name_en     VARCHAR2(200) NOT NULL
@@ -163,7 +163,7 @@ IFW_ROLES
                                                        -- SYSTEM: super/admin roles
                                                        -- MODULE: business-domain roles
                                                        -- DATA: row-level access roles
-  module_id        NUMBER FK IFW_MODULES               -- NULL = platform-wide role
+  module_id        NUMBER FK DCT_MODULES               -- NULL = platform-wide role
   description      VARCHAR2(1000)
   is_system_role   VARCHAR2(1) DEFAULT 'N'             -- Cannot be deleted
   is_active        VARCHAR2(1) DEFAULT 'Y'
@@ -172,11 +172,11 @@ IFW_ROLES
 ```
 
 ```sql
-IFW_PERMISSIONS
+DCT_PERMISSIONS
   permission_id    NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   permission_code  VARCHAR2(200) NOT NULL UNIQUE       -- e.g. USERS.CREATE, CWIP.APPROVE
   permission_name  VARCHAR2(200) NOT NULL
-  module_id        NUMBER FK IFW_MODULES
+  module_id        NUMBER FK DCT_MODULES
   action_type      VARCHAR2(50)                        -- VIEW, CREATE, EDIT, DELETE, APPROVE,
                                                        -- EXPORT, CONFIGURE, ADMIN
   description      VARCHAR2(1000)
@@ -185,21 +185,21 @@ IFW_PERMISSIONS
 ```
 
 ```sql
-IFW_ROLE_PERMISSIONS
+DCT_ROLE_PERMISSIONS
   rp_id            NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  role_id          NUMBER NOT NULL FK IFW_ROLES
-  permission_id    NUMBER NOT NULL FK IFW_PERMISSIONS
+  role_id          NUMBER NOT NULL FK DCT_ROLES
+  permission_id    NUMBER NOT NULL FK DCT_PERMISSIONS
   granted_by       VARCHAR2(100)
   granted_at       TIMESTAMP DEFAULT SYSTIMESTAMP
   UNIQUE (role_id, permission_id)
 ```
 
 ```sql
-IFW_USER_ROLES
+DCT_USER_ROLES
   user_role_id     NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  user_id          NUMBER NOT NULL FK IFW_USERS
-  role_id          NUMBER NOT NULL FK IFW_ROLES
-  org_scope_id     NUMBER FK IFW_ORGANIZATIONS         -- NULL = all orgs; set = scoped to one org
+  user_id          NUMBER NOT NULL FK DCT_USERS
+  role_id          NUMBER NOT NULL FK DCT_ROLES
+  org_scope_id     NUMBER FK DCT_ORGANIZATIONS         -- NULL = all orgs; set = scoped to one org
   start_date       DATE NOT NULL DEFAULT SYSDATE
   end_date         DATE                                -- NULL = indefinite
   assigned_by      VARCHAR2(100)
@@ -213,7 +213,7 @@ IFW_USER_ROLES
 ### 5.4 Module Registry
 
 ```sql
-IFW_MODULES
+DCT_MODULES
   module_id        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   module_code      VARCHAR2(100) NOT NULL UNIQUE       -- e.g. CWIP, BUDGET, HR, TASK_MGMT
   module_name_en   VARCHAR2(200) NOT NULL
@@ -234,10 +234,10 @@ IFW_MODULES
 ```
 
 ```sql
-IFW_MODULE_ROLES
+DCT_MODULE_ROLES
   mr_id            NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  module_id        NUMBER NOT NULL FK IFW_MODULES
-  role_id          NUMBER NOT NULL FK IFW_ROLES
+  module_id        NUMBER NOT NULL FK DCT_MODULES
+  role_id          NUMBER NOT NULL FK DCT_ROLES
   access_level     VARCHAR2(20) DEFAULT 'FULL'         -- FULL, READ_ONLY
   UNIQUE (module_id, role_id)
 ```
@@ -247,9 +247,9 @@ IFW_MODULE_ROLES
 ### 5.5 Menu System
 
 ```sql
-IFW_MENUS
+DCT_MENUS
   menu_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  module_id        NUMBER FK IFW_MODULES               -- Which module this menu belongs to
+  module_id        NUMBER FK DCT_MODULES               -- Which module this menu belongs to
   menu_code        VARCHAR2(100) NOT NULL UNIQUE
   menu_name_en     VARCHAR2(200) NOT NULL
   menu_name_ar     VARCHAR2(200)
@@ -258,10 +258,10 @@ IFW_MENUS
 ```
 
 ```sql
-IFW_MENU_ITEMS
+DCT_MENU_ITEMS
   item_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  menu_id          NUMBER NOT NULL FK IFW_MENUS
-  parent_item_id   NUMBER FK IFW_MENU_ITEMS            -- Nested menus
+  menu_id          NUMBER NOT NULL FK DCT_MENUS
+  parent_item_id   NUMBER FK DCT_MENU_ITEMS            -- Nested menus
   label_en         VARCHAR2(200) NOT NULL
   label_ar         VARCHAR2(200)
   icon_class       VARCHAR2(100)
@@ -280,11 +280,11 @@ IFW_MENU_ITEMS
 ### 5.6 Approval Framework
 
 ```sql
-IFW_APPROVAL_TEMPLATES
+DCT_APPROVAL_TEMPLATES
   template_id      NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   template_code    VARCHAR2(100) NOT NULL UNIQUE       -- e.g. PAYMENT_REQ_APPROVAL
   template_name    VARCHAR2(200) NOT NULL
-  module_id        NUMBER FK IFW_MODULES
+  module_id        NUMBER FK DCT_MODULES
   description      VARCHAR2(1000)
   is_sequential    VARCHAR2(1) DEFAULT 'Y'             -- Y=sequential steps, N=parallel
   is_active        VARCHAR2(1) DEFAULT 'Y'
@@ -292,46 +292,46 @@ IFW_APPROVAL_TEMPLATES
 ```
 
 ```sql
-IFW_APPROVAL_STEPS
+DCT_APPROVAL_STEPS
   step_id          NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  template_id      NUMBER NOT NULL FK IFW_APPROVAL_TEMPLATES
+  template_id      NUMBER NOT NULL FK DCT_APPROVAL_TEMPLATES
   step_seq         NUMBER NOT NULL                     -- Order of this step
   step_name        VARCHAR2(200) NOT NULL
   step_type        VARCHAR2(30)                        -- ROLE_BASED, USER_SPECIFIC, ORG_HEAD
-  required_role_id NUMBER FK IFW_ROLES                 -- For ROLE_BASED steps
-  specific_user_id NUMBER FK IFW_USERS                 -- For USER_SPECIFIC steps
+  required_role_id NUMBER FK DCT_ROLES                 -- For ROLE_BASED steps
+  specific_user_id NUMBER FK DCT_USERS                 -- For USER_SPECIFIC steps
   escalation_days  NUMBER DEFAULT 3                    -- Days before escalation
-  escalate_to_role NUMBER FK IFW_ROLES
+  escalate_to_role NUMBER FK DCT_ROLES
   is_mandatory     VARCHAR2(1) DEFAULT 'Y'
   allow_skip       VARCHAR2(1) DEFAULT 'N'
   UNIQUE (template_id, step_seq)
 ```
 
 ```sql
-IFW_APPROVAL_INSTANCES
+DCT_APPROVAL_INSTANCES
   instance_id      NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  template_id      NUMBER NOT NULL FK IFW_APPROVAL_TEMPLATES
+  template_id      NUMBER NOT NULL FK DCT_APPROVAL_TEMPLATES
   source_module    VARCHAR2(100)                       -- Module code that owns this request
   source_record_id NUMBER NOT NULL                     -- PK of the requesting record
   source_record_ref VARCHAR2(200)                      -- Human-readable ref (e.g. "Payment #PRQ-2026-001")
   current_step_seq NUMBER DEFAULT 1
   overall_status   VARCHAR2(30) DEFAULT 'PENDING'      -- PENDING, APPROVED, REJECTED, CANCELLED
-  submitted_by     NUMBER FK IFW_USERS
+  submitted_by     NUMBER FK DCT_USERS
   submitted_at     TIMESTAMP DEFAULT SYSTIMESTAMP
   completed_at     TIMESTAMP
   -- audit columns
 ```
 
 ```sql
-IFW_APPROVAL_ACTIONS
+DCT_APPROVAL_ACTIONS
   action_id        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  instance_id      NUMBER NOT NULL FK IFW_APPROVAL_INSTANCES
-  step_id          NUMBER NOT NULL FK IFW_APPROVAL_STEPS
-  actioned_by      NUMBER NOT NULL FK IFW_USERS
+  instance_id      NUMBER NOT NULL FK DCT_APPROVAL_INSTANCES
+  step_id          NUMBER NOT NULL FK DCT_APPROVAL_STEPS
+  actioned_by      NUMBER NOT NULL FK DCT_USERS
   actioned_at      TIMESTAMP DEFAULT SYSTIMESTAMP
   action           VARCHAR2(30)                        -- APPROVED, REJECTED, RETURNED, DELEGATED
   comments         VARCHAR2(4000)
-  delegate_to      NUMBER FK IFW_USERS                 -- If action = DELEGATED
+  delegate_to      NUMBER FK DCT_USERS                 -- If action = DELEGATED
   is_escalation    VARCHAR2(1) DEFAULT 'N'
 ```
 
@@ -340,13 +340,13 @@ IFW_APPROVAL_ACTIONS
 ### 5.7 Delegation of Authority
 
 ```sql
-IFW_DELEGATIONS
+DCT_DELEGATIONS
   delegation_id    NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  delegator_id     NUMBER NOT NULL FK IFW_USERS        -- The user delegating
-  delegate_id      NUMBER NOT NULL FK IFW_USERS        -- The user receiving authority
+  delegator_id     NUMBER NOT NULL FK DCT_USERS        -- The user delegating
+  delegate_id      NUMBER NOT NULL FK DCT_USERS        -- The user receiving authority
   scope            VARCHAR2(30)                        -- ALL_ROLES, SPECIFIC_ROLE
-  role_id          NUMBER FK IFW_ROLES                 -- If scope = SPECIFIC_ROLE
-  module_id        NUMBER FK IFW_MODULES               -- If scoped to a module
+  role_id          NUMBER FK DCT_ROLES                 -- If scope = SPECIFIC_ROLE
+  module_id        NUMBER FK DCT_MODULES               -- If scoped to a module
   start_date       DATE NOT NULL
   end_date         DATE NOT NULL
   reason           VARCHAR2(500)
@@ -360,20 +360,20 @@ IFW_DELEGATIONS
 ### 5.8 Lookup Management
 
 ```sql
-IFW_LOOKUP_CATEGORIES
+DCT_LOOKUP_CATEGORIES
   category_id      NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   category_code    VARCHAR2(100) NOT NULL UNIQUE       -- e.g. TASK_STATUS, PRIORITY, CARD_TYPE
   category_name    VARCHAR2(200) NOT NULL
-  module_id        NUMBER FK IFW_MODULES               -- NULL = platform-wide
+  module_id        NUMBER FK DCT_MODULES               -- NULL = platform-wide
   is_system        VARCHAR2(1) DEFAULT 'N'             -- System lookups are read-only in UI
   is_active        VARCHAR2(1) DEFAULT 'Y'
   -- audit columns
 ```
 
 ```sql
-IFW_LOOKUP_VALUES
+DCT_LOOKUP_VALUES
   value_id         NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  category_id      NUMBER NOT NULL FK IFW_LOOKUP_CATEGORIES
+  category_id      NUMBER NOT NULL FK DCT_LOOKUP_CATEGORIES
   value_code       VARCHAR2(100) NOT NULL
   value_name_en    VARCHAR2(200) NOT NULL
   value_name_ar    VARCHAR2(200)
@@ -390,16 +390,16 @@ IFW_LOOKUP_VALUES
 ### 5.9 Audit & Session
 
 ```sql
-IFW_AUDIT_LOG
+DCT_AUDIT_LOG
   log_id           NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   logged_at        TIMESTAMP DEFAULT SYSTIMESTAMP
   username         VARCHAR2(100)
-  user_id          NUMBER FK IFW_USERS
+  user_id          NUMBER FK DCT_USERS
   session_id       VARCHAR2(100)                       -- APEX session ID
   module_code      VARCHAR2(100)
   action           VARCHAR2(50)                        -- LOGIN, LOGOUT, CREATE, UPDATE, DELETE,
                                                        -- ROLE_ASSIGN, ROLE_REVOKE, APPROVE, REJECT
-  object_type      VARCHAR2(100)                       -- Table/entity affected (e.g. IFW_USERS)
+  object_type      VARCHAR2(100)                       -- Table/entity affected (e.g. DCT_USERS)
   object_id        VARCHAR2(200)                       -- PK of affected record
   old_values       CLOB                                -- JSON snapshot of before state
   new_values       CLOB                                -- JSON snapshot of after state
@@ -410,9 +410,9 @@ IFW_AUDIT_LOG
 ```
 
 ```sql
-IFW_SESSIONS
+DCT_SESSIONS
   session_id       VARCHAR2(100) PRIMARY KEY           -- APEX session ID
-  user_id          NUMBER FK IFW_USERS
+  user_id          NUMBER FK DCT_USERS
   username         VARCHAR2(100)
   login_at         TIMESTAMP DEFAULT SYSTIMESTAMP
   last_activity_at TIMESTAMP DEFAULT SYSTIMESTAMP
@@ -426,9 +426,9 @@ IFW_SESSIONS
 ### 5.10 Notifications & Announcements
 
 ```sql
-IFW_NOTIFICATIONS
+DCT_NOTIFICATIONS
   notification_id  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
-  recipient_user_id NUMBER FK IFW_USERS
+  recipient_user_id NUMBER FK DCT_USERS
   module_code      VARCHAR2(100)
   notification_type VARCHAR2(50)                       -- APPROVAL_PENDING, APPROVAL_DONE,
                                                        -- TASK_DUE, DELEGATION, SYSTEM
@@ -442,7 +442,7 @@ IFW_NOTIFICATIONS
 ```
 
 ```sql
-IFW_ANNOUNCEMENTS
+DCT_ANNOUNCEMENTS
   announcement_id  NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   title_en         VARCHAR2(500) NOT NULL
   title_ar         VARCHAR2(500)
@@ -450,8 +450,8 @@ IFW_ANNOUNCEMENTS
   body_ar          CLOB
   severity         VARCHAR2(20) DEFAULT 'INFO'         -- INFO, WARNING, CRITICAL
   target_audience  VARCHAR2(30) DEFAULT 'ALL'          -- ALL, ROLE, MODULE
-  target_role_id   NUMBER FK IFW_ROLES
-  target_module_id NUMBER FK IFW_MODULES
+  target_role_id   NUMBER FK DCT_ROLES
+  target_module_id NUMBER FK DCT_MODULES
   published_at     TIMESTAMP
   expires_at       TIMESTAMP
   created_by       VARCHAR2(100)
@@ -464,7 +464,7 @@ IFW_ANNOUNCEMENTS
 ### 5.11 System Settings
 
 ```sql
-IFW_SYSTEM_SETTINGS
+DCT_SYSTEM_SETTINGS
   setting_id       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY
   setting_key      VARCHAR2(200) NOT NULL UNIQUE
   setting_value    VARCHAR2(4000)
@@ -496,72 +496,72 @@ SELECT ur.user_role_id        AS assignment_id,
        CASE WHEN ur.is_active = 'Y'
              AND SYSDATE BETWEEN ur.start_date AND NVL(ur.end_date, SYSDATE + 1)
             THEN 'A' ELSE 'I' END AS status
-FROM   ifw_user_roles ur
-JOIN   ifw_users u  ON ur.user_id = u.user_id
-JOIN   ifw_roles r  ON ur.role_id = r.role_id;
+FROM   dct_user_roles ur
+JOIN   dct_users u  ON ur.user_id = u.user_id
+JOIN   dct_roles r  ON ur.role_id = r.role_id;
 
 -- Replaces roles (task management module roles)
 CREATE OR REPLACE VIEW roles AS
 SELECT r.role_id, r.role_code, r.role_name_en AS role_name,
        m.module_code, r.is_active
-FROM   ifw_roles r
-LEFT JOIN ifw_modules m ON r.module_id = m.module_id;
+FROM   dct_roles r
+LEFT JOIN dct_modules m ON r.module_id = m.module_id;
 ```
 
 ---
 
 ## 6. PL/SQL Package Design
 
-### `IFW_AUTH` — Authentication & Authorization
+### `DCT_AUTH` — Authentication & Authorization
 
 ```
-IFW_AUTH.authenticate(p_username, p_password) RETURN BOOLEAN
-IFW_AUTH.post_login(p_username)                -- Sets APEX items: USER_ROLES, USER_ORGS, IS_ADMIN
-IFW_AUTH.has_permission(p_user, p_perm_code) RETURN BOOLEAN
-IFW_AUTH.has_role(p_user, p_role_code)        RETURN BOOLEAN
-IFW_AUTH.has_module_access(p_user, p_module)  RETURN BOOLEAN
-IFW_AUTH.get_user_roles(p_user)               RETURN VARCHAR2  -- Comma-delimited
-IFW_AUTH.get_effective_user(p_user)           RETURN VARCHAR2  -- Resolves delegations
+DCT_AUTH.authenticate(p_username, p_password) RETURN BOOLEAN
+DCT_AUTH.post_login(p_username)                -- Sets APEX items: USER_ROLES, USER_ORGS, IS_ADMIN
+DCT_AUTH.has_permission(p_user, p_perm_code) RETURN BOOLEAN
+DCT_AUTH.has_role(p_user, p_role_code)        RETURN BOOLEAN
+DCT_AUTH.has_module_access(p_user, p_module)  RETURN BOOLEAN
+DCT_AUTH.get_user_roles(p_user)               RETURN VARCHAR2  -- Comma-delimited
+DCT_AUTH.get_effective_user(p_user)           RETURN VARCHAR2  -- Resolves delegations
 ```
 
-### `IFW_USERS_API` — User Lifecycle
+### `DCT_USERS_API` — User Lifecycle
 
 ```
-IFW_USERS_API.create_user(...)                RETURN NUMBER   -- user_id
-IFW_USERS_API.update_user(p_user_id, ...)
-IFW_USERS_API.deactivate_user(p_user_id, p_reason)
-IFW_USERS_API.assign_role(p_user_id, p_role_id, p_start, p_end)
-IFW_USERS_API.revoke_role(p_user_id, p_role_id)
-IFW_USERS_API.sync_from_hr(p_employee_num)   -- Pull from dct_employees_list2
+DCT_USERS_API.create_user(...)                RETURN NUMBER   -- user_id
+DCT_USERS_API.update_user(p_user_id, ...)
+DCT_USERS_API.deactivate_user(p_user_id, p_reason)
+DCT_USERS_API.assign_role(p_user_id, p_role_id, p_start, p_end)
+DCT_USERS_API.revoke_role(p_user_id, p_role_id)
+DCT_USERS_API.sync_from_hr(p_employee_num)   -- Pull from dct_employees
 ```
 
-### `IFW_APPROVAL` — Approval Engine
+### `DCT_APPROVAL` — Approval Engine
 
 ```
-IFW_APPROVAL.submit(p_template_code, p_module, p_record_id, p_ref) RETURN NUMBER  -- instance_id
-IFW_APPROVAL.approve(p_instance_id, p_user_id, p_comments)
-IFW_APPROVAL.reject(p_instance_id, p_user_id, p_comments)
-IFW_APPROVAL.return_for_revision(p_instance_id, p_user_id, p_comments)
-IFW_APPROVAL.get_pending_actions(p_user_id)   RETURN SYS_REFCURSOR
-IFW_APPROVAL.is_current_approver(p_instance_id, p_user_id) RETURN BOOLEAN
-IFW_APPROVAL.cancel(p_instance_id, p_user_id)
+DCT_APPROVAL.submit(p_template_code, p_module, p_record_id, p_ref) RETURN NUMBER  -- instance_id
+DCT_APPROVAL.approve(p_instance_id, p_user_id, p_comments)
+DCT_APPROVAL.reject(p_instance_id, p_user_id, p_comments)
+DCT_APPROVAL.return_for_revision(p_instance_id, p_user_id, p_comments)
+DCT_APPROVAL.get_pending_actions(p_user_id)   RETURN SYS_REFCURSOR
+DCT_APPROVAL.is_current_approver(p_instance_id, p_user_id) RETURN BOOLEAN
+DCT_APPROVAL.cancel(p_instance_id, p_user_id)
 ```
 
-### `IFW_AUDIT` — Audit Logging
+### `DCT_AUDIT` — Audit Logging
 
 ```
-IFW_AUDIT.log(p_action, p_object_type, p_object_id, p_old, p_new)
-IFW_AUDIT.log_login(p_username, p_status)
-IFW_AUDIT.log_access_denied(p_username, p_resource)
+DCT_AUDIT.log(p_action, p_object_type, p_object_id, p_old, p_new)
+DCT_AUDIT.log_login(p_username, p_status)
+DCT_AUDIT.log_access_denied(p_username, p_resource)
 ```
 
-### `IFW_NOTIFY` — Notification Dispatch
+### `DCT_NOTIFY` — Notification Dispatch
 
 ```
-IFW_NOTIFY.send(p_user_id, p_type, p_title, p_body, p_link)
-IFW_NOTIFY.send_to_role(p_role_id, p_type, p_title, p_body)
-IFW_NOTIFY.mark_read(p_notification_id, p_user_id)
-IFW_NOTIFY.get_unread_count(p_user_id) RETURN NUMBER
+DCT_NOTIFY.send(p_user_id, p_type, p_title, p_body, p_link)
+DCT_NOTIFY.send_to_role(p_role_id, p_type, p_title, p_body)
+DCT_NOTIFY.mark_read(p_notification_id, p_user_id)
+DCT_NOTIFY.get_unread_count(p_user_id) RETURN NUMBER
 ```
 
 ---
@@ -571,8 +571,8 @@ IFW_NOTIFY.get_unread_count(p_user_id) RETURN NUMBER
 **App ID:** 200 (suggested)  
 **Alias:** I-FINANCE-V2  
 **Theme:** Universal Theme 42  
-**Authentication:** Custom — calls `IFW_AUTH.authenticate`  
-**Authorization Scheme:** `IFW_AUTH.has_role(:APP_USER, 'PLATFORM_USER')`
+**Authentication:** Custom — calls `DCT_AUTH.authenticate`  
+**Authorization Scheme:** `DCT_AUTH.has_role(:APP_USER, 'PLATFORM_USER')`
 
 ---
 
@@ -591,7 +591,7 @@ IFW_NOTIFY.get_unread_count(p_user_id) RETURN NUMBER
 
 | Page | Title | Key Components |
 |---|---|---|
-| 1 | Home — App Launcher | Cards grid from `IFW_MODULES` filtered by `IFW_AUTH.has_module_access`; announcement banner; unread notification badge |
+| 1 | Home — App Launcher | Cards grid from `DCT_MODULES` filtered by `DCT_AUTH.has_module_access`; announcement banner; unread notification badge |
 | 2 | My Profile | Edit display name, photo, language pref, mobile; view active roles & org assignments |
 | 3 | My Delegations | Create/view/cancel delegations; active and past delegation list |
 | 4 | Notifications | Full notification list; mark read; filter by module/type |
@@ -753,19 +753,19 @@ TASK_VIEWER     → Read-only task access
 
 ```
 User logs in
-  → IFW_AUTH.post_login runs
+  → DCT_AUTH.post_login runs
   → Loads into APEX items:
       :USER_ID, :USER_DISPLAY_NAME, :USER_ROLES (comma list),
       :USER_PERMISSIONS (JSON), :USER_ORG_IDS, :IS_ADMIN,
       :ACTIVE_DELEGATION (username if delegating for someone)
-  → Menu items rendered only if IFW_AUTH.has_permission returns TRUE
-  → Each page has APEX Authorization Scheme calling IFW_AUTH
+  → Menu items rendered only if DCT_AUTH.has_permission returns TRUE
+  → Each page has APEX Authorization Scheme calling DCT_AUTH
   → Data queries auto-filter by org scope if user is ORG_ADMIN
 ```
 
 ### Row-Level Security
 - Users with `ORG_ADMIN` role see only data belonging to their org subtree.
-- Implemented via `IFW_AUTH.get_user_org_ids(:APP_USER)` used in WHERE clauses.
+- Implemented via `DCT_AUTH.get_user_org_ids(:APP_USER)` used in WHERE clauses.
 - Domain apps call the same function for their own data filtering.
 
 ---
@@ -797,7 +797,7 @@ User logs in
 
 ### Bilingual (Arabic / English)
 - All labels stored in `_en` / `_ar` columns
-- Language toggled per user in `IFW_USER_PREFERENCES`
+- Language toggled per user in `DCT_USER_PREFERENCES`
 - RTL layout applied when `AR` selected (APEX built-in RTL support)
 - Date/number format adjusted per locale
 
@@ -813,11 +813,11 @@ User logs in
 ### How a Domain App Uses V2
 
 1. **Authentication redirect:** Domain app uses "Redirect to V2 Login" as its auth scheme. V2 issues an APEX session token that domain apps validate.
-2. **Permission check:** Domain app pages call `IFW_AUTH.has_permission(:APP_USER, 'MODULE.ACTION')` as their authorization scheme.
-3. **User lookup:** Domain apps call `IFW_USERS_API.get_user_details(:APP_USER)` instead of querying `dct_employees_list2` directly.
-4. **Approval submission:** Domain apps call `IFW_APPROVAL.submit('TEMPLATE_CODE', 'MODULE', :RECORD_ID, 'Ref Text')` — no local approval tables needed.
-5. **Notifications:** Domain apps call `IFW_NOTIFY.send(...)` — no local notification logic.
-6. **Lookups:** Domain apps query `IFW_LOOKUP_VALUES` via a standard LOV query pattern.
+2. **Permission check:** Domain app pages call `DCT_AUTH.has_permission(:APP_USER, 'MODULE.ACTION')` as their authorization scheme.
+3. **User lookup:** Domain apps call `DCT_USERS_API.get_user_details(:APP_USER)` instead of querying `dct_employees` directly.
+4. **Approval submission:** Domain apps call `DCT_APPROVAL.submit('TEMPLATE_CODE', 'MODULE', :RECORD_ID, 'Ref Text')` — no local approval tables needed.
+5. **Notifications:** Domain apps call `DCT_NOTIFY.send(...)` — no local notification logic.
+6. **Lookups:** Domain apps query `DCT_LOOKUP_VALUES` via a standard LOV query pattern.
 
 ### Migration Path for Existing Apps
 
@@ -826,7 +826,7 @@ User logs in
 | 1 — Foundation | Build V2 schema + packages; deploy compatibility views |
 | 2 — Pilot | Migrate f100 + f910 config into V2; test auth |
 | 3 — Domain Migration | Update each domain app auth scheme to use V2 |
-| 4 — Approval Migration | Replace domain `_approval_history` tables with `IFW_APPROVAL_*` calls |
+| 4 — Approval Migration | Replace domain `_approval_history` tables with `DCT_APPROVAL_*` calls |
 | 5 — Deprecation | Remove compatibility views; retire f100, f910, f9900 |
 
 ---
@@ -900,11 +900,11 @@ Below is how V2's home page would organize the 31 apps + task management:
 |---|---|---|
 | 1 | **Authentication method** | Custom PL/SQL now; architecture must support adding multiple schemes (OCI IAM, SAML) later without restructuring |
 | 2 | **App ID** | **200** |
-| 3 | **Schema owner** | **Same PROD schema** — all IFW_* tables created alongside existing tables |
+| 3 | **Schema owner** | **Same PROD schema** — all DCT_* tables created alongside existing tables |
 | 4 | **Domain app migration** | **Phased** — auth first, then approvals, then lookups; domain apps keep working throughout |
 | 5 | **Bilingual (AR/EN)** | **Phase 1** — all labels bilingual from day one; `_en`/`_ar` columns on all relevant tables; RTL support required |
 | 6 | **Task Management** | **Separate APEX app** (Option B) — Task Management remains its own application, uses V2 for authentication only |
-| 7 | **External users** | **Same `IFW_USERS` table** with `is_external = 'Y'` flag (Option A) |
+| 7 | **External users** | **Same `DCT_USERS` table** with `is_external = 'Y'` flag (Option A) |
 | 8 | **Approval engine** | **Build now** — central engine in place for all new domain apps from Sprint 1; existing apps migrate per phase plan |
 
 ---
@@ -915,14 +915,14 @@ If you approve this proposal, the suggested build order is:
 
 ```
 Sprint 1 — Foundation (Schema + Auth)
-  ├── Create all IFW_* tables
+  ├── Create all DCT_* tables
   ├── Create compatibility views
-  ├── Build IFW_AUTH package
+  ├── Build DCT_AUTH package
   ├── APEX app shell (App 200) + login page
   └── Home / App Launcher with static module cards
 
 Sprint 2 — User & Role Management
-  ├── IFW_USERS_API package
+  ├── DCT_USERS_API package
   ├── User list, detail, create/edit pages
   ├── Role list, detail, permission assignment pages
   └── User-role assignment with date ranges
@@ -930,23 +930,23 @@ Sprint 2 — User & Role Management
 Sprint 3 — Organization + Module Registry
   ├── Org hierarchy tree + management pages
   ├── Module registry + role access config
-  └── Dynamic App Launcher pulling from IFW_MODULES
+  └── Dynamic App Launcher pulling from DCT_MODULES
 
 Sprint 4 — Approval Framework
-  ├── IFW_APPROVAL package
+  ├── DCT_APPROVAL package
   ├── Template + step management pages
   ├── Approval monitor + instance detail
   └── My Pending Approvals page
 
 Sprint 5 — Audit, Lookup, Notifications
-  ├── IFW_AUDIT auto-trigger setup
+  ├── DCT_AUDIT auto-trigger setup
   ├── Audit log + login history pages
   ├── Lookup category + values management
-  └── IFW_NOTIFY + notification bell
+  └── DCT_NOTIFY + notification bell
 
 Sprint 6 — Task Management Integration
   ├── Migrate DCT task management pages into App 200
-  ├── Wire to IFW_AUTH roles (TASK_DIRECTOR, TASK_MANAGER)
+  ├── Wire to DCT_AUTH roles (TASK_DIRECTOR, TASK_MANAGER)
   └── Task reports + trend charts
 
 Sprint 7 — Domain App Auth Migration (per domain)

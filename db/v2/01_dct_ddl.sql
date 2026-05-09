@@ -1,16 +1,16 @@
--- =============================================================================
+﻿-- =============================================================================
 -- i-Finance V2 — Master Schema DDL
--- File    : 01_ifw_ddl.sql
+-- File    : 01_dct_ddl.sql
 -- Schema  : PROD
 -- DB      : Oracle 23ai
--- Prefix  : IFW_ (i-Finance Workspace)
+-- Prefix  : DCT_ (i-Finance Workspace)
 -- Sprint  : 1 — Foundation
 -- =============================================================================
 -- Prerequisites:
 --   GRANT EXECUTE ON DBMS_CRYPTO TO PROD;
 --   GRANT CREATE TRIGGER, CREATE TABLE, CREATE VIEW, CREATE SEQUENCE TO PROD;
 -- =============================================================================
--- Run order: 01_ifw_ddl → 02_ifw_views → 03_ifw_auth_pkg → 04_ifw_seed
+-- Run order: 01_dct_ddl → 02_dct_views → 03_dct_auth_pkg → 04_dct_seed
 -- To reinstall clean: uncomment the DROP section below and run first.
 -- =============================================================================
 
@@ -18,46 +18,46 @@
 -- CLEAN REINSTALL (uncomment to drop all objects before re-creating)
 -- -----------------------------------------------------------------------------
 /*
-DROP TABLE ifw_announcements        CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_notifications        CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_sessions             CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_audit_log            CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_lookup_values        CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_lookup_categories    CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_system_settings      CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_delegations          CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_approval_actions     CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_approval_instances   CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_approval_steps       CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_approval_templates   CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_menu_items           CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_menus                CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_module_roles         CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_user_roles           CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_role_permissions     CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_permissions          CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_roles                CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_modules              CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_user_preferences     CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_user_orgs            CASCADE CONSTRAINTS PURGE;
-ALTER TABLE ifw_organizations DROP CONSTRAINT fk_ifw_org_head;
-DROP TABLE ifw_users                CASCADE CONSTRAINTS PURGE;
-DROP TABLE ifw_organizations        CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_announcements        CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_notifications        CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_sessions             CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_audit_log            CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_lookup_values        CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_lookup_categories    CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_system_settings      CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_delegations          CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_approval_actions     CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_approval_instances   CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_approval_steps       CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_approval_templates   CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_menu_items           CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_menus                CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_module_roles         CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_user_roles           CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_role_permissions     CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_permissions          CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_roles                CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_modules              CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_user_preferences     CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_user_orgs            CASCADE CONSTRAINTS PURGE;
+ALTER TABLE dct_organizations DROP CONSTRAINT fk_dct_org_head;
+DROP TABLE dct_users                CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_organizations        CASCADE CONSTRAINTS PURGE;
 */
 
 -- =============================================================================
--- 1. IFW_ORGANIZATIONS
---    Created before IFW_USERS because users reference it.
---    head_user_id FK added after IFW_USERS is created.
+-- 1. DCT_ORGANIZATIONS
+--    Created before DCT_USERS because users reference it.
+--    head_user_id FK added after DCT_USERS is created.
 -- =============================================================================
-CREATE TABLE ifw_organizations (
+CREATE TABLE dct_organizations (
     org_id          NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     org_code        VARCHAR2(50)   NOT NULL,
     org_name_en     VARCHAR2(200)  NOT NULL,
     org_name_ar     VARCHAR2(200),
     org_type        VARCHAR2(30),                            -- DIVISION | SECTION | UNIT | DEPARTMENT
     parent_org_id   NUMBER,
-    head_user_id    NUMBER,                                  -- FK added after ifw_users
+    head_user_id    NUMBER,                                  -- FK added after dct_users
     level_no        NUMBER         DEFAULT 1,
     full_path       VARCHAR2(1000),                          -- e.g. Finance > Payables > AR
     is_active       VARCHAR2(1)    DEFAULT 'Y' NOT NULL,
@@ -67,19 +67,19 @@ CREATE TABLE ifw_organizations (
     updated_by      VARCHAR2(100),
     updated_at      TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_org_code      UNIQUE      (org_code),
-    CONSTRAINT chk_ifw_org_active   CHECK       (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_org_type     CHECK       (org_type IN ('DIVISION','SECTION','UNIT','DEPARTMENT') OR org_type IS NULL),
-    CONSTRAINT fk_ifw_org_parent    FOREIGN KEY (parent_org_id) REFERENCES ifw_organizations(org_id)
+    CONSTRAINT uq_dct_org_code      UNIQUE      (org_code),
+    CONSTRAINT chk_dct_org_active   CHECK       (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_org_type     CHECK       (org_type IN ('DIVISION','SECTION','UNIT','DEPARTMENT') OR org_type IS NULL),
+    CONSTRAINT fk_dct_org_parent    FOREIGN KEY (parent_org_id) REFERENCES dct_organizations(org_id)
 );
 
-CREATE INDEX ix_ifw_org_parent   ON ifw_organizations(parent_org_id);
-CREATE INDEX ix_ifw_org_active   ON ifw_organizations(is_active);
+CREATE INDEX ix_dct_org_parent   ON dct_organizations(parent_org_id);
+CREATE INDEX ix_dct_org_active   ON dct_organizations(is_active);
 
 -- =============================================================================
--- 2. IFW_USERS
+-- 2. DCT_USERS
 -- =============================================================================
-CREATE TABLE ifw_users (
+CREATE TABLE dct_users (
     user_id          NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     username         VARCHAR2(100)  NOT NULL,
     email            VARCHAR2(255)  NOT NULL,
@@ -90,7 +90,7 @@ CREATE TABLE ifw_users (
     job_title_en     VARCHAR2(200),
     job_title_ar     VARCHAR2(200),
     employee_number  VARCHAR2(50),
-    person_id        NUMBER,                                 -- Numeric HR key (dct_employees_list2)
+    person_id        NUMBER,                                 -- Numeric HR key (dct_employees)
     mobile           VARCHAR2(20),
     photo_url        VARCHAR2(500),
     color_hex        VARCHAR2(7)    DEFAULT '#0076CE',
@@ -108,29 +108,29 @@ CREATE TABLE ifw_users (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_user_username  UNIQUE      (username),
-    CONSTRAINT uq_ifw_user_email     UNIQUE      (email),
-    CONSTRAINT chk_ifw_user_active   CHECK       (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_user_ext      CHECK       (is_external IN ('Y','N')),
-    CONSTRAINT chk_ifw_user_lang     CHECK       (language_pref IN ('EN','AR')),
-    CONSTRAINT chk_ifw_user_auth     CHECK       (auth_method IN ('DB','LDAP','OCI_IAM','SAML')),
-    CONSTRAINT fk_ifw_user_org       FOREIGN KEY (org_id) REFERENCES ifw_organizations(org_id)
+    CONSTRAINT uq_dct_user_username  UNIQUE      (username),
+    CONSTRAINT uq_dct_user_email     UNIQUE      (email),
+    CONSTRAINT chk_dct_user_active   CHECK       (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_user_ext      CHECK       (is_external IN ('Y','N')),
+    CONSTRAINT chk_dct_user_lang     CHECK       (language_pref IN ('EN','AR')),
+    CONSTRAINT chk_dct_user_auth     CHECK       (auth_method IN ('DB','LDAP','OCI_IAM','SAML')),
+    CONSTRAINT fk_dct_user_org       FOREIGN KEY (org_id) REFERENCES dct_organizations(org_id)
 );
 
 -- Deferred FK: org head references user
-ALTER TABLE ifw_organizations
-    ADD CONSTRAINT fk_ifw_org_head FOREIGN KEY (head_user_id) REFERENCES ifw_users(user_id);
+ALTER TABLE dct_organizations
+    ADD CONSTRAINT fk_dct_org_head FOREIGN KEY (head_user_id) REFERENCES dct_users(user_id);
 
-CREATE UNIQUE INDEX uix_ifw_user_username ON ifw_users(UPPER(username));
-CREATE INDEX        ix_ifw_user_active    ON ifw_users(is_active);
-CREATE INDEX        ix_ifw_user_org       ON ifw_users(org_id);
-CREATE INDEX        ix_ifw_user_person    ON ifw_users(person_id);
-CREATE INDEX        ix_ifw_user_empno     ON ifw_users(employee_number);
+CREATE UNIQUE INDEX uix_dct_user_username ON dct_users(UPPER(username));
+CREATE INDEX        ix_dct_user_active    ON dct_users(is_active);
+CREATE INDEX        ix_dct_user_org       ON dct_users(org_id);
+CREATE INDEX        ix_dct_user_person    ON dct_users(person_id);
+CREATE INDEX        ix_dct_user_empno     ON dct_users(employee_number);
 
 -- =============================================================================
--- 3. IFW_USER_PREFERENCES
+-- 3. DCT_USER_PREFERENCES
 -- =============================================================================
-CREATE TABLE ifw_user_preferences (
+CREATE TABLE dct_user_preferences (
     pref_id     NUMBER        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id     NUMBER        NOT NULL,
     pref_key    VARCHAR2(100) NOT NULL,
@@ -138,14 +138,14 @@ CREATE TABLE ifw_user_preferences (
     created_at  TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
     updated_at  TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_pref           UNIQUE      (user_id, pref_key),
-    CONSTRAINT fk_ifw_pref_user      FOREIGN KEY (user_id) REFERENCES ifw_users(user_id) ON DELETE CASCADE
+    CONSTRAINT uq_dct_pref           UNIQUE      (user_id, pref_key),
+    CONSTRAINT fk_dct_pref_user      FOREIGN KEY (user_id) REFERENCES dct_users(user_id) ON DELETE CASCADE
 );
 
 -- =============================================================================
--- 4. IFW_USER_ORGS  (User → Organisation assignments)
+-- 4. DCT_USER_ORGS  (User → Organisation assignments)
 -- =============================================================================
-CREATE TABLE ifw_user_orgs (
+CREATE TABLE dct_user_orgs (
     user_org_id      NUMBER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id          NUMBER       NOT NULL,
     org_id           NUMBER       NOT NULL,
@@ -158,20 +158,20 @@ CREATE TABLE ifw_user_orgs (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP    DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_user_org       UNIQUE      (user_id, org_id, assignment_type),
-    CONSTRAINT chk_ifw_uorg_type     CHECK       (assignment_type IN ('PRIMARY','SECONDARY','ACTING')),
-    CONSTRAINT chk_ifw_uorg_dates    CHECK       (end_date IS NULL OR end_date >= start_date),
-    CONSTRAINT fk_ifw_uorg_user      FOREIGN KEY (user_id) REFERENCES ifw_users(user_id),
-    CONSTRAINT fk_ifw_uorg_org       FOREIGN KEY (org_id)  REFERENCES ifw_organizations(org_id)
+    CONSTRAINT uq_dct_user_org       UNIQUE      (user_id, org_id, assignment_type),
+    CONSTRAINT chk_dct_uorg_type     CHECK       (assignment_type IN ('PRIMARY','SECONDARY','ACTING')),
+    CONSTRAINT chk_dct_uorg_dates    CHECK       (end_date IS NULL OR end_date >= start_date),
+    CONSTRAINT fk_dct_uorg_user      FOREIGN KEY (user_id) REFERENCES dct_users(user_id),
+    CONSTRAINT fk_dct_uorg_org       FOREIGN KEY (org_id)  REFERENCES dct_organizations(org_id)
 );
 
-CREATE INDEX ix_ifw_uorg_user ON ifw_user_orgs(user_id);
-CREATE INDEX ix_ifw_uorg_org  ON ifw_user_orgs(org_id);
+CREATE INDEX ix_dct_uorg_user ON dct_user_orgs(user_id);
+CREATE INDEX ix_dct_uorg_org  ON dct_user_orgs(org_id);
 
 -- =============================================================================
--- 5. IFW_MODULES  (Registered APEX apps and external modules)
+-- 5. DCT_MODULES  (Registered APEX apps and external modules)
 -- =============================================================================
-CREATE TABLE ifw_modules (
+CREATE TABLE dct_modules (
     module_id        NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     module_code      VARCHAR2(100)  NOT NULL,
     module_name_en   VARCHAR2(200)  NOT NULL,
@@ -195,20 +195,20 @@ CREATE TABLE ifw_modules (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_module_code    UNIQUE (module_code),
-    CONSTRAINT chk_ifw_mod_active    CHECK  (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_mod_newtab    CHECK  (is_new_tab IN ('Y','N')),
-    CONSTRAINT chk_ifw_mod_admin     CHECK  (is_admin_only IN ('Y','N')),
-    CONSTRAINT chk_ifw_mod_type      CHECK  (module_type IN ('APEX_APP','EXTERNAL_URL','INTERNAL'))
+    CONSTRAINT uq_dct_module_code    UNIQUE (module_code),
+    CONSTRAINT chk_dct_mod_active    CHECK  (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_mod_newtab    CHECK  (is_new_tab IN ('Y','N')),
+    CONSTRAINT chk_dct_mod_admin     CHECK  (is_admin_only IN ('Y','N')),
+    CONSTRAINT chk_dct_mod_type      CHECK  (module_type IN ('APEX_APP','EXTERNAL_URL','INTERNAL'))
 );
 
-CREATE INDEX ix_ifw_module_category ON ifw_modules(category);
-CREATE INDEX ix_ifw_module_active   ON ifw_modules(is_active);
+CREATE INDEX ix_dct_module_category ON dct_modules(category);
+CREATE INDEX ix_dct_module_active   ON dct_modules(is_active);
 
 -- =============================================================================
--- 6. IFW_ROLES
+-- 6. DCT_ROLES
 -- =============================================================================
-CREATE TABLE ifw_roles (
+CREATE TABLE dct_roles (
     role_id          NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role_code        VARCHAR2(100)  NOT NULL,
     role_name_en     VARCHAR2(200)  NOT NULL,
@@ -225,20 +225,20 @@ CREATE TABLE ifw_roles (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_role_code      UNIQUE      (role_code),
-    CONSTRAINT chk_ifw_role_active   CHECK       (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_role_system   CHECK       (is_system_role IN ('Y','N')),
-    CONSTRAINT chk_ifw_role_type     CHECK       (role_type IN ('SYSTEM','MODULE','DATA')),
-    CONSTRAINT fk_ifw_role_module    FOREIGN KEY (module_id) REFERENCES ifw_modules(module_id)
+    CONSTRAINT uq_dct_role_code      UNIQUE      (role_code),
+    CONSTRAINT chk_dct_role_active   CHECK       (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_role_system   CHECK       (is_system_role IN ('Y','N')),
+    CONSTRAINT chk_dct_role_type     CHECK       (role_type IN ('SYSTEM','MODULE','DATA')),
+    CONSTRAINT fk_dct_role_module    FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
 );
 
-CREATE INDEX ix_ifw_role_module ON ifw_roles(module_id);
-CREATE INDEX ix_ifw_role_type   ON ifw_roles(role_type);
+CREATE INDEX ix_dct_role_module ON dct_roles(module_id);
+CREATE INDEX ix_dct_role_type   ON dct_roles(role_type);
 
 -- =============================================================================
--- 7. IFW_PERMISSIONS
+-- 7. DCT_PERMISSIONS
 -- =============================================================================
-CREATE TABLE ifw_permissions (
+CREATE TABLE dct_permissions (
     permission_id    NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     permission_code  VARCHAR2(200)  NOT NULL,
     permission_name  VARCHAR2(200)  NOT NULL,
@@ -253,37 +253,37 @@ CREATE TABLE ifw_permissions (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_perm_code      UNIQUE (permission_code),
-    CONSTRAINT chk_ifw_perm_active   CHECK  (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_perm_action   CHECK  (action_type IN ('VIEW','CREATE','EDIT','DELETE','APPROVE','EXPORT','CONFIGURE','ADMIN')),
-    CONSTRAINT fk_ifw_perm_module    FOREIGN KEY (module_id) REFERENCES ifw_modules(module_id)
+    CONSTRAINT uq_dct_perm_code      UNIQUE (permission_code),
+    CONSTRAINT chk_dct_perm_active   CHECK  (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_perm_action   CHECK  (action_type IN ('VIEW','CREATE','EDIT','DELETE','APPROVE','EXPORT','CONFIGURE','ADMIN')),
+    CONSTRAINT fk_dct_perm_module    FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
 );
 
-CREATE INDEX ix_ifw_perm_module  ON ifw_permissions(module_id);
-CREATE INDEX ix_ifw_perm_action  ON ifw_permissions(action_type);
+CREATE INDEX ix_dct_perm_module  ON dct_permissions(module_id);
+CREATE INDEX ix_dct_perm_action  ON dct_permissions(action_type);
 
 -- =============================================================================
--- 8. IFW_ROLE_PERMISSIONS
+-- 8. DCT_ROLE_PERMISSIONS
 -- =============================================================================
-CREATE TABLE ifw_role_permissions (
+CREATE TABLE dct_role_permissions (
     rp_id            NUMBER      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     role_id          NUMBER      NOT NULL,
     permission_id    NUMBER      NOT NULL,
     granted_by       VARCHAR2(100),
     granted_at       TIMESTAMP   DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_rp             UNIQUE      (role_id, permission_id),
-    CONSTRAINT fk_ifw_rp_role        FOREIGN KEY (role_id)       REFERENCES ifw_roles(role_id),
-    CONSTRAINT fk_ifw_rp_perm        FOREIGN KEY (permission_id) REFERENCES ifw_permissions(permission_id)
+    CONSTRAINT uq_dct_rp             UNIQUE      (role_id, permission_id),
+    CONSTRAINT fk_dct_rp_role        FOREIGN KEY (role_id)       REFERENCES dct_roles(role_id),
+    CONSTRAINT fk_dct_rp_perm        FOREIGN KEY (permission_id) REFERENCES dct_permissions(permission_id)
 );
 
-CREATE INDEX ix_ifw_rp_role ON ifw_role_permissions(role_id);
-CREATE INDEX ix_ifw_rp_perm ON ifw_role_permissions(permission_id);
+CREATE INDEX ix_dct_rp_role ON dct_role_permissions(role_id);
+CREATE INDEX ix_dct_rp_perm ON dct_role_permissions(permission_id);
 
 -- =============================================================================
--- 9. IFW_USER_ROLES  (Core RBAC assignment table)
+-- 9. DCT_USER_ROLES  (Core RBAC assignment table)
 -- =============================================================================
-CREATE TABLE ifw_user_roles (
+CREATE TABLE dct_user_roles (
     user_role_id     NUMBER        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     user_id          NUMBER        NOT NULL,
     role_id          NUMBER        NOT NULL,
@@ -298,21 +298,21 @@ CREATE TABLE ifw_user_roles (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT chk_ifw_ur_active     CHECK       (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_ur_dates      CHECK       (end_date IS NULL OR end_date >= start_date),
-    CONSTRAINT fk_ifw_ur_user        FOREIGN KEY (user_id)      REFERENCES ifw_users(user_id),
-    CONSTRAINT fk_ifw_ur_role        FOREIGN KEY (role_id)      REFERENCES ifw_roles(role_id),
-    CONSTRAINT fk_ifw_ur_org_scope   FOREIGN KEY (org_scope_id) REFERENCES ifw_organizations(org_id)
+    CONSTRAINT chk_dct_ur_active     CHECK       (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_ur_dates      CHECK       (end_date IS NULL OR end_date >= start_date),
+    CONSTRAINT fk_dct_ur_user        FOREIGN KEY (user_id)      REFERENCES dct_users(user_id),
+    CONSTRAINT fk_dct_ur_role        FOREIGN KEY (role_id)      REFERENCES dct_roles(role_id),
+    CONSTRAINT fk_dct_ur_org_scope   FOREIGN KEY (org_scope_id) REFERENCES dct_organizations(org_id)
 );
 
-CREATE INDEX ix_ifw_ur_user    ON ifw_user_roles(user_id, is_active);
-CREATE INDEX ix_ifw_ur_role    ON ifw_user_roles(role_id);
-CREATE INDEX ix_ifw_ur_dates   ON ifw_user_roles(start_date, end_date);
+CREATE INDEX ix_dct_ur_user    ON dct_user_roles(user_id, is_active);
+CREATE INDEX ix_dct_ur_role    ON dct_user_roles(role_id);
+CREATE INDEX ix_dct_ur_dates   ON dct_user_roles(start_date, end_date);
 
 -- =============================================================================
--- 10. IFW_MODULE_ROLES  (Which roles can access which modules)
+-- 10. DCT_MODULE_ROLES  (Which roles can access which modules)
 -- =============================================================================
-CREATE TABLE ifw_module_roles (
+CREATE TABLE dct_module_roles (
     mr_id            NUMBER       GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     module_id        NUMBER       NOT NULL,
     role_id          NUMBER       NOT NULL,
@@ -320,16 +320,16 @@ CREATE TABLE ifw_module_roles (
     created_by       VARCHAR2(100),
     created_at       TIMESTAMP    DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_mr             UNIQUE      (module_id, role_id),
-    CONSTRAINT chk_ifw_mr_access     CHECK       (access_level IN ('FULL','READ_ONLY')),
-    CONSTRAINT fk_ifw_mr_module      FOREIGN KEY (module_id) REFERENCES ifw_modules(module_id),
-    CONSTRAINT fk_ifw_mr_role        FOREIGN KEY (role_id)   REFERENCES ifw_roles(role_id)
+    CONSTRAINT uq_dct_mr             UNIQUE      (module_id, role_id),
+    CONSTRAINT chk_dct_mr_access     CHECK       (access_level IN ('FULL','READ_ONLY')),
+    CONSTRAINT fk_dct_mr_module      FOREIGN KEY (module_id) REFERENCES dct_modules(module_id),
+    CONSTRAINT fk_dct_mr_role        FOREIGN KEY (role_id)   REFERENCES dct_roles(role_id)
 );
 
 -- =============================================================================
--- 11. IFW_MENUS
+-- 11. DCT_MENUS
 -- =============================================================================
-CREATE TABLE ifw_menus (
+CREATE TABLE dct_menus (
     menu_id          NUMBER        GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     module_id        NUMBER,
     menu_code        VARCHAR2(100) NOT NULL,
@@ -342,16 +342,16 @@ CREATE TABLE ifw_menus (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_menu_code   UNIQUE (menu_code),
-    CONSTRAINT chk_ifw_menu_act   CHECK  (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_menu_type  CHECK  (menu_type IN ('APP_LAUNCHER','SIDEBAR','TOPBAR')),
-    CONSTRAINT fk_ifw_menu_module FOREIGN KEY (module_id) REFERENCES ifw_modules(module_id)
+    CONSTRAINT uq_dct_menu_code   UNIQUE (menu_code),
+    CONSTRAINT chk_dct_menu_act   CHECK  (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_menu_type  CHECK  (menu_type IN ('APP_LAUNCHER','SIDEBAR','TOPBAR')),
+    CONSTRAINT fk_dct_menu_module FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
 );
 
 -- =============================================================================
--- 12. IFW_MENU_ITEMS
+-- 12. DCT_MENU_ITEMS
 -- =============================================================================
-CREATE TABLE ifw_menu_items (
+CREATE TABLE dct_menu_items (
     item_id          NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     menu_id          NUMBER         NOT NULL,
     parent_item_id   NUMBER,
@@ -370,19 +370,19 @@ CREATE TABLE ifw_menu_items (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT chk_ifw_mitem_active  CHECK       (is_active IN ('Y','N')),
-    CONSTRAINT chk_ifw_mitem_type    CHECK       (target_type IN ('APEX_PAGE','URL','MODULE','SEPARATOR')),
-    CONSTRAINT fk_ifw_mitem_menu     FOREIGN KEY (menu_id)        REFERENCES ifw_menus(menu_id),
-    CONSTRAINT fk_ifw_mitem_parent   FOREIGN KEY (parent_item_id) REFERENCES ifw_menu_items(item_id)
+    CONSTRAINT chk_dct_mitem_active  CHECK       (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_mitem_type    CHECK       (target_type IN ('APEX_PAGE','URL','MODULE','SEPARATOR')),
+    CONSTRAINT fk_dct_mitem_menu     FOREIGN KEY (menu_id)        REFERENCES dct_menus(menu_id),
+    CONSTRAINT fk_dct_mitem_parent   FOREIGN KEY (parent_item_id) REFERENCES dct_menu_items(item_id)
 );
 
-CREATE INDEX ix_ifw_mitem_menu   ON ifw_menu_items(menu_id, display_order);
-CREATE INDEX ix_ifw_mitem_parent ON ifw_menu_items(parent_item_id);
+CREATE INDEX ix_dct_mitem_menu   ON dct_menu_items(menu_id, display_order);
+CREATE INDEX ix_dct_mitem_parent ON dct_menu_items(parent_item_id);
 
 -- =============================================================================
--- 13. IFW_APPROVAL_TEMPLATES
+-- 13. DCT_APPROVAL_TEMPLATES
 -- =============================================================================
-CREATE TABLE ifw_approval_templates (
+CREATE TABLE dct_approval_templates (
     template_id      NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     template_code    VARCHAR2(100)  NOT NULL,
     template_name    VARCHAR2(200)  NOT NULL,
@@ -398,16 +398,16 @@ CREATE TABLE ifw_approval_templates (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_tmpl_code     UNIQUE (template_code),
-    CONSTRAINT chk_ifw_tmpl_seq     CHECK  (is_sequential IN ('Y','N')),
-    CONSTRAINT chk_ifw_tmpl_active  CHECK  (is_active IN ('Y','N')),
-    CONSTRAINT fk_ifw_tmpl_module   FOREIGN KEY (module_id) REFERENCES ifw_modules(module_id)
+    CONSTRAINT uq_dct_tmpl_code     UNIQUE (template_code),
+    CONSTRAINT chk_dct_tmpl_seq     CHECK  (is_sequential IN ('Y','N')),
+    CONSTRAINT chk_dct_tmpl_active  CHECK  (is_active IN ('Y','N')),
+    CONSTRAINT fk_dct_tmpl_module   FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
 );
 
 -- =============================================================================
--- 14. IFW_APPROVAL_STEPS
+-- 14. DCT_APPROVAL_STEPS
 -- =============================================================================
-CREATE TABLE ifw_approval_steps (
+CREATE TABLE dct_approval_steps (
     step_id          NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     template_id      NUMBER         NOT NULL,
     step_seq         NUMBER         NOT NULL,
@@ -425,22 +425,22 @@ CREATE TABLE ifw_approval_steps (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_step           UNIQUE      (template_id, step_seq),
-    CONSTRAINT chk_ifw_step_type     CHECK       (step_type IN ('ROLE_BASED','USER_SPECIFIC','ORG_HEAD')),
-    CONSTRAINT chk_ifw_step_mand     CHECK       (is_mandatory IN ('Y','N')),
-    CONSTRAINT chk_ifw_step_skip     CHECK       (allow_skip IN ('Y','N')),
-    CONSTRAINT fk_ifw_step_tmpl      FOREIGN KEY (template_id)      REFERENCES ifw_approval_templates(template_id),
-    CONSTRAINT fk_ifw_step_role      FOREIGN KEY (required_role_id) REFERENCES ifw_roles(role_id),
-    CONSTRAINT fk_ifw_step_user      FOREIGN KEY (specific_user_id) REFERENCES ifw_users(user_id),
-    CONSTRAINT fk_ifw_step_esc_role  FOREIGN KEY (escalate_role_id) REFERENCES ifw_roles(role_id)
+    CONSTRAINT uq_dct_step           UNIQUE      (template_id, step_seq),
+    CONSTRAINT chk_dct_step_type     CHECK       (step_type IN ('ROLE_BASED','USER_SPECIFIC','ORG_HEAD')),
+    CONSTRAINT chk_dct_step_mand     CHECK       (is_mandatory IN ('Y','N')),
+    CONSTRAINT chk_dct_step_skip     CHECK       (allow_skip IN ('Y','N')),
+    CONSTRAINT fk_dct_step_tmpl      FOREIGN KEY (template_id)      REFERENCES dct_approval_templates(template_id),
+    CONSTRAINT fk_dct_step_role      FOREIGN KEY (required_role_id) REFERENCES dct_roles(role_id),
+    CONSTRAINT fk_dct_step_user      FOREIGN KEY (specific_user_id) REFERENCES dct_users(user_id),
+    CONSTRAINT fk_dct_step_esc_role  FOREIGN KEY (escalate_role_id) REFERENCES dct_roles(role_id)
 );
 
-CREATE INDEX ix_ifw_step_tmpl ON ifw_approval_steps(template_id, step_seq);
+CREATE INDEX ix_dct_step_tmpl ON dct_approval_steps(template_id, step_seq);
 
 -- =============================================================================
--- 15. IFW_APPROVAL_INSTANCES  (One row per submitted request needing approval)
+-- 15. DCT_APPROVAL_INSTANCES  (One row per submitted request needing approval)
 -- =============================================================================
-CREATE TABLE ifw_approval_instances (
+CREATE TABLE dct_approval_instances (
     instance_id       NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     template_id       NUMBER         NOT NULL,
     source_module     VARCHAR2(100)  NOT NULL,  -- Module code that owns the request
@@ -457,20 +457,20 @@ CREATE TABLE ifw_approval_instances (
     updated_by        VARCHAR2(100),
     updated_at        TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT chk_ifw_inst_status   CHECK       (overall_status IN ('PENDING','APPROVED','REJECTED','CANCELLED','RETURNED')),
-    CONSTRAINT fk_ifw_inst_tmpl      FOREIGN KEY (template_id)  REFERENCES ifw_approval_templates(template_id),
-    CONSTRAINT fk_ifw_inst_user      FOREIGN KEY (submitted_by) REFERENCES ifw_users(user_id)
+    CONSTRAINT chk_dct_inst_status   CHECK       (overall_status IN ('PENDING','APPROVED','REJECTED','CANCELLED','RETURNED')),
+    CONSTRAINT fk_dct_inst_tmpl      FOREIGN KEY (template_id)  REFERENCES dct_approval_templates(template_id),
+    CONSTRAINT fk_dct_inst_user      FOREIGN KEY (submitted_by) REFERENCES dct_users(user_id)
 );
 
-CREATE INDEX ix_ifw_inst_module   ON ifw_approval_instances(source_module, source_record_id);
-CREATE INDEX ix_ifw_inst_status   ON ifw_approval_instances(overall_status);
-CREATE INDEX ix_ifw_inst_user     ON ifw_approval_instances(submitted_by);
-CREATE INDEX ix_ifw_inst_step     ON ifw_approval_instances(template_id, current_step_seq);
+CREATE INDEX ix_dct_inst_module   ON dct_approval_instances(source_module, source_record_id);
+CREATE INDEX ix_dct_inst_status   ON dct_approval_instances(overall_status);
+CREATE INDEX ix_dct_inst_user     ON dct_approval_instances(submitted_by);
+CREATE INDEX ix_dct_inst_step     ON dct_approval_instances(template_id, current_step_seq);
 
 -- =============================================================================
--- 16. IFW_APPROVAL_ACTIONS  (Audit trail for every approve/reject action)
+-- 16. DCT_APPROVAL_ACTIONS  (Audit trail for every approve/reject action)
 -- =============================================================================
-CREATE TABLE ifw_approval_actions (
+CREATE TABLE dct_approval_actions (
     action_id        NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     instance_id      NUMBER         NOT NULL,
     step_id          NUMBER         NOT NULL,
@@ -481,21 +481,21 @@ CREATE TABLE ifw_approval_actions (
     delegate_to      NUMBER,                   -- If action = DELEGATED
     is_escalation    VARCHAR2(1)    DEFAULT 'N' NOT NULL,
     --
-    CONSTRAINT chk_ifw_act_action    CHECK       (action IN ('APPROVED','REJECTED','RETURNED','DELEGATED','ESCALATED')),
-    CONSTRAINT chk_ifw_act_esc       CHECK       (is_escalation IN ('Y','N')),
-    CONSTRAINT fk_ifw_act_inst       FOREIGN KEY (instance_id)   REFERENCES ifw_approval_instances(instance_id),
-    CONSTRAINT fk_ifw_act_step       FOREIGN KEY (step_id)       REFERENCES ifw_approval_steps(step_id),
-    CONSTRAINT fk_ifw_act_user       FOREIGN KEY (actioned_by)   REFERENCES ifw_users(user_id),
-    CONSTRAINT fk_ifw_act_delegate   FOREIGN KEY (delegate_to)   REFERENCES ifw_users(user_id)
+    CONSTRAINT chk_dct_act_action    CHECK       (action IN ('APPROVED','REJECTED','RETURNED','DELEGATED','ESCALATED')),
+    CONSTRAINT chk_dct_act_esc       CHECK       (is_escalation IN ('Y','N')),
+    CONSTRAINT fk_dct_act_inst       FOREIGN KEY (instance_id)   REFERENCES dct_approval_instances(instance_id),
+    CONSTRAINT fk_dct_act_step       FOREIGN KEY (step_id)       REFERENCES dct_approval_steps(step_id),
+    CONSTRAINT fk_dct_act_user       FOREIGN KEY (actioned_by)   REFERENCES dct_users(user_id),
+    CONSTRAINT fk_dct_act_delegate   FOREIGN KEY (delegate_to)   REFERENCES dct_users(user_id)
 );
 
-CREATE INDEX ix_ifw_act_inst ON ifw_approval_actions(instance_id);
-CREATE INDEX ix_ifw_act_user ON ifw_approval_actions(actioned_by, actioned_at);
+CREATE INDEX ix_dct_act_inst ON dct_approval_actions(instance_id);
+CREATE INDEX ix_dct_act_user ON dct_approval_actions(actioned_by, actioned_at);
 
 -- =============================================================================
--- 17. IFW_DELEGATIONS  (Delegation of authority for absence cover)
+-- 17. DCT_DELEGATIONS  (Delegation of authority for absence cover)
 -- =============================================================================
-CREATE TABLE ifw_delegations (
+CREATE TABLE dct_delegations (
     delegation_id    NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     delegator_id     NUMBER         NOT NULL,  -- User delegating their authority
     delegate_id      NUMBER         NOT NULL,  -- User receiving authority
@@ -513,24 +513,24 @@ CREATE TABLE ifw_delegations (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT chk_ifw_del_dates     CHECK       (end_date >= start_date),
-    CONSTRAINT chk_ifw_del_scope     CHECK       (scope IN ('ALL_ROLES','SPECIFIC_ROLE','MODULE')),
-    CONSTRAINT chk_ifw_del_status    CHECK       (status IN ('ACTIVE','CANCELLED','EXPIRED')),
-    CONSTRAINT chk_ifw_del_self      CHECK       (delegator_id != delegate_id),
-    CONSTRAINT fk_ifw_del_from       FOREIGN KEY (delegator_id) REFERENCES ifw_users(user_id),
-    CONSTRAINT fk_ifw_del_to         FOREIGN KEY (delegate_id)  REFERENCES ifw_users(user_id),
-    CONSTRAINT fk_ifw_del_role       FOREIGN KEY (role_id)      REFERENCES ifw_roles(role_id),
-    CONSTRAINT fk_ifw_del_module     FOREIGN KEY (module_id)    REFERENCES ifw_modules(module_id)
+    CONSTRAINT chk_dct_del_dates     CHECK       (end_date >= start_date),
+    CONSTRAINT chk_dct_del_scope     CHECK       (scope IN ('ALL_ROLES','SPECIFIC_ROLE','MODULE')),
+    CONSTRAINT chk_dct_del_status    CHECK       (status IN ('ACTIVE','CANCELLED','EXPIRED')),
+    CONSTRAINT chk_dct_del_self      CHECK       (delegator_id != delegate_id),
+    CONSTRAINT fk_dct_del_from       FOREIGN KEY (delegator_id) REFERENCES dct_users(user_id),
+    CONSTRAINT fk_dct_del_to         FOREIGN KEY (delegate_id)  REFERENCES dct_users(user_id),
+    CONSTRAINT fk_dct_del_role       FOREIGN KEY (role_id)      REFERENCES dct_roles(role_id),
+    CONSTRAINT fk_dct_del_module     FOREIGN KEY (module_id)    REFERENCES dct_modules(module_id)
 );
 
-CREATE INDEX ix_ifw_del_delegator ON ifw_delegations(delegator_id, status);
-CREATE INDEX ix_ifw_del_delegate  ON ifw_delegations(delegate_id,  status);
-CREATE INDEX ix_ifw_del_dates     ON ifw_delegations(start_date, end_date);
+CREATE INDEX ix_dct_del_delegator ON dct_delegations(delegator_id, status);
+CREATE INDEX ix_dct_del_delegate  ON dct_delegations(delegate_id,  status);
+CREATE INDEX ix_dct_del_dates     ON dct_delegations(start_date, end_date);
 
 -- =============================================================================
--- 18. IFW_LOOKUP_CATEGORIES
+-- 18. DCT_LOOKUP_CATEGORIES
 -- =============================================================================
-CREATE TABLE ifw_lookup_categories (
+CREATE TABLE dct_lookup_categories (
     category_id      NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category_code    VARCHAR2(100)  NOT NULL,
     category_name_en VARCHAR2(200)  NOT NULL,
@@ -543,16 +543,16 @@ CREATE TABLE ifw_lookup_categories (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_lcat_code     UNIQUE (category_code),
-    CONSTRAINT chk_ifw_lcat_system  CHECK  (is_system IN ('Y','N')),
-    CONSTRAINT chk_ifw_lcat_active  CHECK  (is_active IN ('Y','N')),
-    CONSTRAINT fk_ifw_lcat_module   FOREIGN KEY (module_id) REFERENCES ifw_modules(module_id)
+    CONSTRAINT uq_dct_lcat_code     UNIQUE (category_code),
+    CONSTRAINT chk_dct_lcat_system  CHECK  (is_system IN ('Y','N')),
+    CONSTRAINT chk_dct_lcat_active  CHECK  (is_active IN ('Y','N')),
+    CONSTRAINT fk_dct_lcat_module   FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
 );
 
 -- =============================================================================
--- 19. IFW_LOOKUP_VALUES
+-- 19. DCT_LOOKUP_VALUES
 -- =============================================================================
-CREATE TABLE ifw_lookup_values (
+CREATE TABLE dct_lookup_values (
     value_id         NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category_id      NUMBER         NOT NULL,
     value_code       VARCHAR2(100)  NOT NULL,
@@ -567,18 +567,18 @@ CREATE TABLE ifw_lookup_values (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_lval          UNIQUE (category_id, value_code),
-    CONSTRAINT chk_ifw_lval_def     CHECK  (is_default IN ('Y','N')),
-    CONSTRAINT chk_ifw_lval_active  CHECK  (is_active IN ('Y','N')),
-    CONSTRAINT fk_ifw_lval_cat      FOREIGN KEY (category_id) REFERENCES ifw_lookup_categories(category_id)
+    CONSTRAINT uq_dct_lval          UNIQUE (category_id, value_code),
+    CONSTRAINT chk_dct_lval_def     CHECK  (is_default IN ('Y','N')),
+    CONSTRAINT chk_dct_lval_active  CHECK  (is_active IN ('Y','N')),
+    CONSTRAINT fk_dct_lval_cat      FOREIGN KEY (category_id) REFERENCES dct_lookup_categories(category_id)
 );
 
-CREATE INDEX ix_ifw_lval_cat ON ifw_lookup_values(category_id, display_order);
+CREATE INDEX ix_dct_lval_cat ON dct_lookup_values(category_id, display_order);
 
 -- =============================================================================
--- 20. IFW_SYSTEM_SETTINGS
+-- 20. DCT_SYSTEM_SETTINGS
 -- =============================================================================
-CREATE TABLE ifw_system_settings (
+CREATE TABLE dct_system_settings (
     setting_id       NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     setting_key      VARCHAR2(200)  NOT NULL,
     setting_value    VARCHAR2(4000),
@@ -593,16 +593,16 @@ CREATE TABLE ifw_system_settings (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT uq_ifw_setting_key    UNIQUE (setting_key),
-    CONSTRAINT chk_ifw_set_type      CHECK  (value_type IN ('STRING','NUMBER','BOOLEAN','JSON','DATE')),
-    CONSTRAINT chk_ifw_set_enc       CHECK  (is_encrypted IN ('Y','N')),
-    CONSTRAINT chk_ifw_set_sys       CHECK  (is_system IN ('Y','N'))
+    CONSTRAINT uq_dct_setting_key    UNIQUE (setting_key),
+    CONSTRAINT chk_dct_set_type      CHECK  (value_type IN ('STRING','NUMBER','BOOLEAN','JSON','DATE')),
+    CONSTRAINT chk_dct_set_enc       CHECK  (is_encrypted IN ('Y','N')),
+    CONSTRAINT chk_dct_set_sys       CHECK  (is_system IN ('Y','N'))
 );
 
 -- =============================================================================
--- 21. IFW_AUDIT_LOG  (Centralised, append-only audit trail)
+-- 21. DCT_AUDIT_LOG  (Centralised, append-only audit trail)
 -- =============================================================================
-CREATE TABLE ifw_audit_log (
+CREATE TABLE dct_audit_log (
     log_id           NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     logged_at        TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     username         VARCHAR2(100),
@@ -626,15 +626,15 @@ CREATE TABLE ifw_audit_log (
 PARTITION BY RANGE (logged_at) INTERVAL (NUMTOYMINTERVAL(1,'MONTH'))
 (PARTITION p_initial VALUES LESS THAN (TIMESTAMP '2026-01-01 00:00:00'));
 
-CREATE INDEX ix_ifw_audit_user    ON ifw_audit_log(user_id,     logged_at);
-CREATE INDEX ix_ifw_audit_action  ON ifw_audit_log(action,      logged_at);
-CREATE INDEX ix_ifw_audit_module  ON ifw_audit_log(module_code, logged_at);
-CREATE INDEX ix_ifw_audit_object  ON ifw_audit_log(object_type, object_id);
+CREATE INDEX ix_dct_audit_user    ON dct_audit_log(user_id,     logged_at);
+CREATE INDEX ix_dct_audit_action  ON dct_audit_log(action,      logged_at);
+CREATE INDEX ix_dct_audit_module  ON dct_audit_log(module_code, logged_at);
+CREATE INDEX ix_dct_audit_object  ON dct_audit_log(object_type, object_id);
 
 -- =============================================================================
--- 22. IFW_SESSIONS
+-- 22. DCT_SESSIONS
 -- =============================================================================
-CREATE TABLE ifw_sessions (
+CREATE TABLE dct_sessions (
     session_id       VARCHAR2(100)  NOT NULL PRIMARY KEY,  -- APEX session ID (v('APP_SESSION'))
     user_id          NUMBER,
     username         VARCHAR2(100)  NOT NULL,
@@ -646,17 +646,17 @@ CREATE TABLE ifw_sessions (
     auth_method      VARCHAR2(20),
     is_active        VARCHAR2(1)    DEFAULT 'Y' NOT NULL,
     --
-    CONSTRAINT chk_ifw_sess_active  CHECK (is_active IN ('Y','N')),
-    CONSTRAINT fk_ifw_sess_user     FOREIGN KEY (user_id) REFERENCES ifw_users(user_id)
+    CONSTRAINT chk_dct_sess_active  CHECK (is_active IN ('Y','N')),
+    CONSTRAINT fk_dct_sess_user     FOREIGN KEY (user_id) REFERENCES dct_users(user_id)
 );
 
-CREATE INDEX ix_ifw_sess_user   ON ifw_sessions(user_id,  is_active);
-CREATE INDEX ix_ifw_sess_active ON ifw_sessions(is_active, last_activity_at);
+CREATE INDEX ix_dct_sess_user   ON dct_sessions(user_id,  is_active);
+CREATE INDEX ix_dct_sess_active ON dct_sessions(is_active, last_activity_at);
 
 -- =============================================================================
--- 23. IFW_NOTIFICATIONS
+-- 23. DCT_NOTIFICATIONS
 -- =============================================================================
-CREATE TABLE ifw_notifications (
+CREATE TABLE dct_notifications (
     notification_id   NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     recipient_user_id NUMBER         NOT NULL,
     module_code       VARCHAR2(100),
@@ -672,17 +672,17 @@ CREATE TABLE ifw_notifications (
     created_at        TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     expires_at        TIMESTAMP,
     --
-    CONSTRAINT chk_ifw_notif_read  CHECK (is_read IN ('Y','N')),
-    CONSTRAINT fk_ifw_notif_user   FOREIGN KEY (recipient_user_id) REFERENCES ifw_users(user_id)
+    CONSTRAINT chk_dct_notif_read  CHECK (is_read IN ('Y','N')),
+    CONSTRAINT fk_dct_notif_user   FOREIGN KEY (recipient_user_id) REFERENCES dct_users(user_id)
 );
 
-CREATE INDEX ix_ifw_notif_user   ON ifw_notifications(recipient_user_id, is_read);
-CREATE INDEX ix_ifw_notif_type   ON ifw_notifications(notification_type, created_at);
+CREATE INDEX ix_dct_notif_user   ON dct_notifications(recipient_user_id, is_read);
+CREATE INDEX ix_dct_notif_type   ON dct_notifications(notification_type, created_at);
 
 -- =============================================================================
--- 24. IFW_ANNOUNCEMENTS
+-- 24. DCT_ANNOUNCEMENTS
 -- =============================================================================
-CREATE TABLE ifw_announcements (
+CREATE TABLE dct_announcements (
     announcement_id  NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     title_en         VARCHAR2(500)  NOT NULL,
     title_ar         VARCHAR2(500),
@@ -700,113 +700,113 @@ CREATE TABLE ifw_announcements (
     updated_by       VARCHAR2(100),
     updated_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
-    CONSTRAINT chk_ifw_ann_sev     CHECK (severity IN ('INFO','WARNING','CRITICAL')),
-    CONSTRAINT chk_ifw_ann_aud     CHECK (target_audience IN ('ALL','ROLE','MODULE')),
-    CONSTRAINT chk_ifw_ann_active  CHECK (is_active IN ('Y','N')),
-    CONSTRAINT fk_ifw_ann_role     FOREIGN KEY (target_role_id)   REFERENCES ifw_roles(role_id),
-    CONSTRAINT fk_ifw_ann_module   FOREIGN KEY (target_module_id) REFERENCES ifw_modules(module_id)
+    CONSTRAINT chk_dct_ann_sev     CHECK (severity IN ('INFO','WARNING','CRITICAL')),
+    CONSTRAINT chk_dct_ann_aud     CHECK (target_audience IN ('ALL','ROLE','MODULE')),
+    CONSTRAINT chk_dct_ann_active  CHECK (is_active IN ('Y','N')),
+    CONSTRAINT fk_dct_ann_role     FOREIGN KEY (target_role_id)   REFERENCES dct_roles(role_id),
+    CONSTRAINT fk_dct_ann_module   FOREIGN KEY (target_module_id) REFERENCES dct_modules(module_id)
 );
 
-CREATE INDEX ix_ifw_ann_active ON ifw_announcements(is_active, published_at, expires_at);
+CREATE INDEX ix_dct_ann_active ON dct_announcements(is_active, published_at, expires_at);
 
 -- =============================================================================
 -- TRIGGERS — Auto-maintain updated_at on all tables
 -- =============================================================================
 
-CREATE OR REPLACE TRIGGER trg_ifw_org_upd
-    BEFORE UPDATE ON ifw_organizations FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_org_upd
+    BEFORE UPDATE ON dct_organizations FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_usr_upd
-    BEFORE UPDATE ON ifw_users FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_usr_upd
+    BEFORE UPDATE ON dct_users FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_upref_upd
-    BEFORE UPDATE ON ifw_user_preferences FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_upref_upd
+    BEFORE UPDATE ON dct_user_preferences FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_uorg_upd
-    BEFORE UPDATE ON ifw_user_orgs FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_uorg_upd
+    BEFORE UPDATE ON dct_user_orgs FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_mod_upd
-    BEFORE UPDATE ON ifw_modules FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_mod_upd
+    BEFORE UPDATE ON dct_modules FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_role_upd
-    BEFORE UPDATE ON ifw_roles FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_role_upd
+    BEFORE UPDATE ON dct_roles FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_perm_upd
-    BEFORE UPDATE ON ifw_permissions FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_perm_upd
+    BEFORE UPDATE ON dct_permissions FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_ur_upd
-    BEFORE UPDATE ON ifw_user_roles FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_ur_upd
+    BEFORE UPDATE ON dct_user_roles FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_menu_upd
-    BEFORE UPDATE ON ifw_menus FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_menu_upd
+    BEFORE UPDATE ON dct_menus FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_mitem_upd
-    BEFORE UPDATE ON ifw_menu_items FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_mitem_upd
+    BEFORE UPDATE ON dct_menu_items FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_tmpl_upd
-    BEFORE UPDATE ON ifw_approval_templates FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_tmpl_upd
+    BEFORE UPDATE ON dct_approval_templates FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_step_upd
-    BEFORE UPDATE ON ifw_approval_steps FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_step_upd
+    BEFORE UPDATE ON dct_approval_steps FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_inst_upd
-    BEFORE UPDATE ON ifw_approval_instances FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_inst_upd
+    BEFORE UPDATE ON dct_approval_instances FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_del_upd
-    BEFORE UPDATE ON ifw_delegations FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_del_upd
+    BEFORE UPDATE ON dct_delegations FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_lcat_upd
-    BEFORE UPDATE ON ifw_lookup_categories FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_lcat_upd
+    BEFORE UPDATE ON dct_lookup_categories FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_lval_upd
-    BEFORE UPDATE ON ifw_lookup_values FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_lval_upd
+    BEFORE UPDATE ON dct_lookup_values FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_set_upd
-    BEFORE UPDATE ON ifw_system_settings FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_set_upd
+    BEFORE UPDATE ON dct_system_settings FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
-CREATE OR REPLACE TRIGGER trg_ifw_ann_upd
-    BEFORE UPDATE ON ifw_announcements FOR EACH ROW
+CREATE OR REPLACE TRIGGER trg_dct_ann_upd
+    BEFORE UPDATE ON dct_announcements FOR EACH ROW
 BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
 /
 
 -- =============================================================================
 -- COMMENTS — Table and column documentation
 -- =============================================================================
-COMMENT ON TABLE ifw_users               IS 'i-Finance V2: Master user directory for all internal and external users';
-COMMENT ON TABLE ifw_organizations       IS 'i-Finance V2: Organisation hierarchy (divisions, sections, units)';
-COMMENT ON TABLE ifw_roles               IS 'i-Finance V2: Role definitions. SYSTEM roles cannot be deleted.';
-COMMENT ON TABLE ifw_permissions         IS 'i-Finance V2: Granular permission library keyed by MODULE.ACTION pattern';
-COMMENT ON TABLE ifw_user_roles          IS 'i-Finance V2: Core RBAC — time-bounded user-to-role assignments';
-COMMENT ON TABLE ifw_modules             IS 'i-Finance V2: Registry of all APEX apps and external modules in the platform';
-COMMENT ON TABLE ifw_approval_templates  IS 'i-Finance V2: Reusable approval chain templates shared across domain apps';
-COMMENT ON TABLE ifw_approval_instances  IS 'i-Finance V2: One row per submitted business record requiring approval';
-COMMENT ON TABLE ifw_approval_actions    IS 'i-Finance V2: Append-only action log for each approval step taken';
-COMMENT ON TABLE ifw_delegations         IS 'i-Finance V2: Delegation of authority for absence/holiday cover';
-COMMENT ON TABLE ifw_audit_log           IS 'i-Finance V2: Centralised, partitioned audit trail for all platform events';
-COMMENT ON TABLE ifw_system_settings     IS 'i-Finance V2: Key-value configuration store for platform-wide settings';
+COMMENT ON TABLE dct_users               IS 'i-Finance V2: Master user directory for all internal and external users';
+COMMENT ON TABLE dct_organizations       IS 'i-Finance V2: Organisation hierarchy (divisions, sections, units)';
+COMMENT ON TABLE dct_roles               IS 'i-Finance V2: Role definitions. SYSTEM roles cannot be deleted.';
+COMMENT ON TABLE dct_permissions         IS 'i-Finance V2: Granular permission library keyed by MODULE.ACTION pattern';
+COMMENT ON TABLE dct_user_roles          IS 'i-Finance V2: Core RBAC — time-bounded user-to-role assignments';
+COMMENT ON TABLE dct_modules             IS 'i-Finance V2: Registry of all APEX apps and external modules in the platform';
+COMMENT ON TABLE dct_approval_templates  IS 'i-Finance V2: Reusable approval chain templates shared across domain apps';
+COMMENT ON TABLE dct_approval_instances  IS 'i-Finance V2: One row per submitted business record requiring approval';
+COMMENT ON TABLE dct_approval_actions    IS 'i-Finance V2: Append-only action log for each approval step taken';
+COMMENT ON TABLE dct_delegations         IS 'i-Finance V2: Delegation of authority for absence/holiday cover';
+COMMENT ON TABLE dct_audit_log           IS 'i-Finance V2: Centralised, partitioned audit trail for all platform events';
+COMMENT ON TABLE dct_system_settings     IS 'i-Finance V2: Key-value configuration store for platform-wide settings';
 
-COMMENT ON COLUMN ifw_users.auth_method  IS 'DB=custom hash | LDAP=directory | OCI_IAM=Oracle Cloud | SAML=federation';
-COMMENT ON COLUMN ifw_users.password_hash IS 'SHA-512 hex digest. NULL when auth_method != DB.';
-COMMENT ON COLUMN ifw_users.is_external  IS 'Y for freelancers, vendors, CWIP external contractors';
-COMMENT ON COLUMN ifw_user_roles.org_scope_id IS 'NULL = role applies across all orgs. Set to restrict role to one org subtree.';
-COMMENT ON COLUMN ifw_approval_instances.source_module IS 'Module code of the domain app that owns this request (e.g. CWIP, PAYMENT_REQ)';
+COMMENT ON COLUMN dct_users.auth_method  IS 'DB=custom hash | LDAP=directory | OCI_IAM=Oracle Cloud | SAML=federation';
+COMMENT ON COLUMN dct_users.password_hash IS 'SHA-512 hex digest. NULL when auth_method != DB.';
+COMMENT ON COLUMN dct_users.is_external  IS 'Y for freelancers, vendors, CWIP external contractors';
+COMMENT ON COLUMN dct_user_roles.org_scope_id IS 'NULL = role applies across all orgs. Set to restrict role to one org subtree.';
+COMMENT ON COLUMN dct_approval_instances.source_module IS 'Module code of the domain app that owns this request (e.g. CWIP, PAYMENT_REQ)';
 
 COMMIT;
--- End of 01_ifw_ddl.sql
+-- End of 01_dct_ddl.sql

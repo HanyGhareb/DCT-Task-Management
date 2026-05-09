@@ -1,6 +1,6 @@
--- =============================================================================
+﻿-- =============================================================================
 -- i-Finance V2 — Seed Data
--- File    : 04_ifw_seed.sql
+-- File    : 04_dct_seed.sql
 -- Schema  : PROD
 -- Sprint  : 1 — Foundation
 -- =============================================================================
@@ -15,7 +15,7 @@
 -- =============================================================================
 -- 1. ROOT ORGANISATION
 -- =============================================================================
-INSERT INTO ifw_organizations (org_code, org_name_en, org_name_ar, org_type, level_no, full_path, created_by)
+INSERT INTO dct_organizations (org_code, org_name_en, org_name_ar, org_type, level_no, full_path, created_by)
 VALUES ('FINANCE_DIV', 'Finance Division', 'دائرة المالية', 'DIVISION', 1, 'Finance Division', 'SYSTEM');
 
 COMMIT;
@@ -26,7 +26,7 @@ COMMIT;
 -- =============================================================================
 INSERT ALL
 -- ---- Core ----
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('ADMIN',       'Platform Administration', 'إدارة المنصة', 'INTERNAL', 200, 10,
@@ -35,7 +35,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'إدارة المستخدمين والصلاحيات والإعدادات',
             'ADMIN', 0, 'Y', 'Y', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('TASK_MGMT',   'Task Management', 'إدارة المهام', 'APEX_APP', NULL, 1,
@@ -45,7 +45,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'CORE', 1, 'Y', 'N', 'SYSTEM')
 
 -- ---- HR & Employee ----
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('HR',          'HR Organizations', 'الهياكل التنظيمية', 'APEX_APP', 102, 1,
@@ -54,7 +54,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'الهيكل التنظيمي وهرمية الموارد البشرية',
             'HR', 10, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('SELF_SERVICE', 'Employee Self Service', 'الخدمة الذاتية للموظفين', 'APEX_APP', 106, 1,
@@ -63,7 +63,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'التأمين والإسكان والمهام والرواتب',
             'HR', 11, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('DUTY_HUB',    'Duty Hub', 'مركز المهام الرسمية', 'APEX_APP', 810, 1,
@@ -72,7 +72,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'إدارة المهام والسفر الرسمي والتأمين',
             'HR', 12, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('HRSS',        'HR Self Service', 'الخدمة الذاتية للموارد البشرية', 'APEX_APP', 901, 1,
@@ -81,7 +81,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'المصروفات النثرية وتقارير المصاريف',
             'HR', 13, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('PETTY_CASH',  'Petty Cash', 'المصروفات النثرية', 'APEX_APP', 101, 1,
@@ -90,7 +90,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'طلبات واعتماد المصروفات النثرية',
             'HR', 14, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('FREELANCERS', 'Freelancers', 'المتعاقدون المستقلون', 'APEX_APP', 805, 1,
@@ -100,7 +100,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'HR', 15, 'Y', 'N', 'SYSTEM')
 
 -- ---- Budget & Finance ----
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('BUDGET_ALLOC','Budget Allocation', 'تخصيص الميزانية', 'APEX_APP', 110, 1,
@@ -109,7 +109,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'سيناريوهات وإدارة تخصيص الميزانية',
             'BUDGET', 20, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('BUDGET_PLAN', 'Budget Planning', 'تخطيط الميزانية', 'APEX_APP', 115, 1,
@@ -118,7 +118,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'تخطيط الميزانية والتوقعات المالية',
             'BUDGET', 21, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('FUND_MGMT',   'Fund Management', 'إدارة الصناديق', 'APEX_APP', 105, 1,
@@ -127,7 +127,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'تحويلات الميزانية والوصول إلى صناديق المشاريع',
             'BUDGET', 22, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('BUDGET_XFER', 'Budget Transfer', 'تحويل الميزانية', 'APEX_APP', 903, 1,
@@ -137,7 +137,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'BUDGET', 23, 'Y', 'N', 'SYSTEM')
 
 -- ---- Payments & Procurement ----
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('PAYMENT_REQ', 'Payment Requests', 'طلبات الدفع', 'APEX_APP', 113, 1,
@@ -146,7 +146,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'إدارة طلبات الدفع على أساس أوامر الشراء',
             'PAYMENTS', 30, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('MANUAL_PR',   'Manual PR', 'أوامر الشراء اليدوية', 'APEX_APP', 108, 1,
@@ -155,7 +155,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'إنشاء واعتماد أوامر الشراء اليدوية',
             'PAYMENTS', 31, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('MGR_CHECKS',  'Manager Checks', 'شيكات المدراء', 'APEX_APP', 114, 1,
@@ -164,7 +164,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'طلبات واعتماد شيكات المدراء',
             'PAYMENTS', 32, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('BANK_GUAR',   'Bank Guarantee', 'الضمانات البنكية', 'APEX_APP', 127, 1,
@@ -173,7 +173,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'إدارة طلبات واعتماد الضمانات البنكية',
             'PAYMENTS', 33, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('CREDIT_CARDS','Credit Cards', 'بطاقات الائتمان', 'APEX_APP', 911, 1,
@@ -182,7 +182,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'إدارة بطاقات الائتمان والهدايا المؤسسية',
             'PAYMENTS', 34, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('PREPAID_CARDS','Prepaid Cards', 'البطاقات المدفوعة مسبقاً', 'APEX_APP', 104, 1,
@@ -191,7 +191,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'إصدار وإدارة البطاقات المدفوعة مسبقاً',
             'PAYMENTS', 35, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('AR',          'Accounts Receivable', 'الذمم المدينة', 'APEX_APP', 118, 1,
@@ -201,7 +201,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'PAYMENTS', 36, 'Y', 'N', 'SYSTEM')
 
 -- ---- CWIP ----
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('CWIP_MGMT',   'CWIP Payments Management', 'إدارة مدفوعات قيد التنفيذ', 'APEX_APP', 130, 1,
@@ -210,7 +210,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'فرق مشاريع قيد التنفيذ والعقود وتوصيات الدفع',
             'CWIP', 40, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('CWIP_EX',     'CWIP Payments (External)', 'مدفوعات قيد التنفيذ (خارجي)', 'APEX_APP', 109, 1,
@@ -219,7 +219,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'توصيات دفع مقدمي الخدمات الخارجيين لمشاريع قيد التنفيذ',
             'CWIP', 41, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('CWIP_CHANGE', 'CWIP Change Management', 'إدارة تغييرات قيد التنفيذ', 'APEX_APP', 142, 1,
@@ -229,7 +229,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'CWIP', 42, 'Y', 'N', 'SYSTEM')
 
 -- ---- SCM & Procurement ----
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('DEMAND_PLAN', 'Demand Planning', 'تخطيط الطلب', 'APEX_APP', 124, 1,
@@ -238,7 +238,7 @@ INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex
             'فئات مواد المشتريات وتخطيط الطلب والتوقعات',
             'SCM', 50, 'Y', 'N', 'SYSTEM')
 
-INTO ifw_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
+INTO dct_modules (module_code, module_name_en, module_name_ar, module_type, apex_app_id, apex_page_id,
                   icon_class, icon_color, bg_color, description_en, description_ar, category,
                   display_order, is_active, is_admin_only, created_by)
     VALUES ('SINGLE_SRC',  'Single Source (SMD)', 'المصدر المنفرد', 'APEX_APP', 166, 1,
@@ -255,24 +255,24 @@ COMMIT;
 -- 3. SYSTEM ROLES
 -- =============================================================================
 INSERT ALL
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('SYS_ADMIN',       'System Administrator',      'مدير النظام',                  'SYSTEM', NULL, 'Y', 1, 'SYSTEM')
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('USER_ADMIN',      'User Administrator',         'مدير المستخدمين',              'SYSTEM', NULL, 'Y', 2, 'SYSTEM')
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('ORG_ADMIN',       'Organisation Administrator', 'مدير الهيكل التنظيمي',         'SYSTEM', NULL, 'Y', 3, 'SYSTEM')
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('MODULE_ADMIN',    'Module Administrator',       'مدير الوحدات',                 'SYSTEM', NULL, 'Y', 4, 'SYSTEM')
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('AUDITOR',         'Auditor',                    'مدقق',                         'SYSTEM', NULL, 'Y', 5, 'SYSTEM')
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('PLATFORM_USER',   'Platform User',              'مستخدم المنصة',                'SYSTEM', NULL, 'Y', 6, 'SYSTEM')
 -- Task Management roles
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('TASK_DIRECTOR',   'Finance Director',           'مدير المالية',                 'MODULE', NULL, 'N', 10, 'SYSTEM')
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('TASK_MANAGER',    'Section Manager',            'مدير القسم',                   'MODULE', NULL, 'N', 11, 'SYSTEM')
-INTO ifw_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
+INTO dct_roles (role_code, role_name_en, role_name_ar, role_type, module_id, is_system_role, display_order, created_by)
     VALUES ('TASK_VIEWER',     'Task Viewer',                'مشاهد المهام',                 'MODULE', NULL, 'N', 12, 'SYSTEM')
 SELECT 1 FROM DUAL;
 
@@ -283,50 +283,50 @@ COMMIT;
 -- =============================================================================
 INSERT ALL
 -- Platform Admin
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('USERS.VIEW',         'View Users',          'VIEW',      'View user list and profile details',    'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('USERS.CREATE',       'Create Users',        'CREATE',    'Create new user accounts',              'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('USERS.EDIT',         'Edit Users',          'EDIT',      'Edit user profile and settings',        'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('USERS.DEACTIVATE',   'Deactivate Users',    'DELETE',    'Deactivate user accounts',              'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('USERS.ASSIGN_ROLE',  'Assign Roles',        'ADMIN',     'Assign and revoke user roles',          'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('ROLES.VIEW',         'View Roles',          'VIEW',      'View roles and permission list',        'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('ROLES.MANAGE',       'Manage Roles',        'ADMIN',     'Create, edit, and delete roles',        'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('ORGS.VIEW',          'View Organisations',  'VIEW',      'View organisation hierarchy',           'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('ORGS.MANAGE',        'Manage Organisations','ADMIN',     'Create and edit organisations',         'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('MODULES.VIEW',       'View Modules',        'VIEW',      'View module registry',                  'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('MODULES.MANAGE',     'Manage Modules',      'ADMIN',     'Add and configure modules',             'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('APPROVALS.CONFIGURE','Configure Approvals', 'CONFIGURE', 'Manage approval chain templates',       'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('APPROVALS.MONITOR',  'Monitor Approvals',   'VIEW',      'View all pending approval instances',   'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('LOOKUPS.VIEW',       'View Lookups',        'VIEW',      'View lookup categories and values',     'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('LOOKUPS.MANAGE',     'Manage Lookups',      'CONFIGURE', 'Add and edit lookup values',            'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('SETTINGS.VIEW',      'View Settings',       'VIEW',      'View system settings',                  'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('SETTINGS.MANAGE',    'Manage Settings',     'ADMIN',     'Edit system-wide settings',             'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('AUDIT.VIEW',         'View Audit Log',      'VIEW',      'Access audit log and session history',  'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('ANNOUNCEMENTS.MANAGE','Manage Announcements','CONFIGURE','Create and publish announcements',       'SYSTEM')
 -- Task Management
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('TASKS.DIRECTOR_VIEW','Director Dashboard',  'VIEW',      'Full division task overview dashboard', 'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('TASKS.MANAGE',       'Manage Own Tasks',    'EDIT',      'Create and update own section tasks',   'SYSTEM')
-INTO ifw_permissions (permission_code, permission_name, action_type, description_en, created_by)
+INTO dct_permissions (permission_code, permission_name, action_type, description_en, created_by)
     VALUES ('TASKS.VIEW',         'View Tasks',          'VIEW',      'Read-only view of task dashboards',     'SYSTEM')
 SELECT 1 FROM DUAL;
 
@@ -337,55 +337,55 @@ COMMIT;
 -- =============================================================================
 INSERT ALL
 -- SYS_ADMIN gets everything
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r, ifw_permissions p
+    FROM dct_roles r, dct_permissions p
     WHERE r.role_code = 'SYS_ADMIN'
 
 -- USER_ADMIN: user management + role view
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r JOIN ifw_permissions p
+    FROM dct_roles r JOIN dct_permissions p
       ON p.permission_code IN ('USERS.VIEW','USERS.CREATE','USERS.EDIT','USERS.DEACTIVATE',
                                 'USERS.ASSIGN_ROLE','ROLES.VIEW','ORGS.VIEW')
     WHERE r.role_code = 'USER_ADMIN'
 
 -- ORG_ADMIN: org management + user view
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r JOIN ifw_permissions p
+    FROM dct_roles r JOIN dct_permissions p
       ON p.permission_code IN ('ORGS.VIEW','ORGS.MANAGE','USERS.VIEW')
     WHERE r.role_code = 'ORG_ADMIN'
 
 -- MODULE_ADMIN: lookups + approvals config
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r JOIN ifw_permissions p
+    FROM dct_roles r JOIN dct_permissions p
       ON p.permission_code IN ('MODULES.VIEW','APPROVALS.CONFIGURE','APPROVALS.MONITOR',
                                 'LOOKUPS.VIEW','LOOKUPS.MANAGE','ANNOUNCEMENTS.MANAGE')
     WHERE r.role_code = 'MODULE_ADMIN'
 
 -- AUDITOR: read-only audit
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r JOIN ifw_permissions p
+    FROM dct_roles r JOIN dct_permissions p
       ON p.permission_code IN ('AUDIT.VIEW','SETTINGS.VIEW','USERS.VIEW','ROLES.VIEW','APPROVALS.MONITOR')
     WHERE r.role_code = 'AUDITOR'
 
 -- Task roles
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r JOIN ifw_permissions p ON p.permission_code = 'TASKS.DIRECTOR_VIEW'
+    FROM dct_roles r JOIN dct_permissions p ON p.permission_code = 'TASKS.DIRECTOR_VIEW'
     WHERE r.role_code = 'TASK_DIRECTOR'
 
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r JOIN ifw_permissions p ON p.permission_code = 'TASKS.MANAGE'
+    FROM dct_roles r JOIN dct_permissions p ON p.permission_code = 'TASKS.MANAGE'
     WHERE r.role_code = 'TASK_MANAGER'
 
-INTO ifw_role_permissions (role_id, permission_id, granted_by)
+INTO dct_role_permissions (role_id, permission_id, granted_by)
     SELECT r.role_id, p.permission_id, 'SYSTEM'
-    FROM ifw_roles r JOIN ifw_permissions p ON p.permission_code = 'TASKS.VIEW'
+    FROM dct_roles r JOIN dct_permissions p ON p.permission_code = 'TASKS.VIEW'
     WHERE r.role_code = 'TASK_VIEWER'
 
 SELECT 1 FROM DUAL;
@@ -396,22 +396,22 @@ COMMIT;
 -- 6. MODULE → ROLE ACCESS (App Launcher visibility)
 -- =============================================================================
 -- ADMIN module: SYS_ADMIN only
-INSERT INTO ifw_module_roles (module_id, role_id, access_level, created_by)
+INSERT INTO dct_module_roles (module_id, role_id, access_level, created_by)
 SELECT m.module_id, r.role_id, 'FULL', 'SYSTEM'
-FROM ifw_modules m, ifw_roles r
+FROM dct_modules m, dct_roles r
 WHERE m.module_code = 'ADMIN' AND r.role_code = 'SYS_ADMIN';
 
 -- Task Management: Director, Manager, Viewer
-INSERT INTO ifw_module_roles (module_id, role_id, access_level, created_by)
+INSERT INTO dct_module_roles (module_id, role_id, access_level, created_by)
 SELECT m.module_id, r.role_id, 'FULL', 'SYSTEM'
-FROM ifw_modules m, ifw_roles r
+FROM dct_modules m, dct_roles r
 WHERE m.module_code = 'TASK_MGMT'
   AND r.role_code IN ('TASK_DIRECTOR', 'TASK_MANAGER', 'TASK_VIEWER', 'SYS_ADMIN');
 
 -- All remaining domain modules accessible by SYS_ADMIN and PLATFORM_USER
-INSERT INTO ifw_module_roles (module_id, role_id, access_level, created_by)
+INSERT INTO dct_module_roles (module_id, role_id, access_level, created_by)
 SELECT m.module_id, r.role_id, 'FULL', 'SYSTEM'
-FROM ifw_modules m, ifw_roles r
+FROM dct_modules m, dct_roles r
 WHERE m.module_code NOT IN ('ADMIN', 'TASK_MGMT')
   AND r.role_code IN ('SYS_ADMIN', 'PLATFORM_USER');
 
@@ -421,29 +421,29 @@ COMMIT;
 -- 7. SYSTEM SETTINGS
 -- =============================================================================
 INSERT ALL
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('APP_NAME',                  'i-Finance V2',   'STRING', 'UI',            'Application display name',                     'Y', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('APP_NAME_AR',               'آي فاينانس V2',  'STRING', 'UI',            'Application display name in Arabic',            'Y', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('DEFAULT_AUTH_METHOD',       'DB',             'STRING', 'SECURITY',      'Active authentication method: DB|LDAP|OCI_IAM|SAML','Y','SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('SESSION_TIMEOUT_MINS',      '480',            'NUMBER', 'SECURITY',      'APEX session timeout in minutes (8 hours)',     'Y', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('MAX_FAILED_LOGINS',         '5',              'NUMBER', 'SECURITY',      'Max consecutive failed logins before lockout',  'N', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('PASSWORD_MIN_LENGTH',       '8',              'NUMBER', 'SECURITY',      'Minimum password length for DB auth users',     'N', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('DEFAULT_LANGUAGE',          'EN',             'STRING', 'UI',            'Default UI language: EN|AR',                   'N', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('APPROVAL_REMINDER_DAYS',    '3',              'NUMBER', 'NOTIFICATIONS', 'Days before escalation reminder is sent',       'N', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('APPROVAL_ESCALATION_DAYS',  '5',              'NUMBER', 'NOTIFICATIONS', 'Days before escalation to next level',          'N', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('NOTIFICATION_EMAIL_ENABLED','Y',              'BOOLEAN','NOTIFICATIONS', 'Send email notifications: Y|N',                'N', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('SUPPORT_EMAIL',             '',               'STRING', 'UI',            'Support contact email displayed in the app',   'N', 'SYSTEM')
-INTO ifw_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
     VALUES ('LOGO_URL',                  '#APP_IMAGES#logo.png','STRING','UI',        'Application logo URL',                         'N', 'SYSTEM')
 SELECT 1 FROM DUAL;
 
@@ -453,67 +453,67 @@ COMMIT;
 -- 8. LOOKUP CATEGORIES & VALUES
 -- =============================================================================
 INSERT ALL
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('USER_STATUS',   'User Status',         'حالة المستخدم',        'Y', 'SYSTEM')
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('ORG_TYPE',      'Organisation Type',   'نوع الوحدة التنظيمية', 'Y', 'SYSTEM')
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('AUTH_METHOD',   'Auth Method',         'طريقة المصادقة',       'Y', 'SYSTEM')
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('TASK_STATUS',   'Task Status',         'حالة المهمة',          'N', 'SYSTEM')
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('TASK_PRIORITY', 'Task Priority',       'أولوية المهمة',        'N', 'SYSTEM')
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('TASK_CATEGORY', 'Task Category',       'تصنيف المهمة',         'N', 'SYSTEM')
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('APPROVAL_ACTION','Approval Action',    'إجراء الاعتماد',       'Y', 'SYSTEM')
-INTO ifw_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
+INTO dct_lookup_categories (category_code, category_name_en, category_name_ar, is_system, created_by)
     VALUES ('NOTIF_TYPE',    'Notification Type',   'نوع الإشعار',          'Y', 'SYSTEM')
 SELECT 1 FROM DUAL;
 
 -- Lookup Values
 INSERT ALL
 -- USER_STATUS
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, is_default, created_by)
-    SELECT c.category_id, 'ACTIVE',   'Active',   'نشط',    1, 'Y', 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'USER_STATUS'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'INACTIVE', 'Inactive', 'غير نشط', 2, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'USER_STATUS'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, is_default, created_by)
+    SELECT c.category_id, 'ACTIVE',   'Active',   'نشط',    1, 'Y', 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'USER_STATUS'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'INACTIVE', 'Inactive', 'غير نشط', 2, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'USER_STATUS'
 -- ORG_TYPE
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'DIVISION',   'Division',   'دائرة',   1, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'SECTION',    'Section',    'قسم',     2, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'UNIT',       'Unit',       'وحدة',    3, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'DEPARTMENT', 'Department', 'إدارة',   4, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'DIVISION',   'Division',   'دائرة',   1, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'SECTION',    'Section',    'قسم',     2, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'UNIT',       'Unit',       'وحدة',    3, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'DEPARTMENT', 'Department', 'إدارة',   4, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'ORG_TYPE'
 -- TASK_STATUS
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'NOT_STARTED', 'Not Started', 'لم تبدأ',    1, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'IN_PROGRESS', 'In Progress', 'قيد التنفيذ', 2, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'COMPLETED',   'Completed',   'مكتملة',     3, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'DELAYED',     'Delayed',     'متأخرة',     4, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'BLOCKED',     'Blocked',     'معلقة',      5, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'NOT_STARTED', 'Not Started', 'لم تبدأ',    1, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'IN_PROGRESS', 'In Progress', 'قيد التنفيذ', 2, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'COMPLETED',   'Completed',   'مكتملة',     3, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'DELAYED',     'Delayed',     'متأخرة',     4, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'BLOCKED',     'Blocked',     'معلقة',      5, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_STATUS'
 -- TASK_PRIORITY
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'HIGH',   'High',   'عالية',   1, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_PRIORITY'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'MEDIUM', 'Medium', 'متوسطة',  2, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_PRIORITY'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'LOW',    'Low',    'منخفضة',  3, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'TASK_PRIORITY'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'HIGH',   'High',   'عالية',   1, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_PRIORITY'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'MEDIUM', 'Medium', 'متوسطة',  2, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_PRIORITY'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'LOW',    'Low',    'منخفضة',  3, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'TASK_PRIORITY'
 -- APPROVAL_ACTION
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'APPROVED',  'Approved',          'معتمد',            1, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'REJECTED',  'Rejected',          'مرفوض',            2, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'RETURNED',  'Returned for Review','مُعاد للمراجعة',  3, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
-INTO ifw_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
-    SELECT c.category_id, 'DELEGATED', 'Delegated',          'مُفوَّض',          4, 'SYSTEM' FROM ifw_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'APPROVED',  'Approved',          'معتمد',            1, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'REJECTED',  'Rejected',          'مرفوض',            2, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'RETURNED',  'Returned for Review','مُعاد للمراجعة',  3, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
+INTO dct_lookup_values (category_id, value_code, value_name_en, value_name_ar, display_order, created_by)
+    SELECT c.category_id, 'DELEGATED', 'Delegated',          'مُفوَّض',          4, 'SYSTEM' FROM dct_lookup_categories c WHERE c.category_code = 'APPROVAL_ACTION'
 SELECT 1 FROM DUAL;
 
 COMMIT;
@@ -529,10 +529,10 @@ DECLARE
     l_role_id NUMBER;
 BEGIN
     SELECT org_id INTO l_org_id
-    FROM   ifw_organizations
+    FROM   dct_organizations
     WHERE  org_code = 'FINANCE_DIV';
 
-    INSERT INTO ifw_users (
+    INSERT INTO dct_users (
         username, email, display_name, display_name_ar,
         first_name, last_name, job_title_en, job_title_ar,
         org_id, auth_method, is_active, is_external,
@@ -547,12 +547,12 @@ BEGIN
     ) RETURNING user_id INTO l_user_id;
 
     -- Set default password
-    ifw_auth.set_password('ADMIN', 'iFinance@2026');
+    dct_auth.set_password('ADMIN', 'iFinance@2026');
 
     -- Assign SYS_ADMIN role
-    SELECT role_id INTO l_role_id FROM ifw_roles WHERE role_code = 'SYS_ADMIN';
+    SELECT role_id INTO l_role_id FROM dct_roles WHERE role_code = 'SYS_ADMIN';
 
-    INSERT INTO ifw_user_roles (
+    INSERT INTO dct_user_roles (
         user_id, role_id, start_date, is_active, assigned_by, reason, created_by
     ) VALUES (
         l_user_id, l_role_id, SYSDATE, 'Y', 'SYSTEM',
@@ -560,9 +560,9 @@ BEGIN
     );
 
     -- Also assign PLATFORM_USER base role
-    SELECT role_id INTO l_role_id FROM ifw_roles WHERE role_code = 'PLATFORM_USER';
+    SELECT role_id INTO l_role_id FROM dct_roles WHERE role_code = 'PLATFORM_USER';
 
-    INSERT INTO ifw_user_roles (
+    INSERT INTO dct_user_roles (
         user_id, role_id, start_date, is_active, assigned_by, reason, created_by
     ) VALUES (
         l_user_id, l_role_id, SYSDATE, 'Y', 'SYSTEM',
@@ -581,21 +581,21 @@ END;
 DECLARE
     l_div_id NUMBER;
 BEGIN
-    SELECT org_id INTO l_div_id FROM ifw_organizations WHERE org_code = 'FINANCE_DIV';
+    SELECT org_id INTO l_div_id FROM dct_organizations WHERE org_code = 'FINANCE_DIV';
 
-    INSERT INTO ifw_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
+    INSERT INTO dct_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
     VALUES ('FIN_OPS',     'Finance Operations',            'العمليات المالية',         'SECTION', l_div_id, 2, 'Finance Division > Finance Operations',            'SYSTEM');
 
-    INSERT INTO ifw_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
+    INSERT INTO dct_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
     VALUES ('PAY_OPS',     'Payables Operations',           'عمليات الدفع',             'SECTION', l_div_id, 2, 'Finance Division > Payables Operations',           'SYSTEM');
 
-    INSERT INTO ifw_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
+    INSERT INTO dct_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
     VALUES ('FIN_PLAN',    'Financial Planning & Budgeting','التخطيط المالي والميزانية','SECTION', l_div_id, 2, 'Finance Division > Financial Planning & Budgeting', 'SYSTEM');
 
-    INSERT INTO ifw_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
+    INSERT INTO dct_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
     VALUES ('REV_ASSUR',   'Revenue Assurance',             'ضمان الإيرادات',           'SECTION', l_div_id, 2, 'Finance Division > Revenue Assurance',             'SYSTEM');
 
-    INSERT INTO ifw_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
+    INSERT INTO dct_organizations (org_code, org_name_en, org_name_ar, org_type, parent_org_id, level_no, full_path, created_by)
     VALUES ('REC_OPS',     'Receivables Operations',        'عمليات المستحقات',         'SECTION', l_div_id, 2, 'Finance Division > Receivables Operations',        'SYSTEM');
 
     COMMIT;
@@ -608,4 +608,4 @@ PROMPT  i-Finance V2 seed data loaded successfully.
 PROMPT  Default admin: ADMIN / iFinance@2026
 PROMPT  *** CHANGE THE PASSWORD BEFORE GOING LIVE ***
 PROMPT ============================================================
--- End of 04_ifw_seed.sql
+-- End of 04_dct_seed.sql
