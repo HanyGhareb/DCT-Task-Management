@@ -6,7 +6,13 @@
       "Bash(git push *)",
       "Bash(Get-ChildItem *)",
       "PowerShell(Get-ChildItem -Path \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\iFinance-20260509T122918Z-3-001\\\\extracted\\\\\" -Directory | ForEach-Object { $_.Name })",
-      "PowerShell(New-Item *)"
+      "PowerShell(New-Item *)",
+      "WebSearch",
+      "mcp__oracle-db__run-sql",
+      "mcp__oracle-db__list-connections",
+      "mcp__oracle-db__connect",
+      "mcp__oracle-db__run-sqlcl",
+      "mcp__oracle-db__dbtools-get-tool-request"
     ]
   }
 }
