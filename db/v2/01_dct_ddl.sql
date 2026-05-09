@@ -710,80 +710,135 @@ CREATE TABLE dct_announcements (
 CREATE INDEX ix_dct_ann_active ON dct_announcements(is_active, published_at, expires_at);
 
 -- =============================================================================
--- TRIGGERS — Auto-maintain updated_at on all tables
+-- TRIGGERS — Auto-maintain updated_at and updated_by on all tables
+-- updated_by: APEX app user when called from APEX, Oracle session user otherwise
 -- =============================================================================
 
 CREATE OR REPLACE TRIGGER trg_dct_org_upd
     BEFORE UPDATE ON dct_organizations FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_usr_upd
     BEFORE UPDATE ON dct_users FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_upref_upd
     BEFORE UPDATE ON dct_user_preferences FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    -- no updated_by: dct_user_preferences has no audit-user columns (user_id implies ownership)
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_uorg_upd
     BEFORE UPDATE ON dct_user_orgs FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_mod_upd
     BEFORE UPDATE ON dct_modules FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_role_upd
     BEFORE UPDATE ON dct_roles FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_perm_upd
     BEFORE UPDATE ON dct_permissions FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_ur_upd
     BEFORE UPDATE ON dct_user_roles FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_menu_upd
     BEFORE UPDATE ON dct_menus FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_mitem_upd
     BEFORE UPDATE ON dct_menu_items FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_tmpl_upd
     BEFORE UPDATE ON dct_approval_templates FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_step_upd
     BEFORE UPDATE ON dct_approval_steps FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_inst_upd
     BEFORE UPDATE ON dct_approval_instances FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_del_upd
     BEFORE UPDATE ON dct_delegations FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_lcat_upd
     BEFORE UPDATE ON dct_lookup_categories FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_lval_upd
     BEFORE UPDATE ON dct_lookup_values FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_set_upd
     BEFORE UPDATE ON dct_system_settings FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 CREATE OR REPLACE TRIGGER trg_dct_ann_upd
     BEFORE UPDATE ON dct_announcements FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
 /
 
 -- =============================================================================
