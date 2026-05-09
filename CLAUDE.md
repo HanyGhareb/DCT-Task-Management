@@ -11,25 +11,40 @@ The frontend is pure HTML/CSS/Vanilla JS with no build tools. It currently runs 
 ## Architecture
 
 ```
-index.html                  ← Login / entry point
-pages/
-  manager-dashboard.html    ← Section Manager view
-  director-dashboard.html   ← Finance Director view
-js/
-  auth.js                   ← Login, session, role-based redirect
-  data.js                   ← DataStore, mock data models, seed data
-  utils.js                  ← ISO week helpers, date/number formatters
-  manager.js                ← Manager dashboard controller (~589 lines)
-  director.js               ← Director dashboard controller (~706 lines)
-  charts.js                 ← Chart.js wrappers (donut, bar, trend)
-css/
-  main.css                  ← CSS variables, global layout
-  components.css            ← Reusable component styles
-  login.css                 ← Login page
-  manager.css               ← Manager dashboard
-  director.css              ← Director dashboard
+frontend/
+  index.html                ← Login / entry point
+  pages/
+    manager-dashboard.html  ← Section Manager view
+    director-dashboard.html ← Finance Director view
+  js/
+    auth.js                 ← Login, session, role-based redirect
+    data.js                 ← DataStore, mock data models, seed data
+    utils.js                ← ISO week helpers, date/number formatters
+    manager.js              ← Manager dashboard controller
+    director.js             ← Director dashboard controller
+    charts.js               ← Chart.js wrappers (donut, bar, trend)
+  css/
+    main.css                ← CSS variables, global layout
+    components.css          ← Reusable component styles
+    login.css               ← Login page
+    manager.css             ← Manager dashboard
+    director.css            ← Director dashboard
 db/
-  01_schema_ddl.sql         ← Oracle 23ai schema (tables, views, triggers)
+  v1/
+    01_schema_ddl.sql       ← Original Oracle 23ai schema
+  v2/
+    install.sql             ← Master install script
+    01_dct_ddl.sql          ← 24 DCT_* tables, constraints, indexes, triggers
+    02_dct_views.sql        ← Utility + backward-compatibility views
+    03_dct_auth_pkg.sql     ← DCT_AUTH package
+    04_dct_seed.sql         ← Seed data
+    05_apex_200_setup.sql   ← APEX App 200 page setup
+    05b_apex_200_shared_components.sql ← Auth scheme, app items, auth schemes, processes
+    06_dct_notify_pkg.sql   ← DCT_NOTIFY package
+    APEX_SETUP.md           ← Manual APEX configuration steps
+apex-exports/               ← 31 APEX app zip exports (f100–f9900)
+docs/                       ← Analysis, proposals, project plans
+myDoc/                      ← Wallet, local setup notes
 ```
 
 **Pattern:** MVC-like. `manager.js` and `director.js` are controllers that call `DataStore` for data and `Charts` for rendering. No framework — everything is object literals or plain functions on `window`.
@@ -100,7 +115,7 @@ Defined in `js/data.js`. `DataStore` reads/writes `localStorage`.
 
 ## Database (Oracle 23ai)
 
-Schema is in `db/01_schema_ddl.sql`. Tables:
+Schema is in `db/v1/01_schema_ddl.sql`. Tables:
 
 - `roles` — app roles
 - `users` — user records (no passwords; auth via OCI IAM)
@@ -138,38 +153,41 @@ The organization runs 31 Oracle APEX applications under the i-Finance platform. 
 - `dct_employees_signatures` — signatures, used by 6 apps
 - `dct_lookup_values` — lookup reference data, used by 5 apps
 
-**APEX export location:** `iFinance-20260509T122918Z-3-001/iFinance/` (31 zip files, f100–f9900)
+**APEX export location:** `apex-exports/` (31 zip files, f100–f9900)
 
-**V2 Master App design proposal:** `ifinance-v2-proposal.md` — architecture, schema (DCT_* tables), PL/SQL packages, page inventory, security model, and build sequence for the new central auth/admin app (App ID 200).
+**V2 Master App design proposal:** `docs/ifinance-v2-proposal.md` — architecture, schema (DCT_* tables), PL/SQL packages, page inventory, security model, and build sequence for the new central auth/admin app (App ID 200).
 
 **V2 Sprint 1 — Database files** (`db/v2/`):
 
 | File | Contents |
 |---|---|
-| `install.sql` | Master install script — runs all 4 steps in order |
+| `install.sql` | Master install script — runs all 5 steps in order |
 | `01_dct_ddl.sql` | All 24 `DCT_*` tables, constraints, indexes, updated_at triggers |
 | `02_dct_views.sql` | 6 utility views + 2 backward-compatibility views (`dct_data_access_assignment`, `roles`) |
 | `03_dct_auth_pkg.sql` | `DCT_AUTH` package — authenticate, post_login, has_role, has_permission, session management |
 | `04_dct_seed.sql` | 26 modules, 9 roles, 22 permissions, role-permission maps, system settings, lookup values, Finance Division org hierarchy, default ADMIN user |
+| `05_apex_200_setup.sql` | APEX App 200 page-level setup |
+| `05b_apex_200_shared_components.sql` | Auth scheme, 14 app items, 7 authorization schemes, 2 global processes |
+| `06_dct_notify_pkg.sql` | `DCT_NOTIFY` package — notification count, send, mark read, purge |
 | `APEX_SETUP.md` | Step-by-step APEX App 200 configuration: auth scheme, app items, authorization schemes, navigation, page queries |
 
 ---
 
 ## Development Notes
 
-- **No build step.** Open `index.html` in a browser or serve via any static file server.
+- **No build step.** Open `frontend/index.html` in a browser or serve via any static file server.
 - **Reseed data:** Clear `localStorage` in DevTools to reset to fresh mock data.
 - **Quick login:** Use the preset buttons on the login page to switch between roles.
 - **Chart.js & Font Awesome** are loaded from CDN — internet access required in dev.
-- **Oracle APEX migration** is tracked in `i-Finance-APEX-Project-Plan.html`. The JS controllers are designed so data calls can be swapped from `DataStore` to REST API calls without restructuring the controllers.
-- **APEX applications analysis** is in `ifinance-analysis.md` — covers all 31 apps, their functions, pages, and database objects.
+- **Oracle APEX migration** is tracked in `docs/i-Finance-APEX-Project-Plan.html`. The JS controllers are designed so data calls can be swapped from `DataStore` to REST API calls without restructuring the controllers.
+- **APEX applications analysis** is in `docs/ifinance-analysis.md` — covers all 31 apps, their functions, pages, and database objects.
 
 ---
 
 ## Conventions
 
 - Global controller objects: `Manager`, `Director`, `Auth`, `DataStore`, `Charts`, `Utils`
-- CSS custom properties defined in `css/main.css` under `:root`
+- CSS custom properties defined in `frontend/css/main.css` under `:root`
 - Status/priority values are uppercase string constants — match them exactly when filtering
 - ISO week calculation: use `Utils.getISOWeek()` and `Utils.getWeekDates()` — do not reimplement
 - Avoid introducing `npm`, build tools, or frameworks unless the user explicitly requests it

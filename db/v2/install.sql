@@ -32,14 +32,19 @@ PROMPT ============================================================
 @@02_dct_views.sql
 
 PROMPT ============================================================
-PROMPT  Step 3/4 — Package: DCT_AUTH
+PROMPT  Step 3/5 — Package: DCT_AUTH
 PROMPT ============================================================
 @@03_dct_auth_pkg.sql
 
 PROMPT ============================================================
-PROMPT  Step 4/4 — Seed data: roles, modules, settings, admin user
+PROMPT  Step 4/5 — Seed data: roles, modules, settings, admin user
 PROMPT ============================================================
 @@04_dct_seed.sql
+
+PROMPT ============================================================
+PROMPT  Step 5/5 — Package: DCT_NOTIFY
+PROMPT ============================================================
+@@06_dct_notify_pkg.sql
 
 PROMPT ============================================================
 PROMPT  Sprint 1 install complete.
