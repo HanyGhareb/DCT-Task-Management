@@ -1,0 +1,29 @@
+prompt --application/shared_components/logic/application_computations/emp_cost_center
+begin
+--   Manifest
+--     APPLICATION COMPUTATION: EMP_COST_CENTER
+--   Manifest End
+wwv_flow_api.component_begin (
+ p_version_yyyy_mm_dd=>'2020.03.31'
+,p_release=>'20.1.0.00.13'
+,p_default_workspace_id=>1200569973923101
+,p_default_application_id=>115
+,p_default_id_offset=>0
+,p_default_owner=>'PROD'
+);
+wwv_flow_api.create_flow_computation(
+ p_id=>wwv_flow_api.id(55770392647249816)
+,p_computation_sequence=>20
+,p_computation_item=>'EMP_COST_CENTER'
+,p_computation_point=>'AFTER_LOGIN'
+,p_computation_type=>'QUERY'
+,p_computation_processed=>'REPLACE_EXISTING'
+,p_computation=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'SELECT nvl(cost_center_user , cost_center )',
+'FROM dct_employees_list2',
+'where person_id = :PERSON_ID'))
+,p_computation_error_message=>'NO Cost Center defined for this application user.'
+);
+wwv_flow_api.component_end;
+end;
+/

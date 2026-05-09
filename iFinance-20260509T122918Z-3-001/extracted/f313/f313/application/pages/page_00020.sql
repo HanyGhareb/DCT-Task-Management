@@ -1,0 +1,478 @@
+prompt --application/pages/page_00020
+begin
+--   Manifest
+--     PAGE: 00020
+--   Manifest End
+wwv_flow_api.component_begin (
+ p_version_yyyy_mm_dd=>'2020.03.31'
+,p_release=>'20.1.0.00.13'
+,p_default_workspace_id=>1200569973923101
+,p_default_application_id=>120
+,p_default_id_offset=>145171879539529295
+,p_default_owner=>'PROD'
+);
+wwv_flow_api.create_page(
+ p_id=>20
+,p_user_interface_id=>wwv_flow_api.id(24631887413319249)
+,p_name=>'Single Source Drildown- Report'
+,p_alias=>'SINGLE-SOURCE-DRILDOWN-REPORT'
+,p_step_title=>'Single Source Drildown- Report'
+,p_autocomplete_on_off=>'OFF'
+,p_page_template_options=>'#DEFAULT#'
+,p_last_updated_by=>'TCA9051'
+,p_last_upd_yyyymmddhh24miss=>'20210322071631'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(28824409707827697)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(24556678455319312)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(24493261337319361)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(24610734179319274)
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(28825045347827694)
+,p_plug_name=>'Single Source Drildown- Report'
+,p_region_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(24545364387319318)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'BODY'
+,p_query_type=>'TABLE'
+,p_query_table=>'SCM_SINGL_SOURCE'
+,p_query_where=>'approval_status = :P20_STATUS'
+,p_include_rowid_column=>false
+,p_plug_source_type=>'NATIVE_IR'
+,p_ajax_items_to_submit=>'P20_STATUS'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_prn_page_header=>'Single Source Drildown- Report'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(28825166167827694)
+,p_name=>'Single Source Drildown- Report'
+,p_max_row_count_message=>'The maximum row count for this report is #MAX_ROW_COUNT# rows.  Please apply a filter to reduce the number of records in your query.'
+,p_no_data_found_message=>'No data found.'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'TCA9051'
+,p_internal_uid=>28825166167827694
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28825523452827690)
+,p_db_column_name=>'ID'
+,p_display_order=>1
+,p_column_identifier=>'A'
+,p_column_label=>'Id'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28825941507827689)
+,p_db_column_name=>'REQUESTOR_PERSON_ID'
+,p_display_order=>2
+,p_column_identifier=>'B'
+,p_column_label=>'Requestor'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(25227436734855051)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28826309022827689)
+,p_db_column_name=>'REQUESTOR_ORG_ID'
+,p_display_order=>3
+,p_column_identifier=>'C'
+,p_column_label=>'Requestor Org'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(25226959266855051)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28826771995827688)
+,p_db_column_name=>'DEPARTMENT_ID'
+,p_display_order=>4
+,p_column_identifier=>'D'
+,p_column_label=>'Department'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(25226959266855051)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28827143439827688)
+,p_db_column_name=>'SECTOR_ID'
+,p_display_order=>5
+,p_column_identifier=>'E'
+,p_column_label=>'Sector'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(25226959266855051)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28827546411827688)
+,p_db_column_name=>'COST_CENTER'
+,p_display_order=>6
+,p_column_identifier=>'F'
+,p_column_label=>'Cost Center'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28827970593827688)
+,p_db_column_name=>'REQUEST_NUMBER'
+,p_display_order=>7
+,p_column_identifier=>'G'
+,p_column_label=>'Request Number'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28828314728827687)
+,p_db_column_name=>'REQUEST_DATE'
+,p_display_order=>8
+,p_column_identifier=>'H'
+,p_column_label=>'Request Date'
+,p_column_type=>'DATE'
+,p_format_mask=>'DD-MON-YYYY'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28828789342827687)
+,p_db_column_name=>'PR_NUMBER'
+,p_display_order=>9
+,p_column_identifier=>'I'
+,p_column_label=>'PR Number'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28829167510827686)
+,p_db_column_name=>'PROJECT_NAME'
+,p_display_order=>10
+,p_column_identifier=>'J'
+,p_column_label=>'Project'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28829586000827686)
+,p_db_column_name=>'REQUESTED_AMOUNT'
+,p_display_order=>11
+,p_column_identifier=>'K'
+,p_column_label=>'Amount'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+,p_format_mask=>'999G999G999G999G990D00'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28829917359827686)
+,p_db_column_name=>'SCHEDULE'
+,p_display_order=>12
+,p_column_identifier=>'L'
+,p_column_label=>'Schedule'
+,p_column_type=>'DATE'
+,p_format_mask=>'DD-MON-YYYY'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28830333379827686)
+,p_db_column_name=>'NEW_VENDOR_YN'
+,p_display_order=>13
+,p_column_identifier=>'M'
+,p_column_label=>'New Vendor ?'
+,p_column_type=>'STRING'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(25249196382855039)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28830784878827685)
+,p_db_column_name=>'RECOMMENDED_VENDOR_NUM'
+,p_display_order=>14
+,p_column_identifier=>'N'
+,p_column_label=>'Vendor Num'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28831132663827685)
+,p_db_column_name=>'RECOMMENDED_VENDOR_SITE_CODE'
+,p_display_order=>15
+,p_column_identifier=>'O'
+,p_column_label=>'Vendor Site Code'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28831534003827685)
+,p_db_column_name=>'RECOMMENDED_VENDOR_NAME'
+,p_display_order=>16
+,p_column_identifier=>'P'
+,p_column_label=>'Vendor Name'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28831901998827685)
+,p_db_column_name=>'QUOTATION_REFERENCE'
+,p_display_order=>17
+,p_column_identifier=>'Q'
+,p_column_label=>'Quotation Reference'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28832351852827684)
+,p_db_column_name=>'PROJECT_NUMBER'
+,p_display_order=>18
+,p_column_identifier=>'R'
+,p_column_label=>'Project Number'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28832771746827684)
+,p_db_column_name=>'TASK_NUMBER'
+,p_display_order=>19
+,p_column_identifier=>'S'
+,p_column_label=>'Task Number'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28833171189827684)
+,p_db_column_name=>'EXPENDITURE_TYPE'
+,p_display_order=>20
+,p_column_identifier=>'T'
+,p_column_label=>'Expenditure Type'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28833521073827684)
+,p_db_column_name=>'EXEMPTION_TYPE'
+,p_display_order=>21
+,p_column_identifier=>'U'
+,p_column_label=>'Exemption Type'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28833927368827683)
+,p_db_column_name=>'SCOPE_OF_WORK'
+,p_display_order=>22
+,p_column_identifier=>'V'
+,p_column_label=>'Scope Of Work'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28834390202827683)
+,p_db_column_name=>'JUSTIFICATION'
+,p_display_order=>23
+,p_column_identifier=>'W'
+,p_column_label=>'Justification'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28834701385827683)
+,p_db_column_name=>'CORRECTIVE_ACTION'
+,p_display_order=>24
+,p_column_identifier=>'X'
+,p_column_label=>'Corrective Action'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28835135956827682)
+,p_db_column_name=>'EMPLOYEE_NUMBER'
+,p_display_order=>25
+,p_column_identifier=>'Y'
+,p_column_label=>'Employee Number'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28835540463827682)
+,p_db_column_name=>'APPROVAL_STATUS'
+,p_display_order=>26
+,p_column_identifier=>'Z'
+,p_column_label=>'Status'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28835913065827682)
+,p_db_column_name=>'NOTES'
+,p_display_order=>27
+,p_column_identifier=>'AA'
+,p_column_label=>'Notes'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28836325434827682)
+,p_db_column_name=>'NEW_PROJECT_YN'
+,p_display_order=>28
+,p_column_identifier=>'AB'
+,p_column_label=>'New Project ?'
+,p_column_type=>'STRING'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(25249196382855039)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28841193001827678)
+,p_db_column_name=>'SUBMISSION_DATE'
+,p_display_order=>40
+,p_column_identifier=>'AN'
+,p_column_label=>'Submission Date'
+,p_column_type=>'DATE'
+,p_display_text_as=>'HIDDEN'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28841542970827678)
+,p_db_column_name=>'FINAL_APPROVAL'
+,p_display_order=>41
+,p_column_identifier=>'AO'
+,p_column_label=>'Final Approval'
+,p_column_type=>'DATE'
+,p_display_text_as=>'HIDDEN'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28841917531827678)
+,p_db_column_name=>'CREATED_BY_PERSON_ID'
+,p_display_order=>42
+,p_column_identifier=>'AP'
+,p_column_label=>'Created By Person Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28842361462827678)
+,p_db_column_name=>'CREATED_ON'
+,p_display_order=>43
+,p_column_identifier=>'AQ'
+,p_column_label=>'Created On'
+,p_column_type=>'DATE'
+,p_display_text_as=>'HIDDEN'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28842765846827677)
+,p_db_column_name=>'UPDATED_BY_PERSON_ID'
+,p_display_order=>44
+,p_column_identifier=>'AR'
+,p_column_label=>'Updated By Person Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28843183597827677)
+,p_db_column_name=>'UPDATED_ON'
+,p_display_order=>45
+,p_column_identifier=>'AS'
+,p_column_label=>'Updated On'
+,p_column_type=>'DATE'
+,p_display_text_as=>'HIDDEN'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28843544659827677)
+,p_db_column_name=>'PR_TYPE'
+,p_display_order=>46
+,p_column_identifier=>'AT'
+,p_column_label=>'Pr Type'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28843978396827676)
+,p_db_column_name=>'PR_FUND_AVAILABLE'
+,p_display_order=>47
+,p_column_identifier=>'AU'
+,p_column_label=>'Pr Fund Available'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28844334596827676)
+,p_db_column_name=>'CURRENCY'
+,p_display_order=>48
+,p_column_identifier=>'AV'
+,p_column_label=>'Currency'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28844753040827676)
+,p_db_column_name=>'TAC_COMMITTEE_ID'
+,p_display_order=>49
+,p_column_identifier=>'AW'
+,p_column_label=>'Tac Committee Id'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28845169655827676)
+,p_db_column_name=>'PROJECT_DURATION'
+,p_display_order=>50
+,p_column_identifier=>'AX'
+,p_column_label=>'Project Duration'
+,p_column_type=>'NUMBER'
+,p_column_alignment=>'RIGHT'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28845565412827675)
+,p_db_column_name=>'DURATION_UOM'
+,p_display_order=>51
+,p_column_identifier=>'AY'
+,p_column_label=>'Duration UOM'
+,p_column_type=>'STRING'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(28845952787827675)
+,p_db_column_name=>'PROJECT_DURATION_TEXT'
+,p_display_order=>52
+,p_column_identifier=>'AZ'
+,p_column_label=>'Project Duration Text'
+,p_column_type=>'STRING'
+,p_display_text_as=>'HIDDEN'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(28847202568819810)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'288473'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'REQUEST_NUMBER:REQUEST_DATE:REQUESTED_AMOUNT:CURRENCY:SECTOR_ID:DEPARTMENT_ID:REQUESTOR_PERSON_ID:PROJECT_NAME:SCHEDULE:QUOTATION_REFERENCE:PROJECT_NUMBER:APPROVAL_STATUS:NEW_PROJECT_YN:'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(28707074851375923)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_api.id(28824409707827697)
+,p_button_name=>'Back'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#:t-Button--iconRight'
+,p_button_template_id=>wwv_flow_api.id(24609474578319275)
+,p_button_image_alt=>'Back'
+,p_button_position=>'REGION_TEMPLATE_EDIT'
+,p_button_redirect_url=>'f?p=&APP_ID.:1:&SESSION.::&DEBUG.:1::'
+,p_icon_css_classes=>'fa-backward'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(28706954106375922)
+,p_name=>'P20_STATUS'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(28824409707827697)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'N'
+);
+wwv_flow_api.component_end;
+end;
+/

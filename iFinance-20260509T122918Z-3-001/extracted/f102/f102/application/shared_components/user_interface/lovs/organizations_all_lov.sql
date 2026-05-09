@@ -1,0 +1,34 @@
+prompt --application/shared_components/user_interface/lovs/organizations_all_lov
+begin
+--   Manifest
+--     ORGANIZATIONS ALL LOV
+--   Manifest End
+wwv_flow_api.component_begin (
+ p_version_yyyy_mm_dd=>'2020.03.31'
+,p_release=>'20.1.0.00.13'
+,p_default_workspace_id=>1200569973923101
+,p_default_application_id=>102
+,p_default_id_offset=>0
+,p_default_owner=>'PROD'
+);
+wwv_flow_api.create_list_of_values(
+ p_id=>wwv_flow_api.id(4640902314153527)
+,p_lov_name=>'ORGANIZATIONS ALL LOV'
+,p_lov_query=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'select ORG_NAME_EN, ORG_ID',
+'from (',
+'Select nvl(ORG_NAME_EN_USER , org_name_en) org_name_en , org_id',
+'from dct_hr_organizations)',
+'',
+'--Select org_name_en , org_id',
+'--from dct_hr_organizations'))
+,p_source_type=>'SQL'
+,p_location=>'LOCAL'
+,p_return_column_name=>'ORG_ID'
+,p_display_column_name=>'ORG_NAME_EN'
+,p_group_sort_direction=>'ASC'
+,p_default_sort_direction=>'ASC'
+);
+wwv_flow_api.component_end;
+end;
+/

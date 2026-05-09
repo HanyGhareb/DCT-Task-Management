@@ -1,0 +1,153 @@
+prompt --application/pages/page_00035
+begin
+--   Manifest
+--     PAGE: 00035
+--   Manifest End
+wwv_flow_api.component_begin (
+ p_version_yyyy_mm_dd=>'2020.03.31'
+,p_release=>'20.1.0.00.13'
+,p_default_workspace_id=>1200569973923101
+,p_default_application_id=>103
+,p_default_id_offset=>219773596381898043
+,p_default_owner=>'PROD'
+);
+wwv_flow_api.create_page(
+ p_id=>35
+,p_user_interface_id=>wwv_flow_api.id(23921013981372477)
+,p_name=>'Submit Gift Cards Request Confirmation '
+,p_alias=>'SUBMIT-GIFT-CARDS-REQUEST-CONFIRMATION'
+,p_page_mode=>'MODAL'
+,p_step_title=>'Submit Gift Cards Request Confirmation '
+,p_autocomplete_on_off=>'OFF'
+,p_page_template_options=>'#DEFAULT#'
+,p_last_updated_by=>'TCA9051'
+,p_last_upd_yyyymmddhh24miss=>'20220814112701'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(115063317799004877)
+,p_plug_name=>'Declaration'
+,p_region_template_options=>'#DEFAULT#:t-Region--noPadding:t-Region--removeHeader:t-Region--noBorder:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(23836400541372553)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'BODY'
+,p_attribute_01=>'N'
+,p_attribute_02=>'TEXT'
+,p_attribute_03=>'N'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(115321316896299099)
+,p_plug_name=>'New'
+,p_parent_plug_id=>wwv_flow_api.id(115063317799004877)
+,p_region_template_options=>'#DEFAULT#:t-Region--noPadding:t-Region--removeHeader:t-Region--noBorder:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(23836400541372553)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(115062912476004876)
+,p_plug_name=>'Missing Info'
+,p_region_template_options=>'#DEFAULT#:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(23836400541372553)
+,p_plug_display_sequence=>20
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'NEVER'
+,p_attribute_01=>'N'
+,p_attribute_02=>'TEXT'
+,p_attribute_03=>'N'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(115321214781299098)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_api.id(115321316896299099)
+,p_button_name=>'Submit'
+,p_button_action=>'DEFINED_BY_DA'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--primary'
+,p_button_template_id=>wwv_flow_api.id(23898584035372508)
+,p_button_image_alt=>'Submit'
+,p_button_position=>'BELOW_BOX'
+,p_warn_on_unsaved_changes=>null
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(115320838616299094)
+,p_button_sequence=>20
+,p_button_plug_id=>wwv_flow_api.id(115321316896299099)
+,p_button_name=>'Cancel'
+,p_button_action=>'DEFINED_BY_DA'
+,p_button_template_options=>'#DEFAULT#:t-Button--large'
+,p_button_template_id=>wwv_flow_api.id(23898584035372508)
+,p_button_image_alt=>'Cancel'
+,p_button_position=>'BELOW_BOX'
+,p_warn_on_unsaved_changes=>null
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(115321665076299102)
+,p_name=>'P35_ID'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(115063317799004877)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(115321398783299100)
+,p_name=>'P35_APPROVAL_TYPE_ID'
+,p_item_sequence=>20
+,p_item_plug_id=>wwv_flow_api.id(115063317799004877)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(115321196324299097)
+,p_name=>'Submit DA'
+,p_event_sequence=>10
+,p_triggering_element_type=>'BUTTON'
+,p_triggering_button_id=>wwv_flow_api.id(115321214781299098)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'click'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(115321093141299096)
+,p_event_id=>wwv_flow_api.id(115321196324299097)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_EXECUTE_PLSQL_CODE'
+,p_attribute_01=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'BEGIN',
+'-- 61 for "New Credit Cards" approval type',
+' gift_cards_workflow.Submit(:P35_ID , :P35_APPROVAL_TYPE_ID);',
+'END;'))
+,p_attribute_02=>'P35_ID,P35_APPROVAL_TYPE_ID'
+,p_wait_for_result=>'Y'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(115320919877299095)
+,p_event_id=>wwv_flow_api.id(115321196324299097)
+,p_event_result=>'TRUE'
+,p_action_sequence=>20
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_DIALOG_CANCEL'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(115320725351299093)
+,p_name=>'Close Dialog- Cancel'
+,p_event_sequence=>20
+,p_triggering_element_type=>'BUTTON'
+,p_triggering_button_id=>wwv_flow_api.id(115320838616299094)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'click'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(115060189916979042)
+,p_event_id=>wwv_flow_api.id(115320725351299093)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_DIALOG_CLOSE'
+);
+wwv_flow_api.component_end;
+end;
+/

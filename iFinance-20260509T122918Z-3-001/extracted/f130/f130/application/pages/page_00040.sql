@@ -1,0 +1,220 @@
+prompt --application/pages/page_00040
+begin
+--   Manifest
+--     PAGE: 00040
+--   Manifest End
+wwv_flow_api.component_begin (
+ p_version_yyyy_mm_dd=>'2020.03.31'
+,p_release=>'20.1.0.00.13'
+,p_default_workspace_id=>1200569973923101
+,p_default_application_id=>904
+,p_default_id_offset=>40436041828902270
+,p_default_owner=>'PROD'
+);
+wwv_flow_api.create_page(
+ p_id=>40
+,p_user_interface_id=>wwv_flow_api.id(10329664990597858)
+,p_name=>'Action Result'
+,p_alias=>'ACTION-RESULT'
+,p_step_title=>'Action Result'
+,p_autocomplete_on_off=>'OFF'
+,p_step_template=>wwv_flow_api.id(10209032750597754)
+,p_page_template_options=>'#DEFAULT#'
+,p_page_is_public_y_n=>'Y'
+,p_last_updated_by=>'TCA9051'
+,p_last_upd_yyyymmddhh24miss=>'20220314103146'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(14611865949388531)
+,p_plug_name=>'Payment Recommendation on Hold'
+,p_region_template_options=>'#DEFAULT#:t-Alert--colorBG:t-Alert--wizard:t-Alert--defaultIcons:t-Alert--warning'
+,p_plug_template=>wwv_flow_api.id(10214032995597758)
+,p_plug_display_sequence=>40
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'VAL_OF_ITEM_IN_COND_EQ_COND2'
+,p_plug_display_when_condition=>'P40_ACTION'
+,p_plug_display_when_cond2=>'H'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(79419937174045515)
+,p_plug_name=>'Approved Successfully'
+,p_region_template_options=>'#DEFAULT#:t-Alert--colorBG:t-Alert--wizard:t-Alert--defaultIcons:t-Alert--success'
+,p_plug_template=>wwv_flow_api.id(10214032995597758)
+,p_plug_display_sequence=>20
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'VAL_OF_ITEM_IN_COND_EQ_COND2'
+,p_plug_display_when_condition=>'P40_ACTION'
+,p_plug_display_when_cond2=>'A'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(79420331116045519)
+,p_plug_name=>'Rejected Successfully'
+,p_region_template_options=>'#DEFAULT#:t-Alert--colorBG:t-Alert--wizard:t-Alert--defaultIcons:t-Alert--danger'
+,p_plug_template=>wwv_flow_api.id(10214032995597758)
+,p_plug_display_sequence=>30
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_plug_display_condition_type=>'VAL_OF_ITEM_IN_COND_EQ_COND2'
+,p_plug_display_when_condition=>'P40_ACTION'
+,p_plug_display_when_cond2=>'R'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(79420723696045523)
+,p_plug_name=>'New'
+,p_region_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(10217947312597763)
+,p_plug_display_sequence=>10
+,p_include_in_reg_disp_sel_yn=>'Y'
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(14611960303388532)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_api.id(14611865949388531)
+,p_button_name=>'loginHold'
+,p_button_action=>'REDIRECT_URL'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--success'
+,p_button_template_id=>wwv_flow_api.id(10307273349597826)
+,p_button_image_alt=>'Login iFinance'
+,p_button_position=>'BELOW_BOX'
+,p_button_redirect_url=>'https://ifinance.dct.gov.ae:8004/dct/prod/r/i-finance/login'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(14612082314388533)
+,p_button_sequence=>20
+,p_button_plug_id=>wwv_flow_api.id(14611865949388531)
+,p_button_name=>'CloseHold'
+,p_button_action=>'DEFINED_BY_DA'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--primary'
+,p_button_template_id=>wwv_flow_api.id(10307273349597826)
+,p_button_image_alt=>'Close'
+,p_button_position=>'BELOW_BOX'
+,p_warn_on_unsaved_changes=>null
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(39833090758101872)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_api.id(79420331116045519)
+,p_button_name=>'loginReject'
+,p_button_action=>'REDIRECT_URL'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--success'
+,p_button_template_id=>wwv_flow_api.id(10307273349597826)
+,p_button_image_alt=>'Login iFinance'
+,p_button_position=>'REGION_TEMPLATE_NEXT'
+,p_button_redirect_url=>'https://ifinance.dct.gov.ae:8004/dct/prod/r/i-finance/login'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(39834451735101870)
+,p_button_sequence=>20
+,p_button_plug_id=>wwv_flow_api.id(79419937174045515)
+,p_button_name=>'login'
+,p_button_action=>'REDIRECT_URL'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--success'
+,p_button_template_id=>wwv_flow_api.id(10307273349597826)
+,p_button_image_alt=>'Login iFinance'
+,p_button_position=>'REGION_TEMPLATE_NEXT'
+,p_button_redirect_url=>'https://ifinance.dct.gov.ae:8004/dct/prod/r/i-finance/login'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(39834814411101870)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_api.id(79419937174045515)
+,p_button_name=>'Close'
+,p_button_action=>'DEFINED_BY_DA'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--primary'
+,p_button_template_id=>wwv_flow_api.id(10307273349597826)
+,p_button_image_alt=>'Close'
+,p_button_position=>'REGION_TEMPLATE_PREVIOUS'
+,p_warn_on_unsaved_changes=>null
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(39832613487101872)
+,p_button_sequence=>20
+,p_button_plug_id=>wwv_flow_api.id(79420331116045519)
+,p_button_name=>'CloseReject'
+,p_button_action=>'DEFINED_BY_DA'
+,p_button_template_options=>'#DEFAULT#:t-Button--large:t-Button--primary'
+,p_button_template_id=>wwv_flow_api.id(10307273349597826)
+,p_button_image_alt=>'Close'
+,p_button_position=>'REGION_TEMPLATE_PREVIOUS'
+,p_warn_on_unsaved_changes=>null
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(39833766714101871)
+,p_name=>'P40_ACTION'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(79420723696045523)
+,p_display_as=>'NATIVE_HIDDEN'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(39835221092101869)
+,p_name=>'Close DA'
+,p_event_sequence=>10
+,p_triggering_element_type=>'BUTTON'
+,p_triggering_button_id=>wwv_flow_api.id(39832613487101872)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'click'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(39835726714101869)
+,p_event_id=>wwv_flow_api.id(39835221092101869)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_JAVASCRIPT_CODE'
+,p_attribute_01=>'window.close();'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(39836177937101869)
+,p_name=>'Close Approve DA'
+,p_event_sequence=>20
+,p_triggering_element_type=>'BUTTON'
+,p_triggering_button_id=>wwv_flow_api.id(39834814411101870)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'click'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(39836635620101868)
+,p_event_id=>wwv_flow_api.id(39836177937101869)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_JAVASCRIPT_CODE'
+,p_attribute_01=>'window.close();'
+);
+wwv_flow_api.create_page_da_event(
+ p_id=>wwv_flow_api.id(14612242633388534)
+,p_name=>'New'
+,p_event_sequence=>30
+,p_triggering_element_type=>'BUTTON'
+,p_triggering_button_id=>wwv_flow_api.id(14612082314388533)
+,p_bind_type=>'bind'
+,p_bind_event_type=>'click'
+);
+wwv_flow_api.create_page_da_action(
+ p_id=>wwv_flow_api.id(14612351161388535)
+,p_event_id=>wwv_flow_api.id(14612242633388534)
+,p_event_result=>'TRUE'
+,p_action_sequence=>10
+,p_execute_on_page_init=>'N'
+,p_action=>'NATIVE_JAVASCRIPT_CODE'
+,p_attribute_01=>'window.close();'
+);
+wwv_flow_api.component_end;
+end;
+/

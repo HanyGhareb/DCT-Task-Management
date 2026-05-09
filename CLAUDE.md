@@ -115,6 +115,46 @@ All tables have `created_by/created_at/updated_by/updated_at` audit columns. `up
 
 ---
 
+## i-Finance APEX Ecosystem
+
+The organization runs 31 Oracle APEX applications under the i-Finance platform. Full analysis is in `ifinance-analysis.md`.
+
+**Application groups:**
+
+| Group | Apps |
+|---|---|
+| Core Platform | f100 (i-finance hub), f910 (i-finance-EX), f9900 (backup), f116 (template) |
+| HR & Employee | f102 (HR), f106 (Employee Self Service), f810 (Duty Hub), f901 (HRSS), f101 (Petty Cash), f805 (Freelancers) |
+| Budget & Finance | f110 (Budget Allocation), f115 (Budget Planning), f105 (Fund Management), f903 (Budget Transfer) |
+| Payments & Procurement | f113 (Payment Requests), f108 (Manual PR), f114 (Manager Checks), f127 (Bank Guarantee), f103/f911 (Credit Cards), f104 (Prepaid Cards), f118 (AR) |
+| CWIP | f130 (CWIP Payments Mgmt), f904 (CWIP Dev), f109 (CWIP Payment-Ex), f142 (CWIP Change Mgmt) |
+| SCM & Procurement | f124 (Demand Planning), f166 (SMD Form), f313 (SMD Form-Test) |
+| Content & Utility | f117 (Documents), f119 (UCM) |
+
+**Key shared database objects (used across multiple apps):**
+- `dct_employees_list2` — employee directory, used by nearly all apps
+- `employees_v` — employee view, used by most apps
+- `dct_data_access_assignment` — access control, used by ~12 apps
+- `dct_employees_signatures` — signatures, used by 6 apps
+- `dct_lookup_values` — lookup reference data, used by 5 apps
+
+**APEX export location:** `iFinance-20260509T122918Z-3-001/iFinance/` (31 zip files, f100–f9900)
+
+**V2 Master App design proposal:** `ifinance-v2-proposal.md` — architecture, schema (IFW_* tables), PL/SQL packages, page inventory, security model, and build sequence for the new central auth/admin app (App ID 200).
+
+**V2 Sprint 1 — Database files** (`db/v2/`):
+
+| File | Contents |
+|---|---|
+| `install.sql` | Master install script — runs all 4 steps in order |
+| `01_ifw_ddl.sql` | All 24 IFW_* tables, constraints, indexes, updated_at triggers |
+| `02_ifw_views.sql` | 6 utility views + 2 backward-compatibility views (`dct_data_access_assignment`, `roles`) |
+| `03_ifw_auth_pkg.sql` | `IFW_AUTH` package — authenticate, post_login, has_role, has_permission, session management |
+| `04_ifw_seed.sql` | 26 modules, 9 roles, 22 permissions, role-permission maps, system settings, lookup values, Finance Division org hierarchy, default ADMIN user |
+| `APEX_SETUP.md` | Step-by-step APEX App 200 configuration: auth scheme, app items, authorization schemes, navigation, page queries |
+
+---
+
 ## Development Notes
 
 - **No build step.** Open `index.html` in a browser or serve via any static file server.
@@ -122,6 +162,7 @@ All tables have `created_by/created_at/updated_by/updated_at` audit columns. `up
 - **Quick login:** Use the preset buttons on the login page to switch between roles.
 - **Chart.js & Font Awesome** are loaded from CDN — internet access required in dev.
 - **Oracle APEX migration** is tracked in `i-Finance-APEX-Project-Plan.html`. The JS controllers are designed so data calls can be swapped from `DataStore` to REST API calls without restructuring the controllers.
+- **APEX applications analysis** is in `ifinance-analysis.md` — covers all 31 apps, their functions, pages, and database objects.
 
 ---
 

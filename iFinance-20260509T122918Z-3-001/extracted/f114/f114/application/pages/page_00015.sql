@@ -1,0 +1,465 @@
+prompt --application/pages/page_00015
+begin
+--   Manifest
+--     PAGE: 00015
+--   Manifest End
+wwv_flow_api.component_begin (
+ p_version_yyyy_mm_dd=>'2020.03.31'
+,p_release=>'20.1.0.00.13'
+,p_default_workspace_id=>1200569973923101
+,p_default_application_id=>114
+,p_default_id_offset=>0
+,p_default_owner=>'PROD'
+);
+wwv_flow_api.create_page(
+ p_id=>15
+,p_user_interface_id=>wwv_flow_api.id(52958449993734913)
+,p_name=>'Contracts'
+,p_alias=>'CONTRACTS'
+,p_step_title=>'Contracts'
+,p_autocomplete_on_off=>'OFF'
+,p_page_template_options=>'#DEFAULT#'
+,p_last_updated_by=>'TCA9051'
+,p_last_upd_yyyymmddhh24miss=>'20220126070548'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(55823369133843956)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(52883202148734869)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(52819862093734839)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(52937373347734896)
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(55823942712843956)
+,p_plug_name=>'Contracts'
+,p_region_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(52871984744734866)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'BODY'
+,p_query_type=>'TABLE'
+,p_query_table=>'HAZENKAMP_CONTRACTS'
+,p_include_rowid_column=>false
+,p_plug_source_type=>'NATIVE_IR'
+,p_prn_document_header=>'SERVER'
+,p_prn_units=>'MILLIMETERS'
+,p_prn_paper_size=>'A3'
+,p_prn_width=>420
+,p_prn_height=>297
+,p_prn_orientation=>'HORIZONTAL'
+,p_prn_page_header=>'Contracts'
+,p_prn_page_header_font_color=>'#000000'
+,p_prn_page_header_font_family=>'Helvetica'
+,p_prn_page_header_font_weight=>'normal'
+,p_prn_page_header_font_size=>'12'
+,p_prn_page_footer_font_color=>'#000000'
+,p_prn_page_footer_font_family=>'Helvetica'
+,p_prn_page_footer_font_weight=>'normal'
+,p_prn_page_footer_font_size=>'12'
+,p_prn_header_bg_color=>'#EEEEEE'
+,p_prn_header_font_color=>'#000000'
+,p_prn_header_font_family=>'Helvetica'
+,p_prn_header_font_weight=>'bold'
+,p_prn_header_font_size=>'10'
+,p_prn_body_bg_color=>'#FFFFFF'
+,p_prn_body_font_color=>'#000000'
+,p_prn_body_font_family=>'Helvetica'
+,p_prn_body_font_weight=>'normal'
+,p_prn_body_font_size=>'10'
+,p_prn_border_width=>.5
+,p_prn_page_header_alignment=>'CENTER'
+,p_prn_page_footer_alignment=>'CENTER'
+,p_prn_border_color=>'#666666'
+);
+wwv_flow_api.create_worksheet(
+ p_id=>wwv_flow_api.id(55824058781843956)
+,p_name=>'Contracts'
+,p_max_row_count_message=>'The maximum row count for this report is #MAX_ROW_COUNT# rows.  Please apply a filter to reduce the number of records in your query.'
+,p_no_data_found_message=>'No data found.'
+,p_pagination_type=>'ROWS_X_TO_Y'
+,p_pagination_display_pos=>'BOTTOM_RIGHT'
+,p_report_list_mode=>'TABS'
+,p_show_detail_link=>'N'
+,p_download_formats=>'CSV:HTML:EMAIL:XLS:PDF:RTF'
+,p_owner=>'TCA9051'
+,p_internal_uid=>55824058781843956
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55824467185843959)
+,p_db_column_name=>'ID'
+,p_display_order=>1
+,p_column_identifier=>'A'
+,p_column_label=>'Id'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55824862707843959)
+,p_db_column_name=>'VENDOR_NAME'
+,p_display_order=>2
+,p_column_identifier=>'B'
+,p_column_label=>'Vendor Name'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55825214234843960)
+,p_db_column_name=>'PURCHASE_ORDER_NUMBER'
+,p_display_order=>3
+,p_column_identifier=>'C'
+,p_column_label=>'Purchase Order Number'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55825602966843960)
+,p_db_column_name=>'PURCHASE_ORDER_DESCRIPTION'
+,p_display_order=>4
+,p_column_identifier=>'D'
+,p_column_label=>'Purchase Order Description'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55826018779843960)
+,p_db_column_name=>'PO_BUYER_NAME'
+,p_display_order=>5
+,p_column_identifier=>'E'
+,p_column_label=>'Po Buyer Name'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55826460902843960)
+,p_db_column_name=>'RELEASE_NUMBER'
+,p_display_order=>6
+,p_column_identifier=>'F'
+,p_column_label=>'Release Number'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55826888915843960)
+,p_db_column_name=>'PO_LINE_NUM'
+,p_display_order=>7
+,p_column_identifier=>'G'
+,p_column_label=>'Po Line Num'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55827221941843960)
+,p_db_column_name=>'PO_LINE_DESC'
+,p_display_order=>8
+,p_column_identifier=>'H'
+,p_column_label=>'Po Line Desc'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55827692118843961)
+,p_db_column_name=>'PO_LINE_TYPE'
+,p_display_order=>9
+,p_column_identifier=>'I'
+,p_column_label=>'Po Line Type'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55828032239843961)
+,p_db_column_name=>'ORDER_TYPE'
+,p_display_order=>10
+,p_column_identifier=>'J'
+,p_column_label=>'Order Type'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55828455635843961)
+,p_db_column_name=>'SHIPMENT_NUM'
+,p_display_order=>11
+,p_column_identifier=>'K'
+,p_column_label=>'Shipment Num'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55828848203843961)
+,p_db_column_name=>'NEED_BY_DATE'
+,p_display_order=>12
+,p_column_identifier=>'L'
+,p_column_label=>'Need By Date'
+,p_column_type=>'DATE'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55829290984843961)
+,p_db_column_name=>'UNIT_MEASURE'
+,p_display_order=>13
+,p_column_identifier=>'M'
+,p_column_label=>'Unit Measure'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55829688772843961)
+,p_db_column_name=>'CATEGORY_DESCRIPTION'
+,p_display_order=>14
+,p_column_identifier=>'N'
+,p_column_label=>'Category Description'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55830065342843962)
+,p_db_column_name=>'ITEM_CODE'
+,p_display_order=>15
+,p_column_identifier=>'O'
+,p_column_label=>'Item Code'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55830411170843962)
+,p_db_column_name=>'ITEM_DESCRIPTION'
+,p_display_order=>16
+,p_column_identifier=>'P'
+,p_column_label=>'Item Description'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55830815901843962)
+,p_db_column_name=>'COST_CENTER_CODE'
+,p_display_order=>17
+,p_column_identifier=>'Q'
+,p_column_label=>'Cost Center Code'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55831279506843962)
+,p_db_column_name=>'COST_CENTER_DESCRIPTION'
+,p_display_order=>18
+,p_column_identifier=>'R'
+,p_column_label=>'Cost Center Description'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55831681326843962)
+,p_db_column_name=>'ACCOUNT_CODE'
+,p_display_order=>19
+,p_column_identifier=>'S'
+,p_column_label=>'Account Code'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55832020818843962)
+,p_db_column_name=>'ACCOUNT_DESCRIPTION'
+,p_display_order=>20
+,p_column_identifier=>'T'
+,p_column_label=>'Account Description'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55832469147843963)
+,p_db_column_name=>'PROJECT_NAME'
+,p_display_order=>21
+,p_column_identifier=>'U'
+,p_column_label=>'Project Name'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55832829755843963)
+,p_db_column_name=>'PROJECT_NUMBER'
+,p_display_order=>22
+,p_column_identifier=>'V'
+,p_column_label=>'Project Number'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55833282284843963)
+,p_db_column_name=>'TASK_NUMBER'
+,p_display_order=>23
+,p_column_identifier=>'W'
+,p_column_label=>'Task Number'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55833680028843963)
+,p_db_column_name=>'EXPENDITURE_TYPE'
+,p_display_order=>24
+,p_column_identifier=>'X'
+,p_column_label=>'Expenditure Type'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55834085198843963)
+,p_db_column_name=>'EMPLOYEE_NAME'
+,p_display_order=>25
+,p_column_identifier=>'Y'
+,p_column_label=>'Employee Name'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55834473264843963)
+,p_db_column_name=>'AMOUNT'
+,p_display_order=>26
+,p_column_identifier=>'Z'
+,p_column_label=>'Amount'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55834852256843964)
+,p_db_column_name=>'FUNCTIONAL_AMOUNT'
+,p_display_order=>27
+,p_column_identifier=>'AA'
+,p_column_label=>'Functional Amount'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_format_mask=>'999G999G999G999G990D00'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55835202489843964)
+,p_db_column_name=>'PURCHASE_ORDER_NUMBER2'
+,p_display_order=>28
+,p_column_identifier=>'AB'
+,p_column_label=>'Purchase Order Number2'
+,p_column_type=>'NUMBER'
+,p_heading_alignment=>'RIGHT'
+,p_column_alignment=>'RIGHT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55835644373843964)
+,p_db_column_name=>'TRANSACTION_DATE'
+,p_display_order=>29
+,p_column_identifier=>'AC'
+,p_column_label=>'Transaction Date'
+,p_column_type=>'DATE'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55836033290843964)
+,p_db_column_name=>'TRANSACTION_TYPE'
+,p_display_order=>30
+,p_column_identifier=>'AD'
+,p_column_label=>'Transaction Type'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55836492901843964)
+,p_db_column_name=>'DELIVER_TO_LOCATION_NAME'
+,p_display_order=>31
+,p_column_identifier=>'AE'
+,p_column_label=>'Deliver To Location Name'
+,p_column_type=>'STRING'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55836889162843964)
+,p_db_column_name=>'CREATED_BY'
+,p_display_order=>32
+,p_column_identifier=>'AF'
+,p_column_label=>'Created By'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(55840792700881325)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55837215222843965)
+,p_db_column_name=>'LAST_UPDATED_BY'
+,p_display_order=>33
+,p_column_identifier=>'AG'
+,p_column_label=>'Last Updated By'
+,p_column_type=>'NUMBER'
+,p_display_text_as=>'LOV_ESCAPE_SC'
+,p_rpt_named_lov=>wwv_flow_api.id(55840792700881325)
+,p_rpt_show_filter_lov=>'1'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55837666078843965)
+,p_db_column_name=>'CREATION_DATE'
+,p_display_order=>34
+,p_column_identifier=>'AH'
+,p_column_label=>'Creation Date'
+,p_column_type=>'DATE'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_column(
+ p_id=>wwv_flow_api.id(55838019149843965)
+,p_db_column_name=>'LAST_UPDATE_DATE'
+,p_display_order=>35
+,p_column_identifier=>'AI'
+,p_column_label=>'Last Update Date'
+,p_column_type=>'DATE'
+,p_heading_alignment=>'LEFT'
+,p_tz_dependent=>'N'
+);
+wwv_flow_api.create_worksheet_rpt(
+ p_id=>wwv_flow_api.id(55839149336850724)
+,p_application_user=>'APXWS_DEFAULT'
+,p_report_seq=>10
+,p_report_alias=>'558392'
+,p_status=>'PUBLIC'
+,p_is_default=>'Y'
+,p_report_columns=>'VENDOR_NAME:PURCHASE_ORDER_NUMBER:PURCHASE_ORDER_DESCRIPTION:PO_BUYER_NAME:RELEASE_NUMBER:PO_LINE_DESC:PO_LINE_TYPE:ORDER_TYPE:SHIPMENT_NUM:NEED_BY_DATE:UNIT_MEASURE:CATEGORY_DESCRIPTION:ITEM_CODE:ITEM_DESCRIPTION:COST_CENTER_CODE:COST_CENTER_DESCRIP'
+||'TION:ACCOUNT_CODE:ACCOUNT_DESCRIPTION:PROJECT_NAME:PROJECT_NUMBER:TASK_NUMBER:EXPENDITURE_TYPE:EMPLOYEE_NAME:FUNCTIONAL_AMOUNT:TRANSACTION_DATE:TRANSACTION_TYPE:DELIVER_TO_LOCATION_NAME:CREATED_BY:LAST_UPDATED_BY:CREATION_DATE:LAST_UPDATE_DATE'
+);
+wwv_flow_api.component_end;
+end;
+/
