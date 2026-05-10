@@ -955,4 +955,51 @@ Sprint 7 — Domain App Auth Migration (per domain)
 
 ---
 
-*Document version: 1.0 — Pending approval*
+## 14. Page Creation Workflow (APEX 24.2)
+
+All Sprint 2+ pages follow the **build-first, export-then-script** workflow. This is the standing rule for the project — do **not** hand-author APEX page SQL from scratch.
+
+**Why this rule:**
+- APEX 24.2 introduced features that aren't present in older exports (modern Dynamic Actions, new region types, improved Forms/IG, refreshed authentication features). Hand-authoring from older patterns (e.g., `apex-exports/f100.zip` is APEX 20.1) loses these.
+- APEX page metadata has hidden internal linkages (worksheet ↔ region, reports ↔ worksheet, items ↔ form region) that the Builder gets right and hand-rolled SQL gets subtly wrong — symptoms include ORA-01403 in `WWV_FLOW_IR_RENDER` at runtime and Page Designer failing to open the page.
+- The export from a working page is guaranteed to be a correct, idempotent install/reload script.
+
+**Per-page steps:**
+
+1. **Build manually in APEX Builder** using the latest APEX 24.2 features. Verify the page opens in Page Designer and runs end-to-end.
+2. **Export the page** via `apex_export.get_application` from SQLcl (the export function does internal commits, so it must be called from a PL/SQL block, not a SELECT). The exporter writes idempotent SQL that begins with `wwv_flow_imp_page.remove_page` so the script is safe to re-run.
+3. **Drop the export into `db/v2/`** with a numbered filename (e.g. `09_apex_page_12_role_assignment.sql`) and add an `@@`-include line in `install.sql`.
+4. **Commit** the export SQL. APEX Builder is the source of truth for page edits; whenever a page changes, re-export and re-commit.
+
+**Reference template:** `db/v2/08_apex_pages_10_11_users.sql` is a pages-10-11 export and shows the canonical structure.
+
+**SQLcl export command** (one-liner block, run while connected):
+
+```sql
+SET SERVEROUTPUT ON SIZE UNLIMITED
+SPOOL <path>.sql
+DECLARE
+    l_files apex_t_export_files;
+    l_clob CLOB; l_pos NUMBER; l_len NUMBER;
+BEGIN
+    l_files := apex_export.get_application(
+        p_application_id => 200,
+        p_components     => apex_t_varchar2('PAGE:12','PAGE:13'));
+    FOR i IN 1..l_files.count LOOP
+        l_clob := l_files(i).contents;
+        l_len  := DBMS_LOB.GETLENGTH(l_clob); l_pos := 1;
+        WHILE l_pos <= l_len LOOP
+            DBMS_OUTPUT.PUT_LINE(DBMS_LOB.SUBSTR(l_clob, 32000, l_pos));
+            l_pos := l_pos + 32000;
+        END LOOP;
+    END LOOP;
+END;
+/
+SPOOL OFF
+```
+
+**Exception — emergency hand-edits.** If a tiny tweak is needed and re-running APEX Builder isn't practical, edit the export SQL directly, but the next time the page is meaningfully changed, return to the build-first workflow and overwrite the file with a fresh export. Do not let hand-edits diverge from APEX state.
+
+---
+
+*Document version: 1.1 — Page Creation Workflow added*
