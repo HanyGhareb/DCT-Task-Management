@@ -35,36 +35,24 @@ DECLARE
     l_tmpl_id  NUMBER := 0;
     l_html     CLOB;
 BEGIN
-    -- Resolve "No Template" region template for App 200's theme
-    -- apex_application_templates uses template_id (not id)
+    -- Resolve "Blank with Attributes" region template for App 200's theme.
+    -- apex_application_templates.template_type uses mixed case ('Region', not 'REGION').
     BEGIN
         SELECT template_id
         INTO   l_tmpl_id
         FROM   apex_application_templates
         WHERE  application_id = 200
-        AND    template_type  = 'REGION'
-        AND    UPPER(template_name) LIKE '%NO TEMPLATE%'
+        AND    template_type  = 'Region'
+        AND    UPPER(template_name) LIKE '%BLANK%'
         AND    rownum = 1;
-        DBMS_OUTPUT.PUT_LINE('No-Template region template ID: ' || l_tmpl_id);
+        DBMS_OUTPUT.PUT_LINE('Blank region template ID: ' || l_tmpl_id);
     EXCEPTION
         WHEN NO_DATA_FOUND THEN
-            BEGIN
-                SELECT template_id
-                INTO   l_tmpl_id
-                FROM   apex_application_templates
-                WHERE  application_id = 200
-                AND    template_type  = 'REGION'
-                AND    UPPER(template_name) LIKE '%BLANK%'
-                AND    rownum = 1;
-                DBMS_OUTPUT.PUT_LINE('Blank region template ID: ' || l_tmpl_id);
-            EXCEPTION
-                WHEN NO_DATA_FOUND THEN
-                    l_tmpl_id := 0;
-                    DBMS_OUTPUT.PUT_LINE('WARNING: no suitable template found, using 0');
-            END;
+            l_tmpl_id := 0;
+            DBMS_OUTPUT.PUT_LINE('WARNING: Blank template not found, using 0');
         WHEN OTHERS THEN
             l_tmpl_id := 0;
-            DBMS_OUTPUT.PUT_LINE('WARNING: template lookup error: ' || SQLERRM || ' — using 0');
+            DBMS_OUTPUT.PUT_LINE('WARNING: template lookup error: ' || SQLERRM);
     END;
 
     l_html := q'~<!-- =============================================================
