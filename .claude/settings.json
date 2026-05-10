@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "PowerShell(cmd /c \"type C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\10b_nav_missing.sql | C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp\" 2>&1)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(git mv *)"
     ]
   }
 }
