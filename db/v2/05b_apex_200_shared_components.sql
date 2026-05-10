@@ -82,7 +82,7 @@ BEGIN
         p_id            => 300,
         p_flow_id       => 200,
         p_name          => 'Is Platform User',
-        p_scheme_type   => 'NATIVE_PLSQL',
+        p_scheme_type   => 'NATIVE_FUNCTION_BODY',
         p_attribute_01  => 'RETURN dct_auth.has_role(:APP_USER, ''PLATFORM_USER'');',
         p_error_message => 'You do not have access to this application.',
         p_caching       => 'BY_USER_BY_SESSION'
@@ -92,7 +92,7 @@ BEGIN
         p_id            => 301,
         p_flow_id       => 200,
         p_name          => 'Is SYS_ADMIN',
-        p_scheme_type   => 'NATIVE_PLSQL',
+        p_scheme_type   => 'NATIVE_FUNCTION_BODY',
         p_attribute_01  => 'RETURN dct_auth.has_role(:APP_USER, ''SYS_ADMIN'');',
         p_error_message => 'System Administrator access required.',
         p_caching       => 'BY_USER_BY_SESSION'
@@ -102,7 +102,7 @@ BEGIN
         p_id            => 302,
         p_flow_id       => 200,
         p_name          => 'Is USER_ADMIN',
-        p_scheme_type   => 'NATIVE_PLSQL',
+        p_scheme_type   => 'NATIVE_FUNCTION_BODY',
         p_attribute_01  => 'RETURN dct_auth.has_role(:APP_USER, ''USER_ADMIN'') OR dct_auth.has_role(:APP_USER, ''SYS_ADMIN'');',
         p_error_message => 'User Administrator access required.',
         p_caching       => 'BY_USER_BY_SESSION'
@@ -112,7 +112,7 @@ BEGIN
         p_id            => 303,
         p_flow_id       => 200,
         p_name          => 'Is ORG_ADMIN',
-        p_scheme_type   => 'NATIVE_PLSQL',
+        p_scheme_type   => 'NATIVE_FUNCTION_BODY',
         p_attribute_01  => 'RETURN dct_auth.has_role(:APP_USER, ''ORG_ADMIN'') OR dct_auth.has_role(:APP_USER, ''SYS_ADMIN'');',
         p_error_message => 'Organisation Administrator access required.',
         p_caching       => 'BY_USER_BY_SESSION'
@@ -122,7 +122,7 @@ BEGIN
         p_id            => 304,
         p_flow_id       => 200,
         p_name          => 'Is Auditor',
-        p_scheme_type   => 'NATIVE_PLSQL',
+        p_scheme_type   => 'NATIVE_FUNCTION_BODY',
         p_attribute_01  => 'RETURN dct_auth.has_role(:APP_USER, ''AUDITOR'') OR dct_auth.has_role(:APP_USER, ''SYS_ADMIN'');',
         p_error_message => 'Auditor access required.',
         p_caching       => 'BY_USER_BY_SESSION'
@@ -132,7 +132,7 @@ BEGIN
         p_id            => 305,
         p_flow_id       => 200,
         p_name          => 'Is Task Director',
-        p_scheme_type   => 'NATIVE_PLSQL',
+        p_scheme_type   => 'NATIVE_FUNCTION_BODY',
         p_attribute_01  => 'RETURN dct_auth.has_role(:APP_USER, ''TASK_DIRECTOR'');',
         p_error_message => 'Finance Director access required.',
         p_caching       => 'BY_USER_BY_SESSION'
@@ -142,7 +142,7 @@ BEGIN
         p_id            => 306,
         p_flow_id       => 200,
         p_name          => 'Can Manage Users',
-        p_scheme_type   => 'NATIVE_PLSQL',
+        p_scheme_type   => 'NATIVE_FUNCTION_BODY',
         p_attribute_01  => 'RETURN dct_auth.has_permission(:APP_USER, ''USERS.EDIT'');',
         p_error_message => 'User management permission required.',
         p_caching       => 'BY_USER_BY_PAGE_VIEW'
