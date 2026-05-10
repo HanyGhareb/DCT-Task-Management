@@ -11,39 +11,47 @@ The frontend is pure HTML/CSS/Vanilla JS with no build tools. It currently runs 
 ## Architecture
 
 ```
-frontend/
-  index.html                ← Login / entry point
-  pages/
-    manager-dashboard.html  ← Section Manager view
-    director-dashboard.html ← Finance Director view
-  js/
-    auth.js                 ← Login, session, role-based redirect
-    data.js                 ← DataStore, mock data models, seed data
-    utils.js                ← ISO week helpers, date/number formatters
-    manager.js              ← Manager dashboard controller
-    director.js             ← Director dashboard controller
-    charts.js               ← Chart.js wrappers (donut, bar, trend)
-  css/
-    main.css                ← CSS variables, global layout
-    components.css          ← Reusable component styles
-    login.css               ← Login page
-    manager.css             ← Manager dashboard
-    director.css            ← Director dashboard
-db/
-  v1/
-    01_schema_ddl.sql       ← Original Oracle 23ai schema
-  v2/
-    install.sql             ← Master install script
-    01_dct_ddl.sql          ← 24 DCT_* tables, constraints, indexes, triggers
-    02_dct_views.sql        ← Utility + backward-compatibility views
-    03_dct_auth_pkg.sql     ← DCT_AUTH package
-    04_dct_seed.sql         ← Seed data
-    05_apex_200_setup.sql   ← APEX App 200 page setup
-    05b_apex_200_shared_components.sql ← Auth scheme, app items, auth schemes, processes
-    06_dct_notify_pkg.sql   ← DCT_NOTIFY package
-apex-exports/               ← 31 APEX app zip exports, each in its own subfolder (f100/f100.zip …)
+apps/
+  ifinance-v2/              ← App 200 — new central auth/admin platform
+    frontend/
+      index.html            ← Login / entry point
+      pages/                ← manager-dashboard.html, director-dashboard.html
+      js/                   ← auth.js, data.js, utils.js, manager.js, director.js, charts.js
+      css/                  ← main.css, components.css, login.css, manager.css, director.css
+    db/
+      v1/                   ← Original Oracle 23ai schema
+      v2/                   ← Sprint 1-2 install scripts (install.sql + numbered steps)
+  main/                     ← f100 i-Finance Hub
+  petty-cash/               ← f101
+  hr/                       ← f102
+  credit-cards/             ← f103 + f911
+  prepaid-cards/            ← f104
+  fund-management/          ← f105
+  employee-self-service/    ← f106
+  manual-pr/                ← f108
+  cwip-payment-ex/          ← f109
+  budget-allocation/        ← f110
+  payment-requests/         ← f113
+  manager-checks/           ← f114
+  budget-planning/          ← f115
+  template/                 ← f116
+  documents/                ← f117
+  accounts-receivable/      ← f118
+  ucm/                      ← f119
+  demand-planning/          ← f124
+  bank-guarantee/           ← f127
+  cwip-payments/            ← f130
+  cwip-change-mgmt/         ← f142
+  smd-form/                 ← f166 + f313
+  freelancers/              ← f805
+  duty-travel/              ← f810
+  hrss/                     ← f901
+  budget-transfer/          ← f903
+  cwip-dev/                 ← f904
+  ifinance-ex/              ← f910
+  backup/                   ← f9900
 docs/                       ← Analysis, proposals, project plans, md files (incl. APEX_SETUP.md)
-myDoc/                      ← Wallet, local setup notes
+myDoc/                      ← Wallet, wallet connection config
 ```
 
 **Pattern:** MVC-like. `manager.js` and `director.js` are controllers that call `DataStore` for data and `Charts` for rendering. No framework — everything is object literals or plain functions on `window`.
