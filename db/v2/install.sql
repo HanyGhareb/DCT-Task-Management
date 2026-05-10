@@ -73,7 +73,7 @@ PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:
 PROMPT    1. Shared Components > User Interface Attributes > Navigation Menu
 PROMPT       Set Desktop Navigation Menu = "Desktop Navigation Menu"
-PROMPT    2. See db/v2/APEX_SETUP.md for remaining manual configuration steps.
+PROMPT    2. See docs/APEX_SETUP.md for remaining manual configuration steps.
 PROMPT ============================================================
 
 EXIT 0

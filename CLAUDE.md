@@ -41,9 +41,8 @@ db/
     05_apex_200_setup.sql   ← APEX App 200 page setup
     05b_apex_200_shared_components.sql ← Auth scheme, app items, auth schemes, processes
     06_dct_notify_pkg.sql   ← DCT_NOTIFY package
-    APEX_SETUP.md           ← Manual APEX configuration steps
-apex-exports/               ← 31 APEX app zip exports (f100–f9900)
-docs/                       ← Analysis, proposals, project plans
+apex-exports/               ← 31 APEX app zip exports, each in its own subfolder (f100/f100.zip …)
+docs/                       ← Analysis, proposals, project plans, md files (incl. APEX_SETUP.md)
 myDoc/                      ← Wallet, local setup notes
 ```
 
