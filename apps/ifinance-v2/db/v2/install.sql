@@ -63,9 +63,14 @@ PROMPT ============================================================
 @@09_apex_pages_20_21_12_roles.sql
 
 PROMPT ============================================================
-PROMPT  Step 9/9 — APEX Navigation: Breadcrumb + Desktop Navigation Menu
+PROMPT  Step 9/10 — APEX Navigation: Breadcrumb + Desktop Navigation Menu
 PROMPT ============================================================
 @@10_apex_navigation.sql
+
+PROMPT ============================================================
+PROMPT  Step 10/10 — APEX Login Page: Two-panel branding + custom CSS
+PROMPT ============================================================
+@@11_apex_login_page_style.sql
 
 PROMPT ============================================================
 PROMPT  Sprint 1-2 install complete.
