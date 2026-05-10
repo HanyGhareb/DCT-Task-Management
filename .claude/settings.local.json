@@ -19,7 +19,8 @@
       "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -V)",
       "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -S -name prod_mcp '@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\_export_pages.sql' 2>&1 | Select-Object -Last 20)",
       "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -S -name prod_mcp '@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\test_pages_5_6.sql' 2>&1)",
-      "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -S -name prod_mcp '@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\_delete_pages_5_6.sql' 2>&1)"
+      "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -S -name prod_mcp '@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\_delete_pages_5_6.sql' 2>&1)",
+      "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -S -name prod_mcp '@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\09_apex_pages_20_21_12_roles.sql')"
     ]
   }
 }
