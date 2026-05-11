@@ -86,7 +86,12 @@ PROMPT ============================================================
 @@13_apex_pages_25_13_user_role_assignments.sql
 
 PROMPT ============================================================
-PROMPT  Sprint 1-2 install complete.
+PROMPT  Step 13/13 — APEX Page 1: Home / App Launcher (Cards)
+PROMPT ============================================================
+@@14_apex_page_1_home_launcher.sql
+
+PROMPT ============================================================
+PROMPT  Sprint 1-3 install complete.
 PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:
 PROMPT    1. Shared Components > User Interface Attributes > Navigation Menu
