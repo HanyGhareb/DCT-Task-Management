@@ -76,7 +76,47 @@ BEGIN
         p_link            => 'f?p=&APP_ID.:20:&APP_SESSION.',
         p_page_id         => 20
     );
-    DBMS_OUTPUT.PUT_LINE('3 breadcrumb entries created (Home, Users, Roles).');
+    -- Role Permissions (Page 23) — child of Roles
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000030432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000004432070),
+        p_option_sequence => 31,
+        p_short_name      => 'Role Permissions',
+        p_link            => 'f?p=&APP_ID.:23:&APP_SESSION.',
+        p_page_id         => 23
+    );
+    -- Permissions Library (Page 24) — child of Home
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000031432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000002432070),
+        p_option_sequence => 35,
+        p_short_name      => 'Permissions Library',
+        p_link            => 'f?p=&APP_ID.:24:&APP_SESSION.',
+        p_page_id         => 24
+    );
+    -- Role Users (Page 25) — child of Roles
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000032432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000004432070),
+        p_option_sequence => 32,
+        p_short_name      => 'Role Users',
+        p_link            => 'f?p=&APP_ID.:25:&APP_SESSION.',
+        p_page_id         => 25
+    );
+    -- User Role Assignments (Page 13) — child of Users
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000033432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000003432070),
+        p_option_sequence => 21,
+        p_short_name      => 'Role Assignments',
+        p_link            => 'f?p=&APP_ID.:13:&APP_SESSION.',
+        p_page_id         => 13
+    );
+    DBMS_OUTPUT.PUT_LINE('7 breadcrumb entries created (Home, Users, Roles + 4 children).');
 END;
 /
 

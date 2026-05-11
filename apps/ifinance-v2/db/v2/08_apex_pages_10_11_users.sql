@@ -436,6 +436,21 @@ wwv_flow_imp_page.create_page_button(
 ,p_button_condition_type=>'ITEM_IS_NULL'
 ,p_database_action=>'INSERT'
 );
+wwv_flow_imp_page.create_page_button(
+ p_id=>wwv_flow_imp.id(9430000001432070)
+,p_button_sequence=>50
+,p_button_plug_id=>wwv_flow_imp.id(9407137027432050)
+,p_button_name=>'ROLE_ASSIGNMENTS'
+,p_button_action=>'REDIRECT_URL'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>4072362960822175091
+,p_button_image_alt=>'Role Assignments'
+,p_button_position=>'PREVIOUS'
+,p_button_alignment=>'LEFT'
+,p_button_redirect_url=>'f?p=&APP_ID.:13:&APP_SESSION.::NO::P13_USER_ID:&P11_USER_ID.'
+,p_button_condition=>'P11_USER_ID'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+);
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(9397234806432009)
 ,p_name=>'P11_USER_ID'

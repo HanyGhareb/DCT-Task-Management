@@ -420,6 +420,36 @@ wwv_flow_imp_page.create_page_button(
 ,p_button_condition_type=>'ITEM_IS_NULL'
 ,p_database_action=>'INSERT'
 );
+wwv_flow_imp_page.create_page_button(
+ p_id=>wwv_flow_imp.id(9441000030432070)
+,p_button_sequence=>50
+,p_button_plug_id=>wwv_flow_imp.id(9441000002432070)
+,p_button_name=>'ROLE_PERMISSIONS'
+,p_button_action=>'REDIRECT_URL'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>4072362960822175091
+,p_button_image_alt=>'Role Permissions'
+,p_button_position=>'PREVIOUS'
+,p_button_alignment=>'LEFT'
+,p_button_redirect_url=>'f?p=&APP_ID.:23:&APP_SESSION.::NO::P23_ROLE_ID:&P21_ROLE_ID.'
+,p_button_condition=>'P21_ROLE_ID'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+);
+wwv_flow_imp_page.create_page_button(
+ p_id=>wwv_flow_imp.id(9441000031432070)
+,p_button_sequence=>60
+,p_button_plug_id=>wwv_flow_imp.id(9441000002432070)
+,p_button_name=>'ROLE_USERS'
+,p_button_action=>'REDIRECT_URL'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>4072362960822175091
+,p_button_image_alt=>'Role Users'
+,p_button_position=>'PREVIOUS'
+,p_button_alignment=>'LEFT'
+,p_button_redirect_url=>'f?p=&APP_ID.:25:&APP_SESSION.::NO::P25_ROLE_ID:&P21_ROLE_ID.'
+,p_button_condition=>'P21_ROLE_ID'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+);
 wwv_flow_imp_page.create_page_item(
  p_id=>wwv_flow_imp.id(9441000007432070)
 ,p_name=>'P21_ROLE_ID'

@@ -73,6 +73,19 @@ PROMPT ============================================================
 @@11_apex_login_page_style.sql
 
 PROMPT ============================================================
+PROMPT  Step 11/12 — APEX Pages 24 (Permissions Library IR)
+PROMPT             + 23 (Role Permissions IR)
+PROMPT             + 26 (Grant/Revoke Permission modal)
+PROMPT ============================================================
+@@12_apex_pages_23_24_26_role_permissions.sql
+
+PROMPT ============================================================
+PROMPT  Step 12/12 — APEX Pages 25 (Role Users IR)
+PROMPT             + 13 (User Role Assignments IR)
+PROMPT ============================================================
+@@13_apex_pages_25_13_user_role_assignments.sql
+
+PROMPT ============================================================
 PROMPT  Sprint 1-2 install complete.
 PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:
