@@ -91,6 +91,11 @@ PROMPT ============================================================
 @@14_apex_page_1_home_launcher.sql
 
 PROMPT ============================================================
+PROMPT  Step 14/14 — APEX Pages 30 (Organizations IR) + 31 (Org Details)
+PROMPT ============================================================
+@@15_apex_pages_30_31_organizations.sql
+
+PROMPT ============================================================
 PROMPT  Sprint 1-3 install complete.
 PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:

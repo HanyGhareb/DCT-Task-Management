@@ -116,7 +116,27 @@ BEGIN
         p_link            => 'f?p=&APP_ID.:13:&APP_SESSION.',
         p_page_id         => 13
     );
-    DBMS_OUTPUT.PUT_LINE('7 breadcrumb entries created (Home, Users, Roles + 4 children).');
+    -- Organizations (Page 30) — child of Home
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000034432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000002432070),
+        p_option_sequence => 40,
+        p_short_name      => 'Organizations',
+        p_link            => 'f?p=&APP_ID.:30:&APP_SESSION.',
+        p_page_id         => 30
+    );
+    -- Org Details (Page 31) — child of Organizations
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000035432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000034432070),
+        p_option_sequence => 41,
+        p_short_name      => 'Org Details',
+        p_link            => 'f?p=&APP_ID.:31:&APP_SESSION.',
+        p_page_id         => 31
+    );
+    DBMS_OUTPUT.PUT_LINE('9 breadcrumb entries created (Home, Users, Roles + children, Organizations, Org Details).');
 END;
 /
 
