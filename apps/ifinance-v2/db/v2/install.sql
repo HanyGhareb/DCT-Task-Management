@@ -119,12 +119,39 @@ PROMPT ============================================================
 @@19_apex_pages_55_56_monitor.sql
 
 PROMPT ============================================================
-PROMPT  Step 19/19 — Navigation: Breadcrumbs for Sprint 4 pages
+PROMPT  Step 19/24 — Navigation: Breadcrumbs for Sprint 4 pages
 PROMPT ============================================================
 @@10_apex_navigation.sql
 
 PROMPT ============================================================
-PROMPT  Sprint 1-4 install complete.
+PROMPT  Step 20/24 — Package: DCT_AUDIT (centralised audit logging)
+PROMPT ============================================================
+@@20_dct_audit_pkg.sql
+
+PROMPT ============================================================
+PROMPT  Step 21/24 — APEX Pages 60 (Lookup Categories IR)
+PROMPT             + 62 (Category Detail modal)
+PROMPT ============================================================
+@@21_apex_pages_60_62_lookup_categories.sql
+
+PROMPT ============================================================
+PROMPT  Step 22/24 — APEX Pages 61 (Lookup Values IR)
+PROMPT             + 63 (Value Detail modal)
+PROMPT ============================================================
+@@22_apex_pages_61_63_lookup_values.sql
+
+PROMPT ============================================================
+PROMPT  Step 23/24 — APEX Page 4 (My Notifications IR)
+PROMPT ============================================================
+@@23_apex_page_4_notifications.sql
+
+PROMPT ============================================================
+PROMPT  Step 24/24 — Navigation: Breadcrumbs for Sprint 5 pages
+PROMPT ============================================================
+@@10_apex_navigation.sql
+
+PROMPT ============================================================
+PROMPT  Sprint 1-5 install complete.
 PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:
 PROMPT    1. Shared Components > User Interface Attributes > Navigation Menu

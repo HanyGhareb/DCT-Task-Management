@@ -226,7 +226,37 @@ BEGIN
         p_link            => 'f?p=&APP_ID.:56:&APP_SESSION.',
         p_page_id         => 56
     );
-    DBMS_OUTPUT.PUT_LINE('20 breadcrumb entries created.');
+    -- Lookup Categories (Page 60) — child of Home
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000045432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000002432070),
+        p_option_sequence => 75,
+        p_short_name      => 'Lookup Categories',
+        p_link            => 'f?p=&APP_ID.:60:&APP_SESSION.',
+        p_page_id         => 60
+    );
+    -- Lookup Values (Page 61) — child of Lookup Categories
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000046432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000045432070),
+        p_option_sequence => 76,
+        p_short_name      => 'Lookup Values',
+        p_link            => 'f?p=&APP_ID.:61:&APP_SESSION.',
+        p_page_id         => 61
+    );
+    -- My Notifications (Page 4) — child of Home
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000047432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000002432070),
+        p_option_sequence => 80,
+        p_short_name      => 'My Notifications',
+        p_link            => 'f?p=&APP_ID.:4:&APP_SESSION.',
+        p_page_id         => 4
+    );
+    DBMS_OUTPUT.PUT_LINE('23 breadcrumb entries created.');
 END;
 /
 
@@ -469,7 +499,19 @@ BEGIN
         p_security_scheme            => wwv_flow_imp.id(301)
     );
 
-    DBMS_OUTPUT.PUT_LINE('19 navigation menu items created.');
+    -- 8. My Notifications  (Page 4)
+    wwv_flow_imp_shared.create_list_item(
+        p_id                         => wwv_flow_imp.id(9461000029432070),
+        p_list_id                    => wwv_flow_imp.id(9461000001432070),
+        p_parent_list_item_id        => null,
+        p_list_item_display_sequence => 15,
+        p_list_item_link_text        => 'My Notifications',
+        p_list_item_link_target      => 'f?p=&APP_ID.:4:&APP_SESSION.',
+        p_list_item_icon             => 'fa-bell',
+        p_security_scheme            => wwv_flow_imp.id(300)
+    );
+
+    DBMS_OUTPUT.PUT_LINE('20 navigation menu items created.');
 END;
 /
 
@@ -486,11 +528,12 @@ FROM   apex_application_lists
 WHERE  application_id = 200
 ORDER  BY list_name;
 
-SELECT display_sequence, list_item_link_text AS list_item_name, list_item_link_target AS entry_target
+SELECT list_item_display_sequence AS display_sequence,
+       list_item_link_text       AS item_name
 FROM   apex_application_list_entries
 WHERE  application_id = 200
   AND  list_name      = 'Desktop Navigation Menu'
-ORDER  BY display_sequence;
+ORDER  BY list_item_display_sequence;
 
 PROMPT ============================================================
 PROMPT  Navigation setup complete.
