@@ -492,17 +492,15 @@ wwv_flow_imp_page.create_page_da_action(
 ,p_execute_on_page_init=>'N'
 ,p_action=>'NATIVE_DIALOG_CANCEL'
 );
--- ── Form primary key ──────────────────────────────────────────────────────────
+-- ── Form initialise (fetch row) ───────────────────────────────────────────────
 wwv_flow_imp_page.create_page_process(
  p_id=>wwv_flow_imp.id(9744000018432070)
 ,p_process_sequence=>10
 ,p_process_point=>'BEFORE_HEADER'
 ,p_region_id=>wwv_flow_imp.id(9744000002432070)
-,p_process_type=>'NATIVE_FORM_FETCH'
-,p_process_name=>'Fetch Row'
-,p_attribute_02=>'VALUE_ID'
-,p_attribute_03=>'P63_VALUE_ID'
-,p_attribute_04=>'NUMBER'
+,p_process_type=>'NATIVE_FORM_INIT'
+,p_process_name=>'Initialize form Lookup Value'
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
 );
 -- ── Form DML ─────────────────────────────────────────────────────────────────
 wwv_flow_imp_page.create_page_process(
