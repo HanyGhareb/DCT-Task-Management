@@ -259,8 +259,21 @@ wwv_flow_imp_page.create_page_plug(
 ,p_region_template_options=>'#DEFAULT#'
 ,p_plug_template=>4501440665235496320
 ,p_plug_display_sequence=>20
-,p_query_type=>'TABLE'
-,p_plug_source=>'PROD.DCT_LOOKUP_VALUES'
+,p_query_type=>'SQL'
+,p_plug_source=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'SELECT v.value_id,',
+'       v.category_id,',
+'       v.value_code,',
+'       v.value_name_en,',
+'       v.value_name_ar,',
+'       v.tag,',
+'       v.display_order,',
+'       v.is_default,',
+'       v.is_active',
+'FROM   prod.dct_lookup_values v'))
+,p_is_editable=>true
+,p_edit_operations=>'i:u:d'
+,p_lost_update_check_type=>'VALUES'
 ,p_plug_source_type=>'NATIVE_FORM'
 );
 -- ── Items ─────────────────────────────────────────────────────────────────────
