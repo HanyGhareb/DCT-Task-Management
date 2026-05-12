@@ -22,7 +22,11 @@
       "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -S -name prod_mcp '@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\_delete_pages_5_6.sql' 2>&1)",
       "PowerShell(& 'C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe' -S -name prod_mcp '@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\09_apex_pages_20_21_12_roles.sql')",
       "Bash(cmd /c \"type C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\11_apex_login_page_style.sql | C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp\")",
-      "Bash(git commit -m 'fix: correct region template lookup for login branding \\(mixed-case template_type\\) *)"
+      "Bash(git commit -m 'fix: correct region template lookup for login branding \\(mixed-case template_type\\) *)",
+      "Bash(cmd /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp @C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\16_apex_pages_40_41_42_modules.sql\")",
+      "Bash(cd /d \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\")",
+      "Bash(sql.exe -name prod_mcp @\"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\16_apex_pages_40_41_42_modules.sql\")",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\16_apex_pages_40_41_42_modules.sql\" 2>&1)"
     ]
   }
 }

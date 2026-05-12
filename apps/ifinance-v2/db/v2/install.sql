@@ -91,9 +91,15 @@ PROMPT ============================================================
 @@14_apex_page_1_home_launcher.sql
 
 PROMPT ============================================================
-PROMPT  Step 14/14 — APEX Pages 30 (Organizations IR) + 31 (Org Details)
+PROMPT  Step 14/15 — APEX Pages 30 (Organizations IR) + 31 (Org Details)
 PROMPT ============================================================
 @@15_apex_pages_30_31_organizations.sql
+
+PROMPT ============================================================
+PROMPT  Step 15/15 — APEX Pages 40 (Modules IR) + 41 (Module Details)
+PROMPT             + 42 (Module Role Access IR)
+PROMPT ============================================================
+@@16_apex_pages_40_41_42_modules.sql
 
 PROMPT ============================================================
 PROMPT  Sprint 1-3 install complete.

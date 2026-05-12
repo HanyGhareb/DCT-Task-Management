@@ -136,7 +136,37 @@ BEGIN
         p_link            => 'f?p=&APP_ID.:31:&APP_SESSION.',
         p_page_id         => 31
     );
-    DBMS_OUTPUT.PUT_LINE('9 breadcrumb entries created (Home, Users, Roles + children, Organizations, Org Details).');
+    -- Modules (Page 40) — child of Home
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000036432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000002432070),
+        p_option_sequence => 50,
+        p_short_name      => 'Modules',
+        p_link            => 'f?p=&APP_ID.:40:&APP_SESSION.',
+        p_page_id         => 40
+    );
+    -- Module Details (Page 41) — child of Modules
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000037432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000036432070),
+        p_option_sequence => 51,
+        p_short_name      => 'Module Details',
+        p_link            => 'f?p=&APP_ID.:41:&APP_SESSION.',
+        p_page_id         => 41
+    );
+    -- Module Role Access (Page 42) — child of Module Details
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000038432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000037432070),
+        p_option_sequence => 52,
+        p_short_name      => 'Module Role Access',
+        p_link            => 'f?p=&APP_ID.:42:&APP_SESSION.',
+        p_page_id         => 42
+    );
+    DBMS_OUTPUT.PUT_LINE('13 breadcrumb entries created.');
 END;
 /
 
