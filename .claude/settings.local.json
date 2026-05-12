@@ -26,7 +26,15 @@
       "Bash(cmd /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp @C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\16_apex_pages_40_41_42_modules.sql\")",
       "Bash(cd /d \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\")",
       "Bash(sql.exe -name prod_mcp @\"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\16_apex_pages_40_41_42_modules.sql\")",
-      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\16_apex_pages_40_41_42_modules.sql\" 2>&1)"
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\16_apex_pages_40_41_42_modules.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\17_dct_approval_pkg.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\_diag.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\18_apex_pages_50_51_53_54_templates.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\19_apex_pages_55_56_monitor.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\10_apex_navigation.sql\" 2>&1)",
+      "Bash(git -C \"C:/claude/DCT-task-management/DCT-Task-Management\" add apps/ifinance-v2/db/v2/17_dct_approval_pkg.sql apps/ifinance-v2/db/v2/18_apex_pages_50_51_53_54_templates.sql apps/ifinance-v2/db/v2/19_apex_pages_55_56_monitor.sql apps/ifinance-v2/db/v2/10_apex_navigation.sql apps/ifinance-v2/db/v2/install.sql apps/ifinance-v2/db/v2/03_dct_auth_pkg.sql apps/ifinance-v2/db/v2/06_dct_notify_pkg.sql apps/ifinance-v2/db/v2/07_dct_users_api_pkg.sql apps/ifinance-v2/db/v2/15_apex_pages_30_31_organizations.sql apps/ifinance-v2/db/v2/16_apex_pages_40_41_42_modules.sql)",
+      "Bash(git -C \"C:/claude/DCT-task-management/DCT-Task-Management\" status)",
+      "Bash(git -C C:/claude/DCT-task-management/DCT-Task-Management commit -m ' *)"
     ]
   }
 }
