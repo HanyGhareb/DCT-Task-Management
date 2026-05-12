@@ -21,7 +21,7 @@
 -- =============================================================================
 -- PACKAGE SPEC
 -- =============================================================================
-CREATE OR REPLACE PACKAGE dct_auth AS
+CREATE OR REPLACE PACKAGE prod.dct_auth AS
 
     -- -------------------------------------------------------------------------
     -- APEX Custom Authentication entry point.
@@ -124,7 +124,7 @@ END dct_auth;
 -- =============================================================================
 -- PACKAGE BODY
 -- =============================================================================
-CREATE OR REPLACE PACKAGE BODY dct_auth AS
+CREATE OR REPLACE PACKAGE BODY prod.dct_auth AS
 
     -- -------------------------------------------------------------------------
     -- PRIVATE: Hash a plain-text password with SHA-512.

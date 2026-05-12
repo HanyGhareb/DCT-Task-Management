@@ -102,7 +102,29 @@ PROMPT ============================================================
 @@16_apex_pages_40_41_42_modules.sql
 
 PROMPT ============================================================
-PROMPT  Sprint 1-3 install complete.
+PROMPT  Step 16/19 — Package: DCT_APPROVAL (Approval Engine)
+PROMPT ============================================================
+@@17_dct_approval_pkg.sql
+
+PROMPT ============================================================
+PROMPT  Step 17/19 — APEX Pages 50 (Templates IR) + 51 (Template Detail)
+PROMPT             + 53 (Steps IR) + 54 (Step Detail)
+PROMPT ============================================================
+@@18_apex_pages_50_51_53_54_templates.sql
+
+PROMPT ============================================================
+PROMPT  Step 18/19 — APEX Pages 55 (Approval Monitor IR)
+PROMPT             + 56 (Instance Detail)
+PROMPT ============================================================
+@@19_apex_pages_55_56_monitor.sql
+
+PROMPT ============================================================
+PROMPT  Step 19/19 — Navigation: Breadcrumbs for Sprint 4 pages
+PROMPT ============================================================
+@@10_apex_navigation.sql
+
+PROMPT ============================================================
+PROMPT  Sprint 1-4 install complete.
 PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:
 PROMPT    1. Shared Components > User Interface Attributes > Navigation Menu

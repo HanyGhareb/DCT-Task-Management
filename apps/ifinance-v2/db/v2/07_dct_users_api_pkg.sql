@@ -13,7 +13,7 @@ SET DEFINE OFF
 -- =============================================================================
 -- PACKAGE SPEC
 -- =============================================================================
-CREATE OR REPLACE PACKAGE dct_users_api AS
+CREATE OR REPLACE PACKAGE prod.dct_users_api AS
 
     -- -------------------------------------------------------------------------
     -- User lifecycle
@@ -133,7 +133,7 @@ END dct_users_api;
 -- =============================================================================
 -- PACKAGE BODY
 -- =============================================================================
-CREATE OR REPLACE PACKAGE BODY dct_users_api AS
+CREATE OR REPLACE PACKAGE BODY prod.dct_users_api AS
 
     -- -------------------------------------------------------------------------
     -- PRIVATE: audit log (autonomous — never breaks caller)

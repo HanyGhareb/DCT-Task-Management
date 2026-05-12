@@ -166,7 +166,67 @@ BEGIN
         p_link            => 'f?p=&APP_ID.:42:&APP_SESSION.',
         p_page_id         => 42
     );
-    DBMS_OUTPUT.PUT_LINE('13 breadcrumb entries created.');
+    -- Approval Templates (Page 50) — child of Home
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000039432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000002432070),
+        p_option_sequence => 60,
+        p_short_name      => 'Approval Templates',
+        p_link            => 'f?p=&APP_ID.:50:&APP_SESSION.',
+        p_page_id         => 50
+    );
+    -- Template Detail (Page 51) — child of Approval Templates
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000040432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000039432070),
+        p_option_sequence => 61,
+        p_short_name      => 'Template Detail',
+        p_link            => 'f?p=&APP_ID.:51:&APP_SESSION.',
+        p_page_id         => 51
+    );
+    -- Approval Steps (Page 53) — child of Template Detail
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000041432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000040432070),
+        p_option_sequence => 62,
+        p_short_name      => 'Approval Steps',
+        p_link            => 'f?p=&APP_ID.:53:&APP_SESSION.',
+        p_page_id         => 53
+    );
+    -- Step Detail (Page 54) — child of Approval Steps
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000042432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000041432070),
+        p_option_sequence => 63,
+        p_short_name      => 'Step Detail',
+        p_link            => 'f?p=&APP_ID.:54:&APP_SESSION.',
+        p_page_id         => 54
+    );
+    -- Approval Monitor (Page 55) — child of Home
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000043432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000002432070),
+        p_option_sequence => 70,
+        p_short_name      => 'Approval Monitor',
+        p_link            => 'f?p=&APP_ID.:55:&APP_SESSION.',
+        p_page_id         => 55
+    );
+    -- Instance Detail (Page 56) — child of Approval Monitor
+    wwv_flow_imp_shared.create_menu_option(
+        p_id              => wwv_flow_imp.id(9461000044432070),
+        p_menu_id         => wwv_flow_imp.id(9281295074536978),
+        p_parent_id       => wwv_flow_imp.id(9461000043432070),
+        p_option_sequence => 71,
+        p_short_name      => 'Instance Detail',
+        p_link            => 'f?p=&APP_ID.:56:&APP_SESSION.',
+        p_page_id         => 56
+    );
+    DBMS_OUTPUT.PUT_LINE('20 breadcrumb entries created.');
 END;
 /
 
@@ -426,7 +486,7 @@ FROM   apex_application_lists
 WHERE  application_id = 200
 ORDER  BY list_name;
 
-SELECT display_sequence, list_item_name, entry_target
+SELECT display_sequence, list_item_link_text AS list_item_name, list_item_link_target AS entry_target
 FROM   apex_application_list_entries
 WHERE  application_id = 200
   AND  list_name      = 'Desktop Navigation Menu'

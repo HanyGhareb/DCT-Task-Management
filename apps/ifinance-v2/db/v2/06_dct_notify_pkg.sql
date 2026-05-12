@@ -13,7 +13,7 @@ SET DEFINE OFF
 -- =============================================================================
 -- PACKAGE SPEC
 -- =============================================================================
-CREATE OR REPLACE PACKAGE dct_notify AS
+CREATE OR REPLACE PACKAGE prod.dct_notify AS
 
     -- -------------------------------------------------------------------------
     -- Count unread notifications for a user.
@@ -72,7 +72,7 @@ END dct_notify;
 -- =============================================================================
 -- PACKAGE BODY
 -- =============================================================================
-CREATE OR REPLACE PACKAGE BODY dct_notify AS
+CREATE OR REPLACE PACKAGE BODY prod.dct_notify AS
 
     -- -------------------------------------------------------------------------
     FUNCTION get_unread_count (

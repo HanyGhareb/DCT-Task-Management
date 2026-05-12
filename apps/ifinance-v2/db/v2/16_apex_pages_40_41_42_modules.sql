@@ -137,9 +137,9 @@ wwv_flow_imp_page.create_worksheet_column(
 ,p_column_identifier=>'C'
 ,p_column_label=>'Name'
 ,p_column_type=>'STRING'
-,p_column_link=>'f?p=&APP_ID.:41:&APP_SESSION.::NO::P41_MODULE_ID:#MODULE_ID#'
+,p_column_link=>'f?p=&APP_ID.:41:&SESSION.::&DEBUG.::P41_MODULE_ID:#MODULE_ID#'
+,p_column_linktext=>'#MODULE_NAME_EN#'
 ,p_heading_alignment=>'LEFT'
-,p_tz_dependent=>'N'
 ,p_use_as_row_header=>'N'
 );
 wwv_flow_imp_page.create_worksheet_column(
