@@ -1,0 +1,585 @@
+prompt --application/pages/page_00011
+begin
+--   Manifest
+--     PAGE: 00011
+--   Manifest End
+wwv_flow_api.component_begin (
+ p_version_yyyy_mm_dd=>'2020.03.31'
+,p_release=>'20.1.0.00.13'
+,p_default_workspace_id=>1200569973923101
+,p_default_application_id=>101
+,p_default_id_offset=>67985499647402269
+,p_default_owner=>'PROD'
+);
+wwv_flow_api.create_page(
+ p_id=>11
+,p_user_interface_id=>wwv_flow_api.id(8142494873175551)
+,p_name=>'Petty Cash Management Configurations'
+,p_alias=>'PETTY-CASH-MANAGEMENT-CONFIGURATIONS'
+,p_step_title=>'Petty Cash Management Configurations'
+,p_autocomplete_on_off=>'OFF'
+,p_javascript_code=>'var htmldb_delete_message=''"DELETE_CONFIRM_MSG"'';'
+,p_page_template_options=>'#DEFAULT#'
+,p_protection_level=>'C'
+,p_last_updated_by=>'TCA9051'
+,p_last_upd_yyyymmddhh24miss=>'20220112185823'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3688142121353044)
+,p_plug_name=>'Breadcrumb'
+,p_region_template_options=>'#DEFAULT#:t-BreadcrumbRegion--compactTitle:t-BreadcrumbRegion--useBreadcrumbTitle'
+,p_component_template_options=>'#DEFAULT#'
+,p_plug_template=>wwv_flow_api.id(8067277693175509)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'REGION_POSITION_01'
+,p_menu_id=>wwv_flow_api.id(8003821207175482)
+,p_plug_source_type=>'NATIVE_BREADCRUMB'
+,p_menu_template_id=>wwv_flow_api.id(8121335853175533)
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3688681761353228)
+,p_plug_name=>'Petty Cash Management Configurations'
+,p_region_template_options=>'#DEFAULT#:t-Region--noPadding:t-Region--removeHeader:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(8057862405175507)
+,p_plug_display_sequence=>10
+,p_plug_grid_column_span=>12
+,p_plug_display_point=>'BODY'
+,p_query_type=>'TABLE'
+,p_query_table=>'HRSS_CONFIGURATIONS'
+,p_include_rowid_column=>false
+,p_is_editable=>true
+,p_edit_operations=>'i:u:d'
+,p_lost_update_check_type=>'VALUES'
+,p_plug_source_type=>'NATIVE_FORM'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(14303749124242664)
+,p_plug_name=>'Clearing requests: '
+,p_parent_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_region_template_options=>'#DEFAULT#:t-Region--hideShowIconsMath:is-expanded:t-Region--accent1:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(8040898187175502)
+,p_plug_display_sequence=>40
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(14303385486242660)
+,p_plug_name=>'Reimbursement requests: '
+,p_parent_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_region_template_options=>'#DEFAULT#:t-Region--hideShowIconsMath:is-expanded:t-Region--accent1:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(8040898187175502)
+,p_plug_display_sequence=>50
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3528512598745661)
+,p_plug_name=>'General'
+,p_parent_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_region_template_options=>'#DEFAULT#:t-Region--hideShowIconsMath:is-expanded:t-Region--scrollBody:t-Form--labelsAbove'
+,p_plug_template=>wwv_flow_api.id(8040898187175502)
+,p_plug_display_sequence=>10
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3528876642745665)
+,p_plug_name=>'Temporary Petty Cash :'
+,p_parent_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_region_template_options=>'#DEFAULT#:t-Region--hideShowIconsMath:is-expanded:t-Region--accent1:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(8040898187175502)
+,p_plug_display_sequence=>20
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_plug(
+ p_id=>wwv_flow_api.id(3529053352745666)
+,p_plug_name=>'Permanent Petty Cash: '
+,p_parent_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_region_template_options=>'#DEFAULT#:t-Region--hideShowIconsMath:is-expanded:t-Region--accent1:t-Region--scrollBody'
+,p_plug_template=>wwv_flow_api.id(8040898187175502)
+,p_plug_display_sequence=>30
+,p_plug_new_grid_row=>false
+,p_plug_display_point=>'BODY'
+,p_plug_query_options=>'DERIVED_REPORT_COLUMNS'
+,p_attribute_01=>'N'
+,p_attribute_02=>'HTML'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(3695085141353240)
+,p_button_sequence=>30
+,p_button_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_button_name=>'SAVE'
+,p_button_action=>'SUBMIT'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>wwv_flow_api.id(8119922506175532)
+,p_button_is_hot=>'Y'
+,p_button_image_alt=>'Apply Changes'
+,p_button_position=>'REGION_TEMPLATE_CHANGE'
+,p_button_condition=>'P11_ID'
+,p_button_condition_type=>'ITEM_IS_NOT_NULL'
+,p_database_action=>'UPDATE'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(3693900795353236)
+,p_button_sequence=>10
+,p_button_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_button_name=>'CANCEL'
+,p_button_action=>'REDIRECT_PAGE'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>wwv_flow_api.id(8119922506175532)
+,p_button_image_alt=>'Cancel'
+,p_button_position=>'REGION_TEMPLATE_CLOSE'
+,p_button_redirect_url=>'f?p=&APP_ID.:1:&SESSION.::&DEBUG.:::'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(3695482110353240)
+,p_button_sequence=>40
+,p_button_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_button_name=>'CREATE'
+,p_button_action=>'SUBMIT'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>wwv_flow_api.id(8119922506175532)
+,p_button_is_hot=>'Y'
+,p_button_image_alt=>'Create'
+,p_button_position=>'REGION_TEMPLATE_CREATE'
+,p_button_condition=>'P11_ID'
+,p_button_condition_type=>'ITEM_IS_NULL'
+,p_database_action=>'INSERT'
+);
+wwv_flow_api.create_page_button(
+ p_id=>wwv_flow_api.id(3694751597353240)
+,p_button_sequence=>20
+,p_button_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_button_name=>'DELETE'
+,p_button_action=>'REDIRECT_URL'
+,p_button_template_options=>'#DEFAULT#'
+,p_button_template_id=>wwv_flow_api.id(8119922506175532)
+,p_button_image_alt=>'Delete'
+,p_button_position=>'REGION_TEMPLATE_DELETE'
+,p_button_redirect_url=>'javascript:apex.confirm(htmldb_delete_message,''DELETE'');'
+,p_button_execute_validations=>'N'
+,p_button_condition_type=>'NEVER'
+,p_database_action=>'DELETE'
+);
+wwv_flow_api.create_page_branch(
+ p_id=>wwv_flow_api.id(3695848488353241)
+,p_branch_action=>'f?p=&APP_ID.:1:&SESSION.::&DEBUG.&success_msg=#SUCCESS_MSG#'
+,p_branch_point=>'AFTER_PROCESSING'
+,p_branch_type=>'REDIRECT_URL'
+,p_branch_sequence=>1
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(14303937876242666)
+,p_name=>'P11_PROJECT_REQUIRED_FOR_TEMPORARY'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>50
+,p_item_plug_id=>wwv_flow_api.id(3528876642745665)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Required Project Details ?'
+,p_source=>'PROJECT_REQUIRED_FOR_TEMPORARY'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(8119054570175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(14303895046242665)
+,p_name=>'P11_PROJECT_REQUIRED_FOR_PERMANANENT'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>60
+,p_item_plug_id=>wwv_flow_api.id(3529053352745666)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Required Project Details ?'
+,p_source=>'PROJECT_REQUIRED_FOR_PERMANANENT'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(8119054570175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(14303205312242659)
+,p_name=>'P11_PROJECT_REQUIRED_FOR_CLEARING'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(14303749124242664)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Required Project Details ?'
+,p_source=>'PROJECT_REQUIRED_FOR_CLEARING'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(8119054570175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(14303166765242658)
+,p_name=>'P11_PROJECT_REQUIRED_FOR_REIMBUR'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(14303385486242660)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Required Project Details ?'
+,p_source=>'PROJECT_REQUIRED_FOR_REIMBUR'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(8119054570175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3529568352745672)
+,p_name=>'P11_FINANCE_ORG_ID'
+,p_source_data_type=>'NUMBER'
+,p_item_sequence=>70
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Finance Department'
+,p_source=>'FINANCE_ORG_ID'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_POPUP_LOV'
+,p_named_lov=>'COPY OF ORGANIZATIONS ALL LOV'
+,p_lov=>wwv_flow_string.join(wwv_flow_t_varchar2(
+'Select org_name_en , org_id',
+'from dct_hr_organizations'))
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(8118975198175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_lov_display_extra=>'NO'
+,p_attribute_01=>'DIALOG'
+,p_attribute_02=>'FIRST_ROWSET'
+,p_attribute_03=>'N'
+,p_attribute_04=>'N'
+,p_attribute_05=>'N'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3529699080745673)
+,p_name=>'P11_SSED_ORG_ID'
+,p_source_data_type=>'NUMBER'
+,p_item_sequence=>80
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Support Services Sector'
+,p_source=>'SSED_ORG_ID'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_POPUP_LOV'
+,p_named_lov=>'ALL ORGANIZATIONS WITH DETAILS LOV'
+,p_lov=>'select org_name ,  org_level , parent_org_name parent_org ,parent_level, department_name , sector , org_id from organizations_details_v'
+,p_cSize=>30
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(8118975198175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_lov_display_extra=>'NO'
+,p_attribute_01=>'DIALOG'
+,p_attribute_02=>'FIRST_ROWSET'
+,p_attribute_03=>'N'
+,p_attribute_04=>'N'
+,p_attribute_05=>'N'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3529805419745674)
+,p_name=>'P11_PAYABLES_ORG_ID'
+,p_source_data_type=>'NUMBER'
+,p_item_sequence=>90
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Accounts Payable Section'
+,p_source=>'PAYABLES_ORG_ID'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_POPUP_LOV'
+,p_named_lov=>'ALL ORGANIZATIONS WITH DETAILS LOV'
+,p_lov=>'select org_name ,  org_level , parent_org_name parent_org ,parent_level, department_name , sector , org_id from organizations_details_v'
+,p_cSize=>30
+,p_field_template=>wwv_flow_api.id(8118975198175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_lov_display_extra=>'NO'
+,p_attribute_01=>'DIALOG'
+,p_attribute_02=>'FIRST_ROWSET'
+,p_attribute_03=>'N'
+,p_attribute_04=>'N'
+,p_attribute_05=>'N'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3529906243745675)
+,p_name=>'P11_FBP_ORG_ID'
+,p_source_data_type=>'NUMBER'
+,p_item_sequence=>100
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Finance Business Partners Section'
+,p_source=>'FBP_ORG_ID'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_POPUP_LOV'
+,p_named_lov=>'ALL ORGANIZATIONS WITH DETAILS LOV'
+,p_lov=>'select org_name ,  org_level , parent_org_name parent_org ,parent_level, department_name , sector , org_id from organizations_details_v'
+,p_cSize=>30
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(8118975198175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_lov_display_extra=>'NO'
+,p_attribute_01=>'DIALOG'
+,p_attribute_02=>'FIRST_ROWSET'
+,p_attribute_03=>'N'
+,p_attribute_04=>'N'
+,p_attribute_05=>'N'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3689004818353228)
+,p_name=>'P11_ID'
+,p_source_data_type=>'NUMBER'
+,p_is_primary_key=>true
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_source=>'ID'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_HIDDEN'
+,p_is_persistent=>'N'
+,p_protection_level=>'S'
+,p_attribute_01=>'Y'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3689370986353232)
+,p_name=>'P11_TEMPORARY_LIMIT'
+,p_source_data_type=>'NUMBER'
+,p_item_sequence=>20
+,p_item_plug_id=>wwv_flow_api.id(3528876642745665)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Petty Cash Temporary Limit'
+,p_post_element_text=>'AED'
+,p_format_mask=>'999G999G999G999G990D00'
+,p_source=>'TEMPORARY_LIMIT'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_NUMBER_FIELD'
+,p_cSize=>15
+,p_cMaxlength=>255
+,p_field_template=>wwv_flow_api.id(8119115844175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_03=>'right'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3689845003353233)
+,p_name=>'P11_PERMANANENT_LIMIT'
+,p_source_data_type=>'NUMBER'
+,p_item_sequence=>30
+,p_item_plug_id=>wwv_flow_api.id(3529053352745666)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Petty Cash Permananent Limit'
+,p_post_element_text=>'AED'
+,p_format_mask=>'999G999G999G999G990D00'
+,p_source=>'PERMANANENT_LIMIT'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_NUMBER_FIELD'
+,p_cSize=>15
+,p_cMaxlength=>255
+,p_field_template=>wwv_flow_api.id(8119054570175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_03=>'right'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3690235694353233)
+,p_name=>'P11_TEMP_DOC_REQ_YN'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>40
+,p_item_plug_id=>wwv_flow_api.id(3528876642745665)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Attachment Required to submit ? '
+,p_source=>'TEMP_DOC_REQ_YN'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(8119054570175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_help_text=>'Attachment Required to submit ?, if Yes, End user will not be able to submit the petty cash request.'
+,p_attribute_01=>'APPLICATION'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3690571695353234)
+,p_name=>'P11_PERM_DOC_REQ_YN'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>50
+,p_item_plug_id=>wwv_flow_api.id(3529053352745666)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Attachment Required to submit ? '
+,p_source=>'PERM_DOC_REQ_YN'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(8119054570175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_help_text=>'Attachment Required to submit ?, if Yes, End user will not be able to submit the permanent petty cash request.'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3691014138353234)
+,p_name=>'P11_EMAIL_COMMENTS_YN'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>40
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Allow Emails for Comments ?'
+,p_source=>'EMAIL_COMMENTS_YN'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(8118975198175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_help_text=>'Enable sending the comments to Petty cash participants emails.'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3930756310143480)
+,p_name=>'P11_OFFICIAL_EMAIL'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>50
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Official Email'
+,p_source=>'OFFICIAL_EMAIL'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>40
+,p_cMaxlength=>255
+,p_field_template=>wwv_flow_api.id(8118827706175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'EMAIL'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3930788585143481)
+,p_name=>'P11_SEND_EMAIL_YN'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>10
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Send Email ?'
+,p_source=>'SEND_EMAIL_YN'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_field_template=>wwv_flow_api.id(8118975198175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3930903451143482)
+,p_name=>'P11_TEST_EMAIL_YN'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>30
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Email Testing ?'
+,p_source=>'TEST_EMAIL_YN'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_YES_NO'
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(8118975198175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'CUSTOM'
+,p_attribute_02=>'Y'
+,p_attribute_03=>'Yes'
+,p_attribute_04=>'N'
+,p_attribute_05=>'No'
+);
+wwv_flow_api.create_page_item(
+ p_id=>wwv_flow_api.id(3931038247143483)
+,p_name=>'P11_TEST_EMAIL'
+,p_source_data_type=>'VARCHAR2'
+,p_item_sequence=>60
+,p_item_plug_id=>wwv_flow_api.id(3528512598745661)
+,p_item_source_plug_id=>wwv_flow_api.id(3688681761353228)
+,p_prompt=>'Test Email'
+,p_source=>'TEST_EMAIL'
+,p_source_type=>'REGION_SOURCE_COLUMN'
+,p_display_as=>'NATIVE_TEXT_FIELD'
+,p_cSize=>40
+,p_cMaxlength=>100
+,p_begin_on_new_line=>'N'
+,p_field_template=>wwv_flow_api.id(8118827706175531)
+,p_item_template_options=>'#DEFAULT#'
+,p_is_persistent=>'N'
+,p_attribute_01=>'N'
+,p_attribute_02=>'N'
+,p_attribute_04=>'EMAIL'
+,p_attribute_05=>'BOTH'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(3696743177353242)
+,p_process_sequence=>10
+,p_process_point=>'AFTER_SUBMIT'
+,p_region_id=>wwv_flow_api.id(3688681761353228)
+,p_process_type=>'NATIVE_FORM_DML'
+,p_process_name=>'Process form Petty Cash Management Configurations'
+,p_attribute_01=>'REGION_SOURCE'
+,p_attribute_05=>'Y'
+,p_attribute_06=>'Y'
+,p_attribute_08=>'Y'
+,p_error_display_location=>'INLINE_IN_NOTIFICATION'
+);
+wwv_flow_api.create_page_process(
+ p_id=>wwv_flow_api.id(3696295203353242)
+,p_process_sequence=>10
+,p_process_point=>'BEFORE_HEADER'
+,p_region_id=>wwv_flow_api.id(3688681761353228)
+,p_process_type=>'NATIVE_FORM_INIT'
+,p_process_name=>'Initialize form Petty Cash Management Configurations'
+);
+wwv_flow_api.component_end;
+end;
+/

@@ -43,7 +43,13 @@
       "PowerShell($f = Get-Item \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final app\\\\v1\\\\Admin\\(200\\)\\\\f200.sql\"; Write-Output \"File: $\\($f.Name\\)  Size: $\\([math]::Round\\($f.Length/1KB,1\\)\\) KB  Modified: $\\($f.LastWriteTime\\)\")",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\24_theme_oracle_fusion.sql\" 2>&1)",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\db\\\\v2\\\\export_app200.sql\" 2>&1)",
-      "PowerShell($f = Get-Item \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\Admin\\\\v1\\\\f200.sql\"; Write-Output \"Size: $\\([math]::Round\\($f.Length/1KB,1\\)\\) KB  Modified: $\\($f.LastWriteTime\\)\")"
+      "PowerShell($f = Get-Item \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\Admin\\\\v1\\\\f200.sql\"; Write-Output \"Size: $\\([math]::Round\\($f.Length/1KB,1\\)\\) KB  Modified: $\\($f.LastWriteTime\\)\")",
+      "Bash(xargs grep -l \"petty\\\\|f101\")",
+      "Bash(unzip -l apps/petty-cash/f101.zip)",
+      "Bash(unzip -q f101.zip)",
+      "Read(//c/c/claude/DCT-task-management/DCT-Task-Management/apps/petty-cash/**)",
+      "Bash(grep -E \"\\\\.\\(sql|md|txt\\)$\")",
+      "Bash(C:/claude/tools/sqlcl/sqlcl/bin/sql.exe -name prod_mcp @01b_dct_ddl_alterations.sql)"
     ]
   }
 }

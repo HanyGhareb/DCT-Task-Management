@@ -30,6 +30,7 @@ DROP TABLE dct_approval_actions     CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_approval_instances   CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_approval_steps       CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_approval_templates   CASCADE CONSTRAINTS PURGE;
+DROP TABLE dct_module_settings      CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_menu_items           CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_menus                CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_module_roles         CASCADE CONSTRAINTS PURGE;
@@ -388,6 +389,7 @@ CREATE TABLE dct_approval_templates (
     template_name    VARCHAR2(200)  NOT NULL,
     template_name_ar VARCHAR2(200),
     module_id        NUMBER,
+    request_type     VARCHAR2(50),                              -- Module-specific request type (e.g. PETTY_CASH, REIMBURSEMENT, CLEARING)
     description_en   VARCHAR2(1000),
     description_ar   VARCHAR2(1000),
     is_sequential    VARCHAR2(1)    DEFAULT 'Y' NOT NULL,  -- Y=sequential | N=parallel (any approver)
@@ -402,6 +404,12 @@ CREATE TABLE dct_approval_templates (
     CONSTRAINT chk_dct_tmpl_seq     CHECK  (is_sequential IN ('Y','N')),
     CONSTRAINT chk_dct_tmpl_active  CHECK  (is_active IN ('Y','N')),
     CONSTRAINT fk_dct_tmpl_module   FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
+);
+
+-- Only one active template per module + request_type combination
+CREATE UNIQUE INDEX uix_dct_tmpl_active ON dct_approval_templates (
+    CASE WHEN is_active = 'Y' THEN module_id    END,
+    CASE WHEN is_active = 'Y' THEN request_type END
 );
 
 -- =============================================================================
@@ -420,6 +428,12 @@ CREATE TABLE dct_approval_steps (
     escalate_role_id NUMBER,
     is_mandatory     VARCHAR2(1)    DEFAULT 'Y' NOT NULL,
     allow_skip       VARCHAR2(1)    DEFAULT 'N' NOT NULL,
+    -- Condition-based firing (step is skipped when condition not met)
+    condition_type   VARCHAR2(20)   DEFAULT 'ALWAYS' NOT NULL, -- ALWAYS|AMOUNT|TYPE_FILTER|COMBINED|CUSTOM
+    amount_operator  VARCHAR2(5),                               -- >|>=|<|<=|= (used when condition involves amount)
+    amount_threshold NUMBER,                                    -- AED threshold for amount-based conditions
+    type_filter      VARCHAR2(50),                              -- Generic type value (e.g. PERMANENT, TEMPORARY, URGENT)
+    custom_condition VARCHAR2(500),                             -- PL/SQL function name for module-specific logic
     created_by       VARCHAR2(100),
     created_at       TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     updated_by       VARCHAR2(100),
@@ -429,6 +443,8 @@ CREATE TABLE dct_approval_steps (
     CONSTRAINT chk_dct_step_type     CHECK       (step_type IN ('ROLE_BASED','USER_SPECIFIC','ORG_HEAD')),
     CONSTRAINT chk_dct_step_mand     CHECK       (is_mandatory IN ('Y','N')),
     CONSTRAINT chk_dct_step_skip     CHECK       (allow_skip IN ('Y','N')),
+    CONSTRAINT chk_dct_step_cond     CHECK       (condition_type IN ('ALWAYS','AMOUNT','TYPE_FILTER','COMBINED','CUSTOM')),
+    CONSTRAINT chk_dct_step_op       CHECK       (amount_operator IN ('>','>=','<','<=','=') OR amount_operator IS NULL),
     CONSTRAINT fk_dct_step_tmpl      FOREIGN KEY (template_id)      REFERENCES dct_approval_templates(template_id),
     CONSTRAINT fk_dct_step_role      FOREIGN KEY (required_role_id) REFERENCES dct_roles(role_id),
     CONSTRAINT fk_dct_step_user      FOREIGN KEY (specific_user_id) REFERENCES dct_users(user_id),
@@ -710,6 +726,32 @@ CREATE TABLE dct_announcements (
 CREATE INDEX ix_dct_ann_active ON dct_announcements(is_active, published_at, expires_at);
 
 -- =============================================================================
+-- 25. DCT_MODULE_SETTINGS  (Per-module admin-configurable settings)
+--     Each module seeds its own rows; Admin edits values at runtime.
+--     Different from DCT_SYSTEM_SETTINGS which holds platform-wide config.
+-- =============================================================================
+CREATE TABLE dct_module_settings (
+    setting_id          NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    module_id           NUMBER         NOT NULL,
+    setting_key         VARCHAR2(100)  NOT NULL,
+    setting_value       VARCHAR2(500),
+    setting_label       VARCHAR2(200)  NOT NULL,
+    setting_description VARCHAR2(1000),
+    value_type          VARCHAR2(20)   DEFAULT 'TEXT' NOT NULL, -- BOOLEAN|NUMBER|TEXT|SELECT
+    allowed_values      VARCHAR2(500),                          -- Pipe-separated options for SELECT type
+    default_value       VARCHAR2(500),                          -- Factory default; allows reset
+    effective_date      DATE           DEFAULT SYSDATE,         -- Settings apply to records created on/after
+    updated_by          VARCHAR2(100),
+    updated_at          TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    --
+    CONSTRAINT uq_dct_modsetting       UNIQUE      (module_id, setting_key),
+    CONSTRAINT chk_dct_modset_valtype  CHECK       (value_type IN ('BOOLEAN','NUMBER','TEXT','SELECT')),
+    CONSTRAINT fk_dct_modset_module    FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
+);
+
+CREATE INDEX ix_dct_modset_module ON dct_module_settings(module_id);
+
+-- =============================================================================
 -- TRIGGERS — Auto-maintain updated_at and updated_by on all tables
 -- updated_by: APEX app user when called from APEX, Oracle session user otherwise
 -- =============================================================================
@@ -840,6 +882,13 @@ BEGIN
     :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
 END;
 /
+CREATE OR REPLACE TRIGGER trg_dct_modset_upd
+    BEFORE UPDATE ON dct_module_settings FOR EACH ROW
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
+/
 
 -- =============================================================================
 -- COMMENTS — Table and column documentation
@@ -862,6 +911,15 @@ COMMENT ON COLUMN dct_users.password_hash IS 'SHA-512 hex digest. NULL when auth
 COMMENT ON COLUMN dct_users.is_external  IS 'Y for freelancers, vendors, CWIP external contractors';
 COMMENT ON COLUMN dct_user_roles.org_scope_id IS 'NULL = role applies across all orgs. Set to restrict role to one org subtree.';
 COMMENT ON COLUMN dct_approval_instances.source_module IS 'Module code of the domain app that owns this request (e.g. CWIP, PAYMENT_REQ)';
+COMMENT ON TABLE  dct_module_settings IS 'i-Finance V2: Per-module admin-configurable settings. Each module seeds its own keys; Admin edits values at runtime.';
+COMMENT ON COLUMN dct_module_settings.value_type        IS 'BOOLEAN=Y/N | NUMBER=numeric | TEXT=free text | SELECT=one of allowed_values';
+COMMENT ON COLUMN dct_module_settings.allowed_values    IS 'Pipe-separated valid options for SELECT type (e.g. HARD|SOFT)';
+COMMENT ON COLUMN dct_module_settings.effective_date    IS 'Setting applies to new records created on or after this date; does not retroactively affect in-progress records';
+COMMENT ON TABLE  dct_approval_templates IS 'i-Finance V2: Approval workflow definitions (master). One active template per module + request_type combination.';
+COMMENT ON COLUMN dct_approval_templates.request_type   IS 'Module-specific request type this workflow applies to (e.g. PETTY_CASH, REIMBURSEMENT, CLEARING, PAYMENT_REQUEST)';
+COMMENT ON TABLE  dct_approval_steps     IS 'i-Finance V2: Approval step definitions (detail). Steps fire in step_seq order; steps with unmet conditions are skipped.';
+COMMENT ON COLUMN dct_approval_steps.condition_type     IS 'ALWAYS=always fires | AMOUNT=amount threshold | TYPE_FILTER=request type value | COMBINED=amount+type | CUSTOM=PL/SQL function';
+COMMENT ON COLUMN dct_approval_steps.custom_condition   IS 'Name of a PL/SQL boolean function(p_instance_id IN NUMBER) RETURN BOOLEAN for module-specific conditions';
 
 COMMIT;
 -- End of 01_dct_ddl.sql
