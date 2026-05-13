@@ -1,0 +1,19 @@
+-- =============================================================================
+-- Freelancers Module (App 203) — Master Install Script
+-- File    : install.sql
+-- Run     : Via SQLcl — execute each script individually with full path
+--           sql -name prod_mcp < "final apps/FL/db/01_fl_ddl.sql"
+--           sql -name prod_mcp < "final apps/FL/db/02_fl_views.sql"
+--           sql -name prod_mcp < "final apps/FL/db/03_fl_seed.sql"
+-- =============================================================================
+-- Prerequisites:
+--   1. db/v2/install.sql complete
+--   2. final apps/PC/db/install.sql complete (provides DCT_GL_CODE_COMBINATIONS)
+--   3. DCT_APPROVAL_TEMPLATES, DCT_APPROVAL_STEPS tables exist
+-- =============================================================================
+
+PROMPT
+PROMPT === Freelancers Module Install ===
+PROMPT Run each script individually via SQLcl with full path.
+PROMPT See APEX_SETUP.md for APEX App 203 build instructions.
+PROMPT
