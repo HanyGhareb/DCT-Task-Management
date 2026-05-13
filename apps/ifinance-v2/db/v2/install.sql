@@ -146,12 +146,17 @@ PROMPT ============================================================
 @@23_apex_page_4_notifications.sql
 
 PROMPT ============================================================
-PROMPT  Step 24/24 — Navigation: Breadcrumbs for Sprint 5 pages
+PROMPT  Step 24/25 — Navigation: Breadcrumbs for Sprint 5 pages
 PROMPT ============================================================
 @@10_apex_navigation.sql
 
 PROMPT ============================================================
-PROMPT  Sprint 1-5 install complete.
+PROMPT  Step 25/25 — Theme: Oracle Fusion professional design
+PROMPT ============================================================
+@@24_theme_oracle_fusion.sql
+
+PROMPT ============================================================
+PROMPT  Sprint 1-5 install complete (incl. Oracle Fusion theme).
 PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:
 PROMPT    1. Shared Components > User Interface Attributes > Navigation Menu
