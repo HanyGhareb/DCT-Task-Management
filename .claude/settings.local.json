@@ -49,7 +49,26 @@
       "Bash(unzip -q f101.zip)",
       "Read(//c/c/claude/DCT-task-management/DCT-Task-Management/apps/petty-cash/**)",
       "Bash(grep -E \"\\\\.\\(sql|md|txt\\)$\")",
-      "Bash(C:/claude/tools/sqlcl/sqlcl/bin/sql.exe -name prod_mcp @01b_dct_ddl_alterations.sql)"
+      "Bash(C:/claude/tools/sqlcl/sqlcl/bin/sql.exe -name prod_mcp @01b_dct_ddl_alterations.sql)",
+      "Read(//c/Users/hanyg/AppData/Local/Temp/claude-apex-extract/f103/f103/application/pages/**)",
+      "Bash(ls -lh \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\docs\" 2>/dev/null || find c:\\\\\\\\claude -name \"*.md\" -type f 2>/dev/null | head -20)",
+      "Read(//c/claude/**)",
+      "Read(//c/Users/hanyg/AppData/Local/Temp/claude-apex-extract/f911/f911/application/pages/**)",
+      "PowerShell(cmd /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp < `\"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\install.sql`\" 2>&1\")",
+      "PowerShell(cmd /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp < `\"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\01_cc_ddl.sql`\" 2>&1\")",
+      "PowerShell(cmd /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp < `\"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\02_cc_views.sql`\" 2>&1\")",
+      "Bash(cmd.exe /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp\")",
+      "PowerShell(cmd /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp < `\"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\03_cc_seed.sql`\" 2>&1\")",
+      "PowerShell(cmd /c \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe -name prod_mcp < `\"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\app\\\\01_sequences.sql`\" 2>&1\")",
+      "Bash(cd /tmp)",
+      "Bash(unzip -q \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\freelancers\\\\f805.zip\")",
+      "Read(//tmp/**)",
+      "Bash(cat /tmp/f805/application/pages/page_00002.sql > /tmp/page_002.txt && wc -l /tmp/page_002.txt)",
+      "Bash(xargs grep -l \"process\\\\|workflow\\\\|procedure\")",
+      "Bash(xargs grep -l \"APPROVAL_STATUS\\\\|STATUS\\\\|workflow\")"
+    ],
+    "additionalDirectories": [
+      "\\tmp"
     ]
   }
 }
