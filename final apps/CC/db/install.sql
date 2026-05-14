@@ -36,6 +36,12 @@ PROMPT
 PROMPT [Step 4] Running 05_cc_alter_audit_cols.sql ...
 @05_cc_alter_audit_cols.sql
 
+-- Step 5: Add DCT_CC_CARD_LIMIT_HISTORY — immutable credit limit change log
+--         Idempotent — safe to re-run on existing install.
+PROMPT
+PROMPT [Step 5] Running 06_cc_card_limit_history.sql ...
+@06_cc_card_limit_history.sql
+
 PROMPT
 PROMPT ============================================================
 PROMPT  Credit Cards Module install complete.

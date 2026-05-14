@@ -18,6 +18,7 @@ BEGIN
     SELECT table_name FROM all_tables
     WHERE  owner = 'PROD'
     AND    table_name IN (
+             'DCT_CC_CARD_LIMIT_HISTORY',
              'DCT_CC_PROXIES',
              'DCT_CC_REIMB_LINES',
              'DCT_CC_REPLENISHMENTS',
@@ -341,6 +342,38 @@ COMMENT ON COLUMN prod.dct_cc_proxies.end_date         IS 'NULL = no expiry — 
 COMMENT ON COLUMN prod.dct_cc_proxies.granted_by_user_id IS 'CC Admin who authorised this proxy assignment';
 
 -- =============================================================================
+-- 9. DCT_CC_CARD_LIMIT_HISTORY — Immutable audit trail of credit limit changes
+-- =============================================================================
+CREATE TABLE prod.dct_cc_card_limit_history (
+  history_id           NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  cc_id                NUMBER          NOT NULL,
+  old_limit            NUMBER(15,2)    NOT NULL,
+  new_limit            NUMBER(15,2)    NOT NULL,
+  change_type          VARCHAR2(20)    NOT NULL,
+  request_id           NUMBER,
+  changed_at           DATE            DEFAULT SYSDATE NOT NULL,
+  changed_by           VARCHAR2(100),
+  notes                VARCHAR2(500),
+  -- Constraints
+  CONSTRAINT chk_dct_cclh_type        CHECK (change_type IN ('INITIAL','INCREASE','DECREASE')),
+  CONSTRAINT chk_dct_cclh_old_limit   CHECK (old_limit >= 0),
+  CONSTRAINT chk_dct_cclh_new_limit   CHECK (new_limit > 0),
+  CONSTRAINT fk_dct_cclh_cc           FOREIGN KEY (cc_id)
+                                        REFERENCES prod.dct_credit_cards(cc_id),
+  CONSTRAINT fk_dct_cclh_request      FOREIGN KEY (request_id)
+                                        REFERENCES prod.dct_cc_requests(request_id)
+);
+
+CREATE INDEX idx_dct_cclh_cc         ON prod.dct_cc_card_limit_history(cc_id, changed_at);
+CREATE INDEX idx_dct_cclh_request    ON prod.dct_cc_card_limit_history(request_id);
+
+COMMENT ON TABLE  prod.dct_cc_card_limit_history              IS 'Immutable audit trail of every credit limit change per card';
+COMMENT ON COLUMN prod.dct_cc_card_limit_history.change_type  IS 'INITIAL = first recorded limit on card issuance; INCREASE/DECREASE = limit change request approved';
+COMMENT ON COLUMN prod.dct_cc_card_limit_history.request_id   IS 'NULL for INITIAL entries; FK to DCT_CC_REQUESTS for INCREASE/DECREASE';
+COMMENT ON COLUMN prod.dct_cc_card_limit_history.old_limit    IS '0 for INITIAL entries (no prior limit)';
+COMMENT ON COLUMN prod.dct_cc_card_limit_history.changed_by   IS 'APEX APP_USER of the CC admin who approved/applied the change';
+
+-- =============================================================================
 -- UPDATED_AT TRIGGERS
 -- =============================================================================
 CREATE OR REPLACE TRIGGER prod.trg_dct_credit_cards_upd
@@ -385,4 +418,4 @@ PROMPT
 PROMPT === 01_cc_ddl.sql complete ===
 PROMPT Tables created: DCT_CREDIT_CARDS, DCT_CC_REQUESTS, DCT_CC_DOC_REQUIREMENTS,
 PROMPT                  DCT_CC_ATTACHMENTS, DCT_CC_DELEGATION, DCT_CC_REPLENISHMENTS,
-PROMPT                  DCT_CC_REIMB_LINES, DCT_CC_PROXIES
+PROMPT                  DCT_CC_REIMB_LINES, DCT_CC_PROXIES, DCT_CC_CARD_LIMIT_HISTORY
