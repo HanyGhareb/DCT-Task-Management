@@ -42,6 +42,13 @@ PROMPT
 PROMPT [Step 5] Running 06_cc_card_limit_history.sql ...
 @06_cc_card_limit_history.sql
 
+-- Step 6: Consolidate DCT_CC_DELEGATION → V2 DCT_DELEGATIONS
+--         Drops the module-local table; creates DCT_CC_DELEGATION_V view.
+--         Idempotent — safe to re-run on existing install.
+PROMPT
+PROMPT [Step 6] Running 07_cc_consolidate_delegation.sql ...
+@07_cc_consolidate_delegation.sql
+
 PROMPT
 PROMPT ============================================================
 PROMPT  Credit Cards Module install complete.

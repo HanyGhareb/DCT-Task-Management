@@ -175,9 +175,42 @@ AND   (p.end_date IS NULL OR p.end_date >= SYSDATE);
 
 COMMENT ON TABLE prod.dct_cc_active_proxy_v IS 'Currently active proxy assignments — used to determine who can submit on behalf of a card owner';
 
+-- =============================================================================
+-- 6. DCT_CC_DELEGATION_V — CC-scoped approver delegations via V2 shared table
+--    Backed by DCT_DELEGATIONS (scope='MODULE', module_code='CREDIT_CARDS').
+--    Use this view for all CC delegation queries instead of a module-local table.
+-- =============================================================================
+CREATE OR REPLACE VIEW prod.dct_cc_delegation_v AS
+SELECT
+  d.delegation_id,
+  d.delegator_id                          AS delegator_user_id,
+  delegator.display_name                  AS delegator_name,
+  d.delegate_id                           AS delegate_user_id,
+  delegate.display_name                   AS delegate_name,
+  d.start_date,
+  d.end_date,
+  d.reason,
+  d.status,
+  CASE d.status WHEN 'ACTIVE' THEN 'Y' ELSE 'N' END AS is_active,
+  d.approved_by,
+  d.approved_at,
+  d.created_by,
+  d.created_at,
+  d.updated_by,
+  d.updated_at
+FROM   prod.dct_delegations  d
+JOIN   prod.dct_modules      m          ON m.module_id  = d.module_id
+JOIN   prod.dct_users        delegator  ON delegator.user_id = d.delegator_id
+JOIN   prod.dct_users        delegate   ON delegate.user_id  = d.delegate_id
+WHERE  d.scope       = 'MODULE'
+AND    m.module_code = 'CREDIT_CARDS';
+
+COMMENT ON TABLE prod.dct_cc_delegation_v IS 'CC-scoped approver delegations — window into V2 DCT_DELEGATIONS (scope=MODULE, module=CREDIT_CARDS)';
+
 COMMIT;
 
 PROMPT
 PROMPT === 02_cc_views.sql complete ===
 PROMPT Views created: DCT_CC_CARD_V, DCT_CC_REQUEST_V, DCT_CC_REPLENISHMENT_V,
-PROMPT                DCT_CC_PENDING_REPLENISHMENT_V, DCT_CC_ACTIVE_PROXY_V
+PROMPT                DCT_CC_PENDING_REPLENISHMENT_V, DCT_CC_ACTIVE_PROXY_V,
+PROMPT                DCT_CC_DELEGATION_V

@@ -23,7 +23,6 @@ BEGIN
              'DCT_CC_REIMB_LINES',
              'DCT_CC_REPLENISHMENTS',
              'DCT_CC_ATTACHMENTS',
-             'DCT_CC_DELEGATION',
              'DCT_CC_DOC_REQUIREMENTS',
              'DCT_CC_REQUESTS',
              'DCT_CREDIT_CARDS'
@@ -188,38 +187,12 @@ COMMENT ON COLUMN prod.dct_cc_attachments.source_type  IS 'REQUEST = DCT_CC_REQU
 COMMENT ON COLUMN prod.dct_cc_attachments.source_id    IS 'FK to request_id or replenishment_id depending on source_type';
 COMMENT ON COLUMN prod.dct_cc_attachments.reference_id IS 'FK to DCT_CC_REIMB_LINES.line_id for line-level receipt uploads';
 
--- =============================================================================
--- 5. DCT_CC_DELEGATION — Approver Delegation
--- =============================================================================
-CREATE TABLE prod.dct_cc_delegation (
-  delegation_id        NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-  delegator_user_id    NUMBER          NOT NULL,
-  delegate_user_id     NUMBER          NOT NULL,
-  start_date           DATE            NOT NULL,
-  end_date             DATE            NOT NULL,
-  reason               VARCHAR2(500),
-  is_active            CHAR(1)         DEFAULT 'Y' NOT NULL,
-  created_by           VARCHAR2(100),
-  created_at           DATE            DEFAULT SYSDATE NOT NULL,
-  updated_by           VARCHAR2(100),
-  updated_at           DATE            DEFAULT SYSDATE NOT NULL,
-  -- Constraints
-  CONSTRAINT chk_dct_ccdel_active    CHECK (is_active IN ('Y','N')),
-  CONSTRAINT chk_dct_ccdel_dates     CHECK (end_date >= start_date),
-  CONSTRAINT chk_dct_ccdel_diff      CHECK (delegator_user_id <> delegate_user_id),
-  CONSTRAINT fk_dct_ccdel_delegator  FOREIGN KEY (delegator_user_id)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_ccdel_delegate   FOREIGN KEY (delegate_user_id)
-                                       REFERENCES prod.dct_users(user_id)
-);
-
-CREATE INDEX idx_dct_ccdel_delegator ON prod.dct_cc_delegation(delegator_user_id, is_active);
-CREATE INDEX idx_dct_ccdel_delegate  ON prod.dct_cc_delegation(delegate_user_id, is_active);
-
-COMMENT ON TABLE prod.dct_cc_delegation IS 'Temporary delegation of approval authority from one user to another';
+-- NOTE: Approver delegation for Credit Cards is handled by the V2 shared
+-- DCT_DELEGATIONS table (scope='MODULE', module_code='CREDIT_CARDS').
+-- Use the DCT_CC_DELEGATION_V view (02_cc_views.sql) for CC-scoped queries.
 
 -- =============================================================================
--- 6. DCT_CC_REPLENISHMENTS — Monthly Expense Statement Headers
+-- 5. DCT_CC_REPLENISHMENTS — Monthly Expense Statement Headers
 -- =============================================================================
 CREATE TABLE prod.dct_cc_replenishments (
   replenishment_id     NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -273,7 +246,7 @@ COMMENT ON COLUMN prod.dct_cc_replenishments.cc_id_gl       IS 'FK to DCT_GL_COD
 COMMENT ON COLUMN prod.dct_cc_replenishments.coding_type    IS 'GL or PROJECT — applies to all lines unless overridden';
 
 -- =============================================================================
--- 7. DCT_CC_REIMB_LINES — Monthly Expense Lines
+-- 6. DCT_CC_REIMB_LINES — Monthly Expense Lines
 -- =============================================================================
 CREATE TABLE prod.dct_cc_reimb_lines (
   line_id              NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -309,7 +282,7 @@ COMMENT ON COLUMN prod.dct_cc_reimb_lines.coding_type  IS 'Defaulted from header
 COMMENT ON COLUMN prod.dct_cc_reimb_lines.receipt_attached IS 'Y when at least one file is uploaded in DCT_CC_ATTACHMENTS for this line';
 
 -- =============================================================================
--- 8. DCT_CC_PROXIES — Proxy Submitters for Replenishments
+-- 7. DCT_CC_PROXIES — Proxy Submitters for Replenishments
 -- =============================================================================
 CREATE TABLE prod.dct_cc_proxies (
   proxy_id             NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -342,7 +315,7 @@ COMMENT ON COLUMN prod.dct_cc_proxies.end_date         IS 'NULL = no expiry — 
 COMMENT ON COLUMN prod.dct_cc_proxies.granted_by_user_id IS 'CC Admin who authorised this proxy assignment';
 
 -- =============================================================================
--- 9. DCT_CC_CARD_LIMIT_HISTORY — Immutable audit trail of credit limit changes
+-- 8. DCT_CC_CARD_LIMIT_HISTORY — Immutable audit trail of credit limit changes
 -- =============================================================================
 CREATE TABLE prod.dct_cc_card_limit_history (
   history_id           NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -394,12 +367,6 @@ CREATE OR REPLACE TRIGGER prod.trg_dct_cc_doc_req_upd
 BEGIN :NEW.updated_at := SYSDATE; END;
 /
 
-CREATE OR REPLACE TRIGGER prod.trg_dct_cc_delegation_upd
-  BEFORE UPDATE ON prod.dct_cc_delegation
-  FOR EACH ROW
-BEGIN :NEW.updated_at := SYSDATE; END;
-/
-
 CREATE OR REPLACE TRIGGER prod.trg_dct_cc_replenishments_upd
   BEFORE UPDATE ON prod.dct_cc_replenishments
   FOR EACH ROW
@@ -417,5 +384,6 @@ COMMIT;
 PROMPT
 PROMPT === 01_cc_ddl.sql complete ===
 PROMPT Tables created: DCT_CREDIT_CARDS, DCT_CC_REQUESTS, DCT_CC_DOC_REQUIREMENTS,
-PROMPT                  DCT_CC_ATTACHMENTS, DCT_CC_DELEGATION, DCT_CC_REPLENISHMENTS,
+PROMPT                  DCT_CC_ATTACHMENTS, DCT_CC_REPLENISHMENTS,
 PROMPT                  DCT_CC_REIMB_LINES, DCT_CC_PROXIES, DCT_CC_CARD_LIMIT_HISTORY
+PROMPT Note: Approver delegation uses shared V2 DCT_DELEGATIONS (scope=MODULE)

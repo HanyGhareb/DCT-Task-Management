@@ -92,11 +92,10 @@ BEGIN
     fix_table('DCT_CREDIT_CARDS',        'FK_DCT_CC_CREATED_BY',   'FK_DCT_CC_UPDATED_BY');
     fix_table('DCT_CC_REQUESTS',         'FK_DCT_CCR_CREATED_BY',  'FK_DCT_CCR_UPDATED_BY');
     fix_table('DCT_CC_DOC_REQUIREMENTS', 'FK_DCT_DOCREQ_CREATED',  'FK_DCT_DOCREQ_UPDATED');
-    fix_table('DCT_CC_DELEGATION',       'FK_DCT_CCDEL_CREATED',   'FK_DCT_CCDEL_UPDATED');
     fix_table('DCT_CC_REPLENISHMENTS',   'FK_DCT_CCREIMB_CREATED', 'FK_DCT_CCREIMB_UPDATED');
     fix_table('DCT_CC_PROXIES',          'FK_DCT_CCPRX_CREATED',   'FK_DCT_CCPRX_UPDATED');
     COMMIT;
-    DBMS_OUTPUT.PUT_LINE('CC audit columns migration complete — 6 tables.');
+    DBMS_OUTPUT.PUT_LINE('CC audit columns migration complete — 5 tables.');
 END;
 /
 
