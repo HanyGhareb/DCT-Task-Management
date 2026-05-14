@@ -46,6 +46,7 @@ CREATE TABLE dct_petty_cash (
     fiscal_year          NUMBER(4)      NOT NULL,
     due_date             DATE,
     disbursed_date       DATE,
+    disbursed_by         VARCHAR2(100),                    -- APP_USER who clicked "Disburse"
     closed_date          DATE,
     approval_instance_id NUMBER,
     submitted_at         TIMESTAMP,
@@ -304,7 +305,8 @@ END;
 -- =============================================================================
 COMMENT ON TABLE  dct_petty_cash           IS 'Petty Cash: One record per employee advance. Type=TEMPORARY must be cleared within the same fiscal year; PERMANENT spans multiple years.';
 COMMENT ON COLUMN dct_petty_cash.coding_type IS 'GL=segments from DCT_GL_CODE_COMBINATIONS | PROJECT=project/task/expenditure from external projects tables';
-COMMENT ON COLUMN dct_petty_cash.status      IS 'DRAFT→SUBMITTED→PENDING_APPROVAL→ACTIVE(disbursed)→CLOSED | REJECTED | CANCELLED';
+COMMENT ON COLUMN dct_petty_cash.status        IS 'DRAFT→SUBMITTED→PENDING_APPROVAL→ACTIVE(disbursed)→CLOSED | REJECTED | CANCELLED';
+COMMENT ON COLUMN dct_petty_cash.disbursed_by  IS 'APEX APP_USER of the AP_PETTY_CASH_ADMIN who performed the disbursement action';
 COMMENT ON TABLE  dct_pc_budget_lines      IS 'Petty Cash: Budget coding lines for the advance request. SUM(amount) must equal parent DCT_PETTY_CASH.amount.';
 COMMENT ON TABLE  dct_pc_reimbursements    IS 'Petty Cash: Reimbursement requests against an active petty cash. Approved reimbursements restore the employee float.';
 COMMENT ON TABLE  dct_pc_reimb_budget_lines IS 'Petty Cash: Budget coding lines per reimbursement. SUM(amount) must equal parent DCT_PC_REIMBURSEMENTS.amount.';
