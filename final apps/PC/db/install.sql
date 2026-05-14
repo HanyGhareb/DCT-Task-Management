@@ -22,7 +22,8 @@ WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 
 PROMPT ============================================================
 PROMPT  Step 1/3 — DDL: Tables, indexes, triggers
-PROMPT  (DCT_GL_CODE_COMBINATIONS + all petty cash transaction tables)
+PROMPT  (petty cash transaction tables; DCT_GL_CODE_COMBINATIONS is
+PROMPT   in the V2 Admin module — db/v2/01_dct_ddl.sql)
 PROMPT ============================================================
 @@01_pc_ddl.sql
 
@@ -44,9 +45,9 @@ PROMPT ============================================================
 PROMPT  Petty Cash module install complete.
 PROMPT
 PROMPT  NEXT STEPS:
-PROMPT    1. Load DCT_GL_CODE_COMBINATIONS data (GL chart of accounts)
+PROMPT    1. Load DCT_GL_CODE_COMBINATIONS data via App 200 (GL Management)
 PROMPT    2. Verify DCT_PROJECT_BUDGET_V resolves against your project tables
-PROMPT    3. In APEX Builder, create App 101 pages using the APEX_SETUP.md guide
+PROMPT    3. In APEX Builder, create App 201 pages using the APEX_SETUP.md guide
 PROMPT    4. Assign AP_PETTY_CASH_ADMIN role to AP team users via App 200
 PROMPT    5. Review and adjust approval workflow steps via the Admin UI
 PROMPT    6. Review module settings via the Module Settings admin page

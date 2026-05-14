@@ -10,7 +10,7 @@ Before building App 201, confirm the following are complete:
 - [ ] Shared V2 framework installed (`db/v2/install.sql` + `db/v2/01b_dct_ddl_alterations.sql`)
 - [ ] Petty Cash module installed (`final apps/PC/db/install.sql`)
 - [ ] App 200 (i-Finance Hub) is live and DCT_AUTH package is deployed
-- [ ] GL Code Combinations data loaded into `PROD.DCT_GL_CODE_COMBINATIONS`
+- [ ] GL Code Combinations data loaded into `PROD.DCT_GL_CODE_COMBINATIONS` (managed via App 200 — GL Management)
 - [ ] Project tables exist or `DCT_PROJECT_BUDGET_V` has been updated to point at correct source views
 - [ ] Sequences created (see `final apps/PC/app/01_sequences.sql`)
 - [ ] Shared components SQL run (see `final apps/PC/app/02_shared_components.sql`)

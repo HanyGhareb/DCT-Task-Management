@@ -18,6 +18,7 @@
 -- CLEAN REINSTALL (uncomment to drop all objects before re-creating)
 -- -----------------------------------------------------------------------------
 /*
+DROP TABLE dct_gl_code_combinations CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_announcements        CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_notifications        CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_sessions             CASCADE CONSTRAINTS PURGE;
@@ -842,8 +843,54 @@ END;
 /
 
 -- =============================================================================
+-- DCT_GL_CODE_COMBINATIONS
+--    Shared reference table for all valid GL chart-of-accounts combinations.
+--    Used by Petty Cash, Credit Cards, and any other module that records
+--    GL coding against transactions.
+--    Segments cascade: Entity Code → Appropriation → Cost Center →
+--    Entity Specific → Budget Group Code → Account → IC → Future1 → Future2
+-- =============================================================================
+CREATE TABLE dct_gl_code_combinations (
+    cc_id              NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    entity_code        VARCHAR2(30)   NOT NULL,
+    appropriation      VARCHAR2(30),
+    cost_center        VARCHAR2(30),
+    entity_specific    VARCHAR2(30),
+    budget_group_code  VARCHAR2(30),
+    account            VARCHAR2(30),
+    ic                 VARCHAR2(30),
+    future1            VARCHAR2(30),
+    future2            VARCHAR2(30),
+    is_active          VARCHAR2(1)    DEFAULT 'Y' NOT NULL,
+    start_date         DATE           DEFAULT SYSDATE NOT NULL,
+    end_date           DATE,
+    created_by         VARCHAR2(100),
+    created_at         TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    updated_by         VARCHAR2(100),
+    updated_at         TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    --
+    CONSTRAINT chk_dct_glcc_active CHECK (is_active IN ('Y','N')),
+    CONSTRAINT chk_dct_glcc_dates  CHECK (end_date IS NULL OR end_date >= start_date)
+);
+
+CREATE INDEX ix_dct_glcc_entity   ON dct_gl_code_combinations(entity_code, is_active);
+CREATE INDEX ix_dct_glcc_approp   ON dct_gl_code_combinations(entity_code, appropriation);
+CREATE INDEX ix_dct_glcc_cc       ON dct_gl_code_combinations(appropriation, cost_center);
+CREATE INDEX ix_dct_glcc_account  ON dct_gl_code_combinations(budget_group_code, account);
+CREATE INDEX ix_dct_glcc_active   ON dct_gl_code_combinations(is_active, start_date, end_date);
+
+CREATE OR REPLACE TRIGGER trg_dct_glcc_upd
+    BEFORE UPDATE ON dct_gl_code_combinations FOR EACH ROW
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
+END;
+/
+
+-- =============================================================================
 -- COMMENTS — Table and column documentation
 -- =============================================================================
+COMMENT ON TABLE dct_gl_code_combinations IS 'i-Finance V2 Shared: Valid GL chart-of-accounts combinations. Used by Petty Cash, Credit Cards, and any module recording GL coding. Segments cascade: Entity Code → Appropriation → Cost Center → Entity Specific → Budget Group Code → Account → IC → Future1 → Future2.';
 COMMENT ON TABLE dct_users               IS 'i-Finance V2: Master user directory for all internal and external users';
 COMMENT ON TABLE dct_organizations       IS 'i-Finance V2: Organisation hierarchy (divisions, sections, units)';
 COMMENT ON TABLE dct_roles               IS 'i-Finance V2: Role definitions. SYSTEM roles cannot be deleted.';

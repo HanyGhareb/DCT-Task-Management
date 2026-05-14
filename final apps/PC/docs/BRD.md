@@ -155,7 +155,7 @@ Fund Available validation controlled by `BUDGET_VALIDATION_MODE` module setting 
 ### Reference Tables
 | Table | Purpose |
 |---|---|
-| `DCT_GL_CODE_COMBINATIONS` | Valid GL segment combinations (LOV source) |
+| `DCT_GL_CODE_COMBINATIONS` | Valid GL segment combinations (LOV source) — **shared V2 Admin table, owned by `db/v2/01_dct_ddl.sql`** |
 | `DCT_PROJECT_BUDGET_V` | Project/task/expenditure with budget balances (view) |
 | `DCT_MODULE_SETTINGS` | Admin-configurable module behaviour |
 | `DCT_APPROVAL_TEMPLATES` | Workflow definitions (master) |

@@ -4,7 +4,7 @@
 -- Schema  : PROD
 -- DB      : Oracle 23ai
 -- Module  : PETTY_CASH (f101)
--- Depends : db/v2/01_dct_ddl.sql (shared framework must be installed first)
+-- Depends : db/v2/01_dct_ddl.sql (shared framework, incl. DCT_GL_CODE_COMBINATIONS)
 -- =============================================================================
 -- Run order: 01_pc_ddl → 02_pc_views → 03_pc_seed
 -- To reinstall clean: uncomment the DROP section below and run first.
@@ -23,47 +23,12 @@ DROP TABLE dct_pc_reimb_budget_lines CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_pc_reimbursements     CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_pc_budget_lines       CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_petty_cash            CASCADE CONSTRAINTS PURGE;
-DROP TABLE dct_gl_code_combinations  CASCADE CONSTRAINTS PURGE;
+-- NOTE: DCT_GL_CODE_COMBINATIONS is owned by the V2 Admin module (db/v2/01_dct_ddl.sql).
+--       Drop it there only if doing a full platform reinstall.
 */
 
 -- =============================================================================
--- 1. DCT_GL_CODE_COMBINATIONS
---    Master reference table for all valid GL chart-of-accounts combinations.
---    Segments cascade in this order:
---    Entity Code → Appropriation → Cost Center → Entity Specific →
---    Budget Group Code → Account → IC → Future1 → Future2
--- =============================================================================
-CREATE TABLE dct_gl_code_combinations (
-    cc_id              NUMBER         GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    entity_code        VARCHAR2(30)   NOT NULL,
-    appropriation      VARCHAR2(30),
-    cost_center        VARCHAR2(30),
-    entity_specific    VARCHAR2(30),
-    budget_group_code  VARCHAR2(30),
-    account            VARCHAR2(30),
-    ic                 VARCHAR2(30),
-    future1            VARCHAR2(30),
-    future2            VARCHAR2(30),
-    is_active          VARCHAR2(1)    DEFAULT 'Y' NOT NULL,
-    start_date         DATE           DEFAULT SYSDATE NOT NULL,
-    end_date           DATE,
-    created_by         VARCHAR2(100),
-    created_at         TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by         VARCHAR2(100),
-    updated_at         TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
-    --
-    CONSTRAINT chk_dct_glcc_active CHECK (is_active IN ('Y','N')),
-    CONSTRAINT chk_dct_glcc_dates  CHECK (end_date IS NULL OR end_date >= start_date)
-);
-
-CREATE INDEX ix_dct_glcc_entity   ON dct_gl_code_combinations(entity_code, is_active);
-CREATE INDEX ix_dct_glcc_approp   ON dct_gl_code_combinations(entity_code, appropriation);
-CREATE INDEX ix_dct_glcc_cc       ON dct_gl_code_combinations(appropriation, cost_center);
-CREATE INDEX ix_dct_glcc_account  ON dct_gl_code_combinations(budget_group_code, account);
-CREATE INDEX ix_dct_glcc_active   ON dct_gl_code_combinations(is_active, start_date, end_date);
-
--- =============================================================================
--- 2. DCT_PETTY_CASH
+-- 1. DCT_PETTY_CASH
 --    One record per employee advance. Each employee may hold at most
 --    MAX_PC_PER_EMPLOYEE active petty cash records (controlled by module setting).
 -- =============================================================================
@@ -291,13 +256,6 @@ CREATE INDEX ix_dct_att_request ON dct_pc_attachments(request_type, request_id);
 -- =============================================================================
 -- TRIGGERS — Auto-maintain updated_at / updated_by
 -- =============================================================================
-CREATE OR REPLACE TRIGGER trg_dct_glcc_upd
-    BEFORE UPDATE ON dct_gl_code_combinations FOR EACH ROW
-BEGIN
-    :NEW.updated_at := SYSTIMESTAMP;
-    :NEW.updated_by := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'));
-END;
-/
 CREATE OR REPLACE TRIGGER trg_dct_pc_upd
     BEFORE UPDATE ON dct_petty_cash FOR EACH ROW
 BEGIN
@@ -344,7 +302,6 @@ END;
 -- =============================================================================
 -- COMMENTS
 -- =============================================================================
-COMMENT ON TABLE  dct_gl_code_combinations IS 'Petty Cash: Valid GL chart-of-accounts combinations. Segments cascade: Entity Code → Appropriation → Cost Center → Entity Specific → Budget Group Code → Account → IC → Future1 → Future2.';
 COMMENT ON TABLE  dct_petty_cash           IS 'Petty Cash: One record per employee advance. Type=TEMPORARY must be cleared within the same fiscal year; PERMANENT spans multiple years.';
 COMMENT ON COLUMN dct_petty_cash.coding_type IS 'GL=segments from DCT_GL_CODE_COMBINATIONS | PROJECT=project/task/expenditure from external projects tables';
 COMMENT ON COLUMN dct_petty_cash.status      IS 'DRAFT→SUBMITTED→PENDING_APPROVAL→ACTIVE(disbursed)→CLOSED | REJECTED | CANCELLED';

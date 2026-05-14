@@ -7,9 +7,8 @@
 --           sql -name prod_mcp < "final apps/FL/db/03_fl_seed.sql"
 -- =============================================================================
 -- Prerequisites:
---   1. db/v2/install.sql complete
---   2. final apps/PC/db/install.sql complete (provides DCT_GL_CODE_COMBINATIONS)
---   3. DCT_APPROVAL_TEMPLATES, DCT_APPROVAL_STEPS tables exist
+--   1. db/v2/install.sql complete (provides DCT_GL_CODE_COMBINATIONS and approval tables)
+--   2. DCT_APPROVAL_TEMPLATES, DCT_APPROVAL_STEPS tables exist (part of V2 install)
 -- =============================================================================
 
 PROMPT

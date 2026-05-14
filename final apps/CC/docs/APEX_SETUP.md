@@ -8,8 +8,8 @@
 Before building App 202, confirm the following are complete:
 
 - [ ] Shared V2 framework installed (`db/v2/install.sql` + `db/v2/01b_dct_ddl_alterations.sql`)
-- [ ] Petty Cash module installed (`final apps/PC/db/install.sql`) — provides `DCT_GL_CODE_COMBINATIONS`
 - [ ] Credit Cards module installed (`final apps/CC/db/install.sql`)
+- [ ] `DCT_GL_CODE_COMBINATIONS` data loaded (V2 shared table — managed via App 200)
 - [ ] App 200 (i-Finance Hub) is live and `DCT_AUTH` package is deployed
 - [ ] Sequences created (see `final apps/CC/app/01_sequences.sql`)
 - [ ] Shared components SQL run (see `final apps/CC/app/02_shared_components.sql`)

@@ -6,7 +6,6 @@
 ## Prerequisites
 
 - [ ] Shared V2 framework installed (`db/v2/install.sql`)
-- [ ] Petty Cash module installed (`final apps/PC/db/install.sql`) — provides `DCT_GL_CODE_COMBINATIONS`
 - [ ] Freelancers module DB installed (`final apps/FL/db/01_fl_ddl.sql`, `02_fl_views.sql`, `03_fl_seed.sql`)
 - [ ] App 200 (i-Finance Hub) is live and `DCT_AUTH` package is deployed
 - [ ] Sequences created (`final apps/FL/app/01_sequences.sql`)
