@@ -17,7 +17,25 @@
       "Bash(git -C \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\" diff --stat)",
       "Bash(git -C \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\" add \"apps/ifinance-v2/db/v2/01_dct_ddl.sql\" \"db/petty-cash/01_pc_ddl.sql\" \"db/petty-cash/install.sql\" \"final apps/CC/db/install.sql\" \"final apps/CC/docs/APEX_SETUP.md\" \"final apps/FL/db/install.sql\" \"final apps/FL/docs/APEX_SETUP.md\" \"final apps/PC/db/01_pc_ddl.sql\" \"final apps/PC/db/install.sql\" \"final apps/PC/docs/APEX_SETUP.md\" \"final apps/PC/docs/BRD.md\")",
       "Bash(git -C 'c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management' commit -m ' *)",
-      "Bash(git -C \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\" push origin main)"
+      "Bash(git -C \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\" push origin main)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\FL\\\\db\\\\04_fl_pkg.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\05_cc_alter_audit_cols.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\FL\\\\db\\\\05_fl_alter_audit_cols.sql\" 2>&1)",
+      "Bash(New-Item -ItemType Directory -Force \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\DT\\\\docs\")",
+      "Bash(Out-Null)",
+      "Bash(New-Item -ItemType Directory -Force \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\DT\\\\db\")",
+      "Bash(New-Item -ItemType Directory -Force \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\DT\\\\app\")",
+      "Bash(Write-Host \"Folders created\")",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\PC\\\\db\\\\05_pc_alter.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"SELECT column_name, data_type, data_length, nullable FROM all_tab_columns WHERE owner='PROD' AND table_name='DCT_PETTY_CASH' AND column_name='DISBURSED_BY';\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\verify_pc.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\add_disbursed_by.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\PC\\\\db\\\\04_pc_pkg.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\check_audit_log.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\check_pkgs.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\06_cc_card_limit_history.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\check_delegations.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\07_cc_consolidate_delegation.sql\" 2>&1)"
     ]
   }
 }
