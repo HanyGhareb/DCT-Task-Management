@@ -149,7 +149,7 @@ DECLARE
         ON    (rp.role_id = src.role_id AND rp.permission_id = src.permission_id)
         WHEN NOT MATCHED THEN
             INSERT (role_id, permission_id, granted_by)
-            VALUES (p_role_id, p_perm_id, 'SEED');
+            VALUES (p_role_id, p_perm_id, 'archa2');
     END;
 BEGIN
     SELECT module_id INTO v_module_id   FROM dct_modules WHERE module_code = 'DUTY_TRAVEL';
@@ -467,7 +467,7 @@ END;
 /
 
 -- =============================================================================
--- 7. DEFAULT DOCUMENT REQUIREMENTS — DCT_DT_DOC_REQUIREMENTS
+-- 7. DEFAULT DOCUMENT REQUIREMENTS — DT_DOC_REQUIREMENTS
 -- =============================================================================
 DECLARE
     v_invitation_id  dct_lookup_values.lookup_value_id%TYPE;
@@ -486,18 +486,18 @@ DECLARE
     BEGIN
         MERGE INTO dt_doc_requirements t
         USING (SELECT p_mtype     AS mission_type,
-                      p_dir       AS trip_direction,
+                      p_dir       AS trip_type,
                       p_dtype_id  AS document_type_id,
                       p_source    AS applies_to_source FROM dual) s
         ON (t.mission_type      = s.mission_type
-        AND t.trip_direction    = s.trip_direction
+        AND t.trip_type    = s.trip_type
         AND t.document_type_id  = s.document_type_id
         AND t.applies_to_source = s.applies_to_source)
         WHEN NOT MATCHED THEN
-            INSERT (mission_type, trip_direction, document_type_id, is_mandatory,
+            INSERT (mission_type, trip_type, document_type_id, is_mandatory,
                     applies_to_source, is_active, display_seq, created_by, updated_by)
             VALUES (p_mtype, p_dir, p_dtype_id, p_mand,
-                    p_source, 'Y', p_seq, 'SEED', 'SEED')
+                    p_source, 'Y', p_seq, 'archa2', 'archa2')
         WHEN MATCHED THEN
             UPDATE SET is_mandatory = p_mand,
                        display_seq  = p_seq;
@@ -656,7 +656,7 @@ BEGIN
             INSERT (rate_key, rate_key_name_en, grade_code, per_diem_daily_aed,
                     effective_from, is_active, created_by, updated_by)
             VALUES (v_rates(i).rkey, v_rates(i).rname, v_rates(i).grade, v_rates(i).rate,
-                    TRUNC(SYSDATE), 'Y', 'SEED', 'SEED')
+                    TRUNC(SYSDATE), 'Y', 'archa2', 'archa2')
         WHEN MATCHED THEN
             UPDATE SET per_diem_daily_aed = v_rates(i).rate,
                        rate_key_name_en   = v_rates(i).rname;
@@ -720,7 +720,7 @@ BEGIN
         WHEN NOT MATCHED THEN
             INSERT (country_code, country_name_en, group_code, is_active, created_by, updated_by)
             VALUES (v_groups(i).ccode, v_groups(i).cname, v_groups(i).grp,
-                    'Y', 'SEED', 'SEED')
+                    'Y', 'archa2', 'archa2')
         WHEN MATCHED THEN
             UPDATE SET country_name_en = v_groups(i).cname,
                        group_code      = v_groups(i).grp;

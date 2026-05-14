@@ -255,7 +255,7 @@ CREATE TABLE prod.dt_doc_requirements (
 COMMENT ON TABLE  prod.dt_doc_requirements IS 'Admin-configured required document types per mission type and trip direction';
 COMMENT ON COLUMN prod.dt_doc_requirements.applies_to_source IS 'REQUEST = request submission; SETTLEMENT = settlement submission; BOTH = both';
 
-CREATE INDEX ix_dt_docreq_lookup ON prod.dt_doc_requirements(mission_type, trip_direction, is_active);
+CREATE INDEX ix_dt_docreq_lookup ON prod.dt_doc_requirements(mission_type, trip_type, is_active);
 
 -- =============================================================================
 -- 6. DT_DOCUMENTS — Supporting documents (requests + settlements)

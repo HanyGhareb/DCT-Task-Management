@@ -1,5 +1,5 @@
 # Business Requirements Document — Duty Travel Module (App 204)
-**Version:** 1.1 | **Status:** Draft | **Date:** 2026-05-14
+**Version:** 1.2 | **Status:** DB Complete — APEX pending | **Date:** 2026-05-14
 **Schema:** PROD | **App ID:** 204 | **App Alias:** DT
 
 ---
@@ -46,7 +46,7 @@ Master record for a single travel event (one trip, one employee). May contain mu
 | `employee_grade_code` | VARCHAR2(20) NOT NULL | Snapped from employee profile at request creation — used by `CALC_PER_DIEM` for rate lookup |
 | `org_id` | NUMBER NOT NULL | FK → DCT_ORGANIZATIONS |
 | `mission_type` | VARCHAR2(20) NOT NULL | `BUSINESS_MISSION` / `TRAINING` |
-| `trip_direction` | VARCHAR2(10) NOT NULL | `INTERNAL` / `EXTERNAL` |
+| `trip_type` | VARCHAR2(10) NOT NULL | `INTERNAL` / `EXTERNAL` |
 | `purpose` | VARCHAR2(1000) NOT NULL | Trip objective |
 | `hosted_by` | VARCHAR2(200) | Inviting org / conference / training provider |
 | `departure_date` | DATE NOT NULL | Overall trip start date |
@@ -59,9 +59,9 @@ Master record for a single travel event (one trip, one employee). May contain mu
 | `local_transport_aed` | NUMBER(15,2) DEFAULT 0 NOT NULL | Manual entry — visible only when `INCLUDE_LOCAL_TRANSPORT_ALLOWANCE = Y` |
 | `other_allowances_aed` | NUMBER(15,2) DEFAULT 0 NOT NULL | Any other pre-approved allowances — always visible |
 | `total_advance_aed` | NUMBER(15,2) DEFAULT 0 NOT NULL | `total_per_diem_aed` + all enabled allowances — set by `DT_PKG.CALC_PER_DIEM` |
-| `coding_type` | VARCHAR2(10) NOT NULL | `GL` / `PROJECT` |
-| `cc_id_gl` | NUMBER | FK → DCT_GL_CODE_COMBINATIONS (when `coding_type = GL`) |
-| `project_number` | VARCHAR2(50) | When `coding_type = PROJECT` |
+| `budget_type` | VARCHAR2(10) NOT NULL | `GL` / `PROJECT` |
+| `cc_id_gl` | NUMBER | FK → DCT_GL_CODE_COMBINATIONS (when `budget_type = GL`) |
+| `project_number` | VARCHAR2(50) | When `budget_type = PROJECT` |
 | `task_number` | VARCHAR2(50) | |
 | `expenditure_type` | VARCHAR2(100) | |
 | `status` | VARCHAR2(25) DEFAULT 'DRAFT' NOT NULL | See §4.3 |
@@ -82,7 +82,7 @@ Master record for a single travel event (one trip, one employee). May contain mu
 - `return_date ≥ departure_date`
 - `departure_date ≥ SYSDATE` at submission time (unless `ALLOW_PAST_TRAVEL_REQUEST = Y`)
 - At least one destination row must exist before submission
-- Budget coding (`coding_type` + relevant fields) required before submission
+- Budget coding (`budget_type` + relevant fields) required before submission
 - `total_advance_aed` and `total_per_diem_aed` are read-only — always set by `DT_PKG.CALC_PER_DIEM`
 
 ### 4.3 Status Flow
@@ -257,7 +257,7 @@ Admin-configurable required document types per mission type, trip direction, and
 |---|---|---|
 | `doc_req_id` | NUMBER IDENTITY PK | |
 | `mission_type` | VARCHAR2(20) NOT NULL | `BUSINESS_MISSION` / `TRAINING` / `ALL` |
-| `trip_direction` | VARCHAR2(10) NOT NULL | `INTERNAL` / `EXTERNAL` / `ALL` |
+| `trip_type` | VARCHAR2(10) NOT NULL | `INTERNAL` / `EXTERNAL` / `ALL` |
 | `document_type_id` | NUMBER NOT NULL | FK → DCT_LOOKUP_VALUES (`DT_DOCUMENT_TYPE`) |
 | `is_mandatory` | VARCHAR2(1) DEFAULT 'Y' NOT NULL | Y/N |
 | `applies_to_source` | VARCHAR2(20) DEFAULT 'REQUEST' NOT NULL | `REQUEST` / `SETTLEMENT` / `BOTH` |
