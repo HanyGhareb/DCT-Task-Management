@@ -38,7 +38,7 @@ The Freelancers module manages the full lifecycle of freelancer engagements for 
 ## 4. Function 1 — Registration
 
 ### 4.1 `DCT_NATIONALITY`
-Standalone platform-level lookup for nationalities (shared across modules).
+Platform-level nationality lookup — **shared V2 Admin table, owned by `db/v2/01_dct_ddl.sql`**. Seeded in `db/v2/04_dct_seed.sql` (section 11, 31 nationalities). FK referenced by `DCT_FL_REGISTRATIONS.nationality_code` and `DCT_FL_FREELANCERS.nationality_code`.
 
 | Column | Type | Notes |
 |---|---|---|

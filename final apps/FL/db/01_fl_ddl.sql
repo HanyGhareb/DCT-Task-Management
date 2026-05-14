@@ -9,30 +9,12 @@ ALTER SESSION SET CURRENT_SCHEMA = PROD;
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 
--- =============================================================================
--- 1. DCT_NATIONALITY — Standalone platform-level nationality lookup
--- =============================================================================
-CREATE TABLE prod.dct_nationality (
-    nationality_id    NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    nationality_code  VARCHAR2(3)     NOT NULL,
-    nationality_name_en VARCHAR2(100) NOT NULL,
-    nationality_name_ar VARCHAR2(100),
-    is_active         VARCHAR2(1)     DEFAULT 'Y' NOT NULL,
-    display_seq       NUMBER          DEFAULT 99,
-    created_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    --
-    CONSTRAINT uq_dct_nat_code   UNIQUE (nationality_code),
-    CONSTRAINT chk_dct_nat_active CHECK (is_active IN ('Y','N'))
-);
-
-COMMENT ON TABLE  prod.dct_nationality IS 'Platform-level nationality lookup — shared across all modules';
-COMMENT ON COLUMN prod.dct_nationality.nationality_code IS 'ISO 3166-1 alpha-2 code (AE, IN, PK …)';
-
-CREATE INDEX ix_dct_nat_active ON prod.dct_nationality(is_active, display_seq);
+-- NOTE: DCT_NATIONALITY is owned by the V2 Admin module (db/v2/01_dct_ddl.sql).
+--       It is seeded in db/v2/04_dct_seed.sql (section 11).
+--       Drop it there only if doing a full platform reinstall.
 
 -- =============================================================================
--- 2. DCT_FL_REGISTRATIONS — Pre-approval registration request
+-- 1. DCT_FL_REGISTRATIONS — Pre-approval registration request
 -- =============================================================================
 CREATE TABLE prod.dct_fl_registrations (
     registration_id     NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -80,7 +62,7 @@ CREATE INDEX ix_dct_fl_reg_email   ON prod.dct_fl_registrations(email);
 CREATE INDEX ix_dct_fl_reg_natcode ON prod.dct_fl_registrations(nationality_code);
 
 -- =============================================================================
--- 3. DCT_FL_FREELANCERS — Approved freelancer profile
+-- 2. DCT_FL_FREELANCERS — Approved freelancer profile
 -- =============================================================================
 CREATE TABLE prod.dct_fl_freelancers (
     freelancer_id     NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -125,7 +107,7 @@ CREATE INDEX ix_dct_fl_frl_status ON prod.dct_fl_freelancers(status);
 -- ix_dct_fl_frl_email omitted: uq_dct_fl_frl_email unique constraint already indexes email
 
 -- =============================================================================
--- 4. DCT_FL_BANK_ACCOUNTS
+-- 3. DCT_FL_BANK_ACCOUNTS
 -- =============================================================================
 CREATE TABLE prod.dct_fl_bank_accounts (
     bank_account_id   NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -155,7 +137,7 @@ COMMENT ON TABLE prod.dct_fl_bank_accounts IS 'Freelancer bank accounts — one 
 CREATE INDEX ix_dct_fl_ba_frl ON prod.dct_fl_bank_accounts(freelancer_id, is_active);
 
 -- =============================================================================
--- 5. DCT_FL_DOCUMENTS — Unified document store for all FL functions
+-- 4. DCT_FL_DOCUMENTS — Unified document store for all FL functions
 -- =============================================================================
 CREATE TABLE prod.dct_fl_documents (
     document_id       NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -193,7 +175,7 @@ CREATE INDEX ix_dct_fl_doc_frl    ON prod.dct_fl_documents(freelancer_id);
 CREATE INDEX ix_dct_fl_doc_expiry ON prod.dct_fl_documents(expiry_date);
 
 -- =============================================================================
--- 6. DCT_FL_CONTRACTS
+-- 5. DCT_FL_CONTRACTS
 -- =============================================================================
 CREATE TABLE prod.dct_fl_contracts (
     contract_id               NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -244,7 +226,7 @@ CREATE INDEX ix_dct_fl_con_status ON prod.dct_fl_contracts(status);
 CREATE INDEX ix_dct_fl_con_org    ON prod.dct_fl_contracts(org_id);
 
 -- =============================================================================
--- 7. DCT_FL_CONTRACT_AMENDMENTS
+-- 6. DCT_FL_CONTRACT_AMENDMENTS
 -- =============================================================================
 CREATE TABLE prod.dct_fl_contract_amendments (
     amendment_id         NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -275,7 +257,7 @@ COMMENT ON TABLE prod.dct_fl_contract_amendments IS 'Formal amendment requests �
 CREATE INDEX ix_dct_fl_amend_con ON prod.dct_fl_contract_amendments(contract_id, status);
 
 -- =============================================================================
--- 8. DCT_FL_PAYMENT_SCHEDULE — Created before DCT_FL_PAYMENT_VOUCHERS
+-- 7. DCT_FL_PAYMENT_SCHEDULE — Created before DCT_FL_PAYMENT_VOUCHERS
 --    voucher_id FK added via ALTER TABLE after vouchers table is created
 -- =============================================================================
 CREATE TABLE prod.dct_fl_payment_schedule (
@@ -300,7 +282,7 @@ CREATE INDEX ix_dct_fl_sched_status ON prod.dct_fl_payment_schedule(status);
 CREATE INDEX ix_dct_fl_sched_due    ON prod.dct_fl_payment_schedule(due_date);
 
 -- =============================================================================
--- 9. DCT_FL_PAYMENT_VOUCHERS
+-- 8. DCT_FL_PAYMENT_VOUCHERS
 -- =============================================================================
 CREATE TABLE prod.dct_fl_payment_vouchers (
     voucher_id           NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -360,7 +342,7 @@ ALTER TABLE prod.dct_fl_payment_schedule
     FOREIGN KEY (voucher_id) REFERENCES prod.dct_fl_payment_vouchers(voucher_id);
 
 -- =============================================================================
--- 10. DCT_FL_DELIVERABLES
+-- 9. DCT_FL_DELIVERABLES
 -- =============================================================================
 CREATE TABLE prod.dct_fl_deliverables (
     deliverable_id    NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -397,7 +379,7 @@ CREATE INDEX ix_dct_fl_deliv_sched ON prod.dct_fl_deliverables(schedule_id);
 CREATE INDEX ix_dct_fl_deliv_stat  ON prod.dct_fl_deliverables(status);
 
 -- =============================================================================
--- 11. DCT_FL_DOC_EXPIRY_ALERTS
+-- 10. DCT_FL_DOC_EXPIRY_ALERTS
 -- =============================================================================
 CREATE TABLE prod.dct_fl_doc_expiry_alerts (
     alert_id          NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -420,7 +402,7 @@ CREATE INDEX ix_dct_fl_alert_doc  ON prod.dct_fl_doc_expiry_alerts(document_id, 
 CREATE INDEX ix_dct_fl_alert_frl  ON prod.dct_fl_doc_expiry_alerts(freelancer_id);
 
 -- =============================================================================
--- 12. DCT_FL_CONTRACT_RENEWALS
+-- 11. DCT_FL_CONTRACT_RENEWALS
 -- =============================================================================
 CREATE TABLE prod.dct_fl_contract_renewals (
     renewal_id              NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -462,7 +444,7 @@ CREATE INDEX ix_dct_fl_rnl_orig ON prod.dct_fl_contract_renewals(original_contra
 CREATE INDEX ix_dct_fl_rnl_stat ON prod.dct_fl_contract_renewals(status);
 
 -- =============================================================================
--- 13. DCT_FL_PROFILE_CHANGE_REQUESTS
+-- 12. DCT_FL_PROFILE_CHANGE_REQUESTS
 -- =============================================================================
 CREATE TABLE prod.dct_fl_profile_change_requests (
     change_request_id    NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -569,7 +551,7 @@ COMMIT;
 
 PROMPT
 PROMPT === 01_fl_ddl.sql complete ===
-PROMPT Tables created: DCT_NATIONALITY, DCT_FL_REGISTRATIONS, DCT_FL_FREELANCERS,
+PROMPT Tables created: DCT_FL_REGISTRATIONS, DCT_FL_FREELANCERS,
 PROMPT                 DCT_FL_BANK_ACCOUNTS, DCT_FL_DOCUMENTS, DCT_FL_CONTRACTS,
 PROMPT                 DCT_FL_CONTRACT_AMENDMENTS, DCT_FL_PAYMENT_SCHEDULE,
 PROMPT                 DCT_FL_PAYMENT_VOUCHERS, DCT_FL_DELIVERABLES,

@@ -603,6 +603,69 @@ BEGIN
 END;
 /
 
+-- =============================================================================
+-- 11. DCT_NATIONALITY — Common nationalities (UAE context, 31 rows)
+--     ISO 3166-1 alpha-2 codes; OT = "Other" catch-all
+-- =============================================================================
+DECLARE
+    TYPE t_nat IS RECORD (
+        code VARCHAR2(3),
+        en   VARCHAR2(100),
+        ar   VARCHAR2(100),
+        seq  NUMBER
+    );
+    TYPE t_nat_list IS TABLE OF t_nat;
+    v_nats t_nat_list := t_nat_list(
+        t_nat('AE', 'Emirati',        'إماراتي',       1),
+        t_nat('SA', 'Saudi Arabian',   'سعودي',         2),
+        t_nat('EG', 'Egyptian',        'مصري',          3),
+        t_nat('JO', 'Jordanian',       'أردني',         4),
+        t_nat('LB', 'Lebanese',        'لبناني',        5),
+        t_nat('SY', 'Syrian',          'سوري',          6),
+        t_nat('IN', 'Indian',          'هندي',          7),
+        t_nat('PK', 'Pakistani',       'باكستاني',      8),
+        t_nat('PH', 'Filipino',        'فلبيني',        9),
+        t_nat('BD', 'Bangladeshi',     'بنغلاديشي',     10),
+        t_nat('NP', 'Nepali',          'نيبالي',        11),
+        t_nat('LK', 'Sri Lankan',      'سريلانكي',      12),
+        t_nat('GB', 'British',         'بريطاني',       13),
+        t_nat('US', 'American',        'أمريكي',        14),
+        t_nat('FR', 'French',          'فرنسي',         15),
+        t_nat('DE', 'German',          'ألماني',        16),
+        t_nat('CN', 'Chinese',         'صيني',          17),
+        t_nat('MY', 'Malaysian',       'ماليزي',        18),
+        t_nat('SD', 'Sudanese',        'سوداني',        19),
+        t_nat('YE', 'Yemeni',          'يمني',          20),
+        t_nat('OM', 'Omani',           'عُماني',        21),
+        t_nat('BH', 'Bahraini',        'بحريني',        22),
+        t_nat('KW', 'Kuwaiti',         'كويتي',         23),
+        t_nat('QA', 'Qatari',          'قطري',          24),
+        t_nat('ET', 'Ethiopian',       'إثيوبي',        25),
+        t_nat('ER', 'Eritrean',        'إريتري',        26),
+        t_nat('TZ', 'Tanzanian',       'تنزاني',        27),
+        t_nat('KE', 'Kenyan',          'كيني',          28),
+        t_nat('GH', 'Ghanaian',        'غاني',          29),
+        t_nat('NG', 'Nigerian',        'نيجيري',        30),
+        t_nat('OT', 'Other',           'أخرى',          99)
+    );
+BEGIN
+    FOR i IN 1 .. v_nats.COUNT LOOP
+        MERGE INTO dct_nationality tgt
+        USING (SELECT v_nats(i).code AS nationality_code FROM dual) src
+        ON    (tgt.nationality_code = src.nationality_code)
+        WHEN NOT MATCHED THEN
+            INSERT (nationality_code, nationality_name_en, nationality_name_ar, is_active, display_seq)
+            VALUES (v_nats(i).code, v_nats(i).en, v_nats(i).ar, 'Y', v_nats(i).seq)
+        WHEN MATCHED THEN
+            UPDATE SET nationality_name_en = v_nats(i).en,
+                       nationality_name_ar = v_nats(i).ar,
+                       display_seq         = v_nats(i).seq;
+    END LOOP;
+    COMMIT;
+    DBMS_OUTPUT.PUT_LINE('DCT_NATIONALITY seeded: ' || v_nats.COUNT || ' nationalities');
+END;
+/
+
 PROMPT ============================================================
 PROMPT  i-Finance V2 seed data loaded successfully.
 PROMPT  Default admin: ADMIN / iFinance@2026

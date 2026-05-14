@@ -18,6 +18,7 @@
 -- CLEAN REINSTALL (uncomment to drop all objects before re-creating)
 -- -----------------------------------------------------------------------------
 /*
+DROP TABLE dct_nationality          CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_gl_code_combinations CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_announcements        CASCADE CONSTRAINTS PURGE;
 DROP TABLE dct_notifications        CASCADE CONSTRAINTS PURGE;
@@ -843,6 +844,35 @@ END;
 /
 
 -- =============================================================================
+-- DCT_NATIONALITY
+--    Platform-level nationality lookup — ISO 3166-1 alpha-2 codes.
+--    Used by Freelancers (App 203) and any other module that records
+--    the nationality of a person.
+-- =============================================================================
+CREATE TABLE dct_nationality (
+    nationality_id      NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    nationality_code    VARCHAR2(3)     NOT NULL,
+    nationality_name_en VARCHAR2(100)   NOT NULL,
+    nationality_name_ar VARCHAR2(100),
+    is_active           VARCHAR2(1)     DEFAULT 'Y' NOT NULL,
+    display_seq         NUMBER          DEFAULT 99,
+    created_at          TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    updated_at          TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
+    --
+    CONSTRAINT uq_dct_nat_code    UNIQUE (nationality_code),
+    CONSTRAINT chk_dct_nat_active CHECK  (is_active IN ('Y','N'))
+);
+
+CREATE INDEX ix_dct_nat_active ON dct_nationality(is_active, display_seq);
+
+CREATE OR REPLACE TRIGGER trg_dct_nat_upd
+    BEFORE UPDATE ON dct_nationality FOR EACH ROW
+BEGIN
+    :NEW.updated_at := SYSTIMESTAMP;
+END;
+/
+
+-- =============================================================================
 -- DCT_GL_CODE_COMBINATIONS
 --    Shared reference table for all valid GL chart-of-accounts combinations.
 --    Used by Petty Cash, Credit Cards, and any other module that records
@@ -890,6 +920,9 @@ END;
 -- =============================================================================
 -- COMMENTS — Table and column documentation
 -- =============================================================================
+COMMENT ON TABLE  dct_nationality IS 'i-Finance V2 Shared: ISO 3166-1 alpha-2 nationality lookup. Used by Freelancers and any module recording person nationality.';
+COMMENT ON COLUMN dct_nationality.nationality_code IS 'ISO 3166-1 alpha-2 code (AE, IN, PK …). OT = Other for codes not in the list.';
+
 COMMENT ON TABLE dct_gl_code_combinations IS 'i-Finance V2 Shared: Valid GL chart-of-accounts combinations. Used by Petty Cash, Credit Cards, and any module recording GL coding. Segments cascade: Entity Code → Appropriation → Cost Center → Entity Specific → Budget Group Code → Account → IC → Future1 → Future2.';
 COMMENT ON TABLE dct_users               IS 'i-Finance V2: Master user directory for all internal and external users';
 COMMENT ON TABLE dct_organizations       IS 'i-Finance V2: Organisation hierarchy (divisions, sections, units)';
