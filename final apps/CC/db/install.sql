@@ -30,6 +30,12 @@ PROMPT
 PROMPT [Step 3] Running 03_cc_seed.sql ...
 @03_cc_seed.sql
 
+-- Step 4: Migrate audit columns (created_by/updated_by: NUMBER → VARCHAR2(100))
+--         Run once after initial DDL install; idempotent — safe to re-run.
+PROMPT
+PROMPT [Step 4] Running 05_cc_alter_audit_cols.sql ...
+@05_cc_alter_audit_cols.sql
+
 PROMPT
 PROMPT ============================================================
 PROMPT  Credit Cards Module install complete.

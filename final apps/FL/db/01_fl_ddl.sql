@@ -39,9 +39,9 @@ CREATE TABLE prod.dct_fl_registrations (
     status              VARCHAR2(20)    DEFAULT 'DRAFT' NOT NULL,
     approval_instance_id NUMBER,
     notes               VARCHAR2(4000),
-    created_by          NUMBER,
+    created_by          VARCHAR2(100),
     created_at          TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by          NUMBER,
+    updated_by          VARCHAR2(100),
     updated_at          TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT uq_dct_fl_reg_number  UNIQUE (registration_number),
@@ -49,9 +49,7 @@ CREATE TABLE prod.dct_fl_registrations (
     CONSTRAINT chk_dct_fl_reg_subby  CHECK (submitted_by IN ('SELF','STAFF')),
     CONSTRAINT chk_dct_fl_reg_deal   CHECK (first_deal_with_dct IN ('Y','N')),
     CONSTRAINT fk_dct_fl_reg_nat     FOREIGN KEY (nationality_code) REFERENCES prod.dct_nationality(nationality_code),
-    CONSTRAINT fk_dct_fl_reg_subuser FOREIGN KEY (submitted_by_user_id) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_reg_cby     FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_reg_uby     FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_reg_subuser FOREIGN KEY (submitted_by_user_id) REFERENCES prod.dct_users(user_id)
 );
 
 COMMENT ON TABLE  prod.dct_fl_registrations IS 'Freelancer registration request — created before profile is approved';
@@ -85,9 +83,9 @@ CREATE TABLE prod.dct_fl_freelancers (
     status            VARCHAR2(20)    DEFAULT 'ACTIVE' NOT NULL,
     blacklist_reason  VARCHAR2(1000),
     notes             VARCHAR2(4000),
-    created_by        NUMBER,
+    created_by        VARCHAR2(100),
     created_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by        NUMBER,
+    updated_by        VARCHAR2(100),
     updated_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT uq_dct_fl_frl_email   UNIQUE (email),
@@ -95,9 +93,7 @@ CREATE TABLE prod.dct_fl_freelancers (
     CONSTRAINT chk_dct_fl_frl_status CHECK (status IN ('ACTIVE','INACTIVE','BLACKLISTED')),
     CONSTRAINT chk_dct_fl_frl_nat    CHECK (nationality_code IS NULL OR LENGTH(nationality_code) BETWEEN 2 AND 3),
     CONSTRAINT fk_dct_fl_frl_reg     FOREIGN KEY (registration_id) REFERENCES prod.dct_fl_registrations(registration_id),
-    CONSTRAINT fk_dct_fl_frl_nat     FOREIGN KEY (nationality_code) REFERENCES prod.dct_nationality(nationality_code),
-    CONSTRAINT fk_dct_fl_frl_cby     FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_frl_uby     FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_frl_nat     FOREIGN KEY (nationality_code) REFERENCES prod.dct_nationality(nationality_code)
 );
 
 COMMENT ON TABLE  prod.dct_fl_freelancers IS 'Approved freelancer profile — auto-created on registration approval';
@@ -120,16 +116,14 @@ CREATE TABLE prod.dct_fl_bank_accounts (
     is_primary        VARCHAR2(1)     DEFAULT 'Y' NOT NULL,
     is_active         VARCHAR2(1)     DEFAULT 'Y' NOT NULL,
     notes             VARCHAR2(1000),
-    created_by        NUMBER,
+    created_by        VARCHAR2(100),
     created_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by        NUMBER,
+    updated_by        VARCHAR2(100),
     updated_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT chk_dct_fl_ba_primary CHECK (is_primary IN ('Y','N')),
     CONSTRAINT chk_dct_fl_ba_active  CHECK (is_active IN ('Y','N')),
-    CONSTRAINT fk_dct_fl_ba_frl      FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id),
-    CONSTRAINT fk_dct_fl_ba_cby      FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_ba_uby      FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_ba_frl      FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id)
 );
 
 COMMENT ON TABLE prod.dct_fl_bank_accounts IS 'Freelancer bank accounts — one primary per freelancer';
@@ -154,17 +148,15 @@ CREATE TABLE prod.dct_fl_documents (
     is_required       VARCHAR2(1)     DEFAULT 'N' NOT NULL,
     status            VARCHAR2(20)    DEFAULT 'ACTIVE' NOT NULL,
     notes             VARCHAR2(1000),
-    created_by        NUMBER,
+    created_by        VARCHAR2(100),
     created_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by        NUMBER,
+    updated_by        VARCHAR2(100),
     updated_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT chk_dct_fl_doc_srctype CHECK (source_type IN ('REGISTRATION','FREELANCER','CONTRACT','DELIVERABLE','VOUCHER')),
     CONSTRAINT chk_dct_fl_doc_req     CHECK (is_required IN ('Y','N')),
     CONSTRAINT chk_dct_fl_doc_status  CHECK (status IN ('ACTIVE','SUPERSEDED')),
-    CONSTRAINT fk_dct_fl_doc_frl      FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id),
-    CONSTRAINT fk_dct_fl_doc_cby      FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_doc_uby      FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_doc_frl      FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id)
 );
 
 COMMENT ON TABLE  prod.dct_fl_documents IS 'Unified document store — source_type + source_id identifies parent record';
@@ -200,9 +192,9 @@ CREATE TABLE prod.dct_fl_contracts (
     status                    VARCHAR2(20)    DEFAULT 'DRAFT' NOT NULL,
     approval_instance_id      NUMBER,
     notes                     VARCHAR2(4000),
-    created_by                NUMBER,
+    created_by                VARCHAR2(100),
     created_at                TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by                NUMBER,
+    updated_by                VARCHAR2(100),
     updated_at                TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT uq_dct_fl_con_number  UNIQUE (contract_number),
@@ -212,9 +204,7 @@ CREATE TABLE prod.dct_fl_contracts (
     CONSTRAINT chk_dct_fl_con_dates  CHECK (end_date IS NULL OR end_date > start_date),
     CONSTRAINT fk_dct_fl_con_frl     FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id),
     CONSTRAINT fk_dct_fl_con_parent  FOREIGN KEY (renewed_from_contract_id) REFERENCES prod.dct_fl_contracts(contract_id),
-    CONSTRAINT fk_dct_fl_con_org     FOREIGN KEY (org_id) REFERENCES prod.dct_organizations(org_id),
-    CONSTRAINT fk_dct_fl_con_cby     FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_con_uby     FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_con_org     FOREIGN KEY (org_id) REFERENCES prod.dct_organizations(org_id)
 );
 
 COMMENT ON TABLE  prod.dct_fl_contracts IS 'Freelancer contracts — versioned; payment schedule auto-generated on approval';
@@ -240,16 +230,14 @@ CREATE TABLE prod.dct_fl_contract_amendments (
     new_billing_method   VARCHAR2(20),
     status               VARCHAR2(20)    DEFAULT 'DRAFT' NOT NULL,
     approval_instance_id NUMBER,
-    created_by           NUMBER,
+    created_by           VARCHAR2(100),
     created_at           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by           NUMBER,
+    updated_by           VARCHAR2(100),
     updated_at           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT uq_dct_fl_amend_num   UNIQUE (contract_id, amendment_number),
     CONSTRAINT chk_dct_fl_amend_stat CHECK (status IN ('DRAFT','SUBMITTED','APPROVED','REJECTED','CANCELLED')),
-    CONSTRAINT fk_dct_fl_amend_con   FOREIGN KEY (contract_id) REFERENCES prod.dct_fl_contracts(contract_id),
-    CONSTRAINT fk_dct_fl_amend_cby   FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_amend_uby   FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_amend_con   FOREIGN KEY (contract_id) REFERENCES prod.dct_fl_contracts(contract_id)
 );
 
 COMMENT ON TABLE prod.dct_fl_contract_amendments IS 'Formal amendment requests — used when ALLOW_DIRECT_CONTRACT_EDIT = N';
@@ -310,9 +298,9 @@ CREATE TABLE prod.dct_fl_payment_vouchers (
     payment_reference    VARCHAR2(100),
     approval_instance_id NUMBER,
     notes                VARCHAR2(4000),
-    created_by           NUMBER,
+    created_by           VARCHAR2(100),
     created_at           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by           NUMBER,
+    updated_by           VARCHAR2(100),
     updated_at           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT uq_dct_fl_vchr_number  UNIQUE (voucher_number),
@@ -322,9 +310,7 @@ CREATE TABLE prod.dct_fl_payment_vouchers (
     CONSTRAINT chk_dct_fl_vchr_coding CHECK (coding_type IN ('GL','PROJECT')),
     CONSTRAINT fk_dct_fl_vchr_con     FOREIGN KEY (contract_id) REFERENCES prod.dct_fl_contracts(contract_id),
     CONSTRAINT fk_dct_fl_vchr_frl     FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id),
-    CONSTRAINT fk_dct_fl_vchr_sched   FOREIGN KEY (schedule_id) REFERENCES prod.dct_fl_payment_schedule(schedule_id),
-    CONSTRAINT fk_dct_fl_vchr_cby     FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_vchr_uby     FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_vchr_sched   FOREIGN KEY (schedule_id) REFERENCES prod.dct_fl_payment_schedule(schedule_id)
 );
 
 COMMENT ON TABLE  prod.dct_fl_payment_vouchers IS 'Payment vouchers generated from payment schedule rows';
@@ -358,18 +344,16 @@ CREATE TABLE prod.dct_fl_deliverables (
     status            VARCHAR2(20)    DEFAULT 'SUBMITTED' NOT NULL,
     rejection_reason  VARCHAR2(1000),
     notes             VARCHAR2(4000),
-    created_by        NUMBER,
+    created_by        VARCHAR2(100),
     created_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by        NUMBER,
+    updated_by        VARCHAR2(100),
     updated_at        TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT chk_dct_fl_deliv_stat CHECK (status IN ('SUBMITTED','ACCEPTED','REJECTED')),
     CONSTRAINT chk_dct_fl_deliv_qty  CHECK (quantity > 0),
     CONSTRAINT fk_dct_fl_deliv_con   FOREIGN KEY (contract_id) REFERENCES prod.dct_fl_contracts(contract_id),
     CONSTRAINT fk_dct_fl_deliv_sched FOREIGN KEY (schedule_id) REFERENCES prod.dct_fl_payment_schedule(schedule_id),
-    CONSTRAINT fk_dct_fl_deliv_acc   FOREIGN KEY (accepted_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_deliv_cby   FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_deliv_uby   FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_deliv_acc   FOREIGN KEY (accepted_by) REFERENCES prod.dct_users(user_id)
 );
 
 COMMENT ON TABLE prod.dct_fl_deliverables IS 'Deliverable / milestone records — accepted deliverables gate voucher submission';
@@ -423,9 +407,9 @@ CREATE TABLE prod.dct_fl_contract_renewals (
     reason                  VARCHAR2(1000)  NOT NULL,
     status                  VARCHAR2(20)    DEFAULT 'DRAFT' NOT NULL,
     approval_instance_id    NUMBER,
-    created_by              NUMBER,
+    created_by              VARCHAR2(100),
     created_at              TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by              NUMBER,
+    updated_by              VARCHAR2(100),
     updated_at              TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT uq_dct_fl_rnl_number  UNIQUE (renewal_number),
@@ -433,9 +417,7 @@ CREATE TABLE prod.dct_fl_contract_renewals (
     CONSTRAINT chk_dct_fl_rnl_coding CHECK (coding_type IN ('GL','PROJECT')),
     CONSTRAINT chk_dct_fl_rnl_bill   CHECK (new_billing_method IS NULL OR new_billing_method IN ('WEEKLY','MONTHLY','PER_COUNT')),
     CONSTRAINT fk_dct_fl_rnl_orig    FOREIGN KEY (original_contract_id) REFERENCES prod.dct_fl_contracts(contract_id),
-    CONSTRAINT fk_dct_fl_rnl_new     FOREIGN KEY (new_contract_id) REFERENCES prod.dct_fl_contracts(contract_id),
-    CONSTRAINT fk_dct_fl_rnl_cby     FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_rnl_uby     FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_rnl_new     FOREIGN KEY (new_contract_id) REFERENCES prod.dct_fl_contracts(contract_id)
 );
 
 COMMENT ON TABLE prod.dct_fl_contract_renewals IS 'Contract renewal requests — on approval creates new contract linked to original';
@@ -455,16 +437,14 @@ CREATE TABLE prod.dct_fl_profile_change_requests (
     reason               VARCHAR2(1000),
     status               VARCHAR2(20)    DEFAULT 'DRAFT' NOT NULL,
     approval_instance_id NUMBER,
-    created_by           NUMBER,
+    created_by           VARCHAR2(100),
     created_at           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
-    updated_by           NUMBER,
+    updated_by           VARCHAR2(100),
     updated_at           TIMESTAMP       DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT chk_dct_fl_pcr_type   CHECK (change_type IN ('BANK_ACCOUNT','EMAIL','PHONE','OTHER')),
     CONSTRAINT chk_dct_fl_pcr_status CHECK (status IN ('DRAFT','SUBMITTED','APPROVED','REJECTED')),
-    CONSTRAINT fk_dct_fl_pcr_frl     FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id),
-    CONSTRAINT fk_dct_fl_pcr_cby     FOREIGN KEY (created_by) REFERENCES prod.dct_users(user_id),
-    CONSTRAINT fk_dct_fl_pcr_uby     FOREIGN KEY (updated_by) REFERENCES prod.dct_users(user_id)
+    CONSTRAINT fk_dct_fl_pcr_frl     FOREIGN KEY (freelancer_id) REFERENCES prod.dct_fl_freelancers(freelancer_id)
 );
 
 COMMENT ON TABLE prod.dct_fl_profile_change_requests IS 'Freelancer-initiated profile update requests — requires FL_ADMIN approval';
@@ -475,11 +455,7 @@ CREATE INDEX ix_dct_fl_pcr_stat ON prod.dct_fl_profile_change_requests(status);
 -- =============================================================================
 -- 14. UPDATED_AT TRIGGERS
 -- =============================================================================
-CREATE OR REPLACE TRIGGER prod.trg_dct_nat_upd
-    BEFORE UPDATE ON prod.dct_nationality
-    FOR EACH ROW
-BEGIN :NEW.updated_at := SYSTIMESTAMP; END;
-/
+-- NOTE: trg_dct_nat_upd is owned by db/v2/01_dct_ddl.sql — not redefined here.
 
 CREATE OR REPLACE TRIGGER prod.trg_dct_fl_reg_upd
     BEFORE UPDATE ON prod.dct_fl_registrations

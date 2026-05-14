@@ -55,9 +55,9 @@ CREATE TABLE prod.dct_credit_cards (
   status               VARCHAR2(30)    DEFAULT 'UNDER_PROCESS' NOT NULL,
   notes                VARCHAR2(1000),
   approval_instance_id NUMBER,
-  created_by           NUMBER          NOT NULL,
+  created_by           VARCHAR2(100),
   created_at           DATE            DEFAULT SYSDATE NOT NULL,
-  updated_by           NUMBER          NOT NULL,
+  updated_by           VARCHAR2(100),
   updated_at           DATE            DEFAULT SYSDATE NOT NULL,
   -- Constraints
   CONSTRAINT uq_dct_cc_number        UNIQUE (cc_number),
@@ -73,11 +73,7 @@ CREATE TABLE prod.dct_credit_cards (
   CONSTRAINT fk_dct_cc_holder        FOREIGN KEY (holder_user_id)
                                        REFERENCES prod.dct_users(user_id),
   CONSTRAINT fk_dct_cc_org           FOREIGN KEY (org_id)
-                                       REFERENCES prod.dct_organizations(org_id),
-  CONSTRAINT fk_dct_cc_created_by    FOREIGN KEY (created_by)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_cc_updated_by    FOREIGN KEY (updated_by)
-                                       REFERENCES prod.dct_users(user_id)
+                                       REFERENCES prod.dct_organizations(org_id)
 );
 
 CREATE INDEX idx_dct_cc_holder   ON prod.dct_credit_cards(holder_user_id);
@@ -105,9 +101,9 @@ CREATE TABLE prod.dct_cc_requests (
   status               VARCHAR2(20)    DEFAULT 'DRAFT' NOT NULL,
   approval_instance_id NUMBER,
   submitted_at         DATE,
-  created_by           NUMBER          NOT NULL,
+  created_by           VARCHAR2(100),
   created_at           DATE            DEFAULT SYSDATE NOT NULL,
-  updated_by           NUMBER          NOT NULL,
+  updated_by           VARCHAR2(100),
   updated_at           DATE            DEFAULT SYSDATE NOT NULL,
   -- Constraints
   CONSTRAINT uq_dct_ccr_number       UNIQUE (request_number),
@@ -122,11 +118,7 @@ CREATE TABLE prod.dct_cc_requests (
   ) OR replacement_reason IS NULL),
   CONSTRAINT chk_dct_ccr_limit_pos   CHECK (requested_limit IS NULL OR requested_limit > 0),
   CONSTRAINT fk_dct_ccr_cc           FOREIGN KEY (cc_id)
-                                       REFERENCES prod.dct_credit_cards(cc_id),
-  CONSTRAINT fk_dct_ccr_created_by   FOREIGN KEY (created_by)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_ccr_updated_by   FOREIGN KEY (updated_by)
-                                       REFERENCES prod.dct_users(user_id)
+                                       REFERENCES prod.dct_credit_cards(cc_id)
 );
 
 CREATE INDEX idx_dct_ccr_cc_id   ON prod.dct_cc_requests(cc_id);
@@ -147,20 +139,16 @@ CREATE TABLE prod.dct_cc_doc_requirements (
   is_mandatory         CHAR(1)         DEFAULT 'Y' NOT NULL,
   is_active            CHAR(1)         DEFAULT 'Y' NOT NULL,
   display_seq          NUMBER          DEFAULT 10 NOT NULL,
-  created_by           NUMBER          NOT NULL,
+  created_by           VARCHAR2(100),
   created_at           DATE            DEFAULT SYSDATE NOT NULL,
-  updated_by           NUMBER          NOT NULL,
+  updated_by           VARCHAR2(100),
   updated_at           DATE            DEFAULT SYSDATE NOT NULL,
   -- Constraints
   CONSTRAINT chk_dct_doc_req_type    CHECK (request_type IN (
     'NEW_CARD','INCREASE_LIMIT','DECREASE_LIMIT','CLOSE_CARD','REPLACEMENT'
   )),
   CONSTRAINT chk_dct_doc_req_mand    CHECK (is_mandatory IN ('Y','N')),
-  CONSTRAINT chk_dct_doc_req_active  CHECK (is_active    IN ('Y','N')),
-  CONSTRAINT fk_dct_docreq_created   FOREIGN KEY (created_by)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_docreq_updated   FOREIGN KEY (updated_by)
-                                       REFERENCES prod.dct_users(user_id)
+  CONSTRAINT chk_dct_doc_req_active  CHECK (is_active    IN ('Y','N'))
 );
 
 CREATE INDEX idx_dct_docreq_type ON prod.dct_cc_doc_requirements(request_type, is_active);
@@ -210,9 +198,9 @@ CREATE TABLE prod.dct_cc_delegation (
   end_date             DATE            NOT NULL,
   reason               VARCHAR2(500),
   is_active            CHAR(1)         DEFAULT 'Y' NOT NULL,
-  created_by           NUMBER          NOT NULL,
+  created_by           VARCHAR2(100),
   created_at           DATE            DEFAULT SYSDATE NOT NULL,
-  updated_by           NUMBER          NOT NULL,
+  updated_by           VARCHAR2(100),
   updated_at           DATE            DEFAULT SYSDATE NOT NULL,
   -- Constraints
   CONSTRAINT chk_dct_ccdel_active    CHECK (is_active IN ('Y','N')),
@@ -221,10 +209,6 @@ CREATE TABLE prod.dct_cc_delegation (
   CONSTRAINT fk_dct_ccdel_delegator  FOREIGN KEY (delegator_user_id)
                                        REFERENCES prod.dct_users(user_id),
   CONSTRAINT fk_dct_ccdel_delegate   FOREIGN KEY (delegate_user_id)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_ccdel_created    FOREIGN KEY (created_by)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_ccdel_updated    FOREIGN KEY (updated_by)
                                        REFERENCES prod.dct_users(user_id)
 );
 
@@ -255,9 +239,9 @@ CREATE TABLE prod.dct_cc_replenishments (
   status               VARCHAR2(20)    DEFAULT 'DRAFT' NOT NULL,
   approval_instance_id NUMBER,
   submitted_at         DATE,
-  created_by           NUMBER          NOT NULL,
+  created_by           VARCHAR2(100),
   created_at           DATE            DEFAULT SYSDATE NOT NULL,
-  updated_by           NUMBER          NOT NULL,
+  updated_by           VARCHAR2(100),
   updated_at           DATE            DEFAULT SYSDATE NOT NULL,
   -- Constraints
   CONSTRAINT uq_dct_ccreimb_period   UNIQUE (cc_id, period_month, period_year),
@@ -275,11 +259,7 @@ CREATE TABLE prod.dct_cc_replenishments (
   CONSTRAINT fk_dct_ccreimb_owner    FOREIGN KEY (on_behalf_of_user_id)
                                        REFERENCES prod.dct_users(user_id),
   CONSTRAINT fk_dct_ccreimb_gl       FOREIGN KEY (cc_id_gl)
-                                       REFERENCES prod.dct_gl_code_combinations(cc_id),
-  CONSTRAINT fk_dct_ccreimb_created  FOREIGN KEY (created_by)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_ccreimb_updated  FOREIGN KEY (updated_by)
-                                       REFERENCES prod.dct_users(user_id)
+                                       REFERENCES prod.dct_gl_code_combinations(cc_id)
 );
 
 CREATE INDEX idx_dct_ccreimb_cc     ON prod.dct_cc_replenishments(cc_id);
@@ -338,9 +318,9 @@ CREATE TABLE prod.dct_cc_proxies (
   start_date           DATE            NOT NULL,
   end_date             DATE,
   granted_by_user_id   NUMBER          NOT NULL,
-  created_by           NUMBER          NOT NULL,
+  created_by           VARCHAR2(100),
   created_at           DATE            DEFAULT SYSDATE NOT NULL,
-  updated_by           NUMBER          NOT NULL,
+  updated_by           VARCHAR2(100),
   updated_at           DATE            DEFAULT SYSDATE NOT NULL,
   -- Constraints
   CONSTRAINT chk_dct_ccprx_active    CHECK (is_active IN ('Y','N')),
@@ -350,10 +330,6 @@ CREATE TABLE prod.dct_cc_proxies (
   CONSTRAINT fk_dct_ccprx_proxy      FOREIGN KEY (proxy_user_id)
                                        REFERENCES prod.dct_users(user_id),
   CONSTRAINT fk_dct_ccprx_granted    FOREIGN KEY (granted_by_user_id)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_ccprx_created    FOREIGN KEY (created_by)
-                                       REFERENCES prod.dct_users(user_id),
-  CONSTRAINT fk_dct_ccprx_updated    FOREIGN KEY (updated_by)
                                        REFERENCES prod.dct_users(user_id)
 );
 
