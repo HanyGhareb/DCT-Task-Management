@@ -2,46 +2,44 @@ define(['knockout', 'services/userService'], function (ko, userService) {
   'use strict';
 
   function UsersViewModel() {
-    const self = this;
+    var self = this;
 
-    self.allUsers   = ko.observableArray(userService.getAll());
-    self.searchTerm = ko.observable('');
-    self.filterStatus = ko.observable('ALL');  // ALL | ACTIVE | INACTIVE
+    self.loading      = ko.observable(true);
+    self.allUsers     = ko.observableArray([]);
+    self.searchTerm   = ko.observable('');
+    self.filterStatus = ko.observable('ALL');
 
-    // Instant client-side filter — no server round-trip
-    self.filteredUsers = ko.computed(() => {
-      let data = self.allUsers();
-      const q = self.searchTerm().toLowerCase().trim();
+    self.filteredUsers = ko.computed(function () {
+      var data = self.allUsers();
+      var q = self.searchTerm().toLowerCase().trim();
       if (q) {
-        data = data.filter(u =>
-          u.username.toLowerCase().includes(q) ||
-          u.displayName.toLowerCase().includes(q) ||
-          (u.email || '').toLowerCase().includes(q) ||
-          (u.orgName || '').toLowerCase().includes(q) ||
-          (u.employeeNumber || '').toLowerCase().includes(q)
-        );
+        data = data.filter(function (u) {
+          return u.username.toLowerCase().includes(q) ||
+                 u.displayName.toLowerCase().includes(q) ||
+                 (u.email || '').toLowerCase().includes(q) ||
+                 (u.orgName || '').toLowerCase().includes(q) ||
+                 (u.employeeNumber || '').toLowerCase().includes(q);
+        });
       }
-      if (self.filterStatus() === 'ACTIVE')   data = data.filter(u => u.isActive === 'Y');
-      if (self.filterStatus() === 'INACTIVE') data = data.filter(u => u.isActive !== 'Y');
+      if (self.filterStatus() === 'ACTIVE')   data = data.filter(function (u) { return u.isActive === 'Y'; });
+      if (self.filterStatus() === 'INACTIVE') data = data.filter(function (u) { return u.isActive !== 'Y'; });
       return data;
     });
 
-    self.totalCount  = ko.computed(() => self.allUsers().length);
-    self.activeCount = ko.computed(() => self.allUsers().filter(u => u.isActive === 'Y').length);
+    self.totalCount  = ko.computed(function () { return self.allUsers().length; });
+    self.activeCount = ko.computed(function () {
+      return self.allUsers().filter(function (u) { return u.isActive === 'Y'; }).length;
+    });
 
-    self.editUserId = ko.observable(null);
     self.showDeleteConfirm = ko.observable(false);
-    self.deleteTarget = ko.observable(null);
+    self.deleteTarget      = ko.observable(null);
 
-    // Navigate to edit form
     self.navigateToEdit = function (userId) {
-      // Store in sessionStorage for the edit VM to pick up
       sessionStorage.setItem('editUserId', userId || 'new');
-      // Trigger route change via app root
       if (window._jetApp) window._jetApp.navigate('userEdit');
     };
 
-    self.addUser = function () { self.navigateToEdit('new'); };
+    self.addUser  = function ()     { self.navigateToEdit('new'); };
     self.editUser = function (user) { self.navigateToEdit(user.userId); };
 
     self.confirmDelete = function (user) {
@@ -50,22 +48,31 @@ define(['knockout', 'services/userService'], function (ko, userService) {
     };
     self.cancelDelete = function () { self.showDeleteConfirm(false); self.deleteTarget(null); };
     self.doDelete = function () {
-      const target = self.deleteTarget();
+      var target = self.deleteTarget();
       if (target) {
-        userService.remove(target.userId);
-        self.allUsers(userService.getAll());
+        userService.remove(target.userId).then(function () {
+          self.allUsers(self.allUsers().filter(function (u) { return u.userId !== target.userId; }));
+        });
       }
       self.cancelDelete();
     };
 
     self.getInitials = function (name) {
-      const p = (name || '').split(' ');
+      var p = (name || '').split(' ');
       return p.length >= 2 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : (p[0] || '?')[0].toUpperCase();
     };
 
     self.formatRoles = function (roles) {
       return (roles || []).join(', ');
     };
+
+    // Load data
+    userService.getAll().then(function (data) {
+      self.allUsers(data);
+      self.loading(false);
+    }).catch(function () {
+      self.loading(false);
+    });
   }
 
   return UsersViewModel;

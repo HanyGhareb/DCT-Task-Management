@@ -2,12 +2,12 @@ define(['knockout', 'services/authService'], function (ko, authService) {
   'use strict';
 
   function LoginViewModel(params) {
-    const self = this;
+    var self = this;
 
-    self.username  = ko.observable('');
-    self.password  = ko.observable('');
-    self.error     = ko.observable('');
-    self.loading   = ko.observable(false);
+    self.username   = ko.observable('');
+    self.password   = ko.observable('');
+    self.error      = ko.observable('');
+    self.loading    = ko.observable(false);
     self.quickLogins = authService.QUICK_LOGINS;
 
     self.doLogin = function () {
@@ -17,17 +17,20 @@ define(['knockout', 'services/authService'], function (ko, authService) {
         return;
       }
       self.loading(true);
-      // Simulate async call
-      setTimeout(() => {
-        const user = authService.login(self.username(), self.password());
-        self.loading(false);
-        if (!user) {
-          self.error('Invalid username or password.');
-          return;
-        }
-        if (params && params.onLogin) params.onLogin(user);
-        else if (window._jetApp && window._jetApp.onLogin) window._jetApp.onLogin(user);
-      }, 400);
+      authService.login(self.username(), self.password())
+        .then(function (user) {
+          self.loading(false);
+          if (!user) {
+            self.error('Invalid username or password.');
+            return;
+          }
+          if (params && params.onLogin) params.onLogin(user);
+          else if (window._jetApp) window._jetApp.onLogin(user);
+        })
+        .catch(function (err) {
+          self.loading(false);
+          self.error((err && err.message) || 'Login failed. Please try again.');
+        });
     };
 
     self.quickLogin = function (item) {
