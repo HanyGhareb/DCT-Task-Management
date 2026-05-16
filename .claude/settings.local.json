@@ -80,7 +80,10 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://static.oracle.com/cdn/jet/17.0.0/3rdparty/require/text.js\")",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://static.oracle.com/cdn/jet/17.0.0/3rdparty/knockout/knockout-3.5.1.js\")",
       "Bash(start *)",
-      "Bash(findstr \":8080\")"
+      "Bash(findstr \":8080\")",
+      "Bash(\"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @11_dct_ords.sql)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"SELECT ords.source_type_plsql FROM dual;\" 2>&1)",
+      "PowerShell(Get-Content *)"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -1,5 +1,5 @@
 -- =============================================================================
--- i-Finance V2 — ORDS REST API Definition
+-- i-Finance V2 -- ORDS REST API Definition
 -- File    : 11_dct_ords.sql
 -- Schema  : PROD
 -- Run as  : PROD schema owner (sql -name prod_mcp)
@@ -10,7 +10,7 @@
 --   GRANT EXECUTE ON APEX_JSON TO PROD;
 --   GRANT EXECUTE ON OWA_UTIL  TO PROD;
 -- =============================================================================
--- Run standalone (not part of main install.sql — ORDS is configured separately):
+-- Run standalone (not part of main install.sql â€” ORDS is configured separately):
 --   sql -name prod_mcp @11_dct_ords.sql
 -- =============================================================================
 
@@ -35,9 +35,9 @@ END;
 /
 
 -- =============================================================================
--- 2. DCT_REST — helper package (session validation + response helpers)
+-- 2. DCT_REST â€” helper package (session validation + response helpers)
 -- =============================================================================
-CREATE OR REPLACE PACKAGE dct_rest AS
+CREATE OR REPLACE PACKAGE prod.dct_rest AS
 
     -- Reads Bearer token from Authorization header, validates against
     -- DCT_SESSIONS + DCT_USERS.  Returns username on success, NULL on failure.
@@ -49,22 +49,22 @@ CREATE OR REPLACE PACKAGE dct_rest AS
     -- Write error JSON with given HTTP status
     PROCEDURE err(p_status PLS_INTEGER, p_msg VARCHAR2);
 
-    -- Parse BLOB body → APEX_JSON (call before get_varchar2/get_number)
-    PROCEDURE parse_body;
+    -- Parse BLOB body â†’ APEX_JSON (call before get_varchar2/get_number)
+    PROCEDURE parse_body(p_body IN BLOB);
 
 END dct_rest;
 /
 
-CREATE OR REPLACE PACKAGE BODY dct_rest AS
+CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
 
     FUNCTION validate_session RETURN VARCHAR2 IS
-        l_auth     VARCHAR2(4000);
+        l_hdr     VARCHAR2(4000);
         l_token    VARCHAR2(200);
         l_username VARCHAR2(100);
     BEGIN
-        l_auth := OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION');
-        IF l_auth LIKE 'Bearer %' THEN
-            l_token := TRIM(SUBSTR(l_auth, 8));
+        l_hdr := OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION');
+        IF l_hdr LIKE 'Bearer %' THEN
+            l_token := TRIM(SUBSTR(l_hdr, 8));
         END IF;
         IF l_token IS NULL THEN RETURN NULL; END IF;
 
@@ -82,11 +82,12 @@ CREATE OR REPLACE PACKAGE BODY dct_rest AS
     END validate_session;
 
     PROCEDURE json_header IS
+        c_col CONSTANT VARCHAR2(1) := CHR(58);
     BEGIN
         OWA_UTIL.mime_header('application/json', FALSE);
-        HTP.p('Access-Control-Allow-Origin: *');
-        HTP.p('Access-Control-Allow-Headers: Authorization, Content-Type');
-        HTP.p('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
+        HTP.p('Access-Control-Allow-Origin'  || c_col || ' *');
+        HTP.p('Access-Control-Allow-Headers' || c_col || ' Authorization, Content-Type');
+        HTP.p('Access-Control-Allow-Methods' || c_col || ' GET, POST, PUT, DELETE, OPTIONS');
         OWA_UTIL.http_header_close;
     END json_header;
 
@@ -100,11 +101,11 @@ CREATE OR REPLACE PACKAGE BODY dct_rest AS
         APEX_JSON.close_object;
     END err;
 
-    PROCEDURE parse_body IS
+    PROCEDURE parse_body(p_body IN BLOB) IS
         l_raw  RAW(32767);
         l_body VARCHAR2(32767);
     BEGIN
-        l_raw  := DBMS_LOB.SUBSTR(:body, 32767, 1);
+        l_raw  := DBMS_LOB.SUBSTR(p_body, 32767, 1);
         l_body := UTL_RAW.CAST_TO_VARCHAR2(l_raw);
         APEX_JSON.parse(l_body);
     EXCEPTION WHEN OTHERS THEN
@@ -114,22 +115,58 @@ CREATE OR REPLACE PACKAGE BODY dct_rest AS
 END dct_rest;
 /
 
-SHOW ERRORS PACKAGE BODY dct_rest;
+-- =============================================================================
+-- 3. ADMIN synonyms -> PROD DCT objects
+--    ORDS handlers run as ADMIN parsing schema; synonyms let unqualified
+--    names (dct_users, dct_rest, etc.) resolve to PROD objects.
+--    Drop any stale ADMIN-schema packages that would block synonym creation.
+-- =============================================================================
+BEGIN
+    FOR obj IN (SELECT object_name, object_type
+                FROM   user_objects
+                WHERE  object_name IN ('DCT_REST','DCT_NOTIFY')
+                  AND  object_type IN ('PACKAGE BODY','PACKAGE')
+                ORDER BY CASE object_type WHEN 'PACKAGE BODY' THEN 1 ELSE 2 END)
+    LOOP
+        EXECUTE IMMEDIATE 'DROP ' || obj.object_type || ' ' || obj.object_name;
+    END LOOP;
+END;
+/
+
+CREATE OR REPLACE SYNONYM dct_rest              FOR prod.dct_rest;
+CREATE OR REPLACE SYNONYM dct_auth              FOR prod.dct_auth;
+CREATE OR REPLACE SYNONYM dct_sessions          FOR prod.dct_sessions;
+CREATE OR REPLACE SYNONYM dct_users             FOR prod.dct_users;
+CREATE OR REPLACE SYNONYM dct_organizations     FOR prod.dct_organizations;
+CREATE OR REPLACE SYNONYM dct_roles             FOR prod.dct_roles;
+CREATE OR REPLACE SYNONYM dct_user_roles        FOR prod.dct_user_roles;
+CREATE OR REPLACE SYNONYM dct_role_permissions  FOR prod.dct_role_permissions;
+CREATE OR REPLACE SYNONYM dct_permissions       FOR prod.dct_permissions;
+CREATE OR REPLACE SYNONYM dct_modules           FOR prod.dct_modules;
+CREATE OR REPLACE SYNONYM dct_lookup_categories FOR prod.dct_lookup_categories;
+CREATE OR REPLACE SYNONYM dct_lookup_values     FOR prod.dct_lookup_values;
+CREATE OR REPLACE SYNONYM dct_system_settings   FOR prod.dct_system_settings;
+CREATE OR REPLACE SYNONYM dct_notifications     FOR prod.dct_notifications;
+CREATE OR REPLACE SYNONYM dct_audit_log         FOR prod.dct_audit_log;
 
 -- =============================================================================
--- 3. Define ORDS module + all templates + handlers
+-- 4. Define ORDS module + all templates + handlers
 -- =============================================================================
-DECLARE
+-- Procedure in ADMIN schema (no prod. prefix) so SESSION_USER = ADMIN when
+-- ORDS.DEFINE_MODULE runs, registering the module under ADMIN which is the
+-- only REST-enabled schema routable in Oracle ADB managed ORDS.
+-- Wrapped in DDL so SQLcl skips bind-variable scanning of handler source strings.
+-- =============================================================================
+CREATE OR REPLACE PROCEDURE setup_dct_ords_tmp AS
 
-    -- Shared PL/SQL snippets embedded as string constants
-    c_mod  CONSTANT VARCHAR2(30) := 'dct.admin';
-
-    -- -------------------------------------------------------------------------
+    c_mod         CONSTANT VARCHAR2(30)  := 'dct.admin';
+    -- [COLON] in pattern/source strings is replaced with CHR(58) at runtime
+    -- so that the DDL text never contains a literal colon+word sequence.
     PROCEDURE def_template(p_pattern VARCHAR2) IS
     BEGIN
         ORDS.DEFINE_TEMPLATE(
             p_module_name => c_mod,
-            p_pattern     => p_pattern
+            p_pattern     => REPLACE(p_pattern, '[COLON]', CHR(58))
         );
     END;
 
@@ -141,17 +178,12 @@ DECLARE
     BEGIN
         ORDS.DEFINE_HANDLER(
             p_module_name    => c_mod,
-            p_pattern        => p_pattern,
+            p_pattern        => REPLACE(p_pattern, '[COLON]', CHR(58)),
             p_method         => p_method,
             p_source_type    => ORDS.source_type_plsql,
-            p_source         => p_source
+            p_source         => REPLACE(p_source, '[COLON]', CHR(58))
         );
     END;
-
-    -- OPTIONS preflight handler (CORS)
-    c_options_src CONSTANT VARCHAR2(200) :=
-        'BEGIN OWA_UTIL.status_line(204,NULL,FALSE);' ||
-        'dct_rest.json_header; END;';
 
 BEGIN
 
@@ -168,15 +200,14 @@ BEGIN
         p_base_path      => '/dct/',
         p_items_per_page => 100,
         p_status         => 'PUBLISHED',
-        p_comments       => 'i-Finance V2 — DCT Admin REST API'
+        p_comments       => 'i-Finance V2 â€” DCT Admin REST API'
     );
 
     -- =========================================================================
-    -- AUTH — no token required
+    -- AUTH â€” no token required
     -- =========================================================================
     def_template('auth/login');
-    def_handler('auth/login', 'OPTIONS', c_options_src);
-    def_handler('auth/login', 'POST', q'[
+    def_handler('auth/login', 'POST', q'!
 DECLARE
   l_uname  VARCHAR2(100);
   l_pass   VARCHAR2(500);
@@ -186,7 +217,7 @@ DECLARE
   l_roles  VARCHAR2(4000);
   l_org_nm dct_organizations.org_name_en%TYPE;
 BEGIN
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   l_uname := UPPER(TRIM(APEX_JSON.get_varchar2(p_path => 'username')));
   l_pass  := APEX_JSON.get_varchar2(p_path => 'password');
 
@@ -204,11 +235,11 @@ BEGIN
     p_agent       => OWA_UTIL.get_cgi_env('HTTP_USER_AGENT')
   );
 
-  SELECT u.*, o.org_name_en
-  INTO   l_user, l_org_nm
-  FROM   dct_users u
-  LEFT JOIN dct_organizations o ON u.org_id = o.org_id
-  WHERE  UPPER(u.username) = l_uname;
+  SELECT * INTO l_user FROM dct_users WHERE UPPER(username) = l_uname;
+  BEGIN
+    SELECT org_name_en INTO l_org_nm FROM dct_organizations WHERE org_id = l_user.org_id;
+  EXCEPTION WHEN NO_DATA_FOUND THEN l_org_nm := NULL;
+  END;
 
   l_roles := dct_auth.get_user_roles(l_uname);
 
@@ -234,19 +265,18 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN
   dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- -------------------------------------------------------------------------
     def_template('auth/logout');
-    def_handler('auth/logout', 'OPTIONS', c_options_src);
-    def_handler('auth/logout', 'POST', q'[
+    def_handler('auth/logout', 'POST', q'!
 DECLARE
-  l_auth VARCHAR2(4000);
+  l_hdr VARCHAR2(4000);
   l_sid  VARCHAR2(200);
 BEGIN
-  l_auth := OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION');
-  IF l_auth LIKE 'Bearer %' THEN
-    l_sid := TRIM(SUBSTR(l_auth, 8));
+  l_hdr := OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION');
+  IF l_hdr LIKE 'Bearer %' THEN
+    l_sid := TRIM(SUBSTR(l_hdr, 8));
     dct_auth.close_session(l_sid);
     COMMIT;
   END IF;
@@ -256,14 +286,13 @@ BEGIN
   APEX_JSON.write('ok', TRUE);
   APEX_JSON.close_object;
 END;
-]');
+!');
 
     -- =========================================================================
     -- USERS
     -- =========================================================================
     def_template('users/');
-    def_handler('users/', 'OPTIONS', c_options_src);
-    def_handler('users/', 'GET', q'[
+    def_handler('users/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -298,7 +327,7 @@ BEGIN
     APEX_JSON.write('isExternal',     r.is_external);
     APEX_JSON.write('authMethod',     r.auth_method);
     APEX_JSON.write('rolesCsv',       r.roles_csv);
-    APEX_JSON.write('lastLoginAt',    TO_CHAR(r.last_login_at,'YYYY-MM-DD"T"HH24:MI:SS'));
+    APEX_JSON.write('lastLoginAt',    TO_CHAR(r.last_login_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('createdAt',      TO_CHAR(r.created_at,'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
@@ -306,9 +335,9 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_handler('users/', 'POST', q'[
+    def_handler('users/', 'POST', q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_uid    NUMBER;
@@ -316,7 +345,7 @@ DECLARE
   l_pass   VARCHAR2(500);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   l_uname := UPPER(TRIM(APEX_JSON.get_varchar2(p_path => 'username')));
   l_pass  := APEX_JSON.get_varchar2(p_path => 'password');
 
@@ -360,12 +389,11 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- -------------------------------------------------------------------------
-    def_template('users/:id');
-    def_handler('users/:id', 'OPTIONS', c_options_src);
-    def_handler('users/:id', 'GET', q'[
+    def_template('users/[COLON]id');
+    def_handler('users/[COLON]id', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_rec  dct_users%ROWTYPE;
@@ -373,10 +401,11 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   BEGIN
-    SELECT u.*, o.org_name_en INTO l_rec, l_org
-    FROM   dct_users u
-    LEFT JOIN dct_organizations o ON u.org_id = o.org_id
-    WHERE  u.user_id = :id;
+    SELECT * INTO l_rec FROM dct_users WHERE user_id = [COLON]id;
+    BEGIN
+      SELECT org_name_en INTO l_org FROM dct_organizations WHERE org_id = l_rec.org_id;
+    EXCEPTION WHEN NO_DATA_FOUND THEN l_org := NULL;
+    END;
   EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'User not found'); RETURN;
   END;
   dct_rest.json_header;
@@ -399,17 +428,17 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_handler('users/:id', 'PUT', q'[
+    def_handler('users/[COLON]id', 'PUT', q'!
 DECLARE
   l_user  VARCHAR2(100) := dct_rest.validate_session;
-  l_uid   NUMBER        := :id;
+  l_uid   NUMBER        := [COLON]id;
   l_uname VARCHAR2(100);
   l_pass  VARCHAR2(500);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   l_pass := APEX_JSON.get_varchar2(p_path => 'password');
 
   SELECT username INTO l_uname FROM dct_users WHERE user_id = l_uid;
@@ -458,15 +487,15 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_handler('users/:id', 'DELETE', q'[
+    def_handler('users/[COLON]id', 'DELETE', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   UPDATE dct_users SET is_active = 'N', deactivated_at = SYSTIMESTAMP, updated_by = l_user
-  WHERE  user_id = :id;
+  WHERE  user_id = [COLON]id;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -475,14 +504,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- ROLES
     -- =========================================================================
     def_template('roles/');
-    def_handler('roles/', 'OPTIONS', c_options_src);
-    def_handler('roles/', 'GET', q'[
+    def_handler('roles/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -514,15 +542,15 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_handler('roles/', 'POST', q'[
+    def_handler('roles/', 'POST', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_rid  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   INSERT INTO dct_roles (role_code, role_name_en, description_en, role_type, is_active, created_by)
   VALUES (
     UPPER(TRIM(APEX_JSON.get_varchar2(p_path => 'roleCode'))),
@@ -549,18 +577,17 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_template('roles/:id');
-    def_handler('roles/:id', 'OPTIONS', c_options_src);
-    def_handler('roles/:id', 'GET', q'[
+    def_template('roles/[COLON]id');
+    def_handler('roles/[COLON]id', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_rec  dct_roles%ROWTYPE;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   BEGIN
-    SELECT * INTO l_rec FROM dct_roles WHERE role_id = :id;
+    SELECT * INTO l_rec FROM dct_roles WHERE role_id = [COLON]id;
   EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Role not found'); RETURN;
   END;
   dct_rest.json_header;
@@ -574,22 +601,22 @@ BEGIN
   APEX_JSON.write('isSystemRole',l_rec.is_system_role);
   -- Permission IDs assigned to this role
   APEX_JSON.open_array('permIds');
-  FOR p IN (SELECT permission_id FROM dct_role_permissions WHERE role_id = :id) LOOP
+  FOR p IN (SELECT permission_id FROM dct_role_permissions WHERE role_id = [COLON]id) LOOP
     APEX_JSON.write(p.permission_id);
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_handler('roles/:id', 'PUT', q'[
+    def_handler('roles/[COLON]id', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
-  l_rid  NUMBER        := :id;
+  l_rid  NUMBER        := [COLON]id;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   UPDATE dct_roles SET
     role_name_en   = NVL(APEX_JSON.get_varchar2(p_path => 'roleName'),   role_name_en),
     description_en = APEX_JSON.get_varchar2(p_path => 'description'),
@@ -613,17 +640,17 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_handler('roles/:id', 'DELETE', q'[
+    def_handler('roles/[COLON]id', 'DELETE', q'!
 DECLARE
   l_user  VARCHAR2(100) := dct_rest.validate_session;
   l_sys   VARCHAR2(1);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  SELECT is_system_role INTO l_sys FROM dct_roles WHERE role_id = :id;
+  SELECT is_system_role INTO l_sys FROM dct_roles WHERE role_id = [COLON]id;
   IF l_sys = 'Y' THEN dct_rest.err(400,'System roles cannot be deleted'); RETURN; END IF;
-  UPDATE dct_roles SET is_active = 'N', updated_by = l_user WHERE role_id = :id;
+  UPDATE dct_roles SET is_active = 'N', updated_by = l_user WHERE role_id = [COLON]id;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -632,14 +659,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- PERMISSIONS (read-only)
     -- =========================================================================
     def_template('permissions/');
-    def_handler('permissions/', 'OPTIONS', c_options_src);
-    def_handler('permissions/', 'GET', q'[
+    def_handler('permissions/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -670,14 +696,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- MODULES
     -- =========================================================================
     def_template('modules/');
-    def_handler('modules/', 'OPTIONS', c_options_src);
-    def_handler('modules/', 'GET', q'[
+    def_handler('modules/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -716,23 +741,22 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_template('modules/:id');
-    def_handler('modules/:id', 'OPTIONS', c_options_src);
-    def_handler('modules/:id', 'PUT', q'[
+    def_template('modules/[COLON]id');
+    def_handler('modules/[COLON]id', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   UPDATE dct_modules SET
     module_name_en = NVL(APEX_JSON.get_varchar2(p_path => 'nameEn'), module_name_en),
     module_name_ar = APEX_JSON.get_varchar2(p_path => 'nameAr'),
     is_active      = NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), is_active),
     display_order  = NVL(APEX_JSON.get_number(p_path  => 'displayOrder'), display_order),
     updated_by     = l_user, updated_at = SYSTIMESTAMP
-  WHERE module_id = :id;
+  WHERE module_id = [COLON]id;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -741,14 +765,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- ORGS (read-only tree)
     -- =========================================================================
     def_template('orgs/');
-    def_handler('orgs/', 'OPTIONS', c_options_src);
-    def_handler('orgs/', 'GET', q'[
+    def_handler('orgs/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -783,14 +806,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- LOOKUPS
     -- =========================================================================
     def_template('lookups/');
-    def_handler('lookups/', 'OPTIONS', c_options_src);
-    def_handler('lookups/', 'GET', q'[
+    def_handler('lookups/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -828,23 +850,22 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_template('lookups/values/:id');
-    def_handler('lookups/values/:id', 'OPTIONS', c_options_src);
-    def_handler('lookups/values/:id', 'PUT', q'[
+    def_template('lookups/values/[COLON]id');
+    def_handler('lookups/values/[COLON]id', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   UPDATE dct_lookup_values SET
     display_value_en = NVL(APEX_JSON.get_varchar2(p_path => 'displayValue'), display_value_en),
     display_value_ar = APEX_JSON.get_varchar2(p_path => 'displayAr'),
     sort_order       = NVL(APEX_JSON.get_number(p_path  => 'sortOrder'), sort_order),
     is_active        = NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), is_active),
     updated_at       = SYSTIMESTAMP
-  WHERE value_id = :id;
+  WHERE value_id = [COLON]id;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -853,14 +874,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- SYSTEM SETTINGS
     -- =========================================================================
     def_template('settings/');
-    def_handler('settings/', 'OPTIONS', c_options_src);
-    def_handler('settings/', 'GET', q'[
+    def_handler('settings/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -884,23 +904,22 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_template('settings/:key');
-    def_handler('settings/:key', 'OPTIONS', c_options_src);
-    def_handler('settings/:key', 'PUT', q'[
+    def_template('settings/[COLON]key');
+    def_handler('settings/[COLON]key', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_edit VARCHAR2(1);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  SELECT is_editable INTO l_edit FROM dct_system_settings WHERE setting_key = :key;
+  SELECT is_editable INTO l_edit FROM dct_system_settings WHERE setting_key = [COLON]key;
   IF l_edit = 'N' THEN dct_rest.err(403,'Setting is read-only'); RETURN; END IF;
-  dct_rest.parse_body;
+  dct_rest.parse_body([COLON]body);
   UPDATE dct_system_settings
   SET    setting_value = APEX_JSON.get_varchar2(p_path => 'value'),
          updated_at    = SYSTIMESTAMP
-  WHERE  setting_key = :key;
+  WHERE  setting_key = [COLON]key;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -909,14 +928,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- NOTIFICATIONS
     -- =========================================================================
     def_template('notifications/');
-    def_handler('notifications/', 'OPTIONS', c_options_src);
-    def_handler('notifications/', 'GET', q'[
+    def_handler('notifications/', 'GET', q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_uid    NUMBER;
@@ -942,23 +960,22 @@ BEGIN
     APEX_JSON.write('body',      r.body);
     APEX_JSON.write('type',      r.notification_type);
     APEX_JSON.write('isRead',    r.is_read);
-    APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD"T"HH24:MI:SS'));
+    APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
-    def_template('notifications/:id/read');
-    def_handler('notifications/:id/read', 'OPTIONS', c_options_src);
-    def_handler('notifications/:id/read', 'PUT', q'[
+    def_template('notifications/[COLON]id/read');
+    def_handler('notifications/[COLON]id/read', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  UPDATE dct_notifications SET is_read = 'Y' WHERE notification_id = :id;
+  UPDATE dct_notifications SET is_read = 'Y' WHERE notification_id = [COLON]id;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -967,14 +984,13 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     -- =========================================================================
     -- AUDIT LOG (read-only)
     -- =========================================================================
     def_template('audit/');
-    def_handler('audit/', 'OPTIONS', c_options_src);
-    def_handler('audit/', 'GET', q'[
+    def_handler('audit/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
 BEGIN
@@ -998,24 +1014,37 @@ BEGIN
     APEX_JSON.write('objectId',    r.object_id);
     APEX_JSON.write('status',      r.status);
     APEX_JSON.write('error',       r.error_message);
-    APEX_JSON.write('loggedAt',    TO_CHAR(r.logged_at,'YYYY-MM-DD"T"HH24:MI:SS'));
+    APEX_JSON.write('loggedAt',    TO_CHAR(r.logged_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-]');
+!');
 
     COMMIT;
     DBMS_OUTPUT.PUT_LINE('ORDS module dct.admin published successfully.');
 
+END setup_dct_ords_tmp;
+/
+
+-- Call the setup procedure (separate block so its locks are fully released before DROP)
+BEGIN
+    setup_dct_ords_tmp;
+END;
+/
+
+-- Drop the setup helper in a fresh block (avoids ORA-04020 deadlock)
+BEGIN
+    EXECUTE IMMEDIATE 'DROP PROCEDURE setup_dct_ords_tmp';
+EXCEPTION WHEN OTHERS THEN NULL;
 END;
 /
 
 PROMPT ============================================================
 PROMPT  11_dct_ords.sql complete.
-PROMPT  Base URL: /ords/prod/dct/
+PROMPT  Base URL: /ords/admin/dct/
 PROMPT  Endpoints: auth/login, auth/logout, users/, users/:id,
 PROMPT             roles/, roles/:id, permissions/, modules/,
 PROMPT             orgs/, lookups/, settings/, notifications/,
