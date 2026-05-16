@@ -1,0 +1,107 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">&#128196; Approval Rules</div>
+    <div class="page-subtitle">Configure petty cash approval workflows and step conditions</div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__msg">Loading&hellip;</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <!-- Template list -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="section-heading">Approval Workflows (Templates)</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Template Code</th><th>Name</th><th>Request Type</th><th>Sequential</th><th>Auto-Approve Days</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <!-- ko foreach: templates() -->
+          <tr data-bind="css: { 'nav-item--active': $parent.selectedTmpl() && $parent.selectedTmpl().templateId === $data.templateId }, click: $parent.selectTemplate.bind($parent, $data)">
+            <td style="font-family:monospace" data-bind="text: templateCode"></td>
+            <td><strong data-bind="text: templateName"></strong></td>
+            <td><span data-bind="css: $parent.typeClass(requestType), text: $parent.templateTypeLabel(requestType)"></span></td>
+            <td><span data-bind="css: isSequential === 'Y' ? 'badge badge--active' : 'badge badge--inactive', text: isSequential === 'Y' ? 'Sequential' : 'Parallel'"></span></td>
+            <td data-bind="text: autoApproveDays + ' days'"></td>
+            <td><span data-bind="css: isActive === 'Y' ? 'badge badge--active' : 'badge badge--inactive', text: isActive === 'Y' ? 'Active' : 'Inactive'"></span></td>
+            <td><button class="btn btn-secondary btn-sm" data-bind="click: $parent.selectTemplate.bind($parent, $data), clickBubble:false">&#128196; View Steps</button></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Steps for selected template -->
+  <!-- ko if: selectedTmpl() -->
+  <div class="card">
+    <div class="section-heading">
+      Approval Steps — <span data-bind="text: selectedTmpl().templateName"></span>
+    </div>
+    <!-- ko if: stepsLoading() -->
+    <div class="empty-state" style="padding:20px"><div class="empty-state__msg">Loading steps&hellip;</div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: stepsLoading() -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Seq</th><th>Step Name</th><th>Required Role</th><th>Condition</th><th>Threshold</th>
+            <th>Type Filter</th><th>Mandatory</th><th>Escalation (days)</th><th>Active</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: steps() -->
+          <tr>
+            <td><span class="badge badge--idle" data-bind="text: stepSeq()"></span></td>
+            <td><strong data-bind="text: stepName()"></strong></td>
+            <td><span class="badge badge--admin" data-bind="text: requiredRole()"></span></td>
+            <td><span data-bind="css: conditionType() === 'ALWAYS' ? 'badge badge--active' : 'badge badge--warning', text: $parent.condTypeLabel(conditionType())"></span></td>
+            <td>
+              <!-- ko if: conditionType() === 'AMOUNT' || conditionType() === 'COMBINED' -->
+              <strong data-bind="text: amountOperator() + ' AED ' + (amountThreshold() || '—')"></strong>
+              <!-- /ko -->
+              <!-- ko ifnot: conditionType() === 'AMOUNT' || conditionType() === 'COMBINED' -->
+              <span style="color:var(--text-secondary)">—</span>
+              <!-- /ko -->
+            </td>
+            <td>
+              <!-- ko if: conditionType() === 'TYPE_FILTER' || conditionType() === 'COMBINED' -->
+              <span class="badge badge--info" data-bind="text: typeFilter()"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: conditionType() === 'TYPE_FILTER' || conditionType() === 'COMBINED' -->
+              <span style="color:var(--text-secondary)">—</span>
+              <!-- /ko -->
+            </td>
+            <td><span data-bind="css: isMandatory() === 'Y' ? 'badge badge--active' : 'badge badge--inactive', text: isMandatory() === 'Y' ? 'Mandatory' : 'Optional'"></span></td>
+            <td data-bind="text: escalationDays() + ' days'"></td>
+            <td><span data-bind="css: isActive() === 'Y' ? 'badge badge--active' : 'badge badge--inactive', text: isActive()"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Visual step tracker -->
+    <div style="margin-top:20px">
+      <div class="section-heading">Workflow Visualisation</div>
+      <div class="step-tracker" style="padding:16px;flex-wrap:wrap;gap:8px">
+        <!-- ko foreach: steps() -->
+        <div style="display:flex;flex-direction:column;align-items:center;min-width:120px">
+          <div style="background:var(--brand-green);color:#fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:14px" data-bind="text: stepSeq()"></div>
+          <div style="font-size:11px;font-weight:600;margin-top:6px;text-align:center" data-bind="text: stepName()"></div>
+          <div style="font-size:10px;color:var(--text-secondary);margin-top:2px" data-bind="text: requiredRole()"></div>
+          <span style="font-size:10px;margin-top:4px" data-bind="css: conditionType() === 'ALWAYS' ? 'badge badge--active' : 'badge badge--warning', text: $parent.condTypeLabel(conditionType())"></span>
+        </div>
+        <!-- ko if: $index() < $parent.steps().length - 1 -->
+        <div style="flex:1;height:2px;background:var(--border-color);align-self:center;min-width:20px"></div>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+</div>

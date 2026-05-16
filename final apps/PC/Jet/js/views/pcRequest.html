@@ -1,0 +1,184 @@
+<div class="page-wrap">
+  <div class="page-header-row page-header">
+    <div>
+      <div class="page-title" data-bind="text: isEdit ? '&#9998; Edit Petty Cash Request' : '&#10133; New Petty Cash Request'"></div>
+      <div class="page-subtitle" data-bind="text: isEdit ? 'Viewing / editing ' + pcNumber() : 'Submit a new advance request'"></div>
+    </div>
+    <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+  </div>
+
+  <!-- Alerts -->
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:16px"><span>&#9888;</span> <span data-bind="text: error()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: success() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px"><span>&#10003;</span> <span data-bind="text: success()"></span></div>
+  <!-- /ko -->
+
+  <!-- Read-only banner -->
+  <!-- ko if: isReadOnly() -->
+  <div class="alert-banner alert-banner--warning" style="margin-bottom:16px"><span>&#128274;</span> This request has been submitted and cannot be edited.</div>
+  <!-- /ko -->
+
+  <!-- Request details card -->
+  <div class="card" style="margin-bottom:20px">
+    <div class="section-heading">Request Details</div>
+    <div class="form-grid">
+      <!-- ko if: isEdit -->
+      <div class="form-group">
+        <label class="form-label">PC Number</label>
+        <input class="form-control" type="text" readonly data-bind="value: pcNumber">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <input class="form-control" type="text" readonly data-bind="value: status">
+      </div>
+      <!-- /ko -->
+      <div class="form-group">
+        <label class="form-label">PC Type <span class="required">*</span></label>
+        <select class="form-control" data-bind="value: pcType, enable: !isReadOnly()">
+          <option value="TEMPORARY">Temporary</option>
+          <option value="PERMANENT">Permanent</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Amount (AED) <span class="required">*</span></label>
+        <input class="form-control" type="number" step="0.01" min="0" placeholder="0.00"
+               data-bind="value: amount, valueUpdate: 'input', enable: !isReadOnly()">
+      </div>
+      <!-- ko if: showDueDate() -->
+      <div class="form-group">
+        <label class="form-label">Due Date <span class="required">*</span></label>
+        <input class="form-control" type="date" data-bind="value: dueDate, enable: !isReadOnly()">
+      </div>
+      <!-- /ko -->
+      <div class="form-group">
+        <label class="form-label">Fiscal Year</label>
+        <input class="form-control" type="text" readonly data-bind="value: fiscalYear">
+      </div>
+      <div class="form-group form-group--full">
+        <label class="form-label">Purpose <span class="required">*</span></label>
+        <textarea class="form-control" rows="3" placeholder="Describe the purpose of this petty cash advance&hellip;"
+                  data-bind="value: purpose, enable: !isReadOnly()"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget Coding -->
+  <div class="card" style="margin-bottom:20px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+      <div class="section-heading" style="margin:0">Budget Coding</div>
+      <div style="display:flex;align-items:center;gap:16px">
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <div class="switch"><input type="radio" name="codingType" value="GL" data-bind="checked: codingType, disable: isReadOnly()"><span class="switch-slider" style="border-radius:4px"></span></div>
+          GL Level
+        </label>
+        <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+          <div class="switch"><input type="radio" name="codingType" value="PROJECT" data-bind="checked: codingType, disable: isReadOnly()"><span class="switch-slider" style="border-radius:4px"></span></div>
+          Project Level
+        </label>
+      </div>
+    </div>
+
+    <!-- Amount validation -->
+    <!-- ko if: amountMismatch() -->
+    <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">
+      &#9888; Budget lines total (<strong data-bind="text: lineTotal().toFixed(2)"></strong> AED) does not match the requested amount (<strong data-bind="text: (parseFloat(amount()) || 0).toFixed(2)"></strong> AED).
+    </div>
+    <!-- /ko -->
+
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <!-- ko if: codingType() === 'GL' -->
+          <tr>
+            <th>Amount</th><th>Entity Code</th><th>Appropriation</th><th>Cost Center</th>
+            <th>Entity Specific</th><th>Budget Group</th><th>Account</th><th>IC</th><th>Description</th>
+            <!-- ko ifnot: isReadOnly() --><th></th><!-- /ko -->
+          </tr>
+          <!-- /ko -->
+          <!-- ko if: codingType() === 'PROJECT' -->
+          <tr>
+            <th>Amount</th><th>Project Number</th><th>Task Number</th><th>Expenditure Type</th>
+            <th>Fund Available</th><th>Description</th>
+            <!-- ko ifnot: isReadOnly() --><th></th><!-- /ko -->
+          </tr>
+          <!-- /ko -->
+        </thead>
+        <tbody>
+          <!-- ko foreach: budgetLines() -->
+          <!-- ko if: $parent.codingType() === 'GL' -->
+          <tr>
+            <td><input class="form-control" type="number" style="width:100px" placeholder="0.00" data-bind="value: amount, valueUpdate:'input', enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:80px" data-bind="value: entityCode, enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:100px" data-bind="value: appropriation, enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:80px" data-bind="value: costCenter, enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:90px" data-bind="value: entitySpecific, enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:90px" data-bind="value: budgetGroupCode, enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:80px" data-bind="value: account, enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:60px" data-bind="value: ic, enable: !$parent.isReadOnly()"></td>
+            <td><input class="form-control" style="width:140px" data-bind="value: description, enable: !$parent.isReadOnly()"></td>
+            <!-- ko ifnot: $parent.isReadOnly() -->
+            <td><button class="btn btn-danger btn-sm btn-icon" data-bind="click: $parent.removeLine.bind($parent, $data)">&#10005;</button></td>
+            <!-- /ko -->
+          </tr>
+          <!-- /ko -->
+          <!-- ko if: $parent.codingType() === 'PROJECT' -->
+          <tr>
+            <td><input class="form-control" type="number" style="width:100px" data-bind="value: amount, valueUpdate:'input', enable: !$parent.isReadOnly()"></td>
+            <td>
+              <select class="form-control" style="min-width:130px" data-bind="value: projectNumber, enable: !$parent.isReadOnly()">
+                <option value="">-- Select --</option>
+                <!-- ko foreach: $parent.projectNumbers() -->
+                <option data-bind="value: $data, text: $data"></option>
+                <!-- /ko -->
+              </select>
+            </td>
+            <td>
+              <select class="form-control" style="min-width:110px" data-bind="value: taskNumber, enable: !$parent.isReadOnly()">
+                <option value="">-- Select --</option>
+              </select>
+            </td>
+            <td>
+              <select class="form-control" style="min-width:130px" data-bind="value: expenditureType, enable: !$parent.isReadOnly()">
+                <option value="">-- Select --</option>
+              </select>
+            </td>
+            <td>
+              <span style="font-size:12px;color:var(--text-secondary)" data-bind="text: fundAvailable() != null ? 'AED ' + fundAvailable().toLocaleString('en-US',{minimumFractionDigits:2}) : '—'"></span>
+            </td>
+            <td><input class="form-control" style="width:140px" data-bind="value: description, enable: !$parent.isReadOnly()"></td>
+            <!-- ko ifnot: $parent.isReadOnly() -->
+            <td><button class="btn btn-danger btn-sm btn-icon" data-bind="click: $parent.removeLine.bind($parent, $data)">&#10005;</button></td>
+            <!-- /ko -->
+          </tr>
+          <!-- /ko -->
+          <!-- /ko -->
+        </tbody>
+        <tfoot>
+          <tr>
+            <td colspan="2" style="text-align:right;font-weight:700;font-size:13px">Total:</td>
+            <td colspan="7" style="font-weight:700;font-size:15px;color:var(--brand-green)"
+                data-bind="text: 'AED ' + lineTotal().toLocaleString('en-US', {minimumFractionDigits:2})"></td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+
+    <!-- ko ifnot: isReadOnly() -->
+    <button class="btn btn-secondary btn-sm" style="margin-top:12px" data-bind="click: addLine">&#10133; Add Line</button>
+    <!-- /ko -->
+  </div>
+
+  <!-- Actions -->
+  <!-- ko ifnot: isReadOnly() -->
+  <div class="form-actions">
+    <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">
+      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+      <!-- ko ifnot: saving() -->&#9993; Submit for Approval<!-- /ko -->
+    </button>
+    <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">&#128190; Save Draft</button>
+    <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
+  </div>
+  <!-- /ko -->
+</div>

@@ -1,0 +1,173 @@
+<div class="page-wrap">
+
+  <!-- Closing deadline banner -->
+  <!-- ko if: showClosingBanner() -->
+  <div class="alert-banner alert-banner--warning">
+    <span style="font-size:20px">&#9201;</span>
+    <div>
+      <strong>Year-End Closing Reminder</strong>
+      <p data-bind="text: closingMsg()" style="margin-top:4px"></p>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- Greeting -->
+  <div class="page-header">
+    <div style="display:flex;align-items:center;gap:14px">
+      <div class="avatar avatar--lg"
+           data-bind="style: { background: user && user.color || '#2E7D32' },
+                      text: user && (user.initials || (user.displayName && user.displayName[0]))">
+      </div>
+      <div>
+        <div class="page-title" data-bind="text: greeting() + ', ' + (user && user.displayName || '') + '!'"></div>
+        <div class="page-subtitle" data-bind="text: todayDate"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats row -->
+  <div class="stats-row" style="margin-bottom:24px">
+    <div class="stat-card stat-card--green">
+      <div class="stat-value" data-bind="text: stats.activePc()"></div>
+      <div class="stat-label">Active Petty Cash</div>
+    </div>
+    <div class="stat-card stat-card--orange">
+      <div class="stat-value" data-bind="text: stats.pendingPc()"></div>
+      <div class="stat-label">Pending Approval</div>
+    </div>
+    <div class="stat-card stat-card--blue">
+      <div class="stat-value" data-bind="text: 'AED ' + stats.totalFloat()"></div>
+      <div class="stat-label">Total Float Balance</div>
+    </div>
+    <div class="stat-card stat-card--red">
+      <div class="stat-value" data-bind="text: stats.reimbPending()"></div>
+      <div class="stat-label">Reimbursements Pending</div>
+    </div>
+  </div>
+
+  <!-- Two-column layout -->
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
+
+    <!-- Active PC Card -->
+    <div class="card">
+      <div class="section-heading">&#128179; My Active Petty Cash</div>
+      <!-- ko if: loading() -->
+      <div class="empty-state" style="padding:30px"><div class="empty-state__msg">Loading&hellip;</div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: loading() -->
+      <!-- ko if: activeRecord() -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div>
+          <div class="form-label">PC Number</div>
+          <div style="font-size:15px;font-weight:700;color:var(--brand-green)" data-bind="text: activeRecord().pcNumber"></div>
+        </div>
+        <div>
+          <div class="form-label">Type</div>
+          <div><span class="badge badge--info" data-bind="text: activeRecord().pcType"></span></div>
+        </div>
+        <div>
+          <div class="form-label">Advance Amount</div>
+          <div class="stat-value" style="font-size:20px" data-bind="text: 'AED ' + (activeRecord().amount || 0).toLocaleString('en-US', {minimumFractionDigits:2})"></div>
+        </div>
+        <div>
+          <div class="form-label">Float Balance</div>
+          <div class="stat-value" style="font-size:20px;color:var(--brand-green)" data-bind="text: 'AED ' + (activeRecord().currentFloatBalance || 0).toLocaleString('en-US', {minimumFractionDigits:2})"></div>
+        </div>
+        <div>
+          <div class="form-label">Due Date</div>
+          <div data-bind="text: activeRecord().dueDate || 'N/A (Permanent)'"></div>
+        </div>
+        <div>
+          <div class="form-label">Status</div>
+          <span class="badge badge--active">Active</span>
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:8px;flex-wrap:wrap">
+        <button class="btn btn-primary btn-sm" data-bind="click: newReimb">&#10133; New Reimbursement</button>
+        <button class="btn btn-secondary btn-sm" data-bind="click: newClear">&#9989; Submit Clearing</button>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: activeRecord() -->
+      <div class="empty-state" style="padding:30px">
+        <div class="empty-state__icon">&#128179;</div>
+        <div class="empty-state__msg">No active petty cash</div>
+        <div class="empty-state__sub">Submit a new advance request to get started</div>
+        <button class="btn btn-primary" style="margin-top:16px" data-bind="click: newRequest">&#10133; Request Petty Cash</button>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="card">
+      <div class="section-heading">&#9889; Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: newRequest">
+          <span style="font-size:18px">&#10133;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600">New Petty Cash Request</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Submit advance for approval</div>
+          </div>
+        </button>
+        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: viewMy">
+          <span style="font-size:18px">&#128202;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600">View My Petty Cash History</div>
+            <div style="font-size:11px;color:var(--text-secondary)">All past and current advances</div>
+          </div>
+        </button>
+        <!-- ko if: isApprover -->
+        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: viewApprovals">
+          <span style="font-size:18px">&#9989;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600">Pending Approvals</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Review and action pending requests</div>
+          </div>
+        </button>
+        <!-- /ko -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Recent Activity -->
+  <div class="card">
+    <div class="section-heading">&#128337; Recent Approval Activity</div>
+    <!-- ko if: recentActivity().length === 0 -->
+    <div class="empty-state" style="padding:24px">
+      <div class="empty-state__msg">No recent activity</div>
+    </div>
+    <!-- /ko -->
+    <!-- ko ifnot: recentActivity().length === 0 -->
+    <div class="data-table-wrap" style="margin-top:8px">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Request</th>
+            <th>Type</th>
+            <th>Action</th>
+            <th>By</th>
+            <th>Date</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: recentActivity() -->
+          <tr>
+            <td><strong data-bind="text: requestRef"></strong></td>
+            <td><span class="badge badge--info" data-bind="text: requestType"></span></td>
+            <td>
+              <span data-bind="css: action === 'APPROVED' ? 'badge badge--active' : 'badge badge--rejected', text: action"></span>
+            </td>
+            <td data-bind="text: actionedBy"></td>
+            <td data-bind="text: actionDate ? new Date(actionDate).toLocaleDateString('en-GB',{day:'2-digit',month:'short',year:'numeric'}) : ''"></td>
+            <td style="color:var(--text-secondary);font-size:12px;max-width:200px;overflow:hidden;text-overflow:ellipsis" data-bind="text: comments"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+</div>

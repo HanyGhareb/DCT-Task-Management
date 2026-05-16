@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Petty Cash — DCT i-Finance (Oracle JET)</title>
+  <link rel="stylesheet" href="https://static.oracle.com/cdn/jet/17.0.0/default/css/redwood/oj-redwood-min.css">
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .login-mode .app-header,
+    .login-mode .app-sidebar { display: none !important; }
+    .login-mode main { padding: 0; }
+    .login-mode .app-content { background: transparent; }
+  </style>
+</head>
+<body>
+<div id="globalBody" data-bind="css: { 'login-mode': isLoginPage() }">
+
+  <!-- ── Header ──────────────────────────────────────────────────────── -->
+  <header class="app-header" data-bind="visible: !isLoginPage()">
+    <div class="header-start">
+      <button class="nav-toggle-btn" data-bind="click: toggleNav" title="Toggle navigation">
+        <span class="hdr-icon">&#9776;</span>
+      </button>
+      <div class="app-brand">
+        <span class="brand-cube">PC</span>
+        <div class="brand-text">
+          <span class="brand-name">Petty Cash</span>
+          <span class="brand-sub">DCT i-Finance</span>
+        </div>
+        <span class="brand-tech-badge">Oracle JET</span>
+      </div>
+    </div>
+
+    <div class="header-end">
+      <!-- Pending approvals badge -->
+      <button class="hdr-action-btn" data-bind="click: function(){ navigate('approvals'); },
+              visible: pendingCount() > 0" title="Pending Approvals" style="display:none">
+        <span class="hdr-icon">&#9989;</span>
+        <span class="notif-dot" data-bind="text: pendingCount"></span>
+      </button>
+
+      <button class="hdr-action-btn" data-bind="click: function(){ navigate('notifications'); }" title="Notifications">
+        <span class="hdr-icon">&#128276;</span>
+        <span class="notif-dot" data-bind="visible: unreadCount() > 0, text: unreadCount" style="display:none"></span>
+      </button>
+
+      <div class="user-menu-wrap" data-bind="click: toggleUserMenu">
+        <div class="user-avatar-sm"
+             data-bind="style: { background: currentUser() && currentUser().color || '#2E7D32' },
+                        text: userInitials"></div>
+        <span class="user-display-name" data-bind="text: currentUser() && currentUser().displayName"></span>
+        <span class="chevron-down">&#9660;</span>
+
+        <div class="user-dropdown" data-bind="visible: userMenuOpen" style="display:none">
+          <div class="dd-user-info">
+            <div class="dd-avatar"
+                 data-bind="style: { background: currentUser() && currentUser().color || '#2E7D32' },
+                            text: userInitials"></div>
+            <div>
+              <div class="dd-name"  data-bind="text: currentUser() && currentUser().displayName"></div>
+              <div class="dd-email" data-bind="text: currentUser() && currentUser().email"></div>
+            </div>
+          </div>
+          <div class="dd-role-badges" data-bind="visible: currentUser() && currentUser().roles && currentUser().roles.length > 0" style="display:none;padding:4px 16px 8px">
+            <!-- ko foreach: currentUser() && currentUser().roles || [] -->
+            <span class="badge badge--info" style="margin:2px 2px;font-size:10px" data-bind="text: $data"></span>
+            <!-- /ko -->
+          </div>
+          <div class="dd-divider"></div>
+          <button class="dd-item dd-item--danger" data-bind="click: logout">
+            &#10148; &nbsp;Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── App body ────────────────────────────────────────────────────── -->
+  <div class="app-body">
+
+    <!-- ── Sidebar ────────────────────────────────────────────────────── -->
+    <nav class="app-sidebar" data-bind="css: { 'app-sidebar--open': sideNavOpen() }, visible: !isLoginPage()">
+      <div class="sidebar-scroll">
+        <!-- ko foreach: navGroups() -->
+
+        <!-- Standalone items -->
+        <!-- ko if: $data.standalone -->
+        <!-- ko foreach: $data.items -->
+        <a class="nav-item" href="#"
+           data-bind="css: { 'nav-item--active': $root.currentNavItem() === $data.id },
+                      click: function(){ $root.navigate($data.id); return false; }">
+          <span class="nav-icon" data-bind="html: $data.icon"></span>
+          <span class="nav-label" data-bind="text: $data.label"></span>
+        </a>
+        <!-- /ko -->
+        <!-- /ko -->
+
+        <!-- Collapsible groups -->
+        <!-- ko ifnot: $data.standalone -->
+        <div class="nav-group-header" data-bind="click: $root.toggleGroup.bind($root, $data)">
+          <span class="nav-chevron" data-bind="css: { 'nav-chevron--expanded': !$data.collapsed() }">&#9654;</span>
+          <span class="nav-group-label" data-bind="text: $data.label"></span>
+        </div>
+        <!-- ko ifnot: $data.collapsed() -->
+        <!-- ko foreach: $data.items -->
+        <a class="nav-item nav-item--child" href="#"
+           data-bind="css: { 'nav-item--active': $root.currentNavItem() === $data.id },
+                      click: function(){ $root.navigate($data.id); return false; }">
+          <span class="nav-icon" data-bind="html: $data.icon"></span>
+          <span class="nav-label" data-bind="text: $data.label"></span>
+          <!-- ko if: $data.badge && $data.badge() > 0 -->
+          <span class="nav-badge" data-bind="text: $data.badge()"></span>
+          <!-- /ko -->
+        </a>
+        <!-- /ko -->
+        <!-- /ko -->
+        <!-- /ko -->
+
+        <!-- /ko -->
+      </div>
+    </nav>
+
+    <!-- ── Main content ─────────────────────────────────────────────── -->
+    <main class="app-content" data-bind="click: closeUserMenu">
+      <div data-bind="module: moduleConfig" class="app-module-host"></div>
+    </main>
+
+  </div><!-- /.app-body -->
+
+</div><!-- /#globalBody -->
+
+<script src="https://static.oracle.com/cdn/jet/17.0.0/3rdparty/require/require.js"
+        data-main="js/main"></script>
+</body>
+</html>

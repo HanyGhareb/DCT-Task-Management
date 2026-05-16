@@ -470,13 +470,13 @@ END;
 -- 7. DEFAULT DOCUMENT REQUIREMENTS — DT_DOC_REQUIREMENTS
 -- =============================================================================
 DECLARE
-    v_invitation_id  dct_lookup_values.lookup_value_id%TYPE;
-    v_flight_id      dct_lookup_values.lookup_value_id%TYPE;
-    v_hotel_id       dct_lookup_values.lookup_value_id%TYPE;
-    v_training_id    dct_lookup_values.lookup_value_id%TYPE;
-    v_conference_id  dct_lookup_values.lookup_value_id%TYPE;
-    v_visa_id        dct_lookup_values.lookup_value_id%TYPE;
-    v_receipt_id     dct_lookup_values.lookup_value_id%TYPE;
+    v_invitation_id  dct_lookup_values.value_id%TYPE;
+    v_flight_id      dct_lookup_values.value_id%TYPE;
+    v_hotel_id       dct_lookup_values.value_id%TYPE;
+    v_training_id    dct_lookup_values.value_id%TYPE;
+    v_conference_id  dct_lookup_values.value_id%TYPE;
+    v_visa_id        dct_lookup_values.value_id%TYPE;
+    v_receipt_id     dct_lookup_values.value_id%TYPE;
     v_cat_id         dct_lookup_categories.category_id%TYPE;
 
     PROCEDURE add_req (
@@ -506,19 +506,19 @@ BEGIN
     SELECT category_id INTO v_cat_id
     FROM   dct_lookup_categories WHERE category_code = 'DT_DOCUMENT_TYPE';
 
-    SELECT lookup_value_id INTO v_invitation_id FROM dct_lookup_values
+    SELECT value_id INTO v_invitation_id FROM dct_lookup_values
     WHERE  category_id = v_cat_id AND value_code = 'INVITATION';
-    SELECT lookup_value_id INTO v_flight_id FROM dct_lookup_values
+    SELECT value_id INTO v_flight_id FROM dct_lookup_values
     WHERE  category_id = v_cat_id AND value_code = 'FLIGHT_TICKET';
-    SELECT lookup_value_id INTO v_hotel_id FROM dct_lookup_values
+    SELECT value_id INTO v_hotel_id FROM dct_lookup_values
     WHERE  category_id = v_cat_id AND value_code = 'HOTEL_BOOKING';
-    SELECT lookup_value_id INTO v_training_id FROM dct_lookup_values
+    SELECT value_id INTO v_training_id FROM dct_lookup_values
     WHERE  category_id = v_cat_id AND value_code = 'TRAINING_ENROLL';
-    SELECT lookup_value_id INTO v_conference_id FROM dct_lookup_values
+    SELECT value_id INTO v_conference_id FROM dct_lookup_values
     WHERE  category_id = v_cat_id AND value_code = 'CONFERENCE_PROG';
-    SELECT lookup_value_id INTO v_visa_id FROM dct_lookup_values
+    SELECT value_id INTO v_visa_id FROM dct_lookup_values
     WHERE  category_id = v_cat_id AND value_code = 'VISA';
-    SELECT lookup_value_id INTO v_receipt_id FROM dct_lookup_values
+    SELECT value_id INTO v_receipt_id FROM dct_lookup_values
     WHERE  category_id = v_cat_id AND value_code = 'RECEIPT';
 
     -- BUSINESS_MISSION — External

@@ -1,0 +1,43 @@
+<div class="page-wrap">
+  <div class="page-header-row page-header">
+    <div>
+      <div class="page-title">&#128276; Notifications</div>
+      <div class="page-subtitle">In-app notifications for your petty cash activity</div>
+    </div>
+    <button class="btn btn-secondary" data-bind="click: markAllRead">&#10003; Mark All Read</button>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__msg">Loading&hellip;</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: notifs().length === 0 -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#128276;</div>
+    <div class="empty-state__msg">No notifications</div>
+    <div class="empty-state__sub">You're all caught up!</div>
+  </div>
+  <!-- /ko -->
+  <!-- ko ifnot: notifs().length === 0 -->
+  <div class="notif-list">
+    <!-- ko foreach: notifs() -->
+    <div data-bind="css: isRead === 'N' ? 'notif-item notif-item--unread' : 'notif-item', click: $parent.markRead.bind($parent,$data)">
+      <div>
+        <!-- ko if: isRead === 'N' -->
+        <div class="notif-dot-indicator"></div>
+        <!-- /ko -->
+      </div>
+      <div style="flex:1">
+        <div class="notif-title" data-bind="text: titleEn"></div>
+        <div class="notif-body" data-bind="text: bodyEn"></div>
+        <div class="notif-time" data-bind="text: $parent.fmtDate(createdAt)"></div>
+      </div>
+      <div>
+        <span data-bind="html: $parent.typeIcon(type)" style="font-size:18px;opacity:.6"></span>
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

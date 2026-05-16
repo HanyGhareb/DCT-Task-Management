@@ -1,0 +1,108 @@
+<div class="page-wrap">
+  <div class="page-header-row page-header">
+    <div>
+      <div class="page-title">&#128200; GL Code Combinations</div>
+      <div class="page-subtitle">Manage valid GL segment combinations for budget coding</div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: addRow">&#10133; Add Row</button>
+  </div>
+
+  <!-- ko if: success() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:12px"><span>&#10003;</span> <span data-bind="text: success()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:12px"><span>&#9888;</span> <span data-bind="text: error()"></span></div>
+  <!-- /ko -->
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="Search any column&hellip;" data-bind="value: search, valueUpdate: 'input'">
+    <span style="font-size:12px;color:var(--text-secondary)" data-bind="text: filtered().length + ' code(s)'"></span>
+  </div>
+
+  <!-- New row form -->
+  <!-- ko if: editingId() === '__new__' && editRow() -->
+  <div class="card" style="margin-bottom:16px;border-top:3px solid var(--brand-green)">
+    <div class="section-heading">New GL Code Combination</div>
+    <div class="form-grid form-grid--3">
+      <div class="form-group"><label class="form-label">Entity Code <span class="required">*</span></label><input class="form-control" data-bind="value: editRow().entityCode"></div>
+      <div class="form-group"><label class="form-label">Appropriation</label><input class="form-control" data-bind="value: editRow().appropriation"></div>
+      <div class="form-group"><label class="form-label">Cost Center</label><input class="form-control" data-bind="value: editRow().costCenter"></div>
+      <div class="form-group"><label class="form-label">Entity Specific</label><input class="form-control" data-bind="value: editRow().entitySpecific"></div>
+      <div class="form-group"><label class="form-label">Budget Group Code</label><input class="form-control" data-bind="value: editRow().budgetGroupCode"></div>
+      <div class="form-group"><label class="form-label">Account <span class="required">*</span></label><input class="form-control" data-bind="value: editRow().account"></div>
+      <div class="form-group"><label class="form-label">IC</label><input class="form-control" data-bind="value: editRow().ic"></div>
+      <div class="form-group"><label class="form-label">Future 1</label><input class="form-control" data-bind="value: editRow().future1"></div>
+      <div class="form-group"><label class="form-label">Future 2</label><input class="form-control" data-bind="value: editRow().future2"></div>
+      <div class="form-group"><label class="form-label">Is Active</label><select class="form-control" data-bind="value: editRow().isActive"><option value="Y">Y</option><option value="N">N</option></select></div>
+      <div class="form-group"><label class="form-label">Start Date</label><input class="form-control" type="date" data-bind="value: editRow().startDate"></div>
+      <div class="form-group"><label class="form-label">End Date</label><input class="form-control" type="date" data-bind="value: editRow().endDate"></div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" data-bind="click: saveNew">&#10003; Save</button>
+      <button class="btn btn-secondary" data-bind="click: cancelEdit">Cancel</button>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__msg">Loading&hellip;</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>CC ID</th><th>Entity</th><th>Appropriation</th><th>Cost Ctr</th><th>Entity Spec.</th>
+          <th>Budget Grp</th><th>Account</th><th>IC</th><th>Active</th><th>Start</th><th>End</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <!-- ko if: $parent.editingId() === $data.ccId && $parent.editRow() -->
+        <tr style="background:#f0fff4">
+          <td data-bind="text: $data.ccId"></td>
+          <td><input class="form-control" style="width:70px" data-bind="value: $parent.editRow().entityCode"></td>
+          <td><input class="form-control" style="width:90px" data-bind="value: $parent.editRow().appropriation"></td>
+          <td><input class="form-control" style="width:70px" data-bind="value: $parent.editRow().costCenter"></td>
+          <td><input class="form-control" style="width:70px" data-bind="value: $parent.editRow().entitySpecific"></td>
+          <td><input class="form-control" style="width:80px" data-bind="value: $parent.editRow().budgetGroupCode"></td>
+          <td><input class="form-control" style="width:70px" data-bind="value: $parent.editRow().account"></td>
+          <td><input class="form-control" style="width:50px" data-bind="value: $parent.editRow().ic"></td>
+          <td><select class="form-control" style="width:60px" data-bind="value: $parent.editRow().isActive"><option value="Y">Y</option><option value="N">N</option></select></td>
+          <td><input class="form-control" type="date" style="width:130px" data-bind="value: $parent.editRow().startDate"></td>
+          <td><input class="form-control" type="date" style="width:130px" data-bind="value: $parent.editRow().endDate"></td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-primary btn-sm" data-bind="click: $parent.saveEdit.bind($parent)">Save</button>
+              <button class="btn btn-secondary btn-sm" data-bind="click: $parent.cancelEdit.bind($parent)">Cancel</button>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko ifnot: $parent.editingId() === $data.ccId -->
+        <tr>
+          <td style="color:var(--text-secondary);font-size:11px" data-bind="text: ccId"></td>
+          <td data-bind="text: entityCode"></td>
+          <td data-bind="text: appropriation"></td>
+          <td data-bind="text: costCenter"></td>
+          <td data-bind="text: entitySpecific"></td>
+          <td data-bind="text: budgetGroupCode"></td>
+          <td><strong data-bind="text: account"></strong></td>
+          <td data-bind="text: ic || '—'"></td>
+          <td><span data-bind="css: isActive === 'Y' ? 'badge badge--active' : 'badge badge--inactive', text: isActive"></span></td>
+          <td style="font-size:11px" data-bind="text: startDate || '—'"></td>
+          <td style="font-size:11px" data-bind="text: endDate || '—'"></td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-secondary btn-sm" data-bind="click: $parent.startEdit.bind($parent, $data)">&#9998; Edit</button>
+              <button class="btn btn-danger btn-sm" data-bind="click: $parent.deleteRow.bind($parent, $data)">&#128465;</button>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+</div>

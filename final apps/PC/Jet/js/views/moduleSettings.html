@@ -1,0 +1,108 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">&#9881; Module Settings</div>
+    <div class="page-subtitle">Configure Petty Cash module behaviour and policy rules</div>
+  </div>
+
+  <!-- ko if: success() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:12px"><span>&#10003;</span> <span data-bind="text: success()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:12px"><span>&#9888;</span> <span data-bind="text: error()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__msg">Loading&hellip;</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Setting Key</th><th>Label</th><th>Type</th><th>Current Value</th><th>Default</th><th>Effective Date</th><th>Description</th><th>Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: settings() -->
+        <tr>
+          <td><code style="font-size:11px;background:#f5f5f5;padding:2px 6px;border-radius:4px" data-bind="text: settingKey"></code></td>
+          <td><strong data-bind="text: settingLabel"></strong></td>
+          <td><span data-bind="css: $parent.typeClass(valueType), text: valueType"></span></td>
+          <td>
+            <!-- ko if: $parent.editingId() === settingId -->
+            <!-- ko if: valueType === 'BOOLEAN' -->
+            <select class="form-control" style="width:80px" data-bind="value: editValue"><option value="Y">Y</option><option value="N">N</option></select>
+            <!-- /ko -->
+            <!-- ko if: valueType === 'SELECT' && allowedValues -->
+            <select class="form-control" style="min-width:120px" data-bind="value: editValue">
+              <!-- ko foreach: (allowedValues || '').split('|') -->
+              <option data-bind="value: $data, text: $data"></option>
+              <!-- /ko -->
+            </select>
+            <!-- /ko -->
+            <!-- ko if: valueType === 'NUMBER' || valueType === 'TEXT' -->
+            <input class="form-control" style="min-width:200px"
+                   data-bind="value: editValue, attr: { type: valueType === 'NUMBER' ? 'number' : 'text' }">
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko ifnot: $parent.editingId() === settingId -->
+            <span style="font-family:monospace;font-size:13px;font-weight:600;color:var(--text-primary)"
+                  data-bind="text: settingValue || '(not set)'"></span>
+            <!-- /ko -->
+          </td>
+          <td style="color:var(--text-secondary);font-size:12px" data-bind="text: defaultValue || '(none)'"></td>
+          <td>
+            <!-- ko if: $parent.editingId() === settingId -->
+            <input class="form-control" type="date" style="width:150px" data-bind="value: editDate">
+            <!-- /ko -->
+            <!-- ko ifnot: $parent.editingId() === settingId -->
+            <span style="font-size:12px" data-bind="text: effectiveDate || '—'"></span>
+            <!-- /ko -->
+          </td>
+          <td style="font-size:11px;color:var(--text-secondary);max-width:200px" data-bind="text: settingDescription"></td>
+          <td>
+            <div class="table-actions">
+              <!-- ko if: $parent.editingId() === settingId -->
+              <button class="btn btn-primary btn-sm" data-bind="click: $parent.saveEdit.bind($parent, $data)">Save</button>
+              <button class="btn btn-secondary btn-sm" data-bind="click: $parent.cancelEdit.bind($parent)">Cancel</button>
+              <!-- /ko -->
+              <!-- ko ifnot: $parent.editingId() === settingId -->
+              <button class="btn btn-secondary btn-sm" data-bind="click: $parent.startEdit.bind($parent, $data)">&#9998; Edit</button>
+              <!-- ko if: defaultValue !== null && defaultValue !== undefined -->
+              <button class="btn btn-danger btn-sm" data-bind="click: $parent.resetDefault.bind($parent, $data)" title="Reset to default">&#8635;</button>
+              <!-- /ko -->
+              <!-- /ko -->
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- /ko -->
+
+  <!-- Policy summary card -->
+  <div class="card" style="margin-top:24px;border-left:4px solid var(--brand-green)">
+    <div class="section-heading">Current Policy Summary</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px;font-size:13px;margin-top:8px">
+      <div style="padding:10px;background:#f9f9f9;border-radius:6px">
+        <div style="font-weight:600;margin-bottom:4px">&#128273; Budget Validation</div>
+        <div style="color:var(--text-secondary)">Controls whether over-budget requests are blocked (HARD) or warned (SOFT)</div>
+      </div>
+      <div style="padding:10px;background:#f9f9f9;border-radius:6px">
+        <div style="font-weight:600;margin-bottom:4px">&#128179; Multiple PC</div>
+        <div style="color:var(--text-secondary)">Whether employees can hold more than one active petty cash simultaneously</div>
+      </div>
+      <div style="padding:10px;background:#f9f9f9;border-radius:6px">
+        <div style="font-weight:600;margin-bottom:4px">&#128337; Fiscal Year</div>
+        <div style="color:var(--text-secondary)">Temporary petty cash must be cleared before the fiscal year deadline</div>
+      </div>
+      <div style="padding:10px;background:#f9f9f9;border-radius:6px">
+        <div style="font-weight:600;margin-bottom:4px">&#9201; Closing Banner</div>
+        <div style="color:var(--text-secondary)">Deadline reminder banner shown on dashboard to employees with active Temporary PC</div>
+      </div>
+    </div>
+  </div>
+</div>

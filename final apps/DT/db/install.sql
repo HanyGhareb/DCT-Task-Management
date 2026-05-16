@@ -14,6 +14,8 @@ PROMPT
 
 @01_dt_ddl.sql
 @02_dt_seed.sql
+@03_dt_views.sql
+@04_dct_dt_pkg.sql
 
 PROMPT
 PROMPT ============================================================

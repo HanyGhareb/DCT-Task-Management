@@ -1,0 +1,66 @@
+<div class="page-wrap">
+  <div class="page-header-row page-header">
+    <div>
+      <div class="page-title">&#128196; Reimbursement Requests</div>
+      <div class="page-subtitle">All reimbursements raised against your petty cash</div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: newReimb, enable: hasActivePc()">&#10133; New Reimbursement</button>
+  </div>
+
+  <!-- Active PC summary -->
+  <!-- ko if: activePc() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">
+    <span>&#128179;</span>
+    <div>
+      Active PC: <strong data-bind="text: activePc().pcNumber"></strong> &mdash;
+      Float Balance: <strong data-bind="text: 'AED ' + (activePc().currentFloatBalance || 0).toLocaleString('en-US',{minimumFractionDigits:2})"></strong>
+    </div>
+  </div>
+  <!-- /ko -->
+  <!-- ko ifnot: activePc() -->
+  <div class="alert-banner alert-banner--warning" style="margin-bottom:16px">
+    <span>&#9888;</span> You have no active petty cash. Submit a petty cash request before raising reimbursements.
+  </div>
+  <!-- /ko -->
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="Search by REIMB number or purpose&hellip;"
+           data-bind="value: search, valueUpdate: 'input'">
+    <span style="font-size:12px;color:var(--text-secondary)" data-bind="text: filtered().length + ' record(s)'"></span>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128336;</div><div class="empty-state__msg">Loading&hellip;</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: filtered().length === 0 -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#128196;</div>
+    <div class="empty-state__msg">No reimbursements found</div>
+  </div>
+  <!-- /ko -->
+  <!-- ko ifnot: filtered().length === 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>REIMB Number</th><th>PC Number</th><th>Amount (AED)</th><th>Purpose</th><th>Coding</th><th>Status</th><th>Submitted</th><th></th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <tr style="cursor:pointer" data-bind="click: $parent.viewDetail.bind($parent, $data)">
+          <td><strong class="link-text" data-bind="text: reimbNumber"></strong></td>
+          <td data-bind="text: pcNumber"></td>
+          <td><strong data-bind="text: $parent.fmtAmount(amount)"></strong></td>
+          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis" data-bind="text: purpose"></td>
+          <td><span class="badge badge--admin" data-bind="text: codingType"></span></td>
+          <td><span data-bind="css: $parent.statusClass(status), text: status.replace('_',' ')"></span></td>
+          <td data-bind="text: $parent.fmtDate(submittedAt)"></td>
+          <td><button class="btn btn-secondary btn-sm" data-bind="click: function(){ $parent.viewDetail($data); }, clickBubble:false">View</button></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

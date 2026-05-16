@@ -1,0 +1,77 @@
+<div class="page-wrap">
+  <div class="page-header-row page-header">
+    <div>
+      <div class="page-title">&#128179; My Petty Cash</div>
+      <div class="page-subtitle">All your petty cash advance requests</div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: newRequest">&#10133; New Request</button>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="Search by PC number or purpose&hellip;"
+           data-bind="value: search, valueUpdate: 'input'">
+    <select class="form-control" style="max-width:200px" data-bind="value: filterStatus">
+      <!-- ko foreach: STATUS_OPTIONS -->
+      <option data-bind="value: $data.value, text: $data.label"></option>
+      <!-- /ko -->
+    </select>
+    <span style="font-size:12px;color:var(--text-secondary)" data-bind="text: filtered().length + ' record(s)'"></span>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128336;</div><div class="empty-state__msg">Loading&hellip;</div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: filtered().length === 0 -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#128179;</div>
+    <div class="empty-state__msg">No petty cash records found</div>
+    <div class="empty-state__sub">Submit your first advance request</div>
+    <button class="btn btn-primary" style="margin-top:16px" data-bind="click: newRequest">&#10133; New Request</button>
+  </div>
+  <!-- /ko -->
+  <!-- ko ifnot: filtered().length === 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>PC Number</th>
+          <th>Type</th>
+          <th>Amount (AED)</th>
+          <th>Float Balance (AED)</th>
+          <th>Status</th>
+          <th>Fiscal Year</th>
+          <th>Due Date</th>
+          <th>Disbursed</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <tr style="cursor:pointer" data-bind="click: $parent.viewDetail.bind($parent, $data)">
+          <td><strong class="link-text" data-bind="text: pcNumber"></strong></td>
+          <td>
+            <span data-bind="css: pcType === 'PERMANENT' ? 'badge badge--idle' : 'badge badge--info',
+                             text: pcType"></span>
+          </td>
+          <td><strong data-bind="text: $parent.fmtAmount(amount)"></strong></td>
+          <td><span data-bind="text: $parent.fmtAmount(currentFloatBalance),
+                               style: { color: currentFloatBalance < amount * 0.2 ? '#C74634' : '#2E7D32', fontWeight: '600' }"></span></td>
+          <td><span data-bind="css: $parent.statusClass(status), text: $parent.statusLabel(status)"></span></td>
+          <td data-bind="text: fiscalYear"></td>
+          <td data-bind="text: $parent.fmtDate(dueDate)"></td>
+          <td data-bind="text: $parent.fmtDate(disbursedDate)"></td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-secondary btn-sm" data-bind="click: function(){ $parent.viewDetail($data); }, clickBubble: false">View</button>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

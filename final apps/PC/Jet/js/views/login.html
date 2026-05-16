@@ -1,0 +1,44 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-cube" style="font-size:18px;font-weight:900">PC</div>
+      <div class="login-title">Petty Cash</div>
+      <div class="login-subtitle">DCT i-Finance &mdash; Oracle JET &bull; App 201</div>
+    </div>
+
+    <div class="login-error" data-bind="visible: error(), text: error()" style="display:none"></div>
+
+    <div class="form-group" style="margin-bottom:14px">
+      <label class="form-label">Username</label>
+      <input class="form-control" type="text" placeholder="Enter username"
+             data-bind="value: username, valueUpdate: 'input', event: { keydown: onKeyDown }" autocomplete="username">
+    </div>
+    <div class="form-group" style="margin-bottom:20px">
+      <label class="form-label">Password</label>
+      <input class="form-control" type="password" placeholder="Enter password"
+             data-bind="value: password, valueUpdate: 'input', event: { keydown: onKeyDown }" autocomplete="current-password">
+    </div>
+
+    <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px"
+            data-bind="click: doLogin, enable: !loading()">
+      <!-- ko if: loading() --><span>Signing in&hellip;</span><!-- /ko -->
+      <!-- ko ifnot: loading() --><span>&#128273; Sign In</span><!-- /ko -->
+    </button>
+
+    <div class="login-quick" style="margin-top:20px">
+      <div class="login-quick-label">&#9889; Quick login (demo)</div>
+      <div class="quick-btns">
+        <!-- ko foreach: quickLogins -->
+        <button class="quick-btn" data-bind="click: $parent.quickLogin.bind($parent, $data)">
+          <strong data-bind="text: label"></strong>
+          <span data-bind="text: role"></span>
+        </button>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <p style="text-align:center;font-size:11px;color:#aaa;margin-top:20px">
+      Oracle JET 17 &bull; DCT i-Finance V2 &bull; App 201 &bull; &copy; 2026
+    </p>
+  </div>
+</div>
