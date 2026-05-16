@@ -37,5 +37,8 @@
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\check_delegations.sql\" 2>&1)",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\CC\\\\db\\\\07_cc_consolidate_delegation.sql\" 2>&1)"
     ]
+  },
+  "enabledPlugins": {
+    "frontend-design@claude-plugins-official": true
   }
 }

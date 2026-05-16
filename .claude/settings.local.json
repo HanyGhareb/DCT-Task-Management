@@ -65,7 +65,22 @@
       "Read(//tmp/**)",
       "Bash(cat /tmp/f805/application/pages/page_00002.sql > /tmp/page_002.txt && wc -l /tmp/page_002.txt)",
       "Bash(xargs grep -l \"process\\\\|workflow\\\\|procedure\")",
-      "Bash(xargs grep -l \"APPROVAL_STATUS\\\\|STATUS\\\\|workflow\")"
+      "Bash(xargs grep -l \"APPROVAL_STATUS\\\\|STATUS\\\\|workflow\")",
+      "Bash(Select-Object -ExpandProperty FullName)",
+      "PowerShell(head *)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\Admin\" -Recurse | Select-Object FullName, @{Name='Type'; Expression={if \\($_.PSIsContainer\\) {'DIR'} else {'FILE'}}} | Format-Table -AutoSize)",
+      "PowerShell(Get-ChildItem -Path \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\ifinance-v2\\\\frontend\" -Recurse | Select-Object FullName, @{Name='Type'; Expression={if \\($_.PSIsContainer\\) {'DIR'} else {'FILE'}}})",
+      "WebFetch(domain:localhost)",
+      "WebFetch(domain:static.oracle.com)",
+      "Bash(netstat -ano)",
+      "Bash(python -m http.server 8080)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/index.html)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/js/views/login.html)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/js/views/dashboard.html)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://static.oracle.com/cdn/jet/17.0.0/3rdparty/require/text.js\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" \"https://static.oracle.com/cdn/jet/17.0.0/3rdparty/knockout/knockout-3.5.1.js\")",
+      "Bash(start *)",
+      "Bash(findstr \":8080\")"
     ],
     "additionalDirectories": [
       "\\tmp"
