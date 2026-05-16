@@ -1,0 +1,113 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">My Profile</div>
+    <div class="page-subtitle">Manage your personal information and security settings</div>
+  </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- Profile card -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">
+      <div class="avatar avatar--lg"
+           data-bind="style: { background: color }, text: initials()"></div>
+      <div>
+        <div style="font-size:18px;font-weight:700" data-bind="text: displayName()"></div>
+        <div style="font-size:13px;color:#aaa" data-bind="text: username"></div>
+        <div style="margin-top:6px;display:flex;gap:6px;flex-wrap:wrap">
+          <!-- ko foreach: roles -->
+          <span class="badge badge--admin" data-bind="text: $data"></span>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Display Name (English)</label>
+        <input class="form-control" type="text" data-bind="value: displayName, valueUpdate: 'input'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Display Name (Arabic)</label>
+        <input class="form-control" type="text" dir="rtl" data-bind="value: displayNameAr, valueUpdate: 'input'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email</label>
+        <input class="form-control" type="email" data-bind="value: email, valueUpdate: 'input'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input class="form-control" type="text" data-bind="value: phone, valueUpdate: 'input'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Employee Number</label>
+        <input class="form-control" type="text" readonly data-bind="value: employeeNumber">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Organisation</label>
+        <input class="form-control" type="text" readonly data-bind="value: orgName">
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" data-bind="click: saveProfile, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+        <!-- ko ifnot: saving() -->&#10003; Save Profile<!-- /ko -->
+      </button>
+    </div>
+  </div>
+
+  <!-- Change password -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0">Change Password</div>
+    <!-- ko if: pwdError() -->
+    <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: pwdError()"></span></div>
+    <!-- /ko -->
+    <!-- ko if: pwdSuccess() -->
+    <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; <span data-bind="text: pwdSuccess()"></span></div>
+    <!-- /ko -->
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Current Password</label>
+        <input class="form-control" type="password" data-bind="value: currentPassword">
+      </div>
+      <div class="form-group">
+        <label class="form-label">New Password</label>
+        <input class="form-control" type="password" data-bind="value: newPassword">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Confirm New Password</label>
+        <input class="form-control" type="password" data-bind="value: confirmNewPwd">
+      </div>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-primary" data-bind="click: changePassword">Change Password</button>
+    </div>
+  </div>
+
+  <!-- Delegations -->
+  <div class="card">
+    <div class="section-heading" style="margin-top:0">My Delegations</div>
+    <!-- ko foreach: delegations() -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0">
+      <div>
+        <div style="font-size:13px;font-weight:600">
+          Delegating to: <span data-bind="text: toName"></span>
+        </div>
+        <div style="font-size:12px;color:#aaa">
+          <span data-bind="text: startDate"></span> &mdash; <span data-bind="text: endDate"></span>
+          &bull; <span data-bind="text: reason"></span>
+        </div>
+      </div>
+      <span class="badge badge--pending" data-bind="text: status"></span>
+    </div>
+    <!-- /ko -->
+    <!-- ko if: delegations().length === 0 -->
+    <div class="empty-state" style="padding:30px">
+      <div class="empty-state__msg">No active delegations</div>
+    </div>
+    <!-- /ko -->
+  </div>
+</div>

@@ -1,0 +1,99 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">Module Registry</div>
+      <div class="page-subtitle">Manage the i-Finance platform modules and their APEX app mappings</div>
+    </div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search modules&hellip;"
+           data-bind="value: searchTerm, valueUpdate: 'input'">
+    <select class="form-control" style="width:180px;padding:8px 10px"
+            data-bind="value: filterCat">
+      <option value="ALL">All Categories</option>
+      <!-- ko foreach: categories -->
+      <option data-bind="value: id, text: label"></option>
+      <!-- /ko -->
+    </select>
+  </div>
+
+  <!-- Edit dialog -->
+  <!-- ko if: showEdit() -->
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
+    <!-- ko with: editTarget() -->
+    <div style="background:#fff;border-radius:12px;padding:28px;max-width:480px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <h3 style="margin-bottom:16px">Edit Module</h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Name (English)</label>
+          <input class="form-control" type="text" data-bind="value: nameEn">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Name (Arabic)</label>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: nameAr">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Category</label>
+          <select class="form-control" data-bind="value: category">
+            <option value="CORE">Core Platform</option>
+            <option value="FINANCE">Finance</option>
+            <option value="HR">HR &amp; Employee</option>
+            <option value="BUDGET">Budget &amp; Planning</option>
+            <option value="PAYMENTS">Payments</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Order</label>
+          <input class="form-control" type="number" data-bind="value: displayOrder">
+        </div>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+        <label class="switch"><input type="checkbox" data-bind="checked: isActive"><span class="switch-slider"></span></label>
+        <span style="font-size:13px">Active</span>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
+        <button class="btn btn-secondary" data-bind="click: $root.closeEdit">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: $root.saveEdit">&#10003; Save</button>
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <div class="module-grid">
+    <!-- ko foreach: filteredModules() -->
+    <div class="module-card" style="text-align:left;padding:16px">
+      <!-- ko if: $data.isNew -->
+      <div class="module-card__badge">New</div>
+      <!-- /ko -->
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">
+        <div class="module-card__icon" style="margin:0"
+             data-bind="style: { background: $data.bg, color: $data.color }">
+          <span>&#128196;</span>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:13px" data-bind="text: nameEn"></div>
+          <div style="font-size:11px;color:#aaa" data-bind="text: moduleCode"></div>
+        </div>
+      </div>
+      <div style="font-size:11px;color:#aaa;margin-bottom:10px">
+        App <span data-bind="text: apexAppId"></span> &bull;
+        <span data-bind="text: category"></span>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
+        <!-- ko if: isActive === 'Y' -->
+        <span class="badge badge--active" style="font-size:10px">Active</span>
+        <!-- /ko -->
+        <!-- ko ifnot: isActive === 'Y' -->
+        <span class="badge badge--inactive" style="font-size:10px">Inactive</span>
+        <!-- /ko -->
+        <div style="display:flex;gap:4px">
+          <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.openEdit.bind($parent, $data)" title="Edit">&#9998;</button>
+          <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.toggleActive.bind($parent, $data)" title="Toggle Active">&#128260;</button>
+        </div>
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+</div>

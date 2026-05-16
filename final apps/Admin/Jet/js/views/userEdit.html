@@ -1,0 +1,127 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: pageTitle()"></div>
+      <div class="page-subtitle">Complete all required fields then click Save</div>
+    </div>
+    <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back to Users</button>
+  </div>
+
+  <!-- Success -->
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">
+    &#10003; <span data-bind="text: successMsg()"></span>
+  </div>
+  <!-- /ko -->
+
+  <div class="card">
+    <div class="section-heading">Account Information</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Username <span class="required">*</span></label>
+        <input class="form-control" type="text" placeholder="e.g. JOHN.DOE"
+               data-bind="value: username, valueUpdate: 'input', css: { 'border-color': hasError('username') ? '#C74634' : '' }">
+        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('username'), text: getError('username')"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Employee Number</label>
+        <input class="form-control" type="text" placeholder="e.g. EMP007"
+               data-bind="value: employeeNumber, valueUpdate: 'input'">
+      </div>
+      <div class="form-group" data-bind="css: { 'form-group--full': isNew }">
+        <!-- ko if: isNew -->
+        <label class="form-label">Password <span class="required">*</span></label>
+        <input class="form-control" type="password" placeholder="Minimum 8 characters"
+               data-bind="value: password, css: { 'border-color': hasError('password') ? '#C74634' : '' }">
+        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('password'), text: getError('password')"></span>
+        <!-- /ko -->
+      </div>
+      <!-- ko if: isNew -->
+      <div class="form-group">
+        <label class="form-label">Confirm Password</label>
+        <input class="form-control" type="password" placeholder="Re-enter password"
+               data-bind="value: confirmPassword, css: { 'border-color': hasError('confirmPassword') ? '#C74634' : '' }">
+        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('confirmPassword'), text: getError('confirmPassword')"></span>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <div class="section-heading" style="margin-top:20px">Personal Information</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Display Name (English) <span class="required">*</span></label>
+        <input class="form-control" type="text" placeholder="Full name in English"
+               data-bind="value: displayName, valueUpdate: 'input', css: { 'border-color': hasError('displayName') ? '#C74634' : '' }">
+        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('displayName'), text: getError('displayName')"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Display Name (Arabic)</label>
+        <input class="form-control" type="text" placeholder="الاسم بالعربية" dir="rtl"
+               data-bind="value: displayNameAr, valueUpdate: 'input'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Email <span class="required">*</span></label>
+        <input class="form-control" type="email" placeholder="user@ifinance.gov"
+               data-bind="value: email, valueUpdate: 'input', css: { 'border-color': hasError('email') ? '#C74634' : '' }">
+        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('email'), text: getError('email')"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Phone</label>
+        <input class="form-control" type="text" placeholder="+971-4-100-0000"
+               data-bind="value: phone, valueUpdate: 'input'">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Organisation <span class="required">*</span></label>
+        <select class="form-control"
+                data-bind="value: orgId, css: { 'border-color': hasError('orgId') ? '#C74634' : '' }">
+          <option value="">— Select Organisation —</option>
+          <!-- ko foreach: orgOptions -->
+          <option data-bind="value: value, text: label"></option>
+          <!-- /ko -->
+        </select>
+        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('orgId'), text: getError('orgId')"></span>
+      </div>
+    </div>
+
+    <div class="section-heading" style="margin-top:20px">Access &amp; Status</div>
+    <div style="display:flex;gap:32px;margin-bottom:16px">
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"
+           data-bind="click: function() { isActive(!isActive()); }">
+        <div class="switch" style="pointer-events:none">
+          <input type="checkbox" style="pointer-events:none" data-bind="checked: isActive">
+          <span class="switch-slider"></span>
+        </div>
+        Account Active
+      </div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px"
+           data-bind="click: function() { isExternal(!isExternal()); }">
+        <div class="switch" style="pointer-events:none">
+          <input type="checkbox" style="pointer-events:none" data-bind="checked: isExternal">
+          <span class="switch-slider"></span>
+        </div>
+        External User
+      </div>
+    </div>
+
+    <div class="section-heading">Role Assignments</div>
+    <div class="checkbox-grid">
+      <!-- ko foreach: roles -->
+      <div class="checkbox-item" data-bind="click: function() { checked(!checked()); }, css: { 'checkbox-item--on': checked() }">
+        <input type="checkbox" style="pointer-events:none" data-bind="checked: checked">
+        <div>
+          <div style="font-weight:600" data-bind="text: roleName"></div>
+          <div style="color:#aaa;font-size:11px" data-bind="text: description"></div>
+        </div>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-primary" data-bind="click: save, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+        <!-- ko ifnot: saving() -->&#10003; Save User<!-- /ko -->
+      </button>
+      <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
+    </div>
+  </div>
+</div>

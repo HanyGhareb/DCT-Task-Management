@@ -1,0 +1,63 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Organisation Hierarchy</div>
+    <div class="page-subtitle">Finance Division structure — 1 Division, 5 Sections</div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
+
+    <!-- Tree view -->
+    <div class="card">
+      <div class="section-heading" style="margin-top:0">&#128336; Org Tree</div>
+      <!-- ko foreach: tree -->
+      <div class="org-card" style="border-left:4px solid #C74634">
+        <div class="org-icon org-icon--division">&#127959;</div>
+        <div>
+          <div class="org-name" data-bind="text: nameEn"></div>
+          <div class="org-code" data-bind="text: orgCode + ' &bull; ' + orgType"></div>
+        </div>
+        <span class="badge badge--admin" style="margin-left:auto">Division</span>
+      </div>
+      <!-- Children -->
+      <!-- ko foreach: children -->
+      <div style="margin-left:28px;padding-left:12px;border-left:2px dashed #e0e0e0">
+        <div class="org-card" style="border-left:3px solid #0572CE">
+          <div class="org-icon org-icon--section">&#127970;</div>
+          <div>
+            <div class="org-name" data-bind="text: nameEn"></div>
+            <div class="org-code" data-bind="text: orgCode + ' &bull; ' + orgType"></div>
+          </div>
+          <span class="badge badge--info" style="margin-left:auto">Section</span>
+        </div>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+
+    <!-- Flat list with search -->
+    <div class="card">
+      <div class="section-heading" style="margin-top:0">&#128269; Search Units</div>
+      <input class="search-box" type="text" placeholder="Search organisations&hellip;"
+             style="width:100%;margin-bottom:12px"
+             data-bind="value: searchTerm, valueUpdate: 'input'">
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Name</th><th>Code</th><th>Type</th><th>Parent</th></tr>
+          </thead>
+          <tbody>
+            <!-- ko foreach: filteredList() -->
+            <tr>
+              <td style="font-weight:600;font-size:13px" data-bind="text: nameEn"></td>
+              <td style="font-family:monospace;font-size:11px" data-bind="text: orgCode"></td>
+              <td><span class="badge" data-bind="text: orgType, css: { 'badge--admin': orgType === 'DIVISION', 'badge--info': orgType === 'SECTION' }"></span></td>
+              <td style="font-size:12px;color:#aaa" data-bind="text: $parent.getParentName(parentOrgId)"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>

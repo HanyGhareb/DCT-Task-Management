@@ -1,0 +1,44 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">Notifications</div>
+      <div class="page-subtitle"><span data-bind="text: unreadCount()"></span> unread</div>
+    </div>
+    <button class="btn btn-secondary" data-bind="click: markAllRead, enable: unreadCount() > 0">
+      &#10003; Mark all read
+    </button>
+  </div>
+
+  <div class="view-toolbar">
+    <button class="btn btn-secondary btn-sm" data-bind="click: () => filter('ALL'),    css: { 'btn-primary': filter() === 'ALL' }">All</button>
+    <button class="btn btn-secondary btn-sm" data-bind="click: () => filter('UNREAD'), css: { 'btn-primary': filter() === 'UNREAD' }">Unread</button>
+  </div>
+
+  <div class="notif-list">
+    <!-- ko foreach: filteredNotifications() -->
+    <div class="notif-item" data-bind="css: { 'notif-item--unread': isRead === 'N' }, click: $parent.markRead.bind($parent, $data)">
+      <!-- ko if: isRead === 'N' -->
+      <div class="notif-dot-indicator"></div>
+      <!-- /ko -->
+      <!-- ko ifnot: isRead === 'N' -->
+      <div style="width:8px;flex-shrink:0"></div>
+      <!-- /ko -->
+      <div style="font-size:18px" data-bind="html: $parent.getTypeIcon(type)"></div>
+      <div style="flex:1">
+        <div class="notif-title" data-bind="text: titleEn"></div>
+        <div class="notif-body"  data-bind="text: bodyEn"></div>
+        <div class="notif-time"  data-bind="text: $parent.formatTime(createdAt)"></div>
+      </div>
+      <!-- ko if: isRead === 'N' -->
+      <span class="badge badge--pending" style="font-size:10px">Unread</span>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+    <!-- ko if: filteredNotifications().length === 0 -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#128276;</div>
+      <div class="empty-state__msg">No notifications</div>
+    </div>
+    <!-- /ko -->
+  </div>
+</div>

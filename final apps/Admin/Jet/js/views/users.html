@@ -1,0 +1,109 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">Users</div>
+      <div class="page-subtitle">
+        <span data-bind="text: activeCount()"></span> active &bull;
+        <span data-bind="text: totalCount()"></span> total
+      </div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: addUser">&#43; Add User</button>
+  </div>
+
+  <!-- Toolbar with instant search -->
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search by name, username, email, org&hellip;"
+           data-bind="value: searchTerm, valueUpdate: 'input'">
+    <button class="btn btn-secondary btn-sm" data-bind="click: () => filterStatus('ALL'),  css: { 'btn-primary': filterStatus() === 'ALL' }">All</button>
+    <button class="btn btn-secondary btn-sm" data-bind="click: () => filterStatus('ACTIVE'), css: { 'btn-primary': filterStatus() === 'ACTIVE' }">Active</button>
+    <button class="btn btn-secondary btn-sm" data-bind="click: () => filterStatus('INACTIVE'), css: { 'btn-primary': filterStatus() === 'INACTIVE' }">Inactive</button>
+  </div>
+
+  <!-- JET-style note: instant filter, no server call -->
+  <p style="font-size:11px;color:#aaa;margin-bottom:12px">
+    &#9889; <em>Results filter instantly as you type — no server round-trip (contrast: APEX Interactive Report requires server call)</em>
+  </p>
+
+  <!-- Delete confirm -->
+  <!-- ko if: showDeleteConfirm() -->
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <h3 style="margin-bottom:10px;color:#1d1d1f">Delete User?</h3>
+      <p style="font-size:13px;color:#6e6e73;margin-bottom:20px">
+        This will permanently remove <strong data-bind="text: deleteTarget() && deleteTarget().displayName"></strong>.
+        This action cannot be undone.
+      </p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-secondary" data-bind="click: cancelDelete">Cancel</button>
+        <button class="btn btn-danger btn-primary" style="background:#C74634;color:#fff" data-bind="click: doDelete">Delete</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- Table -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>User</th>
+          <th>Username</th>
+          <th>Email</th>
+          <th>Organisation</th>
+          <th>Roles</th>
+          <th>Status</th>
+          <th style="width:120px">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filteredUsers() -->
+        <tr>
+          <td>
+            <div style="display:flex;align-items:center;gap:10px">
+              <div class="avatar" data-bind="style: { background: $data.color || '#C74634' },
+                                            text: $parent.getInitials($data.displayName)"></div>
+              <div>
+                <div style="font-weight:600;font-size:13px" data-bind="text: displayName"></div>
+                <div style="font-size:11px;color:#aaa" data-bind="text: employeeNumber"></div>
+              </div>
+            </div>
+          </td>
+          <td style="font-family:monospace;font-size:12px" data-bind="text: username"></td>
+          <td data-bind="text: email"></td>
+          <td data-bind="text: orgName"></td>
+          <td>
+            <!-- ko foreach: roles -->
+            <span class="badge badge--info" style="margin:1px 2px;font-size:10px" data-bind="text: $data"></span>
+            <!-- /ko -->
+          </td>
+          <td>
+            <!-- ko if: isActive === 'Y' -->
+            <span class="badge badge--active">&#10003; Active</span>
+            <!-- /ko -->
+            <!-- ko ifnot: isActive === 'Y' -->
+            <span class="badge badge--inactive">&#10007; Inactive</span>
+            <!-- /ko -->
+          </td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.editUser.bind($parent, $data)" title="Edit">&#9998;</button>
+              <button class="btn btn-danger btn-sm btn-icon" data-bind="click: $parent.confirmDelete.bind($parent, $data)" title="Delete">&#128465;</button>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: filteredUsers().length === 0 -->
+        <tr>
+          <td colspan="7">
+            <div class="empty-state">
+              <div class="empty-state__icon">&#128100;</div>
+              <div class="empty-state__msg">No users found</div>
+              <div class="empty-state__sub">Try adjusting your search or filter</div>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+</div>

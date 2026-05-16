@@ -1,0 +1,41 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">System Settings</div>
+      <div class="page-subtitle">Global configuration key-value pairs stored in DCT_SYSTEM_SETTINGS</div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: saveAll, enable: hasDirty() && !saving()">
+      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+      <!-- ko ifnot: saving() -->&#10003; Save Changes<!-- /ko -->
+    </button>
+  </div>
+
+  <!-- ko if: savedMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: savedMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko foreach: categories -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: label"></div>
+    <!-- ko foreach: settings -->
+    <div class="switch-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;font-family:monospace" data-bind="text: settingKey"></div>
+        <div style="font-size:12px;color:#aaa;margin-top:2px" data-bind="text: description"></div>
+        <div style="font-size:11px;color:#bbb;margin-top:2px">
+          Last updated: <span data-bind="text: updatedAt"></span> by <span data-bind="text: updatedBy"></span>
+        </div>
+      </div>
+      <div style="flex:0 0 240px;margin-left:20px">
+        <input class="form-control" type="text"
+               data-bind="value: value, valueUpdate: 'input',
+                          style: { 'border-color': dirty() ? '#0572CE' : '', 'background': dirty() ? '#f0f7ff' : '' }">
+        <!-- ko if: dirty() -->
+        <span style="font-size:10px;color:#0572CE;margin-top:2px;display:block">&#9998; Modified</span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>

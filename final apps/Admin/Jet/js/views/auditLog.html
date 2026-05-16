@@ -1,0 +1,107 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Audit &amp; Sessions</div>
+    <div class="page-subtitle">System audit trail, login history, and active session management</div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab-btn" data-bind="click: () => activeTab('audit'),   css: { 'tab-btn--active': activeTab() === 'audit' }">&#128218; Audit Log</button>
+    <button class="tab-btn" data-bind="click: () => activeTab('logins'),  css: { 'tab-btn--active': activeTab() === 'logins' }">&#128274; Login History</button>
+    <button class="tab-btn" data-bind="click: () => activeTab('sessions'),css: { 'tab-btn--active': activeTab() === 'sessions' }">&#128187; Active Sessions</button>
+  </div>
+
+  <!-- Audit Log tab -->
+  <!-- ko if: activeTab() === 'audit' -->
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Filter by user, action, or object&hellip;"
+           data-bind="value: searchBy, valueUpdate: 'input'">
+    <button class="btn btn-secondary btn-sm" data-bind="click: refreshAudit">&#8635; Refresh</button>
+  </div>
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Action</th><th>Object</th><th>Object ID</th><th>By</th><th>When</th><th>IP</th><th>Changes</th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filteredAudit() -->
+        <tr>
+          <td><span class="badge" data-bind="text: actionType, css: $parent.getActionBadgeClass(actionType)"></span></td>
+          <td style="font-family:monospace;font-size:12px" data-bind="text: objectType"></td>
+          <td style="text-align:center;color:#aaa;font-size:12px" data-bind="text: objectId || '—'"></td>
+          <td style="font-weight:600;font-size:12px" data-bind="text: actionBy"></td>
+          <td style="font-size:12px;color:#aaa" data-bind="text: $parent.formatDate(actionAt)"></td>
+          <td style="font-family:monospace;font-size:11px;color:#aaa" data-bind="text: ipAddress"></td>
+          <td style="font-size:11px;font-family:monospace;color:#aaa;max-width:200px;overflow:hidden;text-overflow:ellipsis"
+              data-bind="text: newValues || oldValues || '—'"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- Login History tab -->
+  <!-- ko if: activeTab() === 'logins' -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Username</th><th>Login</th><th>Logout</th><th>IP Address</th><th>Result</th><th>Fail Reason</th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: loginHistory() -->
+        <tr>
+          <td style="font-weight:600" data-bind="text: username"></td>
+          <td style="font-size:12px" data-bind="text: $parent.formatDate(loginAt)"></td>
+          <td style="font-size:12px;color:#aaa" data-bind="text: logoutAt ? $parent.formatDate(logoutAt) : 'Active'"></td>
+          <td style="font-family:monospace;font-size:12px" data-bind="text: ipAddress"></td>
+          <td>
+            <!-- ko if: success === 'Y' -->
+            <span class="badge badge--active">&#10003; Success</span>
+            <!-- /ko -->
+            <!-- ko ifnot: success === 'Y' -->
+            <span class="badge badge--inactive">&#10007; Failed</span>
+            <!-- /ko -->
+          </td>
+          <td style="font-size:12px;color:#C74634" data-bind="text: failReason || '—'"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- Sessions tab -->
+  <!-- ko if: activeTab() === 'sessions' -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Session ID</th><th>Username</th><th>Started</th><th>Last Activity</th><th>IP</th><th>Browser</th><th>Status</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: sessions() -->
+        <tr>
+          <td style="font-family:monospace;font-size:11px" data-bind="text: sessionId"></td>
+          <td style="font-weight:600" data-bind="text: username"></td>
+          <td style="font-size:12px" data-bind="text: $parent.formatDate(startedAt)"></td>
+          <td style="font-size:12px;color:#aaa" data-bind="text: $parent.formatDate(lastActivity)"></td>
+          <td style="font-family:monospace;font-size:12px" data-bind="text: ipAddress"></td>
+          <td style="font-size:12px;color:#aaa" data-bind="text: browser"></td>
+          <td>
+            <span class="badge"
+              data-bind="text: status,
+                css: { 'badge--active': status === 'ACTIVE', 'badge--idle': status === 'IDLE', 'badge--inactive': status === 'REVOKED' }">
+            </span>
+          </td>
+          <td>
+            <!-- ko if: status !== 'REVOKED' -->
+            <button class="btn btn-danger btn-sm" data-bind="click: $parent.revokeSession.bind($parent, $data)">Revoke</button>
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+</div>

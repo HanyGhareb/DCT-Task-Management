@@ -1,0 +1,92 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">Lookup Values</div>
+      <div class="page-subtitle">Manage reference data used in dropdowns across all modules</div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: openNew">&#43; Add Lookup</button>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search&hellip;"
+           data-bind="value: searchTerm, valueUpdate: 'input'">
+    <select class="form-control" style="width:200px;padding:8px 10px" data-bind="value: filterType">
+      <!-- ko foreach: lookupTypes() -->
+      <option data-bind="value: $data, text: $data"></option>
+      <!-- /ko -->
+    </select>
+  </div>
+
+  <!-- Edit dialog -->
+  <!-- ko if: showEdit() -->
+  <!-- ko with: editTarget() -->
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <h3 style="margin-bottom:16px" data-bind="text: $root.isNew() ? 'Add Lookup Value' : 'Edit Lookup Value'"></h3>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Lookup Type <span class="required">*</span></label>
+          <input class="form-control" type="text" placeholder="e.g. PRIORITY" data-bind="value: lookupType">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Code <span class="required">*</span></label>
+          <input class="form-control" type="text" placeholder="e.g. HIGH" data-bind="value: lookupCode">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Value <span class="required">*</span></label>
+          <input class="form-control" type="text" placeholder="e.g. High Priority" data-bind="value: displayValue">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Sort Order</label>
+          <input class="form-control" type="number" data-bind="value: sortOrder">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <div style="display:flex;align-items:center;gap:8px;padding-top:6px;cursor:pointer"
+               data-bind="click: function() { isActive(!isActive()); }">
+            <div class="switch" style="pointer-events:none"><input type="checkbox" style="pointer-events:none" data-bind="checked: isActive"><span class="switch-slider"></span></div>
+            <span style="font-size:13px">Active</span>
+          </div>
+        </div>
+      </div>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+        <button class="btn btn-secondary" data-bind="click: $root.closeEdit">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: $root.saveEdit">&#10003; Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Type</th><th>Code</th><th>Display Value</th><th>Order</th><th>Status</th><th style="width:100px">Actions</th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <tr>
+          <td><span class="badge badge--admin" data-bind="text: lookupType"></span></td>
+          <td style="font-family:monospace;font-size:12px" data-bind="text: lookupCode"></td>
+          <td style="font-weight:600" data-bind="text: displayValue"></td>
+          <td style="text-align:center" data-bind="text: sortOrder"></td>
+          <td>
+            <!-- ko if: isActive === 'Y' -->
+            <span class="badge badge--active">Active</span>
+            <!-- /ko -->
+            <!-- ko ifnot: isActive === 'Y' -->
+            <span class="badge badge--inactive">Inactive</span>
+            <!-- /ko -->
+          </td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.openEdit.bind($parent, $data)">&#9998;</button>
+              <button class="btn btn-danger btn-sm btn-icon" data-bind="click: $parent.removeLookup.bind($parent, $data)">&#128465;</button>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+</div>

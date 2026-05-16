@@ -1,0 +1,73 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">Roles</div>
+      <div class="page-subtitle" data-bind="text: allRoles().length + ' roles defined'"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: addRole">&#43; Add Role</button>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search roles&hellip;"
+           data-bind="value: searchTerm, valueUpdate: 'input'">
+  </div>
+
+  <!-- Delete confirm -->
+  <!-- ko if: showDeleteConfirm() -->
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:28px;max-width:380px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+      <h3 style="margin-bottom:10px">Delete Role?</h3>
+      <p style="font-size:13px;color:#6e6e73;margin-bottom:20px">
+        Delete <strong data-bind="text: deleteTarget() && deleteTarget().roleName"></strong>? Users assigned this role will lose the access it granted.
+      </p>
+      <div style="display:flex;gap:10px;justify-content:flex-end">
+        <button class="btn btn-secondary" data-bind="click: cancelDelete">Cancel</button>
+        <button class="btn btn-primary" style="background:#C74634;color:#fff" data-bind="click: doDelete">Delete</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Role Name</th>
+          <th>Code</th>
+          <th>Description</th>
+          <th>Members</th>
+          <th>Status</th>
+          <th style="width:120px">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filteredRoles() -->
+        <tr>
+          <td style="font-weight:600" data-bind="text: roleName"></td>
+          <td style="font-family:monospace;font-size:12px">
+            <span class="badge badge--admin" data-bind="text: roleCode"></span>
+          </td>
+          <td style="color:#6e6e73;font-size:12px" data-bind="text: description"></td>
+          <td>
+            <span class="badge badge--info" data-bind="text: memberCount + ' member' + (memberCount === 1 ? '' : 's')"></span>
+          </td>
+          <td>
+            <!-- ko if: isActive === 'Y' -->
+            <span class="badge badge--active">Active</span>
+            <!-- /ko -->
+            <!-- ko ifnot: isActive === 'Y' -->
+            <span class="badge badge--inactive">Inactive</span>
+            <!-- /ko -->
+          </td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.editRole.bind($parent, $data)" title="Edit">&#9998;</button>
+              <button class="btn btn-danger btn-sm btn-icon" data-bind="click: $parent.confirmDelete.bind($parent, $data)" title="Delete">&#128465;</button>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+</div>

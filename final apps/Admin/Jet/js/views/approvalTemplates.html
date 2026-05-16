@@ -1,0 +1,84 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Approval Templates</div>
+    <div class="page-subtitle">Define multi-step approval workflows used across all modules</div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search templates&hellip;"
+           data-bind="value: searchTerm, valueUpdate: 'input'">
+  </div>
+
+  <!-- Step detail modal -->
+  <!-- ko if: showDetail() -->
+  <!-- ko with: selected() -->
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
+    <div style="background:#fff;border-radius:12px;padding:28px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:80vh;overflow-y:auto">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+        <h3 data-bind="text: templateName"></h3>
+        <button class="btn btn-secondary btn-sm" data-bind="click: $root.closeDetail">&#10005;</button>
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+        <span class="badge badge--admin" data-bind="text: templateCode"></span>
+        <span class="badge badge--info" data-bind="text: 'Module: ' + module"></span>
+        <span class="badge badge--active" data-bind="visible: isActive === 'Y'">Active</span>
+      </div>
+      <div class="section-heading" style="margin-top:0">Approval Steps</div>
+      <!-- ko foreach: steps -->
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #eee;border-radius:8px;margin-bottom:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:#C74634;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0" data-bind="text: seq"></div>
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:13px" data-bind="text: label"></div>
+          <div style="font-size:12px;color:#aaa">
+            Required Role: <span class="badge badge--admin" style="font-size:10px" data-bind="text: roleCode"></span>
+            &bull; SLA: <span data-bind="text: slaHours + 'h'"></span>
+          </div>
+        </div>
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Template Name</th>
+          <th>Code</th>
+          <th>Module</th>
+          <th>Steps</th>
+          <th>Status</th>
+          <th style="width:120px">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <tr>
+          <td style="font-weight:600" data-bind="text: templateName"></td>
+          <td style="font-family:monospace;font-size:11px" data-bind="text: templateCode"></td>
+          <td><span class="badge badge--info" data-bind="text: module"></span></td>
+          <td>
+            <span class="badge badge--admin" data-bind="text: stepCount + ' step' + (stepCount === 1 ? '' : 's')"></span>
+          </td>
+          <td>
+            <!-- ko if: isActive === 'Y' -->
+            <span class="badge badge--active">Active</span>
+            <!-- /ko -->
+            <!-- ko ifnot: isActive === 'Y' -->
+            <span class="badge badge--inactive">Inactive</span>
+            <!-- /ko -->
+          </td>
+          <td>
+            <div class="table-actions">
+              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.viewTemplate.bind($parent, $data)" title="View Steps">&#128065;</button>
+              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.toggleActive.bind($parent, $data)" title="Toggle">&#128260;</button>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+</div>

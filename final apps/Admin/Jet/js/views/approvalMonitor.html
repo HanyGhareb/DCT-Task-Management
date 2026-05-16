@@ -1,0 +1,78 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Approval Monitor</div>
+    <div class="page-subtitle">Real-time view of all approval instances across modules</div>
+  </div>
+
+  <!-- Status summary -->
+  <div class="stats-row" style="margin-bottom:20px">
+    <div class="stat-card stat-card--blue" style="cursor:pointer" data-bind="click: () => statusFilter('ALL')">
+      <div class="stat-value" data-bind="text: counts().all"></div>
+      <div class="stat-label">Total</div>
+    </div>
+    <div class="stat-card stat-card--orange" style="cursor:pointer" data-bind="click: () => statusFilter('PENDING')">
+      <div class="stat-value" data-bind="text: counts().pending"></div>
+      <div class="stat-label">Pending</div>
+    </div>
+    <div class="stat-card stat-card--green" style="cursor:pointer" data-bind="click: () => statusFilter('APPROVED')">
+      <div class="stat-value" data-bind="text: counts().approved"></div>
+      <div class="stat-label">Approved</div>
+    </div>
+    <div class="stat-card stat-card--red" style="cursor:pointer" data-bind="click: () => statusFilter('REJECTED')">
+      <div class="stat-value" data-bind="text: counts().rejected"></div>
+      <div class="stat-label">Rejected</div>
+    </div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search by template or requestor&hellip;"
+           data-bind="value: searchTerm, valueUpdate: 'input'">
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Template</th>
+          <th>Requested By</th>
+          <th>Date</th>
+          <th>Amount</th>
+          <th>Progress</th>
+          <th>Status</th>
+          <th>Age</th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <tr>
+          <td style="font-weight:600;font-size:13px" data-bind="text: templateName"></td>
+          <td data-bind="text: requestedBy"></td>
+          <td style="font-size:12px;color:#aaa" data-bind="text: requestedAt"></td>
+          <td style="font-family:monospace;font-size:12px" data-bind="text: amount"></td>
+          <td style="min-width:140px">
+            <div style="display:flex;align-items:center;gap:8px">
+              <div class="step-tracker">
+                <!-- ko foreach: $root.getStepArray($parent) -->
+                <!-- ko if: $index() > 0 -->
+                <div class="step-line" data-bind="css: { 'step-line--done': $root.stepState($parent, $data) !== 'pending' }"></div>
+                <!-- /ko -->
+                <div class="step-dot" data-bind="css: { 'step-dot--done': $root.stepState($parent, $data) === 'done', 'step-dot--current': $root.stepState($parent, $data) === 'current' }"></div>
+                <!-- /ko -->
+              </div>
+              <span style="font-size:11px;color:#aaa">
+                <span data-bind="text: currentStep"></span>/<span data-bind="text: totalSteps"></span>
+              </span>
+            </div>
+          </td>
+          <td>
+            <span class="badge" data-bind="text: overallStatus,
+              css: { 'badge--pending': overallStatus === 'PENDING', 'badge--active': overallStatus === 'APPROVED', 'badge--inactive': overallStatus === 'REJECTED' }">
+            </span>
+          </td>
+          <td style="font-size:12px;color:#aaa" data-bind="text: daysOld + 'd'"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+</div>

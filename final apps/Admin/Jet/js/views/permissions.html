@@ -1,0 +1,47 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">Permission Matrix</div>
+      <div class="page-subtitle">Role &times; Permission cross-reference. Check to grant, uncheck to revoke.</div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: saveAll">&#10003; Save Matrix</button>
+  </div>
+
+  <!-- ko if: savedMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: savedMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko foreach: modules -->
+  <div class="card" style="margin-bottom:16px;overflow-x:auto">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $data"></div>
+    <table class="perm-matrix">
+      <thead>
+        <tr>
+          <th style="text-align:left;min-width:180px">Permission</th>
+          <!-- ko foreach: $root.roles -->
+          <th style="min-width:90px;font-size:10px" data-bind="text: roleCode"></th>
+          <!-- /ko -->
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: $root.getPermsByModule($data) -->
+        <tr>
+          <th>
+            <div style="font-weight:600" data-bind="text: permName"></div>
+            <div style="font-weight:400;color:#aaa;font-size:10px" data-bind="text: permCode"></div>
+          </th>
+          <!-- ko foreach: $root.roles -->
+          <td>
+            <input type="checkbox"
+                   data-bind="checked: $root.hasPerm($parent, $data),
+                              click: function() { $root.togglePerm($parent, $data); return true; }"
+                   style="width:16px;height:16px;accent-color:#C74634;cursor:pointer">
+          </td>
+          <!-- /ko -->
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+</div>
