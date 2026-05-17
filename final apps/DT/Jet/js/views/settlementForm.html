@@ -1,0 +1,128 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <button class="btn btn-secondary btn-sm" data-bind="click: goBack" style="margin-bottom:6px">&#8592; Back</button>
+        <div class="page-title" data-bind="text: isView() ? 'Settlement — ' + settleNumber() : 'New Travel Settlement'"></div>
+        <div class="page-subtitle" data-bind="text: request() ? 'Request: ' + request().reqNumber + ' — ' + request().travelPurpose : ''"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: request() -->
+
+  <!-- Advance reference -->
+  <div class="card">
+    <div class="section-heading">Original Request Summary</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Departure</label><div data-bind="text: request().departureDate"></div></div>
+      <div class="form-group"><label class="form-label">Return</label><div data-bind="text: request().returnDate"></div></div>
+      <div class="form-group"><label class="form-label">Estimated Days</label><div data-bind="text: request().estimatedDays"></div></div>
+      <div class="form-group"><label class="form-label">Advance Amount (AED)</label><div data-bind="text: fmt(request().advanceAmount)"></div></div>
+    </div>
+  </div>
+
+  <!-- Settlement form -->
+  <div class="card" style="margin-top:16px">
+    <div class="section-heading">Actual Travel Details</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Actual Departure <span class="required">*</span></label>
+        <input class="form-control" type="date" data-bind="value: actualDeparture, disable: isView()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Actual Return <span class="required">*</span></label>
+        <input class="form-control" type="date" data-bind="value: actualReturn, disable: isView()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Actual Days</label>
+        <input class="form-control" type="number" readonly data-bind="value: actualDays">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Per Diem Total (AED)</label>
+        <input class="form-control" type="number" readonly data-bind="value: actualPerDiemTotal">
+      </div>
+      <div class="form-group form-group--full">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" rows="2" data-bind="value: notes, valueUpdate: 'input', disable: isView()" placeholder="Optional notes on settlement details"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Additional expenses -->
+  <div class="card" style="margin-top:16px">
+    <div class="page-header-row" style="margin-bottom:12px">
+      <div style="font-weight:700;font-size:14px">Additional Expenses</div>
+      <!-- ko ifnot: isView() -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: addExpenseLine">&#10133; Add Expense</button>
+      <!-- /ko -->
+    </div>
+    <!-- ko if: expenseLines().length === 0 -->
+    <div style="color:#6e6e73;font-size:13px">No additional expenses.</div>
+    <!-- /ko -->
+    <!-- ko foreach: expenseLines() -->
+    <div style="display:grid;grid-template-columns:1fr 140px 40px;gap:8px;margin-bottom:8px;align-items:center">
+      <input class="form-control" type="text" placeholder="Description" data-bind="value: description, valueUpdate: 'input', disable: $parent.isView()">
+      <input class="form-control" type="number" placeholder="Amount AED" data-bind="value: amount, valueUpdate: 'input', disable: $parent.isView()" min="0">
+      <!-- ko ifnot: $parent.isView() -->
+      <button class="btn btn-danger btn-icon btn-sm" data-bind="click: $parent.removeExpenseLine.bind($parent, $data)">&#10005;</button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- Settlement summary -->
+  <div class="perdiem-summary" style="margin-top:16px">
+    <div class="perdiem-summary-row">
+      <span>Per Diem Total</span>
+      <span data-bind="text: parseFloat(actualPerDiemTotal()).toLocaleString('en-AE',{minimumFractionDigits:2}) + ' AED'"></span>
+    </div>
+    <div class="perdiem-summary-row">
+      <span>Additional Expenses</span>
+      <span data-bind="text: parseFloat(additionalExpenses()).toLocaleString('en-AE',{minimumFractionDigits:2}) + ' AED'"></span>
+    </div>
+    <div class="perdiem-summary-row">
+      <span>Advance Paid</span>
+      <span data-bind="text: '(' + parseFloat(advanceAmount()).toLocaleString('en-AE',{minimumFractionDigits:2}) + ' AED)'"></span>
+    </div>
+    <div class="perdiem-summary-row">
+      <!-- ko if: netPayable() > 0 -->
+      <span style="color:#2E7D32;font-weight:700">Net Payable to Employee</span>
+      <span style="color:#2E7D32;font-weight:700" data-bind="text: netPayable().toLocaleString('en-AE',{minimumFractionDigits:2}) + ' AED'"></span>
+      <!-- /ko -->
+      <!-- ko if: netRefund() > 0 -->
+      <span style="color:#C74634;font-weight:700">Net Refund to Organisation</span>
+      <span style="color:#C74634;font-weight:700" data-bind="text: netRefund().toLocaleString('en-AE',{minimumFractionDigits:2}) + ' AED'"></span>
+      <!-- /ko -->
+      <!-- ko if: netPayable() === 0 && netRefund() === 0 -->
+      <span style="font-weight:700">Settlement Balanced</span>
+      <span style="font-weight:700">0.00 AED</span>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ko ifnot: isView() -->
+  <div class="form-actions">
+    <button class="btn btn-primary" data-bind="click: submit, disable: saving()">
+      <!-- ko if: saving() -->Submitting…<!-- /ko --><!-- ko ifnot: saving() -->Submit Settlement<!-- /ko -->
+    </button>
+    <button class="btn btn-secondary" data-bind="click: saveDraft, disable: saving()">Save Draft</button>
+    <button class="btn btn-secondary" data-bind="click: goBack">Cancel</button>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+  <!-- ko ifnot: request() -->
+  <div class="alert-banner alert-banner--warning">No travel request found. Please navigate from a specific request.</div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

@@ -1,0 +1,55 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Module Settings</div>
+    <div class="page-subtitle">System-wide configuration for the Duty Travel module</div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9881;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: successMsg"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div class="card">
+    <!-- ko foreach: settings() -->
+    <div class="form-group" style="margin-bottom:18px;padding-bottom:18px;border-bottom:1px solid #f0f0f0">
+      <label class="form-label" data-bind="text: settingLabel"></label>
+      <div class="form-hint" style="margin-bottom:6px" data-bind="text: settingDescription"></div>
+
+      <!-- SELECT type -->
+      <!-- ko if: valueType === 'SELECT' -->
+      <select class="form-control" style="max-width:320px" data-bind="value: $parent.editValues[$data.settingId], options: $parent.getAllowedValues($data)"></select>
+      <!-- /ko -->
+
+      <!-- BOOLEAN type -->
+      <!-- ko if: valueType === 'BOOLEAN' -->
+      <select class="form-control" style="max-width:200px" data-bind="value: $parent.editValues[$data.settingId]">
+        <option value="Y">Yes</option>
+        <option value="N">No</option>
+      </select>
+      <!-- /ko -->
+
+      <!-- NUMBER or TEXT type -->
+      <!-- ko if: valueType === 'NUMBER' || valueType === 'TEXT' -->
+      <input class="form-control" style="max-width:320px" data-bind="value: $parent.editValues[$data.settingId], valueUpdate: 'input', attr: { type: valueType === 'NUMBER' ? 'number' : 'text' }">
+      <!-- /ko -->
+
+      <div class="form-hint" style="margin-top:4px">Default: <strong data-bind="text: defaultValue || '(none)'"></strong></div>
+    </div>
+    <!-- /ko -->
+
+    <div class="form-actions" style="margin-top:0;padding-top:16px">
+      <button class="btn btn-primary" data-bind="click: saveAll, disable: saving()">
+        <!-- ko if: saving() -->Saving…<!-- /ko --><!-- ko ifnot: saving() -->Save Settings<!-- /ko -->
+      </button>
+      <button class="btn btn-danger" data-bind="click: resetDefaults">Reset to Defaults</button>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

@@ -105,7 +105,15 @@
       "Bash(Select-Object -ExpandProperty StatusCode)",
       "PowerShell(Start-Sleep -Seconds 1; \\(Invoke-WebRequest -Uri \"http://localhost:8082/index.html\" -UseBasicParsing\\).StatusCode)",
       "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:8082/js/main.js\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/appController.js\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/css/app.css\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/mockData.js\" -UseBasicParsing\\).StatusCode)",
-      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:8082/js/views/dashboard.html\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/views/login.html\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/services/approvalService.js\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/viewModels/approvals.js\" -UseBasicParsing\\).StatusCode)"
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:8082/js/views/dashboard.html\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/views/login.html\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/services/approvalService.js\" -UseBasicParsing\\).StatusCode; \\(Invoke-WebRequest -Uri \"http://localhost:8082/js/viewModels/approvals.js\" -UseBasicParsing\\).StatusCode)",
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:8082/js/appController.js\" -UseBasicParsing\\).Content | Select-String \"ifinance_jet_session|_requireAuth|apiBase\")",
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:8082/js/services/api.js\" -UseBasicParsing\\).Content | Select-String \"ifinance_jet_session|_handleExpiredSession\")",
+      "Bash(python -m http.server 8204)",
+      "Bash(Start-Sleep -Seconds 2)",
+      "Bash(Invoke-WebRequest -Uri \"http://localhost:8204/\" -UseBasicParsing)",
+      "PowerShell(Start-Sleep -Seconds 1; \\(Invoke-WebRequest -Uri \"http://localhost:8204/\" -UseBasicParsing\\).StatusCode)",
+      "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:8204/index.html\" -UseBasicParsing\\).Content | Select-String 'script' -AllMatches | ForEach-Object { $_.Matches.Value })",
+      "Bash(git *)"
     ],
     "additionalDirectories": [
       "\\tmp"

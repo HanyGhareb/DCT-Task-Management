@@ -1,0 +1,52 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Country Groups</div>
+    <div class="page-subtitle">Regional groupings used for per diem tier-based calculations</div>
+  </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: successMsg"></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#127760;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Code</th><th>Group Name</th><th>Countries</th><th>Active</th><th></th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: groups() -->
+        <tr>
+          <td><span class="badge badge--blue" data-bind="text: groupCode"></span></td>
+          <td style="font-weight:600" data-bind="text: groupName"></td>
+          <td data-bind="text: memberCount + ' countr' + (memberCount === 1 ? 'y' : 'ies')"></td>
+          <td><span data-bind="class: isActive==='Y'?'badge badge--approved':'badge badge--inactive', text: isActive==='Y'?'Active':'Inactive'"></span></td>
+          <td class="table-actions">
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleGroup.bind($parent, $data), text: $parent.isExpanded($data) ? 'Hide' : 'Members'"></button>
+          </td>
+        </tr>
+        <!-- ko if: $parent.isExpanded($data) -->
+        <tr>
+          <td colspan="5" style="background:#f9f9f9;padding:12px 20px">
+            <div style="display:flex;flex-wrap:wrap;gap:6px">
+              <!-- ko foreach: $parent.groupMembers() -->
+              <span class="badge badge--idle" data-bind="text: countryName + ' (' + countryCode + ')'"></span>
+              <!-- /ko -->
+              <!-- ko if: $parent.groupMembers().length === 0 -->
+              <span style="color:#6e6e73;font-size:13px">No countries in this group</span>
+              <!-- /ko -->
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+
+  <!-- /ko -->
+</div>

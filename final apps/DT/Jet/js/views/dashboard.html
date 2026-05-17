@@ -1,0 +1,92 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title" data-bind="text: greeting() + ', ' + (user.displayName || user.username)"></div>
+        <div class="page-subtitle" data-bind="text: todayDate"></div>
+      </div>
+      <button class="btn btn-primary" data-bind="click: newRequest">&#10133; New Travel Request</button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9992;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+
+  <div class="stats-row">
+    <div class="stat-card stat-card--blue">
+      <div class="stat-value" data-bind="text: stats.activeRequests()"></div>
+      <div class="stat-label">Active Requests</div>
+    </div>
+    <div class="stat-card stat-card--orange">
+      <div class="stat-value" data-bind="text: stats.draftRequests()"></div>
+      <div class="stat-label">Draft Requests</div>
+    </div>
+    <div class="stat-card stat-card--purple">
+      <div class="stat-value" data-bind="text: stats.needSettlement()"></div>
+      <div class="stat-label">Pending Settlement</div>
+    </div>
+    <div class="stat-card stat-card--green">
+      <div class="stat-value" data-bind="text: stats.totalAdvance()"></div>
+      <div class="stat-label">Total Advance (AED)</div>
+    </div>
+  </div>
+
+  <!-- Recent requests -->
+  <div class="card">
+    <div class="page-header-row" style="margin-bottom:14px">
+      <div style="font-weight:700;font-size:14px">Recent Travel Requests</div>
+      <button class="btn btn-secondary btn-sm" data-bind="click: viewRequests">View All</button>
+    </div>
+    <!-- ko if: recentRequests().length === 0 -->
+    <div class="empty-state" style="padding:30px 0"><div class="empty-state__icon">&#9992;</div><div class="empty-state__msg">No requests yet</div><div class="empty-state__sub">Submit your first travel request to get started.</div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: recentRequests().length === 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Request #</th>
+            <th>Destination</th>
+            <th>Departure</th>
+            <th>Return</th>
+            <th>Advance (AED)</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: recentRequests() -->
+          <tr style="cursor:pointer" data-bind="click: $parent.openRequest.bind($parent, $data)">
+            <td><span class="link-text" data-bind="text: reqNumber"></span></td>
+            <td data-bind="text: travelPurpose" style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></td>
+            <td data-bind="text: departureDate"></td>
+            <td data-bind="text: returnDate"></td>
+            <td data-bind="text: advanceAmount ? advanceAmount.toLocaleString('en-AE',{minimumFractionDigits:2}) : '—'"></td>
+            <td><span data-bind="class: statusClass, text: statusLabel"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- Quick actions for approvers/finance -->
+  <!-- ko if: isApprover || isDtFinance -->
+  <div class="card" style="margin-top:16px">
+    <div style="font-weight:700;font-size:14px;margin-bottom:14px">Quick Actions</div>
+    <div style="display:flex;gap:10px;flex-wrap:wrap">
+      <!-- ko if: isApprover -->
+      <button class="btn btn-secondary" data-bind="click: viewApprovals">&#128203; Pending Approvals</button>
+      <!-- /ko -->
+      <!-- ko if: isDtFinance -->
+      <button class="btn btn-secondary" data-bind="click: viewDisburse">&#128181; Disbursement Queue</button>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+</div>

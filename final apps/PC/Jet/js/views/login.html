@@ -1,9 +1,18 @@
+<!-- ═══════════════════════════════════════════════════════════════
+     MOCK / DEV MODE ONLY — this page is never reached in production.
+     Production boot redirects to Admin JET (App 200) for authentication.
+     ═══════════════════════════════════════════════════════════════ -->
 <div class="login-page">
   <div class="login-card">
     <div class="login-logo">
       <div class="login-cube" style="font-size:18px;font-weight:900">PC</div>
       <div class="login-title">Petty Cash</div>
       <div class="login-subtitle">DCT i-Finance &mdash; Oracle JET &bull; App 201</div>
+    </div>
+
+    <div class="alert-banner alert-banner--warning" style="margin-bottom:16px;font-size:12px">
+      <span>&#9888;</span>
+      <span><strong>Dev mode only.</strong> In production, login is handled by the Admin portal (App 200).</span>
     </div>
 
     <div class="login-error" data-bind="visible: error(), text: error()" style="display:none"></div>
@@ -26,7 +35,7 @@
     </button>
 
     <div class="login-quick" style="margin-top:20px">
-      <div class="login-quick-label">&#9889; Quick login (demo)</div>
+      <div class="login-quick-label">&#9889; Quick login (mock data)</div>
       <div class="quick-btns">
         <!-- ko foreach: quickLogins -->
         <button class="quick-btn" data-bind="click: $parent.quickLogin.bind($parent, $data)">

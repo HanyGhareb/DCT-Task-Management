@@ -1,5 +1,5 @@
-define(['knockout', 'services/authService', 'services/pcService', 'services/approvalService'],
-function (ko, authService, pcService, approvalService) {
+define(['knockout', 'services/config', 'services/authService', 'services/approvalService'],
+function (ko, config, authService, approvalService) {
   'use strict';
 
   function AppController() {
@@ -139,26 +139,33 @@ function (ko, authService, pcService, approvalService) {
       );
     };
 
+    // ── Auth guard ────────────────────────────────────────────────────────
+    // Production: redirect browser to Admin JET portal (the identity provider).
+    // Mock/dev:   load the local login page for standalone testing.
+    function _requireAuth() {
+      self.currentUser(null);
+      if (config.apiBase) {
+        window.location.href = '../Admin/Jet/index.html';
+      } else {
+        self._loadRoute('login');
+      }
+    }
+
     // ── Public navigate ───────────────────────────────────────────────────
     self.navigate = function (path, state) {
       self.userMenuOpen(false);
       if (state) { Object.assign(self._state, state); }
       const freshUser = authService.getCurrentUser();
-      if (!freshUser && self.currentUser()) {
-        self.currentUser(null);
-        self._loadRoute('login');
-        return;
-      }
-      if (path !== 'login' && !freshUser) {
-        self._loadRoute('login');
+      if (!freshUser) {
+        _requireAuth();
         return;
       }
       self._loadRoute(path);
     };
 
     // ── Shell actions ─────────────────────────────────────────────────────
-    self.toggleNav     = function () { self.sideNavOpen(!self.sideNavOpen()); };
-    self.closeUserMenu = function () { self.userMenuOpen(false); };
+    self.toggleNav      = function () { self.sideNavOpen(!self.sideNavOpen()); };
+    self.closeUserMenu  = function () { self.userMenuOpen(false); };
     self.toggleUserMenu = function (vm, event) {
       event.stopPropagation();
       self.userMenuOpen(!self.userMenuOpen());
@@ -166,12 +173,12 @@ function (ko, authService, pcService, approvalService) {
 
     self.logout = function () {
       authService.logout();
-      self.currentUser(null);
       self.userMenuOpen(false);
       self._state = {};
-      self._loadRoute('login');
+      _requireAuth();
     };
 
+    // Called by mock login page only (dev mode).
     self.onLogin = function (user) {
       self.currentUser(user);
       _refreshCounts();
@@ -179,7 +186,11 @@ function (ko, authService, pcService, approvalService) {
     };
 
     // ── Boot ──────────────────────────────────────────────────────────────
-    self._loadRoute(self.currentUser() ? 'dashboard' : 'login');
+    if (self.currentUser()) {
+      self._loadRoute('dashboard');
+    } else {
+      _requireAuth();
+    }
   }
 
   return AppController;

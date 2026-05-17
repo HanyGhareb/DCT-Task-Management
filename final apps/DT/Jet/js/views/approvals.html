@@ -1,0 +1,78 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Pending Approvals</div>
+    <div class="page-subtitle">Travel requests and settlements awaiting your action</div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="Search by reference or employee…" data-bind="value: searchText, valueUpdate: 'input'">
+    <select class="form-control" style="width:200px" data-bind="value: typeFilter">
+      <option value="">All Types</option>
+      <option value="TRAVEL_REQUEST">Travel Request</option>
+      <option value="SETTLEMENT">Settlement</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: filtered().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#9989;</div><div class="empty-state__msg">No pending approvals</div><div class="empty-state__sub">All caught up!</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: filtered().length === 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Reference</th><th>Type</th><th>Submitted By</th><th>Submitted At</th><th>Current Step</th><th>Amount (AED)</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <tr>
+          <td><span class="link-text" data-bind="text: requestRef, click: $parent.viewDetail.bind($parent, $data)"></span></td>
+          <td><span class="badge badge--info" data-bind="text: requestType === 'TRAVEL_REQUEST' ? 'Travel Request' : 'Settlement'"></span></td>
+          <td data-bind="text: submittedBy"></td>
+          <td data-bind="text: new Date(submittedAt).toLocaleString()"></td>
+          <td data-bind="text: currentStep"></td>
+          <td data-bind="text: amount !== null ? $parent.fmt(amount) : '—'"></td>
+          <td class="table-actions">
+            <button class="btn btn-success btn-sm" data-bind="click: $parent.openApprove.bind($parent, $data)">&#10003; Approve</button>
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.openReturn.bind($parent, $data)">&#8617; Return</button>
+            <button class="btn btn-danger btn-sm" data-bind="click: $parent.openReject.bind($parent, $data)">&#10005;</button>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- Action modal -->
+  <!-- ko if: showModal() -->
+  <div class="modal-overlay" data-bind="click: closeModal">
+    <div class="modal-box" style="max-width:420px" data-bind="click: function(d,e){e.stopPropagation()}">
+      <div class="modal-header">
+        <strong data-bind="text: actionType()==='APPROVED' ? 'Approve' : (actionType()==='REJECTED' ? 'Reject' : 'Return for Revision')"></strong>
+        <button class="btn btn-icon" data-bind="click: closeModal">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <!-- ko if: selectedItem() -->
+        <p style="font-size:13px;margin-bottom:12px">Reference: <strong data-bind="text: selectedItem().requestRef"></strong></p>
+        <!-- /ko -->
+        <!-- ko if: error() --><div class="alert-banner alert-banner--danger" data-bind="text: error"></div><!-- /ko -->
+        <div class="form-group">
+          <label class="form-label">Comments <span class="required">*</span></label>
+          <textarea class="form-control" rows="4" data-bind="value: comments, valueUpdate: 'input'" placeholder="Enter comments…"></textarea>
+        </div>
+        <div class="form-actions" style="border:none;padding:0;margin-top:12px">
+          <button class="btn btn-primary" data-bind="click: submitAction, disable: submitting() || !comments()">
+            <!-- ko if: submitting() -->Submitting…<!-- /ko --><!-- ko ifnot: submitting() -->Confirm<!-- /ko -->
+          </button>
+          <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

@@ -1,0 +1,87 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: isEdit() ? 'Edit Travel Request — ' + reqNumber() : 'New Travel Request'"></div>
+    <div class="page-subtitle">Fill in your trip details and destinations</div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: successMsg"></div>
+  <!-- /ko -->
+
+  <div class="card">
+    <div class="form-grid">
+      <div class="form-group form-group--full">
+        <label class="form-label">Travel Purpose <span class="required">*</span></label>
+        <input class="form-control" type="text" data-bind="value: travelPurpose, valueUpdate: 'input'" placeholder="Describe the purpose of travel">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Trip Type</label>
+        <select class="form-control" data-bind="value: tripType">
+          <option value="OFFICIAL">Official</option>
+          <option value="TRAINING">Training</option>
+          <option value="CONFERENCE">Conference</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Request Advance?</label>
+        <select class="form-control" data-bind="value: advanceRequested">
+          <option value="Y">Yes — pay advance before travel</option>
+          <option value="N">No — claim reimbursement after return</option>
+        </select>
+      </div>
+      <div class="form-group form-group--full">
+        <label class="form-label">Notes</label>
+        <textarea class="form-control" rows="2" data-bind="value: notes, valueUpdate: 'input'" placeholder="Optional notes or context"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- Destinations -->
+  <div class="card" style="margin-top:16px">
+    <div class="page-header-row" style="margin-bottom:12px">
+      <div style="font-weight:700;font-size:14px">Travel Destinations</div>
+      <button class="btn btn-secondary btn-sm" data-bind="click: addDest">&#10133; Add Destination</button>
+    </div>
+
+    <!-- Destination header -->
+    <div class="dest-row dest-row--header" style="margin-bottom:4px">
+      <span>Country</span><span>From</span><span>To</span><span>Days</span><span>Daily Rate (AED)</span><span></span>
+    </div>
+
+    <!-- ko foreach: destinations() -->
+    <div class="dest-row">
+      <select class="form-control" data-bind="value: countryCode, options: $parent.countries(), optionsText: 'countryName', optionsValue: 'countryCode', optionsCaption: 'Select country…'"></select>
+      <input class="form-control" type="date" data-bind="value: fromDate">
+      <input class="form-control" type="date" data-bind="value: toDate">
+      <input class="form-control" type="number" readonly data-bind="value: days">
+      <input class="form-control" type="number" readonly data-bind="value: dailyRateAed">
+      <div style="display:flex;align-items:center;padding-top:4px">
+        <button class="btn btn-danger btn-icon btn-sm" title="Remove" data-bind="click: $parent.removeDest.bind($parent, $data)">&#10005;</button>
+      </div>
+    </div>
+    <!-- /ko -->
+
+    <!-- Per diem summary -->
+    <div class="perdiem-summary" style="margin-top:16px">
+      <div class="perdiem-summary-row">
+        <span>Estimated Per Diem Total</span>
+        <span data-bind="text: totalEstimatedPerDiem().toLocaleString('en-AE',{minimumFractionDigits:2}) + ' AED'"></span>
+      </div>
+      <div class="perdiem-summary-row">
+        <span>Advance Requested</span>
+        <span data-bind="text: advanceRequested() === 'Y' ? estimatedAdvance().toLocaleString('en-AE',{minimumFractionDigits:2}) + ' AED' : 'None'"></span>
+      </div>
+    </div>
+  </div>
+
+  <div class="form-actions">
+    <button class="btn btn-primary" data-bind="click: submit, disable: saving()">
+      <!-- ko if: saving() -->Submitting…<!-- /ko --><!-- ko ifnot: saving() -->Submit for Approval<!-- /ko -->
+    </button>
+    <button class="btn btn-secondary" data-bind="click: saveDraft, disable: saving()">Save as Draft</button>
+    <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
+  </div>
+</div>

@@ -20,8 +20,8 @@ define(['services/config'], function (config) {
     localStorage.removeItem(SESSION_KEY);
     if (config.apiBase) {
       window.location.href = '../Admin/Jet/index.html';
-    } else if (window._pcApp) {
-      window._pcApp.navigate('login');
+    } else if (window._dtApp) {
+      window._dtApp.navigate('login');
     }
   }
 

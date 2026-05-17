@@ -1,0 +1,54 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">My Settlements</div>
+    <div class="page-subtitle">Travel settlement requests you have submitted</div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="Search settlements…" data-bind="value: searchText, valueUpdate: 'input'">
+    <select class="form-control" style="width:180px" data-bind="value: statusFilter">
+      <option value="">All Statuses</option>
+      <option value="DRAFT">Draft</option>
+      <option value="SUBMITTED">Submitted</option>
+      <option value="APPROVED">Approved</option>
+      <option value="CLOSED">Closed</option>
+      <option value="REJECTED">Rejected</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: filtered().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No settlements found</div><div class="empty-state__sub">Settlements appear here after you return from a trip.</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: filtered().length === 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Settlement #</th><th>Req #</th><th>Actual Departure</th><th>Actual Return</th><th>Days</th><th>Total (AED)</th><th>Advance (AED)</th><th>Net Payable</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: filtered() -->
+        <tr>
+          <td><span class="link-text" data-bind="text: settleNumber, click: $parent.openDetail.bind($parent, $data)"></span></td>
+          <td data-bind="text: reqId"></td>
+          <td data-bind="text: actualDeparture"></td>
+          <td data-bind="text: actualReturn"></td>
+          <td data-bind="text: actualDays"></td>
+          <td data-bind="text: $parent.fmt(totalSettlement)"></td>
+          <td data-bind="text: $parent.fmt(advanceAmount)"></td>
+          <td data-bind="text: $parent.fmt(netPayable)"></td>
+          <td><span data-bind="class: statusClass, text: statusLabel"></span></td>
+          <td class="table-actions">
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.openDetail.bind($parent, $data)">View</button>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

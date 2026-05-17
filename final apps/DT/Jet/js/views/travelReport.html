@@ -1,0 +1,96 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Travel Reports</div>
+        <div class="page-subtitle">Travel statistics and summaries across the organisation</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center">
+        <select class="form-control" style="width:120px" data-bind="value: yearFilter, event:{change: refresh}">
+          <option value="2026">2026</option>
+          <option value="2025">2025</option>
+        </select>
+        <button class="btn btn-secondary" data-bind="click: refresh">&#8635; Refresh</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128200;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <!-- Summary stats -->
+  <div class="stats-row">
+    <div class="stat-card stat-card--blue">
+      <div class="stat-value" data-bind="text: totalRequests()"></div>
+      <div class="stat-label">Total Requests</div>
+    </div>
+    <div class="stat-card stat-card--green">
+      <div class="stat-value" data-bind="text: totalApproved()"></div>
+      <div class="stat-label">Approved</div>
+    </div>
+    <div class="stat-card stat-card--orange">
+      <div class="stat-value" data-bind="text: totalAdvance()"></div>
+      <div class="stat-label">Total Advance (AED)</div>
+    </div>
+    <div class="stat-card stat-card--purple">
+      <div class="stat-value" data-bind="text: totalSettled()"></div>
+      <div class="stat-label">Total Settled (AED)</div>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+
+    <!-- By employee -->
+    <div class="card">
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px">Requests by Employee</div>
+      <!-- ko if: byEmployee().length === 0 -->
+      <div style="color:#6e6e73;font-size:13px">No data for selected year.</div>
+      <!-- /ko -->
+      <!-- ko if: byEmployee().length > 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Employee</th><th>Requests</th><th>Total Advance (AED)</th></tr></thead>
+          <tbody>
+            <!-- ko foreach: byEmployee() -->
+            <tr>
+              <td data-bind="text: name"></td>
+              <td data-bind="text: count"></td>
+              <td data-bind="text: parseFloat(advance).toLocaleString('en-AE',{minimumFractionDigits:2})"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- By country -->
+    <div class="card">
+      <div style="font-weight:700;font-size:14px;margin-bottom:14px">Destinations</div>
+      <!-- ko if: byCountry().length === 0 -->
+      <div style="color:#6e6e73;font-size:13px">No destination data for selected year.</div>
+      <!-- /ko -->
+      <!-- ko if: byCountry().length > 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Country</th><th>Trips</th><th>Total Per Diem (AED)</th></tr></thead>
+          <tbody>
+            <!-- ko foreach: byCountry() -->
+            <tr>
+              <td data-bind="text: country"></td>
+              <td data-bind="text: trips"></td>
+              <td data-bind="text: parseFloat(totalAed).toLocaleString('en-AE',{minimumFractionDigits:2})"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
+    </div>
+
+  </div>
+
+  <!-- /ko -->
+</div>

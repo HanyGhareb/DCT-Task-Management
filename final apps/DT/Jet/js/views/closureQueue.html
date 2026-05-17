@@ -1,0 +1,49 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Settlement Closure Queue</div>
+    <div class="page-subtitle">Approved settlements ready for financial closure</div>
+  </div>
+
+  <!-- ko if: actionMsg() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: actionMsg"></div>
+  <!-- /ko -->
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9989;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#9989;</div><div class="empty-state__msg">No settlements pending closure</div><div class="empty-state__sub">All settlements have been processed.</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: items().length === 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Settlement #</th><th>Req #</th><th>Actual Return</th><th>Days</th><th>Total (AED)</th><th>Net Payable (AED)</th><th>Net Refund (AED)</th><th>Approved At</th><th>Actions</th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: items() -->
+        <tr>
+          <td><span class="link-text" data-bind="text: settleNumber, click: $parent.viewDetail.bind($parent, $data)"></span></td>
+          <td data-bind="text: reqId"></td>
+          <td data-bind="text: actualReturn"></td>
+          <td data-bind="text: actualDays"></td>
+          <td data-bind="text: $parent.fmt(totalSettlement)"></td>
+          <td style="color:#2E7D32;font-weight:600" data-bind="text: netPayable > 0 ? $parent.fmt(netPayable) : '—'"></td>
+          <td style="color:#C74634;font-weight:600" data-bind="text: netRefund > 0 ? $parent.fmt(netRefund) : '—'"></td>
+          <td data-bind="text: approvedAt ? new Date(approvedAt).toLocaleDateString() : '—'"></td>
+          <td class="table-actions">
+            <button class="btn btn-success btn-sm" data-bind="click: $parent.closeSettlement.bind($parent, $data)">&#9989; Close</button>
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.viewDetail.bind($parent, $data)">View</button>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

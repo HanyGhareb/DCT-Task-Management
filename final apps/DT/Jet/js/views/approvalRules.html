@@ -1,0 +1,46 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Approval Rules</div>
+    <div class="page-subtitle">Approval workflow steps and conditions for travel requests and settlements</div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128221;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <!-- Template selector -->
+  <div style="display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap">
+    <!-- ko foreach: templates() -->
+    <button class="btn" data-bind="click: $parent.selectTemplate.bind($parent, $data), css: { 'btn-primary': $parent.selectedTemplateId() === templateId, 'btn-secondary': $parent.selectedTemplateId() !== templateId }, text: templateName"></button>
+    <!-- /ko -->
+  </div>
+
+  <!-- ko if: steps().length > 0 -->
+  <div class="card">
+    <div class="section-heading">Approval Steps</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr><th>Seq</th><th>Step Name</th><th>Required Role</th><th>Condition</th><th>Mandatory</th><th>Escalation (days)</th><th>Active</th></tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: steps() -->
+          <tr>
+            <td><span class="badge badge--blue" data-bind="text: stepSeq"></span></td>
+            <td style="font-weight:600" data-bind="text: stepName"></td>
+            <td><span class="badge badge--admin" data-bind="text: requiredRole"></span></td>
+            <td data-bind="text: $parent.conditionLabel($data)"></td>
+            <td><span data-bind="class: isMandatory==='Y'?'badge badge--approved':'badge badge--idle', text: isMandatory==='Y'?'Mandatory':'Optional'"></span></td>
+            <td data-bind="text: escalationDays + ' days'"></td>
+            <td><span data-bind="class: isActive==='Y'?'badge badge--approved':'badge badge--inactive', text: isActive==='Y'?'Active':'Inactive'"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+</div>

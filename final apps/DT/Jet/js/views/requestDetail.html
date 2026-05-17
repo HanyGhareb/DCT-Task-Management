@@ -1,0 +1,163 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <button class="btn btn-secondary btn-sm" data-bind="click: goBack" style="margin-bottom:6px">&#8592; Back</button>
+        <div class="page-title" data-bind="text: request() ? request().reqNumber : 'Loading…'"></div>
+        <div class="page-subtitle" data-bind="text: request() ? request().travelPurpose : ''"></div>
+      </div>
+      <!-- ko if: request() -->
+      <span data-bind="class: request().statusClass, text: request().statusLabel"></span>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9992;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+  <!-- ko if: actionMsg() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: actionMsg"></div>
+  <!-- /ko -->
+
+  <!-- ko if: request() && !loading() -->
+
+  <!-- Action buttons -->
+  <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
+    <!-- ko if: canEdit() -->
+    <button class="btn btn-secondary" data-bind="click: editRequest">&#9998; Edit</button>
+    <!-- /ko -->
+    <!-- ko if: canSubmit() -->
+    <button class="btn btn-primary" data-bind="click: function(){ if(window._dtApp) window._dtApp.navigate('requestForm',{reqId:request().reqId}); }">&#128228; Submit</button>
+    <!-- /ko -->
+    <!-- ko if: canApprove() -->
+    <button class="btn btn-success" data-bind="click: openApproveModal">&#10003; Approve</button>
+    <button class="btn btn-secondary" data-bind="click: openReturnModal">&#8617; Return</button>
+    <button class="btn btn-danger" data-bind="click: openRejectModal">&#10005; Reject</button>
+    <!-- /ko -->
+    <!-- ko if: canPayAdv() -->
+    <button class="btn btn-primary" data-bind="click: payAdvance">&#128181; Mark Advance Paid</button>
+    <!-- /ko -->
+    <!-- ko if: canSettle() -->
+    <button class="btn btn-success" data-bind="click: startSettle">&#9989; Start Settlement</button>
+    <!-- /ko -->
+    <!-- ko if: canCancel() -->
+    <button class="btn btn-danger" data-bind="click: cancelRequest">&#10060; Cancel</button>
+    <!-- /ko -->
+  </div>
+
+  <!-- Request info -->
+  <div class="card">
+    <div class="section-heading">Request Details</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Request #</label><div data-bind="text: request().reqNumber"></div></div>
+      <div class="form-group"><label class="form-label">Employee</label><div data-bind="text: request().employeeName + ' (' + request().employeeNumber + ')'"></div></div>
+      <div class="form-group"><label class="form-label">Grade</label><div data-bind="text: request().gradeCode"></div></div>
+      <div class="form-group"><label class="form-label">Organisation</label><div data-bind="text: request().orgName"></div></div>
+      <div class="form-group"><label class="form-label">Trip Type</label><div data-bind="text: request().tripType"></div></div>
+      <div class="form-group"><label class="form-label">Advance Requested</label><div data-bind="text: request().advanceRequested === 'Y' ? 'Yes' : 'No'"></div></div>
+      <div class="form-group"><label class="form-label">Departure</label><div data-bind="text: request().departureDate"></div></div>
+      <div class="form-group"><label class="form-label">Return</label><div data-bind="text: request().returnDate"></div></div>
+      <div class="form-group"><label class="form-label">Estimated Days</label><div data-bind="text: request().estimatedDays"></div></div>
+      <div class="form-group"><label class="form-label">Estimated Per Diem (AED)</label><div data-bind="text: fmt(request().estimatedPerDiem)"></div></div>
+      <div class="form-group"><label class="form-label">Advance Amount (AED)</label><div data-bind="text: request().advanceRequested === 'Y' ? fmt(request().advanceAmount) : '—'"></div></div>
+      <div class="form-group"><label class="form-label">Submitted</label><div data-bind="text: request().submittedAt ? new Date(request().submittedAt).toLocaleString() : '—'"></div></div>
+      <!-- ko if: request().notes -->
+      <div class="form-group form-group--full"><label class="form-label">Notes</label><div data-bind="text: request().notes"></div></div>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- Destinations -->
+  <!-- ko if: destinations().length > 0 -->
+  <div class="card" style="margin-top:16px">
+    <div class="section-heading">Destinations</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>#</th><th>Country</th><th>From</th><th>To</th><th>Days</th><th>Daily Rate (AED)</th><th>Amount (AED)</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: destinations() -->
+          <tr>
+            <td data-bind="text: seqNum"></td>
+            <td data-bind="text: countryName"></td>
+            <td data-bind="text: fromDate"></td>
+            <td data-bind="text: toDate"></td>
+            <td data-bind="text: days"></td>
+            <td data-bind="text: parseFloat(dailyRateAed).toLocaleString('en-AE',{minimumFractionDigits:2})"></td>
+            <td data-bind="text: parseFloat(amount).toLocaleString('en-AE',{minimumFractionDigits:2})"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+        <tfoot><tr><td colspan="6" style="text-align:right;font-weight:600">Total</td><td style="font-weight:700" data-bind="text: fmt(destinations().reduce(function(s,d){return s+(parseFloat(d.amount)||0);},0))"></td></tr></tfoot>
+      </table>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- Settlement -->
+  <!-- ko if: settlement() -->
+  <div class="card" style="margin-top:16px">
+    <div class="section-heading">Settlement</div>
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label">Settlement #</label><div data-bind="text: settlement().settleNumber"></div></div>
+      <div class="form-group"><label class="form-label">Status</label><span data-bind="class: settlement().statusClass, text: settlement().statusLabel"></span></div>
+      <div class="form-group"><label class="form-label">Actual Days</label><div data-bind="text: settlement().actualDays"></div></div>
+      <div class="form-group"><label class="form-label">Total Settlement (AED)</label><div data-bind="text: fmt(settlement().totalSettlement)"></div></div>
+      <div class="form-group"><label class="form-label">Advance Paid (AED)</label><div data-bind="text: fmt(settlement().advanceAmount)"></div></div>
+      <div class="form-group"><label class="form-label">Net Payable (AED)</label><div data-bind="text: fmt(settlement().netPayable)"></div></div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- Approval history -->
+  <!-- ko if: history().length > 0 -->
+  <div class="card" style="margin-top:16px">
+    <div class="section-heading">Approval History</div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Step</th><th>Action By</th><th>Action</th><th>Comments</th><th>Date</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: history() -->
+          <tr>
+            <td data-bind="text: 'Step ' + stepSeq"></td>
+            <td data-bind="text: actionedByName"></td>
+            <td><span data-bind="text: action, class: action==='APPROVED'?'badge badge--approved':action==='REJECTED'?'badge badge--rejected':'badge badge--warning'"></span></td>
+            <td data-bind="text: comments || '—'"></td>
+            <td data-bind="text: actionedAt ? new Date(actionedAt).toLocaleString() : '—'"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+
+  <!-- Approval action modal -->
+  <!-- ko if: showActionModal() -->
+  <div class="modal-overlay" data-bind="click: closeActionModal">
+    <div class="modal-box" style="max-width:420px" data-bind="click: function(d,e){e.stopPropagation()}">
+      <div class="modal-header">
+        <strong data-bind="text: actionType() === 'APPROVED' ? 'Approve Request' : actionType() === 'REJECTED' ? 'Reject Request' : 'Return for Revision'"></strong>
+        <button class="btn btn-icon" data-bind="click: closeActionModal">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <!-- ko if: error() --><div class="alert-banner alert-banner--danger" data-bind="text: error"></div><!-- /ko -->
+        <div class="form-group">
+          <label class="form-label">Comments <span class="required">*</span></label>
+          <textarea class="form-control" rows="4" data-bind="value: actionComments, valueUpdate: 'input'" placeholder="Enter your comments…"></textarea>
+        </div>
+        <div class="form-actions" style="border:none;padding:0;margin-top:12px">
+          <button class="btn btn-primary" data-bind="click: submitAction, disable: submitting() || !actionComments()">
+            <!-- ko if: submitting() -->Submitting…<!-- /ko --><!-- ko ifnot: submitting() -->Confirm<!-- /ko -->
+          </button>
+          <button class="btn btn-secondary" data-bind="click: closeActionModal">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>
