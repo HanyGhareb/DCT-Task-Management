@@ -113,7 +113,11 @@
       "Bash(Invoke-WebRequest -Uri \"http://localhost:8204/\" -UseBasicParsing)",
       "PowerShell(Start-Sleep -Seconds 1; \\(Invoke-WebRequest -Uri \"http://localhost:8204/\" -UseBasicParsing\\).StatusCode)",
       "PowerShell(\\(Invoke-WebRequest -Uri \"http://localhost:8204/index.html\" -UseBasicParsing\\).Content | Select-String 'script' -AllMatches | ForEach-Object { $_.Matches.Value })",
-      "Bash(git *)"
+      "Bash(git *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/)",
+      "Bash(Start-Process python *)",
+      "Bash(Select-Object Id)",
+      "PowerShell(Set-Location \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\DT\\\\Jet\"; $proc = Start-Process python -ArgumentList \"-m\", \"http.server\", \"8080\" -WindowStyle Hidden -PassThru; Start-Sleep 2; $r = Invoke-WebRequest http://localhost:8080/ -UseBasicParsing -TimeoutSec 5; \"HTTP $\\($r.StatusCode\\) — PID $\\($proc.Id\\)\")"
     ],
     "additionalDirectories": [
       "\\tmp"

@@ -141,10 +141,6 @@ function (ko, authService, dtService, settlementService, approvalService) {
       p.then(function (settle) {
         return approvalService.startWorkflow('DT_SETTLEMENT', 'SETTLEMENT', settle.settleId, settle.settleNumber, user.userId);
       }).then(function () {
-        // Mark request as SETTLED
-        var rId = reqId || (self.request() ? self.request().reqId : null);
-        if (rId) return dtService.updateRequest(rId, { status: 'SETTLED' });
-      }).then(function () {
         self.saving(false);
         if (window._dtApp) window._dtApp.navigate('mySettlements');
       }).catch(function(e){ self.saving(false); self.error(e && e.message ? e.message : 'Submit failed.'); });

@@ -7,9 +7,12 @@
  */
 define([], function () {
   'use strict';
+
+  var ADB = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin';
+
   return {
-    apiBase: null,
-    // apiBase: '/ords/admin/dt',
-    // apiBase: 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/dt',
+    // apiBase: null,                 // mock mode (localStorage)
+    apiBase:  ADB + '/dt',           // DT ORDS module  — real DB
+    authBase: ADB + '/dct',          // Admin ORDS module — login / session
   };
 });

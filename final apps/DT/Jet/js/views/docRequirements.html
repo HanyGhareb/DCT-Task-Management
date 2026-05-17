@@ -4,6 +4,9 @@
     <div class="page-subtitle">Required documents for travel requests and settlements</div>
   </div>
 
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
   <!-- ko if: successMsg() -->
   <div class="alert-banner alert-banner--success" data-bind="text: successMsg"></div>
   <!-- /ko -->
@@ -11,30 +14,50 @@
   <div class="view-toolbar">
     <select class="form-control" style="width:220px" data-bind="value: typeFilter">
       <option value="">All Types</option>
-      <option value="TRAVEL_REQUEST">Travel Request</option>
+      <option value="REQUEST">Travel Request</option>
       <option value="SETTLEMENT">Settlement</option>
     </select>
   </div>
 
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
   <!-- ko if: editRow() -->
   <div class="card" style="margin-bottom:16px">
-    <div style="font-weight:700;font-size:14px;margin-bottom:12px">Edit Document Requirement — <span data-bind="text: editRow().docCode"></span></div>
+    <div style="font-weight:700;font-size:14px;margin-bottom:4px">Edit — <span data-bind="text: editRow().docName"></span></div>
+    <div style="color:#6e6e73;font-size:12px;margin-bottom:12px" data-bind="text: editRow().docCode"></div>
     <div class="form-grid">
-      <div class="form-group form-group--full">
-        <label class="form-label">Document Name</label>
-        <input class="form-control" type="text" data-bind="value: editRow().docName, valueUpdate: 'input'">
+      <div class="form-group">
+        <label class="form-label">Mandatory</label>
+        <select class="form-control" data-bind="value: editRow().isMandatory">
+          <option value="Y">Yes — mandatory</option>
+          <option value="N">No — optional</option>
+        </select>
       </div>
       <div class="form-group">
-        <label class="form-label">Required</label>
-        <select class="form-control" data-bind="value: editRow().isRequired"><option value="Y">Yes</option><option value="N">No (Optional)</option></select>
+        <label class="form-label">Applies To</label>
+        <select class="form-control" data-bind="value: editRow().appliesToSource">
+          <option value="REQUEST">Travel Request only</option>
+          <option value="SETTLEMENT">Settlement only</option>
+          <option value="BOTH">Both</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Display Order</label>
+        <input class="form-control" type="number" min="1" data-bind="value: editRow().displaySeq, valueUpdate: 'input'">
       </div>
       <div class="form-group">
         <label class="form-label">Active</label>
-        <select class="form-control" data-bind="value: editRow().isActive"><option value="Y">Yes</option><option value="N">No</option></select>
+        <select class="form-control" data-bind="value: editRow().isActive">
+          <option value="Y">Yes</option>
+          <option value="N">No</option>
+        </select>
       </div>
     </div>
     <div class="form-actions" style="margin-top:12px;padding-top:12px">
-      <button class="btn btn-primary btn-sm" data-bind="click: saveEdit">Save</button>
+      <button class="btn btn-primary btn-sm" data-bind="click: saveEdit, disable: saving()">Save</button>
       <button class="btn btn-secondary btn-sm" data-bind="click: cancelEdit">Cancel</button>
     </div>
   </div>
@@ -43,22 +66,31 @@
   <div class="data-table-wrap">
     <table class="data-table">
       <thead>
-        <tr><th>Code</th><th>Document Name</th><th>Applies To</th><th>Required</th><th>Active</th><th></th></tr>
+        <tr><th>Document</th><th>Mission / Trip</th><th>Applies To</th><th>Mandatory</th><th>Active</th><th></th></tr>
       </thead>
       <tbody>
         <!-- ko foreach: filtered() -->
         <tr>
-          <td><span class="badge badge--blue" data-bind="text: docCode"></span></td>
-          <td data-bind="text: docName"></td>
-          <td data-bind="text: requestType === 'TRAVEL_REQUEST' ? 'Travel Request' : 'Settlement'"></td>
-          <td><span data-bind="class: isRequired==='Y'?'badge badge--approved':'badge badge--idle', text: isRequired==='Y'?'Required':'Optional'"></span></td>
+          <td>
+            <!-- ko if: docCode -->
+            <span class="badge badge--blue" style="margin-right:6px" data-bind="text: docCode"></span>
+            <!-- /ko -->
+            <span data-bind="text: docName"></span>
+          </td>
+          <td style="font-size:12px;color:#6e6e73" data-bind="text: missionTypeLabel + ' / ' + tripTypeLabel"></td>
+          <td><span class="badge badge--info" data-bind="text: appliesToSourceLabel"></span></td>
+          <td><span data-bind="class: isMandatory==='Y'?'badge badge--danger':'badge badge--idle', text: isMandatory==='Y'?'Mandatory':'Optional'"></span></td>
           <td><span data-bind="class: isActive==='Y'?'badge badge--approved':'badge badge--inactive', text: isActive==='Y'?'Active':'Inactive'"></span></td>
           <td class="table-actions">
             <button class="btn btn-secondary btn-sm" data-bind="click: $parent.startEdit.bind($parent, $data)">Edit</button>
           </td>
         </tr>
         <!-- /ko -->
+        <!-- ko if: filtered().length === 0 -->
+        <tr><td colspan="6" style="color:#6e6e73;font-size:13px;text-align:center;padding:20px">No requirements match your filter.</td></tr>
+        <!-- /ko -->
       </tbody>
     </table>
   </div>
+  <!-- /ko -->
 </div>

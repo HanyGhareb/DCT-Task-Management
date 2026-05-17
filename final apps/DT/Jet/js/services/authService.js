@@ -29,8 +29,17 @@ function (config, api, mockData) {
 
     login: function (username, password) {
       if (config.apiBase) {
-        return api.post('/auth/login', { username: username, password: password })
+        var loginUrl = (config.authBase || config.apiBase) + '/auth/login';
+        return fetch(loginUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ username: username, password: password }),
+        }).then(function (r) { return r.json(); })
           .then(function (data) {
+            if (!data || data.error || !data.userId) {
+              localStorage.removeItem(SESSION_KEY);
+              return null;
+            }
             data.roles    = (data.rolesCsv || '').split(',').filter(Boolean);
             data.initials = getInitials(data.displayName);
             localStorage.setItem(SESSION_KEY, JSON.stringify(data));

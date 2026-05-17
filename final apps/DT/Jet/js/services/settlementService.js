@@ -69,7 +69,15 @@ function (config, api, mockData) {
     },
 
     createSettlement: function (payload) {
-      if (config.apiBase) return api.post('/settlements/', payload);
+      if (config.apiBase) {
+        if (payload.status === 'SUBMITTED') {
+          var draftPayload = Object.assign({}, payload, { status: 'DRAFT' });
+          return api.post('/settlements/', draftPayload).then(function(rec) {
+            return api.post('/settlements/' + rec.settleId + '/submit');
+          });
+        }
+        return api.post('/settlements/', payload);
+      }
       var s = loadStore();
       var now = new Date().toISOString();
       var year = new Date().getFullYear();
@@ -90,7 +98,13 @@ function (config, api, mockData) {
     },
 
     updateSettlement: function (settleId, payload) {
-      if (config.apiBase) return api.put('/settlements/' + settleId, payload);
+      if (config.apiBase) {
+        if (payload.status === 'SUBMITTED') {
+          return api.put('/settlements/' + settleId, Object.assign({}, payload, { status: 'DRAFT' }))
+            .then(function() { return api.post('/settlements/' + settleId + '/submit'); });
+        }
+        return api.put('/settlements/' + settleId, payload);
+      }
       var s = loadStore();
       var idx = s.settlements.findIndex(function(x){ return x.settleId === settleId; });
       if (idx === -1) return Promise.reject({ message: 'Settlement not found' });

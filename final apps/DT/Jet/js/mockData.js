@@ -120,9 +120,9 @@ define([], function () {
       travelPurpose: 'Training on Oracle Fusion Financials — Receivables module — London',
       departureDate: '2026-03-01', returnDate: '2026-03-05', estimatedDays: 5,
       estimatedPerDiem: 8500, advanceRequested: 'Y', advanceAmount: 8500,
-      status: 'SETTLED', submittedAt: '2026-02-10T10:00:00', approvedAt: '2026-02-15T14:00:00',
+      status: 'CLOSED', submittedAt: '2026-02-10T10:00:00', approvedAt: '2026-02-15T14:00:00',
       advancePaidAt: '2026-02-20T09:00:00', advancePaidBy: 4,
-      returnedAt: '2026-03-06', closedAt: null, notes: null, createdAt: '2026-02-10T10:00:00',
+      returnedAt: '2026-03-06', closedAt: '2026-03-15T10:00:00', notes: null, createdAt: '2026-02-10T10:00:00',
     },
     {
       reqId: 3, reqNumber: 'DT-2026-00003', userId: 5,

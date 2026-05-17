@@ -4,6 +4,9 @@
     <div class="page-subtitle">Regional groupings used for per diem tier-based calculations</div>
   </div>
 
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
   <!-- ko if: successMsg() -->
   <div class="alert-banner alert-banner--success" data-bind="text: successMsg"></div>
   <!-- /ko -->

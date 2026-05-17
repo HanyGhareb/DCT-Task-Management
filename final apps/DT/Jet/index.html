@@ -48,7 +48,7 @@
         <div class="user-avatar-sm"
              data-bind="style: { background: currentUser() && currentUser().color || '#0572CE' },
                         text: userInitials"></div>
-        <span class="user-display-name" data-bind="text: currentUser() && currentUser().displayName"></span>
+        <span class="user-display-name" data-bind="text: currentUser() ? (currentUser().displayName || currentUser().username || '') : ''"></span>
         <span class="chevron-down">&#9660;</span>
 
         <div class="user-dropdown" data-bind="visible: userMenuOpen" style="display:none">
@@ -57,8 +57,8 @@
                  data-bind="style: { background: currentUser() && currentUser().color || '#0572CE' },
                             text: userInitials"></div>
             <div>
-              <div class="dd-name"  data-bind="text: currentUser() && currentUser().displayName"></div>
-              <div class="dd-email" data-bind="text: currentUser() && currentUser().email"></div>
+              <div class="dd-name"  data-bind="text: currentUser() ? (currentUser().displayName || currentUser().username || '') : ''"></div>
+              <div class="dd-email" data-bind="text: currentUser() ? (currentUser().email || '') : ''"></div>
             </div>
           </div>
           <div class="dd-role-badges" data-bind="visible: currentUser() && currentUser().roles && currentUser().roles.length > 0" style="display:none;padding:4px 16px 8px">

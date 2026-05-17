@@ -106,7 +106,17 @@ function (config, api, mockData) {
     },
 
     createRequest: function (payload) {
-      if (config.apiBase) return api.post('/requests/', payload);
+      if (config.apiBase) {
+        if (payload.status === 'SUBMITTED') {
+          // Create as DRAFT first, then use the /submit endpoint which starts the
+          // approval workflow server-side.
+          var draftPayload = Object.assign({}, payload, { status: 'DRAFT' });
+          return api.post('/requests/', draftPayload).then(function(req) {
+            return api.post('/requests/' + req.reqId + '/submit');
+          });
+        }
+        return api.post('/requests/', payload);
+      }
       var s = loadStore();
       var now = new Date().toISOString();
       var year = new Date().getFullYear();
@@ -129,7 +139,14 @@ function (config, api, mockData) {
     },
 
     updateRequest: function (reqId, payload) {
-      if (config.apiBase) return api.put('/requests/' + reqId, payload);
+      if (config.apiBase) {
+        if (payload.status === 'SUBMITTED') {
+          // Save edits on the DRAFT, then submit through the dedicated endpoint.
+          return api.put('/requests/' + reqId, Object.assign({}, payload, { status: 'DRAFT' }))
+            .then(function() { return api.post('/requests/' + reqId + '/submit'); });
+        }
+        return api.put('/requests/' + reqId, payload);
+      }
       var s = loadStore();
       var idx = s.requests.findIndex(function(r){ return r.reqId === reqId; });
       if (idx === -1) return Promise.reject({ message: 'Request not found' });

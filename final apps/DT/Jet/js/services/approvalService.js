@@ -137,9 +137,10 @@ function (config, api, mockData) {
       return Promise.resolve(newAction);
     },
 
-    // Create a new approval instance when a request is submitted
+    // Create a new approval instance when a request is submitted.
+    // In API mode the server-side /submit endpoint handles this — client is a no-op.
     startWorkflow: function (templateCode, sourceModule, sourceRecordId, sourceRecordRef, submittedBy) {
-      if (config.apiBase) return api.post('/approvals/start', { templateCode: templateCode, sourceModule: sourceModule, sourceRecordId: sourceRecordId, sourceRecordRef: sourceRecordRef });
+      if (config.apiBase) return Promise.resolve({});
       var s = loadStore();
       var tpl = mockData.APPROVAL_TEMPLATES.find(function(t){ return t.templateCode === templateCode; });
       if (!tpl) return Promise.reject({ message: 'Template not found: ' + templateCode });
