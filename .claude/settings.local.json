@@ -117,7 +117,20 @@
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8080/)",
       "Bash(Start-Process python *)",
       "Bash(Select-Object Id)",
-      "PowerShell(Set-Location \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\DT\\\\Jet\"; $proc = Start-Process python -ArgumentList \"-m\", \"http.server\", \"8080\" -WindowStyle Hidden -PassThru; Start-Sleep 2; $r = Invoke-WebRequest http://localhost:8080/ -UseBasicParsing -TimeoutSec 5; \"HTTP $\\($r.StatusCode\\) — PID $\\($proc.Id\\)\")"
+      "PowerShell(Set-Location \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\DT\\\\Jet\"; $proc = Start-Process python -ArgumentList \"-m\", \"http.server\", \"8080\" -WindowStyle Hidden -PassThru; Start-Sleep 2; $r = Invoke-WebRequest http://localhost:8080/ -UseBasicParsing -TimeoutSec 5; \"HTTP $\\($r.StatusCode\\) — PID $\\($proc.Id\\)\")",
+      "PowerShell(Select-String -Path \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\DT\\\\db\\\\01_dt_ddl.sql\" -Pattern \"REFERENCES prod\\\\.\" | Select-Object -ExpandProperty Line | Select-Object -Unique | ForEach-Object { [regex]::Matches\\($_, \"REFERENCES [^ \\\\\\(]+\"\\) | ForEach-Object { $_.Value } })",
+      "Bash(powershell -Command ' *)",
+      "PowerShell(\\(Get-Content \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\12_dct_master_data.sql\" | Measure-Object -Line\\).Lines)",
+      "Bash(dir C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\apps\\\\petty-cash *)",
+      "Bash(./sql -name prod_mcp)",
+      "PowerShell($script = \"C:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\db\\\\v2\\\\12_dct_master_data.sql\"; & \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@$script\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\test_insert.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\test_exp_insert.sql\" 2>&1)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\check_exp.sql\" 2>&1)",
+      "Bash(2>/dev/null)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\test_individual_inserts.sql\" 2>&1)",
+      "PowerShell(Stop-Process *)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\verify_counts.sql\" 2>&1)"
     ],
     "additionalDirectories": [
       "\\tmp"
