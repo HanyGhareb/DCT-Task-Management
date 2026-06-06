@@ -1,0 +1,99 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Positions & Headcount</div>
+        <div class="page-subtitle" data-bind="text: filtered().length + ' position(s) shown'"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- Summary row -->
+  <div class="stats-row" style="margin-bottom:20px">
+    <div class="stat-card stat-card--blue">
+      <div class="stat-value" data-bind="text: totalApproved()"></div>
+      <div class="stat-label">Approved HC</div>
+    </div>
+    <div class="stat-card stat-card--green">
+      <div class="stat-value" data-bind="text: totalFilled()"></div>
+      <div class="stat-label">Filled</div>
+    </div>
+    <div class="stat-card stat-card--orange">
+      <div class="stat-value" data-bind="text: totalVacant()"></div>
+      <div class="stat-label">Vacancies</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="view-toolbar">
+      <input class="search-box" type="text" placeholder="Search position name or code…" data-bind="value: searchQ, valueUpdate: 'input'">
+      <select class="form-control" style="min-width:180px;width:auto" data-bind="value: filterOrg">
+        <option value="">All Sections</option>
+        <!-- ko foreach: orgs() -->
+        <option data-bind="value: orgId, text: orgNameEn"></option>
+        <!-- /ko -->
+      </select>
+      <select class="form-control" style="min-width:140px;width:auto" data-bind="value: filterVacancy">
+        <option value="">All</option>
+        <option value="vacant">Has Vacancies</option>
+        <option value="full">Fully Staffed</option>
+      </select>
+    </div>
+
+    <!-- ko if: loading() -->
+    <div class="empty-state"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">Loading…</div></div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: filtered().length === 0 -->
+    <div class="empty-state"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">No positions found</div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: filtered().length === 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Position</th>
+            <th>Section</th>
+            <th>Job</th>
+            <th>Grade</th>
+            <th style="text-align:right">Approved</th>
+            <th style="text-align:right">Filled</th>
+            <th>Fill Rate</th>
+            <th>Vacancies</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: filtered() -->
+          <tr>
+            <td>
+              <div style="font-weight:600;font-size:13px" data-bind="text: positionNameEn"></div>
+              <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: positionCode"></div>
+            </td>
+            <td data-bind="text: orgNameEn || '—'"></td>
+            <td style="font-size:12px;color:#6e6e73" data-bind="text: jobNameEn || '—'"></td>
+            <td><span class="badge badge--info" data-bind="text: gradeCode || '—'"></span></td>
+            <td style="text-align:right;font-weight:600" data-bind="text: approvedHeadcount || 0"></td>
+            <td style="text-align:right" data-bind="text: filledCount || 0"></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:8px">
+                <div class="progress-bar-wrap" style="flex:1;min-width:60px">
+                  <div class="progress-bar-fill" data-bind="style: { width: $parent.fillPct($data) + '%' }"></div>
+                </div>
+                <span style="font-size:11px;color:#6e6e73;min-width:30px;text-align:right" data-bind="text: $parent.fillPct($data) + '%'"></span>
+              </div>
+            </td>
+            <td><span data-bind="class: $parent.vacancyClass($data), text: vacancyCount || 0"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</div>

@@ -1,0 +1,191 @@
+<div class="page-wrap">
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128100;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: error() && !loading() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <button class="btn btn-secondary" data-bind="click: goBack" style="margin-top:12px">&#8592; Back to Directory</button>
+  <!-- /ko -->
+
+  <!-- ko if: employee() && !loading() -->
+  <!-- Profile header -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
+      <div class="avatar avatar--lg" data-bind="text: initials(), style: { background: avatarColor() }"></div>
+      <div style="flex:1">
+        <div style="font-size:20px;font-weight:700" data-bind="text: employee().fullNameEn"></div>
+        <div style="color:#6e6e73;font-size:13px;margin-top:4px">
+          <span data-bind="text: employee().employeeNumber"></span>
+          &nbsp;·&nbsp;
+          <span data-bind="text: employee().jobTitleEn || employee().positionNameEn || '—'"></span>
+        </div>
+        <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+          <span class="badge badge--info" data-bind="text: employee().gradeCode || '—'"></span>
+          <span class="badge badge--approved" data-bind="text: employee().orgNameEn || '—'"></span>
+          <!-- ko if: employee().isActive === 'Y' -->
+          <span class="badge badge--active">Active</span>
+          <!-- /ko -->
+          <!-- ko ifnot: employee().isActive === 'Y' -->
+          <span class="badge badge--inactive">Inactive</span>
+          <!-- /ko -->
+        </div>
+      </div>
+      <button class="btn btn-secondary" data-bind="click: goBack">&#8592; Back</button>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div style="display:flex;gap:2px;margin-bottom:16px;border-bottom:2px solid #e0e0e0">
+    <!-- ko foreach: [['overview','Overview'],['assignments','Assignments'],['contracts','Contracts'],['salary','Salary'],['documents','Documents']] -->
+    <button class="btn" style="border-radius:6px 6px 0 0;border-bottom:none"
+            data-bind="click: function(){ $parent.setTab($data[0]); },
+                       css: { 'btn-primary': $parent.activeTab() === $data[0], 'btn-secondary': $parent.activeTab() !== $data[0] },
+                       text: $data[1]"></button>
+    <!-- /ko -->
+  </div>
+
+  <!-- Overview tab -->
+  <!-- ko if: activeTab() === 'overview' -->
+  <div class="card">
+    <div class="section-heading">Personal Information</div>
+    <div class="form-grid">
+      <div class="form-group"><div class="form-label">Full Name</div><div data-bind="text: employee().fullNameEn || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Email</div><div data-bind="text: employee().email || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Mobile</div><div data-bind="text: employee().mobile || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Gender</div><div data-bind="text: employee().gender === 'M' ? 'Male' : employee().gender === 'F' ? 'Female' : '—'"></div></div>
+      <div class="form-group"><div class="form-label">Nationality</div><div data-bind="text: employee().nationalityEn || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Marital Status</div><div data-bind="text: employee().maritalStatus || '—'"></div></div>
+      <div class="form-group"><div class="form-label">National ID</div><div data-bind="text: employee().nationalId || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Hire Date</div><div data-bind="text: employee().hireDate || '—'"></div></div>
+    </div>
+    <div class="section-heading">Employment</div>
+    <div class="form-grid">
+      <div class="form-group"><div class="form-label">Grade</div><div data-bind="text: (employee().gradeCode || '') + (employee().gradeNameEn ? ' — ' + employee().gradeNameEn : '') || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Section</div><div data-bind="text: employee().orgNameEn || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Position</div><div data-bind="text: employee().positionNameEn || employee().jobTitleEn || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Salary</div><div data-bind="text: employee().basicSalary ? fmtSalary(employee().basicSalary) + ' ' + (employee().salaryCurrency || 'AED') : '—'"></div></div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- Assignments tab -->
+  <!-- ko if: activeTab() === 'assignments' -->
+  <div class="card">
+    <!-- ko if: assignments().length === 0 -->
+    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">No assignment history</div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: assignments().length === 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Assignment #</th><th>Position / Job</th><th>Section</th><th>Grade</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: assignments() -->
+          <tr>
+            <td style="font-family:monospace;font-size:12px" data-bind="text: assignment_number || assignmentNumber || '—'"></td>
+            <td data-bind="text: position_name_en || positionNameEn || job_name_en || jobNameEn || '—'"></td>
+            <td data-bind="text: org_name_en || orgNameEn || '—'"></td>
+            <td><span class="badge badge--info" data-bind="text: grade_code || gradeCode || '—'"></span></td>
+            <td data-bind="text: start_date || startDate || '—'"></td>
+            <td data-bind="text: end_date || endDate || '—'"></td>
+            <td><span data-bind="class: (assignment_status||assignmentStatus)==='ACTIVE' ? 'badge badge--active' : 'badge badge--inactive', text: assignment_status || assignmentStatus || '—'"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- Contracts tab -->
+  <!-- ko if: activeTab() === 'contracts' -->
+  <div class="card">
+    <!-- ko if: contracts().length === 0 -->
+    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No contract records</div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: contracts().length === 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Contract #</th><th>Type</th><th>Start</th><th>End</th><th>Probation End</th><th>Status</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: contracts() -->
+          <tr>
+            <td style="font-family:monospace;font-size:12px" data-bind="text: contract_number || contractNumber || '—'"></td>
+            <td data-bind="text: contract_type || contractType || '—'"></td>
+            <td data-bind="text: start_date || startDate || '—'"></td>
+            <td data-bind="text: end_date || endDate || 'Indefinite'"></td>
+            <td data-bind="text: probation_end_date || probationEndDate || '—'"></td>
+            <td><span data-bind="class: (contract_status||contractStatus)==='ACTIVE' ? 'badge badge--active' : 'badge badge--inactive', text: contract_status || contractStatus || '—'"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- Salary tab -->
+  <!-- ko if: activeTab() === 'salary' -->
+  <div class="card">
+    <!-- ko if: salaries().length === 0 -->
+    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128181;</div><div class="empty-state__msg">No salary records</div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: salaries().length === 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Effective Date</th><th style="text-align:right">Basic Salary</th><th>Currency</th><th style="text-align:right">Previous</th><th style="text-align:right">Change %</th><th>Reason</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: salaries() -->
+          <tr>
+            <td data-bind="text: effective_date || effectiveDate || '—'"></td>
+            <td style="text-align:right;font-weight:600" data-bind="text: $parent.fmtSalary(basic_salary || basicSalary)"></td>
+            <td data-bind="text: currency_code || currencyCode || 'AED'"></td>
+            <td style="text-align:right;color:#6e6e73" data-bind="text: (previous_basic || previousBasic) ? $parent.fmtSalary(previous_basic || previousBasic) : '—'"></td>
+            <td style="text-align:right" data-bind="text: (change_percentage || changePercentage) ? (change_percentage || changePercentage) + '%' : '—'"></td>
+            <td style="font-size:12px;color:#6e6e73" data-bind="text: change_reason || changeReason || '—'"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- Documents tab -->
+  <!-- ko if: activeTab() === 'documents' -->
+  <div class="card">
+    <!-- ko if: documents().length === 0 -->
+    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No documents on file</div></div>
+    <!-- /ko -->
+    <!-- ko ifnot: documents().length === 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Document Type</th><th>Number</th><th>Issue Date</th><th>Expiry Date</th><th>Days</th><th>Status</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: documents() -->
+          <tr>
+            <td data-bind="text: docType || doc_type || '—'"></td>
+            <td style="font-family:monospace;font-size:12px" data-bind="text: docNumber || doc_number || '—'"></td>
+            <td data-bind="text: issueDate || issue_date || '—'"></td>
+            <td data-bind="text: expiryDate || expiry_date || '—'"></td>
+            <td>
+              <!-- ko if: (daysUntilExpiry || days_until_expiry) != null -->
+              <span data-bind="class: $parent.alertClass(expiryAlert || expiry_alert), text: daysUntilExpiry != null ? daysUntilExpiry : days_until_expiry"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: (daysUntilExpiry || days_until_expiry) != null -->—<!-- /ko -->
+            </td>
+            <td data-bind="text: docStatus || doc_status || '—'"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+</div>

@@ -1,0 +1,95 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Job Catalog</div>
+        <div class="page-subtitle" data-bind="text: filtered().length + ' job(s)'"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
+
+    <!-- Job list -->
+    <div class="card">
+      <div class="view-toolbar" style="margin-bottom:12px">
+        <input class="search-box" type="text" placeholder="Search job name or code…" data-bind="value: searchQ, valueUpdate: 'input'">
+        <select class="form-control" style="min-width:160px;width:auto" data-bind="value: filterFam">
+          <option value="">All Families</option>
+          <!-- ko foreach: families() -->
+          <option data-bind="value: jobFamilyId || job_family_id, text: familyNameEn || family_name_en"></option>
+          <!-- /ko -->
+        </select>
+      </div>
+
+      <!-- ko if: filtered().length === 0 -->
+      <div class="empty-state" style="padding:30px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No jobs found</div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: filtered().length === 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Job</th><th>Family</th><th>Grade Range</th></tr></thead>
+          <tbody>
+            <!-- ko foreach: filtered() -->
+            <tr style="cursor:pointer" data-bind="click: $parent.select.bind($parent, $data), css: { 'tr--selected': $parent.selected() === $data }">
+              <td>
+                <div class="link-text" data-bind="text: jobNameEn || job_name_en"></div>
+                <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: jobCode || job_code"></div>
+              </td>
+              <td><span class="badge badge--info" data-bind="text: jobFamily || job_family || '—'"></span></td>
+              <td style="font-size:12px;color:#6e6e73" data-bind="text: (minGradeCode || min_grade_code || '') + (maxGradeCode || max_grade_code ? ' – ' + (maxGradeCode || max_grade_code) : '')  || '—'"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- Job detail panel -->
+    <div class="card">
+      <!-- ko if: selected() -->
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px" data-bind="text: selected().jobNameEn || selected().job_name_en"></div>
+      <div style="font-family:monospace;font-size:11px;color:#6e6e73;margin-bottom:12px" data-bind="text: selected().jobCode || selected().job_code"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+        <span class="badge badge--info" data-bind="text: selected().jobFamily || selected().job_family || '—'"></span>
+        <!-- ko if: (selected().isActive || selected().is_active) === 'Y' -->
+        <span class="badge badge--active">Active</span>
+        <!-- /ko -->
+      </div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Grade Range</div>
+        <div data-bind="text: (selected().minGradeCode || selected().min_grade_code || '—') + ' → ' + (selected().maxGradeCode || selected().max_grade_code || '—')"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Min. Experience</div>
+        <div data-bind="text: (selected().minExperienceYears || selected().min_experience_years) ? (selected().minExperienceYears || selected().min_experience_years) + ' years' : '—'"></div>
+      </div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Effective</div>
+        <div data-bind="text: (selected().effectiveFrom || selected().effective_from || '—') + (selected().effectiveTo || selected().effective_to ? ' → ' + (selected().effectiveTo || selected().effective_to) : '')"></div>
+      </div>
+      <!-- ko if: selected().descriptionEn || selected().description_en -->
+      <div class="form-group"><div class="form-label">Description</div>
+        <div style="font-size:12px;color:#6e6e73;line-height:1.5" data-bind="text: selected().descriptionEn || selected().description_en"></div>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- ko ifnot: selected() -->
+      <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">Select a job</div></div>
+      <!-- /ko -->
+    </div>
+
+  </div>
+  <!-- /ko -->
+</div>
+
+<style>
+tr.tr--selected td { background: #e3f2fd !important; }
+</style>

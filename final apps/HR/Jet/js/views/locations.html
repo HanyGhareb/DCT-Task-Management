@@ -1,0 +1,74 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Locations</div>
+        <div class="page-subtitle" data-bind="text: filtered().length + ' location(s)'"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128205;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+
+    <!-- List -->
+    <div class="card">
+      <div class="view-toolbar" style="margin-bottom:12px">
+        <input class="search-box" type="text" placeholder="Search location name, code, or emirate…" data-bind="value: searchQ, valueUpdate: 'input'">
+      </div>
+
+      <!-- ko if: filtered().length === 0 -->
+      <div class="empty-state" style="padding:30px 0"><div class="empty-state__icon">&#128205;</div><div class="empty-state__msg">No locations found</div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: filtered().length === 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Location</th><th>Type</th><th>Emirate / City</th></tr></thead>
+          <tbody>
+            <!-- ko foreach: filtered() -->
+            <tr style="cursor:pointer" data-bind="click: $parent.select.bind($parent, $data)">
+              <td>
+                <div class="link-text" data-bind="text: locationNameEn || location_name_en"></div>
+                <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: locationCode || location_code"></div>
+              </td>
+              <td><span data-bind="class: $parent.typeClass(locationType || location_type), text: locationType || location_type || '—'"></span></td>
+              <td style="font-size:12px;color:#6e6e73" data-bind="text: (emirate || '') + (city ? ', ' + city : '') || '—'"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- Detail -->
+    <div class="card">
+      <!-- ko if: selected() -->
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px" data-bind="text: selected().locationNameEn || selected().location_name_en"></div>
+      <div style="font-family:monospace;font-size:11px;color:#6e6e73;margin-bottom:12px" data-bind="text: selected().locationCode || selected().location_code"></div>
+      <div style="margin-bottom:14px">
+        <span data-bind="class: $root.typeClass(selected().locationType || selected().location_type), text: selected().locationType || selected().location_type || '—'"></span>
+      </div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Emirate</div><div data-bind="text: selected().emirate || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">City</div><div data-bind="text: selected().city || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Area</div><div data-bind="text: selected().area || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Building</div><div data-bind="text: selected().buildingName || selected().building_name || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Floor</div><div data-bind="text: selected().floorNo || selected().floor_no || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Country</div><div data-bind="text: selected().countryNameEn || selected().country_name_en || selected().countryCode || selected().country_code || '—'"></div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: selected() -->
+      <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128205;</div><div class="empty-state__msg">Select a location</div></div>
+      <!-- /ko -->
+    </div>
+
+  </div>
+  <!-- /ko -->
+</div>

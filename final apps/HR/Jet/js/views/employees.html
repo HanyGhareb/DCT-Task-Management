@@ -1,0 +1,76 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Employee Directory</div>
+        <div class="page-subtitle" data-bind="text: filtered().length + ' employee(s) shown'"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <div class="card">
+    <div class="view-toolbar">
+      <input class="search-box" type="text" placeholder="Search name, number, email…" data-bind="value: searchQ, valueUpdate: 'input'">
+      <select class="form-control" style="min-width:180px;width:auto" data-bind="value: filterOrg">
+        <option value="">All Sections</option>
+        <!-- ko foreach: orgs() -->
+        <option data-bind="value: orgId, text: orgNameEn"></option>
+        <!-- /ko -->
+      </select>
+    </div>
+
+    <!-- ko if: loading() -->
+    <div class="empty-state"><div class="empty-state__icon">&#128100;</div><div class="empty-state__msg">Loading…</div></div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: filtered().length === 0 -->
+    <div class="empty-state"><div class="empty-state__icon">&#128100;</div><div class="empty-state__msg">No employees found</div></div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: filtered().length === 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>Employee</th>
+            <th>Section</th>
+            <th>Grade</th>
+            <th>Position</th>
+            <th>Gender</th>
+            <th>Hire Date</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: filtered() -->
+          <tr style="cursor:pointer" data-bind="click: $parent.openEmployee.bind($parent, $data)">
+            <td>
+              <div style="display:flex;align-items:center;gap:10px">
+                <div class="avatar" style="background:#1a7f5a;font-size:12px;width:32px;height:32px"
+                     data-bind="text: (fullNameEn||'').split(' ').filter(function(x){return x}).map(function(w){return w[0]}).slice(0,2).join('').toUpperCase()"></div>
+                <div>
+                  <div class="link-text" data-bind="text: fullNameEn"></div>
+                  <div style="font-size:11px;color:#6e6e73" data-bind="text: employeeNumber"></div>
+                </div>
+              </div>
+            </td>
+            <td data-bind="text: orgNameEn || '—'"></td>
+            <td><span class="badge badge--info" data-bind="text: gradeCode || '—'"></span></td>
+            <td style="font-size:12px;color:#6e6e73;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text: positionNameEn || jobTitleEn || '—'"></td>
+            <td data-bind="text: $parent.genderLabel(gender)"></td>
+            <td data-bind="text: hireDate || '—'"></td>
+            <td><span data-bind="class: $parent.activeClass(isActive), text: isActive === 'Y' ? 'Active' : 'Inactive'"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</div>

@@ -1,0 +1,109 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Organisation Chart</div>
+        <div class="page-subtitle" data-bind="text: orgNodes().length + ' org unit(s)'"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#127970;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
+
+    <!-- Tree panel -->
+    <div class="card" style="min-height:400px">
+      <div class="view-toolbar" style="margin-bottom:12px">
+        <input class="search-box" type="text" placeholder="Search org name or code…" data-bind="value: filterText, valueUpdate: 'input'">
+      </div>
+
+      <!-- Search results (flat list) -->
+      <!-- ko if: isSearching() -->
+      <!-- ko foreach: filtered() -->
+      <div class="org-node" data-bind="css: { 'org-node--selected': $parent.selected() === $data }, click: $parent.select.bind($parent, $data)"
+           style="padding:8px 12px;border-radius:6px;cursor:pointer;margin-bottom:4px;border:1px solid #e0e0e0">
+        <div style="font-size:13px;font-weight:600" data-bind="text: orgNameEn"></div>
+        <div style="font-size:11px;color:#6e6e73" data-bind="text: orgCode + ' · Level ' + levelNo"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: filtered().length === 0 -->
+      <div class="empty-state" style="padding:30px 0"><div class="empty-state__icon">&#127970;</div><div class="empty-state__msg">No matches</div></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- Tree view -->
+      <!-- ko ifnot: isSearching() -->
+      <!-- ko foreach: roots() -->
+      <!-- ko template: { name: 'org-tree-node', data: $data } --><!-- /ko -->
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+
+    <!-- Detail panel -->
+    <div class="card">
+      <!-- ko if: selected() -->
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px" data-bind="text: selected().orgNameEn"></div>
+      <div style="font-size:12px;color:#6e6e73;margin-bottom:14px" data-bind="text: selected().orgCode"></div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
+        <span class="badge" data-bind="class: $root.typeClass(selected().orgType), text: selected().orgType || '—'"></span>
+        <!-- ko if: selected().isActive === 'Y' -->
+        <span class="badge badge--active">Active</span>
+        <!-- /ko -->
+        <!-- ko if: selected().isLeaf === 'Y' -->
+        <span class="badge badge--info">Leaf</span>
+        <!-- /ko -->
+      </div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Level</div><div data-bind="text: selected().levelNo"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Headcount Ceiling</div><div data-bind="text: selected().headcountCeiling || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Cost Center</div><div data-bind="text: selected().costCenterCode || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Location</div><div data-bind="text: selected().locationNameEn || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Full Path</div><div style="font-size:12px;color:#6e6e73;word-break:break-word" data-bind="text: selected().fullPath || selected().orgNameEn"></div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: selected() -->
+      <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#127970;</div><div class="empty-state__msg">Select an org unit</div></div>
+      <!-- /ko -->
+    </div>
+
+  </div>
+  <!-- /ko -->
+</div>
+
+<!-- Recursive node template -->
+<script type="text/html" id="org-tree-node">
+  <div style="margin-left: 16px">
+    <div class="org-node" style="display:flex;align-items:center;gap:6px;padding:6px 10px;border-radius:6px;cursor:pointer;margin-bottom:2px"
+         data-bind="css: { 'org-node--selected': $root.selected() === $data },
+                    click: $root.select.bind($root, $data)">
+      <!-- ko if: children().length > 0 -->
+      <span style="font-size:10px;color:#6e6e73;width:12px;cursor:pointer"
+            data-bind="text: expanded() ? '▼' : '▶', click: $root.toggle.bind($root, $data), clickBubble: false"></span>
+      <!-- /ko -->
+      <!-- ko if: children().length === 0 -->
+      <span style="width:12px;display:inline-block"></span>
+      <!-- /ko -->
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text: orgNameEn"></div>
+        <div style="font-size:10px;color:#6e6e73" data-bind="text: orgCode + (headcountCeiling ? ' · HC: ' + headcountCeiling : '')"></div>
+      </div>
+      <span class="badge" style="font-size:9px" data-bind="class: $root.typeClass(orgType), text: orgType || ''"></span>
+    </div>
+    <!-- ko if: expanded() -->
+    <!-- ko foreach: children() -->
+    <!-- ko template: { name: 'org-tree-node', data: $data } --><!-- /ko -->
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</script>
+
+<style>
+.org-node:hover { background: #f0f7ff; }
+.org-node--selected { background: #e3f2fd !important; }
+</style>

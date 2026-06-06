@@ -1,0 +1,33 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Module Settings</div>
+    <div class="page-subtitle">HR Module — App 205</div>
+  </div>
+
+  <!-- ko if: saved() -->
+  <div class="alert-banner alert-banner--success">&#10004; Data reset to defaults. Refresh the page to reload.</div>
+  <!-- /ko -->
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading">Module Information</div>
+    <div class="form-grid">
+      <div class="form-group"><div class="form-label">Module Name</div><div data-bind="text: moduleInfo.name"></div></div>
+      <div class="form-group"><div class="form-label">Version</div><div data-bind="text: moduleInfo.version"></div></div>
+      <div class="form-group"><div class="form-label">ORDS Base URL</div><code data-bind="text: moduleInfo.ords"></code></div>
+      <div class="form-group"><div class="form-label">DB Schema</div><div data-bind="text: moduleInfo.schema"></div></div>
+      <div class="form-group"><div class="form-label">Tables</div><div data-bind="text: moduleInfo.tables"></div></div>
+      <div class="form-group"><div class="form-label">Views</div><div data-bind="text: moduleInfo.views"></div></div>
+    </div>
+  </div>
+
+  <!-- ko if: isAdmin -->
+  <div class="card">
+    <div class="section-heading">Development Tools</div>
+    <p style="font-size:13px;color:#6e6e73;margin-bottom:16px">Reset all mock data back to the built-in defaults. This clears localStorage — useful when testing mock mode.</p>
+    <button class="btn btn-danger" data-bind="click: resetData">&#128465; Reset Mock Data</button>
+  </div>
+  <!-- /ko -->
+</div>

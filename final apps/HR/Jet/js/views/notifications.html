@@ -1,0 +1,47 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-header-row">
+      <div>
+        <div class="page-title">Notifications</div>
+        <div class="page-subtitle" data-bind="text: unread() + ' unread'"></div>
+      </div>
+      <!-- ko if: unread() > 0 -->
+      <button class="btn btn-secondary" data-bind="click: markAll">&#10004; Mark All Read</button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="empty-state"><div class="empty-state__icon">&#128276;</div><div class="empty-state__msg">Loading…</div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: notifs().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128276;</div><div class="empty-state__msg">No notifications</div><div class="empty-state__sub">You're all caught up.</div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: notifs().length === 0 -->
+  <div class="notif-list">
+    <!-- ko foreach: notifs() -->
+    <div class="notif-item" data-bind="css: { 'notif-item--unread': isRead === 'N' }, click: $parent.markRead.bind($parent, $data)">
+      <!-- ko if: isRead === 'N' -->
+      <div class="notif-dot-indicator"></div>
+      <!-- /ko -->
+      <div style="flex:1;min-width:0">
+        <div class="notif-title" data-bind="text: title"></div>
+        <div class="notif-body"  data-bind="text: body"></div>
+        <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+          <div class="notif-time"  data-bind="text: new Date(createdAt || created_at).toLocaleString('en-GB')"></div>
+          <span data-bind="class: $parent.typeClass(notifType || notif_type), text: notifType || notif_type || '—'"></span>
+        </div>
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>
