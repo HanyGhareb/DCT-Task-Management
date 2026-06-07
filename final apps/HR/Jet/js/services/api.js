@@ -18,7 +18,7 @@ define(['services/config'], function (config) {
   function _handleExpiredSession() {
     localStorage.removeItem(SESSION_KEY);
     if (config.apiBase) {
-      window.location.href = '../Admin/Jet/index.html';
+      window.location.href = '/Admin/Jet/index.html';
     } else if (window._hrApp) {
       window._hrApp.navigate('login');
     }
@@ -38,8 +38,10 @@ define(['services/config'], function (config) {
         _handleExpiredSession();
         return Promise.reject({ status: 401, message: 'Session expired. Please log in again.' });
       }
-      return r.json().then(function (data) {
-        if (!r.ok) return Promise.reject({ status: r.status, message: data.error || 'Request failed' });
+      return r.text().then(function (text) {
+        var data = {};
+        try { if (text) data = JSON.parse(text); } catch (e) {}
+        if (!r.ok) return Promise.reject({ status: r.status, message: (data && (data.message || data.error)) || 'Request failed' });
         return data;
       });
     });

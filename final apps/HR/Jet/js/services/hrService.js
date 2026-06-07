@@ -53,7 +53,16 @@ function (config, api, mockData) {
       isActive:        _norm(e.isActive,         e.is_active),
       nationalityEn:   _norm(e.nationalityEn,    e.nationality_en),
       maritalStatus:   _norm(e.maritalStatus,    e.marital_status),
-      photoUrl:        _norm(e.photoUrl,         e.photo_url),
+      photoUrl: (function () {
+        var raw = _norm(e.photoUrl, e.photo_url);
+        if (!raw) return null;
+        // When ORDS stores relative path (/ords/admin/hr/...) make it absolute
+        if (config.apiBase && /^\/ords\/.+\/employees\/\d+\/photo$/.test(raw)) {
+          var pid = _norm(e.personId, e.person_id);
+          return config.apiBase + '/employees/' + pid + '/photo';
+        }
+        return raw;
+      }()),
       basicSalary:     _norm(e.basicSalary,      e.basic_salary),
       salaryCurrency:  _norm(e.salaryCurrency,   e.salary_currency),
     };
@@ -79,19 +88,117 @@ function (config, api, mockData) {
     };
   }
 
+  function _org(o) {
+    return {
+      orgId:            _norm(o.orgId,            o.org_id),
+      orgCode:          _norm(o.orgCode,          o.org_code),
+      orgNameEn:        _norm(o.orgNameEn,        o.org_name_en),
+      orgNameAr:        _norm(o.orgNameAr,        o.org_name_ar),
+      orgType:          _norm(o.orgType,          o.org_type),
+      orgTypeLabel:     _norm(o.orgTypeLabel,     o.org_type_label),
+      parentOrgId:      _norm(o.parentOrgId,      o.parent_org_id),
+      levelNo:          _norm(o.levelNo,          o.level_no),
+      fullPath:         _norm(o.fullPath,         o.full_path),
+      isActive:         _norm(o.isActive,         o.is_active),
+      headcountCeiling: _norm(o.headcountCeiling, o.headcount_ceiling),
+      costCenterCode:   _norm(o.costCenterCode,   o.cost_center_code),
+      locationNameEn:   _norm(o.locationNameEn,   o.location_name_en),
+      isLeaf:           _norm(o.isLeaf,           o.is_leaf),
+    };
+  }
+
+  function _job(j) {
+    return {
+      jobId:              _norm(j.jobId,              j.job_id),
+      jobCode:            _norm(j.jobCode,            j.job_code),
+      jobNameEn:          _norm(j.jobNameEn,          j.job_name_en),
+      jobNameAr:          _norm(j.jobNameAr,          j.job_name_ar),
+      jobFamilyId:        _norm(j.jobFamilyId,        j.job_family_id),
+      jobFamily:          _norm(j.jobFamily,          j.job_family),
+      minGradeCode:       _norm(j.minGradeCode,       j.min_grade_code),
+      maxGradeCode:       _norm(j.maxGradeCode,       j.max_grade_code),
+      minExperienceYears: _norm(j.minExperienceYears, j.min_experience_years),
+      descriptionEn:      _norm(j.descriptionEn,      j.description_en),
+      isActive:           _norm(j.isActive,           j.is_active),
+      effectiveFrom:      _norm(j.effectiveFrom,      j.effective_from),
+      effectiveTo:        _norm(j.effectiveTo,        j.effective_to),
+    };
+  }
+
+  function _jobFamily(f) {
+    return {
+      jobFamilyId:   _norm(f.jobFamilyId,   f.job_family_id),
+      familyCode:    _norm(f.familyCode,    f.family_code),
+      familyNameEn:  _norm(f.familyNameEn,  f.family_name_en),
+      familyNameAr:  _norm(f.familyNameAr,  f.family_name_ar),
+      descriptionEn: _norm(f.descriptionEn, f.description_en),
+      isActive:      _norm(f.isActive,      f.is_active),
+    };
+  }
+
+  function _loc(l) {
+    return {
+      locationId:     _norm(l.locationId,     l.location_id),
+      locationCode:   _norm(l.locationCode,   l.location_code),
+      locationNameEn: _norm(l.locationNameEn, l.location_name_en),
+      locationNameAr: _norm(l.locationNameAr, l.location_name_ar),
+      locationType:   _norm(l.locationType,   l.location_type),
+      orgId:          _norm(l.orgId,          l.org_id),
+      orgNameEn:      _norm(l.orgNameEn,      l.org_name_en),
+      countryCode:    _norm(l.countryCode,    l.country_code),
+      countryNameEn:  _norm(l.countryNameEn,  l.country_name_en),
+      emirate:        _norm(l.emirate,        l.emirate),
+      city:           _norm(l.city,           l.city),
+      area:           _norm(l.area,           l.area),
+      buildingName:   _norm(l.buildingName,   l.building_name),
+      floorNo:        _norm(l.floorNo,        l.floor_no),
+      isActive:       _norm(l.isActive,       l.is_active),
+    };
+  }
+
+  function _grade(g) {
+    return {
+      gradeCode:      _norm(g.gradeCode,      g.grade_code),
+      gradeNameEn:    _norm(g.gradeNameEn,    g.grade_name_en),
+      gradeNameAr:    _norm(g.gradeNameAr,    g.grade_name_ar),
+      gradeLevel:     _norm(g.gradeLevel,     g.grade_level),
+      gradeCategory:  _norm(g.gradeCategory,  g.grade_category),
+      salaryBandMin:  _norm(g.salaryBandMin,  g.salary_band_min),
+      salaryBandMax:  _norm(g.salaryBandMax,  g.salary_band_max),
+      displayOrder:   _norm(g.displayOrder,   g.display_order),
+      isActive:       _norm(g.isActive,       g.is_active),
+    };
+  }
+
+  function _docType(dt) {
+    return {
+      docTypeId:      _norm(dt.docTypeId,      dt.doc_type_id),
+      docTypeCode:    _norm(dt.docTypeCode,    dt.doc_type_code),
+      docTypeNameEn:  _norm(dt.docTypeNameEn,  dt.doc_type_name_en),
+      docCategory:    _norm(dt.docCategory,    dt.doc_category),
+      hasExpiry:      _norm(dt.hasExpiry,      dt.has_expiry),
+      expiryAlertDays:_norm(dt.expiryAlertDays,dt.expiry_alert_days),
+      isActive:       _norm(dt.isActive,       dt.is_active),
+    };
+  }
+
   function _doc(d) {
     return {
-      docId:           _norm(d.docId,           d.doc_id),
-      personId:        _norm(d.personId,         d.person_id),
-      fullNameEn:      _norm(d.fullNameEn,       d.full_name_en),
-      orgNameEn:       _norm(d.orgNameEn,        d.org_name_en),
-      docType:         _norm(d.docType,          d.doc_type),
-      docNumber:       _norm(d.docNumber,        d.doc_number),
-      issueDate:       _norm(d.issueDate,        d.issue_date),
-      expiryDate:      _norm(d.expiryDate,       d.expiry_date),
-      daysUntilExpiry: _norm(d.daysUntilExpiry,  d.days_until_expiry),
-      expiryAlert:     _norm(d.expiryAlert,      d.expiry_alert),
-      docStatus:       _norm(d.docStatus,        d.doc_status),
+      docId:            _norm(d.docId,            d.doc_id),
+      personId:         _norm(d.personId,          d.person_id),
+      fullNameEn:       _norm(d.fullNameEn,        d.full_name_en),
+      orgNameEn:        _norm(d.orgNameEn,         d.org_name_en),
+      docType:          _norm(d.docType,           d.doc_type_name_en || d.doc_type),
+      docNumber:        _norm(d.docNumber,         d.doc_number),
+      issueDate:        _norm(d.issueDate,         d.issue_date),
+      expiryDate:       _norm(d.expiryDate,        d.expiry_date),
+      daysUntilExpiry:  _norm(d.daysUntilExpiry,   d.days_until_expiry),
+      expiryAlert:      _norm(d.expiryAlert,       d.expiry_alert),
+      docStatus:        _norm(d.docStatus,         d.doc_status),
+      issuingAuthority: _norm(d.issuingAuthority,  d.issuing_authority),
+      notes:            _norm(d.notes,             d.notes),
+      fileName:         _norm(d.fileName,          d.file_name),
+      fileMimeType:     _norm(d.fileMimeType,      d.file_mime_type),
     };
   }
 
@@ -160,23 +267,101 @@ function (config, api, mockData) {
       return Promise.resolve(_emp(e));
     },
 
+    createEmployee: function (data) {
+      if (config.apiBase) return api.post('/employees/', data);
+      var s = loadStore();
+      _nextId.employee++;
+      var newEmp = Object.assign({
+        personId: _nextId.employee,
+        isActive: 'Y',
+        fullNameEn: ((data.first_name_en || '') + ' ' + (data.last_name_en || '')).trim(),
+      }, data);
+      s.employees.push(newEmp);
+      saveStore(s);
+      return Promise.resolve(_emp(newEmp));
+    },
+
+    updateEmployee: function (personId, data) {
+      if (config.apiBase) return api.put('/employees/' + personId, data);
+      var s = loadStore();
+      var idx = s.employees.findIndex(function (e) { return e.personId === parseInt(personId); });
+      if (idx >= 0) {
+        s.employees[idx] = Object.assign({}, s.employees[idx], data,
+          { fullNameEn: ((data.first_name_en || s.employees[idx].first_name_en || '') + ' ' + (data.last_name_en || s.employees[idx].last_name_en || '')).trim() });
+        saveStore(s);
+        return Promise.resolve(_emp(s.employees[idx]));
+      }
+      return Promise.reject({ message: 'Employee not found' });
+    },
+
+    uploadEmployeePhoto: function (personId, file) {
+      if (config.apiBase) {
+        return new Promise(function (resolve, reject) {
+          var reader = new FileReader();
+          reader.onload = function (evt) {
+            var b64 = evt.target.result.split(',')[1];
+            api.put('/employees/' + personId + '/photo', {
+              photo_data_b64: b64,
+              mime_type: file.type || 'image/jpeg',
+            }).then(function () {
+              resolve({ photoUrl: config.apiBase + '/employees/' + personId + '/photo' });
+            }).catch(reject);
+          };
+          reader.onerror = function () { reject({ message: 'Failed to read photo' }); };
+          reader.readAsDataURL(file);
+        });
+      }
+      // mock: store as data URL in localStorage and update employee record
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var dataUrl = e.target.result;
+          var s = loadStore();
+          var idx = s.employees.findIndex(function (emp) { return emp.personId === parseInt(personId); });
+          if (idx >= 0) {
+            s.employees[idx].photoUrl = dataUrl;
+            s.employees[idx].photo_url = dataUrl;
+            saveStore(s);
+          }
+          resolve({ photoUrl: dataUrl });
+        };
+        reader.onerror = function () { reject({ message: 'Failed to read photo' }); };
+        reader.readAsDataURL(file);
+      });
+    },
+
     // ── Orgs ──────────────────────────────────────────────────────────
     getOrgTree: function () {
-      if (config.apiBase) return api.get('/orgs/tree/').then(function (d) { return d.items || []; });
+      if (config.apiBase) return api.get('/orgs/tree/').then(function (d) { return (d.items || []).map(_org); });
       var s = loadStore();
       return Promise.resolve(s.orgs.map(function (o) {
-        return {
-          orgId: o.orgId, orgCode: o.orgCode, orgNameEn: o.orgNameEn,
-          orgType: o.orgType, parentOrgId: o.parentOrgId, levelNo: o.levelNo,
-          isActive: o.isActive, headcountCeiling: o.headcountCeiling,
-          costCenterCode: o.costCenterCode, isLeaf: !s.orgs.some(function (c) { return c.parentOrgId === o.orgId; }) ? 'Y' : 'N',
-        };
+        return _org(Object.assign({}, o, {
+          isLeaf: !s.orgs.some(function (c) { return c.parentOrgId === o.orgId; }) ? 'Y' : 'N',
+        }));
       }));
     },
 
     getOrgs: function () {
-      if (config.apiBase) return api.get('/orgs/').then(function (d) { return d.items || []; });
-      return loadStore().orgs ? Promise.resolve(loadStore().orgs) : Promise.resolve([]);
+      if (config.apiBase) return api.get('/orgs/').then(function (d) { return (d.items || []).map(_org); });
+      var s = loadStore();
+      return Promise.resolve((s.orgs || []).map(_org));
+    },
+
+    createOrg: function (data) {
+      if (config.apiBase) return api.post('/orgs/', data);
+      var s = loadStore();
+      var newOrg = Object.assign({ orgId: Date.now(), isActive: 'Y', levelNo: 1 }, data);
+      s.orgs.push(newOrg);
+      saveStore(s);
+      return Promise.resolve(_org(newOrg));
+    },
+
+    updateOrg: function (orgId, data) {
+      if (config.apiBase) return api.put('/orgs/' + orgId, data);
+      var s = loadStore();
+      var idx = s.orgs.findIndex(function (o) { return o.orgId === parseInt(orgId); });
+      if (idx >= 0) { s.orgs[idx] = Object.assign({}, s.orgs[idx], data); saveStore(s); return Promise.resolve(_org(s.orgs[idx])); }
+      return Promise.reject({ message: 'Org not found' });
     },
 
     // ── Positions ──────────────────────────────────────────────────────
@@ -188,6 +373,23 @@ function (config, api, mockData) {
       var s = loadStore();
       var list = orgId ? s.positions.filter(function (p) { return p.orgId === parseInt(orgId); }) : s.positions;
       return Promise.resolve(list.map(_pos));
+    },
+
+    createPosition: function (data) {
+      if (config.apiBase) return api.post('/positions/', data);
+      var s = loadStore();
+      var newPos = Object.assign({ positionId: Date.now(), isActive: 'Y', filledCount: 0, vacancyCount: data.approved_headcount || 1 }, data);
+      s.positions.push(newPos);
+      saveStore(s);
+      return Promise.resolve(_pos(newPos));
+    },
+
+    updatePosition: function (positionId, data) {
+      if (config.apiBase) return api.put('/positions/' + positionId, data);
+      var s = loadStore();
+      var idx = s.positions.findIndex(function (p) { return p.positionId === parseInt(positionId); });
+      if (idx >= 0) { s.positions[idx] = Object.assign({}, s.positions[idx], data); saveStore(s); return Promise.resolve(_pos(s.positions[idx])); }
+      return Promise.reject({ message: 'Position not found' });
     },
 
     getHeadcountSummary: function () {
@@ -207,22 +409,72 @@ function (config, api, mockData) {
     getJobs: function (familyId) {
       if (config.apiBase) {
         var qs = familyId ? '?family_id=' + familyId : '';
-        return api.get('/jobs/' + qs).then(function (d) { return d.items || []; });
+        return api.get('/jobs/' + qs).then(function (d) { return (d.items || []).map(_job); });
       }
       var s = loadStore();
       var list = familyId ? s.jobs.filter(function (j) { return j.jobFamilyId === parseInt(familyId); }) : s.jobs;
-      return Promise.resolve(list);
+      return Promise.resolve(list.map(_job));
     },
 
     getJobFamilies: function () {
-      if (config.apiBase) return api.get('/job-families/').then(function (d) { return d.items || []; });
-      return Promise.resolve(loadStore().jobFamilies);
+      if (config.apiBase) return api.get('/job-families/').then(function (d) { return (d.items || []).map(_jobFamily); });
+      return Promise.resolve(loadStore().jobFamilies.map(_jobFamily));
+    },
+
+    createJob: function (data) {
+      if (config.apiBase) return api.post('/jobs/', data);
+      var s = loadStore();
+      var newJob = Object.assign({ jobId: Date.now(), isActive: 'Y' }, data);
+      s.jobs.push(newJob);
+      saveStore(s);
+      return Promise.resolve(_job(newJob));
+    },
+
+    updateJob: function (jobId, data) {
+      if (config.apiBase) return api.put('/jobs/' + jobId, data);
+      var s = loadStore();
+      var idx = s.jobs.findIndex(function (j) { return j.jobId === parseInt(jobId); });
+      if (idx >= 0) { s.jobs[idx] = Object.assign({}, s.jobs[idx], data); saveStore(s); return Promise.resolve(_job(s.jobs[idx])); }
+      return Promise.reject({ message: 'Job not found' });
+    },
+
+    // ── Grades ────────────────────────────────────────────────────────
+    getGrades: function () {
+      if (config.apiBase) return api.get('/grades/').then(function (d) { return (d.items || []).map(_grade); });
+      return Promise.resolve([]);
+    },
+
+    createGrade: function (data) {
+      if (config.apiBase) return api.post('/grades/', data);
+      return Promise.resolve(data);
+    },
+
+    updateGrade: function (gradeCode, data) {
+      if (config.apiBase) return api.put('/grades/' + gradeCode, data);
+      return Promise.resolve(data);
     },
 
     // ── Locations ──────────────────────────────────────────────────────
     getLocations: function () {
-      if (config.apiBase) return api.get('/locations/').then(function (d) { return d.items || []; });
-      return Promise.resolve(loadStore().locations.filter(function (l) { return l.isActive === 'Y'; }));
+      if (config.apiBase) return api.get('/locations/').then(function (d) { return (d.items || []).map(_loc); });
+      return Promise.resolve(loadStore().locations.filter(function (l) { return l.isActive === 'Y'; }).map(_loc));
+    },
+
+    createLocation: function (data) {
+      if (config.apiBase) return api.post('/locations/', data);
+      var s = loadStore();
+      var newLoc = Object.assign({ locationId: Date.now(), isActive: 'Y' }, data);
+      s.locations.push(newLoc);
+      saveStore(s);
+      return Promise.resolve(_loc(newLoc));
+    },
+
+    updateLocation: function (locationId, data) {
+      if (config.apiBase) return api.put('/locations/' + locationId, data);
+      var s = loadStore();
+      var idx = s.locations.findIndex(function (l) { return l.locationId === parseInt(locationId); });
+      if (idx >= 0) { s.locations[idx] = Object.assign({}, s.locations[idx], data); saveStore(s); return Promise.resolve(_loc(s.locations[idx])); }
+      return Promise.reject({ message: 'Location not found' });
     },
 
     // ── Assignments ────────────────────────────────────────────────────
@@ -244,10 +496,74 @@ function (config, api, mockData) {
       return Promise.resolve(loadStore().salaries.filter(function (s) { return s.personId === parseInt(personId); }));
     },
 
+    // ── Document Types ─────────────────────────────────────────────────
+    getDocTypes: function () {
+      if (config.apiBase) return api.get('/doc-types/').then(function (d) { return (d.items || []).map(_docType); });
+      return Promise.resolve([]);
+    },
+
     // ── Documents ──────────────────────────────────────────────────────
     getDocuments: function (personId) {
       if (config.apiBase) return api.get('/documents/' + personId).then(function (d) { return (d.items || []).map(_doc); });
       return Promise.resolve(loadStore().documents.filter(function (d) { return d.personId === parseInt(personId); }).map(_doc));
+    },
+
+    addDocument: function (data) {
+      if (config.apiBase) return api.post('/documents/', data);
+      var s = loadStore();
+      var newDoc = Object.assign({ docId: Date.now() }, data);
+      s.documents.push(newDoc);
+      saveStore(s);
+      return Promise.resolve(_doc(newDoc));
+    },
+
+    updateDocument: function (docId, data) {
+      if (config.apiBase) return api.put('/documents/update/' + docId, data);
+      var s = loadStore();
+      var idx = s.documents.findIndex(function (d) { return d.docId === parseInt(docId); });
+      if (idx >= 0) { s.documents[idx] = Object.assign({}, s.documents[idx], data); saveStore(s); return Promise.resolve(_doc(s.documents[idx])); }
+      return Promise.reject({ message: 'Document not found' });
+    },
+
+    uploadDocFile: function (docId, file) {
+      if (config.apiBase) {
+        return file.arrayBuffer().then(function (buf) {
+          var url = config.apiBase + '/documents/file/' + docId
+            + '?file_name='      + encodeURIComponent(file.name)
+            + '&file_mime_type=' + encodeURIComponent(file.type || 'application/octet-stream');
+          return fetch(url, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/octet-stream' },
+            body: buf,
+          }).then(function (r) {
+            if (!r.ok) return Promise.reject({ status: r.status, message: 'File upload failed' });
+            return {};
+          });
+        });
+      }
+      // mock: store as data URL in localStorage
+      return new Promise(function (resolve, reject) {
+        var reader = new FileReader();
+        reader.onload = function (e) {
+          var key = 'hr_doc_file_' + docId;
+          try {
+            localStorage.setItem(key, JSON.stringify({ name: file.name, type: file.type, data: e.target.result }));
+          } catch (ex) { /* storage full — silently skip */ }
+          resolve({});
+        };
+        reader.onerror = function () { reject({ message: 'Failed to read file' }); };
+        reader.readAsDataURL(file);
+      });
+    },
+
+    getDocFileUrl: function (docId, fileName) {
+      if (config.apiBase) {
+        return config.apiBase + '/documents/file/' + docId;
+      }
+      // mock: return data URL from localStorage
+      var raw = localStorage.getItem('hr_doc_file_' + docId);
+      if (!raw) return null;
+      try { return JSON.parse(raw).data; } catch (e) { return null; }
     },
 
     getExpiringDocs: function (days) {
@@ -256,6 +572,38 @@ function (config, api, mockData) {
       var list = loadStore().documents.filter(function (d) { return d.daysUntilExpiry != null && d.daysUntilExpiry <= days; });
       list.sort(function (a, b) { return (a.daysUntilExpiry || 0) - (b.daysUntilExpiry || 0); });
       return Promise.resolve(list.map(_doc));
+    },
+
+    // ── Lookups ────────────────────────────────────────────────────────
+    getLookupCategories: function () {
+      if (config.apiBase) return api.get('/lookups/').then(function (d) { return d.items || []; });
+      return Promise.resolve([
+        { category_code: 'HR_GENDER',      category_name_en: 'Gender' },
+        { category_code: 'HR_MARITAL',     category_name_en: 'Marital Status' },
+        { category_code: 'HR_DOC_TYPE',    category_name_en: 'Document Type' },
+        { category_code: 'HR_DOC_STATUS',  category_name_en: 'Document Status' },
+        { category_code: 'HR_ORG_TYPE',    category_name_en: 'Org Type' },
+        { category_code: 'HR_GRADE',       category_name_en: 'Employee Grade' },
+        { category_code: 'HR_CONTRACT',    category_name_en: 'Contract Type' },
+        { category_code: 'HR_ASSIGNMENT',  category_name_en: 'Assignment Type' },
+        { category_code: 'HR_END_REASON',  category_name_en: 'End Reason' },
+        { category_code: 'HR_LOCATION',    category_name_en: 'Location Type' },
+      ]);
+    },
+
+    getLookupValues: function (categoryCode) {
+      if (config.apiBase) return api.get('/lookups/' + categoryCode).then(function (d) { return d.items || []; });
+      return Promise.resolve([]);
+    },
+
+    createLookupValue: function (data) {
+      if (config.apiBase) return api.post('/lookups/', data);
+      return Promise.resolve(data);
+    },
+
+    updateLookupValue: function (valueId, data) {
+      if (config.apiBase) return api.put('/lookups/value/' + valueId, data);
+      return Promise.resolve(data);
     },
 
     reset: function () { localStorage.removeItem(STORE_KEY); },

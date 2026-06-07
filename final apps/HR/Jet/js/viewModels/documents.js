@@ -41,8 +41,9 @@ function (ko, hrService) {
       self.filterAlert(self.filterAlert() === alert ? '' : alert);
     };
 
-    self.openEmployee = function (doc) {
-      if (window._hrApp) window._hrApp.navigate('employeeDetail', { personId: doc.personId });
+    self.openDoc = function (doc) {
+      var pid = doc.personId || doc.person_id;
+      if (window._hrApp) window._hrApp.navigate('employeeDetail', { personId: pid, activeTab: 'documents' });
     };
 
     self.refresh = function () {

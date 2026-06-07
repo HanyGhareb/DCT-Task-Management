@@ -54,27 +54,27 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>Employee</th>
-            <th>Section</th>
             <th>Document Type</th>
             <th>Doc Number</th>
             <th>Expiry Date</th>
-            <th>Days</th>
+            <th>Days Left</th>
             <th>Alert</th>
             <th>Status</th>
+            <th>Employee</th>
+            <th>Section</th>
           </tr>
         </thead>
         <tbody>
           <!-- ko foreach: filtered() -->
-          <tr style="cursor:pointer" data-bind="click: $parent.openEmployee.bind($parent, $data)">
-            <td><span class="link-text" data-bind="text: fullNameEn || full_name_en"></span></td>
-            <td style="font-size:12px;color:#6e6e73" data-bind="text: orgNameEn || org_name_en || '—'"></td>
-            <td data-bind="text: docType || doc_type || '—'"></td>
+          <tr style="cursor:pointer" data-bind="click: $parent.openDoc.bind($parent, $data)" title="Open Documents tab">
+            <td style="font-weight:600" data-bind="text: docType || doc_type || '—'"></td>
             <td style="font-family:monospace;font-size:12px" data-bind="text: docNumber || doc_number || '—'"></td>
             <td data-bind="text: expiryDate || expiry_date || '—'"></td>
             <td style="font-weight:700" data-bind="text: (daysUntilExpiry != null ? daysUntilExpiry : days_until_expiry != null ? days_until_expiry : '—')"></td>
             <td><span data-bind="class: $parent.alertClass(expiryAlert || expiry_alert), text: expiryAlert || expiry_alert || '—'"></span></td>
-            <td style="font-size:12px;color:#6e6e73" data-bind="text: docStatus || doc_status || '—'"></td>
+            <td style="font-size:12px" data-bind="text: docStatus || doc_status || '—'"></td>
+            <td><span class="link-text" style="font-size:12px" data-bind="text: fullNameEn || full_name_en"></span></td>
+            <td style="font-size:12px;color:#6e6e73" data-bind="text: orgNameEn || org_name_en || '—'"></td>
           </tr>
           <!-- /ko -->
         </tbody>

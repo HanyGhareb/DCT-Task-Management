@@ -5,11 +5,17 @@
         <div class="page-title">Job Catalog</div>
         <div class="page-subtitle" data-bind="text: filtered().length + ' job(s)'"></div>
       </div>
+      <!-- ko if: isAdmin || isMgr -->
+      <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Job</button>
+      <!-- /ko -->
     </div>
   </div>
 
   <!-- ko if: error() -->
   <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+  <!-- ko if: saved() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: saved"></div>
   <!-- /ko -->
 
   <!-- ko if: loading() -->
@@ -19,14 +25,13 @@
   <!-- ko ifnot: loading() -->
   <div style="display:grid;grid-template-columns:1fr 340px;gap:16px;align-items:start">
 
-    <!-- Job list -->
     <div class="card">
       <div class="view-toolbar" style="margin-bottom:12px">
         <input class="search-box" type="text" placeholder="Search job name or code…" data-bind="value: searchQ, valueUpdate: 'input'">
         <select class="form-control" style="min-width:160px;width:auto" data-bind="value: filterFam">
           <option value="">All Families</option>
           <!-- ko foreach: families() -->
-          <option data-bind="value: jobFamilyId || job_family_id, text: familyNameEn || family_name_en"></option>
+          <option data-bind="value: jobFamilyId, text: familyNameEn"></option>
           <!-- /ko -->
         </select>
       </div>
@@ -37,16 +42,22 @@
       <!-- ko ifnot: filtered().length === 0 -->
       <div class="data-table-wrap">
         <table class="data-table">
-          <thead><tr><th>Job</th><th>Family</th><th>Grade Range</th></tr></thead>
+          <thead><tr><th>Job</th><th>Family</th><th>Grade Range</th><th></th></tr></thead>
           <tbody>
             <!-- ko foreach: filtered() -->
             <tr style="cursor:pointer" data-bind="click: $parent.select.bind($parent, $data), css: { 'tr--selected': $parent.selected() === $data }">
               <td>
-                <div class="link-text" data-bind="text: jobNameEn || job_name_en"></div>
-                <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: jobCode || job_code"></div>
+                <div class="link-text" data-bind="text: jobNameEn"></div>
+                <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: jobCode"></div>
               </td>
-              <td><span class="badge badge--info" data-bind="text: jobFamily || job_family || '—'"></span></td>
-              <td style="font-size:12px;color:#6e6e73" data-bind="text: (minGradeCode || min_grade_code || '') + (maxGradeCode || max_grade_code ? ' – ' + (maxGradeCode || max_grade_code) : '')  || '—'"></td>
+              <td><span class="badge badge--info" data-bind="text: jobFamily || '—'"></span></td>
+              <td style="font-size:12px;color:#6e6e73" data-bind="text: (minGradeCode || '') + (maxGradeCode ? ' – ' + maxGradeCode : '') || '—'"></td>
+              <td>
+                <!-- ko if: $parent.isAdmin || $parent.isMgr -->
+                <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
+                  data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEdit($data); }">Edit</button>
+                <!-- /ko -->
+              </td>
             </tr>
             <!-- /ko -->
           </tbody>
@@ -55,29 +66,27 @@
       <!-- /ko -->
     </div>
 
-    <!-- Job detail panel -->
+    <!-- Detail panel -->
     <div class="card">
       <!-- ko if: selected() -->
-      <div style="font-size:15px;font-weight:700;margin-bottom:4px" data-bind="text: selected().jobNameEn || selected().job_name_en"></div>
-      <div style="font-family:monospace;font-size:11px;color:#6e6e73;margin-bottom:12px" data-bind="text: selected().jobCode || selected().job_code"></div>
+      <div style="font-size:15px;font-weight:700;margin-bottom:4px" data-bind="text: selected().jobNameEn"></div>
+      <div style="font-family:monospace;font-size:11px;color:#6e6e73;margin-bottom:12px" data-bind="text: selected().jobCode"></div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px">
-        <span class="badge badge--info" data-bind="text: selected().jobFamily || selected().job_family || '—'"></span>
-        <!-- ko if: (selected().isActive || selected().is_active) === 'Y' -->
-        <span class="badge badge--active">Active</span>
-        <!-- /ko -->
+        <span class="badge badge--info" data-bind="text: selected().jobFamily || '—'"></span>
+        <!-- ko if: selected().isActive === 'Y' --><span class="badge badge--active">Active</span><!-- /ko -->
       </div>
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">Grade Range</div>
-        <div data-bind="text: (selected().minGradeCode || selected().min_grade_code || '—') + ' → ' + (selected().maxGradeCode || selected().max_grade_code || '—')"></div>
+        <div data-bind="text: (selected().minGradeCode || '—') + ' → ' + (selected().maxGradeCode || '—')"></div>
       </div>
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">Min. Experience</div>
-        <div data-bind="text: (selected().minExperienceYears || selected().min_experience_years) ? (selected().minExperienceYears || selected().min_experience_years) + ' years' : '—'"></div>
+        <div data-bind="text: selected().minExperienceYears ? selected().minExperienceYears + ' years' : '—'"></div>
       </div>
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">Effective</div>
-        <div data-bind="text: (selected().effectiveFrom || selected().effective_from || '—') + (selected().effectiveTo || selected().effective_to ? ' → ' + (selected().effectiveTo || selected().effective_to) : '')"></div>
+        <div data-bind="text: (selected().effectiveFrom || '—') + (selected().effectiveTo ? ' → ' + selected().effectiveTo : '')"></div>
       </div>
-      <!-- ko if: selected().descriptionEn || selected().description_en -->
+      <!-- ko if: selected().descriptionEn -->
       <div class="form-group"><div class="form-label">Description</div>
-        <div style="font-size:12px;color:#6e6e73;line-height:1.5" data-bind="text: selected().descriptionEn || selected().description_en"></div>
+        <div style="font-size:12px;color:#6e6e73;line-height:1.5" data-bind="text: selected().descriptionEn"></div>
       </div>
       <!-- /ko -->
       <!-- /ko -->
@@ -85,11 +94,77 @@
       <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">Select a job</div></div>
       <!-- /ko -->
     </div>
-
   </div>
   <!-- /ko -->
 </div>
 
-<style>
-tr.tr--selected td { background: #e3f2fd !important; }
-</style>
+<!-- Add / Edit Job Modal -->
+<!-- ko if: showModal() -->
+<div class="modal-backdrop" data-bind="click: closeModal">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: editingId() ? 'Edit Job' : 'Add Job'"></div>
+      <button class="modal-close" data-bind="click: closeModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <!-- ko if: formError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: formError"></div>
+      <!-- /ko -->
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Job Code <span style="color:red">*</span></div>
+          <input class="form-control" type="text" placeholder="e.g. FIN-ACCT" data-bind="value: form.job_code, valueUpdate:'input', attr:{disabled:!!editingId()}">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Job Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" data-bind="value: form.job_name_en, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Job Name (AR)</div>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: form.job_name_ar, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Job Family</div>
+          <select class="form-control" data-bind="value: form.job_family_id">
+            <option value="">— None —</option>
+            <!-- ko foreach: families() -->
+            <option data-bind="value: jobFamilyId, text: familyNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Min Grade</div>
+          <input class="form-control" type="text" placeholder="e.g. G3" data-bind="value: form.min_grade_code, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Max Grade</div>
+          <input class="form-control" type="text" placeholder="e.g. G7" data-bind="value: form.max_grade_code, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Min Experience (years)</div>
+          <input class="form-control" type="number" min="0" data-bind="value: form.min_experience_years, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Status</div>
+          <select class="form-control" data-bind="value: form.is_active">
+            <option value="Y">Active</option>
+            <option value="N">Inactive</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Description</div>
+          <textarea class="form-control" rows="3" data-bind="value: form.description_en, valueUpdate:'input'"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
+      <button class="btn btn-primary" data-bind="click: saveJob, disable: saving()">
+        <!-- ko if: saving() -->Saving…<!-- /ko --><!-- ko ifnot: saving() -->Save Job<!-- /ko -->
+      </button>
+    </div>
+  </div>
+</div>
+<!-- /ko -->
+
+<style>tr.tr--selected td { background: #e3f2fd !important; }</style>

@@ -98,9 +98,12 @@
         <!-- ko foreach: $data.items -->
         <a class="nav-item nav-item--child" href="#"
            data-bind="css: { 'nav-item--active': $root.currentNavItem() === $data.id },
-                      click: function(){ $root.navigate($data.id); return false; }">
+                      click: function(d, e){ if ($data.url) { window.location.href = $data.url; } else { $root.navigate($data.id); } return false; }">
           <span class="nav-icon" data-bind="html: $data.icon"></span>
           <span class="nav-label" data-bind="text: $data.label"></span>
+          <!-- ko if: $data.url -->
+          <span style="font-size:9px;opacity:0.5;margin-left:auto">&#8599;</span>
+          <!-- /ko -->
         </a>
         <!-- /ko -->
         <!-- /ko -->

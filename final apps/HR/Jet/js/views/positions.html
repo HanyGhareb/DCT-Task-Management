@@ -2,17 +2,22 @@
   <div class="page-header">
     <div class="page-header-row">
       <div>
-        <div class="page-title">Positions & Headcount</div>
+        <div class="page-title">Positions &amp; Headcount</div>
         <div class="page-subtitle" data-bind="text: filtered().length + ' position(s) shown'"></div>
       </div>
+      <!-- ko if: isAdmin || isMgr -->
+      <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Position</button>
+      <!-- /ko -->
     </div>
   </div>
 
   <!-- ko if: error() -->
   <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
   <!-- /ko -->
+  <!-- ko if: saved() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: saved"></div>
+  <!-- /ko -->
 
-  <!-- Summary row -->
   <div class="stats-row" style="margin-bottom:20px">
     <div class="stat-card stat-card--blue">
       <div class="stat-value" data-bind="text: totalApproved()"></div>
@@ -47,7 +52,6 @@
     <!-- ko if: loading() -->
     <div class="empty-state"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">Loading…</div></div>
     <!-- /ko -->
-
     <!-- ko ifnot: loading() -->
     <!-- ko if: filtered().length === 0 -->
     <div class="empty-state"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">No positions found</div></div>
@@ -57,14 +61,9 @@
       <table class="data-table">
         <thead>
           <tr>
-            <th>Position</th>
-            <th>Section</th>
-            <th>Job</th>
-            <th>Grade</th>
-            <th style="text-align:right">Approved</th>
-            <th style="text-align:right">Filled</th>
-            <th>Fill Rate</th>
-            <th>Vacancies</th>
+            <th>Position</th><th>Section</th><th>Job</th><th>Grade</th>
+            <th style="text-align:right">Approved</th><th style="text-align:right">Filled</th>
+            <th>Fill Rate</th><th>Vacancies</th><th></th>
           </tr>
         </thead>
         <tbody>
@@ -84,10 +83,16 @@
                 <div class="progress-bar-wrap" style="flex:1;min-width:60px">
                   <div class="progress-bar-fill" data-bind="style: { width: $parent.fillPct($data) + '%' }"></div>
                 </div>
-                <span style="font-size:11px;color:#6e6e73;min-width:30px;text-align:right" data-bind="text: $parent.fillPct($data) + '%'"></span>
+                <span style="font-size:11px;color:#6e6e73" data-bind="text: $parent.fillPct($data) + '%'"></span>
               </div>
             </td>
             <td><span data-bind="class: $parent.vacancyClass($data), text: vacancyCount || 0"></span></td>
+            <td>
+              <!-- ko if: $parent.isAdmin || $parent.isMgr -->
+              <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
+                data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEdit($data); }">Edit</button>
+              <!-- /ko -->
+            </td>
           </tr>
           <!-- /ko -->
         </tbody>
@@ -97,3 +102,73 @@
     <!-- /ko -->
   </div>
 </div>
+
+<!-- Add / Edit Position Modal -->
+<!-- ko if: showModal() -->
+<div class="modal-backdrop" data-bind="click: closeModal">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: editingId() ? 'Edit Position' : 'Add Position'"></div>
+      <button class="modal-close" data-bind="click: closeModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <!-- ko if: formError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: formError"></div>
+      <!-- /ko -->
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Position Code <span style="color:red">*</span></div>
+          <input class="form-control" type="text" placeholder="e.g. FIN-ACCT-001" data-bind="value: form.position_code, valueUpdate:'input', attr:{disabled:!!editingId()}">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Position Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" data-bind="value: form.position_name_en, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Position Name (AR)</div>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: form.position_name_ar, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Job <span style="color:red">*</span></div>
+          <select class="form-control" data-bind="value: form.job_id">
+            <option value="">— Select Job —</option>
+            <!-- ko foreach: jobs() -->
+            <option data-bind="value: jobId, text: jobNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Section <span style="color:red">*</span></div>
+          <select class="form-control" data-bind="value: form.org_id">
+            <option value="">— Select Section —</option>
+            <!-- ko foreach: orgs() -->
+            <option data-bind="value: orgId, text: orgNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Grade Code</div>
+          <input class="form-control" type="text" placeholder="e.g. G5" data-bind="value: form.grade_code, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Approved Headcount</div>
+          <input class="form-control" type="number" min="1" data-bind="value: form.approved_headcount, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Status</div>
+          <select class="form-control" data-bind="value: form.is_active">
+            <option value="Y">Active</option>
+            <option value="N">Inactive</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
+      <button class="btn btn-primary" data-bind="click: savePosition, disable: saving()">
+        <!-- ko if: saving() -->Saving…<!-- /ko --><!-- ko ifnot: saving() -->Save Position<!-- /ko -->
+      </button>
+    </div>
+  </div>
+</div>
+<!-- /ko -->

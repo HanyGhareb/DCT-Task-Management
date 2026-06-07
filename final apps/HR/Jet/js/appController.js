@@ -62,9 +62,10 @@ function (ko, config, authService, notifService) {
         id: 'structure', label: 'Structure', auth: 'viewer',
         collapsed: ko.observable(false),
         items: [
-          { id: 'positions', label: 'Positions',   icon: '&#128203;' },
-          { id: 'jobs',      label: 'Jobs',         icon: '&#128196;' },
-          { id: 'locations', label: 'Locations',    icon: '&#128205;' },
+          { id: 'positions', label: 'Positions',  icon: '&#128203;' },
+          { id: 'jobs',      label: 'Jobs',        icon: '&#128196;' },
+          { id: 'grades',    label: 'Grades',      icon: '&#127942;' },
+          { id: 'locations', label: 'Locations',   icon: '&#128205;' },
         ]
       },
       {
@@ -75,9 +76,10 @@ function (ko, config, authService, notifService) {
         ]
       },
       {
-        id: 'config', label: 'Configuration', auth: 'admin',
-        collapsed: ko.observable(true),
+        id: 'admin', label: 'Administration', auth: 'admin',
+        collapsed: ko.observable(false),
         items: [
+          { id: 'lookups',        label: 'Lookup Values',  icon: '&#128203;' },
           { id: 'moduleSettings', label: 'Module Settings', icon: '&#9881;' },
         ]
       },
@@ -125,7 +127,7 @@ function (ko, config, authService, notifService) {
     function _requireAuth() {
       self.currentUser(null);
       if (config.apiBase) {
-        window.location.href = '../Admin/Jet/index.html';
+        window.location.href = '/Admin/Jet/index.html';
       } else {
         self._loadRoute('login');
       }

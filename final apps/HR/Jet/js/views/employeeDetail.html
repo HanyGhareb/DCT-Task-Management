@@ -12,7 +12,30 @@
   <!-- Profile header -->
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-      <div class="avatar avatar--lg" data-bind="text: initials(), style: { background: avatarColor() }"></div>
+      <!-- Photo area -->
+      <div style="position:relative;flex-shrink:0">
+        <!-- ko if: employee().photoUrl -->
+        <img data-bind="attr: { src: employee().photoUrl }"
+          alt="Employee photo"
+          style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #e0e0e0">
+        <!-- /ko -->
+        <!-- ko ifnot: employee().photoUrl -->
+        <div class="avatar avatar--lg" data-bind="text: initials(), style: { background: avatarColor() }"></div>
+        <!-- /ko -->
+        <!-- ko if: isAdmin || isMgr -->
+        <button type="button" title="Upload photo"
+          onclick="window._hrPickPhoto()"
+          style="position:absolute;bottom:0;right:0;background:#1d6fa5;color:#fff;border:none;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;padding:0;line-height:1">
+          &#9998;
+        </button>
+        <!-- /ko -->
+        <!-- ko if: photoUploading() -->
+        <div style="position:absolute;inset:0;background:rgba(255,255,255,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px">…</div>
+        <!-- /ko -->
+      </div>
+      <!-- ko if: photoError() -->
+      <div class="alert-banner alert-banner--danger" style="font-size:12px;padding:6px 10px" data-bind="text: photoError"></div>
+      <!-- /ko -->
       <div style="flex:1">
         <div style="font-size:20px;font-weight:700" data-bind="text: employee().fullNameEn"></div>
         <div style="color:#6e6e73;font-size:13px;margin-top:4px">
@@ -31,7 +54,12 @@
           <!-- /ko -->
         </div>
       </div>
-      <button class="btn btn-secondary" data-bind="click: goBack">&#8592; Back</button>
+      <div style="display:flex;gap:8px">
+        <!-- ko if: isAdmin || isMgr -->
+        <button class="btn btn-primary" data-bind="click: openEdit">&#9998; Edit</button>
+        <!-- /ko -->
+        <button class="btn btn-secondary" data-bind="click: goBack">&#8592; Back</button>
+      </div>
     </div>
   </div>
 
@@ -157,27 +185,49 @@
   <!-- Documents tab -->
   <!-- ko if: activeTab() === 'documents' -->
   <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div style="font-weight:600;font-size:14px">Employee Documents</div>
+      <!-- ko if: isAdmin || isMgr -->
+      <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddDoc">&#43; Add Document</button>
+      <!-- /ko -->
+    </div>
+    <!-- ko if: docSaved() -->
+    <div class="alert-banner alert-banner--success" style="margin-bottom:10px" data-bind="text: docSaved"></div>
+    <!-- /ko -->
     <!-- ko if: documents().length === 0 -->
     <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No documents on file</div></div>
     <!-- /ko -->
     <!-- ko ifnot: documents().length === 0 -->
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>Document Type</th><th>Number</th><th>Issue Date</th><th>Expiry Date</th><th>Days</th><th>Status</th></tr></thead>
+        <thead><tr><th>Type</th><th>Number</th><th>Issue Date</th><th>Expiry Date</th><th>Days Left</th><th>Status</th><th>File</th><th></th></tr></thead>
         <tbody>
           <!-- ko foreach: documents() -->
           <tr>
-            <td data-bind="text: docType || doc_type || '—'"></td>
-            <td style="font-family:monospace;font-size:12px" data-bind="text: docNumber || doc_number || '—'"></td>
-            <td data-bind="text: issueDate || issue_date || '—'"></td>
-            <td data-bind="text: expiryDate || expiry_date || '—'"></td>
+            <td style="font-weight:600;font-size:12px" data-bind="text: docType || '—'"></td>
+            <td style="font-family:monospace;font-size:12px" data-bind="text: docNumber || '—'"></td>
+            <td style="font-size:12px" data-bind="text: issueDate ? issueDate.toString().substring(0,10) : '—'"></td>
+            <td style="font-size:12px" data-bind="text: expiryDate ? expiryDate.toString().substring(0,10) : '—'"></td>
             <td>
-              <!-- ko if: (daysUntilExpiry || days_until_expiry) != null -->
-              <span data-bind="class: $parent.alertClass(expiryAlert || expiry_alert), text: daysUntilExpiry != null ? daysUntilExpiry : days_until_expiry"></span>
+              <!-- ko if: daysUntilExpiry != null -->
+              <span data-bind="class: $parent.alertClass(expiryAlert), text: daysUntilExpiry + ' days'"></span>
               <!-- /ko -->
-              <!-- ko ifnot: (daysUntilExpiry || days_until_expiry) != null -->—<!-- /ko -->
+              <!-- ko ifnot: daysUntilExpiry != null -->—<!-- /ko -->
             </td>
-            <td data-bind="text: docStatus || doc_status || '—'"></td>
+            <td><span class="badge badge--info" data-bind="text: docStatus || '—'"></span></td>
+            <td>
+              <!-- ko if: fileName -->
+              <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px" title="Download file"
+                data-bind="click: function(d,e){ e.stopPropagation(); $parent.downloadDoc($data); }">&#11015; <span data-bind="text: fileName"></span></button>
+              <!-- /ko -->
+              <!-- ko ifnot: fileName --><span style="color:#aaa;font-size:11px">—</span><!-- /ko -->
+            </td>
+            <td>
+              <!-- ko if: $parent.isAdmin || $parent.isMgr -->
+              <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
+                data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEditDoc($data); }">Edit</button>
+              <!-- /ko -->
+            </td>
           </tr>
           <!-- /ko -->
         </tbody>
@@ -187,5 +237,140 @@
   </div>
   <!-- /ko -->
 
+  <!-- Add/Edit Document Modal -->
+  <!-- ko if: showDocModal() -->
+  <div class="modal-backdrop" data-bind="click: closeDocModal">
+    <div class="modal-box" style="max-width:560px" data-bind="click: function(d,e){ e.stopPropagation(); }">
+      <div class="modal-header">
+        <div class="modal-title" data-bind="text: editingDocId() ? 'Edit Document' : 'Add Document'"></div>
+        <button class="modal-close" data-bind="click: closeDocModal">&#10005;</button>
+      </div>
+      <div class="modal-body">
+        <!-- ko if: docFormError() -->
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: docFormError"></div>
+        <!-- /ko -->
+        <div class="form-grid">
+          <!-- ko ifnot: editingDocId() -->
+          <div class="form-group" style="grid-column:span 2">
+            <div class="form-label">Document Type <span style="color:red">*</span></div>
+            <select class="form-control" data-bind="value: docForm.doc_type_id">
+              <option value="">— Select Type —</option>
+              <!-- ko foreach: docTypes() -->
+              <option data-bind="value: docTypeId, text: docTypeNameEn + ' (' + docCategory + ')'"></option>
+              <!-- /ko -->
+            </select>
+          </div>
+          <!-- /ko -->
+          <div class="form-group">
+            <div class="form-label">Document Number</div>
+            <input class="form-control" type="text" data-bind="value: docForm.doc_number, valueUpdate:'input'">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Issuing Authority</div>
+            <input class="form-control" type="text" data-bind="value: docForm.issuing_authority, valueUpdate:'input'">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Issue Date</div>
+            <input class="form-control" type="date" data-bind="value: docForm.issue_date">
+          </div>
+          <div class="form-group">
+            <div class="form-label">Expiry Date</div>
+            <input class="form-control" type="date" data-bind="value: docForm.expiry_date">
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <div class="form-label">Notes</div>
+            <textarea class="form-control" rows="2" data-bind="value: docForm.notes, valueUpdate:'input'"></textarea>
+          </div>
+          <div class="form-group" style="grid-column:span 2">
+            <div class="form-label">Attach File <span style="color:#6e6e73;font-weight:400">(PDF, Excel, Word, ZIP — max 10 MB)</span></div>
+            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+              <button type="button" class="btn btn-secondary" onclick="window._hrPickDocFile()">
+                &#128206; Choose File
+              </button>
+              <span style="font-size:12px;color:#6e6e73" data-bind="text: docFileName() || 'No file chosen'"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bind="click: closeDocModal">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: saveDoc, disable: docSaving()">
+          <!-- ko if: docSaving() -->Saving…<!-- /ko --><!-- ko ifnot: docSaving() -->Save Document<!-- /ko -->
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
   <!-- /ko -->
 </div>
+
+<!-- Edit Employee Modal -->
+<!-- ko if: showEditModal() -->
+<div class="modal-backdrop" data-bind="click: closeEdit">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title">Edit Employee</div>
+      <button class="modal-close" data-bind="click: closeEdit">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <!-- ko if: editError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: editError"></div>
+      <!-- /ko -->
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">First Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" data-bind="value: editForm.first_name_en, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Last Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" data-bind="value: editForm.last_name_en, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Gender</div>
+          <select class="form-control" data-bind="value: editForm.gender">
+            <option value="">— Select —</option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Work Email <span style="color:red">*</span></div>
+          <input class="form-control" type="email" data-bind="value: editForm.email, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Mobile</div>
+          <input class="form-control" type="text" data-bind="value: editForm.mobile, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Grade</div>
+          <select class="form-control" data-bind="value: editForm.grade_code">
+            <option value="">— Select Grade —</option>
+            <!-- ko foreach: grades() -->
+            <option data-bind="value: gradeCode, text: gradeCode + (gradeNameEn ? ' — ' + gradeNameEn : '')"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Job Title (EN)</div>
+          <input class="form-control" type="text" data-bind="value: editForm.job_title_en, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Status</div>
+          <select class="form-control" data-bind="value: editForm.is_active">
+            <option value="Y">Active</option>
+            <option value="N">Inactive</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeEdit">Cancel</button>
+      <button class="btn btn-primary" data-bind="click: saveEdit, disable: editSaving()">
+        <!-- ko if: editSaving() -->Saving…<!-- /ko -->
+        <!-- ko ifnot: editSaving() -->Save Changes<!-- /ko -->
+      </button>
+    </div>
+  </div>
+</div>
+<!-- /ko -->

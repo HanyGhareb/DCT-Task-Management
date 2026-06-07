@@ -126,6 +126,42 @@ BEGIN
     def_tpl('employees/:id');
     def_get('employees/:id', 'SELECT * FROM v_hr_employee_full WHERE person_id = :id', TRUE);
 
+    -- Photo upload (PUT base64 JSON) and download (GET media)
+    def_tpl('employees/:id/photo');
+    def_plsql('employees/:id/photo', 'PUT', q'[
+        DECLARE
+            v_blob  BLOB;
+            v_raw   RAW(32767);
+            v_b64   VARCHAR2(32767) := :photo_data_b64;
+            v_len   NUMBER;
+            v_pos   NUMBER := 1;
+            v_chunk NUMBER := 32764;
+        BEGIN
+            DBMS_LOB.CREATETEMPORARY(v_blob, TRUE);
+            v_len := LENGTH(v_b64);
+            WHILE v_pos <= v_len LOOP
+                v_raw := UTL_ENCODE.BASE64_DECODE(UTL_RAW.CAST_TO_RAW(SUBSTR(v_b64, v_pos, v_chunk)));
+                DBMS_LOB.WRITEAPPEND(v_blob, UTL_RAW.LENGTH(v_raw), v_raw);
+                v_pos := v_pos + v_chunk;
+            END LOOP;
+            UPDATE dct_employees SET
+                photo_blob      = v_blob,
+                photo_mime_type = NVL(:mime_type, 'image/jpeg'),
+                photo_url       = '/ords/admin/hr/employees/' || :id || '/photo'
+            WHERE person_id = :id;
+            :status_code := 200;
+            COMMIT;
+            DBMS_LOB.FREETEMPORARY(v_blob);
+        END;
+    ]');
+    ORDS.DEFINE_HANDLER(
+        p_module_name  => c_mod,
+        p_pattern      => 'employees/:id/photo',
+        p_method       => 'GET',
+        p_source_type  => ORDS.SOURCE_TYPE_MEDIA,
+        p_source       => q'[SELECT photo_mime_type, photo_blob FROM dct_employees WHERE person_id = :id]'
+    );
+
     def_plsql('employees/', 'POST', q'[
         DECLARE v_id NUMBER;
         BEGIN
@@ -196,6 +232,27 @@ BEGIN
         WHERE (:is_active IS NULL OR o.is_active = :is_active)
         ORDER BY o.full_path
     ]');
+    def_plsql('orgs/', 'POST', q'[
+        DECLARE v_id NUMBER;
+        BEGIN
+            INSERT INTO dct_organizations (
+                org_code, org_name_en, org_name_ar, org_type_id,
+                parent_org_id, headcount_ceiling, cost_center_code, is_active,
+                created_by
+            ) VALUES (
+                :org_code, :org_name_en, :org_name_ar,
+                (SELECT value_id FROM dct_lookup_values lv
+                 JOIN dct_lookup_categories lc ON lc.category_id = lv.category_id
+                 WHERE lc.category_code = 'HR_ORG_TYPE' AND lv.value_code = :org_type AND ROWNUM = 1),
+                :parent_org_id, :headcount_ceiling, :cost_center_code,
+                NVL(:is_active,'Y'),
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            ) RETURNING org_id INTO v_id;
+            :status_code      := 201;
+            :forward_location := 'orgs/' || v_id;
+            COMMIT;
+        END;
+    ]');
 
     def_tpl('orgs/tree/');
     def_get('orgs/tree/', q'[
@@ -207,9 +264,85 @@ BEGIN
         ORDER  BY full_path
     ]');
 
+    def_tpl('orgs/:id');
+    def_plsql('orgs/:id', 'PUT', q'[
+        BEGIN
+            UPDATE dct_organizations SET
+                org_name_en       = NVL(:org_name_en,      org_name_en),
+                org_name_ar       = NVL(:org_name_ar,      org_name_ar),
+                org_type_id       = NVL((SELECT value_id FROM dct_lookup_values lv
+                                         JOIN dct_lookup_categories lc ON lc.category_id = lv.category_id
+                                         WHERE lc.category_code = 'HR_ORG_TYPE' AND lv.value_code = :org_type AND ROWNUM = 1), org_type_id),
+                parent_org_id     = NVL(:parent_org_id,    parent_org_id),
+                headcount_ceiling = NVL(:headcount_ceiling, headcount_ceiling),
+                cost_center_code  = NVL(:cost_center_code,  cost_center_code),
+                is_active         = NVL(:is_active,          is_active)
+            WHERE org_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
+
     def_tpl('orgs/:id/positions/');
     def_get('orgs/:id/positions/', q'[
         SELECT * FROM v_hr_headcount WHERE org_id = :id ORDER BY position_name_en
+    ]');
+
+    -- =========================================================================
+    -- LOOKUPS
+    -- =========================================================================
+    def_tpl('lookups/');
+    def_get('lookups/', q'[
+        SELECT lc.category_id, lc.category_code, lc.category_name_en, lc.category_name_ar,
+               lc.is_system, lc.is_active
+        FROM   dct_lookup_categories lc
+        WHERE  lc.is_active = NVL(:is_active,'Y')
+        ORDER  BY lc.category_name_en
+    ]');
+    def_plsql('lookups/', 'POST', q'[
+        DECLARE v_id NUMBER; v_cat_id NUMBER;
+        BEGIN
+            SELECT category_id INTO v_cat_id
+            FROM   dct_lookup_categories
+            WHERE  category_code = :category_code AND ROWNUM = 1;
+
+            INSERT INTO dct_lookup_values (
+                category_id, value_code, value_name_en, value_name_ar,
+                display_order, is_active, created_by
+            ) VALUES (
+                v_cat_id, :value_code, :value_name_en, :value_name_ar,
+                NVL(:display_order, 99), NVL(:is_active,'Y'),
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            ) RETURNING value_id INTO v_id;
+            :status_code := 201;
+            COMMIT;
+        END;
+    ]');
+
+    def_tpl('lookups/:category_code');
+    def_get('lookups/:category_code', q'[
+        SELECT lv.value_id, lv.value_code, lv.value_name_en, lv.value_name_ar,
+               lv.display_order, lv.is_active,
+               lc.category_code, lc.category_name_en
+        FROM   dct_lookup_values    lv
+        JOIN   dct_lookup_categories lc ON lc.category_id = lv.category_id
+        WHERE  lc.category_code = :category_code
+          AND  lv.is_active = NVL(:is_active,'Y')
+        ORDER  BY lv.display_order, lv.value_name_en
+    ]');
+
+    def_tpl('lookups/value/:id');
+    def_plsql('lookups/value/:id', 'PUT', q'[
+        BEGIN
+            UPDATE dct_lookup_values SET
+                value_name_en = NVL(:value_name_en, value_name_en),
+                value_name_ar = NVL(:value_name_ar, value_name_ar),
+                display_order = NVL(:display_order,  display_order),
+                is_active     = NVL(:is_active,       is_active)
+            WHERE value_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
     ]');
 
     -- =========================================================================
@@ -221,9 +354,44 @@ BEGIN
         WHERE (:org_id IS NULL OR org_id = :org_id)
         ORDER BY org_name_en, position_name_en
     ]');
+    def_plsql('positions/', 'POST', q'[
+        DECLARE v_id NUMBER;
+        BEGIN
+            INSERT INTO hr_positions (
+                position_code, position_name_en, position_name_ar,
+                job_id, org_id, grade_code, location_id,
+                approved_headcount, effective_from, is_active, created_by
+            ) VALUES (
+                :position_code, :position_name_en, :position_name_ar,
+                :job_id, :org_id, :grade_code, :location_id,
+                NVL(:approved_headcount, 1),
+                TO_DATE(NVL(:effective_from, TO_CHAR(SYSDATE,'YYYY-MM-DD')),'YYYY-MM-DD'),
+                NVL(:is_active,'Y'),
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            ) RETURNING position_id INTO v_id;
+            :status_code := 201;
+            COMMIT;
+        END;
+    ]');
 
     def_tpl('positions/:id');
     def_get('positions/:id', 'SELECT * FROM v_hr_headcount WHERE position_id = :id', TRUE);
+    def_plsql('positions/:id', 'PUT', q'[
+        BEGIN
+            UPDATE hr_positions SET
+                position_name_en   = NVL(:position_name_en,   position_name_en),
+                position_name_ar   = NVL(:position_name_ar,   position_name_ar),
+                job_id             = NVL(:job_id,             job_id),
+                org_id             = NVL(:org_id,             org_id),
+                grade_code         = NVL(:grade_code,         grade_code),
+                location_id        = NVL(:location_id,        location_id),
+                approved_headcount = NVL(:approved_headcount, approved_headcount),
+                is_active          = NVL(:is_active,          is_active)
+            WHERE position_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
 
     def_tpl('jobs/');
     def_get('jobs/', q'[
@@ -238,6 +406,42 @@ BEGIN
           AND  j.is_active = NVL(:is_active,'Y')
         ORDER  BY f.family_name_en, j.job_name_en
     ]');
+    def_plsql('jobs/', 'POST', q'[
+        DECLARE v_id NUMBER;
+        BEGIN
+            INSERT INTO hr_jobs (
+                job_code, job_name_en, job_name_ar, job_family_id,
+                min_grade_code, max_grade_code, min_experience_years,
+                description_en, is_active, created_by
+            ) VALUES (
+                :job_code, :job_name_en, :job_name_ar,
+                :job_family_id,
+                :min_grade_code, :max_grade_code, :min_experience_years,
+                :description_en, NVL(:is_active,'Y'),
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            ) RETURNING job_id INTO v_id;
+            :status_code := 201;
+            COMMIT;
+        END;
+    ]');
+
+    def_tpl('jobs/:id');
+    def_plsql('jobs/:id', 'PUT', q'[
+        BEGIN
+            UPDATE hr_jobs SET
+                job_name_en          = NVL(:job_name_en,          job_name_en),
+                job_name_ar          = NVL(:job_name_ar,          job_name_ar),
+                job_family_id        = NVL(:job_family_id,        job_family_id),
+                min_grade_code       = NVL(:min_grade_code,       min_grade_code),
+                max_grade_code       = NVL(:max_grade_code,       max_grade_code),
+                min_experience_years = NVL(:min_experience_years, min_experience_years),
+                description_en       = NVL(:description_en,       description_en),
+                is_active            = NVL(:is_active,            is_active)
+            WHERE job_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
 
     def_tpl('job-families/');
     def_get('job-families/', q'[
@@ -246,6 +450,66 @@ BEGIN
         FROM   hr_job_families
         WHERE  is_active = NVL(:is_active,'Y')
         ORDER  BY display_order, family_name_en
+    ]');
+
+    -- =========================================================================
+    -- GRADES
+    -- =========================================================================
+    def_tpl('grades/');
+    def_get('grades/', q'[
+        SELECT grade_code, grade_name_en, grade_name_ar, grade_level,
+               grade_category, salary_band_min, salary_band_max,
+               display_order, is_active
+        FROM   dct_employee_grades
+        WHERE  is_active = NVL(:is_active,'Y')
+        ORDER  BY grade_level, grade_code
+    ]');
+    def_plsql('grades/', 'POST', q'[
+        BEGIN
+            INSERT INTO dct_employee_grades (
+                grade_code, grade_name_en, grade_name_ar, grade_level,
+                grade_category, salary_band_min, salary_band_max,
+                display_order, is_active, created_by
+            ) VALUES (
+                :grade_code, :grade_name_en, :grade_name_ar,
+                NVL(:grade_level, 1), NVL(:grade_category,'GENERAL'),
+                :salary_band_min, :salary_band_max,
+                :display_order, NVL(:is_active,'Y'),
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            );
+            :status_code := 201;
+            COMMIT;
+        END;
+    ]');
+
+    def_tpl('grades/:code');
+    def_plsql('grades/:code', 'PUT', q'[
+        BEGIN
+            UPDATE dct_employee_grades SET
+                grade_name_en   = NVL(:grade_name_en,   grade_name_en),
+                grade_name_ar   = NVL(:grade_name_ar,   grade_name_ar),
+                grade_level     = NVL(:grade_level,     grade_level),
+                grade_category  = NVL(:grade_category,  grade_category),
+                salary_band_min = NVL(:salary_band_min, salary_band_min),
+                salary_band_max = NVL(:salary_band_max, salary_band_max),
+                display_order   = NVL(:display_order,   display_order),
+                is_active       = NVL(:is_active,       is_active)
+            WHERE grade_code = :code;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
+
+    -- =========================================================================
+    -- DOCUMENT TYPES
+    -- =========================================================================
+    def_tpl('doc-types/');
+    def_get('doc-types/', q'[
+        SELECT doc_type_id, doc_type_code, doc_type_name_en, doc_type_name_ar,
+               doc_category, has_expiry, expiry_alert_days, is_active, display_order
+        FROM   dct_document_types
+        WHERE  is_active = NVL(:is_active,'Y')
+        ORDER  BY doc_category, display_order, doc_type_name_en
     ]');
 
     -- =========================================================================
@@ -265,6 +529,42 @@ BEGIN
         LEFT JOIN dct_countries      c  ON c.country_code = l.country_code
         WHERE  l.is_active = NVL(:is_active,'Y')
         ORDER  BY l.display_order, l.location_name_en
+    ]');
+    def_plsql('locations/', 'POST', q'[
+        DECLARE v_id NUMBER;
+        BEGIN
+            INSERT INTO hr_locations (
+                location_code, location_name_en, location_name_ar,
+                emirate, city, area, building_name, floor_no,
+                country_code, is_active, created_by
+            ) VALUES (
+                :location_code, :location_name_en, :location_name_ar,
+                :emirate, :city, :area, :building_name, :floor_no,
+                NVL(:country_code,'AE'), NVL(:is_active,'Y'),
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            ) RETURNING location_id INTO v_id;
+            :status_code := 201;
+            COMMIT;
+        END;
+    ]');
+
+    def_tpl('locations/:id');
+    def_plsql('locations/:id', 'PUT', q'[
+        BEGIN
+            UPDATE hr_locations SET
+                location_name_en = NVL(:location_name_en, location_name_en),
+                location_name_ar = NVL(:location_name_ar, location_name_ar),
+                emirate          = NVL(:emirate,          emirate),
+                city             = NVL(:city,             city),
+                area             = NVL(:area,             area),
+                building_name    = NVL(:building_name,    building_name),
+                floor_no         = NVL(:floor_no,         floor_no),
+                country_code     = NVL(:country_code,     country_code),
+                is_active        = NVL(:is_active,        is_active)
+            WHERE location_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
     ]');
 
     -- =========================================================================
@@ -398,9 +698,51 @@ BEGIN
                 NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
             ) RETURNING doc_id INTO v_id;
             :status_code := 201;
+            :body_text   := '{"docId":' || v_id || '}';
             COMMIT;
         END;
     ]');
+
+    def_tpl('documents/update/:id');
+    def_plsql('documents/update/:id', 'PUT', q'[
+        BEGIN
+            UPDATE hr_employee_documents SET
+                doc_number         = NVL(:doc_number,         doc_number),
+                issue_date         = NVL(TO_DATE(:issue_date,'YYYY-MM-DD'), issue_date),
+                expiry_date        = NVL(TO_DATE(:expiry_date,'YYYY-MM-DD'), expiry_date),
+                issuing_authority  = NVL(:issuing_authority,  issuing_authority),
+                notes              = NVL(:notes,              notes)
+            WHERE doc_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
+
+    -- =========================================================================
+    -- DOCUMENT FILE UPLOAD / DOWNLOAD
+    -- =========================================================================
+    def_tpl('documents/file/:id');
+    -- PUT  — receive raw binary body, store as BLOB
+    def_plsql('documents/file/:id', 'PUT', q'[
+        BEGIN
+            UPDATE hr_employee_documents SET
+                file_blob   = :body_blob,
+                file_name      = NVL(:file_name,      file_name),
+                file_mime_type = NVL(:file_mime_type,  file_mime_type),
+                updated_by     = NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            WHERE doc_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
+    -- GET  — stream the stored BLOB back with its original MIME type
+    ORDS.DEFINE_HANDLER(
+        p_module_name  => c_mod,
+        p_pattern      => 'documents/file/:id',
+        p_method       => 'GET',
+        p_source_type  => ORDS.SOURCE_TYPE_MEDIA,
+        p_source       => q'[SELECT file_mime_type, file_blob FROM hr_employee_documents WHERE doc_id = :id]'
+    );
 
     -- =========================================================================
     -- REPORTS

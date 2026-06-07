@@ -54,6 +54,13 @@ define(['knockout', 'services/authService'], function (ko, authService) {
         ]
       },
       {
+        id: 'ifinanceModules', label: 'i-Finance Modules', auth: 'all',
+        collapsed: ko.observable(false),
+        items: [
+          { id: 'hr-module', label: 'Human Resources', icon: '&#128101;', url: '/HR/Jet/index.html' },
+        ]
+      },
+      {
         id: 'system', label: 'System', auth: 'admin',
         collapsed: ko.observable(false),
         items: [

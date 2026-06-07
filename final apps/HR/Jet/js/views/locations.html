@@ -5,11 +5,17 @@
         <div class="page-title">Locations</div>
         <div class="page-subtitle" data-bind="text: filtered().length + ' location(s)'"></div>
       </div>
+      <!-- ko if: isAdmin || isMgr -->
+      <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Location</button>
+      <!-- /ko -->
     </div>
   </div>
 
   <!-- ko if: error() -->
   <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+  <!-- ko if: saved() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: saved"></div>
   <!-- /ko -->
 
   <!-- ko if: loading() -->
@@ -19,7 +25,6 @@
   <!-- ko ifnot: loading() -->
   <div style="display:grid;grid-template-columns:1fr 320px;gap:16px;align-items:start">
 
-    <!-- List -->
     <div class="card">
       <div class="view-toolbar" style="margin-bottom:12px">
         <input class="search-box" type="text" placeholder="Search location name, code, or emirate…" data-bind="value: searchQ, valueUpdate: 'input'">
@@ -31,16 +36,22 @@
       <!-- ko ifnot: filtered().length === 0 -->
       <div class="data-table-wrap">
         <table class="data-table">
-          <thead><tr><th>Location</th><th>Type</th><th>Emirate / City</th></tr></thead>
+          <thead><tr><th>Location</th><th>Type</th><th>Emirate / City</th><th></th></tr></thead>
           <tbody>
             <!-- ko foreach: filtered() -->
             <tr style="cursor:pointer" data-bind="click: $parent.select.bind($parent, $data)">
               <td>
-                <div class="link-text" data-bind="text: locationNameEn || location_name_en"></div>
-                <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: locationCode || location_code"></div>
+                <div class="link-text" data-bind="text: locationNameEn"></div>
+                <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: locationCode"></div>
               </td>
-              <td><span data-bind="class: $parent.typeClass(locationType || location_type), text: locationType || location_type || '—'"></span></td>
+              <td><span data-bind="class: $parent.typeClass(locationType), text: locationType || '—'"></span></td>
               <td style="font-size:12px;color:#6e6e73" data-bind="text: (emirate || '') + (city ? ', ' + city : '') || '—'"></td>
+              <td>
+                <!-- ko if: $parent.isAdmin || $parent.isMgr -->
+                <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
+                  data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEdit($data); }">Edit</button>
+                <!-- /ko -->
+              </td>
             </tr>
             <!-- /ko -->
           </tbody>
@@ -49,26 +60,103 @@
       <!-- /ko -->
     </div>
 
-    <!-- Detail -->
+    <!-- Detail panel -->
     <div class="card">
       <!-- ko if: selected() -->
-      <div style="font-size:16px;font-weight:700;margin-bottom:4px" data-bind="text: selected().locationNameEn || selected().location_name_en"></div>
-      <div style="font-family:monospace;font-size:11px;color:#6e6e73;margin-bottom:12px" data-bind="text: selected().locationCode || selected().location_code"></div>
+      <div style="font-size:16px;font-weight:700;margin-bottom:4px" data-bind="text: selected().locationNameEn"></div>
+      <div style="font-family:monospace;font-size:11px;color:#6e6e73;margin-bottom:12px" data-bind="text: selected().locationCode"></div>
       <div style="margin-bottom:14px">
-        <span data-bind="class: $root.typeClass(selected().locationType || selected().location_type), text: selected().locationType || selected().location_type || '—'"></span>
+        <span data-bind="class: typeClass(selected().locationType), text: selected().locationType || '—'"></span>
       </div>
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">Emirate</div><div data-bind="text: selected().emirate || '—'"></div></div>
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">City</div><div data-bind="text: selected().city || '—'"></div></div>
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">Area</div><div data-bind="text: selected().area || '—'"></div></div>
-      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Building</div><div data-bind="text: selected().buildingName || selected().building_name || '—'"></div></div>
-      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Floor</div><div data-bind="text: selected().floorNo || selected().floor_no || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Country</div><div data-bind="text: selected().countryNameEn || selected().country_name_en || selected().countryCode || selected().country_code || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Building</div><div data-bind="text: selected().buildingName || '—'"></div></div>
+      <div class="form-group" style="margin-bottom:10px"><div class="form-label">Floor</div><div data-bind="text: selected().floorNo || '—'"></div></div>
+      <div class="form-group"><div class="form-label">Country</div><div data-bind="text: selected().countryNameEn || selected().countryCode || '—'"></div></div>
+      <!-- ko if: isAdmin || isMgr -->
+      <div style="margin-top:16px">
+        <button class="btn btn-secondary" style="width:100%" data-bind="click: openEdit.bind($data, selected())">&#9998; Edit Location</button>
+      </div>
+      <!-- /ko -->
       <!-- /ko -->
       <!-- ko ifnot: selected() -->
       <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128205;</div><div class="empty-state__msg">Select a location</div></div>
       <!-- /ko -->
     </div>
-
   </div>
   <!-- /ko -->
 </div>
+
+<!-- Add / Edit Location Modal -->
+<!-- ko if: showModal() -->
+<div class="modal-backdrop" data-bind="click: closeModal">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: editingId() ? 'Edit Location' : 'Add Location'"></div>
+      <button class="modal-close" data-bind="click: closeModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <!-- ko if: formError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: formError"></div>
+      <!-- /ko -->
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Location Code <span style="color:red">*</span></div>
+          <input class="form-control" type="text" placeholder="e.g. HQ-ABU" data-bind="value: form.location_code, valueUpdate:'input', attr:{disabled:!!editingId()}">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Location Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" data-bind="value: form.location_name_en, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Location Name (AR)</div>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: form.location_name_ar, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Emirate</div>
+          <select class="form-control" data-bind="value: form.emirate">
+            <option value="">— Select —</option>
+            <option value="Abu Dhabi">Abu Dhabi</option>
+            <option value="Dubai">Dubai</option>
+            <option value="Sharjah">Sharjah</option>
+            <option value="Ajman">Ajman</option>
+            <option value="Ras Al Khaimah">Ras Al Khaimah</option>
+            <option value="Fujairah">Fujairah</option>
+            <option value="Umm Al Quwain">Umm Al Quwain</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">City</div>
+          <input class="form-control" type="text" data-bind="value: form.city, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Area</div>
+          <input class="form-control" type="text" data-bind="value: form.area, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Building</div>
+          <input class="form-control" type="text" data-bind="value: form.building_name, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Floor</div>
+          <input class="form-control" type="text" data-bind="value: form.floor_no, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Status</div>
+          <select class="form-control" data-bind="value: form.is_active">
+            <option value="Y">Active</option>
+            <option value="N">Inactive</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
+      <button class="btn btn-primary" data-bind="click: saveLocation, disable: saving()">
+        <!-- ko if: saving() -->Saving…<!-- /ko --><!-- ko ifnot: saving() -->Save Location<!-- /ko -->
+      </button>
+    </div>
+  </div>
+</div>
+<!-- /ko -->

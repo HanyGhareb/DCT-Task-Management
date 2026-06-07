@@ -5,11 +5,17 @@
         <div class="page-title">Employee Directory</div>
         <div class="page-subtitle" data-bind="text: filtered().length + ' employee(s) shown'"></div>
       </div>
+      <!-- ko if: isAdmin || isMgr -->
+      <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Employee</button>
+      <!-- /ko -->
     </div>
   </div>
 
   <!-- ko if: error() -->
   <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+  <!-- ko if: saved() -->
+  <div class="alert-banner alert-banner--success" data-bind="text: saved"></div>
   <!-- /ko -->
 
   <div class="card">
@@ -44,6 +50,9 @@
             <th>Gender</th>
             <th>Hire Date</th>
             <th>Status</th>
+            <!-- ko if: isAdmin || isMgr -->
+            <th></th>
+            <!-- /ko -->
           </tr>
         </thead>
         <tbody>
@@ -51,8 +60,14 @@
           <tr style="cursor:pointer" data-bind="click: $parent.openEmployee.bind($parent, $data)">
             <td>
               <div style="display:flex;align-items:center;gap:10px">
+                <!-- ko if: photoUrl -->
+                <img data-bind="attr: { src: photoUrl }" alt=""
+                  style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">
+                <!-- /ko -->
+                <!-- ko ifnot: photoUrl -->
                 <div class="avatar" style="background:#1a7f5a;font-size:12px;width:32px;height:32px"
                      data-bind="text: (fullNameEn||'').split(' ').filter(function(x){return x}).map(function(w){return w[0]}).slice(0,2).join('').toUpperCase()"></div>
+                <!-- /ko -->
                 <div>
                   <div class="link-text" data-bind="text: fullNameEn"></div>
                   <div style="font-size:11px;color:#6e6e73" data-bind="text: employeeNumber"></div>
@@ -65,6 +80,12 @@
             <td data-bind="text: $parent.genderLabel(gender)"></td>
             <td data-bind="text: hireDate || '—'"></td>
             <td><span data-bind="class: $parent.activeClass(isActive), text: isActive === 'Y' ? 'Active' : 'Inactive'"></span></td>
+            <!-- ko if: $parent.isAdmin || $parent.isMgr -->
+            <td style="white-space:nowrap">
+              <button class="btn btn-secondary btn-sm" style="font-size:11px"
+                      data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEdit($data); }">&#9998; Edit</button>
+            </td>
+            <!-- /ko -->
           </tr>
           <!-- /ko -->
         </tbody>
@@ -74,3 +95,98 @@
     <!-- /ko -->
   </div>
 </div>
+
+<!-- Add / Edit Employee Modal -->
+<!-- ko if: showModal() -->
+<div class="modal-backdrop" data-bind="click: closeModal">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: editingId() ? 'Edit Employee' : 'Add New Employee'"></div>
+      <button class="modal-close" data-bind="click: closeModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <!-- ko if: formError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: formError"></div>
+      <!-- /ko -->
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">First Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" data-bind="value: form.first_name_en, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Last Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" data-bind="value: form.last_name_en, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">First Name (AR)</div>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: form.first_name_ar, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Last Name (AR)</div>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: form.last_name_ar, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Employee Number <span style="color:red">*</span></div>
+          <input class="form-control" type="text" placeholder="e.g. EMP-0001" data-bind="value: form.employee_number, valueUpdate: 'input', attr: { disabled: !!editingId() }">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Gender</div>
+          <select class="form-control" data-bind="value: form.gender">
+            <option value="">— Select —</option>
+            <option value="M">Male</option>
+            <option value="F">Female</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Work Email <span style="color:red">*</span></div>
+          <input class="form-control" type="email" data-bind="value: form.email, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Mobile</div>
+          <input class="form-control" type="text" data-bind="value: form.mobile, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Section <span style="color:red">*</span></div>
+          <select class="form-control" data-bind="value: form.org_id">
+            <option value="">— Select Section —</option>
+            <!-- ko foreach: orgs() -->
+            <option data-bind="value: orgId, text: orgNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Grade</div>
+          <select class="form-control" data-bind="value: form.grade_code">
+            <option value="">— Select Grade —</option>
+            <!-- ko foreach: grades() -->
+            <option data-bind="value: gradeCode, text: gradeCode + (gradeNameEn ? ' — ' + gradeNameEn : '')"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Job Title (EN)</div>
+          <input class="form-control" type="text" data-bind="value: form.job_title_en, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Hire Date <span style="color:red">*</span></div>
+          <input class="form-control" type="date" data-bind="value: form.hire_date">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Status</div>
+          <select class="form-control" data-bind="value: form.is_active">
+            <option value="Y">Active</option>
+            <option value="N">Inactive</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
+      <button class="btn btn-primary" data-bind="click: saveEmployee, disable: saving()">
+        <!-- ko if: saving() -->Saving…<!-- /ko -->
+        <!-- ko ifnot: saving() -->Save Employee<!-- /ko -->
+      </button>
+    </div>
+  </div>
+</div>
+<!-- /ko -->
