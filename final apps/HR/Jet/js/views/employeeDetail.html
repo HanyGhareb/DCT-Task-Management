@@ -12,19 +12,16 @@
   <!-- Profile header -->
   <div class="card" style="margin-bottom:16px">
     <div style="display:flex;align-items:center;gap:20px;flex-wrap:wrap">
-      <!-- Photo area -->
       <div style="position:relative;flex-shrink:0">
         <!-- ko if: employee().photoUrl -->
-        <img data-bind="attr: { src: employee().photoUrl }"
-          alt="Employee photo"
+        <img data-bind="attr: { src: employee().photoUrl }" alt="Employee photo"
           style="width:72px;height:72px;border-radius:50%;object-fit:cover;border:2px solid #e0e0e0">
         <!-- /ko -->
         <!-- ko ifnot: employee().photoUrl -->
         <div class="avatar avatar--lg" data-bind="text: initials(), style: { background: avatarColor() }"></div>
         <!-- /ko -->
         <!-- ko if: isAdmin || isMgr -->
-        <button type="button" title="Upload photo"
-          onclick="window._hrPickPhoto()"
+        <button type="button" title="Upload photo" onclick="window._hrPickPhoto()"
           style="position:absolute;bottom:0;right:0;background:#1d6fa5;color:#fff;border:none;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:13px;cursor:pointer;padding:0;line-height:1">
           &#9998;
         </button>
@@ -33,9 +30,6 @@
         <div style="position:absolute;inset:0;background:rgba(255,255,255,0.7);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px">…</div>
         <!-- /ko -->
       </div>
-      <!-- ko if: photoError() -->
-      <div class="alert-banner alert-banner--danger" style="font-size:12px;padding:6px 10px" data-bind="text: photoError"></div>
-      <!-- /ko -->
       <div style="flex:1">
         <div style="font-size:20px;font-weight:700" data-bind="text: employee().fullNameEn"></div>
         <div style="color:#6e6e73;font-size:13px;margin-top:4px">
@@ -61,251 +55,569 @@
         <button class="btn btn-secondary" data-bind="click: goBack">&#8592; Back</button>
       </div>
     </div>
+    <!-- ko if: photoError() -->
+    <div class="alert-banner alert-banner--danger" style="font-size:12px;padding:6px 10px;margin-top:8px" data-bind="text: photoError"></div>
+    <!-- /ko -->
   </div>
 
-  <!-- Tabs -->
+  <!-- Tabs — hardcoded buttons, no ko foreach over inline array -->
   <div style="display:flex;gap:2px;margin-bottom:16px;border-bottom:2px solid #e0e0e0">
-    <!-- ko foreach: [['overview','Overview'],['assignments','Assignments'],['contracts','Contracts'],['salary','Salary'],['documents','Documents']] -->
     <button class="btn" style="border-radius:6px 6px 0 0;border-bottom:none"
-            data-bind="click: function(){ $parent.setTab($data[0]); },
-                       css: { 'btn-primary': $parent.activeTab() === $data[0], 'btn-secondary': $parent.activeTab() !== $data[0] },
-                       text: $data[1]"></button>
-    <!-- /ko -->
+      data-bind="click: function(){ setTab('overview'); }, css: { 'btn-primary': activeTab()==='overview', 'btn-secondary': activeTab()!=='overview' }">Overview</button>
+    <button class="btn" style="border-radius:6px 6px 0 0;border-bottom:none"
+      data-bind="click: function(){ setTab('assignments'); }, css: { 'btn-primary': activeTab()==='assignments', 'btn-secondary': activeTab()!=='assignments' }">Assignments</button>
+    <button class="btn" style="border-radius:6px 6px 0 0;border-bottom:none"
+      data-bind="click: function(){ setTab('contracts'); }, css: { 'btn-primary': activeTab()==='contracts', 'btn-secondary': activeTab()!=='contracts' }">Contracts</button>
+    <button class="btn" style="border-radius:6px 6px 0 0;border-bottom:none"
+      data-bind="click: function(){ setTab('salary'); }, css: { 'btn-primary': activeTab()==='salary', 'btn-secondary': activeTab()!=='salary' }">Salary</button>
+    <button class="btn" style="border-radius:6px 6px 0 0;border-bottom:none"
+      data-bind="click: function(){ setTab('documents'); }, css: { 'btn-primary': activeTab()==='documents', 'btn-secondary': activeTab()!=='documents' }">Documents</button>
   </div>
 
-  <!-- Overview tab -->
-  <!-- ko if: activeTab() === 'overview' -->
-  <div class="card">
-    <div class="section-heading">Personal Information</div>
-    <div class="form-grid">
-      <div class="form-group"><div class="form-label">Full Name</div><div data-bind="text: employee().fullNameEn || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Email</div><div data-bind="text: employee().email || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Mobile</div><div data-bind="text: employee().mobile || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Gender</div><div data-bind="text: employee().gender === 'M' ? 'Male' : employee().gender === 'F' ? 'Female' : '—'"></div></div>
-      <div class="form-group"><div class="form-label">Nationality</div><div data-bind="text: employee().nationalityEn || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Marital Status</div><div data-bind="text: employee().maritalStatus || '—'"></div></div>
-      <div class="form-group"><div class="form-label">National ID</div><div data-bind="text: employee().nationalId || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Hire Date</div><div data-bind="text: employee().hireDate || '—'"></div></div>
-    </div>
-    <div class="section-heading">Employment</div>
-    <div class="form-grid">
-      <div class="form-group"><div class="form-label">Grade</div><div data-bind="text: (employee().gradeCode || '') + (employee().gradeNameEn ? ' — ' + employee().gradeNameEn : '') || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Section</div><div data-bind="text: employee().orgNameEn || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Position</div><div data-bind="text: employee().positionNameEn || employee().jobTitleEn || '—'"></div></div>
-      <div class="form-group"><div class="form-label">Salary</div><div data-bind="text: employee().basicSalary ? fmtSalary(employee().basicSalary) + ' ' + (employee().salaryCurrency || 'AED') : '—'"></div></div>
+  <!-- ── Overview tab ────────────────────────────────────────── -->
+  <div style="display:none" data-bind="visible: activeTab() === 'overview'">
+    <div class="card">
+      <div class="section-heading">Personal Information</div>
+      <div class="form-grid">
+        <div class="form-group"><div class="form-label">Full Name</div><div data-bind="text: employee().fullNameEn || '—'"></div></div>
+        <div class="form-group"><div class="form-label">Email</div><div data-bind="text: employee().email || '—'"></div></div>
+        <div class="form-group"><div class="form-label">Mobile</div><div data-bind="text: employee().mobile || '—'"></div></div>
+        <div class="form-group"><div class="form-label">Gender</div>
+          <div data-bind="text: employee().gender === 'M' ? 'Male' : employee().gender === 'F' ? 'Female' : '—'"></div></div>
+        <div class="form-group"><div class="form-label">Nationality</div><div data-bind="text: employee().nationalityEn || '—'"></div></div>
+        <div class="form-group"><div class="form-label">National ID</div><div data-bind="text: employee().nationalId || '—'"></div></div>
+        <div class="form-group"><div class="form-label">Hire Date</div><div data-bind="text: employee().hireDate || '—'"></div></div>
+      </div>
+      <div class="section-heading">Employment</div>
+      <div class="form-grid">
+        <div class="form-group"><div class="form-label">Grade</div>
+          <div data-bind="text: (employee().gradeCode || '') + (employee().gradeNameEn ? ' — ' + employee().gradeNameEn : '') || '—'"></div></div>
+        <div class="form-group"><div class="form-label">Section</div><div data-bind="text: employee().orgNameEn || '—'"></div></div>
+        <div class="form-group"><div class="form-label">Position</div><div data-bind="text: employee().positionNameEn || employee().jobTitleEn || '—'"></div></div>
+        <div class="form-group"><div class="form-label">Salary</div>
+          <div data-bind="text: employee().basicSalary ? fmtSalary(employee().basicSalary) + ' ' + (employee().salaryCurrency || 'AED') : '—'"></div></div>
+      </div>
     </div>
   </div>
-  <!-- /ko -->
 
-  <!-- Assignments tab -->
-  <!-- ko if: activeTab() === 'assignments' -->
-  <div class="card">
-    <!-- ko if: assignments().length === 0 -->
-    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">No assignment history</div></div>
-    <!-- /ko -->
-    <!-- ko ifnot: assignments().length === 0 -->
-    <div class="data-table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Assignment #</th><th>Position / Job</th><th>Section</th><th>Grade</th><th>Start</th><th>End</th><th>Status</th></tr></thead>
-        <tbody>
-          <!-- ko foreach: assignments() -->
-          <tr>
-            <td style="font-family:monospace;font-size:12px" data-bind="text: assignment_number || assignmentNumber || '—'"></td>
-            <td data-bind="text: position_name_en || positionNameEn || job_name_en || jobNameEn || '—'"></td>
-            <td data-bind="text: org_name_en || orgNameEn || '—'"></td>
-            <td><span class="badge badge--info" data-bind="text: grade_code || gradeCode || '—'"></span></td>
-            <td data-bind="text: start_date || startDate || '—'"></td>
-            <td data-bind="text: end_date || endDate || '—'"></td>
-            <td><span data-bind="class: (assignment_status||assignmentStatus)==='ACTIVE' ? 'badge badge--active' : 'badge badge--inactive', text: assignment_status || assignmentStatus || '—'"></span></td>
-          </tr>
-          <!-- /ko -->
-        </tbody>
-      </table>
-    </div>
-    <!-- /ko -->
-  </div>
-  <!-- /ko -->
-
-  <!-- Contracts tab -->
-  <!-- ko if: activeTab() === 'contracts' -->
-  <div class="card">
-    <!-- ko if: contracts().length === 0 -->
-    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No contract records</div></div>
-    <!-- /ko -->
-    <!-- ko ifnot: contracts().length === 0 -->
-    <div class="data-table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Contract #</th><th>Type</th><th>Start</th><th>End</th><th>Probation End</th><th>Status</th></tr></thead>
-        <tbody>
-          <!-- ko foreach: contracts() -->
-          <tr>
-            <td style="font-family:monospace;font-size:12px" data-bind="text: contract_number || contractNumber || '—'"></td>
-            <td data-bind="text: contract_type || contractType || '—'"></td>
-            <td data-bind="text: start_date || startDate || '—'"></td>
-            <td data-bind="text: end_date || endDate || 'Indefinite'"></td>
-            <td data-bind="text: probation_end_date || probationEndDate || '—'"></td>
-            <td><span data-bind="class: (contract_status||contractStatus)==='ACTIVE' ? 'badge badge--active' : 'badge badge--inactive', text: contract_status || contractStatus || '—'"></span></td>
-          </tr>
-          <!-- /ko -->
-        </tbody>
-      </table>
-    </div>
-    <!-- /ko -->
-  </div>
-  <!-- /ko -->
-
-  <!-- Salary tab -->
-  <!-- ko if: activeTab() === 'salary' -->
-  <div class="card">
-    <!-- ko if: salaries().length === 0 -->
-    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128181;</div><div class="empty-state__msg">No salary records</div></div>
-    <!-- /ko -->
-    <!-- ko ifnot: salaries().length === 0 -->
-    <div class="data-table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Effective Date</th><th style="text-align:right">Basic Salary</th><th>Currency</th><th style="text-align:right">Previous</th><th style="text-align:right">Change %</th><th>Reason</th></tr></thead>
-        <tbody>
-          <!-- ko foreach: salaries() -->
-          <tr>
-            <td data-bind="text: effective_date || effectiveDate || '—'"></td>
-            <td style="text-align:right;font-weight:600" data-bind="text: $parent.fmtSalary(basic_salary || basicSalary)"></td>
-            <td data-bind="text: currency_code || currencyCode || 'AED'"></td>
-            <td style="text-align:right;color:#6e6e73" data-bind="text: (previous_basic || previousBasic) ? $parent.fmtSalary(previous_basic || previousBasic) : '—'"></td>
-            <td style="text-align:right" data-bind="text: (change_percentage || changePercentage) ? (change_percentage || changePercentage) + '%' : '—'"></td>
-            <td style="font-size:12px;color:#6e6e73" data-bind="text: change_reason || changeReason || '—'"></td>
-          </tr>
-          <!-- /ko -->
-        </tbody>
-      </table>
-    </div>
-    <!-- /ko -->
-  </div>
-  <!-- /ko -->
-
-  <!-- Documents tab -->
-  <!-- ko if: activeTab() === 'documents' -->
-  <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div style="font-weight:600;font-size:14px">Employee Documents</div>
-      <!-- ko if: isAdmin || isMgr -->
-      <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddDoc">&#43; Add Document</button>
+  <!-- ── Assignments tab ─────────────────────────────────────── -->
+  <div style="display:none" data-bind="visible: activeTab() === 'assignments'">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:600;font-size:14px">Assignment History</div>
+        <!-- ko if: isAdmin || isMgr -->
+        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddAssignment">&#43; Add Assignment</button>
+        <!-- /ko -->
+      </div>
+      <div style="display:none" data-bind="visible: !!assignmentSaved()">
+        <div class="alert-banner alert-banner--success" style="margin-bottom:10px" data-bind="text: assignmentSaved"></div>
+      </div>
+      <!-- ko if: assignments().length === 0 -->
+      <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128203;</div><div class="empty-state__msg">No assignment history</div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: assignments().length === 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Assignment #</th><th>Position / Job</th><th>Section</th><th>Grade</th><th>Type</th><th>Start</th><th>End</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody data-bind="foreach: assignments()">
+            <tr>
+              <td style="font-family:monospace;font-size:12px" data-bind="text: assignment_number || assignmentNumber || '—'"></td>
+              <td data-bind="text: position_name_en || positionNameEn || job_name_en || jobNameEn || '—'"></td>
+              <td data-bind="text: org_name_en || orgNameEn || '—'"></td>
+              <td><span class="badge badge--info" data-bind="text: grade_code || gradeCode || '—'"></span></td>
+              <td style="font-size:12px;color:#6e6e73" data-bind="text: assignment_type || assignmentType || '—'"></td>
+              <td data-bind="text: start_date || startDate || '—'"></td>
+              <td data-bind="text: end_date || endDate || '—'"></td>
+              <td>
+                <span data-bind="attr: { 'class': (assignment_status||assignmentStatus)==='ACTIVE' ? 'badge badge--active' : 'badge badge--inactive' },
+                                 text: assignment_status || assignmentStatus || '—'"></span>
+              </td>
+              <td>
+                <span style="display:none"
+                  data-bind="visible: ($parent.isAdmin || $parent.isMgr) && (assignment_status||assignmentStatus) === 'ACTIVE'">
+                  <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px;color:#C74634;border-color:#C74634"
+                    data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEndAssignment($data); }">End</button>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
       <!-- /ko -->
     </div>
-    <!-- ko if: docSaved() -->
-    <div class="alert-banner alert-banner--success" style="margin-bottom:10px" data-bind="text: docSaved"></div>
-    <!-- /ko -->
-    <!-- ko if: documents().length === 0 -->
-    <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No documents on file</div></div>
-    <!-- /ko -->
-    <!-- ko ifnot: documents().length === 0 -->
-    <div class="data-table-wrap">
-      <table class="data-table">
-        <thead><tr><th>Type</th><th>Number</th><th>Issue Date</th><th>Expiry Date</th><th>Days Left</th><th>Status</th><th>File</th><th></th></tr></thead>
-        <tbody>
-          <!-- ko foreach: documents() -->
-          <tr>
-            <td style="font-weight:600;font-size:12px" data-bind="text: docType || '—'"></td>
-            <td style="font-family:monospace;font-size:12px" data-bind="text: docNumber || '—'"></td>
-            <td style="font-size:12px" data-bind="text: issueDate ? issueDate.toString().substring(0,10) : '—'"></td>
-            <td style="font-size:12px" data-bind="text: expiryDate ? expiryDate.toString().substring(0,10) : '—'"></td>
-            <td>
-              <!-- ko if: daysUntilExpiry != null -->
-              <span data-bind="class: $parent.alertClass(expiryAlert), text: daysUntilExpiry + ' days'"></span>
-              <!-- /ko -->
-              <!-- ko ifnot: daysUntilExpiry != null -->—<!-- /ko -->
-            </td>
-            <td><span class="badge badge--info" data-bind="text: docStatus || '—'"></span></td>
-            <td>
-              <!-- ko if: fileName -->
-              <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px" title="Download file"
-                data-bind="click: function(d,e){ e.stopPropagation(); $parent.downloadDoc($data); }">&#11015; <span data-bind="text: fileName"></span></button>
-              <!-- /ko -->
-              <!-- ko ifnot: fileName --><span style="color:#aaa;font-size:11px">—</span><!-- /ko -->
-            </td>
-            <td>
-              <!-- ko if: $parent.isAdmin || $parent.isMgr -->
-              <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
-                data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEditDoc($data); }">Edit</button>
-              <!-- /ko -->
-            </td>
-          </tr>
-          <!-- /ko -->
-        </tbody>
-      </table>
-    </div>
-    <!-- /ko -->
   </div>
-  <!-- /ko -->
 
-  <!-- Add/Edit Document Modal -->
-  <!-- ko if: showDocModal() -->
-  <div class="modal-backdrop" data-bind="click: closeDocModal">
-    <div class="modal-box" style="max-width:560px" data-bind="click: function(d,e){ e.stopPropagation(); }">
-      <div class="modal-header">
-        <div class="modal-title" data-bind="text: editingDocId() ? 'Edit Document' : 'Add Document'"></div>
-        <button class="modal-close" data-bind="click: closeDocModal">&#10005;</button>
-      </div>
-      <div class="modal-body">
-        <!-- ko if: docFormError() -->
-        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: docFormError"></div>
+  <!-- ── Contracts tab ───────────────────────────────────────── -->
+  <div style="display:none" data-bind="visible: activeTab() === 'contracts'">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:600;font-size:14px">Employment Contracts</div>
+        <!-- ko if: isAdmin || isMgr -->
+        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddContract">&#43; Add Contract</button>
         <!-- /ko -->
-        <div class="form-grid">
-          <!-- ko ifnot: editingDocId() -->
-          <div class="form-group" style="grid-column:span 2">
-            <div class="form-label">Document Type <span style="color:red">*</span></div>
-            <select class="form-control" data-bind="value: docForm.doc_type_id">
-              <option value="">— Select Type —</option>
-              <!-- ko foreach: docTypes() -->
-              <option data-bind="value: docTypeId, text: docTypeNameEn + ' (' + docCategory + ')'"></option>
-              <!-- /ko -->
-            </select>
-          </div>
-          <!-- /ko -->
-          <div class="form-group">
-            <div class="form-label">Document Number</div>
-            <input class="form-control" type="text" data-bind="value: docForm.doc_number, valueUpdate:'input'">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Issuing Authority</div>
-            <input class="form-control" type="text" data-bind="value: docForm.issuing_authority, valueUpdate:'input'">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Issue Date</div>
-            <input class="form-control" type="date" data-bind="value: docForm.issue_date">
-          </div>
-          <div class="form-group">
-            <div class="form-label">Expiry Date</div>
-            <input class="form-control" type="date" data-bind="value: docForm.expiry_date">
-          </div>
-          <div class="form-group" style="grid-column:span 2">
-            <div class="form-label">Notes</div>
-            <textarea class="form-control" rows="2" data-bind="value: docForm.notes, valueUpdate:'input'"></textarea>
-          </div>
-          <div class="form-group" style="grid-column:span 2">
-            <div class="form-label">Attach File <span style="color:#6e6e73;font-weight:400">(PDF, Excel, Word, ZIP — max 10 MB)</span></div>
-            <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
-              <button type="button" class="btn btn-secondary" onclick="window._hrPickDocFile()">
-                &#128206; Choose File
-              </button>
-              <span style="font-size:12px;color:#6e6e73" data-bind="text: docFileName() || 'No file chosen'"></span>
-            </div>
-          </div>
-        </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: closeDocModal">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: saveDoc, disable: docSaving()">
-          <!-- ko if: docSaving() -->Saving…<!-- /ko --><!-- ko ifnot: docSaving() -->Save Document<!-- /ko -->
-        </button>
+      <div style="display:none" data-bind="visible: !!contractSaved()">
+        <div class="alert-banner alert-banner--success" style="margin-bottom:10px" data-bind="text: contractSaved"></div>
       </div>
+      <!-- ko if: contracts().length === 0 -->
+      <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No contract records</div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: contracts().length === 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr><th>Contract #</th><th>Type</th><th>Start</th><th>End</th><th>Probation End</th><th>Notice (days)</th><th>Status</th><th></th></tr>
+          </thead>
+          <tbody data-bind="foreach: contracts()">
+            <tr>
+              <td style="font-family:monospace;font-size:12px" data-bind="text: contract_number || contractNumber || '—'"></td>
+              <td data-bind="text: contract_type || contractType || '—'"></td>
+              <td data-bind="text: start_date || startDate || '—'"></td>
+              <td data-bind="text: end_date || endDate || 'Indefinite'"></td>
+              <td data-bind="text: probation_end_date || probationEndDate || '—'"></td>
+              <td style="text-align:right" data-bind="text: notice_period_days || noticePeriodDays || '—'"></td>
+              <td>
+                <span data-bind="attr: { 'class': (contract_status||contractStatus)==='ACTIVE' ? 'badge badge--active' : 'badge badge--inactive' },
+                                 text: contract_status || contractStatus || '—'"></span>
+              </td>
+              <td>
+                <span style="display:none" data-bind="visible: $parent.isAdmin || $parent.isMgr">
+                  <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
+                    data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEditContract($data); }">Edit</button>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
     </div>
   </div>
-  <!-- /ko -->
+
+  <!-- ── Salary tab ──────────────────────────────────────────── -->
+  <div style="display:none" data-bind="visible: activeTab() === 'salary'">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:600;font-size:14px">Salary History</div>
+        <!-- ko if: isAdmin -->
+        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddSalary">&#43; Add Entry</button>
+        <!-- /ko -->
+      </div>
+      <div style="display:none" data-bind="visible: !!salarySaved()">
+        <div class="alert-banner alert-banner--success" style="margin-bottom:10px" data-bind="text: salarySaved"></div>
+      </div>
+      <!-- ko if: salaries().length === 0 -->
+      <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128181;</div><div class="empty-state__msg">No salary records</div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: salaries().length === 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Effective Date</th>
+              <th style="text-align:right">Basic Salary</th>
+              <th>Currency</th>
+              <th style="text-align:right">Previous</th>
+              <th style="text-align:right">Change %</th>
+              <th>Reason</th>
+              <th>Remarks</th>
+            </tr>
+          </thead>
+          <tbody data-bind="foreach: salaries()">
+            <tr>
+              <td data-bind="text: effective_date || effectiveDate || '—'"></td>
+              <td style="text-align:right;font-weight:600" data-bind="text: $parent.fmtSalary(basic_salary || basicSalary)"></td>
+              <td data-bind="text: currency_code || currencyCode || 'AED'"></td>
+              <td style="text-align:right;color:#6e6e73" data-bind="text: (previous_basic || previousBasic) ? $parent.fmtSalary(previous_basic || previousBasic) : '—'"></td>
+              <td style="text-align:right" data-bind="text: (change_percentage || changePercentage) != null ? (change_percentage || changePercentage) + '%' : '—'"></td>
+              <td style="font-size:12px;color:#6e6e73" data-bind="text: change_reason || changeReason || '—'"></td>
+              <td style="font-size:12px;color:#6e6e73" data-bind="text: remarks || '—'"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ── Documents tab ───────────────────────────────────────── -->
+  <div style="display:none" data-bind="visible: activeTab() === 'documents'">
+    <div class="card">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+        <div style="font-weight:600;font-size:14px">Employee Documents</div>
+        <!-- ko if: isAdmin || isMgr -->
+        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddDoc">&#43; Add Document</button>
+        <!-- /ko -->
+      </div>
+      <div style="display:none" data-bind="visible: !!docSaved()">
+        <div class="alert-banner alert-banner--success" style="margin-bottom:10px" data-bind="text: docSaved"></div>
+      </div>
+      <!-- ko if: documents().length === 0 -->
+      <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128196;</div><div class="empty-state__msg">No documents on file</div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: documents().length === 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr><th>Type</th><th>Number</th><th>Issue</th><th>Expiry</th><th>Days Left</th><th>Status</th><th>File</th><th></th></tr></thead>
+          <tbody data-bind="foreach: documents()">
+            <tr>
+              <td style="font-weight:600;font-size:12px" data-bind="text: docType || '—'"></td>
+              <td style="font-family:monospace;font-size:12px" data-bind="text: docNumber || '—'"></td>
+              <td style="font-size:12px" data-bind="text: issueDate  ? issueDate.toString().substring(0,10)  : '—'"></td>
+              <td style="font-size:12px" data-bind="text: expiryDate ? expiryDate.toString().substring(0,10) : '—'"></td>
+              <td>
+                <span style="display:none"
+                  data-bind="visible: daysUntilExpiry != null, attr: { 'class': $parent.alertClass(expiryAlert) }, text: daysUntilExpiry + ' days'"></span>
+                <span style="display:none" data-bind="visible: daysUntilExpiry == null">—</span>
+              </td>
+              <td><span class="badge badge--info" data-bind="text: docStatus || '—'"></span></td>
+              <td>
+                <span style="display:none" data-bind="visible: !!fileName">
+                  <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
+                    data-bind="click: function(d,e){ e.stopPropagation(); $parent.downloadDoc($data); }">&#11015; <span data-bind="text: fileName"></span></button>
+                </span>
+                <span style="display:none;color:#aaa;font-size:11px" data-bind="visible: !fileName">—</span>
+              </td>
+              <td>
+                <span style="display:none" data-bind="visible: $parent.isAdmin || $parent.isMgr">
+                  <button class="btn btn-sm btn-secondary" style="padding:2px 8px;font-size:11px"
+                    data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEditDoc($data); }">Edit</button>
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
 
   <!-- /ko -->
 </div>
 
-<!-- Edit Employee Modal -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+<!-- MODALS — outside page-wrap so backdrop covers full viewport            -->
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<!-- ── Add Assignment Modal ──────────────────────────────────────────────── -->
+<div class="modal-backdrop" style="display:none"
+     data-bind="visible: showAssignmentModal(), click: closeAssignmentModal">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title">Add Assignment</div>
+      <button class="modal-close" data-bind="click: closeAssignmentModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:none" data-bind="visible: !!assignmentError()">
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: assignmentError"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Section <span style="color:red">*</span></div>
+          <select class="form-control" data-bind="value: assignmentForm.org_id">
+            <option value="">— Select Section —</option>
+            <!-- ko foreach: orgs() -->
+            <option data-bind="value: orgId, text: orgNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Position</div>
+          <select class="form-control" data-bind="value: assignmentForm.position_id">
+            <option value="">— None —</option>
+            <!-- ko foreach: positions() -->
+            <option data-bind="value: positionId, text: positionNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Job</div>
+          <select class="form-control" data-bind="value: assignmentForm.job_id">
+            <option value="">— None —</option>
+            <!-- ko foreach: jobs() -->
+            <option data-bind="value: jobId, text: jobNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Grade</div>
+          <select class="form-control" data-bind="value: assignmentForm.grade_code">
+            <option value="">— No Grade —</option>
+            <!-- ko foreach: grades() -->
+            <option data-bind="value: gradeCode, text: gradeCode + ' — ' + (gradeNameEn || '')"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Assignment Type</div>
+          <select class="form-control" data-bind="value: assignmentForm.assignment_type_id">
+            <option value="">— None —</option>
+            <!-- ko foreach: assignmentTypes() -->
+            <option data-bind="value: value_id, text: value_name_en"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Location</div>
+          <select class="form-control" data-bind="value: assignmentForm.location_id">
+            <option value="">— None —</option>
+            <!-- ko foreach: locations() -->
+            <option data-bind="value: locationId, text: locationNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Start Date <span style="color:red">*</span></div>
+          <input class="form-control" type="date" data-bind="value: assignmentForm.start_date">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Probation Months</div>
+          <input class="form-control" type="number" min="0" max="24" data-bind="value: assignmentForm.probation_months, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Primary Assignment</div>
+          <select class="form-control" data-bind="value: assignmentForm.is_primary">
+            <option value="Y">Yes — replace current primary</option>
+            <option value="N">No — secondary / acting</option>
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Remarks</div>
+          <textarea class="form-control" rows="2" data-bind="value: assignmentForm.remarks, valueUpdate:'input'"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeAssignmentModal">Cancel</button>
+      <button class="btn btn-primary"
+        data-bind="click: saveAssignment, disable: assignmentSaving(), text: assignmentSaving() ? 'Saving…' : 'Save Assignment'"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── End Assignment Modal ───────────────────────────────────────────────── -->
+<div class="modal-backdrop" style="display:none"
+     data-bind="visible: showEndModal(), click: closeEndModal">
+  <div class="modal-box" style="max-width:480px" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title">End Assignment</div>
+      <button class="modal-close" data-bind="click: closeEndModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:none" data-bind="visible: !!endError()">
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: endError"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">End Date <span style="color:red">*</span></div>
+          <input class="form-control" type="date" data-bind="value: endForm.end_date">
+        </div>
+        <div class="form-group">
+          <div class="form-label">End Reason</div>
+          <select class="form-control" data-bind="value: endForm.end_reason_id">
+            <option value="">— Select Reason —</option>
+            <!-- ko foreach: endReasons() -->
+            <option data-bind="value: value_id, text: value_name_en"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Remarks</div>
+          <textarea class="form-control" rows="2" data-bind="value: endForm.remarks, valueUpdate:'input'"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeEndModal">Cancel</button>
+      <button class="btn" style="background:#C74634;color:#fff"
+        data-bind="click: confirmEndAssignment, disable: endSaving(), text: endSaving() ? 'Ending…' : 'Confirm End'"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add / Edit Contract Modal ──────────────────────────────────────────── -->
+<div class="modal-backdrop" style="display:none"
+     data-bind="visible: showContractModal(), click: closeContractModal">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: editingContractId() ? 'Edit Contract' : 'Add Contract'"></div>
+      <button class="modal-close" data-bind="click: closeContractModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:none" data-bind="visible: !!contractError()">
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: contractError"></div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Contract Number <span style="color:red" data-bind="visible: !editingContractId()">*</span></div>
+          <input class="form-control" type="text" placeholder="e.g. CTR-2026-001"
+            data-bind="value: contractForm.contract_number, valueUpdate:'input', disable: !!editingContractId()">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Contract Type <span style="color:red">*</span></div>
+          <select class="form-control" data-bind="value: contractForm.contract_type_id">
+            <option value="">— Select Type —</option>
+            <!-- ko foreach: contractTypes() -->
+            <option data-bind="value: value_id, text: value_name_en"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Start Date <span style="color:red">*</span></div>
+          <input class="form-control" type="date" data-bind="value: contractForm.start_date">
+        </div>
+        <div class="form-group">
+          <div class="form-label">End Date <span style="color:#6e6e73;font-weight:400">(blank = indefinite)</span></div>
+          <input class="form-control" type="date" data-bind="value: contractForm.end_date">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Probation Months</div>
+          <input class="form-control" type="number" min="0" max="24" data-bind="value: contractForm.probation_months, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Notice Period (days)</div>
+          <input class="form-control" type="number" min="0" data-bind="value: contractForm.notice_period_days, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Signed Date</div>
+          <input class="form-control" type="date" data-bind="value: contractForm.signed_date">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Remarks</div>
+          <textarea class="form-control" rows="2" data-bind="value: contractForm.remarks, valueUpdate:'input'"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeContractModal">Cancel</button>
+      <button class="btn btn-primary"
+        data-bind="click: saveContract, disable: contractSaving(),
+                   text: contractSaving() ? 'Saving…' : (editingContractId() ? 'Save Changes' : 'Add Contract')"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add Salary Entry Modal ─────────────────────────────────────────────── -->
+<div class="modal-backdrop" style="display:none"
+     data-bind="visible: showSalaryModal(), click: closeSalaryModal">
+  <div class="modal-box" style="max-width:520px" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title">Add Salary Entry</div>
+      <button class="modal-close" data-bind="click: closeSalaryModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:none" data-bind="visible: !!salaryError()">
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: salaryError"></div>
+      </div>
+      <div class="alert-banner" style="background:#e3f2fd;color:#1565C0;margin-bottom:12px;font-size:12px">
+        &#128274; Salary history is an immutable ledger. Each entry is permanent. Previous salary and change % are calculated automatically.
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Effective Date <span style="color:red">*</span></div>
+          <input class="form-control" type="date" data-bind="value: salaryForm.effective_date">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Basic Salary <span style="color:red">*</span></div>
+          <input class="form-control" type="number" min="0" step="0.01" placeholder="0.00" data-bind="value: salaryForm.basic_salary, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Currency</div>
+          <select class="form-control" data-bind="value: salaryForm.currency_code">
+            <option value="AED">AED — UAE Dirham</option>
+            <option value="USD">USD — US Dollar</option>
+            <option value="EUR">EUR — Euro</option>
+            <option value="GBP">GBP — British Pound</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Change Reason</div>
+          <select class="form-control" data-bind="value: salaryForm.change_reason_id">
+            <option value="">— Select Reason —</option>
+            <!-- ko foreach: salaryReasons() -->
+            <option data-bind="value: value_id, text: value_name_en"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Remarks</div>
+          <textarea class="form-control" rows="2" data-bind="value: salaryForm.remarks, valueUpdate:'input'"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeSalaryModal">Cancel</button>
+      <button class="btn btn-primary"
+        data-bind="click: saveSalary, disable: salarySaving(), text: salarySaving() ? 'Saving…' : 'Add Entry'"></button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Add / Edit Document Modal ──────────────────────────────────────────── -->
+<!-- ko if: showDocModal() -->
+<div class="modal-backdrop" data-bind="click: closeDocModal">
+  <div class="modal-box" style="max-width:560px" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: editingDocId() ? 'Edit Document' : 'Add Document'"></div>
+      <button class="modal-close" data-bind="click: closeDocModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div style="display:none" data-bind="visible: !!docFormError()">
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: docFormError"></div>
+      </div>
+      <div class="form-grid">
+        <!-- ko ifnot: editingDocId() -->
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Document Type <span style="color:red">*</span></div>
+          <select class="form-control" data-bind="value: docForm.doc_type_id">
+            <option value="">— Select Type —</option>
+            <!-- ko foreach: docTypes() -->
+            <option data-bind="value: docTypeId, text: docTypeNameEn + ' (' + docCategory + ')'"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <!-- /ko -->
+        <div class="form-group">
+          <div class="form-label">Document Number</div>
+          <input class="form-control" type="text" data-bind="value: docForm.doc_number, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Issuing Authority</div>
+          <input class="form-control" type="text" data-bind="value: docForm.issuing_authority, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Issue Date</div>
+          <input class="form-control" type="date" data-bind="value: docForm.issue_date">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Expiry Date</div>
+          <input class="form-control" type="date" data-bind="value: docForm.expiry_date">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Notes</div>
+          <textarea class="form-control" rows="2" data-bind="value: docForm.notes, valueUpdate:'input'"></textarea>
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <div class="form-label">Attach File <span style="color:#6e6e73;font-weight:400">(PDF, Excel, Word, ZIP — max 10 MB)</span></div>
+          <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+            <button type="button" class="btn btn-secondary" onclick="window._hrPickDocFile()">&#128206; Choose File</button>
+            <span style="font-size:12px;color:#6e6e73" data-bind="text: docFileName() || 'No file chosen'"></span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeDocModal">Cancel</button>
+      <button class="btn btn-primary"
+        data-bind="click: saveDoc, disable: docSaving(), text: docSaving() ? 'Saving…' : 'Save Document'"></button>
+    </div>
+  </div>
+</div>
+<!-- /ko -->
+
+<!-- ── Edit Employee Modal ────────────────────────────────────────────────── -->
 <!-- ko if: showEditModal() -->
 <div class="modal-backdrop" data-bind="click: closeEdit">
   <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
@@ -314,9 +626,9 @@
       <button class="modal-close" data-bind="click: closeEdit">&#10005;</button>
     </div>
     <div class="modal-body">
-      <!-- ko if: editError() -->
-      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: editError"></div>
-      <!-- /ko -->
+      <div style="display:none" data-bind="visible: !!editError()">
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: editError"></div>
+      </div>
       <div class="form-grid">
         <div class="form-group">
           <div class="form-label">First Name (EN) <span style="color:red">*</span></div>
@@ -352,6 +664,15 @@
           </select>
         </div>
         <div class="form-group">
+          <div class="form-label">Position</div>
+          <select class="form-control" data-bind="value: editForm.position_id">
+            <option value="">— No Change —</option>
+            <!-- ko foreach: positions() -->
+            <option data-bind="value: positionId, text: positionNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
           <div class="form-label">Job Title (EN)</div>
           <input class="form-control" type="text" data-bind="value: editForm.job_title_en, valueUpdate: 'input'">
         </div>
@@ -363,13 +684,47 @@
           </select>
         </div>
       </div>
+      <!-- Audit Info — view record timestamps -->
+      <!-- ko if: employee() -->
+      <div class="audit-region" style="margin-top:16px">
+        <div class="audit-region__header" data-bind="click: toggleEditAudit">
+          <span class="audit-region__chevron" data-bind="css: {'audit-region__chevron--open': editAuditExpanded()}">&#8250;</span>
+          <span class="audit-region__icon">&#128336;</span>
+          <span class="audit-region__title">Audit Info</span>
+        </div>
+        <!-- ko if: editAuditExpanded() -->
+        <div class="audit-region__body">
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created by</span>
+              <span class="audit-row__value" data-bind="text: employee().createdBy || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(employee().createdAt)"></span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated by</span>
+              <span class="audit-row__value" data-bind="text: employee().updatedBy || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(employee().updatedAt)"></span>
+            </div>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bind="click: closeEdit">Cancel</button>
-      <button class="btn btn-primary" data-bind="click: saveEdit, disable: editSaving()">
-        <!-- ko if: editSaving() -->Saving…<!-- /ko -->
-        <!-- ko ifnot: editSaving() -->Save Changes<!-- /ko -->
-      </button>
+      <button class="btn btn-primary"
+        data-bind="click: saveEdit, disable: editSaving(), text: editSaving() ? 'Saving…' : 'Save Changes'"></button>
     </div>
   </div>
 </div>

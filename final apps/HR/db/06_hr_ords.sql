@@ -116,15 +116,20 @@ BEGIN
         WHERE (:org_id  IS NULL OR e.org_id     = :org_id)
           AND (:grade   IS NULL OR e.grade_code = :grade)
           AND (:active  IS NULL OR e.is_active  = :active)
-          AND (:q IS NULL
-               OR UPPER(e.full_name_en)   LIKE '%'||UPPER(:q)||'%'
-               OR UPPER(e.employee_number) LIKE '%'||UPPER(:q)||'%'
-               OR UPPER(e.email)           LIKE '%'||UPPER(:q)||'%')
+          AND (:search IS NULL
+               OR UPPER(e.full_name_en)    LIKE '%'||UPPER(:search)||'%'
+               OR UPPER(e.employee_number) LIKE '%'||UPPER(:search)||'%'
+               OR UPPER(e.email)           LIKE '%'||UPPER(:search)||'%')
         ORDER BY e.full_name_en
     ]');
 
     def_tpl('employees/:id');
-    def_get('employees/:id', 'SELECT * FROM v_hr_employee_full WHERE person_id = :id', TRUE);
+    def_get('employees/:id', q'[
+        SELECT f.*, e.created_by, e.created_at, e.updated_by, e.updated_at
+        FROM   v_hr_employee_full f
+        JOIN   dct_employees      e ON e.person_id = f.person_id
+        WHERE  f.person_id = :id
+    ]', TRUE);
 
     -- Photo upload (PUT base64 JSON) and download (GET media)
     def_tpl('employees/:id/photo');
@@ -182,8 +187,7 @@ BEGIN
                 :personal_email, :work_phone, :photo_url, :marital_status_id,
                 NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
             ) RETURNING person_id INTO v_id;
-            :status_code      := 201;
-            :forward_location := 'employees/' || v_id;
+            :status_code := 201;
             COMMIT;
         END;
     ]');
@@ -203,6 +207,7 @@ BEGIN
                 national_id       = NVL(:national_id,        national_id),
                 passport_number   = NVL(:passport_number,    passport_number),
                 grade_code        = NVL(:grade_code,         grade_code),
+                position_id       = NVL(:position_id,        position_id),
                 job_title_en      = NVL(:job_title_en,       job_title_en),
                 job_title_ar      = NVL(:job_title_ar,       job_title_ar),
                 org_id            = NVL(:org_id,             org_id),
@@ -294,7 +299,9 @@ BEGIN
     def_tpl('lookups/');
     def_get('lookups/', q'[
         SELECT lc.category_id, lc.category_code, lc.category_name_en, lc.category_name_ar,
-               lc.is_system, lc.is_active
+               lc.is_system, lc.is_active,
+               lc.created_by, lc.created_at, lc.updated_by, lc.updated_at,
+               (SELECT COUNT(*) FROM dct_lookup_values lv WHERE lv.category_id = lc.category_id AND lv.is_active = 'Y') AS value_count
         FROM   dct_lookup_categories lc
         WHERE  lc.is_active = NVL(:is_active,'Y')
         ORDER  BY lc.category_name_en
@@ -319,11 +326,43 @@ BEGIN
         END;
     ]');
 
+    def_tpl('lookups/category/');
+    def_plsql('lookups/category/', 'POST', q'[
+        DECLARE v_id NUMBER;
+        BEGIN
+            INSERT INTO dct_lookup_categories (
+                category_code, category_name_en, category_name_ar,
+                module_id, is_system, is_active, created_by
+            ) VALUES (
+                UPPER(:category_code), :category_name_en, :category_name_ar,
+                :module_id, 'N', NVL(:is_active,'Y'),
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            ) RETURNING category_id INTO v_id;
+            :status_code := 201;
+            COMMIT;
+        END;
+    ]');
+
+    def_tpl('lookups/category/:id');
+    def_plsql('lookups/category/:id', 'PUT', q'[
+        BEGIN
+            UPDATE dct_lookup_categories SET
+                category_name_en = NVL(:category_name_en, category_name_en),
+                category_name_ar = NVL(:category_name_ar, category_name_ar),
+                is_active        = NVL(:is_active,         is_active),
+                updated_by       = NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
+            WHERE category_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
+
     def_tpl('lookups/:category_code');
     def_get('lookups/:category_code', q'[
         SELECT lv.value_id, lv.value_code, lv.value_name_en, lv.value_name_ar,
                lv.display_order, lv.is_active,
-               lc.category_code, lc.category_name_en
+               lc.category_code, lc.category_name_en,
+               lv.created_by, lv.created_at, lv.updated_by, lv.updated_at
         FROM   dct_lookup_values    lv
         JOIN   dct_lookup_categories lc ON lc.category_id = lv.category_id
         WHERE  lc.category_code = :category_code
@@ -350,9 +389,11 @@ BEGIN
     -- =========================================================================
     def_tpl('positions/');
     def_get('positions/', q'[
-        SELECT * FROM v_hr_headcount
-        WHERE (:org_id IS NULL OR org_id = :org_id)
-        ORDER BY org_name_en, position_name_en
+        SELECT hc.*, p.created_by, p.created_at, p.updated_by, p.updated_at
+        FROM   v_hr_headcount hc
+        JOIN   hr_positions   p ON p.position_id = hc.position_id
+        WHERE  (:org_id IS NULL OR hc.org_id = :org_id)
+        ORDER  BY hc.org_name_en, hc.position_name_en
     ]');
     def_plsql('positions/', 'POST', q'[
         DECLARE v_id NUMBER;
@@ -375,7 +416,12 @@ BEGIN
     ]');
 
     def_tpl('positions/:id');
-    def_get('positions/:id', 'SELECT * FROM v_hr_headcount WHERE position_id = :id', TRUE);
+    def_get('positions/:id', q'[
+        SELECT hc.*, p.created_by, p.created_at, p.updated_by, p.updated_at
+        FROM   v_hr_headcount hc
+        JOIN   hr_positions   p ON p.position_id = hc.position_id
+        WHERE  hc.position_id = :id
+    ]', TRUE);
     def_plsql('positions/:id', 'PUT', q'[
         BEGIN
             UPDATE hr_positions SET
@@ -399,7 +445,8 @@ BEGIN
                j.job_family_id, f.family_name_en AS job_family,
                j.min_grade_code, j.max_grade_code,
                j.min_experience_years, j.description_en,
-               j.is_active, j.effective_from, j.effective_to
+               j.is_active, j.effective_from, j.effective_to,
+               j.created_by, j.created_at, j.updated_by, j.updated_at
         FROM   hr_jobs j
         LEFT JOIN hr_job_families f ON f.job_family_id = j.job_family_id
         WHERE  (:family_id IS NULL OR j.job_family_id = :family_id)
@@ -457,12 +504,15 @@ BEGIN
     -- =========================================================================
     def_tpl('grades/');
     def_get('grades/', q'[
-        SELECT grade_code, grade_name_en, grade_name_ar, grade_level,
-               grade_category, salary_band_min, salary_band_max,
-               display_order, is_active
-        FROM   dct_employee_grades
-        WHERE  is_active = NVL(:is_active,'Y')
-        ORDER  BY grade_level, grade_code
+        SELECT g.grade_code, g.grade_name_en, g.grade_name_ar, g.grade_level,
+               g.grade_category, g.salary_band_min, g.salary_band_max,
+               g.display_order, g.is_active,
+               g.created_by, g.created_at, g.updated_by, g.updated_at,
+               (SELECT COUNT(*) FROM dct_employees e
+                WHERE e.grade_code = g.grade_code AND e.is_active = 'Y') AS headcount
+        FROM   dct_employee_grades g
+        WHERE  (:is_active IS NULL OR g.is_active = :is_active)
+        ORDER  BY g.grade_level, g.grade_code
     ]');
     def_plsql('grades/', 'POST', q'[
         BEGIN
@@ -490,8 +540,8 @@ BEGIN
                 grade_name_ar   = NVL(:grade_name_ar,   grade_name_ar),
                 grade_level     = NVL(:grade_level,     grade_level),
                 grade_category  = NVL(:grade_category,  grade_category),
-                salary_band_min = NVL(:salary_band_min, salary_band_min),
-                salary_band_max = NVL(:salary_band_max, salary_band_max),
+                salary_band_min = :salary_band_min,
+                salary_band_max = :salary_band_max,
                 display_order   = NVL(:display_order,   display_order),
                 is_active       = NVL(:is_active,       is_active)
             WHERE grade_code = :code;
@@ -522,7 +572,9 @@ BEGIN
                l.org_id, o.org_name_en,
                l.country_code, c.country_name_en,
                l.emirate, l.city, l.area, l.building_name, l.floor_no,
-               l.is_active, l.display_order
+               l.is_active, l.display_order,
+               l.created_by, l.created_at,
+               l.updated_by, l.updated_at
         FROM   hr_locations l
         LEFT JOIN dct_lookup_values  lt ON lt.value_id    = l.location_type_id
         LEFT JOIN dct_organizations  o  ON o.org_id       = l.org_id
@@ -640,6 +692,58 @@ BEGIN
         SELECT * FROM v_hr_active_contracts WHERE person_id = :person_id ORDER BY start_date DESC
     ]');
 
+    def_tpl('contracts/');
+    def_plsql('contracts/', 'POST', q'[
+        DECLARE v_id NUMBER; v_status_id NUMBER;
+        BEGIN
+            SELECT value_id INTO v_status_id
+            FROM   dct_lookup_values lv
+            JOIN   dct_lookup_categories lc ON lc.category_id = lv.category_id
+            WHERE  lc.category_code = 'HR_CONTRACT_STATUS' AND lv.value_code = 'ACTIVE' AND ROWNUM = 1;
+
+            INSERT INTO hr_employment_contracts (
+                contract_number, person_id, contract_type_id,
+                start_date, end_date,
+                probation_months, probation_end_date,
+                notice_period_days, contract_status_id,
+                signed_date, remarks, created_by
+            ) VALUES (
+                :contract_number,
+                :person_id,
+                :contract_type_id,
+                TO_DATE(:start_date, 'YYYY-MM-DD'),
+                CASE WHEN :end_date IS NOT NULL THEN TO_DATE(:end_date, 'YYYY-MM-DD') ELSE NULL END,
+                NVL(:probation_months, 3),
+                ADD_MONTHS(TO_DATE(:start_date, 'YYYY-MM-DD'), NVL(:probation_months, 3)),
+                NVL(:notice_period_days, 30),
+                v_status_id,
+                CASE WHEN :signed_date IS NOT NULL THEN TO_DATE(:signed_date, 'YYYY-MM-DD') ELSE NULL END,
+                :remarks,
+                NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'))
+            ) RETURNING contract_id INTO v_id;
+            :status_code := 201;
+            COMMIT;
+        END;
+    ]');
+
+    def_tpl('contracts/update/:id');
+    def_plsql('contracts/update/:id', 'PUT', q'[
+        BEGIN
+            UPDATE hr_employment_contracts SET
+                contract_type_id   = NVL(:contract_type_id,   contract_type_id),
+                start_date         = NVL(TO_DATE(:start_date,  'YYYY-MM-DD'), start_date),
+                end_date           = CASE WHEN :end_date   IS NOT NULL THEN TO_DATE(:end_date,   'YYYY-MM-DD') ELSE end_date   END,
+                probation_months   = NVL(:probation_months,   probation_months),
+                notice_period_days = NVL(:notice_period_days, notice_period_days),
+                signed_date        = CASE WHEN :signed_date IS NOT NULL THEN TO_DATE(:signed_date,'YYYY-MM-DD') ELSE signed_date END,
+                remarks            = NVL(:remarks,             remarks),
+                updated_by         = NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'), SYS_CONTEXT('USERENV','SESSION_USER'))
+            WHERE contract_id = :id;
+            :status_code := 200;
+            COMMIT;
+        END;
+    ]');
+
     def_tpl('salary/:person_id');
     def_get('salary/:person_id', q'[
         SELECT s.salary_id, s.effective_date, s.basic_salary, s.currency_code,
@@ -651,6 +755,24 @@ BEGIN
         LEFT JOIN dct_users         u  ON u.user_id   = s.approved_by
         WHERE  s.person_id = :person_id
         ORDER  BY s.effective_date DESC
+    ]');
+
+    def_tpl('salary/');
+    def_plsql('salary/', 'POST', q'[
+        DECLARE v_id NUMBER;
+        BEGIN
+            dct_hr.update_salary(
+                p_person_id        => :person_id,
+                p_basic_salary     => :basic_salary,
+                p_effective_date   => TO_DATE(NVL(:effective_date, TO_CHAR(SYSDATE,'YYYY-MM-DD')), 'YYYY-MM-DD'),
+                p_currency_code    => NVL(:currency_code, 'AED'),
+                p_change_reason_id => :change_reason_id,
+                p_approved_by      => NULL,
+                p_remarks          => :remarks,
+                p_salary_id        => v_id
+            );
+            :status_code := 201;
+        END;
     ]');
 
     -- =========================================================================
@@ -698,7 +820,6 @@ BEGIN
                 NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
             ) RETURNING doc_id INTO v_id;
             :status_code := 201;
-            :body_text   := '{"docId":' || v_id || '}';
             COMMIT;
         END;
     ]');

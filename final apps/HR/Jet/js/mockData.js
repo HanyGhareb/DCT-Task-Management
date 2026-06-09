@@ -30,9 +30,19 @@ define([], function () {
       { orgId: 6,  orgCode: 'REC-OPS',  orgNameEn: 'Receivables Operations',  orgType: 'SECTION',    parentOrgId: 1,    levelNo: 2, isActive: 'Y', headcountCeiling: 8,  costCenterCode: 'CC-REC' },
     ],
 
+    GRADES: [
+      { gradeCode: 'S2', gradeNameEn: 'Support Grade 2',    gradeLevel: 2,  gradeCategory: 'SUPPORT',      salaryBandMin: 2000,  salaryBandMax: 4500,  isActive: 'Y', displayOrder: 20, headcount: 0, created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+      { gradeCode: 'S1', gradeNameEn: 'Support Grade 1',    gradeLevel: 1,  gradeCategory: 'SUPPORT',      salaryBandMin: 3000,  salaryBandMax: 6000,  isActive: 'Y', displayOrder: 10, headcount: 0, created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+      { gradeCode: 'T2', gradeNameEn: 'Technical Grade 2',  gradeLevel: 4,  gradeCategory: 'TECHNICAL',    salaryBandMin: 3500,  salaryBandMax: 7000,  isActive: 'Y', displayOrder: 40, headcount: 0, created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+      { gradeCode: 'T1', gradeNameEn: 'Technical Grade 1',  gradeLevel: 3,  gradeCategory: 'TECHNICAL',    salaryBandMin: 5000,  salaryBandMax: 10000, isActive: 'Y', displayOrder: 30, headcount: 0, created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+      { gradeCode: 'P3', gradeNameEn: 'Professional Grade 3', gradeLevel: 6, gradeCategory: 'PROFESSIONAL', salaryBandMin: 7000, salaryBandMax: 14000, isActive: 'Y', displayOrder: 60, headcount: 0, created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+      { gradeCode: 'P1', gradeNameEn: 'Professional Grade 1', gradeLevel: 5, gradeCategory: 'PROFESSIONAL', salaryBandMin: 15000, salaryBandMax: 28000, isActive: 'Y', displayOrder: 50, headcount: 0, created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+      { gradeCode: 'E1', gradeNameEn: 'Executive Grade 1',  gradeLevel: 7,  gradeCategory: 'EXECUTIVE',    salaryBandMin: 60000, salaryBandMax: 120000, isActive: 'Y', displayOrder: 70, headcount: 0, created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+    ],
+
     LOCATIONS: [
-      { locationId: 1, locationCode: 'HQ-ABU', locationNameEn: 'DCT HQ — Abu Dhabi',      locationType: 'HQ',     emirate: 'Abu Dhabi', city: 'Abu Dhabi', isActive: 'Y' },
-      { locationId: 2, locationCode: 'OFF-DXB', locationNameEn: 'DCT Office — Dubai',     locationType: 'BRANCH', emirate: 'Dubai',     city: 'Dubai',     isActive: 'Y' },
+      { locationId: 1, locationCode: 'HQ-ABU',  locationNameEn: 'DCT HQ — Abu Dhabi',  locationType: 'HQ',     emirate: 'Abu Dhabi', city: 'Abu Dhabi', isActive: 'Y', created_by: 'System Administrator', created_at: '2026-05-01T08:00:00Z', updated_by: 'System Administrator', updated_at: '2026-05-01T08:00:00Z' },
+      { locationId: 2, locationCode: 'OFF-DXB', locationNameEn: 'DCT Office — Dubai',   locationType: 'BRANCH', emirate: 'Dubai',     city: 'Dubai',     isActive: 'Y', created_by: 'System Administrator', created_at: '2026-05-02T09:30:00Z', updated_by: 'HR Officer',           updated_at: '2026-05-15T11:45:00Z' },
     ],
 
     JOB_FAMILIES: [

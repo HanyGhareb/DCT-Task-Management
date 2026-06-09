@@ -1,22 +1,40 @@
 /**
  * orgService.js — Organisation hierarchy
- * Production: GET /ords/prod/dct/organizations/
+ * ORDS: GET /orgs/ — flat list of org nodes
+ *
+ * All methods return Promises.
  */
-define(['mockData'], function (mockData) {
+define(['services/api'], function (api) {
   'use strict';
 
-  let orgs = JSON.parse(JSON.stringify(mockData.ORGS));
-
-  function buildTree(parentId) {
+  function buildTree(orgs, parentId) {
     return orgs
-      .filter(o => o.parentOrgId === parentId)
-      .map(o => ({ ...o, children: buildTree(o.orgId) }));
+      .filter(function (o) { return o.parentOrgId === parentId; })
+      .map(function (o) {
+        return Object.assign({}, o, { children: buildTree(orgs, o.orgId) });
+      });
   }
 
   return {
-    getAll: function () { return orgs; },
-    getTree: function () { return buildTree(null); },
-    getById: function (id) { return orgs.find(o => o.orgId === Number(id)) || null; },
-    getOptions: function () { return orgs.map(o => ({ value: o.orgId, label: o.nameEn })); },
+
+    getAll: function () {
+      return api.get('/orgs/').then(function (r) { return r.items || []; });
+    },
+
+    getTree: function () {
+      return this.getAll().then(function (orgs) { return buildTree(orgs, null); });
+    },
+
+    getById: function (id) {
+      return this.getAll().then(function (orgs) {
+        return orgs.find(function (o) { return o.orgId === Number(id); }) || null;
+      });
+    },
+
+    getOptions: function () {
+      return this.getAll().then(function (orgs) {
+        return orgs.map(function (o) { return { value: o.orgId, label: o.nameEn }; });
+      });
+    },
   };
 });

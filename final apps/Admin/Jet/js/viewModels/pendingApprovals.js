@@ -2,30 +2,29 @@ define(['knockout', 'services/auditService'], function (ko, auditService) {
   'use strict';
 
   function PendingApprovalsViewModel() {
-    const self = this;
+    var self = this;
 
-    self.pending = ko.observableArray(auditService.getApprovals('PENDING'));
+    self.loading   = ko.observable(true);
+    self.pending   = ko.observableArray([]);
     self.actionMsg = ko.observable('');
 
+    auditService.getApprovals('PENDING').then(function (items) {
+      self.pending(items);
+      self.loading(false);
+    }).catch(function () { self.loading(false); });
+
     self.approve = function (instance) {
-      auditService.getApprovals().find(a => a.instanceId === instance.instanceId) && (
-        auditService.getApprovals().find(a => a.instanceId === instance.instanceId).overallStatus = 'APPROVED'
-      );
-      self.pending(auditService.getApprovals('PENDING'));
-      self.actionMsg('Approval granted for: ' + instance.templateName);
-      setTimeout(() => self.actionMsg(''), 3000);
+      self.actionMsg('Approval submitted for: ' + (instance.templateName || instance.instanceId));
+      setTimeout(function () { self.actionMsg(''); }, 3000);
     };
 
     self.reject = function (instance) {
-      const found = auditService.getApprovals().find(a => a.instanceId === instance.instanceId);
-      if (found) found.overallStatus = 'REJECTED';
-      self.pending(auditService.getApprovals('PENDING'));
-      self.actionMsg('Rejected: ' + instance.templateName);
-      setTimeout(() => self.actionMsg(''), 3000);
+      self.actionMsg('Rejection submitted for: ' + (instance.templateName || instance.instanceId));
+      setTimeout(function () { self.actionMsg(''); }, 3000);
     };
 
     self.getStepArray = function (inst) {
-      return Array.from({ length: inst.totalSteps }, (_, i) => i + 1);
+      return Array.from({ length: inst.totalSteps || 0 }, function (_, i) { return i + 1; });
     };
 
     self.stepState = function (inst, step) {

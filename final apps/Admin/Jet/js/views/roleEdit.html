@@ -1,77 +1,129 @@
-<div class="page-wrap">
-  <div class="page-header-row">
-    <div class="page-header">
-      <div class="page-title" data-bind="text: pageTitle()"></div>
-      <div class="page-subtitle">Define role details and assign permissions</div>
+<div class="rm-page">
+
+  <!-- Page header -->
+  <div class="rm-page-head rm-page-head--back">
+    <button class="rm-back-btn" data-bind="click: cancel">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="15 18 9 12 15 6"/></svg>
+      Roles
+    </button>
+    <div style="flex:1">
+      <h1 class="rm-title" data-bind="text: pageTitle()"></h1>
+      <p class="rm-subtitle">Define role details and assign permissions</p>
     </div>
-    <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back to Roles</button>
+    <button class="rm-btn-add" data-bind="click: save, disable: saving() || loading()">
+      <!-- ko if: saving() -->
+      <span class="rm-spinner-sm"></span>
+      Saving&hellip;
+      <!-- /ko -->
+      <!-- ko ifnot: saving() -->
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Save Role
+      <!-- /ko -->
+    </button>
   </div>
 
+  <!-- Alerts -->
   <!-- ko if: successMsg() -->
-  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <div class="rm-alert rm-alert--success" data-bind="text: successMsg()"></div>
+  <!-- /ko -->
+  <!-- ko if: hasError('save') -->
+  <div class="rm-alert rm-alert--error" data-bind="text: getError('save')"></div>
   <!-- /ko -->
 
-  <div class="card">
-    <div class="section-heading">Role Details</div>
-    <div class="form-grid">
-      <div class="form-group">
-        <label class="form-label">Role Code <span class="required">*</span></label>
-        <input class="form-control" type="text" placeholder="e.g. BUDGET_ANALYST"
-               data-bind="value: roleCode, valueUpdate: 'input', css: { 'border-color': hasError('roleCode') ? '#C74634' : '' }">
-        <span class="form-hint">Uppercase, underscore-separated. Used in PL/SQL and ORDS.</span>
-        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('roleCode'), text: getError('roleCode')"></span>
+  <!-- Loading state -->
+  <!-- ko if: loading() -->
+  <div class="rm-matrix-loading">
+    <div class="rm-spinner"></div>
+    <span>Loading role data&hellip;</span>
+  </div>
+  <!-- /ko -->
+
+  <!-- Two-column layout -->
+  <!-- ko ifnot: loading() -->
+  <div class="re-layout">
+
+    <!-- Left: Role identity -->
+    <div class="re-panel re-panel--meta">
+      <div class="re-panel-label">Role Identity</div>
+
+      <div class="re-field">
+        <label class="re-label">Code <span class="re-req">*</span></label>
+        <input class="re-input re-input--mono" type="text" placeholder="BUDGET_ANALYST"
+               data-bind="value: roleCode, valueUpdate: 'input',
+                          css: { 're-input--err': hasError('roleCode') }">
+        <span class="re-hint">Uppercase, underscore-separated</span>
+        <!-- ko if: hasError('roleCode') -->
+        <span class="re-err-msg" data-bind="text: getError('roleCode')"></span>
+        <!-- /ko -->
       </div>
-      <div class="form-group">
-        <label class="form-label">Role Name <span class="required">*</span></label>
-        <input class="form-control" type="text" placeholder="e.g. Budget Analyst"
-               data-bind="value: roleName, valueUpdate: 'input', css: { 'border-color': hasError('roleName') ? '#C74634' : '' }">
-        <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('roleName'), text: getError('roleName')"></span>
+
+      <div class="re-field">
+        <label class="re-label">Name <span class="re-req">*</span></label>
+        <input class="re-input" type="text" placeholder="Budget Analyst"
+               data-bind="value: roleName, valueUpdate: 'input',
+                          css: { 're-input--err': hasError('roleName') }">
+        <!-- ko if: hasError('roleName') -->
+        <span class="re-err-msg" data-bind="text: getError('roleName')"></span>
+        <!-- /ko -->
       </div>
-      <div class="form-group form-group--full">
-        <label class="form-label">Description</label>
-        <textarea class="form-control" rows="2" placeholder="Describe what this role grants access to"
+
+      <div class="re-field">
+        <label class="re-label">Description</label>
+        <textarea class="re-input re-textarea" rows="3"
+                  placeholder="Describe what this role grants access to&hellip;"
                   data-bind="value: description"></textarea>
       </div>
-      <div class="form-group">
-        <label class="form-label">Status</label>
-        <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding-top:6px"
-             data-bind="click: function() { isActive(!isActive()); }">
+
+      <div class="re-field re-field--inline">
+        <label class="re-label">Status</label>
+        <div class="re-toggle-row" data-bind="click: function() { isActive(!isActive()); }">
           <div class="switch" style="pointer-events:none">
             <input type="checkbox" style="pointer-events:none" data-bind="checked: isActive">
             <span class="switch-slider"></span>
           </div>
-          <span style="font-size:13px">Active</span>
+          <span class="re-toggle-label" data-bind="text: isActive() ? 'Enabled' : 'Disabled'"></span>
         </div>
       </div>
     </div>
 
-    <div class="section-heading" style="margin-top:20px">Permission Assignments</div>
-    <p style="font-size:12px;color:#aaa;margin-bottom:12px">Check the permissions this role should grant. Changes take effect immediately on next login.</p>
+    <!-- Right: Permissions -->
+    <div class="re-panel re-panel--perms">
+      <div class="re-panel-label">Permission Assignments</div>
+      <p class="re-perms-hint">
+        Checked permissions are granted to all users holding this role.
+        Changes take effect immediately on next login.
+      </p>
 
-    <!-- ko foreach: permModules -->
-    <div style="margin-bottom:16px">
-      <div style="font-size:12px;font-weight:700;color:#6e6e73;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px"
-           data-bind="text: module"></div>
-      <div class="checkbox-grid">
-        <!-- ko foreach: permissions -->
-        <div class="checkbox-item" data-bind="click: function() { checked(!checked()); }, css: { 'checkbox-item--on': checked() }">
-          <input type="checkbox" style="pointer-events:none" data-bind="checked: checked">
-          <div>
-            <div style="font-weight:600;font-size:12px" data-bind="text: permName"></div>
-            <div style="color:#aaa;font-size:11px" data-bind="text: permCode"></div>
+      <!-- ko foreach: permModules() -->
+      <div class="re-perm-module">
+        <div class="re-perm-module-name" data-bind="text: module"></div>
+        <div class="re-perm-grid">
+          <!-- ko foreach: permissions -->
+          <div class="re-perm-item"
+               data-bind="click: function() { checked(!checked()); },
+                          css: { 're-perm-item--on': checked() }">
+            <div class="re-perm-toggle">
+              <span class="re-perm-toggle-dot"></span>
+            </div>
+            <div class="re-perm-info">
+              <div class="re-perm-name" data-bind="text: permName"></div>
+              <code class="re-perm-code" data-bind="text: permCode"></code>
+            </div>
           </div>
+          <!-- /ko -->
         </div>
-        <!-- /ko -->
       </div>
-    </div>
-    <!-- /ko -->
+      <!-- /ko -->
 
-    <div class="form-actions">
-      <button class="btn btn-primary" data-bind="click: save, enable: !saving()">
-        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
-        <!-- ko ifnot: saving() -->&#10003; Save Role<!-- /ko -->
-      </button>
-      <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
+      <!-- ko if: permModules().length === 0 -->
+      <div class="rm-empty">
+        <div class="rm-empty-icon">&#8856;</div>
+        <div>No permissions available</div>
+      </div>
+      <!-- /ko -->
     </div>
+
   </div>
+  <!-- /ko -->
+
 </div>

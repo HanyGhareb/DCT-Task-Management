@@ -1,13 +1,14 @@
 /**
  * moduleService.js — Module registry
- * Production: GET /ords/prod/dct/modules/
+ * ORDS: GET /modules/      — list all modules
+ *       PUT /modules/:id   — update a module
+ *
+ * All methods return Promises.
  */
-define(['mockData'], function (mockData) {
+define(['services/api'], function (api) {
   'use strict';
 
-  let modules = JSON.parse(JSON.stringify(mockData.MODULES));
-
-  const CATEGORIES = [
+  var CATEGORIES = [
     { id: 'CORE',     label: 'Core Platform',         icon: '&#127968;' },
     { id: 'FINANCE',  label: 'Finance',               icon: '&#128178;' },
     { id: 'HR',       label: 'HR & Employee',          icon: '&#128101;' },
@@ -16,30 +17,34 @@ define(['mockData'], function (mockData) {
   ];
 
   return {
-    getAll: function () { return modules; },
+
+    getAll: function () {
+      return api.get('/modules/').then(function (r) { return r.items || []; });
+    },
 
     getCategories: function () { return CATEGORIES; },
 
-    getByCategory: function (cat) { return modules.filter(m => m.category === cat && m.isActive === 'Y'); },
+    getByCategory: function (cat) {
+      return this.getAll().then(function (mods) {
+        return mods.filter(function (m) { return m.category === cat && m.isActive === 'Y'; });
+      });
+    },
 
-    getAccessibleForUser: function (user) {
-      // All active modules for admin; non-admin gets non-ADMIN category modules
-      const isAdmin = user && (user.roles.includes('SYS_ADMIN') || user.roles.includes('USER_ADMIN'));
-      return modules.filter(m => m.isActive === 'Y');
+    getAccessibleForUser: function () {
+      return this.getAll().then(function (mods) {
+        return mods.filter(function (m) { return m.isActive === 'Y'; });
+      });
     },
 
     update: function (moduleId, data) {
-      const idx = modules.findIndex(m => m.moduleId === Number(moduleId));
-      if (idx === -1) return null;
-      modules[idx] = Object.assign({}, modules[idx], data);
-      return modules[idx];
+      return api.put('/modules/' + moduleId, data);
     },
 
-    toggleActive: function (moduleId) {
-      const m = modules.find(m => m.moduleId === Number(moduleId));
-      if (!m) return;
-      m.isActive = m.isActive === 'Y' ? 'N' : 'Y';
-      return m;
+    /* currentActive = current isActive value ('Y' or 'N') */
+    toggleActive: function (moduleId, currentActive) {
+      return api.put('/modules/' + moduleId, {
+        isActive: currentActive === 'Y' ? 'N' : 'Y',
+      });
     },
   };
 });

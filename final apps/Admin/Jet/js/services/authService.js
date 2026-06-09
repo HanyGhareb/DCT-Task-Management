@@ -1,13 +1,10 @@
 /**
- * authService.js — login / logout / session
+ * authService.js — login / logout / session (ORDS live mode only)
  *
- * mock mode  (config.apiBase = null): validates against userService in-memory data.
- * real mode  (config.apiBase set)   : POST /ords/prod/dct/auth/login
- *
- * login() always returns a Promise.
+ * login() returns a Promise resolving to the session object, or null on failure.
  */
-define(['services/config', 'services/api', 'services/userService', 'mockData'],
-function (config, api, userService, mockData) {
+define(['services/api'],
+function (api) {
   'use strict';
 
   var SESSION_KEY = 'ifinance_jet_session';
@@ -22,49 +19,19 @@ function (config, api, userService, mockData) {
   return {
 
     login: function (username, password) {
-      if (config.apiBase) {
-        // ── Real API ──────────────────────────────────────────────────────────
-        return api.post('/auth/login', { username: username, password: password })
-          .then(function (data) {
-            // Normalise: split rolesCsv → roles array, compute initials
-            data.roles    = (data.rolesCsv || '').split(',').filter(Boolean);
-            data.initials = getInitials(data.displayName);
-            localStorage.setItem(SESSION_KEY, JSON.stringify(data));
-            return data;
-          });
-      } else {
-        // ── Mock ──────────────────────────────────────────────────────────────
-        var user = userService.getAll().find(function (u) {
-          return u.username.toUpperCase() === username.toUpperCase() &&
-                 u.password === password;
+      return api.post('/auth/login', { username: username, password: password })
+        .then(function (data) {
+          data.roles    = (data.rolesCsv || '').split(',').filter(Boolean);
+          data.initials = getInitials(data.displayName);
+          localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+          return data;
         });
-        if (!user || user.isActive !== 'Y') return Promise.resolve(null);
-        var session = {
-          sessionId:      null,   // no real token in mock mode
-          userId:         user.userId,
-          username:       user.username,
-          displayName:    user.displayName,
-          displayNameAr:  user.displayNameAr,
-          email:          user.email,
-          phone:          user.phone,
-          orgId:          user.orgId,
-          orgName:        user.orgName,
-          color:          user.color,
-          isExternal:     user.isExternal,
-          roles:          user.roles || [],
-          initials:       getInitials(user.displayName),
-          loginAt:        new Date().toISOString(),
-        };
-        localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-        return Promise.resolve(session);
-      }
     },
 
     logout: function () {
       var token = this.getToken();
       localStorage.removeItem(SESSION_KEY);
-      if (config.apiBase && token) {
-        // Fire-and-forget — don't block logout on API response
+      if (token) {
         api.post('/auth/logout').catch(function () {});
       }
     },
@@ -79,22 +46,13 @@ function (config, api, userService, mockData) {
     getCurrentUser: function () {
       var raw = localStorage.getItem(SESSION_KEY);
       if (!raw) return null;
-      var session = JSON.parse(raw);
-
-      if (!config.apiBase) {
-        // Mock mode: re-validate active status against live userService data
-        var live = userService.getById(session.userId);
-        if (!live || live.isActive !== 'Y') {
-          localStorage.removeItem(SESSION_KEY);
-          return null;
-        }
-      }
-      // Real API mode: 401 responses in api.js handle session invalidation
-      return session;
+      return JSON.parse(raw);
     },
 
     getUnreadCount: function () {
-      return mockData.NOTIFICATIONS.filter(function (n) { return n.isRead === 'N'; }).length;
+      return api.get('/notifications/').then(function (r) {
+        return (r.items || []).filter(function (n) { return n.isRead === 'N'; }).length;
+      }).catch(function () { return 0; });
     },
 
     isAdmin: function () {

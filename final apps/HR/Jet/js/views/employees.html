@@ -3,14 +3,20 @@
     <div class="page-header-row">
       <div>
         <div class="page-title">Employee Directory</div>
-        <div class="page-subtitle" data-bind="text: filtered().length + ' employee(s) shown'"></div>
+        <div class="page-subtitle" data-bind="text: pageInfo()"></div>
       </div>
-      <!-- ko if: isAdmin || isMgr -->
-      <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Employee</button>
-      <!-- /ko -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button class="btn btn-secondary btn-sm" data-bind="click: exportCSV" title="Export filtered list to CSV">
+          &#8595; Export CSV
+        </button>
+        <!-- ko if: isAdmin || isMgr -->
+        <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Employee</button>
+        <!-- /ko -->
+      </div>
     </div>
   </div>
 
+  <!-- Alerts -->
   <!-- ko if: error() -->
   <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
   <!-- /ko -->
@@ -18,55 +24,136 @@
   <div class="alert-banner alert-banner--success" data-bind="text: saved"></div>
   <!-- /ko -->
 
+  <!-- Stats row -->
+  <!-- ko ifnot: loading() -->
+  <div class="stats-row" style="margin-bottom:20px">
+    <div class="stat-card stat-card--blue">
+      <div class="stat-value" data-bind="text: stats().total"></div>
+      <div class="stat-label">Total Employees</div>
+    </div>
+    <div class="stat-card stat-card--green">
+      <div class="stat-value" data-bind="text: stats().active"></div>
+      <div class="stat-label">Active</div>
+    </div>
+    <div class="stat-card stat-card--red">
+      <div class="stat-value" data-bind="text: stats().inactive"></div>
+      <div class="stat-label">Inactive</div>
+    </div>
+    <div class="stat-card stat-card--purple">
+      <div class="stat-value" data-bind="text: stats().sections"></div>
+      <div class="stat-label">Sections</div>
+    </div>
+  </div>
+  <!-- /ko -->
+
   <div class="card">
+
+    <!-- Toolbar -->
     <div class="view-toolbar">
-      <input class="search-box" type="text" placeholder="Search name, number, email…" data-bind="value: searchQ, valueUpdate: 'input'">
-      <select class="form-control" style="min-width:180px;width:auto" data-bind="value: filterOrg">
+      <input class="search-box" type="text" placeholder="Search name, number, email, Arabic…"
+             data-bind="value: searchQ, valueUpdate: 'input'">
+      <select class="form-control" style="min-width:155px;width:auto" data-bind="value: filterOrg">
         <option value="">All Sections</option>
         <!-- ko foreach: orgs() -->
         <option data-bind="value: orgId, text: orgNameEn"></option>
         <!-- /ko -->
       </select>
+      <select class="form-control" style="min-width:120px;width:auto" data-bind="value: filterGrade">
+        <option value="">All Grades</option>
+        <!-- ko foreach: grades() -->
+        <option data-bind="value: gradeCode, text: gradeCode + (gradeNameEn ? ' — ' + gradeNameEn : '')"></option>
+        <!-- /ko -->
+      </select>
+      <select class="form-control" style="min-width:115px;width:auto" data-bind="value: filterStatus">
+        <option value="">All Status</option>
+        <option value="Y">Active</option>
+        <option value="N">Inactive</option>
+      </select>
+      <!-- ko if: hasActiveFilters() -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: clearFilters" title="Clear all filters">
+        &#10005; Clear
+      </button>
+      <!-- /ko -->
+      <div style="flex:1"></div>
+      <div class="view-toggle-group">
+        <button class="view-toggle-btn" title="Table view"
+                data-bind="click: function(){ viewMode('table'); }, css: {'view-toggle-btn--active': viewMode() === 'table'}">
+          &#9776;
+        </button>
+        <button class="view-toggle-btn" title="Card view"
+                data-bind="click: function(){ viewMode('card'); }, css: {'view-toggle-btn--active': viewMode() === 'card'}">
+          &#9641;&#9641;
+        </button>
+      </div>
     </div>
 
+    <!-- Loading -->
     <!-- ko if: loading() -->
-    <div class="empty-state"><div class="empty-state__icon">&#128100;</div><div class="empty-state__msg">Loading…</div></div>
+    <div class="empty-state">
+      <div class="empty-state__icon">&#128100;</div>
+      <div class="empty-state__msg">Loading…</div>
+    </div>
     <!-- /ko -->
 
     <!-- ko ifnot: loading() -->
-    <!-- ko if: filtered().length === 0 -->
-    <div class="empty-state"><div class="empty-state__icon">&#128100;</div><div class="empty-state__msg">No employees found</div></div>
+
+    <!-- Empty state -->
+    <!-- ko if: paginated().length === 0 -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#128100;</div>
+      <div class="empty-state__msg">No employees found</div>
+      <!-- ko if: hasActiveFilters() -->
+      <div class="empty-state__sub">
+        <button class="btn btn-secondary btn-sm" style="margin-top:12px" data-bind="click: clearFilters">
+          &#10005; Clear Filters
+        </button>
+      </div>
+      <!-- /ko -->
+    </div>
     <!-- /ko -->
 
-    <!-- ko ifnot: filtered().length === 0 -->
+    <!-- TABLE VIEW -->
+    <!-- ko if: paginated().length > 0 && viewMode() === 'table' -->
     <div class="data-table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Employee</th>
-            <th>Section</th>
-            <th>Grade</th>
+            <th class="sort-th" data-bind="click: function(){ setSort('fullNameEn'); }">
+              Employee <span data-bind="attr: { 'class': sortClass('fullNameEn') }"></span>
+            </th>
+            <th class="sort-th" data-bind="click: function(){ setSort('orgNameEn'); }">
+              Section <span data-bind="attr: { 'class': sortClass('orgNameEn') }"></span>
+            </th>
+            <th class="sort-th" data-bind="click: function(){ setSort('gradeCode'); }">
+              Grade <span data-bind="attr: { 'class': sortClass('gradeCode') }"></span>
+            </th>
             <th>Position</th>
-            <th>Gender</th>
-            <th>Hire Date</th>
-            <th>Status</th>
+            <th class="sort-th" data-bind="click: function(){ setSort('gender'); }">
+              Gender <span data-bind="attr: { 'class': sortClass('gender') }"></span>
+            </th>
+            <th class="sort-th" data-bind="click: function(){ setSort('hireDate'); }">
+              Hire Date <span data-bind="attr: { 'class': sortClass('hireDate') }"></span>
+            </th>
+            <th class="sort-th" data-bind="click: function(){ setSort('isActive'); }">
+              Status <span data-bind="attr: { 'class': sortClass('isActive') }"></span>
+            </th>
             <!-- ko if: isAdmin || isMgr -->
-            <th></th>
+            <th style="width:70px"></th>
             <!-- /ko -->
           </tr>
         </thead>
         <tbody>
-          <!-- ko foreach: filtered() -->
+          <!-- ko foreach: paginated() -->
           <tr style="cursor:pointer" data-bind="click: $parent.openEmployee.bind($parent, $data)">
             <td>
               <div style="display:flex;align-items:center;gap:10px">
                 <!-- ko if: photoUrl -->
-                <img data-bind="attr: { src: photoUrl }" alt=""
+                <img data-bind="attr:{src:photoUrl}" alt=""
                   style="width:32px;height:32px;border-radius:50%;object-fit:cover;flex-shrink:0">
                 <!-- /ko -->
                 <!-- ko ifnot: photoUrl -->
-                <div class="avatar" style="background:#1a7f5a;font-size:12px;width:32px;height:32px"
-                     data-bind="text: (fullNameEn||'').split(' ').filter(function(x){return x}).map(function(w){return w[0]}).slice(0,2).join('').toUpperCase()"></div>
+                <div class="avatar" style="font-size:12px;width:32px;height:32px"
+                     data-bind="style:{background:$parent.avatarColor($data)}, text:$parent.initials(fullNameEn)"></div>
                 <!-- /ko -->
                 <div>
                   <div class="link-text" data-bind="text: fullNameEn"></div>
@@ -76,14 +163,19 @@
             </td>
             <td data-bind="text: orgNameEn || '—'"></td>
             <td><span class="badge badge--info" data-bind="text: gradeCode || '—'"></span></td>
-            <td style="font-size:12px;color:#6e6e73;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text: positionNameEn || jobTitleEn || '—'"></td>
+            <td style="font-size:12px;color:#6e6e73;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+                data-bind="text: positionNameEn || jobTitleEn || '—'"></td>
             <td data-bind="text: $parent.genderLabel(gender)"></td>
-            <td data-bind="text: hireDate || '—'"></td>
+            <td data-bind="text: $parent.fmtDate(hireDate)"></td>
             <td><span data-bind="class: $parent.activeClass(isActive), text: isActive === 'Y' ? 'Active' : 'Inactive'"></span></td>
             <!-- ko if: $parent.isAdmin || $parent.isMgr -->
-            <td style="white-space:nowrap">
-              <button class="btn btn-secondary btn-sm" style="font-size:11px"
-                      data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEdit($data); }">&#9998; Edit</button>
+            <td>
+              <div class="row-actions">
+                <button class="btn btn-secondary btn-sm" style="font-size:11px;white-space:nowrap"
+                        data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEdit($data); }">
+                  &#9998; Edit
+                </button>
+              </div>
             </td>
             <!-- /ko -->
           </tr>
@@ -92,22 +184,89 @@
       </table>
     </div>
     <!-- /ko -->
+
+    <!-- CARD VIEW -->
+    <!-- ko if: paginated().length > 0 && viewMode() === 'card' -->
+    <div class="emp-card-grid">
+      <!-- ko foreach: paginated() -->
+      <div class="emp-card" data-bind="click: $parent.openEmployee.bind($parent, $data)">
+        <!-- ko if: photoUrl -->
+        <img data-bind="attr:{src:photoUrl}" class="emp-card-avatar" alt="">
+        <!-- /ko -->
+        <!-- ko ifnot: photoUrl -->
+        <div class="avatar avatar--lg emp-card-avatar"
+             data-bind="style:{background:$parent.avatarColor($data)}, text:$parent.initials(fullNameEn)"></div>
+        <!-- /ko -->
+        <div class="emp-card-name" data-bind="text: fullNameEn"></div>
+        <div class="emp-card-sub" data-bind="text: employeeNumber"></div>
+        <div class="emp-card-section" data-bind="text: orgNameEn || '—'"></div>
+        <div class="emp-card-badges">
+          <!-- ko if: gradeCode -->
+          <span class="badge badge--info" data-bind="text: gradeCode"></span>
+          <!-- /ko -->
+          <span data-bind="class: $parent.activeClass(isActive), text: isActive === 'Y' ? 'Active' : 'Inactive'"></span>
+        </div>
+        <!-- ko if: $parent.isAdmin || $parent.isMgr -->
+        <div class="emp-card-action">
+          <button class="btn btn-secondary btn-sm" style="width:100%"
+                  data-bind="click: function(d,e){ e.stopPropagation(); $parent.openEdit($data); }">
+            &#9998; Edit
+          </button>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+
+    <!-- Pagination -->
+    <!-- ko if: totalPages() > 1 -->
+    <div class="pagination-bar">
+      <span class="page-info" data-bind="text: pageInfo()"></span>
+      <div class="page-btns">
+        <button class="page-btn" title="Previous" data-bind="click: prevPage, disable: currentPage() <= 1">&#8249;</button>
+        <!-- ko foreach: pageNumbers() -->
+          <!-- ko if: typeof $data === 'string' -->
+          <span class="page-ellipsis">…</span>
+          <!-- /ko -->
+          <!-- ko ifnot: typeof $data === 'string' -->
+          <button class="page-btn"
+                  data-bind="click: function(){ $parent.setPage($data); },
+                             css: {'page-btn--active': $parent.currentPage() === $data},
+                             text: $data"></button>
+          <!-- /ko -->
+        <!-- /ko -->
+        <button class="page-btn" title="Next" data-bind="click: nextPage, disable: currentPage() >= totalPages()">&#8250;</button>
+      </div>
+    </div>
+    <!-- /ko -->
+
     <!-- /ko -->
   </div>
 </div>
 
 <!-- Add / Edit Employee Modal -->
-<!-- ko if: showModal() -->
-<div class="modal-backdrop" data-bind="click: closeModal">
-  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+<div class="modal-backdrop" style="display:none"
+     data-bind="visible: showModal(), click: closeModal">
+  <div class="modal-box modal-box--lg" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title" data-bind="text: editingId() ? 'Edit Employee' : 'Add New Employee'"></div>
       <button class="modal-close" data-bind="click: closeModal">&#10005;</button>
     </div>
     <div class="modal-body">
-      <!-- ko if: formError() -->
-      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: formError"></div>
-      <!-- /ko -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px"
+           data-bind="text: formError, visible: !!formError()"></div>
+
+      <!-- Photo upload section -->
+      <div class="photo-upload-section">
+        <img class="photo-preview" alt=""
+             data-bind="attr:{src: photoPreview() || ''}, visible: !!photoPreview()">
+        <div class="avatar avatar--lg" style="background:#1a7f5a;margin:0 auto"
+             data-bind="text: modalInitials(), visible: !photoPreview()"></div>
+        <button type="button" class="btn btn-secondary btn-sm" style="margin-top:8px"
+                onclick="window._hrEmpPickPhoto()">&#128247; Change Photo</button>
+      </div>
+
       <div class="form-grid">
         <div class="form-group">
           <div class="form-label">First Name (EN) <span style="color:red">*</span></div>
@@ -127,7 +286,8 @@
         </div>
         <div class="form-group">
           <div class="form-label">Employee Number <span style="color:red">*</span></div>
-          <input class="form-control" type="text" placeholder="e.g. EMP-0001" data-bind="value: form.employee_number, valueUpdate: 'input', attr: { disabled: !!editingId() }">
+          <input class="form-control" type="text" placeholder="e.g. EMP-0001"
+                 data-bind="value: form.employee_number, valueUpdate: 'input', attr: { disabled: !!editingId() }">
         </div>
         <div class="form-group">
           <div class="form-label">Gender</div>
@@ -151,6 +311,15 @@
             <option value="">— Select Section —</option>
             <!-- ko foreach: orgs() -->
             <option data-bind="value: orgId, text: orgNameEn"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Position</div>
+          <select class="form-control" data-bind="value: form.position_id">
+            <option value="">— Select Position —</option>
+            <!-- ko foreach: filteredPositions() -->
+            <option data-bind="value: positionId, text: positionNameEn"></option>
             <!-- /ko -->
           </select>
         </div>
@@ -182,11 +351,9 @@
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
-      <button class="btn btn-primary" data-bind="click: saveEmployee, disable: saving()">
-        <!-- ko if: saving() -->Saving…<!-- /ko -->
-        <!-- ko ifnot: saving() -->Save Employee<!-- /ko -->
+      <button class="btn btn-primary"
+              data-bind="click: saveEmployee, disable: saving() || photoUploading(), text: saveButtonText()">
       </button>
     </div>
   </div>
 </div>
-<!-- /ko -->

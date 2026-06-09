@@ -1,38 +1,24 @@
 /**
- * roleService.js — Roles & permissions CRUD
+ * roleService.js — Roles & permissions CRUD (ORDS live mode only)
  *
  * All methods return Promises.
- * mock mode  (config.apiBase = null): in-memory mock data.
- * real mode  (config.apiBase set)   : ORDS /dct/roles/ + /dct/permissions/
+ * ORDS endpoints: /dct/roles/  /dct/permissions/  /dct/roles/:id/permissions
  */
-define(['services/config', 'services/api', 'mockData'], function (config, api, mockData) {
+define(['services/api'], function (api) {
   'use strict';
-
-  var roles    = JSON.parse(JSON.stringify(mockData.ROLES));
-  var rolePerms = JSON.parse(JSON.stringify(mockData.ROLE_PERMISSIONS));
-  var nextId   = roles.length + 1;
 
   return {
 
     getAll: function () {
-      if (config.apiBase) {
-        return api.get('/roles/').then(function (r) { return r.items; });
-      }
-      return Promise.resolve(roles);
+      return api.get('/roles/').then(function (r) { return r.items || []; });
     },
 
     getById: function (id) {
-      if (config.apiBase) {
-        return api.get('/roles/' + id);
-      }
-      return Promise.resolve(roles.find(function (r) { return r.roleId === Number(id); }) || null);
+      return api.get('/roles/' + id);
     },
 
     getPermissions: function () {
-      if (config.apiBase) {
-        return api.get('/permissions/').then(function (r) { return r.items; });
-      }
-      return Promise.resolve(mockData.PERMISSIONS);
+      return api.get('/permissions/').then(function (r) { return r.items || []; });
     },
 
     getPermissionsByModule: function () {
@@ -48,59 +34,49 @@ define(['services/config', 'services/api', 'mockData'], function (config, api, m
     },
 
     getRolePermIds: function (roleId) {
-      if (config.apiBase) {
-        return api.get('/roles/' + roleId).then(function (r) { return r.permIds || []; });
-      }
-      return Promise.resolve(rolePerms[Number(roleId)] || []);
+      return api.get('/roles/' + roleId).then(function (r) { return r.permIds || []; });
     },
 
     create: function (data) {
-      if (config.apiBase) {
-        return api.post('/roles/', data);
-      }
-      var newRole = Object.assign({}, data, {
-        roleId: ++nextId, memberCount: 0, isActive: data.isActive || 'Y',
-      });
-      roles.push(newRole);
-      rolePerms[newRole.roleId] = [];
-      return Promise.resolve(newRole);
+      return api.post('/roles/', data);
     },
 
     update: function (id, data) {
-      if (config.apiBase) {
-        return api.put('/roles/' + id, data);
-      }
-      var idx = roles.findIndex(function (r) { return r.roleId === Number(id); });
-      if (idx === -1) return Promise.resolve(null);
-      roles[idx] = Object.assign({}, roles[idx], data);
-      if (data.permIds !== undefined) rolePerms[Number(id)] = data.permIds;
-      return Promise.resolve(roles[idx]);
+      return api.put('/roles/' + id, data);
     },
 
     remove: function (id) {
-      if (config.apiBase) {
-        return api.delete('/roles/' + id);
-      }
-      var idx = roles.findIndex(function (r) { return r.roleId === Number(id); });
-      if (idx === -1) return Promise.resolve(false);
-      roles.splice(idx, 1);
-      delete rolePerms[Number(id)];
-      return Promise.resolve(true);
+      return api.delete('/roles/' + id);
+    },
+
+    setRolePermissions: function (roleId, permIds) {
+      return api.put('/roles/' + roleId, { permIds: permIds });
     },
 
     getPermissionMatrix: function () {
-      return this.getPermissions().then(function (perms) {
-        return perms.map(function (perm) {
-          var row = {
-            permId: perm.permId, permCode: perm.permCode,
-            permName: perm.permName, module: perm.module,
-          };
-          roles.forEach(function (role) {
-            row['role_' + role.roleId] = (rolePerms[role.roleId] || []).includes(perm.permId);
+      var self = this;
+      return Promise.all([self.getAll(), self.getPermissions()])
+        .then(function (results) {
+          var roles = results[0];
+          var perms = results[1];
+          return Promise.all(
+            roles.map(function (role) {
+              return self.getRolePermIds(role.roleId)
+                .then(function (ids) { return { roleId: role.roleId, permIds: ids }; })
+                .catch(function () { return { roleId: role.roleId, permIds: [] }; });
+            })
+          ).then(function (rolePermsList) {
+            var permMap = {};
+            rolePermsList.forEach(function (rp) { permMap[rp.roleId] = rp.permIds; });
+            return { roles: roles, matrix: perms.map(function (perm) {
+              var row = { permId: perm.permId, permCode: perm.permCode, permName: perm.permName, module: perm.module };
+              roles.forEach(function (role) {
+                row['role_' + role.roleId] = (permMap[role.roleId] || []).indexOf(perm.permId) !== -1;
+              });
+              return row;
+            })};
           });
-          return row;
         });
-      });
     },
   };
 });

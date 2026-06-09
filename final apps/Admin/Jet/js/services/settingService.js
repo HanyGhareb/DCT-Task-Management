@@ -1,53 +1,117 @@
 /**
  * settingService.js — system settings & lookup values
- * Production: GET /ords/prod/dct/system_settings/
+ * ORDS: GET  /settings/           — list all settings
+ *       PUT  /settings/:key       — update a setting by key
+ *       GET  /lookups/            — list categories + nested values
+ *       PUT  /lookups/values/:id  — update a lookup value
+ *
+ * All methods return Promises.
  */
-define(['mockData'], function (mockData) {
+define(['services/api'], function (api) {
   'use strict';
 
-  let settings = JSON.parse(JSON.stringify(mockData.SETTINGS));
-  let lookups  = JSON.parse(JSON.stringify(mockData.LOOKUPS));
-  let nextLookupId = lookups.length + 1;
+  /* Flatten ORDS nested category+values → flat lookup rows VMs expect */
+  function flattenLookups(categories) {
+    var flat = [];
+    (categories || []).forEach(function (cat) {
+      (cat.values || []).forEach(function (v) {
+        flat.push({
+          lookupId:     v.valueId,
+          lookupType:   cat.categoryCode,
+          lookupCode:   v.lookupCode,
+          displayValue: v.displayValue,
+          displayAr:    v.displayAr    || '',
+          sortOrder:    v.sortOrder,
+          isActive:     v.isActive,
+        });
+      });
+    });
+    return flat;
+  }
+
+  /* ORDS {key, value, type, category, description, isEditable} → VM shape */
+  function normSetting(s) {
+    return {
+      settingKey:   s.key,
+      settingValue: s.value,
+      settingType:  s.type,
+      category:     s.category || s.type || 'GENERAL',
+      description:  s.description,
+      isEditable:   s.isEditable,
+    };
+  }
 
   return {
-    // Settings
-    getSettings: function () { return settings; },
-    getByKey: function (key) { return settings.find(s => s.settingKey === key); },
-    updateSetting: function (settingId, value) {
-      const s = settings.find(s => s.settingId === Number(settingId));
-      if (s) { s.settingValue = value; s.updatedAt = new Date().toISOString().slice(0, 10); s.updatedBy = 'ADMIN'; }
-      return s;
-    },
-    getSettingsByCategory: function () {
-      const map = {};
-      settings.forEach(s => {
-        if (!map[s.category]) map[s.category] = [];
-        map[s.category].push(s);
+
+    /* ── Settings ─────────────────────────────────────────────────────── */
+
+    getSettings: function () {
+      return api.get('/settings/').then(function (r) {
+        return (r.items || []).map(normSetting);
       });
-      return map;
     },
 
-    // Lookups
-    getLookups: function () { return lookups; },
+    getByKey: function (key) {
+      return api.get('/settings/').then(function (r) {
+        var s = (r.items || []).find(function (s) { return s.key === key; });
+        return s ? normSetting(s) : null;
+      });
+    },
+
+    /* settingKey-based update (ORDS uses key, not numeric ID) */
+    updateSetting: function (settingKey, value) {
+      return api.put('/settings/' + settingKey, { value: String(value) });
+    },
+
+    getSettingsByCategory: function () {
+      return api.get('/settings/').then(function (r) {
+        var map = {};
+        (r.items || []).forEach(function (s) {
+          var cat = s.category || s.type || 'GENERAL';
+          if (!map[cat]) map[cat] = [];
+          map[cat].push(normSetting(s));
+        });
+        return map;
+      });
+    },
+
+    /* ── Lookups ──────────────────────────────────────────────────────── */
+
+    getLookups: function () {
+      return api.get('/lookups/').then(function (r) {
+        return flattenLookups(r.items);
+      });
+    },
+
     getLookupTypes: function () {
-      return [...new Set(lookups.map(l => l.lookupType))].sort();
+      return api.get('/lookups/').then(function (r) {
+        return (r.items || []).map(function (c) { return c.categoryCode; }).sort();
+      });
     },
+
     getLookupsByType: function (type) {
-      return lookups.filter(l => !type || l.lookupType === type).sort((a, b) => a.sortOrder - b.sortOrder);
+      return api.get('/lookups/').then(function (r) {
+        var flat = flattenLookups(r.items);
+        if (!type || type === 'ALL') return flat;
+        return flat.filter(function (l) { return l.lookupType === type; });
+      });
     },
-    createLookup: function (data) {
-      const newL = Object.assign({}, data, { lookupId: ++nextLookupId, isActive: data.isActive || 'Y' });
-      lookups.push(newL);
-      return newL;
-    },
+
     updateLookup: function (id, data) {
-      const idx = lookups.findIndex(l => l.lookupId === Number(id));
-      if (idx !== -1) lookups[idx] = Object.assign({}, lookups[idx], data);
-      return lookups[idx];
+      return api.put('/lookups/values/' + id, {
+        displayValue: data.displayValue,
+        displayAr:    data.displayAr    || '',
+        sortOrder:    Number(data.sortOrder) || 1,
+        isActive:     data.isActive,
+      });
     },
-    removeLookup: function (id) {
-      const idx = lookups.findIndex(l => l.lookupId === Number(id));
-      if (idx !== -1) lookups.splice(idx, 1);
+
+    createLookup: function () {
+      return Promise.reject({ message: 'Creating lookup values requires APEX Admin access.' });
+    },
+
+    removeLookup: function () {
+      return Promise.reject({ message: 'Deleting lookup values requires APEX Admin access.' });
     },
   };
 });

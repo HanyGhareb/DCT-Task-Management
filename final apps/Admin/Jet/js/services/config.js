@@ -12,8 +12,8 @@
 define([], function () {
   'use strict';
   return {
-    // apiBase: null,
-    // apiBase: '/ords/admin/dct',
-    apiBase: 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/dct',
+    // apiBase: null,                                                             // mock mode
+    apiBase: '/ords/admin/dct',                                                  // dev-proxy.py (local dev)
+    // apiBase: 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/dct', // direct (APEX deploy)
   };
 });

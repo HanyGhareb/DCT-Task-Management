@@ -1,8 +1,11 @@
-define(['knockout', 'services/authService'], function (ko, authService) {
+define(['knockout', 'services/authService', 'services/themeService'], function (ko, authService, themeService) {
   'use strict';
 
   function AppController() {
     const self = this;
+
+    // ── Theme: apply persisted theme before first render ────────────────
+    themeService.init();
 
     // ── Auth state ──────────────────────────────────────────────────────
     self.currentUser     = ko.observable(authService.getCurrentUser());
@@ -68,6 +71,7 @@ define(['knockout', 'services/authService'], function (ko, authService) {
           { id: 'approvalTemplates', label: 'Approval Templates', icon: '&#128196;' },
           { id: 'approvalMonitor',   label: 'Approval Monitor',   icon: '&#128065;' },
           { id: 'lookups',           label: 'Lookups',            icon: '&#128203;' },
+          { id: 'appearance',        label: 'Appearance',         icon: '&#127912;' },
           { id: 'systemSettings',    label: 'System Settings',    icon: '&#9881;'   },
           { id: 'auditLog',          label: 'Audit Log',          icon: '&#128218;' },
         ]
@@ -94,7 +98,8 @@ define(['knockout', 'services/authService'], function (ko, authService) {
         : (parts[0] || '?')[0].toUpperCase();
     });
 
-    self.unreadCount = ko.observable(authService.getUnreadCount());
+    self.unreadCount = ko.observable(0);
+    authService.getUnreadCount().then(function (n) { self.unreadCount(n); }).catch(function () {});
 
     // ── Internal route loader ───────────────────────────────────────────
     // Uses RequireJS text! plugin for HTML and AMD for the viewModel class.
@@ -153,7 +158,7 @@ define(['knockout', 'services/authService'], function (ko, authService) {
     // Called by login viewModel via window._jetApp.onLogin(user)
     self.onLogin = function (user) {
       self.currentUser(user);
-      self.unreadCount(authService.getUnreadCount());
+      authService.getUnreadCount().then(function (n) { self.unreadCount(n); }).catch(function () {});
       self._loadRoute('dashboard');
     };
 

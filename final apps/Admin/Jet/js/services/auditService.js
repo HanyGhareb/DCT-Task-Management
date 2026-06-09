@@ -1,63 +1,78 @@
 /**
- * auditService.js — audit log, login history, active sessions, approval instances
- * Production: GET /ords/prod/dct/audit_log/
+ * auditService.js — audit log (live ORDS) + platform stats
+ * ORDS: GET /audit/   — recent audit entries
+ *
+ * Approval instances, templates, sessions, and login history are not yet
+ * exposed via ORDS — those methods return empty arrays.
+ *
+ * All methods return Promises.
  */
-define(['mockData'], function (mockData) {
+define(['services/api'], function (api) {
   'use strict';
 
-  let auditLog     = JSON.parse(JSON.stringify(mockData.AUDIT_LOG));
-  let loginHistory = JSON.parse(JSON.stringify(mockData.LOGIN_HISTORY));
-  let sessions     = JSON.parse(JSON.stringify(mockData.ACTIVE_SESSIONS));
-  let approvals    = JSON.parse(JSON.stringify(mockData.APPROVAL_INSTANCES));
-  let templates    = JSON.parse(JSON.stringify(mockData.APPROVAL_TEMPLATES));
+  /* Map ORDS field names → shape used by VMs */
+  function normAudit(r) {
+    return {
+      auditId:    r.logId,
+      actionBy:   r.username,
+      actionType: r.action,
+      objectType: r.objectType,
+      objectId:   r.objectId,
+      status:     r.status,
+      error:      r.error,
+      loggedAt:   r.loggedAt,
+    };
+  }
 
   return {
-    // Audit log
+
+    /* ── Audit log — live ─────────────────────────────────────────────── */
+
     getAuditLog: function (filter) {
-      let data = auditLog.slice();
-      if (filter && filter.actionType) data = data.filter(a => a.actionType === filter.actionType);
-      if (filter && filter.objectType) data = data.filter(a => a.objectType === filter.objectType);
-      if (filter && filter.actionBy)   data = data.filter(a => a.actionBy.toLowerCase().includes(filter.actionBy.toLowerCase()));
-      return data.sort((a, b) => b.auditId - a.auditId);
+      return api.get('/audit/').then(function (r) {
+        var data = (r.items || []).map(normAudit);
+        if (filter && filter.actionType) {
+          data = data.filter(function (a) { return a.actionType === filter.actionType; });
+        }
+        if (filter && filter.objectType) {
+          data = data.filter(function (a) { return a.objectType === filter.objectType; });
+        }
+        if (filter && filter.actionBy) {
+          var q = filter.actionBy.toLowerCase();
+          data = data.filter(function (a) { return (a.actionBy || '').toLowerCase().includes(q); });
+        }
+        return data;
+      });
     },
 
-    // Login history
-    getLoginHistory: function () { return loginHistory.slice().sort((a, b) => b.histId - a.histId); },
+    /* ── Not in ORDS yet — return empty ──────────────────────────────── */
 
-    // Active sessions
-    getSessions: function () { return sessions; },
-    revokeSession: function (sessionId) {
-      const s = sessions.find(s => s.sessionId === sessionId);
-      if (s) s.status = 'REVOKED';
-    },
+    getLoginHistory:  function () { return Promise.resolve([]); },
+    getSessions:      function () { return Promise.resolve([]); },
+    revokeSession:    function () { return Promise.resolve(false); },
+    getApprovals:     function () { return Promise.resolve([]); },
+    getTemplates:     function () { return Promise.resolve([]); },
+    getTemplateById:  function () { return Promise.resolve(null); },
+    updateTemplate:   function () { return Promise.resolve(null); },
 
-    // Approval monitor
-    getApprovals: function (status) {
-      let data = approvals.slice();
-      if (status && status !== 'ALL') data = data.filter(a => a.overallStatus === status);
-      return data.sort((a, b) => b.instanceId - a.instanceId);
-    },
+    /* ── Platform stats — aggregate live API data ─────────────────────── */
 
-    // Approval templates
-    getTemplates: function () { return templates; },
-    getTemplateById: function (id) { return templates.find(t => t.templateId === Number(id)) || null; },
-    updateTemplate: function (id, data) {
-      const idx = templates.findIndex(t => t.templateId === Number(id));
-      if (idx !== -1) templates[idx] = Object.assign({}, templates[idx], data);
-      return templates[idx];
-    },
-
-    // Platform stats
     getPlatformStats: function () {
-      const mockData2 = mockData;
-      return {
-        totalUsers:    mockData2.USERS.length,
-        activeUsers:   mockData2.USERS.filter(u => u.isActive === 'Y').length,
-        totalRoles:    mockData2.ROLES.length,
-        activeModules: mockData2.MODULES.filter(m => m.isActive === 'Y').length,
-        pendingApprovals: approvals.filter(a => a.overallStatus === 'PENDING').length,
-        activeSessions: sessions.filter(s => s.status === 'ACTIVE').length,
-      };
+      return Promise.all([
+        api.get('/users/').then(function (r) { return r.items || []; }).catch(function () { return []; }),
+        api.get('/roles/').then(function (r) { return r.items || []; }).catch(function () { return []; }),
+        api.get('/modules/').then(function (r) { return r.items || []; }).catch(function () { return []; }),
+      ]).then(function (results) {
+        var users = results[0], roles = results[1], modules = results[2];
+        return {
+          totalUsers:       users.length,
+          activeUsers:      users.filter(function (u) { return u.isActive === 'Y'; }).length,
+          totalRoles:       roles.length,
+          activeModules:    modules.filter(function (m) { return m.isActive === 'Y'; }).length,
+          pendingApprovals: 0,
+          activeSessions:   0,
+        };
+      });
     },
   };
 });

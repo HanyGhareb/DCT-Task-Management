@@ -11,14 +11,11 @@ function (config, api, mockData) {
   var _nextId = { employee: 100, position: 100, assignment: 100, contract: 100, salary: 100, doc: 100 };
 
   function loadStore() {
-    try {
-      var raw = localStorage.getItem(STORE_KEY);
-      if (raw) return JSON.parse(raw);
-    } catch (e) {}
-    return {
+    var fresh = {
       employees:   JSON.parse(JSON.stringify(mockData.EMPLOYEES)),
       orgs:        JSON.parse(JSON.stringify(mockData.ORGS)),
       locations:   JSON.parse(JSON.stringify(mockData.LOCATIONS)),
+      grades:      JSON.parse(JSON.stringify(mockData.GRADES || [])),
       jobFamilies: JSON.parse(JSON.stringify(mockData.JOB_FAMILIES)),
       jobs:        JSON.parse(JSON.stringify(mockData.JOBS)),
       positions:   JSON.parse(JSON.stringify(mockData.POSITIONS)),
@@ -27,6 +24,27 @@ function (config, api, mockData) {
       salaries:    [],
       documents:   JSON.parse(JSON.stringify(mockData.DOCUMENTS)),
     };
+    try {
+      var raw = localStorage.getItem(STORE_KEY);
+      if (raw) {
+        var stored = JSON.parse(raw);
+        // Back-fill audit fields on cached locations that predate the audit columns
+        var auditFields = ['created_by','created_at','updated_by','updated_at'];
+        var seedMap = {};
+        fresh.locations.forEach(function (l) { seedMap[l.locationId] = l; });
+        if (stored.locations) {
+          stored.locations = stored.locations.map(function (l) {
+            var seed = seedMap[l.locationId] || {};
+            auditFields.forEach(function (f) {
+              if (!l[f] && seed[f]) l[f] = seed[f];
+            });
+            return l;
+          });
+        }
+        return stored;
+      }
+    } catch (e) {}
+    return fresh;
   }
   function saveStore(s) { localStorage.setItem(STORE_KEY, JSON.stringify(s)); }
 
@@ -38,6 +56,15 @@ function (config, api, mockData) {
       personId:        _norm(e.personId,        e.person_id),
       employeeNumber:  _norm(e.employeeNumber,   e.employee_number),
       fullNameEn:      _norm(e.fullNameEn,       e.full_name_en),
+      firstNameEn:     _norm(e.firstNameEn,      e.first_name_en),
+      lastNameEn:      _norm(e.lastNameEn,       e.last_name_en),
+      firstNameAr:     _norm(e.firstNameAr,      e.first_name_ar),
+      lastNameAr:      _norm(e.lastNameAr,       e.last_name_ar),
+      fullNameAr: (function () {
+        var fa = _norm(e.firstNameAr, e.first_name_ar);
+        var la = _norm(e.lastNameAr,  e.last_name_ar);
+        return ((fa || '') + ' ' + (la || '')).trim() || _norm(e.fullNameAr, e.full_name_ar) || '';
+      }()),
       email:           _norm(e.email,            e.email),
       mobile:          _norm(e.mobile,           e.mobile),
       gender:          _norm(e.gender,           e.gender),
@@ -65,6 +92,10 @@ function (config, api, mockData) {
       }()),
       basicSalary:     _norm(e.basicSalary,      e.basic_salary),
       salaryCurrency:  _norm(e.salaryCurrency,   e.salary_currency),
+      createdBy:       _norm(e.createdBy,        e.created_by),
+      createdAt:       _norm(e.createdAt,        e.created_at),
+      updatedBy:       _norm(e.updatedBy,        e.updated_by),
+      updatedAt:       _norm(e.updatedAt,        e.updated_at),
     };
   }
 
@@ -73,6 +104,7 @@ function (config, api, mockData) {
       positionId:       _norm(p.positionId,       p.position_id),
       positionCode:     _norm(p.positionCode,     p.position_code),
       positionNameEn:   _norm(p.positionNameEn,   p.position_name_en),
+      positionNameAr:   _norm(p.positionNameAr,   p.position_name_ar),
       jobId:            _norm(p.jobId,            p.job_id),
       jobNameEn:        _norm(p.jobNameEn,        p.job_name_en),
       jobFamily:        _norm(p.jobFamily,        p.job_family),
@@ -85,6 +117,10 @@ function (config, api, mockData) {
       vacancyCount:     _norm(p.vacancyCount,     p.vacancy_count),
       positionType:     _norm(p.positionType,     p.position_type),
       isActive:         _norm(p.isActive,         p.is_active),
+      createdBy:        _norm(p.createdBy,        p.created_by),
+      createdAt:        _norm(p.createdAt,        p.created_at),
+      updatedBy:        _norm(p.updatedBy,        p.updated_by),
+      updatedAt:        _norm(p.updatedAt,        p.updated_at),
     };
   }
 
@@ -122,6 +158,10 @@ function (config, api, mockData) {
       isActive:           _norm(j.isActive,           j.is_active),
       effectiveFrom:      _norm(j.effectiveFrom,      j.effective_from),
       effectiveTo:        _norm(j.effectiveTo,        j.effective_to),
+      createdBy:          _norm(j.createdBy,          j.created_by),
+      createdAt:          _norm(j.createdAt,          j.created_at),
+      updatedBy:          _norm(j.updatedBy,          j.updated_by),
+      updatedAt:          _norm(j.updatedAt,          j.updated_at),
     };
   }
 
@@ -153,6 +193,10 @@ function (config, api, mockData) {
       buildingName:   _norm(l.buildingName,   l.building_name),
       floorNo:        _norm(l.floorNo,        l.floor_no),
       isActive:       _norm(l.isActive,       l.is_active),
+      createdBy:      _norm(l.createdBy,      l.created_by),
+      createdAt:      _norm(l.createdAt,      l.created_at),
+      updatedBy:      _norm(l.updatedBy,      l.updated_by),
+      updatedAt:      _norm(l.updatedAt,      l.updated_at),
     };
   }
 
@@ -167,6 +211,11 @@ function (config, api, mockData) {
       salaryBandMax:  _norm(g.salaryBandMax,  g.salary_band_max),
       displayOrder:   _norm(g.displayOrder,   g.display_order),
       isActive:       _norm(g.isActive,       g.is_active),
+      headcount:      _norm(g.headcount,      g.headcount),
+      createdBy:      _norm(g.createdBy,      g.created_by),
+      createdAt:      _norm(g.createdAt,      g.created_at),
+      updatedBy:      _norm(g.updatedBy,      g.updated_by),
+      updatedAt:      _norm(g.updatedAt,      g.updated_at),
     };
   }
 
@@ -238,7 +287,7 @@ function (config, api, mockData) {
       filters = filters || {};
       if (config.apiBase) {
         var qs = '?';
-        if (filters.q)       qs += 'q='       + encodeURIComponent(filters.q)       + '&';
+        if (filters.q)       qs += 'search='  + encodeURIComponent(filters.q)       + '&';
         if (filters.orgId)   qs += 'org_id='  + filters.orgId  + '&';
         if (filters.grade)   qs += 'grade='   + filters.grade  + '&';
         if (filters.active)  qs += 'active='  + filters.active + '&';
@@ -441,17 +490,35 @@ function (config, api, mockData) {
     // ── Grades ────────────────────────────────────────────────────────
     getGrades: function () {
       if (config.apiBase) return api.get('/grades/').then(function (d) { return (d.items || []).map(_grade); });
-      return Promise.resolve([]);
+      var s = loadStore();
+      return Promise.resolve((s.grades || []).map(_grade));
     },
 
     createGrade: function (data) {
       if (config.apiBase) return api.post('/grades/', data);
-      return Promise.resolve(data);
+      var s = loadStore();
+      if (!s.grades) s.grades = [];
+      var now  = new Date().toISOString();
+      var user = (window._hrCurrentUser && window._hrCurrentUser.displayName) || 'System Administrator';
+      var newGrade = Object.assign({ isActive: 'Y', headcount: 0, created_by: user, created_at: now, updated_by: user, updated_at: now }, data);
+      s.grades.push(newGrade);
+      saveStore(s);
+      return Promise.resolve(_grade(newGrade));
     },
 
     updateGrade: function (gradeCode, data) {
       if (config.apiBase) return api.put('/grades/' + gradeCode, data);
-      return Promise.resolve(data);
+      var s = loadStore();
+      if (!s.grades) s.grades = [];
+      var idx = s.grades.findIndex(function (g) { return (g.gradeCode || g.grade_code) === gradeCode; });
+      if (idx >= 0) {
+        var now  = new Date().toISOString();
+        var user = (window._hrCurrentUser && window._hrCurrentUser.displayName) || 'System Administrator';
+        s.grades[idx] = Object.assign({}, s.grades[idx], data, { updated_by: user, updated_at: now });
+        saveStore(s);
+        return Promise.resolve(_grade(s.grades[idx]));
+      }
+      return Promise.reject({ message: 'Grade not found' });
     },
 
     // ── Locations ──────────────────────────────────────────────────────
@@ -463,7 +530,9 @@ function (config, api, mockData) {
     createLocation: function (data) {
       if (config.apiBase) return api.post('/locations/', data);
       var s = loadStore();
-      var newLoc = Object.assign({ locationId: Date.now(), isActive: 'Y' }, data);
+      var now = new Date().toISOString();
+      var user = (window._hrCurrentUser && window._hrCurrentUser.displayName) || 'System Administrator';
+      var newLoc = Object.assign({ locationId: Date.now(), isActive: 'Y', created_by: user, created_at: now, updated_by: user, updated_at: now }, data);
       s.locations.push(newLoc);
       saveStore(s);
       return Promise.resolve(_loc(newLoc));
@@ -473,7 +542,13 @@ function (config, api, mockData) {
       if (config.apiBase) return api.put('/locations/' + locationId, data);
       var s = loadStore();
       var idx = s.locations.findIndex(function (l) { return l.locationId === parseInt(locationId); });
-      if (idx >= 0) { s.locations[idx] = Object.assign({}, s.locations[idx], data); saveStore(s); return Promise.resolve(_loc(s.locations[idx])); }
+      if (idx >= 0) {
+        var now = new Date().toISOString();
+        var user = (window._hrCurrentUser && window._hrCurrentUser.displayName) || 'System Administrator';
+        s.locations[idx] = Object.assign({}, s.locations[idx], data, { updated_by: user, updated_at: now });
+        saveStore(s);
+        return Promise.resolve(_loc(s.locations[idx]));
+      }
       return Promise.reject({ message: 'Location not found' });
     },
 
@@ -484,16 +559,63 @@ function (config, api, mockData) {
       return Promise.resolve(s.assignments.filter(function (a) { return a.personId === parseInt(personId); }));
     },
 
+    createAssignment: function (data) {
+      if (config.apiBase) return api.post('/assignments/', data);
+      var s = loadStore();
+      var rec = Object.assign({ assignmentId: Date.now(), assignmentNumber: 'ASGN-MOCK-' + Date.now(), assignmentStatus: 'ACTIVE' }, data);
+      s.assignments.push(rec);
+      saveStore(s);
+      return Promise.resolve(rec);
+    },
+
+    endAssignment: function (id, data) {
+      if (config.apiBase) return api.put('/assignments/' + id + '/end/', data);
+      var s = loadStore();
+      var idx = s.assignments.findIndex(function (a) { return (a.assignmentId || a.assignment_id) === parseInt(id); });
+      if (idx >= 0) {
+        s.assignments[idx] = Object.assign({}, s.assignments[idx], { assignmentStatus: 'ENDED', end_date: data.end_date });
+        saveStore(s);
+        return Promise.resolve({});
+      }
+      return Promise.reject({ message: 'Assignment not found' });
+    },
+
     // ── Contracts ──────────────────────────────────────────────────────
     getContracts: function (personId) {
       if (config.apiBase) return api.get('/contracts/' + personId).then(function (d) { return d.items || []; });
       return Promise.resolve(loadStore().contracts.filter(function (c) { return c.personId === parseInt(personId); }));
     },
 
+    createContract: function (data) {
+      if (config.apiBase) return api.post('/contracts/', data);
+      var s = loadStore();
+      var rec = Object.assign({ contractId: Date.now(), contractStatus: 'ACTIVE' }, data);
+      s.contracts.push(rec);
+      saveStore(s);
+      return Promise.resolve(rec);
+    },
+
+    updateContract: function (id, data) {
+      if (config.apiBase) return api.put('/contracts/update/' + id, data);
+      var s = loadStore();
+      var idx = s.contracts.findIndex(function (c) { return (c.contractId || c.contract_id) === parseInt(id); });
+      if (idx >= 0) { s.contracts[idx] = Object.assign({}, s.contracts[idx], data); saveStore(s); return Promise.resolve({}); }
+      return Promise.reject({ message: 'Contract not found' });
+    },
+
     // ── Salary ────────────────────────────────────────────────────────
     getSalaryHistory: function (personId) {
       if (config.apiBase) return api.get('/salary/' + personId).then(function (d) { return d.items || []; });
       return Promise.resolve(loadStore().salaries.filter(function (s) { return s.personId === parseInt(personId); }));
+    },
+
+    addSalaryEntry: function (data) {
+      if (config.apiBase) return api.post('/salary/', data);
+      var s = loadStore();
+      var rec = Object.assign({ salaryId: Date.now() }, data);
+      s.salaries.push(rec);
+      saveStore(s);
+      return Promise.resolve(rec);
     },
 
     // ── Document Types ─────────────────────────────────────────────────
@@ -593,7 +715,50 @@ function (config, api, mockData) {
 
     getLookupValues: function (categoryCode) {
       if (config.apiBase) return api.get('/lookups/' + categoryCode).then(function (d) { return d.items || []; });
-      return Promise.resolve([]);
+      var mock = {
+        HR_GRADE_CATEGORY: [
+          { value_id: 50, value_code: 'SUPPORT',      value_name_en: 'Support',      display_order: 10 },
+          { value_id: 51, value_code: 'TECHNICAL',    value_name_en: 'Technical',    display_order: 20 },
+          { value_id: 52, value_code: 'PROFESSIONAL', value_name_en: 'Professional', display_order: 30 },
+          { value_id: 53, value_code: 'EXECUTIVE',    value_name_en: 'Executive',    display_order: 40 },
+        ],
+        HR_ASSIGNMENT_TYPE: [
+          { value_id: 1, value_code: 'PRIMARY',    value_name_en: 'Primary' },
+          { value_id: 2, value_code: 'ACTING',     value_name_en: 'Acting' },
+          { value_id: 3, value_code: 'SECONDMENT', value_name_en: 'Secondment' },
+          { value_id: 4, value_code: 'DUAL',       value_name_en: 'Dual Role' },
+        ],
+        HR_END_REASON: [
+          { value_id: 10, value_code: 'TRANSFER',        value_name_en: 'Transfer' },
+          { value_id: 11, value_code: 'PROMOTION',       value_name_en: 'Promotion' },
+          { value_id: 12, value_code: 'RESIGNATION',     value_name_en: 'Resignation' },
+          { value_id: 13, value_code: 'RETIREMENT',      value_name_en: 'Retirement' },
+          { value_id: 14, value_code: 'TERMINATION',     value_name_en: 'Termination' },
+          { value_id: 15, value_code: 'CONTRACT_END',    value_name_en: 'Contract End' },
+          { value_id: 16, value_code: 'RESTRUCTURING',   value_name_en: 'Restructuring' },
+        ],
+        HR_CONTRACT_TYPE: [
+          { value_id: 20, value_code: 'PERMANENT',  value_name_en: 'Permanent' },
+          { value_id: 21, value_code: 'FIXED_TERM', value_name_en: 'Fixed Term' },
+          { value_id: 22, value_code: 'SECONDMENT', value_name_en: 'Secondment' },
+          { value_id: 23, value_code: 'INTERNSHIP', value_name_en: 'Internship' },
+          { value_id: 24, value_code: 'CONSULTANT', value_name_en: 'Consultant' },
+        ],
+        HR_SALARY_REASON: [
+          { value_id: 30, value_code: 'HIRE',             value_name_en: 'Initial Hire' },
+          { value_id: 31, value_code: 'PROMOTION',        value_name_en: 'Promotion' },
+          { value_id: 32, value_code: 'ANNUAL_INCREMENT', value_name_en: 'Annual Increment' },
+          { value_id: 33, value_code: 'MARKET_ADJUSTMENT',value_name_en: 'Market Adjustment' },
+          { value_id: 34, value_code: 'ACTING_ALLOWANCE', value_name_en: 'Acting Allowance' },
+          { value_id: 35, value_code: 'CORRECTION',       value_name_en: 'Correction' },
+        ],
+      };
+      return Promise.resolve(mock[categoryCode] || []);
+    },
+
+    createLookupCategory: function (data) {
+      if (config.apiBase) return api.post('/lookups/category/', data);
+      return Promise.resolve(data);
     },
 
     createLookupValue: function (data) {

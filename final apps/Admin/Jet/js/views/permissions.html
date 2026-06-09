@@ -1,47 +1,90 @@
-<div class="page-wrap">
-  <div class="page-header-row">
-    <div class="page-header">
-      <div class="page-title">Permission Matrix</div>
-      <div class="page-subtitle">Role &times; Permission cross-reference. Check to grant, uncheck to revoke.</div>
+<div class="rm-page">
+
+  <!-- Page header -->
+  <div class="rm-page-head">
+    <div>
+      <h1 class="rm-title">Permission Matrix</h1>
+      <p class="rm-subtitle">Grant or revoke permissions per role &mdash; changes take effect on next login</p>
     </div>
-    <button class="btn btn-primary" data-bind="click: saveAll">&#10003; Save Matrix</button>
+    <button class="rm-btn-add" data-bind="click: saveAll, disable: loading()">
+      <!-- ko if: loading() -->
+      <span class="rm-spinner-sm"></span>
+      Loading&hellip;
+      <!-- /ko -->
+      <!-- ko ifnot: loading() -->
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+      Save Matrix
+      <!-- /ko -->
+    </button>
   </div>
 
+  <!-- Alerts -->
+  <!-- ko if: error() -->
+  <div class="rm-alert rm-alert--error" data-bind="text: error()"></div>
+  <!-- /ko -->
   <!-- ko if: savedMsg() -->
-  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: savedMsg()"></span></div>
+  <div class="rm-alert rm-alert--success" data-bind="text: savedMsg()"></div>
   <!-- /ko -->
 
-  <!-- ko foreach: modules -->
-  <div class="card" style="margin-bottom:16px;overflow-x:auto">
-    <div class="section-heading" style="margin-top:0" data-bind="text: $data"></div>
-    <table class="perm-matrix">
-      <thead>
-        <tr>
-          <th style="text-align:left;min-width:180px">Permission</th>
-          <!-- ko foreach: $root.roles -->
-          <th style="min-width:90px;font-size:10px" data-bind="text: roleCode"></th>
-          <!-- /ko -->
-        </tr>
-      </thead>
-      <tbody>
-        <!-- ko foreach: $root.getPermsByModule($data) -->
-        <tr>
-          <th>
-            <div style="font-weight:600" data-bind="text: permName"></div>
-            <div style="font-weight:400;color:#aaa;font-size:10px" data-bind="text: permCode"></div>
-          </th>
-          <!-- ko foreach: $root.roles -->
-          <td>
-            <input type="checkbox"
-                   data-bind="checked: $root.hasPerm($parent, $data),
-                              click: function() { $root.togglePerm($parent, $data); return true; }"
-                   style="width:16px;height:16px;accent-color:#C74634;cursor:pointer">
-          </td>
-          <!-- /ko -->
-        </tr>
-        <!-- /ko -->
-      </tbody>
-    </table>
+  <!-- Loading state -->
+  <!-- ko if: loading() -->
+  <div class="rm-matrix-loading">
+    <div class="rm-spinner"></div>
+    <span>Building permission matrix&hellip;</span>
   </div>
   <!-- /ko -->
+
+  <!-- Matrix sections, one per module -->
+  <!-- ko ifnot: loading() -->
+  <!-- ko foreach: modules() -->
+  <div class="rm-matrix-section">
+    <div class="rm-matrix-module" data-bind="text: $data"></div>
+    <div class="rm-matrix-scroll">
+      <table class="rm-matrix">
+        <thead>
+          <tr>
+            <th class="rm-matrix-th-perm">Permission</th>
+            <!-- ko foreach: $root.roles() -->
+            <th class="rm-matrix-th-role">
+              <div class="rm-role-col-head">
+                <span class="rm-role-col-code" data-bind="text: roleCode"></span>
+                <span class="rm-role-col-name" data-bind="text: roleName"></span>
+              </div>
+            </th>
+            <!-- /ko -->
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: $root.getPermsByModule($data) -->
+          <tr class="rm-matrix-row">
+            <td class="rm-matrix-perm-cell">
+              <div class="rm-perm-name" data-bind="text: permName"></div>
+              <code class="rm-perm-code" data-bind="text: permCode"></code>
+            </td>
+            <!-- ko foreach: $root.roles() -->
+            <td class="rm-matrix-toggle-cell">
+              <div class="rm-toggle-wrap"
+                   data-bind="click: function() { $root.togglePerm($parent, $data); },
+                              css: { 'rm-toggle--on': $root.hasPerm($parent, $data) }">
+                <span class="rm-toggle-dot"></span>
+              </div>
+            </td>
+            <!-- /ko -->
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- Empty state if no modules loaded -->
+  <!-- ko if: modules().length === 0 -->
+  <div class="rm-empty">
+    <div class="rm-empty-icon">&#8856;</div>
+    <div>No permissions found</div>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
 </div>

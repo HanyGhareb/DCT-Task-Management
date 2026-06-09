@@ -2,23 +2,41 @@ define(['knockout', 'services/roleService'], function (ko, roleService) {
   'use strict';
 
   function PermissionsViewModel() {
-    const self = this;
+    var self = this;
 
-    self.roles       = roleService.getAll();
-    self.permissions = roleService.getPermissions();
-    self.matrix      = ko.observableArray(roleService.getPermissionMatrix());
-    self.savedMsg    = ko.observable('');
+    self.roles    = ko.observableArray([]);
+    self.modules  = ko.observableArray([]);
+    self.matrix   = ko.observableArray([]);
+    self.loading  = ko.observable(true);
+    self.savedMsg = ko.observable('');
+    self.error    = ko.observable('');
 
-    // Group permissions by module for display
-    const modules = [...new Set(self.permissions.map(p => p.module))];
-    self.modules = modules;
+    function loadData() {
+      self.loading(true);
+      self.error('');
+      roleService.getPermissionMatrix()
+        .then(function (result) {
+          self.roles(result.roles);
+          self.matrix(result.matrix);
+          var seen = {};
+          var mods = [];
+          result.matrix.forEach(function (row) {
+            if (row.module && !seen[row.module]) { seen[row.module] = true; mods.push(row.module); }
+          });
+          self.modules(mods);
+        })
+        .catch(function (err) {
+          self.error((err && err.message) || 'Failed to load permission matrix.');
+        })
+        .then(function () { self.loading(false); });
+    }
 
     self.getPermsByModule = function (mod) {
-      return self.matrix().filter(row => row.module === mod);
+      return self.matrix().filter(function (row) { return row.module === mod; });
     };
 
     self.togglePerm = function (row, role) {
-      const key = 'role_' + role.roleId;
+      var key = 'role_' + role.roleId;
       row[key] = !row[key];
       self.matrix.notifySubscribers(self.matrix());
     };
@@ -28,15 +46,24 @@ define(['knockout', 'services/roleService'], function (ko, roleService) {
     };
 
     self.saveAll = function () {
-      self.roles.forEach(role => {
-        const permIds = self.matrix()
-          .filter(row => row['role_' + role.roleId])
-          .map(row => row.permId);
-        roleService.setRolePermissions(role.roleId, permIds);
+      self.savedMsg('');
+      var saves = self.roles().map(function (role) {
+        var permIds = self.matrix()
+          .filter(function (row) { return row['role_' + role.roleId]; })
+          .map(function (row) { return row.permId; });
+        return roleService.setRolePermissions(role.roleId, permIds);
       });
-      self.savedMsg('Permission matrix saved!');
-      setTimeout(() => self.savedMsg(''), 3000);
+      Promise.all(saves)
+        .then(function () {
+          self.savedMsg('Permission matrix saved!');
+          setTimeout(function () { self.savedMsg(''); }, 3000);
+        })
+        .catch(function (err) {
+          self.savedMsg('Save failed: ' + ((err && err.message) || 'Unknown error'));
+        });
     };
+
+    loadData();
   }
 
   return PermissionsViewModel;

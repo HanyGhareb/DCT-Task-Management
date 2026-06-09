@@ -41,7 +41,7 @@ CREATE OR REPLACE PACKAGE prod.dct_rest AS
 
     -- Reads Bearer token from Authorization header, validates against
     -- DCT_SESSIONS + DCT_USERS.  Returns username on success, NULL on failure.
-    FUNCTION  validate_session RETURN VARCHAR2;
+    FUNCTION  validate_session RETURN VARCHAR2;  -- checks AUTHORIZATION CGI env (ADB ORDS uses no HTTP_ prefix)
 
     -- Write CORS + JSON content-type headers (200 OK implied)
     PROCEDURE json_header;
@@ -62,7 +62,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
         l_token    VARCHAR2(200);
         l_username VARCHAR2(100);
     BEGIN
-        l_hdr := OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION');
+        -- ADB managed ORDS uses 'AUTHORIZATION' (no HTTP_ prefix); fall back to HTTP_ for on-prem
+        l_hdr := OWA_UTIL.get_cgi_env('AUTHORIZATION');
+        IF l_hdr IS NULL THEN
+            l_hdr := OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION');
+        END IF;
         IF l_hdr LIKE 'Bearer %' THEN
             l_token := TRIM(SUBSTR(l_hdr, 8));
         END IF;

@@ -1,200 +1,179 @@
-﻿# DCT Task Management — CLAUDE.md
+# CLAUDE.md
+
+This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
 
 ## Project Overview
 
-**i-Finance Task Management** is a weekly task management system for the Finance Division of a government organization. It supports one Finance Director and five Section Managers across five finance sections.
+**i-Finance** is a suite of Oracle APEX + Oracle JET SPA applications for the Finance Division of a UAE government organisation. The platform runs on Oracle Autonomous Database (ADB) 23ai/26ai in OCI.
 
-The frontend is pure HTML/CSS/Vanilla JS with no build tools. It currently runs against mock data stored in `localStorage` and is designed to be migrated to an Oracle APEX backend.
+**App 200 (Admin)** is the central identity provider. All other module apps authenticate through it.
 
 ---
 
-## Architecture
+## Repository Layout
 
 ```
-apps/
-  ifinance-v2/              ← App 200 — new central auth/admin platform
-    frontend/
-      index.html            ← Login / entry point
-      pages/                ← manager-dashboard.html, director-dashboard.html
-      js/                   ← auth.js, data.js, utils.js, manager.js, director.js, charts.js
-      css/                  ← main.css, components.css, login.css, manager.css, director.css
-    db/
-      v1/                   ← Original Oracle 23ai schema
-      v2/                   ← Sprint 1-2 install scripts (install.sql + numbered steps)
-  main/                     ← f100 i-Finance Hub
-  petty-cash/               ← f101
-  hr/                       ← f102
-  credit-cards/             ← f103 + f911
-  prepaid-cards/            ← f104
-  fund-management/          ← f105
-  employee-self-service/    ← f106
-  manual-pr/                ← f108
-  cwip-payment-ex/          ← f109
-  budget-allocation/        ← f110
-  payment-requests/         ← f113
-  manager-checks/           ← f114
-  budget-planning/          ← f115
-  template/                 ← f116
-  documents/                ← f117
-  accounts-receivable/      ← f118
-  ucm/                      ← f119
-  demand-planning/          ← f124
-  bank-guarantee/           ← f127
-  cwip-payments/            ← f130
-  cwip-change-mgmt/         ← f142
-  smd-form/                 ← f166 + f313
-  freelancers/              ← f805
-  duty-travel/              ← f810
-  hrss/                     ← f901
-  budget-transfer/          ← f903
-  cwip-dev/                 ← f904
-  ifinance-ex/              ← f910
-  backup/                   ← f9900
-docs/                       ← Analysis, proposals, project plans, md files (incl. APEX_SETUP.md)
-myDoc/                      ← Wallet, wallet connection config
+final apps/          ← ALL live production code lives here
+  Admin/Jet/         ← App 200 — JET SPA (auth, users, roles, settings)
+  PC/Jet/            ← App 201 — Petty Cash JET SPA
+  DT/Jet/            ← App 204 — Duty Travel JET SPA
+  HR/Jet/            ← App 205 — HR JET SPA
+  FL/Jet/            ← Freelancers JET SPA
+  CC/Jet/            ← Credit Cards JET SPA
+  SHARED_JET_ARCHITECTURE.md   ← session contract, module checklist
+  SHARED_APEX_ARCHITECTURE.md  ← APEX auth scheme, app items, LOVs
+  DT/STATUS.md       ← per-module status tracking (replicated per module)
+
+db/v2/               ← All DCT_* DDL, packages, ORDS setup (source of truth)
+  install.sql        ← master script: runs 01→12 in order
+  01_dct_ddl.sql     ← 24 DCT_* tables
+  03_dct_auth_pkg.sql← DCT_AUTH package
+  11_dct_ords.sql    ← all ORDS module definitions (Admin /dct/ path)
+  12_dct_master_data.sql ← reference tables (grades, countries, GL codes…)
+
+apps/ifinance-v2/    ← LEGACY: vanilla JS task management prototype (localStorage only)
+                       Superseded by final apps/ — do not add features here
+
+docs/                ← proposals, APEX setup guides, analysis
+myDoc/               ← Oracle Wallet + tnsnames for ADB connection
 ```
 
-**Pattern:** MVC-like. `manager.js` and `director.js` are controllers that call `DataStore` for data and `Charts` for rendering. No framework — everything is object literals or plain functions on `window`.
+---
+
+## Running the JET SPA Locally
+
+Every JET app has `dev-proxy.py` in its root. It serves static files on port 8080 and proxies `/ords/` requests to ADB (adds CORS headers).
+
+```bash
+# From final apps/Admin/Jet/
+python dev-proxy.py
+# Open http://localhost:8080
+```
+
+The Admin app is the only one that needs to run for full auth. Module apps redirect to `../Admin/Jet/index.html` when no session is found.
+
+Toggle between mock (localStorage) and live ORDS in `js/services/config.js`:
+```js
+// apiBase: null,            // mock mode — no network calls
+apiBase: '/ords/admin/dct',  // live via dev-proxy
+```
 
 ---
 
-## Tech Stack
+## Database Connection
 
-| Layer | Technology |
+Use SQLcl at `C:\claude\tools\sqlcl\sqlcl\bin\sql.exe`.
+
+```powershell
+sql -name prod_mcp
+```
+
+**Always use SQLcl for DB scripts — never the MCP `run-sql` tool**, which silently swallows errors.
+
+All packages and objects must be created in PROD schema. When running from an ADMIN session prefix with schema:
+```sql
+CREATE OR REPLACE PACKAGE prod.package_name AS ...
+```
+
+Add `SET DEFINE OFF` at the top of every seed script — `&` in string literals triggers a substitution variable prompt that hangs SQLcl.
+
+---
+
+## JET SPA Architecture
+
+All JET apps share the same pattern. Full contract is in `final apps/SHARED_JET_ARCHITECTURE.md`. Key points:
+
+**Custom router — no ojs/* CDN imports.** `main.js` wires a `ko.bindingHandlers.module` that swaps view HTML + ViewModel into a container element. Never import `ojs/*` paths in `define([])` — they 404 on the CDN config used here.
+
+**All services return Promises.** VMs initialise observables empty (`ko.observableArray([])`) then populate in `.then()`. Never store a Promise directly in a `ko.observableArray()`.
+
+**Session key** is always `'ifinance_jet_session'` in every app. Module apps only read it; only Admin JET writes it on login/logout.
+
+**`api.js`** injects `Authorization: Bearer <token>` on every request and auto-navigates to `login` on 401.
+
+**KO binding patterns in views:**
+- Use `<!-- ko if: --> / <!-- /ko -->` and `data-bind="text: ..."` — the existing codebase uses raw KO, not JET's `<oj-if>` / `<oj-bind-text>`. The IDE shows advisory warnings; ignore them.
+- Never wrap KO-bound `<input>` in `<label>` — causes double-toggle. Use `<div>` + `pointer-events:none` on the input.
+- Use `$root.method()` (not `$parent`) when calling VM methods inside nested `foreach`.
+- Never call `ko.cleanNode(element)` on an element's own binding — only clean child nodes.
+
+**Services are ORDS-only.** `mockData.js` is present in each module but not imported by any service. The `config.apiBase` toggle switches between mock (null) and live ORDS (string).
+
+---
+
+## APEX Module Architecture
+
+Full checklist in `final apps/SHARED_APEX_ARCHITECTURE.md`. Key rules:
+
+- **Build pages in APEX Builder (24.2) first**, then export via `apex_export.get_application`. Never hand-author page SQL scripts.
+- Every new module app subscribes to App 200's `DCT Auth` scheme, standard app items, and common LOVs — never create standalone copies.
+- `SET_APP_ITEMS` (On New Session) is the standard process body that populates `APP_USER_ID`, `APP_ORG_ID`, `APP_IS_ADMIN`, etc.
+
+---
+
+## ORDS on ADB — Critical Rules
+
+**Module path:** All ORDS modules must be registered under ADMIN schema at `/ords/admin/<module>/`. `ORDS.ENABLE_SCHEMA('PROD')` does not make `/ords/prod/...` routable on ADB managed ORDS.
+
+**Authorization header:** ADB managed ORDS passes the Bearer token under CGI env key `'AUTHORIZATION'` (no `HTTP_` prefix). `OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION')` returns NULL on ADB. `DCT_REST.VALIDATE_SESSION` already handles this with a fallback — do not regress it.
+
+**Synonyms:** ORDS handlers execute as ADMIN. Every PROD object referenced in handler PL/SQL needs an ADMIN synonym:
+```sql
+CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
+```
+
+**Handler pattern:** Use `q'[...]'` for string literals containing special characters. Call `dct_rest.validate_session(:body)` at the top of every protected handler. Return JSON via `APEX_JSON` package.
+
+---
+
+## Database Layer
+
+**Key packages in PROD schema:**
+- `DCT_AUTH` — authenticate, validate_session, has_role, has_permission, open/close session
+- `DCT_REST` — validate_session (reads Authorization header), parse_body, err()
+- `DCT_NOTIFY` — send, mark_read, get_count, purge
+
+**Non-obvious column names (bitten us before):**
+| Table | Gotcha |
 |---|---|
-| UI | HTML5, CSS3 (Grid/Flexbox, custom properties) |
-| Logic | Vanilla JavaScript ES6+ |
-| Charts | Chart.js (CDN) |
-| Icons | Font Awesome 6.5.0 (CDN) |
-| Fonts | Google Fonts — Inter |
-| Storage (dev) | `localStorage` |
-| Database (prod) | Oracle Database 23ai |
-| Backend (planned) | Oracle APEX / REST API |
-| Auth (planned) | OCI IAM |
+| `DCT_USER_ROLES` | date column is `end_date`, not `valid_to` |
+| `DCT_APPROVAL_INSTANCES` | status column is `overall_status`; join steps via `template_id + current_step_seq` |
+| `DCT_LOOKUP_VALUES` | columns are `value_code` / `value_name_en` / `display_order` |
+| `DCT_GL_CODE_COMBINATIONS` | no `cc_concat_segments` column; `cc_code` is a virtual column — concatenate 9 segment codes manually |
+| `DCT_AUTH.HAS_ROLE` | takes `VARCHAR2` username, returns `BOOLEAN` (not NUMBER) |
 
-No `package.json`, no bundler, no transpilation. Open `index.html` directly in a browser.
+**INSERT ALL + IDENTITY columns:** Raises ORA-00001. Use individual `INSERT INTO` per row instead.
+
+**Shared tables used across modules:** `DCT_EMPLOYEES`, `DCT_DATA_ACCESS_ASSIGNMENT`, `DCT_LOOKUP_VALUES`, `DCT_GL_CODE_COMBINATIONS`. See `db/v2/12_dct_master_data.sql` for reference table details (countries, grades, currencies, banks, document types).
 
 ---
 
-## Users & Roles
+## Module Status
 
-Two roles exist: `DIRECTOR` and `MANAGER`.
-
-| Role | User | Section |
-|---|---|---|
-| Director | Hashem Al Kabbi | Finance Division |
-| Manager | Naser Mohamed Al Khaja | Finance Operations |
-| Manager | Ayesha Abdul Kareem Ameri | Payables Operations |
-| Manager | Shaikha Ghanem Al Ameri | Financial Planning & Budgeting |
-| Manager | Shaikha Ahmed Al Suwaidi | Revenue Assurance |
-| Manager | Noora Saeed Al Ali | Receivables Operations |
-
-Login is handled by `auth.js`. Quick-login buttons on the login page seed a session in `localStorage`. Role determines which dashboard the user is redirected to.
+| Module | DB + ORDS | JET SPA | APEX Pages |
+|--------|-----------|---------|------------|
+| Admin (App 200) | ✅ Complete | ✅ Live ORDS | ✅ Users/Roles built |
+| Petty Cash (App 201) | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
+| Duty Travel (App 204) | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
+| HR (App 205) | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
+| Freelancers | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
 
 ---
 
-## Data Model (JavaScript)
+## Available Skills
 
-Defined in `js/data.js`. `DataStore` reads/writes `localStorage`.
-
-**Task fields:** `id`, `title`, `description`, `category`, `status`, `priority`, `startDate`, `dueDate`, `completionPercent`, `nextAction`, `nextActionDate`, `assignedTo` (user id), `weekNumber`, `year`, `attachments[]`, `tags[]`, `notes`, `createdAt`, `updatedAt`
-
-**Task statuses:** `NOT_STARTED`, `IN_PROGRESS`, `COMPLETED`, `DELAYED`, `BLOCKED`
-
-**Priorities:** `HIGH`, `MEDIUM`, `LOW`
-
-**Categories (13):** Budget Review, Financial Report, Vendor Payment, Audit & Compliance, Treasury Management, Cash Flow Analysis, Financial Forecast, Meeting & Communication, System & Process, Payroll Processing, Reconciliation, Risk Assessment, Other
-
-**Auto-sync rule:** Setting `completionPercent` to 0 → `NOT_STARTED`; 100 → `COMPLETED`. Status changes to `IN_PROGRESS` when progress is 1–99.
-
----
-
-## Key Behaviors
-
-- **Week navigation:** Both dashboards use ISO week numbers (`utils.js`). Users can browse historical weeks. Current week is the default.
-- **EOW alert:** A banner appears on the last working day of the week to remind managers of the deadline.
-- **6-week trend:** Charts show completion rates for the past 6 weeks.
-- **Director drill-down:** Clicking a KPI card or manager card opens a modal filtered to that manager's tasks.
-- **File attachments:** Drag-and-drop, max 2 MB each, stored as base64 in `localStorage` for now. DB schema uses BLOB.
-- **Toast/Confirm:** `Toast` and `Confirm` are global helpers for notifications and destructive-action dialogs.
-
----
-
-## Database (Oracle 23ai)
-
-Schema is in `db/v1/01_schema_ddl.sql`. Tables:
-
-- `roles` — app roles
-- `users` — user records (no passwords; auth via OCI IAM)
-- `user_roles` — time-bounded role assignments
-- `tasks` — weekly tasks
-- `task_attachments` — file BLOBs
-- `task_tags` — free-form tags
-
-Views: `v_user_active_roles`, `v_task_weekly_stats`, `v_manager_overview`
-
-All tables have `created_by/created_at/updated_by/updated_at` audit columns. `updated_at` is maintained by triggers.
-
----
-
-## i-Finance APEX Ecosystem
-
-The organization runs 31 Oracle APEX applications under the i-Finance platform. Full analysis is in `ifinance-analysis.md`.
-
-**Application groups:**
-
-| Group | Apps |
-|---|---|
-| Core Platform | f100 (i-finance hub), f910 (i-finance-EX), f9900 (backup), f116 (template) |
-| HR & Employee | f102 (HR), f106 (Employee Self Service), f810 (Duty Hub), f901 (HRSS), f101 (Petty Cash), f805 (Freelancers) |
-| Budget & Finance | f110 (Budget Allocation), f115 (Budget Planning), f105 (Fund Management), f903 (Budget Transfer) |
-| Payments & Procurement | f113 (Payment Requests), f108 (Manual PR), f114 (Manager Checks), f127 (Bank Guarantee), f103/f911 (Credit Cards), f104 (Prepaid Cards), f118 (AR) |
-| CWIP | f130 (CWIP Payments Mgmt), f904 (CWIP Dev), f109 (CWIP Payment-Ex), f142 (CWIP Change Mgmt) |
-| SCM & Procurement | f124 (Demand Planning), f166 (SMD Form), f313 (SMD Form-Test) |
-| Content & Utility | f117 (Documents), f119 (UCM) |
-
-**Key shared database objects (used across multiple apps):**
-- `dct_employees` — employee directory, used by nearly all apps
-- `employees_v` — employee view, used by most apps
-- `dct_data_access_assignment` — access control, used by ~12 apps
-- `dct_employees_signatures` — signatures, used by 6 apps
-- `dct_lookup_values` — lookup reference data, used by 5 apps
-
-**APEX export location:** `apex-exports/` (31 zip files, f100–f9900)
-
-**V2 Master App design proposal:** `docs/ifinance-v2-proposal.md` — architecture, schema (DCT_* tables), PL/SQL packages, page inventory, security model, and build sequence for the new central auth/admin app (App ID 200).
-
-**V2 Sprint 1 — Database files** (`db/v2/`):
-
-| File | Contents |
-|---|---|
-| `install.sql` | Master install script — runs all 5 steps in order |
-| `01_dct_ddl.sql` | All 24 `DCT_*` tables, constraints, indexes, updated_at triggers |
-| `02_dct_views.sql` | 6 utility views + 2 backward-compatibility views (`dct_data_access_assignment`, `roles`) |
-| `03_dct_auth_pkg.sql` | `DCT_AUTH` package — authenticate, post_login, has_role, has_permission, session management |
-| `04_dct_seed.sql` | 26 modules, 9 roles, 22 permissions, role-permission maps, system settings, lookup values, Finance Division org hierarchy, default ADMIN user |
-| `05_apex_200_setup.sql` | APEX App 200 page-level setup |
-| `05b_apex_200_shared_components.sql` | Auth scheme, 14 app items, 7 authorization schemes, 2 global processes |
-| `06_dct_notify_pkg.sql` | `DCT_NOTIFY` package — notification count, send, mark read, purge |
-| `APEX_SETUP.md` | Step-by-step APEX App 200 configuration: auth scheme, app items, authorization schemes, navigation, page queries |
-
----
-
-## Development Notes
-
-- **No build step.** Open `frontend/index.html` in a browser or serve via any static file server.
-- **Reseed data:** Clear `localStorage` in DevTools to reset to fresh mock data.
-- **Quick login:** Use the preset buttons on the login page to switch between roles.
-- **Chart.js & Font Awesome** are loaded from CDN — internet access required in dev.
-- **Oracle APEX migration** is tracked in `docs/i-Finance-APEX-Project-Plan.html`. The JS controllers are designed so data calls can be swapped from `DataStore` to REST API calls without restructuring the controllers.
-- **APEX applications analysis** is in `docs/ifinance-analysis.md` — covers all 31 apps, their functions, pages, and database objects.
+Two skills are configured in `skills-lock.json`:
+- `/apex` — Oracle APEX 24.2 page creation workflow
+- `/frontend-design` — production-grade frontend design (distinctive aesthetics, avoids generic AI-slop styling)
 
 ---
 
 ## Conventions
 
-- Global controller objects: `Manager`, `Director`, `Auth`, `DataStore`, `Charts`, `Utils`
-- CSS custom properties defined in `frontend/css/main.css` under `:root`
-- Status/priority values are uppercase string constants — match them exactly when filtering
-- ISO week calculation: use `Utils.getISOWeek()` and `Utils.getWeekDates()` — do not reimplement
-- Avoid introducing `npm`, build tools, or frameworks unless the user explicitly requests it
+**CSS:** `final apps/Admin/Jet/css/app.css` is the master stylesheet. All module apps clone it and change only the brand colour variable. The `rm-*` / `re-*` Vault dark-theme classes in Admin's CSS apply only to the roles/permissions pages.
+
+**ORDS URL:** `https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com` — always get from OCI Console, never guess from tnsnames (JDBC and HTTPS use different hostnames on ADB).
+
+**Legacy app conventions** (apps/ifinance-v2/ only): Global controller objects `Manager`, `Director`, `Auth`, `DataStore`, `Charts`, `Utils`. ISO week: use `Utils.getISOWeek()` / `Utils.getWeekDates()`. Status/priority values are uppercase string constants.

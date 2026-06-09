@@ -191,6 +191,9 @@ SELECT
     n.nationality_en,
     -- Marital status
     ms.value_name_en                                AS marital_status,
+    -- Job title (employee-level, independent of assignment)
+    e.job_title_en,
+    e.job_title_ar,
     -- Primary org
     e.org_id,
     o.org_name_en,

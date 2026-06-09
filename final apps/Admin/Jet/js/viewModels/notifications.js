@@ -2,27 +2,37 @@ define(['knockout', 'services/notificationService'], function (ko, notifService)
   'use strict';
 
   function NotificationsViewModel() {
-    const self = this;
+    var self = this;
 
-    self.filter = ko.observable('ALL');
-    self.allNotifications = ko.observableArray(notifService.getAll());
+    self.loading          = ko.observable(true);
+    self.filter           = ko.observable('ALL');
+    self.allNotifications = ko.observableArray([]);
 
-    self.filteredNotifications = ko.computed(() => {
-      const f = self.filter();
-      if (f === 'UNREAD') return self.allNotifications().filter(n => n.isRead === 'N');
+    function loadNotifications() {
+      notifService.getAll().then(function (items) {
+        self.allNotifications(items);
+        self.loading(false);
+      }).catch(function () { self.loading(false); });
+    }
+    loadNotifications();
+
+    self.filteredNotifications = ko.computed(function () {
+      if (self.filter() === 'UNREAD') {
+        return self.allNotifications().filter(function (n) { return n.isRead === 'N'; });
+      }
       return self.allNotifications();
     });
 
-    self.unreadCount = ko.computed(() => self.allNotifications().filter(n => n.isRead === 'N').length);
+    self.unreadCount = ko.computed(function () {
+      return self.allNotifications().filter(function (n) { return n.isRead === 'N'; }).length;
+    });
 
     self.markRead = function (notif) {
-      notifService.markRead(notif.notifId);
-      self.allNotifications(notifService.getAll());
+      notifService.markRead(notif.notifId).then(function () { loadNotifications(); });
     };
 
     self.markAllRead = function () {
-      notifService.markAllRead();
-      self.allNotifications(notifService.getAll());
+      notifService.markAllRead(self.allNotifications()).then(function () { loadNotifications(); });
     };
 
     self.formatTime = notifService.formatTime.bind(notifService);

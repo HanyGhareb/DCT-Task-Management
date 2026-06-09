@@ -40,7 +40,19 @@ function (ko, authService, hrService) {
       });
     });
 
-    self.select = function (loc) { self.selected(loc); };
+    self.auditExpanded = ko.observable(false);
+    self.toggleAudit   = function () { self.auditExpanded(!self.auditExpanded()); };
+
+    self.fmtDateTime = function (dt) {
+      if (!dt) return '—';
+      var d = new Date(dt);
+      if (isNaN(d.getTime())) return dt;
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear()
+           + ' · ' + String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0');
+    };
+
+    self.select = function (loc) { self.selected(loc); self.auditExpanded(false); };
 
     self.typeClass = function (t) {
       var map = { HQ: 'badge--blue', BRANCH: 'badge--info', REMOTE: 'badge--pending', FIELD: 'badge--warning', DATA_CENTER: 'badge--settled' };

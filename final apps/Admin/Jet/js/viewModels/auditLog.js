@@ -2,45 +2,52 @@ define(['knockout', 'services/auditService'], function (ko, auditService) {
   'use strict';
 
   function AuditLogViewModel() {
-    const self = this;
+    var self = this;
 
-    self.activeTab = ko.observable('audit');
+    self.activeTab    = ko.observable('audit');
+    self.searchBy     = ko.observable('');
+    self.loading      = ko.observable(true);
+    self.auditEntries = ko.observableArray([]);
 
-    // Audit log tab
-    self.searchBy   = ko.observable('');
-    self.auditEntries = ko.observableArray(auditService.getAuditLog());
+    function loadAudit() {
+      self.loading(true);
+      auditService.getAuditLog().then(function (data) {
+        self.auditEntries(data);
+        self.loading(false);
+      }).catch(function () { self.loading(false); });
+    }
+    loadAudit();
 
-    self.filteredAudit = ko.computed(() => {
-      const q = self.searchBy().toLowerCase();
+    self.filteredAudit = ko.computed(function () {
+      var q = self.searchBy().toLowerCase();
       if (!q) return self.auditEntries();
-      return self.auditEntries().filter(a =>
-        a.actionBy.toLowerCase().includes(q) ||
-        a.actionType.toLowerCase().includes(q) ||
-        a.objectType.toLowerCase().includes(q)
-      );
+      return self.auditEntries().filter(function (a) {
+        return (a.actionBy   || '').toLowerCase().includes(q) ||
+               (a.actionType || '').toLowerCase().includes(q) ||
+               (a.objectType || '').toLowerCase().includes(q);
+      });
     });
 
-    self.refreshAudit = function () { self.auditEntries(auditService.getAuditLog()); };
+    self.refreshAudit = function () { loadAudit(); };
 
-    // Login history tab
-    self.loginHistory = ko.observableArray(auditService.getLoginHistory());
-
-    // Sessions tab
-    self.sessions = ko.observableArray(auditService.getSessions());
-    self.revokeSession = function (s) {
-      if (confirm('Revoke session for ' + s.username + '?')) {
-        auditService.revokeSession(s.sessionId);
-        self.sessions(auditService.getSessions());
-      }
-    };
+    /* Login history & sessions are not in ORDS yet */
+    self.loginHistory = ko.observableArray([]);
+    self.sessions     = ko.observableArray([]);
+    self.revokeSession = function () {};
 
     self.formatDate = function (iso) {
       if (!iso) return '—';
-      return new Date(iso).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      return new Date(iso).toLocaleString('en-GB', {
+        day: 'numeric', month: 'short', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
+      });
     };
 
     self.getActionBadgeClass = function (action) {
-      return { CREATE: 'badge--active', UPDATE: 'badge--info', DELETE: 'badge--inactive', LOGIN: 'badge--admin' }[action] || 'badge--info';
+      return {
+        CREATE: 'badge--active', UPDATE: 'badge--info',
+        DELETE: 'badge--inactive', LOGIN: 'badge--admin',
+      }[action] || 'badge--info';
     };
   }
 

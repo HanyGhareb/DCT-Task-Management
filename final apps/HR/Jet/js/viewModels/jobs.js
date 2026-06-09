@@ -17,10 +17,15 @@ function (ko, authService, hrService) {
     self.selected  = ko.observable(null);
 
     // Modal
-    self.showModal = ko.observable(false);
-    self.editingId = ko.observable(null);
-    self.saving    = ko.observable(false);
-    self.formError = ko.observable('');
+    self.showModal      = ko.observable(false);
+    self.editingId      = ko.observable(null);
+    self.saving         = ko.observable(false);
+    self.formError      = ko.observable('');
+    self.auditExpanded  = ko.observable(false);
+    self.auditCreatedBy = ko.observable('');
+    self.auditCreatedAt = ko.observable('');
+    self.auditUpdatedBy = ko.observable('');
+    self.auditUpdatedAt = ko.observable('');
     self.form = {
       job_code:             ko.observable(''),
       job_name_en:          ko.observable(''),
@@ -45,10 +50,26 @@ function (ko, authService, hrService) {
 
     self.select = function (job) { self.selected(job); };
 
+    self.fmtDateTime = function (dt) {
+      if (!dt) return '—';
+      var d = new Date(dt);
+      if (isNaN(d.getTime())) return dt;
+      var months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      return d.getDate() + ' ' + months[d.getMonth()] + ' ' + d.getFullYear()
+           + ' · ' + String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+    };
+
+    self.toggleAudit = function () { self.auditExpanded(!self.auditExpanded()); };
+
     function _clearForm() {
       Object.keys(self.form).forEach(function (k) { self.form[k](k === 'is_active' ? 'Y' : ''); });
       self.formError('');
       self.editingId(null);
+      self.auditExpanded(false);
+      self.auditCreatedBy('');
+      self.auditCreatedAt('');
+      self.auditUpdatedBy('');
+      self.auditUpdatedAt('');
     }
 
     self.openAdd = function () {
@@ -68,6 +89,10 @@ function (ko, authService, hrService) {
       self.form.min_experience_years(job.minExperienceYears || '');
       self.form.description_en(job.descriptionEn || '');
       self.form.is_active(job.isActive || 'Y');
+      self.auditCreatedBy(job.createdBy || '');
+      self.auditCreatedAt(job.createdAt || '');
+      self.auditUpdatedBy(job.updatedBy || '');
+      self.auditUpdatedAt(job.updatedAt || '');
       self.showModal(true);
     };
 

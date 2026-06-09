@@ -20,24 +20,55 @@
 
   <div class="card">
     <div class="view-toolbar" style="margin-bottom:12px">
-      <input class="search-box" type="text" placeholder="Search grade code or name…" data-bind="value: searchQ, valueUpdate: 'input'">
+      <input class="search-box" type="text" placeholder="Search grade code, name or category…"
+             data-bind="value: searchQ, valueUpdate: 'input'">
+      <select class="form-control" style="min-width:120px;width:auto" data-bind="value: filterStatus">
+        <option value="">All Status</option>
+        <option value="Y">Active</option>
+        <option value="N">Inactive</option>
+      </select>
     </div>
 
     <!-- ko if: loading() -->
-    <div class="empty-state"><div class="empty-state__icon">&#127942;</div><div class="empty-state__msg">Loading…</div></div>
+    <div class="empty-state">
+      <div class="empty-state__icon">&#127942;</div>
+      <div class="empty-state__msg">Loading…</div>
+    </div>
     <!-- /ko -->
+
     <!-- ko ifnot: loading() -->
     <!-- ko if: filtered().length === 0 -->
-    <div class="empty-state"><div class="empty-state__icon">&#127942;</div><div class="empty-state__msg">No grades found</div></div>
+    <div class="empty-state">
+      <div class="empty-state__icon">&#127942;</div>
+      <div class="empty-state__msg">No grades found</div>
+    </div>
     <!-- /ko -->
+
     <!-- ko ifnot: filtered().length === 0 -->
     <div class="data-table-wrap">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Code</th><th>Name</th><th>Level</th><th>Category</th>
-            <th style="text-align:right">Min Salary</th><th style="text-align:right">Max Salary</th>
-            <th>Status</th><th></th>
+            <th class="sort-th" data-bind="click: function(){ setSort('gradeCode'); }">
+              Code <span data-bind="class: sortClass('gradeCode')"></span>
+            </th>
+            <th class="sort-th" data-bind="click: function(){ setSort('gradeNameEn'); }">
+              Name <span data-bind="class: sortClass('gradeNameEn')"></span>
+            </th>
+            <th class="sort-th" style="text-align:center" data-bind="click: function(){ setSort('gradeLevel'); }">
+              Level <span data-bind="class: sortClass('gradeLevel')"></span>
+            </th>
+            <th class="sort-th" data-bind="click: function(){ setSort('gradeCategory'); }">
+              Category <span data-bind="class: sortClass('gradeCategory')"></span>
+            </th>
+            <th>Salary Range</th>
+            <th class="sort-th" style="text-align:center" data-bind="click: function(){ setSort('headcount'); }">
+              Headcount <span data-bind="class: sortClass('headcount')"></span>
+            </th>
+            <th class="sort-th" data-bind="click: function(){ setSort('isActive'); }">
+              Status <span data-bind="class: sortClass('isActive')"></span>
+            </th>
+            <th></th>
           </tr>
         </thead>
         <tbody>
@@ -51,9 +82,16 @@
               <!-- /ko -->
             </td>
             <td style="text-align:center;font-weight:600" data-bind="text: gradeLevel"></td>
-            <td style="font-size:12px;color:#6e6e73" data-bind="text: gradeCategory || '—'"></td>
-            <td style="text-align:right;font-size:12px" data-bind="text: salaryBandMin ? Number(salaryBandMin).toLocaleString() : '—'"></td>
-            <td style="text-align:right;font-size:12px" data-bind="text: salaryBandMax ? Number(salaryBandMax).toLocaleString() : '—'"></td>
+            <td style="font-size:12px;color:#6e6e73" data-bind="text: $parent.categoryLabel(gradeCategory)"></td>
+            <td style="font-size:12px" data-bind="text: $parent.salaryRange($data)"></td>
+            <td style="text-align:center">
+              <!-- ko if: headcount > 0 -->
+              <span class="badge badge--info" data-bind="text: headcount"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: headcount > 0 -->
+              <span style="color:#6e6e73;font-size:12px">—</span>
+              <!-- /ko -->
+            </td>
             <td>
               <!-- ko if: isActive === 'Y' --><span class="badge badge--active">Active</span><!-- /ko -->
               <!-- ko ifnot: isActive === 'Y' --><span class="badge badge--inactive">Inactive</span><!-- /ko -->
@@ -89,28 +127,46 @@
       <div class="form-grid">
         <div class="form-group">
           <div class="form-label">Grade Code <span style="color:red">*</span></div>
-          <input class="form-control" type="text" placeholder="e.g. G5" data-bind="value: form.grade_code, valueUpdate:'input', attr:{disabled:!!editingCode()}">
+          <input class="form-control" type="text" placeholder="e.g. G5"
+                 data-bind="value: form.grade_code, valueUpdate:'input', attr:{disabled:!!editingCode()}">
         </div>
         <div class="form-group">
           <div class="form-label">Grade Name (EN) <span style="color:red">*</span></div>
-          <input class="form-control" type="text" placeholder="e.g. Senior Officer" data-bind="value: form.grade_name_en, valueUpdate:'input'">
+          <input class="form-control" type="text" placeholder="e.g. Senior Officer"
+                 data-bind="value: form.grade_name_en, valueUpdate:'input'">
         </div>
         <div class="form-group">
           <div class="form-label">Grade Name (AR)</div>
-          <input class="form-control" type="text" dir="rtl" data-bind="value: form.grade_name_ar, valueUpdate:'input'">
+          <input class="form-control" type="text" dir="rtl"
+                 data-bind="value: form.grade_name_ar, valueUpdate:'input'">
         </div>
         <div class="form-group">
           <div class="form-label">Grade Level <span style="color:red">*</span></div>
-          <input class="form-control" type="number" min="1" placeholder="1" data-bind="value: form.grade_level, valueUpdate:'input'">
+          <input class="form-control" type="number" min="1" placeholder="1"
+                 data-bind="value: form.grade_level, valueUpdate:'input'">
         </div>
         <div class="form-group">
           <div class="form-label">Category</div>
           <select class="form-control" data-bind="value: form.grade_category">
-            <option value="GENERAL">General</option>
-            <option value="TECHNICAL">Technical</option>
-            <option value="MANAGERIAL">Managerial</option>
-            <option value="EXECUTIVE">Executive</option>
+            <!-- ko foreach: gradeCategories() -->
+            <option data-bind="value: value_code, text: value_name_en"></option>
+            <!-- /ko -->
           </select>
+        </div>
+        <div class="form-group">
+          <div class="form-label">Display Order</div>
+          <input class="form-control" type="number" min="0" placeholder="e.g. 10"
+                 data-bind="value: form.display_order, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Min Salary (AED)</div>
+          <input class="form-control" type="number" min="0"
+                 data-bind="value: form.salary_band_min, valueUpdate:'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Max Salary (AED)</div>
+          <input class="form-control" type="number" min="0"
+                 data-bind="value: form.salary_band_max, valueUpdate:'input'">
         </div>
         <div class="form-group">
           <div class="form-label">Status</div>
@@ -119,15 +175,44 @@
             <option value="N">Inactive</option>
           </select>
         </div>
-        <div class="form-group">
-          <div class="form-label">Min Salary (AED)</div>
-          <input class="form-control" type="number" min="0" data-bind="value: form.salary_band_min, valueUpdate:'input'">
-        </div>
-        <div class="form-group">
-          <div class="form-label">Max Salary (AED)</div>
-          <input class="form-control" type="number" min="0" data-bind="value: form.salary_band_max, valueUpdate:'input'">
-        </div>
       </div>
+
+      <!-- Audit Info — edit mode only -->
+      <!-- ko if: editingCode() -->
+      <div class="audit-region" style="margin-top:16px">
+        <div class="audit-region__header" data-bind="click: toggleAudit">
+          <span class="audit-region__chevron" data-bind="css: {'audit-region__chevron--open': auditExpanded()}">&#8250;</span>
+          <span class="audit-region__icon">&#128336;</span>
+          <span class="audit-region__title">Audit Info</span>
+        </div>
+        <!-- ko if: auditExpanded() -->
+        <div class="audit-region__body">
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created by</span>
+              <span class="audit-row__value" data-bind="text: auditCreatedBy() || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(auditCreatedAt())"></span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated by</span>
+              <span class="audit-row__value" data-bind="text: auditUpdatedBy() || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(auditUpdatedAt())"></span>
+            </div>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>

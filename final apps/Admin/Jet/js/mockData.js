@@ -97,7 +97,8 @@ define([], function () {
     { settingId:  7, settingKey: 'ENABLE_NOTIFICATIONS',    settingValue: 'Y',                     description: 'Enable in-app notification system',           category: 'FEATURES', updatedBy: 'ADMIN', updatedAt: '2026-01-01' },
     { settingId:  8, settingKey: 'ENABLE_DELEGATION',       settingValue: 'Y',                     description: 'Allow users to delegate their role',          category: 'FEATURES', updatedBy: 'ADMIN', updatedAt: '2026-01-01' },
     { settingId:  9, settingKey: 'ENABLE_AUDIT_LOG',        settingValue: 'Y',                     description: 'Record all create/update/delete actions',     category: 'FEATURES', updatedBy: 'ADMIN', updatedAt: '2026-01-01' },
-    { settingId: 10, settingKey: 'APP_VERSION',             settingValue: 'V2.0',                  description: 'Current application version label',           category: 'GENERAL',  updatedBy: 'ADMIN', updatedAt: '2026-01-01' },
+    { settingId: 10, settingKey: 'APP_VERSION',             settingValue: 'V2.0',                  description: 'Current application version label',           category: 'GENERAL',    updatedBy: 'ADMIN', updatedAt: '2026-01-01' },
+    { settingId: 11, settingKey: 'APP_THEME',               settingValue: 'corporate',             description: 'Platform UI theme: corporate | redwood | midnight', category: 'APPEARANCE', updatedBy: 'ADMIN', updatedAt: '2026-01-01' },
   ];
 
   const LOOKUPS = [

@@ -63,7 +63,13 @@
     <!-- Detail panel -->
     <div class="card">
       <!-- ko if: selected() -->
-      <div style="font-size:16px;font-weight:700;margin-bottom:4px" data-bind="text: selected().locationNameEn"></div>
+      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:4px">
+        <div style="font-size:16px;font-weight:700" data-bind="text: selected().locationNameEn"></div>
+        <!-- ko if: isAdmin || isMgr -->
+        <button class="detail-edit-btn" title="Edit Location"
+                data-bind="click: openEdit.bind($data, selected())">&#9998;</button>
+        <!-- /ko -->
+      </div>
       <div style="font-family:monospace;font-size:11px;color:#6e6e73;margin-bottom:12px" data-bind="text: selected().locationCode"></div>
       <div style="margin-bottom:14px">
         <span data-bind="class: typeClass(selected().locationType), text: selected().locationType || '—'"></span>
@@ -74,11 +80,41 @@
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">Building</div><div data-bind="text: selected().buildingName || '—'"></div></div>
       <div class="form-group" style="margin-bottom:10px"><div class="form-label">Floor</div><div data-bind="text: selected().floorNo || '—'"></div></div>
       <div class="form-group"><div class="form-label">Country</div><div data-bind="text: selected().countryNameEn || selected().countryCode || '—'"></div></div>
-      <!-- ko if: isAdmin || isMgr -->
-      <div style="margin-top:16px">
-        <button class="btn btn-secondary" style="width:100%" data-bind="click: openEdit.bind($data, selected())">&#9998; Edit Location</button>
+      <!-- Audit Info collapsible -->
+      <div class="audit-region" style="margin-top:16px">
+        <div class="audit-region__header" data-bind="click: toggleAudit">
+          <span class="audit-region__chevron" data-bind="css: {'audit-region__chevron--open': auditExpanded()}">&#8250;</span>
+          <span class="audit-region__icon">&#128336;</span>
+          <span class="audit-region__title">Audit Info</span>
+        </div>
+        <!-- ko if: auditExpanded() -->
+        <div class="audit-region__body">
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created by</span>
+              <span class="audit-row__value" data-bind="text: selected().createdBy || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(selected().createdAt)"></span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated by</span>
+              <span class="audit-row__value" data-bind="text: selected().updatedBy || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(selected().updatedAt)"></span>
+            </div>
+          </div>
+        </div>
+        <!-- /ko -->
       </div>
-      <!-- /ko -->
+
       <!-- /ko -->
       <!-- ko ifnot: selected() -->
       <div class="empty-state" style="padding:40px 0"><div class="empty-state__icon">&#128205;</div><div class="empty-state__msg">Select a location</div></div>

@@ -3,11 +3,16 @@
     <div class="page-header-row">
       <div>
         <div class="page-title">Lookup Values</div>
-        <div class="page-subtitle" data-bind="text: selectedCategory() ? values().length + ' value(s) in ' + selectedCategory().category_name_en : 'Select a category'"></div>
+        <div class="page-subtitle" data-bind="text: selectedCategory() ? filteredValues().length + ' value(s) in ' + selectedCategory().category_name_en : 'Select a category'"></div>
       </div>
-      <!-- ko if: selectedCategory() && isAdmin -->
-      <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Value</button>
-      <!-- /ko -->
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <!-- ko if: isAdmin -->
+        <button class="btn btn-secondary" data-bind="click: openAddCategory">&#43; New Category</button>
+        <!-- /ko -->
+        <!-- ko if: selectedCategory() && isAdmin -->
+        <button class="btn btn-primary" data-bind="click: openAdd">&#43; Add Value</button>
+        <!-- /ko -->
+      </div>
     </div>
   </div>
 
@@ -22,18 +27,30 @@
 
     <!-- Category list -->
     <div class="card">
-      <div style="font-weight:700;font-size:13px;margin-bottom:12px;color:#6e6e73;text-transform:uppercase;letter-spacing:.5px">Categories</div>
+      <div style="font-weight:700;font-size:13px;margin-bottom:10px;color:#6e6e73;text-transform:uppercase;letter-spacing:.5px">Categories</div>
+      <input class="search-box" type="text" placeholder="Search categories…" style="margin-bottom:10px;width:100%;box-sizing:border-box"
+             data-bind="value: searchCats, valueUpdate: 'input'">
       <!-- ko if: loadingCats() -->
       <div class="empty-state" style="padding:20px 0"><div class="empty-state__msg">Loading…</div></div>
       <!-- /ko -->
-      <!-- ko foreach: categories() -->
+      <!-- ko ifnot: loadingCats() -->
+      <!-- ko if: filteredCategories().length === 0 -->
+      <div class="empty-state" style="padding:20px 0"><div class="empty-state__msg">No categories found</div></div>
+      <!-- /ko -->
+      <!-- ko foreach: filteredCategories() -->
       <div style="padding:8px 10px;border-radius:6px;cursor:pointer;font-size:13px;margin-bottom:2px"
            data-bind="css: { 'nav-item--active': $parent.selectedCategory() && $parent.selectedCategory().category_code === $data.category_code },
                       style: { background: $parent.selectedCategory() && $parent.selectedCategory().category_code === $data.category_code ? '#e3f2fd' : '' },
                       click: $parent.selectCategory.bind($parent, $data)">
         <div style="font-weight:600" data-bind="text: category_name_en"></div>
-        <div style="font-size:11px;color:#6e6e73;font-family:monospace" data-bind="text: category_code"></div>
+        <div style="font-size:11px;color:#6e6e73;font-family:monospace;display:flex;align-items:center;gap:6px">
+          <span data-bind="text: category_code"></span>
+          <!-- ko if: value_count != null -->
+          <span class="badge badge--info" style="font-size:10px;padding:1px 5px" data-bind="text: value_count"></span>
+          <!-- /ko -->
+        </div>
       </div>
+      <!-- /ko -->
       <!-- /ko -->
     </div>
 
@@ -48,22 +65,28 @@
       <!-- /ko -->
 
       <!-- ko if: selectedCategory() -->
+      <!-- Search bar for values -->
+      <div style="margin-bottom:12px">
+        <input class="search-box" type="text" placeholder="Search values…" style="width:100%;box-sizing:border-box"
+               data-bind="value: searchVals, valueUpdate: 'input'">
+      </div>
+
       <!-- ko if: loadingVals() -->
       <div class="empty-state" style="padding:40px 0"><div class="empty-state__msg">Loading values…</div></div>
       <!-- /ko -->
 
       <!-- ko ifnot: loadingVals() -->
-      <!-- ko if: values().length === 0 -->
+      <!-- ko if: filteredValues().length === 0 -->
       <div class="empty-state" style="padding:40px 0">
         <div class="empty-state__icon">&#128203;</div>
-        <div class="empty-state__msg">No values defined</div>
-        <!-- ko if: isAdmin -->
+        <div class="empty-state__msg" data-bind="text: searchVals() ? 'No matching values' : 'No values defined'"></div>
+        <!-- ko if: isAdmin && !searchVals() -->
         <div class="empty-state__sub">Click "Add Value" to create the first entry.</div>
         <!-- /ko -->
       </div>
       <!-- /ko -->
 
-      <!-- ko ifnot: values().length === 0 -->
+      <!-- ko ifnot: filteredValues().length === 0 -->
       <div class="data-table-wrap">
         <table class="data-table">
           <thead>
@@ -79,7 +102,7 @@
             </tr>
           </thead>
           <tbody>
-            <!-- ko foreach: values() -->
+            <!-- ko foreach: filteredValues() -->
             <tr>
               <td style="font-family:monospace;font-size:12px" data-bind="text: value_code || valueCode || '—'"></td>
               <td data-bind="text: value_name_en || valueNameEn || '—'"></td>
@@ -151,6 +174,54 @@
       <button class="btn btn-primary" data-bind="click: saveValue, disable: saving()">
         <!-- ko if: saving() -->Saving…<!-- /ko -->
         <!-- ko ifnot: saving() -->Save Value<!-- /ko -->
+      </button>
+    </div>
+  </div>
+</div>
+<!-- /ko -->
+
+<!-- New Lookup Category Modal -->
+<!-- ko if: showCatModal() -->
+<div class="modal-backdrop" data-bind="click: closeCatModal">
+  <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
+    <div class="modal-header">
+      <div class="modal-title">New Lookup Category</div>
+      <button class="modal-close" data-bind="click: closeCatModal">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <!-- ko if: catFormError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px" data-bind="text: catFormError"></div>
+      <!-- /ko -->
+      <div class="form-grid">
+        <div class="form-group">
+          <div class="form-label">Category Code <span style="color:red">*</span></div>
+          <input class="form-control" type="text" placeholder="e.g. HR_NATIONALITY"
+                 data-bind="value: catForm.category_code, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Name (EN) <span style="color:red">*</span></div>
+          <input class="form-control" type="text" placeholder="e.g. Nationality"
+                 data-bind="value: catForm.category_name_en, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Name (AR)</div>
+          <input class="form-control" type="text" dir="rtl"
+                 data-bind="value: catForm.category_name_ar, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <div class="form-label">Status</div>
+          <select class="form-control" data-bind="value: catForm.is_active">
+            <option value="Y">Active</option>
+            <option value="N">Inactive</option>
+          </select>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" data-bind="click: closeCatModal">Cancel</button>
+      <button class="btn btn-primary" data-bind="click: saveCategory, disable: savingCat()">
+        <!-- ko if: savingCat() -->Saving…<!-- /ko -->
+        <!-- ko ifnot: savingCat() -->Create Category<!-- /ko -->
       </button>
     </div>
   </div>

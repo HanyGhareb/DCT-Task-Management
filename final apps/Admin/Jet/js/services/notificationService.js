@@ -1,31 +1,56 @@
 /**
  * notificationService.js
- * Production: GET /ords/prod/dct/notifications/
+ * ORDS: GET /notifications/          — list for current user
+ *       PUT /notifications/:id/read  — mark one notification read
+ *
+ * All methods return Promises.
  */
-define(['mockData'], function (mockData) {
+define(['services/api'], function (api) {
   'use strict';
 
-  let notifications = JSON.parse(JSON.stringify(mockData.NOTIFICATIONS));
-
   return {
-    getAll: function () { return notifications.slice().sort((a, b) => b.notifId - a.notifId); },
-    getUnread: function () { return notifications.filter(n => n.isRead === 'N'); },
-    getUnreadCount: function () { return notifications.filter(n => n.isRead === 'N').length; },
+
+    getAll: function () {
+      return api.get('/notifications/').then(function (r) {
+        return (r.items || []).sort(function (a, b) {
+          return new Date(b.createdAt) - new Date(a.createdAt);
+        });
+      });
+    },
+
+    getUnread: function () {
+      return this.getAll().then(function (items) {
+        return items.filter(function (n) { return n.isRead === 'N'; });
+      });
+    },
+
+    getUnreadCount: function () {
+      return this.getAll().then(function (items) {
+        return items.filter(function (n) { return n.isRead === 'N'; }).length;
+      });
+    },
 
     markRead: function (notifId) {
-      const n = notifications.find(n => n.notifId === Number(notifId));
-      if (n) n.isRead = 'Y';
+      return api.put('/notifications/' + notifId + '/read', {});
     },
-    markAllRead: function () { notifications.forEach(n => { n.isRead = 'Y'; }); },
+
+    /* Pass the current items array so we know which IDs to mark */
+    markAllRead: function (items) {
+      var unread = (items || []).filter(function (n) { return n.isRead === 'N'; });
+      if (!unread.length) return Promise.resolve();
+      return Promise.all(unread.map(function (n) {
+        return api.put('/notifications/' + n.notifId + '/read', {});
+      }));
+    },
 
     formatTime: function (isoStr) {
-      const d = new Date(isoStr);
-      const now = new Date();
-      const diffMs = now - d;
-      const diffHours = diffMs / 3600000;
+      var d = new Date(isoStr);
+      var now = new Date();
+      var diffMs = now - d;
+      var diffHours = diffMs / 3600000;
       if (diffHours < 1)  return Math.round(diffMs / 60000) + ' min ago';
       if (diffHours < 24) return Math.round(diffHours) + ' hours ago';
-      const diffDays = Math.floor(diffHours / 24);
+      var diffDays = Math.floor(diffHours / 24);
       if (diffDays < 7)   return diffDays + ' days ago';
       return d.toLocaleDateString('en-GB');
     },

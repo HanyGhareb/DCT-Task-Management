@@ -157,6 +157,43 @@
         </div>
       </div>
     </div>
+      <!-- Audit Info — edit mode only -->
+      <!-- ko if: editingId() -->
+      <div class="audit-region" style="margin-top:16px">
+        <div class="audit-region__header" data-bind="click: toggleAudit">
+          <span class="audit-region__chevron" data-bind="css: {'audit-region__chevron--open': auditExpanded()}">&#8250;</span>
+          <span class="audit-region__icon">&#128336;</span>
+          <span class="audit-region__title">Audit Info</span>
+        </div>
+        <!-- ko if: auditExpanded() -->
+        <div class="audit-region__body">
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created by</span>
+              <span class="audit-row__value" data-bind="text: auditCreatedBy() || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Created on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(auditCreatedAt())"></span>
+            </div>
+          </div>
+          <div class="audit-row">
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated by</span>
+              <span class="audit-row__value" data-bind="text: auditUpdatedBy() || '—'"></span>
+            </div>
+            <div class="audit-row__sep"></div>
+            <div class="audit-row__item">
+              <span class="audit-row__label">Last updated on</span>
+              <span class="audit-row__value" data-bind="text: fmtDateTime(auditUpdatedAt())"></span>
+            </div>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
       <button class="btn btn-primary" data-bind="click: saveJob, disable: saving()">

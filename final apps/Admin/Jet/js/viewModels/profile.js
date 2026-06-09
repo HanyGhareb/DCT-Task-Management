@@ -3,63 +3,76 @@ function (ko, authService, userService) {
   'use strict';
 
   function ProfileViewModel() {
-    const self = this;
+    var self = this;
 
-    const session = authService.getCurrentUser();
-    const user    = session ? userService.getById(session.userId) : null;
+    /* Use session data for immediate display; session is set at login time */
+    var session = authService.getCurrentUser() || {};
 
-    self.displayName   = ko.observable(user ? user.displayName   : '');
-    self.displayNameAr = ko.observable(user ? user.displayNameAr : '');
-    self.email         = ko.observable(user ? user.email         : '');
-    self.phone         = ko.observable(user ? user.phone         : '');
-    self.username      = user ? user.username      : '';
-    self.employeeNumber= user ? user.employeeNumber : '';
-    self.orgName       = user ? user.orgName        : '';
-    self.roles         = user ? user.roles          : [];
-    self.color         = user ? user.color          : '#C74634';
-    self.successMsg    = ko.observable('');
-    self.saving        = ko.observable(false);
+    self.displayName    = ko.observable(session.displayName    || '');
+    self.displayNameAr  = ko.observable(session.displayNameAr  || '');
+    self.email          = ko.observable(session.email          || '');
+    self.phone          = ko.observable(session.phone          || '');
+    self.username       = session.username       || '';
+    self.employeeNumber = session.employeeNumber || '';
+    self.orgName        = session.orgName        || '';
+    self.roles          = session.roles          || [];
+    self.color          = session.color          || '#C74634';
+    self.successMsg     = ko.observable('');
+    self.saving         = ko.observable(false);
+    self.errorMsg       = ko.observable('');
 
-    self.initials = ko.computed(() => {
-      const p = self.displayName().split(' ');
-      return p.length >= 2 ? (p[0][0] + p[p.length-1][0]).toUpperCase() : (p[0]||'?')[0].toUpperCase();
+    self.initials = ko.computed(function () {
+      var p = self.displayName().split(' ');
+      return p.length >= 2
+        ? (p[0][0] + p[p.length - 1][0]).toUpperCase()
+        : (p[0] || '?')[0].toUpperCase();
     });
 
-    // Change password
+    self.saveProfile = function () {
+      if (!session.userId) return;
+      self.saving(true);
+      self.errorMsg('');
+      userService.update(session.userId, {
+        displayName:   self.displayName(),
+        displayNameAr: self.displayNameAr(),
+        email:         self.email(),
+        phone:         self.phone(),
+      }).then(function () {
+        self.saving(false);
+        self.successMsg('Profile updated successfully!');
+        setTimeout(function () { self.successMsg(''); }, 3000);
+      }).catch(function (err) {
+        self.saving(false);
+        self.errorMsg('Update failed: ' + ((err && err.message) || 'Unknown error'));
+      });
+    };
+
+    /* Change password */
     self.currentPassword = ko.observable('');
     self.newPassword     = ko.observable('');
     self.confirmNewPwd   = ko.observable('');
     self.pwdError        = ko.observable('');
     self.pwdSuccess      = ko.observable('');
 
-    self.saveProfile = function () {
-      self.saving(true);
-      setTimeout(() => {
-        if (user) {
-          userService.update(user.userId, {
-            displayName: self.displayName(), displayNameAr: self.displayNameAr(),
-            email: self.email(), phone: self.phone(),
-          });
-        }
-        self.saving(false);
-        self.successMsg('Profile updated successfully!');
-        setTimeout(() => self.successMsg(''), 3000);
-      }, 400);
-    };
-
     self.changePassword = function () {
       self.pwdError('');
-      if (!self.newPassword()) { self.pwdError('New password is required.'); return; }
+      if (!self.newPassword())          { self.pwdError('New password is required.'); return; }
       if (self.newPassword() !== self.confirmNewPwd()) { self.pwdError('Passwords do not match.'); return; }
       if (self.newPassword().length < 8) { self.pwdError('Password must be at least 8 characters.'); return; }
-      setTimeout(() => {
-        self.pwdSuccess('Password changed successfully!');
-        self.currentPassword(''); self.newPassword(''); self.confirmNewPwd('');
-        setTimeout(() => self.pwdSuccess(''), 3000);
-      }, 400);
+      self.saving(true);
+      userService.update(session.userId, { password: self.newPassword() })
+        .then(function () {
+          self.saving(false);
+          self.pwdSuccess('Password changed successfully!');
+          self.currentPassword(''); self.newPassword(''); self.confirmNewPwd('');
+          setTimeout(function () { self.pwdSuccess(''); }, 3000);
+        }).catch(function (err) {
+          self.saving(false);
+          self.pwdError('Password change failed: ' + ((err && err.message) || 'Unknown error'));
+        });
     };
 
-    // Delegations
+    /* Delegations */
     self.delegations = ko.observableArray([
       { fromName: 'Hashem Al Kabbi', toName: 'Naser Al Khaja', startDate: '20 May 2026', endDate: '25 May 2026', reason: 'Annual leave', status: 'Upcoming' }
     ]);

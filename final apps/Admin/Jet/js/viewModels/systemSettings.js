@@ -2,54 +2,68 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
   'use strict';
 
   function SystemSettingsViewModel() {
-    const self = this;
+    var self = this;
 
-    const grouped = settingService.getSettingsByCategory();
-    self.categories = Object.keys(grouped).map(cat => ({
-      label: cat,
-      settings: grouped[cat].map(s => ({
-        settingId: s.settingId,
-        settingKey: s.settingKey,
-        description: s.description,
-        updatedBy: s.updatedBy,
-        updatedAt: s.updatedAt,
-        value: ko.observable(s.settingValue),
-        original: s.settingValue,
-        dirty: ko.observable(false),
-      }))
-    }));
+    self.loading    = ko.observable(true);
+    self.errorMsg   = ko.observable('');
+    self.categories = ko.observableArray([]);
+    self.savedMsg   = ko.observable('');
+    self.saving     = ko.observable(false);
 
-    // Track dirty
-    self.categories.forEach(cat => {
-      cat.settings.forEach(s => {
-        s.value.subscribe(v => { s.dirty(v !== s.original); });
+    settingService.getSettingsByCategory().then(function (grouped) {
+      self.categories(Object.keys(grouped).map(function (cat) {
+        return {
+          label: cat,
+          settings: grouped[cat].map(function (s) {
+            var obs  = ko.observable(s.settingValue);
+            var item = {
+              settingKey:  s.settingKey,
+              description: s.description,
+              isEditable:  s.isEditable,
+              value:       obs,
+              original:    s.settingValue,
+              dirty:       ko.observable(false),
+            };
+            obs.subscribe(function (v) { item.dirty(v !== item.original); });
+            return item;
+          }),
+        };
+      }));
+      self.loading(false);
+    }).catch(function (err) {
+      self.errorMsg('Failed to load settings: ' + ((err && err.message) || 'Unknown error'));
+      self.loading(false);
+    });
+
+    self.hasDirty = ko.computed(function () {
+      return self.categories().some(function (cat) {
+        return cat.settings.some(function (s) { return s.dirty(); });
       });
     });
 
-    self.savedMsg = ko.observable('');
-    self.saving   = ko.observable(false);
-
     self.saveAll = function () {
       self.saving(true);
-      setTimeout(() => {
-        self.categories.forEach(cat => {
-          cat.settings.forEach(s => {
-            if (s.dirty()) {
-              settingService.updateSetting(s.settingId, s.value());
-              s.original = s.value();
-              s.dirty(false);
-            }
-          });
+      self.savedMsg('');
+      var dirty = [];
+      self.categories().forEach(function (cat) {
+        cat.settings.forEach(function (s) {
+          if (s.dirty() && s.isEditable === 'Y') dirty.push(s);
         });
+      });
+      if (!dirty.length) { self.saving(false); return; }
+
+      Promise.all(dirty.map(function (s) {
+        return settingService.updateSetting(s.settingKey, s.value());
+      })).then(function () {
+        dirty.forEach(function (s) { s.original = s.value(); s.dirty(false); });
         self.saving(false);
         self.savedMsg('Settings saved successfully!');
-        setTimeout(() => self.savedMsg(''), 3000);
-      }, 400);
+        setTimeout(function () { self.savedMsg(''); }, 3000);
+      }).catch(function (err) {
+        self.saving(false);
+        self.savedMsg('Save failed: ' + ((err && err.message) || 'Unknown error'));
+      });
     };
-
-    self.hasDirty = ko.computed(() =>
-      self.categories.some(cat => cat.settings.some(s => s.dirty()))
-    );
   }
 
   return SystemSettingsViewModel;
