@@ -1,0 +1,17 @@
+-- =============================================================================
+-- Credit Cards Module (App 202) — PL/SQL Package
+-- File    : 04_cc_pkg.sql
+-- Schema  : PROD
+-- Status  : STUB — business logic not yet implemented
+-- Run     : sql -name prod_mcp @04_cc_pkg.sql  (after 03_cc_seed.sql)
+-- =============================================================================
+-- Placeholder: DCT_CC_PKG spec and body to be written here.
+-- Expected procedures / functions (based on module requirements):
+--   - manage_card         (create / update / deactivate a card)
+--   - post_transaction    (record a card transaction)
+--   - check_limit         (validate transaction against card limit)
+--   - generate_statement  (produce monthly statement for a card)
+--   - process_payment     (record a statement payment)
+--   - get_card_summary    (returns card balance and limit info)
+-- =============================================================================
+PROMPT 04_cc_pkg.sql — stub only, no objects created.

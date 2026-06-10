@@ -99,7 +99,11 @@ All JET apps share the same pattern. Full contract is in `final apps/SHARED_JET_
 - Use `$root.method()` (not `$parent`) when calling VM methods inside nested `foreach`.
 - Never call `ko.cleanNode(element)` on an element's own binding — only clean child nodes.
 
-**Services are ORDS-only.** `mockData.js` is present in each module but not imported by any service. The `config.apiBase` toggle switches between mock (null) and live ORDS (string).
+**Services are ORDS-only (Admin JET).** All 8 Admin JET services (`authService`, `userService`, `roleService`, `orgService`, `moduleService`, `settingService`, `notificationService`, `auditService`) call ORDS directly — no mock branches, no `mockData` imports, no localStorage fallback. `mockData.js` is present but unused. Module apps (PC, DT, HR …) may still have `apiBase: null` in their `config.js` and remain in mock mode until their ORDS endpoints are wired.
+
+**`roleService.getPermissionMatrix()` return shape** is `{ roles: [...], matrix: [...] }` — not a flat array. The `matrix` array contains rows with `permId`, `permCode`, `permName`, `module`, and a `role_<roleId>: boolean` key per role. VMs must destructure: `result.roles` and `result.matrix`.
+
+**`roleService.setRolePermissions(roleId, permIds)`** — added alongside `update()`. Sends `PUT /roles/:id` with `{ permIds }`. Used by both `permissions.js` and `roleEdit.js` VMs.
 
 ---
 
@@ -166,13 +170,31 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 
 Two skills are configured in `skills-lock.json`:
 - `/apex` — Oracle APEX 24.2 page creation workflow
-- `/frontend-design` — production-grade frontend design (distinctive aesthetics, avoids generic AI-slop styling)
+- `/frontend-design` — production-grade frontend design (distinctive aesthetics, avoids generic AI-slop styling). The skill instructs: commit to a bold conceptual direction before coding; pick distinctive fonts (never Inter/Roboto/Arial); use CSS variables for theming; animate high-impact moments (load reveals, toggles) rather than scattering micro-interactions. Used to create the Vault dark theme for the roles/permissions pages.
 
 ---
 
 ## Conventions
 
-**CSS:** `final apps/Admin/Jet/css/app.css` is the master stylesheet. All module apps clone it and change only the brand colour variable. The `rm-*` / `re-*` Vault dark-theme classes in Admin's CSS apply only to the roles/permissions pages.
+**CSS:** `final apps/Admin/Jet/css/app.css` is the master stylesheet. All module apps clone it and change only the brand colour variable. When Admin's CSS changes structurally, propagate to all module apps.
+
+**Vault design system** (`rm-*` / `re-*` classes, defined at the bottom of Admin's `app.css`) applies only to the roles/permissions pages (`roles.html`, `permissions.html`, `roleEdit.html`). Key design tokens:
+
+| Variable | Value | Usage |
+|---|---|---|
+| `--vault-bg` | `#0D1117` | Page background |
+| `--vault-surface` | `#161B22` | Card / panel surface |
+| `--vault-border` | `#30363D` | Borders |
+| `--vault-text` | `#E6EDF3` | Primary text |
+| `--vault-muted` | `#7D8590` | Secondary text |
+| `--vault-amber` | `#F0883E` | Accent / active states |
+| `--vault-green` | `#3FB950` | Success / active status |
+| `--vault-red` | `#F85149` | Error / danger |
+| `--vault-blue` | `#58A6FF` | Code badges / info |
+| `--vault-font` | `'Outfit'` | UI text (Google Fonts) |
+| `--vault-mono` | `'Fira Code'` | Role codes, permission codes |
+
+The permission matrix toggle (`rm-toggle-wrap` / `rm-toggle--on`) and permission checkbox items (`re-perm-item` / `re-perm-item--on`) use amber dot animations with `cubic-bezier(.34,1.56,.64,1)` spring timing. Use the same pattern for any new security-section pages.
 
 **ORDS URL:** `https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com` — always get from OCI Console, never guess from tnsnames (JDBC and HTTPS use different hostnames on ADB).
 
