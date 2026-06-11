@@ -86,6 +86,22 @@ function (config, api, mockData) {
       return Promise.resolve(list.map(function(r){ return Object.assign({}, r, { statusLabel: _statusLabel(r.status), statusClass: _statusClass(r.status) }); }).sort(function(a,b){ return b.reqId - a.reqId; }));
     },
 
+    /**
+     * Phase 3 server-side pagination over /requests/ (admin branch).
+     * opts: { limit, offset, search, status }
+     * Resolves { items, total, limit, offset }.
+     */
+    getAllPage: function (opts) {
+      opts = opts || {};
+      var q = '?limit=' + (opts.limit || 50) + '&offset=' + (opts.offset || 0);
+      if (opts.search) q += '&search=' + encodeURIComponent(opts.search);
+      if (opts.status) q += '&status=' + encodeURIComponent(opts.status);
+      return api.get('/requests/' + q).then(function (d) {
+        return { items: d.items || [], total: d.total || (d.items || []).length,
+                 limit: d.limit, offset: d.offset };
+      });
+    },
+
     getRequest: function (reqId) {
       if (config.apiBase) return api.get('/requests/' + reqId);
       var s = loadStore();

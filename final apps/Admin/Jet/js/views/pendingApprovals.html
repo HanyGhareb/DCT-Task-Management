@@ -1,7 +1,7 @@
-<div class="page-wrap">
+﻿<div class="page-wrap">
   <div class="page-header">
-    <div class="page-title">Pending Approvals</div>
-    <div class="page-subtitle" data-bind="text: 'You have ' + pending().length + ' item' + (pending().length === 1 ? '' : 's') + ' awaiting your action'"></div>
+    <div class="page-title" data-bind="text: $root.t('nav.pendingApprovals')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('pa.subtitle', [pending().length])"></div>
   </div>
 
   <!-- ko if: actionMsg() -->
@@ -11,8 +11,8 @@
   <!-- ko if: pending().length === 0 -->
   <div class="empty-state" style="padding:80px">
     <div class="empty-state__icon">&#9989;</div>
-    <div class="empty-state__msg">All caught up!</div>
-    <div class="empty-state__sub">No pending approvals require your action</div>
+    <div class="empty-state__msg" data-bind="text: $root.t('pa.caughtUp')"></div>
+    <div class="empty-state__sub" data-bind="text: $root.t('pa.caughtUpSub')"></div>
   </div>
   <!-- /ko -->
 
@@ -22,15 +22,15 @@
       <div style="flex:1">
         <div style="font-size:15px;font-weight:700;margin-bottom:4px" data-bind="text: templateName"></div>
         <div style="font-size:13px;color:#6e6e73">
-          Requested by <strong data-bind="text: requestedBy"></strong>
-          on <span data-bind="text: requestedAt"></span>
-          &bull; Amount: <strong data-bind="text: amount"></strong>
+          <span data-bind="text: $root.t('pa.requestedBy')"></span> <strong data-bind="text: requestedBy"></strong>
+          · <span data-bind="text: requestedAt"></span>
+          &bull; <span data-bind="text: $root.t('pa.amount')"></span>: <strong class="mono" data-bind="text: amount"></strong>
         </div>
 
         <!-- Step progress -->
         <div style="margin-top:14px">
           <div style="font-size:11px;color:#aaa;margin-bottom:6px">
-            Approval Progress — Step <span data-bind="text: currentStep"></span> of <span data-bind="text: totalSteps"></span>
+            <span data-bind="text: $root.t('pa.progress', [currentStep, totalSteps])"></span>
           </div>
           <div style="display:flex;align-items:center;gap:8px">
             <div class="step-tracker" style="flex:1;max-width:200px">
@@ -43,7 +43,7 @@
               </div>
               <!-- /ko -->
             </div>
-            <span class="badge badge--pending">Awaiting Step <span data-bind="text: currentStep"></span></span>
+            <span class="badge badge--pending" data-bind="text: $root.t('pa.awaitingStep', [currentStep])"></span>
           </div>
         </div>
       </div>
@@ -51,10 +51,10 @@
       <!-- Actions -->
       <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
         <button class="btn btn-primary" style="background:#2E7D32" data-bind="click: $parent.approve.bind($parent, $data)">
-          &#10003; Approve
+          ✓ <span data-bind="text: $root.t('pa.approve')"></span>
         </button>
         <button class="btn btn-danger" data-bind="click: $parent.reject.bind($parent, $data)">
-          &#10007; Reject
+          ✗ <span data-bind="text: $root.t('pa.reject')"></span>
         </button>
       </div>
     </div>

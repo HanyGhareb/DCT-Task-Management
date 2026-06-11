@@ -65,5 +65,9 @@
   "toast.sessionExpired": "Session expired. Please log in again.",
 
   "chart.loading": "Loading chart…",
-  "chart.noData": "No data to chart yet"
+  "chart.noData": "No data to chart yet",
+
+  "dash.greetingM": "Good morning",
+  "dash.greetingA": "Good afternoon",
+  "dash.greetingE": "Good evening"
 }

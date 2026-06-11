@@ -1,17 +1,17 @@
-<div class="page-wrap">
+﻿<div class="page-wrap">
   <div class="page-header-row">
     <div class="page-header">
-      <div class="page-title">Notifications</div>
-      <div class="page-subtitle"><span data-bind="text: unreadCount()"></span> unread</div>
+      <div class="page-title" data-bind="text: $root.t('nav.notifications')"></div>
+      <div class="page-subtitle"><span class="mono" data-bind="text: unreadCount()"></span> <span data-bind="text: $root.t('notif.unreadSuffix')"></span></div>
     </div>
     <button class="btn btn-secondary" data-bind="click: markAllRead, enable: unreadCount() > 0">
-      &#10003; Mark all read
+      ✓ <span data-bind="text: $root.t('notif.markAll')"></span>
     </button>
   </div>
 
   <div class="view-toolbar">
-    <button class="btn btn-secondary btn-sm" data-bind="click: () => filter('ALL'),    css: { 'btn-primary': filter() === 'ALL' }">All</button>
-    <button class="btn btn-secondary btn-sm" data-bind="click: () => filter('UNREAD'), css: { 'btn-primary': filter() === 'UNREAD' }">Unread</button>
+    <button class="btn btn-secondary btn-sm" data-bind="click: () => filter('ALL'),    css: { 'btn-primary': filter() === 'ALL' }"><span data-bind="text: $root.t('common.all')"></span></button>
+    <button class="btn btn-secondary btn-sm" data-bind="click: () => filter('UNREAD'), css: { 'btn-primary': filter() === 'UNREAD' }"><span data-bind="text: $root.t('notif.unread')"></span></button>
   </div>
 
   <div class="notif-list">
@@ -30,14 +30,14 @@
         <div class="notif-time"  data-bind="text: $parent.formatTime(createdAt)"></div>
       </div>
       <!-- ko if: isRead === 'N' -->
-      <span class="badge badge--pending" style="font-size:10px">Unread</span>
+      <span class="badge badge--pending" style="font-size:10px"><span data-bind="text: $root.t('notif.unread')"></span></span>
       <!-- /ko -->
     </div>
     <!-- /ko -->
     <!-- ko if: filteredNotifications().length === 0 -->
     <div class="empty-state">
       <div class="empty-state__icon">&#128276;</div>
-      <div class="empty-state__msg">No notifications</div>
+      <div class="empty-state__msg" data-bind="text: $root.t('notif.none')"></div>
     </div>
     <!-- /ko -->
   </div>

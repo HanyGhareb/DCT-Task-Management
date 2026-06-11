@@ -65,5 +65,9 @@
   "toast.sessionExpired": "انتهت الجلسة. الرجاء تسجيل الدخول مجدداً.",
 
   "chart.loading": "جارٍ تحميل الرسم…",
-  "chart.noData": "لا توجد بيانات للرسم بعد"
+  "chart.noData": "لا توجد بيانات للرسم بعد",
+
+  "dash.greetingM": "صباح الخير",
+  "dash.greetingA": "مساء الخير",
+  "dash.greetingE": "مساء الخير"
 }

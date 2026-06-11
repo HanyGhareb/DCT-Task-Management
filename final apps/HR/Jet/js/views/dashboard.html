@@ -42,6 +42,42 @@
     <!-- /ko -->
   </div>
 
+  <!-- Charts (Phase 3) — existing report endpoints -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Headcount by organisation</h3>
+      <div class="chart-cap">Approved positions vs filled</div>
+      <!-- ko if: loading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: loading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#128202;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="hrChart1"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+    <div class="chart-card">
+      <h3>Document expiry horizon</h3>
+      <div class="chart-cap">Employee documents expiring within 90 days</div>
+      <!-- ko if: loading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: loading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#128196;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="hrChart2"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  </div>
+
   <!-- Headcount by org -->
   <div class="card">
     <div class="page-header-row" style="margin-bottom:14px">

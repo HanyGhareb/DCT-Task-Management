@@ -1,0 +1,17 @@
+{
+  "nav.home": "الرئيسية",
+  "nav.people": "الأشخاص",
+  "nav.employees": "دليل الموظفين",
+  "nav.orgHierarchy": "الهيكل التنظيمي",
+  "nav.structure": "الهيكلة",
+  "nav.positions": "الوظائف",
+  "nav.jobs": "المسميات الوظيفية",
+  "nav.grades": "الدرجات",
+  "nav.locations": "المواقع",
+  "nav.compliance": "الامتثال",
+  "nav.documents": "انتهاء الوثائق",
+  "nav.adminGroup": "الإدارة",
+  "nav.lookups": "القيم المرجعية",
+  "nav.moduleSettings": "إعدادات الوحدة",
+  "nav.notifications": "الإشعارات"
+}

@@ -1,11 +1,11 @@
 <div class="page-wrap">
   <div class="page-header">
     <div class="page-title">All Travel Requests</div>
-    <div class="page-subtitle">All requests across the organisation</div>
+    <div class="page-subtitle"><span class="mono" data-bind="text: total()"></span> requests across the organisation</div>
   </div>
 
   <div class="view-toolbar">
-    <input class="search-box" type="text" placeholder="Search by reference, employee, or purpose…" data-bind="value: searchText, valueUpdate: 'input'">
+    <input class="search-box" type="text" placeholder="&#128269; Search by reference, employee, or purpose…" data-bind="value: searchText, valueUpdate: 'input'">
     <select class="form-control" style="width:180px" data-bind="value: statusFilter">
       <option value="">All Statuses</option>
       <option value="DRAFT">Draft</option>
@@ -13,44 +13,64 @@
       <option value="APPROVED">Approved</option>
       <option value="ADVANCE_PAID">Advance Paid</option>
       <option value="TRAVELLED">Travelled</option>
-      <option value="SETTLED">Settled</option>
       <option value="CLOSED">Closed</option>
+      <option value="RETURNED">Returned</option>
       <option value="REJECTED">Rejected</option>
     </select>
   </div>
 
-  <!-- ko if: loading() -->
-  <div class="empty-state"><div class="empty-state__icon">&#128202;</div><div class="empty-state__msg">Loading…</div></div>
-  <!-- /ko -->
-  <!-- ko ifnot: loading() -->
-  <!-- ko if: filtered().length === 0 -->
-  <div class="empty-state"><div class="empty-state__icon">&#9992;</div><div class="empty-state__msg">No requests found</div></div>
-  <!-- /ko -->
-  <!-- ko ifnot: filtered().length === 0 -->
+  <!-- Tri-state list: skeleton / data / empty / error (Phase 3) -->
   <div class="data-table-wrap">
+    <!-- ko if: loading() -->
+    <list-skeleton params="rows: 8"></list-skeleton>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: loadError() -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#9888;</div>
+      <div class="empty-state__msg" data-bind="text: t('empty.loadFailed')"></div>
+      <div class="empty-state__sub" data-bind="text: t('empty.loadFailedSub')"></div>
+      <button class="btn btn-primary" data-bind="click: reload, text: t('common.retry')"></button>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loadError() -->
     <table class="data-table">
       <thead>
-        <tr><th>Request #</th><th>Employee</th><th>Org</th><th>Purpose</th><th>Departure</th><th>Days</th><th>Advance (AED)</th><th>Status</th><th></th></tr>
+        <tr><th>Request #</th><th>Employee</th><th>Purpose</th><th>Departure</th><th>Days</th><th>Advance (AED)</th><th>Status</th><th></th></tr>
       </thead>
       <tbody>
-        <!-- ko foreach: filtered() -->
+        <!-- ko foreach: requests() -->
         <tr>
-          <td><span class="link-text" data-bind="text: reqNumber, click: $parent.openDetail.bind($parent, $data)"></span></td>
+          <td><span class="link-text mono" data-bind="text: reqNumber, click: $parent.openDetail.bind($parent, $data)"></span></td>
           <td data-bind="text: employeeName"></td>
-          <td data-bind="text: orgName" style="max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></td>
-          <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text: travelPurpose"></td>
-          <td data-bind="text: departureDate"></td>
-          <td data-bind="text: estimatedDays"></td>
-          <td data-bind="text: advanceAmount ? $parent.fmt(advanceAmount) : '—'"></td>
+          <td style="max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text: travelPurpose"></td>
+          <td class="mono" data-bind="text: departureDate"></td>
+          <td class="mono" data-bind="text: estimatedDays"></td>
+          <td class="mono" data-bind="text: advanceAmount ? $parent.fmt(advanceAmount) : '—'"></td>
           <td><span data-bind="class: statusClass, text: statusLabel"></span></td>
           <td class="table-actions">
             <button class="btn btn-secondary btn-sm" data-bind="click: $parent.openDetail.bind($parent, $data)">View</button>
           </td>
         </tr>
         <!-- /ko -->
+        <!-- ko if: requests().length === 0 -->
+        <tr>
+          <td colspan="8">
+            <div class="empty-state">
+              <div class="empty-state__icon">&#9992;</div>
+              <div class="empty-state__msg" data-bind="text: t('empty.noMatch')"></div>
+              <div class="empty-state__sub" data-bind="text: t('empty.noMatchSub')"></div>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
       </tbody>
     </table>
+
+    <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+    <!-- /ko -->
+    <!-- /ko -->
   </div>
-  <!-- /ko -->
-  <!-- /ko -->
 </div>

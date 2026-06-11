@@ -1,4 +1,4 @@
--- =============================================================================
+﻿-- =============================================================================
 -- i-Finance V2 -- ORDS REST API Definition
 -- File    : 11_dct_ords.sql
 -- Schema  : PROD
@@ -158,6 +158,9 @@ CREATE OR REPLACE SYNONYM dct_lookup_values     FOR prod.dct_lookup_values;
 CREATE OR REPLACE SYNONYM dct_system_settings   FOR prod.dct_system_settings;
 CREATE OR REPLACE SYNONYM dct_notifications     FOR prod.dct_notifications;
 CREATE OR REPLACE SYNONYM dct_audit_log         FOR prod.dct_audit_log;
+CREATE OR REPLACE SYNONYM dct_user_preferences  FOR prod.dct_user_preferences;
+CREATE OR REPLACE SYNONYM dct_approval_instances FOR prod.dct_approval_instances;
+CREATE OR REPLACE SYNONYM dct_approval_templates FOR prod.dct_approval_templates;
 
 -- =============================================================================
 -- 4. Define ORDS module + all templates + handlers
@@ -304,12 +307,31 @@ END;
     def_template('users/');
     def_handler('users/', 'GET', q'!
 DECLARE
-  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  -- Phase 3 server-side pagination: ?limit=&offset=&search=&status=
+  l_limit  NUMBER        := LEAST(NVL(TO_NUMBER([COLON]limit DEFAULT NULL ON CONVERSION ERROR), 50), 200);
+  l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
+  l_search VARCHAR2(200) := [COLON]search;
+  l_status VARCHAR2(1)   := UPPER(SUBSTR([COLON]status, 1, 1));
+  l_total  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+
+  SELECT COUNT(*) INTO l_total
+  FROM   dct_users u
+  LEFT JOIN dct_organizations o ON u.org_id = o.org_id
+  WHERE (l_status IS NULL OR u.is_active = l_status)
+    AND (l_search IS NULL OR
+         UPPER(u.username || ' ' || u.display_name || ' ' || NVL(u.email, '') || ' ' ||
+               NVL(u.employee_number, '') || ' ' || NVL(o.org_name_en, ''))
+         LIKE '%' || UPPER(l_search) || '%');
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
+  APEX_JSON.write('total',  l_total);
+  APEX_JSON.write('limit',  l_limit);
+  APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT u.user_id, u.username, u.display_name, u.display_name_ar,
@@ -320,7 +342,13 @@ BEGIN
            dct_auth.get_user_roles(u.username) AS roles_csv
     FROM   dct_users u
     LEFT JOIN dct_organizations o ON u.org_id = o.org_id
+    WHERE (l_status IS NULL OR u.is_active = l_status)
+      AND (l_search IS NULL OR
+           UPPER(u.username || ' ' || u.display_name || ' ' || NVL(u.email, '') || ' ' ||
+                 NVL(u.employee_number, '') || ' ' || NVL(o.org_name_en, ''))
+           LIKE '%' || UPPER(l_search) || '%')
     ORDER BY u.display_name
+    OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('userId',         r.user_id);
@@ -899,15 +927,27 @@ BEGIN
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
-  FOR r IN (SELECT setting_key, setting_value, setting_type, description_en,
-                   is_editable, display_order
-            FROM dct_system_settings ORDER BY display_order, setting_key) LOOP
+  -- Columns fixed 2026-06-11: real table has value_type/category/is_system
+  -- (handler previously referenced setting_type/is_editable/display_order
+  --  which never existed -> the block failed to compile -> HTTP 555)
+  FOR r IN (SELECT setting_key, setting_value, value_type, category,
+                   description_en, is_system, is_encrypted
+            FROM dct_system_settings ORDER BY category, setting_key) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('key',         r.setting_key);
-    APEX_JSON.write('value',       r.setting_value);
-    APEX_JSON.write('type',        r.setting_type);
+    APEX_JSON.write('value',       CASE
+                                     WHEN r.is_encrypted = 'Y'
+                                       OR r.setting_key LIKE '%API_KEY%'
+                                       OR r.setting_key LIKE '%SECRET%'
+                                       OR r.setting_key LIKE '%PASSWORD%'
+                                       OR r.setting_key LIKE '%TOKEN%'
+                                     THEN CASE WHEN r.setting_value IS NULL THEN NULL ELSE '********' END
+                                     ELSE r.setting_value
+                                   END);
+    APEX_JSON.write('type',        r.value_type);
+    APEX_JSON.write('category',    r.category);
     APEX_JSON.write('description', r.description_en);
-    APEX_JSON.write('isEditable',  r.is_editable);
+    APEX_JSON.write('isEditable',  CASE r.is_system WHEN 'Y' THEN 'N' ELSE 'Y' END);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -916,20 +956,29 @@ EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
 
-    def_template('settings/[COLON]key');
-    def_handler('settings/[COLON]key', 'PUT', q'!
+    def_template('settings/[COLON]setkey');
+    def_handler('settings/[COLON]setkey', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
-  l_edit VARCHAR2(1);
+  l_sys  VARCHAR2(1);
+  l_val  VARCHAR2(4000);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  SELECT is_editable INTO l_edit FROM dct_system_settings WHERE setting_key = [COLON]key;
-  IF l_edit = 'N' THEN dct_rest.err(403,'Setting is read-only'); RETURN; END IF;
+  SELECT is_system INTO l_sys FROM dct_system_settings WHERE setting_key = [COLON]setkey;
+  IF l_sys = 'Y' THEN dct_rest.err(403,'Setting is read-only'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
+  l_val := APEX_JSON.get_varchar2(p_path => 'value');
+  -- '********' is the masked placeholder for secrets - never write it back
+  IF l_val = '********' THEN
+    dct_rest.json_header;
+    APEX_JSON.initialize_output;
+    APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('skipped', 'masked value'); APEX_JSON.close_object;
+    RETURN;
+  END IF;
   UPDATE dct_system_settings
-  SET    setting_value = APEX_JSON.get_varchar2(p_path => 'value'),
+  SET    setting_value = l_val,
          updated_at    = SYSTIMESTAMP
-  WHERE  setting_key = [COLON]key;
+  WHERE  setting_key = [COLON]setkey;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -955,8 +1004,10 @@ BEGIN
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
+  -- Columns fixed 2026-06-11: real table is bilingual (title_en/body_en);
+  -- the old title/body references never compiled -> HTTP 555
   FOR r IN (
-    SELECT notification_id, title, body, notification_type,
+    SELECT notification_id, title_en, body_en, notification_type,
            is_read, created_at
     FROM   dct_notifications
     WHERE  recipient_user_id = l_uid
@@ -966,8 +1017,8 @@ BEGIN
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('notifId',   r.notification_id);
-    APEX_JSON.write('title',     r.title);
-    APEX_JSON.write('body',      r.body);
+    APEX_JSON.write('title',     r.title_en);
+    APEX_JSON.write('body',      r.body_en);
     APEX_JSON.write('type',      r.notification_type);
     APEX_JSON.write('isRead',    r.is_read);
     APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
@@ -1002,19 +1053,40 @@ END;
     def_template('audit/');
     def_handler('audit/', 'GET', q'!
 DECLARE
-  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  -- Phase 3 server-side pagination: ?limit=&offset=&search=&action=
+  l_limit  NUMBER        := LEAST(NVL(TO_NUMBER([COLON]limit DEFAULT NULL ON CONVERSION ERROR), 50), 200);
+  l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
+  l_search VARCHAR2(200) := [COLON]search;
+  l_action VARCHAR2(100) := UPPER([COLON]action);
+  l_total  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+
+  SELECT COUNT(*) INTO l_total
+  FROM   dct_audit_log
+  WHERE (l_action IS NULL OR action = l_action)
+    AND (l_search IS NULL OR
+         UPPER(NVL(username,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
+         LIKE '%' || UPPER(l_search) || '%');
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
+  APEX_JSON.write('total',  l_total);
+  APEX_JSON.write('limit',  l_limit);
+  APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT log_id, username, action, object_type, object_id,
            status, error_message, logged_at
     FROM   dct_audit_log
+    WHERE (l_action IS NULL OR action = l_action)
+      AND (l_search IS NULL OR
+           UPPER(NVL(username,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
+           LIKE '%' || UPPER(l_search) || '%')
     ORDER BY logged_at DESC
-    FETCH FIRST 200 ROWS ONLY
+    OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('logId',       r.log_id);
@@ -1030,6 +1102,142 @@ BEGIN
   APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- STATS (Phase 3 — Admin dashboard charts)
+    -- =========================================================================
+    def_template('stats/');
+    def_handler('stats/', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+
+  -- Headline counts
+  FOR c IN (
+    SELECT (SELECT COUNT(*) FROM dct_users WHERE is_active = 'Y')           AS active_users,
+           (SELECT COUNT(*) FROM dct_modules WHERE is_active = 'Y')         AS active_modules,
+           (SELECT COUNT(*) FROM dct_roles)                                  AS roles_defined,
+           (SELECT COUNT(*) FROM dct_approval_instances
+             WHERE overall_status = 'PENDING')                               AS pending_approvals,
+           (SELECT COUNT(*) FROM dct_sessions
+             WHERE is_active = 'Y' AND logout_at IS NULL
+               AND last_activity_at > SYSTIMESTAMP - INTERVAL '8' HOUR)      AS active_sessions
+    FROM dual
+  ) LOOP
+    APEX_JSON.write('activeUsers',      c.active_users);
+    APEX_JSON.write('activeModules',    c.active_modules);
+    APEX_JSON.write('rolesDefined',     c.roles_defined);
+    APEX_JSON.write('pendingApprovals', c.pending_approvals);
+    APEX_JSON.write('activeSessions',   c.active_sessions);
+  END LOOP;
+
+  -- Chart 1: approval cycle time per module (completed, last 90 days)
+  APEX_JSON.open_array('approvalCycle');
+  FOR r IN (
+    SELECT m.module_code,
+           ROUND(AVG(CAST(ai.completed_at AS DATE) - CAST(ai.created_at AS DATE)), 1) AS avg_days,
+           COUNT(*) AS n
+    FROM   dct_approval_instances ai
+    JOIN   dct_approval_templates t ON t.template_id = ai.template_id
+    JOIN   dct_modules            m ON m.module_id   = t.module_id
+    WHERE  ai.completed_at IS NOT NULL
+    AND    ai.created_at  >= SYSDATE - 90
+    GROUP  BY m.module_code
+    ORDER  BY m.module_code
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('module',  r.module_code);
+    APEX_JSON.write('avgDays', NVL(r.avg_days, 0));
+    APEX_JSON.write('count',   r.n);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+
+  -- Chart 2: platform activity by day (last 30 days, logins vs other actions)
+  APEX_JSON.open_array('activity');
+  FOR r IN (
+    SELECT TRUNC(logged_at) AS d,
+           SUM(CASE WHEN action = 'LOGIN' THEN 1 ELSE 0 END)  AS logins,
+           SUM(CASE WHEN action != 'LOGIN' THEN 1 ELSE 0 END) AS actions
+    FROM   dct_audit_log
+    WHERE  logged_at >= TRUNC(SYSDATE) - 29
+    GROUP  BY TRUNC(logged_at)
+    ORDER  BY 1
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('day',     TO_CHAR(r.d, 'YYYY-MM-DD'));
+    APEX_JSON.write('logins',  r.logins);
+    APEX_JSON.write('actions', r.actions);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- USER PREFERENCES (Phase 3 — language etc., DCT_USER_PREFERENCES)
+    -- =========================================================================
+    def_template('prefs/');
+    def_handler('prefs/', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT pref_key, pref_value FROM dct_user_preferences
+    WHERE  user_id = l_uid ORDER BY pref_key
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('key',   r.pref_key);
+    APEX_JSON.write('value', r.pref_value);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('prefs/[COLON]prefkey');
+    def_handler('prefs/[COLON]prefkey', 'PUT', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
+  l_val  VARCHAR2(4000);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  dct_rest.parse_body([COLON]body);
+  l_val := APEX_JSON.get_varchar2(p_path => 'value');
+
+  MERGE INTO dct_user_preferences t
+  USING (SELECT l_uid AS user_id, [COLON]prefkey AS pref_key FROM dual) s
+  ON (t.user_id = s.user_id AND t.pref_key = s.pref_key)
+  WHEN NOT MATCHED THEN
+    INSERT (user_id, pref_key, pref_value) VALUES (l_uid, [COLON]prefkey, l_val)
+  WHEN MATCHED THEN
+    UPDATE SET t.pref_value = l_val, t.updated_at = SYSTIMESTAMP;
+  COMMIT;
+
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 
@@ -1058,5 +1266,7 @@ PROMPT  Base URL: /ords/admin/dct/
 PROMPT  Endpoints: auth/login, auth/logout, users/, users/:id,
 PROMPT             roles/, roles/:id, permissions/, modules/,
 PROMPT             orgs/, lookups/, settings/, notifications/,
-PROMPT             audit/
+PROMPT             audit/, stats/, prefs/, prefs/:key
+PROMPT  Phase 3: users/ + audit/ paginated ({items,total,limit,offset};
+PROMPT           ?limit=&offset=&search=&status=/&action=)
 PROMPT ============================================================

@@ -41,7 +41,7 @@
 
 **Exit:** new modules cannot diverge again; orphan report empty; cross-module spend query works.
 
-## Phase 3 — Frontend foundation (≈ 2 weeks)
+## Phase 3 — Frontend foundation ✦ **✅ DONE 2026-06-11 — report: [phase3/README.md](phase3/README.md)** (mockups-first per user direction; shared layer + page-level shell w/ module switcher + settings-driven brands, EN/AR i18n+RTL, async tri-state standard, server pagination on the 5 big lists, 8 Chart.js charts; 3 ORDS modules redeployed; 15/15 smoke + browser-verified — also fixed 5 pre-existing platform bugs incl. settings/notifications 555s)
 
 | # | Task | Owner |
 |---|---|---|

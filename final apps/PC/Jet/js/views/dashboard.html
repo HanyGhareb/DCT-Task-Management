@@ -130,6 +130,42 @@
 
   </div>
 
+  <!-- Charts (Phase 3) — GET /pc/charts -->
+  <div class="charts-row" style="margin-top:24px">
+    <div class="chart-card">
+      <h3>Outstanding floats by organisation</h3>
+      <div class="chart-cap">Advance minus reimbursed, ACTIVE floats (AED)</div>
+      <!-- ko if: chartsLoading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: chartsLoading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#128202;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="pcChart1"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+    <div class="chart-card">
+      <h3>Uncleared TEMPORARY floats — ageing</h3>
+      <div class="chart-cap">Days since disbursement</div>
+      <!-- ko if: chartsLoading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: chartsLoading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#9203;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="pcChart2"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  </div>
+
   <!-- Recent Activity -->
   <div class="card">
     <div class="section-heading">&#128337; Recent Approval Activity</div>

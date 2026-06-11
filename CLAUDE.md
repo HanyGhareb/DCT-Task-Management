@@ -176,7 +176,7 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 | Freelancers (App 203) | ✅ DB + PL/SQL (unified-adopted); ⬜ no ORDS | ⬜ Not started (no Jet/ folder) | ⬜ Not started |
 | Credit Cards (App 202) | ✅ DB + PL/SQL (DCT_CC_PKG, unified-adopted); ⬜ no ORDS | ⬜ Not started (no Jet/ folder) | ⬜ Not started |
 
-Full evaluation + phased action plan: `assessment-3/` (2026-06-11). Phase 1 executed + tested — report in `assessment-3/phase1/`. Phase 2 (data-model convergence: natural-key masters, unified tables, lookup-first, 22 FKs, CC+FL adoption) executed + tested 2026-06-11 — report in `assessment-3/phase2/`. Platform sweep job `DCT_APPROVAL_PKG` (db/v2/14) activates approval escalation/auto-approve daily 07:10.
+Full evaluation + phased action plan: `assessment-3/` (2026-06-11). Phase 1 executed + tested — report in `assessment-3/phase1/`. Phase 2 (data-model convergence: natural-key masters, unified tables, lookup-first, 22 FKs, CC+FL adoption) executed + tested 2026-06-11 — report in `assessment-3/phase2/`. Phase 3 (frontend foundation: `final apps/shared/` layer, page-level shell with module switcher, EN/AR i18n+RTL, tri-state lists, server pagination on users/audit/pc-all/dt-requests/hr-employees, Chart.js dashboards ×4, new `/dct/stats/` + `/dct/prefs/` endpoints) executed + tested 2026-06-11 — report in `assessment-3/phase3/`. Platform sweep job `DCT_APPROVAL_PKG` (db/v2/14) activates approval escalation/auto-approve daily 07:10.
 
 ---
 
@@ -190,7 +190,7 @@ Two skills are configured in `skills-lock.json`:
 
 ## Conventions
 
-**CSS:** `final apps/Admin/Jet/css/app.css` is the master stylesheet. All module apps clone it and change only the brand colour variable. When Admin's CSS changes structurally, propagate to all module apps.
+**CSS (Phase 3):** `final apps/shared/css/platform.css` is the ONE structural stylesheet for all JET apps — edit it once; never copy styles into a module app. Each app's `css/app.css` holds only brand tokens (`--brand`/`--brand-rgb`/`--brand-dark`/`--brand-soft` + legacy aliases); the live brand color loads from the module's `THEME_BRAND_COLOR` setting at boot (`shared/js/shell.js`). Full contract incl. the shared shell (top bar + module switcher + side-nav), i18n (`t()`, EN/AR, Latin digits), tri-state lists (`<list-skeleton>`/`<list-pager>`/toast) and the Chart.js rule (**never `<script>`-tag it — load via requirejs `chartjs` path; create via `shared/chartLoader.makeChart`**) is in `final apps/SHARED_JET_ARCHITECTURE.md`. KO+ORDS gotcha: APEX_JSON skips NULLs — bind optional fields as `$data.field || ''`, never bare `text: field`.
 
 **Vault design system** (`rm-*` / `re-*` classes, defined at the bottom of Admin's `app.css`) applies only to the roles/permissions pages (`roles.html`, `permissions.html`, `roleEdit.html`). Key design tokens:
 

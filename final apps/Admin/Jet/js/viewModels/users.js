@@ -1,36 +1,57 @@
-define(['knockout', 'services/userService'], function (ko, userService) {
+define(['knockout', 'services/userService', 'shared/i18n', 'shared/toast'],
+function (ko, userService, i18n, toast) {
   'use strict';
 
   function UsersViewModel() {
     var self = this;
+    self.t = i18n.t;
 
-    self.loading      = ko.observable(true);
-    self.allUsers     = ko.observableArray([]);
+    // ── tri-state list (Phase 3): loading / data / empty / error ────────
+    self.loading   = ko.observable(true);
+    self.loadError = ko.observable(false);
+    self.users     = ko.observableArray([]);
+
+    // ── server-side query state ──────────────────────────────────────────
     self.searchTerm   = ko.observable('');
-    self.filterStatus = ko.observable('ALL');
-
-    self.filteredUsers = ko.computed(function () {
-      var data = self.allUsers();
-      var q = self.searchTerm().toLowerCase().trim();
-      if (q) {
-        data = data.filter(function (u) {
-          return u.username.toLowerCase().includes(q) ||
-                 u.displayName.toLowerCase().includes(q) ||
-                 (u.email || '').toLowerCase().includes(q) ||
-                 (u.orgName || '').toLowerCase().includes(q) ||
-                 (u.employeeNumber || '').toLowerCase().includes(q);
-        });
-      }
-      if (self.filterStatus() === 'ACTIVE')   data = data.filter(function (u) { return u.isActive === 'Y'; });
-      if (self.filterStatus() === 'INACTIVE') data = data.filter(function (u) { return u.isActive !== 'Y'; });
-      return data;
+    self.filterStatus = ko.observable('ALL');          // ALL | ACTIVE | INACTIVE
+    self.offset       = ko.observable(0);
+    self.limit        = ko.observable(50);
+    self.total        = ko.observable(0);
+    self.activeShown  = ko.pureComputed(function () {
+      return self.users().filter(function (u) { return u.isActive === 'Y'; }).length;
     });
 
-    self.totalCount  = ko.computed(function () { return self.allUsers().length; });
-    self.activeCount = ko.computed(function () {
-      return self.allUsers().filter(function (u) { return u.isActive === 'Y'; }).length;
-    });
+    self.reload = function () {
+      self.loading(true);
+      self.loadError(false);
+      userService.getPage({
+        limit:  self.limit(),
+        offset: self.offset(),
+        search: self.searchTerm().trim() || null,
+        status: self.filterStatus() === 'ACTIVE' ? 'Y'
+              : self.filterStatus() === 'INACTIVE' ? 'N' : null
+      }).then(function (r) {
+        self.users(r.items);
+        self.total(r.total || r.items.length);
+        self.loading(false);
+      }).catch(function (err) {
+        console.error('[users] load failed:', err && err.message, err);
+        self.loading(false);
+        self.loadError(true);
+      });
+    };
 
+    // debounced search → server query (300ms, fires when typing stops)
+    self.searchTerm.extend({ rateLimit: { timeout: 300, method: 'notifyWhenChangesStop' } });
+    self.searchTerm.subscribe(function () { self.offset(0); self.reload(); });
+    self.setStatus = function (s) {
+      if (self.filterStatus() === s) return;
+      self.filterStatus(s);
+      self.offset(0);
+      self.reload();
+    };
+
+    // ── delete flow ──────────────────────────────────────────────────────
     self.showDeleteConfirm = ko.observable(false);
     self.deleteTarget      = ko.observable(null);
 
@@ -38,7 +59,6 @@ define(['knockout', 'services/userService'], function (ko, userService) {
       sessionStorage.setItem('editUserId', userId || 'new');
       if (window._jetApp) window._jetApp.navigate('userEdit');
     };
-
     self.addUser  = function ()     { self.navigateToEdit('new'); };
     self.editUser = function (user) { self.navigateToEdit(user.userId); };
 
@@ -51,7 +71,8 @@ define(['knockout', 'services/userService'], function (ko, userService) {
       var target = self.deleteTarget();
       if (target) {
         userService.remove(target.userId).then(function () {
-          self.allUsers(self.allUsers().filter(function (u) { return u.userId !== target.userId; }));
+          toast.success(i18n.t('toast.deleted'));
+          self.reload();
         });
       }
       self.cancelDelete();
@@ -62,17 +83,7 @@ define(['knockout', 'services/userService'], function (ko, userService) {
       return p.length >= 2 ? (p[0][0] + p[p.length - 1][0]).toUpperCase() : (p[0] || '?')[0].toUpperCase();
     };
 
-    self.formatRoles = function (roles) {
-      return (roles || []).join(', ');
-    };
-
-    // Load data
-    userService.getAll().then(function (data) {
-      self.allUsers(data);
-      self.loading(false);
-    }).catch(function () {
-      self.loading(false);
-    });
+    self.reload();
   }
 
   return UsersViewModel;

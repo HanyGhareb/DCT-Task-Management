@@ -20,6 +20,7 @@ The legacy APEX exports under `apps/` and the `apps/ifinance-v2/` prototype are 
 | Action plan | [06-action-plan.md](06-action-plan.md) | Phased execution plan (Phase 0–6) with owners, effort, and exit criteria |
 | **Phase 1 report** | [phase1/](phase1/) | Execution + full test report (2026-06-11): 4 deliverables deployed, 5 defects fixed, test evidence in `phase1/tests/` |
 | **Phase 2 report** | [phase2/](phase2/) | Plan + execution + full test report (2026-06-11): natural-key masters, 5 unified tables, lookup-first statuses (40 categories), 22 validated FKs, CC+FL adoption (5 tables dropped), DT fixes — test evidence in `phase2/tests/` |
+| **Phase 3 report** | [phase3/](phase3/) | Plan + approved mockups + execution + test report (2026-06-11): `final apps/shared/` layer, page-level shell (module switcher, settings-driven brands), EN/AR i18n + RTL, tri-state lists, server pagination, Chart.js dashboards — evidence in `phase3/tests/` |
 
 ## How to read it
 

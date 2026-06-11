@@ -1,51 +1,76 @@
 <div class="page-wrap">
 
-  <!-- Announcement banner -->
-  <!-- ko if: announcement.show -->
-  <div class="alert-banner alert-banner--warning" style="margin-bottom:20px">
-    <span style="font-size:18px">&#9888;</span>
-    <div>
-      <strong data-bind="text: announcement.title"></strong>
-      <p data-bind="text: announcement.body" style="margin-top:4px"></p>
-    </div>
-  </div>
-  <!-- /ko -->
-
   <!-- Greeting -->
   <div class="page-header">
     <div style="display:flex;align-items:center;gap:14px">
       <div class="avatar avatar--lg"
-           data-bind="style: { background: user && user.color || '#C74634' },
+           data-bind="style: { background: user && user.color || 'var(--brand)' },
                       text: user && (user.initials || user.displayName[0])">
       </div>
       <div>
         <div class="page-title" data-bind="text: greeting() + ', ' + (user && user.displayName || '') + '!'"></div>
-        <div class="page-subtitle" data-bind="text: todayDate"></div>
+        <div class="page-subtitle" data-bind="text: todayDate()"></div>
       </div>
     </div>
   </div>
 
-  <!-- Stats row -->
+  <!-- Stats row (GET /stats/) -->
   <div class="stats-row">
     <div class="stat-card stat-card--red">
-      <div class="stat-value" data-bind="text: stats.activeUsers"></div>
-      <div class="stat-label">Active Users</div>
+      <div class="stat-value" data-bind="text: stats().activeUsers"></div>
+      <div class="stat-label" data-bind="text: t('dash.activeUsers')"></div>
     </div>
     <div class="stat-card stat-card--blue">
-      <div class="stat-value" data-bind="text: stats.activeModules"></div>
-      <div class="stat-label">Active Modules</div>
+      <div class="stat-value" data-bind="text: stats().activeModules"></div>
+      <div class="stat-label" data-bind="text: t('dash.activeModules')"></div>
     </div>
     <div class="stat-card stat-card--green">
-      <div class="stat-value" data-bind="text: stats.totalRoles"></div>
-      <div class="stat-label">Roles Defined</div>
+      <div class="stat-value" data-bind="text: stats().rolesDefined"></div>
+      <div class="stat-label" data-bind="text: t('dash.rolesDefined')"></div>
     </div>
     <div class="stat-card stat-card--orange">
-      <div class="stat-value" data-bind="text: stats.pendingApprovals"></div>
-      <div class="stat-label">Pending Approvals</div>
+      <div class="stat-value" data-bind="text: stats().pendingApprovals"></div>
+      <div class="stat-label" data-bind="text: t('dash.pendingApprovals')"></div>
     </div>
     <div class="stat-card stat-card--blue">
-      <div class="stat-value" data-bind="text: stats.activeSessions"></div>
-      <div class="stat-label">Active Sessions</div>
+      <div class="stat-value" data-bind="text: stats().activeSessions"></div>
+      <div class="stat-label" data-bind="text: t('dash.activeSessions')"></div>
+    </div>
+  </div>
+
+  <!-- Charts (Phase 3) — tri-state: skeleton / charts / empty -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3 data-bind="text: t('dash.chart1Title')"></h3>
+      <div class="chart-cap" data-bind="text: t('dash.chart1Cap')"></div>
+      <!-- ko if: statsLoading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: statsLoading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#128202;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="admChart1"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+    <div class="chart-card">
+      <h3 data-bind="text: t('dash.chart2Title')"></h3>
+      <div class="chart-cap" data-bind="text: t('dash.chart2Cap')"></div>
+      <!-- ko if: statsLoading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: statsLoading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#128200;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="admChart2"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
     </div>
   </div>
 
@@ -68,28 +93,11 @@
           <span style="font-size:22px">&#128196;</span>
         </div>
         <div class="module-card__name" data-bind="text: nameEn"></div>
-        <div style="font-size:11px;color:#aaa;margin-top:4px">App <span data-bind="text: apexAppId"></span></div>
+        <div style="font-size:11px;color:var(--text-3);margin-top:4px" class="mono">App <span data-bind="text: apexAppId"></span></div>
       </div>
       <!-- /ko -->
     </div>
   </div>
   <!-- /ko -->
-
-  <!-- Dev Tools -->
-  <div class="card" style="margin-top:8px;border:1px dashed #d0d0d0;background:#fafafa">
-    <div class="section-heading" style="color:#6e6e73">&#9881; Developer Tools</div>
-    <p style="font-size:12px;color:#aaa;margin-bottom:14px">
-      Use these controls to reset mock data to its original state. Does not affect production data.
-    </p>
-    <!-- ko if: resetMsg() -->
-    <div class="alert-banner alert-banner--info" style="margin-bottom:12px">&#10003; <span data-bind="text: resetMsg()"></span></div>
-    <!-- /ko -->
-    <div style="display:flex;gap:12px;flex-wrap:wrap">
-      <button class="btn btn-secondary" style="border-color:#C74634;color:#C74634"
-              data-bind="click: resetUsersToDefault">
-        &#8635; Reset All Users to Default
-      </button>
-    </div>
-  </div>
 
 </div>

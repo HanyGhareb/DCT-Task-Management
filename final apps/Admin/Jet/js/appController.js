@@ -11,9 +11,24 @@ define(
     shell.initBrand('admin');   // THEME_BRAND_COLOR override applied post-login (see onLogin)
 
     // ── i18n (Phase 3): t() + live language switching ────────────────────
-    self.t       = i18n.t;
-    self.lang    = i18n.lang;
-    self.setLang = i18n.setLang;
+    // localStorage is the primary store; the LANG row in DCT_USER_PREFERENCES
+    // (PUT /prefs/LANG) makes the preference follow the user across devices.
+    self.t    = i18n.t;
+    self.lang = i18n.lang;
+    self.setLang = function (l) {
+      i18n.setLang(l);
+      require(['services/api'], function (api) {
+        api.put('/prefs/LANG', { value: l }, { silent: true }).catch(function () {});
+      });
+    };
+    self._applyServerLang = function () {
+      require(['services/api'], function (api) {
+        api.get('/prefs/', { silent: true }).then(function (r) {
+          var row = (r.items || []).find(function (p) { return p.key === 'LANG'; });
+          if (row && row.value && row.value !== i18n.lang()) i18n.setLang(row.value);
+        }).catch(function () {});
+      });
+    };
 
     // ── Auth state ──────────────────────────────────────────────────────
     self.currentUser     = ko.observable(authService.getCurrentUser());
@@ -180,6 +195,7 @@ define(
       self.currentUser(user);
       authService.getUnreadCount().then(function (n) { self.unreadCount(n); }).catch(function () {});
       self._applyServerTheme();
+      self._applyServerLang();
       self._loadRoute('dashboard');
     };
 

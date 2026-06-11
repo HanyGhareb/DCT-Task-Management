@@ -45,6 +45,27 @@ define(['services/api'], function (api) {
       });
     },
 
+    /**
+     * Phase 3 server-side pagination.
+     * opts: { limit, offset, search, action }
+     * Resolves { items, total, limit, offset } (items normalised).
+     */
+    getPage: function (opts) {
+      opts = opts || {};
+      var q = '?limit=' + (opts.limit || 50) + '&offset=' + (opts.offset || 0);
+      if (opts.search) q += '&search=' + encodeURIComponent(opts.search);
+      if (opts.action) q += '&action=' + encodeURIComponent(opts.action);
+      return api.get('/audit/' + q).then(function (r) {
+        r.items = (r.items || []).map(normAudit);
+        return r;
+      });
+    },
+
+    /* Phase 3: Admin dashboard stats + chart series (GET /stats/) */
+    getStats: function () {
+      return api.get('/stats/');
+    },
+
     /* ── Not in ORDS yet — return empty ──────────────────────────────── */
 
     getLoginHistory:  function () { return Promise.resolve([]); },

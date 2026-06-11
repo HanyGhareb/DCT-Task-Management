@@ -283,6 +283,30 @@ function (config, api, mockData) {
     },
 
     // ── Employees ──────────────────────────────────────────────────────
+    /**
+     * Phase 3: ORDS-native paging over /employees/ (source_type_query,
+     * items_per_page 50). Resolves { items, hasMore, offset, limit } so the
+     * <list-pager> hasMore mode can drive page navigation. NOTE: before this,
+     * the UI silently showed only the first 50 employees.
+     * opts: { q, orgId, grade, active, offset, limit }
+     */
+    getEmployeesPage: function (opts) {
+      opts = opts || {};
+      var qs = '?offset=' + (opts.offset || 0) + '&limit=' + (opts.limit || 50) + '&';
+      if (opts.q)      qs += 'search=' + encodeURIComponent(opts.q) + '&';
+      if (opts.orgId)  qs += 'org_id=' + opts.orgId + '&';
+      if (opts.grade)  qs += 'grade='  + opts.grade + '&';
+      if (opts.active) qs += 'active=' + opts.active + '&';
+      return api.get('/employees/' + qs).then(function (d) {
+        return {
+          items:   (d.items || []).map(_emp),
+          hasMore: !!d.hasMore,
+          offset:  d.offset !== undefined ? d.offset : (opts.offset || 0),
+          limit:   d.limit  !== undefined ? d.limit  : (opts.limit  || 50)
+        };
+      });
+    },
+
     getEmployees: function (filters) {
       filters = filters || {};
       if (config.apiBase) {

@@ -52,9 +52,13 @@ function (config, api, mockData) {
       );
     },
 
-    // All petty cash (admin view)
+    // All petty cash (admin view) — legacy full-list call
     getAllPettyCash: function (filters) {
-      if (config.apiBase) return api.get('/pc/all');
+      if (config.apiBase) {
+        return api.get('/pc/all?limit=200').then(function (d) {
+          return Array.isArray(d) ? d : (d.items || []);   // shim: tolerate both shapes
+        });
+      }
       var list = _store.petty_cash.slice().sort(function (a, b) { return b.pcId - a.pcId; });
       if (filters) {
         if (filters.status)  list = list.filter(function (r) { return r.status === filters.status; });
@@ -62,6 +66,28 @@ function (config, api, mockData) {
         if (filters.orgName) list = list.filter(function (r) { return r.orgName.includes(filters.orgName); });
       }
       return Promise.resolve(list);
+    },
+
+    /**
+     * Phase 3 server-side pagination over /pc/all.
+     * opts: { limit, offset, search, status }
+     * Resolves { items, total, limit, offset } — shimmed if the pre-Phase-3
+     * handler (raw array) is still deployed.
+     */
+    getAllPage: function (opts) {
+      opts = opts || {};
+      var q = '?limit=' + (opts.limit || 50) + '&offset=' + (opts.offset || 0);
+      if (opts.search) q += '&search=' + encodeURIComponent(opts.search);
+      if (opts.status) q += '&status=' + encodeURIComponent(opts.status);
+      return api.get('/pc/all' + q).then(function (d) {
+        if (Array.isArray(d)) return { items: d, total: d.length, limit: d.length, offset: 0 };
+        return d;
+      });
+    },
+
+    /* Phase 3: PC dashboard chart series (GET /pc/charts) */
+    getCharts: function () {
+      return api.get('/pc/charts');
     },
 
     // Single record

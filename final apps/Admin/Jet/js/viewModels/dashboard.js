@@ -1,31 +1,89 @@
-define(['knockout', 'services/authService', 'services/moduleService', 'services/auditService'],
-function (ko, authService, moduleService, auditService) {
+define(['knockout', 'services/authService', 'services/moduleService', 'services/auditService',
+        'shared/i18n', 'shared/chartLoader'],
+function (ko, authService, moduleService, auditService, i18n, charts) {
   'use strict';
 
   function DashboardViewModel() {
     var self = this;
+    self.t = i18n.t;
 
     var user  = authService.getCurrentUser();
     self.user = user;
 
     self.greeting = ko.computed(function () {
       var h = new Date().getHours();
-      return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening';
+      return i18n.t(h < 12 ? 'dash.greetingM' : h < 17 ? 'dash.greetingA' : 'dash.greetingE');
     });
-    self.todayDate = new Date().toLocaleDateString('en-GB', {
-      weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+    self.todayDate = ko.computed(function () {
+      i18n.lang();
+      return i18n.fmtDate(new Date(), { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
     });
 
-    /* Platform stats — loaded async */
-    self.stats = ko.observable({
-      totalUsers: 0, activeUsers: 0, totalRoles: 0,
-      activeModules: 0, pendingApprovals: 0, activeSessions: 0,
+    /* Headline stats + chart series — one GET /stats/ (Phase 3) */
+    self.statsLoading = ko.observable(true);
+    self.stats        = ko.observable({
+      activeUsers: '—', activeModules: '—', rolesDefined: '—',
+      pendingApprovals: '—', activeSessions: '—'
     });
-    auditService.getPlatformStats()
-      .then(function (s) { self.stats(s); })
-      .catch(function () {});
+    self.chartsEmpty  = ko.observable(false);
 
-    /* Module cards — loaded async */
+    function renderCharts(data) {
+      var p = charts.palette();
+      var cyc = data.approvalCycle || [];
+      var act = data.activity || [];
+      self.chartsEmpty(cyc.length === 0 && act.length === 0);
+
+      var c1 = document.getElementById('admChart1');
+      if (c1 && cyc.length) {
+        charts.makeChart(c1, {
+          type: 'bar',
+          data: {
+            labels: cyc.map(function (r) { return r.module; }),
+            datasets: [{
+              label: i18n.t('dash.avgDays'),
+              data: cyc.map(function (r) { return r.avgDays; }),
+              backgroundColor: charts.alpha(p.brand, .75),
+              borderRadius: 6
+            }]
+          },
+          options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+      }
+      var c2 = document.getElementById('admChart2');
+      if (c2 && act.length) {
+        charts.makeChart(c2, {
+          type: 'line',
+          data: {
+            labels: act.map(function (r) { return r.day.slice(5); }),
+            datasets: [
+              { label: i18n.t('dash.logins'),  data: act.map(function (r) { return r.logins; }),
+                borderColor: p.brand, backgroundColor: charts.alpha(p.brand, .12), fill: true, tension: .35 },
+              { label: i18n.t('dash.actions'), data: act.map(function (r) { return r.actions; }),
+                borderColor: p.amber, backgroundColor: charts.alpha(p.amber, .10), fill: true, tension: .35 }
+            ]
+          },
+          options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+      }
+    }
+
+    auditService.getStats().then(function (s) {
+      self.stats({
+        activeUsers:      s.activeUsers,
+        activeModules:    s.activeModules,
+        rolesDefined:     s.rolesDefined,
+        pendingApprovals: s.pendingApprovals,
+        activeSessions:   s.activeSessions
+      });
+      self.statsLoading(false);
+      // canvases exist only after KO renders the ifnot:statsLoading block
+      setTimeout(function () { renderCharts(s); }, 0);
+    }).catch(function () {
+      self.statsLoading(false);
+      self.chartsEmpty(true);
+    });
+
+    /* Module cards — unchanged behavior */
     self.categoryGroups = ko.observableArray([]);
     var categories = moduleService.getCategories();
     moduleService.getAccessibleForUser().then(function (allMods) {
@@ -39,18 +97,6 @@ function (ko, authService, moduleService, auditService) {
         .filter(function (g) { return g.modules.length > 0; });
       self.categoryGroups(groups);
     }).catch(function () {});
-
-    self.announcement = {
-      show:  true,
-      type:  'warning',
-      title: 'Scheduled Maintenance',
-      body:  'System maintenance on Saturday 18 May at 02:00 AM GST. All applications will be unavailable for approximately 2 hours.',
-    };
-
-    self.resetMsg = ko.observable('');
-    self.resetUsersToDefault = function () {
-      alert('User reset is not available in live ORDS mode. Manage users via the Users page or APEX Admin.');
-    };
   }
 
   return DashboardViewModel;

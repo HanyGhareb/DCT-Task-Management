@@ -1,48 +1,68 @@
-define(['knockout', 'services/authService', 'services/pcService'],
-function (ko, authService, pcService) {
+define(['knockout', 'services/authService', 'services/pcService', 'shared/i18n', 'shared/toast'],
+function (ko, authService, pcService, i18n, toast) {
   'use strict';
 
   function AllPettyCashViewModel() {
     var self = this;
+    self.t = i18n.t;
 
     var user = authService.getCurrentUser();
-    self.records      = ko.observableArray([]);
-    self.loading      = ko.observable(true);
+
+    // ── tri-state + server paging (Phase 3) ──────────────────────────────
+    self.loading   = ko.observable(true);
+    self.loadError = ko.observable(false);
+    self.records   = ko.observableArray([]);
+
     self.search       = ko.observable('');
     self.filterStatus = ko.observable('');
-    self.filterType   = ko.observable('');
-    self.success      = ko.observable('');
-    self.error        = ko.observable('');
+    self.filterType   = ko.observable('');          // applied client-side on the page
+    self.offset       = ko.observable(0);
+    self.limit        = ko.observable(50);
+    self.total        = ko.observable(0);
 
     self.STATUS_OPTIONS = [
-      { value: '', label: 'All Statuses' },
+      { value: '',                 label: 'All Statuses' },
       { value: 'ACTIVE',           label: 'Active' },
       { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
-      { value: 'APPROVED',         label: 'Approved (Awaiting Disburse)' },
       { value: 'SUBMITTED',        label: 'Submitted' },
       { value: 'CLOSED',           label: 'Closed' },
       { value: 'REJECTED',         label: 'Rejected' },
     ];
     self.TYPE_OPTIONS = [
-      { value: '', label: 'All Types' },
+      { value: '',          label: 'All Types' },
       { value: 'TEMPORARY', label: 'Temporary' },
       { value: 'PERMANENT', label: 'Permanent' },
     ];
 
-    self.filtered = ko.computed(function () {
-      var q  = self.search().toLowerCase();
-      var s  = self.filterStatus();
-      var t  = self.filterType();
-      return self.records().filter(function (r) {
-        var matchQ = !q || r.pcNumber.toLowerCase().includes(q) || r.employeeName.toLowerCase().includes(q) || r.employeeNumber.toLowerCase().includes(q);
-        var matchS = !s || r.status === s;
-        var matchT = !t || r.pcType === t;
-        return matchQ && matchS && matchT;
-      });
+    self.filtered = ko.pureComputed(function () {
+      var t = self.filterType();
+      return t ? self.records().filter(function (r) { return r.pcType === t; }) : self.records();
     });
 
-    self.fmtAmount  = function (n) { return n ? Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 }) : '0.00'; };
-    self.fmtDate    = function (d) { return d ? new Date(d).toLocaleDateString('en-GB', { day:'2-digit', month:'short', year:'numeric' }) : '—'; };
+    self.reload = function () {
+      self.loading(true);
+      self.loadError(false);
+      pcService.getAllPage({
+        limit:  self.limit(),
+        offset: self.offset(),
+        search: self.search().trim() || null,
+        status: self.filterStatus() || null
+      }).then(function (r) {
+        self.records(r.items);
+        self.total(r.total || r.items.length);
+        self.loading(false);
+      }).catch(function () {
+        self.loading(false);
+        self.loadError(true);
+      });
+    };
+
+    self.search.extend({ rateLimit: { timeout: 300, method: 'notifyWhenChangesStop' } });
+    self.search.subscribe(function () { self.offset(0); self.reload(); });
+    self.filterStatus.subscribe(function () { self.offset(0); self.reload(); });
+
+    self.fmtAmount = function (n) { return i18n.fmtNum(n || 0, 2); };
+    self.fmtDate   = function (d) { return d ? i18n.fmtDate(d) : '—'; };
 
     self.statusClass = function (s) {
       var map = { ACTIVE:'badge--active', PENDING_APPROVAL:'badge--pending', SUBMITTED:'badge--pending',
@@ -57,21 +77,12 @@ function (ko, authService, pcService) {
     self.disburse = function (rec) {
       if (!confirm('Disburse ' + self.fmtAmount(rec.amount) + ' AED to ' + rec.employeeName + '?')) return;
       pcService.disburse(rec.pcId, user.userId).then(function () {
-        self.success('Disbursed ' + rec.pcNumber + ' successfully.');
-        _load();
-      }).catch(function (err) {
-        self.error((err && err.message) || 'Disburse failed.');
+        toast.success('Disbursed ' + rec.pcNumber + ' successfully.');
+        self.reload();
       });
     };
 
-    function _load() {
-      pcService.getAllPettyCash().then(function (list) {
-        self.records(list);
-        self.loading(false);
-      }).catch(function () { self.loading(false); });
-    }
-
-    _load();
+    self.reload();
   }
 
   return AllPettyCashViewModel;

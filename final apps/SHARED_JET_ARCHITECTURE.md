@@ -218,3 +218,30 @@ This document covers the **JET SPA layer** only. The same principle (App 200 as 
 - Standard application items
 - SET_APP_ITEMS process
 - Common LOVs and authorization schemes
+
+---
+
+## Shared Asset Layer (Phase 3, 2026-06-11)
+
+`final apps/shared/` is the single source of truth for shell + components:
+
+```
+shared/
+  css/platform.css   <- ALL structural CSS (shell, components, skeleton/toast/pager,
+                        RTL logical properties, AR fonts). EDIT THIS ONCE - never
+                        copy styles into a module app again.
+  css/themes.css     <- legacy data-theme sets (moved from per-app copies)
+  css/vault.css      <- Vault dark tier (security surfaces only - two-tier rule)
+  js/api.js i18n.js toast.js skeleton.js pager.js chartLoader.js shell.js
+  i18n/common.en.json common.ar.json
+```
+
+**Rules:**
+- Each app's `css/app.css` holds ONLY brand tokens (--brand/--brand-rgb/--brand-dark/--brand-soft + legacy aliases). The live color comes from the module's THEME_BRAND_COLOR setting at boot (shared/js/shell.js derives dark/soft from the one stored hex).
+- Each app's `js/services/api.js` is a 1-line re-export of `shared/api` (which needs `config.adminPortalUrl` for the 401 redirect; null in Admin).
+- `main.js` requirejs paths: `'shared': '/shared/js'` and `'chartjs': <CDN chart.umd.min>`. **Chart.js must NEVER be loaded via <script> tag** - its UMD calls define() and crashes under RequireJS. Charts must be created via `shared/chartLoader.makeChart` (auto-destroys on route change).
+- The shell is page-level: fixed dark top bar (suite logo + MODULE SWITCHER dropdown + EN|AR toggle + user menu) + full-height side navigation rendered from each app's NAV_GROUPS (labelKey -> i18n). Adding module #7 = one entry in shared/js/shell.js MODULES.
+- i18n: `t()` from shared/i18n; nav/view labels use keys (common.*.json + per-app js/i18n/app.{en,ar}.json); Latin digits for all amounts in Arabic; language persists in localStorage 'ifinance_lang' + the LANG row in DCT_USER_PREFERENCES (Admin prefs/ endpoint).
+- Tri-state list standard: `<list-skeleton>` while loading -> table or .empty-state -> error empty-state + retry (api.js already toasts the failure). Server-paged lists use `<list-pager>` ({items,total,limit,offset} envelope, or hasMore mode for ORDS-native paging).
+- **KO + ORDS gotcha:** APEX_JSON skips NULL fields, so bind optional fields as `.field || ''` - a bare `text: field` throws ReferenceError when the field is absent and the whole list dies into the error state.
+- Dev: each app's dev-proxy.py serves `/shared/*` from the sibling folder. Deploy: ship `final apps/` as one web root (module switcher uses root-absolute /App/Jet/index.html URLs).

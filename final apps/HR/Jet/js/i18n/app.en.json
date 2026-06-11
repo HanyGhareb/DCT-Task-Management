@@ -1,0 +1,17 @@
+{
+  "nav.home": "Home",
+  "nav.people": "People",
+  "nav.employees": "Employee Directory",
+  "nav.orgHierarchy": "Org Chart",
+  "nav.structure": "Structure",
+  "nav.positions": "Positions",
+  "nav.jobs": "Jobs",
+  "nav.grades": "Grades",
+  "nav.locations": "Locations",
+  "nav.compliance": "Compliance",
+  "nav.documents": "Document Expiry",
+  "nav.adminGroup": "Administration",
+  "nav.lookups": "Lookup Values",
+  "nav.moduleSettings": "Module Settings",
+  "nav.notifications": "Notifications"
+}

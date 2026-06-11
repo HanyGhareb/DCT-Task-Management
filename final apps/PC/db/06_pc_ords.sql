@@ -205,18 +205,41 @@ END;
     def_template('pc/all');
     def_handler('pc/all', 'GET', q'!
 DECLARE
-  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  -- Phase 3: raw array -> {items,total,limit,offset} envelope + server paging
+  l_limit  NUMBER        := LEAST(NVL(TO_NUMBER([COLON]limit DEFAULT NULL ON CONVERSION ERROR), 50), 200);
+  l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
+  l_search VARCHAR2(200) := [COLON]search;
+  l_status VARCHAR2(30)  := UPPER([COLON]status);
+  l_total  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+
+  SELECT COUNT(*) INTO l_total
+  FROM   dct_pc_admin_v a
+  WHERE (l_status IS NULL OR a.status = l_status)
+    AND (l_search IS NULL OR
+         UPPER(a.pc_number || ' ' || NVL(a.employee_name,'') || ' ' || NVL(a.org_name,''))
+         LIKE '%' || UPPER(l_search) || '%');
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
-  APEX_JSON.open_array;
+  APEX_JSON.open_object;
+  APEX_JSON.write('total',  l_total);
+  APEX_JSON.write('limit',  l_limit);
+  APEX_JSON.write('offset', l_offset);
+  APEX_JSON.open_array('items');
   FOR r IN (
     SELECT a.*, ai.overall_status AS approval_status
     FROM   dct_pc_admin_v a
     LEFT JOIN dct_petty_cash pc ON pc.pc_id = a.pc_id
     LEFT JOIN dct_approval_instances ai ON ai.instance_id = pc.approval_instance_id
+    WHERE (l_status IS NULL OR a.status = l_status)
+      AND (l_search IS NULL OR
+           UPPER(a.pc_number || ' ' || NVL(a.employee_name,'') || ' ' || NVL(a.org_name,''))
+           LIKE '%' || UPPER(l_search) || '%')
     ORDER  BY a.pc_id DESC
+    OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('pcId',                r.pc_id);
@@ -241,6 +264,67 @@ BEGIN
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- PC CHARTS (Phase 3 — dashboard charts)
+    -- =========================================================================
+    def_template('pc/charts');
+    def_handler('pc/charts', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+
+  -- Chart 1: outstanding floats by organisation (ACTIVE floats)
+  APEX_JSON.open_array('floatsByOrg');
+  FOR r IN (
+    SELECT NVL(a.org_name, 'Unassigned') AS org_name,
+           SUM(a.advance_amount - NVL(a.total_reimbursed, 0)) AS outstanding
+    FROM   dct_pc_admin_v a
+    WHERE  a.status = 'ACTIVE'
+    GROUP  BY NVL(a.org_name, 'Unassigned')
+    ORDER  BY outstanding DESC
+    FETCH FIRST 8 ROWS ONLY
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('org',         r.org_name);
+    APEX_JSON.write('outstanding', r.outstanding);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+
+  -- Chart 2: uncleared TEMPORARY floats ageing (days since disbursement)
+  APEX_JSON.open_array('tempAgeing');
+  FOR r IN (
+    SELECT bucket, COUNT(*) AS n FROM (
+      SELECT CASE
+               WHEN SYSDATE - pc.disbursed_date <= 30 THEN '0-30'
+               WHEN SYSDATE - pc.disbursed_date <= 60 THEN '31-60'
+               WHEN SYSDATE - pc.disbursed_date <= 90 THEN '61-90'
+               ELSE '90+'
+             END AS bucket
+      FROM   dct_petty_cash pc
+      WHERE  pc.pc_type = 'TEMPORARY'
+      AND    pc.status  = 'ACTIVE'
+      AND    pc.disbursed_date IS NOT NULL
+    )
+    GROUP BY bucket
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('bucket', r.bucket);
+    APEX_JSON.write('count',  r.n);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+
+  APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');

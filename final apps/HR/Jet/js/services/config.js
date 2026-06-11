@@ -14,5 +14,8 @@ define([], function () {
     // apiBase: null,                 // mock mode (localStorage)
     apiBase:  ADB + '/hr',           // HR ORDS module  — real DB
     authBase: ADB + '/dct',          // Admin ORDS module — login / session
+
+    // Phase 3 shared api.js: where to send the browser when the session dies
+    adminPortalUrl: '/Admin/Jet/index.html',
   };
 });

@@ -1,9 +1,9 @@
-<div class="login-page">
+﻿<div class="login-page">
   <div class="login-card">
     <div class="login-logo">
       <div class="login-cube">i</div>
       <div class="login-title">i-Finance V2</div>
-      <div class="login-subtitle">Admin Portal &mdash; Oracle JET</div>
+      <div class="login-subtitle" data-bind="text: $root.t('login.subtitle')"></div>
     </div>
 
     <!-- Error -->
@@ -11,25 +11,23 @@
 
     <!-- Form -->
     <div class="form-group" style="margin-bottom:14px">
-      <label class="form-label">Username</label>
-      <input class="form-control" type="text" placeholder="Enter username"
-             data-bind="value: username, valueUpdate: 'input', event: { keydown: onKeyDown }" autocomplete="username">
+      <label class="form-label" data-bind="text: $root.t('login.username')"></label>
+      <input class="form-control" type="text" data-bind="attr: { placeholder: $root.t('login.usernamePh') }, value: username, valueUpdate: 'input', event: { keydown: onKeyDown }" autocomplete="username">
     </div>
     <div class="form-group" style="margin-bottom:20px">
-      <label class="form-label">Password</label>
-      <input class="form-control" type="password" placeholder="Enter password"
-             data-bind="value: password, valueUpdate: 'input', event: { keydown: onKeyDown }" autocomplete="current-password">
+      <label class="form-label" data-bind="text: $root.t('login.password')"></label>
+      <input class="form-control" type="password" data-bind="attr: { placeholder: $root.t('login.passwordPh') }, value: password, valueUpdate: 'input', event: { keydown: onKeyDown }" autocomplete="current-password">
     </div>
 
     <button class="btn btn-primary" style="width:100%;justify-content:center;padding:11px"
             data-bind="click: doLogin, enable: !loading()">
-      <!-- ko if: loading() --><span>Signing in&hellip;</span><!-- /ko -->
-      <!-- ko ifnot: loading() --><span>Sign In</span><!-- /ko -->
+      <!-- ko if: loading() --><span data-bind="text: $root.t('login.signingIn')"></span><!-- /ko -->
+      <!-- ko ifnot: loading() --><span data-bind="text: $root.t('login.signIn')"></span><!-- /ko -->
     </button>
 
     <!-- Quick logins (demo) -->
     <div class="login-quick">
-      <div class="login-quick-label">&#9889; Quick login (demo)</div>
+      <div class="login-quick-label">⚡ <span data-bind="text: $root.t('login.quick')"></span></div>
       <div class="quick-btns">
         <!-- ko foreach: quickLogins -->
         <button class="quick-btn" data-bind="click: $parent.quickLogin.bind($parent, $data)">

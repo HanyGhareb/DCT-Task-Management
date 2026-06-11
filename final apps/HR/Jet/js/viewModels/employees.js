@@ -18,11 +18,17 @@ function (ko, authService, hrService) {
     self.error     = ko.observable('');
     self.saved     = ko.observable('');
 
-    // ── Filters ────────────────────────────────────────────────────────
+    // ── Filters (Phase 3: applied SERVER-side via ORDS binds) ──────────
     self.searchQ      = ko.observable('');
     self.filterOrg    = ko.observable('');
     self.filterGrade  = ko.observable('');
     self.filterStatus = ko.observable('Y');
+
+    // ── Server paging state (ORDS-native: items_per_page + hasMore) ────
+    // Before Phase 3 the view silently showed only the first 50 employees.
+    self.srvOffset = ko.observable(0);
+    self.srvLimit  = ko.observable(50);
+    self.hasMore   = ko.observable(false);
 
     // ── View mode ──────────────────────────────────────────────────────
     self.viewMode = ko.observable('table');
@@ -44,15 +50,18 @@ function (ko, authService, hrService) {
       return 'sort-icon sort-icon--' + self.sortDir();
     };
 
-    // ── Pagination ─────────────────────────────────────────────────────
-    self.pageSize    = 25;
-    self.currentPage = ko.observable(1);
-    self.setPage = function (p) {
-      var tp = self.totalPages();
-      if (p >= 1 && p <= tp) self.currentPage(p);
+    // ── Pagination — server-driven prev/next (Phase 3) ──────────────────
+    self.currentPage = ko.observable(1);   // retained for legacy bindings
+    self.prevPage = function () {
+      if (self.srvOffset() <= 0) return;
+      self.srvOffset(Math.max(0, self.srvOffset() - self.srvLimit()));
+      _reload();
     };
-    self.prevPage = function () { self.setPage(self.currentPage() - 1); };
-    self.nextPage = function () { self.setPage(self.currentPage() + 1); };
+    self.nextPage = function () {
+      if (!self.hasMore()) return;
+      self.srvOffset(self.srvOffset() + self.srvLimit());
+      _reload();
+    };
 
     // ── Modal state ────────────────────────────────────────────────────
     self.showModal      = ko.observable(false);
@@ -146,26 +155,15 @@ function (ko, authService, hrService) {
       };
     });
 
-    // ── Filtered ───────────────────────────────────────────────────────
-    self.filtered = ko.computed(function () {
-      var q    = (self.searchQ() || '').toUpperCase();
-      var org  = self.filterOrg();
-      var grd  = self.filterGrade();
-      var stat = self.filterStatus();
-      return self.employees().filter(function (e) {
-        var matchQ = !q
-          || (e.fullNameEn    || '').toUpperCase().includes(q)
-          || (e.fullNameAr    || '').toUpperCase().includes(q)
-          || (e.firstNameAr   || '').toUpperCase().includes(q)
-          || (e.lastNameAr    || '').toUpperCase().includes(q)
-          || (e.employeeNumber|| '').toUpperCase().includes(q)
-          || (e.email         || '').toUpperCase().includes(q);
-        var matchOrg  = !org  || String(e.orgId)    === String(org);
-        var matchGrd  = !grd  || e.gradeCode         === grd;
-        var matchStat = !stat || e.isActive           === stat;
-        return matchQ && matchOrg && matchGrd && matchStat;
-      });
-    });
+    // ── Filtered — pass-through: filters are now applied SERVER-side ────
+    self.filtered = ko.computed(function () { return self.employees(); });
+
+    // filter changes → reset to first page + server query (search debounced)
+    self.searchQ.extend({ rateLimit: { timeout: 300, method: 'notifyWhenChangesStop' } });
+    self.searchQ.subscribe(function ()      { self.srvOffset(0); _reload(); });
+    self.filterOrg.subscribe(function ()    { self.srvOffset(0); _reload(); });
+    self.filterGrade.subscribe(function ()  { self.srvOffset(0); _reload(); });
+    self.filterStatus.subscribe(function () { self.srvOffset(0); _reload(); });
 
     // ── Sorted ────────────────────────────────────────────────────────
     self.sorted = ko.computed(function () {
@@ -182,41 +180,24 @@ function (ko, authService, hrService) {
       return list;
     });
 
-    // ── Pagination computeds ───────────────────────────────────────────
-    self.totalPages = ko.computed(function () {
-      return Math.max(1, Math.ceil(self.sorted().length / self.pageSize));
+    // ── Pagination computeds — server hasMore mode (Phase 3) ────────────
+    self.pageNo = ko.computed(function () {
+      return Math.floor(self.srvOffset() / Math.max(1, self.srvLimit())) + 1;
     });
-
-    self.filtered.subscribe(function () { self.currentPage(1); });
-
-    self.paginated = ko.computed(function () {
-      var p  = self.currentPage();
-      var ps = self.pageSize;
-      return self.sorted().slice((p - 1) * ps, p * ps);
+    self.totalPages = ko.computed(function () {       // legacy compat
+      return self.hasMore() ? self.pageNo() + 1 : self.pageNo();
     });
-
-    self.pageNumbers = ko.computed(function () {
-      var tp    = self.totalPages();
-      var cp    = self.currentPage();
-      var nums  = [];
-      var start = Math.max(1, cp - 2);
-      var end   = Math.min(tp, cp + 2);
-      if (start > 1) nums.push(1);
-      if (start > 2) nums.push('…');
-      for (var i = start; i <= end; i++) nums.push(i);
-      if (end < tp - 1) nums.push('…');
-      if (end < tp)   nums.push(tp);
-      return nums;
-    });
+    self.paginated = ko.computed(function () { return self.sorted(); });
+    self.pageNumbers = ko.computed(function () { return [self.pageNo()]; });
+    self.canPrev = ko.computed(function () { return self.srvOffset() > 0; });
+    self.canNext = ko.computed(function () { return self.hasMore(); });
 
     self.pageInfo = ko.computed(function () {
-      var total = self.sorted().length;
-      if (total === 0) return '0 employees';
-      var p    = self.currentPage();
-      var ps   = self.pageSize;
-      var from = (p - 1) * ps + 1;
-      var to   = Math.min(p * ps, total);
-      return 'Showing ' + from + '–' + to + ' of ' + total + ' employee(s)';
+      var n = self.sorted().length;
+      if (n === 0) return '0 employees';
+      var from = self.srvOffset() + 1;
+      var to   = self.srvOffset() + n;
+      return 'Showing ' + from + '–' + to + (self.hasMore() ? '+' : '') + ' employee(s)';
     });
 
     // ── Filter helpers ─────────────────────────────────────────────────
@@ -229,7 +210,8 @@ function (ko, authService, hrService) {
       self.filterOrg('');
       self.filterGrade('');
       self.filterStatus('Y');
-      self.currentPage(1);
+      self.srvOffset(0);
+      // subscriptions trigger _reload()
     };
 
     // ── Navigation ─────────────────────────────────────────────────────
@@ -402,19 +384,34 @@ function (ko, authService, hrService) {
       setTimeout(function () { URL.revokeObjectURL(url); }, 2000);
     };
 
-    // ── Reload ─────────────────────────────────────────────────────────
+    // ── Reload — server-paged employees + reference lists once ──────────
+    var _refsLoaded = false;
     function _reload() {
       self.loading(true);
-      Promise.all([
-        hrService.getEmployees({}),
-        hrService.getOrgs(),
-        hrService.getGrades(),
-        hrService.getPositions(),
-      ]).then(function (results) {
-        self.employees(results[0]);
-        self.orgs(results[1]);
-        self.grades(results[2]);
-        self.positions(results[3]);
+      self.error('');
+      var calls = [
+        hrService.getEmployeesPage({
+          q:      self.searchQ().trim() || null,
+          orgId:  self.filterOrg() || null,
+          grade:  self.filterGrade() || null,
+          active: self.filterStatus() || null,
+          offset: self.srvOffset(),
+          limit:  self.srvLimit()
+        })
+      ];
+      if (!_refsLoaded) {
+        calls.push(hrService.getOrgs(), hrService.getGrades(), hrService.getPositions());
+      }
+      Promise.all(calls).then(function (results) {
+        var page = results[0];
+        self.employees(page.items);
+        self.hasMore(page.hasMore);
+        if (!_refsLoaded && results.length > 1) {
+          self.orgs(results[1]);
+          self.grades(results[2]);
+          self.positions(results[3]);
+          _refsLoaded = true;
+        }
         self.loading(false);
       }).catch(function (err) {
         self.error((err && err.message) || 'Failed to load employees.');

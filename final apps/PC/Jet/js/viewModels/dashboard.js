@@ -1,9 +1,11 @@
-define(['knockout', 'services/authService', 'services/pcService', 'services/settingService'],
-function (ko, authService, pcService, settingService) {
+define(['knockout', 'services/authService', 'services/pcService', 'services/settingService',
+        'shared/i18n', 'shared/chartLoader'],
+function (ko, authService, pcService, settingService, i18n, charts) {
   'use strict';
 
   function DashboardViewModel() {
     var self = this;
+    self.t = i18n.t;
 
     var user = authService.getCurrentUser();
     self.user = user;
@@ -73,6 +75,56 @@ function (ko, authService, pcService, settingService) {
         self.showClosingBanner(true);
       }
     }
+
+    // ── Phase 3 charts (GET /pc/charts) ──────────────────────────────────
+    self.chartsLoading = ko.observable(true);
+    self.chartsEmpty   = ko.observable(false);
+
+    function _renderCharts(d) {
+      var p = charts.palette();
+      var orgs = d.floatsByOrg || [];
+      var age  = d.tempAgeing || [];
+      self.chartsEmpty(orgs.length === 0 && age.length === 0);
+
+      var c1 = document.getElementById('pcChart1');
+      if (c1 && orgs.length) {
+        charts.makeChart(c1, {
+          type: 'bar',
+          data: {
+            labels: orgs.map(function (r) { return r.org; }),
+            datasets: [{ label: 'AED', data: orgs.map(function (r) { return r.outstanding; }),
+                         backgroundColor: charts.alpha(p.brand, .75), borderRadius: 6 }]
+          },
+          options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+        });
+      }
+      var c2 = document.getElementById('pcChart2');
+      if (c2 && age.length) {
+        var order = ['0-30', '31-60', '61-90', '90+'];
+        var byB = {}; age.forEach(function (r) { byB[r.bucket] = r.count; });
+        charts.makeChart(c2, {
+          type: 'bar',
+          data: {
+            labels: order,
+            datasets: [{ label: 'floats',
+                         data: order.map(function (b) { return byB[b] || 0; }),
+                         backgroundColor: [charts.alpha(p.green, .65), charts.alpha(p.amber, .65),
+                                           charts.alpha(p.amber, .85), charts.alpha(p.red, .7)],
+                         borderRadius: 6 }]
+          },
+          options: { plugins: { legend: { display: false } },
+                     scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+        });
+      }
+    }
+
+    pcService.getCharts().then(function (d) {
+      self.chartsLoading(false);
+      setTimeout(function () { _renderCharts(d); }, 0);
+    }).catch(function () {
+      self.chartsLoading(false);
+      self.chartsEmpty(true);
+    });
 
     _load();
   }

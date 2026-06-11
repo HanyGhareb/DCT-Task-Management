@@ -15,7 +15,23 @@ define(['services/api'], function (api) {
   return {
 
     getAll: function () {
-      return api.get('/users/').then(function (r) { return r.items.map(norm); });
+      return api.get('/users/?limit=200').then(function (r) { return r.items.map(norm); });
+    },
+
+    /**
+     * Phase 3 server-side pagination.
+     * opts: { limit, offset, search, status ('Y'|'N'|null) }
+     * Resolves { items, total, limit, offset } (items normalised).
+     */
+    getPage: function (opts) {
+      opts = opts || {};
+      var q = '?limit=' + (opts.limit || 50) + '&offset=' + (opts.offset || 0);
+      if (opts.search) q += '&search=' + encodeURIComponent(opts.search);
+      if (opts.status) q += '&status=' + encodeURIComponent(opts.status);
+      return api.get('/users/' + q, { silent: opts.silent }).then(function (r) {
+        r.items = (r.items || []).map(norm);
+        return r;
+      });
     },
 
     getById: function (id) {

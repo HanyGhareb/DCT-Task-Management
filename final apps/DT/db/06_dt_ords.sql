@@ -134,6 +134,46 @@ BEGIN
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
+
+  -- Phase 3 (additive): chart series for the dashboard
+  -- monthlySpend: 12-month advances vs per-diem (all requests, AED)
+  APEX_JSON.open_array('monthlySpend');
+  FOR r IN (
+    SELECT TO_CHAR(TRUNC(departure_date, 'MM'), 'YYYY-MM') AS mon,
+           NVL(SUM(total_advance_aed), 0)  AS advances,
+           NVL(SUM(total_per_diem_aed), 0) AS per_diem
+    FROM   dt_requests
+    WHERE  departure_date >= ADD_MONTHS(TRUNC(SYSDATE, 'MM'), -11)
+    AND    status NOT IN ('DRAFT', 'CANCELLED', 'REJECTED')
+    GROUP  BY TRUNC(departure_date, 'MM')
+    ORDER  BY 1
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('month',    r.mon);
+    APEX_JSON.write('advances', r.advances);
+    APEX_JSON.write('perDiem',  r.per_diem);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+
+  -- statusFunnel: current request distribution by status
+  APEX_JSON.open_array('statusFunnel');
+  FOR r IN (
+    SELECT status, COUNT(*) AS n
+    FROM   dt_requests
+    GROUP  BY status
+    ORDER  BY CASE status
+      WHEN 'DRAFT' THEN 1 WHEN 'SUBMITTED' THEN 2 WHEN 'APPROVED' THEN 3
+      WHEN 'ADVANCE_PAID' THEN 4 WHEN 'TRAVELLED' THEN 5 WHEN 'CLOSED' THEN 6
+      WHEN 'RETURNED' THEN 7 WHEN 'REJECTED' THEN 8 ELSE 9 END
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('status', r.status);
+    APEX_JSON.write('count',  r.n);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -150,6 +190,13 @@ DECLARE
   l_uid  NUMBER;
   l_mine VARCHAR2(1)   := [COLON]mine;
   l_adv  VARCHAR2(1)   := [COLON]advancePending;
+  -- Phase 3 server-side pagination on the admin (all-requests) branch:
+  -- ?limit=&offset=&search=&status= ; mine/advancePending stay unpaged (small sets)
+  l_limit  NUMBER        := LEAST(NVL(TO_NUMBER([COLON]limit DEFAULT NULL ON CONVERSION ERROR), 50), 200);
+  l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
+  l_search VARCHAR2(200) := [COLON]search;
+  l_status VARCHAR2(30)  := UPPER([COLON]status);
+  l_total  NUMBER;
 
   PROCEDURE write_req(
     p_id NUMBER, p_num VARCHAR2, p_uid NUMBER, p_purp VARCHAR2,
@@ -186,9 +233,28 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
+
+  -- total: meaningful for the admin branch; mirrors the branch row counts otherwise
+  IF l_mine = 'Y' THEN
+    SELECT COUNT(*) INTO l_total FROM dt_requests WHERE employee_user_id = l_uid;
+  ELSIF l_adv = 'Y' THEN
+    SELECT COUNT(*) INTO l_total FROM dt_requests
+    WHERE status = 'APPROVED' AND total_advance_aed > 0 AND finance_disbursed_yn = 'N';
+  ELSE
+    SELECT COUNT(*) INTO l_total
+    FROM dt_requests r JOIN dt_requests_v v ON v.request_id = r.request_id
+    WHERE (l_status IS NULL OR r.status = l_status)
+      AND (l_search IS NULL OR
+           UPPER(r.request_number || ' ' || NVL(r.purpose,'') || ' ' || NVL(v.employee_name,''))
+           LIKE '%' || UPPER(l_search) || '%');
+  END IF;
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
+  APEX_JSON.write('total',  l_total);
+  APEX_JSON.write('limit',  l_limit);
+  APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
 
   IF l_mine = 'Y' THEN
@@ -229,7 +295,7 @@ BEGIN
     END LOOP;
 
   ELSE
-    -- All requests (admin / HR / finance view)
+    -- All requests (admin / HR / finance view) — server-paged
     FOR r IN (
       SELECT r.request_id, r.request_number, r.employee_user_id, r.purpose,
              TO_CHAR(r.departure_date,'YYYY-MM-DD') AS dep_dt,
@@ -238,7 +304,12 @@ BEGIN
              r.budget_type, r.finance_disbursed_yn,
              v.employee_name, r.status
       FROM dt_requests r JOIN dt_requests_v v ON v.request_id = r.request_id
+      WHERE (l_status IS NULL OR r.status = l_status)
+        AND (l_search IS NULL OR
+             UPPER(r.request_number || ' ' || NVL(r.purpose,'') || ' ' || NVL(v.employee_name,''))
+             LIKE '%' || UPPER(l_search) || '%')
       ORDER BY r.request_id DESC
+      OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
     ) LOOP
       write_req(r.request_id, r.request_number, r.employee_user_id, r.purpose,
                 r.dep_dt, r.ret_dt, r.total_days, r.total_per_diem_aed,

@@ -1,12 +1,12 @@
-<div class="page-wrap">
+﻿<div class="page-wrap">
   <div class="page-header-row">
     <div class="page-header">
-      <div class="page-title">System Settings</div>
-      <div class="page-subtitle">Global configuration key-value pairs stored in DCT_SYSTEM_SETTINGS</div>
+      <div class="page-title" data-bind="text: $root.t('sys.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('sys.subtitle')"></div>
     </div>
     <button class="btn btn-primary" data-bind="click: saveAll, enable: hasDirty() && !saving()">
-      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
-      <!-- ko ifnot: saving() -->&#10003; Save Changes<!-- /ko -->
+      <!-- ko if: saving() --><span data-bind="text: $root.t('sys.saving')"></span><!-- /ko -->
+      <!-- ko ifnot: saving() --><span data-bind="text: '✓ ' + $root.t('sys.save')"></span><!-- /ko -->
     </button>
   </div>
 
@@ -23,7 +23,7 @@
         <div style="font-size:13px;font-weight:600;font-family:monospace" data-bind="text: settingKey"></div>
         <div style="font-size:12px;color:#aaa;margin-top:2px" data-bind="text: description"></div>
         <div style="font-size:11px;color:#bbb;margin-top:2px">
-          Last updated: <span data-bind="text: updatedAt"></span> by <span data-bind="text: updatedBy"></span>
+          <span data-bind="text: $root.t('sys.lastUpdated')"></span> <span data-bind="text: $data.updatedAt || ''"></span> · <span data-bind="text: $data.updatedBy || ''"></span>
         </div>
       </div>
       <div style="flex:0 0 240px;margin-left:20px">
@@ -31,7 +31,7 @@
                data-bind="value: value, valueUpdate: 'input',
                           style: { 'border-color': dirty() ? '#0572CE' : '', 'background': dirty() ? '#f0f7ff' : '' }">
         <!-- ko if: dirty() -->
-        <span style="font-size:10px;color:#0572CE;margin-top:2px;display:block">&#9998; Modified</span>
+        <span style="font-size:10px;color:#0572CE;margin-top:2px;display:block">✎ <span data-bind="text: $root.t('sys.modified')"></span></span>
         <!-- /ko -->
       </div>
     </div>

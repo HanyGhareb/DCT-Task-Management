@@ -34,6 +34,42 @@
     </div>
   </div>
 
+  <!-- Charts (Phase 3) — extended GET /dashboard/ -->
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Monthly travel spend vs advances</h3>
+      <div class="chart-cap">12-month trend, AED</div>
+      <!-- ko if: loading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: loading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#128200;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="dtChart1"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+    <div class="chart-card">
+      <h3>Requests by status</h3>
+      <div class="chart-cap">Current lifecycle distribution</div>
+      <!-- ko if: loading() --><div class="skeleton sk-block"></div><!-- /ko -->
+      <!-- ko ifnot: loading() -->
+      <!-- ko if: chartsEmpty() -->
+      <div class="empty-state" style="padding:40px 10px">
+        <div class="empty-state__icon">&#128202;</div>
+        <div class="empty-state__msg" data-bind="text: t('chart.noData')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: chartsEmpty() -->
+      <div class="chart-wrap"><canvas id="dtChart2"></canvas></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  </div>
+
   <!-- Recent requests -->
   <div class="card">
     <div class="page-header-row" style="margin-bottom:14px">

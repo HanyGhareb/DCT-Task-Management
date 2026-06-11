@@ -1,107 +1,92 @@
 <div class="page-wrap">
   <div class="page-header">
-    <div class="page-title">Audit &amp; Sessions</div>
-    <div class="page-subtitle">System audit trail, login history, and active session management</div>
+    <div class="page-title" data-bind="text: t('audit.title')"></div>
+    <div class="page-subtitle">
+      <span class="mono" data-bind="text: total()"></span> <span data-bind="text: t('audit.subtitle')"></span>
+    </div>
   </div>
 
-  <!-- Tabs -->
-  <div class="tab-bar">
-    <button class="tab-btn" data-bind="click: () => activeTab('audit'),   css: { 'tab-btn--active': activeTab() === 'audit' }">&#128218; Audit Log</button>
-    <button class="tab-btn" data-bind="click: () => activeTab('logins'),  css: { 'tab-btn--active': activeTab() === 'logins' }">&#128274; Login History</button>
-    <button class="tab-btn" data-bind="click: () => activeTab('sessions'),css: { 'tab-btn--active': activeTab() === 'sessions' }">&#128187; Active Sessions</button>
-  </div>
-
-  <!-- Audit Log tab -->
-  <!-- ko if: activeTab() === 'audit' -->
+  <!-- Toolbar: debounced server search + action filter -->
   <div class="view-toolbar">
-    <input class="search-box" type="text" placeholder="&#128269; Filter by user, action, or object&hellip;"
-           data-bind="value: searchBy, valueUpdate: 'input'">
-    <button class="btn btn-secondary btn-sm" data-bind="click: refreshAudit">&#8635; Refresh</button>
+    <input class="search-box" type="text"
+           data-bind="value: searchBy, valueUpdate: 'input', attr: { placeholder: t('audit.searchPh') }">
+    <select class="form-control" style="max-width:180px" data-bind="value: actionFilter">
+      <option value="" data-bind="text: t('audit.allActions')"></option>
+      <option value="LOGIN">LOGIN</option>
+      <option value="CREATE">CREATE</option>
+      <option value="UPDATE">UPDATE</option>
+      <option value="DELETE">DELETE</option>
+    </select>
+    <span class="toolbar-spacer"></span>
+    <button class="btn btn-secondary btn-sm" data-bind="click: reload, text: '↻ ' + t('common.refresh')"></button>
   </div>
-  <div class="data-table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr><th>Action</th><th>Object</th><th>Object ID</th><th>By</th><th>When</th><th>IP</th><th>Changes</th></tr>
-      </thead>
-      <tbody>
-        <!-- ko foreach: filteredAudit() -->
-        <tr>
-          <td><span class="badge" data-bind="text: actionType, css: $parent.getActionBadgeClass(actionType)"></span></td>
-          <td style="font-family:monospace;font-size:12px" data-bind="text: objectType"></td>
-          <td style="text-align:center;color:#aaa;font-size:12px" data-bind="text: objectId || '—'"></td>
-          <td style="font-weight:600;font-size:12px" data-bind="text: actionBy"></td>
-          <td style="font-size:12px;color:#aaa" data-bind="text: $parent.formatDate(actionAt)"></td>
-          <td style="font-family:monospace;font-size:11px;color:#aaa" data-bind="text: ipAddress"></td>
-          <td style="font-size:11px;font-family:monospace;color:#aaa;max-width:200px;overflow:hidden;text-overflow:ellipsis"
-              data-bind="text: newValues || oldValues || '—'"></td>
-        </tr>
-        <!-- /ko -->
-      </tbody>
-    </table>
-  </div>
-  <!-- /ko -->
 
-  <!-- Login History tab -->
-  <!-- ko if: activeTab() === 'logins' -->
+  <!-- Tri-state list -->
   <div class="data-table-wrap">
-    <table class="data-table">
-      <thead>
-        <tr><th>Username</th><th>Login</th><th>Logout</th><th>IP Address</th><th>Result</th><th>Fail Reason</th></tr>
-      </thead>
-      <tbody>
-        <!-- ko foreach: loginHistory() -->
-        <tr>
-          <td style="font-weight:600" data-bind="text: username"></td>
-          <td style="font-size:12px" data-bind="text: $parent.formatDate(loginAt)"></td>
-          <td style="font-size:12px;color:#aaa" data-bind="text: logoutAt ? $parent.formatDate(logoutAt) : 'Active'"></td>
-          <td style="font-family:monospace;font-size:12px" data-bind="text: ipAddress"></td>
-          <td>
-            <!-- ko if: success === 'Y' -->
-            <span class="badge badge--active">&#10003; Success</span>
-            <!-- /ko -->
-            <!-- ko ifnot: success === 'Y' -->
-            <span class="badge badge--inactive">&#10007; Failed</span>
-            <!-- /ko -->
-          </td>
-          <td style="font-size:12px;color:#C74634" data-bind="text: failReason || '—'"></td>
-        </tr>
-        <!-- /ko -->
-      </tbody>
-    </table>
-  </div>
-  <!-- /ko -->
+    <!-- ko if: loading() -->
+    <list-skeleton params="rows: 10"></list-skeleton>
+    <!-- /ko -->
 
-  <!-- Sessions tab -->
-  <!-- ko if: activeTab() === 'sessions' -->
-  <div class="data-table-wrap">
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: loadError() -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#9888;</div>
+      <div class="empty-state__msg" data-bind="text: t('empty.loadFailed')"></div>
+      <div class="empty-state__sub" data-bind="text: t('empty.loadFailedSub')"></div>
+      <button class="btn btn-primary" data-bind="click: reload, text: t('common.retry')"></button>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loadError() -->
     <table class="data-table">
       <thead>
-        <tr><th>Session ID</th><th>Username</th><th>Started</th><th>Last Activity</th><th>IP</th><th>Browser</th><th>Status</th><th>Actions</th></tr>
+        <tr>
+          <th data-bind="text: t('audit.colWhen')"></th>
+          <th data-bind="text: t('audit.colUser')"></th>
+          <th data-bind="text: t('audit.colAction')"></th>
+          <th data-bind="text: t('audit.colObject')"></th>
+          <th data-bind="text: t('audit.colStatus')"></th>
+          <th data-bind="text: t('audit.colError')"></th>
+        </tr>
       </thead>
       <tbody>
-        <!-- ko foreach: sessions() -->
+        <!-- ko foreach: entries() -->
         <tr>
-          <td style="font-family:monospace;font-size:11px" data-bind="text: sessionId"></td>
-          <td style="font-weight:600" data-bind="text: username"></td>
-          <td style="font-size:12px" data-bind="text: $parent.formatDate(startedAt)"></td>
-          <td style="font-size:12px;color:#aaa" data-bind="text: $parent.formatDate(lastActivity)"></td>
-          <td style="font-family:monospace;font-size:12px" data-bind="text: ipAddress"></td>
-          <td style="font-size:12px;color:#aaa" data-bind="text: browser"></td>
+          <td class="mono" style="font-size:12px;white-space:nowrap" data-bind="text: $parent.formatDate(loggedAt)"></td>
+          <td class="mono" style="font-size:12px" data-bind="text: actionBy"></td>
+          <td><span class="badge" data-bind="css: $parent.getActionBadgeClass(actionType), text: actionType"></span></td>
           <td>
-            <span class="badge"
-              data-bind="text: status,
-                css: { 'badge--active': status === 'ACTIVE', 'badge--idle': status === 'IDLE', 'badge--inactive': status === 'REVOKED' }">
-            </span>
+            <span data-bind="text: objectType"></span>
+            <span style="color:var(--text-3);font-size:11px" class="mono" data-bind="text: objectId ? ' #' + objectId : ''"></span>
           </td>
           <td>
-            <!-- ko if: status !== 'REVOKED' -->
-            <button class="btn btn-danger btn-sm" data-bind="click: $parent.revokeSession.bind($parent, $data)">Revoke</button>
+            <!-- ko if: status === 'SUCCESS' -->
+            <span class="badge badge--active">SUCCESS</span>
             <!-- /ko -->
+            <!-- ko ifnot: status === 'SUCCESS' -->
+            <span class="badge badge--inactive" data-bind="text: status"></span>
+            <!-- /ko -->
+          </td>
+          <td style="font-size:11.5px;color:var(--text-3);max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              data-bind="text: error, attr: { title: error }"></td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: entries().length === 0 -->
+        <tr>
+          <td colspan="6">
+            <div class="empty-state">
+              <div class="empty-state__icon">&#128218;</div>
+              <div class="empty-state__msg" data-bind="text: t('empty.noMatch')"></div>
+              <div class="empty-state__sub" data-bind="text: t('empty.noMatchSub')"></div>
+            </div>
           </td>
         </tr>
         <!-- /ko -->
       </tbody>
     </table>
+
+    <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+    <!-- /ko -->
+    <!-- /ko -->
   </div>
-  <!-- /ko -->
 </div>

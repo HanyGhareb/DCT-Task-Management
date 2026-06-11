@@ -1,9 +1,9 @@
-<div class="page-wrap">
+﻿<div class="page-wrap">
 
   <div class="page-header-row" style="margin-bottom:24px">
     <div class="page-header" style="margin-bottom:0">
-      <div class="page-title">&#127912; Appearance</div>
-      <div class="page-subtitle">Choose a platform theme — applies to all i-Finance modules</div>
+      <div class="page-title" data-bind="text: $root.t('vw.appearance.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('vw.appearance.subtitle')"></div>
     </div>
     <button class="btn btn-primary" data-bind="click: saveTheme, enable: isDirty() && !saving()">
       <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->

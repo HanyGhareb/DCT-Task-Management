@@ -219,24 +219,14 @@
     </div>
     <!-- /ko -->
 
-    <!-- Pagination -->
-    <!-- ko if: totalPages() > 1 -->
+    <!-- Pagination — server-driven (Phase 3, ORDS hasMore mode) -->
+    <!-- ko if: canPrev() || canNext() -->
     <div class="pagination-bar">
       <span class="page-info" data-bind="text: pageInfo()"></span>
       <div class="page-btns">
-        <button class="page-btn" title="Previous" data-bind="click: prevPage, disable: currentPage() <= 1">&#8249;</button>
-        <!-- ko foreach: pageNumbers() -->
-          <!-- ko if: typeof $data === 'string' -->
-          <span class="page-ellipsis">…</span>
-          <!-- /ko -->
-          <!-- ko ifnot: typeof $data === 'string' -->
-          <button class="page-btn"
-                  data-bind="click: function(){ $parent.setPage($data); },
-                             css: {'page-btn--active': $parent.currentPage() === $data},
-                             text: $data"></button>
-          <!-- /ko -->
-        <!-- /ko -->
-        <button class="page-btn" title="Next" data-bind="click: nextPage, disable: currentPage() >= totalPages()">&#8250;</button>
+        <button class="page-btn" title="Previous" data-bind="click: prevPage, disable: !canPrev()">&#8249;</button>
+        <button class="page-btn page-btn--active" data-bind="text: pageNo()" disabled></button>
+        <button class="page-btn" title="Next" data-bind="click: nextPage, disable: !canNext()">&#8250;</button>
       </div>
     </div>
     <!-- /ko -->
