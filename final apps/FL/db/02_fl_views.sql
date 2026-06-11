@@ -23,7 +23,7 @@ SELECT
   r.last_name_ar,
   r.date_of_birth,
   r.nationality_code,
-  n.nationality_name_en                        AS nationality_name,
+  n.nationality_en                             AS nationality_name,
   r.national_id,
   r.passport_number,
   r.email,
@@ -63,7 +63,7 @@ SELECT
   f.last_name_ar,
   f.date_of_birth,
   f.nationality_code,
-  n.nationality_name_en                        AS nationality_name,
+  n.nationality_en                             AS nationality_name,
   f.national_id,
   f.passport_number,
   f.email,
@@ -79,12 +79,14 @@ SELECT
    FROM prod.dct_fl_contracts c
    WHERE c.freelancer_id = f.freelancer_id
    AND   c.status        = 'ACTIVE')           AS active_contract_count,
-  -- Expired document count
+  -- Expired document count (unified dct_documents; reference_id = freelancer_id for FL docs)
   (SELECT COUNT(*)
-   FROM prod.dct_fl_documents d
-   WHERE d.freelancer_id  = f.freelancer_id
+   FROM prod.dct_documents d
+   WHERE d.source_module  = 'FL'
+   AND   d.reference_id   = f.freelancer_id
    AND   d.expiry_date    < SYSDATE
-   AND   d.status         = 'ACTIVE')          AS expired_doc_count
+   AND   d.status         = 'ACTIVE'
+   AND   d.is_active      = 'Y')               AS expired_doc_count
 FROM prod.dct_fl_freelancers f
 LEFT JOIN prod.dct_nationality n ON n.nationality_code = f.nationality_code;
 
@@ -227,19 +229,22 @@ COMMENT ON TABLE prod.dct_fl_voucher_v IS 'Payment vouchers with contract, freel
 
 -- =============================================================================
 -- 6. DCT_FL_DOCUMENT_V — Documents with expiry status and freelancer name
+--    Backed by the unified DCT_DOCUMENTS store (source_module = 'FL').
+--    Convention: reference_id carries the freelancer_id for every FL document;
+--    document types resolve from DCT_DOCUMENT_TYPES (not lookup values).
 -- =============================================================================
 CREATE OR REPLACE VIEW prod.dct_fl_document_v AS
 SELECT
-  d.document_id,
-  d.freelancer_id,
+  d.doc_id                                    AS document_id,
+  d.reference_id                              AS freelancer_id,
   f.first_name_en || ' ' || f.last_name_en    AS freelancer_name,
   d.source_type,
   d.source_id,
-  d.document_type_id,
-  lv.value_name_en                            AS document_type_name,
-  d.document_name,
-  d.file_mime_type,
-  d.file_size,
+  d.doc_type_id                               AS document_type_id,
+  dt.doc_type_name_en                         AS document_type_name,
+  d.file_name                                 AS document_name,
+  d.mime_type                                 AS file_mime_type,
+  d.file_size_bytes                           AS file_size,
   d.expiry_date,
   d.alert_days_before,
   d.is_required,
@@ -259,11 +264,12 @@ SELECT
     ELSE 'VALID'
   END                                         AS expiry_status,
   TRUNC(d.expiry_date - SYSDATE)              AS days_to_expiry
-FROM prod.dct_fl_documents      d
-LEFT JOIN prod.dct_fl_freelancers f  ON f.freelancer_id = d.freelancer_id
-LEFT JOIN prod.dct_lookup_values lv  ON lv.value_id     = d.document_type_id;
+FROM prod.dct_documents           d
+LEFT JOIN prod.dct_fl_freelancers f  ON f.freelancer_id = d.reference_id
+LEFT JOIN prod.dct_document_types dt ON dt.doc_type_id  = d.doc_type_id
+WHERE d.source_module = 'FL';
 
-COMMENT ON TABLE prod.dct_fl_document_v IS 'Documents with expiry_status (VALID/EXPIRING_SOON/EXPIRED), days_to_expiry, and freelancer name';
+COMMENT ON TABLE prod.dct_fl_document_v IS 'FL window into unified DCT_DOCUMENTS with expiry_status (VALID/EXPIRING_SOON/EXPIRED), days_to_expiry, and freelancer name (reference_id = freelancer_id)';
 
 -- =============================================================================
 -- 7. DCT_FL_DELIVERABLE_V — Deliverables with contract and freelancer info

@@ -1,0 +1,22 @@
+{
+  "nav.home": "الرئيسية",
+  "nav.workspace": "مساحة عملي",
+  "nav.profile": "ملفي الشخصي",
+  "nav.notifications": "الإشعارات",
+  "nav.pendingApprovals": "الموافقات المعلقة",
+  "nav.userMgmt": "إدارة المستخدمين",
+  "nav.users": "المستخدمون",
+  "nav.roles": "الأدوار",
+  "nav.permissions": "الصلاحيات",
+  "nav.organisation": "الهيكل التنظيمي",
+  "nav.orgHierarchy": "التسلسل التنظيمي",
+  "nav.ifinanceModules": "وحدات آي-فاينانس",
+  "nav.system": "النظام",
+  "nav.modules": "سجل الوحدات",
+  "nav.approvalTemplates": "قوالب الاعتماد",
+  "nav.approvalMonitor": "مراقب الاعتمادات",
+  "nav.lookups": "القوائم المرجعية",
+  "nav.appearance": "المظهر",
+  "nav.systemSettings": "إعدادات النظام",
+  "nav.auditLog": "سجل التدقيق"
+}

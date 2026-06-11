@@ -394,7 +394,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_dt_pkg AS
                     p_recipient_user_id => usr.user_id,
                     p_notification_type => 'APPROVAL_REQUEST',
                     p_title_en          => 'Travel Request Pending Approval',
-                    p_body_en           => 'Travel request ' || v_req.request_number || ' is awaiting your approval.'
+                    p_body_en           => 'Travel request ' || v_req.request_number || ' is awaiting your approval.',
+                    p_module_code       => 'DUTY_TRAVEL'
                 );
             END LOOP;
         EXCEPTION WHEN OTHERS THEN NULL;  -- notifications are non-critical
@@ -465,7 +466,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_dt_pkg AS
                 p_recipient_user_id => v_emp_id,
                 p_notification_type => 'STATUS_UPDATE',
                 p_title_en          => 'Travel Advance Disbursed',
-                p_body_en           => 'Your travel advance for request ' || v_req_num || ' has been disbursed. You may proceed with your travel.'
+                p_body_en           => 'Your travel advance for request ' || v_req_num || ' has been disbursed. You may proceed with your travel.',
+                p_module_code       => 'DUTY_TRAVEL'
             );
         EXCEPTION WHEN OTHERS THEN NULL;
         END;
@@ -527,7 +529,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_dt_pkg AS
                 p_recipient_user_id => v_emp_id,
                 p_notification_type => 'STATUS_UPDATE',
                 p_title_en          => 'Travel Request Closed',
-                p_body_en           => 'Your travel request ' || v_req_num || ' has been closed.'
+                p_body_en           => 'Your travel request ' || v_req_num || ' has been closed.',
+                p_module_code       => 'DUTY_TRAVEL'
             );
         EXCEPTION WHEN OTHERS THEN NULL;
         END;
@@ -565,7 +568,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_dt_pkg AS
                         p_recipient_user_id => rec.employee_user_id,
                         p_notification_type => 'ACTION_REQUIRED',
                         p_title_en          => 'Settlement Required',
-                        p_body_en           => 'You have returned from trip ' || rec.request_number || '. Please submit your expense settlement.'
+                        p_body_en           => 'You have returned from trip ' || rec.request_number || '. Please submit your expense settlement.',
+                        p_module_code       => 'DUTY_TRAVEL'
                     );
                 EXCEPTION WHEN OTHERS THEN NULL;
                 END;
@@ -641,7 +645,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_dt_pkg AS
                         p_title_en          => 'Settlement Overdue',
                         p_body_en           => req.employee_name || ' has not submitted settlement for request ' ||
                                               req.request_number || ' (returned ' ||
-                                              TO_CHAR(req.return_date,'DD-Mon-YYYY') || ').'
+                                              TO_CHAR(req.return_date,'DD-Mon-YYYY') || ').',
+                        p_module_code       => 'DUTY_TRAVEL'
                     );
                 EXCEPTION WHEN OTHERS THEN NULL;
                 END;

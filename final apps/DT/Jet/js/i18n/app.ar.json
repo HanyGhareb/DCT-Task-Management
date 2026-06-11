@@ -1,0 +1,23 @@
+{
+  "nav.home": "الرئيسية",
+  "nav.myTravel": "رحلاتي",
+  "nav.myRequests": "طلباتي",
+  "nav.requestForm": "طلب جديد",
+  "nav.mySettlements": "تسوياتي",
+  "nav.approvalsGroup": "الاعتمادات",
+  "nav.approvals": "الموافقات المعلقة",
+  "nav.finance": "المالية",
+  "nav.disbursementQueue": "قائمة الصرف",
+  "nav.closureQueue": "إغلاق التسويات",
+  "nav.allSettlements": "كل التسويات",
+  "nav.adminGroup": "الإدارة",
+  "nav.allRequests": "كل طلبات السفر",
+  "nav.travelReport": "تقارير السفر",
+  "nav.config": "الإعدادات",
+  "nav.perDiemRates": "بدلات الإقامة",
+  "nav.countryGroups": "مجموعات الدول",
+  "nav.docRequirements": "متطلبات الوثائق",
+  "nav.approvalRules": "قواعد الاعتماد",
+  "nav.moduleSettings": "إعدادات الوحدة",
+  "nav.notifications": "الإشعارات"
+}

@@ -49,6 +49,24 @@ PROMPT
 PROMPT [Step 6] Running 07_cc_consolidate_delegation.sql ...
 @07_cc_consolidate_delegation.sql
 
+-- Step 7: Phase 2 unified-structure adoption (REQUIRES db/v2/15 first).
+--         Drops dct_cc_attachments / dct_cc_reimb_lines / dct_cc_doc_requirements
+--         (superseded by DCT_DOCUMENTS / DCT_BUDGET_CODING_LINES /
+--         DCT_DOC_REQUIREMENTS), removes status CHECKs (lookup-first), and
+--         simplifies card statuses to ACTIVE|INACTIVE|CLOSED.
+--         MUST run in a fresh ADMIN session (it creates ADMIN synonyms) —
+--         then re-run 02_cc_views.sql and 04_cc_pkg.sql.
+PROMPT
+PROMPT [Step 7] Running 08_cc_unified_adoption.sql ...
+@08_cc_unified_adoption.sql
+@02_cc_views.sql
+
+-- Step 8: Business-logic package (after adoption so it compiles against
+--         the unified tables)
+PROMPT
+PROMPT [Step 8] Running 04_cc_pkg.sql ...
+@04_cc_pkg.sql
+
 PROMPT
 PROMPT ============================================================
 PROMPT  Credit Cards Module install complete.

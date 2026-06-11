@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-brand="admin">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i-Finance · Module Dashboards — Phase 3 Mockup 02</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#C74634; --brand-soft:#FDEEEB;
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F0F2F5;
+  --border:#E3E6EB; --text:#1B2430; --text-2:#5B6573; --text-3:#8A93A2;
+  --amber:#F0883E; --green:#2DA44E; --red:#D1242F; --blue:#0969DA;
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace; --font-ar:'IBM Plex Sans Arabic',sans-serif;
+  --r:10px; --r-lg:14px; --shadow:0 1px 2px rgba(27,36,48,.06),0 4px 14px rgba(27,36,48,.05);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+[data-brand="admin"]{--brand:#C74634;--brand-soft:#FDEEEB}
+[data-brand="pc"]{--brand:#2E7D32;--brand-soft:#E8F5E9}
+[data-brand="dt"]{--brand:#0572CE;--brand-soft:#E3F2FD}
+[data-brand="hr"]{--brand:#1a7f5a;--brand-soft:#E6F4EF}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14.5px/1.55 var(--font)}
+html[lang="ar"] body{font-family:var(--font-ar)}
+.mono{font-family:var(--mono);font-feature-settings:'tnum'}
+
+.mock-bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:10px 24px;background:#10151C;color:#E6EDF3;font-size:13px}
+.mock-bar b{font-family:var(--mono);color:var(--amber);font-weight:500}
+.mock-bar .spacer{flex:1}
+.lang-toggle{display:flex;border:1px solid #30363D;border-radius:99px;overflow:hidden}
+.lang-toggle button{border:0;background:transparent;color:#7D8590;padding:6px 16px;font:600 13px var(--font);cursor:pointer;transition:all .25s var(--spring)}
+.lang-toggle button.on{background:var(--amber);color:#10151C}
+
+.page{max-width:1180px;margin-inline:auto;padding:32px 24px 100px}
+h1{font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--text-2);margin:0 0 24px;max-width:75ch}
+.kbd{font-family:var(--mono);font-size:.85em;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+
+.tabs{display:flex;gap:8px;margin-block-end:20px;flex-wrap:wrap}
+.tab{display:flex;align-items:center;gap:8px;border:1px solid var(--border);background:var(--surface);border-radius:99px;
+  padding:8px 18px;font:600 13.5px var(--font);color:var(--text-2);cursor:pointer;transition:all .25s var(--spring)}
+.tab .dot{width:9px;height:9px;border-radius:50%}
+.tab.on{border-color:var(--brand);color:var(--brand);background:var(--brand-soft);transform:scale(1.04)}
+
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-block-end:16px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:16px;box-shadow:var(--shadow);
+  animation:rise .45s var(--spring) both}
+.stat:nth-child(2){animation-delay:.04s}.stat:nth-child(3){animation-delay:.08s}.stat:nth-child(4){animation-delay:.12s}
+.stat .lbl{font-size:11.5px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.stat .val{font:600 25px var(--mono);margin-block-start:4px}
+@keyframes rise{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+
+.charts{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.chart-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);
+  padding:18px;animation:rise .5s var(--spring) both;animation-delay:.15s}
+.chart-card h3{margin:0;font-size:15px}
+.chart-card .cap{font-size:12px;color:var(--text-3);margin:2px 0 14px}
+.chart-card .src{font-family:var(--mono);font-size:10.5px;color:var(--text-3);margin-block-start:10px;
+  border-block-start:1px dashed var(--border);padding-block-start:8px}
+.cwrap{position:relative;height:260px}
+.skeleton{position:absolute;inset:0;border-radius:8px;background:var(--surface-2);overflow:hidden}
+.skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:shimmer 1.2s infinite}
+@keyframes shimmer{100%{transform:translateX(100%)}}
+.note{background:#FFF1E3;border:1px solid #F4C99B;border-radius:var(--r);padding:16px;font-size:13px;margin-block-start:24px}
+@media(max-width:920px){.charts,.stats{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="mock-bar">
+  <b>phase3 / 02-dashboards</b>
+  <span id="barHint">Chart.js 4 loaded through RequireJS paths — the exact AMD wiring the apps will use.</span>
+  <span class="spacer"></span>
+  <div class="lang-toggle"><button id="lang-en" class="on">EN</button><button id="lang-ar">ع</button></div>
+</div>
+
+<div class="page">
+  <h1 id="title">Module dashboards — 2 charts each</h1>
+  <p class="sub" id="subtitle">Each module keeps its stat cards and gains two Chart.js cards fed by its stats endpoint. Colors come from CSS variables (switch tabs — the brand recolors live). Toggle <span class="kbd">ع</span> to see the same charts mirrored RTL with Arabic labels and Latin digits.</p>
+
+  <div class="tabs" id="tabs">
+    <button class="tab on" data-mod="admin"><span class="dot" style="background:#C74634"></span><span>Admin 200</span></button>
+    <button class="tab" data-mod="pc"><span class="dot" style="background:#2E7D32"></span><span>Petty Cash 201</span></button>
+    <button class="tab" data-mod="dt"><span class="dot" style="background:#0572CE"></span><span>Duty Travel 204</span></button>
+    <button class="tab" data-mod="hr"><span class="dot" style="background:#1a7f5a"></span><span>HR 205</span></button>
+  </div>
+
+  <div class="stats" id="stats"></div>
+
+  <div class="charts">
+    <div class="chart-card">
+      <h3 id="c1t"></h3><div class="cap" id="c1c"></div>
+      <div class="cwrap"><div class="skeleton" id="sk1"></div><canvas id="chart1"></canvas></div>
+      <div class="src" id="c1s"></div>
+    </div>
+    <div class="chart-card">
+      <h3 id="c2t"></h3><div class="cap" id="c2c"></div>
+      <div class="cwrap"><div class="skeleton" id="sk2"></div><canvas id="chart2"></canvas></div>
+      <div class="src" id="c2s"></div>
+    </div>
+  </div>
+
+  <div class="note" id="note"><b>Implementation contract:</b> charts are created by <span class="kbd">shared/js/chartLoader.js</span> — palette from CSS vars, Arabic font + <span class="kbd">rtl/textDirection</span> when lang=ar, and <span class="kbd">chart.destroy()</span> wired to KO node disposal so route changes never leak canvases (the skeleton you see on every tab switch is the dashboard tri-state in action).</div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js"></script>
+<script>
+/* ===== EXACTLY how each app's main.js will load Chart.js (no <script> tag!) ===== */
+requirejs.config({
+  paths: { 'chartjs': 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min' }
+});
+
+var L = {
+ en:{
+  title:'Module dashboards — 2 charts each',
+  subtitle:'Each module keeps its stat cards and gains two Chart.js cards fed by its stats endpoint. Colors come from CSS variables (switch tabs — the brand recolors live). Toggle ع to see the same charts mirrored RTL with Arabic labels and Latin digits.',
+  barHint:'Chart.js 4 loaded through RequireJS paths — the exact AMD wiring the apps will use.',
+  months:['Jul','Aug','Sep','Oct','Nov','Dec','Jan','Feb','Mar','Apr','May','Jun'],
+  days:['W1','W2','W3','W4'],
+  admin:{ tab:'Admin 200',
+    stats:[['Users','142'],['Active sessions','17'],['Roles','12'],['Audit events · 30d','3,481']],
+    c1t:'Approval cycle time by module', c1c:'Average days from submission to final decision — last 90 days',
+    c1s:'NEW GET /dct/stats/ · dct_approval_instances (completed_at − created_at, 90d)',
+    c1labels:['Petty Cash','Duty Travel','HR','Freelancers','Credit Cards'],
+    c2t:'Platform activity — last 30 days', c2c:'Logins vs all other audited actions, by week',
+    c2s:'NEW GET /dct/stats/ · dct_audit_log grouped by day',
+    c2s1:'Logins', c2s2:'Other actions' },
+  pc:{ tab:'Petty Cash 201',
+    stats:[['Active floats','12'],['Pending approval','5'],['Outstanding','48,250'],['Reimb. pending','9']],
+    c1t:'Outstanding floats by organisation', c1c:'Advance minus reimbursed, ACTIVE floats',
+    c1s:'NEW GET /pc/pc/charts · dct_pc_admin_v (ACTIVE, grouped by org)',
+    c1labels:['Culture','Tourism','Heritage','Shared Svcs','Events'],
+    c2t:'Uncleared TEMPORARY floats — ageing', c2c:'Days since disbursement',
+    c2s:'NEW GET /pc/pc/charts · bucketed by SYSDATE − disbursed_date',
+    c2labels:['0–30 days','31–60','61–90','90+'], c2s1:'Within policy', c2s2:'Escalated' },
+  dt:{ tab:'Duty Travel 204',
+    stats:[['Active requests','8'],['Need settlement','3'],['Advances YTD','312,400'],['Avg trip days','4.2']],
+    c1t:'Monthly travel spend vs advances', c1c:'12-month trend, AED',
+    c1s:'EXTENDED GET /dt/dashboard/ · SUM(total_advance_aed), SUM(total_per_diem_aed) by month',
+    c1s1:'Advances', c1s2:'Per-diem',
+    c2t:'Requests by status', c2c:'Current lifecycle distribution',
+    c2s:'EXTENDED GET /dt/dashboard/ · count by status',
+    c2labels:['Draft','Submitted','Approved','Advance paid','Travelled','Closed'] },
+  hr:{ tab:'HR 205',
+    stats:[['Headcount','486'],['Open positions','23'],['Fill rate','94%'],['Docs expiring 90d','31']],
+    c1t:'Headcount by organisation', c1c:'Approved positions vs filled',
+    c1s:'EXISTING GET /hr/reports/headcount/ — no DB change',
+    c1labels:['Culture','Tourism','Heritage','Shared Svcs','Events'], c1s1:'Approved', c1s2:'Filled',
+    c2t:'Document expiry horizon', c2c:'Employee documents expiring in the next 90 days',
+    c2s:'EXISTING GET /hr/reports/expiry-alerts/?days=90 — bucketed client-side',
+    c2labels:['0–30 days','31–60','61–90'] }
+ },
+ ar:{
+  title:'لوحات معلومات الوحدات — رسمان بيانيان لكل وحدة',
+  subtitle:'تحتفظ كل وحدة ببطاقات الإحصاء وتكتسب بطاقتي Chart.js مغذّاتين من نقطة نهاية الإحصاءات. الألوان من متغيرات CSS (بدّل التبويبات لترى العلامة تتلون مباشرة). الأرقام تبقى لاتينية في العربية.',
+  barHint:'تحميل Chart.js 4 عبر RequireJS paths — نفس التوصيل الذي ستستخدمه التطبيقات.',
+  months:['يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر','يناير','فبراير','مارس','أبريل','مايو','يونيو'],
+  days:['أ1','أ2','أ3','أ4'],
+  admin:{ tab:'الإدارة 200',
+    stats:[['المستخدمون','142'],['الجلسات النشطة','17'],['الأدوار','12'],['أحداث التدقيق · 30ي','3,481']],
+    c1t:'زمن دورة الاعتماد حسب الوحدة', c1c:'متوسط الأيام من التقديم حتى القرار النهائي — آخر 90 يوماً',
+    c1s:'NEW GET /dct/stats/',
+    c1labels:['السلفة النقدية','السفر الرسمي','الموارد البشرية','المتعاقدون','البطاقات'],
+    c2t:'نشاط المنصة — آخر 30 يوماً', c2c:'تسجيلات الدخول مقابل بقية الإجراءات، أسبوعياً',
+    c2s:'NEW GET /dct/stats/', c2s1:'تسجيلات الدخول', c2s2:'إجراءات أخرى' },
+  pc:{ tab:'السلفة النقدية 201',
+    stats:[['السلف النشطة','12'],['بانتظار الاعتماد','5'],['المستحق','48,250'],['استردادات معلقة','9']],
+    c1t:'السلف المستحقة حسب الجهة', c1c:'السلفة ناقص المسترد، للسلف النشطة',
+    c1s:'NEW GET /pc/pc/charts',
+    c1labels:['الثقافة','السياحة','التراث','الخدمات المشتركة','الفعاليات'],
+    c2t:'السلف المؤقتة غير المسوّاة — التقادم', c2c:'الأيام منذ الصرف',
+    c2s:'NEW GET /pc/pc/charts',
+    c2labels:['0–30 يوماً','31–60','61–90','+90'], c2s1:'ضمن السياسة', c2s2:'مصعّدة' },
+  dt:{ tab:'السفر الرسمي 204',
+    stats:[['طلبات نشطة','8'],['بحاجة لتسوية','3'],['السلف منذ بداية السنة','312,400'],['متوسط أيام الرحلة','4.2']],
+    c1t:'الإنفاق الشهري مقابل السلف', c1c:'اتجاه 12 شهراً، درهم',
+    c1s:'EXTENDED GET /dt/dashboard/', c1s1:'السلف', c1s2:'بدل الإقامة',
+    c2t:'الطلبات حسب الحالة', c2c:'التوزيع الحالي لدورة الحياة',
+    c2s:'EXTENDED GET /dt/dashboard/',
+    c2labels:['مسودة','مقدم','معتمد','سلفة مدفوعة','تم السفر','مغلق'] },
+  hr:{ tab:'الموارد البشرية 205',
+    stats:[['عدد الموظفين','486'],['وظائف شاغرة','23'],['نسبة الإشغال','94%'],['وثائق تنتهي خلال 90ي','31']],
+    c1t:'عدد الموظفين حسب الجهة', c1c:'الوظائف المعتمدة مقابل المشغولة',
+    c1s:'EXISTING GET /hr/reports/headcount/',
+    c1labels:['الثقافة','السياحة','التراث','الخدمات المشتركة','الفعاليات'], c1s1:'معتمدة', c1s2:'مشغولة',
+    c2t:'أفق انتهاء الوثائق', c2c:'وثائق الموظفين المنتهية خلال 90 يوماً',
+    c2s:'EXISTING GET /hr/reports/expiry-alerts/?days=90',
+    c2labels:['0–30 يوماً','31–60','61–90'] }
+ }
+};
+
+require(['chartjs'], function (Chart) {
+  var charts = [];
+  var mod = 'admin', lang = 'en';
+
+  function cssVar(n){ return getComputedStyle(document.documentElement).getPropertyValue(n).trim(); }
+  function alpha(hex,a){
+    var h = hex.replace('#',''); if (h.length===3) h = h.replace(/./g,'$&$&');
+    var n = parseInt(h,16);
+    return 'rgba('+(n>>16&255)+','+(n>>8&255)+','+(n&255)+','+a+')';
+  }
+
+  /* ===== shared/js/chartLoader.js behavior: theme + i18n aware defaults ===== */
+  function baseOpts(){
+    var rtl = (lang === 'ar');
+    Chart.defaults.font.family = rtl ? "'IBM Plex Sans Arabic',sans-serif" : "'Outfit',sans-serif";
+    Chart.defaults.color = cssVar('--text-2');
+    Chart.defaults.borderColor = cssVar('--border');
+    return {
+      responsive:true, maintainAspectRatio:false, locale:'en-AE', /* Latin digits always */
+      plugins:{
+        legend:{ rtl:rtl, textDirection: rtl?'rtl':'ltr', labels:{ usePointStyle:true, boxHeight:7 } },
+        tooltip:{ rtl:rtl, textDirection: rtl?'rtl':'ltr' }
+      },
+      animation:{ duration:600, easing:'easeOutQuart' }
+    };
+  }
+
+  function render(){
+    var s = L[lang][mod], brand = cssVar('--brand');
+    var amber = cssVar('--amber'), green = cssVar('--green'), red = cssVar('--red'), blue = cssVar('--blue');
+
+    /* stats */
+    var st = document.getElementById('stats'); st.innerHTML='';
+    s.stats.forEach(function(p){
+      var d = document.createElement('div'); d.className='stat';
+      d.innerHTML = '<div class="lbl">'+p[0]+'</div><div class="val mono">'+p[1]+'</div>';
+      st.appendChild(d);
+    });
+    ['c1t','c1c','c1s','c2t','c2c','c2s'].forEach(function(k){ document.getElementById(k).textContent = s[k]; });
+
+    /* skeletons on, charts destroyed (= what route-change must do) */
+    charts.forEach(function(c){ c.destroy(); }); charts = [];
+    document.getElementById('sk1').style.display = 'block';
+    document.getElementById('sk2').style.display = 'block';
+
+    setTimeout(function(){  /* simulated endpoint latency → skeleton → chart */
+      document.getElementById('sk1').style.display = 'none';
+      document.getElementById('sk2').style.display = 'none';
+      var o1 = baseOpts(), o2 = baseOpts();
+      var c1 = document.getElementById('chart1').getContext('2d');
+      var c2 = document.getElementById('chart2').getContext('2d');
+
+      if (mod==='admin'){
+        charts.push(new Chart(c1,{type:'bar',data:{labels:s.c1labels,datasets:[{label:lang==='ar'?'أيام':'days',
+          data:[2.1,3.4,1.6,4.8,2.9],backgroundColor:alpha(brand,.75),borderRadius:6}]},options:o1}));
+        charts.push(new Chart(c2,{type:'line',data:{labels:L[lang].days,datasets:[
+          {label:s.c2s1,data:[126,148,141,167],borderColor:brand,backgroundColor:alpha(brand,.12),fill:true,tension:.35},
+          {label:s.c2s2,data:[342,398,371,455],borderColor:amber,backgroundColor:alpha(amber,.10),fill:true,tension:.35}]},options:o2}));
+      } else if (mod==='pc'){
+        charts.push(new Chart(c1,{type:'bar',data:{labels:s.c1labels,datasets:[{label:'AED',
+          data:[18250,12400,8900,5600,3100],backgroundColor:alpha(brand,.75),borderRadius:6}]},options:o1}));
+        charts.push(new Chart(c2,{type:'bar',data:{labels:s.c2labels,datasets:[
+          {label:s.c2s1,data:[6,3,1,0],backgroundColor:alpha(green,.7),borderRadius:6,stack:'a'},
+          {label:s.c2s2,data:[0,0,1,2],backgroundColor:alpha(red,.7),borderRadius:6,stack:'a'}]},
+          options:Object.assign(o2,{scales:{x:{stacked:true},y:{stacked:true,ticks:{precision:0}}}})}));
+      } else if (mod==='dt'){
+        charts.push(new Chart(c1,{type:'line',data:{labels:L[lang].months,datasets:[
+          {label:s.c1s1,data:[22,31,28,35,41,26,30,38,44,36,29,33].map(function(v){return v*1000}),borderColor:brand,backgroundColor:alpha(brand,.12),fill:true,tension:.35},
+          {label:s.c1s2,data:[15,21,19,24,29,18,21,27,31,25,20,23].map(function(v){return v*1000}),borderColor:amber,borderDash:[6,4],tension:.35}]},options:o1}));
+        charts.push(new Chart(c2,{type:'bar',data:{labels:s.c2labels,datasets:[{label:lang==='ar'?'طلبات':'requests',
+          data:[4,7,5,3,6,21],backgroundColor:[alpha(cssVar('--text-3'),.5),alpha(blue,.7),alpha(green,.7),alpha(amber,.7),alpha(brand,.75),alpha(cssVar('--text-2'),.45)],borderRadius:6}]},
+          options:Object.assign(o2,{indexAxis:'y',plugins:Object.assign(o2.plugins,{legend:{display:false}})})}));
+      } else {
+        charts.push(new Chart(c1,{type:'bar',data:{labels:s.c1labels,datasets:[
+          {label:s.c1s1,data:[120,98,86,140,65],backgroundColor:alpha(cssVar('--text-3'),.35),borderRadius:6},
+          {label:s.c1s2,data:[114,90,79,138,60],backgroundColor:alpha(brand,.75),borderRadius:6}]},options:o1}));
+        charts.push(new Chart(c2,{type:'bar',data:{labels:s.c2labels,datasets:[{label:lang==='ar'?'وثائق':'documents',
+          data:[9,14,8],backgroundColor:[alpha(red,.7),alpha(amber,.7),alpha(green,.6)],borderRadius:6}]},
+          options:Object.assign(o2,{plugins:Object.assign(o2.plugins,{legend:{display:false}}),scales:{y:{ticks:{precision:0}}}})}));
+      }
+    }, 650);
+  }
+
+  /* tabs */
+  document.querySelectorAll('.tab').forEach(function(tb){
+    tb.onclick = function(){
+      mod = tb.getAttribute('data-mod');
+      document.documentElement.setAttribute('data-brand', mod);
+      document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('on', t===tb); });
+      render();
+    };
+  });
+  function setLang(l){
+    lang = l;
+    document.documentElement.lang = l;
+    document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
+    document.getElementById('lang-en').classList.toggle('on', l==='en');
+    document.getElementById('lang-ar').classList.toggle('on', l==='ar');
+    document.getElementById('title').textContent = L[l].title;
+    document.getElementById('subtitle').textContent = L[l].subtitle;
+    document.getElementById('barHint').textContent = L[l].barHint;
+    document.querySelectorAll('.tab').forEach(function(t){ t.lastElementChild.textContent = L[l][t.getAttribute('data-mod')].tab; });
+    render();
+  }
+  document.getElementById('lang-en').onclick = function(){ setLang('en'); };
+  document.getElementById('lang-ar').onclick = function(){ setLang('ar'); };
+
+  render();
+});
+</script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 # Petty Cash Module (App 201) — Status
 
-**Last updated:** 2026-06-10  
+**Last updated:** 2026-06-11  
 **App alias:** PC | **Schema:** PROD | **APEX version:** 24.2
 
 ---
@@ -14,8 +14,9 @@
 | Seed Data | ✅ Complete | Module, roles, permissions, settings, lookups |
 | PL/SQL Package | ✅ Complete | DCT_PC_PKG + DCT_PC_AI_PKG (AI clearing) |
 | Alterations | ✅ Complete | 05_pc_alter.sql — added audit cols |
+| ORDS Module | ✅ Complete | 06_pc_ords.sql — pc.rest at `/ords/admin/pc/` (deployed 2026-06-11, smoke-tested 15/15) |
 | APEX App Shell | ⬜ Not started | Must be built in APEX Builder |
-| JET SPA | ✅ Complete | All VMs, dual mock/ORDS mode |
+| JET SPA | ✅ **LIVE** | All VMs; config points at ADB ORDS (`apiBase`/`authBase`, DT convention) |
 | APEX Pages | ⬜ Not started | Must be built in APEX Builder |
 
 ---
@@ -31,6 +32,7 @@
 | `03_pc_seed.sql` | ✅ Deployed | Module registration, roles, permissions, settings, lookups |
 | `04_pc_pkg.sql` | ✅ Deployed | DCT_PC_PKG spec + body; DCT_PC_AI_PKG (AI expense clearing) |
 | `05_pc_alter.sql` | ✅ Deployed | Audit column additions |
+| `06_pc_ords.sql` | ✅ Deployed | ORDS module `pc.rest` at `/ords/admin/pc/` — 26 handlers; secrets masked in settings; login/logout live on Admin `/dct` module |
 
 ---
 
@@ -89,3 +91,8 @@ Config: `js/services/config.js` — set `apiBase: '/ords/admin/pc'` for live mod
 | PC install order | Views (step 2) before seed (step 3) — reverse of other modules |
 | AI clearing (DCT_PC_AI_PKG) | API key must be set in DCT_SYSTEM_SETTINGS before AI features work |
 | APEX `WHENEVER SQLERROR ROLLBACK` | Rolls back ALL uncommitted blocks — fix all errors before running |
+
+## Phase 2 update (2026-06-11) - status history wiring (assessment-3/phase2/)
+- pc.rest redeployed: create (PC/reimb/clearing), disburse, and approval-action handlers now append rows to the unified DCT_REQUEST_STATUS_HISTORY (source_module 'PC'; source_type PC / PC_REIMB / PC_CLEAR). Verified live with PC-2026-00004 (SUBMITTED -> REJECTED, 2 history rows).
+- Natural-key FKs validated on all 3 budget-line tables (project_number/task_number -> DCT_PROJECTS/DCT_TASKS, expenditure_type -> DCT_EXPENDITURE_TYPES).
+- 6 PC_* lookup categories seeded (lookup-first); table CHECKs retained as safety nets until PC fully adopts.

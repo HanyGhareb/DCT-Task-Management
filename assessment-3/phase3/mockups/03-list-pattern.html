@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr" data-brand="admin">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i-Finance · List Pattern — Phase 3 Mockup 03</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#C74634; --brand-soft:#FDEEEB;
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F0F2F5;
+  --border:#E3E6EB; --border-strong:#CBD2DA; --text:#1B2430; --text-2:#5B6573; --text-3:#8A93A2;
+  --amber:#F0883E; --amber-soft:#FFF1E3; --green:#2DA44E; --green-soft:#DDF4E4;
+  --red:#D1242F; --red-soft:#FBE9EA; --blue:#0969DA; --blue-soft:#DDF0FF;
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace; --font-ar:'IBM Plex Sans Arabic',sans-serif;
+  --r:10px; --r-lg:14px; --shadow:0 1px 2px rgba(27,36,48,.06),0 4px 14px rgba(27,36,48,.05);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font:14.5px/1.55 var(--font)}
+html[lang="ar"] body{font-family:var(--font-ar)}
+.mono{font-family:var(--mono);font-feature-settings:'tnum'}
+
+.mock-bar{position:sticky;top:0;z-index:50;display:flex;align-items:center;gap:16px;padding:10px 24px;background:#10151C;color:#E6EDF3;font-size:13px}
+.mock-bar b{font-family:var(--mono);color:var(--amber);font-weight:500}
+.mock-bar .spacer{flex:1}
+.lang-toggle{display:flex;border:1px solid #30363D;border-radius:99px;overflow:hidden}
+.lang-toggle button{border:0;background:transparent;color:#7D8590;padding:6px 16px;font:600 13px var(--font);cursor:pointer;transition:all .25s var(--spring)}
+.lang-toggle button.on{background:var(--amber);color:#10151C}
+
+.page{max-width:1080px;margin-inline:auto;padding:32px 24px 100px}
+h1{font-size:28px;letter-spacing:-.02em;margin:0 0 4px}
+.sub{color:var(--text-2);margin:0 0 20px;max-width:78ch}
+.kbd{font-family:var(--mono);font-size:.85em;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+
+.statebar{display:flex;gap:8px;align-items:center;margin-block-end:16px;flex-wrap:wrap}
+.statebar .lbl{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3)}
+.chip{border:1px solid var(--border-strong);background:var(--surface);border-radius:99px;padding:6px 14px;
+  font:600 12.5px var(--font);color:var(--text-2);cursor:pointer;transition:all .25s var(--spring)}
+.chip:hover{transform:translateY(-1px)}
+.chip.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:var(--shadow);overflow:hidden}
+.card-h{display:flex;align-items:center;gap:12px;padding:14px 18px;border-block-end:1px solid var(--border);flex-wrap:wrap}
+.card-h h2{margin:0;font-size:16px}
+.count-pill{font:600 12px var(--mono);background:var(--surface-2);border-radius:99px;padding:3px 10px;color:var(--text-2)}
+.search{margin-inline-start:auto;position:relative}
+.search input{border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);color:var(--text);
+  padding:8px 12px;padding-inline-start:32px;font:inherit;width:260px;outline:none;transition:border .2s,box-shadow .2s}
+.search input:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.search::before{content:'⌕';position:absolute;inset-inline-start:10px;inset-block-start:6px;font-size:16px;color:var(--text-3)}
+.search .busy{position:absolute;inset-inline-end:10px;inset-block-start:9px;width:14px;height:14px;border:2px solid var(--border);
+  border-block-start-color:var(--amber);border-radius:50%;animation:spin .7s linear infinite;display:none}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+table.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:start;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);padding:10px 18px;border-block-end:1px solid var(--border);background:var(--surface)}
+.tbl td{padding:12px 18px;border-block-end:1px solid var(--border)}
+.tbl tbody tr{animation:rowIn .3s ease both}
+.tbl tbody tr:hover td{background:var(--surface-2)}
+@keyframes rowIn{from{opacity:0}to{opacity:1}}
+.code{font-family:var(--mono);font-size:12.5px;color:var(--blue)}
+.uavatar{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--brand);color:#fff;font:700 10.5px var(--font);margin-inline-end:10px;vertical-align:middle}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge--ok{background:var(--green-soft);color:var(--green)}
+.badge--mut{background:var(--surface-2);color:var(--text-2)}
+.badge--err{background:var(--red-soft);color:var(--red)}
+
+/* skeleton rows */
+.skeleton{position:relative;overflow:hidden;background:var(--surface-2);border-radius:6px;height:13px}
+.skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:shimmer 1.2s infinite}
+@keyframes shimmer{100%{transform:translateX(100%)}}
+@media(prefers-reduced-motion:reduce){.skeleton::after{animation:none}}
+.sk-cell-a{display:flex;align-items:center;gap:10px}
+.sk-cir{width:28px;height:28px;border-radius:50%;flex:none}
+
+/* empty + error states */
+.empty{padding:64px 20px;text-align:center;color:var(--text-2)}
+.empty .ico{font-size:44px;opacity:.35;margin-block-end:10px}
+.empty .msg{font-weight:600;font-size:15px}
+.empty .subm{font-size:13px;color:var(--text-3);margin-block-start:4px}
+.empty .btn{margin-block-start:16px}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--text);border-radius:8px;
+  padding:8px 16px;font:600 13.5px var(--font);cursor:pointer;transition:all .2s var(--spring)}
+.btn:hover{transform:translateY(-1px)}
+.btn--brand{background:var(--brand);border-color:var(--brand);color:#fff}
+
+/* pager — the shared <list-pager> component */
+.pager{display:flex;align-items:center;gap:14px;padding:12px 18px;border-block-start:1px solid var(--border);background:var(--surface)}
+.pager .info{font:500 12.5px var(--mono);color:var(--text-2)}
+.pager .grow{flex:1}
+.pager select{border:1px solid var(--border-strong);border-radius:7px;padding:5px 8px;font:600 12.5px var(--font);color:var(--text-2);background:var(--surface)}
+.pgbtn{width:32px;height:32px;display:grid;place-items:center;border:1px solid var(--border-strong);background:var(--surface);
+  border-radius:8px;cursor:pointer;font-size:15px;color:var(--text-2);transition:all .2s var(--spring)}
+.pgbtn:hover:not(:disabled){border-color:var(--brand);color:var(--brand);transform:scale(1.08)}
+.pgbtn:disabled{opacity:.35;cursor:default}
+html[dir="rtl"] .pgbtn span{display:inline-block;transform:scaleX(-1)}
+.pgnum{font:600 13px var(--mono);min-width:72px;text-align:center;color:var(--text)}
+
+/* toast */
+.toast-host{position:fixed;inset-block-start:60px;inset-inline-end:24px;display:grid;gap:10px;z-index:99}
+.toast{display:flex;gap:12px;align-items:flex-start;min-width:300px;max-width:380px;background:var(--surface);
+  border:1px solid var(--border);border-inline-start:4px solid var(--red);border-radius:10px;
+  box-shadow:0 8px 30px rgba(15,22,30,.18);padding:12px 14px;animation:toastIn .45s var(--spring)}
+.toast b{display:block;font-size:13.5px}.toast span{font-size:12.5px;color:var(--text-2)}
+.toast .x{margin-inline-start:auto;border:0;background:none;color:var(--text-3);cursor:pointer;font-size:15px}
+@keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.94)}to{opacity:1;transform:none}}
+.note{background:var(--amber-soft);border:1px solid #F4C99B;border-radius:var(--r);padding:16px;font-size:13px;margin-block-start:22px}
+@media(max-width:760px){.search input{width:160px}}
+</style>
+</head>
+<body>
+<div class="mock-bar">
+  <b>phase3 / 03-list-pattern</b>
+  <span id="barHint">Server-side pagination + tri-state standard for every big list.</span>
+  <span class="spacer"></span>
+  <div class="lang-toggle"><button id="lang-en" class="on">EN</button><button id="lang-ar">ع</button></div>
+</div>
+
+<div class="page">
+  <h1 id="title">The list standard</h1>
+  <p class="sub" id="subtitle">Every large list (Admin users &amp; audit, PC all petty cash, DT all requests, HR employees) gets this exact pattern: server query with <span class="kbd">{ items, total, limit, offset }</span>, skeleton rows while loading, a shared pager, 300 ms debounced search, and an error path that toasts + offers retry. A simulated server (312 rows, 600 ms latency) powers this page.</p>
+
+  <div class="statebar">
+    <span class="lbl" id="forceLbl">Force state:</span>
+    <button class="chip" id="fLoad">Loading</button>
+    <button class="chip" id="fEmpty">Empty</button>
+    <button class="chip" id="fError">Error</button>
+    <button class="chip on" id="fNormal">Normal</button>
+  </div>
+
+  <div class="card">
+    <div class="card-h">
+      <h2 id="listTitle">Users</h2><span class="count-pill mono" id="countPill">…</span>
+      <div class="search">
+        <input id="q" placeholder="Search name, username, email…">
+        <span class="busy" id="busy"></span>
+      </div>
+    </div>
+
+    <table class="tbl">
+      <thead><tr>
+        <th id="thUser">User</th><th id="thUsername">Username</th><th id="thOrg">Organisation</th><th id="thRoles">Roles</th><th id="thStatus">Status</th>
+      </tr></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+    <div id="stateHost"></div>
+
+    <div class="pager" id="pager">
+      <span class="info" id="rangeInfo">—</span>
+      <span class="grow"></span>
+      <label style="font-size:12.5px;color:var(--text-3)" id="perPageLbl">Per page</label>
+      <select id="pageSize"><option>25</option><option selected>50</option><option>100</option></select>
+      <button class="pgbtn" id="prev"><span>‹</span></button>
+      <span class="pgnum" id="pgnum">1 / 7</span>
+      <button class="pgbtn" id="next"><span>›</span></button>
+    </div>
+  </div>
+
+  <div class="note" id="note"><b>Implementation contract:</b> the pager is the shared <span class="kbd">&lt;list-pager&gt;</span> KO component (also supports the ORDS-native <span class="kbd">hasMore</span> mode used by HR employees); skeletons are <span class="kbd">&lt;list-skeleton&gt;</span>; errors flow through <span class="kbd">shared/js/api.js → toast.error()</span>. Search is sent to the server (<span class="kbd">?search=&amp;limit=&amp;offset=</span>) — no more client-side filtering of full tables.</div>
+</div>
+
+<div class="toast-host" id="toasthost"></div>
+
+<script>
+/* ---------- strings ---------- */
+var L = {
+ en:{ title:'The list standard', barHint:'Server-side pagination + tri-state standard for every big list.',
+   subtitle:'Every large list (Admin users & audit, PC all petty cash, DT all requests, HR employees) gets this exact pattern: server query with { items, total, limit, offset }, skeleton rows while loading, a shared pager, 300 ms debounced search, and an error path that toasts + offers retry. A simulated server (312 rows, 600 ms latency) powers this page.',
+   forceLbl:'Force state:', fLoad:'Loading', fEmpty:'Empty', fError:'Error', fNormal:'Normal',
+   listTitle:'Users', search:'Search name, username, email…', perPage:'Per page',
+   thUser:'User', thUsername:'Username', thOrg:'Organisation', thRoles:'Roles', thStatus:'Status',
+   of:'of', rows:'rows', active:'Active', inactive:'Inactive', locked:'Locked',
+   emptyMsg:'No users match your search', emptySub:'Try a different term or clear the search.', clear:'Clear search',
+   errMsg:'Could not load users', errSub:'The server returned an error. Your filters are preserved.', retry:'Retry',
+   toastT:'Request failed', toastB:'GET /dct/users/ → 500 — Internal Server Error',
+   orgs:['Culture Sector','Tourism Sector','Heritage Authority','Shared Services','Events & Festivals'],
+   first:['Mariam','Ahmed','Latifa','Omar','Fatima','Khalid','Noora','Saeed','Aisha','Hamdan','Salama','Rashid'],
+   last:['Al Mansoori','Al Hashemi','Al Suwaidi','Al Marri','Al Zaabi','Al Shamsi','Al Falasi','Al Ketbi'] },
+ ar:{ title:'معيار القوائم', barHint:'ترقيم من الخادم + معيار الحالات الثلاث لكل قائمة كبيرة.',
+   subtitle:'كل قائمة كبيرة (مستخدمو الإدارة والتدقيق، كل السلف النقدية، كل طلبات السفر، موظفو الموارد البشرية) تحصل على هذا النمط نفسه: استعلام من الخادم بـ { items, total, limit, offset }، صفوف هيكلية أثناء التحميل، مكوّن ترقيم مشترك، بحث مؤجّل 300 مللي ثانية، ومسار خطأ يعرض تنبيهاً مع إعادة المحاولة. خادم محاكى (312 صفاً، كمون 600 مللي ثانية) يشغّل هذه الصفحة.',
+   forceLbl:'فرض الحالة:', fLoad:'تحميل', fEmpty:'فارغة', fError:'خطأ', fNormal:'طبيعية',
+   listTitle:'المستخدمون', search:'ابحث بالاسم أو اسم المستخدم أو البريد…', perPage:'لكل صفحة',
+   thUser:'المستخدم', thUsername:'اسم المستخدم', thOrg:'الجهة', thRoles:'الأدوار', thStatus:'الحالة',
+   of:'من', rows:'صفاً', active:'نشط', inactive:'غير نشط', locked:'مقفل',
+   emptyMsg:'لا يوجد مستخدمون مطابقون لبحثك', emptySub:'جرّب كلمة أخرى أو امسح البحث.', clear:'مسح البحث',
+   errMsg:'تعذّر تحميل المستخدمين', errSub:'أعاد الخادم خطأ. عوامل التصفية محفوظة.', retry:'إعادة المحاولة',
+   toastT:'فشل الطلب', toastB:'GET /dct/users/ → 500 — خطأ داخلي في الخادم',
+   orgs:['قطاع الثقافة','قطاع السياحة','هيئة التراث','الخدمات المشتركة','الفعاليات والمهرجانات'],
+   first:['مريم','أحمد','لطيفة','عمر','فاطمة','خالد','نورة','سعيد','عائشة','حمدان','سلامة','راشد'],
+   last:['المنصوري','الهاشمي','السويدي','المري','الزعابي','الشامسي','الفلاسي','الكتبي'] }
+};
+var lang = 'en';
+
+/* ---------- simulated server: 312 users, {items,total} envelope, 600ms ---------- */
+var TOTAL = 312, ROLES = ['SYS_ADMIN','FINANCE','MANAGER','EMPLOYEE','AUDITOR'];
+function rowAt(i, s){
+  var f = s.first[i % s.first.length], l = s.last[(i*7) % s.last.length];
+  return { name: f+' '+l,
+    username: ('u'+(1000+i)),
+    email: 'user'+(1000+i)+'@dct.gov.ae',
+    org: s.orgs[i % s.orgs.length],
+    roles: ROLES[i % ROLES.length] + (i % 4 === 0 ? ' +1' : ''),
+    status: i % 9 === 0 ? 'locked' : (i % 5 === 0 ? 'inactive' : 'active'),
+    ini: (f[0]||'U') + (l.split(' ').pop()[0]||'') };
+}
+function serverQuery(opts){     /* mirrors GET /dct/users/?search=&limit=&offset= */
+  return new Promise(function(resolve, reject){
+    setTimeout(function(){
+      if (forced === 'error') { reject(new Error('500')); return; }
+      var s = L[lang];
+      var all = []; for (var i=0;i<TOTAL;i++) all.push(rowAt(i,s));
+      if (forced === 'empty') all = [];
+      var q = (opts.search||'').toLowerCase();
+      if (q) all = all.filter(function(r){ return (r.name+' '+r.username+' '+r.email).toLowerCase().indexOf(q) >= 0; });
+      resolve({ items: all.slice(opts.offset, opts.offset + opts.limit), total: all.length,
+                limit: opts.limit, offset: opts.offset });
+    }, 600);
+  });
+}
+
+/* ---------- list state ---------- */
+var state = { offset:0, limit:50, search:'', loading:false };
+var forced = null; // null | 'loading' | 'empty' | 'error'
+
+function skeletonRows(n){
+  var h = '';
+  for (var i=0;i<n;i++){
+    h += '<tr><td><div class="sk-cell-a"><div class="skeleton sk-cir"></div><div class="skeleton" style="width:'+(55+((i*13)%30))+'%"></div></div></td>' +
+         '<td><div class="skeleton" style="width:60%"></div></td><td><div class="skeleton" style="width:'+(40+((i*17)%40))+'%"></div></td>' +
+         '<td><div class="skeleton" style="width:50%"></div></td><td><div class="skeleton" style="width:55px"></div></td></tr>';
+  }
+  return h;
+}
+function render(resp){
+  var s = L[lang], tb = document.getElementById('tbody'), host = document.getElementById('stateHost');
+  host.innerHTML = '';
+  if (state.loading){ tb.innerHTML = skeletonRows(8); updatePager(null); return; }
+  if (!resp){ tb.innerHTML=''; return; }
+  if (!resp.items.length){
+    tb.innerHTML = '';
+    host.innerHTML = '<div class="empty"><div class="ico">⌀</div><div class="msg">'+s.emptyMsg+'</div>'+
+      '<div class="subm">'+s.emptySub+'</div><button class="btn" onclick="clearSearch()">'+s.clear+'</button></div>';
+    updatePager(resp); return;
+  }
+  tb.innerHTML = resp.items.map(function(r,i){
+    var badge = r.status==='active' ? '<span class="badge badge--ok">'+s.active+'</span>'
+              : r.status==='locked' ? '<span class="badge badge--err">'+s.locked+'</span>'
+              : '<span class="badge badge--mut">'+s.inactive+'</span>';
+    return '<tr style="animation-delay:'+(i*18)+'ms"><td><span class="uavatar">'+r.ini+'</span><b>'+r.name+'</b></td>'+
+      '<td class="code">'+r.username+'</td><td>'+r.org+'</td>'+
+      '<td style="font-size:12.5px;color:var(--text-2)">'+r.roles+'</td><td>'+badge+'</td></tr>';
+  }).join('');
+  updatePager(resp);
+}
+function renderError(){
+  var s = L[lang];
+  document.getElementById('tbody').innerHTML = '';
+  document.getElementById('stateHost').innerHTML =
+    '<div class="empty"><div class="ico">⚠</div><div class="msg">'+s.errMsg+'</div>'+
+    '<div class="subm">'+s.errSub+'</div><button class="btn btn--brand" onclick="load()">'+s.retry+'</button></div>';
+  updatePager(null);
+  toast(s.toastT, s.toastB);
+}
+function updatePager(resp){
+  var s = L[lang];
+  var info = document.getElementById('rangeInfo'), num = document.getElementById('pgnum');
+  if (!resp){ info.textContent='—'; document.getElementById('countPill').textContent='…';
+    document.getElementById('prev').disabled = true; document.getElementById('next').disabled = true; return; }
+  var from = resp.total ? resp.offset+1 : 0, to = Math.min(resp.offset+resp.limit, resp.total);
+  info.textContent = from+'–'+to+' '+s.of+' '+resp.total;
+  document.getElementById('countPill').textContent = resp.total + ' ' + s.rows;
+  var page = Math.floor(resp.offset/resp.limit)+1, pages = Math.max(1, Math.ceil(resp.total/resp.limit));
+  num.textContent = page+' / '+pages;
+  document.getElementById('prev').disabled = resp.offset <= 0;
+  document.getElementById('next').disabled = resp.offset + resp.limit >= resp.total;
+}
+var lastResp = null;
+function load(){
+  state.loading = true; render(null);
+  if (forced === 'loading') return;            /* stay on skeleton */
+  serverQuery({ offset:state.offset, limit:state.limit, search:state.search })
+    .then(function(r){ state.loading=false; lastResp=r; render(r); })
+    .catch(function(){ state.loading=false; renderError(); });
+}
+function clearSearch(){ document.getElementById('q').value=''; state.search=''; state.offset=0; setForce('normal'); }
+
+/* debounced search — 300ms, mirrors ko.extenders.rateLimit */
+var debounce = null;
+document.getElementById('q').addEventListener('input', function(e){
+  document.getElementById('busy').style.display = 'block';
+  clearTimeout(debounce);
+  debounce = setTimeout(function(){
+    document.getElementById('busy').style.display = 'none';
+    state.search = e.target.value.trim(); state.offset = 0; load();
+  }, 300);
+});
+document.getElementById('prev').onclick = function(){ state.offset = Math.max(0, state.offset - state.limit); load(); };
+document.getElementById('next').onclick = function(){ state.offset += state.limit; load(); };
+document.getElementById('pageSize').onchange = function(e){ state.limit = +e.target.value; state.offset = 0; load(); };
+
+/* force-state chips */
+function setForce(mode){
+  forced = (mode==='normal') ? null : mode;
+  ['fLoad','fEmpty','fError','fNormal'].forEach(function(id){
+    document.getElementById(id).classList.toggle('on',
+      (mode==='loading'&&id==='fLoad')||(mode==='empty'&&id==='fEmpty')||(mode==='error'&&id==='fError')||(mode==='normal'&&id==='fNormal'));
+  });
+  state.offset = 0; load();
+}
+document.getElementById('fLoad').onclick  = function(){ setForce('loading'); };
+document.getElementById('fEmpty').onclick = function(){ setForce('empty'); };
+document.getElementById('fError').onclick = function(){ setForce('error'); };
+document.getElementById('fNormal').onclick= function(){ setForce('normal'); };
+
+/* toast */
+function toast(t,b){
+  var host = document.getElementById('toasthost');
+  var el = document.createElement('div'); el.className='toast';
+  el.innerHTML = '<div><b>'+t+'</b><span class="mono" style="font-size:11.5px">'+b+'</span></div><button class="x" onclick="this.parentNode.remove()">✕</button>';
+  host.appendChild(el);
+  while (host.children.length > 4) host.firstChild.remove();
+  setTimeout(function(){ if (el.parentNode) el.remove(); }, 5000);
+}
+
+/* language */
+function setLang(l){
+  lang = l;
+  document.documentElement.lang = l; document.documentElement.dir = l==='ar'?'rtl':'ltr';
+  document.getElementById('lang-en').classList.toggle('on', l==='en');
+  document.getElementById('lang-ar').classList.toggle('on', l==='ar');
+  var s = L[l];
+  ['title','subtitle','barHint','forceLbl','listTitle','thUser','thUsername','thOrg','thRoles','thStatus'].forEach(function(k){
+    document.getElementById(k==='forceLbl'?'forceLbl':k).textContent = s[k] || s[k];
+  });
+  document.getElementById('fLoad').textContent = s.fLoad; document.getElementById('fEmpty').textContent = s.fEmpty;
+  document.getElementById('fError').textContent = s.fError; document.getElementById('fNormal').textContent = s.fNormal;
+  document.getElementById('q').placeholder = s.search;
+  document.getElementById('perPageLbl').textContent = s.perPage;
+  load();
+}
+document.getElementById('lang-en').onclick = function(){ setLang('en'); };
+document.getElementById('lang-ar').onclick = function(){ setLang('ar'); };
+
+load();
+</script>
+</body>
+</html>

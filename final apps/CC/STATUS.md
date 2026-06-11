@@ -1,6 +1,6 @@
 # Credit Cards Module (App 202) — Status
 
-**Last updated:** 2026-06-10  
+**Last updated:** 2026-06-11  
 **App alias:** CC | **Schema:** PROD | **APEX version:** 24.2
 
 ---
@@ -12,7 +12,7 @@
 | Database DDL | ✅ Complete | CC_* tables, sequences, triggers |
 | Views | ✅ Complete | 02_cc_views.sql deployed |
 | Seed Data | ✅ Complete | Module, roles, permissions, settings, lookups |
-| PL/SQL Package | ⬜ Not started | 04_cc_pkg.sql stub exists — business logic not yet implemented |
+| PL/SQL Package | ✅ Complete | DCT_CC_PKG deployed 2026-06-11 — request lifecycle, CUSTOM bank-step conditions, limit history, register_card, replenishments, daily reminder job |
 | Alterations | ✅ Complete | 05_cc_alter_audit_cols.sql + 06 + 07 |
 | JET SPA | ⬜ Not started | No Jet/ folder yet |
 | APEX App Shell | ⬜ Not started | Must be built in APEX Builder |
@@ -28,7 +28,7 @@
 | `01_cc_ddl.sql` | ✅ Deployed | DDL: CC_* tables (cards, transactions, limits, statements…) |
 | `02_cc_views.sql` | ✅ Deployed | CC views |
 | `03_cc_seed.sql` | ✅ Deployed | Module registration, roles, permissions, settings, lookups |
-| `04_cc_pkg.sql` | ⬜ Stub only | DCT_CC_PKG — stub file, business logic not yet written |
+| `04_cc_pkg.sql` | ✅ Deployed | DCT_CC_PKG spec + body (VALID) + 3 sequences + JOB_CC_REPL_REMINDER (daily 07:00). Approval source_module values: CC_REQUEST / CC_REPLENISHMENT |
 | `05_cc_alter_audit_cols.sql` | ✅ Deployed | Added audit columns |
 | `06_cc_card_limit_history.sql` | ✅ Deployed | Card limit history table + trigger |
 | `07_cc_consolidate_delegation.sql` | ✅ Deployed | Delegation consolidation alteration |
@@ -64,7 +64,7 @@ To start the JET SPA:
 
 ## Immediate Next Steps
 
-1. **Implement DCT_CC_PKG** in `04_cc_pkg.sql` — the stub is in place; write the business logic (card management, transaction processing, limit enforcement, statement generation).
+1. ~~Implement DCT_CC_PKG~~ ✅ Done 2026-06-11 (see assessment-3/phase1/). NEW_CARD issuance: approval does NOT auto-create the card (bank data is not on the request) — CC Admin calls `dct_cc_pkg.register_card` after the bank issues it.
 
 2. **APEX Builder — create App 202 shell:**
    - New app: ID 202, alias `CC`, schema PROD, Theme 42
@@ -86,3 +86,10 @@ To start the JET SPA:
 | CC card limits | Limit history tracked in separate table (step 6); query `CC_CARD_LIMIT_HISTORY` for audit trail |
 | APEX `WHENEVER SQLERROR ROLLBACK` | Rolls back ALL uncommitted blocks — fix all errors before running |
 | ORDS handlers | All execute as ADMIN; every PROD object needs an `ADMIN` synonym if not already present |
+
+## Phase 2 update (2026-06-11) - unified-structure adoption (assessment-3/phase2/)
+- Card statuses simplified to ACTIVE | INACTIVE | CLOSED (default INACTIVE); *_IN_PROGRESS retired - DCT_CC_CARD_V derives pending_operation from open requests.
+- Documents -> unified DCT_DOCUMENTS / DCT_DOC_REQUIREMENTS (11 reqs re-seeded, mapped to DCT_DOCUMENT_TYPES); replenishment lines -> DCT_BUDGET_CODING_LINES (source_type CC_REPL); every transition logged to DCT_REQUEST_STATUS_HISTORY.
+- Dropped: DCT_CC_ATTACHMENTS, DCT_CC_REIMB_LINES, DCT_CC_DOC_REQUIREMENTS. New script: 08_cc_unified_adoption.sql (run after db/v2/15, then re-run 02 + 04).
+- Status/type CHECKs removed; 6 CC_* lookup categories seeded (lookup-first, validated via DCT_LOOKUP_PKG).
+- Full write-path exercised in PROD (CCR-2026-00001..3, card CC-2026-00001 CLOSED) - see assessment-3/phase2/README.md.

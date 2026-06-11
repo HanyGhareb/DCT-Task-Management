@@ -1,0 +1,22 @@
+{
+  "nav.home": "Home",
+  "nav.workspace": "My Workspace",
+  "nav.profile": "My Profile",
+  "nav.notifications": "Notifications",
+  "nav.pendingApprovals": "Pending Approvals",
+  "nav.userMgmt": "User Management",
+  "nav.users": "Users",
+  "nav.roles": "Roles",
+  "nav.permissions": "Permissions",
+  "nav.organisation": "Organisation",
+  "nav.orgHierarchy": "Org Hierarchy",
+  "nav.ifinanceModules": "i-Finance Modules",
+  "nav.system": "System",
+  "nav.modules": "Module Registry",
+  "nav.approvalTemplates": "Approval Templates",
+  "nav.approvalMonitor": "Approval Monitor",
+  "nav.lookups": "Lookups",
+  "nav.appearance": "Appearance",
+  "nav.systemSettings": "System Settings",
+  "nav.auditLog": "Audit Log"
+}

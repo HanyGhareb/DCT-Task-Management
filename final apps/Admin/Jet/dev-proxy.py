@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 dev-proxy.py — i-Finance local dev server
   - Serves static files from this directory (Admin/Jet)
@@ -17,6 +17,7 @@ import sys
 ORDS_ORIGIN = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com'
 PORT = 8080
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+SHARED_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..', 'shared'))
 
 
 class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
@@ -24,6 +25,13 @@ class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=SCRIPT_DIR, **kwargs)
 
+    # -- /shared/* -> sibling 'final apps/shared' folder (Phase 3 shared assets) --
+    def translate_path(self, path):
+        clean = path.split('?', 1)[0].split('#', 1)[0]
+        if clean.startswith('/shared/'):
+            parts = [p for p in clean[len('/shared/'):].split('/') if p and p != '..']
+            return os.path.join(SHARED_DIR, *parts)
+        return super().translate_path(path)
     # ── CORS headers added to every proxy response ──────────────────────
     def _cors(self):
         self.send_header('Access-Control-Allow-Origin', '*')

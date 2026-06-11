@@ -85,3 +85,10 @@ To start the JET SPA:
 | FL audit columns | Added in step 5 (after package) — run 05 before testing package procs that set audit cols |
 | APEX `WHENEVER SQLERROR ROLLBACK` | Rolls back ALL uncommitted blocks — fix all errors before running |
 | ORDS handlers | All execute as ADMIN; every PROD object needs an `ADMIN` synonym if not already present |
+
+## Phase 2 update (2026-06-11) - unified-structure adoption (assessment-3/phase2/)
+- Documents -> unified DCT_DOCUMENTS (convention: reference_id = freelancer_id); expiry alerts -> DCT_DOC_EXPIRY_ALERTS; doc types now resolve from DCT_DOCUMENT_TYPES (FL_DOCUMENT_TYPE lookup deactivated; TRADE_LICENSE/QUALIFICATION/DELIVERABLE_DOC added to the master).
+- Dropped: DCT_FL_DOCUMENTS, DCT_FL_DOC_EXPIRY_ALERTS (both empty). New script: 06_fl_unified_adoption.sql (run after db/v2/15, then re-run 02 + 04).
+- New DCT_FL_PKG.MIRROR_CONTRACT_CODING mirrors header coding into DCT_BUDGET_CODING_LINES (FL_CONTRACT, line 1); called from CREATE_RENEWED_CONTRACT and by future contract-approval flows.
+- All 17 FL status/type CHECKs dropped (lookup-first); 12 FL_* lookup categories seeded; natural-key FKs added on contracts/renewals/vouchers + bank_code FK on bank accounts.
+- Drift fixed: DCT_FL_REGISTRATION_V / DCT_FL_CONTRACT_V were INVALID in PROD (nationality_en column name) - repaired; all 9 FL objects VALID.

@@ -108,3 +108,9 @@
 | DBMS_SCHEDULER job DROP | Use `all_scheduler_jobs WHERE owner='PROD'` not `user_scheduler_jobs` |
 | PL/SQL `IF (SELECT ...)` | Illegal — must SELECT INTO variable first |
 | `MEMBER OF` local collection in SQL | Illegal — rewrite as cursor loop |
+
+## Phase 2 update (2026-06-11) - fixes (assessment-3/phase2/)
+- FIXED: 8 ORDS handlers queried module_code 'DT' instead of 'DUTY_TRAVEL' - settings/approval-templates/notifications endpoints returned empty. GET /dt/settings/ now returns 19 rows (verified live).
+- Secret masking added to DT settings GET (+ PUT refuses the '********' mask); dct_notify.send calls now pass p_module_code => 'DUTY_TRAVEL'.
+- FIXED: DT_REQUESTS_V was INVALID in PROD (referenced gl.account etc.; real columns are *_code) - now uses the cc_code virtual column; all 6 DT views redeployed VALID.
+- Deferred to DT adoption: natural-key FKs on dt_requests inline coding columns; status CHECKs retained as safety nets (DT_* lookup categories already seeded).

@@ -33,6 +33,12 @@ SELECT
   cc.bank_mobile_yn,
   cc.bank_email_yn,
   cc.status,
+  -- Derived from open requests — replaces the retired *_IN_PROGRESS card statuses
+  (SELECT MAX(r.request_type)
+   FROM   prod.dct_cc_requests r
+   WHERE  r.cc_id  = cc.cc_id
+   AND    r.status IN ('SUBMITTED','UNDER_REVIEW'))
+                                        AS pending_operation,
   cc.notes,
   cc.approval_instance_id,
   cc.created_by,
@@ -43,7 +49,7 @@ FROM prod.dct_credit_cards cc
 JOIN prod.dct_users         u  ON u.user_id = cc.holder_user_id
 JOIN prod.dct_organizations o  ON o.org_id  = cc.org_id;
 
-COMMENT ON TABLE prod.dct_cc_card_v IS 'Card registry enriched with cardholder name, employee number, and organization name';
+COMMENT ON TABLE prod.dct_cc_card_v IS 'Card registry enriched with cardholder name, employee number, organization name, and pending operation derived from open requests';
 
 -- =============================================================================
 -- 2. DCT_CC_REQUEST_V — Card requests with cardholder and card context
@@ -107,11 +113,13 @@ SELECT
   r.created_at,
   r.updated_by,
   r.updated_at,
-  -- Derived: line count and sum for validation display
-  (SELECT COUNT(*) FROM prod.dct_cc_reimb_lines l WHERE l.replenishment_id = r.replenishment_id)
-                                        AS line_count,
-  (SELECT NVL(SUM(l.amount),0) FROM prod.dct_cc_reimb_lines l WHERE l.replenishment_id = r.replenishment_id)
-                                        AS lines_total
+  -- Derived: line count and sum for validation display (unified coding lines)
+  (SELECT COUNT(*) FROM prod.dct_budget_coding_lines l
+   WHERE l.source_module = 'CC' AND l.source_type = 'CC_REPL'
+   AND   l.source_id = r.replenishment_id)         AS line_count,
+  (SELECT NVL(SUM(l.amount),0) FROM prod.dct_budget_coding_lines l
+   WHERE l.source_module = 'CC' AND l.source_type = 'CC_REPL'
+   AND   l.source_id = r.replenishment_id)         AS lines_total
 FROM prod.dct_cc_replenishments r
 JOIN prod.dct_credit_cards      cc  ON cc.cc_id   = r.cc_id
 JOIN prod.dct_users             sub ON sub.user_id = r.submitted_by_user_id

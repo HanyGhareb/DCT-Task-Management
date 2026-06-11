@@ -17,6 +17,9 @@ The legacy APEX exports under `apps/` and the `apps/ifinance-v2/` prototype are 
 | Design recommendations | [04-uiux/02-design-recommendations.md](04-uiux/02-design-recommendations.md) | Shared assets, i18n/RTL, accessibility, UX patterns |
 | Concept mockups | [04-uiux/mockups/](04-uiux/mockups/) | 3 standalone HTML pages showing the proposed design direction — open directly in a browser |
 | Advanced features | [05-advanced-features.md](05-advanced-features.md) | AI/OCR, SSO, escalation, analytics, PWA, Fusion — with effort/impact ratings |
+| Action plan | [06-action-plan.md](06-action-plan.md) | Phased execution plan (Phase 0–6) with owners, effort, and exit criteria |
+| **Phase 1 report** | [phase1/](phase1/) | Execution + full test report (2026-06-11): 4 deliverables deployed, 5 defects fixed, test evidence in `phase1/tests/` |
+| **Phase 2 report** | [phase2/](phase2/) | Plan + execution + full test report (2026-06-11): natural-key masters, 5 unified tables, lookup-first statuses (40 categories), 22 validated FKs, CC+FL adoption (5 tables dropped), DT fixes — test evidence in `phase2/tests/` |
 
 ## How to read it
 

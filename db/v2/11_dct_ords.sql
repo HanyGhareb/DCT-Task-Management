@@ -96,13 +96,19 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
     END json_header;
 
     PROCEDURE err(p_status PLS_INTEGER, p_msg VARCHAR2) IS
+        c_col CONSTANT VARCHAR2(1) := CHR(58);
     BEGIN
+        -- Do NOT use APEX_JSON here: initialize_output resets the HTP buffer
+        -- and silently wipes the status line (every error returned HTTP 200
+        -- until this was fixed — discovered in the Phase 1 smoke test).
         OWA_UTIL.status_line(p_status, NULL, FALSE);
-        json_header;
-        APEX_JSON.initialize_output;
-        APEX_JSON.open_object;
-        APEX_JSON.write('error', p_msg);
-        APEX_JSON.close_object;
+        OWA_UTIL.mime_header('application/json', FALSE);
+        HTP.p('Access-Control-Allow-Origin'  || c_col || ' *');
+        HTP.p('Access-Control-Allow-Headers' || c_col || ' Authorization, Content-Type');
+        HTP.p('Access-Control-Allow-Methods' || c_col || ' GET, POST, PUT, DELETE, OPTIONS');
+        OWA_UTIL.http_header_close;
+        HTP.p('{"error"' || c_col || ' "' ||
+              REPLACE(REPLACE(p_msg, '\', '\\'), '"', '\"') || '"}');
     END err;
 
     PROCEDURE parse_body(p_body IN BLOB) IS

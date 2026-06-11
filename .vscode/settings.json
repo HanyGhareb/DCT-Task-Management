@@ -1,0 +1,25 @@
+{
+    "oracleFusionBIPVSCodeExtension.connections": [
+        {
+            "id": "f2297165-f567-416f-8b08-dd0b4d5cd7f0",
+            "name": "ADERP2",
+            "baseUrl": "https://fa-euth-dev59-saasfademo1.ds-fa.oraclepdemos.com",
+            "username": "OG.DEMO",
+            "reportPath": "/Custom/VS Code Extension/VS_CODE_EXTENSION.xdo",
+            "createdAt": "2026-06-11T10:33:18.980Z",
+            "updatedAt": "2026-06-11T10:36:08.447Z"
+        }
+    ],
+    "oracleFusionBIPVSCodeExtension.activeConnectionId": "f2297165-f567-416f-8b08-dd0b4d5cd7f0",
+    "oracleFusionBIPVSCodeExtension.parametersByConnection": {
+        "f2297165-f567-416f-8b08-dd0b4d5cd7f0": [
+            {
+                "name": "P_LEDGER",
+                "value": "DCT",
+                "type": "string",
+                "createdAt": "2026-06-11T10:36:40.317Z",
+                "updatedAt": "2026-06-11T10:36:44.038Z"
+            }
+        ]
+    }
+}

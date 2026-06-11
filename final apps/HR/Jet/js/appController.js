@@ -1,11 +1,29 @@
-define(['knockout', 'services/config', 'services/authService', 'services/notificationService'],
-function (ko, config, authService, notifService) {
+define(['knockout', 'services/config', 'services/authService', 'services/notificationService', 'shared/i18n', 'shared/shell'],
+function (ko, config, authService, notifService, i18n, shell) {
   'use strict';
 
   function AppController() {
     var self = this;
 
     self._state = {};
+
+    // ── Shared shell (Phase 3): brand + i18n ────────────────────────────
+    shell.initBrand('hr');
+    self.t       = i18n.t;
+    self.lang    = i18n.lang;
+    self.setLang = i18n.setLang;
+
+    // ── Module switcher (apps live side-by-side under "final apps/") ────
+    self.modules       = shell.MODULES;
+    self.currentModule = shell.byKey('hr');
+    self.modswOpen     = ko.observable(false);
+    self.toggleModsw   = function () { self.modswOpen(!self.modswOpen()); };
+    self.switchModule  = function (m) {
+      if (m.soon || !m.url) return;
+      if (m.key === self.currentModule.key) { self.modswOpen(false); return; }
+      window.location.href = m.url;   // root-absolute: "final apps/" is the web root in deployment
+    };
+    self.pendingCount = ko.observable(0);   // not used by HR; keeps the shared shell template uniform
 
     self.currentUser     = ko.observable(authService.getCurrentUser());
     self.isAuthenticated = ko.computed(function () { return !!self.currentUser(); });
@@ -47,40 +65,40 @@ function (ko, config, authService, notifService) {
       {
         id: 'home', standalone: true, auth: 'all',
         items: [
-          { id: 'dashboard', label: 'Home', icon: '&#127968;' },
+          { id: 'dashboard', labelKey: 'nav.home', icon: '&#127968;' },
         ]
       },
       {
-        id: 'people', label: 'People', auth: 'viewer',
+        id: 'people', labelKey: 'nav.people', auth: 'viewer',
         collapsed: ko.observable(false),
         items: [
-          { id: 'employees',     label: 'Employee Directory', icon: '&#128100;' },
-          { id: 'orgHierarchy',  label: 'Org Chart',         icon: '&#127970;' },
+          { id: 'employees',     labelKey: 'nav.employees',    icon: '&#128100;' },
+          { id: 'orgHierarchy',  labelKey: 'nav.orgHierarchy', icon: '&#127970;' },
         ]
       },
       {
-        id: 'structure', label: 'Structure', auth: 'viewer',
+        id: 'structure', labelKey: 'nav.structure', auth: 'viewer',
         collapsed: ko.observable(false),
         items: [
-          { id: 'positions', label: 'Positions',  icon: '&#128203;' },
-          { id: 'jobs',      label: 'Jobs',        icon: '&#128196;' },
-          { id: 'grades',    label: 'Grades',      icon: '&#127942;' },
-          { id: 'locations', label: 'Locations',   icon: '&#128205;' },
+          { id: 'positions', labelKey: 'nav.positions', icon: '&#128203;' },
+          { id: 'jobs',      labelKey: 'nav.jobs',      icon: '&#128196;' },
+          { id: 'grades',    labelKey: 'nav.grades',    icon: '&#127942;' },
+          { id: 'locations', labelKey: 'nav.locations', icon: '&#128205;' },
         ]
       },
       {
-        id: 'compliance', label: 'Compliance', auth: 'manager',
+        id: 'compliance', labelKey: 'nav.compliance', auth: 'manager',
         collapsed: ko.observable(false),
         items: [
-          { id: 'documents', label: 'Document Expiry', icon: '&#128196;', badge: self.expiringAlerts },
+          { id: 'documents', labelKey: 'nav.documents', icon: '&#128196;', badge: self.expiringAlerts },
         ]
       },
       {
-        id: 'admin', label: 'Administration', auth: 'admin',
+        id: 'admin', labelKey: 'nav.adminGroup', auth: 'admin',
         collapsed: ko.observable(false),
         items: [
-          { id: 'lookups',        label: 'Lookup Values',  icon: '&#128203;' },
-          { id: 'moduleSettings', label: 'Module Settings', icon: '&#9881;' },
+          { id: 'lookups',        labelKey: 'nav.lookups',        icon: '&#128203;' },
+          { id: 'moduleSettings', labelKey: 'nav.moduleSettings', icon: '&#9881;' },
         ]
       },
     ];

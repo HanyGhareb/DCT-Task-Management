@@ -50,7 +50,8 @@ function (api) {
     },
 
     getUnreadCount: function () {
-      return api.get('/notifications/').then(function (r) {
+      if (!this.getCurrentUser()) return Promise.resolve(0);   // nothing to count pre-login
+      return api.get('/notifications/', { silent: true }).then(function (r) {
         return (r.items || []).filter(function (n) { return n.isRead === 'N'; }).length;
       }).catch(function () { return 0; });
     },

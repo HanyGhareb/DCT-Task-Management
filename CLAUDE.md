@@ -20,8 +20,8 @@ final apps/          ← ALL live production code lives here
   PC/Jet/            ← App 201 — Petty Cash JET SPA
   DT/Jet/            ← App 204 — Duty Travel JET SPA
   HR/Jet/            ← App 205 — HR JET SPA
-  FL/Jet/            ← Freelancers JET SPA
-  CC/Jet/            ← Credit Cards JET SPA
+  FL/db/             ← Freelancers — DB only (no Jet/ folder yet)
+  CC/db/             ← Credit Cards — DB only (no Jet/ folder yet)
   SHARED_JET_ARCHITECTURE.md   ← session contract, module checklist
   SHARED_APEX_ARCHITECTURE.md  ← APEX auth scheme, app items, LOVs
   DT/STATUS.md       ← per-module status tracking (replicated per module)
@@ -32,6 +32,9 @@ db/v2/               ← All DCT_* DDL, packages, ORDS setup (source of truth)
   03_dct_auth_pkg.sql← DCT_AUTH package
   11_dct_ords.sql    ← all ORDS module definitions (Admin /dct/ path)
   12_dct_master_data.sql ← reference tables (grades, countries, GL codes…)
+  15_dct_unified_structures.sql ← Phase 2: natural-key masters + unified
+                       documents / coding-lines / status-history + DCT_LOOKUP_PKG
+  16_dct_missing_fks.sql ← Phase 2: natural-key FKs + lookup-first migration
 
 apps/ifinance-v2/    ← LEGACY: vanilla JS task management prototype (localStorage only)
                        Superseded by final apps/ — do not add features here
@@ -138,6 +141,11 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 - `DCT_AUTH` — authenticate, validate_session, has_role, has_permission, open/close session
 - `DCT_REST` — validate_session (reads Authorization header), parse_body, err()
 - `DCT_NOTIFY` — send, mark_read, get_count, purge
+- `DCT_LOOKUP_PKG` — `is_valid` / `validate_lookup` (raises -20090). **Lookup-first rule:** status/enum value sets live in `DCT_LOOKUP_VALUES` (managed in Admin lookups.html), not CHECK constraints. New/refactored tables get no status CHECKs; packages and handlers call `validate_lookup`. PC/DT keep their legacy CHECKs as safety nets until those modules adopt.
+
+**Unified shared structures (Phase 2, 2026-06-11):** `DCT_DOCUMENTS` (+ `DCT_DOC_REQUIREMENTS`, `DCT_DOC_EXPIRY_ALERTS`), `DCT_BUDGET_CODING_LINES`, `DCT_REQUEST_STATUS_HISTORY` — discriminated by `(source_module, source_type, source_id)`. CC and FL use them natively (their private doc/attachment/line tables are dropped); PC ORDS writes status history. FL convention: `dct_documents.reference_id` carries the freelancer_id.
+
+**Natural-key project-costing masters (no surrogate IDs):** `DCT_PROJECTS` (`project_number VARCHAR2(12)` PK), `DCT_TASKS` (`(project_number, task_number VARCHAR2(30))` PK — replaced `DCT_PROJECT_TASKS`), `DCT_EXPENDITURE_TYPES` (`expenditure_type VARCHAR2(255)` PK). Module project/task/exp-type columns FK directly to them (22 validated FKs; DT's inline columns pending DT adoption).
 
 **Non-obvious column names (bitten us before):**
 | Table | Gotcha |
@@ -145,10 +153,13 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 | `DCT_USER_ROLES` | date column is `end_date`, not `valid_to` |
 | `DCT_APPROVAL_INSTANCES` | status column is `overall_status`; join steps via `template_id + current_step_seq` |
 | `DCT_LOOKUP_VALUES` | columns are `value_code` / `value_name_en` / `display_order` |
-| `DCT_GL_CODE_COMBINATIONS` | no `cc_concat_segments` column; `cc_code` is a virtual column — concatenate 9 segment codes manually |
+| `DCT_GL_CODE_COMBINATIONS` | segment columns end in `_code` (`account_code`, not `account`); `cc_code` is a virtual column with the full 9-segment concatenation — use it for display |
+| `DCT_NATIONALITY` | name columns are `nationality_en` / `nationality_ar`, not `nationality_name_en` |
 | `DCT_AUTH.HAS_ROLE` | takes `VARCHAR2` username, returns `BOOLEAN` (not NUMBER) |
 
 **INSERT ALL + IDENTITY columns:** Raises ORA-00001. Use individual `INSERT INTO` per row instead.
+
+**ADMIN synonyms need a fresh session:** scripts that `CREATE OR REPLACE SYNONYM x FOR prod.x` must NOT run in a SQLcl session where an earlier script set `ALTER SESSION SET CURRENT_SCHEMA = PROD` — the synonym becomes self-referencing (ORA-01471). Run ORDS/synonym scripts in their own `sql -name prod_mcp` invocation.
 
 **Shared tables used across modules:** `DCT_EMPLOYEES`, `DCT_DATA_ACCESS_ASSIGNMENT`, `DCT_LOOKUP_VALUES`, `DCT_GL_CODE_COMBINATIONS`. See `db/v2/12_dct_master_data.sql` for reference table details (countries, grades, currencies, banks, document types).
 
@@ -159,10 +170,13 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 | Module | DB + ORDS | JET SPA | APEX Pages |
 |--------|-----------|---------|------------|
 | Admin (App 200) | ✅ Complete | ✅ Live ORDS | ✅ Users/Roles built |
-| Petty Cash (App 201) | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
-| Duty Travel (App 204) | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
-| HR (App 205) | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
-| Freelancers | ✅ Complete | ✅ Complete | ⬜ Pending in Builder |
+| Petty Cash (App 201) | ✅ Complete (ORDS live `/pc/`) | ✅ Complete (live) | ⬜ Pending in Builder |
+| Duty Travel (App 204) | ✅ Complete (ORDS live) | ✅ Complete (live) | ⬜ Pending in Builder |
+| HR (App 205) | ✅ Complete (ORDS live) | ✅ Complete (live) | ⬜ Pending in Builder |
+| Freelancers (App 203) | ✅ DB + PL/SQL (unified-adopted); ⬜ no ORDS | ⬜ Not started (no Jet/ folder) | ⬜ Not started |
+| Credit Cards (App 202) | ✅ DB + PL/SQL (DCT_CC_PKG, unified-adopted); ⬜ no ORDS | ⬜ Not started (no Jet/ folder) | ⬜ Not started |
+
+Full evaluation + phased action plan: `assessment-3/` (2026-06-11). Phase 1 executed + tested — report in `assessment-3/phase1/`. Phase 2 (data-model convergence: natural-key masters, unified tables, lookup-first, 22 FKs, CC+FL adoption) executed + tested 2026-06-11 — report in `assessment-3/phase2/`. Platform sweep job `DCT_APPROVAL_PKG` (db/v2/14) activates approval escalation/auto-approve daily 07:10.
 
 ---
 

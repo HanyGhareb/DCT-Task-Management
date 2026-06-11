@@ -1,0 +1,19 @@
+{
+  "nav.home": "Home",
+  "nav.myWork": "My Petty Cash",
+  "nav.myPettyCash": "My Petty Cash",
+  "nav.pcRequest": "New Request",
+  "nav.reimbursements": "Reimbursements",
+  "nav.clearing": "Clearing",
+  "nav.approvalsGroup": "Approvals",
+  "nav.approvals": "Pending Approvals",
+  "nav.adminGroup": "Administration",
+  "nav.allPettyCash": "All Petty Cash",
+  "nav.allReimbursements": "All Reimbursements",
+  "nav.allClearings": "All Clearings",
+  "nav.config": "Configuration",
+  "nav.glCodes": "GL Code Combinations",
+  "nav.approvalRules": "Approval Rules",
+  "nav.moduleSettings": "Module Settings",
+  "nav.notifications": "Notifications"
+}

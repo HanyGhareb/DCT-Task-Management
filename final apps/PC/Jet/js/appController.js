@@ -1,5 +1,5 @@
-define(['knockout', 'services/config', 'services/authService', 'services/approvalService'],
-function (ko, config, authService, approvalService) {
+define(['knockout', 'services/config', 'services/authService', 'services/approvalService', 'shared/i18n', 'shared/shell'],
+function (ko, config, authService, approvalService, i18n, shell) {
   'use strict';
 
   function AppController() {
@@ -7,6 +7,29 @@ function (ko, config, authService, approvalService) {
 
     // ── Shared navigation state (passed to detail viewModels) ───────────
     self._state = {};
+
+    // ── Shared shell (Phase 3): brand from settings + i18n ──────────────
+    shell.initBrand('pc', function () {
+      return new Promise(function (resolve) {
+        require(['services/settingService'], function (settingService) {
+          settingService.getValue('THEME_BRAND_COLOR').then(resolve).catch(function () { resolve(null); });
+        }, function () { resolve(null); });
+      });
+    });
+    self.t       = i18n.t;
+    self.lang    = i18n.lang;
+    self.setLang = i18n.setLang;
+
+    // ── Module switcher (apps live side-by-side under "final apps/") ────
+    self.modules       = shell.MODULES;
+    self.currentModule = shell.byKey('pc');
+    self.modswOpen     = ko.observable(false);
+    self.toggleModsw   = function () { self.modswOpen(!self.modswOpen()); };
+    self.switchModule  = function (m) {
+      if (m.soon || !m.url) return;
+      if (m.key === self.currentModule.key) { self.modswOpen(false); return; }
+      window.location.href = m.url;   // root-absolute: "final apps/" is the web root in deployment
+    };
 
     // ── Auth ────────────────────────────────────────────────────────────
     self.currentUser     = ko.observable(authService.getCurrentUser());
@@ -54,42 +77,42 @@ function (ko, config, authService, approvalService) {
       {
         id: 'home', standalone: true, auth: 'all',
         items: [
-          { id: 'dashboard', label: 'Home', icon: '&#127968;' },
+          { id: 'dashboard', labelKey: 'nav.home', icon: '&#127968;' },
         ]
       },
       {
-        id: 'myWork', label: 'My Petty Cash', auth: 'all',
+        id: 'myWork', labelKey: 'nav.myWork', auth: 'all',
         collapsed: ko.observable(false),
         items: [
-          { id: 'myPettyCash',    label: 'My Petty Cash',    icon: '&#128179;' },
-          { id: 'pcRequest',      label: 'New Request',       icon: '&#10133;'  },
-          { id: 'reimbursements', label: 'Reimbursements',    icon: '&#128196;' },
-          { id: 'clearing',       label: 'Clearing',          icon: '&#9989;'   },
+          { id: 'myPettyCash',    labelKey: 'nav.myPettyCash',    icon: '&#128179;' },
+          { id: 'pcRequest',      labelKey: 'nav.pcRequest',      icon: '&#10133;'  },
+          { id: 'reimbursements', labelKey: 'nav.reimbursements', icon: '&#128196;' },
+          { id: 'clearing',       labelKey: 'nav.clearing',       icon: '&#9989;'   },
         ]
       },
       {
-        id: 'approvals', label: 'Approvals', auth: 'approver',
+        id: 'approvals', labelKey: 'nav.approvalsGroup', auth: 'approver',
         collapsed: ko.observable(false),
         items: [
-          { id: 'approvals', label: 'Pending Approvals', icon: '&#128203;', badge: self.pendingCount },
+          { id: 'approvals', labelKey: 'nav.approvals', icon: '&#128203;', badge: self.pendingCount },
         ]
       },
       {
-        id: 'admin', label: 'Administration', auth: 'pcAdmin',
+        id: 'admin', labelKey: 'nav.adminGroup', auth: 'pcAdmin',
         collapsed: ko.observable(false),
         items: [
-          { id: 'allPettyCash',      label: 'All Petty Cash',      icon: '&#128202;' },
-          { id: 'allReimbursements', label: 'All Reimbursements',   icon: '&#128204;' },
-          { id: 'allClearings',      label: 'All Clearings',        icon: '&#128205;' },
+          { id: 'allPettyCash',      labelKey: 'nav.allPettyCash',      icon: '&#128202;' },
+          { id: 'allReimbursements', labelKey: 'nav.allReimbursements', icon: '&#128204;' },
+          { id: 'allClearings',      labelKey: 'nav.allClearings',      icon: '&#128205;' },
         ]
       },
       {
-        id: 'config', label: 'Configuration', auth: 'admin',
+        id: 'config', labelKey: 'nav.config', auth: 'admin',
         collapsed: ko.observable(true),
         items: [
-          { id: 'glCodes',        label: 'GL Code Combinations', icon: '&#128200;' },
-          { id: 'approvalRules',  label: 'Approval Rules',        icon: '&#128196;' },
-          { id: 'moduleSettings', label: 'Module Settings',       icon: '&#9881;'   },
+          { id: 'glCodes',        labelKey: 'nav.glCodes',        icon: '&#128200;' },
+          { id: 'approvalRules',  labelKey: 'nav.approvalRules',  icon: '&#128196;' },
+          { id: 'moduleSettings', labelKey: 'nav.moduleSettings', icon: '&#9881;'   },
         ]
       },
     ];

@@ -1,11 +1,19 @@
-define(['knockout', 'services/authService', 'services/themeService'], function (ko, authService, themeService) {
+define(
+  ['knockout', 'services/authService', 'services/themeService', 'shared/i18n', 'shared/shell'],
+  function (ko, authService, themeService, i18n, shell) {
   'use strict';
 
   function AppController() {
     const self = this;
 
-    // ── Theme: apply persisted theme before first render ────────────────
+    // ── Theme: persisted data-theme + settings-driven brand color ───────
     themeService.init();
+    shell.initBrand('admin');   // THEME_BRAND_COLOR override applied post-login (see onLogin)
+
+    // ── i18n (Phase 3): t() + live language switching ────────────────────
+    self.t       = i18n.t;
+    self.lang    = i18n.lang;
+    self.setLang = i18n.setLang;
 
     // ── Auth state ──────────────────────────────────────────────────────
     self.currentUser     = ko.observable(authService.getCurrentUser());
@@ -23,57 +31,68 @@ define(['knockout', 'services/authService', 'services/themeService'], function (
       !self.isAuthenticated() || self.currentNavItem() === 'login'
     );
 
-    // ── Nav groups — collapsible sections ───────────────────────────────
+    // ── Module switcher (shared shell, Phase 3) ─────────────────────────
+    self.modules       = shell.MODULES;
+    self.currentModule = shell.byKey('admin');
+    self.modswOpen     = ko.observable(false);
+    self.toggleModsw   = function () { self.modswOpen(!self.modswOpen()); };
+    self.switchModule  = function (m) {
+      if (m.soon) return;
+      if (m.key === self.currentModule.key) { self.modswOpen(false); return; }
+      if (m.url) window.location.href = m.url;
+    };
+
+    // ── Nav groups — collapsible sections (labels via i18n keys) ────────
     const NAV_GROUPS = [
       {
         id: 'home', standalone: true, auth: 'all',
         items: [
-          { id: 'dashboard', label: 'Home', icon: '&#127968;' },
+          { id: 'dashboard', labelKey: 'nav.home', icon: '&#127968;' },
         ]
       },
       {
-        id: 'workspace', label: 'My Workspace', auth: 'all',
+        id: 'workspace', labelKey: 'nav.workspace', auth: 'all',
         collapsed: ko.observable(false),
         items: [
-          { id: 'profile',          label: 'My Profile',        icon: '&#128100;' },
-          { id: 'notifications',    label: 'Notifications',     icon: '&#128276;' },
-          { id: 'pendingApprovals', label: 'Pending Approvals', icon: '&#9989;'   },
+          { id: 'profile',          labelKey: 'nav.profile',          icon: '&#128100;' },
+          { id: 'notifications',    labelKey: 'nav.notifications',    icon: '&#128276;' },
+          { id: 'pendingApprovals', labelKey: 'nav.pendingApprovals', icon: '&#9989;'   },
         ]
       },
       {
-        id: 'userMgmt', label: 'User Management', auth: 'admin',
+        id: 'userMgmt', labelKey: 'nav.userMgmt', auth: 'admin',
         collapsed: ko.observable(false),
         items: [
-          { id: 'users',       label: 'Users',       icon: '&#128101;' },
-          { id: 'roles',       label: 'Roles',       icon: '&#128737;' },
-          { id: 'permissions', label: 'Permissions', icon: '&#128273;' },
+          { id: 'users',       labelKey: 'nav.users',       icon: '&#128101;' },
+          { id: 'roles',       labelKey: 'nav.roles',       icon: '&#128737;' },
+          { id: 'permissions', labelKey: 'nav.permissions', icon: '&#128273;' },
         ]
       },
       {
-        id: 'organisation', label: 'Organisation', auth: 'admin',
+        id: 'organisation', labelKey: 'nav.organisation', auth: 'admin',
         collapsed: ko.observable(false),
         items: [
-          { id: 'orgHierarchy', label: 'Org Hierarchy', icon: '&#127959;' },
+          { id: 'orgHierarchy', labelKey: 'nav.orgHierarchy', icon: '&#127959;' },
         ]
       },
       {
-        id: 'ifinanceModules', label: 'i-Finance Modules', auth: 'all',
+        id: 'ifinanceModules', labelKey: 'nav.ifinanceModules', auth: 'all',
         collapsed: ko.observable(false),
         items: [
-          { id: 'hr-module', label: 'Human Resources', icon: '&#128101;', url: '/HR/Jet/index.html' },
+          { id: 'hr-module', labelKey: 'mod.hr', icon: '&#128101;', url: '/HR/Jet/index.html' },
         ]
       },
       {
-        id: 'system', label: 'System', auth: 'admin',
+        id: 'system', labelKey: 'nav.system', auth: 'admin',
         collapsed: ko.observable(false),
         items: [
-          { id: 'modules',           label: 'Module Registry',    icon: '&#9707;'   },
-          { id: 'approvalTemplates', label: 'Approval Templates', icon: '&#128196;' },
-          { id: 'approvalMonitor',   label: 'Approval Monitor',   icon: '&#128065;' },
-          { id: 'lookups',           label: 'Lookups',            icon: '&#128203;' },
-          { id: 'appearance',        label: 'Appearance',         icon: '&#127912;' },
-          { id: 'systemSettings',    label: 'System Settings',    icon: '&#9881;'   },
-          { id: 'auditLog',          label: 'Audit Log',          icon: '&#128218;' },
+          { id: 'modules',           labelKey: 'nav.modules',           icon: '&#9707;'   },
+          { id: 'approvalTemplates', labelKey: 'nav.approvalTemplates', icon: '&#128196;' },
+          { id: 'approvalMonitor',   labelKey: 'nav.approvalMonitor',   icon: '&#128065;' },
+          { id: 'lookups',           labelKey: 'nav.lookups',           icon: '&#128203;' },
+          { id: 'appearance',        labelKey: 'nav.appearance',        icon: '&#127912;' },
+          { id: 'systemSettings',    labelKey: 'nav.systemSettings',    icon: '&#9881;'   },
+          { id: 'auditLog',          labelKey: 'nav.auditLog',          icon: '&#128218;' },
         ]
       },
     ];
@@ -125,6 +144,7 @@ define(['knockout', 'services/authService', 'services/themeService'], function (
     // ── Public navigate ─────────────────────────────────────────────────
     self.navigate = function (path) {
       self.userMenuOpen(false);
+      self.modswOpen(false);
       // Re-validate on every navigation — catches deactivation without page reload
       const freshUser = authService.getCurrentUser();
       if (!freshUser && self.currentUser()) {
@@ -141,7 +161,7 @@ define(['knockout', 'services/authService', 'services/themeService'], function (
 
     // ── Shell actions ───────────────────────────────────────────────────
     self.toggleNav      = function () { self.sideNavOpen(!self.sideNavOpen()); };
-    self.closeUserMenu  = function () { self.userMenuOpen(false); };
+    self.closeUserMenu  = function () { self.userMenuOpen(false); self.modswOpen(false); };
 
     self.toggleUserMenu = function (vm, event) {
       event.stopPropagation();
@@ -159,10 +179,24 @@ define(['knockout', 'services/authService', 'services/themeService'], function (
     self.onLogin = function (user) {
       self.currentUser(user);
       authService.getUnreadCount().then(function (n) { self.unreadCount(n); }).catch(function () {});
+      self._applyServerTheme();
       self._loadRoute('dashboard');
     };
 
+    // THEME_BRAND_COLOR from system settings (GET /settings via settingService)
+    self._applyServerTheme = function () {
+      require(['services/settingService'], function (settingService) {
+        try {
+          settingService.getByKey('THEME_BRAND_COLOR').then(function (row) {
+            var hex = row && row.settingValue;
+            if (hex) shell.applyBrand(hex);
+          }).catch(function () {});
+        } catch (e) {}
+      });
+    };
+
     // ── Boot: load initial route ────────────────────────────────────────
+    if (self.currentUser()) self._applyServerTheme();
     self._loadRoute(self.currentUser() ? 'dashboard' : 'login');
   }
 

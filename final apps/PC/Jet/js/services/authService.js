@@ -34,10 +34,16 @@ function (config, api, mockData) {
 
     login: function (username, password) {
       if (config.apiBase) {
-        // Real mode: Admin ORDS handles auth; store shared session.
-        return api.post('/auth/login', { username: username, password: password })
+        // Real mode: Admin ORDS (/dct) handles auth; store shared session.
+        var loginUrl = (config.authBase || config.apiBase) + '/auth/login';
+        return fetch(loginUrl, {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({ username: username, password: password }),
+        }).then(function (r) { return r.json(); })
           .then(function (data) {
-            data.roles    = (data.rolesCsv || '').split(',').filter(Boolean);
+            if (!data || !data.sessionId) return null;
+            data.roles    = data.roles || (data.rolesCsv || '').split(',').filter(Boolean);
             data.initials = getInitials(data.displayName);
             localStorage.setItem(SESSION_KEY, JSON.stringify(data));
             return data;
@@ -73,7 +79,11 @@ function (config, api, mockData) {
       var token = this.getToken();
       localStorage.removeItem(SESSION_KEY);
       if (config.apiBase && token) {
-        api.post('/auth/logout').catch(function () {});
+        // Logout lives on the Admin ORDS module (/dct), like login.
+        fetch((config.authBase || config.apiBase) + '/auth/logout', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+        }).catch(function () {});
       }
     },
 

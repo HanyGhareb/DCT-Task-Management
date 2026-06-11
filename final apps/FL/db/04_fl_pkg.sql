@@ -65,6 +65,11 @@ CREATE OR REPLACE PACKAGE prod.dct_fl_pkg AS
     -- Daily scheduled job — document expiry notifications
     PROCEDURE send_expiry_alerts;
 
+    -- Mirror a contract's header budget coding into the unified
+    -- DCT_BUDGET_CODING_LINES (source_module FL, source_type FL_CONTRACT,
+    -- line_num 1). Call on contract approval and after renewal creation.
+    PROCEDURE mirror_contract_coding (p_contract_id IN NUMBER);
+
     -- Public helper — read a FREELANCERS module setting value
     FUNCTION get_setting (p_key IN VARCHAR2) RETURN VARCHAR2;
 
@@ -455,6 +460,58 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- The new contract starts in ACTIVE status (no re-approval needed).
     -- Idempotent: exits silently if new_contract_id is already populated.
     -- =========================================================================
+    -- =========================================================================
+    -- MIRROR_CONTRACT_CODING
+    -- Upserts the contract's header GL/PROJECT coding as line 1 of the unified
+    -- DCT_BUDGET_CODING_LINES so cross-module spend reporting has one read
+    -- path. The FL forms keep editing the header columns; this mirror runs on
+    -- contract approval and inside CREATE_RENEWED_CONTRACT.
+    -- =========================================================================
+    PROCEDURE mirror_contract_coding (p_contract_id IN NUMBER) IS
+        v_con     prod.dct_fl_contracts%ROWTYPE;
+        v_user_id NUMBER;
+    BEGIN
+        SELECT * INTO v_con
+        FROM   prod.dct_fl_contracts
+        WHERE  contract_id = p_contract_id;
+
+        IF v_con.coding_type IS NULL THEN
+            RETURN;   -- contract carries no budget coding yet
+        END IF;
+
+        -- Resolve an audit user (unified table requires a dct_users FK)
+        BEGIN
+            SELECT user_id INTO v_user_id FROM prod.dct_users
+            WHERE  username = NVL(v_con.updated_by, 'ADMIN') AND ROWNUM = 1;
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            SELECT MIN(user_id) INTO v_user_id FROM prod.dct_users;
+        END;
+
+        MERGE INTO prod.dct_budget_coding_lines t
+        USING (SELECT 'FL' AS source_module, 'FL_CONTRACT' AS source_type,
+                      p_contract_id AS source_id, 1 AS line_num FROM dual) s
+        ON (t.source_module = s.source_module AND t.source_type = s.source_type
+            AND t.source_id = s.source_id AND t.line_num = s.line_num)
+        WHEN NOT MATCHED THEN
+            INSERT (source_module, source_type, source_id, line_num, coding_type,
+                    cc_id, project_number, task_number, expenditure_type,
+                    amount, currency_code, description, created_by)
+            VALUES ('FL', 'FL_CONTRACT', p_contract_id, 1, v_con.coding_type,
+                    v_con.cc_id_gl, v_con.project_number, v_con.task_number, v_con.expenditure_type,
+                    NVL(v_con.total_amount, 0), NVL(v_con.currency_code, 'AED'),
+                    'Contract ' || v_con.contract_number || ' header coding', v_user_id)
+        WHEN MATCHED THEN
+            UPDATE SET t.coding_type      = v_con.coding_type,
+                       t.cc_id            = v_con.cc_id_gl,
+                       t.project_number   = v_con.project_number,
+                       t.task_number      = v_con.task_number,
+                       t.expenditure_type = v_con.expenditure_type,
+                       t.amount           = NVL(v_con.total_amount, 0),
+                       t.currency_code    = NVL(v_con.currency_code, 'AED'),
+                       t.updated_by       = v_user_id,
+                       t.updated_at       = SYSTIMESTAMP;
+    END mirror_contract_coding;
+
     PROCEDURE create_renewed_contract (p_renewal_id IN NUMBER) IS
         v_rnl      prod.dct_fl_contract_renewals%ROWTYPE;
         v_orig     prod.dct_fl_contracts%ROWTYPE;
@@ -523,6 +580,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         IF NVL(get_setting('AUTO_GENERATE_PAYMENT_SCHEDULE'), 'Y') = 'Y' THEN
             generate_payment_schedule(v_new_id);
         END IF;
+
+        -- Mirror the new contract's coding into the unified coding lines
+        mirror_contract_coding(v_new_id);
 
         prod.dct_audit.log(
             p_action      => 'CONTRACT_RENEWED',
@@ -731,33 +791,36 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- =========================================================================
     -- SEND_EXPIRY_ALERTS
     -- Intended to run daily via DBMS_SCHEDULER (see job created below).
-    -- Scans DCT_FL_DOCUMENTS for ACTIVE documents where:
+    -- Scans the unified DCT_DOCUMENTS (source_module = 'FL'; reference_id =
+    -- freelancer_id) for ACTIVE documents where:
     --   expiry_date < SYSDATE                           → EXPIRED
     --   expiry_date BETWEEN SYSDATE AND SYSDATE + N     → EXPIRING_SOON
     -- For each qualifying document, notifies all FL_ADMIN users once per day
     -- (skips if an alert of the same type was already sent today for that doc).
-    -- Inserts one DCT_FL_DOC_EXPIRY_ALERTS row per notification sent.
+    -- Inserts one unified DCT_DOC_EXPIRY_ALERTS row per notification sent.
     -- =========================================================================
     PROCEDURE send_expiry_alerts IS
         v_notified  NUMBER := 0;
 
         CURSOR c_docs IS
             SELECT
-                d.document_id,
-                d.freelancer_id,
+                d.doc_id                                   AS document_id,
+                d.reference_id                             AS freelancer_id,
                 d.expiry_date,
                 d.alert_days_before,
                 f.first_name_en || ' ' || f.last_name_en  AS freelancer_name,
-                lv.value_name_en                           AS doc_type_name,
+                dt.doc_type_name_en                        AS doc_type_name,
                 TRUNC(d.expiry_date - SYSDATE)             AS days_remaining,
                 CASE
                     WHEN d.expiry_date < SYSDATE THEN 'EXPIRED'
                     ELSE 'EXPIRING_SOON'
                 END                                        AS alert_type
-            FROM  prod.dct_fl_documents       d
-            JOIN  prod.dct_fl_freelancers      f  ON f.freelancer_id = d.freelancer_id
-            LEFT JOIN prod.dct_lookup_values   lv ON lv.value_id     = d.document_type_id
-            WHERE d.status      = 'ACTIVE'
+            FROM  prod.dct_documents           d
+            JOIN  prod.dct_fl_freelancers      f  ON f.freelancer_id = d.reference_id
+            LEFT JOIN prod.dct_document_types  dt ON dt.doc_type_id  = d.doc_type_id
+            WHERE d.source_module = 'FL'
+            AND   d.status      = 'ACTIVE'
+            AND   d.is_active   = 'Y'
             AND   d.expiry_date IS NOT NULL
             AND   f.status      = 'ACTIVE'
             AND   (d.expiry_date < SYSDATE
@@ -765,8 +828,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             -- One alert per document per alert_type per calendar day
             AND NOT EXISTS (
                 SELECT 1
-                FROM   prod.dct_fl_doc_expiry_alerts a
-                WHERE  a.document_id = d.document_id
+                FROM   prod.dct_doc_expiry_alerts a
+                WHERE  a.doc_id      = d.doc_id
                 AND    a.alert_type  = CASE
                                          WHEN d.expiry_date < SYSDATE THEN 'EXPIRED'
                                          ELSE 'EXPIRING_SOON'
@@ -807,11 +870,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                     p_module_code       => 'FREELANCERS'
                 );
 
-                INSERT INTO prod.dct_fl_doc_expiry_alerts
-                    (document_id, freelancer_id, alert_type,
-                     days_remaining, notified_user_id, sent_at)
+                INSERT INTO prod.dct_doc_expiry_alerts
+                    (doc_id, alert_type, days_remaining, notified_user_id, sent_at)
                 VALUES
-                    (rec.document_id, rec.freelancer_id, rec.alert_type,
+                    (rec.document_id, rec.alert_type,
                      rec.days_remaining, adm.user_id, SYSTIMESTAMP);
 
                 v_notified := v_notified + 1;

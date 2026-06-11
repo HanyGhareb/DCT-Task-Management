@@ -15,5 +15,9 @@ define([], function () {
     // apiBase: null,                                                             // mock mode
     apiBase: '/ords/admin/dct',                                                  // dev-proxy.py (local dev)
     // apiBase: 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/dct', // direct (APEX deploy)
+
+    // Phase 3 shared api.js: Admin IS the identity provider — on 401 it routes
+    // to its own login view instead of redirecting to a portal URL.
+    adminPortalUrl: null,
   };
 });

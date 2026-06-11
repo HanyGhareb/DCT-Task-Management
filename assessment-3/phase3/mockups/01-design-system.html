@@ -1,0 +1,594 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i-Finance · Shared Design System — Phase 3 Mockup 01 (rev 3)</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   SHARED TOKENS — the contract for final apps/shared/css/platform.css.
+   Brand values come from DCT_MODULE_SETTINGS at boot (THEME_BRAND_COLOR);
+   this page simulates that with the Appearance settings card below.
+   THE PAGE ITSELF IS THE SHELL: common top bar (module switcher) +
+   full-height side navigation + scrollable work surface.
+   ===================================================================== */
+:root{
+  --brand:#2E7D32; --brand-rgb:46,125,50; --brand-dark:#1F5A23; --brand-soft:#E8F5E9;
+
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F0F2F5;
+  --border:#E3E6EB; --border-strong:#CBD2DA;
+  --text:#1B2430; --text-2:#5B6573; --text-3:#8A93A2;
+
+  /* dark chrome (top bar + side nav) */
+  --chrome-bg:#0F141B; --chrome-surface:#161C25; --chrome-border:#232B36;
+  --chrome-text:#C9D2DC; --chrome-text-2:#7D8794;
+
+  --amber:#F0883E; --green:#2DA44E; --red:#D1242F; --blue:#0969DA;
+  --green-soft:#DDF4E4; --red-soft:#FBE9EA; --blue-soft:#DDF0FF; --amber-soft:#FFF1E3;
+
+  --font:'Outfit',system-ui,sans-serif;
+  --mono:'Fira Code',monospace;
+  --font-ar:'IBM Plex Sans Arabic',system-ui,sans-serif;
+  --mono-ar:'IBM Plex Mono',monospace;
+
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --sp-1:4px; --sp-2:8px; --sp-3:16px; --sp-4:24px; --sp-5:32px; --sp-6:48px;
+  --shadow:0 1px 2px rgba(27,36,48,.06),0 4px 14px rgba(27,36,48,.05);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --topbar-h:54px; --side-w:250px;
+}
+.tier-vault{
+  --bg:#0D1117; --surface:#161B22; --surface-2:#1C232C;
+  --border:#30363D; --border-strong:#444C56;
+  --text:#E6EDF3; --text-2:#7D8590; --text-3:#586069;
+  --green:#3FB950; --red:#F85149; --blue:#58A6FF;
+  --green-soft:rgba(63,185,80,.15); --red-soft:rgba(248,81,73,.15);
+  --blue-soft:rgba(88,166,255,.15); --amber-soft:rgba(240,136,62,.15);
+  --shadow:0 0 0 1px var(--border);
+  background:var(--bg); color:var(--text);
+}
+
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14.5px;line-height:1.55}
+html[lang="ar"] body{font-family:var(--font-ar)}
+html[lang="ar"] .mono{font-family:var(--mono-ar)}
+.mono{font-family:var(--mono);font-feature-settings:'tnum'}
+h1,h2,h3{font-weight:700;letter-spacing:-.02em}
+.kbd{font-family:var(--mono);font-size:.85em;background:var(--surface-2);border:1px solid var(--border);border-radius:5px;padding:1px 6px}
+
+/* =====================================================================
+   TOP BAR — common for the whole app, holds the MODULE SWITCHER
+   ===================================================================== */
+.topbar{position:fixed;inset-block-start:0;inset-inline:0;height:var(--topbar-h);z-index:60;
+  display:flex;align-items:center;gap:var(--sp-3);padding:0 var(--sp-3);
+  background:var(--chrome-bg);border-block-end:1px solid var(--chrome-border);color:var(--chrome-text)}
+.topbar .suite{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;color:#fff;letter-spacing:-.01em}
+.suite-cube{width:30px;height:30px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;
+  font:700 11.5px var(--mono);transition:background .3s;box-shadow:0 3px 12px rgba(var(--brand-rgb),.45)}
+.topbar .sep{width:1px;height:24px;background:var(--chrome-border)}
+.head-end{margin-inline-start:auto;display:flex;align-items:center;gap:12px}
+.lang-toggle{display:flex;border:1px solid var(--chrome-border);border-radius:99px;overflow:hidden}
+.lang-toggle button{border:0;background:transparent;color:var(--chrome-text-2);padding:5px 14px;font:600 12.5px var(--font);cursor:pointer;transition:all .25s var(--spring)}
+.lang-toggle button.on{background:var(--amber);color:#10151C}
+.bell{position:relative;width:32px;height:32px;border-radius:8px;background:var(--chrome-surface);display:grid;place-items:center;font-size:14px;cursor:pointer}
+.bell .dotn{position:absolute;inset-block-start:-3px;inset-inline-end:-3px;width:14px;height:14px;border-radius:50%;
+  background:var(--red);color:#fff;font:700 9px var(--font);display:grid;place-items:center;border:2px solid var(--chrome-bg)}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 11px var(--font);transition:background .3s}
+.whoami{line-height:1.15;font-size:12px}
+.whoami b{display:block;color:#fff;font-size:12.5px}
+.whoami span{color:var(--chrome-text-2)}
+
+/* ---- MODULE SWITCHER (in the common top bar) ---- */
+.modsw{position:relative}
+.modsw-btn{display:flex;align-items:center;gap:10px;border:1px solid var(--chrome-border);background:var(--chrome-surface);
+  border-radius:10px;padding:6px 12px;font:600 13.5px var(--font);color:#fff;cursor:pointer;
+  transition:all .25s var(--spring);min-width:220px}
+.modsw-btn:hover{border-color:var(--brand)}
+.modsw-btn .dot{width:10px;height:10px;border-radius:50%;background:var(--brand);flex:none;transition:background .3s;box-shadow:0 0 8px rgba(var(--brand-rgb),.8)}
+.modsw-btn .app{font:500 10.5px var(--mono);color:var(--chrome-text-2);margin-inline-start:auto}
+.modsw-btn .chev{color:var(--chrome-text-2);font-size:10px;transition:transform .3s var(--spring)}
+.modsw.open .modsw-btn .chev{transform:rotate(180deg)}
+.modsw-menu{position:absolute;inset-block-start:calc(100% + 10px);inset-inline-start:0;min-width:300px;z-index:70;
+  background:var(--surface);color:var(--text);border:1px solid var(--border);border-radius:12px;
+  box-shadow:0 18px 50px rgba(15,22,30,.30);padding:6px;
+  opacity:0;transform:translateY(-8px) scale(.97);pointer-events:none;transition:all .28s var(--spring)}
+.modsw.open .modsw-menu{opacity:1;transform:none;pointer-events:auto}
+.modsw-head{font-size:10.5px;text-transform:uppercase;letter-spacing:.14em;color:var(--text-3);padding:8px 12px 4px}
+.modsw-item{display:flex;align-items:center;gap:11px;padding:9px 12px;border-radius:8px;cursor:pointer;transition:background .15s}
+.modsw-item:hover{background:var(--surface-2)}
+.modsw-item .dot{width:10px;height:10px;border-radius:50%;flex:none}
+.modsw-item .nm{font-weight:600;font-size:13.5px}
+.modsw-item .ds{font-size:11.5px;color:var(--text-3)}
+.modsw-item .app{font:500 11px var(--mono);color:var(--text-3);margin-inline-start:auto}
+.modsw-item.cur{background:var(--brand-soft)}
+.modsw-item.soon{opacity:.45;cursor:default}
+.modsw-item .soon-b{font:600 9.5px var(--font);text-transform:uppercase;letter-spacing:.08em;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:99px;padding:2px 8px;color:var(--text-3);margin-inline-start:auto}
+
+/* =====================================================================
+   SIDE NAVIGATION — full page height, per-module function list
+   ===================================================================== */
+.layout{display:grid;grid-template-columns:var(--side-w) 1fr;min-height:100vh;padding-block-start:var(--topbar-h)}
+.side{background:var(--chrome-bg);color:var(--chrome-text);border-inline-end:1px solid var(--chrome-border);
+  position:sticky;top:var(--topbar-h);height:calc(100vh - var(--topbar-h));overflow-y:auto;
+  display:flex;flex-direction:column;padding:var(--sp-3) 10px}
+.side::-webkit-scrollbar{width:8px}.side::-webkit-scrollbar-thumb{background:var(--chrome-border);border-radius:4px}
+.side-logo{display:flex;align-items:center;gap:11px;padding:4px 10px 16px;border-block-end:1px solid var(--chrome-border);margin-block-end:8px}
+.brand-cube{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;
+  font:700 13px var(--mono);flex:none;transition:background .3s;box-shadow:0 4px 14px rgba(var(--brand-rgb),.4)}
+.side-logo .nm{font-weight:700;font-size:15px;color:#fff;line-height:1.2}
+.side-logo .sb{font:500 9.5px var(--mono);letter-spacing:.14em;color:var(--chrome-text-2);text-transform:uppercase}
+.nav-group{font-size:10px;text-transform:uppercase;letter-spacing:.16em;color:var(--chrome-text-2);padding:16px 12px 7px}
+.nav-item{display:flex;align-items:center;gap:11px;padding:8px 12px;border-radius:8px;color:var(--chrome-text);
+  font-weight:500;font-size:13.5px;cursor:pointer;transition:all .2s;position:relative}
+.nav-item .bullet{width:7px;height:7px;border-radius:50%;background:var(--chrome-text-2);opacity:.55;flex:none;transition:all .25s var(--spring)}
+.nav-item:hover{background:var(--chrome-surface);color:#fff}
+.nav-item.on{background:rgba(var(--brand-rgb),.16);color:#fff;font-weight:600}
+.nav-item.on .bullet{background:var(--brand);opacity:1;transform:scale(1.25);box-shadow:0 0 8px rgba(var(--brand-rgb),.8)}
+.nav-item.on::before{content:'';position:absolute;inset-inline-start:-10px;inset-block:7px;width:3px;border-radius:3px;background:var(--brand)}
+.side-foot{margin-block-start:auto;padding:14px 12px 6px;font:500 10.5px var(--mono);color:var(--chrome-text-2)}
+
+/* =====================================================================
+   WORK SURFACE — scrollable main area (the design-system sheet)
+   ===================================================================== */
+.main{min-width:0;padding:var(--sp-4) var(--sp-5) 120px;max-width:1100px}
+.crumb{font-size:12.5px;color:var(--text-3);margin-block-end:6px}
+.crumb b{color:var(--text-2)}
+.sect{margin-block-start:var(--sp-5);animation:rise .5s var(--spring) both}
+@keyframes rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.sect>h2{font-size:13px;text-transform:uppercase;letter-spacing:.14em;color:var(--text-3);
+  display:flex;align-items:center;gap:12px;margin:0 0 var(--sp-3)}
+.sect>h2::after{content:'';flex:1;height:1px;background:var(--border)}
+.hero h1{font-size:30px;margin:0}
+.hero p{color:var(--text-2);max-width:74ch;margin:.5em 0 0}
+
+.statgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--sp-3)}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);padding:var(--sp-3);box-shadow:var(--shadow)}
+.stat .lbl{font-size:12px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.08em}
+.stat .val{font:600 26px var(--mono);margin-block-start:4px}
+.stat .sub{font-size:12px;color:var(--text-2)}
+.stat .up{color:var(--green)} .stat .dn{color:var(--red)}
+
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.card-h{display:flex;align-items:center;justify-content:space-between;padding:var(--sp-3);border-block-end:1px solid var(--border);font-weight:700}
+.card-b{padding:var(--sp-3)}
+table.tbl{width:100%;border-collapse:collapse;font-size:13.5px}
+.tbl th{text-align:start;font-size:11px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);
+  padding:10px var(--sp-3);border-block-end:1px solid var(--border)}
+.tbl td{padding:11px var(--sp-3);border-block-end:1px solid var(--border)}
+.tbl tr:last-child td{border:0}
+.tbl tr:hover td{background:var(--surface-2)}
+.code{font-family:var(--mono);font-size:12.5px;color:var(--blue)}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:3px 10px;font-size:12px;font-weight:600}
+.badge::before{content:'';width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge--ok{background:var(--green-soft);color:var(--green)}
+.badge--warn{background:var(--amber-soft);color:#B05E1A}
+.badge--err{background:var(--red-soft);color:var(--red)}
+.badge--info{background:var(--blue-soft);color:var(--blue)}
+.badge--mut{background:var(--surface-2);color:var(--text-2)}
+.btn{border:1px solid var(--border-strong);background:var(--surface);color:var(--text);border-radius:8px;
+  padding:8px 16px;font:600 13.5px var(--font);cursor:pointer;transition:all .2s var(--spring)}
+.btn:hover{transform:translateY(-1px)}
+.btn--brand{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn--brand:hover{background:var(--brand-dark)}
+.btn--ghost{border-color:transparent;color:var(--brand)}
+.field{display:grid;gap:6px}
+.field label{font-size:12.5px;font-weight:600;color:var(--text-2)}
+.field input,.field select{border:1px solid var(--border-strong);border-radius:8px;background:var(--surface);
+  color:var(--text);padding:9px 12px;font:inherit;outline:none;transition:border .2s,box-shadow .2s}
+.field input:focus,.field select:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.formrow{display:grid;grid-template-columns:1fr 1fr 1fr;gap:var(--sp-3)}
+
+/* theme editor */
+.theme-grid{display:grid;grid-template-columns:1.2fr .8fr;gap:var(--sp-3)}
+.set-row{display:grid;grid-template-columns:215px 1fr auto;align-items:center;gap:var(--sp-3);
+  padding:12px var(--sp-3);border-block-end:1px solid var(--border)}
+.set-row:last-child{border:0}
+.set-key{font:500 12px var(--mono);color:var(--blue)}
+.set-desc{font-size:12px;color:var(--text-3)}
+.colorwrap{display:flex;align-items:center;gap:10px}
+.colorwrap input[type=color]{width:42px;height:30px;border:1px solid var(--border-strong);border-radius:7px;background:var(--surface);padding:2px;cursor:pointer}
+.colorwrap .hex{font:500 12.5px var(--mono);color:var(--text-2)}
+.derived{display:flex;gap:8px;align-items:center}
+.derived .sw{width:26px;height:26px;border-radius:7px;border:1px solid var(--border)}
+.derived .cap{font-size:10.5px;color:var(--text-3)}
+.preview-stack{display:grid;gap:10px;align-content:start}
+.note{background:var(--amber-soft);border:1px solid #F4C99B;border-radius:var(--r);padding:var(--sp-3);font-size:13px}
+
+/* skeleton + toast */
+.skeleton{position:relative;overflow:hidden;background:var(--surface-2);border-radius:6px}
+.skeleton::after{content:'';position:absolute;inset:0;transform:translateX(-100%);
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.55),transparent);animation:shimmer 1.3s infinite}
+.tier-vault .skeleton::after{background:linear-gradient(90deg,transparent,rgba(255,255,255,.07),transparent)}
+@keyframes shimmer{100%{transform:translateX(100%)}}
+@media (prefers-reduced-motion:reduce){.skeleton::after{animation:none}}
+.sk-row{display:grid;grid-template-columns:36px 2fr 1.4fr 1fr .8fr;gap:14px;padding:12px var(--sp-3);align-items:center}
+.sk-row .skeleton{height:13px}.sk-row .skeleton.cir{width:30px;height:30px;border-radius:50%}
+.toast-host{position:fixed;inset-block-start:calc(var(--topbar-h) + 12px);inset-inline-end:24px;display:grid;gap:10px;z-index:99}
+.toast{display:flex;gap:12px;align-items:flex-start;min-width:300px;max-width:380px;background:var(--surface);
+  border:1px solid var(--border);border-inline-start:4px solid var(--blue);border-radius:10px;
+  box-shadow:0 8px 30px rgba(15,22,30,.18);padding:12px 14px;animation:toastIn .45s var(--spring)}
+.toast--ok{border-inline-start-color:var(--green)} .toast--err{border-inline-start-color:var(--red)}
+.toast b{display:block;font-size:13.5px} .toast span{font-size:12.5px;color:var(--text-2)}
+.toast .x{margin-inline-start:auto;border:0;background:none;color:var(--text-3);cursor:pointer;font-size:15px}
+@keyframes toastIn{from{opacity:0;transform:translateY(-14px) scale(.94)}to{opacity:1;transform:none}}
+
+/* tokens / type / two-tier */
+.tokgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:var(--sp-3)}
+.tok{border:1px solid var(--border);border-radius:var(--r);overflow:hidden;background:var(--surface)}
+.tok .sw{height:54px} .tok .nm{padding:8px 10px;font:500 11.5px var(--mono)} .tok .vl{padding:0 10px 8px;font-size:11px;color:var(--text-3)}
+.typerow{display:flex;align-items:baseline;gap:var(--sp-3);padding:8px 0;border-block-end:1px dashed var(--border)}
+.typerow .tag{font:500 11px var(--mono);color:var(--text-3);min-width:130px}
+.two-tier{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3)}
+.tier-card{border-radius:var(--r-lg);border:1px solid var(--border);padding:var(--sp-3)}
+.tier-card h3{margin:0 0 4px;font-size:15px} .tier-card .cap{font-size:12px;color:var(--text-2);margin-block-end:var(--sp-3)}
+.tg-wrap{display:inline-flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.tg{width:40px;height:22px;border-radius:99px;background:var(--border-strong);position:relative;transition:background .3s}
+.tg::after{content:'';position:absolute;inset-block-start:3px;inset-inline-start:3px;width:16px;height:16px;border-radius:50%;
+  background:#fff;transition:transform .35s var(--spring)}
+.tg.on{background:var(--amber)} .tg.on::after{transform:translateX(18px)}
+html[dir="rtl"] .tg.on::after{transform:translateX(-18px)}
+@media(max-width:920px){.layout{grid-template-columns:1fr}.side{display:none}.formrow,.two-tier,.statgrid,.theme-grid{grid-template-columns:1fr}.main{padding:var(--sp-3)}}
+</style>
+</head>
+<body>
+
+<!-- ===================== COMMON TOP BAR (whole app) ===================== -->
+<header class="topbar">
+  <span class="suite"><span class="suite-cube" id="suiteCube">iF</span><span data-i18n="suite">i-Finance</span></span>
+  <span class="sep"></span>
+  <div class="modsw" id="modsw">
+    <button class="modsw-btn" id="modswBtn">
+      <span class="dot"></span>
+      <span id="modswName">Petty Cash</span>
+      <span class="app" id="modswApp">APP 201</span>
+      <span class="chev">▼</span>
+    </button>
+    <div class="modsw-menu" id="modswMenu"></div>
+  </div>
+  <div class="head-end">
+    <div class="lang-toggle"><button id="lang-en" class="on">EN</button><button id="lang-ar">ع</button></div>
+    <div class="bell">🔔<span class="dotn">3</span></div>
+    <div class="whoami"><b data-i18n="who.name">System Administrator</b><span data-i18n="who.role">SYS_ADMIN</span></div>
+    <div class="avatar">SA</div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ===================== FULL-HEIGHT SIDE NAVIGATION ===================== -->
+  <aside class="side" id="sidenav"><!-- rendered per module --></aside>
+
+  <!-- ===================== WORK SURFACE ===================== -->
+  <main class="main">
+    <div class="crumb"><span data-i18n="suite">i-Finance</span> / <span id="crumbMod">Petty Cash</span> / <b data-i18n="crumb.page">Design System</b></div>
+
+    <div class="hero sect">
+      <h1 data-i18n="hero.title">The shared shell, at page level</h1>
+      <p data-i18n="hero.sub">What you are looking at IS the proposal: the dark top bar (common to every app) carries the module switcher dropdown; the side navigation fills the page side with the selected module's full function list; this scrollable surface is the work area. Switch modules from the top bar — brand, side-nav and breadcrumb all follow. Colors come from system settings, not CSS.</p>
+    </div>
+
+    <div class="sect">
+      <h2 data-i18n="s.dash">Work surface sample — stat cards + table</h2>
+      <div class="statgrid">
+        <div class="stat"><div class="lbl" data-i18n="st.active">Active floats</div><div class="val mono">12</div><div class="sub up">▲ <span data-i18n="st.up">2 this week</span></div></div>
+        <div class="stat"><div class="lbl" data-i18n="st.pending">Pending approval</div><div class="val mono">5</div><div class="sub" data-i18n="st.oldest">oldest: 3 days</div></div>
+        <div class="stat"><div class="lbl" data-i18n="st.total">Total outstanding</div><div class="val mono">48,250 <small style="font-size:13px">AED</small></div><div class="sub dn">▼ 6%</div></div>
+      </div>
+      <div class="card" style="margin-block-start:16px">
+        <div class="card-h"><span data-i18n="tbl.title">Recent requests</span><button class="btn btn--brand" data-i18n="btn.new">+ New Request</button></div>
+        <table class="tbl">
+          <thead><tr><th data-i18n="tbl.ref">Reference</th><th data-i18n="tbl.emp">Employee</th><th data-i18n="tbl.amount">Amount</th><th data-i18n="tbl.status">Status</th></tr></thead>
+          <tbody>
+            <tr><td class="code">PC-2026-00104</td><td data-i18n="n1">Mariam K.</td><td class="mono">1,500.00</td><td><span class="badge badge--ok" data-i18n="b.active">Active</span></td></tr>
+            <tr><td class="code">PC-2026-00103</td><td data-i18n="n2">Ahmed R.</td><td class="mono">3,250.00</td><td><span class="badge badge--warn" data-i18n="b.pending">Pending Approval</span></td></tr>
+            <tr><td class="code">PC-2026-00102</td><td data-i18n="n3">Latifa M.</td><td class="mono">800.00</td><td><span class="badge badge--err" data-i18n="b.rejected">Rejected</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2 data-i18n="s.theme">Brand colors from system settings</h2>
+      <div class="theme-grid">
+        <div class="card">
+          <div class="card-h"><span data-i18n="th.title">Module Settings → Appearance</span><button class="btn" id="themeReset" data-i18n="th.reset">Reset to default</button></div>
+          <div>
+            <div class="set-row">
+              <div><div class="set-key">THEME_BRAND_COLOR</div><div class="set-desc" data-i18n="th.d1">One hex per module — stored in DCT_MODULE_SETTINGS</div></div>
+              <div class="colorwrap"><input type="color" id="brandPick" value="#2E7D32"><span class="hex mono" id="brandHex">#2E7D32</span></div>
+              <div class="derived">
+                <div><div class="sw" id="swDark"></div><div class="cap">dark</div></div>
+                <div><div class="sw" id="swSoft"></div><div class="cap">soft</div></div>
+                <div><div class="sw" id="swMain"></div><div class="cap">brand</div></div>
+              </div>
+            </div>
+            <div class="set-row">
+              <div><div class="set-key">THEME_NAV_STYLE</div><div class="set-desc" data-i18n="th.d2">Top bar + side navigation chrome</div></div>
+              <div><select id="navStyle" style="border:1px solid var(--border-strong);border-radius:8px;padding:7px 10px;font:inherit;background:var(--surface);color:var(--text)">
+                <option value="dark" data-i18n="th.navDark">Dark (default)</option>
+                <option value="light" data-i18n="th.navLight">Light</option>
+              </select></div>
+              <div></div>
+            </div>
+          </div>
+        </div>
+        <div class="preview-stack">
+          <div class="note"><b data-i18n="th.howT">How it works in the apps:</b> <span data-i18n="th.howB">at boot, config.js fetches the module's THEME_* settings (already exposed by each module's GET /settings endpoint) and injects them as CSS custom properties on &lt;html&gt;. brand-dark and brand-soft are derived from the one stored hex — admins manage a single color per module from the Settings page. Watch the top bar, side-nav and buttons recolor as you pick.</span></div>
+          <div class="card"><div class="card-b" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+            <button class="btn btn--brand" data-i18n="btn.primary">Primary action</button>
+            <span class="badge" style="background:var(--brand-soft);color:var(--brand)" data-i18n="th.badge">Brand badge</span>
+            <span class="avatar" style="width:34px;height:34px">SA</span>
+            <span class="set-desc" data-i18n="th.live">← live preview of the picked color</span>
+          </div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2 data-i18n="s.tiers">Two tiers, one token set</h2>
+      <div class="two-tier">
+        <div class="tier-card">
+          <h3 data-i18n="tier.light">Ledger — light tier</h3>
+          <div class="cap" data-i18n="tier.lightCap">Default for every working surface (lists, forms, dashboards).</div>
+          <p style="margin:0 0 12px"><span class="badge badge--ok" data-i18n="b.approved">Approved</span> <span class="badge badge--warn" data-i18n="b.pending">Pending Approval</span> <span class="badge badge--info" data-i18n="b.review">Under Review</span> <span class="badge badge--mut" data-i18n="b.draft">Draft</span></p>
+          <button class="btn btn--brand" data-i18n="btn.primary">Primary action</button>
+          <button class="btn" data-i18n="btn.secondary">Secondary</button>
+          <button class="btn btn--ghost" data-i18n="btn.ghost">Ghost</button>
+        </div>
+        <div class="tier-card tier-vault">
+          <h3 style="font-family:var(--font)" data-i18n="tier.vault">Vault — dark tier</h3>
+          <div class="cap" data-i18n="tier.vaultCap">Reserved for security surfaces: roles, permissions, audit, approval templates.</div>
+          <p style="margin:0 0 12px"><span class="badge badge--ok" data-i18n="b.active">Active</span> <span class="badge badge--info">SYS_ADMIN</span> <span class="badge badge--err" data-i18n="b.revoked">Revoked</span></p>
+          <div class="tg-wrap" onclick="this.querySelector('.tg').classList.toggle('on')">
+            <span class="tg on"></span><span style="font-size:13px" data-i18n="tier.toggle">users.manage — amber spring toggle</span>
+          </div>
+          <div style="margin-top:14px;font-family:var(--mono);font-size:12.5px;color:var(--blue)">ROLE_FINANCE_ADMIN</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <h2 data-i18n="s.tokens">Core tokens</h2>
+      <div class="tokgrid" id="tokgrid"></div>
+      <div style="margin-top:var(--sp-4)" class="card"><div class="card-b">
+        <div class="typerow"><span class="tag">display / Outfit 700</span><span style="font-size:26px;font-weight:700" data-i18n="ty.display">Petty Cash Clearing</span></div>
+        <div class="typerow"><span class="tag">body / Outfit 400</span><span data-i18n="ty.body">All amounts are validated against the GL combination before submission.</span></div>
+        <div class="typerow"><span class="tag">code / Fira Code</span><span class="mono" style="color:var(--blue)">CCR-2026-00001 · 48,250.00 AED</span></div>
+        <div class="typerow" style="border:0"><span class="tag">arabic / IBM Plex Sans Arabic</span><span style="font-family:var(--font-ar);font-size:16px" dir="rtl">جميع المبالغ يتم التحقق منها قبل الإرسال — 48,250.00 AED</span></div>
+      </div></div>
+    </div>
+
+    <div class="sect">
+      <h2 data-i18n="s.forms">Forms · focus ring · async states</h2>
+      <div class="card"><div class="card-b">
+        <div class="formrow">
+          <div class="field"><label data-i18n="f.amount">Amount (AED)</label><input class="mono" value="1,500.00"></div>
+          <div class="field"><label data-i18n="f.type">Coding type</label><select><option data-i18n="f.gl">GL Account</option><option data-i18n="f.project">Project</option></select></div>
+          <div class="field"><label data-i18n="f.due">Due date</label><input type="date" value="2026-07-15"></div>
+        </div>
+        <p style="font-size:12.5px;color:var(--text-3)" data-i18n="f.hint">Focus any field — the amber ring is the shared focus token in both tiers.</p>
+      </div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3);margin-top:var(--sp-3)">
+        <div class="card">
+          <div class="card-h"><span data-i18n="sk.title">Skeleton rows (loading)</span></div>
+          <div>
+            <div class="sk-row"><div class="skeleton cir"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div><div class="skeleton"></div></div>
+            <div class="sk-row"><div class="skeleton cir"></div><div class="skeleton" style="width:80%"></div><div class="skeleton"></div><div class="skeleton" style="width:60%"></div><div class="skeleton"></div></div>
+            <div class="sk-row"><div class="skeleton cir"></div><div class="skeleton" style="width:90%"></div><div class="skeleton" style="width:70%"></div><div class="skeleton"></div><div class="skeleton" style="width:50%"></div></div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-h"><span data-i18n="to.title">Toasts</span></div>
+          <div class="card-b" style="display:flex;gap:10px;flex-wrap:wrap">
+            <button class="btn" onclick="toast('ok')" data-i18n="to.ok">Show success</button>
+            <button class="btn" onclick="toast('err')" data-i18n="to.err">Show error</button>
+            <button class="btn" onclick="toast('info')" data-i18n="to.info">Show info</button>
+            <p style="font-size:12.5px;color:var(--text-3);margin:6px 0 0" data-i18n="to.cap">Top-end stacked under the top bar, spring entrance, auto-dismiss 5s, RTL-aware.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="sect">
+      <div class="note"><b data-i18n="note.t">What ships:</b> <span data-i18n="note.b">platform.css + themes.css + vault.css in final apps/shared/css/. The top bar (with the module switcher) and the full-height side navigation are the shared shell rendered by every app; each app contributes only its nav config and its THEME_BRAND_COLOR setting in DCT_MODULE_SETTINGS — no color lives in any stylesheet, and adding module #7 is one row in the registry.</span></div>
+    </div>
+  </main>
+</div>
+
+<div class="toast-host" id="toasthost"></div>
+
+<script>
+/* =====================================================================
+   MODULE REGISTRY — in the real apps this comes from GET /dct/modules +
+   each module's nav config; color = THEME_BRAND_COLOR module setting.
+   ===================================================================== */
+var MODULES = {
+  admin:{ code:'iF', app:'200', color:'#C74634',
+    nm:{en:'Admin',ar:'الإدارة'}, ds:{en:'Identity, security & platform',ar:'الهوية والأمن والمنصة'},
+    nav:[ {g:{en:'Workspace',ar:'مساحة العمل'}, items:[{en:'Dashboard',ar:'لوحة المعلومات',on:1},{en:'Notifications',ar:'الإشعارات'}]},
+          {g:{en:'Identity',ar:'الهوية'}, items:[{en:'Users',ar:'المستخدمون'},{en:'Roles & Permissions',ar:'الأدوار والصلاحيات'},{en:'Organizations',ar:'الهيكل التنظيمي'}]},
+          {g:{en:'Platform',ar:'المنصة'}, items:[{en:'Modules',ar:'الوحدات'},{en:'Lookups',ar:'القوائم المرجعية'},{en:'Audit Log',ar:'سجل التدقيق'},{en:'Settings',ar:'الإعدادات'}]} ]},
+  pc:{ code:'PC', app:'201', color:'#2E7D32',
+    nm:{en:'Petty Cash',ar:'السلفة النقدية'}, ds:{en:'Floats, reimbursements & clearing',ar:'السلف والاستردادات والتسويات'},
+    nav:[ {g:{en:'Workspace',ar:'مساحة العمل'}, items:[{en:'Dashboard',ar:'لوحة المعلومات',on:1},{en:'My Petty Cash',ar:'سلفي النقدية'},{en:'Reimbursements',ar:'الاستردادات'},{en:'Clearing',ar:'التسوية'}]},
+          {g:{en:'Finance',ar:'المالية'}, items:[{en:'Approvals',ar:'الاعتمادات'},{en:'All Records',ar:'كل السجلات'}]},
+          {g:{en:'Admin',ar:'الإدارة'}, items:[{en:'GL Codes',ar:'رموز الأستاذ العام'},{en:'Settings',ar:'الإعدادات'}]} ]},
+  dt:{ code:'DT', app:'204', color:'#0572CE',
+    nm:{en:'Duty Travel',ar:'السفر الرسمي'}, ds:{en:'Requests, advances & settlements',ar:'الطلبات والسلف والتسويات'},
+    nav:[ {g:{en:'Workspace',ar:'مساحة العمل'}, items:[{en:'Dashboard',ar:'لوحة المعلومات',on:1},{en:'My Requests',ar:'طلباتي'},{en:'Settlements',ar:'التسويات'}]},
+          {g:{en:'Finance',ar:'المالية'}, items:[{en:'Approvals',ar:'الاعتمادات'},{en:'All Requests',ar:'كل الطلبات'},{en:'Disbursements',ar:'الصرف'}]},
+          {g:{en:'Admin',ar:'الإدارة'}, items:[{en:'Per-Diem Rates',ar:'بدلات الإقامة'},{en:'Country Groups',ar:'مجموعات الدول'},{en:'Settings',ar:'الإعدادات'}]} ]},
+  hr:{ code:'HR', app:'205', color:'#1a7f5a',
+    nm:{en:'HR',ar:'الموارد البشرية'}, ds:{en:'Employees, positions & documents',ar:'الموظفون والوظائف والوثائق'},
+    nav:[ {g:{en:'Workspace',ar:'مساحة العمل'}, items:[{en:'Dashboard',ar:'لوحة المعلومات',on:1},{en:'Employees',ar:'الموظفون'},{en:'Org Hierarchy',ar:'الهيكل التنظيمي'}]},
+          {g:{en:'Structure',ar:'الهيكلة'}, items:[{en:'Positions',ar:'الوظائف'},{en:'Jobs',ar:'المسميات'},{en:'Grades',ar:'الدرجات'}]},
+          {g:{en:'Admin',ar:'الإدارة'}, items:[{en:'Documents',ar:'الوثائق'},{en:'Settings',ar:'الإعدادات'}]} ]},
+  fl:{ code:'FL', app:'203', color:'#7C4DBE', soon:true,
+    nm:{en:'Freelancers',ar:'المتعاقدون'}, ds:{en:'Contracts & payment vouchers',ar:'العقود وسندات الدفع'}, nav:[] },
+  cc:{ code:'CC', app:'202', color:'#B0721E', soon:true,
+    nm:{en:'Credit Cards',ar:'البطاقات الائتمانية'}, ds:{en:'Cards & monthly replenishments',ar:'البطاقات والتغذية الشهرية'}, nav:[] }
+};
+var cur = 'pc', lang = 'en';
+var override = null;  /* simulated THEME_BRAND_COLOR override */
+
+/* ---- color math: ONE stored hex → brand / brand-dark / brand-soft ---- */
+function hex2rgb(h){ h=h.replace('#',''); if(h.length===3)h=h.replace(/./g,'$&$&'); var n=parseInt(h,16); return [n>>16&255,n>>8&255,n&255]; }
+function mix(a,b,t){ return a.map(function(v,i){ return Math.round(v+(b[i]-v)*t); }); }
+function rgb2hex(r){ return '#'+r.map(function(v){ return v.toString(16).padStart(2,'0'); }).join(''); }
+function applyBrand(){
+  var hex = override || MODULES[cur].color;
+  var rgb = hex2rgb(hex);
+  var dark = rgb2hex(mix(rgb,[0,0,0],.28));
+  var soft = rgb2hex(mix(rgb,[255,255,255],.90));
+  var st = document.documentElement.style;
+  st.setProperty('--brand', hex); st.setProperty('--brand-rgb', rgb.join(','));
+  st.setProperty('--brand-dark', dark); st.setProperty('--brand-soft', soft);
+  document.getElementById('brandPick').value = hex;
+  document.getElementById('brandHex').textContent = hex.toUpperCase();
+  document.getElementById('swMain').style.background = hex;
+  document.getElementById('swDark').style.background = dark;
+  document.getElementById('swSoft').style.background = soft;
+}
+
+/* ---- full-height side navigation per module ---- */
+function renderSide(){
+  var m = MODULES[cur], el = document.getElementById('sidenav'), h = '';
+  h += '<div class="side-logo"><span class="brand-cube">'+m.code+'</span><div><div class="nm">'+m.nm[lang]+'</div><div class="sb">i-FINANCE · APP '+m.app+'</div></div></div>';
+  m.nav.forEach(function(grp){
+    h += '<div class="nav-group">'+grp.g[lang]+'</div>';
+    grp.items.forEach(function(it){
+      h += '<div class="nav-item'+(it.on?' on':'')+'" onclick="navClick(this)"><span class="bullet"></span><span>'+it[lang]+'</span></div>';
+    });
+  });
+  h += '<div class="side-foot">v3.0 · '+(lang==='ar'?'الهيكل المشترك':'shared shell')+'</div>';
+  el.innerHTML = h;
+  document.getElementById('crumbMod').textContent = m.nm[lang];
+  document.getElementById('suiteCube').textContent = m.code;
+}
+function navClick(el){
+  el.parentNode.querySelectorAll('.nav-item').forEach(function(n){ n.classList.remove('on'); });
+  el.classList.add('on');
+}
+
+/* ---- module switcher (top bar) ---- */
+function renderSwitcher(){
+  var m = MODULES[cur];
+  document.getElementById('modswName').textContent = m.nm[lang];
+  document.getElementById('modswApp').textContent = 'APP ' + m.app;
+  var menu = document.getElementById('modswMenu');
+  var h = '<div class="modsw-head">'+(lang==='ar'?'وحدات آي-فاينانس':'i-Finance modules')+'</div>';
+  Object.keys(MODULES).forEach(function(k){
+    var x = MODULES[k];
+    h += '<div class="modsw-item'+(k===cur?' cur':'')+(x.soon?' soon':'')+'" data-mod="'+k+'">'+
+         '<span class="dot" style="background:'+x.color+'"></span>'+
+         '<div><div class="nm">'+x.nm[lang]+'</div><div class="ds">'+x.ds[lang]+'</div></div>'+
+         (x.soon ? '<span class="soon-b">'+(lang==='ar'?'قريباً':'soon')+'</span>' : '<span class="app">APP '+x.app+'</span>')+
+         '</div>';
+  });
+  menu.innerHTML = h;
+  menu.querySelectorAll('.modsw-item').forEach(function(it){
+    it.onclick = function(e){
+      var k = it.getAttribute('data-mod');
+      if (MODULES[k].soon) { e.stopPropagation(); return; }
+      cur = k; override = null;
+      applyBrand(); renderSide(); renderSwitcher();
+      document.getElementById('modsw').classList.remove('open');
+    };
+  });
+}
+document.getElementById('modswBtn').onclick = function(e){
+  e.stopPropagation();
+  document.getElementById('modsw').classList.toggle('open');
+};
+document.addEventListener('click', function(){ document.getElementById('modsw').classList.remove('open'); });
+
+/* ---- theme editor (simulates Settings → Appearance) ---- */
+document.getElementById('brandPick').addEventListener('input', function(e){
+  override = e.target.value; applyBrand();
+});
+document.getElementById('themeReset').onclick = function(){ override = null; applyBrand(); };
+document.getElementById('navStyle').onchange = function(e){
+  var st = document.documentElement.style;
+  if (e.target.value === 'light'){
+    st.setProperty('--chrome-bg','#FFFFFF'); st.setProperty('--chrome-surface','#F0F2F5');
+    st.setProperty('--chrome-border','#E3E6EB'); st.setProperty('--chrome-text','#3A4452'); st.setProperty('--chrome-text-2','#8A93A2');
+  } else {
+    ['--chrome-bg','--chrome-surface','--chrome-border','--chrome-text','--chrome-text-2'].forEach(function(p){ st.removeProperty(p); });
+  }
+};
+
+/* ---- mini t() — same mechanics shared/js/i18n.js will use ---- */
+var STR = {
+ en:{},
+ ar:{
+  'suite':'آي-فاينانس','crumb.page':'نظام التصميم',
+  'who.name':'مدير النظام','who.role':'SYS_ADMIN',
+  'hero.title':'الهيكل المشترك، على مستوى الصفحة كاملة',
+  'hero.sub':'ما تراه الآن هو المقترح نفسه: الشريط العلوي الداكن (المشترك لكل التطبيقات) يحمل قائمة الوحدات المنسدلة؛ والتنقل الجانبي يملأ جانب الصفحة بقائمة وظائف الوحدة المختارة؛ وهذه المساحة القابلة للتمرير هي سطح العمل. بدّل الوحدة من الشريط العلوي — تتبعها العلامة والتنقل الجانبي ومسار التنقل. الألوان من إعدادات النظام لا من CSS.',
+  's.dash':'عينة سطح العمل — بطاقات الإحصاء والجدول',
+  'st.active':'السلف النشطة','st.up':'2 هذا الأسبوع','st.pending':'بانتظار الاعتماد','st.oldest':'الأقدم: 3 أيام','st.total':'إجمالي المستحق',
+  'tbl.title':'أحدث الطلبات','btn.new':'+ طلب جديد','tbl.ref':'المرجع','tbl.emp':'الموظف','tbl.amount':'المبلغ','tbl.status':'الحالة',
+  'n1':'مريم خ.','n2':'أحمد ر.','n3':'لطيفة م.',
+  'b.active':'نشط','b.pending':'بانتظار الاعتماد','b.rejected':'مرفوض','b.approved':'معتمد','b.review':'قيد المراجعة','b.draft':'مسودة','b.revoked':'ملغى',
+  's.theme':'ألوان العلامة من إعدادات النظام',
+  'th.title':'إعدادات الوحدة ← المظهر','th.reset':'إعادة للافتراضي',
+  'th.d1':'لون واحد لكل وحدة — يُخزَّن في DCT_MODULE_SETTINGS','th.d2':'مظهر الشريط العلوي والتنقل الجانبي',
+  'th.navDark':'داكن (افتراضي)','th.navLight':'فاتح',
+  'th.howT':'كيف يعمل في التطبيقات:','th.howB':'عند الإقلاع يجلب config.js إعدادات THEME_* للوحدة (من نقطة GET /settings الموجودة أصلاً) ويحقنها كمتغيرات CSS على <html>. يُشتق الداكن والفاتح من اللون الواحد المخزن — يدير المسؤول لوناً واحداً لكل وحدة من صفحة الإعدادات. راقب الشريط العلوي والتنقل الجانبي والأزرار تتلون أثناء الاختيار.',
+  'th.badge':'شارة العلامة','th.live':'← معاينة حية للون المختار',
+  's.tiers':'طبقتان، مجموعة رموز واحدة','tier.light':'ليدجر — الطبقة الفاتحة','tier.lightCap':'الافتراضية لكل شاشات العمل (القوائم والنماذج ولوحات المعلومات).',
+  'tier.vault':'فولت — الطبقة الداكنة','tier.vaultCap':'محجوزة للشاشات الأمنية: الأدوار والصلاحيات والتدقيق وقوالب الاعتماد.',
+  'tier.toggle':'users.manage — مفتاح كهرماني نابض','btn.primary':'إجراء رئيسي','btn.secondary':'ثانوي','btn.ghost':'شفاف',
+  's.tokens':'الرموز الأساسية','ty.display':'تسوية السلفة النقدية','ty.body':'يتم التحقق من جميع المبالغ مقابل تركيبة الأستاذ العام قبل الإرسال.',
+  's.forms':'النماذج · حلقة التركيز · حالات التحميل','f.amount':'المبلغ (درهم)','f.type':'نوع الترميز','f.gl':'حساب الأستاذ العام','f.project':'مشروع','f.due':'تاريخ الاستحقاق',
+  'f.hint':'ركّز على أي حقل — الحلقة الكهرمانية هي رمز التركيز المشترك في الطبقتين.',
+  'sk.title':'صفوف هيكلية (جارٍ التحميل)','to.title':'التنبيهات','to.ok':'عرض نجاح','to.err':'عرض خطأ','to.info':'عرض معلومة',
+  'to.cap':'مكدسة تحت الشريط العلوي، دخول نابض، إغلاق تلقائي بعد 5 ثوانٍ، تنعكس مع اتجاه الواجهة.',
+  'note.t':'ما الذي سيُسلَّم:','note.b':'platform.css + themes.css + vault.css في final apps/shared/css/. الشريط العلوي (بقائمة الوحدات) والتنقل الجانبي بكامل الارتفاع هما الهيكل المشترك الذي يعرضه كل تطبيق؛ يساهم كل تطبيق فقط بإعداد تنقّله ولون THEME_BRAND_COLOR في DCT_MODULE_SETTINGS — لا لون في أي ملف أنماط، وإضافة الوحدة السابعة سطر واحد في السجل.',
+  'toast.okT':'تم الحفظ','toast.okB':'تم تحديث السلفة PC-2026-00104.','toast.errT':'فشل الطلب','toast.errB':'انتهت الجلسة — أعد تسجيل الدخول.','toast.infoT':'معلومة','toast.infoB':'3 موافقات بانتظارك.'
+ }
+};
+var EN = {}; document.querySelectorAll('[data-i18n]').forEach(function(el){ EN[el.getAttribute('data-i18n')] = el.innerHTML; });
+STR.en = Object.assign(EN, {'toast.okT':'Saved','toast.okB':'Petty cash PC-2026-00104 updated.','toast.errT':'Request failed','toast.errB':'Session expired — sign in again.','toast.infoT':'Heads up','toast.infoB':'3 approvals are waiting for you.'});
+function setLang(l){
+  lang = l;
+  document.documentElement.lang = l;
+  document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
+  document.querySelectorAll('[data-i18n]').forEach(function(el){
+    var k = el.getAttribute('data-i18n'); el.innerHTML = (STR[l][k]!==undefined) ? STR[l][k] : STR.en[k];
+  });
+  document.getElementById('lang-en').classList.toggle('on', l==='en');
+  document.getElementById('lang-ar').classList.toggle('on', l==='ar');
+  renderSide(); renderSwitcher();
+}
+document.getElementById('lang-en').onclick = function(){ setLang('en'); };
+document.getElementById('lang-ar').onclick = function(){ setLang('ar'); };
+
+/* token sheet */
+var TOKENS = [['--brand','brand · from settings'],['--amber','amber · focus/active'],['--green','success'],['--red','danger'],
+  ['--blue','info/code'],['--bg','bg'],['--surface','surface'],['--surface-2','surface-2'],['--border','border'],['--text','text'],['--text-2','text-2'],['--chrome-bg','chrome (top bar + nav)']];
+var tg = document.getElementById('tokgrid');
+TOKENS.forEach(function(t){
+  var d = document.createElement('div'); d.className='tok';
+  d.innerHTML = '<div class="sw" style="background:var('+t[0]+')"></div><div class="nm">'+t[0]+'</div><div class="vl">'+t[1]+'</div>';
+  tg.appendChild(d);
+});
+
+/* toast demo */
+function toast(kind){
+  var s = STR[lang] || STR.en;
+  var host = document.getElementById('toasthost');
+  var el = document.createElement('div');
+  el.className = 'toast' + (kind==='ok' ? ' toast--ok' : kind==='err' ? ' toast--err' : '');
+  el.innerHTML = '<div><b>'+s['toast.'+kind+'T']+'</b><span>'+s['toast.'+kind+'B']+'</span></div><button class="x" onclick="this.parentNode.remove()">✕</button>';
+  host.appendChild(el);
+  while (host.children.length > 4) host.firstChild.remove();
+  setTimeout(function(){ if (el.parentNode) el.remove(); }, 5000);
+}
+
+/* boot */
+applyBrand(); renderSide(); renderSwitcher();
+</script>
+</body>
+</html>

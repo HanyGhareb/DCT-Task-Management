@@ -70,6 +70,17 @@ PROMPT ============================================================
 PROMPT ============================================================
 PROMPT  Sprint 1-2 install complete.
 PROMPT
+PROMPT  LATER PLATFORM SCRIPTS (run individually, in order, AFTER this install):
+PROMPT    11_dct_ords.sql              — ORDS module (run as ADMIN, fresh session)
+PROMPT    12_dct_master_data.sql       — reference tables + seeds
+PROMPT    13_dct_rest_status_fix.sql   — DCT_REST.err() HTTP status fix
+PROMPT    14_dct_approval_pkg.sql      — approval escalation/auto-approve sweep
+PROMPT    15_dct_unified_structures.sql— Phase 2: natural-key masters + unified
+PROMPT                                   docs/coding/history tables + DCT_LOOKUP_PKG
+PROMPT                                   (run as ADMIN, fresh session — creates synonyms;
+PROMPT                                    supersedes the project/task/exp-type masters in 12)
+PROMPT    16_dct_missing_fks.sql       — Phase 2: natural-key FKs + lookup migration
+PROMPT
 PROMPT  NEXT: In APEX Builder for App 200:
 PROMPT    1. Shared Components > User Interface Attributes > Navigation Menu
 PROMPT       Set Desktop Navigation Menu = "Desktop Navigation Menu"

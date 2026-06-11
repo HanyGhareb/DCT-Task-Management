@@ -1,0 +1,19 @@
+{
+  "nav.home": "الرئيسية",
+  "nav.myWork": "سلفي النقدية",
+  "nav.myPettyCash": "سلفي النقدية",
+  "nav.pcRequest": "طلب جديد",
+  "nav.reimbursements": "الاستردادات",
+  "nav.clearing": "التسوية",
+  "nav.approvalsGroup": "الاعتمادات",
+  "nav.approvals": "الموافقات المعلقة",
+  "nav.adminGroup": "الإدارة",
+  "nav.allPettyCash": "كل السلف النقدية",
+  "nav.allReimbursements": "كل الاستردادات",
+  "nav.allClearings": "كل التسويات",
+  "nav.config": "الإعدادات",
+  "nav.glCodes": "تركيبات الأستاذ العام",
+  "nav.approvalRules": "قواعد الاعتماد",
+  "nav.moduleSettings": "إعدادات الوحدة",
+  "nav.notifications": "الإشعارات"
+}

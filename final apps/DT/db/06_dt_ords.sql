@@ -274,7 +274,7 @@ BEGIN
   BEGIN
     SELECT setting_value INTO l_prefix
     FROM dct_module_settings ms JOIN dct_modules m ON m.module_id = ms.module_id
-    WHERE m.module_code = 'DT' AND ms.setting_key = 'REQUEST_NUMBER_PREFIX';
+    WHERE m.module_code = 'DUTY_TRAVEL' AND ms.setting_key = 'REQUEST_NUMBER_PREFIX';
   EXCEPTION WHEN NO_DATA_FOUND THEN l_prefix := 'DT'; END;
 
   SELECT seq_dt_request_number.NEXTVAL INTO l_seq FROM DUAL;
@@ -531,7 +531,7 @@ BEGIN
     SELECT at2.template_id INTO l_tmpl_id
     FROM   dct_approval_templates at2
     JOIN   dct_modules m ON m.module_id = at2.module_id
-    WHERE  m.module_code   = 'DT'
+    WHERE  m.module_code   = 'DUTY_TRAVEL'
       AND  at2.request_type = 'TRAVEL_REQUEST'
       AND  at2.is_active    = 'Y'
     FETCH FIRST 1 ROW ONLY;
@@ -846,7 +846,7 @@ BEGIN
   BEGIN
     SELECT setting_value INTO l_prefix
     FROM dct_module_settings ms JOIN dct_modules m ON m.module_id = ms.module_id
-    WHERE m.module_code = 'DT' AND ms.setting_key = 'SETTLEMENT_NUMBER_PREFIX';
+    WHERE m.module_code = 'DUTY_TRAVEL' AND ms.setting_key = 'SETTLEMENT_NUMBER_PREFIX';
   EXCEPTION WHEN NO_DATA_FOUND THEN l_prefix := 'DTS'; END;
 
   SELECT seq_dt_settlement_number.NEXTVAL INTO l_seq FROM DUAL;
@@ -1023,7 +1023,7 @@ BEGIN
   BEGIN
     SELECT at2.template_id INTO l_tmpl_id
     FROM dct_approval_templates at2 JOIN dct_modules m ON m.module_id = at2.module_id
-    WHERE m.module_code = 'DT' AND at2.request_type = 'SETTLEMENT' AND at2.is_active = 'Y'
+    WHERE m.module_code = 'DUTY_TRAVEL' AND at2.request_type = 'SETTLEMENT' AND at2.is_active = 'Y'
     FETCH FIRST 1 ROW ONLY;
   EXCEPTION WHEN NO_DATA_FOUND THEN l_tmpl_id := NULL; END;
   IF l_tmpl_id IS NOT NULL THEN
@@ -1279,7 +1279,7 @@ BEGIN
     SELECT at2.template_id, at2.template_code, at2.template_name,
            at2.request_type, at2.is_sequential, at2.is_active
     FROM   dct_approval_templates at2 JOIN dct_modules m ON m.module_id = at2.module_id
-    WHERE  m.module_code = 'DT'
+    WHERE  m.module_code = 'DUTY_TRAVEL'
     ORDER  BY at2.template_code
   ) LOOP
     APEX_JSON.open_object;
@@ -1351,11 +1351,18 @@ BEGIN
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT ms.setting_id, ms.setting_key, ms.setting_value,
+    SELECT ms.setting_id, ms.setting_key,
+           -- Never expose secrets through the API (API keys, passwords, tokens)
+           CASE WHEN ms.setting_key LIKE '%API_KEY%'
+                  OR ms.setting_key LIKE '%SECRET%'
+                  OR ms.setting_key LIKE '%PASSWORD%'
+                  OR ms.setting_key LIKE '%TOKEN%'
+                THEN CASE WHEN ms.setting_value IS NULL THEN NULL ELSE '********' END
+                ELSE ms.setting_value END AS setting_value,
            ms.setting_label, ms.setting_description,
            ms.value_type, ms.allowed_values, ms.default_value
     FROM   dct_module_settings ms JOIN dct_modules m ON m.module_id = ms.module_id
-    WHERE  m.module_code = 'DT'
+    WHERE  m.module_code = 'DUTY_TRAVEL'
     ORDER  BY ms.setting_key
   ) LOOP
     APEX_JSON.open_object;
@@ -1382,6 +1389,13 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
+  -- '********' is the masked placeholder for secrets — never write it back
+  IF APEX_JSON.get_varchar2(p_path => 'settingValue') = '********' THEN
+    dct_rest.json_header;
+    APEX_JSON.initialize_output;
+    APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('skipped', 'masked value'); APEX_JSON.close_object;
+    RETURN;
+  END IF;
   UPDATE dct_module_settings SET
     setting_value = APEX_JSON.get_varchar2(p_path => 'settingValue'),
     updated_by    = l_user,
@@ -1416,7 +1430,7 @@ BEGIN
     SELECT notification_id, title_en, body_en, notification_type, is_read, created_at
     FROM   dct_notifications
     WHERE  recipient_user_id = l_uid
-      AND  module_code       = 'DT'
+      AND  (module_code = 'DUTY_TRAVEL' OR module_code IS NULL)
       AND  (expires_at IS NULL OR expires_at > SYSTIMESTAMP)
     ORDER BY created_at DESC
     FETCH FIRST 50 ROWS ONLY
@@ -1446,7 +1460,7 @@ BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
   UPDATE dct_notifications SET is_read = 'Y', read_at = SYSTIMESTAMP
-  WHERE  recipient_user_id = l_uid AND module_code = 'DT' AND is_read = 'N';
+  WHERE  recipient_user_id = l_uid AND (module_code = 'DUTY_TRAVEL' OR module_code IS NULL) AND is_read = 'N';
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;

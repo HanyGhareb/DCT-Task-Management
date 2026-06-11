@@ -11,13 +11,19 @@ requirejs.config({
     'hammerjs':       CDN + '/3rdparty/hammerjs/hammer-2.0.8.min',
     'signals':        CDN + '/3rdparty/js-signals/signals.min',
     'text':           CDN + '/3rdparty/require/text',
+    // Phase 3 — shared asset layer ('/shared' is served by dev-proxy from final apps/shared)
+    'shared':         '/shared/js',
+    // Chart.js MUST load via RequireJS (its UMD calls define(); a <script> tag breaks)
+    'chartjs':        'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min',
   },
   shim: {
     'hammerjs': { exports: 'Hammer' }
   }
 });
 
-require(['appController', 'knockout'], function (AppController, ko) {
+require(
+  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager'],
+  function (AppController, ko, i18n) {
 
   // Custom KO binding: swaps a view+viewModel pair into a container element.
   // IMPORTANT: clean only child nodes — cleaning `element` itself would remove
@@ -47,9 +53,14 @@ require(['appController', 'knockout'], function (AppController, ko) {
     ko.applyBindings(app, document.getElementById('globalBody'));
   }
 
+  function boot() {
+    // Translations must be ready before the first route renders
+    i18n.init().then(init, init);
+  }
+
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', boot);
   } else {
-    init();
+    boot();
   }
 });

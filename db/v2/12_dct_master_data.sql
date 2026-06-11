@@ -265,6 +265,13 @@ CREATE INDEX        ix_dct_emp_active  ON dct_employees(is_active, end_date);
 -- 6. DCT_PROJECTS
 --    Project master for PROJECT budget coding across all modules.
 --    project_number (free-text in all modules) should FK here.
+--
+--    *** SUPERSEDED 2026-06-11 (Phase 2): sections 6, 7 and 8 (dct_projects,
+--    *** dct_project_tasks, dct_expenditure_types) are replaced by NATURAL-KEY
+--    *** masters in 15_dct_unified_structures.sql (project_number VARCHAR2(12)
+--    *** PK; dct_tasks (project_number, task_number) PK; expenditure_type
+--    *** VARCHAR2(255) PK). On a fresh install this script still runs first;
+--    *** 15 then drops and recreates them on the new shape.
 -- =============================================================================
 CREATE TABLE dct_projects (
     project_id          NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,

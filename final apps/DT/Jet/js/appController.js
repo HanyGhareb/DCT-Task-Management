@@ -1,11 +1,38 @@
-define(['knockout', 'services/config', 'services/authService', 'services/approvalService'],
-function (ko, config, authService, approvalService) {
+define(['knockout', 'services/config', 'services/authService', 'services/approvalService', 'shared/i18n', 'shared/shell'],
+function (ko, config, authService, approvalService, i18n, shell) {
   'use strict';
 
   function AppController() {
     const self = this;
 
     self._state = {};
+
+    // ── Shared shell (Phase 3): brand from settings + i18n ──────────────
+    shell.initBrand('dt', function () {
+      return new Promise(function (resolve) {
+        require(['services/settingService'], function (settingService) {
+          var fn = settingService.getValue || settingService.getByKey;
+          if (!fn) { resolve(null); return; }
+          fn.call(settingService, 'THEME_BRAND_COLOR').then(function (v) {
+            resolve(v && v.settingValue !== undefined ? v.settingValue : v);
+          }).catch(function () { resolve(null); });
+        }, function () { resolve(null); });
+      });
+    });
+    self.t       = i18n.t;
+    self.lang    = i18n.lang;
+    self.setLang = i18n.setLang;
+
+    // ── Module switcher (apps live side-by-side under "final apps/") ────
+    self.modules       = shell.MODULES;
+    self.currentModule = shell.byKey('dt');
+    self.modswOpen     = ko.observable(false);
+    self.toggleModsw   = function () { self.modswOpen(!self.modswOpen()); };
+    self.switchModule  = function (m) {
+      if (m.soon || !m.url) return;
+      if (m.key === self.currentModule.key) { self.modswOpen(false); return; }
+      window.location.href = m.url;   // root-absolute: "final apps/" is the web root in deployment
+    };
 
     self.currentUser     = ko.observable(authService.getCurrentUser());
     self.isAuthenticated = ko.computed(() => !!self.currentUser());
@@ -49,51 +76,51 @@ function (ko, config, authService, approvalService) {
       {
         id: 'home', standalone: true, auth: 'all',
         items: [
-          { id: 'dashboard', label: 'Home', icon: '&#127968;' },
+          { id: 'dashboard', labelKey: 'nav.home', icon: '&#127968;' },
         ]
       },
       {
-        id: 'myTravel', label: 'My Travel', auth: 'all',
+        id: 'myTravel', labelKey: 'nav.myTravel', auth: 'all',
         collapsed: ko.observable(false),
         items: [
-          { id: 'myRequests',    label: 'My Requests',    icon: '&#9992;'   },
-          { id: 'requestForm',   label: 'New Request',    icon: '&#10133;'  },
-          { id: 'mySettlements', label: 'My Settlements', icon: '&#128196;' },
+          { id: 'myRequests',    labelKey: 'nav.myRequests',    icon: '&#9992;'   },
+          { id: 'requestForm',   labelKey: 'nav.requestForm',   icon: '&#10133;'  },
+          { id: 'mySettlements', labelKey: 'nav.mySettlements', icon: '&#128196;' },
         ]
       },
       {
-        id: 'approvals', label: 'Approvals', auth: 'approver',
+        id: 'approvals', labelKey: 'nav.approvalsGroup', auth: 'approver',
         collapsed: ko.observable(false),
         items: [
-          { id: 'approvals', label: 'Pending Approvals', icon: '&#128203;', badge: self.pendingCount },
+          { id: 'approvals', labelKey: 'nav.approvals', icon: '&#128203;', badge: self.pendingCount },
         ]
       },
       {
-        id: 'finance', label: 'Finance', auth: 'dtFinance',
+        id: 'finance', labelKey: 'nav.finance', auth: 'dtFinance',
         collapsed: ko.observable(false),
         items: [
-          { id: 'disbursementQueue', label: 'Disbursement Queue',  icon: '&#128181;' },
-          { id: 'closureQueue',      label: 'Settlement Closure',  icon: '&#9989;'   },
-          { id: 'allSettlements',    label: 'All Settlements',     icon: '&#128204;' },
+          { id: 'disbursementQueue', labelKey: 'nav.disbursementQueue', icon: '&#128181;' },
+          { id: 'closureQueue',      labelKey: 'nav.closureQueue',      icon: '&#9989;'   },
+          { id: 'allSettlements',    labelKey: 'nav.allSettlements',    icon: '&#128204;' },
         ]
       },
       {
-        id: 'admin', label: 'Administration', auth: 'dtAdmin',
+        id: 'admin', labelKey: 'nav.adminGroup', auth: 'dtAdmin',
         collapsed: ko.observable(false),
         items: [
-          { id: 'allRequests',  label: 'All Travel Requests', icon: '&#128202;' },
-          { id: 'travelReport', label: 'Travel Reports',      icon: '&#128200;' },
+          { id: 'allRequests',  labelKey: 'nav.allRequests',  icon: '&#128202;' },
+          { id: 'travelReport', labelKey: 'nav.travelReport', icon: '&#128200;' },
         ]
       },
       {
-        id: 'config', label: 'Configuration', auth: 'sysAdmin',
+        id: 'config', labelKey: 'nav.config', auth: 'sysAdmin',
         collapsed: ko.observable(true),
         items: [
-          { id: 'perDiemRates',    label: 'Per Diem Rates',       icon: '&#128176;' },
-          { id: 'countryGroups',   label: 'Country Groups',       icon: '&#127760;' },
-          { id: 'docRequirements', label: 'Document Requirements', icon: '&#128196;' },
-          { id: 'approvalRules',   label: 'Approval Rules',       icon: '&#128221;' },
-          { id: 'moduleSettings',  label: 'Module Settings',      icon: '&#9881;'   },
+          { id: 'perDiemRates',    labelKey: 'nav.perDiemRates',    icon: '&#128176;' },
+          { id: 'countryGroups',   labelKey: 'nav.countryGroups',   icon: '&#127760;' },
+          { id: 'docRequirements', labelKey: 'nav.docRequirements', icon: '&#128196;' },
+          { id: 'approvalRules',   labelKey: 'nav.approvalRules',   icon: '&#128221;' },
+          { id: 'moduleSettings',  labelKey: 'nav.moduleSettings',  icon: '&#9881;'   },
         ]
       },
     ];

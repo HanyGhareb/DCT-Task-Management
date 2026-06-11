@@ -1,0 +1,23 @@
+{
+  "nav.home": "Home",
+  "nav.myTravel": "My Travel",
+  "nav.myRequests": "My Requests",
+  "nav.requestForm": "New Request",
+  "nav.mySettlements": "My Settlements",
+  "nav.approvalsGroup": "Approvals",
+  "nav.approvals": "Pending Approvals",
+  "nav.finance": "Finance",
+  "nav.disbursementQueue": "Disbursement Queue",
+  "nav.closureQueue": "Settlement Closure",
+  "nav.allSettlements": "All Settlements",
+  "nav.adminGroup": "Administration",
+  "nav.allRequests": "All Travel Requests",
+  "nav.travelReport": "Travel Reports",
+  "nav.config": "Configuration",
+  "nav.perDiemRates": "Per Diem Rates",
+  "nav.countryGroups": "Country Groups",
+  "nav.docRequirements": "Document Requirements",
+  "nav.approvalRules": "Approval Rules",
+  "nav.moduleSettings": "Module Settings",
+  "nav.notifications": "Notifications"
+}

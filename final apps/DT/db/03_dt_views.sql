@@ -54,11 +54,8 @@ SELECT
   -- Budget coding
   r.budget_type,
   r.cc_id_gl,
-  gl.entity_code
-    || CASE WHEN gl.appropriation IS NOT NULL THEN '.' || gl.appropriation ELSE '' END
-    || CASE WHEN gl.cost_center   IS NOT NULL THEN '.' || gl.cost_center   ELSE '' END
-    || CASE WHEN gl.account       IS NOT NULL THEN '.' || gl.account       ELSE '' END
-                                                              AS gl_code_display,
+  -- cc_code is the virtual 9-segment concatenation on dct_gl_code_combinations
+  gl.cc_code                                                  AS gl_code_display,
   r.project_number,
   r.task_number,
   r.expenditure_type,
