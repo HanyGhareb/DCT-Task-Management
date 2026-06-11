@@ -35,6 +35,7 @@ db/v2/               ← All DCT_* DDL, packages, ORDS setup (source of truth)
   15_dct_unified_structures.sql ← Phase 2: natural-key masters + unified
                        documents / coding-lines / status-history + DCT_LOOKUP_PKG
   16_dct_missing_fks.sql ← Phase 2: natural-key FKs + lookup-first migration
+  17_dct_user_photo.sql  ← DCT_USERS photo_blob/photo_mime_type (profile photos via /dct/users/:id/photo)
 
 apps/ifinance-v2/    ← LEGACY: vanilla JS task management prototype (localStorage only)
                        Superseded by final apps/ — do not add features here

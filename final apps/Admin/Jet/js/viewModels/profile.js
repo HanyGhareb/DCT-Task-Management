@@ -5,21 +5,51 @@ function (ko, authService, userService) {
   function ProfileViewModel() {
     var self = this;
 
-    /* Use session data for immediate display; session is set at login time */
+    /* Session gives instant first paint; the server is the source of truth
+       (the session snapshot is only written at login, so it goes stale as
+       soon as the profile is edited). */
     var session = authService.getCurrentUser() || {};
 
     self.displayName    = ko.observable(session.displayName    || '');
     self.displayNameAr  = ko.observable(session.displayNameAr  || '');
     self.email          = ko.observable(session.email          || '');
     self.phone          = ko.observable(session.phone          || '');
+    self.employeeNumber = ko.observable(session.employeeNumber || '');
+    self.orgName        = ko.observable(session.orgName        || '');
+    self.photoUrl       = ko.observable(session.photoUrl       || '');
     self.username       = session.username       || '';
-    self.employeeNumber = session.employeeNumber || '';
-    self.orgName        = session.orgName        || '';
     self.roles          = session.roles          || [];
     self.color          = session.color          || '#C74634';
     self.successMsg     = ko.observable('');
     self.saving         = ko.observable(false);
     self.errorMsg       = ko.observable('');
+
+    /* Cache-busted img src — the photo URL is stable, the bytes change */
+    self.photoSrc = ko.observable('');
+    function setPhoto(url) {
+      self.photoUrl(url || '');
+      self.photoSrc(url ? url + '?t=' + Date.now() : '');
+    }
+    setPhoto(session.photoUrl);
+
+    /* Server-first load: refresh every editable field from GET /users/:id */
+    if (session.userId) {
+      userService.getById(session.userId).then(function (u) {
+        self.displayName(u.displayName       || '');
+        self.displayNameAr(u.displayNameAr   || '');
+        self.email(u.email                   || '');
+        self.phone(u.phone                   || '');
+        self.employeeNumber(u.employeeNumber || '');
+        self.orgName(u.orgName               || '');
+        setPhoto(u.photoUrl);
+        /* keep the cached session in step so other views/top bar agree */
+        authService.updateCachedUser({
+          displayName: u.displayName, displayNameAr: u.displayNameAr,
+          email: u.email, phone: u.phone, employeeNumber: u.employeeNumber,
+          photoUrl: u.photoUrl || null,
+        });
+      }).catch(function () { /* session values already shown */ });
+    }
 
     self.initials = ko.computed(function () {
       var p = self.displayName().split(' ');
@@ -32,18 +62,47 @@ function (ko, authService, userService) {
       if (!session.userId) return;
       self.saving(true);
       self.errorMsg('');
-      userService.update(session.userId, {
+      var payload = {
         displayName:   self.displayName(),
         displayNameAr: self.displayNameAr(),
         email:         self.email(),
         phone:         self.phone(),
-      }).then(function () {
+      };
+      userService.update(session.userId, payload).then(function () {
+        authService.updateCachedUser(payload);
         self.saving(false);
         self.successMsg('Profile updated successfully!');
         setTimeout(function () { self.successMsg(''); }, 3000);
       }).catch(function (err) {
         self.saving(false);
         self.errorMsg('Update failed: ' + ((err && err.message) || 'Unknown error'));
+      });
+    };
+
+    /* Photo upload */
+    self.uploadingPhoto = ko.observable(false);
+    self.photoError     = ko.observable('');
+
+    self.pickPhoto = function (vm, event) {
+      var input = document.getElementById('profile-photo-input');
+      if (input) input.click();
+    };
+
+    self.photoSelected = function (vm, event) {
+      var file = event.target.files && event.target.files[0];
+      event.target.value = '';            /* allow re-selecting the same file */
+      if (!file || !session.userId) return;
+      self.photoError('');
+      self.uploadingPhoto(true);
+      userService.uploadPhoto(session.userId, file).then(function (r) {
+        setPhoto(r.photoUrl);
+        authService.updateCachedUser({ photoUrl: r.photoUrl });
+        self.uploadingPhoto(false);
+        self.successMsg('Photo updated!');
+        setTimeout(function () { self.successMsg(''); }, 3000);
+      }).catch(function (err) {
+        self.uploadingPhoto(false);
+        self.photoError((err && err.message) || 'Photo upload failed');
       });
     };
 

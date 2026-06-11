@@ -272,6 +272,7 @@ BEGIN
   APEX_JSON.write('orgId',        l_user.org_id);
   APEX_JSON.write('orgName',      l_org_nm);
   APEX_JSON.write('color',        l_user.color_hex);
+  APEX_JSON.write('photoUrl',     l_user.photo_url);
   APEX_JSON.write('isExternal',   l_user.is_external);
   APEX_JSON.write('rolesCsv',     l_roles);
   APEX_JSON.close_object;
@@ -459,6 +460,7 @@ BEGIN
   APEX_JSON.write('orgId',          l_rec.org_id);
   APEX_JSON.write('orgName',        l_org);
   APEX_JSON.write('color',          l_rec.color_hex);
+  APEX_JSON.write('photoUrl',       l_rec.photo_url);
   APEX_JSON.write('isActive',       l_rec.is_active);
   APEX_JSON.write('isExternal',     l_rec.is_external);
   APEX_JSON.write('authMethod',     l_rec.auth_method);
@@ -481,12 +483,21 @@ BEGIN
 
   SELECT username INTO l_uname FROM dct_users WHERE user_id = l_uid;
 
+  -- Fields a caller may legitimately clear use a does_exist guard: present in
+  -- the body (even empty) = update, absent = keep. Prevents partial-form
+  -- callers (e.g. My Profile) from wiping fields they never sent.
   UPDATE dct_users SET
     display_name     = NVL(APEX_JSON.get_varchar2(p_path => 'displayName'),   display_name),
-    display_name_ar  = APEX_JSON.get_varchar2(p_path => 'displayNameAr'),
+    display_name_ar  = CASE WHEN APEX_JSON.does_exist(p_path => 'displayNameAr')
+                            THEN APEX_JSON.get_varchar2(p_path => 'displayNameAr')
+                            ELSE display_name_ar END,
     email            = NVL(LOWER(TRIM(APEX_JSON.get_varchar2(p_path => 'email'))), email),
-    mobile           = APEX_JSON.get_varchar2(p_path => 'phone'),
-    employee_number  = APEX_JSON.get_varchar2(p_path => 'employeeNumber'),
+    mobile           = CASE WHEN APEX_JSON.does_exist(p_path => 'phone')
+                            THEN APEX_JSON.get_varchar2(p_path => 'phone')
+                            ELSE mobile END,
+    employee_number  = CASE WHEN APEX_JSON.does_exist(p_path => 'employeeNumber')
+                            THEN APEX_JSON.get_varchar2(p_path => 'employeeNumber')
+                            ELSE employee_number END,
     org_id           = NVL(APEX_JSON.get_number(p_path => 'orgId'), org_id),
     color_hex        = NVL(APEX_JSON.get_varchar2(p_path => 'color'), color_hex),
     is_active        = NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), is_active),
@@ -543,6 +554,61 @@ BEGIN
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
+
+    -- -------------------------------------------------------------------------
+    -- User photo — PUT base64 JSON ({photo_data_b64, mime_type}), GET media.
+    -- Mirrors the HR employees/:id/photo pattern (final apps/HR/db/06_hr_ords.sql).
+    -- Client must keep base64 under 32k (canvas-resized thumbnail).
+    -- GET is unauthenticated media (img tags cannot send Authorization), same
+    -- trade-off as HR photos.
+    -- -------------------------------------------------------------------------
+    def_template('users/[COLON]id/photo');
+    def_handler('users/[COLON]id/photo', 'PUT', q'!
+DECLARE
+  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  v_blob  BLOB;
+  v_raw   RAW(32767);
+  v_b64   VARCHAR2(32767) := [COLON]photo_data_b64;
+  v_len   NUMBER;
+  v_pos   NUMBER := 1;
+  v_chunk NUMBER := 32764;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF v_b64 IS NULL THEN dct_rest.err(400,'photo_data_b64 is required'); RETURN; END IF;
+  DBMS_LOB.CREATETEMPORARY(v_blob, TRUE);
+  v_len := LENGTH(v_b64);
+  WHILE v_pos <= v_len LOOP
+    v_raw := UTL_ENCODE.BASE64_DECODE(UTL_RAW.CAST_TO_RAW(SUBSTR(v_b64, v_pos, v_chunk)));
+    DBMS_LOB.WRITEAPPEND(v_blob, UTL_RAW.LENGTH(v_raw), v_raw);
+    v_pos := v_pos + v_chunk;
+  END LOOP;
+  UPDATE dct_users SET
+    photo_blob      = v_blob,
+    photo_mime_type = NVL([COLON]mime_type, 'image/jpeg'),
+    photo_url       = '/ords/admin/dct/users/' || [COLON]id || '/photo',
+    updated_by      = l_user,
+    updated_at      = SYSTIMESTAMP
+  WHERE user_id = [COLON]id;
+  COMMIT;
+  DBMS_LOB.FREETEMPORARY(v_blob);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('photoUrl', '/ords/admin/dct/users/' || [COLON]id || '/photo');
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+    ORDS.DEFINE_HANDLER(
+        p_module_name  => c_mod,
+        p_pattern      => REPLACE('users/[COLON]id/photo', '[COLON]', CHR(58)),
+        p_method       => 'GET',
+        p_source_type  => ORDS.SOURCE_TYPE_MEDIA,
+        p_source       => REPLACE(
+            q'!SELECT photo_mime_type, photo_blob FROM dct_users WHERE user_id = [COLON]id!',
+            '[COLON]', CHR(58))
+    );
 
     -- =========================================================================
     -- ROLES

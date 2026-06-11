@@ -49,6 +49,19 @@ function (api) {
       return JSON.parse(raw);
     },
 
+    /* Merge updated profile fields into the cached session so the UI stays
+       correct across refreshes without re-login (session payload is otherwise
+       only written at login time). */
+    updateCachedUser: function (fields) {
+      var raw = localStorage.getItem(SESSION_KEY);
+      if (!raw) return;
+      try {
+        var s = JSON.parse(raw);
+        Object.keys(fields || {}).forEach(function (k) { s[k] = fields[k]; });
+        localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+      } catch (e) { /* corrupt session — leave as-is, next login rewrites it */ }
+    },
+
     getUnreadCount: function () {
       if (!this.getCurrentUser()) return Promise.resolve(0);   // nothing to count pre-login
       return api.get('/notifications/', { silent: true }).then(function (r) {

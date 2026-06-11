@@ -94,6 +94,8 @@ CREATE TABLE dct_users (
     person_id        NUMBER,                                 -- Numeric HR key (dct_employees)
     mobile           VARCHAR2(20),
     photo_url        VARCHAR2(500),
+    photo_blob       BLOB,                                    -- profile photo (uploaded via /dct/users/:id/photo)
+    photo_mime_type  VARCHAR2(100),
     color_hex        VARCHAR2(7)    DEFAULT '#0076CE',
     language_pref    VARCHAR2(10)   DEFAULT 'EN'   NOT NULL,
     org_id           NUMBER,                                 -- Primary organisation

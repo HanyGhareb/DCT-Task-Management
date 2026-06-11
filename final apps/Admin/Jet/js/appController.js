@@ -176,7 +176,10 @@ define(
 
     // ── Shell actions ───────────────────────────────────────────────────
     self.toggleNav      = function () { self.sideNavOpen(!self.sideNavOpen()); };
-    self.closeUserMenu  = function () { self.userMenuOpen(false); self.modswOpen(false); };
+    /* Bound to <main> via click: — MUST return true, or KO preventDefaults
+       every click that bubbles up and kills native default actions
+       (file-picker open, checkbox toggle, …). */
+    self.closeUserMenu  = function () { self.userMenuOpen(false); self.modswOpen(false); return true; };
 
     self.toggleUserMenu = function (vm, event) {
       event.stopPropagation();
