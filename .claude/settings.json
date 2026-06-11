@@ -59,7 +59,9 @@
       "Bash(Get-Content \"C:\\\\Users\\\\hanyg\\\\AppData\\\\Local\\\\Temp\\\\claude\\\\c--claude-DCT-task-management-DCT-Task-Management\\\\63559a62-22b0-49e8-b13a-eb0ff978fd4a\\\\tasks\\\\b3urifah4.output\")",
       "Bash(python -m http.server 8765)",
       "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:8765/HR/Jet/index.html)",
-      "Bash(curl -s \"https://static.oracle.com/cdn/jet/17.0.0/default/css/redwood/oj-redwood-min.css\")"
+      "Bash(curl -s \"https://static.oracle.com/cdn/jet/17.0.0/default/css/redwood/oj-redwood-min.css\")",
+      "PowerShell(Get-ChildItem -Recurse assessment-3 -File | Select-Object @{n='File';e={$_.FullName.Replace\\(\"$PWD\\\\\",''\\)}}, @{n='KB';e={[math]::Round\\($_.Length/1KB,1\\)}} | Format-Table -AutoSize)",
+      "PowerShell(Invoke-Item \"assessment-3\\\\04-uiux\\\\mockups\\\\dashboard-concept.html\"; Invoke-Item \"assessment-3\\\\04-uiux\\\\mockups\\\\approvals-inbox-concept.html\"; Invoke-Item \"assessment-3\\\\04-uiux\\\\mockups\\\\request-wizard-concept.html\")"
     ]
   },
   "enabledPlugins": {

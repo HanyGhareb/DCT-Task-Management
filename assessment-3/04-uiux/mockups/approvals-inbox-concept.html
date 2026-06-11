@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Unified Approvals Inbox — Vault Concept · i-Finance Assessment 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   VAULT — DARK TIER (privileged surface)
+   The manager's "one place in the morning": every pending
+   approval across PC / DT / HR / FL / CC in a single queue.
+   ============================================================ */
+:root{
+  --bg:#0D1117; --surface:#161B22; --surface-2:#1C2230;
+  --border:#30363D; --text:#E6EDF3; --muted:#7D8590;
+  --amber:#F0883E; --green:#3FB950; --red:#F85149; --blue:#58A6FF;
+  --pc:#3FB950; --dt:#58A6FF; --hr:#39C5BB; --fl:#D2A8FF; --cc:#F778BA;
+  --font:'Outfit',sans-serif; --mono:'Fira Code',monospace;
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:var(--font);color:var(--text);min-height:100vh;
+  background:
+    radial-gradient(900px 420px at 110% -5%, rgba(240,136,62,.07), transparent 65%),
+    radial-gradient(700px 400px at -10% 110%, rgba(88,166,255,.05), transparent 60%),
+    var(--bg);
+}
+.wrap{max-width:1060px;margin:0 auto;padding:34px 28px 70px}
+/* ---------- header ---------- */
+.hd{display:flex;align-items:flex-end;justify-content:space-between;margin-bottom:8px}
+.hd h1{font-size:30px;font-weight:700;letter-spacing:-.4px}
+.hd h1 em{font-style:normal;color:var(--amber)}
+.hd .sub{color:var(--muted);font-size:13.5px;margin-top:5px}
+.kbd{font-family:var(--mono);font-size:10.5px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:2px 6px;background:var(--surface)}
+.counter{
+  font-family:var(--mono);text-align:right;
+}
+.counter b{font-size:40px;font-weight:600;color:var(--amber);letter-spacing:-1px;display:block;line-height:1}
+.counter span{font-size:11px;color:var(--muted);letter-spacing:1.4px;text-transform:uppercase}
+/* ---------- filter rail ---------- */
+.rail{display:flex;gap:8px;margin:24px 0 16px;flex-wrap:wrap;align-items:center}
+.chip{
+  font-family:var(--mono);font-size:12px;font-weight:500;cursor:pointer;
+  border:1px solid var(--border);border-radius:20px;padding:6px 14px;
+  background:var(--surface);color:var(--muted);
+  transition:all .3s var(--spring);user-select:none;
+  display:inline-flex;align-items:center;gap:8px;
+}
+.chip i{width:7px;height:7px;border-radius:50%;background:var(--mc,var(--muted))}
+.chip b{font-weight:600;color:var(--text)}
+.chip:hover{transform:translateY(-1px);border-color:var(--mc,var(--amber))}
+.chip.on{border-color:var(--mc,var(--amber));color:var(--text);background:var(--surface-2);box-shadow:0 0 0 1px var(--mc,var(--amber)) inset}
+.rail .spacer{flex:1}
+.search{
+  font-family:var(--mono);font-size:12px;background:var(--surface);
+  border:1px solid var(--border);border-radius:8px;color:var(--text);
+  padding:8px 12px;width:210px;outline:none;transition:border .2s;
+}
+.search:focus{border-color:var(--amber)}
+.search::placeholder{color:var(--muted)}
+/* ---------- queue ---------- */
+.queue{display:flex;flex-direction:column;gap:10px}
+.item{
+  background:var(--surface);border:1px solid var(--border);border-radius:12px;
+  overflow:hidden;opacity:0;transform:translateY(12px);
+  transition:border-color .2s;
+}
+.item.in{animation:rise .55s var(--spring) forwards}
+@keyframes rise{to{opacity:1;transform:none}}
+.item:hover{border-color:#444C56}
+.row{
+  display:grid;grid-template-columns:4px 120px 1fr 130px 110px auto;
+  gap:16px;align-items:center;padding:14px 18px 14px 0;cursor:pointer;
+}
+.row .mod-bar{align-self:stretch;background:var(--mc)}
+.ref{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--blue)}
+.ref small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:3px;letter-spacing:.6px}
+.who{font-size:14px;font-weight:600}
+.who small{display:block;font-size:12px;color:var(--muted);font-weight:400;margin-top:2px}
+.amt{font-family:var(--mono);font-size:14.5px;font-weight:600;text-align:right}
+.amt small{display:block;font-size:10px;color:var(--muted);font-weight:400;margin-top:3px;letter-spacing:.8px}
+.wait{font-family:var(--mono);font-size:11px;text-align:center}
+.wait .pill{
+  display:inline-block;border-radius:14px;padding:4px 10px;font-weight:500;
+  background:rgba(125,133,144,.12);color:var(--muted);
+}
+.wait .pill.warn{background:rgba(240,136,62,.14);color:var(--amber)}
+.wait .pill.crit{background:rgba(248,81,73,.14);color:var(--red);animation:pulse 2.2s infinite}
+@keyframes pulse{50%{box-shadow:0 0 0 5px rgba(248,81,73,.08)}}
+.acts{display:flex;gap:7px;padding-right:2px}
+.btn{
+  font-family:var(--mono);font-size:11.5px;font-weight:600;cursor:pointer;
+  border-radius:7px;padding:8px 13px;border:1px solid var(--border);
+  background:transparent;color:var(--muted);
+  transition:all .3s var(--spring);
+}
+.btn:hover{transform:translateY(-2px)}
+.btn.ok{border-color:rgba(63,185,80,.4);color:var(--green)}
+.btn.ok:hover{background:rgba(63,185,80,.12);box-shadow:0 4px 14px -6px rgba(63,185,80,.5)}
+.btn.no{border-color:rgba(248,81,73,.4);color:var(--red)}
+.btn.no:hover{background:rgba(248,81,73,.12)}
+.btn.back:hover{color:var(--text)}
+/* expanded detail */
+.detail{
+  max-height:0;overflow:hidden;transition:max-height .45s var(--spring);
+  border-top:0 solid var(--border);
+}
+.item.open .detail{max-height:200px;border-top:1px solid var(--border)}
+.detail-in{padding:16px 22px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:18px;font-size:12.5px}
+.detail-in .k{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);margin-bottom:5px;font-weight:600}
+.detail-in .v{font-family:var(--mono);font-size:12px}
+.steps{display:flex;align-items:center;gap:6px;margin-top:4px}
+.step{width:22px;height:5px;border-radius:3px;background:var(--border)}
+.step.done{background:var(--green)}
+.step.cur{background:var(--amber);box-shadow:0 0 8px rgba(240,136,62,.5)}
+/* approved flash */
+.item.gone{animation:slideOut .5s var(--spring) forwards}
+@keyframes slideOut{to{opacity:0;transform:translateX(60px);max-height:0;margin-bottom:-10px}}
+.note{
+  margin-top:26px;font-size:12px;color:var(--muted);line-height:1.6;
+  border-left:3px solid var(--amber);padding:10px 16px;
+  background:rgba(240,136,62,.06);border-radius:0 8px 8px 0;
+}
+.note b{color:var(--text)}
+@media(max-width:820px){.row{grid-template-columns:4px 1fr auto;}.who,.wait{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hd">
+    <div>
+      <h1>Approvals <em>Inbox</em></h1>
+      <div class="sub">Every module, one queue · <span class="kbd">A</span> approve · <span class="kbd">R</span> return · <span class="kbd">↵</span> open</div>
+    </div>
+    <div class="counter"><b id="count">7</b><span>pending items</span></div>
+  </header>
+
+  <div class="rail">
+    <span class="chip on" data-m="all"><i style="--mc:var(--amber)"></i>All <b id="c-all">7</b></span>
+    <span class="chip" data-m="PC"><i style="--mc:var(--pc)"></i>Petty Cash <b>2</b></span>
+    <span class="chip" data-m="DT"><i style="--mc:var(--dt)"></i>Duty Travel <b>2</b></span>
+    <span class="chip" data-m="HR"><i style="--mc:var(--hr)"></i>HR <b>1</b></span>
+    <span class="chip" data-m="FL"><i style="--mc:var(--fl)"></i>Freelancers <b>1</b></span>
+    <span class="chip" data-m="CC"><i style="--mc:var(--cc)"></i>Credit Cards <b>1</b></span>
+    <span class="spacer"></span>
+    <input class="search" placeholder="⌕ filter by name, ref, amount…">
+  </div>
+
+  <div class="queue" id="queue"></div>
+
+  <p class="note"><b>Concept notes:</b> reads <b>dct_approval_instances</b> — already a cross-module table, no schema change needed (UX-7). Module identity = colored spine + chip, statuses in Fira Code. Waiting-time pills escalate gray → amber → pulsing red as <b>escalation_days</b> approaches, surfacing the engine's dormant escalation data. Click a row for the step trail; Approve plays the spring slide-out. Vault dark tier = privileged surface.</p>
+</div>
+
+<script>
+const data=[
+ {m:'PC', ref:'PC-2026-0142', type:'TEMPORARY ADVANCE', who:'Mariam Al Suwaidi', org:'Accounts Payable', amt:'12,500.00', cur:'AED', days:1, step:2, of:3, gl:'11.402.7110…'},
+ {m:'DT', ref:'DT-2026-0309', type:'BUSINESS MISSION · GENEVA', who:'Khalid Rahman', org:'Budget Section', amt:'18,340.00', cur:'AED', days:3, step:1, of:3, gl:'11.301.7240…'},
+ {m:'CC', ref:'CCM-2026-05-0061', type:'MAY REPLENISHMENT', who:'Sara Haddad', org:'Treasury', amt:'9,212.40', cur:'AED', days:6, step:2, of:2, gl:'11.105.7180…'},
+ {m:'FL', ref:'FLC-2026-0027', type:'CONTRACT RENEWAL', who:'Yusuf El-Masri', org:'Media Production', amt:'64,000.00', cur:'AED', days:2, step:1, of:4, gl:'PRJ-2204 · T-31'},
+ {m:'DT', ref:'STL-2026-0118', type:'TRAVEL SETTLEMENT', who:'Aisha Al Mansoori', org:'Revenue', amt:'2,180.25', cur:'AED', days:9, step:3, of:3, gl:'11.301.7240…'},
+ {m:'HR', ref:'POS-2026-0044', type:'POSITION HEADCOUNT +1', who:'Org Development', org:'HR Division', amt:'—', cur:'', days:4, step:1, of:2, gl:'n/a'},
+ {m:'PC', ref:'CLR-2026-0087', type:'CLEARING · OVERDUE', who:'Khalid Rahman', org:'Budget Section', amt:'8,940.00', cur:'AED', days:11, step:1, of:2, gl:'11.301.7110…'},
+];
+const colors={PC:'var(--pc)',DT:'var(--dt)',HR:'var(--hr)',FL:'var(--fl)',CC:'var(--cc)'};
+const q=document.getElementById('queue');
+
+function pill(d){return d>=8?'crit':d>=3?'warn':''}
+function render(filter='all',term=''){
+  q.innerHTML='';
+  data.filter(x=>(filter==='all'||x.m===filter))
+      .filter(x=>!term||JSON.stringify(x).toLowerCase().includes(term.toLowerCase()))
+      .forEach((x,i)=>{
+    const el=document.createElement('div');
+    el.className='item';el.style.animationDelay=(i*.06)+'s';
+    el.innerHTML=`
+      <div class="row" style="--mc:${colors[x.m]}">
+        <div class="mod-bar"></div>
+        <div class="ref">${x.ref}<small>${x.type}</small></div>
+        <div class="who">${x.who}<small>${x.org}</small></div>
+        <div class="amt">${x.amt}<small>${x.cur}</small></div>
+        <div class="wait"><span class="pill ${pill(x.days)}">${x.days}d waiting</span></div>
+        <div class="acts">
+          <button class="btn ok" onclick="approve(event,this)">✓ Approve</button>
+          <button class="btn no" onclick="event.stopPropagation()">✕</button>
+          <button class="btn back" onclick="event.stopPropagation()">↩</button>
+        </div>
+      </div>
+      <div class="detail"><div class="detail-in">
+        <div><div class="k">Approval trail</div>
+          <div class="steps">${Array.from({length:x.of},(_,s)=>
+            `<span class="step ${s<x.step-1?'done':s===x.step-1?'cur':''}"></span>`).join('')}
+          </div>
+          <div class="v" style="margin-top:6px;color:var(--muted)">step ${x.step} of ${x.of}</div></div>
+        <div><div class="k">Budget coding</div><div class="v">${x.gl}</div></div>
+        <div><div class="k">Source</div><div class="v">${x.m} · dct_approval_instances</div></div>
+      </div></div>`;
+    el.querySelector('.row').addEventListener('click',()=>el.classList.toggle('open'));
+    q.appendChild(el);
+    requestAnimationFrame(()=>el.classList.add('in'));
+  });
+}
+function approve(ev,btn){
+  ev.stopPropagation();
+  const item=btn.closest('.item');
+  item.classList.add('gone');
+  setTimeout(()=>{item.remove();
+    const c=document.getElementById('count');c.textContent=Math.max(0,+c.textContent-1);
+  },480);
+}
+document.querySelectorAll('.chip').forEach(ch=>ch.addEventListener('click',()=>{
+  document.querySelectorAll('.chip').forEach(c=>c.classList.remove('on'));
+  ch.classList.add('on');
+  render(ch.dataset.m,document.querySelector('.search').value);
+}));
+document.querySelector('.search').addEventListener('input',e=>{
+  render(document.querySelector('.chip.on').dataset.m,e.target.value);
+});
+render();
+</script>
+</body>
+</html>

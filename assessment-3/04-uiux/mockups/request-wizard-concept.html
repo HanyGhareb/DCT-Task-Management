@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Travel Request Wizard — Concept · i-Finance Assessment 3</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   VAULT — LIGHT TIER ("Ledger") · Multi-step request wizard
+   Demonstrates: step indicator, inline validation, EN/AR + RTL
+   (the locked Phase-1 bilingual decision, finally on screen).
+   ============================================================ */
+:root{
+  --paper:#F4F1EB; --surface:#FFFFFF; --surface-2:#FAF8F4;
+  --ink:#1B2026; --muted:#6E7681; --line:#E3DED4; --line-strong:#C9C2B4;
+  --amber:#F0883E; --amber-soft:#FBE9DA; --green:#2E7D32; --green-soft:#E3F1E4;
+  --red:#C5483B; --red-soft:#F8E5E3; --blue:#2563A8; --vault:#0D1117;
+  --font:'Outfit',sans-serif; --mono:'Fira Code',monospace;
+  --spring:cubic-bezier(.34,1.56,.64,1);
+}
+html[dir="rtl"] body{font-family:'IBM Plex Sans Arabic',var(--font)}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:var(--font);color:var(--ink);min-height:100vh;
+  background:
+    linear-gradient(180deg, rgba(13,17,23,.0) 0 210px, transparent 210px),
+    radial-gradient(1000px 420px at 15% -10%, rgba(240,136,62,.10), transparent 60%),
+    var(--paper);
+}
+.top{
+  background:var(--vault);color:#E6EDF3;padding:18px 0 64px;
+}
+.top-in{max-width:880px;margin:0 auto;padding:0 24px;display:flex;align-items:center;justify-content:space-between}
+.crumb{font-size:13px;color:#7D8590}
+.crumb b{color:#E6EDF3;font-weight:600}
+.crumb .cube{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:6px;background:linear-gradient(135deg,#58A6FF,#2563A8);color:#0D1117;font-weight:800;font-size:11px;margin-inline-end:9px;vertical-align:-7px}
+/* language toggle — the rm-toggle pattern, reused */
+.lang{display:flex;align-items:center;gap:10px;font-family:var(--mono);font-size:11.5px;color:#7D8590}
+.lang span.on{color:var(--amber);font-weight:600}
+.tgl{width:44px;height:24px;border-radius:14px;background:#30363D;position:relative;cursor:pointer;transition:background .3s}
+.tgl i{position:absolute;top:3px;left:3px;width:18px;height:18px;border-radius:50%;background:var(--amber);transition:transform .4s var(--spring);box-shadow:0 0 10px rgba(240,136,62,.5)}
+html[dir="rtl"] .tgl i{transform:translateX(20px)}
+/* ---------- card ---------- */
+.sheet{max-width:880px;margin:-46px auto 60px;padding:0 24px}
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:18px;
+  box-shadow:0 24px 60px -30px rgba(13,17,23,.25);
+  overflow:hidden;
+}
+/* steps rail */
+.steps{display:flex;border-bottom:1px solid var(--line);background:var(--surface-2)}
+.st{
+  flex:1;padding:15px 8px 13px;text-align:center;font-size:12px;font-weight:600;
+  color:var(--muted);position:relative;transition:color .3s;
+}
+.st .n{
+  font-family:var(--mono);display:inline-grid;place-items:center;
+  width:21px;height:21px;border-radius:50%;border:1.5px solid var(--line-strong);
+  font-size:10.5px;margin-inline-end:7px;vertical-align:-5px;transition:all .4s var(--spring);
+  background:var(--surface);
+}
+.st.cur{color:var(--ink)}
+.st.cur .n{border-color:var(--amber);background:var(--amber);color:#fff;transform:scale(1.15);box-shadow:0 0 0 4px var(--amber-soft)}
+.st.done{color:var(--green)}
+.st.done .n{border-color:var(--green);background:var(--green);color:#fff}
+.st::after{content:'';position:absolute;bottom:-1px;inset-inline:0;height:2px;background:transparent;transition:background .3s}
+.st.cur::after{background:var(--amber)}
+/* panes */
+.panes{position:relative;min-height:380px}
+.pane{padding:30px 36px 26px;display:none;animation:slide .45s var(--spring)}
+.pane.show{display:block}
+@keyframes slide{from{opacity:0;transform:translateX(24px)}to{opacity:1;transform:none}}
+html[dir="rtl"] .pane.show{animation-name:slideR}
+@keyframes slideR{from{opacity:0;transform:translateX(-24px)}to{opacity:1;transform:none}}
+h2{font-size:20px;font-weight:700;margin-bottom:4px;letter-spacing:-.2px}
+.hint{font-size:13px;color:var(--muted);margin-bottom:24px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px 22px}
+.fg{display:flex;flex-direction:column;gap:6px}
+.fg.full{grid-column:1/-1}
+label{font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--muted)}
+html[dir="rtl"] label{letter-spacing:0}
+label .req{color:var(--red)}
+input,select{
+  font-family:var(--font);font-size:14px;color:var(--ink);
+  border:1.5px solid var(--line);border-radius:9px;padding:10px 13px;
+  background:var(--surface);outline:none;transition:border .2s, box-shadow .2s;
+}
+input:focus,select:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.fg.err input,.fg.err select{border-color:var(--red);background:var(--red-soft)}
+.fmsg{font-size:11.5px;color:var(--red);font-weight:500;display:none;align-items:center;gap:5px}
+.fg.err .fmsg{display:flex;animation:shake .4s var(--spring)}
+@keyframes shake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
+/* destination leg rows */
+.leg{
+  display:grid;grid-template-columns:1fr 130px 130px 110px 34px;gap:12px;align-items:end;
+  padding:14px;border:1px dashed var(--line-strong);border-radius:12px;margin-bottom:12px;
+  background:var(--surface-2);
+}
+.leg .per{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--green);padding-bottom:11px}
+.leg button{border:none;background:none;color:var(--red);cursor:pointer;font-size:16px;padding-bottom:10px}
+.addleg{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--amber);
+  border:1.5px dashed var(--amber);background:var(--amber-soft);border-radius:9px;
+  padding:9px 16px;cursor:pointer;transition:all .3s var(--spring);
+}
+.addleg:hover{transform:translateY(-2px);box-shadow:0 6px 16px -8px rgba(240,136,62,.6)}
+/* allowance toggles — div+pointer-events pattern from the KO codebase */
+.allow{display:flex;flex-direction:column;gap:10px}
+.al{
+  display:flex;align-items:center;justify-content:space-between;
+  border:1px solid var(--line);border-radius:11px;padding:13px 16px;cursor:pointer;
+  transition:all .3s var(--spring);background:var(--surface);
+}
+.al:hover{border-color:var(--line-strong)}
+.al.on{border-color:var(--amber);background:var(--amber-soft)}
+.al .t{font-size:14px;font-weight:600}
+.al .t small{display:block;font-size:11.5px;color:var(--muted);font-weight:400;margin-top:2px}
+.al .amt{font-family:var(--mono);font-size:13px;font-weight:600;color:var(--muted);margin-inline-start:auto;margin-inline-end:16px}
+.al.on .amt{color:#B05F1D}
+.dotgl{width:38px;height:21px;border-radius:12px;background:var(--line-strong);position:relative;flex:none;transition:background .3s;pointer-events:none}
+.dotgl i{position:absolute;top:2.5px;inset-inline-start:3px;width:16px;height:16px;border-radius:50%;background:#fff;transition:all .4s var(--spring);box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.al.on .dotgl{background:var(--amber)}
+.al.on .dotgl i{inset-inline-start:19px}
+/* review */
+.review{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.rv{border:1px solid var(--line);border-radius:11px;padding:14px 16px;background:var(--surface-2)}
+.rv .k{font-size:10px;letter-spacing:1.3px;text-transform:uppercase;color:var(--muted);font-weight:700;margin-bottom:5px}
+html[dir="rtl"] .rv .k{letter-spacing:0}
+.rv .v{font-size:14px;font-weight:600}
+.rv .v.mono{font-family:var(--mono)}
+.total{
+  grid-column:1/-1;background:var(--vault);color:#E6EDF3;border:none;
+  display:flex;align-items:center;justify-content:space-between;
+}
+.total .k{color:#7D8590}
+.total .v{font-family:var(--mono);font-size:24px;color:var(--amber);letter-spacing:-.5px}
+/* footer */
+.foot{
+  display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid var(--line);padding:18px 36px;background:var(--surface-2);
+}
+.btn{
+  font-family:var(--font);font-size:14px;font-weight:700;cursor:pointer;
+  border-radius:10px;padding:11px 26px;transition:all .3s var(--spring);border:none;
+}
+.btn.next{background:var(--vault);color:#fff}
+.btn.next:hover{transform:translateY(-2px);box-shadow:0 10px 22px -10px rgba(13,17,23,.5)}
+.btn.next:active{transform:scale(.97)}
+.btn.prev{background:none;border:1.5px solid var(--line-strong);color:var(--muted)}
+.btn.prev:hover{color:var(--ink)}
+.btn.submit{background:linear-gradient(135deg,var(--amber),#d9692a);color:#fff}
+.btn.submit:hover{transform:translateY(-2px);box-shadow:0 12px 26px -10px rgba(240,136,62,.7)}
+.note{max-width:880px;margin:0 auto 50px;padding:0 24px}
+.note p{font-size:12px;color:var(--muted);border-inline-start:3px solid var(--amber);padding:10px 16px;background:var(--amber-soft);border-radius:0 8px 8px 0;line-height:1.6}
+html[dir="rtl"] .note p{border-radius:8px 0 0 8px}
+.note b{color:var(--ink)}
+@media(max-width:720px){.grid,.review{grid-template-columns:1fr}.leg{grid-template-columns:1fr 1fr;}.pane{padding:22px 20px}}
+</style>
+</head>
+<body>
+<div class="top"><div class="top-in">
+  <div class="crumb"><span class="cube">DT</span><span data-i="crumb">Duty Travel · </span><b data-i="newReq">New Travel Request</b></div>
+  <div class="lang">
+    <span id="l-en" class="on">EN</span>
+    <div class="tgl" onclick="flip()"><i></i></div>
+    <span id="l-ar">عربي</span>
+  </div>
+</div></div>
+
+<div class="sheet"><div class="card">
+  <div class="steps" id="steps">
+    <div class="st cur"><span class="n">1</span><span data-i="s1">Trip</span></div>
+    <div class="st"><span class="n">2</span><span data-i="s2">Destinations</span></div>
+    <div class="st"><span class="n">3</span><span data-i="s3">Allowances</span></div>
+    <div class="st"><span class="n">4</span><span data-i="s4">Review</span></div>
+  </div>
+
+  <div class="panes">
+    <!-- STEP 1 -->
+    <div class="pane show" data-p="1">
+      <h2 data-i="t1">Trip details</h2>
+      <p class="hint" data-i="h1">Grade and per-diem rates are resolved automatically from your employee profile.</p>
+      <div class="grid">
+        <div class="fg" id="f-mission">
+          <label data-i="mission">Mission type <span class="req">*</span></label>
+          <select id="mission"><option value="" data-i="sel">— select —</option><option value="BM" data-i="bm">Business Mission</option><option value="TR" data-i="tr">Training</option></select>
+          <span class="fmsg">⚠ <span data-i="reqd">This field is required</span></span>
+        </div>
+        <div class="fg" id="f-trip">
+          <label data-i="trip">Trip type <span class="req">*</span></label>
+          <select id="trip"><option value="" data-i="sel">— select —</option><option value="EXT" data-i="ext">External</option><option value="INT" data-i="int">Internal</option></select>
+          <span class="fmsg">⚠ <span data-i="reqd">This field is required</span></span>
+        </div>
+        <div class="fg" id="f-dep">
+          <label data-i="dep">Departure <span class="req">*</span></label>
+          <input id="dep" type="date">
+          <span class="fmsg">⚠ <span data-i="reqd">This field is required</span></span>
+        </div>
+        <div class="fg" id="f-ret">
+          <label data-i="ret">Return <span class="req">*</span></label>
+          <input id="ret" type="date">
+          <span class="fmsg">⚠ <span data-i="retErr">Return must be after departure</span></span>
+        </div>
+        <div class="fg full" id="f-purp">
+          <label data-i="purp">Purpose <span class="req">*</span></label>
+          <input id="purp" data-ph="purpPh" placeholder="e.g. WIPO coordination meeting, Geneva">
+          <span class="fmsg">⚠ <span data-i="reqd">This field is required</span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- STEP 2 -->
+    <div class="pane" data-p="2">
+      <h2 data-i="t2">Destination legs</h2>
+      <p class="hint" data-i="h2">Per diem is calculated per leg from the country group of each destination.</p>
+      <div class="leg">
+        <div class="fg"><label data-i="country">Country / City</label><input value="Switzerland — Geneva"></div>
+        <div class="fg"><label data-i="from">From</label><input type="date" value="2026-07-06"></div>
+        <div class="fg"><label data-i="to">To</label><input type="date" value="2026-07-10"></div>
+        <div class="per">5d × 1,450</div>
+        <button title="remove">✕</button>
+      </div>
+      <div class="leg">
+        <div class="fg"><label data-i="country">Country / City</label><input value="Austria — Vienna"></div>
+        <div class="fg"><label data-i="from">From</label><input type="date" value="2026-07-10"></div>
+        <div class="fg"><label data-i="to">To</label><input type="date" value="2026-07-12"></div>
+        <div class="per">2d × 1,280</div>
+        <button title="remove">✕</button>
+      </div>
+      <button class="addleg" data-i="addLeg">+ add destination leg</button>
+    </div>
+
+    <!-- STEP 3 -->
+    <div class="pane" data-p="3">
+      <h2 data-i="t3">Allowances</h2>
+      <p class="hint" data-i="h3">Toggles reflect module settings — disabled allowances never appear here.</p>
+      <div class="allow">
+        <div class="al on" onclick="this.classList.toggle('on');sum()"><div class="t"><span data-i="alTicket">Air ticket</span><small data-i="alTicketS">Economy, return — booked by Travel Desk</small></div><span class="amt" data-v="4200">4,200.00</span><div class="dotgl"><i></i></div></div>
+        <div class="al on" onclick="this.classList.toggle('on');sum()"><div class="t"><span data-i="alAcc">Accommodation</span><small data-i="alAccS">7 nights cap per grade band</small></div><span class="amt" data-v="6300">6,300.00</span><div class="dotgl"><i></i></div></div>
+        <div class="al" onclick="this.classList.toggle('on');sum()"><div class="t"><span data-i="alVisa">Visa fees</span><small data-i="alVisaS">Schengen short-stay</small></div><span class="amt" data-v="450">450.00</span><div class="dotgl"><i></i></div></div>
+        <div class="al" onclick="this.classList.toggle('on');sum()"><div class="t"><span data-i="alLoc">Local transport</span><small data-i="alLocS">Airport transfers & inter-city</small></div><span class="amt" data-v="600">600.00</span><div class="dotgl"><i></i></div></div>
+      </div>
+    </div>
+
+    <!-- STEP 4 -->
+    <div class="pane" data-p="4">
+      <h2 data-i="t4">Review & submit</h2>
+      <p class="hint" data-i="h4">Submitting routes the request to your approval chain — step 1 of 3: Section Manager.</p>
+      <div class="review">
+        <div class="rv"><div class="k" data-i="mission">Mission type</div><div class="v" id="rv-mission">Business Mission</div></div>
+        <div class="rv"><div class="k" data-i="rvDates">Dates</div><div class="v mono" id="rv-dates">06 Jul → 12 Jul · 7 days</div></div>
+        <div class="rv"><div class="k" data-i="s2">Destinations</div><div class="v">Geneva · Vienna</div></div>
+        <div class="rv"><div class="k" data-i="rvPerDiem">Per diem</div><div class="v mono">9,810.00 AED</div></div>
+        <div class="rv total"><div class="k" data-i="rvTotal">TOTAL ADVANCE</div><div class="v" id="rv-total">20,310.00 AED</div></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="foot">
+    <button class="btn prev" id="bPrev" onclick="go(-1)" style="visibility:hidden" data-i="back">← Back</button>
+    <button class="btn next" id="bNext" onclick="go(1)" data-i="cont">Continue →</button>
+  </div>
+</div></div>
+
+<div class="note"><p><b>Concept notes:</b> step indicator with spring scale on the current node; <b>inline validation</b> — hit Continue with empty fields to see the shake + .form-error pattern (UX-8); <b>EN/عربي toggle</b> flips <code>dir="rtl"</code>, swaps to IBM Plex Sans Arabic, mirrors the layout via CSS logical properties, and re-labels from an i18n dictionary (UX-2 — the locked Phase-1 bilingual decision). Allowance toggles reuse the KO-safe div-wrapper pattern with <code>pointer-events:none</code>.</p></div>
+
+<script>
+/* ---------- i18n ---------- */
+const M={
+ en:{crumb:'Duty Travel · ',newReq:'New Travel Request',s1:'Trip',s2:'Destinations',s3:'Allowances',s4:'Review',
+  t1:'Trip details',h1:'Grade and per-diem rates are resolved automatically from your employee profile.',
+  mission:'Mission type *',trip:'Trip type *',dep:'Departure *',ret:'Return *',purp:'Purpose *',
+  sel:'— select —',bm:'Business Mission',tr:'Training',ext:'External',int:'Internal',
+  reqd:'This field is required',retErr:'Return must be after departure',
+  purpPh:'e.g. WIPO coordination meeting, Geneva',
+  t2:'Destination legs',h2:'Per diem is calculated per leg from the country group of each destination.',
+  country:'Country / City',from:'From',to:'To',addLeg:'+ add destination leg',
+  t3:'Allowances',h3:'Toggles reflect module settings — disabled allowances never appear here.',
+  alTicket:'Air ticket',alTicketS:'Economy, return — booked by Travel Desk',
+  alAcc:'Accommodation',alAccS:'7 nights cap per grade band',
+  alVisa:'Visa fees',alVisaS:'Schengen short-stay',
+  alLoc:'Local transport',alLocS:'Airport transfers & inter-city',
+  t4:'Review & submit',h4:'Submitting routes the request to your approval chain — step 1 of 3: Section Manager.',
+  rvDates:'Dates',rvPerDiem:'Per diem',rvTotal:'TOTAL ADVANCE',
+  back:'← Back',cont:'Continue →',submit:'Submit request ✓'},
+ ar:{crumb:'السفر الرسمي · ',newReq:'طلب سفر جديد',s1:'الرحلة',s2:'الوجهات',s3:'البدلات',s4:'المراجعة',
+  t1:'تفاصيل الرحلة',h1:'تُحدَّد الدرجة وبدل الإقامة اليومي تلقائياً من ملفك الوظيفي.',
+  mission:'نوع المهمة *',trip:'نوع الرحلة *',dep:'تاريخ المغادرة *',ret:'تاريخ العودة *',purp:'الغرض *',
+  sel:'— اختر —',bm:'مهمة عمل',tr:'تدريب',ext:'خارجية',int:'داخلية',
+  reqd:'هذا الحقل مطلوب',retErr:'يجب أن تكون العودة بعد المغادرة',
+  purpPh:'مثال: اجتماع تنسيقي، جنيف',
+  t2:'وجهات الرحلة',h2:'يُحتسب بدل الإقامة لكل وجهة حسب مجموعة الدولة.',
+  country:'الدولة / المدينة',from:'من',to:'إلى',addLeg:'+ إضافة وجهة',
+  t3:'البدلات',h3:'تعكس المفاتيح إعدادات الوحدة — البدلات المعطّلة لا تظهر هنا.',
+  alTicket:'تذكرة الطيران',alTicketS:'درجة سياحية، ذهاب وعودة — عبر مكتب السفر',
+  alAcc:'الإقامة',alAccS:'حد أقصى ٧ ليالٍ حسب الدرجة',
+  alVisa:'رسوم التأشيرة',alVisaS:'شنغن — إقامة قصيرة',
+  alLoc:'المواصلات المحلية',alLocS:'التنقل من المطار وبين المدن',
+  t4:'المراجعة والإرسال',h4:'يُحوَّل الطلب إلى سلسلة الاعتماد — الخطوة ١ من ٣: مدير القسم.',
+  rvDates:'التواريخ',rvPerDiem:'بدل الإقامة',rvTotal:'إجمالي السلفة',
+  back:'رجوع ←',cont:'متابعة ←',submit:'إرسال الطلب ✓'}
+};
+let lang='en';
+function t(){
+  document.querySelectorAll('[data-i]').forEach(el=>{const k=el.dataset.i;if(M[lang][k])el.innerHTML=M[lang][k].replace(' *',' <span class="req">*</span>')});
+  document.querySelectorAll('[data-ph]').forEach(el=>el.placeholder=M[lang][el.dataset.ph]||'');
+  paint();
+}
+function flip(){
+  lang=lang==='en'?'ar':'en';
+  document.documentElement.dir=lang==='ar'?'rtl':'ltr';
+  document.documentElement.lang=lang;
+  document.getElementById('l-en').classList.toggle('on',lang==='en');
+  document.getElementById('l-ar').classList.toggle('on',lang==='ar');
+  t();
+}
+/* ---------- wizard ---------- */
+let step=1;const LAST=4;
+function paint(){
+  document.querySelectorAll('.st').forEach((s,i)=>{
+    s.classList.toggle('cur',i+1===step);
+    s.classList.toggle('done',i+1<step);
+    if(i+1<step)s.querySelector('.n').textContent='✓';else s.querySelector('.n').textContent=i+1;
+  });
+  document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('show',+p.dataset.p===step));
+  document.getElementById('bPrev').style.visibility=step===1?'hidden':'visible';
+  const n=document.getElementById('bNext');
+  n.innerHTML=step===LAST?M[lang].submit:M[lang].cont;
+  n.classList.toggle('submit',step===LAST);
+  n.classList.toggle('next',step!==LAST);
+}
+function validate1(){
+  let ok=true;
+  [['mission','f-mission'],['trip','f-trip'],['dep','f-dep'],['purp','f-purp']].forEach(([id,fid])=>{
+    const bad=!document.getElementById(id).value;
+    document.getElementById(fid).classList.toggle('err',bad);ok=ok&&!bad;
+  });
+  const d=document.getElementById('dep').value,r=document.getElementById('ret').value;
+  const retBad=!r||(d&&r<=d);
+  document.getElementById('f-ret').classList.toggle('err',retBad);
+  return ok&&!retBad;
+}
+function go(dir){
+  if(dir>0&&step===1&&!validate1())return;
+  if(dir>0&&step===LAST){
+    const b=document.getElementById('bNext');
+    b.textContent=lang==='en'?'Submitted ✓ routing to approver…':'تم الإرسال ✓ جارٍ التحويل للاعتماد…';
+    b.style.background='var(--green)';b.disabled=true;return;
+  }
+  step=Math.min(LAST,Math.max(1,step+dir));paint();
+}
+/* live inline re-validation once touched */
+document.querySelectorAll('#mission,#trip,#dep,#ret,#purp').forEach(el=>
+  el.addEventListener('input',()=>{if(el.closest('.fg').classList.contains('err'))validate1()}));
+/* allowance sum on review */
+function sum(){
+  let total=9810;
+  document.querySelectorAll('.al.on .amt').forEach(a=>total+=+a.dataset.v);
+  document.getElementById('rv-total').textContent=total.toLocaleString('en-US',{minimumFractionDigits:2})+' AED';
+}
+sum();paint();
+</script>
+</body>
+</html>
