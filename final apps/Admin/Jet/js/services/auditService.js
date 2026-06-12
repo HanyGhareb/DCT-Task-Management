@@ -61,6 +61,39 @@ define(['services/api'], function (api) {
       });
     },
 
+    /* Wave 3: before/after JSON snapshots of one entry (GET /audit/:id) */
+    getDetail: function (logId) {
+      return api.get('/audit/' + logId, { silent: true }).then(function (r) {
+        var parse = function (s) {
+          try { return s ? JSON.parse(s) : null; } catch (e) { return null; }
+        };
+        return { oldValues: parse(r.oldValues), newValues: parse(r.newValues),
+                 oldRaw: r.oldValues || '', newRaw: r.newValues || '' };
+      });
+    },
+
+    /**
+     * Wave 3: export the current filter as CSV rows (server cap is 200/page —
+     * walk pages up to maxRows). Resolves an array of normalised entries.
+     */
+    exportRows: function (opts, maxRows) {
+      var self = this;
+      maxRows = maxRows || 1000;
+      var all = [];
+      function page(offset) {
+        return self.getPage({ limit: 200, offset: offset,
+                              search: opts.search, action: opts.action })
+          .then(function (r) {
+            all = all.concat(r.items);
+            if (all.length < Math.min(r.total, maxRows) && r.items.length > 0) {
+              return page(offset + 200);
+            }
+            return all.slice(0, maxRows);
+          });
+      }
+      return page(0);
+    },
+
     /* Phase 3: Admin dashboard stats + chart series (GET /stats/) */
     getStats: function () {
       return api.get('/stats/');
@@ -101,6 +134,19 @@ define(['services/api'], function (api) {
 
     updateTemplate: function (id, data) {
       return api.put('/approval-templates/' + id, data);
+    },
+
+    /* Wave 4 (1.4): safe template editing — clone-as-draft → edit → activate.
+       The live template is never edited; activation archives the old version. */
+    cloneTemplate: function (id) {
+      return api.post('/approval-templates/' + id + '/clone', {}, { silent: true });
+    },
+    activateTemplate: function (id) {
+      return api.post('/approval-templates/' + id + '/activate', {}, { silent: true });
+    },
+    /* steps: [{ stepId, seq, label, slaHours }] — drafts only (server-enforced) */
+    updateTemplateSteps: function (id, steps) {
+      return api.put('/approval-templates/' + id + '/steps', { steps: steps }, { silent: true });
     },
 
     /* ── Platform stats — aggregate live API data ─────────────────────── */

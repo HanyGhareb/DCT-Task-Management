@@ -15,7 +15,9 @@ import os
 import sys
 
 ORDS_ORIGIN = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com'
-PORT = 8080
+# Port override: `python dev-proxy.py 8081` or DEV_PROXY_PORT=8081 (default 8080)
+PORT = int(os.environ.get('DEV_PROXY_PORT')
+           or (sys.argv[1] if len(sys.argv) > 1 and sys.argv[1].isdigit() else 8080))
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 APPS_ROOT  = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))   # 'final apps'
 SHARED_DIR = os.path.join(APPS_ROOT, 'shared')

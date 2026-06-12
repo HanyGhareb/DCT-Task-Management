@@ -28,7 +28,10 @@ define(['knockout'], function (ko) {
   }
 
   function fetchJson(url) {
-    return fetch(url + '?v=' + Date.now()).then(function (r) {
+    // Same cache policy as requirejs urlArgs: fresh on localhost, APP_VERSION on deploys.
+    var v = (!window.APP_VERSION || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+            ? Date.now() : window.APP_VERSION;
+    return fetch(url + '?v=' + v).then(function (r) {
       return r.ok ? r.json() : {};
     }).catch(function () { return {}; });
   }
@@ -58,8 +61,14 @@ define(['knockout'], function (ko) {
     return v;
   }
 
-  function setLang(l) {
+  /* True once the user explicitly picked a language this session (lang pill on
+     login page or topbar). Decision rule for post-login sync (UAT LOG-07):
+     explicit choice this session > stored server pref > default EN. */
+  var userTouched = false;
+
+  function setLang(l, opts) {
     if (l !== 'en' && l !== 'ar') return;
+    if (!opts || !opts.system) userTouched = true;
     localStorage.setItem(LS_KEY, l);
     applyDocument(l);
     load(l).then(function () { lang(l); });
@@ -92,6 +101,7 @@ define(['knockout'], function (ko) {
   return {
     t: t, lang: lang, setLang: setLang, init: init,
     toggle: function () { setLang(lang() === 'en' ? 'ar' : 'en'); },
+    wasUserSet: function () { return userTouched; },
     fmtNum: fmtNum, fmtDate: fmtDate
   };
 });

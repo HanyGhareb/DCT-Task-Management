@@ -27,6 +27,76 @@ function (ko, authService, moduleService, auditService, i18n, charts) {
     });
     self.chartsEmpty  = ko.observable(false);
 
+    /* ── Wave 4 (4.2): user-configurable layout ──────────────────────────
+       Stat cards can be hidden/reordered, charts + module grid hidden.
+       Persisted per-user as JSON in /prefs/DASHBOARD_LAYOUT. */
+    var STAT_DEFS = [
+      { id: 'activeUsers',      cls: 'stat-card--red',    key: 'dash.activeUsers' },
+      { id: 'activeModules',    cls: 'stat-card--blue',   key: 'dash.activeModules' },
+      { id: 'rolesDefined',     cls: 'stat-card--green',  key: 'dash.rolesDefined' },
+      { id: 'pendingApprovals', cls: 'stat-card--orange', key: 'dash.pendingApprovals' },
+      { id: 'activeSessions',   cls: 'stat-card--blue',   key: 'dash.activeSessions' },
+    ];
+    self.customizing = ko.observable(false);
+    self.layout = ko.observable({ order: STAT_DEFS.map(function (d) { return d.id; }), hidden: [] });
+
+    function normLayout(l) {
+      var ids = STAT_DEFS.map(function (d) { return d.id; });
+      var order = ((l && l.order) || []).filter(function (id) { return ids.indexOf(id) >= 0; });
+      ids.forEach(function (id) { if (order.indexOf(id) < 0) order.push(id); });
+      return { order: order, hidden: (l && l.hidden) || [] };
+    }
+    require(['services/api'], function (api) {
+      api.get('/prefs/', { silent: true }).then(function (r) {
+        var row = (r.items || []).find(function (p) { return p.key === 'DASHBOARD_LAYOUT'; });
+        if (row && row.value) {
+          try { self.layout(normLayout(JSON.parse(row.value))); } catch (e) {}
+        }
+      }).catch(function () {});
+    });
+
+    self.isHidden = function (id) { return self.layout().hidden.indexOf(id) >= 0; };
+    self.toggleWidget = function (id) {
+      var l = self.layout();
+      var h = l.hidden.slice();
+      var i = h.indexOf(id);
+      if (i >= 0) h.splice(i, 1); else h.push(id);
+      self.layout({ order: l.order, hidden: h });
+      // re-showing a chart re-creates its canvas — paint it on the next tick
+      if (self._statsData) setTimeout(function () { renderCharts(self._statsData); }, 0);
+    };
+    self.moveStat = function (id, dir) {
+      var l = self.layout();
+      var order = l.order.slice();
+      var i = order.indexOf(id);
+      var j = i + dir;
+      if (i < 0 || j < 0 || j >= order.length) return;
+      order[i] = order[j];
+      order[j] = id;
+      self.layout({ order: order, hidden: l.hidden });
+    };
+    self.statCards = ko.computed(function () {
+      var l = self.layout();
+      var custom = self.customizing();
+      return l.order.map(function (id) {
+        return STAT_DEFS.find(function (d) { return d.id === id; });
+      }).filter(function (d) {
+        return d && (custom || l.hidden.indexOf(d.id) < 0);
+      });
+    });
+    self.toggleCustomize = function () {
+      if (self.customizing()) {
+        // leaving customize mode = save
+        require(['services/api'], function (api) {
+          api.put('/prefs/DASHBOARD_LAYOUT',
+                  { value: JSON.stringify(self.layout()) }, { silent: true })
+            .catch(function () {});
+        });
+      }
+      self.customizing(!self.customizing());
+      if (self._statsData) setTimeout(function () { renderCharts(self._statsData); }, 0);
+    };
+
     function renderCharts(data) {
       var p = charts.palette();
       var cyc = data.approvalCycle || [];
@@ -46,7 +116,17 @@ function (ko, authService, moduleService, auditService, i18n, charts) {
               borderRadius: 6
             }]
           },
-          options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
+          options: {
+            plugins: { legend: { display: false } },
+            scales: { y: { beginAtZero: true } },
+            // Wave 3 drill-down: bar → approval monitor pre-filtered to module
+            onHover: function (e, els) { e.native.target.style.cursor = els.length ? 'pointer' : ''; },
+            onClick: function (e, els) {
+              if (!els.length) return;
+              sessionStorage.setItem('amPresetSearch', cyc[els[0].index].module || '');
+              if (window._jetApp) window._jetApp.navigate('approvalMonitor');
+            }
+          }
         });
       }
       var c2 = document.getElementById('admChart2');
@@ -62,12 +142,23 @@ function (ko, authService, moduleService, auditService, i18n, charts) {
                 borderColor: p.amber, backgroundColor: charts.alpha(p.amber, .10), fill: true, tension: .35 }
             ]
           },
-          options: { scales: { y: { beginAtZero: true, ticks: { precision: 0 } } } }
+          options: {
+            scales: { y: { beginAtZero: true, ticks: { precision: 0 } } },
+            // Wave 3 drill-down: logins series → audit log filtered to LOGIN
+            onHover: function (e, els) { e.native.target.style.cursor = els.length ? 'pointer' : ''; },
+            onClick: function (e, els) {
+              if (!els.length) return;
+              sessionStorage.setItem('auditPresetAction',
+                els[0].datasetIndex === 0 ? 'LOGIN' : '');
+              if (window._jetApp) window._jetApp.navigate('auditLog');
+            }
+          }
         });
       }
     }
 
     auditService.getStats().then(function (s) {
+      self._statsData = s;   // kept for re-render when widgets are re-shown
       self.stats({
         activeUsers:      s.activeUsers,
         activeModules:    s.activeModules,

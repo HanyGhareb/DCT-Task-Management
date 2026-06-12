@@ -1,5 +1,5 @@
-define(['knockout', 'services/userService', 'services/roleService'],
-function (ko, userService, roleService) {
+define(['knockout', 'services/userService', 'services/roleService', 'shared/formGuard'],
+function (ko, userService, roleService, formGuard) {
   'use strict';
 
   function UserEditViewModel() {
@@ -100,6 +100,7 @@ function (ko, userService, roleService) {
       var op = self.isNew ? userService.create(data) : userService.update(editId, data);
       op.then(function () {
         self.saving(false);
+        if (self._guard) self._guard.reset();   // saved — let navigation through
         self.successMsg('User saved successfully!');
         setTimeout(function () {
           if (window._jetApp) window._jetApp.navigate('users');
@@ -154,6 +155,17 @@ function (ko, userService, roleService) {
         }));
 
         self.loading(false);
+
+        // Wave 2: dirty-guard baseline AFTER the async populate — covers all
+        // fields plus the role checkbox set (serialised via a computed).
+        self._guard = formGuard.track([
+          self.username, self.displayName, self.displayNameAr, self.email,
+          self.phone, self.employeeNumber, self.orgId, self.isActive,
+          self.isExternal, self.password, self.confirmPassword,
+          ko.pureComputed(function () {
+            return self.roles().map(function (r) { return r.checked() ? r.roleCode : ''; }).join(',');
+          })
+        ]);
       })
       .catch(function () {
         self.loading(false);

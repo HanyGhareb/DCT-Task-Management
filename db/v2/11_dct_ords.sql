@@ -72,12 +72,18 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
         END IF;
         IF l_token IS NULL THEN RETURN NULL; END IF;
 
+        -- Wave 3 (db/v2/19): sessions expire after SESSION_TIMEOUT_MINS of
+        -- inactivity (default 480); successful calls touch last_activity_at.
         SELECT s.username INTO l_username
         FROM   dct_sessions s
         JOIN   dct_users    u ON s.user_id = u.user_id
         WHERE  s.session_id = l_token
           AND  s.is_active  = 'Y'
           AND  u.is_active  = 'Y'
+          AND  s.last_activity_at > SYSTIMESTAMP - NUMTODSINTERVAL(
+                 NVL((SELECT TO_NUMBER(setting_value)
+                      FROM dct_system_settings
+                      WHERE setting_key = 'SESSION_TIMEOUT_MINS'), 480), 'MINUTE')
           AND  ROWNUM = 1;
 
         dct_auth.touch_session(l_token);
@@ -1660,11 +1666,12 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT t.template_id, t.template_code, t.template_name, t.request_type,
-           t.is_active, m.module_code,
+           t.is_active, t.parent_template_id, NVL(t.version_no, 1) AS version_no,
+           m.module_code,
            (SELECT COUNT(*) FROM dct_approval_steps s WHERE s.template_id = t.template_id) AS step_count
     FROM   dct_approval_templates t
     LEFT JOIN dct_modules m ON m.module_id = t.module_id
-    ORDER BY m.module_code, t.template_name
+    ORDER BY m.module_code, t.template_name, t.version_no
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('templateId',   r.template_id);
@@ -1674,6 +1681,10 @@ BEGIN
     APEX_JSON.write('requestType',  NVL(r.request_type, '-'));
     APEX_JSON.write('stepCount',    NVL(r.step_count, 0));
     APEX_JSON.write('isActive',     r.is_active);
+    APEX_JSON.write('versionNo',    r.version_no);
+    IF r.parent_template_id IS NOT NULL THEN
+      APEX_JSON.write('parentTemplateId', r.parent_template_id);
+    END IF;
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1693,7 +1704,8 @@ BEGIN
   APEX_JSON.initialize_output;
   FOR t IN (
     SELECT t.template_id, t.template_code, t.template_name, t.request_type,
-           t.is_active, m.module_code,
+           t.is_active, t.parent_template_id, NVL(t.version_no, 1) AS version_no,
+           m.module_code,
            t.created_by, t.created_at, t.updated_by, t.updated_at
     FROM   dct_approval_templates t
     LEFT JOIN dct_modules m ON m.module_id = t.module_id
@@ -1706,13 +1718,17 @@ BEGIN
     APEX_JSON.write('module',       NVL(t.module_code, '-'));
     APEX_JSON.write('requestType',  NVL(t.request_type, '-'));
     APEX_JSON.write('isActive',     t.is_active);
+    APEX_JSON.write('versionNo',    t.version_no);
+    IF t.parent_template_id IS NOT NULL THEN
+      APEX_JSON.write('parentTemplateId', t.parent_template_id);
+    END IF;
     APEX_JSON.write('createdBy',    t.created_by);
     APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(t.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',    t.updated_by);
     APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(t.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.open_array('steps');
     FOR s IN (
-      SELECT s.step_seq, s.step_name, s.escalation_days, r.role_code
+      SELECT s.step_id, s.step_seq, s.step_name, s.escalation_days, r.role_code
       FROM   dct_approval_steps s
       LEFT JOIN dct_roles r ON r.role_id = s.required_role_id
       WHERE  s.template_id = t.template_id
@@ -1720,6 +1736,7 @@ BEGIN
     ) LOOP
       l_seq := l_seq + 1;
       APEX_JSON.open_object;
+      APEX_JSON.write('stepId',   s.step_id);
       APEX_JSON.write('seq',      l_seq);
       APEX_JSON.write('label',    NVL(s.step_name, 'Step ' || l_seq));
       APEX_JSON.write('roleCode', NVL(s.role_code, '-'));
@@ -2261,6 +2278,234 @@ BEGIN
   APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- WAVE ENHANCEMENTS (db/v2/19, post-UAT 12-Jun-2026)
+    -- boot (one-call shell bootstrap), notifications/count (badge poll),
+    -- audit/:id (diff snapshots), approval-template draft lifecycle.
+    -- =========================================================================
+    def_template('boot');
+    def_handler('boot', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
+  l_cnt  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  SELECT COUNT(*) INTO l_cnt
+  FROM   dct_notifications
+  WHERE  recipient_user_id = l_uid AND is_read = 'N'
+    AND  (expires_at IS NULL OR expires_at > SYSTIMESTAMP);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('unreadCount', l_cnt);
+  APEX_JSON.open_object('prefs');
+  FOR p IN (SELECT pref_key, pref_value FROM dct_user_preferences WHERE user_id = l_uid) LOOP
+    APEX_JSON.write(p.pref_key, p.pref_value);
+  END LOOP;
+  APEX_JSON.close_object;
+  APEX_JSON.open_array('settings');
+  FOR s IN (SELECT setting_key, setting_value
+            FROM   dct_system_settings
+            WHERE  setting_key LIKE 'FEATURE\_%' ESCAPE '\'
+               OR  setting_key LIKE 'LANDING\_%' ESCAPE '\'
+               OR  setting_key IN ('THEME_BRAND_COLOR','SESSION_TIMEOUT_MINS','APP_THEME')) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('key',   s.setting_key);
+    APEX_JSON.write('value', s.setting_value);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('notifications/count');
+    def_handler('notifications/count', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
+  l_cnt  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  SELECT COUNT(*) INTO l_cnt
+  FROM   dct_notifications
+  WHERE  recipient_user_id = l_uid AND is_read = 'N'
+    AND  (expires_at IS NULL OR expires_at > SYSTIMESTAMP);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('count', l_cnt);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('audit/[COLON]id');
+    def_handler('audit/[COLON]id', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  FOR r IN (SELECT log_id, old_values, new_values
+            FROM dct_audit_log WHERE log_id = [COLON]id) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('logId',     r.log_id);
+    APEX_JSON.write('oldValues', r.old_values);
+    APEX_JSON.write('newValues', r.new_values);
+    APEX_JSON.close_object;
+  END LOOP;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('approval-templates/[COLON]id/clone');
+    def_handler('approval-templates/[COLON]id/clone', 'POST', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_code VARCHAR2(100);
+  l_cnt  NUMBER;
+  l_new  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only SYS_ADMIN may manage templates'); RETURN;
+  END IF;
+  SELECT template_code INTO l_code
+  FROM dct_approval_templates WHERE template_id = [COLON]id;
+  IF INSTR(l_code, CHR(126)) > 0 THEN
+    dct_rest.err(409,'Only live templates can be cloned'); RETURN;
+  END IF;
+  SELECT COUNT(*) INTO l_cnt FROM dct_approval_templates
+  WHERE template_code = l_code || CHR(126) || 'D';
+  IF l_cnt > 0 THEN
+    dct_rest.err(409,'A draft already exists for this template'); RETURN;
+  END IF;
+  INSERT INTO dct_approval_templates (
+    template_code, template_name, template_name_ar, module_id, request_type,
+    description_en, description_ar, is_sequential, auto_approve_days,
+    is_active, parent_template_id, version_no, created_by)
+  SELECT template_code || CHR(126) || 'D', template_name, template_name_ar,
+         module_id, request_type, description_en, description_ar,
+         is_sequential, auto_approve_days,
+         'N', template_id, NVL(version_no, 1), l_user
+  FROM dct_approval_templates WHERE template_id = [COLON]id;
+  SELECT template_id INTO l_new FROM dct_approval_templates
+  WHERE template_code = l_code || CHR(126) || 'D';
+  INSERT INTO dct_approval_steps (
+    template_id, step_seq, step_name, step_name_ar, step_type,
+    required_role_id, specific_user_id, escalation_days, escalate_role_id,
+    is_mandatory, allow_skip, condition_type, amount_operator,
+    amount_threshold, type_filter, custom_condition, created_by)
+  SELECT l_new, step_seq, step_name, step_name_ar, step_type,
+         required_role_id, specific_user_id, escalation_days, escalate_role_id,
+         is_mandatory, allow_skip, condition_type, amount_operator,
+         amount_threshold, type_filter, custom_condition, l_user
+  FROM dct_approval_steps WHERE template_id = [COLON]id;
+  COMMIT;
+  OWA_UTIL.status_line(201, NULL, FALSE);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('templateId', l_new);
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN ROLLBACK; dct_rest.err(404,'Template not found');
+  WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('approval-templates/[COLON]id/activate');
+    def_handler('approval-templates/[COLON]id/activate', 'POST', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_parent NUMBER;
+  l_code   VARCHAR2(100);
+  l_ver    NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only SYS_ADMIN may manage templates'); RETURN;
+  END IF;
+  SELECT parent_template_id INTO l_parent
+  FROM dct_approval_templates WHERE template_id = [COLON]id;
+  IF l_parent IS NULL THEN
+    dct_rest.err(409,'Only drafts can be activated'); RETURN;
+  END IF;
+  SELECT template_code, NVL(version_no, 1) INTO l_code, l_ver
+  FROM dct_approval_templates WHERE template_id = l_parent;
+  UPDATE dct_approval_templates
+  SET    template_code = template_code || CHR(126) || 'V' || l_ver,
+         is_active = 'N', updated_by = l_user, updated_at = SYSTIMESTAMP
+  WHERE  template_id = l_parent;
+  UPDATE dct_approval_templates
+  SET    template_code = l_code, is_active = 'Y',
+         version_no = l_ver + 1, parent_template_id = NULL,
+         updated_by = l_user, updated_at = SYSTIMESTAMP
+  WHERE  template_id = [COLON]id;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN ROLLBACK; dct_rest.err(404,'Template not found');
+  WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('approval-templates/[COLON]id/steps');
+    def_handler('approval-templates/[COLON]id/steps', 'PUT', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_parent NUMBER;
+  l_n      NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only SYS_ADMIN may manage templates'); RETURN;
+  END IF;
+  SELECT parent_template_id INTO l_parent
+  FROM dct_approval_templates WHERE template_id = [COLON]id;
+  IF l_parent IS NULL THEN
+    dct_rest.err(409,'Steps can only be edited on drafts'); RETURN;
+  END IF;
+  dct_rest.parse_body([COLON]body);
+  l_n := NVL(APEX_JSON.get_count(p_path => 'steps'), 0);
+  FOR i IN 1 .. l_n LOOP
+    UPDATE dct_approval_steps
+    SET    step_seq = 1000 + APEX_JSON.get_number(p_path => 'steps[%d].seq', p0 => i)
+    WHERE  step_id     = APEX_JSON.get_number(p_path => 'steps[%d].stepId', p0 => i)
+      AND  template_id = [COLON]id;
+  END LOOP;
+  FOR i IN 1 .. l_n LOOP
+    UPDATE dct_approval_steps
+    SET    step_seq        = APEX_JSON.get_number(p_path => 'steps[%d].seq', p0 => i),
+           step_name       = NVL(APEX_JSON.get_varchar2(p_path => 'steps[%d].label', p0 => i), step_name),
+           escalation_days = NVL(APEX_JSON.get_number(p_path => 'steps[%d].slaHours', p0 => i) / 24, escalation_days),
+           updated_by      = l_user, updated_at = SYSTIMESTAMP
+    WHERE  step_id     = APEX_JSON.get_number(p_path => 'steps[%d].stepId', p0 => i)
+      AND  template_id = [COLON]id;
+  END LOOP;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN NO_DATA_FOUND THEN ROLLBACK; dct_rest.err(404,'Template not found');
+  WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 

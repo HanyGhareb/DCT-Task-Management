@@ -21,20 +21,34 @@
   <!-- ko if: showEdit() -->
   <!-- ko with: editTarget() -->
   <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
-    <div style="background:#fff;border-radius:12px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="background:var(--surface,#fff);border-radius:12px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)"
+         data-bind="modalTrap: $vm.closeEdit">
       <h3 style="margin-bottom:16px" data-bind="text: $vm.isNew() ? 'Add Lookup Value' : 'Edit Lookup Value'"></h3>
+      <!-- ko if: $vm.editError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: $vm.editError()"></span></div>
+      <!-- /ko -->
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Lookup Type <span class="required">*</span></label>
-          <input class="form-control" type="text" placeholder="e.g. PRIORITY" data-bind="value: lookupType">
+          <!-- ko if: $vm.isNew() -->
+          <select class="form-control" data-bind="value: lookupType,
+                   options: $vm.categoryOptions, optionsCaption: 'Select type…'"></select>
+          <!-- /ko -->
+          <!-- ko ifnot: $vm.isNew() -->
+          <input class="form-control" type="text" disabled data-bind="value: lookupType">
+          <!-- /ko -->
         </div>
         <div class="form-group">
           <label class="form-label">Code <span class="required">*</span></label>
-          <input class="form-control" type="text" placeholder="e.g. HIGH" data-bind="value: lookupCode">
+          <input class="form-control" type="text" placeholder="e.g. HIGH" data-bind="value: lookupCode, enable: $vm.isNew()">
         </div>
         <div class="form-group">
-          <label class="form-label">Display Value <span class="required">*</span></label>
+          <label class="form-label">Display Value (EN) <span class="required">*</span></label>
           <input class="form-control" type="text" placeholder="e.g. High Priority" data-bind="value: displayValue">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Display Value (AR)</label>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: displayAr">
         </div>
         <div class="form-group">
           <label class="form-label">Sort Order</label>
@@ -81,8 +95,7 @@
           </td>
           <td>
             <div class="table-actions">
-              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.openEdit.bind($parent, $data)">&#9998;</button>
-              <button class="btn btn-danger btn-sm btn-icon" data-bind="click: $parent.removeLookup.bind($parent, $data)">&#128465;</button>
+              <button class="btn btn-secondary btn-sm btn-icon" title="Edit" data-bind="click: $parent.openEdit.bind($parent, $data)">&#9998;</button>
             </div>
           </td>
         </tr>

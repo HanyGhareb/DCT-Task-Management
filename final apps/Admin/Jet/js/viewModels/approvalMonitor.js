@@ -6,6 +6,13 @@ define(['knockout', 'services/auditService'], function (ko, auditService) {
 
     self.statusFilter = ko.observable('ALL');
     self.searchTerm   = ko.observable('');
+
+    // Wave 3: dashboard drill-down lands here pre-filtered to a module
+    var presetSearch = sessionStorage.getItem('amPresetSearch');
+    if (presetSearch) {
+      sessionStorage.removeItem('amPresetSearch');
+      self.searchTerm(presetSearch);
+    }
     self.loading      = ko.observable(true);
     self.allApprovals = ko.observableArray([]);
 

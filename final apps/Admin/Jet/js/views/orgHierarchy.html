@@ -71,8 +71,20 @@
       <span class="badge" style="margin-inline-start:auto"
             data-bind="text: $vm.getTypeLabel($data.orgType),
                        css: $data.parentOrgId ? 'badge--info' : 'badge--admin'"></span>
-      <button class="btn btn-secondary btn-sm btn-icon" style="margin-inline-start:8px" title="Edit"
-              data-bind="click: $vm.openEdit.bind($vm, $data)">&#9998;</button>
+      <!-- UAT ORG-03: explicit per-node actions, keyboard reachable + named -->
+      <div class="org-actions">
+        <button type="button" class="btn btn-secondary btn-sm btn-icon"
+                data-bind="click: $vm.openEdit.bind($vm, $data),
+                           attr: { title: 'Edit ' + ($data.nameEn || ''), 'aria-label': 'Edit ' + ($data.nameEn || '') }">&#9998;</button>
+        <button type="button" class="btn btn-secondary btn-sm btn-icon"
+                data-bind="click: $vm.addChild.bind($vm, $data),
+                           attr: { title: 'Add unit under ' + ($data.nameEn || ''), 'aria-label': 'Add unit under ' + ($data.nameEn || '') }">&#43;</button>
+        <button type="button" class="btn btn-secondary btn-sm btn-icon"
+                data-bind="click: $vm.toggleActive.bind($vm, $data),
+                           attr: { title: ($data.isActive !== 'N' ? 'Deactivate ' : 'Reactivate ') + ($data.nameEn || ''),
+                                   'aria-label': ($data.isActive !== 'N' ? 'Deactivate ' : 'Reactivate ') + ($data.nameEn || '') },
+                           html: $data.isActive !== 'N' ? '&#9209;' : '&#9654;'"></button>
+      </div>
     </div>
     <!-- ko if: ($data.children || []).length -->
     <div style="margin-inline-start:28px;padding-inline-start:12px;border-inline-start:2px dashed var(--border, #e0e0e0)">
@@ -84,8 +96,11 @@
   <!-- Add / Edit modal -->
   <!-- ko if: showModal() -->
   <div class="modal-overlay" data-bind="click: closeModal">
-    <div class="modal-box" data-bind="click: function () { return false; }, clickBubble: false">
+    <div class="modal-box" data-bind="click: function () { return false; }, clickBubble: false, modalTrap: closeModal">
       <div class="modal-title" data-bind="text: modalTitle()"></div>
+      <!-- ko if: modalPath() -->
+      <div class="org-breadcrumb" data-bind="text: modalPath()"></div>
+      <!-- /ko -->
       <!-- ko if: modalError() -->
       <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: modalError()"></span></div>
       <!-- /ko -->

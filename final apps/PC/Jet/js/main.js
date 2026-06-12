@@ -4,7 +4,9 @@ const CDN = 'https://static.oracle.com/cdn/jet/17.0.0';
 
 requirejs.config({
   baseUrl: 'js',
-  urlArgs: 'v=' + Date.now(), // dev cache-buster
+  // localhost: bust on every load (dev). Deployed: cache by APP_VERSION (index.html).
+  urlArgs: 'v=' + ((!window.APP_VERSION || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+                   ? Date.now() : window.APP_VERSION),
   paths: {
     'knockout': CDN + '/3rdparty/knockout/knockout-3.5.1',
     'jquery':   CDN + '/3rdparty/jquery/jquery-3.7.1.min',

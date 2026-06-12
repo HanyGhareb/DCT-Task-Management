@@ -510,6 +510,14 @@ html[dir="rtl"] .switch input:checked + .switch-slider:before { transform: trans
   justify-content: center; font-size: 16px; flex-shrink: 0; }
 .org-icon--division { background: var(--brand-soft); }
 .org-icon--section  { background: var(--blue-soft); }
+/* per-node actions (UAT ORG-03): dimmed until hover/keyboard focus reaches
+   the row — never display:none, so they stay tab- and automation-reachable */
+.org-actions { display: flex; gap: 4px; margin-inline-start: 8px;
+  opacity: .35; transition: opacity .15s; }
+.org-card:hover .org-actions,
+.org-card:focus-within .org-actions { opacity: 1; }
+.org-breadcrumb { font: 500 12px var(--mono); color: var(--text-3);
+  margin: -6px 0 12px; }
 .org-name { font-size: 13px; font-weight: 600; }
 .org-code { font-size: 11px; color: var(--text-2); margin-block-start: 1px; }
 .org-children { margin-inline-start: 28px; padding-inline-start: 12px;
@@ -551,6 +559,11 @@ html[dir="rtl"] .switch input:checked + .switch-slider:before { transform: trans
   letter-spacing: .05em; }
 
 /* ── Empty state ────────────────────────────────────────────────────── */
+/* a11y (Wave 2): consistent keyboard focus ring everywhere — :focus-visible
+   keeps mouse clicks clean while making Tab navigation obvious */
+:focus-visible { outline: 2px solid var(--brand, var(--blue)); outline-offset: 2px;
+  border-radius: 4px; }
+
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-2); }
 .empty-state__icon { font-size: 48px; opacity: .3; margin-block-end: 12px; }
 .empty-state__msg  { font-size: 15px; font-weight: 600; }
@@ -613,6 +626,13 @@ html[dir="rtl"] .switch input:checked + .switch-slider:before { transform: trans
 .toast__body  { font-size: 12.5px; color: var(--text-2); word-break: break-word; }
 .toast__x { margin-inline-start: auto; border: 0; background: none; color: var(--text-3);
   cursor: pointer; font-size: 15px; line-height: 1; }
+/* inline action button (undo pattern, Wave 1) */
+.toast__action { display: inline-block; margin-block-start: 6px; margin-inline-end: 8px;
+  border: 1px solid var(--border-strong); background: var(--surface);
+  color: var(--brand, var(--blue)); font: 700 12px var(--font);
+  border-radius: 7px; padding: 4px 12px; cursor: pointer;
+  transition: background .15s, color .15s; }
+.toast__action:hover { background: var(--brand, var(--blue)); color: #fff; }
 @keyframes toastIn { from { opacity: 0; transform: translateY(-14px) scale(.94); }
   to { opacity: 1; transform: none; } }
 
@@ -689,3 +709,79 @@ html[dir="rtl"] .pager__btn span { display: inline-block; transform: scaleX(-1);
 .ann-banner--info     { background: var(--blue-soft);  color: #0a4d8c; border-color: rgba(9,105,218,.25); }
 .ann-banner--warning  { background: var(--amber-soft); color: #92400E; border-color: rgba(180,83,9,.3); }
 .ann-banner--critical { background: var(--red-soft);   color: #8a1820; border-color: rgba(209,36,47,.35); }
+
+/* ── Command palette (Wave 3 — shared/js/commandPalette.js, Ctrl+K) ─────
+   Vault aesthetic on purpose: the palette is a power-user surface, so it
+   wears the security-section design (dark surface, amber accent, mono). */
+.cmdp-overlay { position: fixed; inset: 0; background: rgba(6,10,16,.55);
+  backdrop-filter: blur(2px); z-index: 1200; display: flex;
+  justify-content: center; align-items: flex-start; padding-block-start: 12vh; }
+.cmdp { width: min(620px, 92vw); background: #161B22; border: 1px solid #30363D;
+  border-radius: 14px; box-shadow: 0 24px 80px rgba(0,0,0,.55);
+  font-family: var(--vault-font, var(--font)); overflow: hidden;
+  animation: cmdpIn .4s cubic-bezier(.34,1.56,.64,1); }
+@keyframes cmdpIn { from { opacity: 0; transform: translateY(-18px) scale(.96); }
+  to { opacity: 1; transform: none; } }
+.cmdp-inputwrap { display: flex; align-items: center; gap: 10px;
+  padding: 14px 16px; border-block-end: 1px solid #30363D; }
+.cmdp-glyph { color: #F0883E; font-size: 16px; }
+.cmdp-input { flex: 1; border: 0; outline: 0; background: transparent;
+  color: #E6EDF3; font: 500 15px var(--vault-font, var(--font)); }
+.cmdp-input::placeholder { color: #7D8590; }
+.cmdp-esc, .cmdp-foot kbd { background: #21262D; border: 1px solid #30363D;
+  border-radius: 5px; color: #7D8590; font: 600 10.5px var(--vault-mono, monospace);
+  padding: 2px 6px; }
+.cmdp-list { max-height: 46vh; overflow-y: auto; padding: 6px; }
+.cmdp-group { font: 700 10.5px var(--vault-mono, monospace); letter-spacing: .12em;
+  text-transform: uppercase; color: #7D8590; padding: 10px 12px 4px; }
+.cmdp-item { display: flex; align-items: center; gap: 12px; padding: 9px 12px;
+  border-radius: 9px; cursor: pointer; }
+.cmdp-item--sel { background: rgba(240,136,62,.13);
+  box-shadow: inset 2px 0 0 #F0883E; }
+html[dir="rtl"] .cmdp-item--sel { box-shadow: inset -2px 0 0 #F0883E; }
+.cmdp-ic { width: 26px; text-align: center; font-size: 15px; flex: none; }
+.cmdp-txt { min-width: 0; }
+.cmdp-title { color: #E6EDF3; font-size: 13.5px; font-weight: 600;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmdp-sub { color: #7D8590; font: 500 11.5px var(--vault-mono, monospace);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cmdp-empty { color: #7D8590; text-align: center; padding: 26px 0;
+  font-size: 13px; }
+.cmdp-foot { display: flex; align-items: center; gap: 6px; padding: 9px 16px;
+  border-block-start: 1px solid #30363D; }
+.cmdp-foot-txt { color: #7D8590; font-size: 11.5px; }
+
+/* ── Bulk action bar (Wave 3 — users list multi-select) ─────────────── */
+.bulkbar { position: sticky; inset-block-start: calc(var(--topbar-h) + 8px);
+  z-index: 60; display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--brand, var(--blue));
+  border-radius: 10px; padding: 9px 14px; margin-block-end: 12px;
+  box-shadow: 0 6px 24px rgba(15,22,30,.12);
+  animation: toastIn .35s var(--spring); }
+.bulkbar__count { font: 700 12.5px var(--mono); color: var(--brand, var(--blue)); }
+.row--selected td { background: var(--brand-soft, rgba(9,105,218,.06)); }
+
+/* ── Audit before/after diff (Wave 3 — auditLog.html expandable row) ── */
+.audit-diff-row > td { background: var(--surface-2); padding: 14px 18px; }
+.audit-diff { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.audit-diff th { text-align: start; font: 700 10.5px var(--mono); letter-spacing: .08em;
+  text-transform: uppercase; color: var(--text-3); padding: 4px 10px; }
+.audit-diff td { padding: 5px 10px; border-block-start: 1px solid var(--border);
+  vertical-align: top; word-break: break-word; }
+.audit-diff__old { color: var(--text-3); }
+.audit-diff__new { color: var(--text-2); }
+.audit-diff--changed .audit-diff__old { background: var(--red-soft);
+  color: #8a1820; text-decoration: line-through; border-radius: 4px; }
+.audit-diff--changed .audit-diff__new { background: rgba(63,185,80,.12);
+  color: #1a7f37; border-radius: 4px; font-weight: 600; }
+.audit-diff__loading { color: var(--text-3); font-size: 12.5px; padding: 6px 2px; }
+
+/* ── Dashboard customize mode (Wave 4 — 4.2) ────────────────────────── */
+.stat-card, .chart-card { position: relative; }
+.dash-cust { position: absolute; inset-block-start: 6px; inset-inline-end: 6px;
+  display: flex; gap: 4px; z-index: 5; }
+.dash-cust button { width: 24px; height: 24px; display: grid; place-items: center;
+  border: 1px solid var(--border-strong); background: var(--surface);
+  border-radius: 6px; cursor: pointer; font-size: 11px; color: var(--text-2); }
+.dash-cust button:hover { border-color: var(--brand); color: var(--brand); }
+.dash-widget--off { opacity: .35; filter: grayscale(.6); }

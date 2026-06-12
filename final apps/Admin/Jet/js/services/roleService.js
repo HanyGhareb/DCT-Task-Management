@@ -4,13 +4,17 @@
  * All methods return Promises.
  * ORDS endpoints: /dct/roles/  /dct/permissions/  /dct/roles/:id/permissions
  */
-define(['services/api'], function (api) {
+define(['services/api', 'shared/refCache'], function (api, refCache) {
   'use strict';
 
   return {
 
+    /* roles/permissions lists are read-mostly — served via the shared
+       5-min TTL cache (Wave 2); every mutating method invalidates */
     getAll: function () {
-      return api.get('/roles/').then(function (r) { return r.items || []; });
+      return refCache.get('roles', function () {
+        return api.get('/roles/').then(function (r) { return r.items || []; });
+      });
     },
 
     getById: function (id) {
@@ -18,7 +22,9 @@ define(['services/api'], function (api) {
     },
 
     getPermissions: function () {
-      return api.get('/permissions/').then(function (r) { return r.items || []; });
+      return refCache.get('permissions', function () {
+        return api.get('/permissions/').then(function (r) { return r.items || []; });
+      });
     },
 
     getPermissionsByModule: function () {
@@ -38,18 +44,22 @@ define(['services/api'], function (api) {
     },
 
     create: function (data) {
+      refCache.invalidate('roles');
       return api.post('/roles/', data);
     },
 
     update: function (id, data) {
+      refCache.invalidate('roles');
       return api.put('/roles/' + id, data);
     },
 
     remove: function (id) {
+      refCache.invalidate('roles');
       return api.delete('/roles/' + id);
     },
 
     setRolePermissions: function (roleId, permIds) {
+      refCache.invalidate('roles');
       return api.put('/roles/' + roleId, { permIds: permIds });
     },
 

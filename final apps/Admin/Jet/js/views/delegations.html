@@ -21,7 +21,10 @@
   <!-- /ko -->
   <!-- ko if: !loading() && !loadError() && filtered().length === 0 -->
   <div class="empty-state"><div class="empty-state__icon">&#129309;</div>
-    <div class="empty-state__msg">No delegations in this view</div></div>
+    <div class="empty-state__msg" data-bind="text: $root.t('del.emptyMsg')"></div>
+    <div class="empty-state__sub" data-bind="text: $root.t('del.emptySub')"></div>
+    <button class="btn btn-primary"
+            data-bind="click: function(){ $root.navigate('profile'); }, text: $root.t('del.emptyCta')"></button></div>
   <!-- /ko -->
 
   <!-- ko if: !loading() && !loadError() && filtered().length > 0 -->

@@ -56,6 +56,23 @@ define(['knockout', 'services/themeService'], function (ko, themeService) {
       textColor:   '#dde0f0',
       border:      '#252538',
     },
+    {
+      id:          'vault',
+      name:        'Vault Dark',
+      desc:        'The security-section design as a full platform theme — GitHub-dark surfaces with the signature amber accent',
+      /* preview colours — mirrors the --vault-* tokens */
+      headerBg:    '#090C10',
+      headerText:  '#E6EDF3',
+      sidebarBg:   '#0D1117',
+      contentBg:   '#0D1117',
+      cardBg:      '#161B22',
+      tableHeadBg: '#161B22',
+      activeBg:    'rgba(240,136,62,0.13)',
+      activeColor: '#F0883E',
+      accent:      '#F0883E',
+      textColor:   '#E6EDF3',
+      border:      '#30363D',
+    },
   ];
 
   function AppearanceViewModel() {

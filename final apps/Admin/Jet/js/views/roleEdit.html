@@ -101,9 +101,13 @@
         <div class="re-perm-module-name" data-bind="text: module"></div>
         <div class="re-perm-grid">
           <!-- ko foreach: permissions -->
-          <div class="re-perm-item"
+          <div class="re-perm-item" role="switch" tabindex="0" aria-checked="false"
                data-bind="click: function() { checked(!checked()); },
-                          css: { 're-perm-item--on': checked() }">
+                          css: { 're-perm-item--on': checked() },
+                          attr: { 'aria-checked': checked() ? 'true' : 'false', 'aria-label': permName },
+                          event: { keydown: function (d, e) {
+                            if (e.key === 'Enter' || e.key === ' ') { checked(!checked()); return false; }
+                            return true; } }">
             <div class="re-perm-toggle">
               <span class="re-perm-toggle-dot"></span>
             </div>

@@ -430,3 +430,85 @@ table.data-table thead th,
     color .25s ease,
     box-shadow .25s ease;
 }
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  THEME 4 — VAULT DARK (Wave 4)                                      ║
+   ║  The roles/permissions "Vault" design promoted to a full platform   ║
+   ║  theme: GitHub-dark surfaces, amber accent, Fira Code mono.         ║
+   ║  Mostly token overrides — platform.css components follow along.     ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+[data-theme="vault"] {
+  /* Phase 3 platform tokens */
+  --bg:            #0D1117;
+  --surface:       #161B22;
+  --surface-2:     #1C232C;
+  --border:        #30363D;
+  --border-strong: #3D444D;
+  --text:          #E6EDF3;
+  --text-2:        #B7C0CA;
+  --text-3:        #7D8590;
+
+  --chrome-bg:      #090C10;
+  --chrome-surface: #161B22;
+  --chrome-border:  #30363D;
+  --chrome-text:    #C9D2DC;
+  --chrome-text-2:  #7D8590;
+
+  --amber: #F0883E;  --amber-soft: rgba(240,136,62,.13);
+  --green: #3FB950;  --green-soft: rgba(63,185,80,.15);
+  --red:   #F85149;  --red-soft:   rgba(248,81,73,.14);
+  --blue:  #58A6FF;  --blue-soft:  rgba(88,166,255,.14);
+
+  --shadow:       0 1px 2px rgba(0,0,0,.5), 0 4px 14px rgba(0,0,0,.35);
+  --shadow-hover: 0 6px 22px rgba(0,0,0,.55);
+
+  /* legacy aliases used by older views */
+  --header-bg:        var(--chrome-bg);
+  --sidebar-bg:       var(--chrome-bg);
+  --sidebar-border:   var(--chrome-border);
+  --content-bg:       var(--bg);
+  --text-primary:     var(--text);
+  --text-secondary:   var(--text-2);
+  --border-color:     var(--border);
+  --nav-active-bg:    rgba(240,136,62,.13);
+  --nav-active-color: #F0883E;
+  --nav-hover-bg:     var(--chrome-surface);
+  --card-shadow:      var(--shadow);
+  --card-shadow-hover:var(--shadow-hover);
+}
+
+/* dark form controls + native select arrow */
+[data-theme="vault"] .form-control       { background: #0D1117; border-color: #30363D; color: #E6EDF3; }
+[data-theme="vault"] .form-control:focus { border-color: #F0883E; box-shadow: 0 0 0 2px rgba(240,136,62,.18); }
+[data-theme="vault"] .form-control[readonly] { background: #10151C; color: #7D8590; }
+[data-theme="vault"] select.form-control {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M0 0l6 7 6-7z' fill='%237D8590'/%3E%3C/svg%3E");
+}
+[data-theme="vault"] .search-box              { background: #0D1117; border-color: #30363D; color: #E6EDF3; }
+[data-theme="vault"] .search-box::placeholder { color: #7D8590; }
+[data-theme="vault"] .search-box:focus        { border-color: #F0883E; box-shadow: 0 0 0 2px rgba(240,136,62,.18); }
+
+/* buttons & switches pick up the amber accent */
+[data-theme="vault"] .btn-secondary       { background: #161B22; color: #E6EDF3; border-color: #30363D; }
+[data-theme="vault"] .btn-secondary:hover { background: #1C232C; }
+[data-theme="vault"] .switch-slider       { background: #3D444D; }
+[data-theme="vault"] .switch input:checked + .switch-slider { background: #F0883E; }
+[data-theme="vault"] .checkbox-item       { background: #0D1117; border-color: #30363D; color: #E6EDF3; }
+[data-theme="vault"] .checkbox-item--on   { border-color: #F0883E; background: rgba(240,136,62,.08); }
+[data-theme="vault"] .checkbox-item input[type="checkbox"] { accent-color: #F0883E; }
+
+/* tables */
+[data-theme="vault"] table.data-table thead th { background: #161B22; color: #7D8590; }
+[data-theme="vault"] table.data-table tbody tr:hover { background: rgba(255,255,255,.03); }
+
+/* user dropdown + theme picker cards */
+[data-theme="vault"] .user-dropdown       { background: #161B22; border-color: #30363D; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+[data-theme="vault"] .dd-item:hover       { background: rgba(255,255,255,.05); }
+[data-theme="vault"] .theme-card          { background: #161B22; }
+[data-theme="vault"] .theme-card--active  { border-color: #F0883E; box-shadow: 0 4px 18px rgba(240,136,62,.25); }
+[data-theme="vault"] .theme-card__check   { background: #F0883E; color: #0D1117; }
+[data-theme="vault"] .theme-card__footer  { border-color: #30363D; }
+
+/* badges keep their hue but on dark soft backgrounds (tokens above), one fix: */
+[data-theme="vault"] .badge--admin { background: rgba(240,136,62,.13); color: #F0883E; }

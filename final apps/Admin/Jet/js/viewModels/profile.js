@@ -1,5 +1,6 @@
-define(['knockout', 'services/authService', 'services/userService', 'services/delegationService'],
-function (ko, authService, userService, delegationService) {
+define(['knockout', 'services/authService', 'services/userService', 'services/delegationService',
+        'shared/formGuard'],
+function (ko, authService, userService, delegationService, formGuard) {
   'use strict';
 
   function ProfileViewModel() {
@@ -50,8 +51,15 @@ function (ko, authService, userService, delegationService) {
           email: u.email, phone: u.phone, employeeNumber: u.employeeNumber,
           photoUrl: u.photoUrl || null,
         });
+        if (self._guard) self._guard.reset();   /* server values = clean state */
       }).catch(function () { /* session values already shown */ });
     }
+
+    // Wave 2: dirty guard — profile fields + password trio (cleared on save)
+    self._guard = formGuard.track([
+      self.displayName, self.displayNameAr, self.email, self.phone,
+      self.employeeNumber
+    ]);
 
     self.initials = ko.computed(function () {
       var p = self.displayName().split(' ');
@@ -74,6 +82,7 @@ function (ko, authService, userService, delegationService) {
       userService.update(session.userId, payload).then(function () {
         authService.updateCachedUser(payload);
         self.saving(false);
+        if (self._guard) self._guard.reset();
         self.successMsg('Profile updated successfully!');
         setTimeout(function () { self.successMsg(''); }, 3000);
       }).catch(function (err) {
@@ -145,6 +154,10 @@ function (ko, authService, userService, delegationService) {
     self.delEnd          = ko.observable('');
     self.delReason       = ko.observable('');
     self.delError        = ko.observable('');
+    // Wave 4 (4.4): scope — ALL_ROLES or one module; future start = scheduled
+    self.delScope        = ko.observable('ALL_ROLES');
+    self.delModuleCode   = ko.observable('');
+    self.delModules      = ko.observableArray([]);
 
     function loadDelegations() {
       delegationService.getAll(true).then(function (items) {
@@ -156,10 +169,19 @@ function (ko, authService, userService, delegationService) {
 
     self.openDelModal = function () {
       self.delError('');
-      userService.getAll().then(function (items) {
-        self.delUsers((items || []).filter(function (u) {
+      Promise.all([
+        userService.getAll(),
+        // modules list rides the refCache (Wave 2) — no extra network cost
+        new Promise(function (resolve) {
+          require(['services/moduleService'], function (moduleService) {
+            moduleService.getAccessibleForUser().then(resolve).catch(function () { resolve([]); });
+          });
+        })
+      ]).then(function (res) {
+        self.delUsers((res[0] || []).filter(function (u) {
           return u.userId !== session.userId && u.isActive !== 'N';
         }));
+        self.delModules(res[1] || []);
         self.showDelModal(true);
       });
     };
@@ -168,10 +190,14 @@ function (ko, authService, userService, delegationService) {
       self.delError('');
       if (!self.delDelegateId()) { self.delError('Pick who will act on your behalf.'); return; }
       if (!self.delEnd())        { self.delError('An end date is required.'); return; }
+      if (self.delScope() === 'MODULE' && !self.delModuleCode()) {
+        self.delError('Pick the module this delegation covers.'); return;
+      }
       self.delBusy(true);
       delegationService.create({
         delegateId: Number(self.delDelegateId()),
-        scope:      'ALL_ROLES',
+        scope:      self.delScope(),
+        moduleCode: self.delScope() === 'MODULE' ? self.delModuleCode() : null,
         startDate:  self.delStart() || null,
         endDate:    self.delEnd(),
         reason:     self.delReason()
@@ -179,6 +205,7 @@ function (ko, authService, userService, delegationService) {
         self.delBusy(false);
         self.showDelModal(false);
         self.delDelegateId(''); self.delStart(''); self.delEnd(''); self.delReason('');
+        self.delScope('ALL_ROLES'); self.delModuleCode('');
         loadDelegations();
       }).catch(function (err) {
         self.delBusy(false);

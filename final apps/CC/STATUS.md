@@ -105,3 +105,10 @@ UAT: `UAT/UAT_CC_TestScript.xlsx` (29 cases). Test scripts:
 - Dropped: DCT_CC_ATTACHMENTS, DCT_CC_REIMB_LINES, DCT_CC_DOC_REQUIREMENTS. New script: 08_cc_unified_adoption.sql (run after db/v2/15, then re-run 02 + 04).
 - Status/type CHECKs removed; 6 CC_* lookup categories seeded (lookup-first, validated via DCT_LOOKUP_PKG).
 - Full write-path exercised in PROD (CCR-2026-00001..3, card CC-2026-00001 CLOSED) - see assessment-3/phase2/README.md.
+
+## Automated UAT (2026-06-12) - assessment-3/phase4/tests/uat_run_cc.py
+- All 29 workbook cases (UAT_CC_*.xlsx) executed by Playwright against the live app; result 29 PASS / 0 FAIL.
+- Word report with one evidence screenshot per case: UAT/UAT_CC_Results_12-Jun-2026-02.docx (+ evidence_12-Jun-2026-02/).
+- Runner runs on its own port (8081) - CC/Jet/dev-proxy.py now accepts a port argument (default 8080).
+- Lifecycle data created: cards CC-2026-00004 (ADMIN) + CC-2026-00005 (SHAIKHA.GALAMERI) registered from approved NEW_CARD requests; SHAIKHA.ALSUWAIDI limit exercised 20k->22k->restored 20k (INCREASE+DECREASE history rows); replenishments CCM-2026-04/03/02 + a dangling June DRAFT CCM-2026-06-00002 from pass 1.
+- Observation (one-off, pass 1 only): a freshly loaded DRAFT replenishment once showed a phantom "Unsaved changes" marker forcing a re-save before Submit; not reproduced in the final run.

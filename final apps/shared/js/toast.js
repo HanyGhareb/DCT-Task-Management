@@ -22,7 +22,9 @@ define([], function () {
     return host;
   }
 
-  function show(type, title, body, ms) {
+  /* opts (Wave 1): { actionLabel, onAction } renders an inline action button
+     (the undo pattern) — clicking it runs onAction and dismisses the toast. */
+  function show(type, title, body, ms, opts) {
     var h = ensureHost();
     var el = document.createElement('div');
     el.className = 'toast' + (type ? ' toast--' + type : '');
@@ -43,6 +45,16 @@ define([], function () {
       b.textContent = body;
       txt.appendChild(b);
     }
+    if (opts && opts.actionLabel && typeof opts.onAction === 'function') {
+      var a = document.createElement('button');
+      a.className = 'toast__action';
+      a.textContent = opts.actionLabel;
+      a.onclick = function () {
+        dismiss();
+        try { opts.onAction(); } catch (e) {}
+      };
+      txt.appendChild(a);
+    }
     el.appendChild(txt);
     el.appendChild(x);
     h.appendChild(el);
@@ -61,6 +73,10 @@ define([], function () {
     error:   function (body, title) { return show('error',   title || 'Error',   body, 7000); },
     success: function (body, title) { return show('success', title || 'Done',    body); },
     info:    function (body, title) { return show('info',    title || '',        body); },
-    warn:    function (body, title) { return show('warn',    title || '',        body); }
+    warn:    function (body, title) { return show('warn',    title || '',        body); },
+    /* undo('User deactivated', fn, 'Undo') — 8s window, then it sticks */
+    undo:    function (body, onUndo, label) {
+      return show('info', '', body, 8000, { actionLabel: label || 'Undo', onAction: onUndo });
+    }
   };
 });

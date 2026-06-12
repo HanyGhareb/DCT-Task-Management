@@ -1,4 +1,5 @@
-define(['knockout', 'services/roleService'], function (ko, roleService) {
+define(['knockout', 'services/roleService', 'shared/formGuard'],
+function (ko, roleService, formGuard) {
   'use strict';
 
   function RoleEditViewModel() {
@@ -51,7 +52,20 @@ define(['knockout', 'services/roleService'], function (ko, roleService) {
           }));
         })
         .catch(function () {})
-        .then(function () { self.loading(false); });
+        .then(function () {
+          self.loading(false);
+          // Wave 2: dirty-guard baseline after populate (fields + perm set)
+          self._guard = formGuard.track([
+            self.roleCode, self.roleName, self.description, self.isActive,
+            ko.pureComputed(function () {
+              var ids = [];
+              self.permModules().forEach(function (m) {
+                m.permissions.forEach(function (p) { if (p.checked()) ids.push(p.permId); });
+              });
+              return ids.join(',');
+            })
+          ]);
+        });
     }
 
     self.validate = function () {
@@ -86,6 +100,7 @@ define(['knockout', 'services/roleService'], function (ko, roleService) {
         .then(function (savedId) { return roleService.setRolePermissions(savedId, selectedPermIds); })
         .then(function () {
           self.saving(false);
+          if (self._guard) self._guard.reset();   // saved — let navigation through
           self.successMsg('Role saved successfully!');
           setTimeout(function () { if (window._jetApp) window._jetApp.navigate('roles'); }, 800);
         })

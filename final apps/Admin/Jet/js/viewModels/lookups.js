@@ -47,9 +47,14 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
     self.saving      = ko.observable(false);
     self.auditTarget = ko.observable(null);   // createdBy/At, updatedBy/At of the edited value
 
+    // existing categories only — creating a NEW category stays an APEX task
+    self.categoryOptions = ko.computed(function () {
+      return self.lookupTypes().filter(function (t) { return t !== 'ALL'; });
+    });
+
     self.openNew = function () {
       self.auditTarget(null);
-      self.editTarget({ lookupId: null, lookupType: ko.observable(''), lookupCode: ko.observable(''), displayValue: ko.observable(''), sortOrder: ko.observable(1), isActive: ko.observable(true) });
+      self.editTarget({ lookupId: null, lookupType: ko.observable(''), lookupCode: ko.observable(''), displayValue: ko.observable(''), displayAr: ko.observable(''), sortOrder: ko.observable(''), isActive: ko.observable(true) });
       self.isNew(true);
       self.editError('');
       self.showEdit(true);
@@ -57,7 +62,7 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
 
     self.openEdit = function (l) {
       self.auditTarget(l);
-      self.editTarget({ lookupId: l.lookupId, lookupType: ko.observable(l.lookupType), lookupCode: ko.observable(l.lookupCode), displayValue: ko.observable(l.displayValue), sortOrder: ko.observable(l.sortOrder), isActive: ko.observable(l.isActive === 'Y') });
+      self.editTarget({ lookupId: l.lookupId, lookupType: ko.observable(l.lookupType), lookupCode: ko.observable(l.lookupCode), displayValue: ko.observable(l.displayValue), displayAr: ko.observable(l.displayAr || ''), sortOrder: ko.observable(l.sortOrder), isActive: ko.observable(l.isActive === 'Y') });
       self.isNew(false);
       self.editError('');
       self.showEdit(true);
@@ -68,15 +73,19 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
     self.saveEdit = function () {
       var t = self.editTarget();
       if (!t) return;
-      self.saving(true);
       self.editError('');
       var data = {
         lookupType:   t.lookupType(),
         lookupCode:   (t.lookupCode() || '').toUpperCase().trim(),
         displayValue: (t.displayValue() || '').trim(),
+        displayAr:    (t.displayAr() || '').trim(),
         sortOrder:    Number(t.sortOrder()) || 1,
         isActive:     t.isActive() ? 'Y' : 'N',
       };
+      if (self.isNew() && !data.lookupType) { self.editError('Pick the lookup type.'); return; }
+      if (!data.lookupCode)                 { self.editError('A code is required.');   return; }
+      if (!data.displayValue)               { self.editError('A display value is required.'); return; }
+      self.saving(true);
       var op = self.isNew()
         ? settingService.createLookup(data)
         : settingService.updateLookup(t.lookupId, data);
@@ -90,13 +99,8 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
         self.editError((err && err.message) || 'Save failed');
       });
     };
-
-    self.removeLookup = function (l) {
-      if (!confirm('Delete "' + l.displayValue + '"?')) return;
-      settingService.removeLookup(l.lookupId).catch(function (err) {
-        alert((err && err.message) || 'Delete failed');
-      });
-    };
+    // Lookup values are never hard-deleted from the UI (lookup-first rule):
+    // retire a value by deactivating it in the editor instead.
   }
 
   return LookupsViewModel;

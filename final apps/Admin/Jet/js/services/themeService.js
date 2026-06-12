@@ -16,7 +16,7 @@ define(['services/settingService'], function (settingService) {
   'use strict';
 
   var KEY     = 'APP_THEME';
-  var VALID   = ['corporate', 'redwood', 'midnight'];
+  var VALID   = ['corporate', 'redwood', 'midnight', 'vault'];
   var DEFAULT = 'corporate';
   var LS_KEY  = 'ifinance_theme';
 

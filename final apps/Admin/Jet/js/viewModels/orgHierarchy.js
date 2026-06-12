@@ -1,4 +1,5 @@
-define(['knockout', 'services/orgService'], function (ko, orgService) {
+define(['knockout', 'services/orgService', 'shared/i18n', 'shared/toast', 'shared/formGuard'],
+function (ko, orgService, i18n, toast, formGuard) {
   'use strict';
 
   function OrgHierarchyViewModel() {
@@ -64,14 +65,39 @@ define(['knockout', 'services/orgService'], function (ko, orgService) {
       );
     });
 
+    /* Breadcrumb path of a unit (root → … → parent) shown in the modal so
+       the admin always knows WHERE in the tree they are editing/adding. */
+    self.modalPath = ko.observable('');
+    function pathOf(parentId) {
+      var names = [], guard = 0;
+      var id = parentId;
+      while (id && guard++ < 20) {
+        var p = self.flatList().find(function (o) { return o.orgId === id; });
+        if (!p) break;
+        names.unshift(p.nameEn);
+        id = p.parentOrgId;
+      }
+      return names.join(' › ');
+    }
+
     self.openAdd = function () {
       self.auditTarget(null);
       self.editingId(null);
       self.modalTitle('Add Organisation Unit');
       self.fNameEn(''); self.fNameAr(''); self.fOrgCode('');
       self.fOrgType('SECTION'); self.fParentId(null); self.fIsActive(true);
+      self.modalPath('');
       self.modalError('');
       self.showModal(true);
+    };
+
+    /* UAT ORG-03: per-node "add child" — pre-targets the parent */
+    self.addChild = function (org) {
+      self.openAdd();
+      self.fParentId(org.orgId);
+      self.fOrgType(org.orgType === 'DIVISION' ? 'SECTION' : 'DEPARTMENT');
+      self.modalTitle('Add Unit under: ' + (org.nameEn || ''));
+      self.modalPath(pathOf(org.orgId));
     };
 
     self.openEdit = function (org) {
@@ -84,11 +110,35 @@ define(['knockout', 'services/orgService'], function (ko, orgService) {
       self.fOrgType(org.orgType || 'SECTION');
       self.fParentId(org.parentOrgId || null);
       self.fIsActive(org.isActive !== 'N');
+      self.modalPath(pathOf(org.parentOrgId));
       self.modalError('');
       self.showModal(true);
     };
 
+    /* UAT ORG-03: one-click deactivate/reactivate on the node, undo-able */
+    self.toggleActive = function (org) {
+      var deactivating = org.isActive !== 'N';
+      orgService.update(org.orgId, { isActive: deactivating ? 'N' : 'Y' }).then(function () {
+        load();
+        if (deactivating) {
+          toast.undo(
+            (org.nameEn || '') + ' ' + i18n.t('status.inactive').toLowerCase(),
+            function () {
+              orgService.update(org.orgId, { isActive: 'Y' }).then(load);
+            },
+            i18n.t('common.undo'));
+        }
+      });
+    };
+
     self.closeModal = function () { self.showModal(false); };
+
+    // Wave 2: dirty guard over the modal fields — re-baselined on open/close
+    self._guard = formGuard.track([
+      self.fNameEn, self.fNameAr, self.fOrgCode, self.fOrgType,
+      self.fParentId, self.fIsActive
+    ]);
+    self.showModal.subscribe(function () { self._guard.reset(); });
 
     self.saveUnit = function () {
       if (!self.fNameEn().trim()) { self.modalError('English name is required'); return; }

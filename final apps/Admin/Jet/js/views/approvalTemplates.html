@@ -1,4 +1,4 @@
-﻿<div class="page-wrap">
+<div class="page-wrap">
   <div class="page-header">
     <div class="page-title" data-bind="text: $root.t('vw.approvalTemplates.title')"></div>
     <div class="page-subtitle" data-bind="text: $root.t('vw.approvalTemplates.subtitle')"></div>
@@ -9,33 +9,72 @@
            data-bind="value: searchTerm, valueUpdate: 'input'">
   </div>
 
-  <!-- Step detail modal -->
+  <!-- Step detail modal — read-only for live templates, editable for drafts -->
   <!-- ko if: showDetail() -->
   <!-- ko with: selected() -->
   <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
-    <div style="background:#fff;border-radius:12px;padding:28px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:80vh;overflow-y:auto">
+    <div style="background:var(--surface,#fff);border-radius:12px;padding:28px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:80vh;overflow-y:auto"
+         data-bind="modalTrap: $vm.closeDetail">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h3 data-bind="text: templateName"></h3>
-        <button class="btn btn-secondary btn-sm" data-bind="click: $vm.closeDetail">&#10005;</button>
+        <button type="button" class="btn btn-secondary btn-sm" title="Close" data-bind="click: $vm.closeDetail">&#10005;</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <span class="badge badge--admin" data-bind="text: templateCode"></span>
         <span class="badge badge--info" data-bind="text: 'Module: ' + module"></span>
         <span class="badge badge--active" data-bind="visible: isActive === 'Y'">Active</span>
+        <!-- ko if: $vm.isDraft() --><span class="badge badge--pending" data-bind="text: $root.t('tmpl.draft')"></span><!-- /ko -->
       </div>
-      <div class="section-heading" style="margin-top:0">Approval Steps</div>
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('tmpl.steps')"></div>
+
+      <!-- read-only steps (live / archived templates) -->
+      <!-- ko ifnot: $vm.isDraft() -->
       <!-- ko foreach: steps -->
-      <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid #eee;border-radius:8px;margin-bottom:8px">
-        <div style="width:28px;height:28px;border-radius:50%;background:#C74634;color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0" data-bind="text: seq"></div>
+      <div style="display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border,#eee);border-radius:8px;margin-bottom:8px">
+        <div style="width:28px;height:28px;border-radius:50%;background:var(--brand,#C74634);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;flex-shrink:0" data-bind="text: seq"></div>
         <div style="flex:1">
           <div style="font-weight:600;font-size:13px" data-bind="text: label"></div>
-          <div style="font-size:12px;color:#aaa">
+          <div style="font-size:12px;color:var(--text-3,#aaa)">
             Required Role: <span class="badge badge--admin" style="font-size:10px" data-bind="text: roleCode"></span>
             &bull; SLA: <span data-bind="text: slaHours + 'h'"></span>
           </div>
         </div>
       </div>
       <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- editable steps (drafts only): reorder + rename + SLA -->
+      <!-- ko if: $vm.isDraft() -->
+      <!-- ko foreach: $vm.editSteps() -->
+      <div style="display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border,#eee);border-radius:8px;margin-bottom:8px">
+        <div style="width:26px;height:26px;border-radius:50%;background:var(--amber,#F0883E);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0" data-bind="text: $index() + 1"></div>
+        <div style="flex:1;display:grid;gap:6px">
+          <input class="form-control" style="padding:6px 9px;font-size:13px"
+                 data-bind="value: label, valueUpdate: 'input', attr: { 'aria-label': 'Step name' }">
+          <div style="display:flex;align-items:center;gap:8px;font-size:12px;color:var(--text-3)">
+            <span class="badge badge--admin" style="font-size:10px" data-bind="text: roleCode"></span>
+            <span>SLA</span>
+            <input class="form-control" type="number" min="0" style="width:80px;padding:4px 8px;font-size:12.5px"
+                   data-bind="value: slaHours, attr: { 'aria-label': 'SLA hours' }"><span>h</span>
+          </div>
+        </div>
+        <div style="display:grid;gap:4px">
+          <button type="button" class="btn btn-secondary btn-sm btn-icon" title="Move up"
+                  data-bind="click: function(){ $vm.moveStep($index(), -1); }">&#9650;</button>
+          <button type="button" class="btn btn-secondary btn-sm btn-icon" title="Move down"
+                  data-bind="click: function(){ $vm.moveStep($index(), 1); }">&#9660;</button>
+        </div>
+      </div>
+      <!-- /ko -->
+      <div class="form-actions">
+        <button type="button" class="btn btn-secondary" data-bind="click: $vm.closeDetail, text: $root.t('common.cancel')"></button>
+        <button type="button" class="btn btn-primary" data-bind="click: $vm.saveSteps, enable: !$vm.stepsSaving()">
+          <!-- ko if: $vm.stepsSaving() -->&hellip;<!-- /ko -->
+          <!-- ko ifnot: $vm.stepsSaving() --><span data-bind="text: '✓ ' + $root.t('common.save')"></span><!-- /ko -->
+        </button>
+      </div>
+      <!-- /ko -->
+
       <audit-info params="data: $data"></audit-info>
     </div>
   </div>
@@ -51,7 +90,7 @@
           <th>Module</th>
           <th>Steps</th>
           <th>Status</th>
-          <th style="width:120px">Actions</th>
+          <th style="width:150px">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -64,17 +103,30 @@
             <span class="badge badge--admin" data-bind="text: stepCount + ' step' + (stepCount === 1 ? '' : 's')"></span>
           </td>
           <td>
-            <!-- ko if: isActive === 'Y' -->
-            <span class="badge badge--active">Active</span>
-            <!-- /ko -->
-            <!-- ko ifnot: isActive === 'Y' -->
-            <span class="badge badge--inactive">Inactive</span>
-            <!-- /ko -->
+            <span class="badge" data-bind="css: $vm.statusBadge($data), text: $root.t('tmpl.status.' + $vm.statusOf($data))"></span>
           </td>
           <td>
             <div class="table-actions">
-              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.viewTemplate.bind($parent, $data)" title="View Steps">&#128065;</button>
-              <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.toggleActive.bind($parent, $data)" title="Toggle">&#128260;</button>
+              <button type="button" class="btn btn-secondary btn-sm btn-icon"
+                      data-bind="click: $parent.viewTemplate.bind($parent, $data),
+                                 attr: { title: $vm.statusOf($data) === 'DRAFT' ? $root.t('tmpl.editSteps') : 'View Steps' }">
+                <!-- ko if: $vm.statusOf($data) === 'DRAFT' -->&#9998;<!-- /ko -->
+                <!-- ko ifnot: $vm.statusOf($data) === 'DRAFT' -->&#128065;<!-- /ko -->
+              </button>
+              <!-- ko if: $vm.statusOf($data) === 'ACTIVE' -->
+              <button type="button" class="btn btn-secondary btn-sm btn-icon"
+                      data-bind="click: $parent.cloneDraft.bind($parent, $data), enable: !$vm.busy(),
+                                 attr: { title: $root.t('tmpl.cloneDraft') }">&#10697;</button>
+              <!-- /ko -->
+              <!-- ko if: $vm.statusOf($data) === 'DRAFT' -->
+              <button type="button" class="btn btn-primary btn-sm"
+                      data-bind="click: $parent.activate.bind($parent, $data), enable: !$vm.busy(),
+                                 text: $root.t('tmpl.activate')"></button>
+              <!-- /ko -->
+              <!-- ko if: $vm.statusOf($data) === 'INACTIVE' -->
+              <button type="button" class="btn btn-secondary btn-sm btn-icon" title="Reactivate"
+                      data-bind="click: $parent.toggleActive.bind($parent, $data)">&#128260;</button>
+              <!-- /ko -->
             </div>
           </td>
         </tr>

@@ -96,3 +96,12 @@ UAT: `UAT/UAT_FL_TestScript.xlsx` (35 cases). Test scripts:
 - New DCT_FL_PKG.MIRROR_CONTRACT_CODING mirrors header coding into DCT_BUDGET_CODING_LINES (FL_CONTRACT, line 1); called from CREATE_RENEWED_CONTRACT and by future contract-approval flows.
 - All 17 FL status/type CHECKs dropped (lookup-first); 12 FL_* lookup categories seeded; natural-key FKs added on contracts/renewals/vouchers + bank_code FK on bank accounts.
 - Drift fixed: DCT_FL_REGISTRATION_V / DCT_FL_CONTRACT_V were INVALID in PROD (nationality_en column name) - repaired; all 9 FL objects VALID.
+
+## Automated UAT (2026-06-12) - assessment-3/phase4/tests/uat_run_fl.py
+- All 35 workbook cases (UAT_FL_*.xlsx) executed by Playwright against the live app; result 34 PASS / 1 PARTIAL / 0 FAIL.
+- Word report with one evidence screenshot per case: UAT/UAT_FL_Results_12-Jun-2026-04.docx (+ evidence_12-Jun-2026-04/).
+- Defects found and FIXED during the run:
+  - DCT_AUTH delegation substitution: an active delegation made the delegate LOSE their own roles in has_role/has_permission/has_module_access (AYESHA lost FL_ADMIN while covering NASER). Now additive - own authority first, delegator fallback (db/v2/03 redeployed, user-approved).
+  - registrationEdit.js lookup race: nationalities options arriving after the record bound reset the Nationality select to the caption, silently dropping the value and blocking submit. Lookups now load before the record (contractEdit pattern).
+- Open minor finding (PARTIAL FL-CMP-02): Compliance > Documents row click opens the freelancer on the Profile tab, not the Documents tab.
+- Run data note: the seeded 84k FL-CON-000002 was consumed (approved) by pass 1; the runner now self-seeds a >=50k contract when needed. A dangling DRAFT voucher FL-VCH-000002 (FL-CON-000001, July) remains from pass 1.

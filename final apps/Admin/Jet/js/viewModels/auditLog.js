@@ -13,6 +13,13 @@ function (ko, auditService, i18n) {
 
     self.searchBy     = ko.observable('');
     self.actionFilter = ko.observable('');             // '', LOGIN, CREATE, UPDATE, DELETE…
+
+    // Wave 3: dashboard drill-down lands here with a preset action filter
+    var presetAction = sessionStorage.getItem('auditPresetAction');
+    if (presetAction !== null) {
+      sessionStorage.removeItem('auditPresetAction');
+      self.actionFilter(presetAction);   // set before the subscribe below exists
+    }
     self.offset       = ko.observable(0);
     self.limit        = ko.observable(50);
     self.total        = ko.observable(0);
@@ -51,6 +58,65 @@ function (ko, auditService, i18n) {
         CREATE: 'badge--active', UPDATE: 'badge--info',
         DELETE: 'badge--inactive', LOGIN: 'badge--admin',
       }[action] || 'badge--info';
+    };
+
+    // ── Wave 3: expandable before/after diff per entry ───────────────────
+    self.expandedId  = ko.observable(null);
+    self.diffRows    = ko.observableArray([]);   // [{field, oldVal, newVal, changed}]
+    self.diffLoading = ko.observable(false);
+    self.diffEmpty   = ko.observable(false);
+
+    self.toggleExpand = function (entry) {
+      if (self.expandedId() === entry.auditId) { self.expandedId(null); return; }
+      self.expandedId(entry.auditId);
+      self.diffRows([]);
+      self.diffEmpty(false);
+      self.diffLoading(true);
+      auditService.getDetail(entry.auditId).then(function (d) {
+        self.diffLoading(false);
+        var o = d.oldValues || {}, n = d.newValues || {};
+        var keys = Object.keys(o);
+        Object.keys(n).forEach(function (k) { if (keys.indexOf(k) < 0) keys.push(k); });
+        if (!keys.length) { self.diffEmpty(true); return; }
+        self.diffRows(keys.sort().map(function (k) {
+          var ov = o[k] === undefined || o[k] === null ? '' : String(o[k]);
+          var nv = n[k] === undefined || n[k] === null ? '' : String(n[k]);
+          return { field: k, oldVal: ov, newVal: nv, changed: ov !== nv };
+        }));
+      }).catch(function () {
+        self.diffLoading(false);
+        self.diffEmpty(true);
+      });
+    };
+
+    // ── Wave 3: CSV export of the current filter (≤1000 rows) ────────────
+    self.exporting = ko.observable(false);
+    self.exportCsv = function () {
+      self.exporting(true);
+      auditService.exportRows({
+        search: self.searchBy().trim() || null,
+        action: self.actionFilter() || null
+      }).then(function (rows) {
+        self.exporting(false);
+        var esc = function (v) {
+          v = v === undefined || v === null ? '' : String(v);
+          return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+        };
+        var lines = ['loggedAt,username,action,objectType,objectId,status,error'];
+        rows.forEach(function (r) {
+          lines.push([r.loggedAt, r.actionBy, r.actionType, r.objectType,
+                      r.objectId, r.status, r.error].map(esc).join(','));
+        });
+        // ﻿ BOM so Excel opens UTF-8 (Arabic usernames) correctly
+        var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'audit-log-' + new Date().toISOString().slice(0, 10) + '.csv';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(a.href);
+      }).catch(function () { self.exporting(false); });
     };
 
     self.reload();

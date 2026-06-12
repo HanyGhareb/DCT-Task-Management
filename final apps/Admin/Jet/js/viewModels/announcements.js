@@ -1,5 +1,6 @@
-define(['knockout', 'services/announcementService', 'services/roleService', 'services/moduleService'],
-function (ko, announcementService, roleService, moduleService) {
+define(['knockout', 'services/announcementService', 'services/roleService', 'services/moduleService',
+        'shared/i18n', 'shared/toast', 'shared/formGuard'],
+function (ko, announcementService, roleService, moduleService, i18n, toast, formGuard) {
   'use strict';
 
   function AnnouncementsViewModel() {
@@ -38,6 +39,15 @@ function (ko, announcementService, roleService, moduleService) {
       }).catch(function () { self.loading(false); self.loadError(true); });
     };
     self.reload();
+
+    // Wave 2: dirty guard over the editor fields — armed while the modal is
+    // open (baseline set on open, cleared when the modal closes either way)
+    self._guard = formGuard.track([
+      self.ed.titleEn, self.ed.titleAr, self.ed.bodyEn, self.ed.bodyAr,
+      self.ed.severity, self.ed.audience, self.ed.roleId, self.ed.moduleCode,
+      self.ed.expiresAt, self.ed.isActive
+    ]);
+    self.showEditor.subscribe(function () { self._guard.reset(); });
 
     function loadRefs() {
       return Promise.all([
@@ -109,9 +119,23 @@ function (ko, announcementService, roleService, moduleService) {
     };
 
     self.toggleActive = function (a) {
+      var deactivating = a.isActive === 'Y';
       self.busy(true);
-      announcementService.update(a.announcementId, { isActive: a.isActive === 'Y' ? 'N' : 'Y' })
-        .then(function () { self.busy(false); self.reload(); })
+      announcementService.update(a.announcementId, { isActive: deactivating ? 'N' : 'Y' })
+        .then(function () {
+          self.busy(false);
+          self.reload();
+          // Wave 1: deactivation is reversible inline — undo flips it back
+          if (deactivating) {
+            toast.undo(
+              i18n.t('ann.deactivatedToast', [a.titleEn]),
+              function () {
+                announcementService.update(a.announcementId, { isActive: 'Y' })
+                  .then(function () { self.reload(); });
+              },
+              i18n.t('common.undo'));
+          }
+        })
         .catch(function () { self.busy(false); });
     };
 

@@ -18,19 +18,44 @@
     <button class="btn btn-secondary btn-sm" data-bind="click: function(){ setStatus('INACTIVE'); }, css: { 'btn-primary': filterStatus() === 'INACTIVE' }, text: t('status.inactive')"></button>
   </div>
 
-  <!-- Delete confirm -->
-  <!-- ko if: showDeleteConfirm() -->
+  <!-- Deactivate is immediate with an Undo toast (Wave 1) — no confirm modal -->
+
+  <!-- Bulk action bar (Wave 3) — appears once ≥1 row is selected -->
+  <!-- ko if: selectedIds().length > 0 -->
+  <div class="bulkbar">
+    <span class="bulkbar__count" data-bind="text: $root.t('bulk.selected', [selectedIds().length])"></span>
+    <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('ACTIVATE'); },   text: $root.t('bulk.activate')"></button>
+    <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('DEACTIVATE'); }, text: $root.t('bulk.deactivate')"></button>
+    <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('ASSIGN_ROLE'); }, text: $root.t('bulk.assignRole')"></button>
+    <span style="flex:1"></span>
+    <button type="button" class="btn btn-secondary btn-sm" data-bind="click: clearSelection, text: $root.t('bulk.clear')"></button>
+  </div>
+  <!-- /ko -->
+
+  <!-- Bulk confirm modal -->
+  <!-- ko if: bulkAction() -->
   <div class="modal-overlay">
-    <div class="modal-box" style="max-width:380px;padding:28px">
-      <h3 style="margin-bottom:10px" data-bind="text: t('users.deleteTitle')"></h3>
-      <p style="font-size:13px;color:var(--text-2);margin-bottom:20px">
-        <span data-bind="text: t('users.deleteBody1')"></span>
-        <strong data-bind="text: deleteTarget() && deleteTarget().displayName"></strong>.
-        <span data-bind="text: t('users.deleteBody2')"></span>
-      </p>
+    <div class="modal-box" style="max-width:420px;padding:26px" data-bind="modalTrap: closeBulk">
+      <h3 style="margin-bottom:10px" data-bind="text: $root.t('bulk.confirmTitle.' + bulkAction())"></h3>
+      <!-- ko if: bulkAction() === 'ASSIGN_ROLE' -->
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label" data-bind="text: $root.t('bulk.pickRole')"></label>
+        <select class="form-control" data-bind="value: bulkRole,
+                 options: roleOptions, optionsValue: 'value', optionsText: 'label',
+                 optionsCaption: '…'"></select>
+      </div>
+      <!-- /ko -->
+      <div style="max-height:180px;overflow-y:auto;font-size:12.5px;color:var(--text-2);margin-bottom:18px">
+        <!-- ko foreach: selectedUsers() -->
+        <div style="padding:3px 0"><span class="mono" data-bind="text: username"></span> — <span data-bind="text: displayName"></span></div>
+        <!-- /ko -->
+      </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
-        <button class="btn btn-secondary" data-bind="click: cancelDelete, text: t('common.cancel')"></button>
-        <button class="btn" style="background:var(--red);color:#fff" data-bind="click: doDelete, text: t('common.delete')"></button>
+        <button type="button" class="btn btn-secondary" data-bind="click: closeBulk, text: $root.t('common.cancel')"></button>
+        <button type="button" class="btn btn-primary" data-bind="click: runBulk, enable: !bulkBusy() && (bulkAction() !== 'ASSIGN_ROLE' || bulkRole())">
+          <!-- ko if: bulkBusy() --><span data-bind="text: $root.t('common.loading')"></span><!-- /ko -->
+          <!-- ko ifnot: bulkBusy() --><span data-bind="text: $root.t('bulk.apply')"></span><!-- /ko -->
+        </button>
       </div>
     </div>
   </div>
@@ -56,6 +81,12 @@
     <table class="data-table">
       <thead>
         <tr>
+          <!-- ko if: $root.featureOn('BULK_USER_ACTIONS', true) -->
+          <th style="width:34px">
+            <input type="checkbox" aria-label="Select all on page"
+                   data-bind="checked: allPageSelected(), click: toggleSelectAll, clickBubble: false">
+          </th>
+          <!-- /ko -->
           <th data-bind="text: t('users.colUser')"></th>
           <th data-bind="text: t('users.colUsername')"></th>
           <th data-bind="text: t('users.colEmail')"></th>
@@ -67,7 +98,15 @@
       </thead>
       <tbody>
         <!-- ko foreach: users() -->
-        <tr>
+        <tr data-bind="css: { 'row--selected': $parent.isSelected($data) }">
+          <!-- ko if: $root.featureOn('BULK_USER_ACTIONS', true) -->
+          <td>
+            <input type="checkbox"
+                   data-bind="checked: $parent.isSelected($data),
+                              click: $parent.toggleSelect.bind($parent, $data), clickBubble: false,
+                              attr: { 'aria-label': 'Select ' + displayName }">
+          </td>
+          <!-- /ko -->
           <td>
             <div style="display:flex;align-items:center;gap:10px">
               <div class="avatar" data-bind="style: { background: $data.color || 'var(--brand)' },
@@ -105,11 +144,15 @@
         <!-- /ko -->
         <!-- ko if: users().length === 0 -->
         <tr>
-          <td colspan="7">
+          <td colspan="8">
             <div class="empty-state">
               <div class="empty-state__icon">&#128100;</div>
               <div class="empty-state__msg" data-bind="text: t('empty.noMatch')"></div>
               <div class="empty-state__sub" data-bind="text: t('empty.noMatchSub')"></div>
+              <!-- ko if: searchTerm() || filterStatus() !== 'ALL' -->
+              <button class="btn btn-secondary"
+                      data-bind="click: function(){ searchTerm(''); setStatus('ALL'); }, text: t('empty.clearFilters')"></button>
+              <!-- /ko -->
             </div>
           </td>
         </tr>

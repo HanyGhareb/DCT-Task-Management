@@ -7,8 +7,13 @@
  *
  * All methods return Promises.
  */
-define(['services/api'], function (api) {
+define(['services/api', 'shared/refCache'], function (api, refCache) {
   'use strict';
+
+  /* one cached fetch behind getLookups/getLookupTypes/getLookupsByType */
+  function lookupsRaw() {
+    return refCache.get('lookups', function () { return api.get('/lookups/'); });
+  }
 
   /* Flatten ORDS nested category+values → flat lookup rows VMs expect */
   function flattenLookups(categories) {
@@ -49,8 +54,8 @@ define(['services/api'], function (api) {
 
     /* ── Settings ─────────────────────────────────────────────────────── */
 
-    getSettings: function () {
-      return api.get('/settings/').then(function (r) {
+    getSettings: function (opts) {
+      return api.get('/settings/', opts).then(function (r) {
         return (r.items || []).map(normSetting);
       });
     },
@@ -82,19 +87,19 @@ define(['services/api'], function (api) {
     /* ── Lookups ──────────────────────────────────────────────────────── */
 
     getLookups: function () {
-      return api.get('/lookups/').then(function (r) {
+      return lookupsRaw().then(function (r) {
         return flattenLookups(r.items);
       });
     },
 
     getLookupTypes: function () {
-      return api.get('/lookups/').then(function (r) {
+      return lookupsRaw().then(function (r) {
         return (r.items || []).map(function (c) { return c.categoryCode; }).sort();
       });
     },
 
     getLookupsByType: function (type) {
-      return api.get('/lookups/').then(function (r) {
+      return lookupsRaw().then(function (r) {
         var flat = flattenLookups(r.items);
         if (!type || type === 'ALL') return flat;
         return flat.filter(function (l) { return l.lookupType === type; });
@@ -102,6 +107,7 @@ define(['services/api'], function (api) {
     },
 
     updateLookup: function (id, data) {
+      refCache.invalidate('lookups');
       return api.put('/lookups/values/' + id, {
         displayValue: data.displayValue,
         displayAr:    data.displayAr    || '',
@@ -110,12 +116,29 @@ define(['services/api'], function (api) {
       });
     },
 
-    createLookup: function () {
-      return Promise.reject({ message: 'Creating lookup values requires APEX Admin access.' });
-    },
-
-    removeLookup: function () {
-      return Promise.reject({ message: 'Deleting lookup values requires APEX Admin access.' });
+    /* Wave 2 (UAT SYS-04): in-app creation via POST /lookups/values.
+       The category must already exist — new categories stay an APEX task
+       (they imply code-level adoption anyway). */
+    createLookup: function (data) {
+      return lookupsRaw().then(function (r) {
+        var cat = (r.items || []).find(function (c) {
+          return c.categoryCode === data.lookupType;
+        });
+        if (!cat) {
+          return Promise.reject({ message: 'Unknown lookup type "' + data.lookupType +
+            '" — new categories are created in APEX Admin.' });
+        }
+        return api.post('/lookups/values', {
+          categoryId:   cat.categoryId,
+          lookupCode:   data.lookupCode,
+          displayValue: data.displayValue,
+          displayAr:    data.displayAr || '',
+          sortOrder:    Number(data.sortOrder) || null
+        }, { silent: true }).then(function (res) {
+          refCache.invalidate('lookups');   // AFTER the insert — next read sees it
+          return res;
+        });
+      });
     },
   };
 });

@@ -158,7 +158,7 @@
   <!-- new delegation modal -->
   <!-- ko if: showDelModal() -->
   <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(15,22,30,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px">
-    <div class="card" style="width:100%;max-width:460px">
+    <div class="card" style="width:100%;max-width:460px" data-bind="modalTrap: function(){ showDelModal(false); }">
       <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
         <span>New Delegation</span>
         <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showDelModal(false); }">&#10005;</button>
@@ -172,9 +172,27 @@
                  options: delUsers, optionsValue: 'userId',
                  optionsText: 'displayName', optionsCaption: 'Select user…'"></select>
       </div>
+      <!-- Wave 4 (4.4): scope — cover everything or only one module -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
         <div class="form-group">
-          <label class="form-label">Start Date</label>
+          <label class="form-label">Scope</label>
+          <select class="form-control" data-bind="value: delScope">
+            <option value="ALL_ROLES">All my roles</option>
+            <option value="MODULE">One module only</option>
+          </select>
+        </div>
+        <!-- ko if: delScope() === 'MODULE' -->
+        <div class="form-group">
+          <label class="form-label">Module *</label>
+          <select class="form-control" data-bind="value: delModuleCode,
+                   options: delModules, optionsValue: 'moduleCode',
+                   optionsText: 'nameEn', optionsCaption: 'Select…'"></select>
+        </div>
+        <!-- /ko -->
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Start Date <span style="font-weight:400;color:var(--text-3)">(future = scheduled)</span></label>
           <input class="form-control" type="date" data-bind="value: delStart">
         </div>
         <div class="form-group">

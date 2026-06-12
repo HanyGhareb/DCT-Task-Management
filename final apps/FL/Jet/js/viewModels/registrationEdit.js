@@ -35,10 +35,6 @@ define(['knockout', 'services/flService'], function (ko, flService) {
     });
     self.needsEmiratesId = ko.computed(function () { return self.nationalityCode() === 'AE'; });
 
-    flService.getLookups().then(function (lk) {
-      self.nationalities(lk.nationalities || []);
-    }).catch(function () {});
-
     function load() {
       if (self.isNew) { self.loading(false); return; }
       flService.getRegistration(self.regId()).then(function (r) {
@@ -61,7 +57,13 @@ define(['knockout', 'services/flService'], function (ko, flService) {
         self.loading(false);
       }).catch(function () { self.loading(false); });
     }
-    load();
+    // Load the nationality options BEFORE binding the record value — if the
+    // options arrive after, KO's options binding resets the selection to the
+    // caption and the draft silently loses its nationality (same pattern as
+    // contractEdit's Promise.all-then-load).
+    flService.getLookups().then(function (lk) {
+      self.nationalities(lk.nationalities || []);
+    }).catch(function () {}).then(load);
 
     function payload() {
       return {

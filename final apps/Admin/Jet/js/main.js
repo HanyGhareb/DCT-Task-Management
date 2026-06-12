@@ -4,7 +4,10 @@ const CDN = 'https://static.oracle.com/cdn/jet/17.0.0';
 
 requirejs.config({
   baseUrl: 'js',
-  urlArgs: 'v=' + Date.now(), // cache-buster for dev
+  // localhost: bust on every load (dev). Deployed: cache by APP_VERSION
+  // (set in index.html, bumped per deploy) so the ~40-file boot hits cache.
+  urlArgs: 'v=' + ((!window.APP_VERSION || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))
+                   ? Date.now() : window.APP_VERSION),
   paths: {
     'knockout':       CDN + '/3rdparty/knockout/knockout-3.5.1',
     'jquery':         CDN + '/3rdparty/jquery/jquery-3.7.1.min',
@@ -47,6 +50,48 @@ require(
         config.viewModel, null,
         function (ctx) { ctx.$vm = config.viewModel; });
       ko.applyBindingsToDescendants(childCtx, element);
+    }
+  };
+
+  // Wave 2 (a11y): modal behavior in one binding — focus moves into the
+  // dialog on open, Tab cycles inside it, Escape calls the close handler.
+  //   <div class="modal-box" data-bind="modalTrap: closeModal">
+  ko.bindingHandlers.modalTrap = {
+    init: function (element, valueAccessor) {
+      const close = valueAccessor();
+      element.setAttribute('role', 'dialog');
+      element.setAttribute('aria-modal', 'true');
+      if (element.tabIndex < 0) element.tabIndex = -1;
+      const SEL = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+      function focusables() {
+        return Array.prototype.filter.call(element.querySelectorAll(SEL), function (el) {
+          return !el.disabled && el.offsetParent !== null;
+        });
+      }
+      const restoreTo = document.activeElement;
+      setTimeout(function () {
+        const f = focusables();
+        (f.length ? f[0] : element).focus();
+      }, 0);
+      function onKey(e) {
+        if (e.key === 'Escape' && typeof close === 'function') {
+          e.stopPropagation();
+          close();
+        } else if (e.key === 'Tab') {
+          const f = focusables();
+          if (!f.length) return;
+          const first = f[0], last = f[f.length - 1];
+          if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+          else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+        }
+      }
+      element.addEventListener('keydown', onKey);
+      ko.utils.domNodeDisposal.addDisposeCallback(element, function () {
+        element.removeEventListener('keydown', onKey);
+        if (restoreTo && document.contains(restoreTo)) {
+          try { restoreTo.focus(); } catch (e) {}
+        }
+      });
     }
   };
 

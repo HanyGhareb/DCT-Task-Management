@@ -15,7 +15,9 @@
   <!-- /ko -->
   <!-- ko if: !loading() && !loadError() && items().length === 0 -->
   <div class="empty-state"><div class="empty-state__icon">&#128226;</div>
-    <div class="empty-state__msg">No announcements yet</div></div>
+    <div class="empty-state__msg" data-bind="text: $root.t('ann.emptyMsg')"></div>
+    <div class="empty-state__sub" data-bind="text: $root.t('ann.emptySub')"></div>
+    <button class="btn btn-primary" data-bind="click: openCreate, text: '+ ' + $root.t('ann.new')"></button></div>
   <!-- /ko -->
 
   <!-- ko if: !loading() && !loadError() && items().length > 0 -->
@@ -55,7 +57,8 @@
   <!-- editor modal -->
   <!-- ko if: showEditor() -->
   <div style="position:fixed;inset:0;background:rgba(15,22,30,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px">
-    <div class="card" style="width:100%;max-width:640px;max-height:92vh;overflow-y:auto">
+    <div class="card" style="width:100%;max-width:640px;max-height:92vh;overflow-y:auto"
+         data-bind="modalTrap: function () { showEditor(false); }">
       <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
         <span data-bind="text: editId() ? 'Edit Announcement' : 'New Announcement'"></span>
         <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showEditor(false); }">&#10005;</button>

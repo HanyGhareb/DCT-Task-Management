@@ -5,7 +5,7 @@
  *
  * All methods return Promises.
  */
-define(['services/api'], function (api) {
+define(['services/api', 'shared/refCache'], function (api, refCache) {
   'use strict';
 
   var CATEGORIES = [
@@ -19,7 +19,9 @@ define(['services/api'], function (api) {
   return {
 
     getAll: function () {
-      return api.get('/modules/').then(function (r) { return r.items || []; });
+      return refCache.get('modules', function () {
+        return api.get('/modules/').then(function (r) { return r.items || []; });
+      });
     },
 
     getCategories: function () { return CATEGORIES; },
@@ -37,11 +39,13 @@ define(['services/api'], function (api) {
     },
 
     update: function (moduleId, data) {
+      refCache.invalidate('modules');
       return api.put('/modules/' + moduleId, data);
     },
 
     /* currentActive = current isActive value ('Y' or 'N') */
     toggleActive: function (moduleId, currentActive) {
+      refCache.invalidate('modules');
       return api.put('/modules/' + moduleId, {
         isActive: currentActive === 'Y' ? 'N' : 'Y',
       });

@@ -3,8 +3,8 @@
  *
  * login() returns a Promise resolving to the session object, or null on failure.
  */
-define(['services/api'],
-function (api) {
+define(['services/api', 'shared/refCache'],
+function (api, refCache) {
   'use strict';
 
   var SESSION_KEY = 'ifinance_jet_session';
@@ -37,6 +37,7 @@ function (api) {
         api.post('/auth/logout', {}, { silent: true }).catch(function () {});
       }
       localStorage.removeItem(SESSION_KEY);
+      refCache.invalidate();   // cached reference data must not outlive the session
     },
 
     getToken: function () {
@@ -67,9 +68,15 @@ function (api) {
 
     getUnreadCount: function () {
       if (!this.getCurrentUser()) return Promise.resolve(0);   // nothing to count pre-login
-      return api.get('/notifications/', { silent: true }).then(function (r) {
-        return (r.items || []).filter(function (n) { return n.isRead === 'N'; }).length;
-      }).catch(function () { return 0; });
+      // Wave 3: cheap COUNT endpoint (60s badge poll) — falls back to the
+      // full list until /notifications/count is deployed.
+      return api.get('/notifications/count', { silent: true }).then(function (r) {
+        return r.count || 0;
+      }).catch(function () {
+        return api.get('/notifications/', { silent: true }).then(function (r) {
+          return (r.items || []).filter(function (n) { return n.isRead === 'N'; }).length;
+        }).catch(function () { return 0; });
+      });
     },
 
     isAdmin: function () {

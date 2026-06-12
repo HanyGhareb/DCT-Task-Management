@@ -151,6 +151,32 @@ define([], function () {
       .catch(function () {});
   }
 
+  /* ── feature flags (Wave 1) ─────────────────────────────────────────────
+     Convention: FEATURE_<NAME> rows in DCT_SETTINGS, value 'Y'/'N'. Apps load
+     settings once post-login and call setFeatures(); UI binds visibility via
+     featureEnabled(). A missing row falls back to the call-site default, so
+     features ship ON unless explicitly disabled (or pass dflt=false to ship
+     dark until the row is flipped). */
+  var features = {};
+
+  function setFeatures(rows) {
+    features = {};
+    (rows || []).forEach(function (r) {
+      var k = r.settingKey || r.key;
+      if (k && k.indexOf('FEATURE_') === 0) {
+        features[k] = String(r.settingValue !== undefined ? r.settingValue : r.value);
+      }
+    });
+  }
+
+  /** featureEnabled('COMMAND_PALETTE') or featureEnabled('FEATURE_COMMAND_PALETTE', false) */
+  function featureEnabled(name, dflt) {
+    var k = name.indexOf('FEATURE_') === 0 ? name : 'FEATURE_' + name;
+    if (!(k in features)) return dflt === undefined ? true : !!dflt;
+    return features[k] !== 'N' && features[k] !== 'false' && features[k] !== '0';
+  }
+
   return { MODULES: MODULES, byKey: byKey, applyBrand: applyBrand,
-           initBrand: initBrand, initAnnouncements: initAnnouncements };
+           initBrand: initBrand, initAnnouncements: initAnnouncements,
+           setFeatures: setFeatures, featureEnabled: featureEnabled };
 });

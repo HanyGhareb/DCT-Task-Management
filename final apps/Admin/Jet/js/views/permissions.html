@@ -63,9 +63,14 @@
             </td>
             <!-- ko foreach: $vm.roles() -->
             <td class="rm-matrix-toggle-cell">
-              <div class="rm-toggle-wrap"
+              <div class="rm-toggle-wrap" role="switch" tabindex="0" aria-checked="false"
                    data-bind="click: function() { $vm.togglePerm($parent, $data); },
-                              css: { 'rm-toggle--on': $vm.hasPerm($parent, $data) }">
+                              css: { 'rm-toggle--on': $vm.hasPerm($parent, $data) },
+                              attr: { 'aria-checked': $vm.hasPerm($parent, $data) ? 'true' : 'false',
+                                      'aria-label': $parent.permName + ' for ' + ($data.roleName || $data.roleCode) },
+                              event: { keydown: function (d, e) {
+                                if (e.key === 'Enter' || e.key === ' ') { $vm.togglePerm($parent, $data); return false; }
+                                return true; } }">
                 <span class="rm-toggle-dot"></span>
               </div>
             </td>

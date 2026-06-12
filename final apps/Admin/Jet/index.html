@@ -58,6 +58,8 @@
     </div>
 
     <div class="head-end">
+      <button class="tb-btn" data-bind="click: openPalette, visible: featureOn('COMMAND_PALETTE', true),
+                                        attr: { title: t('cmdp.buttonTitle') }">&#128269;</button>
       <div class="lang-pill">
         <button data-bind="click: function(){ setLang('en'); }, css: { on: lang() === 'en' }">EN</button>
         <button data-bind="click: function(){ setLang('ar'); }, css: { on: lang() === 'ar' }">&#1593;</button>
@@ -158,6 +160,7 @@
 
 </div><!-- /#globalBody -->
 
+<script>window.APP_VERSION = '4.1.0'; /* bump per deploy — drives requirejs urlArgs cache key */</script>
 <script src="https://static.oracle.com/cdn/jet/17.0.0/3rdparty/require/require.js"
         data-main="js/main"></script>
 </body>

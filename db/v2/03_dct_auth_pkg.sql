@@ -1,4 +1,4 @@
-﻿-- =============================================================================
+-- =============================================================================
 -- i-Finance V2 — Authentication & Authorization Package
 -- File    : 03_dct_auth_pkg.sql
 -- Schema  : PROD
@@ -253,7 +253,15 @@ CREATE OR REPLACE PACKAGE BODY dct_auth AS
         l_count NUMBER;
         l_eff   VARCHAR2(100);
     BEGIN
+        -- Own authority always applies; delegation only ADDS the delegator's.
+        SELECT COUNT(*)
+        INTO   l_count
+        FROM   v_dct_user_active_roles
+        WHERE  UPPER(username)  = UPPER(p_username)
+          AND  UPPER(role_code) = UPPER(p_role_code);
+        IF l_count > 0 THEN RETURN TRUE; END IF;
         l_eff := get_effective_user(p_username);
+        IF UPPER(l_eff) = UPPER(p_username) THEN RETURN FALSE; END IF;
         SELECT COUNT(*)
         INTO   l_count
         FROM   v_dct_user_active_roles
@@ -272,7 +280,15 @@ CREATE OR REPLACE PACKAGE BODY dct_auth AS
         l_count NUMBER;
         l_eff   VARCHAR2(100);
     BEGIN
+        -- Own authority always applies; delegation only ADDS the delegator's.
+        SELECT COUNT(*)
+        INTO   l_count
+        FROM   v_dct_user_permissions
+        WHERE  UPPER(username)        = UPPER(p_username)
+          AND  UPPER(permission_code) = UPPER(p_permission_code);
+        IF l_count > 0 THEN RETURN TRUE; END IF;
         l_eff := get_effective_user(p_username);
+        IF UPPER(l_eff) = UPPER(p_username) THEN RETURN FALSE; END IF;
         SELECT COUNT(*)
         INTO   l_count
         FROM   v_dct_user_permissions
@@ -291,7 +307,15 @@ CREATE OR REPLACE PACKAGE BODY dct_auth AS
         l_count NUMBER;
         l_eff   VARCHAR2(100);
     BEGIN
+        -- Own authority always applies; delegation only ADDS the delegator's.
+        SELECT COUNT(*)
+        INTO   l_count
+        FROM   v_dct_module_access
+        WHERE  UPPER(username)    = UPPER(p_username)
+          AND  UPPER(module_code) = UPPER(p_module_code);
+        IF l_count > 0 THEN RETURN TRUE; END IF;
         l_eff := get_effective_user(p_username);
+        IF UPPER(l_eff) = UPPER(p_username) THEN RETURN FALSE; END IF;
         SELECT COUNT(*)
         INTO   l_count
         FROM   v_dct_module_access

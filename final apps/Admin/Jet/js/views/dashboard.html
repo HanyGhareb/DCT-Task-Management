@@ -1,46 +1,55 @@
 <div class="page-wrap">
 
-  <!-- Greeting -->
-  <div class="page-header">
-    <div style="display:flex;align-items:center;gap:14px">
-      <div class="avatar avatar--lg"
-           data-bind="style: { background: user && user.color || 'var(--brand)' },
-                      text: user && (user.initials || user.displayName[0])">
-      </div>
-      <div>
-        <div class="page-title" data-bind="text: greeting() + ', ' + (user && user.displayName || '') + '!'"></div>
-        <div class="page-subtitle" data-bind="text: todayDate()"></div>
+  <!-- Greeting + customize toggle (Wave 4) -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div style="display:flex;align-items:center;gap:14px">
+        <div class="avatar avatar--lg"
+             data-bind="style: { background: user && user.color || 'var(--brand)' },
+                        text: user && (user.initials || user.displayName[0])">
+        </div>
+        <div>
+          <div class="page-title" data-bind="text: greeting() + ', ' + (user && user.displayName || '') + '!'"></div>
+          <div class="page-subtitle" data-bind="text: todayDate()"></div>
+        </div>
       </div>
     </div>
+    <button type="button" class="btn btn-secondary btn-sm"
+            data-bind="click: toggleCustomize,
+                       css: { 'btn-primary': customizing() },
+                       text: (customizing() ? '✓ ' + t('dash.customizeDone') : '⚙ ' + t('dash.customize'))"></button>
   </div>
 
-  <!-- Stats row (GET /stats/) -->
+  <!-- Stats row (GET /stats/) — order + visibility are user preferences -->
   <div class="stats-row">
-    <div class="stat-card stat-card--red">
-      <div class="stat-value" data-bind="text: stats().activeUsers"></div>
-      <div class="stat-label" data-bind="text: t('dash.activeUsers')"></div>
+    <!-- ko foreach: statCards() -->
+    <div class="stat-card" data-bind="css: cls + ($vm.customizing() && $vm.isHidden(id) ? ' dash-widget--off' : '')">
+      <!-- ko if: $vm.customizing() -->
+      <div class="dash-cust">
+        <button type="button" title="Move left"  data-bind="click: function(){ $vm.moveStat(id, -1); }">&#9664;</button>
+        <button type="button" data-bind="click: function(){ $vm.toggleWidget(id); },
+                attr: { title: $vm.isHidden(id) ? 'Show' : 'Hide' },
+                html: $vm.isHidden(id) ? '&#128065;' : '&#10005;'"></button>
+        <button type="button" title="Move right" data-bind="click: function(){ $vm.moveStat(id, 1); }">&#9654;</button>
+      </div>
+      <!-- /ko -->
+      <div class="stat-value" data-bind="text: $vm.stats()[id]"></div>
+      <div class="stat-label" data-bind="text: $vm.t(key)"></div>
     </div>
-    <div class="stat-card stat-card--blue">
-      <div class="stat-value" data-bind="text: stats().activeModules"></div>
-      <div class="stat-label" data-bind="text: t('dash.activeModules')"></div>
-    </div>
-    <div class="stat-card stat-card--green">
-      <div class="stat-value" data-bind="text: stats().rolesDefined"></div>
-      <div class="stat-label" data-bind="text: t('dash.rolesDefined')"></div>
-    </div>
-    <div class="stat-card stat-card--orange">
-      <div class="stat-value" data-bind="text: stats().pendingApprovals"></div>
-      <div class="stat-label" data-bind="text: t('dash.pendingApprovals')"></div>
-    </div>
-    <div class="stat-card stat-card--blue">
-      <div class="stat-value" data-bind="text: stats().activeSessions"></div>
-      <div class="stat-label" data-bind="text: t('dash.activeSessions')"></div>
-    </div>
+    <!-- /ko -->
   </div>
 
   <!-- Charts (Phase 3) — tri-state: skeleton / charts / empty -->
   <div class="charts-row">
-    <div class="chart-card">
+    <!-- ko if: customizing() || !isHidden('chartCycle') -->
+    <div class="chart-card" data-bind="css: { 'dash-widget--off': customizing() && isHidden('chartCycle') }">
+      <!-- ko if: customizing() -->
+      <div class="dash-cust">
+        <button type="button" data-bind="click: function(){ toggleWidget('chartCycle'); },
+                attr: { title: isHidden('chartCycle') ? 'Show' : 'Hide' },
+                html: isHidden('chartCycle') ? '&#128065;' : '&#10005;'"></button>
+      </div>
+      <!-- /ko -->
       <h3 data-bind="text: t('dash.chart1Title')"></h3>
       <div class="chart-cap" data-bind="text: t('dash.chart1Cap')"></div>
       <!-- ko if: statsLoading() --><div class="skeleton sk-block"></div><!-- /ko -->
@@ -56,7 +65,16 @@
       <!-- /ko -->
       <!-- /ko -->
     </div>
-    <div class="chart-card">
+    <!-- /ko -->
+    <!-- ko if: customizing() || !isHidden('chartActivity') -->
+    <div class="chart-card" data-bind="css: { 'dash-widget--off': customizing() && isHidden('chartActivity') }">
+      <!-- ko if: customizing() -->
+      <div class="dash-cust">
+        <button type="button" data-bind="click: function(){ toggleWidget('chartActivity'); },
+                attr: { title: isHidden('chartActivity') ? 'Show' : 'Hide' },
+                html: isHidden('chartActivity') ? '&#128065;' : '&#10005;'"></button>
+      </div>
+      <!-- /ko -->
       <h3 data-bind="text: t('dash.chart2Title')"></h3>
       <div class="chart-cap" data-bind="text: t('dash.chart2Cap')"></div>
       <!-- ko if: statsLoading() --><div class="skeleton sk-block"></div><!-- /ko -->
@@ -72,9 +90,18 @@
       <!-- /ko -->
       <!-- /ko -->
     </div>
+    <!-- /ko -->
   </div>
 
-  <!-- Module categories -->
+  <!-- Module categories (hideable as one widget, Wave 4) -->
+  <!-- ko if: customizing() -->
+  <div class="view-toolbar" style="justify-content:flex-end">
+    <button type="button" class="btn btn-secondary btn-sm"
+            data-bind="click: function(){ toggleWidget('modules'); },
+                       text: (isHidden('modules') ? '👁 ' : '✕ ') + t('dash.modulesTitle')"></button>
+  </div>
+  <!-- /ko -->
+  <!-- ko if: customizing() || !isHidden('modules') -->
   <!-- ko foreach: categoryGroups -->
   <div style="margin-bottom:24px">
     <div class="section-heading">
@@ -98,6 +125,7 @@
       <!-- /ko -->
     </div>
   </div>
+  <!-- /ko -->
   <!-- /ko -->
 
 </div>
