@@ -1,0 +1,136 @@
+<div class="page-wrap">
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+
+  <!-- ko if: !loading() && !data() -->
+  <div class="empty-state"><div class="empty-state__icon">&#10067;</div>
+    <div class="empty-state__msg">Replenishment not found</div>
+    <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && data() -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">
+        <span class="mono" data-bind="text: data().reimbNumber"></span>
+        <span style="margin-inline-start:10px" data-bind="text: data().status, css: statusBadge(data().status)"></span>
+      </div>
+      <div class="page-subtitle"
+           data-bind="text: data().ccNumber + ' · ' + data().periodLabel + ' · ' + data().onBehalfOfName"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <!-- ko if: editable() -->
+      <button class="btn btn-secondary" data-bind="click: saveLines, enable: !busy()">&#128190; Save Lines</button>
+      <button class="btn btn-primary" data-bind="click: submit, enable: !busy() && lines().length > 0">&#10003; Submit</button>
+      <!-- /ko -->
+      <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+    </div>
+  </div>
+
+  <div class="stats-row" style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:18px">
+    <div class="card stat-card">
+      <div style="font-size:22px;font-weight:800" class="mono" data-bind="text: linesTotal().toLocaleString()"></div>
+      <div style="font-size:12px;color:var(--text-2)">Lines Total (AED)</div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:22px;font-weight:800" class="mono" data-bind="text: lines().length"></div>
+      <div style="font-size:12px;color:var(--text-2)">Expense Lines</div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:22px;font-weight:800" class="mono"
+           data-bind="text: lines().filter(function(l){ return l.receiptAttached(); }).length + '/' + lines().length"></div>
+      <div style="font-size:12px;color:var(--text-2)">Receipts Flagged</div>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+      <span>Merchant Expense Lines</span>
+      <!-- ko if: editable() -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: addLine">+ Add Line</button>
+      <!-- /ko -->
+    </div>
+
+    <!-- ko if: lines().length === 0 -->
+    <div style="font-size:13px;color:var(--text-3);padding:14px 0">
+      No expense lines yet<span data-bind="visible: editable()"> — add the card statement lines, one merchant per row</span>.
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: lines().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table lines-table">
+        <thead><tr>
+          <th style="width:120px">Date</th><th>Merchant</th><th style="width:110px">Amount</th>
+          <th style="width:90px">Coding</th><th style="width:220px">GL / Project</th>
+          <th style="width:70px;text-align:center">Receipt</th><th>Description</th>
+          <th style="width:40px" data-bind="visible: editable()"></th>
+        </tr></thead>
+        <tbody>
+          <!-- ko foreach: lines -->
+          <tr>
+            <td><input type="date" data-bind="value: expenseDate, event: { change: $vm.markDirty }, enable: $vm.editable()"></td>
+            <td><input type="text" placeholder="Merchant name"
+                       data-bind="value: merchantName, valueUpdate: 'input', event: { input: $vm.markDirty }, enable: $vm.editable()"></td>
+            <td><input type="number" min="0.01" step="0.01"
+                       data-bind="value: amount, valueUpdate: 'input', event: { input: $vm.markDirty }, enable: $vm.editable()"></td>
+            <td>
+              <select data-bind="value: codingType, event: { change: $vm.markDirty }, enable: $vm.editable()">
+                <option value="GL">GL</option>
+                <option value="PROJECT">Project</option>
+              </select>
+            </td>
+            <td>
+              <!-- ko if: codingType() === 'GL' -->
+              <select data-bind="value: ccIdGl, event: { change: $vm.markDirty }, enable: $vm.editable(),
+                       options: $vm.glCodes, optionsValue: 'ccId',
+                       optionsText: function(g){ return g.ccCode; },
+                       optionsCaption: 'GL code…'"></select>
+              <!-- /ko -->
+              <!-- ko if: codingType() === 'PROJECT' -->
+              <div style="display:grid;gap:4px">
+                <input type="text" placeholder="Project #"
+                       data-bind="value: projectNumber, valueUpdate: 'input', event: { input: $vm.markDirty }, enable: $vm.editable()">
+                <input type="text" placeholder="Task #"
+                       data-bind="value: taskNumber, valueUpdate: 'input', event: { input: $vm.markDirty }, enable: $vm.editable()">
+                <input type="text" placeholder="Expenditure type"
+                       data-bind="value: expenditureType, valueUpdate: 'input', event: { input: $vm.markDirty }, enable: $vm.editable()">
+              </div>
+              <!-- /ko -->
+            </td>
+            <td style="text-align:center">
+              <div style="display:inline-block;cursor:pointer"
+                   data-bind="click: function(){ if ($vm.editable()) { receiptAttached(!receiptAttached()); $vm.markDirty(); } }">
+                <input type="checkbox" style="pointer-events:none" data-bind="checked: receiptAttached">
+              </div>
+            </td>
+            <td><input type="text" placeholder="Optional"
+                       data-bind="value: description, valueUpdate: 'input', event: { input: $vm.markDirty }, enable: $vm.editable()"></td>
+            <td data-bind="visible: $vm.editable()">
+              <button class="btn btn-secondary btn-sm" title="Remove line"
+                      data-bind="click: $vm.removeLine.bind($vm, $data)">&#10005;</button>
+            </td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- ko if: dirty() -->
+    <div style="font-size:12px;color:var(--brand-dark);margin-top:8px">&#9998; Unsaved changes — click "Save Lines".</div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
+  <div class="card">
+    <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="form-group"><label class="form-label">Submitted By</label>
+        <div data-bind="text: data().submittedByName"></div></div>
+      <div class="form-group"><label class="form-label">On Behalf Of</label>
+        <div data-bind="text: data().onBehalfOfName"></div></div>
+      <div class="form-group"><label class="form-label">Submitted At</label>
+        <div class="mono" data-bind="text: data().submittedAt || '—'"></div></div>
+    </div>
+    <audit-info params="data: data"></audit-info>
+  </div>
+  <!-- /ko -->
+</div>

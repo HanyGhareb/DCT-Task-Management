@@ -1,0 +1,78 @@
+<div class="page-wrap" style="max-width:1100px">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: t('nav.pnlCategories')"></div>
+    <div class="page-subtitle">Expense / revenue item categories — descriptions feed the AI mapping prompt</div>
+    <div style="margin-inline-start:auto">
+      <button class="btn btn-primary" data-bind="click: newCat">+ New Category</button>
+    </div>
+  </div>
+
+  <!-- editor -->
+  <!-- ko if: showEditor() -->
+  <div class="form-card" style="margin-bottom:16px">
+    <div class="form-grid form-grid--2col">
+      <div class="form-field">
+        <label>Code *</label>
+        <input class="form-control mono" data-bind="value: code, disable: !!editId()" placeholder="E.G. VENUE_RENTAL">
+      </div>
+      <div class="form-field">
+        <label>Type *</label>
+        <select class="form-control" data-bind="value: type">
+          <option value="EXPENSE">Expense</option>
+          <option value="REVENUE">Revenue</option>
+          <option value="BOTH">Both</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Name (EN) *</label>
+        <input class="form-control" data-bind="value: nameEn">
+      </div>
+      <div class="form-field">
+        <label>Name (AR)</label>
+        <input class="form-control" dir="rtl" data-bind="value: nameAr">
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Description (used by the AI to map extracted items)</label>
+      <textarea class="form-control" rows="2" data-bind="value: description"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" data-bind="click: cancelEdit, text: t('common.cancel')"></button>
+      <button class="btn btn-primary" data-bind="click: save, disable: saving(), text: t('common.save')"></button>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search by code, name, type, or description…"
+           data-bind="value: search, valueUpdate: 'input'">
+    <span style="font-size:12px; color:#8a94a6; align-self:center"
+          data-bind="text: filteredCategories().length + ' / ' + categories().length"></span>
+  </div>
+
+  <div class="data-table-wrap">
+    <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: loading() -->
+    <table class="data-table">
+      <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Description</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        <!-- ko foreach: filteredCategories() -->
+        <tr data-bind="style: { opacity: isActive ? 1 : .5 }">
+          <td class="mono" data-bind="text: code"></td>
+          <td data-bind="text: nameEn"></td>
+          <td><span data-bind="css: type === 'REVENUE' ? 'badge badge--success' : 'badge badge--info', text: type"></span></td>
+          <td style="max-width:420px; font-size:12px" data-bind="text: description || '—'"></td>
+          <td><span data-bind="css: isActive ? 'badge badge--success' : 'badge badge--neutral',
+                text: isActive ? 'Y' : 'N'"></span></td>
+          <td class="table-actions" style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.editCat.bind($parent, $data)">Edit</button>
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleActive.bind($parent, $data),
+                    text: isActive ? 'Disable' : 'Enable'"></button>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+    <!-- /ko -->
+  </div>
+</div>

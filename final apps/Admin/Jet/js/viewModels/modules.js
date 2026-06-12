@@ -31,10 +31,12 @@ define(['knockout', 'services/moduleService'], function (ko, moduleService) {
       return data;
     });
 
-    self.editTarget = ko.observable(null);
-    self.showEdit   = ko.observable(false);
+    self.editTarget  = ko.observable(null);
+    self.showEdit    = ko.observable(false);
+    self.auditTarget = ko.observable(null);   // createdBy/At, updatedBy/At of the edited module
 
     self.openEdit = function (mod) {
+      self.auditTarget(mod);
       self.editTarget({
         moduleId:     mod.moduleId,
         nameEn:       ko.observable(mod.nameEn),

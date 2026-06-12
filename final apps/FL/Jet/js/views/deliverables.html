@@ -1,0 +1,91 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('del.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('del.subtitle')"></div>
+  </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: errorMsg() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: errorMsg()"></span></div>
+  <!-- /ko -->
+
+  <div class="view-toolbar">
+    <select class="form-control" style="width:170px;padding:8px 10px" data-bind="value: statusFilter">
+      <option value="">All statuses</option>
+      <option value="SUBMITTED">Submitted</option>
+      <option value="ACCEPTED">Accepted</option>
+      <option value="REJECTED">Rejected</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load deliverables</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128230;</div>
+    <div class="empty-state__msg">No deliverables</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Contract</th><th>Freelancer</th><th>Title</th><th>Date</th><th>Qty</th><th>Period</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr>
+          <td class="mono" style="font-size:12px" data-bind="text: $data.contractNumber || ''"></td>
+          <td data-bind="text: $data.freelancerName || ''"></td>
+          <td style="font-weight:600" data-bind="text: $data.title || ''"></td>
+          <td class="mono" data-bind="text: $data.deliverableDate || ''"></td>
+          <td class="mono" data-bind="text: ($data.quantity || 1) + ' ' + ($data.unitName || '')"></td>
+          <td data-bind="text: $data.periodLabel || '—'"></td>
+          <td>
+            <span class="badge" data-bind="text: status, css: $vm.badgeFor(status)"></span>
+            <!-- ko if: status === 'REJECTED' && $data.rejectionReason -->
+            <div style="font-size:11px;color:var(--red)" data-bind="text: $data.rejectionReason"></div>
+            <!-- /ko -->
+          </td>
+          <td>
+            <!-- ko if: status === 'SUBMITTED' -->
+            <div style="display:flex;gap:6px">
+              <button class="btn btn-primary btn-sm" style="background:var(--green);border-color:var(--green)"
+                      data-bind="click: $vm.accept.bind($vm, $data)">&#10003;</button>
+              <button class="btn btn-secondary btn-sm" data-bind="click: $vm.openReject.bind($vm, $data)">&#10005;</button>
+            </div>
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- reject modal -->
+  <!-- ko if: rejectTarget() -->
+  <div class="modal-backdrop">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-head"><span class="modal-title">Reject Deliverable</span>
+        <button class="modal-close" data-bind="click: function(){ rejectTarget(null); }">&#10005;</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Reason *</label>
+          <input class="form-control" type="text" data-bind="value: rejectReason, valueUpdate: 'input'">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bind="click: function(){ rejectTarget(null); }">Cancel</button>
+        <button class="btn btn-primary" style="background:var(--red);border-color:var(--red)"
+                data-bind="click: confirmReject">&#10005; Reject</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

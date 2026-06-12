@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i-Finance · Credit Cards (App 202) — Phase 4 Mockup 02</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --brand:#B0721E; --brand-rgb:176,114,30; --brand-dark:#8A5612; --brand-soft:#F8EEDC;
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F0F2F5;
+  --border:#E3E6EB; --border-strong:#CBD2DA;
+  --text:#1B2430; --text-2:#5B6573; --text-3:#8A93A2;
+  --chrome-bg:#0F141B; --chrome-surface:#161C25; --chrome-border:#232B36;
+  --chrome-text:#C9D2DC; --chrome-text-2:#7D8794;
+  --amber:#F0883E; --green:#2DA44E; --red:#D1242F; --blue:#0969DA;
+  --green-soft:#DDF4E4; --red-soft:#FBE9EA; --blue-soft:#DDF0FF; --amber-soft:#FFF1E3;
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace;
+  --font-ar:'IBM Plex Sans Arabic',system-ui,sans-serif;
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --shadow:0 1px 2px rgba(27,36,48,.06),0 4px 14px rgba(27,36,48,.05);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --topbar-h:54px; --side-w:250px;
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14.5px;line-height:1.55}
+html[lang="ar"] body{font-family:var(--font-ar)}
+.mono{font-family:var(--mono);font-feature-settings:'tnum'}
+h1,h2,h3{font-weight:700;letter-spacing:-.02em}
+.topbar{position:fixed;inset-block-start:0;inset-inline:0;height:var(--topbar-h);z-index:60;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--chrome-bg);border-block-end:1px solid var(--chrome-border);color:var(--chrome-text)}
+.suite{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;color:#fff}
+.suite-cube{width:30px;height:30px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 11.5px var(--mono);box-shadow:0 3px 12px rgba(var(--brand-rgb),.45)}
+.sep{width:1px;height:24px;background:var(--chrome-border)}
+.modsw-btn{display:flex;align-items:center;gap:10px;border:1px solid var(--chrome-border);background:var(--chrome-surface);border-radius:10px;padding:6px 12px;font:600 13.5px var(--font);color:#fff;min-width:220px}
+.modsw-btn .dot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 8px rgba(var(--brand-rgb),.8)}
+.modsw-btn .app{font:500 10.5px var(--mono);color:var(--chrome-text-2);margin-inline-start:auto}
+.head-end{margin-inline-start:auto;display:flex;align-items:center;gap:12px}
+.lang-toggle{display:flex;border:1px solid var(--chrome-border);border-radius:99px;overflow:hidden}
+.lang-toggle button{border:0;background:transparent;color:var(--chrome-text-2);padding:5px 14px;font:600 12.5px var(--font);cursor:pointer}
+.lang-toggle button.on{background:var(--amber);color:#10151C}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 11px var(--font)}
+.layout{display:grid;grid-template-columns:var(--side-w) 1fr;min-height:100vh;padding-block-start:var(--topbar-h)}
+.side{background:var(--chrome-bg);color:var(--chrome-text);border-inline-end:1px solid var(--chrome-border);position:sticky;top:var(--topbar-h);height:calc(100vh - var(--topbar-h));overflow-y:auto;display:flex;flex-direction:column;padding:16px 10px}
+.side-logo{display:flex;align-items:center;gap:11px;padding:4px 10px 16px;border-block-end:1px solid var(--chrome-border);margin-block-end:8px}
+.brand-cube{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 13px var(--mono);box-shadow:0 4px 14px rgba(var(--brand-rgb),.4)}
+.side-logo .nm{font-weight:700;font-size:15px;color:#fff;line-height:1.2}
+.side-logo .sub{font:500 10px var(--mono);color:var(--chrome-text-2);letter-spacing:.08em}
+.nav-h{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--chrome-text-2);padding:14px 10px 5px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--chrome-text);font-size:13.5px;font-weight:500;cursor:pointer;border-inline-start:3px solid transparent;transition:all .15s}
+.nav-i:hover{background:var(--chrome-surface)}
+.nav-i.on{background:rgba(var(--brand-rgb),.18);border-inline-start-color:var(--brand);color:#fff;font-weight:600}
+.nav-i .bdg{margin-inline-start:auto;background:var(--red);color:#fff;font:700 10px var(--font);border-radius:99px;padding:1px 7px}
+.content{padding:26px 30px;max-width:1240px}
+.crumb{font-size:12px;color:var(--text-3);margin-block-end:4px}
+.pg-title{font-size:22px;margin:0 0 2px}
+.pg-sub{color:var(--text-2);font-size:13.5px;margin:0 0 22px}
+.section{display:none} .section.on{display:block;animation:fadeUp .35s var(--spring)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 12px;font-size:14.5px}
+.chart-wrap{height:230px;position:relative}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:start;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);padding:8px 10px;border-block-end:1px solid var(--border)}
+td{padding:10px;border-block-end:1px solid var(--surface-2);vertical-align:middle}
+tr:hover td{background:var(--surface-2)}
+.badge{display:inline-block;font:600 10.5px var(--font);border-radius:99px;padding:3px 10px}
+.b-green{background:var(--green-soft);color:var(--green)} .b-amber{background:var(--amber-soft);color:#B45309}
+.b-red{background:var(--red-soft);color:var(--red)} .b-blue{background:var(--blue-soft);color:var(--blue)}
+.b-gray{background:var(--surface-2);color:var(--text-2)} .b-brand{background:var(--brand-soft);color:var(--brand-dark)}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-sm);padding:8px 14px;font:600 13px var(--font);cursor:pointer;transition:all .2s}
+.btn:hover{border-color:var(--border-strong)}
+.btn-p{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 3px 10px rgba(var(--brand-rgb),.35)}
+.btn-p:hover{background:var(--brand-dark)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.fg label{display:block;font:600 11px var(--font);text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);margin-block-end:5px}
+.fg input,.fg select{width:100%;border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;font:13.5px var(--font);background:var(--surface)}
+.audit{display:flex;gap:18px;align-items:center;margin-block-start:16px;padding:8px 12px;border:1px dashed var(--border);border-radius:8px;background:var(--surface-2);font-size:11.5px;color:var(--text-3)}
+.audit b{font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+
+/* card visual */
+.ccard{width:380px;height:222px;border-radius:18px;color:#fff;position:relative;overflow:hidden;
+  background:linear-gradient(135deg,#1c1207 0%,#8A5612 55%,#B0721E 100%);box-shadow:0 18px 44px rgba(138,86,18,.4);padding:22px 24px}
+.ccard:before{content:'';position:absolute;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.07);inset-block-start:-140px;inset-inline-end:-90px}
+.ccard .bank{font:600 12px var(--font);letter-spacing:.18em;opacity:.85}
+.ccard .chip{width:42px;height:30px;border-radius:6px;background:linear-gradient(135deg,#E8C277,#B98A36);margin-block-start:22px}
+.ccard .num{font:600 19px var(--mono);letter-spacing:.14em;margin-block-start:16px}
+.ccard .row{display:flex;justify-content:space-between;align-items:flex-end;margin-block-start:18px}
+.ccard .lbl{font:600 8.5px var(--font);letter-spacing:.14em;opacity:.7;text-transform:uppercase}
+.ccard .val{font:600 13.5px var(--font)}
+.due-banner{display:flex;align-items:center;gap:12px;background:var(--amber-soft);border:1px solid #F0C277;border-radius:var(--r);padding:12px 16px;margin-block-end:18px}
+.due-banner .ic{font-size:20px}
+.due-banner b{font-size:13.5px}
+.due-banner .sub{font-size:12px;color:#8a5d12}
+.limit-line{display:flex;align-items:center;gap:10px;font-size:12.5px;padding:7px 0;border-block-end:1px dashed var(--surface-2)}
+.limit-line .d{width:9px;height:9px;border-radius:50%;flex:none}
+
+/* wizard */
+.wsteps{display:flex;gap:0;margin-block-end:22px}
+.wstep{flex:1;text-align:center;position:relative;font-size:12px;color:var(--text-3)}
+.wstep .n{width:30px;height:30px;border-radius:50%;background:var(--surface);border:2px solid var(--border);display:grid;place-items:center;margin:0 auto 6px;font:700 12.5px var(--font)}
+.wstep.done .n{background:var(--green);border-color:var(--green);color:#fff}
+.wstep.cur .n{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 0 0 5px rgba(var(--brand-rgb),.18)}
+.wstep.cur{color:var(--brand-dark);font-weight:700}
+.wstep:not(:last-child):after{content:'';position:absolute;inset-block-start:14px;inset-inline-start:calc(50% + 22px);width:calc(100% - 44px);height:2px;background:var(--border)}
+.wstep.done:not(:last-child):after{background:var(--green)}
+.typegrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-block-end:18px}
+.typecard{border:2px solid var(--border);border-radius:var(--r);padding:14px 10px;text-align:center;cursor:pointer;transition:all .2s var(--spring)}
+.typecard:hover{border-color:var(--border-strong);transform:translateY(-2px)}
+.typecard.on{border-color:var(--brand);background:var(--brand-soft);box-shadow:0 6px 16px rgba(var(--brand-rgb),.18)}
+.typecard .ic{font-size:22px}
+.typecard .nm{font:700 12px var(--font);margin-block-start:6px}
+.doc-req{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-block-end:8px;font-size:13px}
+.doc-req .st{margin-inline-start:auto}
+html[lang="ar"] .en-only{display:none} html[lang="en"] .ar-only{display:none}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="suite"><div class="suite-cube">iF</div><span>i-Finance</span></div>
+  <div class="sep"></div>
+  <div class="modsw-btn"><span class="dot"></span>
+    <span class="en-only">Credit Cards</span><span class="ar-only">بطاقات الائتمان</span>
+    <span class="app">APP 202 ▾</span></div>
+  <div class="head-end">
+    <div class="lang-toggle"><button id="bEn" class="on" onclick="setLang('en')">EN</button><button id="bAr" onclick="setLang('ar')">ع</button></div>
+    <div class="avatar">SA</div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="side">
+    <div class="side-logo"><div class="brand-cube">CC</div>
+      <div><div class="nm en-only">Credit Cards</div><div class="nm ar-only">بطاقات الائتمان</div><div class="sub">I-FINANCE · APP 202</div></div></div>
+    <div class="nav-i on" data-s="my" onclick="go('my',this)">💳 <span class="en-only">My Card</span><span class="ar-only">بطاقتي</span></div>
+    <div class="nav-h en-only">My Work</div><div class="nav-h ar-only">أعمالي</div>
+    <div class="nav-i" data-s="wiz" onclick="go('wiz',this)">➕ <span class="en-only">New Request</span><span class="ar-only">طلب جديد</span></div>
+    <div class="nav-i" data-s="rep" onclick="go('rep',this)">🧾 <span class="en-only">My Replenishments</span><span class="ar-only">كشوفاتي الشهرية</span><span class="bdg">!</span></div>
+    <div class="nav-h en-only">Approvals</div><div class="nav-h ar-only">الموافقات</div>
+    <div class="nav-i">✅ <span class="en-only">Pending Approvals</span><span class="ar-only">موافقات معلّقة</span></div>
+    <div class="nav-h en-only">Administration</div><div class="nav-h ar-only">الإدارة</div>
+    <div class="nav-i" data-s="dash" onclick="go('dash',this)">📊 <span class="en-only">Dashboard</span><span class="ar-only">لوحة المعلومات</span></div>
+    <div class="nav-i">🗂 <span class="en-only">All Cards</span><span class="ar-only">جميع البطاقات</span></div>
+    <div class="nav-i">📑 <span class="en-only">All Requests</span><span class="ar-only">جميع الطلبات</span></div>
+    <div class="nav-i">👥 <span class="en-only">Proxies</span><span class="ar-only">المفوّضون</span></div>
+    <div class="nav-i">⚙️ <span class="en-only">Module Settings</span><span class="ar-only">إعدادات الوحدة</span></div>
+  </nav>
+
+  <main class="content">
+
+    <!-- ════ MY CARD ════ -->
+    <section class="section on" id="s-my">
+      <div class="crumb en-only">Credit Cards / My Card</div>
+      <h1 class="pg-title en-only">My Corporate Card</h1>
+      <h1 class="pg-title ar-only">بطاقتي المؤسسية</h1>
+      <p class="pg-sub en-only">Card status, limit history and monthly statement duty</p>
+      <p class="pg-sub ar-only">حالة البطاقة وسجل الحدود والكشف الشهري</p>
+
+      <div class="due-banner">
+        <span class="ic">⏰</span>
+        <div><b class="en-only">May 2026 replenishment is due</b><b class="ar-only">كشف مايو ٢٠٢٦ مستحق</b>
+          <div class="sub en-only">Statement day 5 + 3 grace days have passed — submit your expense lines now</div>
+          <div class="sub ar-only">انقضى يوم الكشف ٥ + ٣ أيام سماح — قدّم بنود المصروفات الآن</div></div>
+        <button class="btn btn-p btn-sm" style="margin-inline-start:auto" onclick="go('rep',document.querySelector('[data-s=rep]'))"><span class="en-only">Submit now</span><span class="ar-only">قدّم الآن</span></button>
+      </div>
+
+      <div class="grid2">
+        <div>
+          <div class="ccard">
+            <div class="bank">ADCB · CORPORATE</div>
+            <div class="chip"></div>
+            <div class="num">5412 •••• •••• 7733</div>
+            <div class="row">
+              <div><div class="lbl en-only">Cardholder</div><div class="lbl ar-only">حامل البطاقة</div><div class="val">SHAIKHA ALSUWAIDI</div></div>
+              <div><div class="lbl en-only">Expires</div><div class="lbl ar-only">تنتهي</div><div class="val mono">09/28</div></div>
+              <div><div class="lbl en-only">Limit</div><div class="lbl ar-only">الحد</div><div class="val mono">AED 40,000</div></div>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;margin-block-start:14px;flex-wrap:wrap">
+            <span class="badge b-green">ACTIVE</span>
+            <span class="badge b-brand en-only">PENDING: INCREASE LIMIT</span><span class="badge b-brand ar-only">معلّق: زيادة الحد</span>
+          </div>
+          <div style="display:flex;gap:8px;margin-block-start:14px">
+            <button class="btn btn-sm" onclick="go('wiz',document.querySelector('[data-s=wiz]'))"><span class="en-only">⬆ Increase limit</span><span class="ar-only">⬆ زيادة الحد</span></button>
+            <button class="btn btn-sm"><span class="en-only">♻ Replace card</span><span class="ar-only">♻ استبدال البطاقة</span></button>
+            <button class="btn btn-sm"><span class="en-only">✕ Close card</span><span class="ar-only">✕ إغلاق البطاقة</span></button>
+          </div>
+        </div>
+        <div class="card">
+          <h3 class="en-only">Limit History</h3><h3 class="ar-only">سجل الحدود</h3>
+          <div class="limit-line"><span class="d" style="background:var(--green)"></span><span class="mono">25,000 → 40,000</span><span class="badge b-green">INCREASE</span><span style="margin-inline-start:auto" class="mono">02-Feb-2026</span></div>
+          <div class="limit-line"><span class="d" style="background:var(--blue)"></span><span class="mono">— → 25,000</span><span class="badge b-blue">INITIAL</span><span style="margin-inline-start:auto" class="mono">15-Sep-2025</span></div>
+          <h3 style="margin-block-start:18px" class="en-only">Active Proxy</h3><h3 style="margin-block-start:18px" class="ar-only">المفوّض النشط</h3>
+          <div style="display:flex;align-items:center;gap:10px;font-size:13px">
+            <div class="avatar" style="width:28px;height:28px;font-size:10px">NA</div>
+            Naser Al Khaja <span class="badge b-gray en-only">until 30-Jun-2026</span><span class="badge b-gray ar-only">حتى 30-Jun-2026</span>
+          </div>
+          <div class="audit">🕑 <span><b class="en-only">Created</b><b class="ar-only">أُنشئ</b> NASER.ALKHAJA · 15-Sep-2025 09:30 AM</span><span><b class="en-only">Last updated</b><b class="ar-only">آخر تحديث</b> ADMIN · 02-Feb-2026 01:12 PM</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ REQUEST WIZARD ════ -->
+    <section class="section" id="s-wiz">
+      <div class="crumb en-only">Credit Cards / New Request</div>
+      <h1 class="pg-title en-only">New Card Request</h1>
+      <h1 class="pg-title ar-only">طلب بطاقة جديد</h1>
+      <p class="pg-sub en-only">CCR number is assigned on submit · routed per request type</p>
+      <p class="pg-sub ar-only">يُمنح رقم الطلب عند الإرسال · يوجَّه حسب نوع الطلب</p>
+
+      <div class="card">
+        <div class="wsteps">
+          <div class="wstep done"><div class="n">✓</div><span class="en-only">Type</span><span class="ar-only">النوع</span></div>
+          <div class="wstep cur"><div class="n">2</div><span class="en-only">Details</span><span class="ar-only">التفاصيل</span></div>
+          <div class="wstep"><div class="n">3</div><span class="en-only">Documents</span><span class="ar-only">المستندات</span></div>
+          <div class="wstep"><div class="n">4</div><span class="en-only">Review & Submit</span><span class="ar-only">مراجعة وإرسال</span></div>
+        </div>
+
+        <div class="typegrid">
+          <div class="typecard"><div class="ic">💳</div><div class="nm en-only">New Card</div><div class="nm ar-only">بطاقة جديدة</div></div>
+          <div class="typecard on"><div class="ic">⬆</div><div class="nm en-only">Increase Limit</div><div class="nm ar-only">زيادة الحد</div></div>
+          <div class="typecard"><div class="ic">⬇</div><div class="nm en-only">Decrease Limit</div><div class="nm ar-only">تخفيض الحد</div></div>
+          <div class="typecard"><div class="ic">♻</div><div class="nm en-only">Replacement</div><div class="nm ar-only">استبدال</div></div>
+          <div class="typecard"><div class="ic">✕</div><div class="nm en-only">Close Card</div><div class="nm ar-only">إغلاق</div></div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="fg"><label class="en-only">Card</label><label class="ar-only">البطاقة</label><select><option>5412 •••• 7733 — SHAIKHA ALSUWAIDI</option></select></div>
+          <div class="fg"><label class="en-only">Current Limit</label><label class="ar-only">الحد الحالي</label><input class="mono" value="AED 40,000" disabled></div>
+          <div class="fg"><label class="en-only">Requested Limit *</label><label class="ar-only">الحد المطلوب *</label><input class="mono" value="60,000"></div>
+          <div class="fg"><label class="en-only">Justification *</label><label class="ar-only">المبرر *</label><input value="Quarterly media-buy commitments"></div>
+        </div>
+
+        <h3 style="margin-block-start:20px" class="en-only">Required Documents (per type)</h3>
+        <h3 style="margin-block-start:20px" class="ar-only">المستندات المطلوبة (حسب النوع)</h3>
+        <div class="doc-req">📄 <span class="en-only">Manager justification memo</span><span class="ar-only">مذكرة مبررات المدير</span><span class="st badge b-green en-only">UPLOADED</span><span class="st badge b-green ar-only">تم الرفع</span></div>
+        <div class="doc-req">📄 <span class="en-only">Last 3 statements reconciliation</span><span class="ar-only">تسوية آخر ٣ كشوف</span><span class="st badge b-red en-only">MISSING — blocks submit</span><span class="st badge b-red ar-only">ناقص — يمنع الإرسال</span></div>
+
+        <div style="display:flex;gap:10px;margin-block-start:20px">
+          <button class="btn"><span class="en-only">← Back</span><span class="ar-only">→ رجوع</span></button>
+          <button class="btn btn-p" style="margin-inline-start:auto"><span class="en-only">Continue →</span><span class="ar-only">متابعة ←</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ REPLENISHMENT DETAIL ════ -->
+    <section class="section" id="s-rep">
+      <div class="crumb en-only">Credit Cards / Replenishments / CCM-2026-05-00018</div>
+      <h1 class="pg-title mono">CCM-2026-05-00018 <span class="badge b-gray" style="vertical-align:4px">DRAFT</span></h1>
+      <p class="pg-sub en-only">May 2026 statement · Card 5412 •••• 7733 · lines must justify the month's spend</p>
+      <p class="pg-sub ar-only">كشف مايو ٢٠٢٦ · يجب أن تغطي البنود مصروفات الشهر</p>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-block-end:10px">
+          <h3 style="margin:0" class="en-only">Expense Lines</h3><h3 style="margin:0" class="ar-only">بنود المصروفات</h3>
+          <button class="btn btn-sm en-only">+ Add Line</button><button class="btn btn-sm ar-only">+ إضافة بند</button>
+        </div>
+        <table>
+          <tr><th>#</th><th class="en-only">Date</th><th class="ar-only">التاريخ</th><th class="en-only">Merchant</th><th class="ar-only">التاجر</th><th class="en-only">Coding</th><th class="ar-only">الترميز</th><th>AED</th><th class="en-only">Receipt</th><th class="ar-only">الإيصال</th><th></th></tr>
+          <tr><td>1</td><td class="mono">04-May</td><td>Etihad Airways</td><td><span class="badge b-blue">GL · 8211-2210…</span></td><td class="mono">4,820.00</td><td><span class="badge b-green">✓</span></td><td><button class="btn btn-sm">✎</button></td></tr>
+          <tr><td>2</td><td class="mono">11-May</td><td>LinkedIn Ads</td><td><span class="badge b-blue">GL · 8211-2530…</span></td><td class="mono">7,350.00</td><td><span class="badge b-green">✓</span></td><td><button class="btn btn-sm">✎</button></td></tr>
+          <tr><td>3</td><td class="mono">23-May</td><td>AWS EMEA</td><td><span class="badge b-brand">PROJECT · DCT-26-031</span></td><td class="mono">2,114.75</td><td><span class="badge b-red">✗</span></td><td><button class="btn btn-sm">✎</button></td></tr>
+          <tr style="font-weight:700"><td colspan="4" style="text-align:end" class="en-only">Statement total</td><td colspan="4" style="text-align:end" class="ar-only">إجمالي الكشف</td><td class="mono">14,284.75</td><td colspan="2"></td></tr>
+        </table>
+        <div style="display:flex;gap:10px;margin-block-start:18px">
+          <button class="btn btn-p"><span class="en-only">✓ Submit Statement</span><span class="ar-only">✓ إرسال الكشف</span></button>
+          <button class="btn"><span class="en-only">Save Draft</span><span class="ar-only">حفظ مسودة</span></button>
+        </div>
+        <div class="audit">🕑 <span><b class="en-only">Created</b><b class="ar-only">أُنشئ</b> SHAIKHA.ALSUWAIDI · 08-Jun-2026 10:05 AM</span><span><b class="en-only">Last updated</b><b class="ar-only">آخر تحديث</b> NASER.ALKHAJA (proxy) · 11-Jun-2026 04:48 PM</span></div>
+      </div>
+    </section>
+
+    <!-- ════ ADMIN DASHBOARD ════ -->
+    <section class="section" id="s-dash">
+      <div class="crumb en-only">Credit Cards / Dashboard</div>
+      <h1 class="pg-title en-only">Card Programme Dashboard</h1>
+      <h1 class="pg-title ar-only">لوحة برنامج البطاقات</h1>
+      <p class="pg-sub en-only">Replenishment discipline and exposure by organisation</p>
+      <p class="pg-sub ar-only">انضباط الكشوف الشهرية والتعرض حسب الإدارة</p>
+      <div class="grid2">
+        <div class="card"><h3 class="en-only">Replenishment Compliance (last 6 months)</h3><h3 class="ar-only">التزام الكشوف (آخر ٦ أشهر)</h3>
+          <div class="chart-wrap"><canvas id="c1"></canvas></div></div>
+        <div class="card"><h3 class="en-only">Credit Limits by Organisation</h3><h3 class="ar-only">حدود الائتمان حسب الإدارة</h3>
+          <div class="chart-wrap"><canvas id="c2"></canvas></div></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+function go(id, el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
+  if (el) el.classList.add('on');
+  if (id==='dash' && !window._charts) drawCharts();
+}
+function setLang(l){
+  document.documentElement.lang = l;
+  document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
+  document.getElementById('bEn').classList.toggle('on', l==='en');
+  document.getElementById('bAr').classList.toggle('on', l==='ar');
+}
+function drawCharts(){
+  window._charts = true;
+  const gridCol = '#E3E6EB', txtCol = '#5B6573';
+  new Chart(document.getElementById('c1'), { type:'bar',
+    data:{ labels:['Dec','Jan','Feb','Mar','Apr','May'],
+      datasets:[
+        {label:'On time', data:[9,10,11,10,12,8], backgroundColor:'rgba(45,164,78,.8)', stack:'s', borderRadius:4},
+        {label:'Late', data:[2,1,1,2,1,3], backgroundColor:'rgba(240,136,62,.85)', stack:'s', borderRadius:4},
+        {label:'Missing', data:[1,1,0,0,0,2], backgroundColor:'rgba(209,36,47,.8)', stack:'s', borderRadius:4}]},
+    options:{ maintainAspectRatio:false, plugins:{legend:{labels:{color:txtCol,boxWidth:12}}},
+      scales:{ x:{stacked:true,grid:{display:false},ticks:{color:txtCol}}, y:{stacked:true,grid:{color:gridCol},ticks:{color:txtCol,stepSize:4}}}}});
+  new Chart(document.getElementById('c2'), { type:'bar',
+    data:{ labels:['Finance','Media','Strategy','Digital','Events'],
+      datasets:[{ data:[180,140,80,95,60], backgroundColor:'rgba(176,114,30,.8)', borderRadius:6 }]},
+    options:{ maintainAspectRatio:false, indexAxis:'y', plugins:{legend:{display:false}},
+      scales:{ x:{grid:{color:gridCol},ticks:{color:txtCol,callback:v=>v+'k'}}, y:{grid:{display:false},ticks:{color:txtCol}}}}});
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,80 @@
+<div class="page-wrap" style="max-width:980px">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: t('ar.uploadFolder')"></div>
+    <div class="page-subtitle">Pick the event folder — sub-folders are preserved; Excel/Word/PowerPoint/email files get a text rendition for the AI</div>
+    <div style="margin-inline-start:auto">
+      <button class="btn btn-secondary" data-bind="click: backToEvent">← Back to event</button>
+    </div>
+  </div>
+
+  <!-- STEP 1: pick -->
+  <!-- ko if: step() === 1 -->
+  <div class="form-card" style="text-align:center; padding:60px 20px">
+    <div style="font-size:44px">&#128193;</div>
+    <p style="color:#5a6577; margin:14px 0 22px">
+      Select the event's document folder. All files in it and its sub-folders will be uploaded.
+    </p>
+    <button class="btn btn-primary" data-bind="click: pickFolder">Choose Folder…</button>
+  </div>
+  <!-- /ko -->
+
+  <!-- STEP 2: preview -->
+  <!-- ko if: step() === 2 -->
+  <div class="form-card">
+    <h3 style="margin-top:0">
+      <span data-bind="text: validCount()"></span> file(s) ready
+      <span style="color:#8a94a6; font-weight:400; font-size:13px"
+            data-bind="text: ' (max ' + maxSizeMb() + ' MB each)'"></span>
+    </h3>
+    <div class="ar-tree" style="max-height:380px; overflow:auto; border:1px solid #eef1f6; border-radius:8px; padding:10px 14px">
+      <!-- ko foreach: folderTree() -->
+      <div class="dir" data-bind="text: '📁 ' + dir"></div>
+      <!-- ko foreach: files -->
+      <div class="file">
+        <span data-bind="text: name, style: { textDecoration: tooBig ? 'line-through' : 'none' }"></span>
+        <span class="sz" data-bind="text: sizeKb + ' KB'"></span>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" data-bind="click: reset">Re-pick</button>
+      <button class="btn btn-primary" data-bind="click: startUpload, disable: validCount() === 0">
+        Upload <span data-bind="text: validCount()"></span> file(s)
+      </button>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- STEP 3: uploading -->
+  <!-- ko if: step() === 3 -->
+  <div class="form-card">
+    <h3 style="margin-top:0">Uploading…</h3>
+    <div class="mono" style="font-size:12px; color:#5a6577; margin-bottom:10px"
+         data-bind="text: currentMsg"></div>
+    <div class="ar-tree" style="max-height:420px; overflow:auto">
+      <!-- ko foreach: files() -->
+      <div class="file">
+        <span data-bind="text: name"></span>
+        <span class="sz" data-bind="text: status()"></span>
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- STEP 4: done -->
+  <!-- ko if: step() === 4 -->
+  <div class="form-card" style="text-align:center; padding:46px 20px">
+    <div style="font-size:44px">&#9989;</div>
+    <h3>
+      <span data-bind="text: uploadedOk()"></span> uploaded
+      <span class="ar-neg" data-bind="visible: uploadedErr() > 0, text: ' · ' + uploadedErr() + ' failed'"></span>
+    </h3>
+    <p style="color:#5a6577" data-bind="visible: autoRun()">
+      AI classification is running in the background — track it on the event's Files tab.
+    </p>
+    <button class="btn btn-primary" data-bind="click: backToEvent">Go to event →</button>
+  </div>
+  <!-- /ko -->
+</div>

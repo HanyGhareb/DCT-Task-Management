@@ -1,5 +1,5 @@
-define(['knockout', 'services/authService', 'services/userService'],
-function (ko, authService, userService) {
+define(['knockout', 'services/authService', 'services/userService', 'services/delegationService'],
+function (ko, authService, userService, delegationService) {
   'use strict';
 
   function ProfileViewModel() {
@@ -23,6 +23,7 @@ function (ko, authService, userService) {
     self.successMsg     = ko.observable('');
     self.saving         = ko.observable(false);
     self.errorMsg       = ko.observable('');
+    self.audit          = ko.observable(null);   // createdBy/At, updatedBy/At
 
     /* Cache-busted img src — the photo URL is stable, the bytes change */
     self.photoSrc = ko.observable('');
@@ -35,6 +36,7 @@ function (ko, authService, userService) {
     /* Server-first load: refresh every editable field from GET /users/:id */
     if (session.userId) {
       userService.getById(session.userId).then(function (u) {
+        self.audit(u);
         self.displayName(u.displayName       || '');
         self.displayNameAr(u.displayNameAr   || '');
         self.email(u.email                   || '');
@@ -63,10 +65,11 @@ function (ko, authService, userService) {
       self.saving(true);
       self.errorMsg('');
       var payload = {
-        displayName:   self.displayName(),
-        displayNameAr: self.displayNameAr(),
-        email:         self.email(),
-        phone:         self.phone(),
+        displayName:    self.displayName(),
+        displayNameAr:  self.displayNameAr(),
+        email:          self.email(),
+        phone:          self.phone(),
+        employeeNumber: self.employeeNumber(),
       };
       userService.update(session.userId, payload).then(function () {
         authService.updateCachedUser(payload);
@@ -131,10 +134,71 @@ function (ko, authService, userService) {
         });
     };
 
-    /* Delegations */
-    self.delegations = ko.observableArray([
-      { fromName: 'Hashem Al Kabbi', toName: 'Naser Al Khaja', startDate: '20 May 2026', endDate: '25 May 2026', reason: 'Annual leave', status: 'Upcoming' }
-    ]);
+    /* Delegations — real data (Phase 4) */
+    self.delegations     = ko.observableArray([]);
+    self.delLoading      = ko.observable(true);
+    self.delBusy         = ko.observable(false);
+    self.showDelModal    = ko.observable(false);
+    self.delUsers        = ko.observableArray([]);
+    self.delDelegateId   = ko.observable('');
+    self.delStart        = ko.observable('');
+    self.delEnd          = ko.observable('');
+    self.delReason       = ko.observable('');
+    self.delError        = ko.observable('');
+
+    function loadDelegations() {
+      delegationService.getAll(true).then(function (items) {
+        self.delegations(items);
+        self.delLoading(false);
+      }).catch(function () { self.delLoading(false); });
+    }
+    loadDelegations();
+
+    self.openDelModal = function () {
+      self.delError('');
+      userService.getAll().then(function (items) {
+        self.delUsers((items || []).filter(function (u) {
+          return u.userId !== session.userId && u.isActive !== 'N';
+        }));
+        self.showDelModal(true);
+      });
+    };
+
+    self.createDelegation = function () {
+      self.delError('');
+      if (!self.delDelegateId()) { self.delError('Pick who will act on your behalf.'); return; }
+      if (!self.delEnd())        { self.delError('An end date is required.'); return; }
+      self.delBusy(true);
+      delegationService.create({
+        delegateId: Number(self.delDelegateId()),
+        scope:      'ALL_ROLES',
+        startDate:  self.delStart() || null,
+        endDate:    self.delEnd(),
+        reason:     self.delReason()
+      }).then(function () {
+        self.delBusy(false);
+        self.showDelModal(false);
+        self.delDelegateId(''); self.delStart(''); self.delEnd(''); self.delReason('');
+        loadDelegations();
+      }).catch(function (err) {
+        self.delBusy(false);
+        self.delError((err && err.message) || 'Could not create the delegation');
+      });
+    };
+
+    self.cancelDelegation = function (d) {
+      self.delBusy(true);
+      delegationService.cancel(d.delegationId).then(function () {
+        self.delBusy(false);
+        loadDelegations();
+      }).catch(function () { self.delBusy(false); });
+    };
+
+    self.isMyOutgoing = function (d) { return d.delegatorId === session.userId; };
+    self.delBadge = function (s) {
+      var map = { ACTIVE: 'badge--approved', CANCELLED: 'badge--idle', EXPIRED: 'badge--idle' };
+      return 'badge ' + (map[s] || 'badge--pending');
+    };
   }
 
   return ProfileViewModel;

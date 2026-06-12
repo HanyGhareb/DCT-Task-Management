@@ -10,6 +10,14 @@ define(
     themeService.init();
     shell.initBrand('admin');   // THEME_BRAND_COLOR override applied post-login (see onLogin)
 
+    // Platform announcement banner (Phase 4) — no-op until a session exists
+    self._initAnnouncements = function () {
+      require(['services/config'], function (config) {
+        shell.initAnnouncements('admin', config.authBase || config.apiBase);
+      });
+    };
+    self._initAnnouncements();
+
     // ── i18n (Phase 3): t() + live language switching ────────────────────
     // localStorage is the primary store; the LANG row in DCT_USER_PREFERENCES
     // (PUT /prefs/LANG) makes the preference follow the user across devices.
@@ -104,6 +112,8 @@ define(
           { id: 'modules',           labelKey: 'nav.modules',           icon: '&#9707;'   },
           { id: 'approvalTemplates', labelKey: 'nav.approvalTemplates', icon: '&#128196;' },
           { id: 'approvalMonitor',   labelKey: 'nav.approvalMonitor',   icon: '&#128065;' },
+          { id: 'delegations',       labelKey: 'nav.delegations',       icon: '&#129309;' },
+          { id: 'announcements',     labelKey: 'nav.announcements',     icon: '&#128226;' },
           { id: 'lookups',           labelKey: 'nav.lookups',           icon: '&#128203;' },
           { id: 'appearance',        labelKey: 'nav.appearance',        icon: '&#127912;' },
           { id: 'systemSettings',    labelKey: 'nav.systemSettings',    icon: '&#9881;'   },
@@ -138,6 +148,14 @@ define(
     // ── Internal route loader ───────────────────────────────────────────
     // Uses RequireJS text! plugin for HTML and AMD for the viewModel class.
     self._loadRoute = function (path) {
+      // Keep the route in the URL hash so F5 restores the same page
+      if (path === 'login') {
+        if (window.location.hash) {
+          try { history.replaceState(null, '', window.location.pathname); } catch (e) {}
+        }
+      } else if (window.location.hash !== '#' + path) {
+        try { history.replaceState(null, '', '#' + path); } catch (e) {}
+      }
       // Auto-expand the group that contains this route
       NAV_GROUPS.forEach(function (g) {
         if (g.collapsed && g.items && g.items.some(function (item) { return item.id === path; })) {
@@ -199,6 +217,7 @@ define(
       authService.getUnreadCount().then(function (n) { self.unreadCount(n); }).catch(function () {});
       self._applyServerTheme();
       self._applyServerLang();
+      self._initAnnouncements();
       self._loadRoute('dashboard');
     };
 
@@ -214,9 +233,10 @@ define(
       });
     };
 
-    // ── Boot: load initial route ────────────────────────────────────────
+    // ── Boot: load initial route (URL hash survives F5) ────────────────
     if (self.currentUser()) self._applyServerTheme();
-    self._loadRoute(self.currentUser() ? 'dashboard' : 'login');
+    var bootRoute = (window.location.hash || '').replace(/^#/, '');
+    self._loadRoute(self.currentUser() ? (bootRoute || 'dashboard') : 'login');
   }
 
   return AppController;

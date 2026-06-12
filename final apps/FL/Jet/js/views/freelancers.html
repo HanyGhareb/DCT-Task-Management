@@ -1,0 +1,59 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('fl.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('fl.subtitle')"></div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search name / vendor # / email&hellip;"
+           data-bind="value: searchBy, valueUpdate: 'input'">
+    <select class="form-control" style="width:170px;padding:8px 10px" data-bind="value: statusFilter">
+      <option value="">All statuses</option>
+      <option value="ACTIVE">Active</option>
+      <option value="INACTIVE">Inactive</option>
+      <option value="BLACKLISTED">Blacklisted</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8, avatar: true"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load freelancers</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128100;</div>
+    <div class="empty-state__msg">No freelancers found</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Vendor #</th><th>Name</th><th>Nationality</th><th>Email</th><th>Contracts</th><th>Docs</th><th>Status</th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr style="cursor:pointer" data-bind="click: $vm.openItem.bind($vm, $data)">
+          <td class="mono" style="font-size:12px" data-bind="text: $data.vendorNumber || '-'"></td>
+          <td style="font-weight:600" data-bind="text: fullNameEn"></td>
+          <td data-bind="text: $data.nationality || '-'"></td>
+          <td data-bind="text: $data.email || ''"></td>
+          <td><span class="badge badge--info" data-bind="text: ($data.activeContracts || 0) + ' active'"></span></td>
+          <td>
+            <!-- ko if: ($data.expiredDocs || 0) > 0 -->
+            <span class="exp-chip exp-chip--expired" data-bind="text: $data.expiredDocs + ' expired'"></span>
+            <!-- /ko -->
+            <!-- ko if: ($data.expiredDocs || 0) === 0 -->
+            <span class="exp-chip exp-chip--valid">OK</span>
+            <!-- /ko -->
+          </td>
+          <td><span class="badge" data-bind="text: status, css: $vm.badgeFor(status)"></span></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+  <!-- /ko -->
+</div>

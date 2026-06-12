@@ -9,6 +9,7 @@ function (ko, config, authService, notifService, i18n, shell) {
 
     // ── Shared shell (Phase 3): brand + i18n ────────────────────────────
     shell.initBrand('hr');
+    shell.initAnnouncements('hr', config.authBase || config.apiBase);
     self.t       = i18n.t;
     self.lang    = i18n.lang;
     self.setLang = i18n.setLang;

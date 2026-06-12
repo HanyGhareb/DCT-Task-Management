@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i-Finance · Freelancers (App 203) — Phase 4 Mockup 01</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<style>
+:root{
+  --brand:#7C4DBE; --brand-rgb:124,77,190; --brand-dark:#5D3792; --brand-soft:#F1EAFA;
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F0F2F5;
+  --border:#E3E6EB; --border-strong:#CBD2DA;
+  --text:#1B2430; --text-2:#5B6573; --text-3:#8A93A2;
+  --chrome-bg:#0F141B; --chrome-surface:#161C25; --chrome-border:#232B36;
+  --chrome-text:#C9D2DC; --chrome-text-2:#7D8794;
+  --amber:#F0883E; --green:#2DA44E; --red:#D1242F; --blue:#0969DA;
+  --green-soft:#DDF4E4; --red-soft:#FBE9EA; --blue-soft:#DDF0FF; --amber-soft:#FFF1E3;
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace;
+  --font-ar:'IBM Plex Sans Arabic',system-ui,sans-serif;
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --shadow:0 1px 2px rgba(27,36,48,.06),0 4px 14px rgba(27,36,48,.05);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --topbar-h:54px; --side-w:250px;
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14.5px;line-height:1.55}
+html[lang="ar"] body{font-family:var(--font-ar)}
+.mono{font-family:var(--mono);font-feature-settings:'tnum'}
+h1,h2,h3{font-weight:700;letter-spacing:-.02em}
+
+/* ── top bar ───────────────────────────────────────────────────────── */
+.topbar{position:fixed;inset-block-start:0;inset-inline:0;height:var(--topbar-h);z-index:60;
+  display:flex;align-items:center;gap:16px;padding:0 16px;
+  background:var(--chrome-bg);border-block-end:1px solid var(--chrome-border);color:var(--chrome-text)}
+.suite{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;color:#fff}
+.suite-cube{width:30px;height:30px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 11.5px var(--mono);box-shadow:0 3px 12px rgba(var(--brand-rgb),.45)}
+.sep{width:1px;height:24px;background:var(--chrome-border)}
+.modsw-btn{display:flex;align-items:center;gap:10px;border:1px solid var(--chrome-border);background:var(--chrome-surface);
+  border-radius:10px;padding:6px 12px;font:600 13.5px var(--font);color:#fff;min-width:220px}
+.modsw-btn .dot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 8px rgba(var(--brand-rgb),.8)}
+.modsw-btn .app{font:500 10.5px var(--mono);color:var(--chrome-text-2);margin-inline-start:auto}
+.head-end{margin-inline-start:auto;display:flex;align-items:center;gap:12px}
+.lang-toggle{display:flex;border:1px solid var(--chrome-border);border-radius:99px;overflow:hidden}
+.lang-toggle button{border:0;background:transparent;color:var(--chrome-text-2);padding:5px 14px;font:600 12.5px var(--font);cursor:pointer}
+.lang-toggle button.on{background:var(--amber);color:#10151C}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 11px var(--font)}
+
+/* ── layout + side nav ─────────────────────────────────────────────── */
+.layout{display:grid;grid-template-columns:var(--side-w) 1fr;min-height:100vh;padding-block-start:var(--topbar-h)}
+.side{background:var(--chrome-bg);color:var(--chrome-text);border-inline-end:1px solid var(--chrome-border);
+  position:sticky;top:var(--topbar-h);height:calc(100vh - var(--topbar-h));overflow-y:auto;
+  display:flex;flex-direction:column;padding:16px 10px}
+.side-logo{display:flex;align-items:center;gap:11px;padding:4px 10px 16px;border-block-end:1px solid var(--chrome-border);margin-block-end:8px}
+.brand-cube{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 13px var(--mono);box-shadow:0 4px 14px rgba(var(--brand-rgb),.4)}
+.side-logo .nm{font-weight:700;font-size:15px;color:#fff;line-height:1.2}
+.side-logo .sub{font:500 10px var(--mono);color:var(--chrome-text-2);letter-spacing:.08em}
+.nav-h{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--chrome-text-2);padding:14px 10px 5px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--chrome-text);font-size:13.5px;font-weight:500;cursor:pointer;border-inline-start:3px solid transparent;transition:all .15s}
+.nav-i:hover{background:var(--chrome-surface)}
+.nav-i.on{background:rgba(var(--brand-rgb),.18);border-inline-start-color:var(--brand);color:#fff;font-weight:600}
+.nav-i .bdg{margin-inline-start:auto;background:var(--red);color:#fff;font:700 10px var(--font);border-radius:99px;padding:1px 7px}
+
+/* ── work surface ──────────────────────────────────────────────────── */
+.content{padding:26px 30px;max-width:1240px}
+.crumb{font-size:12px;color:var(--text-3);margin-block-end:4px}
+.pg-title{font-size:22px;margin:0 0 2px}
+.pg-sub{color:var(--text-2);font-size:13.5px;margin:0 0 22px}
+.section{display:none} .section.on{display:block;animation:fadeUp .35s var(--spring)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+.cards{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-block-end:20px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow)}
+.stat .v{font-size:26px;font-weight:800;letter-spacing:-.03em}
+.stat .l{font-size:12px;color:var(--text-2);margin-block-start:2px}
+.stat .d{font-size:11px;margin-block-start:6px}
+.up{color:var(--green)} .warn{color:var(--amber)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow)}
+.card h3{margin:0 0 12px;font-size:14.5px}
+.chart-wrap{height:230px;position:relative}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:start;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);padding:8px 10px;border-block-end:1px solid var(--border)}
+td{padding:10px;border-block-end:1px solid var(--surface-2);vertical-align:middle}
+tr:hover td{background:var(--surface-2)}
+.badge{display:inline-block;font:600 10.5px var(--font);border-radius:99px;padding:3px 10px}
+.b-green{background:var(--green-soft);color:var(--green)} .b-amber{background:var(--amber-soft);color:#B45309}
+.b-red{background:var(--red-soft);color:var(--red)} .b-blue{background:var(--blue-soft);color:var(--blue)}
+.b-gray{background:var(--surface-2);color:var(--text-2)} .b-brand{background:var(--brand-soft);color:var(--brand-dark)}
+
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);
+  border-radius:var(--r-sm);padding:8px 14px;font:600 13px var(--font);cursor:pointer;transition:all .2s}
+.btn:hover{border-color:var(--border-strong)}
+.btn-p{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 3px 10px rgba(var(--brand-rgb),.35)}
+.btn-p:hover{background:var(--brand-dark)}
+.btn-sm{padding:5px 10px;font-size:12px}
+.toolbar{display:flex;gap:10px;align-items:center;margin-block-end:14px}
+.search{flex:1;max-width:340px;border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 12px;font:13px var(--font);background:var(--surface)}
+
+.tabs{display:flex;gap:4px;border-block-end:2px solid var(--border);margin-block-end:18px}
+.tab{padding:9px 16px;font:600 13px var(--font);color:var(--text-2);cursor:pointer;border-block-end:2px solid transparent;margin-block-end:-2px}
+.tab.on{color:var(--brand-dark);border-block-end-color:var(--brand)}
+.kv{display:grid;grid-template-columns:160px 1fr;row-gap:9px;font-size:13.5px}
+.kv .k{color:var(--text-3);font-size:12px;text-transform:uppercase;letter-spacing:.06em;padding-block-start:2px}
+.fgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.fg label{display:block;font:600 11px var(--font);text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);margin-block-end:5px}
+.fg input,.fg select{width:100%;border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;font:13.5px var(--font);background:var(--surface)}
+.fg input:focus{outline:2px solid rgba(var(--brand-rgb),.35);border-color:var(--brand)}
+.hint{font-size:11.5px;color:var(--text-3);margin-block-start:4px}
+.audit{display:flex;gap:18px;align-items:center;margin-block-start:16px;padding:8px 12px;border:1px dashed var(--border);border-radius:8px;background:var(--surface-2);font-size:11.5px;color:var(--text-3)}
+.audit b{font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+.exp-chip{font:600 10.5px var(--mono);border-radius:6px;padding:2px 8px}
+.exp-ok{background:var(--green-soft);color:var(--green)} .exp-soon{background:var(--amber-soft);color:#B45309} .exp-bad{background:var(--red-soft);color:var(--red)}
+.bill{height:7px;border-radius:99px;background:var(--surface-2);overflow:hidden;min-width:90px}
+.bill i{display:block;height:100%;background:var(--green);border-radius:99px}
+.note{background:var(--brand-soft);border:1px solid rgba(var(--brand-rgb),.25);border-radius:var(--r);padding:10px 14px;font-size:12.5px;color:var(--brand-dark);margin-block-end:18px}
+html[lang="ar"] .en-only{display:none} html[lang="en"] .ar-only{display:none}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="suite"><div class="suite-cube">iF</div><span>i-Finance</span></div>
+  <div class="sep"></div>
+  <div class="modsw-btn"><span class="dot"></span>
+    <span class="en-only">Freelancers</span><span class="ar-only">المستقلون</span>
+    <span class="app">APP 203 ▾</span></div>
+  <div class="head-end">
+    <div class="lang-toggle"><button id="bEn" class="on" onclick="setLang('en')">EN</button><button id="bAr" onclick="setLang('ar')">ع</button></div>
+    <div class="avatar">AA</div>
+  </div>
+</header>
+
+<div class="layout">
+  <nav class="side">
+    <div class="side-logo"><div class="brand-cube">FL</div>
+      <div><div class="nm en-only">Freelancers</div><div class="nm ar-only">المستقلون</div><div class="sub">I-FINANCE · APP 203</div></div></div>
+    <div class="nav-i on" data-s="dash" onclick="go('dash',this)">🏠 <span class="en-only">Home</span><span class="ar-only">الرئيسية</span></div>
+    <div class="nav-h en-only">People</div><div class="nav-h ar-only">الأشخاص</div>
+    <div class="nav-i" data-s="reg" onclick="go('reg',this)">📝 <span class="en-only">Registrations</span><span class="ar-only">طلبات التسجيل</span></div>
+    <div class="nav-i" data-s="fl" onclick="go('fl',this)">👤 <span class="en-only">Freelancers</span><span class="ar-only">المستقلون</span></div>
+    <div class="nav-h en-only">Contracts</div><div class="nav-h ar-only">العقود</div>
+    <div class="nav-i" data-s="con" onclick="go('con',this)">📃 <span class="en-only">Contracts</span><span class="ar-only">العقود</span></div>
+    <div class="nav-i">📆 <span class="en-only">Payment Schedule</span><span class="ar-only">جدول الدفعات</span></div>
+    <div class="nav-h en-only">Payments</div><div class="nav-h ar-only">المدفوعات</div>
+    <div class="nav-i">💵 <span class="en-only">Vouchers</span><span class="ar-only">سندات الدفع</span></div>
+    <div class="nav-i">📦 <span class="en-only">Deliverables</span><span class="ar-only">المخرجات</span></div>
+    <div class="nav-h en-only">Compliance</div><div class="nav-h ar-only">الامتثال</div>
+    <div class="nav-i">📄 <span class="en-only">Documents</span><span class="ar-only">المستندات</span><span class="bdg">3</span></div>
+    <div class="nav-h en-only">Approvals</div><div class="nav-h ar-only">الموافقات</div>
+    <div class="nav-i">✅ <span class="en-only">Pending Approvals</span><span class="ar-only">موافقات معلّقة</span><span class="bdg">2</span></div>
+    <div class="nav-h en-only">Administration</div><div class="nav-h ar-only">الإدارة</div>
+    <div class="nav-i">⚙️ <span class="en-only">Module Settings</span><span class="ar-only">إعدادات الوحدة</span></div>
+  </nav>
+
+  <main class="content">
+
+    <!-- ════ DASHBOARD ════ -->
+    <section class="section on" id="s-dash">
+      <div class="crumb en-only">Freelancers / Home</div>
+      <h1 class="pg-title en-only">Freelancer Operations</h1>
+      <h1 class="pg-title ar-only">عمليات المستقلين</h1>
+      <p class="pg-sub en-only">Registrations, contracts and payments at a glance</p>
+      <p class="pg-sub ar-only">نظرة عامة على التسجيلات والعقود والمدفوعات</p>
+
+      <div class="cards">
+        <div class="stat"><div class="v">38</div><div class="l en-only">Active Freelancers</div><div class="l ar-only">مستقلون نشطون</div><div class="d up">▲ 4 <span class="en-only">this month</span><span class="ar-only">هذا الشهر</span></div></div>
+        <div class="stat"><div class="v">21</div><div class="l en-only">Active Contracts</div><div class="l ar-only">عقود نشطة</div><div class="d mono">AED 1,284,500</div></div>
+        <div class="stat"><div class="v">7</div><div class="l en-only">Vouchers Awaiting Approval</div><div class="l ar-only">سندات بانتظار الموافقة</div><div class="d mono">AED 96,200</div></div>
+        <div class="stat"><div class="v warn">3</div><div class="l en-only">Documents Expiring ≤ 30d</div><div class="l ar-only">مستندات تنتهي ≤ ٣٠ يوم</div><div class="d warn">⚠ <span class="en-only">action needed</span><span class="ar-only">إجراء مطلوب</span></div></div>
+      </div>
+
+      <div class="grid2">
+        <div class="card"><h3 class="en-only">Contract Spend — Committed vs Paid (by org)</h3><h3 class="ar-only">الإنفاق التعاقدي — الملتزم به مقابل المدفوع</h3>
+          <div class="chart-wrap"><canvas id="c1"></canvas></div></div>
+        <div class="card"><h3 class="en-only">Document Expiry Horizon</h3><h3 class="ar-only">أفق انتهاء المستندات</h3>
+          <div class="chart-wrap"><canvas id="c2"></canvas></div></div>
+      </div>
+    </section>
+
+    <!-- ════ REGISTRATION FORM ════ -->
+    <section class="section" id="s-reg">
+      <div class="crumb en-only">Freelancers / Registrations / New</div>
+      <h1 class="pg-title en-only">New Freelancer Registration</h1>
+      <h1 class="pg-title ar-only">تسجيل مستقل جديد</h1>
+      <p class="pg-sub en-only">Submitting routes to FL Manager → FL Admin approval</p>
+      <p class="pg-sub ar-only">يمر الطلب على موافقة مدير المستقلين ثم مشرف الوحدة</p>
+
+      <div class="card">
+        <div class="fgrid">
+          <div class="fg"><label class="en-only">Full Name (English) *</label><label class="ar-only">الاسم الكامل (إنجليزي) *</label><input value="Layla Mahmoud Hassan"></div>
+          <div class="fg"><label class="en-only">Full Name (Arabic)</label><label class="ar-only">الاسم الكامل (عربي)</label><input dir="rtl" value="ليلى محمود حسن"></div>
+          <div class="fg"><label class="en-only">Nationality *</label><label class="ar-only">الجنسية *</label><select><option>Egypt</option><option>United Arab Emirates</option></select></div>
+          <div class="fg"><label class="en-only">Date of Birth</label><label class="ar-only">تاريخ الميلاد</label><input type="date" value="1992-04-18"></div>
+          <div class="fg"><label>Email *</label><input value="layla.hassan@gmail.com"><div class="hint en-only">Becomes the portal username on approval</div><div class="hint ar-only">يصبح اسم المستخدم للبوابة بعد الموافقة</div></div>
+          <div class="fg"><label class="en-only">Mobile</label><label class="ar-only">الهاتف المتحرك</label><input value="+971 50 234 7788"></div>
+          <div class="fg"><label class="en-only">Photo *</label><label class="ar-only">الصورة *</label><div style="display:flex;gap:10px;align-items:center"><div class="avatar" style="width:44px;height:44px">LH</div><button class="btn btn-sm en-only">Upload Photo</button><button class="btn btn-sm ar-only">رفع الصورة</button></div></div>
+          <div class="fg"><label class="en-only">Emirates ID (UAE only)</label><label class="ar-only">الهوية الإماراتية</label><input placeholder="784-XXXX-XXXXXXX-X" disabled><div class="hint en-only">Required when nationality = UAE (module setting)</div><div class="hint ar-only">مطلوب عندما تكون الجنسية إماراتية</div></div>
+        </div>
+        <div style="display:flex;gap:10px;margin-block-start:20px">
+          <button class="btn btn-p en-only">✓ Submit for Approval</button><button class="btn btn-p ar-only">✓ إرسال للموافقة</button>
+          <button class="btn en-only">Save Draft</button><button class="btn ar-only">حفظ مسودة</button>
+        </div>
+        <div class="audit">🕑 <span><b class="en-only">Created</b><b class="ar-only">أُنشئ</b> AYESHA.AMERI · 12-Jun-2026 09:14 AM</span></div>
+      </div>
+    </section>
+
+    <!-- ════ FREELANCER DETAIL ════ -->
+    <section class="section" id="s-fl">
+      <div class="crumb en-only">Freelancers / Layla Hassan</div>
+      <h1 class="pg-title">Layla Mahmoud Hassan <span class="badge b-green" style="vertical-align:4px">ACTIVE</span></h1>
+      <p class="pg-sub mono">VND-2026-0042 · layla.hassan@gmail.com</p>
+
+      <div class="tabs">
+        <div class="tab on en-only">Profile</div><div class="tab on ar-only">الملف</div>
+        <div class="tab en-only">Bank Accounts</div><div class="tab ar-only">الحسابات البنكية</div>
+        <div class="tab en-only">Contracts (2)</div><div class="tab ar-only">العقود (٢)</div>
+        <div class="tab en-only">Documents (4)</div><div class="tab ar-only">المستندات (٤)</div>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h3 class="en-only">Profile</h3><h3 class="ar-only">الملف الشخصي</h3>
+          <div class="kv">
+            <div class="k en-only">Vendor #</div><div class="k ar-only">رقم المورد</div><div class="mono">VND-2026-0042</div>
+            <div class="k en-only">Nationality</div><div class="k ar-only">الجنسية</div><div>Egypt</div>
+            <div class="k en-only">Mobile</div><div class="k ar-only">الهاتف</div><div class="mono">+971 50 234 7788</div>
+            <div class="k en-only">Registered</div><div class="k ar-only">تاريخ التسجيل</div><div>02-Jun-2026</div>
+            <div class="k en-only">Status</div><div class="k ar-only">الحالة</div><div><span class="badge b-green">ACTIVE</span> <button class="btn btn-sm en-only">Change…</button><button class="btn btn-sm ar-only">تغيير…</button></div>
+          </div>
+          <div class="audit">🕑 <span><b class="en-only">Created</b><b class="ar-only">أُنشئ</b> SYSTEM · 02-Jun-2026 10:02 AM</span><span><b class="en-only">Last updated</b><b class="ar-only">آخر تحديث</b> AYESHA.AMERI · 11-Jun-2026 03:40 PM</span></div>
+        </div>
+        <div class="card">
+          <h3 class="en-only">Documents — expiry at a glance</h3><h3 class="ar-only">المستندات — حالة الانتهاء</h3>
+          <table>
+            <tr><th class="en-only">Document</th><th class="ar-only">المستند</th><th class="en-only">Expiry</th><th class="ar-only">الانتهاء</th><th></th></tr>
+            <tr><td>Passport</td><td class="mono">14-Mar-2031</td><td><span class="exp-chip exp-ok">VALID</span></td></tr>
+            <tr><td>Residence Visa</td><td class="mono">02-Jul-2026</td><td><span class="exp-chip exp-soon">20 DAYS</span></td></tr>
+            <tr><td>Trade License</td><td class="mono">28-May-2026</td><td><span class="exp-chip exp-bad">EXPIRED</span></td></tr>
+            <tr><td>Qualification Cert.</td><td class="mono">—</td><td><span class="exp-chip exp-ok">N/A</span></td></tr>
+          </table>
+          <div class="note" style="margin-block-start:12px;margin-block-end:0">⚠ <span class="en-only">New contract submission is blocked while a required document is expired (module setting).</span><span class="ar-only">يتم حظر تقديم عقد جديد عند وجود مستند منتهي الصلاحية.</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ CONTRACT DETAIL ════ -->
+    <section class="section" id="s-con">
+      <div class="crumb en-only">Freelancers / Contracts / FL-CON-000118</div>
+      <h1 class="pg-title mono">FL-CON-000118 <span class="badge b-green" style="vertical-align:4px">ACTIVE</span> <span class="badge b-amber" style="vertical-align:4px">PARTIALLY PAID</span></h1>
+      <p class="pg-sub en-only">Layla Hassan · Content Production Retainer · Monthly billing</p>
+      <p class="pg-sub ar-only">ليلى حسن · عقد إنتاج محتوى · فوترة شهرية</p>
+
+      <div class="cards" style="grid-template-columns:repeat(4,1fr)">
+        <div class="stat"><div class="v mono">120,000</div><div class="l en-only">Total (AED)</div><div class="l ar-only">الإجمالي (درهم)</div></div>
+        <div class="stat"><div class="v mono up">40,000</div><div class="l en-only">Paid</div><div class="l ar-only">المدفوع</div></div>
+        <div class="stat"><div class="v mono">80,000</div><div class="l en-only">Remaining</div><div class="l ar-only">المتبقي</div></div>
+        <div class="stat"><div class="bill" style="margin-block-start:14px"><i style="width:33%"></i></div><div class="l" style="margin-block-start:8px">33% <span class="en-only">billed</span><span class="ar-only">مفوتر</span></div></div>
+      </div>
+
+      <div class="card">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-block-end:10px">
+          <h3 style="margin:0" class="en-only">Payment Schedule</h3><h3 style="margin:0" class="ar-only">جدول الدفعات</h3>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-sm en-only">+ Amendment</button><button class="btn btn-sm ar-only">+ تعديل</button>
+            <button class="btn btn-sm en-only">↻ Renew Contract</button><button class="btn btn-sm ar-only">↻ تجديد العقد</button>
+          </div>
+        </div>
+        <table>
+          <tr><th class="en-only">Period</th><th class="ar-only">الفترة</th><th class="en-only">Due</th><th class="ar-only">الاستحقاق</th><th>AED</th><th class="en-only">Voucher</th><th class="ar-only">السند</th><th class="en-only">Status</th><th class="ar-only">الحالة</th><th></th></tr>
+          <tr><td>April 2026</td><td class="mono">30-Apr-2026</td><td class="mono">20,000</td><td class="mono">FL-VCH-000301</td><td><span class="badge b-green">PAID</span></td><td></td></tr>
+          <tr><td>May 2026</td><td class="mono">31-May-2026</td><td class="mono">20,000</td><td class="mono">FL-VCH-000318</td><td><span class="badge b-green">PAID</span></td><td></td></tr>
+          <tr><td>June 2026</td><td class="mono">30-Jun-2026</td><td class="mono">20,000</td><td class="mono">FL-VCH-000334</td><td><span class="badge b-blue">VOUCHER GENERATED</span></td><td></td></tr>
+          <tr style="background:var(--brand-soft)"><td><b>July 2026</b></td><td class="mono">31-Jul-2026</td><td class="mono">20,000</td><td>—</td><td><span class="badge b-gray">PENDING</span></td>
+            <td><button class="btn btn-p btn-sm en-only">⚡ Generate Voucher</button><button class="btn btn-p btn-sm ar-only">⚡ إنشاء سند</button></td></tr>
+          <tr><td>August 2026</td><td class="mono">31-Aug-2026</td><td class="mono">20,000</td><td>—</td><td><span class="badge b-gray">PENDING</span></td><td></td></tr>
+          <tr><td>September 2026</td><td class="mono">30-Sep-2026</td><td class="mono">20,000</td><td>—</td><td><span class="badge b-gray">PENDING</span></td><td></td></tr>
+        </table>
+        <div class="audit">🕑 <span><b class="en-only">Created</b><b class="ar-only">أُنشئ</b> SHAIKHA.GALAMERI · 28-Mar-2026 11:20 AM</span><span><b class="en-only">Last updated</b><b class="ar-only">آخر تحديث</b> NASER.ALKHAJA · 10-Jun-2026 02:15 PM</span></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+function go(id, el){
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
+  el.classList.add('on');
+}
+function setLang(l){
+  document.documentElement.lang = l;
+  document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
+  document.getElementById('bEn').classList.toggle('on', l==='en');
+  document.getElementById('bAr').classList.toggle('on', l==='ar');
+}
+const gridCol = '#E3E6EB', txtCol = '#5B6573';
+new Chart(document.getElementById('c1'), { type:'bar',
+  data:{ labels:['Finance','Procurement','Strategy','Media','Digital'],
+    datasets:[
+      {label:'Committed', data:[420,310,180,250,124], backgroundColor:'rgba(124,77,190,.75)', borderRadius:6},
+      {label:'Paid', data:[260,190,80,140,60], backgroundColor:'rgba(45,164,78,.75)', borderRadius:6}]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{labels:{color:txtCol,boxWidth:12}}},
+    scales:{ x:{grid:{display:false},ticks:{color:txtCol}}, y:{grid:{color:gridCol},ticks:{color:txtCol,callback:v=>v+'k'}}}}});
+new Chart(document.getElementById('c2'), { type:'bar',
+  data:{ labels:['Expired','≤ 30 days','31–60','61–90','> 90 days'],
+    datasets:[{ data:[1,3,5,4,22], backgroundColor:['#D1242F','#F0883E','#E3B341','#0969DA','#2DA44E'], borderRadius:6 }]},
+  options:{ maintainAspectRatio:false, plugins:{legend:{display:false}},
+    scales:{ x:{grid:{display:false},ticks:{color:txtCol}}, y:{grid:{color:gridCol},ticks:{color:txtCol,stepSize:5}}}}});
+</script>
+</body>
+</html>

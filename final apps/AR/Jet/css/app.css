@@ -1,0 +1,74 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   i-Finance — ACCOUNTS RECEIVABLE (App 206) brand layer
+   Everything structural lives in /shared/css/platform.css (+ themes.css).
+   This file holds ONLY the module's default brand tokens. The live color
+   is overridden at boot from the THEME_BRAND_COLOR module setting
+   (DCT_MODULE_SETTINGS → shared/js/shell.js).
+   ═══════════════════════════════════════════════════════════════════════ */
+
+:root {
+  --brand:      #6C4AB6;   /* default — Module Settings → Appearance overrides */
+  --brand-rgb:  108,74,182;
+  --brand-dark: #4E3583;
+  --brand-soft: #F0EBFA;
+}
+
+/* ── AR-specific helpers (small, module-only) ───────────────────────── */
+
+/* KPI tiles (maps onto the platform stat-card look) */
+.kpi-row  { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+            gap: 16px; margin-block-end: 24px; }
+.kpi-card { background: var(--surface, #fff); border: 1px solid var(--border, #e3e8ef);
+            border-radius: 10px; padding: 14px 16px;
+            border-block-start: 3px solid var(--brand); }
+.kpi-label { font-size: 11.5px; color: var(--text-3, #8a94a6); text-transform: uppercase;
+             letter-spacing: .04em; }
+.kpi-value { font-size: 24px; font-weight: 700; color: var(--text, #1c2434);
+             font-feature-settings: 'tnum'; margin-block-start: 2px; }
+
+/* tabs (alias of platform tab-btn) */
+.tab { padding: 10px 18px; font-size: 13px; font-weight: 500; color: var(--text-2, #5a6577);
+       background: none; border: none; border-block-end: 2px solid transparent;
+       margin-block-end: -2px; cursor: pointer; }
+.tab--active { color: var(--brand); border-block-end-color: var(--brand); font-weight: 600; }
+
+/* badge variants the AR views use */
+.badge--success { background: var(--green-soft, #E6F6EC); color: var(--green, #1A7F45); }
+.badge--neutral { background: var(--surface-2, #EEF1F6); color: var(--text-2, #5A6577); }
+.badge--danger  { background: var(--red-soft, #FDEAEA);  color: var(--red, #C0392B); }
+
+/* simple form card + field */
+.form-card  { background: var(--surface, #fff); border: 1px solid var(--border, #e3e8ef);
+              border-radius: 10px; padding: 20px 22px; }
+.form-field { display: flex; flex-direction: column; gap: 5px; margin-block-end: 12px; }
+.form-field label { font-size: 12px; font-weight: 600; color: var(--text-2, #5a6577); }
+
+
+/* upload wizard folder tree */
+.ar-tree { font-size: 13px; line-height: 1.9; }
+.ar-tree .dir  { font-weight: 600; color: var(--text-1, #1c2434); }
+.ar-tree .file { padding-inline-start: 18px; display: flex; align-items: center; gap: 8px; }
+.ar-tree .file .sz { color: var(--text-3, #8a94a6); font-size: 11px; margin-inline-start: auto; }
+
+/* confidence pill */
+.ar-conf { display: inline-block; min-width: 42px; text-align: center; border-radius: 10px;
+           font-size: 11px; font-weight: 700; padding: 1px 8px; }
+.ar-conf--hi  { background: #E6F6EC; color: #1A7F45; }
+.ar-conf--md  { background: #FFF4E0; color: #9A6A00; }
+.ar-conf--lo  { background: #FDEAEA; color: #C0392B; }
+
+/* review status chips */
+.ar-chip { display: inline-block; border-radius: 10px; font-size: 11px; font-weight: 600; padding: 2px 9px; }
+.ar-chip--draft     { background: #EEF1F6; color: #5A6577; }
+.ar-chip--confirmed { background: #E6F6EC; color: #1A7F45; }
+.ar-chip--rejected  { background: #FDEAEA; color: #C0392B; }
+.ar-chip--budget    { background: #E8F0FE; color: #1A56B0; }
+.ar-chip--actual    { background: #F0EBFA; color: var(--brand-dark); }
+.ar-chip--forecast  { background: #FFF4E0; color: #9A6A00; }
+
+/* negative amount */
+.ar-neg { color: #C0392B; }
+
+/* what-if delta */
+.ar-delta-up   { color: #1A7F45; font-weight: 700; }
+.ar-delta-down { color: #C0392B; font-weight: 700; }

@@ -1,0 +1,51 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('doc.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('doc.subtitle')"></div>
+  </div>
+
+  <div class="view-toolbar">
+    <select class="form-control" style="width:200px;padding:8px 10px" data-bind="value: expiryFilter">
+      <option value="">All</option>
+      <option value="EXPIRED">Expired</option>
+      <option value="EXPIRING_SOON">Expiring Soon</option>
+      <option value="VALID">Valid</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load documents</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128206;</div>
+    <div class="empty-state__msg">No documents in this view</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Freelancer</th><th>Type</th><th>Name</th><th>Context</th><th>Expiry</th><th>Days</th><th>Status</th><th>Required</th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr style="cursor:pointer" data-bind="click: $vm.openFreelancer.bind($vm, $data)">
+          <td style="font-weight:600" data-bind="text: $data.freelancerName || '-'"></td>
+          <td data-bind="text: $data.docTypeName || '-'"></td>
+          <td data-bind="text: $data.documentName || ''"></td>
+          <td><span class="badge badge--info" style="font-size:10px" data-bind="text: $data.sourceType || ''"></span></td>
+          <td class="mono" data-bind="text: $data.expiryDate || '—'"></td>
+          <td class="mono" data-bind="text: $data.daysToExpiry !== undefined && $data.daysToExpiry !== null ? $data.daysToExpiry : '—'"></td>
+          <td><span class="exp-chip" data-bind="text: $data.expiryStatus || 'VALID', css: $vm.expChip($data.expiryStatus)"></span></td>
+          <td data-bind="text: $data.isRequired === 'Y' ? 'Yes' : 'No'"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+  <!-- /ko -->
+</div>

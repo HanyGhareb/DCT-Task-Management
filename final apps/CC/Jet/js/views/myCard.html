@@ -1,0 +1,103 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('card.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('card.subtitle')"></div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 5"></list-skeleton><!-- /ko -->
+
+  <!-- ko if: !loading() && !card() -->
+  <div class="empty-state" style="padding:80px">
+    <div class="empty-state__icon">&#128179;</div>
+    <div class="empty-state__msg" data-bind="text: $root.t('card.none')"></div>
+    <button class="btn btn-primary" data-bind="click: newRequest, text: $root.t('req.new')"></button>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && card() -->
+
+  <!-- ko if: replDue() -->
+  <div class="due-banner" style="margin-bottom:18px">
+    <span style="font-size:18px">&#9888;</span>
+    <span data-bind="text: $root.t('card.dueBanner')"></span>
+    <button class="btn btn-primary btn-sm" style="margin-inline-start:auto"
+            data-bind="click: newReplenishment, text: $root.t('repl.new')"></button>
+  </div>
+  <!-- /ko -->
+
+  <div style="display:grid;grid-template-columns:minmax(320px,440px) 1fr;gap:24px;align-items:start">
+
+    <!-- card visual -->
+    <div>
+      <div class="cc-card" data-bind="css: { 'cc-card--inactive': card().status !== 'ACTIVE' }">
+        <div style="display:flex;justify-content:space-between;align-items:flex-start">
+          <div class="cc-chip"></div>
+          <span class="badge" style="background:rgba(255,255,255,.2);color:#fff"
+                data-bind="text: card().status"></span>
+        </div>
+        <div class="cc-number" data-bind="text: maskedNumber()"></div>
+        <div class="cc-meta">
+          <div>
+            <div class="cc-label">Card Holder</div>
+            <div class="cc-value" data-bind="text: card().holderName"></div>
+          </div>
+          <div>
+            <div class="cc-label">Limit (AED)</div>
+            <div class="cc-value mono" data-bind="text: (card().creditLimit || 0).toLocaleString()"></div>
+          </div>
+          <div>
+            <div class="cc-label">Expires</div>
+            <div class="cc-value mono" data-bind="text: card().expiryDate"></div>
+          </div>
+        </div>
+      </div>
+      <!-- ko if: card().pendingOperation -->
+      <div style="margin-top:12px">
+        <span class="op-chip" data-bind="text: '&#9203; ' + card().pendingOperation + ' in progress'"></span>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- details + limit history -->
+    <div>
+      <div class="card" style="margin-bottom:16px">
+        <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group"><label class="form-label">Organisation</label>
+            <div data-bind="text: card().orgName"></div></div>
+          <div class="form-group"><label class="form-label">Cost Center</label>
+            <div class="mono" data-bind="text: card().costCenter || '—'"></div></div>
+          <div class="form-group"><label class="form-label">Bank</label>
+            <div data-bind="text: card().bankName || '—'"></div></div>
+          <div class="form-group"><label class="form-label">Email</label>
+            <div data-bind="text: card().email"></div></div>
+        </div>
+        <audit-info params="data: card"></audit-info>
+      </div>
+
+      <div class="card">
+        <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('card.limitHistory')"></div>
+        <!-- ko if: history().length === 0 -->
+        <div style="font-size:13px;color:var(--text-3);padding:12px 0">No limit changes recorded.</div>
+        <!-- /ko -->
+        <!-- ko if: history().length > 0 -->
+        <table class="data-table">
+          <thead><tr><th>Date</th><th>Type</th><th>From</th><th>To</th><th>By</th><th>Notes</th></tr></thead>
+          <tbody>
+            <!-- ko foreach: history -->
+            <tr>
+              <td class="mono" data-bind="text: $data.changedAt"></td>
+              <td><span data-bind="text: $data.changeType, css: $vm.changeBadge($data.changeType)"></span></td>
+              <td class="mono" data-bind="text: ($data.oldLimit || 0).toLocaleString()"></td>
+              <td class="mono" style="font-weight:700" data-bind="text: ($data.newLimit || 0).toLocaleString()"></td>
+              <td data-bind="text: $data.changedBy || '-'"></td>
+              <td style="font-size:12px;color:var(--text-2)" data-bind="text: $data.notes || ''"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

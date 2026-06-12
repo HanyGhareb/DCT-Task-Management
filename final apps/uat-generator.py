@@ -1,10 +1,12 @@
 # -*- coding: utf-8 -*-
-"""Generate UAT workbooks for the 4 i-Finance JET apps.
+"""Generate UAT workbooks for the 6 i-Finance JET apps.
 
-One .xlsx per app under final apps/<App>/UAT/:
-  - Instructions sheet (how to test, legend, live summary via formulas)
+One .xlsx per app under final apps/<App>/UAT/, named
+UAT_<APP>_dd-Mon-YYYY-NN.xlsx (NN auto-increments — re-runs never overwrite):
+  - Instructions sheet (how to test, legend, seeded data, live summary)
   - One sheet per logical functional area
-  - Columns: Test ID | Function | Test Scenario | Steps | Expected Result |
+  - Columns: Test ID | Function | Test Scenario | Steps |
+             Sample Data / Records | Expected Result |
              Status (dropdown) | Tested By | Test Date | Comments / Defect Ref
   - Pass/Fail/Blocked/N/A dropdown + conditional colors, frozen header, autofilter
 """
@@ -19,11 +21,13 @@ ROOT = r"c:\claude\DCT-task-management\DCT-Task-Management\final apps"
 
 BRANDS = {  # header color per app
     "Admin": "C74634", "PC": "2E7D32", "DT": "0572CE", "HR": "1A7F5A",
+    "FL": "7C4DBE", "CC": "B0721E",
 }
 
-HEADERS = ["Test ID", "Function", "Test Scenario", "Steps", "Expected Result",
-           "Status", "Tested By", "Test Date", "Comments / Defect Ref"]
-WIDTHS  = [10, 22, 34, 52, 46, 11, 14, 12, 36]
+HEADERS = ["Test ID", "Function", "Test Scenario", "Steps", "Sample Data / Records",
+           "Expected Result", "Status", "Tested By", "Test Date", "Comments / Defect Ref"]
+WIDTHS  = [10, 20, 30, 46, 34, 42, 11, 14, 12, 32]
+STATUS_COL = "G"   # Status column letter — keep in sync with HEADERS
 
 thin = Side(style="thin", color="C9C9C9")
 BORDER = Border(left=thin, right=thin, top=thin, bottom=thin)
@@ -96,8 +100,20 @@ ADMIN = [
  ("Audit log", "Pagination + filter", "1. Open Audit Log\n2. Check pager caption\n3. Filter by action (e.g. LOGIN)\n4. Page through", "Server-paged list; filter narrows rows; newest entries first; your own recent actions appear"),
  ("Appearance", "Theme switch", "1. Open Appearance\n2. Switch theme and back", "Theme applies immediately and persists across refresh"),
 ]),
+("Delegations & Announcements", "DLG", [
+ ("My delegations", "Profile shows real data", "1. Open My Workspace > My Profile\n2. Scroll to My Delegations", "Real delegations from the server (not placeholders); outgoing show 'Delegating to', incoming show 'Acting for'"),
+ ("Create delegation", "Delegate my authority", "1. In My Profile click + New Delegation\n2. Pick a user, end date (e.g. +7 days), reason\n3. Create", "Delegation appears ACTIVE in the list; the delegate now sees your pending approvals with an 'acting for' badge"),
+ ("Acting for", "Delegate sees the queue", "1. Login as the delegate\n2. Open Pending Approvals (Admin) or the module's approvals page", "Items requiring the delegator's role are listed with an 'acting for <name>' badge; delegate can approve/reject"),
+ ("Cancel delegation", "Stop the cover", "1. As the delegator (or SYS_ADMIN) cancel the ACTIVE delegation", "Status becomes CANCELLED; the delegate's queue no longer shows the delegated items"),
+ ("Oversight", "System > Delegations", "1. Login as SYS_ADMIN\n2. Open System > Delegations\n3. Filter by status", "All delegations platform-wide with delegator, delegate, scope, window; expired ones flip to EXPIRED automatically"),
+ ("Announcements admin", "Create an announcement", "1. Open System > Announcements\n2. + New Announcement: EN+AR titles, severity, audience\n3. Save", "Announcement listed; appears as a colored banner at the top of the targeted apps within a refresh"),
+ ("Banner audience", "Module-targeted banner", "1. Create a WARNING announcement targeted at module CREDIT_CARDS\n2. Open the CC app, then the PC app", "Banner shows in CC only; PC does not show it; ALL announcements show everywhere"),
+ ("Banner dismiss", "Dismiss persists for the session", "1. Click the X on a banner\n2. Navigate around\n3. Close the tab, reopen and login", "Dismissed banner stays hidden while the session lasts; reappears in a new session if still active"),
+ ("Deactivate", "Pull an announcement", "1. In System > Announcements deactivate one", "It stops appearing in all apps (after refresh); stays in the admin list as inactive"),
+]),
 ("Shell & Platform", "SHL", [
  ("Module switcher", "Switch to another module", "1. Click the module dropdown in the top bar\n2. Choose HR (or PC/DT)", "Target app opens WITHOUT a second login (shared session); switcher highlights the current module"),
+ ("Module switcher", "FL + CC are live", "1. Open the module dropdown", "Freelancers (APP 203) and Credit Cards (APP 202) appear WITHOUT a 'soon' badge and open their apps"),
  ("Language", "EN to AR live switch", "1. Click the ع button in the top bar", "Entire page flips RTL instantly: top bar, side nav, content; Arabic font; numbers stay Latin digits"),
  ("Language", "AR persists across login", "1. Switch to AR\n2. Logout, close browser, reopen and login", "App opens in Arabic (server-stored preference); switch back to EN at the end"),
  ("Side navigation", "Collapse / expand", "1. Click the hamburger icon", "Side nav collapses/expands; content area adjusts"),
@@ -250,19 +266,271 @@ HR = [
 ]),
 ]
 
+FL = [
+("Access & Session", "ACC", [
+ ("Shared session", "Entry from Admin", "1. Login in Admin\n2. Switch to Freelancers via the module dropdown", "FL opens logged-in; viewer/manager/admin nav per role (FL_USER / FL_MANAGER / FL_ADMIN)"),
+ ("No session", "Direct open without login", "1. Fresh private window > FL URL", "Redirected to Admin login"),
+ ("Role gating", "Compliance/Approvals/Admin menus", "1. Compare menus as FL_USER (SHAIKHA.GALAMERI) vs FL_MANAGER (NASER) vs FL_ADMIN (AYESHA)", "Compliance + Approvals groups appear for managers+; Module Settings only for FL_ADMIN/SYS_ADMIN"),
+]),
+("Dashboard", "DSH", [
+ ("Stats", "Cards show live numbers", "1. Open FL Dashboard", "Active freelancers, active contracts (+AED total), vouchers awaiting approval, documents expiring — all sensible values"),
+ ("Charts", "Spend + expiry horizon", "1. Wait for both charts", "Committed-vs-Paid by organisation bar chart + document expiry horizon chart render with data"),
+]),
+("Registrations", "REG", [
+ ("List", "Paged list + search", "1. Open Registrations\n2. Search by name\n3. Filter by status", "Server-paged list; filters work; FL-REG numbers shown"),
+ ("Create", "New registration draft", "1. + New Registration: names, date of birth, nationality, email, mobile, specialization\n2. Save", "Draft saved with FL-REG-NNNNNN number; appears in the list as DRAFT"),
+ ("Photo", "Photo required to submit", "1. Open a DRAFT registration without a photo\n2. Try Submit\n3. Upload a photo and submit again", "Submit blocked until a photo is uploaded; with photo it submits"),
+ ("Submit", "Send for approval", "1. Submit a complete draft", "Status SUBMITTED; appears in the FL manager's approvals queue"),
+ ("Approve", "Approval creates the freelancer", "1. As FL_MANAGER approve the registration (then FL_ADMIN if a second step shows)", "On final approval a freelancer profile is created automatically with a FL-VND vendor number"),
+]),
+("Freelancers", "VND", [
+ ("List", "Directory", "1. Open Freelancers", "Active freelancers with vendor number, name, specialization, status"),
+ ("Detail", "Tabs", "1. Open a freelancer", "Profile / Bank Accounts / Contracts / Documents tabs all load; audit info shows created/updated in local time"),
+ ("Bank", "Add bank account", "1. In Bank Accounts add IBAN/bank details\n2. Save", "Account listed; primary flag honoured"),
+ ("Status", "Change status", "1. Use Change Status (e.g. ACTIVE > INACTIVE and back)", "Status updates with a reason; reflected in the list"),
+ ("Documents", "Add document with expiry", "1. In Documents add a document with a near-future expiry\n2. Upload the file", "Document saved; appears in Compliance > Documents with days-to-expiry"),
+]),
+("Contracts", "CON", [
+ ("List", "Contracts with billing bar", "1. Open Contracts", "Contracts with totals, status and % billed progress bar"),
+ ("Create", "New contract draft", "1. + New Contract: freelancer, title, dates, total amount, billing method, GL or Project coding\n2. Save", "Draft saved with FL-CON number; GL/PROJECT coding toggle works"),
+ ("Submit small", "< 50k = 1 approval step", "1. Submit a contract under AED 50,000\n2. Approve as FL_MANAGER", "Contract becomes ACTIVE after ONE approval; payment schedule generated automatically"),
+ ("Submit large", ">= 50k = 2 approval steps", "1. Submit a contract of AED 50,000+ (seeded: FL-CON-000002, 84k)\n2. Approve as FL_MANAGER", "After step 1 it is still pending at the FL_ADMIN step; only after step 2 does it activate"),
+ ("Detail", "Schedule + tabs", "1. Open an ACTIVE contract", "Payment Schedule / Amendments / Renewals / Details tabs; schedule rows match the billing method"),
+ ("Amendment", "Amend amount/end date", "1. + Amendment on an ACTIVE contract\n2. Submit and approve it", "On approval the contract values update, version +1, schedule rebuilt"),
+ ("Renewal", "Renew a contract", "1. Renew from the contract detail\n2. Submit and approve", "A new contract version/row is created per the renewal terms"),
+]),
+("Payments", "PAY", [
+ ("Schedule", "Due worklist", "1. Open Payment Schedule", "Due/pending schedule rows across contracts with Generate Voucher actions"),
+ ("Voucher", "Generate from schedule", "1. Click Generate Voucher on a due row", "Voucher FL-VCH created in DRAFT linked to the schedule row"),
+ ("Voucher", "Invoice + submit", "1. Open the voucher detail\n2. Enter invoice reference\n3. Submit and approve", "Voucher APPROVED; schedule row marked voucher-generated"),
+ ("Mark paid", "FL_ADMIN settles", "1. As FL_ADMIN use Mark Paid on an approved voucher", "Payment status PAID; contract paid-total and % billed update"),
+ ("Deliverables", "Accept / reject", "1. Open Deliverables\n2. Accept one and reject another with a reason", "States update; reason stored"),
+]),
+("Compliance", "CMP", [
+ ("Documents", "Expiry filter + badge", "1. Open Compliance > Documents\n2. Use the expiry filter (Expired / Expiring Soon / Valid)", "Filtered list with days-to-expiry; side-nav badge matches the expiring count"),
+ ("Navigate", "Document to freelancer", "1. Click a document row", "Opens the owning freelancer's Documents tab"),
+]),
+("Approvals", "APR", [
+ ("Queue", "Pending list", "1. Login as FL_MANAGER (NASER)\n2. Open Pending Approvals", "FL registrations/contracts/vouchers awaiting YOUR step; badge count matches"),
+ ("Comment required", "Approve needs a comment", "1. Click Approve and try to confirm with an empty comment", "Blocked with 'a comment is required'; with a comment it succeeds"),
+ ("Reject / Return", "Negative paths", "1. Reject one item; Return another (with comments)", "Statuses update; requester notified; returned item editable again"),
+]),
+("Administration", "ADM", [
+ ("Module settings", "FL settings", "1. As FL_ADMIN open Module Settings\n2. Edit a value (e.g. DOC_EXPIRY_ALERT_DAYS)\n3. Save + refresh", "Persists; non-admins do not see the page"),
+]),
+("Shell & Language", "SHL", [
+ ("Switcher", "Cross-module hop", "1. Module dropdown > Admin / CC and back", "No re-login; FL shows live (no 'soon' badge)"),
+ ("Arabic", "RTL pass", "1. Switch to AR\n2. Walk Dashboard + Registrations + a contract detail", "Mirrored layout, Arabic labels, Latin digits; charts re-render"),
+]),
+]
+
+CC = [
+("Access & Session", "ACC", [
+ ("Shared session", "Entry from Admin", "1. Login in Admin\n2. Switch to Credit Cards via the module dropdown", "CC opens logged-in; holder vs approver vs CC_ADMIN nav per role"),
+ ("No session", "Direct open without login", "1. Fresh private window > CC URL", "Redirected to Admin login"),
+ ("Role gating", "Admin menus", "1. Compare menus as a holder (SHAIKHA.ALSUWAIDI) vs CC_ADMIN (NASER)", "All Cards / Proxies / Module Settings only for CC_ADMIN/SYS_ADMIN; Approvals for MANAGER+"),
+]),
+("Dashboard", "DSH", [
+ ("Stats", "Cards show live numbers", "1. Open CC Dashboard", "Active cards, total credit limit, pending requests, replenishments due — sensible values"),
+ ("Charts", "Limits + compliance", "1. Wait for both charts", "Credit limits by organisation bar + 6-month replenishment compliance (submitted vs due) render"),
+]),
+("My Card", "CRD", [
+ ("Card visual", "My card renders", "1. Login as a card holder\n2. Open My Card", "Card visual with number, holder, limit, expiry; status badge; greyed if not ACTIVE"),
+ ("Limit history", "Timeline", "1. Check the Limit History table", "INITIAL row from registration; INCREASE/DECREASE rows after approved limit changes"),
+ ("Due banner", "Replenishment due", "1. As a holder whose current-month statement is missing open My Card", "Amber 'this month's replenishment has not been submitted' banner with a shortcut button"),
+ ("No card", "Holder without card", "1. Login as a user with no card\n2. Open My Card", "Friendly empty state offering a New Card request (no errors)"),
+]),
+("Card Requests", "REQ", [
+ ("Wizard", "Type tiles", "1. Open Card Requests > + New Request", "5 tiles: New Card / Increase / Decrease / Replacement / Close; 3-step wizard with progress"),
+ ("New card", "Full happy path", "1. Pick New Card, enter limit + reason\n2. Save Draft & Continue\n3. Upload every mandatory document\n4. Submit", "Submit only enabled once all mandatory docs are uploaded; request goes to approval"),
+ ("Doc checklist", "Mandatory docs enforced", "1. In step 3 leave a mandatory document missing\n2. Try Submit", "Submit disabled / blocked with a clear message naming the missing document"),
+ ("Increase limit", "Validation", "1. Create INCREASE_LIMIT with a limit LOWER than the current one\n2. Submit", "Blocked: requested limit must exceed the current limit"),
+ ("Withdraw", "Pull back a submitted request", "1. Open your SUBMITTED request\n2. Withdraw", "Status WITHDRAWN; leaves the approver queue; card free for new requests"),
+ ("Detail", "Request detail", "1. Open a request", "Type, card, limits, reason, documents and audit info all shown"),
+]),
+("Replenishments", "RPL", [
+ ("Create", "New monthly statement", "1. Open Replenishments > + New Replenishment\n2. Pick your card + last month\n3. Create Draft", "Draft CCM-YYYY-MM-NNNNN created; one statement per card per month enforced"),
+ ("Lines", "Merchant lines editor", "1. In the detail add 3 lines: date, merchant, amount, GL or Project coding, receipt flag\n2. Save Lines", "Lines saved; running total recalculates; receipt counter updates"),
+ ("Validation", "Line rules", "1. Try saving a line without merchant/amount/date or GL code", "Clear per-line validation; nothing saved"),
+ ("Submit", "Send for approval", "1. Submit the statement", "Status SUBMITTED; appears in the approvals queue; only the holder or an active proxy may submit"),
+ ("Proxy", "Proxy submits for the holder", "1. As CC_ADMIN create a proxy for a card\n2. Login as the proxy and create/submit a statement for that card", "Proxy can submit; non-proxies are blocked with a clear message"),
+]),
+("Approvals", "APR", [
+ ("Queue", "Pending list", "1. Login as an approver (MANAGER/CC_ADMIN)\n2. Open Pending Approvals", "CC requests + replenishments awaiting your step; badge matches"),
+ ("Comment required", "Approve needs a comment", "1. Approve with an empty comment", "Blocked; succeeds with a comment"),
+ ("Lifecycle", "Approved request applies", "1. Fully approve an INCREASE_LIMIT request", "Card limit updates; INCREASE row added to limit history; holder notified"),
+]),
+("Administration", "ADM", [
+ ("All cards", "Registry + search", "1. As CC_ADMIN open All Cards\n2. Search and filter by status", "All cards org-wide; pending operation chips for in-flight requests"),
+ ("Register card", "From approved NEW_CARD", "1. + Register Card\n2. Pick an APPROVED NEW_CARD request\n3. Fill holder, mother name, nationality, limit, expiry, email, org\n4. Register", "Card created ACTIVE with CC-YYYY-NNNNN number + INITIAL limit history; holder notified"),
+ ("Proxies", "Manage proxies", "1. Open Proxies\n2. Create one (card + proxy user + window)\n3. Deactivate it", "Proxy listed; deactivation removes submit rights"),
+ ("Module settings", "CC settings", "1. Open Module Settings\n2. Edit a value (e.g. REPLENISHMENT_DUE_DAY)\n3. Save + refresh", "Persists; non-admins do not see the page"),
+]),
+("Shell & Language", "SHL", [
+ ("Switcher", "Cross-module hop", "1. Module dropdown > Admin / FL and back", "No re-login; CC shows live (no 'soon' badge)"),
+ ("Arabic", "RTL pass", "1. Switch to AR\n2. Walk Dashboard + My Card + a request detail", "Mirrored layout, Arabic labels, Latin digits; card visual unaffected"),
+]),
+]
+
 APPS = [
     ("Admin", "Admin (App 200) — Identity, Users, Roles, Platform Administration", ADMIN),
     ("PC",    "Petty Cash (App 201) — Floats, Reimbursements, Clearing",            PC),
     ("DT",    "Duty Travel (App 204) — Travel Requests, Per-Diem, Settlements",     DT),
     ("HR",    "HR (App 205) — Employees, Structure, Compliance",                    HR),
+    ("FL",    "Freelancers (App 203) — Registrations, Contracts, Payments",         FL),
+    ("CC",    "Credit Cards (App 202) — Cards, Requests, Replenishments",           CC),
 ]
 
 KNOWN_ISSUES = {
-    "HR": ["Employees list may show 0 rows even though employees exist in the database — "
-           "known issue under investigation; mark affected cases Blocked and note it."],
+    "HR": [],
     "Admin": [],
     "PC": [],
     "DT": [],
+    "FL": [],
+    "CC": [],
+}
+
+SEED_NOTES = {
+    "Admin": [
+        "6 test accounts exist matching the quick-login buttons: ADMIN (SYS_ADMIN), HASHEM.ALKABBI "
+        "(Director/approver), NASER.ALKHAJA, AYESHA.AMERI, SHAIKHA.GALAMERI, SHAIKHA.ALSUWAIDI (managers).",
+        "Module roles: AYESHA = Petty Cash admin/approver, HASHEM = DT approver, NASER = DT finance, "
+        "SHAIKHA.GALAMERI = HR manager, SHAIKHA.ALSUWAIDI = HR viewer.",
+    ],
+    "PC": [
+        "PC-2026-00008 (SHAIKHA.ALSUWAIDI, TEMPORARY 1,800) - awaiting approval: use for approve/reject tests (approver: AYESHA.AMERI).",
+        "PC-2026-00005 (NASER, TEMPORARY 2,500) - fully approved, awaiting disbursement: use for the Disburse test.",
+        "PC-2026-00006 (AYESHA, TEMPORARY 3,500) - ACTIVE/disbursed: use to create a Clearing.",
+        "PC-2026-00007 (SHAIKHA.GALAMERI, PERMANENT 5,000) - ACTIVE: use to create Reimbursements.",
+        "RMB-2026-00100 (450 on PC-00007) - awaiting approval.",
+    ],
+    "DT": [
+        "DT-REQ-2026-00001 (NASER, Paris) - DRAFT: use for edit/submit tests.",
+        "DT-REQ-2026-00002 (AYESHA, London) - SUBMITTED: in HASHEM's approval queue.",
+        "DT-REQ-2026-00003 (SHAIKHA.GALAMERI, Riyadh, trip already past) - ADVANCE_PAID: use to create a Settlement.",
+        "Config seeded: per-diem rates (18 countries + tiers + regions), 50 country-group mappings, 2 approval workflows.",
+    ],
+    "HR": [
+        "5 active employees incl. E1101 Mohammed Al Mansoori, E1102 Fatima Al Hosani, E1103 Omar Khalil (seeded).",
+        "Documents seeded with expiries ~20 / ~45 days (compliance list + badge data) and one ~13 months out.",
+        "HR roles: SHAIKHA.GALAMERI = HR_MANAGER, SHAIKHA.ALSUWAIDI = HR_VIEWER.",
+    ],
+    "FL": [
+        "FL roles: AYESHA.AMERI = FL_ADMIN, NASER.ALKHAJA = FL_MANAGER, SHAIKHA.GALAMERI = FL_USER.",
+        "Layla Hassan (FL-VND-000001) - ACTIVE freelancer with bank account, documents and contract FL-CON-000001 "
+        "(24k, ACTIVE, 1 voucher PAID): use for detail/schedule/voucher tests.",
+        "FL-CON-000002 (84k) - pending at the FL_ADMIN step: use for the >=50k two-step approval test.",
+        "FL-REG-000004 (Omar Saleh) - DRAFT; FL-REG-000005 (Mariam Khalil) - SUBMITTED, in the manager queue.",
+        "One amendment, one deliverable, one renewal and near-expiry documents exist from the lifecycle seed.",
+    ],
+    "CC": [
+        "CC roles: NASER.ALKHAJA = CC_ADMIN; card holders: SHAIKHA.ALSUWAIDI (CC-2026-00002, 20k) and "
+        "HASHEM.ALKABBI (CC-2026-00003, 12k). CC-2026-00001 is a CLOSED test card.",
+        "CCM-2026-05-00001 (May statement, 3 merchant lines, 1,970.50) - SUBMITTED, awaiting approval.",
+        "One INCREASE_LIMIT request exists in WITHDRAWN state (negative-path evidence).",
+        "Doc requirements seeded: 4 mandatory documents for NEW_CARD; check the wizard checklist against them.",
+    ],
+}
+
+
+# =============================================================================
+# Sample data per test case — keyed (app, area prefix, scenario). Falls back to
+# AREA_SAMPLES[(app, prefix)] then ''. References seeded records and usernames
+# only — NEVER passwords (testers use the quick-login buttons).
+# =============================================================================
+AREA_SAMPLES = {
+    ("Admin", "LOG"): "Quick-login buttons on the login page (ADMIN, HASHEM.ALKABBI, NASER.ALKHAJA…)",
+    ("Admin", "DLG"): "Seeded: delegation NASER.ALKHAJA → AYESHA.AMERI (ACTIVE, 14 days); 2 announcements (INFO/ALL + WARNING/CREDIT_CARDS)",
+    ("PC",  "APR"): "PC-2026-00008 (SHAIKHA.ALSUWAIDI, 1,800) awaiting approval — approver AYESHA.AMERI",
+    ("DT",  "APR"): "DT-REQ-2026-00002 (AYESHA, London) — in HASHEM.ALKABBI's queue",
+    ("HR",  "EMP"): "Seeded employees: E1101 Mohammed Al Mansoori, E1102 Fatima Al Hosani, E1103 Omar Khalil",
+    ("FL",  "ACC"): "FL_USER = SHAIKHA.GALAMERI · FL_MANAGER = NASER.ALKHAJA · FL_ADMIN = AYESHA.AMERI",
+    ("FL",  "APR"): "Login NASER.ALKHAJA; pending: FL-REG-000005 (registration) + FL-CON-000002 (84k contract, step 2)",
+    ("CC",  "ACC"): "Holders: SHAIKHA.ALSUWAIDI (CC-2026-00002), HASHEM.ALKABBI (CC-2026-00003) · CC_ADMIN = NASER.ALKHAJA",
+    ("CC",  "APR"): "CCM-2026-05-00001 (May statement, 1,970.50) — SUBMITTED, in the approver queue",
+}
+
+SAMPLES = {
+    # ── Admin ────────────────────────────────────────────────────────────────
+    ("Admin", "LOG", "Valid login"): "Quick-login: System Admin (ADMIN)",
+    ("Admin", "LOG", "Invalid password"): "Username ADMIN + any wrong password",
+    ("Admin", "LOG", "Inactive account"): "Create + deactivate UAT.TESTER1 first (User Management)",
+    ("Admin", "WSP", "Update phone persists"): "Phone: +97150 000 1234 (restore the original after)",
+    ("Admin", "WSP", "Upload photo"): "Any JPG/PNG photo file",
+    ("Admin", "USR", "Happy path"): "Username UAT.TESTER1 · role PLATFORM_USER · org Finance Division",
+    ("Admin", "USR", "Duplicate username"): "Existing username: NASER.ALKHAJA",
+    ("Admin", "USR", "Change roles"): "Test user UAT.TESTER1 — add/remove AUDITOR",
+    ("Admin", "ROL", "New role"): "Code UAT_ROLE1, name 'UAT Test Role' (delete/deactivate after)",
+    ("Admin", "SYS", "Add lookup value"): "Category CC_REPLACEMENT_REASON — add code UAT_TEST",
+    ("Admin", "SYS", "Brand color from settings"): "THEME_BRAND_COLOR = #7B1FA2 (restore #C74634 after)",
+    ("Admin", "DLG", "Profile shows real data"): "Login AYESHA.AMERI — shows 'Acting for Naser Al Khaja' (incoming, seeded)",
+    ("Admin", "DLG", "Delegate my authority"): "Delegate to HASHEM.ALKABBI, end date +7 days, reason 'UAT'",
+    ("Admin", "DLG", "Delegate sees the queue"): "Login AYESHA.AMERI — NASER's pending items carry 'acting for' badge",
+    ("Admin", "DLG", "Stop the cover"): "Cancel the delegation created in the previous case",
+    ("Admin", "DLG", "System > Delegations"): "Seeded NASER→AYESHA row + your test rows",
+    ("Admin", "DLG", "Create an announcement"): "Title 'UAT banner test' / INFO / Everyone (deactivate after)",
+    ("Admin", "DLG", "Module-targeted banner"): "WARNING targeted at module CREDIT_CARDS (seeded example exists)",
+    ("Admin", "DLG", "Dismiss persists for the session"): "Seeded banner: 'Freelancers & Credit Cards modules are live'",
+    ("Admin", "DLG", "Pull an announcement"): "Deactivate your 'UAT banner test' announcement",
+    ("Admin", "SHL", "FL + CC are live"): "Switcher: Freelancers APP 203 + Credit Cards APP 202 (no 'soon')",
+    # ── PC ───────────────────────────────────────────────────────────────────
+    ("PC", "MPC", "PERMANENT float request"): "Amount 2,000 · any active GL combination",
+    ("PC", "MPC", "TEMPORARY float request"): "Amount 1,500 · needed-by +7 days",
+    ("PC", "RMB", "New reimbursement"): "On PC-2026-00007 (SHAIKHA.GALAMERI, PERMANENT 5,000); RMB-2026-00100 (450) already awaiting approval",
+    ("PC", "CLR", "Clear a TEMPORARY float"): "PC-2026-00006 (AYESHA, 3,500, ACTIVE/disbursed)",
+    ("PC", "APR", "Pending list (approver)"): "Login AYESHA.AMERI — PC-2026-00008 (1,800) in the queue",
+    ("PC", "ADM", "Mark approved float disbursed"): "PC-2026-00005 (NASER, 2,500) — approved, awaiting disbursement",
+    # ── DT ───────────────────────────────────────────────────────────────────
+    ("DT", "TRV", "List + status"): "Login NASER.ALKHAJA — DT-REQ-2026-00001 (Paris, DRAFT)",
+    ("DT", "TRV", "New travel request"): "Destination London, 3 nights, next month",
+    ("DT", "TRV", "Create settlement"): "DT-REQ-2026-00003 (SHAIKHA.GALAMERI, Riyadh, ADVANCE_PAID, trip past)",
+    ("DT", "APR", "Pending approvals"): "Login HASHEM.ALKABBI — DT-REQ-2026-00002 (AYESHA, London) in the queue",
+    ("DT", "FIN", "Pay approved advances"): "Login NASER.ALKHAJA (DT_FINANCE)",
+    # ── HR ───────────────────────────────────────────────────────────────────
+    ("HR", "EMP", "Full record"): "E1101 Mohammed Al Mansoori",
+    ("HR", "EMP", "New employee"): "Number E9901 · hire date today · any position/org/grade",
+    ("HR", "EMP", "Upload employee photo"): "E1102 Fatima Al Hosani · small JPG/PNG (< 20KB if large files fail)",
+    ("HR", "CMP", "Expiry list + badge"): "Seeded documents expiring in ~20 and ~45 days",
+    # ── FL ───────────────────────────────────────────────────────────────────
+    ("FL", "REG", "Paged list + search"): "FL-REG-000004 (Omar Saleh, DRAFT) · FL-REG-000005 (Mariam Khalil, SUBMITTED)",
+    ("FL", "REG", "New registration draft"): "Name 'Test Freelancer UAT' · nationality from dropdown · test.fl.uat@example.com",
+    ("FL", "REG", "Photo required to submit"): "FL-REG-000004 (no photo yet) · any JPG/PNG",
+    ("FL", "REG", "Send for approval"): "Your draft from the previous case (photo uploaded)",
+    ("FL", "REG", "Approval creates the freelancer"): "FL-REG-000005 — in NASER.ALKHAJA's queue",
+    ("FL", "VND", "Directory"): "Layla Hassan — FL-VND-000001 (ACTIVE)",
+    ("FL", "VND", "Tabs"): "FL-VND-000001 (has bank account, contract, documents)",
+    ("FL", "VND", "Add bank account"): "IBAN AE07 0331 2345 6789 0123 456 · any seeded bank",
+    ("FL", "VND", "Add document with expiry"): "Expiry +20 days (so it appears in Compliance)",
+    ("FL", "CON", "Contracts with billing bar"): "FL-CON-000001 (24k ACTIVE, ~17% billed) · FL-CON-000002 (84k, pending)",
+    ("FL", "CON", "New contract draft"): "FL-VND-000001 · 12 months · GL coding from dropdown",
+    ("FL", "CON", "< 50k = 1 approval step"): "Amount 24,000 — approve as NASER.ALKHAJA only",
+    ("FL", "CON", ">= 50k = 2 approval steps"): "FL-CON-000002 (84k) — already at step 2; approve as AYESHA.AMERI (FL_ADMIN)",
+    ("FL", "CON", "Schedule + tabs"): "FL-CON-000001 — 6 monthly rows, June PAID",
+    ("FL", "CON", "Amend amount/end date"): "FL-CON-000001 — one amendment already exists as reference",
+    ("FL", "PAY", "Due worklist"): "FL-CON-000001 schedule — July onwards PENDING",
+    ("FL", "PAY", "Generate from schedule"): "July 2026 row of FL-CON-000001",
+    ("FL", "PAY", "Invoice + submit"): "Invoice ref INV-UAT-001",
+    ("FL", "PAY", "FL_ADMIN settles"): "Login AYESHA.AMERI — FL-VCH-000001 is the PAID reference",
+    ("FL", "CMP", "Expiry filter + badge"): "Seeded near-expiry document on FL-VND-000001",
+    ("FL", "ADM", "FL settings"): "DOC_EXPIRY_ALERT_DAYS (restore the value after)",
+    # ── CC ───────────────────────────────────────────────────────────────────
+    ("CC", "CRD", "My card renders"): "Login SHAIKHA.ALSUWAIDI — CC-2026-00002 (20,000 AED)",
+    ("CC", "CRD", "Timeline"): "CC-2026-00002 — INITIAL 0→20,000 row from registration",
+    ("CC", "CRD", "Replenishment due"): "SHAIKHA.ALSUWAIDI — May submitted, current month missing → banner shows",
+    ("CC", "CRD", "Holder without card"): "Login SHAIKHA.GALAMERI (no card)",
+    ("CC", "REQ", "Full happy path"): "Limit 10,000 · 4 mandatory NEW_CARD docs (any small PNG/PDF)",
+    ("CC", "REQ", "Mandatory docs enforced"): "Leave 'Salary Certificate' (or any mandatory doc) missing",
+    ("CC", "REQ", "Validation"): "CC-2026-00002 (current 20,000) — request 15,000 to test the block",
+    ("CC", "REQ", "Pull back a submitted request"): "Create INCREASE_LIMIT 25,000 on CC-2026-00003, submit, then withdraw (a seeded WITHDRAWN example exists)",
+    ("CC", "RPL", "New monthly statement"): "CC-2026-00002 + May 2026 → duplicate blocked; use the current month",
+    ("CC", "RPL", "Merchant lines editor"): "Lines: Etisalat 420.50 / Amazon AE 1,310.00 / ADNOC 240.00 (as in CCM-2026-05-00001)",
+    ("CC", "RPL", "Send for approval"): "Your current-month draft from the previous cases",
+    ("CC", "RPL", "Proxy submits for the holder"): "Proxy HASHEM.ALKABBI on CC-2026-00002 (create in Proxies first)",
+    ("CC", "APR", "Approved request applies"): "INCREASE_LIMIT on CC-2026-00003: 12,000 → 14,000",
+    ("CC", "ADM", "Registry + search"): "CC-2026-00001 (CLOSED) · 00002 (SHAIKHA.ALSUWAIDI) · 00003 (HASHEM)",
+    ("CC", "ADM", "From approved NEW_CARD"): "Approve a fresh NEW_CARD request first (wizard case), then register it here",
+    ("CC", "ADM", "Manage proxies"): "Card CC-2026-00002 · proxy SHAIKHA.GALAMERI · window today → +30 days",
+    ("CC", "ADM", "CC settings"): "REPLENISHMENT_DUE_DAY (restore the value after)",
 }
 
 
@@ -285,14 +553,18 @@ def build_area_sheet(wb, area, prefix, app_key, cases, brand):
     r = 2
     for i, (func, scen, steps, exp) in enumerate(cases, start=1):
         tid = "%s-%s-%02d" % (app_key.upper(), prefix, i)
-        vals = [tid, func, scen, steps, exp, "", "", "", ""]
+        sample = SAMPLES.get((app_key, prefix, scen),
+                             AREA_SAMPLES.get((app_key, prefix), ""))
+        vals = [tid, func, scen, steps, sample, exp, "", "", "", ""]
         for col, v in enumerate(vals, start=1):
             c = ws.cell(row=r, column=col, value=v)
             c.alignment = Alignment(vertical="top", wrap_text=True,
-                                    horizontal="center" if col in (1, 6, 7, 8) else "left")
+                                    horizontal="center" if col in (1, 7, 8, 9) else "left")
             c.border = BORDER
             if col == 1:
                 c.font = Font(bold=True, color="555555")
+            if col == 5 and v:
+                c.font = Font(color="1A5276", italic=True)
         r += 1
     last = r - 1
 
@@ -301,9 +573,9 @@ def build_area_sheet(wb, area, prefix, app_key, cases, brand):
     dv.error = "Choose Pass, Fail, Blocked or N/A"
     dv.errorTitle = "Invalid status"
     ws.add_data_validation(dv)
-    dv.add("F2:F%d" % last)
+    dv.add("%s2:%s%d" % (STATUS_COL, STATUS_COL, last))
 
-    rng = "F2:F%d" % last
+    rng = "%s2:%s%d" % (STATUS_COL, STATUS_COL, last)
     ws.conditional_formatting.add(rng, CellIsRule(operator="equal", formula=['"Pass"'],
         fill=PatternFill("solid", fgColor="C8E6C9"), font=Font(color="1B5E20", bold=True)))
     ws.conditional_formatting.add(rng, CellIsRule(operator="equal", formula=['"Fail"'],
@@ -313,7 +585,7 @@ def build_area_sheet(wb, area, prefix, app_key, cases, brand):
     ws.conditional_formatting.add(rng, CellIsRule(operator="equal", formula=['"N/A"'],
         fill=PatternFill("solid", fgColor="ECEFF1"), font=Font(color="546E7A")))
 
-    ws.auto_filter.ref = "A1:I%d" % last
+    ws.auto_filter.ref = "A1:J%d" % last
     return area, last - 1
 
 
@@ -330,7 +602,7 @@ def build_instructions(wb, app_key, app_title, areas_counts, brand):
     ws["B3"].font = Font(size=12, bold=True, color="444444")
 
     meta = [("Environment URL", "(fill in: e.g. http://localhost:8080 or the deployed URL)"),
-            ("Build / version date", "2026-06-11"),
+            ("Build / version date", "2026-06-12 (Phase 4)"),
             ("UAT round", ""), ("Lead tester", ""), ("Start date", ""), ("End date", "")]
     r = 5
     for k, v in meta:
@@ -344,6 +616,7 @@ def build_instructions(wb, app_key, app_title, areas_counts, brand):
     howto = [
         "1. Each tab is one functional area. Work top-to-bottom; one row = one test case.",
         "2. Follow the Steps column exactly; compare the outcome with Expected Result.",
+        "2b. Sample Data / Records tells you WHICH seeded record, account or value to use — prefer it over inventing your own so results are reproducible.",
         "3. Set Status from the dropdown: Pass / Fail / Blocked / N/A.",
         "4. On Fail or Blocked, ALWAYS fill Comments (what happened, screenshots reference, error text).",
         "5. Fill Tested By + Test Date on every executed row.",
@@ -378,6 +651,17 @@ def build_instructions(wb, app_key, app_title, areas_counts, brand):
             ws.row_dimensions[r].height = 28
             r += 1
 
+    seeds = SEED_NOTES.get(app_key, [])
+    if seeds:
+        r += 1
+        ws.cell(row=r, column=2, value="Seeded UAT data (your starting point)").font = Font(size=12, bold=True, color=brand); r += 1
+        for line in seeds:
+            ws.cell(row=r, column=2, value="- " + line)
+            ws.merge_cells(start_row=r, start_column=2, end_row=r, end_column=7)
+            ws.cell(row=r, column=2).alignment = Alignment(wrap_text=True, vertical="top")
+            ws.row_dimensions[r].height = 30
+            r += 1
+
     r += 1
     ws.cell(row=r, column=2, value="Live summary").font = Font(size=12, bold=True, color=brand); r += 1
     hdrs = ["Functional area", "Cases", "Pass", "Fail", "Blocked", "Executed %"]
@@ -389,12 +673,13 @@ def build_instructions(wb, app_key, app_title, areas_counts, brand):
     first_data = r
     for area, n in areas_counts:
         q = "'%s'" % area[:31]
+        S = STATUS_COL
         ws.cell(row=r, column=2, value=area).border = BORDER
         ws.cell(row=r, column=3, value=n).border = BORDER
-        ws.cell(row=r, column=4, value='=COUNTIF(%s!F:F,"Pass")' % q).border = BORDER
-        ws.cell(row=r, column=5, value='=COUNTIF(%s!F:F,"Fail")' % q).border = BORDER
-        ws.cell(row=r, column=6, value='=COUNTIF(%s!F:F,"Blocked")' % q).border = BORDER
-        ws.cell(row=r, column=7, value='=ROUND(COUNTA(%s!F2:F500)/C%d*100,0)&"%%"' % (q, r)).border = BORDER
+        ws.cell(row=r, column=4, value='=COUNTIF(%s!%s:%s,"Pass")' % (q, S, S)).border = BORDER
+        ws.cell(row=r, column=5, value='=COUNTIF(%s!%s:%s,"Fail")' % (q, S, S)).border = BORDER
+        ws.cell(row=r, column=6, value='=COUNTIF(%s!%s:%s,"Blocked")' % (q, S, S)).border = BORDER
+        ws.cell(row=r, column=7, value='=ROUND(COUNTA(%s!%s2:%s500)/C%d*100,0)&"%%"' % (q, S, S, r)).border = BORDER
         r += 1
     ws.cell(row=r, column=2, value="TOTAL").font = Font(bold=True)
     for col in range(3, 7):
@@ -404,8 +689,27 @@ def build_instructions(wb, app_key, app_title, areas_counts, brand):
     ws.cell(row=r, column=2).border = BORDER
 
 
+# Optional CLI filter (e.g. `python uat-generator.py FL CC`) limits which apps
+# are generated. Naming convention: UAT_<APP>_dd-Mon-YYYY-NN.xlsx — NN starts
+# at 01 and auto-increments when a file for the same app+date already exists,
+# so regenerating never overwrites a workbook testers may have filled.
+import sys
+from datetime import date as _date
+ONLY = set(a.upper() for a in sys.argv[1:])
+DATESTR = _date.today().strftime("%d-%b-%Y")
+
+def next_out_path(out_dir, app_key):
+    seq = 1
+    while True:
+        out = os.path.join(out_dir, "UAT_%s_%s-%02d.xlsx" % (app_key, DATESTR, seq))
+        if not os.path.exists(out):
+            return out
+        seq += 1
+
 total_all = 0
 for app_key, app_title, areas in APPS:
+    if ONLY and app_key.upper() not in ONLY:
+        continue
     wb = Workbook()
     wb.remove(wb.active)
     brand = BRANDS[app_key]
@@ -416,7 +720,7 @@ for app_key, app_title, areas in APPS:
     build_instructions(wb, app_key, app_title, counts, brand)
     out_dir = os.path.join(ROOT, app_key, "UAT")
     os.makedirs(out_dir, exist_ok=True)
-    out = os.path.join(out_dir, "UAT_%s_TestScript.xlsx" % app_key)
+    out = next_out_path(out_dir, app_key)
     wb.save(out)
     n_cases = sum(n for _, n in counts)
     total_all += n_cases

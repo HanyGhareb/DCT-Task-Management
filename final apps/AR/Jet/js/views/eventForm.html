@@ -1,0 +1,65 @@
+<div class="page-wrap" style="max-width:880px">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: isEdit ? 'Edit Event' : 'New Event'"></div>
+    <div class="page-subtitle">Event master record — AI extraction can prefill empty fields later from contracts and audit reports</div>
+  </div>
+
+  <div class="form-card">
+    <div class="form-grid form-grid--2col">
+      <div class="form-field">
+        <label>Event Name (EN) *</label>
+        <input class="form-control" type="text" data-bind="value: nameEn">
+      </div>
+      <div class="form-field">
+        <label>Event Name (AR)</label>
+        <input class="form-control" type="text" dir="rtl" data-bind="value: nameAr">
+      </div>
+      <div class="form-field">
+        <label>Event Type</label>
+        <select class="form-control" data-bind="options: eventTypes, optionsText: 'nameEn', optionsValue: 'code', value: eventType"></select>
+      </div>
+      <div class="form-field">
+        <label>Venue</label>
+        <input class="form-control" type="text" data-bind="value: venue">
+      </div>
+      <div class="form-field">
+        <label>Organizer</label>
+        <input class="form-control" type="text" data-bind="value: organizer">
+      </div>
+      <div class="form-field">
+        <label>Contract Number</label>
+        <input class="form-control mono" type="text" data-bind="value: contractNumber">
+      </div>
+      <div class="form-field">
+        <label>Start Date</label>
+        <input class="form-control" type="date" data-bind="value: startDate">
+      </div>
+      <div class="form-field">
+        <label>End Date</label>
+        <input class="form-control" type="date" data-bind="value: endDate">
+      </div>
+      <div class="form-field">
+        <label>Expected Attendance</label>
+        <input class="form-control mono" type="number" data-bind="value: expectedAttendance">
+      </div>
+      <div class="form-field">
+        <label>DCT Revenue Share %</label>
+        <input class="form-control mono" type="number" min="0" max="100" data-bind="value: revSharePct">
+      </div>
+      <div class="form-field">
+        <label>Currency</label>
+        <select class="form-control" data-bind="options: currencies, value: currency"></select>
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Description</label>
+      <textarea class="form-control" rows="3" data-bind="value: description"></textarea>
+    </div>
+
+    <div class="form-actions">
+      <button class="btn btn-secondary" data-bind="click: cancel, text: t('common.cancel')"></button>
+      <button class="btn btn-primary" data-bind="click: save, disable: saving(),
+              text: saving() ? '…' : t('common.save')"></button>
+    </div>
+  </div>
+</div>

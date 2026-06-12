@@ -78,9 +78,9 @@ SELECT
 FROM prod.dct_cc_requests      r
 LEFT JOIN prod.dct_credit_cards cc  ON cc.cc_id   = r.cc_id
 LEFT JOIN prod.dct_users        u   ON u.user_id  = cc.holder_user_id
-LEFT JOIN prod.dct_users        cr  ON cr.user_id = r.created_by;
+LEFT JOIN prod.dct_users        cr  ON cr.username = r.created_by;
 
-COMMENT ON TABLE prod.dct_cc_request_v IS 'Card requests with card and cardholder context — LEFT JOIN so NEW_CARD requests (no cc_id) appear';
+COMMENT ON TABLE prod.dct_cc_request_v IS 'Card requests with card and cardholder context — LEFT JOIN so NEW_CARD requests (no cc_id) appear; created_by holds usernames (05_cc_alter_audit_cols)';
 
 -- =============================================================================
 -- 3. DCT_CC_REPLENISHMENT_V — Monthly replenishments with card and submitter info

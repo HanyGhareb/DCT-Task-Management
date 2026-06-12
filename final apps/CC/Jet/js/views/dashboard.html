@@ -1,0 +1,41 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('dash.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('dash.subtitle')"></div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div class="stats-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800" data-bind="text: stats().activeCards || 0"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.activeCards')"></div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800" data-bind="text: 'AED ' + (stats().totalLimit || 0).toLocaleString()"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.totalLimit')"></div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800" data-bind="text: stats().pendingRequests || 0"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.pendingRequests')"></div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800;color:var(--amber)" data-bind="text: stats().replenishmentsDue || 0"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.replDue')"></div>
+      <div class="mono" style="font-size:11px;color:var(--text-3)" data-bind="text: 'AED ' + (stats().monthTotal || 0).toLocaleString() + ' this month'"></div>
+    </div>
+  </div>
+
+  <div class="charts-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card chart-card">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('dash.chartLimits')"></div>
+      <div style="height:240px;position:relative"><canvas id="ccChart1"></canvas></div>
+    </div>
+    <div class="card chart-card">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('dash.chartCompliance')"></div>
+      <div style="height:240px;position:relative"><canvas id="ccChart2"></canvas></div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

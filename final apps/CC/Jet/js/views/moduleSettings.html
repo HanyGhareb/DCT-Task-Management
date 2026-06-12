@@ -1,0 +1,54 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('set.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('set.subtitle')"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: saveAll, enable: hasDirty() && !saving()">
+      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+      <!-- ko ifnot: saving() -->&#10003; Save Changes<!-- /ko -->
+    </button>
+  </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: errorMsg() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: errorMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div class="card">
+    <!-- ko foreach: items -->
+    <div class="switch-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600" data-bind="text: label"></div>
+        <div style="font-size:11.5px;color:var(--text-3);font-family:monospace" data-bind="text: key"></div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:2px" data-bind="text: description"></div>
+      </div>
+      <div style="flex:0 0 240px;margin-inline-start:20px">
+        <!-- ko if: type === 'BOOLEAN' -->
+        <select class="form-control" data-bind="value: value,
+                 style: { 'border-color': dirty() ? 'var(--brand)' : '' }">
+          <option value="Y">Yes</option><option value="N">No</option>
+        </select>
+        <!-- /ko -->
+        <!-- ko if: type === 'SELECT' && allowed.length > 0 -->
+        <select class="form-control" data-bind="options: allowed, value: value,
+                 style: { 'border-color': dirty() ? 'var(--brand)' : '' }"></select>
+        <!-- /ko -->
+        <!-- ko if: type !== 'BOOLEAN' && (type !== 'SELECT' || allowed.length === 0) -->
+        <input class="form-control" type="text" data-bind="value: value, valueUpdate: 'input',
+               style: { 'border-color': dirty() ? 'var(--brand)' : '' }">
+        <!-- /ko -->
+        <!-- ko if: dirty() -->
+        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block">&#9998; modified</span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>

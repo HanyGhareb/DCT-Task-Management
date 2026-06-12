@@ -7,6 +7,8 @@
 -- Depends : db/v2/04_dct_seed.sql (platform roles MANAGER, ADMIN must exist)
 -- =============================================================================
 
+SET DEFINE OFF
+
 ALTER SESSION SET CURRENT_SCHEMA = PROD;
 
 WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK

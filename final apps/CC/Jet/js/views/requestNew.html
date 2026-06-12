@@ -1,0 +1,112 @@
+<div class="page-wrap" style="max-width:860px">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('reqNew.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('reqNew.subtitle')"></div>
+  </div>
+
+  <div class="wiz-steps">
+    <div class="wiz-step" data-bind="css: { 'wiz-step--on': step() === 1, 'wiz-step--done': step() > 1 }">1 · Type</div>
+    <div class="wiz-step" data-bind="css: { 'wiz-step--on': step() === 2, 'wiz-step--done': step() > 2 }">2 · Details</div>
+    <div class="wiz-step" data-bind="css: { 'wiz-step--on': step() === 3 }">3 · Documents &amp; Submit</div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: error()"></span></div>
+  <!-- /ko -->
+
+  <!-- ── Step 1: type ──────────────────────────────────────────────────── -->
+  <!-- ko if: step() === 1 -->
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:12px;margin-bottom:20px">
+    <!-- ko foreach: types -->
+    <div class="type-tile" data-bind="css: { 'type-tile--on': $vm.selType() === $data.code },
+                                      click: $vm.pickType.bind($vm, $data)">
+      <div style="font-size:22px;margin-bottom:6px" data-bind="text: $data.icon"></div>
+      <div style="font-weight:700;font-size:14px" data-bind="text: $data.label"></div>
+      <div style="font-size:12px;color:var(--text-2);margin-top:4px" data-bind="text: $data.desc"></div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <div style="display:flex;justify-content:flex-end">
+    <button class="btn btn-primary" data-bind="click: next, enable: !!selType()">Continue &#8594;</button>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Step 2: details ───────────────────────────────────────────────── -->
+  <!-- ko if: step() === 2 -->
+  <div class="card">
+    <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+      <!-- ko if: needsCard() -->
+      <div class="form-group">
+        <label class="form-label">Card *</label>
+        <select class="form-control" data-bind="value: ccId,
+                 options: myCards, optionsValue: 'ccId',
+                 optionsText: function(c){ return c.ccNumber + ' · ' + (c.creditLimit || 0).toLocaleString() + ' AED'; },
+                 optionsCaption: 'Select your card…'"></select>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: needsLimit() -->
+      <div class="form-group">
+        <label class="form-label">Requested Limit (AED) *</label>
+        <input class="form-control" type="number" min="1" data-bind="value: requestedLimit, valueUpdate: 'input'">
+      </div>
+      <!-- /ko -->
+      <!-- ko if: needsReplReason() -->
+      <div class="form-group">
+        <label class="form-label">Replacement Reason *</label>
+        <select class="form-control" data-bind="value: replacementReason">
+          <option value="">Select…</option>
+          <option value="DAMAGED">Damaged</option>
+          <option value="LOST">Lost</option>
+          <option value="EXPIRING">Expiring</option>
+          <option value="OTHER">Other</option>
+        </select>
+      </div>
+      <!-- /ko -->
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label">Reason / Justification</label>
+        <textarea class="form-control" rows="3" data-bind="value: reason, valueUpdate: 'input'"></textarea>
+      </div>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-top:16px">
+    <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+    <button class="btn btn-primary" data-bind="click: createDraft, enable: !saving()">
+      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+      <!-- ko ifnot: saving() -->Save Draft &amp; Continue &#8594;<!-- /ko -->
+    </button>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Step 3: documents + submit ────────────────────────────────────── -->
+  <!-- ko if: step() === 3 -->
+  <div class="card">
+    <div class="section-heading" style="margin-top:0">
+      Draft <span class="mono" data-bind="text: requestNumber()"></span> — required documents
+    </div>
+    <!-- ko if: docReqs().length === 0 -->
+    <div style="font-size:13px;color:var(--text-3);padding:10px 0">No documents are required for this request type.</div>
+    <!-- /ko -->
+    <!-- ko foreach: docReqs -->
+    <div class="doc-req-row">
+      <span style="font-size:16px" data-bind="text: uploaded() ? '✅' : ($data.isMandatory === 'Y' ? '⚠' : '\u{1F4CE}')"></span>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600" data-bind="text: $data.docTypeName"></div>
+        <div style="font-size:11px;color:var(--text-3)"
+             data-bind="text: $data.isMandatory === 'Y' ? 'Mandatory' : 'Optional'"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" data-bind="click: $vm.pickFile.bind($vm, $data), enable: !uploading()">
+        <!-- ko if: uploading() -->Uploading&hellip;<!-- /ko -->
+        <!-- ko ifnot: uploading() --><span data-bind="text: uploaded() ? 'Replace' : 'Upload'"></span><!-- /ko -->
+      </button>
+    </div>
+    <!-- /ko -->
+  </div>
+  <div style="display:flex;justify-content:space-between;margin-top:16px">
+    <button class="btn btn-secondary" data-bind="click: saveDraftAndExit">Save as Draft &amp; Exit</button>
+    <button class="btn btn-primary" data-bind="click: submit, enable: allMandatoryUploaded() && !saving()">
+      <!-- ko if: saving() -->Submitting&hellip;<!-- /ko -->
+      <!-- ko ifnot: saving() -->&#10003; Submit for Approval<!-- /ko -->
+    </button>
+  </div>
+  <!-- /ko -->
+</div>

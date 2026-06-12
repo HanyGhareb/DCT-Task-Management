@@ -25,7 +25,12 @@ PROMPT Step 6/7 — Phase 2 adoption (REQUIRES db/v2/15 first; fresh ADMIN sessi
 PROMPT             sql -name prod_mcp < "final apps/FL/db/06_fl_unified_adoption.sql"
 PROMPT             (drops dct_fl_documents / dct_fl_doc_expiry_alerts — superseded
 PROMPT              by unified DCT_DOCUMENTS / DCT_DOC_EXPIRY_ALERTS)
-PROMPT Step 7/7 — Re-run 02_fl_views.sql then 04_fl_pkg.sql after step 6.
+PROMPT Step 7/9 — Re-run 02_fl_views.sql then 04_fl_pkg.sql after step 6.
+PROMPT Step 8/9 — Phase 4 workflow pkg (replaces 04 output; includes submit_* +
+PROMPT             act_on_approval): sql -name prod_mcp < "final apps/FL/db/07_fl_pkg_workflow.sql"
+PROMPT Step 9/9 — ORDS module fl.rest at /ords/admin/fl/ (FRESH ADMIN session -
+PROMPT             creates synonyms; never run after a CURRENT_SCHEMA switch):
+PROMPT             sql -name prod_mcp < "final apps/FL/db/08_fl_ords.sql"
 PROMPT
 PROMPT See APEX_SETUP.md for APEX App 203 build instructions.
 PROMPT

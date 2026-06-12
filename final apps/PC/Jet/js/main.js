@@ -17,7 +17,7 @@ requirejs.config({
 });
 
 require(
-  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager'],
+  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager', 'shared/auditInfo'],
   function (AppController, ko, i18n) {
 
   // Custom KO binding: swaps a view+viewModel pair into the host container.
@@ -33,7 +33,9 @@ require(
       }
       if (!config) return;
       element.innerHTML = config.view;
-      const childCtx = bindingContext.createChildContext(config.viewModel);
+      const childCtx = bindingContext.createChildContext(
+        config.viewModel, null,
+        function (ctx) { ctx.$vm = config.viewModel; });
       ko.applyBindingsToDescendants(childCtx, element);
     }
   };

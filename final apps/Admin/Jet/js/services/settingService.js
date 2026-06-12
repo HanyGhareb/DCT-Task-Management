@@ -23,6 +23,10 @@ define(['services/api'], function (api) {
           displayAr:    v.displayAr    || '',
           sortOrder:    v.sortOrder,
           isActive:     v.isActive,
+          createdBy:    v.createdBy,
+          createdAt:    v.createdAt,
+          updatedBy:    v.updatedBy,
+          updatedAt:    v.updatedAt,
         });
       });
     });

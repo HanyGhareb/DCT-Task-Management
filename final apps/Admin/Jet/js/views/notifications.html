@@ -25,9 +25,9 @@
       <!-- /ko -->
       <div style="font-size:18px" data-bind="html: $parent.getTypeIcon(type)"></div>
       <div style="flex:1">
-        <div class="notif-title" data-bind="text: titleEn"></div>
-        <div class="notif-body"  data-bind="text: bodyEn"></div>
-        <div class="notif-time"  data-bind="text: $parent.formatTime(createdAt)"></div>
+        <div class="notif-title" data-bind="text: $data.title || ''"></div>
+        <div class="notif-body"  data-bind="text: $data.body || ''"></div>
+        <div class="notif-time"  data-bind="text: $parent.formatTime($data.createdAt)"></div>
       </div>
       <!-- ko if: isRead === 'N' -->
       <span class="badge badge--pending" style="font-size:10px"><span data-bind="text: $root.t('notif.unread')"></span></span>

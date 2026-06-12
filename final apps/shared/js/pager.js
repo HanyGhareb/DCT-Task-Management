@@ -62,12 +62,19 @@ define(['knockout', 'shared/i18n'], function (ko, i18n) {
       self.offset(ko.unwrap(self.offset) + ko.unwrap(self.limit));
       onChange();
     };
-    self.sizeChanged = function (vm, e) {
-      self.limit(parseInt(e.target.value, 10) || 50);
-      self.offset(0);
-      onChange();
-      return true;
-    };
+    /* String proxy for the <select> — KO's value binding selects the matching
+       <option>; the old attr:{value} wrote a dead attribute so the dropdown
+       always DISPLAYED "25" regardless of the real page size. */
+    self.limitSel = ko.pureComputed({
+      read:  function ()  { return String(ko.unwrap(self.limit)); },
+      write: function (v) {
+        var n = parseInt(v, 10) || 50;
+        if (n === ko.unwrap(self.limit)) return;
+        self.limit(n);
+        self.offset(0);
+        onChange();
+      }
+    });
   }
 
   if (!ko.components.isRegistered('list-pager')) {
@@ -78,7 +85,7 @@ define(['knockout', 'shared/i18n'], function (ko, i18n) {
         '  <span class="pager__info" data-bind="text: rangeText"></span>' +
         '  <span class="pager__grow"></span>' +
         '  <label class="pager__size-lbl" data-bind="text: t(\'pager.perPage\')"></label>' +
-        '  <select data-bind="event: { change: sizeChanged }, attr: { value: limit() }">' +
+        '  <select data-bind="value: limitSel">' +
         '    <option value="25">25</option><option value="50">50</option><option value="100">100</option>' +
         '  </select>' +
         '  <button class="pager__btn" data-bind="click: prev, disable: prevDisabled"><span>&#8249;</span></button>' +

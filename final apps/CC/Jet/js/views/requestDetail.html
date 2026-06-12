@@ -1,0 +1,74 @@
+<div class="page-wrap" style="max-width:980px">
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+
+  <!-- ko if: !loading() && !data() -->
+  <div class="empty-state"><div class="empty-state__icon">&#10067;</div>
+    <div class="empty-state__msg">Request not found</div>
+    <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && data() -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">
+        <span class="mono" data-bind="text: data().requestNumber"></span>
+        <span style="margin-inline-start:10px" data-bind="text: data().status, css: statusBadge(data().status)"></span>
+      </div>
+      <div class="page-subtitle"
+           data-bind="text: typeLabel(data().requestType) + (data().ccNumber ? ' · ' + data().ccNumber : '') + (data().holderName ? ' · ' + data().holderName : '')"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <!-- ko if: canSubmit() -->
+      <button class="btn btn-primary" data-bind="click: submit, enable: !busy()">&#10003; Submit</button>
+      <!-- /ko -->
+      <!-- ko if: canWithdraw() -->
+      <button class="btn btn-secondary" data-bind="click: withdraw, enable: !busy()">&#8617; Withdraw</button>
+      <!-- /ko -->
+      <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+      <div class="form-group"><label class="form-label">Type</label>
+        <div style="font-weight:600" data-bind="text: typeLabel(data().requestType)"></div></div>
+      <div class="form-group"><label class="form-label">Card</label>
+        <div class="mono" data-bind="text: data().ccNumber || '— (new card)'"></div></div>
+      <div class="form-group"><label class="form-label">Holder</label>
+        <div data-bind="text: data().holderName || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Requested Limit</label>
+        <div class="mono" data-bind="text: data().requestedLimit ? 'AED ' + data().requestedLimit.toLocaleString() : '—'"></div></div>
+      <div class="form-group"><label class="form-label">Replacement Reason</label>
+        <div data-bind="text: data().replacementReason || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Submitted</label>
+        <div class="mono" data-bind="text: data().submittedAt || '—'"></div></div>
+      <div class="form-group form-group--full" style="grid-column:1/-1"><label class="form-label">Reason</label>
+        <div data-bind="text: data().reason || '—'"></div></div>
+    </div>
+    <audit-info params="data: data"></audit-info>
+  </div>
+
+  <div class="card">
+    <div class="section-heading" style="margin-top:0">Documents</div>
+    <!-- ko if: docs().length === 0 -->
+    <div style="font-size:13px;color:var(--text-3);padding:10px 0">No documents attached.</div>
+    <!-- /ko -->
+    <!-- ko if: docs().length > 0 -->
+    <table class="data-table">
+      <thead><tr><th>Type</th><th>File</th><th>Uploaded</th><th>File attached</th></tr></thead>
+      <tbody>
+        <!-- ko foreach: docs -->
+        <tr>
+          <td data-bind="text: $data.docTypeName"></td>
+          <td data-bind="text: $data.fileName"></td>
+          <td class="mono" data-bind="text: $data.createdAt || ''"></td>
+          <td data-bind="text: $data.hasFile === 'Y' ? 'Yes' : 'No'"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>

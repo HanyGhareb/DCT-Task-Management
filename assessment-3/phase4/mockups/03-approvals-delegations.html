@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i-Finance · Unified Approvals, Delegations & Announcements — Phase 4 Mockup 03</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=Fira+Code:wght@400;500;600&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#C74634; --brand-rgb:199,70,52; --brand-dark:#9E3729; --brand-soft:#FAE9E6;
+  --bg:#F6F7F9; --surface:#FFFFFF; --surface-2:#F0F2F5;
+  --border:#E3E6EB; --border-strong:#CBD2DA;
+  --text:#1B2430; --text-2:#5B6573; --text-3:#8A93A2;
+  --chrome-bg:#0F141B; --chrome-surface:#161C25; --chrome-border:#232B36;
+  --chrome-text:#C9D2DC; --chrome-text-2:#7D8794;
+  --amber:#F0883E; --green:#2DA44E; --red:#D1242F; --blue:#0969DA;
+  --green-soft:#DDF4E4; --red-soft:#FBE9EA; --blue-soft:#DDF0FF; --amber-soft:#FFF1E3;
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace;
+  --font-ar:'IBM Plex Sans Arabic',system-ui,sans-serif;
+  --r-sm:6px; --r:10px; --r-lg:14px;
+  --shadow:0 1px 2px rgba(27,36,48,.06),0 4px 14px rgba(27,36,48,.05);
+  --spring:cubic-bezier(.34,1.56,.64,1);
+  --topbar-h:54px; --side-w:250px;
+  --pc:#2E7D32; --dt:#0572CE; --fl:#7C4DBE; --cc:#B0721E;
+}
+*{box-sizing:border-box} html,body{margin:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font);font-size:14.5px;line-height:1.55}
+html[lang="ar"] body{font-family:var(--font-ar)}
+.mono{font-family:var(--mono);font-feature-settings:'tnum'}
+h1,h2,h3{font-weight:700;letter-spacing:-.02em}
+.topbar{position:fixed;inset-block-start:0;inset-inline:0;height:var(--topbar-h);z-index:60;display:flex;align-items:center;gap:16px;padding:0 16px;background:var(--chrome-bg);border-block-end:1px solid var(--chrome-border);color:var(--chrome-text)}
+.suite{display:flex;align-items:center;gap:10px;font-weight:800;font-size:15px;color:#fff}
+.suite-cube{width:30px;height:30px;border-radius:8px;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 11.5px var(--mono);box-shadow:0 3px 12px rgba(var(--brand-rgb),.45)}
+.sep{width:1px;height:24px;background:var(--chrome-border)}
+.modsw-btn{display:flex;align-items:center;gap:10px;border:1px solid var(--chrome-border);background:var(--chrome-surface);border-radius:10px;padding:6px 12px;font:600 13.5px var(--font);color:#fff;min-width:220px}
+.modsw-btn .dot{width:10px;height:10px;border-radius:50%;background:var(--brand);box-shadow:0 0 8px rgba(var(--brand-rgb),.8)}
+.modsw-btn .app{font:500 10.5px var(--mono);color:var(--chrome-text-2);margin-inline-start:auto}
+.head-end{margin-inline-start:auto;display:flex;align-items:center;gap:12px}
+.lang-toggle{display:flex;border:1px solid var(--chrome-border);border-radius:99px;overflow:hidden}
+.lang-toggle button{border:0;background:transparent;color:var(--chrome-text-2);padding:5px 14px;font:600 12.5px var(--font);cursor:pointer}
+.lang-toggle button.on{background:var(--amber);color:#10151C}
+.avatar{width:32px;height:32px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 11px var(--font)}
+
+/* announcement banner — lives under the top bar, ALL apps */
+.ann{position:fixed;inset-block-start:var(--topbar-h);inset-inline:0;z-index:55;display:flex;align-items:center;gap:12px;
+  padding:9px 18px;font-size:13px;border-block-end:1px solid}
+.ann.warn{background:#FFF7EA;border-color:#F3D9A4;color:#7A5410}
+.ann.crit{background:#FDECEC;border-color:#F2B8B5;color:#8E2A23}
+.ann .sev{font:700 9.5px var(--font);letter-spacing:.1em;border-radius:5px;padding:2px 8px;background:rgba(0,0,0,.08)}
+.ann .x{margin-inline-start:auto;cursor:pointer;font-weight:700;opacity:.6}
+.ann .x:hover{opacity:1}
+
+.layout{display:grid;grid-template-columns:var(--side-w) 1fr;min-height:100vh;padding-block-start:calc(var(--topbar-h) + 40px)}
+.side{background:var(--chrome-bg);color:var(--chrome-text);border-inline-end:1px solid var(--chrome-border);position:sticky;top:calc(var(--topbar-h) + 40px);height:calc(100vh - var(--topbar-h) - 40px);overflow-y:auto;display:flex;flex-direction:column;padding:16px 10px}
+.side-logo{display:flex;align-items:center;gap:11px;padding:4px 10px 16px;border-block-end:1px solid var(--chrome-border);margin-block-end:8px}
+.brand-cube{width:38px;height:38px;border-radius:10px;background:var(--brand);color:#fff;display:grid;place-items:center;font:700 13px var(--mono);box-shadow:0 4px 14px rgba(var(--brand-rgb),.4)}
+.side-logo .nm{font-weight:700;font-size:15px;color:#fff;line-height:1.2}
+.side-logo .sub{font:500 10px var(--mono);color:var(--chrome-text-2);letter-spacing:.08em}
+.nav-h{font-size:10px;text-transform:uppercase;letter-spacing:.14em;color:var(--chrome-text-2);padding:14px 10px 5px}
+.nav-i{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;color:var(--chrome-text);font-size:13.5px;font-weight:500;cursor:pointer;border-inline-start:3px solid transparent;transition:all .15s}
+.nav-i:hover{background:var(--chrome-surface)}
+.nav-i.on{background:rgba(var(--brand-rgb),.18);border-inline-start-color:var(--brand);color:#fff;font-weight:600}
+.nav-i .bdg{margin-inline-start:auto;background:var(--red);color:#fff;font:700 10px var(--font);border-radius:99px;padding:1px 7px}
+.content{padding:26px 30px;max-width:1240px}
+.crumb{font-size:12px;color:var(--text-3);margin-block-end:4px}
+.pg-title{font-size:22px;margin:0 0 2px}
+.pg-sub{color:var(--text-2);font-size:13.5px;margin:0 0 22px}
+.section{display:none} .section.on{display:block;animation:fadeUp .35s var(--spring)}
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px 20px;box-shadow:var(--shadow);margin-block-end:16px}
+.card h3{margin:0 0 12px;font-size:14.5px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{text-align:start;font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:var(--text-3);padding:8px 10px;border-block-end:1px solid var(--border)}
+td{padding:11px 10px;border-block-end:1px solid var(--surface-2);vertical-align:middle}
+tr:hover td{background:var(--surface-2)}
+.badge{display:inline-block;font:600 10.5px var(--font);border-radius:99px;padding:3px 10px}
+.b-green{background:var(--green-soft);color:var(--green)} .b-amber{background:var(--amber-soft);color:#B45309}
+.b-red{background:var(--red-soft);color:var(--red)} .b-blue{background:var(--blue-soft);color:var(--blue)}
+.b-gray{background:var(--surface-2);color:var(--text-2)}
+.mod-chip{display:inline-flex;align-items:center;gap:6px;font:700 10px var(--mono);letter-spacing:.04em;border-radius:6px;padding:3px 9px;color:#fff}
+.actfor{display:inline-flex;align-items:center;gap:5px;font:600 10.5px var(--font);border-radius:99px;padding:3px 9px;background:#EFE5FB;color:#5D3792;border:1px dashed #BFA0E8}
+.btn{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:var(--r-sm);padding:8px 14px;font:600 13px var(--font);cursor:pointer;transition:all .2s}
+.btn:hover{border-color:var(--border-strong)}
+.btn-p{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-g{background:var(--green);border-color:var(--green);color:#fff}
+.btn-r{background:var(--red);border-color:var(--red);color:#fff}
+.btn-sm{padding:5px 10px;font-size:12px}
+.steps{display:inline-flex;align-items:center;gap:4px}
+.sdot{width:9px;height:9px;border-radius:50%;background:var(--border)}
+.sdot.done{background:var(--green)} .sdot.cur{background:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.sline{width:14px;height:2px;background:var(--border)} .sline.done{background:var(--green)}
+.modal-demo{border:1px solid var(--border);border-radius:var(--r-lg);box-shadow:0 18px 50px rgba(15,22,30,.18);max-width:520px;padding:22px;background:var(--surface)}
+.fg label{display:block;font:600 11px var(--font);text-transform:uppercase;letter-spacing:.08em;color:var(--text-2);margin-block-end:5px}
+.fg input,.fg select,.fg textarea{width:100%;border:1px solid var(--border);border-radius:var(--r-sm);padding:9px 11px;font:13.5px var(--font);background:var(--surface)}
+.sev-pill{display:inline-flex;font:700 9.5px var(--font);letter-spacing:.08em;border-radius:5px;padding:3px 9px}
+.sev-info{background:var(--blue-soft);color:var(--blue)} .sev-warn{background:var(--amber-soft);color:#B45309} .sev-crit{background:var(--red-soft);color:var(--red)}
+.audit{display:flex;gap:18px;align-items:center;margin-block-start:14px;padding:8px 12px;border:1px dashed var(--border);border-radius:8px;background:var(--surface-2);font-size:11.5px;color:var(--text-3)}
+.audit b{font-size:10px;text-transform:uppercase;letter-spacing:.05em}
+html[lang="ar"] .en-only{display:none} html[lang="en"] .ar-only{display:none}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="suite"><div class="suite-cube">iF</div><span>i-Finance</span></div>
+  <div class="sep"></div>
+  <div class="modsw-btn"><span class="dot"></span>
+    <span class="en-only">Admin</span><span class="ar-only">الإدارة</span>
+    <span class="app">APP 200 ▾</span></div>
+  <div class="head-end">
+    <div class="lang-toggle"><button id="bEn" class="on" onclick="setLang('en')">EN</button><button id="bAr" onclick="setLang('ar')">ع</button></div>
+    <div class="avatar">SA</div>
+  </div>
+</header>
+
+<!-- Announcement banner: rendered by the SHARED SHELL in every app -->
+<div class="ann warn" id="annBar">
+  <span class="sev">WARNING</span>
+  <span class="en-only"><b>Fiscal-year closing:</b> all May petty-cash clearings must be submitted before 20-Jun-2026.</span>
+  <span class="ar-only"><b>إقفال السنة المالية:</b> يجب تقديم جميع تسويات النثرية لشهر مايو قبل 20-Jun-2026.</span>
+  <span class="x" onclick="document.getElementById('annBar').style.display='none'">✕</span>
+</div>
+
+<div class="layout">
+  <nav class="side">
+    <div class="side-logo"><div class="brand-cube">iF</div>
+      <div><div class="nm en-only">Admin</div><div class="nm ar-only">الإدارة</div><div class="sub">I-FINANCE · APP 200</div></div></div>
+    <div class="nav-h en-only">My Workspace</div><div class="nav-h ar-only">مساحتي</div>
+    <div class="nav-i" data-s="prof" onclick="go('prof',this)">👤 <span class="en-only">My Profile</span><span class="ar-only">ملفي الشخصي</span></div>
+    <div class="nav-i on" data-s="inbox" onclick="go('inbox',this)">✅ <span class="en-only">Pending Approvals</span><span class="ar-only">الموافقات المعلّقة</span><span class="bdg">6</span></div>
+    <div class="nav-h en-only">System</div><div class="nav-h ar-only">النظام</div>
+    <div class="nav-i" data-s="deleg" onclick="go('deleg',this)">🔁 <span class="en-only">Delegations</span><span class="ar-only">التفويضات</span></div>
+    <div class="nav-i" data-s="ann" onclick="go('ann',this)">📣 <span class="en-only">Announcements</span><span class="ar-only">الإعلانات</span></div>
+  </nav>
+
+  <main class="content">
+
+    <!-- ════ UNIFIED INBOX ════ -->
+    <section class="section on" id="s-inbox">
+      <div class="crumb en-only">Admin / Pending Approvals</div>
+      <h1 class="pg-title en-only">Unified Approvals Inbox</h1>
+      <h1 class="pg-title ar-only">صندوق الموافقات الموحّد</h1>
+      <p class="pg-sub en-only">Every module's queue in one place — 6 items awaiting your action (2 via delegation)</p>
+      <p class="pg-sub ar-only">قوائم جميع الوحدات في مكان واحد — ٦ عناصر بانتظار إجرائك (٢ عبر تفويض)</p>
+
+      <div class="card" style="padding:0">
+        <table>
+          <tr><th class="en-only">Reference</th><th class="ar-only">المرجع</th><th class="en-only">Module</th><th class="ar-only">الوحدة</th><th class="en-only">Requested By</th><th class="ar-only">مقدّم الطلب</th><th>AED</th><th class="en-only">Step</th><th class="ar-only">الخطوة</th><th class="en-only">Waiting</th><th class="ar-only">منذ</th><th></th></tr>
+          <tr>
+            <td class="mono">FL-CON-000124</td>
+            <td><span class="mod-chip" style="background:var(--fl)">FL · CONTRACT</span></td>
+            <td>Shaikha Al Galameri</td><td class="mono">84,000</td>
+            <td><span class="steps"><span class="sdot done"></span><span class="sline done"></span><span class="sdot cur"></span></span> <span style="font-size:11px;color:var(--text-3)">2/2</span></td>
+            <td class="mono">2d</td>
+            <td><button class="btn btn-g btn-sm en-only" onclick="go('modal')">Review</button><button class="btn btn-g btn-sm ar-only" onclick="go('modal')">مراجعة</button></td>
+          </tr>
+          <tr>
+            <td class="mono">CCR-2026-00007</td>
+            <td><span class="mod-chip" style="background:var(--cc)">CC · NEW CARD</span></td>
+            <td>Omar Khalil</td><td class="mono">25,000</td>
+            <td><span class="steps"><span class="sdot cur"></span><span class="sline"></span><span class="sdot"></span><span class="sline"></span><span class="sdot"></span></span> <span style="font-size:11px;color:var(--text-3)">1/3</span></td>
+            <td class="mono">5h</td>
+            <td><button class="btn btn-g btn-sm en-only">Review</button><button class="btn btn-g btn-sm ar-only">مراجعة</button></td>
+          </tr>
+          <tr style="background:#FBF8FF">
+            <td class="mono">PC-2026-00008 <div><span class="actfor">🔁 <span class="en-only">acting for Ayesha Al Ameri</span><span class="ar-only">بالنيابة عن عائشة العامري</span></span></div></td>
+            <td><span class="mod-chip" style="background:var(--pc)">PC · FLOAT</span></td>
+            <td>Shaikha Al Suwaidi</td><td class="mono">1,800</td>
+            <td><span class="steps"><span class="sdot cur"></span></span> <span style="font-size:11px;color:var(--text-3)">1/1</span></td>
+            <td class="mono">1d</td>
+            <td><button class="btn btn-g btn-sm en-only">Review</button><button class="btn btn-g btn-sm ar-only">مراجعة</button></td>
+          </tr>
+          <tr>
+            <td class="mono">FL-VCH-000334</td>
+            <td><span class="mod-chip" style="background:var(--fl)">FL · VOUCHER</span></td>
+            <td>Ayesha Al Ameri</td><td class="mono">20,000</td>
+            <td><span class="steps"><span class="sdot cur"></span><span class="sline"></span><span class="sdot"></span></span> <span style="font-size:11px;color:var(--text-3)">1/2</span></td>
+            <td class="mono">3h</td>
+            <td><button class="btn btn-g btn-sm en-only">Review</button><button class="btn btn-g btn-sm ar-only">مراجعة</button></td>
+          </tr>
+          <tr>
+            <td class="mono">DT-REQ-2026-00002</td>
+            <td><span class="mod-chip" style="background:var(--dt)">DT · TRAVEL</span></td>
+            <td>Ayesha Al Ameri</td><td class="mono">4,000</td>
+            <td><span class="steps"><span class="sdot cur"></span><span class="sline"></span><span class="sdot"></span></span> <span style="font-size:11px;color:var(--text-3)">1/2</span></td>
+            <td class="mono">12h</td>
+            <td><button class="btn btn-g btn-sm en-only">Review</button><button class="btn btn-g btn-sm ar-only">مراجعة</button></td>
+          </tr>
+          <tr style="background:#FBF8FF">
+            <td class="mono">CCM-2026-05-00018 <div><span class="actfor">🔁 <span class="en-only">acting for Ayesha Al Ameri</span><span class="ar-only">بالنيابة عن عائشة العامري</span></span></div></td>
+            <td><span class="mod-chip" style="background:var(--cc)">CC · STATEMENT</span></td>
+            <td>Shaikha Al Suwaidi</td><td class="mono">14,284</td>
+            <td><span class="steps"><span class="sdot cur"></span></span> <span style="font-size:11px;color:var(--text-3)">1/1</span></td>
+            <td class="mono">6h</td>
+            <td><button class="btn btn-g btn-sm en-only">Review</button><button class="btn btn-g btn-sm ar-only">مراجعة</button></td>
+          </tr>
+        </table>
+      </div>
+
+      <!-- review modal (shown inline for the mockup) -->
+      <div class="modal-demo">
+        <h3 style="margin:0 0 4px"><span class="mono">FL-CON-000124</span> · <span class="en-only">Contract Approval — Step 2 of 2</span><span class="ar-only">موافقة عقد — الخطوة ٢ من ٢</span></h3>
+        <div style="font-size:12.5px;color:var(--text-2);margin-block-end:12px">
+          <span class="en-only">Layla Hassan · Content Production Retainer · AED 84,000 ≥ 50,000 → FL Admin step triggered</span>
+          <span class="ar-only">ليلى حسن · عقد إنتاج محتوى · ٨٤٬٠٠٠ درهم ≥ ٥٠٬٠٠٠ → خطوة مشرف الوحدة مفعّلة</span>
+        </div>
+        <div class="fg"><label class="en-only">Comment (required)</label><label class="ar-only">التعليق (إلزامي)</label>
+          <textarea rows="2">Budget line verified against FY26 media allocation.</textarea></div>
+        <div style="display:flex;gap:8px;margin-block-start:14px">
+          <button class="btn btn-g">✓ <span class="en-only">Approve</span><span class="ar-only">موافقة</span></button>
+          <button class="btn btn-r">✗ <span class="en-only">Reject</span><span class="ar-only">رفض</span></button>
+          <button class="btn">↩ <span class="en-only">Return</span><span class="ar-only">إعادة</span></button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ════ MY PROFILE — DELEGATIONS ════ -->
+    <section class="section" id="s-prof">
+      <div class="crumb en-only">Admin / My Profile</div>
+      <h1 class="pg-title en-only">My Delegations</h1>
+      <h1 class="pg-title ar-only">تفويضاتي</h1>
+      <p class="pg-sub en-only">Hand your approval queue to a colleague while away — shown on the profile page</p>
+      <p class="pg-sub ar-only">فوّض صلاحيات الموافقة لزميل أثناء غيابك — تُعرض في ملفك الشخصي</p>
+
+      <div class="card">
+        <table>
+          <tr><th class="en-only">Delegate</th><th class="ar-only">المفوَّض إليه</th><th class="en-only">Scope</th><th class="ar-only">النطاق</th><th class="en-only">From</th><th class="ar-only">من</th><th class="en-only">To</th><th class="ar-only">إلى</th><th class="en-only">Reason</th><th class="ar-only">السبب</th><th class="en-only">Status</th><th class="ar-only">الحالة</th><th></th></tr>
+          <tr>
+            <td><b>Naser Al Khaja</b></td>
+            <td><span class="badge b-blue en-only">ALL ROLES</span><span class="badge b-blue ar-only">كل الأدوار</span></td>
+            <td class="mono">20-Jun-2026</td><td class="mono">28-Jun-2026</td>
+            <td class="en-only">Annual leave</td><td class="ar-only">إجازة سنوية</td>
+            <td><span class="badge b-amber en-only">UPCOMING</span><span class="badge b-amber ar-only">قادم</span></td>
+            <td><button class="btn btn-sm en-only">Cancel</button><button class="btn btn-sm ar-only">إلغاء</button></td>
+          </tr>
+          <tr>
+            <td><b>Ayesha Al Ameri</b></td>
+            <td><span class="badge b-gray en-only">MODULE · PETTY CASH</span><span class="badge b-gray ar-only">وحدة · النثرية</span></td>
+            <td class="mono">01-May-2026</td><td class="mono">10-May-2026</td>
+            <td class="en-only">Training course</td><td class="ar-only">دورة تدريبية</td>
+            <td><span class="badge b-gray en-only">EXPIRED</span><span class="badge b-gray ar-only">منتهٍ</span></td>
+            <td></td>
+          </tr>
+        </table>
+      </div>
+
+      <div class="modal-demo">
+        <h3 class="en-only" style="margin:0 0 12px">New Delegation</h3><h3 class="ar-only" style="margin:0 0 12px">تفويض جديد</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="fg"><label class="en-only">Delegate to *</label><label class="ar-only">تفويض إلى *</label><select><option>Naser Al Khaja</option><option>Ayesha Al Ameri</option></select></div>
+          <div class="fg"><label class="en-only">Scope</label><label class="ar-only">النطاق</label><select><option class="en-only">All my roles</option><option class="en-only">Specific role…</option><option class="en-only">One module…</option><option class="ar-only">كل أدواري</option></select></div>
+          <div class="fg"><label class="en-only">From *</label><label class="ar-only">من *</label><input type="date" value="2026-06-20"></div>
+          <div class="fg"><label class="en-only">To *</label><label class="ar-only">إلى *</label><input type="date" value="2026-06-28"></div>
+          <div class="fg" style="grid-column:1/-1"><label class="en-only">Reason</label><label class="ar-only">السبب</label><input value="Annual leave"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-block-start:14px">
+          <button class="btn btn-p">✓ <span class="en-only">Create Delegation</span><span class="ar-only">إنشاء التفويض</span></button>
+          <button class="btn en-only">Cancel</button><button class="btn ar-only">إلغاء</button>
+        </div>
+        <div class="audit">🕑 <span><b class="en-only">Created</b><b class="ar-only">أُنشئ</b> — <span class="en-only">on save</span><span class="ar-only">عند الحفظ</span></span></div>
+      </div>
+    </section>
+
+    <!-- ════ DELEGATIONS OVERSIGHT (SYSTEM) ════ -->
+    <section class="section" id="s-deleg">
+      <div class="crumb en-only">Admin / System / Delegations</div>
+      <h1 class="pg-title en-only">Delegations — Oversight</h1>
+      <h1 class="pg-title ar-only">التفويضات — إشراف</h1>
+      <p class="pg-sub en-only">All delegations platform-wide (SYS_ADMIN); cancel any active delegation</p>
+      <p class="pg-sub ar-only">جميع التفويضات على مستوى المنصة؛ يمكن إلغاء أي تفويض نشط</p>
+      <div class="card" style="padding:0">
+        <table>
+          <tr><th class="en-only">Delegator</th><th class="ar-only">المفوِّض</th><th>→</th><th class="en-only">Delegate</th><th class="ar-only">المفوَّض إليه</th><th class="en-only">Scope</th><th class="ar-only">النطاق</th><th class="en-only">Window</th><th class="ar-only">الفترة</th><th class="en-only">Status</th><th class="ar-only">الحالة</th><th></th></tr>
+          <tr><td>Ayesha Al Ameri</td><td>→</td><td><b>Naser Al Khaja</b></td><td><span class="badge b-blue">ALL ROLES</span></td><td class="mono">10–25 Jun 2026</td><td><span class="badge b-green">ACTIVE</span></td><td><button class="btn btn-sm btn-r en-only">Cancel</button><button class="btn btn-sm btn-r ar-only">إلغاء</button></td></tr>
+          <tr><td>Hashem Al Kabbi</td><td>→</td><td><b>Shaikha Al Galameri</b></td><td><span class="badge b-gray">ROLE · DT_MANAGER</span></td><td class="mono">20–28 Jun 2026</td><td><span class="badge b-amber">UPCOMING</span></td><td><button class="btn btn-sm btn-r en-only">Cancel</button><button class="btn btn-sm btn-r ar-only">إلغاء</button></td></tr>
+          <tr><td>Naser Al Khaja</td><td>→</td><td><b>Ayesha Al Ameri</b></td><td><span class="badge b-gray">MODULE · CREDIT CARDS</span></td><td class="mono">01–10 May 2026</td><td><span class="badge b-gray">EXPIRED</span></td><td></td></tr>
+        </table>
+      </div>
+    </section>
+
+    <!-- ════ ANNOUNCEMENTS ADMIN ════ -->
+    <section class="section" id="s-ann">
+      <div class="crumb en-only">Admin / System / Announcements</div>
+      <h1 class="pg-title en-only">Announcements</h1>
+      <h1 class="pg-title ar-only">الإعلانات</h1>
+      <p class="pg-sub en-only">Banner shown in every app's shell to the targeted audience until expiry or dismissal</p>
+      <p class="pg-sub ar-only">يظهر الشريط في جميع التطبيقات للجمهور المستهدف حتى الانتهاء أو الإغلاق</p>
+
+      <div class="card" style="padding:0">
+        <table>
+          <tr><th class="en-only">Title</th><th class="ar-only">العنوان</th><th class="en-only">Severity</th><th class="ar-only">الأهمية</th><th class="en-only">Audience</th><th class="ar-only">الجمهور</th><th class="en-only">Published</th><th class="ar-only">النشر</th><th class="en-only">Expires</th><th class="ar-only">الانتهاء</th><th></th></tr>
+          <tr><td><b class="en-only">Fiscal-year closing</b><b class="ar-only">إقفال السنة المالية</b></td><td><span class="sev-pill sev-warn">WARNING</span></td><td><span class="badge b-gray">ALL</span></td><td class="mono">12-Jun-2026</td><td class="mono">20-Jun-2026</td><td><button class="btn btn-sm">✎</button></td></tr>
+          <tr><td><b class="en-only">New FL & CC apps are live</b><b class="ar-only">إطلاق تطبيقي المستقلين والبطاقات</b></td><td><span class="sev-pill sev-info">INFO</span></td><td><span class="badge b-gray">ALL</span></td><td class="mono">15-Jun-2026</td><td class="mono">30-Jun-2026</td><td><button class="btn btn-sm">✎</button></td></tr>
+          <tr><td><b class="en-only">ORDS maintenance window</b><b class="ar-only">صيانة الخدمات</b></td><td><span class="sev-pill sev-crit">CRITICAL</span></td><td><span class="badge b-blue">MODULE · PC</span></td><td class="mono">18-Jun-2026</td><td class="mono">19-Jun-2026</td><td><button class="btn btn-sm">✎</button></td></tr>
+        </table>
+      </div>
+
+      <div class="modal-demo" style="max-width:640px">
+        <h3 class="en-only" style="margin:0 0 12px">New Announcement</h3><h3 class="ar-only" style="margin:0 0 12px">إعلان جديد</h3>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="fg"><label class="en-only">Title (English) *</label><label class="ar-only">العنوان (إنجليزي) *</label><input value="Fiscal-year closing"></div>
+          <div class="fg"><label class="en-only">Title (Arabic)</label><label class="ar-only">العنوان (عربي)</label><input dir="rtl" value="إقفال السنة المالية"></div>
+          <div class="fg" style="grid-column:1/-1"><label class="en-only">Body (English) *</label><label class="ar-only">النص (إنجليزي) *</label><textarea rows="2">All May petty-cash clearings must be submitted before 20-Jun-2026.</textarea></div>
+          <div class="fg"><label class="en-only">Severity</label><label class="ar-only">الأهمية</label><select><option>WARNING</option><option>INFO</option><option>CRITICAL</option></select></div>
+          <div class="fg"><label class="en-only">Audience</label><label class="ar-only">الجمهور</label><select><option class="en-only">Everyone</option><option class="en-only">Role…</option><option class="en-only">Module…</option><option class="ar-only">الجميع</option></select></div>
+          <div class="fg"><label class="en-only">Publish at</label><label class="ar-only">النشر في</label><input type="date" value="2026-06-12"></div>
+          <div class="fg"><label class="en-only">Expires at</label><label class="ar-only">ينتهي في</label><input type="date" value="2026-06-20"></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-block-start:14px">
+          <button class="btn btn-p">✓ <span class="en-only">Publish</span><span class="ar-only">نشر</span></button>
+          <button class="btn en-only">Save Draft</button><button class="btn ar-only">حفظ مسودة</button>
+        </div>
+        <div class="audit">🕑 <span><b class="en-only">Created</b><b class="ar-only">أُنشئ</b> ADMIN · 12-Jun-2026 09:00 AM</span></div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+function go(id, el){
+  if (id==='modal') return;
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('on'));
+  document.getElementById('s-'+id).classList.add('on');
+  document.querySelectorAll('.nav-i').forEach(n=>n.classList.remove('on'));
+  if (el) el.classList.add('on');
+}
+function setLang(l){
+  document.documentElement.lang = l;
+  document.documentElement.dir = l==='ar' ? 'rtl' : 'ltr';
+  document.getElementById('bEn').classList.toggle('on', l==='en');
+  document.getElementById('bAr').classList.toggle('on', l==='ar');
+}
+</script>
+</body>
+</html>

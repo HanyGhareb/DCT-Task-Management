@@ -71,10 +71,37 @@ define(['services/api'], function (api) {
     getLoginHistory:  function () { return Promise.resolve([]); },
     getSessions:      function () { return Promise.resolve([]); },
     revokeSession:    function () { return Promise.resolve(false); },
-    getApprovals:     function () { return Promise.resolve([]); },
-    getTemplates:     function () { return Promise.resolve([]); },
-    getTemplateById:  function () { return Promise.resolve(null); },
-    updateTemplate:   function () { return Promise.resolve(null); },
+
+    /* ── Approvals (cross-module, wired post-UAT 2026-06-11) ─────────── */
+
+    /* Monitor: every instance (optionally by status) */
+    getApprovals: function (status) {
+      var q = status && status !== 'ALL' ? '?status=' + encodeURIComponent(status) : '';
+      return api.get('/approvals/' + q).then(function (r) { return r.items || []; });
+    },
+
+    /* My queue: instances whose current step matches one of my roles */
+    getPendingApprovals: function () {
+      return api.get('/approvals/pending').then(function (r) { return r.items || []; });
+    },
+
+    /* action: 'APPROVED' | 'REJECTED' | 'RETURNED' — comments mandatory */
+    actionApproval: function (instanceId, action, comments) {
+      return api.post('/approvals/' + instanceId + '/action',
+                      { action: action, comments: comments });
+    },
+
+    getTemplates: function () {
+      return api.get('/approval-templates/').then(function (r) { return r.items || []; });
+    },
+
+    getTemplateById: function (id) {
+      return api.get('/approval-templates/' + id);
+    },
+
+    updateTemplate: function (id, data) {
+      return api.put('/approval-templates/' + id, data);
+    },
 
     /* ── Platform stats — aggregate live API data ─────────────────────── */
 

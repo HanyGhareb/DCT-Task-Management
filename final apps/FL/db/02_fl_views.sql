@@ -44,7 +44,7 @@ SELECT
 FROM prod.dct_fl_registrations  r
 JOIN  prod.dct_nationality       n   ON n.nationality_code = r.nationality_code
 LEFT JOIN prod.dct_users         su  ON su.user_id = r.submitted_by_user_id
-LEFT JOIN prod.dct_users         cb  ON cb.user_id = r.created_by;
+LEFT JOIN prod.dct_users         cb  ON cb.username = r.created_by;
 
 COMMENT ON TABLE prod.dct_fl_registration_v IS 'Registration requests enriched with nationality name and submitter details';
 
@@ -154,7 +154,7 @@ FROM prod.dct_fl_contracts      c
 JOIN  prod.dct_fl_freelancers   f   ON f.freelancer_id = c.freelancer_id
 JOIN  prod.dct_organizations    o   ON o.org_id        = c.org_id
 LEFT JOIN prod.dct_lookup_values lv ON lv.value_id     = c.billing_unit_id
-LEFT JOIN prod.dct_users         cb ON cb.user_id      = c.created_by;
+LEFT JOIN prod.dct_users         cb ON cb.username      = c.created_by;
 
 COMMENT ON TABLE prod.dct_fl_contract_v IS 'Contracts with freelancer, org, billing unit, payment totals and contract_bill_status';
 
@@ -223,7 +223,7 @@ SELECT
 FROM prod.dct_fl_payment_vouchers  v
 JOIN  prod.dct_fl_contracts         c   ON c.contract_id   = v.contract_id
 JOIN  prod.dct_fl_freelancers       f   ON f.freelancer_id = v.freelancer_id
-LEFT JOIN prod.dct_users            cb  ON cb.user_id      = v.created_by;
+LEFT JOIN prod.dct_users            cb  ON cb.username      = v.created_by;
 
 COMMENT ON TABLE prod.dct_fl_voucher_v IS 'Payment vouchers with contract, freelancer, and payment status context';
 
@@ -305,7 +305,7 @@ JOIN  prod.dct_fl_freelancers        f   ON f.freelancer_id = c.freelancer_id
 LEFT JOIN prod.dct_fl_payment_schedule s ON s.schedule_id  = d.schedule_id
 LEFT JOIN prod.dct_lookup_values     lv  ON lv.value_id    = d.unit_id
 LEFT JOIN prod.dct_users             au  ON au.user_id     = d.accepted_by
-LEFT JOIN prod.dct_users             cb  ON cb.user_id     = d.created_by;
+LEFT JOIN prod.dct_users             cb  ON cb.username     = d.created_by;
 
 COMMENT ON TABLE prod.dct_fl_deliverable_v IS 'Deliverables with contract, freelancer, schedule period and acceptor details';
 

@@ -16,6 +16,7 @@ function (ko, config, authService, approvalService, i18n, shell) {
         }, function () { resolve(null); });
       });
     });
+    shell.initAnnouncements('pc', config.authBase || config.apiBase);
     self.t       = i18n.t;
     self.lang    = i18n.lang;
     self.setLang = i18n.setLang;

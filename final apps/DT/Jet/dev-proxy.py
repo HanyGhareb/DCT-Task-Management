@@ -17,7 +17,9 @@ import sys
 ORDS_ORIGIN = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com'
 PORT = 8080
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-SHARED_DIR = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..', 'shared'))
+APPS_ROOT  = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))   # 'final apps'
+SHARED_DIR = os.path.join(APPS_ROOT, 'shared')
+SIBLING_APPS = ('Admin', 'PC', 'DT', 'HR', 'FL', 'CC', 'AR')
 
 
 class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
@@ -25,12 +27,17 @@ class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, directory=SCRIPT_DIR, **kwargs)
 
-    # -- /shared/* -> sibling 'final apps/shared' folder (Phase 3 shared assets) --
+    # -- /shared/* -> 'final apps/shared'; /<App>/Jet/* -> sibling app folders
+    #    (the top-bar module switcher uses root-absolute /PC/Jet/... URLs) --
     def translate_path(self, path):
         clean = path.split('?', 1)[0].split('#', 1)[0]
         if clean.startswith('/shared/'):
             parts = [p for p in clean[len('/shared/'):].split('/') if p and p != '..']
             return os.path.join(SHARED_DIR, *parts)
+        seg = [p for p in clean.split('/') if p]
+        if len(seg) >= 2 and seg[0] in SIBLING_APPS and seg[1] == 'Jet':
+            parts = [p for p in seg if p != '..']
+            return os.path.join(APPS_ROOT, *parts)
         return super().translate_path(path)
     # ── CORS headers added to every proxy response ──────────────────────
     def _cors(self):

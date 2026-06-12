@@ -67,6 +67,13 @@ PROMPT
 PROMPT [Step 8] Running 04_cc_pkg.sql ...
 @04_cc_pkg.sql
 
+-- Step 9: ORDS REST module (cc.rest at /ords/admin/cc/).
+--         MUST run in a fresh ADMIN session (it creates ADMIN synonyms and
+--         this script sets CURRENT_SCHEMA=PROD in earlier steps — ORA-01471).
+PROMPT
+PROMPT [Step 9] 09_cc_ords.sql NOT run automatically — run it in a fresh
+PROMPT          SQLcl session:  sql -name prod_mcp @09_cc_ords.sql
+
 PROMPT
 PROMPT ============================================================
 PROMPT  Credit Cards Module install complete.

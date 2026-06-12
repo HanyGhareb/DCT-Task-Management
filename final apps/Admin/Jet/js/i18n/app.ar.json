@@ -19,9 +19,7 @@
   "nav.appearance": "المظهر",
   "nav.systemSettings": "إعدادات النظام",
   "nav.auditLog": "سجل التدقيق",
-
   "tbl.status": "الحالة",
-
   "users.title": "المستخدمون",
   "users.totalSuffix": "إجمالي المستخدمين",
   "users.add": "إضافة مستخدم",
@@ -34,7 +32,6 @@
   "users.colEmail": "البريد الإلكتروني",
   "users.colOrg": "الجهة",
   "users.colRoles": "الأدوار",
-
   "audit.title": "سجل التدقيق",
   "audit.subtitle": "كل إجراء موثّق عبر المنصة",
   "audit.searchPh": "🔍 ابحث بالمستخدم أو نوع الكائن أو معرّفه…",
@@ -45,7 +42,6 @@
   "audit.colStatus": "الحالة",
   "audit.colError": "الخطأ",
   "audit.allActions": "كل الإجراءات",
-
   "dash.greetingM": "صباح الخير",
   "dash.greetingA": "مساء الخير",
   "dash.greetingE": "مساء الخير",
@@ -62,19 +58,16 @@
   "dash.actions": "إجراءات أخرى",
   "dash.avgDays": "متوسط الأيام",
   "dash.modulesTitle": "المنصة الأساسية",
-
   "sys.title": "إعدادات النظام",
   "sys.subtitle": "إعدادات عامة (مفتاح-قيمة) مخزنة في DCT_SYSTEM_SETTINGS",
   "sys.save": "حفظ التغييرات",
   "sys.saving": "جارٍ الحفظ…",
   "sys.lastUpdated": "آخر تحديث:",
   "sys.modified": "معدّل",
-
   "notif.unreadSuffix": "غير مقروءة",
   "notif.markAll": "تعليم الكل كمقروء",
   "notif.unread": "غير مقروء",
   "notif.none": "لا توجد إشعارات",
-
   "login.subtitle": "بوابة الإدارة — Oracle JET",
   "login.username": "اسم المستخدم",
   "login.usernamePh": "أدخل اسم المستخدم",
@@ -83,7 +76,6 @@
   "login.signIn": "تسجيل الدخول",
   "login.signingIn": "جارٍ تسجيل الدخول…",
   "login.quick": "دخول سريع (تجريبي)",
-
   "pa.subtitle": "لديك {0} عنصر بانتظار إجرائك",
   "pa.caughtUp": "أنجزت كل شيء!",
   "pa.caughtUpSub": "لا توجد موافقات معلقة تتطلب إجراءك",
@@ -93,7 +85,10 @@
   "pa.awaitingStep": "بانتظار الخطوة {0}",
   "pa.approve": "اعتماد",
   "pa.reject": "رفض",
-
+  "pa.approveComment": "أضف تعليق الموافقة (مطلوب):",
+  "pa.rejectComment": "أضف سبب الرفض (مطلوب):",
+  "pa.confirmApprove": "تأكيد الموافقة",
+  "pa.confirmReject": "تأكيد الرفض",
   "vw.orgHierarchy.title": "الهيكل التنظيمي",
   "vw.orgHierarchy.subtitle": "هيكل قطاع المالية — إدارة واحدة وخمسة أقسام",
   "vw.approvalMonitor.title": "مراقب الاعتمادات",
@@ -108,5 +103,12 @@
   "vw.profile.subtitle": "إدارة معلوماتك الشخصية وإعدادات الأمان",
   "vw.userEdit.subtitle": "أكمل جميع الحقول الإلزامية ثم اضغط حفظ",
   "vw.appearance.title": "🎨 المظهر",
-  "vw.appearance.subtitle": "اختر سمة المنصة — تنطبق على جميع وحدات آي-فاينانس"
+  "vw.appearance.subtitle": "اختر سمة المنصة — تنطبق على جميع وحدات آي-فاينانس",
+  "nav.delegations": "التفويضات",
+  "nav.announcements": "الإعلانات",
+  "del.title": "التفويضات",
+  "del.subtitle": "تغطية الصلاحيات على مستوى المنصة — من ينوب عن من",
+  "ann.title": "الإعلانات",
+  "ann.subtitle": "إشعارات المنصة المعروضة في جميع التطبيقات",
+  "ann.new": "+ إعلان جديد"
 }

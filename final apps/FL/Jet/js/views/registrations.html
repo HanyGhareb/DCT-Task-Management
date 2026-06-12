@@ -1,0 +1,57 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('reg.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('reg.subtitle')"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: openNew">+ <span data-bind="text: $root.t('reg.new')"></span></button>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search name / number / email&hellip;"
+           data-bind="value: searchBy, valueUpdate: 'input'">
+    <select class="form-control" style="width:170px;padding:8px 10px" data-bind="value: statusFilter">
+      <option value="">All statuses</option>
+      <option value="DRAFT">Draft</option>
+      <option value="SUBMITTED">Submitted</option>
+      <option value="APPROVED">Approved</option>
+      <option value="REJECTED">Rejected</option>
+      <option value="RETURNED">Returned</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load registrations</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128221;</div>
+    <div class="empty-state__msg">No registrations found</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Number</th><th>Name</th><th>Nationality</th><th>Email</th><th>Specialization</th><th>Status</th><th>Created</th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr style="cursor:pointer" data-bind="click: $vm.openItem.bind($vm, $data)">
+          <td class="mono" style="font-size:12px" data-bind="text: registrationNumber"></td>
+          <td style="font-weight:600" data-bind="text: fullNameEn"></td>
+          <td data-bind="text: $data.nationality || '-'"></td>
+          <td data-bind="text: $data.email || ''"></td>
+          <td data-bind="text: $data.specialization || ''"></td>
+          <td><span class="badge" data-bind="text: status, css: $vm.badgeFor(status)"></span></td>
+          <td style="font-size:12px;color:var(--text-3)" data-bind="text: $data.createdAt || ''"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+  <!-- /ko -->
+</div>

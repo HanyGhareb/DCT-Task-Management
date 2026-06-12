@@ -1,0 +1,132 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('cards.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('cards.subtitle')"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: openRegister, text: $root.t('cards.register')"></button>
+  </div>
+
+  <div class="view-toolbar" style="display:flex;gap:10px">
+    <input class="form-control" type="search" placeholder="Search number, holder, org…"
+           style="width:280px;padding:8px 12px" data-bind="value: search, valueUpdate: 'input'">
+    <select class="form-control" style="width:160px;padding:8px 10px" data-bind="value: statusFilter">
+      <option value="">All statuses</option>
+      <option value="ACTIVE">Active</option>
+      <option value="INACTIVE">Inactive</option>
+      <option value="CLOSED">Closed</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load cards</div>
+    <button class="btn btn-secondary" data-bind="click: function(){ reload(); }">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128179;</div>
+    <div class="empty-state__msg">No cards in this view</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Number</th><th>Holder</th><th>Organisation</th><th>Limit (AED)</th><th>Expiry</th><th>Status</th><th>Pending Op</th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr>
+          <td class="mono" style="font-weight:600" data-bind="text: $data.ccNumber"></td>
+          <td data-bind="text: $data.holderName"></td>
+          <td data-bind="text: $data.orgName"></td>
+          <td class="mono" data-bind="text: ($data.creditLimit || 0).toLocaleString()"></td>
+          <td class="mono" data-bind="text: $data.expiryDate"></td>
+          <td><span data-bind="text: $data.status, css: $vm.statusBadge($data.status)"></span></td>
+          <td>
+            <!-- ko if: $data.pendingOperation -->
+            <span class="op-chip" data-bind="text: $data.pendingOperation"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $data.pendingOperation --><span style="color:var(--text-3)">—</span><!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+  <!-- /ko -->
+
+  <!-- register drawer (modal) -->
+  <!-- ko if: showRegister() -->
+  <div class="modal-backdrop">
+    <div class="modal-box" style="max-width:620px">
+      <div class="modal-head"><span class="modal-title" data-bind="text: $root.t('cards.register')"></span>
+        <button class="modal-close" data-bind="click: function(){ showRegister(false); }">&#10005;</button></div>
+      <div class="modal-body">
+        <!-- ko if: regError() -->
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: regError()"></span></div>
+        <!-- /ko -->
+        <!-- ko if: approvedNewCardReqs().length === 0 -->
+        <div class="alert-banner alert-banner--info" style="margin-bottom:12px">
+          No approved NEW_CARD requests are awaiting registration.
+        </div>
+        <!-- /ko -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group" style="grid-column:1/-1">
+            <label class="form-label">Approved NEW_CARD Request *</label>
+            <select class="form-control" data-bind="value: reg.requestId,
+                     options: approvedNewCardReqs, optionsValue: 'requestId',
+                     optionsText: function(r){ return r.requestNumber + ' · ' + (r.createdByName || '') + ' · ' + (r.requestedLimit || 0).toLocaleString() + ' AED'; },
+                     optionsCaption: 'Select request…'"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Card Holder *</label>
+            <select class="form-control" data-bind="value: reg.holderUserId,
+                     options: lookups().users, optionsValue: 'userId',
+                     optionsText: 'displayName', optionsCaption: 'Select…'"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Organisation *</label>
+            <select class="form-control" data-bind="value: reg.orgId,
+                     options: lookups().orgs, optionsValue: 'orgId',
+                     optionsText: 'name', optionsCaption: 'Select…'"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Mother's Name *</label>
+            <input class="form-control" data-bind="value: reg.motherName, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Nationality *</label>
+            <input class="form-control" data-bind="value: reg.nationality, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Credit Limit (AED) *</label>
+            <input class="form-control" type="number" min="1" data-bind="value: reg.creditLimit, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Card Expiry *</label>
+            <input class="form-control" type="date" data-bind="value: reg.expiryDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Email *</label>
+            <input class="form-control" type="email" data-bind="value: reg.email, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Cost Center</label>
+            <input class="form-control" data-bind="value: reg.costCenter, valueUpdate: 'input'">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bind="click: function(){ showRegister(false); }">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: registerCard, enable: !regBusy()">
+          <!-- ko if: regBusy() -->Registering&hellip;<!-- /ko -->
+          <!-- ko ifnot: regBusy() -->&#10003; Register Card<!-- /ko -->
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

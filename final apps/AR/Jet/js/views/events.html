@@ -1,0 +1,80 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Events</div>
+    <div class="page-subtitle"><span class="mono" data-bind="text: total()"></span> events</div>
+    <div style="margin-inline-start:auto">
+      <button class="btn btn-primary" data-bind="click: newEvent, text: t('nav.newEvent')"></button>
+    </div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search by code, name, organizer, or venue…"
+           data-bind="value: searchText, valueUpdate: 'input'">
+    <select class="form-control" style="width:190px" data-bind="value: statusFilter">
+      <option value="">All Statuses</option>
+      <option value="NEW">New</option>
+      <option value="FILES_UPLOADED">Files Uploaded</option>
+      <option value="AI_PROCESSING">AI Processing</option>
+      <option value="UNDER_REVIEW">Under Review</option>
+      <option value="CONFIRMED">Confirmed</option>
+      <option value="CLOSED">Closed</option>
+    </select>
+  </div>
+
+  <div class="data-table-wrap">
+    <!-- ko if: loading() -->
+    <list-skeleton params="rows: 8"></list-skeleton>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: loadError() -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#9888;</div>
+      <div class="empty-state__msg" data-bind="text: t('empty.loadFailed')"></div>
+      <button class="btn btn-primary" data-bind="click: reload, text: t('common.retry')"></button>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loadError() -->
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th>Code</th><th>Event</th><th>Type</th><th>Organizer</th>
+          <th>Start</th><th>Files</th><th>Lines</th><th>Actual Net (AED)</th><th>Status</th><th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: events() -->
+        <tr>
+          <td><span class="link-text mono" data-bind="text: eventCode, click: $parent.openDetail.bind($parent, $data)"></span></td>
+          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text: nameEn"></td>
+          <td data-bind="text: $data.eventType || '—'"></td>
+          <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text: $data.organizer || '—'"></td>
+          <td class="mono" data-bind="text: $data.startDate || '—'"></td>
+          <td class="mono" data-bind="text: filesCount"></td>
+          <td class="mono" data-bind="text: linesCount"></td>
+          <td class="mono" data-bind="text: $parent.fmt(actualNet), css: { 'ar-neg': actualNet < 0 }"></td>
+          <td><span data-bind="class: $parent.statusClass(status), text: status"></span></td>
+          <td class="table-actions">
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.openDetail.bind($parent, $data)">Open</button>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: events().length === 0 -->
+        <tr>
+          <td colspan="10">
+            <div class="empty-state">
+              <div class="empty-state__icon">&#127914;</div>
+              <div class="empty-state__msg" data-bind="text: t('empty.noMatch')"></div>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+
+    <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</div>

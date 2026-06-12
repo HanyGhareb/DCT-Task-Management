@@ -1,0 +1,69 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title">Event P&amp;L Dashboard</div>
+    <div class="page-subtitle">Revenue Assurance — confirmed actuals across all events</div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 6"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg" data-bind="text: t('empty.loadFailed')"></div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loadError() -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-label">Events (YTD)</div>
+      <div class="kpi-value" data-bind="text: eventsYtd"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label" data-bind="text: t('ar.revenue') + ' (AED)'"></div>
+      <div class="kpi-value mono" data-bind="text: totalRevenue"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label" data-bind="text: t('ar.expense') + ' (AED)'"></div>
+      <div class="kpi-value mono" data-bind="text: totalExpense"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label" data-bind="text: t('ar.net') + ' (AED)'"></div>
+      <div class="kpi-value mono" data-bind="text: netResult"></div>
+    </div>
+    <div class="kpi-card" data-bind="click: openEvents" style="cursor:pointer">
+      <div class="kpi-label" data-bind="text: t('ar.pendingReviews')"></div>
+      <div class="kpi-value" data-bind="text: pendingReviews"></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-label" data-bind="text: t('ar.potentialLoss') + ' (AED)'"></div>
+      <div class="kpi-value mono ar-neg" data-bind="text: potentialLoss"></div>
+    </div>
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Revenue vs expense by event</h3>
+      <div class="chart-wrap"><canvas id="arChart1"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Net result trend</h3>
+      <div class="chart-wrap"><canvas id="arChart2"></canvas></div>
+    </div>
+  </div>
+  <div class="charts-row">
+    <div class="chart-card">
+      <h3>Expense breakdown by category</h3>
+      <div class="chart-wrap"><canvas id="arChart3"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <h3>Budget vs actual expense</h3>
+      <div class="chart-wrap"><canvas id="arChart4"></canvas></div>
+    </div>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

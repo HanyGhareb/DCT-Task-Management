@@ -29,9 +29,35 @@ function (ko, userService, roleService) {
     self.errors     = ko.observable({});
     self.successMsg = ko.observable('');
     self.saving     = ko.observable(false);
+    self.audit      = ko.observable(null);   // createdBy/At, updatedBy/At
 
     self.hasError = function (field) { return !!(self.errors()[field]); };
     self.getError = function (field) { return self.errors()[field] || ''; };
+
+    self.setFieldError = function (field, msg) {
+      var e = Object.assign({}, self.errors());
+      if (msg) e[field] = msg; else delete e[field];
+      self.errors(e);
+    };
+
+    /* Live password checks — run on blur (leaving the field), not on save */
+    self.passwordHint = 'Minimum 8 characters.';
+    self.validatePassword = function () {
+      var p = self.password();
+      if (!p) {
+        self.setFieldError('password', self.isNew ? 'Password is required for new users' : null);
+      } else {
+        self.setFieldError('password', p.length < 8 ? 'Password must be at least 8 characters' : null);
+      }
+      if (self.confirmPassword()) self.validateConfirm();
+      return true;
+    };
+    self.validateConfirm = function () {
+      self.setFieldError('confirmPassword',
+        self.password() && self.confirmPassword() !== self.password()
+          ? 'Passwords do not match' : null);
+      return true;
+    };
 
     self.validate = function () {
       var errs = {};
@@ -40,6 +66,8 @@ function (ko, userService, roleService) {
       if (!self.email().trim())       errs.email       = 'Email is required';
       if (!self.orgId())              errs.orgId       = 'Organisation is required';
       if (self.isNew && !self.password()) errs.password = 'Password is required for new users';
+      if (self.password() && self.password().length < 8)
+        errs.password = 'Password must be at least 8 characters';
       if (self.password() && self.password() !== self.confirmPassword())
         errs.confirmPassword = 'Passwords do not match';
       self.errors(errs);
@@ -97,7 +125,13 @@ function (ko, userService, roleService) {
         var allRoles   = results[1].filter(function (r) { return r.isActive === 'Y'; });
         var orgOpts    = results[2];
 
+        /* Options MUST be set before the selected value — KO's value binding
+           writes '' back into orgId when the select has no matching option
+           yet (this is why the saved org appeared blank when editing). */
+        self.orgOptions(orgOpts);
+
         if (existing) {
+          self.audit(existing);
           self.username(existing.username || '');
           self.displayName(existing.displayName || '');
           self.displayNameAr(existing.displayNameAr || '');
@@ -119,7 +153,6 @@ function (ko, userService, roleService) {
           };
         }));
 
-        self.orgOptions(orgOpts);
         self.loading(false);
       })
       .catch(function () {

@@ -1,0 +1,250 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">
+        <span data-bind="text: data().fullNameEn || ''"></span>
+        <span class="badge" style="vertical-align:3px;margin-inline-start:8px"
+              data-bind="text: data().status || '', css: statusBadge(data().status)"></span>
+      </div>
+      <div class="page-subtitle mono" data-bind="text: (data().vendorNumber || '-') + ' · ' + (data().email || '')"></div>
+    </div>
+    <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" data-bind="click: openStatus">Change Status&hellip;</button>
+      <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+    </div>
+  </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: errorMsg() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: errorMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div class="fl-tabs">
+    <div class="fl-tab" data-bind="css: { 'fl-tab--on': tab() === 'profile' }, click: setTab.bind($data, 'profile')">Profile</div>
+    <div class="fl-tab" data-bind="css: { 'fl-tab--on': tab() === 'bank' }, click: setTab.bind($data, 'bank')">
+      Bank Accounts (<span data-bind="text: bankAccounts().length"></span>)</div>
+    <div class="fl-tab" data-bind="css: { 'fl-tab--on': tab() === 'contracts' }, click: setTab.bind($data, 'contracts')">
+      Contracts (<span data-bind="text: contracts().length"></span>)</div>
+    <div class="fl-tab" data-bind="css: { 'fl-tab--on': tab() === 'docs' }, click: setTab.bind($data, 'docs')">
+      Documents (<span data-bind="text: documents().length"></span>)</div>
+  </div>
+
+  <!-- ko if: tab() === 'profile' -->
+  <div class="card">
+    <div style="display:flex;gap:20px;align-items:flex-start">
+      <img class="photo-preview" data-bind="attr: { src: photoSrc() }" alt="" onerror="this.style.display='none'">
+      <div class="form-grid" style="flex:1">
+        <div class="form-group"><label class="form-label">Vendor #</label>
+          <div class="mono" data-bind="text: data().vendorNumber || '-'"></div></div>
+        <div class="form-group"><label class="form-label">Nationality</label>
+          <div data-bind="text: data().nationality || '-'"></div></div>
+        <div class="form-group"><label class="form-label">Email</label>
+          <div data-bind="text: data().email || ''"></div></div>
+        <div class="form-group"><label class="form-label">Mobile</label>
+          <div class="mono" data-bind="text: data().mobile || '-'"></div></div>
+        <div class="form-group"><label class="form-label">Specialization</label>
+          <div data-bind="text: data().specialization || '-'"></div></div>
+        <div class="form-group"><label class="form-label">Date of Birth</label>
+          <div class="mono" data-bind="text: data().dateOfBirth || '-'"></div></div>
+        <div class="form-group"><label class="form-label">National ID</label>
+          <div class="mono" data-bind="text: data().nationalId || '-'"></div></div>
+        <div class="form-group"><label class="form-label">Passport</label>
+          <div class="mono" data-bind="text: data().passportNumber || '-'"></div></div>
+        <!-- ko if: data().status === 'BLACKLISTED' -->
+        <div class="form-group form-group--full"><label class="form-label">Blacklist Reason</label>
+          <div style="color:var(--red)" data-bind="text: data().blacklistReason || ''"></div></div>
+        <!-- /ko -->
+      </div>
+    </div>
+    <audit-info params="data: data"></audit-info>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: tab() === 'bank' -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-heading" style="margin:0">Bank Accounts</div>
+      <button class="btn btn-primary btn-sm" data-bind="click: openBank">+ Add Account</button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Bank</th><th>Account #</th><th>IBAN</th><th>Account Name</th><th>Currency</th><th>Primary</th><th></th></tr></thead>
+        <tbody>
+          <!-- ko foreach: bankAccounts -->
+          <tr>
+            <td style="font-weight:600" data-bind="text: $data.bankName || ''"></td>
+            <td class="mono" data-bind="text: $data.accountNumber || ''"></td>
+            <td class="mono" style="font-size:11px" data-bind="text: $data.iban || '-'"></td>
+            <td data-bind="text: $data.accountName || ''"></td>
+            <td data-bind="text: $data.currencyCode || 'AED'"></td>
+            <td>
+              <!-- ko if: $data.isPrimary === 'Y' --><span class="badge badge--approved">PRIMARY</span><!-- /ko -->
+              <!-- ko if: $data.isPrimary !== 'Y' -->
+              <button class="btn btn-secondary btn-sm" data-bind="click: $vm.makePrimary.bind($vm, $data)">Make primary</button>
+              <!-- /ko -->
+            </td>
+            <td>
+              <!-- ko if: $data.isActive === 'N' --><span class="badge badge--cancelled">INACTIVE</span><!-- /ko -->
+            </td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- ko if: bankAccounts().length === 0 -->
+    <div class="empty-state" style="padding:30px"><div class="empty-state__msg">No bank accounts yet</div></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: tab() === 'contracts' -->
+  <div class="card">
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Number</th><th>Title</th><th>Amount</th><th>Status</th><th>Billing</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: contracts -->
+          <tr style="cursor:pointer" data-bind="click: $vm.openContract.bind($vm, $data)">
+            <td class="mono" style="font-size:12px" data-bind="text: $data.contractNumber || ''"></td>
+            <td style="font-weight:600" data-bind="text: $data.title || ''"></td>
+            <td class="mono" data-bind="text: ($data.totalAmount || 0).toLocaleString()"></td>
+            <td><span class="badge" data-bind="text: $data.status || '', css: $vm.conBadge($data.status)"></span></td>
+            <td><span class="badge badge--info" data-bind="text: $data.billStatus || ''"></span></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- ko if: contracts().length === 0 -->
+    <div class="empty-state" style="padding:30px"><div class="empty-state__msg">No contracts yet</div></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: tab() === 'docs' -->
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
+      <div class="section-heading" style="margin:0">Documents</div>
+      <button class="btn btn-primary btn-sm" data-bind="click: openDoc">+ Add Document</button>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Type</th><th>Name</th><th>Expiry</th><th>Status</th><th>Required</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: documents -->
+          <tr>
+            <td style="font-weight:600" data-bind="text: $data.docTypeName || '-'"></td>
+            <td data-bind="text: $data.documentName || ''"></td>
+            <td class="mono" data-bind="text: $data.expiryDate || '—'"></td>
+            <td><span class="exp-chip" data-bind="text: $data.expiryStatus || 'VALID', css: $vm.expChip($data.expiryStatus)"></span></td>
+            <td data-bind="text: $data.isRequired === 'Y' ? 'Yes' : 'No'"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- ko if: documents().length === 0 -->
+    <div class="empty-state" style="padding:30px"><div class="empty-state__msg">No documents yet</div></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- status modal -->
+  <!-- ko if: showStatusModal() -->
+  <div class="modal-backdrop">
+    <div class="modal-box" style="max-width:440px">
+      <div class="modal-head"><span class="modal-title">Change Status</span>
+        <button class="modal-close" data-bind="click: function(){ showStatusModal(false); }">&#10005;</button></div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-control" data-bind="value: newStatus">
+            <option value="ACTIVE">ACTIVE</option>
+            <option value="INACTIVE">INACTIVE</option>
+            <option value="BLACKLISTED">BLACKLISTED</option>
+          </select>
+        </div>
+        <!-- ko if: newStatus() === 'BLACKLISTED' -->
+        <div class="form-group">
+          <label class="form-label">Blacklist Reason *</label>
+          <input class="form-control" type="text" data-bind="value: statusReason, valueUpdate: 'input'">
+        </div>
+        <!-- /ko -->
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bind="click: function(){ showStatusModal(false); }">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: saveStatus">&#10003; Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- bank modal -->
+  <!-- ko if: showBankModal() -->
+  <div class="modal-backdrop">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-head"><span class="modal-title">Add Bank Account</span>
+        <button class="modal-close" data-bind="click: function(){ showBankModal(false); }">&#10005;</button></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Bank *</label>
+            <input class="form-control" data-bind="value: bForm.bankName, valueUpdate: 'input'"></div>
+          <div class="form-group"><label class="form-label">Account Number *</label>
+            <input class="form-control" data-bind="value: bForm.accountNumber, valueUpdate: 'input'"></div>
+          <div class="form-group"><label class="form-label">IBAN</label>
+            <input class="form-control" data-bind="value: bForm.iban, valueUpdate: 'input'"></div>
+          <div class="form-group"><label class="form-label">Account Name *</label>
+            <input class="form-control" data-bind="value: bForm.accountName, valueUpdate: 'input'"></div>
+          <div class="form-group">
+            <div class="checkbox-item" data-bind="click: function(){ bForm.isPrimary(!bForm.isPrimary()); }, css: { 'checkbox-item--on': bForm.isPrimary() }">
+              <input type="checkbox" style="pointer-events:none" data-bind="checked: bForm.isPrimary">
+              <div style="font-weight:600">Primary account</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bind="click: function(){ showBankModal(false); }">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: saveBank">&#10003; Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- document modal -->
+  <!-- ko if: showDocModal() -->
+  <div class="modal-backdrop">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-head"><span class="modal-title">Add Document</span>
+        <button class="modal-close" data-bind="click: function(){ showDocModal(false); }">&#10005;</button></div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Type *</label>
+            <select class="form-control" data-bind="options: docTypes, optionsText: 'name', optionsValue: 'docTypeId',
+                     optionsCaption: '— Select —', value: dForm.docTypeId"></select></div>
+          <div class="form-group"><label class="form-label">Name *</label>
+            <input class="form-control" placeholder="e.g. passport.pdf" data-bind="value: dForm.documentName, valueUpdate: 'input'"></div>
+          <div class="form-group"><label class="form-label">Expiry Date</label>
+            <input class="form-control" type="date" data-bind="value: dForm.expiryDate"></div>
+          <div class="form-group">
+            <div class="checkbox-item" data-bind="click: function(){ dForm.isRequired(!dForm.isRequired()); }, css: { 'checkbox-item--on': dForm.isRequired() }">
+              <input type="checkbox" style="pointer-events:none" data-bind="checked: dForm.isRequired">
+              <div style="font-weight:600">Required document</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bind="click: function(){ showDocModal(false); }">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: saveDoc">&#10003; Save</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

@@ -1,0 +1,432 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   i-Finance — Theme System
+   Three themes applied via data-theme attribute on <body>:
+     (none / "corporate")  Default dark-header red-brand look
+     "redwood"             Oracle Fusion Redwood — white header, blue primary
+     "midnight"            Full dark mode — dark cards, blue-cyan accent
+
+   Usage: document.body.setAttribute('data-theme', 'redwood')
+          document.body.removeAttribute('data-theme')   → corporate
+   ═══════════════════════════════════════════════════════════════════════ */
+
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  THEME 1 — ORACLE REDWOOD                                          ║
+   ║  Mirrors Oracle Fusion / Redwood Reference App design language:    ║
+   ║  white topbar, Oracle blue (#0572CE) as the primary action color,  ║
+   ║  light gray content area, rounded-4 radius, subtle 1px borders.    ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+[data-theme="redwood"] {
+  /* Core brand — keep Oracle red for logo only; blue drives all UI actions */
+  --brand-red:         #C74634;
+  --brand-red-dark:    #a3381f;
+  --brand-blue:        #0572CE;
+
+  /* Shell */
+  --header-bg:         #ffffff;
+  --sidebar-bg:        #f8f8f8;
+  --sidebar-border:    #dde3ea;
+  --content-bg:        #f4f4f4;
+
+  /* Navigation */
+  --nav-active-bg:     #ddeeff;
+  --nav-active-color:  #0572CE;
+  --nav-hover-bg:      #edf4fc;
+
+  /* Text */
+  --text-primary:      #201e1c;
+  --text-secondary:    #55524f;
+
+  /* Borders & shadows */
+  --border-color:      #dde3ea;
+  --card-shadow:       0 1px 4px rgba(0,0,0,.06), 0 0 0 1px rgba(0,0,0,.04);
+  --card-shadow-hover: 0 4px 16px rgba(0,0,0,.10);
+
+  /* Geometry — Redwood uses tighter radii than the corporate theme */
+  --radius:    6px;
+  --radius-lg: 8px;
+}
+
+/* Header: white with a bottom border instead of dark background */
+[data-theme="redwood"] .app-header {
+  color: #201e1c;
+  box-shadow: none;
+  border-bottom: 1px solid #dde3ea;
+}
+[data-theme="redwood"] .nav-toggle-btn         { color: #55524f; }
+[data-theme="redwood"] .nav-toggle-btn:hover   { background: rgba(0,0,0,.06); color: #201e1c; }
+[data-theme="redwood"] .brand-name             { color: #201e1c; }
+[data-theme="redwood"] .brand-sub              { color: #55524f; }
+[data-theme="redwood"] .brand-tech-badge {
+  background: rgba(5,114,206,.08);
+  border-color: rgba(5,114,206,.22);
+  color: #0572CE;
+}
+[data-theme="redwood"] .hdr-action-btn         { color: #55524f; }
+[data-theme="redwood"] .hdr-action-btn:hover   { background: rgba(0,0,0,.06); color: #201e1c; }
+[data-theme="redwood"] .user-display-name      { color: #201e1c; }
+[data-theme="redwood"] .chevron-down           { color: #887e78; }
+
+/* Sidebar nav group labels */
+[data-theme="redwood"] .nav-section-label      { color: #887e78; }
+[data-theme="redwood"] .nav-group-label        { color: #887e78; }
+[data-theme="redwood"] .nav-chevron            { color: #887e78; }
+
+/* Buttons: blue primary */
+[data-theme="redwood"] .btn-primary            { background: #0572CE; }
+[data-theme="redwood"] .btn-primary:hover      { background: #0464b8; }
+
+/* Tabs, inputs, switches: blue active state */
+[data-theme="redwood"] .tab-btn--active        { color: #0572CE; border-bottom-color: #0572CE; }
+[data-theme="redwood"] .search-box:focus       { border-color: #0572CE; box-shadow: 0 0 0 2px rgba(5,114,206,.14); }
+[data-theme="redwood"] .form-control:focus     { border-color: #0572CE; box-shadow: 0 0 0 2px rgba(5,114,206,.14); }
+[data-theme="redwood"] .switch input:checked + .switch-slider { background: #0572CE; }
+
+/* Tree / org hierarchy */
+[data-theme="redwood"] .tree-item--division    { color: #0572CE; }
+
+/* Checkboxes */
+[data-theme="redwood"] .checkbox-item--on      { border-color: #0572CE; background: #f0f7ff; }
+[data-theme="redwood"] .checkbox-item input[type="checkbox"] { accent-color: #0572CE; }
+
+/* Stat card accent stripe */
+[data-theme="redwood"] .stat-card--red         { border-top-color: #C74634; }
+[data-theme="redwood"] .stat-card--blue        { border-top-color: #0572CE; }
+
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  THEME 2 — MIDNIGHT DARK                                           ║
+   ║  Deep navy-black shell, dark cards, teal-blue accent. Designed for ║
+   ║  low-light environments. All hardcoded #fff backgrounds patched.   ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+[data-theme="midnight"] {
+  /* Rebrand accent colours for dark context */
+  --brand-red:         #ff7a65;
+  --brand-red-dark:    #e85e48;
+  --brand-blue:        #5ab4ff;
+
+  /* Shell */
+  --header-bg:         #10101e;
+  --sidebar-bg:        #141424;
+  --sidebar-border:    #252538;
+  --content-bg:        #0e0e1c;
+
+  /* Navigation */
+  --nav-active-bg:     rgba(90, 180, 255, .10);
+  --nav-active-color:  #5ab4ff;
+  --nav-hover-bg:      rgba(255, 255, 255, .04);
+
+  /* Text */
+  --text-primary:      #dde0f0;
+  --text-secondary:    #8890b0;
+
+  /* Borders & shadows */
+  --border-color:      #252538;
+  --card-shadow:       0 2px 10px rgba(0, 0, 0, .40);
+  --card-shadow-hover: 0 6px 24px rgba(0, 0, 0, .55);
+
+  /* Geometry — same as corporate */
+  --radius:    8px;
+  --radius-lg: 12px;
+}
+
+/* ─── Midnight: Shell chrome ─────────────────────────────────── */
+[data-theme="midnight"] .brand-tech-badge {
+  background: rgba(90,180,255,.10);
+  border-color: rgba(90,180,255,.25);
+  color: #5ab4ff;
+}
+[data-theme="midnight"] .nav-section-label  { color: #454560; }
+[data-theme="midnight"] .nav-group-label    { color: #454560; }
+[data-theme="midnight"] .nav-chevron        { color: #454560; }
+[data-theme="midnight"] .nav-group-header:hover .nav-group-label,
+[data-theme="midnight"] .nav-group-header:hover .nav-chevron { color: #8890b0; }
+
+/* ─── Midnight: Cards & surfaces ────────────────────────────── */
+[data-theme="midnight"] .card              { background: #1a1a2e; border-color: #252538; }
+[data-theme="midnight"] .module-card       { background: #1a1a2e; border-color: #252538; }
+[data-theme="midnight"] .stat-card         { background: #1a1a2e; border-color: #252538; }
+[data-theme="midnight"] .stat-value        { color: #dde0f0; }
+[data-theme="midnight"] .module-card__name { color: #dde0f0; }
+[data-theme="midnight"] .module-card__badge { background: rgba(46,125,50,.18); color: #81c784; }
+
+/* ─── Midnight: Page elements ───────────────────────────────── */
+[data-theme="midnight"] .page-title        { color: #dde0f0; }
+[data-theme="midnight"] .section-heading   { color: #dde0f0; border-color: #252538; }
+[data-theme="midnight"] .tab-bar           { border-color: #252538; }
+[data-theme="midnight"] .tab-btn--active   { color: #5ab4ff; border-bottom-color: #5ab4ff; }
+[data-theme="midnight"] .switch-row        { border-color: #1f1f35; }
+
+/* ─── Midnight: User dropdown ───────────────────────────────── */
+[data-theme="midnight"] .user-dropdown     { background: #1a1a2e; border-color: #252538; box-shadow: 0 8px 32px rgba(0,0,0,.6); }
+[data-theme="midnight"] .dd-name           { color: #dde0f0; }
+[data-theme="midnight"] .dd-item:hover     { background: rgba(255,255,255,.05); }
+[data-theme="midnight"] .dd-item--danger   { color: #ff7a65; }
+[data-theme="midnight"] .dd-item--danger:hover { background: rgba(255,122,101,.07); }
+[data-theme="midnight"] .dd-divider        { border-color: #252538; }
+
+/* ─── Midnight: Data table ──────────────────────────────────── */
+[data-theme="midnight"] .data-table-wrap              { background: #1a1a2e; border-color: #252538; }
+[data-theme="midnight"] table.data-table thead th     { background: #141424; color: #8890b0; border-color: #252538; }
+[data-theme="midnight"] table.data-table tbody td     { color: #dde0f0; border-color: #1f1f35; }
+[data-theme="midnight"] table.data-table tbody tr:hover { background: rgba(255,255,255,.03); }
+
+/* ─── Midnight: Form controls ───────────────────────────────── */
+[data-theme="midnight"] .form-control          { background: #141424; border-color: #252538; color: #dde0f0; }
+[data-theme="midnight"] .form-control:focus    { border-color: #5ab4ff; box-shadow: 0 0 0 2px rgba(90,180,255,.14); }
+[data-theme="midnight"] .form-control[readonly]{ background: #111120; color: #8890b0; }
+[data-theme="midnight"] select.form-control    {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M0 0l6 7 6-7z' fill='%238890b0'/%3E%3C/svg%3E");
+}
+[data-theme="midnight"] .search-box            { background: #141424; border-color: #252538; color: #dde0f0; }
+[data-theme="midnight"] .search-box:focus      { border-color: #5ab4ff; box-shadow: 0 0 0 2px rgba(90,180,255,.14); }
+[data-theme="midnight"] .search-box::placeholder { color: #454560; }
+
+/* ─── Midnight: Buttons ─────────────────────────────────────── */
+[data-theme="midnight"] .btn-secondary         { background: #1a1a2e; color: #dde0f0; border-color: #252538; }
+[data-theme="midnight"] .btn-secondary:hover   { background: #252538; }
+[data-theme="midnight"] .btn-danger            { background: transparent; color: #ff7a65; border-color: rgba(255,122,101,.30); }
+[data-theme="midnight"] .btn-danger:hover      { background: rgba(255,122,101,.07); }
+
+/* ─── Midnight: Checkboxes, switches ────────────────────────── */
+[data-theme="midnight"] .checkbox-item         { background: #141424; border-color: #252538; color: #dde0f0; }
+[data-theme="midnight"] .checkbox-item:hover   { background: #1a1a2e; }
+[data-theme="midnight"] .checkbox-item--on     { border-color: #5ab4ff; background: rgba(90,180,255,.06); }
+[data-theme="midnight"] .checkbox-item input[type="checkbox"] { accent-color: #5ab4ff; }
+[data-theme="midnight"] .switch-slider         { background: #3a3a52; }
+[data-theme="midnight"] .switch input:checked + .switch-slider { background: #5ab4ff; }
+
+/* ─── Midnight: Badges ──────────────────────────────────────── */
+[data-theme="midnight"] .badge--active,
+[data-theme="midnight"] .badge--y,
+[data-theme="midnight"] .badge--approved       { background: rgba(46,125,50,.18); color: #81c784; }
+[data-theme="midnight"] .badge--inactive,
+[data-theme="midnight"] .badge--n,
+[data-theme="midnight"] .badge--rejected       { background: rgba(255,122,101,.12); color: #ff7a65; }
+[data-theme="midnight"] .badge--pending        { background: rgba(255,180,50,.10); color: #ffb432; }
+[data-theme="midnight"] .badge--admin          { background: rgba(90,180,255,.10); color: #5ab4ff; }
+[data-theme="midnight"] .badge--info           { background: rgba(110,130,230,.12); color: #a5b4fc; }
+[data-theme="midnight"] .badge--warning        { background: rgba(255,180,50,.10); color: #ffb432; }
+[data-theme="midnight"] .badge--idle           { background: rgba(160,110,210,.12); color: #c4b5fd; }
+
+/* ─── Midnight: Alert banners ───────────────────────────────── */
+[data-theme="midnight"] .alert-banner--info    { background: rgba(90,180,255,.07); border-color: rgba(90,180,255,.20); color: #5ab4ff; }
+[data-theme="midnight"] .alert-banner--warning { background: rgba(255,180,50,.07); border-color: rgba(255,180,50,.20); color: #ffb432; }
+[data-theme="midnight"] .alert-banner--danger  { background: rgba(255,122,101,.07); border-color: rgba(255,122,101,.20); color: #ff7a65; }
+
+/* ─── Midnight: Tree ─────────────────────────────────────────── */
+[data-theme="midnight"] .tree-item--division   { color: #5ab4ff; }
+[data-theme="midnight"] .tree-item--section    { color: #dde0f0; }
+[data-theme="midnight"] .tree-item:hover       { background: rgba(255,255,255,.04); }
+
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  APPEARANCE PAGE — Theme picker card component                     ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+.theme-picker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
+  gap: 20px;
+}
+
+/* ── Theme card wrapper ─────────────────────────────────────── */
+.theme-card {
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  cursor: pointer;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+  background: #fff;
+  position: relative;
+}
+.theme-card:hover {
+  border-color: var(--brand-blue);
+  box-shadow: 0 4px 18px rgba(5,114,206,.14);
+  transform: translateY(-2px);
+}
+.theme-card--active {
+  border-color: var(--brand-red);
+  box-shadow: 0 4px 18px rgba(199,70,52,.18);
+}
+[data-theme="midnight"] .theme-card            { background: #1a1a2e; }
+[data-theme="midnight"] .theme-card:hover      { border-color: #5ab4ff; box-shadow: 0 4px 18px rgba(90,180,255,.16); }
+[data-theme="midnight"] .theme-card--active    { border-color: #5ab4ff; box-shadow: 0 4px 18px rgba(90,180,255,.22); }
+[data-theme="redwood"]  .theme-card--active    { border-color: #0572CE; box-shadow: 0 4px 18px rgba(5,114,206,.18); }
+
+/* ── Mini shell preview inside card ────────────────────────── */
+.theme-preview {
+  height: 170px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+  pointer-events: none;
+}
+.theme-preview__header {
+  height: 30px;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+.theme-preview__logo {
+  width: 20px; height: 20px;
+  border-radius: 4px;
+  flex-shrink: 0;
+}
+.theme-preview__hdr-text {
+  height: 4px;
+  border-radius: 2px;
+  flex-shrink: 0;
+}
+.theme-preview__body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+.theme-preview__sidebar {
+  width: 58px;
+  flex-shrink: 0;
+  border-right: 1px solid;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.theme-preview__nav-row {
+  height: 7px;
+  border-radius: 3px;
+}
+.theme-preview__nav-active {
+  height: 9px;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  padding: 0 4px;
+}
+.theme-preview__nav-active-dot {
+  width: 28px; height: 3px;
+  border-radius: 2px;
+}
+.theme-preview__content {
+  flex: 1;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+}
+.theme-preview__stat-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 5px;
+}
+.theme-preview__stat {
+  border-radius: 4px;
+  padding: 5px;
+  border: 1px solid;
+}
+.theme-preview__stat-accent {
+  height: 4px; width: 14px;
+  border-radius: 2px;
+  margin-bottom: 4px;
+}
+.theme-preview__stat-label {
+  height: 3px;
+  border-radius: 2px;
+  opacity: .28;
+}
+.theme-preview__table {
+  border-radius: 4px;
+  flex: 1;
+  overflow: hidden;
+  border: 1px solid;
+}
+.theme-preview__table-head {
+  height: 11px;
+  border-bottom: 1px solid;
+}
+.theme-preview__table-row {
+  height: 8px;
+  margin: 4px 6px;
+  border-radius: 2px;
+  opacity: .14;
+}
+
+/* ── Card info footer ───────────────────────────────────────── */
+.theme-card__footer {
+  padding: 13px 16px;
+  border-top: 1px solid var(--border-color);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+[data-theme="midnight"] .theme-card__footer { border-color: #252538; }
+
+.theme-card__swatches {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  flex-shrink: 0;
+  margin-bottom: 6px;
+}
+.theme-card__swatch {
+  width: 16px; height: 16px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.theme-card__meta { flex: 1; }
+.theme-card__name {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: 1.2;
+}
+.theme-card__desc {
+  font-size: 11px;
+  color: var(--text-secondary);
+  margin-top: 3px;
+  line-height: 1.4;
+}
+.theme-card__check {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--brand-red);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 13px; font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+[data-theme="redwood"]  .theme-card__check { background: #0572CE; }
+[data-theme="midnight"] .theme-card__check { background: #5ab4ff; color: #10101e; }
+
+
+/* ╔══════════════════════════════════════════════════════════════════════╗
+   ║  THEME TRANSITION — smooth switch animation                        ║
+   ╚══════════════════════════════════════════════════════════════════════╝ */
+
+body {
+  transition:
+    background-color .25s ease,
+    color .25s ease;
+}
+.app-header,
+.app-sidebar,
+.app-content,
+.card,
+.stat-card,
+.module-card,
+.data-table-wrap,
+table.data-table thead th,
+.user-dropdown {
+  transition:
+    background-color .25s ease,
+    border-color .25s ease,
+    color .25s ease,
+    box-shadow .25s ease;
+}

@@ -22,7 +22,7 @@ requirejs.config({
 });
 
 require(
-  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager'],
+  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager', 'shared/auditInfo'],
   function (AppController, ko, i18n) {
 
   // Custom KO binding: swaps a view+viewModel pair into a container element.
@@ -39,7 +39,13 @@ require(
       }
       if (!config) return;
       element.innerHTML = config.view;
-      const childCtx = bindingContext.createChildContext(config.viewModel);
+      // $vm = the view's own viewModel at ANY nesting depth (inherited by all
+      // descendant contexts). $root is the AppController (shell: t/lang/nav);
+      // views call their own methods via $vm.x — Phase 3 made $root the shell
+      // controller, which silently broke legacy `$root.<vmMethod>` references.
+      const childCtx = bindingContext.createChildContext(
+        config.viewModel, null,
+        function (ctx) { ctx.$vm = config.viewModel; });
       ko.applyBindingsToDescendants(childCtx, element);
     }
   };

@@ -32,7 +32,12 @@
         <!-- ko if: isNew -->
         <label class="form-label">Password <span class="required">*</span></label>
         <input class="form-control" type="password" placeholder="Minimum 8 characters"
-               data-bind="value: password, css: { 'border-color': hasError('password') ? '#C74634' : '' }">
+               data-bind="value: password, valueUpdate: 'input',
+                          event: { blur: validatePassword },
+                          css: { 'border-color': hasError('password') ? '#C74634' : '' }">
+        <!-- ko ifnot: hasError('password') -->
+        <span class="form-hint" data-bind="text: passwordHint"></span>
+        <!-- /ko -->
         <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('password'), text: getError('password')"></span>
         <!-- /ko -->
       </div>
@@ -40,7 +45,9 @@
       <div class="form-group">
         <label class="form-label">Confirm Password</label>
         <input class="form-control" type="password" placeholder="Re-enter password"
-               data-bind="value: confirmPassword, css: { 'border-color': hasError('confirmPassword') ? '#C74634' : '' }">
+               data-bind="value: confirmPassword, valueUpdate: 'input',
+                          event: { blur: validateConfirm },
+                          css: { 'border-color': hasError('confirmPassword') ? '#C74634' : '' }">
         <span class="form-hint" style="color:#C74634" data-bind="visible: hasError('confirmPassword'), text: getError('confirmPassword')"></span>
       </div>
       <!-- /ko -->
@@ -73,7 +80,8 @@
       <div class="form-group">
         <label class="form-label">Organisation <span class="required">*</span></label>
         <select class="form-control"
-                data-bind="value: orgId, css: { 'border-color': hasError('orgId') ? '#C74634' : '' }">
+                data-bind="value: orgId, valueAllowUnset: true,
+                           css: { 'border-color': hasError('orgId') ? '#C74634' : '' }">
           <option value="">— Select Organisation —</option>
           <!-- ko foreach: orgOptions -->
           <option data-bind="value: value, text: label"></option>
@@ -110,11 +118,13 @@
         <input type="checkbox" style="pointer-events:none" data-bind="checked: checked">
         <div>
           <div style="font-weight:600" data-bind="text: roleName"></div>
-          <div style="color:#aaa;font-size:11px" data-bind="text: description"></div>
+          <div style="color:#aaa;font-size:11px" data-bind="text: $data.description || ''"></div>
         </div>
       </div>
       <!-- /ko -->
     </div>
+
+    <audit-info params="data: audit"></audit-info>
 
     <div class="form-actions">
       <button class="btn btn-primary" data-bind="click: save, enable: !saving()">

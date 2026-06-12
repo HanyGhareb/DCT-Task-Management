@@ -100,7 +100,7 @@ All JET apps share the same pattern. Full contract is in `final apps/SHARED_JET_
 **KO binding patterns in views:**
 - Use `<!-- ko if: --> / <!-- /ko -->` and `data-bind="text: ..."` — the existing codebase uses raw KO, not JET's `<oj-if>` / `<oj-bind-text>`. The IDE shows advisory warnings; ignore them.
 - Never wrap KO-bound `<input>` in `<label>` — causes double-toggle. Use `<div>` + `pointer-events:none` on the input.
-- Use `$root.method()` (not `$parent`) when calling VM methods inside nested `foreach`.
+- Use **`$vm.method()`** when calling VM methods inside `foreach`/`with`/templates at any depth — the module binding injects `$vm` (the view's own viewModel) into the binding context. `$root` is the shell AppController (only `$root.t()`, `$root.lang()`, `$root.setLang()` belong to it); `$root.<vmMethod>` silently breaks.
 - Never call `ko.cleanNode(element)` on an element's own binding — only clean child nodes.
 
 **Services are ORDS-only (Admin JET).** All 8 Admin JET services (`authService`, `userService`, `roleService`, `orgService`, `moduleService`, `settingService`, `notificationService`, `auditService`) call ORDS directly — no mock branches, no `mockData` imports, no localStorage fallback. `mockData.js` is present but unused. Module apps (PC, DT, HR …) may still have `apiBase: null` in their `config.js` and remain in mock mode until their ORDS endpoints are wired.
@@ -151,7 +151,7 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 **Non-obvious column names (bitten us before):**
 | Table | Gotcha |
 |---|---|
-| `DCT_USER_ROLES` | date column is `end_date`, not `valid_to` |
+| `DCT_USER_ROLES` | date column is `end_date`, not `valid_to`; `chk_dct_ur_dates` requires `end_date >= start_date` and `start_date` defaults to SYSDATE *with time* — never close assignments with `TRUNC(SYSDATE)` (ORA-02290 for same-day rows); use `GREATEST(SYSDATE, start_date)` |
 | `DCT_APPROVAL_INSTANCES` | status column is `overall_status`; join steps via `template_id + current_step_seq` |
 | `DCT_LOOKUP_VALUES` | columns are `value_code` / `value_name_en` / `display_order` |
 | `DCT_GL_CODE_COMBINATIONS` | segment columns end in `_code` (`account_code`, not `account`); `cc_code` is a virtual column with the full 9-segment concatenation — use it for display |
@@ -174,10 +174,10 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 | Petty Cash (App 201) | ✅ Complete (ORDS live `/pc/`) | ✅ Complete (live) | ⬜ Pending in Builder |
 | Duty Travel (App 204) | ✅ Complete (ORDS live) | ✅ Complete (live) | ⬜ Pending in Builder |
 | HR (App 205) | ✅ Complete (ORDS live) | ✅ Complete (live) | ⬜ Pending in Builder |
-| Freelancers (App 203) | ✅ DB + PL/SQL (unified-adopted); ⬜ no ORDS | ⬜ Not started (no Jet/ folder) | ⬜ Not started |
-| Credit Cards (App 202) | ✅ DB + PL/SQL (DCT_CC_PKG, unified-adopted); ⬜ no ORDS | ⬜ Not started (no Jet/ folder) | ⬜ Not started |
+| Freelancers (App 203) | ✅ Complete (`fl.rest` live `/fl/`; DCT_FL_PKG workflow engine) | ✅ Complete (live, 17 views, #7C4DBE) | ⬜ Not started |
+| Credit Cards (App 202) | ✅ Complete (`cc.rest` live `/cc/`; thin handlers over DCT_CC_PKG) | ✅ Complete (live, 13 views, #B0721E) | ⬜ Not started |
 
-Full evaluation + phased action plan: `assessment-3/` (2026-06-11). Phase 1 executed + tested — report in `assessment-3/phase1/`. Phase 2 (data-model convergence: natural-key masters, unified tables, lookup-first, 22 FKs, CC+FL adoption) executed + tested 2026-06-11 — report in `assessment-3/phase2/`. Phase 3 (frontend foundation: `final apps/shared/` layer, page-level shell with module switcher, EN/AR i18n+RTL, tri-state lists, server pagination on users/audit/pc-all/dt-requests/hr-employees, Chart.js dashboards ×4, new `/dct/stats/` + `/dct/prefs/` endpoints) executed + tested 2026-06-11 — report in `assessment-3/phase3/`. Platform sweep job `DCT_APPROVAL_PKG` (db/v2/14) activates approval escalation/auto-approve daily 07:10.
+Full evaluation + phased action plan: `assessment-3/` (2026-06-11). Phase 1 executed + tested — report in `assessment-3/phase1/`. Phase 2 (data-model convergence: natural-key masters, unified tables, lookup-first, 22 FKs, CC+FL adoption) executed + tested 2026-06-11 — report in `assessment-3/phase2/`. Phase 3 (frontend foundation: `final apps/shared/` layer, page-level shell with module switcher, EN/AR i18n+RTL, tri-state lists, server pagination on users/audit/pc-all/dt-requests/hr-employees, Chart.js dashboards ×4, new `/dct/stats/` + `/dct/prefs/` endpoints) executed + tested 2026-06-11 — report in `assessment-3/phase3/`. Phase 4 (FL + CC apps: `fl.rest`+`cc.rest`, FL JET ×17 + CC JET ×13 views, unified approvals inbox covering all 4 modules with delegation-aware pending + `actingFor`, new `/dct/delegations/` + `/dct/announcements/` endpoints, Admin Delegations/Announcements pages, shared-shell announcement banner in all apps, switcher flipped live for FL/CC, UAT workbooks FL 35 / CC 29 / Admin v2 64 cases) executed + tested 2026-06-12 — report in `assessment-3/phase4/`. Platform sweep job `DCT_APPROVAL_PKG` (db/v2/14) activates approval escalation/auto-approve daily 07:10.
 
 ---
 

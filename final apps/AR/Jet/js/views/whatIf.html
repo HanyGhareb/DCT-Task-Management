@@ -1,0 +1,118 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: t('nav.whatIf')"></div>
+    <div class="page-subtitle">Adjust confirmed actuals by category — % change, fixed amount, or override</div>
+  </div>
+
+  <div class="view-toolbar">
+    <select class="form-control" style="width:320px"
+            data-bind="options: events, optionsText: function(e){ return e.eventCode + ' — ' + e.nameEn; },
+                       optionsValue: 'eventId', optionsCaption: '— select event —', value: selectedEvent"></select>
+  </div>
+
+  <!-- ko if: selectedEvent() -->
+  <div class="charts-row">
+
+    <!-- adjustments panel -->
+    <div class="chart-card" style="min-height:auto">
+      <h3>Scenario adjustments</h3>
+      <input class="form-control" style="margin-bottom:10px" placeholder="Scenario name"
+             data-bind="value: scenarioName">
+
+      <!-- ko foreach: adjustments() -->
+      <div style="display:flex; gap:6px; margin-bottom:8px; align-items:center">
+        <select class="form-control" style="width:110px" data-bind="value: lineType">
+          <option value="EXPENSE">Expense</option>
+          <option value="REVENUE">Revenue</option>
+        </select>
+        <select class="form-control" style="flex:1"
+                data-bind="options: $parent.pnlCats, optionsText: 'nameEn', optionsValue: 'categoryId',
+                           optionsCaption: 'All categories', value: categoryId"></select>
+        <select class="form-control" style="width:110px" data-bind="value: adjType">
+          <option value="PCT">% +/-</option>
+          <option value="AMOUNT">AED +/-</option>
+          <option value="OVERRIDE">Override</option>
+        </select>
+        <input class="form-control mono" type="number" style="width:110px" data-bind="value: value">
+        <button class="btn btn-secondary btn-sm" data-bind="click: $parent.removeAdjustment.bind($parent, $data)">✕</button>
+      </div>
+      <!-- /ko -->
+
+      <div style="display:flex; gap:8px; margin-top:10px">
+        <button class="btn btn-secondary" data-bind="click: addAdjustment">+ Adjustment</button>
+        <button class="btn btn-primary" data-bind="click: saveScenario">Save Scenario</button>
+      </div>
+
+      <!-- saved scenarios -->
+      <!-- ko if: scenarios().length > 0 -->
+      <h3 style="margin-top:22px">Saved scenarios</h3>
+      <!-- ko foreach: scenarios() -->
+      <div style="display:flex; gap:8px; align-items:center; padding:4px 0; border-bottom:1px solid #eef1f6">
+        <span class="link-text" data-bind="text: name, click: $parent.loadScenario.bind($parent, $data)"></span>
+        <span style="font-size:11px; color:#8a94a6"
+              data-bind="text: ($data.adjustments || []).length + ' adj.'"></span>
+        <button class="btn btn-secondary btn-sm" style="margin-inline-start:auto"
+                data-bind="click: $parent.deleteScenario.bind($parent, $data)">🗑</button>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+
+    <!-- results panel -->
+    <div class="chart-card" style="min-height:auto">
+      <h3>Actual vs scenario</h3>
+      <table class="data-table" style="margin-bottom:14px">
+        <thead><tr><th></th><th>Actual</th><th>Scenario</th><th>Δ</th></tr></thead>
+        <tbody>
+          <tr>
+            <td data-bind="text: t('ar.revenue')"></td>
+            <td class="mono" data-bind="text: fmt(result().baseRevenue)"></td>
+            <td class="mono" data-bind="text: fmt(result().scenRevenue)"></td>
+            <td class="mono" data-bind="text: fmt(result().scenRevenue - result().baseRevenue)"></td>
+          </tr>
+          <tr>
+            <td data-bind="text: t('ar.expense')"></td>
+            <td class="mono" data-bind="text: fmt(result().baseExpense)"></td>
+            <td class="mono" data-bind="text: fmt(result().scenExpense)"></td>
+            <td class="mono" data-bind="text: fmt(result().scenExpense - result().baseExpense)"></td>
+          </tr>
+          <tr style="font-weight:700">
+            <td data-bind="text: t('ar.net')"></td>
+            <td class="mono" data-bind="text: fmt(result().baseNet)"></td>
+            <td class="mono" data-bind="text: fmt(result().scenNet)"></td>
+            <td class="mono" data-bind="text: fmt(result().deltaNet),
+                css: result().deltaNet >= 0 ? 'ar-delta-up' : 'ar-delta-down'"></td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="chart-wrap"><canvas id="arWhatIfChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- per-category detail -->
+  <div class="data-table-wrap" style="margin-top:14px">
+    <table class="data-table">
+      <thead><tr><th>Type</th><th>Category</th><th>Actual (AED)</th><th>Scenario (AED)</th><th>Δ</th></tr></thead>
+      <tbody>
+        <!-- ko foreach: result().rows -->
+        <tr>
+          <td data-bind="text: lineType"></td>
+          <td data-bind="text: name"></td>
+          <td class="mono" data-bind="text: $parent.fmt(base)"></td>
+          <td class="mono" data-bind="text: $parent.fmt(amount)"></td>
+          <td class="mono" data-bind="text: $parent.fmt(amount - base),
+              css: (amount - base) >= 0 ? 'ar-delta-up' : 'ar-delta-down'"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: selectedEvent() -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#129518;</div>
+    <div class="empty-state__msg">Select an event to start a what-if analysis</div>
+  </div>
+  <!-- /ko -->
+</div>

@@ -65,13 +65,16 @@
       </div>
       <div class="form-group">
         <label class="form-label">Employee Number</label>
-        <input class="form-control" type="text" readonly data-bind="value: employeeNumber">
+        <input class="form-control" type="text" placeholder="e.g. E9001"
+               data-bind="value: employeeNumber, valueUpdate: 'input'">
       </div>
       <div class="form-group">
         <label class="form-label">Organisation</label>
         <input class="form-control" type="text" readonly data-bind="value: orgName">
       </div>
     </div>
+
+    <audit-info params="data: audit"></audit-info>
 
     <div class="form-actions">
       <button class="btn btn-primary" data-bind="click: saveProfile, enable: !saving()">
@@ -111,25 +114,86 @@
 
   <!-- Delegations -->
   <div class="card">
-    <div class="section-heading" style="margin-top:0">My Delegations</div>
+    <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+      <span>My Delegations</span>
+      <button class="btn btn-secondary btn-sm" data-bind="click: openDelModal">+ New Delegation</button>
+    </div>
+    <!-- ko if: delLoading() --><list-skeleton params="rows: 2"></list-skeleton><!-- /ko -->
     <!-- ko foreach: delegations() -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid #f0f0f0">
       <div>
         <div style="font-size:13px;font-weight:600">
-          Delegating to: <span data-bind="text: toName"></span>
+          <!-- ko if: $vm.isMyOutgoing($data) -->
+          Delegating to: <span data-bind="text: $data.delegateName"></span>
+          <!-- /ko -->
+          <!-- ko ifnot: $vm.isMyOutgoing($data) -->
+          Acting for: <span data-bind="text: $data.delegatorName"></span>
+          <!-- /ko -->
+          <span class="badge badge--info" style="margin-inline-start:6px;font-size:10px"
+                data-bind="text: $data.scope === 'ALL_ROLES' ? 'All roles'
+                                 : ($data.scope === 'MODULE' ? $data.moduleName : $data.roleName)"></span>
         </div>
         <div style="font-size:12px;color:#aaa">
-          <span data-bind="text: startDate"></span> &mdash; <span data-bind="text: endDate"></span>
-          &bull; <span data-bind="text: reason"></span>
+          <span class="mono" data-bind="text: $data.startDate"></span> &mdash;
+          <span class="mono" data-bind="text: $data.endDate"></span>
+          <!-- ko if: $data.reason --> &bull; <span data-bind="text: $data.reason"></span><!-- /ko -->
         </div>
       </div>
-      <span class="badge badge--pending" data-bind="text: status"></span>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span data-bind="text: $data.status, css: $vm.delBadge($data.status)"></span>
+        <!-- ko if: $data.status === 'ACTIVE' && $vm.isMyOutgoing($data) -->
+        <button class="btn btn-secondary btn-sm"
+                data-bind="click: $vm.cancelDelegation.bind($vm, $data), enable: !$vm.delBusy()">Cancel</button>
+        <!-- /ko -->
+      </div>
     </div>
     <!-- /ko -->
-    <!-- ko if: delegations().length === 0 -->
+    <!-- ko if: !delLoading() && delegations().length === 0 -->
     <div class="empty-state" style="padding:30px">
       <div class="empty-state__msg">No active delegations</div>
     </div>
     <!-- /ko -->
   </div>
+
+  <!-- new delegation modal -->
+  <!-- ko if: showDelModal() -->
+  <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(15,22,30,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px">
+    <div class="card" style="width:100%;max-width:460px">
+      <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+        <span>New Delegation</span>
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showDelModal(false); }">&#10005;</button>
+      </div>
+      <!-- ko if: delError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: delError()"></span></div>
+      <!-- /ko -->
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Delegate To *</label>
+        <select class="form-control" data-bind="value: delDelegateId,
+                 options: delUsers, optionsValue: 'userId',
+                 optionsText: 'displayName', optionsCaption: 'Select user…'"></select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Start Date</label>
+          <input class="form-control" type="date" data-bind="value: delStart">
+        </div>
+        <div class="form-group">
+          <label class="form-label">End Date *</label>
+          <input class="form-control" type="date" data-bind="value: delEnd">
+        </div>
+      </div>
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label">Reason</label>
+        <input class="form-control" data-bind="value: delReason, valueUpdate: 'input'" placeholder="e.g. Annual leave">
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" data-bind="click: function(){ showDelModal(false); }">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: createDelegation, enable: !delBusy()">
+          <!-- ko if: delBusy() -->Saving&hellip;<!-- /ko -->
+          <!-- ko ifnot: delBusy() -->&#10003; Create<!-- /ko -->
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
 </div>

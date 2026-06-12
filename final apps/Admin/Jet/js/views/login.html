@@ -1,5 +1,9 @@
 ﻿<div class="login-page">
   <div class="login-card">
+    <div class="lang-pill" style="position:absolute;top:14px;inset-inline-end:14px">
+      <button type="button" data-bind="click: function(){ $root.setLang('en'); }, css: { on: $root.lang() === 'en' }">EN</button>
+      <button type="button" data-bind="click: function(){ $root.setLang('ar'); }, css: { on: $root.lang() === 'ar' }">&#1593;</button>
+    </div>
     <div class="login-logo">
       <div class="login-cube">i</div>
       <div class="login-title">i-Finance V2</div>

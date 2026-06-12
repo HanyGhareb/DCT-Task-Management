@@ -13,6 +13,7 @@
   "mod.hr": "HR", "mod.hr.desc": "Employees, positions & documents",
   "mod.fl": "Freelancers", "mod.fl.desc": "Contracts & payment vouchers",
   "mod.cc": "Credit Cards", "mod.cc.desc": "Cards & monthly replenishments",
+  "mod.ar": "Accounts Receivable", "mod.ar.desc": "Event P&L analysis & revenue assurance",
 
   "common.search": "Search…",
   "common.loading": "Loading…",
@@ -50,6 +51,8 @@
   "status.locked": "Locked",
 
   "pager.perPage": "Per page",
+  "audit.created": "Created",
+  "audit.updated": "Last updated",
   "pager.range": "{0}–{1} of {2}",
   "pager.rangeOpen": "{0}–{1}",
 

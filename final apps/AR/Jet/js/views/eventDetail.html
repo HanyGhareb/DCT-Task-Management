@@ -1,0 +1,319 @@
+<div class="page-wrap">
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 8"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <!-- ko if: event() -->
+  <div class="page-header">
+    <div>
+      <div class="page-title">
+        <span class="mono" data-bind="text: event().eventCode"></span> —
+        <span data-bind="text: event().nameEn"></span>
+      </div>
+      <div class="page-subtitle">
+        <span data-bind="class: statusClass(event().status), text: event().status"></span>
+        <span data-bind="text: ' · ' + (event().organizer || '—') + ' · ' + (event().venue || '—')"></span>
+        <span class="mono" data-bind="text: event().startDate ? ' · ' + event().startDate : ''"></span>
+      </div>
+    </div>
+    <div style="margin-inline-start:auto; display:flex; gap:8px">
+      <button class="btn btn-secondary" data-bind="click: editEvent">Edit</button>
+      <button class="btn btn-secondary" data-bind="click: openUpload, text: t('ar.uploadFolder')"></button>
+      <button class="btn btn-secondary" data-bind="click: openWhatIf">What-If</button>
+      <button class="btn btn-secondary" data-bind="click: openReport">Report</button>
+      <button class="btn btn-primary" data-bind="click: runAi, disable: processing(),
+              text: processing() ? 'Processing…' : t('ar.runAi')"></button>
+    </div>
+  </div>
+
+  <!-- AI progress strip -->
+  <!-- ko if: processing() && progress() -->
+  <div class="form-card" style="padding:10px 16px; margin-bottom:14px; display:flex; gap:24px; align-items:center">
+    <span class="badge badge--warning">AI PROCESSING</span>
+    <span class="mono" data-bind="text: 'Files: ' + (progress().totalFiles || 0)"></span>
+    <span class="mono" data-bind="text: 'Classified: ' + ((progress().classConfirmed||0) + (progress().classAiDone||0)) + ' / pending ' + (progress().classPending||0)"></span>
+    <span class="mono" data-bind="text: 'Extracted: ' + ((progress().extractDone||0) + (progress().extractConfirmed||0)) + ' / pending ' + (progress().extractPending||0)"></span>
+    <span class="mono" data-bind="text: 'Lines: ' + (progress().totalLines || 0)"></span>
+    <span class="mono ar-neg" data-bind="visible: (progress().classFailed||0)+(progress().extractFailed||0) > 0,
+          text: 'Failed: ' + ((progress().classFailed||0)+(progress().extractFailed||0))"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    <button class="tab" data-bind="css: { 'tab--active': activeTab() === 'overview' },
+            click: function(){ setTab('overview'); }">Overview</button>
+    <button class="tab" data-bind="css: { 'tab--active': activeTab() === 'files' },
+            click: function(){ setTab('files'); }">
+      Files (<span data-bind="text: files().length"></span>)</button>
+    <button class="tab" data-bind="css: { 'tab--active': activeTab() === 'pnl' },
+            click: function(){ setTab('pnl'); }">
+      P&amp;L (<span data-bind="text: pnlTotal()"></span>)</button>
+    <button class="tab" data-bind="css: { 'tab--active': activeTab() === 'findings' },
+            click: function(){ setTab('findings'); }">
+      Findings &amp; KPIs (<span data-bind="text: findings().length + kpis().length"></span>)</button>
+  </div>
+
+  <!-- ════════ OVERVIEW ════════ -->
+  <!-- ko if: activeTab() === 'overview' -->
+  <div class="kpi-row">
+    <!-- ko foreach: pnlSummary() -->
+    <div class="kpi-card">
+      <div class="kpi-label"><span data-bind="class: $parent.chipClass(basis), text: basis"></span></div>
+      <div style="font-size:13px; margin-top:6px; display:grid; gap:3px">
+        <div>Revenue: <b class="mono" data-bind="text: $parent.fmt(revenue)"></b></div>
+        <div>Expense: <b class="mono" data-bind="text: $parent.fmt(expense)"></b></div>
+        <div>Net: <b class="mono" data-bind="text: $parent.fmt(net), css: { 'ar-neg': net < 0 }"></b>
+          <span class="mono" data-bind="visible: $data.marginPct !== null && $data.marginPct !== undefined,
+                text: ' (' + $data.marginPct + '%)'"></span></div>
+      </div>
+    </div>
+    <!-- /ko -->
+    <!-- ko if: pnlSummary().length === 0 -->
+    <div class="kpi-card"><div class="kpi-label">No confirmed P&amp;L data yet</div>
+      <div style="font-size:12px;color:#8a94a6">Upload documents and run AI, then confirm lines.</div></div>
+    <!-- /ko -->
+  </div>
+
+  <div class="charts-row">
+    <div class="chart-card" style="min-height:auto">
+      <h3>Document completeness</h3>
+      <!-- ko if: completeness().length === 0 -->
+      <div style="font-size:12px;color:#8a94a6;padding:8px 0">
+        No required document categories configured for this event type
+        (Admin → Document Categories → "Required for event types").
+      </div>
+      <!-- /ko -->
+      <div style="display:flex; flex-wrap:wrap; gap:8px; padding:6px 0">
+        <!-- ko foreach: completeness() -->
+        <span data-bind="css: present ? 'badge badge--success' : 'badge badge--danger',
+                         text: (present ? '✓ ' : '✗ ') + nameEn"></span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="chart-card" style="min-height:auto">
+      <h3 data-bind="text: t('ar.kpis')"></h3>
+      <div style="display:flex; flex-wrap:wrap; gap:14px; padding:6px 0">
+        <!-- ko foreach: kpis() -->
+        <div style="min-width:130px">
+          <div style="font-size:11px;color:#8a94a6" data-bind="text: $data.label || $data.name || $data.code"></div>
+          <div class="mono" style="font-size:17px;font-weight:700"
+               data-bind="text: $data.value !== null && $data.value !== undefined ? $parent.fmt($data.value) : ($data.text || '—')"></div>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: kpis().length === 0 -->
+        <span style="font-size:12px;color:#8a94a6">No KPIs yet — extracted from post-event reports.</span>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ════════ FILES ════════ -->
+  <!-- ko if: activeTab() === 'files' -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Folder</th><th>File</th><th>Size</th><th>AI Suggestion</th><th>Conf.</th>
+            <th>Category</th><th>Status</th><th>Extraction</th><th></th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: files() -->
+        <tr>
+          <td class="mono" style="font-size:11px" data-bind="text: $data.folderPath || '/'"></td>
+          <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <span class="link-text" data-bind="text: fileName, click: $parent.downloadFile.bind($parent, $data),
+                  attr: { title: ($data.altFileName ? 'Alt: ' + $data.altFileName : fileName) }"></span>
+          </td>
+          <td class="mono" data-bind="text: $data.sizeBytes ? Math.round($data.sizeBytes/1024) + ' KB' : '—'"></td>
+          <td style="font-size:12px" data-bind="text: $data.aiDocCatName || '—',
+              attr: { title: $data.aiReason || '' }"></td>
+          <td><span data-bind="visible: $data.aiConfidence !== null && $data.aiConfidence !== undefined,
+                class: $parent.confClass($data.aiConfidence), text: $data.aiConfidence"></span></td>
+          <td>
+            <select class="form-control" style="min-width:170px;font-size:12px"
+                    data-bind="options: $parent.docCats, optionsText: 'nameEn', optionsValue: 'docCatId',
+                               optionsCaption: '— select —', value: _selCat"></select>
+          </td>
+          <td><span data-bind="class: $parent.chipClass(classStatus === 'CONFIRMED' ? 'CONFIRMED' : 'DRAFT'),
+                text: classStatus"></span>
+              <div class="ar-neg" style="font-size:10px;max-width:160px" data-bind="visible: $data.errorMessage, text: $data.errorMessage || ''"></div>
+          </td>
+          <td style="font-size:12px">
+            <span data-bind="text: extractStatus"></span>
+            <span class="mono" data-bind="visible: ($data.linesExtracted || 0) > 0, text: ' (' + $data.linesExtracted + ')'"></span>
+          </td>
+          <td class="table-actions" style="white-space:nowrap">
+            <!-- ko if: classStatus === 'FAILED' || extractStatus === 'FAILED' -->
+            <button class="btn btn-primary btn-sm" title="Retry AI classification / extraction for this file"
+                    data-bind="click: $parent.retryFile.bind($parent, $data),
+                               disable: $parent.processing()">&#8635; Retry</button>
+            <!-- /ko -->
+            <button class="btn btn-primary btn-sm" data-bind="click: $parent.confirmFileCat.bind($parent, $data),
+                    text: $parent.t('ar.confirm')"></button>
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.deleteFileRow.bind($parent, $data)">✕</button>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: files().length === 0 -->
+        <tr><td colspan="9">
+          <div class="empty-state">
+            <div class="empty-state__icon">&#128193;</div>
+            <div class="empty-state__msg">No files yet</div>
+            <button class="btn btn-primary" data-bind="click: openUpload, text: t('ar.uploadFolder')"></button>
+          </div>
+        </td></tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- ════════ P&L ════════ -->
+  <!-- ko if: activeTab() === 'pnl' -->
+  <div class="view-toolbar">
+    <select class="form-control" style="width:140px" data-bind="value: typeFilter">
+      <option value="">All Types</option>
+      <option value="REVENUE">Revenue</option>
+      <option value="EXPENSE">Expense</option>
+    </select>
+    <select class="form-control" style="width:140px" data-bind="value: basisFilter">
+      <option value="">All Basis</option>
+      <option value="ACTUAL">Actual</option>
+      <option value="BUDGET">Budget</option>
+      <option value="FORECAST">Forecast</option>
+    </select>
+    <select class="form-control" style="width:140px" data-bind="value: statusFilter">
+      <option value="">All Statuses</option>
+      <option value="DRAFT">Draft</option>
+      <option value="CONFIRMED">Confirmed</option>
+      <option value="REJECTED">Rejected</option>
+    </select>
+    <div style="margin-inline-start:auto">
+      <button class="btn btn-primary" data-bind="click: confirmAllDrafts, visible: draftCount() > 0,
+              text: t('ar.confirmAll') + ' (' + draftCount() + ')'"></button>
+    </div>
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Type</th><th>Basis</th><th>Item</th><th>Category</th><th>Date</th>
+            <th>Amount</th><th>Reported</th><th>Var.</th><th>Conf.</th><th>Source</th><th>Inc.</th><th>Status</th><th></th></tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: lines() -->
+        <tr data-bind="style: { opacity: isIncluded ? 1 : .45 }">
+          <td><span data-bind="text: lineType === 'REVENUE' ? '▲' : '▼',
+                style: { color: lineType === 'REVENUE' ? '#1A7F45' : '#C0392B' }"></span></td>
+          <td><span data-bind="class: $parent.chipClass(basis), text: basis"></span></td>
+          <td style="max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              data-bind="text: itemName, attr: { title: ($data.rawCategory ? 'Doc label: ' + $data.rawCategory : itemName) }"></td>
+          <td>
+            <select class="form-control" style="min-width:160px;font-size:12px"
+                    data-bind="options: $parent.pnlCats, optionsText: 'nameEn', optionsValue: 'categoryId',
+                               optionsCaption: '— unmapped —', value: _selCat,
+                               event: { change: $parent.saveLineCategory.bind($parent, $data) }"></select>
+          </td>
+          <td class="mono" data-bind="text: $data.itemDate || '—'"></td>
+          <td class="mono" data-bind="text: $parent.fmt(amount), css: { 'ar-neg': amount < 0 }"></td>
+          <td class="mono" data-bind="text: $parent.fmt($data.reportedAmount)"></td>
+          <td class="mono" data-bind="text: $parent.fmt($data.varianceAmount),
+              css: { 'ar-neg': ($data.varianceAmount || 0) < 0 }"></td>
+          <td><span data-bind="visible: isAi, class: $parent.confClass($data.aiConfidence), text: $data.aiConfidence"></span></td>
+          <td><span class="link-text" style="font-size:11px"
+                data-bind="visible: $data.fileId, click: $parent.viewSource.bind($parent, $data),
+                           text: ($data.sourceFile || '').length > 22 ? ($data.sourceFile || '').slice(0,20) + '…' : ($data.sourceFile || ''),
+                           attr: { title: $data.sourceFile || '' }"></span></td>
+          <td>
+            <div data-bind="click: $parent.toggleIncluded.bind($parent, $data)" style="cursor:pointer">
+              <input type="checkbox" data-bind="checked: isIncluded" style="pointer-events:none">
+            </div>
+          </td>
+          <td><span data-bind="class: $parent.chipClass(reviewStatus), text: reviewStatus"></span></td>
+          <td class="table-actions" style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" title="Confirm"
+                    data-bind="visible: reviewStatus === 'DRAFT',
+                               click: function(){ $parent.setLineStatus($data, 'CONFIRMED'); }">✓</button>
+            <button class="btn btn-secondary btn-sm" title="Reject"
+                    data-bind="visible: reviewStatus === 'DRAFT',
+                               click: function(){ $parent.setLineStatus($data, 'REJECTED'); }">✗</button>
+            <button class="btn btn-secondary btn-sm" title="Delete"
+                    data-bind="click: $parent.deleteLine.bind($parent, $data)">🗑</button>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: lines().length === 0 -->
+        <tr><td colspan="13">
+          <div class="empty-state">
+            <div class="empty-state__icon">&#128202;</div>
+            <div class="empty-state__msg">No P&amp;L lines — run AI extraction or add lines manually</div>
+          </div>
+        </td></tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- ════════ FINDINGS & KPIS ════════ -->
+  <!-- ko if: activeTab() === 'findings' -->
+  <div class="charts-row">
+    <div class="chart-card" style="min-height:auto">
+      <h3 data-bind="text: t('ar.findings')"></h3>
+      <!-- ko foreach: findings() -->
+      <div style="border-bottom:1px solid #eef1f6; padding:10px 0">
+        <div style="display:flex; gap:10px; align-items:center">
+          <b data-bind="text: seq + '. ' + title"></b>
+          <span class="mono ar-neg" data-bind="visible: $data.potentialLoss,
+                text: 'AED ' + $parent.fmt($data.potentialLoss)"></span>
+          <span data-bind="class: $parent.chipClass(reviewStatus), text: reviewStatus"></span>
+          <span style="margin-inline-start:auto; white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" data-bind="visible: reviewStatus === 'DRAFT',
+                    click: function(){ $parent.setFindingStatus($data, 'CONFIRMED'); }">✓</button>
+            <button class="btn btn-secondary btn-sm" data-bind="visible: reviewStatus === 'DRAFT',
+                    click: function(){ $parent.setFindingStatus($data, 'REJECTED'); }">✗</button>
+          </span>
+        </div>
+        <div style="font-size:12.5px; color:#444; margin-top:5px" data-bind="text: $data.observation || ''"></div>
+        <div style="font-size:12px; color:#1A56B0; margin-top:4px"
+             data-bind="visible: $data.recommendation, text: '→ ' + ($data.recommendation || '')"></div>
+        <div style="font-size:11px; color:#8a94a6; margin-top:3px"
+             data-bind="visible: $data.sourceFile, text: $root.t('ar.sourceFile') + ': ' + ($data.sourceFile || '')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: findings().length === 0 -->
+      <div style="font-size:12px;color:#8a94a6;padding:8px 0">No findings — extracted from audit reports.</div>
+      <!-- /ko -->
+    </div>
+
+    <div class="chart-card" style="min-height:auto">
+      <h3 data-bind="text: t('ar.kpis')"></h3>
+      <table class="data-table">
+        <thead><tr><th>KPI</th><th>Value</th><th>Unit</th><th>Source</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+          <!-- ko foreach: kpis() -->
+          <tr>
+            <td data-bind="text: $data.label || $data.name || $data.code"></td>
+            <td class="mono" data-bind="text: $data.value !== null && $data.value !== undefined ? $parent.fmt($data.value) : ($data.text || '—')"></td>
+            <td data-bind="text: $data.unit || ''"></td>
+            <td style="font-size:11px" data-bind="text: $data.sourceFile || 'manual'"></td>
+            <td><span data-bind="class: $parent.chipClass(reviewStatus), text: reviewStatus"></span></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-secondary btn-sm" data-bind="visible: reviewStatus === 'DRAFT',
+                      click: function(){ $parent.setKpiStatus($data, 'CONFIRMED'); }">✓</button>
+              <button class="btn btn-secondary btn-sm" data-bind="visible: reviewStatus === 'DRAFT',
+                      click: function(){ $parent.setKpiStatus($data, 'REJECTED'); }">✗</button>
+            </td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

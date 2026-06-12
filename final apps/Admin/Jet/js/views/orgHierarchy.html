@@ -1,37 +1,27 @@
-﻿<div class="page-wrap">
-  <div class="page-header">
-    <div class="page-title" data-bind="text: $root.t('vw.orgHierarchy.title')"></div>
-    <div class="page-subtitle" data-bind="text: $root.t('vw.orgHierarchy.subtitle')"></div>
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('vw.orgHierarchy.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('vw.orgHierarchy.subtitle')"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: openAdd">+ Add Unit</button>
   </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <!-- /ko -->
 
   <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start">
 
-    <!-- Tree view -->
+    <!-- Tree view (recursive) -->
     <div class="card">
-      <div class="section-heading" style="margin-top:0">&#128336; Org Tree</div>
-      <!-- ko foreach: tree -->
-      <div class="org-card" style="border-left:4px solid #C74634">
-        <div class="org-icon org-icon--division">&#127959;</div>
-        <div>
-          <div class="org-name" data-bind="text: nameEn"></div>
-          <div class="org-code" data-bind="text: orgCode + ' &bull; ' + orgType"></div>
-        </div>
-        <span class="badge badge--admin" style="margin-left:auto">Division</span>
-      </div>
-      <!-- Children -->
-      <!-- ko foreach: children -->
-      <div style="margin-left:28px;padding-left:12px;border-left:2px dashed #e0e0e0">
-        <div class="org-card" style="border-left:3px solid #0572CE">
-          <div class="org-icon org-icon--section">&#127970;</div>
-          <div>
-            <div class="org-name" data-bind="text: nameEn"></div>
-            <div class="org-code" data-bind="text: orgCode + ' &bull; ' + orgType"></div>
-          </div>
-          <span class="badge badge--info" style="margin-left:auto">Section</span>
-        </div>
+      <div class="section-heading" style="margin-top:0">&#127959; Org Tree</div>
+      <!-- ko if: !loading() && tree().length === 0 -->
+      <div class="empty-state" style="padding:30px">
+        <div class="empty-state__msg">No organisation units</div>
       </div>
       <!-- /ko -->
-      <!-- /ko -->
+      <!-- ko template: { name: 'org-node-tpl', foreach: tree } --><!-- /ko -->
     </div>
 
     <!-- Flat list with search -->
@@ -43,15 +33,22 @@
       <div class="data-table-wrap">
         <table class="data-table">
           <thead>
-            <tr><th>Name</th><th>Code</th><th>Type</th><th>Parent</th></tr>
+            <tr><th>Name</th><th>Code</th><th>Type</th><th>Parent</th><th>Status</th><th></th></tr>
           </thead>
           <tbody>
             <!-- ko foreach: filteredList() -->
             <tr>
-              <td style="font-weight:600;font-size:13px" data-bind="text: nameEn"></td>
-              <td style="font-family:monospace;font-size:11px" data-bind="text: orgCode"></td>
-              <td><span class="badge" data-bind="text: orgType, css: { 'badge--admin': orgType === 'DIVISION', 'badge--info': orgType === 'SECTION' }"></span></td>
-              <td style="font-size:12px;color:#aaa" data-bind="text: $parent.getParentName(parentOrgId)"></td>
+              <td style="font-weight:600;font-size:13px" data-bind="text: $data.nameEn || ''"></td>
+              <td style="font-family:monospace;font-size:11px" data-bind="text: $data.orgCode || ''"></td>
+              <td><span class="badge" data-bind="text: $vm.getTypeLabel($data.orgType),
+                       css: { 'badge--admin': $data.orgType === 'DIVISION', 'badge--info': $data.orgType === 'SECTION' }"></span></td>
+              <td style="font-size:12px;color:#aaa" data-bind="text: $vm.getParentName($data.parentOrgId)"></td>
+              <td>
+                <!-- ko if: $data.isActive !== 'N' --><span class="badge badge--active">Active</span><!-- /ko -->
+                <!-- ko if: $data.isActive === 'N' --><span class="badge badge--inactive">Inactive</span><!-- /ko -->
+              </td>
+              <td><button class="btn btn-secondary btn-sm btn-icon" title="Edit"
+                          data-bind="click: $vm.openEdit.bind($vm, $data)">&#9998;</button></td>
             </tr>
             <!-- /ko -->
           </tbody>
@@ -60,4 +57,77 @@
     </div>
 
   </div>
+
+  <!-- Recursive node template -->
+  <script type="text/html" id="org-node-tpl">
+    <div class="org-card" data-bind="style: { 'border-left': $data.parentOrgId ? '3px solid #0572CE' : '4px solid var(--brand, #C74634)',
+                                              opacity: $data.isActive === 'N' ? 0.5 : 1 }">
+      <div data-bind="css: $data.parentOrgId ? 'org-icon org-icon--section' : 'org-icon org-icon--division',
+                      html: $data.parentOrgId ? '&#127970;' : '&#127959;'"></div>
+      <div>
+        <div class="org-name" data-bind="text: $data.nameEn || ''"></div>
+        <div class="org-code" data-bind="text: ($data.orgCode || '') + ' &bull; ' + $vm.getTypeLabel($data.orgType)"></div>
+      </div>
+      <span class="badge" style="margin-inline-start:auto"
+            data-bind="text: $vm.getTypeLabel($data.orgType),
+                       css: $data.parentOrgId ? 'badge--info' : 'badge--admin'"></span>
+      <button class="btn btn-secondary btn-sm btn-icon" style="margin-inline-start:8px" title="Edit"
+              data-bind="click: $vm.openEdit.bind($vm, $data)">&#9998;</button>
+    </div>
+    <!-- ko if: ($data.children || []).length -->
+    <div style="margin-inline-start:28px;padding-inline-start:12px;border-inline-start:2px dashed var(--border, #e0e0e0)">
+      <!-- ko template: { name: 'org-node-tpl', foreach: $data.children } --><!-- /ko -->
+    </div>
+    <!-- /ko -->
+  </script>
+
+  <!-- Add / Edit modal -->
+  <!-- ko if: showModal() -->
+  <div class="modal-overlay" data-bind="click: closeModal">
+    <div class="modal-box" data-bind="click: function () { return false; }, clickBubble: false">
+      <div class="modal-title" data-bind="text: modalTitle()"></div>
+      <!-- ko if: modalError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: modalError()"></span></div>
+      <!-- /ko -->
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Name (English) *</label>
+          <input class="form-control" type="text" data-bind="value: fNameEn, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Name (Arabic)</label>
+          <input class="form-control" type="text" dir="rtl" data-bind="value: fNameAr, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Code *</label>
+          <input class="form-control" type="text" placeholder="e.g. FIN-AP" data-bind="value: fOrgCode, valueUpdate: 'input', enable: !editingId()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Type</label>
+          <select class="form-control" data-bind="options: typeOptions, value: fOrgType"></select>
+        </div>
+        <div class="form-group form-group--full">
+          <label class="form-label">Parent Unit</label>
+          <select class="form-control" data-bind="options: parentOptions, optionsText: 'label', optionsValue: 'value', value: fParentId"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <div class="checkbox-item" data-bind="click: function () { fIsActive(!fIsActive()); }, css: { 'checkbox-item--on': fIsActive() }">
+            <input type="checkbox" style="pointer-events:none" data-bind="checked: fIsActive">
+            <div style="font-weight:600">Active</div>
+          </div>
+        </div>
+      </div>
+      <audit-info params="data: auditTarget"></audit-info>
+
+      <div class="form-actions">
+        <button class="btn btn-primary" data-bind="click: saveUnit, enable: !savingUnit()">
+          <!-- ko if: savingUnit() -->Saving&hellip;<!-- /ko -->
+          <!-- ko ifnot: savingUnit() -->&#10003; Save<!-- /ko -->
+        </button>
+        <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
 </div>

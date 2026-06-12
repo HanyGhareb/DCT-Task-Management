@@ -9,6 +9,9 @@ define(['services/api'], function (api) {
 
   function norm(u) {
     u.roles = (u.rolesCsv || '').split(',').filter(Boolean);
+    /* Display names (e.g. "Section Manager") — fall back to codes so the
+       list never regresses if roleNamesCsv is absent */
+    u.roleNames = (u.roleNamesCsv || u.rolesCsv || '').split(',').filter(Boolean);
     return u;
   }
 

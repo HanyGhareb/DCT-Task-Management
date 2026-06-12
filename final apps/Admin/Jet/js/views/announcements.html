@@ -1,0 +1,136 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('ann.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('ann.subtitle')"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: openCreate, text: $root.t('ann.new')"></button>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load announcements</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128226;</div>
+    <div class="empty-state__msg">No announcements yet</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Title</th><th>Severity</th><th>Audience</th><th>Published</th><th>Expires</th><th>Active</th><th></th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr>
+          <td>
+            <div style="font-weight:600" data-bind="text: $data.titleEn"></div>
+            <div style="font-size:11.5px;color:var(--text-3)" data-bind="text: ($data.bodyEn || '').slice(0, 90)"></div>
+          </td>
+          <td><span data-bind="text: $data.severity, css: $vm.sevBadge($data.severity)"></span></td>
+          <td style="font-size:12px" data-bind="text: $vm.audienceLabel($data)"></td>
+          <td class="mono" style="font-size:12px" data-bind="text: $data.publishedAt || '—'"></td>
+          <td class="mono" style="font-size:12px" data-bind="text: $data.expiresAt || 'never'"></td>
+          <td>
+            <span data-bind="text: $data.isActive === 'Y' ? 'Yes' : 'No',
+                             css: 'badge ' + ($data.isActive === 'Y' ? 'badge--approved' : 'badge--idle')"></span>
+          </td>
+          <td style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" data-bind="click: $vm.openEdit.bind($vm, $data)">Edit</button>
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: $vm.toggleActive.bind($vm, $data), enable: !$vm.busy(),
+                               text: $data.isActive === 'Y' ? 'Deactivate' : 'Activate'"></button>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- editor modal -->
+  <!-- ko if: showEditor() -->
+  <div style="position:fixed;inset:0;background:rgba(15,22,30,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px">
+    <div class="card" style="width:100%;max-width:640px;max-height:92vh;overflow-y:auto">
+      <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
+        <span data-bind="text: editId() ? 'Edit Announcement' : 'New Announcement'"></span>
+        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showEditor(false); }">&#10005;</button>
+      </div>
+      <!-- ko if: edError() -->
+      <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: edError()"></span></div>
+      <!-- /ko -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="form-group">
+          <label class="form-label">Title (EN) *</label>
+          <input class="form-control" data-bind="value: ed.titleEn, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Title (AR)</label>
+          <input class="form-control" dir="rtl" data-bind="value: ed.titleAr, valueUpdate: 'input'">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body (EN)</label>
+          <textarea class="form-control" rows="3" data-bind="value: ed.bodyEn, valueUpdate: 'input'"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Body (AR)</label>
+          <textarea class="form-control" rows="3" dir="rtl" data-bind="value: ed.bodyAr, valueUpdate: 'input'"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Severity</label>
+          <select class="form-control" data-bind="value: ed.severity">
+            <option value="INFO">Info</option>
+            <option value="WARNING">Warning</option>
+            <option value="CRITICAL">Critical</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Audience</label>
+          <select class="form-control" data-bind="value: ed.audience">
+            <option value="ALL">Everyone</option>
+            <option value="ROLE">Specific role</option>
+            <option value="MODULE">Specific module</option>
+          </select>
+        </div>
+        <!-- ko if: ed.audience() === 'ROLE' -->
+        <div class="form-group">
+          <label class="form-label">Target Role *</label>
+          <select class="form-control" data-bind="value: ed.roleId,
+                   options: roles, optionsValue: 'roleId',
+                   optionsText: 'roleName', optionsCaption: 'Select…'"></select>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: ed.audience() === 'MODULE' -->
+        <div class="form-group">
+          <label class="form-label">Target Module *</label>
+          <select class="form-control" data-bind="value: ed.moduleCode,
+                   options: modules, optionsValue: 'moduleCode',
+                   optionsText: 'nameEn', optionsCaption: 'Select…'"></select>
+        </div>
+        <!-- /ko -->
+        <div class="form-group">
+          <label class="form-label">Expires</label>
+          <input class="form-control" type="datetime-local" data-bind="value: ed.expiresAt">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Active</label>
+          <select class="form-control" data-bind="value: ed.isActive">
+            <option value="Y">Yes</option><option value="N">No</option>
+          </select>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn btn-secondary" data-bind="click: function(){ showEditor(false); }">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: save, enable: !busy()">
+          <!-- ko if: busy() -->Saving&hellip;<!-- /ko -->
+          <!-- ko ifnot: busy() -->&#10003; Save<!-- /ko -->
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

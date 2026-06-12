@@ -40,13 +40,15 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
       return data;
     });
 
-    self.editTarget = ko.observable(null);
-    self.showEdit   = ko.observable(false);
-    self.isNew      = ko.observable(false);
-    self.editError  = ko.observable('');
-    self.saving     = ko.observable(false);
+    self.editTarget  = ko.observable(null);
+    self.showEdit    = ko.observable(false);
+    self.isNew       = ko.observable(false);
+    self.editError   = ko.observable('');
+    self.saving      = ko.observable(false);
+    self.auditTarget = ko.observable(null);   // createdBy/At, updatedBy/At of the edited value
 
     self.openNew = function () {
+      self.auditTarget(null);
       self.editTarget({ lookupId: null, lookupType: ko.observable(''), lookupCode: ko.observable(''), displayValue: ko.observable(''), sortOrder: ko.observable(1), isActive: ko.observable(true) });
       self.isNew(true);
       self.editError('');
@@ -54,6 +56,7 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
     };
 
     self.openEdit = function (l) {
+      self.auditTarget(l);
       self.editTarget({ lookupId: l.lookupId, lookupType: ko.observable(l.lookupType), lookupCode: ko.observable(l.lookupCode), displayValue: ko.observable(l.displayValue), sortOrder: ko.observable(l.sortOrder), isActive: ko.observable(l.isActive === 'Y') });
       self.isNew(false);
       self.editError('');

@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Freelancers Module — Process Flow | i-Finance App 203</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --vault-bg:#0D1117;
+  --vault-surface:#161B22;
+  --vault-surface-2:#1C2230;
+  --vault-border:#30363D;
+  --vault-text:#E6EDF3;
+  --vault-muted:#7D8590;
+  --vault-amber:#F0883E;
+  --vault-green:#3FB950;
+  --vault-red:#F85149;
+  --vault-blue:#58A6FF;
+  --vault-font:'Outfit',sans-serif;
+  --vault-mono:'Fira Code',monospace;
+  --spine:2px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--vault-bg);
+  color:var(--vault-text);
+  font-family:var(--vault-font);
+  line-height:1.55;
+  overflow-x:hidden;
+}
+/* ambient backdrop */
+body::before{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;
+  background:
+    radial-gradient(900px 500px at 85% -5%, rgba(240,136,62,.07), transparent 60%),
+    radial-gradient(700px 600px at -10% 40%, rgba(88,166,255,.05), transparent 60%),
+    radial-gradient(800px 500px at 70% 105%, rgba(63,185,80,.06), transparent 60%);
+}
+body::after{
+  content:'';position:fixed;inset:0;pointer-events:none;z-index:0;opacity:.35;
+  background-image:radial-gradient(rgba(230,237,243,.045) 1px, transparent 1px);
+  background-size:26px 26px;
+}
+.page{position:relative;z-index:1;max-width:1060px;margin:0 auto;padding:56px 32px 96px}
+
+/* ============ header ============ */
+header{margin-bottom:64px;animation:rise .7s cubic-bezier(.22,1,.36,1) both}
+.hd-badge-row{display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap}
+.hd-badge{
+  font-family:var(--vault-mono);font-size:12px;letter-spacing:.12em;
+  border:1px solid var(--vault-border);border-radius:999px;
+  padding:5px 14px;color:var(--vault-amber);background:rgba(240,136,62,.08);
+}
+.hd-badge--dim{color:var(--vault-muted);background:transparent}
+h1{
+  font-size:clamp(34px,5vw,54px);font-weight:800;letter-spacing:-.02em;line-height:1.05;
+  margin-bottom:14px;
+}
+h1 .accent{color:var(--vault-amber)}
+.hd-sub{color:var(--vault-muted);font-size:17px;max-width:640px;font-weight:300}
+.hd-sub strong{color:var(--vault-text);font-weight:500}
+.hd-ar{
+  font-size:14px;color:var(--vault-muted);margin-top:8px;direction:rtl;text-align:left;
+  display:inline-block;border-bottom:1px dashed var(--vault-border);padding-bottom:2px;
+}
+
+/* legend */
+.legend{
+  display:flex;gap:22px;flex-wrap:wrap;margin-top:34px;padding:16px 20px;
+  border:1px solid var(--vault-border);border-radius:12px;background:rgba(22,27,34,.7);
+}
+.lg{display:flex;align-items:center;gap:9px;font-size:13px;color:var(--vault-muted)}
+.lg-swatch{width:14px;height:14px;border-radius:4px;flex:none}
+.lg-swatch--process{background:var(--vault-surface);border:1px solid var(--vault-border)}
+.lg-swatch--gate{background:rgba(240,136,62,.18);border:1px solid var(--vault-amber);transform:rotate(45deg);border-radius:3px;width:12px;height:12px}
+.lg-swatch--auto{background:rgba(88,166,255,.15);border:1px solid var(--vault-blue)}
+.lg-swatch--terminal{background:rgba(63,185,80,.15);border:1px solid var(--vault-green)}
+.lg-swatch--reject{background:rgba(248,81,73,.12);border:1px dashed var(--vault-red)}
+
+/* ============ phase bands ============ */
+.phase{position:relative;margin-bottom:8px}
+.phase-head{
+  display:flex;align-items:baseline;gap:16px;margin:56px 0 36px;
+  animation:rise .7s cubic-bezier(.22,1,.36,1) both;
+}
+.phase-num{
+  font-family:var(--vault-mono);font-size:13px;font-weight:600;color:var(--vault-amber);
+  border:1px solid rgba(240,136,62,.4);border-radius:8px;padding:6px 11px;
+  background:rgba(240,136,62,.07);letter-spacing:.08em;flex:none;
+}
+.phase-title{font-size:24px;font-weight:700;letter-spacing:-.01em}
+.phase-tag{font-family:var(--vault-mono);font-size:12px;color:var(--vault-muted)}
+.phase-rule{flex:1;height:1px;background:linear-gradient(90deg,var(--vault-border),transparent)}
+
+/* ============ flow spine ============ */
+.flow{position:relative;padding-left:0}
+.step{
+  position:relative;display:grid;grid-template-columns:1fr 300px;gap:24px;
+  animation:rise .7s cubic-bezier(.22,1,.36,1) both;
+}
+.step--solo{grid-template-columns:1fr}
+@media(max-width:880px){.step{grid-template-columns:1fr}.side-note{margin-top:-6px}}
+
+/* node card */
+.node{
+  position:relative;background:var(--vault-surface);
+  border:1px solid var(--vault-border);border-radius:14px;
+  padding:22px 24px;transition:border-color .25s,transform .25s,box-shadow .25s;
+}
+.node:hover{border-color:rgba(240,136,62,.55);transform:translateY(-2px);box-shadow:0 12px 36px rgba(0,0,0,.45)}
+.node--auto{background:linear-gradient(180deg,rgba(88,166,255,.07),rgba(22,27,34,.9));border-color:rgba(88,166,255,.35)}
+.node--auto:hover{border-color:var(--vault-blue)}
+.node--terminal{background:linear-gradient(180deg,rgba(63,185,80,.10),rgba(22,27,34,.9));border-color:rgba(63,185,80,.45)}
+.node--terminal:hover{border-color:var(--vault-green)}
+.node-top{display:flex;align-items:center;gap:12px;margin-bottom:8px;flex-wrap:wrap}
+.node-step{
+  font-family:var(--vault-mono);font-size:11px;font-weight:600;color:var(--vault-bg);
+  background:var(--vault-amber);border-radius:6px;padding:3px 8px;letter-spacing:.06em;flex:none;
+}
+.node--auto .node-step{background:var(--vault-blue)}
+.node--terminal .node-step{background:var(--vault-green)}
+.node-title{font-size:17px;font-weight:600;letter-spacing:-.01em}
+.node-desc{font-size:14px;color:var(--vault-muted);font-weight:300;max-width:560px}
+.node-desc strong{color:var(--vault-text);font-weight:500}
+.node-desc code{
+  font-family:var(--vault-mono);font-size:12px;color:var(--vault-blue);
+  background:rgba(88,166,255,.1);border-radius:5px;padding:1px 6px;
+}
+.node-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+
+/* chips */
+.chip{
+  font-family:var(--vault-mono);font-size:11px;font-weight:500;letter-spacing:.05em;
+  border-radius:999px;padding:3px 10px;border:1px solid var(--vault-border);color:var(--vault-muted);
+}
+.chip--status{color:var(--vault-blue);border-color:rgba(88,166,255,.4);background:rgba(88,166,255,.07)}
+.chip--actor{color:var(--vault-amber);border-color:rgba(240,136,62,.4);background:rgba(240,136,62,.07)}
+.chip--sys{color:var(--vault-green);border-color:rgba(63,185,80,.4);background:rgba(63,185,80,.07)}
+.chip--table{color:var(--vault-muted)}
+.chip--ok{color:var(--vault-green);border-color:rgba(63,185,80,.45);background:rgba(63,185,80,.08)}
+
+/* connectors */
+.link{position:relative;height:52px;width:100%;display:flex;justify-content:flex-start}
+.link-line{
+  position:relative;width:var(--spine);height:100%;margin-left:48px;
+  background:linear-gradient(180deg,var(--vault-border),rgba(240,136,62,.7));
+  transform-origin:top;animation:draw .5s ease both;
+}
+.link-line::after{
+  content:'';position:absolute;bottom:-1px;left:50%;transform:translateX(-50%);
+  border-left:6px solid transparent;border-right:6px solid transparent;
+  border-top:8px solid var(--vault-amber);
+}
+.link-label{
+  position:absolute;left:70px;top:50%;transform:translateY(-50%);
+  font-family:var(--vault-mono);font-size:11px;color:var(--vault-muted);letter-spacing:.06em;
+}
+.link-label b{color:var(--vault-green);font-weight:600}
+
+/* approval gate (diamond) */
+.gate{position:relative;display:grid;grid-template-columns:1fr 300px;gap:24px;animation:rise .7s cubic-bezier(.22,1,.36,1) both}
+@media(max-width:880px){.gate{grid-template-columns:1fr}}
+.gate-card{
+  position:relative;border:1px solid rgba(240,136,62,.5);border-radius:14px;
+  background:linear-gradient(180deg,rgba(240,136,62,.10),rgba(22,27,34,.92));
+  padding:22px 24px 22px 84px;transition:border-color .25s,box-shadow .25s;
+}
+.gate-card:hover{border-color:var(--vault-amber);box-shadow:0 0 0 1px rgba(240,136,62,.3),0 12px 36px rgba(0,0,0,.45)}
+.gate-diamond{
+  position:absolute;left:26px;top:50%;width:30px;height:30px;transform:translateY(-50%) rotate(45deg);
+  background:rgba(240,136,62,.16);border:2px solid var(--vault-amber);border-radius:6px;
+  animation:gatePulse 2.6s ease-in-out infinite;
+}
+.gate-diamond::after{
+  content:'?';position:absolute;inset:0;display:grid;place-items:center;
+  transform:rotate(-45deg);font-family:var(--vault-mono);font-weight:600;
+  font-size:14px;color:var(--vault-amber);
+}
+.gate-title{font-size:16px;font-weight:600;margin-bottom:4px}
+.gate-title .tmpl{font-family:var(--vault-mono);font-size:12px;color:var(--vault-amber);font-weight:500}
+.gate-steps{font-size:13.5px;color:var(--vault-muted);font-weight:300}
+.gate-steps b{color:var(--vault-text);font-weight:500}
+.gate-steps .cond{font-family:var(--vault-mono);font-size:11px;color:var(--vault-blue)}
+.gate-out{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+
+/* rejected / returned side note */
+.side-note{
+  align-self:center;position:relative;border:1px dashed rgba(248,81,73,.5);border-radius:12px;
+  background:rgba(248,81,73,.05);padding:14px 16px;font-size:12.5px;color:var(--vault-muted);
+}
+.side-note::before{
+  content:'';position:absolute;left:-24px;top:50%;width:24px;height:1px;
+  background:repeating-linear-gradient(90deg,rgba(248,81,73,.6) 0 5px,transparent 5px 10px);
+}
+@media(max-width:880px){.side-note::before{display:none}}
+.side-note .sn-title{
+  font-family:var(--vault-mono);font-size:11px;font-weight:600;letter-spacing:.08em;
+  color:var(--vault-red);margin-bottom:5px;
+}
+.side-note .ret{color:var(--vault-amber)}
+.side-note b{color:var(--vault-text);font-weight:500}
+
+/* parallel processes strip */
+.parallel{
+  margin-top:72px;border:1px solid var(--vault-border);border-radius:16px;
+  background:rgba(22,27,34,.65);padding:30px;animation:rise .7s cubic-bezier(.22,1,.36,1) both;
+}
+.parallel h2{font-size:19px;font-weight:700;margin-bottom:4px}
+.parallel .p-sub{font-size:13.5px;color:var(--vault-muted);font-weight:300;margin-bottom:22px}
+.p-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+@media(max-width:880px){.p-grid{grid-template-columns:1fr}}
+.p-card{
+  border:1px solid var(--vault-border);border-radius:12px;padding:18px;
+  background:var(--vault-surface);transition:border-color .25s,transform .25s;
+}
+.p-card:hover{border-color:rgba(88,166,255,.5);transform:translateY(-2px)}
+.p-card .p-icon{
+  font-family:var(--vault-mono);font-size:11px;color:var(--vault-blue);letter-spacing:.1em;
+  margin-bottom:8px;display:block;
+}
+.p-card h3{font-size:15px;font-weight:600;margin-bottom:6px}
+.p-card p{font-size:12.5px;color:var(--vault-muted);font-weight:300}
+.p-card p code{font-family:var(--vault-mono);font-size:11px;color:var(--vault-blue)}
+
+footer{
+  margin-top:64px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap;
+  font-family:var(--vault-mono);font-size:11.5px;color:var(--vault-muted);letter-spacing:.05em;
+  border-top:1px solid var(--vault-border);padding-top:22px;
+}
+
+/* animations + stagger */
+@keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
+@keyframes draw{from{transform:scaleY(0)}to{transform:scaleY(1)}}
+@keyframes gatePulse{0%,100%{box-shadow:0 0 0 0 rgba(240,136,62,.35)}50%{box-shadow:0 0 0 9px rgba(240,136,62,0)}}
+.flow>*:nth-child(1){animation-delay:.05s}.flow>*:nth-child(2){animation-delay:.1s}
+.flow>*:nth-child(3){animation-delay:.15s}.flow>*:nth-child(4){animation-delay:.2s}
+.flow>*:nth-child(5){animation-delay:.25s}.flow>*:nth-child(6){animation-delay:.3s}
+.flow>*:nth-child(7){animation-delay:.35s}.flow>*:nth-child(8){animation-delay:.4s}
+.flow>*:nth-child(9){animation-delay:.45s}.flow>*:nth-child(10){animation-delay:.5s}
+
+@media print{
+  body{background:#fff;color:#111}
+  body::before,body::after{display:none}
+  .node,.gate-card,.p-card,.parallel,.legend{background:#fff;border-color:#bbb}
+}
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <div class="hd-badge-row">
+    <span class="hd-badge">APP 203 · FL</span>
+    <span class="hd-badge hd-badge--dim">i-FINANCE PLATFORM</span>
+    <span class="hd-badge hd-badge--dim">ORACLE ADB · APEX · JET</span>
+  </div>
+  <h1>Freelancer Lifecycle<br><span class="accent">Onboarding → Payment</span></h1>
+  <p class="hd-sub">End-to-end process of the <strong>Freelancers module</strong> — from registration and vetting, through contract issuance and payment scheduling, to voucher approval and settlement via <strong>Oracle Fusion Payables</strong>.</p>
+  <p class="hd-ar">دورة حياة المستقلين — من التسجيل حتى الدفع</p>
+
+  <div class="legend">
+    <div class="lg"><span class="lg-swatch lg-swatch--process"></span> Manual step</div>
+    <div class="lg"><span class="lg-swatch lg-swatch--gate"></span> Approval gate</div>
+    <div class="lg"><span class="lg-swatch lg-swatch--auto"></span> Automated (PL/SQL)</div>
+    <div class="lg"><span class="lg-swatch lg-swatch--terminal"></span> Terminal state</div>
+    <div class="lg"><span class="lg-swatch lg-swatch--reject"></span> Reject / return path</div>
+  </div>
+</header>
+
+<!-- ================= PHASE 1 ================= -->
+<section class="phase">
+  <div class="phase-head">
+    <span class="phase-num">PHASE 01</span>
+    <span class="phase-title">Onboarding &amp; Registration</span>
+    <span class="phase-rule"></span>
+    <span class="phase-tag">DCT_FL_REGISTRATIONS</span>
+  </div>
+
+  <div class="flow">
+    <div class="step step--solo">
+      <div class="node">
+        <div class="node-top"><span class="node-step">01</span><span class="node-title">Registration Request Created</span></div>
+        <p class="node-desc">Freelancer self-registers via the public portal, or staff submits on their behalf. Captures identity, nationality, specialization, photo and bank details. <strong>Emirates ID is mandatory for UAE nationals</strong>; photo required per module setting.</p>
+        <div class="node-meta">
+          <span class="chip chip--actor">FREELANCER / FL_USER</span>
+          <span class="chip chip--status">DRAFT</span>
+          <span class="chip chip--table">DCT_FL_DOCUMENTS · ID, passport, visa</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label">submit · validations pass</span></div>
+
+    <div class="step step--solo">
+      <div class="node">
+        <div class="node-top"><span class="node-step">02</span><span class="node-title">Registration Submitted</span></div>
+        <p class="node-desc">Validation enforced by <code>DCT_FL_WF_PKG.submit_registration</code> — required documents present, national ID rule, no duplicate pending request. An approval instance is opened.</p>
+        <div class="node-meta">
+          <span class="chip chip--status">SUBMITTED</span>
+          <span class="chip chip--table">DCT_APPROVAL_INSTANCES</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span></div>
+
+    <div class="gate">
+      <div class="gate-card">
+        <span class="gate-diamond"></span>
+        <div class="gate-title">Registration Approval &nbsp;<span class="tmpl">FL_REGISTRATION_APPROVAL</span></div>
+        <p class="gate-steps">Step 1 — <b>FL_MANAGER</b> <span class="cond">ALWAYS</span> &nbsp;→&nbsp; Step 2 — <b>FL_ADMIN</b> <span class="cond">ALWAYS</span></p>
+        <div class="gate-out">
+          <span class="chip chip--ok">APPROVED ↓</span>
+          <span class="chip" style="color:var(--vault-red);border-color:rgba(248,81,73,.45)">REJECTED →</span>
+          <span class="chip chip--actor">RETURNED ↺</span>
+        </div>
+      </div>
+      <div class="side-note">
+        <div class="sn-title">REJECTED / RETURNED</div>
+        <b>Rejected</b> — request closed with reviewer comments.<br>
+        <span class="ret"><b>Returned</b></span> — back to requester for correction; may be re-submitted from <b>RETURNED</b> status.
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label"><b>APPROVED</b> · auto-trigger</span></div>
+
+    <div class="step step--solo">
+      <div class="node node--auto">
+        <div class="node-top"><span class="node-step">AUTO</span><span class="node-title">Freelancer Profile Created</span></div>
+        <p class="node-desc"><code>DCT_FL_PKG.create_freelancer_profile</code> fires on final approval — creates the freelancer master record with auto-generated <strong>vendor number</strong> (FL-VND-{n}), copies bank accounts, links person-level documents, and enables portal login by email.</p>
+        <div class="node-meta">
+          <span class="chip chip--sys">SYSTEM</span>
+          <span class="chip chip--status">ACTIVE</span>
+          <span class="chip chip--table">DCT_FL_FREELANCERS · DCT_FL_BANK_ACCOUNTS</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PHASE 2 ================= -->
+<section class="phase">
+  <div class="phase-head">
+    <span class="phase-num">PHASE 02</span>
+    <span class="phase-title">Contracting</span>
+    <span class="phase-rule"></span>
+    <span class="phase-tag">DCT_FL_CONTRACTS</span>
+  </div>
+
+  <div class="flow">
+    <div class="step step--solo">
+      <div class="node">
+        <div class="node-top"><span class="node-step">03</span><span class="node-title">Contract Drafted</span></div>
+        <p class="node-desc">FL Admin drafts the engagement: dates, <strong>total amount (AED)</strong>, billing method — <code>WEEKLY</code> / <code>MONTHLY</code> / <code>PER_COUNT</code> — and budget coding (<strong>GL combination or Project / Task / Expenditure Type</strong>).</p>
+        <div class="node-meta">
+          <span class="chip chip--actor">FL_ADMIN</span>
+          <span class="chip chip--status">DRAFT</span>
+          <span class="chip chip--table">CODING: GL / PROJECT</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label">submit · expired-document check</span></div>
+
+    <div class="gate">
+      <div class="gate-card">
+        <span class="gate-diamond"></span>
+        <div class="gate-title">Contract Approval &nbsp;<span class="tmpl">FL_CONTRACT_APPROVAL</span></div>
+        <p class="gate-steps">Step 1 — <b>FL_MANAGER</b> <span class="cond">ALWAYS</span> &nbsp;→&nbsp; Step 2 — <b>FL_ADMIN</b> <span class="cond">AMOUNT ≥ 50,000 AED</span></p>
+        <div class="gate-out">
+          <span class="chip chip--ok">APPROVED ↓</span>
+          <span class="chip" style="color:var(--vault-red);border-color:rgba(248,81,73,.45)">CANCELLED →</span>
+          <span class="chip chip--actor">RETURNED → DRAFT ↺</span>
+        </div>
+      </div>
+      <div class="side-note">
+        <div class="sn-title">BLOCKED?</div>
+        Submission is <b>blocked</b> if the freelancer holds expired documents (<b>BLOCK_CONTRACT_ON_EXPIRED_DOC = Y</b>) — renew documents first.
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label"><b>APPROVED → ACTIVE</b> · auto-trigger</span></div>
+
+    <div class="step step--solo">
+      <div class="node node--auto">
+        <div class="node-top"><span class="node-step">AUTO</span><span class="node-title">Payment Schedule Generated</span></div>
+        <p class="node-desc"><code>DCT_FL_PKG.generate_payment_schedule</code> builds the payment plan on activation — one row per calendar month or ISO week; <code>PER_COUNT</code> rows are added per accepted unit of work. Schedule total is capped at the contract amount.</p>
+        <div class="node-meta">
+          <span class="chip chip--sys">SYSTEM</span>
+          <span class="chip chip--status">PENDING × n</span>
+          <span class="chip chip--table">DCT_FL_PAYMENT_SCHEDULE</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PHASE 3 ================= -->
+<section class="phase">
+  <div class="phase-head">
+    <span class="phase-num">PHASE 03</span>
+    <span class="phase-title">Execution &amp; Delivery</span>
+    <span class="phase-rule"></span>
+    <span class="phase-tag">DCT_FL_DELIVERABLES</span>
+  </div>
+
+  <div class="flow">
+    <div class="step step--solo">
+      <div class="node">
+        <div class="node-top"><span class="node-step">04</span><span class="node-title">Work Delivered</span></div>
+        <p class="node-desc">Freelancer submits deliverables through the self-service portal — title, quantity, units and supporting files — optionally linked to the payment period they justify.</p>
+        <div class="node-meta">
+          <span class="chip chip--actor">FREELANCER</span>
+          <span class="chip chip--status">SUBMITTED</span>
+          <span class="chip chip--table">DOCS: source_type = DELIVERABLE</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label">review</span></div>
+
+    <div class="gate">
+      <div class="gate-card">
+        <span class="gate-diamond"></span>
+        <div class="gate-title">Deliverable Acceptance</div>
+        <p class="gate-steps">Reviewed by <b>FL_MANAGER / FL_ADMIN</b> — accept or reject with reason.</p>
+        <div class="gate-out">
+          <span class="chip chip--ok">ACCEPTED ↓</span>
+          <span class="chip" style="color:var(--vault-red);border-color:rgba(248,81,73,.45)">REJECTED →</span>
+        </div>
+      </div>
+      <div class="side-note">
+        <div class="sn-title">VOUCHER GATE</div>
+        When <b>VOUCHER_REQUIRE_ACCEPTED_DELIVERABLE = Y</b>, a payment voucher cannot be submitted for a period without an <b>ACCEPTED</b> deliverable.
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PHASE 4 ================= -->
+<section class="phase">
+  <div class="phase-head">
+    <span class="phase-num">PHASE 04</span>
+    <span class="phase-title">Payment &amp; Settlement</span>
+    <span class="phase-rule"></span>
+    <span class="phase-tag">DCT_FL_PAYMENT_VOUCHERS</span>
+  </div>
+
+  <div class="flow">
+    <div class="step step--solo">
+      <div class="node">
+        <div class="node-top"><span class="node-step">05</span><span class="node-title">Payment Voucher Generated</span></div>
+        <p class="node-desc">Voucher raised from a due schedule row (FL-VCH-{n}) — amount, period and budget coding <strong>inherited from the contract</strong>; invoice number &amp; date captured (mandatory per setting). Schedule row moves to <code>VOUCHER_GENERATED</code>.</p>
+        <div class="node-meta">
+          <span class="chip chip--actor">FL_ADMIN</span>
+          <span class="chip chip--status">DRAFT</span>
+          <span class="chip chip--table">1 voucher per schedule row · Σ ≤ contract total</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label">submit · contract must be ACTIVE</span></div>
+
+    <div class="gate">
+      <div class="gate-card">
+        <span class="gate-diamond"></span>
+        <div class="gate-title">Voucher Approval &nbsp;<span class="tmpl">FL_VOUCHER_APPROVAL</span></div>
+        <p class="gate-steps">Step 1 — <b>FL_MANAGER</b> <span class="cond">ALWAYS</span> &nbsp;→&nbsp; Step 2 — <b>FL_ADMIN</b> <span class="cond">AMOUNT ≥ THRESHOLD</span></p>
+        <div class="gate-out">
+          <span class="chip chip--ok">APPROVED ↓</span>
+          <span class="chip" style="color:var(--vault-red);border-color:rgba(248,81,73,.45)">REJECTED →</span>
+          <span class="chip chip--actor">RETURNED → DRAFT ↺</span>
+        </div>
+      </div>
+      <div class="side-note">
+        <div class="sn-title">REJECTED</div>
+        Voucher closed; the schedule row reverts to <b>PENDING</b> and a new voucher may be raised after correction.
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label"><b>APPROVED</b> · post_to_fusion = Y</span></div>
+
+    <div class="step step--solo">
+      <div class="node node--auto">
+        <div class="node-top"><span class="node-step">AUTO</span><span class="node-title">Pushed to Oracle Fusion Payables</span></div>
+        <p class="node-desc"><code>DCT_FL_PKG.push_to_fusion</code> creates the Payables invoice in Oracle Fusion ERP — payment method, pay group and bank account (IBAN) travel with it. Voucher awaits the payment run.</p>
+        <div class="node-meta">
+          <span class="chip chip--sys">SYSTEM → FUSION ERP</span>
+          <span class="chip chip--status">payment_status: PENDING</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="link"><span class="link-line"></span><span class="link-label">Fusion payment-run callback</span></div>
+
+    <div class="step step--solo">
+      <div class="node node--terminal">
+        <div class="node-top"><span class="node-step">PAID</span><span class="node-title">Payment Settled</span></div>
+        <p class="node-desc"><code>DCT_FL_PKG.receive_fusion_callback</code> records the bank reference and payment date — voucher <strong>payment_status → PAID</strong>, the linked schedule row → <strong>PAID</strong>, and the freelancer is notified. When every period is settled the contract can be closed as <code>COMPLETED</code>.</p>
+        <div class="node-meta">
+          <span class="chip chip--sys">FUSION CALLBACK</span>
+          <span class="chip chip--ok">PAID ✓</span>
+          <span class="chip chip--table">payment_reference · payment_date</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ================= PARALLEL PROCESSES ================= -->
+<section class="parallel">
+  <h2>Running Alongside the Main Flow</h2>
+  <p class="p-sub">Supporting processes that can fire at any point of an active engagement — each with its own approval template.</p>
+  <div class="p-grid">
+    <div class="p-card">
+      <span class="p-icon">↻ AMENDMENT / RENEWAL</span>
+      <h3>Contract Changes</h3>
+      <p>Amendments rebuild the schedule — <code>rebuild_payment_schedule</code> preserves PAID rows and regenerates unpaid periods. Renewals spawn a successor contract and complete the original.</p>
+    </div>
+    <div class="p-card">
+      <span class="p-icon">⏰ DAILY SWEEP</span>
+      <h3>Document Expiry Alerts</h3>
+      <p><code>send_expiry_alerts</code> runs daily — flags documents as EXPIRING_SOON / EXPIRED and can block new contracts or vouchers until IDs and visas are renewed.</p>
+    </div>
+    <div class="p-card">
+      <span class="p-icon">⚙ SELF-SERVICE</span>
+      <h3>Profile Change Requests</h3>
+      <p>Freelancers request bank / email / phone changes via the portal; applied by <code>apply_profile_change</code> after FL_ADMIN approval — bank changes never bypass review.</p>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <span>i-FINANCE · FREELANCERS MODULE (APP 203)</span>
+  <span>SOURCE: final apps/FL/docs/BRD.md · DCT_FL_PKG / DCT_FL_WF_PKG</span>
+</footer>
+
+</div>
+</body>
+</html>

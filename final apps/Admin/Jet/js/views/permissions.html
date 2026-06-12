@@ -44,7 +44,7 @@
         <thead>
           <tr>
             <th class="rm-matrix-th-perm">Permission</th>
-            <!-- ko foreach: $root.roles() -->
+            <!-- ko foreach: $vm.roles() -->
             <th class="rm-matrix-th-role">
               <div class="rm-role-col-head">
                 <span class="rm-role-col-code" data-bind="text: roleCode"></span>
@@ -55,17 +55,17 @@
           </tr>
         </thead>
         <tbody>
-          <!-- ko foreach: $root.getPermsByModule($data) -->
+          <!-- ko foreach: $vm.getPermsByModule($data) -->
           <tr class="rm-matrix-row">
             <td class="rm-matrix-perm-cell">
               <div class="rm-perm-name" data-bind="text: permName"></div>
               <code class="rm-perm-code" data-bind="text: permCode"></code>
             </td>
-            <!-- ko foreach: $root.roles() -->
+            <!-- ko foreach: $vm.roles() -->
             <td class="rm-matrix-toggle-cell">
               <div class="rm-toggle-wrap"
-                   data-bind="click: function() { $root.togglePerm($parent, $data); },
-                              css: { 'rm-toggle--on': $root.hasPerm($parent, $data) }">
+                   data-bind="click: function() { $vm.togglePerm($parent, $data); },
+                              css: { 'rm-toggle--on': $vm.hasPerm($parent, $data) }">
                 <span class="rm-toggle-dot"></span>
               </div>
             </td>

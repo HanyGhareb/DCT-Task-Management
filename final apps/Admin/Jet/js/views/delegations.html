@@ -1,0 +1,55 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('del.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('del.subtitle')"></div>
+  </div>
+
+  <div class="view-toolbar">
+    <select class="form-control" style="width:180px;padding:8px 10px" data-bind="value: statusFilter">
+      <option value="">All statuses</option>
+      <option value="ACTIVE">Active</option>
+      <option value="CANCELLED">Cancelled</option>
+      <option value="EXPIRED">Expired</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load delegations</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && filtered().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#129309;</div>
+    <div class="empty-state__msg">No delegations in this view</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && filtered().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Delegator</th><th>Delegate</th><th>Scope</th><th>From</th><th>Until</th><th>Reason</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: filtered -->
+        <tr>
+          <td style="font-weight:600" data-bind="text: $data.delegatorName"></td>
+          <td data-bind="text: $data.delegateName"></td>
+          <td><span class="badge badge--info" style="font-size:10px" data-bind="text: $vm.scopeLabel($data)"></span></td>
+          <td class="mono" data-bind="text: $data.startDate"></td>
+          <td class="mono" data-bind="text: $data.endDate"></td>
+          <td style="font-size:12px;color:var(--text-2)" data-bind="text: $data.reason || '—'"></td>
+          <td><span data-bind="text: $data.status, css: $vm.statusBadge($data.status)"></span></td>
+          <td>
+            <!-- ko if: $data.status === 'ACTIVE' -->
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: $vm.cancel.bind($vm, $data), enable: !$vm.busy()">Cancel</button>
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+</div>

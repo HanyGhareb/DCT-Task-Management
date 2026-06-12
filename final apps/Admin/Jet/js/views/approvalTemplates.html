@@ -16,7 +16,7 @@
     <div style="background:#fff;border-radius:12px;padding:28px;max-width:520px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:80vh;overflow-y:auto">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
         <h3 data-bind="text: templateName"></h3>
-        <button class="btn btn-secondary btn-sm" data-bind="click: $root.closeDetail">&#10005;</button>
+        <button class="btn btn-secondary btn-sm" data-bind="click: $vm.closeDetail">&#10005;</button>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <span class="badge badge--admin" data-bind="text: templateCode"></span>
@@ -36,6 +36,7 @@
         </div>
       </div>
       <!-- /ko -->
+      <audit-info params="data: $data"></audit-info>
     </div>
   </div>
   <!-- /ko -->

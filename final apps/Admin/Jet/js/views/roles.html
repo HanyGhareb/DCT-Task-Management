@@ -56,11 +56,11 @@
           <td>
             <code class="rm-code-badge" data-bind="text: roleCode"></code>
           </td>
-          <td class="rm-cell-desc" data-bind="text: description || '&mdash;'"></td>
+          <td class="rm-cell-desc" data-bind="text: $data.description || '&mdash;'"></td>
           <td>
             <span class="rm-member-pill">
               <span class="rm-member-dot"></span>
-              <span data-bind="text: (memberCount || 0)"></span>
+              <span data-bind="text: ($data.memberCount || 0)"></span>
             </span>
           </td>
           <td>

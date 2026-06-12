@@ -18,7 +18,22 @@ define(['services/api'], function (api) {
   return {
 
     getAll: function () {
-      return api.get('/orgs/').then(function (r) { return r.items || []; });
+      return api.get('/orgs/').then(function (r) {
+        return (r.items || []).map(function (o) {
+          /* APEX_JSON omits NULL keys — root nodes arrive WITHOUT parentOrgId,
+             and undefined !== null broke buildTree (empty tree). Normalise. */
+          if (o.parentOrgId === undefined) o.parentOrgId = null;
+          return o;
+        });
+      });
+    },
+
+    create: function (data) {
+      return api.post('/orgs/', data);
+    },
+
+    update: function (id, data) {
+      return api.put('/orgs/' + id, data);
     },
 
     getTree: function () {

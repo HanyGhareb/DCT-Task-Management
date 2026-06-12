@@ -30,10 +30,13 @@ function (api) {
 
     logout: function () {
       var token = this.getToken();
-      localStorage.removeItem(SESSION_KEY);
       if (token) {
-        api.post('/auth/logout').catch(function () {});
+        /* Close the server session BEFORE dropping the local token (the call
+           needs the Bearer header) — with an empty JSON body (ORDS 400s a
+           bodyless POST) and silent (a failed logout must never toast). */
+        api.post('/auth/logout', {}, { silent: true }).catch(function () {});
       }
+      localStorage.removeItem(SESSION_KEY);
     },
 
     getToken: function () {

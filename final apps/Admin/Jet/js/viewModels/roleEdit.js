@@ -17,6 +17,7 @@ define(['knockout', 'services/roleService'], function (ko, roleService) {
     self.errors      = ko.observable({});
     self.successMsg  = ko.observable('');
     self.saving      = ko.observable(false);
+    self.audit       = ko.observable(null);   // createdBy/At, updatedBy/At
 
     function loadData() {
       var existingP      = self.isNew ? Promise.resolve(null) : roleService.getById(editId);
@@ -30,6 +31,7 @@ define(['knockout', 'services/roleService'], function (ko, roleService) {
           var currentIds    = results[2];
 
           if (existing) {
+            self.audit(existing);
             self.roleCode(existing.roleCode || '');
             self.roleName(existing.roleName || '');
             self.description(existing.description || '');

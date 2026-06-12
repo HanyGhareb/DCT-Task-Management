@@ -1,0 +1,97 @@
+<div class="page-wrap" style="max-width:1000px">
+  <div class="page-header">
+    <div class="page-title">Event P&amp;L Statement</div>
+    <div class="page-subtitle">Confirmed lines only — budget vs actual with variance</div>
+    <div style="margin-inline-start:auto; display:flex; gap:8px">
+      <button class="btn btn-secondary" data-bind="click: exportCsv, disable: !event()">Export CSV</button>
+      <button class="btn btn-secondary" data-bind="click: print, disable: !event()">Print</button>
+    </div>
+  </div>
+
+  <div class="view-toolbar">
+    <select class="form-control" style="width:320px"
+            data-bind="options: events, optionsText: function(e){ return e.eventCode + ' — ' + e.nameEn; },
+                       optionsValue: 'eventId', optionsCaption: '— select event —', value: selectedEvent"></select>
+  </div>
+
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 8"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko if: event() && !loading() -->
+  <div class="form-card">
+    <div style="display:flex; gap:30px; flex-wrap:wrap; font-size:13px; margin-bottom:14px">
+      <div><b data-bind="text: event().eventCode"></b> — <span data-bind="text: event().nameEn"></span></div>
+      <div>Organizer: <b data-bind="text: event().organizer || '—'"></b></div>
+      <div>Venue: <b data-bind="text: event().venue || '—'"></b></div>
+      <div>Date: <b class="mono" data-bind="text: event().startDate || '—'"></b></div>
+      <div data-bind="visible: event().revSharePct">DCT Share: <b data-bind="text: event().revSharePct + '%'"></b></div>
+    </div>
+
+    <h3 data-bind="text: t('ar.revenue')"></h3>
+    <table class="data-table">
+      <thead><tr><th>Category</th><th>Budget (AED)</th><th>Actual (AED)</th><th>Variance</th></tr></thead>
+      <tbody>
+        <!-- ko foreach: revenueRows() -->
+        <tr>
+          <td data-bind="text: name"></td>
+          <td class="mono" data-bind="text: $parent.fmt(budget)"></td>
+          <td class="mono" data-bind="text: $parent.fmt(actual)"></td>
+          <td class="mono" data-bind="text: $parent.fmt(variance), css: { 'ar-neg': variance < 0 }"></td>
+        </tr>
+        <!-- /ko -->
+        <tr style="font-weight:700; background:#fafbfd">
+          <td>Total Revenue</td>
+          <td class="mono" data-bind="text: fmt(totals().revB)"></td>
+          <td class="mono" data-bind="text: fmt(totals().revA)"></td>
+          <td class="mono" data-bind="text: fmt(totals().revA - totals().revB)"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h3 style="margin-top:22px" data-bind="text: t('ar.expense')"></h3>
+    <table class="data-table">
+      <thead><tr><th>Category</th><th>Budget (AED)</th><th>Actual (AED)</th><th>Variance</th></tr></thead>
+      <tbody>
+        <!-- ko foreach: expenseRows() -->
+        <tr>
+          <td data-bind="text: name"></td>
+          <td class="mono" data-bind="text: $parent.fmt(budget)"></td>
+          <td class="mono" data-bind="text: $parent.fmt(actual)"></td>
+          <td class="mono" data-bind="text: $parent.fmt(variance), css: { 'ar-neg': variance > 0 }"></td>
+        </tr>
+        <!-- /ko -->
+        <tr style="font-weight:700; background:#fafbfd">
+          <td>Total Expense</td>
+          <td class="mono" data-bind="text: fmt(totals().expB)"></td>
+          <td class="mono" data-bind="text: fmt(totals().expA)"></td>
+          <td class="mono" data-bind="text: fmt(totals().expA - totals().expB)"></td>
+        </tr>
+        <tr style="font-weight:800; background:var(--brand-soft)">
+          <td data-bind="text: t('ar.net')"></td>
+          <td class="mono" data-bind="text: fmt(totals().netB)"></td>
+          <td class="mono" data-bind="text: fmt(totals().netA), css: { 'ar-neg': totals().netA < 0 }"></td>
+          <td class="mono" data-bind="text: fmt(totals().netA - totals().netB)"></td>
+        </tr>
+      </tbody>
+    </table>
+
+    <!-- ko if: findings().length > 0 -->
+    <h3 style="margin-top:22px" data-bind="text: t('ar.findings')"></h3>
+    <table class="data-table">
+      <thead><tr><th>#</th><th>Finding</th><th>Recommendation</th><th>Potential Loss (AED)</th></tr></thead>
+      <tbody>
+        <!-- ko foreach: findings() -->
+        <tr>
+          <td class="mono" data-bind="text: seq"></td>
+          <td data-bind="text: title"></td>
+          <td style="font-size:12px" data-bind="text: recommendation || '—'"></td>
+          <td class="mono ar-neg" data-bind="text: potentialLoss ? $parent.fmt(potentialLoss) : '—'"></td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>

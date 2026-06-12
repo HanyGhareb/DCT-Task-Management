@@ -21,7 +21,7 @@
     <div class="switch-row">
       <div style="flex:1">
         <div style="font-size:13px;font-weight:600;font-family:monospace" data-bind="text: settingKey"></div>
-        <div style="font-size:12px;color:#aaa;margin-top:2px" data-bind="text: description"></div>
+        <div style="font-size:12px;color:#aaa;margin-top:2px" data-bind="text: $data.description || ''"></div>
         <div style="font-size:11px;color:#bbb;margin-top:2px">
           <span data-bind="text: $root.t('sys.lastUpdated')"></span> <span data-bind="text: $data.updatedAt || ''"></span> · <span data-bind="text: $data.updatedBy || ''"></span>
         </div>

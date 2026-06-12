@@ -1,0 +1,44 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('dash.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('dash.subtitle')"></div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 3"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div class="stats-row" style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:20px">
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800" data-bind="text: stats().activeFreelancers || 0"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.activeFreelancers')"></div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800" data-bind="text: stats().activeContracts || 0"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.activeContracts')"></div>
+      <div class="mono" style="font-size:11px;color:var(--text-3)" data-bind="text: 'AED ' + (stats().contractsTotal || 0).toLocaleString()"></div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800" data-bind="text: stats().vouchersPending || 0"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.vouchersPending')"></div>
+      <div class="mono" style="font-size:11px;color:var(--text-3)" data-bind="text: 'AED ' + (stats().vouchersPendingAmt || 0).toLocaleString()"></div>
+    </div>
+    <div class="card stat-card">
+      <div style="font-size:26px;font-weight:800;color:var(--amber)" data-bind="text: stats().docsExpiring || 0"></div>
+      <div style="font-size:12px;color:var(--text-2)" data-bind="text: $root.t('dash.docsExpiring')"></div>
+    </div>
+  </div>
+
+  <div class="charts-row" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+    <div class="card chart-card">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('dash.chartSpend')"></div>
+      <div style="height:240px;position:relative"><canvas id="flChart1"></canvas></div>
+    </div>
+    <div class="card chart-card">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('dash.chartExpiry')"></div>
+      <div style="height:240px;position:relative"><canvas id="flChart2"></canvas></div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

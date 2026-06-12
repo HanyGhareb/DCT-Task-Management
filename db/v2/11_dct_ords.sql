@@ -161,6 +161,21 @@ CREATE OR REPLACE SYNONYM dct_audit_log         FOR prod.dct_audit_log;
 CREATE OR REPLACE SYNONYM dct_user_preferences  FOR prod.dct_user_preferences;
 CREATE OR REPLACE SYNONYM dct_approval_instances FOR prod.dct_approval_instances;
 CREATE OR REPLACE SYNONYM dct_approval_templates FOR prod.dct_approval_templates;
+CREATE OR REPLACE SYNONYM dct_approval_steps     FOR prod.dct_approval_steps;
+CREATE OR REPLACE SYNONYM dct_approval_actions   FOR prod.dct_approval_actions;
+-- Unified approvals inbox reads/updates PC + DT sources (UAT 2026-06-11)
+CREATE OR REPLACE SYNONYM dct_petty_cash            FOR prod.dct_petty_cash;
+CREATE OR REPLACE SYNONYM dct_pc_reimbursements     FOR prod.dct_pc_reimbursements;
+CREATE OR REPLACE SYNONYM dct_pc_clearing           FOR prod.dct_pc_clearing;
+CREATE OR REPLACE SYNONYM dt_requests               FOR prod.dt_requests;
+CREATE OR REPLACE SYNONYM dt_settlement             FOR prod.dt_settlement;
+CREATE OR REPLACE SYNONYM dct_request_status_history FOR prod.dct_request_status_history;
+CREATE OR REPLACE SYNONYM dct_notify                FOR prod.dct_notify;
+-- Phase 4: unified inbox covers FL + CC; delegations + announcements endpoints
+-- (dct_fl_* / dct_cc_* synonyms are created by the FL/CC ORDS scripts; the
+--  ones below are the Admin-only additions)
+CREATE OR REPLACE SYNONYM dct_delegations           FOR prod.dct_delegations;
+CREATE OR REPLACE SYNONYM dct_announcements         FOR prod.dct_announcements;
 
 -- =============================================================================
 -- 4. Define ORDS module + all templates + handlers
@@ -340,7 +355,12 @@ BEGIN
            o.org_name_en AS org_name, u.color_hex, u.is_active,
            u.is_external, u.auth_method, u.last_login_at,
            u.created_at,
-           dct_auth.get_user_roles(u.username) AS roles_csv
+           dct_auth.get_user_roles(u.username) AS roles_csv,
+           (SELECT LISTAGG(r2.role_name_en, ',') WITHIN GROUP (ORDER BY r2.role_name_en)
+            FROM   dct_user_roles ur2
+            JOIN   dct_roles r2 ON r2.role_id = ur2.role_id
+            WHERE  ur2.user_id = u.user_id AND ur2.is_active = 'Y'
+              AND (ur2.end_date IS NULL OR ur2.end_date >= SYSDATE)) AS role_names_csv
     FROM   dct_users u
     LEFT JOIN dct_organizations o ON u.org_id = o.org_id
     WHERE (l_status IS NULL OR u.is_active = l_status)
@@ -366,6 +386,7 @@ BEGIN
     APEX_JSON.write('isExternal',     r.is_external);
     APEX_JSON.write('authMethod',     r.auth_method);
     APEX_JSON.write('rolesCsv',       r.roles_csv);
+    APEX_JSON.write('roleNamesCsv',   r.role_names_csv);
     APEX_JSON.write('lastLoginAt',    TO_CHAR(r.last_login_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('createdAt',      TO_CHAR(r.created_at,'YYYY-MM-DD'));
     APEX_JSON.close_object;
@@ -387,6 +408,10 @@ BEGIN
   dct_rest.parse_body([COLON]body);
   l_uname := UPPER(TRIM(APEX_JSON.get_varchar2(p_path => 'username')));
   l_pass  := APEX_JSON.get_varchar2(p_path => 'password');
+
+  IF l_pass IS NOT NULL AND LENGTH(l_pass) < 8 THEN
+    dct_rest.err(400,'Password must be at least 8 characters'); RETURN;
+  END IF;
 
   INSERT INTO dct_users (
     username, display_name, display_name_ar, email, mobile,
@@ -426,7 +451,10 @@ BEGIN
   APEX_JSON.write('userId', l_uid);
   APEX_JSON.write('ok', TRUE);
   APEX_JSON.close_object;
-EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+EXCEPTION
+  WHEN DUP_VAL_ON_INDEX THEN
+    ROLLBACK; dct_rest.err(409, 'Username or email already exists');
+  WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 
@@ -465,6 +493,10 @@ BEGIN
   APEX_JSON.write('isExternal',     l_rec.is_external);
   APEX_JSON.write('authMethod',     l_rec.auth_method);
   APEX_JSON.write('rolesCsv',       dct_auth.get_user_roles(l_rec.username));
+  APEX_JSON.write('createdBy',      l_rec.created_by);
+  APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(l_rec.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+  APEX_JSON.write('updatedBy',      l_rec.updated_by);
+  APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(l_rec.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -512,7 +544,10 @@ BEGIN
 
   -- Sync role assignments: remove all, re-insert selected
   IF APEX_JSON.get_count(p_path => 'roles') >= 0 THEN
-    UPDATE dct_user_roles SET is_active = 'N', end_date = TRUNC(SYSDATE)
+    -- GREATEST keeps end_date >= start_date (chk_dct_ur_dates): start_date
+    -- defaults to SYSDATE with time, so a midnight end_date violates it for
+    -- roles assigned the same day.
+    UPDATE dct_user_roles SET is_active = 'N', end_date = GREATEST(SYSDATE, start_date)
     WHERE  user_id = l_uid AND is_active = 'Y';
 
     FOR i IN 1 .. APEX_JSON.get_count(p_path => 'roles') LOOP
@@ -703,6 +738,10 @@ BEGIN
   APEX_JSON.write('description', l_rec.description_en);
   APEX_JSON.write('isActive',    l_rec.is_active);
   APEX_JSON.write('isSystemRole',l_rec.is_system_role);
+  APEX_JSON.write('createdBy',   l_rec.created_by);
+  APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(l_rec.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+  APEX_JSON.write('updatedBy',   l_rec.updated_by);
+  APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(l_rec.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
   -- Permission IDs assigned to this role
   APEX_JSON.open_array('permIds');
   FOR p IN (SELECT permission_id FROM dct_role_permissions WHERE role_id = [COLON]id) LOOP
@@ -819,7 +858,8 @@ BEGIN
     SELECT module_id, module_code, module_name_en, module_name_ar,
            module_type, apex_app_id, apex_page_id, app_url,
            icon_class, icon_color, bg_color, category,
-           description_en, is_active, is_admin_only, display_order
+           description_en, is_active, is_admin_only, display_order,
+           created_by, created_at, updated_by, updated_at
     FROM   dct_modules
     ORDER BY display_order, module_name_en
   ) LOOP
@@ -839,6 +879,10 @@ BEGIN
     APEX_JSON.write('description', r.description_en);
     APEX_JSON.write('isActive',    r.is_active);
     APEX_JSON.write('isAdminOnly', r.is_admin_only);
+    APEX_JSON.write('createdBy',   r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedBy',   r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -888,6 +932,7 @@ BEGIN
     SELECT o.org_id, o.org_code, o.org_name_en, o.org_name_ar,
            o.org_type, o.parent_org_id, o.level_no, o.full_path,
            o.is_active, o.display_order,
+           o.created_by, o.created_at, o.updated_by, o.updated_at,
            u.display_name AS head_name
     FROM   dct_organizations o
     LEFT JOIN dct_users u ON o.head_user_id = u.user_id
@@ -904,6 +949,10 @@ BEGIN
     APEX_JSON.write('fullPath',    r.full_path);
     APEX_JSON.write('isActive',    r.is_active);
     APEX_JSON.write('headName',    r.head_name);
+    APEX_JSON.write('createdBy',   r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedBy',   r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -912,10 +961,89 @@ EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    def_handler('orgs/', 'POST', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_parent NUMBER;
+  l_level  NUMBER := 1;
+  l_path   VARCHAR2(900);
+  l_name   VARCHAR2(200);
+  l_id     NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_parent := APEX_JSON.get_number(p_path => 'parentOrgId');
+  l_name   := APEX_JSON.get_varchar2(p_path => 'nameEn');
+  IF l_name IS NULL THEN dct_rest.err(400,'nameEn is required'); RETURN; END IF;
+  IF l_parent IS NOT NULL THEN
+    SELECT level_no + 1, full_path || ' > ' || l_name
+    INTO   l_level, l_path
+    FROM   dct_organizations WHERE org_id = l_parent;
+  ELSE
+    l_path := l_name;
+  END IF;
+  INSERT INTO dct_organizations (
+    org_code, org_name_en, org_name_ar, org_type, parent_org_id,
+    level_no, full_path, is_active, created_by)
+  VALUES (
+    UPPER(TRIM(APEX_JSON.get_varchar2(p_path => 'orgCode'))),
+    l_name,
+    APEX_JSON.get_varchar2(p_path => 'nameAr'),
+    NVL(APEX_JSON.get_varchar2(p_path => 'orgType'), 'SECTION'),
+    l_parent, l_level, l_path,
+    NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), 'Y'),
+    l_user
+  ) RETURNING org_id INTO l_id;
+  COMMIT;
+  OWA_UTIL.status_line(201, NULL, FALSE);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('orgId', l_id);
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN DUP_VAL_ON_INDEX THEN ROLLBACK; dct_rest.err(409,'Organisation code already exists');
+  WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('orgs/[COLON]id');
+    def_handler('orgs/[COLON]id', 'PUT', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  UPDATE dct_organizations SET
+    org_name_en   = NVL(APEX_JSON.get_varchar2(p_path => 'nameEn'), org_name_en),
+    org_name_ar   = CASE WHEN APEX_JSON.does_exist(p_path => 'nameAr')
+                         THEN APEX_JSON.get_varchar2(p_path => 'nameAr')
+                         ELSE org_name_ar END,
+    org_type      = NVL(APEX_JSON.get_varchar2(p_path => 'orgType'), org_type),
+    parent_org_id = CASE WHEN APEX_JSON.does_exist(p_path => 'parentOrgId')
+                         THEN APEX_JSON.get_number(p_path => 'parentOrgId')
+                         ELSE parent_org_id END,
+    is_active     = NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), is_active),
+    updated_by    = l_user, updated_at = SYSTIMESTAMP
+  WHERE org_id = [COLON]id;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
     -- =========================================================================
     -- LOOKUPS
     -- =========================================================================
     def_template('lookups/');
+    -- Columns fixed post-UAT 2026-06-11: real tables use category_name_en /
+    -- value_code / value_name_en / display_order (the old name_en /
+    -- lookup_code / display_value_en / sort_order never existed -> HTTP 555)
     def_handler('lookups/', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
@@ -925,26 +1053,31 @@ BEGIN
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
-  FOR c IN (SELECT category_id, category_code, name_en, name_ar, is_active
-            FROM dct_lookup_categories ORDER BY name_en) LOOP
+  FOR c IN (SELECT category_id, category_code, category_name_en, category_name_ar, is_active
+            FROM dct_lookup_categories ORDER BY category_name_en) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('categoryId',   c.category_id);
     APEX_JSON.write('categoryCode', c.category_code);
-    APEX_JSON.write('nameEn',       c.name_en);
-    APEX_JSON.write('nameAr',       c.name_ar);
+    APEX_JSON.write('nameEn',       c.category_name_en);
+    APEX_JSON.write('nameAr',       c.category_name_ar);
     APEX_JSON.write('isActive',     c.is_active);
     APEX_JSON.open_array('values');
-    FOR v IN (SELECT value_id, lookup_code, display_value_en, display_value_ar,
-                     sort_order, is_active
+    FOR v IN (SELECT value_id, value_code, value_name_en, value_name_ar,
+                     display_order, is_active,
+                     created_by, created_at, updated_by, updated_at
               FROM dct_lookup_values
-              WHERE category_id = c.category_id ORDER BY sort_order, display_value_en) LOOP
+              WHERE category_id = c.category_id ORDER BY display_order, value_name_en) LOOP
       APEX_JSON.open_object;
       APEX_JSON.write('valueId',      v.value_id);
-      APEX_JSON.write('lookupCode',   v.lookup_code);
-      APEX_JSON.write('displayValue', v.display_value_en);
-      APEX_JSON.write('displayAr',    v.display_value_ar);
-      APEX_JSON.write('sortOrder',    v.sort_order);
+      APEX_JSON.write('lookupCode',   v.value_code);
+      APEX_JSON.write('displayValue', v.value_name_en);
+      APEX_JSON.write('displayAr',    v.value_name_ar);
+      APEX_JSON.write('sortOrder',    v.display_order);
       APEX_JSON.write('isActive',     v.is_active);
+      APEX_JSON.write('createdBy',    v.created_by);
+      APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(v.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+      APEX_JSON.write('updatedBy',    v.updated_by);
+      APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(v.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
@@ -956,6 +1089,40 @@ EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    def_template('lookups/values');
+    def_handler('lookups/values', 'POST', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_id   NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  INSERT INTO dct_lookup_values (
+    category_id, value_code, value_name_en, value_name_ar, display_order, is_active, created_by)
+  VALUES (
+    APEX_JSON.get_number(p_path   => 'categoryId'),
+    UPPER(TRIM(APEX_JSON.get_varchar2(p_path => 'lookupCode'))),
+    APEX_JSON.get_varchar2(p_path => 'displayValue'),
+    APEX_JSON.get_varchar2(p_path => 'displayAr'),
+    NVL(APEX_JSON.get_number(p_path => 'sortOrder'),
+        (SELECT NVL(MAX(display_order),0)+10 FROM dct_lookup_values
+         WHERE category_id = APEX_JSON.get_number(p_path => 'categoryId'))),
+    'Y', l_user
+  ) RETURNING value_id INTO l_id;
+  COMMIT;
+  OWA_UTIL.status_line(201, NULL, FALSE);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('valueId', l_id);
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN DUP_VAL_ON_INDEX THEN ROLLBACK; dct_rest.err(409,'Value code already exists in this category');
+  WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
     def_template('lookups/values/[COLON]id');
     def_handler('lookups/values/[COLON]id', 'PUT', q'!
 DECLARE
@@ -964,11 +1131,14 @@ BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
   UPDATE dct_lookup_values SET
-    display_value_en = NVL(APEX_JSON.get_varchar2(p_path => 'displayValue'), display_value_en),
-    display_value_ar = APEX_JSON.get_varchar2(p_path => 'displayAr'),
-    sort_order       = NVL(APEX_JSON.get_number(p_path  => 'sortOrder'), sort_order),
-    is_active        = NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), is_active),
-    updated_at       = SYSTIMESTAMP
+    value_name_en = NVL(APEX_JSON.get_varchar2(p_path => 'displayValue'), value_name_en),
+    value_name_ar = CASE WHEN APEX_JSON.does_exist(p_path => 'displayAr')
+                         THEN APEX_JSON.get_varchar2(p_path => 'displayAr')
+                         ELSE value_name_ar END,
+    display_order = NVL(APEX_JSON.get_number(p_path  => 'sortOrder'), display_order),
+    is_active     = NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), is_active),
+    updated_at    = SYSTIMESTAMP,
+    updated_by    = l_user
   WHERE value_id = [COLON]id;
   COMMIT;
   dct_rest.json_header;
@@ -997,7 +1167,8 @@ BEGIN
   -- (handler previously referenced setting_type/is_editable/display_order
   --  which never existed -> the block failed to compile -> HTTP 555)
   FOR r IN (SELECT setting_key, setting_value, value_type, category,
-                   description_en, is_system, is_encrypted
+                   description_en, is_system, is_encrypted,
+                   created_by, created_at, updated_by, updated_at
             FROM dct_system_settings ORDER BY category, setting_key) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('key',         r.setting_key);
@@ -1013,7 +1184,14 @@ BEGIN
     APEX_JSON.write('type',        r.value_type);
     APEX_JSON.write('category',    r.category);
     APEX_JSON.write('description', r.description_en);
-    APEX_JSON.write('isEditable',  CASE r.is_system WHEN 'Y' THEN 'N' ELSE 'Y' END);
+    -- UAT 2026-06-11: the Admin console may edit every setting (incl. APP_NAME,
+    -- which is is_system='Y'); secrets stay masked and refuse the mask on PUT.
+    APEX_JSON.write('isEditable',  'Y');
+    APEX_JSON.write('isSystem',    r.is_system);
+    APEX_JSON.write('createdBy',   r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedBy',   r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1026,12 +1204,9 @@ END;
     def_handler('settings/[COLON]setkey', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
-  l_sys  VARCHAR2(1);
   l_val  VARCHAR2(4000);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  SELECT is_system INTO l_sys FROM dct_system_settings WHERE setting_key = [COLON]setkey;
-  IF l_sys = 'Y' THEN dct_rest.err(403,'Setting is read-only'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
   l_val := APEX_JSON.get_varchar2(p_path => 'value');
   -- '********' is the masked placeholder for secrets - never write it back
@@ -1103,6 +1278,472 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   UPDATE dct_notifications SET is_read = 'Y' WHERE notification_id = [COLON]id;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- APPROVALS — unified cross-module queue + monitor + templates (UAT 2026-06-11)
+    -- Source modules: PETTY_CASH / REIMBURSEMENT / CLEARING (PC) and
+    -- TRAVEL_REQUEST / SETTLEMENT (DT). Reads need the PC/DT ADMIN synonyms
+    -- (dct_petty_cash, dt_requests, ... — created by the module ORDS scripts).
+    -- =========================================================================
+    def_template('approvals/pending');
+    def_handler('approvals/pending', 'GET', q'!
+DECLARE
+  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  l_uid   NUMBER;
+  l_roles VARCHAR2(4000);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid   := dct_auth.get_user_id(l_user);
+  l_roles := ',' || dct_auth.get_user_roles(l_user) || ',';
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT ai.instance_id, ai.source_module, ai.source_record_ref,
+           ai.submitted_at, t.template_name,
+           ast.step_name, sub.display_name AS submitted_by_name,
+           (SELECT COUNT(*) FROM dct_approval_steps s2 WHERE s2.template_id = ai.template_id) AS total_steps,
+           (SELECT COUNT(*) FROM dct_approval_steps s3 WHERE s3.template_id = ai.template_id
+             AND s3.step_seq <= ai.current_step_seq) AS current_step,
+           NVL(CASE ai.source_module
+             WHEN 'PETTY_CASH'     THEN (SELECT amount       FROM dct_petty_cash       WHERE pc_id        = ai.source_record_id)
+             WHEN 'REIMBURSEMENT'  THEN (SELECT amount       FROM dct_pc_reimbursements WHERE reimb_id    = ai.source_record_id)
+             WHEN 'CLEARING'       THEN (SELECT amount_spent FROM dct_pc_clearing       WHERE clearing_id = ai.source_record_id)
+             WHEN 'TRAVEL_REQUEST' THEN (SELECT total_advance_aed FROM dt_requests      WHERE request_id  = ai.source_record_id)
+             WHEN 'SETTLEMENT'     THEN (SELECT total_actual_aed  FROM dt_settlement    WHERE settlement_id = ai.source_record_id)
+             WHEN 'FL_CONTRACT'       THEN (SELECT total_amount     FROM dct_fl_contracts           WHERE contract_id      = ai.source_record_id)
+             WHEN 'FL_AMENDMENT'      THEN (SELECT new_total_amount FROM dct_fl_contract_amendments WHERE amendment_id     = ai.source_record_id)
+             WHEN 'FL_VOUCHER'        THEN (SELECT amount           FROM dct_fl_payment_vouchers    WHERE voucher_id       = ai.source_record_id)
+             WHEN 'FL_RENEWAL'        THEN (SELECT new_total_amount FROM dct_fl_contract_renewals   WHERE renewal_id       = ai.source_record_id)
+             WHEN 'CC_REQUEST'        THEN (SELECT requested_limit  FROM dct_cc_requests            WHERE request_id       = ai.source_record_id)
+             WHEN 'CC_REPLENISHMENT'  THEN (SELECT total_amount     FROM dct_cc_replenishments      WHERE replenishment_id = ai.source_record_id)
+           END, 0) AS amount,
+           CASE WHEN INSTR(l_roles, ',' || rol.role_code || ',') > 0
+                  OR INSTR(l_roles, ',SYS_ADMIN,') > 0
+                THEN NULL
+                ELSE (SELECT MAX(du.display_name)
+                      FROM dct_delegations dg
+                      JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
+                                             AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
+                      JOIN dct_users du ON du.user_id = dg.delegator_id
+                      WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
+                        AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
+                        AND (dg.scope = 'ALL_ROLES'
+                             OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
+                             OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id)))
+           END AS acting_for
+    FROM   dct_approval_instances ai
+    JOIN   dct_approval_templates t   ON t.template_id  = ai.template_id
+    JOIN   dct_approval_steps     ast ON ast.template_id = ai.template_id
+                                     AND ast.step_seq    = ai.current_step_seq
+    JOIN   dct_roles              rol ON rol.role_id     = ast.required_role_id
+    JOIN   dct_users              sub ON sub.user_id     = ai.submitted_by
+    WHERE  ai.overall_status = 'PENDING'
+      AND (INSTR(l_roles, ',' || rol.role_code || ',') > 0
+           OR INSTR(l_roles, ',SYS_ADMIN,') > 0
+           OR EXISTS (
+                SELECT 1 FROM dct_delegations dg
+                JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
+                                       AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
+                WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
+                  AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
+                  AND (dg.scope = 'ALL_ROLES'
+                       OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
+                       OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id))))
+    ORDER BY ai.submitted_at
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('instanceId',      r.instance_id);
+    APEX_JSON.write('requestRef',      NVL(r.source_record_ref, '-'));
+    APEX_JSON.write('module',          r.source_module);
+    APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
+    APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
+    APEX_JSON.write('requestedAt',     TO_CHAR(r.submitted_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('amount',          r.amount);
+    APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
+    APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));
+    APEX_JSON.write('currentStepName', NVL(r.step_name, '-'));
+    APEX_JSON.write('actingFor',       r.acting_for);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('approvals/');
+    def_handler('approvals/', 'GET', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_status VARCHAR2(20)  := UPPER([COLON]status);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT ai.instance_id, ai.source_module, ai.source_record_ref,
+           ai.overall_status, ai.submitted_at, t.template_name,
+           sub.display_name AS submitted_by_name,
+           TRUNC(SYSDATE - CAST(ai.submitted_at AS DATE)) AS days_old,
+           (SELECT COUNT(*) FROM dct_approval_steps s2 WHERE s2.template_id = ai.template_id) AS total_steps,
+           NVL((SELECT COUNT(*) FROM dct_approval_steps s3 WHERE s3.template_id = ai.template_id
+             AND s3.step_seq <= ai.current_step_seq), 0) AS current_step,
+           NVL(CASE ai.source_module
+             WHEN 'PETTY_CASH'     THEN (SELECT amount       FROM dct_petty_cash       WHERE pc_id        = ai.source_record_id)
+             WHEN 'REIMBURSEMENT'  THEN (SELECT amount       FROM dct_pc_reimbursements WHERE reimb_id    = ai.source_record_id)
+             WHEN 'CLEARING'       THEN (SELECT amount_spent FROM dct_pc_clearing       WHERE clearing_id = ai.source_record_id)
+             WHEN 'TRAVEL_REQUEST' THEN (SELECT total_advance_aed FROM dt_requests      WHERE request_id  = ai.source_record_id)
+             WHEN 'SETTLEMENT'     THEN (SELECT total_actual_aed  FROM dt_settlement    WHERE settlement_id = ai.source_record_id)
+             WHEN 'FL_CONTRACT'       THEN (SELECT total_amount     FROM dct_fl_contracts           WHERE contract_id      = ai.source_record_id)
+             WHEN 'FL_AMENDMENT'      THEN (SELECT new_total_amount FROM dct_fl_contract_amendments WHERE amendment_id     = ai.source_record_id)
+             WHEN 'FL_VOUCHER'        THEN (SELECT amount           FROM dct_fl_payment_vouchers    WHERE voucher_id       = ai.source_record_id)
+             WHEN 'FL_RENEWAL'        THEN (SELECT new_total_amount FROM dct_fl_contract_renewals   WHERE renewal_id       = ai.source_record_id)
+             WHEN 'CC_REQUEST'        THEN (SELECT requested_limit  FROM dct_cc_requests            WHERE request_id       = ai.source_record_id)
+             WHEN 'CC_REPLENISHMENT'  THEN (SELECT total_amount     FROM dct_cc_replenishments      WHERE replenishment_id = ai.source_record_id)
+           END, 0) AS amount
+    FROM   dct_approval_instances ai
+    JOIN   dct_approval_templates t  ON t.template_id = ai.template_id
+    JOIN   dct_users              sub ON sub.user_id  = ai.submitted_by
+    WHERE (l_status IS NULL OR ai.overall_status = l_status)
+    ORDER BY ai.submitted_at DESC
+    FETCH FIRST 200 ROWS ONLY
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('instanceId',    r.instance_id);
+    APEX_JSON.write('requestRef',    NVL(r.source_record_ref, '-'));
+    APEX_JSON.write('module',        r.source_module);
+    APEX_JSON.write('templateName',  NVL(r.template_name, '-'));
+    APEX_JSON.write('requestedBy',   NVL(r.submitted_by_name, '-'));
+    APEX_JSON.write('requestedAt',   TO_CHAR(r.submitted_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('amount',        r.amount);
+    APEX_JSON.write('currentStep',   r.current_step);
+    APEX_JSON.write('totalSteps',    NVL(r.total_steps, 1));
+    APEX_JSON.write('overallStatus', r.overall_status);
+    APEX_JSON.write('daysOld',       NVL(r.days_old, 0));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('approvals/[COLON]id/action');
+    def_handler('approvals/[COLON]id/action', 'POST', q'!
+DECLARE
+  l_user     VARCHAR2(100) := dct_rest.validate_session;
+  l_iid      NUMBER        := [COLON]id;
+  l_uid      NUMBER;
+  l_action   VARCHAR2(20);
+  l_comments VARCHAR2(4000);
+  l_inst     dct_approval_instances%ROWTYPE;
+  l_step_id  NUMBER;
+  l_amount   NUMBER := 0;
+  l_next     NUMBER := NULL;
+  l_owner    NUMBER := NULL;
+
+  PROCEDURE hist(p_type VARCHAR2, p_old VARCHAR2, p_new VARCHAR2, p_cmt VARCHAR2) IS
+  BEGIN
+    INSERT INTO dct_request_status_history (
+      source_module, source_type, source_id, old_status, new_status, changed_by, comments)
+    VALUES (CASE WHEN l_inst.source_module IN ('TRAVEL_REQUEST','SETTLEMENT') THEN 'DT' ELSE 'PC' END,
+            p_type, l_inst.source_record_id, p_old, p_new, l_uid, p_cmt);
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  dct_rest.parse_body([COLON]body);
+  l_action   := UPPER(APEX_JSON.get_varchar2(p_path => 'action'));
+  l_comments := APEX_JSON.get_varchar2(p_path => 'comments');
+
+  IF l_action NOT IN ('APPROVED','REJECTED','RETURNED') THEN
+    dct_rest.err(400,'Invalid action. Use APPROVED, REJECTED, or RETURNED'); RETURN;
+  END IF;
+  IF l_comments IS NULL THEN dct_rest.err(400,'Comments are required'); RETURN; END IF;
+
+  SELECT * INTO l_inst FROM dct_approval_instances WHERE instance_id = l_iid;
+  IF l_inst.overall_status != 'PENDING' THEN
+    dct_rest.err(400,'Approval instance is not PENDING'); RETURN;
+  END IF;
+
+  -- FL and CC instances are acted on by their packages (step conditions,
+  -- final-approval callbacks, notifications and history live there)
+  IF l_inst.source_module LIKE 'FL_%' THEN
+    dct_fl_pkg.act_on_approval(l_iid, l_uid, l_action, l_comments);
+    dct_rest.json_header;
+    APEX_JSON.initialize_output;
+    APEX_JSON.open_object;
+    APEX_JSON.write('ok', TRUE); APEX_JSON.write('action', l_action);
+    APEX_JSON.close_object;
+    RETURN;
+  ELSIF l_inst.source_module LIKE 'CC_%' THEN
+    dct_cc_pkg.act_on_approval(l_iid, l_uid, l_action, l_comments);
+    dct_rest.json_header;
+    APEX_JSON.initialize_output;
+    APEX_JSON.open_object;
+    APEX_JSON.write('ok', TRUE); APEX_JSON.write('action', l_action);
+    APEX_JSON.close_object;
+    RETURN;
+  END IF;
+
+  SELECT step_id INTO l_step_id
+  FROM dct_approval_steps
+  WHERE template_id = l_inst.template_id AND step_seq = l_inst.current_step_seq;
+
+  INSERT INTO dct_approval_actions (instance_id, step_id, actioned_by, action, comments)
+  VALUES (l_iid, l_step_id, l_uid, l_action, l_comments);
+
+  -- requester (for notification)
+  BEGIN
+    SELECT submitted_by INTO l_owner FROM dct_approval_instances WHERE instance_id = l_iid;
+  EXCEPTION WHEN OTHERS THEN NULL;
+  END;
+
+  IF l_action = 'APPROVED' THEN
+    BEGIN
+      IF    l_inst.source_module = 'PETTY_CASH'     THEN SELECT amount       INTO l_amount FROM dct_petty_cash        WHERE pc_id         = l_inst.source_record_id;
+      ELSIF l_inst.source_module = 'REIMBURSEMENT'  THEN SELECT amount       INTO l_amount FROM dct_pc_reimbursements WHERE reimb_id      = l_inst.source_record_id;
+      ELSIF l_inst.source_module = 'CLEARING'       THEN SELECT amount_spent INTO l_amount FROM dct_pc_clearing       WHERE clearing_id   = l_inst.source_record_id;
+      ELSIF l_inst.source_module = 'TRAVEL_REQUEST' THEN SELECT total_advance_aed INTO l_amount FROM dt_requests      WHERE request_id    = l_inst.source_record_id;
+      ELSIF l_inst.source_module = 'SETTLEMENT'     THEN SELECT total_actual_aed  INTO l_amount FROM dt_settlement    WHERE settlement_id = l_inst.source_record_id;
+      END IF;
+    EXCEPTION WHEN OTHERS THEN l_amount := 0; END;
+
+    FOR nxt IN (
+      SELECT step_seq FROM dct_approval_steps
+      WHERE template_id    = l_inst.template_id
+        AND step_seq       > l_inst.current_step_seq
+        AND (condition_type = 'ALWAYS'
+             OR (condition_type = 'AMOUNT' AND amount_operator = '>='  AND l_amount >= amount_threshold)
+             OR (condition_type = 'AMOUNT' AND amount_operator = '>'   AND l_amount >  amount_threshold)
+             OR (condition_type = 'AMOUNT' AND amount_operator = '<='  AND l_amount <= amount_threshold)
+             OR (condition_type = 'AMOUNT' AND amount_operator = '<'   AND l_amount <  amount_threshold))
+      ORDER BY step_seq FETCH FIRST 1 ROW ONLY
+    ) LOOP
+      l_next := nxt.step_seq;
+    END LOOP;
+
+    IF l_next IS NOT NULL THEN
+      UPDATE dct_approval_instances SET
+        current_step_seq = l_next, last_action_at = SYSTIMESTAMP,
+        updated_by = l_user, updated_at = SYSTIMESTAMP
+      WHERE instance_id = l_iid;
+      IF l_inst.source_module = 'PETTY_CASH' THEN
+        UPDATE dct_petty_cash SET status = 'PENDING_APPROVAL', updated_by = l_user
+        WHERE pc_id = l_inst.source_record_id AND status = 'SUBMITTED';
+        hist('PC','SUBMITTED','PENDING_APPROVAL','Step approved (Admin inbox): ' || l_comments);
+      ELSIF l_inst.source_module = 'REIMBURSEMENT' THEN
+        UPDATE dct_pc_reimbursements SET status = 'PENDING_APPROVAL', updated_by = l_user
+        WHERE reimb_id = l_inst.source_record_id AND status = 'SUBMITTED';
+      ELSIF l_inst.source_module = 'CLEARING' THEN
+        UPDATE dct_pc_clearing SET status = 'PENDING_APPROVAL', updated_by = l_user
+        WHERE clearing_id = l_inst.source_record_id AND status = 'SUBMITTED';
+      END IF;
+    ELSE
+      UPDATE dct_approval_instances SET
+        overall_status = 'APPROVED', current_step_seq = NULL,
+        completed_at = SYSTIMESTAMP, last_action_at = SYSTIMESTAMP,
+        updated_by = l_user, updated_at = SYSTIMESTAMP
+      WHERE instance_id = l_iid;
+
+      IF l_inst.source_module = 'PETTY_CASH' THEN
+        -- stays PENDING_APPROVAL until Finance disburses (-> ACTIVE)
+        UPDATE dct_petty_cash SET status = 'PENDING_APPROVAL', updated_by = l_user
+        WHERE pc_id = l_inst.source_record_id;
+        hist('PC', NULL, 'PENDING_APPROVAL', 'Fully approved - awaiting disbursement: ' || l_comments);
+      ELSIF l_inst.source_module = 'REIMBURSEMENT' THEN
+        UPDATE dct_pc_reimbursements SET status = 'APPROVED', updated_by = l_user
+        WHERE reimb_id = l_inst.source_record_id;
+        hist('PC_REIMB', NULL, 'APPROVED', 'Final approval: ' || l_comments);
+      ELSIF l_inst.source_module = 'CLEARING' THEN
+        UPDATE dct_pc_clearing SET status = 'APPROVED', updated_by = l_user
+        WHERE clearing_id = l_inst.source_record_id;
+        hist('PC_CLEAR', NULL, 'APPROVED', 'Final approval: ' || l_comments);
+        DECLARE
+          l_pcid NUMBER;
+        BEGIN
+          SELECT pc_id INTO l_pcid FROM dct_pc_clearing WHERE clearing_id = l_inst.source_record_id;
+          UPDATE dct_petty_cash SET status = 'CLOSED', closed_date = SYSDATE, updated_by = l_user
+          WHERE pc_id = l_pcid;
+          INSERT INTO dct_request_status_history (
+            source_module, source_type, source_id, old_status, new_status, changed_by, comments)
+          VALUES ('PC','PC', l_pcid, NULL, 'CLOSED', l_uid,
+                  'Closed by approved clearing ' || l_inst.source_record_ref);
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
+      ELSIF l_inst.source_module = 'TRAVEL_REQUEST' THEN
+        UPDATE dt_requests SET status = 'APPROVED', updated_by = l_user, updated_at = SYSTIMESTAMP
+        WHERE request_id = l_inst.source_record_id;
+      ELSIF l_inst.source_module = 'SETTLEMENT' THEN
+        UPDATE dt_settlement SET status = 'APPROVED', updated_by = l_user, updated_at = SYSTIMESTAMP
+        WHERE settlement_id = l_inst.source_record_id;
+      END IF;
+
+      BEGIN
+        dct_notify.send(l_owner, 'STATUS_UPDATE', 'Request Approved',
+          'Your request ' || l_inst.source_record_ref || ' has been fully approved.',
+          p_module_code => CASE WHEN l_inst.source_module IN ('TRAVEL_REQUEST','SETTLEMENT')
+                                THEN 'DUTY_TRAVEL' ELSE 'PETTY_CASH' END);
+      EXCEPTION WHEN OTHERS THEN NULL; END;
+    END IF;
+
+  ELSE
+    -- REJECTED or RETURNED
+    UPDATE dct_approval_instances SET
+      overall_status = l_action, current_step_seq = NULL,
+      completed_at = SYSTIMESTAMP, last_action_at = SYSTIMESTAMP,
+      updated_by = l_user, updated_at = SYSTIMESTAMP
+    WHERE instance_id = l_iid;
+
+    IF l_inst.source_module = 'PETTY_CASH' THEN
+      UPDATE dct_petty_cash SET status = l_action, updated_by = l_user
+      WHERE pc_id = l_inst.source_record_id;
+      hist('PC', NULL, l_action, l_action || ' (Admin inbox): ' || l_comments);
+    ELSIF l_inst.source_module = 'REIMBURSEMENT' THEN
+      UPDATE dct_pc_reimbursements SET status = l_action, updated_by = l_user
+      WHERE reimb_id = l_inst.source_record_id;
+      hist('PC_REIMB', NULL, l_action, l_action || ': ' || l_comments);
+    ELSIF l_inst.source_module = 'CLEARING' THEN
+      UPDATE dct_pc_clearing SET status = l_action, updated_by = l_user
+      WHERE clearing_id = l_inst.source_record_id;
+      hist('PC_CLEAR', NULL, l_action, l_action || ': ' || l_comments);
+    ELSIF l_inst.source_module = 'TRAVEL_REQUEST' THEN
+      UPDATE dt_requests SET status = l_action, updated_by = l_user, updated_at = SYSTIMESTAMP
+      WHERE request_id = l_inst.source_record_id;
+    ELSIF l_inst.source_module = 'SETTLEMENT' THEN
+      UPDATE dt_settlement SET status = l_action, updated_by = l_user, updated_at = SYSTIMESTAMP
+      WHERE settlement_id = l_inst.source_record_id;
+    END IF;
+
+    BEGIN
+      dct_notify.send(l_owner, 'STATUS_UPDATE', 'Request ' || INITCAP(l_action),
+        'Your request ' || l_inst.source_record_ref || ' was ' || LOWER(l_action) || ': ' || l_comments,
+        p_module_code => CASE WHEN l_inst.source_module IN ('TRAVEL_REQUEST','SETTLEMENT')
+                              THEN 'DUTY_TRAVEL' ELSE 'PETTY_CASH' END);
+    EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('action', l_action);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('approval-templates/');
+    def_handler('approval-templates/', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT t.template_id, t.template_code, t.template_name, t.request_type,
+           t.is_active, m.module_code,
+           (SELECT COUNT(*) FROM dct_approval_steps s WHERE s.template_id = t.template_id) AS step_count
+    FROM   dct_approval_templates t
+    LEFT JOIN dct_modules m ON m.module_id = t.module_id
+    ORDER BY m.module_code, t.template_name
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('templateId',   r.template_id);
+    APEX_JSON.write('templateCode', NVL(r.template_code, '-'));
+    APEX_JSON.write('templateName', NVL(r.template_name, '-'));
+    APEX_JSON.write('module',       NVL(r.module_code, '-'));
+    APEX_JSON.write('requestType',  NVL(r.request_type, '-'));
+    APEX_JSON.write('stepCount',    NVL(r.step_count, 0));
+    APEX_JSON.write('isActive',     r.is_active);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('approval-templates/[COLON]id');
+    def_handler('approval-templates/[COLON]id', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_seq  NUMBER := 0;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  FOR t IN (
+    SELECT t.template_id, t.template_code, t.template_name, t.request_type,
+           t.is_active, m.module_code,
+           t.created_by, t.created_at, t.updated_by, t.updated_at
+    FROM   dct_approval_templates t
+    LEFT JOIN dct_modules m ON m.module_id = t.module_id
+    WHERE  t.template_id = [COLON]id
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('templateId',   t.template_id);
+    APEX_JSON.write('templateCode', NVL(t.template_code, '-'));
+    APEX_JSON.write('templateName', NVL(t.template_name, '-'));
+    APEX_JSON.write('module',       NVL(t.module_code, '-'));
+    APEX_JSON.write('requestType',  NVL(t.request_type, '-'));
+    APEX_JSON.write('isActive',     t.is_active);
+    APEX_JSON.write('createdBy',    t.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(t.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedBy',    t.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(t.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.open_array('steps');
+    FOR s IN (
+      SELECT s.step_seq, s.step_name, s.escalation_days, r.role_code
+      FROM   dct_approval_steps s
+      LEFT JOIN dct_roles r ON r.role_id = s.required_role_id
+      WHERE  s.template_id = t.template_id
+      ORDER BY s.step_seq
+    ) LOOP
+      l_seq := l_seq + 1;
+      APEX_JSON.open_object;
+      APEX_JSON.write('seq',      l_seq);
+      APEX_JSON.write('label',    NVL(s.step_name, 'Step ' || l_seq));
+      APEX_JSON.write('roleCode', NVL(s.role_code, '-'));
+      APEX_JSON.write('slaHours', NVL(s.escalation_days, 0) * 24);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+    APEX_JSON.close_object;
+  END LOOP;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_handler('approval-templates/[COLON]id', 'PUT', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  UPDATE dct_approval_templates SET
+    template_name = NVL(APEX_JSON.get_varchar2(p_path => 'templateName'), template_name),
+    is_active     = NVL(APEX_JSON.get_varchar2(p_path => 'isActive'), is_active),
+    updated_by    = l_user, updated_at = SYSTIMESTAMP
+  WHERE template_id = [COLON]id;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -1304,6 +1945,322 @@ BEGIN
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- DELEGATIONS (Phase 4 — absence cover; lazy expiry on every list call)
+    -- =========================================================================
+    def_template('delegations/');
+    def_handler('delegations/', 'GET', q'!
+DECLARE
+  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  l_uid   NUMBER;
+  l_mine  VARCHAR2(1) := UPPER([COLON]mine);
+  l_admin BOOLEAN;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid   := dct_auth.get_user_id(l_user);
+  l_admin := dct_auth.has_role(l_user, 'SYS_ADMIN');
+  UPDATE dct_delegations SET status = 'EXPIRED', updated_at = SYSTIMESTAMP
+  WHERE status = 'ACTIVE' AND end_date < TRUNC(SYSDATE);
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT d.delegation_id, d.delegator_id, fr.display_name AS delegator_name,
+           d.delegate_id, de.display_name AS delegate_name,
+           d.scope, d.role_id, rl.role_code, rl.role_name_en,
+           d.module_id, m.module_code, m.module_name_en,
+           d.start_date, d.end_date, d.reason, d.status, d.created_at
+    FROM   dct_delegations d
+    JOIN   dct_users fr ON fr.user_id = d.delegator_id
+    JOIN   dct_users de ON de.user_id = d.delegate_id
+    LEFT JOIN dct_roles   rl ON rl.role_id   = d.role_id
+    LEFT JOIN dct_modules m  ON m.module_id  = d.module_id
+    WHERE ( (l_mine = 'Y' OR NOT l_admin)
+            AND (d.delegator_id = l_uid OR d.delegate_id = l_uid) )
+       OR ( l_admin AND NVL(l_mine,'N') != 'Y' )
+    ORDER BY d.status, d.end_date DESC, d.delegation_id DESC
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('delegationId',  r.delegation_id);
+    APEX_JSON.write('delegatorId',   r.delegator_id);
+    APEX_JSON.write('delegatorName', r.delegator_name);
+    APEX_JSON.write('delegateId',    r.delegate_id);
+    APEX_JSON.write('delegateName',  r.delegate_name);
+    APEX_JSON.write('scope',         r.scope);
+    APEX_JSON.write('roleId',        r.role_id);
+    APEX_JSON.write('roleCode',      NVL(r.role_code, ''));
+    APEX_JSON.write('roleName',      NVL(r.role_name_en, ''));
+    APEX_JSON.write('moduleCode',    NVL(r.module_code, ''));
+    APEX_JSON.write('moduleName',    NVL(r.module_name_en, ''));
+    APEX_JSON.write('startDate',     TO_CHAR(r.start_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('endDate',       TO_CHAR(r.end_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('reason',        NVL(r.reason, ''));
+    APEX_JSON.write('status',        r.status);
+    APEX_JSON.write('createdAt',     TO_CHAR(r.created_at AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_handler('delegations/', 'POST', q'!
+DECLARE
+  l_user      VARCHAR2(100) := dct_rest.validate_session;
+  l_uid       NUMBER;
+  l_delegator NUMBER;
+  l_module_id NUMBER := NULL;
+  l_mod_code  VARCHAR2(50);
+  l_id        NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  dct_rest.parse_body([COLON]body);
+  l_delegator := NVL(APEX_JSON.get_number(p_path => 'delegatorId'), l_uid);
+  IF l_delegator != l_uid AND NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only SYS_ADMIN may create delegations for other users'); RETURN;
+  END IF;
+  l_mod_code := APEX_JSON.get_varchar2(p_path => 'moduleCode');
+  IF l_mod_code IS NOT NULL THEN
+    SELECT module_id INTO l_module_id FROM dct_modules WHERE module_code = l_mod_code;
+  END IF;
+  INSERT INTO dct_delegations (
+    delegator_id, delegate_id, scope, role_id, module_id,
+    start_date, end_date, reason, status, created_by, updated_by
+  ) VALUES (
+    l_delegator,
+    APEX_JSON.get_number(p_path => 'delegateId'),
+    NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'scope')), 'ALL_ROLES'),
+    APEX_JSON.get_number(p_path => 'roleId'),
+    l_module_id,
+    NVL(TO_DATE(APEX_JSON.get_varchar2(p_path => 'startDate'), 'YYYY-MM-DD'), TRUNC(SYSDATE)),
+    TO_DATE(APEX_JSON.get_varchar2(p_path => 'endDate'), 'YYYY-MM-DD'),
+    APEX_JSON.get_varchar2(p_path => 'reason'),
+    'ACTIVE', l_user, l_user
+  ) RETURNING delegation_id INTO l_id;
+  COMMIT;
+  OWA_UTIL.status_line(201, NULL, FALSE);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('delegationId', l_id); APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('delegations/[COLON]id/cancel');
+    def_handler('delegations/[COLON]id/cancel', 'POST', q'!
+DECLARE
+  l_user      VARCHAR2(100) := dct_rest.validate_session;
+  l_uid       NUMBER;
+  l_delegator NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  SELECT delegator_id INTO l_delegator FROM dct_delegations WHERE delegation_id = [COLON]id;
+  IF l_delegator != l_uid AND NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only the delegator or SYS_ADMIN may cancel a delegation'); RETURN;
+  END IF;
+  UPDATE dct_delegations SET
+    status = 'CANCELLED', updated_by = l_user, updated_at = SYSTIMESTAMP
+  WHERE delegation_id = [COLON]id AND status = 'ACTIVE';
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- ANNOUNCEMENTS (Phase 4 — platform banner + Admin management)
+    -- =========================================================================
+    def_template('announcements/');
+    def_handler('announcements/', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT a.announcement_id, a.title_en, a.title_ar, a.body_en, a.body_ar,
+           a.severity, a.target_audience, a.target_role_id, rl.role_name_en,
+           a.target_module_id, m.module_code, m.module_name_en,
+           a.published_at, a.expires_at, a.is_active, a.created_by, a.created_at
+    FROM   dct_announcements a
+    LEFT JOIN dct_roles   rl ON rl.role_id  = a.target_role_id
+    LEFT JOIN dct_modules m  ON m.module_id = a.target_module_id
+    ORDER BY a.announcement_id DESC
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('announcementId', r.announcement_id);
+    APEX_JSON.write('titleEn',     r.title_en);
+    APEX_JSON.write('titleAr',     NVL(r.title_ar, ''));
+    APEX_JSON.write('bodyEn',      NVL(DBMS_LOB.SUBSTR(r.body_en, 3000, 1), ''));
+    APEX_JSON.write('bodyAr',      NVL(DBMS_LOB.SUBSTR(r.body_ar, 3000, 1), ''));
+    APEX_JSON.write('severity',    r.severity);
+    APEX_JSON.write('audience',    r.target_audience);
+    APEX_JSON.write('roleId',      r.target_role_id);
+    APEX_JSON.write('roleName',    NVL(r.role_name_en, ''));
+    APEX_JSON.write('moduleCode',  NVL(r.module_code, ''));
+    APEX_JSON.write('moduleName',  NVL(r.module_name_en, ''));
+    APEX_JSON.write('publishedAt', TO_CHAR(r.published_at AT TIME ZONE 'Asia/Dubai','YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('expiresAt',   TO_CHAR(r.expires_at AT TIME ZONE 'Asia/Dubai','YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('isActive',    r.is_active);
+    APEX_JSON.write('createdBy',   NVL(r.created_by, ''));
+    APEX_JSON.write('createdAt',   TO_CHAR(r.created_at AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_handler('announcements/', 'POST', q'!
+DECLARE
+  l_user      VARCHAR2(100) := dct_rest.validate_session;
+  l_module_id NUMBER := NULL;
+  l_mod_code  VARCHAR2(50);
+  l_id        NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only SYS_ADMIN can manage announcements'); RETURN;
+  END IF;
+  dct_rest.parse_body([COLON]body);
+  l_mod_code := APEX_JSON.get_varchar2(p_path => 'moduleCode');
+  IF l_mod_code IS NOT NULL THEN
+    SELECT module_id INTO l_module_id FROM dct_modules WHERE module_code = l_mod_code;
+  END IF;
+  INSERT INTO dct_announcements (
+    title_en, title_ar, body_en, body_ar, severity,
+    target_audience, target_role_id, target_module_id,
+    published_at, expires_at, is_active, created_by, updated_by
+  ) VALUES (
+    APEX_JSON.get_varchar2(p_path => 'titleEn'),
+    APEX_JSON.get_varchar2(p_path => 'titleAr'),
+    APEX_JSON.get_varchar2(p_path => 'bodyEn'),
+    APEX_JSON.get_varchar2(p_path => 'bodyAr'),
+    NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'severity')), 'INFO'),
+    NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'audience')), 'ALL'),
+    APEX_JSON.get_number(p_path => 'roleId'),
+    l_module_id,
+    NVL(TO_TIMESTAMP(APEX_JSON.get_varchar2(p_path => 'publishedAt'), 'YYYY-MM-DD"T"HH24:MI'), SYSTIMESTAMP),
+    TO_TIMESTAMP(APEX_JSON.get_varchar2(p_path => 'expiresAt'), 'YYYY-MM-DD"T"HH24:MI'),
+    NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'isActive')), 'Y'),
+    l_user, l_user
+  ) RETURNING announcement_id INTO l_id;
+  COMMIT;
+  OWA_UTIL.status_line(201, NULL, FALSE);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('announcementId', l_id); APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('announcements/[COLON]id');
+    def_handler('announcements/[COLON]id', 'PUT', q'!
+DECLARE
+  l_user      VARCHAR2(100) := dct_rest.validate_session;
+  l_module_id NUMBER := NULL;
+  l_mod_code  VARCHAR2(50);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only SYS_ADMIN can manage announcements'); RETURN;
+  END IF;
+  dct_rest.parse_body([COLON]body);
+  l_mod_code := APEX_JSON.get_varchar2(p_path => 'moduleCode');
+  IF l_mod_code IS NOT NULL THEN
+    SELECT module_id INTO l_module_id FROM dct_modules WHERE module_code = l_mod_code;
+  END IF;
+  UPDATE dct_announcements SET
+    title_en  = NVL(APEX_JSON.get_varchar2(p_path => 'titleEn'), title_en),
+    title_ar  = CASE WHEN APEX_JSON.does_exist(p_path => 'titleAr')
+                     THEN APEX_JSON.get_varchar2(p_path => 'titleAr') ELSE title_ar END,
+    body_en   = CASE WHEN APEX_JSON.does_exist(p_path => 'bodyEn')
+                     THEN TO_CLOB(APEX_JSON.get_varchar2(p_path => 'bodyEn')) ELSE body_en END,
+    body_ar   = CASE WHEN APEX_JSON.does_exist(p_path => 'bodyAr')
+                     THEN TO_CLOB(APEX_JSON.get_varchar2(p_path => 'bodyAr')) ELSE body_ar END,
+    severity  = NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'severity')), severity),
+    target_audience = NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'audience')), target_audience),
+    target_role_id  = CASE WHEN APEX_JSON.does_exist(p_path => 'roleId')
+                           THEN APEX_JSON.get_number(p_path => 'roleId') ELSE target_role_id END,
+    target_module_id = CASE WHEN APEX_JSON.does_exist(p_path => 'moduleCode')
+                            THEN l_module_id ELSE target_module_id END,
+    published_at = CASE WHEN APEX_JSON.does_exist(p_path => 'publishedAt')
+                        THEN TO_TIMESTAMP(APEX_JSON.get_varchar2(p_path => 'publishedAt'), 'YYYY-MM-DD"T"HH24:MI')
+                        ELSE published_at END,
+    expires_at   = CASE WHEN APEX_JSON.does_exist(p_path => 'expiresAt')
+                        THEN TO_TIMESTAMP(APEX_JSON.get_varchar2(p_path => 'expiresAt'), 'YYYY-MM-DD"T"HH24:MI')
+                        ELSE expires_at END,
+    is_active = NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'isActive')), is_active),
+    updated_by = l_user, updated_at = SYSTIMESTAMP
+  WHERE announcement_id = [COLON]id;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('announcements/active');
+    def_handler('announcements/active', 'GET', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_uid    NUMBER;
+  l_module VARCHAR2(50) := UPPER([COLON]module);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT a.announcement_id, a.title_en, a.title_ar, a.body_en, a.body_ar, a.severity
+    FROM   dct_announcements a
+    LEFT JOIN dct_modules m ON m.module_id = a.target_module_id
+    WHERE  a.is_active = 'Y'
+      AND  a.published_at <= SYSTIMESTAMP
+      AND (a.expires_at IS NULL OR a.expires_at > SYSTIMESTAMP)
+      AND ( a.target_audience = 'ALL'
+            OR (a.target_audience = 'MODULE' AND l_module IS NOT NULL AND m.module_code = l_module)
+            OR (a.target_audience = 'ROLE' AND EXISTS (
+                  SELECT 1 FROM dct_user_roles ur
+                  WHERE ur.user_id = l_uid AND ur.role_id = a.target_role_id
+                    AND ur.is_active = 'Y'
+                    AND (ur.end_date IS NULL OR ur.end_date >= SYSDATE))) )
+    ORDER BY CASE a.severity WHEN 'CRITICAL' THEN 1 WHEN 'WARNING' THEN 2 ELSE 3 END,
+             a.published_at DESC
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('announcementId', r.announcement_id);
+    APEX_JSON.write('titleEn',  r.title_en);
+    APEX_JSON.write('titleAr',  NVL(r.title_ar, ''));
+    APEX_JSON.write('bodyEn',   NVL(DBMS_LOB.SUBSTR(r.body_en, 3000, 1), ''));
+    APEX_JSON.write('bodyAr',   NVL(DBMS_LOB.SUBSTR(r.body_ar, 3000, 1), ''));
+    APEX_JSON.write('severity', r.severity);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
 

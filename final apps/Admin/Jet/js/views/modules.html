@@ -52,9 +52,10 @@
         <label class="switch"><input type="checkbox" data-bind="checked: isActive"><span class="switch-slider"></span></label>
         <span style="font-size:13px">Active</span>
       </div>
+      <audit-info params="data: $vm.auditTarget"></audit-info>
       <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px">
-        <button class="btn btn-secondary" data-bind="click: $root.closeEdit">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: $root.saveEdit">&#10003; Save</button>
+        <button class="btn btn-secondary" data-bind="click: $vm.closeEdit">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: $vm.saveEdit">&#10003; Save</button>
       </div>
     </div>
     <!-- /ko -->
@@ -78,8 +79,8 @@
         </div>
       </div>
       <div style="font-size:11px;color:#aaa;margin-bottom:10px">
-        App <span data-bind="text: apexAppId"></span> &bull;
-        <span data-bind="text: category"></span>
+        App <span data-bind="text: $data.apexAppId || '—'"></span> &bull;
+        <span data-bind="text: $data.category || '—'"></span>
       </div>
       <div style="display:flex;align-items:center;gap:6px;justify-content:space-between">
         <!-- ko if: isActive === 'Y' -->

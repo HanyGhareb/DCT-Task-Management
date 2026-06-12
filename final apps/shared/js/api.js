@@ -43,12 +43,17 @@ define(['services/config', 'shared/toast'], function (config, toast) {
 
     var base = (opts.base === 'auth' && config.authBase) ? config.authBase : config.apiBase;
 
+    /* 401 on /auth/* is a credential failure the caller must render inline
+       (e.g. "Invalid credentials" on the login form) — redirecting there
+       reloads the login view and silently eats the error message. */
+    var isAuthCall = path.indexOf('/auth/') === 0;
+
     return fetch(base + path, {
       method:  method,
       headers: headers,
       body:    body !== undefined ? JSON.stringify(body) : undefined
     }).then(function (r) {
-      if (r.status === 401) {
+      if (r.status === 401 && !isAuthCall) {
         handleExpiredSession();
         return Promise.reject({ status: 401, message: 'Session expired. Please log in again.' });
       }
@@ -57,7 +62,7 @@ define(['services/config', 'shared/toast'], function (config, toast) {
         try { if (text) data = JSON.parse(text); } catch (e) {}
         if (!r.ok) {
           var msg = (data && (data.message || data.error)) || ('Request failed (' + r.status + ')');
-          if (!opts.silent) toast.error(msg);
+          if (!opts.silent && !isAuthCall) toast.error(msg);
           return Promise.reject({ status: r.status, message: msg });
         }
         return data;

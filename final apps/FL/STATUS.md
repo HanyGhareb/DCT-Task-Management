@@ -1,6 +1,6 @@
 # Freelancers Module (App 203) — Status
 
-**Last updated:** 2026-06-10  
+**Last updated:** 2026-06-12 (Phase 4)  
 **App alias:** FL | **Schema:** PROD | **APEX version:** 24.2
 
 ---
@@ -10,11 +10,13 @@
 | Layer | Status | Detail |
 |---|---|---|
 | Database DDL | ✅ Complete | FL_* tables, sequences, triggers |
-| Views | ✅ Complete | 02_fl_views.sql deployed |
+| Views | ✅ Complete | 02_fl_views.sql deployed (created_by joins on username) |
 | Seed Data | ✅ Complete | Module, roles, permissions, settings, lookups |
-| PL/SQL Package | ✅ Complete | DCT_FL_PKG spec + body |
+| PL/SQL Package | ✅ Complete | DCT_FL_PKG incl. Phase 4 workflow engine (6 submit_* + act_on_approval) |
 | Audit Column Alterations | ✅ Complete | 05_fl_alter_audit_cols.sql |
-| JET SPA | ⬜ Not started | No Jet/ folder yet |
+| ORDS REST | ✅ Complete | `fl.rest` live at `/ords/admin/fl/` (~52 handlers); smoke 27/27 |
+| JET SPA | ✅ Complete | `Jet/` live, 17 views, brand #7C4DBE, browser check clean |
+| UAT workbook | ✅ Generated | `UAT/UAT_FL_TestScript.xlsx` — 35 cases / 10 areas |
 | APEX App Shell | ⬜ Not started | Must be built in APEX Builder |
 | APEX Pages | ⬜ Not started | Must be built in APEX Builder |
 
@@ -24,12 +26,14 @@
 
 | File | Status | Contents |
 |---|---|---|
-| `install.sql` | ✅ | Master install — runs 01→02→03→04→05 |
+| `install.sql` | ✅ | Master install — runs 01→08 (07/08 in fresh sessions) |
 | `01_fl_ddl.sql` | ✅ Deployed | DDL: FL_* tables, sequences, triggers |
 | `02_fl_views.sql` | ✅ Deployed | FL views |
 | `03_fl_seed.sql` | ✅ Deployed | Module registration, roles, permissions, settings, lookups |
 | `04_fl_pkg.sql` | ✅ Deployed | DCT_FL_PKG spec + body |
 | `05_fl_alter_audit_cols.sql` | ✅ Deployed | Added audit columns (created_by/at, updated_by/at) |
+| `07_fl_pkg_workflow.sql` | ✅ Deployed | Phase 4: submit_registration/contract/amendment/voucher/renewal/profile_change + act_on_approval (50k AMOUNT step) |
+| `08_fl_ords.sql` | ✅ Deployed | Phase 4: `fl.rest` module + ADMIN synonyms (run in a FRESH session) |
 
 ---
 
@@ -48,30 +52,30 @@
 
 ---
 
-## JET SPA — Not Started
+## JET SPA — Live (Phase 4, 2026-06-12)
 
-No `Jet/` folder exists. Freelancers module is currently APEX-only.
+`final apps/FL/Jet/` — 17 view/VM pairs on the Phase 3 shared layer, brand
+#7C4DBE (live from THEME_BRAND_COLOR): dashboard (committed-vs-paid +
+doc-expiry charts), registrations (+photo-gated submit), freelancers
+(+4-tab detail: profile/bank/contracts/documents), contracts (+GL/PROJECT
+edit, schedule/amendments/renewals detail, generate voucher), payment
+schedule worklist, vouchers (invoice→submit→mark-paid), deliverables
+(accept/reject), compliance documents (expiry filter + badge), approvals
+(comment-mandatory, delegation `actingFor`), module settings, notifications.
+Run locally: `python Jet/dev-proxy.py` → http://localhost:8080 (or enter via
+the Admin module switcher — FL is live there).
 
-To start the JET SPA:
-1. Create `final apps/FL/Jet/` by copying the HR module structure as a template
-2. Update branding (brand-cube `FL`, title, brand-name)
-3. Add `apiBase: '/ords/admin/fl'` in `config.js`
-4. Scaffold VMs following `final apps/SHARED_JET_ARCHITECTURE.md`
+UAT: `UAT/UAT_FL_TestScript.xlsx` (35 cases). Test scripts:
+`assessment-3/phase4/tests/` (smoke + Playwright + seed).
 
 ---
 
 ## Immediate Next Steps
 
-1. **APEX Builder — create App 203 shell:**
-   - New app: ID 203, alias `FL`, schema PROD, Theme 42
-   - Subscribe to App 200's `DCT Auth` scheme → set as current
-   - Add standard + FL-specific app items
-   - Create `SET_APP_ITEMS` process (On New Session)
-   - Subscribe common LOVs from App 200; define FL-specific LOVs locally
-
-2. **Build page content in APEX Builder** — document page list in `docs/` first.
-
-3. **JET SPA** — decide whether to build JET SPA or remain APEX-only. If JET, scaffold `Jet/` from HR template.
+1. **UAT round** with the seeded personas (AYESHA = FL_ADMIN, NASER =
+   FL_MANAGER, SHAIKHA.GALAMERI = FL_USER).
+2. **APEX Builder — create App 203 shell** (unchanged checklist above).
+3. **Deferred:** freelancer self-service portal (FL_FREELANCER) — Phase 4.5/5.
 
 ---
 

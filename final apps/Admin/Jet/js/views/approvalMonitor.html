@@ -52,11 +52,11 @@
           <td style="min-width:140px">
             <div style="display:flex;align-items:center;gap:8px">
               <div class="step-tracker">
-                <!-- ko foreach: $root.getStepArray($parent) -->
+                <!-- ko foreach: $vm.getStepArray($data) -->
                 <!-- ko if: $index() > 0 -->
-                <div class="step-line" data-bind="css: { 'step-line--done': $root.stepState($parent, $data) !== 'pending' }"></div>
+                <div class="step-line" data-bind="css: { 'step-line--done': $vm.stepState($parent, $data) !== 'pending' }"></div>
                 <!-- /ko -->
-                <div class="step-dot" data-bind="css: { 'step-dot--done': $root.stepState($parent, $data) === 'done', 'step-dot--current': $root.stepState($parent, $data) === 'current' }"></div>
+                <div class="step-dot" data-bind="css: { 'step-dot--done': $vm.stepState($parent, $data) === 'done', 'step-dot--current': $vm.stepState($parent, $data) === 'current' }"></div>
                 <!-- /ko -->
               </div>
               <span style="font-size:11px;color:#aaa">

@@ -1,0 +1,120 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">
+        <span data-bind="text: isNew ? 'New Contract' : contractNumber()"></span>
+        <!-- ko ifnot: isNew --><span class="badge" style="vertical-align:3px;margin-inline-start:8px"
+          data-bind="text: status(), css: { 'badge--draft': status()==='DRAFT', 'badge--submitted': status()==='SUBMITTED', 'badge--approved': status()==='ACTIVE' }"></span><!-- /ko -->
+      </div>
+      <div class="page-subtitle">FL Manager approval; FL Admin joins above AED 50,000</div>
+    </div>
+    <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+  </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: errorMsg() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: errorMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div class="card">
+    <div class="section-heading" style="margin-top:0">Contract</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Freelancer *</label>
+        <select class="form-control" data-bind="options: freelancerOptions, optionsText: 'label', optionsValue: 'id',
+                 optionsCaption: '— Select —', value: freelancerId, enable: editable()"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Title *</label>
+        <input class="form-control" type="text" data-bind="value: title, valueUpdate: 'input', enable: editable()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Start Date *</label>
+        <input class="form-control" type="date" data-bind="value: startDate, enable: editable()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">End Date</label>
+        <input class="form-control" type="date" data-bind="value: endDate, enable: editable()">
+        <span class="form-hint">Open-ended contracts schedule 12 months ahead</span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Total Amount (AED) *</label>
+        <input class="form-control mono" type="number" data-bind="value: totalAmount, enable: editable()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Organisation *</label>
+        <select class="form-control" data-bind="options: orgOptions, optionsText: 'name', optionsValue: 'orgId',
+                 optionsCaption: '— Select —', value: orgId, enable: editable()"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Billing Method *</label>
+        <select class="form-control" data-bind="value: billingMethod, enable: editable()">
+          <option value="MONTHLY">MONTHLY</option>
+          <option value="WEEKLY">WEEKLY</option>
+          <option value="PER_COUNT">PER_COUNT (deliverable based)</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Billing Unit / Amount per Period</label>
+        <div style="display:flex;gap:8px">
+          <select class="form-control" style="flex:1" data-bind="options: billingUnits, optionsText: 'name', optionsValue: 'valueId',
+                   optionsCaption: '—', value: billingUnitId, enable: editable()"></select>
+          <input class="form-control mono" type="number" placeholder="auto" style="flex:1"
+                 data-bind="value: billingUnitAmount, enable: editable()">
+        </div>
+        <span class="form-hint">Leave amount empty to divide the total over the period count</span>
+      </div>
+    </div>
+
+    <div class="section-heading">Budget Coding</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Coding Type</label>
+        <select class="form-control" data-bind="value: codingType, enable: editable()">
+          <option value="GL">GL</option>
+          <option value="PROJECT">PROJECT</option>
+        </select>
+      </div>
+      <!-- ko if: codingType() === 'GL' -->
+      <div class="form-group">
+        <label class="form-label">GL Code Combination *</label>
+        <select class="form-control" data-bind="options: glOptions, optionsText: 'ccCode', optionsValue: 'ccId',
+                 optionsCaption: '— Select —', value: ccIdGl, enable: editable()"></select>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: codingType() === 'PROJECT' -->
+      <div class="form-group">
+        <label class="form-label">Project Number *</label>
+        <input class="form-control mono" type="text" data-bind="value: projectNumber, valueUpdate: 'input', enable: editable()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Task Number</label>
+        <input class="form-control mono" type="text" data-bind="value: taskNumber, valueUpdate: 'input', enable: editable()">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Expenditure Type</label>
+        <input class="form-control" type="text" data-bind="value: expenditureType, valueUpdate: 'input', enable: editable()">
+      </div>
+      <!-- /ko -->
+      <div class="form-group form-group--full">
+        <label class="form-label">Notes</label>
+        <input class="form-control" type="text" data-bind="value: notes, valueUpdate: 'input', enable: editable()">
+      </div>
+    </div>
+
+    <audit-info params="data: audit"></audit-info>
+
+    <div class="form-actions">
+      <!-- ko if: editable() -->
+      <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">&#10003; Submit for Approval</button>
+      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">Save Draft</button>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

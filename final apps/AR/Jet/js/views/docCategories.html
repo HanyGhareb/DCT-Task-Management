@@ -1,0 +1,107 @@
+<div class="page-wrap" style="max-width:1150px">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: t('nav.docCategories')"></div>
+    <div class="page-subtitle">Document categories drive AI classification (description) and extraction (mode flags + basis)</div>
+    <div style="margin-inline-start:auto">
+      <button class="btn btn-primary" data-bind="click: newCat">+ New Category</button>
+    </div>
+  </div>
+
+  <!-- editor -->
+  <!-- ko if: showEditor() -->
+  <div class="form-card" style="margin-bottom:16px">
+    <div class="form-grid form-grid--2col">
+      <div class="form-field">
+        <label>Code *</label>
+        <input class="form-control mono" data-bind="value: code, disable: !!editId()" placeholder="E.G. ORGANIZER_PNL">
+      </div>
+      <div class="form-field">
+        <label>Name (EN) *</label>
+        <input class="form-control" data-bind="value: nameEn">
+      </div>
+      <div class="form-field">
+        <label>Name (AR)</label>
+        <input class="form-control" dir="rtl" data-bind="value: nameAr">
+      </div>
+      <div class="form-field">
+        <label>Required for event types (pipe-separated, e.g. CONCERT|FESTIVAL)</label>
+        <input class="form-control mono" data-bind="value: requiredFor">
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Description (the AI classifies files using this text)</label>
+      <textarea class="form-control" rows="2" data-bind="value: description"></textarea>
+    </div>
+    <div style="display:flex; gap:26px; flex-wrap:wrap; padding:10px 0; align-items:center">
+      <div data-bind="click: function(){ isPnlSource(!isPnlSource()); }" style="cursor:pointer">
+        <input type="checkbox" data-bind="checked: isPnlSource" style="pointer-events:none"> Trusted P&amp;L source
+      </div>
+      <div data-bind="visible: isPnlSource()">
+        Default basis:
+        <select class="form-control" style="display:inline-block;width:120px" data-bind="value: pnlBasis">
+          <option value="ACTUAL">Actual</option>
+          <option value="BUDGET">Budget</option>
+          <option value="FORECAST">Forecast</option>
+        </select>
+      </div>
+      <div data-bind="click: function(){ exLines(!exLines()); }" style="cursor:pointer">
+        <input type="checkbox" data-bind="checked: exLines" style="pointer-events:none"> Extract P&amp;L lines
+      </div>
+      <div data-bind="click: function(){ exKpis(!exKpis()); }" style="cursor:pointer">
+        <input type="checkbox" data-bind="checked: exKpis" style="pointer-events:none"> Extract KPIs
+      </div>
+      <div data-bind="click: function(){ exFindings(!exFindings()); }" style="cursor:pointer">
+        <input type="checkbox" data-bind="checked: exFindings" style="pointer-events:none"> Extract findings
+      </div>
+      <div data-bind="click: function(){ exMeta(!exMeta()); }" style="cursor:pointer">
+        <input type="checkbox" data-bind="checked: exMeta" style="pointer-events:none"> Prefill event header
+      </div>
+    </div>
+    <div class="form-field">
+      <label>Extraction hints (appended to the AI prompt for this category)</label>
+      <textarea class="form-control" rows="2" data-bind="value: hints"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn btn-secondary" data-bind="click: cancelEdit, text: t('common.cancel')"></button>
+      <button class="btn btn-primary" data-bind="click: save, disable: saving(), text: t('common.save')"></button>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" placeholder="&#128269; Search by code, name, or description…"
+           data-bind="value: search, valueUpdate: 'input'">
+    <span style="font-size:12px; color:#8a94a6; align-self:center"
+          data-bind="text: filteredCategories().length + ' / ' + categories().length"></span>
+  </div>
+
+  <div class="data-table-wrap">
+    <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: loading() -->
+    <table class="data-table">
+      <thead><tr><th>Code</th><th>Name</th><th>P&amp;L Source</th><th>Basis</th><th>Extracts</th><th>Required For</th><th>Active</th><th></th></tr></thead>
+      <tbody>
+        <!-- ko foreach: filteredCategories() -->
+        <tr data-bind="style: { opacity: $data.isActive ? 1 : .5 }">
+          <td class="mono" style="font-size:11px" data-bind="text: code"></td>
+          <td data-bind="text: nameEn, attr: { title: $data.description || '' }"></td>
+          <td><span data-bind="css: $data.isPnlSource ? 'badge badge--success' : 'badge badge--neutral',
+                text: $data.isPnlSource ? 'Y' : 'N'"></span></td>
+          <td><span data-bind="visible: $data.pnlBasis, class: 'ar-chip ar-chip--' + ($data.pnlBasis || '').toLowerCase(),
+                text: $data.pnlBasis || ''"></span></td>
+          <td style="font-size:12px" data-bind="text: $parent.flagsText($data)"></td>
+          <td class="mono" style="font-size:11px" data-bind="text: $data.requiredFor || '—'"></td>
+          <td><span data-bind="css: isActive ? 'badge badge--success' : 'badge badge--neutral',
+                text: isActive ? 'Y' : 'N'"></span></td>
+          <td class="table-actions" style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.editCat.bind($parent, $data)">Edit</button>
+            <button class="btn btn-secondary btn-sm" data-bind="click: $parent.toggleActive.bind($parent, $data),
+                    text: isActive ? 'Disable' : 'Enable'"></button>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+    <!-- /ko -->
+  </div>
+</div>

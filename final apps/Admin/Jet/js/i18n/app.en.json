@@ -19,6 +19,14 @@
   "nav.appearance": "Appearance",
   "nav.systemSettings": "System Settings",
   "nav.auditLog": "Audit Log",
+  "nav.delegations": "Delegations",
+  "nav.announcements": "Announcements",
+
+  "del.title": "Delegations",
+  "del.subtitle": "Authority cover across the platform — who acts for whom",
+  "ann.title": "Announcements",
+  "ann.subtitle": "Platform banners shown across all module apps",
+  "ann.new": "+ New Announcement",
 
   "tbl.status": "Status",
 
@@ -93,6 +101,10 @@
   "pa.awaitingStep": "Awaiting Step {0}",
   "pa.approve": "Approve",
   "pa.reject": "Reject",
+  "pa.approveComment": "Add an approval comment (required):",
+  "pa.rejectComment": "Add a rejection reason (required):",
+  "pa.confirmApprove": "Confirm Approve",
+  "pa.confirmReject": "Confirm Reject",
 
   "vw.orgHierarchy.title": "Organisation Hierarchy",
   "vw.orgHierarchy.subtitle": "Finance Division structure — 1 Division, 5 Sections",

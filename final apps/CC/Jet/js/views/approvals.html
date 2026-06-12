@@ -1,0 +1,69 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('pa.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('pa.subtitle', [pending().length])"></div>
+  </div>
+
+  <!-- ko if: actionMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: actionMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 3"></list-skeleton><!-- /ko -->
+
+  <!-- ko if: !loading() && pending().length === 0 -->
+  <div class="empty-state" style="padding:80px">
+    <div class="empty-state__icon">&#9989;</div>
+    <div class="empty-state__msg">All caught up!</div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko foreach: pending() -->
+  <div class="card" style="margin-bottom:14px">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px">
+      <div style="flex:1">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px">
+          <span class="mono" data-bind="text: $data.requestRef || ''"></span>
+          <span class="badge badge--info" style="margin-inline-start:8px;font-size:10px"
+                data-bind="text: $vm.moduleChip($data.module)"></span>
+          <!-- ko if: $data.actingFor -->
+          <span class="badge" style="margin-inline-start:4px;font-size:10px;background:#EFE5FB;color:#5D3792"
+                data-bind="text: '🔁 acting for ' + $data.actingFor"></span>
+          <!-- /ko -->
+        </div>
+        <div style="font-size:13px;color:var(--text-2)">
+          <strong data-bind="text: $data.requestedBy || ''"></strong>
+          · <span data-bind="text: $data.requestedAt || ''"></span>
+          &bull; AED <strong class="mono" data-bind="text: ($data.amount || 0).toLocaleString()"></strong>
+          &bull; <span data-bind="text: ($data.currentStep || 1) + '/' + ($data.totalSteps || 1) + ' · ' + ($data.currentStepName || '')"></span>
+        </div>
+
+        <!-- ko if: actionMode() -->
+        <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)">
+          <div style="font-size:12px;font-weight:600;margin-bottom:6px"
+               data-bind="text: actionMode() + ' — comment (required):'"></div>
+          <!-- ko if: actionError() -->
+          <div style="color:var(--red);font-size:12px;margin-bottom:6px" data-bind="text: actionError()"></div>
+          <!-- /ko -->
+          <textarea class="form-control" rows="2" style="width:100%;resize:vertical"
+                    data-bind="value: commentText, valueUpdate: 'input'"></textarea>
+          <div style="display:flex;gap:8px;margin-top:8px">
+            <button class="btn btn-primary btn-sm" data-bind="click: $vm.confirmAction.bind($vm, $data), enable: !busy()">
+              <span data-bind="text: 'Confirm ' + actionMode()"></span>
+            </button>
+            <button class="btn btn-secondary btn-sm" data-bind="click: $vm.cancelAction.bind($vm, $data)">Cancel</button>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:8px;flex-shrink:0">
+        <button class="btn btn-primary" style="background:var(--green);border-color:var(--green)"
+                data-bind="click: $vm.startApprove.bind($vm, $data)">&#10003; Approve</button>
+        <button class="btn btn-primary" style="background:var(--red);border-color:var(--red)"
+                data-bind="click: $vm.startReject.bind($vm, $data)">&#10005; Reject</button>
+        <button class="btn btn-secondary" data-bind="click: $vm.startReturn.bind($vm, $data)">&#8617; Return</button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

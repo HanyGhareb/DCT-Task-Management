@@ -1,0 +1,59 @@
+{
+  "nav.home": "Home",
+  "nav.myCardGroup": "My Card",
+  "nav.myCard": "My Card",
+  "nav.requests": "Card Requests",
+  "nav.replenishments": "Replenishments",
+  "nav.approvalsGroup": "Approvals",
+  "nav.approvals": "Pending Approvals",
+  "nav.adminGroup": "Administration",
+  "nav.allCards": "All Cards",
+  "nav.proxies": "Proxies",
+  "nav.moduleSettings": "Module Settings",
+
+  "dash.title": "Credit Card Operations",
+  "dash.subtitle": "Cards, requests and monthly replenishments at a glance",
+  "dash.activeCards": "Active Cards",
+  "dash.totalLimit": "Total Credit Limit",
+  "dash.pendingRequests": "Pending Requests",
+  "dash.replDue": "Replenishments Due",
+  "dash.chartLimits": "Credit Limits by Organisation",
+  "dash.chartCompliance": "Replenishment Compliance — last 6 months",
+  "common.submitted": "Submitted",
+  "common.due": "Cards due",
+
+  "card.title": "My Card",
+  "card.subtitle": "Your corporate credit card",
+  "card.none": "You have no corporate credit card. Submit a New Card request to apply.",
+  "card.limitHistory": "Limit History",
+  "card.dueBanner": "This month's replenishment has not been submitted yet.",
+
+  "req.title": "Card Requests",
+  "req.subtitle": "New card, limit change, replacement and closure requests",
+  "req.new": "+ New Request",
+
+  "reqNew.title": "New Card Request",
+  "reqNew.subtitle": "Pick a request type, fill the details, attach the required documents",
+
+  "repl.title": "Monthly Replenishments",
+  "repl.subtitle": "Card expense statements by month",
+  "repl.new": "+ New Replenishment",
+
+  "pa.title": "Pending Approvals",
+  "pa.subtitle": "{0} item(s) awaiting your action",
+
+  "cards.title": "All Cards",
+  "cards.subtitle": "Card registry across the organisation",
+  "cards.register": "+ Register Card",
+
+  "prx.title": "Replenishment Proxies",
+  "prx.subtitle": "Who may submit statements on behalf of card holders",
+  "prx.new": "+ New Proxy",
+
+  "set.title": "Module Settings",
+  "set.subtitle": "Credit Cards module configuration",
+
+  "ntf.title": "Notifications",
+  "ntf.subtitle": "Updates about your cards, requests and approvals",
+  "ntf.markAll": "Mark all as read"
+}

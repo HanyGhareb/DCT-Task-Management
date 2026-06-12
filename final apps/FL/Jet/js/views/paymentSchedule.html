@@ -1,0 +1,64 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: $root.t('sched.title')"></div>
+    <div class="page-subtitle" data-bind="text: $root.t('sched.subtitle')"></div>
+  </div>
+
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; <span data-bind="text: successMsg()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: errorMsg() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: errorMsg()"></span></div>
+  <!-- /ko -->
+
+  <div class="view-toolbar">
+    <select class="form-control" style="width:200px;padding:8px 10px" data-bind="value: statusFilter">
+      <option value="PENDING">Pending</option>
+      <option value="VOUCHER_GENERATED">Voucher Generated</option>
+      <option value="PAID">Paid</option>
+      <option value="SKIPPED">Skipped</option>
+      <option value="">All</option>
+    </select>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load schedule</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#128197;</div>
+    <div class="empty-state__msg">Nothing here</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Contract</th><th>Freelancer</th><th>Period</th><th>Due</th><th>AED</th><th>Voucher</th><th>Status</th><th></th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr>
+          <td class="mono" style="font-size:12px;cursor:pointer;color:var(--brand-dark)"
+              data-bind="text: contractNumber, click: $vm.openContract.bind($vm, $data)"></td>
+          <td data-bind="text: $data.freelancerName || ''"></td>
+          <td style="font-weight:600" data-bind="text: $data.periodLabel || ''"></td>
+          <td class="mono" data-bind="text: $data.dueDate || '', style: { color: $vm.isOverdue($data) ? 'var(--red)' : '' }"></td>
+          <td class="mono" data-bind="text: ($data.amount || 0).toLocaleString()"></td>
+          <td class="mono" style="font-size:12px" data-bind="text: $data.voucherNumber || '—'"></td>
+          <td><span class="badge" data-bind="text: status, css: $vm.badgeFor(status)"></span></td>
+          <td>
+            <!-- ko if: status === 'PENDING' -->
+            <button class="btn btn-primary btn-sm" data-bind="click: $vm.generateVoucher.bind($vm, $data)">&#9889; Voucher</button>
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+  <!-- /ko -->
+</div>

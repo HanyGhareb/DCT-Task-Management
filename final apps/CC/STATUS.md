@@ -1,6 +1,6 @@
 # Credit Cards Module (App 202) — Status
 
-**Last updated:** 2026-06-11  
+**Last updated:** 2026-06-12 (Phase 4)  
 **App alias:** CC | **Schema:** PROD | **APEX version:** 24.2
 
 ---
@@ -10,11 +10,13 @@
 | Layer | Status | Detail |
 |---|---|---|
 | Database DDL | ✅ Complete | CC_* tables, sequences, triggers |
-| Views | ✅ Complete | 02_cc_views.sql deployed |
+| Views | ✅ Complete | 02_cc_views.sql deployed (Phase 4: created_by joins on username) |
 | Seed Data | ✅ Complete | Module, roles, permissions, settings, lookups |
 | PL/SQL Package | ✅ Complete | DCT_CC_PKG deployed 2026-06-11 — request lifecycle, CUSTOM bank-step conditions, limit history, register_card, replenishments, daily reminder job |
 | Alterations | ✅ Complete | 05_cc_alter_audit_cols.sql + 06 + 07 |
-| JET SPA | ⬜ Not started | No Jet/ folder yet |
+| ORDS REST | ✅ Complete | `cc.rest` live at `/ords/admin/cc/` (~27 templates over DCT_CC_PKG); smoke 17/17 |
+| JET SPA | ✅ Complete | `Jet/` live, 13 views, brand #B0721E, browser check clean |
+| UAT workbook | ✅ Generated | `UAT/UAT_CC_TestScript.xlsx` — 29 cases / 8 areas |
 | APEX App Shell | ⬜ Not started | Must be built in APEX Builder |
 | APEX Pages | ⬜ Not started | Must be built in APEX Builder |
 
@@ -32,6 +34,8 @@
 | `05_cc_alter_audit_cols.sql` | ✅ Deployed | Added audit columns |
 | `06_cc_card_limit_history.sql` | ✅ Deployed | Card limit history table + trigger |
 | `07_cc_consolidate_delegation.sql` | ✅ Deployed | Delegation consolidation alteration |
+| `08_cc_unified_adoption.sql` | ✅ Deployed | Phase 2: unified docs/lines, lookup-first, CC synonyms |
+| `09_cc_ords.sql` | ✅ Deployed | Phase 4: `cc.rest` module + ADMIN synonyms (run in a FRESH session) |
 
 ---
 
@@ -50,14 +54,22 @@
 
 ---
 
-## JET SPA — Not Started
+## JET SPA — Live (Phase 4, 2026-06-12)
 
-No `Jet/` folder exists. Credit Cards module is currently APEX-only.
+`final apps/CC/Jet/` — 13 view/VM pairs on the shared layer, brand #B0721E
+(live from THEME_BRAND_COLOR): dashboard (limits-by-org + 6-month
+replenishment compliance charts), **My Card** (card visual, limit-history
+timeline, replenishment-due banner), 3-step **New Request wizard** (type
+tiles → details → mandatory-doc checklist with upload gate), requests
+(Mine/All toggle) + detail (submit/withdraw), replenishments + merchant
+lines editor (per-line GL/PROJECT coding + receipt flags), approvals
+(comment-mandatory, delegation `actingFor`), All Cards (+register drawer),
+proxies, module settings, notifications.
+Run locally: `python Jet/dev-proxy.py` → http://localhost:8080 (or enter via
+the Admin module switcher — CC is live there).
 
-To start the JET SPA:
-1. Create `final apps/CC/Jet/` by copying the HR module structure as a template
-2. Update branding (brand-cube `CC`, title, brand-name)
-3. Add `apiBase: '/ords/admin/cc'` in `config.js`
+UAT: `UAT/UAT_CC_TestScript.xlsx` (29 cases). Test scripts:
+`assessment-3/phase4/tests/` (smoke + Playwright + seed).
 4. Scaffold VMs following `final apps/SHARED_JET_ARCHITECTURE.md`
 
 ---

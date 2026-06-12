@@ -1,0 +1,96 @@
+<div class="page-wrap" style="max-width:980px">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('prx.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('prx.subtitle')"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: openNew, text: $root.t('prx.new')"></button>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko if: loadError() -->
+  <div class="empty-state"><div class="empty-state__icon">&#9888;</div>
+    <div class="empty-state__msg">Could not load proxies</div>
+    <button class="btn btn-secondary" data-bind="click: reload">&#8635; Retry</button></div>
+  <!-- /ko -->
+  <!-- ko if: !loading() && !loadError() && items().length === 0 -->
+  <div class="empty-state"><div class="empty-state__icon">&#129309;</div>
+    <div class="empty-state__msg">No proxies configured</div></div>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && !loadError() && items().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>Card</th><th>Owner</th><th>Proxy</th><th>From</th><th>Until</th><th>Active</th><th></th>
+      </tr></thead>
+      <tbody>
+        <!-- ko foreach: items -->
+        <tr>
+          <td class="mono" data-bind="text: $data.ccNumber"></td>
+          <td data-bind="text: $data.ownerName"></td>
+          <td style="font-weight:600" data-bind="text: $data.proxyName"></td>
+          <td class="mono" data-bind="text: $data.startDate"></td>
+          <td class="mono" data-bind="text: $data.endDate || 'open'"></td>
+          <td>
+            <span data-bind="text: $data.isActive === 'Y' ? 'Yes' : 'No',
+                             css: 'badge ' + ($data.isActive === 'Y' ? 'badge--active-st' : 'badge--inactive')"></span>
+          </td>
+          <td>
+            <!-- ko if: $data.isActive === 'Y' -->
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: $vm.deactivate.bind($vm, $data), enable: !$vm.busy()">Deactivate</button>
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- new proxy modal -->
+  <!-- ko if: showNew() -->
+  <div class="modal-backdrop">
+    <div class="modal-box" style="max-width:480px">
+      <div class="modal-head"><span class="modal-title" data-bind="text: $root.t('prx.new')"></span>
+        <button class="modal-close" data-bind="click: function(){ showNew(false); }">&#10005;</button></div>
+      <div class="modal-body">
+        <!-- ko if: newError() -->
+        <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: newError()"></span></div>
+        <!-- /ko -->
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Card *</label>
+          <select class="form-control" data-bind="value: newCcId,
+                   options: cards, optionsValue: 'ccId',
+                   optionsText: function(c){ return c.ccNumber + ' · ' + c.holderName; },
+                   optionsCaption: 'Select…'"></select>
+        </div>
+        <div class="form-group" style="margin-bottom:12px">
+          <label class="form-label">Proxy User *</label>
+          <select class="form-control" data-bind="value: newUser,
+                   options: users, optionsValue: 'userId',
+                   optionsText: 'displayName', optionsCaption: 'Select…'"></select>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input class="form-control" type="date" data-bind="value: newStart">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input class="form-control" type="date" data-bind="value: newEnd">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-bind="click: function(){ showNew(false); }">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: createProxy, enable: !busy()">
+          <!-- ko if: busy() -->Creating&hellip;<!-- /ko -->
+          <!-- ko ifnot: busy() -->&#10003; Create Proxy<!-- /ko -->
+        </button>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>
