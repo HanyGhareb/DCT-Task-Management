@@ -61,7 +61,13 @@
     <div class="modal-box" data-bind="clickBubble: false" style="max-width:480px">
       <div class="modal-header">
         <span style="font-size:16px;font-weight:700">&#128221; Approval Action</span>
-        <button class="btn btn-icon" data-bind="click: closeModal">&#10005;</button>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeModal">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: submitAction, enable: !modalSaving()">
+            <!-- ko if: modalSaving() -->Processing&hellip;<!-- /ko -->
+            <!-- ko ifnot: modalSaving() -->Confirm<!-- /ko -->
+          </button>
+        </div>
       </div>
       <div class="modal-body">
         <!-- ko if: modalItem() -->
@@ -100,13 +106,6 @@
           <textarea class="form-control" rows="4" placeholder="Enter your comments&hellip;"
                     data-bind="value: modalComment, valueUpdate: 'input'"></textarea>
         </div>
-      </div>
-      <div class="modal-footer" style="display:flex;gap:10px;padding:16px;border-top:1px solid var(--border-color)">
-        <button class="btn btn-primary" data-bind="click: submitAction, enable: !modalSaving()">
-          <!-- ko if: modalSaving() -->Processing&hellip;<!-- /ko -->
-          <!-- ko ifnot: modalSaving() -->Confirm<!-- /ko -->
-        </button>
-        <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
       </div>
     </div>
   </div>

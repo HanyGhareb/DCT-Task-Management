@@ -36,6 +36,14 @@ db/v2/               ← All DCT_* DDL, packages, ORDS setup (source of truth)
                        documents / coding-lines / status-history + DCT_LOOKUP_PKG
   16_dct_missing_fks.sql ← Phase 2: natural-key FKs + lookup-first migration
   17_dct_user_photo.sql  ← DCT_USERS photo_blob/photo_mime_type (profile photos via /dct/users/:id/photo)
+  19_dct_wave_enhancements.sql ← Wave 1-4: template draft lifecycle, /dct/boot,
+                       notifications/count, audit/:id snapshots, FEATURE_*/LANDING_* seeds,
+                       validate_session inactivity timeout (deployed 2026-06-13)
+  20_dct_enhancements2.sql ← Enh round 2: settings PUT upsert, audit fromdt/todt + /audit/export CSV,
+                       /dct/sessions/ + sessions/revoke, approval-templates/:id/restore,
+                       INTEGRATION_API_KEY secret seed (deployed 2026-06-13)
+  21_uat_cleanup.sql   ← rerunnable UAT artifact housekeeping (park uat.auto.* users,
+                       close their sessions, drop UAT_WAVE_FLOW~V% archives)
 
 apps/ifinance-v2/    ← LEGACY: vanilla JS task management prototype (localStorage only)
                        Superseded by final apps/ — do not add features here
@@ -134,6 +142,8 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 
 **Handler pattern:** Use `q'[...]'` for string literals containing special characters. Call `dct_rest.validate_session(:body)` at the top of every protected handler. Return JSON via `APEX_JSON` package.
 
+**Public branding endpoint:** `GET /dct/branding` is the ONLY unauthenticated handler (the login page renders pre-session). It exposes just the whitelisted UI keys `APP_NAME` / `APP_NAME_AR` / `APP_TAGLINE` / `APP_TAGLINE_AR` from `DCT_SYSTEM_SETTINGS` — never add secrets to it. The Admin login title/subtitle bind to it (login.js fetch with static/i18n fallback) and are editable on the System Settings page.
+
 ---
 
 ## Database Layer
@@ -191,7 +201,11 @@ Two skills are configured in `skills-lock.json`:
 
 ## Conventions
 
+**Deployment notes (2026-06-13):** every app has a deployment runbook at `final apps/<App>/docs/deployment-notes.md` (Admin, PC, DT, HR, FL, CC, AR). It holds the app's deploy checklist (APP_VERSION bump, DB script order, ORDS/synonym rules, smoke test) plus the app's deployment history and gotchas. **Update the relevant file with EVERY deployment** — new DB scripts, ORDS changes, frontend ships, and any new gotcha discovered during deployment go there. Admin's file (§2) carries the canonical platform-wide SQLcl/ORDS rules; the others reference it. Key universal rule: bump `window.APP_VERSION` in the app's `Jet/index.html` on every frontend deploy (it drives the requirejs + i18n cache key; deployed browsers serve stale files without it), and a change to `final apps/shared/` requires the bump in **all 7 apps**.
+
 **CSS (Phase 3):** `final apps/shared/css/platform.css` is the ONE structural stylesheet for all JET apps — edit it once; never copy styles into a module app. Each app's `css/app.css` holds only brand tokens (`--brand`/`--brand-rgb`/`--brand-dark`/`--brand-soft` + legacy aliases); the live brand color loads from the module's `THEME_BRAND_COLOR` setting at boot (`shared/js/shell.js`). Full contract incl. the shared shell (top bar + module switcher + side-nav), i18n (`t()`, EN/AR, Latin digits), tri-state lists (`<list-skeleton>`/`<list-pager>`/toast) and the Chart.js rule (**never `<script>`-tag it — load via requirejs `chartjs` path; create via `shared/chartLoader.makeChart`**) is in `final apps/SHARED_JET_ARCHITECTURE.md`. KO+ORDS gotcha: APEX_JSON skips NULLs — bind optional fields as `$data.field || ''`, never bare `text: field`.
+
+**Action buttons — top-right (2026-06-13):** Save / Save Changes / Submit / Back / Cancel / Confirm always sit at the TOP-RIGHT of the page header (`.page-header-row` + `.page-actions`), region heading (`.section-heading-row` + `.region-actions`), or modal header (`.region-actions` `btn-sm`, replacing the `×`) — never at the bottom of a form. `.form-actions` bottom bars are deprecated (only "+ Add X" CTAs and table-row inline editors may stay at the bottom). Primary action is the right-most button; never pair Back AND Cancel when they call the same handler. Full recipes in `final apps/SHARED_JET_ARCHITECTURE.md` § "Action Buttons — Always Top-Right".
 
 **Vault design system** (`rm-*` / `re-*` classes, defined at the bottom of Admin's `app.css`) applies only to the roles/permissions pages (`roles.html`, `permissions.html`, `roleEdit.html`). Key design tokens:
 

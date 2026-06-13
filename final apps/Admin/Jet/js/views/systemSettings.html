@@ -27,9 +27,23 @@
         </div>
       </div>
       <div style="flex:0 0 240px;margin-left:20px">
+        <!-- ko if: $data.isToggle -->
+        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:flex-end"
+             data-bind="click: flip">
+          <span style="font-size:11.5px;color:var(--text-3)"
+                data-bind="text: toggleOn() ? $root.t('sys.flagOn') : $root.t('sys.flagOff')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none"
+                   data-bind="checked: toggleOn(), attr: { 'aria-label': settingKey }">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- ko ifnot: $data.isToggle -->
         <input class="form-control" type="text"
-               data-bind="value: value, valueUpdate: 'input',
+               data-bind="value: value, valueUpdate: 'input', attr: { 'aria-label': settingKey },
                           style: { 'border-color': dirty() ? '#0572CE' : '', 'background': dirty() ? '#f0f7ff' : '' }">
+        <!-- /ko -->
         <!-- ko if: dirty() -->
         <span style="font-size:10px;color:#0572CE;margin-top:2px;display:block">✎ <span data-bind="text: $root.t('sys.modified')"></span></span>
         <!-- /ko -->

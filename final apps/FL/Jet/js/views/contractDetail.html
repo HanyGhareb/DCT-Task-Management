@@ -171,7 +171,10 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:520px">
       <div class="modal-head"><span class="modal-title">New Amendment</span>
-        <button class="modal-close" data-bind="click: function(){ showAmdModal(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showAmdModal(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveAmendment">&#10003; Create Draft</button>
+        </div></div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group form-group--full"><label class="form-label">Reason *</label>
@@ -185,10 +188,6 @@
         </div>
         <div class="form-hint" style="margin-top:8px">On approval the contract is updated and PENDING schedule rows are rebuilt (PAID rows preserved).</div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showAmdModal(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: saveAmendment">&#10003; Create Draft</button>
-      </div>
     </div>
   </div>
   <!-- /ko -->
@@ -198,7 +197,10 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:520px">
       <div class="modal-head"><span class="modal-title">Renew Contract</span>
-        <button class="modal-close" data-bind="click: function(){ showRnlModal(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showRnlModal(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveRenewal">&#10003; Create Draft</button>
+        </div></div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">New Start Date *</label>
@@ -211,10 +213,6 @@
             <input class="form-control" data-bind="value: rForm.reason, valueUpdate: 'input'"></div>
         </div>
         <div class="form-hint" style="margin-top:8px">On approval a new contract is created and this one is marked COMPLETED.</div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showRnlModal(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: saveRenewal">&#10003; Create Draft</button>
       </div>
     </div>
   </div>

@@ -4,7 +4,16 @@
       <div class="page-title" data-bind="text: isEdit ? '&#9998; Edit Petty Cash Request' : '&#10133; New Petty Cash Request'"></div>
       <div class="page-subtitle" data-bind="text: isEdit ? 'Viewing / editing ' + pcNumber() : 'Submit a new advance request'"></div>
     </div>
-    <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+      <!-- ko ifnot: isReadOnly() -->
+      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">&#128190; Save Draft</button>
+      <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+        <!-- ko ifnot: saving() -->&#9993; Submit for Approval<!-- /ko -->
+      </button>
+      <!-- /ko -->
+    </div>
   </div>
 
   <!-- Alerts -->
@@ -170,15 +179,4 @@
     <!-- /ko -->
   </div>
 
-  <!-- Actions -->
-  <!-- ko ifnot: isReadOnly() -->
-  <div class="form-actions">
-    <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">
-      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
-      <!-- ko ifnot: saving() -->&#9993; Submit for Approval<!-- /ko -->
-    </button>
-    <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">&#128190; Save Draft</button>
-    <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
-  </div>
-  <!-- /ko -->
 </div>

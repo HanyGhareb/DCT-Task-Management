@@ -23,7 +23,13 @@
   <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
     <div style="background:var(--surface,#fff);border-radius:12px;padding:28px;max-width:420px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3)"
          data-bind="modalTrap: $vm.closeEdit">
-      <h3 style="margin-bottom:16px" data-bind="text: $vm.isNew() ? 'Add Lookup Value' : 'Edit Lookup Value'"></h3>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px">
+        <h3 style="margin:0" data-bind="text: $vm.isNew() ? 'Add Lookup Value' : 'Edit Lookup Value'"></h3>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: $vm.closeEdit">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: $vm.saveEdit">&#10003; Save</button>
+        </div>
+      </div>
       <!-- ko if: $vm.editError() -->
       <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: $vm.editError()"></span></div>
       <!-- /ko -->
@@ -64,10 +70,6 @@
         </div>
       </div>
       <audit-info params="data: $vm.auditTarget"></audit-info>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
-        <button class="btn btn-secondary" data-bind="click: $vm.closeEdit">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: $vm.saveEdit">&#10003; Save</button>
-      </div>
     </div>
   </div>
   <!-- /ko -->

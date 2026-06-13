@@ -46,6 +46,9 @@
   "cmdp.groupUsers": "Users",
   "cmdp.groupRoles": "Roles",
   "cmdp.groupSettings": "Settings",
+  "cmdp.groupRecent": "Recent",
+  "cmdp.recentSub": "recently visited",
+  "cmdp.groupActions": "Actions",
 
   "idle.title": "Still there?",
   "idle.body": "You have been inactive for a while. Extend your session or you will be signed out.",

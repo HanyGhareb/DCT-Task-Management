@@ -46,6 +46,9 @@
   "cmdp.groupUsers": "المستخدمون",
   "cmdp.groupRoles": "الأدوار",
   "cmdp.groupSettings": "الإعدادات",
+  "cmdp.groupRecent": "الأخيرة",
+  "cmdp.recentSub": "تمت زيارتها مؤخراً",
+  "cmdp.groupActions": "إجراءات",
 
   "idle.title": "هل ما زلت هنا؟",
   "idle.body": "لم يُسجّل أي نشاط منذ فترة. مدّد جلستك وإلا سيتم تسجيل خروجك.",

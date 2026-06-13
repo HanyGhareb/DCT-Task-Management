@@ -1,0 +1,75 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: t('sess.title')"></div>
+      <div class="page-subtitle">
+        <span class="mono" data-bind="text: sessionCount()"></span>
+        <span data-bind="text: t('sess.subtitle', [userCount(), timeoutMins()])"></span>
+      </div>
+    </div>
+    <button class="btn btn-secondary btn-sm" data-bind="click: reload, text: '↻ ' + t('common.refresh')"></button>
+  </div>
+
+  <div class="data-table-wrap">
+    <!-- ko if: loading() -->
+    <list-skeleton params="rows: 8"></list-skeleton>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: loadError() -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#9888;</div>
+      <div class="empty-state__msg" data-bind="text: t('empty.loadFailed')"></div>
+      <button class="btn btn-primary" data-bind="click: reload, text: t('common.retry')"></button>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loadError() -->
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-bind="text: t('sess.colUser')"></th>
+          <th data-bind="text: t('sess.colSession')"></th>
+          <th data-bind="text: t('sess.colLogin')"></th>
+          <th data-bind="text: t('sess.colActivity')"></th>
+          <th data-bind="text: t('sess.colIp')"></th>
+          <th style="width:120px" data-bind="text: t('common.actions')"></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: items() -->
+        <tr data-bind="css: { 'row--selected': $parent.isOwn($data) }">
+          <td>
+            <div style="font-weight:600;font-size:13px" data-bind="text: displayName"></div>
+            <div style="font-size:11px;color:var(--text-3)" class="mono" data-bind="text: username"></div>
+          </td>
+          <td>
+            <span class="mono" style="font-size:12px" data-bind="text: '…' + sidTail"></span>
+            <!-- ko if: $parent.isOwn($data) -->
+            <span class="badge badge--admin" style="margin-inline-start:6px" data-bind="text: $root.t('sess.thisDevice')"></span>
+            <!-- /ko -->
+          </td>
+          <td style="font-size:12.5px" data-bind="text: $parent.fmt(loginAt)"></td>
+          <td style="font-size:12.5px" data-bind="text: $parent.fmt(lastActivity)"></td>
+          <td class="mono" style="font-size:11.5px" data-bind="text: ip, attr: { title: userAgent }"></td>
+          <td>
+            <button class="btn btn-danger btn-sm"
+                    data-bind="click: $parent.revoke.bind($parent, $data), enable: !$parent.busy(),
+                               text: $root.t('sess.revoke')"></button>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: items().length === 0 -->
+        <tr><td colspan="6">
+          <div class="empty-state">
+            <div class="empty-state__icon">&#128274;</div>
+            <div class="empty-state__msg" data-bind="text: $root.t('sess.empty')"></div>
+          </div>
+        </td></tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</div>

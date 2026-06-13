@@ -100,6 +100,7 @@ require(
     window._jetApp = {
       navigate: app.navigate.bind(app),
       onLogin:  app.onLogin.bind(app),
+      route:    function () { return app.currentNavItem(); },
     };
     ko.applyBindings(app, document.getElementById('globalBody'));
   }

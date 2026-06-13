@@ -1,6 +1,9 @@
 /**
- * settingService.js — AR module settings (DCT_MODULE_SETTINGS rows).
- * GET /settings/ returns { items: [{key, value, label, …}] }.
+ * settingService.js — AR module settings (DCT_MODULE_SETTINGS rows) +
+ * AI provider registry (DCT_AR_AI_PROVIDERS, Manage Providers popup).
+ * GET /settings/  returns { items: [{key, value, label, …, updatedBy, updatedAt}] }.
+ * GET /providers/ returns { items: [{id, code, name, apiFormat, model, hasKey, …}] }
+ *                 — api_key is write-only and never returned.
  */
 define(['services/api'], function (api) {
   'use strict';
@@ -28,6 +31,26 @@ define(['services/api'], function (api) {
     update: function (key, value) {
       _cache = null;
       return api.put('/settings/', { key: key, value: value });
+    },
+
+    /* ── AI provider registry ─────────────────────────────────────── */
+
+    getProviders: function () {
+      return api.get('/providers/').then(function (res) {
+        return (res && res.items) || [];
+      });
+    },
+
+    createProvider: function (p) {
+      return api.post('/providers/', p);
+    },
+
+    updateProvider: function (id, p) {
+      return api.put('/providers/' + id, p);
+    },
+
+    deleteProvider: function (id) {
+      return api.delete('/providers/' + id);
     },
   };
 });

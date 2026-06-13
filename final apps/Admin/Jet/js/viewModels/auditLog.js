@@ -13,6 +13,8 @@ function (ko, auditService, i18n) {
 
     self.searchBy     = ko.observable('');
     self.actionFilter = ko.observable('');             // '', LOGIN, CREATE, UPDATE, DELETE…
+    self.fromDate     = ko.observable('');             // enh-3: YYYY-MM-DD, inclusive
+    self.toDate       = ko.observable('');
 
     // Wave 3: dashboard drill-down lands here with a preset action filter
     var presetAction = sessionStorage.getItem('auditPresetAction');
@@ -31,7 +33,9 @@ function (ko, auditService, i18n) {
         limit:  self.limit(),
         offset: self.offset(),
         search: self.searchBy().trim() || null,
-        action: self.actionFilter() || null
+        action: self.actionFilter() || null,
+        fromdt: self.fromDate() || null,
+        todt:   self.toDate() || null
       }).then(function (r) {
         self.entries(r.items);
         self.total(r.total || r.items.length);
@@ -45,6 +49,8 @@ function (ko, auditService, i18n) {
     self.searchBy.extend({ rateLimit: { timeout: 300, method: 'notifyWhenChangesStop' } });
     self.searchBy.subscribe(function () { self.offset(0); self.reload(); });
     self.actionFilter.subscribe(function () { self.offset(0); self.reload(); });
+    self.fromDate.subscribe(function () { self.offset(0); self.reload(); });
+    self.toDate.subscribe(function () { self.offset(0); self.reload(); });
 
     self.formatDate = function (iso) {
       return iso ? i18n.fmtDate(iso, {
@@ -89,26 +95,18 @@ function (ko, auditService, i18n) {
       });
     };
 
-    // ── Wave 3: CSV export of the current filter (≤1000 rows) ────────────
+    // ── enh-3: server-built CSV of the full filtered history ─────────────
+    // (replaces the Wave 3 client-side page-walk, which capped at 1000 rows)
     self.exporting = ko.observable(false);
     self.exportCsv = function () {
       self.exporting(true);
-      auditService.exportRows({
+      auditService.exportServerCsv({
         search: self.searchBy().trim() || null,
-        action: self.actionFilter() || null
-      }).then(function (rows) {
+        action: self.actionFilter() || null,
+        fromdt: self.fromDate() || null,
+        todt:   self.toDate() || null
+      }).then(function (blob) {
         self.exporting(false);
-        var esc = function (v) {
-          v = v === undefined || v === null ? '' : String(v);
-          return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
-        };
-        var lines = ['loggedAt,username,action,objectType,objectId,status,error'];
-        rows.forEach(function (r) {
-          lines.push([r.loggedAt, r.actionBy, r.actionType, r.objectType,
-                      r.objectId, r.status, r.error].map(esc).join(','));
-        });
-        // ﻿ BOM so Excel opens UTF-8 (Arabic usernames) correctly
-        var blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
         var a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
         a.download = 'audit-log-' + new Date().toISOString().slice(0, 10) + '.csv';

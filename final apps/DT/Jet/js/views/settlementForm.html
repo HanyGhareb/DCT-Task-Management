@@ -2,9 +2,17 @@
   <div class="page-header">
     <div class="page-header-row">
       <div>
-        <button class="btn btn-secondary btn-sm" data-bind="click: goBack" style="margin-bottom:6px">&#8592; Back</button>
         <div class="page-title" data-bind="text: isView() ? 'Settlement — ' + settleNumber() : 'New Travel Settlement'"></div>
         <div class="page-subtitle" data-bind="text: request() ? 'Request: ' + request().reqNumber + ' — ' + request().travelPurpose : ''"></div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" data-bind="click: goBack">&#8592; Back</button>
+        <!-- ko ifnot: isView() -->
+        <button class="btn btn-secondary" data-bind="click: saveDraft, disable: saving()">Save Draft</button>
+        <button class="btn btn-primary" data-bind="click: submit, disable: saving()">
+          <!-- ko if: saving() -->Submitting…<!-- /ko --><!-- ko ifnot: saving() -->Submit Settlement<!-- /ko -->
+        </button>
+        <!-- /ko -->
       </div>
     </div>
   </div>
@@ -110,15 +118,6 @@
     </div>
   </div>
 
-  <!-- ko ifnot: isView() -->
-  <div class="form-actions">
-    <button class="btn btn-primary" data-bind="click: submit, disable: saving()">
-      <!-- ko if: saving() -->Submitting…<!-- /ko --><!-- ko ifnot: saving() -->Submit Settlement<!-- /ko -->
-    </button>
-    <button class="btn btn-secondary" data-bind="click: saveDraft, disable: saving()">Save Draft</button>
-    <button class="btn btn-secondary" data-bind="click: goBack">Cancel</button>
-  </div>
-  <!-- /ko -->
 
   <!-- /ko -->
   <!-- ko ifnot: request() -->

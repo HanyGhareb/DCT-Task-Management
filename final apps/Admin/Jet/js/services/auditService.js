@@ -46,8 +46,8 @@ define(['services/api'], function (api) {
     },
 
     /**
-     * Phase 3 server-side pagination.
-     * opts: { limit, offset, search, action }
+     * Phase 3 server-side pagination (+ enh-2 round: fromdt/todt, YYYY-MM-DD).
+     * opts: { limit, offset, search, action, fromdt, todt }
      * Resolves { items, total, limit, offset } (items normalised).
      */
     getPage: function (opts) {
@@ -55,9 +55,36 @@ define(['services/api'], function (api) {
       var q = '?limit=' + (opts.limit || 50) + '&offset=' + (opts.offset || 0);
       if (opts.search) q += '&search=' + encodeURIComponent(opts.search);
       if (opts.action) q += '&action=' + encodeURIComponent(opts.action);
+      if (opts.fromdt) q += '&fromdt=' + encodeURIComponent(opts.fromdt);
+      if (opts.todt)   q += '&todt='   + encodeURIComponent(opts.todt);
       return api.get('/audit/' + q).then(function (r) {
         r.items = (r.items || []).map(normAudit);
         return r;
+      });
+    },
+
+    /**
+     * Server-built CSV of the full filtered history (GET /audit/export).
+     * Resolves a Blob — the api wrapper JSON-parses everything, so this one
+     * goes through fetch directly with the same bearer token.
+     */
+    exportServerCsv: function (opts) {
+      opts = opts || {};
+      var q = [];
+      if (opts.search) q.push('search=' + encodeURIComponent(opts.search));
+      if (opts.action) q.push('action=' + encodeURIComponent(opts.action));
+      if (opts.fromdt) q.push('fromdt=' + encodeURIComponent(opts.fromdt));
+      if (opts.todt)   q.push('todt='   + encodeURIComponent(opts.todt));
+      return Promise.all([
+        new Promise(function (res) { require(['services/config', 'services/authService'], function (c, a) { res([c, a]); }); })
+      ]).then(function (mods) {
+        var config = mods[0][0], authService = mods[0][1];
+        return fetch(config.apiBase + '/audit/export' + (q.length ? '?' + q.join('&') : ''), {
+          headers: { Authorization: 'Bearer ' + authService.getToken() }
+        }).then(function (r) {
+          if (!r.ok) return Promise.reject({ status: r.status, message: 'Export failed (' + r.status + ')' });
+          return r.blob();
+        });
       });
     },
 
@@ -143,6 +170,10 @@ define(['services/api'], function (api) {
     },
     activateTemplate: function (id) {
       return api.post('/approval-templates/' + id + '/activate', {}, { silent: true });
+    },
+    /* enh-2 round: archived version → new draft of the live template */
+    restoreTemplate: function (id) {
+      return api.post('/approval-templates/' + id + '/restore', {}, { silent: true });
     },
     /* steps: [{ stepId, seq, label, slaHours }] — drafts only (server-enforced) */
     updateTemplateSteps: function (id, steps) {

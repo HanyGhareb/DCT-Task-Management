@@ -13,6 +13,7 @@ import urllib.request
 import urllib.error
 import os
 import sys
+import time
 
 ORDS_ORIGIN = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com'
 PORT = 8080
@@ -101,7 +102,21 @@ class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
 
         req = urllib.request.Request(target, data=body, headers=fwd_headers, method=method)
         try:
-            with urllib.request.urlopen(req, timeout=30) as resp:
+            # transient ADB hiccups (reset/timeout) surface as random 502s
+            # mid-suite — retry idempotent GETs twice before giving up
+            attempts = 3 if method == 'GET' else 1
+            resp = None
+            for i in range(attempts):
+                try:
+                    resp = urllib.request.urlopen(req, timeout=30)
+                    break
+                except urllib.error.HTTPError:
+                    raise                      # real HTTP status — pass through
+                except Exception:
+                    if i == attempts - 1:
+                        raise
+                    time.sleep(0.5 * (i + 1))
+            with resp:
                 body_out = resp.read()
                 self.send_response(resp.status)
                 self._cors()

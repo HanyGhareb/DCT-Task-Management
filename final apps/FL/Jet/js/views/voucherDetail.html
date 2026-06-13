@@ -15,7 +15,16 @@
         · <span data-bind="text: data().periodLabel || ''"></span>
       </div>
     </div>
-    <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+      <!-- ko if: editable() -->
+      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">Save Draft</button>
+      <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">&#10003; Submit for Approval</button>
+      <!-- /ko -->
+      <!-- ko if: isAdmin && data().status === 'APPROVED' && data().paymentStatus === 'PENDING' -->
+      <button class="btn btn-primary" data-bind="click: markPaid">&#128181; Confirm Payment</button>
+      <!-- /ko -->
+    </div>
   </div>
 
   <!-- ko if: successMsg() -->
@@ -72,15 +81,6 @@
 
     <audit-info params="data: data"></audit-info>
 
-    <div class="form-actions">
-      <!-- ko if: editable() -->
-      <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">&#10003; Submit for Approval</button>
-      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">Save Draft</button>
-      <!-- /ko -->
-      <!-- ko if: isAdmin && data().status === 'APPROVED' && data().paymentStatus === 'PENDING' -->
-      <button class="btn btn-primary" data-bind="click: markPaid">&#128181; Confirm Payment</button>
-      <!-- /ko -->
-    </div>
   </div>
   <!-- /ko -->
 </div>

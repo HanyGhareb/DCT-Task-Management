@@ -97,7 +97,16 @@
   <!-- ko if: showModal() -->
   <div class="modal-overlay" data-bind="click: closeModal">
     <div class="modal-box" data-bind="click: function () { return false; }, clickBubble: false, modalTrap: closeModal">
-      <div class="modal-title" data-bind="text: modalTitle()"></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+        <div class="modal-title" data-bind="text: modalTitle()"></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeModal">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveUnit, enable: !savingUnit()">
+            <!-- ko if: savingUnit() -->Saving&hellip;<!-- /ko -->
+            <!-- ko ifnot: savingUnit() -->&#10003; Save<!-- /ko -->
+          </button>
+        </div>
+      </div>
       <!-- ko if: modalPath() -->
       <div class="org-breadcrumb" data-bind="text: modalPath()"></div>
       <!-- /ko -->
@@ -134,14 +143,6 @@
         </div>
       </div>
       <audit-info params="data: auditTarget"></audit-info>
-
-      <div class="form-actions">
-        <button class="btn btn-primary" data-bind="click: saveUnit, enable: !savingUnit()">
-          <!-- ko if: savingUnit() -->Saving&hellip;<!-- /ko -->
-          <!-- ko ifnot: savingUnit() -->&#10003; Save<!-- /ko -->
-        </button>
-        <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
-      </div>
     </div>
   </div>
   <!-- /ko -->

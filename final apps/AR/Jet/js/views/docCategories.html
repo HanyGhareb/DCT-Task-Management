@@ -10,6 +10,10 @@
   <!-- editor -->
   <!-- ko if: showEditor() -->
   <div class="form-card" style="margin-bottom:16px">
+    <div class="region-actions" style="margin-bottom:12px">
+      <button class="btn btn-secondary btn-sm" data-bind="click: cancelEdit, text: t('common.cancel')"></button>
+      <button class="btn btn-primary btn-sm" data-bind="click: save, disable: saving(), text: t('common.save')"></button>
+    </div>
     <div class="form-grid form-grid--2col">
       <div class="form-field">
         <label>Code *</label>
@@ -60,10 +64,6 @@
     <div class="form-field">
       <label>Extraction hints (appended to the AI prompt for this category)</label>
       <textarea class="form-control" rows="2" data-bind="value: hints"></textarea>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-secondary" data-bind="click: cancelEdit, text: t('common.cancel')"></button>
-      <button class="btn btn-primary" data-bind="click: save, disable: saving(), text: t('common.save')"></button>
     </div>
   </div>
   <!-- /ko -->

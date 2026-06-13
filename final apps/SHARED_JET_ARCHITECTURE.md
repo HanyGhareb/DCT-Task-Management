@@ -180,6 +180,25 @@ All other CSS (layout, typography, cards, badges, forms, tables) is **identical*
 
 ---
 
+## Action Buttons — Always Top-Right (platform rule, 2026-06-13)
+
+**Save / Save Changes / Submit / Back / Cancel / Confirm buttons live at the TOP-RIGHT of the page or region they act on — never at the bottom of the form.** This applies to every existing view and every future one. CSS lives in `shared/css/platform.css`.
+
+| Scope | Markup recipe |
+|---|---|
+| Page-level form (edit/detail page) | `<div class="page-header page-header-row"><div>title + subtitle</div><div class="page-actions">[← Back] [Save Draft] [Save/Submit (primary)]</div></div>` |
+| Region (card / inline edit panel) | `<div class="section-heading-row"><div class="section-heading">Title</div><div class="region-actions">[Cancel] [Save]</div></div>` — or a flex row with `.region-actions` if the region has no `.section-heading` |
+| Modal dialog | Buttons go in the modal header row next to the title (`.region-actions`, `btn-sm`), replacing the old `×` close button (Cancel covers it). No `.modal-footer`. |
+| Wizard steps | Per-step buttons go in the page header `page-actions`, gated by `<!-- ko if: step() === n -->`. |
+
+Rules:
+- Button order (LTR): Back / Cancel first, primary action (Save / Submit / Confirm) last — the primary is the right-most button. RTL mirrors automatically (flex + logical properties).
+- A page never needs both Back and Cancel when they call the same handler — keep Back only.
+- `.form-actions` (bottom bar with top border) is **deprecated for new work**; the only sanctioned bottom-row leftovers are non-form CTAs (e.g. "+ Add X") and table-row inline editors.
+- Confirmation-only dialogs (e.g. the Vault delete-role prompt: a question + two buttons, no form fields) keep their buttons in place.
+
+---
+
 ## Checklist — Every New Module JET App
 
 - [ ] Directory created: `final apps/<MODULE>/Jet/`

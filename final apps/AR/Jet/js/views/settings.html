@@ -1,42 +1,204 @@
-<div class="page-wrap" style="max-width:900px">
+<div class="page-wrap" style="max-width:980px">
   <div class="page-header">
     <div class="page-title" data-bind="text: t('nav.moduleSettings')"></div>
-    <div class="page-subtitle">AI behavior, review gate, alternative file naming, and appearance</div>
+    <div class="page-subtitle" data-bind="text: t('set.subtitle')"></div>
   </div>
 
   <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
   <!-- ko ifnot: loading() -->
-  <div class="form-card">
-    <!-- ko foreach: settings() -->
-    <div style="display:grid; grid-template-columns: 1fr 280px 90px; gap:14px; align-items:center;
-                padding:12px 0; border-bottom:1px solid #eef1f6">
-      <div>
-        <div style="font-weight:600; font-size:13px" data-bind="text: label"></div>
-        <div style="font-size:11.5px; color:#8a94a6" data-bind="text: description"></div>
+
+  <!-- ko foreach: regions -->
+  <div class="card set-region">
+    <div class="set-region__head">
+      <span class="set-region__icon" data-bind="text: icon"></span>
+      <span class="set-region__title" data-bind="text: $vm.t(titleKey)"></span>
+    </div>
+
+    <!-- ko foreach: settings -->
+    <div class="set-row" data-bind="css: { 'set-row--dirty': _dirty() }">
+      <div class="set-row__info">
+        <div class="set-row__label" data-bind="text: label"></div>
+        <div class="set-row__desc" data-bind="text: $data.description || ''"></div>
+        <!-- ko if: _updatedAt() -->
+        <div class="set-row__audit">
+          <span class="set-row__audit-ico">&#128337;</span>
+          <span class="set-row__audit-lbl" data-bind="text: $vm.t('set.updated')"></span>
+          <span data-bind="text: _updatedBy() || '&mdash;'"></span>
+          <span>&middot;</span>
+          <span data-bind="text: _updatedAt()"></span>
+        </div>
+        <!-- /ko -->
       </div>
-      <div>
+      <div class="set-row__input">
         <!-- ko if: type === 'BOOLEAN' -->
         <select class="form-control" data-bind="value: _value">
           <option value="Y">Yes</option>
           <option value="N">No</option>
         </select>
         <!-- /ko -->
-        <!-- ko if: type === 'SELECT' -->
-        <select class="form-control" data-bind="options: (allowed || '').split('|'), value: _value"></select>
+        <!-- ko if: type === 'SELECT' && key === 'AI_PROVIDER' -->
+        <select class="form-control" data-bind="options: $vm.providerOptions(), value: _value"></select>
+        <!-- /ko -->
+        <!-- ko if: type === 'SELECT' && key !== 'AI_PROVIDER' -->
+        <select class="form-control" data-bind="options: ($data.allowed || '').split('|'), value: _value"></select>
         <!-- /ko -->
         <!-- ko if: type === 'NUMBER' -->
         <input class="form-control mono" type="number" data-bind="value: _value">
         <!-- /ko -->
-        <!-- ko if: type !== 'BOOLEAN' && type !== 'SELECT' && type !== 'NUMBER' -->
+        <!-- ko if: type === 'COLOR' -->
+        <div class="set-color">
+          <input type="color" class="set-color__swatch" data-bind="value: _value">
+          <input class="form-control mono set-color__hex" data-bind="value: _value">
+        </div>
+        <!-- /ko -->
+        <!-- ko if: type !== 'BOOLEAN' && type !== 'SELECT' && type !== 'NUMBER' && type !== 'COLOR' -->
         <input class="form-control" data-bind="value: _value,
                attr: { type: key.indexOf('API_KEY') >= 0 ? 'password' : 'text',
                        placeholder: key.indexOf('API_KEY') >= 0 ? 'enter new key to replace' : '' }">
         <!-- /ko -->
       </div>
-      <button class="btn btn-primary btn-sm" data-bind="click: $parent.save.bind($parent, $data),
-              disable: _saving(), text: _saving() ? '…' : $parent.t('common.save')"></button>
     </div>
     <!-- /ko -->
+
+    <!-- ko if: id === 'ai' -->
+    <div class="set-providers">
+      <!-- ko foreach: $vm.providers -->
+      <div class="set-prov-card" data-bind="css: { 'set-prov-card--dim': !$vm.isSelectedProvider($data) }">
+        <div class="set-prov-card__main">
+          <span class="set-prov-card__code mono" data-bind="text: code"></span>
+          <span class="set-prov-card__name" data-bind="text: name"></span>
+          <span class="set-prov-card__model mono" data-bind="text: model"></span>
+        </div>
+        <div class="set-prov-card__meta">
+          <!-- ko if: $vm.isSelectedProvider($data) -->
+          <span class="badge badge--active" data-bind="text: $vm.t('set.provActive')"></span>
+          <!-- /ko -->
+          <!-- ko if: isActive === 'N' -->
+          <span class="badge badge--inactive" data-bind="text: $vm.t('set.provDisabled')"></span>
+          <!-- /ko -->
+          <span class="badge" data-bind="css: hasKey === 'Y' ? 'badge--info' : 'badge--pending',
+                text: hasKey === 'Y' ? $vm.t('set.keySet') : $vm.t('set.keyMissing')"></span>
+        </div>
+      </div>
+      <!-- /ko -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: $vm.openProviders,
+              text: $vm.t('set.manageProviders')"></button>
+    </div>
+    <!-- /ko -->
+
+    <div class="set-region__foot">
+      <span class="set-region__dirty" data-bind="visible: dirtyCount() > 0">
+        <span data-bind="text: dirtyCount()"></span>&nbsp;<span data-bind="text: $vm.t('set.unsaved')"></span>
+      </span>
+      <button class="btn btn-primary btn-sm"
+              data-bind="click: $vm.saveRegion.bind($vm, $data),
+                         disable: dirtyCount() === 0 || saving(),
+                         text: saving() ? '…' : $vm.t('common.save')"></button>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+
+  <!-- ── Manage Providers popup ─────────────────────────────────────── -->
+  <!-- ko if: provModalOpen() -->
+  <div class="modal-overlay" data-bind="click: closeProviders">
+    <div class="modal-box" style="max-width:680px"
+         data-bind="click: function () { return true; }, clickBubble: false">
+      <div class="modal-header">
+        <div class="modal-title" style="margin:0" data-bind="text: t('set.manageProviders')"></div>
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeProviders">&#10005;</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- ko ifnot: provEditing() -->
+        <!-- ko foreach: providers -->
+        <div class="set-prov-row">
+          <div class="set-prov-row__info">
+            <div>
+              <span class="set-prov-card__code mono" data-bind="text: code"></span>
+              <span class="set-prov-card__name" data-bind="text: name"></span>
+              <!-- ko if: $vm.isSelectedProvider($data) -->
+              <span class="badge badge--active" data-bind="text: $vm.t('set.provActive')"></span>
+              <!-- /ko -->
+              <!-- ko if: isActive === 'N' -->
+              <span class="badge badge--inactive" data-bind="text: $vm.t('set.provDisabled')"></span>
+              <!-- /ko -->
+            </div>
+            <div class="set-prov-row__sub">
+              <span class="mono" data-bind="text: model"></span>
+              <span>&middot;</span>
+              <span data-bind="text: apiFormat"></span>
+              <span>&middot;</span>
+              <span data-bind="text: hasKey === 'Y' ? $vm.t('set.keySet') : $vm.t('set.keyMissing')"></span>
+            </div>
+          </div>
+          <div class="set-prov-row__actions">
+            <button class="btn btn-secondary btn-sm" data-bind="click: $vm.editProvider.bind($vm, $data),
+                    text: $vm.t('common.edit')"></button>
+            <!-- ko ifnot: $vm.isSelectedProvider($data) -->
+            <button class="btn btn-secondary btn-sm set-btn-danger"
+                    data-bind="click: $vm.deleteProvider.bind($vm, $data), text: $vm.t('common.delete')"></button>
+            <!-- /ko -->
+          </div>
+        </div>
+        <!-- /ko -->
+        <div class="form-actions">
+          <button class="btn btn-primary btn-sm" data-bind="click: addProvider,
+                  text: '+ ' + t('set.addProvider')"></button>
+        </div>
+        <!-- /ko -->
+
+        <!-- ko if: provEditing() -->
+        <div class="region-actions" style="margin-bottom:12px">
+          <button class="btn btn-secondary btn-sm" data-bind="click: cancelProvEdit,
+                  text: t('common.cancel')"></button>
+          <button class="btn btn-primary btn-sm"
+                  data-bind="click: saveProvider, disable: provSaving(),
+                             text: provSaving() ? '…' : t('common.save')"></button>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('set.provCode')"></div>
+            <input class="form-control mono" data-bind="value: provForm.code, enable: !provForm.id()"
+                   placeholder="e.g. OPENROUTER">
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('set.provName')"></div>
+            <input class="form-control" data-bind="value: provForm.name">
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('set.provFormat')"></div>
+            <select class="form-control" data-bind="options: apiFormats, value: provForm.apiFormat"></select>
+            <div class="form-hint" data-bind="text: t('set.provFormatHint')"></div>
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('set.provModel')"></div>
+            <input class="form-control mono" data-bind="value: provForm.model">
+          </div>
+          <div class="form-group form-group--full">
+            <div class="form-label" data-bind="text: t('set.provBaseUrl')"></div>
+            <input class="form-control mono" data-bind="value: provForm.baseUrl"
+                   placeholder="optional — leave empty for the provider default">
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('set.provApiKey')"></div>
+            <input class="form-control" type="password" data-bind="value: provForm.apiKey,
+                   attr: { placeholder: provForm.hasKey() === 'Y' ? 'enter new key to replace' : 'enter API key' }">
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('set.provIsActive')"></div>
+            <select class="form-control" data-bind="value: provForm.isActive">
+              <option value="Y">Yes</option>
+              <option value="N">No</option>
+            </select>
+          </div>
+        </div>
+        <audit-info params="data: provAudit"></audit-info>
+        <!-- /ko -->
+
+      </div>
+    </div>
   </div>
   <!-- /ko -->
 </div>

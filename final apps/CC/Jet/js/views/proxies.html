@@ -54,7 +54,13 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:480px">
       <div class="modal-head"><span class="modal-title" data-bind="text: $root.t('prx.new')"></span>
-        <button class="modal-close" data-bind="click: function(){ showNew(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showNew(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: createProxy, enable: !busy()">
+            <!-- ko if: busy() -->Creating&hellip;<!-- /ko -->
+            <!-- ko ifnot: busy() -->&#10003; Create Proxy<!-- /ko -->
+          </button>
+        </div></div>
       <div class="modal-body">
         <!-- ko if: newError() -->
         <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: newError()"></span></div>
@@ -82,13 +88,6 @@
             <input class="form-control" type="date" data-bind="value: newEnd">
           </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showNew(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: createProxy, enable: !busy()">
-          <!-- ko if: busy() -->Creating&hellip;<!-- /ko -->
-          <!-- ko ifnot: busy() -->&#10003; Create Proxy<!-- /ko -->
-        </button>
       </div>
     </div>
   </div>

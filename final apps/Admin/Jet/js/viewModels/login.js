@@ -1,4 +1,4 @@
-define(['knockout', 'services/authService'], function (ko, authService) {
+define(['knockout', 'services/authService', 'services/config'], function (ko, authService, config) {
   'use strict';
 
   function LoginViewModel(params) {
@@ -9,6 +9,27 @@ define(['knockout', 'services/authService'], function (ko, authService) {
     self.error      = ko.observable('');
     self.loading    = ko.observable(false);
     self.quickLogins = authService.QUICK_LOGINS;
+
+    // Settings-driven branding (APP_NAME / APP_TAGLINE in DCT_SYSTEM_SETTINGS).
+    // /branding is the only public endpoint — plain fetch, no Authorization;
+    // the view falls back to the static title / i18n subtitle until it loads.
+    self.appName   = ko.observable('');
+    self.appNameAr = ko.observable('');
+    self.tagline   = ko.observable('');
+    self.taglineAr = ko.observable('');
+    if (config.apiBase) {
+      fetch(config.apiBase + '/branding')
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (b) {
+          if (!b) return;
+          self.appName(b.appName || '');
+          self.appNameAr(b.appNameAr || '');
+          self.tagline(b.tagline || '');
+          self.taglineAr(b.taglineAr || '');
+          if (b.appName) document.title = b.appName + ' — Admin Portal';
+        })
+        .catch(function () {});
+    }
 
     self.doLogin = function () {
       self.error('');

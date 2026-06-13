@@ -17,6 +17,10 @@
       <option value="UPDATE">UPDATE</option>
       <option value="DELETE">DELETE</option>
     </select>
+    <input class="form-control" type="date" style="max-width:160px"
+           data-bind="value: fromDate, attr: { 'aria-label': t('audit.from'), title: t('audit.from') }">
+    <input class="form-control" type="date" style="max-width:160px"
+           data-bind="value: toDate, attr: { 'aria-label': t('audit.to'), title: t('audit.to') }">
     <span class="toolbar-spacer"></span>
     <button class="btn btn-secondary btn-sm"
             data-bind="click: exportCsv, enable: !exporting(),

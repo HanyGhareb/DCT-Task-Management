@@ -1,4 +1,7 @@
 -- =============================================================================
+-- SUPERSEDED 2026-06-13 by 07_ar_ai_providers.sql — provider/model/key rows
+-- now live in DCT_AR_AI_PROVIDERS. Do not re-run this patch after 07.
+-- =============================================================================
 -- AR Module patch — Gemini AI provider settings (2026-06-12)
 -- Adds AI_PROVIDER / GEMINI_API_KEY / GEMINI_MODEL module settings and
 -- relabels AI_MODEL as the Anthropic-specific model setting.

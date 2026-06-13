@@ -307,7 +307,11 @@
   <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title">Add Assignment</div>
-      <button class="modal-close" data-bind="click: closeAssignmentModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeAssignmentModal">Cancel</button>
+        <button class="btn btn-primary btn-sm"
+          data-bind="click: saveAssignment, disable: assignmentSaving(), text: assignmentSaving() ? 'Saving…' : 'Save Assignment'"></button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="display:none" data-bind="visible: !!assignmentError()">
@@ -389,11 +393,6 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeAssignmentModal">Cancel</button>
-      <button class="btn btn-primary"
-        data-bind="click: saveAssignment, disable: assignmentSaving(), text: assignmentSaving() ? 'Saving…' : 'Save Assignment'"></button>
-    </div>
   </div>
 </div>
 
@@ -403,7 +402,11 @@
   <div class="modal-box" style="max-width:480px" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title">End Assignment</div>
-      <button class="modal-close" data-bind="click: closeEndModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeEndModal">Cancel</button>
+        <button class="btn btn-sm" style="background:#C74634;color:#fff"
+          data-bind="click: confirmEndAssignment, disable: endSaving(), text: endSaving() ? 'Ending…' : 'Confirm End'"></button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="display:none" data-bind="visible: !!endError()">
@@ -429,11 +432,6 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeEndModal">Cancel</button>
-      <button class="btn" style="background:#C74634;color:#fff"
-        data-bind="click: confirmEndAssignment, disable: endSaving(), text: endSaving() ? 'Ending…' : 'Confirm End'"></button>
-    </div>
   </div>
 </div>
 
@@ -443,7 +441,12 @@
   <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title" data-bind="text: editingContractId() ? 'Edit Contract' : 'Add Contract'"></div>
-      <button class="modal-close" data-bind="click: closeContractModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeContractModal">Cancel</button>
+        <button class="btn btn-primary btn-sm"
+          data-bind="click: saveContract, disable: contractSaving(),
+                     text: contractSaving() ? 'Saving…' : (editingContractId() ? 'Save Changes' : 'Add Contract')"></button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="display:none" data-bind="visible: !!contractError()">
@@ -490,12 +493,6 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeContractModal">Cancel</button>
-      <button class="btn btn-primary"
-        data-bind="click: saveContract, disable: contractSaving(),
-                   text: contractSaving() ? 'Saving…' : (editingContractId() ? 'Save Changes' : 'Add Contract')"></button>
-    </div>
   </div>
 </div>
 
@@ -505,7 +502,11 @@
   <div class="modal-box" style="max-width:520px" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title">Add Salary Entry</div>
-      <button class="modal-close" data-bind="click: closeSalaryModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeSalaryModal">Cancel</button>
+        <button class="btn btn-primary btn-sm"
+          data-bind="click: saveSalary, disable: salarySaving(), text: salarySaving() ? 'Saving…' : 'Add Entry'"></button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="display:none" data-bind="visible: !!salaryError()">
@@ -547,11 +548,6 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeSalaryModal">Cancel</button>
-      <button class="btn btn-primary"
-        data-bind="click: saveSalary, disable: salarySaving(), text: salarySaving() ? 'Saving…' : 'Add Entry'"></button>
-    </div>
   </div>
 </div>
 
@@ -561,7 +557,11 @@
   <div class="modal-box" style="max-width:560px" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title" data-bind="text: editingDocId() ? 'Edit Document' : 'Add Document'"></div>
-      <button class="modal-close" data-bind="click: closeDocModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeDocModal">Cancel</button>
+        <button class="btn btn-primary btn-sm"
+          data-bind="click: saveDoc, disable: docSaving(), text: docSaving() ? 'Saving…' : 'Save Document'"></button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="display:none" data-bind="visible: !!docFormError()">
@@ -608,11 +608,6 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeDocModal">Cancel</button>
-      <button class="btn btn-primary"
-        data-bind="click: saveDoc, disable: docSaving(), text: docSaving() ? 'Saving…' : 'Save Document'"></button>
-    </div>
   </div>
 </div>
 <!-- /ko -->
@@ -623,7 +618,11 @@
   <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title">Edit Employee</div>
-      <button class="modal-close" data-bind="click: closeEdit">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeEdit">Cancel</button>
+        <button class="btn btn-primary btn-sm"
+          data-bind="click: saveEdit, disable: editSaving(), text: editSaving() ? 'Saving…' : 'Save Changes'"></button>
+      </div>
     </div>
     <div class="modal-body">
       <div style="display:none" data-bind="visible: !!editError()">
@@ -720,11 +719,6 @@
         <!-- /ko -->
       </div>
       <!-- /ko -->
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeEdit">Cancel</button>
-      <button class="btn btn-primary"
-        data-bind="click: saveEdit, disable: editSaving(), text: editSaving() ? 'Saving…' : 'Save Changes'"></button>
     </div>
   </div>
 </div>

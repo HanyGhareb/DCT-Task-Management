@@ -1,0 +1,50 @@
+# HR (App 205) — Deployment Notes
+
+> **Keep this file current: every deployment (frontend, DB, ORDS) must be recorded here.**
+
+- **Module code:** HR · **ORDS base path:** `/ords/admin/hr/` · **Brand:** `#00695C` (Teal)
+- Depends on Admin (App 200) for auth — deploy/verify Admin first.
+
+---
+
+## 1. Frontend (JET SPA) deployment
+
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.2.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
+- `js/services/config.js` → live `apiBase`, never `null`.
+
+## 2. Database deployment (PROD schema, via SQLcl)
+
+Run order = `db/install.sql`:
+
+| Script | Contents |
+|---|---|
+| `01_hr_ddl.sql` | 8 HR_* tables |
+| `02_hr_dct_alterations.sql` | ⚠ **Alters shared tables** (`DCT_EMPLOYEES`, `DCT_ORG`) used by PC/DT/FL — coordinate before re-running; never run blindly on a refresh |
+| `03_hr_views.sql` → `05_hr_pkg.sql` | Views, seed, `DCT_HR_PKG` |
+| `06_hr_ords.sql` | ORDS module — run in a **fresh SQLcl session** (synonym ORA-01471 gotcha) |
+
+Platform SQLcl rules apply (see `final apps/Admin/docs/deployment-notes.md` §2).
+
+HR-specific DB notes:
+
+- Employee photos use the base64/media pattern (b64 payload ≤ 30k) — same as DCT_USERS photos (db/v2/17).
+- Salary history is an **immutable ledger** — no UPDATE/DELETE handlers; don't add them.
+
+## 3. ORDS deployment
+
+- Module under ADMIN schema at `/ords/admin/hr/`; ADMIN synonyms; fresh session for the ORDS script.
+- `validate_session` first in every protected handler; CGI `'AUTHORIZATION'` key (no `HTTP_` prefix).
+- ⚠ **Latent bug:** HR's `documents/file` PUT dereferences `:body` more than once. On ADB ORDS, `:body` may only be dereferenced ONCE (assign to a local BLOB first) — the AR module hit this as silent-empty JSON + ORA-01400. Fix before relying on HR document file upload.
+
+## 4. Post-deploy smoke test
+
+1. Open HR from the Admin module switcher; brand teal loads from `THEME_BRAND_COLOR`.
+2. Employee directory paginates (server-side, Phase 3); employee detail tabs render (Overview/Assignments/Contracts/Salary/Documents).
+3. Add/Edit Employee modal saves; photo upload round-trips.
+
+## 5. Deployment history
+
+- DB + ORDS 100% deployed (`hr.rest` at `/ords/admin/hr/`); JET SPA live; APEX pages pending in Builder.
+- 2026-06-11: UAT lifecycle data E1101-03; hr-employees server pagination (Phase 3).
+- 2026-06-13: all modal Save/Cancel actions moved into modal headers, employeeDetail + 7 setup pages (platform top-right rule). Frontend-only; bump APP_VERSION on next deploy.

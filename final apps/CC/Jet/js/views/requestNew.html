@@ -1,7 +1,28 @@
 <div class="page-wrap" style="max-width:860px">
-  <div class="page-header">
-    <div class="page-title" data-bind="text: $root.t('reqNew.title')"></div>
-    <div class="page-subtitle" data-bind="text: $root.t('reqNew.subtitle')"></div>
+  <div class="page-header page-header-row">
+    <div>
+      <div class="page-title" data-bind="text: $root.t('reqNew.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('reqNew.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: step() === 1 -->
+      <button class="btn btn-primary" data-bind="click: next, enable: !!selType()">Continue &#8594;</button>
+      <!-- /ko -->
+      <!-- ko if: step() === 2 -->
+      <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+      <button class="btn btn-primary" data-bind="click: createDraft, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+        <!-- ko ifnot: saving() -->Save Draft &amp; Continue &#8594;<!-- /ko -->
+      </button>
+      <!-- /ko -->
+      <!-- ko if: step() === 3 -->
+      <button class="btn btn-secondary" data-bind="click: saveDraftAndExit">Save as Draft &amp; Exit</button>
+      <button class="btn btn-primary" data-bind="click: submit, enable: allMandatoryUploaded() && !saving()">
+        <!-- ko if: saving() -->Submitting&hellip;<!-- /ko -->
+        <!-- ko ifnot: saving() -->&#10003; Submit for Approval<!-- /ko -->
+      </button>
+      <!-- /ko -->
+    </div>
   </div>
 
   <div class="wiz-steps">
@@ -25,9 +46,6 @@
       <div style="font-size:12px;color:var(--text-2);margin-top:4px" data-bind="text: $data.desc"></div>
     </div>
     <!-- /ko -->
-  </div>
-  <div style="display:flex;justify-content:flex-end">
-    <button class="btn btn-primary" data-bind="click: next, enable: !!selType()">Continue &#8594;</button>
   </div>
   <!-- /ko -->
 
@@ -68,13 +86,6 @@
       </div>
     </div>
   </div>
-  <div style="display:flex;justify-content:space-between;margin-top:16px">
-    <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
-    <button class="btn btn-primary" data-bind="click: createDraft, enable: !saving()">
-      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
-      <!-- ko ifnot: saving() -->Save Draft &amp; Continue &#8594;<!-- /ko -->
-    </button>
-  </div>
   <!-- /ko -->
 
   <!-- ── Step 3: documents + submit ────────────────────────────────────── -->
@@ -100,13 +111,6 @@
       </button>
     </div>
     <!-- /ko -->
-  </div>
-  <div style="display:flex;justify-content:space-between;margin-top:16px">
-    <button class="btn btn-secondary" data-bind="click: saveDraftAndExit">Save as Draft &amp; Exit</button>
-    <button class="btn btn-primary" data-bind="click: submit, enable: allMandatoryUploaded() && !saving()">
-      <!-- ko if: saving() -->Submitting&hellip;<!-- /ko -->
-      <!-- ko ifnot: saving() -->&#10003; Submit for Approval<!-- /ko -->
-    </button>
   </div>
   <!-- /ko -->
 </div>

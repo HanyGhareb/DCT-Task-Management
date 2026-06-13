@@ -137,7 +137,13 @@
   <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title" data-bind="text: editingId() ? 'Edit Lookup Value' : 'Add Lookup Value'"></div>
-      <button class="modal-close" data-bind="click: closeModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeModal">Cancel</button>
+        <button class="btn btn-primary btn-sm" data-bind="click: saveValue, disable: saving()">
+          <!-- ko if: saving() -->Saving…<!-- /ko -->
+          <!-- ko ifnot: saving() -->Save Value<!-- /ko -->
+        </button>
+      </div>
     </div>
     <div class="modal-body">
       <!-- ko if: formError() -->
@@ -169,13 +175,6 @@
         </div>
       </div>
     </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
-      <button class="btn btn-primary" data-bind="click: saveValue, disable: saving()">
-        <!-- ko if: saving() -->Saving…<!-- /ko -->
-        <!-- ko ifnot: saving() -->Save Value<!-- /ko -->
-      </button>
-    </div>
   </div>
 </div>
 <!-- /ko -->
@@ -186,7 +185,13 @@
   <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title">New Lookup Category</div>
-      <button class="modal-close" data-bind="click: closeCatModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeCatModal">Cancel</button>
+        <button class="btn btn-primary btn-sm" data-bind="click: saveCategory, disable: savingCat()">
+          <!-- ko if: savingCat() -->Saving…<!-- /ko -->
+          <!-- ko ifnot: savingCat() -->Create Category<!-- /ko -->
+        </button>
+      </div>
     </div>
     <div class="modal-body">
       <!-- ko if: catFormError() -->
@@ -216,13 +221,6 @@
           </select>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeCatModal">Cancel</button>
-      <button class="btn btn-primary" data-bind="click: saveCategory, disable: savingCat()">
-        <!-- ko if: savingCat() -->Saving…<!-- /ko -->
-        <!-- ko ifnot: savingCat() -->Create Category<!-- /ko -->
-      </button>
     </div>
   </div>
 </div>

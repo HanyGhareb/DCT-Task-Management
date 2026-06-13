@@ -323,6 +323,7 @@ html[dir="rtl"] .nav-chevron--expanded { transform: rotate(90deg); }
 
 /* ── Page wrapper ───────────────────────────────────────────────────── */
 .page-wrap { padding: 24px 28px; max-width: 1400px; }
+.page-wrap--full { max-width: none; }
 .page-header { margin-block-end: 24px; }
 .page-title { font-size: 22px; font-weight: 700; color: var(--text); letter-spacing: -.02em; }
 .page-subtitle { font-size: 13px; color: var(--text-2); margin-block-start: 4px; }
@@ -434,6 +435,18 @@ html[dir="rtl"] select.form-control { background-position: left 10px center; }
 .form-hint { font-size: 11px; color: var(--text-3); }
 .form-actions { display: flex; gap: 10px; margin-block-start: 24px; padding-block-start: 20px;
   border-block-start: 1px solid var(--border); }
+
+/* ── Top-right action bars ──────────────────────────────────────────────
+   Platform rule: Save / Save Changes / Back / Cancel actions sit at the
+   TOP-RIGHT of the page (.page-header-row + .page-actions) or of the
+   region (.section-heading-row + .region-actions) — never at the bottom
+   of the form. .form-actions remains ONLY for modal dialog footers. */
+.page-actions, .region-actions { display: flex; align-items: center; gap: 10px;
+  flex-wrap: wrap; justify-content: flex-end; margin-inline-start: auto; }
+.section-heading-row { display: flex; align-items: center; justify-content: space-between;
+  gap: 12px; flex-wrap: wrap; margin: 20px 0 10px; padding-block-end: 6px;
+  border-block-end: 1px solid var(--border); }
+.section-heading-row > .section-heading { margin: 0; padding: 0; border: none; flex: 1 1 auto; }
 
 /* ── Checkbox / switch ──────────────────────────────────────────────── */
 .checkbox-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
@@ -661,6 +674,14 @@ html[dir="rtl"] .pager__btn span { display: inline-block; transform: scaleX(-1);
 .chart-wrap { position: relative; height: 260px; }
 .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-block-end: 24px; }
 @media (max-width: 920px) { .charts-row { grid-template-columns: 1fr; } }
+
+/* ── Dashboard right rail (main content + pinned actions column) ────── */
+.dash-rail-layout { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 20px; align-items: start; }
+.dash-rail { position: sticky; inset-block-start: 16px; min-width: 0; }
+@media (max-width: 1100px) {
+  .dash-rail-layout { grid-template-columns: 1fr; }
+  .dash-rail { position: static; }
+}
 
 /* ── Theme mapping for legacy data-theme attribute (Appearance page) ── */
 [data-theme="redwood"] {

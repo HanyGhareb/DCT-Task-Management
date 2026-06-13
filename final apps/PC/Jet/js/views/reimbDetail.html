@@ -4,7 +4,14 @@
       <div class="page-title" data-bind="text: isEdit ? '&#128196; Reimbursement ' + reimbNumber() : '&#10133; New Reimbursement'"></div>
       <div class="page-subtitle" data-bind="text: pcRecord() ? 'Against: ' + pcRecord().pcNumber + ' | Float: AED ' + (pcRecord().currentFloatBalance || 0).toLocaleString('en-US',{minimumFractionDigits:2}) : 'Loading petty cash details&hellip;'"></div>
     </div>
-    <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+      <!-- ko ifnot: isReadOnly() -->
+      <button class="btn btn-primary" data-bind="click: saveForm, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko --><!-- ko ifnot: saving() -->&#9993; Submit Reimbursement<!-- /ko -->
+      </button>
+      <!-- /ko -->
+    </div>
   </div>
 
   <!-- ko if: error() -->
@@ -115,14 +122,6 @@
     <!-- /ko -->
   </div>
 
-  <!-- ko ifnot: isReadOnly() -->
-  <div class="form-actions">
-    <button class="btn btn-primary" data-bind="click: saveForm, enable: !saving()">
-      <!-- ko if: saving() -->Saving&hellip;<!-- /ko --><!-- ko ifnot: saving() -->&#9993; Submit Reimbursement<!-- /ko -->
-    </button>
-    <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
-  </div>
-  <!-- /ko -->
 
   <!-- /ko -->
 </div>

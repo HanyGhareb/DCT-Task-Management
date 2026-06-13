@@ -1,7 +1,14 @@
 <div class="page-wrap" style="max-width:880px">
-  <div class="page-header">
-    <div class="page-title" data-bind="text: isEdit ? 'Edit Event' : 'New Event'"></div>
-    <div class="page-subtitle">Event master record — AI extraction can prefill empty fields later from contracts and audit reports</div>
+  <div class="page-header page-header-row">
+    <div>
+      <div class="page-title" data-bind="text: isEdit ? 'Edit Event' : 'New Event'"></div>
+      <div class="page-subtitle">Event master record — AI extraction can prefill empty fields later from contracts and audit reports</div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: cancel, text: t('common.cancel')"></button>
+      <button class="btn btn-primary" data-bind="click: save, disable: saving(),
+              text: saving() ? '…' : t('common.save')"></button>
+    </div>
   </div>
 
   <div class="form-card">
@@ -56,10 +63,5 @@
       <textarea class="form-control" rows="3" data-bind="value: description"></textarea>
     </div>
 
-    <div class="form-actions">
-      <button class="btn btn-secondary" data-bind="click: cancel, text: t('common.cancel')"></button>
-      <button class="btn btn-primary" data-bind="click: save, disable: saving(),
-              text: saving() ? '…' : t('common.save')"></button>
-    </div>
   </div>
 </div>

@@ -85,6 +85,15 @@
         </div>
       </div>
 
+      <!-- enh-2: per-role landing page (LANDING_<CODE> system setting) -->
+      <div class="re-field">
+        <label class="re-label" data-bind="text: $root.t('role.landing')"></label>
+        <select class="re-input" data-bind="value: landingRoute,
+                  options: landingOptions, optionsValue: 'value', optionsText: 'label',
+                  attr: { 'aria-label': $root.t('role.landing') }"></select>
+        <span class="re-hint" data-bind="text: $root.t('role.landingHint')"></span>
+      </div>
+
       <audit-info params="data: audit"></audit-info>
     </div>
 

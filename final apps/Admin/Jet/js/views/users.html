@@ -27,6 +27,8 @@
     <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('ACTIVATE'); },   text: $root.t('bulk.activate')"></button>
     <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('DEACTIVATE'); }, text: $root.t('bulk.deactivate')"></button>
     <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('ASSIGN_ROLE'); }, text: $root.t('bulk.assignRole')"></button>
+    <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('REMOVE_ROLE'); }, text: $root.t('bulk.removeRole')"></button>
+    <button type="button" class="btn btn-secondary btn-sm" data-bind="click: function(){ openBulk('ASSIGN_ORG'); }, text: $root.t('bulk.assignOrg')"></button>
     <span style="flex:1"></span>
     <button type="button" class="btn btn-secondary btn-sm" data-bind="click: clearSelection, text: $root.t('bulk.clear')"></button>
   </div>
@@ -37,11 +39,19 @@
   <div class="modal-overlay">
     <div class="modal-box" style="max-width:420px;padding:26px" data-bind="modalTrap: closeBulk">
       <h3 style="margin-bottom:10px" data-bind="text: $root.t('bulk.confirmTitle.' + bulkAction())"></h3>
-      <!-- ko if: bulkAction() === 'ASSIGN_ROLE' -->
+      <!-- ko if: bulkNeedsRole() -->
       <div class="form-group" style="margin-bottom:12px">
         <label class="form-label" data-bind="text: $root.t('bulk.pickRole')"></label>
         <select class="form-control" data-bind="value: bulkRole,
                  options: roleOptions, optionsValue: 'value', optionsText: 'label',
+                 optionsCaption: '…'"></select>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: bulkAction() === 'ASSIGN_ORG' -->
+      <div class="form-group" style="margin-bottom:12px">
+        <label class="form-label" data-bind="text: $root.t('bulk.pickOrg')"></label>
+        <select class="form-control" data-bind="value: bulkOrg,
+                 options: orgOptions, optionsValue: 'value', optionsText: 'label',
                  optionsCaption: '…'"></select>
       </div>
       <!-- /ko -->
@@ -52,7 +62,8 @@
       </div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button type="button" class="btn btn-secondary" data-bind="click: closeBulk, text: $root.t('common.cancel')"></button>
-        <button type="button" class="btn btn-primary" data-bind="click: runBulk, enable: !bulkBusy() && (bulkAction() !== 'ASSIGN_ROLE' || bulkRole())">
+        <button type="button" class="btn btn-primary" data-bind="click: runBulk,
+                 enable: !bulkBusy() && (!bulkNeedsRole() || bulkRole()) && (bulkAction() !== 'ASSIGN_ORG' || bulkOrg())">
           <!-- ko if: bulkBusy() --><span data-bind="text: $root.t('common.loading')"></span><!-- /ko -->
           <!-- ko ifnot: bulkBusy() --><span data-bind="text: $root.t('bulk.apply')"></span><!-- /ko -->
         </button>

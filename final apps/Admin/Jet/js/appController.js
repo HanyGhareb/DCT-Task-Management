@@ -128,6 +128,7 @@ define(
           { id: 'lookups',           labelKey: 'nav.lookups',           icon: '&#128203;' },
           { id: 'appearance',        labelKey: 'nav.appearance',        icon: '&#127912;' },
           { id: 'systemSettings',    labelKey: 'nav.systemSettings',    icon: '&#9881;'   },
+          { id: 'sessions',          labelKey: 'nav.sessions',          icon: '&#128274;' },
           { id: 'auditLog',          labelKey: 'nav.auditLog',          icon: '&#128218;' },
         ]
       },
@@ -222,6 +223,15 @@ define(
           // route swap disposes the old view — its dirty-guards go with it
           formGuard.clearAll();
           self.currentNavItem(path);
+          // enh-5: recent-pages trail for the command palette (cap 6, no login)
+          if (path !== 'login') {
+            try {
+              var rec = JSON.parse(sessionStorage.getItem('recentRoutes') || '[]')
+                .filter(function (r) { return r !== path; });
+              rec.unshift(path);
+              sessionStorage.setItem('recentRoutes', JSON.stringify(rec.slice(0, 6)));
+            } catch (e) {}
+          }
           self.moduleConfig({ view: viewHtml, viewModel: new VMClass() });
         },
         function (err) {
@@ -338,7 +348,7 @@ define(
     var KNOWN_ROUTES = ['dashboard', 'profile', 'notifications', 'pendingApprovals',
       'users', 'roles', 'permissions', 'orgHierarchy', 'modules', 'approvalTemplates',
       'approvalMonitor', 'delegations', 'announcements', 'lookups', 'appearance',
-      'systemSettings', 'auditLog'];
+      'systemSettings', 'sessions', 'auditLog'];
     self._landingRoute = function () {
       var user = self.currentUser();
       if (user && user.roles) {
@@ -412,6 +422,39 @@ define(
             return !!self.currentUser() && shell.featureEnabled('COMMAND_PALETTE', true);
           },
           providers: [
+            // enh-5: recent pages — shown on the empty query only
+            { group: i18n.t('cmdp.groupRecent'), min: 0, search: function (q) {
+                if (q) return [];
+                var rec;
+                try { rec = JSON.parse(sessionStorage.getItem('recentRoutes') || '[]'); }
+                catch (e) { rec = []; }
+                return rec.slice(1, 5).map(function (r) {       // [0] = the page we're on
+                  var it = navItems.find(function (n) { return n.id === r; });
+                  return it && { icon: '🕘', title: i18n.t(it.labelKey),
+                                 sub: i18n.t('cmdp.recentSub'),
+                                 run: function () { self.navigate(it.id); } };
+                }).filter(Boolean);
+            } },
+            // enh-5: action verbs (admins)
+            { group: i18n.t('cmdp.groupActions'), min: 0, search: function (q) {
+                if (!authService.isAdmin()) return [];
+                var acts = [
+                  { key: 'cmdp.actNewUser', icon: '➕', run: function () {
+                      sessionStorage.setItem('editUserId', 'new'); self.navigate('userEdit'); } },
+                  { key: 'cmdp.actNewRole', icon: '➕', run: function () {
+                      sessionStorage.setItem('editRoleId', 'new'); self.navigate('roleEdit'); } },
+                  { key: 'cmdp.actNewAnnouncement', icon: '📢', run: function () {
+                      self.navigate('announcements'); } },
+                  { key: 'cmdp.actNewDelegation', icon: '🤝', run: function () {
+                      self.navigate('profile'); } },
+                ];
+                var ql = (q || '').toLowerCase();
+                return acts.filter(function (a) {
+                  return !ql || i18n.t(a.key).toLowerCase().indexOf(ql) >= 0;
+                }).slice(0, q ? 4 : 2).map(function (a) {
+                  return { icon: a.icon, title: i18n.t(a.key), run: a.run };
+                });
+            } },
             { group: i18n.t('cmdp.groupNav'), min: 0, search: function (q) {
                 var ql = q.toLowerCase();
                 return navItems.filter(function (it) {

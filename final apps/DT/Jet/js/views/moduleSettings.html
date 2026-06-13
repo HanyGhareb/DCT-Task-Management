@@ -1,7 +1,17 @@
 <div class="page-wrap">
-  <div class="page-header">
-    <div class="page-title">Module Settings</div>
-    <div class="page-subtitle">System-wide configuration for the Duty Travel module</div>
+  <div class="page-header page-header-row">
+    <div>
+      <div class="page-title">Module Settings</div>
+      <div class="page-subtitle">System-wide configuration for the Duty Travel module</div>
+    </div>
+    <!-- ko ifnot: loading() -->
+    <div class="page-actions">
+      <button class="btn btn-danger" data-bind="click: resetDefaults">Reset to Defaults</button>
+      <button class="btn btn-primary" data-bind="click: saveAll, disable: saving()">
+        <!-- ko if: saving() -->Saving…<!-- /ko --><!-- ko ifnot: saving() -->Save Settings<!-- /ko -->
+      </button>
+    </div>
+    <!-- /ko -->
   </div>
 
   <!-- ko if: loading() -->
@@ -44,12 +54,6 @@
     </div>
     <!-- /ko -->
 
-    <div class="form-actions" style="margin-top:0;padding-top:16px">
-      <button class="btn btn-primary" data-bind="click: saveAll, disable: saving()">
-        <!-- ko if: saving() -->Saving…<!-- /ko --><!-- ko ifnot: saving() -->Save Settings<!-- /ko -->
-      </button>
-      <button class="btn btn-danger" data-bind="click: resetDefaults">Reset to Defaults</button>
-    </div>
   </div>
   <!-- /ko -->
 </div>

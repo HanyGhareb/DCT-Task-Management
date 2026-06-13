@@ -54,7 +54,12 @@
     <div class="modal-box" style="max-width:420px" data-bind="click: function(d,e){e.stopPropagation()}">
       <div class="modal-header">
         <strong data-bind="text: actionType()==='APPROVED' ? 'Approve' : (actionType()==='REJECTED' ? 'Reject' : 'Return for Revision')"></strong>
-        <button class="btn btn-icon" data-bind="click: closeModal">&#10005;</button>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeModal">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: submitAction, disable: submitting() || !comments()">
+            <!-- ko if: submitting() -->Submitting…<!-- /ko --><!-- ko ifnot: submitting() -->Confirm<!-- /ko -->
+          </button>
+        </div>
       </div>
       <div class="modal-body">
         <!-- ko if: selectedItem() -->
@@ -64,12 +69,6 @@
         <div class="form-group">
           <label class="form-label">Comments <span class="required">*</span></label>
           <textarea class="form-control" rows="4" data-bind="value: comments, valueUpdate: 'input'" placeholder="Enter comments…"></textarea>
-        </div>
-        <div class="form-actions" style="border:none;padding:0;margin-top:12px">
-          <button class="btn btn-primary" data-bind="click: submitAction, disable: submitting() || !comments()">
-            <!-- ko if: submitting() -->Submitting…<!-- /ko --><!-- ko ifnot: submitting() -->Confirm<!-- /ko -->
-          </button>
-          <button class="btn btn-secondary" data-bind="click: closeModal">Cancel</button>
         </div>
       </div>
     </div>

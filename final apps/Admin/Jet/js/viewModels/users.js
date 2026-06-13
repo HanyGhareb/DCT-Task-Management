@@ -107,16 +107,27 @@ function (ko, userService, roleService, i18n, toast) {
       return self.users().filter(self.isSelected);
     });
 
-    // confirm modal: action = 'ACTIVATE' | 'DEACTIVATE' | 'ASSIGN_ROLE'
+    // confirm modal: 'ACTIVATE' | 'DEACTIVATE' | 'ASSIGN_ROLE' |
+    //                'REMOVE_ROLE' | 'ASSIGN_ORG' (enh-5)
     self.bulkAction   = ko.observable(null);
     self.bulkBusy     = ko.observable(false);
     self.bulkRole     = ko.observable('');
+    self.bulkOrg      = ko.observable('');
     self.roleOptions  = ko.observableArray([]);
+    self.orgOptions   = ko.observableArray([]);
+
+    self.bulkNeedsRole = ko.pureComputed(function () {
+      return self.bulkAction() === 'ASSIGN_ROLE' || self.bulkAction() === 'REMOVE_ROLE';
+    });
 
     self.openBulk = function (action) {
       self.bulkRole('');
-      if (action === 'ASSIGN_ROLE' && !self.roleOptions().length) {
+      self.bulkOrg('');
+      if ((action === 'ASSIGN_ROLE' || action === 'REMOVE_ROLE') && !self.roleOptions().length) {
         userService.getRoleOptions().then(self.roleOptions);
+      }
+      if (action === 'ASSIGN_ORG' && !self.orgOptions().length) {
+        userService.getOrgOptions().then(self.orgOptions);
       }
       self.bulkAction(action);
     };
@@ -126,17 +137,21 @@ function (ko, userService, roleService, i18n, toast) {
       var action = self.bulkAction();
       var users  = self.selectedUsers();
       if (!users.length) { self.closeBulk(); return; }
-      if (action === 'ASSIGN_ROLE' && !self.bulkRole()) return;
+      if (self.bulkNeedsRole() && !self.bulkRole()) return;
+      if (action === 'ASSIGN_ORG' && !self.bulkOrg()) return;
       self.bulkBusy(true);
 
       var ops = users.map(function (u) {
-        if (action === 'DEACTIVATE') return userService.remove(u.userId);
-        if (action === 'ACTIVATE')   return userService.update(u.userId, { isActive: 'Y' });
-        // ASSIGN_ROLE: merge into the user's existing role set — the PUT
-        // replaces roles wholesale, so read-modify-write per user
+        if (action === 'DEACTIVATE')  return userService.remove(u.userId);
+        if (action === 'ACTIVATE')    return userService.update(u.userId, { isActive: 'Y' });
+        if (action === 'ASSIGN_ORG')  return userService.update(u.userId, { orgId: Number(self.bulkOrg()) });
+        // ASSIGN_ROLE / REMOVE_ROLE: the PUT replaces roles wholesale,
+        // so read-modify-write per user
         return userService.getById(u.userId).then(function (full) {
           var roles = (full.roles || []).slice();
-          if (roles.indexOf(self.bulkRole()) < 0) roles.push(self.bulkRole());
+          var i = roles.indexOf(self.bulkRole());
+          if (action === 'ASSIGN_ROLE' && i < 0) roles.push(self.bulkRole());
+          if (action === 'REMOVE_ROLE' && i >= 0) roles.splice(i, 1);
           return userService.update(u.userId, { roles: roles });
         });
       });

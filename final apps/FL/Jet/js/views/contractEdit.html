@@ -8,7 +8,13 @@
       </div>
       <div class="page-subtitle">FL Manager approval; FL Admin joins above AED 50,000</div>
     </div>
-    <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
+      <!-- ko if: editable() -->
+      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">Save Draft</button>
+      <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">&#10003; Submit for Approval</button>
+      <!-- /ko -->
+    </div>
   </div>
 
   <!-- ko if: successMsg() -->
@@ -109,12 +115,6 @@
 
     <audit-info params="data: audit"></audit-info>
 
-    <div class="form-actions">
-      <!-- ko if: editable() -->
-      <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">&#10003; Submit for Approval</button>
-      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">Save Draft</button>
-      <!-- /ko -->
-    </div>
   </div>
   <!-- /ko -->
 </div>

@@ -26,6 +26,7 @@ CREATE OR REPLACE SYNONYM dct_ar_event_kpis      FOR prod.dct_ar_event_kpis;
 CREATE OR REPLACE SYNONYM dct_ar_extract_log     FOR prod.dct_ar_extract_log;
 CREATE OR REPLACE SYNONYM dct_ar_scenarios       FOR prod.dct_ar_scenarios;
 CREATE OR REPLACE SYNONYM dct_ar_scenario_adj    FOR prod.dct_ar_scenario_adj;
+CREATE OR REPLACE SYNONYM dct_ar_ai_providers    FOR prod.dct_ar_ai_providers;
 CREATE OR REPLACE SYNONYM dct_ar_event_pnl_v     FOR prod.dct_ar_event_pnl_v;
 CREATE OR REPLACE SYNONYM dct_ar_category_pnl_v  FOR prod.dct_ar_category_pnl_v;
 CREATE OR REPLACE SYNONYM dct_ar_file_status_v   FOR prod.dct_ar_file_status_v;
@@ -43,6 +44,7 @@ CREATE OR REPLACE SYNONYM dct_lookup_values          FOR prod.dct_lookup_values;
 CREATE OR REPLACE SYNONYM dct_lookup_categories      FOR prod.dct_lookup_categories;
 CREATE OR REPLACE SYNONYM dct_currency_codes         FOR prod.dct_currency_codes;
 CREATE OR REPLACE SYNONYM dct_request_status_history FOR prod.dct_request_status_history;
+CREATE OR REPLACE SYNONYM dct_lookup_pkg             FOR prod.dct_lookup_pkg;
 
 -- =============================================================================
 -- 2. Module + templates + handlers
@@ -1628,7 +1630,8 @@ BEGIN
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
   FOR r IN (SELECT ms.setting_key, ms.setting_value, ms.setting_label,
-                   ms.setting_description, ms.value_type, ms.allowed_values, ms.default_value
+                   ms.setting_description, ms.value_type, ms.allowed_values, ms.default_value,
+                   ms.updated_by, ms.updated_at
             FROM   dct_module_settings ms
             JOIN   dct_modules m ON m.module_id = ms.module_id
             WHERE  m.module_code = 'ACCOUNTS_RECEIVABLE'
@@ -1643,6 +1646,8 @@ BEGIN
     APEX_JSON.write('type',        r.value_type);
     APEX_JSON.write('allowed',     r.allowed_values);
     APEX_JSON.write('default',     r.default_value);
+    APEX_JSON.write('updatedBy',   r.updated_by);
+    APEX_JSON.write('updatedAt',   TO_CHAR(r.updated_at, 'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1662,6 +1667,15 @@ BEGIN
   l_key := APEX_JSON.get_varchar2(p_path=>'key');
   l_val := APEX_JSON.get_varchar2(p_path=>'value');
   IF l_key IS NULL THEN dct_rest.err(400,'key required'); RETURN; END IF;
+  -- AI_PROVIDER must point at an active row in the provider registry
+  IF l_key = 'AI_PROVIDER' THEN
+    DECLARE l_n NUMBER;
+    BEGIN
+      SELECT COUNT(*) INTO l_n FROM dct_ar_ai_providers
+      WHERE  UPPER(provider_code) = UPPER(TRIM(l_val)) AND is_active = 'Y';
+      IF l_n = 0 THEN dct_rest.err(400,'Unknown or inactive AI provider: ' || l_val); RETURN; END IF;
+    END;
+  END IF;
   -- never overwrite an API key with the mask or blank
   IF l_key LIKE '%API_KEY' AND (l_val IS NULL OR l_val = '********') THEN
     dct_rest.json_header;
@@ -1676,6 +1690,175 @@ BEGIN
   AND    ms.module_id = (SELECT module_id FROM dct_modules
                          WHERE module_code = 'ACCOUNTS_RECEIVABLE');
   IF SQL%ROWCOUNT = 0 THEN dct_rest.err(404,'Setting not found'); RETURN; END IF;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+]');
+
+    -- =========================================================================
+    -- AI PROVIDERS — registry behind the Manage Providers popup.
+    -- api_key is WRITE-ONLY: list returns hasKey Y/N, never the key itself.
+    -- =========================================================================
+    def_tpl('providers/');
+    def_plsql('providers/', 'GET', q'[
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (SELECT provider_id, provider_code, provider_name, api_format, base_url,
+                   model_id,
+                   CASE WHEN api_key IS NULL THEN 'N' ELSE 'Y' END AS has_key,
+                   is_active, created_by, created_at, updated_by, updated_at
+            FROM   dct_ar_ai_providers
+            ORDER  BY provider_id) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('id',        r.provider_id);
+    APEX_JSON.write('code',      r.provider_code);
+    APEX_JSON.write('name',      r.provider_name);
+    APEX_JSON.write('apiFormat', r.api_format);
+    APEX_JSON.write('baseUrl',   r.base_url);
+    APEX_JSON.write('model',     r.model_id);
+    APEX_JSON.write('hasKey',    r.has_key);
+    APEX_JSON.write('isActive',  r.is_active);
+    APEX_JSON.write('createdBy', r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(r.created_at, 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('updatedBy', r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(r.updated_at, 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+]');
+
+    def_plsql('providers/', 'POST', q'[
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_code   VARCHAR2(30);
+  l_name   VARCHAR2(100);
+  l_format VARCHAR2(20);
+  l_url    VARCHAR2(300);
+  l_model  VARCHAR2(100);
+  l_key    VARCHAR2(200);
+  l_active VARCHAR2(1);
+  l_id     NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.parse_body(:body);
+  l_code   := UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'code')));
+  l_name   := TRIM(APEX_JSON.get_varchar2(p_path=>'name'));
+  l_format := UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'apiFormat')));
+  l_url    := TRIM(APEX_JSON.get_varchar2(p_path=>'baseUrl'));
+  l_model  := TRIM(APEX_JSON.get_varchar2(p_path=>'model'));
+  l_key    := APEX_JSON.get_varchar2(p_path=>'apiKey');
+  l_active := NVL(UPPER(APEX_JSON.get_varchar2(p_path=>'isActive')), 'Y');
+  IF l_code IS NULL OR l_name IS NULL OR l_format IS NULL OR l_model IS NULL THEN
+    dct_rest.err(400,'code, name, apiFormat and model are required'); RETURN;
+  END IF;
+  IF l_active NOT IN ('Y','N') THEN l_active := 'Y'; END IF;
+  IF l_key = '********' THEN l_key := NULL; END IF;
+  dct_lookup_pkg.validate_lookup('AR_API_FORMAT', l_format);
+  INSERT INTO dct_ar_ai_providers
+    (provider_code, provider_name, api_format, base_url, model_id, api_key, is_active, created_by)
+  VALUES
+    (l_code, l_name, l_format, l_url, l_model, l_key, l_active, l_user)
+  RETURNING provider_id INTO l_id;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('id', l_id);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN DUP_VAL_ON_INDEX THEN ROLLBACK; dct_rest.err(409,'Provider code already exists: ' || l_code);
+  WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+]');
+
+    def_tpl('providers/:id');
+    def_plsql('providers/:id', 'PUT', q'[
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_format VARCHAR2(20);
+  l_key    VARCHAR2(200);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.parse_body(:body);
+  l_format := UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'apiFormat')));
+  IF l_format IS NOT NULL THEN
+    dct_lookup_pkg.validate_lookup('AR_API_FORMAT', l_format);
+  END IF;
+  UPDATE dct_ar_ai_providers p
+  SET    p.provider_name = CASE WHEN APEX_JSON.does_exist(p_path=>'name')
+                                THEN NVL(TRIM(APEX_JSON.get_varchar2(p_path=>'name')), p.provider_name)
+                                ELSE p.provider_name END,
+         p.api_format    = NVL(l_format, p.api_format),
+         p.base_url      = CASE WHEN APEX_JSON.does_exist(p_path=>'baseUrl')
+                                THEN TRIM(APEX_JSON.get_varchar2(p_path=>'baseUrl'))
+                                ELSE p.base_url END,
+         p.model_id      = CASE WHEN APEX_JSON.does_exist(p_path=>'model')
+                                THEN NVL(TRIM(APEX_JSON.get_varchar2(p_path=>'model')), p.model_id)
+                                ELSE p.model_id END,
+         p.is_active     = CASE WHEN UPPER(APEX_JSON.get_varchar2(p_path=>'isActive')) IN ('Y','N')
+                                THEN UPPER(APEX_JSON.get_varchar2(p_path=>'isActive'))
+                                ELSE p.is_active END,
+         p.updated_by    = l_user,
+         p.updated_at    = SYSTIMESTAMP
+  WHERE  p.provider_id = :id;
+  IF SQL%ROWCOUNT = 0 THEN dct_rest.err(404,'Provider not found'); RETURN; END IF;
+  -- api_key is replace-only: absent / blank / mask means keep the stored key
+  l_key := APEX_JSON.get_varchar2(p_path=>'apiKey');
+  IF APEX_JSON.does_exist(p_path=>'apiKey')
+     AND l_key IS NOT NULL AND l_key != '********' THEN
+    UPDATE dct_ar_ai_providers SET api_key = l_key WHERE provider_id = :id;
+  END IF;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+]');
+
+    def_plsql('providers/:id', 'DELETE', q'[
+DECLARE
+  l_user     VARCHAR2(100) := dct_rest.validate_session;
+  l_code     VARCHAR2(30);
+  l_active   VARCHAR2(1);
+  l_selected VARCHAR2(1000);
+  l_others   NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  BEGIN
+    SELECT provider_code, is_active INTO l_code, l_active
+    FROM   dct_ar_ai_providers WHERE provider_id = :id;
+  EXCEPTION WHEN NO_DATA_FOUND THEN
+    dct_rest.err(404,'Provider not found'); RETURN;
+  END;
+  SELECT MAX(ms.setting_value) INTO l_selected
+  FROM   dct_module_settings ms
+  JOIN   dct_modules m ON m.module_id = ms.module_id
+  WHERE  m.module_code = 'ACCOUNTS_RECEIVABLE' AND ms.setting_key = 'AI_PROVIDER';
+  IF UPPER(NVL(l_selected,'-')) = UPPER(l_code) THEN
+    dct_rest.err(400,'Cannot delete the currently selected AI provider — switch AI Provider first');
+    RETURN;
+  END IF;
+  SELECT COUNT(*) INTO l_others FROM dct_ar_ai_providers
+  WHERE  provider_id != :id AND is_active = 'Y';
+  IF l_active = 'Y' AND l_others = 0 THEN
+    dct_rest.err(400,'Cannot delete the only active AI provider');
+    RETURN;
+  END IF;
+  DELETE FROM dct_ar_ai_providers WHERE provider_id = :id;
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;

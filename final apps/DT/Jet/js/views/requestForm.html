@@ -2,9 +2,15 @@
   <div class="page-header">
     <div class="page-header-row">
       <div>
-        <button class="btn btn-secondary btn-sm" data-bind="click: cancel" style="margin-bottom:6px">&#8592; Back</button>
         <div class="page-title" data-bind="text: isEdit() ? 'Edit Travel Request — ' + reqNumber() : 'New Travel Request'"></div>
         <div class="page-subtitle">Fill in your trip details and destinations</div>
+      </div>
+      <div class="page-actions">
+        <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+        <button class="btn btn-secondary" data-bind="click: saveDraft, disable: saving()">Save as Draft</button>
+        <button class="btn btn-primary" data-bind="click: submit, disable: saving()">
+          <!-- ko if: saving() -->Submitting…<!-- /ko --><!-- ko ifnot: saving() -->Submit for Approval<!-- /ko -->
+        </button>
       </div>
     </div>
   </div>
@@ -112,11 +118,4 @@
     </div>
   </div>
 
-  <div class="form-actions">
-    <button class="btn btn-primary" data-bind="click: submit, disable: saving()">
-      <!-- ko if: saving() -->Submitting…<!-- /ko --><!-- ko ifnot: saving() -->Submit for Approval<!-- /ko -->
-    </button>
-    <button class="btn btn-secondary" data-bind="click: saveDraft, disable: saving()">Save as Draft</button>
-    <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
-  </div>
 </div>

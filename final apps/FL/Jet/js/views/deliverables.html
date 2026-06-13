@@ -73,17 +73,16 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:440px">
       <div class="modal-head"><span class="modal-title">Reject Deliverable</span>
-        <button class="modal-close" data-bind="click: function(){ rejectTarget(null); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ rejectTarget(null); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" style="background:var(--red);border-color:var(--red)"
+                  data-bind="click: confirmReject">&#10005; Reject</button>
+        </div></div>
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Reason *</label>
           <input class="form-control" type="text" data-bind="value: rejectReason, valueUpdate: 'input'">
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ rejectTarget(null); }">Cancel</button>
-        <button class="btn btn-primary" style="background:var(--red);border-color:var(--red)"
-                data-bind="click: confirmReject">&#10005; Reject</button>
       </div>
     </div>
   </div>

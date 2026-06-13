@@ -39,19 +39,21 @@
 
         <!-- ko if: actionMode() -->
         <div style="margin-top:14px;padding:12px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2)">
-          <div style="font-size:12px;font-weight:600;margin-bottom:6px"
-               data-bind="text: actionMode() + ' — comment (required):'"></div>
+          <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px">
+            <div style="font-size:12px;font-weight:600"
+                 data-bind="text: actionMode() + ' — comment (required):'"></div>
+            <div class="region-actions">
+              <button class="btn btn-secondary btn-sm" data-bind="click: $vm.cancelAction.bind($vm, $data)">Cancel</button>
+              <button class="btn btn-primary btn-sm" data-bind="click: $vm.confirmAction.bind($vm, $data), enable: !busy()">
+                <span data-bind="text: 'Confirm ' + actionMode()"></span>
+              </button>
+            </div>
+          </div>
           <!-- ko if: actionError() -->
           <div style="color:var(--red);font-size:12px;margin-bottom:6px" data-bind="text: actionError()"></div>
           <!-- /ko -->
           <textarea class="form-control" rows="2" style="width:100%;resize:vertical"
                     data-bind="value: commentText, valueUpdate: 'input'"></textarea>
-          <div style="display:flex;gap:8px;margin-top:8px">
-            <button class="btn btn-primary btn-sm" data-bind="click: $vm.confirmAction.bind($vm, $data), enable: !busy()">
-              <span data-bind="text: 'Confirm ' + actionMode()"></span>
-            </button>
-            <button class="btn btn-secondary btn-sm" data-bind="click: $vm.cancelAction.bind($vm, $data)">Cancel</button>
-          </div>
         </div>
         <!-- /ko -->
       </div>

@@ -1,5 +1,5 @@
-define(['knockout', 'services/roleService', 'shared/formGuard'],
-function (ko, roleService, formGuard) {
+define(['knockout', 'services/roleService', 'services/settingService', 'shared/i18n', 'shared/formGuard'],
+function (ko, roleService, settingService, i18n, formGuard) {
   'use strict';
 
   function RoleEditViewModel() {
@@ -20,6 +20,16 @@ function (ko, roleService, formGuard) {
     self.saving      = ko.observable(false);
     self.audit       = ko.observable(null);   // createdBy/At, updatedBy/At
 
+    // enh-2: per-role landing page → LANDING_<CODE> system setting.
+    // '' = default (dashboard). Routes must stay in the appController
+    // KNOWN_ROUTES allow-list or the landing falls back to dashboard.
+    var LANDING_ROUTES = ['dashboard', 'profile', 'notifications', 'pendingApprovals',
+      'users', 'roles', 'orgHierarchy', 'approvalMonitor', 'auditLog'];
+    self.landingRoute    = ko.observable('');
+    self._landingLoaded  = '';
+    self.landingOptions  = [{ value: '', label: i18n.t('role.landingDefault') }].concat(
+      LANDING_ROUTES.map(function (r) { return { value: r, label: r }; }));
+
     function loadData() {
       var existingP      = self.isNew ? Promise.resolve(null) : roleService.getById(editId);
       var permsByModuleP = roleService.getPermissionsByModule();
@@ -37,6 +47,11 @@ function (ko, roleService, formGuard) {
             self.roleName(existing.roleName || '');
             self.description(existing.description || '');
             self.isActive(existing.isActive !== 'N');
+            settingService.getByKey('LANDING_' + existing.roleCode).then(function (row) {
+              var v = (row && row.settingValue) || '';
+              self._landingLoaded = v;
+              self.landingRoute(v);
+            }).catch(function () {});
           }
 
           self.permModules(Object.keys(permsByModule).map(function (mod) {
@@ -98,6 +113,13 @@ function (ko, roleService, formGuard) {
 
       saveP
         .then(function (savedId) { return roleService.setRolePermissions(savedId, selectedPermIds); })
+        .then(function () {
+          // landing page (only when changed; '' clears back to the default)
+          if (self.landingRoute() !== self._landingLoaded) {
+            return settingService.updateSetting('LANDING_' + data.roleCode,
+                                                self.landingRoute() || 'dashboard');
+          }
+        })
         .then(function () {
           self.saving(false);
           if (self._guard) self._guard.reset();   // saved — let navigation through

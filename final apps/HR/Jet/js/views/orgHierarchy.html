@@ -294,7 +294,13 @@
   <div class="modal-box" data-bind="click: function(d,e){ e.stopPropagation(); }">
     <div class="modal-header">
       <div class="modal-title" data-bind="text: editingOrgId() ? 'Edit Org Unit' : 'Add Org Unit'"></div>
-      <button class="modal-close" data-bind="click: closeOrgModal">&#10005;</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: closeOrgModal">Cancel</button>
+        <button class="btn btn-primary btn-sm" data-bind="click: saveOrg, disable: orgSaving()">
+          <!-- ko if: orgSaving() -->Saving…<!-- /ko -->
+          <!-- ko ifnot: orgSaving() -->Save Org Unit<!-- /ko -->
+        </button>
+      </div>
     </div>
     <div class="modal-body">
       <!-- ko if: orgFormError() -->
@@ -349,13 +355,6 @@
           </select>
         </div>
       </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-secondary" data-bind="click: closeOrgModal">Cancel</button>
-      <button class="btn btn-primary" data-bind="click: saveOrg, disable: orgSaving()">
-        <!-- ko if: orgSaving() -->Saving…<!-- /ko -->
-        <!-- ko ifnot: orgSaving() -->Save Org Unit<!-- /ko -->
-      </button>
     </div>
   </div>
 </div>

@@ -447,6 +447,13 @@ INTO dct_system_settings (setting_key, setting_value, value_type, category, desc
     VALUES ('LOGO_URL',                  '#APP_IMAGES#logo.png','STRING','UI',        'Application logo URL',                         'N', 'SYSTEM')
 SELECT 1 FROM DUAL;
 
+-- Login-page tagline (shown under APP_NAME on the pre-auth login card;
+-- served with APP_NAME via the public /dct/branding endpoint)
+INSERT INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+    VALUES ('APP_TAGLINE',    'Admin Portal — Oracle JET',  'STRING', 'UI', 'Login page tagline (English)', 'Y', 'SYSTEM');
+INSERT INTO dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+    VALUES ('APP_TAGLINE_AR', 'بوابة الإدارة — Oracle JET', 'STRING', 'UI', 'Login page tagline (Arabic)',  'Y', 'SYSTEM');
+
 COMMIT;
 
 -- =============================================================================

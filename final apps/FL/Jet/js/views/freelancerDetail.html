@@ -160,7 +160,10 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:440px">
       <div class="modal-head"><span class="modal-title">Change Status</span>
-        <button class="modal-close" data-bind="click: function(){ showStatusModal(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showStatusModal(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveStatus">&#10003; Save</button>
+        </div></div>
       <div class="modal-body">
         <div class="form-group">
           <label class="form-label">Status</label>
@@ -177,10 +180,6 @@
         </div>
         <!-- /ko -->
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showStatusModal(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: saveStatus">&#10003; Save</button>
-      </div>
     </div>
   </div>
   <!-- /ko -->
@@ -190,7 +189,10 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:520px">
       <div class="modal-head"><span class="modal-title">Add Bank Account</span>
-        <button class="modal-close" data-bind="click: function(){ showBankModal(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showBankModal(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveBank">&#10003; Save</button>
+        </div></div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Bank *</label>
@@ -209,10 +211,6 @@
           </div>
         </div>
       </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showBankModal(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: saveBank">&#10003; Save</button>
-      </div>
     </div>
   </div>
   <!-- /ko -->
@@ -222,7 +220,10 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:520px">
       <div class="modal-head"><span class="modal-title">Add Document</span>
-        <button class="modal-close" data-bind="click: function(){ showDocModal(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showDocModal(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveDoc">&#10003; Save</button>
+        </div></div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group"><label class="form-label">Type *</label>
@@ -239,10 +240,6 @@
             </div>
           </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showDocModal(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: saveDoc">&#10003; Save</button>
       </div>
     </div>
   </div>

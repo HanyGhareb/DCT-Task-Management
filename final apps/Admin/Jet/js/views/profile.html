@@ -1,7 +1,15 @@
 ﻿<div class="page-wrap">
-  <div class="page-header">
-    <div class="page-title" data-bind="text: $root.t('vw.profile.title')"></div>
-    <div class="page-subtitle" data-bind="text: $root.t('vw.profile.subtitle')"></div>
+  <div class="page-header page-header-row">
+    <div>
+      <div class="page-title" data-bind="text: $root.t('vw.profile.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('vw.profile.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: saveProfile, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+        <!-- ko ifnot: saving() -->&#10003; Save Profile<!-- /ko -->
+      </button>
+    </div>
   </div>
 
   <!-- ko if: successMsg() -->
@@ -75,18 +83,16 @@
     </div>
 
     <audit-info params="data: audit"></audit-info>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" data-bind="click: saveProfile, enable: !saving()">
-        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
-        <!-- ko ifnot: saving() -->&#10003; Save Profile<!-- /ko -->
-      </button>
-    </div>
   </div>
 
   <!-- Change password -->
   <div class="card" style="margin-bottom:16px">
-    <div class="section-heading" style="margin-top:0">Change Password</div>
+    <div class="section-heading-row" style="margin-top:0">
+      <div class="section-heading">Change Password</div>
+      <div class="region-actions">
+        <button class="btn btn-primary btn-sm" data-bind="click: changePassword">Change Password</button>
+      </div>
+    </div>
     <!-- ko if: pwdError() -->
     <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: pwdError()"></span></div>
     <!-- /ko -->
@@ -106,9 +112,6 @@
         <label class="form-label">Confirm New Password</label>
         <input class="form-control" type="password" data-bind="value: confirmNewPwd">
       </div>
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-primary" data-bind="click: changePassword">Change Password</button>
     </div>
   </div>
 
@@ -159,9 +162,15 @@
   <!-- ko if: showDelModal() -->
   <div class="modal-backdrop" style="position:fixed;inset:0;background:rgba(15,22,30,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px">
     <div class="card" style="width:100%;max-width:460px" data-bind="modalTrap: function(){ showDelModal(false); }">
-      <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
-        <span>New Delegation</span>
-        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showDelModal(false); }">&#10005;</button>
+      <div class="section-heading-row" style="margin-top:0">
+        <div class="section-heading">New Delegation</div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showDelModal(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: createDelegation, enable: !delBusy()">
+            <!-- ko if: delBusy() -->Saving&hellip;<!-- /ko -->
+            <!-- ko ifnot: delBusy() -->&#10003; Create<!-- /ko -->
+          </button>
+        </div>
       </div>
       <!-- ko if: delError() -->
       <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: delError()"></span></div>
@@ -203,13 +212,6 @@
       <div class="form-group" style="margin-bottom:12px">
         <label class="form-label">Reason</label>
         <input class="form-control" data-bind="value: delReason, valueUpdate: 'input'" placeholder="e.g. Annual leave">
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" data-bind="click: function(){ showDelModal(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: createDelegation, enable: !delBusy()">
-          <!-- ko if: delBusy() -->Saving&hellip;<!-- /ko -->
-          <!-- ko ifnot: delBusy() -->&#10003; Create<!-- /ko -->
-        </button>
       </div>
     </div>
   </div>

@@ -739,7 +739,7 @@ CREATE TABLE dct_module_settings (
     setting_value       VARCHAR2(500),
     setting_label       VARCHAR2(200)  NOT NULL,
     setting_description VARCHAR2(1000),
-    value_type          VARCHAR2(20)   DEFAULT 'TEXT' NOT NULL, -- BOOLEAN|NUMBER|TEXT|SELECT
+    value_type          VARCHAR2(20)   DEFAULT 'TEXT' NOT NULL, -- BOOLEAN|NUMBER|TEXT|SELECT|COLOR
     allowed_values      VARCHAR2(500),                          -- Pipe-separated options for SELECT type
     default_value       VARCHAR2(500),                          -- Factory default; allows reset
     effective_date      DATE           DEFAULT SYSDATE,         -- Settings apply to records created on/after
@@ -747,7 +747,7 @@ CREATE TABLE dct_module_settings (
     updated_at          TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
     --
     CONSTRAINT uq_dct_modsetting       UNIQUE      (module_id, setting_key),
-    CONSTRAINT chk_dct_modset_valtype  CHECK       (value_type IN ('BOOLEAN','NUMBER','TEXT','SELECT')),
+    CONSTRAINT chk_dct_modset_valtype  CHECK       (value_type IN ('BOOLEAN','NUMBER','TEXT','SELECT','COLOR')),
     CONSTRAINT fk_dct_modset_module    FOREIGN KEY (module_id) REFERENCES dct_modules(module_id)
 );
 

@@ -37,7 +37,9 @@ define(['services/config', 'shared/toast'], function (config, toast) {
 
   function call(method, path, body, opts) {
     opts = opts || {};
-    var headers = { 'Content-Type': 'application/json' };
+    /* No Content-Type on body-less requests — ORDS rejects a DELETE that
+       declares application/json with a zero-length body (HTTP 400). */
+    var headers = body !== undefined ? { 'Content-Type': 'application/json' } : {};
     var token = getToken();
     if (token) headers['Authorization'] = 'Bearer ' + token;
 

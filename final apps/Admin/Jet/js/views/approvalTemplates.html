@@ -15,9 +15,20 @@
   <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
     <div style="background:var(--surface,#fff);border-radius:12px;padding:28px;max-width:560px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:80vh;overflow-y:auto"
          data-bind="modalTrap: $vm.closeDetail">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;gap:12px">
         <h3 data-bind="text: templateName"></h3>
-        <button type="button" class="btn btn-secondary btn-sm" title="Close" data-bind="click: $vm.closeDetail">&#10005;</button>
+        <div class="region-actions">
+          <!-- ko if: $vm.isDraft() -->
+          <button type="button" class="btn btn-secondary btn-sm" data-bind="click: $vm.closeDetail, text: $root.t('common.cancel')"></button>
+          <button type="button" class="btn btn-primary btn-sm" data-bind="click: $vm.saveSteps, enable: !$vm.stepsSaving()">
+            <!-- ko if: $vm.stepsSaving() -->&hellip;<!-- /ko -->
+            <!-- ko ifnot: $vm.stepsSaving() --><span data-bind="text: '✓ ' + $root.t('common.save')"></span><!-- /ko -->
+          </button>
+          <!-- /ko -->
+          <!-- ko ifnot: $vm.isDraft() -->
+          <button type="button" class="btn btn-secondary btn-sm" title="Close" data-bind="click: $vm.closeDetail">&#10005;</button>
+          <!-- /ko -->
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap">
         <span class="badge badge--admin" data-bind="text: templateCode"></span>
@@ -66,19 +77,57 @@
         </div>
       </div>
       <!-- /ko -->
-      <div class="form-actions">
-        <button type="button" class="btn btn-secondary" data-bind="click: $vm.closeDetail, text: $root.t('common.cancel')"></button>
-        <button type="button" class="btn btn-primary" data-bind="click: $vm.saveSteps, enable: !$vm.stepsSaving()">
-          <!-- ko if: $vm.stepsSaving() -->&hellip;<!-- /ko -->
-          <!-- ko ifnot: $vm.stepsSaving() --><span data-bind="text: '✓ ' + $root.t('common.save')"></span><!-- /ko -->
-        </button>
-      </div>
       <!-- /ko -->
 
       <audit-info params="data: $data"></audit-info>
     </div>
   </div>
   <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- enh-6: version history modal (live + archived versions, step diff, restore) -->
+  <!-- ko if: showHistory() -->
+  <div style="position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:500;display:flex;align-items:center;justify-content:center">
+    <div style="background:var(--surface,#fff);border-radius:12px;padding:28px;max-width:640px;width:100%;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:82vh;overflow-y:auto"
+         data-bind="modalTrap: closeHistory">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+        <h3><span data-bind="text: $root.t('tmpl.history')"></span> — <span class="mono" style="font-size:14px" data-bind="text: historyBase()"></span></h3>
+        <button type="button" class="btn btn-secondary btn-sm" data-bind="click: closeHistory, attr: { title: $root.t('common.close') }">&#10005;</button>
+      </div>
+      <!-- ko if: historyHasDraft() -->
+      <div class="alert-banner alert-banner--warning" data-bind="text: $root.t('tmpl.histDraftBlock')"></div>
+      <!-- /ko -->
+      <!-- ko foreach: historyVersions() -->
+      <div style="border:1px solid var(--border,#eee);border-radius:10px;padding:14px 16px;margin-bottom:12px"
+           data-bind="style: { 'border-color': isLive ? 'var(--brand)' : '' }">
+        <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">
+          <span class="badge badge--admin mono" data-bind="text: code"></span>
+          <span class="badge" data-bind="css: isLive ? 'badge--active' : 'badge--idle',
+                text: isLive ? $root.t('tmpl.status.ACTIVE') : $root.t('tmpl.status.ARCHIVED')"></span>
+          <span style="font-size:12px;color:var(--text-3)" data-bind="text: 'v' + versionNo"></span>
+          <!-- ko if: diff -->
+          <span style="font-size:11.5px;color:var(--text-2)" data-bind="text: $vm.diffText(diff)"></span>
+          <!-- /ko -->
+          <span style="flex:1"></span>
+          <!-- ko ifnot: isLive -->
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: $vm.restoreVersion.bind($vm, $data),
+                             enable: !$vm.busy() && !$vm.historyHasDraft(),
+                             text: $root.t('tmpl.restore')"></button>
+          <!-- /ko -->
+        </div>
+        <!-- ko foreach: steps -->
+        <div style="display:flex;align-items:center;gap:8px;font-size:12.5px;padding:3px 0">
+          <span style="width:20px;height:20px;border-radius:50%;background:var(--surface-2,#f0f0f0);display:inline-flex;align-items:center;justify-content:center;font-weight:700;font-size:11px" data-bind="text: seq"></span>
+          <span data-bind="text: label"></span>
+          <span class="badge badge--admin" style="font-size:9.5px" data-bind="text: roleCode"></span>
+          <span style="color:var(--text-3);font-size:11px" data-bind="text: slaHours + 'h'"></span>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
   <!-- /ko -->
 
   <div class="data-table-wrap">
@@ -117,6 +166,11 @@
               <button type="button" class="btn btn-secondary btn-sm btn-icon"
                       data-bind="click: $parent.cloneDraft.bind($parent, $data), enable: !$vm.busy(),
                                  attr: { title: $root.t('tmpl.cloneDraft') }">&#10697;</button>
+              <!-- /ko -->
+              <!-- ko if: $vm.hasHistory($data) -->
+              <button type="button" class="btn btn-secondary btn-sm btn-icon"
+                      data-bind="click: $parent.openHistory.bind($parent, $data),
+                                 attr: { title: $root.t('tmpl.history') }">&#128336;</button>
               <!-- /ko -->
               <!-- ko if: $vm.statusOf($data) === 'DRAFT' -->
               <button type="button" class="btn btn-primary btn-sm"

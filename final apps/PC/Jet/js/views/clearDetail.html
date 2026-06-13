@@ -4,7 +4,14 @@
       <div class="page-title" data-bind="text: isEdit ? '&#9989; ' + clearingNumber() : '&#9989; New Clearing Request'"></div>
       <div class="page-subtitle" data-bind="text: pcRecord() ? 'Advance: AED ' + (pcRecord().amount||0).toLocaleString('en-US',{minimumFractionDigits:2}) : 'Loading&hellip;'"></div>
     </div>
-    <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back</button>
+      <!-- ko ifnot: isReadOnly() -->
+      <button class="btn btn-primary" data-bind="click: saveForm, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko --><!-- ko ifnot: saving() -->&#9993; Submit Clearing Request<!-- /ko -->
+      </button>
+      <!-- /ko -->
+    </div>
   </div>
 
   <!-- ko if: error() -->
@@ -123,12 +130,4 @@
     <!-- /ko -->
   </div>
 
-  <!-- ko ifnot: isReadOnly() -->
-  <div class="form-actions">
-    <button class="btn btn-primary" data-bind="click: saveForm, enable: !saving()">
-      <!-- ko if: saving() -->Saving&hellip;<!-- /ko --><!-- ko ifnot: saving() -->&#9993; Submit Clearing Request<!-- /ko -->
-    </button>
-    <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
-  </div>
-  <!-- /ko -->
 </div>

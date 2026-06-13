@@ -4,10 +4,12 @@
 -- Schema  : PROD
 -- Run     : After 01_ar_ddl.sql + 02_ar_seed.sql
 -- Pattern : Cloned from DCT_PC_AI_PKG (DBMS_CLOUD.SEND_REQUEST → AI provider)
--- Provider: AI_PROVIDER module setting — ANTHROPIC (Claude, paid) or
---           GEMINI (Google Gemini, free tier). Each has its own _API_KEY
---           and model setting; payload + response formats are dispatched
---           internally (payload_begin/payload_finish/call_ai/response_json).
+-- Provider: registry table DCT_AR_AI_PROVIDERS (07_ar_ai_providers.sql).
+--           The AI_PROVIDER module setting holds the selected provider_code;
+--           the row carries api_format (ANTHROPIC|GEMINI wire protocol),
+--           model_id, api_key and an optional base_url override. Payload +
+--           response formats are dispatched on api_format
+--           (payload_begin/payload_finish/call_ai/response_json).
 -- =============================================================================
 -- Public API:
 --   classify_file(file_id)            — AI doc-category classification
@@ -66,6 +68,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ar_ai_pkg AS
     c_max_ai_bytes CONSTANT NUMBER       := 20 * 1024 * 1024;  -- Claude doc API limit guard
     c_max_text    CONSTANT NUMBER        := 180000;            -- content_text char cap
 
+    -- Active provider row shape (registry DCT_AR_AI_PROVIDERS)
+    TYPE t_provider IS RECORD (
+        provider_code VARCHAR2(30),
+        api_format    VARCHAR2(20),
+        base_url      VARCHAR2(300),
+        model_id      VARCHAR2(100),
+        api_key       VARCHAR2(200)
+    );
+
     -- ----------------------------------------------------------------
     -- Private: module setting reader
     -- ----------------------------------------------------------------
@@ -83,20 +94,50 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ar_ai_pkg AS
         WHEN NO_DATA_FOUND THEN RETURN NULL;
     END get_setting;
 
-    -- Active AI provider: ANTHROPIC (default) or GEMINI (free tier)
-    FUNCTION get_provider RETURN VARCHAR2 IS
-        v_p VARCHAR2(20) := UPPER(TRIM(get_setting('AI_PROVIDER')));
+    -- ----------------------------------------------------------------
+    -- Private: active provider row from DCT_AR_AI_PROVIDERS.
+    -- AI_PROVIDER setting = selected provider_code; falls back to the
+    -- first active row when the selection is missing or inactive.
+    -- ----------------------------------------------------------------
+    FUNCTION get_provider_row RETURN t_provider IS
+        v_code VARCHAR2(30) := UPPER(TRIM(get_setting('AI_PROVIDER')));
+        v_p    t_provider;
     BEGIN
-        RETURN CASE WHEN v_p = 'GEMINI' THEN 'GEMINI' ELSE 'ANTHROPIC' END;
+        BEGIN
+            SELECT provider_code, UPPER(TRIM(api_format)), base_url, model_id, api_key
+            INTO   v_p.provider_code, v_p.api_format, v_p.base_url, v_p.model_id, v_p.api_key
+            FROM   prod.dct_ar_ai_providers
+            WHERE  UPPER(provider_code) = v_code
+            AND    is_active = 'Y';
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            BEGIN
+                SELECT provider_code, UPPER(TRIM(api_format)), base_url, model_id, api_key
+                INTO   v_p.provider_code, v_p.api_format, v_p.base_url, v_p.model_id, v_p.api_key
+                FROM   prod.dct_ar_ai_providers
+                WHERE  is_active = 'Y'
+                ORDER  BY provider_id
+                FETCH FIRST 1 ROW ONLY;
+            EXCEPTION WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20001,
+                    'No active AI provider configured for ACCOUNTS_RECEIVABLE'
+                 || ' — add one in Module Settings > Manage Providers');
+            END;
+        END;
+        RETURN v_p;
+    END get_provider_row;
+
+    -- Wire protocol of the active provider: ANTHROPIC (default) or GEMINI
+    FUNCTION get_provider RETURN VARCHAR2 IS
+        v_p t_provider := get_provider_row;
+    BEGIN
+        RETURN CASE WHEN v_p.api_format = 'GEMINI' THEN 'GEMINI' ELSE 'ANTHROPIC' END;
     END get_provider;
 
     -- Model for the ACTIVE provider (also what log_call records)
     FUNCTION get_model RETURN VARCHAR2 IS
+        v_p t_provider := get_provider_row;
     BEGIN
-        IF get_provider = 'GEMINI' THEN
-            RETURN NVL(get_setting('GEMINI_MODEL'), 'gemini-flash-latest');
-        END IF;
-        RETURN NVL(get_setting('AI_MODEL'), 'claude-haiku-4-5-20251001');
+        RETURN v_p.model_id;
     END get_model;
 
     -- ----------------------------------------------------------------
@@ -244,14 +285,16 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ar_ai_pkg AS
         v_soffset   INTEGER := 1;
         v_langctx   INTEGER := DBMS_LOB.DEFAULT_LANG_CTX;
         v_warning   INTEGER;
-        v_api_key   VARCHAR2(200) := get_setting('ANTHROPIC_API_KEY');
+        v_prov      t_provider := get_provider_row;
+        v_api_key   VARCHAR2(200) := v_prov.api_key;
         v_headers   VARCHAR2(500);
         v_status    NUMBER;
         v_response  CLOB;
     BEGIN
         IF v_api_key IS NULL THEN
             RAISE_APPLICATION_ERROR(-20001,
-                'ANTHROPIC_API_KEY not configured in module settings for ACCOUNTS_RECEIVABLE');
+                'No API key configured for AI provider ' || v_prov.provider_code
+             || ' — set it in Module Settings > Manage Providers');
         END IF;
 
         DBMS_LOB.CREATETEMPORARY(v_body_blob, TRUE);
@@ -271,7 +314,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ar_ai_pkg AS
                   || ',"content-type":"application/json"}';
 
         v_resp := DBMS_CLOUD.SEND_REQUEST(
-            uri     => c_api_url,
+            uri     => NVL(v_prov.base_url, c_api_url),
             method  => 'POST',
             headers => v_headers,
             body    => v_body_blob
@@ -305,15 +348,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ar_ai_pkg AS
         v_soffset   INTEGER := 1;
         v_langctx   INTEGER := DBMS_LOB.DEFAULT_LANG_CTX;
         v_warning   INTEGER;
-        v_api_key   VARCHAR2(200) := get_setting('GEMINI_API_KEY');
+        v_prov      t_provider := get_provider_row;
+        v_api_key   VARCHAR2(200) := v_prov.api_key;
         v_headers   VARCHAR2(500);
         v_status    NUMBER;
         v_response  CLOB;
     BEGIN
         IF v_api_key IS NULL THEN
             RAISE_APPLICATION_ERROR(-20001,
-                'GEMINI_API_KEY not configured in module settings for ACCOUNTS_RECEIVABLE'
-             || ' (get a free key at aistudio.google.com/apikey)');
+                'No API key configured for AI provider ' || v_prov.provider_code
+             || ' — set it in Module Settings > Manage Providers'
+             || ' (Gemini: free key at aistudio.google.com/apikey)');
         END IF;
 
         DBMS_LOB.CREATETEMPORARY(v_body_blob, TRUE);
@@ -332,7 +377,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ar_ai_pkg AS
                   || ',"content-type":"application/json"}';
 
         v_resp := DBMS_CLOUD.SEND_REQUEST(
-            uri     => c_gemini_url || get_model() || ':generateContent',
+            uri     => NVL(v_prov.base_url, c_gemini_url) || v_prov.model_id || ':generateContent',
             method  => 'POST',
             headers => v_headers,
             body    => v_body_blob

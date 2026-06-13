@@ -61,16 +61,39 @@ contract, organizer P&L, post-event report).
 
 ## Key settings (Admin → AR → Module Settings)
 
-- `AI_PROVIDER` = ANTHROPIC | GEMINI (added 2026-06-12). GEMINI = Google Gemini
-  free tier — key from aistudio.google.com/apikey (no credit card / username),
-  ~10–15 req/min and 1,500 req/day on Flash models.
-- `ANTHROPIC_API_KEY` — set (reused PETTY_CASH key per user authorization 2026-06-12);
-  `AI_MODEL` = claude-haiku-4-5-20251001 (Anthropic model)
-- `GEMINI_API_KEY` — empty (admin sets); `GEMINI_MODEL` = gemini-flash-latest
-  (alias that tracks the newest free-tier Flash model)
+- **AI providers live in `DCT_AR_AI_PROVIDERS`** (2026-06-13, `07_ar_ai_providers.sql`)
+  managed via the settings page's **Manage Providers** popup — per row: code, name,
+  api_format (lookup `AR_API_FORMAT`: ANTHROPIC|GEMINI wire protocol), model,
+  write-only api_key (`hasKey` flag over REST), optional base_url override, active flag.
+  Migrated rows: ANTHROPIC (Claude key set, model claude-haiku-4-5-20251001) and
+  GEMINI (no key yet, gemini-flash-latest). The old `AI_MODEL` / `ANTHROPIC_API_KEY`
+  / `GEMINI_MODEL` / `GEMINI_API_KEY` setting rows were **removed**;
+  `06_ar_patch_gemini.sql` is superseded — do not re-run it.
+- `AI_PROVIDER` = the selected `provider_code` (validated against active registry rows).
 - `REQUIRE_HUMAN_REVIEW` = Y (N ⇒ AI results auto-confirm straight to dashboards)
-- `AUTO_CLASSIFY_ON_UPLOAD` = Y, `MIN_CONFIDENCE_AUTOCONFIRM` = 85
+- `AUTO_CLASSIFY_ON_UPLOAD` = Y, `MIN_CONFIDENCE_AUTOCONFIRM` = 85 (now a 50–100 pick-list)
 - `ENABLE_ALT_FILE_NAME` = N, `ALT_FILE_NAME_FORMAT` = `{EVENT_NAME}-{CATEGORY}-{ORIGINAL_NAME}`
+- `DEFAULT_CURRENCY` / `MAX_FILE_SIZE_MB` are pick-lists; `THEME_BRAND_COLOR` is a
+  native colour picker (`value_type` 'COLOR' — `chk_dct_modset_valtype` extended platform-wide).
+
+## 2026-06-13 Module Settings redesign
+
+- **Grouped regions** (AI Provider & Models / AI Processing & Review Gate /
+  File Handling / Defaults & Appearance + auto "Other" for future keys),
+  **per-region Save** that PUTs only dirty fields, dirty-row highlight + unsaved
+  counter, **inline audit line** (updated by · at) under every field — settings GET
+  now returns `updatedBy`/`updatedAt`.
+- **AI provider registry** + `/providers/` ORDS CRUD (GET/POST/PUT/:id/DELETE/:id);
+  DELETE blocked for the selected provider and for the last active row; POST/PUT
+  validate api_format via `dct_lookup_pkg.validate_lookup`. `DCT_AR_AI_PKG` resolves
+  the active row by the `AI_PROVIDER` setting (fallback: first active) and dispatches
+  on `api_format`, so an extra Anthropic/Gemini-compatible provider works without code.
+- **Shared fix**: ADB ORDS returns HTML 400 for bodyless requests carrying
+  `Content-Type: application/json` (every DELETE) — `shared/js/api.js` now sets the
+  header only when a body exists.
+- Verified: ORDS smoke 17/17, browser E2E 22/22 (regions, dirty/save round-trip,
+  popup add/edit/delete, selected-provider guard, zero console errors), AI regression
+  classify OK with model read from the registry (extract_log #34).
 
 ## 2026-06-12 round-2 changes
 

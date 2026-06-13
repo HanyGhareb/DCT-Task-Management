@@ -1,4 +1,4 @@
-<div class="page-wrap">
+<div class="page-wrap page-wrap--full">
 
   <!-- Closing deadline banner -->
   <!-- ko if: showClosingBanner() -->
@@ -10,6 +10,10 @@
     </div>
   </div>
   <!-- /ko -->
+
+  <!-- Main content + Quick Actions rail pinned right -->
+  <div class="dash-rail-layout">
+  <div style="min-width:0">
 
   <!-- Greeting -->
   <div class="page-header">
@@ -45,11 +49,8 @@
     </div>
   </div>
 
-  <!-- Two-column layout -->
-  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:24px">
-
-    <!-- Active PC Card -->
-    <div class="card">
+  <!-- Active PC Card -->
+  <div class="card" style="margin-bottom:24px">
       <div class="section-heading">&#128179; My Active Petty Cash</div>
       <!-- ko if: loading() -->
       <div class="empty-state" style="padding:30px"><div class="empty-state__msg">Loading&hellip;</div></div>
@@ -97,38 +98,6 @@
       <!-- /ko -->
       <!-- /ko -->
     </div>
-
-    <!-- Quick Actions -->
-    <div class="card">
-      <div class="section-heading">&#9889; Quick Actions</div>
-      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
-        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: newRequest">
-          <span style="font-size:18px">&#10133;</span>
-          <div style="text-align:left">
-            <div style="font-weight:600">New Petty Cash Request</div>
-            <div style="font-size:11px;color:var(--text-secondary)">Submit advance for approval</div>
-          </div>
-        </button>
-        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: viewMy">
-          <span style="font-size:18px">&#128202;</span>
-          <div style="text-align:left">
-            <div style="font-weight:600">View My Petty Cash History</div>
-            <div style="font-size:11px;color:var(--text-secondary)">All past and current advances</div>
-          </div>
-        </button>
-        <!-- ko if: isApprover -->
-        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: viewApprovals">
-          <span style="font-size:18px">&#9989;</span>
-          <div style="text-align:left">
-            <div style="font-weight:600">Pending Approvals</div>
-            <div style="font-size:11px;color:var(--text-secondary)">Review and action pending requests</div>
-          </div>
-        </button>
-        <!-- /ko -->
-      </div>
-    </div>
-
-  </div>
 
   <!-- Charts (Phase 3) — GET /pc/charts -->
   <div class="charts-row" style="margin-top:24px">
@@ -205,5 +174,41 @@
     </div>
     <!-- /ko -->
   </div>
+
+  </div><!-- /main column -->
+
+  <!-- Quick Actions — pinned rail on the extreme right -->
+  <aside class="dash-rail">
+    <div class="card">
+      <div class="section-heading">&#9889; Quick Actions</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-top:8px">
+        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: newRequest">
+          <span style="font-size:18px">&#10133;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600">New Petty Cash Request</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Submit advance for approval</div>
+          </div>
+        </button>
+        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: viewMy">
+          <span style="font-size:18px">&#128202;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600">View My Petty Cash History</div>
+            <div style="font-size:11px;color:var(--text-secondary)">All past and current advances</div>
+          </div>
+        </button>
+        <!-- ko if: isApprover -->
+        <button class="btn btn-secondary" style="justify-content:flex-start;gap:12px" data-bind="click: viewApprovals">
+          <span style="font-size:18px">&#9989;</span>
+          <div style="text-align:left">
+            <div style="font-weight:600">Pending Approvals</div>
+            <div style="font-size:11px;color:var(--text-secondary)">Review and action pending requests</div>
+          </div>
+        </button>
+        <!-- /ko -->
+      </div>
+    </div>
+  </aside>
+
+  </div><!-- /dash-rail-layout -->
 
 </div>

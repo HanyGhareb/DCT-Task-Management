@@ -23,7 +23,13 @@
 
   <!-- ko if: editRow() -->
   <div class="card" style="margin-bottom:16px">
-    <div style="font-weight:700;font-size:14px;margin-bottom:12px">Edit Rate — <span data-bind="text: editRow().rateKeyName + ' (' + editRow().rateKey + ') / Grade ' + editRow().gradeCode"></span></div>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px">
+      <div style="font-weight:700;font-size:14px">Edit Rate — <span data-bind="text: editRow().rateKeyName + ' (' + editRow().rateKey + ') / Grade ' + editRow().gradeCode"></span></div>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: cancelEdit">Cancel</button>
+        <button class="btn btn-primary btn-sm" data-bind="click: saveEdit, disable: saving()">Save</button>
+      </div>
+    </div>
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Daily Rate (AED)</label>
@@ -45,10 +51,6 @@
         <label class="form-label">Notes</label>
         <input class="form-control" type="text" data-bind="value: editRow().notes, valueUpdate: 'input'" placeholder="Optional notes">
       </div>
-    </div>
-    <div class="form-actions" style="margin-top:12px;padding-top:12px">
-      <button class="btn btn-primary btn-sm" data-bind="click: saveEdit, disable: saving()">Save</button>
-      <button class="btn btn-secondary btn-sm" data-bind="click: cancelEdit">Cancel</button>
     </div>
   </div>
   <!-- /ko -->

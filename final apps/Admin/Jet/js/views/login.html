@@ -6,8 +6,10 @@
     </div>
     <div class="login-logo">
       <div class="login-cube">i</div>
-      <div class="login-title">i-Finance V2</div>
-      <div class="login-subtitle" data-bind="text: $root.t('login.subtitle')"></div>
+      <div class="login-title"
+           data-bind="text: ($root.lang() === 'ar' ? appNameAr() : appName()) || appName() || 'i-Finance V2'"></div>
+      <div class="login-subtitle"
+           data-bind="text: ($root.lang() === 'ar' ? taglineAr() : tagline()) || tagline() || $root.t('login.subtitle')"></div>
     </div>
 
     <!-- Error -->

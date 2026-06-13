@@ -63,7 +63,13 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:620px">
       <div class="modal-head"><span class="modal-title" data-bind="text: $root.t('cards.register')"></span>
-        <button class="modal-close" data-bind="click: function(){ showRegister(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showRegister(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: registerCard, enable: !regBusy()">
+            <!-- ko if: regBusy() -->Registering&hellip;<!-- /ko -->
+            <!-- ko ifnot: regBusy() -->&#10003; Register Card<!-- /ko -->
+          </button>
+        </div></div>
       <div class="modal-body">
         <!-- ko if: regError() -->
         <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: regError()"></span></div>
@@ -118,13 +124,6 @@
             <input class="form-control" data-bind="value: reg.costCenter, valueUpdate: 'input'">
           </div>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showRegister(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: registerCard, enable: !regBusy()">
-          <!-- ko if: regBusy() -->Registering&hellip;<!-- /ko -->
-          <!-- ko ifnot: regBusy() -->&#10003; Register Card<!-- /ko -->
-        </button>
       </div>
     </div>
   </div>

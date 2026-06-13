@@ -191,27 +191,13 @@ DECLARE
     );
     TYPE t_setting_list IS TABLE OF t_setting;
 
+    -- AI provider/model/key rows live in DCT_AR_AI_PROVIDERS (07_ar_ai_providers.sql);
+    -- AI_PROVIDER below selects the active provider_code from that registry.
     v_settings t_setting_list := t_setting_list(
-        t_setting('ANTHROPIC_API_KEY', NULL,
-            'Anthropic API Key (AI Classification & Extraction)',
-            'API key for the Claude API used by AI document classification and P&L extraction. Set by the administrator; never stored in source control.',
-            'TEXT', NULL, NULL),
-        t_setting('AI_MODEL', 'claude-haiku-4-5-20251001',
-            'Anthropic Model',
-            'Claude model used when AI Provider = ANTHROPIC. Switch to a Sonnet model for higher accuracy at higher cost.',
-            'TEXT', NULL, 'claude-haiku-4-5-20251001'),
         t_setting('AI_PROVIDER', 'ANTHROPIC',
             'AI Provider',
-            'ANTHROPIC = Claude (paid, highest accuracy). GEMINI = Google Gemini (free tier available via Google AI Studio — ~10-15 requests/min, 1,500/day). Each provider needs its own API key setting.',
-            'SELECT', 'ANTHROPIC|GEMINI', 'ANTHROPIC'),
-        t_setting('GEMINI_API_KEY', NULL,
-            'Google Gemini API Key',
-            'Free API key from Google AI Studio (aistudio.google.com/apikey) — only an API key is required, no credit card or username. Used when AI Provider = GEMINI. Never stored in source control.',
-            'TEXT', NULL, NULL),
-        t_setting('GEMINI_MODEL', 'gemini-flash-latest',
-            'Gemini Model',
-            'Gemini model used when AI Provider = GEMINI. gemini-flash-latest always points to the newest free-tier Flash model; a pinned ID (e.g. gemini-2.5-flash) may also be used.',
-            'TEXT', NULL, 'gemini-flash-latest'),
+            'The managed AI provider used for document classification and P&L extraction. Providers (model, API key, endpoint) are maintained in Module Settings via Manage Providers.',
+            'SELECT', NULL, 'ANTHROPIC'),
         t_setting('AUTO_CLASSIFY_ON_UPLOAD', 'Y',
             'Auto-Run AI After Upload',
             'Y = AI classification starts automatically when a folder upload completes; N = user triggers processing manually.',
@@ -222,8 +208,8 @@ DECLARE
             'BOOLEAN', 'Y|N', 'Y'),
         t_setting('MIN_CONFIDENCE_AUTOCONFIRM', '85',
             'Auto-Confirm Confidence Threshold (%)',
-            'When REQUIRE_HUMAN_REVIEW = Y, classifications with AI confidence >= this percentage are auto-confirmed (still editable). 0-100.',
-            'NUMBER', NULL, '85'),
+            'When REQUIRE_HUMAN_REVIEW = Y, classifications with AI confidence >= this percentage are auto-confirmed (still editable).',
+            'SELECT', '50|55|60|65|70|75|80|85|90|95|100', '85'),
         t_setting('ENABLE_ALT_FILE_NAME', 'N',
             'Enable Alternative File Name',
             'Y = a standardized alternative file name is generated for each classified file using ALT_FILE_NAME_FORMAT and used when downloading.',
@@ -235,11 +221,11 @@ DECLARE
         t_setting('DEFAULT_CURRENCY', 'AED',
             'Default Currency',
             'Default currency for events and extracted P&L lines when the document does not state one.',
-            'TEXT', NULL, 'AED'),
+            'SELECT', 'AED|USD|EUR|GBP|SAR|QAR|KWD|BHD|OMR', 'AED'),
         t_setting('MAX_FILE_SIZE_MB', '25',
             'Maximum Upload File Size (MB)',
             'Client-side limit per file. Files larger than ~20 MB cannot be processed by the AI document API and will require manual entry.',
-            'NUMBER', NULL, '25'),
+            'SELECT', '5|10|15|20|25', '25'),
         t_setting('EVENT_CODE_PREFIX', 'EVT',
             'Event Code Prefix',
             'Prefix for auto-generated event codes. Generated format: {PREFIX}-{YYYY}-{0001}.',
@@ -247,7 +233,7 @@ DECLARE
         t_setting('THEME_BRAND_COLOR', '#6C4AB6',
             'Brand Colour',
             'Primary brand colour for the AR JET app shell.',
-            'TEXT', NULL, '#6C4AB6')
+            'COLOR', NULL, '#6C4AB6')
     );
 BEGIN
     SELECT module_id INTO v_module_id FROM dct_modules WHERE module_code = 'ACCOUNTS_RECEIVABLE';

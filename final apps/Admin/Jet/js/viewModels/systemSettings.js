@@ -20,10 +20,15 @@ define(['knockout', 'services/settingService'], function (ko, settingService) {
               settingKey:  s.settingKey,
               description: s.description,
               isEditable:  s.isEditable,
+              // enh-2: BOOLEAN settings (FEATURE_* flags) render as switches
+              isToggle:    s.settingType === 'BOOLEAN' ||
+                           /^[YN]$/.test(s.settingValue || '') && cat === 'FEATURES',
               value:       obs,
               original:    s.settingValue,
               dirty:       ko.observable(false),
             };
+            item.toggleOn = ko.pureComputed(function () { return obs() === 'Y'; });
+            item.flip = function () { obs(obs() === 'Y' ? 'N' : 'Y'); };
             obs.subscribe(function (v) { item.dirty(v !== item.original); });
             return item;
           }),

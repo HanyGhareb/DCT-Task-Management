@@ -4,7 +4,13 @@
       <div class="page-title" data-bind="text: pageTitle()"></div>
       <div class="page-subtitle" data-bind="text: $root.t('vw.userEdit.subtitle')"></div>
     </div>
-    <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back to Users</button>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: cancel">&#8592; Back to Users</button>
+      <button class="btn btn-primary" data-bind="click: save, enable: !saving()">
+        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+        <!-- ko ifnot: saving() -->&#10003; Save User<!-- /ko -->
+      </button>
+    </div>
   </div>
 
   <!-- Success -->
@@ -125,13 +131,5 @@
     </div>
 
     <audit-info params="data: audit"></audit-info>
-
-    <div class="form-actions">
-      <button class="btn btn-primary" data-bind="click: save, enable: !saving()">
-        <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
-        <!-- ko ifnot: saving() -->&#10003; Save User<!-- /ko -->
-      </button>
-      <button class="btn btn-secondary" data-bind="click: cancel">Cancel</button>
-    </div>
   </div>
 </div>

@@ -59,9 +59,15 @@
   <div style="position:fixed;inset:0;background:rgba(15,22,30,.5);display:flex;align-items:center;justify-content:center;z-index:1000;padding:16px">
     <div class="card" style="width:100%;max-width:640px;max-height:92vh;overflow-y:auto"
          data-bind="modalTrap: function () { showEditor(false); }">
-      <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
-        <span data-bind="text: editId() ? 'Edit Announcement' : 'New Announcement'"></span>
-        <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showEditor(false); }">&#10005;</button>
+      <div class="section-heading-row" style="margin-top:0">
+        <div class="section-heading" data-bind="text: editId() ? 'Edit Announcement' : 'New Announcement'"></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showEditor(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: save, enable: !busy()">
+            <!-- ko if: busy() -->Saving&hellip;<!-- /ko -->
+            <!-- ko ifnot: busy() -->&#10003; Save<!-- /ko -->
+          </button>
+        </div>
       </div>
       <!-- ko if: edError() -->
       <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: edError()"></span></div>
@@ -125,13 +131,6 @@
             <option value="Y">Yes</option><option value="N">No</option>
           </select>
         </div>
-      </div>
-      <div class="form-actions">
-        <button class="btn btn-secondary" data-bind="click: function(){ showEditor(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: save, enable: !busy()">
-          <!-- ko if: busy() -->Saving&hellip;<!-- /ko -->
-          <!-- ko ifnot: busy() -->&#10003; Save<!-- /ko -->
-        </button>
       </div>
     </div>
   </div>

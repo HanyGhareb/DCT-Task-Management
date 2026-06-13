@@ -66,7 +66,13 @@
   <div class="modal-backdrop">
     <div class="modal-box" style="max-width:460px">
       <div class="modal-head"><span class="modal-title" data-bind="text: $root.t('repl.new')"></span>
-        <button class="modal-close" data-bind="click: function(){ showNewModal(false); }">&#10005;</button></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showNewModal(false); }">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: createNew, enable: myCards().length > 0 && !creating()">
+            <!-- ko if: creating() -->Creating&hellip;<!-- /ko -->
+            <!-- ko ifnot: creating() -->Create Draft<!-- /ko -->
+          </button>
+        </div></div>
       <div class="modal-body">
         <!-- ko if: newError() -->
         <div class="alert-banner alert-banner--danger" style="margin-bottom:12px">&#9888; <span data-bind="text: newError()"></span></div>
@@ -93,13 +99,6 @@
           </div>
         </div>
         <!-- /ko -->
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" data-bind="click: function(){ showNewModal(false); }">Cancel</button>
-        <button class="btn btn-primary" data-bind="click: createNew, enable: myCards().length > 0 && !creating()">
-          <!-- ko if: creating() -->Creating&hellip;<!-- /ko -->
-          <!-- ko ifnot: creating() -->Create Draft<!-- /ko -->
-        </button>
       </div>
     </div>
   </div>

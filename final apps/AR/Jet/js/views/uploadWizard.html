@@ -21,11 +21,19 @@
   <!-- STEP 2: preview -->
   <!-- ko if: step() === 2 -->
   <div class="form-card">
-    <h3 style="margin-top:0">
-      <span data-bind="text: validCount()"></span> file(s) ready
-      <span style="color:#8a94a6; font-weight:400; font-size:13px"
-            data-bind="text: ' (max ' + maxSizeMb() + ' MB each)'"></span>
-    </h3>
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:12px">
+      <h3 style="margin-top:0">
+        <span data-bind="text: validCount()"></span> file(s) ready
+        <span style="color:#8a94a6; font-weight:400; font-size:13px"
+              data-bind="text: ' (max ' + maxSizeMb() + ' MB each)'"></span>
+      </h3>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: reset">Re-pick</button>
+        <button class="btn btn-primary btn-sm" data-bind="click: startUpload, disable: validCount() === 0">
+          Upload <span data-bind="text: validCount()"></span> file(s)
+        </button>
+      </div>
+    </div>
     <div class="ar-tree" style="max-height:380px; overflow:auto; border:1px solid #eef1f6; border-radius:8px; padding:10px 14px">
       <!-- ko foreach: folderTree() -->
       <div class="dir" data-bind="text: '📁 ' + dir"></div>
@@ -36,12 +44,6 @@
       </div>
       <!-- /ko -->
       <!-- /ko -->
-    </div>
-    <div class="form-actions">
-      <button class="btn btn-secondary" data-bind="click: reset">Re-pick</button>
-      <button class="btn btn-primary" data-bind="click: startUpload, disable: validCount() === 0">
-        Upload <span data-bind="text: validCount()"></span> file(s)
-      </button>
     </div>
   </div>
   <!-- /ko -->

@@ -2,13 +2,15 @@
   <div class="page-header">
     <div class="page-header-row">
       <div>
-        <button class="btn btn-secondary btn-sm" data-bind="click: goBack" style="margin-bottom:6px">&#8592; Back</button>
         <div class="page-title" data-bind="text: request() ? request().reqNumber : 'Loading…'"></div>
         <div class="page-subtitle" data-bind="text: request() ? request().travelPurpose : ''"></div>
       </div>
-      <!-- ko if: request() -->
-      <span data-bind="class: request().statusClass, text: request().statusLabel"></span>
-      <!-- /ko -->
+      <div class="page-actions">
+        <!-- ko if: request() -->
+        <span data-bind="class: request().statusClass, text: request().statusLabel"></span>
+        <!-- /ko -->
+        <button class="btn btn-secondary" data-bind="click: goBack">&#8592; Back</button>
+      </div>
     </div>
   </div>
 
@@ -142,19 +144,18 @@
     <div class="modal-box" style="max-width:420px" data-bind="click: function(d,e){e.stopPropagation()}">
       <div class="modal-header">
         <strong data-bind="text: actionType() === 'APPROVED' ? 'Approve Request' : actionType() === 'REJECTED' ? 'Reject Request' : 'Return for Revision'"></strong>
-        <button class="btn btn-icon" data-bind="click: closeActionModal">&#10005;</button>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeActionModal">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: submitAction, disable: submitting() || !actionComments()">
+            <!-- ko if: submitting() -->Submitting…<!-- /ko --><!-- ko ifnot: submitting() -->Confirm<!-- /ko -->
+          </button>
+        </div>
       </div>
       <div class="modal-body">
         <!-- ko if: error() --><div class="alert-banner alert-banner--danger" data-bind="text: error"></div><!-- /ko -->
         <div class="form-group">
           <label class="form-label">Comments <span class="required">*</span></label>
           <textarea class="form-control" rows="4" data-bind="value: actionComments, valueUpdate: 'input'" placeholder="Enter your comments…"></textarea>
-        </div>
-        <div class="form-actions" style="border:none;padding:0;margin-top:12px">
-          <button class="btn btn-primary" data-bind="click: submitAction, disable: submitting() || !actionComments()">
-            <!-- ko if: submitting() -->Submitting…<!-- /ko --><!-- ko ifnot: submitting() -->Confirm<!-- /ko -->
-          </button>
-          <button class="btn btn-secondary" data-bind="click: closeActionModal">Cancel</button>
         </div>
       </div>
     </div>

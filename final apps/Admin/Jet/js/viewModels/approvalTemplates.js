@@ -20,8 +20,10 @@ function (ko, auditService, i18n, toast) {
 
     self.filtered = ko.computed(function () {
       var q = self.searchTerm().toLowerCase();
-      if (!q) return self.templates();
       return self.templates().filter(function (t) {
+        // enh-6: archived versions live in the History modal, not the list
+        if ((t.templateCode || '').indexOf('~V') >= 0) return false;
+        if (!q) return true;
         return (t.templateName || '').toLowerCase().includes(q) ||
                (t.templateCode || '').toLowerCase().includes(q) ||
                (t.module       || '').toLowerCase().includes(q);
@@ -120,6 +122,94 @@ function (ko, auditService, i18n, toast) {
     self.toggleActive = function (t) {
       auditService.updateTemplate(t.templateId, { isActive: t.isActive === 'Y' ? 'N' : 'Y' })
         .then(reload);
+    };
+
+    /* ── enh-6: version history (live + ~V archives) with step diff ───────
+       Restore = clone an archive's steps into a new ~D draft of the live
+       template; the draft then follows the normal edit/activate lifecycle. */
+    function baseCodeOf(t) {
+      var code = t.templateCode || '';
+      var i = code.indexOf('~');
+      return i < 0 ? code : code.slice(0, i);
+    }
+    function stepKey(s) { return (s.label || '') + '|' + (s.roleCode || ''); }
+    function diffVsLive(steps, liveSteps) {
+      var live = (liveSteps || []).map(stepKey);
+      var mine = (steps || []).map(stepKey);
+      var added = mine.filter(function (k) { return live.indexOf(k) < 0; }).length;
+      var removed = live.filter(function (k) { return mine.indexOf(k) < 0; }).length;
+      var moved = 0;
+      mine.forEach(function (k, i) {
+        var j = live.indexOf(k);
+        if (j >= 0 && j !== i) moved++;
+      });
+      return { added: added, removed: removed, moved: moved,
+               same: !added && !removed && !moved };
+    }
+
+    self.historyBase     = ko.observable('');
+    self.historyVersions = ko.observableArray([]);
+    self.showHistory     = ko.observable(false);
+    self.historyHasDraft = ko.observable(false);
+
+    self.familyArchives = function (t) {
+      var base = baseCodeOf(t);
+      return self.templates().filter(function (x) {
+        return (x.templateCode || '').indexOf(base + '~V') === 0;
+      });
+    };
+    self.hasHistory = function (t) {
+      return self.statusOf(t) === 'ACTIVE' && self.familyArchives(t).length > 0;
+    };
+
+    self.openHistory = function (t) {
+      var base = baseCodeOf(t);
+      var live = self.templates().find(function (x) {
+        return x.templateCode === base && x.isActive === 'Y';
+      });
+      var fam = self.familyArchives(t);
+      self.historyHasDraft(self.templates().some(function (x) {
+        return x.templateCode === base + '~D';
+      }));
+      var rows = (live ? [live] : []).concat(fam).map(function (x) {
+        return {
+          templateId: x.templateId,
+          code:       x.templateCode,
+          versionNo:  x.versionNo || 1,
+          isLive:     x.templateCode === base,
+          steps:      x.steps || [],
+          diff:       x.templateCode === base ? null
+                        : diffVsLive(x.steps, live && live.steps),
+        };
+      }).sort(function (a, b) { return b.versionNo - a.versionNo; });
+      self.historyBase(base);
+      self.historyVersions(rows);
+      self.showHistory(true);
+    };
+    self.closeHistory = function () { self.showHistory(false); };
+
+    self.diffText = function (d) {
+      if (!d) return '';
+      if (d.same) return i18n.t('tmpl.histSame');
+      var bits = [];
+      if (d.added)   bits.push(i18n.t('tmpl.histAdded',   [d.added]));
+      if (d.removed) bits.push(i18n.t('tmpl.histRemoved', [d.removed]));
+      if (d.moved)   bits.push(i18n.t('tmpl.histMoved',   [d.moved]));
+      return bits.join(' · ');
+    };
+
+    self.restoreVersion = function (v) {
+      if (!window.confirm(i18n.t('tmpl.restoreConfirm', [v.code]))) return;
+      self.busy(true);
+      auditService.restoreTemplate(v.templateId).then(function () {
+        self.busy(false);
+        self.closeHistory();
+        toast.success(i18n.t('tmpl.restored'));
+        reload();
+      }).catch(function (err) {
+        self.busy(false);
+        toast.error((err && err.message) || 'Restore failed');
+      });
     };
   }
 
