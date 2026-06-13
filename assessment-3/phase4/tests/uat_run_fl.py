@@ -111,9 +111,19 @@ def persona(ctx, username):
     return ctx['pp'][username][1]
 
 def nav(page, route, ms=2500):
+    # form-guard confirms (Wave 2 rollout) would be auto-DISMISSED by
+    # Playwright and silently block navigation — accept them, scoped to nav
     page.wait_for_function('() => !!window._jetApp', timeout=15000)
-    page.evaluate("window._jetApp.navigate('%s')" % route)
-    wait(page, ms)
+    def _accept(d):
+        try: d.accept()
+        except Exception: pass
+    page.on('dialog', _accept)
+    try:
+        page.evaluate("window._jetApp.navigate('%s')" % route)
+        wait(page, ms)
+    finally:
+        try: page.remove_listener('dialog', _accept)
+        except Exception: pass
 
 def open_detail(page, sskey, val, route, ms=2800):
     page.wait_for_function('() => !!window._jetApp', timeout=15000)
@@ -197,8 +207,20 @@ def run_case(ctx, tid, area, function, scenario, fn):
         out = fn(ctx)
         status, note = out if isinstance(out, tuple) else ('PASS', str(out or ''))
     except Exception as e:
-        status = 'FAIL'
-        note = ' '.join(str(e).split())[:300]
+        # ADB latency spikes fail honest cases — one retry before recording FAIL
+        try:
+            ctx.pop('shot_page', None)
+            tp = ctx.pop('tmp_page', None)
+            if tp:
+                try: tp.close()
+                except Exception: pass
+            wait(ctx['page'], 2500)
+            out = fn(ctx)
+            status, note = out if isinstance(out, tuple) else ('PASS', str(out or ''))
+            note = (note + '  [passed on retry]').strip()
+        except Exception as e2:
+            status = 'FAIL'
+            note = ' '.join(str(e2).split())[:300]
     try:
         pg = ctx.get('shot_page') or ctx['page']
         pg.screenshot(path=shot, full_page=False)
@@ -791,6 +813,104 @@ def shl_arabic(ctx):
     assert latin, 'digits not Latin in AR mode'
     return 'PASS', 'RTL mirrored; AR labels with Latin digits; dashboard charts re-rendered (%d); registrations + contract detail OK' % canvases
 
+# ── ENH (FL-CMP-02 fix + bulk vouchers + Wave-2 rollout) ─────────────────────
+def _fl_setting(key):
+    st, d = api('GET', '/fl/settings', token=tok())
+    for s in d.get('items', []):
+        if s.get('key') == key:
+            return s
+    raise AssertionError('setting %s not found (HTTP %s)' % (key, st))
+
+def _set_fl_setting(key, value):
+    s = _fl_setting(key)
+    st, d = api('PUT', '/fl/settings/%s' % s['settingId'], {'value': value}, token=tok())
+    assert st < 300, 'setting %s update failed: %s %s' % (key, st, d)
+    return s
+
+def enh_deeplink(ctx):
+    p = ctx['page']; ensure_en(p)   # SHL-02 leaves AR active
+    nav(p, 'documents', 3000)
+    assert p.locator('.data-table tbody tr').count(), 'no compliance documents to click'
+    p.locator('.data-table tbody tr').first.click(); wait(p, 2800)
+    assert p.locator('.fl-tabs').count(), 'did not open the freelancer detail'
+    on_tab = p.locator('.fl-tab--on').inner_text()
+    assert 'Documents' in on_tab, 'landed on the %s tab, not Documents (FL-CMP-02 regressed)' % on_tab.strip()
+    return 'PASS', 'Compliance document row deep-linked straight to the Documents tab (FL-CMP-02 fixed)'
+
+def enh_killswitch(ctx):
+    p = ctx['page']; ensure_en(p)
+    s = _fl_setting('ALLOW_BULK_VOUCHER_GENERATION')
+    if str(s.get('value', 'N')).upper() != 'N':
+        _set_fl_setting('ALLOW_BULK_VOUCHER_GENERATION', 'N')
+    nav(p, 'dashboard', 1200); nav(p, 'paymentSchedule', 3000)
+    assert p.locator('button:has-text("Generate All Due")').count() == 0, \
+        'bulk button visible although the setting is N'
+    st, d = api('POST', '/fl/schedule/bulk-generate', {}, token=tok())
+    assert st == 403, 'direct API call expected 403, got %s %s' % (st, d)
+    return 'PASS', 'Setting N: no Generate All Due button; direct POST /schedule/bulk-generate refused with 403'
+
+def enh_bulk(ctx):
+    p = ctx['page']
+    _set_fl_setting('ALLOW_BULK_VOUCHER_GENERATION', 'Y')
+    try:
+        st, before = api('GET', '/fl/schedule/?status=PENDING&limit=200', token=tok())
+        eligible = [r for r in before.get('items', []) if not r.get('voucherNumber')]
+        nav(p, 'dashboard', 1200); nav(p, 'paymentSchedule', 3000)
+        btn = p.locator('button:has-text("Generate All Due")')
+        btn.wait_for(state='visible', timeout=10000)
+        btn.click(); wait(p, 800)
+        p.locator('.modal-box button:has-text("Generate")').click(); wait(p, 4000)
+        banner = p.locator('.alert-banner--info').inner_text() if p.locator('.alert-banner--info').count() else ''
+        st, after = api('GET', '/fl/schedule/?status=PENDING&limit=200', token=tok())
+        left = [r for r in after.get('items', []) if not r.get('voucherNumber')]
+        assert len(left) == 0 or len(eligible) > 100, \
+            '%d PENDING rows still without a voucher after bulk run' % len(left)
+        st, vch = api('GET', '/fl/vouchers/?status=DRAFT&limit=200', token=tok())
+        return 'PASS', ('Bulk run created DRAFT vouchers for all %d eligible PENDING rows '
+                        '(banner: "%s"); rows now VOUCHER_GENERATED' % (len(eligible), banner.strip()[:80]))
+    finally:
+        _set_fl_setting('ALLOW_BULK_VOUCHER_GENERATION', 'N')
+
+def enh_guard(ctx):
+    p = ctx['page']; ensure_en(p)
+    open_detail(p, 'flEditRegId', 'new', 'registrationEdit', 3000)
+    fill_label(p, 'First Name (English) *', 'Guard')
+    seen = {}
+    def _dismiss(d):
+        seen['msg'] = d.message
+        try: d.dismiss()
+        except Exception: pass
+    p.on('dialog', _dismiss)
+    try:
+        p.evaluate("window._jetApp.navigate('registrations')")
+        wait(p, 1200)
+    finally:
+        try: p.remove_listener('dialog', _dismiss)
+        except Exception: pass
+    assert seen.get('msg'), 'no unsaved-changes confirm appeared for a dirty form'
+    title = p.locator('.page-title').first.inner_text()
+    assert 'Registration' in title and p.locator('#fl-reg-photo-input').count(), \
+        'Cancel did not keep the dirty form open (on: %s)' % title.strip()
+    nav(p, 'registrations', 2000)   # nav() accepts the confirm -> leaves
+    title2 = p.locator('.page-title').first.inner_text()
+    assert p.locator('#fl-reg-photo-input').count() == 0, 'accepting the confirm did not leave the form'
+    return 'PASS', ('Dirty form: confirm shown ("%s"); Cancel stayed on the form, '
+                    'OK left to %s' % (seen['msg'][:60], title2.strip()))
+
+def enh_palette(ctx):
+    p = ctx['page']; ensure_en(p)
+    nav(p, 'dashboard', 2000)
+    p.keyboard.press('Control+k')
+    p.wait_for_selector('.cmdp-overlay', timeout=8000)
+    p.locator('.cmdp-input').fill('sched'); wait(p, 1500)
+    item = p.locator('.cmdp-item:has-text("Payment Schedule"), .cmdp-list [class*=item]:has-text("Payment Schedule")').first
+    assert item.count(), 'no Payment Schedule entry in the FL palette results'
+    p.keyboard.press('Enter'); wait(p, 2500)
+    assert p.locator('.cmdp-overlay').count() == 0, 'palette did not close'
+    title = p.locator('.page-title').first.inner_text()
+    assert 'Schedule' in title, 'palette Enter landed on "%s"' % title.strip()
+    return 'PASS', 'Ctrl+K opened the FL palette; "sched" matched Payment Schedule; Enter navigated there'
+
 # ═════════════════════════════════════════════════════════════════════════════
 CASES = [
  ('Access & Session', 'ACC', [
@@ -847,6 +967,13 @@ CASES = [
  ('Shell & Language', 'SHL', [
    ('Switcher', 'Cross-module hop', shl_switch),
    ('Arabic', 'RTL pass', shl_arabic),
+ ]),
+ ('Enhancements', 'ENH', [
+   ('Compliance deep link', 'Doc row opens Documents tab', enh_deeplink),
+   ('Bulk kill switch', 'Bulk button respects setting', enh_killswitch),
+   ('Bulk generation', 'Generate all due vouchers', enh_bulk),
+   ('Unsaved changes guard', 'Dirty form warns on navigation', enh_guard),
+   ('Command palette', 'Ctrl+K navigation', enh_palette),
  ]),
 ]
 

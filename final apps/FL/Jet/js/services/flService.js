@@ -76,6 +76,7 @@ define(['services/api'], function (api) {
     getVouchers: function (opts) { return api.get('/vouchers/' + qs(opts || {}, ['status', 'paymentStatus', 'freelancerId'])); },
     getVoucher:  function (id)   { return api.get('/vouchers/' + id); },
     generateVoucher: function (scheduleId) { return api.post('/vouchers/', { scheduleId: scheduleId }); },
+    bulkGenerateVouchers: function (opts) { return api.post('/schedule/bulk-generate', opts || {}); },
     updateVoucher: function (id, d) { return api.put('/vouchers/' + id, d); },
     submitVoucher: function (id) { return api.post('/vouchers/' + id + '/submit', {}); },
     markVoucherPaid: function (id, d) { return api.post('/vouchers/' + id + '/mark-paid', d || {}); },

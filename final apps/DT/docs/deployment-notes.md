@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.2.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 - DT API-mode patterns: submit goes through the `/submit` endpoint (not a status-field PUT); use `_norm()` where mock/ORDS field names differ.
@@ -49,3 +49,4 @@ DT-specific DB notes:
 - DB + ORDS + JET SPA complete and live (all 19 VMs dual-mode); APEX pages pending in Builder.
 - 2026-06-11: server pagination on dt-requests (Phase 3); dashboard charts.
 - 2026-06-13: Save/Back/Cancel actions moved to top-right of page/region/modal (platform rule). Frontend-only; bump APP_VERSION on next deploy.
+- 2026-06-13: **Region appearance theme** — headers + borders themed via `THEME_REGION_*` (db/v2/22 seeds DT override rows, NULL = inherit; editable in Module Settings). Boots via `shell.initRegionTheme`. APP_VERSION **4.3.0** (shared/ change, all 7 apps). Module Settings VM now defaults JSON keys APEX_JSON omits for NULLs (the new no-default rows would otherwise kill the rows after them).

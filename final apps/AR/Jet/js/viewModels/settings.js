@@ -21,7 +21,10 @@ function (ko, settingService, authService, i18n, toast, shell) {
     { id: 'files',    icon: '📁', titleKey: 'set.regionFiles',
       keys: ['ENABLE_ALT_FILE_NAME', 'ALT_FILE_NAME_FORMAT', 'MAX_FILE_SIZE_MB'] },
     { id: 'defaults', icon: '🎨', titleKey: 'set.regionDefaults',
-      keys: ['DEFAULT_CURRENCY', 'EVENT_CODE_PREFIX', 'THEME_BRAND_COLOR'] }
+      keys: ['DEFAULT_CURRENCY', 'EVENT_CODE_PREFIX', 'THEME_BRAND_COLOR',
+             'THEME_REGION_HEADER_BG', 'THEME_REGION_HEADER_FG',
+             'THEME_REGION_BORDER_COLOR', 'THEME_REGION_BORDER_WIDTH',
+             'THEME_REGION_BORDER_STYLE'] }
   ];
 
   function asStr(v) { return v === null || v === undefined ? '' : String(v); }

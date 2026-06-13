@@ -17,6 +17,12 @@ function (ko, settingService) {
     function _buildEditable(list) {
       var ev = {};
       list.forEach(function(s) {
+        // APEX_JSON omits NULL fields — default the keys the view binds bare,
+        // or the row's ReferenceError kills every row after it
+        if (s.settingValue === undefined)       s.settingValue = null;
+        if (s.defaultValue === undefined)       s.defaultValue = null;
+        if (s.settingDescription === undefined) s.settingDescription = '';
+        if (s.allowedValues === undefined)      s.allowedValues = null;
         ev[s.settingId] = ko.observable(s.settingValue !== null ? s.settingValue : s.defaultValue);
       });
       self.editValues = ev;

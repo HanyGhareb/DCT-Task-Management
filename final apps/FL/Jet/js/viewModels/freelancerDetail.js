@@ -5,9 +5,11 @@ define(['knockout', 'services/flService'], function (ko, flService) {
     var self = this;
 
     var id = Number(sessionStorage.getItem('flFreelancerId') || 0);
+    var initTab = sessionStorage.getItem('flDetailTab') || 'profile';
+    sessionStorage.removeItem('flDetailTab');           // one-shot deep link (FL-CMP-02)
     self.flId    = id;
     self.loading = ko.observable(true);
-    self.tab     = ko.observable('profile');
+    self.tab     = ko.observable(initTab);
     self.data    = ko.observable({});
     self.bankAccounts = ko.observableArray([]);
     self.contracts    = ko.observableArray([]);

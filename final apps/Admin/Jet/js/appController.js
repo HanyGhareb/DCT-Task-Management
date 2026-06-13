@@ -308,6 +308,7 @@ define(
               if (self._bootSettings.THEME_BRAND_COLOR) {
                 shell.applyBrand(self._bootSettings.THEME_BRAND_COLOR);
               }
+              shell.applyRegionTheme(self._bootSettings);
               if (self._idleWarn && self._bootSettings.SESSION_TIMEOUT_MINS) {
                 self._idleWarn.setTimeoutMins(Number(self._bootSettings.SESSION_TIMEOUT_MINS));
               }

@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.2.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 - 13 views; CC appears in the module switcher (flipped live in Phase 4).
@@ -50,3 +50,4 @@ CC-specific DB notes:
 
 - 2026-06-12 (Phase 4): `cc.rest` + 13-view JET app deployed live; seeded cards incl. CC-2026-00002 (20,000 AED, SHAIKHA.ALSUWAIDI); UAT 29 cases (29P automated run).
 - 2026-06-13: wizard step buttons moved into the page header; register/proxy/replenishment modal footers moved into modal headers; inline approval confirm moved beside its label (platform top-right rule). Frontend-only; bump APP_VERSION on next deploy.
+- 2026-06-13: **Region appearance theme** — headers + borders themed via `THEME_REGION_*` (db/v2/22 seeds CC override rows, NULL = inherit; rows listed in Module Settings). Boots via `shell.initRegionTheme` + `ccService.getSettings`. APP_VERSION **4.3.0** (shared/ change, all 7 apps). Module Settings SELECT options now split on `|` as well as `,` (seeded `allowed_values` are pipe-separated).

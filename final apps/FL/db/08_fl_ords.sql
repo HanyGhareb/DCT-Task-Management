@@ -1139,6 +1139,86 @@ EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    def_template('schedule/bulk-generate');
+    def_handler('schedule/bulk-generate', 'POST', q'!
+DECLARE
+  l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_dstr    VARCHAR2(20);
+  l_due     DATE;
+  l_tpl     VARCHAR2(1000);
+  l_desc    VARCHAR2(1000);
+  l_pay     VARCHAR2(30);
+  l_grp     VARCHAR2(30);
+  l_num     VARCHAR2(50);
+  l_id      NUMBER;
+  l_ids     APEX_T_NUMBER   := APEX_T_NUMBER();
+  l_nums    APEX_T_VARCHAR2 := APEX_T_VARCHAR2();
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NVL(dct_fl_pkg.get_setting('ALLOW_BULK_VOUCHER_GENERATION'),'N') != 'Y' THEN
+    dct_rest.err(403,'Bulk voucher generation is disabled (ALLOW_BULK_VOUCHER_GENERATION)'); RETURN;
+  END IF;
+  dct_rest.parse_body([COLON]body);
+  l_dstr := APEX_JSON.get_varchar2(p_path => 'dueBefore');
+  IF l_dstr IS NOT NULL THEN
+    l_due := TO_DATE(l_dstr DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+  END IF;
+  l_tpl := NVL(dct_fl_pkg.get_setting('VOUCHER_DEFAULT_DESCRIPTION'),
+               'Freelancer Payment - {CONTRACT_NUMBER} - {PERIOD_LABEL}');
+  l_pay := NVL(dct_fl_pkg.get_setting('DEFAULT_PAYMENT_METHOD'), 'BANK_TRANSFER');
+  l_grp := NVL(dct_fl_pkg.get_setting('DEFAULT_PAY_GROUP'), 'FREELANCER');
+  FOR s IN (
+    SELECT s.schedule_id, s.contract_id, s.period_label, s.due_date, s.amount,
+           c.contract_number, c.freelancer_id,
+           c.coding_type, c.cc_id_gl, c.project_number, c.task_number, c.expenditure_type
+    FROM dct_fl_payment_schedule s
+    JOIN dct_fl_contracts c ON c.contract_id = s.contract_id
+    WHERE s.status = 'PENDING'
+      AND (l_due IS NULL OR s.due_date <= l_due)
+      AND NOT EXISTS (SELECT 1 FROM dct_fl_payment_vouchers v
+                      WHERE v.schedule_id = s.schedule_id
+                        AND v.status NOT IN ('REJECTED','CANCELLED'))
+    ORDER BY s.due_date
+    FETCH FIRST 100 ROWS ONLY
+  ) LOOP
+    l_num  := 'FL-VCH-' || TO_CHAR(seq_fl_voucher_number.NEXTVAL, 'FM000000');
+    l_desc := REPLACE(REPLACE(l_tpl, '{CONTRACT_NUMBER}', s.contract_number),
+                      '{PERIOD_LABEL}', s.period_label);
+    INSERT INTO dct_fl_payment_vouchers (
+      voucher_number, contract_id, freelancer_id, schedule_id,
+      period_label, due_date, amount,
+      payment_method, pay_group, description,
+      coding_type, cc_id_gl, project_number, task_number, expenditure_type,
+      post_to_fusion, status, payment_status, created_by, updated_by
+    ) VALUES (
+      l_num, s.contract_id, s.freelancer_id, s.schedule_id,
+      s.period_label, s.due_date, s.amount,
+      l_pay, l_grp, l_desc,
+      s.coding_type, s.cc_id_gl, s.project_number, s.task_number, s.expenditure_type,
+      'N', 'DRAFT', 'PENDING', l_user, l_user
+    ) RETURNING voucher_id INTO l_id;
+    l_ids.EXTEND;  l_ids(l_ids.COUNT)   := l_id;
+    l_nums.EXTEND; l_nums(l_nums.COUNT) := l_num;
+  END LOOP;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('created', l_ids.COUNT);
+  APEX_JSON.open_array('vouchers');
+  FOR i IN 1 .. l_ids.COUNT LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('voucherId',     l_ids(i));
+    APEX_JSON.write('voucherNumber', l_nums(i));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
     -- =========================================================================
     -- VOUCHERS
     -- =========================================================================
@@ -2045,6 +2125,279 @@ BEGIN
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- PORTAL (freelancer self-service, Phase 1)
+    -- Portal sessions live in dct_fl_portal_sessions, NOT dct_sessions -- an
+    -- external freelancer can never hold a staff session. Every protected
+    -- portal handler resolves freelancer_id from dct_fl_portal_pkg, never
+    -- from the client.
+    -- =========================================================================
+
+    def_template('portal/auth/login');
+    def_handler('portal/auth/login', 'POST', q'!
+DECLARE
+  l_email VARCHAR2(200);
+  l_pwd   VARCHAR2(200);
+  l_token VARCHAR2(64);
+BEGIN
+  IF NVL(dct_fl_pkg.get_setting('FEATURE_FL_PORTAL'),'N') != 'Y' THEN
+    dct_rest.err(503,'The freelancer portal is not enabled'); RETURN;
+  END IF;
+  dct_rest.parse_body([COLON]body);
+  l_email := APEX_JSON.get_varchar2(p_path => 'email');
+  l_pwd   := APEX_JSON.get_varchar2(p_path => 'password');
+  l_token := dct_fl_portal_pkg.login(l_email, l_pwd);
+  IF l_token IS NULL THEN
+    dct_rest.err(401,'Invalid e-mail or password'); RETURN;
+  END IF;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('token', l_token);
+  FOR r IN (SELECT first_name_en || ' ' || last_name_en AS dn, vendor_number, email
+            FROM dct_fl_freelancers
+            WHERE LOWER(email) = LOWER(TRIM(l_email)) AND ROWNUM = 1) LOOP
+    APEX_JSON.write('displayName',  r.dn);
+    APEX_JSON.write('vendorNumber', NVL(r.vendor_number, ''));
+    APEX_JSON.write('email',        r.email);
+  END LOOP;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('portal/auth/set-password');
+    def_handler('portal/auth/set-password', 'POST', q'!
+DECLARE
+  l_token VARCHAR2(64);
+  l_pwd   VARCHAR2(200);
+BEGIN
+  IF NVL(dct_fl_pkg.get_setting('FEATURE_FL_PORTAL'),'N') != 'Y' THEN
+    dct_rest.err(503,'The freelancer portal is not enabled'); RETURN;
+  END IF;
+  dct_rest.parse_body([COLON]body);
+  l_token := APEX_JSON.get_varchar2(p_path => 'token');
+  l_pwd   := APEX_JSON.get_varchar2(p_path => 'password');
+  dct_fl_portal_pkg.set_password(l_token, l_pwd);
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  ROLLBACK;
+  dct_rest.err(400, REGEXP_REPLACE(SQLERRM, '^ORA-[0-9]+: ', ''));
+END;
+!');
+
+    def_template('portal/auth/logout');
+    def_handler('portal/auth/logout', 'POST', q'!
+DECLARE
+  l_hdr VARCHAR2(4000);
+BEGIN
+  l_hdr := OWA_UTIL.get_cgi_env('AUTHORIZATION');
+  IF l_hdr IS NULL THEN l_hdr := OWA_UTIL.get_cgi_env('HTTP_AUTHORIZATION'); END IF;
+  IF l_hdr LIKE 'Bearer %' THEN
+    dct_fl_portal_pkg.logout(TRIM(SUBSTR(l_hdr, 8)));
+    COMMIT;
+  END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('portal/me');
+    def_handler('portal/me', 'GET', q'!
+DECLARE
+  l_frl NUMBER := dct_fl_portal_pkg.validate_bearer;
+BEGIN
+  IF l_frl IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  FOR r IN (SELECT first_name_en, last_name_en, first_name_ar, last_name_ar,
+                   vendor_number, email, mobile, specialization
+            FROM dct_fl_freelancers WHERE freelancer_id = l_frl) LOOP
+    APEX_JSON.write('displayName',    r.first_name_en || ' ' || r.last_name_en);
+    APEX_JSON.write('displayNameAr',  NVL(r.first_name_ar || ' ' || r.last_name_ar, ''));
+    APEX_JSON.write('vendorNumber',   NVL(r.vendor_number, ''));
+    APEX_JSON.write('email',          r.email);
+    APEX_JSON.write('mobile',         NVL(r.mobile, ''));
+    APEX_JSON.write('specialization', NVL(r.specialization, ''));
+  END LOOP;
+  FOR r IN (SELECT bank_name, account_number, iban
+            FROM dct_fl_bank_accounts
+            WHERE freelancer_id = l_frl AND is_primary = 'Y' AND ROWNUM = 1) LOOP
+    APEX_JSON.write('bankName', r.bank_name);
+    APEX_JSON.write('ibanTail', SUBSTR(NVL(r.iban, r.account_number), -4));
+  END LOOP;
+  FOR r IN (SELECT COUNT(*) AS n,
+                   NVL(SUM(CASE WHEN status = 'ACTIVE' THEN 1 ELSE 0 END), 0) AS act
+            FROM dct_fl_contracts WHERE freelancer_id = l_frl) LOOP
+    APEX_JSON.write('contracts',       r.n);
+    APEX_JSON.write('activeContracts', r.act);
+  END LOOP;
+  FOR r IN (
+    SELECT s.period_label, s.due_date, s.amount, s.status,
+           c.contract_number, NVL(v.status, ' ') AS voucher_status
+    FROM dct_fl_payment_schedule s
+    JOIN dct_fl_contracts c ON c.contract_id = s.contract_id
+    LEFT JOIN dct_fl_payment_vouchers v ON v.voucher_id = s.voucher_id
+    WHERE c.freelancer_id = l_frl
+      AND s.status IN ('PENDING','VOUCHER_GENERATED')
+    ORDER BY s.due_date
+    FETCH FIRST 1 ROWS ONLY
+  ) LOOP
+    APEX_JSON.open_object('nextPayment');
+    APEX_JSON.write('periodLabel',    r.period_label);
+    APEX_JSON.write('dueDate',        TO_CHAR(r.due_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('amount',         r.amount);
+    APEX_JSON.write('status',         r.status);
+    APEX_JSON.write('voucherStatus',  TRIM(r.voucher_status));
+    APEX_JSON.write('contractNumber', r.contract_number);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('portal/contracts');
+    def_handler('portal/contracts', 'GET', q'!
+DECLARE
+  l_frl NUMBER := dct_fl_portal_pkg.validate_bearer;
+BEGIN
+  IF l_frl IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT contract_number, title, status, start_date, end_date,
+           total_amount, currency_code, billing_method,
+           scheduled_total, paid_total
+    FROM dct_fl_contract_v
+    WHERE freelancer_id = l_frl
+    ORDER BY start_date DESC, contract_id DESC
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('contractNumber', r.contract_number);
+    APEX_JSON.write('title',          r.title);
+    APEX_JSON.write('status',         r.status);
+    APEX_JSON.write('startDate',      TO_CHAR(r.start_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('endDate',        TO_CHAR(r.end_date,   'YYYY-MM-DD'));
+    APEX_JSON.write('totalAmount',    r.total_amount);
+    APEX_JSON.write('currency',       NVL(r.currency_code, 'AED'));
+    APEX_JSON.write('billingMethod',  NVL(r.billing_method, ' '));
+    APEX_JSON.write('scheduledTotal', r.scheduled_total);
+    APEX_JSON.write('paidTotal',      r.paid_total);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('portal/schedule');
+    def_handler('portal/schedule', 'GET', q'!
+DECLARE
+  l_frl NUMBER := dct_fl_portal_pkg.validate_bearer;
+  l_con VARCHAR2(50) := [COLON]contractNumber;
+BEGIN
+  IF l_frl IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT s.period_label, s.due_date, s.amount, s.status,
+           s.contract_number, NVL(v.status, ' ') AS voucher_status,
+           NVL(v.payment_status, ' ') AS payment_status
+    FROM dct_fl_payment_schedule_v s
+    LEFT JOIN dct_fl_payment_vouchers v ON v.voucher_id = s.voucher_id
+    WHERE s.freelancer_id = l_frl
+      AND (l_con IS NULL OR s.contract_number = l_con)
+    ORDER BY s.due_date
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('periodLabel',    r.period_label);
+    APEX_JSON.write('dueDate',        TO_CHAR(r.due_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('amount',         r.amount);
+    APEX_JSON.write('status',         r.status);
+    APEX_JSON.write('voucherStatus',  TRIM(r.voucher_status));
+    APEX_JSON.write('paymentStatus',  TRIM(r.payment_status));
+    APEX_JSON.write('contractNumber', r.contract_number);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('portal/vouchers');
+    def_handler('portal/vouchers', 'GET', q'!
+DECLARE
+  l_frl NUMBER := dct_fl_portal_pkg.validate_bearer;
+BEGIN
+  IF l_frl IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT voucher_number, period_label, due_date, amount,
+           status, payment_status, contract_number
+    FROM dct_fl_voucher_v
+    WHERE freelancer_id = l_frl
+    ORDER BY voucher_id DESC
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('voucherNumber',  r.voucher_number);
+    APEX_JSON.write('periodLabel',    NVL(r.period_label, ' '));
+    APEX_JSON.write('dueDate',        TO_CHAR(r.due_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('amount',         r.amount);
+    APEX_JSON.write('status',         r.status);
+    APEX_JSON.write('paymentStatus',  r.payment_status);
+    APEX_JSON.write('contractNumber', r.contract_number);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- staff side: FL_ADMIN invites a freelancer to the portal
+    def_template('freelancers/[COLON]id/portal-invite');
+    def_handler('freelancers/[COLON]id/portal-invite', 'POST', q'!
+DECLARE
+  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  l_token VARCHAR2(64);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT (dct_auth.has_role(l_user, 'FL_ADMIN') OR dct_auth.has_role(l_user, 'SYS_ADMIN')) THEN
+    dct_rest.err(403,'FL_ADMIN role required'); RETURN;
+  END IF;
+  l_token := dct_fl_portal_pkg.create_invite([COLON]id, l_user);
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('token', l_token);
+  APEX_JSON.write('setPasswordPath', '/FL/Portal/index.html#set-password=' || l_token);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  ROLLBACK;
+  dct_rest.err(400, REGEXP_REPLACE(SQLERRM, '^ORA-[0-9]+: ', ''));
 END;
 !');
 

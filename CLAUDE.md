@@ -20,8 +20,11 @@ final apps/          ← ALL live production code lives here
   PC/Jet/            ← App 201 — Petty Cash JET SPA
   DT/Jet/            ← App 204 — Duty Travel JET SPA
   HR/Jet/            ← App 205 — HR JET SPA
-  FL/db/             ← Freelancers — DB only (no Jet/ folder yet)
-  CC/db/             ← Credit Cards — DB only (no Jet/ folder yet)
+  FL/Jet/ + FL/db/   ← App 203 — Freelancers JET SPA + module DB scripts
+  FL/Portal/         ← External freelancer self-service portal (plain KO SPA,
+                       own ifinance_portal_session — NOT a module app; see
+                       FL/docs/deployment-notes.md and 09_fl_portal.sql)
+  CC/Jet/ + CC/db/   ← App 202 — Credit Cards JET SPA + module DB scripts
   SHARED_JET_ARCHITECTURE.md   ← session contract, module checklist
   SHARED_APEX_ARCHITECTURE.md  ← APEX auth scheme, app items, LOVs
   DT/STATUS.md       ← per-module status tracking (replicated per module)
@@ -44,6 +47,10 @@ db/v2/               ← All DCT_* DDL, packages, ORDS setup (source of truth)
                        INTEGRATION_API_KEY secret seed (deployed 2026-06-13)
   21_uat_cleanup.sql   ← rerunnable UAT artifact housekeeping (park uat.auto.* users,
                        close their sessions, drop UAT_WAVE_FLOW~V% archives)
+  22_region_theme.sql  ← THEME_REGION_* settings (region header/border theming)
+  23_fl_uat_cleanup.sql ← rerunnable FL UAT data housekeeping (runner registrations/
+                       contracts/vouchers + invoice-less drafts on the two seeded
+                       sample contracts; preserves seeded samples)
 
 apps/ifinance-v2/    ← LEGACY: vanilla JS task management prototype (localStorage only)
                        Superseded by final apps/ — do not add features here
@@ -204,6 +211,8 @@ Two skills are configured in `skills-lock.json`:
 **Deployment notes (2026-06-13):** every app has a deployment runbook at `final apps/<App>/docs/deployment-notes.md` (Admin, PC, DT, HR, FL, CC, AR). It holds the app's deploy checklist (APP_VERSION bump, DB script order, ORDS/synonym rules, smoke test) plus the app's deployment history and gotchas. **Update the relevant file with EVERY deployment** — new DB scripts, ORDS changes, frontend ships, and any new gotcha discovered during deployment go there. Admin's file (§2) carries the canonical platform-wide SQLcl/ORDS rules; the others reference it. Key universal rule: bump `window.APP_VERSION` in the app's `Jet/index.html` on every frontend deploy (it drives the requirejs + i18n cache key; deployed browsers serve stale files without it), and a change to `final apps/shared/` requires the bump in **all 7 apps**.
 
 **CSS (Phase 3):** `final apps/shared/css/platform.css` is the ONE structural stylesheet for all JET apps — edit it once; never copy styles into a module app. Each app's `css/app.css` holds only brand tokens (`--brand`/`--brand-rgb`/`--brand-dark`/`--brand-soft` + legacy aliases); the live brand color loads from the module's `THEME_BRAND_COLOR` setting at boot (`shared/js/shell.js`). Full contract incl. the shared shell (top bar + module switcher + side-nav), i18n (`t()`, EN/AR, Latin digits), tri-state lists (`<list-skeleton>`/`<list-pager>`/toast) and the Chart.js rule (**never `<script>`-tag it — load via requirejs `chartjs` path; create via `shared/chartLoader.makeChart`**) is in `final apps/SHARED_JET_ARCHITECTURE.md`. KO+ORDS gotcha: APEX_JSON skips NULLs — bind optional fields as `$data.field || ''`, never bare `text: field`.
+
+**Region header colors + borders (2026-06-13):** every region header (fill + font) and region border (color/thickness/style) in ALL apps — current and future — is driven by the five `THEME_REGION_*` settings, applied at boot by `shared/js/shell.js` as CSS vars `--region-hd-bg/-fg/-accent/-soft` + `--region-bd-color/-width/-style` (resolution: module row in `DCT_MODULE_SETTINGS` → system default in `DCT_SYSTEM_SETTINGS` via `GET /dct/boot` → platform.css fallback; seed = `db/v2/22_region_theme.sql`). Configure via the palette picker in Admin → System Settings → Region Appearance (curated fill/font pairs + AA-contrast check); each module can override in its own Module Settings page. **Never hard-code header/border colors in views** — use `.section-heading` / `.section-heading-row` / `.modal-header` / `table.data-table` and the theme applies for free. Buttons inside colored headers restyle automatically (ghost non-primary, inverted primary).
 
 **Action buttons — top-right (2026-06-13):** Save / Save Changes / Submit / Back / Cancel / Confirm always sit at the TOP-RIGHT of the page header (`.page-header-row` + `.page-actions`), region heading (`.section-heading-row` + `.region-actions`), or modal header (`.region-actions` `btn-sm`, replacing the `×`) — never at the bottom of a form. `.form-actions` bottom bars are deprecated (only "+ Add X" CTAs and table-row inline editors may stay at the bottom). Primary action is the right-most button; never pair Back AND Cancel when they call the same handler. Full recipes in `final apps/SHARED_JET_ARCHITECTURE.md` § "Action Buttons — Always Top-Right".
 

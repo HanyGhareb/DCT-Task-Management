@@ -1,4 +1,5 @@
-define(['knockout', 'services/flService', 'services/authService'], function (ko, flService, authService) {
+define(['knockout', 'services/flService', 'services/authService', 'shared/formGuard'],
+function (ko, flService, authService, formGuard) {
   'use strict';
 
   function VoucherDetailViewModel() {
@@ -29,6 +30,12 @@ define(['knockout', 'services/flService', 'services/authService'], function (ko,
         self.paymentMethod(v.paymentMethod || 'BANK_TRANSFER');
         self.notes(v.notes || '');
         self.loading(false);
+        if (self._guard) { self._guard.reset(); }
+        else {
+          self._guard = formGuard.track([
+            self.invoiceNumber, self.invoiceDate, self.paymentMethod, self.notes
+          ]);
+        }
       }).catch(function () { self.loading(false); });
     };
     self.reload();
@@ -46,6 +53,7 @@ define(['knockout', 'services/flService', 'services/authService'], function (ko,
       }).then(function () {
         self.saving(false);
         flash('Saved.');
+        if (self._guard) self._guard.reset();
       }).catch(function (err) {
         self.saving(false);
         self.errorMsg((err && err.message) || 'Save failed');

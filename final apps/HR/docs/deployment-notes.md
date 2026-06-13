@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.2.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 
@@ -48,3 +48,4 @@ HR-specific DB notes:
 - DB + ORDS 100% deployed (`hr.rest` at `/ords/admin/hr/`); JET SPA live; APEX pages pending in Builder.
 - 2026-06-11: UAT lifecycle data E1101-03; hr-employees server pagination (Phase 3).
 - 2026-06-13: all modal Save/Cancel actions moved into modal headers, employeeDetail + 7 setup pages (platform top-right rule). Frontend-only; bump APP_VERSION on next deploy.
+- 2026-06-13: **Region appearance theme** — headers + borders themed via `THEME_REGION_*` (db/v2/22). HR has **no module-settings endpoint** → system default only (`shell.initRegionTheme` without a module getter); wiring a `/hr/settings` GET later enables the per-module override automatically. APP_VERSION **4.3.0** (shared/ change, all 7 apps).

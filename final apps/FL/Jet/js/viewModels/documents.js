@@ -29,6 +29,7 @@ define(['knockout', 'services/flService'], function (ko, flService) {
 
     self.openFreelancer = function (item) {
       sessionStorage.setItem('flFreelancerId', String(item.freelancerId));
+      sessionStorage.setItem('flDetailTab', 'docs');   // land on the Documents tab (FL-CMP-02)
       if (window._jetApp) window._jetApp.navigate('freelancerDetail');
     };
 

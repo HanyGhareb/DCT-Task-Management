@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService'], function (ko, flService) {
+define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flService, formGuard) {
   'use strict';
 
   function ContractEditViewModel() {
@@ -72,8 +72,17 @@ define(['knockout', 'services/flService'], function (ko, flService) {
           self.notes(c.notes || '');
         });
       }
-    }).then(function () { self.loading(false); })
-      .catch(function () { self.loading(false); });
+    }).then(function () { self.loading(false); initGuard(); })
+      .catch(function () { self.loading(false); initGuard(); });
+
+    function initGuard() {
+      self._guard = formGuard.track([
+        self.freelancerId, self.title, self.startDate, self.endDate,
+        self.totalAmount, self.billingMethod, self.billingUnitId, self.billingUnitAmount,
+        self.orgId, self.codingType, self.ccIdGl,
+        self.projectNumber, self.taskNumber, self.expenditureType, self.notes
+      ]);
+    }
 
     function flash(m) { self.successMsg(m); setTimeout(function () { self.successMsg(''); }, 3000); }
 
@@ -130,6 +139,7 @@ define(['knockout', 'services/flService'], function (ko, flService) {
       return op.then(function (r) {
         self.saving(false);
         flash('Saved.');
+        if (self._guard) self._guard.reset();
         return r;
       }).catch(function (err) {
         self.saving(false);

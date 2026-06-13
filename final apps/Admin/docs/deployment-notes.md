@@ -13,7 +13,7 @@
 
 | Step | Detail |
 |---|---|
-| Bump `window.APP_VERSION` | In `Jet/index.html` (currently `4.2.0`). Drives the requirejs `urlArgs` + i18n cache key. Localhost auto-busts; deployed browsers serve stale JS/HTML forever if you forget. |
+| Bump `window.APP_VERSION` | In `Jet/index.html` (currently `4.3.0`). Drives the requirejs `urlArgs` + i18n cache key. Localhost auto-busts; deployed browsers serve stale JS/HTML forever if you forget. |
 | Deploy `final apps/shared/` | The shared layer (`platform.css`, `shell.js`, `i18n.js`, `chartLoader.js`, components) is referenced at `../shared/` by ALL apps. Any change to it requires an APP_VERSION bump in **all 7 apps'** index.html (precedent: the 4.1.1 wave bump). |
 | Check `js/services/config.js` | `apiBase: '/ords/admin/dct'` (live). Never ship `apiBase: null` (mock) to production. |
 | Chart.js | Never `<script>`-tag it — loaded via requirejs `chartjs` path, created via `shared/chartLoader.makeChart`. |
@@ -43,6 +43,7 @@ Script inventory (`db/v2/`, run order = `install.sql` 01→12, then numbered pat
 | `19` wave enhancements | ✅ 2026-06-13 | Template draft lifecycle, `/dct/boot`, `/dct/notifications/count`, `/dct/audit/:id` snapshots, FEATURE_*/LANDING_* seeds, validate_session inactivity timeout |
 | `20` enhancements 2 | ✅ 2026-06-13 | Settings PUT upsert, audit fromdt/todt + `/dct/audit/export` CSV, `/dct/sessions/` + revoke, approval-templates restore, INTEGRATION_API_KEY secret seed |
 | `21` UAT cleanup | rerunnable | Parks `uat.auto.*` users, closes their sessions, drops `UAT_WAVE_FLOW~V%` archives |
+| `22` region theme | ✅ 2026-06-13 | Five `THEME_REGION_*` settings (header fill/font + border color/width/style): system rows (APPEARANCE), override rows in ALL `dct_modules` (26 × 5, NULL = inherit), `chk_dct_set_type` widened (+COLOR/SELECT), `/dct/boot` whitelist + `THEME_REGION_%`. Rerunnable. |
 
 ## 3. ORDS deployment
 
@@ -61,7 +62,11 @@ Script inventory (`db/v2/`, run order = `install.sql` 01→12, then numbered pat
 3. `GET /dct/boot` returns feature flags; notifications badge populates.
 4. Verify `DCT_APPROVAL_PKG` sweep job exists and is `ENABLED`.
 
-## 5. Known gaps / cautions
+## 5. Deployment history
+
+- 2026-06-13: **Region appearance theme** deployed (db/v2/22 + shared layer). Region/modal/table headers + card borders themed via `THEME_REGION_*` (module → system → CSS fallback); System Settings page gained the Region Appearance palette picker (live preview, AA-contrast badge); module apps boot via `shell.initRegionTheme` (HR has no settings endpoint — system default only). APP_VERSION **4.3.0** in all 7 apps. Verified: `/dct/boot` returns the 5 keys; Playwright on Admin systemSettings/users + PC dashboard.
+
+## 6. Known gaps / cautions
 
 - Nothing populates `dct_audit_log.old_values/new_values` yet — the audit diff modal shows "no snapshot" until handlers write snapshots.
 - ADB ORDS returns a 400 HTML error page for **body-less requests carrying `Content-Type: application/json`** (e.g. DELETE). Fixed in `shared/js/api.js` (Content-Type only when a body exists) — don't regress.

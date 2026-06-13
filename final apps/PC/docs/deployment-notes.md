@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.2.0`) — drives requirejs + i18n cache key; deployed browsers serve stale files without it.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — drives requirejs + i18n cache key; deployed browsers serve stale files without it.
 - Deploy `final apps/shared/` alongside (referenced at `../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → `apiBase` must point at the live `/ords/admin/pc` path (plus `/ords/admin/dct` for shared endpoints), never `null` (mock).
 - Chart.js via requirejs `chartjs` path only (dashboard has 2 charts) — never `<script>`-tag it.
@@ -49,3 +49,4 @@ PC-specific DB notes:
 - 2026-06 (Phase 1): PC ORDS live, JET switched to live mode.
 - 2026-06-11: UAT seed data (PC 00005-00008, RMB-00100); approvals modal + lifecycle UAT-tested.
 - 2026-06-13: UI sweep — Quick Actions moved to right rail on Home; all Save/Back/Cancel actions moved to top-right (platform rule). Frontend-only; requires APP_VERSION bump on next deploy.
+- 2026-06-13: **Region appearance theme** — region/modal/table headers + card borders themed via `THEME_REGION_*` (db/v2/22 seeds PC override rows, NULL = inherit platform default; editable in Module Settings). Boots via `shell.initRegionTheme` in appController. APP_VERSION **4.3.0** (shared/ change, all 7 apps). Also fixed two pre-existing bugs found during verification: Module Settings rendered only 2 of 16 rows (APEX_JSON omits NULL fields → bare KO bindings threw on row 2; `_toObs` now defaults the bound keys) and `settingService.getValue(...).then` threw at boot (getValue is sync/mock-only — new `getValueAsync` used by the initBrand getter).

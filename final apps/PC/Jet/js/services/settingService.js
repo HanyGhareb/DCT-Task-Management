@@ -26,6 +26,17 @@ function (config, api, mockData) {
       return s ? s.settingValue : null;
     },
 
+    /* Promise-returning variant — getValue() is sync and mock-only (returns
+       null in live mode), which broke .then() callers at boot. */
+    getValueAsync: function (key) {
+      function find(list) {
+        var s = (list || []).find(function (r) { return r.settingKey === key; });
+        return s ? s.settingValue : null;
+      }
+      if (config.apiBase) return api.get('/settings').then(find);
+      return Promise.resolve(find(loadSettings()));
+    },
+
     update: function (settingId, newValue, effectiveDate) {
       if (config.apiBase) return api.put('/settings/' + settingId, { settingValue: newValue, effectiveDate: effectiveDate });
       var list = loadSettings();

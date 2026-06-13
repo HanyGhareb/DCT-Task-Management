@@ -24,6 +24,13 @@ function (ko, config, authService, approvalService, i18n, shell) {
       });
     });
     shell.initAnnouncements('dt', config.authBase || config.apiBase);
+    shell.initRegionTheme(config.authBase || config.apiBase, function () {
+      return new Promise(function (resolve) {
+        require(['services/settingService'], function (settingService) {
+          settingService.getAll().then(resolve).catch(function () { resolve(null); });
+        }, function () { resolve(null); });
+      });
+    });
     self.t       = i18n.t;
     self.lang    = i18n.lang;
     self.setLang = i18n.setLang;

@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService'], function (ko, flService) {
+define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flService, formGuard) {
   'use strict';
 
   function RegistrationEditViewModel() {
@@ -35,8 +35,16 @@ define(['knockout', 'services/flService'], function (ko, flService) {
     });
     self.needsEmiratesId = ko.computed(function () { return self.nationalityCode() === 'AE'; });
 
+    function initGuard() {
+      self._guard = formGuard.track([
+        self.firstNameEn, self.lastNameEn, self.firstNameAr, self.lastNameAr,
+        self.dateOfBirth, self.nationalityCode, self.nationalId, self.passportNumber,
+        self.email, self.mobile, self.specialization, self.notes
+      ]);
+    }
+
     function load() {
-      if (self.isNew) { self.loading(false); return; }
+      if (self.isNew) { self.loading(false); initGuard(); return; }
       flService.getRegistration(self.regId()).then(function (r) {
         self.audit(r);
         self.registrationNumber(r.registrationNumber || '');
@@ -55,7 +63,8 @@ define(['knockout', 'services/flService'], function (ko, flService) {
         self.notes(r.notes || '');
         self.photoSrc('https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/fl/registrations/' + self.regId() + '/photo?t=' + Date.now());
         self.loading(false);
-      }).catch(function () { self.loading(false); });
+        initGuard();
+      }).catch(function () { self.loading(false); initGuard(); });
     }
     // Load the nationality options BEFORE binding the record value — if the
     // options arrive after, KO's options binding resets the selection to the
@@ -107,6 +116,7 @@ define(['knockout', 'services/flService'], function (ko, flService) {
       return op.then(function (r) {
         self.saving(false);
         flash('Saved.');
+        if (self._guard) self._guard.reset();
         return r;
       }).catch(function (err) {
         self.saving(false);

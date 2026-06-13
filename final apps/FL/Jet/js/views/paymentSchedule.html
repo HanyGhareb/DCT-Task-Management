@@ -1,7 +1,14 @@
 <div class="page-wrap">
-  <div class="page-header">
-    <div class="page-title" data-bind="text: $root.t('sched.title')"></div>
-    <div class="page-subtitle" data-bind="text: $root.t('sched.subtitle')"></div>
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('sched.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('sched.subtitle')"></div>
+    </div>
+    <!-- ko if: bulkAllowed() -->
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: openBulk">&#9889; Generate All Due</button>
+    </div>
+    <!-- /ko -->
   </div>
 
   <!-- ko if: successMsg() -->
@@ -60,5 +67,24 @@
     </table>
   </div>
   <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+  <!-- /ko -->
+
+  <!-- bulk generate confirm modal -->
+  <!-- ko if: showBulkModal() -->
+  <div class="modal-backdrop">
+    <div class="modal-box" style="max-width:460px">
+      <div class="modal-head"><span class="modal-title">Generate All Due Vouchers</span>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: function(){ showBulkModal(false); }, disable: bulkRunning">Cancel</button>
+          <button class="btn btn-primary btn-sm" data-bind="click: runBulk, disable: bulkRunning">&#9889; Generate</button>
+        </div></div>
+      <div class="modal-body">
+        <p style="margin:0 0 8px">This creates a <strong>DRAFT voucher</strong> for every PENDING schedule
+          row that does not already have an open voucher (up to 100 per run).</p>
+        <p style="margin:0;color:var(--muted,#666);font-size:13px">Each voucher still goes through the
+          normal review &rarr; submit &rarr; approval flow.</p>
+      </div>
+    </div>
+  </div>
   <!-- /ko -->
 </div>

@@ -14,6 +14,9 @@ function (ko, config, authService, flService, i18n, shell) {
     // ── Shared shell: brand + i18n ──────────────────────────────────────
     shell.initBrand('fl');
     shell.initAnnouncements('fl', config.authBase || config.apiBase);
+    shell.initRegionTheme(config.authBase || config.apiBase, function () {
+      return flService.getSettings();
+    });
     self.t       = i18n.t;
     self.lang    = i18n.lang;
     self.setLang = i18n.setLang;

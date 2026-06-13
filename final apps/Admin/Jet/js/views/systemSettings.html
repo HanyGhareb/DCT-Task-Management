@@ -14,6 +14,77 @@
   <div class="alert-banner alert-banner--info" style="margin-bottom:16px">&#10003; <span data-bind="text: savedMsg()"></span></div>
   <!-- /ko -->
 
+  <!-- ── Region Appearance — THEME_REGION_* palette picker ─────────────── -->
+  <!-- ko if: region() -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('sys.region.title')"></div>
+    <div style="font-size:12px;color:var(--text-2);margin-bottom:14px" data-bind="text: $root.t('sys.region.subtitle')"></div>
+
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.header')"></div>
+    <div class="rgp-grid">
+      <!-- ko foreach: palette -->
+      <div class="rgp-chip" data-bind="click: function () { $vm.pickPal($data); },
+           css: { 'rgp-chip--on': $vm.isPal($data) }">
+        <div class="sw" data-bind="style: { background: bg, color: fg }">Aa</div>
+        <div class="nm" data-bind="text: nm"></div>
+      </div>
+      <!-- /ko -->
+    </div>
+    <div class="rgp-row" style="margin-top:12px">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.region.custom')"></span>
+      <input type="color" class="rgp-color" data-bind="value: region().bg.value"
+             aria-label="header fill color" title="Header fill">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.region.fill')"></span>
+      <input type="color" class="rgp-color" data-bind="value: region().fg.value"
+             aria-label="header font color" title="Header font">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.region.font')"></span>
+      <!-- ko if: contrastInfo() -->
+      <span class="rgp-badge" data-bind="text: contrastInfo().txt,
+            style: { background: contrastInfo().ok ? '#E8F5E9' : '#FDECEA',
+                     color: contrastInfo().ok ? '#1B5E20' : '#B3261E' }"></span>
+      <!-- /ko -->
+    </div>
+
+    <!-- ko if: region().bColor -->
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.bcolor')"></div>
+    <div class="rgp-row">
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickBorderColor('MATCH_HEADER'); },
+              css: { 'rgp-opt--on': isBorderColor('MATCH_HEADER') },
+              text: $root.t('sys.region.match')"></button>
+      <!-- ko foreach: borderColors -->
+      <div class="rgp-dot" data-bind="click: function () { $vm.pickBorderColor($data); },
+           style: { background: $data }, css: { 'rgp-dot--on': $vm.isBorderColor($data) },
+           attr: { title: $data }"></div>
+      <!-- /ko -->
+      <input type="color" class="rgp-color"
+             data-bind="event: { input: function (d, e) { $vm.pickBorderColor(e.target.value); } }"
+             aria-label="custom border color" title="Custom border color">
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: region().bWidth -->
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.bwidth')"></div>
+    <div class="rgp-row">
+      <!-- ko foreach: borderWidths -->
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickWidth($data); },
+              css: { 'rgp-opt--on': $vm.region().bWidth.value() === $data },
+              text: $data === '0' ? $root.t('sys.region.noborder') : $data"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: region().bStyle -->
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.bstyle')"></div>
+    <div class="rgp-row">
+      <!-- ko foreach: borderStyles -->
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickStyle($data); },
+              css: { 'rgp-opt--on': $vm.region().bStyle.value() === $data }, text: $data"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
   <!-- ko foreach: categories -->
   <div class="card" style="margin-bottom:16px">
     <div class="section-heading" style="margin-top:0" data-bind="text: label"></div>

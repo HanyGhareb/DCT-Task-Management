@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.2.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 - Dev note: multiple stale `dev-proxy.py` instances can stack on :8080 (SO_REUSEADDR) — kill all python proxies before restarting.
@@ -55,3 +55,4 @@ AR-specific DB/AI notes:
 - 2026-06-12: module built + deployed (DB, DCT_AR_AI_PKG, ar.rest, JET SPA). Round 2 same day: Gemini support.
 - 2026-06-13: settings redesign deployed (grouped regions, provider registry db/07, 17/17 ORDS + 22/22 E2E green); `06_ar_patch_gemini.sql` superseded.
 - 2026-06-13: eventForm/categories/settings/uploadWizard actions moved to top-right (platform rule). Frontend-only; bump APP_VERSION on next deploy.
+- 2026-06-13: **Region appearance theme** — headers + borders themed via `THEME_REGION_*` (db/v2/22 seeds AR override rows, NULL = inherit; the 5 keys added to the Settings page "Defaults & Appearance" group). Boots via `shell.initRegionTheme` + `settingService.getAll`. APP_VERSION **4.3.0** (shared/ change, all 7 apps).

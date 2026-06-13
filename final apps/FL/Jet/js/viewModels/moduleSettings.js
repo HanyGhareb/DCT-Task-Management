@@ -19,7 +19,7 @@ define(['knockout', 'services/flService'], function (ko, flService) {
           label: s.label || s.key,
           description: s.description || '',
           type: s.type || 'TEXT',
-          allowed: (s.allowed || '').split(',').filter(Boolean),
+          allowed: (s.allowed || '').split(/[|,]/).filter(Boolean),
           value: obs,
           original: s.value,
           dirty: ko.observable(false)

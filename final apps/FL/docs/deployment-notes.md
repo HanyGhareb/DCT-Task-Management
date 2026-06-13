@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.2.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 - 17 views; FL appears in the module switcher (flipped live in Phase 4).
@@ -51,3 +51,7 @@ FL-specific DB notes:
 - 2026-06-12 (Phase 4): `fl.rest` + 17-view JET app deployed live; Stage 6 seed (roles + 84k contract); UAT 35 cases (34P/1PARTIAL automated run).
 - dct_auth delegation made ADDITIVE; registrationEdit lookup race fixed (UAT round).
 - 2026-06-13: Save Draft/Submit moved to page headers; 5 modal footers moved into modal headers (platform top-right rule). Frontend-only; bump APP_VERSION on next deploy.
+- 2026-06-13 (APP_VERSION 4.2.1): FL-CMP-02 fix (compliance doc row deep-links to Documents tab via one-shot `flDetailTab` sessionStorage key); `formGuard.track()` adopted in registrationEdit/contractEdit/voucherDetail; bulk voucher generation — new `POST /fl/schedule/bulk-generate` handler in `08_fl_ords.sql` (403 unless `ALLOW_BULK_VOUCHER_GENERATION=Y`; ≤100 rows/run; skips rows with open vouchers) + "Generate All Due" page action on Payment Schedule. ⚠ Requires rerun of `08_fl_ords.sql` (fresh SQLcl session).
+- 2026-06-13: **Region appearance theme** — headers + borders themed via `THEME_REGION_*` (db/v2/22 seeds FL override rows, NULL = inherit; rows listed in Module Settings). Boots via `shell.initRegionTheme` + `flService.getSettings`. APP_VERSION **4.3.0** (shared/ change, all 7 apps). Module Settings SELECT options now split on `|` as well as `,` (seeded `allowed_values` are pipe-separated). Note: the new `Portal/` SPA has its own styling and is NOT covered by the region theme.
+- 2026-06-13 (deployed): FL-CMP-02 fix + formGuard + bulk voucher generation live — `08_fl_ords.sql` rerun, UAT extended to **40 cases, 40/40 PASS** (`UAT/UAT_FL_Results_13-Jun-2026-01.docx`). FL UAT data cleanup script at `db/v2/23_fl_uat_cleanup.sql` (run after UAT passes; preserves seeded samples).
+- 2026-06-13 (deployed): **Freelancer Self-Service Portal Phase 1** — new SPA at `Portal/` (plain KO, no requirejs, EN/AR; own `ifinance_portal_session` key, APP_VERSION 1.0.0 in `Portal/index.html`). DB: `09_fl_portal.sql` (portal columns on freelancers, `DCT_FL_PORTAL_INVITES`/`DCT_FL_PORTAL_SESSIONS`, `DCT_FL_PORTAL_PKG`, `FL_PORTAL_STATUS` lookup, `FEATURE_FL_PORTAL`/`PORTAL_SESSION_HOURS`/`PORTAL_INVITE_EXPIRY_HOURS` settings). ORDS: `/fl/portal/*` handlers + staff `POST /fl/freelancers/:id/portal-invite` (FL_ADMIN). **Security model: portal identities are NOT DCT_USERS** — portal tokens only open `/fl/portal/*`; staff tokens are refused there (verified both ways). Kill switch `FEATURE_FL_PORTAL` (currently Y for demo). Dev URL: `http://localhost:8080/FL/Portal/index.html` via the FL dev-proxy (proxy now also serves `/<App>/Portal/`).

@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Freelancer Portal · i-Finance</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
+<script>window.APP_VERSION = '1.0.0';</script>
+<link rel="stylesheet" id="portal-css">
+<script>
+  document.getElementById('portal-css').href = 'css/portal.css?v=' + window.APP_VERSION;
+</script>
+</head>
+<body>
+
+<!-- ════════════════ LOGIN / SET-PASSWORD ════════════════ -->
+<section class="login-stage" data-bind="visible: view() === 'login' || view() === 'setpwd'" style="display:none">
+  <div class="login-left">
+    <div class="mark">i-Finance <span class="mark-sub" data-bind="text: t('portalName')"></span></div>
+    <h2><span data-bind="html: t('loginHero')"></span></h2>
+    <p data-bind="text: t('loginHeroSub')"></p>
+  </div>
+  <div class="login-right">
+
+    <!-- sign in -->
+    <div class="login-card" data-bind="visible: view() === 'login'">
+      <h3 data-bind="text: t('signIn')"></h3>
+      <div class="hint" data-bind="text: t('signInHint')"></div>
+      <div class="alert" data-bind="visible: loginError(), text: loginError()"></div>
+      <div class="fld">
+        <label data-bind="text: t('email')"></label>
+        <input type="email" autocomplete="username" data-bind="value: email, event: { keyup: onLoginKey }">
+      </div>
+      <div class="fld">
+        <label data-bind="text: t('password')"></label>
+        <input type="password" autocomplete="current-password" data-bind="value: password, event: { keyup: onLoginKey }">
+      </div>
+      <button class="btn btn-brand btn-block" data-bind="click: doLogin, disable: busy">
+        <span data-bind="text: busy() ? '…' : t('continue')"></span>
+      </button>
+      <div class="alt"><span data-bind="text: t('firstTime')"></span></div>
+    </div>
+
+    <!-- set password (invite link) -->
+    <div class="login-card" data-bind="visible: view() === 'setpwd'">
+      <h3 data-bind="text: t('setPwdTitle')"></h3>
+      <div class="hint" data-bind="text: t('setPwdHint')"></div>
+      <div class="alert" data-bind="visible: loginError(), text: loginError()"></div>
+      <div class="fld">
+        <label data-bind="text: t('newPassword')"></label>
+        <input type="password" autocomplete="new-password" data-bind="value: password">
+      </div>
+      <div class="fld">
+        <label data-bind="text: t('confirmPassword')"></label>
+        <input type="password" autocomplete="new-password" data-bind="value: password2">
+      </div>
+      <button class="btn btn-brand btn-block" data-bind="click: doSetPassword, disable: busy">
+        <span data-bind="text: busy() ? '…' : t('setPwdBtn')"></span>
+      </button>
+    </div>
+
+    <button class="lang-flip lang-flip--floating" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
+  </div>
+</section>
+
+<!-- ════════════════ APP SHELL ════════════════ -->
+<div data-bind="visible: isApp()" style="display:none">
+  <div class="pbar">
+    <div class="wordmark"><span class="mark">i-Finance</span><span class="sub" data-bind="text: t('portalName')"></span></div>
+    <div class="grow"></div>
+    <button class="lang-flip" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
+    <div class="who">
+      <div class="av" data-bind="text: initials()"></div>
+      <div>
+        <div class="nm" data-bind="text: me().displayName || session().displayName"></div>
+        <div class="vn" data-bind="text: me().vendorNumber || ''"></div>
+      </div>
+    </div>
+    <button class="lang-flip" data-bind="click: doLogout, text: t('signOut')"></button>
+  </div>
+  <nav class="pnav">
+    <a data-bind="css: { on: view() === 'overview' }, click: go.bind($data, 'overview'), text: t('navOverview')"></a>
+    <a data-bind="css: { on: view() === 'contracts' }, click: go.bind($data, 'contracts'), text: t('navContracts')"></a>
+    <a data-bind="css: { on: view() === 'payments' }, click: go.bind($data, 'payments'), text: t('navPayments')"></a>
+  </nav>
+
+  <div class="wrap">
+
+    <!-- ── OVERVIEW ── -->
+    <div data-bind="visible: view() === 'overview'">
+      <h1 class="greet"><span data-bind="text: t('greeting')"></span> <em data-bind="text: firstName() + '.'"></em></h1>
+      <div class="greet-sub" data-bind="text: t('greetingSub')"></div>
+
+      <div class="hero">
+        <div class="card pay-hero" data-bind="with: me().nextPayment">
+          <div class="eyebrow"><span class="dot"></span>
+            <span data-bind="text: $root.t('nextPayment') + ' · ' + ($data.dueDate || '')"></span></div>
+          <div class="amount"><span data-bind="text: ($data.amount || 0).toLocaleString()"></span><small>AED</small></div>
+          <div class="pay-meta">
+            <div><b data-bind="text: $data.periodLabel || ''"></b><span data-bind="text: $root.t('period')"></span></div>
+            <div><b class="mono" data-bind="text: $data.contractNumber || ''"></b><span data-bind="text: $root.t('contract')"></span></div>
+            <div><b><span class="chip brand" data-bind="text: $root.payState($data)"></span></b><span data-bind="text: $root.t('status')"></span></div>
+          </div>
+        </div>
+        <div class="card pay-hero pay-hero--empty" data-bind="visible: !me().nextPayment">
+          <div class="eyebrow" data-bind="text: t('nextPayment')"></div>
+          <div class="empty-note" data-bind="text: t('noUpcoming')"></div>
+        </div>
+        <div class="card con-card">
+          <div class="ttl" data-bind="text: t('accountTitle')"></div>
+          <div class="num" data-bind="text: (me().vendorNumber || '') + ' · ' + (me().email || '')"></div>
+          <div class="row2">
+            <div><b data-bind="text: me().activeContracts || 0"></b><span data-bind="text: t('activeContracts')"></span></div>
+            <div><b data-bind="text: me().contracts || 0"></b><span data-bind="text: t('totalContracts')"></span></div>
+            <div data-bind="visible: me().bankName">
+              <b data-bind="text: (me().bankName || '') + ' ··' + (me().ibanTail || '')"></b>
+              <span data-bind="text: t('payoutAccount')"></span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <h2 class="sec"><span data-bind="text: t('paymentTimeline')"></span><span class="rule"></span></h2>
+      <div class="card timeline">
+        <!-- ko foreach: timelineRows -->
+        <div class="t-row" data-bind="css: $root.rowCss($data)">
+          <span class="t-node"></span>
+          <span class="t-what"><b data-bind="text: periodLabel"></b>
+            <span data-bind="text: contractNumber + ' · ' + dueDate"></span></span>
+          <span class="chip" data-bind="text: $root.payState($data), css: $root.chipCss($data)"></span>
+          <span class="t-amt" data-bind="text: (amount || 0).toLocaleString()"></span>
+        </div>
+        <!-- /ko -->
+        <div class="empty-note pad" data-bind="visible: timelineRows().length === 0, text: t('nothingHere')"></div>
+      </div>
+    </div>
+
+    <!-- ── CONTRACTS ── -->
+    <div data-bind="visible: view() === 'contracts'">
+      <h1 class="greet"><span data-bind="html: t('myContracts')"></span></h1>
+      <div class="greet-sub" data-bind="text: t('contractsSub')"></div>
+      <div class="con-grid">
+        <!-- ko foreach: contracts -->
+        <div class="card con-card">
+          <div class="ttl" data-bind="text: title"></div>
+          <div class="num"><span class="mono" data-bind="text: contractNumber"></span>
+            · <span data-bind="text: status"></span>
+            · <span data-bind="text: (startDate || '') + ' → ' + (endDate || $root.t('openEnded'))"></span></div>
+          <div class="meter">
+            <div class="lbl"><span data-bind="text: $root.t('paidToDate')"></span>
+              <span><b data-bind="text: (paidTotal || 0).toLocaleString()"></b> / <span data-bind="text: (totalAmount || 0).toLocaleString()"></span> AED</span></div>
+            <div class="bar"><div class="fill" data-bind="style: { width: $root.pct($data) + '%' }"></div></div>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+      <div class="empty-note pad" data-bind="visible: contracts().length === 0, text: t('nothingHere')"></div>
+    </div>
+
+    <!-- ── PAYMENTS ── -->
+    <div data-bind="visible: view() === 'payments'">
+      <h1 class="greet"><span data-bind="html: t('myPayments')"></span></h1>
+      <div class="greet-sub" data-bind="text: t('paymentsSub')"></div>
+
+      <h2 class="sec"><span data-bind="text: t('schedule')"></span><span class="rule"></span></h2>
+      <div class="card timeline">
+        <!-- ko foreach: schedule -->
+        <div class="t-row" data-bind="css: $root.rowCss($data)">
+          <span class="t-node"></span>
+          <span class="t-what"><b data-bind="text: periodLabel"></b>
+            <span data-bind="text: contractNumber + ' · ' + dueDate"></span></span>
+          <span class="chip" data-bind="text: $root.payState($data), css: $root.chipCss($data)"></span>
+          <span class="t-amt" data-bind="text: (amount || 0).toLocaleString()"></span>
+        </div>
+        <!-- /ko -->
+        <div class="empty-note pad" data-bind="visible: schedule().length === 0, text: t('nothingHere')"></div>
+      </div>
+
+      <h2 class="sec"><span data-bind="text: t('vouchers')"></span><span class="rule"></span></h2>
+      <div class="card timeline">
+        <!-- ko foreach: vouchers -->
+        <div class="t-row" data-bind="css: { paid: paymentStatus === 'PAID' }">
+          <span class="t-node"></span>
+          <span class="t-what"><b class="mono" data-bind="text: voucherNumber"></b>
+            <span data-bind="text: (periodLabel || '') + ' · ' + contractNumber"></span></span>
+          <span class="chip" data-bind="text: paymentStatus === 'PAID' ? $root.t('statePaid') : status,
+                                        css: paymentStatus === 'PAID' ? 'ok' : 'brand'"></span>
+          <span class="t-amt" data-bind="text: (amount || 0).toLocaleString()"></span>
+        </div>
+        <!-- /ko -->
+        <div class="empty-note pad" data-bind="visible: vouchers().length === 0, text: t('nothingHere')"></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="pfoot">
+    <span data-bind="text: t('footOrg')"></span><span class="grow"></span>
+    <span data-bind="text: t('footNote')"></span>
+  </div>
+</div>
+
+<script src="https://static.oracle.com/cdn/jet/17.0.0/3rdparty/knockout/knockout-3.5.1.js"></script>
+<script>
+  var s = document.createElement('script');
+  s.src = 'js/portal.js?v=' + window.APP_VERSION;
+  document.body.appendChild(s);
+</script>
+</body>
+</html>

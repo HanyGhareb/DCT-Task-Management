@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Mockup — Configurable Region Header Colors + Borders (i-Finance platform)</title>
+<style>
+  /* ── mimic of final apps/shared/css/platform.css tokens ─────────────── */
+  :root {
+    --brand: #C74634; --brand-dark: #8f3325; --brand-soft: #f9ece9;
+    --surface: #ffffff; --surface-2: #f7f7f8; --bg: #fafafa;
+    --border: #e0e0e0; --text: #1d1d1f; --text-2: #6e6e73; --radius: 10px;
+
+    /* NEW platform vars — what this proposal adds */
+    --region-hd-bg: #334155;
+    --region-hd-fg: #ffffff;
+    --region-bd-color: #334155;   /* defaults to "match header" */
+    --region-bd-width: 1.5px;
+    --region-bd-style: solid;
+    --region-hd-accent: #334155;  /* darker of the bg/fg pair — table headers stay readable with soft fills */
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); }
+
+  /* top bar (shell) */
+  .topbar { height: 52px; background: #1d1d1f; display: flex; align-items: center; gap: 18px; padding: 0 20px; }
+  .topbar .logo { width: 26px; height: 26px; border-radius: 6px; background: var(--brand); }
+  .topbar .ttl { color: #fff; font-weight: 600; font-size: 14px; }
+  .topbar .hint { color: rgba(255,255,255,.55); font-size: 12px; margin-left: auto; }
+  .mod-pills { display: flex; gap: 6px; margin-left: 24px; }
+  .mod-pill { padding: 5px 14px; border-radius: 99px; font-size: 12px; color: rgba(255,255,255,.7);
+    background: rgba(255,255,255,.08); border: 1px solid transparent; cursor: pointer; }
+  .mod-pill.on { color: #fff; border-color: rgba(255,255,255,.45); background: rgba(255,255,255,.16); }
+
+  .layout { display: grid; grid-template-columns: minmax(0,1fr) 390px; gap: 22px; padding: 22px 26px; max-width: 1520px; }
+
+  .page-title { font-size: 19px; font-weight: 700; margin: 2px 0 2px; }
+  .page-subtitle { font-size: 12.5px; color: var(--text-2); margin-bottom: 16px; }
+
+  /* ── THE PROPOSED STYLE — region = bordered box + colored header bar ── */
+  .region-box {
+    background: var(--surface);
+    border: var(--region-bd-width) var(--region-bd-style) var(--region-bd-color);
+    border-radius: 9px;
+    margin-bottom: 18px;
+    overflow: hidden;
+    transition: border-color .25s;
+  }
+  .section-heading {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 13px; font-weight: 700;
+    background: var(--region-hd-bg); color: var(--region-hd-fg);
+    padding: 9px 14px;
+    transition: background .25s, color .25s;
+  }
+  .region-body { padding: 14px 16px; }
+  .section-heading .region-actions { display: flex; gap: 8px; }
+  .section-heading .btn-sm, .modal-header .btn-sm {
+    font-size: 11.5px; padding: 4px 12px; border-radius: 6px; cursor: pointer;
+    border: 1px solid currentColor; background: transparent; color: inherit; font-weight: 600;
+  }
+  .section-heading .btn-sm.primary, .modal-header .btn-sm.primary {
+    background: var(--region-hd-fg); color: var(--region-hd-bg); border-color: transparent; }
+
+  /* modal inherits the same vars (header colors + border) */
+  .modal-demo { border: var(--region-bd-width) var(--region-bd-style) var(--region-bd-color);
+    border-radius: 9px; overflow: hidden; max-width: 460px;
+    box-shadow: 0 10px 30px rgba(0,0,0,.10); transition: border-color .25s; }
+  .modal-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px;
+    background: var(--region-hd-bg); color: var(--region-hd-fg); font-size: 13.5px; font-weight: 700;
+    transition: background .25s, color .25s; }
+  .modal-body { padding: 16px; background: var(--surface); }
+
+  /* table header row keyed to the region color (10% tint) */
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  thead th { text-align: left; padding: 8px 10px; font-size: 11px; letter-spacing: .4px; text-transform: uppercase;
+    background: color-mix(in srgb, var(--region-hd-accent) 9%, white); color: var(--region-hd-accent);
+    border-bottom: 2px solid var(--region-hd-accent); transition: all .25s; }
+  tbody td { padding: 8px 10px; border-bottom: 1px solid var(--border); color: var(--text); }
+
+  .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .fld label { display: block; font-size: 11px; color: var(--text-2); margin-bottom: 4px; font-weight: 600; }
+  .fld input, .fld select { width: 100%; padding: 7px 10px; border: 1px solid var(--border); border-radius: 7px; font-size: 12.5px; background: #fff; }
+
+  /* ── settings panel (right) ──────────────────────────────────────────── */
+  .set-panel { position: sticky; top: 18px; }
+  .set-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 18px 20px; margin-bottom: 14px; }
+  .set-title { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+  .set-sub { font-size: 11.5px; color: var(--text-2); margin-bottom: 14px; }
+  .grp-label { font-size: 10.5px; letter-spacing: .6px; font-weight: 700; color: var(--text-2);
+    text-transform: uppercase; margin: 16px 0 8px; }
+  .grp-label:first-of-type { margin-top: 0; }
+  .scope-row { display: flex; gap: 6px; margin-bottom: 14px; }
+  .scope-btn { flex: 1; padding: 7px 10px; font-size: 11.5px; border-radius: 7px; border: 1px solid var(--border);
+    background: #fff; cursor: pointer; color: var(--text-2); font-weight: 600; }
+  .scope-btn.on { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+  .pal-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+  .pal-chip { border-radius: 9px; border: 2px solid transparent; cursor: pointer; overflow: hidden;
+    text-align: center; background: #fff; outline: 1px solid var(--border); }
+  .pal-chip .swatch { height: 40px; display: flex; align-items: center; justify-content: center;
+    font-size: 15px; font-weight: 800; }
+  .pal-chip .nm { font-size: 9.5px; padding: 4px 2px; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pal-chip.on { border-color: var(--brand); outline-color: var(--brand); box-shadow: 0 3px 10px rgba(0,0,0,.12); }
+  .custom-row { display: flex; align-items: center; gap: 8px; margin-top: 12px; }
+  .custom-row label { font-size: 11px; color: var(--text-2); font-weight: 600; }
+  .custom-row input[type=color] { width: 34px; height: 28px; border: 1px solid var(--border); border-radius: 6px; padding: 1px; background: #fff; cursor: pointer; }
+
+  /* border option chips */
+  .opt-row { display: flex; flex-wrap: wrap; gap: 8px; }
+  .opt-chip { padding: 6px 12px; font-size: 11.5px; font-weight: 600; border-radius: 7px;
+    border: 1px solid var(--border); background: #fff; cursor: pointer; color: var(--text-2);
+    display: flex; align-items: center; gap: 7px; }
+  .opt-chip.on { border-color: var(--brand); color: var(--brand); background: var(--brand-soft); }
+  .opt-chip .ln { width: 30px; border-bottom-color: currentColor; }
+  .bcol-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .bcol-dot { width: 26px; height: 26px; border-radius: 7px; cursor: pointer; border: 2px solid transparent;
+    outline: 1px solid var(--border); display: flex; align-items: center; justify-content: center;
+    font-size: 9px; font-weight: 800; color: #fff; }
+  .bcol-dot.on { border-color: var(--brand); outline-color: var(--brand); }
+  .bcol-dot.match { width: auto; padding: 0 9px; height: 26px; font-size: 10px; color: var(--text-2);
+    background: repeating-linear-gradient(45deg, #fff, #fff 4px, #f1f1f3 4px, #f1f1f3 8px); }
+  .bcol-dot.match.on { color: var(--brand); }
+
+  .note { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2);
+    border: 1px dashed var(--border); font-size: 11px; color: var(--text-2); line-height: 1.55; }
+  .note b { color: var(--text); }
+  code { font-size: 10.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+  #contrastBadge { margin-left: auto; font-size: 10.5px; font-weight: 700; padding: 2px 8px; border-radius: 99px; }
+</style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="logo" id="logoBox"></div>
+    <div class="ttl">i-Finance</div>
+    <div class="mod-pills" id="modPills"></div>
+    <div class="hint">MOCKUP — click a module pill, a palette chip, or any border option</div>
+  </div>
+
+  <div class="layout">
+
+    <!-- ════════ LEFT: sample page — colored headers + configurable borders ════════ -->
+    <div>
+      <div class="page-title" id="pgTitle">Petty Cash Request — PC-2026-00012</div>
+      <div class="page-subtitle">Sample page — region header fill/font AND region border (color · thickness · style) come from the settings on the right</div>
+
+      <div class="region-box">
+        <div class="section-heading">
+          <span>&#9645;&nbsp; Request Details</span>
+          <span class="region-actions"><button class="btn-sm">Back</button><button class="btn-sm primary">&#10003; Save</button></span>
+        </div>
+        <div class="region-body">
+          <div class="form-grid">
+            <div class="fld"><label>REQUEST DATE</label><input value="13-Jun-2026"></div>
+            <div class="fld"><label>CUSTODIAN</label><input value="AYESHA.ALMARZOOQI"></div>
+            <div class="fld"><label>PURPOSE</label><input value="Office hospitality supplies"></div>
+            <div class="fld"><label>AMOUNT (AED)</label><input value="2,500.00"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="region-box">
+        <div class="section-heading">
+          <span>&#9645;&nbsp; Budget Coding</span>
+          <span class="region-actions"><button class="btn-sm">+ Add Line</button></span>
+        </div>
+        <div class="region-body">
+          <table>
+            <thead><tr><th>#</th><th>Project</th><th>Task</th><th>Expenditure Type</th><th style="text-align:right">Amount</th></tr></thead>
+            <tbody>
+              <tr><td>1</td><td>100012</td><td>1.1</td><td>Hospitality Supplies</td><td style="text-align:right">1,500.00</td></tr>
+              <tr><td>2</td><td>100012</td><td>1.2</td><td>Office Consumables</td><td style="text-align:right">1,000.00</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="region-box">
+        <div class="section-heading">
+          <span>&#9645;&nbsp; Approval History</span>
+        </div>
+        <div class="region-body">
+          <table>
+            <thead><tr><th>Step</th><th>Approver</th><th>Action</th><th>Date</th></tr></thead>
+            <tbody>
+              <tr><td>1 — Line Manager</td><td>MOHAMMED.ALHAMMADI</td><td>Approved</td><td>12-Jun-2026</td></tr>
+              <tr><td>2 — PC Admin</td><td>AYESHA.ALMARZOOQI</td><td>Pending</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div style="font-size:11.5px;color:var(--text-2);margin:4px 0 8px;font-weight:600">MODAL DIALOGS USE THE SAME HEADER COLOR + BORDER:</div>
+      <div class="modal-demo">
+        <div class="modal-header">
+          <span>Edit Lookup Value</span>
+          <span style="display:flex;gap:8px"><button class="btn-sm">Cancel</button><button class="btn-sm primary">&#10003; Save</button></span>
+        </div>
+        <div class="modal-body">
+          <div class="form-grid">
+            <div class="fld"><label>CODE</label><input value="APPROVED"></div>
+            <div class="fld"><label>NAME (EN)</label><input value="Approved"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ RIGHT: the settings UI ════════ -->
+    <div class="set-panel">
+      <div class="set-card">
+        <div class="set-title">&#127912;&nbsp; Region Appearance</div>
+        <div class="set-sub">System Settings → Appearance &nbsp;·&nbsp; keys <code>THEME_REGION_HEADER_BG/_FG</code> + <code>THEME_REGION_BORDER_COLOR/_WIDTH/_STYLE</code></div>
+
+        <div class="scope-row">
+          <button class="scope-btn on" id="scopeSys">Platform default<br><span style="font-weight:400">(System Settings)</span></button>
+          <button class="scope-btn" id="scopeMod">This module<br><span style="font-weight:400">(Module Settings override)</span></button>
+        </div>
+
+        <div class="grp-label">Header color (fill + font)</div>
+        <div class="pal-grid" id="palGrid"></div>
+        <div class="custom-row">
+          <label>Custom:</label>
+          <input type="color" id="cBg" value="#334155" title="Fill">
+          <label style="font-weight:400">fill</label>
+          <input type="color" id="cFg" value="#ffffff" title="Font">
+          <label style="font-weight:400">font</label>
+          <span id="contrastBadge"></span>
+        </div>
+
+        <div class="grp-label">Region border — color</div>
+        <div class="bcol-row" id="bColRow"></div>
+
+        <div class="grp-label">Region border — thickness</div>
+        <div class="opt-row" id="bWidthRow"></div>
+
+        <div class="grp-label">Region border — style</div>
+        <div class="opt-row" id="bStyleRow"></div>
+
+        <div class="note">
+          <b>How it works:</b> five <code>COLOR</code>/<code>SELECT</code>-type settings.
+          Module rows in <code>DCT_MODULE_SETTINGS</code> override the platform default in
+          <code>DCT_SYSTEM_SETTINGS</code>; unset = derive from <code>THEME_BRAND_COLOR</code>
+          (header) and "Match header" (border). <code>shell.js</code> applies the winning values
+          at boot as CSS vars <code>--region-hd-bg/-fg</code> +
+          <code>--region-bd-color/-width/-style</code> — one rule in <code>platform.css</code>
+          themes every region, table header and modal in all 7 apps. Contrast check warns below AA (4.5:1).
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+  // module registry (subset) — same defaults as shared/js/shell.js
+  var MODULES = [
+    { key:'ADMIN', name:'Admin',       brand:'#C74634' },
+    { key:'PC',    name:'Petty Cash',  brand:'#2E7D32' },
+    { key:'DT',    name:'Duty Travel', brand:'#0572CE' },
+    { key:'HR',    name:'HR',          brand:'#00695C' },
+    { key:'AR',    name:'Event P&L',   brand:'#6C4AB6' }
+  ];
+  // curated palette — each entry is an accessible bg/fg pair
+  var PALETTE = [
+    { nm:'Brand',      bg:null,      fg:'#ffffff' },          // derived from module brand
+    { nm:'Slate',      bg:'#334155', fg:'#ffffff' },
+    { nm:'Navy',       bg:'#1E3A8A', fg:'#ffffff' },
+    { nm:'Teal',       bg:'#00695C', fg:'#ffffff' },
+    { nm:'Forest',     bg:'#1B5E20', fg:'#ffffff' },
+    { nm:'Maroon',     bg:'#8E2A24', fg:'#ffffff' },
+    { nm:'Plum',       bg:'#5B2C6F', fg:'#ffffff' },
+    { nm:'Charcoal',   bg:'#1d1d1f', fg:'#ffffff' },
+    { nm:'Soft Gray',  bg:'#F1F5F9', fg:'#334155' },
+    { nm:'Soft Blue',  bg:'#E3F2FD', fg:'#0D47A1' },
+    { nm:'Soft Green', bg:'#E8F5E9', fg:'#1B5E20' },
+    { nm:'Soft Amber', bg:'#FFF3E0', fg:'#7A4F09' }
+  ];
+  // border options
+  var BCOLORS = [
+    { nm:'Match header', val:null },
+    { nm:'Gray',  val:'#e0e0e0' }, { nm:'Slate', val:'#334155' },
+    { nm:'Navy',  val:'#1E3A8A' }, { nm:'Teal',  val:'#00695C' },
+    { nm:'Forest',val:'#1B5E20' }, { nm:'Maroon',val:'#8E2A24' },
+    { nm:'Custom…', val:'PICK' }
+  ];
+  var BWIDTHS = [
+    { nm:'Hairline · 1px', val:'1px' },
+    { nm:'Regular · 1.5px', val:'1.5px' },
+    { nm:'Medium · 2px', val:'2px' },
+    { nm:'Bold · 3px', val:'3px' },
+    { nm:'None', val:'0' }
+  ];
+  var BSTYLES = ['solid','dashed','dotted','double'];
+
+  var curModule = MODULES[1]; // start on PC
+  var curPal = 1;
+  var curBCol = 0;            // Match header
+  var curBColCustom = '#334155';
+  var curBW = 1;              // 1.5px
+  var curBS = 0;              // solid
+
+  function shade(hex, f) {
+    var n = parseInt(hex.slice(1), 16), r = n>>16, g = (n>>8)&255, b = n&255, t = f<0?0:255, p = Math.abs(f);
+    function m(c){ return Math.round(c + (t-c)*p); }
+    return '#' + ((1<<24) + (m(r)<<16) + (m(g)<<8) + m(b)).toString(16).slice(1);
+  }
+  function lum(hex){ var n=parseInt(hex.slice(1),16);
+    var a=[n>>16,(n>>8)&255,n&255].map(function(v){v/=255;return v<=.03928?v/12.92:Math.pow((v+.055)/1.055,2.4);});
+    return .2126*a[0]+.7152*a[1]+.0722*a[2]; }
+  function contrast(b,f){ var l1=lum(b),l2=lum(f); return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05); }
+
+  function effBg(p){ return p.bg || curModule.brand; }
+  function effBCol(){
+    var c = BCOLORS[curBCol];
+    if (c.val === null) return effBg(PALETTE[curPal]);     // match header
+    if (c.val === 'PICK') return curBColCustom;
+    return c.val;
+  }
+
+  function apply() {
+    var p = PALETTE[curPal], bg = effBg(p), fg = p.fg;
+    var st = document.documentElement.style;
+    st.setProperty('--region-hd-bg', bg);
+    st.setProperty('--region-hd-fg', fg);
+    st.setProperty('--region-hd-accent', lum(bg) <= lum(fg) ? bg : fg);
+    st.setProperty('--region-bd-color', effBCol());
+    st.setProperty('--region-bd-width', BWIDTHS[curBW].val);
+    st.setProperty('--region-bd-style', BSTYLES[curBS]);
+    st.setProperty('--brand', curModule.brand);
+    st.setProperty('--brand-dark', shade(curModule.brand, -.28));
+    st.setProperty('--brand-soft', shade(curModule.brand, .9));
+    document.getElementById('cBg').value = bg;
+    document.getElementById('cFg').value = fg.length===7?fg:'#ffffff';
+    var c = contrast(bg, fg), badge = document.getElementById('contrastBadge');
+    badge.textContent = 'contrast ' + c.toFixed(1) + ':1 ' + (c>=4.5?'AA ✓':'⚠ below AA');
+    badge.style.background = c>=4.5?'#E8F5E9':'#FDECEA';
+    badge.style.color = c>=4.5?'#1B5E20':'#B3261E';
+    render();
+  }
+
+  function render() {
+    document.getElementById('modPills').innerHTML = MODULES.map(function(m,i){
+      return '<button class="mod-pill'+(m.key===curModule.key?' on':'')+'" onclick="pick('+i+')">'+m.name+'</button>';
+    }).join('');
+    document.getElementById('logoBox').style.background = curModule.brand;
+    document.getElementById('pgTitle').textContent =
+      curModule.key==='PC' ? 'Petty Cash Request — PC-2026-00012' : curModule.name + ' — sample page';
+
+    document.getElementById('palGrid').innerHTML = PALETTE.map(function(p,i){
+      var bg = effBg(p);
+      return '<div class="pal-chip'+(i===curPal?' on':'')+'" onclick="pal('+i+')">'
+        + '<div class="swatch" style="background:'+bg+';color:'+p.fg+'">Aa</div>'
+        + '<div class="nm">'+p.nm+'</div></div>';
+    }).join('');
+
+    document.getElementById('bColRow').innerHTML = BCOLORS.map(function(c,i){
+      var on = i===curBCol?' on':'';
+      if (c.val === null)
+        return '<div class="bcol-dot match'+on+'" onclick="bcol('+i+')" title="Border follows the header fill color">Match header</div>';
+      if (c.val === 'PICK')
+        return '<div class="bcol-dot match'+on+'" onclick="bcolPick()" title="Pick any color">Custom…</div>'
+          + '<input type="color" id="bColPick" value="'+curBColCustom+'" style="display:none">';
+      return '<div class="bcol-dot'+on+'" style="background:'+c.val+'" onclick="bcol('+i+')" title="'+c.nm+'"></div>';
+    }).join('');
+
+    document.getElementById('bWidthRow').innerHTML = BWIDTHS.map(function(w,i){
+      return '<button class="opt-chip'+(i===curBW?' on':'')+'" onclick="bw('+i+')">'
+        + (w.val!=='0' ? '<span class="ln" style="border-bottom:'+w.val+' solid currentColor"></span>' : '')
+        + w.nm + '</button>';
+    }).join('');
+
+    document.getElementById('bStyleRow').innerHTML = BSTYLES.map(function(s,i){
+      return '<button class="opt-chip'+(i===curBS?' on':'')+'" onclick="bs('+i+')">'
+        + '<span class="ln" style="border-bottom:'+(s==='double'?'3px':'2px')+' '+s+' currentColor"></span>'
+        + s.charAt(0).toUpperCase()+s.slice(1) + '</button>';
+    }).join('');
+  }
+
+  function pick(i){ curModule = MODULES[i]; apply(); }
+  function pal(i){ curPal = i; apply(); }
+  function bcol(i){ curBCol = i; apply(); }
+  function bcolPick(){
+    var inp = document.getElementById('bColPick');
+    inp.onchange = function(){ curBColCustom = inp.value; curBCol = BCOLORS.length-1; apply(); };
+    inp.click();
+  }
+  function bw(i){ curBW = i; apply(); }
+  function bs(i){ curBS = i; apply(); }
+
+  document.getElementById('cBg').addEventListener('input', function(){
+    PALETTE.push({nm:'Custom', bg:this.value, fg:document.getElementById('cFg').value}); curPal = PALETTE.length-1; apply(); });
+  document.getElementById('cFg').addEventListener('input', function(){
+    PALETTE.push({nm:'Custom', bg:document.getElementById('cBg').value, fg:this.value}); curPal = PALETTE.length-1; apply(); });
+  document.getElementById('scopeMod').addEventListener('click', function(){
+    this.classList.add('on'); document.getElementById('scopeSys').classList.remove('on'); });
+  document.getElementById('scopeSys').addEventListener('click', function(){
+    this.classList.add('on'); document.getElementById('scopeMod').classList.remove('on'); });
+  apply();
+</script>
+</body>
+</html>

@@ -14,6 +14,9 @@ function (ko, config, authService, ccService, i18n, shell) {
     // ── Shared shell: brand + i18n ──────────────────────────────────────
     shell.initBrand('cc');
     shell.initAnnouncements('cc', config.authBase || config.apiBase);
+    shell.initRegionTheme(config.authBase || config.apiBase, function () {
+      return ccService.getSettings();
+    });
     self.t       = i18n.t;
     self.lang    = i18n.lang;
     self.setLang = i18n.setLang;

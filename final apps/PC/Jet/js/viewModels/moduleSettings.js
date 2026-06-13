@@ -12,7 +12,13 @@ function (ko, settingService) {
     self.editingId = ko.observable(null);
 
     function _toObs(s) {
-      return Object.assign({}, s, {
+      // APEX_JSON omits NULL fields — default every bound key or the row's
+      // bare KO references throw and kill the whole foreach (rows 2+ vanish)
+      s = Object.assign({
+        settingValue: null, settingLabel: '', settingDescription: '',
+        allowedValues: null, defaultValue: null, effectiveDate: null,
+      }, s);
+      return Object.assign(s, {
         editValue: ko.observable(s.settingValue),
         editDate:  ko.observable(s.effectiveDate),
       });

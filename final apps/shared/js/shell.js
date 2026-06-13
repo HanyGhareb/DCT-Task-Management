@@ -73,6 +73,96 @@ define([], function () {
     }
   }
 
+  /* ── region appearance (region headers + borders, 2026-06-13) ───────────
+     Five THEME_REGION_* settings drive every region header, table header and
+     modal header through CSS vars (platform.css). Resolution order:
+     module override (DCT_MODULE_SETTINGS row, non-empty value)
+       → system default (DCT_SYSTEM_SETTINGS, delivered by GET /dct/boot)
+         → the fallback baked into platform.css (mirrors the seed). */
+  var REGION_KEYS = ['THEME_REGION_HEADER_BG', 'THEME_REGION_HEADER_FG',
+                     'THEME_REGION_BORDER_COLOR', 'THEME_REGION_BORDER_WIDTH',
+                     'THEME_REGION_BORDER_STYLE'];
+
+  function lum(rgb) {
+    var a = rgb.map(function (v) {
+      v /= 255; return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4);
+    });
+    return .2126 * a[0] + .7152 * a[1] + .0722 * a[2];
+  }
+
+  /** map: { THEME_REGION_HEADER_BG: '#334155', ... } — unknown/invalid values
+      are ignored so a bad setting can never break the UI. */
+  function applyRegionTheme(map) {
+    map = map || {};
+    var st = document.documentElement.style;
+    var bgRgb = hex2rgb(map.THEME_REGION_HEADER_BG);
+    var fgRgb = hex2rgb(map.THEME_REGION_HEADER_FG);
+    if (bgRgb) st.setProperty('--region-hd-bg', rgb2hex(bgRgb));
+    if (fgRgb) st.setProperty('--region-hd-fg', rgb2hex(fgRgb));
+    if (bgRgb || fgRgb) {
+      /* accent = darker of the pair (keeps table headers readable on soft
+         fills); soft = 8% tint of the accent for thead backgrounds */
+      var accent = (bgRgb && fgRgb) ? (lum(bgRgb) <= lum(fgRgb) ? bgRgb : fgRgb)
+                                    : (bgRgb || fgRgb);
+      st.setProperty('--region-hd-accent', rgb2hex(accent));
+      st.setProperty('--region-hd-soft', rgb2hex(mix(accent, [255, 255, 255], .92)));
+    }
+    var bc = String(map.THEME_REGION_BORDER_COLOR || '').trim();
+    if (bc.toUpperCase() === 'MATCH_HEADER') st.setProperty('--region-bd-color', 'var(--region-hd-bg)');
+    else if (hex2rgb(bc)) st.setProperty('--region-bd-color', rgb2hex(hex2rgb(bc)));
+    var bw = String(map.THEME_REGION_BORDER_WIDTH || '').trim();
+    if (/^(\d+(\.\d+)?px|0)$/.test(bw)) st.setProperty('--region-bd-width', bw === '0' ? '0px' : bw);
+    var bs = String(map.THEME_REGION_BORDER_STYLE || '').trim().toLowerCase();
+    if (['solid', 'dashed', 'dotted', 'double'].indexOf(bs) >= 0) st.setProperty('--region-bd-style', bs);
+  }
+
+  /**
+   * initRegionTheme(authBase, getModuleRowsPromise) — module apps call this at
+   * boot (Admin applies its existing /boot payload via applyRegionTheme
+   * directly). Fetches the system defaults from /dct/boot, optionally merges
+   * the module's own THEME_REGION_* rows on top, applies once. Silently
+   * no-ops without a session.
+   */
+  function initRegionTheme(authBase, getModuleRowsPromise) {
+    var sys = {}, mod = {};
+    var token = null;
+    try {
+      var raw = localStorage.getItem('ifinance_jet_session');
+      token = raw ? (JSON.parse(raw).sessionId || null) : null;
+    } catch (e) {}
+    var sysP = (token && authBase)
+      ? fetch(authBase + '/boot', { headers: { 'Authorization': 'Bearer ' + token } })
+          .then(function (r) { return r.ok ? r.json() : {}; })
+          .then(function (d) {
+            (d.settings || []).forEach(function (s) {
+              if (REGION_KEYS.indexOf(s.key) >= 0) sys[s.key] = s.value;
+            });
+          }).catch(function () {})
+      : Promise.resolve();
+    var modP = Promise.resolve();
+    if (typeof getModuleRowsPromise === 'function') {
+      try {
+        modP = getModuleRowsPromise().then(function (rows) {
+          rows = (rows && rows.items) || rows || [];
+          rows.forEach(function (r) {
+            var k = r.settingKey || r.setting_key || r.key;
+            var v = r.settingValue !== undefined ? r.settingValue
+                  : (r.setting_value !== undefined ? r.setting_value : r.value);
+            if (REGION_KEYS.indexOf(k) >= 0) mod[k] = v;
+          });
+        }).catch(function () {});
+      } catch (e) {}
+    }
+    Promise.all([sysP, modP]).then(function () {
+      var out = {};
+      REGION_KEYS.forEach(function (k) {
+        var v = (mod[k] !== undefined && mod[k] !== null && String(mod[k]) !== '') ? mod[k] : sys[k];
+        if (v !== undefined && v !== null && String(v) !== '') out[k] = v;
+      });
+      applyRegionTheme(out);
+    });
+  }
+
   /* ── platform announcement banner (Phase 4) ────────────────────────────
      Fetches /dct/announcements/active for the module and injects a banner
      strip above the layout. Dismissals persist per announcement id for the
@@ -178,5 +268,6 @@ define([], function () {
 
   return { MODULES: MODULES, byKey: byKey, applyBrand: applyBrand,
            initBrand: initBrand, initAnnouncements: initAnnouncements,
+           applyRegionTheme: applyRegionTheme, initRegionTheme: initRegionTheme,
            setFeatures: setFeatures, featureEnabled: featureEnabled };
 });

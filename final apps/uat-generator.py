@@ -358,6 +358,13 @@ FL = [
  ("Switcher", "Cross-module hop", "1. Module dropdown > Admin / CC and back", "No re-login; FL shows live (no 'soon' badge)"),
  ("Arabic", "RTL pass", "1. Switch to AR\n2. Walk Dashboard + Registrations + a contract detail", "Mirrored layout, Arabic labels, Latin digits; charts re-render"),
 ]),
+("Enhancements", "ENH", [
+ ("Compliance deep link", "Doc row opens Documents tab", "1. Open Compliance > Documents\n2. Click a document row", "Freelancer detail opens directly on the Documents tab (not Profile) — FL-CMP-02 fix"),
+ ("Bulk kill switch", "Bulk button respects setting", "1. With ALLOW_BULK_VOUCHER_GENERATION = N open Payment Schedule\n2. Call POST /fl/schedule/bulk-generate directly", "No 'Generate All Due' button on the page; direct API call refused with 403"),
+ ("Bulk generation", "Generate all due vouchers", "1. Set ALLOW_BULK_VOUCHER_GENERATION = Y\n2. Reload Payment Schedule\n3. Generate All Due > Generate\n4. Restore the setting to N", "Button appears; one DRAFT voucher per PENDING row without an open voucher; rows flip to VOUCHER_GENERATED; toast shows the created count"),
+ ("Unsaved changes guard", "Dirty form warns on navigation", "1. Open a contract/registration edit form\n2. Change a field without saving\n3. Click another nav item", "Confirm dialog about unsaved changes; Cancel stays, OK leaves; after Save no warning"),
+ ("Command palette", "Ctrl+K navigation", "1. Press Ctrl+K anywhere in FL\n2. Type a page name and press Enter", "Palette opens with FL navigation entries; Enter navigates to the page"),
+]),
 ]
 
 CC = [
