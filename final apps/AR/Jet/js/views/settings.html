@@ -15,6 +15,7 @@
     </div>
 
     <!-- ko foreach: settings -->
+    <!-- ko ifnot: $data._isRegion -->
     <div class="set-row" data-bind="css: { 'set-row--dirty': _dirty() }">
       <div class="set-row__info">
         <div class="set-row__label" data-bind="text: label"></div>
@@ -58,6 +59,74 @@
         <!-- /ko -->
       </div>
     </div>
+    <!-- /ko -->
+    <!-- /ko -->
+
+    <!-- ── Region Appearance — THEME_REGION_* palette picker ───────────── -->
+    <!-- ko if: id === 'defaults' && $vm.region() -->
+    <div class="rgp-grp" data-bind="text: $vm.t('sys.region.title')"></div>
+    <div style="font-size:12px;color:var(--text-2);margin-bottom:10px" data-bind="text: $vm.t('sys.region.subtitle')"></div>
+    <div class="rgp-grid">
+      <!-- ko foreach: $vm.palette -->
+      <div class="rgp-chip" data-bind="click: function () { $vm.pickPal($data); },
+           css: { 'rgp-chip--on': $vm.isPal($data) }">
+        <div class="sw" data-bind="style: { background: bg, color: fg }">Aa</div>
+        <div class="nm" data-bind="text: nm"></div>
+      </div>
+      <!-- /ko -->
+    </div>
+    <div class="rgp-row" style="margin-top:12px">
+      <span class="rgp-lbl" data-bind="text: $vm.t('sys.region.custom')"></span>
+      <input type="color" class="rgp-color" data-bind="value: $vm.region().bg.value"
+             aria-label="header fill color" title="Header fill">
+      <span class="rgp-lbl" data-bind="text: $vm.t('sys.region.fill')"></span>
+      <input type="color" class="rgp-color" data-bind="value: $vm.region().fg.value"
+             aria-label="header font color" title="Header font">
+      <span class="rgp-lbl" data-bind="text: $vm.t('sys.region.font')"></span>
+      <!-- ko if: $vm.contrastInfo() -->
+      <span class="rgp-badge" data-bind="text: $vm.contrastInfo().txt,
+            style: { background: $vm.contrastInfo().ok ? '#E8F5E9' : '#FDECEA',
+                     color: $vm.contrastInfo().ok ? '#1B5E20' : '#B3261E' }"></span>
+      <!-- /ko -->
+    </div>
+
+    <!-- ko if: $vm.region().bColor -->
+    <div class="rgp-grp" data-bind="text: $vm.t('sys.region.bcolor')"></div>
+    <div class="rgp-row">
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickBorderColor('MATCH_HEADER'); },
+              css: { 'rgp-opt--on': $vm.isBorderColor('MATCH_HEADER') },
+              text: $vm.t('sys.region.match')"></button>
+      <!-- ko foreach: $vm.borderColors -->
+      <div class="rgp-dot" data-bind="click: function () { $vm.pickBorderColor($data); },
+           style: { background: $data }, css: { 'rgp-dot--on': $vm.isBorderColor($data) },
+           attr: { title: $data }"></div>
+      <!-- /ko -->
+      <input type="color" class="rgp-color"
+             data-bind="event: { input: function (d, e) { $vm.pickBorderColor(e.target.value); } }"
+             aria-label="custom border color" title="Custom border color">
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: $vm.region().bWidth -->
+    <div class="rgp-grp" data-bind="text: $vm.t('sys.region.bwidth')"></div>
+    <div class="rgp-row">
+      <!-- ko foreach: $vm.borderWidths -->
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickWidth($data); },
+              css: { 'rgp-opt--on': $vm.region().bWidth.value() === $data },
+              text: $data === '0' ? $vm.t('sys.region.noborder') : $data"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: $vm.region().bStyle -->
+    <div class="rgp-grp" data-bind="text: $vm.t('sys.region.bstyle')"></div>
+    <div class="rgp-row">
+      <!-- ko foreach: $vm.borderStyles -->
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickStyle($data); },
+              css: { 'rgp-opt--on': $vm.region().bStyle.value() === $data }, text: $data"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
     <!-- /ko -->
 
     <!-- ko if: id === 'ai' -->

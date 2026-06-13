@@ -13,7 +13,7 @@
 
 | Step | Detail |
 |---|---|
-| Bump `window.APP_VERSION` | In `Jet/index.html` (currently `4.3.0`). Drives the requirejs `urlArgs` + i18n cache key. Localhost auto-busts; deployed browsers serve stale JS/HTML forever if you forget. |
+| Bump `window.APP_VERSION` | In `Jet/index.html` (currently `4.4.0`). Drives the requirejs `urlArgs` + i18n cache key. Localhost auto-busts; deployed browsers serve stale JS/HTML forever if you forget. |
 | Deploy `final apps/shared/` | The shared layer (`platform.css`, `shell.js`, `i18n.js`, `chartLoader.js`, components) is referenced at `../shared/` by ALL apps. Any change to it requires an APP_VERSION bump in **all 7 apps'** index.html (precedent: the 4.1.1 wave bump). |
 | Check `js/services/config.js` | `apiBase: '/ords/admin/dct'` (live). Never ship `apiBase: null` (mock) to production. |
 | Chart.js | Never `<script>`-tag it — loaded via requirejs `chartjs` path, created via `shared/chartLoader.makeChart`. |
@@ -44,6 +44,13 @@ Script inventory (`db/v2/`, run order = `install.sql` 01→12, then numbered pat
 | `20` enhancements 2 | ✅ 2026-06-13 | Settings PUT upsert, audit fromdt/todt + `/dct/audit/export` CSV, `/dct/sessions/` + revoke, approval-templates restore, INTEGRATION_API_KEY secret seed |
 | `21` UAT cleanup | rerunnable | Parks `uat.auto.*` users, closes their sessions, drops `UAT_WAVE_FLOW~V%` archives |
 | `22` region theme | ✅ 2026-06-13 | Five `THEME_REGION_*` settings (header fill/font + border color/width/style): system rows (APPEARANCE), override rows in ALL `dct_modules` (26 × 5, NULL = inherit), `chk_dct_set_type` widened (+COLOR/SELECT), `/dct/boot` whitelist + `THEME_REGION_%`. Rerunnable. |
+| `24` audit snapshots | ✅ 2026-06-13 | `DCT_AUDIT_PKG` (`snapshots_on` ×2 / `snap` / `log`) + ADMIN synonym + `FEATURE_AUDIT_SNAPSHOTS` (global default) **and 7 per-module switches** `FEATURE_AUDIT_SNAPSHOTS_<ADMIN\|PC\|DT\|HR\|FL\|CC\|AR>` (all BOOLEAN, default **N**). Powers the audit-diff modal. Rerunnable; run in its own fresh session. After deploy, **re-run every module's ORDS script** (11 + PC/DT/HR/FL/CC/AR) so their write handlers capture before/after snapshots. |
+
+### Audit snapshots (db/v2/24) — how it works
+- **Per-module control.** Each module has its own switch `FEATURE_AUDIT_SNAPSHOTS_<CODE>` (CODE = the audit module code ADMIN/PC/DT/HR/FL/CC/AR), default **N**, on System Settings → FEATURES. `FEATURE_AUDIT_SNAPSHOTS` (no suffix) is the **default applied to any module without its own switch** (none today — it's a safety net for future modules). Resolution: module switch (Y/N) wins; else the global default; else off.
+- `snapshots_on(module_code)` does that resolution (used by `log` to decide whether to store). The no-arg `snapshots_on` is TRUE if **any** `FEATURE_AUDIT_SNAPSHOTS%` key is `Y` (used by `snap` to skip work when snapshots are off everywhere). All keys match `FEATURE\_%` so they flow to `GET /dct/boot` automatically.
+- Write handlers call `dct_audit_pkg.snap(table, pk_col, pk_val)` before/after the write and `dct_audit_pkg.log(user, action, type, id, module_code, p_old=>, p_new=>)`. `log` is autonomous + swallows exceptions — auditing can never fail a business write. `snap` excludes BLOB/CLOB/LONG/RAW columns and `PASSWORD_HASH`; settings PUT additionally skips snapshots for `%API_KEY%/%SECRET%/%PASSWORD%/%TOKEN%` keys.
+- **Coverage = core entity create/update per module** (Admin users/roles/settings/modules/orgs/lookups/delegations/announcements; PC pc/reimb/clearing; DT requests/settlements; HR employees/contracts/salary; FL registrations/contracts/vouchers; CC cards/requests/replenishments; AR events). Pure workflow actions (approve/submit/etc.) and reference-data sub-endpoints are not yet instrumented — they have their own status-history trails and can adopt the helper incrementally.
 
 ## 3. ORDS deployment
 
@@ -64,10 +71,12 @@ Script inventory (`db/v2/`, run order = `install.sql` 01→12, then numbered pat
 
 ## 5. Deployment history
 
+- 2026-06-13: **Audit before/after snapshots** deployed (db/v2/24 + all 7 ORDS scripts re-run). New `DCT_AUDIT_PKG` captures JSON old/new of changed rows into `dct_audit_log`, **gated per module** by `FEATURE_AUDIT_SNAPSHOTS_<CODE>` switches (+ `FEATURE_AUDIT_SNAPSHOTS` global default), all default OFF. No frontend change — the audit-diff modal already reads `/dct/audit/:id`; the 8 switches render in System Settings → FEATURES automatically. Verified in PROD: snap NULL when OFF / full JSON when ON, `password_hash`+`photo_blob` excluded, `snap` resolves for all 23 instrumented tables, and per-module resolution (enable PC only → PC captures, DT does not; explicit N overrides global Y).
 - 2026-06-13: **Region appearance theme** deployed (db/v2/22 + shared layer). Region/modal/table headers + card borders themed via `THEME_REGION_*` (module → system → CSS fallback); System Settings page gained the Region Appearance palette picker (live preview, AA-contrast badge); module apps boot via `shell.initRegionTheme` (HR has no settings endpoint — system default only). APP_VERSION **4.3.0** in all 7 apps. Verified: `/dct/boot` returns the 5 keys; Playwright on Admin systemSettings/users + PC dashboard.
 
 ## 6. Known gaps / cautions
 
-- Nothing populates `dct_audit_log.old_values/new_values` yet — the audit diff modal shows "no snapshot" until handlers write snapshots.
+- Audit snapshots (`dct_audit_log.old_values/new_values`) are populated by `DCT_AUDIT_PKG` (db/v2/24) **per module** via the `FEATURE_AUDIT_SNAPSHOTS_<CODE>` switches — all default OFF, so the diff modal shows "no snapshot" until an admin enables a module. Coverage is core entity create/update per module (see §2); workflow actions and reference-data writes are not yet instrumented.
 - ADB ORDS returns a 400 HTML error page for **body-less requests carrying `Content-Type: application/json`** (e.g. DELETE). Fixed in `shared/js/api.js` (Content-Type only when a body exists) — don't regress.
 - Rotate any leaked keys immediately (an ANTHROPIC_API_KEY leak was rotated during Phase 1).
+- **2026-06-13 — Settings palette picker extracted to shared (APP_VERSION 4.4.0):** `Admin/Jet/js/viewModels/systemSettings.js` refactored to consume the new `shared/js/regionPicker.js` (PALETTE/contrast/pickers/live-preview) — no behaviour change. Same helper now powers the Region Appearance panel on every module's settings page. Shared/ change → APP_VERSION bumped to 4.4.0 in all 7 apps.

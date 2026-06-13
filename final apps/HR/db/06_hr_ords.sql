@@ -39,6 +39,11 @@ CREATE OR REPLACE SYNONYM dct_document_types        FOR prod.dct_document_types;
 CREATE OR REPLACE SYNONYM dct_countries             FOR prod.dct_countries;
 CREATE OR REPLACE SYNONYM dct_users                 FOR prod.dct_users;
 CREATE OR REPLACE SYNONYM dct_hr                    FOR prod.dct_hr;
+-- Module-settings endpoints (Region Appearance + future HR settings)
+CREATE OR REPLACE SYNONYM dct_module_settings       FOR prod.dct_module_settings;
+CREATE OR REPLACE SYNONYM dct_modules               FOR prod.dct_modules;
+CREATE OR REPLACE SYNONYM dct_rest                  FOR prod.dct_rest;
+CREATE OR REPLACE SYNONYM dct_auth                  FOR prod.dct_auth;
 
 -- =============================================================================
 -- 2. Define ORDS module + all templates + handlers
@@ -168,7 +173,10 @@ BEGIN
     );
 
     def_plsql('employees/', 'POST', q'[
-        DECLARE v_id NUMBER;
+        DECLARE
+          v_id NUMBER;
+          l_actor VARCHAR2(100) := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'));
+          l_new CLOB;
         BEGIN
             INSERT INTO dct_employees (
                 employee_number, first_name_en, last_name_en,
@@ -189,11 +197,18 @@ BEGIN
             ) RETURNING person_id INTO v_id;
             :status_code := 201;
             COMMIT;
+            l_new := dct_audit_pkg.snap('DCT_EMPLOYEES','person_id', TO_CHAR(v_id));
+            dct_audit_pkg.log(l_actor,'CREATE','DCT_EMPLOYEES', TO_CHAR(v_id), 'HR', p_new=>l_new);
         END;
     ]');
 
     def_plsql('employees/:id', 'PUT', q'[
+        DECLARE
+          l_actor VARCHAR2(100) := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'));
+          l_old CLOB;
+          l_new CLOB;
         BEGIN
+            l_old := dct_audit_pkg.snap('DCT_EMPLOYEES','person_id', TO_CHAR(:id));
             UPDATE dct_employees SET
                 first_name_en     = NVL(:first_name_en,     first_name_en),
                 last_name_en      = NVL(:last_name_en,      last_name_en),
@@ -217,6 +232,8 @@ BEGIN
             WHERE person_id = :id;
             :status_code := 200;
             COMMIT;
+            l_new := dct_audit_pkg.snap('DCT_EMPLOYEES','person_id', TO_CHAR(:id));
+            dct_audit_pkg.log(l_actor,'UPDATE','DCT_EMPLOYEES', TO_CHAR(:id), 'HR', p_old=>l_old, p_new=>l_new);
         END;
     ]');
 
@@ -694,7 +711,10 @@ BEGIN
 
     def_tpl('contracts/');
     def_plsql('contracts/', 'POST', q'[
-        DECLARE v_id NUMBER; v_status_id NUMBER;
+        DECLARE
+          v_id NUMBER; v_status_id NUMBER;
+          l_actor VARCHAR2(100) := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'));
+          l_new CLOB;
         BEGIN
             SELECT value_id INTO v_status_id
             FROM   dct_lookup_values lv
@@ -723,12 +743,19 @@ BEGIN
             ) RETURNING contract_id INTO v_id;
             :status_code := 201;
             COMMIT;
+            l_new := dct_audit_pkg.snap('HR_EMPLOYMENT_CONTRACTS','contract_id', TO_CHAR(v_id));
+            dct_audit_pkg.log(l_actor,'CREATE','HR_EMPLOYMENT_CONTRACTS', TO_CHAR(v_id), 'HR', p_new=>l_new);
         END;
     ]');
 
     def_tpl('contracts/update/:id');
     def_plsql('contracts/update/:id', 'PUT', q'[
+        DECLARE
+          l_actor VARCHAR2(100) := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'));
+          l_old CLOB;
+          l_new CLOB;
         BEGIN
+            l_old := dct_audit_pkg.snap('HR_EMPLOYMENT_CONTRACTS','contract_id', TO_CHAR(:id));
             UPDATE hr_employment_contracts SET
                 contract_type_id   = NVL(:contract_type_id,   contract_type_id),
                 start_date         = NVL(TO_DATE(:start_date,  'YYYY-MM-DD'), start_date),
@@ -741,6 +768,8 @@ BEGIN
             WHERE contract_id = :id;
             :status_code := 200;
             COMMIT;
+            l_new := dct_audit_pkg.snap('HR_EMPLOYMENT_CONTRACTS','contract_id', TO_CHAR(:id));
+            dct_audit_pkg.log(l_actor,'UPDATE','HR_EMPLOYMENT_CONTRACTS', TO_CHAR(:id), 'HR', p_old=>l_old, p_new=>l_new);
         END;
     ]');
 
@@ -759,7 +788,10 @@ BEGIN
 
     def_tpl('salary/');
     def_plsql('salary/', 'POST', q'[
-        DECLARE v_id NUMBER;
+        DECLARE
+          v_id NUMBER;
+          l_actor VARCHAR2(100) := NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'));
+          l_new CLOB;
         BEGIN
             dct_hr.update_salary(
                 p_person_id        => :person_id,
@@ -772,6 +804,9 @@ BEGIN
                 p_salary_id        => v_id
             );
             :status_code := 201;
+            l_new := dct_audit_pkg.snap('HR_SALARY_HISTORY','salary_id', TO_CHAR(v_id));
+            dct_audit_pkg.log(l_actor,'CREATE','HR_SALARY_HISTORY', TO_CHAR(v_id), 'HR',
+                              p_object_ref=>'person '||:person_id, p_new=>l_new);
         END;
     ]');
 
@@ -887,6 +922,69 @@ BEGIN
         WHERE  days_until_expiry <= NVL(:days, 90)
         ORDER  BY days_until_expiry ASC, full_name_en
     ]');
+
+    -- =========================================================================
+    -- MODULE SETTINGS (Region Appearance + any future HR module settings)
+    -- Mirrors the CC/FL/PC/DT settings endpoints: reads DCT_MODULE_SETTINGS for
+    -- module_code 'HR'; PUT is HR_ADMIN/SYS_ADMIN only. THEME_REGION_* rows are
+    -- seeded for every module by db/v2/22_region_theme.sql.
+    -- =========================================================================
+    def_tpl('settings');
+    def_plsql('settings', 'GET', q'[
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT ms.setting_id, ms.setting_key, ms.setting_value, ms.setting_label,
+           ms.setting_description, ms.value_type, ms.allowed_values, ms.default_value
+    FROM   dct_module_settings ms
+    JOIN   dct_modules m ON m.module_id = ms.module_id
+    WHERE  m.module_code = 'HR'
+    ORDER BY ms.setting_key
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('settingId',    r.setting_id);
+    APEX_JSON.write('key',          r.setting_key);
+    APEX_JSON.write('value',        r.setting_value);
+    APEX_JSON.write('label',        NVL(r.setting_label, r.setting_key));
+    APEX_JSON.write('description',  NVL(r.setting_description, ''));
+    APEX_JSON.write('type',         NVL(r.value_type, 'TEXT'));
+    APEX_JSON.write('allowed',      NVL(r.allowed_values, ''));
+    APEX_JSON.write('defaultValue', NVL(r.default_value, ''));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+]');
+
+    def_tpl('settings/:id');
+    def_plsql('settings/:id', 'PUT', q'[
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user, 'HR_ADMIN') AND NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only HR Admin can change module settings'); RETURN;
+  END IF;
+  dct_rest.parse_body(:body);
+  UPDATE dct_module_settings SET
+    setting_value = APEX_JSON.get_varchar2(p_path => 'value'),
+    updated_at    = SYSTIMESTAMP
+  WHERE setting_id = :id;
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+]');
 
     COMMIT;
     DBMS_OUTPUT.PUT_LINE('HR ORDS module hr.rest published at /ords/admin/hr/');

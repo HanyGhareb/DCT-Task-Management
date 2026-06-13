@@ -388,6 +388,7 @@ DECLARE
   l_cnt      NUMBER;
   l_line_sum NUMBER := 0;
   l_role_id  NUMBER;
+  l_new      CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -512,6 +513,9 @@ BEGIN
           'Petty cash ' || l_number || ' created and submitted');
 
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_PETTY_CASH','pc_id', TO_CHAR(l_pc_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_PETTY_CASH', TO_CHAR(l_pc_id), 'PC',
+                    p_object_ref=>l_number, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -575,6 +579,8 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_petty_cash WHERE pc_id = [COLON]id FOR UPDATE;
@@ -582,6 +588,7 @@ BEGIN
     dct_rest.err(400,'Only DRAFT records can be updated (current status: ' || l_status || ')');
     RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_PETTY_CASH','pc_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_petty_cash SET
     pc_type     = NVL(APEX_JSON.get_varchar2(p_path => 'pcType'), pc_type),
@@ -592,6 +599,9 @@ BEGIN
     updated_by  = l_user
   WHERE pc_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_PETTY_CASH','pc_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_PETTY_CASH', TO_CHAR([COLON]id), 'PC',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
@@ -895,6 +905,7 @@ DECLARE
   l_cnt     NUMBER;
   l_sum     NUMBER := 0;
   l_role_id NUMBER;
+  l_new     CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -995,6 +1006,9 @@ BEGIN
           'Reimbursement ' || l_number || ' created and submitted');
 
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_PC_REIMBURSEMENTS','reimb_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_PC_REIMBURSEMENTS', TO_CHAR(l_id), 'PC',
+                    p_object_ref=>l_number, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -1042,12 +1056,15 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_pc_reimbursements WHERE reimb_id = [COLON]id FOR UPDATE;
   IF l_status != 'DRAFT' THEN
     dct_rest.err(400,'Only DRAFT reimbursements can be updated'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_PC_REIMBURSEMENTS','reimb_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_pc_reimbursements SET
     amount     = NVL(APEX_JSON.get_number  (p_path => 'amount'), amount),
@@ -1055,6 +1072,9 @@ BEGIN
     updated_by = l_user
   WHERE reimb_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_PC_REIMBURSEMENTS','reimb_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_PC_REIMBURSEMENTS', TO_CHAR([COLON]id), 'PC',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
@@ -1185,6 +1205,7 @@ DECLARE
   l_cnt      NUMBER;
   l_sum      NUMBER := 0;
   l_role_id  NUMBER;
+  l_new      CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -1286,6 +1307,9 @@ BEGIN
           'Clearing ' || l_number || ' created and submitted');
 
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_PC_CLEARING','clearing_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_PC_CLEARING', TO_CHAR(l_id), 'PC',
+                    p_object_ref=>l_number, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -1336,12 +1360,15 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_pc_clearing WHERE clearing_id = [COLON]id FOR UPDATE;
   IF l_status != 'DRAFT' THEN
     dct_rest.err(400,'Only DRAFT clearings can be updated'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_PC_CLEARING','clearing_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_pc_clearing SET
     amount_spent    = NVL(APEX_JSON.get_number(p_path => 'amountSpent'), amount_spent),
@@ -1349,6 +1376,9 @@ BEGIN
     updated_by      = l_user
   WHERE clearing_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_PC_CLEARING','clearing_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_PC_CLEARING', TO_CHAR([COLON]id), 'PC',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;

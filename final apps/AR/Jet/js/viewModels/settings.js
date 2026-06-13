@@ -9,8 +9,8 @@
  *   Manage Providers popup; the AI_PROVIDER setting selects the active code.
  */
 define(['knockout', 'services/settingService', 'services/authService',
-        'shared/i18n', 'shared/toast', 'shared/shell'],
-function (ko, settingService, authService, i18n, toast, shell) {
+        'shared/i18n', 'shared/toast', 'shared/shell', 'shared/regionPicker'],
+function (ko, settingService, authService, i18n, toast, shell, regionPicker) {
   'use strict';
 
   var REGION_DEFS = [
@@ -45,6 +45,17 @@ function (ko, settingService, authService, i18n, toast, shell) {
     self.loading = ko.observable(true);
     self.regions = ko.observableArray([]);
 
+    /* Region Appearance palette picker — installs self.region/palette/pickers/
+       contrastInfo; the five THEME_REGION_* keys render in the panel inside the
+       "Defaults & Appearance" region instead of as plain rows, but stay in that
+       region's settings array so its per-region Save still persists them. */
+    var rp = regionPicker.install(self);
+    var REGION_KEY_MAP = {
+      THEME_REGION_HEADER_BG: 'bg', THEME_REGION_HEADER_FG: 'fg',
+      THEME_REGION_BORDER_COLOR: 'bColor', THEME_REGION_BORDER_WIDTH: 'bWidth',
+      THEME_REGION_BORDER_STYLE: 'bStyle'
+    };
+
     /* ── AI provider registry ─────────────────────────────────────── */
     self.providers         = ko.observableArray([]);
     self.aiProviderSetting = ko.observable(null);
@@ -76,6 +87,15 @@ function (ko, settingService, authService, i18n, toast, shell) {
       var byKey = {};
       items.forEach(function (s) { byKey[s.key] = decorate(s); });
       self.aiProviderSetting(byKey.AI_PROVIDER || null);
+
+      /* wire the five THEME_REGION_* keys into the palette picker (sharing each
+         setting's own _value observable) and flag them so the view hides their
+         plain rows — they remain in the defaults region for dirty/save. */
+      var regionItems = {};
+      Object.keys(REGION_KEY_MAP).forEach(function (k) {
+        if (byKey[k]) { byKey[k]._isRegion = true; regionItems[REGION_KEY_MAP[k]] = { value: byKey[k]._value }; }
+      });
+      rp.setRegion(regionItems);
 
       var used = {};
       var regions = REGION_DEFS.map(function (def) {

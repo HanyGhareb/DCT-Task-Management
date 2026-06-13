@@ -241,6 +241,7 @@ DECLARE
   l_uid  NUMBER;
   l_id   NUMBER;
   l_num  VARCHAR2(50);
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -270,6 +271,9 @@ BEGIN
     l_user, l_user
   ) RETURNING registration_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_FL_REGISTRATIONS','registration_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_FL_REGISTRATIONS', TO_CHAR(l_id), 'FL',
+                    p_object_ref=>l_num, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -323,12 +327,15 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_fl_registrations WHERE registration_id = [COLON]id;
   IF l_status NOT IN ('DRAFT','RETURNED') THEN
     dct_rest.err(400,'Registration can only be edited in DRAFT or RETURNED status'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_FL_REGISTRATIONS','registration_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_fl_registrations SET
     first_name_en   = NVL(APEX_JSON.get_varchar2(p_path => 'firstNameEn'), first_name_en),
@@ -353,6 +360,9 @@ BEGIN
     updated_by      = l_user, updated_at = SYSTIMESTAMP
   WHERE registration_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_FL_REGISTRATIONS','registration_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_FL_REGISTRATIONS', TO_CHAR([COLON]id), 'FL',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
@@ -721,6 +731,7 @@ DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_id   NUMBER;
   l_num  VARCHAR2(50);
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -752,6 +763,9 @@ BEGIN
     l_user, l_user
   ) RETURNING contract_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_FL_CONTRACTS','contract_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_FL_CONTRACTS', TO_CHAR(l_id), 'FL',
+                    p_object_ref=>l_num, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -816,12 +830,15 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_fl_contracts WHERE contract_id = [COLON]id;
   IF l_status != 'DRAFT' THEN
     dct_rest.err(400,'Contract can only be edited in DRAFT status (use an amendment after approval)'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_FL_CONTRACTS','contract_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_fl_contracts SET
     title          = NVL(APEX_JSON.get_varchar2(p_path => 'title'), title),
@@ -849,6 +866,9 @@ BEGIN
     updated_by     = l_user, updated_at = SYSTIMESTAMP
   WHERE contract_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_FL_CONTRACTS','contract_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_FL_CONTRACTS', TO_CHAR([COLON]id), 'FL',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
@@ -1280,6 +1300,7 @@ DECLARE
   l_con    dct_fl_contracts%ROWTYPE;
   l_open   NUMBER;
   l_desc   VARCHAR2(1000);
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -1323,6 +1344,9 @@ BEGIN
     'N', 'DRAFT', 'PENDING', l_user, l_user
   ) RETURNING voucher_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_FL_PAYMENT_VOUCHERS','voucher_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_FL_PAYMENT_VOUCHERS', TO_CHAR(l_id), 'FL',
+                    p_object_ref=>l_num, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -1385,12 +1409,15 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_fl_payment_vouchers WHERE voucher_id = [COLON]id;
   IF l_status != 'DRAFT' THEN
     dct_rest.err(400,'Voucher can only be edited in DRAFT status'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_FL_PAYMENT_VOUCHERS','voucher_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_fl_payment_vouchers SET
     invoice_number = CASE WHEN APEX_JSON.does_exist(p_path => 'invoiceNumber')
@@ -1407,6 +1434,9 @@ BEGIN
     updated_by     = l_user, updated_at = SYSTIMESTAMP
   WHERE voucher_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_FL_PAYMENT_VOUCHERS','voucher_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_FL_PAYMENT_VOUCHERS', TO_CHAR([COLON]id), 'FL',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;

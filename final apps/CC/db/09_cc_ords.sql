@@ -235,6 +235,7 @@ END;
 DECLARE
   l_user  VARCHAR2(100) := dct_rest.validate_session;
   l_cc_id NUMBER;
+  l_new   CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user, 'CC_ADMIN') AND NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
@@ -253,6 +254,8 @@ BEGIN
     p_cost_center    => APEX_JSON.get_varchar2(p_path => 'costCenter'),
     p_user_id        => dct_auth.get_user_id(l_user),
     p_cc_id          => l_cc_id);
+  l_new := dct_audit_pkg.snap('DCT_CREDIT_CARDS','cc_id', TO_CHAR(l_cc_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_CREDIT_CARDS', TO_CHAR(l_cc_id), 'CC', p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -395,6 +398,7 @@ DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_id   NUMBER;
   l_num  VARCHAR2(50);
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -412,6 +416,9 @@ BEGIN
     'DRAFT', l_user, l_user
   ) RETURNING request_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_CC_REQUESTS','request_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_CC_REQUESTS', TO_CHAR(l_id), 'CC',
+                    p_object_ref=>l_num, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -462,12 +469,15 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_cc_requests WHERE request_id = [COLON]id;
   IF l_status NOT IN ('DRAFT','RETURNED') THEN
     dct_rest.err(400,'Request can only be edited in DRAFT or RETURNED status'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_CC_REQUESTS','request_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_cc_requests SET
     cc_id              = CASE WHEN APEX_JSON.does_exist(p_path => 'ccId')
@@ -482,6 +492,9 @@ BEGIN
     updated_by         = l_user, updated_at = SYSDATE
   WHERE request_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_CC_REQUESTS','request_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_CC_REQUESTS', TO_CHAR([COLON]id), 'CC',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
@@ -748,6 +761,7 @@ DECLARE
   l_dup    NUMBER;
   l_id     NUMBER;
   l_num    VARCHAR2(50);
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -778,6 +792,9 @@ BEGIN
     'DRAFT', l_user, l_user
   ) RETURNING replenishment_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_CC_REPLENISHMENTS','replenishment_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_CC_REPLENISHMENTS', TO_CHAR(l_id), 'CC',
+                    p_object_ref=>l_num, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -857,12 +874,15 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dct_cc_replenishments WHERE replenishment_id = [COLON]id;
   IF l_status NOT IN ('DRAFT','RETURNED') THEN
     dct_rest.err(400,'Replenishment can only be edited in DRAFT or RETURNED status'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_CC_REPLENISHMENTS','replenishment_id', TO_CHAR([COLON]id));
   dct_rest.parse_body([COLON]body);
   UPDATE dct_cc_replenishments SET
     coding_type      = CASE WHEN APEX_JSON.does_exist(p_path => 'codingType')
@@ -878,6 +898,9 @@ BEGIN
     updated_by       = l_user, updated_at = SYSDATE
   WHERE replenishment_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_CC_REPLENISHMENTS','replenishment_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_CC_REPLENISHMENTS', TO_CHAR([COLON]id), 'CC',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;

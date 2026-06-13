@@ -1,18 +1,147 @@
 <div class="page-wrap">
-  <div class="page-header">
-    <div class="page-title">Module Settings</div>
-    <div class="page-subtitle">HR Module — App 205</div>
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('set.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('set.subtitle')"></div>
+    </div>
+    <!-- ko ifnot: loading() -->
+    <button class="btn btn-primary" data-bind="click: saveAll, enable: hasDirty() && !saving()">
+      <!-- ko if: saving() -->Saving&hellip;<!-- /ko -->
+      <!-- ko ifnot: saving() -->&#10003; <span data-bind="text: $root.t('set.save')"></span><!-- /ko -->
+    </button>
+    <!-- /ko -->
   </div>
 
-  <!-- ko if: saved() -->
-  <div class="alert-banner alert-banner--success">&#10004; Data reset to defaults. Refresh the page to reload.</div>
+  <!-- ko if: successMsg() -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; <span data-bind="text: successMsg()"></span></div>
   <!-- /ko -->
-  <!-- ko if: error() -->
-  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- ko if: errorMsg() -->
+  <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: errorMsg()"></span></div>
+  <!-- /ko -->
+  <!-- ko if: saved() -->
+  <div class="alert-banner alert-banner--success" style="margin-bottom:14px">&#10004; Data reset to defaults. Refresh the page to reload.</div>
   <!-- /ko -->
 
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+
+  <!-- ── Region Appearance — THEME_REGION_* palette picker ─────────────── -->
+  <!-- ko if: region() -->
   <div class="card" style="margin-bottom:16px">
-    <div class="section-heading">Module Information</div>
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('sys.region.title')"></div>
+    <div style="font-size:12px;color:var(--text-2);margin-bottom:14px" data-bind="text: $root.t('sys.region.subtitle')"></div>
+
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.header')"></div>
+    <div class="rgp-grid">
+      <!-- ko foreach: palette -->
+      <div class="rgp-chip" data-bind="click: function () { $vm.pickPal($data); },
+           css: { 'rgp-chip--on': $vm.isPal($data) }">
+        <div class="sw" data-bind="style: { background: bg, color: fg }">Aa</div>
+        <div class="nm" data-bind="text: nm"></div>
+      </div>
+      <!-- /ko -->
+    </div>
+    <div class="rgp-row" style="margin-top:12px">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.region.custom')"></span>
+      <input type="color" class="rgp-color" data-bind="value: region().bg.value"
+             aria-label="header fill color" title="Header fill">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.region.fill')"></span>
+      <input type="color" class="rgp-color" data-bind="value: region().fg.value"
+             aria-label="header font color" title="Header font">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.region.font')"></span>
+      <!-- ko if: contrastInfo() -->
+      <span class="rgp-badge" data-bind="text: contrastInfo().txt,
+            style: { background: contrastInfo().ok ? '#E8F5E9' : '#FDECEA',
+                     color: contrastInfo().ok ? '#1B5E20' : '#B3261E' }"></span>
+      <!-- /ko -->
+    </div>
+
+    <!-- ko if: region().bColor -->
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.bcolor')"></div>
+    <div class="rgp-row">
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickBorderColor('MATCH_HEADER'); },
+              css: { 'rgp-opt--on': isBorderColor('MATCH_HEADER') },
+              text: $root.t('sys.region.match')"></button>
+      <!-- ko foreach: borderColors -->
+      <div class="rgp-dot" data-bind="click: function () { $vm.pickBorderColor($data); },
+           style: { background: $data }, css: { 'rgp-dot--on': $vm.isBorderColor($data) },
+           attr: { title: $data }"></div>
+      <!-- /ko -->
+      <input type="color" class="rgp-color"
+             data-bind="event: { input: function (d, e) { $vm.pickBorderColor(e.target.value); } }"
+             aria-label="custom border color" title="Custom border color">
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: region().bWidth -->
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.bwidth')"></div>
+    <div class="rgp-row">
+      <!-- ko foreach: borderWidths -->
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickWidth($data); },
+              css: { 'rgp-opt--on': $vm.region().bWidth.value() === $data },
+              text: $data === '0' ? $root.t('sys.region.noborder') : $data"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: region().bStyle -->
+    <div class="rgp-grp" data-bind="text: $root.t('sys.region.bstyle')"></div>
+    <div class="rgp-row">
+      <!-- ko foreach: borderStyles -->
+      <button class="rgp-opt" data-bind="click: function () { $vm.pickStyle($data); },
+              css: { 'rgp-opt--on': $vm.region().bStyle.value() === $data }, text: $data"></button>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Module settings ───────────────────────────────────────────────── -->
+  <!-- ko if: items().length -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('set.general')"></div>
+    <!-- ko foreach: items -->
+    <div class="switch-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600" data-bind="text: label"></div>
+        <div style="font-size:11.5px;color:var(--text-3);font-family:monospace" data-bind="text: settingKey"></div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:2px" data-bind="text: description"></div>
+      </div>
+      <div style="flex:0 0 240px;margin-inline-start:20px">
+        <!-- ko if: isToggle -->
+        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:flex-end"
+             data-bind="click: flip">
+          <span style="font-size:11.5px;color:var(--text-3)"
+                data-bind="text: toggleOn() ? $root.t('set.flagOn') : $root.t('set.flagOff')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none"
+                   data-bind="checked: toggleOn(), attr: { 'aria-label': settingKey }">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: !isToggle && type === 'SELECT' && allowed.length -->
+        <select class="form-control" data-bind="options: allowed, value: value,
+                 style: { 'border-color': dirty() ? 'var(--brand)' : '' }"></select>
+        <!-- /ko -->
+        <!-- ko if: !isToggle && (type !== 'SELECT' || !allowed.length) -->
+        <input class="form-control" data-bind="value: value, valueUpdate: 'input',
+               attr: { type: type === 'NUMBER' ? 'number' : 'text', 'aria-label': settingKey },
+               style: { 'border-color': dirty() ? 'var(--brand)' : '' }">
+        <!-- /ko -->
+        <!-- ko if: dirty() -->
+        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block">&#9998; <span data-bind="text: $root.t('set.modified')"></span></span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Module information ────────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0">Module Information</div>
     <div class="form-grid">
       <div class="form-group"><div class="form-label">Module Name</div><div data-bind="text: moduleInfo.name"></div></div>
       <div class="form-group"><div class="form-label">Version</div><div data-bind="text: moduleInfo.version"></div></div>
@@ -23,11 +152,14 @@
     </div>
   </div>
 
+  <!-- ── Development tools (admin only) ────────────────────────────────── -->
   <!-- ko if: isAdmin -->
   <div class="card">
-    <div class="section-heading">Development Tools</div>
-    <p style="font-size:13px;color:#6e6e73;margin-bottom:16px">Reset all mock data back to the built-in defaults. This clears localStorage — useful when testing mock mode.</p>
+    <div class="section-heading" style="margin-top:0">Development Tools</div>
+    <p style="font-size:13px;color:var(--text-2);margin-bottom:16px">Reset all mock data back to the built-in defaults. This clears localStorage — useful when testing mock mode.</p>
     <button class="btn btn-danger" data-bind="click: resetData">&#128465; Reset Mock Data</button>
   </div>
+  <!-- /ko -->
+
   <!-- /ko -->
 </div>

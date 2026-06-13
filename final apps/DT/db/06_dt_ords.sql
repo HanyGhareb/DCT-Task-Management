@@ -333,6 +333,7 @@ DECLARE
   l_seq    VARCHAR2(10);
   l_prefix VARCHAR2(20) := 'DT';
   l_org_id NUMBER;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -406,6 +407,9 @@ BEGIN
   END LOOP;
 
   COMMIT;
+  l_new := dct_audit_pkg.snap('DT_REQUESTS','request_id', TO_CHAR(l_req_id));
+  dct_audit_pkg.log(l_user,'CREATE','DT_REQUESTS', TO_CHAR(l_req_id), 'DT',
+                    p_object_ref=>l_req_num, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -518,12 +522,15 @@ DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_id   NUMBER        := [COLON]id;
   l_status VARCHAR2(25);
+  l_old  CLOB;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dt_requests WHERE request_id = l_id;
   IF l_status NOT IN ('DRAFT','RETURNED') THEN
     dct_rest.err(400,'Only DRAFT or RETURNED requests can be edited'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DT_REQUESTS','request_id', TO_CHAR(l_id));
   dct_rest.parse_body([COLON]body);
   UPDATE dt_requests SET
     mission_type             = NVL(APEX_JSON.get_varchar2(p_path => 'missionType'),       mission_type),
@@ -567,6 +574,9 @@ BEGIN
     END LOOP;
   END IF;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DT_REQUESTS','request_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'UPDATE','DT_REQUESTS', TO_CHAR(l_id), 'DT',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -905,6 +915,7 @@ DECLARE
   l_year     VARCHAR2(4) := TO_CHAR(SYSDATE,'YYYY');
   l_seq      VARCHAR2(10);
   l_prefix   VARCHAR2(20) := 'DTS';
+  l_new      CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -952,6 +963,9 @@ BEGIN
   END LOOP;
 
   COMMIT;
+  l_new := dct_audit_pkg.snap('DT_SETTLEMENT','settlement_id', TO_CHAR(l_sid));
+  dct_audit_pkg.log(l_user,'CREATE','DT_SETTLEMENT', TO_CHAR(l_sid), 'DT',
+                    p_object_ref=>l_snum, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -1032,12 +1046,15 @@ DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_id     NUMBER        := [COLON]id;
   l_status VARCHAR2(25);
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT status INTO l_status FROM dt_settlement WHERE settlement_id = l_id;
   IF l_status NOT IN ('DRAFT','RETURNED') THEN
     dct_rest.err(400,'Only DRAFT or RETURNED settlements can be edited'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DT_SETTLEMENT','settlement_id', TO_CHAR(l_id));
   dct_rest.parse_body([COLON]body);
   UPDATE dt_settlement SET
     actual_return_date   = NVL(TO_DATE(APEX_JSON.get_varchar2(p_path => 'actualReturn'),'YYYY-MM-DD'), actual_return_date),
@@ -1060,6 +1077,9 @@ BEGIN
     END LOOP;
   END IF;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DT_SETTLEMENT','settlement_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'UPDATE','DT_SETTLEMENT', TO_CHAR(l_id), 'DT',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;

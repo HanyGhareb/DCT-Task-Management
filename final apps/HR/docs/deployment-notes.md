@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.4.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 
@@ -49,3 +49,5 @@ HR-specific DB notes:
 - 2026-06-11: UAT lifecycle data E1101-03; hr-employees server pagination (Phase 3).
 - 2026-06-13: all modal Save/Cancel actions moved into modal headers, employeeDetail + 7 setup pages (platform top-right rule). Frontend-only; bump APP_VERSION on next deploy.
 - 2026-06-13: **Region appearance theme** — headers + borders themed via `THEME_REGION_*` (db/v2/22). HR has **no module-settings endpoint** → system default only (`shell.initRegionTheme` without a module getter); wiring a `/hr/settings` GET later enables the per-module override automatically. APP_VERSION **4.3.0** (shared/ change, all 7 apps).
+- **2026-06-13 — Module Settings redesign (APP_VERSION 4.4.0):** settings page restyled to match Admin System Settings — top-right Save, category cards, switch-row toggles, dirty tracking, alert banners, and a **Region Appearance** palette picker (module-level `THEME_REGION_*` override with live preview + AA-contrast check). New shared helper `shared/js/regionPicker.js` (used by all 7 apps → APP_VERSION bumped 4.3.0→4.4.0 everywhere). Region keys are read/written through this module's existing `/settings` endpoint.
+- **2026-06-13 — HR `/settings` ORDS added:** `06_hr_ords.sql` now defines `GET /settings` + `PUT /settings/:id` (HR_ADMIN/SYS_ADMIN only) over `DCT_MODULE_SETTINGS` for module_code `HR`, plus ADMIN synonyms `dct_module_settings`/`dct_modules`/`dct_rest`/`dct_auth`. **Redeploy `06_hr_ords.sql` in a fresh SQLcl session** (it DELETE_MODULEs + recreates `hr.rest`). `hrService.getSettings/updateSetting` added. THEME_REGION rows come from `db/v2/22`.

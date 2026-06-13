@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.3.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.4.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 - DT API-mode patterns: submit goes through the `/submit` endpoint (not a status-field PUT); use `_norm()` where mock/ORDS field names differ.
@@ -50,3 +50,5 @@ DT-specific DB notes:
 - 2026-06-11: server pagination on dt-requests (Phase 3); dashboard charts.
 - 2026-06-13: Save/Back/Cancel actions moved to top-right of page/region/modal (platform rule). Frontend-only; bump APP_VERSION on next deploy.
 - 2026-06-13: **Region appearance theme** — headers + borders themed via `THEME_REGION_*` (db/v2/22 seeds DT override rows, NULL = inherit; editable in Module Settings). Boots via `shell.initRegionTheme`. APP_VERSION **4.3.0** (shared/ change, all 7 apps). Module Settings VM now defaults JSON keys APEX_JSON omits for NULLs (the new no-default rows would otherwise kill the rows after them).
+- **2026-06-13 — Module Settings redesign (APP_VERSION 4.4.0):** settings page restyled to match Admin System Settings — top-right Save, category cards, switch-row toggles, dirty tracking, alert banners, and a **Region Appearance** palette picker (module-level `THEME_REGION_*` override with live preview + AA-contrast check). New shared helper `shared/js/regionPicker.js` (used by all 7 apps → APP_VERSION bumped 4.3.0→4.4.0 everywhere). Region keys are read/written through this module's existing `/settings` endpoint.
+- DT keeps its Reset-to-Defaults button (now in the page-header actions).

@@ -164,6 +164,7 @@ DECLARE
   l_code   VARCHAR2(50);
   l_prefix VARCHAR2(20);
   l_seq    NUMBER;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -215,6 +216,9 @@ BEGIN
   VALUES ('AR', 'EVENT', l_id, NULL, 'NEW', l_uid, 'Event created');
   COMMIT;
 
+  l_new := dct_audit_pkg.snap('DCT_AR_EVENTS','event_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_AR_EVENTS', TO_CHAR(l_id), 'AR',
+                    p_object_ref=>l_code, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -301,12 +305,15 @@ DECLARE
   l_uid  NUMBER;
   l_old  VARCHAR2(30);
   l_new  VARCHAR2(30);
+  l_old_snap CLOB;
+  l_new_snap CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
   dct_rest.parse_body(:body);
 
   SELECT status INTO l_old FROM dct_ar_events WHERE event_id = :id FOR UPDATE;
+  l_old_snap := dct_audit_pkg.snap('DCT_AR_EVENTS','event_id', TO_CHAR(:id));
 
   UPDATE dct_ar_events SET
     event_name_en   = CASE WHEN APEX_JSON.does_exist(p_path=>'nameEn')
@@ -353,6 +360,9 @@ BEGIN
   END IF;
   COMMIT;
 
+  l_new_snap := dct_audit_pkg.snap('DCT_AR_EVENTS','event_id', TO_CHAR(:id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_AR_EVENTS', TO_CHAR(:id), 'AR',
+                    p_old=>l_old_snap, p_new=>l_new_snap);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;

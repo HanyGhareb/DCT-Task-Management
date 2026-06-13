@@ -795,6 +795,16 @@ function (config, api, mockData) {
       return Promise.resolve(data);
     },
 
+    /* ── module settings (Region Appearance + future HR settings) ───────── */
+    getSettings: function () {
+      if (config.apiBase) return api.get('/settings').then(function (r) { return r.items || []; });
+      return Promise.resolve([]);   // no mock settings — region panel only shows live
+    },
+    updateSetting: function (settingId, value) {
+      if (config.apiBase) return api.put('/settings/' + settingId, { value: value });
+      return Promise.resolve({ ok: true });
+    },
+
     reset: function () { localStorage.removeItem(STORE_KEY); },
   };
 });

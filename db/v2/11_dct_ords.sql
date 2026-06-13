@@ -409,6 +409,7 @@ DECLARE
   l_uid    NUMBER;
   l_uname  VARCHAR2(100);
   l_pass   VARCHAR2(500);
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -449,6 +450,10 @@ BEGIN
                        WHERE x.user_id = l_uid AND x.role_id = r.role_id);
   END LOOP;
   COMMIT;
+
+  l_new := dct_audit_pkg.snap('DCT_USERS','user_id', TO_CHAR(l_uid));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_USERS', TO_CHAR(l_uid), 'ADMIN',
+                    p_object_ref=>l_uname, p_new=>l_new);
 
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
@@ -514,12 +519,15 @@ DECLARE
   l_uid   NUMBER        := [COLON]id;
   l_uname VARCHAR2(100);
   l_pass  VARCHAR2(500);
+  l_old   CLOB;
+  l_new   CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
   l_pass := APEX_JSON.get_varchar2(p_path => 'password');
 
   SELECT username INTO l_uname FROM dct_users WHERE user_id = l_uid;
+  l_old := dct_audit_pkg.snap('DCT_USERS','user_id', TO_CHAR(l_uid));
 
   -- Fields a caller may legitimately clear use a does_exist guard: present in
   -- the body (even empty) = update, absent = keep. Prevents partial-form
@@ -570,6 +578,10 @@ BEGIN
   END IF;
   COMMIT;
 
+  l_new := dct_audit_pkg.snap('DCT_USERS','user_id', TO_CHAR(l_uid));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_USERS', TO_CHAR(l_uid), 'ADMIN',
+                    p_object_ref=>l_uname, p_old=>l_old, p_new=>l_new);
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -582,11 +594,17 @@ END;
     def_handler('users/[COLON]id', 'DELETE', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_old  CLOB;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_old := dct_audit_pkg.snap('DCT_USERS','user_id', TO_CHAR([COLON]id));
   UPDATE dct_users SET is_active = 'N', deactivated_at = SYSTIMESTAMP, updated_by = l_user
   WHERE  user_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_USERS','user_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'DEACTIVATE','DCT_USERS', TO_CHAR([COLON]id), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -693,6 +711,7 @@ END;
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_rid  NUMBER;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -712,6 +731,9 @@ BEGIN
     VALUES (l_rid, APEX_JSON.get_number(p_path => 'permIds[%d]', p0 => i), l_user);
   END LOOP;
   COMMIT;
+
+  l_new := dct_audit_pkg.snap('DCT_ROLES','role_id', TO_CHAR(l_rid));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_ROLES', TO_CHAR(l_rid), 'ADMIN', p_new=>l_new);
 
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
@@ -763,9 +785,12 @@ END;
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_rid  NUMBER        := [COLON]id;
+  l_old  CLOB;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
+  l_old := dct_audit_pkg.snap('DCT_ROLES','role_id', TO_CHAR(l_rid));
   UPDATE dct_roles SET
     role_name_en   = NVL(APEX_JSON.get_varchar2(p_path => 'roleName'),   role_name_en),
     description_en = APEX_JSON.get_varchar2(p_path => 'description'),
@@ -782,6 +807,10 @@ BEGIN
   END LOOP;
   COMMIT;
 
+  l_new := dct_audit_pkg.snap('DCT_ROLES','role_id', TO_CHAR(l_rid));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_ROLES', TO_CHAR(l_rid), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -795,12 +824,18 @@ END;
 DECLARE
   l_user  VARCHAR2(100) := dct_rest.validate_session;
   l_sys   VARCHAR2(1);
+  l_old   CLOB;
+  l_new   CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   SELECT is_system_role INTO l_sys FROM dct_roles WHERE role_id = [COLON]id;
   IF l_sys = 'Y' THEN dct_rest.err(400,'System roles cannot be deleted'); RETURN; END IF;
+  l_old := dct_audit_pkg.snap('DCT_ROLES','role_id', TO_CHAR([COLON]id));
   UPDATE dct_roles SET is_active = 'N', updated_by = l_user WHERE role_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_ROLES','role_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'DELETE','DCT_ROLES', TO_CHAR([COLON]id), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -901,9 +936,12 @@ END;
     def_handler('modules/[COLON]id', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_old  CLOB;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
+  l_old := dct_audit_pkg.snap('DCT_MODULES','module_id', TO_CHAR([COLON]id));
   UPDATE dct_modules SET
     module_name_en = NVL(APEX_JSON.get_varchar2(p_path => 'nameEn'), module_name_en),
     module_name_ar = APEX_JSON.get_varchar2(p_path => 'nameAr'),
@@ -912,6 +950,9 @@ BEGIN
     updated_by     = l_user, updated_at = SYSTIMESTAMP
   WHERE module_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_MODULES','module_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_MODULES', TO_CHAR([COLON]id), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -975,6 +1016,7 @@ DECLARE
   l_path   VARCHAR2(900);
   l_name   VARCHAR2(200);
   l_id     NUMBER;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -1001,6 +1043,9 @@ BEGIN
     l_user
   ) RETURNING org_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_ORGANIZATIONS','org_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_ORGANIZATIONS', TO_CHAR(l_id), 'ADMIN',
+                    p_object_ref=>l_name, p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -1018,9 +1063,12 @@ END;
     def_handler('orgs/[COLON]id', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_old  CLOB;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
+  l_old := dct_audit_pkg.snap('DCT_ORGANIZATIONS','org_id', TO_CHAR([COLON]id));
   UPDATE dct_organizations SET
     org_name_en   = NVL(APEX_JSON.get_varchar2(p_path => 'nameEn'), org_name_en),
     org_name_ar   = CASE WHEN APEX_JSON.does_exist(p_path => 'nameAr')
@@ -1034,6 +1082,9 @@ BEGIN
     updated_by    = l_user, updated_at = SYSTIMESTAMP
   WHERE org_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_ORGANIZATIONS','org_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_ORGANIZATIONS', TO_CHAR([COLON]id), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -1100,6 +1151,7 @@ END;
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_id   NUMBER;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -1116,6 +1168,8 @@ BEGIN
     'Y', l_user
   ) RETURNING value_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_LOOKUP_VALUES','value_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_LOOKUP_VALUES', TO_CHAR(l_id), 'ADMIN', p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -1133,9 +1187,12 @@ END;
     def_handler('lookups/values/[COLON]id', 'PUT', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_old  CLOB;
+  l_new  CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
+  l_old := dct_audit_pkg.snap('DCT_LOOKUP_VALUES','value_id', TO_CHAR([COLON]id));
   UPDATE dct_lookup_values SET
     value_name_en = NVL(APEX_JSON.get_varchar2(p_path => 'displayValue'), value_name_en),
     value_name_ar = CASE WHEN APEX_JSON.does_exist(p_path => 'displayAr')
@@ -1147,6 +1204,9 @@ BEGIN
     updated_by    = l_user
   WHERE value_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_LOOKUP_VALUES','value_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_LOOKUP_VALUES', TO_CHAR([COLON]id), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -1232,8 +1292,12 @@ END;
     def_template('settings/[COLON]setkey');
     def_handler('settings/[COLON]setkey', 'PUT', q'!
 DECLARE
-  l_user VARCHAR2(100) := dct_rest.validate_session;
-  l_val  VARCHAR2(4000);
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_val    VARCHAR2(4000);
+  l_secret BOOLEAN := ([COLON]setkey LIKE '%API_KEY%' OR [COLON]setkey LIKE '%SECRET%'
+                       OR [COLON]setkey LIKE '%PASSWORD%' OR [COLON]setkey LIKE '%TOKEN%');
+  l_old    CLOB;
+  l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
@@ -1243,6 +1307,10 @@ BEGIN
     APEX_JSON.initialize_output;
     APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('skipped', 'masked value'); APEX_JSON.close_object;
     RETURN;
+  END IF;
+  -- Never snapshot secret values into the audit log (mirrors the GET mask).
+  IF NOT l_secret THEN
+    l_old := dct_audit_pkg.snap('DCT_SYSTEM_SETTINGS','setting_key', [COLON]setkey);
   END IF;
   MERGE INTO dct_system_settings t
   USING (SELECT [COLON]setkey AS k FROM dual) s
@@ -1261,6 +1329,11 @@ BEGIN
           ELSE 'GENERAL' END,
      'N', l_user);
   COMMIT;
+  IF NOT l_secret THEN
+    l_new := dct_audit_pkg.snap('DCT_SYSTEM_SETTINGS','setting_key', [COLON]setkey);
+  END IF;
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_SYSTEM_SETTINGS', [COLON]setkey, 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -2074,6 +2147,7 @@ DECLARE
   l_module_id NUMBER := NULL;
   l_mod_code  VARCHAR2(50);
   l_id        NUMBER;
+  l_new       CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -2101,6 +2175,8 @@ BEGIN
     'ACTIVE', l_user, l_user
   ) RETURNING delegation_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_DELEGATIONS','delegation_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_DELEGATIONS', TO_CHAR(l_id), 'ADMIN', p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -2117,6 +2193,8 @@ DECLARE
   l_user      VARCHAR2(100) := dct_rest.validate_session;
   l_uid       NUMBER;
   l_delegator NUMBER;
+  l_old       CLOB;
+  l_new       CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -2124,10 +2202,14 @@ BEGIN
   IF l_delegator != l_uid AND NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
     dct_rest.err(403,'Only the delegator or SYS_ADMIN may cancel a delegation'); RETURN;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_DELEGATIONS','delegation_id', TO_CHAR([COLON]id));
   UPDATE dct_delegations SET
     status = 'CANCELLED', updated_by = l_user, updated_at = SYSTIMESTAMP
   WHERE delegation_id = [COLON]id AND status = 'ACTIVE';
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_DELEGATIONS','delegation_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'CANCEL','DCT_DELEGATIONS', TO_CHAR([COLON]id), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
@@ -2189,6 +2271,7 @@ DECLARE
   l_module_id NUMBER := NULL;
   l_mod_code  VARCHAR2(50);
   l_id        NUMBER;
+  l_new       CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
@@ -2218,6 +2301,8 @@ BEGIN
     l_user, l_user
   ) RETURNING announcement_id INTO l_id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_ANNOUNCEMENTS','announcement_id', TO_CHAR(l_id));
+  dct_audit_pkg.log(l_user,'CREATE','DCT_ANNOUNCEMENTS', TO_CHAR(l_id), 'ADMIN', p_new=>l_new);
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -2234,6 +2319,8 @@ DECLARE
   l_user      VARCHAR2(100) := dct_rest.validate_session;
   l_module_id NUMBER := NULL;
   l_mod_code  VARCHAR2(50);
+  l_old       CLOB;
+  l_new       CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
@@ -2244,6 +2331,7 @@ BEGIN
   IF l_mod_code IS NOT NULL THEN
     SELECT module_id INTO l_module_id FROM dct_modules WHERE module_code = l_mod_code;
   END IF;
+  l_old := dct_audit_pkg.snap('DCT_ANNOUNCEMENTS','announcement_id', TO_CHAR([COLON]id));
   UPDATE dct_announcements SET
     title_en  = NVL(APEX_JSON.get_varchar2(p_path => 'titleEn'), title_en),
     title_ar  = CASE WHEN APEX_JSON.does_exist(p_path => 'titleAr')
@@ -2268,6 +2356,9 @@ BEGIN
     updated_by = l_user, updated_at = SYSTIMESTAMP
   WHERE announcement_id = [COLON]id;
   COMMIT;
+  l_new := dct_audit_pkg.snap('DCT_ANNOUNCEMENTS','announcement_id', TO_CHAR([COLON]id));
+  dct_audit_pkg.log(l_user,'UPDATE','DCT_ANNOUNCEMENTS', TO_CHAR([COLON]id), 'ADMIN',
+                    p_old=>l_old, p_new=>l_new);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
