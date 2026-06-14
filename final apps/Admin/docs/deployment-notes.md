@@ -17,6 +17,7 @@
 | Deploy `final apps/shared/` | The shared layer (`platform.css`, `shell.js`, `i18n.js`, `chartLoader.js`, components) is referenced at `../shared/` by ALL apps. Any change to it requires an APP_VERSION bump in **all 7 apps'** index.html (precedent: the 4.1.1 wave bump). |
 | Check `js/services/config.js` | `apiBase: '/ords/admin/dct'` (live). Never ship `apiBase: null` (mock) to production. |
 | Chart.js | Never `<script>`-tag it — loaded via requirejs `chartjs` path, created via `shared/chartLoader.makeChart`. |
+| Update `docs/functions_list.md` | If this deploy added/removed/renamed any view, viewModel method, service, or ORDS endpoint, reflect it in the functional inventory (see root `CLAUDE.md` → "Functions List"). |
 
 ## 2. Database deployment (PROD schema, via SQLcl)
 
@@ -26,6 +27,7 @@ Platform-wide SQLcl rules (apply to every script):
 - `prod_mcp` connects as ADMIN — prefix all objects: `CREATE OR REPLACE PACKAGE prod.x …`.
 - `SET DEFINE OFF` at the top of every script (`&` in literals hangs SQLcl).
 - Deploy scripts must be **CRLF** — SQLcl 26.1 silently skips ALL statements in LF-only files run via `@`.
+- **Any script containing Arabic (or non-ASCII) literals MUST be run with `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8`** (PowerShell: `$env:JAVA_TOOL_OPTIONS="-Dfile.encoding=UTF-8"`). Without it SQLcl reads the file as the Windows code page and the Arabic is **silently destroyed** before it reaches the AL32UTF8 column — either as literal `?` or as lossy mojibake. The DB/ORDS/JET write paths are all UTF-8-clean; this is purely a SQLcl file-read issue. Diagnose with `SELECT DUMP(col,1016)` (clean Arabic = `d8`/`d9` lead bytes; corruption = `3f` repeated, or Latin-1 bytes). This destroyed 31 reference values once — see `db/v2/25`.
 - No SQL keywords (MERGE/DECLARE/CREATE PROCEDURE) in leading `--` banner comments — SQLcl silently skips the following statement. Diagnose with `SET ECHO ON`.
 - `INSERT ALL` + IDENTITY columns → ORA-00001. Use one `INSERT INTO` per row.
 - Never close date ranges with `TRUNC(SYSDATE)` when `start_date` defaults to SYSDATE-with-time (ORA-02290) — use `GREATEST(SYSDATE, start_date)`.
@@ -45,6 +47,7 @@ Script inventory (`db/v2/`, run order = `install.sql` 01→12, then numbered pat
 | `21` UAT cleanup | rerunnable | Parks `uat.auto.*` users, closes their sessions, drops `UAT_WAVE_FLOW~V%` archives |
 | `22` region theme | ✅ 2026-06-13 | Five `THEME_REGION_*` settings (header fill/font + border color/width/style): system rows (APPEARANCE), override rows in ALL `dct_modules` (26 × 5, NULL = inherit), `chk_dct_set_type` widened (+COLOR/SELECT), `/dct/boot` whitelist + `THEME_REGION_%`. Rerunnable. |
 | `24` audit snapshots | ✅ 2026-06-13 | `DCT_AUDIT_PKG` (`snapshots_on` ×2 / `snap` / `log`) + ADMIN synonym + `FEATURE_AUDIT_SNAPSHOTS` (global default) **and 7 per-module switches** `FEATURE_AUDIT_SNAPSHOTS_<ADMIN\|PC\|DT\|HR\|FL\|CC\|AR>` (all BOOLEAN, default **N**). Powers the audit-diff modal. Rerunnable; run in its own fresh session. After deploy, **re-run every module's ORDS script** (11 + PC/DT/HR/FL/CC/AR) so their write handlers capture before/after snapshots. |
+| `25` Arabic encoding repair | ✅ 2026-06-13 | One-time data repair: re-supplies correct Arabic for 31 values destroyed by earlier seed runs (SQLcl read the .sql as the Windows code page, not UTF-8). Fixed: `DCT_USERS.display_name_ar` (ADMIN, was literal `?`), `DCT_ROLES.role_name_ar` ×6, `DCT_LOOKUP_CATEGORIES.category_name_ar` ×4, `DCT_LOOKUP_VALUES.value_name_ar` ×20 (all FL). The stored corruption was **unrecoverable** (mojibake collapsed every Arabic letter whose UTF-8 trailing byte was 0x80–0x9F to one char), so values were re-keyed by business code. Idempotent/rerunnable. **MUST run with `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8`** or it re-corrupts. |
 
 ### Audit snapshots (db/v2/24) — how it works
 - **Per-module control.** Each module has its own switch `FEATURE_AUDIT_SNAPSHOTS_<CODE>` (CODE = the audit module code ADMIN/PC/DT/HR/FL/CC/AR), default **N**, on System Settings → FEATURES. `FEATURE_AUDIT_SNAPSHOTS` (no suffix) is the **default applied to any module without its own switch** (none today — it's a safety net for future modules). Resolution: module switch (Y/N) wins; else the global default; else off.

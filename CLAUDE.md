@@ -198,8 +198,70 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 | HR (App 205) | ✅ Complete (ORDS live) | ✅ Complete (live) | ⬜ Pending in Builder |
 | Freelancers (App 203) | ✅ Complete (`fl.rest` live `/fl/`; DCT_FL_PKG workflow engine) | ✅ Complete (live, 17 views, #7C4DBE) | ⬜ Not started |
 | Credit Cards (App 202) | ✅ Complete (`cc.rest` live `/cc/`; thin handlers over DCT_CC_PKG) | ✅ Complete (live, 13 views, #B0721E) | ⬜ Not started |
+| Task Management (App 207) | ✅ Complete (`tm.rest` live `/tm/`; DCT_TM_PKG + DCT_TM_REMINDER_PKG) | ✅ Complete (live, 10 views, #0E8A8A) | ⬜ Not started |
 
 Full evaluation + phased action plan: `assessment-3/` (2026-06-11). Phase 1 executed + tested — report in `assessment-3/phase1/`. Phase 2 (data-model convergence: natural-key masters, unified tables, lookup-first, 22 FKs, CC+FL adoption) executed + tested 2026-06-11 — report in `assessment-3/phase2/`. Phase 3 (frontend foundation: `final apps/shared/` layer, page-level shell with module switcher, EN/AR i18n+RTL, tri-state lists, server pagination on users/audit/pc-all/dt-requests/hr-employees, Chart.js dashboards ×4, new `/dct/stats/` + `/dct/prefs/` endpoints) executed + tested 2026-06-11 — report in `assessment-3/phase3/`. Phase 4 (FL + CC apps: `fl.rest`+`cc.rest`, FL JET ×17 + CC JET ×13 views, unified approvals inbox covering all 4 modules with delegation-aware pending + `actingFor`, new `/dct/delegations/` + `/dct/announcements/` endpoints, Admin Delegations/Announcements pages, shared-shell announcement banner in all apps, switcher flipped live for FL/CC, UAT workbooks FL 35 / CC 29 / Admin v2 64 cases) executed + tested 2026-06-12 — report in `assessment-3/phase4/`. Platform sweep job `DCT_APPROVAL_PKG` (db/v2/14) activates approval escalation/auto-approve daily 07:10.
+
+---
+
+## Adding a New Module App — Requirements Checklist
+
+**This is the canonical checklist for building ANY new module app. Keep it here and extend it whenever a new requirement is learned.** It encodes hard-won lessons (the TM/App 207 build hit every one of these). Treat each item as mandatory unless the user explicitly waives it. Model the new app on the most recent complete module (CC or TM), not on older ones.
+
+### 0. Plan & approval
+- Produce a written plan (`final apps/<App>/<APP>_PLAN.md`) and get explicit approval **before** implementing. Build **layer-by-layer** (DB → package/views → ORDS → frontend → jobs → docs/UAT), deploying and verifying each layer before the next.
+- Include the **full functional-test strategy** in the plan (Unit, System, UAT, Regression) covering Happy Path, Edge Cases, Error Handling (400/401/403/404/500) and Boundary Values.
+
+### 1. Identity & scaffold
+- Allocate App number, `module_code`, brand colour, ORDS base `/ords/admin/<mod>/`, package(s) `<mod>.rest` + `DCT_<MOD>_PKG`.
+- Folder structure **mirrors CC**: `final apps/<App>/` with `Jet/`, `db/`, `tests/`, `docs/`, `UAT/`, `guides/`, `STATUS.md`, `<APP>_PLAN.md`.
+- Register the app in `final apps/shared/js/shell.js` MODULES array **and** `shared/i18n/common.en.json` + `common.ar.json` (`mod.<key>` + `.desc`).
+- Add the app to `SIBLING_APPS` in **every** app's `dev-proxy.py` (all of them — the switcher uses root-absolute `/<App>/Jet/` URLs).
+- Add the app to this file's **Module Status** table.
+
+### 2. Auth & shell (shared session — never a private login)
+- Production auth is via **App 200 (Admin)**. The app has NO real login: when no `ifinance_jet_session` exists it redirects to `../Admin/Jet/index.html`. Only Admin writes the session.
+- **Scrub copy artifacts** when cloning another app: `login.html` brand cube/title/subtitle, `authService.js` header comment + role-helper method names, `config.js` (`apiBase`/`authBase`/`adminPortalUrl`). Shipping the source app's branding is a defect (TM shipped an "HR" login cube).
+- Bump `window.APP_VERSION` in the app's `Jet/index.html` on every frontend deploy. **A change under `final apps/shared/` requires bumping `APP_VERSION` in ALL apps.**
+
+### 3. Frontend — USE the shared platform design system (NON-NEGOTIABLE)
+- `final apps/shared/css/platform.css` is the ONE structural stylesheet. Build views with the **platform classes**, never bespoke ones: `.form-grid`/`.form-group`/`.form-label`/`.form-control`; `.modal-overlay`/`.modal-box`/`.modal-header`/`.modal-body`; `.data-table`(+`.data-table-wrap`); `.btn`/`.btn-primary`/`.btn-secondary`/`.btn-sm`; `.card`, `.badge`, `.empty-state`, `.avatar`; `.page-header-row`+`.page-actions`; `.section-heading-row`+`.region-actions`.
+- **Do NOT invent `.input` / `.modal` / `.modal-backdrop` markup, and do NOT wrap KO-bound inputs in `<label>`.** This bespoke markup is exactly what made TM "look different / fields misaligned" — the #1 visual-divergence cause. `app.css` holds ONLY brand tokens (`--brand`/`--brand-rgb`/`--brand-dark`/`--brand-soft`) plus a few genuinely module-specific component styles; never copy platform structure into it.
+- Action buttons (Save/Submit/Back/Cancel/Confirm/Edit) sit **top-right** (page/region/modal header), never in a bottom form bar.
+- EN/AR + RTL; Latin digits. Chart.js only via requirejs `chartjs` + `shared/chartLoader.makeChart` — never a `<script>` tag.
+- **KO gotchas (each has bitten us):** use `$vm.method()` for VM calls inside `foreach`/`with`; **APEX_JSON omits NULL keys** so bind every nullable field as `$data.field` (a bare `text: field` throws `ReferenceError: field is not defined` and blanks the row); a `ko.computed` only re-runs when an **observable** dependency changes — make late-set values (`myUid`, etc.) `ko.observable`; never wrap a KO checkbox/toggle in `<label>`; container `click:` handlers must `return true`; never `ko.cleanNode` an element's own binding.
+
+### 4. Functional completeness — never ship read-only where management is expected
+- Every entity/artifact gets **full CRUD from the UI** (create / edit / remove), inline role/status changes, and detail pages that show **ALL** fields — not read-only tables. (TM round 1 shipped read-only members/milestones/meetings, no team edit, no task assignment — all rejected.)
+- Provide pickers from real data (e.g. a `GET /<mod>/users` endpoint to choose people from `DCT_USERS`).
+- **Reuse the unified shared tables** — `DCT_DOCUMENTS` (`source_module='<MOD>'`), `DCT_REQUEST_STATUS_HISTORY`, `DCT_LOOKUP_VALUES`; do not create private doc/attachment/status tables.
+- **Audit state transitions** (assignment/reassignment, status changes) so they are traceable in an activity feed / status history.
+
+### 5. i18n
+- Every `t('…')` key MUST exist in **both** `Jet/js/i18n/app.en.json` and `app.ar.json`. A missing key renders the raw key string to users. Add keys as you add views.
+
+### 6. Database (PROD schema)
+- **Lookup-first:** status/enum sets live in `DCT_LOOKUP_VALUES`; call `DCT_LOOKUP_PKG.validate_lookup`; no status CHECK constraints on new tables.
+- Run all scripts via **SQLcl** `sql -name prod_mcp` (never the MCP `run-sql` tool). Every script: `SET DEFINE OFF`, `SET SQLBLANKLINES ON`, **CRLF** line endings, **UTF-8 no BOM**, keyword-free `--` comment banners. Schema-qualify objects (`CREATE … prod.<obj>`).
+- Oracle quirks: no filtered indexes (use function-based unique indexes); `INSERT ALL` + IDENTITY → ORA-00001 (use individual `INSERT`s); package-private functions can't be used in SQL DML → publish helpers in the package spec (PLS-00231); never end-date rows with `TRUNC(SYSDATE)` when the start defaults to `SYSDATE` (use `GREATEST`).
+
+### 7. ORDS (on ADB)
+- Modules register under **ADMIN** at `/ords/admin/<mod>/`. Every PROD object referenced in a handler needs an **ADMIN→PROD synonym**. Run the ORDS/synonym script in a **fresh SQLcl session** (must not follow `ALTER SESSION SET CURRENT_SCHEMA=PROD`, or synonyms self-reference → ORA-01471).
+- `validate_session(:body)` at the top of every protected handler; `q'[...]'` literals; output via `APEX_JSON`. Error mapping: `-20401→401, -20403→403, -20404→404, -20001/-20090→400, else 500`.
+- Bearer token arrives under CGI key `AUTHORIZATION` on ADB (no `HTTP_` prefix) — `DCT_REST.VALIDATE_SESSION` handles it; don't regress. The shared `api.js` only sets `Content-Type` when a body exists (body-less GET/DELETE with `application/json` 400s on ORDS).
+
+### 8. Testing & the UAT package (Admin convention — required deliverable)
+- Tiers: PL/SQL unit (standalone assert harness — utPLSQL is NOT installed on this ADB), API (pytest), System/E2E (Playwright via the `webapp-testing` skill), Regression, UAT. Cover Happy / Edge / Error(400/401/403/404/500) / Boundary.
+- **The UAT package MUST follow the Admin layout** (not a markdown case list):
+  - reusable master `final apps/<App>/UAT/UAT_<App>_TestScript.xlsx` at the UAT root;
+  - one folder per trial `final apps/<App>/UAT/UAT_<App>_round<N>-dd-mm-yyyy/` holding the dated workbook `UAT_<App>_<dd-Mon-yyyy>-NN.xlsx` (statuses filled), the Word results `UAT_<App>_Results_<dd-Mon-yyyy>-NN.docx`, and `evidence_<dd-Mon-yyyy>-NN/` (one screenshot per case).
+  - Round numbers are **global-sequential per app**; **never overwrite a prior round**. Same convention for `guides/` (`GUIDE_<App>_round<N>-…` + `assets/`).
+- Build the runner on the established pattern `assessment-3/phase4/tests/uat_run_<app>.py` (Playwright + ORDS hybrid; model on `uat_run_cc.py` / `uat_run_tm.py`). It emits the workbook(s) + Word doc + evidence.
+- **Live-run gotchas:** module apps redirect to Admin for auth, so after quick-login load `http://localhost:<port>/index.html` (the app root) **once a session exists** — relative view paths 404 under `/Admin/Jet/` otherwise. The platform modal backdrop trips Playwright's strict hit-test on modal header buttons (even `force=True` lands on the backdrop) → fire the bound handler with `locator.evaluate('el => el.click()')`. Kanban/native HTML5 DnD can't be driven by `drag_to` → dispatch real `DragEvent`s. Run ONE dev-proxy at a time on 8080, or give each runner its own port.
+
+### 9. Documentation (per module, kept current)
+- `docs/deployment-notes.md` (deploy checklist + history + app-specific gotchas — **update on every deploy**), `STATUS.md` (per-layer status + deployment log), `<APP>_PLAN.md`, and `guides/`.
+- Update the persistent memory project entry and this CLAUDE.md (Module Status row) when the app ships.
 
 ---
 
@@ -214,6 +276,8 @@ Two skills are configured in `skills-lock.json`:
 ## Conventions
 
 **Deployment notes (2026-06-13):** every app has a deployment runbook at `final apps/<App>/docs/deployment-notes.md` (Admin, PC, DT, HR, FL, CC, AR). It holds the app's deploy checklist (APP_VERSION bump, DB script order, ORDS/synonym rules, smoke test) plus the app's deployment history and gotchas. **Update the relevant file with EVERY deployment** — new DB scripts, ORDS changes, frontend ships, and any new gotcha discovered during deployment go there. Admin's file (§2) carries the canonical platform-wide SQLcl/ORDS rules; the others reference it. Key universal rule: bump `window.APP_VERSION` in the app's `Jet/index.html` on every frontend deploy (it drives the requirejs + i18n cache key; deployed browsers serve stale files without it), and a change to `final apps/shared/` requires the bump in **all 7 apps**.
+
+**Functions List (2026-06-14):** every app has a functional inventory at `final apps/<App>/docs/functions_list.md` (Admin, AR, CC, DT, FL, HR, PC, TM). It lists **all user-facing functions** the app exposes, grouped by functional area — each area maps to a view (`Jet/js/views/<x>.html` + `viewModels/<x>.js`), and each bullet is a public `self.<method>` on that viewModel — plus an **API Endpoints (ORDS)** table (method + path, from the app's `db/<n>_<code>_ords.sql`; Admin's is `db/v2/11_dct_ords.sql`) and a Services/Data-layer table. **This is a MANDATORY maintenance artifact: any time you add, remove, or rename a view, a viewModel method, a service, OR an ORDS endpoint in `final apps/<App>/Jet/` or the app's ORDS script, update that app's `functions_list.md` in the SAME change.** Adding a brand-new view → add its functional-area section; new method → add its bullet; new/changed ORDS handler → update the API Endpoints table; removed/renamed → reflect it. A change to a function or shared endpoint exposed across all apps (e.g. via `final apps/shared/` or the shared `/dct/` module) updates every app's file. Treat it as part of "done", like the deployment note and the APP_VERSION bump.
 
 **UAT & guide artifacts — one folder per trial/round (2026-06-13):** every UAT trial lives in its own folder under `final apps/<App>/UAT/` named `UAT_<App>_round<N>-dd-mm-yyyy` (round number is **global sequential per app**, ordered chronologically; e.g. `UAT_Admin_round2-13-06-2026`). Each round folder holds that trial's workbook (`.xlsx`), results doc (`UAT_<App>_Results_*.docx`), and `evidence_*` screenshot folder — group by run date even when the workbook and results/evidence seq numbers differ. Reusable `TestScript` template workbooks stay at the `UAT/` root, outside the round folders. The **same convention applies to `final apps/<App>/guides/`**: each generated guide version goes in `GUIDE_<App>_round<N>-dd-mm-yyyy`, holding the guide doc **and its `assets/` folder** (the generated diagrams + cropped screenshots embedded in that version — the guide's equivalent of a UAT `evidence_*` folder). Only the reusable generator script (e.g. `generate_freelancer_guide.py`) stays at the `guides/` root. When generating a new trial/guide, write a new round folder — never overwrite a prior one.
 

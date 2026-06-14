@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 dev-proxy.py — i-Finance local dev server
   - Serves static files from this directory (Admin/Jet)
@@ -19,7 +19,7 @@ PORT = 8080
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 APPS_ROOT  = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))   # 'final apps'
 SHARED_DIR = os.path.join(APPS_ROOT, 'shared')
-SIBLING_APPS = ('Admin', 'PC', 'DT', 'HR', 'FL', 'CC', 'AR')
+SIBLING_APPS = ('Admin', 'PC', 'DT', 'HR', 'FL', 'CC', 'AR', 'TM')
 
 
 class DevProxyHandler(http.server.SimpleHTTPRequestHandler):

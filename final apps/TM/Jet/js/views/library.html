@@ -1,0 +1,28 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('tm.library.title')"></h1>
+  </div>
+  <div style="margin-bottom:14px;">
+    <input class="input" type="text" data-bind="textInput: search, event:{ keyup: function(d,e){ if(e.keyCode===13) load(); return true; } }" placeholder="Search documents…" style="max-width:260px">
+    <button class="btn btn-sm" data-bind="click: load">Search</button>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <!-- ko if: docs().length === 0 --><div class="empty-state" data-bind="text: t('tm.library.empty')"></div><!-- /ko -->
+  <!-- ko if: docs().length > 0 -->
+  <table class="data-table">
+    <thead><tr><th>File</th><th>Type</th><th>Source</th><th>Uploaded By</th><th>Date</th></tr></thead>
+    <tbody data-bind="foreach: docs">
+      <tr>
+        <td data-bind="text: fileName"></td>
+        <td data-bind="text: docTypeName || '—'"></td>
+        <td data-bind="text: sourceType + ' #' + sourceId"></td>
+        <td data-bind="text: uploadedBy || '—'"></td>
+        <td data-bind="text: createdAt"></td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

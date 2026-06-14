@@ -14,6 +14,7 @@
   "mod.fl": "Freelancers", "mod.fl.desc": "Contracts & payment vouchers",
   "mod.cc": "Credit Cards", "mod.cc.desc": "Cards & monthly replenishments",
   "mod.ar": "Accounts Receivable", "mod.ar.desc": "Event P&L analysis & revenue assurance",
+  "mod.tm": "Task Management", "mod.tm.desc": "Teams, objectives, tasks & deliverables",
 
   "common.search": "Search…",
   "common.loading": "Loading…",

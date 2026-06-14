@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Management — i-Finance</title>
+  <link rel="stylesheet" href="https://static.oracle.com/cdn/jet/17.0.0/default/css/redwood/oj-redwood-min.css">
+  <!-- Shared platform layer (Phase 3) — edit /shared/css/platform.css once for all apps -->
+  <link rel="stylesheet" href="/shared/css/platform.css">
+  <link rel="stylesheet" href="/shared/css/themes.css">
+  <!-- App layer: brand tokens + module-specific rules only -->
+  <link rel="stylesheet" href="css/app.css">
+  <style>
+    .login-mode .topbar,
+    .login-mode .side { display: none !important; }
+    .login-mode .layout { grid-template-columns: 1fr; padding-block-start: 0; }
+    .login-mode .app-content { height: 100vh; background: transparent; }
+  </style>
+</head>
+<body>
+<div id="globalBody" data-bind="css: { 'login-mode': isLoginPage() }">
+
+  <!-- ── Top bar — common suite chrome + module switcher ─────────────── -->
+  <header class="topbar" data-bind="visible: !isLoginPage()">
+    <button class="tb-btn" data-bind="click: toggleNav" title="Toggle navigation">
+      <span class="hdr-icon">&#9776;</span>
+    </button>
+    <span class="suite">
+      <span class="suite-cube">iF</span>
+      <span data-bind="text: t('suite.name')"></span>
+    </span>
+    <span class="sep"></span>
+
+    <div class="modsw" data-bind="css: { open: modswOpen() }">
+      <button class="modsw-btn" data-bind="click: toggleModsw, clickBubble: false">
+        <span class="dot"></span>
+        <span data-bind="text: t(currentModule.nameKey)"></span>
+        <span class="app" data-bind="text: 'APP ' + currentModule.app"></span>
+        <span class="chev">&#9660;</span>
+      </button>
+      <div class="modsw-menu" data-bind="clickBubble: false">
+        <div class="modsw-head" data-bind="text: t('suite.modules')"></div>
+        <!-- ko foreach: modules -->
+        <div class="modsw-item"
+             data-bind="css: { cur: $data.key === $root.currentModule.key, soon: $data.soon },
+                        click: function () { $root.switchModule($data); }">
+          <span class="dot" data-bind="style: { background: $data.color }"></span>
+          <div>
+            <div class="nm" data-bind="text: $root.t($data.nameKey)"></div>
+            <div class="ds" data-bind="text: $root.t($data.descKey)"></div>
+          </div>
+          <!-- ko if: $data.soon --><span class="soon-b" data-bind="text: $root.t('shell.soon')"></span><!-- /ko -->
+          <!-- ko ifnot: $data.soon --><span class="app" data-bind="text: 'APP ' + $data.app"></span><!-- /ko -->
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <div class="head-end">
+      <div class="lang-pill">
+        <button data-bind="click: function(){ setLang('en'); }, css: { on: lang() === 'en' }">EN</button>
+        <button data-bind="click: function(){ setLang('ar'); }, css: { on: lang() === 'ar' }">&#1593;</button>
+      </div>
+      <button class="tb-btn" data-bind="click: function(){ navigate('notifications'); }" title="Notifications">
+        &#128276;
+        <span class="tb-dotn" data-bind="visible: unreadCount() > 0, text: unreadCount" style="display:none"></span>
+      </button>
+      <div class="tb-userwrap" data-bind="click: toggleUserMenu">
+        <div class="tb-avatar"
+             data-bind="style: { background: currentUser() && currentUser().color || '' },
+                        text: userInitials"></div>
+        <div class="tb-who">
+          <b data-bind="text: currentUser() && currentUser().displayName"></b>
+          <span data-bind="text: currentUser() && (currentUser().roles || []).slice(0, 1).join('')"></span>
+        </div>
+        <span class="chevron-down">&#9660;</span>
+
+        <div class="user-dropdown" data-bind="visible: userMenuOpen" style="display:none">
+          <div class="dd-user-info">
+            <div class="dd-avatar"
+                 data-bind="style: { background: currentUser() && currentUser().color || '' },
+                            text: userInitials"></div>
+            <div>
+              <div class="dd-name"  data-bind="text: currentUser() && currentUser().displayName"></div>
+              <div class="dd-email" data-bind="text: currentUser() && currentUser().email"></div>
+            </div>
+          </div>
+          <div class="dd-divider"></div>
+          <button class="dd-item dd-item--danger" data-bind="click: logout,
+                                             text: '➞ ' + t('shell.logout')"></button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Layout: full-height side navigation + work surface ──────────── -->
+  <div class="layout" data-bind="css: { 'layout--nav-closed': !sideNavOpen() }">
+
+    <nav class="side" data-bind="visible: !isLoginPage()">
+      <div class="side-logo">
+        <span class="brand-cube">TM</span>
+        <div>
+          <div class="nm" data-bind="text: t(currentModule.nameKey)"></div>
+          <div class="sb">i-FINANCE · APP 207</div>
+        </div>
+      </div>
+
+      <!-- ko foreach: navGroups() -->
+
+      <!-- ko if: $data.standalone -->
+      <!-- ko foreach: $data.items -->
+      <a class="nav-item" href="#"
+         data-bind="css: { 'nav-item--active': $root.currentNavItem() === $data.id },
+                    click: function(){ $root.navigate($data.id); return false; }">
+        <span class="bullet"></span>
+        <span class="nav-label" data-bind="text: $root.t($data.labelKey)"></span>
+      </a>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- ko ifnot: $data.standalone -->
+      <div class="nav-group-header" data-bind="click: $root.toggleGroup.bind($root, $data)">
+        <span class="nav-chevron" data-bind="css: { 'nav-chevron--expanded': !$data.collapsed() }">&#9654;</span>
+        <span class="nav-group-label" data-bind="text: $root.t($data.labelKey)"></span>
+      </div>
+      <!-- ko ifnot: $data.collapsed() -->
+      <!-- ko foreach: $data.items -->
+      <a class="nav-item nav-item--child" href="#"
+         data-bind="css: { 'nav-item--active': $root.currentNavItem() === $data.id },
+                    click: function(){ $root.navigate($data.id); return false; }">
+        <span class="bullet"></span>
+        <span class="nav-label" data-bind="text: $root.t($data.labelKey)"></span>
+      </a>
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- /ko -->
+
+      <div class="side-foot" data-bind="text: 'v4.5 · ' + t('shell.sharedShell')"></div>
+    </nav>
+
+    <!-- ── Work surface ───────────────────────────────────────────────── -->
+    <main class="app-content" data-bind="click: closeUserMenu">
+      <div data-bind="module: moduleConfig" class="app-module-host"></div>
+    </main>
+
+  </div><!-- /.layout -->
+
+</div><!-- /#globalBody -->
+
+<script>window.APP_VERSION = '4.5.1'; /* bump per deploy — drives requirejs urlArgs cache key */</script>
+<script src="https://static.oracle.com/cdn/jet/17.0.0/3rdparty/require/require.js"
+        data-main="js/main"></script>
+</body>
+</html>

@@ -1,0 +1,37 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('tm.prefs.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: save, text: t('tm.action.save')"></button>
+    </div>
+  </div>
+
+  <!-- ko ifnot: loading -->
+  <div class="card" style="max-width:560px;">
+    <div class="form-row" style="margin-bottom:14px;">
+      <label data-bind="text: t('tm.prefs.leadDays')" style="display:block; font-weight:600; margin-bottom:4px;"></label>
+      <input class="input" type="number" min="0" max="365" data-bind="value: leadDays" style="max-width:120px">
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <input type="checkbox" data-bind="checked: remindOverdue">
+      <span data-bind="text: t('tm.prefs.remindOverdue')"></span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <input type="checkbox" data-bind="checked: inapp">
+      <span data-bind="text: t('tm.prefs.inapp')"></span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+      <input type="checkbox" data-bind="checked: email">
+      <span data-bind="text: t('tm.prefs.email')"></span>
+    </div>
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:14px;">
+      <input type="checkbox" data-bind="checked: digest">
+      <span data-bind="text: t('tm.prefs.digest')"></span>
+    </div>
+    <div class="form-row">
+      <label data-bind="text: t('tm.prefs.digestHour')" style="display:block; font-weight:600; margin-bottom:4px;"></label>
+      <input class="input" type="number" min="0" max="23" data-bind="value: digestHour" style="max-width:120px">
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

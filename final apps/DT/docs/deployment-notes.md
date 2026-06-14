@@ -10,6 +10,7 @@
 ## 1. Frontend (JET SPA) deployment
 
 - Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.4.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- **Update `docs/functions_list.md`** if this deploy added/removed/renamed any view, viewModel method, service, or ORDS endpoint (functional inventory — see root `CLAUDE.md` → "Functions List").
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
 - DT API-mode patterns: submit goes through the `/submit` endpoint (not a status-field PUT); use `_norm()` where mock/ORDS field names differ.

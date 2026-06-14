@@ -1,0 +1,43 @@
+<div class="login-page">
+  <div class="login-card">
+    <div class="login-logo">
+      <div class="login-cube">TM</div>
+      <div class="login-title">Task Management</div>
+      <div class="login-subtitle">DCT i-Finance — Task Management</div>
+    </div>
+
+    <!-- ko if: error() -->
+    <div class="login-error" data-bind="text: error"></div>
+    <!-- /ko -->
+
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Username</label>
+      <input class="form-control" type="text" placeholder="Enter username"
+             data-bind="value: username, valueUpdate: 'input',
+                        event: { keypress: function(d,e){ if(e.keyCode===13) doLogin(); } }">
+    </div>
+    <div class="form-group" style="margin-bottom:18px">
+      <label class="form-label">Password</label>
+      <input class="form-control" type="password" placeholder="Enter password"
+             data-bind="value: password, valueUpdate: 'input',
+                        event: { keypress: function(d,e){ if(e.keyCode===13) doLogin(); } }">
+    </div>
+
+    <button class="btn btn-primary" style="width:100%" data-bind="click: doLogin, disable: loading()">
+      <!-- ko if: loading() -->Signing in…<!-- /ko -->
+      <!-- ko ifnot: loading() -->Sign In<!-- /ko -->
+    </button>
+
+    <div class="login-quick">
+      <div class="login-quick-label">Quick Login</div>
+      <div class="quick-btns">
+        <!-- ko foreach: quickLogins -->
+        <div class="quick-btn" data-bind="click: $parent.quickLogin.bind($parent, $data)">
+          <span data-bind="text: label"></span>
+          <span data-bind="text: role"></span>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+</div>

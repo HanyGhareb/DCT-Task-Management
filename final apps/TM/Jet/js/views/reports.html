@@ -1,0 +1,38 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('tm.reports.title')"></h1>
+  </div>
+
+  <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:18px;">
+    <!-- ko foreach: reportList -->
+    <span class="badge badge--info" data-bind="text: $vm.t($data)"></span>
+    <!-- /ko -->
+  </div>
+
+  <div class="section-heading" data-bind="text: t('tm.report.progress')"></div>
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <table class="data-table">
+    <thead><tr>
+      <th data-bind="text: t('tm.teams.title')"></th>
+      <th>Class</th>
+      <th data-bind="text: t('tm.teams.objectives')"></th>
+      <th data-bind="text: t('tm.teams.tasks')"></th>
+      <th>% Done</th>
+      <th data-bind="text: t('tm.teams.overdue')"></th>
+      <th>Health</th>
+    </tr></thead>
+    <tbody data-bind="foreach: teams">
+      <tr>
+        <td data-bind="text: nameEn"></td>
+        <td data-bind="text: $data['class']"></td>
+        <td data-bind="text: objectiveCount"></td>
+        <td data-bind="text: taskDone + ' / ' + taskCount"></td>
+        <td data-bind="text: $vm.pct(taskDone, taskCount) + '%'"></td>
+        <td><span data-bind="css:{ 'is-overdue': taskOverdue>0 }, text: taskOverdue"></span></td>
+        <td><span data-bind="css: $vm.ragClass(health), text: health"></span></td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+</div>

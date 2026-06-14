@@ -1,0 +1,45 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('tm.dashboard.title')"></h1>
+  </div>
+
+  <!-- ko if: loading -->
+  <div class="muted" data-bind="text: t('tm.common.loading')"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <div class="kpi-row">
+    <div class="kpi" style="cursor:pointer" data-bind="click: function(){ go('teams'); }">
+      <div class="kpi__n" data-bind="text: k().myTeams || 0"></div>
+      <div class="kpi__l" data-bind="text: t('tm.kpi.myTeams')"></div>
+    </div>
+    <div class="kpi" style="cursor:pointer" data-bind="click: function(){ go('myWork'); }">
+      <div class="kpi__n" data-bind="text: k().myOpenTasks || 0"></div>
+      <div class="kpi__l" data-bind="text: t('tm.kpi.myOpenTasks')"></div>
+    </div>
+    <div class="kpi" style="cursor:pointer" data-bind="click: function(){ go('myWork'); }">
+      <div class="kpi__n is-overdue" data-bind="text: k().myOverdue || 0"></div>
+      <div class="kpi__l" data-bind="text: t('tm.kpi.myOverdue')"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__n" data-bind="text: k().openRisks || 0"></div>
+      <div class="kpi__l" data-bind="text: t('tm.kpi.openRisks')"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__n" data-bind="text: k().deliverablesDue || 0"></div>
+      <div class="kpi__l" data-bind="text: t('tm.kpi.deliverablesDue')"></div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+    <div class="card">
+      <div class="section-heading" data-bind="text: t('tm.chart.health')"></div>
+      <div style="height:240px"><canvas id="tmHealthChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="section-heading" data-bind="text: t('tm.chart.class')"></div>
+      <div style="height:240px"><canvas id="tmClassChart"></canvas></div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

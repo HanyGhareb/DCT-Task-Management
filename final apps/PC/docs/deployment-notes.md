@@ -10,6 +10,7 @@
 ## 1. Frontend (JET SPA) deployment
 
 - Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.4.0`) — drives requirejs + i18n cache key; deployed browsers serve stale files without it.
+- **Update `docs/functions_list.md`** if this deploy added/removed/renamed any view, viewModel method, service, or ORDS endpoint (functional inventory — see root `CLAUDE.md` → "Functions List").
 - Deploy `final apps/shared/` alongside (referenced at `../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → `apiBase` must point at the live `/ords/admin/pc` path (plus `/ords/admin/dct` for shared endpoints), never `null` (mock).
 - Chart.js via requirejs `chartjs` path only (dashboard has 2 charts) — never `<script>`-tag it.

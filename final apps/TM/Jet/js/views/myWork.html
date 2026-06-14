@@ -1,0 +1,41 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('tm.myWork.title')"></h1>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <!-- ko if: tasks().length === 0 --><div class="empty-state" data-bind="text: t('tm.myWork.empty')"></div><!-- /ko -->
+
+  <!-- ko if: tasks().length > 0 -->
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th data-bind="text: t('tm.myWork.team')"></th>
+        <th data-bind="text: t('tm.field.title')"></th>
+        <th data-bind="text: t('tm.field.priority')"></th>
+        <th data-bind="text: t('tm.field.status')"></th>
+        <th data-bind="text: t('tm.field.progress')"></th>
+        <th data-bind="text: t('tm.field.dueDate')"></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody data-bind="foreach: tasks">
+      <tr>
+        <td><a href="#" data-bind="text: teamName, click: function(){ $vm.open($data); return false; }"></a></td>
+        <td data-bind="text: title"></td>
+        <td><span data-bind="css: $vm.prioClass(priority), text: priority"></span></td>
+        <td><span data-bind="css: $vm.statClass(status), text: status"></span></td>
+        <td data-bind="text: (progress||0) + '%'"></td>
+        <td data-bind="css: { 'is-overdue': isOverdue==='Y' }, text: dueDate || $vm.t('tm.common.none')"></td>
+        <td>
+          <!-- ko if: status !== 'DONE' && status !== 'CANCELLED' -->
+          <button class="btn btn-sm" data-bind="click: function(){ $vm.markDone($data); }">✓</button>
+          <!-- /ko -->
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

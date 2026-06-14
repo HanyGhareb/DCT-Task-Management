@@ -1,0 +1,26 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('tm.roles.title')"></h1>
+  </div>
+  <p class="muted" data-bind="text: t('tm.roles.subtitle')"></p>
+
+  <!-- ko ifnot: loading -->
+  <div style="margin:12px 0;">
+    <label data-bind="text: t('tm.field.role')" style="font-weight:600; margin-inline-end:8px;"></label>
+    <select class="input" data-bind="value: role, options: roles, optionsValue:'code', optionsText:'nameEn'" style="max-width:240px"></select>
+  </div>
+
+  <table class="data-table">
+    <thead><tr><th>Artifact</th><th>Create</th><th>Read</th><th>Update</th><th>Delete</th></tr></thead>
+    <tbody data-bind="foreach: perms">
+      <tr>
+        <td data-bind="text: artifact"></td>
+        <td data-bind="text: $vm.yn(canCreate)"></td>
+        <td data-bind="text: $vm.yn(canRead)"></td>
+        <td data-bind="text: $vm.yn(canUpdate)"></td>
+        <td data-bind="text: $vm.yn(canDelete)"></td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+</div>

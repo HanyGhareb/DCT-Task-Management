@@ -212,6 +212,8 @@ Rules:
 - [ ] Nav groups filtered by roles from `user.roles` (read from shared session)
 - [ ] ORDS module created under `/ords/admin/<code>/` using same `DCT_AUTH` token validation
 - [ ] Module ORDS handlers validate `sessionId` via `DCT_AUTH.validate_session` (or equivalent)
+- [ ] `docs/functions_list.md` created (functional inventory — views/methods grouped by area + API Endpoints (ORDS) table + services table)
+- [ ] **`docs/functions_list.md` kept in sync** — every added/removed/renamed view, viewModel method, service, or ORDS endpoint updates it in the same change (see root `CLAUDE.md` → "Functions List")
 
 ---
 

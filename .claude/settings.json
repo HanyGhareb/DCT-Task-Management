@@ -63,7 +63,11 @@
       "PowerShell(Get-ChildItem -Recurse assessment-3 -File | Select-Object @{n='File';e={$_.FullName.Replace\\(\"$PWD\\\\\",''\\)}}, @{n='KB';e={[math]::Round\\($_.Length/1KB,1\\)}} | Format-Table -AutoSize)",
       "PowerShell(Invoke-Item \"assessment-3\\\\04-uiux\\\\mockups\\\\dashboard-concept.html\"; Invoke-Item \"assessment-3\\\\04-uiux\\\\mockups\\\\approvals-inbox-concept.html\"; Invoke-Item \"assessment-3\\\\04-uiux\\\\mockups\\\\request-wizard-concept.html\")",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@c:/tmp/phase2_0_deploy_dt.sql\")",
-      "PowerShell(Copy-Item \"C:\\\\Users\\\\hanyg\\\\.claude\\\\plans\\\\i-need-to-do-gentle-puddle.md\" \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\assessment-3\\\\phase3\\\\00-phase3-plan.md\")"
+      "PowerShell(Copy-Item \"C:\\\\Users\\\\hanyg\\\\.claude\\\\plans\\\\i-need-to-do-gentle-puddle.md\" \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\assessment-3\\\\phase3\\\\00-phase3-plan.md\")",
+      "PowerShell($p = \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\TM\\\\db\\\\01_tm_ddl.sql\"; $raw = [System.IO.File]::ReadAllText\\($p\\); $hasCRLF = $raw -match \"`r`n\"; $hasLoneLF = \\($raw -replace \"`r`n\",\"\"\\) -match \"`n\"; \"CRLF present: $hasCRLF\"; \"Lone LF present: $hasLoneLF\")",
+      "PowerShell($p = \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\TM\\\\db\\\\01_tm_ddl.sql\"; $raw = [System.IO.File]::ReadAllText\\($p\\); $crlf = \\($raw -replace \"`r`n\",\"`n\"\\) -replace \"`n\",\"`r`n\"; [System.IO.File]::WriteAllText\\($p, $crlf, \\(New-Object System.Text.UTF8Encoding\\($false\\)\\)\\); \"converted to CRLF, no BOM\")",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -S -name prod_mcp \"@c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\TM\\\\db\\\\01_tm_ddl.sql\")",
+      "PowerShell($p = \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\TM\\\\db\\\\03_tm_seed.sql\"; $raw = [System.IO.File]::ReadAllText\\($p\\); $crlf = \\($raw -replace \"`r`n\",\"`n\"\\) -replace \"`n\",\"`r`n\"; [System.IO.File]::WriteAllText\\($p, $crlf, \\(New-Object System.Text.UTF8Encoding\\($false\\)\\)\\); & \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -S -name prod_mcp \"@$p\")"
     ]
   },
   "enabledPlugins": {

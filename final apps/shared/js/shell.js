@@ -26,7 +26,9 @@ define([], function () {
     { key: 'hr',    code: 'HR', app: '205', color: '#1a7f5a', url: '/HR/Jet/index.html',
       mc: 'HR',           nameKey: 'mod.hr',    descKey: 'mod.hr.desc' },
     { key: 'ar',    code: 'AR', app: '206', color: '#6C4AB6', url: '/AR/Jet/index.html',
-      mc: 'AR',           nameKey: 'mod.ar',    descKey: 'mod.ar.desc' }
+      mc: 'AR',           nameKey: 'mod.ar',    descKey: 'mod.ar.desc' },
+    { key: 'tm',    code: 'TM', app: '207', color: '#0E8A8A', url: '/TM/Jet/index.html',
+      mc: 'TASK_MGMT',    nameKey: 'mod.tm',    descKey: 'mod.tm.desc' }
   ];
 
   function byKey(key) {
