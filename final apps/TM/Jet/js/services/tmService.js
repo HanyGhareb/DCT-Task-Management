@@ -81,6 +81,13 @@ function (api, authService, notifService) {
     listDocuments: function (params)   { return api.get('/documents' + qs(params)); },
     addDocument:   function (body)     { return api.post('/documents', body); },
     updateDocument:function (body)     { return api.post('/documents/update', body); },
+    /* Raw-binary upload (no base64, no ~32 KB cap) — file bytes are the body. */
+    uploadDocumentFile: function (id, file) {
+      return api.putBinary('/documents/' + id + '/file', file, {
+        mime: file.type || 'application/octet-stream',
+        query: { file_name: file.name, mime_type: file.type || 'application/octet-stream' }
+      });
+    },
 
     // reminder preferences
     getPrefs:     function ()          { return api.get('/prefs'); },

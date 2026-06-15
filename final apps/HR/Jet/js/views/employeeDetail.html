@@ -103,10 +103,12 @@
   <!-- ── Assignments tab ─────────────────────────────────────── -->
   <div style="display:none" data-bind="visible: activeTab() === 'assignments'">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:600;font-size:14px">Assignment History</div>
+      <div class="section-heading-row">
+        <div class="section-heading">Assignment History</div>
         <!-- ko if: isAdmin || isMgr -->
-        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddAssignment">&#43; Add Assignment</button>
+        <div class="region-actions">
+          <button class="btn btn-primary btn-sm" data-bind="click: openAddAssignment">&#43; Add Assignment</button>
+        </div>
         <!-- /ko -->
       </div>
       <div style="display:none" data-bind="visible: !!assignmentSaved()">
@@ -152,10 +154,12 @@
   <!-- ── Contracts tab ───────────────────────────────────────── -->
   <div style="display:none" data-bind="visible: activeTab() === 'contracts'">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:600;font-size:14px">Employment Contracts</div>
+      <div class="section-heading-row">
+        <div class="section-heading">Employment Contracts</div>
         <!-- ko if: isAdmin || isMgr -->
-        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddContract">&#43; Add Contract</button>
+        <div class="region-actions">
+          <button class="btn btn-primary btn-sm" data-bind="click: openAddContract">&#43; Add Contract</button>
+        </div>
         <!-- /ko -->
       </div>
       <div style="display:none" data-bind="visible: !!contractSaved()">
@@ -199,10 +203,12 @@
   <!-- ── Salary tab ──────────────────────────────────────────── -->
   <div style="display:none" data-bind="visible: activeTab() === 'salary'">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:600;font-size:14px">Salary History</div>
+      <div class="section-heading-row">
+        <div class="section-heading">Salary History</div>
         <!-- ko if: isAdmin -->
-        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddSalary">&#43; Add Entry</button>
+        <div class="region-actions">
+          <button class="btn btn-primary btn-sm" data-bind="click: openAddSalary">&#43; Add Entry</button>
+        </div>
         <!-- /ko -->
       </div>
       <div style="display:none" data-bind="visible: !!salarySaved()">
@@ -245,10 +251,12 @@
   <!-- ── Documents tab ───────────────────────────────────────── -->
   <div style="display:none" data-bind="visible: activeTab() === 'documents'">
     <div class="card">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <div style="font-weight:600;font-size:14px">Employee Documents</div>
+      <div class="section-heading-row">
+        <div class="section-heading">Employee Documents</div>
         <!-- ko if: isAdmin || isMgr -->
-        <button class="btn btn-primary" style="font-size:12px;padding:6px 14px" data-bind="click: openAddDoc">&#43; Add Document</button>
+        <div class="region-actions">
+          <button class="btn btn-primary btn-sm" data-bind="click: openAddDoc">&#43; Add Document</button>
+        </div>
         <!-- /ko -->
       </div>
       <div style="display:none" data-bind="visible: !!docSaved()">

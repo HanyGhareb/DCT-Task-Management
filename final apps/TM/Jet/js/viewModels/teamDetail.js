@@ -1,5 +1,5 @@
-define(['knockout', 'services/tmService', 'shared/i18n', 'shared/toast'],
-function (ko, tm, i18n, toast) {
+define(['knockout', 'services/tmService', 'shared/i18n', 'shared/toast', 'shared/docUpload'],
+function (ko, tm, i18n, toast, docUpload) {
   'use strict';
   return function TeamDetail() {
     var self = this;
@@ -437,27 +437,30 @@ function (ko, tm, i18n, toast) {
     self.docSaveLabel = ko.computed(function () {
       return self.t(self.docEditId() ? 'tm.action.saveChanges' : 'tm.action.upload');
     });
-    self.onFilePick = function (e) {
-      var f = e.target.files && e.target.files[0];
-      if (!f) return true;
-      if (f.size > 24000) { toast.error(self.t('tm.detail.fileTooBig')); e.target.value = ''; return true; }
-      self.dFileName(f.name); self._docMime = f.type || 'application/octet-stream'; self._docSize = f.size;
-      var reader = new FileReader();
-      reader.onload = function () { self._docB64 = String(reader.result).split(',').pop(); };
-      reader.readAsDataURL(f);
+    // Raw-binary upload (no base64, no ~32 KB cap): stash the File, then on
+    // save POST the metadata (no fileB64) and PUT the bytes to documents/:id/file.
+    self.onFilePick = function () {
+      docUpload.choose({ accept: '.pdf,.jpg,.jpeg,.png', maxMb: 10 }).then(function (f) {
+        if (!f) return;
+        self._docFile = f;
+        self.dFileName(f.name); self._docMime = f.type || 'application/octet-stream'; self._docSize = f.size;
+      });
       return true;
     };
     self.saveDoc = function () {
       if (!self.dFileName()) { toast.error(self.t('tm.detail.fileNameReq')); return; }
-      var done = function () { toast.success(self.t('tm.common.saved')); self.addingDoc(false); self.docEditId(null); self.loadTab('documents'); };
-      if (self.docEditId())
+      var done = function () { toast.success(self.t('tm.common.saved')); self.addingDoc(false); self.docEditId(null); self._docFile = null; self.loadTab('documents'); };
+      if (self.docEditId()) {
         tm.updateDocument({ docId: self.docEditId(), fileName: self.dFileName(), docTypeCode: self.dDocType(), notes: self.dNotes() }).then(done).catch(function () {});
-      else
+      } else {
         tm.addDocument({
           teamId: self.teamId, sourceType: 'TEAM', sourceId: self.teamId,
           fileName: self.dFileName(), docTypeCode: self.dDocType(), notes: self.dNotes(),
-          mimeType: self._docMime, fileSize: self._docSize, fileB64: self._docB64
+          mimeType: self._docMime, fileSize: self._docSize
+        }).then(function (r) {
+          if (self._docFile && r && r.docId) return tm.uploadDocumentFile(r.docId, self._docFile);
         }).then(done).catch(function () {});
+      }
     };
 
     // ---- objectives: remove + measurable-objective drawer (key results) -----

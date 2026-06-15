@@ -26,7 +26,7 @@ Module: **Freelancers** · Brand: `#7C4DBE` · ORDS base: `/ords/admin/fl`
 
 **Registration Editor** (`registrationEdit`) — create/edit a registration. Inline per-field validation (`checkField`), required-documents checklist + How-to-Complete panel.
 - `saveDraft` / `submit` · `checkField` · `pickPhoto` / `photoSelected` · `back`.
-- Required docs: `loadRegDocs` · `pickDocFile` / `docFileSelected` · `removeDoc` · `viewDoc` · `missingDocs` (computed `docChecklist`).
+- Required docs (raw-binary upload via shared `docUpload.choose` + `putBinary`): `loadRegDocs` · `pickDocFile` · `removeDoc` · `viewDoc` · `missingDocs` (computed `docChecklist`).
 
 ## 4. Freelancers
 

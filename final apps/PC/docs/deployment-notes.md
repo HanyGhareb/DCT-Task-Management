@@ -47,6 +47,7 @@ PC-specific DB notes:
 
 ## 5. Deployment history
 
+- **2026-06-15 — Region header flush (PC APP_VERSION 4.5.3→4.5.4; shared/ change → all 8 apps bumped):** shared `platform.css` flush rule (see Admin/FL notes) removes the gap between every in-card header and the border. No PC markup change — pcRequest/pcDetail/clearDetail/reimbDetail main cards already use a first-child `.section-heading`, so they flush automatically; version bumped for the shared/ change. Frontend/CSS only.
 - 2026-06 (Phase 1): PC ORDS live, JET switched to live mode.
 - 2026-06-11: UAT seed data (PC 00005-00008, RMB-00100); approvals modal + lifecycle UAT-tested.
 - 2026-06-13: UI sweep — Quick Actions moved to right rail on Home; all Save/Back/Cancel actions moved to top-right (platform rule). Frontend-only; requires APP_VERSION bump on next deploy.

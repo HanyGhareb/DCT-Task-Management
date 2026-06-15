@@ -53,6 +53,7 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+- **2026-06-15 — Region header flush (AR APP_VERSION 4.5.3→4.5.4; shared/ change → all 8 apps bumped):** shared `platform.css` flush rule (see Admin/FL notes) removes the gap between every in-card header and the border. No AR markup change — the settings page uses bespoke `.set-region__head` (not `.section-heading`), so it is unaffected; version bumped for the shared/ change. Frontend/CSS only.
 - 2026-06-12: module built + deployed (DB, DCT_AR_AI_PKG, ar.rest, JET SPA). Round 2 same day: Gemini support.
 - 2026-06-13: settings redesign deployed (grouped regions, provider registry db/07, 17/17 ORDS + 22/22 E2E green); `06_ar_patch_gemini.sql` superseded.
 - 2026-06-13: eventForm/categories/settings/uploadWizard actions moved to top-right (platform rule). Frontend-only; bump APP_VERSION on next deploy.

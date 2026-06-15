@@ -331,8 +331,9 @@
       <!-- ko ifnot: docEditId -->
       <div class="form-group">
         <label class="form-label" data-bind="text: t('tm.field.file')"></label>
-        <input class="form-control" type="file" data-bind="event:{ change: function(d,e){ return onFilePick(e); } }">
-        <div class="form-hint" data-bind="text: t('tm.detail.fileHint')"></div>
+        <button type="button" class="btn btn-secondary btn-sm" title="Choose file"
+                data-bind="click: function(){ return onFilePick(); }, text: t('docup.choose')"></button>
+        <div class="form-hint" data-bind="text: t('docup.hint', [10])"></div>
       </div>
       <!-- /ko -->
       <div class="form-group">

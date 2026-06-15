@@ -878,15 +878,35 @@ BEGIN
     -- DOCUMENT FILE UPLOAD / DOWNLOAD
     -- =========================================================================
     def_tpl('documents/file/:id');
-    -- PUT  — receive raw binary body, store as BLOB
+    -- PUT  — receive raw binary body, store as BLOB. Use :body (deref ONCE) not
+    -- :body_blob, which binds as VARCHAR2 on this ORDS version (PLS-00382).
+    -- No base64, no ~32 KB cap; size guarded by MAX_UPLOAD_MB (default 10).
     def_plsql('documents/file/:id', 'PUT', q'[
+        DECLARE
+            l_blob BLOB;
+            l_len  NUMBER;
+            l_max  NUMBER;
         BEGIN
+            l_blob := :body;
+            IF l_blob IS NULL OR DBMS_LOB.GETLENGTH(l_blob) = 0 THEN
+                :status_code := 400; RETURN;
+            END IF;
+            l_len := DBMS_LOB.GETLENGTH(l_blob);
+            BEGIN
+                SELECT TO_NUMBER(ms.setting_value DEFAULT NULL ON CONVERSION ERROR)
+                INTO   l_max
+                FROM   dct_module_settings ms JOIN dct_modules m ON m.module_id = ms.module_id
+                WHERE  m.module_code = 'HR' AND ms.setting_key = 'MAX_UPLOAD_MB';
+            EXCEPTION WHEN NO_DATA_FOUND THEN l_max := NULL; END;
+            l_max := NVL(l_max, 10);
+            IF l_len > l_max * 1024 * 1024 THEN :status_code := 413; RETURN; END IF;
             UPDATE hr_employee_documents SET
-                file_blob   = :body_blob,
+                file_blob      = l_blob,
                 file_name      = NVL(:file_name,      file_name),
                 file_mime_type = NVL(:file_mime_type,  file_mime_type),
                 updated_by     = NVL(SYS_CONTEXT('APEX$SESSION','APP_USER'),SYS_CONTEXT('USERENV','SESSION_USER'))
             WHERE doc_id = :id;
+            IF SQL%ROWCOUNT = 0 THEN :status_code := 404; RETURN; END IF;
             :status_code := 200;
             COMMIT;
         END;

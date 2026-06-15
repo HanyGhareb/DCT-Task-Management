@@ -18,6 +18,9 @@
 
   <!-- Profile card -->
   <div class="card" style="margin-bottom:16px">
+    <div class="section-heading-row">
+      <div class="section-heading">Profile Information</div>
+    </div>
     <div style="display:flex;align-items:center;gap:20px;margin-bottom:20px">
       <div style="text-align:center">
         <!-- ko if: photoSrc() -->
@@ -87,7 +90,7 @@
 
   <!-- Change password -->
   <div class="card" style="margin-bottom:16px">
-    <div class="section-heading-row" style="margin-top:0">
+    <div class="section-heading-row">
       <div class="section-heading">Change Password</div>
       <div class="region-actions">
         <button class="btn btn-primary btn-sm" data-bind="click: changePassword">Change Password</button>
@@ -117,9 +120,11 @@
 
   <!-- Delegations -->
   <div class="card">
-    <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
-      <span>My Delegations</span>
-      <button class="btn btn-secondary btn-sm" data-bind="click: openDelModal">+ New Delegation</button>
+    <div class="section-heading-row">
+      <div class="section-heading">My Delegations</div>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: openDelModal">+ New Delegation</button>
+      </div>
     </div>
     <!-- ko if: delLoading() --><list-skeleton params="rows: 2"></list-skeleton><!-- /ko -->
     <!-- ko foreach: delegations() -->

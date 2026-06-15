@@ -34,7 +34,7 @@ Module: **Task Management** · ORDS base: `/ords/admin/tm`
 - Task board: `openTask` / `closeTask` · `colTasks` · `saveTaskStatus` · drag-drop `onDragStart` / `onDragOver` / `onDrop` · `doAssign` / `unassign` · `addComment`.
 - Members: `openAddMember` / `openEditMember` (drawer; role + title via `members/update`) / `saveMember` / `cancelAddMember` · `changeRole` / `makePrimary` / `removeMember`.
 - Objectives (measurable): `openObjective` / `closeObjective` / `removeObjective` · `loadKrs` / `refreshObjAfterKr` · `saveObjEdits` (title/status/target/weight + Auto|Manual progress mode) · key results `openAddKr` / `editKr` / `cancelKr` / `saveKr` / `recordKr` / `removeKr`.
-- Documents: `openAddDoc` / `openEditDoc` (drawer; file name + type + notes via `documents/update`) / `saveDoc` / `cancelAddDoc` / `onFilePick`.
+- Documents (raw-binary upload via shared `docUpload.choose` + `tmService.uploadDocumentFile`/`putBinary`): `openAddDoc` / `openEditDoc` (drawer; file name + type + notes via `documents/update`) / `saveDoc` / `cancelAddDoc` / `onFilePick`.
 - Generic add/edit (drawer): `openAdd` / `openEdit` (per-row edit for deliverable/raid/milestone/meeting — pre-fills the shared `<edit-drawer>` and upserts via `editId`) / `saveAdd` / `cancelAdd` · `back` · `initials` / `prioClass` / `ragClass` / `statusLabel`.
 
 ## 5. Team Roles
@@ -79,7 +79,7 @@ All other calls (incl. TM's own `GET boot`/`prefs`) hit `/ords/admin/tm/`. Notif
 | Tasks | `GET tasks` · `POST tasks` · `POST tasks/status` · `POST tasks/assign` · `GET tasks/assignees` · `GET tasks/updates` · `POST tasks/update` · `GET my-tasks` |
 | Deliverables | `GET deliverables` · `POST deliverables` · `POST deliverables/status` |
 | RAID & Meetings | `GET raid` · `POST raid` · `GET meetings` · `POST meetings` |
-| Documents | `GET documents` · `POST documents` · `POST documents/update` |
+| Documents | `GET documents` · `POST documents` · `POST documents/update` · `PUT documents/:id/file` *(raw-binary upload)* · `GET documents/:id/file` *(media)* |
 | Preferences | `GET prefs` · `POST prefs` |
 
 ---

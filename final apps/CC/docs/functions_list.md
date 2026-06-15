@@ -75,7 +75,7 @@ All protected handlers call `dct_rest.validate_session`. **Shared `/dct/` calls:
 | Dashboard | `GET dashboard/stats` · `GET dashboard/charts` |
 | Cards | `GET cards/` · `POST cards/register` · `GET cards/:id` · `GET cards/:id/limit-history` |
 | Requests | `GET requests/` · `POST requests/` · `GET requests/:id` · `PUT requests/:id` · `POST requests/:id/submit` · `POST requests/:id/withdraw` |
-| Documents | `GET doc-requirements` · `GET documents/` · `POST documents/` · `PUT documents/:id/file` · `GET documents/:id/file` *(media)* |
+| Documents | `GET doc-requirements` · `GET documents/` · `POST documents/` · `PUT documents/:id/file` *(raw-binary upload)* · `GET documents/:id/file` *(media)* |
 | Replenishments | `GET replenishments/` · `POST replenishments/` · `GET replenishments/:id` · `PUT replenishments/:id` · `PUT replenishments/:id/lines` · `POST replenishments/:id/submit` |
 | Proxies | `GET proxies/` · `POST proxies/` · `PUT proxies/:id` |
 | Approvals | `GET approvals/pending` · `POST approvals/:id/action` |

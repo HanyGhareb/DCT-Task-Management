@@ -68,10 +68,12 @@
 
   <!-- Additional expenses -->
   <div class="card" style="margin-top:16px">
-    <div class="page-header-row" style="margin-bottom:12px">
-      <div style="font-weight:700;font-size:14px">Additional Expenses</div>
+    <div class="section-heading-row">
+      <div class="section-heading">Additional Expenses</div>
       <!-- ko ifnot: isView() -->
-      <button class="btn btn-secondary btn-sm" data-bind="click: addExpenseLine">&#10133; Add Expense</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: addExpenseLine">&#10133; Add Expense</button>
+      </div>
       <!-- /ko -->
     </div>
     <!-- ko if: expenseLines().length === 0 -->

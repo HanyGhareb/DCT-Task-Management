@@ -513,10 +513,13 @@ html[dir="rtl"] select.form-control { background-position: left 10px center; }
 /* Region header flush to the card edge (top/left/right). When a header is the
    first child of a .card, cancel the card's 20px padding on those three sides so
    the colored bar meets the border; keep a gap below before the content. Top
-   corners follow the card radius (minus the border width) and the bottom is square. */
+   corners follow the card radius (minus the border width) and the bottom is square.
+   The margin is !important so it wins over the legacy inline `margin-top:0` some
+   views set on their first heading — those would otherwise flush only on the sides.
+   Only the FIRST heading flushes; mid-card sub-section headings keep normal spacing. */
 .card > .section-heading-row:first-child,
 .card > .section-heading:first-child {
-  margin: -20px -20px 16px;
+  margin: -20px -20px 16px !important;
   border-radius: calc(var(--radius-lg) - var(--region-bd-width))
                  calc(var(--radius-lg) - var(--region-bd-width)) 0 0;
 }

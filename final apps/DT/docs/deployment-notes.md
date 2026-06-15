@@ -47,6 +47,7 @@ DT-specific DB notes:
 
 ## 5. Deployment history
 
+- **2026-06-15 — Region header flush + missing region headers (DT APP_VERSION 4.5.3→4.5.4; shared/ change → all 8 apps bumped):** shared `platform.css` flush rule (see Admin/FL notes) removes the gap between every in-card header and the border. Normalized the bold-div faux-headers in requestForm (Destination Legs) and settlementForm (Additional Expenses) into themed `.section-heading-row`s; requestForm/requestDetail/settlementForm cards that already had a first-child `.section-heading` now flush automatically. Frontend/CSS only — no DB/ORDS change.
 - DB + ORDS + JET SPA complete and live (all 19 VMs dual-mode); APEX pages pending in Builder.
 - 2026-06-11: server pagination on dt-requests (Phase 3); dashboard charts.
 - 2026-06-13: Save/Back/Cancel actions moved to top-right of page/region/modal (platform rule). Frontend-only; bump APP_VERSION on next deploy.
