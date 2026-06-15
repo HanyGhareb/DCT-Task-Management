@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>i-Finance · Shared UI Components</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --brand:#0E8A8A; --brand-rgb:14,138,138; --brand-dark:#0A6A6A;
+  --ink:#0E1A1A; --ink-2:#425655; --muted:#7C908F;
+  --line:#E2EAE9; --surface:#fff; --canvas:#F4F7F6;
+  --slate:#1B2430;
+  --ok:#2E9E6B; --warn:#C9871F; --info:#2563B0;
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace;
+  --ease:cubic-bezier(.22,1,.32,1);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:var(--font); color:var(--ink); line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(1100px 560px at 90% -8%, rgba(var(--brand-rgb),.08), transparent 60%),
+    radial-gradient(800px 480px at -6% 108%, rgba(var(--brand-rgb),.05), transparent 55%),
+    var(--canvas);
+  min-height:100vh;
+}
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(16,32,31,.02) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(16,32,31,.02) 1px,transparent 1px);
+  background-size:48px 48px;
+  -webkit-mask-image:radial-gradient(circle at 50% 20%,#000,transparent 78%);
+  mask-image:radial-gradient(circle at 50% 20%,#000,transparent 78%);
+}
+.wrap{position:relative;z-index:1;max-width:1180px;margin:0 auto;padding:54px 28px 80px}
+
+/* ---- masthead ---- */
+.mast{display:flex;justify-content:space-between;align-items:flex-end;gap:30px;flex-wrap:wrap;margin-bottom:8px}
+.brand-mark{display:flex;align-items:center;gap:14px;margin-bottom:18px}
+.cube{
+  width:46px;height:46px;border-radius:13px;flex:none;display:grid;place-items:center;
+  background:linear-gradient(140deg,var(--brand),var(--brand-dark));
+  box-shadow:0 10px 24px -10px rgba(var(--brand-rgb),.8), inset 0 1px 0 rgba(255,255,255,.3);
+  color:#fff;font-weight:800;font-size:20px;letter-spacing:-.04em;
+}
+.eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;text-transform:uppercase;color:var(--brand);font-weight:600;display:flex;align-items:center;gap:9px}
+.eyebrow::before{content:"";width:26px;height:2px;background:var(--brand);border-radius:2px}
+h1{font-size:42px;font-weight:800;letter-spacing:-.03em;line-height:1.02;margin-top:9px}
+h1 em{font-style:normal;color:var(--brand)}
+.lede{color:var(--ink-2);font-size:15.5px;max-width:60ch;margin-top:14px}
+.lede b{color:var(--ink);font-weight:600}
+.legend{display:flex;gap:18px;flex-wrap:wrap;font-size:12.5px;color:var(--muted);margin-top:4px}
+.legend span{display:flex;align-items:center;gap:7px}
+.dot{width:9px;height:9px;border-radius:50%}
+.dot.ready{background:var(--ok)} .dot.draft{background:var(--warn)} .dot.planned{background:#9AA8A7}
+
+/* ---- count strip ---- */
+.strip{display:flex;gap:10px;flex-wrap:wrap;margin:30px 0 26px}
+.pill{
+  font-family:var(--mono);font-size:12px;font-weight:600;color:var(--ink-2);
+  background:var(--surface);border:1px solid var(--line);border-radius:30px;padding:7px 15px;
+  display:flex;align-items:center;gap:8px;
+}
+.pill b{color:var(--brand-dark)}
+
+/* ---- grid ---- */
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:22px}
+
+.card{
+  position:relative;display:flex;flex-direction:column;
+  background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden;
+  text-decoration:none;color:inherit;
+  box-shadow:0 1px 2px rgba(16,32,31,.04);
+  transition:transform .3s var(--ease), box-shadow .3s var(--ease), border-color .3s;
+}
+.card:hover{transform:translateY(-5px);box-shadow:0 22px 48px -22px rgba(16,40,38,.4);border-color:rgba(var(--brand-rgb),.5)}
+.card.soon{pointer-events:none;border-style:dashed;background:transparent;box-shadow:none}
+
+/* scaled live preview */
+.thumb{position:relative;height:208px;overflow:hidden;border-bottom:1px solid var(--line);background:#eef3f2}
+.thumb iframe{
+  position:absolute;top:0;left:0;width:250%;height:250%;border:0;
+  transform:scale(.4);transform-origin:top left;pointer-events:none;
+}
+.thumb::after{ /* subtle hover sheen */
+  content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 60%,rgba(14,26,26,.05));
+}
+.open-tag{
+  position:absolute;top:12px;right:12px;z-index:2;
+  font-size:11px;font-weight:600;color:#fff;background:rgba(14,26,26,.78);
+  padding:5px 11px;border-radius:30px;display:flex;align-items:center;gap:6px;
+  opacity:0;transform:translateY(-4px);transition:all .25s var(--ease);-webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
+}
+.card:hover .open-tag{opacity:1;transform:none}
+
+.thumb.placeholder{display:grid;place-items:center;background:repeating-linear-gradient(45deg,#eef3f2,#eef3f2 12px,#e7eeed 12px,#e7eeed 24px)}
+.thumb.placeholder span{font-family:var(--mono);font-size:12px;color:var(--muted);letter-spacing:.1em;text-transform:uppercase}
+
+.card-body{padding:17px 18px 19px;display:flex;flex-direction:column;gap:9px;flex:1}
+.card-head{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.card-title{font-size:17px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.badge{font-size:10.5px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;padding:3px 9px;border-radius:20px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.badge.ready{color:var(--ok);background:#E4F4EC}
+.badge.draft{color:var(--warn);background:#FBF2DE}
+.badge.planned{color:#6a7877;background:#EEF2F1}
+.badge.promoted{color:#fff;background:linear-gradient(180deg,var(--brand),var(--brand-dark))}
+.dot.promoted{background:var(--brand)}
+.card-desc{font-size:13.5px;color:var(--ink-2);line-height:1.5}
+.tags{display:flex;gap:6px;flex-wrap:wrap;margin-top:auto;padding-top:6px}
+.tag{font-family:var(--mono);font-size:10.5px;color:var(--brand-dark);background:rgba(var(--brand-rgb),.08);padding:3px 9px;border-radius:6px}
+.tag.neutral{color:var(--muted);background:#f0f4f3}
+
+/* ---- how-to footer ---- */
+.note{
+  margin-top:40px;background:var(--slate);color:#cdd8d7;border-radius:18px;padding:26px 28px;
+  position:relative;overflow:hidden;
+}
+.note::before{content:"";position:absolute;inset-inline-start:0;inset-block:0;width:4px;background:linear-gradient(180deg,var(--brand),var(--brand-dark))}
+.note h2{color:#fff;font-size:16px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:9px}
+.note h2 .k{font-family:var(--mono);font-size:11px;background:rgba(255,255,255,.1);padding:3px 8px;border-radius:6px;color:#9fe7e7}
+.note ol{margin:0 0 0 4px;padding:0;list-style:none;counter-reset:s;display:grid;gap:11px}
+.note li{counter-increment:s;padding-inline-start:34px;position:relative;font-size:13.5px;line-height:1.55}
+.note li::before{
+  content:counter(s);position:absolute;inset-inline-start:0;top:-1px;width:23px;height:23px;border-radius:7px;
+  background:rgba(var(--brand-rgb),.22);color:#7fe9e9;font-family:var(--mono);font-size:12px;font-weight:600;
+  display:grid;place-items:center;
+}
+.note code{font-family:var(--mono);font-size:12px;background:rgba(255,255,255,.08);padding:1px 6px;border-radius:5px;color:#bfeaea}
+.note b{color:#fff;font-weight:600}
+
+footer{margin-top:34px;text-align:center;color:var(--muted);font-size:12.5px}
+footer b{font-family:var(--mono);color:var(--ink-2)}
+
+@media (max-width:560px){.wrap{padding:36px 16px 60px}h1{font-size:32px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="brand-mark">
+    <div class="cube">iF</div>
+    <div>
+      <div class="eyebrow">Design System · Reference</div>
+    </div>
+  </div>
+
+  <div class="mast">
+    <div>
+      <h1>Shared UI <em>Components</em></h1>
+      <p class="lede">A living catalogue of <b>reusable interface patterns</b> for the i-Finance JET apps. Each entry is a self-contained, runnable mockup — design and validate the interaction here, then <b>promote it once</b> into <code style="font-family:var(--mono);font-size:13px">final apps/shared/</code> so every module (Admin, PC, DT, HR, FL, CC, AR, TM) inherits it.</p>
+    </div>
+    <div class="legend">
+      <span><i class="dot ready"></i>Ready — mockup complete</span>
+      <span><i class="dot draft"></i>Draft — in design</span>
+      <span><i class="dot planned"></i>Planned</span>
+    </div>
+  </div>
+
+  <div class="strip">
+    <div class="pill"><b>1</b> promoted to <span style="font-family:var(--font)">shared/</span></div>
+    <div class="pill"><b>3</b> planned</div>
+    <div class="pill">tokens · <b>platform.css</b></div>
+    <div class="pill">type · <b>Outfit + Fira Code</b></div>
+  </div>
+
+  <div class="grid">
+
+    <!-- ░░ DRAWER FORM ░░ -->
+    <a class="card" href="components/drawer-form/index.html" target="_blank" rel="noopener">
+      <div class="thumb">
+        <span class="open-tag">Open mockup ↗</span>
+        <iframe src="components/drawer-form/index.html" scrolling="no" tabindex="-1" title="Drawer Form preview" loading="lazy"></iframe>
+      </div>
+      <div class="card-body">
+        <div class="card-head">
+          <div class="card-title">Drawer Form</div>
+          <span class="badge promoted"><i class="dot promoted"></i>Promoted</span>
+        </div>
+        <p class="card-desc">APEX-style right-edge slide-in record editor. Opens from a table's edit column; top-right header actions, staggered field reveal, unsaved-changes dot, Esc-to-close. Body binds to the host view's own ViewModel.</p>
+        <div class="tags">
+          <span class="tag">edit-drawer</span>
+          <span class="tag">table → edit</span>
+          <span class="tag neutral">KO component</span>
+        </div>
+      </div>
+    </a>
+
+    <!-- ░░ PLACEHOLDERS — copy a card, drop a folder under components/ ░░ -->
+    <div class="card soon">
+      <div class="thumb placeholder"><span>Planned</span></div>
+      <div class="card-body">
+        <div class="card-head"><div class="card-title">Stepper / Wizard</div><span class="badge planned"><i class="dot planned"></i>Planned</span></div>
+        <p class="card-desc">Multi-step record creation with progress rail, per-step validation, and review summary — for longer create flows.</p>
+        <div class="tags"><span class="tag neutral">wizard</span><span class="tag neutral">multi-step</span></div>
+      </div>
+    </div>
+
+    <div class="card soon">
+      <div class="thumb placeholder"><span>Planned</span></div>
+      <div class="card-body">
+        <div class="card-head"><div class="card-title">Filter Bar</div><span class="badge planned"><i class="dot planned"></i>Planned</span></div>
+        <p class="card-desc">Standardised search + facet chips + saved-view selector that sits above any <code style="font-size:11px;font-family:var(--mono)">.data-table</code>.</p>
+        <div class="tags"><span class="tag neutral">filters</span><span class="tag neutral">facets</span></div>
+      </div>
+    </div>
+
+    <div class="card soon">
+      <div class="thumb placeholder"><span>Planned</span></div>
+      <div class="card-body">
+        <div class="card-head"><div class="card-title">Detail Drawer (read)</div><span class="badge planned"><i class="dot planned"></i>Planned</span></div>
+        <p class="card-desc">Read-only inspector drawer with status timeline, attachments and an activity feed — the view-mode twin of the edit drawer.</p>
+        <div class="tags"><span class="tag neutral">inspector</span><span class="tag neutral">timeline</span></div>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="note">
+    <h2>Add a component <span class="k">pattern</span></h2>
+    <ol>
+      <li>Create <code>components/&lt;name&gt;/index.html</code> — a single self-contained, runnable mockup (link Google Fonts, inline CSS/JS, use the <b>platform.css token names</b> so it ports cleanly).</li>
+      <li>Copy the <b>Drawer Form</b> card above, point <code>href</code> + the preview <code>iframe</code> at your new folder, and set the status badge.</li>
+      <li>Drop a <code>NOTES.md</code> beside the mockup: what it is, its <b>params / classes</b>, and the <b>promote path</b> into <code>final apps/shared/</code> (CSS block + component module + the one-line wiring each app needs).</li>
+      <li>When approved, <b>promote once</b>: styles → <code>shared/css/platform.css</code>, behaviour → <code>shared/js/&lt;name&gt;.js</code>, then bump <code>APP_VERSION</code> in every app per the shared-change rule.</li>
+    </ol>
+  </div>
+
+  <footer>i-Finance Finance Division · reference only — not served by <b>dev-proxy</b>; open these files directly in a browser.</footer>
+
+</div>
+</body>
+</html>

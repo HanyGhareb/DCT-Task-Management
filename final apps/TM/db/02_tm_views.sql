@@ -42,16 +42,42 @@ FROM   prod.dct_tm_members m
 JOIN   prod.dct_users    u ON u.user_id    = m.user_id
 JOIN   prod.dct_tm_roles r ON r.tm_role_id = m.tm_role_id;
 
--- ---- Objectives (with owner + task roll-up) ---------------------------------
+-- ---- Objectives (with owner + task + key-result roll-up) --------------------
 CREATE OR REPLACE VIEW prod.dct_tm_objective_v AS
 SELECT ob.objective_id, ob.team_id, ob.title_en, ob.title_ar, ob.description,
        ob.owner_user_id, ou.display_name AS owner_name,
-       ob.weight, ob.progress_pct, ob.target_date, ob.status, ob.display_order,
+       ob.weight, ob.progress_pct, ob.progress_mode, ob.target_date, ob.status, ob.display_order,
        ob.created_at, ob.updated_at,
        (SELECT COUNT(*) FROM prod.dct_tm_tasks tk WHERE tk.objective_id = ob.objective_id) AS task_count,
-       (SELECT COUNT(*) FROM prod.dct_tm_tasks tk WHERE tk.objective_id = ob.objective_id AND tk.status = 'DONE') AS task_done_count
+       (SELECT COUNT(*) FROM prod.dct_tm_tasks tk WHERE tk.objective_id = ob.objective_id AND tk.status = 'DONE') AS task_done_count,
+       (SELECT COUNT(*) FROM prod.dct_tm_key_results kr WHERE kr.objective_id = ob.objective_id) AS kr_count,
+       (SELECT COUNT(*) FROM prod.dct_tm_key_results kr WHERE kr.objective_id = ob.objective_id AND kr.status = 'ACHIEVED') AS kr_achieved_count
 FROM   prod.dct_tm_objectives ob
 LEFT JOIN prod.dct_users ou ON ou.user_id = ob.owner_user_id;
+
+-- ---- Key Results (measurable targets per objective; progress computed 0-100) -
+CREATE OR REPLACE VIEW prod.dct_tm_key_result_v AS
+SELECT kr.kr_id, kr.objective_id, ob.team_id, ob.title_en AS objective_title,
+       kr.title_en, kr.title_ar, kr.unit, kr.direction,
+       kr.baseline_value, kr.target_value, kr.current_value,
+       kr.weight, kr.target_date, kr.status, kr.display_order,
+       kr.created_at, kr.updated_at,
+       ROUND(
+         GREATEST(0, LEAST(100,
+           CASE kr.direction
+             WHEN 'DECREASE' THEN
+               (NVL(kr.baseline_value,0) - NVL(kr.current_value, kr.baseline_value))
+               / NULLIF(NVL(kr.baseline_value,0) - kr.target_value, 0) * 100
+             WHEN 'MAINTAIN' THEN
+               CASE WHEN NVL(kr.current_value,0) >= kr.target_value THEN 100
+                    ELSE NVL(kr.current_value,0) / NULLIF(kr.target_value,0) * 100 END
+             ELSE  -- INCREASE
+               (NVL(kr.current_value, kr.baseline_value) - NVL(kr.baseline_value,0))
+               / NULLIF(kr.target_value - NVL(kr.baseline_value,0), 0) * 100
+           END
+         )), 1) AS progress_pct
+FROM   prod.dct_tm_key_results kr
+JOIN   prod.dct_tm_objectives ob ON ob.objective_id = kr.objective_id;
 
 -- ---- Tasks (with objective, team, assignee names) ---------------------------
 CREATE OR REPLACE VIEW prod.dct_tm_task_v AS

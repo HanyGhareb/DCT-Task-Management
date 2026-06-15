@@ -73,15 +73,10 @@ Module: **HR** · ORDS base: `/ords/admin/hr`
 ## API Endpoints (ORDS)
 
 Module `hr.rest` · base path **`/ords/admin/hr/`** · defined in `final apps/HR/db/06_hr_ords.sql`.
-All protected handlers call `dct_rest.validate_session`. **Shared `/dct/` calls:** only auth
-(`auth/login`, `auth/logout`, session validation) and `GET boot` go to the Admin
-`/ords/admin/dct/` module (via `authBase`). All other calls hit `/ords/admin/hr/`.
-
-> ⚠️ **Known drift:** `hr.rest` defines **no notifications endpoints**, but `notificationService.js`
-> (live branch) calls `GET /notifications/`, `PUT /notifications/:id/read`, `PUT /notifications/read-all`
-> against the `/hr` base — these 404 in live mode. Either add HR notification handlers to
-> `06_hr_ords.sql`, or route the service to `/dct` via `authBase` (and align to `dct`'s
-> `PUT notifications/:id/read` + per-item mark-all, since `dct` has no `read-all`/`mark-all-read`).
+All protected handlers call `dct_rest.validate_session`. **Shared `/dct/` calls:** auth
+(`auth/login`, `auth/logout`, session validation), `GET boot`, **and notifications** go to the
+Admin `/ords/admin/dct/` module (via `authBase`) — `hr.rest` defines no notification handlers
+(notifications are platform-wide `DCT_NOTIFY`). All other calls hit `/ords/admin/hr/`.
 
 | Area | Method & Path |
 |---|---|

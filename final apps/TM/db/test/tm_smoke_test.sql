@@ -23,6 +23,9 @@ DECLARE
     v_team    NUMBER;
     v_task    NUMBER;
     v_deliv   NUMBER;
+    v_obj     NUMBER;
+    v_kr1     NUMBER;
+    v_kr2     NUMBER;
     v_n       NUMBER;
     v_status  VARCHAR2(20);
     v_pct     NUMBER;
@@ -130,6 +133,62 @@ BEGIN
     prod.dct_tm_pkg.save_reminder_pref(p_user_id => v_member, p_lead_days => 3);
     SELECT lead_days INTO v_n FROM prod.dct_tm_reminder_prefs WHERE user_id = v_member;
     ok(v_n = 3, 'save_reminder_pref persists lead_days=3');
+
+    -- 15. HAPPY: create an objective (defaults to AUTO progress mode)
+    v_obj := prod.dct_tm_pkg.upsert_objective(p_actor_id => v_leader, p_team_id => v_team, p_title_en => 'Raise service quality');
+    ok(v_obj > 0, 'upsert_objective creates an objective');
+
+    -- 16. HAPPY: add an INCREASE key result (0 -> 100, current 50) -> KR 50%, objective auto 50%
+    v_kr1 := prod.dct_tm_pkg.upsert_key_result(v_leader, v_obj, 'CSAT score', p_unit => '%',
+               p_direction => 'INCREASE', p_baseline => 0, p_target => 100, p_current => 50, p_weight => 1);
+    SELECT progress_pct INTO v_pct FROM prod.dct_tm_objectives WHERE objective_id = v_obj;
+    ok(v_kr1 > 0 AND v_pct = 50, 'INCREASE KR rolls objective progress to 50% (got ' || v_pct || ')');
+
+    -- 17. HAPPY: add a DECREASE key result (100 -> 0, current 75) -> KR 25%, objective auto (50+25)/2 = 37.5%
+    v_kr2 := prod.dct_tm_pkg.upsert_key_result(v_leader, v_obj, 'Complaints', p_unit => '#',
+               p_direction => 'DECREASE', p_baseline => 100, p_target => 0, p_current => 75, p_weight => 1);
+    SELECT progress_pct INTO v_pct FROM prod.dct_tm_objectives WHERE objective_id = v_obj;
+    ok(v_pct = 37.5, 'DECREASE KR weighted roll-up -> objective 37.5% (got ' || v_pct || ')');
+
+    -- 18. HAPPY: record_kr_value moves kr1 current to 100 -> (100+25)/2 = 62.5%
+    prod.dct_tm_pkg.record_kr_value(v_leader, v_kr1, 100);
+    SELECT progress_pct INTO v_pct FROM prod.dct_tm_objectives WHERE objective_id = v_obj;
+    ok(v_pct = 62.5, 'record_kr_value reflows objective to 62.5% (got ' || v_pct || ')');
+
+    -- 19. ERROR: invalid KR direction -> -20090
+    BEGIN
+        v_n := prod.dct_tm_pkg.upsert_key_result(v_leader, v_obj, 'Bad dir', p_direction => 'SIDEWAYS', p_target => 10);
+        ok(FALSE, 'invalid KR direction should raise');
+    EXCEPTION WHEN OTHERS THEN ok(SQLCODE = -20090, 'invalid KR direction -> -20090 (got ' || SQLCODE || ')'); END;
+
+    -- 20. BOUNDARY: new KR without a target value -> -20001
+    BEGIN
+        v_n := prod.dct_tm_pkg.upsert_key_result(v_leader, v_obj, 'No target', p_direction => 'INCREASE');
+        ok(FALSE, 'KR without target should raise');
+    EXCEPTION WHEN OTHERS THEN ok(SQLCODE = -20001, 'KR without target -> -20001 (got ' || SQLCODE || ')'); END;
+
+    -- 21. HAPPY: delete kr2 -> only kr1 (100%) remains -> objective auto 100%
+    prod.dct_tm_pkg.delete_key_result(v_leader, v_kr2);
+    SELECT progress_pct INTO v_pct FROM prod.dct_tm_objectives WHERE objective_id = v_obj;
+    ok(v_pct = 100, 'delete_key_result reflows objective to 100% (got ' || v_pct || ')');
+
+    -- 22. EDGE: MANUAL mode pins progress -- KR changes no longer move it
+    v_n := prod.dct_tm_pkg.upsert_objective(v_leader, v_team, 'Raise service quality',
+             p_objective_id => v_obj, p_progress => 88, p_progress_mode => 'MANUAL');
+    prod.dct_tm_pkg.record_kr_value(v_leader, v_kr1, 0);
+    SELECT progress_pct INTO v_pct FROM prod.dct_tm_objectives WHERE objective_id = v_obj;
+    ok(v_pct = 88, 'MANUAL objective keeps hand-entered 88% despite KR change (got ' || v_pct || ')');
+
+    -- 23. PERMISSION: outsider cannot add a key result -> -20403
+    BEGIN
+        v_n := prod.dct_tm_pkg.upsert_key_result(v_outsider, v_obj, 'Sneaky', p_direction => 'INCREASE', p_target => 5);
+        ok(FALSE, 'outsider adding KR should be denied');
+    EXCEPTION WHEN OTHERS THEN ok(SQLCODE = -20403, 'outsider add KR -> -20403 (got ' || SQLCODE || ')'); END;
+
+    -- 24. HAPPY: delete_objective cascades its key results
+    prod.dct_tm_pkg.delete_objective(v_leader, v_obj);
+    SELECT COUNT(*) INTO v_n FROM prod.dct_tm_key_results WHERE objective_id = v_obj;
+    ok(v_n = 0, 'delete_objective cascades key results away');
 
     ROLLBACK;
     DBMS_OUTPUT.PUT_LINE('---------------------------------------------');

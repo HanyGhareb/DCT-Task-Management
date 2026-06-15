@@ -45,6 +45,13 @@ function (api, authService, notifService) {
     // objectives
     listObjectives: function (teamId)  { return api.get('/objectives' + qs({ teamId: teamId })); },
     saveObjective:  function (body)    { return api.post('/objectives', body); },
+    deleteObjective:function (id)      { return api.delete('/objectives/' + id); },
+
+    // key results (measurable targets per objective)
+    listKeyResults: function (objectiveId)   { return api.get('/key-results' + qs({ objectiveId: objectiveId })); },
+    saveKeyResult:  function (body)          { return api.post('/key-results', body); },
+    recordKrValue:  function (krId, current) { return api.post('/key-results/value', { krId: krId, current: current }); },
+    deleteKeyResult:function (krId)          { return api.delete('/key-results/' + krId); },
 
     // tasks
     listTasks:    function (params)    { return api.get('/tasks' + qs(params)); },

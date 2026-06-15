@@ -26,6 +26,7 @@ CREATE OR REPLACE SYNONYM dct_tm_roles          FOR prod.dct_tm_roles;
 CREATE OR REPLACE SYNONYM dct_tm_role_perms     FOR prod.dct_tm_role_perms;
 CREATE OR REPLACE SYNONYM dct_tm_members        FOR prod.dct_tm_members;
 CREATE OR REPLACE SYNONYM dct_tm_objectives     FOR prod.dct_tm_objectives;
+CREATE OR REPLACE SYNONYM dct_tm_key_results    FOR prod.dct_tm_key_results;
 CREATE OR REPLACE SYNONYM dct_tm_tasks          FOR prod.dct_tm_tasks;
 CREATE OR REPLACE SYNONYM dct_tm_deliverables   FOR prod.dct_tm_deliverables;
 CREATE OR REPLACE SYNONYM dct_tm_log_items      FOR prod.dct_tm_log_items;
@@ -35,6 +36,7 @@ CREATE OR REPLACE SYNONYM dct_tm_reminder_prefs FOR prod.dct_tm_reminder_prefs;
 CREATE OR REPLACE SYNONYM dct_tm_team_v         FOR prod.dct_tm_team_v;
 CREATE OR REPLACE SYNONYM dct_tm_member_v       FOR prod.dct_tm_member_v;
 CREATE OR REPLACE SYNONYM dct_tm_objective_v    FOR prod.dct_tm_objective_v;
+CREATE OR REPLACE SYNONYM dct_tm_key_result_v   FOR prod.dct_tm_key_result_v;
 CREATE OR REPLACE SYNONYM dct_tm_task_v         FOR prod.dct_tm_task_v;
 CREATE OR REPLACE SYNONYM dct_tm_my_task_v      FOR prod.dct_tm_my_task_v;
 CREATE OR REPLACE SYNONYM dct_tm_deliverable_v  FOR prod.dct_tm_deliverable_v;
@@ -480,8 +482,10 @@ BEGIN
     APEX_JSON.write('titleAr', NVL(r.title_ar,'')); APEX_JSON.write('description', NVL(r.description,''));
     APEX_JSON.write('ownerId', r.owner_user_id); APEX_JSON.write('ownerName', NVL(r.owner_name,''));
     APEX_JSON.write('weight', r.weight); APEX_JSON.write('progress', r.progress_pct);
+    APEX_JSON.write('progressMode', NVL(r.progress_mode,'AUTO'));
     APEX_JSON.write('targetDate', TO_CHAR(r.target_date,'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('taskCount', r.task_count); APEX_JSON.write('taskDone', r.task_done_count);
+    APEX_JSON.write('krCount', r.kr_count); APEX_JSON.write('krAchieved', r.kr_achieved_count);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -497,11 +501,99 @@ BEGIN
   l_id := dct_tm_pkg.upsert_objective(l_uid, APEX_JSON.get_number(p_path=>'teamId'), APEX_JSON.get_varchar2(p_path=>'titleEn'),
     APEX_JSON.get_number(p_path=>'objectiveId'), APEX_JSON.get_varchar2(p_path=>'titleAr'), APEX_JSON.get_varchar2(p_path=>'description'),
     APEX_JSON.get_number(p_path=>'ownerId'), NVL(APEX_JSON.get_number(p_path=>'weight'),1), APEX_JSON.get_number(p_path=>'progress'),
-    TO_DATE(APEX_JSON.get_varchar2(p_path=>'targetDate'),'YYYY-MM-DD'), NVL(APEX_JSON.get_varchar2(p_path=>'status'),'NOT_STARTED'));
+    TO_DATE(APEX_JSON.get_varchar2(p_path=>'targetDate'),'YYYY-MM-DD'), NVL(APEX_JSON.get_varchar2(p_path=>'status'),'NOT_STARTED'),
+    APEX_JSON.get_varchar2(p_path=>'progressMode'));
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('objectiveId', l_id); APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN
   IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM); ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM);
   ELSE dct_rest.err(500,SQLERRM); END IF;
+END;
+!');
+
+    -- DELETE /objectives/:id  (removes the objective and cascades its key results)
+    def_template('objectives/[COLON]id');
+    def_handler('objectives/[COLON]id', 'DELETE', q'!
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  dct_tm_pkg.delete_objective(l_uid, TO_NUMBER([COLON]id));
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('ok',1); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM); ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM);
+  ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM); ELSE dct_rest.err(500,SQLERRM); END IF;
+END;
+!');
+
+    -- =========================================================================
+    -- KEY RESULTS  (measurable targets per objective)
+    -- =========================================================================
+    def_template('key-results');
+    def_handler('key-results', 'GET', q'!
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_obj NUMBER := TO_NUMBER([COLON]objectiveId DEFAULT NULL ON CONVERSION ERROR);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
+  FOR r IN (SELECT * FROM dct_tm_key_result_v WHERE objective_id=l_obj ORDER BY display_order, kr_id) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('krId', r.kr_id); APEX_JSON.write('objectiveId', r.objective_id);
+    APEX_JSON.write('titleEn', r.title_en); APEX_JSON.write('titleAr', NVL(r.title_ar,''));
+    APEX_JSON.write('unit', NVL(r.unit,'')); APEX_JSON.write('direction', r.direction);
+    APEX_JSON.write('baseline', r.baseline_value); APEX_JSON.write('target', r.target_value);
+    APEX_JSON.write('current', r.current_value); APEX_JSON.write('weight', r.weight);
+    APEX_JSON.write('progress', r.progress_pct);
+    APEX_JSON.write('targetDate', TO_CHAR(r.target_date,'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array; APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_handler('key-results', 'POST', q'!
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER; l_id NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user); dct_rest.parse_body([COLON]body);
+  l_id := dct_tm_pkg.upsert_key_result(l_uid, APEX_JSON.get_number(p_path=>'objectiveId'), APEX_JSON.get_varchar2(p_path=>'titleEn'),
+    APEX_JSON.get_number(p_path=>'krId'), APEX_JSON.get_varchar2(p_path=>'titleAr'), APEX_JSON.get_varchar2(p_path=>'unit'),
+    NVL(APEX_JSON.get_varchar2(p_path=>'direction'),'INCREASE'), APEX_JSON.get_number(p_path=>'baseline'),
+    APEX_JSON.get_number(p_path=>'target'), APEX_JSON.get_number(p_path=>'current'), NVL(APEX_JSON.get_number(p_path=>'weight'),1),
+    TO_DATE(APEX_JSON.get_varchar2(p_path=>'targetDate'),'YYYY-MM-DD'), NVL(APEX_JSON.get_varchar2(p_path=>'status'),'NOT_STARTED'));
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('krId', l_id); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM); ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM);
+  ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM); ELSE dct_rest.err(500,SQLERRM); END IF;
+END;
+!');
+
+    -- POST /key-results/value  (quick "update measurement" -- sets current_value)
+    def_template('key-results/value');
+    def_handler('key-results/value', 'POST', q'!
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user); dct_rest.parse_body([COLON]body);
+  dct_tm_pkg.record_kr_value(l_uid, APEX_JSON.get_number(p_path=>'krId'), APEX_JSON.get_number(p_path=>'current'));
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('ok',1); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM); ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM);
+  ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM); ELSE dct_rest.err(500,SQLERRM); END IF;
+END;
+!');
+
+    -- DELETE /key-results/:id
+    def_template('key-results/[COLON]id');
+    def_handler('key-results/[COLON]id', 'DELETE', q'!
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  dct_tm_pkg.delete_key_result(l_uid, TO_NUMBER([COLON]id));
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('ok',1); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM); ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM);
+  ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM); ELSE dct_rest.err(500,SQLERRM); END IF;
 END;
 !');
 

@@ -99,8 +99,23 @@ CREATE OR REPLACE PACKAGE prod.dct_tm_pkg AS
         p_objective_id NUMBER DEFAULT NULL, p_title_ar VARCHAR2 DEFAULT NULL,
         p_description VARCHAR2 DEFAULT NULL, p_owner_id NUMBER DEFAULT NULL,
         p_weight NUMBER DEFAULT 1, p_progress NUMBER DEFAULT NULL,
-        p_target DATE DEFAULT NULL, p_status VARCHAR2 DEFAULT 'NOT_STARTED'
+        p_target DATE DEFAULT NULL, p_status VARCHAR2 DEFAULT 'NOT_STARTED',
+        p_progress_mode VARCHAR2 DEFAULT NULL
     ) RETURN NUMBER;
+
+    PROCEDURE delete_objective (p_actor_id NUMBER, p_objective_id NUMBER);
+
+    -- ---- key results (measurable targets per objective) ----
+    FUNCTION upsert_key_result (
+        p_actor_id NUMBER, p_objective_id NUMBER, p_title_en VARCHAR2,
+        p_kr_id NUMBER DEFAULT NULL, p_title_ar VARCHAR2 DEFAULT NULL,
+        p_unit VARCHAR2 DEFAULT NULL, p_direction VARCHAR2 DEFAULT 'INCREASE',
+        p_baseline NUMBER DEFAULT NULL, p_target NUMBER DEFAULT NULL, p_current NUMBER DEFAULT NULL,
+        p_weight NUMBER DEFAULT 1, p_target_date DATE DEFAULT NULL, p_status VARCHAR2 DEFAULT 'NOT_STARTED'
+    ) RETURN NUMBER;
+
+    PROCEDURE record_kr_value (p_actor_id NUMBER, p_kr_id NUMBER, p_current NUMBER);
+    PROCEDURE delete_key_result (p_actor_id NUMBER, p_kr_id NUMBER);
 
     -- ---- tasks ----
     FUNCTION upsert_task (
@@ -486,12 +501,31 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_tm_pkg AS
     -- =========================================================================
     -- objectives
     -- =========================================================================
+    -- Roll the objective's progress_pct up from its key results (weighted), but
+    -- only when the objective is in AUTO mode. MANUAL objectives keep their value.
+    PROCEDURE recompute_objective_progress (p_objective_id NUMBER) IS
+        v_mode VARCHAR2(10);
+        v_pct  NUMBER;
+    BEGIN
+        SELECT progress_mode INTO v_mode FROM prod.dct_tm_objectives WHERE objective_id = p_objective_id;
+        IF v_mode <> 'AUTO' THEN RETURN; END IF;
+        SELECT ROUND(SUM(kr.progress_pct * NVL(kr.weight,1)) / NULLIF(SUM(NVL(kr.weight,1)), 0), 1)
+        INTO   v_pct
+        FROM   prod.dct_tm_key_result_v kr
+        WHERE  kr.objective_id = p_objective_id;
+        UPDATE prod.dct_tm_objectives
+        SET    progress_pct = NVL(v_pct, 0)
+        WHERE  objective_id = p_objective_id;
+    EXCEPTION WHEN NO_DATA_FOUND THEN NULL;
+    END recompute_objective_progress;
+
     FUNCTION upsert_objective (
         p_actor_id NUMBER, p_team_id NUMBER, p_title_en VARCHAR2,
         p_objective_id NUMBER DEFAULT NULL, p_title_ar VARCHAR2 DEFAULT NULL,
         p_description VARCHAR2 DEFAULT NULL, p_owner_id NUMBER DEFAULT NULL,
         p_weight NUMBER DEFAULT 1, p_progress NUMBER DEFAULT NULL,
-        p_target DATE DEFAULT NULL, p_status VARCHAR2 DEFAULT 'NOT_STARTED'
+        p_target DATE DEFAULT NULL, p_status VARCHAR2 DEFAULT 'NOT_STARTED',
+        p_progress_mode VARCHAR2 DEFAULT NULL
     ) RETURN NUMBER IS
         v_id NUMBER := p_objective_id;
     BEGIN
@@ -499,12 +533,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_tm_pkg AS
         IF p_progress IS NOT NULL AND (p_progress < 0 OR p_progress > 100) THEN
             RAISE_APPLICATION_ERROR(-20001, 'progress_pct must be between 0 and 100.');
         END IF;
+        IF p_progress_mode IS NOT NULL AND p_progress_mode NOT IN ('AUTO','MANUAL') THEN
+            RAISE_APPLICATION_ERROR(-20001, 'progress_mode must be AUTO or MANUAL.');
+        END IF;
         IF v_id IS NULL THEN
             require_perm(p_actor_id, p_team_id, 'OBJECTIVE', 'CREATE');
             INSERT INTO prod.dct_tm_objectives
-                (team_id, title_en, title_ar, description, owner_user_id, weight, progress_pct, target_date, status, created_by)
+                (team_id, title_en, title_ar, description, owner_user_id, weight, progress_pct, target_date, status, progress_mode, created_by)
             VALUES (p_team_id, p_title_en, p_title_ar, p_description, p_owner_id, NVL(p_weight,1),
-                    NVL(p_progress,0), p_target, p_status, actor_name(p_actor_id))
+                    NVL(p_progress,0), p_target, p_status, NVL(p_progress_mode,'AUTO'), actor_name(p_actor_id))
             RETURNING objective_id INTO v_id;
         ELSE
             require_perm(p_actor_id, p_team_id, 'OBJECTIVE', 'UPDATE');
@@ -512,11 +549,109 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_tm_pkg AS
             SET    title_en = p_title_en, title_ar = NVL(p_title_ar, title_ar),
                    description = NVL(p_description, description), owner_user_id = NVL(p_owner_id, owner_user_id),
                    weight = NVL(p_weight, weight), progress_pct = NVL(p_progress, progress_pct),
-                   target_date = NVL(p_target, target_date), status = p_status, updated_by = actor_name(p_actor_id)
+                   target_date = NVL(p_target, target_date), status = p_status,
+                   progress_mode = NVL(p_progress_mode, progress_mode), updated_by = actor_name(p_actor_id)
             WHERE  objective_id = v_id;
+            -- if it was switched (back) to AUTO, refresh the roll-up immediately
+            recompute_objective_progress(v_id);
         END IF;
         RETURN v_id;
     END upsert_objective;
+
+    PROCEDURE delete_objective (p_actor_id NUMBER, p_objective_id NUMBER) IS
+        v_team NUMBER;
+    BEGIN
+        SELECT team_id INTO v_team FROM prod.dct_tm_objectives WHERE objective_id = p_objective_id;
+        require_perm(p_actor_id, v_team, 'OBJECTIVE', 'DELETE');
+        DELETE FROM prod.dct_tm_objectives WHERE objective_id = p_objective_id;  -- key results cascade
+        recompute_team_health(v_team);
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20404, 'Objective not found.');
+    END delete_objective;
+
+    -- =========================================================================
+    -- key results (measurable targets per objective)
+    -- =========================================================================
+    FUNCTION kr_team (p_objective_id NUMBER) RETURN NUMBER IS
+        v_team NUMBER;
+    BEGIN
+        SELECT team_id INTO v_team FROM prod.dct_tm_objectives WHERE objective_id = p_objective_id;
+        RETURN v_team;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20404, 'Objective not found.');
+    END kr_team;
+
+    FUNCTION upsert_key_result (
+        p_actor_id NUMBER, p_objective_id NUMBER, p_title_en VARCHAR2,
+        p_kr_id NUMBER DEFAULT NULL, p_title_ar VARCHAR2 DEFAULT NULL,
+        p_unit VARCHAR2 DEFAULT NULL, p_direction VARCHAR2 DEFAULT 'INCREASE',
+        p_baseline NUMBER DEFAULT NULL, p_target NUMBER DEFAULT NULL, p_current NUMBER DEFAULT NULL,
+        p_weight NUMBER DEFAULT 1, p_target_date DATE DEFAULT NULL, p_status VARCHAR2 DEFAULT 'NOT_STARTED'
+    ) RETURN NUMBER IS
+        v_id   NUMBER := p_kr_id;
+        v_obj  NUMBER := p_objective_id;
+        v_team NUMBER;
+    BEGIN
+        IF p_title_en IS NULL OR LENGTH(TRIM(p_title_en)) = 0 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'Key result title is required.');
+        END IF;
+        prod.dct_lookup_pkg.validate_lookup('TM_KR_DIRECTION',     p_direction);
+        prod.dct_lookup_pkg.validate_lookup('TM_OBJECTIVE_STATUS', p_status);
+        IF v_id IS NULL THEN
+            IF p_target IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Key result target value is required.');
+            END IF;
+            v_team := kr_team(v_obj);
+            require_perm(p_actor_id, v_team, 'OBJECTIVE', 'CREATE');
+            INSERT INTO prod.dct_tm_key_results
+                (objective_id, title_en, title_ar, unit, direction, baseline_value, target_value,
+                 current_value, weight, target_date, status, created_by)
+            VALUES (v_obj, p_title_en, p_title_ar, p_unit, NVL(p_direction,'INCREASE'), p_baseline, p_target,
+                    NVL(p_current, p_baseline), NVL(p_weight,1), p_target_date, p_status, actor_name(p_actor_id))
+            RETURNING kr_id INTO v_id;
+        ELSE
+            SELECT objective_id INTO v_obj FROM prod.dct_tm_key_results WHERE kr_id = v_id;
+            v_team := kr_team(v_obj);
+            require_perm(p_actor_id, v_team, 'OBJECTIVE', 'UPDATE');
+            UPDATE prod.dct_tm_key_results
+            SET    title_en = p_title_en, title_ar = NVL(p_title_ar, title_ar),
+                   unit = p_unit, direction = NVL(p_direction, direction),
+                   baseline_value = p_baseline, target_value = NVL(p_target, target_value),
+                   current_value = p_current, weight = NVL(p_weight, weight),
+                   target_date = p_target_date, status = p_status, updated_by = actor_name(p_actor_id)
+            WHERE  kr_id = v_id;
+        END IF;
+        recompute_objective_progress(v_obj);
+        RETURN v_id;
+    END upsert_key_result;
+
+    PROCEDURE record_kr_value (p_actor_id NUMBER, p_kr_id NUMBER, p_current NUMBER) IS
+        v_obj  NUMBER;
+        v_team NUMBER;
+    BEGIN
+        SELECT objective_id INTO v_obj FROM prod.dct_tm_key_results WHERE kr_id = p_kr_id;
+        v_team := kr_team(v_obj);
+        require_perm(p_actor_id, v_team, 'OBJECTIVE', 'UPDATE');
+        UPDATE prod.dct_tm_key_results
+        SET    current_value = p_current, updated_by = actor_name(p_actor_id)
+        WHERE  kr_id = p_kr_id;
+        recompute_objective_progress(v_obj);
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20404, 'Key result not found.');
+    END record_kr_value;
+
+    PROCEDURE delete_key_result (p_actor_id NUMBER, p_kr_id NUMBER) IS
+        v_obj  NUMBER;
+        v_team NUMBER;
+    BEGIN
+        SELECT objective_id INTO v_obj FROM prod.dct_tm_key_results WHERE kr_id = p_kr_id;
+        v_team := kr_team(v_obj);
+        require_perm(p_actor_id, v_team, 'OBJECTIVE', 'UPDATE');
+        DELETE FROM prod.dct_tm_key_results WHERE kr_id = p_kr_id;
+        recompute_objective_progress(v_obj);
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20404, 'Key result not found.');
+    END delete_key_result;
 
     -- =========================================================================
     -- tasks

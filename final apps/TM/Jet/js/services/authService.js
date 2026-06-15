@@ -41,7 +41,7 @@ function (config, api) {
       var token = this.getToken();
       localStorage.removeItem(SESSION_KEY);
       if (token) {
-        api.post('/auth/logout').catch(function () {});
+        api.post('/auth/logout', {}, { base: 'auth', silent: true }).catch(function () {});
       }
     },
 

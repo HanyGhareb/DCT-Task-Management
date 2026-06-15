@@ -1,7 +1,7 @@
 -- =============================================================================
 -- Task Management Module (App 207) -- master install
 -- Run     : sql -name prod_mcp @install.sql
--- Order   : DDL -> seed -> views -> package -> reminder pkg -> jobs.
+-- Order   : DDL -> seed -> key results -> views -> package -> reminder pkg -> jobs.
 --
 -- IMPORTANT: 06_tm_ords.sql is intentionally NOT included here. The scripts
 -- below run `ALTER SESSION SET CURRENT_SCHEMA = PROD`; the ORDS script creates
@@ -16,17 +16,19 @@ SET DEFINE OFF
 SET SQLBLANKLINES ON
 SET SERVEROUTPUT ON SIZE UNLIMITED
 
-PROMPT ===== [1/6] 01_tm_ddl.sql =====
+PROMPT ===== [1/7] 01_tm_ddl.sql =====
 @@01_tm_ddl.sql
-PROMPT ===== [2/6] 03_tm_seed.sql =====
+PROMPT ===== [2/7] 03_tm_seed.sql =====
 @@03_tm_seed.sql
-PROMPT ===== [3/6] 02_tm_views.sql =====
+PROMPT ===== [3/7] 08_tm_key_results.sql =====
+@@08_tm_key_results.sql
+PROMPT ===== [4/7] 02_tm_views.sql =====
 @@02_tm_views.sql
-PROMPT ===== [4/6] 04_tm_pkg.sql =====
+PROMPT ===== [5/7] 04_tm_pkg.sql =====
 @@04_tm_pkg.sql
-PROMPT ===== [5/6] 05_tm_reminder_pkg.sql =====
+PROMPT ===== [6/7] 05_tm_reminder_pkg.sql =====
 @@05_tm_reminder_pkg.sql
-PROMPT ===== [6/6] 07_tm_jobs.sql =====
+PROMPT ===== [7/7] 07_tm_jobs.sql =====
 @@07_tm_jobs.sql
 
 PROMPT

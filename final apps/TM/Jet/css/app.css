@@ -148,3 +148,27 @@
 .tm-feed__author { font-weight:600; color:var(--text,#1c252e); }
 .tm-feed__time { font-size:11px; }
 .tm-feed__body { font-size:13px; color:var(--text-2,#4a5560); margin-top:2px; }
+
+/* ---- objectives: clickable rows + soft badge ----------------------- */
+.badge--soft { background:var(--surface-2,#eef1f4); color:var(--text-2,#6a747e); }
+.row-link { cursor:pointer; }
+.row-link:hover { background:var(--brand-soft); }
+.link-strong { font-weight:600; color:var(--text,#1c252e); }
+.cell-actions { white-space:nowrap; text-align:end; }
+.cell-actions .btn { margin-inline-start:4px; }
+
+/* ---- objective drawer: progress + key results ---------------------- */
+.tm-obj-prog { display:flex; align-items:center; gap:8px; margin-top:10px; }
+.tm-obj-prog .tm-prog { width:auto; height:8px; }
+.tm-kr-list { display:flex; flex-direction:column; gap:10px; margin-top:6px; }
+.tm-kr { border:1px solid var(--border,#e2e6ea); border-radius:10px; padding:10px 12px; background:var(--surface,#fff); }
+.tm-kr__hd { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.tm-kr__title { font-weight:600; font-size:13px; flex:1 1 auto; }
+.tm-kr__actions { display:flex; gap:4px; }
+.tm-kr__gauge { display:flex; align-items:center; gap:8px; margin:10px 0 6px; }
+.tm-kr__bar { flex:1 1 auto; width:auto; height:8px; }
+.tm-kr__mark { font-size:11px; color:var(--text-2,#6a747e); white-space:nowrap; }
+.tm-kr__foot { display:flex; align-items:flex-end; justify-content:space-between; gap:10px; flex-wrap:wrap; }
+.tm-kr__update { display:flex; align-items:center; gap:6px; }
+.tm-kr__update .form-label { margin:0; font-size:11px; }
+.tm-kr__update .form-control--sm { width:110px; }

@@ -22,10 +22,10 @@ from playwright.sync_api import sync_playwright
 ROOT    = r'c:\claude\DCT-task-management\DCT-Task-Management\final apps'
 PORT    = 8092
 APPURL  = 'http://localhost:%d' % PORT
-RUN_DATE = date(2026, 6, 13)                         # this enhancement round (matches the dev work)
-DATESTR = RUN_DATE.strftime('%d-%b-%Y')              # 13-Jun-2026
-ROUNDDT = RUN_DATE.strftime('%d-%m-%Y')              # 13-06-2026
-ROUND_N = 2                                           # round 1 = initial build case list
+RUN_DATE = date(2026, 6, 14)                         # round 3 = measurable objectives (Key Results)
+DATESTR = RUN_DATE.strftime('%d-%b-%Y')              # 14-Jun-2026
+ROUNDDT = RUN_DATE.strftime('%d-%m-%Y')              # 14-06-2026
+ROUND_N = 3                                           # 1 = initial build · 2 = UI/UX+enhancements · 3 = key results
 RUN     = time.strftime('%H%M%S')
 
 # ── credentials (runtime parse from TM + Admin + FL + CC quick logins) ────────
@@ -461,6 +461,129 @@ def role_gating(ctx):
     return 'PASS', 'Non-admin (%s) enters TM via shared session; Team Roles admin nav %s' % (
         MEMBERU, 'hidden' if admin_hidden else 'visible (role-dependent)')
 
+# ── Objectives & Key Results (round 3) ─────────────────────────────────────────
+def _obj(ctx):
+    if not ctx.get('obj'):
+        t = _team(ctx)
+        st, d = api('POST', '/tm/objectives', {'teamId': t['teamId'],
+                    'titleEn': 'UAT measurable objective ' + RUN}, token=tok())
+        assert d.get('objectiveId'), 'objective create failed: %s' % d
+        ctx['obj'] = d['objectiveId']
+    return ctx['obj']
+
+def _open_obj_drawer(ctx):
+    t = _team(ctx); p = ctx['page']; ctx['shot_page'] = p
+    nav(p, 'teamDetail', 1800, state={'teamId': t['teamId'], 'tab': 'objectives'})
+    p.locator('.tm-tab').nth(2).click(); wait(p, 1400)
+    btn = p.get_by_role('button', name='Manage', exact=True)
+    if btn.count():
+        btn.first.evaluate('el => el.click()'); wait(p, 1400)
+    return p
+
+def obj_create(ctx):
+    oid = _obj(ctx); t = _team(ctx)
+    st, d = api('GET', '/tm/objectives?teamId=%d' % t['teamId'], token=tok())
+    row = next((o for o in d.get('items', []) if o['objectiveId'] == oid), {})
+    assert row.get('progressMode') == 'AUTO', 'new objective should default to AUTO mode'
+    p = ctx['page']; ctx['shot_page'] = p
+    nav(p, 'teamDetail', 1500, state={'teamId': t['teamId'], 'tab': 'objectives'})
+    p.locator('.tm-tab').nth(2).click(); wait(p, 1200)
+    assert p.locator('table.data-table tbody tr').count() >= 1, 'objectives table empty'
+    return 'PASS', 'Objective created (defaults to AUTO progress mode); listed on the Objectives tab'
+
+def obj_kr_increase(ctx):
+    oid = _obj(ctx)
+    st, d = api('POST', '/tm/key-results', {'objectiveId': oid, 'titleEn': 'CSAT score',
+                'unit': '%', 'direction': 'INCREASE', 'baseline': 0, 'target': 100,
+                'current': 50, 'weight': 1}, token=tok())
+    assert d.get('krId'), 'KR create failed: %s' % d
+    ctx['kr1'] = d['krId']
+    st, kl = api('GET', '/tm/key-results?objectiveId=%d' % oid, token=tok())
+    kr = next((k for k in kl.get('items', []) if k['krId'] == ctx['kr1']), {})
+    st, ol = api('GET', '/tm/objectives?teamId=%d' % _team(ctx)['teamId'], token=tok())
+    obj = next((o for o in ol.get('items', []) if o['objectiveId'] == oid), {})
+    assert kr.get('progress') == 50 and obj.get('progress') == 50, \
+        'expected KR 50%% / objective 50%%, got KR %s / obj %s' % (kr.get('progress'), obj.get('progress'))
+    _open_obj_drawer(ctx)
+    return 'PASS', 'INCREASE KR (0→100, current 50) = 50%%; objective auto-rolled to 50%%'
+
+def obj_kr_decrease(ctx):
+    oid = _obj(ctx)
+    st, d = api('POST', '/tm/key-results', {'objectiveId': oid, 'titleEn': 'Complaints',
+                'unit': '#', 'direction': 'DECREASE', 'baseline': 100, 'target': 0,
+                'current': 75, 'weight': 1}, token=tok())
+    assert d.get('krId'), 'KR create failed: %s' % d
+    ctx['kr2'] = d['krId']
+    st, ol = api('GET', '/tm/objectives?teamId=%d' % _team(ctx)['teamId'], token=tok())
+    obj = next((o for o in ol.get('items', []) if o['objectiveId'] == oid), {})
+    assert obj.get('progress') == 37.5, 'expected weighted 37.5%%, got %s' % obj.get('progress')
+    _open_obj_drawer(ctx)
+    return 'PASS', 'DECREASE KR (100→0, current 75) = 25%%; weighted objective roll-up = 37.5%%'
+
+def obj_kr_update(ctx):
+    oid = _obj(ctx); kr1 = ctx.get('kr1') or obj_kr_increase(ctx) and ctx['kr1']
+    st, d = api('POST', '/tm/key-results/value', {'krId': kr1, 'current': 100}, token=tok())
+    assert st == 200, 'record value failed: %s' % d
+    st, ol = api('GET', '/tm/objectives?teamId=%d' % _team(ctx)['teamId'], token=tok())
+    obj = next((o for o in ol.get('items', []) if o['objectiveId'] == oid), {})
+    assert obj.get('progress') == 62.5, 'expected 62.5%% after update, got %s' % obj.get('progress')
+    _open_obj_drawer(ctx)
+    return 'PASS', 'Updating CSAT current 50→100 reflows the objective to 62.5%% live'
+
+def obj_manual(ctx):
+    oid = _obj(ctx); t = _team(ctx)
+    api('POST', '/tm/objectives', {'teamId': t['teamId'], 'objectiveId': oid,
+        'titleEn': 'UAT measurable objective ' + RUN, 'progress': 88, 'progressMode': 'MANUAL'}, token=tok())
+    if ctx.get('kr1'):
+        api('POST', '/tm/key-results/value', {'krId': ctx['kr1'], 'current': 0}, token=tok())
+    st, ol = api('GET', '/tm/objectives?teamId=%d' % t['teamId'], token=tok())
+    obj = next((o for o in ol.get('items', []) if o['objectiveId'] == oid), {})
+    assert obj.get('progressMode') == 'MANUAL' and obj.get('progress') == 88, \
+        'MANUAL pin failed: mode %s / progress %s' % (obj.get('progressMode'), obj.get('progress'))
+    api('POST', '/tm/objectives', {'teamId': t['teamId'], 'objectiveId': oid,
+        'titleEn': 'UAT measurable objective ' + RUN, 'progressMode': 'AUTO'}, token=tok())  # restore
+    _open_obj_drawer(ctx)
+    return 'PASS', 'MANUAL mode pins the objective at 88%% despite a KR change (then restored to AUTO)'
+
+def obj_kr_target_boundary(ctx):
+    oid = _obj(ctx)
+    st, d = api('POST', '/tm/key-results', {'objectiveId': oid, 'titleEn': 'No target',
+                'direction': 'INCREASE'}, token=tok())
+    assert st == 400, 'KR without a target should be 400, got %s' % st
+    ctx['shot_page'] = ctx['page']
+    return 'PASS', 'KR without a target value is rejected with HTTP 400 (boundary)'
+
+def obj_kr_dir_error(ctx):
+    oid = _obj(ctx)
+    st, d = api('POST', '/tm/key-results', {'objectiveId': oid, 'titleEn': 'Bad direction',
+                'direction': 'SIDEWAYS', 'target': 10}, token=tok())
+    assert st == 400, 'invalid direction should be 400 (-20090), got %s' % st
+    ctx['shot_page'] = ctx['page']
+    return 'PASS', 'Invalid KR direction is rejected with HTTP 400 (lookup validation, -20090)'
+
+def obj_kr_perm(ctx):
+    oid = _obj(ctx); u = MEMBERU
+    st, d = api('POST', '/tm/key-results', {'objectiveId': oid, 'titleEn': 'Sneaky',
+                'direction': 'INCREASE', 'target': 5}, token=tok(u))
+    assert st == 403, 'non-member adding a KR should be 403, got %s' % st
+    ctx['shot_page'] = ctx['page']
+    return 'PASS', 'Non-member (%s) adding a KR is denied with HTTP 403 (OBJECTIVE permission)' % u
+
+def obj_delete(ctx):
+    t = _team(ctx)
+    st, d = api('POST', '/tm/objectives', {'teamId': t['teamId'], 'titleEn': 'UAT throwaway ' + RUN}, token=tok())
+    throwaway = d['objectiveId']
+    api('POST', '/tm/key-results', {'objectiveId': throwaway, 'titleEn': 'temp', 'direction': 'INCREASE',
+        'target': 10, 'current': 5}, token=tok())
+    st, dd = api('DELETE', '/tm/objectives/%d' % throwaway, token=tok())
+    assert st == 200, 'objective delete failed: %s' % st
+    st, kl = api('GET', '/tm/key-results?objectiveId=%d' % throwaway, token=tok())
+    assert len(kl.get('items', [])) == 0, 'key results not cascaded on objective delete'
+    p = ctx['page']; ctx['shot_page'] = p
+    nav(p, 'teamDetail', 1400, state={'teamId': t['teamId'], 'tab': 'objectives'})
+    p.locator('.tm-tab').nth(2).click(); wait(p, 1200)
+    return 'PASS', 'delete_objective removes the objective and cascades its key results'
+
 # ═════════════════════════════════════════════════════════════════════════════
 # Case catalogue: (area, prefix, [(function, scenario, steps, expected, fn)])
 # ═════════════════════════════════════════════════════════════════════════════
@@ -491,6 +614,22 @@ CASES = [
    ('Overview', 'Full team definition grid', '1. Open a team', 'Overview shows ALL team fields in an aligned definition grid + KPI tiles + 9 tabs', detail_overview),
    ('Edit team', 'Edit Team modal persists', '1. Open a team → Edit Team\n2. Change objective + status\n3. Save Changes',
     'Edit modal (top-right) saves via PUT; changes persist on reload', detail_edit),
+ ]),
+ ('Objectives & Key Results', 'OBJ', [
+   ('Create objective', 'Measurable objective (AUTO)', '1. Objectives tab → Add Objective\n2. Title + status\n3. Save',
+    'Objective created and listed; progress defaults to AUTO (rolled up from key results)', obj_create),
+   ('KR increase', 'Add an INCREASE key result', '1. Open the objective → Add Key Result\n2. Unit %, Increase, baseline 0, target 100, current 50\n3. Save',
+    'KR shows 50%; the objective auto-progress rolls up to 50%', obj_kr_increase),
+   ('KR decrease + roll-up', 'Add a DECREASE key result', '1. Add a second KR: Decrease, baseline 100, target 0, current 75',
+    'KR shows 25%; the objective weighted roll-up becomes 37.5%', obj_kr_decrease),
+   ('Update measurement', 'Inline current-value update', '1. In the KR row set current = 100\n2. Update',
+    'The objective auto-progress reflows live to 62.5%', obj_kr_update),
+   ('Manual override', 'MANUAL pins the percentage', '1. Set the objective to Manual at 88%\n2. Change a KR value',
+    'Objective stays 88% (KR changes no longer move it); switch back to Auto restores roll-up', obj_manual),
+   ('Target required', 'KR without a target', '1. Add a KR with no target value', 'Rejected with HTTP 400 (boundary)', obj_kr_target_boundary),
+   ('Invalid direction', 'Bad direction lookup', '1. Add a KR with an invalid direction', 'Rejected with HTTP 400 (lookup validation)', obj_kr_dir_error),
+   ('Permission', 'Non-member cannot add a KR', '1. As a non-member, add a KR', 'Denied with HTTP 403 (OBJECTIVE permission)', obj_kr_perm),
+   ('Delete objective', 'Cascade key results', '1. Remove an objective that has key results', 'Objective removed and its key results cascade away', obj_delete),
  ]),
  ('Members', 'MBR', [
    ('Add member', 'Add from the user picker', '1. Members tab → Add Member\n2. Pick a user + role + title\n3. Add',
@@ -553,8 +692,9 @@ def build_workbook(path, fill_status):
     ins['A1'] = 'i-Finance UAT — Task Management (App 207)'; ins['A1'].font = Font(bold=True, size=14)
     notes = [
         'Round %d · %s · Environment: dev-proxy → ADB PROD.' % (ROUND_N, DATESTR),
-        'Scope: UI/UX rework to the shared platform design + functional enhancements '
-        '(team edit, member management, task assignment with reassignment tracking, milestones, meetings, documents).',
+        'Round 3 focus: measurable objectives (OKR-style Key Results) — per-KR baseline/target/current '
+        'with auto weighted progress roll-up, a MANUAL override, and full objective + key-result CRUD. '
+        'Re-runs the full TM regression suite (teams, members, tasks, artifacts, cross-cutting) alongside it.',
         'Login: TM authenticates through the Admin portal — enter via the module switcher (shared session).',
         'Status legend: PASS / FAIL / PARTIAL / MANUAL / SKIP (Status column has a dropdown).',
         'Automated results with one evidence screenshot per case: UAT_TM_Results_%s-%02d.docx.' % (DATESTR, seq),
@@ -608,11 +748,12 @@ def build_docx():
     doc.add_heading('i-Finance UAT Results — Task Management (App 207)', level=0)
     doc.add_paragraph('Automated UAT run · Round %d · %s · Environment: %s (dev-proxy → ADB PROD)'
                       % (ROUND_N, DATESTR, APPURL)).runs[0].font.size = Pt(10)
-    doc.add_paragraph('Executed by Claude (Playwright + ORDS). Scope: the UI/UX rework onto the shared '
-                      'platform design plus the functional enhancements — team edit, member management, '
-                      'task assignment with reassignment tracking, milestones, meetings and documents. '
-                      'Personas: SYS_ADMIN (ADMIN) and a non-admin (%s). Test data created during the run '
-                      'is prefixed "UAT".' % MEMBERU).runs[0].font.size = Pt(9)
+    doc.add_paragraph('Executed by Claude (Playwright + ORDS). Round 3 focus: measurable objectives '
+                      '(OKR-style Key Results) — per-KR baseline/target/current with auto weighted '
+                      'progress roll-up, a MANUAL override, and full objective + key-result CRUD — run '
+                      'alongside the full TM regression suite (teams, members, tasks, artifacts, '
+                      'cross-cutting). Personas: SYS_ADMIN (ADMIN) and a non-admin (%s). Test data '
+                      'created during the run is prefixed "UAT".' % MEMBERU).runs[0].font.size = Pt(9)
     doc.add_heading('Summary', level=1)
     counts = {}
     for r in RESULTS: counts[r['status']] = counts.get(r['status'], 0) + 1

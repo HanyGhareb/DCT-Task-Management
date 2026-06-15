@@ -1,0 +1,602 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Drawer Form — Edit Row (APEX-style)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ============================================================
+   THEME TOKENS  — mirrors platform.css brand-token contract.
+   Drop-in for any module by swapping --brand / --brand-rgb.
+   ============================================================ */
+:root{
+  --brand:#0E8A8A;            /* TM teal */
+  --brand-rgb:14,138,138;
+  --brand-dark:#0A6A6A;
+  --brand-soft:#E6F4F4;
+
+  --ink:#10201F;
+  --ink-2:#4A5E5D;
+  --muted:#7C908F;
+  --line:#E2EAE9;
+  --line-2:#EEF3F2;
+  --surface:#FFFFFF;
+  --canvas:#F4F7F6;
+
+  --danger:#D9534F;
+  --warn:#C9871F;
+  --ok:#2E9E6B;
+
+  --radius:14px;
+  --radius-sm:10px;
+  --shadow-card:0 1px 2px rgba(16,32,31,.04), 0 8px 24px -12px rgba(16,32,31,.12);
+  --shadow-drawer:-24px 0 60px -24px rgba(10,40,38,.35), -2px 0 0 rgba(var(--brand-rgb),.06);
+
+  --font:'Outfit',system-ui,sans-serif;
+  --mono:'Fira Code',monospace;
+
+  --ease-spring:cubic-bezier(.22,1,.32,1);
+}
+
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font);
+  color:var(--ink);
+  background:
+    radial-gradient(1200px 600px at 88% -10%, rgba(var(--brand-rgb),.07), transparent 60%),
+    radial-gradient(900px 500px at -5% 110%, rgba(var(--brand-rgb),.05), transparent 55%),
+    var(--canvas);
+  -webkit-font-smoothing:antialiased;
+  line-height:1.45;
+  padding:40px 28px;
+}
+
+/* faint engineering grid texture for depth */
+body::before{
+  content:"";position:fixed;inset:0;z-index:0;pointer-events:none;
+  background-image:
+    linear-gradient(rgba(16,32,31,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(16,32,31,.022) 1px, transparent 1px);
+  background-size:46px 46px;
+  -webkit-mask-image:radial-gradient(circle at 50% 30%, #000 0%, transparent 80%);
+  mask-image:radial-gradient(circle at 50% 30%, #000 0%, transparent 80%);
+}
+
+.wrap{position:relative;z-index:1;max-width:1080px;margin:0 auto}
+
+/* ---------- page header ---------- */
+.page-header-row{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:24px;margin-bottom:26px;
+}
+.eyebrow{
+  font-family:var(--mono);font-size:11px;letter-spacing:.22em;text-transform:uppercase;
+  color:var(--brand);font-weight:600;margin-bottom:8px;display:flex;align-items:center;gap:9px;
+}
+.eyebrow::before{content:"";width:26px;height:2px;background:var(--brand);border-radius:2px}
+.page-title{font-size:30px;font-weight:700;letter-spacing:-.02em;line-height:1.1}
+.page-sub{color:var(--muted);font-size:14px;margin-top:6px;max-width:46ch}
+.page-actions{display:flex;gap:10px}
+
+/* ---------- buttons ---------- */
+.btn{
+  font-family:var(--font);font-size:13.5px;font-weight:600;
+  border:1px solid var(--line);background:var(--surface);color:var(--ink);
+  padding:10px 16px;border-radius:11px;cursor:pointer;
+  display:inline-flex;align-items:center;gap:8px;
+  transition:transform .15s var(--ease-spring), box-shadow .2s, background .2s, border-color .2s, color .2s;
+  white-space:nowrap;
+}
+.btn:hover{transform:translateY(-1px);box-shadow:0 6px 16px -8px rgba(16,32,31,.25)}
+.btn:active{transform:translateY(0)}
+.btn svg{width:16px;height:16px}
+.btn-primary{
+  background:linear-gradient(180deg, var(--brand), var(--brand-dark));
+  border-color:transparent;color:#fff;
+  box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 8px 18px -10px rgba(var(--brand-rgb),.9);
+}
+.btn-primary:hover{box-shadow:0 1px 0 rgba(255,255,255,.25) inset, 0 12px 24px -10px rgba(var(--brand-rgb),.9)}
+.btn-ghost{background:transparent;border-color:transparent;color:var(--ink-2)}
+.btn-ghost:hover{background:var(--line-2);box-shadow:none}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:9px}
+
+/* ---------- table card ---------- */
+.card{
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);
+  box-shadow:var(--shadow-card);overflow:hidden;
+}
+.section-heading-row{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:15px 20px;border-bottom:1px solid var(--line);
+  background:linear-gradient(180deg, rgba(var(--brand-rgb),.05), rgba(var(--brand-rgb),.015));
+}
+.section-heading{font-size:14px;font-weight:600;letter-spacing:.01em;display:flex;align-items:center;gap:10px}
+.section-heading .dot{width:8px;height:8px;border-radius:50%;background:var(--brand);box-shadow:0 0 0 4px rgba(var(--brand-rgb),.15)}
+.count-chip{
+  font-family:var(--mono);font-size:11px;color:var(--brand-dark);
+  background:var(--brand-soft);padding:2px 9px;border-radius:20px;font-weight:600;
+}
+
+table{width:100%;border-collapse:collapse}
+thead th{
+  text-align:left;font-size:11px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;padding:12px 18px;border-bottom:1px solid var(--line);
+  background:#fbfdfc;
+}
+thead th.center{text-align:center}
+tbody td{padding:14px 18px;border-bottom:1px solid var(--line-2);font-size:14px;vertical-align:middle}
+tbody tr{transition:background .18s}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:rgba(var(--brand-rgb),.035)}
+tbody tr.is-editing{background:rgba(var(--brand-rgb),.07);box-shadow:inset 3px 0 0 var(--brand)}
+
+.task-key{font-family:var(--mono);font-size:12.5px;color:var(--brand-dark);font-weight:600}
+.task-title{font-weight:600;color:var(--ink)}
+.assignee{display:flex;align-items:center;gap:10px}
+.avatar{
+  width:30px;height:30px;border-radius:9px;flex:none;
+  display:grid;place-items:center;font-size:12px;font-weight:700;color:#fff;
+  background:linear-gradient(135deg,var(--brand),var(--brand-dark));
+  box-shadow:0 2px 6px -2px rgba(var(--brand-rgb),.6);
+}
+.avatar.alt{background:linear-gradient(135deg,#5B6CC9,#3A47A0)}
+.avatar.alt2{background:linear-gradient(135deg,#C9871F,#9A6310)}
+.avatar.alt3{background:linear-gradient(135deg,#2E9E6B,#1F7A50)}
+
+.badge{
+  font-size:11.5px;font-weight:600;padding:4px 11px;border-radius:20px;
+  display:inline-flex;align-items:center;gap:6px;letter-spacing:.01em;
+}
+.badge::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.badge.open{color:#2563B0;background:#E8F1FB}
+.badge.prog{color:var(--warn);background:#FBF2DE}
+.badge.done{color:var(--ok);background:#E4F4EC}
+.badge.block{color:var(--danger);background:#FBE9E8}
+
+.prio{font-family:var(--mono);font-size:12px;font-weight:600}
+.prio.high{color:var(--danger)}
+.prio.med{color:var(--warn)}
+.prio.low{color:var(--muted)}
+
+td.center{text-align:center}
+.edit-btn{
+  width:34px;height:34px;border-radius:9px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink-2);cursor:pointer;
+  display:inline-grid;place-items:center;
+  transition:all .18s var(--ease-spring);
+}
+.edit-btn svg{width:15px;height:15px}
+.edit-btn:hover{color:var(--brand);border-color:var(--brand);background:var(--brand-soft);transform:translateY(-1px) rotate(-6deg)}
+.edit-btn:active{transform:translateY(0)}
+
+.hint{
+  text-align:center;color:var(--muted);font-size:12.5px;margin-top:18px;
+}
+.hint kbd{
+  font-family:var(--mono);font-size:11px;background:var(--surface);border:1px solid var(--line);
+  border-bottom-width:2px;border-radius:6px;padding:1px 6px;color:var(--ink-2);
+}
+
+/* ============================================================
+   DRAWER  — slides from right edge (APEX pattern)
+   ============================================================ */
+.scrim{
+  position:fixed;inset:0;z-index:40;
+  background:rgba(10,32,30,.42);
+  -webkit-backdrop-filter:blur(2px);
+  backdrop-filter:blur(2px);
+  opacity:0;visibility:hidden;
+  transition:opacity .35s ease, visibility .35s;
+}
+.scrim.show{opacity:1;visibility:visible}
+
+.drawer{
+  position:fixed;top:0;right:0;bottom:0;z-index:41;
+  width:min(560px,100vw);
+  background:var(--surface);
+  box-shadow:var(--shadow-drawer);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .5s var(--ease-spring);
+  will-change:transform;
+}
+.drawer.show{transform:translateX(0)}
+
+/* accent rail */
+.drawer::before{
+  content:"";position:absolute;left:0;top:0;bottom:0;width:4px;
+  background:linear-gradient(180deg,var(--brand),var(--brand-dark));
+}
+
+.drawer-header{
+  padding:20px 22px 16px 26px;border-bottom:1px solid var(--line);
+  display:flex;align-items:flex-start;justify-content:space-between;gap:16px;
+  background:linear-gradient(180deg, rgba(var(--brand-rgb),.05), transparent);
+}
+.drawer-eyebrow{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--brand);font-weight:600;margin-bottom:5px;display:flex;align-items:center;gap:8px;
+}
+.drawer-eyebrow .rec{color:var(--ink-2)}
+.drawer-title{font-size:19px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:9px}
+.dirty-dot{
+  width:9px;height:9px;border-radius:50%;background:var(--warn);opacity:0;transform:scale(.4);
+  transition:all .3s var(--ease-spring);
+}
+.dirty-dot.on{opacity:1;transform:scale(1);animation:pulse 1.8s ease-in-out infinite}
+@keyframes pulse{0%,100%{box-shadow:0 0 0 0 rgba(201,135,31,.5)}50%{box-shadow:0 0 0 6px rgba(201,135,31,0)}}
+
+/* header actions — TOP-RIGHT per platform convention */
+.drawer-actions{display:flex;gap:8px;align-items:center}
+
+.drawer-body{
+  flex:1;overflow-y:auto;padding:24px 26px 30px;
+  scrollbar-width:thin;scrollbar-color:var(--line) transparent;
+}
+.drawer-body::-webkit-scrollbar{width:9px}
+.drawer-body::-webkit-scrollbar-thumb{background:var(--line);border-radius:8px;border:3px solid var(--surface)}
+
+.fieldset-label{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--muted);font-weight:600;margin:6px 0 14px;display:flex;align-items:center;gap:10px;
+}
+.fieldset-label::after{content:"";flex:1;height:1px;background:var(--line)}
+.fieldset-label:not(:first-child){margin-top:28px}
+
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 14px}
+.form-group{display:flex;flex-direction:column;gap:7px}
+.form-group.col-2{grid-column:1 / -1}
+
+.form-label{
+  font-size:12.5px;font-weight:600;color:var(--ink-2);display:flex;align-items:center;gap:6px;
+}
+.form-label .req{color:var(--danger);font-weight:700}
+.form-control{
+  font-family:var(--font);font-size:14px;color:var(--ink);
+  background:#FBFDFC;border:1px solid var(--line);border-radius:11px;
+  padding:11px 13px;width:100%;
+  transition:border-color .18s, box-shadow .18s, background .18s;
+  appearance:none;
+}
+textarea.form-control{resize:vertical;min-height:84px;line-height:1.5}
+.form-control:hover{border-color:#CDD9D8}
+.form-control:focus{
+  outline:none;border-color:var(--brand);background:#fff;
+  box-shadow:0 0 0 4px rgba(var(--brand-rgb),.13);
+}
+select.form-control{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%237C908F' stroke-width='2.4' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 13px center;padding-right:34px;cursor:pointer;
+}
+
+/* segmented control for status */
+.seg{display:flex;gap:6px;flex-wrap:wrap}
+.seg-opt{
+  font-size:12.5px;font-weight:600;padding:8px 12px;border-radius:9px;cursor:pointer;
+  border:1px solid var(--line);background:#FBFDFC;color:var(--ink-2);
+  transition:all .18s var(--ease-spring);display:flex;align-items:center;gap:7px;
+}
+.seg-opt .pip{width:7px;height:7px;border-radius:50%;background:currentColor;opacity:.6}
+.seg-opt:hover{border-color:#CDD9D8;transform:translateY(-1px)}
+.seg-opt.sel{background:var(--brand);border-color:var(--brand);color:#fff}
+.seg-opt.sel .pip{opacity:1;background:#fff}
+
+/* range/slider for progress */
+.progress-row{display:flex;align-items:center;gap:14px}
+input[type=range]{
+  -webkit-appearance:none;appearance:none;height:6px;border-radius:6px;flex:1;
+  background:linear-gradient(90deg,var(--brand) var(--p,40%),var(--line) var(--p,40%));
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;width:20px;height:20px;border-radius:50%;background:#fff;cursor:pointer;
+  border:2px solid var(--brand);box-shadow:0 2px 6px -1px rgba(var(--brand-rgb),.6);transition:transform .15s;
+}
+input[type=range]::-webkit-slider-thumb:active{transform:scale(1.15)}
+.progress-val{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--brand-dark);min-width:46px;text-align:right}
+
+/* meta footer inside drawer */
+.drawer-meta{
+  margin-top:26px;padding-top:16px;border-top:1px dashed var(--line);
+  display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;
+  font-size:11.5px;color:var(--muted);
+}
+.drawer-meta b{font-family:var(--mono);color:var(--ink-2);font-weight:600}
+
+/* staggered field reveal when drawer opens */
+.drawer.show .form-group,
+.drawer.show .fieldset-label{
+  animation:fieldIn .5s var(--ease-spring) backwards;
+}
+@keyframes fieldIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+/* toast */
+.toast{
+  position:fixed;bottom:26px;left:50%;transform:translateX(-50%) translateY(120%);
+  z-index:60;background:var(--ink);color:#fff;font-size:13.5px;font-weight:500;
+  padding:13px 20px;border-radius:12px;display:flex;align-items:center;gap:11px;
+  box-shadow:0 16px 40px -12px rgba(0,0,0,.5);transition:transform .45s var(--ease-spring);
+}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast svg{width:18px;height:18px;color:var(--ok)}
+
+@media (max-width:560px){
+  body{padding:22px 14px}
+  .form-grid{grid-template-columns:1fr}
+  .page-title{font-size:24px}
+  .col-tablet-hide{display:none}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="page-header-row">
+    <div>
+      <div class="eyebrow">Task Management · App 207</div>
+      <h1 class="page-title">Sprint Backlog</h1>
+      <p class="page-sub">Click the edit icon on any row to open the record drawer — the form slides in from the right, the way Oracle APEX drawer dialogs work.</p>
+    </div>
+    <div class="page-actions">
+      <button class="btn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M6 12h12M9 18h6"/></svg>Filter</button>
+      <button class="btn btn-primary"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>New Task</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading"><span class="dot"></span>Tasks <span class="count-chip">5 records</span></div>
+      <button class="btn btn-sm btn-ghost"><svg style="width:15px;height:15px" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 11-3-6.7M21 3v6h-6"/></svg>Refresh</button>
+    </div>
+    <table id="tbl">
+      <thead>
+        <tr>
+          <th>Task</th>
+          <th>Title</th>
+          <th class="col-tablet-hide">Assignee</th>
+          <th>Status</th>
+          <th class="col-tablet-hide">Priority</th>
+          <th class="center">Edit</th>
+        </tr>
+      </thead>
+      <tbody><!-- rows injected --></tbody>
+    </table>
+  </div>
+
+  <p class="hint">Tip: open a drawer, change a field, watch the amber <b>unsaved</b> dot appear · press <kbd>Esc</kbd> to close</p>
+</div>
+
+<!-- ======================= DRAWER ======================= -->
+<div class="scrim" id="scrim"></div>
+<aside class="drawer" id="drawer" role="dialog" aria-modal="true" aria-labelledby="drawerTitle">
+  <header class="drawer-header">
+    <div>
+      <div class="drawer-eyebrow">Edit Record · <span class="rec" id="recKey">TM-0000</span></div>
+      <div class="drawer-title" id="drawerTitle">Task Details <span class="dirty-dot" id="dirtyDot" title="Unsaved changes"></span></div>
+    </div>
+    <div class="drawer-actions">
+      <button class="btn btn-sm btn-ghost" id="cancelBtn">Cancel</button>
+      <button class="btn btn-sm btn-primary" id="saveBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>Save
+      </button>
+    </div>
+  </header>
+
+  <div class="drawer-body">
+    <form id="editForm" autocomplete="off">
+
+      <div class="fieldset-label">Overview</div>
+      <div class="form-grid">
+        <div class="form-group col-2">
+          <label class="form-label" for="f_title">Title <span class="req">*</span></label>
+          <input class="form-control" id="f_title" name="title" required>
+        </div>
+        <div class="form-group col-2">
+          <label class="form-label" for="f_desc">Description</label>
+          <textarea class="form-control" id="f_desc" name="desc" placeholder="What needs to be done…"></textarea>
+        </div>
+      </div>
+
+      <div class="fieldset-label">Assignment</div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" for="f_assignee">Assignee</label>
+          <select class="form-control" id="f_assignee" name="assignee">
+            <option>Hany Ghareb</option>
+            <option>Naser Alkhaja</option>
+            <option>Ayesha Ameri</option>
+            <option>Shaikha Alsuwaidi</option>
+            <option>Hashem Alkabbi</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="f_due">Due Date</label>
+          <input class="form-control" type="date" id="f_due" name="due">
+        </div>
+      </div>
+
+      <div class="fieldset-label">State</div>
+      <div class="form-grid">
+        <div class="form-group col-2">
+          <label class="form-label">Status</label>
+          <div class="seg" id="statusSeg">
+            <span class="seg-opt" data-val="Open"><span class="pip"></span>Open</span>
+            <span class="seg-opt" data-val="In Progress"><span class="pip"></span>In Progress</span>
+            <span class="seg-opt" data-val="Blocked"><span class="pip"></span>Blocked</span>
+            <span class="seg-opt" data-val="Done"><span class="pip"></span>Done</span>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="f_prio">Priority</label>
+          <select class="form-control" id="f_prio" name="prio">
+            <option>High</option><option>Medium</option><option>Low</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="f_est">Estimate (hrs)</label>
+          <input class="form-control" type="number" id="f_est" name="est" min="0" step="0.5">
+        </div>
+        <div class="form-group col-2">
+          <label class="form-label">Progress <span style="color:var(--muted);font-weight:500">— % complete</span></label>
+          <div class="progress-row">
+            <input type="range" id="f_prog" name="prog" min="0" max="100" step="5">
+            <span class="progress-val" id="progVal">40%</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer-meta">
+        <span>Created <b id="m_created">02 Jun 2026</b></span>
+        <span>Last modified <b id="m_mod">12 Jun 2026 · 09:14</b></span>
+      </div>
+    </form>
+  </div>
+</aside>
+
+<div class="toast" id="toast">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+  <span id="toastMsg">Saved</span>
+</div>
+
+<script>
+/* ---------- sample data (stands in for an ORDS GET /tm/tasks) ---------- */
+const TASKS = [
+  {key:'TM-1042', title:'Wire approval inbox to /tm/approvals', desc:'Connect the unified inbox endpoint and render delegation-aware pending items.', assignee:'Naser Alkhaja', av:'NA', avc:'', due:'2026-06-18', status:'In Progress', prio:'High', est:8, prog:40, created:'02 Jun 2026', mod:'12 Jun 2026 · 09:14'},
+  {key:'TM-1043', title:'Kanban drag-and-drop reorder', desc:'Native HTML5 DnD with persisted column + position.', assignee:'Ayesha Ameri', av:'AA', avc:'alt', due:'2026-06-20', status:'Open', prio:'Medium', est:5, prog:0, created:'03 Jun 2026', mod:'11 Jun 2026 · 16:02'},
+  {key:'TM-1044', title:'Reminder digest job (07:10 daily)', desc:'DCT_TM_REMINDER_PKG sweep + notification fan-out.', assignee:'Hany Ghareb', av:'HG', avc:'alt3', due:'2026-06-16', status:'Blocked', prio:'High', est:6, prog:20, created:'01 Jun 2026', mod:'10 Jun 2026 · 11:48'},
+  {key:'TM-1045', title:'Milestone burndown chart', desc:'Chart.js via shared chartLoader.makeChart.', assignee:'Shaikha Alsuwaidi', av:'SA', avc:'alt2', due:'2026-06-25', status:'Open', prio:'Low', est:4, prog:0, created:'05 Jun 2026', mod:'09 Jun 2026 · 14:20'},
+  {key:'TM-1046', title:'EN/AR strings for task views', desc:'Add app.en.json + app.ar.json keys for all 10 views.', assignee:'Hashem Alkabbi', av:'HA', avc:'alt', due:'2026-06-14', status:'Done', prio:'Medium', est:3, prog:100, created:'30 May 2026', mod:'13 Jun 2026 · 08:05'},
+];
+
+const badgeClass = {'Open':'open','In Progress':'prog','Blocked':'block','Done':'done'};
+const prioClass  = {'High':'high','Medium':'med','Low':'low'};
+
+/* ---------- render table ---------- */
+const tbody = document.querySelector('#tbl tbody');
+tbody.innerHTML = TASKS.map((t,i)=>`
+  <tr data-i="${i}">
+    <td><span class="task-key">${t.key}</span></td>
+    <td class="task-title">${t.title}</td>
+    <td class="col-tablet-hide"><div class="assignee"><span class="avatar ${t.avc}">${t.av}</span>${t.assignee}</div></td>
+    <td><span class="badge ${badgeClass[t.status]}">${t.status}</span></td>
+    <td class="col-tablet-hide"><span class="prio ${prioClass[t.prio]}">${t.prio}</span></td>
+    <td class="center">
+      <button class="edit-btn" title="Edit ${t.key}" data-edit="${i}">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 013 3L7 19l-4 1 1-4 12.5-12.5z"/></svg>
+      </button>
+    </td>
+  </tr>`).join('');
+
+/* ---------- drawer logic ---------- */
+const drawer = document.getElementById('drawer');
+const scrim  = document.getElementById('scrim');
+const dirtyDot = document.getElementById('dirtyDot');
+let activeRow = null, dirty = false;
+
+const F = {
+  title:document.getElementById('f_title'), desc:document.getElementById('f_desc'),
+  assignee:document.getElementById('f_assignee'), due:document.getElementById('f_due'),
+  prio:document.getElementById('f_prio'), est:document.getElementById('f_est'),
+  prog:document.getElementById('f_prog'),
+};
+
+function openDrawer(i){
+  const t = TASKS[i];
+  activeRow = document.querySelector(`tr[data-i="${i}"]`);
+  document.querySelectorAll('tr.is-editing').forEach(r=>r.classList.remove('is-editing'));
+  activeRow.classList.add('is-editing');
+
+  document.getElementById('recKey').textContent = t.key;
+  F.title.value = t.title;
+  F.desc.value  = t.desc;
+  F.assignee.value = t.assignee;
+  F.due.value   = t.due;
+  F.prio.value  = t.prio;
+  F.est.value   = t.est;
+  F.prog.value  = t.prog;
+  setProg(t.prog);
+  setStatus(t.status);
+  document.getElementById('m_created').textContent = t.created;
+  document.getElementById('m_mod').textContent = t.mod;
+
+  // staggered field reveal
+  const items = drawer.querySelectorAll('.form-group, .fieldset-label');
+  items.forEach((el,n)=> el.style.animationDelay = (0.12 + n*0.035)+'s');
+
+  setDirty(false);
+  scrim.classList.add('show');
+  drawer.classList.add('show');
+  setTimeout(()=>F.title.focus(), 480);
+}
+
+function closeDrawer(){
+  drawer.classList.remove('show');
+  scrim.classList.remove('show');
+  if(activeRow) activeRow.classList.remove('is-editing');
+  activeRow = null;
+}
+
+function setDirty(v){ dirty=v; dirtyDot.classList.toggle('on', v); }
+
+/* progress slider */
+function setProg(v){
+  F.prog.value = v;
+  F.prog.style.setProperty('--p', v+'%');
+  document.getElementById('progVal').textContent = v+'%';
+}
+F.prog.addEventListener('input', e=>{ setProg(e.target.value); setDirty(true); });
+
+/* status segmented control */
+let curStatus = 'Open';
+function setStatus(v){
+  curStatus = v;
+  document.querySelectorAll('.seg-opt').forEach(o=>o.classList.toggle('sel', o.dataset.val===v));
+}
+document.getElementById('statusSeg').addEventListener('click', e=>{
+  const opt = e.target.closest('.seg-opt'); if(!opt) return;
+  setStatus(opt.dataset.val); setDirty(true);
+});
+
+/* mark dirty on any field change */
+document.getElementById('editForm').addEventListener('input', ()=>setDirty(true));
+
+/* wire edit buttons */
+tbody.addEventListener('click', e=>{
+  const btn = e.target.closest('[data-edit]'); if(!btn) return;
+  openDrawer(+btn.dataset.edit);
+});
+
+/* close actions */
+document.getElementById('cancelBtn').addEventListener('click', closeDrawer);
+scrim.addEventListener('click', closeDrawer);
+document.addEventListener('keydown', e=>{ if(e.key==='Escape' && drawer.classList.contains('show')) closeDrawer(); });
+
+/* save (mock — would PUT /tm/tasks/:id) */
+document.getElementById('saveBtn').addEventListener('click', ()=>{
+  if(!F.title.value.trim()){ F.title.focus(); F.title.style.borderColor='var(--danger)'; return; }
+  // reflect into the table row for the demo
+  const i = +activeRow.dataset.i;
+  const t = TASKS[i];
+  t.title=F.title.value; t.desc=F.desc.value; t.assignee=F.assignee.value;
+  t.due=F.due.value; t.prio=F.prio.value; t.est=F.est.value; t.prog=+F.prog.value; t.status=curStatus;
+  activeRow.querySelector('.task-title').textContent = t.title;
+  const b = activeRow.querySelector('.badge'); b.className='badge '+badgeClass[t.status]; b.textContent=t.status;
+  const p = activeRow.querySelector('.prio'); p.className='prio '+prioClass[t.prio]; p.textContent=t.prio;
+  closeDrawer();
+  toast('Saved · '+t.key);
+});
+
+/* toast */
+let toastT;
+function toast(msg){
+  document.getElementById('toastMsg').textContent = msg;
+  const el = document.getElementById('toast');
+  el.classList.add('show'); clearTimeout(toastT);
+  toastT = setTimeout(()=>el.classList.remove('show'), 2600);
+}
+</script>
+</body>
+</html>

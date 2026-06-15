@@ -76,7 +76,7 @@ function (config, api, mockData) {
       var token = this.getToken();
       localStorage.removeItem(SESSION_KEY);
       if (config.apiBase && token) {
-        api.post('/auth/logout').catch(function () {});
+        api.post('/auth/logout', {}, { base: 'auth', silent: true }).catch(function () {});
       }
     },
 

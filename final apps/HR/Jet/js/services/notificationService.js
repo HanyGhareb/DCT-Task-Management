@@ -1,10 +1,17 @@
 /**
  * notificationService.js — HR module notifications (mock + ORDS).
+ *
+ * Notifications are platform-wide (DCT_NOTIFY) and served by the Admin (/dct)
+ * module — hr.rest defines no notification handlers — so live calls target the
+ * auth base (`/dct`), not the HR module base. dct exposes only
+ * GET /notifications/ and PUT /notifications/:id/read (no mark-all-read), so
+ * markAllRead PUTs each unread item.
  */
 define(['services/config', 'services/api', 'mockData'],
 function (config, api, mockData) {
   'use strict';
 
+  var AUTH = { base: 'auth' };
   var NOTIF_KEY = 'ifinance_hr_notifs';
 
   function loadNotifs() {
@@ -18,7 +25,7 @@ function (config, api, mockData) {
   return {
 
     getAll: function (userId) {
-      if (config.apiBase) return api.get('/notifications/').then(function (d) { return d.items || []; });
+      if (config.apiBase) return api.get('/notifications/', AUTH).then(function (d) { return d.items || []; });
       var list = loadNotifs().filter(function (n) { return n.targetUserId === userId; });
       return Promise.resolve(list.sort(function (a, b) { return b.notifId - a.notifId; }));
     },
@@ -29,7 +36,7 @@ function (config, api, mockData) {
     },
 
     markRead: function (notifId) {
-      if (config.apiBase) return api.put('/notifications/' + notifId + '/read');
+      if (config.apiBase) return api.put('/notifications/' + notifId + '/read', {}, AUTH);
       var list = loadNotifs();
       var n = list.find(function (x) { return x.notifId === notifId; });
       if (n) { n.isRead = 'Y'; saveNotifs(list); }
@@ -37,7 +44,15 @@ function (config, api, mockData) {
     },
 
     markAllRead: function (userId) {
-      if (config.apiBase) return api.put('/notifications/read-all');
+      if (config.apiBase) {
+        return api.get('/notifications/', AUTH).then(function (d) {
+          var unread = (d.items || []).filter(function (n) { return n.isRead === 'N'; });
+          if (!unread.length) return Promise.resolve();
+          return Promise.all(unread.map(function (n) {
+            return api.put('/notifications/' + (n.notifId || n.notif_id) + '/read', {}, AUTH);
+          }));
+        });
+      }
       var list = loadNotifs();
       list.filter(function (n) { return n.targetUserId === userId; }).forEach(function (n) { n.isRead = 'Y'; });
       saveNotifs(list);

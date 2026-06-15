@@ -148,11 +148,20 @@
   <!-- ko if: objectives().length === 0 --><div class="empty-state" data-bind="text: t('tm.common.empty')"></div><!-- /ko -->
   <!-- ko if: objectives().length > 0 -->
   <div class="data-table-wrap"><table class="data-table">
-    <thead><tr><th data-bind="text: t('tm.field.title')"></th><th data-bind="text: t('tm.field.owner')"></th><th data-bind="text: t('tm.field.progress')"></th><th data-bind="text: t('tm.field.status')"></th><th data-bind="text: t('tm.field.dueDate')"></th></tr></thead>
+    <thead><tr><th data-bind="text: t('tm.field.title')"></th><th data-bind="text: t('tm.field.progress')"></th><th data-bind="text: t('tm.detail.keyResults')"></th><th data-bind="text: t('tm.field.status')"></th><th data-bind="text: t('tm.field.dueDate')"></th><th></th></tr></thead>
     <tbody data-bind="foreach: objectives">
-      <tr><td data-bind="text: titleEn"></td><td class="muted" data-bind="text: $data.ownerName || '—'"></td>
-        <td><div class="tm-prog"><div class="tm-prog__bar" data-bind="style:{ width: (progress||0)+'%' }"></div></div><span class="tm-prog__n" data-bind="text:(progress||0)+'%'"></span></td>
-        <td><span class="badge" data-bind="text: status"></span></td><td class="muted" data-bind="text: $data.targetDate || '—'"></td></tr>
+      <tr class="row-link" data-bind="click: function(){ $vm.openObjective($data); }">
+        <td><span class="link-strong" data-bind="text: titleEn"></span><span class="muted" data-bind="text: $data.ownerName ? ' · ' + $data.ownerName : ''"></span></td>
+        <td><div class="tm-prog"><div class="tm-prog__bar" data-bind="style:{ width: (progress||0)+'%' }"></div></div><span class="tm-prog__n" data-bind="text:(progress||0)+'%'"></span>
+          <span class="badge badge--soft" data-bind="text: (progressMode||'AUTO')==='MANUAL' ? $vm.t('tm.detail.manual') : $vm.t('tm.detail.auto')"></span></td>
+        <td class="muted"><span data-bind="text: (krCount||0)"></span><!-- ko if: krCount --><span data-bind="text: ' (' + (krAchieved||0) + ' ' + $vm.t('tm.detail.krAchieved') + ')'"></span><!-- /ko --></td>
+        <td><span class="badge" data-bind="text: status"></span></td>
+        <td class="muted" data-bind="text: $data.targetDate || '—'"></td>
+        <td class="cell-actions" data-bind="click: function(){ return true; }, clickBubble: false">
+          <button class="btn btn-xs" data-bind="click: function(){ $vm.openObjective($data); }, text: $vm.t('tm.action.manage')"></button>
+          <button class="btn btn-xs btn-icon-danger" title="Remove" data-bind="click: function(){ $vm.removeObjective($data); }">&times;</button>
+        </td>
+      </tr>
     </tbody>
   </table></div>
   <!-- /ko -->
@@ -368,18 +377,12 @@
   <!-- /ko -->
   <!-- /ko -->
 
-  <!-- ══ EDIT TEAM MODAL ═══════════════════════════════════════════════════ -->
-  <!-- ko if: showEdit -->
-  <div class="modal-overlay" data-bind="click: function(){ showEdit(false); }"></div>
-  <div class="modal-box" style="max-width:640px;" data-bind="click: function(){ return true; }">
-    <div class="modal-header">
-      <div class="modal-title" data-bind="text: t('tm.detail.editTeam')"></div>
-      <div class="region-actions">
-        <button class="btn btn-sm" data-bind="click: function(){ showEdit(false); }, text: t('tm.action.cancel')"></button>
-        <button class="btn btn-sm btn-primary" data-bind="click: saveTeam, text: t('tm.action.saveChanges')"></button>
-      </div>
-    </div>
-    <div class="modal-body">
+  <!-- ══ EDIT TEAM DRAWER (shared <edit-drawer>) ══════════════════════════ -->
+  <edit-drawer params="open: showEdit, vm: $vm,
+                       title: t('tm.detail.editTeam'),
+                       saveLabel: t('tm.action.saveChanges'),
+                       cancelLabel: t('tm.action.cancel'),
+                       onSave: saveTeam, width: '760px'">
       <div class="form-grid">
         <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.nameEn')"></label><input class="form-control" data-bind="textInput: eName"></div>
         <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.nameAr')"></label><input class="form-control" dir="rtl" data-bind="textInput: eNameAr"></div>
@@ -394,9 +397,7 @@
         <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.field.objective')"></label><textarea class="form-control" rows="2" data-bind="textInput: eObj"></textarea></div>
         <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.field.purpose')"></label><textarea class="form-control" rows="2" data-bind="textInput: ePurpose"></textarea></div>
       </div>
-    </div>
-  </div>
-  <!-- /ko -->
+  </edit-drawer>
 
   <!-- ══ TASK DRAWER (modal) ═══════════════════════════════════════════════ -->
   <!-- ko if: selTask -->
@@ -454,6 +455,103 @@
           </div>
           <!-- ko if: type === 'STATUS' --><div class="tm-feed__body" data-bind="text: ($data.oldStatus||'—') + ' → ' + ($data.newStatus||'—')"></div><!-- /ko -->
           <!-- ko ifnot: type === 'STATUS' --><div class="tm-feed__body" data-bind="text: $data.body || ''"></div><!-- /ko -->
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ══ OBJECTIVE DRAWER (modal) ══════════════════════════════════════════ -->
+  <!-- ko if: selObj -->
+  <div class="modal-overlay" data-bind="click: closeObjective"></div>
+  <div class="modal-box tm-drawer" data-bind="click: function(){ return true; }">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: selObj().titleEn"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm" data-bind="click: closeObjective, text: t('tm.action.close')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: saveObjEdits, text: t('tm.action.saveChanges')"></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <!-- objective fields -->
+      <div class="form-grid">
+        <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.field.title')"></label><input class="form-control" data-bind="textInput: oTitle"></div>
+        <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.field.description')"></label><textarea class="form-control" rows="2" data-bind="textInput: oDesc"></textarea></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.status')"></label><select class="form-control" data-bind="value: oStatus, options: objStatuses, optionsValue:'code', optionsText:'nameEn'"></select></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.dueDate')"></label><input class="form-control" type="date" data-bind="value: oTarget"></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.weight')"></label><input class="form-control" type="number" min="0" step="0.5" data-bind="value: oWeight"></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.detail.progressMode')"></label>
+          <select class="form-control" data-bind="value: oMode">
+            <option value="AUTO" data-bind="text: t('tm.detail.autoFromKr')"></option>
+            <option value="MANUAL" data-bind="text: t('tm.detail.manualPct')"></option>
+          </select></div>
+        <!-- ko if: oMode() === 'MANUAL' -->
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.progress') + ' (%)'"></label><input class="form-control" type="number" min="0" max="100" data-bind="value: oProgress"></div>
+        <!-- /ko -->
+      </div>
+      <div class="tm-obj-prog">
+        <span class="tm-prog" style="flex:1;"><span class="tm-prog__bar" data-bind="style:{ width: (oProgress()||0)+'%' }"></span></span>
+        <span class="tm-prog__n" data-bind="text: (oProgress()||0)+'%'"></span>
+      </div>
+
+      <!-- key results -->
+      <div class="section-heading-row" style="margin-top:18px;">
+        <div class="section-heading" data-bind="text: t('tm.detail.keyResults')"></div>
+        <div class="region-actions"><button class="btn btn-sm btn-primary" data-bind="click: openAddKr, text: '+ ' + t('tm.detail.addKeyResult')"></button></div>
+      </div>
+
+      <!-- add / edit KR form -->
+      <!-- ko if: krFormOpen -->
+      <div class="card" style="margin-bottom:14px;">
+        <div class="form-grid">
+          <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.field.title')"></label><input class="form-control" data-bind="textInput: kTitle"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.direction')"></label><select class="form-control" data-bind="value: kDir, options: krDirections, optionsValue:'code', optionsText:'nameEn'"></select></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.unit')"></label>
+            <input class="form-control" list="tm-kr-units" data-bind="textInput: kUnit">
+            <datalist id="tm-kr-units" data-bind="foreach: krUnits"><option data-bind="value: code, attr:{ label: nameEn }"></option></datalist>
+          </div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.baseline')"></label><input class="form-control" type="number" step="any" data-bind="value: kBase"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.target')"></label><input class="form-control" type="number" step="any" data-bind="value: kTarget"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.current')"></label><input class="form-control" type="number" step="any" data-bind="value: kCurrent"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.weight')"></label><input class="form-control" type="number" min="0" step="0.5" data-bind="value: kWeight"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.dueDate')"></label><input class="form-control" type="date" data-bind="value: kDue"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.status')"></label><select class="form-control" data-bind="value: kStatus, options: objStatuses, optionsValue:'code', optionsText:'nameEn'"></select></div>
+        </div>
+        <div class="region-actions" style="margin-top:14px;">
+          <button class="btn btn-sm" data-bind="click: cancelKr, text: t('tm.action.cancel')"></button>
+          <button class="btn btn-sm btn-primary" data-bind="click: saveKr, text: t('tm.action.save')"></button>
+        </div>
+      </div>
+      <!-- /ko -->
+
+      <!-- ko if: keyResults().length === 0 --><div class="muted" style="font-size:13px;margin:6px 0;" data-bind="text: t('tm.detail.noKeyResults')"></div><!-- /ko -->
+      <div class="tm-kr-list">
+        <!-- ko foreach: keyResults -->
+        <div class="tm-kr">
+          <div class="tm-kr__hd">
+            <span class="tm-kr__title" data-bind="text: titleEn"></span>
+            <span class="badge badge--soft" data-bind="text: direction + ($data.unit ? ' · ' + $data.unit : '')"></span>
+            <span class="badge" data-bind="text: status"></span>
+            <span class="tm-kr__actions">
+              <button class="btn btn-xs" data-bind="click: function(){ $vm.editKr($data); }, text: $vm.t('tm.action.edit')"></button>
+              <button class="btn btn-xs btn-icon-danger" title="Remove" data-bind="click: function(){ $vm.removeKr($data); }">&times;</button>
+            </span>
+          </div>
+          <div class="tm-kr__gauge">
+            <span class="tm-kr__mark" data-bind="text: $vm.t('tm.field.baseline') + ': ' + ($data.baseline != null ? $data.baseline : '—')"></span>
+            <span class="tm-prog tm-kr__bar"><span class="tm-prog__bar" data-bind="style:{ width: (progress||0)+'%' }"></span></span>
+            <span class="tm-kr__mark" data-bind="text: $vm.t('tm.field.target') + ': ' + ($data.target != null ? $data.target : '—')"></span>
+            <span class="tm-prog__n" data-bind="text: (progress||0)+'%'"></span>
+          </div>
+          <div class="tm-kr__foot">
+            <div class="tm-kr__update">
+              <label class="form-label" data-bind="text: $vm.t('tm.detail.currentValue')"></label>
+              <input class="form-control form-control--sm" type="number" step="any" data-bind="value: $data.current, valueUpdate: 'input'">
+              <button class="btn btn-sm btn-primary" data-bind="click: function(){ $vm.recordKr($data); }, text: $vm.t('tm.action.updateValue')"></button>
+            </div>
+            <!-- ko if: $data.targetDate --><span class="muted" data-bind="text: $vm.t('tm.field.dueDate') + ': ' + $data.targetDate"></span><!-- /ko -->
+          </div>
         </div>
         <!-- /ko -->
       </div>

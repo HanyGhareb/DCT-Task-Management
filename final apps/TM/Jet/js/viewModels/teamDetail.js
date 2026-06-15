@@ -42,10 +42,13 @@ function (ko, tm, i18n, toast) {
     self.cats = ko.observableArray([]); self.statuses = ko.observableArray([]);
     self.teamRoles = ko.observableArray([]);     // team-scoped roles (Leader/Member…)
     self.docTypes = ko.observableArray([]);
+    self.krDirections = ko.observableArray([]);  // TM_KR_DIRECTION
+    self.krUnits = ko.observableArray([]);       // TM_KR_UNIT (suggestions)
     self.isTmAdmin = ko.observable(false);
     self.myUid = ko.observable(null);
 
     function by(list, cat) { return (list || []).filter(function (l) { return l.category === cat; }); }
+    function numOrNull(v) { return (v === '' || v === null || v === undefined) ? null : Number(v); }
 
     // members usable as new members = active users not already on the team
     self.assignableUsers = ko.computed(function () {
@@ -64,6 +67,7 @@ function (ko, tm, i18n, toast) {
       self.cats(by(b.lookups, 'TM_TEAM_CATEGORY')); self.statuses(by(b.lookups, 'TM_TEAM_STATUS'));
       self.teamRoles(b.roles || []);
       self.docTypes(b.docTypes || []);
+      self.krDirections(by(b.lookups, 'TM_KR_DIRECTION')); self.krUnits(by(b.lookups, 'TM_KR_UNIT'));
     }).catch(function () {});
 
     // who can edit team / manage members (TM admin or team leader)
@@ -268,6 +272,95 @@ function (ko, tm, i18n, toast) {
         fileName: self.dFileName(), docTypeCode: self.dDocType(), notes: self.dNotes(),
         mimeType: self._docMime, fileSize: self._docSize, fileB64: self._docB64
       }).then(function () { toast.success(self.t('tm.common.saved')); self.addingDoc(false); self.loadTab('documents'); }).catch(function () {});
+    };
+
+    // ---- objectives: remove + measurable-objective drawer (key results) -----
+    self.removeObjective = function (o) {
+      if (!window.confirm(self.t('tm.detail.confirmRemove'))) return;
+      tm.deleteObjective(o.objectiveId)
+        .then(function () { toast.success(self.t('tm.common.removed')); self.loadTab('objectives'); self.refreshTeam(); }).catch(function () {});
+    };
+
+    self.selObj = ko.observable(null);
+    self.keyResults = ko.observableArray([]);
+    self.oTitle = ko.observable(''); self.oDesc = ko.observable(''); self.oStatus = ko.observable('NOT_STARTED');
+    self.oTarget = ko.observable(''); self.oWeight = ko.observable(1);
+    self.oMode = ko.observable('AUTO'); self.oProgress = ko.observable(0);
+
+    self.openObjective = function (o) {
+      self.selObj(o);
+      self.oTitle(o.titleEn || ''); self.oDesc(o.description || ''); self.oStatus(o.status || 'NOT_STARTED');
+      self.oTarget(o.targetDate || ''); self.oWeight(o.weight || 1);
+      self.oMode(o.progressMode || 'AUTO'); self.oProgress(o.progress || 0);
+      self.krFormOpen(false); self.editKrId(null);
+      self.loadKrs(o.objectiveId);
+    };
+    self.closeObjective = function () { self.selObj(null); };
+    self.loadKrs = function (objId) { tm.listKeyResults(objId).then(function (r) { self.keyResults(r.items || []); }).catch(function () {}); };
+
+    // re-pull objectives and re-sync the open drawer's progress/mode after a KR change
+    self.refreshObjAfterKr = function () {
+      var o = self.selObj(); if (!o) return;
+      tm.listObjectives(self.teamId).then(function (r) {
+        self.objectives(r.items || []);
+        var f = (r.items || []).filter(function (x) { return x.objectiveId === o.objectiveId; })[0];
+        if (f) { self.selObj(f); self.oProgress(f.progress || 0); self.oMode(f.progressMode || 'AUTO'); }
+      }).catch(function () {});
+    };
+
+    self.saveObjEdits = function () {
+      if (!self.oTitle()) { toast.error(self.t('tm.detail.titleReq')); return; }
+      var o = self.selObj();
+      tm.saveObjective({
+        teamId: self.teamId, objectiveId: o.objectiveId, titleEn: self.oTitle(), description: self.oDesc(),
+        status: self.oStatus(), targetDate: self.oTarget(), weight: Number(self.oWeight()) || 1,
+        progress: self.oMode() === 'MANUAL' ? Number(self.oProgress()) : null, progressMode: self.oMode()
+      }).then(function () { toast.success(self.t('tm.common.saved')); self.refreshObjAfterKr(); self.refreshTeam(); }).catch(function () {});
+    };
+
+    // key-result add/edit form
+    self.krFormOpen = ko.observable(false); self.editKrId = ko.observable(null);
+    self.kTitle = ko.observable(''); self.kUnit = ko.observable(''); self.kDir = ko.observable('INCREASE');
+    self.kBase = ko.observable(''); self.kTarget = ko.observable(''); self.kCurrent = ko.observable('');
+    self.kWeight = ko.observable(1); self.kDue = ko.observable(''); self.kStatus = ko.observable('NOT_STARTED');
+    self.openAddKr = function () {
+      self.editKrId(null);
+      self.kTitle(''); self.kUnit(''); self.kDir('INCREASE');
+      self.kBase(''); self.kTarget(''); self.kCurrent(''); self.kWeight(1); self.kDue(''); self.kStatus('NOT_STARTED');
+      self.krFormOpen(true);
+    };
+    self.editKr = function (kr) {
+      self.editKrId(kr.krId);
+      self.kTitle(kr.titleEn || ''); self.kUnit(kr.unit || ''); self.kDir(kr.direction || 'INCREASE');
+      self.kBase(kr.baseline != null ? kr.baseline : ''); self.kTarget(kr.target != null ? kr.target : '');
+      self.kCurrent(kr.current != null ? kr.current : ''); self.kWeight(kr.weight || 1);
+      self.kDue(kr.targetDate || ''); self.kStatus(kr.status || 'NOT_STARTED');
+      self.krFormOpen(true);
+    };
+    self.cancelKr = function () { self.krFormOpen(false); };
+    self.saveKr = function () {
+      if (!self.kTitle()) { toast.error(self.t('tm.detail.titleReq')); return; }
+      if (self.kTarget() === '' || self.kTarget() === null) { toast.error(self.t('tm.detail.targetReq')); return; }
+      tm.saveKeyResult({
+        objectiveId: self.selObj().objectiveId, krId: self.editKrId() || null, titleEn: self.kTitle(),
+        unit: self.kUnit(), direction: self.kDir(), baseline: numOrNull(self.kBase()),
+        target: numOrNull(self.kTarget()), current: numOrNull(self.kCurrent()), weight: Number(self.kWeight()) || 1,
+        targetDate: self.kDue(), status: self.kStatus()
+      }).then(function () {
+        toast.success(self.t('tm.common.saved')); self.krFormOpen(false);
+        self.loadKrs(self.selObj().objectiveId); self.refreshObjAfterKr();
+      }).catch(function () {});
+    };
+    self.recordKr = function (kr) {
+      tm.recordKrValue(kr.krId, numOrNull(kr.current))
+        .then(function () { toast.success(self.t('tm.common.saved')); self.loadKrs(self.selObj().objectiveId); self.refreshObjAfterKr(); })
+        .catch(function () { self.loadKrs(self.selObj().objectiveId); });
+    };
+    self.removeKr = function (kr) {
+      if (!window.confirm(self.t('tm.detail.confirmRemove'))) return;
+      tm.deleteKeyResult(kr.krId)
+        .then(function () { toast.success(self.t('tm.common.removed')); self.loadKrs(self.selObj().objectiveId); self.refreshObjAfterKr(); })
+        .catch(function () {});
     };
 
     // ---- refreshers ---------------------------------------------------------
