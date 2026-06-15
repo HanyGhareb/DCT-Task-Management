@@ -39,6 +39,26 @@ define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flS
     self.editable = ko.computed(function () { return self.isNew || self.status() === 'DRAFT'; });
     self.isPerCount = ko.computed(function () { return self.billingMethod() === 'PER_COUNT'; });
 
+    // ── Review-mode display helpers (used by the .fl-readonly value twins when
+    //    a submitted/active contract renders read-only via the form-layout scaffold)
+    function lookupText(arr, keyField, valObs, textField) {
+      var v = valObs(); if (v === null || v === undefined || v === '') return '';
+      var hit = (arr() || []).filter(function (o) { return o[keyField] === v; })[0];
+      return hit ? hit[textField] : '';
+    }
+    function aed(v) { return (v || v === 0) && v !== '' ? 'AED ' + Number(v).toLocaleString('en-US') : ''; }
+
+    self.freelancerDisp  = ko.computed(function () { return lookupText(self.freelancerOptions, 'id', self.freelancerId, 'label') || '—'; });
+    self.orgDisp         = ko.computed(function () { return lookupText(self.orgOptions, 'orgId', self.orgId, 'name') || '—'; });
+    self.glDisp          = ko.computed(function () { return lookupText(self.glOptions, 'ccId', self.ccIdGl, 'ccCode') || '—'; });
+    self.totalAmountDisp = ko.computed(function () { return aed(self.totalAmount()) || '—'; });
+    self.endDateDisp     = ko.computed(function () { return self.endDate() || 'Open-ended'; });
+    self.billingComboDisp = ko.computed(function () {
+      var unit = lookupText(self.billingUnits, 'valueId', self.billingUnitId, 'name');
+      var amt  = aed(self.billingUnitAmount()) || 'auto';
+      return (unit ? unit + ' · ' : '') + amt;
+    });
+
     Promise.all([
       flService.getLookups(),
       flService.getGlCodes(),

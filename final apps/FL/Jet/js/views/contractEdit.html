@@ -27,46 +27,57 @@
   <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
 
   <!-- ko ifnot: loading() -->
-  <div class="card">
-    <div class="section-heading" style="margin-top:0">Contract</div>
+  <!-- Form Layout scaffold (shared .fl-* / platform.css): .fl-review flips the
+       whole card to clean read-only value rows when the contract is not editable
+       (submitted/active) instead of greyed-out disabled inputs. -->
+  <div class="card fl-section" data-bind="css: { 'fl-review': !editable() }">
+    <div class="section-heading">Contract</div>
+    <!-- ko if: editable() --><p class="fl-legend">Fields marked <b>*</b> are required.</p><!-- /ko -->
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Freelancer *</label>
+        <label class="form-label">Freelancer <span class="required">*</span></label>
         <select class="form-control" data-bind="options: freelancerOptions, optionsText: 'label', optionsValue: 'id',
                  optionsCaption: '— Select —', value: freelancerId, enable: editable()"></select>
+        <span class="fl-readonly" data-bind="text: freelancerDisp"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Title *</label>
+        <label class="form-label">Title <span class="required">*</span></label>
         <input class="form-control" type="text" data-bind="value: title, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: title() || '—'"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Start Date *</label>
+        <label class="form-label">Start Date <span class="required">*</span></label>
         <input class="form-control" type="date" data-bind="value: startDate, enable: editable()">
+        <span class="fl-readonly" data-bind="text: startDate() || '—'"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">End Date</label>
+        <label class="form-label">End Date <span class="opt">optional</span></label>
         <input class="form-control" type="date" data-bind="value: endDate, enable: editable()">
         <span class="form-hint">Open-ended contracts schedule 12 months ahead</span>
+        <span class="fl-readonly" data-bind="text: endDateDisp"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Total Amount (AED) *</label>
+        <label class="form-label">Total Amount (AED) <span class="required">*</span></label>
         <input class="form-control mono" type="number" data-bind="value: totalAmount, enable: editable()">
+        <span class="fl-readonly" data-bind="text: totalAmountDisp"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Organisation *</label>
+        <label class="form-label">Organisation <span class="required">*</span></label>
         <select class="form-control" data-bind="options: orgOptions, optionsText: 'name', optionsValue: 'orgId',
                  optionsCaption: '— Select —', value: orgId, enable: editable()"></select>
+        <span class="fl-readonly" data-bind="text: orgDisp"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Billing Method *</label>
+        <label class="form-label">Billing Method <span class="required">*</span></label>
         <select class="form-control" data-bind="value: billingMethod, enable: editable()">
           <option value="MONTHLY">MONTHLY</option>
           <option value="WEEKLY">WEEKLY</option>
           <option value="PER_COUNT">PER_COUNT (deliverable based)</option>
         </select>
+        <span class="fl-readonly" data-bind="text: billingMethod() || '—'"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Billing Unit / Amount per Period</label>
+        <label class="form-label">Billing Unit / Amount per Period <span class="opt">optional</span></label>
         <div style="display:flex;gap:8px">
           <select class="form-control" style="flex:1" data-bind="options: billingUnits, optionsText: 'name', optionsValue: 'valueId',
                    optionsCaption: '—', value: billingUnitId, enable: editable()"></select>
@@ -74,6 +85,7 @@
                  data-bind="value: billingUnitAmount, enable: editable()">
         </div>
         <span class="form-hint">Leave amount empty to divide the total over the period count</span>
+        <span class="fl-readonly" data-bind="text: billingComboDisp"></span>
       </div>
     </div>
 
@@ -85,31 +97,37 @@
           <option value="GL">GL</option>
           <option value="PROJECT">PROJECT</option>
         </select>
+        <span class="fl-readonly" data-bind="text: codingType() || '—'"></span>
       </div>
       <!-- ko if: codingType() === 'GL' -->
       <div class="form-group">
-        <label class="form-label">GL Code Combination *</label>
+        <label class="form-label">GL Code Combination <span class="required">*</span></label>
         <select class="form-control" data-bind="options: glOptions, optionsText: 'ccCode', optionsValue: 'ccId',
                  optionsCaption: '— Select —', value: ccIdGl, enable: editable()"></select>
+        <span class="fl-readonly" data-bind="text: glDisp"></span>
       </div>
       <!-- /ko -->
       <!-- ko if: codingType() === 'PROJECT' -->
       <div class="form-group">
-        <label class="form-label">Project Number *</label>
+        <label class="form-label">Project Number <span class="required">*</span></label>
         <input class="form-control mono" type="text" data-bind="value: projectNumber, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: projectNumber() || '—'"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Task Number</label>
+        <label class="form-label">Task Number <span class="opt">optional</span></label>
         <input class="form-control mono" type="text" data-bind="value: taskNumber, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: taskNumber() || '—'"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Expenditure Type</label>
+        <label class="form-label">Expenditure Type <span class="opt">optional</span></label>
         <input class="form-control" type="text" data-bind="value: expenditureType, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: expenditureType() || '—'"></span>
       </div>
       <!-- /ko -->
       <div class="form-group form-group--full">
-        <label class="form-label">Notes</label>
+        <label class="form-label">Notes <span class="opt">optional</span></label>
         <input class="form-control" type="text" data-bind="value: notes, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: notes() || '—'"></span>
       </div>
     </div>
 

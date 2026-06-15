@@ -30,6 +30,9 @@
   </div>
 
   <div class="card" style="margin-bottom:16px">
+    <div class="section-heading-row">
+      <div class="section-heading">Request Details</div>
+    </div>
     <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
       <div class="form-group"><label class="form-label">Type</label>
         <div style="font-weight:600" data-bind="text: typeLabel(data().requestType)"></div></div>
@@ -50,7 +53,7 @@
   </div>
 
   <div class="card">
-    <div class="section-heading" style="margin-top:0">Documents</div>
+    <div class="section-heading">Documents</div>
     <!-- ko if: docs().length === 0 -->
     <div style="font-size:13px;color:var(--text-3);padding:10px 0">No documents attached.</div>
     <!-- /ko -->

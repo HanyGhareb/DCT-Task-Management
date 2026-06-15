@@ -92,6 +92,15 @@
   "chart.loading": "Loading chart…",
   "chart.noData": "No data to chart yet",
 
+  "docup.choose": "Choose a file or drag it here",
+  "docup.hint": "PDF or image · up to {0} MB",
+  "docup.replace": "Replace",
+  "docup.remove": "Remove",
+  "docup.view": "View",
+  "docup.uploading": "Uploading…",
+  "docup.tooLarge": "File is too large. Maximum {0} MB.",
+  "docup.badType": "Unsupported file type.",
+
   "dash.greetingM": "Good morning",
   "dash.greetingA": "Good afternoon",
   "dash.greetingE": "Good evening"

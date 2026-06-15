@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n'], function (ko, flService, formGuard, i18n) {
+define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'shared/docUpload'], function (ko, flService, formGuard, i18n, docUpload) {
   'use strict';
 
   function RegistrationEditViewModel() {
@@ -35,7 +35,6 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n'], fu
     self.regDocs         = ko.observableArray([]);    // uploaded docs for this registration
     self.docError        = ko.observable('');
     self.docBusy         = ko.observable(false);
-    self._pendingDoc     = null;                      // req row awaiting a file pick
     self.lang            = (i18n && i18n.lang) ? i18n.lang : ko.observable('en');
 
     self.editable = ko.computed(function () {
@@ -335,25 +334,28 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n'], fu
       img.src = url;
     };
 
-    // ---- Required-document uploads ----------------------------------------
+    // ---- Required-document uploads (raw-binary, no size cap) --------------
+    // Picks a file via the shared dialog (size/type validated there) then
+    // uploads its raw bytes: createDocument (metadata) → putBinary (the file).
     self.pickDocFile = function (item) {
       self.docError('');
       if (!self.regId()) { self.docError('Save the draft first, then attach documents.'); return; }
-      self._pendingDoc = item;
-      var input = document.getElementById('fl-reg-doc-input');
-      if (input) input.click();
+      docUpload.choose({ accept: 'image/*,application/pdf', maxMb: 10 }).then(function (file) {
+        if (file) uploadDocBlob(item, file);
+      });
     };
 
-    function uploadDocBlob(item, b64, mime, fileName) {
+    function uploadDocBlob(item, file) {
       self.docBusy(true);
+      var mime = file.type || 'application/octet-stream';
       var chain = item.docId ? flService.deleteDocument(item.docId) : Promise.resolve();
       chain.then(function () {
         return flService.createDocument({
           sourceType: 'REGISTRATION', sourceId: self.regId(),
-          docTypeId: item.docTypeId, documentName: fileName, mimeType: mime, isRequired: 'Y'
+          docTypeId: item.docTypeId, documentName: file.name, mimeType: mime, isRequired: 'Y'
         });
       }).then(function (r) {
-        return flService.uploadDocumentFile(r.documentId, b64, mime);
+        return flService.uploadDocumentFile(r.documentId, file);
       }).then(function () {
         self.docBusy(false);
         self.loadRegDocs();
@@ -363,50 +365,6 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n'], fu
         self.docError((err && err.message) || 'Document upload failed');
       });
     }
-
-    self.docFileSelected = function (vm, event) {
-      var file = event.target.files && event.target.files[0];
-      event.target.value = '';
-      var item = self._pendingDoc;
-      self._pendingDoc = null;
-      if (!file || !item || !self.regId()) return;
-
-      if (/^image\//.test(file.type)) {
-        // Downscale images so the base64 fits the document store (~30 KB).
-        var url = URL.createObjectURL(file);
-        var img = new Image();
-        img.onload = function () {
-          URL.revokeObjectURL(url);
-          var side = 1280, quality = 0.8, b64 = null;
-          while (side >= 96) {
-            var scale = Math.min(1, side / Math.max(img.width, img.height));
-            var canvas = document.createElement('canvas');
-            canvas.width  = Math.max(1, Math.round(img.width * scale));
-            canvas.height = Math.max(1, Math.round(img.height * scale));
-            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
-            b64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
-            if (b64.length <= 30000) break;
-            if (quality > 0.5) { quality -= 0.1; } else { side -= 160; quality = 0.8; }
-          }
-          uploadDocBlob(item, b64, 'image/jpeg', file.name);
-        };
-        img.onerror = function () { URL.revokeObjectURL(url); self.docError('Could not read the image.'); };
-        img.src = url;
-      } else {
-        // Non-image (e.g. PDF): read as-is, but the store caps at ~24 KB.
-        var reader = new FileReader();
-        reader.onload = function () {
-          var b64 = String(reader.result).split(',')[1] || '';
-          if (b64.length > 32000) {
-            self.docError('File too large — max ~24 KB. Upload a clear photo (JPG/PNG) instead.');
-            return;
-          }
-          uploadDocBlob(item, b64, file.type || 'application/octet-stream', file.name);
-        };
-        reader.onerror = function () { self.docError('Could not read the file.'); };
-        reader.readAsDataURL(file);
-      }
-    };
 
     self.removeDoc = function (item) {
       if (!item.docId) return;

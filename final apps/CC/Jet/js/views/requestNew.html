@@ -52,6 +52,9 @@
   <!-- ── Step 2: details ───────────────────────────────────────────────── -->
   <!-- ko if: step() === 2 -->
   <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Request Details</div>
+    </div>
     <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
       <!-- ko if: needsCard() -->
       <div class="form-group">
@@ -91,7 +94,7 @@
   <!-- ── Step 3: documents + submit ────────────────────────────────────── -->
   <!-- ko if: step() === 3 -->
   <div class="card">
-    <div class="section-heading" style="margin-top:0">
+    <div class="section-heading">
       Draft <span class="mono" data-bind="text: requestNumber()"></span> — required documents
     </div>
     <!-- ko if: docReqs().length === 0 -->

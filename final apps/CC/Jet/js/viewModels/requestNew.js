@@ -1,5 +1,5 @@
-define(['knockout', 'services/ccService'],
-function (ko, ccService) {
+define(['knockout', 'services/ccService', 'shared/docUpload'],
+function (ko, ccService, docUpload) {
   'use strict';
 
   var TYPES = [
@@ -81,37 +81,28 @@ function (ko, ccService) {
     };
 
     self.pickFile = function (docReq) {
-      var input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.pdf,.jpg,.jpeg,.png';
-      input.onchange = function () {
-        var file = input.files && input.files[0];
+      // Raw-binary upload (no base64, no ~32 KB cap): pick → createDocument → putBinary.
+      docUpload.choose({ accept: '.pdf,.jpg,.jpeg,.png', maxMb: 10 }).then(function (file) {
         if (!file) return;
         docReq.uploading(true);
-        var reader = new FileReader();
-        reader.onload = function () {
-          var b64 = String(reader.result).split(',')[1];
-          ccService.createDocument({
-            sourceType: 'REQUEST',
-            sourceId:   self.requestId(),
-            docReqId:   docReq.docReqId,
-            docTypeId:  docReq.docTypeId,
-            fileName:   file.name,
-            mimeType:   file.type || 'application/octet-stream',
-            isRequired: docReq.isMandatory
-          }).then(function (r) {
-            return ccService.uploadDocumentFile(r.documentId, b64, file.type || 'application/octet-stream');
-          }).then(function () {
-            docReq.uploading(false);
-            docReq.uploaded(true);
-          }).catch(function (err) {
-            docReq.uploading(false);
-            self.error((err && err.message) || 'Upload failed');
-          });
-        };
-        reader.readAsDataURL(file);
-      };
-      input.click();
+        ccService.createDocument({
+          sourceType: 'REQUEST',
+          sourceId:   self.requestId(),
+          docReqId:   docReq.docReqId,
+          docTypeId:  docReq.docTypeId,
+          fileName:   file.name,
+          mimeType:   file.type || 'application/octet-stream',
+          isRequired: docReq.isMandatory
+        }).then(function (r) {
+          return ccService.uploadDocumentFile(r.documentId, file);
+        }).then(function () {
+          docReq.uploading(false);
+          docReq.uploaded(true);
+        }).catch(function (err) {
+          docReq.uploading(false);
+          self.error((err && err.message) || 'Upload failed');
+        });
+      });
       return true;
     };
 

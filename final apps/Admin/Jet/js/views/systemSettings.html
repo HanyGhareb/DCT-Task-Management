@@ -85,6 +85,49 @@
   </div>
   <!-- /ko -->
 
+  <!-- ── Field Focus Highlight — THEME_FOCUS_COLOR + FEATURE_FOCUS_HIGHLIGHT ── -->
+  <!-- ko if: focus() -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('sys.focus.title')"></div>
+    <div style="font-size:12px;color:var(--text-2);margin-bottom:14px" data-bind="text: $root.t('sys.focus.subtitle')"></div>
+
+    <!-- ko if: focusOn() -->
+    <div class="rgp-row" style="margin-bottom:6px">
+      <div style="display:flex;align-items:center;gap:10px;cursor:pointer" data-bind="click: toggleFocusOn">
+        <div class="switch" style="pointer-events:none">
+          <input type="checkbox" style="pointer-events:none"
+                 data-bind="checked: focusEnabled(), attr: { 'aria-label': 'FEATURE_FOCUS_HIGHLIGHT' }">
+          <span class="switch-slider"></span>
+        </div>
+        <span class="rgp-lbl" data-bind="text: $root.t('sys.focus.enable')"></span>
+      </div>
+    </div>
+    <!-- /ko -->
+
+    <div class="rgp-row" data-bind="style: { opacity: focusEnabled() ? 1 : .45,
+         'pointer-events': focusEnabled() ? 'auto' : 'none' }">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.focus.hint')"></span>
+      <input type="color" class="rgp-color" title="Focus highlight color"
+             aria-label="Focus highlight color"
+             data-bind="value: focus().value, valueUpdate: 'input'">
+      <span class="rgp-hex" data-bind="text: focus().value"></span>
+    </div>
+
+    <!-- ko if: focusLevel() -->
+    <div class="rgp-row" style="margin-top:10px" data-bind="style: { opacity: focusEnabled() ? 1 : .45,
+         'pointer-events': focusEnabled() ? 'auto' : 'none' }">
+      <span class="rgp-lbl" data-bind="text: $root.t('sys.focus.level')"></span>
+      <input type="range" class="rgp-range" min="0" max="60" step="5"
+             title="Fill intensity" aria-label="Fill intensity"
+             data-bind="value: focusLevel().value, valueUpdate: 'input'">
+      <span class="rgp-hex" data-bind="text: focusLevel().value() + '%'"></span>
+      <span class="rgp-fill-prev" data-bind="style: { background: 'var(--focus-fill)' }"
+            title="Fill preview" aria-hidden="true"></span>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
   <!-- ko foreach: categories -->
   <div class="card" style="margin-bottom:16px">
     <div class="section-heading" style="margin-top:0" data-bind="text: label"></div>

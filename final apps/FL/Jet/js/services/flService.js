@@ -97,8 +97,13 @@ define(['services/api'], function (api) {
     /* ── documents (unified store) ─────────────────────────────────────── */
     getDocuments: function (opts) { return api.get('/documents/' + qs(opts || {}, ['freelancerId', 'expiryStatus'])); },
     createDocument: function (d)  { return api.post('/documents/', d); },
-    uploadDocumentFile: function (id, b64, mime) {
-      return api.put('/documents/' + id + '/file', { file_data_b64: b64, mime_type: mime });
+    /* Raw-binary upload (no base64, no ~32 KB cap) — file bytes are the body;
+       name/mime ride in the query string. ORDS handler reads it via :body. */
+    uploadDocumentFile: function (id, file) {
+      return api.putBinary('/documents/' + id + '/file', file, {
+        mime: file.type || 'application/octet-stream',
+        query: { file_name: file.name, mime_type: file.type || 'application/octet-stream' }
+      });
     },
     deleteDocument: function (id) { return api.delete('/documents/' + id); },
 

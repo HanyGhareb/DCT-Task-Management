@@ -92,6 +92,15 @@
   "chart.loading": "جارٍ تحميل الرسم…",
   "chart.noData": "لا توجد بيانات للرسم بعد",
 
+  "docup.choose": "اختر ملفاً أو اسحبه إلى هنا",
+  "docup.hint": "PDF أو صورة · حتى {0} ميجابايت",
+  "docup.replace": "استبدال",
+  "docup.remove": "إزالة",
+  "docup.view": "عرض",
+  "docup.uploading": "جارٍ الرفع…",
+  "docup.tooLarge": "حجم الملف كبير جداً. الحد الأقصى {0} ميجابايت.",
+  "docup.badType": "نوع الملف غير مدعوم.",
+
   "dash.greetingM": "صباح الخير",
   "dash.greetingA": "مساء الخير",
   "dash.greetingE": "مساء الخير"

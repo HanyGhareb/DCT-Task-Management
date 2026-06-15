@@ -30,6 +30,9 @@
   <!-- ko ifnot: loading() -->
   <div class="reg-layout">
   <div class="card">
+    <div class="section-heading-row">
+      <h3 class="section-heading">Registration Details</h3>
+    </div>
     <div style="display:flex;gap:18px;align-items:center;margin-bottom:18px">
       <!-- ko if: photoSrc() -->
       <img class="photo-preview" data-bind="attr: { src: photoSrc() }" alt="photo"
@@ -40,6 +43,8 @@
       <button class="btn btn-secondary btn-sm" data-bind="click: pickPhoto, enable: editable() || isNew">&#128247; Photo *</button>
       <span style="font-size:11.5px;color:var(--text-3)">Required before submission (module setting)</span>
     </div>
+
+    <p class="fl-legend">Fields marked <b>*</b> are required.</p>
 
     <div class="form-grid">
       <div class="form-group">
@@ -122,9 +127,6 @@
       <div class="section-heading-row">
         <h3 class="section-heading">Required Documents</h3>
       </div>
-      <input id="fl-reg-doc-input" type="file" accept="image/*,application/pdf" style="display:none"
-             data-bind="event: { change: docFileSelected }">
-
       <!-- ko if: !regId() -->
       <p class="reg-doc-note">&#9888; Save the draft first, then attach the documents below.</p>
       <!-- /ko -->

@@ -36,6 +36,9 @@
 
   <!-- ko if: tab() === 'profile' -->
   <div class="card">
+    <div class="section-heading-row">
+      <h3 class="section-heading">Profile Details</h3>
+    </div>
     <div style="display:flex;gap:20px;align-items:flex-start">
       <img class="photo-preview" data-bind="attr: { src: photoSrc() }" alt="" onerror="this.style.display='none'">
       <div class="form-grid" style="flex:1">
@@ -67,9 +70,11 @@
 
   <!-- ko if: tab() === 'bank' -->
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="section-heading" style="margin:0">Bank Accounts</div>
-      <button class="btn btn-primary btn-sm" data-bind="click: openBank">+ Add Account</button>
+    <div class="section-heading-row">
+      <div class="section-heading">Bank Accounts</div>
+      <div class="region-actions">
+        <button class="btn btn-primary btn-sm" data-bind="click: openBank">+ Add Account</button>
+      </div>
     </div>
     <div class="data-table-wrap">
       <table class="data-table">
@@ -104,6 +109,9 @@
 
   <!-- ko if: tab() === 'contracts' -->
   <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Contracts</div>
+    </div>
     <div class="data-table-wrap">
       <table class="data-table">
         <thead><tr><th>Number</th><th>Title</th><th>Amount</th><th>Status</th><th>Billing</th></tr></thead>
@@ -128,9 +136,11 @@
 
   <!-- ko if: tab() === 'docs' -->
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-      <div class="section-heading" style="margin:0">Documents</div>
-      <button class="btn btn-primary btn-sm" data-bind="click: openDoc">+ Add Document</button>
+    <div class="section-heading-row">
+      <div class="section-heading">Documents</div>
+      <div class="region-actions">
+        <button class="btn btn-primary btn-sm" data-bind="click: openDoc">+ Add Document</button>
+      </div>
     </div>
     <div class="data-table-wrap">
       <table class="data-table">

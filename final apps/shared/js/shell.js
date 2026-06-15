@@ -83,7 +83,10 @@ define([], function () {
          → the fallback baked into platform.css (mirrors the seed). */
   var REGION_KEYS = ['THEME_REGION_HEADER_BG', 'THEME_REGION_HEADER_FG',
                      'THEME_REGION_BORDER_COLOR', 'THEME_REGION_BORDER_WIDTH',
-                     'THEME_REGION_BORDER_STYLE'];
+                     'THEME_REGION_BORDER_STYLE',
+                     /* field-focus highlight (26_focus_theme.sql) — rides the same
+                        boot → applyRegionTheme path as the region keys */
+                     'THEME_FOCUS_COLOR', 'FEATURE_FOCUS_HIGHLIGHT', 'THEME_FOCUS_FILL_LEVEL'];
 
   function lum(rgb) {
     var a = rgb.map(function (v) {
@@ -116,6 +119,33 @@ define([], function () {
     if (/^(\d+(\.\d+)?px|0)$/.test(bw)) st.setProperty('--region-bd-width', bw === '0' ? '0px' : bw);
     var bs = String(map.THEME_REGION_BORDER_STYLE || '').trim().toLowerCase();
     if (['solid', 'dashed', 'dotted', 'double'].indexOf(bs) >= 0) st.setProperty('--region-bd-style', bs);
+
+    /* field-focus highlight: FEATURE_FOCUS_HIGHLIGHT flag gates THEME_FOCUS_COLOR.
+       Absent flag → enabled (default-on convention). Disabled → neutral border,
+       no colored ring. Invalid color is ignored so a bad setting can't break UI. */
+    if ('FEATURE_FOCUS_HIGHLIGHT' in map || 'THEME_FOCUS_COLOR' in map) {
+      var flag = String(map.FEATURE_FOCUS_HIGHLIGHT === undefined ? '' : map.FEATURE_FOCUS_HIGHLIGHT)
+                   .trim().toLowerCase();
+      var focusOff = (flag === 'n' || flag === 'false' || flag === '0');
+      if (focusOff) {
+        st.setProperty('--focus-color', 'var(--border-strong)');
+        st.setProperty('--focus-ring', 'transparent');
+        st.setProperty('--focus-fill', 'var(--surface)');
+      } else {
+        var fc = hex2rgb(map.THEME_FOCUS_COLOR);
+        if (fc) {
+          st.setProperty('--focus-color', rgb2hex(fc));
+          st.setProperty('--focus-ring', 'rgba(' + fc.join(',') + ',0.20)');
+          /* fill = opaque tint of the chosen color. THEME_FOCUS_FILL_LEVEL is the
+             intensity 0–100 (% of the full color; higher = darker fill); default 15.
+             level%→ mix t = 1 - level/100 toward white. */
+          var lvl = parseFloat(map.THEME_FOCUS_FILL_LEVEL);
+          if (isNaN(lvl)) lvl = 15;
+          lvl = Math.max(0, Math.min(100, lvl));
+          st.setProperty('--focus-fill', rgb2hex(mix(fc, [255, 255, 255], 1 - lvl / 100)));
+        }
+      }
+    }
   }
 
   /**

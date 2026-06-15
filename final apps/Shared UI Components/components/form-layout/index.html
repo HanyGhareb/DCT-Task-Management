@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Form Layout — i-Finance Shared UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* ─────────────────────────────────────────────────────────────────────────
+   TOKENS — mirror final apps/shared/css/platform.css names so the component
+   ports with near-zero rework. (Light + dark are both demoed via [data-theme].)
+   ───────────────────────────────────────────────────────────────────────── */
+:root{
+  --brand:#0E8A8A; --brand-rgb:14,138,138; --brand-dark:#0A6A6A; --brand-soft:#E4F2F1;
+  --text:#0E1A1A; --text-2:#425655; --text-3:#7C908F;
+  --surface:#fff; --surface-2:#F4F7F6; --canvas:#EEF3F2;
+  --border:#E2EAE9; --border-strong:#CBD8D6;
+  --region-hd-bg:#0E8A8A; --region-hd-fg:#fff; --region-hd-accent:#0A6A6A; --region-hd-soft:#EAF4F3;
+  --region-bd-color:#0E8A8A; --region-bd-width:1px;
+  --amber:#0E8A8A; --amber-soft:rgba(14,138,138,.18);
+  --red:#D7263D; --red-soft:rgba(215,38,61,.12);
+  --ok:#2E9E6B; --warn:#C9871F;
+  --radius:8px; --radius-lg:12px;
+  --shadow:0 1px 2px rgba(16,32,31,.05); --shadow-hover:0 14px 34px -18px rgba(16,40,38,.4);
+  --transition:.18s ease; --spring:cubic-bezier(.34,1.56,.64,1); --ease:cubic-bezier(.22,1,.32,1);
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace;
+}
+[data-theme="dark"]{
+  --text:#E6EDF3; --text-2:#A6B2Bd; --text-3:#7D8590;
+  --surface:#161B22; --surface-2:#0F141A; --canvas:#0D1117;
+  --border:#2A3139; --border-strong:#3A434E;
+  --region-hd-bg:#0B6C6C; --region-hd-accent:#11A0A0; --region-hd-soft:#16242a;
+  --brand-soft:rgba(14,138,138,.16);
+  --shadow:0 1px 2px rgba(0,0,0,.4); --shadow-hover:0 16px 40px -18px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{
+  font-family:var(--font); color:var(--text); line-height:1.5; -webkit-font-smoothing:antialiased;
+  background:
+    radial-gradient(900px 480px at 88% -10%, rgba(var(--brand-rgb),.10), transparent 60%),
+    radial-gradient(700px 420px at -6% 110%, rgba(var(--brand-rgb),.06), transparent 55%),
+    var(--canvas);
+  min-height:100vh; transition:background .3s, color .3s;
+}
+
+/* ─── LAB CONTROL BAR (demo chrome only — NOT part of the promoted component) ─── */
+.lab{
+  position:sticky; top:0; z-index:20; -webkit-backdrop-filter:blur(10px); backdrop-filter:blur(10px);
+  background:color-mix(in srgb, var(--surface) 80%, transparent);
+  border-bottom:1px solid var(--border);
+}
+.lab-in{max-width:1120px;margin:0 auto;padding:11px 24px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.lab-brand{display:flex;align-items:center;gap:9px;margin-inline-end:6px}
+.lab-cube{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;flex:none;
+  background:linear-gradient(140deg,var(--brand),var(--brand-dark));color:#fff;font-weight:800;font-size:13px;
+  box-shadow:0 6px 16px -7px rgba(var(--brand-rgb),.9), inset 0 1px 0 rgba(255,255,255,.3)}
+.lab-ttl{font-size:13px;font-weight:700;letter-spacing:-.01em}
+.lab-ttl small{display:block;font-family:var(--mono);font-size:9.5px;letter-spacing:.18em;text-transform:uppercase;color:var(--brand);font-weight:600}
+.lab-seg{display:flex;align-items:center;gap:0;border:1px solid var(--border-strong);border-radius:9px;overflow:hidden;background:var(--surface)}
+.lab-seg button{font-family:var(--font);font-size:11.5px;font-weight:600;color:var(--text-2);background:none;border:0;padding:6px 11px;cursor:pointer;transition:var(--transition);border-inline-end:1px solid var(--border)}
+.lab-seg button:last-child{border-inline-end:0}
+.lab-seg button.on{background:var(--brand);color:#fff}
+.lab-seg button:not(.on):hover{background:var(--surface-2)}
+.lab-tag{font-family:var(--mono);font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-3);align-self:center}
+.lab-spacer{flex:1}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   THE COMPONENT — these classes mirror / extend platform.css.
+   Existing (in platform.css today):  page-header-row · page-title · page-actions ·
+     region-actions · card · section-heading-row · section-heading · form-grid ·
+     form-grid--3 · form-group · form-group--full · form-label · .required ·
+     form-control · form-hint · field-error · form-control--error · btn*.
+   NEW (the promote delta — the .fl-* block):  fl-page · fl-section · fl-section__intro ·
+     form-grid--label-start (inline label-edge) · form-grid--compact (density) ·
+     fl-readonly (review-mode value) · form-group--span2.
+   ───────────────────────────────────────────────────────────────────────── */
+.fl-page{max-width:1120px;margin:0 auto;padding:30px 24px 90px;position:relative;z-index:1}
+
+.page-header-row{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap;margin-bottom:6px}
+.page-title{font-size:27px;font-weight:800;letter-spacing:-.025em;line-height:1.1}
+.page-sub{color:var(--text-2);font-size:13.5px;margin-top:5px;max-width:62ch}
+.page-actions,.region-actions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;justify-content:flex-end;margin-inline-start:auto}
+
+.btn{font-family:var(--font);font-size:13px;font-weight:600;border-radius:8px;padding:9px 16px;cursor:pointer;
+  border:1px solid var(--border-strong);background:var(--surface);color:var(--text);transition:var(--transition);white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn-primary{background:var(--brand);border-color:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-dark);border-color:var(--brand-dark)}
+.btn-sm{padding:6px 12px;font-size:12px}
+/* ghost/inverted buttons inside colored region headers (platform behaviour) */
+.section-heading-row .btn:not(.btn-primary){background:transparent;color:inherit;border-color:currentColor}
+.section-heading-row .btn-primary{background:var(--region-hd-fg);color:var(--region-hd-bg);border-color:transparent}
+
+/* progress rail — orients the user across a long, sectioned form */
+.fl-rail{display:flex;gap:8px;flex-wrap:wrap;margin:20px 0 26px}
+.fl-rail a{font-size:12px;font-weight:600;color:var(--text-2);text-decoration:none;display:flex;align-items:center;gap:7px;
+  padding:6px 13px;border:1px solid var(--border);border-radius:30px;background:var(--surface);transition:var(--transition)}
+.fl-rail a:hover{border-color:var(--brand);color:var(--brand)}
+.fl-rail a .n{font-family:var(--mono);font-size:10px;width:18px;height:18px;border-radius:50%;display:grid;place-items:center;background:var(--brand-soft);color:var(--brand-dark)}
+.fl-rail a.done .n{background:var(--ok);color:#fff}
+
+/* a form SECTION = a card with a colored region header + a field grid */
+.fl-section{background:var(--surface);border:var(--region-bd-width) solid var(--border);border-radius:var(--radius-lg);
+  box-shadow:var(--shadow);margin-bottom:18px;overflow:hidden;scroll-margin-top:78px;
+  animation:fl-rise .5s var(--ease) backwards}
+.fl-section:nth-of-type(1){animation-delay:.05s}
+.fl-section:nth-of-type(2){animation-delay:.12s}
+.fl-section:nth-of-type(3){animation-delay:.19s}
+.fl-section:nth-of-type(4){animation-delay:.26s}
+@keyframes fl-rise{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:none}}
+.section-heading-row{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  background:var(--region-hd-bg);color:var(--region-hd-fg);padding:11px 16px;transition:background .25s,color .25s}
+.section-heading{font-size:13px;font-weight:700;letter-spacing:.01em;display:flex;align-items:center;gap:10px;margin:0}
+.section-heading .ic{width:22px;height:22px;border-radius:7px;display:grid;place-items:center;background:rgba(255,255,255,.16);font-size:12px}
+.fl-section__intro{padding:14px 20px 0;color:var(--text-2);font-size:12.5px}
+.fl-section__body{padding:18px 20px 22px}
+
+/* ── field grid (extends platform .form-grid) ── */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px 20px}
+.form-grid--1{grid-template-columns:1fr}
+.form-grid--3{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:680px){.form-grid,.form-grid--3{grid-template-columns:1fr}}
+.form-group{display:flex;flex-direction:column;gap:5px;min-width:0}
+.form-group--full{grid-column:1/-1}
+.form-group--span2{grid-column:span 2}
+@media (max-width:680px){.form-group--span2{grid-column:1/-1}}
+.form-label{font-size:11.5px;font-weight:600;color:var(--text-2);text-transform:uppercase;letter-spacing:.05em;display:flex;align-items:center;gap:5px}
+.form-label .required{color:var(--red)}
+.form-label .opt{font-weight:500;text-transform:none;letter-spacing:0;color:var(--text-3);font-size:10.5px}
+.form-control{padding:9px 12px;border:1px solid var(--border-strong);border-radius:8px;font-size:13px;font-family:inherit;
+  outline:none;background:var(--surface);color:var(--text);width:100%;transition:border-color var(--transition),box-shadow var(--transition)}
+.form-control::placeholder{color:var(--text-3)}
+.form-control:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--amber-soft)}
+textarea.form-control{resize:vertical;min-height:84px;line-height:1.55}
+select.form-control{appearance:none;padding-inline-end:30px;cursor:pointer;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M0 0l6 7 6-7z' fill='%238A93A2'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 11px center}
+html[dir="rtl"] select.form-control{background-position:left 11px center}
+.form-hint{font-size:11px;color:var(--text-3)}
+.field-error{font-size:11px;color:var(--red);font-weight:500;display:none;align-items:center;gap:5px}
+.form-group.invalid .form-control{border-color:var(--red)}
+.form-group.invalid .form-control:focus{box-shadow:0 0 0 3px var(--red-soft)}
+.form-group.invalid .field-error{display:flex;animation:fl-shake .3s}
+@keyframes fl-shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+
+/* ── LABEL-EDGE = START : label sits inline before the control (JET cookbook toggle) ── */
+.form-grid--label-start .form-group{display:grid;grid-template-columns:140px 1fr;align-items:center;gap:4px 14px}
+.form-grid--label-start .form-group .form-label{justify-self:start;padding-top:2px}
+.form-grid--label-start .form-group .form-hint,
+.form-grid--label-start .form-group .field-error{grid-column:2}
+.form-grid--label-start textarea.form-control{align-self:start}
+@media (max-width:680px){.form-grid--label-start .form-group{grid-template-columns:1fr}
+  .form-grid--label-start .form-group .form-hint,.form-grid--label-start .form-group .field-error{grid-column:1}}
+
+/* ── DENSITY = COMPACT ── */
+.form-grid--compact{gap:10px 16px}
+.form-grid--compact .form-control{padding:6px 10px;font-size:12.5px}
+
+/* ── REVIEW MODE : controls collapse to read-only value rows ── */
+.fl-readonly{display:none;font-size:13.5px;font-weight:600;color:var(--text);padding:8px 0;
+  border-bottom:1px solid var(--border)}
+.fl-readonly .none{color:var(--text-3);font-weight:400;font-style:italic}
+body.review .form-control,
+body.review .docup{display:none}
+body.review .fl-readonly{display:block}
+body.review .field-error,
+body.review .form-hint{display:none!important}
+body.review .form-label .required,
+body.review .form-label .opt{display:none}
+
+/* ── document upload (platform .docup look) ── */
+.docup{border:1.5px dashed var(--border-strong);border-radius:10px;background:var(--surface-2);
+  padding:18px 14px;text-align:center;cursor:pointer;transition:var(--transition)}
+.docup:hover{border-color:var(--brand);background:var(--brand-soft)}
+.docup .ic{font-size:20px;color:var(--brand)}
+.docup .main{font-size:13px;font-weight:600;margin-top:4px}
+.docup .hint{font-size:11px;color:var(--text-3)}
+
+/* save-bar toast (demo) */
+.fl-toast{position:fixed;inset-block-end:24px;inset-inline:0;margin-inline:auto;width:max-content;max-width:90vw;z-index:40;
+  background:var(--text);color:var(--surface);font-size:13px;font-weight:600;padding:11px 20px;border-radius:30px;
+  box-shadow:0 18px 40px -16px rgba(0,0,0,.5);display:flex;align-items:center;gap:9px;
+  opacity:0;transform:translateY(14px);pointer-events:none;transition:.35s var(--spring)}
+.fl-toast.show{opacity:1;transform:none}
+.fl-toast .dot{width:8px;height:8px;border-radius:50%;background:var(--ok)}
+.fl-toast.err .dot{background:var(--red)}
+
+/* required legend */
+.fl-legend{font-size:11.5px;color:var(--text-3);margin-top:2px}
+.fl-legend b{color:var(--red)}
+</style>
+</head>
+<body data-mode="edit">
+
+<!-- ════════ LAB CONTROL BAR (demo chrome — strip on promote) ════════ -->
+<div class="lab">
+  <div class="lab-in">
+    <div class="lab-brand">
+      <div class="lab-cube">iF</div>
+      <div class="lab-ttl">Form Layout<small>Shared UI · mockup</small></div>
+    </div>
+
+    <span class="lab-tag">labels</span>
+    <div class="lab-seg" id="segLabel">
+      <button data-v="top" class="on">Top</button>
+      <button data-v="start">Start</button>
+    </div>
+
+    <span class="lab-tag">columns</span>
+    <div class="lab-seg" id="segCols">
+      <button data-v="1">1</button>
+      <button data-v="2" class="on">2</button>
+      <button data-v="3">3</button>
+    </div>
+
+    <span class="lab-tag">density</span>
+    <div class="lab-seg" id="segDensity">
+      <button data-v="cozy" class="on">Cozy</button>
+      <button data-v="compact">Compact</button>
+    </div>
+
+    <span class="lab-tag">mode</span>
+    <div class="lab-seg" id="segMode">
+      <button data-v="edit" class="on">Edit</button>
+      <button data-v="review">Review</button>
+    </div>
+
+    <span class="lab-spacer"></span>
+
+    <span class="lab-tag">dir</span>
+    <div class="lab-seg" id="segDir">
+      <button data-v="ltr" class="on">LTR</button>
+      <button data-v="rtl">RTL</button>
+    </div>
+
+    <span class="lab-tag">theme</span>
+    <div class="lab-seg" id="segTheme">
+      <button data-v="light" class="on">Light</button>
+      <button data-v="dark">Dark</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════════ THE FORM PAGE ════════ -->
+<form class="fl-page" id="flForm" novalidate>
+
+  <div class="page-header-row">
+    <div>
+      <h1 class="page-title">New Freelancer Registration</h1>
+      <p class="page-sub">A unified, sectioned form page — the same scaffold every i-Finance module (Admin · PC · DT · HR · FL · CC · AR · TM) uses for create / edit. Built entirely on platform classes; switch the controls above to feel every variant before rollout.</p>
+      <p class="fl-legend">Fields marked <b>*</b> are required.</p>
+    </div>
+    <div class="page-actions">
+      <button type="button" class="btn" id="btnCancel">Cancel</button>
+      <button type="submit" class="btn btn-primary" id="btnSave">Save registration</button>
+    </div>
+  </div>
+
+  <nav class="fl-rail" aria-label="Form sections">
+    <a href="#sec-id"><span class="n">1</span> Identity</a>
+    <a href="#sec-contact"><span class="n">2</span> Contact</a>
+    <a href="#sec-engagement"><span class="n">3</span> Engagement</a>
+    <a href="#sec-banking"><span class="n">4</span> Banking &amp; docs</a>
+  </nav>
+
+  <!-- ── SECTION 1 ── -->
+  <section class="fl-section" id="sec-id">
+    <div class="section-heading-row">
+      <h2 class="section-heading"><span class="ic">①</span> Identity</h2>
+    </div>
+    <p class="fl-section__intro">Legal name as it appears on the Emirates ID / passport.</p>
+    <div class="fl-section__body">
+      <div class="form-grid">
+        <div class="form-group" data-req>
+          <label class="form-label" for="fName">Full name (EN) <span class="required">*</span></label>
+          <input class="form-control" id="fName" type="text" placeholder="e.g. Layla Hassan" value="Layla Hassan">
+          <div class="field-error">⚠ Full name is required.</div>
+          <div class="fl-readonly">Layla Hassan</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fNameAr">Full name (AR) <span class="opt">optional</span></label>
+          <input class="form-control" id="fNameAr" type="text" dir="rtl" placeholder="ليلى حسن" value="ليلى حسن">
+          <div class="fl-readonly" dir="rtl">ليلى حسن</div>
+        </div>
+        <div class="form-group" data-req>
+          <label class="form-label" for="fEid">Emirates ID <span class="required">*</span></label>
+          <input class="form-control" id="fEid" type="text" placeholder="784-XXXX-XXXXXXX-X" value="784-1990-1234567-1">
+          <div class="form-hint">15 digits, format 784-YYYY-XXXXXXX-X.</div>
+          <div class="field-error">⚠ Enter a valid Emirates ID.</div>
+          <div class="fl-readonly">784-1990-1234567-1</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fNat">Nationality</label>
+          <select class="form-control" id="fNat">
+            <option>United Arab Emirates</option>
+            <option selected>Egypt</option>
+            <option>Jordan</option>
+            <option>India</option>
+            <option>United Kingdom</option>
+          </select>
+          <div class="fl-readonly">Egypt</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 2 ── -->
+  <section class="fl-section" id="sec-contact">
+    <div class="section-heading-row">
+      <h2 class="section-heading"><span class="ic">②</span> Contact</h2>
+    </div>
+    <div class="fl-section__body">
+      <div class="form-grid">
+        <div class="form-group" data-req data-type="email">
+          <label class="form-label" for="fEmail">Email <span class="required">*</span></label>
+          <input class="form-control" id="fEmail" type="email" placeholder="name@example.com" value="layla.h@example.com">
+          <div class="field-error">⚠ Enter a valid email address.</div>
+          <div class="fl-readonly">layla.h@example.com</div>
+        </div>
+        <div class="form-group" data-req>
+          <label class="form-label" for="fPhone">Mobile <span class="required">*</span></label>
+          <input class="form-control" id="fPhone" type="tel" placeholder="+971 5X XXX XXXX" value="+971 50 123 4567">
+          <div class="field-error">⚠ Mobile number is required.</div>
+          <div class="fl-readonly">+971 50 123 4567</div>
+        </div>
+        <div class="form-group form-group--full">
+          <label class="form-label" for="fAddr">Address <span class="opt">optional</span></label>
+          <textarea class="form-control" id="fAddr" placeholder="Building, street, city, emirate">Marina Plaza, Tower 2, Dubai Marina, Dubai</textarea>
+          <div class="fl-readonly">Marina Plaza, Tower 2, Dubai Marina, Dubai</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 3 ── -->
+  <section class="fl-section" id="sec-engagement">
+    <div class="section-heading-row">
+      <h2 class="section-heading"><span class="ic">③</span> Engagement</h2>
+    </div>
+    <div class="fl-section__body">
+      <div class="form-grid">
+        <div class="form-group" data-req>
+          <label class="form-label" for="fType">Engagement type <span class="required">*</span></label>
+          <select class="form-control" id="fType">
+            <option value="">— select —</option>
+            <option selected>Consultant</option>
+            <option>Trainer</option>
+            <option>Auditor</option>
+            <option>Speaker</option>
+          </select>
+          <div class="field-error">⚠ Choose an engagement type.</div>
+          <div class="fl-readonly">Consultant</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fRate">Day rate (AED)</label>
+          <input class="form-control" id="fRate" type="number" inputmode="numeric" placeholder="0" value="2500">
+          <div class="fl-readonly">AED 2,500</div>
+        </div>
+        <div class="form-group" data-req>
+          <label class="form-label" for="fStart">Start date <span class="required">*</span></label>
+          <input class="form-control" id="fStart" type="date" value="2026-07-01">
+          <div class="field-error">⚠ Start date is required.</div>
+          <div class="fl-readonly">01 Jul 2026</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fEnd">End date <span class="opt">optional</span></label>
+          <input class="form-control" id="fEnd" type="date" value="2026-12-31">
+          <div class="fl-readonly">31 Dec 2026</div>
+        </div>
+        <div class="form-group form-group--full">
+          <label class="form-label" for="fScope">Scope of work <span class="opt">optional</span></label>
+          <textarea class="form-control" id="fScope" placeholder="Brief description of the engagement…">Quarterly financial-controls review and advisory for the Finance Division.</textarea>
+          <div class="fl-readonly">Quarterly financial-controls review and advisory for the Finance Division.</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ── SECTION 4 ── -->
+  <section class="fl-section" id="sec-banking">
+    <div class="section-heading-row">
+      <h2 class="section-heading"><span class="ic">④</span> Banking &amp; documents</h2>
+    </div>
+    <div class="fl-section__body">
+      <div class="form-grid">
+        <div class="form-group" data-req>
+          <label class="form-label" for="fIban">IBAN <span class="required">*</span></label>
+          <input class="form-control" id="fIban" type="text" placeholder="AE07 0331 2345 6789 0123 456" value="AE07 0331 2345 6789 0123 456">
+          <div class="field-error">⚠ IBAN is required.</div>
+          <div class="fl-readonly">AE07 0331 2345 6789 0123 456</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" for="fBank">Bank</label>
+          <select class="form-control" id="fBank">
+            <option selected>Emirates NBD</option>
+            <option>First Abu Dhabi Bank</option>
+            <option>Abu Dhabi Commercial Bank</option>
+            <option>Mashreq</option>
+          </select>
+          <div class="fl-readonly">Emirates NBD</div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Trade licence <span class="opt">optional</span></label>
+          <div class="docup">
+            <div class="ic">⬆</div>
+            <div class="main">Click or drop a file</div>
+            <div class="hint">PDF / JPG · up to 5&nbsp;MB</div>
+          </div>
+          <div class="fl-readonly"><span class="none">No file uploaded</span></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Passport copy <span class="opt">optional</span></label>
+          <div class="docup">
+            <div class="ic">⬆</div>
+            <div class="main">Click or drop a file</div>
+            <div class="hint">PDF / JPG · up to 5&nbsp;MB</div>
+          </div>
+          <div class="fl-readonly"><span class="none">No file uploaded</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</form>
+
+<div class="fl-toast" id="toast"><span class="dot"></span><span id="toastMsg">Saved</span></div>
+
+<script>
+(function(){
+  var body=document.body, html=document.documentElement, form=document.getElementById('flForm');
+
+  // ── generic segmented-control wiring ──
+  function seg(id, fn){
+    var box=document.getElementById(id);
+    box.addEventListener('click', function(e){
+      var b=e.target.closest('button'); if(!b) return;
+      box.querySelectorAll('button').forEach(function(x){x.classList.toggle('on', x===b);});
+      fn(b.getAttribute('data-v'));
+    });
+  }
+
+  var grids=function(){ return Array.prototype.slice.call(document.querySelectorAll('.form-grid')); };
+
+  // labels: top | start
+  seg('segLabel', function(v){
+    grids().forEach(function(g){ g.classList.toggle('form-grid--label-start', v==='start'); });
+  });
+
+  // columns: 1 | 2 | 3   (label-start always implies a single column for legibility)
+  seg('segCols', function(v){
+    grids().forEach(function(g){
+      g.classList.remove('form-grid--1','form-grid--3');
+      if(v==='1') g.classList.add('form-grid--1');
+      if(v==='3') g.classList.add('form-grid--3');
+    });
+  });
+
+  // density
+  seg('segDensity', function(v){
+    grids().forEach(function(g){ g.classList.toggle('form-grid--compact', v==='compact'); });
+  });
+
+  // mode: edit | review
+  seg('segMode', function(v){
+    body.classList.toggle('review', v==='review');
+    body.setAttribute('data-mode', v);
+  });
+
+  // direction
+  seg('segDir', function(v){ html.setAttribute('dir', v); });
+
+  // theme
+  seg('segTheme', function(v){ html.setAttribute('data-theme', v); });
+
+  // ── live validation demo ──
+  function validate(){
+    var ok=true;
+    form.querySelectorAll('.form-group[data-req]').forEach(function(g){
+      var ctl=g.querySelector('.form-control'); if(!ctl){return;}
+      var val=(ctl.value||'').trim(), bad=!val;
+      if(!bad && g.getAttribute('data-type')==='email'){ bad=!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(val); }
+      g.classList.toggle('invalid', bad);
+      if(bad) ok=false;
+    });
+    return ok;
+  }
+  // clear a field's error as the user fixes it
+  form.addEventListener('input', function(e){
+    var g=e.target.closest('.form-group.invalid'); if(g) g.classList.remove('invalid');
+  });
+
+  var toast=document.getElementById('toast'), toastMsg=document.getElementById('toastMsg'), tT;
+  function showToast(msg, err){
+    toastMsg.textContent=msg; toast.classList.toggle('err', !!err); toast.classList.add('show');
+    clearTimeout(tT); tT=setTimeout(function(){toast.classList.remove('show');},2200);
+  }
+
+  form.addEventListener('submit', function(e){
+    e.preventDefault();
+    if(body.classList.contains('review')){ showToast('Submitted for approval ✓'); return; }
+    if(validate()){ showToast('Registration saved ✓'); }
+    else{
+      showToast('Please fix the highlighted fields', true);
+      var first=form.querySelector('.form-group.invalid .form-control');
+      if(first){ first.focus(); first.scrollIntoView({behavior:'smooth',block:'center'}); }
+    }
+  });
+  document.getElementById('btnCancel').addEventListener('click', function(){ showToast('Discarded'); });
+})();
+</script>
+</body>
+</html>

@@ -57,6 +57,9 @@
 
   <!-- ko if: tab() === 'schedule' -->
   <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Payment Schedule</div>
+    </div>
     <div class="data-table-wrap">
       <table class="data-table">
         <thead><tr><th>Period</th><th>Due</th><th>AED</th><th>Voucher</th><th>Status</th><th></th></tr></thead>
@@ -86,6 +89,9 @@
 
   <!-- ko if: tab() === 'amendments' -->
   <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Amendments</div>
+    </div>
     <div class="data-table-wrap">
       <table class="data-table">
         <thead><tr><th>#</th><th>Reason</th><th>New Amount</th><th>New End</th><th>Status</th><th></th></tr></thead>
@@ -115,6 +121,9 @@
 
   <!-- ko if: tab() === 'renewals' -->
   <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Renewals</div>
+    </div>
     <div class="data-table-wrap">
       <table class="data-table">
         <thead><tr><th>Number</th><th>New Period</th><th>New Amount</th><th>New Contract</th><th>Status</th><th></th></tr></thead>
@@ -144,6 +153,9 @@
 
   <!-- ko if: tab() === 'info' -->
   <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Contract Details</div>
+    </div>
     <div class="form-grid">
       <div class="form-group"><label class="form-label">Freelancer</label>
         <div data-bind="text: data().freelancerName || ''"></div></div>

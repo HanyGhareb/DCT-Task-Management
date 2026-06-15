@@ -655,37 +655,49 @@ EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    -- Raw-binary upload: the file's bytes ARE the request body (no base64, no
+    -- ~32 KB cap). Per the AR note, :body may be dereferenced only ONCE. File
+    -- name / mime ride in the query string. Size guarded by MAX_UPLOAD_MB.
     def_template('documents/[COLON]id/file');
     def_handler('documents/[COLON]id/file', 'PUT', q'!
 DECLARE
-  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  l_user  VARCHAR2(100);
   l_uid   NUMBER;
   v_blob  BLOB;
-  v_raw   RAW(32767);
-  v_b64   VARCHAR2(32767) := [COLON]file_data_b64;
-  v_len   NUMBER; v_pos NUMBER := 1; v_chunk NUMBER := 32764;
+  v_len   NUMBER;
+  v_max   NUMBER;
 BEGIN
+  v_blob := [COLON]body;
+  l_user := dct_rest.validate_session;
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  IF v_b64 IS NULL THEN dct_rest.err(400,'file_data_b64 is required'); RETURN; END IF;
+  IF v_blob IS NULL OR DBMS_LOB.GETLENGTH(v_blob) = 0 THEN
+    dct_rest.err(400,'Request body (file bytes) is required'); RETURN;
+  END IF;
+  v_len := DBMS_LOB.GETLENGTH(v_blob);
+  BEGIN
+    SELECT TO_NUMBER(ms.setting_value DEFAULT NULL ON CONVERSION ERROR)
+    INTO   v_max
+    FROM   dct_module_settings ms JOIN dct_modules m ON m.module_id = ms.module_id
+    WHERE  m.module_code = 'CREDIT_CARDS' AND ms.setting_key = 'MAX_UPLOAD_MB';
+  EXCEPTION WHEN NO_DATA_FOUND THEN v_max := NULL; END;
+  v_max := NVL(v_max, 10);
+  IF v_len > v_max * 1024 * 1024 THEN
+    dct_rest.err(413,'File exceeds the maximum upload size of '||v_max||' MB'); RETURN;
+  END IF;
   l_uid := dct_auth.get_user_id(l_user);
-  DBMS_LOB.CREATETEMPORARY(v_blob, TRUE);
-  v_len := LENGTH(v_b64);
-  WHILE v_pos <= v_len LOOP
-    v_raw := UTL_ENCODE.BASE64_DECODE(UTL_RAW.CAST_TO_RAW(SUBSTR(v_b64, v_pos, v_chunk)));
-    DBMS_LOB.WRITEAPPEND(v_blob, UTL_RAW.LENGTH(v_raw), v_raw);
-    v_pos := v_pos + v_chunk;
-  END LOOP;
   UPDATE dct_documents SET
-    file_blob = v_blob,
-    mime_type = NVL([COLON]mime_type, mime_type),
-    file_size_bytes = DBMS_LOB.GETLENGTH(v_blob),
-    updated_by = l_uid, updated_at = SYSTIMESTAMP
+    file_blob       = v_blob,
+    file_name       = NVL([COLON]file_name, file_name),
+    mime_type       = NVL([COLON]mime_type, mime_type),
+    file_size_bytes = v_len,
+    updated_by      = l_uid, updated_at = SYSTIMESTAMP
   WHERE doc_id = [COLON]id AND source_module = 'CC';
+  IF SQL%ROWCOUNT = 0 THEN ROLLBACK; dct_rest.err(404,'Document not found'); RETURN; END IF;
   COMMIT;
-  DBMS_LOB.FREETEMPORARY(v_blob);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
-  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('fileSize', v_len);
+  APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');

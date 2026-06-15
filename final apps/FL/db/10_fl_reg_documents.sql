@@ -41,6 +41,25 @@ BEGIN
                    allowed_values       = 'Y|N',
                    default_value        = 'Y';
     DBMS_OUTPUT.PUT_LINE('Setting DOCS_REQUIRED_FOR_SUBMIT merged.');
+
+    -- MAX_UPLOAD_MB: hard cap (in MB) enforced by the binary documents/:id/file
+    -- handler. Default 10. The handler also defaults to 10 if this row is absent.
+    MERGE INTO dct_module_settings s
+    USING (SELECT v_module_id AS module_id, 'MAX_UPLOAD_MB' AS setting_key FROM dual) src
+    ON    (s.module_id = src.module_id AND s.setting_key = src.setting_key)
+    WHEN NOT MATCHED THEN
+        INSERT (module_id, setting_key, setting_value, setting_label,
+                setting_description, value_type, allowed_values, default_value, effective_date)
+        VALUES (v_module_id, 'MAX_UPLOAD_MB', '10',
+                'Maximum Document Upload Size (MB)',
+                'Largest single document file (passport, visa, bank letter, etc.) that can be uploaded. Files are sent as raw bytes; the server rejects anything above this with HTTP 413.',
+                'NUMBER', NULL, '10', SYSDATE)
+    WHEN MATCHED THEN
+        UPDATE SET setting_label      = 'Maximum Document Upload Size (MB)',
+                   setting_description = 'Largest single document file (passport, visa, bank letter, etc.) that can be uploaded. Files are sent as raw bytes; the server rejects anything above this with HTTP 413.',
+                   value_type          = 'NUMBER',
+                   default_value        = '10';
+    DBMS_OUTPUT.PUT_LINE('Setting MAX_UPLOAD_MB merged.');
 END;
 /
 

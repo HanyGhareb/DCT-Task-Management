@@ -44,10 +44,12 @@
   </div>
 
   <div class="card" style="margin-bottom:16px">
-    <div class="section-heading" style="margin-top:0;display:flex;justify-content:space-between;align-items:center">
-      <span>Merchant Expense Lines</span>
+    <div class="section-heading-row">
+      <div class="section-heading">Merchant Expense Lines</div>
       <!-- ko if: editable() -->
-      <button class="btn btn-secondary btn-sm" data-bind="click: addLine">+ Add Line</button>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: addLine">+ Add Line</button>
+      </div>
       <!-- /ko -->
     </div>
 
@@ -122,6 +124,9 @@
   </div>
 
   <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Submission Details</div>
+    </div>
     <div class="form-grid" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
       <div class="form-group"><label class="form-label">Submitted By</label>
         <div data-bind="text: data().submittedByName"></div></div>

@@ -43,6 +43,7 @@ define(['knockout', 'shared/shell'], function (ko, shell) {
   var BORDER_WIDTHS = ['1px', '1.5px', '2px', '3px', '0'];
   var BORDER_STYLES = ['solid', 'dashed', 'dotted', 'double'];
 
+
   function lum(hex) {
     var h = String(hex || '').replace('#', '');
     if (!/^[0-9a-fA-F]{6}$/.test(h)) return null;
@@ -68,17 +69,24 @@ define(['knockout', 'shared/shell'], function (ko, shell) {
     self.borderWidths = BORDER_WIDTHS;
     self.borderStyles = BORDER_STYLES;
     self.region       = ko.observable(null);   // { bg, fg, bColor, bWidth, bStyle } items
+    self.focus        = ko.observable(null);    // THEME_FOCUS_COLOR item (.value)
+    self.focusOn      = ko.observable(null);    // FEATURE_FOCUS_HIGHLIGHT item (.value Y/N)
+    self.focusLevel   = ko.observable(null);    // THEME_FOCUS_FILL_LEVEL item (.value 0–100)
 
     self._regionMap = function () {
       var r = self.region();
-      if (!r) return {};
-      return {
+      var out = r ? {
         THEME_REGION_HEADER_BG:    r.bg.value(),
         THEME_REGION_HEADER_FG:    r.fg.value(),
         THEME_REGION_BORDER_COLOR: r.bColor ? r.bColor.value() : null,
         THEME_REGION_BORDER_WIDTH: r.bWidth ? r.bWidth.value() : null,
         THEME_REGION_BORDER_STYLE: r.bStyle ? r.bStyle.value() : null
-      };
+      } : {};
+      /* fold the focus highlight in so the live preview reflects color + on/off + fill level */
+      if (self.focus())      out.THEME_FOCUS_COLOR = self.focus().value();
+      if (self.focusOn())    out.FEATURE_FOCUS_HIGHLIGHT = self.focusOn().value();
+      if (self.focusLevel()) out.THEME_FOCUS_FILL_LEVEL = self.focusLevel().value();
+      return out;
     };
     /* live preview on this browser; permanent for everyone after Save */
     self.previewRegion = function () { shell.applyRegionTheme(self._regionMap()); };
@@ -105,6 +113,21 @@ define(['knockout', 'shared/shell'], function (ko, shell) {
       var r = self.region(); if (r && r.bStyle) r.bStyle.value(s);
     };
 
+    /* ── field-focus highlight (THEME_FOCUS_COLOR + FEATURE_FOCUS_HIGHLIGHT) ──
+       Color is chosen with a native <input type="color"> (any color) bound
+       straight to self.focus().value; only the on/off flag needs helpers here. */
+    /* true when the highlight is enabled (flag missing → enabled, default-on) */
+    self.focusEnabled = ko.pureComputed(function () {
+      var fo = self.focusOn();
+      if (!fo) return true;
+      var v = String(fo.value() || '').trim().toLowerCase();
+      return !(v === 'n' || v === 'false' || v === '0');
+    });
+    self.toggleFocusOn = function () {
+      var fo = self.focusOn(); if (!fo) return;
+      fo.value(self.focusEnabled() ? 'N' : 'Y');
+    };
+
     self.contrastInfo = ko.pureComputed(function () {
       var r = self.region(); if (!r) return null;
       var c = contrast(r.bg.value(), r.fg.value());
@@ -121,6 +144,20 @@ define(['knockout', 'shared/shell'], function (ko, shell) {
           if (regionItems[k]) regionItems[k].value.subscribe(self.previewRegion);
         });
         self.region(regionItems);
+      },
+      /* focusItems: { color, flag, level } — each holding a `.value` ko.observable
+         (color = THEME_FOCUS_COLOR hex, flag = FEATURE_FOCUS_HIGHLIGHT Y/N,
+         level = THEME_FOCUS_FILL_LEVEL 0–100 fill intensity).
+         Reveals the focus sub-panel + live-previews on change. Admin-only;
+         module Settings VMs never call this, so the panel stays hidden there. */
+      setFocus: function (focusItems) {
+        if (!focusItems || !focusItems.color) return;
+        focusItems.color.value.subscribe(self.previewRegion);
+        if (focusItems.flag)  focusItems.flag.value.subscribe(self.previewRegion);
+        if (focusItems.level) focusItems.level.value.subscribe(self.previewRegion);
+        self.focus(focusItems.color);
+        if (focusItems.flag)  self.focusOn(focusItems.flag);
+        if (focusItems.level) self.focusLevel(focusItems.level);
       }
     };
   }

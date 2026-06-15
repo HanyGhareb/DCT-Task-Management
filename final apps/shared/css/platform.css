@@ -53,6 +53,13 @@
   --chrome-text:    #C9D2DC;
   --chrome-text-2:  #7D8794;
 
+  /* field focus highlight — admin-configurable (THEME_FOCUS_COLOR + the
+     FEATURE_FOCUS_HIGHLIGHT flag), applied at boot by shared/js/shell.js.
+     Defaults mirror the seed so the UI is identical before the boot fetch. */
+  --focus-color: var(--amber);
+  --focus-ring:  var(--amber-soft);
+  --focus-fill:  var(--amber-soft);
+
   /* shared accents */
   --amber:      #F0883E;  --amber-soft: #FFF1E3;
   --green:      #2DA44E;  --green-soft: #DDF4E4;
@@ -378,7 +385,7 @@ html[dir="rtl"] .nav-chevron--expanded { transform: rotate(90deg); }
   border: 1px solid var(--border-strong); border-radius: 8px; font-size: 13px; font-family: inherit;
   outline: none; background: var(--surface); color: var(--text);
   transition: border-color var(--transition), box-shadow var(--transition); }
-.search-box:focus { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+.search-box:focus { border-color: var(--focus-color); box-shadow: 0 0 0 3px var(--focus-ring); }
 .toolbar-spacer { flex: 1; }
 
 /* ── Buttons ────────────────────────────────────────────────────────── */
@@ -438,8 +445,18 @@ table.data-table tbody tr:hover { background: var(--surface-2); }
 .form-control { padding: 9px 12px; border: 1px solid var(--border-strong);
   border-radius: 8px; font-size: 13px; font-family: inherit; outline: none;
   background: var(--surface); color: var(--text);
-  transition: border-color var(--transition), box-shadow var(--transition); }
-.form-control:focus { border-color: var(--amber); box-shadow: 0 0 0 3px var(--amber-soft); }
+  transition: border-color var(--transition), box-shadow var(--transition),
+              background-color var(--transition); }
+.form-control:focus { border-color: var(--focus-color); box-shadow: 0 0 0 3px var(--focus-ring);
+  background-color: var(--focus-fill); }
+/* configurable field-focus highlight (THEME_FOCUS_COLOR) — fills the field with a
+   soft tint of the chosen color + colored border + ring. Also covers bare
+   (non-.form-control) inputs in any module; checkboxes/radios/toggles excluded.
+   background-color (not the shorthand) so the select arrow image survives focus. */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]):not([type=file]):focus,
+textarea:focus, select:focus {
+  border-color: var(--focus-color); box-shadow: 0 0 0 3px var(--focus-ring);
+  background-color: var(--focus-fill); outline: none; }
 .form-control[readonly] { background: var(--surface-2); color: var(--text-2); }
 select.form-control { appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='7'%3E%3Cpath d='M0 0l6 7 6-7z' fill='%238A93A2'/%3E%3C/svg%3E");
@@ -447,10 +464,37 @@ select.form-control { appearance: none;
 html[dir="rtl"] select.form-control { background-position: left 10px center; }
 .form-hint { font-size: 11px; color: var(--text-3); }
 .form-control--error { border-color: var(--red); }
-.form-control--error:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(248,81,73,.18); }
+.form-control--error:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(248,81,73,.18);
+  background-color: var(--red-soft); }
 .field-error { font-size: 11px; color: var(--red); font-weight: 500; }
 .form-actions { display: flex; gap: 10px; margin-block-start: 24px; padding-block-start: 20px;
   border-block-start: 1px solid var(--border); }
+
+/* ── Document upload control (<doc-upload>, shared/js/docUpload.js) ─────── */
+.docup { display: block; }
+.docup-input { position: absolute; width: 1px; height: 1px; opacity: 0; pointer-events: none; }
+.docup-zone { display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 4px; padding: 16px 14px; text-align: center; cursor: pointer;
+  border: 1.5px dashed var(--border-strong); border-radius: 10px; background: var(--surface-2);
+  transition: border-color var(--transition), background var(--transition); }
+.docup-zone:hover, .docup-zone:focus { border-color: var(--brand); background: var(--brand-soft); outline: none; }
+.docup--over .docup-zone { border-color: var(--brand); background: var(--brand-soft); }
+.docup-zone-ic { font-size: 20px; line-height: 1; color: var(--brand); }
+.docup-zone-main { font-size: 13px; font-weight: 600; color: var(--text); }
+.docup-zone-hint { font-size: 11px; color: var(--text-3); }
+.docup-chip { display: flex; align-items: center; gap: 8px; padding: 8px 10px;
+  border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.docup-chip-ic { font-size: 16px; line-height: 1; flex-shrink: 0; }
+.docup-chip-name { flex: 1; min-width: 0; font-size: 13px; font-weight: 600; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.docup-chip-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.docup-state { display: flex; align-items: center; gap: 8px; padding: 12px 10px;
+  font-size: 13px; color: var(--text-2); }
+.docup-spinner { width: 14px; height: 14px; border-radius: 50%; flex-shrink: 0;
+  border: 2px solid var(--border-strong); border-top-color: var(--brand);
+  animation: docup-spin .7s linear infinite; }
+@keyframes docup-spin { to { transform: rotate(360deg); } }
+.docup--disabled { opacity: .55; pointer-events: none; }
 
 /* ── Top-right action bars ──────────────────────────────────────────────
    Platform rule: Save / Save Changes / Back / Cancel actions sit at the
@@ -465,6 +509,17 @@ html[dir="rtl"] select.form-control { background-position: left 10px center; }
   transition: background .25s, color .25s; }
 .section-heading-row > .section-heading { margin: 0; padding: 0; border: none; flex: 1 1 auto;
   background: transparent; color: inherit; border-radius: 0; }
+
+/* Region header flush to the card edge (top/left/right). When a header is the
+   first child of a .card, cancel the card's 20px padding on those three sides so
+   the colored bar meets the border; keep a gap below before the content. Top
+   corners follow the card radius (minus the border width) and the bottom is square. */
+.card > .section-heading-row:first-child,
+.card > .section-heading:first-child {
+  margin: -20px -20px 16px;
+  border-radius: calc(var(--radius-lg) - var(--region-bd-width))
+                 calc(var(--radius-lg) - var(--region-bd-width)) 0 0;
+}
 
 /* buttons that sit INSIDE a colored region/modal header: non-primary actions
    render as ghosts (inherit the header font color); the primary action is
@@ -500,6 +555,11 @@ html[dir="rtl"] select.form-control { background-position: left 10px center; }
 .rgp-dot { width: 26px; height: 26px; border-radius: 7px; cursor: pointer;
   border: 2px solid var(--border); }
 .rgp-dot--on { border-color: var(--brand); box-shadow: 0 0 0 2px rgba(var(--brand-rgb), .25); }
+.rgp-hex { font-family: var(--mono); font-size: 12px; color: var(--text-2);
+  text-transform: uppercase; }
+.rgp-range { width: 160px; accent-color: var(--focus-color); cursor: pointer; }
+.rgp-fill-prev { display: inline-block; width: 28px; height: 28px; border-radius: 6px;
+  border: 1px solid var(--border-strong); flex-shrink: 0; }
 .rgp-opt { padding: 6px 12px; font-size: 11.5px; font-weight: 600; border-radius: 7px;
   border: 1px solid var(--border); background: var(--surface); cursor: pointer; color: var(--text-2);
   display: inline-flex; align-items: center; gap: 7px; }
@@ -944,3 +1004,83 @@ html[dir="rtl"] .cmdp-item--sel { box-shadow: inset -2px 0 0 #F0883E; }
 .ed-drawer.ed-show .ed-drawer__body .form-group:nth-child(5) { animation-delay: .26s; }
 .ed-drawer.ed-show .ed-drawer__body .form-group:nth-child(n+6) { animation-delay: .30s; }
 @keyframes ed-field-in { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+
+/* ── Form Layout (.fl-*) — unified create / edit form page ──────────────────
+   Composes the .form-* atoms (see "Forms" above) into the canonical full-page
+   create/edit form (Oracle JET Cookbook form-layout pattern). ADDITIVE ONLY —
+   nothing here overrides an existing class, so adding it affects an app only
+   once that app actually opts in. Reference mockup + full adoption recipe:
+   final apps/Shared UI Components/components/form-layout/.
+
+   • Layout variants are AUTHOR-TIME — static classes on .form-grid set per page:
+       .form-grid--1  ·  .form-grid--3 (already exists)  ·  .form-grid--label-start
+       ·  .form-grid--compact ;  span a field with .form-group--span2.
+   • Review mode is RUNTIME — put .fl-review on any ancestor (bind
+     css:{ 'fl-review': !editable() }) and give each field a .fl-readonly twin
+     bound to the same value; controls collapse to clean read-only rows.        */
+
+/* single-column grid + a 2-col span (the 2-col default and --3 already exist) */
+.form-grid--1 { grid-template-columns: 1fr; }
+.form-group--span2 { grid-column: span 2; }
+@media (max-width: 640px) { .form-group--span2 { grid-column: 1 / -1; } }
+
+/* optional-field tag + required-fields legend */
+.form-label .opt { font-weight: 500; text-transform: none; letter-spacing: 0;
+  color: var(--text-3); font-size: 10.5px; margin-inline-start: 4px; }
+.fl-legend { font-size: 11.5px; color: var(--text-3); margin-block-start: 2px; }
+.fl-legend b { color: var(--red); }
+
+/* LABEL-EDGE = START — label sits inline before the control (best at 1–2 cols) */
+.form-grid--label-start .form-group { display: grid; grid-template-columns: 140px 1fr;
+  align-items: center; gap: 4px 14px; }
+.form-grid--label-start .form-group > .form-label { justify-self: start; padding-block-start: 2px; }
+.form-grid--label-start .form-group > .form-hint,
+.form-grid--label-start .form-group > .field-error,
+.form-grid--label-start .form-group > .fl-readonly { grid-column: 2; }
+.form-grid--label-start textarea.form-control { align-self: start; }
+@media (max-width: 640px) {
+  .form-grid--label-start .form-group { grid-template-columns: 1fr; }
+  .form-grid--label-start .form-group > .form-hint,
+  .form-grid--label-start .form-group > .field-error,
+  .form-grid--label-start .form-group > .fl-readonly { grid-column: 1; }
+}
+
+/* DENSITY = COMPACT */
+.form-grid--compact { gap: 10px 16px; }
+.form-grid--compact .form-control { padding: 6px 10px; font-size: 12.5px; }
+
+/* section helper line (a muted intro under a .section-heading-row in a .card) */
+.fl-section-intro { color: var(--text-2); font-size: 12.5px; margin-block-end: 14px; }
+
+/* optional staggered reveal + scroll anchor for "card fl-section" form sections */
+.fl-section { scroll-margin-block-start: 78px;
+  animation: fl-rise .5s cubic-bezier(.22, 1, .32, 1) backwards; }
+.fl-section:nth-of-type(1) { animation-delay: .04s; }
+.fl-section:nth-of-type(2) { animation-delay: .10s; }
+.fl-section:nth-of-type(3) { animation-delay: .16s; }
+.fl-section:nth-of-type(4) { animation-delay: .22s; }
+@keyframes fl-rise { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
+
+/* optional section jump-rail (orientation nav for long, multi-section forms) */
+.fl-rail { display: flex; gap: 8px; flex-wrap: wrap; margin: 16px 0 22px; }
+.fl-rail a { font-size: 12px; font-weight: 600; color: var(--text-2); text-decoration: none;
+  display: flex; align-items: center; gap: 7px; padding: 6px 13px; border: 1px solid var(--border);
+  border-radius: 30px; background: var(--surface); transition: var(--transition); }
+.fl-rail a:hover { border-color: var(--brand); color: var(--brand); }
+.fl-rail a .n { font-size: 10px; width: 18px; height: 18px; border-radius: 50%;
+  display: grid; place-items: center; background: var(--brand-soft); color: var(--brand-dark); }
+.fl-rail a.done .n { background: var(--green); color: #fff; }
+
+/* REVIEW MODE — controls collapse to read-only value rows under .fl-review */
+.fl-readonly { display: none; font-size: 13.5px; font-weight: 600; color: var(--text);
+  padding: 8px 0; border-block-end: 1px solid var(--border); }
+.fl-readonly .none { color: var(--text-3); font-weight: 400; font-style: italic; }
+.fl-review .form-control,
+.fl-review .docup { display: none; }
+.fl-review .fl-readonly { display: block; }
+.fl-review .field-error,
+.fl-review .form-hint { display: none !important; }
+.fl-review .form-label .required,
+.fl-review .form-label .opt { display: none; }
+
+@media (prefers-reduced-motion: reduce) { .fl-section { animation: none; } }

@@ -45,8 +45,12 @@ define(['services/api'], function (api) {
         .then(function (r) { return r.items || []; });
     },
     createDocument: function (data) { return api.post('/documents/', data); },
-    uploadDocumentFile: function (id, b64, mime) {
-      return api.put('/documents/' + id + '/file', { file_data_b64: b64, mime_type: mime });
+    /* Raw-binary upload (no base64, no ~32 KB cap) — file bytes are the body. */
+    uploadDocumentFile: function (id, file) {
+      return api.putBinary('/documents/' + id + '/file', file, {
+        mime: file.type || 'application/octet-stream',
+        query: { file_name: file.name, mime_type: file.type || 'application/octet-stream' }
+      });
     },
 
     /* ── replenishments ────────────────────────────────────────────────── */

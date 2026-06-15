@@ -45,6 +45,7 @@
   "card.title": "My Card",
   "card.subtitle": "Your corporate credit card",
   "card.none": "You have no corporate credit card. Submit a New Card request to apply.",
+  "card.details": "Card Details",
   "card.limitHistory": "Limit History",
   "card.dueBanner": "This month's replenishment has not been submitted yet.",
 
