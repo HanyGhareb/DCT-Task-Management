@@ -197,6 +197,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             END IF;
         END;
 
+        -- Carry the registration's uploaded documents over to the new freelancer
+        -- so they are not orphaned (FL convention: reference_id = freelancer_id).
+        UPDATE prod.dct_documents
+        SET    source_type  = 'FREELANCER',
+               source_id    = v_fl_id,
+               reference_id = v_fl_id,
+               updated_at   = SYSTIMESTAMP
+        WHERE  source_module = 'FL'
+        AND    source_type   = 'REGISTRATION'
+        AND    source_id     = p_registration_id;
+
         -- Mark registration approved
         UPDATE prod.dct_fl_registrations
         SET    status     = 'APPROVED',

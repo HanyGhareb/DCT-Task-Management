@@ -100,6 +100,17 @@ define(['services/api'], function (api) {
     uploadDocumentFile: function (id, b64, mime) {
       return api.put('/documents/' + id + '/file', { file_data_b64: b64, mime_type: mime });
     },
+    deleteDocument: function (id) { return api.delete('/documents/' + id); },
+
+    /* ── document requirements + registration documents ────────────────── */
+    getDocRequirements: function (context) {
+      return api.get('/doc-requirements/' + (context ? '?context=' + encodeURIComponent(context) : ''))
+        .then(function (r) { return r.items || []; });
+    },
+    getRegistrationDocuments: function (regId) {
+      return api.get('/registrations/' + regId + '/documents')
+        .then(function (r) { return r.items || []; });
+    },
 
     /* ── profile change requests ───────────────────────────────────────── */
     getProfileChanges: function (opts) {

@@ -382,6 +382,22 @@ EXCEPTION WHEN OTHERS THEN
 END;
 !');
 
+    def_template('members/update');
+    def_handler('members/update', 'POST', q'!
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user); dct_rest.parse_body([COLON]body);
+  dct_tm_pkg.update_member(l_uid, APEX_JSON.get_number(p_path=>'teamId'), APEX_JSON.get_number(p_path=>'userId'),
+    APEX_JSON.get_varchar2(p_path=>'roleCode'), APEX_JSON.get_varchar2(p_path=>'title'));
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('ok',1); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE=-20401 THEN dct_rest.err(401,SQLERRM); ELSIF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM);
+  ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM); ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM);
+  ELSE dct_rest.err(500,SQLERRM); END IF;
+END;
+!');
+
     -- =========================================================================
     -- USERS  (active-user picker for member / assignee selection)
     -- =========================================================================
@@ -954,8 +970,8 @@ BEGIN
             ORDER BY created_at DESC) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('docId', r.doc_id); APEX_JSON.write('sourceType', r.source_type); APEX_JSON.write('sourceId', r.source_id);
-    APEX_JSON.write('docTypeName', NVL(r.doc_type_name,'')); APEX_JSON.write('fileName', r.file_name);
-    APEX_JSON.write('mimeType', NVL(r.mime_type,'')); APEX_JSON.write('fileSize', NVL(r.file_size_bytes,0));
+    APEX_JSON.write('docTypeCode', NVL(r.doc_type_code,'OTHER')); APEX_JSON.write('docTypeName', NVL(r.doc_type_name,'')); APEX_JSON.write('fileName', r.file_name);
+    APEX_JSON.write('mimeType', NVL(r.mime_type,'')); APEX_JSON.write('fileSize', NVL(r.file_size_bytes,0)); APEX_JSON.write('notes', NVL(r.notes,''));
     APEX_JSON.write('uploadedBy', NVL(r.uploaded_by_name,'')); APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
@@ -993,6 +1009,22 @@ BEGIN
     p_expiry => TO_DATE(APEX_JSON.get_varchar2(p_path=>'expiryDate'),'YYYY-MM-DD'));
   IF v_blob IS NOT NULL THEN DBMS_LOB.FREETEMPORARY(v_blob); END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('docId', l_id); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  IF SQLCODE=-20401 THEN dct_rest.err(401,SQLERRM); ELSIF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM);
+  ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM); ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM);
+  ELSE dct_rest.err(500,SQLERRM); END IF;
+END;
+!');
+
+    def_template('documents/update');
+    def_handler('documents/update', 'POST', q'!
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user); dct_rest.parse_body([COLON]body);
+  dct_tm_pkg.update_document(l_uid, APEX_JSON.get_number(p_path=>'docId'), APEX_JSON.get_varchar2(p_path=>'fileName'),
+    NVL(APEX_JSON.get_varchar2(p_path=>'docTypeCode'),'OTHER'), APEX_JSON.get_varchar2(p_path=>'notes'));
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.write('ok',1); APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN
   IF SQLCODE=-20401 THEN dct_rest.err(401,SQLERRM); ELSIF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM);
   ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM); ELSIF SQLCODE IN (-20001,-20090) THEN dct_rest.err(400,SQLERRM);

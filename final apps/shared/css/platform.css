@@ -446,6 +446,9 @@ select.form-control { appearance: none;
   background-repeat: no-repeat; background-position: right 10px center; padding-inline-end: 28px; }
 html[dir="rtl"] select.form-control { background-position: left 10px center; }
 .form-hint { font-size: 11px; color: var(--text-3); }
+.form-control--error { border-color: var(--red); }
+.form-control--error:focus { border-color: var(--red); box-shadow: 0 0 0 3px rgba(248,81,73,.18); }
+.field-error { font-size: 11px; color: var(--red); font-weight: 500; }
 .form-actions { display: flex; gap: 10px; margin-block-start: 24px; padding-block-start: 20px;
   border-block-start: 1px solid var(--border); }
 

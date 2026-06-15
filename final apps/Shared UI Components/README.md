@@ -43,8 +43,9 @@ Shared UI Components/
 | Component | Status | What it is |
 |-----------|--------|------------|
 | [Drawer Form](components/drawer-form/index.html) | 🚀 Promoted | APEX-style right-edge slide-in record editor for "edit table row". Live in `shared/` (`.ed-*` + `<edit-drawer>`); adopted by TM `teamDetail`. |
+| [Search → Table Result](components/search-table-result-1/index.html) | 🟢 Ready | Canonical list page: search + facet toolbar above a platform `.data-table` with badge / RAG / count-chip / overdue row decoration. A **composition recipe** over classes already in `platform.css` (nothing to promote); reference adopter = TM `Teams`. |
 | Stepper / Wizard | ⚪ Planned | Multi-step create flow with progress rail + per-step validation. |
-| Filter Bar | ⚪ Planned | Standard search + facet chips + saved-view selector above any `.data-table`. |
+| Filter Bar | ⚪ Planned | Heavier toolbar — facet chips + saved-view selector above any `.data-table` (the Search → Table Result entry covers the simple inline-facets case). |
 | Detail Drawer (read) | ⚪ Planned | Read-only inspector with status timeline + activity feed. |
 
 ---

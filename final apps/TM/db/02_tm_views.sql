@@ -169,7 +169,7 @@ JOIN   prod.dct_tm_role_perms p ON p.tm_role_id = r.tm_role_id;
 -- ---- Documents library (TM-scoped slice of unified DCT_DOCUMENTS) ------------
 CREATE OR REPLACE VIEW prod.dct_tm_document_v AS
 SELECT d.doc_id, d.source_type, d.source_id, d.reference_id,
-       d.doc_type_id, dt.doc_type_name_en AS doc_type_name,
+       d.doc_type_id, dt.doc_type_code, dt.doc_type_name_en AS doc_type_name,
        d.file_name, d.mime_type, d.file_size_bytes, d.expiry_date, d.status,
        d.notes, d.created_by, cu.display_name AS uploaded_by_name, d.created_at
 FROM   prod.dct_documents d

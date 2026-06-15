@@ -85,6 +85,7 @@ CREATE OR REPLACE PACKAGE prod.dct_tm_pkg AS
     -- ---- members ----
     PROCEDURE add_member     (p_actor_id NUMBER, p_team_id NUMBER, p_user_id NUMBER, p_role_code VARCHAR2, p_title VARCHAR2 DEFAULT NULL);
     PROCEDURE set_member_role(p_actor_id NUMBER, p_team_id NUMBER, p_user_id NUMBER, p_role_code VARCHAR2);
+    PROCEDURE update_member  (p_actor_id NUMBER, p_team_id NUMBER, p_user_id NUMBER, p_role_code VARCHAR2, p_title VARCHAR2 DEFAULT NULL);
     PROCEDURE remove_member  (p_actor_id NUMBER, p_team_id NUMBER, p_user_id NUMBER);
 
     -- ---- team-role permission override ----
@@ -182,6 +183,14 @@ CREATE OR REPLACE PACKAGE prod.dct_tm_pkg AS
         p_notes         VARCHAR2 DEFAULT NULL,
         p_expiry        DATE     DEFAULT NULL
     ) RETURN NUMBER;
+
+    PROCEDURE update_document (
+        p_actor_id      NUMBER,
+        p_doc_id        NUMBER,
+        p_file_name     VARCHAR2,
+        p_doc_type_code VARCHAR2 DEFAULT NULL,
+        p_notes         VARCHAR2 DEFAULT NULL
+    );
 
     -- ---- health + prefs ----
     PROCEDURE recompute_team_health (p_team_id NUMBER);
@@ -467,6 +476,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_tm_pkg AS
             RAISE_APPLICATION_ERROR(-20404, 'Active membership not found for this user/team.');
         END IF;
     END set_member_role;
+
+    PROCEDURE update_member (p_actor_id NUMBER, p_team_id NUMBER, p_user_id NUMBER, p_role_code VARCHAR2, p_title VARCHAR2 DEFAULT NULL) IS
+    BEGIN
+        require_perm(p_actor_id, p_team_id, 'MEMBER', 'UPDATE');
+        UPDATE prod.dct_tm_members
+        SET    tm_role_id = role_id_of(p_role_code), title = p_title, updated_by = actor_name(p_actor_id)
+        WHERE  team_id = p_team_id AND user_id = p_user_id AND is_active = 'Y';
+        IF SQL%ROWCOUNT = 0 THEN
+            RAISE_APPLICATION_ERROR(-20404, 'Active membership not found for this user/team.');
+        END IF;
+    END update_member;
 
     PROCEDURE remove_member (p_actor_id NUMBER, p_team_id NUMBER, p_user_id NUMBER) IS
     BEGIN
@@ -1045,6 +1065,37 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_tm_pkg AS
         RETURNING doc_id INTO v_id;
         RETURN v_id;
     END add_document;
+
+    PROCEDURE update_document (
+        p_actor_id NUMBER, p_doc_id NUMBER, p_file_name VARCHAR2,
+        p_doc_type_code VARCHAR2 DEFAULT NULL, p_notes VARCHAR2 DEFAULT NULL
+    ) IS
+        v_team     NUMBER;
+        v_doc_type NUMBER;
+    BEGIN
+        BEGIN
+            SELECT reference_id INTO v_team FROM prod.dct_documents
+            WHERE doc_id = p_doc_id AND source_module = 'TM' AND is_active = 'Y';
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20404, 'Document ' || p_doc_id || ' not found.');
+        END;
+        require_perm(p_actor_id, v_team, 'DOCUMENT', 'UPDATE');
+        IF p_file_name IS NULL OR LENGTH(TRIM(p_file_name)) = 0 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'File name is required.');
+        END IF;
+        BEGIN
+            SELECT doc_type_id INTO v_doc_type FROM prod.dct_document_types
+            WHERE doc_type_code = NVL(p_doc_type_code, 'OTHER') AND is_active = 'Y';
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            v_doc_type := NULL;
+        END;
+        UPDATE prod.dct_documents
+        SET    file_name   = p_file_name,
+               doc_type_id = NVL(v_doc_type, doc_type_id),
+               notes       = p_notes,
+               updated_by  = p_actor_id
+        WHERE  doc_id = p_doc_id;
+    END update_document;
 
 END dct_tm_pkg;
 /

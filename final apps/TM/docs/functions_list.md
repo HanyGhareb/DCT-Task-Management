@@ -25,16 +25,17 @@ Module: **Task Management** · ORDS base: `/ords/admin/tm`
 
 ## 4. Teams
 
-**Teams** (`teams`) — team list.
-- `newTeam` / `open` / `save` / `cancel` · `load` · `ragClass`.
+**Teams** (`teams`) — team list (search toolbar + platform data table).
+- `newTeam` / `editTeam` (per-row edit; loads full team via `getTeam`, drawer updates via `PUT teams/:id`) / `open` / `save` (create↔update) / `cancel` · `load` · `ragClass` / `statusClass`.
 
-**Team Detail** (`teamDetail`) — full team workspace (tabs: tasks board, members, docs, comments).
+**Team Detail** (`teamDetail`) — full team workspace (summary header band + tabs: tasks board, members, docs, comments).
+- Visibility: `taskPct` (header completion %) · `tabCount` / `tabAttn` (tab count pills + attention dots) · `loadOverview` (builds the Overview "Needs attention" + "Upcoming" lists) · `statusBadge` / `sevBadge` (semantic status/severity colors).
 - Tabs/load: `setTab` / `tabClass` · `loadTab` / `loadTaskPanel` · `refreshTeam` / `refreshUsers` · `editTeam` / `saveTeam`.
 - Task board: `openTask` / `closeTask` · `colTasks` · `saveTaskStatus` · drag-drop `onDragStart` / `onDragOver` / `onDrop` · `doAssign` / `unassign` · `addComment`.
-- Members: `openAddMember` / `saveMember` / `cancelAddMember` · `changeRole` / `makePrimary` / `removeMember`.
+- Members: `openAddMember` / `openEditMember` (drawer; role + title via `members/update`) / `saveMember` / `cancelAddMember` · `changeRole` / `makePrimary` / `removeMember`.
 - Objectives (measurable): `openObjective` / `closeObjective` / `removeObjective` · `loadKrs` / `refreshObjAfterKr` · `saveObjEdits` (title/status/target/weight + Auto|Manual progress mode) · key results `openAddKr` / `editKr` / `cancelKr` / `saveKr` / `recordKr` / `removeKr`.
-- Documents: `openAddDoc` / `saveDoc` / `cancelAddDoc` / `onFilePick`.
-- Generic add: `openAdd` / `saveAdd` / `cancelAdd` · `back` · `initials` / `prioClass` / `ragClass` / `statusLabel`.
+- Documents: `openAddDoc` / `openEditDoc` (drawer; file name + type + notes via `documents/update`) / `saveDoc` / `cancelAddDoc` / `onFilePick`.
+- Generic add/edit (drawer): `openAdd` / `openEdit` (per-row edit for deliverable/raid/milestone/meeting — pre-fills the shared `<edit-drawer>` and upserts via `editId`) / `saveAdd` / `cancelAdd` · `back` · `initials` / `prioClass` / `ragClass` / `statusLabel`.
 
 ## 5. Team Roles
 **Team Roles** (`teamRoles`) — team role × artifact permission templates.
@@ -71,14 +72,14 @@ All other calls (incl. TM's own `GET boot`/`prefs`) hit `/ords/admin/tm/`. Notif
 |---|---|
 | Boot / Dashboard | `GET boot` · `GET dashboard` |
 | Teams | `GET teams` · `POST teams` · `GET teams/:id` · `PUT teams/:id` |
-| Members | `GET members` · `POST members/add` · `POST members/role` · `POST members/remove` · `GET users` |
+| Members | `GET members` · `POST members/add` · `POST members/role` · `POST members/update` · `POST members/remove` · `GET users` |
 | Roles / Permissions | `GET perms` · `POST perms` |
 | Objectives & Milestones | `GET objectives` · `POST objectives` · `DELETE objectives/:id` · `GET milestones` · `POST milestones` |
 | Key Results (measurable objectives) | `GET key-results?objectiveId=` · `POST key-results` · `POST key-results/value` · `DELETE key-results/:id` |
 | Tasks | `GET tasks` · `POST tasks` · `POST tasks/status` · `POST tasks/assign` · `GET tasks/assignees` · `GET tasks/updates` · `POST tasks/update` · `GET my-tasks` |
 | Deliverables | `GET deliverables` · `POST deliverables` · `POST deliverables/status` |
 | RAID & Meetings | `GET raid` · `POST raid` · `GET meetings` · `POST meetings` |
-| Documents | `GET documents` · `POST documents` |
+| Documents | `GET documents` · `POST documents` · `POST documents/update` |
 | Preferences | `GET prefs` · `POST prefs` |
 
 ---

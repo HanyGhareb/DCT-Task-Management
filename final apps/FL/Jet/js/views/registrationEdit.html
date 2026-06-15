@@ -28,6 +28,7 @@
   <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
 
   <!-- ko ifnot: loading() -->
+  <div class="reg-layout">
   <div class="card">
     <div style="display:flex;gap:18px;align-items:center;margin-bottom:18px">
       <!-- ko if: photoSrc() -->
@@ -43,11 +44,15 @@
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">First Name (English) *</label>
-        <input class="form-control" type="text" data-bind="value: firstNameEn, valueUpdate: 'input', enable: editable() || isNew">
+        <input class="form-control" type="text" data-bind="value: firstNameEn, valueUpdate: 'input', enable: editable() || isNew,
+               css: { 'form-control--error': err.firstNameEn() }, event: { blur: function () { return $vm.checkField('firstNameEn'); } }">
+        <!-- ko if: err.firstNameEn() --><span class="field-error" data-bind="text: err.firstNameEn()"></span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">Last Name (English) *</label>
-        <input class="form-control" type="text" data-bind="value: lastNameEn, valueUpdate: 'input', enable: editable() || isNew">
+        <input class="form-control" type="text" data-bind="value: lastNameEn, valueUpdate: 'input', enable: editable() || isNew,
+               css: { 'form-control--error': err.lastNameEn() }, event: { blur: function () { return $vm.checkField('lastNameEn'); } }">
+        <!-- ko if: err.lastNameEn() --><span class="field-error" data-bind="text: err.lastNameEn()"></span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">First Name (Arabic)</label>
@@ -59,31 +64,43 @@
       </div>
       <div class="form-group">
         <label class="form-label">Date of Birth *</label>
-        <input class="form-control" type="date" data-bind="value: dateOfBirth, enable: editable() || isNew">
+        <input class="form-control" type="date" data-bind="value: dateOfBirth, enable: editable() || isNew,
+               css: { 'form-control--error': err.dateOfBirth() }, event: { blur: function () { return $vm.checkField('dateOfBirth'); } }">
+        <!-- ko if: err.dateOfBirth() --><span class="field-error" data-bind="text: err.dateOfBirth()"></span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">Nationality *</label>
         <select class="form-control" data-bind="options: nationalities, optionsText: 'name', optionsValue: 'code',
-                 optionsCaption: '— Select —', value: nationalityCode, enable: editable() || isNew"></select>
+                 optionsCaption: '— Select —', value: nationalityCode, enable: editable() || isNew,
+                 css: { 'form-control--error': err.nationalityCode() }, event: { change: function () { return $vm.checkField('nationalityCode'); } }"></select>
+        <!-- ko if: err.nationalityCode() --><span class="field-error" data-bind="text: err.nationalityCode()"></span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">Emirates ID <span data-bind="visible: needsEmiratesId()">*</span></label>
         <input class="form-control" type="text" placeholder="784-XXXX-XXXXXXX-X"
-               data-bind="value: nationalId, valueUpdate: 'input', enable: (editable() || isNew)">
-        <span class="form-hint" data-bind="visible: needsEmiratesId()">Required for UAE nationals</span>
+               data-bind="value: nationalId, valueUpdate: 'input', enable: (editable() || isNew),
+               css: { 'form-control--error': err.nationalId() }, event: { blur: function () { return $vm.checkField('nationalId'); } }">
+        <!-- ko if: err.nationalId() --><span class="field-error" data-bind="text: err.nationalId()"></span><!-- /ko -->
+        <!-- ko ifnot: err.nationalId() --><span class="form-hint" data-bind="visible: needsEmiratesId()">Required for UAE nationals</span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">Passport Number</label>
-        <input class="form-control" type="text" data-bind="value: passportNumber, valueUpdate: 'input', enable: editable() || isNew">
+        <input class="form-control" type="text" data-bind="value: passportNumber, valueUpdate: 'input', enable: editable() || isNew,
+               css: { 'form-control--error': err.passportNumber() }, event: { blur: function () { return $vm.checkField('passportNumber'); } }">
+        <!-- ko if: err.passportNumber() --><span class="field-error" data-bind="text: err.passportNumber()"></span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">Email *</label>
-        <input class="form-control" type="email" data-bind="value: email, valueUpdate: 'input', enable: editable() || isNew">
-        <span class="form-hint">Becomes the portal username on approval</span>
+        <input class="form-control" type="email" data-bind="value: email, valueUpdate: 'input', enable: editable() || isNew,
+               css: { 'form-control--error': err.email() }, event: { blur: function () { return $vm.checkField('email'); } }">
+        <!-- ko if: err.email() --><span class="field-error" data-bind="text: err.email()"></span><!-- /ko -->
+        <!-- ko ifnot: err.email() --><span class="form-hint">Becomes the portal username on approval</span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">Mobile</label>
-        <input class="form-control" type="text" data-bind="value: mobile, valueUpdate: 'input', enable: editable() || isNew">
+        <input class="form-control" type="text" data-bind="value: mobile, valueUpdate: 'input', enable: editable() || isNew,
+               css: { 'form-control--error': err.mobile() }, event: { blur: function () { return $vm.checkField('mobile'); } }">
+        <!-- ko if: err.mobile() --><span class="field-error" data-bind="text: err.mobile()"></span><!-- /ko -->
       </div>
       <div class="form-group">
         <label class="form-label">Specialization</label>
@@ -97,6 +114,71 @@
 
     <audit-info params="data: audit"></audit-info>
 
-  </div>
+  </div><!-- /card -->
+
+  <aside class="reg-side">
+    <!-- Required documents -->
+    <div class="card reg-doc-card">
+      <div class="section-heading-row">
+        <h3 class="section-heading">Required Documents</h3>
+      </div>
+      <input id="fl-reg-doc-input" type="file" accept="image/*,application/pdf" style="display:none"
+             data-bind="event: { change: docFileSelected }">
+
+      <!-- ko if: !regId() -->
+      <p class="reg-doc-note">&#9888; Save the draft first, then attach the documents below.</p>
+      <!-- /ko -->
+
+      <!-- ko foreach: docChecklist -->
+      <div class="reg-doc-row" data-bind="css: { 'reg-doc-row--ok': uploaded }">
+        <div class="reg-doc-info">
+          <span class="reg-doc-icon" data-bind="text: uploaded ? '✓' : '○',
+                css: { 'reg-doc-icon--ok': uploaded }"></span>
+          <div>
+            <div class="reg-doc-name">
+              <span data-bind="text: name"></span><!-- ko if: mandatory --><span class="reg-doc-req">*</span><!-- /ko -->
+            </div>
+            <!-- ko if: uploaded --><div class="reg-doc-file" data-bind="text: fileName"></div><!-- /ko -->
+            <!-- ko ifnot: uploaded --><div class="reg-doc-file reg-doc-file--missing">Not attached</div><!-- /ko -->
+          </div>
+        </div>
+        <div class="reg-doc-actions">
+          <!-- ko if: uploaded -->
+          <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.viewDoc($data); }">View</button>
+          <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.pickDocFile($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()">Replace</button>
+          <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.removeDoc($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()">&times;</button>
+          <!-- /ko -->
+          <!-- ko ifnot: uploaded -->
+          <button class="btn btn-primary btn-sm" data-bind="click: function () { return $vm.pickDocFile($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()">&#128206; Upload</button>
+          <!-- /ko -->
+        </div>
+      </div>
+      <!-- /ko -->
+
+      <!-- ko if: docChecklist().length === 0 -->
+      <p class="reg-doc-note">No document requirements configured.</p>
+      <!-- /ko -->
+
+      <!-- ko if: docError() -->
+      <p class="field-error" style="margin-top:8px" data-bind="text: docError()"></p>
+      <!-- /ko -->
+    </div>
+
+    <!-- How to complete -->
+    <div class="card reg-help-card">
+      <div class="section-heading-row">
+        <h3 class="section-heading">How to Complete</h3>
+      </div>
+      <ol class="reg-help-steps">
+        <li>Fill in the freelancer's personal details. Fields marked <b>*</b> are required.</li>
+        <li>Provide a valid <b>email</b> &mdash; it becomes the freelancer's portal login on approval.</li>
+        <li>Attach a <b>photo</b> and the <b>required documents</b> (passport always; Emirates ID for UAE nationals; residence visa for expats; bank letter).</li>
+        <li>Use <b>Save Draft</b> anytime to keep partial work &mdash; documents can be attached after the first save.</li>
+        <li>When everything is complete, click <b>Submit for Approval</b>. The request routes to the <b>FL Manager</b>, then <b>FL Admin</b>.</li>
+      </ol>
+      <p class="reg-help-note">Documents accepted as clear photos (JPG/PNG) or small PDFs. Images are optimised automatically.</p>
+    </div>
+  </aside>
+  </div><!-- /reg-layout -->
   <!-- /ko -->
 </div>

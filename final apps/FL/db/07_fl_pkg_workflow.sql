@@ -195,6 +195,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             END IF;
         END;
 
+        -- Carry the registration's uploaded documents over to the new freelancer
+        -- so they are not orphaned (FL convention: reference_id = freelancer_id).
+        UPDATE prod.dct_documents
+        SET    source_type  = 'FREELANCER',
+               source_id    = v_fl_id,
+               reference_id = v_fl_id,
+               updated_at   = SYSTIMESTAMP
+        WHERE  source_module = 'FL'
+        AND    source_type   = 'REGISTRATION'
+        AND    source_id     = p_registration_id;
+
         -- Mark registration approved
         UPDATE prod.dct_fl_registrations
         SET    status     = 'APPROVED',
@@ -1018,9 +1029,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- SUBMIT_REGISTRATION
     -- =========================================================================
     PROCEDURE submit_registration (p_id IN NUMBER, p_user_id IN NUMBER) IS
-        v_reg   prod.dct_fl_registrations%ROWTYPE;
-        v_inst  NUMBER;
-        v_uname VARCHAR2(100) := wf_username_of(p_user_id);
+        v_reg     prod.dct_fl_registrations%ROWTYPE;
+        v_inst    NUMBER;
+        v_uname   VARCHAR2(100) := wf_username_of(p_user_id);
+        v_missing VARCHAR2(4000);
+        v_cnt     NUMBER;
     BEGIN
         SELECT * INTO v_reg FROM prod.dct_fl_registrations
         WHERE registration_id = p_id FOR UPDATE NOWAIT;
@@ -1036,6 +1049,67 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         END IF;
         IF NVL(get_setting('PHOTO_REQUIRED'),'Y') = 'Y' AND v_reg.photo_blob IS NULL THEN
             RAISE_APPLICATION_ERROR(-20132, 'A photo is required before submission.');
+        END IF;
+
+        -- Format validation (mirrors the JET registrationEdit client checks).
+        IF v_reg.date_of_birth IS NULL OR v_reg.date_of_birth > TRUNC(SYSDATE) THEN
+            RAISE_APPLICATION_ERROR(-20133, 'Date of birth is missing or in the future.');
+        END IF;
+        IF MONTHS_BETWEEN(TRUNC(SYSDATE), v_reg.date_of_birth) < 18 * 12 THEN
+            RAISE_APPLICATION_ERROR(-20134, 'Freelancer must be at least 18 years old.');
+        END IF;
+        IF v_reg.email IS NULL
+           OR NOT REGEXP_LIKE(v_reg.email, '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$') THEN
+            RAISE_APPLICATION_ERROR(-20135, 'A valid email address is required.');
+        END IF;
+        IF v_reg.national_id IS NOT NULL
+           AND NOT REGEXP_LIKE(REGEXP_REPLACE(v_reg.national_id, '[^0-9]', ''), '^784[0-9]{12}$') THEN
+            RAISE_APPLICATION_ERROR(-20136, 'Emirates ID must be 15 digits starting with 784.');
+        END IF;
+        IF v_reg.passport_number IS NOT NULL
+           AND NOT REGEXP_LIKE(v_reg.passport_number, '^[A-Za-z0-9]{6,12}$') THEN
+            RAISE_APPLICATION_ERROR(-20137, 'Passport number must be 6-12 letters or digits.');
+        END IF;
+        IF v_reg.national_id IS NULL AND v_reg.passport_number IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20138, 'Provide an Emirates ID or a passport number.');
+        END IF;
+        IF v_reg.mobile IS NOT NULL
+           AND NOT REGEXP_LIKE(REGEXP_REPLACE(v_reg.mobile, '[[:space:]()-]', ''), '^\+?[0-9]{7,15}$') THEN
+            RAISE_APPLICATION_ERROR(-20139, 'Enter a valid mobile number (7-15 digits, optional leading +).');
+        END IF;
+
+        -- Required documents (DCT_DOC_REQUIREMENTS, context REGISTRATION). The set
+        -- is data-driven; conditional applicability (Emirates ID only for AE / ID
+        -- provided; Residence Visa only for non-AE) is applied here, keyed on code.
+        -- A document counts as present only when its file_blob has been uploaded.
+        IF NVL(get_setting('DOCS_REQUIRED_FOR_SUBMIT'),'Y') = 'Y' THEN
+            FOR req IN (
+                SELECT dr.doc_type_id, dt.doc_type_code, dt.doc_type_name_en
+                FROM   prod.dct_doc_requirements dr
+                JOIN   prod.dct_document_types   dt ON dt.doc_type_id = dr.doc_type_id
+                WHERE  dr.source_module = 'FL' AND dr.context_code = 'REGISTRATION'
+                AND    dr.is_active = 'Y' AND dr.is_mandatory = 'Y'
+                ORDER BY dr.display_seq
+            ) LOOP
+                IF (req.doc_type_code = 'EMIRATES_ID'
+                    AND NVL(v_reg.nationality_code,'X') != 'AE' AND v_reg.national_id IS NULL)
+                   OR (req.doc_type_code = 'RESIDENCE_VISA'
+                    AND NVL(v_reg.nationality_code,'X') = 'AE') THEN
+                    CONTINUE;  -- not applicable to this registration
+                END IF;
+                SELECT COUNT(*) INTO v_cnt FROM prod.dct_documents
+                WHERE  source_module = 'FL' AND source_type = 'REGISTRATION'
+                AND    source_id = p_id AND doc_type_id = req.doc_type_id
+                AND    is_active = 'Y' AND file_blob IS NOT NULL;
+                IF v_cnt = 0 THEN
+                    v_missing := v_missing
+                              || CASE WHEN v_missing IS NULL THEN NULL ELSE ', ' END
+                              || req.doc_type_name_en;
+                END IF;
+            END LOOP;
+            IF v_missing IS NOT NULL THEN
+                RAISE_APPLICATION_ERROR(-20142, 'Required document(s) missing: ' || v_missing || '.');
+            END IF;
         END IF;
 
         v_inst := wf_create_instance('REGISTRATION', 'FL_REGISTRATION',

@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Search → Table Result · Shared UI Components</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* =====================================================================
+   Tokens — mirror final apps/shared/css/platform.css names + values so
+   this mockup ports with near-zero rework. Brand shown in TM teal.
+   ===================================================================== */
+:root{
+  --brand:#0E8A8A; --brand-rgb:14,138,138; --brand-dark:#0A6A6A; --brand-soft:#E6F4F4;
+  --surface:#FFFFFF; --surface-2:#F0F2F5;
+  --border:#E3E6EB; --border-strong:#CBD2DA;
+  --text:#1B2430; --text-2:#5B6573; --text-3:#8A93A2;
+  --bg:#F0F2F5;
+  --amber:#F0883E; --amber-soft:#FFF1E3;
+  --green:#2DA44E; --green-soft:#DDF4E4;
+  --red:#D1242F;   --red-soft:#FBE9EA;
+  --blue:#0969DA;  --blue-soft:#DDF0FF;
+  /* region-theme header vars (default slate; an app overrides at boot) */
+  --region-hd-soft:#EFF1F4; --region-hd-accent:#334155;
+  --radius:8px;  --spring:cubic-bezier(.34,1.56,.64,1); --transition:.2s ease;
+  --font:'Outfit',system-ui,sans-serif; --mono:'Fira Code',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:var(--font);color:var(--text);background:var(--bg);line-height:1.5;
+  -webkit-font-smoothing:antialiased;padding:34px 28px 70px}
+.page{max-width:1060px;margin:0 auto}
+
+/* eyebrow ribbon (mockup chrome only) */
+.lab{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--brand);font-weight:600;display:flex;align-items:center;gap:9px;margin-bottom:18px}
+.lab::before{content:"";width:24px;height:2px;background:var(--brand);border-radius:2px}
+
+/* ── page header (title + top-right action) ─────────────────────────── */
+.page-header-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.page-title{font-size:25px;font-weight:800;letter-spacing:-.02em}
+.page-actions{display:flex;gap:8px}
+
+/* ── buttons ────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 16px;border:0;cursor:pointer;
+  border-radius:8px;font:600 13px var(--font);transition:all .2s var(--spring)}
+.btn:hover{transform:translateY(-1px)}
+.btn-primary{background:var(--brand);color:#fff}
+.btn-primary:hover{background:var(--brand-dark)}
+
+/* ── toolbar / search ───────────────────────────────────────────────── */
+.view-toolbar{display:flex;align-items:center;gap:10px;margin-block-end:16px;flex-wrap:wrap}
+.search-box{flex:1;min-width:200px;max-width:320px;padding:8px 12px;border:1px solid var(--border-strong);
+  border-radius:8px;font:13px var(--font);outline:none;background:var(--surface);color:var(--text);
+  transition:border-color var(--transition),box-shadow var(--transition)}
+.search-box:focus{border-color:var(--amber);box-shadow:0 0 0 3px var(--amber-soft)}
+.form-control--sm{padding:6px 9px;border:1px solid var(--border-strong);border-radius:8px;
+  font:12px var(--font);background:var(--surface);color:var(--text);outline:none;max-width:160px}
+.form-control--sm:focus{border-color:var(--brand);box-shadow:0 0 0 3px var(--brand-soft)}
+.mine-toggle{display:flex;align-items:center;gap:6px;font-size:13px;color:var(--text-2);white-space:nowrap;cursor:pointer}
+.toolbar-spacer{flex:1}
+.result-count{font-size:12.5px;color:var(--text-2);font-weight:600;white-space:nowrap}
+
+/* ── data table ─────────────────────────────────────────────────────── */
+.data-table-wrap{overflow-x:auto;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface)}
+table.data-table{width:100%;border-collapse:collapse;font-size:13px}
+table.data-table thead th{background:var(--region-hd-soft);padding:10px 14px;text-align:start;font-weight:600;
+  color:var(--region-hd-accent);font-size:11px;text-transform:uppercase;letter-spacing:.08em;
+  border-block-end:2px solid var(--region-hd-accent);white-space:nowrap}
+table.data-table tbody td{padding:12px 14px;border-block-end:1px solid var(--surface-2);color:var(--text);vertical-align:middle}
+table.data-table tbody tr:last-child td{border-block-end:none}
+table.data-table tbody tr:hover{background:var(--surface-2)}
+
+/* ── row-cell helpers (the brand-scoped bits an app keeps in app.css) ── */
+.r-row{cursor:pointer}
+.r-code{font-family:var(--mono);font-size:12px;color:var(--text-2)}
+.r-name{font-weight:700;color:var(--text)}
+.r-name-ar{font-size:11px;color:var(--text-3);margin-top:2px;direction:rtl}
+.r-tc{color:var(--text-2);font-size:12.5px}
+
+/* ── badge / avatar / RAG (all in platform.css) ─────────────────────── */
+.badge{display:inline-flex;align-items:center;gap:5px;padding:3px 10px;border-radius:99px;font-size:11.5px;font-weight:600}
+.badge::before{content:'';width:5px;height:5px;border-radius:50%;background:currentColor}
+.badge--active{background:var(--green-soft);color:var(--green)}
+.badge--idle{background:var(--surface-2);color:var(--text-2)}
+.badge--warning{background:var(--amber-soft);color:#B05E1A}
+.badge--info{background:var(--blue-soft);color:var(--blue)}
+.avatar{width:36px;height:36px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;
+  font-size:13px;font-weight:700;color:#fff;flex-shrink:0}
+.avatar--sm{width:24px;height:24px;font-size:11px}
+.badge--brand{background:var(--brand-soft);color:var(--brand-dark)}
+.rag{display:inline-flex;align-items:center;gap:6px;font-weight:600;font-size:12px}
+.rag::before{content:"";width:10px;height:10px;border-radius:50%;display:inline-block}
+.rag--green::before{background:#3FB950} .rag--amber::before{background:#F0883E} .rag--red::before{background:#F85149}
+.rag--green{color:#2A7D3A} .rag--amber{color:#B5651A} .rag--red{color:#C13A30}
+.is-overdue{color:#C13A30;font-weight:700}
+
+.empty-state{padding:38px;text-align:center;color:var(--text-2);font-size:14px;
+  border:1px dashed var(--border-strong);border-radius:var(--radius);background:var(--surface)}
+
+.foot{margin-top:22px;font-size:12px;color:var(--text-3);font-family:var(--mono)}
+.foot b{color:var(--text-2)}
+</style>
+</head>
+<body>
+<div class="page">
+
+  <div class="lab">Search → Table Result · pattern #1</div>
+
+  <!-- page header: title + top-right primary action -->
+  <div class="page-header-row">
+    <h1 class="page-title">Teams</h1>
+    <div class="page-actions"><button class="btn btn-primary">+ New Team</button></div>
+  </div>
+
+  <!-- search toolbar: search-box · facet selects · toggle · spacer · count -->
+  <div class="view-toolbar">
+    <input id="q" class="search-box" type="text" placeholder="Search teams…">
+    <select id="fType" class="form-control--sm">
+      <option value="">All Types</option><option>Internal</option><option>Cross-functional</option>
+    </select>
+    <select id="fClass" class="form-control--sm">
+      <option value="">All Classes</option><option>Operational</option><option>Project</option>
+    </select>
+    <select id="fStatus" class="form-control--sm">
+      <option value="">All Statuses</option><option>Active</option><option>Archived</option>
+    </select>
+    <label class="mine-toggle"><input type="checkbox" id="fMine"> Mine</label>
+    <span class="toolbar-spacer"></span>
+    <span class="result-count" id="count">—</span>
+  </div>
+
+  <!-- result table -->
+  <div class="data-table-wrap" id="wrap">
+    <table class="data-table">
+      <thead>
+        <tr><th>Code</th><th>Team</th><th>Type · Class</th><th>Members</th><th>Tasks</th><th>Health</th><th>Status</th></tr>
+      </thead>
+      <tbody id="rows"></tbody>
+    </table>
+  </div>
+  <div class="empty-state" id="empty" style="display:none">No teams found.</div>
+
+  <div class="foot">Composition over existing <b>platform.css</b> classes — <b>.view-toolbar · .search-box · .data-table · .badge · .avatar · .rag</b>. See <b>NOTES.md</b> for the promote / reuse recipe.</div>
+</div>
+
+<script>
+// ---- sample data (an app feeds this from its list service) -------------
+var DATA = [
+  {code:'TM-01', name:'Finance Operations', nameAr:'العمليات المالية', type:'Internal', cls:'Operational', cat:'', members:12, tasks:34, overdue:2, health:'GREEN', status:'Active'},
+  {code:'TM-02', name:'Audit Sprint',       nameAr:'سباق التدقيق',     type:'Internal', cls:'Operational', cat:'', members:8,  tasks:21, overdue:5, health:'AMBER', status:'Active'},
+  {code:'TM-03', name:'Vendor Onboarding',  nameAr:'إعداد الموردين',   type:'Cross-functional', cls:'Project', cat:'Strategic', members:15, tasks:52, overdue:0, health:'RED', status:'Active'},
+  {code:'TM-04', name:'Budget Review 2026',  nameAr:'',                 type:'Internal', cls:'Project', cat:'Strategic', members:6,  tasks:9,  overdue:0, health:'GREEN', status:'Archived'},
+  {code:'TM-05', name:'Procurement Council', nameAr:'',                 type:'Cross-functional', cls:'Operational', cat:'', members:11, tasks:18, overdue:1, health:'AMBER', status:'Active'}
+];
+function statusClass(s){ s=(s||'').toUpperCase();
+  if(s==='ACTIVE')return'badge--active';
+  if(s==='ARCHIVED'||s==='INACTIVE'||s==='CLOSED')return'badge--idle';
+  if(s==='ONHOLD'||s==='PAUSED')return'badge--warning';
+  return'badge--info'; }
+function title(s){ return s ? s.charAt(0).toUpperCase()+s.slice(1).toLowerCase() : ''; }
+function esc(s){ return (s==null?'':String(s)).replace(/[&<>]/g,function(c){return{'&':'&amp;','<':'&lt;','>':'&gt;'}[c];}); }
+
+function render(){
+  var q=document.getElementById('q').value.trim().toLowerCase();
+  var ft=document.getElementById('fType').value, fc=document.getElementById('fClass').value,
+      fs=document.getElementById('fStatus').value, fm=document.getElementById('fMine').checked;
+  var rows=DATA.filter(function(t){
+    if(q && (t.name+' '+t.code).toLowerCase().indexOf(q)<0) return false;
+    if(ft && t.type!==ft) return false;
+    if(fc && t.cls!==fc) return false;
+    if(fs && t.status!==fs) return false;
+    if(fm && t.code!=='TM-01' && t.code!=='TM-02') return false; // demo "mine"
+    return true;
+  });
+  var tc=[]; // type · class · category
+  document.getElementById('rows').innerHTML = rows.map(function(t){
+    var typeClass=[t.type,t.cls,t.cat].filter(Boolean).join(' · ');
+    var over = t.overdue>0 ? ' <span class="is-overdue">('+t.overdue+' over)</span>' : '';
+    var ar = t.nameAr ? '<div class="r-name-ar">'+esc(t.nameAr)+'</div>' : '';
+    return '<tr class="r-row">'+
+      '<td><span class="r-code">'+esc(t.code)+'</span></td>'+
+      '<td><div class="r-name">'+esc(t.name)+'</div>'+ar+'</td>'+
+      '<td><span class="r-tc">'+esc(typeClass)+'</span></td>'+
+      '<td><span class="avatar avatar--sm badge--brand">'+t.members+'</span></td>'+
+      '<td>'+t.tasks+over+'</td>'+
+      '<td><span class="rag rag--'+t.health.toLowerCase()+'">'+title(t.health)+'</span></td>'+
+      '<td><span class="badge '+statusClass(t.status)+'">'+esc(t.status)+'</span></td>'+
+    '</tr>';
+  }).join('');
+  document.getElementById('count').textContent = rows.length+' teams';
+  document.getElementById('wrap').style.display = rows.length? '' : 'none';
+  document.getElementById('empty').style.display = rows.length? 'none' : '';
+}
+['q','fType','fClass','fStatus','fMine'].forEach(function(id){
+  var el=document.getElementById(id);
+  el.addEventListener(el.tagName==='INPUT'&&el.type!=='checkbox'?'input':'change', render);
+});
+render();
+</script>
+</body>
+</html>

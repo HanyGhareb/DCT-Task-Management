@@ -36,6 +36,7 @@ function (api, authService, notifService) {
     listMembers:  function (teamId)    { return api.get('/members' + qs({ teamId: teamId })); },
     addMember:    function (body)      { return api.post('/members/add', body); },
     setMemberRole:function (body)      { return api.post('/members/role', body); },
+    updateMember: function (body)      { return api.post('/members/update', body); },
     removeMember: function (body)      { return api.post('/members/remove', body); },
 
     // permissions matrix
@@ -79,6 +80,7 @@ function (api, authService, notifService) {
     // documents library
     listDocuments: function (params)   { return api.get('/documents' + qs(params)); },
     addDocument:   function (body)     { return api.post('/documents', body); },
+    updateDocument:function (body)     { return api.post('/documents/update', body); },
 
     // reminder preferences
     getPrefs:     function ()          { return api.get('/prefs'); },

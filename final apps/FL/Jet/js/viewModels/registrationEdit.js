@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flService, formGuard) {
+define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n'], function (ko, flService, formGuard, i18n) {
   'use strict';
 
   function RegistrationEditViewModel() {
@@ -30,10 +30,51 @@ define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flS
     self.photoSrc      = ko.observable('');
     self.nationalities = ko.observableArray([]);
 
+    // Required documents
+    self.docRequirements = ko.observableArray([]);   // from /doc-requirements?context=REGISTRATION
+    self.regDocs         = ko.observableArray([]);    // uploaded docs for this registration
+    self.docError        = ko.observable('');
+    self.docBusy         = ko.observable(false);
+    self._pendingDoc     = null;                      // req row awaiting a file pick
+    self.lang            = (i18n && i18n.lang) ? i18n.lang : ko.observable('en');
+
     self.editable = ko.computed(function () {
       return self.status() === 'DRAFT' || self.status() === 'RETURNED';
     });
     self.needsEmiratesId = ko.computed(function () { return self.nationalityCode() === 'AE'; });
+
+    // Which required docs apply to THIS registration, merged with upload status.
+    self.docChecklist = ko.computed(function () {
+      var nat = self.nationalityCode();
+      var hasEid = !!(self.nationalId() || '').trim();
+      var uploaded = self.regDocs();
+      var ar = self.lang() === 'ar';
+      return self.docRequirements().filter(function (req) {
+        if (req.docTypeCode === 'EMIRATES_ID')    return nat === 'AE' || hasEid;
+        if (req.docTypeCode === 'RESIDENCE_VISA')  return !!nat && nat !== 'AE';
+        return true;
+      }).map(function (req) {
+        var up = null;
+        for (var i = 0; i < uploaded.length; i++) {
+          if (uploaded[i].docTypeId === req.docTypeId && uploaded[i].hasFile === 'Y') { up = uploaded[i]; break; }
+        }
+        return {
+          docTypeId:   req.docTypeId,
+          docTypeCode: req.docTypeCode,
+          name:        ar ? (req.docTypeNameAr || req.docTypeName) : req.docTypeName,
+          mandatory:   req.isMandatory === 'Y',
+          uploaded:    !!up,
+          docId:       up ? up.documentId : null,
+          fileName:    up ? up.documentName : ''
+        };
+      });
+    });
+
+    // Names of mandatory applicable docs not yet uploaded (gates Submit only).
+    self.missingDocs = function () {
+      return self.docChecklist().filter(function (d) { return d.mandatory && !d.uploaded; })
+                                .map(function (d) { return d.name; });
+    };
 
     function initGuard() {
       self._guard = formGuard.track([
@@ -64,8 +105,17 @@ define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flS
         self.photoSrc('https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/fl/registrations/' + self.regId() + '/photo?t=' + Date.now());
         self.loading(false);
         initGuard();
+        self.loadRegDocs();
       }).catch(function () { self.loading(false); initGuard(); });
     }
+
+    self.loadRegDocs = function () {
+      if (!self.regId()) { self.regDocs([]); return; }
+      flService.getRegistrationDocuments(self.regId()).then(function (items) {
+        self.regDocs(items);
+      }).catch(function () {});
+    };
+
     // Load the nationality options BEFORE binding the record value — if the
     // options arrive after, KO's options binding resets the selection to the
     // caption and the draft silently loses its nationality (same pattern as
@@ -73,6 +123,10 @@ define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flS
     flService.getLookups().then(function (lk) {
       self.nationalities(lk.nationalities || []);
     }).catch(function () {}).then(load);
+
+    flService.getDocRequirements('REGISTRATION').then(function (reqs) {
+      self.docRequirements(reqs);
+    }).catch(function () {});
 
     function payload() {
       return {
@@ -96,13 +150,118 @@ define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flS
       setTimeout(function () { self.successMsg(''); }, 3000);
     }
 
+    // ---- Field-level validation -------------------------------------------
+    // One validator per field returns an error string ('' = valid). Reused by
+    // the blur handler (inline) and by validate() (full check on Submit).
+    // Mirrors the server checks in DCT_FL_PKG.submit_registration.
+    var V = {
+      firstNameEn: function () {
+        return self.firstNameEn().trim() ? '' : 'Required.';
+      },
+      lastNameEn: function () {
+        return self.lastNameEn().trim() ? '' : 'Required.';
+      },
+      dateOfBirth: function () {
+        var v = self.dateOfBirth();
+        if (!v) return 'Required.';
+        var dob = new Date(v);
+        if (isNaN(dob.getTime())) return 'Not a valid date.';
+        var today = new Date(); today.setHours(0, 0, 0, 0);
+        if (dob > today) return 'Cannot be in the future.';
+        if (dob.getFullYear() < 1900) return 'Year is not valid.';
+        var age = today.getFullYear() - dob.getFullYear();
+        var md = today.getMonth() - dob.getMonth();
+        if (md < 0 || (md === 0 && today.getDate() < dob.getDate())) age--;
+        if (age < 18) return 'Must be at least 18 years old.';
+        return '';
+      },
+      nationalityCode: function () {
+        return self.nationalityCode() ? '' : 'Required.';
+      },
+      email: function () {
+        var v = self.email().trim();
+        if (!v) return 'Required.';
+        if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(v))
+          return 'Enter a valid email (becomes the portal login).';
+        return '';
+      },
+      nationalId: function () {
+        var v = self.nationalId().trim();
+        if (self.needsEmiratesId() && !v) return 'Required for UAE nationals.';
+        if (v && !/^784\d{12}$/.test(v.replace(/\D/g, '')))
+          return 'Must be 15 digits starting with 784.';
+        return '';
+      },
+      passportNumber: function () {
+        var v = self.passportNumber().trim();
+        if (v && !/^[A-Za-z0-9]{6,12}$/.test(v))
+          return '6–12 letters or digits.';
+        return '';
+      },
+      mobile: function () {
+        var v = self.mobile().trim();
+        if (v && !/^\+?\d{7,15}$/.test(v.replace(/[\s\-()]/g, '')))
+          return '7–15 digits, optional leading +.';
+        return '';
+      }
+    };
+    var FIELD_ORDER = ['firstNameEn', 'lastNameEn', 'dateOfBirth', 'nationalityCode',
+                       'email', 'nationalId', 'passportNumber', 'mobile'];
+
+    self.err = {};
+    FIELD_ORDER.forEach(function (k) { self.err[k] = ko.observable(''); });
+
+    // Inline check fired on blur. Returns true so KO doesn't cancel the event.
+    self.checkField = function (name) {
+      if (V[name]) self.err[name](V[name]());
+      // "at least one ID" is cross-field — re-evaluate the partner field too.
+      if (name === 'nationalId' || name === 'passportNumber') crossCheckIds();
+      return true;
+    };
+
+    function crossCheckIds() {
+      if (!self.nationalId().trim() && !self.passportNumber().trim()) {
+        if (!self.err.passportNumber()) self.err.passportNumber('Provide an Emirates ID or a passport number.');
+      } else {
+        // clear the cross-field message if a single-field error isn't present
+        if (self.err.passportNumber() === 'Provide an Emirates ID or a passport number.') {
+          self.err.passportNumber(V.passportNumber());
+        }
+      }
+    }
+
+    // Validation. SUBMIT = full (required + format). Draft (opts.draft) = format
+    // only: blank fields are allowed, but any value entered must be well-formed.
+    function validate(opts) {
+      var draft = !!(opts && opts.draft);
+      var ok = true;
+      FIELD_ORDER.forEach(function (k) {
+        var blank = !(self[k]() || '').toString().trim();
+        var m = (draft && blank) ? '' : V[k]();
+        self.err[k](m);
+        if (m) ok = false;
+      });
+      // "at least one ID" is a submit-only requirement (a draft may have neither yet).
+      if (!draft && !self.nationalId().trim() && !self.passportNumber().trim()) {
+        self.err.passportNumber('Provide an Emirates ID or a passport number.');
+        ok = false;
+      }
+      // Required documents gate Submit only (drafts may be saved without them).
+      if (!draft) {
+        var missing = self.missingDocs();
+        if (missing.length) {
+          ok = false;
+          self.docError((self.regId() ? 'Attach required document(s): ' : 'Save the draft, then attach: ') + missing.join(', ') + '.');
+        } else {
+          self.docError('');
+        }
+      }
+      return ok;
+    }
+
     self.saveDraft = function () {
       self.errorMsg('');
-      if (!self.firstNameEn().trim() || !self.lastNameEn().trim() || !self.email().trim()
-          || !self.dateOfBirth() || !self.nationalityCode()) {
-        self.errorMsg('Name, date of birth, nationality and email are required.');
-        return null;
-      }
+      if (!validate({ draft: true })) { self.errorMsg('Please correct the highlighted fields.'); return null; }
       self.saving(true);
       var op = self.isNew
         ? flService.createRegistration(payload()).then(function (r) {
@@ -126,6 +285,8 @@ define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flS
     };
 
     self.submit = function () {
+      self.errorMsg('');
+      if (!validate()) { self.errorMsg('Please correct the highlighted fields.'); return; }
       var save = self.saveDraft();
       if (!save) return;
       save.then(function () {
@@ -172,6 +333,96 @@ define(['knockout', 'services/flService', 'shared/formGuard'], function (ko, flS
       };
       img.onerror = function () { URL.revokeObjectURL(url); self.errorMsg('Could not read the image'); };
       img.src = url;
+    };
+
+    // ---- Required-document uploads ----------------------------------------
+    self.pickDocFile = function (item) {
+      self.docError('');
+      if (!self.regId()) { self.docError('Save the draft first, then attach documents.'); return; }
+      self._pendingDoc = item;
+      var input = document.getElementById('fl-reg-doc-input');
+      if (input) input.click();
+    };
+
+    function uploadDocBlob(item, b64, mime, fileName) {
+      self.docBusy(true);
+      var chain = item.docId ? flService.deleteDocument(item.docId) : Promise.resolve();
+      chain.then(function () {
+        return flService.createDocument({
+          sourceType: 'REGISTRATION', sourceId: self.regId(),
+          docTypeId: item.docTypeId, documentName: fileName, mimeType: mime, isRequired: 'Y'
+        });
+      }).then(function (r) {
+        return flService.uploadDocumentFile(r.documentId, b64, mime);
+      }).then(function () {
+        self.docBusy(false);
+        self.loadRegDocs();
+        flash('Document uploaded.');
+      }).catch(function (err) {
+        self.docBusy(false);
+        self.docError((err && err.message) || 'Document upload failed');
+      });
+    }
+
+    self.docFileSelected = function (vm, event) {
+      var file = event.target.files && event.target.files[0];
+      event.target.value = '';
+      var item = self._pendingDoc;
+      self._pendingDoc = null;
+      if (!file || !item || !self.regId()) return;
+
+      if (/^image\//.test(file.type)) {
+        // Downscale images so the base64 fits the document store (~30 KB).
+        var url = URL.createObjectURL(file);
+        var img = new Image();
+        img.onload = function () {
+          URL.revokeObjectURL(url);
+          var side = 1280, quality = 0.8, b64 = null;
+          while (side >= 96) {
+            var scale = Math.min(1, side / Math.max(img.width, img.height));
+            var canvas = document.createElement('canvas');
+            canvas.width  = Math.max(1, Math.round(img.width * scale));
+            canvas.height = Math.max(1, Math.round(img.height * scale));
+            canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+            b64 = canvas.toDataURL('image/jpeg', quality).split(',')[1];
+            if (b64.length <= 30000) break;
+            if (quality > 0.5) { quality -= 0.1; } else { side -= 160; quality = 0.8; }
+          }
+          uploadDocBlob(item, b64, 'image/jpeg', file.name);
+        };
+        img.onerror = function () { URL.revokeObjectURL(url); self.docError('Could not read the image.'); };
+        img.src = url;
+      } else {
+        // Non-image (e.g. PDF): read as-is, but the store caps at ~24 KB.
+        var reader = new FileReader();
+        reader.onload = function () {
+          var b64 = String(reader.result).split(',')[1] || '';
+          if (b64.length > 32000) {
+            self.docError('File too large — max ~24 KB. Upload a clear photo (JPG/PNG) instead.');
+            return;
+          }
+          uploadDocBlob(item, b64, file.type || 'application/octet-stream', file.name);
+        };
+        reader.onerror = function () { self.docError('Could not read the file.'); };
+        reader.readAsDataURL(file);
+      }
+    };
+
+    self.removeDoc = function (item) {
+      if (!item.docId) return;
+      self.docBusy(true);
+      flService.deleteDocument(item.docId).then(function () {
+        self.docBusy(false);
+        self.loadRegDocs();
+      }).catch(function (err) {
+        self.docBusy(false);
+        self.docError((err && err.message) || 'Remove failed');
+      });
+    };
+
+    self.viewDoc = function (item) {
+      if (!item.docId) return;
+      window.open('https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/fl/documents/' + item.docId + '/file', '_blank');
     };
 
     self.back = function () { if (window._jetApp) window._jetApp.navigate('registrations'); };

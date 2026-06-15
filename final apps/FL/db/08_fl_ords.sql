@@ -421,6 +421,82 @@ END;
     def_media('registrations/[COLON]id/photo',
       q'!SELECT photo_mime_type, photo_blob FROM dct_fl_registrations WHERE registration_id = [COLON]id!');
 
+    -- Documents attached to a registration (pre-approval). source_type=REGISTRATION,
+    -- source_id=registration_id. On approval these are re-pointed to the freelancer.
+    def_template('registrations/[COLON]id/documents');
+    def_handler('registrations/[COLON]id/documents', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT d.doc_id, d.doc_type_id, dt.doc_type_code, dt.doc_type_name_en,
+           d.file_name, d.mime_type, d.file_size_bytes,
+           CASE WHEN d.file_blob IS NULL THEN 'N' ELSE 'Y' END AS has_file
+    FROM   dct_documents d
+    JOIN   dct_document_types dt ON dt.doc_type_id = d.doc_type_id
+    WHERE  d.source_module = 'FL' AND d.source_type = 'REGISTRATION'
+    AND    d.source_id = [COLON]id AND d.is_active = 'Y'
+    ORDER BY dt.display_order, d.doc_id
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('documentId',   r.doc_id);
+    APEX_JSON.write('docTypeId',    r.doc_type_id);
+    APEX_JSON.write('docTypeCode',  r.doc_type_code);
+    APEX_JSON.write('docTypeName',  r.doc_type_name_en);
+    APEX_JSON.write('documentName', NVL(r.file_name, ''));
+    APEX_JSON.write('mimeType',     NVL(r.mime_type, ''));
+    APEX_JSON.write('fileSize',     NVL(r.file_size_bytes, 0));
+    APEX_JSON.write('hasFile',      r.has_file);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- Document requirements for a context (drives the registration checklist).
+    def_template('doc-requirements/');
+    def_handler('doc-requirements/', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_ctx  VARCHAR2(50)  := UPPER([COLON]context);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT dr.doc_req_id, dr.doc_type_id, dr.is_mandatory, dr.display_seq,
+           dt.doc_type_code, dt.doc_type_name_en, dt.doc_type_name_ar
+    FROM   dct_doc_requirements dr
+    JOIN   dct_document_types   dt ON dt.doc_type_id = dr.doc_type_id
+    WHERE  dr.source_module = 'FL' AND dr.is_active = 'Y'
+    AND    (l_ctx IS NULL OR dr.context_code = l_ctx)
+    ORDER BY dr.display_seq
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('docReqId',    r.doc_req_id);
+    APEX_JSON.write('docTypeId',   r.doc_type_id);
+    APEX_JSON.write('docTypeCode', r.doc_type_code);
+    APEX_JSON.write('docTypeName', r.doc_type_name_en);
+    APEX_JSON.write('docTypeNameAr', NVL(r.doc_type_name_ar, r.doc_type_name_en));
+    APEX_JSON.write('isMandatory', r.is_mandatory);
+    APEX_JSON.write('displaySeq',  r.display_seq);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
     -- =========================================================================
     -- FREELANCERS
     -- =========================================================================
@@ -1749,6 +1825,26 @@ END;
 !');
     def_media('documents/[COLON]id/file',
       q'!SELECT mime_type, file_blob FROM dct_documents WHERE doc_id = [COLON]id AND source_module = 'FL'!');
+
+    -- Soft-delete a FL document (used to replace a registration document).
+    def_template('documents/[COLON]id');
+    def_handler('documents/[COLON]id', 'DELETE', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  UPDATE dct_documents
+  SET    is_active = 'N', updated_by = l_uid, updated_at = SYSTIMESTAMP
+  WHERE  doc_id = [COLON]id AND source_module = 'FL';
+  COMMIT;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
 
     -- =========================================================================
     -- PROFILE CHANGE REQUESTS

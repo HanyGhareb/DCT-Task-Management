@@ -6,24 +6,26 @@
     </div>
   </div>
 
-  <!-- filters -->
-  <div class="filter-bar" style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:14px;">
-    <input class="input" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('tm.teams.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13) load(); return true; } }" style="max-width:220px">
-    <select class="input" data-bind="value: fType, event:{change: load}">
+  <!-- search + filters -->
+  <div class="view-toolbar">
+    <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('tm.teams.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13) load(); return true; } }">
+    <select class="form-control form-control--sm" style="max-width:160px" data-bind="value: fType, event:{change: load}">
       <option value="" data-bind="text: t('tm.teams.allTypes')"></option>
       <!-- ko foreach: types --><option data-bind="value: code, text: nameEn"></option><!-- /ko -->
     </select>
-    <select class="input" data-bind="value: fClass, event:{change: load}">
+    <select class="form-control form-control--sm" style="max-width:160px" data-bind="value: fClass, event:{change: load}">
       <option value="" data-bind="text: t('tm.teams.allClasses')"></option>
       <!-- ko foreach: classes --><option data-bind="value: code, text: nameEn"></option><!-- /ko -->
     </select>
-    <select class="input" data-bind="value: fStatus, event:{change: load}">
+    <select class="form-control form-control--sm" style="max-width:160px" data-bind="value: fStatus, event:{change: load}">
       <option value="" data-bind="text: t('tm.teams.allStatuses')"></option>
       <!-- ko foreach: statuses --><option data-bind="value: code, text: nameEn"></option><!-- /ko -->
     </select>
-    <label style="display:flex; align-items:center; gap:6px; font-size:13px;">
+    <label class="tm-mine-toggle">
       <input type="checkbox" data-bind="checked: fMine, event:{change: load}"> <span data-bind="text: t('tm.teams.mine')"></span>
     </label>
+    <span class="toolbar-spacer"></span>
+    <!-- ko ifnot: loading --><span class="tm-result-count" data-bind="text: teams().length + ' ' + t('tm.teams.results')"></span><!-- /ko -->
   </div>
 
   <!-- ko if: loading -->
@@ -35,53 +37,66 @@
   <div class="empty-state" data-bind="text: t('tm.teams.empty')"></div>
   <!-- /ko -->
 
-  <div class="team-grid">
-    <!-- ko foreach: teams -->
-    <div class="team-card" data-bind="click: function(){ $vm.open($data); }">
-      <div style="display:flex; justify-content:space-between; align-items:center;">
-        <span class="team-card__code" data-bind="text: teamCode"></span>
-        <span data-bind="css: $vm.ragClass(health), text: health"></span>
-      </div>
-      <div class="team-card__name" data-bind="text: nameEn"></div>
-      <div style="font-size:12px; color:#6a747e;">
-        <span data-bind="text: type"></span> · <span data-bind="text: $data['class']"></span>
-        <!-- ko if: category --> · <span data-bind="text: category"></span><!-- /ko -->
-      </div>
-      <div class="team-card__stats">
-        <div class="team-card__stat"><b data-bind="text: memberCount"></b><span data-bind="text: $vm.t('tm.teams.members')"></span></div>
-        <div class="team-card__stat"><b data-bind="text: taskCount"></b><span data-bind="text: $vm.t('tm.teams.tasks')"></span></div>
-        <div class="team-card__stat"><b data-bind="text: objectiveCount"></b><span data-bind="text: $vm.t('tm.teams.objectives')"></span></div>
-        <div class="team-card__stat"><b class="is-overdue" data-bind="text: taskOverdue"></b><span data-bind="text: $vm.t('tm.teams.overdue')"></span></div>
-      </div>
-    </div>
-    <!-- /ko -->
+  <!-- ko if: teams().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-bind="text: t('tm.teams.col.code')"></th>
+          <th data-bind="text: t('tm.teams.col.name')"></th>
+          <th data-bind="text: t('tm.teams.col.typeClass')"></th>
+          <th data-bind="text: t('tm.teams.col.members')"></th>
+          <th data-bind="text: t('tm.teams.col.tasks')"></th>
+          <th data-bind="text: t('tm.teams.col.health')"></th>
+          <th data-bind="text: t('tm.teams.col.status')"></th>
+          <th style="width:80px;"></th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: teams">
+        <tr class="tm-team-row" data-bind="click: function(){ $vm.open($data); }">
+          <td><span class="tm-team-code" data-bind="text: $data.teamCode || '—'"></span></td>
+          <td>
+            <div class="tm-team-name" data-bind="text: nameEn"></div>
+            <!-- ko if: $data.nameAr --><div class="tm-team-name-ar" dir="rtl" data-bind="text: $data.nameAr"></div><!-- /ko -->
+          </td>
+          <td><span class="tm-team-tc" data-bind="text: $data.typeClass || '—'"></span></td>
+          <td><span class="avatar avatar--sm badge--brand" data-bind="text: $data.memberCount || 0"></span></td>
+          <td>
+            <span data-bind="text: $data.taskCount || 0"></span>
+            <!-- ko if: ($data.taskOverdue || 0) > 0 --> <span class="is-overdue" data-bind="text: '(' + $data.taskOverdue + ' ' + $vm.t('tm.teams.over') + ')'"></span><!-- /ko -->
+          </td>
+          <td><span data-bind="css: $vm.ragClass(health), text: $data.healthLabel || $data.health || '—'"></span></td>
+          <td><span class="badge" data-bind="css: $vm.statusClass($data.status), text: $data.statusName || $data.status || '—'"></span></td>
+          <td class="cell-actions" style="text-align:end;" data-bind="click: function(){ return true; }, clickBubble: false">
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.editTeam($data); }, text: $vm.t('tm.action.edit')"></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
   </div>
+  <!-- /ko -->
   <!-- /ko -->
 
-  <!-- create modal -->
-  <!-- ko if: showForm -->
-  <div class="modal-overlay" data-bind="click: cancel"></div>
-  <div class="modal-box" style="max-width:560px" data-bind="click: function(){ return true; }">
-    <div class="modal-header">
-      <div class="modal-title" data-bind="text: t('tm.teams.new')"></div>
-      <div class="region-actions">
-        <button class="btn btn-sm" data-bind="click: cancel, text: t('tm.action.cancel')"></button>
-        <button class="btn btn-sm btn-primary" data-bind="click: save, text: t('tm.action.create')"></button>
-      </div>
+  <!-- create / edit team — shared <edit-drawer> slide-in -->
+  <edit-drawer params="open: showForm, vm: $vm,
+                       title: formTitle,
+                       saveLabel: formSaveLabel,
+                       cancelLabel: t('tm.action.cancel'),
+                       onSave: save, width: '620px'">
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.nameEn')"></label><input class="form-control" data-bind="textInput: fmName"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.nameAr')"></label><input class="form-control" dir="rtl" data-bind="textInput: fmNameAr"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.type')"></label>
+        <select class="form-control" data-bind="value: fmType, options: types, optionsValue:'code', optionsText:'nameEn'"></select></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.class')"></label>
+        <select class="form-control" data-bind="value: fmClass, options: classes, optionsValue:'code', optionsText:'nameEn'"></select></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.category')"></label>
+        <select class="form-control" data-bind="value: fmCat, options: cats, optionsValue:'code', optionsText:'nameEn', optionsCaption:'—'"></select></div>
+      <!-- ko if: editId -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.status')"></label>
+        <select class="form-control" data-bind="value: fmStatus, options: statuses, optionsValue:'code', optionsText:'nameEn'"></select></div>
+      <!-- /ko -->
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.field.objective')"></label><textarea class="form-control" rows="2" data-bind="textInput: fmObj"></textarea></div>
     </div>
-    <div class="modal-body">
-      <div class="form-grid">
-        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.nameEn')"></label><input class="form-control" data-bind="textInput: fmName"></div>
-        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.nameAr')"></label><input class="form-control" dir="rtl" data-bind="textInput: fmNameAr"></div>
-        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.type')"></label>
-          <select class="form-control" data-bind="value: fmType, options: types, optionsValue:'code', optionsText:'nameEn'"></select></div>
-        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.class')"></label>
-          <select class="form-control" data-bind="value: fmClass, options: classes, optionsValue:'code', optionsText:'nameEn'"></select></div>
-        <div class="form-group"><label class="form-label" data-bind="text: t('tm.field.category')"></label>
-          <select class="form-control" data-bind="value: fmCat, options: cats, optionsValue:'code', optionsText:'nameEn', optionsCaption:'—'"></select></div>
-        <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.field.objective')"></label><textarea class="form-control" rows="2" data-bind="textInput: fmObj"></textarea></div>
-      </div>
-    </div>
-  </div>
-  <!-- /ko -->
+  </edit-drawer>
 </div>

@@ -31,6 +31,9 @@ function (ko, tm, i18n, toast) {
     self.meetings = ko.observableArray([]);
     self.documents = ko.observableArray([]);
     self.allUsers = ko.observableArray([]);      // active users for pickers
+    self.counts = ko.observable({});             // per-tab counts (seeded from summary, refined on load)
+    self.attention = ko.observableArray([]);     // overview: overdue tasks + open high-sev RAID
+    self.upcoming = ko.observableArray([]);      // overview: soonest milestones/deliverables/meetings
 
     // ---- lookups / refs -----------------------------------------------------
     self.priorities = ko.observableArray([]); self.taskStatuses = ko.observableArray([]);
@@ -77,21 +80,91 @@ function (ko, tm, i18n, toast) {
     });
     self.canManageMembers = self.canEditTeam;
 
+    // overall task-completion % for the header band (0 when no tasks)
+    self.taskPct = ko.computed(function () {
+      var t = self.team(), tot = Number(t.taskCount) || 0;
+      if (!tot) return 0;
+      return Math.round((Number(t.taskDone) || 0) / tot * 100);
+    });
+
     // ---- navigation ---------------------------------------------------------
     self.back = function () { window._jetApp.navigate('teams'); };
     self.setTab = function (k) { self.tab(k); self.adding(''); self.addingMember(false); self.addingDoc(false); self.loadTab(k); };
     self.tabClass = function (k) { return 'tm-tab' + (self.tab() === k ? ' tm-tab--on' : ''); };
 
+    // E2: count pill per tab (null = no pill yet) + attention dot
+    function setCount(k, n) { var c = self.counts(); c[k] = n; self.counts(c); }
+    self.tabCount = function (k) {
+      var c = self.counts();
+      return (c[k] === undefined || c[k] === null) ? null : c[k];
+    };
+    self.tabAttn = function (k) {
+      if (k === 'tasks') return (Number(self.team().taskOverdue) || 0) > 0;
+      if (k === 'raid')  return (Number(self.team().openRisks)   || 0) > 0;
+      return false;
+    };
+
     self.loadTab = function (k) {
       var id = self.teamId;
-      if (k === 'members') tm.listMembers(id).then(function (r) { self.members(r.items || []); });
-      else if (k === 'objectives') tm.listObjectives(id).then(function (r) { self.objectives(r.items || []); });
-      else if (k === 'tasks') tm.listTasks({ teamId: id, limit: 200 }).then(function (r) { self.tasks(r.items || []); });
-      else if (k === 'deliverables') tm.listDeliverables(id).then(function (r) { self.deliverables(r.items || []); });
-      else if (k === 'raid') tm.listRaid(id, '').then(function (r) { self.raid(r.items || []); });
-      else if (k === 'milestones') tm.listMilestones(id).then(function (r) { self.milestones(r.items || []); });
-      else if (k === 'meetings') tm.listMeetings(id).then(function (r) { self.meetings(r.items || []); });
-      else if (k === 'documents') tm.listDocuments({ sourceType: 'TEAM', sourceId: id }).then(function (r) { self.documents(r.items || []); });
+      if (k === 'overview') self.loadOverview();
+      else if (k === 'members') tm.listMembers(id).then(function (r) { self.members(r.items || []); setCount('members', (r.items || []).length); });
+      else if (k === 'objectives') tm.listObjectives(id).then(function (r) { self.objectives(r.items || []); setCount('objectives', (r.items || []).length); });
+      else if (k === 'tasks') tm.listTasks({ teamId: id, limit: 200 }).then(function (r) { self.tasks(r.items || []); setCount('tasks', (r.items || []).length); });
+      else if (k === 'deliverables') tm.listDeliverables(id).then(function (r) { self.deliverables(r.items || []); setCount('deliverables', (r.items || []).length); });
+      else if (k === 'raid') tm.listRaid(id, '').then(function (r) { self.raid(r.items || []); setCount('raid', (r.items || []).length); });
+      else if (k === 'milestones') tm.listMilestones(id).then(function (r) { self.milestones(r.items || []); setCount('milestones', (r.items || []).length); });
+      else if (k === 'meetings') tm.listMeetings(id).then(function (r) { self.meetings(r.items || []); setCount('meetings', (r.items || []).length); });
+      else if (k === 'documents') tm.listDocuments({ sourceType: 'TEAM', sourceId: id }).then(function (r) { self.documents(r.items || []); setCount('documents', (r.items || []).length); });
+    };
+
+    // E3: overview command panel — build "needs attention" + "upcoming" from existing list endpoints
+    self.loadOverview = function () {
+      var id = self.teamId;
+      Promise.all([
+        tm.listTasks({ teamId: id, limit: 200 }).then(function (r) { return r.items || []; }).catch(function () { return []; }),
+        tm.listRaid(id, '').then(function (r) { return r.items || []; }).catch(function () { return []; }),
+        tm.listMilestones(id).then(function (r) { return r.items || []; }).catch(function () { return []; }),
+        tm.listDeliverables(id).then(function (r) { return r.items || []; }).catch(function () { return []; }),
+        tm.listMeetings(id).then(function (r) { return r.items || []; }).catch(function () { return []; })
+      ]).then(function (res) {
+        var tasks = res[0], raid = res[1], ms = res[2], dl = res[3], mt = res[4];
+        // keep the tab pills accurate from this single fetch
+        setCount('tasks', tasks.length); setCount('raid', raid.length);
+        setCount('milestones', ms.length); setCount('deliverables', dl.length); setCount('meetings', mt.length);
+
+        // ---- needs attention: overdue tasks first, then open high/critical RAID ----
+        var attn = [];
+        tasks.filter(function (t) { return t.isOverdue === 'Y'; })
+          .sort(function (a, b) { return (a.dueDate || '').localeCompare(b.dueDate || ''); })
+          .forEach(function (t) {
+            attn.push({ tone: 'danger', icon: '⏰', title: t.title,
+              sub: self.t('tm.tab.tasks') + ' · ' + (t.priority || '') + (t.assignees ? ' · ' + t.assignees : ''),
+              when: self.daysLabel(t.dueDate, true), whenColor: 'var(--red)' });
+          });
+        raid.filter(function (r) { return r.status === 'OPEN' && (r.severity === 'HIGH' || r.severity === 'CRITICAL'); })
+          .forEach(function (r) {
+            attn.push({ tone: 'warn', icon: '⚠️', title: r.title,
+              sub: (r.type || 'RISK') + ' · ' + (r.severity || '') + (r.ownerName ? ' · ' + r.ownerName : ''),
+              when: self.t('tm.detail.openLabel'), whenColor: '#b05e1a' });
+          });
+        self.attention(attn.slice(0, 6));
+
+        // ---- upcoming: future-dated milestones / deliverables / meetings, soonest first ----
+        var up = [];
+        ms.forEach(function (m) { if (m.dueDate) up.push({ date: m.dueDate, title: m.titleEn, sub: self.t('tm.tab.milestones') }); });
+        dl.forEach(function (d) { if (d.dueDate) up.push({ date: d.dueDate, title: d.titleEn, sub: self.t('tm.tab.deliverables') }); });
+        mt.forEach(function (m) { if (m.meetingDate) up.push({ date: m.meetingDate, title: m.title, sub: self.t('tm.tab.meetings') }); });
+        var today = self.todayStr();
+        self.upcoming(up.filter(function (x) { return x.date >= today; })
+          .sort(function (a, b) { return a.date.localeCompare(b.date); })
+          .slice(0, 5)
+          .map(function (x) {
+            var dd = self.daysFromNow(x.date);
+            return { day: self.upDay(x.date), mon: self.upMon(x.date), title: x.title, sub: x.sub,
+              days: self.daysLabel(x.date, false),
+              badgeClass: dd <= 3 ? 'badge badge--warn' : 'badge badge--muted' };
+          }));
+      });
     };
 
     // ---- display helpers ----------------------------------------------------
@@ -106,6 +179,42 @@ function (ko, tm, i18n, toast) {
     self.statusLabel = function (code) {
       var f = self.taskStatuses().filter(function (s) { return s.code === code; })[0];
       return f ? f.nameEn : code;
+    };
+
+    // E4: semantic status / severity → platform badge classes
+    self.statusBadge = function (code) {
+      var c = String(code || '').toUpperCase();
+      if (['DONE', 'ACCEPTED', 'ACHIEVED', 'COMPLETED', 'CLOSED', 'ACTIVE', 'APPROVED'].indexOf(c) >= 0) return 'badge badge--ok';
+      if (['BLOCKED', 'CANCELLED', 'REJECTED', 'OVERDUE'].indexOf(c) >= 0) return 'badge badge--danger';
+      if (['REVIEW', 'PENDING', 'AT_RISK', 'ON_HOLD', 'ONHOLD'].indexOf(c) >= 0) return 'badge badge--warn';
+      if (['IN_PROGRESS', 'PLANNED', 'NOT_STARTED', 'TODO', 'DRAFT'].indexOf(c) >= 0) return 'badge badge--info';
+      return 'badge badge--muted';
+    };
+    self.sevBadge = function (code) {
+      var c = String(code || '').toUpperCase();
+      if (c === 'CRITICAL' || c === 'HIGH') return 'badge badge--danger';
+      if (c === 'MEDIUM') return 'badge badge--warn';
+      if (c === 'LOW') return 'badge badge--info';
+      return 'badge badge--muted';
+    };
+
+    // ---- date helpers (Latin digits) for overview "upcoming" / attention ----
+    var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    function pad2(n) { return (n < 10 ? '0' : '') + n; }
+    self.todayStr = function () { var d = new Date(); return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()); };
+    self.upDay = function (s) { return s ? String(Number(s.slice(8, 10))) : ''; };
+    self.upMon = function (s) { return s ? (MON[Number(s.slice(5, 7)) - 1] || '') : ''; };
+    self.daysFromNow = function (s) {
+      if (!s) return 0;
+      var a = new Date(s + 'T00:00:00'), b = new Date(self.todayStr() + 'T00:00:00');
+      return Math.round((a - b) / 86400000);
+    };
+    // late=true → "N days late"; else → "today" / "in N days"
+    self.daysLabel = function (s, late) {
+      var d = self.daysFromNow(s);
+      if (late) return Math.abs(d) <= 0 ? self.t('tm.teams.overdue') : (Math.abs(d) + ' ' + self.t('tm.detail.daysLate'));
+      if (d <= 0) return self.t('tm.detail.dueToday');
+      return d + ' ' + self.t('tm.detail.daysLeft');
     };
 
     // ---- Kanban -------------------------------------------------------------
@@ -127,10 +236,12 @@ function (ko, tm, i18n, toast) {
 
     // ---- generic add-forms (objective/task/deliverable/raid/milestone/meeting)
     self.adding = ko.observable('');
+    self.editId = ko.observable(null);   // record id when the drawer is in edit mode (null = create)
     self.fTitle = ko.observable(''); self.fDesc = ko.observable('');
     self.fStatus = ko.observable(''); self.fPriority = ko.observable('MEDIUM');
     self.fDue = ko.observable(''); self.fType = ko.observable(''); self.fLocation = ko.observable('');
     self.openAdd = function (kind) {
+      self.editId(null);
       self.adding(kind); self.fTitle(''); self.fDesc(''); self.fDue(''); self.fLocation('');
       self.fPriority('MEDIUM');
       if (kind === 'task') self.fStatus('TODO');
@@ -140,38 +251,94 @@ function (ko, tm, i18n, toast) {
       else self.fStatus('NOT_STARTED');
       self.fType(kind === 'raid' ? 'ISSUE' : 'DOCUMENT');
     };
-    self.cancelAdd = function () { self.adding(''); };
+    // open the same drawer pre-filled to UPDATE an existing row (deliverable/raid/milestone/meeting)
+    self.openEdit = function (kind, row) {
+      self.adding(kind);
+      self.fTitle(''); self.fDesc(''); self.fDue(''); self.fLocation(''); self.fPriority('MEDIUM'); self.fType('');
+      if (kind === 'deliverable') {
+        self.fTitle(row.titleEn || ''); self.fDesc(row.description || ''); self.fType(row.type || 'DOCUMENT');
+        self.fStatus(row.status || 'NOT_STARTED'); self.fDue(row.dueDate || ''); self.editId(row.deliverableId);
+      } else if (kind === 'raid') {
+        self.fTitle(row.title || ''); self.fDesc(row.description || ''); self.fType(row.type || 'ISSUE');
+        self.fPriority(row.severity || 'MEDIUM'); self.fStatus(row.status || 'OPEN'); self.editId(row.logId);
+      } else if (kind === 'milestone') {
+        self.fTitle(row.titleEn || ''); self.fDue(row.dueDate || ''); self.fStatus(row.status || 'PENDING');
+        self.editId(row.milestoneId);
+      } else if (kind === 'meeting') {
+        self.fTitle(row.title || ''); self.fDue(row.meetingDate || ''); self.fLocation(row.location || '');
+        self.fDesc(row.agenda || ''); self.fStatus(row.status || 'PLANNED'); self.editId(row.meetingId);
+      }
+    };
+    self.cancelAdd = function () { self.adding(''); self.editId(null); };
+    // drawer open state for the generic add/edit form (writable so <edit-drawer> can close it)
+    self.addOpen = ko.computed({
+      read: function () { return !!self.adding(); },
+      write: function (v) { if (!v) { self.adding(''); self.editId(null); } }
+    });
+    self.addTitle = ko.computed(function () {
+      var addMap = {
+        objective: 'tm.detail.addObjective', task: 'tm.detail.addTask',
+        deliverable: 'tm.detail.addDeliverable', raid: 'tm.detail.addRaid',
+        milestone: 'tm.detail.addMilestone', meeting: 'tm.detail.addMeeting'
+      };
+      var editMap = {
+        deliverable: 'tm.detail.editDeliverable', raid: 'tm.detail.editRaid',
+        milestone: 'tm.detail.editMilestone', meeting: 'tm.detail.editMeeting'
+      };
+      var k = self.adding();
+      if (self.editId()) return self.t(editMap[k] || 'tm.action.edit');
+      return self.t(addMap[k] || 'tm.action.add');
+    });
     self.saveAdd = function () {
-      var id = self.teamId, kind = self.adding();
+      var id = self.teamId, kind = self.adding(), eid = self.editId();
       if (!self.fTitle()) { toast.error(self.t('tm.detail.titleReq')); return; }
-      var ok = function (tab) { return function () { toast.success(self.t('tm.common.saved')); self.adding(''); self.loadTab(tab); self.refreshTeam(); }; };
+      var ok = function (tab) { return function () { toast.success(self.t('tm.common.saved')); self.adding(''); self.editId(null); self.loadTab(tab); self.refreshTeam(); }; };
       if (kind === 'objective')
-        tm.saveObjective({ teamId: id, titleEn: self.fTitle(), description: self.fDesc(), status: self.fStatus(), targetDate: self.fDue() }).then(ok('objectives')).catch(function () {});
+        tm.saveObjective({ objectiveId: eid, teamId: id, titleEn: self.fTitle(), description: self.fDesc(), status: self.fStatus(), targetDate: self.fDue() }).then(ok('objectives')).catch(function () {});
       else if (kind === 'task')
-        tm.saveTask({ teamId: id, title: self.fTitle(), description: self.fDesc(), priority: self.fPriority(), status: self.fStatus(), dueDate: self.fDue() }).then(ok('tasks')).catch(function () {});
+        tm.saveTask({ taskId: eid, teamId: id, title: self.fTitle(), description: self.fDesc(), priority: self.fPriority(), status: self.fStatus(), dueDate: self.fDue() }).then(ok('tasks')).catch(function () {});
       else if (kind === 'deliverable')
-        tm.saveDeliverable({ teamId: id, titleEn: self.fTitle(), description: self.fDesc(), type: self.fType(), status: self.fStatus(), dueDate: self.fDue() }).then(ok('deliverables')).catch(function () {});
+        tm.saveDeliverable({ deliverableId: eid, teamId: id, titleEn: self.fTitle(), description: self.fDesc(), type: self.fType(), status: self.fStatus(), dueDate: self.fDue() }).then(ok('deliverables')).catch(function () {});
       else if (kind === 'raid')
-        tm.saveRaid({ teamId: id, type: self.fType(), title: self.fTitle(), description: self.fDesc(), severity: self.fPriority(), status: self.fStatus() }).then(ok('raid')).catch(function () {});
+        tm.saveRaid({ logId: eid, teamId: id, type: self.fType(), title: self.fTitle(), description: self.fDesc(), severity: self.fPriority(), status: self.fStatus() }).then(ok('raid')).catch(function () {});
       else if (kind === 'milestone')
-        tm.saveMilestone({ teamId: id, titleEn: self.fTitle(), dueDate: self.fDue(), status: self.fStatus() }).then(ok('milestones')).catch(function () {});
+        tm.saveMilestone({ milestoneId: eid, teamId: id, titleEn: self.fTitle(), dueDate: self.fDue(), status: self.fStatus() }).then(ok('milestones')).catch(function () {});
       else if (kind === 'meeting')
-        tm.saveMeeting({ teamId: id, title: self.fTitle(), meetingDate: self.fDue(), location: self.fLocation(), agenda: self.fDesc(), status: self.fStatus() }).then(ok('meetings')).catch(function () {});
+        tm.saveMeeting({ meetingId: eid, teamId: id, title: self.fTitle(), meetingDate: self.fDue(), location: self.fLocation(), agenda: self.fDesc(), status: self.fStatus() }).then(ok('meetings')).catch(function () {});
     };
 
     // ---- members ------------------------------------------------------------
     self.addingMember = ko.observable(false);
+    self.memberEditId = ko.observable(null);   // userId being edited (null = add a new member)
     self.mUser = ko.observable(''); self.mRole = ko.observable('MEMBER'); self.mTitle = ko.observable('');
+    self.mEditName = ko.observable('');         // display name of the member being edited
     self.openAddMember = function () {
       if (!self.allUsers().length) self.refreshUsers();
-      self.mUser(''); self.mRole('MEMBER'); self.mTitle(''); self.addingMember(true);
+      self.memberEditId(null);
+      self.mUser(''); self.mRole('MEMBER'); self.mTitle(''); self.mEditName(''); self.addingMember(true);
     };
-    self.cancelAddMember = function () { self.addingMember(false); };
+    self.openEditMember = function (m) {
+      self.mUser(m.userId); self.mRole(m.roleCode || 'MEMBER'); self.mTitle(m.title || '');
+      self.mEditName(m.name || ''); self.memberEditId(m.userId); self.addingMember(true);
+    };
+    self.cancelAddMember = function () { self.addingMember(false); self.memberEditId(null); };
+    self.memberOpen = ko.computed({
+      read: function () { return self.addingMember(); },
+      write: function (v) { if (!v) { self.addingMember(false); self.memberEditId(null); } }
+    });
+    self.memberDrawerTitle = ko.computed(function () {
+      return self.t(self.memberEditId() ? 'tm.detail.editMember' : 'tm.detail.addMember');
+    });
+    self.memberSaveLabel = ko.computed(function () {
+      return self.t(self.memberEditId() ? 'tm.action.saveChanges' : 'tm.action.add');
+    });
     self.saveMember = function () {
       if (!self.mUser()) { toast.error(self.t('tm.detail.selectUser')); return; }
-      tm.addMember({ teamId: self.teamId, userId: self.mUser(), roleCode: self.mRole(), title: self.mTitle() })
-        .then(function () { toast.success(self.t('tm.common.saved')); self.addingMember(false); self.loadTab('members'); self.refreshTeam(); })
-        .catch(function () {});
+      var done = function () { toast.success(self.t('tm.common.saved')); self.addingMember(false); self.memberEditId(null); self.loadTab('members'); self.refreshTeam(); };
+      if (self.memberEditId())
+        tm.updateMember({ teamId: self.teamId, userId: self.memberEditId(), roleCode: self.mRole(), title: self.mTitle() }).then(done).catch(function () {});
+      else
+        tm.addMember({ teamId: self.teamId, userId: self.mUser(), roleCode: self.mRole(), title: self.mTitle() }).then(done).catch(function () {});
     };
     self.changeRole = function (m) {
       tm.setMemberRole({ teamId: self.teamId, userId: m.userId, roleCode: m.roleCode })
@@ -251,10 +418,25 @@ function (ko, tm, i18n, toast) {
 
     // ---- documents ----------------------------------------------------------
     self.addingDoc = ko.observable(false);
+    self.docEditId = ko.observable(null);   // doc_id being edited (null = upload a new document)
     self.dFileName = ko.observable(''); self.dDocType = ko.observable('OTHER'); self.dNotes = ko.observable('');
     self._docB64 = null; self._docMime = null; self._docSize = null;
-    self.openAddDoc = function () { self.addingDoc(true); self.dFileName(''); self.dDocType('OTHER'); self.dNotes(''); self._docB64 = null; self._docMime = null; self._docSize = null; };
-    self.cancelAddDoc = function () { self.addingDoc(false); };
+    self.openAddDoc = function () { self.docEditId(null); self.addingDoc(true); self.dFileName(''); self.dDocType('OTHER'); self.dNotes(''); self._docB64 = null; self._docMime = null; self._docSize = null; };
+    self.openEditDoc = function (d) {
+      self.docEditId(d.docId); self.dFileName(d.fileName || ''); self.dDocType(d.docTypeCode || 'OTHER'); self.dNotes(d.notes || '');
+      self._docB64 = null; self._docMime = null; self._docSize = null; self.addingDoc(true);
+    };
+    self.cancelAddDoc = function () { self.addingDoc(false); self.docEditId(null); };
+    self.docOpen = ko.computed({
+      read: function () { return self.addingDoc(); },
+      write: function (v) { if (!v) { self.addingDoc(false); self.docEditId(null); } }
+    });
+    self.docDrawerTitle = ko.computed(function () {
+      return self.t(self.docEditId() ? 'tm.detail.editDocument' : 'tm.detail.addDocument');
+    });
+    self.docSaveLabel = ko.computed(function () {
+      return self.t(self.docEditId() ? 'tm.action.saveChanges' : 'tm.action.upload');
+    });
     self.onFilePick = function (e) {
       var f = e.target.files && e.target.files[0];
       if (!f) return true;
@@ -267,11 +449,15 @@ function (ko, tm, i18n, toast) {
     };
     self.saveDoc = function () {
       if (!self.dFileName()) { toast.error(self.t('tm.detail.fileNameReq')); return; }
-      tm.addDocument({
-        teamId: self.teamId, sourceType: 'TEAM', sourceId: self.teamId,
-        fileName: self.dFileName(), docTypeCode: self.dDocType(), notes: self.dNotes(),
-        mimeType: self._docMime, fileSize: self._docSize, fileB64: self._docB64
-      }).then(function () { toast.success(self.t('tm.common.saved')); self.addingDoc(false); self.loadTab('documents'); }).catch(function () {});
+      var done = function () { toast.success(self.t('tm.common.saved')); self.addingDoc(false); self.docEditId(null); self.loadTab('documents'); };
+      if (self.docEditId())
+        tm.updateDocument({ docId: self.docEditId(), fileName: self.dFileName(), docTypeCode: self.dDocType(), notes: self.dNotes() }).then(done).catch(function () {});
+      else
+        tm.addDocument({
+          teamId: self.teamId, sourceType: 'TEAM', sourceId: self.teamId,
+          fileName: self.dFileName(), docTypeCode: self.dDocType(), notes: self.dNotes(),
+          mimeType: self._docMime, fileSize: self._docSize, fileB64: self._docB64
+        }).then(done).catch(function () {});
     };
 
     // ---- objectives: remove + measurable-objective drawer (key results) -----
@@ -364,7 +550,18 @@ function (ko, tm, i18n, toast) {
     };
 
     // ---- refreshers ---------------------------------------------------------
-    self.refreshTeam = function () { tm.getTeam(self.teamId).then(function (t0) { self.team(t0); }).catch(function () {}); };
+    self.refreshTeam = function () {
+      tm.getTeam(self.teamId).then(function (t0) {
+        self.team(t0);
+        // seed tab-count pills from the summary (refined to real lengths as tabs load)
+        var c = self.counts();
+        if (t0.memberCount != null) c.members = t0.memberCount;
+        if (t0.objectiveCount != null) c.objectives = t0.objectiveCount;
+        if (t0.taskCount != null) c.tasks = t0.taskCount;
+        if (t0.deliverableCount != null) c.deliverables = t0.deliverableCount;
+        self.counts(c);
+      }).catch(function () {});
+    };
     self.refreshUsers = function () { tm.listUsers('').then(function (r) { self.allUsers(r.items || []); }).catch(function () {}); };
 
     // ---- boot ---------------------------------------------------------------

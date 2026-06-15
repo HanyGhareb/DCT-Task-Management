@@ -24,8 +24,9 @@ Module: **Freelancers** · Brand: `#7C4DBE` · ORDS base: `/ords/admin/fl`
 **Registrations** (`registrations`) — freelancer registration applications.
 - `openNew` / `openItem` · `reload` · `badgeFor`.
 
-**Registration Editor** (`registrationEdit`) — create/edit a registration.
-- `saveDraft` / `submit` · `pickPhoto` / `photoSelected` · `back`.
+**Registration Editor** (`registrationEdit`) — create/edit a registration. Inline per-field validation (`checkField`), required-documents checklist + How-to-Complete panel.
+- `saveDraft` / `submit` · `checkField` · `pickPhoto` / `photoSelected` · `back`.
+- Required docs: `loadRegDocs` · `pickDocFile` / `docFileSelected` · `removeDoc` · `viewDoc` · `missingDocs` (computed `docChecklist`).
 
 ## 4. Freelancers
 
@@ -95,14 +96,15 @@ The `portal/*` endpoints serve the external freelancer self-service Portal (sepa
 | Area | Method & Path |
 |---|---|
 | Dashboard | `GET dashboard/stats` · `GET dashboard/charts` |
-| Registrations | `GET registrations/` · `POST registrations/` · `GET registrations/:id` · `PUT registrations/:id` · `POST registrations/:id/submit` · `PUT registrations/:id/photo` · `GET registrations/:id/photo` *(media)* |
+| Registrations | `GET registrations/` · `POST registrations/` · `GET registrations/:id` · `PUT registrations/:id` · `POST registrations/:id/submit` · `PUT registrations/:id/photo` · `GET registrations/:id/photo` *(media)* · `GET registrations/:id/documents` |
+| Doc requirements | `GET doc-requirements/?context=…` |
 | Freelancers | `GET freelancers/` · `GET freelancers/:id` · `PUT freelancers/:id` · `PUT freelancers/:id/photo` · `GET freelancers/:id/photo` *(media)* · `POST freelancers/:id/bank-accounts` · `PUT bank-accounts/:id` · `POST freelancers/:id/portal-invite` |
 | Contracts | `GET contracts/` · `POST contracts/` · `GET contracts/:id` · `PUT contracts/:id` · `POST contracts/:id/submit` · `GET contracts/:id/schedule` · `GET contracts/:id/amendments` · `POST contracts/:id/amendments` · `POST amendments/:id/submit` |
 | Renewals | `GET renewals/` · `POST renewals/` · `POST renewals/:id/submit` |
 | Payment Schedule | `GET schedule/` · `POST schedule/bulk-generate` |
 | Vouchers | `GET vouchers/` · `POST vouchers/` · `GET vouchers/:id` · `PUT vouchers/:id` · `POST vouchers/:id/submit` · `POST vouchers/:id/mark-paid` |
 | Deliverables | `GET deliverables/` · `POST deliverables/` · `POST deliverables/:id/accept` · `POST deliverables/:id/reject` |
-| Documents | `GET documents/` · `POST documents/` · `PUT documents/:id/file` · `GET documents/:id/file` *(media)* |
+| Documents | `GET documents/` · `POST documents/` · `PUT documents/:id/file` · `GET documents/:id/file` *(media)* · `DELETE documents/:id` |
 | Profile Changes | `GET profile-changes/` · `POST profile-changes/` · `POST profile-changes/:id/submit` |
 | Approvals | `GET approvals/pending` · `POST approvals/:id/action` |
 | Reference | `GET lookups` · `GET gl-codes` |
