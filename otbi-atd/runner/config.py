@@ -68,8 +68,13 @@ def get_browser_jobs_sqlcl(only=None):
 def get_browser_jobs(conn, only=None):
     """Enabled jobs whose env is BROWSER track (Track B owns these)."""
     cur = conn.cursor()
-    sql = """select j.* from prod.atd_otbi_jobs j
+    sql = """select j.job_name, j.env_name, j.target_name, j.source_ref, j.params_json,
+                    j.stage_table, j.final_table, j.load_mode, j.key_columns,
+                    j.column_map_json, e.analytics_base_url, e.credential_ref,
+                    e.extract_track, t.db_kind
+               from prod.atd_otbi_jobs j
                join prod.atd_otbi_env e on e.env_name = j.env_name
+               join prod.atd_target_db t on t.target_name = j.target_name
               where j.enabled = 'Y' and e.enabled = 'Y'
                 and e.extract_track = 'BROWSER'"""
     if only:

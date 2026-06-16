@@ -13,6 +13,7 @@ tables. For a REMOTE target, pass a separate connection.
 import csv
 import io
 import json
+import os
 from datetime import datetime
 
 DATE_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y", "%d-%b-%y",
@@ -80,9 +81,12 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     if load_mode == "TRUNCATE_INSERT":
         cur.execute(f"truncate table {stage_table}")
 
+    # chunked array-bind insert: fast (one round-trip per chunk) and memory-bounded
     binds = ", ".join(f":{i+1}" for i in range(len(target_cols)))
-    cur.executemany(
-        f"insert into {stage_table} ({', '.join(target_cols)}) values ({binds})", conv)
+    insert_sql = f"insert into {stage_table} ({', '.join(target_cols)}) values ({binds})"
+    chunk = int(os.environ.get("ATD_DB_CHUNK", "5000"))
+    for i in range(0, len(conv), chunk):
+        cur.executemany(insert_sql, conv[i:i + chunk])
 
     if load_mode == "MERGE" and final_table:
         keys = [k.strip().upper() for k in (key_columns or "").split(",") if k.strip()]

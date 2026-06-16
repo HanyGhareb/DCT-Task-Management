@@ -13,6 +13,14 @@ import re
 import hashlib
 
 import sqlrun
+import checks
+
+
+def _logvals(job_name, n, checksum):
+    """Build the (row_count, csv_checksum, message) tail for a SUCCESS run-log row."""
+    note = checks.truncation_note(n)
+    msg = "NULL" if not note else "'" + note.replace("'", "''") + "'"
+    return f"{n},'{checksum}',{msg}"
 
 _DT = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
 _D = re.compile(r"^\d{4}-\d{2}-\d{2}$")
@@ -98,8 +106,8 @@ def _load_bulk(job, csv_text):
 
     sqlrun.run_sql(
         "INSERT INTO prod.atd_load_run_log(job_name, track, status, finished, row_count, "
-        f"csv_checksum) VALUES ('{job_name}','BROWSER','SUCCESS',systimestamp,{len(rows)},"
-        f"'{checksum}');\nCOMMIT;")
+        f"csv_checksum, message) VALUES ('{job_name}','BROWSER','SUCCESS',systimestamp,"
+        f"{_logvals(job_name, len(rows), checksum)});\nCOMMIT;")
     return len(rows)
 
 
@@ -130,9 +138,9 @@ def load(job, csv_text):
                 f.write(f"  INTO {stage} ({collist}) VALUES ({vals})\n")
             f.write("SELECT 1 FROM dual;\n")
         f.write("INSERT INTO prod.atd_load_run_log"
-                "(job_name, track, status, finished, row_count, csv_checksum) "
-                f"VALUES ('{job_name}','BROWSER','SUCCESS',systimestamp,{len(rows)},"
-                f"'{checksum}');\n")
+                "(job_name, track, status, finished, row_count, csv_checksum, message) "
+                f"VALUES ('{job_name}','BROWSER','SUCCESS',systimestamp,"
+                f"{_logvals(job_name, len(rows), checksum)});\n")
         f.write("COMMIT;\nEXIT;\n")
     try:
         sqlrun.run_script(script, check=True)

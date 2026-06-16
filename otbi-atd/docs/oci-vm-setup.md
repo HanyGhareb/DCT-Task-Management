@@ -59,14 +59,18 @@ export OTBI_PWD='********'
 export ATD_STATE_DIR="$HOME/otbi-atd-state"
 export ATD_SQLCL="/usr/local/bin/sql"
 export ATD_SQLCL_CONN="prod_mcp"
-export ATD_LOAD_METHOD="bulk"          # fast SQLcl LOAD path
 export ATD_MFA_WAIT="600"              # give yourself time to approve from the phone
 # Telegram MFA delivery
 export ATD_NOTIFY="telegram"
-export ATD_TG_TOKEN="8879979459:AAF...(regenerate in BotFather for prod)"
-export ATD_TG_CHAT="721809903"
+export ATD_TG_TOKEN="<bot token from BotFather>"
+export ATD_TG_CHAT="<your chat id>"
+# OPTIONAL fast load for large analyses (~10x): uses python-oracledb + the wallet
+# export ATD_DB_MODE="oracledb"
+# export ATD_DB_USER="<db user>" ; export ATD_DB_PASSWORD="<pwd>"
+# export ATD_DB_DSN="<tns_alias>" ; export TNS_ADMIN="$HOME/wallet"
 ```
 > Keep secrets out of git. `chmod 600 env.sh`. Consider OCI Vault for the passwords later.
+> Default load (SQLcl) needs no DB creds; `oracledb` mode is only for large tables.
 
 ## 6. First run (one-time MFA to seed the session)
 ```bash

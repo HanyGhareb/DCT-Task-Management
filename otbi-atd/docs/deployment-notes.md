@@ -71,6 +71,25 @@ On first run (or after the session expires) the console prints
 approve. The session is saved to `auth_state_FUSION_ADGOV.json` and reused on later runs
 (no MFA) until Entra expires it. Each run writes a row to `PROD.ATD_LOAD_RUN_LOG`.
 
+## Fast load mode (oracledb) — for large analyses
+Default is SQLcl (no creds). For big tables, switch the DB layer to chunked array-bind:
+```
+set ATD_DB_MODE=oracledb
+set ATD_DB_USER=<db user>      &  set ATD_DB_PASSWORD=********
+set ATD_DB_DSN=<tns alias>     &  set TNS_ADMIN=<wallet dir>   (myDoc/)
+set ATD_DB_CHUNK=5000          # rows per round-trip
+pip install python-oracledb
+```
+~10× faster on large loads (bind variables vs SQLcl literal hard-parse). Same control tables,
+same runner. Measured baselines + why bigger SQLcl batches/`LOAD` are slower: see REFERENCE.md §6.
+
+## Truncation / OTBI export cap warning
+OTBI caps the CSV download server-side (often ~65k rows) → large analyses can come back
+silently truncated. The runner flags it: if a load's row count equals a common cap
+(`ATD_TRUNCATION_CAPS`) or is below `ATD_EXPECTED_MIN`, it prints `[WARN]`, sends it to Telegram,
+and stores it in `ATD_LOAD_RUN_LOG.message`. Raise the pod's download limit before relying on
+extracts near the cap. Full detail: REFERENCE.md §7.
+
 ## MFA number delivery (Telegram) — approve from anywhere
 When the saved session has expired the runner needs a fresh push approval. It prints the
 number-matching value NN, writes it to a file, AND sends it via `notify.py` so you can read
