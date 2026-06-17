@@ -29,6 +29,38 @@ def _rows(cur):
     return [dict(zip(cols, r)) for r in cur.fetchall()]
 
 
+def apply_runner_config(conn=None):
+    """Overlay the UI-managed operational settings (ATD_RUNNER_CONFIG) onto the
+    process environment at startup. DB value wins over env.ps1 for these keys;
+    secrets are NOT stored there (they stay in env.ps1 / Vault). Best-effort:
+    a failure here never blocks a run. Reads via the live oracledb connection
+    when given, else via SQLcl (sqlrun)."""
+    try:
+        rows = []
+        if conn is not None:
+            cur = conn.cursor()
+            cur.execute("select config_key, config_value from prod.atd_runner_config "
+                        "where config_value is not null")
+            rows = cur.fetchall()
+        else:
+            import sqlrun
+            data = sqlrun.query_json(
+                "select config_key, config_value from prod.atd_runner_config "
+                "where config_value is not null")
+            rows = [(d.get("config_key"), d.get("config_value")) for d in (data or [])]
+    except Exception as e:  # noqa: BLE001
+        print(f"[config] ATD_RUNNER_CONFIG not applied: {e}")
+        return 0
+    n = 0
+    for k, v in rows:
+        if k and v is not None and str(v) != "":
+            os.environ[str(k)] = str(v)
+            n += 1
+    if n:
+        print(f"[config] applied {n} runner settings from ATD_RUNNER_CONFIG")
+    return n
+
+
 def get_env(conn, env_name):
     cur = conn.cursor()
     cur.execute("""select * from prod.atd_otbi_env where env_name = :n""", n=env_name)

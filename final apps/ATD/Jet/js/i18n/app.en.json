@@ -14,6 +14,15 @@
   "atd.nav.configGroup": "Configuration",
   "atd.nav.environments": "Environments",
   "atd.nav.targets": "Targets",
+  "atd.nav.runnerSettings": "Runner Settings",
+
+  "atd.rs.title": "Runner Settings",
+  "atd.rs.intro": "Operational settings the runner reads at startup (DB overrides env.ps1). Secrets (passwords, bot token) are NOT here — they stay in env.ps1 / OCI Vault.",
+  "atd.rs.save": "Save Settings",
+  "atd.rs.saved": "Settings saved — applied on the next run",
+  "atd.rs.secretSet": "set",
+  "atd.rs.notSet": "not set",
+  "atd.rs.updated": "Updated",
 
   "atd.dash.title": "Analytics Loader",
   "atd.dash.jobs": "Total Jobs",

@@ -25,6 +25,7 @@ CREATE OR REPLACE SYNONYM atd_target_db    FOR prod.atd_target_db;
 CREATE OR REPLACE SYNONYM atd_otbi_jobs    FOR prod.atd_otbi_jobs;
 CREATE OR REPLACE SYNONYM atd_load_run_log FOR prod.atd_load_run_log;
 CREATE OR REPLACE SYNONYM atd_queue_pkg    FOR prod.atd_queue_pkg;
+CREATE OR REPLACE SYNONYM atd_runner_config FOR prod.atd_runner_config;
 
 -- =============================================================================
 -- 2. Module + handlers (wrapped in a temp procedure so SQLcl skips bind scanning)
@@ -753,6 +754,62 @@ BEGIN
               NVL(r.row_count,0)||','||NVL(r.started_s,'')||','||NVL(r.finished_s,''));
   END LOOP;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- RUNNER CONFIG (UI-managed non-secret operational settings)
+    -- =========================================================================
+    def_template('config');
+    def_handler('config', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.open_array('items');
+  FOR r IN (SELECT * FROM atd_runner_config ORDER BY display_order, config_key) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('key', r.config_key);
+    -- never return a secret value in clear; expose only whether it is set
+    APEX_JSON.write('value', CASE WHEN r.is_secret='Y' THEN '' ELSE NVL(r.config_value,'') END);
+    APEX_JSON.write('isSecret', r.is_secret);
+    APEX_JSON.write('secretSet', CASE WHEN r.is_secret='Y' AND r.config_value IS NOT NULL THEN 'Y' ELSE 'N' END);
+    APEX_JSON.write('valueType', r.value_type);
+    APEX_JSON.write('enumValues', NVL(r.enum_values,''));
+    APEX_JSON.write('description', NVL(r.description,''));
+    APEX_JSON.write('updatedBy', NVL(r.updated_by,''));
+    APEX_JSON.write('updatedAt', TO_CHAR(r.updated_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array; APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_handler('config', 'PUT', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_cnt  NUMBER; l_key VARCHAR2(60); l_val VARCHAR2(2000); l_n NUMBER := 0;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_cnt := NVL(APEX_JSON.get_count(p_path => 'items'), 0);
+  FOR i IN 1 .. l_cnt LOOP
+    l_key := APEX_JSON.get_varchar2(p_path => 'items['||i||'].key');
+    l_val := APEX_JSON.get_varchar2(p_path => 'items['||i||'].value');
+    -- only UPDATE known keys (never create arbitrary rows from the client)
+    UPDATE atd_runner_config
+       SET config_value = l_val, updated_by = l_user, updated_at = SYSTIMESTAMP
+     WHERE config_key = l_key;
+    l_n := l_n + SQL%ROWCOUNT;
+  END LOOP;
+  COMMIT;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('updated', l_n); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 

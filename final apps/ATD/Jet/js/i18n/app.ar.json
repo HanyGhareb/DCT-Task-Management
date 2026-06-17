@@ -14,6 +14,15 @@
   "atd.nav.configGroup": "الإعدادات",
   "atd.nav.environments": "البيئات",
   "atd.nav.targets": "الجداول الهدف",
+  "atd.nav.runnerSettings": "إعدادات المُشغّل",
+
+  "atd.rs.title": "إعدادات المُشغّل",
+  "atd.rs.intro": "إعدادات تشغيلية يقرأها المُشغّل عند البدء (قاعدة البيانات تتجاوز env.ps1). الأسرار (كلمات المرور، رمز البوت) ليست هنا — تبقى في env.ps1 / OCI Vault.",
+  "atd.rs.save": "حفظ الإعدادات",
+  "atd.rs.saved": "تم حفظ الإعدادات — تُطبَّق في التشغيل القادم",
+  "atd.rs.secretSet": "مُعيّن",
+  "atd.rs.notSet": "غير مُعيّن",
+  "atd.rs.updated": "آخر تحديث",
 
   "atd.dash.title": "محمّل التحليلات",
   "atd.dash.jobs": "إجمالي المهام",

@@ -45,8 +45,9 @@ function (ko, config, authService, atd, i18n, shell) {
           { id: 'queue', labelKey: 'atd.nav.queue' },
           { id: 'runs',  labelKey: 'atd.nav.runs' } ] },
       { id: 'config', labelKey: 'atd.nav.configGroup', collapsed: ko.observable(false), items: [
-          { id: 'environments', labelKey: 'atd.nav.environments' },
-          { id: 'targets',      labelKey: 'atd.nav.targets' } ] }
+          { id: 'environments',   labelKey: 'atd.nav.environments' },
+          { id: 'targets',        labelKey: 'atd.nav.targets' },
+          { id: 'runnerSettings', labelKey: 'atd.nav.runnerSettings' } ] }
     ];
 
     self.navGroups = ko.computed(function () { return NAV_GROUPS; });

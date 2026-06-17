@@ -217,6 +217,7 @@ def main(argv):
             sys.exit(2)
         import load
         conn = config.connect()
+        config.apply_runner_config(conn)
         if enqueue:
             _enqueue(conn, only)
         failures = _run_worker(conn, load, forever) if worker else 0
@@ -226,9 +227,11 @@ def main(argv):
     if mode == "oracledb":
         import load
         conn = config.connect()
+        config.apply_runner_config(conn)
         jobs = config.get_browser_jobs(conn, only=only)
         run_one = _make_run_one_oracledb(conn, load)
     else:
+        config.apply_runner_config()
         jobs = config.get_browser_jobs_sqlcl(only=only)
         run_one = _run_one_sqlcl
 

@@ -50,5 +50,9 @@ function (api) {
     listRuns:     function (params)    { return api.get('/runs' + qs(params)); },
     getRun:       function (id)        { return api.get('/runs/' + id); },
     runsExportUrl:function (params)    { return '/runs/export' + qs(params); },
+
+    // runner config (UI-managed operational settings)
+    getConfig:    function ()          { return api.get('/config'); },
+    saveConfig:   function (items)     { return api.put('/config', { items: items }); },
   };
 });
