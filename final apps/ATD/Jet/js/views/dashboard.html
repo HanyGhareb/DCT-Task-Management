@@ -1,0 +1,92 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.dash.title')"></h1>
+  </div>
+
+  <!-- ko if: loading -->
+  <div class="muted" data-bind="text: t('atd.common.loading')"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <div class="kpi-row">
+    <div class="kpi" style="cursor:pointer" data-bind="click: function(){ go('jobs'); }">
+      <div class="kpi__n" data-bind="text: k().jobs || 0"></div>
+      <div class="kpi__l" data-bind="text: t('atd.dash.jobs')"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__n" data-bind="text: k().enabledJobs || 0"></div>
+      <div class="kpi__l" data-bind="text: t('atd.dash.enabled')"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__n" data-bind="text: (k().successRate === null || k().successRate === undefined) ? '—' : (k().successRate + '%')"></div>
+      <div class="kpi__l" data-bind="text: t('atd.dash.successRate')"></div>
+    </div>
+    <div class="kpi" style="cursor:pointer" data-bind="click: function(){ go('runs'); }">
+      <div class="kpi__n" data-bind="text: k().runs24h || 0"></div>
+      <div class="kpi__l" data-bind="text: t('atd.dash.runs24')"></div>
+    </div>
+    <div class="kpi">
+      <div class="kpi__n" style="font-size:18px" data-bind="text: k().lastFinished || '—'"></div>
+      <div class="kpi__l" data-bind="text: t('atd.dash.lastFinished')"></div>
+    </div>
+  </div>
+
+  <div style="display:grid; grid-template-columns:340px 1fr; gap:16px; margin-top:16px;">
+    <div class="card">
+      <div class="section-heading" data-bind="text: t('atd.dash.queueState')"></div>
+      <div style="height:240px"><canvas id="atdQueueChart"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="section-heading" data-bind="text: t('atd.dash.recent')"></div>
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th data-bind="text: t('atd.col.job')"></th>
+            <th data-bind="text: t('atd.col.status')"></th>
+            <th data-bind="text: t('atd.col.rows')"></th>
+            <th data-bind="text: t('atd.col.finished')"></th>
+          </tr></thead>
+          <tbody data-bind="foreach: recent">
+            <tr>
+              <td class="mono" data-bind="text: $data.jobName"></td>
+              <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+              <td data-bind="text: $data.rowCount"></td>
+              <td data-bind="text: $data.finished || $data.started || '—'"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- ko if: recent().length === 0 -->
+      <div class="empty-state" data-bind="text: t('atd.detail.noHistory')"></div>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="section-heading" data-bind="text: t('atd.dash.alerts')"></div>
+    <!-- ko if: alerts().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.dash.noAlerts')"></div>
+    <!-- /ko -->
+    <!-- ko if: alerts().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.col.job')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.runs.detail.message')"></th>
+          <th data-bind="text: t('atd.col.started')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: alerts">
+          <tr>
+            <td class="mono" data-bind="text: $data.jobName"></td>
+            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td class="truncate-cell" data-bind="text: $data.message, attr:{ title: $data.message }"></td>
+            <td data-bind="text: $data.started || '—'"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>

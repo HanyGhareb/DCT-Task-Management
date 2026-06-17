@@ -1,0 +1,46 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.queue.title')"></h1>
+    <div class="page-actions">
+      <input class="form-control form-control--sm" type="number" style="max-width:90px" data-bind="value: lease" title="lease minutes">
+      <button class="btn btn-secondary" data-bind="click: reap, text: t('atd.queue.reap')"></button>
+      <button class="btn btn-primary" data-bind="click: enqueueAll, text: t('atd.queue.enqueueAll')"></button>
+    </div>
+  </div>
+
+  <div class="muted" style="margin-bottom:12px" data-bind="text: t('atd.queue.hint')"></div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <!-- ko if: jobs().length === 0 --><div class="empty-state" data-bind="text: t('atd.queue.empty')"></div><!-- /ko -->
+  <!-- ko if: jobs().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.col.job')"></th>
+        <th data-bind="text: t('atd.queue.col.order')"></th>
+        <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.queue.col.worker')"></th>
+        <th data-bind="text: t('atd.queue.col.claimedAt')"></th>
+        <th data-bind="text: t('atd.jobs.col.enabled')"></th>
+        <th style="width:120px;"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: jobs">
+        <tr>
+          <td class="mono" data-bind="text: $data.jobName"></td>
+          <td data-bind="text: $data.priority + '·' + $data.runOrder"></td>
+          <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+          <td class="mono" data-bind="text: $data.claimedBy || '—'"></td>
+          <td data-bind="text: $data.claimedAt || '—'"></td>
+          <td><span class="badge" data-bind="text: $data.enabled, css: { 'badge--active': $data.enabled==='Y', 'badge--idle': $data.enabled!=='Y' }"></span></td>
+          <td class="cell-actions" style="text-align:end;">
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.enqueueOne($data); }, text: $vm.t('atd.action.enqueue')"></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

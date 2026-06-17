@@ -28,7 +28,9 @@ define([], function () {
     { key: 'ar',    code: 'AR', app: '206', color: '#6C4AB6', url: '/AR/Jet/index.html',
       mc: 'AR',           nameKey: 'mod.ar',    descKey: 'mod.ar.desc' },
     { key: 'tm',    code: 'TM', app: '207', color: '#0E8A8A', url: '/TM/Jet/index.html',
-      mc: 'TASK_MGMT',    nameKey: 'mod.tm',    descKey: 'mod.tm.desc' }
+      mc: 'TASK_MGMT',    nameKey: 'mod.tm',    descKey: 'mod.tm.desc' },
+    { key: 'atd',   code: 'AT', app: '208', color: '#3A4FB0', url: '/ATD/Jet/index.html',
+      mc: 'ATD',          nameKey: 'mod.atd',   descKey: 'mod.atd.desc' }
   ];
 
   function byKey(key) {

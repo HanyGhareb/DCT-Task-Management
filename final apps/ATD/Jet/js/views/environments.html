@@ -1,0 +1,58 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.envs.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: newEnv, text: '+ ' + t('atd.envs.new')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <!-- ko if: envs().length === 0 --><div class="empty-state" data-bind="text: t('atd.envs.empty')"></div><!-- /ko -->
+  <!-- ko if: envs().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.envs.col.name')"></th>
+        <th data-bind="text: t('atd.envs.col.url')"></th>
+        <th data-bind="text: t('atd.envs.col.track')"></th>
+        <th data-bind="text: t('atd.jobs.col.enabled')"></th>
+        <th style="width:140px;"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: envs">
+        <tr>
+          <td class="mono" data-bind="text: $data.envName"></td>
+          <td class="truncate-cell mono" data-bind="text: $data.analyticsBaseUrl, attr:{ title: $data.analyticsBaseUrl }"></td>
+          <td><span class="badge badge--info" data-bind="text: $data.extractTrack"></span></td>
+          <td><span class="badge" data-bind="text: $data.enabled, css: { 'badge--active': $data.enabled==='Y', 'badge--idle': $data.enabled!=='Y' }"></span></td>
+          <td class="cell-actions" style="text-align:end;">
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.editEnv($data); }, text: $vm.t('atd.action.edit')"></button>
+            <button class="btn btn-xs btn-danger" data-bind="click: function(){ $vm.del($data); }, text: $vm.t('atd.action.delete')"></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <edit-drawer params="open: showForm, vm: $vm,
+                       title: formTitle, saveLabel: formSaveLabel,
+                       cancelLabel: t('atd.action.cancel'), onSave: save, width: '580px'">
+    <div class="form-grid">
+      <!-- ko if: !editName() -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.envs.col.name')"></label><input class="form-control mono" data-bind="textInput: fmName"></div>
+      <!-- /ko -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.extractTrack')"></label>
+        <select class="form-control" data-bind="value: fmTrack, options: tracks"></select></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.description')"></label><input class="form-control" data-bind="textInput: fmDesc"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.analyticsUrl')"></label><input class="form-control mono" data-bind="textInput: fmUrl"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.xmlpUrl')"></label><input class="form-control mono" data-bind="textInput: fmXmlp"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.authType')"></label>
+        <select class="form-control" data-bind="value: fmAuth, options: authTypes"></select></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.credentialRef')"></label><input class="form-control mono" data-bind="textInput: fmCred"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.enabled')"></label><div><input type="checkbox" data-bind="checked: fmEnabled"></div></div>
+    </div>
+  </edit-drawer>
+</div>

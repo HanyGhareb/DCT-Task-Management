@@ -15,6 +15,7 @@
   "mod.cc": "Credit Cards", "mod.cc.desc": "Cards & monthly replenishments",
   "mod.ar": "Accounts Receivable", "mod.ar.desc": "Event P&L analysis & revenue assurance",
   "mod.tm": "Task Management", "mod.tm.desc": "Teams, objectives, tasks & deliverables",
+  "mod.atd": "Analytics Loader", "mod.atd.desc": "OTBI → ATD jobs, queue & run logs",
 
   "common.search": "Search…",
   "common.loading": "Loading…",

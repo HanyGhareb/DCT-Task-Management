@@ -1,0 +1,40 @@
+/* =====================================================================
+   i-Finance — Analytics Loader (App 208) brand + module layer
+   ---------------------------------------------------------------------
+   Holds ONLY the module's default brand tokens plus ATD-specific UI rules.
+   All structural styling comes from /shared/css/platform.css. The live
+   brand colour is overridden at boot from the module's THEME_BRAND_COLOR
+   (shared/js/shell.js); these are the static fallbacks.
+   ===================================================================== */
+:root {
+  --brand:      #3A4FB0;   /* ATD indigo — Module Settings → Appearance overrides */
+  --brand-rgb:  58,79,176;
+  --brand-dark: #2A3A86;
+  --brand-soft: #ECEEF8;
+  --accent:     var(--brand);
+  --accent-dark: var(--brand-dark);
+}
+
+/* ---- run / queue status pills -------------------------------------- */
+.rstat { font-size:11px; font-weight:700; padding:2px 9px; border-radius:10px;
+         letter-spacing:.02em; background:#eef1f4; color:#4a5560; display:inline-block; }
+.rstat--READY    { background:#EAF2FB; color:#2C6CB0; }
+.rstat--CLAIMED  { background:#FDF1DD; color:#B5651A; }
+.rstat--DONE     { background:#E8F6EC; color:#2A7D3A; }
+.rstat--SUCCESS  { background:#E8F6EC; color:#2A7D3A; }
+.rstat--RUNNING  { background:#EAF2FB; color:#2C6CB0; }
+.rstat--FAILED   { background:#FBE6E4; color:#C13A30; }
+
+/* ---- monospace cells (paths, tables, checksums) -------------------- */
+.mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
+.truncate-cell { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+
+/* ---- small muted label --------------------------------------------- */
+.muted { color: var(--muted, #7d8590); }
+
+/* ---- KPI cards (dashboard) ----------------------------------------- */
+.kpi-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:12px; margin-bottom:18px; }
+.kpi { border:1px solid var(--border,#e2e6ea); border-radius:12px; padding:14px 16px; background:#fff; }
+.kpi__n { font-size:26px; font-weight:800; color:var(--brand-dark); }
+.kpi__l { font-size:12px; color:#6a747e; margin-top:2px; }
+.kpi__n.is-failed { color:#C13A30; }

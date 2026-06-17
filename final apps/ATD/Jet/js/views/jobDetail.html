@@ -1,0 +1,69 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title">
+      <span data-bind="text: t('atd.detail.title') + ' · '"></span>
+      <span class="mono" data-bind="text: job().jobName || ''"></span>
+    </h1>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: back, text: t('atd.action.back')"></button>
+      <button class="btn btn-primary" data-bind="click: enqueue, text: t('atd.action.enqueue')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading -->
+  <div class="muted" data-bind="text: t('atd.common.loading')"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <div class="card">
+    <div class="section-heading" data-bind="text: t('atd.detail.config')"></div>
+    <div class="form-grid" style="padding:8px 0;">
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.env')"></label><div class="mono" data-bind="text: job().envName"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.target')"></label><div class="mono" data-bind="text: job().targetName"></div></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.sourceRef')"></label><div class="mono" data-bind="text: job().sourceRef"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.stageTable')"></label><div class="mono" data-bind="text: job().stageTable"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.loadMode')"></label><div data-bind="text: job().loadMode"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.priority')"></label><div data-bind="text: (job().priority || 0) + ' · ' + (job().runOrder || 0)"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.status')"></label><div><span data-bind="css: statusClass(job().runStatus), text: job().runStatus"></span></div></div>
+      <!-- ko if: job().finalTable -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.finalTable')"></label><div class="mono" data-bind="text: job().finalTable"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.keyColumns')"></label><div class="mono" data-bind="text: job().keyColumns"></div></div>
+      <!-- /ko -->
+      <!-- ko if: job().columnMapJson -->
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.columnMap')"></label><pre class="mono" style="white-space:pre-wrap;margin:0" data-bind="text: job().columnMapJson"></pre></div>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="section-heading" data-bind="text: t('atd.detail.history')"></div>
+    <!-- ko if: history().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.detail.noHistory')"></div>
+    <!-- /ko -->
+    <!-- ko if: history().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.col.run')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.col.rows')"></th>
+          <th data-bind="text: t('atd.col.started')"></th>
+          <th data-bind="text: t('atd.col.finished')"></th>
+          <th data-bind="text: t('atd.detail.checksum')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: history">
+          <tr>
+            <td data-bind="text: $data.runId"></td>
+            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td data-bind="text: $data.rowCount"></td>
+            <td data-bind="text: $data.started || '—'"></td>
+            <td data-bind="text: $data.finished || '—'"></td>
+            <td class="mono" data-bind="text: $data.checksum || ''"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>

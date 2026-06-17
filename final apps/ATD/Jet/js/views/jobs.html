@@ -1,0 +1,107 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.jobs.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: newJob, text: '+ ' + t('atd.jobs.new')"></button>
+    </div>
+  </div>
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('atd.jobs.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13) load(); return true; } }">
+    <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fStatus, event:{change: load}">
+      <option value="" data-bind="text: t('atd.jobs.allStatuses')"></option>
+      <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+    </select>
+    <span class="toolbar-spacer"></span>
+    <!-- ko ifnot: loading --><span class="muted" data-bind="text: jobs().length + ' ' + t('atd.common.results')"></span><!-- /ko -->
+  </div>
+
+  <!-- ko if: loading -->
+  <div class="muted" data-bind="text: t('atd.common.loading')"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <!-- ko if: jobs().length === 0 -->
+  <div class="empty-state" data-bind="text: t('atd.jobs.empty')"></div>
+  <!-- /ko -->
+
+  <!-- ko if: jobs().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.col.job')"></th>
+        <th data-bind="text: t('atd.jobs.col.source')"></th>
+        <th data-bind="text: t('atd.jobs.col.target')"></th>
+        <th data-bind="text: t('atd.jobs.col.order')"></th>
+        <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.jobs.col.lastRun')"></th>
+        <th data-bind="text: t('atd.jobs.col.enabled')"></th>
+        <th style="width:220px;"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: jobs">
+        <tr style="cursor:pointer" data-bind="click: function(){ $vm.open($data); }">
+          <td><span class="mono" data-bind="text: $data.jobName"></span></td>
+          <td class="truncate-cell mono" data-bind="text: $data.sourceRef, attr:{ title: $data.sourceRef }"></td>
+          <td class="mono" data-bind="text: $data.stageTable"></td>
+          <td data-bind="text: $data.priority + '·' + $data.runOrder"></td>
+          <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+          <td>
+            <!-- ko if: $data.lastRunStatus -->
+            <span data-bind="css: $vm.statusClass($data.lastRunStatus), text: $data.lastRunStatus"></span>
+            <span class="muted" style="margin-inline-start:6px" data-bind="text: $data.lastFinished || ''"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $data.lastRunStatus --><span class="muted">—</span><!-- /ko -->
+          </td>
+          <td><span class="badge" data-bind="text: $data.enabled, css: { 'badge--active': $data.enabled==='Y', 'badge--idle': $data.enabled!=='Y' }"></span></td>
+          <td class="cell-actions" style="text-align:end;" data-bind="click: function(){ return true; }, clickBubble: false">
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.enqueue($data); }, text: $vm.t('atd.action.enqueue')"></button>
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.editJob($data); }, text: $vm.t('atd.action.edit')"></button>
+            <button class="btn btn-xs btn-danger" data-bind="click: function(){ $vm.del($data); }, text: $vm.t('atd.action.delete')"></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- create / edit job — shared <edit-drawer> slide-in -->
+  <edit-drawer params="open: showForm, vm: $vm,
+                       title: formTitle, saveLabel: formSaveLabel,
+                       cancelLabel: t('atd.action.cancel'), onSave: save, width: '640px'">
+    <div class="form-grid">
+      <!-- ko if: !editName() -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.jobName')"></label>
+        <input class="form-control mono" data-bind="textInput: fmJobName"></div>
+      <!-- /ko -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.env')"></label>
+        <select class="form-control" data-bind="value: fmEnv, options: envs"></select></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.target')"></label>
+        <select class="form-control" data-bind="value: fmTarget, options: targets"></select></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.sourceRef')"></label>
+        <input class="form-control mono" data-bind="textInput: fmSource"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.stageTable')"></label>
+        <input class="form-control mono" data-bind="textInput: fmStage"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.loadMode')"></label>
+        <select class="form-control" data-bind="value: fmLoadMode, options: loadModes"></select></div>
+      <!-- ko if: fmLoadMode() === 'MERGE' -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.finalTable')"></label>
+        <input class="form-control mono" data-bind="textInput: fmFinal"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.keyColumns')"></label>
+        <input class="form-control mono" data-bind="textInput: fmKeyCols"></div>
+      <!-- /ko -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.priority')"></label>
+        <input class="form-control" type="number" data-bind="value: fmPriority"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.runOrder')"></label>
+        <input class="form-control" type="number" data-bind="value: fmRunOrder"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.columnMap')"></label>
+        <textarea class="form-control mono" rows="3" data-bind="textInput: fmColMap" placeholder='{"CSV Header":"TARGET_COL"}'></textarea></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.params')"></label>
+        <textarea class="form-control mono" rows="2" data-bind="textInput: fmParams"></textarea></div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('atd.field.enabled')"></label>
+        <div><input type="checkbox" data-bind="checked: fmEnabled"></div>
+      </div>
+    </div>
+  </edit-drawer>
+</div>

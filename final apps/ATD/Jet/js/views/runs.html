@@ -1,0 +1,81 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.runs.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: exportCsv, text: t('atd.runs.export')"></button>
+    </div>
+  </div>
+
+  <div class="view-toolbar">
+    <select class="form-control form-control--sm" style="max-width:200px" data-bind="value: fJob, event:{change: load}">
+      <option value="" data-bind="text: t('atd.runs.allJobs')"></option>
+      <!-- ko foreach: jobs --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+    </select>
+    <select class="form-control form-control--sm" style="max-width:160px" data-bind="value: fStatus, event:{change: load}">
+      <option value="" data-bind="text: t('atd.runs.allStatuses')"></option>
+      <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+    </select>
+    <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fFrom, event:{change: load}">
+    <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fTo, event:{change: load}">
+    <span class="toolbar-spacer"></span>
+    <!-- ko ifnot: loading --><span class="muted" data-bind="text: runs().length + ' ' + t('atd.common.results')"></span><!-- /ko -->
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <!-- ko if: runs().length === 0 --><div class="empty-state" data-bind="text: t('atd.runs.empty')"></div><!-- /ko -->
+  <!-- ko if: runs().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.col.run')"></th>
+        <th data-bind="text: t('atd.col.job')"></th>
+        <th data-bind="text: t('atd.col.track')"></th>
+        <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.col.rows')"></th>
+        <th data-bind="text: t('atd.col.started')"></th>
+        <th data-bind="text: t('atd.col.finished')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: runs">
+        <tr style="cursor:pointer" data-bind="click: function(){ $vm.open($data); }">
+          <td data-bind="text: $data.runId"></td>
+          <td class="mono" data-bind="text: $data.jobName"></td>
+          <td data-bind="text: $data.track || '—'"></td>
+          <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+          <td data-bind="text: $data.rowCount"></td>
+          <td data-bind="text: $data.started || '—'"></td>
+          <td data-bind="text: $data.finished || '—'"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- run detail modal -->
+  <!-- ko if: detail -->
+  <div class="modal-overlay" data-bind="click: closeDetail">
+    <div class="modal-box" data-bind="click: function(){ return true; }, clickBubble: false" style="max-width:640px">
+      <div class="modal-header">
+        <h3 data-bind="text: t('atd.runs.detail.title') + ' #' + detail().runId"></h3>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-secondary" data-bind="click: closeDetail, text: t('atd.action.back')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.job')"></label><div class="mono" data-bind="text: detail().jobName"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.status')"></label><div><span data-bind="css: statusClass(detail().status), text: detail().status"></span></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.rows')"></label><div data-bind="text: detail().rowCount"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.detail.checksum')"></label><div class="mono" data-bind="text: detail().csvChecksum || '—'"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.started')"></label><div data-bind="text: detail().started || '—'"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.finished')"></label><div data-bind="text: detail().finished || '—'"></div></div>
+          <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.runs.detail.message')"></label>
+            <pre class="mono" style="white-space:pre-wrap;margin:0;max-height:240px;overflow:auto" data-bind="text: detail().message || '—'"></pre></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>
