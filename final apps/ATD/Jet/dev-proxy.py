@@ -19,7 +19,12 @@ PORT = int(os.environ.get('DEV_PROXY_PORT')
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 APPS_ROOT  = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))   # 'final apps'
 SHARED_DIR = os.path.join(APPS_ROOT, 'shared')
-SIBLING_APPS = ('Admin', 'PC', 'DT', 'HR', 'FL', 'CC', 'AR', 'TM', 'ATD')
+# Auto-derived: any folder under 'final apps' with a Jet/ subdir is a sibling app,
+# so a NEW app is served by every proxy automatically (no edit here).
+SIBLING_APPS = tuple(sorted(
+    d for d in os.listdir(APPS_ROOT)
+    if os.path.isdir(os.path.join(APPS_ROOT, d, 'Jet'))
+)) if os.path.isdir(APPS_ROOT) else ()
 
 
 class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
