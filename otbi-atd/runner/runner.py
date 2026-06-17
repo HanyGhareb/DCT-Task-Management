@@ -14,13 +14,22 @@ Two DB modes (ATD_DB_MODE):
                        + TNS_ADMIN wallet. Best for large analyses / the OCI VM.
 
 Usage:
-  python runner.py            # all enabled BROWSER jobs
+  python runner.py            # all enabled BROWSER jobs (single host, direct)
   python runner.py JOB_NAME   # one job
+
+Multi-host shared queue (oracledb mode only — design #3):
+  python runner.py --enqueue [JOB]      # mark enabled jobs READY (run once per cycle)
+  python runner.py --worker [--forever] # claim+run jobs from the queue until empty
+  python runner.py --enqueue --worker   # single-host convenience: queue then drain
+Each host calls --worker; ATD_QUEUE_PKG.claim_next (FOR UPDATE SKIP LOCKED) hands each
+job to exactly one host. Host id = ATD_WORKER_ID or the machine hostname.
 """
 import hashlib
 import json
 import os
+import socket
 import sys
+import time
 
 from playwright.sync_api import sync_playwright
 
@@ -117,6 +126,67 @@ def _make_run_one_oracledb(conn, load):
     return run_one
 
 
+# ---- multi-host shared queue (oracledb mode, design #3) -----------------
+def _worker_id():
+    return os.environ.get("ATD_WORKER_ID") or socket.gethostname()
+
+
+def _enqueue(conn, only):
+    n = conn.cursor().callfunc("prod.atd_queue_pkg.enqueue", int, [only])
+    print(f"[enqueue] marked {n} job(s) READY" + (f" ({only})" if only else ""))
+
+
+def _run_worker(conn, load, forever):
+    """Claim+run jobs from the shared queue until it's empty (or forever)."""
+    host = _worker_id()
+    lease = int(os.environ.get("ATD_LEASE_MINUTES", "30"))
+    idle = int(os.environ.get("ATD_WORKER_IDLE", "15"))
+    run_one = _make_run_one_oracledb(conn, load)
+    processed, failures = 0, 0
+    ctx_by_env = {}
+    browsers = []
+    # crash recovery: return any jobs left CLAIMED by a dead worker past the lease
+    reaped = conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
+    print(f"[worker {host}] starting (lease={lease}m, forever={forever}"
+          + (f", reaped {reaped} stale" if reaped else "") + ")")
+    with sync_playwright() as p:
+        try:
+            while True:
+                name = conn.cursor().callfunc(
+                    "prod.atd_queue_pkg.claim_next", str, [host])
+                if not name:
+                    if forever:
+                        time.sleep(idle)
+                        continue
+                    break
+                jobs = config.get_browser_jobs(conn, only=name)
+                if not jobs:
+                    print(f"[worker {host}] claimed {name} but no job row -> FAILED")
+                    conn.cursor().callproc("prod.atd_queue_pkg.mark_failed", [name])
+                    failures += 1
+                    continue
+                job = jobs[0]
+                env_name = job["env_name"]
+                if env_name not in ctx_by_env:
+                    env = {"env_name": env_name,
+                           "analytics_base_url": job["analytics_base_url"],
+                           "credential_ref": job.get("credential_ref") or env_name}
+                    browser, ctx = auth.authenticate(p, env)
+                    browsers.append(browser)
+                    ctx_by_env[env_name] = (env, ctx)
+                env, ctx = ctx_by_env[env_name]
+                ok = run_one(ctx, env, job)
+                conn.cursor().callproc(
+                    "prod.atd_queue_pkg." + ("mark_done" if ok else "mark_failed"), [name])
+                processed += 1
+                failures += 0 if ok else 1
+        finally:
+            for b in browsers:
+                b.close()
+    print(f"\n[worker {host}] done — processed {processed} job(s), {failures} failure(s)")
+    return failures
+
+
 def _resolve_mode():
     """oracledb is the default fast path; fall back to sqlcl only when its
     credentials are absent. Explicit ATD_DB_MODE always wins."""
@@ -131,9 +201,28 @@ def _resolve_mode():
 
 
 def main(argv):
-    only = argv[1] if len(argv) > 1 else None
+    args = argv[1:]
+    enqueue = "--enqueue" in args
+    worker = "--worker" in args
+    forever = "--forever" in args
+    only = next((a for a in args if not a.startswith("-")), None)
     mode = _resolve_mode()
 
+    # queue commands require oracledb (the function lives in the DB; the loop
+    # claims via a live oracledb connection)
+    if enqueue or worker:
+        if mode != "oracledb":
+            print("[queue] --enqueue/--worker require oracledb mode "
+                  "(set ATD_DB_USER/PASSWORD + ATD_WALLET_PASSWORD)")
+            sys.exit(2)
+        import load
+        conn = config.connect()
+        if enqueue:
+            _enqueue(conn, only)
+        failures = _run_worker(conn, load, forever) if worker else 0
+        sys.exit(1 if failures else 0)
+
+    # ---- direct single-host run (unchanged) ----
     if mode == "oracledb":
         import load
         conn = config.connect()
