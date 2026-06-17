@@ -61,7 +61,7 @@ def get_browser_jobs_sqlcl(only=None):
                 join prod.atd_otbi_env e on e.env_name = j.env_name
                 join prod.atd_target_db t on t.target_name = j.target_name
                where {where}
-               order by j.job_name"""
+               order by j.priority, j.run_order, j.job_name"""
     return sqlrun.query_json(sql)
 
 
@@ -79,6 +79,8 @@ def get_browser_jobs(conn, only=None):
                 and e.extract_track = 'BROWSER'"""
     if only:
         sql += " and j.job_name = :n"
+    sql += " order by j.priority, j.run_order, j.job_name"
+    if only:
         cur.execute(sql, n=only)
     else:
         cur.execute(sql)

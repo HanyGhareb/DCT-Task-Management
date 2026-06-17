@@ -117,9 +117,22 @@ def _make_run_one_oracledb(conn, load):
     return run_one
 
 
+def _resolve_mode():
+    """oracledb is the default fast path; fall back to sqlcl only when its
+    credentials are absent. Explicit ATD_DB_MODE always wins."""
+    m = os.environ.get("ATD_DB_MODE")
+    if m:
+        return m.lower()
+    if os.environ.get("ATD_DB_USER") and os.environ.get("ATD_DB_PASSWORD"):
+        return "oracledb"
+    print("[mode] ATD_DB_USER/PASSWORD not set -> falling back to sqlcl "
+          "(set them + ATD_WALLET_PASSWORD for the ~155x oracledb path)")
+    return "sqlcl"
+
+
 def main(argv):
     only = argv[1] if len(argv) > 1 else None
-    mode = os.environ.get("ATD_DB_MODE", "sqlcl").lower()
+    mode = _resolve_mode()
 
     if mode == "oracledb":
         import load

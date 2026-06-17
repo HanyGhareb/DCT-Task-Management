@@ -19,31 +19,38 @@ Outbound only is needed: 443 to the Fusion pod, 443 to api.telegram.org, and ADB
 ## 2. Base software
 ```bash
 sudo apt update && sudo apt -y upgrade
-sudo apt -y install python3 python3-pip python3-venv unzip openjdk-17-jre-headless
-# Python deps
-python3 -m pip install --user playwright httpx
+sudo apt -y install python3 python3-pip python3-venv unzip
+# Python deps — python-oracledb thin mode IS the fast default load path (no Instant Client/Java)
+python3 -m pip install --user playwright httpx python-oracledb
 python3 -m playwright install --with-deps chromium     # ARM Chromium + system libs
 ```
+> SQLcl + Java (`openjdk-17-jre-headless`) are only needed for the **fallback** SQLcl load mode
+> (Section 3b). The default `oracledb` mode needs neither — just the wallet + `python-oracledb`.
 
-## 3. SQLcl + the ADB wallet + the `prod_mcp` connection
+## 3. The ADB wallet (default `oracledb` mode)
 ```bash
-# SQLcl
+# From OCI Console -> Autonomous DB -> DB Connection -> Download Wallet (set a wallet password).
+mkdir -p ~/wallet && cp /path/to/Wallet_*.zip ~/wallet/ && cd ~/wallet && unzip Wallet_*.zip
+# Thin mode needs ewallet.pem + tnsnames.ora (cwallet.sso is NOT used; sqlnet.ora optional).
+ls ~/wallet/ewallet.pem ~/wallet/tnsnames.ora      # confirm both exist
+```
+- The runner connects via `python-oracledb` thin mode using `ATD_DB_*` + `ATD_WALLET_PASSWORD`
+  (Section 5). **`ATD_WALLET_PASSWORD` decrypts `ewallet.pem`** — it's the password you set when
+  downloading the wallet (here it equals the DB password).
+- Egress needed: TCP **1522 (TCPS)** to the ADB host (default OCI egress allows it).
+
+## 3b. (Optional) SQLcl + the `prod_mcp` connection — only for the fallback mode
+```bash
+sudo apt -y install openjdk-17-jre-headless
 cd /opt && sudo curl -L -o sqlcl.zip https://download.oracle.com/otn_software/java/sqldeveloper/sqlcl-latest.zip
 sudo unzip sqlcl.zip && sudo ln -s /opt/sqlcl/bin/sql /usr/local/bin/sql
-# Wallet: copy your ADB wallet zip to the VM (from myDoc/ or OCI Console -> DB -> DB Connection -> Download Wallet)
-mkdir -p ~/wallet && cp /path/to/Wallet_*.zip ~/wallet/
-```
-Recreate the saved connection (same name the runner uses, `prod_mcp`):
-```bash
 sql /nolog
 SQL> set cloudconfig /home/ubuntu/wallet/Wallet_xxxx.zip
 SQL> connect -save prod_mcp -savepwd <DBUSER>/<DBPASS>@<tns_alias_high>
-SQL> show connection      -- confirm
 SQL> exit
 ```
-- `<tns_alias_*>` comes from the wallet's `tnsnames.ora` (e.g. `xxxx_high`).
-- `-savepwd` stores the password in SQLcl's secure connection store so the runner connects
-  unattended. Test:  `sql -name prod_mcp`  then `select 1 from dual;`
+- `-savepwd` stores the password in SQLcl's secure store so the runner connects unattended.
+  Test: `sql -name prod_mcp` then `select 1 from dual;`. Use this only if you set `ATD_DB_MODE=sqlcl`.
 
 ## 4. Deploy the runner
 ```bash
@@ -57,20 +64,22 @@ mkdir -p ~/otbi-atd-state          # saved Fusion session + mfa file
 export OTBI_USER='hg2248@dctabudhabi.ae'
 export OTBI_PWD='********'
 export ATD_STATE_DIR="$HOME/otbi-atd-state"
-export ATD_SQLCL="/usr/local/bin/sql"
-export ATD_SQLCL_CONN="prod_mcp"
 export ATD_MFA_WAIT="600"              # give yourself time to approve from the phone
 # Telegram MFA delivery
 export ATD_NOTIFY="telegram"
 export ATD_TG_TOKEN="<bot token from BotFather>"
 export ATD_TG_CHAT="<your chat id>"
-# OPTIONAL fast load for large analyses (~10x): uses python-oracledb + the wallet
-# export ATD_DB_MODE="oracledb"
-# export ATD_DB_USER="<db user>" ; export ATD_DB_PASSWORD="<pwd>"
-# export ATD_DB_DSN="<tns_alias>" ; export TNS_ADMIN="$HOME/wallet"
+# DEFAULT fast load (oracledb thin mode, ~155x on the DB load) — uses the wallet from Section 3
+export ATD_DB_MODE="oracledb"
+export ATD_DB_USER="ADMIN" ; export ATD_DB_PASSWORD="********"
+export ATD_WALLET_PASSWORD="********"   # decrypts ewallet.pem (= DB password here)
+export ATD_DB_DSN="prod_low" ; export TNS_ADMIN="$HOME/wallet"
+export ATD_DB_CHUNK="5000"
+# Fallback SQLcl mode instead? unset the ATD_DB_* above and set:
+# export ATD_DB_MODE="sqlcl" ; export ATD_SQLCL="/usr/local/bin/sql" ; export ATD_SQLCL_CONN="prod_mcp"
 ```
-> Keep secrets out of git. `chmod 600 env.sh`. Consider OCI Vault for the passwords later.
-> Default load (SQLcl) needs no DB creds; `oracledb` mode is only for large tables.
+> Keep secrets out of git. `chmod 600 env.sh`. Put the passwords (DB + wallet) in **OCI Vault**
+> for a real fleet rather than plain files. `oracledb` is the default; SQLcl is the no-creds fallback.
 
 ## 6. First run (one-time MFA to seed the session)
 ```bash

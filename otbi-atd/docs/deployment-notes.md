@@ -37,12 +37,12 @@ Three jobs are live in `ATD_OTBI_JOBS` (all BROWSER / TRUNCATE_INSERT):
 datetime values), so no NLS dependency.
 
 ## Running the Track B runner (`runner/`)
-The runner does **all** database work through the already-configured **SQLcl**
-connection (`sql -name prod_mcp`) — **no separate DB username/password needed**.
+DB load defaults to **`oracledb`** (fast; see "Fast load mode" below) when DB creds are present,
+and falls back to **SQLcl** (`sql -name prod_mcp`, no separate creds) otherwise.
 
 One-time setup on the host:
 ```
-pip install -r runner/requirements.txt   # playwright + httpx (oracledb optional)
+pip install -r runner/requirements.txt   # playwright + httpx + python-oracledb
 python -m playwright install chromium
 ```
 Environment variables:
@@ -71,17 +71,27 @@ On first run (or after the session expires) the console prints
 approve. The session is saved to `auth_state_FUSION_ADGOV.json` and reused on later runs
 (no MFA) until Entra expires it. Each run writes a row to `PROD.ATD_LOAD_RUN_LOG`.
 
-## Fast load mode (oracledb) — for large analyses
-Default is SQLcl (no creds). For big tables, switch the DB layer to chunked array-bind:
+## Fast load mode (oracledb) — NOW THE DEFAULT
+`oracledb` is auto-selected when `ATD_DB_USER`+`ATD_DB_PASSWORD` are set; it falls back to SQLcl
+otherwise. Force either with `ATD_DB_MODE`. Pure-Python **thin mode** (no Instant Client, no Java):
 ```
-set ATD_DB_MODE=oracledb
-set ATD_DB_USER=<db user>      &  set ATD_DB_PASSWORD=********
-set ATD_DB_DSN=<tns alias>     &  set TNS_ADMIN=<wallet dir>   (myDoc/)
-set ATD_DB_CHUNK=5000          # rows per round-trip
 pip install python-oracledb
+set ATD_DB_USER=ADMIN          &  set ATD_DB_PASSWORD=********
+set ATD_WALLET_PASSWORD=****** &  rem decrypts ewallet.pem (= DB password here)
+set ATD_DB_DSN=prod_low        &  set TNS_ADMIN=<wallet dir: ewallet.pem + tnsnames.ora>
+set ATD_DB_CHUNK=5000          rem rows per array-bind round-trip
 ```
-~10× faster on large loads (bind variables vs SQLcl literal hard-parse). Same control tables,
-same runner. Measured baselines + why bigger SQLcl batches/`LOAD` are slower: see REFERENCE.md §6.
+**Measured A/B on this host (BENEFICIARIES 12,160 rows): pure DB load 80.7s → 0.5s = 155×;
+end-to-end 109s → 17.5s.** Same control tables, same runner. Two gotchas (full detail REFERENCE.md
+§10): thin mode **needs the wallet password** (SQLcl/JDBC use the password-less `cwallet.sso`,
+which thin mode ignores); and the wallet's `retry_count=20` makes a *bad* connect hang ~60s while
+a correct one is <1s. On Windows the secrets live in the git-ignored `runner/env.ps1`
+(`. .\env.ps1` then `python runner.py`).
+
+## Job ordering (priority / run_order)
+`db/11_atd_job_ordering.sql` adds `priority` (lower runs earlier; default 5) and `run_order`
+(sequence within a band; default 100) to `ATD_OTBI_JOBS`. Both runner paths order by
+`priority, run_order, job_name`. Re-sequence with a plain `UPDATE` — no code change.
 
 ## Truncation / OTBI export cap warning
 OTBI caps the CSV download server-side (often ~65k rows) → large analyses can come back

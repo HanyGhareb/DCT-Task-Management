@@ -62,37 +62,31 @@ Repoint host/account/DB or add a job by editing rows — no redeploy. Secrets ar
 name (`credential_ref`), never stored in these tables.
 
 ## 6. DB load modes + measured performance
-Two interchangeable load paths (env `ATD_DB_MODE`):
+Two interchangeable load paths. **`oracledb` is the default** (auto-selected when
+`ATD_DB_USER`/`ATD_DB_PASSWORD` are set; falls back to `sqlcl` otherwise). Force either with
+`ATD_DB_MODE`.
 
 | Mode | How | Credentials | Speed |
 |---|---|---|---|
-| **`sqlcl`** (default) | SQLcl `sql -name prod_mcp`, batched literal `INSERT ALL` | **none** (reuses SQLcl's stored connection) | baseline |
-| **`oracledb`** (fast) | python-oracledb chunked `executemany` (array bind) | `ATD_DB_USER/PASSWORD/DSN` + wallet | ~10× on large tables |
+| **`oracledb`** (default, fast) | python-oracledb thin mode, chunked `executemany` (array bind) | `ATD_DB_USER/PASSWORD` + `ATD_WALLET_PASSWORD` + wallet | **~155× on the DB load** |
+| **`sqlcl`** (fallback) | SQLcl `sql -name prod_mcp`, batched literal `INSERT ALL` | **none** (reuses SQLcl's stored connection) | baseline |
 
-**Measured steady-state cycle (session cached, all 3 jobs ≈ 15k rows, SQLcl mode):**
-```
-config read (SQLcl)  7.5s
-auth (cached)        5.7s
-downloads            1.1s   (negligible)
-loads              115.3s   ← bottleneck (88%)
-  Beneficiaries 12,086  81.0s
-  GRN All        1,527  17.9s
-  Suppliers      1,398  16.4s
-TOTAL              ~130s (~2m10s)
-```
+**Measured A/B (this host, BENEFICIARIES 12,160 rows, same CSV) — 2026-06-17:**
+| Measurement | `sqlcl` | `oracledb` | Speedup |
+|---|---|---|---|
+| **Pure DB load** | **80.7s** | **0.5s** | **155×** |
+| End-to-end (auth + download + load) | 109s | 17.5s | 6.2× |
+| Download (identical) | 0.4s | 0.4s | — |
 
-**Load-method experiments (don't repeat these — conclusions recorded):**
-| Method | 12,086-row load | 3-job cycle |
-|---|---|---|
-| Batched INSERT, `ATD_LOAD_BATCH=200` (default) | 81s | **130s — best** |
-| Batched INSERT, batch=500 | 121s | 186s (worse) |
-| SQLcl native `LOAD` | 116s | 390s (much worse) |
+Once the load is ~0.5s, the remaining ~17s end-to-end is **fixed per-run overhead** (browser
+session launch/validate ~5s, oracledb connect ~1s, page nav) — *not* per-job. So extra jobs are
+nearly free: a 3-job run drops from ~130s (sqlcl) to ~15–20s (oracledb).
 
-Why bigger batches / `LOAD` are slower: the SQLcl path writes **literal values** (no bind
-variables), so every statement is **hard-parsed**; larger statements cost more to parse than the
-round-trips they save. This is the floor for the credential-free path. The real fix is **bind
-variables** → that's exactly what `oracledb` mode does (`executemany`), which would load 12k
-rows in ~2–3s.
+**Why oracledb wins:** the SQLcl path writes **literal values** (no bind variables) → every
+statement is **hard-parsed**, the dominant cost. oracledb sends rows as **bind variables in one
+array operation** (`executemany`), eliminating parse cost. (For the record, on the SQLcl path
+bigger batches/`LOAD` were *slower*, not faster — `ATD_LOAD_BATCH=200`=130s/3-job best, batch
+500=186s, SQLcl `LOAD`=390s — because they enlarge the hard-parsed statements. Don't re-test.)
 
 ## 7. Large files, chunking, and the OTBI export cap
 - **`oracledb` mode chunks** the array-bind insert (`ATD_DB_CHUNK`, default 5000 rows/round-trip)
@@ -106,8 +100,10 @@ rows in ~2–3s.
   prints a `[WARN]`, sends it to Telegram, and stores it in `ATD_LOAD_RUN_LOG.message`. Raise the
   pod's download limit before relying on big extracts.
 
-**Scale guidance (SQLcl mode):** ≤20k ✅ ~1–2 min · ~50k ✅ ~5 min · ~100k ⚠️ ~10 min + may hit
-OTBI cap · 200k+ → use `oracledb` mode and confirm the OTBI limit.
+**Scale guidance:** with **`oracledb` mode (default)** the DB load is no longer the limit
+(155× faster) — at any size the cost is the download + the OTBI export cap, so the cap is the
+only thing to watch (≤65k safe; confirm `instanceconfig` before relying on more). The legacy
+`sqlcl` fallback is load-bound: ≤20k ~1–2 min · ~50k ~5 min · ~100k ~10 min.
 
 ## 8. MFA number delivery
 `notify.send()` pushes the match number when a login is needed (channel via `ATD_NOTIFY`):
@@ -120,12 +116,13 @@ a notify failure never breaks the login. The number is also printed and written 
 | `OTBI_USER` / `OTBI_PWD` | Fusion login | — (required) |
 | `ATD_STATE_DIR` | saved sessions + mfa file | `.` |
 | `ATD_MFA_WAIT` | seconds to wait for approval | 420 |
-| `ATD_DB_MODE` | `sqlcl` \| `oracledb` | `sqlcl` |
-| `ATD_SQLCL` / `ATD_SQLCL_CONN` | SQLcl path / named connection | local sql.exe / `prod_mcp` |
-| `ATD_LOAD_METHOD` | `insert` \| `bulk` (SQLcl mode) | `insert` |
-| `ATD_LOAD_BATCH` | rows per INSERT ALL (SQLcl) | 200 |
-| `ATD_DB_USER`/`ATD_DB_PASSWORD`/`ATD_DB_DSN`/`TNS_ADMIN` | oracledb mode | — |
+| `ATD_DB_MODE` | `oracledb` \| `sqlcl` | auto: `oracledb` if `ATD_DB_USER`+`PASSWORD` set, else `sqlcl` |
+| `ATD_DB_USER`/`ATD_DB_PASSWORD`/`ATD_DB_DSN` | oracledb login + DSN | — (required for oracledb) |
+| `ATD_WALLET_PASSWORD` | decrypts the wallet `ewallet.pem` (thin mode) | — (required for oracledb; = DB password here) |
+| `TNS_ADMIN` | wallet dir (`ewallet.pem` + `tnsnames.ora`) | — (required for oracledb) |
 | `ATD_DB_CHUNK` | rows per array-bind chunk (oracledb) | 5000 |
+| `ATD_SQLCL` / `ATD_SQLCL_CONN` | SQLcl path / named connection (fallback) | local sql.exe / `prod_mcp` |
+| `ATD_LOAD_METHOD` / `ATD_LOAD_BATCH` | SQLcl-mode tuning | `insert` / 200 |
 | `ATD_NOTIFY` + channel vars | MFA delivery | off |
 | `ATD_TRUNCATION_CAPS` / `ATD_EXPECTED_MIN` | truncation warning | common caps |
 
@@ -140,6 +137,14 @@ a notify failure never breaks the login. The number is also printed and written 
   type in Python; SQLcl path emits per-value `TO_DATE` with the right mask.
 - **Git Bash mangles** `/users/...` CLI args (MSYS path conversion) → run helpers from
   PowerShell/cmd or set `MSYS_NO_PATHCONV=1`.
+- **oracledb thin mode needs the WALLET password** to decrypt `ewallet.pem` (`BEGIN ENCRYPTED
+  PRIVATE KEY`). SQLcl/JDBC don't, because they use the password-less `cwallet.sso` (which thin
+  mode ignores). Set `ATD_WALLET_PASSWORD` (here it equals the DB password). Symptom if missing:
+  TLS handshake fails.
+- **Wallet `retry_count` makes a bad connect "hang" ~60s** — ADB `tnsnames.ora` entries carry
+  `(retry_count=20)(retry_delay=3)`, so a failing connect silently retries ~60s before erroring.
+  A *correct* connect is <1s. When diagnosing, use a one-off descriptor with `(retry_count=0)` to
+  fail fast. (No Oracle Instant Client / Java needed — python-oracledb thin mode is pure Python.)
 
 ## 11. Adding an analysis later
 ```
@@ -154,21 +159,36 @@ Downloads a sample, auto-derives column names/types, and emits `CREATE TABLE` + 
 otbi-atd/
   db/   01 control tables · 02 net ACL · 03 ATD_OTBI_PKG (Track A) · 04 scheduler ·
         05 seed example · 06 grn table · 07 grn seed · 08 suppliers · 09 beneficiaries ·
-        10 seed more · install.sql · generated/ (from add_analysis)
+        10 seed more · 11 job ordering (priority/run_order) · install.sql · generated/
   runner/  runner.py (orchestrator, 2 modes) · auth.py (federated MFA + notify) ·
            extract.py (Go-URL) · loadsql.py (SQLcl load) · load.py (oracledb chunked) ·
            sqlrun.py (SQLcl bridge) · config.py · checks.py (truncation) · notify.py ·
-           add_analysis.py · requirements.txt
-  docs/  REFERENCE.md (this) · deployment-notes.md · oci-vm-setup.md · functions_list?
+           add_analysis.py · requirements.txt · env.ps1 (git-ignored secrets)
+  docs/  REFERENCE.md (this) · deployment-notes.md · oci-vm-setup.md
 ```
 
+### Per-host requirements for `oracledb` mode (the default)
+1. **Python 3.8+** (already needed for Playwright).
+2. **`pip install python-oracledb`** — pure-Python **thin mode**: no Oracle Instant Client, no Java.
+3. **ADB wallet** at `TNS_ADMIN`: needs `ewallet.pem` (mTLS client key) + `tnsnames.ora` (DSN
+   alias). `cwallet.sso` is **not** used by thin mode; `sqlnet.ora` optional.
+4. **`ATD_WALLET_PASSWORD`** to decrypt `ewallet.pem` (= DB password here).
+5. **`ATD_DB_USER` / `ATD_DB_PASSWORD` / `ATD_DB_DSN`** (`prod_low|medium|high`).
+6. **Network egress:** TCP **1522 (TCPS)** → `adb.me-abudhabi-1.oraclecloud.com` (outbound only).
+
+Both modes ultimately need the wallet + DB credentials on the host; SQLcl just hides them inside
+its saved connection. oracledb is *lighter to install* (one pip package, no Java) and 155× faster
+on load — the only extra it asks for is the wallet password as an explicit env var. Secret-mgmt
+for many hosts: wallet on the box, passwords in **OCI Vault** (don't bake into images / commit).
+
 ## 13. Deployment targets
-- **Windows host** — SQLcl mode, Task Scheduler. No DB creds.
+- **Windows host** — `oracledb` mode (default), Task Scheduler. Secrets in git-ignored `env.ps1`.
 - **OCI Always-Free VM (recommended)** — Ubuntu ARM (Ampere A1, 2 OCPU/12 GB), **fully headless**
-  (Telegram delivers the MFA number, no VNC). cron-scheduled. See `oci-vm-setup.md`. On the VM,
-  enabling `oracledb` mode gives the large-file speed-up.
+  (Telegram delivers the MFA number, no VNC). cron-scheduled. See `oci-vm-setup.md`.
 
 ## 14. Status (2026-06-17)
-3 jobs live and verified end-to-end (GRN All 1,527 / Suppliers 1,398 / Beneficiaries 12,086),
-SQLcl mode, MFA number delivered via Telegram and approved from phone. `oracledb` fast-mode +
-chunking + truncation check implemented; first live `oracledb` run pending DB creds (the VM).
+3 jobs live and verified end-to-end (GRN All / Suppliers / Beneficiaries). **`oracledb` mode now
+the default** and benchmarked on this host: pure DB load **80.7s → 0.5s (155×)**, end-to-end
+109s → 17.5s. Job ordering (`priority` + `run_order`) deployed (`db/11`). MFA delivered via
+Telegram, approved from phone. Wallet-password (thin mode) + retry-hang gotchas captured (§10).
+Next: #3 multi-host shared-queue (claim/`SKIP LOCKED` + `--worker`).
