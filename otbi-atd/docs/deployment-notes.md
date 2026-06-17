@@ -123,9 +123,23 @@ top of `runner/notify.py` (Teams/Slack incoming webhook, SMTP, or Twilio SMS). N
 is best-effort: a delivery failure is logged but never breaks the login.
 
 ## Scheduling
-Windows Task Scheduler (or cron) calling `python runner.py`. Cannot be scheduled from
-ATP (Track B drives a browser). Cluster runs inside the Entra session lifetime so MFA is
-only needed occasionally; the runner surfaces the number when a refresh is required.
+Cannot be scheduled from ATP (Track B drives a browser). Runs stay inside the Entra session
+lifetime, so MFA is only needed occasionally; the runner surfaces the number (Telegram) on refresh.
+
+**This host — live every 15 min (registered 2026-06-18):** Windows Task `OTBI-ATD Loader` runs
+`runner/run_atd.ps1` (dot-sources the git-ignored `env.ps1`, runs `python runner.py` for all
+enabled jobs, appends to `otbi-atd/run.log`). Trigger: every 15 minutes, `MultipleInstances=
+IgnoreNew`, 10-min limit, `StartWhenAvailable`. Runs in the logged-on user session (Playwright
+headless). Manage it:
+```
+Get-ScheduledTaskInfo -TaskName 'OTBI-ATD Loader'      # last result + next run
+Start-ScheduledTask  -TaskName 'OTBI-ATD Loader'       # run now
+Disable-ScheduledTask -TaskName 'OTBI-ATD Loader'      # pause
+Unregister-ScheduledTask -TaskName 'OTBI-ATD Loader' -Confirm:$false   # remove
+```
+To run **while logged off**, re-register with stored credentials (`-User`/`-Password` or
+`-LogonType S4U`). `run.log` is git-ignored. (Linux/VM equivalent: the cron line in
+`oci-vm-setup.md` §7.)
 
 ## Adding another analysis
 1. (optional) create its target table — model on `06_grn_all_table.sql`.

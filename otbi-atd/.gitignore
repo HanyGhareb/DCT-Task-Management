@@ -7,3 +7,6 @@ env.sh
 env.local.*
 runner/env.ps1
 runner/env.sh
+# runtime logs
+run.log
+*.log
