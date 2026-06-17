@@ -11,7 +11,8 @@ shared queue + run logs. Admin-only (SYS_ADMIN).
 | JET SPA (7 views) | ✅ Live, verified via dev-proxy (0 console errors, all views render real data) |
 | Docs | ✅ this file + `docs/deployment-notes.md` + `docs/functions_list.md` |
 | APEX pages | N/A (internal admin tool) |
-| UAT package | ⬜ pending (round 1) |
+| UAT package | ✅ round 1 — 26/26 PASS (2026-06-18); `UAT/uat_run_atd.py` + workbook + Word + evidence |
+| Runner Settings | ✅ ATD_RUNNER_CONFIG + /atd/config + page (db/14); runner reads at startup |
 
 ## Views (7)
 dashboard · jobs · jobDetail · environments · targets · runs · queue
