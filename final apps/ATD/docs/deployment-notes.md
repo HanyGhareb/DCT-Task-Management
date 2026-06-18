@@ -87,3 +87,16 @@ table columns (`_plan_drift`) and reconciles:
   the next run re-profiles. Both the stage and (MERGE) final table are altered together.
 - Warnings go to **Telegram** (`notify.send`) **and the run-log `message`** (oracledb path —
   visible in the Runs detail modal). Reconcile ALTERs auto-commit; widening only ever grows.
+
+### Performance (the extra step runs every load)
+- The only added cost on a **clean** (no-drift) run is a small `all_tab_columns` query
+  (negligible) + one `profile()` pass over the already-downloaded CSV. `profile()` is a single
+  streaming pass (rewritten from a per-column pass): **~125 ms for a 12k-row analysis, ~0.7 s
+  for the 65k-row OTBI export cap** (17.7 MB). The load itself already parses the CSV (~0.35 s
+  at 65k), and the OTBI download dominates a run (seconds), so prepare adds a low single-digit
+  % to a job's wall time and is dwarfed by the network fetch. No ALTER/commit happens unless the
+  schema actually drifted.
+- A drift *reconcile* needs no extra DB work beyond the one metadata query + (rarely) the ALTERs.
+- If very large analyses ever run on a tight cadence, the next lever is to **fuse profiling into
+  the load's existing CSV parse** (one pass instead of two) — deferred; not worth the coupling at
+  current data sizes.

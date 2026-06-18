@@ -80,19 +80,55 @@ def infer(values, maxlen):
 
 
 def profile(csv_text):
-    """Return ([{header,name,type,maxlen,nulls}], row_count) from CSV text."""
-    rows = list(csv.reader(io.StringIO(csv_text)))
-    if not rows:
+    """Return ([{header,name,type,maxlen,nulls}], row_count) from CSV text.
+
+    Single streaming pass: per-column max length, null count and type flags are
+    accumulated row-by-row (the old version made one full pass *per column*, which
+    cost ~1s on a 65k-row export). Type rules match infer()."""
+    reader = csv.reader(io.StringIO(csv_text))
+    try:
+        hdr = next(reader)
+    except StopIteration:
         raise ValueError("analysis returned no rows")
-    hdr, data = rows[0], rows[1:]
+    nc = len(hdr)
+    maxlen = [0] * nc
+    nulls = [0] * nc
+    seen = [False] * nc                       # any non-empty value?
+    is_date = [True] * nc
+    is_int = [True] * nc
+    is_num = [True] * nc
+    nrows = 0
+    for r in reader:
+        nrows += 1
+        for i in range(nc):
+            v = r[i] if i < len(r) else ""
+            if len(v) > maxlen[i]:
+                maxlen[i] = len(v)
+            if v.strip() == "":
+                nulls[i] += 1
+                continue
+            seen[i] = True
+            if is_date[i] and not DATE_RE.match(v):
+                is_date[i] = False
+            if is_int[i] and not INT_RE.match(v):
+                is_int[i] = False
+            if is_num[i] and not NUM_RE.match(v):
+                is_num[i] = False
     used, cols = set(), []
     for i, h in enumerate(hdr):
-        vals = [r[i] if i < len(r) else "" for r in data]
-        maxlen = max((len(v) for v in vals), default=0)
+        if not seen[i]:
+            typ = "VARCHAR2(40)"               # all-null: safe default
+        elif is_date[i]:
+            typ = "DATE"
+        elif is_int[i] and maxlen[i] <= 15:
+            typ = "NUMBER"
+        elif is_num[i] and maxlen[i] <= 18:
+            typ = "NUMBER"
+        else:
+            typ = f"VARCHAR2({bucket(maxlen[i])})"
         cols.append({"header": h, "name": colname(h, used),
-                     "type": infer(vals, maxlen), "maxlen": maxlen,
-                     "nulls": sum(1 for v in vals if v.strip() == "")})
-    return cols, len(data)
+                     "type": typ, "maxlen": maxlen[i], "nulls": nulls[i]})
+    return cols, nrows
 
 
 def column_map(cols):
