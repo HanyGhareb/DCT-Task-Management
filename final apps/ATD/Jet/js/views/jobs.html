@@ -8,7 +8,7 @@
 
   <div class="view-toolbar">
     <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('atd.jobs.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13) load(); return true; } }">
-    <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fStatus, event:{change: load}">
+    <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fStatus">
       <option value="" data-bind="text: t('atd.jobs.allStatuses')"></option>
       <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
     </select>

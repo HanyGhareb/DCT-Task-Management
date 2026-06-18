@@ -39,6 +39,9 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
 - **2026-06-18** — **Run-duration on Run Logs** (APP_VERSION 1.3.2). Same duration column on the
   Run Logs list + run-detail modal (`GET /runs` + `/runs/:id` return `durationSec`). ORDS
   redeployed; live-verified.
+- **2026-06-18** — **Filter fix** (APP_VERSION 1.3.3, frontend-only). Run Logs + Jobs filters were
+  lagging one change (KO `value`+`event:change` ordering); now driven by observable subscriptions.
+  Run Logs count label shows `shown / total`. Browser-verified all filter combinations.
 
 ## How to run locally
 ```

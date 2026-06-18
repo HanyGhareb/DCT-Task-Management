@@ -49,6 +49,16 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-18** — **Filter fix: Run Logs + Jobs** (APP_VERSION 1.3.3, frontend-only). The
+  job/status/date filters were lagging one change behind: the controls used
+  `value: X, event:{change: load}`, and KO fires the `event` `change` handler **before** the
+  `value` binding writes the observable, so `load()` read the previous value. Fixed by driving
+  `load` from **observable subscriptions** (`fJob/fStatus/fFrom/fTo` on Run Logs; `fStatus` on
+  Jobs) and removing the `event:{change: load}` markup. Also surfaced the server `total` in the
+  Run Logs count label (`100 / 322 results`) so a filter's effect is visible even though the list
+  is capped at 100 (no pager yet). No ORDS/DB change. Browser-verified (FAILED→3, SUCCESS→100/319,
+  job=SUPPLIERS→100/106 all-SUPPLIERS, combined→1, todt→96). **KO gotcha for future filters: never
+  pair `value:` with `event:{change: load}` on one control — subscribe to the observable instead.**
 - **2026-06-18** — **Run-duration on Run Logs** (APP_VERSION 1.3.2). Extended the duration column
   to the **Run Logs** list + run-detail modal (`GET /runs` + `/runs/:id` now return `durationSec`),
   same `js/util/duration.js` adaptive-compact format; `—` for RUNNING / no-`started` rows. ORDS

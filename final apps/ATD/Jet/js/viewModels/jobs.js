@@ -44,6 +44,10 @@ function (ko, atd, i18n, toast, fmtDuration) {
         .catch(function () { self.loading(false); });
     };
 
+    // Reload on status change via the observable subscription (fires after the value
+    // binding writes) — the DOM change event fires before KO updates the observable.
+    self.fStatus.subscribe(function () { self.load(); });
+
     atd.getLookups().then(function (l) {
       self.envs((l.envs || []).map(function (e) { return e.envName; }));
       self.targets((l.targets || []).map(function (t) { return t.targetName; }));
