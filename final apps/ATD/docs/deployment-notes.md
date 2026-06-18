@@ -143,6 +143,12 @@ table columns (`_plan_drift`) and reconciles:
 - **Date-format alignment (avoids false drift):** `prepare.DATE_RE` recognises every shape the
   loader parses (`YYYY-MM-DD[ HH:MI:SS]`, `DD-MON-YYYY`, `MM/DD/YYYY[ HH:MI:SS]`), so a DATE
   column fed non-ISO dates (e.g. `15-JAN-2026`) is **not** mis-flagged as an incompatible change.
+- **All-empty column guard (avoids false drift):** a column that is **entirely empty** in an
+  extract profiles to the all-null default (`VARCHAR2(40)`) and carries no type evidence — so
+  `prepare._evolve` returns no change for an all-null live column. Without this, a `DATE`/`NUMBER`
+  column that is simply empty this run (e.g. SUPPLIERS `TO_DT`, 0/1413 filled) was wrongly warned
+  *"now has non-date values … but column is DATE — load may fail"* even though the load succeeded
+  (NULLs load into any type). Genuine text-in-a-DATE-column drift is still flagged.
 
 ### Performance (the extra step runs every load)
 - The only added cost on a **clean** (no-drift) run is a small `all_tab_columns` query

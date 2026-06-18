@@ -134,7 +134,8 @@ def profile(csv_text):
         else:
             typ = f"VARCHAR2({bucket(maxlen[i])})"
         cols.append({"header": h, "name": colname(h, used),
-                     "type": typ, "maxlen": maxlen[i], "nulls": nulls[i]})
+                     "type": typ, "maxlen": maxlen[i], "nulls": nulls[i],
+                     "allnull": not seen[i]})
     return cols, nrows
 
 
@@ -168,6 +169,12 @@ def _split(table):
 def _evolve(cur, live):
     """Decide how an existing column should change for the live data.
     Returns ('widen', new_type) | ('incompat', message) | None."""
+    # An all-empty column this run carries NO type evidence: it profiles to the
+    # all-null default (VARCHAR2(40)), so without this guard a DATE/NUMBER column
+    # that's simply empty in this extract would be mis-flagged "incompatible" (or a
+    # narrower text column would be force-widened). NULLs load into any type fine.
+    if live.get("allnull"):
+        return None
     ctype, clen = cur["type"], (cur["len"] or 0)
     ltype = live["type"]
     if ctype.startswith("VARCHAR2"):
