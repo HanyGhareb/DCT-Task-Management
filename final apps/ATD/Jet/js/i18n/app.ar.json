@@ -46,6 +46,10 @@
   "atd.col.rows": "الصفوف",
   "atd.col.started": "البدء",
   "atd.col.finished": "الانتهاء",
+  "atd.col.duration": "المدة",
+  "atd.dur.h": "س",
+  "atd.dur.m": "د",
+  "atd.dur.s": "ث",
 
   "atd.jobs.title": "المهام",
   "atd.jobs.new": "مهمة جديدة",

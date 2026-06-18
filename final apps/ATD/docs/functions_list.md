@@ -10,7 +10,10 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Jobs (`jobs`)
 - `load` (search + status filter) · `open` (→ jobDetail) · `newJob` / `editJob` (drawer) ·
   `toggleAdvanced` · `save` (create/update, JSON-validates column-map/params) · `enqueue` ·
-  `reset` · `del`.
+  `reset` · `runNow` · `del` · `fmtDuration` (`util/duration` — adaptive-compact run time).
+- The list shows a **Duration** column = the last run's elapsed time (`lastDurationSec`),
+  formatted `47s` / `1m 50s` / `1h 20m 10s` (units i18n `atd.dur.h/m/s`; `—` when never run or
+  the run-log row has no `started`, e.g. the SQLcl loader path).
 - **Minimal create:** the New-Job drawer needs only the **analysis path** (and, optionally, a
   target table). Everything else — job name, environment, target DB, staging table — is
   auto-derived; the **column map + table columns are prepared by the runner on first run**
@@ -18,7 +21,8 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   disclosure. Jobs not yet prepared show a `not prepared` badge (`prepared='N'`).
 
 ## Job detail (`jobDetail`)
-- `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)`.
+- `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)` ·
+  `fmtDuration`. The run-history table includes a **Duration** column (`durationSec` per run).
 - **Re-prepare** recovers a job whose stored column map / table no longer fits the live
   analysis. **Re-map** (`reprepare(false)`) clears `column_map_json` so the next run
   re-derives it (table + rows kept). **Rebuild table** (`reprepare(true)`, danger, confirm)
@@ -48,8 +52,8 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 |---|---|---|
 | GET | `/dashboard` | KPIs + queue counts + recent + alerts (failures **and** runs with a warning message; each alert has `kind` WARNING/FAILED) |
 | GET | `/lookups` | envs + targets for pickers |
-| GET / POST | `/jobs` | list (+`prepared` flag) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
-| GET / PUT / DELETE | `/jobs/:name` | read / update / delete job |
+| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec` = last run elapsed seconds) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
+| GET / PUT / DELETE | `/jobs/:name` | read (history rows carry `durationSec`) / update / delete job |
 | GET | `/runs` | run-log list — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |

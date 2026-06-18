@@ -32,6 +32,10 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
   accept an incompatible change. `TRUNCATE_INSERT` is now an atomic `DELETE`-in-transaction
   replace (failed reload rolls back, keeps prior load). `13_atd_ords.sql` redeployed; live-verified
   (remap flips `prepared` Y→N; rebuild dropped a real PROD table; 404 on unknown job).
+- **2026-06-18** — **Run-duration column** (APP_VERSION 1.3.1). Jobs list + Job Detail history show
+  the run's elapsed time (`lastDurationSec`/`durationSec` from `GET /jobs` + `/jobs/:name`),
+  formatted adaptive-compact (`47s` / `1m 50s` / `1h 20m 10s`) by `js/util/duration.js` (units i18n,
+  Latin digits). ORDS redeployed; live-verified against real runs.
 
 ## How to run locally
 ```

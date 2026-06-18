@@ -53,6 +53,7 @@
           <th data-bind="text: t('atd.col.rows')"></th>
           <th data-bind="text: t('atd.col.started')"></th>
           <th data-bind="text: t('atd.col.finished')"></th>
+          <th data-bind="text: t('atd.col.duration')"></th>
           <th data-bind="text: t('atd.detail.checksum')"></th>
         </tr></thead>
         <tbody data-bind="foreach: history">
@@ -62,6 +63,7 @@
             <td data-bind="text: $data.rowCount"></td>
             <td data-bind="text: $data.started || '—'"></td>
             <td data-bind="text: $data.finished || '—'"></td>
+            <td class="mono" data-bind="text: ($data.durationSec != null ? $vm.fmtDuration($data.durationSec) : '—')"></td>
             <td class="mono" data-bind="text: $data.checksum || ''"></td>
           </tr>
         </tbody>

@@ -35,6 +35,7 @@
         <th data-bind="text: t('atd.jobs.col.order')"></th>
         <th data-bind="text: t('atd.col.status')"></th>
         <th data-bind="text: t('atd.jobs.col.lastRun')"></th>
+        <th data-bind="text: t('atd.col.duration')"></th>
         <th data-bind="text: t('atd.jobs.col.enabled')"></th>
         <th style="width:220px;"></th>
       </tr></thead>
@@ -56,6 +57,10 @@
             <span class="muted" style="margin-inline-start:6px" data-bind="text: $data.lastFinished || ''"></span>
             <!-- /ko -->
             <!-- ko ifnot: $data.lastRunStatus --><span class="muted">—</span><!-- /ko -->
+          </td>
+          <td class="mono">
+            <!-- ko if: $data.lastDurationSec != null --><span data-bind="text: $vm.fmtDuration($data.lastDurationSec)"></span><!-- /ko -->
+            <!-- ko ifnot: $data.lastDurationSec != null --><span class="muted">—</span><!-- /ko -->
           </td>
           <td><span class="badge" data-bind="text: $data.enabled, css: { 'badge--active': $data.enabled==='Y', 'badge--idle': $data.enabled!=='Y' }"></span></td>
           <td class="cell-actions" style="text-align:end;" data-bind="click: function(){ return true; }, clickBubble: false">

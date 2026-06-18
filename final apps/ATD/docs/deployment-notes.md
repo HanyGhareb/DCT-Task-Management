@@ -49,6 +49,12 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-18** — **Run-duration column** (APP_VERSION 1.3.1). Jobs list shows a **Duration**
+  column (`GET /jobs` → `lastDurationSec`, the last run's `finished − started` in seconds, via the
+  OUTER APPLY); Job Detail run-history adds a Duration column (`durationSec` per run). Formatted
+  client-side adaptive-compact (`47s` / `1m 50s` / `1h 20m 10s`) by `js/util/duration.js`, units
+  i18n `atd.dur.h/m/s` (EN h/m/s, AR س/د/ث), Latin digits; `—` when a run-log row has no `started`
+  (the SQLcl loader path stamps only `finished`). ORDS redeployed; live-verified against real runs.
 - **2026-06-18** — **Backlog: re-prepare action + atomic reload** (APP_VERSION 1.3.0).
   (1) New `POST /atd/jobs/:name/reprepare` clears `column_map_json` (next run re-derives it);
   `{"rebuild":"Y"}` also DROPs the stage (+final) table so the next run recreates it from the

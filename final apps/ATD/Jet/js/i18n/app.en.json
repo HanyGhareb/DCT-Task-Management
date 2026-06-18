@@ -46,6 +46,10 @@
   "atd.col.rows": "Rows",
   "atd.col.started": "Started",
   "atd.col.finished": "Finished",
+  "atd.col.duration": "Duration",
+  "atd.dur.h": "h",
+  "atd.dur.m": "m",
+  "atd.dur.s": "s",
 
   "atd.jobs.title": "Jobs",
   "atd.jobs.new": "New Job",
