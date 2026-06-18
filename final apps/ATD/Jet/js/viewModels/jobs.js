@@ -23,6 +23,8 @@ function (ko, atd, i18n, toast) {
     self.fmColMap = ko.observable(''); self.fmParams = ko.observable('');
     self.fmPriority = ko.observable(5); self.fmRunOrder = ko.observable(100);
     self.fmEnabled = ko.observable(true);
+    self.showAdvanced = ko.observable(false);
+    self.toggleAdvanced = function () { self.showAdvanced(!self.showAdvanced()); };
 
     self.formTitle = ko.computed(function () {
       return self.t(self.editName() ? 'atd.jobs.editTitle' : 'atd.jobs.newTitle');
@@ -50,15 +52,15 @@ function (ko, atd, i18n, toast) {
 
     self.newJob = function () {
       self.editName(null);
-      self.fmJobName(''); self.fmEnv(self.envs()[0] || ''); self.fmTarget(self.targets()[0] || '');
+      self.fmJobName(''); self.fmEnv(''); self.fmTarget('');
       self.fmSource(''); self.fmStage(''); self.fmFinal(''); self.fmLoadMode('TRUNCATE_INSERT');
       self.fmKeyCols(''); self.fmColMap(''); self.fmParams(''); self.fmPriority(5); self.fmRunOrder(100);
-      self.fmEnabled(true); self.showForm(true);
+      self.fmEnabled(true); self.showAdvanced(false); self.showForm(true);
     };
 
     self.editJob = function (row) {
       atd.getJob(row.jobName).then(function (j) {
-        self.editName(j.jobName);
+        self.editName(j.jobName); self.showAdvanced(true);
         self.fmJobName(j.jobName); self.fmEnv(j.envName); self.fmTarget(j.targetName);
         self.fmSource(j.sourceRef || ''); self.fmStage(j.stageTable || ''); self.fmFinal(j.finalTable || '');
         self.fmLoadMode(j.loadMode || 'TRUNCATE_INSERT'); self.fmKeyCols(j.keyColumns || '');
@@ -74,25 +76,46 @@ function (ko, atd, i18n, toast) {
     }
 
     self.save = function () {
-      if (!self.fmJobName()) { toast.error(self.t('atd.field.jobName')); return; }
-      if (!self.fmSource())  { toast.error(self.t('atd.field.sourceRef')); return; }
-      if (!self.fmStage())   { toast.error(self.t('atd.field.stageTable')); return; }
       if (!_validJson(self.fmColMap(), self.t('atd.field.columnMap'))) return;
       if (!_validJson(self.fmParams(), self.t('atd.field.params'))) return;
-      var body = {
-        envName: self.fmEnv(), targetName: self.fmTarget(), sourceRef: self.fmSource(),
-        stageTable: self.fmStage(), finalTable: self.fmFinal(), loadMode: self.fmLoadMode(),
-        keyColumns: self.fmKeyCols(), columnMapJson: self.fmColMap(), paramsJson: self.fmParams(),
-        priority: Number(self.fmPriority()), runOrder: Number(self.fmRunOrder()),
-        enabled: self.fmEnabled() ? 'Y' : 'N'
-      };
-      var done = function () { toast.success(self.t('atd.common.saved')); self.showForm(false); self.load(); };
+
       if (self.editName()) {
-        atd.updateJob(self.editName(), body).then(done).catch(function () {});
-      } else {
-        body.jobName = self.fmJobName();
-        atd.createJob(body).then(done).catch(function () {});
+        // edit: full body (PUT only overwrites keys present)
+        var body = {
+          envName: self.fmEnv(), targetName: self.fmTarget(), sourceRef: self.fmSource(),
+          stageTable: self.fmStage(), finalTable: self.fmFinal(), loadMode: self.fmLoadMode(),
+          keyColumns: self.fmKeyCols(), columnMapJson: self.fmColMap(), paramsJson: self.fmParams(),
+          priority: Number(self.fmPriority()), runOrder: Number(self.fmRunOrder()),
+          enabled: self.fmEnabled() ? 'Y' : 'N'
+        };
+        atd.updateJob(self.editName(), body).then(function () {
+          toast.success(self.t('atd.common.saved')); self.showForm(false); self.load();
+        }).catch(function () {});
+        return;
       }
+
+      // create: analysis path is the ONLY required field — everything else is
+      // auto-derived server-side and prepared by the runner on first run.
+      if (!self.fmSource()) { toast.error(self.t('atd.field.sourceRef')); return; }
+      var b = { sourceRef: self.fmSource() };
+      if (self.fmStage())   b.stageTable = self.fmStage();   // optional target table
+      if (self.fmJobName()) b.jobName = self.fmJobName();
+      if (self.showAdvanced()) {
+        if (self.fmEnv())     b.envName = self.fmEnv();
+        if (self.fmTarget())  b.targetName = self.fmTarget();
+        b.loadMode = self.fmLoadMode();
+        if (self.fmFinal())   b.finalTable = self.fmFinal();
+        if (self.fmKeyCols()) b.keyColumns = self.fmKeyCols();
+        if (self.fmColMap())  b.columnMapJson = self.fmColMap();
+        if (self.fmParams())  b.paramsJson = self.fmParams();
+        b.priority = Number(self.fmPriority()); b.runOrder = Number(self.fmRunOrder());
+        b.enabled = self.fmEnabled() ? 'Y' : 'N';
+      }
+      atd.createJob(b).then(function (r) {
+        var nm = (r && r.jobName) || self.fmSource();
+        toast.success(self.t('atd.jobs.createdPrepare').replace('{name}', nm));
+        self.showForm(false); self.load();
+      }).catch(function () {});
     };
 
     self.enqueue = function (row) {

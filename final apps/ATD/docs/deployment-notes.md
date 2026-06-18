@@ -47,3 +47,23 @@ cd "final apps/ATD/Jet" && python dev-proxy.py        # serves all sibling apps 
 The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` workers (the
 15-min Windows Task `OTBI-ATD Loader` on this host, or `--worker` hosts). Dashboard shows
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
+
+## Deployment history
+- **2026-06-18** — App 208 built (DB/ORDS/JET/UAT round 1 26/26) + Runner Settings.
+- **2026-06-18** — **Minimal job create + auto-prepare.** Creating a job now needs only the
+  **analysis path** (target table optional); job name/env/target/stage table are auto-derived
+  in `POST /atd/jobs`, and the **staging table + column map are prepared by the runner on first
+  run** (new `otbi-atd/runner/prepare.py`, shared with `add_analysis.py`; wired into both the
+  oracledb and SQLcl load paths). `prepared` flag added to `/jobs` list + detail; UI New-Job
+  drawer collapsed to path + optional target table with an "Advanced options" disclosure.
+  Redeployed `13_atd_ords.sql`; APP_VERSION 1.1.0 → **1.2.0**. Verified live: minimal POST
+  derives `MY_TEST_ANALYSIS` → `PROD.ATD_MY_TEST_ANALYSIS`, env/target auto-filled,
+  `prepared='N'`, missing-source → 400. No `final apps/shared/` change → only this app bumped.
+
+## Auto-prepare contract (prepare.py)
+- A job "needs preparation" when `column_map_json` is empty. On that job's first run the runner
+  profiles the freshly downloaded CSV (`profile()` — same column-name/type inference as
+  `add_analysis.py`), **CREATEs the staging table if missing** (sized/typed from the data +
+  a `load_ts` audit column), persists `column_map_json` + `stage_table` onto the job row, then
+  loads. Subsequent runs skip prep. DB slug (`PROD.ATD_<slug>`) and the runner's
+  `derive_table()` produce identical names, so the pre-created stage table and the runner agree.

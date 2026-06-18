@@ -9,7 +9,13 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 
 ## Jobs (`jobs`)
 - `load` (search + status filter) · `open` (→ jobDetail) · `newJob` / `editJob` (drawer) ·
-  `save` (create/update, JSON-validates column-map/params) · `enqueue` · `reset` · `del`.
+  `toggleAdvanced` · `save` (create/update, JSON-validates column-map/params) · `enqueue` ·
+  `reset` · `del`.
+- **Minimal create:** the New-Job drawer needs only the **analysis path** (and, optionally, a
+  target table). Everything else — job name, environment, target DB, staging table — is
+  auto-derived; the **column map + table columns are prepared by the runner on first run**
+  (`prepare.py` profiles the live CSV). All other fields live behind an "Advanced options"
+  disclosure. Jobs not yet prepared show a `not prepared` badge (`prepared='N'`).
 
 ## Job detail (`jobDetail`)
 - `refresh` (full config + run history) · `enqueue` · `back`.
@@ -32,7 +38,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 |---|---|---|
 | GET | `/dashboard` | KPIs + queue counts + recent + alerts |
 | GET | `/lookups` | envs + targets for pickers |
-| GET / POST | `/jobs` | list / create job |
+| GET / POST | `/jobs` | list (+`prepared` flag) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
 | GET / PUT / DELETE | `/jobs/:name` | read / update / delete job |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |

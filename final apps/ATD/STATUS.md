@@ -22,6 +22,10 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
 - **2026-06-18** — App 208 built. ORDS `atd.rest` deployed; JET app (`final apps/ATD/Jet/`)
   live; registered in `shared/js/shell.js` MODULES + `shared/i18n/common.*`; all 8 sibling
   APP_VERSIONs bumped (shared shell change); CLAUDE.md Module Status row added.
+- **2026-06-18** — **Minimal job create + runner auto-prepare** (APP_VERSION 1.2.0). New job
+  needs only the analysis path (target table optional); job name/env/target/stage auto-derived;
+  staging table + column map prepared on first run (`otbi-atd/runner/prepare.py`). `13_atd_ords.sql`
+  redeployed; verified live (minimal POST → derived name + `prepared='N'`, missing-source → 400).
 
 ## How to run locally
 ```

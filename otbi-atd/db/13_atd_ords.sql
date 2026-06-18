@@ -198,6 +198,7 @@ BEGIN
     SELECT j.job_name, j.env_name, j.target_name, j.source_ref, j.stage_table,
            j.final_table, j.load_mode, j.priority, j.run_order, j.enabled,
            j.run_status, j.claimed_by, j.claimed_at,
+           CASE WHEN j.column_map_json IS NOT NULL THEN 'Y' ELSE 'N' END AS prepared,
            lr.run_id AS last_run_id2, lr.status AS last_status,
            TO_CHAR(lr.finished,'YYYY-MM-DD HH24:MI') AS last_finished
     FROM atd_otbi_jobs j
@@ -223,6 +224,7 @@ BEGIN
     APEX_JSON.write('priority', r.priority);
     APEX_JSON.write('runOrder', r.run_order);
     APEX_JSON.write('enabled', r.enabled);
+    APEX_JSON.write('prepared', r.prepared);
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
     APEX_JSON.write('claimedAt', TO_CHAR(r.claimed_at,'YYYY-MM-DD HH24:MI'));
@@ -239,30 +241,72 @@ END;
 
     def_handler('jobs', 'POST', q'!
 DECLARE
+  -- Minimal create: an analysis path is the ONLY required input. The job name,
+  -- environment, target DB, staging table and column map are all auto-derived
+  -- here when omitted; the column map + final table sizing are PREPARED BY THE
+  -- RUNNER on first run (it profiles the live CSV). See otbi-atd/runner/prepare.py.
   l_user VARCHAR2(100) := dct_rest.validate_session;
-  l_name VARCHAR2(80);
+  l_name  VARCHAR2(80);
+  l_src   VARCHAR2(400);
+  l_slug  VARCHAR2(40);
+  l_env   VARCHAR2(80);
+  l_tgt   VARCHAR2(80);
+  l_stage VARCHAR2(128);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
-  l_name := APEX_JSON.get_varchar2(p_path => 'jobName');
-  IF l_name IS NULL THEN dct_rest.err(400,'jobName is required'); RETURN; END IF;
+
+  l_src := APEX_JSON.get_varchar2(p_path => 'sourceRef');
+  IF l_src IS NULL THEN dct_rest.err(400,'Analysis path (sourceRef) is required'); RETURN; END IF;
+
+  -- slug = upper, non-alnum -> _, trimmed, <=26 chars (matches prepare.slug())
+  l_slug := SUBSTR(TRIM('_' FROM REGEXP_REPLACE(
+              UPPER(REGEXP_REPLACE(l_src, '^.*/', '')), '[^A-Za-z0-9]+', '_')), 1, 26);
+  IF l_slug IS NULL THEN dct_rest.err(400,'Could not derive a name from the analysis path'); RETURN; END IF;
+
+  l_name := NVL(APEX_JSON.get_varchar2(p_path => 'jobName'), l_slug);
+
+  l_env := APEX_JSON.get_varchar2(p_path => 'envName');
+  IF l_env IS NULL THEN
+    BEGIN
+      SELECT env_name INTO l_env FROM (
+        SELECT env_name FROM atd_otbi_env
+         WHERE enabled='Y' AND extract_track='BROWSER' ORDER BY env_name)
+       WHERE ROWNUM = 1;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      dct_rest.err(400,'No enabled environment - create one first'); RETURN;
+    END;
+  END IF;
+
+  l_tgt := APEX_JSON.get_varchar2(p_path => 'targetName');
+  IF l_tgt IS NULL THEN
+    BEGIN
+      SELECT target_name INTO l_tgt FROM (
+        SELECT target_name FROM atd_target_db WHERE enabled='Y' ORDER BY target_name)
+       WHERE ROWNUM = 1;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      dct_rest.err(400,'No enabled target database - create one first'); RETURN;
+    END;
+  END IF;
+
+  -- "Target table" is optional; default PROD.ATD_<slug> (created on first run)
+  l_stage := NVL(APEX_JSON.get_varchar2(p_path => 'stageTable'),
+                 NVL(APEX_JSON.get_varchar2(p_path => 'finalTable'), 'PROD.ATD_'||l_slug));
+
   INSERT INTO atd_otbi_jobs (
     job_name, env_name, target_name, source_ref, output_format, params_json,
     stage_table, final_table, load_mode, key_columns, column_map_json, schedule,
     enabled, priority, run_order, run_status)
   VALUES (
-    l_name,
-    APEX_JSON.get_varchar2(p_path => 'envName'),
-    APEX_JSON.get_varchar2(p_path => 'targetName'),
-    APEX_JSON.get_varchar2(p_path => 'sourceRef'),
+    l_name, l_env, l_tgt, l_src,
     NVL(APEX_JSON.get_varchar2(p_path => 'outputFormat'),'csv'),
     APEX_JSON.get_varchar2(p_path => 'paramsJson'),
-    APEX_JSON.get_varchar2(p_path => 'stageTable'),
+    l_stage,
     APEX_JSON.get_varchar2(p_path => 'finalTable'),
     NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'loadMode')),'TRUNCATE_INSERT'),
     APEX_JSON.get_varchar2(p_path => 'keyColumns'),
-    APEX_JSON.get_varchar2(p_path => 'columnMapJson'),
+    APEX_JSON.get_varchar2(p_path => 'columnMapJson'),   -- usually NULL -> prepared on first run
     APEX_JSON.get_varchar2(p_path => 'schedule'),
     NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'enabled')),'Y'),
     NVL(APEX_JSON.get_number(p_path => 'priority'),5),
@@ -272,7 +316,12 @@ BEGIN
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
-  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.write('jobName', l_name); APEX_JSON.close_object;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('jobName', l_name);
+  APEX_JSON.write('stageTable', l_stage);
+  APEX_JSON.write('prepared', 'N');
+  APEX_JSON.close_object;
 EXCEPTION
   WHEN DUP_VAL_ON_INDEX THEN ROLLBACK; dct_rest.err(400,'A job with that name already exists');
   WHEN OTHERS THEN ROLLBACK;
@@ -305,6 +354,7 @@ BEGIN
     APEX_JSON.write('loadMode', r.load_mode);
     APEX_JSON.write('keyColumns', NVL(r.key_columns,''));
     APEX_JSON.write('columnMapJson', NVL(DBMS_LOB.SUBSTR(r.column_map_json,32000,1),''));
+    APEX_JSON.write('prepared', CASE WHEN r.column_map_json IS NOT NULL THEN 'Y' ELSE 'N' END);
     APEX_JSON.write('schedule', NVL(r.schedule,''));
     APEX_JSON.write('enabled', r.enabled);
     APEX_JSON.write('priority', r.priority);

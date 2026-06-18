@@ -42,7 +42,12 @@
         <tr style="cursor:pointer" data-bind="click: function(){ $vm.open($data); }">
           <td><span class="mono" data-bind="text: $data.jobName"></span></td>
           <td class="truncate-cell mono" data-bind="text: $data.sourceRef, attr:{ title: $data.sourceRef }"></td>
-          <td class="mono" data-bind="text: $data.stageTable"></td>
+          <td class="mono">
+            <span data-bind="text: $data.stageTable"></span>
+            <!-- ko if: $data.prepared === 'N' -->
+            <span class="badge badge--idle" style="margin-inline-start:6px" data-bind="text: $vm.t('atd.jobs.notPrepared')"></span>
+            <!-- /ko -->
+          </td>
           <td data-bind="text: $data.priority + '·' + $data.runOrder"></td>
           <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
           <td>
@@ -70,18 +75,30 @@
                        title: formTitle, saveLabel: formSaveLabel,
                        cancelLabel: t('atd.action.cancel'), onSave: save, width: '640px'">
     <div class="form-grid">
+      <!-- the only required input: the analysis path -->
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.sourceRef')"></label>
+        <input class="form-control mono" data-bind="textInput: fmSource, attr:{ placeholder: t('atd.field.sourceRef.ph') }"></div>
+      <!-- optional target table (defaults to PROD.ATD_<name>, created on first run) -->
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.targetTable')"></label>
+        <input class="form-control mono" data-bind="textInput: fmStage, attr:{ placeholder: t('atd.field.targetTable.ph') }"></div>
+
+      <!-- ko if: !editName() -->
+      <div class="form-group form-group--full">
+        <p class="muted" style="margin:0 0 8px; font-size:.85em" data-bind="text: t('atd.jobs.minimalHint')"></p>
+        <button type="button" class="btn btn-xs" data-bind="click: toggleAdvanced,
+                text: (showAdvanced() ? '▾ ' : '▸ ') + t('atd.jobs.advanced')"></button>
+      </div>
+      <!-- /ko -->
+
+      <!-- ko if: showAdvanced -->
       <!-- ko if: !editName() -->
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.jobName')"></label>
-        <input class="form-control mono" data-bind="textInput: fmJobName"></div>
+        <input class="form-control mono" data-bind="textInput: fmJobName, attr:{ placeholder: t('atd.field.jobName.ph') }"></div>
       <!-- /ko -->
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.env')"></label>
-        <select class="form-control" data-bind="value: fmEnv, options: envs"></select></div>
+        <select class="form-control" data-bind="value: fmEnv, options: envs, optionsCaption: t('atd.field.auto')"></select></div>
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.target')"></label>
-        <select class="form-control" data-bind="value: fmTarget, options: targets"></select></div>
-      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.sourceRef')"></label>
-        <input class="form-control mono" data-bind="textInput: fmSource"></div>
-      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.stageTable')"></label>
-        <input class="form-control mono" data-bind="textInput: fmStage"></div>
+        <select class="form-control" data-bind="value: fmTarget, options: targets, optionsCaption: t('atd.field.auto')"></select></div>
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.loadMode')"></label>
         <select class="form-control" data-bind="value: fmLoadMode, options: loadModes"></select></div>
       <!-- ko if: fmLoadMode() === 'MERGE' -->
@@ -95,13 +112,15 @@
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.runOrder')"></label>
         <input class="form-control" type="number" data-bind="value: fmRunOrder"></div>
       <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.columnMap')"></label>
-        <textarea class="form-control mono" rows="3" data-bind="textInput: fmColMap" placeholder='{"CSV Header":"TARGET_COL"}'></textarea></div>
+        <textarea class="form-control mono" rows="3" data-bind="textInput: fmColMap" placeholder='{"CSV Header":"TARGET_COL"}'></textarea>
+        <p class="muted" style="margin:4px 0 0; font-size:.8em" data-bind="text: t('atd.field.columnMap.hint')"></p></div>
       <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.params')"></label>
         <textarea class="form-control mono" rows="2" data-bind="textInput: fmParams"></textarea></div>
       <div class="form-group">
         <label class="form-label" data-bind="text: t('atd.field.enabled')"></label>
         <div><input type="checkbox" data-bind="checked: fmEnabled"></div>
       </div>
+      <!-- /ko -->
     </div>
   </edit-drawer>
 </div>

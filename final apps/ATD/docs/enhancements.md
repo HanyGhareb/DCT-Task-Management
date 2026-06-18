@@ -3,6 +3,12 @@
 Prioritised suggestions after the App 208 build + round-1 UAT (2026-06-18). Grouped by
 effort/strategic horizon. None are blockers — the platform is complete and verified.
 
+> **Delivered 2026-06-18 — Minimal job create + auto-prepare.** Adding a job now needs only the
+> analysis path (target table optional); job name/env/target/stage table are auto-derived and
+> the staging table + column map are prepared by the runner on first run (`prepare.py`). This
+> also covers most of #5 below (a paste-paths bulk import is now a thin loop over the minimal
+> `POST /atd/jobs`). See `docs/deployment-notes.md` → "Auto-prepare contract".
+
 ## Quick wins (small, high value)
 1. **Per-job scheduling (use the `schedule` column).** Jobs already carry a `schedule`
    (DBMS_SCHEDULER calendar) but Track B ignores it — every cycle re-runs all jobs. Add a

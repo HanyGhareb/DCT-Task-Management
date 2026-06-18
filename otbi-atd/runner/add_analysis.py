@@ -16,84 +16,22 @@ Optional: OTBI_ANALYTICS_BASE (default the known pod), OTBI_ENV_NAME (default
 FUSION_ADGOV), OTBI_TARGET_NAME (default ATD_LOCAL), ATD_SQLCL (default 'sql').
 """
 import argparse
-import csv
-import io
 import json
 import os
 import re
 import subprocess
 import sys
-from datetime import datetime
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
 from playwright.sync_api import sync_playwright
 
 import auth
 import extract
+from prepare import profile, column_map  # shared profiling (also used by the runner)
 
 DB_DIR = os.path.join(os.path.dirname(__file__), "..", "db", "generated")
 DEFAULT_BASE = os.environ.get("OTBI_ANALYTICS_BASE",
                               "https://iaaibv.fa.ocs.oraclecloud29.com/analytics")
-
-# Oracle reserved words we must not use as bare column names
-RESERVED = {"ORDER", "DATE", "LEVEL", "NUMBER", "COMMENT", "ROW", "ROWID", "SIZE",
-            "TABLE", "COLUMN", "ACCESS", "GROUP", "USER", "SESSION", "START", "TO",
-            "FROM", "SELECT", "VALUES", "RAW", "DESC", "ASC", "MODE", "UID"}
-LEN_BUCKETS = [10, 20, 30, 40, 60, 100, 150, 200, 300, 400, 600, 1000, 2000, 4000]
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$")
-INT_RE = re.compile(r"^-?\d+$")
-NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
-
-
-def colname(header, used):
-    n = re.sub(r"[^A-Za-z0-9]+", "_", header.strip().upper()).strip("_")
-    n = re.sub(r"_+", "_", n)
-    if not n or not n[0].isalpha():
-        n = "C_" + n
-    n = n[:28]
-    if n in RESERVED:
-        n = n + "_"
-    base, i = n, 2
-    while n in used:
-        n = f"{base[:26]}_{i}"; i += 1
-    used.add(n)
-    return n
-
-
-def bucket(maxlen):
-    want = max(int(maxlen * 1.5) + 1, 10)
-    for b in LEN_BUCKETS:
-        if want <= b:
-            return b
-    return 4000
-
-
-def infer(values, maxlen):
-    ne = [v for v in values if v.strip() != ""]
-    if not ne:
-        return "VARCHAR2(40)"          # all-null: safe default
-    if all(DATE_RE.match(v) for v in ne):
-        return "DATE"
-    if all(INT_RE.match(v) for v in ne) and maxlen <= 15:
-        return "NUMBER"
-    if all(NUM_RE.match(v) for v in ne) and maxlen <= 18:
-        return "NUMBER"
-    return f"VARCHAR2({bucket(maxlen)})"
-
-
-def profile(csv_text):
-    rows = list(csv.reader(io.StringIO(csv_text)))
-    if not rows:
-        raise SystemExit("analysis returned no rows")
-    hdr, data = rows[0], rows[1:]
-    used, cols = set(), []
-    for i, h in enumerate(hdr):
-        vals = [r[i] if i < len(r) else "" for r in data]
-        maxlen = max((len(v) for v in vals), default=0)
-        cols.append({"header": h, "name": colname(h, used),
-                     "type": infer(vals, maxlen), "maxlen": maxlen,
-                     "nulls": sum(1 for v in vals if v.strip() == "")})
-    return cols, len(data)
 
 
 def write_sql(table, job, src_path, env_name, target_name, load_mode, key_cols, cols):
@@ -115,7 +53,7 @@ def write_sql(table, job, src_path, env_name, target_name, load_mode, key_cols, 
     with open(ddl_path, "w", encoding="utf-8", newline="\r\n") as f:
         f.write("\n".join(ddl) + "\n")
 
-    colmap = {c["header"]: c["name"] for c in cols}
+    colmap = column_map(cols)
     keymap = ",".join(colmap.get(k.strip(), k.strip()) for k in key_cols) if key_cols else "NULL"
     keysql = f"'{keymap}'" if key_cols else "NULL"
     seed = ["SET DEFINE OFF", "SET SQLBLANKLINES ON",

@@ -3,8 +3,11 @@
 For each enabled BROWSER-track job in the control tables:
   1) ensure an OTBI session (reuse saved, else MFA login - number to Telegram),
   2) download the analysis CSV via the Go-URL,
-  3) load into the target table,
-  4) write an ATD_LOAD_RUN_LOG row (SUCCESS/FAILED), warning on likely truncation.
+  3) on a not-yet-prepared job (no column map), derive its staging table + column
+     map from that CSV and persist them (see prepare.py) - so a job needs only its
+     analysis path to be created; everything else is prepared on first run,
+  4) load into the target table,
+  5) write an ATD_LOAD_RUN_LOG row (SUCCESS/FAILED), warning on likely truncation.
 
 Two DB modes (ATD_DB_MODE):
   sqlcl    (default) - all DB work via the configured SQLcl connection
@@ -38,6 +41,7 @@ import auth
 import extract
 import checks
 import notify
+import prepare
 
 
 def _warn_truncation(name, n):
@@ -77,6 +81,7 @@ def _run_one_sqlcl(ctx, env, job):
     try:
         params = json.loads(job["params_json"]) if job.get("params_json") else None
         csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
+        prepare.ensure_prepared_sqlcl(job, csv_text)   # first run: derive table + column map
         n = loadsql.load(job, csv_text)
         _warn_truncation(name, n)
         print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
@@ -112,6 +117,7 @@ def _make_run_one_oracledb(conn, load):
         try:
             params = json.loads(job["params_json"]) if job.get("params_json") else None
             csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
+            prepare.ensure_prepared_oracledb(conn, job, csv_text)  # first run: derive table + map
             ck = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
             n = load.load(conn, csv_text, job["stage_table"], job["final_table"],
                           job["load_mode"], job["key_columns"], job["column_map_json"])
