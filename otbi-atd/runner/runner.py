@@ -81,7 +81,10 @@ def _run_one_sqlcl(ctx, env, job):
     try:
         params = json.loads(job["params_json"]) if job.get("params_json") else None
         csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
-        prepare.ensure_prepared_sqlcl(job, csv_text)   # first run: derive table + column map
+        # first run: derive table + column map; later runs: auto-adapt to schema drift
+        drift = prepare.ensure_prepared_sqlcl(job, csv_text)
+        if drift:
+            notify.send(f"otbi-atd {name} schema drift: " + "; ".join(drift))
         n = loadsql.load(job, csv_text)
         _warn_truncation(name, n)
         print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
@@ -117,12 +120,16 @@ def _make_run_one_oracledb(conn, load):
         try:
             params = json.loads(job["params_json"]) if job.get("params_json") else None
             csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
-            prepare.ensure_prepared_oracledb(conn, job, csv_text)  # first run: derive table + map
+            # first run: derive table + map; later runs: auto-adapt to schema drift
+            drift = prepare.ensure_prepared_oracledb(conn, job, csv_text)
+            if drift:
+                notify.send(f"otbi-atd {name} schema drift: " + "; ".join(drift))
             ck = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
             n = load.load(conn, csv_text, job["stage_table"], job["final_table"],
                           job["load_mode"], job["key_columns"], job["column_map_json"])
             note = _warn_truncation(name, n)
-            _log_end(conn, run_id, "SUCCESS", n=n, ck=ck, msg=note or None)
+            _log_end(conn, run_id, "SUCCESS", n=n, ck=ck,
+                     msg="; ".join(drift + ([note] if note else [])) or None)
             print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
             return True
         except Exception as e:  # noqa: BLE001

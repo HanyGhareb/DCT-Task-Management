@@ -50,6 +50,11 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 
 ## Deployment history
 - **2026-06-18** — App 208 built (DB/ORDS/JET/UAT round 1 26/26) + Runner Settings.
+- **2026-06-18** — **Schema-drift auto-adapt.** `prepare.ensure_prepared_*` now runs every load:
+  after the first run it diffs the live header and ADDs new columns / widens outgrown text
+  automatically, keeps removed columns (load NULL) and flags incompatible type changes — all
+  warned via Telegram + run-log `message`. Runner-only (no frontend change); verified live
+  (A VARCHAR2(20)→100 widen + new column ADD on a probe table). See "Schema drift" below.
 - **2026-06-18** — **Minimal job create + auto-prepare.** Creating a job now needs only the
   **analysis path** (target table optional); job name/env/target/stage table are auto-derived
   in `POST /atd/jobs`, and the **staging table + column map are prepared by the runner on first
@@ -65,5 +70,20 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
   profiles the freshly downloaded CSV (`profile()` — same column-name/type inference as
   `add_analysis.py`), **CREATEs the staging table if missing** (sized/typed from the data +
   a `load_ts` audit column), persists `column_map_json` + `stage_table` onto the job row, then
-  loads. Subsequent runs skip prep. DB slug (`PROD.ATD_<slug>`) and the runner's
-  `derive_table()` produce identical names, so the pre-created stage table and the runner agree.
+  loads. DB slug (`PROD.ATD_<slug>`) and the runner's `derive_table()` produce identical names,
+  so the pre-created stage table and the runner agree.
+
+## Schema drift — auto-adapt + warn (every run)
+`ensure_prepared_*` runs on **every** load, not just the first, so a job tracks its analysis
+when columns change. After the first run it diffs the live CSV header against the stored map +
+table columns (`_plan_drift`) and reconciles:
+- **New column** → `ALTER TABLE ADD` (typed from the live data) + extend the map. *(auto)*
+- **Outgrown text** (values longer than the column) → `ALTER TABLE MODIFY` to a wider
+  `VARCHAR2`. *(auto; `NUMBER` is unbounded in our DDL so numbers never need widening.)*
+- **Removed column** → kept in the table + map; it loads `NULL`. **Warned.**
+- **Incompatible** (a `NUMBER`/`DATE` column now holds text) → **warned**, not altered (changing
+  a populated column's type needs it empty); the load then fails loudly (ORA-01722 / date parse)
+  and is logged `FAILED`. To accept it, drop/clear that column or the job's `column_map_json` so
+  the next run re-profiles. Both the stage and (MERGE) final table are altered together.
+- Warnings go to **Telegram** (`notify.send`) **and the run-log `message`** (oracledb path —
+  visible in the Runs detail modal). Reconcile ALTERs auto-commit; widening only ever grows.

@@ -8,6 +8,13 @@ effort/strategic horizon. None are blockers — the platform is complete and ver
 > the staging table + column map are prepared by the runner on first run (`prepare.py`). This
 > also covers most of #5 below (a paste-paths bulk import is now a thin loop over the minimal
 > `POST /atd/jobs`). See `docs/deployment-notes.md` → "Auto-prepare contract".
+>
+> **Delivered 2026-06-18 — Schema-drift auto-adapt + warn.** Preparation now runs every load:
+> new analysis columns are `ALTER TABLE ADD`-ed, outgrown text columns are widened, removed
+> columns load NULL (warned), and incompatible type changes warn loudly (Telegram + run-log).
+> See `docs/deployment-notes.md` → "Schema drift". *Remaining gap (small backlog):* a one-click
+> **"Re-prepare / accept breaking change"** action (clears `column_map_json` so the next run
+> rebuilds the table) to recover from an incompatible change without hand-editing the row.
 
 ## Quick wins (small, high value)
 1. **Per-job scheduling (use the `schedule` column).** Jobs already carry a `schedule`

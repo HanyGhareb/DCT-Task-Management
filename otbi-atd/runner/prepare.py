@@ -121,6 +121,71 @@ def _split(table):
     return owner.upper(), name.upper()
 
 
+# ---- schema-drift reconciliation (shared, DB-agnostic) -------------------
+def _evolve(cur, live):
+    """Decide how an existing column should change for the live data.
+    Returns ('widen', new_type) | ('incompat', message) | None."""
+    ctype, clen = cur["type"], (cur["len"] or 0)
+    ltype = live["type"]
+    if ctype.startswith("VARCHAR2"):
+        if ltype.startswith("VARCHAR2"):
+            need = int(ltype[ltype.find("(") + 1:-1])
+            if need > clen:
+                return ("widen", f"VARCHAR2({need})")
+        return None                      # numbers/dates load fine as strings
+    if ctype == "NUMBER":
+        if ltype.startswith("VARCHAR2"):
+            return ("incompat", f"now has non-numeric values (needs {ltype}) but column is NUMBER")
+        return None                      # NUMBER is unbounded in our DDL
+    if ctype.startswith(("DATE", "TIMESTAMP")):
+        if ltype.startswith("VARCHAR2"):
+            return ("incompat", f"now has non-date values (needs {ltype}) but column is {ctype}")
+        return None
+    return None
+
+
+def _plan_drift(cols, cur_map, table_cols):
+    """Diff the live CSV (cols=profile()) against the stored map + table columns.
+    Returns (adds, widens, removed, incompat, new_map)."""
+    by_header = {c["header"]: c for c in cols}
+    used = set(cur_map.values())
+    adds, widens, removed, incompat = [], [], [], []
+    new_map = dict(cur_map)
+    for c in cols:                       # columns the analysis grew
+        if c["header"] not in cur_map:
+            name = colname(c["header"], used)
+            adds.append((c["header"], name, c["type"]))
+            new_map[c["header"]] = name
+    for h in cur_map:                    # columns the analysis lost
+        if h not in by_header:
+            removed.append(h)
+    for h, col in cur_map.items():       # surviving columns: widen / flag
+        if h not in by_header:
+            continue
+        meta = table_cols.get(col.upper())
+        if not meta:
+            continue
+        d = _evolve(meta, by_header[h])
+        if d and d[0] == "widen":
+            widens.append((col, d[1]))
+        elif d and d[0] == "incompat":
+            incompat.append((col, d[1]))
+    return adds, widens, removed, incompat, new_map
+
+
+def _drift_warnings(adds, widens, removed, incompat):
+    w = []
+    for h, name, typ in adds:
+        w.append(f"new column '{h}' added as {name} {typ}")
+    for col, typ in widens:
+        w.append(f"widened {col} -> {typ}")
+    for h in removed:
+        w.append(f"column '{h}' no longer in the analysis - loading NULL")
+    for col, msg in incompat:
+        w.append(f"{col}: {msg} - load may fail")
+    return w
+
+
 # ---- oracledb path -------------------------------------------------------
 def _table_exists_ora(conn, table):
     owner, name = _split(table)
@@ -130,27 +195,58 @@ def _table_exists_ora(conn, table):
     return cur.fetchone()[0] > 0
 
 
-def ensure_prepared_oracledb(conn, job, csv_text):
-    """If the job has no column map yet, profile the CSV, create the staging
-    table when missing, persist column_map_json (+ stage_table) onto the job
-    row, and mutate `job` in place so the caller can load immediately."""
-    if not _needs_prep(job):
-        return job
-    cols, n = profile(csv_text)
-    stage = (job.get("stage_table") or "").strip() or ("PROD." + derive_table(job.get("source_ref", "")))
-    cmap = json.dumps(column_map(cols), ensure_ascii=False)
+def _table_columns_ora(conn, table):
+    owner, name = _split(table)
     cur = conn.cursor()
-    for tbl in [stage, (job.get("final_table") or "").strip()]:
-        if tbl and not _table_exists_ora(conn, tbl):
-            cur.execute(create_table_sql(tbl, cols))
-    cur.execute("update prod.atd_otbi_jobs set column_map_json=:m, stage_table=:s "
-                "where job_name=:j", m=cmap, s=stage, j=job["job_name"])
-    conn.commit()
-    job["stage_table"] = stage
-    job["column_map_json"] = cmap
-    print(f"[prepare] {job['job_name']}: created/mapped {len(cols)} columns -> {stage} "
-          f"({n} sample rows)")
-    return job
+    cur.execute("""select column_name, data_type, data_length, char_length
+                     from all_tab_columns where owner=:o and table_name=:t""",
+                o=owner, t=name)
+    return {r[0].upper(): {"type": r[1].upper(), "len": (r[3] or r[2])} for r in cur.fetchall()}
+
+
+def ensure_prepared_oracledb(conn, job, csv_text):
+    """Prepare/reconcile the job's staging table from the live CSV, then return a
+    list of drift warnings (empty = clean). First run (no column map): profile,
+    CREATE the table when missing, persist column_map_json + stage_table. Later
+    runs: diff the live header vs the stored map and auto-adapt - ADD new columns,
+    widen outgrown text columns - keeping dropped columns (load NULL) and flagging
+    incompatible changes. `job` is mutated in place so the caller can load now."""
+    cols, n = profile(csv_text)
+    cur = conn.cursor()
+    if _needs_prep(job):
+        stage = (job.get("stage_table") or "").strip() or ("PROD." + derive_table(job.get("source_ref", "")))
+        cmap = json.dumps(column_map(cols), ensure_ascii=False)
+        for tbl in [stage, (job.get("final_table") or "").strip()]:
+            if tbl and not _table_exists_ora(conn, tbl):
+                cur.execute(create_table_sql(tbl, cols))
+        cur.execute("update prod.atd_otbi_jobs set column_map_json=:m, stage_table=:s "
+                    "where job_name=:j", m=cmap, s=stage, j=job["job_name"])
+        conn.commit()
+        job["stage_table"], job["column_map_json"] = stage, cmap
+        print(f"[prepare] {job['job_name']}: created/mapped {len(cols)} columns -> {stage} "
+              f"({n} sample rows)")
+        return []
+
+    cur_map = json.loads(job["column_map_json"])
+    table_cols = _table_columns_ora(conn, job["stage_table"])
+    adds, widens, removed, incompat, new_map = _plan_drift(cols, cur_map, table_cols)
+    if adds or widens:
+        for tbl in [job["stage_table"], (job.get("final_table") or "").strip()]:
+            if not tbl:
+                continue
+            for h, name, typ in adds:
+                cur.execute(f"alter table {tbl} add ({name} {typ})")
+            for col, typ in widens:
+                cur.execute(f"alter table {tbl} modify ({col} {typ})")
+        cmap = json.dumps(new_map, ensure_ascii=False)
+        cur.execute("update prod.atd_otbi_jobs set column_map_json=:m where job_name=:j",
+                    m=cmap, j=job["job_name"])
+        conn.commit()
+        job["column_map_json"] = cmap
+    warns = _drift_warnings(adds, widens, removed, incompat)
+    if warns:
+        print(f"[drift] {job['job_name']}: " + "; ".join(warns))
+    return warns
 
 
 # ---- SQLcl path ----------------------------------------------------------
@@ -162,23 +258,58 @@ def _table_exists_sqlcl(table):
     return bool(rows) and int(rows[0].get("c", 0)) > 0
 
 
+def _table_columns_sqlcl(table):
+    import sqlrun
+    owner, name = _split(table)
+    rows = sqlrun.query_json(
+        "select column_name, data_type, data_length, char_length from all_tab_columns "
+        f"where owner='{owner}' and table_name='{name}'")
+    out = {}
+    for r in rows:
+        out[str(r["column_name"]).upper()] = {
+            "type": str(r["data_type"]).upper(),
+            "len": r.get("char_length") or r.get("data_length")}
+    return out
+
+
 def ensure_prepared_sqlcl(job, csv_text):
-    if not _needs_prep(job):
-        return job
+    """SQLcl-mode prepare/reconcile (see ensure_prepared_oracledb). Returns drift warnings."""
     import sqlrun
     cols, n = profile(csv_text)
-    stage = (job.get("stage_table") or "").strip() or ("PROD." + derive_table(job.get("source_ref", "")))
-    cmap = json.dumps(column_map(cols), ensure_ascii=False)
-    for tbl in [stage, (job.get("final_table") or "").strip()]:
-        if tbl and not _table_exists_sqlcl(tbl):
-            sqlrun.run_sql(create_table_sql(tbl, cols) + ";")
-    jn = job["job_name"].replace("'", "''")
-    cm = cmap.replace("'", "''")
-    sqlrun.run_sql(
-        f"UPDATE prod.atd_otbi_jobs SET column_map_json='{cm}', stage_table='{stage}' "
-        f"WHERE job_name='{jn}';\nCOMMIT;")
-    job["stage_table"] = stage
-    job["column_map_json"] = cmap
-    print(f"[prepare] {job['job_name']}: created/mapped {len(cols)} columns -> {stage} "
-          f"({n} sample rows)")
-    return job
+    if _needs_prep(job):
+        stage = (job.get("stage_table") or "").strip() or ("PROD." + derive_table(job.get("source_ref", "")))
+        cmap = json.dumps(column_map(cols), ensure_ascii=False)
+        for tbl in [stage, (job.get("final_table") or "").strip()]:
+            if tbl and not _table_exists_sqlcl(tbl):
+                sqlrun.run_sql(create_table_sql(tbl, cols) + ";")
+        jn = job["job_name"].replace("'", "''"); cm = cmap.replace("'", "''")
+        sqlrun.run_sql(
+            f"UPDATE prod.atd_otbi_jobs SET column_map_json='{cm}', stage_table='{stage}' "
+            f"WHERE job_name='{jn}';\nCOMMIT;")
+        job["stage_table"], job["column_map_json"] = stage, cmap
+        print(f"[prepare] {job['job_name']}: created/mapped {len(cols)} columns -> {stage} "
+              f"({n} sample rows)")
+        return []
+
+    cur_map = json.loads(job["column_map_json"])
+    table_cols = _table_columns_sqlcl(job["stage_table"])
+    adds, widens, removed, incompat, new_map = _plan_drift(cols, cur_map, table_cols)
+    if adds or widens:
+        ddl = []
+        for tbl in [job["stage_table"], (job.get("final_table") or "").strip()]:
+            if not tbl:
+                continue
+            for h, name, typ in adds:
+                ddl.append(f"ALTER TABLE {tbl} ADD ({name} {typ});")
+            for col, typ in widens:
+                ddl.append(f"ALTER TABLE {tbl} MODIFY ({col} {typ});")
+        cm = json.dumps(new_map, ensure_ascii=False).replace("'", "''")
+        jn = job["job_name"].replace("'", "''")
+        ddl.append(f"UPDATE prod.atd_otbi_jobs SET column_map_json='{cm}' WHERE job_name='{jn}';")
+        ddl.append("COMMIT;")
+        sqlrun.run_sql("\n".join(ddl))
+        job["column_map_json"] = json.dumps(new_map, ensure_ascii=False)
+    warns = _drift_warnings(adds, widens, removed, incompat)
+    if warns:
+        print(f"[drift] {job['job_name']}: " + "; ".join(warns))
+    return warns
