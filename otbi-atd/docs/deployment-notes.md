@@ -71,6 +71,25 @@ On first run (or after the session expires) the console prints
 approve. The session is saved to `auth_state_FUSION_ADGOV.json` and reused on later runs
 (no MFA) until Entra expires it. Each run writes a row to `PROD.ATD_LOAD_RUN_LOG`.
 
+## Creating analyses (`create_analysis.py`) — build, don't just load
+`add_analysis.py` registers an analysis that already exists; `create_analysis.py` **builds**
+one in the OTBI Answers UI from a declarative spec (`otbi-atd/specs/*.json`) and reuses the
+same `auth.authenticate()` session, so it triggers the same MFA flow as the runner.
+```
+cd runner
+python create_analysis.py --spec ../specs/po_headers.json --headed   # bring-up: watch it
+python create_analysis.py --spec ../specs/po_headers.json --load      # create + table + load
+```
+Four spec inputs: `subject_area`+`columns[]` (the data), `params[]` (optional prompted
+filters), `save_folder`, `name`. `--load` chains `add_analysis.py` + `runner.py`.
+**Selectors are confirmed live** (the Answers editor is dynamic): use `--headed` or `--pause`
+(Playwright inspector) on first bring-up of a new pod/subject area, then harden the selector
+lists in `create_analysis.py`; step failures screenshot to `ATD_STATE_DIR` as
+`create_<step>_*.png`. The reference spec `po_headers.json` builds PO header details from
+`Procurement - Purchasing Real Time` → `/users/haghareb@dctabudhabi.ae/PO/PO Headers`
+(MERGE on `Order Number`). Save to `/Shared Folders/...` instead if a different service account
+runs the scheduled loads (personal folders are private to their owner).
+
 ## Fast load mode (oracledb) — NOW THE DEFAULT
 `oracledb` is auto-selected when `ATD_DB_USER`+`ATD_DB_PASSWORD` are set; it falls back to SQLcl
 otherwise. Force either with `ATD_DB_MODE`. Pure-Python **thin mode** (no Instant Client, no Java):

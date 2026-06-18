@@ -37,8 +37,11 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 - `load` · `newTarget` / `editTarget` (drawer) · `save` (create/update) · `del`.
 
 ## Run Logs (`runs`)
-- `load` (job/status/from/to filters) · `open` (detail modal: message, checksum, rows, duration) ·
-  `closeDetail` · `exportCsv` (authed blob download) · `fmtDuration`.
+- `load` (job/status/from/to filters, **server-paged** via `<list-pager>` — `offset`/`limit`/`total`) ·
+  `open` (detail modal: message, checksum, rows, duration) · `closeDetail` · `exportCsv` (authed blob
+  download) · `fmtDuration`.
+- Status filter includes **WARNING** (a SUCCESS run that carries a message) alongside
+  SUCCESS/FAILED/RUNNING — the server maps `status=WARNING` to `status='SUCCESS' AND message IS NOT NULL`.
 - The list + detail modal show a **Duration** column (`durationSec` = `finished − started` seconds,
   same adaptive-compact format as the Jobs list; `—` for a RUNNING row or one with no `started`).
 - A `SUCCESS` run that carries a `message` (schema-drift note or truncation warning) shows a
@@ -56,7 +59,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 | GET | `/lookups` | envs + targets for pickers |
 | GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec` = last run elapsed seconds) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
 | GET / PUT / DELETE | `/jobs/:name` | read (history rows carry `durationSec`) / update / delete job |
-| GET | `/runs` | run-log list — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec` |
+| GET | `/runs` | run-log list (paged) — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |

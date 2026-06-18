@@ -154,6 +154,26 @@ python add_analysis.py "/users/.../Folder/Analysis" [--table NAME] [--job NAME]
 Downloads a sample, auto-derives column names/types, and emits `CREATE TABLE` + an
 `ATD_OTBI_JOBS` seed under `db/generated/`. Review, then apply (or `--apply`). No code change.
 
+## 11b. Creating an analysis (generic builder + specs)
+`add_analysis.py` assumes the analysis already exists. `create_analysis.py` **builds it** —
+generic across subject areas, driven by a declarative **spec** (the four inputs: the data =
+`subject_area` + `columns[]`; optional `params[]`; the `save_folder`; the `name`). It reuses
+`auth.authenticate()` (same federated/MFA session as the runner) and drives the OTBI **Answers**
+UI with Playwright: open the subject area → add columns → set headings → add any prompted
+filters → Save As → verify the saved path downloads as CSV.
+```
+python create_analysis.py --spec ../specs/po_headers.json [--headed] [--pause] [--load]
+```
+- Specs live in `otbi-atd/specs/*.json`. `po_headers.json` is the reference (PO header details,
+  `Procurement - Purchasing Real Time`, saved to `/users/.../PO/PO Headers`).
+- `--load` chains `add_analysis.py` + `runner.py` so creation→table→load is one command.
+- **The Answers editor is a heavy dynamic JS app — selectors are confirmed live.** Bring up a
+  new pod/subject area with `--headed` (watch) or `--pause` (Playwright inspector to record
+  selectors), then harden the selector lists. Failures screenshot to `ATD_STATE_DIR`
+  (`create_<step>_*.png`). Most fragile step = prompted filters; columns-only works standalone.
+- Saving to a **personal** `/users/<you>/...` folder is fine only if the runner logs in as the
+  same account; otherwise save to `/Shared Folders/...` (just change the spec's `save_folder`).
+
 ## 12. File map
 ```
 otbi-atd/

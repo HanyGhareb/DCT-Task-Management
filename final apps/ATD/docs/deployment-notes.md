@@ -49,6 +49,12 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-19** — **Run Logs: pager + Warning filter** (APP_VERSION 1.3.4). Added the shared
+  `<list-pager>` to Run Logs (server-paged `offset`/`limit`/`total`, default 50/page; filter changes
+  reset to page 1) and a **WARNING** option to the status filter. `GET /runs` (+ COUNT + `/runs/export`)
+  now map `status=WARNING` → `status='SUCCESS' AND message IS NOT NULL`, so you can isolate the
+  warned runs (drift/truncation). ORDS redeployed; verified live (WARNING→10 rows all `warn=Y`;
+  pager 1–50 / 51–100 of 326, 7 pages; pages disjoint).
 - **2026-06-18** — **Filter fix: Run Logs + Jobs** (APP_VERSION 1.3.3, frontend-only). The
   job/status/date filters were lagging one change behind: the controls used
   `value: X, event:{change: load}`, and KO fires the `event` `change` handler **before** the

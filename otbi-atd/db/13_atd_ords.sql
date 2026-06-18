@@ -802,7 +802,9 @@ BEGIN
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
   SELECT COUNT(*) INTO l_total FROM atd_load_run_log l
    WHERE (l_job IS NULL OR l.job_name = l_job)
-     AND (l_status IS NULL OR l.status = l_status)
+     AND (l_status IS NULL
+          OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
+          OR (l_status != 'WARNING' AND l.status = l_status))
      AND (l_from IS NULL OR l.started >= TO_TIMESTAMP(l_from,'YYYY-MM-DD'))
      AND (l_to   IS NULL OR l.started <  TO_TIMESTAMP(l_to,'YYYY-MM-DD') + 1);
   dct_rest.json_header; APEX_JSON.initialize_output;
@@ -820,7 +822,9 @@ BEGIN
                 ELSE NULL END AS dur_sec
     FROM atd_load_run_log l
     WHERE (l_job IS NULL OR l.job_name = l_job)
-      AND (l_status IS NULL OR l.status = l_status)
+      AND (l_status IS NULL
+           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
+           OR (l_status != 'WARNING' AND l.status = l_status))
       AND (l_from IS NULL OR l.started >= TO_TIMESTAMP(l_from,'YYYY-MM-DD'))
       AND (l_to   IS NULL OR l.started <  TO_TIMESTAMP(l_to,'YYYY-MM-DD') + 1)
     ORDER BY run_id DESC
@@ -891,7 +895,9 @@ BEGIN
            TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
     FROM atd_load_run_log l
     WHERE (l_job IS NULL OR l.job_name = l_job)
-      AND (l_status IS NULL OR l.status = l_status)
+      AND (l_status IS NULL
+           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
+           OR (l_status != 'WARNING' AND l.status = l_status))
     ORDER BY run_id DESC FETCH FIRST 20000 ROWS ONLY
   ) LOOP
     HTP.print(r.run_id||','||r.job_name||','||NVL(r.track,'')||','||r.status||','||

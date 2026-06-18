@@ -1,0 +1,33 @@
+{
+  "subject_area": "Procurement - Purchasing Real Time",
+  "save_folder": "/users/haghareb@dctabudhabi.ae/PO",
+  "name": "PO Headers",
+  "load_mode": "MERGE",
+  "key": "Order Number",
+  "columns": [
+    {"folder": "Purchase Order Header", "column": "Order Number",       "heading": "Order Number"},
+    {"folder": "Purchase Order Header", "column": "Document Style",      "heading": "Document Style"},
+    {"folder": "Purchase Order Header", "column": "Order Type",          "heading": "Order Type"},
+    {"folder": "Purchase Order Header", "column": "Status",              "heading": "Status"},
+    {"folder": "Purchase Order Header", "column": "Description",         "heading": "Order Description"},
+    {"folder": "Purchase Order Header", "column": "Creation Date",       "heading": "Creation Date"},
+    {"folder": "Purchase Order Header", "column": "Approved Date",       "heading": "Approved Date"},
+    {"folder": "Purchase Order Header", "column": "Submitted Date",      "heading": "Submitted Date"},
+    {"folder": "Purchase Order Header", "column": "Closed Date",         "heading": "Closed Date"},
+    {"folder": "Procurement BU",        "column": "Business Unit Name",  "heading": "Procurement BU"},
+    {"folder": "Requisitioning BU",     "column": "Business Unit Name",  "heading": "Requisitioning BU"},
+    {"folder": "Buyer",                 "column": "Buyer Name",          "heading": "Buyer"},
+    {"folder": "Supplier",              "column": "Supplier Number",     "heading": "Supplier Number"},
+    {"folder": "Supplier",              "column": "Supplier Name",       "heading": "Supplier Name"},
+    {"folder": "Supplier Site",         "column": "Supplier Site",       "heading": "Supplier Site"},
+    {"folder": "Currency",              "column": "Currency Code",       "heading": "Currency"},
+    {"folder": "Payment Terms",         "column": "Name",                "heading": "Payment Terms"},
+    {"folder": "Purchase Order Header", "column": "Note to Supplier",    "heading": "Note to Supplier"},
+    {"folder": "Purchase Order Header", "column": "Ordered Amount",      "heading": "Ordered Amount"},
+    {"folder": "Purchase Order Header", "column": "Total Tax Amount",    "heading": "Total Tax Amount"}
+  ],
+  "params": [
+    {"folder": "Procurement BU",        "column": "Business Unit Name", "operator": "is equal to", "prompted": true},
+    {"folder": "Purchase Order Header", "column": "Creation Date",      "operator": "is between",  "prompted": true}
+  ]
+}

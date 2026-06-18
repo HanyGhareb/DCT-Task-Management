@@ -42,6 +42,9 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
 - **2026-06-18** — **Filter fix** (APP_VERSION 1.3.3, frontend-only). Run Logs + Jobs filters were
   lagging one change (KO `value`+`event:change` ordering); now driven by observable subscriptions.
   Run Logs count label shows `shown / total`. Browser-verified all filter combinations.
+- **2026-06-19** — **Run Logs pager + Warning filter** (APP_VERSION 1.3.4). Shared `<list-pager>`
+  on Run Logs (server-paged, 50/page); status filter gains **WARNING** (`GET /runs` maps it to
+  SUCCESS rows with a message). ORDS redeployed; browser-verified (WARNING→10; pager 7 pages).
 
 ## How to run locally
 ```
