@@ -814,7 +814,10 @@ BEGIN
            NVL(DBMS_LOB.SUBSTR(message,400,1),'') AS msg,
            CASE WHEN status='SUCCESS' AND message IS NOT NULL THEN 'Y' ELSE 'N' END AS warn,
            TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
-           TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
+           TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s,
+           CASE WHEN started IS NOT NULL AND finished IS NOT NULL
+                THEN ROUND((CAST(finished AS DATE) - CAST(started AS DATE)) * 86400)
+                ELSE NULL END AS dur_sec
     FROM atd_load_run_log l
     WHERE (l_job IS NULL OR l.job_name = l_job)
       AND (l_status IS NULL OR l.status = l_status)
@@ -830,6 +833,7 @@ BEGIN
     APEX_JSON.write('warn', r.warn);
     APEX_JSON.write('message', r.msg);
     APEX_JSON.write('started', NVL(r.started_s,'')); APEX_JSON.write('finished', NVL(r.finished_s,''));
+    APEX_JSON.write('durationSec', r.dur_sec);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -856,6 +860,10 @@ BEGIN
     APEX_JSON.write('csvChecksum', NVL(r.csv_checksum,''));
     APEX_JSON.write('started',  TO_CHAR(r.started,'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('finished', TO_CHAR(r.finished,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('durationSec',
+      CASE WHEN r.started IS NOT NULL AND r.finished IS NOT NULL
+           THEN ROUND((CAST(r.finished AS DATE) - CAST(r.started AS DATE)) * 86400)
+           ELSE NULL END);
     APEX_JSON.write('message', NVL(DBMS_LOB.SUBSTR(r.message,32000,1),''));
     APEX_JSON.close_object;
   END LOOP;

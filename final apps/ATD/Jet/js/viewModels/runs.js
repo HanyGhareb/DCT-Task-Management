@@ -1,9 +1,10 @@
-define(['knockout', 'services/atdService', 'services/api', 'shared/i18n', 'shared/toast'],
-function (ko, atd, api, i18n, toast) {
+define(['knockout', 'services/atdService', 'services/api', 'shared/i18n', 'shared/toast', 'util/duration'],
+function (ko, atd, api, i18n, toast, fmtDuration) {
   'use strict';
   return function Runs() {
     var self = this;
     self.t = i18n.t;
+    self.fmtDuration = fmtDuration;
     self.loading = ko.observable(true);
     self.runs = ko.observableArray([]);
     self.jobs = ko.observableArray([]);

@@ -36,6 +36,9 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
   the run's elapsed time (`lastDurationSec`/`durationSec` from `GET /jobs` + `/jobs/:name`),
   formatted adaptive-compact (`47s` / `1m 50s` / `1h 20m 10s`) by `js/util/duration.js` (units i18n,
   Latin digits). ORDS redeployed; live-verified against real runs.
+- **2026-06-18** — **Run-duration on Run Logs** (APP_VERSION 1.3.2). Same duration column on the
+  Run Logs list + run-detail modal (`GET /runs` + `/runs/:id` return `durationSec`). ORDS
+  redeployed; live-verified.
 
 ## How to run locally
 ```

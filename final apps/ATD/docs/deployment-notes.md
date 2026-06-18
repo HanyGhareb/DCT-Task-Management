@@ -49,6 +49,10 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-18** — **Run-duration on Run Logs** (APP_VERSION 1.3.2). Extended the duration column
+  to the **Run Logs** list + run-detail modal (`GET /runs` + `/runs/:id` now return `durationSec`),
+  same `js/util/duration.js` adaptive-compact format; `—` for RUNNING / no-`started` rows. ORDS
+  redeployed; live-verified.
 - **2026-06-18** — **Run-duration column** (APP_VERSION 1.3.1). Jobs list shows a **Duration**
   column (`GET /jobs` → `lastDurationSec`, the last run's `finished − started` in seconds, via the
   OUTER APPLY); Job Detail run-history adds a Duration column (`durationSec` per run). Formatted
