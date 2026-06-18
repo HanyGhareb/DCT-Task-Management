@@ -6,6 +6,10 @@
     </h1>
     <div class="page-actions">
       <button class="btn btn-secondary" data-bind="click: back, text: t('atd.action.back')"></button>
+      <button class="btn btn-secondary" data-bind="click: function(){ reprepare(false); }, text: t('atd.action.remap'),
+              attr:{ title: t('atd.action.remap.hint') }"></button>
+      <button class="btn btn-secondary btn-danger" data-bind="click: function(){ reprepare(true); }, text: t('atd.action.rebuild'),
+              attr:{ title: t('atd.action.rebuild.hint') }"></button>
       <button class="btn btn-primary" data-bind="click: enqueue, text: t('atd.action.enqueue')"></button>
     </div>
   </div>

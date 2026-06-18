@@ -12,9 +12,15 @@ effort/strategic horizon. None are blockers — the platform is complete and ver
 > **Delivered 2026-06-18 — Schema-drift auto-adapt + warn.** Preparation now runs every load:
 > new analysis columns are `ALTER TABLE ADD`-ed, outgrown text columns are widened, removed
 > columns load NULL (warned), and incompatible type changes warn loudly (Telegram + run-log).
-> See `docs/deployment-notes.md` → "Schema drift". *Remaining gap (small backlog):* a one-click
-> **"Re-prepare / accept breaking change"** action (clears `column_map_json` so the next run
-> rebuilds the table) to recover from an incompatible change without hand-editing the row.
+> See `docs/deployment-notes.md` → "Schema drift".
+>
+> **Delivered 2026-06-18 — Re-prepare action + atomic reload** (APP_VERSION 1.3.0). The
+> incompatible-change recovery gap is now closed: Job Detail → **Re-map** clears
+> `column_map_json` (next run re-derives it); **Rebuild table** also drops + recreates the
+> table from the live data (`POST /jobs/:name/reprepare {"rebuild":"Y"}`). Separately,
+> `TRUNCATE_INSERT` is now an **atomic replace** (`DELETE` in-transaction, not `TRUNCATE`), so a
+> failed reload rolls back and the table keeps its prior load. See `docs/deployment-notes.md`
+> → deployment history 2026-06-18.
 
 ## Quick wins (small, high value)
 1. **Per-job scheduling (use the `schedule` column).** Jobs already carry a `schedule`

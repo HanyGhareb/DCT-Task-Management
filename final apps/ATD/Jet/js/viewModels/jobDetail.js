@@ -22,5 +22,16 @@ function (ko, atd, i18n, toast) {
     self.enqueue = function () {
       atd.enqueueJob(name).then(function () { toast.success(self.t('atd.jobs.enqueued')); self.refresh(); }).catch(function () {});
     };
+
+    // Re-prepare: clear the stored column map so the next run re-derives it from the
+    // live analysis. rebuild=true also drops + recreates the table (accept an
+    // incompatible column change, discarding currently loaded rows).
+    self.reprepare = function (rebuild) {
+      if (!window.confirm(self.t(rebuild ? 'atd.jobs.confirmRebuild' : 'atd.jobs.confirmRemap'))) return;
+      atd.reprepareJob(name, rebuild).then(function () {
+        toast.success(self.t(rebuild ? 'atd.jobs.rebuilt' : 'atd.jobs.remapped'));
+        self.refresh();
+      }).catch(function () {});
+    };
   };
 });

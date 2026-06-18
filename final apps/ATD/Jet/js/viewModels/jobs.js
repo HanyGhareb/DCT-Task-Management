@@ -121,6 +121,10 @@ function (ko, atd, i18n, toast) {
     self.enqueue = function (row) {
       atd.enqueueJob(row.jobName).then(function () { toast.success(self.t('atd.jobs.enqueued')); self.load(); }).catch(function () {});
     };
+    self.runNow = function (row) {
+      if (!window.confirm(self.t('atd.jobs.confirmRun'))) return;
+      atd.runJob(row.jobName).then(function () { toast.success(self.t('atd.jobs.runQueued')); self.load(); }).catch(function () {});
+    };
     self.reset = function (row) {
       atd.resetJob(row.jobName).then(function () { toast.success(self.t('atd.jobs.reset')); self.load(); }).catch(function () {});
     };

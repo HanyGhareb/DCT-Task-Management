@@ -79,7 +79,12 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
 
     cur = conn.cursor()
     if load_mode == "TRUNCATE_INSERT":
-        cur.execute(f"truncate table {stage_table}")
+        # DELETE (not TRUNCATE) so the clear-out stays in the same transaction as
+        # the INSERTs below — committed together at the end. A failed reload thus
+        # rolls back and the table keeps its prior load (caller must rollback on
+        # error before logging; TRUNCATE is DDL and would auto-commit the empty
+        # state). Volumes here are the OTBI export cap, so undo cost is negligible.
+        cur.execute(f"delete from {stage_table}")
 
     # chunked array-bind insert: fast (one round-trip per chunk) and memory-bounded
     binds = ", ".join(f":{i+1}" for i in range(len(target_cols)))

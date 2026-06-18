@@ -130,9 +130,13 @@ def load(job, csv_text, extra_msg=None):
     batch = int(os.environ.get("ATD_LOAD_BATCH", "200"))
     script = os.path.join(sqlrun.TMP, f"atd_load_{job_name}.sql")
     with open(script, "w", encoding="utf-8", newline="\r\n") as f:
-        f.write("WHENEVER SQLERROR EXIT FAILURE\nSET DEFINE OFF\nSET SQLBLANKLINES ON\n")
+        # ROLLBACK on any error so a failed reload leaves the prior load intact
+        # (atomic replace: the DELETE + all INSERTs + COMMIT are one transaction).
+        f.write("WHENEVER SQLERROR EXIT FAILURE ROLLBACK\nSET DEFINE OFF\nSET SQLBLANKLINES ON\n")
         f.write("ALTER SESSION DISABLE PARALLEL DML;\n")
-        f.write(f"TRUNCATE TABLE {stage};\n")
+        # DELETE (not TRUNCATE) keeps the clear-out inside the transaction; TRUNCATE
+        # is DDL and would auto-commit the empty table before the INSERTs ran.
+        f.write(f"DELETE FROM {stage};\n")
         # batched multi-row INSERT ALL (no identity cols -> safe); load_ts defaults
         for i in range(0, len(rows), batch):
             f.write("INSERT ALL\n")

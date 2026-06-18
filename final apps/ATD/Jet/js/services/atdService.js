@@ -29,6 +29,8 @@ function (api) {
     deleteJob:    function (name)      { return api.delete('/jobs/' + encodeURIComponent(name)); },
     enqueueJob:   function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/enqueue', {}); },
     resetJob:     function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/reset', {}); },
+    runJob:       function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/run', {}); },
+    reprepareJob: function (name, rebuild) { return api.post('/jobs/' + encodeURIComponent(name) + '/reprepare', { rebuild: rebuild ? 'Y' : 'N' }); },
 
     // queue ops
     enqueueAll:   function ()          { return api.post('/enqueue', {}); },

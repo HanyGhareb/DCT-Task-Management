@@ -136,6 +136,13 @@ def _make_run_one_oracledb(conn, load):
             print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
             return True
         except Exception as e:  # noqa: BLE001
+            # discard the failed (uncommitted) delete+insert so the table keeps its
+            # prior load — otherwise _log_end's commit would persist the empty/partial
+            # state. prepare's ALTERs already auto-committed (DDL) and are kept.
+            try:
+                conn.rollback()
+            except Exception:  # noqa: BLE001
+                pass
             # prepend drift so the job log explains *why* a drifted load failed
             _log_end(conn, run_id, "FAILED", msg="; ".join(drift + [str(e)])[:3900])
             print(f"[FAIL] {name}: {e}")

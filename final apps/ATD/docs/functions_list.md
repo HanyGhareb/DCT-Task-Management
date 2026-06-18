@@ -18,7 +18,13 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   disclosure. Jobs not yet prepared show a `not prepared` badge (`prepared='N'`).
 
 ## Job detail (`jobDetail`)
-- `refresh` (full config + run history) · `enqueue` · `back`.
+- `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)`.
+- **Re-prepare** recovers a job whose stored column map / table no longer fits the live
+  analysis. **Re-map** (`reprepare(false)`) clears `column_map_json` so the next run
+  re-derives it (table + rows kept). **Rebuild table** (`reprepare(true)`, danger, confirm)
+  also DROPs the stage (+ final) table so the next run recreates it from the live data —
+  the way to accept an **incompatible** column change (a NUMBER/DATE column the analysis
+  now sends as text); currently loaded rows are lost.
 
 ## Environments (`environments`)
 - `load` · `newEnv` / `editEnv` (drawer) · `save` (create/update) · `del`.
@@ -46,6 +52,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 | GET / PUT / DELETE | `/jobs/:name` | read / update / delete job |
 | GET | `/runs` | run-log list — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
+| POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |

@@ -49,6 +49,18 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-18** — **Backlog: re-prepare action + atomic reload** (APP_VERSION 1.3.0).
+  (1) New `POST /atd/jobs/:name/reprepare` clears `column_map_json` (next run re-derives it);
+  `{"rebuild":"Y"}` also DROPs the stage (+final) table so the next run recreates it from the
+  live data — the recovery path for an **incompatible** column change. Surfaced on the Job
+  Detail page as **Re-map** (safe) + **Rebuild table** (danger, confirm). ORDS redeployed;
+  live-verified (remap flips `prepared` Y→N; rebuild dropped a real `PROD.ATD_RP_DROP`; 404 on
+  unknown job). (2) **`TRUNCATE_INSERT` is now an atomic replace** — the loaders clear the
+  staging table with `DELETE` (in-transaction) instead of `TRUNCATE` (DDL auto-commit), so a
+  failed reload rolls back and the table keeps its prior load. SQLcl path uses
+  `WHENEVER SQLERROR EXIT FAILURE ROLLBACK`; oracledb path adds `conn.rollback()` before the
+  FAILED-log commit. (The opt-in `ATD_LOAD_METHOD=bulk` SQLcl-LOAD path stays non-atomic — it
+  commits per batch — and is unchanged.)
 - **2026-06-18** — App 208 built (DB/ORDS/JET/UAT round 1 26/26) + Runner Settings.
 - **2026-06-18** — **Drift warnings made visible + consistent** (APP_VERSION 1.2.1). Drift/
   truncation notes now land in the run-log `message` on **all** paths (sqlcl via `loadsql`
@@ -90,8 +102,10 @@ table columns (`_plan_drift`) and reconciles:
 - **Removed column** → kept in the table + map; it loads `NULL`. **Warned.**
 - **Incompatible** (a `NUMBER`/`DATE` column now holds text) → **warned**, not altered (changing
   a populated column's type needs it empty); the load then fails loudly (ORA-01722 / date parse)
-  and is logged `FAILED`. To accept it, drop/clear that column or the job's `column_map_json` so
-  the next run re-profiles. Both the stage and (MERGE) final table are altered together.
+  and is logged `FAILED`. **To accept it, use Job Detail → Rebuild table** (`POST /jobs/:name/
+  reprepare {"rebuild":"Y"}`), which drops the stage (+final) table + clears the map so the next
+  run recreates it fresh from the live data. (Re-map clears only the map — for a non-breaking
+  remap.) Both the stage and (MERGE) final table are altered together.
 - Warnings go to **Telegram** (`notify.send`) **and the run-log `message` on every path**:
   oracledb (`_log_end`), sqlcl (`loadsql._logvals` `extra_msg`), and the FAILED path prepends the
   drift note so a failed reload explains *why*. Reconcile ALTERs auto-commit; widening only grows.

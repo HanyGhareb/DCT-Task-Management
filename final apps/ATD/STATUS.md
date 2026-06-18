@@ -26,6 +26,12 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
   needs only the analysis path (target table optional); job name/env/target/stage auto-derived;
   staging table + column map prepared on first run (`otbi-atd/runner/prepare.py`). `13_atd_ords.sql`
   redeployed; verified live (minimal POST → derived name + `prepared='N'`, missing-source → 400).
+- **2026-06-18** — **Re-prepare action + atomic reload** (APP_VERSION 1.3.0). New
+  `POST /atd/jobs/:name/reprepare` (Job Detail → Re-map / Rebuild table) recovers a job whose
+  stored map/table no longer fits the analysis — `{"rebuild":"Y"}` drops + recreates the table to
+  accept an incompatible change. `TRUNCATE_INSERT` is now an atomic `DELETE`-in-transaction
+  replace (failed reload rolls back, keeps prior load). `13_atd_ords.sql` redeployed; live-verified
+  (remap flips `prepared` Y→N; rebuild dropped a real PROD table; 404 on unknown job).
 
 ## How to run locally
 ```

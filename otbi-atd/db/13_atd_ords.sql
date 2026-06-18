@@ -470,6 +470,78 @@ EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    -- run now = top-priority enqueue (bump to front + mark READY). The runner is
+    -- a scheduled batch worker, so "immediate" means it is the next job claimed.
+    def_template('jobs/[COLON]name/run');
+    def_handler('jobs/[COLON]name/run', 'POST', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_n NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  UPDATE atd_otbi_jobs
+     SET priority = 1, run_order = 0,
+         run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
+         updated_at = SYSTIMESTAMP
+   WHERE job_name = [COLON]name AND enabled = 'Y';
+  l_n := SQL%ROWCOUNT; COMMIT;
+  IF l_n = 0 THEN dct_rest.err(404,'Job not found or disabled'); RETURN; END IF;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- re-prepare = recover a job whose stored column map / table no longer fits the
+    -- live analysis. Clears column_map_json so the next run re-profiles the CSV and
+    -- re-derives the map. With {"rebuild":"Y"} it also DROPs the stage (and final)
+    -- table so the next run recreates it fresh from the live data -- the way to accept
+    -- an INCOMPATIBLE column change (a NUMBER/DATE column the analysis now sends as
+    -- text), which cannot be ALTERed in place while the column holds data.
+    def_template('jobs/[COLON]name/reprepare');
+    def_handler('jobs/[COLON]name/reprepare', 'POST', q'!
+DECLARE
+  l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_rebuild VARCHAR2(5);
+  l_stage   VARCHAR2(128);
+  l_final   VARCHAR2(128);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_rebuild := NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'rebuild')),'N');
+
+  BEGIN
+    SELECT stage_table, final_table INTO l_stage, l_final
+      FROM atd_otbi_jobs WHERE job_name = [COLON]name;
+  EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Job not found'); RETURN; END;
+
+  -- clear the column map -> next run re-profiles the live CSV and re-derives it
+  UPDATE atd_otbi_jobs SET column_map_json = NULL, updated_at = SYSTIMESTAMP
+   WHERE job_name = [COLON]name;
+
+  -- rebuild: drop the managed tables so they are recreated from the live data
+  -- (DDL auto-commits the UPDATE above). Best-effort: a missing table is fine.
+  IF l_rebuild = 'Y' THEN
+    IF l_stage IS NOT NULL THEN
+      BEGIN EXECUTE IMMEDIATE 'DROP TABLE '||l_stage||' PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+    END IF;
+    IF l_final IS NOT NULL THEN
+      BEGIN EXECUTE IMMEDIATE 'DROP TABLE '||l_final||' PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+    END IF;
+  END IF;
+  COMMIT;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('rebuilt', l_rebuild);
+  APEX_JSON.write('prepared', 'N');
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
     -- queue-wide ops
     def_template('enqueue');
     def_handler('enqueue', 'POST', q'!
@@ -887,6 +959,6 @@ END;
 PROMPT ============================================================
 PROMPT  13_atd_ords.sql complete.
 PROMPT  Base URL: /ords/admin/atd/
-PROMPT  Endpoints: dashboard, lookups, jobs (+/:name, /enqueue, /reset),
+PROMPT  Endpoints: dashboard, lookups, jobs (+/:name, /enqueue, /reset, /run, /reprepare),
 PROMPT             enqueue, reap, envs, targets, runs (+/:id, /export)
 PROMPT ============================================================
