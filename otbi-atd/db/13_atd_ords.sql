@@ -119,16 +119,18 @@ BEGIN
   APEX_JSON.open_array('alerts');
   FOR r IN (SELECT * FROM (
               SELECT run_id, job_name, status, row_count,
-                     SUBSTR(message,1,300) AS msg,
+                     NVL(DBMS_LOB.SUBSTR(message,300,1),'') AS msg,
+                     CASE WHEN status='FAILED' THEN 'FAILED' ELSE 'WARNING' END AS kind,
                      TO_CHAR(started,'YYYY-MM-DD HH24:MI') AS started_s
               FROM atd_load_run_log
-              WHERE status='FAILED' OR LOWER(DBMS_LOB.SUBSTR(message,300,1)) LIKE '%trunc%'
+              WHERE status='FAILED' OR message IS NOT NULL
               ORDER BY run_id DESC) WHERE ROWNUM <= 10) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('runId', r.run_id);
     APEX_JSON.write('jobName', r.job_name);
     APEX_JSON.write('status', r.status);
-    APEX_JSON.write('message', NVL(r.msg,''));
+    APEX_JSON.write('kind', r.kind);
+    APEX_JSON.write('message', r.msg);
     APEX_JSON.write('started', NVL(r.started_s,''));
     APEX_JSON.close_object;
   END LOOP;
@@ -729,6 +731,8 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT run_id, job_name, track, status, row_count,
+           NVL(DBMS_LOB.SUBSTR(message,400,1),'') AS msg,
+           CASE WHEN status='SUCCESS' AND message IS NOT NULL THEN 'Y' ELSE 'N' END AS warn,
            TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
            TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
     FROM atd_load_run_log l
@@ -743,6 +747,8 @@ BEGIN
     APEX_JSON.write('runId', r.run_id);     APEX_JSON.write('jobName', r.job_name);
     APEX_JSON.write('track', NVL(r.track,'')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('rowCount', NVL(r.row_count,0));
+    APEX_JSON.write('warn', r.warn);
+    APEX_JSON.write('message', r.msg);
     APEX_JSON.write('started', NVL(r.started_s,'')); APEX_JSON.write('finished', NVL(r.finished_s,''));
     APEX_JSON.close_object;
   END LOOP;

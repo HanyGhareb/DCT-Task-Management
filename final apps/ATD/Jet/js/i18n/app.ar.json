@@ -99,6 +99,8 @@
   "atd.jobs.enqueued": "تمت الإضافة لتشغيل العامل القادم",
   "atd.jobs.reset": "إعادة التعيين إلى جاهزة",
 
+  "atd.runs.warn": "تحذير",
+
   "atd.detail.title": "المهمة",
   "atd.detail.config": "الإعدادات",
   "atd.detail.history": "سجل التشغيل",

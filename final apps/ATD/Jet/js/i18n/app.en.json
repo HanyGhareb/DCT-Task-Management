@@ -99,6 +99,8 @@
   "atd.jobs.enqueued": "Queued for the next worker run",
   "atd.jobs.reset": "Reset to READY",
 
+  "atd.runs.warn": "warning",
+
   "atd.detail.title": "Job",
   "atd.detail.config": "Configuration",
   "atd.detail.history": "Run History",

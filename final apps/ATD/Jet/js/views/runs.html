@@ -42,7 +42,13 @@
           <td data-bind="text: $data.runId"></td>
           <td class="mono" data-bind="text: $data.jobName"></td>
           <td data-bind="text: $data.track || '—'"></td>
-          <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+          <td>
+            <span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span>
+            <!-- ko if: $data.warn === 'Y' -->
+            <span class="rstat rstat--WARNING" style="margin-inline-start:6px"
+                  data-bind="text: $vm.t('atd.runs.warn'), attr:{ title: $data.message }"></span>
+            <!-- /ko -->
+          </td>
           <td data-bind="text: $data.rowCount"></td>
           <td data-bind="text: $data.started || '—'"></td>
           <td data-bind="text: $data.finished || '—'"></td>

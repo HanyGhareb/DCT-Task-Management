@@ -21,7 +21,14 @@ RESERVED = {"ORDER", "DATE", "LEVEL", "NUMBER", "COMMENT", "ROW", "ROWID", "SIZE
             "TABLE", "COLUMN", "ACCESS", "GROUP", "USER", "SESSION", "START", "TO",
             "FROM", "SELECT", "VALUES", "RAW", "DESC", "ASC", "MODE", "UID"}
 LEN_BUCKETS = [10, 20, 30, 40, 60, 100, 150, 200, 300, 400, 600, 1000, 2000, 4000]
-DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?$")
+# Recognise every date shape the loader (load._to_dt / loadsql) can parse, so a
+# DATE column fed non-ISO dates (e.g. 15-JAN-2026) is NOT mis-flagged as drift.
+DATE_RE = re.compile(
+    r"^(?:"
+    r"\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?"          # 2026-01-15 [00:00:00]
+    r"|\d{1,2}-[A-Za-z]{3}-\d{2,4}"                     # 15-Jan-2026 / 15-Jan-26
+    r"|\d{1,2}/\d{1,2}/\d{4}( \d{2}:\d{2}:\d{2})?"      # 01/15/2026 [00:00:00]
+    r")$")
 INT_RE = re.compile(r"^-?\d+$")
 NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
 

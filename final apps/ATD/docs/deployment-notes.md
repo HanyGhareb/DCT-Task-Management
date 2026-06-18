@@ -50,6 +50,13 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 
 ## Deployment history
 - **2026-06-18** — App 208 built (DB/ORDS/JET/UAT round 1 26/26) + Runner Settings.
+- **2026-06-18** — **Drift warnings made visible + consistent** (APP_VERSION 1.2.1). Drift/
+  truncation notes now land in the run-log `message` on **all** paths (sqlcl via `loadsql`
+  `extra_msg`; FAILED path prepends the note). UI: `⚠ warning` chip in Run Logs (`/runs` returns
+  `warn`+`message`), `kind` (WARNING/FAILED) on Dashboard Alerts (broadened to any run with a
+  message). Fixed a false-positive: `prepare.DATE_RE` now matches all loader date formats so a
+  DATE column with `15-JAN-2026`-style values isn't flagged incompatible. ORDS redeployed; live-
+  verified (real runs already show `widened POSTED_FLAG` + the now-fixed TO_DT case).
 - **2026-06-18** — **Schema-drift auto-adapt.** `prepare.ensure_prepared_*` now runs every load:
   after the first run it diffs the live header and ADDs new columns / widens outgrown text
   automatically, keeps removed columns (load NULL) and flags incompatible type changes — all
@@ -85,8 +92,17 @@ table columns (`_plan_drift`) and reconciles:
   a populated column's type needs it empty); the load then fails loudly (ORA-01722 / date parse)
   and is logged `FAILED`. To accept it, drop/clear that column or the job's `column_map_json` so
   the next run re-profiles. Both the stage and (MERGE) final table are altered together.
-- Warnings go to **Telegram** (`notify.send`) **and the run-log `message`** (oracledb path —
-  visible in the Runs detail modal). Reconcile ALTERs auto-commit; widening only ever grows.
+- Warnings go to **Telegram** (`notify.send`) **and the run-log `message` on every path**:
+  oracledb (`_log_end`), sqlcl (`loadsql._logvals` `extra_msg`), and the FAILED path prepends the
+  drift note so a failed reload explains *why*. Reconcile ALTERs auto-commit; widening only grows.
+- **Where it shows in the UI:** a `SUCCESS` run with a message gets a `⚠ warning` chip in the
+  **Run Logs** list (`warn='Y'`, message in the tooltip) + the full text in the run **detail
+  modal**; the **Dashboard → Alerts** panel lists failures *and* warnings with a `kind`
+  (WARNING amber / FAILED red). `GET /runs` returns `warn`+`message`; `GET /dashboard` alerts
+  use `WHERE status='FAILED' OR message IS NOT NULL`.
+- **Date-format alignment (avoids false drift):** `prepare.DATE_RE` recognises every shape the
+  loader parses (`YYYY-MM-DD[ HH:MI:SS]`, `DD-MON-YYYY`, `MM/DD/YYYY[ HH:MI:SS]`), so a DATE
+  column fed non-ISO dates (e.g. `15-JAN-2026`) is **not** mis-flagged as an incompatible change.
 
 ### Performance (the extra step runs every load)
 - The only added cost on a **clean** (no-drift) run is a small `all_tab_columns` query

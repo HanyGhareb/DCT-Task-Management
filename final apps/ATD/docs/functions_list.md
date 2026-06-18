@@ -29,6 +29,10 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Run Logs (`runs`)
 - `load` (job/status/from/to filters) · `open` (detail modal: message, checksum, rows) ·
   `closeDetail` · `exportCsv` (authed blob download).
+- A `SUCCESS` run that carries a `message` (schema-drift note or truncation warning) shows a
+  `⚠ warning` chip in the list (`warn='Y'`, message in the chip tooltip); the full text is in the
+  detail modal's Message box. The Dashboard **Alerts** panel lists these as `WARNING` (amber) /
+  `FAILED` (red) via the run's `kind`.
 
 ## Queue & Operations (`queue`)
 - `load` (per-job claim state + worker) · `enqueueAll` · `reap` (lease minutes) · `enqueueOne`.
@@ -36,10 +40,11 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## API Endpoints (ORDS) — `/ords/admin/atd/` (`otbi-atd/db/13_atd_ords.sql`, module `atd.rest`)
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/dashboard` | KPIs + queue counts + recent + alerts |
+| GET | `/dashboard` | KPIs + queue counts + recent + alerts (failures **and** runs with a warning message; each alert has `kind` WARNING/FAILED) |
 | GET | `/lookups` | envs + targets for pickers |
 | GET / POST | `/jobs` | list (+`prepared` flag) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
 | GET / PUT / DELETE | `/jobs/:name` | read / update / delete job |
+| GET | `/runs` | run-log list — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |

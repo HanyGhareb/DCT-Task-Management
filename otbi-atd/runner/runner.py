@@ -78,6 +78,7 @@ def _drive(jobs, run_one_fn):
 def _run_one_sqlcl(ctx, env, job):
     import loadsql
     name = job["job_name"]
+    drift = []
     try:
         params = json.loads(job["params_json"]) if job.get("params_json") else None
         csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
@@ -85,12 +86,13 @@ def _run_one_sqlcl(ctx, env, job):
         drift = prepare.ensure_prepared_sqlcl(job, csv_text)
         if drift:
             notify.send(f"otbi-atd {name} schema drift: " + "; ".join(drift))
-        n = loadsql.load(job, csv_text)
+        n = loadsql.load(job, csv_text, extra_msg="; ".join(drift) if drift else None)
         _warn_truncation(name, n)
         print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
         return True
     except Exception as e:  # noqa: BLE001
-        loadsql.log_failure(name, str(e))
+        # prepend drift so the job log explains *why* a drifted load failed
+        loadsql.log_failure(name, "; ".join(drift + [str(e)]) if drift else str(e))
         print(f"[FAIL] {name}: {e}")
         return False
 
@@ -117,6 +119,7 @@ def _make_run_one_oracledb(conn, load):
     def run_one(ctx, env, job):
         name = job["job_name"]
         run_id = _log_start(conn, name)
+        drift = []
         try:
             params = json.loads(job["params_json"]) if job.get("params_json") else None
             csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
@@ -133,7 +136,8 @@ def _make_run_one_oracledb(conn, load):
             print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
             return True
         except Exception as e:  # noqa: BLE001
-            _log_end(conn, run_id, "FAILED", msg=str(e)[:3900])
+            # prepend drift so the job log explains *why* a drifted load failed
+            _log_end(conn, run_id, "FAILED", msg="; ".join(drift + [str(e)])[:3900])
             print(f"[FAIL] {name}: {e}")
             return False
     return run_one

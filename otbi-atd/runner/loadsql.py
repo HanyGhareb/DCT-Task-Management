@@ -16,9 +16,12 @@ import sqlrun
 import checks
 
 
-def _logvals(job_name, n, checksum):
-    """Build the (row_count, csv_checksum, message) tail for a SUCCESS run-log row."""
-    note = checks.truncation_note(n)
+def _logvals(job_name, n, checksum, extra=None):
+    """Build the (row_count, csv_checksum, message) tail for a SUCCESS run-log row.
+    `extra` (e.g. schema-drift warnings) is merged with the truncation note so the
+    job log carries the same warning the runner pushed to Telegram."""
+    parts = [p for p in [(extra or "").strip() or None, checks.truncation_note(n)] if p]
+    note = "; ".join(parts)
     msg = "NULL" if not note else "'" + note.replace("'", "''") + "'"
     return f"{n},'{checksum}',{msg}"
 
@@ -62,7 +65,7 @@ def _date_columns(table):
     return {r["column_name"].upper() for r in rows}
 
 
-def _load_bulk(job, csv_text):
+def _load_bulk(job, csv_text, extra_msg=None):
     """Fast path: rewrite headers to column names, normalize dates, SQLcl LOAD."""
     cols, rows = _parse(csv_text, json.loads(job["column_map_json"]))
     stage = job["stage_table"]
@@ -107,17 +110,17 @@ def _load_bulk(job, csv_text):
     sqlrun.run_sql(
         "INSERT INTO prod.atd_load_run_log(job_name, track, status, finished, row_count, "
         f"csv_checksum, message) VALUES ('{job_name}','BROWSER','SUCCESS',systimestamp,"
-        f"{_logvals(job_name, len(rows), checksum)});\nCOMMIT;")
+        f"{_logvals(job_name, len(rows), checksum, extra_msg)});\nCOMMIT;")
     return len(rows)
 
 
-def load(job, csv_text):
+def load(job, csv_text, extra_msg=None):
     if job["load_mode"] != "TRUNCATE_INSERT":
         raise NotImplementedError("SQLcl loader currently supports TRUNCATE_INSERT only")
     # NOTE: SQLcl LOAD ("bulk") was measured ~3x SLOWER than batched INSERT on this
     # ADB (368s vs 115s for the 3 jobs), so INSERT is the default. Keep bulk opt-in.
     if (os.environ.get("ATD_LOAD_METHOD", "insert").lower() == "bulk"):
-        return _load_bulk(job, csv_text)
+        return _load_bulk(job, csv_text, extra_msg)
     cols, rows = _parse(csv_text, json.loads(job["column_map_json"]))
     stage = job["stage_table"]
     collist = ",".join(cols)
@@ -140,7 +143,7 @@ def load(job, csv_text):
         f.write("INSERT INTO prod.atd_load_run_log"
                 "(job_name, track, status, finished, row_count, csv_checksum, message) "
                 f"VALUES ('{job_name}','BROWSER','SUCCESS',systimestamp,"
-                f"{_logvals(job_name, len(rows), checksum)});\n")
+                f"{_logvals(job_name, len(rows), checksum, extra_msg)});\n")
         f.write("COMMIT;\nEXIT;\n")
     try:
         sqlrun.run_script(script, check=True)

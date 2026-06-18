@@ -79,7 +79,7 @@
         <tbody data-bind="foreach: alerts">
           <tr>
             <td class="mono" data-bind="text: $data.jobName"></td>
-            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td><span data-bind="css: $vm.statusClass($data.kind || $data.status), text: $data.kind || $data.status"></span></td>
             <td class="truncate-cell" data-bind="text: $data.message, attr:{ title: $data.message }"></td>
             <td data-bind="text: $data.started || '—'"></td>
           </tr>
