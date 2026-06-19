@@ -358,6 +358,123 @@ def save_as(page, save_folder, name):
     time.sleep(LAZY + 3)
 
 
+# --------------------------------------------------------------------------- #
+# Discovery: scrape a subject area's folders + columns for the UI column picker.
+# Same authenticated session as the builder; result is cached in atd_sa_catalog so
+# the picker is instant + offline afterwards (one scrape per subject area).
+# --------------------------------------------------------------------------- #
+def _top_folders(page):
+    """The selected subject area's presentation folders, read BEFORE expanding
+    anything. The criteria pane's "Subject Areas" tree lists EVERY subject area as
+    a node too, but OTBI ids quote subject-area names (criteriaDataBrowser$"SA Name")
+    while presentation folders are unquoted (criteriaDataBrowser$Folder Name) — so a
+    quoted id is another subject area, not a folder of ours. Keep only unquoted ids."""
+    js = ("() => Array.from(document.querySelectorAll("
+          "'[id^=\"criteriaDataBrowser$\"][id$=\"_disclosure\"]'))"
+          ".map(d => d.id.slice(20, d.id.length - 11))")
+    for _ in range(int((LAZY + 10) / 1.0)):
+        names = page.evaluate(js)
+        seen, s = [], set()
+        for n in names:
+            if n and '"' not in n and n not in s:    # drop subject-area nodes (quoted)
+                s.add(n); seen.append(n)
+        if seen:
+            return seen
+        time.sleep(1.0)
+    return []
+
+
+def _scroll_children(page, folder):
+    """Page the folder's (possibly virtualised) children container down one screen.
+    Returns True when it can't scroll any further (at the bottom)."""
+    return page.evaluate("""(cid) => {
+      const c = document.getElementById(cid);
+      let n = c;
+      while (n) {
+        if (n.scrollHeight > n.clientHeight + 5) {
+          const before = n.scrollTop;
+          n.scrollTop = Math.min(n.scrollTop + Math.max(120, n.clientHeight - 30), n.scrollHeight);
+          return n.scrollTop <= before + 1;
+        }
+        n = n.parentElement;
+      }
+      return true;
+    }""", f"criteriaDataBrowser${folder}_children")
+
+
+def _collect_leaves(page, folder):
+    """Every leaf label under an expanded folder, walking the virtualised tree to
+    the bottom so mid-list attributes are captured (cf. add_column's window walk)."""
+    sel = _children(folder) + ' span.treeNodeText'
+    seen, s, stable = [], set(), 0
+    for _ in range(80):
+        try:
+            texts = page.locator(sel).all_inner_texts()
+        except Exception:
+            texts = []
+        new = 0
+        for t in texts:
+            t = (t or "").strip()
+            if t and t not in s:
+                s.add(t); seen.append(t); new += 1
+        at_bottom = _scroll_children(page, folder)
+        time.sleep(0.5)
+        if new == 0:
+            stable += 1
+            if at_bottom or stable >= 4:
+                break
+        else:
+            stable = 0
+    return seen
+
+
+def discover_subject_area(spec_sa, headless=True):
+    """Open the editor on a subject area, enumerate every folder and its columns,
+    return {subject_area, folders:[{folder, columns:[...]}], scraped_at}.
+    Sub-folders that leak into a parent's leaves are filtered out (a folder name is
+    one that owns a disclosure node)."""
+    env = {"env_name": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV"),
+           "analytics_base_url": DEFAULT_BASE,
+           "credential_ref": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV")}
+    with sync_playwright() as p:
+        browser, ctx = auth.authenticate(p, env, headless=headless)
+        page = ctx.new_page()
+        page.set_default_timeout(STEP_TIMEOUT)
+        try:
+            open_editor(page, DEFAULT_BASE, spec_sa)
+            folders = _top_folders(page)
+            _step(f"discover: {len(folders)} folder(s) in {spec_sa!r}")
+            result = []
+            for f in folders:
+                _step(f"discover folder: {f}")
+                try:
+                    expand_folder(page, f)
+                    leaves = _collect_leaves(page, f)
+                except Exception as e:  # noqa: BLE001
+                    print(f"[discover] folder {f!r} failed: {e}; skipping")
+                    leaves = []
+                result.append({"folder": f, "columns": leaves})
+                try:                                  # collapse to keep the DOM small
+                    disc = page.locator(_disc(f))
+                    if disc.count():
+                        disc.first.click(); time.sleep(0.3)
+                except Exception:
+                    pass
+            names = {r["folder"] for r in result}
+            for r in result:
+                r["columns"] = [c for c in r["columns"] if c not in names]
+            result = [r for r in result if r["columns"]]   # drop empty/non-folder nodes
+            total = sum(len(r["columns"]) for r in result)
+            _step(f"discover done: {len(result)} folders, {total} columns")
+            return {"subject_area": spec_sa, "folders": result,
+                    "scraped_at": datetime.now().isoformat(timespec="seconds")}
+        except Exception:
+            _shot(page, "discover_error")
+            raise
+        finally:
+            browser.close()
+
+
 def build(page, spec, do_headings=True, do_params=True):
     open_editor(page, DEFAULT_BASE, spec["subject_area"])
     last = None
@@ -454,7 +571,21 @@ def main():
     ap.add_argument("--no-headings", action="store_true")
     ap.add_argument("--no-params", action="store_true")
     ap.add_argument("--load", action="store_true")
+    ap.add_argument("--discover", action="store_true",
+                    help="scrape --subject-area's folders+columns and print the catalog JSON")
     a = ap.parse_args()
+
+    if a.discover:
+        sa = a.subject_area
+        if not sa and a.spec:
+            with open(a.spec, encoding="utf-8") as f:
+                sa = json.load(f).get("subject_area")
+        if not sa:
+            sys.exit("--discover needs --subject-area (or a --spec with subject_area)")
+        print(json.dumps(discover_subject_area(sa, headless=not (a.headed or a.pause)),
+                         ensure_ascii=False, indent=2))
+        return
+
     spec = load_spec(a)
 
     env = {"env_name": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV"),

@@ -32,6 +32,12 @@ function (api) {
     // build a NEW OTBI analysis from a spec (runner --build picks it up)
     listAnalyses:   function ()        { return api.get('/analyses'); },
     createAnalysis: function (body)    { return api.post('/analyses', body); },
+
+    // subject-area column catalog — picker for "Add New OTBI Analysis"
+    // (runner --discover scrapes the OTBI tree into the cache these read)
+    listSubjectAreas:      function ()   { return api.get('/subject-areas'); },
+    getSubjectAreaColumns: function (sa) { return api.get('/subject-areas/columns?sa=' + encodeURIComponent(sa)); },
+    discoverSubjectArea:   function (sa) { return api.post('/subject-areas/discover', { subjectArea: sa }); },
     resetJob:     function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/reset', {}); },
     runJob:       function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/run', {}); },
     reprepareJob: function (name, rebuild) { return api.post('/jobs/' + encodeURIComponent(name) + '/reprepare', { rebuild: rebuild ? 'Y' : 'N' }); },

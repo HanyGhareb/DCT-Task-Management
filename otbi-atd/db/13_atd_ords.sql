@@ -27,6 +27,7 @@ CREATE OR REPLACE SYNONYM atd_load_run_log FOR prod.atd_load_run_log;
 CREATE OR REPLACE SYNONYM atd_queue_pkg    FOR prod.atd_queue_pkg;
 CREATE OR REPLACE SYNONYM atd_runner_config FOR prod.atd_runner_config;
 CREATE OR REPLACE SYNONYM atd_analysis_request FOR prod.atd_analysis_request;
+CREATE OR REPLACE SYNONYM atd_sa_catalog     FOR prod.atd_sa_catalog;
 
 -- =============================================================================
 -- 2. Module + handlers (wrapped in a temp procedure so SQLcl skips bind scanning)
@@ -402,6 +403,114 @@ BEGIN
   APEX_JSON.open_object;
   APEX_JSON.write('ok', TRUE);
   APEX_JSON.write('reqId', l_id);
+  APEX_JSON.write('status', 'QUEUED');
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- SUBJECT-AREA CATALOG  (column picker for "Add New OTBI Analysis")
+    --   GET  subject-areas          -> discovered subject areas + status
+    --   GET  subject-areas/columns  -> one READY subject area's folder/column tree
+    --   POST subject-areas/discover -> queue a (re)scrape (runner --discover drains)
+    -- =========================================================================
+    def_template('subject-areas');
+    def_handler('subject-areas', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (SELECT subject_area, status, folder_count, column_count,
+                   NVL(SUBSTR(message,1,300),'') AS msg,
+                   TO_CHAR(scraped_at,'YYYY-MM-DD HH24:MI') AS scraped_s
+              FROM atd_sa_catalog ORDER BY subject_area) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('subjectArea', r.subject_area);
+    APEX_JSON.write('status', r.status);
+    APEX_JSON.write('folderCount', NVL(r.folder_count,0));
+    APEX_JSON.write('columnCount', NVL(r.column_count,0));
+    APEX_JSON.write('message', r.msg);
+    APEX_JSON.write('scrapedAt', NVL(r.scraped_s,''));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+END;
+!');
+
+    def_template('subject-areas/columns');
+    def_handler('subject-areas/columns', 'GET', q'!
+DECLARE
+  -- Returns the cached folder/column tree (catalog_json) for one subject area,
+  -- selected via ?sa=<name>. READY -> the raw catalog JSON is streamed out as-is;
+  -- otherwise a small {subjectArea,status,folders:[]} stub so the UI can show status.
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_sa     VARCHAR2(256) := [COLON]sa;
+  l_status VARCHAR2(20);
+  l_cat    CLOB;
+  l_off    NUMBER := 1;
+  l_amt    CONSTANT NUMBER := 8000;
+  l_len    NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  IF l_sa IS NULL THEN dct_rest.err(400,'sa query parameter is required'); RETURN; END IF;
+  BEGIN
+    SELECT status, catalog_json INTO l_status, l_cat
+      FROM atd_sa_catalog WHERE subject_area = l_sa;
+  EXCEPTION WHEN NO_DATA_FOUND THEN
+    dct_rest.err(404,'Subject area not discovered'); RETURN;
+  END;
+  dct_rest.json_header;
+  IF l_status = 'READY' AND l_cat IS NOT NULL THEN
+    l_len := DBMS_LOB.GETLENGTH(l_cat);
+    WHILE l_off <= l_len LOOP
+      HTP.PRN(DBMS_LOB.SUBSTR(l_cat, l_amt, l_off));
+      l_off := l_off + l_amt;
+    END LOOP;
+  ELSE
+    APEX_JSON.initialize_output;
+    APEX_JSON.open_object;
+    APEX_JSON.write('subjectArea', l_sa);
+    APEX_JSON.write('status', l_status);
+    APEX_JSON.open_array('folders'); APEX_JSON.close_array;
+    APEX_JSON.close_object;
+  END IF;
+END;
+!');
+
+    def_template('subject-areas/discover');
+    def_handler('subject-areas/discover', 'POST', q'!
+DECLARE
+  -- Queue a subject area for (re)discovery. runner.py --discover drains QUEUED
+  -- rows, scrapes the OTBI Answers tree, and caches the columns for the picker.
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_sa   VARCHAR2(256);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_sa := APEX_JSON.get_varchar2(p_path => 'subjectArea');
+  IF l_sa IS NULL THEN dct_rest.err(400,'subjectArea is required'); RETURN; END IF;
+  MERGE INTO atd_sa_catalog t USING (SELECT l_sa AS sa FROM dual) s
+    ON (t.subject_area = s.sa)
+  WHEN MATCHED THEN UPDATE SET status='QUEUED', message=NULL,
+    requested_by=l_user, requested_at=systimestamp
+  WHEN NOT MATCHED THEN INSERT (subject_area, status, requested_by)
+    VALUES (l_sa, 'QUEUED', l_user);
+  COMMIT;
+  OWA_UTIL.status_line(201, NULL, FALSE);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('subjectArea', l_sa);
   APEX_JSON.write('status', 'QUEUED');
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
@@ -1055,5 +1164,6 @@ PROMPT ============================================================
 PROMPT  13_atd_ords.sql complete.
 PROMPT  Base URL: /ords/admin/atd/
 PROMPT  Endpoints: dashboard, lookups, jobs (+/:name, /enqueue, /reset, /run, /reprepare),
-PROMPT             analyses (build new), enqueue, reap, envs, targets, runs (+/:id, /export)
+PROMPT             analyses (build new), subject-areas (+/columns, /discover),
+PROMPT             enqueue, reap, envs, targets, runs (+/:id, /export)
 PROMPT ============================================================

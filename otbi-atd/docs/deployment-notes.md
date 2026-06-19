@@ -192,3 +192,28 @@ The runner host drains requests: **`python runner.py --build`** (oracledb mode) 
 queued analysis in OTBI (`create_analysis.build_analysis`), registers it as a job, and loads
 it once; marks the request DONE/FAILED. (Schedule `--build` alongside the loader task, or run
 on demand. Building needs the OTBI session, so MFA may be prompted like any runner login.)
+
+**Column picker (Add-New-Analysis drawer).** Instead of typing Folder/Column labels, pick a
+**discovered** subject area and tick its real folders/columns. Deploy order:
+1. `sql -name prod_mcp @otbi-atd/db/16_atd_sa_catalog.sql`  (creates `ATD_SA_CATALOG` — the
+   discover queue **and** the picker cache; one row per subject area)
+2. `sql -name prod_mcp @otbi-atd/db/13_atd_ords.sql`  (FRESH session — adds the
+   `atd_sa_catalog` synonym + `GET /atd/subject-areas`, `GET /atd/subject-areas/columns?sa=`,
+   `POST /atd/subject-areas/discover` handlers)
+3. Bump `final apps/ATD/Jet/index.html` `APP_VERSION` (→ 1.5.0).
+"Discover columns" POSTs `/atd/subject-areas/discover` (QUEUED). The runner host drains scrapes:
+**`python runner.py --discover`** (oracledb mode) drives the OTBI Answers tree
+(`create_analysis.discover_subject_area`) — enumerates every top-level folder, walks each
+(virtualised) folder's leaves, and caches `{folders:[{folder,columns:[]}]}` into
+`ATD_SA_CATALOG` (status READY). Scope = **whole subject area per run** (first scrape of a big
+SA can take minutes; the picker is instant + offline afterwards). The picker reads the cache via
+`GET /atd/subject-areas/columns?sa=`; non-READY returns `{status, folders:[]}` so the UI shows
+QUEUED/SCRAPING/FAILED. Sub-folders that leak into a parent's leaves are filtered out (a folder
+owns a `_disclosure` node). Standalone test: `python create_analysis.py --discover --subject-area "…" [--headed]`.
+**Gotcha (live-pod, fixed):** the Answers criteria pane lists EVERY subject area in the catalog
+as its own `criteriaDataBrowser$…` node, so enumerating all `_disclosure` ids grabs all subject
+areas as phantom folders (a Financials subject area showed 274). OTBI **quotes subject-area names
+in the id** (`criteriaDataBrowser$"Costing - X Real Time"`) but presentation **folders are
+unquoted** (`criteriaDataBrowser$Currency`) — `_top_folders` keeps only unquoted ids (and drops
+zero-column folders). Verified: "Project Control - Financial Project Plans Real Time" → 11 folders
+/ 195 columns.

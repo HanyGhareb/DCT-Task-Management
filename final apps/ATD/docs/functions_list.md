@@ -17,6 +17,13 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   `saveAnalysis` POSTs `{name, saveFolder, specJson}` to `/atd/analyses` — queued in
   `ATD_ANALYSIS_REQUEST`; the runner (`python runner.py --build`) drives the OTBI Answers UI
   (`create_analysis.build_analysis`), saves the analysis, registers it as a job, and loads it.
+- **Column picker** (in the Add-New-Analysis drawer; `loadSubjectAreas` · `loadCatalog` ·
+  `discoverColumns` · `toggleFolder` · `togglePick` · `anPickSa` subscribe): instead of typing
+  Folder/Column labels, pick a previously **discovered** subject area from the dropdown and tick
+  its real folders/columns to fill the repeater. `discoverColumns` POSTs `/atd/subject-areas/discover`
+  to queue a scrape; the runner (`python runner.py --discover`) drives the OTBI tree
+  (`create_analysis.discover_subject_area`) and caches the folder/column catalog in
+  `ATD_SA_CATALOG`; the picker then reads it via `/atd/subject-areas/columns?sa=`.
 - The list shows a **Duration** column = the last run's elapsed time (`lastDurationSec`),
   formatted `47s` / `1m 50s` / `1h 20m 10s` (units i18n `atd.dur.h/m/s`; `—` when never run or
   the run-log row has no `started`, e.g. the SQLcl loader path).
@@ -67,6 +74,9 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 | GET / PUT / DELETE | `/jobs/:name` | read (history rows carry `durationSec`) / update / delete job |
 | GET | `/runs` | run-log list (paged) — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
+| GET | `/subject-areas` | list discovered subject areas + status/column counts (column-picker source) |
+| GET | `/subject-areas/columns?sa=` | one READY subject area's cached folder/column tree (raw `catalog_json`) |
+| POST | `/subject-areas/discover` | queue a subject area for (re)scrape (`{subjectArea}` → `ATD_SA_CATALOG` QUEUED; runner `--discover` consumes it) |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |

@@ -30,6 +30,8 @@ job to exactly one host. Host id = ATD_WORKER_ID or the machine hostname.
 Build new analyses (oracledb mode only — "Add New OTBI Analysis" from the Jobs page):
   python runner.py --build   # drain QUEUED prod.atd_analysis_request rows: build each
                              # in OTBI (create_analysis), register it as a job, load once
+  python runner.py --discover# drain QUEUED prod.atd_sa_catalog rows: scrape each subject
+                             # area's folders+columns -> cache for the UI column picker
 """
 import hashlib
 import json
@@ -294,6 +296,55 @@ def _build_requests(conn, load):
     return failures
 
 
+# ---- subject-area discovery queue (column picker for "Add New OTBI Analysis") -
+def _set_sa(conn, sa, status, message=None):
+    conn.cursor().execute(
+        "update prod.atd_sa_catalog set status=:s, message=:m where subject_area=:sa",
+        s=status, m=message, sa=sa)
+    conn.commit()
+
+
+def _save_catalog(conn, sa, catalog_json, folders, columns):
+    import oracledb
+    cur = conn.cursor()
+    cur.setinputsizes(c=oracledb.DB_TYPE_CLOB)
+    cur.execute(
+        "update prod.atd_sa_catalog set catalog_json=:c, folder_count=:fc, "
+        "column_count=:cc, status='READY', message=NULL, scraped_at=systimestamp "
+        "where subject_area=:sa",
+        c=catalog_json, fc=folders, cc=columns, sa=sa)
+    conn.commit()
+
+
+def _discover_requests(conn):
+    """Drain QUEUED subject-area discovery requests: scrape each subject area's
+    folders+columns in OTBI (create_analysis.discover_subject_area) and cache the
+    catalog for the UI column picker. Marks each READY / FAILED."""
+    import create_analysis
+    cur = conn.cursor()
+    cur.execute("SELECT subject_area FROM prod.atd_sa_catalog "
+                "WHERE status='QUEUED' ORDER BY requested_at")
+    sas = [r[0] for r in cur.fetchall()]
+    if not sas:
+        print("[discover] no queued subject-area discovery requests")
+        return 0
+    failures = 0
+    for sa in sas:
+        print(f"[discover] {sa}: scraping...")
+        _set_sa(conn, sa, "SCRAPING")
+        try:
+            tree = create_analysis.discover_subject_area(sa)
+            fc = len(tree["folders"])
+            cc = sum(len(f["columns"]) for f in tree["folders"])
+            _save_catalog(conn, sa, json.dumps(tree, ensure_ascii=False), fc, cc)
+            print(f"[discover] {sa}: READY ({fc} folders, {cc} columns)")
+        except Exception as e:  # noqa: BLE001
+            _set_sa(conn, sa, "FAILED", message=str(e)[:3900])
+            print(f"[discover] {sa}: FAILED: {e}")
+            failures += 1
+    return failures
+
+
 def _resolve_mode():
     """oracledb is the default fast path; fall back to sqlcl only when its
     credentials are absent. Explicit ATD_DB_MODE always wins."""
@@ -313,19 +364,22 @@ def main(argv):
     worker = "--worker" in args
     forever = "--forever" in args
     build = "--build" in args
+    discover = "--discover" in args
     only = next((a for a in args if not a.startswith("-")), None)
     mode = _resolve_mode()
 
     # queue commands require oracledb (the function lives in the DB; the loop
     # claims via a live oracledb connection)
-    if enqueue or worker or build:
+    if enqueue or worker or build or discover:
         if mode != "oracledb":
-            print("[queue] --enqueue/--worker/--build require oracledb mode "
+            print("[queue] --enqueue/--worker/--build/--discover require oracledb mode "
                   "(set ATD_DB_USER/PASSWORD + ATD_WALLET_PASSWORD)")
             sys.exit(2)
         import load
         conn = config.connect()
         config.apply_runner_config(conn)
+        if discover:                    # drain subject-area column-picker scrapes
+            sys.exit(1 if _discover_requests(conn) else 0)
         if build:                       # drain "Add New OTBI Analysis" requests
             sys.exit(1 if _build_requests(conn, load) else 0)
         if enqueue:
