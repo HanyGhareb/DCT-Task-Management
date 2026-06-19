@@ -256,6 +256,24 @@ zero-column folders). Verified: "Project Control - Financial Project Plans Real 
   SA gets the full limit. `run_atd.ps1` reverted to **build + load only** (no `--discover`).
   `--discover` still no-ops (no browser) when the queue is empty. Manage:
   `Get-ScheduledTaskInfo / Start-ScheduledTask / Disable-ScheduledTask -TaskName 'OTBI-ATD Discover'`.
+- **Single-browser lock (2026-06-20).** The 1-min Discover task and the 15-min loader must never
+  drive an OTBI browser at the same time — two Playwright sessions on the one Fusion SSO session
+  corrupt each other's server-side Answers-editor state (intermittent build failures like
+  `folder did not load children: '<name>'` / `saTreeNode_NN`). Both `run_atd.ps1` and
+  `run_atd_discover.ps1` acquire the SAME exclusive lockfile `otbi-atd/.otbi_runner.lock`
+  (`[System.IO.File]::Open(path,'OpenOrCreate','ReadWrite','None')`) before launching python; if the
+  other holds it, the cycle is skipped and retried next tick. One OTBI browser per host — the only
+  safe model with a single MFA account.
+- **Stale-SCRAPING reaper (2026-06-20).** `--discover` only retries `QUEUED` rows, so a row left in
+  `SCRAPING` by a crashed/killed scrape (or one that wrote the catalog but lost the `READY` flip)
+  would never recover. `runner._reap_stale_discovery` runs at the top of every `--discover` cycle:
+  it resets to `QUEUED` any `SCRAPING` catalog row that has **no** `DISCOVER` run-log row `RUNNING`
+  within `ATD_LEASE_MINUTES` (default 30), and closes the dangling `RUNNING` run-log rows as
+  `FAILED`. A genuinely-live scrape keeps a fresh `RUNNING` log row and is never reaped. Gotchas:
+  the statements carry `/*+ no_parallel */` (these ATD tables auto-parallelize → ORA-12860 deadlock
+  under concurrency) and compare `started >= CAST(systimestamp AS TIMESTAMP) - …` (the run-log
+  `started` is a plain `TIMESTAMP`; comparing it against TZ-aware `systimestamp` mis-fired the lease
+  — same skew fixed earlier in `ATD_QUEUE_PKG.reap_stale`).
 - **AI column suggester (Sonnet 4.6).** `db/17_atd_ai.sql` = network ACL for `api.anthropic.com`
   + `ATD_RUNNER_CONFIG` keys `AI_MODEL` (default `claude-sonnet-4-6`) / `AI_MAX_TOKENS` /
   `AI_API_KEY` (secret; blank → reuses the AR ANTHROPIC provider key) + `DCT_ATD_AI_PKG`.

@@ -319,6 +319,39 @@ def _save_catalog(conn, sa, catalog_json, folders, columns):
     conn.commit()
 
 
+def _reap_stale_discovery(conn, minutes):
+    """Recover discovery rows stranded in SCRAPING by a crashed/killed scrape.
+
+    --discover only picks up QUEUED rows, so a row left in SCRAPING (process died
+    mid-scrape, or finished the catalog but lost the READY status flip) would never
+    retry. A row is stale when NO DISCOVER run-log row for it has been RUNNING within
+    the last `minutes` — i.e. no scrape is actually working on it. Reset those to
+    QUEUED and close their dangling RUNNING run-log rows as FAILED so the Discovery
+    page stops showing an eternal RUNNING. Runs at the top of each --discover cycle;
+    a genuinely-live scrape keeps a fresh RUNNING log row and is never reaped."""
+    cur = conn.cursor()
+    cur.execute(
+        "UPDATE /*+ no_parallel */ prod.atd_load_run_log SET status='FAILED', "
+        "  finished=systimestamp, message='reaped: scrape did not finish (stale)' "
+        "WHERE track='DISCOVER' AND status='RUNNING' "
+        "  AND started < CAST(systimestamp AS TIMESTAMP) - NUMTODSINTERVAL(:m,'MINUTE')",
+        m=minutes)
+    cur.execute(
+        "UPDATE /*+ no_parallel */ prod.atd_sa_catalog c SET c.status='QUEUED', "
+        "  c.message='re-queued: previous scrape did not finish' "
+        "WHERE c.status='SCRAPING' "
+        "  AND NOT EXISTS (SELECT /*+ no_parallel */ 1 FROM prod.atd_load_run_log l "
+        "    WHERE l.track='DISCOVER' AND l.status='RUNNING' "
+        "      AND l.job_name = c.subject_area "
+        "      AND l.started >= CAST(systimestamp AS TIMESTAMP) - NUMTODSINTERVAL(:m,'MINUTE'))",
+        m=minutes)
+    n = cur.rowcount
+    conn.commit()
+    if n:
+        print(f"[discover] reaped {n} stale SCRAPING row(s) -> QUEUED")
+    return n
+
+
 def _discover_requests(conn):
     """Drain ONE QUEUED subject-area discovery request (the oldest): scrape its full
     folder/column tree in OTBI (create_analysis.discover_subject_area) and cache it for
@@ -328,6 +361,8 @@ def _discover_requests(conn):
     tick, and each subject area gets the full ExecutionTimeLimit to itself. Returns the
     number still queued AFTER this one (so the caller/log shows remaining backlog)."""
     import create_analysis
+    # first recover anything stranded in SCRAPING by a dead scrape (lease = ATD_LEASE_MINUTES)
+    _reap_stale_discovery(conn, int(os.environ.get("ATD_LEASE_MINUTES", "30")))
     cur = conn.cursor()
     cur.execute("SELECT subject_area FROM prod.atd_sa_catalog "
                 "WHERE status='QUEUED' ORDER BY requested_at FETCH FIRST 1 ROW ONLY")
