@@ -11,19 +11,8 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 - `load` (search + status filter) · `open` (→ jobDetail) · `newJob` / `editJob` (drawer) ·
   `toggleAdvanced` · `save` (create/update, JSON-validates column-map/params) · `enqueue` ·
   `reset` · `runNow` · `del` · `fmtDuration` (`util/duration` — adaptive-compact run time).
-- **Add New OTBI Analysis** (`newAnalysis` → drawer; `addAnColumn` / `removeAnColumn` /
-  `saveAnalysis`): builds a brand-new OTBI analysis from a spec (subject area, save folder,
-  name, a Folder/Column/Heading columns repeater, optional prompted-filter JSON, load mode).
-  `saveAnalysis` POSTs `{name, saveFolder, specJson}` to `/atd/analyses` — queued in
-  `ATD_ANALYSIS_REQUEST`; the runner (`python runner.py --build`) drives the OTBI Answers UI
-  (`create_analysis.build_analysis`), saves the analysis, registers it as a job, and loads it.
-- **Column picker** (in the Add-New-Analysis drawer; `loadSubjectAreas` · `loadCatalog` ·
-  `discoverColumns` · `toggleFolder` · `togglePick` · `anPickSa` subscribe): instead of typing
-  Folder/Column labels, pick a previously **discovered** subject area from the dropdown and tick
-  its real folders/columns to fill the repeater. `discoverColumns` POSTs `/atd/subject-areas/discover`
-  to queue a scrape; the runner (`python runner.py --discover`) drives the OTBI tree
-  (`create_analysis.discover_subject_area`) and caches the folder/column catalog in
-  `ATD_SA_CATALOG`; the picker then reads it via `/atd/subject-areas/columns?sa=`.
+- **Add New OTBI Analysis** + the **column picker** now live on the **OTBI Discovery** page
+  (see below), not here — the Jobs page only manages existing jobs.
 - The list shows a **Duration** column = the last run's elapsed time (`lastDurationSec`),
   formatted `47s` / `1m 50s` / `1h 20m 10s` (units i18n `atd.dur.h/m/s`; `—` when never run or
   the run-log row has no `started`, e.g. the SQLcl loader path).
@@ -75,6 +64,21 @@ One page, three tables, for the `create_analysis` async pipeline:
 - **Analysis build requests** (`loadBuilds` from `/analyses`): the "Add New OTBI Analysis" queue
   (name, save folder, status, resulting job, message).
 - `refresh` reloads all three.
+- **Add New OTBI Analysis** (`newAnalysis` → drawer; `addAnColumn` / `removeAnColumn` /
+  `saveAnalysis`): builds a brand-new OTBI analysis from a spec (subject area, save folder,
+  name, a Folder/Column/Heading columns repeater, optional prompted-filter JSON, load mode).
+  `saveAnalysis` POSTs `{name, saveFolder, specJson}` to `/atd/analyses` — queued in
+  `ATD_ANALYSIS_REQUEST`; the runner (`python runner.py --build`) drives the OTBI Answers UI
+  (`create_analysis.build_analysis`), saves the analysis, registers it as a job, and loads it.
+  `saveAnalysis` refreshes the build-requests table on success.
+- **Column picker** (in the Add-New-Analysis drawer; `loadCatalog` · `discoverColumns` ·
+  `toggleFolder` · `togglePick` · `anPickSa` subscribe): instead of typing Folder/Column labels,
+  pick a previously **discovered** subject area from the dropdown (reuses the page's `requests`
+  list) and tick its real folders/columns to fill the repeater. `discoverColumns` POSTs
+  `/atd/subject-areas/discover` to queue a scrape; the runner (`python runner.py --discover`)
+  drives the OTBI tree (`create_analysis.discover_subject_area`) and caches the folder/column
+  catalog in `ATD_SA_CATALOG`; the picker then reads it via `/atd/subject-areas/columns?sa=`
+  (renders folders whenever the cache exists, even if the row was re-queued).
 
 ## API Endpoints (ORDS) — `/ords/admin/atd/` (`otbi-atd/db/13_atd_ords.sql`, module `atd.rest`)
 | Method | Path | Purpose |
