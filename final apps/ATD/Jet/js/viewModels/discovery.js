@@ -64,10 +64,11 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.anLoadMode = ko.observable('TRUNCATE_INSERT');
     self.anColumns = ko.observableArray([]);
     self.anParams = ko.observable('');
-    function _colRow(folder, column, heading) {
+    function _colRow(folder, column, heading, path) {
       return { folder: ko.observable(folder || ''), column: ko.observable(column || ''),
-               heading: ko.observable(heading || '') };
+               heading: ko.observable(heading || ''), path: path || null };
     }
+    var SEP = ' ▸ ';   // "A ▸ B ▸ C" path display
     self.addAnColumn = function () { self.anColumns.push(_colRow()); };
     self.removeAnColumn = function (row) { self.anColumns.remove(row); };
 
@@ -77,25 +78,33 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.anPickerBusy = ko.observable(false);
     self.anPickerMsg = ko.observable('');         // status line under the picker
 
-    function _wrapCatalog(folders) {
+    // a column row's identity = its folder path joined + column name
+    function _rowKey(r) { return (r.path ? r.path.join(SEP) : r.folder()) + ' :: ' + r.column(); }
+
+    // recursively wrap the nested catalog tree {folder, columns[], folders[]} for the
+    // picker; each leaf carries its full folder PATH so picking it adds a path-aware row.
+    function _wrapCatalog(folders, parentPath) {
+      parentPath = parentPath || [];
       var have = {};
-      self.anColumns().forEach(function (r) { have[r.folder() + ' ' + r.column()] = true; });
+      self.anColumns().forEach(function (r) { have[_rowKey(r)] = true; });
       return (folders || []).map(function (f) {
-        return {
-          folder: f.folder,
-          open: ko.observable(false),
-          columns: (f.columns || []).map(function (c) {
-            var p = ko.observable(!!have[f.folder + ' ' + c]);
-            p.subscribe(function (on) {
-              var match = self.anColumns().filter(function (r) {
-                return r.folder() === f.folder && r.column() === c;
-              });
-              if (on && !match.length) self.anColumns.push(_colRow(f.folder, c, ''));
-              else if (!on) match.forEach(function (r) { self.anColumns.remove(r); });
+        var path = parentPath.concat([f.folder]);
+        var pkey = path.join(SEP);
+        var cols = (f.columns || []).map(function (c) {
+          var p = ko.observable(!!have[pkey + ' :: ' + c]);
+          p.subscribe(function (on) {
+            var match = self.anColumns().filter(function (r) {
+              return (r.path ? r.path.join(SEP) : '') === pkey && r.column() === c;
             });
-            return { name: c, picked: p };
-          })
-        };
+            if (on && !match.length) self.anColumns.push(_colRow(pkey, c, '', path));
+            else if (!on) match.forEach(function (r) { self.anColumns.remove(r); });
+          });
+          return { name: c, picked: p };
+        });
+        var subs = _wrapCatalog(f.folders || [], path);
+        var count = cols.length + subs.reduce(function (n, s) { return n + s.count; }, 0);
+        return { folder: f.folder, path: path, open: ko.observable(false),
+                 columns: cols, folders: subs, count: count };
       });
     }
 
@@ -137,11 +146,57 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.toggleFolder = function (f) { f.open(!f.open()); };
     self.togglePick = function (col) { col.picked(!col.picked()); };
 
+    // ── AI column suggester (describe the data → tick the matching columns) ──
+    self.anSuggestText = ko.observable('');
+    self.anSuggestBusy = ko.observable(false);
+
+    // tick a leaf by folder path + column in the loaded nested catalog (expanding
+    // ancestors); returns false if the catalog isn't loaded or the leaf isn't found.
+    function _pickByPath(path, column) {
+      var cur = self.anCatalog(), node = null;
+      for (var d = 0; d < path.length; d++) {
+        node = null;
+        for (var i = 0; i < cur.length; i++) { if (cur[i].folder === path[d]) { node = cur[i]; break; } }
+        if (!node) return false;
+        node.open(true);
+        cur = node.folders;
+      }
+      var col = (node.columns || []).filter(function (c) { return c.name === column; })[0];
+      if (col) { col.picked(true); return true; }   // subscribe adds the anColumns row
+      return false;
+    }
+
+    function _applyPick(path, column) {
+      if (_pickByPath(path || [], column)) return;
+      // fallback (catalog not loaded / label drift): add the row directly
+      var pkey = (path || []).join(SEP);
+      var dup = self.anColumns().some(function (r) {
+        return (r.path ? r.path.join(SEP) : '') === pkey && r.column() === column;
+      });
+      if (!dup) self.anColumns.push(_colRow(pkey, column, '', path || []));
+    }
+
+    self.suggestColumns = function () {
+      var sa = (self.anSubjectArea() || '').trim();
+      var req = (self.anSuggestText() || '').trim();
+      if (!sa) { toast.error(self.t('atd.analysis.subjectArea')); return; }
+      if (!req) { toast.error(self.t('atd.analysis.suggestNeed')); return; }
+      self.anSuggestBusy(true);
+      atd.suggestColumns(sa, req).then(function (r) {
+        self.anSuggestBusy(false);
+        var items = (r && r.items) || [];
+        if (!items.length) { toast.error(self.t('atd.analysis.suggestNone')); return; }
+        items.forEach(function (it) { _applyPick(it.path, it.column); });
+        toast.success(self.t('atd.analysis.suggestAdded').replace('{n}', items.length));
+      }).catch(function () { self.anSuggestBusy(false); });
+    };
+
     self.newAnalysis = function () {
       self.anSubjectArea(''); self.anSaveFolder(''); self.anName('');
       self.anLoadMode('TRUNCATE_INSERT'); self.anParams('');
       self.anColumns([_colRow(), _colRow(), _colRow()]);
       self.anPickSa(''); self.anCatalog([]); self.anPickerMsg('');
+      self.anSuggestText(''); self.anSuggestBusy(false);
       self.loadRequests();
       self.showAnalysisForm(true);
     };
@@ -153,10 +208,12 @@ function (ko, atd, i18n, toast, fmtDuration) {
       if (!name) { toast.error(self.t('atd.analysis.name')); return; }
       if (!folder) { toast.error(self.t('atd.analysis.saveFolder')); return; }
       var cols = self.anColumns().map(function (r) {
-        var o = { folder: (r.folder() || '').trim(), column: (r.column() || '').trim() };
+        var o = { column: (r.column() || '').trim() };
+        if (r.path && r.path.length) o.path = r.path;           // nested column
+        else o.folder = (r.folder() || '').trim();              // manual depth-1 row
         var h = (r.heading() || '').trim(); if (h) o.heading = h;
         return o;
-      }).filter(function (o) { return o.folder && o.column; });
+      }).filter(function (o) { return o.column && (o.folder || (o.path && o.path.length)); });
       if (!cols.length) { toast.error(self.t('atd.analysis.needColumn')); return; }
       var spec = { subject_area: sa, save_folder: folder, name: name,
                    load_mode: self.anLoadMode(), columns: cols };

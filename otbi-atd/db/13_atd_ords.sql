@@ -28,6 +28,7 @@ CREATE OR REPLACE SYNONYM atd_queue_pkg    FOR prod.atd_queue_pkg;
 CREATE OR REPLACE SYNONYM atd_runner_config FOR prod.atd_runner_config;
 CREATE OR REPLACE SYNONYM atd_analysis_request FOR prod.atd_analysis_request;
 CREATE OR REPLACE SYNONYM atd_sa_catalog     FOR prod.atd_sa_catalog;
+CREATE OR REPLACE SYNONYM dct_atd_ai_pkg     FOR prod.dct_atd_ai_pkg;
 
 -- =============================================================================
 -- 2. Module + handlers (wrapped in a temp procedure so SQLcl skips bind scanning)
@@ -563,6 +564,45 @@ BEGIN
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- AI column suggester: free-text request -> {items:[{path,column}]} chosen from
+    -- the discovered catalog (DCT_ATD_AI_PKG -> Anthropic). Body {sa, request}.
+    def_template('subject-areas/suggest');
+    def_handler('subject-areas/suggest', 'POST', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_sa   VARCHAR2(256);
+  l_req  CLOB;
+  l_out  CLOB;
+  l_off  NUMBER := 1;
+  l_amt  CONSTANT NUMBER := 8000;
+  l_len  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_sa  := APEX_JSON.get_varchar2(p_path => 'sa');
+  l_req := APEX_JSON.get_varchar2(p_path => 'request');
+  IF l_sa IS NULL THEN dct_rest.err(400,'sa is required'); RETURN; END IF;
+  l_out := dct_atd_ai_pkg.suggest_columns(l_sa, l_req);
+  dct_rest.json_header;
+  l_len := DBMS_LOB.GETLENGTH(l_out);
+  WHILE l_off <= l_len LOOP
+    HTP.PRN(DBMS_LOB.SUBSTR(l_out, l_amt, l_off));
+    l_off := l_off + l_amt;
+  END LOOP;
+EXCEPTION
+  WHEN OTHERS THEN
+    CASE SQLCODE
+      WHEN -20404 THEN dct_rest.err(404, SQLERRM);
+      WHEN -20403 THEN dct_rest.err(403, SQLERRM);
+      WHEN -20401 THEN dct_rest.err(401, SQLERRM);
+      WHEN -20001 THEN dct_rest.err(400, SQLERRM);
+      WHEN -20090 THEN dct_rest.err(400, SQLERRM);
+      ELSE dct_rest.err(500, SQLERRM);
+    END CASE;
 END;
 !');
 

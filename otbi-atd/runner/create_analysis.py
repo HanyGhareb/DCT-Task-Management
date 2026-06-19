@@ -384,8 +384,8 @@ def _top_folders(page):
     return []
 
 
-def _scroll_children(page, folder):
-    """Page the folder's (possibly virtualised) children container down one screen.
+def _scroll_el(page, container_id):
+    """Page a (possibly virtualised) container down one screen by its DOM id.
     Returns True when it can't scroll any further (at the bottom)."""
     return page.evaluate("""(cid) => {
       const c = document.getElementById(cid);
@@ -399,40 +399,117 @@ def _scroll_children(page, folder):
         n = n.parentElement;
       }
       return true;
-    }""", f"criteriaDataBrowser${folder}_children")
+    }""", container_id)
 
 
-def _collect_leaves(page, folder):
-    """Every leaf label under an expanded folder, walking the virtualised tree to
-    the bottom so mid-list attributes are captured (cf. add_column's window walk)."""
-    sel = _children(folder) + ' span.treeNodeText'
-    seen, s, stable = [], set(), 0
-    for _ in range(80):
+def _scroll_children(page, folder):
+    """Page a folder's children container down one screen; True at the bottom."""
+    return _scroll_el(page, f"criteriaDataBrowser${folder}_children")
+
+
+# JS: the IMMEDIATE child nodes of a `..._children` container -> [{name, folder, id}].
+# OTBI tree rows are `criteriaDataBrowser$<base>_details`; the children box is a SIBLING
+# keyed on `<base>` (`<base>_children`). `id` = `<base>` minus the `criteriaDataBrowser$`
+# prefix (top folders use a readable <base> = the folder name; nested ones use a generated
+# <base> = saTreeNode_NNNNN) — exactly what _children()/expand_folder need.
+# FOLDER vs LEAF is the ICON, not the disclosure: real folders use .../obips.Tree/folder.png,
+# columns use column.png — and BOTH carry a (visible) disclosure_collapsed.png stub, so
+# disclosure presence is NOT a discriminator (treating leaves as folders made every column
+# expand-timeout, hanging the scrape). "Immediate" = the nearest enclosing `..._children`
+# container is this one (so already-expanded grandchildren are not double-counted).
+_JS_CHILDREN = r"""(containerId) => {
+  const c = document.getElementById(containerId);
+  if (!c) return [];
+  const out = [], seen = new Set();
+  for (const s of c.querySelectorAll('span.treeNodeText')) {
+    let p = s.parentElement, near = null;
+    while (p) { if (p.id && p.id.endsWith('_children')) { near = p; break; } p = p.parentElement; }
+    if (near !== c) continue;                       // not a direct child of this container
+    const name = (s.innerText || '').trim();
+    if (!name || seen.has(name)) continue; seen.add(name);
+    const row = s.closest('[id^="criteriaDataBrowser$"]');
+    let id = '', folder = false;
+    if (row) {
+      id = row.id.replace(/_details$/, '').slice(20);   // <base> minus 'criteriaDataBrowser$'
+      const icon = row.querySelector('img.treeNodeIcon');
+      const src = icon ? (icon.getAttribute('src') || '') : '';
+      folder = /\/folder\.png(\?|$)/.test(src) || src.endsWith('folder.png');
+    }
+    out.push({ name, folder, id });
+  }
+  return out;
+}"""
+
+
+def _enumerate_children(page, container_id):
+    """Every immediate child node of a container, scrolling the virtualised list to
+    the bottom so mid-list folders/columns are all captured. [{name, folder, id}]."""
+    seen, order, stable = {}, [], 0
+    for _ in range(120):
         try:
-            texts = page.locator(sel).all_inner_texts()
+            rows = page.evaluate(_JS_CHILDREN, container_id)
         except Exception:
-            texts = []
+            rows = []
         new = 0
-        for t in texts:
-            t = (t or "").strip()
-            if t and t not in s:
-                s.add(t); seen.append(t); new += 1
-        at_bottom = _scroll_children(page, folder)
-        time.sleep(0.5)
+        for r in rows:
+            k = r.get("name")
+            if k and k not in seen:
+                seen[k] = r; order.append(k); new += 1
+        at_bottom = _scroll_el(page, container_id)
+        time.sleep(0.4)
         if new == 0:
             stable += 1
             if at_bottom or stable >= 4:
                 break
         else:
             stable = 0
-    return seen
+    return [seen[k] for k in order]
+
+
+def _collapse(page, node_id):
+    """Collapse an expanded folder to keep the DOM small (best-effort)."""
+    try:
+        disc = page.locator(_disc(node_id))
+        if disc.count() and page.locator(_children(node_id)).locator("span.treeNodeText").count():
+            disc.first.click(); time.sleep(0.3)
+    except Exception:
+        pass
+
+
+def _discover_node(page, node_id, name, depth):
+    """Expand a folder and return its full sub-tree to every depth:
+    {folder, columns:[...], folders:[<same shape>...]}. A child is a sub-folder when it
+    owns a disclosure twisty (recursed into); everything else is a leaf column."""
+    expand_folder(page, node_id)
+    kids = _enumerate_children(page, f"criteriaDataBrowser${node_id}_children")
+    columns = [k["name"] for k in kids if not k["folder"]]
+    subs    = [k for k in kids if k["folder"] and k["id"]]
+    node = {"folder": name, "columns": columns, "folders": []}
+    for sf in subs:
+        _step(f"{'  ' * depth}sub-folder: {sf['name']}")
+        try:
+            node["folders"].append(_discover_node(page, sf["id"], sf["name"], depth + 1))
+        except Exception as e:  # noqa: BLE001
+            print(f"[discover] sub-folder {sf['name']!r} failed: {e}; skipping")
+        _collapse(page, sf["id"])
+    return node
+
+
+def _count_tree(folders):
+    """(total leaf columns, total folder nodes) across a nested folder list."""
+    cols, flds = 0, len(folders)
+    for f in folders:
+        cols += len(f.get("columns", []))
+        c2, f2 = _count_tree(f.get("folders", []))
+        cols += c2; flds += f2
+    return cols, flds
 
 
 def discover_subject_area(spec_sa, headless=True):
-    """Open the editor on a subject area, enumerate every folder and its columns,
-    return {subject_area, folders:[{folder, columns:[...]}], scraped_at}.
-    Sub-folders that leak into a parent's leaves are filtered out (a folder name is
-    one that owns a disclosure node)."""
+    """Open the editor on a subject area and scrape its FULL folder/column tree to every
+    depth. Returns {subject_area, folders:[{folder, columns, folders}], column_count,
+    folder_count, scraped_at}. A node is a folder when it owns a disclosure twisty; every
+    other tree node is a leaf column (so sub-folders are recursed, never shown as columns)."""
     env = {"env_name": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV"),
            "analytics_base_url": DEFAULT_BASE,
            "credential_ref": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV")}
@@ -442,31 +519,20 @@ def discover_subject_area(spec_sa, headless=True):
         page.set_default_timeout(STEP_TIMEOUT)
         try:
             open_editor(page, DEFAULT_BASE, spec_sa)
-            folders = _top_folders(page)
-            _step(f"discover: {len(folders)} folder(s) in {spec_sa!r}")
+            tops = _top_folders(page)
+            _step(f"discover: {len(tops)} top folder(s) in {spec_sa!r}")
             result = []
-            for f in folders:
-                _step(f"discover folder: {f}")
+            for f in tops:
+                _step(f"folder: {f}")
                 try:
-                    expand_folder(page, f)
-                    leaves = _collect_leaves(page, f)
+                    result.append(_discover_node(page, f, f, 1))
                 except Exception as e:  # noqa: BLE001
                     print(f"[discover] folder {f!r} failed: {e}; skipping")
-                    leaves = []
-                result.append({"folder": f, "columns": leaves})
-                try:                                  # collapse to keep the DOM small
-                    disc = page.locator(_disc(f))
-                    if disc.count():
-                        disc.first.click(); time.sleep(0.3)
-                except Exception:
-                    pass
-            names = {r["folder"] for r in result}
-            for r in result:
-                r["columns"] = [c for c in r["columns"] if c not in names]
-            result = [r for r in result if r["columns"]]   # drop empty/non-folder nodes
-            total = sum(len(r["columns"]) for r in result)
-            _step(f"discover done: {len(result)} folders, {total} columns")
+                _collapse(page, f)
+            cols, flds = _count_tree(result)
+            _step(f"discover done: {flds} folders, {cols} columns")
             return {"subject_area": spec_sa, "folders": result,
+                    "column_count": cols, "folder_count": flds,
                     "scraped_at": datetime.now().isoformat(timespec="seconds")}
         except Exception:
             _shot(page, "discover_error")
@@ -475,24 +541,70 @@ def discover_subject_area(spec_sa, headless=True):
             browser.close()
 
 
+def _col_path(c):
+    """A column/param spec's folder path (top -> immediate parent). Accepts the new
+    nested `path` array or the legacy flat `folder`. Returns None if neither is set."""
+    p = c.get("path")
+    if p:
+        return list(p)
+    return [c["folder"]] if c.get("folder") else None
+
+
+def _child_id(page, container_id, name):
+    """The node id-part of an immediate child FOLDER named `name` in a container,
+    scrolling the virtualised list as needed. None if not found."""
+    for _ in range(24):
+        for r in (page.evaluate(_JS_CHILDREN, container_id) or []):
+            if r.get("name") == name and r.get("folder") and r.get("id"):
+                return r["id"]
+        if _scroll_el(page, container_id):
+            break
+        time.sleep(0.8)
+    return None
+
+
+def _expand_path(page, path):
+    """Expand every folder in a name path and return the deepest folder's id-part (the
+    container `add_column`/`add_filter` then search). path[0] is a top folder (id==name);
+    each deeper level is resolved live by its label so session-assigned ids stay correct."""
+    top = path[0]
+    expand_folder(page, top)
+    container = top
+    for name in path[1:]:
+        cid = _child_id(page, f"criteriaDataBrowser${container}_children", name)
+        if not cid:
+            _shot(page, "path")
+            raise RuntimeError(f"sub-folder not found: {name!r} under {container!r}")
+        expand_folder(page, cid)
+        container = cid
+    return container
+
+
 def build(page, spec, do_headings=True, do_params=True):
     open_editor(page, DEFAULT_BASE, spec["subject_area"])
-    last = None
+    last, container = None, None
     for c in spec["columns"]:
-        if c["folder"] != last:
-            _step(f"expand folder: {c['folder']}")
-            expand_folder(page, c["folder"])
-            last = c["folder"]
-        _step(f"add column: {c['folder']} -> {c['column']}")
-        add_column(page, c["folder"], c["column"])
+        path = _col_path(c)
+        if not path:
+            print(f"[create] (skip) column has no folder/path: {c!r}"); continue
+        if path != last:
+            _step("expand path: " + " > ".join(path))
+            container = _expand_path(page, path)
+            last = path
+        _step(f"add column: {'/'.join(path)} -> {c['column']}")
+        add_column(page, container, c["column"])
         # rename immediately so duplicate source names resolve uniquely
         if do_headings and c.get("heading") and c["heading"] != c["column"]:
             _step(f"heading: {c['column']} -> {c['heading']}")
             set_heading(page, c["column"], c["heading"])
     if do_params:
         for p in spec.get("params", []) or []:
+            ppath = _col_path(p)
+            if not ppath:
+                print(f"[create] (skip) param has no folder/path: {p!r}"); continue
+            cont = _expand_path(page, ppath)
             _step(f"filter: {p['column']} {p.get('operator','')}")
-            add_filter(page, p["folder"], p["column"], p.get("operator", "is prompted"),
+            add_filter(page, cont, p["column"], p.get("operator", "is prompted"),
                        bool(p.get("prompted")) or p.get("operator") == "is prompted",
                        p.get("default"))
     save_as(page, spec["save_folder"], spec["name"])

@@ -318,35 +318,41 @@ def _save_catalog(conn, sa, catalog_json, folders, columns):
 
 
 def _discover_requests(conn):
-    """Drain QUEUED subject-area discovery requests: scrape each subject area's
-    folders+columns in OTBI (create_analysis.discover_subject_area) and cache the
-    catalog for the UI column picker. Marks each READY / FAILED."""
+    """Drain ONE QUEUED subject-area discovery request (the oldest): scrape its full
+    folder/column tree in OTBI (create_analysis.discover_subject_area) and cache it for
+    the UI column picker; mark it READY / FAILED. One-per-invocation by design — the
+    dedicated 1-minute 'OTBI-ATD Discover' task (run_atd_discover.ps1, MultipleInstances=
+    IgnoreNew) calls this each cycle, so a multi-minute scrape never overlaps the next
+    tick, and each subject area gets the full ExecutionTimeLimit to itself. Returns the
+    number still queued AFTER this one (so the caller/log shows remaining backlog)."""
     import create_analysis
     cur = conn.cursor()
     cur.execute("SELECT subject_area FROM prod.atd_sa_catalog "
-                "WHERE status='QUEUED' ORDER BY requested_at")
-    sas = [r[0] for r in cur.fetchall()]
-    if not sas:
+                "WHERE status='QUEUED' ORDER BY requested_at FETCH FIRST 1 ROW ONLY")
+    row = cur.fetchone()
+    if not row:
         print("[discover] no queued subject-area discovery requests")
         return 0
-    failures = 0
-    for sa in sas:
-        print(f"[discover] {sa}: scraping...")
-        _set_sa(conn, sa, "SCRAPING")
-        run_id = _log_start(conn, sa, track="DISCOVER")   # history for the Discovery page
-        try:
-            tree = create_analysis.discover_subject_area(sa)
-            fc = len(tree["folders"])
-            cc = sum(len(f["columns"]) for f in tree["folders"])
-            _save_catalog(conn, sa, json.dumps(tree, ensure_ascii=False), fc, cc)
-            _log_end(conn, run_id, "SUCCESS", n=cc, msg=f"{fc} folders, {cc} columns")
-            print(f"[discover] {sa}: READY ({fc} folders, {cc} columns)")
-        except Exception as e:  # noqa: BLE001
-            _set_sa(conn, sa, "FAILED", message=str(e)[:3900])
-            _log_end(conn, run_id, "FAILED", msg=str(e)[:3900])
-            print(f"[discover] {sa}: FAILED: {e}")
-            failures += 1
-    return failures
+    sa = row[0]
+    print(f"[discover] {sa}: scraping...")
+    _set_sa(conn, sa, "SCRAPING")
+    run_id = _log_start(conn, sa, track="DISCOVER")       # history for the Discovery page
+    try:
+        tree = create_analysis.discover_subject_area(sa)
+        # full-depth tree: counts come from the nested walk (create_analysis._count_tree)
+        cc = tree.get("column_count", 0)
+        fc = tree.get("folder_count", len(tree["folders"]))
+        _save_catalog(conn, sa, json.dumps(tree, ensure_ascii=False), fc, cc)
+        _log_end(conn, run_id, "SUCCESS", n=cc, msg=f"{fc} folders, {cc} columns")
+        print(f"[discover] {sa}: READY ({fc} folders, {cc} columns)")
+    except Exception as e:  # noqa: BLE001
+        _set_sa(conn, sa, "FAILED", message=str(e)[:3900])
+        _log_end(conn, run_id, "FAILED", msg=str(e)[:3900])
+        print(f"[discover] {sa}: FAILED: {e}")
+    cur.execute("SELECT COUNT(*) FROM prod.atd_sa_catalog WHERE status='QUEUED'")
+    remaining = cur.fetchone()[0]
+    print(f"[discover] {remaining} subject area(s) still queued")
+    return 0
 
 
 def _resolve_mode():

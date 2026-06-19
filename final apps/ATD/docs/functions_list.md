@@ -74,11 +74,19 @@ One page, three tables, for the `create_analysis` async pipeline:
 - **Column picker** (in the Add-New-Analysis drawer; `loadCatalog` · `discoverColumns` ·
   `toggleFolder` · `togglePick` · `anPickSa` subscribe): instead of typing Folder/Column labels,
   pick a previously **discovered** subject area from the dropdown (reuses the page's `requests`
-  list) and tick its real folders/columns to fill the repeater. `discoverColumns` POSTs
-  `/atd/subject-areas/discover` to queue a scrape; the runner (`python runner.py --discover`)
-  drives the OTBI tree (`create_analysis.discover_subject_area`) and caches the folder/column
-  catalog in `ATD_SA_CATALOG`; the picker then reads it via `/atd/subject-areas/columns?sa=`
-  (renders folders whenever the cache exists, even if the row was re-queued).
+  list) and tick its real folders/columns to fill the repeater. The catalog is a **full-depth
+  nested tree** (folders → sub-folders → leaf columns) rendered by a recursive KO template
+  (`anPickNodeTpl`); each picked leaf carries its folder **`path`** so the builder can expand the
+  full ancestor chain. `discoverColumns` POSTs `/atd/subject-areas/discover` to queue a scrape;
+  the dedicated **1-minute `OTBI-ATD Discover`** task (`python runner.py --discover`, one SA/run)
+  drives the OTBI tree (`create_analysis.discover_subject_area`, icon-based folder detection) and
+  caches it in `ATD_SA_CATALOG`; the picker reads it via `/atd/subject-areas/columns?sa=`.
+- **AI column suggester** (`suggestColumns` · `anSuggestText` · `anSuggestBusy`; helpers
+  `_pickByPath`/`_applyPick`): a "✨ Suggest columns" textarea — describe the data in plain language
+  and POST `/atd/subject-areas/suggest` `{sa, request}`; `DCT_ATD_AI_PKG.suggest_columns` flattens
+  the discovered catalog to a numbered list, asks Claude (Sonnet 4.6) for the matching **indices**,
+  and maps them back to `{path, column}` (server-validated against the catalog — no hallucinations).
+  The matches are ticked in the nested picker for review before Build.
 
 ## API Endpoints (ORDS) — `/ords/admin/atd/` (`otbi-atd/db/13_atd_ords.sql`, module `atd.rest`)
 | Method | Path | Purpose |
@@ -91,7 +99,8 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
 | GET | `/subject-areas` | list discovered subject areas + status/column counts (column-picker source) |
 | GET | `/subject-areas/columns?sa=` | one READY subject area's cached folder/column tree (raw `catalog_json`) |
-| POST | `/subject-areas/discover` | queue a subject area for (re)scrape (`{subjectArea}` → `ATD_SA_CATALOG` QUEUED; runner `--discover` consumes it) |
+| POST | `/subject-areas/discover` | queue a subject area for (re)scrape (`{subjectArea}` → `ATD_SA_CATALOG` QUEUED; the 1-min `OTBI-ATD Discover` task / runner `--discover` consumes it, one SA per run) |
+| POST | `/subject-areas/suggest` | AI column suggester — `{sa, request}` → `DCT_ATD_AI_PKG.suggest_columns` (Claude Sonnet 4.6) → `{items:[{path,column}]}` chosen strictly from the discovered catalog |
 | GET | `/subject-areas/runs` | discovery run history (paged) — `ATD_LOAD_RUN_LOG` rows with `track='DISCOVER'` (subject area, status, columns, started, duration, message); the main `/runs` excludes these |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |

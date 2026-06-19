@@ -56,3 +56,6 @@
 .an-pick-col:hover { background:#f4f6fa; }
 .an-pick-col--on { background:var(--brand-soft); color:var(--brand-dark); font-weight:600; }
 .an-pick-col span { cursor:pointer; }
+/* nested sub-folders: indent + a guide line so the tree depth reads clearly */
+.an-pick-sub { margin-inline-start:14px; border-inline-start:1px solid var(--border,#eef1f4); }
+.an-pick-sub .an-pick-fhead { font-size:12.5px; font-weight:600; }

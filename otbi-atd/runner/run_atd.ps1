@@ -1,11 +1,11 @@
-# otbi-atd scheduled-runner wrapper (Windows Task Scheduler).
-# Dot-sources the git-ignored env.ps1 (creds + Telegram + oracledb mode) then
-# drains all three runner queues, appending to ..\run.log:
-#   --discover : scrape any QUEUED subject areas for the column picker
-#   --build    : build + load any QUEUED "Add New OTBI Analysis" requests
-#   (plain)    : load all enabled jobs
-# Each phase early-exits cheaply (no browser/MFA) when its queue is empty, so a
-# single scheduled cycle keeps every queue self-draining like the load queue.
+# otbi-atd scheduled LOADER wrapper (Windows Task Scheduler, every 15 minutes).
+# Dot-sources the git-ignored env.ps1 (creds + Telegram + oracledb mode) then drains
+# the build + load queues, appending each phase to ..\run.log:
+#   --build : build + load any QUEUED "Add New OTBI Analysis" requests
+#   (plain) : load all enabled jobs
+# Subject-area DISCOVERY has its own dedicated 1-minute task (run_atd_discover.ps1) —
+# it is intentionally NOT run here. Each phase early-exits cheaply (no browser/MFA)
+# when its queue is empty.
 $ErrorActionPreference = 'Continue'
 $dir = 'C:\claude\DCT-task-management\DCT-Task-Management\otbi-atd\runner'
 $log = Join-Path $dir '..\run.log'
@@ -19,6 +19,5 @@ function Invoke-AtdPhase($label, $phaseArgs) {
     "`r`n--- end $label (exit $LASTEXITCODE) ---")
 }
 
-Invoke-AtdPhase 'discover' @('--discover')
-Invoke-AtdPhase 'build'    @('--build')
-Invoke-AtdPhase 'load'     @()
+Invoke-AtdPhase 'build' @('--build')
+Invoke-AtdPhase 'load'  @()

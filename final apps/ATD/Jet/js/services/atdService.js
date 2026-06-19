@@ -39,6 +39,8 @@ function (api) {
     getSubjectAreaColumns: function (sa)     { return api.get('/subject-areas/columns?sa=' + encodeURIComponent(sa)); },
     discoverSubjectArea:   function (sa)     { return api.post('/subject-areas/discover', { subjectArea: sa }); },
     listDiscoveryRuns:     function (params) { return api.get('/subject-areas/runs' + qs(params)); },
+    // AI column suggester: free-text request -> {items:[{path,column}]} from the catalog
+    suggestColumns:        function (sa, request) { return api.post('/subject-areas/suggest', { sa: sa, request: request }); },
     resetJob:     function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/reset', {}); },
     runJob:       function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/run', {}); },
     reprepareJob: function (name, rebuild) { return api.post('/jobs/' + encodeURIComponent(name) + '/reprepare', { rebuild: rebuild ? 'Y' : 'N' }); },

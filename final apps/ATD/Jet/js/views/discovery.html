@@ -144,26 +144,24 @@
         </select>
       </div>
 
+      <!-- AI suggester: describe the data you need; Claude ticks the matching columns -->
+      <div class="form-group form-group--full">
+        <label class="form-label" data-bind="text: t('atd.analysis.suggest')"></label>
+        <div style="display:flex; gap:8px; align-items:flex-start">
+          <textarea class="form-control" rows="2" style="flex:1"
+                    data-bind="textInput: anSuggestText, attr:{ placeholder: t('atd.analysis.suggestPlaceholder') }"></textarea>
+          <button type="button" class="btn btn-secondary btn-sm" style="white-space:nowrap"
+                  data-bind="click: suggestColumns, disable: anSuggestBusy,
+                             text: anSuggestBusy() ? t('atd.common.loading') : ('✨ ' + t('atd.analysis.suggestBtn'))"></button>
+        </div>
+        <p class="muted" style="margin:4px 0 0; font-size:.8em" data-bind="text: t('atd.analysis.suggestHint')"></p>
+      </div>
+
       <!-- folder/column picker (tick to add) -->
       <div class="form-group form-group--full" data-bind="visible: anCatalog().length || anPickerBusy() || anPickerMsg()">
         <label class="form-label" data-bind="text: t('atd.analysis.pick')"></label>
-        <div class="an-pick" data-bind="visible: anCatalog().length">
-          <!-- ko foreach: anCatalog -->
-          <div class="an-pick-folder">
-            <div class="an-pick-fhead" data-bind="click: function(){ $vm.toggleFolder($data); return true; }">
-              <span data-bind="text: (open() ? '▾ ' : '▸ ') + folder + ' (' + columns.length + ')'"></span>
-            </div>
-            <!-- ko if: open -->
-            <div class="an-pick-cols" data-bind="foreach: columns">
-              <div class="an-pick-col" data-bind="css: { 'an-pick-col--on': picked }">
-                <input type="checkbox" data-bind="checked: picked" style="pointer-events:none">
-                <span data-bind="text: name, click: function(){ $vm.togglePick($data); return true; }"></span>
-              </div>
-            </div>
-            <!-- /ko -->
-          </div>
-          <!-- /ko -->
-        </div>
+        <div class="an-pick" data-bind="visible: anCatalog().length,
+             template: { name: 'anPickNodeTpl', foreach: anCatalog }"></div>
         <p class="muted" style="margin:6px 0 0; font-size:.8em" data-bind="visible: anPickerBusy(), text: t('atd.common.loading')"></p>
         <p class="muted" style="margin:6px 0 0; font-size:.8em" data-bind="visible: !anPickerBusy() && anPickerMsg(), text: anPickerMsg"></p>
         <p class="muted" style="margin:6px 0 0; font-size:.8em" data-bind="visible: anCatalog().length, text: t('atd.analysis.pickHint')"></p>
@@ -207,4 +205,24 @@
         <p class="muted" style="margin:4px 0 0; font-size:.8em" data-bind="text: t('atd.analysis.queueHint')"></p></div>
     </div>
   </edit-drawer>
+
+  <!-- recursive picker node: folder header (collapsible) + leaf columns + nested folders.
+       Inline handlers only (no $vm) so the template self-references cleanly. -->
+  <script type="text/html" id="anPickNodeTpl">
+    <div class="an-pick-folder">
+      <div class="an-pick-fhead" data-bind="click: function(){ open(!open()); return true; }">
+        <span data-bind="text: (open() ? '▾ ' : '▸ ') + folder + ' (' + count + ')'"></span>
+      </div>
+      <!-- ko if: open -->
+      <div class="an-pick-cols" data-bind="visible: columns.length, foreach: columns">
+        <div class="an-pick-col" data-bind="css: { 'an-pick-col--on': picked },
+             click: function(){ picked(!picked()); return true; }">
+          <input type="checkbox" data-bind="checked: picked" style="pointer-events:none">
+          <span data-bind="text: name"></span>
+        </div>
+      </div>
+      <div class="an-pick-sub" data-bind="template: { name: 'anPickNodeTpl', foreach: folders }"></div>
+      <!-- /ko -->
+    </div>
+  </script>
 </div>

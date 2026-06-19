@@ -222,6 +222,41 @@ unquoted** (`criteriaDataBrowser$Currency`) — `_top_folders` keeps only unquot
 zero-column folders). Verified: "Project Control - Financial Project Plans Real Time" → 11 folders
 / 195 columns.
 
+**Full-depth nested discovery + dedicated 1-min runner + AI suggester (2026-06-20, APP_VERSION 1.6.4).**
+- **Nested discovery (full depth).** `create_analysis.discover_subject_area` now recurses into
+  sub-folders to the true leaf columns and returns a **nested tree**
+  `{subject_area, folders:[{folder, columns, folders}], column_count, folder_count, scraped_at}`.
+  The builder (`build`/`add_column`) is **path-aware**: a spec column may carry `path:[...]`
+  (top→immediate parent) and the builder expands every ancestor before adding the leaf
+  (`_expand_path`/`_child_id`); legacy depth-1 `folder` still works. **Live-DOM gotcha (caused a
+  hang):** OTBI tree rows are `criteriaDataBrowser$<base>_details` with the twisty/children as
+  SIBLINGS on `<base>`; **folder vs column is the ICON** (`.../obips.Tree/folder.png` vs
+  `column.png`) — NOT the disclosure, which EVERY node (incl. leaf columns) carries collapsed.
+  The first cut keyed on disclosure → treated every column as a folder → 30s expand-timeout each →
+  multi-hour hang. `_JS_CHILDREN` now keys folder-ness on the icon. Verified: Requisitions
+  15 flat→**73 folders/1166 cols**, Project Control 11→40/370, Supplier 7→34/552 (depth-3).
+  Re-queue all SAs after deploying (old catalogs are flat): `UPDATE prod.atd_sa_catalog SET
+  status='QUEUED' WHERE catalog_json NOT LIKE '%"column_count"%'`.
+- **Dedicated discovery runner.** `run_atd_discover.ps1` + Windows Task **`OTBI-ATD Discover`**
+  (every **1 min**, `MultipleInstances=IgnoreNew`, 30-min limit, logged-on session) drains the
+  discovery queue independently of the 15-min loader. `runner.py --discover` now processes **ONE**
+  oldest QUEUED SA per invocation, so a multi-minute scrape never overlaps the next tick and each
+  SA gets the full limit. `run_atd.ps1` reverted to **build + load only** (no `--discover`).
+  `--discover` still no-ops (no browser) when the queue is empty. Manage:
+  `Get-ScheduledTaskInfo / Start-ScheduledTask / Disable-ScheduledTask -TaskName 'OTBI-ATD Discover'`.
+- **AI column suggester (Sonnet 4.6).** `db/17_atd_ai.sql` = network ACL for `api.anthropic.com`
+  + `ATD_RUNNER_CONFIG` keys `AI_MODEL` (default `claude-sonnet-4-6`) / `AI_MAX_TOKENS` /
+  `AI_API_KEY` (secret; blank → reuses the AR ANTHROPIC provider key) + `DCT_ATD_AI_PKG`.
+  `suggest_columns(sa, request)` flattens the cached catalog to a NUMBERED list, asks Claude for
+  the matching **indices**, and maps them back to `{path,column}` server-side — so a suggestion can
+  never be a column outside the catalog (no hallucination). ORDS `POST /atd/subject-areas/suggest`
+  `{sa, request}` (synonym `dct_atd_ai_pkg`; error map -20404→404 / -20001→400). Frontend: a
+  "✨ Suggest columns" textarea in the Add-New-Analysis drawer ticks the matches in the nested
+  picker. Deploy: `@db/17_atd_ai.sql` (own session) then `@db/13_atd_ords.sql` (FRESH session).
+  **PLS gotchas:** `DBMS_LOB.CONVERTTOBLOB` offset/lang args are IN OUT (pass variables, not
+  literals); the CLOB-escape chunk buffer must be `VARCHAR2(32767)` reading 8000 chars (ORA-06502
+  otherwise). Verified live: a supplier-data request returned 11 correctly-pathed real columns.
+
 **OTBI Discovery page (ATD JET, APP_VERSION 1.6.0).** New `discovery` view = one page, three
 tables: (1) discovery requests (`/subject-areas`, queue-style, with Discover / Re-discover),
 (2) discovery run history (`/subject-areas/runs`), (3) analysis build requests (`/analyses`).
