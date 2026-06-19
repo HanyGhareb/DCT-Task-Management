@@ -37,6 +37,51 @@ function (ko, atd, i18n, toast, fmtDuration) {
 
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
 
+    // ---- "Add New OTBI Analysis" drawer (builds an analysis via create_analysis.py) ----
+    self.showAnalysisForm = ko.observable(false);
+    self.anSubjectArea = ko.observable('');
+    self.anSaveFolder = ko.observable('');
+    self.anName = ko.observable('');
+    self.anLoadMode = ko.observable('TRUNCATE_INSERT');
+    self.anColumns = ko.observableArray([]);
+    self.anParams = ko.observable('');
+    function _colRow(folder, column, heading) {
+      return { folder: ko.observable(folder || ''), column: ko.observable(column || ''),
+               heading: ko.observable(heading || '') };
+    }
+    self.addAnColumn = function () { self.anColumns.push(_colRow()); };
+    self.removeAnColumn = function (row) { self.anColumns.remove(row); };
+    self.newAnalysis = function () {
+      self.anSubjectArea(''); self.anSaveFolder(''); self.anName('');
+      self.anLoadMode('TRUNCATE_INSERT'); self.anParams('');
+      self.anColumns([_colRow(), _colRow(), _colRow()]);
+      self.showAnalysisForm(true);
+    };
+    self.saveAnalysis = function () {
+      var name = (self.anName() || '').trim();
+      var sa = (self.anSubjectArea() || '').trim();
+      var folder = (self.anSaveFolder() || '').trim();
+      if (!sa) { toast.error(self.t('atd.analysis.subjectArea')); return; }
+      if (!name) { toast.error(self.t('atd.analysis.name')); return; }
+      if (!folder) { toast.error(self.t('atd.analysis.saveFolder')); return; }
+      var cols = self.anColumns().map(function (r) {
+        var o = { folder: (r.folder() || '').trim(), column: (r.column() || '').trim() };
+        var h = (r.heading() || '').trim(); if (h) o.heading = h;
+        return o;
+      }).filter(function (o) { return o.folder && o.column; });
+      if (!cols.length) { toast.error(self.t('atd.analysis.needColumn')); return; }
+      var spec = { subject_area: sa, save_folder: folder, name: name,
+                   load_mode: self.anLoadMode(), columns: cols };
+      if ((self.anParams() || '').trim()) {
+        try { spec.params = JSON.parse(self.anParams()); }
+        catch (e) { toast.error(self.t('atd.field.params') + ': invalid JSON'); return; }
+      }
+      atd.createAnalysis({ name: name, saveFolder: folder, specJson: JSON.stringify(spec) })
+        .then(function () {
+          toast.success(self.t('atd.analysis.queued')); self.showAnalysisForm(false);
+        }).catch(function () {});
+    };
+
     self.load = function () {
       self.loading(true);
       atd.listJobs({ search: self.fSearch(), status: self.fStatus(), limit: 200 })

@@ -101,7 +101,7 @@ def profile(csv_text):
     maxlen = [0] * nc
     nulls = [0] * nc
     seen = [False] * nc                       # any non-empty value?
-    is_date = [True] * nc
+    date_bad = [0] * nc                        # non-empty values that AREN'T a date
     is_int = [True] * nc
     is_num = [True] * nc
     nrows = 0
@@ -115,17 +115,22 @@ def profile(csv_text):
                 nulls[i] += 1
                 continue
             seen[i] = True
-            if is_date[i] and not DATE_RE.match(v):
-                is_date[i] = False
+            if not DATE_RE.match(v):
+                date_bad[i] += 1
             if is_int[i] and not INT_RE.match(v):
                 is_int[i] = False
             if is_num[i] and not NUM_RE.match(v):
                 is_num[i] = False
     used, cols = set(), []
     for i, h in enumerate(hdr):
+        nonnull = nrows - nulls[i]
+        # DATE if (nearly) every value parses as a date — tolerate <=2% dirty cells
+        # (real OTBI exports occasionally misalign a row via free-text commas); the
+        # loader nulls an unparseable date cell rather than failing the whole load.
+        date_ok = seen[i] and maxlen[i] <= 30 and date_bad[i] <= nonnull // 50
         if not seen[i]:
             typ = "VARCHAR2(40)"               # all-null: safe default
-        elif is_date[i]:
+        elif date_ok:
             typ = "DATE"
         elif is_int[i] and maxlen[i] <= 15:
             typ = "NUMBER"

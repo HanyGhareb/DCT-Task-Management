@@ -163,16 +163,27 @@ def _add_leaf(page, leaf, column):
 def add_column(page, folder, column):
     children = page.locator(_children(folder))
     leaf = children.locator(f'span.treeNodeText:text-is("{column}")')
-    # long folders (e.g. Supplier Profile, 75+ attrs) render leaves lazily — nudge
-    # the tree by scrolling the last rendered node into view, then retry
-    for _ in range(6):
+    # Long folders (e.g. Supplier Profile, 100+ attrs) VIRTUALISE the tree — only a
+    # window of leaves is in the DOM at a time, so a mid-list column may be absent.
+    # Walk the scrollable ancestor down a page at a time to render every node, retry.
+    for _ in range(24):
         if leaf.count() > 0:
             break
         try:
-            children.locator('span.treeNodeText').last.scroll_into_view_if_needed(timeout=3000)
+            page.evaluate("""(cid) => {
+              const el = document.getElementById(cid) || document.getElementById('criteriaDataBrowser');
+              let n = el;
+              while (n) {
+                if (n.scrollHeight > n.clientHeight + 5) {
+                  n.scrollTop = n.scrollTop + Math.max(120, n.clientHeight - 30);
+                  return;
+                }
+                n = n.parentElement;
+              }
+            }""", f"criteriaDataBrowser${folder}_children")
         except Exception:
             pass
-        time.sleep(2)
+        time.sleep(1.1)
     if leaf.count() > 0:
         _add_leaf(page, leaf.first, column)
         return
@@ -368,6 +379,35 @@ def build(page, spec, do_headings=True, do_params=True):
                        bool(p.get("prompted")) or p.get("operator") == "is prompted",
                        p.get("default"))
     save_as(page, spec["save_folder"], spec["name"])
+
+
+def build_analysis(spec, headless=True, do_headings=True, do_params=True):
+    """Auth + build + Save As + verify; returns the saved analysis catalog path.
+    Single reusable entry point — the CLI and the runner --build queue both call this."""
+    for k in ("subject_area", "name", "save_folder", "columns"):
+        if not spec.get(k):
+            raise ValueError(f"spec missing required key: {k}")
+    env = {"env_name": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV"),
+           "analytics_base_url": DEFAULT_BASE,
+           "credential_ref": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV")}
+    analysis_path = spec["save_folder"].rstrip("/") + "/" + spec["name"]
+    with sync_playwright() as p:
+        browser, ctx = auth.authenticate(p, env, headless=headless)
+        page = ctx.new_page()
+        page.set_default_timeout(STEP_TIMEOUT)
+        try:
+            build(page, spec, do_headings=do_headings, do_params=do_params)
+            _step("verifying the saved analysis downloads as CSV...")
+            csv_text = extract.download_csv(ctx, env, analysis_path)
+            lines = csv_text.splitlines()
+            _step(f"OK — saved + downloadable ({len(lines)} CSV lines)")
+            _step("CSV header: " + (lines[0] if lines else "(empty)"))
+        except Exception:
+            _shot(page, "error")
+            raise
+        finally:
+            browser.close()
+    return analysis_path
 
 
 # --------------------------------------------------------------------------- #

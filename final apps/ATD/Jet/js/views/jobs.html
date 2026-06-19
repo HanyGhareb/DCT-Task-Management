@@ -2,6 +2,7 @@
   <div class="page-header-row">
     <h1 class="page-title" data-bind="text: t('atd.jobs.title')"></h1>
     <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: newAnalysis, text: '+ ' + t('atd.analysis.new')"></button>
       <button class="btn btn-primary" data-bind="click: newJob, text: '+ ' + t('atd.jobs.new')"></button>
     </div>
   </div>
@@ -135,6 +136,52 @@
         <div><input type="checkbox" data-bind="checked: fmEnabled"></div>
       </div>
       <!-- /ko -->
+    </div>
+  </edit-drawer>
+
+  <!-- Add New OTBI Analysis — builds the analysis in OTBI via create_analysis.py -->
+  <edit-drawer params="open: showAnalysisForm, vm: $vm,
+                       title: t('atd.analysis.title'), saveLabel: t('atd.analysis.build'),
+                       cancelLabel: t('atd.action.cancel'), onSave: saveAnalysis, width: '760px'">
+    <div class="form-grid">
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.analysis.subjectArea')"></label>
+        <input class="form-control" data-bind="textInput: anSubjectArea, attr:{ placeholder: t('atd.analysis.subjectArea.ph') }"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.analysis.name')"></label>
+        <input class="form-control" data-bind="textInput: anName, attr:{ placeholder: t('atd.analysis.name.ph') }"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.loadMode')"></label>
+        <select class="form-control" data-bind="value: anLoadMode, options: loadModes"></select></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.analysis.saveFolder')"></label>
+        <input class="form-control mono" data-bind="textInput: anSaveFolder, attr:{ placeholder: t('atd.analysis.saveFolder.ph') }"></div>
+
+      <div class="form-group form-group--full">
+        <label class="form-label" data-bind="text: t('atd.analysis.columns')"></label>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr>
+              <th data-bind="text: t('atd.analysis.col.folder')"></th>
+              <th data-bind="text: t('atd.analysis.col.column')"></th>
+              <th data-bind="text: t('atd.analysis.col.heading')"></th>
+              <th style="width:40px"></th>
+            </tr></thead>
+            <tbody data-bind="foreach: anColumns">
+              <tr>
+                <td><input class="form-control form-control--sm" data-bind="textInput: folder"></td>
+                <td><input class="form-control form-control--sm" data-bind="textInput: column"></td>
+                <td><input class="form-control form-control--sm" data-bind="textInput: heading"></td>
+                <td style="text-align:center">
+                  <button class="btn btn-xs btn-icon btn-danger" data-bind="click: function(){ $vm.removeAnColumn($data); },
+                          attr:{ 'aria-label': $vm.t('atd.action.delete') }">×</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <button type="button" class="btn btn-xs" style="margin-top:8px" data-bind="click: addAnColumn, text: '+ ' + t('atd.analysis.addColumn')"></button>
+        <p class="muted" style="margin:6px 0 0; font-size:.8em" data-bind="text: t('atd.analysis.hint')"></p>
+      </div>
+
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.params')"></label>
+        <textarea class="form-control mono" rows="2" data-bind="textInput: anParams" placeholder='[{"folder":"...","column":"...","operator":"is prompted"}]'></textarea>
+        <p class="muted" style="margin:4px 0 0; font-size:.8em" data-bind="text: t('atd.analysis.queueHint')"></p></div>
     </div>
   </edit-drawer>
 </div>

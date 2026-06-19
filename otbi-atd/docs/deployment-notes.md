@@ -87,8 +87,9 @@ filters), `save_folder`, `name`. `--load` chains `add_analysis.py` + `runner.py`
 lists in `create_analysis.py`; step failures screenshot to `ATD_STATE_DIR` as
 `create_<step>_*.png`. The reference spec `po_headers.json` builds PO header details from
 `Procurement - Purchasing Real Time` → `/users/haghareb@dctabudhabi.ae/PO/PO Headers`
-(MERGE on `Order Number`). Save to `/Shared Folders/...` instead if a different service account
-runs the scheduled loads (personal folders are private to their owner).
+(TRUNCATE_INSERT full snapshot; see the 2026-06-19 entry below for the date-only + Status
+column choices). Save to `/Shared Folders/...` instead if a different service account runs
+the scheduled loads (personal folders are private to their owner).
 
 ## Fast load mode (oracledb) — NOW THE DEFAULT
 `oracledb` is auto-selected when `ATD_DB_USER`+`ATD_DB_PASSWORD` are set; it falls back to SQLcl
@@ -169,3 +170,25 @@ To run **while logged off**, re-register with stored credentials (`-User`/`-Pass
 ## To repoint host / account / database
 Edit rows, not code: `ATD_OTBI_ENV.analytics_base_url` (pod), `.credential_ref` (account),
 `ATD_TARGET_DB` (LOCAL_ATP vs REMOTE). Both tracks read the same tables.
+
+## 2026-06-19 — PO Headers (date-only) + "Add New OTBI Analysis" from the UI
+**PO Headers analysis** built via `create_analysis.py --spec ../specs/po_headers.json`
+(18 cols, `/users/haghareb@dctabudhabi.ae/PO/PO Headers`), loaded to `PROD.ATD_PO_HEADERS`
+(`TRUNCATE_INSERT`, 2641 rows). Date columns (Creation/Approved/Closed) sourced from the
+`Time - <X> Date` folders' **`Report Date`** attribute (date-only); status from
+`Document Status` → **`Document Status Meaning`** (the bare attribute returns a hierarchy
+total). Two robustness fixes so date columns type as `DATE` despite a few OTBI-misaligned
+rows: `prepare.profile` tolerates ≤2% non-date cells when typing a `DATE` column;
+`load._to_dt` nulls an unparseable date cell instead of failing the load.
+
+**Add New OTBI Analysis (feature).** Jobs page → "+ New OTBI Analysis" drawer collects a
+spec (subject area, save folder, name, Folder/Column/Heading repeater, optional prompt JSON,
+load mode) and POSTs `{name, saveFolder, specJson}` to `/atd/analyses`. Deploy order:
+1. `sql -name prod_mcp @otbi-atd/db/15_atd_analysis_request.sql`  (creates `ATD_ANALYSIS_REQUEST`)
+2. `sql -name prod_mcp @otbi-atd/db/13_atd_ords.sql`  (FRESH session — adds the
+   `atd_analysis_request` synonym + `GET/POST /atd/analyses` handlers)
+3. Bump `final apps/ATD/Jet/index.html` `APP_VERSION` (→ 1.4.0).
+The runner host drains requests: **`python runner.py --build`** (oracledb mode) builds each
+queued analysis in OTBI (`create_analysis.build_analysis`), registers it as a job, and loads
+it once; marks the request DONE/FAILED. (Schedule `--build` alongside the loader task, or run
+on demand. Building needs the OTBI session, so MFA may be prompted like any runner login.)

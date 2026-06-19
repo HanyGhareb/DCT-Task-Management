@@ -11,6 +11,12 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 - `load` (search + status filter) · `open` (→ jobDetail) · `newJob` / `editJob` (drawer) ·
   `toggleAdvanced` · `save` (create/update, JSON-validates column-map/params) · `enqueue` ·
   `reset` · `runNow` · `del` · `fmtDuration` (`util/duration` — adaptive-compact run time).
+- **Add New OTBI Analysis** (`newAnalysis` → drawer; `addAnColumn` / `removeAnColumn` /
+  `saveAnalysis`): builds a brand-new OTBI analysis from a spec (subject area, save folder,
+  name, a Folder/Column/Heading columns repeater, optional prompted-filter JSON, load mode).
+  `saveAnalysis` POSTs `{name, saveFolder, specJson}` to `/atd/analyses` — queued in
+  `ATD_ANALYSIS_REQUEST`; the runner (`python runner.py --build`) drives the OTBI Answers UI
+  (`create_analysis.build_analysis`), saves the analysis, registers it as a job, and loads it.
 - The list shows a **Duration** column = the last run's elapsed time (`lastDurationSec`),
   formatted `47s` / `1m 50s` / `1h 20m 10s` (units i18n `atd.dur.h/m/s`; `—` when never run or
   the run-log row has no `started`, e.g. the SQLcl loader path).
@@ -60,6 +66,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 | GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec` = last run elapsed seconds) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
 | GET / PUT / DELETE | `/jobs/:name` | read (history rows carry `durationSec`) / update / delete job |
 | GET | `/runs` | run-log list (paged) — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
+| GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |

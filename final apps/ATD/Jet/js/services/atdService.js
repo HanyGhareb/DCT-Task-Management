@@ -28,6 +28,10 @@ function (api) {
     updateJob:    function (name, body){ return api.put('/jobs/' + encodeURIComponent(name), body); },
     deleteJob:    function (name)      { return api.delete('/jobs/' + encodeURIComponent(name)); },
     enqueueJob:   function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/enqueue', {}); },
+
+    // build a NEW OTBI analysis from a spec (runner --build picks it up)
+    listAnalyses:   function ()        { return api.get('/analyses'); },
+    createAnalysis: function (body)    { return api.post('/analyses', body); },
     resetJob:     function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/reset', {}); },
     runJob:       function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/run', {}); },
     reprepareJob: function (name, rebuild) { return api.post('/jobs/' + encodeURIComponent(name) + '/reprepare', { rebuild: rebuild ? 'Y' : 'N' }); },

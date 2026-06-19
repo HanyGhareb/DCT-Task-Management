@@ -29,7 +29,9 @@ def _to_dt(s):
             return datetime.strptime(s, f)
         except ValueError:
             continue
-    raise ValueError(f"unparseable date value: {s!r}")
+    # lenient: a stray non-date in a DATE column (e.g. an OTBI row misaligned by a
+    # free-text comma) loads as NULL rather than failing the whole load
+    return None
 
 
 def _split(name):

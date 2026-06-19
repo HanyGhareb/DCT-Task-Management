@@ -26,6 +26,10 @@ Multi-host shared queue (oracledb mode only — design #3):
   python runner.py --enqueue --worker   # single-host convenience: queue then drain
 Each host calls --worker; ATD_QUEUE_PKG.claim_next (FOR UPDATE SKIP LOCKED) hands each
 job to exactly one host. Host id = ATD_WORKER_ID or the machine hostname.
+
+Build new analyses (oracledb mode only — "Add New OTBI Analysis" from the Jobs page):
+  python runner.py --build   # drain QUEUED prod.atd_analysis_request rows: build each
+                             # in OTBI (create_analysis), register it as a job, load once
 """
 import hashlib
 import json
@@ -211,6 +215,85 @@ def _run_worker(conn, load, forever):
     return failures
 
 
+# ---- analysis build queue (design: "Add New OTBI Analysis" from the Jobs page) -
+def _set_req(conn, req_id, status, job_name=None, message=None):
+    conn.cursor().execute(
+        "update prod.atd_analysis_request set status=:s, job_name=NVL(:j,job_name), "
+        "message=:m, finished=CASE WHEN :s2 IN ('DONE','FAILED') THEN systimestamp "
+        "ELSE finished END where req_id=:id",
+        s=status, j=job_name, m=message, s2=status, id=req_id)
+    conn.commit()
+
+
+def _register_built_job(conn, spec, analysis_path):
+    """Insert/refresh the ATD job for a freshly-built analysis (column map stays
+    NULL -> the runner prepares it on first load). Returns the job name."""
+    job = prepare.derive_job(analysis_path)
+    stage = "PROD." + prepare.derive_table(analysis_path)
+    cur = conn.cursor()
+    cur.execute("SELECT env_name FROM (SELECT env_name FROM prod.atd_otbi_env "
+                "WHERE enabled='Y' AND extract_track='BROWSER' ORDER BY env_name) WHERE ROWNUM=1")
+    r = cur.fetchone(); env_name = r[0] if r else None
+    cur.execute("SELECT target_name FROM (SELECT target_name FROM prod.atd_target_db "
+                "WHERE enabled='Y' ORDER BY target_name) WHERE ROWNUM=1")
+    r = cur.fetchone(); tgt = r[0] if r else None
+    cur.execute("""MERGE INTO prod.atd_otbi_jobs t USING (SELECT :j job_name FROM dual) s
+      ON (t.job_name = s.job_name)
+      WHEN MATCHED THEN UPDATE SET source_ref=:src, stage_table=:stg, load_mode=:lm,
+        key_columns=:k, params_json=:pj, enabled='Y'
+      WHEN NOT MATCHED THEN INSERT (job_name, env_name, target_name, source_ref, output_format,
+        stage_table, load_mode, key_columns, params_json, enabled, priority, run_order, run_status)
+        VALUES (:j,:env,:tgt,:src,'csv',:stg,:lm,:k,:pj,'Y',5,100,'READY')""",
+      j=job, src=analysis_path, stg=stage, lm=spec.get("load_mode", "TRUNCATE_INSERT"),
+      k=spec.get("key"), pj=json.dumps(spec["params"]) if spec.get("params") else None,
+      env=env_name, tgt=tgt)
+    conn.commit()
+    return job
+
+
+def _run_job_now(job, run_one):
+    env = {"env_name": job["env_name"], "analytics_base_url": job["analytics_base_url"],
+           "credential_ref": job.get("credential_ref") or job["env_name"]}
+    with sync_playwright() as p:
+        browser, ctx = auth.authenticate(p, env)
+        try:
+            return run_one(ctx, env, job)
+        finally:
+            browser.close()
+
+
+def _build_requests(conn, load):
+    """Drain QUEUED analysis-build requests: build each in OTBI (create_analysis),
+    register it as a job, then load it once. Marks each DONE / FAILED."""
+    import create_analysis
+    cur = conn.cursor()
+    cur.execute("SELECT req_id, spec_json FROM prod.atd_analysis_request "
+                "WHERE status='QUEUED' ORDER BY req_id")
+    reqs = [(r[0], r[1].read() if hasattr(r[1], "read") else r[1]) for r in cur.fetchall()]
+    if not reqs:
+        print("[build] no queued analysis requests")
+        return 0
+    run_one = _make_run_one_oracledb(conn, load)
+    failures = 0
+    for req_id, spec_text in reqs:
+        print(f"[build] request {req_id}: building analysis...")
+        _set_req(conn, req_id, "BUILDING")
+        try:
+            spec = json.loads(spec_text)
+            path = create_analysis.build_analysis(spec)        # OTBI UI build + save + verify
+            job = _register_built_job(conn, spec, path)        # register as an ATD job
+            jobs = config.get_browser_jobs(conn, only=job)
+            loaded = _run_job_now(jobs[0], run_one) if jobs else False
+            _set_req(conn, req_id, "DONE", job_name=job,
+                     message="built + loaded" if loaded else "built; load pending")
+            print(f"[build] request {req_id}: DONE -> job {job}")
+        except Exception as e:  # noqa: BLE001
+            _set_req(conn, req_id, "FAILED", message=str(e)[:3900])
+            print(f"[build] request {req_id}: FAILED: {e}")
+            failures += 1
+    return failures
+
+
 def _resolve_mode():
     """oracledb is the default fast path; fall back to sqlcl only when its
     credentials are absent. Explicit ATD_DB_MODE always wins."""
@@ -229,19 +312,22 @@ def main(argv):
     enqueue = "--enqueue" in args
     worker = "--worker" in args
     forever = "--forever" in args
+    build = "--build" in args
     only = next((a for a in args if not a.startswith("-")), None)
     mode = _resolve_mode()
 
     # queue commands require oracledb (the function lives in the DB; the loop
     # claims via a live oracledb connection)
-    if enqueue or worker:
+    if enqueue or worker or build:
         if mode != "oracledb":
-            print("[queue] --enqueue/--worker require oracledb mode "
+            print("[queue] --enqueue/--worker/--build require oracledb mode "
                   "(set ATD_DB_USER/PASSWORD + ATD_WALLET_PASSWORD)")
             sys.exit(2)
         import load
         conn = config.connect()
         config.apply_runner_config(conn)
+        if build:                       # drain "Add New OTBI Analysis" requests
+            sys.exit(1 if _build_requests(conn, load) else 0)
         if enqueue:
             _enqueue(conn, only)
         failures = _run_worker(conn, load, forever) if worker else 0

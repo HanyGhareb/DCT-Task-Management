@@ -26,6 +26,7 @@ CREATE OR REPLACE SYNONYM atd_otbi_jobs    FOR prod.atd_otbi_jobs;
 CREATE OR REPLACE SYNONYM atd_load_run_log FOR prod.atd_load_run_log;
 CREATE OR REPLACE SYNONYM atd_queue_pkg    FOR prod.atd_queue_pkg;
 CREATE OR REPLACE SYNONYM atd_runner_config FOR prod.atd_runner_config;
+CREATE OR REPLACE SYNONYM atd_analysis_request FOR prod.atd_analysis_request;
 
 -- =============================================================================
 -- 2. Module + handlers (wrapped in a temp procedure so SQLcl skips bind scanning)
@@ -332,6 +333,78 @@ EXCEPTION
   WHEN DUP_VAL_ON_INDEX THEN ROLLBACK; dct_rest.err(400,'A job with that name already exists');
   WHEN OTHERS THEN ROLLBACK;
     IF SQLCODE = -2291 THEN dct_rest.err(400,'Unknown env or target'); ELSE dct_rest.err(500, SQLERRM); END IF;
+END;
+!');
+
+    -- =========================================================================
+    -- ANALYSES  (build a NEW OTBI analysis from a spec; runner --build drains these)
+    -- =========================================================================
+    def_template('analyses');
+    def_handler('analyses', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (SELECT * FROM (
+              SELECT req_id, analysis_name, save_folder, status, job_name,
+                     NVL(SUBSTR(message,1,300),'') AS msg, requested_by,
+                     TO_CHAR(created,'YYYY-MM-DD HH24:MI')  AS created_s,
+                     TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
+              FROM atd_analysis_request ORDER BY req_id DESC) WHERE ROWNUM <= 50) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('reqId', r.req_id);
+    APEX_JSON.write('analysisName', NVL(r.analysis_name,''));
+    APEX_JSON.write('saveFolder', NVL(r.save_folder,''));
+    APEX_JSON.write('status', r.status);
+    APEX_JSON.write('jobName', NVL(r.job_name,''));
+    APEX_JSON.write('message', r.msg);
+    APEX_JSON.write('requestedBy', NVL(r.requested_by,''));
+    APEX_JSON.write('created', NVL(r.created_s,''));
+    APEX_JSON.write('finished', NVL(r.finished_s,''));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+END;
+!');
+    def_handler('analyses', 'POST', q'!
+DECLARE
+  -- Queue a "build a new OTBI analysis" request. The whole create_analysis spec
+  -- is passed as a JSON STRING in `specJson` and stored verbatim; the runner
+  -- (python runner.py --build) builds it in OTBI then registers it as a job.
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_spec CLOB;
+  l_name VARCHAR2(256);
+  l_fldr VARCHAR2(512);
+  l_id   NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_spec := APEX_JSON.get_clob(p_path => 'specJson');
+  IF l_spec IS NULL OR DBMS_LOB.GETLENGTH(l_spec) = 0 THEN
+    dct_rest.err(400,'specJson is required'); RETURN;
+  END IF;
+  l_name := APEX_JSON.get_varchar2(p_path => 'name');
+  l_fldr := APEX_JSON.get_varchar2(p_path => 'saveFolder');
+  INSERT INTO atd_analysis_request (spec_json, analysis_name, save_folder, requested_by, status)
+  VALUES (l_spec, l_name, l_fldr, l_user, 'QUEUED')
+  RETURNING req_id INTO l_id;
+  COMMIT;
+  OWA_UTIL.status_line(201, NULL, FALSE);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('reqId', l_id);
+  APEX_JSON.write('status', 'QUEUED');
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 
@@ -982,5 +1055,5 @@ PROMPT ============================================================
 PROMPT  13_atd_ords.sql complete.
 PROMPT  Base URL: /ords/admin/atd/
 PROMPT  Endpoints: dashboard, lookups, jobs (+/:name, /enqueue, /reset, /run, /reprepare),
-PROMPT             enqueue, reap, envs, targets, runs (+/:id, /export)
+PROMPT             analyses (build new), enqueue, reap, envs, targets, runs (+/:id, /export)
 PROMPT ============================================================
