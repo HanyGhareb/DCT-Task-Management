@@ -41,9 +41,10 @@ function (ko, config, authService, atd, i18n, shell) {
       { id: 'home', standalone: true, items: [
           { id: 'dashboard', labelKey: 'atd.nav.dashboard' } ] },
       { id: 'ops', labelKey: 'atd.nav.opsGroup', collapsed: ko.observable(false), items: [
-          { id: 'jobs',  labelKey: 'atd.nav.jobs' },
-          { id: 'queue', labelKey: 'atd.nav.queue' },
-          { id: 'runs',  labelKey: 'atd.nav.runs' } ] },
+          { id: 'jobs',      labelKey: 'atd.nav.jobs' },
+          { id: 'queue',     labelKey: 'atd.nav.queue' },
+          { id: 'discovery', labelKey: 'atd.nav.discovery' },
+          { id: 'runs',      labelKey: 'atd.nav.runs' } ] },
       { id: 'config', labelKey: 'atd.nav.configGroup', collapsed: ko.observable(false), items: [
           { id: 'environments',   labelKey: 'atd.nav.environments' },
           { id: 'targets',        labelKey: 'atd.nav.targets' },

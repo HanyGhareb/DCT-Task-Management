@@ -104,11 +104,12 @@ def _run_one_sqlcl(ctx, env, job):
 
 
 # ---- oracledb mode (fast, chunked array-bind) ---------------------------
-def _log_start(conn, name):
+def _log_start(conn, name, track="BROWSER"):
     cur = conn.cursor()
     rid = cur.var(int)
     cur.execute("insert into prod.atd_load_run_log(job_name, track, status) "
-                "values (:n,'BROWSER','RUNNING') returning run_id into :r", n=name, r=rid)
+                "values (:n,:t,'RUNNING') returning run_id into :r",
+                n=name[:80], t=track, r=rid)
     conn.commit()
     return rid.getvalue()[0]
 
@@ -332,14 +333,17 @@ def _discover_requests(conn):
     for sa in sas:
         print(f"[discover] {sa}: scraping...")
         _set_sa(conn, sa, "SCRAPING")
+        run_id = _log_start(conn, sa, track="DISCOVER")   # history for the Discovery page
         try:
             tree = create_analysis.discover_subject_area(sa)
             fc = len(tree["folders"])
             cc = sum(len(f["columns"]) for f in tree["folders"])
             _save_catalog(conn, sa, json.dumps(tree, ensure_ascii=False), fc, cc)
+            _log_end(conn, run_id, "SUCCESS", n=cc, msg=f"{fc} folders, {cc} columns")
             print(f"[discover] {sa}: READY ({fc} folders, {cc} columns)")
         except Exception as e:  # noqa: BLE001
             _set_sa(conn, sa, "FAILED", message=str(e)[:3900])
+            _log_end(conn, run_id, "FAILED", msg=str(e)[:3900])
             print(f"[discover] {sa}: FAILED: {e}")
             failures += 1
     return failures

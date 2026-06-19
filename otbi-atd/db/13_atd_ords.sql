@@ -517,6 +517,53 @@ EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    -- discovery run history (the "Run Logs"-style table on the OTBI Discovery page).
+    -- Each --discover scrape writes an atd_load_run_log row with track='DISCOVER';
+    -- job_name carries the subject area, row_count carries the column count.
+    def_template('subject-areas/runs');
+    def_handler('subject-areas/runs', 'GET', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 50), 200);
+  l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
+  l_total  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  SELECT COUNT(*) INTO l_total FROM atd_load_run_log WHERE track = 'DISCOVER';
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT run_id, job_name, status, row_count,
+           NVL(DBMS_LOB.SUBSTR(message,400,1),'') AS msg,
+           TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
+           TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s,
+           CASE WHEN started IS NOT NULL AND finished IS NOT NULL
+                THEN ROUND((CAST(finished AS DATE) - CAST(started AS DATE)) * 86400)
+                ELSE NULL END AS dur_sec
+    FROM atd_load_run_log
+    WHERE track = 'DISCOVER'
+    ORDER BY run_id DESC
+    OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('runId', r.run_id);
+    APEX_JSON.write('subjectArea', r.job_name);
+    APEX_JSON.write('status', r.status);
+    APEX_JSON.write('columnCount', NVL(r.row_count,0));
+    APEX_JSON.write('message', r.msg);
+    APEX_JSON.write('started', NVL(r.started_s,''));
+    APEX_JSON.write('finished', NVL(r.finished_s,''));
+    APEX_JSON.write('durationSec', r.dur_sec);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array; APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
     def_template('jobs/[COLON]name');
     def_handler('jobs/[COLON]name', 'GET', q'!
 DECLARE
@@ -983,7 +1030,8 @@ BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
   SELECT COUNT(*) INTO l_total FROM atd_load_run_log l
-   WHERE (l_job IS NULL OR l.job_name = l_job)
+   WHERE NVL(l.track,'X') <> 'DISCOVER'             -- discovery runs live on the Discovery page
+     AND (l_job IS NULL OR l.job_name = l_job)
      AND (l_status IS NULL
           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
           OR (l_status != 'WARNING' AND l.status = l_status))
@@ -1003,7 +1051,8 @@ BEGIN
                 THEN ROUND((CAST(finished AS DATE) - CAST(started AS DATE)) * 86400)
                 ELSE NULL END AS dur_sec
     FROM atd_load_run_log l
-    WHERE (l_job IS NULL OR l.job_name = l_job)
+    WHERE NVL(l.track,'X') <> 'DISCOVER'
+      AND (l_job IS NULL OR l.job_name = l_job)
       AND (l_status IS NULL
            OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
            OR (l_status != 'WARNING' AND l.status = l_status))
@@ -1164,6 +1213,6 @@ PROMPT ============================================================
 PROMPT  13_atd_ords.sql complete.
 PROMPT  Base URL: /ords/admin/atd/
 PROMPT  Endpoints: dashboard, lookups, jobs (+/:name, /enqueue, /reset, /run, /reprepare),
-PROMPT             analyses (build new), subject-areas (+/columns, /discover),
+PROMPT             analyses (build new), subject-areas (+/columns, /discover, /runs),
 PROMPT             enqueue, reap, envs, targets, runs (+/:id, /export)
 PROMPT ============================================================

@@ -217,3 +217,13 @@ in the id** (`criteriaDataBrowser$"Costing - X Real Time"`) but presentation **f
 unquoted** (`criteriaDataBrowser$Currency`) — `_top_folders` keeps only unquoted ids (and drops
 zero-column folders). Verified: "Project Control - Financial Project Plans Real Time" → 11 folders
 / 195 columns.
+
+**OTBI Discovery page (ATD JET, APP_VERSION 1.6.0).** New `discovery` view = one page, three
+tables: (1) discovery requests (`/subject-areas`, queue-style, with Discover / Re-discover),
+(2) discovery run history (`/subject-areas/runs`), (3) analysis build requests (`/analyses`).
+Backend additions: each `--discover` scrape now writes an `ATD_LOAD_RUN_LOG` row with
+`track='DISCOVER'` (job_name = subject area truncated to 80, row_count = column count); new
+`GET /atd/subject-areas/runs` lists them, and the main `/runs` now excludes `track='DISCOVER'` so
+the Run Logs page stays load-focused. Redeploy `13_atd_ords.sql` (fresh session) for the new
+endpoint; no new DB script (reuses `ATD_LOAD_RUN_LOG`). Nav item added under Operations in
+`appController.js`.

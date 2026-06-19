@@ -65,6 +65,17 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Queue & Operations (`queue`)
 - `load` (per-job claim state + worker) · `enqueueAll` · `reap` (lease minutes) · `enqueueOne`.
 
+## OTBI Discovery (`discovery`)
+One page, three tables, for the `create_analysis` async pipeline:
+- **Discovery requests** (`loadRequests` from `/subject-areas`): current status per subject area
+  (QUEUED/SCRAPING/READY/FAILED + folder/column counts). `discoverNew` (input + button) and
+  `rediscover(row)` POST `/subject-areas/discover` to (re)queue a scrape; `discover(sa)` is shared.
+- **Discovery run history** (`loadRuns` from `/subject-areas/runs`, paged): every `--discover`
+  scrape as a log row (subject area, status, columns, started, duration, message).
+- **Analysis build requests** (`loadBuilds` from `/analyses`): the "Add New OTBI Analysis" queue
+  (name, save folder, status, resulting job, message).
+- `refresh` reloads all three.
+
 ## API Endpoints (ORDS) — `/ords/admin/atd/` (`otbi-atd/db/13_atd_ords.sql`, module `atd.rest`)
 | Method | Path | Purpose |
 |---|---|---|
@@ -77,6 +88,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 | GET | `/subject-areas` | list discovered subject areas + status/column counts (column-picker source) |
 | GET | `/subject-areas/columns?sa=` | one READY subject area's cached folder/column tree (raw `catalog_json`) |
 | POST | `/subject-areas/discover` | queue a subject area for (re)scrape (`{subjectArea}` → `ATD_SA_CATALOG` QUEUED; runner `--discover` consumes it) |
+| GET | `/subject-areas/runs` | discovery run history (paged) — `ATD_LOAD_RUN_LOG` rows with `track='DISCOVER'` (subject area, status, columns, started, duration, message); the main `/runs` excludes these |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |

@@ -1,0 +1,122 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.discovery.title')"></h1>
+    <div class="page-actions">
+      <input class="form-control form-control--sm" style="min-width:280px"
+             data-bind="textInput: newSa, attr:{ placeholder: t('atd.discovery.saPlaceholder') }">
+      <button class="btn btn-primary" data-bind="click: discoverNew, text: t('atd.discovery.discover')"></button>
+      <button class="btn btn-secondary" data-bind="click: refresh, text: t('atd.discovery.refresh')"></button>
+    </div>
+  </div>
+  <div class="muted" style="margin-bottom:16px" data-bind="text: t('atd.discovery.hint')"></div>
+
+  <!-- ── 1. Discovery requests ───────────────────────────────────────── -->
+  <div class="section-heading-row">
+    <h2 class="section-heading" data-bind="text: t('atd.discovery.requests')"></h2>
+  </div>
+  <!-- ko if: reqLoading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: reqLoading -->
+  <!-- ko if: requests().length === 0 --><div class="empty-state" data-bind="text: t('atd.discovery.noRequests')"></div><!-- /ko -->
+  <!-- ko if: requests().length > 0 -->
+  <div class="data-table-wrap" style="margin-bottom:26px">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.discovery.col.subjectArea')"></th>
+        <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.discovery.col.folders')"></th>
+        <th data-bind="text: t('atd.discovery.col.columns')"></th>
+        <th data-bind="text: t('atd.discovery.col.requestedBy')"></th>
+        <th data-bind="text: t('atd.discovery.col.scraped')"></th>
+        <th style="width:110px"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: requests">
+        <tr>
+          <td data-bind="text: $data.subjectArea"></td>
+          <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status,
+                    attr:{ title: $data.message || '' }"></span></td>
+          <td data-bind="text: $data.folderCount || 0"></td>
+          <td data-bind="text: $data.columnCount || 0"></td>
+          <td class="mono" data-bind="text: $data.requestedBy || '—'"></td>
+          <td data-bind="text: $data.scrapedAt || '—'"></td>
+          <td class="cell-actions" style="text-align:end">
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.rediscover($data); },
+                    text: $vm.t('atd.discovery.rediscover')"></button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ── 2. Discovery run history ────────────────────────────────────── -->
+  <div class="section-heading-row">
+    <h2 class="section-heading" data-bind="text: t('atd.discovery.runHistory')"></h2>
+  </div>
+  <!-- ko if: runLoading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: runLoading -->
+  <!-- ko if: runs().length === 0 --><div class="empty-state" data-bind="text: t('atd.discovery.noRuns')"></div><!-- /ko -->
+  <!-- ko if: runs().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.col.run')"></th>
+        <th data-bind="text: t('atd.discovery.col.subjectArea')"></th>
+        <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.discovery.col.columns')"></th>
+        <th data-bind="text: t('atd.col.started')"></th>
+        <th data-bind="text: t('atd.col.duration')"></th>
+        <th data-bind="text: t('atd.runs.detail.message')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: runs">
+        <tr>
+          <td data-bind="text: $data.runId"></td>
+          <td data-bind="text: $data.subjectArea"></td>
+          <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+          <td data-bind="text: $data.columnCount || 0"></td>
+          <td data-bind="text: $data.started || '—'"></td>
+          <td class="mono" data-bind="text: ($data.durationSec != null ? $vm.fmtDuration($data.durationSec) : '—')"></td>
+          <td class="truncate-cell" data-bind="text: $data.message || '—', attr:{ title: $data.message || '' }"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <list-pager params="offset: runOffset, limit: runLimit, total: runTotal, onChange: loadRuns"></list-pager>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ── 3. Analysis build requests ──────────────────────────────────── -->
+  <div class="section-heading-row" style="margin-top:26px">
+    <h2 class="section-heading" data-bind="text: t('atd.discovery.builds')"></h2>
+  </div>
+  <!-- ko if: buildLoading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: buildLoading -->
+  <!-- ko if: builds().length === 0 --><div class="empty-state" data-bind="text: t('atd.discovery.noBuilds')"></div><!-- /ko -->
+  <!-- ko if: builds().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.discovery.col.analysis')"></th>
+        <th data-bind="text: t('atd.discovery.col.saveFolder')"></th>
+        <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.col.job')"></th>
+        <th data-bind="text: t('atd.discovery.col.requestedBy')"></th>
+        <th data-bind="text: t('atd.discovery.col.created')"></th>
+        <th data-bind="text: t('atd.runs.detail.message')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: builds">
+        <tr>
+          <td data-bind="text: $data.analysisName || '—'"></td>
+          <td class="mono truncate-cell" data-bind="text: $data.saveFolder || '—', attr:{ title: $data.saveFolder || '' }"></td>
+          <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+          <td class="mono" data-bind="text: $data.jobName || '—'"></td>
+          <td class="mono" data-bind="text: $data.requestedBy || '—'"></td>
+          <td data-bind="text: $data.created || '—'"></td>
+          <td class="truncate-cell" data-bind="text: $data.message || '—', attr:{ title: $data.message || '' }"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>
