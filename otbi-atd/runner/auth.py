@@ -75,8 +75,12 @@ def surface_number(num, env_name):
         pass
     print(f"[auth][{env_name}] >>> APPROVE THE AUTHENTICATOR PUSH — ENTER NUMBER: {msg}",
           flush=True)
-    notify.send(f"OTBI sign-in ({env_name}): open Microsoft Authenticator and enter "
-                f"number {msg} to approve. (expires in a few minutes)")
+    default = ("OTBI sign-in ({env}): open Microsoft Authenticator and enter "
+               "number {number} to approve. (expires in a few minutes)")
+    text = notify.render("ATD_MFA_MSG", default, number=msg, env=env_name)
+    if msg and str(msg) not in text:        # template dropped the number -> append it so it's never lost
+        text = f"{text} (number: {msg})"
+    notify.send(text)
 
 
 def _login(ctx, env, wait_secs):

@@ -142,6 +142,18 @@ Other channels (same `notify.send`): `ATD_NOTIFY=email|webhook|sms` — see env 
 top of `runner/notify.py` (Teams/Slack incoming webhook, SMTP, or Twilio SMS). Notification
 is best-effort: a delivery failure is logged but never breaks the login.
 
+**Editable message text (db/18, Runner Settings page):** the three notification
+messages are templates in `ATD_RUNNER_CONFIG`, editable in the app's **Runner Settings**
+page — no code change needed. `notify.render(key, default, ...)` formats them, falls back to
+the built-in default if the key is blank/malformed, and never raises:
+- `ATD_MFA_MSG` — MFA sign-in approval. Placeholders `{number}` (auto-appended if the
+  template omits it, so the code can never be lost) and `{env}`.
+- `ATD_JOB_MSG` — job status / truncation warning. Placeholders `{job}`, `{note}`.
+- `ATD_DRIFT_MSG` — schema-drift warning. Placeholders `{job}`, `{drift}`.
+
+Re-running `db/18_atd_msg_templates.sql` is idempotent (MERGE inserts only when absent —
+it never overwrites a value edited in the UI).
+
 ## Scheduling
 Cannot be scheduled from ATP (Track B drives a browser). Runs stay inside the Entra session
 lifetime, so MFA is only needed occasionally; the runner surfaces the number (Telegram) on refresh.

@@ -54,7 +54,7 @@ def _warn_truncation(name, n):
     note = checks.truncation_note(n)
     if note:
         print(f"[WARN] {name}: {note}")
-        notify.send(f"otbi-atd {name}: {note}")
+        notify.send(notify.render("ATD_JOB_MSG", "otbi-atd {job}: {note}", job=name, note=note))
     return note
 
 
@@ -91,7 +91,8 @@ def _run_one_sqlcl(ctx, env, job):
         # first run: derive table + column map; later runs: auto-adapt to schema drift
         drift = prepare.ensure_prepared_sqlcl(job, csv_text)
         if drift:
-            notify.send(f"otbi-atd {name} schema drift: " + "; ".join(drift))
+            notify.send(notify.render("ATD_DRIFT_MSG", "otbi-atd {job} schema drift: {drift}",
+                                      job=name, drift="; ".join(drift)))
         n = loadsql.load(job, csv_text, extra_msg="; ".join(drift) if drift else None)
         _warn_truncation(name, n)
         print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
@@ -133,7 +134,8 @@ def _make_run_one_oracledb(conn, load):
             # first run: derive table + map; later runs: auto-adapt to schema drift
             drift = prepare.ensure_prepared_oracledb(conn, job, csv_text)
             if drift:
-                notify.send(f"otbi-atd {name} schema drift: " + "; ".join(drift))
+                notify.send(notify.render("ATD_DRIFT_MSG", "otbi-atd {job} schema drift: {drift}",
+                                          job=name, drift="; ".join(drift)))
             ck = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
             n = load.load(conn, csv_text, job["stage_table"], job["final_table"],
                           job["load_mode"], job["key_columns"], job["column_map_json"])

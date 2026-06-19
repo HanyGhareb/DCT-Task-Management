@@ -17,6 +17,29 @@ import os
 import sys
 
 
+class _SafeDict(dict):
+    """Leave unknown {placeholders} literal instead of raising KeyError, so an
+    edited template that references a wrong field still sends (visibly wrong)."""
+    def __missing__(self, key):
+        return "{" + key + "}"
+
+
+def render(env_key, default, **values):
+    """Render a notification message from a UI-editable template.
+
+    The template text lives in ATD_RUNNER_CONFIG (overlaid onto os.environ[env_key]
+    at startup by config.apply_runner_config). If the key is unset/blank or the
+    template is malformed, fall back to `default`. Never raises — a bad template
+    must not break a run or hide the underlying event."""
+    tpl = (os.environ.get(env_key) or "").strip() or default
+    for candidate in (tpl, default):
+        try:
+            return candidate.format_map(_SafeDict(values))
+        except Exception:  # noqa: BLE001 - malformed template -> try the default next
+            continue
+    return default
+
+
 def send(text):
     ch = (os.environ.get("ATD_NOTIFY") or "").lower()
     if not ch:
