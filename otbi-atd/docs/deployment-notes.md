@@ -147,8 +147,12 @@ Cannot be scheduled from ATP (Track B drives a browser). Runs stay inside the En
 lifetime, so MFA is only needed occasionally; the runner surfaces the number (Telegram) on refresh.
 
 **This host — live every 15 min (registered 2026-06-18):** Windows Task `OTBI-ATD Loader` runs
-`runner/run_atd.ps1` (dot-sources the git-ignored `env.ps1`, runs `python runner.py` for all
-enabled jobs, appends to `otbi-atd/run.log`). Trigger: every 15 minutes, `MultipleInstances=
+`runner/run_atd.ps1`, which dot-sources the git-ignored `env.ps1` and drains **all three runner
+queues each cycle** (since 2026-06-19): `--discover` (subject-area column-picker scrapes),
+`--build` (Add-New-Analysis requests), then the plain load for all enabled jobs — each phase logged
+separately to `otbi-atd/run.log`. The discover/build phases early-exit cheaply (no browser/MFA) when
+their queues are empty, so they cost nothing when idle but make every queue self-draining like the
+load queue. Trigger: every 15 minutes, `MultipleInstances=
 IgnoreNew`, 10-min limit, `StartWhenAvailable`. Runs in the logged-on user session (Playwright
 headless). Manage it:
 ```

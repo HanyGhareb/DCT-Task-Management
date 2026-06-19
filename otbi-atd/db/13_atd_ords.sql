@@ -448,8 +448,10 @@ END;
     def_handler('subject-areas/columns', 'GET', q'!
 DECLARE
   -- Returns the cached folder/column tree (catalog_json) for one subject area,
-  -- selected via ?sa=<name>. READY -> the raw catalog JSON is streamed out as-is;
-  -- otherwise a small {subjectArea,status,folders:[]} stub so the UI can show status.
+  -- selected via ?sa=<name>. Whenever a catalog exists it is streamed as-is (the
+  -- raw catalog JSON is {subject_area,folders,scraped_at}) -- even when the row was
+  -- re-queued for a re-scrape (status QUEUED), so the previously-scraped columns
+  -- stay usable. Only a never-scraped row falls back to the {status,folders:[]} stub.
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_sa     VARCHAR2(256) := [COLON]sa;
   l_status VARCHAR2(20);
@@ -468,7 +470,7 @@ BEGIN
     dct_rest.err(404,'Subject area not discovered'); RETURN;
   END;
   dct_rest.json_header;
-  IF l_status = 'READY' AND l_cat IS NOT NULL THEN
+  IF l_cat IS NOT NULL AND DBMS_LOB.GETLENGTH(l_cat) > 0 THEN
     l_len := DBMS_LOB.GETLENGTH(l_cat);
     WHILE l_off <= l_len LOOP
       HTP.PRN(DBMS_LOB.SUBSTR(l_cat, l_amt, l_off));
