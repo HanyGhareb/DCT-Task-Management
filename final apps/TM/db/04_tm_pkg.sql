@@ -275,7 +275,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_tm_pkg AS
         FROM   prod.dct_user_roles ur
         JOIN   prod.dct_roles r ON r.role_id = ur.role_id
         WHERE  ur.user_id = p_user_id
-        AND    r.role_code = 'TM_ADMIN'
+        AND    r.role_code IN ('TM_ADMIN','SYS_ADMIN')
         AND    ur.is_active = 'Y'
         AND    ur.start_date <= SYSDATE
         AND    (ur.end_date IS NULL OR ur.end_date >= SYSDATE);

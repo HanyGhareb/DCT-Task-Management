@@ -1,0 +1,43 @@
+<div class="page">
+  <div class="page-header-row">
+    <div>
+      <h1 class="page-title"><span data-bind="text: t('tm.tl.title')"></span><!-- ko if: teamName --> — <span data-bind="text: teamName"></span><!-- /ko --></h1>
+      <div class="muted" data-bind="text: t('tm.tl.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-sm" data-bind="text: t('nav.teams'), click: back"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <!-- ko if: rows().length === 0 --><div class="empty-state" data-bind="text: t('tm.tl.none')"></div><!-- /ko -->
+  <!-- ko if: rows().length > 0 -->
+  <div class="gantt-legend">
+    <span><i class="gantt-key gantt-key--task"></i> <span data-bind="text: t('tm.tab.tasks')"></span></span>
+    <span><i class="gantt-key gantt-key--dl"></i> <span data-bind="text: t('tm.tab.deliverables')"></span></span>
+    <span><i class="gantt-key gantt-key--ms"></i> <span data-bind="text: t('tm.tab.milestones')"></span></span>
+  </div>
+  <div class="gantt">
+    <!-- month axis -->
+    <div class="gantt-axis" data-bind="foreach: months">
+      <div class="gantt-axis-cell" data-bind="style: { width: w + '%' }, text: label"></div>
+    </div>
+    <!-- rows -->
+    <div data-bind="foreach: rows">
+      <div class="gantt-row">
+        <div class="gantt-row-label" data-bind="text: label, attr: { title: label }"></div>
+        <div class="gantt-track">
+          <!-- ko ifnot: point -->
+          <div data-bind="css: $vm.barClass($data), style: barStyle, attr: { title: label }"></div>
+          <!-- /ko -->
+          <!-- ko if: point -->
+          <div class="gantt-point" data-bind="css: $vm.barClass($data), style: barStyle, attr: { title: label }"></div>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

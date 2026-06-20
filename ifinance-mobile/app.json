@@ -1,0 +1,69 @@
+{
+  "expo": {
+    "name": "i-Finance",
+    "slug": "ifinance-mobile",
+    "version": "1.1.0",
+    "orientation": "portrait",
+    "scheme": "ifinance",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "splash": {
+      "backgroundColor": "#0F141B",
+      "resizeMode": "contain"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "ae.gov.ifinance.mobile",
+      "infoPlist": {
+        "NSFaceIDUsageDescription": "Unlock i-Finance with Face ID.",
+        "NSCameraUsageDescription": "Take a photo for your profile.",
+        "NSPhotoLibraryUsageDescription": "Choose a photo for your profile."
+      }
+    },
+    "android": {
+      "package": "ae.gov.ifinance.mobile",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "backgroundColor": "#0F141B"
+      },
+      "permissions": [
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.USE_FINGERPRINT",
+        "android.permission.CAMERA"
+      ],
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ]
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-local-authentication",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Choose a photo for your profile.",
+          "cameraPermission": "Take a photo for your profile.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#C74634"
+        }
+      ],
+      "expo-asset",
+      "expo-font"
+    ],
+    "extra": {
+      "apiBase": "https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/dct",
+      "eas": {
+        "projectId": "f5421129-423c-4866-94ec-f726776e3a1e"
+      }
+    },
+    "owner": "hanyghareb"
+  }
+}

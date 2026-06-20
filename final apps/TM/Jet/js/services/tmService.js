@@ -93,6 +93,39 @@ function (api, authService, notifService) {
     getPrefs:     function ()          { return api.get('/prefs'); },
     savePrefs:    function (body)      { return api.post('/prefs', body); },
 
+    // ---- reporting cycles / periods / submissions (check-in engine) ----
+    getCycleConfig:  function (teamId)  { return api.get('/cycle-config' + qs({ teamId: teamId })); },
+    saveCycleConfig: function (body)    { return api.post('/cycle-config', body); },
+    listPeriods:     function (params)  { return api.get('/periods' + qs(params)); },
+    generatePeriods: function (teamId)  { return api.post('/periods/generate', { teamId: teamId }); },
+    closePeriod:     function (periodId){ return api.post('/periods/close', { periodId: periodId }); },
+    lockPeriod:      function (periodId){ return api.post('/periods/lock', { periodId: periodId }); },
+    signoffPeriod:   function (body)    { return api.post('/periods/signoff', body); },
+    periodSnapshot:  function (periodId){ return api.get('/periods/' + periodId + '/snapshot'); },
+    getAiSummary:    function (periodId){ return api.get('/periods/' + periodId + '/ai-summary'); },
+    generateAiSummary: function (periodId){ return api.post('/periods/' + periodId + '/ai-summary', {}); },
+    periodStatus:    function (periodId){ return api.get('/period-status' + qs({ periodId: periodId })); },
+    mySubmissions:   function ()        { return api.get('/my-submissions'); },
+    getSubmission:   function (periodId){ return api.get('/submissions' + qs({ periodId: periodId })); },
+    saveSubmission:  function (body)    { return api.post('/submissions/save', body); },
+    submitSubmission:function (periodId){ return api.post('/submissions/submit', { periodId: periodId }); },
+
+    // ---- cross-team visibility (executive viewers) ----
+    listGrants:      function (params)  { return api.get('/visibility-grants' + qs(params)); },
+    createGrant:     function (body)    { return api.post('/visibility-grants', body); },
+    revokeGrant:     function (grantId) { return api.post('/visibility-grants/revoke', { grantId: grantId }); },
+    myVisibility:    function ()        { return api.get('/my-visibility'); },
+
+    // ---- team hierarchy + executive roll-up ----
+    setTeamParent:   function (teamId, parentTeamId) { return api.post('/teams/parent', { teamId: teamId, parentTeamId: parentTeamId }); },
+    teamTree:        function ()        { return api.get('/team-tree'); },
+    execTeams:       function (params)  { return api.get('/exec/teams' + qs(params)); },
+
+    // ---- custom team roles (admin) ----
+    saveRole:        function (body)    { return api.post('/roles', body); },
+    retireRole:      function (tmRoleId){ return api.post('/roles/retire', { tmRoleId: tmRoleId }); },
+    saveRoleTemplatePerm: function (body) { return api.post('/role-template-perm', body); },
+
     // shims used by the shared shell / appController
     getNotifications: function () {
       return notifService.getAll(uid()).catch(function () { return []; });

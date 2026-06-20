@@ -1,26 +1,81 @@
 <div class="page">
   <div class="page-header-row">
-    <h1 class="page-title" data-bind="text: t('tm.roles.title')"></h1>
+    <div>
+      <h1 class="page-title" data-bind="text: t('tm.roles.title')"></h1>
+      <div class="muted" data-bind="text: t('tm.roles.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-sm" data-bind="text: t('tm.role.new'), click: newRole"></button>
+    </div>
   </div>
-  <p class="muted" data-bind="text: t('tm.roles.subtitle')"></p>
 
   <!-- ko ifnot: loading -->
-  <div style="margin:12px 0;">
-    <label data-bind="text: t('tm.field.role')" style="font-weight:600; margin-inline-end:8px;"></label>
-    <select class="input" data-bind="value: role, options: roles, optionsValue:'code', optionsText:'nameEn'" style="max-width:240px"></select>
+  <div class="section-heading-row">
+    <div>
+      <label class="form-label" data-bind="text: t('tm.field.role')"></label>
+      <select class="form-control form-control--inline" data-bind="value: role, options: roles, optionsValue:'code', optionsText:'nameEn'"></select>
+      <!-- ko if: selectedRole().isSystem === 'Y' --><span class="badge badge--muted" data-bind="text: t('tm.role.system')"></span><!-- /ko -->
+      <!-- ko if: selectedRole().isLeader === 'Y' --><span class="badge badge--info" data-bind="text: t('tm.role.isLeader')"></span><!-- /ko -->
+    </div>
+    <div class="region-actions">
+      <button class="btn btn-sm" data-bind="text: t('tm.role.edit'), click: editRole, visible: role"></button>
+      <!-- ko if: selectedRole().isSystem !== 'Y' -->
+      <button class="btn btn-sm" data-bind="text: t('tm.role.retire'), click: retire, visible: role"></button>
+      <!-- /ko -->
+    </div>
   </div>
 
+  <div class="section-heading-sm" data-bind="text: t('tm.role.matrix')"></div>
   <table class="data-table">
     <thead><tr><th>Artifact</th><th>Create</th><th>Read</th><th>Update</th><th>Delete</th></tr></thead>
     <tbody data-bind="foreach: perms">
       <tr>
         <td data-bind="text: artifact"></td>
-        <td data-bind="text: $vm.yn(canCreate)"></td>
-        <td data-bind="text: $vm.yn(canRead)"></td>
-        <td data-bind="text: $vm.yn(canUpdate)"></td>
-        <td data-bind="text: $vm.yn(canDelete)"></td>
+        <td><button class="btn btn-sm perm-cell" data-bind="text: $vm.yn(canCreate), css: { 'perm-cell--on': canCreate==='Y' }, click: function(){ $vm.toggle($data,'canCreate'); }"></button></td>
+        <td><button class="btn btn-sm perm-cell" data-bind="text: $vm.yn(canRead),   css: { 'perm-cell--on': canRead==='Y' },   click: function(){ $vm.toggle($data,'canRead'); }"></button></td>
+        <td><button class="btn btn-sm perm-cell" data-bind="text: $vm.yn(canUpdate), css: { 'perm-cell--on': canUpdate==='Y' }, click: function(){ $vm.toggle($data,'canUpdate'); }"></button></td>
+        <td><button class="btn btn-sm perm-cell" data-bind="text: $vm.yn(canDelete), css: { 'perm-cell--on': canDelete==='Y' }, click: function(){ $vm.toggle($data,'canDelete'); }"></button></td>
       </tr>
     </tbody>
   </table>
+  <!-- /ko -->
+
+  <!-- ===== Role editor modal ===== -->
+  <!-- ko if: editing -->
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header section-heading-row">
+        <h2 class="section-heading" data-bind="text: f.tmRoleId() ? t('tm.role.edit') : t('tm.role.new')"></h2>
+        <div class="region-actions">
+          <button class="btn btn-sm" data-bind="text: t('tm.common.cancel'), click: cancel"></button>
+          <button class="btn btn-sm btn-primary" data-bind="text: t('tm.common.save'), click: saveRole, disable: saving"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.role.code')"></label>
+            <input type="text" class="form-control" data-bind="value: f.code, disable: f.tmRoleId" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.role.isLeader')"></label>
+            <select class="form-control" data-bind="value: f.isLeader"><option value="N">No</option><option value="Y">Yes</option></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.role.nameEn')"></label>
+            <input type="text" class="form-control" data-bind="value: f.nameEn" />
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.role.nameAr')"></label>
+            <input type="text" class="form-control" data-bind="value: f.nameAr" dir="rtl" />
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.role.desc')"></label>
+            <input type="text" class="form-control" data-bind="value: f.descriptionEn" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
   <!-- /ko -->
 </div>

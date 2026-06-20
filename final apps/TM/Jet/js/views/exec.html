@@ -1,0 +1,94 @@
+<div class="page">
+  <div class="page-header-row">
+    <div>
+      <h1 class="page-title" data-bind="text: t('tm.exec.title')"></h1>
+      <div class="muted" data-bind="text: t('tm.exec.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <span class="muted" data-bind="text: t('tm.exec.groupBy')"></span>
+      <select class="form-control form-control--inline" data-bind="value: groupBy">
+        <option value="org" data-bind="text: t('tm.exec.byOrg')"></option>
+        <option value="tree" data-bind="text: t('tm.exec.byTeamTree')"></option>
+        <option value="flat" data-bind="text: t('tm.exec.flat')"></option>
+      </select>
+    </div>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <!-- ko if: teams().length === 0 --><div class="empty-state" data-bind="text: t('tm.exec.none')"></div><!-- /ko -->
+
+  <!-- ko if: teams().length > 0 -->
+  <!-- KPI roll-up -->
+  <div class="exec-kpis">
+    <div class="exec-kpi"><b data-bind="text: kTeams"></b><span data-bind="text: t('tm.exec.totalTeams')"></span></div>
+    <div class="exec-kpi"><b data-bind="text: kOnTime"></b><span data-bind="text: t('tm.exec.onTimeRate')"></span></div>
+    <div class="exec-kpi"><b data-bind="text: kOverdue"></b><span data-bind="text: t('tm.exec.overdue')"></span></div>
+    <div class="exec-kpi"><b data-bind="text: kRisks"></b><span data-bind="text: t('tm.exec.risks')"></span></div>
+  </div>
+
+  <!-- charts -->
+  <div class="exec-charts">
+    <div class="exec-chart-card">
+      <h3 data-bind="text: t('tm.exec.health')"></h3>
+      <div class="exec-chart-wrap"><canvas id="execRagChart"></canvas></div>
+    </div>
+    <div class="exec-chart-card">
+      <h3 data-bind="text: t('tm.exec.onTime')"></h3>
+      <div class="exec-chart-wrap"><canvas id="execOnTimeChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- scorecard -->
+  <div class="section-heading-row">
+    <h2 class="section-heading" data-bind="text: t('tm.exec.scorecard')"></h2>
+  </div>
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th data-bind="text: t('tm.exec.team')"></th>
+        <th data-bind="text: t('tm.exec.leader')"></th>
+        <th class="num" data-bind="text: t('tm.exec.members')"></th>
+        <th class="num" data-bind="text: t('tm.exec.openTasks')"></th>
+        <th class="num" data-bind="text: t('tm.exec.done')"></th>
+        <th class="num" data-bind="text: t('tm.exec.overdue')"></th>
+        <th class="num" data-bind="text: t('tm.exec.risks')"></th>
+        <th data-bind="text: t('tm.exec.kpi')"></th>
+        <th class="num" data-bind="text: t('tm.exec.onTimeRate')"></th>
+        <th data-bind="text: t('tm.exec.latest')"></th>
+      </tr>
+    </thead>
+    <!-- ko foreach: groups -->
+    <tbody>
+      <tr class="exec-group-head"><td colspan="10" data-bind="text: name"></td></tr>
+      <!-- ko foreach: teams -->
+      <tr>
+        <td>
+          <span data-bind="css: $parents[1].ragDot(health)"></span>
+          <a href="#" data-bind="text: teamName, click: function(){ $parents[1].openTeam($data); return false; }"></a>
+        </td>
+        <td data-bind="text: $data.leaderName || ''"></td>
+        <td class="num" data-bind="text: memberCount"></td>
+        <td class="num" data-bind="text: openTasks"></td>
+        <td class="num" data-bind="text: doneTasks"></td>
+        <td class="num" data-bind="css: { 'is-overdue': overdueTasks > 0 }, text: overdueTasks"></td>
+        <td class="num" data-bind="css: { 'is-overdue': highRisks > 0 }, text: highRisks"></td>
+        <td>
+          <span class="bar-track"><span class="bar-mini" data-bind="style: { width: (objectiveProgress||0)+'%' }"></span></span>
+          <span class="num" data-bind="text: ' ' + (objectiveProgress||0) + '%'"></span>
+        </td>
+        <td class="num" data-bind="text: (onTimeRate===null||onTimeRate===undefined) ? '—' : (onTimeRate + '%')"></td>
+        <td>
+          <div data-bind="text: $data.latestPeriod || '—'"></div>
+          <div class="tm-badges" data-bind="foreach: $parents[1].badges($data)">
+            <span data-bind="css: cls, text: label"></span>
+          </div>
+        </td>
+      </tr>
+      <!-- /ko -->
+    </tbody>
+    <!-- /ko -->
+  </table>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

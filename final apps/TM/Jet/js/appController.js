@@ -61,12 +61,15 @@ function (ko, config, authService, tmService, i18n, shell) {
           { id: 'dashboard', labelKey: 'nav.home', icon: '&#127968;' } ] },
       { id: 'work', labelKey: 'nav.workGroup', auth: 'all', collapsed: ko.observable(false), items: [
           { id: 'myWork', labelKey: 'nav.myWork', icon: '&#9989;' },
+          { id: 'myUpdates', labelKey: 'nav.myUpdates', icon: '&#128221;' },
           { id: 'teams',  labelKey: 'nav.teams',  icon: '&#128101;' },
           { id: 'library',labelKey: 'nav.library',icon: '&#128193;' } ] },
       { id: 'insights', labelKey: 'nav.insightsGroup', auth: 'mgr', collapsed: ko.observable(false), items: [
+          { id: 'exec', labelKey: 'nav.execView', icon: '&#127970;' },
           { id: 'reports', labelKey: 'nav.reports', icon: '&#128202;' } ] },
       { id: 'admin', labelKey: 'nav.adminGroup', auth: 'admin', collapsed: ko.observable(false), items: [
-          { id: 'teamRoles', labelKey: 'nav.teamRoles', icon: '&#128272;' } ] },
+          { id: 'teamRoles', labelKey: 'nav.teamRoles', icon: '&#128272;' },
+          { id: 'visibilityGrants', labelKey: 'nav.visibility', icon: '&#128065;' } ] },
       { id: 'prefs', standalone: true, auth: 'all', items: [
           { id: 'preferences', labelKey: 'nav.preferences', icon: '&#9881;' } ] }
     ];

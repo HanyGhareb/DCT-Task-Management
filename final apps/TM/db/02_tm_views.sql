@@ -16,6 +16,7 @@ SET SQLBLANKLINES ON
 CREATE OR REPLACE VIEW prod.dct_tm_team_v AS
 SELECT t.team_id, t.team_code, t.team_name_en, t.team_name_ar, t.objective, t.purpose,
        t.team_type, t.team_class, t.team_category, t.status, t.health_rag,
+       t.parent_team_id, pt.team_name_en AS parent_team_name,
        t.leader_user_id, lu.display_name AS leader_name,
        t.org_id, o.org_name_en AS org_name,
        t.start_date, t.end_date, t.is_active, t.created_at, t.updated_at,
@@ -30,7 +31,8 @@ SELECT t.team_id, t.team_code, t.team_name_en, t.team_name_ar, t.objective, t.pu
                AND l.item_type IN ('ISSUE','RISK') AND l.status = 'OPEN') AS open_risk_count
 FROM   prod.dct_tm_teams t
 LEFT JOIN prod.dct_users lu        ON lu.user_id = t.leader_user_id
-LEFT JOIN prod.dct_organizations o ON o.org_id   = t.org_id;
+LEFT JOIN prod.dct_organizations o ON o.org_id   = t.org_id
+LEFT JOIN prod.dct_tm_teams pt     ON pt.team_id = t.parent_team_id;
 
 -- ---- Members (with user + role) ---------------------------------------------
 CREATE OR REPLACE VIEW prod.dct_tm_member_v AS

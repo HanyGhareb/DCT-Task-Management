@@ -1,0 +1,3 @@
+npx -y skills add nextlevelbuilder/ui-ux-pro-max-skill --skill ui-ux-pro-max --agent claude-code -g
+
+npx -y skills add callstackincubator/agent-skills --skill react-native-best-practices --agent claude-code -g

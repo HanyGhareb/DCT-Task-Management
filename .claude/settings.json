@@ -68,7 +68,12 @@
       "PowerShell($p = \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\TM\\\\db\\\\01_tm_ddl.sql\"; $raw = [System.IO.File]::ReadAllText\\($p\\); $crlf = \\($raw -replace \"`r`n\",\"`n\"\\) -replace \"`n\",\"`r`n\"; [System.IO.File]::WriteAllText\\($p, $crlf, \\(New-Object System.Text.UTF8Encoding\\($false\\)\\)\\); \"converted to CRLF, no BOM\")",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -S -name prod_mcp \"@c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\TM\\\\db\\\\01_tm_ddl.sql\")",
       "PowerShell($p = \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\final apps\\\\TM\\\\db\\\\03_tm_seed.sql\"; $raw = [System.IO.File]::ReadAllText\\($p\\); $crlf = \\($raw -replace \"`r`n\",\"`n\"\\) -replace \"`n\",\"`r`n\"; [System.IO.File]::WriteAllText\\($p, $crlf, \\(New-Object System.Text.UTF8Encoding\\($false\\)\\)\\); & \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -S -name prod_mcp \"@$p\")",
-      "Bash(curl -s -k -L -u hg2248@dctabudhabi.ae:Roro@2009Roro@2009 -o /tmp/grn_basic.out -w '%{http_code} %{content_type}' 'https://iaaibv.fa.ocs.oraclecloud29.com/analytics/saw.dll?Go&Path=/users/haghareb%40dctabudhabi.ae/MG/GRN%20All&Action=Download&Format=csv')"
+      "Bash(curl -s -k -L -u hg2248@dctabudhabi.ae:Roro@2009Roro@2009 -o /tmp/grn_basic.out -w '%{http_code} %{content_type}' 'https://iaaibv.fa.ocs.oraclecloud29.com/analytics/saw.dll?Go&Path=/users/haghareb%40dctabudhabi.ae/MG/GRN%20All&Action=Download&Format=csv')",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@c:\\\\tmp\\\\verify_28.sql\" 2>&1)",
+      "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; npx tsc --noEmit 2>&1 | Select-Object -First 20; \"TSC EXIT: $LASTEXITCODE\")",
+      "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; npx tsc --noEmit 2>&1 | Select-Object -First 15; \"TSC EXIT: $LASTEXITCODE\")",
+      "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; $env:EAS_NO_VCS=1; npx expo config --type public 2>&1 | Select-String -Pattern \"googleServicesFile|projectId|error|Error\" | Select-Object -First 8; \"CONFIG EXIT: $LASTEXITCODE\")",
+      "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; npx tsc --noEmit 2>&1 | Select-Object -First 25; \"TSC EXIT: $LASTEXITCODE\")"
     ]
   },
   "enabledPlugins": {

@@ -81,6 +81,29 @@ All other calls (incl. TM's own `GET boot`/`prefs`) hit `/ords/admin/tm/`. Notif
 | RAID & Meetings | `GET raid` · `POST raid` · `GET meetings` · `POST meetings` |
 | Documents | `GET documents` · `POST documents` · `POST documents/update` · `PUT documents/:id/file` *(raw-binary upload)* · `GET documents/:id/file` *(media)* |
 | Preferences | `GET prefs` · `POST prefs` |
+| Reporting cycles | `GET cycle-config?teamId=` · `POST cycle-config` · `GET periods` · `POST periods/generate` · `POST periods/close` · `POST periods/lock` · `POST periods/signoff` · `GET periods/:id/snapshot` |
+| Member check-ins | `GET my-submissions` · `GET submissions?periodId=` · `POST submissions/save` · `POST submissions/submit` · `GET period-status?periodId=` |
+| Visibility (exec exceptions) | `GET visibility-grants` · `POST visibility-grants` · `POST visibility-grants/revoke` · `GET my-visibility` |
+| Team hierarchy + executive | `POST teams/parent` · `GET team-tree` · `GET exec/teams` |
+| Custom roles (admin) | `POST roles` · `POST roles/retire` · `POST role-template-perm` |
+| AI period summary | `POST periods/:id/ai-summary` *(generate via DCT_TM_AI_PKG → Anthropic; gated by AI_FEATURES_ENABLED)* · `GET periods/:id/ai-summary` *(read stored)* |
+
+> **Row-level visibility (security):** all team-keyed GET list handlers (`teams`, `teams/:id`, `members`, `objectives`, `tasks`, `deliverables`, `raid`, `milestones`, `meetings`) and the dashboard aggregates are scoped to the caller's visible team set via `dct_tm_vis_pkg.visible_teams(uid)` — a team only sees its own data unless an active visibility grant / org-head / team-tree / admin scope applies.
+
+## Functional areas — Reporting Cycles, Executive View & Visibility (2026-06-20)
+
+| Area | View / ViewModel | Key `self.*` methods |
+|---|---|---|
+| My Check-ins | `views/myUpdates.html` + `viewModels/myUpdates.js` | `load`, `open`, `saveDraft`, `submit` (auto-pulled metrics shown read-only) |
+| Executive View | `views/exec.html` + `viewModels/exec.js` | `load`, `setGroup` (org/team-tree/flat), `openTeam`; RAG donut + on-time leaderboard + grouped scorecard |
+| Reporting Cycle (per team) | `views/teamCycle.html` + `viewModels/teamCycle.js` | `saveConfig`, `generate`, `openRoster`, `closePeriod`, `lockPeriod`, `signoff`, `saveParent` |
+| Visibility Grants (admin) | `views/visibilityGrants.html` + `viewModels/visibilityGrants.js` | `newGrant`, `save`, `revoke` (scope TEAM/TEAM_TREE/ORG/ALL × VIEWER/REPORTER) |
+| Team Roles (admin, full CRUD) | `views/teamRoles.html` + `viewModels/teamRoles.js` | `newRole`, `editRole`, `saveRole`, `retire`, `toggle` (clickable template CRUD matrix) |
+| Timeline / Gantt (per team) | `views/timeline.html` + `viewModels/timeline.js` | date-axis bars for tasks/deliverables/milestones (reached from teamDetail) |
+
+**Phase B/C additions (2026-06-20):** exec scorecard gains achievement **badges** (`exec.js` `badges()` — perfect on-time / zero-overdue / all-on-track); **AI executive summary** per period in the teamCycle roster modal (`genAi`, `getAiSummary`); **weekly leader digest** (`DCT_TM_CYCLE_PKG.run_cycle_sweep` step 7, Sundays, gated by `CYCLE_WEEKLY_DIGEST`) — auto-fans to mobile push via the shared `DCT_NOTIFICATIONS`→`DCT_PUSH_OUTBOX` trigger (db/v2/28), so all `TM_CYCLE_*`/`TM_WEEKLY_DIGEST` notifications already reach App 209. New `tmService`: `getAiSummary`, `generateAiSummary`.
+
+`tmService` additions: `getCycleConfig`, `saveCycleConfig`, `listPeriods`, `generatePeriods`, `closePeriod`, `lockPeriod`, `signoffPeriod`, `periodSnapshot`, `periodStatus`, `mySubmissions`, `getSubmission`, `saveSubmission`, `submitSubmission`, `listGrants`, `createGrant`, `revokeGrant`, `myVisibility`, `setTeamParent`, `teamTree`, `execTeams`, `saveRole`, `retireRole`, `saveRoleTemplatePerm`.
 
 ---
 

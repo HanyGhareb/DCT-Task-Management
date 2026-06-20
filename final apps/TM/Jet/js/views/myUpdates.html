@@ -1,0 +1,93 @@
+<div class="page">
+  <div class="page-header-row">
+    <div>
+      <h1 class="page-title" data-bind="text: t('tm.upd.title')"></h1>
+      <div class="muted" data-bind="text: t('tm.upd.subtitle')"></div>
+    </div>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <!-- ko if: rows().length === 0 --><div class="empty-state" data-bind="text: t('tm.upd.none')"></div><!-- /ko -->
+
+  <!-- ko if: rows().length > 0 -->
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th data-bind="text: t('tm.exec.team')"></th>
+        <th data-bind="text: t('tm.upd.period')"></th>
+        <th data-bind="text: t('tm.upd.due')"></th>
+        <th data-bind="text: t('tm.upd.status')"></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody data-bind="foreach: rows">
+      <tr>
+        <td data-bind="text: $data.teamName || ''"></td>
+        <td data-bind="text: $data.label || ''"></td>
+        <td data-bind="css: { 'is-overdue': periodStatus==='DUE' }, text: $data.dueDate || ''"></td>
+        <td><span data-bind="css: $vm.statClass(status), text: status"></span></td>
+        <td>
+          <button class="btn btn-sm btn-primary" data-bind="text: $vm.t('tm.upd.open'),
+                  click: function(){ $vm.open($data); }"></button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ===== Check-in modal ===== -->
+  <!-- ko if: editing -->
+  <div class="modal-overlay">
+    <div class="modal-box modal-box--lg">
+      <div class="modal-header section-heading-row">
+        <h2 class="section-heading">
+          <span data-bind="text: t('tm.upd.open')"></span> — <span data-bind="text: cur.label"></span>
+        </h2>
+        <div class="region-actions">
+          <button class="btn btn-sm" data-bind="text: t('tm.common.close'), click: close"></button>
+          <!-- ko ifnot: readOnly -->
+          <button class="btn btn-sm" data-bind="text: t('tm.upd.saveDraft'), click: saveDraft, disable: saving"></button>
+          <button class="btn btn-sm btn-primary" data-bind="text: t('tm.upd.submit'), click: submit, disable: saving"></button>
+          <!-- /ko -->
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- auto-pulled metrics -->
+        <div class="section-heading-sm" data-bind="text: t('tm.upd.metrics')"></div>
+        <div class="metric-row">
+          <div class="metric metric--ok"><span class="metric-n" data-bind="text: cur.tasksDone"></span><span class="metric-l" data-bind="text: t('tm.upd.tasksDone')"></span></div>
+          <div class="metric"><span class="metric-n" data-bind="text: cur.tasksOnTrack"></span><span class="metric-l" data-bind="text: t('tm.upd.tasksOnTrack')"></span></div>
+          <div class="metric metric--warn"><span class="metric-n" data-bind="text: cur.tasksLate"></span><span class="metric-l" data-bind="text: t('tm.upd.tasksLate')"></span></div>
+          <div class="metric metric--bad"><span class="metric-n" data-bind="text: cur.tasksOverdue"></span><span class="metric-l" data-bind="text: t('tm.upd.tasksOverdue')"></span></div>
+          <div class="metric"><span class="metric-n" data-bind="text: (cur.kpi()||0) + '%'"></span><span class="metric-l" data-bind="text: t('tm.upd.kpi')"></span></div>
+        </div>
+
+        <div class="form-grid">
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.upd.accomplishments')"></label>
+            <textarea class="form-control" rows="3" data-bind="value: cur.accomplishments, disable: readOnly"></textarea>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.upd.inProgress')"></label>
+            <textarea class="form-control" rows="2" data-bind="value: cur.inProgress, disable: readOnly"></textarea>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.upd.pending')"></label>
+            <textarea class="form-control" rows="2" data-bind="value: cur.pending, disable: readOnly"></textarea>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.upd.blockers')"></label>
+            <textarea class="form-control" rows="2" data-bind="value: cur.blockers, disable: readOnly"></textarea>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.upd.highlights')"></label>
+            <textarea class="form-control" rows="2" data-bind="value: cur.highlights, disable: readOnly"></textarea>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

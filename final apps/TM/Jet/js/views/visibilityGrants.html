@@ -1,0 +1,110 @@
+<div class="page">
+  <div class="page-header-row">
+    <div>
+      <h1 class="page-title" data-bind="text: t('tm.vis.title')"></h1>
+      <div class="muted" data-bind="text: t('tm.vis.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="text: t('tm.vis.new'), click: newGrant"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <!-- ko if: rows().length === 0 --><div class="empty-state" data-bind="text: t('tm.vis.none')"></div><!-- /ko -->
+
+  <!-- ko if: rows().length > 0 -->
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th data-bind="text: t('tm.vis.grantee')"></th>
+        <th data-bind="text: t('tm.vis.scope')"></th>
+        <th data-bind="text: t('tm.vis.level')"></th>
+        <th data-bind="text: t('tm.vis.expiry')"></th>
+        <th data-bind="text: t('tm.vis.status')"></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody data-bind="foreach: rows">
+      <tr>
+        <td data-bind="text: $data.granteeName || ''"></td>
+        <td>
+          <span class="badge badge--info" data-bind="text: scope"></span>
+          <span class="muted" data-bind="text: $data.teamName || $data.orgName || ''"></span>
+        </td>
+        <td data-bind="text: accessLevel"></td>
+        <td data-bind="text: $data.endDate || '—'"></td>
+        <td><span class="badge" data-bind="css: status==='ACTIVE' ? 'badge--ok' : 'badge--muted', text: status"></span></td>
+        <td>
+          <!-- ko if: status === 'ACTIVE' -->
+          <button class="btn btn-sm" data-bind="text: $vm.t('tm.vis.revoke'), click: function(){ $vm.revoke($data); }"></button>
+          <!-- /ko -->
+        </td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ===== New grant modal ===== -->
+  <!-- ko if: editing -->
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header section-heading-row">
+        <h2 class="section-heading" data-bind="text: t('tm.vis.new')"></h2>
+        <div class="region-actions">
+          <button class="btn btn-sm" data-bind="text: t('tm.common.cancel'), click: cancel"></button>
+          <button class="btn btn-sm btn-primary" data-bind="text: t('tm.common.save'), click: save, disable: saving"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.vis.grantee')"></label>
+            <select class="form-control" data-bind="options: users, optionsValue: 'userId', optionsText: 'name',
+                    optionsCaption: '—', value: f.granteeUserId"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.vis.scope')"></label>
+            <select class="form-control" data-bind="value: f.scope">
+              <option value="TEAM" data-bind="text: t('tm.vis.team')"></option>
+              <option value="TEAM_TREE">Team + sub-teams</option>
+              <option value="ORG" data-bind="text: t('tm.vis.org')"></option>
+              <option value="ALL" data-bind="text: t('tm.exec.flat')"></option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.vis.level')"></label>
+            <select class="form-control" data-bind="value: f.accessLevel">
+              <option value="VIEWER">VIEWER</option>
+              <option value="REPORTER">REPORTER</option>
+            </select>
+          </div>
+          <!-- ko if: needTeam -->
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.vis.team')"></label>
+            <select class="form-control" data-bind="options: teams, optionsValue: 'teamId', optionsText: 'nameEn',
+                    optionsCaption: '—', value: f.teamId"></select>
+          </div>
+          <!-- /ko -->
+          <!-- ko if: needOrg -->
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.vis.org')"></label>
+            <select class="form-control" data-bind="options: orgs, optionsValue: 'orgId', optionsText: 'orgName',
+                    optionsCaption: '—', value: f.orgId"></select>
+          </div>
+          <!-- /ko -->
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.vis.expiry')"></label>
+            <input type="date" class="form-control" data-bind="value: f.endDate" />
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.vis.reason')"></label>
+            <input type="text" class="form-control" data-bind="value: f.reason" />
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

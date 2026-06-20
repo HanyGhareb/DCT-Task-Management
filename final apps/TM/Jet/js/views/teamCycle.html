@@ -1,0 +1,201 @@
+<div class="page">
+  <div class="page-header-row">
+    <div>
+      <h1 class="page-title"><span data-bind="text: t('tm.cyc.title')"></span><!-- ko if: teamName --> — <span data-bind="text: teamName"></span><!-- /ko --></h1>
+      <div class="muted" data-bind="text: t('tm.upd.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: teamId -->
+      <button class="btn btn-sm" data-bind="text: t('tm.cyc.generate'), click: generate"></button>
+      <button class="btn btn-sm" data-bind="text: t('nav.teams'), click: back"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+
+  <!-- team picker when arrived without a team -->
+  <!-- ko if: !loading() && !teamId() -->
+  <div class="section-heading" data-bind="text: t('nav.teams')"></div>
+  <table class="data-table">
+    <tbody data-bind="foreach: teams">
+      <tr>
+        <td data-bind="text: nameEn"></td>
+        <td><button class="btn btn-sm" data-bind="text: $vm.t('tm.upd.open'), click: function(){ $vm.selectTeam($data); }"></button></td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+
+  <!-- ko if: !loading() && teamId() -->
+  <!-- ===== Cadence config ===== -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('tm.cyc.cadence')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-primary" data-bind="text: t('tm.cyc.save'), click: saveConfig, disable: saving"></button>
+      </div>
+    </div>
+    <!-- ko if: !hasConfig() --><div class="muted" data-bind="text: t('tm.cyc.notSet')"></div><!-- /ko -->
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.cadence')"></label>
+        <select class="form-control" data-bind="options: cadences, value: c.cadence"></select>
+      </div>
+      <!-- ko if: isCustom -->
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.customDays')"></label>
+        <input type="number" min="1" class="form-control" data-bind="value: c.customDays" />
+      </div>
+      <!-- /ko -->
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.anchor')"></label>
+        <input type="date" class="form-control" data-bind="value: c.anchorDate" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.submitterScope')"></label>
+        <select class="form-control" data-bind="options: scopes, value: c.submitterScope"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.leadDays')"></label>
+        <input type="number" min="0" class="form-control" data-bind="value: c.leadDays" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.deadlineOffset')"></label>
+        <input type="number" min="0" class="form-control" data-bind="value: c.deadlineOffset" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.reminderDays')"></label>
+        <input type="text" class="form-control" data-bind="value: c.reminderDays" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.escalateAfter')"></label>
+        <input type="number" min="0" class="form-control" data-bind="value: c.escalateAfter" />
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('tm.cyc.autoClose')"></label>
+        <select class="form-control" data-bind="value: c.autoClose"><option value="Y">Yes</option><option value="N">No</option></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Team structure (parent) ===== -->
+  <div class="card" style="margin-top:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('tm.team.parent')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-primary" data-bind="text: t('tm.common.save'), click: saveParent"></button>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group form-group--full">
+        <label class="form-label" data-bind="text: t('tm.team.parent')"></label>
+        <select class="form-control" data-bind="options: parentOptions, optionsValue:'teamId', optionsText:'nameEn',
+                optionsCaption: t('tm.team.parentNone'), value: parentTeamId"></select>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== Periods ===== -->
+  <div class="section-heading-row" style="margin-top:18px;">
+    <h2 class="section-heading" data-bind="text: t('tm.cyc.periods')"></h2>
+  </div>
+  <!-- ko if: periods().length === 0 --><div class="empty-state" data-bind="text: t('tm.cyc.notSet')"></div><!-- /ko -->
+  <!-- ko if: periods().length > 0 -->
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th data-bind="text: t('tm.upd.period')"></th>
+        <th data-bind="text: t('tm.upd.due')"></th>
+        <th data-bind="text: t('tm.upd.status')"></th>
+        <th class="num" data-bind="text: t('tm.cyc.submitted')"></th>
+        <th class="num" data-bind="text: t('tm.cyc.pending')"></th>
+        <th data-bind="text: t('tm.cyc.teamRag')"></th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody data-bind="foreach: periods">
+      <tr>
+        <td data-bind="text: label"></td>
+        <td data-bind="css: { 'is-overdue': status==='DUE' }, text: dueDate"></td>
+        <td><span data-bind="css: $vm.pstatClass(status), text: status"></span></td>
+        <td class="num" data-bind="text: submittedCount + '/' + submitterCount"></td>
+        <td class="num" data-bind="text: pendingCount"></td>
+        <td><span data-bind="text: $data.signoffRag || '—'"></span></td>
+        <td><button class="btn btn-sm" data-bind="text: $vm.t('tm.cyc.periodStatus'), click: function(){ $vm.openRoster($data); }"></button></td>
+      </tr>
+    </tbody>
+  </table>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ===== Roster modal ===== -->
+  <!-- ko if: showRoster -->
+  <div class="modal-overlay">
+    <div class="modal-box modal-box--lg">
+      <div class="modal-header section-heading-row">
+        <h2 class="section-heading"><span data-bind="text: t('tm.cyc.roster')"></span> — <span data-bind="text: rosterPeriod().label"></span></h2>
+        <div class="region-actions">
+          <button class="btn btn-sm" data-bind="text: t('tm.common.close'), click: closeRoster"></button>
+          <!-- ko if: ['CLOSED','LOCKED'].indexOf(rosterPeriod().status) < 0 -->
+          <button class="btn btn-sm btn-primary" data-bind="text: t('tm.cyc.close'), click: closePeriod"></button>
+          <!-- /ko -->
+          <!-- ko if: rosterPeriod().status === 'CLOSED' -->
+          <button class="btn btn-sm" data-bind="text: t('tm.cyc.lock'), click: lockPeriod"></button>
+          <!-- /ko -->
+        </div>
+      </div>
+      <div class="modal-body">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th data-bind="text: t('tm.exec.members')"></th>
+              <th data-bind="text: t('tm.upd.status')"></th>
+              <th class="num" data-bind="text: t('tm.upd.tasksDone')"></th>
+              <th class="num" data-bind="text: t('tm.upd.tasksLate')"></th>
+              <th class="num" data-bind="text: t('tm.upd.tasksOverdue')"></th>
+              <th data-bind="text: t('tm.upd.highlights')"></th>
+            </tr>
+          </thead>
+          <tbody data-bind="foreach: roster">
+            <tr>
+              <td data-bind="text: name"></td>
+              <td><span data-bind="css: $vm.subStatClass(status), text: status"></span></td>
+              <td class="num" data-bind="text: tasksDone"></td>
+              <td class="num" data-bind="text: tasksLate"></td>
+              <td class="num" data-bind="text: tasksOverdue"></td>
+              <td><small data-bind="text: $data.highlights || $data.blockers || ''"></small></td>
+            </tr>
+          </tbody>
+        </table>
+
+        <!-- AI executive summary -->
+        <div class="section-heading-row" style="margin-top:14px;">
+          <div class="section-heading-sm" data-bind="text: t('tm.ai.summary')"></div>
+          <button class="btn btn-sm" data-bind="text: aiBusy() ? t('tm.ai.generating') : t('tm.ai.generate'), click: genAi, disable: aiBusy"></button>
+        </div>
+        <!-- ko if: aiSummary --><div class="ai-summary" data-bind="text: aiSummary"></div><!-- /ko -->
+        <!-- ko ifnot: aiSummary --><div class="muted" data-bind="text: t('tm.ai.none')"></div><!-- /ko -->
+
+        <!-- leader sign-off -->
+        <div class="section-heading-sm" style="margin-top:14px;" data-bind="text: t('tm.cyc.signoff')"></div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" data-bind="text: t('tm.cyc.teamRag')"></label>
+            <select class="form-control" data-bind="value: signRag">
+              <option value="GREEN">GREEN</option><option value="AMBER">AMBER</option><option value="RED">RED</option>
+            </select>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: t('tm.cyc.signoffSummary')"></label>
+            <textarea class="form-control" rows="2" data-bind="value: signSummary"></textarea>
+          </div>
+          <div class="form-group">
+            <button class="btn btn-sm" data-bind="text: t('tm.cyc.signoff'), click: signoff"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

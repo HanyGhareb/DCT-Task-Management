@@ -1,0 +1,28 @@
+# Expo / RN
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# Native
+ios/
+android/
+*.orig.*
+
+# Env / secrets
+.env*
+google-services.json
+GoogleService-Info.plist
+# Firebase / FCM service-account keys (NEVER commit — keep in the password manager)
+*firebase-adminsdk*.json
+*-service-account*.json
+*serviceAccount*.json
+
+# IDE / OS
+.DS_Store
+*.tsbuildinfo
+expo-env.d.ts

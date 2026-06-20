@@ -20,6 +20,7 @@ SET SQLBLANKLINES ON
 -- 1. ADMIN synonyms for every PROD object the handlers touch
 -- =============================================================================
 CREATE OR REPLACE SYNONYM dct_tm_pkg            FOR prod.dct_tm_pkg;
+CREATE OR REPLACE SYNONYM dct_tm_vis_pkg        FOR prod.dct_tm_vis_pkg;
 CREATE OR REPLACE SYNONYM dct_tm_reminder_pkg   FOR prod.dct_tm_reminder_pkg;
 CREATE OR REPLACE SYNONYM dct_tm_teams          FOR prod.dct_tm_teams;
 CREATE OR REPLACE SYNONYM dct_tm_roles          FOR prod.dct_tm_roles;
@@ -129,12 +130,15 @@ BEGIN
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('roles');
-  FOR r IN (SELECT role_code, role_name_en, role_name_ar, is_leader_role FROM dct_tm_roles WHERE is_active='Y' ORDER BY display_order) LOOP
+  FOR r IN (SELECT tm_role_id, role_code, role_name_en, role_name_ar, description_en, is_leader_role, is_system FROM dct_tm_roles WHERE is_active='Y' ORDER BY display_order) LOOP
     APEX_JSON.open_object;
+    APEX_JSON.write('tmRoleId', r.tm_role_id);
     APEX_JSON.write('code', r.role_code);
     APEX_JSON.write('nameEn', r.role_name_en);
     APEX_JSON.write('nameAr', NVL(r.role_name_ar,''));
+    APEX_JSON.write('descriptionEn', NVL(r.description_en,''));
     APEX_JSON.write('isLeader', r.is_leader_role);
+    APEX_JSON.write('isSystem', r.is_system);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -168,8 +172,10 @@ BEGIN
   SELECT COUNT(DISTINCT m.team_id) INTO l_teams FROM dct_tm_members m WHERE m.user_id=l_uid AND m.is_active='Y';
   SELECT COUNT(*) INTO l_my_open FROM dct_tm_my_task_v WHERE user_id=l_uid AND status NOT IN ('DONE','CANCELLED');
   SELECT COUNT(*) INTO l_my_overdue FROM dct_tm_my_task_v WHERE user_id=l_uid AND is_overdue='Y';
-  SELECT COUNT(*) INTO l_risks FROM dct_tm_log_v WHERE item_type IN ('ISSUE','RISK') AND status='OPEN';
-  SELECT COUNT(*) INTO l_deliv_due FROM dct_tm_deliverable_v WHERE status NOT IN ('ACCEPTED') AND due_date IS NOT NULL AND due_date <= TRUNC(SYSDATE)+14;
+  SELECT COUNT(*) INTO l_risks FROM dct_tm_log_v WHERE item_type IN ('ISSUE','RISK') AND status='OPEN'
+    AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)));
+  SELECT COUNT(*) INTO l_deliv_due FROM dct_tm_deliverable_v WHERE status NOT IN ('ACCEPTED') AND due_date IS NOT NULL AND due_date <= TRUNC(SYSDATE)+14
+    AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)));
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -180,13 +186,17 @@ BEGIN
   APEX_JSON.write('deliverablesDue', l_deliv_due);
   -- teams RAG breakdown
   APEX_JSON.open_array('teamsByHealth');
-  FOR r IN (SELECT NVL(health_rag,'GREEN') rag, COUNT(*) n FROM dct_tm_team_v WHERE is_active='Y' GROUP BY NVL(health_rag,'GREEN')) LOOP
+  FOR r IN (SELECT NVL(health_rag,'GREEN') rag, COUNT(*) n FROM dct_tm_team_v WHERE is_active='Y'
+            AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)))
+            GROUP BY NVL(health_rag,'GREEN')) LOOP
     APEX_JSON.open_object; APEX_JSON.write('rag', r.rag); APEX_JSON.write('count', r.n); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   -- teams by class
   APEX_JSON.open_array('teamsByClass');
-  FOR r IN (SELECT team_class, COUNT(*) n FROM dct_tm_team_v WHERE is_active='Y' GROUP BY team_class) LOOP
+  FOR r IN (SELECT team_class, COUNT(*) n FROM dct_tm_team_v WHERE is_active='Y'
+            AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)))
+            GROUP BY team_class) LOOP
     APEX_JSON.open_object; APEX_JSON.write('cls', r.team_class); APEX_JSON.write('count', r.n); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -219,6 +229,7 @@ BEGIN
   WHERE (l_type IS NULL OR t.team_type=l_type) AND (l_class IS NULL OR t.team_class=l_class)
     AND (l_cat IS NULL OR t.team_category=l_cat) AND (l_status IS NULL OR t.status=l_status)
     AND (l_search IS NULL OR UPPER(t.team_name_en||' '||t.team_code) LIKE '%'||UPPER(l_search)||'%')
+    AND t.team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)))
     AND (l_mine != 'Y' OR EXISTS (SELECT 1 FROM dct_tm_members m WHERE m.team_id=t.team_id AND m.user_id=l_uid AND m.is_active='Y'));
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
@@ -228,6 +239,7 @@ BEGIN
     WHERE (l_type IS NULL OR t.team_type=l_type) AND (l_class IS NULL OR t.team_class=l_class)
       AND (l_cat IS NULL OR t.team_category=l_cat) AND (l_status IS NULL OR t.status=l_status)
       AND (l_search IS NULL OR UPPER(t.team_name_en||' '||t.team_code) LIKE '%'||UPPER(l_search)||'%')
+      AND t.team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)))
       AND (l_mine != 'Y' OR EXISTS (SELECT 1 FROM dct_tm_members m WHERE m.team_id=t.team_id AND m.user_id=l_uid AND m.is_active='Y'))
     ORDER BY t.team_id DESC OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
@@ -237,7 +249,8 @@ BEGIN
     APEX_JSON.write('type', r.team_type); APEX_JSON.write('class', r.team_class);
     APEX_JSON.write('category', NVL(r.team_category,'')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('health', NVL(r.health_rag,'GREEN'));
-    APEX_JSON.write('leaderName', NVL(r.leader_name,'')); APEX_JSON.write('orgName', NVL(r.org_name,''));
+    APEX_JSON.write('parentTeamId', r.parent_team_id); APEX_JSON.write('parentTeamName', NVL(r.parent_team_name,''));
+    APEX_JSON.write('leaderName', NVL(r.leader_name,'')); APEX_JSON.write('orgId', r.org_id); APEX_JSON.write('orgName', NVL(r.org_name,''));
     APEX_JSON.write('memberCount', r.member_count); APEX_JSON.write('objectiveCount', r.objective_count);
     APEX_JSON.write('taskCount', r.task_count); APEX_JSON.write('taskDone', r.task_done_count);
     APEX_JSON.write('taskOverdue', r.task_overdue_count); APEX_JSON.write('deliverableCount', r.deliverable_count);
@@ -278,9 +291,11 @@ END;
 
     def_template('teams/[COLON]id');
     def_handler('teams/[COLON]id', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_found NUMBER := 0;
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER; l_found NUMBER := 0;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  IF dct_tm_vis_pkg.can_view_team(l_uid, TO_NUMBER([COLON]id)) <> 'Y' THEN dct_rest.err(404,'Team not found'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output;
   FOR r IN (SELECT * FROM dct_tm_team_v WHERE team_id = [COLON]id) LOOP
     l_found := 1;
@@ -291,6 +306,7 @@ BEGIN
     APEX_JSON.write('type', r.team_type); APEX_JSON.write('class', r.team_class);
     APEX_JSON.write('category', NVL(r.team_category,'')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('health', NVL(r.health_rag,'GREEN'));
+    APEX_JSON.write('parentTeamId', r.parent_team_id); APEX_JSON.write('parentTeamName', NVL(r.parent_team_name,''));
     APEX_JSON.write('leaderUserId', r.leader_user_id); APEX_JSON.write('leaderName', NVL(r.leader_name,''));
     APEX_JSON.write('orgId', r.org_id); APEX_JSON.write('orgName', NVL(r.org_name,''));
     APEX_JSON.write('startDate', TO_CHAR(r.start_date,'YYYY-MM-DD')); APEX_JSON.write('endDate', TO_CHAR(r.end_date,'YYYY-MM-DD'));
@@ -330,9 +346,11 @@ END;
     -- =========================================================================
     def_template('members');
     def_handler('members', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  IF dct_tm_vis_pkg.can_view_team(l_uid, l_team) <> 'Y' THEN dct_rest.err(403,'Not permitted to view this team'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (SELECT * FROM dct_tm_member_v WHERE team_id=l_team AND is_active='Y' ORDER BY is_leader_role DESC, member_name) LOOP
     APEX_JSON.open_object;
@@ -498,9 +516,11 @@ END;
     -- =========================================================================
     def_template('objectives');
     def_handler('objectives', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
+  IF dct_tm_vis_pkg.can_view_team(l_uid, l_team) <> 'Y' THEN dct_rest.err(403,'Not permitted to view this team'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (SELECT * FROM dct_tm_objective_v WHERE team_id=l_team ORDER BY display_order, objective_id) LOOP
     APEX_JSON.open_object;
@@ -628,7 +648,7 @@ END;
     -- =========================================================================
     def_template('tasks');
     def_handler('tasks', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session;
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER;
   l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
   l_status VARCHAR2(20) := UPPER([COLON]status); l_search VARCHAR2(200) := [COLON]search;
   l_limit NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit DEFAULT NULL ON CONVERSION ERROR),100),200);
@@ -636,9 +656,11 @@ DECLARE l_user VARCHAR2(100) := dct_rest.validate_session;
   l_total NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
   SELECT COUNT(*) INTO l_total FROM dct_tm_task_v t
   WHERE (l_team IS NULL OR t.team_id=l_team) AND (l_status IS NULL OR t.status=l_status)
-    AND (l_search IS NULL OR UPPER(t.title) LIKE '%'||UPPER(l_search)||'%');
+    AND (l_search IS NULL OR UPPER(t.title) LIKE '%'||UPPER(l_search)||'%')
+    AND t.team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)));
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('total',l_total); APEX_JSON.write('limit',l_limit); APEX_JSON.write('offset',l_offset);
   APEX_JSON.open_array('items');
@@ -646,6 +668,7 @@ BEGIN
     SELECT * FROM dct_tm_task_v t
     WHERE (l_team IS NULL OR t.team_id=l_team) AND (l_status IS NULL OR t.status=l_status)
       AND (l_search IS NULL OR UPPER(t.title) LIKE '%'||UPPER(l_search)||'%')
+      AND t.team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)))
     ORDER BY t.task_id DESC OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
     APEX_JSON.open_object;
@@ -799,11 +822,13 @@ END;
     -- =========================================================================
     def_template('deliverables');
     def_handler('deliverables', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
-  FOR r IN (SELECT * FROM dct_tm_deliverable_v WHERE (l_team IS NULL OR team_id=l_team) ORDER BY deliverable_id DESC) LOOP
+  FOR r IN (SELECT * FROM dct_tm_deliverable_v WHERE (l_team IS NULL OR team_id=l_team)
+            AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid))) ORDER BY deliverable_id DESC) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('deliverableId', r.deliverable_id); APEX_JSON.write('code', r.deliverable_code);
     APEX_JSON.write('teamId', r.team_id); APEX_JSON.write('teamName', NVL(r.team_name,''));
@@ -855,12 +880,14 @@ END;
     -- =========================================================================
     def_template('raid');
     def_handler('raid', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session;
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER;
   l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR); l_type VARCHAR2(20) := UPPER([COLON]type);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
-  FOR r IN (SELECT * FROM dct_tm_log_v WHERE (l_team IS NULL OR team_id=l_team) AND (l_type IS NULL OR item_type=l_type) ORDER BY log_id DESC) LOOP
+  FOR r IN (SELECT * FROM dct_tm_log_v WHERE (l_team IS NULL OR team_id=l_team) AND (l_type IS NULL OR item_type=l_type)
+            AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid))) ORDER BY log_id DESC) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('logId', r.log_id); APEX_JSON.write('code', r.log_code); APEX_JSON.write('teamId', r.team_id);
     APEX_JSON.write('teamName', NVL(r.team_name,'')); APEX_JSON.write('type', r.item_type); APEX_JSON.write('title', r.title);
@@ -894,11 +921,13 @@ END;
 
     def_template('milestones');
     def_handler('milestones', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
-  FOR r IN (SELECT * FROM dct_tm_milestone_v WHERE (l_team IS NULL OR team_id=l_team) ORDER BY due_date) LOOP
+  FOR r IN (SELECT * FROM dct_tm_milestone_v WHERE (l_team IS NULL OR team_id=l_team)
+            AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid))) ORDER BY due_date) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('milestoneId', r.milestone_id); APEX_JSON.write('teamId', r.team_id);
     APEX_JSON.write('titleEn', r.title_en); APEX_JSON.write('titleAr', NVL(r.title_ar,''));
@@ -929,11 +958,13 @@ END;
 
     def_template('meetings');
     def_handler('meetings', 'GET', q'!
-DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
+DECLARE l_user VARCHAR2(100) := dct_rest.validate_session; l_uid NUMBER; l_team NUMBER := TO_NUMBER([COLON]teamId DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
-  FOR r IN (SELECT * FROM dct_tm_meeting_v WHERE (l_team IS NULL OR team_id=l_team) ORDER BY meeting_date DESC) LOOP
+  FOR r IN (SELECT * FROM dct_tm_meeting_v WHERE (l_team IS NULL OR team_id=l_team)
+            AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid))) ORDER BY meeting_date DESC) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('meetingId', r.meeting_id); APEX_JSON.write('code', r.meeting_code); APEX_JSON.write('teamId', r.team_id);
     APEX_JSON.write('title', r.title); APEX_JSON.write('meetingDate', TO_CHAR(r.meeting_date,'YYYY-MM-DD'));

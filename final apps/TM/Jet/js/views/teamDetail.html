@@ -17,6 +17,8 @@
         </div>
       </div>
       <div class="tm-hdr-side">
+        <button class="btn btn-sm" data-bind="click: function(){ window._jetApp.navigate('timeline', { teamId: teamId }); }, text: t('tm.tl.title')"></button>
+        <button class="btn btn-sm" data-bind="click: function(){ window._jetApp.navigate('teamCycle', { teamId: teamId }); }, text: t('tm.cyc.title')"></button>
         <button class="btn btn-primary btn-sm" data-bind="visible: canEditTeam, click: editTeam, text: t('tm.detail.editTeam')"></button>
         <!-- ko if: team().leaderName -->
         <div class="tm-leader">

@@ -1,0 +1,31 @@
+# EAS Build archive ignore — this monorepo holds many unrelated subprojects, but
+# the ONLY EAS project is ifinance-mobile/. EAS roots the upload archive at this
+# folder (the git root), so without this file it copies the whole tree — which
+# fails on otbi-atd/.otbi_runner.lock (EBUSY, held by the running OTBI runner) and
+# needlessly uploads other apps' source. Exclude every sibling; keep ifinance-mobile.
+#
+# NOTE: when EAS finds a .easignore it uses THIS file instead of .gitignore, so we
+# must also re-exclude the mobile app's node_modules/build dirs here.
+
+# ── Monorepo siblings (not part of the mobile app) ──────────────────────────
+/apps/
+/assessment-3/
+/db/
+/docs/
+/final apps/
+/myDoc/
+/otbi-atd/
+
+# ── Root-level files we don't need in the build ─────────────────────────────
+*.log
+*.lock
+.otbi_runner.lock
+
+# ── Inside ifinance-mobile: deps + generated/native dirs (mirror its .gitignore)
+ifinance-mobile/node_modules/
+ifinance-mobile/.expo/
+ifinance-mobile/dist/
+ifinance-mobile/dist-check/
+ifinance-mobile/ios/
+ifinance-mobile/android/
+ifinance-mobile/web-build/
