@@ -26,6 +26,11 @@ import { AtdDashboardScreen } from '@/screens/atd/AtdDashboardScreen';
 import { AtdJobsScreen } from '@/screens/atd/AtdJobsScreen';
 import { AtdRunsScreen } from '@/screens/atd/AtdRunsScreen';
 import { AtdRunDetailScreen } from '@/screens/atd/AtdRunDetailScreen';
+import { AtdQueueScreen } from '@/screens/atd/AtdQueueScreen';
+import { AtdEnvironmentsScreen } from '@/screens/atd/AtdEnvironmentsScreen';
+import { AtdTargetsScreen } from '@/screens/atd/AtdTargetsScreen';
+import { AtdRunnerSettingsScreen } from '@/screens/atd/AtdRunnerSettingsScreen';
+import { AtdDiscoveryScreen } from '@/screens/atd/AtdDiscoveryScreen';
 
 const Tab = createBottomTabNavigator<TabParamList>();
 const Stack = createNativeStackNavigator<RootStackParamList>();
@@ -114,6 +119,11 @@ export function RootNavigator() {
       <Stack.Screen name="AtdJobs" component={AtdJobsScreen} />
       <Stack.Screen name="AtdRuns" component={AtdRunsScreen} />
       <Stack.Screen name="AtdRunDetail" component={AtdRunDetailScreen} />
+      <Stack.Screen name="AtdQueue" component={AtdQueueScreen} />
+      <Stack.Screen name="AtdEnvironments" component={AtdEnvironmentsScreen} />
+      <Stack.Screen name="AtdTargets" component={AtdTargetsScreen} />
+      <Stack.Screen name="AtdRunnerSettings" component={AtdRunnerSettingsScreen} />
+      <Stack.Screen name="AtdDiscovery" component={AtdDiscoveryScreen} />
     </Stack.Navigator>
   );
 }

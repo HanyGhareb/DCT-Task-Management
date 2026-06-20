@@ -109,6 +109,18 @@ profile for on-device installs (development = dev-client, needs Metro/Expo login
 - Quality: **tsc clean** + **Metro android bundle clean** (3.18 MB). `app.json`
   1.0.0 → **1.1.0**. New deps: `expo-image`, `@react-native-community/netinfo`
   (native → rebuild required).
+- **Phase 2.1 — FULL ATD admin (2026-06-20, app 1.2.0).** Extended the Analytics
+  slice to **parity with the web ATD app**: Jobs now have full management (enqueue /
+  reset / enable / disable / re-map / rebuild / delete via a bottom-sheet — Android
+  Alert caps at 3 buttons), plus new screens **Environments** (CRUD), **Targets**
+  (CRUD), **Runner Settings** (`/config` editor — STRING/NUMBER/ENUM/BOOL/secret,
+  saves only changed keys so write-only secrets aren't clobbered), **Queue**
+  (counts + READY/CLAIMED jobs + reap), **Discovery** (subject areas + trigger
+  (re)discover + discovery history; the deep column-picker/AI builder stays web).
+  Dashboard now has a **Manage** menu grid to all sections. Reusable form
+  primitives in `components/form.tsx`. All endpoint shapes verified live vs PROD;
+  partial-PUT safety confirmed (every column guarded by `does_exist`). tsc +
+  Metro-android (3.24 MB) clean.
 - **Next:** `$env:EAS_NO_VCS=1; eas build --profile preview --platform android`,
   install, test with an ATD-admin login (ADMIN has SYS_ADMIN). Also picks up the
   round-3 photo fix (expo-image) + the delegation user-picker.

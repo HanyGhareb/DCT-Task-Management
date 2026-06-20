@@ -51,10 +51,19 @@ modules via the shared session.
   `ifinance_write_queue`) and auto-retry on reconnect (NetInfo) / foreground / 30 s.
   Triggers (e.g. ATD job enqueue) use `requireOnline:true` and **fail fast offline**
   instead of queuing. Reviewed in the **Outbox** screen (Profile → Outbox).
-- **First module slice = Analytics Loader (App 208).** Role-gated **Analytics** tab
-  (SYS_ADMIN only — every `/atd/` handler enforces `dct_auth.has_role(…, 'SYS_ADMIN')`):
-  Dashboard, Jobs (enqueue/reset/enqueue-all/reap), Runs, Run detail.
+- **First module slice = Analytics Loader (App 208) — FULL admin (v1.2.0).**
+  Role-gated **Analytics** tab (SYS_ADMIN only — every `/atd/` handler enforces
+  `dct_auth.has_role(…, 'SYS_ADMIN')`) with a **Manage** menu to: Dashboard, **Jobs**
+  (enqueue/reset/enable/disable/re-map/rebuild/delete), **Queue** (counts + reap),
+  **Runs** (+detail), **Discovery** (subject areas + (re)discover + history),
+  **Environments** (CRUD), **Targets** (CRUD), **Runner Settings** (`/config`
+  editor). Job/env/target writes use the partial-safe PUT (`does_exist` per column);
+  Runner Settings PUTs only changed keys so write-only secrets are preserved.
 - New native deps → **require a rebuild**: `expo-image`, `@react-native-community/netinfo`.
+- **ATD UX notes:** Android `Alert` shows max 3 buttons → multi-action menus use a
+  custom bottom-sheet / full-screen modal, not `Alert`. Enqueue ≠ run: it sets the
+  job READY in the queue; a **run-history** row appears only after the runner
+  (Windows Scheduled Task `OTBI-ATD Loader`, ~15-min poll) claims and executes it.
 
 ## Gotchas learned
 - `expo install react-native @shopify/flash-list` pruned `expo-asset` /
@@ -112,3 +121,9 @@ modules via the shared session.
   PROD; **writes** (enqueue/reset/reap) deferred to the on-device test (they trigger
   real loads). **Pending:** one preview rebuild (`$env:EAS_NO_VCS=1; eas build
   --profile preview --platform android`) then the Phase 2 on-device test.
+- 2026-06-20 — **Phase 2.1: FULL ATD admin (app 1.1.0 → 1.2.0).** Brought the
+  Analytics slice to web-parity: full Jobs management (enable/disable/re-map/rebuild/
+  delete) + new Environments/Targets CRUD, Runner Settings (`/config`) editor, Queue,
+  Discovery screens + a dashboard Manage menu. Reusable `components/form.tsx`. No DB
+  change (all endpoints already existed; shapes verified live). tsc + Metro-android
+  (3.24 MB) clean. **Pending:** the same single preview rebuild + on-device test.

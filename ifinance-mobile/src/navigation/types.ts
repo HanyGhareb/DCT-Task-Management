@@ -8,6 +8,11 @@ export type RootStackParamList = {
   AtdJobs: undefined;
   AtdRuns: undefined;
   AtdRunDetail: { runId: number };
+  AtdQueue: undefined;
+  AtdEnvironments: undefined;
+  AtdTargets: undefined;
+  AtdRunnerSettings: undefined;
+  AtdDiscovery: undefined;
 };
 
 export type TabParamList = {

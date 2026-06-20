@@ -25,7 +25,8 @@ export const OFFLINE_ERROR: ApiError = { status: 0, message: 'offline' };
 export interface QueuedMutationConfig<V> {
   /** ORDS module for `api.for(module)`; omit for the shared `/dct`. */
   module?: string;
-  method?: QueueMethod; // default POST
+  /** HTTP method — static or derived per call (default POST). */
+  method?: QueueMethod | ((vars: V) => QueueMethod);
   path: (vars: V) => string;
   body?: (vars: V) => unknown;
   /** Human label stored with a queued item (shown in the Outbox). */
@@ -44,7 +45,7 @@ export function useQueuedMutation<V, T = unknown>(
   return useMutation<QueuedResult<T>, ApiError, V>({
     mutationFn: async (vars: V): Promise<QueuedResult<T>> => {
       const module = cfg.module ?? '';
-      const method: QueueMethod = cfg.method ?? 'POST';
+      const method: QueueMethod = typeof cfg.method === 'function' ? cfg.method(vars) : cfg.method ?? 'POST';
       const path = cfg.path(vars);
       const body = cfg.body?.(vars);
       const keys = cfg.invalidateKeys?.(vars) ?? [];

@@ -230,7 +230,7 @@ BEGIN
     AND (l_cat IS NULL OR t.team_category=l_cat) AND (l_status IS NULL OR t.status=l_status)
     AND (l_search IS NULL OR UPPER(t.team_name_en||' '||t.team_code) LIKE '%'||UPPER(l_search)||'%')
     AND t.team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)))
-    AND (l_mine != 'Y' OR EXISTS (SELECT 1 FROM dct_tm_members m WHERE m.team_id=t.team_id AND m.user_id=l_uid AND m.is_active='Y'));
+    AND (NVL(l_mine,'N') != 'Y' OR EXISTS (SELECT 1 FROM dct_tm_members m WHERE m.team_id=t.team_id AND m.user_id=l_uid AND m.is_active='Y'));
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
@@ -240,7 +240,7 @@ BEGIN
       AND (l_cat IS NULL OR t.team_category=l_cat) AND (l_status IS NULL OR t.status=l_status)
       AND (l_search IS NULL OR UPPER(t.team_name_en||' '||t.team_code) LIKE '%'||UPPER(l_search)||'%')
       AND t.team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid)))
-      AND (l_mine != 'Y' OR EXISTS (SELECT 1 FROM dct_tm_members m WHERE m.team_id=t.team_id AND m.user_id=l_uid AND m.is_active='Y'))
+      AND (NVL(l_mine,'N') != 'Y' OR EXISTS (SELECT 1 FROM dct_tm_members m WHERE m.team_id=t.team_id AND m.user_id=l_uid AND m.is_active='Y'))
     ORDER BY t.team_id DESC OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
     APEX_JSON.open_object;

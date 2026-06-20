@@ -152,6 +152,18 @@ Login user `ADMIN` returned `rolesCsv=PLATFORM_USER,SYS_ADMIN` (sees Analytics t
   deliberately NOT fired against PROD (they trigger real loads) — proven on-device.
 - `app.json` version bumped **1.0.0 → 1.1.0**.
 
+### Phase 2.1 — FULL ATD admin (web-parity) ✅ CODE COMPLETE (2026-06-20, v1.2.0)
+Per user request ("all functions available… runner settings"), the ATD slice was
+extended to mirror the web app — **no DB change** (every endpoint already existed):
+- **Jobs:** enqueue / reset / **enable / disable** / re-map / rebuild / delete (bottom-
+  sheet; Android Alert caps at 3 buttons). **Environments** + **Targets**: full CRUD.
+- **Runner Settings** (`/config`): typed editor (STRING/NUMBER/ENUM/BOOL/secret); PUTs
+  only changed keys so write-only secrets (`secretSet`) are preserved.
+- **Queue** (counts + READY/CLAIMED + reap) · **Discovery** (subject areas + (re)discover
+  + history; deep column-picker/AI-builder remains web). **Dashboard Manage menu** to all.
+- Reusable `components/form.tsx`. Partial-PUT safety confirmed (`does_exist` per column).
+  tsc + Metro-android (3.24 MB) clean. Same single preview rebuild still pending.
+
 ### Pending (Layer 4)
 On-device test with an ATD-admin session via a new **preview** build
 (`$env:EAS_NO_VCS=1; eas build --profile preview --platform android`): dashboard

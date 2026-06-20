@@ -5,7 +5,7 @@
  * a light auto-poll while focused.
  */
 import React from 'react';
-import { RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
+import { Pressable, RefreshControl, ScrollView, StyleSheet, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -69,10 +69,18 @@ export function AtdDashboardScreen() {
             />
           </View>
 
-          {/* Quick links */}
-          <View style={styles.linksRow}>
-            <LinkCard icon="construct" label={t('atd.viewJobs')} onPress={() => nav.navigate('AtdJobs')} color={ATD} />
-            <LinkCard icon="time" label={t('atd.viewRuns')} onPress={() => nav.navigate('AtdRuns')} color={palette.info} />
+          {/* Manage menu */}
+          <T variant="label" color={palette.textMuted} style={styles.sectionLabel}>
+            {t('atd.menu')}
+          </T>
+          <View style={styles.menuGrid}>
+            <MenuItem icon="construct" label={t('atd.jobs')} onPress={() => nav.navigate('AtdJobs')} color={ATD} />
+            <MenuItem icon="layers" label={t('atd.queue')} onPress={() => nav.navigate('AtdQueue')} color={palette.warning} />
+            <MenuItem icon="time" label={t('atd.runs')} onPress={() => nav.navigate('AtdRuns')} color={palette.info} />
+            <MenuItem icon="albums" label={t('atd.discovery')} onPress={() => nav.navigate('AtdDiscovery')} color={ATD} />
+            <MenuItem icon="cloud" label={t('atd.environments')} onPress={() => nav.navigate('AtdEnvironments')} color={palette.info} />
+            <MenuItem icon="server" label={t('atd.targets')} onPress={() => nav.navigate('AtdTargets')} color={palette.success} />
+            <MenuItem icon="settings" label={t('atd.runnerSettings')} onPress={() => nav.navigate('AtdRunnerSettings')} color={palette.textMuted} />
           </View>
 
           {/* Alerts */}
@@ -155,17 +163,18 @@ function Stat({ label, value, sub, color }: { label: string; value: string | num
   );
 }
 
-function LinkCard({ icon, label, onPress, color }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; color: string }) {
+function MenuItem({ icon, label, onPress, color }: { icon: keyof typeof Ionicons.glyphMap; label: string; onPress: () => void; color: string }) {
   const { palette } = useTheme();
   return (
-    <Card onPress={onPress} style={{ flex: 1, marginBottom: 0 }}>
-      <View style={styles.linkInner}>
-        <Ionicons name={icon} size={22} color={color} />
-        <T variant="title" style={{ marginStart: spacing.sm }}>
-          {label}
-        </T>
-      </View>
-    </Card>
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.menuItem, { backgroundColor: pressed ? palette.surfaceAlt : palette.surface, borderColor: palette.border }]}
+    >
+      <Ionicons name={icon} size={24} color={color} />
+      <T variant="caption" color={palette.text} numberOfLines={1} style={{ marginTop: 6, textAlign: 'center' }}>
+        {label}
+      </T>
+    </Pressable>
   );
 }
 
@@ -173,8 +182,8 @@ const styles = StyleSheet.create({
   safe: { flex: 1 },
   kpiRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
   stat: { flex: 1, borderWidth: 1, borderRadius: 12, padding: spacing.md, alignItems: 'flex-start' },
-  linksRow: { flexDirection: 'row', gap: spacing.sm, marginBottom: spacing.md },
-  linkInner: { flexDirection: 'row', alignItems: 'center' },
+  menuGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.sm },
+  menuItem: { width: '31%', borderWidth: 1, borderRadius: 12, paddingVertical: spacing.md, alignItems: 'center', flexGrow: 1 },
   sectionLabel: { marginTop: spacing.md, marginBottom: spacing.sm, textTransform: 'uppercase', letterSpacing: 0.5 },
   alertTop: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
   okRow: { flexDirection: 'row', alignItems: 'center' },
