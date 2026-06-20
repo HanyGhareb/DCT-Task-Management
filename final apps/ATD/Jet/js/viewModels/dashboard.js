@@ -9,7 +9,10 @@ function (ko, atd, i18n, charts) {
     self.queue = ko.observable({});
     self.recent = ko.observableArray([]);
     self.alerts = ko.observableArray([]);
+    self.actions = ko.observable(null);   // Fusion action-queue health tile
     self.go = function (id) { window._jetApp.navigate(id); };
+
+    atd.getActionStats().then(function (a) { self.actions(a); }).catch(function () {});
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
 
     atd.getDashboard().then(function (d) {

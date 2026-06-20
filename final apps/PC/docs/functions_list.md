@@ -60,6 +60,16 @@ Module: **Petty Cash** · ORDS base: `/ords/admin/pc`
 **Approvals** (`approvals`) — approval inbox across PC document types.
 - `openModal` / `submitAction` / `closeModal` · `viewSource` · `typeClass` / `typeLabel` / `fmtAmount` / `fmtDate`.
 
+**Fusion AP write-back (backend, no UI).** On a reimbursement's final approval, both the interactive
+approve handler (`06_pc_ords.sql`) and the auto-approval sweep (`db/v2/14` `apply_final_approval`)
+call `DCT_PC_FUSION_PKG.enqueue_fusion_action(reimb_id)` — a **no-op unless** PETTY_CASH setting
+`FUSION_POST_REIMB=Y` (or the row's `post_to_fusion='Y'`). It builds an AP-invoice payload
+(`build_ap_invoice_payload`) and enqueues an idempotent `AP_INVOICE` action (keyed by `reimb_number`)
+into `ATD_ACTION_REQUEST`; the Analytics-Loader runner (`runner.py --actions`) creates the invoice in
+Fusion and calls back `receive_fusion_result(reimb_id, invoice_id)` → reimbursement
+`fusion_status=POSTED` + `fusion_invoice_id`. New columns on `DCT_PC_REIMBURSEMENTS`:
+`post_to_fusion`, `fusion_status`, `fusion_invoice_id`, `fusion_pushed_at`. Script: `db/07_pc_fusion.sql`.
+
 ## 7. Configuration
 
 **GL Codes** (`glCodes`) — GL code combination master.

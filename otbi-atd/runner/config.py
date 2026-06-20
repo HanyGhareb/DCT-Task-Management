@@ -97,6 +97,38 @@ def get_browser_jobs_sqlcl(only=None):
     return sqlrun.query_json(sql)
 
 
+def get_default_browser_env(conn):
+    """First enabled BROWSER-track env — used when an action row has no env_name."""
+    cur = conn.cursor()
+    cur.execute("select * from (select * from prod.atd_otbi_env "
+                "where enabled='Y' and extract_track='BROWSER' order by env_name) "
+                "where rownum = 1")
+    rows = _rows(cur)
+    return rows[0] if rows else None
+
+
+def get_action(conn, action_id):
+    """Fetch one ATD_ACTION_REQUEST row (+ its env's URLs/credential_ref).
+    env columns are NULL when the action carries no env_name (caller falls back
+    to get_default_browser_env)."""
+    cur = conn.cursor()
+    cur.execute("""select a.action_id, a.action_type, a.env_name, a.source_module,
+                          a.source_type, a.source_id, a.source_ref, a.idem_key,
+                          a.payload_json, e.analytics_base_url, e.xmlpserver_base_url,
+                          e.fusion_apps_url, e.credential_ref
+                     from prod.atd_action_request a
+                     left join prod.atd_otbi_env e on e.env_name = a.env_name
+                    where a.action_id = :id""", id=action_id)
+    rows = _rows(cur)
+    if not rows:
+        return None
+    a = rows[0]
+    v = a.get("payload_json")
+    if v is not None and not isinstance(v, str):
+        a["payload_json"] = v.read()
+    return a
+
+
 def get_browser_jobs(conn, only=None):
     """Enabled jobs whose env is BROWSER track (Track B owns these)."""
     cur = conn.cursor()

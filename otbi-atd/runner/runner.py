@@ -32,6 +32,13 @@ Build new analyses (oracledb mode only — "Add New OTBI Analysis" from the Jobs
                              # in OTBI (create_analysis), register it as a job, load once
   python runner.py --discover# drain QUEUED prod.atd_sa_catalog rows: scrape each subject
                              # area's folders+columns -> cache for the UI column picker
+
+Fusion write-back actions (the INVERSE of extract — oracledb mode only):
+  python runner.py --actions [--forever]
+                             # drain prod.atd_action_request: perform each action INSIDE
+                             # Fusion (first type AP_INVOICE) via the shared SSO session.
+                             # Idempotent (handler pre-checks Fusion); writes are gated by
+                             # ATD_ACTION_LIVE=1 (else dry-run: probe + validate, no save).
 """
 import hashlib
 import json
@@ -108,9 +115,9 @@ def _run_one_sqlcl(ctx, env, job):
 def _log_start(conn, name, track="BROWSER"):
     cur = conn.cursor()
     rid = cur.var(int)
-    cur.execute("insert into prod.atd_load_run_log(job_name, track, status) "
-                "values (:n,:t,'RUNNING') returning run_id into :r",
-                n=name[:80], t=track, r=rid)
+    cur.execute("insert into prod.atd_load_run_log(job_name, track, status, host_id) "
+                "values (:n,:t,'RUNNING',:h) returning run_id into :r",
+                n=name[:80], t=track, h=_worker_id()[:120], r=rid)
     conn.commit()
     return rid.getvalue()[0]
 
@@ -164,6 +171,40 @@ def _worker_id():
     return os.environ.get("ATD_WORKER_ID") or socket.gethostname()
 
 
+def _heartbeat(conn, status, job=None):
+    """Upsert this worker's liveness row (ATD_WORKER_HEARTBEAT) for the UI Workers
+    panel. Best-effort: a heartbeat failure must never break the worker."""
+    try:
+        conn.cursor().execute(
+            "merge into prod.atd_worker_heartbeat t "
+            "using (select :w worker_id from dual) s on (t.worker_id = s.worker_id) "
+            "when matched then update set last_seen=systimestamp, status=:st, current_job=:j "
+            "when not matched then insert (worker_id, last_seen, status, current_job) "
+            "values (:w, systimestamp, :st, :j)",
+            w=_worker_id()[:120], st=status, j=(job[:256] if job else None))
+        conn.commit()
+    except Exception:  # noqa: BLE001
+        pass
+
+
+def _alert_stale_workers(conn, stale_minutes=5):
+    """Telegram-notify once when a peer's heartbeat goes stale, then flag it DOWN so
+    we don't spam (it re-arms when that worker next heartbeats). Best-effort."""
+    try:
+        cur = conn.cursor()
+        cur.execute("select worker_id from prod.atd_worker_heartbeat "
+                    "where status <> 'DOWN' "
+                    "  and last_seen < systimestamp - numtodsinterval(:m,'MINUTE')",
+                    m=stale_minutes)
+        stale = [r[0] for r in cur.fetchall()]
+        for w in stale:
+            notify.send(f"otbi-atd: worker {w} is silent (no heartbeat > {stale_minutes}m)")
+            cur.execute("update prod.atd_worker_heartbeat set status='DOWN' where worker_id=:w", w=w)
+            conn.commit()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _enqueue(conn, only):
     n = conn.cursor().callfunc("prod.atd_queue_pkg.enqueue", int, [only])
     print(f"[enqueue] marked {n} job(s) READY" + (f" ({only})" if only else ""))
@@ -172,7 +213,7 @@ def _enqueue(conn, only):
 def _run_worker(conn, load, forever):
     """Claim+run jobs from the shared queue until it's empty (or forever)."""
     host = _worker_id()
-    lease = int(os.environ.get("ATD_LEASE_MINUTES", "30"))
+    lease = int(os.environ.get("ATD_LEASE_MINUTES", "10"))
     idle = int(os.environ.get("ATD_WORKER_IDLE", "15"))
     run_one = _make_run_one_oracledb(conn, load)
     processed, failures = 0, 0
@@ -189,6 +230,16 @@ def _run_worker(conn, load, forever):
                     "prod.atd_queue_pkg.claim_next", str, [host])
                 if not name:
                     if forever:
+                        # idle: keep liveness fresh, recover dead peers' jobs, alert on
+                        # silent peers, and reuse the warm session for discovery + builds.
+                        _heartbeat(conn, "IDLE")
+                        conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
+                        _alert_stale_workers(conn)
+                        try:
+                            _discover_requests(conn)
+                            _build_requests(conn, load)
+                        except Exception as e:  # noqa: BLE001
+                            print(f"[worker {host}] idle discover/build error: {e}")
                         time.sleep(idle)
                         continue
                     break
@@ -208,6 +259,7 @@ def _run_worker(conn, load, forever):
                     browsers.append(browser)
                     ctx_by_env[env_name] = (env, ctx)
                 env, ctx = ctx_by_env[env_name]
+                _heartbeat(conn, "BUSY", name)
                 ok = run_one(ctx, env, job)
                 conn.cursor().callproc(
                     "prod.atd_queue_pkg." + ("mark_done" if ok else "mark_failed"), [name])
@@ -217,6 +269,108 @@ def _run_worker(conn, load, forever):
             for b in browsers:
                 b.close()
     print(f"\n[worker {host}] done — processed {processed} job(s), {failures} failure(s)")
+    return failures
+
+
+# ---- Fusion write-back action queue (the inverse of the extract jobs) ---------
+def _action_result_callback(conn, action, fusion_id, ref):
+    """Hand the Fusion result back to the source module so it can mark its own row
+    (e.g. PC reimbursement -> POSTED with the invoice id). New source modules add a
+    branch here. The worker commits after this returns."""
+    mod = (action.get("source_module") or "").upper()
+    sid = action.get("source_id")
+    if sid is None:
+        return
+    if mod == "PC":
+        conn.cursor().callproc("prod.dct_pc_fusion_pkg.receive_fusion_result",
+                               [action.get("source_type"), int(sid), fusion_id, ref])
+
+
+def _run_action_worker(conn, forever):
+    """Claim+perform Fusion actions from ATD_ACTION_REQUEST until empty (or forever).
+    Reuses the shared SSO session (auth.authenticate) and the single-browser lock.
+    Each action is idempotent (the handler pre-checks Fusion); writes are gated by
+    ATD_ACTION_LIVE=1 (else the handler raises DryRun and the row is marked failed
+    with a clear reason)."""
+    import actions
+    host = _worker_id()
+    lease = int(os.environ.get("ATD_ACTION_LEASE_MINUTES",
+                               os.environ.get("ATD_LEASE_MINUTES", "30")))
+    idle = int(os.environ.get("ATD_WORKER_IDLE", "15"))
+    live = os.environ.get("ATD_ACTION_LIVE", "0") == "1"
+    processed, failures = 0, 0
+    ctx_by_env, browsers = {}, []
+    reaped = conn.cursor().callfunc("prod.atd_action_pkg.reap_stale_actions", int, [lease])
+    print(f"[action-worker {host}] starting (lease={lease}m, forever={forever}, "
+          f"live={live}" + (f", reaped {reaped} stale" if reaped else "") + ")")
+    if not live:
+        print("[action-worker] ATD_ACTION_LIVE != 1 — DRY RUN: idempotency + form "
+              "validation only, nothing will be saved in Fusion.")
+    with sync_playwright() as p:
+        try:
+            while True:
+                aid = conn.cursor().callfunc(
+                    "prod.atd_action_pkg.claim_next_action", int, [host])
+                if not aid:
+                    if forever:
+                        time.sleep(idle)
+                        continue
+                    break
+                action = config.get_action(conn, aid)
+                if not action:
+                    conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                           [aid, "no action row after claim"])
+                    failures += 1
+                    continue
+                # resolve the Fusion env (action's own, else first BROWSER env)
+                env_name = action.get("env_name")
+                if not env_name or not action.get("analytics_base_url"):
+                    dflt = config.get_default_browser_env(conn)
+                    if not dflt:
+                        conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                               [aid, "no enabled BROWSER env configured"])
+                        failures += 1
+                        continue
+                    env_name = dflt["env_name"]
+                    action["analytics_base_url"] = dflt["analytics_base_url"]
+                    action["fusion_apps_url"] = dflt.get("fusion_apps_url")
+                    action["credential_ref"] = dflt.get("credential_ref")
+                if env_name not in ctx_by_env:
+                    env = {"env_name": env_name,
+                           "analytics_base_url": action["analytics_base_url"],
+                           "fusion_apps_url": action.get("fusion_apps_url"),
+                           "credential_ref": action.get("credential_ref") or env_name}
+                    browser, ctx = auth.authenticate(p, env)
+                    browsers.append(browser)
+                    ctx_by_env[env_name] = (env, ctx)
+                env, ctx = ctx_by_env[env_name]
+                try:
+                    fusion_id, ref = actions.dispatch(ctx, env, action)
+                    conn.cursor().callproc("prod.atd_action_pkg.mark_action_done",
+                                           [aid, fusion_id, ref])
+                    _action_result_callback(conn, action, fusion_id, ref)
+                    conn.commit()
+                    print(f"[action {aid}] DONE {action['action_type']} "
+                          f"{action.get('source_ref') or ''} -> {fusion_id} ({ref})")
+                    processed += 1
+                except actions.DryRun as d:
+                    conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                           [aid, str(d)[:3900]])
+                    print(f"[action {aid}] DRY-RUN: {d}")
+                    failures += 1
+                except Exception as e:  # noqa: BLE001
+                    try:
+                        conn.rollback()
+                    except Exception:  # noqa: BLE001
+                        pass
+                    conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                           [aid, str(e)[:3900]])
+                    print(f"[action {aid}] FAILED: {e}")
+                    failures += 1
+        finally:
+            for b in browsers:
+                b.close()
+    print(f"\n[action-worker {host}] done — processed {processed}, {failures} failure(s)")
     return failures
 
 
@@ -268,21 +422,22 @@ def _run_job_now(job, run_one):
 
 
 def _build_requests(conn, load):
-    """Drain QUEUED analysis-build requests: build each in OTBI (create_analysis),
-    register it as a job, then load it once. Marks each DONE / FAILED."""
+    """Drain QUEUED analysis-build requests, claiming each via ATD_QUEUE_PKG.claim_build
+    (FOR UPDATE SKIP LOCKED -> flips QUEUED->BUILDING atomically) so two workers never
+    build the same request. Build each in OTBI, register as a job, load once; mark
+    DONE / FAILED."""
     import create_analysis
-    cur = conn.cursor()
-    cur.execute("SELECT req_id, spec_json FROM prod.atd_analysis_request "
-                "WHERE status='QUEUED' ORDER BY req_id")
-    reqs = [(r[0], r[1].read() if hasattr(r[1], "read") else r[1]) for r in cur.fetchall()]
-    if not reqs:
-        print("[build] no queued analysis requests")
-        return 0
     run_one = _make_run_one_oracledb(conn, load)
     failures = 0
-    for req_id, spec_text in reqs:
+    while True:
+        req_id = conn.cursor().callfunc("prod.atd_queue_pkg.claim_build", int, [])
+        if not req_id:
+            break
+        cur = conn.cursor()
+        cur.execute("SELECT spec_json FROM prod.atd_analysis_request WHERE req_id=:id", id=req_id)
+        row = cur.fetchone()
+        spec_text = (row[0].read() if row and hasattr(row[0], "read") else (row[0] if row else None))
         print(f"[build] request {req_id}: building analysis...")
-        _set_req(conn, req_id, "BUILDING")
         try:
             spec = json.loads(spec_text)
             path = create_analysis.build_analysis(spec)        # OTBI UI build + save + verify
@@ -364,15 +519,13 @@ def _discover_requests(conn):
     # first recover anything stranded in SCRAPING by a dead scrape (lease = ATD_LEASE_MINUTES)
     _reap_stale_discovery(conn, int(os.environ.get("ATD_LEASE_MINUTES", "30")))
     cur = conn.cursor()
-    cur.execute("SELECT subject_area FROM prod.atd_sa_catalog "
-                "WHERE status='QUEUED' ORDER BY requested_at FETCH FIRST 1 ROW ONLY")
-    row = cur.fetchone()
-    if not row:
+    # claim the next subject area atomically (FOR UPDATE SKIP LOCKED -> SCRAPING) so two
+    # workers never scrape the same one
+    sa = conn.cursor().callfunc("prod.atd_queue_pkg.claim_sa", str, [])
+    if not sa:
         print("[discover] no queued subject-area discovery requests")
         return 0
-    sa = row[0]
     print(f"[discover] {sa}: scraping...")
-    _set_sa(conn, sa, "SCRAPING")
     run_id = _log_start(conn, sa, track="DISCOVER")       # history for the Discovery page
     try:
         tree = create_analysis.discover_subject_area(sa)
@@ -412,19 +565,22 @@ def main(argv):
     forever = "--forever" in args
     build = "--build" in args
     discover = "--discover" in args
+    do_actions = "--actions" in args
     only = next((a for a in args if not a.startswith("-")), None)
     mode = _resolve_mode()
 
     # queue commands require oracledb (the function lives in the DB; the loop
     # claims via a live oracledb connection)
-    if enqueue or worker or build or discover:
+    if enqueue or worker or build or discover or do_actions:
         if mode != "oracledb":
-            print("[queue] --enqueue/--worker/--build/--discover require oracledb mode "
-                  "(set ATD_DB_USER/PASSWORD + ATD_WALLET_PASSWORD)")
+            print("[queue] --enqueue/--worker/--build/--discover/--actions require oracledb "
+                  "mode (set ATD_DB_USER/PASSWORD + ATD_WALLET_PASSWORD)")
             sys.exit(2)
         import load
         conn = config.connect()
         config.apply_runner_config(conn)
+        if do_actions:                  # drain Fusion write-back actions (AP invoices...)
+            sys.exit(1 if _run_action_worker(conn, forever) else 0)
         if discover:                    # drain subject-area column-picker scrapes
             sys.exit(1 if _discover_requests(conn) else 0)
         if build:                       # drain "Add New OTBI Analysis" requests

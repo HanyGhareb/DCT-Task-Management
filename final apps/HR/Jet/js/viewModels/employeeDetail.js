@@ -562,6 +562,67 @@ function (ko, authService, hrService) {
       });
     };
 
+    // ── Fusion AP supplier mapping ─────────────────────────────────────────
+    self.supMap         = ko.observable(null);   // current saved mapping (display)
+    self.showSupMapModal = ko.observable(false);
+    self.supMapSaving   = ko.observable(false);
+    self.supMapError    = ko.observable('');
+    self.supMapSaved    = ko.observable('');
+    self.supMapForm = {
+      supplier_number: ko.observable(''),
+      supplier_name:   ko.observable(''),
+      supplier_site:   ko.observable(''),
+      business_unit:   ko.observable(''),
+      payment_method:  ko.observable(''),
+      pay_group:       ko.observable(''),
+      payment_terms:   ko.observable(''),
+      currency_code:   ko.observable('AED'),
+      is_active:       ko.observable('Y'),
+    };
+
+    function _supVal(m, a, b) { return (m && (m[a] !== undefined ? m[a] : m[b])) || ''; }
+
+    self.openSupMap = function () {
+      var m = self.supMap() || {};
+      self.supMapForm.supplier_number(_supVal(m, 'supplierNumber', 'supplier_number'));
+      self.supMapForm.supplier_name(_supVal(m, 'supplierName', 'supplier_name'));
+      self.supMapForm.supplier_site(_supVal(m, 'supplierSite', 'supplier_site'));
+      self.supMapForm.business_unit(_supVal(m, 'businessUnit', 'business_unit'));
+      self.supMapForm.payment_method(_supVal(m, 'paymentMethod', 'payment_method'));
+      self.supMapForm.pay_group(_supVal(m, 'payGroup', 'pay_group'));
+      self.supMapForm.payment_terms(_supVal(m, 'paymentTerms', 'payment_terms'));
+      self.supMapForm.currency_code(_supVal(m, 'currencyCode', 'currency_code') || 'AED');
+      self.supMapForm.is_active(_supVal(m, 'isActive', 'is_active') || 'Y');
+      self.supMapError('');
+      self.showSupMapModal(true);
+    };
+    self.closeSupMap = function () { if (!self.supMapSaving()) self.showSupMapModal(false); };
+
+    self.saveSupMap = function () {
+      var data = {
+        supplier_number: self.supMapForm.supplier_number().trim(),
+        supplier_name:   self.supMapForm.supplier_name().trim(),
+        supplier_site:   self.supMapForm.supplier_site().trim(),
+        business_unit:   self.supMapForm.business_unit().trim(),
+        payment_method:  self.supMapForm.payment_method().trim(),
+        pay_group:       self.supMapForm.pay_group().trim(),
+        payment_terms:   self.supMapForm.payment_terms().trim(),
+        currency_code:   self.supMapForm.currency_code().trim() || 'AED',
+        is_active:       self.supMapForm.is_active() || 'Y',
+      };
+      self.supMapSaving(true);
+      hrService.saveSupplierMap(personId, data).then(function () {
+        self.supMapSaving(false);
+        self.showSupMapModal(false);
+        self.supMap(Object.assign({}, self.supMap() || {}, data));
+        self.supMapSaved('Supplier mapping saved.');
+        setTimeout(function () { self.supMapSaved(''); }, 4000);
+      }).catch(function (err) {
+        self.supMapSaving(false);
+        self.supMapError((err && err.message) || 'Save failed.');
+      });
+    };
+
     // ── Helpers ────────────────────────────────────────────────────────────
     self.setTab = function (tab) { self.activeTab(tab); };
     self.goBack = function () { if (window._hrApp) window._hrApp.navigate('employees'); };
@@ -600,6 +661,7 @@ function (ko, authService, hrService) {
       if (self.showContractModal())   { self.closeContractModal();   return; }
       if (self.showSalaryModal())     { self.closeSalaryModal();     return; }
       if (self.showDocModal())        { self.closeDocModal();        return; }
+      if (self.showSupMapModal())     { self.closeSupMap();          return; }
       if (self.showEditModal())       { self.closeEdit();            return; }
     };
     document.addEventListener('keydown', self._onKeyDown);
@@ -617,12 +679,14 @@ function (ko, authService, hrService) {
         hrService.getContracts(personId),
         hrService.getSalaryHistory(personId),
         hrService.getDocuments(personId),
+        hrService.getSupplierMap(personId).catch(function () { return null; }),
       ]).then(function (results) {
         self.employee(results[0]);
         self.assignments(results[1]);
         self.contracts(results[2]);
         self.salaries(results[3]);
         self.documents(results[4]);
+        self.supMap(results[5] || null);
         self.loading(false);
       }).catch(function (err) {
         self.error((err && err.message) || 'Failed to load employee details.');

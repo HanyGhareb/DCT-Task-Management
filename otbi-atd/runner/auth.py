@@ -16,6 +16,7 @@ otbi_mfa_number.txt) so a wrapper/notifier can relay it.
 """
 import os
 import re
+import socket
 import time
 from pathlib import Path
 
@@ -68,18 +69,21 @@ def _validate(ctx, env):
 
 def surface_number(num, env_name):
     msg = num or "see login screen"
+    host = os.environ.get("ATD_WORKER_ID") or socket.gethostname()   # which VM is asking
     try:
         with open(NUMFILE, "w") as fh:
             fh.write(msg)
     except OSError:
         pass
-    print(f"[auth][{env_name}] >>> APPROVE THE AUTHENTICATOR PUSH — ENTER NUMBER: {msg}",
+    print(f"[auth][{host}][{env_name}] >>> APPROVE THE AUTHENTICATOR PUSH — ENTER NUMBER: {msg}",
           flush=True)
-    default = ("OTBI sign-in ({env}): open Microsoft Authenticator and enter "
+    default = ("OTBI sign-in on {host} ({env}): open Microsoft Authenticator and enter "
                "number {number} to approve. (expires in a few minutes)")
-    text = notify.render("ATD_MFA_MSG", default, number=msg, env=env_name)
+    text = notify.render("ATD_MFA_MSG", default, number=msg, env=env_name, host=host)
     if msg and str(msg) not in text:        # template dropped the number -> append it so it's never lost
         text = f"{text} (number: {msg})"
+    if host and host not in text:           # always identify the VM, even if the DB template omits {host}
+        text = f"[{host}] {text}"
     notify.send(text)
 
 
@@ -110,21 +114,26 @@ def _login(ctx, env, wait_secs):
     if sb:
         sb.click(); time.sleep(6)
 
-    # surface number-matching value
+    # surface number-matching value — poll: the number-match screen can take several
+    # seconds to render after the password submit (a single look races it).
     num = ""
-    try:
-        el = page.locator('#idRichContext_DisplaySign, .display-sign, [aria-label*="number"]')
-        if el.count() > 0:
-            num = el.first.inner_text().strip()
-    except Exception:
-        pass
-    if not num:
+    for _ in range(12):                       # up to ~36s
         try:
-            m = re.search(r"\b(\d{2})\b", page.inner_text("body"))
-            if m:
-                num = m.group(1)
+            el = page.locator('#idRichContext_DisplaySign, .display-sign, [aria-label*="number"]')
+            if el.count() > 0:
+                num = (el.first.inner_text() or "").strip()
         except Exception:
             pass
+        if not num:
+            try:
+                m = re.search(r"\b(\d{2})\b", page.inner_text("body"))
+                if m:
+                    num = m.group(1)
+            except Exception:
+                pass
+        if num:
+            break
+        time.sleep(3)
     surface_number(num, env["env_name"])
 
     # wait for approval -> analytics (handle the "Stay signed in?" page)

@@ -65,6 +65,12 @@ CREATE OR REPLACE PACKAGE prod.atd_queue_pkg AS
   PROCEDURE mark_failed(p_job VARCHAR2, p_run_id NUMBER DEFAULT NULL);
   -- Queue (mark READY) all enabled jobs, or one named job. Returns count.
   FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER;
+  -- Atomically claim the next QUEUED subject-area discovery (-> SCRAPING); SKIP LOCKED.
+  -- Returns subject_area or NULL. Lets N hosts drain the discover queue with no overlap.
+  FUNCTION claim_sa RETURN VARCHAR2;
+  -- Atomically claim the next QUEUED analysis-build request (-> BUILDING); SKIP LOCKED.
+  -- Returns req_id or NULL.
+  FUNCTION claim_build RETURN NUMBER;
 END atd_queue_pkg;
 /
 
@@ -128,14 +134,51 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
   FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
     n NUMBER;
   BEGIN
+    -- never reset an in-flight (CLAIMED) job - that would let a peer double-run it;
+    -- only READY/DONE/FAILED enabled jobs are (re)queued for the next cycle.
     UPDATE prod.atd_otbi_jobs
        SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL
      WHERE enabled = 'Y'
+       AND run_status <> 'CLAIMED'
        AND (p_only IS NULL OR job_name = p_only);
     n := SQL%ROWCOUNT;
     COMMIT;
     RETURN n;
   END enqueue;
+
+  FUNCTION claim_sa RETURN VARCHAR2 IS
+    CURSOR c IS
+      SELECT subject_area FROM prod.atd_sa_catalog
+       WHERE status = 'QUEUED' ORDER BY requested_at
+       FOR UPDATE SKIP LOCKED;
+    v prod.atd_sa_catalog.subject_area%TYPE;
+  BEGIN
+    OPEN c;
+    FETCH c INTO v;
+    IF c%FOUND THEN
+      UPDATE prod.atd_sa_catalog SET status = 'SCRAPING' WHERE subject_area = v;
+    END IF;
+    CLOSE c;
+    COMMIT;                 -- COMMIT releases the row lock; the SCRAPING flag now owns it
+    RETURN v;
+  END claim_sa;
+
+  FUNCTION claim_build RETURN NUMBER IS
+    CURSOR c IS
+      SELECT req_id FROM prod.atd_analysis_request
+       WHERE status = 'QUEUED' ORDER BY req_id
+       FOR UPDATE SKIP LOCKED;
+    v NUMBER;
+  BEGIN
+    OPEN c;
+    FETCH c INTO v;
+    IF c%FOUND THEN
+      UPDATE prod.atd_analysis_request SET status = 'BUILDING' WHERE req_id = v;
+    END IF;
+    CLOSE c;
+    COMMIT;
+    RETURN v;
+  END claim_build;
 
 END atd_queue_pkg;
 /

@@ -296,3 +296,91 @@ Backend additions: each `--discover` scrape now writes an `ATD_LOAD_RUN_LOG` row
 the Run Logs page stays load-focused. Redeploy `13_atd_ords.sql` (fresh session) for the new
 endpoint; no new DB script (reuses `ATD_LOAD_RUN_LOG`). Nav item added under Operations in
 `appController.js`.
+
+---
+
+**Fusion write-back ACTIONS — AP invoices from Petty Cash (APP_VERSION 1.7.0, 2026-06-20).**
+The inverse of the extract jobs: a queue of actions the runner *performs inside* Oracle Fusion via
+the SAME authenticated browser session (no service account). First action type = `AP_INVOICE`,
+sourced from approved Petty Cash reimbursements.
+
+- **DB (new, isolated):** `otbi-atd/db/19_atd_action_queue.sql` = `ATD_ACTION_REQUEST` (queue:
+  `READY|CLAIMED|DONE|FAILED|CANCELLED`, UNIQUE `idem_key`, `payload_json`) + `ATD_ACTION_PKG`
+  (`enqueue_action` MERGE-on-idem_key, `claim_next_action` FOR UPDATE SKIP LOCKED,
+  `mark_action_done/failed`, `reap_stale_actions`, `cancel_action`) + `ATD_ACTION_TYPE`/`ATD_ACTION_STATUS`
+  lookups. **Idempotency law:** a `DONE` row is never re-created; `enqueue` re-arms only FAILED/CANCELLED.
+- **DB (PC source):** `final apps/PC/db/07_pc_fusion.sql` = `DCT_PC_FUSION_PKG`
+  (`build_ap_invoice_payload` / `enqueue_fusion_action` / `receive_fusion_result`) + 4 tracking
+  columns on `DCT_PC_REIMBURSEMENTS` (`post_to_fusion`, `fusion_status`, `fusion_invoice_id`,
+  `fusion_pushed_at`) + 2 settings (`FUSION_POST_REIMB` Y/N gate, `FUSION_ENV_NAME`). Hooks:
+  `db/v2/14` `apply_final_approval` (sweep) + `final apps/PC/db/06_pc_ords.sql` (interactive approve)
+  both call `dct_pc_fusion_pkg.enqueue_fusion_action(reimb_id)` — **no-op until FUSION_POST_REIMB=Y**.
+  `changed_by` on `dct_request_status_history` is NOT NULL → both procs resolve the petty-cash owner
+  user_id (bit us once: ORA-01400).
+- **Runner:** `runner.py --actions [--forever]` (oracledb mode) drains the queue; `actions/__init__.py`
+  dispatch + `actions/ap_invoice.py` driver. **Idempotency probe** = read-only Payables REST lookup
+  by InvoiceNumber over the session cookies (`ctx.request`); if found, return that id, create nothing.
+  **Writes are gated by `ATD_ACTION_LIVE=1`** — without it the driver does probe + form validation and
+  raises `DryRun` (nothing saved). Pod-specific Create-Invoice selectors in `ap_invoice.py` MUST be
+  confirmed in a HEADED run against a Fusion TEST pod before the first live save.
+- **Schedule:** `run_atd_actions.ps1` (e.g. every 5 min, MultipleInstances=IgnoreNew) — shares the
+  SAME `.otbi_runner.lock` as loader/discover so no two tasks drive a Fusion browser concurrently.
+- **App 208 UI/ORDS:** `otbi-atd/db/20_atd_action_ords.sql` (ADDITIVE — no DELETE_MODULE) adds
+  `GET /atd/actions`, `GET /atd/actions/stats`, `GET /atd/actions/:id`, `POST /atd/actions/:id/retry`,
+  `POST /atd/actions/:id/cancel` to the live `atd.rest`. New JET `actions` view + dashboard tile.
+- **Employee→Fusion supplier map:** `otbi-atd/db/21_emp_supplier_map.sql` = `DCT_EMP_SUPPLIER_MAP`
+  (`source_module`, `party_key`=employee_num/freelancer_id, `supplier_number/name/site`,
+  `business_unit`, **`payment_method`**, `pay_group/payment_terms/currency_code`,
+  UNIQUE(source_module, party_key)). `build_ap_invoice_payload` LEFT-JOINs it (`PC` + employee_num,
+  active) → emits a `supplier{number,name,site,paymentMethod,payGroup,paymentTerms}` block and
+  overrides `businessUnit`/`currency`; omitted (ABSENT ON NULL) when unmapped. Per-app by design.
+  Ships EMPTY — populate before live posting.
+- **Deploy order (each in its OWN fresh SQLcl session — synonym rule):**
+  `@otbi-atd/db/19...` → `@otbi-atd/db/21...` → `@final apps/PC/db/07...` → `@db/v2/14...` →
+  `@final apps/PC/db/06...` (recreates pc.rest) → `@otbi-atd/db/20...`. Then bump ATD `APP_VERSION` + ship JET.
+- **Verified (2026-06-20):** all objects VALID; idempotency unit (DONE never resurrected); end-to-end
+  on real RMB-2026-00100 — payload builds, enqueue → 1 READY + reimb QUEUED, runner-callback → POSTED.
+  Runner action handler unit-tested (idempotent skip + dry-run safety). **Pending:** headed live test
+  of `ap_invoice.py` against a Fusion test pod (needs MFA approval) before enabling FUSION_POST_REIMB=Y.
+- **Honest note:** semi-attended — runs unattended while the saved SSO session is valid; a human
+  approves the Authenticator number-match only when it expires (same as the extract jobs).
+- **Explicit Fusion apps URL (db/22, 2026-06-21):** `ATD_OTBI_ENV.fusion_apps_url` (FUSION_ADGOV =
+  `https://iaaibv.fa.ocs.oraclecloud29.com`). `ap_invoice._apps_base` resolves: this column →
+  `ATD_FUSION_APPS_URL` env → derive from `analytics_base_url`. Threaded via `config.get_action` /
+  `get_default_browser_env` → worker env dict.
+- **Supplier identity source:** `DCT_EMP_SUPPLIER_MAP` is fed from the **HR module Employee screen**
+  (employee↔supplier mapping; HR has no supplier columns yet → this table is the store, party_key =
+  employee_number). HR-screen wiring is a follow-up.
+- **Smoke test (db/22 + runner):** `smoke_ap_invoice.fields.txt` (fill-in form) → generate
+  `payload.json` → `python smoke_ap_invoice.py payload.json` (HEADED, bypasses the queue). It first
+  runs a **fscmRestApi reachability probe** (settles the InvoiceId source: REST read-back if reachable,
+  else the invoice number we set + UI-based idempotency), then drives Create-Invoice. Dry-run by default
+  (fills the form, validates selectors, does NOT save); `ATD_ACTION_LIVE=1` actually saves. `create()`
+  now fills the form BEFORE the save gate so a dry-run exercises the selectors.
+- **AP invoice TYPE (answer to "Fusion doc"):** in Fusion Payables every invoice has a TYPE — Standard,
+  Prepayment, Credit Memo, etc. Reimbursement = **Standard** (built). Advance = likely **Prepayment**;
+  Clearing = prepayment application / adjustment — both pending confirmation before wiring their
+  action_types.
+
+---
+
+**Round 2 — all 3 PC documents + configurable type + HR mapping screen (2026-06-21):**
+- **Configurable invoice TYPE** (`otbi-atd/db/23_fusion_doctype_map.sql`): `DCT_FUSION_DOCTYPE_MAP`
+  (source_module, source_type) -> invoice_type. Seeded PC_REIMB=Standard, PC_CLEAR=Standard,
+  PC_ADVANCE=Prepayment. `DCT_PC_FUSION_PKG.doctype()` reads it (default Standard); the payload
+  carries `invoiceType`; `ap_invoice.py` fills the Fusion Invoice Type field from it.
+- **All 3 PC documents** now post (each its own per-type gate + tracking cols on
+  DCT_PETTY_CASH / DCT_PC_CLEARING / DCT_PC_REIMBURSEMENTS):
+  - Reimbursement -> Standard, gate FUSION_POST_REIMB, hook = approve (06 + sweep 14).
+  - Advance -> Prepayment, gate FUSION_POST_ADVANCE, hook = **disburse** (06 pc/:id/disburse,
+    fires at status->ACTIVE), idem = pc_number.
+  - Clearing -> Standard, gate FUSION_POST_CLEARING, hook = approve (06 + sweep 14), idem = clearing_number.
+  `receive_fusion_result` is now generic `(source_type, source_id, invoice_id, ref)`; the runner
+  passes `action.source_type`. Verified: reimb->Standard, advance->Prepayment enqueue end-to-end.
+- **HR Employee supplier-mapping screen** (`final apps/HR/db/07_hr_supplier_map_ords.sql`, additive
+  to hr.rest): `GET/PUT /hr/employees/:id/supplier-map` upsert DCT_EMP_SUPPLIER_MAP (source_module='PC',
+  party_key = employee_number). HR `employeeDetail` view: a "🏛 Supplier" button + modal (all fields
+  incl. payment_method). HR APP_VERSION 4.6.0. This is the map's source of truth per the requirement.
+- **Pending re-auth:** redeploy of `db/v2/14` (adds the CLEARING **sweep-path** enqueue) was blocked
+  by the deploy classifier; 14 is live with the reimbursement sweep hook only. Interactive clearing
+  approval already enqueues (06 live). Re-run `@db/v2/14_dct_approval_pkg.sql` when authorized.

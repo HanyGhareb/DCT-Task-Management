@@ -54,6 +54,18 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Queue & Operations (`queue`)
 - `load` (per-job claim state + worker) · `enqueueAll` · `reap` (lease minutes) · `enqueueOne`.
 
+## Fusion Actions (`actions`)
+Fusion write-back queue — the inverse of extract jobs. The runner (`python runner.py --actions`)
+performs each action *inside* Oracle Fusion via the shared SSO session; first type `AP_INVOICE`,
+sourced from approved Petty Cash reimbursements. Idempotent (never creates a duplicate invoice).
+- `load` (from `/actions` + `/actions/stats`): list of action requests + a status-count strip.
+- `setStatus` / `statusFilter`: filter by `READY|CLAIMED|DONE|FAILED|CANCELLED`.
+- `retry(row)` POST `/actions/:id/retry` (re-arm a FAILED/CANCELLED action → READY).
+- `cancel(row)` POST `/actions/:id/cancel` (cancel anything not DONE).
+- `openDetail(row)` / `closeDetail`: modal with pretty-printed `payload_json`, last error, and the
+  source-record status history (`detail` + `detailPayload`).
+- Dashboard tile: `actions` (queued = ready+claimed, failed) KPIs link here.
+
 ## OTBI Discovery (`discovery`)
 One page, three tables, for the `create_analysis` async pipeline:
 - **Discovery requests** (`loadRequests` from `/subject-areas`): current status per subject area
@@ -108,13 +120,17 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |
 | GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV |
+| GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
+| GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |
+| GET | `/actions/:id` | action detail: payload, last error, source status history |
+| POST | `/actions/:id/retry` · `/actions/:id/cancel` | re-arm FAILED/CANCELLED → READY · cancel (not-DONE) |
 
 All handlers: `dct_rest.validate_session` → 401, `dct_auth.has_role(user,'SYS_ADMIN')` → 403.
 
 ## Services / Data layer
 | File | Role |
 |---|---|
-| `js/services/atdService.js` | one method per ORDS endpoint (Promises) |
+| `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction` |
 | `js/services/api.js` | re-export of `shared/js/api.js` (Bearer + 401 handling) |
 | `js/services/authService.js` | session reader (shared `ifinance_jet_session`) |
 | `js/services/config.js` | `apiBase=/ords/admin/atd`, `authBase=/ords/admin/dct` |

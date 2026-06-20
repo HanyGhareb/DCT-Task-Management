@@ -1,0 +1,40 @@
+============================================================================
+ AP INVOICE — SMOKE TEST SAMPLE  (fill the blanks, send back; I'll generate the JSON)
+============================================================================
+Fill the value after each "= ". Leave a field blank if it does not apply.
+"Lines" repeats — copy the LINE block for each distribution line you want.
+
+--- HEADER -----------------------------------------------------------------
+invoiceNumber   =            (unique; e.g. SMOKE-TEST-001 — also the dedupe key)
+invoiceDate     =            (YYYY-MM-DD)
+invoiceAmount   =            (number, no currency symbol; must equal sum of line amounts)
+currency        =            (e.g. AED)
+description     =            (free text)
+businessUnit    =            (Fusion Business Unit name, e.g. "DCT Business Unit")
+
+--- SUPPLIER (the Fusion AP identity to bill to) ---------------------------
+supplier.number       =      (Fusion supplier number)
+supplier.name         =      (supplier name as it appears in Fusion)
+supplier.site         =      (supplier site / pay site, e.g. AUH-MAIN)
+supplier.paymentMethod =     (e.g. EFT | CHECK | WIRE)
+supplier.payGroup     =      (optional)
+supplier.paymentTerms =      (optional, e.g. Immediate)
+
+--- LINE 1 -----------------------------------------------------------------
+line.lineNumber      = 1
+line.amount          =       (number)
+line.glAccount       =       (full GL/distribution combination string)
+line.projectNumber   =       (optional — only if project-coded)
+line.taskNumber      =       (optional)
+line.expenditureType =       (optional)
+line.description     =       (optional)
+
+--- LINE 2 (copy this block for more lines; delete if only one line) -------
+line.lineNumber      = 2
+line.amount          =
+line.glAccount       =
+line.projectNumber   =
+line.taskNumber      =
+line.expenditureType =
+line.description     =
+============================================================================

@@ -29,6 +29,18 @@
       <div class="kpi__n" style="font-size:18px" data-bind="text: k().lastFinished || '—'"></div>
       <div class="kpi__l" data-bind="text: t('atd.dash.lastFinished')"></div>
     </div>
+    <!-- ko if: actions -->
+    <div class="kpi" style="cursor:pointer" data-bind="click: function(){ go('actions'); }">
+      <div class="kpi__n" data-bind="text: (actions().ready||0) + (actions().claimed||0)"></div>
+      <div class="kpi__l" data-bind="text: t('atd.dash.actionsQueued')"></div>
+    </div>
+    <!-- ko if: actions().failed > 0 -->
+    <div class="kpi" style="cursor:pointer" data-bind="click: function(){ go('actions'); }">
+      <div class="kpi__n" style="color:#C13A30" data-bind="text: actions().failed"></div>
+      <div class="kpi__l" data-bind="text: t('atd.dash.actionsFailed')"></div>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
   </div>
 
   <div style="display:grid; grid-template-columns:340px 1fr; gap:16px; margin-top:16px;">

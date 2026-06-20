@@ -1,0 +1,131 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.actions.title')"></h1>
+    <div class="page-actions">
+      <select class="form-control form-control--sm" style="max-width:160px"
+              data-bind="value: statusFilter, event: { change: load }">
+        <option value="" data-bind="text: t('atd.actions.allStatuses')"></option>
+        <option value="READY">READY</option>
+        <option value="CLAIMED">CLAIMED</option>
+        <option value="DONE">DONE</option>
+        <option value="FAILED">FAILED</option>
+        <option value="CANCELLED">CANCELLED</option>
+      </select>
+      <button class="btn btn-secondary" data-bind="click: load, text: t('atd.common.refresh')"></button>
+    </div>
+  </div>
+
+  <div class="muted" style="margin-bottom:12px" data-bind="text: t('atd.actions.hint')"></div>
+
+  <!-- ko if: stats -->
+  <div class="stat-strip" style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+    <span class="badge" data-bind="text: t('atd.actions.stat.ready')   + ': ' + (stats().ready||0)"></span>
+    <span class="badge" data-bind="text: t('atd.actions.stat.claimed') + ': ' + (stats().claimed||0)"></span>
+    <span class="badge badge--active" data-bind="text: t('atd.actions.stat.done')  + ': ' + (stats().done||0)"></span>
+    <span class="badge badge--idle"   data-bind="text: t('atd.actions.stat.failed')+ ': ' + (stats().failed||0)"></span>
+    <span class="badge" data-bind="text: t('atd.actions.stat.cancelled') + ': ' + (stats().cancelled||0)"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <!-- ko if: rows().length === 0 --><div class="empty-state" data-bind="text: t('atd.actions.empty')"></div><!-- /ko -->
+  <!-- ko if: rows().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th>#</th>
+        <th data-bind="text: t('atd.actions.col.type')"></th>
+        <th data-bind="text: t('atd.actions.col.source')"></th>
+        <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.actions.col.attempts')"></th>
+        <th data-bind="text: t('atd.actions.col.invoice')"></th>
+        <th data-bind="text: t('atd.actions.col.updated')"></th>
+        <th style="width:170px;"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: rows">
+        <tr>
+          <td class="mono" data-bind="text: $data.actionId"></td>
+          <td data-bind="text: $data.actionType"></td>
+          <td class="mono" data-bind="text: $data.sourceRef || $data.idemKey"></td>
+          <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+          <td data-bind="text: $data.attempts + '/' + $data.maxAttempts"></td>
+          <td class="mono" data-bind="text: $data.fusionInvoiceId || '—'"></td>
+          <td data-bind="text: $data.updatedAt || '—'"></td>
+          <td class="cell-actions" style="text-align:end;">
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.openDetail($data); }, text: $vm.t('atd.actions.detail')"></button>
+            <!-- ko if: $data.runStatus === 'FAILED' || $data.runStatus === 'CANCELLED' -->
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.retry($data); }, text: $vm.t('atd.actions.retry')"></button>
+            <!-- /ko -->
+            <!-- ko if: $data.runStatus !== 'DONE' && $data.runStatus !== 'CANCELLED' -->
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.cancel($data); }, text: $vm.t('atd.actions.cancel')"></button>
+            <!-- /ko -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- detail modal -->
+  <!-- ko if: detailOpen -->
+  <div class="modal-overlay" data-bind="click: closeDetail">
+    <div class="modal-box" data-bind="click: function(){ return true; }, clickBubble: false" style="max-width:680px;">
+      <div class="modal-header">
+        <h2 data-bind="text: t('atd.actions.detailTitle') + ' #' + (detail() ? detail().actionId : '')"></h2>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-secondary" data-bind="click: closeDetail, text: t('atd.common.close')"></button>
+        </div>
+      </div>
+      <!-- ko if: detail -->
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.actions.col.type')"></label>
+            <div data-bind="text: detail().actionType"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.status')"></label>
+            <div><span data-bind="css: statusClass(detail().runStatus), text: detail().runStatus"></span></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.actions.col.source')"></label>
+            <div class="mono" data-bind="text: detail().sourceModule + ' / ' + detail().sourceType + ' / ' + (detail().sourceRef || '')"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.actions.idemKey')"></label>
+            <div class="mono" data-bind="text: detail().idemKey"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.actions.col.invoice')"></label>
+            <div class="mono" data-bind="text: detail().fusionInvoiceId || '—'"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.actions.col.attempts')"></label>
+            <div data-bind="text: detail().attempts + '/' + detail().maxAttempts"></div></div>
+        </div>
+
+        <!-- ko if: detail().lastError -->
+        <label class="form-label" style="margin-top:10px" data-bind="text: t('atd.actions.lastError')"></label>
+        <pre class="code-block" style="white-space:pre-wrap; color:var(--vault-red,#b00);" data-bind="text: detail().lastError"></pre>
+        <!-- /ko -->
+
+        <label class="form-label" style="margin-top:10px" data-bind="text: t('atd.actions.payload')"></label>
+        <pre class="code-block" style="white-space:pre-wrap; max-height:240px; overflow:auto;" data-bind="text: detailPayload"></pre>
+
+        <!-- ko if: detail().history && detail().history.length -->
+        <label class="form-label" style="margin-top:10px" data-bind="text: t('atd.actions.history')"></label>
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr>
+              <th data-bind="text: t('atd.col.status')"></th>
+              <th data-bind="text: t('atd.actions.col.updated')"></th>
+              <th data-bind="text: t('atd.actions.comments')"></th>
+            </tr></thead>
+            <tbody data-bind="foreach: detail().history">
+              <tr>
+                <td data-bind="text: $data.newStatus"></td>
+                <td data-bind="text: $data.changedAt"></td>
+                <td data-bind="text: $data.comments || ''"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

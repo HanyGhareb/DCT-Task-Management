@@ -1,0 +1,22 @@
+[Unit]
+Description=otbi-atd parallel worker (drains the shared ADB job queue; keeps one warm Fusion session)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# systemd does not set HOME; env.sh uses $HOME for TNS_ADMIN/ATD_STATE_DIR
+Environment=HOME=/root
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=/root/otbi-atd/runner
+# source the shared env (secrets + oracledb config) then exec the always-on worker.
+# worker id defaults to the VM hostname, so this unit + env.sh are identical on every VM.
+ExecStart=/bin/bash -c 'source /root/otbi-atd/env.sh && exec /root/otbi-atd/venv/bin/python runner.py --worker --forever'
+Restart=always
+RestartSec=15
+# logs go to journald (journalctl -u atd-worker); append-to-/root is blocked by SELinux
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

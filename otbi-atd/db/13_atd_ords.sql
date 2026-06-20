@@ -28,6 +28,7 @@ CREATE OR REPLACE SYNONYM atd_queue_pkg    FOR prod.atd_queue_pkg;
 CREATE OR REPLACE SYNONYM atd_runner_config FOR prod.atd_runner_config;
 CREATE OR REPLACE SYNONYM atd_analysis_request FOR prod.atd_analysis_request;
 CREATE OR REPLACE SYNONYM atd_sa_catalog     FOR prod.atd_sa_catalog;
+CREATE OR REPLACE SYNONYM atd_worker_heartbeat FOR prod.atd_worker_heartbeat;
 CREATE OR REPLACE SYNONYM dct_atd_ai_pkg     FOR prod.dct_atd_ai_pkg;
 
 -- =============================================================================
@@ -1084,7 +1085,7 @@ BEGIN
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT run_id, job_name, track, status, row_count,
+    SELECT run_id, job_name, track, status, row_count, NVL(host_id,'') AS host_id,
            NVL(DBMS_LOB.SUBSTR(message,400,1),'') AS msg,
            CASE WHEN status='SUCCESS' AND message IS NOT NULL THEN 'Y' ELSE 'N' END AS warn,
            TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
@@ -1105,6 +1106,7 @@ BEGIN
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('runId', r.run_id);     APEX_JSON.write('jobName', r.job_name);
+    APEX_JSON.write('host', r.host_id);
     APEX_JSON.write('track', NVL(r.track,'')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('rowCount', NVL(r.row_count,0));
     APEX_JSON.write('warn', r.warn);
@@ -1176,6 +1178,42 @@ BEGIN
     HTP.print(r.run_id||','||r.job_name||','||NVL(r.track,'')||','||r.status||','||
               NVL(r.row_count,0)||','||NVL(r.started_s,'')||','||NVL(r.finished_s,''));
   END LOOP;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- WORKERS : live per-VM health (ATD_WORKER_HEARTBEAT) for the dashboard panel
+    -- =========================================================================
+    def_template('workers');
+    def_handler('workers', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT h.worker_id, h.status, h.current_job,
+           TO_CHAR(h.last_seen,'YYYY-MM-DD HH24:MI:SS') AS last_seen_s,
+           ROUND((CAST(SYSTIMESTAMP AS DATE) - CAST(h.last_seen AS DATE)) * 86400) AS age_sec,
+           (SELECT COUNT(*) FROM atd_load_run_log l
+             WHERE l.host_id = h.worker_id
+               AND l.started > SYSTIMESTAMP - INTERVAL '1' DAY) AS runs24h
+    FROM atd_worker_heartbeat h ORDER BY h.worker_id
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('workerId',   r.worker_id);
+    APEX_JSON.write('status',     NVL(r.status,''));
+    APEX_JSON.write('currentJob', NVL(r.current_job,''));
+    APEX_JSON.write('lastSeen',   NVL(r.last_seen_s,''));
+    APEX_JSON.write('ageSec',     r.age_sec);
+    APEX_JSON.write('online',     CASE WHEN r.age_sec <= 120 THEN 'Y' ELSE 'N' END);
+    APEX_JSON.write('runs24h',    r.runs24h);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array; APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');

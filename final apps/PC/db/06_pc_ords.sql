@@ -689,6 +689,9 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN NULL;
   END;
 
+  -- Queue a Fusion AP prepayment (no-op unless PETTY_CASH.FUSION_POST_ADVANCE=Y)
+  dct_pc_fusion_pkg.enqueue_advance_action([COLON]id);
+
   COMMIT;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
@@ -1609,10 +1612,14 @@ BEGIN
         UPDATE dct_pc_reimbursements SET status = 'APPROVED', updated_by = l_user
         WHERE reimb_id = l_inst.source_record_id;
         hist('APPROVED', 'Final approval: ' || l_comments);
+        -- Queue a Fusion AP invoice (no-op unless PETTY_CASH.FUSION_POST_REIMB=Y)
+        dct_pc_fusion_pkg.enqueue_fusion_action(l_inst.source_record_id);
       ELSIF l_inst.source_module = 'CLEARING' THEN
         UPDATE dct_pc_clearing SET status = 'APPROVED', updated_by = l_user
         WHERE clearing_id = l_inst.source_record_id;
         hist('APPROVED', 'Final approval: ' || l_comments);
+        -- Queue a Fusion AP invoice (no-op unless PETTY_CASH.FUSION_POST_CLEARING=Y)
+        dct_pc_fusion_pkg.enqueue_clearing_action(l_inst.source_record_id);
         -- Close the parent petty cash (logged as its own transition)
         DECLARE
           l_pcid  NUMBER;

@@ -98,9 +98,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_approval_pkg AS
         ELSIF p_source_module = 'REIMBURSEMENT' THEN
             UPDATE prod.dct_pc_reimbursements SET status = 'APPROVED'
             WHERE  reimb_id = p_source_id;
+            -- Queue a Fusion AP invoice (no-op unless PETTY_CASH.FUSION_POST_REIMB=Y)
+            prod.dct_pc_fusion_pkg.enqueue_fusion_action(p_source_id);
         ELSIF p_source_module = 'CLEARING' THEN
             UPDATE prod.dct_pc_clearing SET status = 'APPROVED'
             WHERE  clearing_id = p_source_id;
+            -- Queue a Fusion AP invoice (no-op unless PETTY_CASH.FUSION_POST_CLEARING=Y)
+            prod.dct_pc_fusion_pkg.enqueue_clearing_action(p_source_id);
             UPDATE prod.dct_petty_cash SET status = 'CLOSED', closed_date = SYSDATE
             WHERE  pc_id = (SELECT pc_id FROM prod.dct_pc_clearing WHERE clearing_id = p_source_id);
         ELSIF p_source_module = 'TRAVEL_REQUEST' THEN

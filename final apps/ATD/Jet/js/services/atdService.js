@@ -69,5 +69,12 @@ function (api) {
     // runner config (UI-managed operational settings)
     getConfig:    function ()          { return api.get('/config'); },
     saveConfig:   function (items)     { return api.put('/config', { items: items }); },
+
+    // Fusion write-back actions (AP invoices...) — runner --actions performs these
+    getActionStats: function ()        { return api.get('/actions/stats'); },
+    listActions:    function (params)  { return api.get('/actions' + qs(params)); },
+    getAction:      function (id)       { return api.get('/actions/' + id); },
+    retryAction:    function (id)       { return api.post('/actions/' + id + '/retry', {}); },
+    cancelAction:   function (id)       { return api.post('/actions/' + id + '/cancel', {}); },
   };
 });

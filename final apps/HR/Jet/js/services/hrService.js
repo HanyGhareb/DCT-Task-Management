@@ -340,6 +340,16 @@ function (config, api, mockData) {
       return Promise.resolve(_emp(e));
     },
 
+    // Employee -> Fusion AP supplier mapping (DCT_EMP_SUPPLIER_MAP, source PC)
+    getSupplierMap: function (personId) {
+      if (config.apiBase) return api.get('/employees/' + personId + '/supplier-map');
+      return Promise.resolve({});
+    },
+    saveSupplierMap: function (personId, data) {
+      if (config.apiBase) return api.put('/employees/' + personId + '/supplier-map', data);
+      return Promise.resolve({ ok: true });
+    },
+
     createEmployee: function (data) {
       if (config.apiBase) return api.post('/employees/', data);
       var s = loadStore();
