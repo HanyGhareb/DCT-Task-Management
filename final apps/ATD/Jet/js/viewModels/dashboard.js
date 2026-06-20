@@ -10,10 +10,18 @@ function (ko, atd, i18n, charts) {
     self.recent = ko.observableArray([]);
     self.alerts = ko.observableArray([]);
     self.actions = ko.observable(null);   // Fusion action-queue health tile
+    self.workers = ko.observableArray([]); // parallel-worker fleet (one row per VM)
     self.go = function (id) { window._jetApp.navigate(id); };
 
     atd.getActionStats().then(function (a) { self.actions(a); }).catch(function () {});
+    atd.listWorkers().then(function (r) { self.workers((r && r.items) || []); }).catch(function () {});
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
+    // a worker is "online" when its heartbeat is fresh (ORDS computes online=Y, age<=120s)
+    self.workerDot = function (w) { return (w && w.online === 'Y') ? '#2A7D3A' : '#C13A30'; };
+    self.workerAge = function (w) {
+      var s = (w && w.ageSec) || 0;
+      return s < 90 ? (s + 's') : (Math.round(s / 60) + 'm');
+    };
 
     atd.getDashboard().then(function (d) {
       self.k(d);

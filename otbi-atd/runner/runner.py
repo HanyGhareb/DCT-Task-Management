@@ -192,9 +192,13 @@ def _alert_stale_workers(conn, stale_minutes=5):
     we don't spam (it re-arms when that worker next heartbeats). Best-effort."""
     try:
         cur = conn.cursor()
+        # compare both sides as plain TIMESTAMP (session TZ) - mixing a TIMESTAMP column
+        # with SYSTIMESTAMP-WITH-TZ skews by the TZ offset and falsely flags live
+        # workers (same fix as ATD_QUEUE_PKG.reap_stale).
         cur.execute("select worker_id from prod.atd_worker_heartbeat "
                     "where status <> 'DOWN' "
-                    "  and last_seen < systimestamp - numtodsinterval(:m,'MINUTE')",
+                    "  and last_seen < CAST(SYSTIMESTAMP AS TIMESTAMP) "
+                    "                  - numtodsinterval(:m,'MINUTE')",
                     m=stale_minutes)
         stale = [r[0] for r in cur.fetchall()]
         for w in stale:

@@ -31,6 +31,7 @@
       <thead><tr>
         <th data-bind="text: t('atd.col.run')"></th>
         <th data-bind="text: t('atd.col.job')"></th>
+        <th data-bind="text: t('atd.col.host')"></th>
         <th data-bind="text: t('atd.col.track')"></th>
         <th data-bind="text: t('atd.col.status')"></th>
         <th data-bind="text: t('atd.col.rows')"></th>
@@ -42,6 +43,7 @@
         <tr style="cursor:pointer" data-bind="click: function(){ $vm.open($data); }">
           <td data-bind="text: $data.runId"></td>
           <td class="mono" data-bind="text: $data.jobName"></td>
+          <td class="mono" data-bind="text: $data.host || '—'"></td>
           <td data-bind="text: $data.track || '—'"></td>
           <td>
             <span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span>

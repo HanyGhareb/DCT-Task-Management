@@ -6,6 +6,10 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Dashboard (`dashboard`)
 - KPIs (total/enabled jobs, 24h success rate, 24h runs, last finished), queue-state donut,
   recent runs, alerts (FAILED / truncation). `go(id)` — jump to a section.
+- **Worker Fleet** panel (`listWorkers` → `GET /atd/workers`): one row per parallel-worker VM
+  (`worker_id`, status IDLE/BUSY/DOWN, current job, last-seen age, runs-24h) with a green/red
+  online dot (`workerDot`, fresh ≤120s) and `workerAge`. Reflects the 3-VM fleet
+  (atd-vm180/181/182) draining the shared queue.
 
 ## Jobs (`jobs`)
 - `load` (search + status filter) · `open` (→ jobDetail) · `newJob` / `editJob` (drawer) ·
@@ -42,6 +46,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 - `load` (job/status/from/to filters, **server-paged** via `<list-pager>` — `offset`/`limit`/`total`) ·
   `open` (detail modal: message, checksum, rows, duration) · `closeDetail` · `exportCsv` (authed blob
   download) · `fmtDuration`.
+- **VM column** (`host`, from `ATD_LOAD_RUN_LOG.host_id`) shows which parallel worker ran each load.
 - Status filter includes **WARNING** (a SUCCESS run that carries a message) alongside
   SUCCESS/FAILED/RUNNING — the server maps `status=WARNING` to `status='SUCCESS' AND message IS NOT NULL`.
 - The list + detail modal show a **Duration** column (`durationSec` = `finished − started` seconds,
@@ -107,7 +112,8 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET | `/lookups` | envs + targets for pickers |
 | GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec` = last run elapsed seconds) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
 | GET / PUT / DELETE | `/jobs/:name` | read (history rows carry `durationSec`) / update / delete job |
-| GET | `/runs` | run-log list (paged) — each row carries `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
+| GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
+| GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
 | GET | `/subject-areas` | list discovered subject areas + status/column counts (column-picker source) |
 | GET | `/subject-areas/columns?sa=` | one READY subject area's cached folder/column tree (raw `catalog_json`) |

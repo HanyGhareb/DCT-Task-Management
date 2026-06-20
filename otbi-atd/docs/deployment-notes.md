@@ -385,3 +385,40 @@ sourced from approved Petty Cash reimbursements.
   alongside the reimbursement one; interactive approval (06) and idle-timeout auto-approve both
   enqueue all 3 PC documents. All Fusion-action DB deploys complete; only the live headed smoke
   test + populating `DCT_EMP_SUPPLIER_MAP` remain before flipping a `FUSION_POST_*` gate to Y.
+
+## 3-VM parallel worker fleet — DEPLOYED 2026-06-21 (Track B scale-out)
+
+The Track B runner now runs on **3 on-prem Oracle Linux 9.7 VMs** (replaced the single Windows
+box + the OL7.9 agents) as **parallel workers draining the one shared ADB queue**.
+
+- **VMs:** `atd-vm180/181/182` = 192.168.1.180/181/182 on standalone ESXi 6.5 (192.168.1.190),
+  provisioned hands-off via OL9.7 kickstart (see `provision/`). 2 vCPU / 6 GB / 50 GB each.
+- **Each VM runs** `runner.py --worker --forever` as systemd **`atd-worker.service`**
+  (`runner/systemd/`, `Restart=always`, `Environment=HOME=/root` + `PYTHONUNBUFFERED=1`, logs to
+  journald — **not** `append:/root/...`, which SELinux blocks → status 209/STDOUT). One warm Fusion
+  session per VM; **worker id = hostname** so `env.sh` is identical on every VM.
+- **The `--forever` loop now also drains discover + builds** when no load job is waiting (reuses the
+  warm session), and calls `reap_stale` + a stale-peer Telegram alert each idle cycle.
+- **DB changes (deployed):** `db/12` `ATD_QUEUE_PKG` — `enqueue` skips `CLAIMED` rows; added
+  `claim_sa` / `claim_build` (FOR UPDATE SKIP LOCKED) so discover/build are race-safe across VMs.
+  `db/24` `ATD_ENQUEUE_JOB` (DBMS_SCHEDULER, every 15 min — the only schedule). `db/25`
+  `host_id` on `ATD_LOAD_RUN_LOG` + `ATD_WORKER_HEARTBEAT`. `db/13` ORDS `GET /atd/workers` + `host`
+  in the runs feed. (Numbered 24/25 — 19–23 are the parallel Fusion-action work-stream.)
+- **UI (App 208, APP_VERSION 1.8.0):** dashboard **Worker Fleet** panel (green/red per VM, current
+  job, last-seen, runs-24h) + **VM column** on the Runs page.
+- **Deploy / scale-out:** `runner/deploy_worker.sh <ip>` (idempotent: software via `install_sw.sh`,
+  syncs runner+wallet+`env.sh`, enables the service). Add a VM later with
+  `provision/provision_vm.sh <host> <ip>` then `deploy_worker.sh <ip>` — **no DB/queue/UI change**, it
+  self-registers in the queue + dashboard. **Old Windows "OTBI-ATD Loader" task DISABLED** (cutover).
+- **GOTCHAS hit & fixed:** PyPI package is **`oracledb`** not `python-oracledb`; OL9 needs Chromium
+  libs via `dnf` (Playwright `--with-deps` is Debian-only) — `CHROMIUM_SMOKE_OK` confirms; kickstart
+  `network` must be **one line** (pykickstart chokes on `\` continuation → "unrecognized arguments");
+  systemd needs `HOME=/root` (env.sh uses `$HOME` for `TNS_ADMIN`); the MFA number-match screen needs
+  **polling** (single look races it) — auth.py now polls ~36s; the heartbeat staleness check must
+  `CAST(SYSTIMESTAMP AS TIMESTAMP)` (raw TIMESTAMPTZ vs TIMESTAMP skews by the TZ offset → false DOWN).
+- **VALIDATED:** parallel load spread across 2 VMs with no duplication (SUPPLIERS→vm180,
+  AP_INVOICE_HEADER→vm181, each one SUCCESS); `host_id` recorded; heartbeats stable IDLE. Fusion
+  confirmed to allow concurrent sessions for one account (3 independent sessions seeded).
+- **MFA Telegram message now includes the VM name** (`auth.surface_number` adds `host`).
+- **Pending:** VM clock sync (chronyd — ~13 min skew observed, cosmetic for timestamps only);
+  optional crash-recovery + discover-race live tests (mechanism deployed).

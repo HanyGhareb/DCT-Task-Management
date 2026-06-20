@@ -61,6 +61,9 @@ function (api) {
     updateTarget: function (name, body){ return api.put('/targets/' + encodeURIComponent(name), body); },
     deleteTarget: function (name)      { return api.delete('/targets/' + encodeURIComponent(name)); },
 
+    // parallel-worker fleet health (one row per VM, from ATD_WORKER_HEARTBEAT)
+    listWorkers:  function ()          { return api.get('/workers'); },
+
     // run logs
     listRuns:     function (params)    { return api.get('/runs' + qs(params)); },
     getRun:       function (id)        { return api.get('/runs/' + id); },

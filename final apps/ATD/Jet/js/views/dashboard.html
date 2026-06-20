@@ -75,6 +75,38 @@
   </div>
 
   <div class="card" style="margin-top:16px;">
+    <div class="section-heading" data-bind="text: t('atd.dash.workers')"></div>
+    <!-- ko if: workers().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.dash.noWorkers')"></div>
+    <!-- /ko -->
+    <!-- ko if: workers().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.workers.vm')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.workers.currentJob')"></th>
+          <th data-bind="text: t('atd.workers.lastSeen')"></th>
+          <th data-bind="text: t('atd.workers.runs24')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: workers">
+          <tr>
+            <td class="mono">
+              <span data-bind="style:{ color: $vm.workerDot($data) }">&#9679;</span>
+              <span data-bind="text: $data.workerId"></span>
+            </td>
+            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td class="mono" data-bind="text: $data.currentJob || '—'"></td>
+            <td data-bind="text: $vm.workerAge($data) + ' ' + t('atd.workers.ago')"></td>
+            <td data-bind="text: $data.runs24h"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <div class="card" style="margin-top:16px;">
     <div class="section-heading" data-bind="text: t('atd.dash.alerts')"></div>
     <!-- ko if: alerts().length === 0 -->
     <div class="empty-state" data-bind="text: t('atd.dash.noAlerts')"></div>
