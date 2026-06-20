@@ -381,6 +381,7 @@ sourced from approved Petty Cash reimbursements.
   to hr.rest): `GET/PUT /hr/employees/:id/supplier-map` upsert DCT_EMP_SUPPLIER_MAP (source_module='PC',
   party_key = employee_number). HR `employeeDetail` view: a "🏛 Supplier" button + modal (all fields
   incl. payment_method). HR APP_VERSION 4.6.0. This is the map's source of truth per the requirement.
-- **Pending re-auth:** redeploy of `db/v2/14` (adds the CLEARING **sweep-path** enqueue) was blocked
-  by the deploy classifier; 14 is live with the reimbursement sweep hook only. Interactive clearing
-  approval already enqueues (06 live). Re-run `@db/v2/14_dct_approval_pkg.sql` when authorized.
+- **`db/v2/14` DEPLOYED 2026-06-21 (VALID):** the CLEARING **sweep-path** enqueue is now live
+  alongside the reimbursement one; interactive approval (06) and idle-timeout auto-approve both
+  enqueue all 3 PC documents. All Fusion-action DB deploys complete; only the live headed smoke
+  test + populating `DCT_EMP_SUPPLIER_MAP` remain before flipping a `FUSION_POST_*` gate to Y.
