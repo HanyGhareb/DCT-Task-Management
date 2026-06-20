@@ -73,7 +73,12 @@
       "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; npx tsc --noEmit 2>&1 | Select-Object -First 20; \"TSC EXIT: $LASTEXITCODE\")",
       "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; npx tsc --noEmit 2>&1 | Select-Object -First 15; \"TSC EXIT: $LASTEXITCODE\")",
       "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; $env:EAS_NO_VCS=1; npx expo config --type public 2>&1 | Select-String -Pattern \"googleServicesFile|projectId|error|Error\" | Select-Object -First 8; \"CONFIG EXIT: $LASTEXITCODE\")",
-      "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; npx tsc --noEmit 2>&1 | Select-Object -First 25; \"TSC EXIT: $LASTEXITCODE\")"
+      "PowerShell(cd \"c:\\\\claude\\\\DCT-task-management\\\\DCT-Task-Management\\\\ifinance-mobile\"; npx tsc --noEmit 2>&1 | Select-Object -First 25; \"TSC EXIT: $LASTEXITCODE\")",
+      "Bash('/c/Program Files/PuTTY/pscp.exe' -batch -pw Nono@2017 -scp /c/tmp/atd-provision/create_vms.sh root@192.168.1.190:/tmp/create_vms.sh)",
+      "Bash('/c/Program Files/PuTTY/plink' -ssh -batch -pw Nono@2017 root@192.168.1.190 'dos2unix /tmp/create_vms.sh 2>/dev/null; sh /tmp/create_vms.sh')",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @c:\\\\tmp\\\\run07b.sql)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @c:\\\\tmp\\\\verify_e2e.sql)",
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @c:\\\\tmp\\\\run14.sql)"
     ]
   },
   "enabledPlugins": {
