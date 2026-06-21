@@ -68,9 +68,9 @@ BEGIN
            a.source_ref, a.idem_key, a.run_status, a.priority, a.attempts, a.max_attempts,
            a.claimed_by, a.fusion_invoice_id,
            NVL(DBMS_LOB.SUBSTR(a.last_error,300,1),'') AS last_err,
-           TO_CHAR( dct_to_local(a.claimed_at),'YYYY-MM-DD HH24:MI') AS claimed_s,
-           TO_CHAR( dct_to_local(a.created_at),'YYYY-MM-DD HH24:MI') AS created_s,
-           TO_CHAR( dct_to_local(a.updated_at),'YYYY-MM-DD HH24:MI') AS updated_s
+           TO_CHAR( dct_to_local(a.claimed_at),'YYYY-MM-DD HH:MI AM') AS claimed_s,
+           TO_CHAR( dct_to_local(a.created_at),'YYYY-MM-DD HH:MI AM') AS created_s,
+           TO_CHAR( dct_to_local(a.updated_at),'YYYY-MM-DD HH:MI AM') AS updated_s
     FROM atd_action_request a
     WHERE (l_status IS NULL OR a.run_status = l_status)
       AND (l_type   IS NULL OR a.action_type = l_type)
@@ -165,16 +165,16 @@ BEGIN
     APEX_JSON.write('attempts', r.attempts);
     APEX_JSON.write('maxAttempts', r.max_attempts);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
-    APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('fusionInvoiceId', NVL(r.fusion_invoice_id,''));
     APEX_JSON.write('fusionRef', NVL(r.fusion_ref,''));
     APEX_JSON.write('lastError', NVL(DBMS_LOB.SUBSTR(r.last_error,3900,1),''));
     APEX_JSON.write('payloadJson', NVL(DBMS_LOB.SUBSTR(r.payload_json,32000,1),''));
-    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH24:MI'));
-    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(r.updated_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(r.updated_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.open_array('history');
     FOR h IN (SELECT new_status, old_status, comments,
-                     TO_CHAR( dct_to_local(changed_at),'YYYY-MM-DD HH24:MI') AS changed_s
+                     TO_CHAR( dct_to_local(changed_at),'YYYY-MM-DD HH:MI AM') AS changed_s
               FROM dct_request_status_history
               WHERE source_module = r.source_module
                 AND source_type   = r.source_type

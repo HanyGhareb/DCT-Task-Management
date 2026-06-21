@@ -2022,7 +2022,7 @@ BEGIN
     APEX_JSON.write('module',          r.source_module);
     APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
     APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('amount',          r.amount);
     APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
     APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));

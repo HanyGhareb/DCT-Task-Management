@@ -1657,7 +1657,7 @@ BEGIN
     APEX_JSON.write('allowed',     r.allowed_values);
     APEX_JSON.write('default',     r.default_value);
     APEX_JSON.write('updatedBy',   r.updated_by);
-    APEX_JSON.write('updatedAt',   TO_CHAR( dct_to_local(r.updated_at), 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('updatedAt',   TO_CHAR( dct_to_local(r.updated_at), 'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1738,9 +1738,9 @@ BEGIN
     APEX_JSON.write('hasKey',    r.has_key);
     APEX_JSON.write('isActive',  r.is_active);
     APEX_JSON.write('createdBy', r.created_by);
-    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at), 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at), 'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('updatedBy', r.updated_by);
-    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(r.updated_at), 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(r.updated_at), 'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;

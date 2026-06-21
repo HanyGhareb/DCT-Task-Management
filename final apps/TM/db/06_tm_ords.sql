@@ -754,7 +754,7 @@ BEGIN
     APEX_JSON.open_object;
     APEX_JSON.write('userId', r.user_id); APEX_JSON.write('name', NVL(r.name,''));
     APEX_JSON.write('isPrimary', r.is_primary); APEX_JSON.write('assignedBy', NVL(r.assigned_by,''));
-    APEX_JSON.write('assignedAt', TO_CHAR( dct_to_local(r.assigned_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('assignedAt', TO_CHAR( dct_to_local(r.assigned_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -773,7 +773,7 @@ BEGIN
     APEX_JSON.write('updateId', r.update_id); APEX_JSON.write('type', r.update_type);
     APEX_JSON.write('body', NVL(r.body,'')); APEX_JSON.write('oldStatus', NVL(r.old_status,''));
     APEX_JSON.write('newStatus', NVL(r.new_status,'')); APEX_JSON.write('author', NVL(r.author_name,''));
-    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -1013,7 +1013,7 @@ BEGIN
     APEX_JSON.write('docId', r.doc_id); APEX_JSON.write('sourceType', r.source_type); APEX_JSON.write('sourceId', r.source_id);
     APEX_JSON.write('docTypeCode', NVL(r.doc_type_code,'OTHER')); APEX_JSON.write('docTypeName', NVL(r.doc_type_name,'')); APEX_JSON.write('fileName', r.file_name);
     APEX_JSON.write('mimeType', NVL(r.mime_type,'')); APEX_JSON.write('fileSize', NVL(r.file_size_bytes,0)); APEX_JSON.write('notes', NVL(r.notes,''));
-    APEX_JSON.write('uploadedBy', NVL(r.uploaded_by_name,'')); APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('uploadedBy', NVL(r.uploaded_by_name,'')); APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;

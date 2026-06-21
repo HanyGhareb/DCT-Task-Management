@@ -1481,7 +1481,7 @@ BEGIN
     APEX_JSON.write('module',          r.source_module);
     APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
     APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('amount',          r.amount);
     APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
     APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));
@@ -1540,7 +1540,7 @@ BEGIN
     APEX_JSON.write('module',        r.source_module);
     APEX_JSON.write('templateName',  NVL(r.template_name, '-'));
     APEX_JSON.write('requestedBy',   NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',   TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('requestedAt',   TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('amount',        r.amount);
     APEX_JSON.write('currentStep',   r.current_step);
     APEX_JSON.write('totalSteps',    NVL(r.total_steps, 1));
@@ -2252,8 +2252,8 @@ BEGIN
     APEX_JSON.write('roleName',    NVL(r.role_name_en, ''));
     APEX_JSON.write('moduleCode',  NVL(r.module_code, ''));
     APEX_JSON.write('moduleName',  NVL(r.module_name_en, ''));
-    APEX_JSON.write('publishedAt', TO_CHAR( dct_to_local(r.published_at AT TIME ZONE 'Asia/Dubai'),'YYYY-MM-DD HH24:MI'));
-    APEX_JSON.write('expiresAt',   TO_CHAR( dct_to_local(r.expires_at AT TIME ZONE 'Asia/Dubai'),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('publishedAt', TO_CHAR( dct_to_local(r.published_at AT TIME ZONE 'Asia/Dubai'),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('expiresAt',   TO_CHAR( dct_to_local(r.expires_at AT TIME ZONE 'Asia/Dubai'),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('isActive',    r.is_active);
     APEX_JSON.write('createdBy',   NVL(r.created_by, ''));
     APEX_JSON.write('createdAt',   TO_CHAR( dct_to_local(r.created_at AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));

@@ -49,7 +49,7 @@ function (ko, sessionService, authService, i18n, toast) {
     self.fmt = function (iso) {
       return iso ? i18n.fmtDate(iso, {
         day: 'numeric', month: 'short',
-        hour: '2-digit', minute: '2-digit'
+        hour: '2-digit', minute: '2-digit', hour12: true
       }) : '—';
     };
 

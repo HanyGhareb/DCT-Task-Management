@@ -55,7 +55,7 @@ function (ko, auditService, i18n) {
     self.formatDate = function (iso) {
       return iso ? i18n.fmtDate(iso, {
         day: 'numeric', month: 'short', year: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+        hour: '2-digit', minute: '2-digit', hour12: true
       }) : '—';
     };
 

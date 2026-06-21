@@ -123,7 +123,7 @@ BEGIN
     APEX_JSON.write('submitterCount', r.submitter_count); APEX_JSON.write('submittedCount', r.submitted_count);
     APEX_JSON.write('lateCount', r.late_count); APEX_JSON.write('pendingCount', r.pending_count);
     APEX_JSON.write('signoffRag', NVL(r.signoff_rag,'')); APEX_JSON.write('signoffBy', NVL(r.signoff_by,''));
-    APEX_JSON.write('closedAt', TO_CHAR( dct_to_local(r.closed_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('closedAt', TO_CHAR( dct_to_local(r.closed_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -262,7 +262,7 @@ BEGIN
     APEX_JSON.write('tasksDone', r.tasks_done); APEX_JSON.write('tasksOnTrack', r.tasks_on_track); APEX_JSON.write('tasksLate', r.tasks_late);
     APEX_JSON.write('tasksOpen', r.tasks_open); APEX_JSON.write('tasksOverdue', r.tasks_overdue);
     APEX_JSON.write('objectiveProgress', NVL(r.objective_progress,0)); APEX_JSON.write('deliverablesDone', r.deliverables_done);
-    APEX_JSON.write('newRaid', r.new_raid_count); APEX_JSON.write('submittedAt', TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('newRaid', r.new_raid_count); APEX_JSON.write('submittedAt', TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;

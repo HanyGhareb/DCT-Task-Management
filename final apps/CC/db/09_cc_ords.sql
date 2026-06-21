@@ -454,7 +454,7 @@ BEGIN
     APEX_JSON.write('replacementReason', NVL(r.replacement_reason, ''));
     APEX_JSON.write('status',            r.status);
     APEX_JSON.write('approvalInstanceId',r.approval_instance_id);
-    APEX_JSON.write('submittedAt',       TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('submittedAt',       TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('createdBy',         r.created_by);
     APEX_JSON.write('createdAt',         TO_CHAR( dct_to_local(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',         r.updated_by);
@@ -848,7 +848,7 @@ BEGIN
     APEX_JSON.write('expenditureType', NVL(r.expenditure_type, ''));
     APEX_JSON.write('status',          r.status);
     APEX_JSON.write('approvalInstanceId', r.approval_instance_id);
-    APEX_JSON.write('submittedAt',     TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('submittedAt',     TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('createdBy',       r.created_by);
     APEX_JSON.write('createdAt',       TO_CHAR( dct_to_local(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',       r.updated_by);
@@ -1165,7 +1165,7 @@ BEGIN
     APEX_JSON.write('module',          r.source_module);
     APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
     APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('amount',          r.amount);
     APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
     APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));

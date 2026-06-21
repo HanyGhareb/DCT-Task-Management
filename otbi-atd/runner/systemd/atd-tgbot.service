@@ -1,0 +1,22 @@
+[Unit]
+Description=otbi-atd Telegram query bot (PoC — vendor lookup; DEPLOY TO vm180 ONLY)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+# systemd does not set HOME; env.sh uses $HOME for TNS_ADMIN/ATD_STATE_DIR
+Environment=HOME=/root
+Environment=PYTHONUNBUFFERED=1
+WorkingDirectory=/root/otbi-atd/runner
+# source the shared env (secrets + oracledb config) then run the poll loop.
+# getUpdates is single-consumer — do not enable this unit on vm181/vm182.
+ExecStart=/bin/bash -c 'source /root/otbi-atd/env.sh && exec /root/otbi-atd/venv/bin/python tg_bot.py'
+Restart=always
+RestartSec=15
+# logs go to journald: journalctl -u atd-tgbot -f
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target

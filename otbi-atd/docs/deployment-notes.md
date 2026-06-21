@@ -428,3 +428,89 @@ box + the OL7.9 agents) as **parallel workers draining the one shared ADB queue*
 - **MFA Telegram message now includes the VM name** (`auth.surface_number` adds `host`).
 - **Pending:** VM clock sync (chronyd — ~13 min skew observed, cosmetic for timestamps only);
   optional crash-recovery + discover-race live tests (mechanism deployed).
+
+---
+
+## Telegram query bot (tg_bot.py) — PoC, vm180 only
+
+A lightweight long-polling bot that answers i-Finance lookups in Telegram.
+**getUpdates is single-consumer — run on vm180 only** (one service, no lock needed).
+
+### What it does (PoC scope)
+| Command | Behaviour |
+|---|---|
+| `/help` | List commands + "coming soon" services |
+| `/vendor <number>` | Exact supplier lookup by number (name, status, currency) |
+| `/vendor <text>` | Case-insensitive fuzzy name search, top 5 results |
+| (others) | Stub "coming soon" reply (payments, pettycash, freelancer) |
+
+Bank-sensitive columns (`iban`, `bank_account_number`, `bank_name`, `bank_branch_name`,
+`account_name`) are never returned by any command — hardcoded whitelist in `tg_bot.py`.
+
+Unrecognised Telegram chat IDs are silently ignored (no reply revealing the bot exists).
+
+### Files
+- `runner/tg_bot.py` — poll loop + command dispatch + DB lookups (imports `config`, `notify`)
+- `runner/systemd/atd-tgbot.service` — systemd unit (clone of atd-worker.service)
+
+### env.sh additions (vm180 only)
+Add these two lines to `/root/otbi-atd/env.sh` on vm180 **after** the existing `ATD_TG_CHAT` line:
+```bash
+export ATD_TGBOT_ALLOW="${ATD_TG_CHAT}"   # comma-separated; seed = operator chat id
+export ATD_TGBOT_ENABLED=1                # set to 0 to pause without stopping the unit
+```
+If you want to allow additional chat IDs later: `ATD_TGBOT_ALLOW="111111111,222222222"`.
+
+### Deploy (one-time, vm180 only)
+```bash
+# 1. Copy the bot script and service unit to vm180
+scp -i /c/tmp/atd-provision/keys/atd_id_ed25519 \
+    otbi-atd/runner/tg_bot.py \
+    root@192.168.1.180:/root/otbi-atd/runner/
+
+scp -i /c/tmp/atd-provision/keys/atd_id_ed25519 \
+    otbi-atd/runner/systemd/atd-tgbot.service \
+    root@192.168.1.180:/etc/systemd/system/
+
+# 2. SSH into vm180 and add the env vars
+ssh -i /c/tmp/atd-provision/keys/atd_id_ed25519 root@192.168.1.180
+
+  # --- on vm180 ---
+  # Append the two env vars after ATD_TG_CHAT in /root/otbi-atd/env.sh:
+  #   export ATD_TGBOT_ALLOW="${ATD_TG_CHAT}"
+  #   export ATD_TGBOT_ENABLED=1
+
+  # 3. Enable and start the service
+  systemctl daemon-reload
+  systemctl enable atd-tgbot
+  systemctl start  atd-tgbot
+  systemctl status atd-tgbot    # should show "active (running)"
+
+  # 4. Follow logs
+  journalctl -u atd-tgbot -f
+```
+
+### Redeployment (after tg_bot.py changes)
+```bash
+scp -i /c/tmp/atd-provision/keys/atd_id_ed25519 \
+    otbi-atd/runner/tg_bot.py \
+    root@192.168.1.180:/root/otbi-atd/runner/
+
+ssh -i /c/tmp/atd-provision/keys/atd_id_ed25519 root@192.168.1.180 \
+    systemctl restart atd-tgbot
+```
+
+### State file
+The last processed `update_id` is persisted to `/root/otbi-atd/tgbot_offset.txt` so a
+`systemctl restart` does not replay already-handled messages.
+
+### Test plan
+1. **Allowed chat → `/help`** — should list commands and "coming soon" services.
+2. **Allowed chat → `/vendor <known number>`** — should reply with name (status, currency).
+3. **Allowed chat → `/vendor acme`** (or any partial name) — should reply with up to 5 matches.
+4. **Non-allowed chat** — send any message → no reply at all (check `journalctl -u atd-tgbot`
+   for `"ignored chat_id=..."` log line).
+5. **Bank field check** — search for a supplier known to have IBAN data; confirm the reply
+   contains NO `IBAN`, `Bank`, or `Account Name` fields.
+6. **Restart resilience** — `systemctl restart atd-tgbot`; send a message; should reply
+   correctly with no duplicate responses.
