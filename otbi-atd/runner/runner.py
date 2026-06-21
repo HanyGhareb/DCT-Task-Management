@@ -240,8 +240,11 @@ def _run_worker(conn, load, forever):
                         conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
                         _alert_stale_workers(conn)
                         try:
-                            _discover_requests(conn)
-                            _build_requests(conn, load)
+                            # reuse the worker's warm Playwright (p) — opening a
+                            # nested sync_playwright here raises "Sync API inside
+                            # the asyncio loop".
+                            _discover_requests(conn, pw=p)
+                            _build_requests(conn, load, pw=p)
                         except Exception as e:  # noqa: BLE001
                             print(f"[worker {host}] idle discover/build error: {e}")
                         time.sleep(idle)
@@ -425,7 +428,7 @@ def _run_job_now(job, run_one):
             browser.close()
 
 
-def _build_requests(conn, load):
+def _build_requests(conn, load, pw=None):
     """Drain QUEUED analysis-build requests, claiming each via ATD_QUEUE_PKG.claim_build
     (FOR UPDATE SKIP LOCKED -> flips QUEUED->BUILDING atomically) so two workers never
     build the same request. Build each in OTBI, register as a job, load once; mark
@@ -444,7 +447,7 @@ def _build_requests(conn, load):
         print(f"[build] request {req_id}: building analysis...")
         try:
             spec = json.loads(spec_text)
-            path = create_analysis.build_analysis(spec)        # OTBI UI build + save + verify
+            path = create_analysis.build_analysis(spec, pw=pw)  # OTBI UI build + save + verify
             job = _register_built_job(conn, spec, path)        # register as an ATD job
             jobs = config.get_browser_jobs(conn, only=job)
             loaded = _run_job_now(jobs[0], run_one) if jobs else False
@@ -511,7 +514,7 @@ def _reap_stale_discovery(conn, minutes):
     return n
 
 
-def _discover_requests(conn):
+def _discover_requests(conn, pw=None):
     """Drain ONE QUEUED subject-area discovery request (the oldest): scrape its full
     folder/column tree in OTBI (create_analysis.discover_subject_area) and cache it for
     the UI column picker; mark it READY / FAILED. One-per-invocation by design — the
@@ -532,7 +535,7 @@ def _discover_requests(conn):
     print(f"[discover] {sa}: scraping...")
     run_id = _log_start(conn, sa, track="DISCOVER")       # history for the Discovery page
     try:
-        tree = create_analysis.discover_subject_area(sa)
+        tree = create_analysis.discover_subject_area(sa, pw=pw)
         # full-depth tree: counts come from the nested walk (create_analysis._count_tree)
         cc = tree.get("column_count", 0)
         fc = tree.get("folder_count", len(tree["folders"]))

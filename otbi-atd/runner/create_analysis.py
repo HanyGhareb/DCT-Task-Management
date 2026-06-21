@@ -37,10 +37,25 @@ import urllib.parse
 from datetime import datetime
 
 sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+from contextlib import contextmanager
+
 from playwright.sync_api import sync_playwright
 
 import auth
 import extract
+
+
+@contextmanager
+def _maybe_pw(pw):
+    """Yield an existing Playwright instance when one is passed (the always-on
+    worker reuses its single warm sync_playwright), otherwise open a fresh one.
+    Nesting `with sync_playwright()` inside another raises 'Sync API inside the
+    asyncio loop', so callers running under the worker MUST pass pw."""
+    if pw is not None:
+        yield pw
+    else:
+        with sync_playwright() as p:
+            yield p
 
 DEFAULT_BASE = os.environ.get("OTBI_ANALYTICS_BASE",
                               "https://iaaibv.fa.ocs.oraclecloud29.com/analytics")
@@ -505,15 +520,16 @@ def _count_tree(folders):
     return cols, flds
 
 
-def discover_subject_area(spec_sa, headless=True):
+def discover_subject_area(spec_sa, headless=True, pw=None):
     """Open the editor on a subject area and scrape its FULL folder/column tree to every
     depth. Returns {subject_area, folders:[{folder, columns, folders}], column_count,
     folder_count, scraped_at}. A node is a folder when it owns a disclosure twisty; every
-    other tree node is a leaf column (so sub-folders are recursed, never shown as columns)."""
+    other tree node is a leaf column (so sub-folders are recursed, never shown as columns).
+    pw: pass the worker's warm Playwright instance to avoid a nested sync_playwright."""
     env = {"env_name": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV"),
            "analytics_base_url": DEFAULT_BASE,
            "credential_ref": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV")}
-    with sync_playwright() as p:
+    with _maybe_pw(pw) as p:
         browser, ctx = auth.authenticate(p, env, headless=headless)
         page = ctx.new_page()
         page.set_default_timeout(STEP_TIMEOUT)
@@ -610,9 +626,10 @@ def build(page, spec, do_headings=True, do_params=True):
     save_as(page, spec["save_folder"], spec["name"])
 
 
-def build_analysis(spec, headless=True, do_headings=True, do_params=True):
+def build_analysis(spec, headless=True, do_headings=True, do_params=True, pw=None):
     """Auth + build + Save As + verify; returns the saved analysis catalog path.
-    Single reusable entry point — the CLI and the runner --build queue both call this."""
+    Single reusable entry point — the CLI and the runner --build queue both call this.
+    pw: pass the worker's warm Playwright instance to avoid a nested sync_playwright."""
     for k in ("subject_area", "name", "save_folder", "columns"):
         if not spec.get(k):
             raise ValueError(f"spec missing required key: {k}")
@@ -620,7 +637,7 @@ def build_analysis(spec, headless=True, do_headings=True, do_params=True):
            "analytics_base_url": DEFAULT_BASE,
            "credential_ref": os.environ.get("OTBI_ENV_NAME", "FUSION_ADGOV")}
     analysis_path = spec["save_folder"].rstrip("/") + "/" + spec["name"]
-    with sync_playwright() as p:
+    with _maybe_pw(pw) as p:
         browser, ctx = auth.authenticate(p, env, headless=headless)
         page = ctx.new_page()
         page.set_default_timeout(STEP_TIMEOUT)
