@@ -49,6 +49,17 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-21** — **Schema review/editor** (APP_VERSION 1.9.0). Job Detail gains a **Table Schema**
+  panel: the live staging-table structure (source header · column name · data type · sample value)
+  with editable name + type per column and an editable table name. **Apply** = `POST /jobs/:name/
+  schema` → validates names (identifier) + types (strict allowlist regex, blocks DDL injection),
+  **drops + recreates** the staging table from the edited definition (it's load-only/disposable, so
+  no migration), rebuilds `column_map_json`, renames `stage_table` if changed, marks the job READY to
+  reload. `GET /jobs/:name/schema` reads `all_tab_columns` + a per-column sample + raw column map.
+  ORDS redeployed; verified live (GET 30 cols+samples+headers; apply flips types + blocks
+  `DROP TABLE`/`1;DROP` with 400; runner reloads 18986 rows into the applied NUMBER schema, SUM works;
+  Playwright drove the panel: grid renders, edit a type via dropdown, Apply → reload). The human-review
+  escape hatch for auto-detection edge cases (all-null amount cols, ambiguous names, custom sizes).
 - **2026-06-19** — **Run Logs: pager + Warning filter** (APP_VERSION 1.3.4). Added the shared
   `<list-pager>` to Run Logs (server-paged `offset`/`limit`/`total`, default 50/page; filter changes
   reset to page 1) and a **WARNING** option to the status filter. `GET /runs` (+ COUNT + `/runs/export`)

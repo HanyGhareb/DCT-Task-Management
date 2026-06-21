@@ -29,6 +29,11 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Job detail (`jobDetail`)
 - `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)` ·
   `fmtDuration`. The run-history table includes a **Duration** column (`durationSec` per run).
+- **Schema panel** (`toggleSchema` · `loadSchema` · `applySchema`): shows the live staging-table
+  structure — **Source header · Column name (editable) · Data type (editable dropdown) · Sample
+  value** — plus an editable **table name**. **Apply** validates and drops + recreates the staging
+  table from the edited definition, rebuilds the column map, renames the table if changed, and the
+  job reloads on the next run. Nothing changes until Apply (the staging table is load-only/disposable).
 - **Re-prepare** recovers a job whose stored column map / table no longer fits the live
   analysis. **Re-map** (`reprepare(false)`) clears `column_map_json` so the next run
   re-derives it (table + rows kept). **Rebuild table** (`reprepare(true)`, danger, confirm)
@@ -122,6 +127,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET | `/subject-areas/runs` | discovery run history (paged) — `ATD_LOAD_RUN_LOG` rows with `track='DISCOVER'` (subject area, status, columns, started, duration, message); the main `/runs` excludes these |
 | POST | `/jobs/:name/enqueue` · `/jobs/:name/reset` | queue one / reset one |
 | POST | `/jobs/:name/reprepare` | clear column map (re-derive next run); `{"rebuild":"Y"}` also drops + recreates the table to accept an incompatible column change |
+| GET / POST | `/jobs/:name/schema` | read live staging-table structure (name+type+sample per column, + raw column_map_json) / apply an edited definition (validate names+types, drop + recreate the table, rebuild column map, rename, mark reload) |
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |

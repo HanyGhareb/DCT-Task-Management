@@ -39,6 +39,56 @@
     </div>
   </div>
 
+  <!-- Schema review / editor: edit the staging table's column names + data types
+       and the table name; nothing applies until Apply (drop + recreate, reloads next run) -->
+  <div class="card" style="margin-top:16px;">
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: t('atd.schema.title')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleSchema,
+                text: (schemaOpen() ? '▾ ' : '▸ ') + t('atd.schema.toggle')"></button>
+        <!-- ko if: schemaOpen -->
+        <button class="btn btn-sm btn-secondary" data-bind="click: loadSchema, text: t('atd.schema.reload')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: applySchema, text: t('atd.schema.apply')"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <!-- ko if: schemaOpen -->
+    <p class="muted" style="margin:6px 0 10px; font-size:.85em" data-bind="text: t('atd.schema.hint')"></p>
+    <!-- ko if: schemaLoading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+    <!-- ko ifnot: schemaLoading -->
+    <div class="form-group" style="max-width:440px;">
+      <label class="form-label" data-bind="text: t('atd.schema.tableName')"></label>
+      <input class="form-control mono" data-bind="textInput: schemaTable">
+    </div>
+    <!-- ko if: schemaCols().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.schema.noTable')"></div>
+    <!-- /ko -->
+    <!-- ko if: schemaCols().length > 0 -->
+    <div class="data-table-wrap" style="margin-top:10px;">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.schema.col.header')"></th>
+          <th data-bind="text: t('atd.schema.col.name')"></th>
+          <th data-bind="text: t('atd.schema.col.type')"></th>
+          <th data-bind="text: t('atd.schema.col.sample')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: schemaCols">
+          <tr>
+            <td class="mono muted" data-bind="text: $data.header || '—'"></td>
+            <td><input class="form-control form-control--sm mono" data-bind="textInput: $data.name"></td>
+            <td><select class="form-control form-control--sm mono" data-bind="value: $data.type, options: $vm.typeOptions"></select></td>
+            <td class="mono muted truncate-cell" data-bind="text: $data.sample, attr:{ title: $data.sample }"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
   <div class="card" style="margin-top:16px;">
     <div class="section-heading" data-bind="text: t('atd.detail.history')"></div>
     <!-- ko if: history().length === 0 -->

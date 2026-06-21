@@ -44,6 +44,8 @@ function (api) {
     resetJob:     function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/reset', {}); },
     runJob:       function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/run', {}); },
     reprepareJob: function (name, rebuild) { return api.post('/jobs/' + encodeURIComponent(name) + '/reprepare', { rebuild: rebuild ? 'Y' : 'N' }); },
+    getSchema:    function (name)      { return api.get('/jobs/' + encodeURIComponent(name) + '/schema'); },
+    applySchema:  function (name, body){ return api.post('/jobs/' + encodeURIComponent(name) + '/schema', body); },
 
     // queue ops
     enqueueAll:   function ()          { return api.post('/enqueue', {}); },
