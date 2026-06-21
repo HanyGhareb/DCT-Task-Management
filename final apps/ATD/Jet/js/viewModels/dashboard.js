@@ -32,15 +32,24 @@ function (ko, atd, i18n, charts) {
       setTimeout(function () {
         var el = document.getElementById('atdQueueChart');
         var q = d.queue || {};
+        var counts = [q.ready || 0, q.claimed || 0, q.done || 0, q.failed || 0];
+        var names = [i18n.t('atd.dash.queue.ready'), i18n.t('atd.dash.queue.claimed'),
+                     i18n.t('atd.dash.queue.done'), i18n.t('atd.dash.queue.failed')];
+        // show the figure next to each segment in the legend, e.g. "Ready (5)"
+        var labels = names.map(function (n, i) { return n + ' (' + counts[i] + ')'; });
         if (el) charts.makeChart(el, {
           type: 'doughnut',
           data: {
-            labels: [i18n.t('atd.dash.queue.ready'), i18n.t('atd.dash.queue.claimed'),
-                     i18n.t('atd.dash.queue.done'), i18n.t('atd.dash.queue.failed')],
-            datasets: [{ data: [q.ready || 0, q.claimed || 0, q.done || 0, q.failed || 0],
+            labels: labels,
+            datasets: [{ data: counts,
                          backgroundColor: ['#2C6CB0', '#B5651A', '#2A7D3A', '#C13A30'] }]
           },
-          options: { plugins: { legend: { position: 'bottom' } } }
+          options: {
+            plugins: {
+              legend: { position: 'bottom' },
+              tooltip: { callbacks: { label: function (c) { return c.label; } } }
+            }
+          }
         });
       }, 40);
     }).catch(function () { self.loading(false); });

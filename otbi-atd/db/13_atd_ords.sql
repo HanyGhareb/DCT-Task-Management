@@ -112,7 +112,7 @@ BEGIN
   APEX_JSON.write('lastFinished', NVL(l_lastfin,''));
   APEX_JSON.open_array('recent');
   FOR r IN (SELECT * FROM (
-              SELECT run_id, job_name, status, row_count,
+              SELECT run_id, job_name, status, row_count, NVL(host_id,'') AS host_id,
                      TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
                      TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
               FROM atd_load_run_log ORDER BY run_id DESC) WHERE ROWNUM <= 10) LOOP
@@ -121,6 +121,7 @@ BEGIN
     APEX_JSON.write('jobName', r.job_name);
     APEX_JSON.write('status', r.status);
     APEX_JSON.write('rowCount', NVL(r.row_count,0));
+    APEX_JSON.write('host', r.host_id);
     APEX_JSON.write('started', NVL(r.started_s,''));
     APEX_JSON.write('finished', NVL(r.finished_s,''));
     APEX_JSON.close_object;
@@ -128,7 +129,7 @@ BEGIN
   APEX_JSON.close_array;
   APEX_JSON.open_array('alerts');
   FOR r IN (SELECT * FROM (
-              SELECT run_id, job_name, status, row_count,
+              SELECT run_id, job_name, status, row_count, NVL(host_id,'') AS host_id,
                      NVL(DBMS_LOB.SUBSTR(message,300,1),'') AS msg,
                      CASE WHEN status='FAILED' THEN 'FAILED' ELSE 'WARNING' END AS kind,
                      TO_CHAR(started,'YYYY-MM-DD HH24:MI') AS started_s
@@ -140,6 +141,7 @@ BEGIN
     APEX_JSON.write('jobName', r.job_name);
     APEX_JSON.write('status', r.status);
     APEX_JSON.write('kind', r.kind);
+    APEX_JSON.write('host', r.host_id);
     APEX_JSON.write('message', r.msg);
     APEX_JSON.write('started', NVL(r.started_s,''));
     APEX_JSON.close_object;
