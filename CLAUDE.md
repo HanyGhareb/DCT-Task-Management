@@ -173,6 +173,8 @@ CREATE OR REPLACE SYNONYM dct_rest FOR prod.dct_rest;
 
 **Handler pattern:** Use `q'[...]'` for string literals containing special characters. Call `dct_rest.validate_session(:body)` at the top of every protected handler. Return JSON via `APEX_JSON` package.
 
+**Local time display (UTC→Asia/Dubai):** the ADB is UTC (`DBTIMEZONE +00:00`) and every timestamp/date column is written by `SYSTIMESTAMP`/`SYSDATE` (UTC). The org is UAE-only (Asia/Dubai, fixed +04:00, no DST), so **storage stays UTC and every datetime is converted only on display**. Wrap each display `TO_CHAR` with the shared helper: `TO_CHAR(dct_to_local(col), '<fmt>')` (`prod.dct_to_local` = `FROM_TZ(ts,'UTC') AT TIME ZONE 'Asia/Dubai'`, `db/v2/30_dct_tz_local.sql`, ADMIN synonym present). Applied platform-wide 2026-06-21 (205 calls across all 10 ORDS modules). **Never wrap** `TO_CHAR(SYSDATE/SYSTIMESTAMP,…)` — those build reference numbers / job names / `TO_DATE` defaults / filenames and must stay UTC — and never wrap timestamp **differences/comparisons** (TZ-agnostic) or `WHERE`/filter `TO_CHAR`. Any NEW handler that displays a stored datetime must use `dct_to_local`.
+
 **Public branding endpoint:** `GET /dct/branding` is the ONLY unauthenticated handler (the login page renders pre-session). It exposes just the whitelisted UI keys `APP_NAME` / `APP_NAME_AR` / `APP_TAGLINE` / `APP_TAGLINE_AR` from `DCT_SYSTEM_SETTINGS` — never add secrets to it. The Admin login title/subtitle bind to it (login.js fetch with static/i18n fallback) and are editable on the System Settings page.
 
 ---
