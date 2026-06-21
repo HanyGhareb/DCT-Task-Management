@@ -104,6 +104,7 @@
   "atd.col.run": "Run",
   "atd.col.job": "Job",
   "atd.col.host": "VM",
+  "atd.col.message": "Message",
   "atd.col.track": "Track",
   "atd.col.status": "Status",
   "atd.col.rows": "Rows",

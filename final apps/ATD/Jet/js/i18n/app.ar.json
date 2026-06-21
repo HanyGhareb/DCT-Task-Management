@@ -104,6 +104,7 @@
   "atd.col.run": "التشغيل",
   "atd.col.job": "المهمة",
   "atd.col.host": "الجهاز الظاهري",
+  "atd.col.message": "الرسالة",
   "atd.col.track": "المسار",
   "atd.col.status": "الحالة",
   "atd.col.rows": "الصفوف",

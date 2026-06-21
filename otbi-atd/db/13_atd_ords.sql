@@ -656,6 +656,9 @@ BEGIN
                        CASE WHEN started IS NOT NULL AND finished IS NOT NULL
                             THEN ROUND((CAST(finished AS DATE) - CAST(started AS DATE)) * 86400)
                             ELSE NULL END AS dur_sec,
+                       NVL(DBMS_LOB.SUBSTR(message,1000,1),'') AS msg,
+                       CASE WHEN status='SUCCESS' AND message IS NOT NULL THEN 'Y' ELSE 'N' END AS warn,
+                       host_id,
                        SUBSTR(csv_checksum,1,12) AS ck
                 FROM atd_load_run_log WHERE job_name = [COLON]name
                 ORDER BY run_id DESC) WHERE ROWNUM <= 20) LOOP
@@ -664,6 +667,9 @@ BEGIN
       APEX_JSON.write('rowCount', NVL(h.row_count,0));
       APEX_JSON.write('started', NVL(h.started_s,''));   APEX_JSON.write('finished', NVL(h.finished_s,''));
       APEX_JSON.write('durationSec', h.dur_sec);
+      APEX_JSON.write('warn', h.warn);
+      APEX_JSON.write('host', NVL(h.host_id,''));
+      APEX_JSON.write('message', h.msg);
       APEX_JSON.write('checksum', NVL(h.ck,''));
       APEX_JSON.close_object;
     END LOOP;

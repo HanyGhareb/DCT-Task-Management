@@ -26,6 +26,8 @@
 .rstat--FAILED   { background:#FBE6E4; color:#C13A30; }
 .rstat--WARNING  { background:#FCEFD6; color:#9A6A12; }
 .rstat--WARNING::before { content:"\26A0"; margin-inline-end:4px; }  /* ⚠ */
+/* failed-run message text in the Job run-history table */
+.rstat--FAILED-text { color:#C13A30; }
 
 /* ---- monospace cells (paths, tables, checksums) -------------------- */
 .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }

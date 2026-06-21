@@ -102,19 +102,27 @@
           <th data-bind="text: t('atd.col.status')"></th>
           <th data-bind="text: t('atd.col.rows')"></th>
           <th data-bind="text: t('atd.col.started')"></th>
-          <th data-bind="text: t('atd.col.finished')"></th>
           <th data-bind="text: t('atd.col.duration')"></th>
-          <th data-bind="text: t('atd.detail.checksum')"></th>
+          <th data-bind="text: t('atd.col.host')"></th>
+          <th data-bind="text: t('atd.col.message')"></th>
         </tr></thead>
         <tbody data-bind="foreach: history">
           <tr>
             <td data-bind="text: $data.runId"></td>
-            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td>
+              <span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span>
+              <!-- ko if: $data.warn === 'Y' -->
+              <span class="rstat rstat--WARNING" style="margin-inline-start:6px"
+                    data-bind="text: $vm.t('atd.runs.warn')"></span>
+              <!-- /ko -->
+            </td>
             <td data-bind="text: $data.rowCount"></td>
             <td data-bind="text: $data.started || '—'"></td>
-            <td data-bind="text: $data.finished || '—'"></td>
             <td class="mono" data-bind="text: ($data.durationSec != null ? $vm.fmtDuration($data.durationSec) : '—')"></td>
-            <td class="mono" data-bind="text: $data.checksum || ''"></td>
+            <td class="mono muted" data-bind="text: $data.host || '—'"></td>
+            <td class="truncate-cell" style="max-width:520px"
+                data-bind="css: { 'rstat--FAILED-text': $data.status === 'FAILED' },
+                           text: $data.message || '', attr:{ title: $data.message }"></td>
           </tr>
         </tbody>
       </table>
