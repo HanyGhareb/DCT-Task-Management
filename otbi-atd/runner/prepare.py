@@ -201,7 +201,10 @@ def profile(csv_text):
         # loader nulls an unparseable date cell rather than failing the whole load.
         date_ok = seen[i] and maxlen[i] <= 30 and date_bad[i] <= nonnull // 50
         if not seen[i]:
-            typ = "NUMBER" if suffix else "VARCHAR2(40)"   # explicit suffix wins even if empty
+            # all-empty: trust the name. An amount-named column (suffix OR keyword)
+            # that's empty in this extract is created NUMBER (NULLs load into any
+            # type); no values means no alpha-guard to consult.
+            typ = "NUMBER" if hint else "VARCHAR2(40)"
         elif date_ok and not hint:
             typ = "DATE"
         elif is_int[i] and maxlen[i] <= INT_MAXLEN:
