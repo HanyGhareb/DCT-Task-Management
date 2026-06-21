@@ -14,6 +14,7 @@ import hashlib
 
 import sqlrun
 import checks
+from prepare import clean_cell   # OBIEE numeric-guard normalization (shared w/ profiler)
 
 
 def _logvals(job_name, n, checksum, extra=None):
@@ -48,7 +49,7 @@ def _parse(csv_text, column_map):
     if not pairs:
         raise RuntimeError("no column_map header matched the CSV")
     cols = [v.upper() for _, v in pairs]
-    rows = [[r.get(src) for src, _ in pairs] for r in reader]
+    rows = [[clean_cell(r.get(src)) for src, _ in pairs] for r in reader]
     return cols, rows
 
 

@@ -16,6 +16,8 @@ import json
 import os
 from datetime import datetime
 
+from prepare import clean_cell   # OBIEE numeric-guard normalization (shared w/ profiler)
+
 DATE_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y", "%d-%b-%y",
                 "%m/%d/%Y %H:%M:%S", "%m/%d/%Y")
 
@@ -58,7 +60,7 @@ def _parse_csv(csv_text, column_map):
     if not pairs:
         raise RuntimeError("no column_map header matched the CSV")
     target_cols = [v.upper() for _, v in pairs]
-    rows = [[r.get(src) for src, _ in pairs] for r in reader]
+    rows = [[clean_cell(r.get(src)) for src, _ in pairs] for r in reader]
     return target_cols, rows
 
 

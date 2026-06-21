@@ -31,6 +31,24 @@ DATE_RE = re.compile(
     r")$")
 INT_RE = re.compile(r"^-?\d+$")
 NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
+# Oracle NUMBER holds 38 significant digits; allow decimals/measures up to that
+# (sign + dot + 38 digits). Integers keep a tighter cap so long IDs / account
+# codes with leading zeros are NOT coerced to NUMBER (which would drop the zeros).
+INT_MAXLEN = 15
+NUM_MAXLEN = 40
+
+
+def clean_cell(v):
+    """Normalize an OBIEE/Excel export cell so numeric values type & load cleanly.
+
+    OBIEE prefixes a 'text-guard' apostrophe to negative/measure numbers on CSV
+    export (e.g. "'-33750"), which makes the column profile as VARCHAR2 and stores
+    the apostrophe verbatim. Strip that leading apostrophe — but ONLY when the
+    remainder is a plain number, so genuine text ("'NORTH") is left untouched.
+    Used by the profiler AND both loaders so every value is normalized identically."""
+    if v and len(v) > 1 and v[0] == "'" and NUM_RE.match(v[1:]):
+        return v[1:]
+    return v
 
 
 def slug(text):
@@ -74,14 +92,14 @@ def bucket(maxlen):
 
 
 def infer(values, maxlen):
-    ne = [v for v in values if v.strip() != ""]
+    ne = [clean_cell(v) for v in values if v.strip() != ""]
     if not ne:
         return "VARCHAR2(40)"          # all-null: safe default
     if all(DATE_RE.match(v) for v in ne):
         return "DATE"
-    if all(INT_RE.match(v) for v in ne) and maxlen <= 15:
+    if all(INT_RE.match(v) for v in ne) and maxlen <= INT_MAXLEN:
         return "NUMBER"
-    if all(NUM_RE.match(v) for v in ne) and maxlen <= 18:
+    if all(NUM_RE.match(v) for v in ne) and maxlen <= NUM_MAXLEN:
         return "NUMBER"
     return f"VARCHAR2({bucket(maxlen)})"
 
@@ -108,7 +126,7 @@ def profile(csv_text):
     for r in reader:
         nrows += 1
         for i in range(nc):
-            v = r[i] if i < len(r) else ""
+            v = clean_cell(r[i]) if i < len(r) else ""   # unguard OBIEE numerics first
             if len(v) > maxlen[i]:
                 maxlen[i] = len(v)
             if v.strip() == "":
@@ -132,9 +150,9 @@ def profile(csv_text):
             typ = "VARCHAR2(40)"               # all-null: safe default
         elif date_ok:
             typ = "DATE"
-        elif is_int[i] and maxlen[i] <= 15:
+        elif is_int[i] and maxlen[i] <= INT_MAXLEN:
             typ = "NUMBER"
-        elif is_num[i] and maxlen[i] <= 18:
+        elif is_num[i] and maxlen[i] <= NUM_MAXLEN:
             typ = "NUMBER"
         else:
             typ = f"VARCHAR2({bucket(maxlen[i])})"

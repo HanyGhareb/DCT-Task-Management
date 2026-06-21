@@ -143,6 +143,18 @@ table columns (`_plan_drift`) and reconciles:
 - **Date-format alignment (avoids false drift):** `prepare.DATE_RE` recognises every shape the
   loader parses (`YYYY-MM-DD[ HH:MI:SS]`, `DD-MON-YYYY`, `MM/DD/YYYY[ HH:MI:SS]`), so a DATE
   column fed non-ISO dates (e.g. `15-JAN-2026`) is **not** mis-flagged as an incompatible change.
+- **OBIEE numeric normalization (correct NUMBER typing + clean values):** OTBI/OBIEE CSV export
+  prefixes a **text-guard apostrophe** to negative/measure numbers (e.g. `'-33750`). Left as-is, the
+  column profiles as `VARCHAR2` (not `NUMBER`) and the apostrophe is stored verbatim. `prepare.clean_cell`
+  strips a leading `'` **only when the remainder is a plain number** (genuine text like `'NORTH` is
+  untouched) and is applied in the **profiler and both loaders** (`loadsql._parse`, `load._parse_csv`)
+  so every value is normalized identically. Also: the `NUMBER` size cap for **decimals** was raised
+  18→40 chars (`NUM_MAXLEN`; Oracle `NUMBER` holds 38 significant digits) so high-precision measures
+  like `Funds Available PCT` (`0.09606986899563312`) type as `NUMBER`; integers keep the tighter
+  `INT_MAXLEN=15` so long IDs/account codes with leading zeros stay text. Found via GL_BALANCES
+  (`FUNDS_AVAILABLE` 16,105 apostrophe-guarded negatives → was `VARCHAR2(20)`). **To fix an already-
+  created table, use Job Detail → Rebuild table** (re-profiles + recreates with NUMBER columns + clean
+  values); future loads are clean automatically.
 - **All-empty column guard (avoids false drift):** a column that is **entirely empty** in an
   extract profiles to the all-null default (`VARCHAR2(40)`) and carries no type evidence — so
   `prepare._evolve` returns no change for an all-null live column. Without this, a `DATE`/`NUMBER`
