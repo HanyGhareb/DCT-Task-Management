@@ -14,7 +14,7 @@ import hashlib
 
 import sqlrun
 import checks
-from prepare import clean_cell   # OBIEE numeric-guard normalization (shared w/ profiler)
+from prepare import clean_cell, coerce_number   # OBIEE numeric normalization (shared w/ profiler)
 
 
 def _logvals(job_name, n, checksum, extra=None):
@@ -66,10 +66,33 @@ def _date_columns(table):
     return {r["column_name"].upper() for r in rows}
 
 
+def _number_columns(table):
+    """Names of NUMBER columns in the (PROD.)table, via SQLcl."""
+    owner, tname = (table.split(".", 1) if "." in table else ("PROD", table))
+    rows = sqlrun.query_json(
+        f"select column_name from all_tab_columns where owner='{owner.upper()}' "
+        f"and table_name='{tname.upper()}' and data_type='NUMBER'")
+    return {r["column_name"].upper() for r in rows}
+
+
+def _coerce_numbers(cols, rows, stage):
+    """In place: coerce every NUMBER-column cell (strip OBIEE apostrophe/commas/
+    parens) so it converts cleanly into the NUMBER column."""
+    numset = _number_columns(stage)
+    nidx = [k for k, c in enumerate(cols) if c.upper() in numset]
+    if not nidx:
+        return
+    for r in rows:
+        for k in nidx:
+            if k < len(r):
+                r[k] = coerce_number(r[k])
+
+
 def _load_bulk(job, csv_text, extra_msg=None):
     """Fast path: rewrite headers to column names, normalize dates, SQLcl LOAD."""
     cols, rows = _parse(csv_text, json.loads(job["column_map_json"]))
     stage = job["stage_table"]
+    _coerce_numbers(cols, rows, stage)              # OBIEE-formatted numbers -> clean
     checksum = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
     job_name = job["job_name"].replace("'", "''")
     date_idx = [i for i, c in enumerate(cols) if c in _date_columns(stage)]
@@ -124,6 +147,7 @@ def load(job, csv_text, extra_msg=None):
         return _load_bulk(job, csv_text, extra_msg)
     cols, rows = _parse(csv_text, json.loads(job["column_map_json"]))
     stage = job["stage_table"]
+    _coerce_numbers(cols, rows, stage)              # OBIEE-formatted numbers -> clean
     collist = ",".join(cols)
     checksum = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
     job_name = job["job_name"].replace("'", "''")

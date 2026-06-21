@@ -16,7 +16,7 @@ import json
 import os
 from datetime import datetime
 
-from prepare import clean_cell   # OBIEE numeric-guard normalization (shared w/ profiler)
+from prepare import clean_cell, coerce_number   # OBIEE numeric normalization (shared w/ profiler)
 
 DATE_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y", "%d-%b-%y",
                 "%m/%d/%Y %H:%M:%S", "%m/%d/%Y")
@@ -69,14 +69,20 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     target_cols, rows = _parse_csv(csv_text, column_map)
     types = _col_types(conn, stage_table)
 
-    # per-column converters: dates -> datetime, blanks -> None, else keep string
+    # per-column converters: dates -> datetime, NUMBER -> coerced numeric string
+    # (strip OBIEE apostrophe/commas/parens so it binds cleanly), blanks -> None,
+    # everything else kept as the (lightly-cleaned) string.
     is_date = [types.get(c, "").startswith(("DATE", "TIMESTAMP")) for c in target_cols]
+    is_num = [types.get(c, "").startswith("NUMBER") for c in target_cols]
     conv = []
     for r in rows:
         out = []
         for i, v in enumerate(r):
             if is_date[i]:
                 out.append(_to_dt(v))
+            elif is_num[i]:
+                cv = coerce_number(v)
+                out.append(None if (cv is None or cv == "") else cv)
             else:
                 out.append(None if (v is None or v == "") else v)
         conv.append(out)

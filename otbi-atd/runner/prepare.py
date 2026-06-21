@@ -14,6 +14,7 @@ the two `ensure_prepared_*` entry points (oracledb / SQLcl) the runner calls.
 import csv
 import io
 import json
+import os
 import re
 
 # Oracle reserved words we must not use as bare column names
@@ -31,11 +32,56 @@ DATE_RE = re.compile(
     r")$")
 INT_RE = re.compile(r"^-?\d+$")
 NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
+ALPHA_RE = re.compile(r"[A-Za-z]")
 # Oracle NUMBER holds 38 significant digits; allow decimals/measures up to that
 # (sign + dot + 38 digits). Integers keep a tighter cap so long IDs / account
 # codes with leading zeros are NOT coerced to NUMBER (which would drop the zeros).
 INT_MAXLEN = 15
 NUM_MAXLEN = 40
+
+# Name-based NUMBER hint. A column whose header carries an amount token is created
+# as NUMBER regardless of OBIEE value formatting (apostrophes, commas, parens) and
+# its values are coerced on load. The *_AMOUNT/_AMT/_NUM/_BAL/_QTY suffix is the
+# explicit, guaranteed contract for new analyses; the keyword list covers existing
+# finance columns. Override the whole pattern via ATD_NUMERIC_NAME_PATTERN.
+NUM_SUFFIX_RE = re.compile(r"(?:_AMOUNT|_AMT|_NUM|_BAL|_QTY)$", re.I)
+NUM_NAME_RE = re.compile(
+    os.environ.get("ATD_NUMERIC_NAME_PATTERN",
+        r"(?:_AMOUNT|_AMT|_NUM|_BAL|_QTY)$"
+        r"|AMOUNT|EXPENDITURE|COMMITMENT|OBLIGATION|ENCUMBRANCE|BUDGET|BALANCE|FUNDS|PCT"),
+    re.I)
+
+
+def is_numeric_suffix(header):
+    """True when the header ends with an explicit numeric suffix (_AMOUNT, ...)."""
+    return bool(header) and bool(NUM_SUFFIX_RE.search(header))
+
+
+def is_numeric_name(header):
+    """True when the header carries any amount token (suffix or keyword)."""
+    return bool(header) and bool(NUM_NAME_RE.search(header))
+
+
+def coerce_number(v):
+    """Aggressively normalize a value bound for a NUMBER column: strip the OBIEE
+    text-guard apostrophe, thousands separators, surrounding whitespace, and turn
+    accounting parentheses into a minus ("(1,234)" -> "-1234"). A non-numeric
+    leftover is returned as-is so the NUMBER insert fails loudly (surfacing real
+    bad data) rather than silently corrupting it."""
+    if v is None:
+        return v
+    s = v.strip()
+    if s == "":
+        return ""
+    if s[0] == "'":                          # OBIEE text-guard apostrophe
+        s = s[1:].strip()
+    neg = False
+    if s.startswith("(") and s.endswith(")"):   # (123.45) -> -123.45
+        neg, s = True, s[1:-1].strip()
+    s = s.replace(",", "")                   # thousands separators
+    if neg and s and not s.startswith("-"):
+        s = "-" + s
+    return s
 
 
 def clean_cell(v):
@@ -122,6 +168,7 @@ def profile(csv_text):
     date_bad = [0] * nc                        # non-empty values that AREN'T a date
     is_int = [True] * nc
     is_num = [True] * nc
+    has_alpha = [False] * nc                   # any value with a letter (-> real text)
     nrows = 0
     for r in reader:
         nrows += 1
@@ -135,24 +182,40 @@ def profile(csv_text):
             seen[i] = True
             if not DATE_RE.match(v):
                 date_bad[i] += 1
-            if is_int[i] and not INT_RE.match(v):
+            if not has_alpha[i] and ALPHA_RE.search(v):
+                has_alpha[i] = True
+            # numeric tests run on the COERCED value so OBIEE-formatted numbers
+            # ('-33750, 1,234.56, (123)) are recognised as numbers, not text.
+            cv = coerce_number(v)
+            if is_int[i] and not INT_RE.match(cv):
                 is_int[i] = False
-            if is_num[i] and not NUM_RE.match(v):
+            if is_num[i] and not NUM_RE.match(cv):
                 is_num[i] = False
     used, cols = set(), []
     for i, h in enumerate(hdr):
         nonnull = nrows - nulls[i]
+        suffix = is_numeric_suffix(h)
+        hint = is_numeric_name(h)
         # DATE if (nearly) every value parses as a date — tolerate <=2% dirty cells
         # (real OTBI exports occasionally misalign a row via free-text commas); the
         # loader nulls an unparseable date cell rather than failing the whole load.
         date_ok = seen[i] and maxlen[i] <= 30 and date_bad[i] <= nonnull // 50
         if not seen[i]:
-            typ = "VARCHAR2(40)"               # all-null: safe default
-        elif date_ok:
+            typ = "NUMBER" if suffix else "VARCHAR2(40)"   # explicit suffix wins even if empty
+        elif date_ok and not hint:
             typ = "DATE"
         elif is_int[i] and maxlen[i] <= INT_MAXLEN:
             typ = "NUMBER"
         elif is_num[i] and maxlen[i] <= NUM_MAXLEN:
+            typ = "NUMBER"
+        elif hint and not has_alpha[i]:
+            # amount-named + no alphabetic values -> NUMBER (coerced on load). Guards
+            # against a keyword false-positive on a text column (e.g. CONTROL_BUDGET
+            # holding words), which keeps its letters and so stays VARCHAR2.
+            typ = "NUMBER"
+        elif suffix:
+            # explicit suffix is a hard contract: force NUMBER even past alpha values;
+            # if the column is genuinely text the load fails loudly (named it wrong).
             typ = "NUMBER"
         else:
             typ = f"VARCHAR2({bucket(maxlen[i])})"
