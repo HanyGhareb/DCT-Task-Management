@@ -99,7 +99,7 @@
             </td>
             <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
             <td class="mono" data-bind="text: $data.currentJob || '—'"></td>
-            <td data-bind="text: $vm.workerAge($data) + ' ' + t('atd.workers.ago')"></td>
+            <td data-bind="text: $vm.workerAge($data) + ' ' + $root.t('atd.workers.ago')"></td>
             <td data-bind="text: $data.runs24h"></td>
           </tr>
         </tbody>
