@@ -15,9 +15,9 @@ function (ko, atd, api, i18n, toast, fmtDuration) {
     self.fJob = ko.observable(''); self.fStatus = ko.observable('');
     self.fFrom = ko.observable(''); self.fTo = ko.observable('');
 
-    // server pagination (envelope {items,total,limit,offset})
+    // server pagination (envelope {items,total,limit,offset}); 20 rows/page
     self.offset = ko.observable(0);
-    self.limit = ko.observable(50);
+    self.limit = ko.observable(20);
 
     self.detail = ko.observable(null);
 

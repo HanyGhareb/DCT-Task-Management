@@ -8,6 +8,15 @@ function (ko, atd, i18n, toast) {
     self.targets = ko.observableArray([]);
     self.kinds = ['LOCAL_ATP', 'REMOTE'];
 
+    // client-side pagination (20 rows/page)
+    self.offset = ko.observable(0);
+    self.limit = ko.observable(20);
+    self.total = ko.pureComputed(function () { return self.targets().length; });
+    self.targetsPage = ko.pureComputed(function () {
+      var o = self.offset(); return self.targets().slice(o, o + self.limit());
+    });
+    self.noop = function () {};
+
     self.showForm = ko.observable(false);
     self.editName = ko.observable(null);
     self.fmName = ko.observable(''); self.fmDesc = ko.observable('');
@@ -20,7 +29,7 @@ function (ko, atd, i18n, toast) {
 
     self.load = function () {
       self.loading(true);
-      atd.listTargets().then(function (r) { self.targets(r.items || []); self.loading(false); })
+      atd.listTargets().then(function (r) { self.targets(r.items || []); self.offset(0); self.loading(false); })
         .catch(function () { self.loading(false); });
     };
     self.load();

@@ -15,6 +15,11 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.fSearch = ko.observable('');
     self.fStatus = ko.observable('');
 
+    // server pagination (envelope {items,total,limit,offset}); 20 rows/page
+    self.offset = ko.observable(0);
+    self.limit = ko.observable(20);
+    self.total = ko.observable(0);
+
     // drawer form state
     self.showForm = ko.observable(false);
     self.editName = ko.observable(null);
@@ -41,14 +46,21 @@ function (ko, atd, i18n, toast, fmtDuration) {
 
     self.load = function () {
       self.loading(true);
-      atd.listJobs({ search: self.fSearch(), status: self.fStatus(), limit: 200 })
-        .then(function (r) { self.jobs(r.items || []); self.loading(false); })
+      atd.listJobs({ search: self.fSearch(), status: self.fStatus(),
+                     limit: self.limit(), offset: self.offset() })
+        .then(function (r) {
+          self.jobs(r.items || []);
+          self.total(r.total || (r.items || []).length);
+          self.loading(false);
+        })
         .catch(function () { self.loading(false); });
     };
+    self.reload = self.load;                     // pager onChange (offset already set)
 
     // Reload on status change via the observable subscription (fires after the value
     // binding writes) — the DOM change event fires before KO updates the observable.
-    self.fStatus.subscribe(function () { self.load(); });
+    // Reset to page 1 when the filter changes.
+    self.fStatus.subscribe(function () { self.offset(0); self.load(); });
 
     atd.getLookups().then(function (l) {
       self.envs((l.envs || []).map(function (e) { return e.envName; }));

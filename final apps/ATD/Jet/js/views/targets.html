@@ -20,7 +20,7 @@
         <th data-bind="text: t('atd.jobs.col.enabled')"></th>
         <th style="width:140px;"></th>
       </tr></thead>
-      <tbody data-bind="foreach: targets">
+      <tbody data-bind="foreach: targetsPage">
         <tr>
           <td class="mono" data-bind="text: $data.targetName"></td>
           <td><span class="badge badge--info" data-bind="text: $data.dbKind"></span></td>
@@ -34,6 +34,7 @@
       </tbody>
     </table>
   </div>
+  <list-pager params="offset: offset, limit: limit, total: total, onChange: noop"></list-pager>
   <!-- /ko -->
   <!-- /ko -->
 

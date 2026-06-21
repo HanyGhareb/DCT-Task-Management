@@ -8,13 +8,24 @@ function (ko, atd, i18n, toast) {
     self.jobs = ko.observableArray([]);
     self.lease = ko.observable(30);
 
+    // server pagination (envelope {items,total,limit,offset}); 20 rows/page
+    self.offset = ko.observable(0);
+    self.limit = ko.observable(20);
+    self.total = ko.observable(0);
+
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
 
     self.load = function () {
       self.loading(true);
-      atd.listJobs({ limit: 200 }).then(function (r) { self.jobs(r.items || []); self.loading(false); })
+      atd.listJobs({ limit: self.limit(), offset: self.offset() })
+        .then(function (r) {
+          self.jobs(r.items || []);
+          self.total(r.total || (r.items || []).length);
+          self.loading(false);
+        })
         .catch(function () { self.loading(false); });
     };
+    self.reload = self.load;                     // pager onChange
     self.load();
 
     self.enqueueAll = function () {

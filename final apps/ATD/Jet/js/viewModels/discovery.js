@@ -10,13 +10,23 @@ function (ko, atd, i18n, toast, fmtDuration) {
 
     // ── 1. discovery requests (atd_sa_catalog — current status per subject area) ──
     self.reqLoading = ko.observable(true);
-    self.requests = ko.observableArray([]);
+    self.requests = ko.observableArray([]);             // full list (also feeds the picker)
     self.newSa = ko.observable('');                     // "discover a subject area" input
+    self.noop = function () {};                         // client-paged: slice is computed
+
+    // client-side pagination (20 rows/page) over the full requests list
+    self.reqOffset = ko.observable(0);
+    self.reqLimit = ko.observable(20);
+    self.reqTotal = ko.pureComputed(function () { return self.requests().length; });
+    self.reqPage = ko.pureComputed(function () {
+      var o = self.reqOffset(); return self.requests().slice(o, o + self.reqLimit());
+    });
 
     self.loadRequests = function () {
       self.reqLoading(true);
-      atd.listSubjectAreas().then(function (r) { self.requests(r.items || []); self.reqLoading(false); })
-        .catch(function () { self.reqLoading(false); });
+      atd.listSubjectAreas().then(function (r) {
+        self.requests(r.items || []); self.reqOffset(0); self.reqLoading(false);
+      }).catch(function () { self.reqLoading(false); });
     };
 
     self.discover = function (sa) {
@@ -35,7 +45,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.runs = ko.observableArray([]);
     self.runTotal = ko.observable(0);
     self.runOffset = ko.observable(0);
-    self.runLimit = ko.observable(25);
+    self.runLimit = ko.observable(20);
 
     self.loadRuns = function () {
       self.runLoading(true);
@@ -48,10 +58,19 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.buildLoading = ko.observable(true);
     self.builds = ko.observableArray([]);
 
+    // client-side pagination (20 rows/page)
+    self.buildOffset = ko.observable(0);
+    self.buildLimit = ko.observable(20);
+    self.buildTotal = ko.pureComputed(function () { return self.builds().length; });
+    self.buildPage = ko.pureComputed(function () {
+      var o = self.buildOffset(); return self.builds().slice(o, o + self.buildLimit());
+    });
+
     self.loadBuilds = function () {
       self.buildLoading(true);
-      atd.listAnalyses().then(function (r) { self.builds(r.items || []); self.buildLoading(false); })
-        .catch(function () { self.buildLoading(false); });
+      atd.listAnalyses().then(function (r) {
+        self.builds(r.items || []); self.buildOffset(0); self.buildLoading(false);
+      }).catch(function () { self.buildLoading(false); });
     };
 
     self.refresh = function () { self.loadRequests(); self.loadRuns(); self.loadBuilds(); };

@@ -10,12 +10,21 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.history = ko.observableArray([]);
     var name = (window._jetApp.getState() || {}).jobName;
 
+    // client-side pagination (20 rows/page) over the run history
+    self.offset = ko.observable(0);
+    self.limit = ko.observable(20);
+    self.total = ko.pureComputed(function () { return self.history().length; });
+    self.historyPage = ko.pureComputed(function () {
+      var o = self.offset(); return self.history().slice(o, o + self.limit());
+    });
+    self.noop = function () {};
+
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
     self.back = function () { window._jetApp.navigate('jobs'); };
 
     self.refresh = function () {
       atd.getJob(name).then(function (j) {
-        self.job(j); self.history(j.history || []); self.loading(false);
+        self.job(j); self.history(j.history || []); self.offset(0); self.loading(false);
       }).catch(function () { self.loading(false); });
     };
     self.refresh();

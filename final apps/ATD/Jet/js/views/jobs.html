@@ -7,13 +7,13 @@
   </div>
 
   <div class="view-toolbar">
-    <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('atd.jobs.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13) load(); return true; } }">
+    <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('atd.jobs.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13){ offset(0); load(); } return true; } }">
     <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fStatus">
       <option value="" data-bind="text: t('atd.jobs.allStatuses')"></option>
       <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
     </select>
     <span class="toolbar-spacer"></span>
-    <!-- ko ifnot: loading --><span class="muted" data-bind="text: jobs().length + ' ' + t('atd.common.results')"></span><!-- /ko -->
+    <!-- ko ifnot: loading --><span class="muted" data-bind="text: total() + ' ' + t('atd.common.results')"></span><!-- /ko -->
   </div>
 
   <!-- ko if: loading -->
@@ -81,6 +81,7 @@
       </tbody>
     </table>
   </div>
+  <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
   <!-- /ko -->
   <!-- /ko -->
 

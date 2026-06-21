@@ -9,6 +9,11 @@ function (ko, atd, i18n, toast) {
     self.stats = ko.observable(null);
     self.statusFilter = ko.observable('');
 
+    // server pagination (envelope {items,total,limit,offset}); 20 rows/page
+    self.offset = ko.observable(0);
+    self.limit = ko.observable(20);
+    self.total = ko.observable(0);
+
     // detail modal
     self.detailOpen = ko.observable(false);
     self.detail = ko.observable(null);
@@ -19,13 +24,19 @@ function (ko, atd, i18n, toast) {
     self.load = function () {
       self.loading(true);
       atd.getActionStats().then(function (s) { self.stats(s); }).catch(function () {});
-      atd.listActions({ status: self.statusFilter() || undefined, limit: 200 })
-        .then(function (r) { self.rows(r.items || []); self.loading(false); })
+      atd.listActions({ status: self.statusFilter() || undefined,
+                        limit: self.limit(), offset: self.offset() })
+        .then(function (r) {
+          self.rows(r.items || []);
+          self.total(r.total || (r.items || []).length);
+          self.loading(false);
+        })
         .catch(function () { self.loading(false); });
     };
+    self.reload = self.load;                     // pager onChange
     self.load();
 
-    self.setStatus = function (s) { self.statusFilter(s); self.load(); };
+    self.setStatus = function (s) { self.statusFilter(s); self.offset(0); self.load(); };
 
     self.retry = function (row) {
       atd.retryAction(row.actionId)

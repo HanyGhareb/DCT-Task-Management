@@ -7,6 +7,15 @@ function (ko, atd, i18n, toast) {
     self.loading = ko.observable(true);
     self.envs = ko.observableArray([]);
     self.tracks = ['BROWSER', 'API'];
+
+    // client-side pagination (20 rows/page)
+    self.offset = ko.observable(0);
+    self.limit = ko.observable(20);
+    self.total = ko.pureComputed(function () { return self.envs().length; });
+    self.envsPage = ko.pureComputed(function () {
+      var o = self.offset(); return self.envs().slice(o, o + self.limit());
+    });
+    self.noop = function () {};
     self.authTypes = ['SESSION', 'WSS', 'BASIC', 'OAUTH'];
 
     self.showForm = ko.observable(false);
@@ -22,7 +31,7 @@ function (ko, atd, i18n, toast) {
 
     self.load = function () {
       self.loading(true);
-      atd.listEnvs().then(function (r) { self.envs(r.items || []); self.loading(false); })
+      atd.listEnvs().then(function (r) { self.envs(r.items || []); self.offset(0); self.loading(false); })
         .catch(function () { self.loading(false); });
     };
     self.load();

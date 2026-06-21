@@ -86,7 +86,7 @@ define(['knockout', 'shared/i18n'], function (ko, i18n) {
         '  <span class="pager__grow"></span>' +
         '  <label class="pager__size-lbl" data-bind="text: t(\'pager.perPage\')"></label>' +
         '  <select data-bind="value: limitSel">' +
-        '    <option value="25">25</option><option value="50">50</option><option value="100">100</option>' +
+        '    <option value="20">20</option><option value="25">25</option><option value="50">50</option><option value="100">100</option>' +
         '  </select>' +
         '  <button class="pager__btn" data-bind="click: prev, disable: prevDisabled"><span>&#8249;</span></button>' +
         '  <span class="pager__num" data-bind="text: numText"></span>' +

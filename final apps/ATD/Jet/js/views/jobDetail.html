@@ -106,7 +106,7 @@
           <th data-bind="text: t('atd.col.host')"></th>
           <th data-bind="text: t('atd.col.message')"></th>
         </tr></thead>
-        <tbody data-bind="foreach: history">
+        <tbody data-bind="foreach: historyPage">
           <tr>
             <td data-bind="text: $data.runId"></td>
             <td>
@@ -127,6 +127,7 @@
         </tbody>
       </table>
     </div>
+    <list-pager params="offset: offset, limit: limit, total: total, onChange: noop"></list-pager>
     <!-- /ko -->
   </div>
   <!-- /ko -->

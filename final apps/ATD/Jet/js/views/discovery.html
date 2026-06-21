@@ -30,7 +30,7 @@
         <th data-bind="text: t('atd.discovery.col.scraped')"></th>
         <th style="width:110px"></th>
       </tr></thead>
-      <tbody data-bind="foreach: requests">
+      <tbody data-bind="foreach: reqPage">
         <tr>
           <td data-bind="text: $data.subjectArea"></td>
           <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status,
@@ -47,6 +47,7 @@
       </tbody>
     </table>
   </div>
+  <list-pager params="offset: reqOffset, limit: reqLimit, total: reqTotal, onChange: noop"></list-pager>
   <!-- /ko -->
   <!-- /ko -->
 
@@ -105,7 +106,7 @@
         <th data-bind="text: t('atd.discovery.col.created')"></th>
         <th data-bind="text: t('atd.runs.detail.message')"></th>
       </tr></thead>
-      <tbody data-bind="foreach: builds">
+      <tbody data-bind="foreach: buildPage">
         <tr>
           <td data-bind="text: $data.analysisName || '—'"></td>
           <td class="mono truncate-cell" data-bind="text: $data.saveFolder || '—', attr:{ title: $data.saveFolder || '' }"></td>
@@ -118,6 +119,7 @@
       </tbody>
     </table>
   </div>
+  <list-pager params="offset: buildOffset, limit: buildLimit, total: buildTotal, onChange: noop"></list-pager>
   <!-- /ko -->
   <!-- /ko -->
 
