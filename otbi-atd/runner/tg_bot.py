@@ -188,7 +188,10 @@ _HELP = (
     "<b>🔜 Coming soon</b>\n"
     "/payments  ·  /pettycash  ·  /freelancer\n"
     "\n"
-    "/help — show this message"
+    "/help — show this message\n"
+    "\n"
+    "<i>Finance Department\n"
+    "Department of Culture and Tourism</i>"
 )
 
 _COMING_SOON = {
@@ -212,9 +215,11 @@ def _handle(update, conn, allow):
         print(f"[bot] ignored update from chat_id={chat_id} (not in allow-list)")
         return  # silent ignore — do not reveal the bot exists to strangers
 
-    # Strip the @botname suffix Telegram appends in groups
+    # Strip the @botname suffix Telegram appends in groups; accept with or without /
     cmd_part, _, arg = text.partition(" ")
     cmd = cmd_part.lower().split("@")[0]
+    if not cmd.startswith("/"):
+        cmd = "/" + cmd
     arg = arg.strip()
 
     if cmd in ("/start", "/help"):
@@ -238,7 +243,7 @@ def _handle(update, conn, allow):
             _send(chat_id, search_name(conn, arg))
         return
 
-    _send(chat_id, f"❓ Unknown command: <code>{html.escape(cmd)}</code>\n/help — list commands")
+    _send(chat_id, _HELP)
 
 
 # ---------------------------------------------------------------------------
