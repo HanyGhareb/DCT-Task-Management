@@ -49,6 +49,18 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-21** — **Runner code MUST be redeployed to the worker VMs** (atd-vm180/181/182). The
+  workers run as a long-lived systemd service (`atd-worker`, `--worker --forever`) on each VM, so a
+  change to `otbi-atd/runner/*.py` does NOT take effect until each VM is re-synced **and the service
+  restarted** (it holds the old code in memory). Symptom seen: after the OBIEE-numeric / name-hint /
+  atomic-reload fixes (which work on the control host), enqueued GL_BALANCES kept FAILING on the VMs
+  (`ORA-01722` apostrophe→NUMBER) and — because the old VM code still used `TRUNCATE`-then-load — each
+  failure **emptied the table**. Deploy procedure (control box, key at `/c/tmp/atd-provision/keys`):
+  `bash otbi-atd/runner/deploy_worker.sh <ip>` then `ssh root@<ip> systemctl restart atd-worker` for
+  each of .180/.181/.182 (restart reuses the saved Fusion session → no MFA; first-ever start needs one
+  MFA approval). Canary one VM (stop the other two, enqueue, confirm SUCCESS on that host) before the
+  rest. Verified: fleet 4/4 SUCCESS, GL_BALANCES 18986 rows, 0 failures after. See
+  `otbi-atd/docs/vm-restart-runbook.md`.
 - **2026-06-21** — **Schema review/editor** (APP_VERSION 1.9.0). Job Detail gains a **Table Schema**
   panel: the live staging-table structure (source header · column name · data type · sample value)
   with editable name + type per column and an editable table name. **Apply** = `POST /jobs/:name/
