@@ -328,6 +328,12 @@ sourced from approved Petty Cash reimbursements.
 - **App 208 UI/ORDS:** `otbi-atd/db/20_atd_action_ords.sql` (ADDITIVE — no DELETE_MODULE) adds
   `GET /atd/actions`, `GET /atd/actions/stats`, `GET /atd/actions/:id`, `POST /atd/actions/:id/retry`,
   `POST /atd/actions/:id/cancel` to the live `atd.rest`. New JET `actions` view + dashboard tile.
+  - **⚠️ ALWAYS run `20_atd_action_ords.sql` RIGHT AFTER `13_atd_ords.sql`.** `13` does
+    `ORDS.DELETE_MODULE(atd.rest)` + rebuild, so any redeploy of `13` (e.g. the 2026-06-21 `/workers`
+    add) WIPES these additive `/actions/*` handlers. Symptom: the dashboard's `/actions/stats` call
+    404s and the browser shows a CORS **"Network error — check your connection"** toast + a dead
+    Fusion Actions page. Fix = re-run `20`. (Same trap as the TM `06`/`14` rule.) Hit & fixed
+    2026-06-21.
 - **Employee→Fusion supplier map:** `otbi-atd/db/21_emp_supplier_map.sql` = `DCT_EMP_SUPPLIER_MAP`
   (`source_module`, `party_key`=employee_num/freelancer_id, `supplier_number/name/site`,
   `business_unit`, **`payment_method`**, `pay_group/payment_terms/currency_code`,

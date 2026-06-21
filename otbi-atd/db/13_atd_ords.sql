@@ -6,6 +6,12 @@
 -- Run     : sql -name prod_mcp @13_atd_ords.sql   (FRESH session - synonym rule:
 --           must NOT follow ALTER SESSION SET CURRENT_SCHEMA=PROD, or synonyms
 --           self-reference -> ORA-01471)
+-- WARNING : this script ORDS.DELETE_MODULEs atd.rest and rebuilds it. The Fusion
+--           Actions handlers (/atd/actions*) live in 20_atd_action_ords.sql and
+--           only APPEND to this module, so they are wiped on every rebuild here.
+--           ALWAYS run 20_atd_action_ords.sql RIGHT AFTER this script (same as
+--           the TM 06/14 rule), or the dashboard /actions/stats call 404s and the
+--           browser reports it as a CORS "Network error".
 -- =============================================================================
 -- Admin-only (SYS_ADMIN). Manages ATD_OTBI_ENV / ATD_TARGET_DB / ATD_OTBI_JOBS
 -- and reads ATD_LOAD_RUN_LOG. Queue ops delegate to PROD.ATD_QUEUE_PKG (enqueue
