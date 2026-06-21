@@ -114,26 +114,40 @@ def _login(ctx, env, wait_secs):
     if sb:
         sb.click(); time.sleep(6)
 
-    # surface number-matching value — poll: the number-match screen can take several
-    # seconds to render after the password submit (a single look races it).
+    # surface number-matching value. The Entra number-match screen can take a while to
+    # render after the password submit; ACTIVELY WAIT for the canonical display element
+    # (a fixed-count poll races slow/federated logins -> number-less "see login screen"
+    # messages, e.g. once on atd-vm181). Only accept a digit string.
     num = ""
-    for _ in range(12):                       # up to ~36s
-        try:
-            el = page.locator('#idRichContext_DisplaySign, .display-sign, [aria-label*="number"]')
-            if el.count() > 0:
-                num = (el.first.inner_text() or "").strip()
-        except Exception:
-            pass
-        if not num:
-            try:
-                m = re.search(r"\b(\d{2})\b", page.inner_text("body"))
-                if m:
-                    num = m.group(1)
-            except Exception:
-                pass
-        if num:
-            break
-        time.sleep(3)
+    try:
+        el = page.wait_for_selector('#idRichContext_DisplaySign', timeout=120000)  # up to 2 min
+        t = (el.inner_text() or "").strip()
+        if t.isdigit():
+            num = t
+    except Exception:
+        pass
+    if not num:                               # fallbacks if the canonical id changed/absent
+        for _ in range(10):
+            for sel in ['.display-sign', '[aria-label*="number"]', 'div[role="heading"]']:
+                try:
+                    e2 = page.locator(sel)
+                    if e2.count() > 0:
+                        t = (e2.first.inner_text() or "").strip()
+                        if t.isdigit():
+                            num = t
+                            break
+                except Exception:
+                    pass
+            if not num:
+                try:
+                    m = re.search(r"\b(\d{2})\b", page.inner_text("body"))
+                    if m:
+                        num = m.group(1)
+                except Exception:
+                    pass
+            if num:
+                break
+            time.sleep(3)
     surface_number(num, env["env_name"])
 
     # wait for approval -> analytics (handle the "Stay signed in?" page)
