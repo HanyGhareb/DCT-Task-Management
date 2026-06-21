@@ -96,7 +96,7 @@ BEGIN
     INTO l_ready, l_claimed, l_done, l_failed FROM atd_otbi_jobs;
   SELECT COUNT(*), COUNT(CASE WHEN status='SUCCESS' THEN 1 END)
     INTO l_runs, l_ok FROM atd_load_run_log WHERE started > SYSTIMESTAMP - INTERVAL '1' DAY;
-  SELECT TO_CHAR(MAX(finished),'YYYY-MM-DD HH24:MI') INTO l_lastfin FROM atd_load_run_log;
+  SELECT TO_CHAR( dct_to_local(MAX(finished)),'YYYY-MM-DD HH24:MI') INTO l_lastfin FROM atd_load_run_log;
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -113,8 +113,8 @@ BEGIN
   APEX_JSON.open_array('recent');
   FOR r IN (SELECT * FROM (
               SELECT run_id, job_name, status, row_count, NVL(host_id,'') AS host_id,
-                     TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
-                     TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
+                     TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH24:MI')  AS started_s,
+                     TO_CHAR( dct_to_local(finished),'YYYY-MM-DD HH24:MI') AS finished_s
               FROM atd_load_run_log ORDER BY run_id DESC) WHERE ROWNUM <= 10) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('runId', r.run_id);
@@ -132,7 +132,7 @@ BEGIN
               SELECT run_id, job_name, status, row_count, NVL(host_id,'') AS host_id,
                      NVL(DBMS_LOB.SUBSTR(message,300,1),'') AS msg,
                      CASE WHEN status='FAILED' THEN 'FAILED' ELSE 'WARNING' END AS kind,
-                     TO_CHAR(started,'YYYY-MM-DD HH24:MI') AS started_s
+                     TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH24:MI') AS started_s
               FROM atd_load_run_log
               WHERE status='FAILED' OR message IS NOT NULL
               ORDER BY run_id DESC) WHERE ROWNUM <= 10) LOOP
@@ -214,7 +214,7 @@ BEGIN
            j.run_status, j.claimed_by, j.claimed_at,
            CASE WHEN j.column_map_json IS NOT NULL THEN 'Y' ELSE 'N' END AS prepared,
            lr.run_id AS last_run_id2, lr.status AS last_status,
-           TO_CHAR(lr.finished,'YYYY-MM-DD HH24:MI') AS last_finished,
+           TO_CHAR( dct_to_local(lr.finished),'YYYY-MM-DD HH24:MI') AS last_finished,
            CASE WHEN lr.started IS NOT NULL AND lr.finished IS NOT NULL
                 THEN ROUND((CAST(lr.finished AS DATE) - CAST(lr.started AS DATE)) * 86400)
                 ELSE NULL END AS last_dur_sec
@@ -244,7 +244,7 @@ BEGIN
     APEX_JSON.write('prepared', r.prepared);
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
-    APEX_JSON.write('claimedAt', TO_CHAR(r.claimed_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('lastRunId', r.last_run_id2);
     APEX_JSON.write('lastRunStatus', NVL(r.last_status,''));
     APEX_JSON.write('lastFinished', NVL(r.last_finished,''));
@@ -364,8 +364,8 @@ BEGIN
   FOR r IN (SELECT * FROM (
               SELECT req_id, analysis_name, save_folder, status, job_name,
                      NVL(SUBSTR(message,1,300),'') AS msg, requested_by,
-                     TO_CHAR(created,'YYYY-MM-DD HH24:MI')  AS created_s,
-                     TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
+                     TO_CHAR( dct_to_local(created),'YYYY-MM-DD HH24:MI')  AS created_s,
+                     TO_CHAR( dct_to_local(finished),'YYYY-MM-DD HH24:MI') AS finished_s
               FROM atd_analysis_request ORDER BY req_id DESC) WHERE ROWNUM <= 50) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('reqId', r.req_id);
@@ -438,7 +438,7 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR r IN (SELECT subject_area, status, folder_count, column_count,
                    NVL(SUBSTR(message,1,300),'') AS msg,
-                   TO_CHAR(scraped_at,'YYYY-MM-DD HH24:MI') AS scraped_s
+                   TO_CHAR( dct_to_local(scraped_at),'YYYY-MM-DD HH24:MI') AS scraped_s
               FROM atd_sa_catalog ORDER BY subject_area) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('subjectArea', r.subject_area);
@@ -550,8 +550,8 @@ BEGIN
   FOR r IN (
     SELECT run_id, job_name, status, row_count,
            NVL(DBMS_LOB.SUBSTR(message,400,1),'') AS msg,
-           TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
-           TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s,
+           TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH24:MI')  AS started_s,
+           TO_CHAR( dct_to_local(finished),'YYYY-MM-DD HH24:MI') AS finished_s,
            CASE WHEN started IS NOT NULL AND finished IS NOT NULL
                 THEN ROUND((CAST(finished AS DATE) - CAST(started AS DATE)) * 86400)
                 ELSE NULL END AS dur_sec
@@ -647,12 +647,12 @@ BEGIN
     APEX_JSON.write('runOrder', r.run_order);
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
-    APEX_JSON.write('claimedAt', TO_CHAR(r.claimed_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.open_array('history');
     FOR h IN (SELECT * FROM (
                 SELECT run_id, status, row_count,
-                       TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
-                       TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s,
+                       TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH24:MI')  AS started_s,
+                       TO_CHAR( dct_to_local(finished),'YYYY-MM-DD HH24:MI') AS finished_s,
                        CASE WHEN started IS NOT NULL AND finished IS NOT NULL
                             THEN ROUND((CAST(finished AS DATE) - CAST(started AS DATE)) * 86400)
                             ELSE NULL END AS dur_sec,
@@ -1096,8 +1096,8 @@ BEGIN
     SELECT run_id, job_name, track, status, row_count, NVL(host_id,'') AS host_id,
            NVL(DBMS_LOB.SUBSTR(message,400,1),'') AS msg,
            CASE WHEN status='SUCCESS' AND message IS NOT NULL THEN 'Y' ELSE 'N' END AS warn,
-           TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
-           TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s,
+           TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH24:MI')  AS started_s,
+           TO_CHAR( dct_to_local(finished),'YYYY-MM-DD HH24:MI') AS finished_s,
            CASE WHEN started IS NOT NULL AND finished IS NOT NULL
                 THEN ROUND((CAST(finished AS DATE) - CAST(started AS DATE)) * 86400)
                 ELSE NULL END AS dur_sec
@@ -1145,8 +1145,8 @@ BEGIN
     APEX_JSON.write('track', NVL(r.track,'')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('rowCount', NVL(r.row_count,0));
     APEX_JSON.write('csvChecksum', NVL(r.csv_checksum,''));
-    APEX_JSON.write('started',  TO_CHAR(r.started,'YYYY-MM-DD HH24:MI'));
-    APEX_JSON.write('finished', TO_CHAR(r.finished,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('started',  TO_CHAR( dct_to_local(r.started),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('finished', TO_CHAR( dct_to_local(r.finished),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('durationSec',
       CASE WHEN r.started IS NOT NULL AND r.finished IS NOT NULL
            THEN ROUND((CAST(r.finished AS DATE) - CAST(r.started AS DATE)) * 86400)
@@ -1174,8 +1174,8 @@ BEGIN
   HTP.print('runId,jobName,track,status,rowCount,started,finished');
   FOR r IN (
     SELECT run_id, job_name, track, status, row_count,
-           TO_CHAR(started,'YYYY-MM-DD HH24:MI')  AS started_s,
-           TO_CHAR(finished,'YYYY-MM-DD HH24:MI') AS finished_s
+           TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH24:MI')  AS started_s,
+           TO_CHAR( dct_to_local(finished),'YYYY-MM-DD HH24:MI') AS finished_s
     FROM atd_load_run_log l
     WHERE (l_job IS NULL OR l.job_name = l_job)
       AND (l_status IS NULL
@@ -1204,7 +1204,7 @@ BEGIN
   APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (
     SELECT h.worker_id, h.status, h.current_job,
-           TO_CHAR(h.last_seen,'YYYY-MM-DD HH24:MI:SS') AS last_seen_s,
+           TO_CHAR( dct_to_local(h.last_seen),'YYYY-MM-DD HH24:MI:SS') AS last_seen_s,
            ROUND((CAST(SYSTIMESTAMP AS DATE) - CAST(h.last_seen AS DATE)) * 86400) AS age_sec,
            (SELECT COUNT(*) FROM atd_load_run_log l
              WHERE l.host_id = h.worker_id
@@ -1249,7 +1249,7 @@ BEGIN
     APEX_JSON.write('enumValues', NVL(r.enum_values,''));
     APEX_JSON.write('description', NVL(r.description,''));
     APEX_JSON.write('updatedBy', NVL(r.updated_by,''));
-    APEX_JSON.write('updatedAt', TO_CHAR(r.updated_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(r.updated_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;

@@ -140,8 +140,8 @@ BEGIN
     APEX_JSON.write('eventType',      r.event_type);
     APEX_JSON.write('venue',          r.venue);
     APEX_JSON.write('organizer',      r.organizer_name);
-    APEX_JSON.write('startDate',      TO_CHAR(r.start_date,'YYYY-MM-DD'));
-    APEX_JSON.write('endDate',        TO_CHAR(r.end_date,'YYYY-MM-DD'));
+    APEX_JSON.write('startDate',      TO_CHAR( dct_to_local(r.start_date),'YYYY-MM-DD'));
+    APEX_JSON.write('endDate',        TO_CHAR( dct_to_local(r.end_date),'YYYY-MM-DD'));
     APEX_JSON.write('status',         r.status);
     APEX_JSON.write('currency',       r.currency_code);
     APEX_JSON.write('revSharePct',    r.dct_revenue_share_pct);
@@ -256,8 +256,8 @@ BEGIN
   APEX_JSON.write('venue',          r.venue);
   APEX_JSON.write('organizer',      r.organizer_name);
   APEX_JSON.write('contractNumber', r.contract_number);
-  APEX_JSON.write('startDate',      TO_CHAR(r.start_date,'YYYY-MM-DD'));
-  APEX_JSON.write('endDate',        TO_CHAR(r.end_date,'YYYY-MM-DD'));
+  APEX_JSON.write('startDate',      TO_CHAR( dct_to_local(r.start_date),'YYYY-MM-DD'));
+  APEX_JSON.write('endDate',        TO_CHAR( dct_to_local(r.end_date),'YYYY-MM-DD'));
   APEX_JSON.write('expectedAttendance', r.expected_attendance);
   APEX_JSON.write('actualAttendance',   r.actual_attendance);
   APEX_JSON.write('revSharePct',    r.dct_revenue_share_pct);
@@ -740,7 +740,7 @@ BEGIN
     APEX_JSON.write('categoryCode', r.category_code);
     APEX_JSON.write('categoryName', r.category_name_en);
     APEX_JSON.write('rawCategory',  r.raw_category);
-    APEX_JSON.write('itemDate',     TO_CHAR(r.item_date,'YYYY-MM-DD'));
+    APEX_JSON.write('itemDate',     TO_CHAR( dct_to_local(r.item_date),'YYYY-MM-DD'));
     APEX_JSON.write('quantity',     r.quantity);
     APEX_JSON.write('unitCost',     r.unit_cost);
     APEX_JSON.write('amount',       r.amount);
@@ -1533,7 +1533,7 @@ BEGIN
   APEX_JSON.close_array;
 
   APEX_JSON.open_array('marginTrend');
-  FOR r IN (SELECT TO_CHAR(TRUNC(e.start_date,'MM'),'YYYY-MM') AS mth,
+  FOR r IN (SELECT TO_CHAR( dct_to_local(TRUNC(e.start_date,'MM')),'YYYY-MM') AS mth,
                    SUM(v.total_revenue) rev, SUM(v.total_expense) exp
             FROM   dct_ar_event_pnl_v v
             JOIN   dct_ar_events e ON e.event_id = v.event_id
@@ -1657,7 +1657,7 @@ BEGIN
     APEX_JSON.write('allowed',     r.allowed_values);
     APEX_JSON.write('default',     r.default_value);
     APEX_JSON.write('updatedBy',   r.updated_by);
-    APEX_JSON.write('updatedAt',   TO_CHAR(r.updated_at, 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('updatedAt',   TO_CHAR( dct_to_local(r.updated_at), 'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1738,9 +1738,9 @@ BEGIN
     APEX_JSON.write('hasKey',    r.has_key);
     APEX_JSON.write('isActive',  r.is_active);
     APEX_JSON.write('createdBy', r.created_by);
-    APEX_JSON.write('createdAt', TO_CHAR(r.created_at, 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at), 'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('updatedBy', r.updated_by);
-    APEX_JSON.write('updatedAt', TO_CHAR(r.updated_at, 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(r.updated_at), 'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;

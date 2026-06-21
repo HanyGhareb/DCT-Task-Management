@@ -153,7 +153,7 @@ BEGIN
     APEX_JSON.write('status',              r.status);
     APEX_JSON.write('codingType',          r.coding_type);
     APEX_JSON.write('fiscalYear',          r.fiscal_year);
-    APEX_JSON.write('dueDate',             TO_CHAR(r.due_date,'YYYY-MM-DD'));
+    APEX_JSON.write('dueDate',             TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
     APEX_JSON.write('totalReimbursed',     r.total_reimbursed);
     APEX_JSON.write('clearedAmount',       r.cleared_amount);
     APEX_JSON.write('refundedAmount',      r.refunded_amount);
@@ -193,7 +193,7 @@ BEGIN
     APEX_JSON.write('requestType', r.source_module);
     APEX_JSON.write('action',      r.action);
     APEX_JSON.write('comments',    r.comments);
-    APEX_JSON.write('actionDate',  TO_CHAR(r.actioned_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('actionDate',  TO_CHAR( dct_to_local(r.actioned_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('actionedBy',  r.actor);
     APEX_JSON.close_object;
   END LOOP;
@@ -253,9 +253,9 @@ BEGIN
     APEX_JSON.write('codingType',          r.coding_type);
     APEX_JSON.write('status',              r.status);
     APEX_JSON.write('fiscalYear',          r.fiscal_year);
-    APEX_JSON.write('dueDate',             TO_CHAR(r.due_date,'YYYY-MM-DD'));
-    APEX_JSON.write('disbursedDate',       TO_CHAR(r.disbursed_date,'YYYY-MM-DD'));
-    APEX_JSON.write('submittedAt',         TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('dueDate',             TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
+    APEX_JSON.write('disbursedDate',       TO_CHAR( dct_to_local(r.disbursed_date),'YYYY-MM-DD'));
+    APEX_JSON.write('submittedAt',         TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('totalReimbursed',     r.total_reimbursed);
     APEX_JSON.write('clearedAmount',       r.cleared_amount);
     APEX_JSON.write('refundedAmount',      r.refunded_amount);
@@ -358,9 +358,9 @@ BEGIN
     APEX_JSON.write('status',              r.status);
     APEX_JSON.write('displayStatus',       r.display_status);
     APEX_JSON.write('fiscalYear',          r.fiscal_year);
-    APEX_JSON.write('dueDate',             TO_CHAR(r.due_date,'YYYY-MM-DD'));
-    APEX_JSON.write('disbursedDate',       TO_CHAR(r.disbursed_date,'YYYY-MM-DD'));
-    APEX_JSON.write('submittedAt',         TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('dueDate',             TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
+    APEX_JSON.write('disbursedDate',       TO_CHAR( dct_to_local(r.disbursed_date),'YYYY-MM-DD'));
+    APEX_JSON.write('submittedAt',         TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('totalReimbursed',     r.total_reimbursed);
     APEX_JSON.write('clearedAmount',       r.cleared_amount);
     APEX_JSON.write('refundedAmount',      r.refunded_amount);
@@ -559,9 +559,9 @@ BEGIN
     APEX_JSON.write('status',              r.status);
     APEX_JSON.write('displayStatus',       r.display_status);
     APEX_JSON.write('fiscalYear',          r.fiscal_year);
-    APEX_JSON.write('dueDate',             TO_CHAR(r.due_date,'YYYY-MM-DD'));
-    APEX_JSON.write('disbursedDate',       TO_CHAR(r.disbursed_date,'YYYY-MM-DD'));
-    APEX_JSON.write('submittedAt',         TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('dueDate',             TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
+    APEX_JSON.write('disbursedDate',       TO_CHAR( dct_to_local(r.disbursed_date),'YYYY-MM-DD'));
+    APEX_JSON.write('submittedAt',         TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('totalReimbursed',     r.total_reimbursed);
     APEX_JSON.write('clearedAmount',       r.cleared_amount);
     APEX_JSON.write('refundedAmount',      r.refunded_amount);
@@ -726,8 +726,8 @@ BEGIN
     APEX_JSON.write('future1',         r.future1_code);
     APEX_JSON.write('future2',         r.future2_code);
     APEX_JSON.write('isActive',        r.is_active);
-    APEX_JSON.write('startDate',       TO_CHAR(r.effective_from,'YYYY-MM-DD'));
-    APEX_JSON.write('endDate',         TO_CHAR(r.effective_to,'YYYY-MM-DD'));
+    APEX_JSON.write('startDate',       TO_CHAR( dct_to_local(r.effective_from),'YYYY-MM-DD'));
+    APEX_JSON.write('endDate',         TO_CHAR( dct_to_local(r.effective_to),'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -849,7 +849,7 @@ BEGIN
     APEX_JSON.write('purpose',        r.purpose);
     APEX_JSON.write('codingType',     r.coding_type);
     APEX_JSON.write('status',         r.status);
-    APEX_JSON.write('submittedAt',    TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt',    TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('employeeName',   r.employee_name);
     APEX_JSON.write('employeeNumber', r.employee_number);
     APEX_JSON.write('orgName',        r.org_name);
@@ -887,7 +887,7 @@ BEGIN
     APEX_JSON.write('purpose',     r.purpose);
     APEX_JSON.write('codingType',  r.coding_type);
     APEX_JSON.write('status',      r.status);
-    APEX_JSON.write('submittedAt', TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt', TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1047,7 +1047,7 @@ BEGIN
     APEX_JSON.write('purpose',      r.purpose);
     APEX_JSON.write('codingType',   r.coding_type);
     APEX_JSON.write('status',       r.status);
-    APEX_JSON.write('submittedAt',  TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt',  TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('employeeName', r.employee_name);
     APEX_JSON.close_object;
   END LOOP;
@@ -1149,7 +1149,7 @@ BEGIN
     APEX_JSON.write('amountRefunded', r.amount_refunded);
     APEX_JSON.write('codingType',     r.coding_type);
     APEX_JSON.write('status',         r.status);
-    APEX_JSON.write('submittedAt',    TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt',    TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('employeeName',   r.employee_name);
     APEX_JSON.write('employeeNumber', r.employee_number);
     APEX_JSON.close_object;
@@ -1186,7 +1186,7 @@ BEGIN
     APEX_JSON.write('amountRefunded', r.amount_refunded);
     APEX_JSON.write('codingType',     r.coding_type);
     APEX_JSON.write('status',         r.status);
-    APEX_JSON.write('submittedAt',    TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt',    TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1351,7 +1351,7 @@ BEGIN
     APEX_JSON.write('amountRefunded', r.amount_refunded);
     APEX_JSON.write('codingType',     r.coding_type);
     APEX_JSON.write('status',         r.status);
-    APEX_JSON.write('submittedAt',    TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt',    TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('employeeName',   r.employee_name);
     APEX_JSON.close_object;
   END LOOP;
@@ -1469,7 +1469,7 @@ BEGIN
     APEX_JSON.write('requestType',    r.source_module);
     APEX_JSON.write('sourceRecordId', r.source_record_id);
     APEX_JSON.write('submittedBy',    r.submitted_by_name);
-    APEX_JSON.write('submittedAt',    TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt',    TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('currentStep',    r.step_name);
     APEX_JSON.write('amount',         r.amount);
     APEX_JSON.write('overallStatus',  r.overall_status);
@@ -1767,7 +1767,7 @@ BEGIN
                 ELSE ms.setting_value END AS setting_value,
            ms.setting_label, ms.setting_description,
            ms.value_type, ms.allowed_values, ms.default_value,
-           TO_CHAR(ms.effective_date,'YYYY-MM-DD') AS eff_date
+           TO_CHAR( dct_to_local(ms.effective_date),'YYYY-MM-DD') AS eff_date
     FROM   dct_module_settings ms JOIN dct_modules m ON m.module_id = ms.module_id
     WHERE  m.module_code = 'PETTY_CASH'
     ORDER  BY ms.setting_key
@@ -1865,7 +1865,7 @@ BEGIN
     APEX_JSON.write('message',   r.body_en);
     APEX_JSON.write('type',      r.notification_type);
     APEX_JSON.write('isRead',    r.is_read);
-    APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;

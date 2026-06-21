@@ -309,7 +309,7 @@ BEGIN
     APEX_JSON.write('parentTeamId', r.parent_team_id); APEX_JSON.write('parentTeamName', NVL(r.parent_team_name,''));
     APEX_JSON.write('leaderUserId', r.leader_user_id); APEX_JSON.write('leaderName', NVL(r.leader_name,''));
     APEX_JSON.write('orgId', r.org_id); APEX_JSON.write('orgName', NVL(r.org_name,''));
-    APEX_JSON.write('startDate', TO_CHAR(r.start_date,'YYYY-MM-DD')); APEX_JSON.write('endDate', TO_CHAR(r.end_date,'YYYY-MM-DD'));
+    APEX_JSON.write('startDate', TO_CHAR( dct_to_local(r.start_date),'YYYY-MM-DD')); APEX_JSON.write('endDate', TO_CHAR( dct_to_local(r.end_date),'YYYY-MM-DD'));
     APEX_JSON.write('memberCount', r.member_count); APEX_JSON.write('objectiveCount', r.objective_count);
     APEX_JSON.write('taskCount', r.task_count); APEX_JSON.write('taskDone', r.task_done_count);
     APEX_JSON.write('taskOverdue', r.task_overdue_count); APEX_JSON.write('deliverableCount', r.deliverable_count);
@@ -529,7 +529,7 @@ BEGIN
     APEX_JSON.write('ownerId', r.owner_user_id); APEX_JSON.write('ownerName', NVL(r.owner_name,''));
     APEX_JSON.write('weight', r.weight); APEX_JSON.write('progress', r.progress_pct);
     APEX_JSON.write('progressMode', NVL(r.progress_mode,'AUTO'));
-    APEX_JSON.write('targetDate', TO_CHAR(r.target_date,'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
+    APEX_JSON.write('targetDate', TO_CHAR( dct_to_local(r.target_date),'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('taskCount', r.task_count); APEX_JSON.write('taskDone', r.task_done_count);
     APEX_JSON.write('krCount', r.kr_count); APEX_JSON.write('krAchieved', r.kr_achieved_count);
     APEX_JSON.close_object;
@@ -588,7 +588,7 @@ BEGIN
     APEX_JSON.write('baseline', r.baseline_value); APEX_JSON.write('target', r.target_value);
     APEX_JSON.write('current', r.current_value); APEX_JSON.write('weight', r.weight);
     APEX_JSON.write('progress', r.progress_pct);
-    APEX_JSON.write('targetDate', TO_CHAR(r.target_date,'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
+    APEX_JSON.write('targetDate', TO_CHAR( dct_to_local(r.target_date),'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -678,7 +678,7 @@ BEGIN
     APEX_JSON.write('title', r.title); APEX_JSON.write('description', NVL(r.description,''));
     APEX_JSON.write('priority', r.priority); APEX_JSON.write('status', r.status);
     APEX_JSON.write('progress', r.progress_pct);
-    APEX_JSON.write('startDate', TO_CHAR(r.start_date,'YYYY-MM-DD')); APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD'));
+    APEX_JSON.write('startDate', TO_CHAR( dct_to_local(r.start_date),'YYYY-MM-DD')); APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
     APEX_JSON.write('isOverdue', r.is_overdue); APEX_JSON.write('assignees', NVL(r.assignees,''));
     APEX_JSON.write('subtaskCount', r.subtask_count);
     APEX_JSON.close_object;
@@ -754,7 +754,7 @@ BEGIN
     APEX_JSON.open_object;
     APEX_JSON.write('userId', r.user_id); APEX_JSON.write('name', NVL(r.name,''));
     APEX_JSON.write('isPrimary', r.is_primary); APEX_JSON.write('assignedBy', NVL(r.assigned_by,''));
-    APEX_JSON.write('assignedAt', TO_CHAR(r.assigned_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('assignedAt', TO_CHAR( dct_to_local(r.assigned_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -773,7 +773,7 @@ BEGIN
     APEX_JSON.write('updateId', r.update_id); APEX_JSON.write('type', r.update_type);
     APEX_JSON.write('body', NVL(r.body,'')); APEX_JSON.write('oldStatus', NVL(r.old_status,''));
     APEX_JSON.write('newStatus', NVL(r.new_status,'')); APEX_JSON.write('author', NVL(r.author_name,''));
-    APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -808,7 +808,7 @@ BEGIN
     APEX_JSON.write('taskId', r.task_id); APEX_JSON.write('taskCode', r.task_code);
     APEX_JSON.write('teamId', r.team_id); APEX_JSON.write('teamName', NVL(r.team_name,''));
     APEX_JSON.write('title', r.title); APEX_JSON.write('priority', r.priority); APEX_JSON.write('status', r.status);
-    APEX_JSON.write('progress', r.progress_pct); APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD'));
+    APEX_JSON.write('progress', r.progress_pct); APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
     APEX_JSON.write('isOverdue', r.is_overdue); APEX_JSON.write('objectiveTitle', NVL(r.objective_title,''));
     APEX_JSON.close_object;
   END LOOP;
@@ -835,7 +835,7 @@ BEGIN
     APEX_JSON.write('titleEn', r.title_en); APEX_JSON.write('titleAr', NVL(r.title_ar,''));
     APEX_JSON.write('type', NVL(r.deliverable_type,'')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('progress', r.progress_pct); APEX_JSON.write('ownerName', NVL(r.owner_name,''));
-    APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD')); APEX_JSON.write('isOverdue', r.is_overdue);
+    APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD')); APEX_JSON.write('isOverdue', r.is_overdue);
     APEX_JSON.write('acceptanceCriteria', NVL(r.acceptance_criteria,''));
     APEX_JSON.close_object;
   END LOOP;
@@ -894,7 +894,7 @@ BEGIN
     APEX_JSON.write('description', NVL(r.description,'')); APEX_JSON.write('ownerName', NVL(r.owner_name,''));
     APEX_JSON.write('severity', NVL(r.severity,'')); APEX_JSON.write('likelihood', NVL(r.likelihood,''));
     APEX_JSON.write('impact', NVL(r.impact,'')); APEX_JSON.write('status', r.status);
-    APEX_JSON.write('mitigation', NVL(r.mitigation,'')); APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD'));
+    APEX_JSON.write('mitigation', NVL(r.mitigation,'')); APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -932,7 +932,7 @@ BEGIN
     APEX_JSON.write('milestoneId', r.milestone_id); APEX_JSON.write('teamId', r.team_id);
     APEX_JSON.write('titleEn', r.title_en); APEX_JSON.write('titleAr', NVL(r.title_ar,''));
     APEX_JSON.write('objectiveTitle', NVL(r.objective_title,'')); APEX_JSON.write('status', r.status);
-    APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD')); APEX_JSON.write('achievedDate', TO_CHAR(r.achieved_date,'YYYY-MM-DD'));
+    APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD')); APEX_JSON.write('achievedDate', TO_CHAR( dct_to_local(r.achieved_date),'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -967,7 +967,7 @@ BEGIN
             AND team_id IN (SELECT column_value FROM TABLE(dct_tm_vis_pkg.visible_teams(l_uid))) ORDER BY meeting_date DESC) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('meetingId', r.meeting_id); APEX_JSON.write('code', r.meeting_code); APEX_JSON.write('teamId', r.team_id);
-    APEX_JSON.write('title', r.title); APEX_JSON.write('meetingDate', TO_CHAR(r.meeting_date,'YYYY-MM-DD'));
+    APEX_JSON.write('title', r.title); APEX_JSON.write('meetingDate', TO_CHAR( dct_to_local(r.meeting_date),'YYYY-MM-DD'));
     APEX_JSON.write('location', NVL(r.location,'')); APEX_JSON.write('agenda', NVL(r.agenda,''));
     APEX_JSON.write('minutes', NVL(r.minutes,'')); APEX_JSON.write('attendees', NVL(r.attendees,''));
     APEX_JSON.write('status', r.status);
@@ -1013,7 +1013,7 @@ BEGIN
     APEX_JSON.write('docId', r.doc_id); APEX_JSON.write('sourceType', r.source_type); APEX_JSON.write('sourceId', r.source_id);
     APEX_JSON.write('docTypeCode', NVL(r.doc_type_code,'OTHER')); APEX_JSON.write('docTypeName', NVL(r.doc_type_name,'')); APEX_JSON.write('fileName', r.file_name);
     APEX_JSON.write('mimeType', NVL(r.mime_type,'')); APEX_JSON.write('fileSize', NVL(r.file_size_bytes,0)); APEX_JSON.write('notes', NVL(r.notes,''));
-    APEX_JSON.write('uploadedBy', NVL(r.uploaded_by_name,'')); APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('uploadedBy', NVL(r.uploaded_by_name,'')); APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;

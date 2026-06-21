@@ -153,7 +153,7 @@ BEGIN
   -- replenishment compliance: submitted vs cards due, last 6 months
   APEX_JSON.open_array('replCompliance');
   FOR m IN (
-    SELECT TO_CHAR(ADD_MONTHS(TRUNC(SYSDATE,'MM'), 1 - LEVEL), 'Mon YYYY') AS month_label,
+    SELECT TO_CHAR( dct_to_local(ADD_MONTHS(TRUNC(SYSDATE,'MM'), 1 - LEVEL)), 'Mon YYYY') AS month_label,
            EXTRACT(MONTH FROM ADD_MONTHS(TRUNC(SYSDATE,'MM'), 1 - LEVEL)) AS mth,
            EXTRACT(YEAR  FROM ADD_MONTHS(TRUNC(SYSDATE,'MM'), 1 - LEVEL)) AS yr,
            LEVEL AS lvl
@@ -219,7 +219,7 @@ BEGIN
     APEX_JSON.write('employeeNum',      NVL(r.employee_num, ''));
     APEX_JSON.write('orgName',          r.org_name);
     APEX_JSON.write('creditLimit',      r.credit_limit);
-    APEX_JSON.write('expiryDate',       TO_CHAR(r.expiry_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('expiryDate',       TO_CHAR( dct_to_local(r.expiry_date), 'YYYY-MM-DD'));
     APEX_JSON.write('status',           r.status);
     APEX_JSON.write('pendingOperation', NVL(r.pending_operation, ''));
     APEX_JSON.close_object;
@@ -285,7 +285,7 @@ BEGIN
     APEX_JSON.write('motherName',       r.mother_name);
     APEX_JSON.write('nationality',      r.nationality);
     APEX_JSON.write('creditLimit',      r.credit_limit);
-    APEX_JSON.write('expiryDate',       TO_CHAR(r.expiry_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('expiryDate',       TO_CHAR( dct_to_local(r.expiry_date), 'YYYY-MM-DD'));
     APEX_JSON.write('email',            r.email);
     APEX_JSON.write('orgId',            r.org_id);
     APEX_JSON.write('orgName',          r.org_name);
@@ -298,9 +298,9 @@ BEGIN
     APEX_JSON.write('pendingOperation', NVL(r.pending_operation, ''));
     APEX_JSON.write('notes',            NVL(r.notes, ''));
     APEX_JSON.write('createdBy',        r.created_by);
-    APEX_JSON.write('createdAt',        TO_CHAR(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt',        TO_CHAR( dct_to_local(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',        r.updated_by);
-    APEX_JSON.write('updatedAt',        TO_CHAR(FROM_TZ(CAST(r.updated_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedAt',        TO_CHAR( dct_to_local(FROM_TZ(CAST(r.updated_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
@@ -327,7 +327,7 @@ BEGIN
     APEX_JSON.write('newLimit',   r.new_limit);
     APEX_JSON.write('changeType', r.change_type);
     APEX_JSON.write('requestId',  r.request_id);
-    APEX_JSON.write('changedAt',  TO_CHAR(r.changed_at, 'YYYY-MM-DD'));
+    APEX_JSON.write('changedAt',  TO_CHAR( dct_to_local(r.changed_at), 'YYYY-MM-DD'));
     APEX_JSON.write('changedBy',  NVL(r.changed_by, ''));
     APEX_JSON.write('notes',      NVL(r.notes, ''));
     APEX_JSON.close_object;
@@ -383,8 +383,8 @@ BEGIN
     APEX_JSON.write('replacementReason', NVL(r.replacement_reason, ''));
     APEX_JSON.write('status',            r.status);
     APEX_JSON.write('createdByName',     NVL(r.created_by_name, r.created_by));
-    APEX_JSON.write('submittedAt',       TO_CHAR(r.submitted_at, 'YYYY-MM-DD'));
-    APEX_JSON.write('createdAt',         TO_CHAR(r.created_at, 'YYYY-MM-DD'));
+    APEX_JSON.write('submittedAt',       TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD'));
+    APEX_JSON.write('createdAt',         TO_CHAR( dct_to_local(r.created_at), 'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -454,11 +454,11 @@ BEGIN
     APEX_JSON.write('replacementReason', NVL(r.replacement_reason, ''));
     APEX_JSON.write('status',            r.status);
     APEX_JSON.write('approvalInstanceId',r.approval_instance_id);
-    APEX_JSON.write('submittedAt',       TO_CHAR(r.submitted_at, 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('submittedAt',       TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('createdBy',         r.created_by);
-    APEX_JSON.write('createdAt',         TO_CHAR(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt',         TO_CHAR( dct_to_local(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',         r.updated_by);
-    APEX_JSON.write('updatedAt',         TO_CHAR(FROM_TZ(CAST(r.updated_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedAt',         TO_CHAR( dct_to_local(FROM_TZ(CAST(r.updated_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
@@ -611,7 +611,7 @@ BEGIN
     APEX_JSON.write('fileName',    r.file_name);
     APEX_JSON.write('mimeType',    NVL(r.mime_type, ''));
     APEX_JSON.write('hasFile',     r.has_file);
-    APEX_JSON.write('createdAt',   TO_CHAR(r.created_at, 'YYYY-MM-DD'));
+    APEX_JSON.write('createdAt',   TO_CHAR( dct_to_local(r.created_at), 'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -753,7 +753,7 @@ BEGIN
     APEX_JSON.write('status',          r.status);
     APEX_JSON.write('submittedByName', r.submitted_by_name);
     APEX_JSON.write('onBehalfOfName',  r.on_behalf_of_name);
-    APEX_JSON.write('submittedAt',     TO_CHAR(r.submitted_at, 'YYYY-MM-DD'));
+    APEX_JSON.write('submittedAt',     TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -848,11 +848,11 @@ BEGIN
     APEX_JSON.write('expenditureType', NVL(r.expenditure_type, ''));
     APEX_JSON.write('status',          r.status);
     APEX_JSON.write('approvalInstanceId', r.approval_instance_id);
-    APEX_JSON.write('submittedAt',     TO_CHAR(r.submitted_at, 'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('submittedAt',     TO_CHAR( dct_to_local(r.submitted_at), 'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('createdBy',       r.created_by);
-    APEX_JSON.write('createdAt',       TO_CHAR(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt',       TO_CHAR( dct_to_local(FROM_TZ(CAST(r.created_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',       r.updated_by);
-    APEX_JSON.write('updatedAt',       TO_CHAR(FROM_TZ(CAST(r.updated_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedAt',       TO_CHAR( dct_to_local(FROM_TZ(CAST(r.updated_at AS TIMESTAMP), 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.open_array('lines');
     FOR ln IN (
       SELECT * FROM dct_budget_coding_lines
@@ -863,7 +863,7 @@ BEGIN
       APEX_JSON.open_object;
       APEX_JSON.write('lineId',          ln.line_id);
       APEX_JSON.write('lineNum',         ln.line_num);
-      APEX_JSON.write('expenseDate',     TO_CHAR(ln.expense_date, 'YYYY-MM-DD'));
+      APEX_JSON.write('expenseDate',     TO_CHAR( dct_to_local(ln.expense_date), 'YYYY-MM-DD'));
       APEX_JSON.write('merchantName',    NVL(ln.merchant_name, ''));
       APEX_JSON.write('amount',          ln.amount);
       APEX_JSON.write('description',     NVL(ln.description, ''));
@@ -1025,8 +1025,8 @@ BEGIN
     APEX_JSON.write('ownerName',   r.owner_name);
     APEX_JSON.write('proxyUserId', r.proxy_user_id);
     APEX_JSON.write('proxyName',   r.proxy_name);
-    APEX_JSON.write('startDate',   TO_CHAR(r.start_date, 'YYYY-MM-DD'));
-    APEX_JSON.write('endDate',     TO_CHAR(r.end_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('startDate',   TO_CHAR( dct_to_local(r.start_date), 'YYYY-MM-DD'));
+    APEX_JSON.write('endDate',     TO_CHAR( dct_to_local(r.end_date), 'YYYY-MM-DD'));
     APEX_JSON.write('isActive',    r.is_active);
     APEX_JSON.close_object;
   END LOOP;
@@ -1165,7 +1165,7 @@ BEGIN
     APEX_JSON.write('module',          r.source_module);
     APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
     APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR(r.submitted_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('amount',          r.amount);
     APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
     APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));
@@ -1377,7 +1377,7 @@ BEGIN
     APEX_JSON.write('body',      r.body_en);
     APEX_JSON.write('type',      r.notification_type);
     APEX_JSON.write('isRead',    r.is_read);
-    APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;

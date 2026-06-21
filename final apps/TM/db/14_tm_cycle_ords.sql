@@ -65,7 +65,7 @@ BEGIN
     l_found := 1;
     APEX_JSON.write('cycleConfigId', r.cycle_config_id); APEX_JSON.write('teamId', r.team_id);
     APEX_JSON.write('cadence', r.cadence); APEX_JSON.write('customDays', r.custom_days);
-    APEX_JSON.write('anchorDate', TO_CHAR(r.anchor_date,'YYYY-MM-DD'));
+    APEX_JSON.write('anchorDate', TO_CHAR( dct_to_local(r.anchor_date),'YYYY-MM-DD'));
     APEX_JSON.write('leadDays', r.submission_lead_days); APEX_JSON.write('deadlineOffset', r.deadline_offset_days);
     APEX_JSON.write('reminderDays', r.reminder_days_before); APEX_JSON.write('escalateAfter', r.escalate_after_days);
     APEX_JSON.write('submitterScope', r.submitter_scope); APEX_JSON.write('autoClose', r.auto_close);
@@ -117,13 +117,13 @@ BEGIN
             ORDER BY period_start DESC) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('periodId', r.period_id); APEX_JSON.write('teamId', r.team_id); APEX_JSON.write('teamName', NVL(r.team_name_en,''));
-    APEX_JSON.write('label', r.period_label); APEX_JSON.write('periodStart', TO_CHAR(r.period_start,'YYYY-MM-DD'));
-    APEX_JSON.write('periodEnd', TO_CHAR(r.period_end,'YYYY-MM-DD')); APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD'));
+    APEX_JSON.write('label', r.period_label); APEX_JSON.write('periodStart', TO_CHAR( dct_to_local(r.period_start),'YYYY-MM-DD'));
+    APEX_JSON.write('periodEnd', TO_CHAR( dct_to_local(r.period_end),'YYYY-MM-DD')); APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
     APEX_JSON.write('status', r.status); APEX_JSON.write('hasSnapshot', r.has_snapshot); APEX_JSON.write('hasAiSummary', r.has_ai_summary);
     APEX_JSON.write('submitterCount', r.submitter_count); APEX_JSON.write('submittedCount', r.submitted_count);
     APEX_JSON.write('lateCount', r.late_count); APEX_JSON.write('pendingCount', r.pending_count);
     APEX_JSON.write('signoffRag', NVL(r.signoff_rag,'')); APEX_JSON.write('signoffBy', NVL(r.signoff_by,''));
-    APEX_JSON.write('closedAt', TO_CHAR(r.closed_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('closedAt', TO_CHAR( dct_to_local(r.closed_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -262,7 +262,7 @@ BEGIN
     APEX_JSON.write('tasksDone', r.tasks_done); APEX_JSON.write('tasksOnTrack', r.tasks_on_track); APEX_JSON.write('tasksLate', r.tasks_late);
     APEX_JSON.write('tasksOpen', r.tasks_open); APEX_JSON.write('tasksOverdue', r.tasks_overdue);
     APEX_JSON.write('objectiveProgress', NVL(r.objective_progress,0)); APEX_JSON.write('deliverablesDone', r.deliverables_done);
-    APEX_JSON.write('newRaid', r.new_raid_count); APEX_JSON.write('submittedAt', TO_CHAR(r.submitted_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('newRaid', r.new_raid_count); APEX_JSON.write('submittedAt', TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
@@ -284,7 +284,7 @@ BEGIN
     APEX_JSON.write('submissionId', r.submission_id); APEX_JSON.write('periodId', r.period_id);
     APEX_JSON.write('teamId', r.team_id); APEX_JSON.write('teamName', NVL(r.team_name_en,''));
     APEX_JSON.write('label', r.period_label); APEX_JSON.write('periodStatus', r.period_status);
-    APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
+    APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD')); APEX_JSON.write('status', r.status);
     APEX_JSON.write('tasksDone', r.tasks_done); APEX_JSON.write('tasksOpen', r.tasks_open); APEX_JSON.write('tasksOverdue', r.tasks_overdue);
     APEX_JSON.close_object;
   END LOOP;
@@ -304,7 +304,7 @@ BEGIN
   FOR r IN (SELECT * FROM dct_tm_submission_v WHERE period_id=l_pid AND user_id=l_uid) LOOP
     l_found := 1;
     APEX_JSON.write('submissionId', r.submission_id); APEX_JSON.write('periodId', r.period_id); APEX_JSON.write('status', r.status);
-    APEX_JSON.write('periodStatus', r.period_status); APEX_JSON.write('label', r.period_label); APEX_JSON.write('dueDate', TO_CHAR(r.due_date,'YYYY-MM-DD'));
+    APEX_JSON.write('periodStatus', r.period_status); APEX_JSON.write('label', r.period_label); APEX_JSON.write('dueDate', TO_CHAR( dct_to_local(r.due_date),'YYYY-MM-DD'));
     APEX_JSON.write('accomplishments', NVL(r.accomplishments,'')); APEX_JSON.write('inProgress', NVL(r.in_progress,''));
     APEX_JSON.write('pending', NVL(r.pending,'')); APEX_JSON.write('blockers', NVL(r.blockers,'')); APEX_JSON.write('highlights', NVL(r.highlights,''));
     APEX_JSON.write('tasksDone', r.tasks_done); APEX_JSON.write('tasksOnTrack', r.tasks_on_track); APEX_JSON.write('tasksLate', r.tasks_late);
@@ -368,7 +368,7 @@ BEGIN
     APEX_JSON.write('scope', r.scope); APEX_JSON.write('teamId', r.team_id); APEX_JSON.write('teamName', NVL(r.team_name,''));
     APEX_JSON.write('orgId', r.org_id); APEX_JSON.write('orgName', NVL(r.org_name,''));
     APEX_JSON.write('accessLevel', r.access_level); APEX_JSON.write('grantedByName', NVL(r.granted_by_name,''));
-    APEX_JSON.write('startDate', TO_CHAR(r.start_date,'YYYY-MM-DD')); APEX_JSON.write('endDate', TO_CHAR(r.end_date,'YYYY-MM-DD'));
+    APEX_JSON.write('startDate', TO_CHAR( dct_to_local(r.start_date),'YYYY-MM-DD')); APEX_JSON.write('endDate', TO_CHAR( dct_to_local(r.end_date),'YYYY-MM-DD'));
     APEX_JSON.write('status', r.status); APEX_JSON.write('reason', NVL(r.reason,''));
     APEX_JSON.close_object;
   END LOOP;

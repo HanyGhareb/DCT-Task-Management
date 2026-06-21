@@ -106,8 +106,8 @@ BEGIN
   APEX_JSON.open_array('recentRequests');
   FOR r IN (
     SELECT request_id, request_number, purpose,
-           TO_CHAR(departure_date,'YYYY-MM-DD') AS dep_dt,
-           TO_CHAR(return_date,'YYYY-MM-DD')    AS ret_dt,
+           TO_CHAR( dct_to_local(departure_date),'YYYY-MM-DD') AS dep_dt,
+           TO_CHAR( dct_to_local(return_date),'YYYY-MM-DD')    AS ret_dt,
            total_advance_aed, status
     FROM   dt_requests
     WHERE  employee_user_id = l_uid
@@ -139,7 +139,7 @@ BEGIN
   -- monthlySpend: 12-month advances vs per-diem (all requests, AED)
   APEX_JSON.open_array('monthlySpend');
   FOR r IN (
-    SELECT TO_CHAR(TRUNC(departure_date, 'MM'), 'YYYY-MM') AS mon,
+    SELECT TO_CHAR( dct_to_local(TRUNC(departure_date, 'MM')), 'YYYY-MM') AS mon,
            NVL(SUM(total_advance_aed), 0)  AS advances,
            NVL(SUM(total_per_diem_aed), 0) AS per_diem
     FROM   dt_requests
@@ -260,8 +260,8 @@ BEGIN
   IF l_mine = 'Y' THEN
     FOR r IN (
       SELECT r.request_id, r.request_number, r.employee_user_id, r.purpose,
-             TO_CHAR(r.departure_date,'YYYY-MM-DD') AS dep_dt,
-             TO_CHAR(r.return_date,'YYYY-MM-DD')    AS ret_dt,
+             TO_CHAR( dct_to_local(r.departure_date),'YYYY-MM-DD') AS dep_dt,
+             TO_CHAR( dct_to_local(r.return_date),'YYYY-MM-DD')    AS ret_dt,
              r.total_days, r.total_per_diem_aed, r.total_advance_aed,
              r.budget_type, r.finance_disbursed_yn,
              v.employee_name, r.status
@@ -278,8 +278,8 @@ BEGIN
     -- Disbursement queue: APPROVED, advance requested, not yet disbursed
     FOR r IN (
       SELECT r.request_id, r.request_number, r.employee_user_id, r.purpose,
-             TO_CHAR(r.departure_date,'YYYY-MM-DD') AS dep_dt,
-             TO_CHAR(r.return_date,'YYYY-MM-DD')    AS ret_dt,
+             TO_CHAR( dct_to_local(r.departure_date),'YYYY-MM-DD') AS dep_dt,
+             TO_CHAR( dct_to_local(r.return_date),'YYYY-MM-DD')    AS ret_dt,
              r.total_days, r.total_per_diem_aed, r.total_advance_aed,
              r.budget_type, r.finance_disbursed_yn,
              v.employee_name, r.status
@@ -298,8 +298,8 @@ BEGIN
     -- All requests (admin / HR / finance view) — server-paged
     FOR r IN (
       SELECT r.request_id, r.request_number, r.employee_user_id, r.purpose,
-             TO_CHAR(r.departure_date,'YYYY-MM-DD') AS dep_dt,
-             TO_CHAR(r.return_date,'YYYY-MM-DD')    AS ret_dt,
+             TO_CHAR( dct_to_local(r.departure_date),'YYYY-MM-DD') AS dep_dt,
+             TO_CHAR( dct_to_local(r.return_date),'YYYY-MM-DD')    AS ret_dt,
              r.total_days, r.total_per_diem_aed, r.total_advance_aed,
              r.budget_type, r.finance_disbursed_yn,
              v.employee_name, r.status
@@ -454,8 +454,8 @@ BEGIN
   APEX_JSON.write('tripTypeLabel',    l_rec.trip_type_label);
   APEX_JSON.write('travelPurpose',    l_rec.purpose);
   APEX_JSON.write('hostedBy',         l_rec.hosted_by);
-  APEX_JSON.write('departureDate',    TO_CHAR(l_rec.departure_date,'YYYY-MM-DD'));
-  APEX_JSON.write('returnDate',       TO_CHAR(l_rec.return_date,'YYYY-MM-DD'));
+  APEX_JSON.write('departureDate',    TO_CHAR( dct_to_local(l_rec.departure_date),'YYYY-MM-DD'));
+  APEX_JSON.write('returnDate',       TO_CHAR( dct_to_local(l_rec.return_date),'YYYY-MM-DD'));
   APEX_JSON.write('estimatedDays',    l_rec.total_days);
   APEX_JSON.write('estimatedPerDiem', l_rec.total_per_diem_aed);
   APEX_JSON.write('advanceAmount',    l_rec.total_advance_aed);
@@ -473,10 +473,10 @@ BEGIN
   APEX_JSON.write('expenditureType',  l_rec.expenditure_type);
   APEX_JSON.write('status',           l_rec.status);
   APEX_JSON.write('financeDisbursedYn', l_rec.finance_disbursed_yn);
-  APEX_JSON.write('disbursedDate',    TO_CHAR(l_rec.disbursed_date,'YYYY-MM-DD'));
+  APEX_JSON.write('disbursedDate',    TO_CHAR( dct_to_local(l_rec.disbursed_date),'YYYY-MM-DD'));
   APEX_JSON.write('notes',            l_rec.notes);
   APEX_JSON.write('createdBy',        l_rec.created_by);
-  APEX_JSON.write('createdAt',        TO_CHAR(l_rec.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+  APEX_JSON.write('createdAt',        TO_CHAR( dct_to_local(l_rec.created_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
   APEX_JSON.write('statusLabel', CASE l_rec.status
     WHEN 'DRAFT'        THEN 'Draft'        WHEN 'SUBMITTED'    THEN 'Submitted'
     WHEN 'APPROVED'     THEN 'Approved'     WHEN 'ADVANCE_PAID' THEN 'Advance Paid'
@@ -490,8 +490,8 @@ BEGIN
   APEX_JSON.open_array('destinations');
   FOR d IN (
     SELECT destination_id, seq_num, country_code, country_name_en, city,
-           TO_CHAR(arrival_date,'YYYY-MM-DD')   AS from_dt,
-           TO_CHAR(departure_date,'YYYY-MM-DD') AS to_dt,
+           TO_CHAR( dct_to_local(arrival_date),'YYYY-MM-DD')   AS from_dt,
+           TO_CHAR( dct_to_local(departure_date),'YYYY-MM-DD') AS to_dt,
            duration_days, per_diem_daily_rate_aed, per_diem_total_aed, notes
     FROM dt_destinations_v
     WHERE request_id = l_id ORDER BY seq_num
@@ -749,8 +749,8 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR d IN (
     SELECT destination_id, seq_num, country_code, country_name_en, city,
-           TO_CHAR(arrival_date,'YYYY-MM-DD')   AS from_dt,
-           TO_CHAR(departure_date,'YYYY-MM-DD') AS to_dt,
+           TO_CHAR( dct_to_local(arrival_date),'YYYY-MM-DD')   AS from_dt,
+           TO_CHAR( dct_to_local(departure_date),'YYYY-MM-DD') AS to_dt,
            duration_days, per_diem_daily_rate_aed, per_diem_total_aed
     FROM dt_destinations_v
     WHERE request_id = l_id ORDER BY seq_num
@@ -834,7 +834,7 @@ BEGIN
         APEX_JSON.write('settleNumber',    l_s.settlement_number);
         APEX_JSON.write('reqId',           l_s.request_id);
         APEX_JSON.write('reqNumber',       l_s.request_number);
-        APEX_JSON.write('actualReturn',    TO_CHAR(l_s.actual_return_date,'YYYY-MM-DD'));
+        APEX_JSON.write('actualReturn',    TO_CHAR( dct_to_local(l_s.actual_return_date),'YYYY-MM-DD'));
         APEX_JSON.write('actualDays',      l_s.actual_per_diem_days);
         APEX_JSON.write('totalSettlement', l_s.total_actual_aed);
         APEX_JSON.write('advanceAmount',   l_s.advance_paid_aed);
@@ -854,7 +854,7 @@ BEGIN
       FOR s IN (
         SELECT s.settlement_id, s.settlement_number, s.request_id,
                s.request_number, s.employee_user_id,
-               TO_CHAR(s.actual_return_date,'YYYY-MM-DD') AS ret_dt,
+               TO_CHAR( dct_to_local(s.actual_return_date),'YYYY-MM-DD') AS ret_dt,
                s.actual_per_diem_days, s.total_actual_aed, s.advance_paid_aed,
                s.status, s.employee_name
         FROM dt_settlement_v s
@@ -870,7 +870,7 @@ BEGIN
       FOR s IN (
         SELECT s.settlement_id, s.settlement_number, s.request_id,
                s.request_number, s.employee_user_id,
-               TO_CHAR(s.actual_return_date,'YYYY-MM-DD') AS ret_dt,
+               TO_CHAR( dct_to_local(s.actual_return_date),'YYYY-MM-DD') AS ret_dt,
                s.actual_per_diem_days, s.total_actual_aed, s.advance_paid_aed,
                s.status, s.employee_name
         FROM dt_settlement_v s
@@ -885,7 +885,7 @@ BEGIN
       FOR s IN (
         SELECT s.settlement_id, s.settlement_number, s.request_id,
                s.request_number, s.employee_user_id,
-               TO_CHAR(s.actual_return_date,'YYYY-MM-DD') AS ret_dt,
+               TO_CHAR( dct_to_local(s.actual_return_date),'YYYY-MM-DD') AS ret_dt,
                s.actual_per_diem_days, s.total_actual_aed, s.advance_paid_aed,
                s.status, s.employee_name
         FROM dt_settlement_v s
@@ -1002,9 +1002,9 @@ BEGIN
   APEX_JSON.write('reqNumber',       l_s.request_number);
   APEX_JSON.write('employeeName',    l_s.employee_name);
   APEX_JSON.write('orgName',         l_s.org_name_en);
-  APEX_JSON.write('plannedDeparture',TO_CHAR(l_s.planned_departure_date,'YYYY-MM-DD'));
-  APEX_JSON.write('plannedReturn',   TO_CHAR(l_s.planned_return_date,'YYYY-MM-DD'));
-  APEX_JSON.write('actualReturn',    TO_CHAR(l_s.actual_return_date,'YYYY-MM-DD'));
+  APEX_JSON.write('plannedDeparture',TO_CHAR( dct_to_local(l_s.planned_departure_date),'YYYY-MM-DD'));
+  APEX_JSON.write('plannedReturn',   TO_CHAR( dct_to_local(l_s.planned_return_date),'YYYY-MM-DD'));
+  APEX_JSON.write('actualReturn',    TO_CHAR( dct_to_local(l_s.actual_return_date),'YYYY-MM-DD'));
   APEX_JSON.write('actualDays',      l_s.actual_per_diem_days);
   APEX_JSON.write('totalSettlement', l_s.total_actual_aed);
   APEX_JSON.write('advanceAmount',   l_s.advance_paid_aed);
@@ -1019,7 +1019,7 @@ BEGIN
     WHEN 'APPROVED'  THEN 'Approved'  WHEN 'REJECTED'  THEN 'Rejected'
     WHEN 'RETURNED'  THEN 'Returned'  ELSE l_s.status END);
   APEX_JSON.write('statusClass', 'badge badge--' || LOWER(l_s.status));
-  APEX_JSON.write('createdAt',   TO_CHAR(l_s.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+  APEX_JSON.write('createdAt',   TO_CHAR( dct_to_local(l_s.created_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
   -- Expense lines
   APEX_JSON.open_array('lines');
   FOR ln IN (
@@ -1223,7 +1223,7 @@ BEGIN
     APEX_JSON.write('requestType',   r.source_module);
     APEX_JSON.write('sourceRecordId',r.source_record_id);
     APEX_JSON.write('submittedBy',   r.submitted_by_name);
-    APEX_JSON.write('submittedAt',   TO_CHAR(r.submitted_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('submittedAt',   TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('currentStep',   r.step_name);
     APEX_JSON.write('amount',        r.amount);
     APEX_JSON.write('overallStatus', 'PENDING');
@@ -1532,7 +1532,7 @@ BEGIN
     APEX_JSON.write('bodyEn',    r.body_en);
     APEX_JSON.write('type',      r.notification_type);
     APEX_JSON.write('isRead',    r.is_read);
-    APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1620,8 +1620,8 @@ BEGIN
   APEX_JSON.write('rateKeyName',    l_rec.rate_key_name_en);
   APEX_JSON.write('gradeCode',      l_rec.grade_code);
   APEX_JSON.write('dailyRateAed',   l_rec.per_diem_daily_aed);
-  APEX_JSON.write('effectiveFrom',  TO_CHAR(l_rec.effective_from,'YYYY-MM-DD'));
-  APEX_JSON.write('effectiveTo',    TO_CHAR(l_rec.effective_to,'YYYY-MM-DD'));
+  APEX_JSON.write('effectiveFrom',  TO_CHAR( dct_to_local(l_rec.effective_from),'YYYY-MM-DD'));
+  APEX_JSON.write('effectiveTo',    TO_CHAR( dct_to_local(l_rec.effective_to),'YYYY-MM-DD'));
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -1640,8 +1640,8 @@ BEGIN
   FOR r IN (
     SELECT rate_id, rate_key, rate_key_name_en, grade_code, grade_label,
            per_diem_daily_aed,
-           TO_CHAR(effective_from,'YYYY-MM-DD') AS eff_from,
-           TO_CHAR(effective_to,'YYYY-MM-DD')   AS eff_to,
+           TO_CHAR( dct_to_local(effective_from),'YYYY-MM-DD') AS eff_from,
+           TO_CHAR( dct_to_local(effective_to),'YYYY-MM-DD')   AS eff_to,
            is_active, rate_status, notes
     FROM dt_rate_master_v ORDER BY rate_key, grade_code
   ) LOOP

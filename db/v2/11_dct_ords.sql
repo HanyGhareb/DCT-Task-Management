@@ -393,8 +393,8 @@ BEGIN
     APEX_JSON.write('authMethod',     r.auth_method);
     APEX_JSON.write('rolesCsv',       r.roles_csv);
     APEX_JSON.write('roleNamesCsv',   r.role_names_csv);
-    APEX_JSON.write('lastLoginAt',    TO_CHAR(r.last_login_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
-    APEX_JSON.write('createdAt',      TO_CHAR(r.created_at,'YYYY-MM-DD'));
+    APEX_JSON.write('lastLoginAt',    TO_CHAR( dct_to_local(r.last_login_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('createdAt',      TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -505,9 +505,9 @@ BEGIN
   APEX_JSON.write('authMethod',     l_rec.auth_method);
   APEX_JSON.write('rolesCsv',       dct_auth.get_user_roles(l_rec.username));
   APEX_JSON.write('createdBy',      l_rec.created_by);
-  APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(l_rec.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+  APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(FROM_TZ(l_rec.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
   APEX_JSON.write('updatedBy',      l_rec.updated_by);
-  APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(l_rec.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+  APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(FROM_TZ(l_rec.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -767,9 +767,9 @@ BEGIN
   APEX_JSON.write('isActive',    l_rec.is_active);
   APEX_JSON.write('isSystemRole',l_rec.is_system_role);
   APEX_JSON.write('createdBy',   l_rec.created_by);
-  APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(l_rec.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+  APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(FROM_TZ(l_rec.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
   APEX_JSON.write('updatedBy',   l_rec.updated_by);
-  APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(l_rec.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+  APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(FROM_TZ(l_rec.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
   -- Permission IDs assigned to this role
   APEX_JSON.open_array('permIds');
   FOR p IN (SELECT permission_id FROM dct_role_permissions WHERE role_id = [COLON]id) LOOP
@@ -921,9 +921,9 @@ BEGIN
     APEX_JSON.write('isActive',    r.is_active);
     APEX_JSON.write('isAdminOnly', r.is_admin_only);
     APEX_JSON.write('createdBy',   r.created_by);
-    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',   r.updated_by);
-    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -997,9 +997,9 @@ BEGIN
     APEX_JSON.write('isActive',    r.is_active);
     APEX_JSON.write('headName',    r.head_name);
     APEX_JSON.write('createdBy',   r.created_by);
-    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',   r.updated_by);
-    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1132,9 +1132,9 @@ BEGIN
       APEX_JSON.write('sortOrder',    v.display_order);
       APEX_JSON.write('isActive',     v.is_active);
       APEX_JSON.write('createdBy',    v.created_by);
-      APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(v.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+      APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(FROM_TZ(v.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
       APEX_JSON.write('updatedBy',    v.updated_by);
-      APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(v.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+      APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(FROM_TZ(v.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
@@ -1278,9 +1278,9 @@ BEGIN
     APEX_JSON.write('isEditable',  'Y');
     APEX_JSON.write('isSystem',    r.is_system);
     APEX_JSON.write('createdBy',   r.created_by);
-    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(FROM_TZ(r.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',   r.updated_by);
-    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(FROM_TZ(r.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1375,7 +1375,7 @@ BEGIN
     APEX_JSON.write('body',      r.body_en);
     APEX_JSON.write('type',      r.notification_type);
     APEX_JSON.write('isRead',    r.is_read);
-    APEX_JSON.write('createdAt', TO_CHAR(r.created_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(r.created_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1481,7 +1481,7 @@ BEGIN
     APEX_JSON.write('module',          r.source_module);
     APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
     APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR(r.submitted_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('amount',          r.amount);
     APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
     APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));
@@ -1540,7 +1540,7 @@ BEGIN
     APEX_JSON.write('module',        r.source_module);
     APEX_JSON.write('templateName',  NVL(r.template_name, '-'));
     APEX_JSON.write('requestedBy',   NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',   TO_CHAR(r.submitted_at,'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('requestedAt',   TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('amount',        r.amount);
     APEX_JSON.write('currentStep',   r.current_step);
     APEX_JSON.write('totalSteps',    NVL(r.total_steps, 1));
@@ -1830,9 +1830,9 @@ BEGIN
       APEX_JSON.write('parentTemplateId', t.parent_template_id);
     END IF;
     APEX_JSON.write('createdBy',    t.created_by);
-    APEX_JSON.write('createdAt', TO_CHAR(FROM_TZ(t.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt', TO_CHAR( dct_to_local(FROM_TZ(t.created_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.write('updatedBy',    t.updated_by);
-    APEX_JSON.write('updatedAt', TO_CHAR(FROM_TZ(t.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('updatedAt', TO_CHAR( dct_to_local(FROM_TZ(t.updated_at, 'UTC') AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.open_array('steps');
     FOR s IN (
       SELECT s.step_id, s.step_seq, s.step_name, s.escalation_days, r.role_code
@@ -1932,7 +1932,7 @@ BEGIN
     APEX_JSON.write('objectId',    r.object_id);
     APEX_JSON.write('status',      r.status);
     APEX_JSON.write('error',       r.error_message);
-    APEX_JSON.write('loggedAt',    TO_CHAR(r.logged_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('loggedAt',    TO_CHAR( dct_to_local(r.logged_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -2007,7 +2007,7 @@ BEGIN
     ORDER  BY 1
   ) LOOP
     APEX_JSON.open_object;
-    APEX_JSON.write('day',     TO_CHAR(r.d, 'YYYY-MM-DD'));
+    APEX_JSON.write('day',     TO_CHAR( dct_to_local(r.d), 'YYYY-MM-DD'));
     APEX_JSON.write('logins',  r.logins);
     APEX_JSON.write('actions', r.actions);
     APEX_JSON.close_object;
@@ -2126,11 +2126,11 @@ BEGIN
     APEX_JSON.write('roleName',      NVL(r.role_name_en, ''));
     APEX_JSON.write('moduleCode',    NVL(r.module_code, ''));
     APEX_JSON.write('moduleName',    NVL(r.module_name_en, ''));
-    APEX_JSON.write('startDate',     TO_CHAR(r.start_date, 'YYYY-MM-DD'));
-    APEX_JSON.write('endDate',       TO_CHAR(r.end_date, 'YYYY-MM-DD'));
+    APEX_JSON.write('startDate',     TO_CHAR( dct_to_local(r.start_date), 'YYYY-MM-DD'));
+    APEX_JSON.write('endDate',       TO_CHAR( dct_to_local(r.end_date), 'YYYY-MM-DD'));
     APEX_JSON.write('reason',        NVL(r.reason, ''));
     APEX_JSON.write('status',        r.status);
-    APEX_JSON.write('createdAt',     TO_CHAR(r.created_at AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt',     TO_CHAR( dct_to_local(r.created_at AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -2252,11 +2252,11 @@ BEGIN
     APEX_JSON.write('roleName',    NVL(r.role_name_en, ''));
     APEX_JSON.write('moduleCode',  NVL(r.module_code, ''));
     APEX_JSON.write('moduleName',  NVL(r.module_name_en, ''));
-    APEX_JSON.write('publishedAt', TO_CHAR(r.published_at AT TIME ZONE 'Asia/Dubai','YYYY-MM-DD HH24:MI'));
-    APEX_JSON.write('expiresAt',   TO_CHAR(r.expires_at AT TIME ZONE 'Asia/Dubai','YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('publishedAt', TO_CHAR( dct_to_local(r.published_at AT TIME ZONE 'Asia/Dubai'),'YYYY-MM-DD HH24:MI'));
+    APEX_JSON.write('expiresAt',   TO_CHAR( dct_to_local(r.expires_at AT TIME ZONE 'Asia/Dubai'),'YYYY-MM-DD HH24:MI'));
     APEX_JSON.write('isActive',    r.is_active);
     APEX_JSON.write('createdBy',   NVL(r.created_by, ''));
-    APEX_JSON.write('createdAt',   TO_CHAR(r.created_at AT TIME ZONE 'Asia/Dubai','DD-Mon-YYYY HH:MI AM'));
+    APEX_JSON.write('createdAt',   TO_CHAR( dct_to_local(r.created_at AT TIME ZONE 'Asia/Dubai'),'DD-Mon-YYYY HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -2691,7 +2691,7 @@ BEGIN
     EXIT WHEN l_n >= 20000;
     l_n := l_n + 1;
     HTP.print(
-      TO_CHAR(r.logged_at,'YYYY-MM-DD"T"HH24":"MI":"SS') || ',' ||
+      TO_CHAR( dct_to_local(r.logged_at),'YYYY-MM-DD"T"HH24":"MI":"SS') || ',' ||
       esc(r.username)    || ',' || esc(r.action)    || ',' ||
       esc(r.object_type) || ',' || esc(r.object_id) || ',' ||
       esc(r.status)      || ',' || esc(r.error_message));
@@ -2740,8 +2740,8 @@ BEGIN
     APEX_JSON.write('sidTail',      SUBSTR(r.session_id, -6));
     APEX_JSON.write('username',     r.username);
     APEX_JSON.write('displayName',  r.display_name);
-    APEX_JSON.write('loginAt',      TO_CHAR(r.login_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
-    APEX_JSON.write('lastActivity', TO_CHAR(r.last_activity_at,'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('loginAt',      TO_CHAR( dct_to_local(r.login_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('lastActivity', TO_CHAR( dct_to_local(r.last_activity_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
     APEX_JSON.write('ip',           r.ip_address);
     APEX_JSON.write('userAgent',    SUBSTR(r.user_agent, 1, 120));
     APEX_JSON.write('authMethod',   r.auth_method);
