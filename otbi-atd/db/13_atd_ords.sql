@@ -830,6 +830,133 @@ EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    -- =========================================================================
+    -- SCHEMA review/editor (staging table is data-only / disposable, so a type
+    -- or rename change just drops + recreates it; data reloads on the next run).
+    -- GET  = live table structure (all_tab_columns) + a sample value per column
+    --        + the raw column_map_json (header->name) for the UI to show source.
+    -- POST = apply an edited definition: validate, drop + recreate the table,
+    --        rebuild column_map_json, rename stage_table, mark the job to reload.
+    -- =========================================================================
+    def_template('jobs/[COLON]name/schema');
+    def_handler('jobs/[COLON]name/schema', 'GET', q'!
+DECLARE
+  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  l_stage VARCHAR2(128); l_cmap CLOB;
+  l_owner VARCHAR2(128); l_tname VARCHAR2(128); l_dot NUMBER;
+  l_sample VARCHAR2(400);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  BEGIN
+    SELECT stage_table, column_map_json INTO l_stage, l_cmap
+      FROM atd_otbi_jobs WHERE job_name = [COLON]name;
+  EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Job not found'); RETURN; END;
+  l_dot := INSTR(l_stage, '.');
+  IF l_dot > 0 THEN l_owner := UPPER(SUBSTR(l_stage,1,l_dot-1)); l_tname := UPPER(SUBSTR(l_stage,l_dot+1));
+  ELSE l_owner := 'PROD'; l_tname := UPPER(l_stage); END IF;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('stageTable', l_stage);
+  APEX_JSON.write('columnMapJson', NVL(DBMS_LOB.SUBSTR(l_cmap,32000,1),''));
+  APEX_JSON.open_array('columns');
+  FOR c IN (SELECT column_name, data_type, data_length, data_precision, data_scale
+              FROM all_tab_columns
+             WHERE owner = l_owner AND table_name = l_tname AND column_name <> 'LOAD_TS'
+             ORDER BY column_id) LOOP
+    BEGIN
+      EXECUTE IMMEDIATE 'SELECT '||c.column_name||' FROM '||l_stage||
+                        ' WHERE '||c.column_name||' IS NOT NULL AND ROWNUM = 1' INTO l_sample;
+    EXCEPTION WHEN OTHERS THEN l_sample := NULL; END;
+    APEX_JSON.open_object;
+    APEX_JSON.write('name', c.column_name);
+    APEX_JSON.write('type',
+      CASE WHEN c.data_type='NUMBER' AND c.data_precision IS NULL THEN 'NUMBER'
+           WHEN c.data_type='NUMBER' THEN 'NUMBER('||c.data_precision||
+                CASE WHEN NVL(c.data_scale,0)>0 THEN ','||c.data_scale END||')'
+           WHEN c.data_type='VARCHAR2' THEN 'VARCHAR2('||c.data_length||')'
+           WHEN c.data_type='CHAR' THEN 'CHAR('||c.data_length||')'
+           ELSE c.data_type END);
+    APEX_JSON.write('sample', NVL(l_sample,''));
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_handler('jobs/[COLON]name/schema', 'POST', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_oldtbl VARCHAR2(128);
+  l_tbl    VARCHAR2(128);
+  l_owner  VARCHAR2(128); l_tname VARCHAR2(128); l_dot NUMBER;
+  l_cnt    NUMBER; l_name VARCHAR2(128); l_type VARCHAR2(60); l_hdr VARCHAR2(400);
+  l_ddl    CLOB := ''; l_map CLOB := ''; l_n NUMBER := 0;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
+  BEGIN SELECT stage_table INTO l_oldtbl FROM atd_otbi_jobs WHERE job_name = [COLON]name;
+  EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Job not found'); RETURN; END;
+  dct_rest.parse_body([COLON]body);
+
+  l_tbl := UPPER(TRIM(NVL(APEX_JSON.get_varchar2(p_path=>'tableName'), l_oldtbl)));
+  IF l_tbl IS NULL THEN dct_rest.err(400,'tableName is required'); RETURN; END IF;
+  l_dot := INSTR(l_tbl,'.');
+  IF l_dot > 0 THEN l_owner := SUBSTR(l_tbl,1,l_dot-1); l_tname := SUBSTR(l_tbl,l_dot+1);
+  ELSE l_owner := 'PROD'; l_tname := l_tbl; l_tbl := 'PROD.'||l_tbl; END IF;
+  IF NOT REGEXP_LIKE(l_owner,'^[A-Z][A-Z0-9_]*$')
+     OR NOT REGEXP_LIKE(l_tname,'^[A-Z][A-Z0-9_]{0,29}$') THEN
+    dct_rest.err(400,'Invalid table name'); RETURN; END IF;
+
+  l_cnt := NVL(APEX_JSON.get_count(p_path=>'columns'),0);
+  IF l_cnt = 0 THEN dct_rest.err(400,'At least one column is required'); RETURN; END IF;
+
+  FOR i IN 1 .. l_cnt LOOP
+    l_name := UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'columns['||i||'].name')));
+    l_type := UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'columns['||i||'].type')));
+    l_hdr  := APEX_JSON.get_varchar2(p_path=>'columns['||i||'].header');
+    IF NOT REGEXP_LIKE(l_name,'^[A-Z][A-Z0-9_]{0,29}$') THEN
+      dct_rest.err(400,'Invalid column name: '||l_name); RETURN; END IF;
+    IF l_name = 'LOAD_TS' THEN CONTINUE; END IF;  -- audit column is auto-added
+    IF NOT REGEXP_LIKE(l_type,
+        '^(NUMBER(\([0-9]+(,[0-9]+)?\))?|VARCHAR2\([0-9]+\)|CHAR\([0-9]+\)|DATE|TIMESTAMP(\([0-9]+\))?|CLOB)$') THEN
+      dct_rest.err(400,'Invalid data type for '||l_name||': '||l_type); RETURN; END IF;
+    l_ddl := l_ddl || CASE WHEN LENGTH(l_ddl) > 0 THEN ', ' END || l_name || ' ' || l_type;
+    IF l_hdr IS NOT NULL THEN
+      l_map := l_map || CASE WHEN l_n > 0 THEN ',' END ||
+               '"'||REPLACE(REPLACE(l_hdr,'\','\\'),'"','\"')||'":"'||l_name||'"';
+      l_n := l_n + 1;
+    END IF;
+  END LOOP;
+
+  -- recreate the staging table from the approved definition (data is transient: it
+  -- reloads on the next run, so no migration). Drop old (+ the renamed target if any).
+  BEGIN EXECUTE IMMEDIATE 'DROP TABLE '||l_oldtbl||' PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+  IF l_tbl <> l_oldtbl THEN
+    BEGIN EXECUTE IMMEDIATE 'DROP TABLE '||l_tbl||' PURGE'; EXCEPTION WHEN OTHERS THEN NULL; END;
+  END IF;
+  EXECUTE IMMEDIATE 'CREATE TABLE '||l_tbl||' ('||l_ddl||
+                    ', load_ts TIMESTAMP DEFAULT SYSTIMESTAMP)';
+
+  UPDATE atd_otbi_jobs
+     SET stage_table = l_tbl,
+         column_map_json = TO_CLOB('{'||l_map||'}'),
+         run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
+         updated_at = SYSTIMESTAMP
+   WHERE job_name = [COLON]name;
+  COMMIT;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('stageTable', l_tbl);
+  APEX_JSON.write('columns', l_n);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
     -- queue-wide ops
     def_template('enqueue');
     def_handler('enqueue', 'POST', q'!
@@ -1300,7 +1427,7 @@ END;
 PROMPT ============================================================
 PROMPT  13_atd_ords.sql complete.
 PROMPT  Base URL: /ords/admin/atd/
-PROMPT  Endpoints: dashboard, lookups, jobs (+/:name, /enqueue, /reset, /run, /reprepare),
+PROMPT  Endpoints: dashboard, lookups, jobs (+/:name, /enqueue, /reset, /run, /reprepare, /schema),
 PROMPT             analyses (build new), subject-areas (+/columns, /discover, /runs),
 PROMPT             enqueue, reap, envs, targets, runs (+/:id, /export)
 PROMPT ============================================================
