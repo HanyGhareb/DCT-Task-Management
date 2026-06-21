@@ -227,7 +227,7 @@ BEGIN
     WHERE (l_status IS NULL OR j.run_status = l_status)
       AND (l_search IS NULL OR UPPER(j.job_name||' '||j.source_ref||' '||j.stage_table)
            LIKE '%'||UPPER(l_search)||'%')
-    ORDER BY j.priority, j.run_order, j.job_name
+    ORDER BY lr.run_id DESC NULLS LAST, j.priority, j.run_order, j.job_name
     OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
     APEX_JSON.open_object;
@@ -439,7 +439,7 @@ BEGIN
   FOR r IN (SELECT subject_area, status, folder_count, column_count,
                    NVL(SUBSTR(message,1,300),'') AS msg,
                    TO_CHAR( dct_to_local(scraped_at),'YYYY-MM-DD HH:MI AM') AS scraped_s
-              FROM atd_sa_catalog ORDER BY subject_area) LOOP
+              FROM atd_sa_catalog ORDER BY requested_at DESC NULLS LAST, subject_area) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('subjectArea', r.subject_area);
     APEX_JSON.write('status', r.status);
@@ -1008,7 +1008,7 @@ BEGIN
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.open_array('items');
-  FOR r IN (SELECT * FROM atd_otbi_env ORDER BY env_name) LOOP
+  FOR r IN (SELECT * FROM atd_otbi_env ORDER BY created_at DESC NULLS LAST, env_name) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('envName', r.env_name);
     APEX_JSON.write('description', NVL(r.description,''));
@@ -1110,7 +1110,7 @@ BEGIN
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.open_array('items');
-  FOR r IN (SELECT * FROM atd_target_db ORDER BY target_name) LOOP
+  FOR r IN (SELECT * FROM atd_target_db ORDER BY created_at DESC NULLS LAST, target_name) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('targetName', r.target_name);
     APEX_JSON.write('description', NVL(r.description,''));
