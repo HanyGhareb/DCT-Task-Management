@@ -431,6 +431,49 @@ box + the OL7.9 agents) as **parallel workers draining the one shared ADB queue*
 
 ---
 
+## 2026-06-22 — Mid-life session self-heal + fleet re-seed (Track B)
+
+**Incident:** all 3 VMs failed every GL_BALANCES load for ~20h with
+`Go-URL did not return CSV (status=200, type=text/html) … Session likely expired`. Root cause:
+the Fusion/Entra session expired **mid-life**; the `--forever` worker caches its Playwright
+context in `ctx_by_env` and only calls `auth.authenticate()` (which re-validates + re-prompts MFA)
+the **first** time it needs an env — so a cached session that dies later is never re-validated and
+every load fails until a manual restart. The midnight MFA pushes came from the *discovery* path
+(authenticates fresh per scrape); none were approved → stuck.
+
+**Immediate recovery:** re-seeded all 3 (restart → approve MFA: vm182=21, vm180=34, vm181=98).
+vm181 needed a **forced** re-seed (`runner/seed_session.py` one-shot `auth.authenticate` after
+`rm auth_state_*.json`) because its dead session still passed auth.py's cheap `_validate`
+(bieehome loads even when the Go-URL export bounces to login — a false positive).
+
+**Permanent fix (code, deployed to all 3 VMs):**
+- `runner/extract.py` — new `SessionExpired(RuntimeError)`, raised by `download_csv` **only** when
+  the Go-URL bounces to the login page (HTTP 200 + HTML). A genuinely wrong path (WebLogic 404,
+  status≠200) still raises plain `RuntimeError` — so we re-auth only when it can actually help.
+- `runner/runner.py` — `_make_run_one_oracledb` logs the failed attempt then **re-raises**
+  `SessionExpired`; `_run_worker` catches it, drops the dead context (`ctx_by_env`/`browser_by_env`,
+  closes the browser), calls `auth.authenticate()` (→ **one** MFA push) and **retries the job once**
+  with the fresh session. MFA-not-approved/re-auth failure is caught → job fails this cycle, worker
+  keeps running (next claim re-prompts). `_drive` (direct non-worker path) guards `SessionExpired`
+  as a clean failure (no retry) so it can't crash a batch. New `_env_of(job, env_name)` helper.
+- **Effect:** a mid-life expiry now self-heals after **one** approval instead of failing silently
+  for hours. Deploy = `scp runner.py extract.py` to each VM + `systemctl restart atd-worker`
+  (py_compile-checked on each; all came back `active` with no MFA — fresh sessions valid).
+- **VERIFIED by simulation (2026-06-22).** `extract.download_csv` has an inert test affordance: if
+  the one-shot sentinel `$ATD_STATE_DIR/ATD_TEST_EXPIRE_ONCE` exists it is consumed and raises
+  `SessionExpired` (as if the Go-URL bounced to login) — the file never exists in normal operation.
+  To simulate: `ssh vm<ip> "touch /root/otbi-atd-state/ATD_TEST_EXPIRE_ONCE"`, then run/enqueue a
+  load job. Observed on atd-vm180 (10s, real `_run_worker`):
+  `[FAIL] GL_BALANCES: session expired mid-run; re-authenticating` ->
+  `GL_BALANCES: SIMULATED session expiry ... -> re-authenticating` ->
+  `[ok] GL_BALANCES: 9530 rows`. Re-auth was silent (real session valid -> no MFA); a real expiry
+  would prompt one MFA, then retry. (One FAILED + one SUCCESS run row per simulated heal is expected
+  test residue; `rm` any sentinel you arm on VMs that didn't claim the job.)
+- **Note:** the same latent pattern exists in `_run_action_worker` but is low-impact
+  (`FUSION_POST_REIMB` defaults N, actions DRY by default) — left for a follow-up.
+
+---
+
 ## Telegram query bot (tg_bot.py) — PoC, vm180 only
 
 A lightweight long-polling bot that answers i-Finance lookups in Telegram.

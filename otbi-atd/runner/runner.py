@@ -80,7 +80,14 @@ def _drive(jobs, run_one_fn):
             browser, ctx = auth.authenticate(p, env)
             try:
                 for job in env_jobs:
-                    if not run_one_fn(ctx, env, job):
+                    try:
+                        ok = run_one_fn(ctx, env, job)
+                    except extract.SessionExpired as e:
+                        # direct (non-worker) run: no retry loop here — just fail the
+                        # job cleanly instead of crashing the whole batch.
+                        print(f"[FAIL] {job['job_name']}: {e}")
+                        ok = False
+                    if not ok:
                         failures += 1
             finally:
                 browser.close()
@@ -151,6 +158,18 @@ def _make_run_one_oracledb(conn, load):
                      msg="; ".join(drift + ([note] if note else [])) or None)
             print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
             return True
+        except extract.SessionExpired:
+            # The warm session died mid-run. Log THIS attempt as FAILED, then re-raise
+            # so the worker can refresh the session (one MFA push) and retry the job.
+            # Roll back the uncommitted load first (same reason as the general case).
+            try:
+                conn.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            _log_end(conn, run_id, "FAILED",
+                     msg="; ".join(drift + ["session expired mid-run; re-authenticating"])[:3900])
+            print(f"[FAIL] {name}: session expired mid-run; re-authenticating")
+            raise
         except Exception as e:  # noqa: BLE001
             # discard the failed (uncommitted) delete+insert so the table keeps its
             # prior load — otherwise _log_end's commit would persist the empty/partial
@@ -169,6 +188,13 @@ def _make_run_one_oracledb(conn, load):
 # ---- multi-host shared queue (oracledb mode, design #3) -----------------
 def _worker_id():
     return os.environ.get("ATD_WORKER_ID") or socket.gethostname()
+
+
+def _env_of(job, env_name):
+    """The env dict auth.authenticate expects, built from a claimed job row."""
+    return {"env_name": env_name,
+            "analytics_base_url": job["analytics_base_url"],
+            "credential_ref": job.get("credential_ref") or env_name}
 
 
 def _heartbeat(conn, status, job=None):
@@ -222,6 +248,7 @@ def _run_worker(conn, load, forever):
     run_one = _make_run_one_oracledb(conn, load)
     processed, failures = 0, 0
     ctx_by_env = {}
+    browser_by_env = {}
     browsers = []
     # crash recovery: return any jobs left CLAIMED by a dead worker past the lease
     reaped = conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
@@ -259,15 +286,38 @@ def _run_worker(conn, load, forever):
                 job = jobs[0]
                 env_name = job["env_name"]
                 if env_name not in ctx_by_env:
-                    env = {"env_name": env_name,
-                           "analytics_base_url": job["analytics_base_url"],
-                           "credential_ref": job.get("credential_ref") or env_name}
-                    browser, ctx = auth.authenticate(p, env)
+                    browser, ctx = auth.authenticate(p, _env_of(job, env_name))
                     browsers.append(browser)
-                    ctx_by_env[env_name] = (env, ctx)
+                    browser_by_env[env_name] = browser
+                    ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
                 env, ctx = ctx_by_env[env_name]
                 _heartbeat(conn, "BUSY", name)
-                ok = run_one(ctx, env, job)
+                try:
+                    ok = run_one(ctx, env, job)
+                except extract.SessionExpired as se:
+                    # The cached warm session died mid-life. Drop it, re-authenticate
+                    # (sends ONE MFA push) and retry the job once — so the fleet
+                    # self-heals after a single approval instead of failing every job
+                    # until someone manually restarts the worker.
+                    print(f"[worker {host}] {name}: {se} -> re-authenticating")
+                    ok = False
+                    dead = browser_by_env.pop(env_name, None)
+                    ctx_by_env.pop(env_name, None)
+                    if dead:
+                        try:
+                            dead.close()
+                        except Exception:  # noqa: BLE001
+                            pass
+                    try:
+                        browser, ctx = auth.authenticate(p, _env_of(job, env_name))
+                        browsers.append(browser)
+                        browser_by_env[env_name] = browser
+                        ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
+                        env, ctx = ctx_by_env[env_name]
+                        ok = run_one(ctx, env, job)            # retry once, fresh session
+                    except Exception as e:  # noqa: BLE001 (incl. MFA-not-approved / still expired)
+                        print(f"[worker {host}] {name}: re-auth/retry failed: {e}")
+                        ok = False
                 conn.cursor().callproc(
                     "prod.atd_queue_pkg." + ("mark_done" if ok else "mark_failed"), [name])
                 processed += 1
