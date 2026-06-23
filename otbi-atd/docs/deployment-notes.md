@@ -474,6 +474,40 @@ vm181 needed a **forced** re-seed (`runner/seed_session.py` one-shot `auth.authe
 
 ---
 
+## 2026-06-23 — The GL_BALANCES "session" outage was actually a MOVED REPORT PATH
+
+**Lesson: HTTP 200 + HTML from the Go-URL does NOT always mean the session expired.** After
+the 2026-06-22 self-heal work, GL_BALANCES kept failing on all 3 VMs with
+`Go-URL did not return CSV (type=text/html) … Session likely expired`. A controlled probe
+(reuse a freshly-approved session, dump every job's Go-URL) proved the session was **fine** —
+6 of 8 reports returned CSV; only GL_BALANCES + AP_INVOICE_HEADER returned HTML. Dumping the
+GL_BALANCES HTML showed the real error: **"Path not found — Check the input path entered.
+Error Codes: U9KP7Q94"** — the report had been **moved/renamed** out of its configured path
+(`/users/haghareb@dctabudhabi.ae/Drafts/GL/GL Balances`). The runner blindly treated *any*
+HTML as expiry, so the self-heal kept re-authenticating (uselessly) and pushing MFA for a
+problem re-auth can never fix.
+
+**Fixes:**
+- **Path corrected** (by the report owner): `GL_BALANCES.source_ref` →
+  `/users/haghareb@dctabudhabi.ae/Data/GL/Budget Status` (verified: Go-URL returns CSV).
+- **`extract.download_csv` now classifies HTML by the FINAL url** (deployed to all 3 VMs):
+  - still on `/analytics/` → **`ReportError`** (report moved/renamed/deleted or a report
+    runtime error) — a clean failure with an honest message; **no re-auth, no MFA**.
+  - redirected to sign-in (`login.microsoft*` / `signin` / `/oam`) → **`SessionExpired`**
+    (the worker re-authenticates + retries, as designed).
+  - non-200 → plain `RuntimeError`.
+  The old test sentinel was removed (it routed to an analytics HTML page and so now classifies
+  as `ReportError`, which is correct but no longer simulates expiry). Verified live with
+  `test_classify.py`: configured path → CSV; bogus path → `ReportError` (NOT `SessionExpired`).
+- **Diagnosing this class:** reuse a known-good session and dump the Go-URL — if 200+HTML with a
+  final url still on `/analytics/`, read the page text (it carries the OTBI error, e.g. "Path not
+  found"); the report/path is wrong, not the session. (`probe_dump.py` did exactly this.)
+- **Telegram relay is flaky** (`[notify] telegram send failed: handshake timed out`) and the
+  MFA number capture sometimes yields `"see login screen"` (no digit). Both make manual re-seeds
+  unreliable — another reason to pursue Track A (BIP, MFA-free).
+
+---
+
 ## Telegram query bot (tg_bot.py) — PoC, vm180 only
 
 A lightweight long-polling bot that answers i-Finance lookups in Telegram.

@@ -151,9 +151,19 @@ The runner is a **browser robot** logged into Fusion as a real user. That login 
 perishable cookie/token issued by Microsoft Entra; it expires on Entra's schedule (hours),
 and renewing it requires a **human MFA approval** — it is *designed* to resist automation.
 So the steady state is: jobs run fine for a while, the session silently dies, and every job
-fails identically until someone re-approves MFA. When you see *every* job failing with
-`type=text/html` / `Session likely expired`, **don't debug the reports or the DB** — go
-straight to Step 4 and re-seed.
+fails identically until someone re-approves MFA. When you see *every* job failing with a
+redirect to sign-in, **don't debug the reports or the DB** — go straight to Step 4 and re-seed.
+
+**But HTTP 200 + HTML is NOT always an expired session (learned 2026-06-23).** OTBI also
+returns `200 + text/html` when it renders an error page while you are STILL logged in — e.g.
+**"Path not found"** (the report was moved/renamed/deleted) or a report runtime error. The
+giveaway: only ONE report fails while others still return CSV, and the response's final URL is
+still on `/analytics/`. The runner now classifies this automatically — still on `/analytics/`
+→ **`ReportError`** (fix the job's `source_ref` / the report; **re-auth is NOT attempted**),
+redirected to sign-in → **`SessionExpired`** (self-heal re-auths). A MESSAGE saying *"OTBI
+returned an error page … report path/definition is wrong"* is a **catalog-path** problem
+(Step 5), not a session one. To diagnose by hand: reuse a known-good session and dump the
+Go-URL response (`runner/probe_dump.py`) — the HTML carries the OTBI error text.
 
 **Self-heal (fixed 2026-06-22):** the worker now catches a session-expiry load failure
 (`SessionExpired`, raised by `extract.download_csv` on the HTTP 200 + HTML login bounce),

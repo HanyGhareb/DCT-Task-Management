@@ -169,13 +169,19 @@ def _login(ctx, env, wait_secs):
     raise RuntimeError("MFA not approved within timeout — session not established")
 
 
-def authenticate(p, env, headless=True, wait_secs=None):
-    """Return (browser, context) with an authenticated OTBI session for env."""
+def authenticate(p, env, headless=True, wait_secs=None, force=False):
+    """Return (browser, context) with an authenticated OTBI session for env.
+
+    force=True skips the saved-session reuse/validate and goes straight to a fresh
+    login (MFA). Use it when the caller already KNOWS the session is dead (e.g. the
+    self-heal after a Go-URL login bounce) — `_validate` only checks the cheap
+    bieehome page, which can still load when the data-export session has died, so
+    trusting it there would silently reuse the dead session."""
     if wait_secs is None:
         wait_secs = int(os.environ.get("ATD_MFA_WAIT", "420"))  # time to receive NN + approve
     state = _state_path(env["env_name"])
     browser = p.chromium.launch(headless=headless)
-    if state.exists():
+    if state.exists() and not force:
         ctx = browser.new_context(storage_state=str(state), ignore_https_errors=True,
                                   accept_downloads=True)
         if _validate(ctx, env):

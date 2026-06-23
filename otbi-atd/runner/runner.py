@@ -250,6 +250,8 @@ def _run_worker(conn, load, forever):
     ctx_by_env = {}
     browser_by_env = {}
     browsers = []
+    reauth_at = {}          # env_name -> monotonic time of last self-heal re-auth attempt
+    reauth_cooldown = int(os.environ.get("ATD_REAUTH_COOLDOWN", "1800"))  # 30 min
     # crash recovery: return any jobs left CLAIMED by a dead worker past the lease
     reaped = conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
     print(f"[worker {host}] starting (lease={lease}m, forever={forever}"
@@ -295,29 +297,38 @@ def _run_worker(conn, load, forever):
                 try:
                     ok = run_one(ctx, env, job)
                 except extract.SessionExpired as se:
-                    # The cached warm session died mid-life. Drop it, re-authenticate
-                    # (sends ONE MFA push) and retry the job once — so the fleet
+                    # The cached warm session died mid-life. Drop it, FORCE a fresh
+                    # login (sends ONE MFA push) and retry the job once — so the fleet
                     # self-heals after a single approval instead of failing every job
-                    # until someone manually restarts the worker.
-                    print(f"[worker {host}] {name}: {se} -> re-authenticating")
+                    # until someone manually restarts the worker. A cooldown stops an
+                    # un-approved expiry (e.g. overnight) from re-prompting MFA / blocking
+                    # the worker on every cycle.
                     ok = False
-                    dead = browser_by_env.pop(env_name, None)
-                    ctx_by_env.pop(env_name, None)
-                    if dead:
+                    now = time.monotonic()
+                    if now - reauth_at.get(env_name, 0.0) < reauth_cooldown:
+                        wait = int(reauth_cooldown - (now - reauth_at.get(env_name, 0.0)))
+                        print(f"[worker {host}] {name}: {se} -> session dead, re-auth on "
+                              f"cooldown ({wait}s left); failing without re-prompt")
+                    else:
+                        reauth_at[env_name] = now
+                        print(f"[worker {host}] {name}: {se} -> re-authenticating (forced)")
+                        dead = browser_by_env.pop(env_name, None)
+                        ctx_by_env.pop(env_name, None)
+                        if dead:
+                            try:
+                                dead.close()
+                            except Exception:  # noqa: BLE001
+                                pass
                         try:
-                            dead.close()
-                        except Exception:  # noqa: BLE001
-                            pass
-                    try:
-                        browser, ctx = auth.authenticate(p, _env_of(job, env_name))
-                        browsers.append(browser)
-                        browser_by_env[env_name] = browser
-                        ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
-                        env, ctx = ctx_by_env[env_name]
-                        ok = run_one(ctx, env, job)            # retry once, fresh session
-                    except Exception as e:  # noqa: BLE001 (incl. MFA-not-approved / still expired)
-                        print(f"[worker {host}] {name}: re-auth/retry failed: {e}")
-                        ok = False
+                            browser, ctx = auth.authenticate(p, _env_of(job, env_name), force=True)
+                            browsers.append(browser)
+                            browser_by_env[env_name] = browser
+                            ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
+                            env, ctx = ctx_by_env[env_name]
+                            ok = run_one(ctx, env, job)        # retry once, fresh session
+                        except Exception as e:  # noqa: BLE001 (incl. MFA-not-approved / still expired)
+                            print(f"[worker {host}] {name}: re-auth/retry failed: {e}")
+                            ok = False
                 conn.cursor().callproc(
                     "prod.atd_queue_pkg." + ("mark_done" if ok else "mark_failed"), [name])
                 processed += 1
