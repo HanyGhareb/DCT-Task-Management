@@ -40,18 +40,29 @@ def render(env_key, default, **values):
     return default
 
 
-def send(text):
+def send(text, attempts=3):
+    """Send a notification, retrying transient failures (e.g. the flaky Telegram SSL
+    handshake timeout / connection reset) up to `attempts` times with a short backoff.
+    Never raises — a notify failure must not break the login."""
+    import time
     ch = (os.environ.get("ATD_NOTIFY") or "").lower()
     if not ch:
         return False
-    try:
-        {"telegram": _telegram, "email": _email,
-         "webhook": _webhook, "sms": _twilio}[ch](text)
-        return True
-    except KeyError:
+    fn = {"telegram": _telegram, "email": _email,
+          "webhook": _webhook, "sms": _twilio}.get(ch)
+    if fn is None:
         print(f"[notify] unknown ATD_NOTIFY={ch!r}")
-    except Exception as e:  # noqa: BLE001 - never break the run on a notify error
-        print(f"[notify] {ch} send failed: {e}")
+        return False
+    last = None
+    for i in range(max(1, attempts)):
+        try:
+            fn(text)
+            return True
+        except Exception as e:  # noqa: BLE001 - never break the run on a notify error
+            last = e
+            if i + 1 < attempts:
+                time.sleep(2 * (i + 1))      # 2s, then 4s, before retrying
+    print(f"[notify] {ch} send failed after {attempts} attempts: {last}")
     return False
 
 
@@ -60,7 +71,7 @@ def _telegram(text):
     token = os.environ["ATD_TG_TOKEN"]
     chat = os.environ["ATD_TG_CHAT"]
     r = httpx.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                   json={"chat_id": chat, "text": text}, timeout=20)
+                   json={"chat_id": chat, "text": text}, timeout=30)
     r.raise_for_status()
 
 

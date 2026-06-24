@@ -87,6 +87,44 @@ def surface_number(num, env_name):
     notify.send(text)
 
 
+def _grab_number(page, first_wait=120000):
+    """Scrape the Entra number-match digit from the sign-in page; '' if not found.
+    Waits for the canonical display element, then falls back to other selectors and a
+    2-digit body scan. (Extracted so the login can retry the scrape after a reload.)"""
+    num = ""
+    try:
+        el = page.wait_for_selector('#idRichContext_DisplaySign', timeout=first_wait)
+        t = (el.inner_text() or "").strip()
+        if t.isdigit():
+            num = t
+    except Exception:
+        pass
+    if not num:                               # fallbacks if the canonical id changed/absent
+        for _ in range(10):
+            for sel in ['#idRichContext_DisplaySign', '.display-sign',
+                        '[aria-label*="number"]', 'div[role="heading"]']:
+                try:
+                    e2 = page.locator(sel)
+                    if e2.count() > 0:
+                        t = (e2.first.inner_text() or "").strip()
+                        if t.isdigit():
+                            num = t
+                            break
+                except Exception:
+                    pass
+            if not num:
+                try:
+                    m = re.search(r"\b(\d{2})\b", page.inner_text("body"))
+                    if m:
+                        num = m.group(1)
+                except Exception:
+                    pass
+            if num:
+                break
+            time.sleep(3)
+    return num
+
+
 def _login(ctx, env, wait_secs):
     user, pwd = _creds(env)
     page = ctx.new_page()
@@ -117,37 +155,18 @@ def _login(ctx, env, wait_secs):
     # surface number-matching value. The Entra number-match screen can take a while to
     # render after the password submit; ACTIVELY WAIT for the canonical display element
     # (a fixed-count poll races slow/federated logins -> number-less "see login screen"
-    # messages, e.g. once on atd-vm181). Only accept a digit string.
-    num = ""
-    try:
-        el = page.wait_for_selector('#idRichContext_DisplaySign', timeout=120000)  # up to 2 min
-        t = (el.inner_text() or "").strip()
-        if t.isdigit():
-            num = t
-    except Exception:
-        pass
-    if not num:                               # fallbacks if the canonical id changed/absent
-        for _ in range(10):
-            for sel in ['.display-sign', '[aria-label*="number"]', 'div[role="heading"]']:
-                try:
-                    e2 = page.locator(sel)
-                    if e2.count() > 0:
-                        t = (e2.first.inner_text() or "").strip()
-                        if t.isdigit():
-                            num = t
-                            break
-                except Exception:
-                    pass
-            if not num:
-                try:
-                    m = re.search(r"\b(\d{2})\b", page.inner_text("body"))
-                    if m:
-                        num = m.group(1)
-                except Exception:
-                    pass
-            if num:
-                break
-            time.sleep(3)
+    # messages, e.g. on atd-vm181). Only accept a digit string.
+    num = _grab_number(page, first_wait=120000)
+    if not num:
+        # retry once: the number element sometimes fails to render on the first pass.
+        # Reload the sign-in page and re-scrape (Entra re-issues a number-match).
+        print("[auth] no number captured on first pass — reloading to retry", flush=True)
+        try:
+            page.reload(wait_until="domcontentloaded")
+            time.sleep(5)
+        except Exception:
+            pass
+        num = _grab_number(page, first_wait=60000)
     surface_number(num, env["env_name"])
 
     # wait for approval -> analytics (handle the "Stay signed in?" page)
