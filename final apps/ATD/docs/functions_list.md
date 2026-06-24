@@ -10,6 +10,10 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   (`worker_id`, status IDLE/BUSY/DOWN, current job, last-seen age, runs-24h) with a green/red
   online dot (`workerDot`, fresh ≤120s) and `workerAge`. Reflects the 3-VM fleet
   (atd-vm180/181/182) draining the shared queue.
+  - **Refresh** button per VM (`refreshWorker` → `POST /atd/workers/:id/refresh`): asks that
+    worker to re-login to Fusion (sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a
+    fresh login → one MFA push to approve in Authenticator). Also available via the Telegram bot
+    (`refresh vm180`/`vm181`/`vm182`/`all`).
 
 ## Jobs (`jobs`)
 - `load` (search + status filter) · `open` (→ jobDetail) · `newJob` / `editJob` (drawer) ·
@@ -119,6 +123,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / PUT / DELETE | `/jobs/:name` | read (history rows carry `durationSec`) / update / delete job |
 | GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
 | GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
+| POST | `/workers/:id/refresh` | request a worker re-login (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a fresh Fusion login (MFA). SYS_ADMIN |
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
 | GET | `/subject-areas` | list discovered subject areas + status/column counts (column-picker source) |
 | GET | `/subject-areas/columns?sa=` | one READY subject area's cached folder/column tree (raw `catalog_json`) |

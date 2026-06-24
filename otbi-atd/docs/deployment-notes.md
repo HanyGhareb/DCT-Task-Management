@@ -474,6 +474,28 @@ vm181 needed a **forced** re-seed (`runner/seed_session.py` one-shot `auth.authe
 
 ---
 
+## 2026-06-24 — Operator-triggered worker re-login ("Refresh") — UI button + Telegram
+
+Re-seeding a worker's Fusion session no longer needs SSH. Two front-ends now set a flag
+that the worker acts on:
+- **DB (`db/26_atd_worker_refresh.sql`, deployed):** `refresh_req TIMESTAMP` on
+  `ATD_WORKER_HEARTBEAT`; **additive** ORDS `POST /atd/workers/:id/refresh` (`:id` = worker_id
+  or `all`; SYS_ADMIN) sets it. Additive only (DEFINE_TEMPLATE/HANDLER) — actions + workers-GET
+  untouched; run in a fresh session (synonym rule).
+- **Worker (`runner.py`, deployed all 3):** the `--forever` idle loop calls `_handle_refresh`
+  — if `refresh_req` is set for THIS host, it clears it and **forces a fresh login**
+  (`auth.authenticate(force=True)` → one MFA push), dropping the cached session first.
+- **UI (App 208, APP_VERSION 1.11.0):** a **Refresh** button per VM in the dashboard Worker
+  Fleet table (`atdService.refreshWorker` → the POST). Confirm dialog + toast; i18n EN/AR.
+- **Telegram (`tg_bot.py`, vm180 only):** `refresh vm180` / `vm181` / `vm182` / `all` →
+  `do_refresh` sets the same flag. Added to `/help`.
+- **The MFA tap still happens in Microsoft Authenticator** — these only *trigger* the login and
+  surface the number; they cannot replace the approval (only Track A/BIP removes the tap).
+- **Verified:** ORDS template registered (actions intact); `refresh_req` column present; all 3
+  workers read the column with no error; tgbot restarted clean. Final live tap = operator test.
+
+---
+
 ## 2026-06-23 — The GL_BALANCES "session" outage was actually a MOVED REPORT PATH
 
 **Lesson: HTTP 200 + HTML from the Go-URL does NOT always mean the session expired.** After

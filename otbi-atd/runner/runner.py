@@ -213,6 +213,47 @@ def _heartbeat(conn, status, job=None):
         pass
 
 
+def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
+    """Operator-triggered re-login: if atd_worker_heartbeat.refresh_req is set for THIS
+    worker (by the UI 'Refresh' button or the Telegram 'refresh <vm>' command), clear it
+    and FORCE a fresh Fusion login (one MFA push) — dropping any cached session first.
+    Best-effort: never break the idle loop."""
+    try:
+        cur = conn.cursor()
+        cur.execute("select refresh_req from prod.atd_worker_heartbeat where worker_id=:w", w=host)
+        row = cur.fetchone()
+        if not row or row[0] is None:
+            return
+        cur.execute("update prod.atd_worker_heartbeat set refresh_req=NULL where worker_id=:w", w=host)
+        conn.commit()
+    except Exception as e:  # noqa: BLE001
+        print(f"[worker {host}] refresh check error: {e}", flush=True)
+        return
+    print(f"[worker {host}] operator refresh requested -> forcing a fresh login", flush=True)
+    denv = config.get_default_browser_env(conn)
+    if not denv:
+        print(f"[worker {host}] refresh: no enabled BROWSER env to log into", flush=True)
+        return
+    en = denv["env_name"]
+    dead = browser_by_env.pop(en, None)
+    ctx_by_env.pop(en, None)
+    if dead:
+        try:
+            dead.close()
+        except Exception:  # noqa: BLE001
+            pass
+    envd = {"env_name": en, "analytics_base_url": denv["analytics_base_url"],
+            "credential_ref": denv.get("credential_ref") or en}
+    try:
+        browser, ctx = auth.authenticate(p, envd, force=True)   # force a clean login (MFA)
+        browsers.append(browser)
+        browser_by_env[en] = browser
+        ctx_by_env[en] = (envd, ctx)
+        print(f"[worker {host}] refresh: fresh login OK", flush=True)
+    except Exception as e:  # noqa: BLE001 (e.g. MFA not approved)
+        print(f"[worker {host}] refresh: login failed: {e}", flush=True)
+
+
 def _alert_stale_workers(conn, stale_minutes=5):
     """Telegram-notify once when a peer's heartbeat goes stale, then flag it DOWN so
     we don't spam (it re-arms when that worker next heartbeats). Best-effort."""
@@ -266,6 +307,7 @@ def _run_worker(conn, load, forever):
                         # idle: keep liveness fresh, recover dead peers' jobs, alert on
                         # silent peers, and reuse the warm session for discovery + builds.
                         _heartbeat(conn, "IDLE")
+                        _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers)
                         conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
                         _alert_stale_workers(conn)
                         try:

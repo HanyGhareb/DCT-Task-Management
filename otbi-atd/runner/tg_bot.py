@@ -175,6 +175,51 @@ def search_name(conn, query):
 
 
 # ---------------------------------------------------------------------------
+# Worker refresh (operator re-login trigger) — sets ATD_WORKER_HEARTBEAT.refresh_req;
+# the target VM's --forever worker clears it and forces a fresh Fusion login (MFA).
+# ---------------------------------------------------------------------------
+
+def _norm_worker(arg):
+    """Normalise loose VM input to a worker_id: 'vm180'/'180'/'atd-vm180' -> 'atd-vm180';
+    'all' -> 'all'. Returns None for empty input."""
+    a = (arg or "").strip().lower()
+    if not a:
+        return None
+    if a == "all":
+        return "all"
+    if a.startswith("atd-"):
+        return a
+    if a.startswith("vm"):
+        return "atd-" + a
+    if a.isdigit():
+        return "atd-vm" + a
+    return "atd-" + a
+
+
+def do_refresh(conn, arg):
+    """Request a re-login for a worker (or all). Returns an HTML reply."""
+    w = _norm_worker(arg)
+    if not w:
+        return ("Usage: <code>refresh vm180</code> (or vm181 / vm182, or "
+                "<code>refresh all</code>)")
+    cur = conn.cursor()
+    if w == "all":
+        cur.execute("update prod.atd_worker_heartbeat set refresh_req = systimestamp")
+    else:
+        cur.execute("update prod.atd_worker_heartbeat set refresh_req = systimestamp "
+                    "where worker_id = :w", w=w)
+    n = cur.rowcount
+    conn.commit()
+    if n == 0:
+        return (f"❌ No worker matching <code>{html.escape(w)}</code>. "
+                f"Try <code>vm180</code> / <code>vm181</code> / <code>vm182</code> / "
+                f"<code>all</code>.")
+    tgt = "all workers" if w == "all" else f"<code>{html.escape(w)}</code>"
+    return (f"🔄 Re-login requested for {tgt} ({n}). The worker will start a fresh login "
+            f"shortly — <b>approve the Microsoft Authenticator number</b> when it arrives.")
+
+
+# ---------------------------------------------------------------------------
 # Command dispatch
 # ---------------------------------------------------------------------------
 
@@ -184,6 +229,10 @@ _HELP = (
     "<b>📦 Vendors</b>\n"
     "/vendor <code>12345</code>  — look up by number\n"
     "/vendor <code>acme</code>   — fuzzy name search (top 5)\n"
+    "\n"
+    "<b>🖥️ Analytics Loader (ops)</b>\n"
+    "<code>refresh vm180</code>  — re-login a worker (vm180/181/182, or "
+    "<code>all</code>); then approve the Authenticator number\n"
     "\n"
     "<b>🔜 Coming soon</b>\n"
     "/payments  ·  /pettycash  ·  /freelancer\n"
@@ -241,6 +290,10 @@ def _handle(update, conn, allow):
             _send(chat_id, lookup_number(conn, int(arg)))
         except ValueError:
             _send(chat_id, search_name(conn, arg))
+        return
+
+    if cmd == "/refresh":
+        _send(chat_id, do_refresh(conn, arg))
         return
 
     _send(chat_id, _HELP)

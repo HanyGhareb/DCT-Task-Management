@@ -1,5 +1,5 @@
-define(['knockout', 'services/atdService', 'shared/i18n', 'shared/chartLoader'],
-function (ko, atd, i18n, charts) {
+define(['knockout', 'services/atdService', 'shared/i18n', 'shared/chartLoader', 'shared/toast'],
+function (ko, atd, i18n, charts, toast) {
   'use strict';
   return function Dashboard() {
     var self = this;
@@ -21,6 +21,15 @@ function (ko, atd, i18n, charts) {
     self.workerAge = function (w) {
       var s = (w && w.ageSec) || 0;
       return s < 90 ? (s + 's') : (Math.round(s / 60) + 'm');
+    };
+    // operator-triggered re-login: ask this worker to start a fresh Fusion login;
+    // the MFA number then arrives in Telegram / Authenticator for approval.
+    self.refreshWorker = function (w) {
+      if (!w || !w.workerId) return;
+      if (!window.confirm(i18n.t('atd.workers.refresh.confirm').replace('{vm}', w.workerId))) return;
+      atd.refreshWorker(w.workerId)
+        .then(function () { toast.success(i18n.t('atd.workers.refresh.asked').replace('{vm}', w.workerId)); })
+        .catch(function () { toast.error(i18n.t('atd.workers.refresh.failed')); });
     };
 
     atd.getDashboard().then(function (d) {

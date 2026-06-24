@@ -90,6 +90,7 @@
           <th data-bind="text: t('atd.workers.currentJob')"></th>
           <th data-bind="text: t('atd.workers.lastSeen')"></th>
           <th data-bind="text: t('atd.workers.runs24')"></th>
+          <th data-bind="text: t('atd.workers.refresh')"></th>
         </tr></thead>
         <tbody data-bind="foreach: workers">
           <tr>
@@ -101,6 +102,13 @@
             <td class="mono" data-bind="text: $data.currentJob || '—'"></td>
             <td data-bind="text: $vm.workerAge($data) + ' ' + $root.t('atd.workers.ago')"></td>
             <td data-bind="text: $data.runs24h"></td>
+            <td>
+              <button class="btn btn-xs btn-secondary"
+                      data-bind="click: function(){ $vm.refreshWorker($data); },
+                                 attr:{ title: $root.t('atd.workers.refresh.hint') }">
+                <span data-bind="text: $root.t('atd.workers.refresh')"></span>
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>

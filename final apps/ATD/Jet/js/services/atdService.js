@@ -65,6 +65,8 @@ function (api) {
 
     // parallel-worker fleet health (one row per VM, from ATD_WORKER_HEARTBEAT)
     listWorkers:  function ()          { return api.get('/workers'); },
+    // ask a worker (or 'all') to re-login to Fusion (operator triggers MFA)
+    refreshWorker: function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/refresh', {}); },
 
     // run logs
     listRuns:     function (params)    { return api.get('/runs' + qs(params)); },
