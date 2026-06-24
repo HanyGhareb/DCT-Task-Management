@@ -5,7 +5,7 @@
 -- of in code. The runner overlays these onto its environment at startup and
 -- notify.render(key, default, ...) formats them (falling back to the default and
 -- tolerating a missing placeholder, so a bad template never hides the event):
---   ATD_MFA_MSG    -> auth.surface_number   placeholders: {number} {env}
+--   ATD_MFA_MSG    -> auth.surface_number   placeholders: {number} {vm} {host} {env}
 --   ATD_JOB_MSG    -> runner truncation warn placeholders: {job} {note}
 --   ATD_DRIFT_MSG  -> runner schema drift    placeholders: {job} {drift}
 --
@@ -22,9 +22,9 @@ ON (t.config_key = s.config_key)
 WHEN NOT MATCHED THEN
   INSERT (config_key, config_value, value_type, enum_values, description, display_order)
   VALUES ('ATD_MFA_MSG',
-          'OTBI sign-in ({env}): open Microsoft Authenticator and enter number {number} to approve. (expires in a few minutes)',
+          '{number} - {vm} OTP for OTBI (use MS Authenticator - expires in a few minutes)',
           'STRING', NULL,
-          'MFA sign-in approval message. Placeholders: {number} = the number to enter, {env} = environment name. {number} is auto-appended if omitted.',
+          'MFA sign-in approval message. Placeholders: {number} = the number to enter, {vm} = VM short name (e.g. vm181), {host} = full worker id, {env} = environment name. {number} is auto-appended if omitted; {vm} is prefixed if omitted.',
           100);
 
 MERGE INTO prod.atd_runner_config t

@@ -70,6 +70,7 @@ def _validate(ctx, env):
 def surface_number(num, env_name):
     msg = num or "see login screen"
     host = os.environ.get("ATD_WORKER_ID") or socket.gethostname()   # which VM is asking
+    vm = host[4:] if host.startswith("atd-") else host               # short name, e.g. vm181
     try:
         with open(NUMFILE, "w") as fh:
             fh.write(msg)
@@ -77,13 +78,13 @@ def surface_number(num, env_name):
         pass
     print(f"[auth][{host}][{env_name}] >>> APPROVE THE AUTHENTICATOR PUSH — ENTER NUMBER: {msg}",
           flush=True)
-    default = ("OTBI sign-in on {host} ({env}): open Microsoft Authenticator and enter "
-               "number {number} to approve. (expires in a few minutes)")
-    text = notify.render("ATD_MFA_MSG", default, number=msg, env=env_name, host=host)
+    # Placeholders: {number} {vm} (short, e.g. vm181) {host} (full id) {env}
+    default = "{number} - {vm} OTP for OTBI (use MS Authenticator - expires in a few minutes)"
+    text = notify.render("ATD_MFA_MSG", default, number=msg, env=env_name, host=host, vm=vm)
     if msg and str(msg) not in text:        # template dropped the number -> append it so it's never lost
         text = f"{text} (number: {msg})"
-    if host and host not in text:           # always identify the VM, even if the DB template omits {host}
-        text = f"[{host}] {text}"
+    if vm and vm not in text:               # always identify the VM, even if the template omits it
+        text = f"[{vm}] {text}"
     notify.send(text)
 
 
