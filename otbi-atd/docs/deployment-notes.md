@@ -1,5 +1,35 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-06-25/26 — Production-workload hardening (Phases 0–2) + Track A spike
+
+Driven by a run-log review (multi-hour overnight dead windows; a moved-path job blind for
+~2 days; orphaned RUNNING rows stuck 4–6 days). All new behaviour is **config-gated** in
+`ATD_RUNNER_CONFIG` (Runner Settings page) so each piece is independently toggleable.
+
+- **Phase 0 — data quality (commit 486a098):** `prepare.py` date detection now wins over the
+  numeric-name hint (fixed `BUDGET_DATE` → was NUMBER; remediated live via ALTER), date-name
+  awareness, TIMESTAMP + ISO-`T`/fractional support; blank header → `COL_<pos>`. `load.py`
+  DATE_FORMATS broadened. `PO_HEADERS.SUBMIT_DATE` (VARCHAR2, job disabled) corrects on its next
+  Rebuild.
+- **Phase 1 — reliability (commit 3b9b3fa):** stale-RUNNING reaper (`ATD_RUN_REAP_MINUTES`, closed
+  the 2 orphans); proactive session mgmt (`ATD_WORKER_HEARTBEAT.session_started`, `ATD_DAILY_RELOGIN`
+  job at 06:00 Asia/Dubai gated by `ATD_AUTO_RELOGIN`, aging nudge `ATD_SESSION_WARN_HOURS`+
+  `ATD_AGING_MSG`); chronic-failure alert (`fail_alert_sent`, `ATD_FAIL_ALERT_STREAK`,
+  `ATD_FAIL_ALERT_MSG`); Break window (`db/30 prod.atd_in_break` + `ATD_BREAK_ENABLED/START/END`,
+  enforced in `enqueue` + worker idle loop, seeded DISABLED 20:00–06:00, midnight-wrap aware).
+  DB 27/28/30 + db/12; runner.py.
+- **Phase 2.1 — per-job scheduling (commit 2ed3b11):** `ATD_OTBI_JOBS.frequency_minutes` (NULL →
+  `ATD_DEFAULT_FREQ_MINUTES`=15); `enqueue` only (re)queues a DUE job. db/29 + db/12.
+- **Track A (BIP, MFA-free) spike — VIABLE, no MFA wall (2026-06-26).** BIP SOAP
+  `ExternalReportWSSService` at `…/xmlpserver/services/…` responds at the **SOAP/WS-Security layer**
+  with **no Entra/Microsoft login redirect** → auth is credential-based, non-interactive; **no
+  separate MFA-free account needed.** Required combo = **SOAP 1.2** content-type
+  (`application/soap+xml`) + **WS-Security UsernameToken** (HTTP Basic → 401; text/xml → VersionMismatch).
+  Current state: `InvalidSecurity: error processing the WS-Security header` — token needs finalizing
+  (likely `oracle/wss_username_token_over_ssl` with a `wsu:Timestamp`). **STOP-GAP CAUTION: do not
+  brute-force auth against the shared prod account (lockout risk to the browser workers); finalize the
+  token carefully / confirm the lockout policy first.** Then build `extract_bip.py` (`extract_track='BIP'`).
+
 ## What is proven (2026-06-17)
 End-to-end pipeline for the **GRN All** analysis works:
 
