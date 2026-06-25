@@ -32,24 +32,34 @@ Driven by a run-log review (multi-hour overnight dead windows; a moved-path job 
   `jobs/health` queries run clean (workers vm180/181 showed ~9h sessions — exactly what the new
   Session Age column surfaces). **No runner change.** Frontend: dashboard/jobs/jobDetail views+VMs,
   `atdService.getJobHealth`, EN/AR i18n.
-- **Track A (BIP, MFA-free) spike — VIABLE, no MFA wall (2026-06-26).** BIP SOAP
-  `ExternalReportWSSService` at `…/xmlpserver/services/…` responds at the **SOAP/WS-Security layer**
-  with **no Entra/Microsoft login redirect** → auth is credential-based, non-interactive; **no
-  separate MFA-free account needed.** Required combo = **SOAP 1.2** content-type
-  (`application/soap+xml`) + **WS-Security UsernameToken** (HTTP Basic → 401; text/xml → VersionMismatch).
-  Current state: hand-rolled curl WS-Security (UsernameToken PasswordText, with and without
-  `wsu:Timestamp`) returns `InvalidSecurity: error in processing the WS-Security security header` —
-  i.e. OWSM rejects the **header structure**, NOT the credentials (no `FailedAuthentication`, so the
-  password isn't even checked → these attempts don't count toward credential lockout). **Lesson:
-  stop hand-rolling WSSE in curl** — Fusion OWSM is strict about header canonicalization/ordering.
-  **Recommended completion (the actual build, not more probing):**
-    1. Build `extract_bip.py` with **python `zeep` + `zeep.wsse.UsernameToken`** (forms the WSSE
-       header correctly) against `ExternalReportWSSService` (SOAP 1.2). OR
-    2. Try `…/xmlpserver/services/v2/ReportService` (the non-WSS variant) with **HTTP Basic** —
-       it may not require OWSM WSSE at all (untested for runReport; try first, carefully).
-  Then wire `extract_track='BIP'` + per-job BIP report mapping. **CAUTION: minimise live auth
-  attempts against the shared account** (the browser workers depend on it). Verdict stands: **no MFA
-  wall — the account authenticates non-interactively; this is now an integration/build task.**
+- **Track A (BIP) spike — NO MFA wall, BUT current credential REJECTED by BIP (2026-06-26, zeep on vm180).**
+  Ran a real `zeep` 4.3.2 spike against the BIP web services. Findings, in order:
+    1. **No MFA / no Entra redirect** on any BIP SOAP endpoint — confirmed. The service does its own
+       credential check; MFA is genuinely not in the path.
+    2. **WSSE (`ExternalReportWSSService.getFolderContents`) keeps returning `InvalidSecurity: error
+       in processing the WS-Security security header`** — even with correct `zeep` UsernameToken
+       **and** a `wsu:Timestamp`, PasswordText **and** PasswordDigest. So it is NOT a curl/canon
+       issue and NOT a missing-timestamp issue; OWSM wants a stricter policy (likely message
+       protection / signing) on the WSS endpoint. These are header-structure rejections → password
+       never evaluated → lockout-safe.
+    3. **The clean path is `…/xmlpserver/services/v2/ReportService`** — its non-`InSession` ops take
+       **inline `userID`/`password` as plain SOAP body params, no WS-Security at all**:
+       `runReport(reportRequest, userID, password)`, `getReportParameters(reportRequest, userID, password)`.
+       This sidesteps OWSM/WSSE entirely.
+    4. **DECISIVE:** `getReportParameters(req, OTBI_USER, OTBI_PWD)` returned
+       **`java.lang.SecurityException: Failed to log into BI Publisher: invalid username or password.`**
+       The credential was **evaluated and rejected**. The `OTBI_USER/OTBI_PWD` in `env.sh` (the
+       Entra/SSO password the browser workers use to drive the interactive login) is **not valid for
+       BIP direct service auth** — the classic federated-SSO gotcha (SSO password ≠ a credential the
+       Fusion identity domain accepts for non-interactive web-service login).
+  **Revised verdict:** the *mechanism* is solved (v2/ReportService, inline creds, no WSSE, no MFA),
+  but Track A is **blocked on a credential**: it needs either (a) the correct username form / a
+  Fusion-local (non-SSO) password for this user, or (b) a dedicated **BI Publisher service account**
+  from IT with web-service access. **Do not keep trying username/password variants** — each is a real
+  FailedAuth against the shared account the whole browser fleet depends on (one such failure already
+  occurred during this spike; worker confirmed still `active` after). **Next step is an IT/credential
+  ask, not more code.** Once a working credential exists, the build is small: `extract_bip.py` calling
+  `v2/ReportService.runReport` with inline creds + `extract_track='BIP'` + per-job report path.
 
 ## What is proven (2026-06-17)
 End-to-end pipeline for the **GRN All** analysis works:
