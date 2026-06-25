@@ -18,7 +18,9 @@ from datetime import datetime
 
 from prepare import clean_cell, coerce_number   # OBIEE numeric normalization (shared w/ profiler)
 
-DATE_FORMATS = ("%Y-%m-%d %H:%M:%S", "%Y-%m-%d", "%d-%b-%Y", "%d-%b-%y",
+DATE_FORMATS = ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S.%f",
+                "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d",
+                "%d-%b-%Y %H:%M:%S", "%d-%b-%y %H:%M:%S", "%d-%b-%Y", "%d-%b-%y",
                 "%m/%d/%Y %H:%M:%S", "%m/%d/%Y")
 
 

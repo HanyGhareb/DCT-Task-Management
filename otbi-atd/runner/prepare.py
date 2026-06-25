@@ -24,12 +24,18 @@ RESERVED = {"ORDER", "DATE", "LEVEL", "NUMBER", "COMMENT", "ROW", "ROWID", "SIZE
 LEN_BUCKETS = [10, 20, 30, 40, 60, 100, 150, 200, 300, 400, 600, 1000, 2000, 4000]
 # Recognise every date shape the loader (load._to_dt / loadsql) can parse, so a
 # DATE column fed non-ISO dates (e.g. 15-JAN-2026) is NOT mis-flagged as drift.
+# A time part may be space- OR 'T'-separated and may carry fractional seconds
+# (the latter -> store as TIMESTAMP; see FRAC_RE / profile()).
+_T = r"([ T]\d{2}:\d{2}:\d{2}(\.\d+)?)?"               # optional [ /T]HH:MI:SS[.fff]
 DATE_RE = re.compile(
     r"^(?:"
-    r"\d{4}-\d{2}-\d{2}( \d{2}:\d{2}:\d{2})?"          # 2026-01-15 [00:00:00]
-    r"|\d{1,2}-[A-Za-z]{3}-\d{2,4}"                     # 15-Jan-2026 / 15-Jan-26
-    r"|\d{1,2}/\d{1,2}/\d{4}( \d{2}:\d{2}:\d{2})?"      # 01/15/2026 [00:00:00]
+    r"\d{4}-\d{2}-\d{2}" + _T +                          # 2026-01-15 [T/ HH:MI:SS[.fff]]
+    r"|\d{1,2}-[A-Za-z]{3}-\d{2,4}" + _T +               # 15-Jan-2026 [time]
+    r"|\d{1,2}/\d{1,2}/\d{4}" + _T +                     # 01/15/2026 [time]
     r")$")
+# A matched date that carries fractional seconds -> needs TIMESTAMP (Oracle DATE
+# holds only whole seconds). Plain date / date+HH:MI:SS stays DATE.
+FRAC_RE = re.compile(r"\d:\d{2}:\d{2}\.\d")
 INT_RE = re.compile(r"^-?\d+$")
 NUM_RE = re.compile(r"^-?\d+(\.\d+)?$")
 ALPHA_RE = re.compile(r"[A-Za-z]")
@@ -60,6 +66,17 @@ def is_numeric_suffix(header):
 def is_numeric_name(header):
     """True when the header carries any amount token (suffix or keyword)."""
     return bool(header) and bool(NUM_NAME_RE.search(header))
+
+
+# A header ending in DATE / DATETIME / DT (word-boundaried, so "UPDATE"/"VALIDATE"
+# do NOT match). Used only to type an all-EMPTY column (no values to profile) as a
+# date; columns with values are typed from the data (date detection wins, below).
+DATE_NAME_RE = re.compile(r"(?:^|[ _])(?:DATE|DATETIME|DT)$", re.I)
+
+
+def is_date_name(header):
+    """True when the header's last token is DATE/DATETIME/DT (e.g. 'Invoice Date')."""
+    return bool(header) and bool(DATE_NAME_RE.search(header.strip()))
 
 
 def coerce_number(v):
@@ -117,9 +134,15 @@ def derive_job(path):
     return slug(leaf)
 
 
-def colname(header, used):
-    n = slug(header)
-    n = n[:28]
+def colname(header, used, pos=None):
+    """Target column name for a CSV header. A blank/whitespace header (OTBI sometimes
+    exports an unlabelled column) becomes a deterministic COL_<pos> rather than the old
+    'C_' junk, so it never collides into a table-like/empty name. Dedups with _2, _3…"""
+    h = (header or "").strip()
+    if not h:
+        n = f"COL_{pos}" if pos is not None else "COL"
+    else:
+        n = slug(h)[:28]
     if n in RESERVED:
         n = n + "_"
     base, i = n, 2
@@ -169,6 +192,7 @@ def profile(csv_text):
     is_int = [True] * nc
     is_num = [True] * nc
     has_alpha = [False] * nc                   # any value with a letter (-> real text)
+    has_frac = [False] * nc                    # any date value with fractional seconds (-> TIMESTAMP)
     nrows = 0
     for r in reader:
         nrows += 1
@@ -182,6 +206,8 @@ def profile(csv_text):
             seen[i] = True
             if not DATE_RE.match(v):
                 date_bad[i] += 1
+            elif not has_frac[i] and FRAC_RE.search(v):
+                has_frac[i] = True
             if not has_alpha[i] and ALPHA_RE.search(v):
                 has_alpha[i] = True
             # numeric tests run on the COERCED value so OBIEE-formatted numbers
@@ -196,17 +222,19 @@ def profile(csv_text):
         nonnull = nrows - nulls[i]
         suffix = is_numeric_suffix(h)
         hint = is_numeric_name(h)
-        # DATE if (nearly) every value parses as a date — tolerate <=2% dirty cells
-        # (real OTBI exports occasionally misalign a row via free-text commas); the
-        # loader nulls an unparseable date cell rather than failing the whole load.
-        date_ok = seen[i] and maxlen[i] <= 30 and date_bad[i] <= nonnull // 50
+        # DATE/TIMESTAMP if (nearly) every value parses as a date — tolerate <=2%
+        # dirty cells (real OTBI exports occasionally misalign a row via free-text
+        # commas); the loader nulls an unparseable date cell rather than failing the
+        # whole load. (<=40 chars covers 'YYYY-MM-DD HH:MI:SS.ffffff'.)
+        date_ok = seen[i] and maxlen[i] <= 40 and date_bad[i] <= nonnull // 50
         if not seen[i]:
-            # all-empty: trust the name. An amount-named column (suffix OR keyword)
-            # that's empty in this extract is created NUMBER (NULLs load into any
-            # type); no values means no alpha-guard to consult.
-            typ = "NUMBER" if hint else "VARCHAR2(40)"
-        elif date_ok and not hint:
-            typ = "DATE"
+            # all-empty: trust the name. Date-named -> DATE; amount-named -> NUMBER;
+            # else text. (NULLs load into any type, so this is just a sensible default.)
+            typ = "DATE" if is_date_name(h) else ("NUMBER" if hint else "VARCHAR2(40)")
+        elif date_ok:
+            # values ARE dates -> DATE/TIMESTAMP wins over any numeric-name keyword.
+            # (Fixes e.g. "Budget Date" being forced to NUMBER by the BUDGET keyword.)
+            typ = "TIMESTAMP" if has_frac[i] else "DATE"
         elif is_int[i] and maxlen[i] <= INT_MAXLEN:
             typ = "NUMBER"
         elif is_num[i] and maxlen[i] <= NUM_MAXLEN:
@@ -222,7 +250,7 @@ def profile(csv_text):
             typ = "NUMBER"
         else:
             typ = f"VARCHAR2({bucket(maxlen[i])})"
-        cols.append({"header": h, "name": colname(h, used),
+        cols.append({"header": h, "name": colname(h, used, pos=i + 1),
                      "type": typ, "maxlen": maxlen[i], "nulls": nulls[i],
                      "allnull": not seen[i]})
     return cols, nrows
@@ -364,6 +392,10 @@ def ensure_prepared_oracledb(conn, job, csv_text):
         job["stage_table"], job["column_map_json"] = stage, cmap
         print(f"[prepare] {job['job_name']}: created/mapped {len(cols)} columns -> {stage} "
               f"({n} sample rows)")
+        blanks = [c["name"] for c in cols if not c["header"].strip()]
+        if blanks:
+            print(f"[prepare] {job['job_name']}: {len(blanks)} blank-header column(s) "
+                  f"auto-named {blanks} — rename in the schema editor if needed")
         return []
 
     cur_map = json.loads(job["column_map_json"])
