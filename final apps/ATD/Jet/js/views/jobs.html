@@ -126,6 +126,9 @@
         <input class="form-control" type="number" data-bind="value: fmPriority"></div>
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.runOrder')"></label>
         <input class="form-control" type="number" data-bind="value: fmRunOrder"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.frequency')"></label>
+        <input class="form-control" type="number" min="0" data-bind="value: fmFrequency, attr:{ placeholder: t('atd.field.frequency.ph') }">
+        <p class="muted" style="margin:4px 0 0; font-size:.8em" data-bind="text: t('atd.field.frequency.hint')"></p></div>
       <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.columnMap')"></label>
         <textarea class="form-control mono" rows="3" data-bind="textInput: fmColMap" placeholder='{"CSV Header":"TARGET_COL"}'></textarea>
         <p class="muted" style="margin:4px 0 0; font-size:.8em" data-bind="text: t('atd.field.columnMap.hint')"></p></div>

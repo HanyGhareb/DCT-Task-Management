@@ -14,6 +14,15 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
     worker to re-login to Fusion (sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a
     fresh login → one MFA push to approve in Authenticator). Also available via the Telegram bot
     (`refresh vm180`/`vm181`/`vm182`/`all`).
+  - **Session Age** column (`sessionAge`/`sessionAged` ← `getJobHealth` → `GET /atd/jobs/health`):
+    each VM's Fusion session age (from `ATD_WORKER_HEARTBEAT.session_started`); turns amber past
+    ~7h so an aging session is visible before it expires (~8h).
+- **Break window banner** (`breakInfo`/`breakText` ← `getJobHealth`): shown when `ATD_BREAK_ENABLED=Y`;
+  displays the configured window (`ATD_BREAK_START`–`END`, Asia/Dubai) and whether it is active now,
+  so a paused fleet reads as intentional, not broken.
+- **Job Freshness** card (`jobHealth`/`sinceText`/`jobStale` ← `getJobHealth`): per ENABLED job —
+  last SUCCESS + time-since, consecutive fails since that success, any stuck `RUNNING`, and the
+  effective frequency. Stale rows (fails>0 or stuck) tint red.
 
 ## Jobs (`jobs`)
 - `load` (search + status filter) · `open` (→ jobDetail) · `newJob` / `editJob` (drawer) ·
@@ -29,6 +38,10 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   auto-derived; the **column map + table columns are prepared by the runner on first run**
   (`prepare.py` profiles the live CSV). All other fields live behind an "Advanced options"
   disclosure. Jobs not yet prepared show a `not prepared` badge (`prepared='N'`).
+- **Frequency (min)** field (Advanced; `fmFrequency` → `frequencyMinutes`): how often the job is
+  queued. Blank = the global default (`ATD_DEFAULT_FREQ_MINUTES`, 15); e.g. 60 = hourly,
+  1440 = daily. The 15-min enqueue only marks a job READY once this much time has passed since its
+  last run (db/12 `enqueue` due-ness), so heavy "Real Time" jobs needn't run every cycle.
 
 ## Job detail (`jobDetail`)
 - `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)` ·
@@ -119,10 +132,11 @@ One page, three tables, for the `create_analysis` async pipeline:
 |---|---|---|
 | GET | `/dashboard` | KPIs + queue counts + recent + alerts (failures **and** runs with a warning message; each alert has `kind` WARNING/FAILED) |
 | GET | `/lookups` | envs + targets for pickers |
-| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec` = last run elapsed seconds) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived |
-| GET / PUT / DELETE | `/jobs/:name` | read (history rows carry `durationSec`) / update / delete job |
+| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec` = last run elapsed seconds) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived; optional `frequencyMinutes` |
+| GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes`; history rows carry `durationSec`) / update (incl. `frequencyMinutes`) / delete job |
 | GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
 | GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
+| GET | `/jobs/health` | dashboard observability (additive, db/31) — `break` {enabled,active,start,end}, `workers[]` {workerId,sessionStarted,sessionAgeMin}, `jobs[]` (enabled) {jobName,lastSuccess,sinceMin,consecutiveFails,stuckRunning,alertSent,frequencyMin}. SYS_ADMIN |
 | POST | `/workers/:id/refresh` | request a worker re-login (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a fresh Fusion login (MFA). SYS_ADMIN |
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
 | GET | `/subject-areas` | list discovered subject areas + status/column counts (column-picker source) |

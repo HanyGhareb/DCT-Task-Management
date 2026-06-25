@@ -11,10 +11,43 @@ function (ko, atd, i18n, charts, toast) {
     self.alerts = ko.observableArray([]);
     self.actions = ko.observable(null);   // Fusion action-queue health tile
     self.workers = ko.observableArray([]); // parallel-worker fleet (one row per VM)
+    self.breakInfo = ko.observable(null);  // {enabled,active,start,end} Break window status
+    self.jobHealth = ko.observableArray([]); // per-enabled-job freshness rows
+    self._sessAge = {};                    // workerId -> {sessionStarted, sessionAgeMin}
     self.go = function (id) { window._jetApp.navigate(id); };
 
     atd.getActionStats().then(function (a) { self.actions(a); }).catch(function () {});
     atd.listWorkers().then(function (r) { self.workers((r && r.items) || []); }).catch(function () {});
+    // observability: break window + per-VM session age + per-job freshness
+    atd.getJobHealth().then(function (h) {
+      self.breakInfo(h.break || null);
+      self.jobHealth(h.jobs || []);
+      (h.workers || []).forEach(function (w) { self._sessAge[w.workerId] = w; });
+      self.workers.valueHasMutated();      // re-render the fleet table with session ages
+    }).catch(function () {});
+
+    // minutes -> "Nm" / "Hh Mm"
+    function ageText(m) {
+      if (m === '' || m === null || m === undefined) return '—';
+      m = Number(m);
+      return m < 90 ? (m + 'm') : (Math.floor(m / 60) + 'h ' + (m % 60) + 'm');
+    }
+    self.sessionAge = function (w) {
+      var s = self._sessAge[w && w.workerId]; return s ? ageText(s.sessionAgeMin) : '—';
+    };
+    // an Entra session lives ~8h; flag amber once past the warn threshold (7h)
+    self.sessionAged = function (w) {
+      var s = self._sessAge[w && w.workerId];
+      return !!(s && s.sessionAgeMin !== '' && s.sessionAgeMin != null && Number(s.sessionAgeMin) >= 420);
+    };
+    self.sinceText = function (j) { return ageText(j && j.sinceMin); };
+    self.jobStale = function (j) {
+      return !!(j && (Number(j.consecutiveFails) > 0 || j.stuckRunning === 'Y'));
+    };
+    self.breakText = function () {
+      var b = self.breakInfo(); if (!b) return '';
+      return (b.start || '') + '–' + (b.end || '');
+    };
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
     // a worker is "online" when its heartbeat is fresh (ORDS computes online=Y, age<=120s)
     self.workerDot = function (w) { return (w && w.online === 'Y') ? '#2A7D3A' : '#C13A30'; };

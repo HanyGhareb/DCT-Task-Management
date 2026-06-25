@@ -28,6 +28,7 @@
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.stageTable')"></label><div class="mono" data-bind="text: job().stageTable"></div></div>
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.loadMode')"></label><div data-bind="text: job().loadMode"></div></div>
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.priority')"></label><div data-bind="text: (job().priority || 0) + ' · ' + (job().runOrder || 0)"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.frequency')"></label><div data-bind="text: (job().frequencyMinutes === '' || job().frequencyMinutes == null) ? t('atd.field.auto') : (job().frequencyMinutes + 'm')"></div></div>
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.status')"></label><div><span data-bind="css: statusClass(job().runStatus), text: job().runStatus"></span></div></div>
       <!-- ko if: job().finalTable -->
       <div class="form-group"><label class="form-label" data-bind="text: t('atd.field.finalTable')"></label><div class="mono" data-bind="text: job().finalTable"></div></div>

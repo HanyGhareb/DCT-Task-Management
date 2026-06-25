@@ -20,6 +20,18 @@ Driven by a run-log review (multi-hour overnight dead windows; a moved-path job 
   DB 27/28/30 + db/12; runner.py.
 - **Phase 2.1 — per-job scheduling (commit 2ed3b11):** `ATD_OTBI_JOBS.frequency_minutes` (NULL →
   `ATD_DEFAULT_FREQ_MINUTES`=15); `enqueue` only (re)queues a DUE job. db/29 + db/12.
+- **Phase 2.2 — observability + frequency UI (2026-06-26, APP_VERSION 1.12.0):** additive ORDS
+  **`GET /atd/jobs/health`** (`db/31`, no module rebuild needed by itself) returns break-window
+  status + per-VM session age + per-job freshness. Dashboard gains a **Break-window banner**, a
+  **Session Age** column on the Worker Fleet (amber past ~7h), and a **Job Freshness** card
+  (last success / since / consecutive fails / stuck / frequency). The job form (+ jobDetail) gains a
+  **Frequency (min)** field — persisted via the core `/jobs` POST + `/jobs/:name` PUT/GET in `db/13`,
+  so this redeploy **rebuilt `atd.rest`**: ran **13 → 20 → 26 → 31** in order (20/26/31 are additive
+  and must follow any `db/13` rebuild). Verified: all 8 handlers registered (incl. `jobs/health`,
+  `workers/:id/refresh`, `actions/stats`); `frequencyMinutes` round-trips through create/update/get;
+  `jobs/health` queries run clean (workers vm180/181 showed ~9h sessions — exactly what the new
+  Session Age column surfaces). **No runner change.** Frontend: dashboard/jobs/jobDetail views+VMs,
+  `atdService.getJobHealth`, EN/AR i18n.
 - **Track A (BIP, MFA-free) spike — VIABLE, no MFA wall (2026-06-26).** BIP SOAP
   `ExternalReportWSSService` at `…/xmlpserver/services/…` responds at the **SOAP/WS-Security layer**
   with **no Entra/Microsoft login redirect** → auth is credential-based, non-interactive; **no

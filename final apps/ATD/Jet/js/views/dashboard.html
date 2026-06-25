@@ -3,6 +3,19 @@
     <h1 class="page-title" data-bind="text: t('atd.dash.title')"></h1>
   </div>
 
+  <!-- Break window banner: a paused fleet should read as intentional, not broken -->
+  <!-- ko if: breakInfo() && breakInfo().enabled === 'Y' -->
+  <div class="card" data-bind="style:{ borderInlineStartWidth:'4px', borderInlineStartStyle:'solid',
+       borderInlineStartColor: (breakInfo().active==='Y' ? '#B5651A' : '#2A7D3A') }"
+       style="margin-bottom:12px; padding:10px 14px;">
+    <span style="font-weight:600" data-bind="text: (breakInfo().active==='Y' ? '⏸ ' : '▶ ') + t('atd.dash.break')"></span>
+    <span class="mono" style="margin-inline-start:8px" data-bind="text: breakText()"></span>
+    <span class="badge" style="margin-inline-start:8px"
+          data-bind="text: (breakInfo().active==='Y' ? t('atd.dash.break.active') : t('atd.dash.break.inactive')),
+                     css:{ 'badge--idle': breakInfo().active==='Y', 'badge--active': breakInfo().active!=='Y' }"></span>
+  </div>
+  <!-- /ko -->
+
   <!-- ko if: loading -->
   <div class="muted" data-bind="text: t('atd.common.loading')"></div>
   <!-- /ko -->
@@ -89,6 +102,7 @@
           <th data-bind="text: t('atd.col.status')"></th>
           <th data-bind="text: t('atd.workers.currentJob')"></th>
           <th data-bind="text: t('atd.workers.lastSeen')"></th>
+          <th data-bind="text: t('atd.workers.sessionAge')"></th>
           <th data-bind="text: t('atd.workers.runs24')"></th>
           <th data-bind="text: t('atd.workers.refresh')"></th>
         </tr></thead>
@@ -101,6 +115,7 @@
             <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
             <td class="mono" data-bind="text: $data.currentJob || '—'"></td>
             <td data-bind="text: $vm.workerAge($data) + ' ' + $root.t('atd.workers.ago')"></td>
+            <td data-bind="text: $vm.sessionAge($data), style:{ color: ($vm.sessionAged($data) ? '#B5651A' : ''), fontWeight: ($vm.sessionAged($data) ? '600' : '') }"></td>
             <td data-bind="text: $data.runs24h"></td>
             <td>
               <button class="btn btn-xs btn-secondary"
@@ -109,6 +124,45 @@
                 <span data-bind="text: $root.t('atd.workers.refresh')"></span>
               </button>
             </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <div class="card" style="margin-top:16px;">
+    <div class="section-heading" data-bind="text: t('atd.dash.jobHealth')"></div>
+    <!-- ko if: jobHealth().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.dash.noEnabledJobs')"></div>
+    <!-- /ko -->
+    <!-- ko if: jobHealth().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.col.job')"></th>
+          <th data-bind="text: t('atd.jobHealth.lastSuccess')"></th>
+          <th data-bind="text: t('atd.jobHealth.since')"></th>
+          <th data-bind="text: t('atd.jobHealth.fails')"></th>
+          <th data-bind="text: t('atd.jobHealth.stuck')"></th>
+          <th data-bind="text: t('atd.field.frequency')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: jobHealth">
+          <tr data-bind="style:{ background: ($vm.jobStale($data) ? 'rgba(193,58,48,.06)' : '') }">
+            <td class="mono" data-bind="text: $data.jobName"></td>
+            <td data-bind="text: $data.lastSuccess || '—'"></td>
+            <td data-bind="text: $vm.sinceText($data)"></td>
+            <td>
+              <!-- ko if: Number($data.consecutiveFails) > 0 -->
+              <span class="badge badge--idle" style="color:#C13A30" data-bind="text: $data.consecutiveFails"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: Number($data.consecutiveFails) > 0 --><span class="muted">0</span><!-- /ko -->
+            </td>
+            <td>
+              <!-- ko if: $data.stuckRunning === 'Y' --><span class="badge badge--idle" style="color:#C13A30" data-bind="text: $root.t('atd.jobHealth.stuckYes')"></span><!-- /ko -->
+              <!-- ko ifnot: $data.stuckRunning === 'Y' --><span class="muted">—</span><!-- /ko -->
+            </td>
+            <td class="mono" data-bind="text: ($data.frequencyMin === '' || $data.frequencyMin == null) ? $root.t('atd.field.auto') : ($data.frequencyMin + 'm')"></td>
           </tr>
         </tbody>
       </table>

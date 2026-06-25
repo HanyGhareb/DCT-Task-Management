@@ -315,7 +315,7 @@ BEGIN
   INSERT INTO atd_otbi_jobs (
     job_name, env_name, target_name, source_ref, output_format, params_json,
     stage_table, final_table, load_mode, key_columns, column_map_json, schedule,
-    enabled, priority, run_order, run_status)
+    enabled, priority, run_order, frequency_minutes, run_status)
   VALUES (
     l_name, l_env, l_tgt, l_src,
     NVL(APEX_JSON.get_varchar2(p_path => 'outputFormat'),'csv'),
@@ -329,6 +329,7 @@ BEGIN
     NVL(UPPER(APEX_JSON.get_varchar2(p_path => 'enabled')),'Y'),
     NVL(APEX_JSON.get_number(p_path => 'priority'),5),
     NVL(APEX_JSON.get_number(p_path => 'runOrder'),100),
+    APEX_JSON.get_number(p_path => 'frequencyMinutes'),  -- NULL -> ATD_DEFAULT_FREQ_MINUTES
     'READY');
   COMMIT;
   OWA_UTIL.status_line(201, NULL, FALSE);
@@ -645,6 +646,8 @@ BEGIN
     APEX_JSON.write('enabled', r.enabled);
     APEX_JSON.write('priority', r.priority);
     APEX_JSON.write('runOrder', r.run_order);
+    IF r.frequency_minutes IS NULL THEN APEX_JSON.write('frequencyMinutes', '');
+    ELSE APEX_JSON.write('frequencyMinutes', r.frequency_minutes); END IF;
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
     APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH:MI AM'));
@@ -703,6 +706,7 @@ BEGIN
     enabled         = CASE WHEN APEX_JSON.does_exist(p_path=>'enabled')       THEN UPPER(APEX_JSON.get_varchar2(p_path=>'enabled')) ELSE enabled END,
     priority        = CASE WHEN APEX_JSON.does_exist(p_path=>'priority')      THEN APEX_JSON.get_number(p_path=>'priority')        ELSE priority END,
     run_order       = CASE WHEN APEX_JSON.does_exist(p_path=>'runOrder')      THEN APEX_JSON.get_number(p_path=>'runOrder')        ELSE run_order END,
+    frequency_minutes = CASE WHEN APEX_JSON.does_exist(p_path=>'frequencyMinutes') THEN APEX_JSON.get_number(p_path=>'frequencyMinutes') ELSE frequency_minutes END,
     updated_at      = SYSTIMESTAMP
   WHERE job_name = [COLON]name;
   l_n := SQL%ROWCOUNT;

@@ -28,6 +28,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.fmLoadMode = ko.observable('TRUNCATE_INSERT'); self.fmKeyCols = ko.observable('');
     self.fmColMap = ko.observable(''); self.fmParams = ko.observable('');
     self.fmPriority = ko.observable(5); self.fmRunOrder = ko.observable(100);
+    self.fmFrequency = ko.observable('');   // run-frequency minutes; blank = default (ATD_DEFAULT_FREQ_MINUTES)
     self.fmEnabled = ko.observable(true);
     self.showAdvanced = ko.observable(false);
     self.toggleAdvanced = function () { self.showAdvanced(!self.showAdvanced()); };
@@ -74,7 +75,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
       self.fmJobName(''); self.fmEnv(''); self.fmTarget('');
       self.fmSource(''); self.fmStage(''); self.fmFinal(''); self.fmLoadMode('TRUNCATE_INSERT');
       self.fmKeyCols(''); self.fmColMap(''); self.fmParams(''); self.fmPriority(5); self.fmRunOrder(100);
-      self.fmEnabled(true); self.showAdvanced(false); self.showForm(true);
+      self.fmFrequency(''); self.fmEnabled(true); self.showAdvanced(false); self.showForm(true);
     };
 
     self.editJob = function (row) {
@@ -85,6 +86,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
         self.fmLoadMode(j.loadMode || 'TRUNCATE_INSERT'); self.fmKeyCols(j.keyColumns || '');
         self.fmColMap(j.columnMapJson || ''); self.fmParams(j.paramsJson || '');
         self.fmPriority(j.priority); self.fmRunOrder(j.runOrder);
+        self.fmFrequency(j.frequencyMinutes != null && j.frequencyMinutes !== '' ? j.frequencyMinutes : '');
         self.fmEnabled((j.enabled || 'Y') === 'Y'); self.showForm(true);
       }).catch(function () {});
     };
@@ -105,6 +107,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
           stageTable: self.fmStage(), finalTable: self.fmFinal(), loadMode: self.fmLoadMode(),
           keyColumns: self.fmKeyCols(), columnMapJson: self.fmColMap(), paramsJson: self.fmParams(),
           priority: Number(self.fmPriority()), runOrder: Number(self.fmRunOrder()),
+          frequencyMinutes: (self.fmFrequency() === '' || self.fmFrequency() == null) ? null : Number(self.fmFrequency()),
           enabled: self.fmEnabled() ? 'Y' : 'N'
         };
         atd.updateJob(self.editName(), body).then(function () {
@@ -128,6 +131,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
         if (self.fmColMap())  b.columnMapJson = self.fmColMap();
         if (self.fmParams())  b.paramsJson = self.fmParams();
         b.priority = Number(self.fmPriority()); b.runOrder = Number(self.fmRunOrder());
+        if (self.fmFrequency() !== '' && self.fmFrequency() != null) b.frequencyMinutes = Number(self.fmFrequency());
         b.enabled = self.fmEnabled() ? 'Y' : 'N';
       }
       atd.createJob(b).then(function (r) {
