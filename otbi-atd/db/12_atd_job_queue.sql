@@ -132,7 +132,8 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
   END mark_failed;
 
   FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
-    n NUMBER;
+    n        NUMBER;
+    v_defreq NUMBER := 15;
   BEGIN
     -- Break / blackout window: during the configured off-hours window pause the whole
     -- fleet -> queue no new work (the scheduled bulk enqueue). A manual single-job
@@ -140,13 +141,26 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     IF p_only IS NULL AND prod.atd_in_break = 'Y' THEN
       RETURN 0;
     END IF;
-    -- never reset an in-flight (CLAIMED) job - that would let a peer double-run it;
-    -- only READY/DONE/FAILED enabled jobs are (re)queued for the next cycle.
-    UPDATE prod.atd_otbi_jobs
-       SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL
-     WHERE enabled = 'Y'
-       AND run_status <> 'CLAIMED'
-       AND (p_only IS NULL OR job_name = p_only);
+    BEGIN
+      SELECT TO_NUMBER(config_value) INTO v_defreq
+        FROM prod.atd_runner_config WHERE config_key = 'ATD_DEFAULT_FREQ_MINUTES';
+    EXCEPTION WHEN OTHERS THEN v_defreq := 15;
+    END;
+    -- never reset an in-flight (CLAIMED) job - that would let a peer double-run it.
+    -- Per-job frequency: on the scheduled bulk run only (re)queue a job that is DUE,
+    -- i.e. has no run within its frequency_minutes (NULL -> ATD_DEFAULT_FREQ_MINUTES).
+    -- A manual single-job enqueue (p_only) always runs as an explicit override.
+    UPDATE prod.atd_otbi_jobs j
+       SET j.run_status = 'READY', j.claimed_by = NULL, j.claimed_at = NULL
+     WHERE j.enabled = 'Y'
+       AND j.run_status <> 'CLAIMED'
+       AND (p_only IS NULL OR j.job_name = p_only)
+       AND (p_only IS NOT NULL
+            OR NOT EXISTS (
+                 SELECT 1 FROM prod.atd_load_run_log l
+                  WHERE l.job_name = j.job_name
+                    AND l.started > CAST(SYSTIMESTAMP AS TIMESTAMP)
+                        - NUMTODSINTERVAL(NVL(j.frequency_minutes, v_defreq), 'MINUTE')));
     n := SQL%ROWCOUNT;
     COMMIT;
     RETURN n;
