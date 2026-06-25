@@ -40,12 +40,14 @@ Fusion write-back actions (the INVERSE of extract — oracledb mode only):
                              # Idempotent (handler pre-checks Fusion); writes are gated by
                              # ATD_ACTION_LIVE=1 (else dry-run: probe + validate, no save).
 """
+import glob
 import hashlib
 import json
 import os
 import socket
 import sys
 import time
+from datetime import datetime
 
 from playwright.sync_api import sync_playwright
 
@@ -197,6 +199,43 @@ def _env_of(job, env_name):
             "credential_ref": job.get("credential_ref") or env_name}
 
 
+def _session_files():
+    d = os.environ.get("ATD_STATE_DIR", ".")
+    return glob.glob(os.path.join(d, "auth_state_*.json"))
+
+
+def _session_mtime():
+    """Newest auth_state file mtime (epoch) = when the current Fusion session began;
+    None if no saved session."""
+    files = _session_files()
+    if not files:
+        return None
+    try:
+        return max(os.path.getmtime(f) for f in files)
+    except OSError:
+        return None
+
+
+def _session_started_dt():
+    """UTC datetime the session began (for ATD_WORKER_HEARTBEAT.session_started)."""
+    m = _session_mtime()
+    return datetime.utcfromtimestamp(m) if m else None
+
+
+def _session_age_hours():
+    """Age of the current session in hours (same-clock, skew-free); None if no session."""
+    m = _session_mtime()
+    return None if m is None else (time.time() - m) / 3600.0
+
+
+def _in_break(conn):
+    """Whether NOW is inside the configured Break window (DB is the single source)."""
+    try:
+        return conn.cursor().callfunc("prod.atd_in_break", str, []) == 'Y'
+    except Exception:  # noqa: BLE001 - if the function is absent, never block work
+        return False
+
+
 def _heartbeat(conn, status, job=None):
     """Upsert this worker's liveness row (ATD_WORKER_HEARTBEAT) for the UI Workers
     panel. Best-effort: a heartbeat failure must never break the worker."""
@@ -204,10 +243,12 @@ def _heartbeat(conn, status, job=None):
         conn.cursor().execute(
             "merge into prod.atd_worker_heartbeat t "
             "using (select :w worker_id from dual) s on (t.worker_id = s.worker_id) "
-            "when matched then update set last_seen=systimestamp, status=:st, current_job=:j "
-            "when not matched then insert (worker_id, last_seen, status, current_job) "
-            "values (:w, systimestamp, :st, :j)",
-            w=_worker_id()[:120], st=status, j=(job[:256] if job else None))
+            "when matched then update set last_seen=systimestamp, status=:st, "
+            "  current_job=:j, session_started=:ss "
+            "when not matched then insert (worker_id, last_seen, status, current_job, session_started) "
+            "values (:w, systimestamp, :st, :j, :ss)",
+            w=_worker_id()[:120], st=status, j=(job[:256] if job else None),
+            ss=_session_started_dt())
         conn.commit()
     except Exception:  # noqa: BLE001
         pass
@@ -276,6 +317,96 @@ def _alert_stale_workers(conn, stale_minutes=5):
         pass
 
 
+def _reap_stale_runs(conn, minutes):
+    """Close orphaned BROWSER run-log rows left RUNNING by a crashed/restarted worker
+    (the load equivalent of _reap_stale_discovery). Best-effort; returns count."""
+    try:
+        cur = conn.cursor()
+        cur.execute(
+            "update prod.atd_load_run_log set status='FAILED', finished=systimestamp, "
+            "  message='reaped: run did not finish (stale)' "
+            "where track='BROWSER' and status='RUNNING' "
+            "  and started < CAST(systimestamp AS TIMESTAMP) - NUMTODSINTERVAL(:m,'MINUTE')",
+            m=minutes)
+        n = cur.rowcount
+        conn.commit()
+        if n:
+            print(f"[reap] closed {n} stale RUNNING run-log row(s)", flush=True)
+        return n
+    except Exception as e:  # noqa: BLE001
+        print(f"[reap] stale-run reap error: {e}", flush=True)
+        return 0
+
+
+# aging-nudge de-dupe: host -> session mtime already warned for (re-arms on new session)
+_AGING_WARNED = {}
+
+
+def _alert_aging_session(conn, host, vm, in_break):
+    """Pre-expiry nudge: when this worker's Fusion session is older than
+    ATD_SESSION_WARN_HOURS, Telegram-warn once (per session) to refresh before it dies.
+    Suppressed during the Break window. Best-effort."""
+    try:
+        warn_h = float(os.environ.get("ATD_SESSION_WARN_HOURS", "7") or 0)
+        if warn_h <= 0 or in_break:
+            return
+        age = _session_age_hours()
+        m = _session_mtime()
+        if age is None or age < warn_h:
+            return
+        if _AGING_WARNED.get(host) == m:        # already warned for THIS session
+            return
+        _AGING_WARNED[host] = m
+        text = notify.render("ATD_AGING_MSG",
+                             "{vm} OTBI session is ~{hours}h old and will expire soon - "
+                             "send \"refresh {vm}\" to re-login.",
+                             vm=vm, hours=int(age))
+        notify.send(text)
+        print(f"[worker {host}] session aging ~{int(age)}h -> nudged", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"[worker {host}] aging-alert error: {e}", flush=True)
+
+
+def _post_mark_health(conn, host, vm, job, ok):
+    """Chronic-failure alert: on SUCCESS clear the job's alert flag; on FAILURE, if the
+    last ATD_FAIL_ALERT_STREAK runs are all FAILED, atomically claim the alert (so only
+    one VM sends) and Telegram-alert with the latest error. Best-effort."""
+    try:
+        cur = conn.cursor()
+        if ok:
+            cur.execute("update prod.atd_otbi_jobs set fail_alert_sent='N' "
+                        "where job_name=:j and fail_alert_sent='Y'", j=job)
+            conn.commit()
+            return
+        streak = int(os.environ.get("ATD_FAIL_ALERT_STREAK", "4") or 0)
+        if streak <= 0:
+            return
+        cur.execute("select status from prod.atd_load_run_log where job_name=:j "
+                    "order by run_id desc fetch first :k rows only", j=job, k=streak)
+        statuses = [r[0] for r in cur.fetchall()]
+        if len(statuses) < streak or any(s != 'FAILED' for s in statuses):
+            return
+        # atomic claim: only the VM that flips N->Y sends the alert
+        cur.execute("update prod.atd_otbi_jobs set fail_alert_sent='Y' "
+                    "where job_name=:j and fail_alert_sent='N'", j=job)
+        claimed = cur.rowcount
+        conn.commit()
+        if claimed != 1:
+            return
+        cur.execute("select message from prod.atd_load_run_log where job_name=:j "
+                    "order by run_id desc fetch first 1 rows only", j=job)
+        row = cur.fetchone()
+        err = (row[0] if row and row[0] else "")[:300]
+        text = notify.render("ATD_FAIL_ALERT_MSG",
+                             "otbi-atd ALERT: job {job} has failed {count} times in a row "
+                             "on {vm}. Last error: {error}",
+                             job=job, count=streak, vm=vm, error=err)
+        notify.send(text)
+        print(f"[worker {host}] chronic-failure alert sent for {job} ({streak}x)", flush=True)
+    except Exception as e:  # noqa: BLE001
+        print(f"[worker {host}] health-check error: {e}", flush=True)
+
+
 def _enqueue(conn, only):
     n = conn.cursor().callfunc("prod.atd_queue_pkg.enqueue", int, [only])
     print(f"[enqueue] marked {n} job(s) READY" + (f" ({only})" if only else ""))
@@ -284,6 +415,7 @@ def _enqueue(conn, only):
 def _run_worker(conn, load, forever):
     """Claim+run jobs from the shared queue until it's empty (or forever)."""
     host = _worker_id()
+    vm = host[4:] if host.startswith("atd-") else host    # short name for messages
     lease = int(os.environ.get("ATD_LEASE_MINUTES", "10"))
     idle = int(os.environ.get("ATD_WORKER_IDLE", "15"))
     run_one = _make_run_one_oracledb(conn, load)
@@ -300,24 +432,32 @@ def _run_worker(conn, load, forever):
     with sync_playwright() as p:
         try:
             while True:
-                name = conn.cursor().callfunc(
+                # Break window: pause ALL work (claim nothing; in-flight jobs already
+                # claimed will have finished). Resumes automatically at break-end.
+                in_break = _in_break(conn)
+                name = None if in_break else conn.cursor().callfunc(
                     "prod.atd_queue_pkg.claim_next", str, [host])
                 if not name:
                     if forever:
-                        # idle: keep liveness fresh, recover dead peers' jobs, alert on
-                        # silent peers, and reuse the warm session for discovery + builds.
-                        _heartbeat(conn, "IDLE")
+                        # idle (or paused for the Break window): keep liveness fresh,
+                        # honour operator refresh, recover dead peers' jobs + stale runs,
+                        # nudge on an aging session, and — only when NOT in break — reuse
+                        # the warm session for discovery + builds.
+                        _heartbeat(conn, "BREAK" if in_break else "IDLE")
                         _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers)
                         conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
+                        _reap_stale_runs(conn, int(os.environ.get("ATD_RUN_REAP_MINUTES", "60")))
                         _alert_stale_workers(conn)
-                        try:
-                            # reuse the worker's warm Playwright (p) — opening a
-                            # nested sync_playwright here raises "Sync API inside
-                            # the asyncio loop".
-                            _discover_requests(conn, pw=p)
-                            _build_requests(conn, load, pw=p)
-                        except Exception as e:  # noqa: BLE001
-                            print(f"[worker {host}] idle discover/build error: {e}")
+                        _alert_aging_session(conn, host, vm, in_break)
+                        if not in_break:
+                            try:
+                                # reuse the worker's warm Playwright (p) — opening a
+                                # nested sync_playwright here raises "Sync API inside
+                                # the asyncio loop".
+                                _discover_requests(conn, pw=p)
+                                _build_requests(conn, load, pw=p)
+                            except Exception as e:  # noqa: BLE001
+                                print(f"[worker {host}] idle discover/build error: {e}")
                         time.sleep(idle)
                         continue
                     break
@@ -373,6 +513,7 @@ def _run_worker(conn, load, forever):
                             ok = False
                 conn.cursor().callproc(
                     "prod.atd_queue_pkg." + ("mark_done" if ok else "mark_failed"), [name])
+                _post_mark_health(conn, host, vm, name, ok)   # chronic-failure alert / clear
                 processed += 1
                 failures += 0 if ok else 1
         finally:

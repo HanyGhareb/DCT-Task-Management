@@ -134,6 +134,12 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
   FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
     n NUMBER;
   BEGIN
+    -- Break / blackout window: during the configured off-hours window pause the whole
+    -- fleet -> queue no new work (the scheduled bulk enqueue). A manual single-job
+    -- enqueue (p_only set) is allowed through as an explicit operator override.
+    IF p_only IS NULL AND prod.atd_in_break = 'Y' THEN
+      RETURN 0;
+    END IF;
     -- never reset an in-flight (CLAIMED) job - that would let a peer double-run it;
     -- only READY/DONE/FAILED enabled jobs are (re)queued for the next cycle.
     UPDATE prod.atd_otbi_jobs
