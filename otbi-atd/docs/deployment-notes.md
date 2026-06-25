@@ -25,10 +25,19 @@ Driven by a run-log review (multi-hour overnight dead windows; a moved-path job 
   with **no Entra/Microsoft login redirect** → auth is credential-based, non-interactive; **no
   separate MFA-free account needed.** Required combo = **SOAP 1.2** content-type
   (`application/soap+xml`) + **WS-Security UsernameToken** (HTTP Basic → 401; text/xml → VersionMismatch).
-  Current state: `InvalidSecurity: error processing the WS-Security header` — token needs finalizing
-  (likely `oracle/wss_username_token_over_ssl` with a `wsu:Timestamp`). **STOP-GAP CAUTION: do not
-  brute-force auth against the shared prod account (lockout risk to the browser workers); finalize the
-  token carefully / confirm the lockout policy first.** Then build `extract_bip.py` (`extract_track='BIP'`).
+  Current state: hand-rolled curl WS-Security (UsernameToken PasswordText, with and without
+  `wsu:Timestamp`) returns `InvalidSecurity: error in processing the WS-Security security header` —
+  i.e. OWSM rejects the **header structure**, NOT the credentials (no `FailedAuthentication`, so the
+  password isn't even checked → these attempts don't count toward credential lockout). **Lesson:
+  stop hand-rolling WSSE in curl** — Fusion OWSM is strict about header canonicalization/ordering.
+  **Recommended completion (the actual build, not more probing):**
+    1. Build `extract_bip.py` with **python `zeep` + `zeep.wsse.UsernameToken`** (forms the WSSE
+       header correctly) against `ExternalReportWSSService` (SOAP 1.2). OR
+    2. Try `…/xmlpserver/services/v2/ReportService` (the non-WSS variant) with **HTTP Basic** —
+       it may not require OWSM WSSE at all (untested for runReport; try first, carefully).
+  Then wire `extract_track='BIP'` + per-job BIP report mapping. **CAUTION: minimise live auth
+  attempts against the shared account** (the browser workers depend on it). Verdict stands: **no MFA
+  wall — the account authenticates non-interactively; this is now an integration/build task.**
 
 ## What is proven (2026-06-17)
 End-to-end pipeline for the **GRN All** analysis works:
