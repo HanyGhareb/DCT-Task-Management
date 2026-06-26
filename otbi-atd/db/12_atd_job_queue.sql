@@ -155,6 +155,10 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
      WHERE j.enabled = 'Y'
        AND j.run_status <> 'CLAIMED'
        AND (p_only IS NULL OR j.job_name = p_only)
+       -- schema-review hold: a job awaiting review that is ALREADY prepared is not
+       -- (re)queued (it would only re-HELD). A held job not yet prepared IS queued so
+       -- the worker can prepare the table+map for review. Resumes once approved (->'Y').
+       AND NOT (NVL(j.schema_reviewed,'Y') = 'N' AND j.column_map_json IS NOT NULL)
        AND (p_only IS NOT NULL
             OR NOT EXISTS (
                  SELECT 1 FROM prod.atd_load_run_log l

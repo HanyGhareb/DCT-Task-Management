@@ -1,5 +1,30 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-06-26 — Existing-target-table fix + schema-review gate (App 208, APP_VERSION 1.14.0)
+
+Two linked changes to job create/update.
+- **Bug fixed — entering an already-existing target table "went wrong":** on first run the runner
+  reused the existing table but derived the column map *from the CSV* as if it were fresh, so a
+  shared/peer table (the 10-min / hourly / daily jobs on one analysis) or a customised table could
+  fail to load. `prepare.ensure_prepared_oracledb` now **reconciles to the existing table**
+  (`_reconcile_existing`: ADD genuinely-new columns, widen outgrown text) instead of assuming a new
+  one. Shared target tables are **intentional and allowed** — no blocking.
+- **Schema-review gate (`db/33`):** `ATD_OTBI_JOBS.schema_reviewed CHAR(1) DEFAULT 'Y'`. A
+  **"Hold for schema review"** checkbox on the form, and **auto-hold when the target table already
+  exists**, set it to `'N'`. The worker then **prepares** the table+map but **HOLDS before loading**
+  (run-log status `HELD`) until approved via **`POST /jobs/:name/approve-schema`** (job-detail
+  "Approve schema"). `db/12 enqueue` skips a held job once it is prepared (no repeated HELD); resumes
+  on approval. Existing jobs default `'Y'` → no behaviour change.
+- **DB:** `db/33` (column + approve endpoint, additive) + `db/12` (enqueue guard) + `db/13`
+  (create/PUT `holdForReview` + table-exists auto-hold, GET returns `schemaReviewed`). Redeploy ran
+  **`33 → 12 → 13 → 20 → 26 → 31 → 32 → 33`** (33 last to re-add the endpoint after the 13 rebuild).
+- **Runner (deploy to all 3 VMs + restart):** `prepare.py` (reconcile), `runner.py` (HELD gate, both
+  paths), `config.py` (selects `schema_reviewed`), `loadsql.py` (`log_held`). **Restart needs one MFA
+  per VM.**
+- **Frontend:** hold checkbox + "Review" badge (jobs), approve button + notice (jobDetail),
+  `atdService.approveSchema`, EN/AR i18n, `app.css` `.review-*`.
+
+
 ## 2026-06-26 — Job Categories (ATD App 208, APP_VERSION 1.13.0)
 
 Tag jobs with any number of **categories** (ATD-native lookup) to simplify job management.

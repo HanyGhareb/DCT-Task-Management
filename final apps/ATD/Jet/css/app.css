@@ -71,3 +71,12 @@
                  border-color:var(--border,#cfd5dd); }
 .cat-swatch { display:inline-block; width:14px; height:14px; border-radius:4px;
               border:1px solid rgba(0,0,0,.15); vertical-align:middle; }
+
+/* ---- schema-review gate: hold toggle + "Review" badge -------------- */
+.review-toggle { display:flex; align-items:center; gap:8px; font-size:.85em; }
+.review-toggle input { flex:none; }
+.review-badge { background:#B5651A; color:#fff; }
+
+/* ---- schema-review notice banner (job detail) --------------------- */
+.review-notice { display:flex; align-items:center; justify-content:space-between; gap:14px;
+                 border-inline-start:4px solid #B5651A; background:#fff8f0; }

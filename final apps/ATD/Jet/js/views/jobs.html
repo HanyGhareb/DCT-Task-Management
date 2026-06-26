@@ -62,7 +62,12 @@
             <!-- ko if: !($data.categories && $data.categories.length) --><span class="muted">—</span><!-- /ko -->
           </td>
           <td data-bind="text: $data.priority + '·' + $data.runOrder"></td>
-          <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+          <td>
+            <span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span>
+            <!-- ko if: $data.schemaReviewed === 'N' -->
+            <span class="badge review-badge" style="margin-inline-start:6px" data-bind="text: $vm.t('atd.review.badge'), attr:{ title: $vm.t('atd.review.badge.hint') }"></span>
+            <!-- /ko -->
+          </td>
           <td>
             <!-- ko if: $data.lastRunStatus -->
             <span data-bind="css: $vm.statusClass($data.lastRunStatus), text: $data.lastRunStatus"></span>
@@ -123,6 +128,15 @@
           <!-- ko if: activeCategories().length === 0 -->
           <span class="muted" data-bind="text: t('atd.cat.none')"></span>
           <!-- /ko -->
+        </div>
+      </div>
+
+      <!-- hold for schema review: prepare the table, but don't load until approved -->
+      <div class="form-group form-group--full">
+        <label class="form-label" data-bind="text: t('atd.review.hold')"></label>
+        <div class="review-toggle">
+          <input type="checkbox" data-bind="checked: fmHoldReview">
+          <span class="muted" data-bind="text: t('atd.review.hold.hint')"></span>
         </div>
       </div>
 

@@ -46,6 +46,8 @@ function (api) {
     reprepareJob: function (name, rebuild) { return api.post('/jobs/' + encodeURIComponent(name) + '/reprepare', { rebuild: rebuild ? 'Y' : 'N' }); },
     getSchema:    function (name)      { return api.get('/jobs/' + encodeURIComponent(name) + '/schema'); },
     applySchema:  function (name, body){ return api.post('/jobs/' + encodeURIComponent(name) + '/schema', body); },
+    // schema-review gate: release a job held for review (schema_reviewed -> 'Y')
+    approveSchema:function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/approve-schema', {}); },
 
     // queue ops
     enqueueAll:   function ()          { return api.post('/enqueue', {}); },

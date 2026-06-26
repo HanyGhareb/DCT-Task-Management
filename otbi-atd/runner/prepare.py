@@ -371,6 +371,29 @@ def _table_columns_ora(conn, table):
     return {r[0].upper(): {"type": r[1].upper(), "len": (r[3] or r[2])} for r in cur.fetchall()}
 
 
+def _reconcile_existing(conn, table, cols):
+    """First-run prep against a table that ALREADY exists: align it to the live
+    profile WITHOUT recreating it (keeps any peer job's data). ADD columns the
+    table lacks; widen outgrown text columns. Returns human notes for the run log."""
+    have = _table_columns_ora(conn, table)          # {NAME: {type,len}}
+    cur = conn.cursor()
+    notes = []
+    for c in cols:
+        name = c["name"]
+        up = name.upper()
+        if up == "LOAD_TS":
+            continue
+        if up not in have:
+            cur.execute(f"alter table {table} add ({name} {c['type']})")
+            notes.append(f"added {name} {c['type']} to existing {table}")
+        else:
+            d = _evolve(have[up], c)
+            if d and d[0] == "widen":
+                cur.execute(f"alter table {table} modify ({name} {d[1]})")
+                notes.append(f"widened {name} -> {d[1]} in {table}")
+    return notes
+
+
 def ensure_prepared_oracledb(conn, job, csv_text):
     """Prepare/reconcile the job's staging table from the live CSV, then return a
     list of drift warnings (empty = clean). First run (no column map): profile,
@@ -383,8 +406,19 @@ def ensure_prepared_oracledb(conn, job, csv_text):
     if _needs_prep(job):
         stage = (job.get("stage_table") or "").strip() or ("PROD." + derive_table(job.get("source_ref", "")))
         cmap = json.dumps(column_map(cols), ensure_ascii=False)
+        recon = []
         for tbl in [stage, (job.get("final_table") or "").strip()]:
-            if tbl and not _table_exists_ora(conn, tbl):
+            if not tbl:
+                continue
+            if _table_exists_ora(conn, tbl):
+                # The table ALREADY exists (a peer job already loads it - e.g. the
+                # 10-min / hourly / daily jobs that share one analysis table - or it
+                # was reviewed/customised). Do NOT assume a fresh table: reconcile the
+                # live profile to the real columns so the shared table loads correctly
+                # (ADD genuinely-new columns, widen outgrown text) instead of mapping
+                # to columns that may not exist.
+                recon += _reconcile_existing(conn, tbl, cols)
+            else:
                 cur.execute(create_table_sql(tbl, cols))
         cur.execute("update prod.atd_otbi_jobs set column_map_json=:m, stage_table=:s "
                     "where job_name=:j", m=cmap, s=stage, j=job["job_name"])
@@ -396,7 +430,7 @@ def ensure_prepared_oracledb(conn, job, csv_text):
         if blanks:
             print(f"[prepare] {job['job_name']}: {len(blanks)} blank-header column(s) "
                   f"auto-named {blanks} — rename in the schema editor if needed")
-        return []
+        return recon
 
     cur_map = json.loads(job["column_map_json"])
     table_cols = _table_columns_ora(conn, job["stage_table"])

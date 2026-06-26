@@ -87,7 +87,7 @@ def get_browser_jobs_sqlcl(only=None):
         where += f" and j.job_name='{only}'"
     sql = f"""select j.job_name, j.env_name, j.target_name, j.source_ref, j.params_json,
                      j.stage_table, j.final_table, j.load_mode, j.key_columns,
-                     j.column_map_json, e.analytics_base_url, e.credential_ref,
+                     j.column_map_json, j.schema_reviewed, e.analytics_base_url, e.credential_ref,
                      e.extract_track, t.db_kind
                 from prod.atd_otbi_jobs j
                 join prod.atd_otbi_env e on e.env_name = j.env_name
@@ -134,7 +134,7 @@ def get_browser_jobs(conn, only=None):
     cur = conn.cursor()
     sql = """select j.job_name, j.env_name, j.target_name, j.source_ref, j.params_json,
                     j.stage_table, j.final_table, j.load_mode, j.key_columns,
-                    j.column_map_json, e.analytics_base_url, e.credential_ref,
+                    j.column_map_json, j.schema_reviewed, e.analytics_base_url, e.credential_ref,
                     e.extract_track, t.db_kind
                from prod.atd_otbi_jobs j
                join prod.atd_otbi_env e on e.env_name = j.env_name

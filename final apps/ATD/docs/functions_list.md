@@ -42,6 +42,15 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   queued. Blank = the global default (`ATD_DEFAULT_FREQ_MINUTES`, 15); e.g. 60 = hourly,
   1440 = daily. The 15-min enqueue only marks a job READY once this much time has passed since its
   last run (db/12 `enqueue` due-ness), so heavy "Real Time" jobs needn't run every cycle.
+- **Schema-review gate** (`fmHoldReview` → `holdForReview`; `db/33`): a **"Hold for schema review"**
+  checkbox on the job form. When held (`schemaReviewed='N'`), the worker prepares the table + column
+  map but **does not load** data (run-log `HELD`) until approved. A new job is **auto-held when its
+  target table already exists** (shared/peer table — e.g. the 10-min / hourly / daily jobs on one
+  analysis — or a customised one), so the structure/mapping is confirmed before loading; the create
+  toast says so. Held jobs show a **"Review"** badge in the list (`schemaReviewed`). Approve from
+  **job detail** (`approveSchema` → `POST /jobs/:name/approve-schema`): the page shows an "Awaiting
+  schema review" notice + **Approve schema** button (replacing Enqueue while held); the Schema panel
+  edits/recreates the table if the mapping needs fixing, then Approve releases it.
 - **Job Categories** (ATD-native lookup, `db/32`): tag a job with any number of categories.
   - List **Category column** (colored chips) + a toolbar **category filter** (`fCategory` →
     `GET /jobs?category=CODE`).
@@ -146,6 +155,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes` + `categories[]`) / update (incl. `frequencyMinutes`, `categories[]` replace-set) / delete job |
 | GET / POST | `/categories` | list categories (+`usage` count) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`). SYS_ADMIN |
 | PUT / DELETE | `/categories/:code` | update (partial) / delete — 400 if in use (deactivate instead). SYS_ADMIN |
+| POST | `/jobs/:name/approve-schema` | release a job held for schema review (`schema_reviewed`→'Y'); it loads on next run. SYS_ADMIN |
 | GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
 | GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
 | GET | `/jobs/health` | dashboard observability (additive, db/31) — `break` {enabled,active,start,end}, `workers[]` {workerId,sessionStarted,sessionAgeMin}, `jobs[]` (enabled) {jobName,lastSuccess,sinceMin,consecutiveFails,stuckRunning,alertSent,frequencyMin}. SYS_ADMIN |

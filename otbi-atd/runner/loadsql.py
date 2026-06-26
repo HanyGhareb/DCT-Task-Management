@@ -188,3 +188,12 @@ def log_failure(job_name, message):
     sqlrun.run_sql(
         "INSERT INTO prod.atd_load_run_log(job_name, track, status, finished, message) "
         f"VALUES ('{jn}','BROWSER','FAILED',systimestamp,'{msg}');\nCOMMIT;", check=False)
+
+
+def log_held(job_name, message):
+    """Schema-review hold: prepared but not loaded (neutral status, not a failure)."""
+    jn = job_name.replace("'", "''")
+    msg = (message or "")[:3900].replace("'", "''")
+    sqlrun.run_sql(
+        "INSERT INTO prod.atd_load_run_log(job_name, track, status, finished, row_count, message) "
+        f"VALUES ('{jn}','BROWSER','HELD',systimestamp,0,'{msg}');\nCOMMIT;", check=False)

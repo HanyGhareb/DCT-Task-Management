@@ -38,6 +38,14 @@ function (ko, atd, i18n, toast, fmtDuration) {
       atd.enqueueJob(name).then(function () { toast.success(self.t('atd.jobs.enqueued')); self.refresh(); }).catch(function () {});
     };
 
+    // release a job held for schema review -> it loads on its next run
+    self.approveSchema = function () {
+      if (!window.confirm(self.t('atd.review.confirmApprove'))) return;
+      atd.approveSchema(name).then(function () {
+        toast.success(self.t('atd.review.approved')); self.refresh();
+      }).catch(function () {});
+    };
+
     // Re-prepare: clear the stored column map so the next run re-derives it from the
     // live analysis. rebuild=true also drops + recreates the table (accept an
     // incompatible column change, discarding currently loaded rows).

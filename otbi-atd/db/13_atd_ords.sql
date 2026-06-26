@@ -216,7 +216,7 @@ BEGIN
   FOR r IN (
     SELECT j.job_name, j.env_name, j.target_name, j.source_ref, j.stage_table,
            j.final_table, j.load_mode, j.priority, j.run_order, j.enabled,
-           j.run_status, j.claimed_by, j.claimed_at,
+           j.run_status, j.claimed_by, j.claimed_at, j.schema_reviewed,
            CASE WHEN j.column_map_json IS NOT NULL THEN 'Y' ELSE 'N' END AS prepared,
            lr.run_id AS last_run_id2, lr.status AS last_status,
            TO_CHAR( dct_to_local(lr.finished),'YYYY-MM-DD HH:MI AM') AS last_finished,
@@ -249,6 +249,7 @@ BEGIN
     APEX_JSON.write('runOrder', r.run_order);
     APEX_JSON.write('enabled', r.enabled);
     APEX_JSON.write('prepared', r.prepared);
+    APEX_JSON.write('schemaReviewed', NVL(r.schema_reviewed,'Y'));
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
     APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH:MI AM'));
@@ -289,6 +290,8 @@ DECLARE
   l_env   VARCHAR2(80);
   l_tgt   VARCHAR2(80);
   l_stage VARCHAR2(128);
+  l_texists NUMBER := 0;
+  l_review  CHAR(1);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
@@ -331,10 +334,23 @@ BEGIN
   l_stage := NVL(APEX_JSON.get_varchar2(p_path => 'stageTable'),
                  NVL(APEX_JSON.get_varchar2(p_path => 'finalTable'), 'PROD.ATD_'||l_slug));
 
+  -- Does the target table already physically exist? (owner.name, default owner PROD).
+  -- A pre-existing table is a peer/shared table (e.g. the 10-min / hourly / daily jobs
+  -- that load one analysis) OR a reviewed/customised one - so DON'T block (tables are
+  -- intentionally shared), but FORCE schema review so the structure/mapping is confirmed
+  -- before any data loads. Also honour an explicit holdForReview from the form.
+  SELECT COUNT(*) INTO l_texists FROM all_tables
+   WHERE owner = NVL(UPPER(REGEXP_SUBSTR(l_stage,'^[^.]+(?=\.)')),'PROD')
+     AND table_name = UPPER(REGEXP_SUBSTR(l_stage,'[^.]+$'));
+  l_review := CASE
+                WHEN UPPER(NVL(APEX_JSON.get_varchar2(p_path=>'holdForReview'),'N')) IN ('Y','TRUE','1','ON')
+                  OR l_texists > 0
+                THEN 'N' ELSE 'Y' END;
+
   INSERT INTO atd_otbi_jobs (
     job_name, env_name, target_name, source_ref, output_format, params_json,
     stage_table, final_table, load_mode, key_columns, column_map_json, schedule,
-    enabled, priority, run_order, frequency_minutes, run_status)
+    enabled, priority, run_order, frequency_minutes, schema_reviewed, run_status)
   VALUES (
     l_name, l_env, l_tgt, l_src,
     NVL(APEX_JSON.get_varchar2(p_path => 'outputFormat'),'csv'),
@@ -349,6 +365,7 @@ BEGIN
     NVL(APEX_JSON.get_number(p_path => 'priority'),5),
     NVL(APEX_JSON.get_number(p_path => 'runOrder'),100),
     APEX_JSON.get_number(p_path => 'frequencyMinutes'),  -- NULL -> ATD_DEFAULT_FREQ_MINUTES
+    l_review,                                             -- 'N' = hold for schema review
     'READY');
   -- optional category tags (any number; MERGE dedupes a repeated code)
   FOR i IN 1 .. NVL(APEX_JSON.get_count(p_path=>'categories'),0) LOOP
@@ -366,6 +383,8 @@ BEGIN
   APEX_JSON.write('jobName', l_name);
   APEX_JSON.write('stageTable', l_stage);
   APEX_JSON.write('prepared', 'N');
+  APEX_JSON.write('schemaReviewed', l_review);
+  APEX_JSON.write('tableExists', CASE WHEN l_texists > 0 THEN 'Y' ELSE 'N' END);
   APEX_JSON.close_object;
 EXCEPTION
   WHEN DUP_VAL_ON_INDEX THEN ROLLBACK; dct_rest.err(400,'A job with that name already exists');
@@ -668,6 +687,7 @@ BEGIN
     APEX_JSON.write('keyColumns', NVL(r.key_columns,''));
     APEX_JSON.write('columnMapJson', NVL(DBMS_LOB.SUBSTR(r.column_map_json,32000,1),''));
     APEX_JSON.write('prepared', CASE WHEN r.column_map_json IS NOT NULL THEN 'Y' ELSE 'N' END);
+    APEX_JSON.write('schemaReviewed', NVL(r.schema_reviewed,'Y'));
     APEX_JSON.write('schedule', NVL(r.schedule,''));
     APEX_JSON.write('enabled', r.enabled);
     APEX_JSON.write('priority', r.priority);
@@ -745,6 +765,9 @@ BEGIN
     priority        = CASE WHEN APEX_JSON.does_exist(p_path=>'priority')      THEN APEX_JSON.get_number(p_path=>'priority')        ELSE priority END,
     run_order       = CASE WHEN APEX_JSON.does_exist(p_path=>'runOrder')      THEN APEX_JSON.get_number(p_path=>'runOrder')        ELSE run_order END,
     frequency_minutes = CASE WHEN APEX_JSON.does_exist(p_path=>'frequencyMinutes') THEN APEX_JSON.get_number(p_path=>'frequencyMinutes') ELSE frequency_minutes END,
+    schema_reviewed = CASE WHEN APEX_JSON.does_exist(p_path=>'holdForReview')
+                           THEN (CASE WHEN UPPER(APEX_JSON.get_varchar2(p_path=>'holdForReview')) IN ('Y','TRUE','1','ON') THEN 'N' ELSE 'Y' END)
+                           ELSE schema_reviewed END,
     updated_at      = SYSTIMESTAMP
   WHERE job_name = [COLON]name;
   l_n := SQL%ROWCOUNT;

@@ -109,6 +109,11 @@ def _run_one_sqlcl(ctx, env, job):
         if drift:
             notify.send(notify.render("ATD_DRIFT_MSG", "otbi-atd {job} schema drift: {drift}",
                                       job=name, drift="; ".join(drift)))
+        if str(job.get("schema_reviewed") or "Y").upper() == "N":
+            loadsql.log_held(name, "; ".join(drift + ["prepared - awaiting schema review (not loaded)"])
+                             if drift else "prepared - awaiting schema review (not loaded)")
+            print(f"[held] {name}: prepared, awaiting schema review (not loaded)")
+            return True
         n = loadsql.load(job, csv_text, extra_msg="; ".join(drift) if drift else None)
         _warn_truncation(name, n)
         print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
@@ -152,6 +157,14 @@ def _make_run_one_oracledb(conn, load):
             if drift:
                 notify.send(notify.render("ATD_DRIFT_MSG", "otbi-atd {job} schema drift: {drift}",
                                           job=name, drift="; ".join(drift)))
+            # Schema-review gate: the table + column map are now prepared (so the
+            # end user can review the structure in the Schema panel), but HOLD before
+            # loading any data until they approve it. Re-armed each run while held.
+            if str(job.get("schema_reviewed") or "Y").upper() == "N":
+                _log_end(conn, run_id, "HELD", n=0,
+                         msg="; ".join(drift + ["prepared - awaiting schema review (not loaded)"]))
+                print(f"[held] {name}: prepared, awaiting schema review (not loaded)")
+                return True
             ck = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
             n = load.load(conn, csv_text, job["stage_table"], job["final_table"],
                           job["load_mode"], job["key_columns"], job["column_map_json"])

@@ -31,6 +31,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.fmColMap = ko.observable(''); self.fmParams = ko.observable('');
     self.fmPriority = ko.observable(5); self.fmRunOrder = ko.observable(100);
     self.fmFrequency = ko.observable('');   // run-frequency minutes; blank = default (ATD_DEFAULT_FREQ_MINUTES)
+    self.fmHoldReview = ko.observable(false); // hold the job for schema review before first load
     self.fmEnabled = ko.observable(true);
     self.fmCategories = ko.observableArray([]);   // selected category codes for the job
     self.showAdvanced = ko.observable(false);
@@ -101,7 +102,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
       self.fmJobName(''); self.fmEnv(''); self.fmTarget('');
       self.fmSource(''); self.fmStage(''); self.fmFinal(''); self.fmLoadMode('TRUNCATE_INSERT');
       self.fmKeyCols(''); self.fmColMap(''); self.fmParams(''); self.fmPriority(5); self.fmRunOrder(100);
-      self.fmFrequency(''); self.fmEnabled(true); self.fmCategories([]);
+      self.fmFrequency(''); self.fmEnabled(true); self.fmCategories([]); self.fmHoldReview(false);
       self.showAdvanced(false); self.showForm(true);
     };
 
@@ -115,6 +116,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
         self.fmPriority(j.priority); self.fmRunOrder(j.runOrder);
         self.fmFrequency(j.frequencyMinutes != null && j.frequencyMinutes !== '' ? j.frequencyMinutes : '');
         self.fmCategories((j.categories || []).map(function (c) { return c.code; }));
+        self.fmHoldReview((j.schemaReviewed || 'Y') === 'N');
         self.fmEnabled((j.enabled || 'Y') === 'Y'); self.showForm(true);
       }).catch(function () {});
     };
@@ -137,6 +139,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
           priority: Number(self.fmPriority()), runOrder: Number(self.fmRunOrder()),
           frequencyMinutes: (self.fmFrequency() === '' || self.fmFrequency() == null) ? null : Number(self.fmFrequency()),
           categories: self.fmCategories(),
+          holdForReview: self.fmHoldReview() ? 'Y' : 'N',
           enabled: self.fmEnabled() ? 'Y' : 'N'
         };
         atd.updateJob(self.editName(), body).then(function () {
@@ -152,6 +155,7 @@ function (ko, atd, i18n, toast, fmtDuration) {
       if (self.fmStage())   b.stageTable = self.fmStage();   // optional target table
       if (self.fmJobName()) b.jobName = self.fmJobName();
       if (self.fmCategories().length) b.categories = self.fmCategories();
+      if (self.fmHoldReview()) b.holdForReview = 'Y';
       if (self.showAdvanced()) {
         if (self.fmEnv())     b.envName = self.fmEnv();
         if (self.fmTarget())  b.targetName = self.fmTarget();
@@ -166,7 +170,13 @@ function (ko, atd, i18n, toast, fmtDuration) {
       }
       atd.createJob(b).then(function (r) {
         var nm = (r && r.jobName) || self.fmSource();
-        toast.success(self.t('atd.jobs.createdPrepare').replace('{name}', nm));
+        if (r && r.schemaReviewed === 'N') {
+          // auto-held (target table already exists) or explicitly held for review
+          var key = (r.tableExists === 'Y') ? 'atd.review.createdExisting' : 'atd.review.createdHold';
+          toast.success(self.t(key).replace('{name}', nm));
+        } else {
+          toast.success(self.t('atd.jobs.createdPrepare').replace('{name}', nm));
+        }
         self.showForm(false); self.load();
       }).catch(function () {});
     };

@@ -10,7 +10,13 @@
               attr:{ title: t('atd.action.remap.hint') }"></button>
       <button class="btn btn-secondary btn-danger" data-bind="click: function(){ reprepare(true); }, text: t('atd.action.rebuild'),
               attr:{ title: t('atd.action.rebuild.hint') }"></button>
+      <!-- ko if: job().schemaReviewed === 'N' -->
+      <button class="btn btn-primary" data-bind="click: approveSchema, text: t('atd.review.approve'),
+              attr:{ title: t('atd.review.approve.hint') }"></button>
+      <!-- /ko -->
+      <!-- ko ifnot: job().schemaReviewed === 'N' -->
       <button class="btn btn-primary" data-bind="click: enqueue, text: t('atd.action.enqueue')"></button>
+      <!-- /ko -->
     </div>
   </div>
 
@@ -19,6 +25,15 @@
   <!-- /ko -->
 
   <!-- ko ifnot: loading -->
+  <!-- ko if: job().schemaReviewed === 'N' -->
+  <div class="card review-notice">
+    <div>
+      <strong data-bind="text: t('atd.review.notice')"></strong>
+      <div class="muted" style="font-size:.86em; margin-top:2px" data-bind="text: t('atd.review.notice.hint')"></div>
+    </div>
+    <button class="btn btn-sm btn-primary" data-bind="click: approveSchema, text: t('atd.review.approve')"></button>
+  </div>
+  <!-- /ko -->
   <div class="card">
     <div class="section-heading" data-bind="text: t('atd.detail.config')"></div>
     <div class="form-grid" style="padding:8px 0;">
