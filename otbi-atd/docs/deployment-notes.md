@@ -18,9 +18,11 @@ Two linked changes to job create/update.
 - **DB:** `db/33` (column + approve endpoint, additive) + `db/12` (enqueue guard) + `db/13`
   (create/PUT `holdForReview` + table-exists auto-hold, GET returns `schemaReviewed`). Redeploy ran
   **`33 → 12 → 13 → 20 → 26 → 31 → 32 → 33`** (33 last to re-add the endpoint after the 13 rebuild).
-- **Runner (deploy to all 3 VMs + restart):** `prepare.py` (reconcile), `runner.py` (HELD gate, both
-  paths), `config.py` (selects `schema_reviewed`), `loadsql.py` (`log_held`). **Restart needs one MFA
-  per VM.**
+- **Runner — DEPLOYED to all 3 VMs 2026-06-26:** `prepare.py` (reconcile), `runner.py` (HELD gate,
+  both paths), `config.py` (selects `schema_reviewed`), `loadsql.py` (`log_held`). scp'd to
+  `/root/otbi-atd/runner/` on atd-vm180/181/182 + `systemctl restart atd-worker` (all `active`,
+  clean startup, no SQL errors). No MFA needed at restart — all jobs were disabled so the workers
+  stayed idle; each re-auths (one MFA) on its next real job claim.
 - **Frontend:** hold checkbox + "Review" badge (jobs), approve button + notice (jobDetail),
   `atdService.approveSchema`, EN/AR i18n, `app.css` `.review-*`.
 
