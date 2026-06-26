@@ -198,6 +198,7 @@
   "atd.cat.order": "الترتيب",
   "atd.cat.active": "مُفعّل",
   "atd.cat.usage": "قيد الاستخدام",
+  "atd.cat.inUse": "قيد الاستخدام — قم بالتعطيل بدلاً من الحذف",
   "atd.cat.newBtn": "جديد",
   "atd.cat.confirmDelete": "حذف الفئة {name}؟",
   "atd.cat.saveFailed": "تعذّر حفظ الفئة",

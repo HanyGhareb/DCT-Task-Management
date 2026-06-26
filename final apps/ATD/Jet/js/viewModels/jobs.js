@@ -199,6 +199,13 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.editCat = function (c) {
       self.catEdit(c.code); self.cmCode(c.code); self.cmNameEn(c.nameEn); self.cmNameAr(c.nameAr || '');
       self.cmColor(c.color || '#2C6CB0'); self.cmOrder(c.displayOrder); self.cmActive(c.active === 'Y');
+      // bring the (now-populated) form into view + focus so the edit is obvious
+      setTimeout(function () {
+        var body = document.querySelector('.cat-mgr .ed-drawer__body');
+        if (body) body.scrollTop = 0;
+        var f = document.querySelector('.cat-mgr .form-grid .form-control:not([disabled])');
+        if (f) try { f.focus(); } catch (e) {}
+      }, 0);
     };
     self.saveCat = function () {
       if (!self.cmNameEn()) { toast.error(self.t('atd.cat.nameEn')); return; }

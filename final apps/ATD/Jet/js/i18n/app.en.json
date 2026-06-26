@@ -198,6 +198,7 @@
   "atd.cat.order": "Order",
   "atd.cat.active": "Active",
   "atd.cat.usage": "In use",
+  "atd.cat.inUse": "In use — deactivate instead of deleting",
   "atd.cat.newBtn": "New",
   "atd.cat.confirmDelete": "Delete category {name}?",
   "atd.cat.saveFailed": "Could not save the category",
