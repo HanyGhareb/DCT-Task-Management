@@ -96,9 +96,13 @@ BEGIN
          COUNT(CASE WHEN run_status='DONE'    THEN 1 END),
          COUNT(CASE WHEN run_status='FAILED'  THEN 1 END)
     INTO l_ready, l_claimed, l_done, l_failed FROM atd_otbi_jobs;
+  -- job loads only (track API/BROWSER); DISCOVER runs are not jobs
   SELECT COUNT(*), COUNT(CASE WHEN status='SUCCESS' THEN 1 END)
-    INTO l_runs, l_ok FROM atd_load_run_log WHERE started > SYSTIMESTAMP - INTERVAL '1' DAY;
-  SELECT TO_CHAR( dct_to_local(MAX(finished)),'YYYY-MM-DD HH:MI AM') INTO l_lastfin FROM atd_load_run_log;
+    INTO l_runs, l_ok FROM atd_load_run_log
+   WHERE started > SYSTIMESTAMP - INTERVAL '1' DAY
+     AND NVL(track,'BROWSER') IN ('API','BROWSER');
+  SELECT TO_CHAR( dct_to_local(MAX(finished)),'YYYY-MM-DD HH:MI AM') INTO l_lastfin
+    FROM atd_load_run_log WHERE NVL(track,'BROWSER') IN ('API','BROWSER');
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -117,7 +121,10 @@ BEGIN
               SELECT run_id, job_name, status, row_count, NVL(host_id,'') AS host_id,
                      TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH:MI AM')  AS started_s,
                      TO_CHAR( dct_to_local(finished),'YYYY-MM-DD HH:MI AM') AS finished_s
-              FROM atd_load_run_log ORDER BY run_id DESC) WHERE ROWNUM <= 10) LOOP
+              FROM atd_load_run_log l
+              WHERE NVL(l.track,'BROWSER') IN ('API','BROWSER')
+                AND EXISTS (SELECT 1 FROM atd_otbi_jobs j WHERE j.job_name = l.job_name)
+              ORDER BY run_id DESC) WHERE ROWNUM <= 10) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('runId', r.run_id);
     APEX_JSON.write('jobName', r.job_name);
@@ -135,8 +142,10 @@ BEGIN
                      NVL(DBMS_LOB.SUBSTR(message,300,1),'') AS msg,
                      CASE WHEN status='FAILED' THEN 'FAILED' ELSE 'WARNING' END AS kind,
                      TO_CHAR( dct_to_local(started),'YYYY-MM-DD HH:MI AM') AS started_s
-              FROM atd_load_run_log
-              WHERE status='FAILED' OR message IS NOT NULL
+              FROM atd_load_run_log l
+              WHERE (status='FAILED' OR message IS NOT NULL)
+                AND NVL(l.track,'BROWSER') IN ('API','BROWSER')
+                AND EXISTS (SELECT 1 FROM atd_otbi_jobs j WHERE j.job_name = l.job_name)
               ORDER BY run_id DESC) WHERE ROWNUM <= 10) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('runId', r.run_id);

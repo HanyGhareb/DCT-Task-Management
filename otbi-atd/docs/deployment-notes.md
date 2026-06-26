@@ -50,6 +50,17 @@ Tag jobs with any number of **categories** (ATD-native lookup) to simplify job m
   tag/untag a job, list Category column + chips, category filter, drawer header actions, Arabic RTL
   in the drawer — all verified end-to-end (UI→ORDS→DB), test self-cleaned (no prod residue).
 
+## 2026-06-26 — Dashboard scoped to real job loads
+
+- **Recent Runs / Alerts / 24h KPIs showed phantom rows for deleted jobs (db/13, redeployed).**
+  These dashboard panels read `atd_load_run_log` with no track filter, so after the orphan sweep
+  the 69 leftover **DISCOVER** rows (subject-area names, not jobs) surfaced as fake "jobs". Scoped
+  the dashboard handler: `runs24h`/`success24h`/`lastFinished` now count only `track IN
+  ('API','BROWSER')`; the **recent** + **alerts** cursors additionally require the job to still
+  exist (`EXISTS atd_otbi_jobs`). Verified live with 0 jobs: jobs/runs24h/recent/alerts all 0,
+  successRate `—`. Full 13-chain re-run (13→20→26→31→32→33); regression-checked jobs/health,
+  actions/stats, categories, workers all 200.
+
 ## 2026-06-26 — Job→log cascade + dev-proxy no-cache
 
 - **Orphaned run-logs (db/34, DEPLOYED):** run-log rows had no link to their job, so deleting a
