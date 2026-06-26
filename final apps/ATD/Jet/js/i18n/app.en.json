@@ -7,7 +7,6 @@
   "atd.common.results": "results",
   "atd.common.refresh": "Refresh",
   "atd.common.close": "Close",
-
   "atd.actions.title": "Fusion Actions",
   "atd.actions.hint": "Write-back actions performed inside Oracle Fusion (e.g. create AP invoice from an approved Petty Cash reimbursement). The runner performs each via the shared browser session; idempotent — never creates a duplicate.",
   "atd.actions.allStatuses": "All statuses",
@@ -33,7 +32,6 @@
   "atd.actions.stat.done": "Done",
   "atd.actions.stat.failed": "Failed",
   "atd.actions.stat.cancelled": "Cancelled",
-
   "atd.nav.dashboard": "Dashboard",
   "atd.nav.opsGroup": "Operations",
   "atd.nav.jobs": "Jobs",
@@ -45,7 +43,6 @@
   "atd.nav.environments": "Environments",
   "atd.nav.targets": "Targets",
   "atd.nav.runnerSettings": "Runner Settings",
-
   "atd.discovery.title": "OTBI Discovery",
   "atd.discovery.hint": "Scrape an OTBI subject area's folders + columns so they can be picked when building an analysis. Queue a subject area here, then the runner (python runner.py --discover) scrapes it.",
   "atd.discovery.saPlaceholder": "Subject area name, e.g. Procurement - Purchasing Real Time",
@@ -68,7 +65,6 @@
   "atd.discovery.col.analysis": "Analysis",
   "atd.discovery.col.saveFolder": "Save Folder",
   "atd.discovery.col.created": "Created",
-
   "atd.rs.title": "Runner Settings",
   "atd.rs.intro": "Operational settings the runner reads at startup (DB overrides env.ps1). Secrets (passwords, bot token) are NOT here — they stay in env.ps1 / OCI Vault.",
   "atd.rs.save": "Save Settings",
@@ -76,7 +72,6 @@
   "atd.rs.secretSet": "set",
   "atd.rs.notSet": "not set",
   "atd.rs.updated": "Updated",
-
   "atd.dash.title": "Analytics Loader",
   "atd.dash.jobs": "Total Jobs",
   "atd.dash.enabled": "Enabled",
@@ -116,7 +111,6 @@
   "atd.dash.queue.claimed": "Claimed",
   "atd.dash.queue.done": "Done",
   "atd.dash.queue.failed": "Failed",
-
   "atd.col.run": "Run",
   "atd.col.job": "Job",
   "atd.col.host": "VM",
@@ -130,7 +124,6 @@
   "atd.dur.h": "h",
   "atd.dur.m": "m",
   "atd.dur.s": "s",
-
   "atd.jobs.title": "Jobs",
   "atd.jobs.new": "New Job",
   "atd.jobs.search": "Search jobs…",
@@ -141,7 +134,6 @@
   "atd.jobs.col.order": "Order",
   "atd.jobs.col.enabled": "On",
   "atd.jobs.col.lastRun": "Last run",
-
   "atd.action.edit": "Edit",
   "atd.action.run": "Run now",
   "atd.action.run.hint": "Run now — moves this job to the front of the queue; it runs on the next worker cycle (≤15 min)",
@@ -159,7 +151,6 @@
   "atd.action.saveChanges": "Save Changes",
   "atd.action.cancel": "Cancel",
   "atd.action.back": "Back",
-
   "atd.field.jobName": "Job name",
   "atd.field.jobName.ph": "auto-derived from the analysis name",
   "atd.field.env": "Environment",
@@ -215,7 +206,6 @@
   "atd.cat.confirmDelete": "Delete category {name}?",
   "atd.cat.saveFailed": "Could not save the category",
   "atd.cat.deleteFailed": "Could not delete — it may be in use; deactivate it instead",
-
   "atd.jobs.newTitle": "New Job",
   "atd.jobs.editTitle": "Edit Job",
   "atd.jobs.minimalHint": "Just the analysis path is needed. The table, columns and mapping are prepared automatically on the first run.",
@@ -266,15 +256,12 @@
   "atd.jobs.confirmRebuild": "Rebuild this job's table?\n\nThis DROPS the stage table (and final table, if any) and recreates it from the live analysis on the next run — all currently loaded rows are LOST.\n\nUse this to accept an incompatible column change (a NUMBER/DATE column the analysis now sends as text).",
   "atd.jobs.remapped": "Column map cleared — re-derived on the next run",
   "atd.jobs.rebuilt": "Table dropped — rebuilt from the analysis on the next run",
-
   "atd.runs.warn": "warning",
-
   "atd.detail.title": "Job",
   "atd.detail.config": "Configuration",
   "atd.detail.history": "Run History",
   "atd.detail.noHistory": "No runs yet.",
   "atd.detail.checksum": "Checksum",
-
   "atd.schema.title": "Table Schema",
   "atd.schema.toggle": "Review / edit",
   "atd.schema.reload": "Reload",
@@ -289,7 +276,6 @@
   "atd.schema.empty": "Nothing to apply.",
   "atd.schema.confirmApply": "Apply this schema?\n\nThe staging table is dropped and recreated from these column names / data types (and table name), then reloaded on the next run. Current rows are cleared and reloaded.",
   "atd.schema.applied": "Schema applied — table recreated; it reloads on the next run",
-
   "atd.queue.title": "Queue & Operations",
   "atd.queue.enqueueAll": "Enqueue All",
   "atd.queue.reap": "Reap Stale",
@@ -301,7 +287,6 @@
   "atd.queue.enqueued": "jobs queued",
   "atd.queue.reaped": "stale jobs reclaimed",
   "atd.queue.hint": "Enqueue marks jobs READY; a worker host running the runner picks them up.",
-
   "atd.runs.title": "Run Logs",
   "atd.runs.allStatuses": "All statuses",
   "atd.runs.allJobs": "All jobs",
@@ -309,7 +294,6 @@
   "atd.runs.empty": "No runs match.",
   "atd.runs.detail.title": "Run",
   "atd.runs.detail.message": "Message",
-
   "atd.envs.title": "Environments",
   "atd.envs.new": "New Environment",
   "atd.envs.empty": "No environments.",
@@ -323,7 +307,6 @@
   "atd.field.authType": "Auth type",
   "atd.field.credentialRef": "Credential reference",
   "atd.field.extractTrack": "Extract track",
-
   "atd.targets.title": "Targets",
   "atd.targets.new": "New Target",
   "atd.targets.empty": "No targets.",
@@ -334,5 +317,7 @@
   "atd.field.dbKind": "Database kind",
   "atd.field.dbLink": "DB link (REMOTE)",
   "atd.field.schemaName": "Schema name",
-  "atd.field.tnsAlias": "TNS alias"
+  "atd.field.tnsAlias": "TNS alias",
+  "atd.review.notice.pending": "Not prepared yet",
+  "atd.review.notice.pending.hint": "The schema is captured on the first successful run — source headers and column types appear here once the job extracts the source once. (If a run looks stuck, refresh the worker so the extract can complete.)"
 }

@@ -7,7 +7,6 @@
   "atd.common.results": "نتيجة",
   "atd.common.refresh": "تحديث",
   "atd.common.close": "إغلاق",
-
   "atd.actions.title": "إجراءات فيوجن",
   "atd.actions.hint": "إجراءات الكتابة التي تُنفَّذ داخل أوراكل فيوجن (مثل إنشاء فاتورة دائنين من مطالبة سلفة نقدية معتمدة). يقوم المشغّل بتنفيذ كل إجراء عبر جلسة المتصفح المشتركة؛ وهو غير قابل للتكرار — لا يُنشئ فاتورة مكررة.",
   "atd.actions.allStatuses": "كل الحالات",
@@ -33,7 +32,6 @@
   "atd.actions.stat.done": "منجز",
   "atd.actions.stat.failed": "فشل",
   "atd.actions.stat.cancelled": "ملغى",
-
   "atd.nav.dashboard": "لوحة المعلومات",
   "atd.nav.opsGroup": "العمليات",
   "atd.nav.jobs": "المهام",
@@ -45,7 +43,6 @@
   "atd.nav.environments": "البيئات",
   "atd.nav.targets": "الجداول الهدف",
   "atd.nav.runnerSettings": "إعدادات المُشغّل",
-
   "atd.discovery.title": "اكتشاف OTBI",
   "atd.discovery.hint": "امسح مجلدات وأعمدة مجال موضوع في OTBI ليصبح بالإمكان اختيارها عند إنشاء تحليل. أضف مجال الموضوع هنا، ثم يقوم المُشغّل (python runner.py --discover) بمسحه.",
   "atd.discovery.saPlaceholder": "اسم مجال الموضوع، مثل Procurement - Purchasing Real Time",
@@ -68,7 +65,6 @@
   "atd.discovery.col.analysis": "التحليل",
   "atd.discovery.col.saveFolder": "مجلد الحفظ",
   "atd.discovery.col.created": "تاريخ الإنشاء",
-
   "atd.rs.title": "إعدادات المُشغّل",
   "atd.rs.intro": "إعدادات تشغيلية يقرأها المُشغّل عند البدء (قاعدة البيانات تتجاوز env.ps1). الأسرار (كلمات المرور، رمز البوت) ليست هنا — تبقى في env.ps1 / OCI Vault.",
   "atd.rs.save": "حفظ الإعدادات",
@@ -76,7 +72,6 @@
   "atd.rs.secretSet": "مُعيّن",
   "atd.rs.notSet": "غير مُعيّن",
   "atd.rs.updated": "آخر تحديث",
-
   "atd.dash.title": "محمّل التحليلات",
   "atd.dash.jobs": "إجمالي المهام",
   "atd.dash.enabled": "مُفعّلة",
@@ -116,7 +111,6 @@
   "atd.dash.queue.claimed": "قيد التنفيذ",
   "atd.dash.queue.done": "منتهية",
   "atd.dash.queue.failed": "فاشلة",
-
   "atd.col.run": "التشغيل",
   "atd.col.job": "المهمة",
   "atd.col.host": "الجهاز الظاهري",
@@ -130,7 +124,6 @@
   "atd.dur.h": "س",
   "atd.dur.m": "د",
   "atd.dur.s": "ث",
-
   "atd.jobs.title": "المهام",
   "atd.jobs.new": "مهمة جديدة",
   "atd.jobs.search": "بحث في المهام…",
@@ -141,7 +134,6 @@
   "atd.jobs.col.order": "الترتيب",
   "atd.jobs.col.enabled": "تشغيل",
   "atd.jobs.col.lastRun": "آخر تشغيل",
-
   "atd.action.edit": "تعديل",
   "atd.action.run": "تشغيل الآن",
   "atd.action.run.hint": "تشغيل الآن — ينقل هذه المهمة إلى مقدمة القائمة؛ وتُشغَّل في دورة العامل القادمة (≤15 دقيقة)",
@@ -159,7 +151,6 @@
   "atd.action.saveChanges": "حفظ التغييرات",
   "atd.action.cancel": "إلغاء",
   "atd.action.back": "رجوع",
-
   "atd.field.jobName": "اسم المهمة",
   "atd.field.jobName.ph": "يُشتق تلقائيًا من اسم التحليل",
   "atd.field.env": "البيئة",
@@ -215,7 +206,6 @@
   "atd.cat.confirmDelete": "حذف الفئة {name}؟",
   "atd.cat.saveFailed": "تعذّر حفظ الفئة",
   "atd.cat.deleteFailed": "تعذّر الحذف — قد تكون قيد الاستخدام؛ قم بتعطيلها بدلاً من ذلك",
-
   "atd.jobs.newTitle": "مهمة جديدة",
   "atd.jobs.editTitle": "تعديل المهمة",
   "atd.jobs.minimalHint": "يكفي مسار التحليل فقط. يُجهَّز الجدول والأعمدة والربط تلقائيًا في أول تشغيل.",
@@ -266,15 +256,12 @@
   "atd.jobs.confirmRebuild": "إعادة بناء جدول هذه المهمة؟\n\nسيؤدي ذلك إلى حذف جدول التحضير (والجدول النهائي إن وُجد) وإعادة إنشائه من التحليل الحي في التشغيل التالي — وتُفقد كل الصفوف المحمّلة حاليًا.\n\nاستخدم هذا لقبول تغيير عمود غير متوافق (عمود رقمي/تاريخ يرسله التحليل الآن كنص).",
   "atd.jobs.remapped": "مُسحت خريطة الأعمدة — يُعاد اشتقاقها في التشغيل التالي",
   "atd.jobs.rebuilt": "حُذف الجدول — يُعاد بناؤه من التحليل في التشغيل التالي",
-
   "atd.runs.warn": "تحذير",
-
   "atd.detail.title": "المهمة",
   "atd.detail.config": "الإعدادات",
   "atd.detail.history": "سجل التشغيل",
   "atd.detail.noHistory": "لا توجد عمليات تشغيل بعد.",
   "atd.detail.checksum": "البصمة",
-
   "atd.schema.title": "بنية الجدول",
   "atd.schema.toggle": "مراجعة / تعديل",
   "atd.schema.reload": "إعادة تحميل",
@@ -289,7 +276,6 @@
   "atd.schema.empty": "لا شيء للتطبيق.",
   "atd.schema.confirmApply": "تطبيق هذه البنية؟\n\nسيُحذف جدول التحضير ويُعاد إنشاؤه من أسماء الأعمدة/أنواع البيانات (واسم الجدول)، ثم يُعاد تحميله في التشغيل التالي. تُمسح الصفوف الحالية ويُعاد تحميلها.",
   "atd.schema.applied": "طُبّقت البنية — أُعيد إنشاء الجدول؛ ويُعاد تحميله في التشغيل التالي",
-
   "atd.queue.title": "قائمة الانتظار والعمليات",
   "atd.queue.enqueueAll": "إضافة الكل",
   "atd.queue.reap": "استرجاع المعلّقة",
@@ -301,7 +287,6 @@
   "atd.queue.enqueued": "مهمة في القائمة",
   "atd.queue.reaped": "مهمة معلّقة تم استرجاعها",
   "atd.queue.hint": "الإضافة للقائمة تحوّل المهام إلى جاهزة؛ ويلتقطها عامل يشغّل المُشغّل.",
-
   "atd.runs.title": "سجلات التشغيل",
   "atd.runs.allStatuses": "كل الحالات",
   "atd.runs.allJobs": "كل المهام",
@@ -309,7 +294,6 @@
   "atd.runs.empty": "لا توجد عمليات تشغيل مطابقة.",
   "atd.runs.detail.title": "التشغيل",
   "atd.runs.detail.message": "الرسالة",
-
   "atd.envs.title": "البيئات",
   "atd.envs.new": "بيئة جديدة",
   "atd.envs.empty": "لا توجد بيئات.",
@@ -323,7 +307,6 @@
   "atd.field.authType": "نوع المصادقة",
   "atd.field.credentialRef": "مرجع بيانات الاعتماد",
   "atd.field.extractTrack": "مسار الاستخراج",
-
   "atd.targets.title": "الجداول الهدف",
   "atd.targets.new": "هدف جديد",
   "atd.targets.empty": "لا توجد أهداف.",
@@ -334,5 +317,7 @@
   "atd.field.dbKind": "نوع قاعدة البيانات",
   "atd.field.dbLink": "رابط قاعدة البيانات (بعيد)",
   "atd.field.schemaName": "اسم المخطط",
-  "atd.field.tnsAlias": "اسم TNS"
+  "atd.field.tnsAlias": "اسم TNS",
+  "atd.review.notice.pending": "لم يتم التجهيز بعد",
+  "atd.review.notice.pending.hint": "يتم التقاط بنية الجدول عند أول تشغيل ناجح — ستظهر عناوين المصدر وأنواع الأعمدة هنا بعد أول استخراج للمصدر."
 }

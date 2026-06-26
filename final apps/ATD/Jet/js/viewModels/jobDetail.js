@@ -19,6 +19,16 @@ function (ko, atd, i18n, toast, fmtDuration) {
     });
     self.noop = function () {};
 
+    // "prepared" = the worker has captured a column map (so source headers exist).
+    // A held job whose first extract hasn't completed yet has an EMPTY map -> the
+    // schema editor would show table columns with blank source headers, so the
+    // banner must say "pending first run", not "prepared, review below".
+    self.prepared = ko.pureComputed(function () {
+      var cm = (self.job() || {}).columnMapJson;
+      cm = (cm == null ? '' : String(cm)).trim();
+      return cm !== '' && cm !== '{}';
+    });
+
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
     self.chipStyle = function (color) { return { background: color || '#6B7280', color: '#fff' }; };
     self.catLabel = function (c) {
