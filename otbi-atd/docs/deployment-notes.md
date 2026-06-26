@@ -50,6 +50,22 @@ Tag jobs with any number of **categories** (ATD-native lookup) to simplify job m
   tag/untag a job, list Category column + chips, category filter, drawer header actions, Arabic RTL
   in the drawer — all verified end-to-end (UI→ORDS→DB), test self-cleaned (no prod residue).
 
+## 2026-06-26 — Job→log cascade + dev-proxy no-cache
+
+- **Orphaned run-logs (db/34, DEPLOYED):** run-log rows had no link to their job, so deleting a
+  job left its load history behind. New row trigger `prod.trg_atd_job_log_cascade`
+  (AFTER DELETE on `atd_otbi_jobs`) clears that job's load rows (track API/BROWSER) on any delete
+  path (ORDS/SQLcl). DISCOVER rows are keyed by subject area, not a job, so they are preserved.
+  One-time sweep removed **1369** already-orphaned load rows (verified: 0 load-orphans left,
+  69 DISCOVER rows kept, trigger ENABLED). No FK added (a hard FK would break DISCOVER inserts).
+  Independent of the 13-chain (no ORDS).
+- **Blank-page-after-deploy fix (dev-proxy.py, all 9 apps):** the dev-proxy served static assets
+  with **no `Cache-Control`**, so the browser cached `index.html`; after rapid APP_VERSION bumps a
+  stale `index.html` kept re-requesting old-versioned (cached) JS → blank page. Added an
+  `end_headers` override emitting `Cache-Control: no-store, must-revalidate` for non-`/ords/`
+  responses. Verified header now served. (One-time remedy for an already-stale browser: hard
+  refresh / Ctrl+Shift+R.)
+
 ## 2026-06-25/26 — Production-workload hardening (Phases 0–2) + Track A spike
 
 Driven by a run-log review (multi-hour overnight dead windows; a moved-path job blind for

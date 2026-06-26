@@ -54,6 +54,14 @@ class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header('Access-Control-Max-Age', '86400')
 
     # ── Preflight (OPTIONS) ─────────────────────────────────────────────
+    def end_headers(self):
+        # Dev only: never cache static assets so a redeploy (new APP_VERSION /
+        # changed JS or index.html) is always picked up — prevents a stale
+        # cached index.html from re-requesting old-versioned JS (blank page).
+        if not self.path.startswith('/ords/'):
+            self.send_header('Cache-Control', 'no-store, must-revalidate')
+        super().end_headers()
+
     def do_OPTIONS(self):
         if self.path.startswith('/ords/'):
             self.send_response(200)
