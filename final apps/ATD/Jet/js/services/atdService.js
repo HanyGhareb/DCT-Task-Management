@@ -67,6 +67,12 @@ function (api) {
     listWorkers:  function ()          { return api.get('/workers'); },
     // observability: break window + per-VM session age + per-job freshness
     getJobHealth: function ()          { return api.get('/jobs/health'); },
+
+    // job categories (lookup + tagging)
+    listCategories:  function ()           { return api.get('/categories'); },
+    createCategory:  function (body)       { return api.post('/categories', body); },
+    updateCategory:  function (code, body) { return api.put('/categories/' + encodeURIComponent(code), body); },
+    deleteCategory:  function (code)       { return api.delete('/categories/' + encodeURIComponent(code)); },
     // ask a worker (or 'all') to re-login to Fusion (operator triggers MFA)
     refreshWorker: function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/refresh', {}); },
 

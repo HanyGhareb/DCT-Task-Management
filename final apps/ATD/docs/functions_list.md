@@ -42,6 +42,14 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   queued. Blank = the global default (`ATD_DEFAULT_FREQ_MINUTES`, 15); e.g. 60 = hourly,
   1440 = daily. The 15-min enqueue only marks a job READY once this much time has passed since its
   last run (db/12 `enqueue` due-ness), so heavy "Real Time" jobs needn't run every cycle.
+- **Job Categories** (ATD-native lookup, `db/32`): tag a job with any number of categories.
+  - List **Category column** (colored chips) + a toolbar **category filter** (`fCategory` →
+    `GET /jobs?category=CODE`).
+  - Drawer **category picker** (`fmCategories`, toggle chips) — sent as `categories:[codes]` on
+    create/update (replace-set).
+  - **Manage Categories** modal (`openCatMgr`/`editCat`/`saveCat`/`delCat`): list / add / rename /
+    color / order / activate-deactivate, over `/categories`. Delete is blocked while in use (→
+    deactivate). Chips localize EN/AR (`catLabel`) and colour from the category (`chipStyle`).
 
 ## Job detail (`jobDetail`)
 - `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)` ·
@@ -132,8 +140,10 @@ One page, three tables, for the `create_analysis` async pipeline:
 |---|---|---|
 | GET | `/dashboard` | KPIs + queue counts + recent + alerts (failures **and** runs with a warning message; each alert has `kind` WARNING/FAILED) |
 | GET | `/lookups` | envs + targets for pickers |
-| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec` = last run elapsed seconds) / create job — POST needs only `sourceRef`; job name, env, target, stage table auto-derived; optional `frequencyMinutes` |
-| GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes`; history rows carry `durationSec`) / update (incl. `frequencyMinutes`) / delete job |
+| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec`, +`categories[]`; **`?category=CODE`** filter) / create job — POST needs only `sourceRef`; optional `frequencyMinutes`, `categories[]` |
+| GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes` + `categories[]`) / update (incl. `frequencyMinutes`, `categories[]` replace-set) / delete job |
+| GET / POST | `/categories` | list categories (+`usage` count) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`). SYS_ADMIN |
+| PUT / DELETE | `/categories/:code` | update (partial) / delete — 400 if in use (deactivate instead). SYS_ADMIN |
 | GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
 | GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
 | GET | `/jobs/health` | dashboard observability (additive, db/31) — `break` {enabled,active,start,end}, `workers[]` {workerId,sessionStarted,sessionAgeMin}, `jobs[]` (enabled) {jobName,lastSuccess,sinceMin,consecutiveFails,stuckRunning,alertSent,frequencyMin}. SYS_ADMIN |

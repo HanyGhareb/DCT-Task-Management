@@ -61,3 +61,13 @@
 /* nested sub-folders: indent + a guide line so the tree depth reads clearly */
 .an-pick-sub { margin-inline-start:14px; border-inline-start:1px solid var(--border,#eef1f4); }
 .an-pick-sub .an-pick-fhead { font-size:12.5px; font-weight:600; }
+
+/* ---- Job categories: chips + picker + manage-modal swatch ----------- */
+.cat-chips { display:flex; flex-wrap:wrap; gap:3px; }
+.cat-chip { font-size:11px; line-height:1.5; padding:1px 8px; border-radius:11px; white-space:nowrap; }
+.cat-picker { display:flex; flex-wrap:wrap; gap:5px; }
+.cat-chip--toggle { cursor:pointer; user-select:none; border:1px solid transparent; }
+.cat-chip--off { background:transparent !important; color:var(--text,#3a4150) !important;
+                 border-color:var(--border,#cfd5dd); }
+.cat-swatch { display:inline-block; width:14px; height:14px; border-radius:4px;
+              border:1px solid rgba(0,0,0,.15); vertical-align:middle; }

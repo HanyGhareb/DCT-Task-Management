@@ -2,6 +2,7 @@
   <div class="page-header-row">
     <h1 class="page-title" data-bind="text: t('atd.jobs.title')"></h1>
     <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: openCatMgr, text: t('atd.cat.manage')"></button>
       <button class="btn btn-primary" data-bind="click: newJob, text: '+ ' + t('atd.jobs.new')"></button>
     </div>
   </div>
@@ -11,6 +12,10 @@
     <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fStatus">
       <option value="" data-bind="text: t('atd.jobs.allStatuses')"></option>
       <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+    </select>
+    <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fCategory">
+      <option value="" data-bind="text: t('atd.cat.all')"></option>
+      <!-- ko foreach: activeCategories --><option data-bind="value: code, text: $vm.catLabel($data)"></option><!-- /ko -->
     </select>
     <span class="toolbar-spacer"></span>
     <!-- ko ifnot: loading --><span class="muted" data-bind="text: total() + ' ' + t('atd.common.results')"></span><!-- /ko -->
@@ -32,6 +37,7 @@
         <th data-bind="text: t('atd.col.job')"></th>
         <th data-bind="text: t('atd.jobs.col.source')"></th>
         <th data-bind="text: t('atd.jobs.col.target')"></th>
+        <th data-bind="text: t('atd.cat.label')"></th>
         <th data-bind="text: t('atd.jobs.col.order')"></th>
         <th data-bind="text: t('atd.col.status')"></th>
         <th data-bind="text: t('atd.jobs.col.lastRun')"></th>
@@ -48,6 +54,12 @@
             <!-- ko if: $data.prepared === 'N' -->
             <span class="badge badge--idle" style="margin-inline-start:6px" data-bind="text: $vm.t('atd.jobs.notPrepared')"></span>
             <!-- /ko -->
+          </td>
+          <td>
+            <span class="cat-chips" data-bind="foreach: ($data.categories || [])">
+              <span class="badge cat-chip" data-bind="style: $vm.chipStyle($data.color), text: $vm.catLabel($data)"></span>
+            </span>
+            <!-- ko if: !($data.categories && $data.categories.length) --><span class="muted">—</span><!-- /ko -->
           </td>
           <td data-bind="text: $data.priority + '·' + $data.runOrder"></td>
           <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
@@ -97,6 +109,23 @@
       <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.field.targetTable')"></label>
         <input class="form-control mono" data-bind="textInput: fmStage, attr:{ placeholder: t('atd.field.targetTable.ph') }"></div>
 
+      <!-- category tags (toggle chips; any number) -->
+      <div class="form-group form-group--full">
+        <label class="form-label" data-bind="text: t('atd.cat.assign')"></label>
+        <div class="cat-picker">
+          <!-- ko foreach: activeCategories -->
+          <span class="badge cat-chip cat-chip--toggle"
+                data-bind="css:{ 'cat-chip--off': !$vm.isCatSelected(code) },
+                           style: ($vm.isCatSelected(code) ? $vm.chipStyle(color) : {}),
+                           click: function(){ $vm.toggleCat(code); return true; },
+                           text: $vm.catLabel($data)"></span>
+          <!-- /ko -->
+          <!-- ko if: activeCategories().length === 0 -->
+          <span class="muted" data-bind="text: t('atd.cat.none')"></span>
+          <!-- /ko -->
+        </div>
+      </div>
+
       <!-- ko if: !editName() -->
       <div class="form-group form-group--full">
         <p class="muted" style="margin:0 0 8px; font-size:.85em" data-bind="text: t('atd.jobs.minimalHint')"></p>
@@ -141,4 +170,72 @@
       <!-- /ko -->
     </div>
   </edit-drawer>
+
+  <!-- Manage Categories modal -->
+  <!-- ko if: showCatMgr -->
+  <div class="modal-overlay" data-bind="click: function(){ showCatMgr(false); return true; }">
+    <div class="modal-box" style="max-width:760px" data-bind="click: function(){ return true; }, clickBubble:false">
+      <div class="modal-header">
+        <h3 data-bind="text: t('atd.cat.manage')"></h3>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-secondary" data-bind="click: function(){ showCatMgr(false); }, text: t('atd.action.close')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- add / edit form -->
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.code')"></label>
+            <input class="form-control mono" data-bind="textInput: cmCode, enable: !catEdit(), attr:{ placeholder: 'AP' }"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.nameEn')"></label>
+            <input class="form-control" data-bind="textInput: cmNameEn"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.nameAr')"></label>
+            <input class="form-control" dir="rtl" data-bind="textInput: cmNameAr"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.color')"></label>
+            <input class="form-control" type="color" data-bind="value: cmColor"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.order')"></label>
+            <input class="form-control" type="number" data-bind="value: cmOrder"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.active')"></label>
+            <div><input type="checkbox" data-bind="checked: cmActive"></div></div>
+          <div class="form-group form-group--full" style="text-align:end">
+            <button class="btn btn-secondary btn-sm" data-bind="click: resetCatForm, text: t('atd.cat.newBtn')"></button>
+            <button class="btn btn-primary btn-sm" data-bind="click: saveCat, text: (catEdit() ? t('atd.action.saveChanges') : t('atd.action.create'))"></button>
+          </div>
+        </div>
+
+        <div class="data-table-wrap" style="margin-top:12px">
+          <table class="data-table">
+            <thead><tr>
+              <th></th>
+              <th data-bind="text: t('atd.cat.code')"></th>
+              <th data-bind="text: t('atd.cat.nameEn')"></th>
+              <th data-bind="text: t('atd.cat.nameAr')"></th>
+              <th data-bind="text: t('atd.cat.order')"></th>
+              <th data-bind="text: t('atd.cat.active')"></th>
+              <th data-bind="text: t('atd.cat.usage')"></th>
+              <th></th>
+            </tr></thead>
+            <tbody data-bind="foreach: categories">
+              <tr>
+                <td><span class="cat-swatch" data-bind="style:{ background: $data.color || '#6B7280' }"></span></td>
+                <td class="mono" data-bind="text: $data.code"></td>
+                <td data-bind="text: $data.nameEn"></td>
+                <td dir="rtl" data-bind="text: $data.nameAr || '—'"></td>
+                <td data-bind="text: $data.displayOrder"></td>
+                <td><span class="badge" data-bind="text: $data.active, css:{ 'badge--active': $data.active==='Y', 'badge--idle': $data.active!=='Y' }"></span></td>
+                <td data-bind="text: $data.usage"></td>
+                <td style="text-align:end">
+                  <button class="btn btn-xs btn-secondary" data-bind="click: function(){ $vm.editCat($data); }, text: $root.t('atd.action.edit')"></button>
+                  <button class="btn btn-xs btn-danger" data-bind="click: function(){ $vm.delCat($data); }, text: $root.t('atd.action.delete')"></button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <!-- ko if: categories().length === 0 -->
+          <div class="empty-state" data-bind="text: t('atd.cat.none')"></div>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
 </div>

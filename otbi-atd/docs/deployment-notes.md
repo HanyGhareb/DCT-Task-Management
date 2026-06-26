@@ -1,5 +1,25 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-06-26 — Job Categories (ATD App 208, APP_VERSION 1.13.0)
+
+Tag jobs with any number of **categories** (ATD-native lookup) to simplify job management.
+- **DB (`db/32_atd_job_category.sql`, additive):** `ATD_JOB_CATEGORY` (code, EN/AR name, color,
+  order, active) + `ATD_JOB_CATEGORY_MAP` (`(job_name,category_code)` PK — no per-job cap; FK
+  `job_name` ON DELETE CASCADE). Seeds 6 starters (AP/GL/PO/SUPPLIER/MASTER/FINANCE). **No max-3
+  cap** (the PK alone prevents duplicate tags). Additive ORDS: `GET/POST /atd/categories`,
+  `PUT/DELETE /atd/categories/:code` (DELETE blocked while in use → deactivate).
+  **Deploy with `-Dfile.encoding=UTF-8`** for the Arabic seed (verified bytes ≈ 2× chars, no
+  mojibake).
+- **`db/13` (jobs handlers, triggers a rebuild):** list returns `categories[]` per job +
+  **`?category=CODE` filter**; `GET /jobs/:name` returns `categories[]`; `POST`/`PUT` accept
+  `categories:[codes]` (PUT = replace-set). **Redeploy ran `13 → 20 → 26 → 31 → 32`** (32 is
+  additive and must follow any 13 rebuild — the chain is now five scripts). Verified all 12 handlers
+  registered; tag round-trip + filter + PK-dup-block + delete-in-use guard all pass.
+- **Frontend:** Jobs list Category column + filter + **Manage Categories** modal; drawer category
+  picker (toggle chips, no cap); jobDetail chips. Colored EN/AR chips. `atdService` category CRUD;
+  `app.css` `.cat-chip*`/`.cat-swatch`; EN/AR i18n; APP_VERSION 1.13.0. (Static-verified: JS/JSON
+  clean; DB+ORDS live-verified.)
+
 ## 2026-06-25/26 — Production-workload hardening (Phases 0–2) + Track A spike
 
 Driven by a run-log review (multi-hour overnight dead windows; a moved-path job blind for

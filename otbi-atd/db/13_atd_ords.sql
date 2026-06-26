@@ -36,6 +36,8 @@ CREATE OR REPLACE SYNONYM atd_analysis_request FOR prod.atd_analysis_request;
 CREATE OR REPLACE SYNONYM atd_sa_catalog     FOR prod.atd_sa_catalog;
 CREATE OR REPLACE SYNONYM atd_worker_heartbeat FOR prod.atd_worker_heartbeat;
 CREATE OR REPLACE SYNONYM dct_atd_ai_pkg     FOR prod.dct_atd_ai_pkg;
+CREATE OR REPLACE SYNONYM atd_job_category     FOR prod.atd_job_category;
+CREATE OR REPLACE SYNONYM atd_job_category_map FOR prod.atd_job_category_map;
 
 -- =============================================================================
 -- 2. Module + handlers (wrapped in a temp procedure so SQLcl skips bind scanning)
@@ -193,6 +195,7 @@ DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20)  := UPPER([COLON]status);
   l_search VARCHAR2(200) := [COLON]search;
+  l_cat    VARCHAR2(30)  := UPPER([COLON]category);
   l_limit  NUMBER        := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 500);
   l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
@@ -202,7 +205,9 @@ BEGIN
   SELECT COUNT(*) INTO l_total FROM atd_otbi_jobs j
    WHERE (l_status IS NULL OR j.run_status = l_status)
      AND (l_search IS NULL OR UPPER(j.job_name||' '||j.source_ref||' '||j.stage_table)
-          LIKE '%'||UPPER(l_search)||'%');
+          LIKE '%'||UPPER(l_search)||'%')
+     AND (l_cat IS NULL OR EXISTS (SELECT 1 FROM atd_job_category_map m
+            WHERE m.job_name = j.job_name AND m.category_code = l_cat));
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -227,6 +232,8 @@ BEGIN
     WHERE (l_status IS NULL OR j.run_status = l_status)
       AND (l_search IS NULL OR UPPER(j.job_name||' '||j.source_ref||' '||j.stage_table)
            LIKE '%'||UPPER(l_search)||'%')
+      AND (l_cat IS NULL OR EXISTS (SELECT 1 FROM atd_job_category_map m
+             WHERE m.job_name = j.job_name AND m.category_code = l_cat))
     ORDER BY lr.run_id DESC NULLS LAST, j.priority, j.run_order, j.job_name
     OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP
@@ -249,6 +256,18 @@ BEGIN
     APEX_JSON.write('lastRunStatus', NVL(r.last_status,''));
     APEX_JSON.write('lastFinished', NVL(r.last_finished,''));
     APEX_JSON.write('lastDurationSec', r.last_dur_sec);   -- omitted when never run
+    APEX_JSON.open_array('categories');
+    FOR c IN (SELECT m.category_code, cat.name_en, cat.name_ar, cat.color
+                FROM atd_job_category_map m JOIN atd_job_category cat ON cat.category_code = m.category_code
+               WHERE m.job_name = r.job_name ORDER BY cat.display_order, cat.category_code) LOOP
+      APEX_JSON.open_object;
+      APEX_JSON.write('code', c.category_code);
+      APEX_JSON.write('name', c.name_en);
+      APEX_JSON.write('nameAr', NVL(c.name_ar,''));
+      APEX_JSON.write('color', NVL(c.color,''));
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -331,6 +350,13 @@ BEGIN
     NVL(APEX_JSON.get_number(p_path => 'runOrder'),100),
     APEX_JSON.get_number(p_path => 'frequencyMinutes'),  -- NULL -> ATD_DEFAULT_FREQ_MINUTES
     'READY');
+  -- optional category tags (any number; MERGE dedupes a repeated code)
+  FOR i IN 1 .. NVL(APEX_JSON.get_count(p_path=>'categories'),0) LOOP
+    MERGE INTO atd_job_category_map m
+    USING (SELECT l_name AS jn, UPPER(APEX_JSON.get_varchar2(p_path=>'categories[%d]', p0=>i)) AS cc FROM dual) s
+       ON (m.job_name = s.jn AND m.category_code = s.cc)
+    WHEN NOT MATCHED THEN INSERT (job_name, category_code) VALUES (s.jn, s.cc);
+  END LOOP;
   COMMIT;
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header;
@@ -651,6 +677,18 @@ BEGIN
     APEX_JSON.write('runStatus', r.run_status);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
     APEX_JSON.write('claimedAt', TO_CHAR( dct_to_local(r.claimed_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.open_array('categories');
+    FOR c IN (SELECT m.category_code, cat.name_en, cat.name_ar, cat.color
+                FROM atd_job_category_map m JOIN atd_job_category cat ON cat.category_code = m.category_code
+               WHERE m.job_name = [COLON]name ORDER BY cat.display_order, cat.category_code) LOOP
+      APEX_JSON.open_object;
+      APEX_JSON.write('code', c.category_code);
+      APEX_JSON.write('name', c.name_en);
+      APEX_JSON.write('nameAr', NVL(c.name_ar,''));
+      APEX_JSON.write('color', NVL(c.color,''));
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
     APEX_JSON.open_array('history');
     FOR h IN (SELECT * FROM (
                 SELECT run_id, status, row_count,
@@ -710,6 +748,16 @@ BEGIN
     updated_at      = SYSTIMESTAMP
   WHERE job_name = [COLON]name;
   l_n := SQL%ROWCOUNT;
+  -- category tags: replace-set only when the key is present (omit = leave unchanged)
+  IF l_n > 0 AND APEX_JSON.does_exist(p_path=>'categories') THEN
+    DELETE FROM atd_job_category_map WHERE job_name = [COLON]name;
+    FOR i IN 1 .. NVL(APEX_JSON.get_count(p_path=>'categories'),0) LOOP
+      MERGE INTO atd_job_category_map m
+      USING (SELECT [COLON]name AS jn, UPPER(APEX_JSON.get_varchar2(p_path=>'categories[%d]', p0=>i)) AS cc FROM dual) s
+         ON (m.job_name = s.jn AND m.category_code = s.cc)
+      WHEN NOT MATCHED THEN INSERT (job_name, category_code) VALUES (s.jn, s.cc);
+    END LOOP;
+  END IF;
   COMMIT;
   IF l_n = 0 THEN dct_rest.err(404,'Job not found'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output;

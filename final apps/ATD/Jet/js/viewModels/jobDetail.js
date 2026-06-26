@@ -20,6 +20,11 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.noop = function () {};
 
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
+    self.chipStyle = function (color) { return { background: color || '#6B7280', color: '#fff' }; };
+    self.catLabel = function (c) {
+      var ar = (i18n.lang && i18n.lang() === 'ar');
+      return (ar ? (c.nameAr || c.name) : c.name) || c.code;
+    };
     self.back = function () { window._jetApp.navigate('jobs'); };
 
     self.refresh = function () {
