@@ -50,6 +50,26 @@ Tag jobs with any number of **categories** (ATD-native lookup) to simplify job m
   tag/untag a job, list Category column + chips, category filter, drawer header actions, Arabic RTL
   in the drawer — all verified end-to-end (UI→ORDS→DB), test self-cleaned (no prod residue).
 
+## 2026-06-26 — Unqualified stage table → ORA-00942 (blank source headers)
+
+- **Symptom:** a new job (AP_INVOICES_F) showed every SOURCE HEADER blank on the schema-review
+  page. Root cause: the user typed the stage table as `ATD_AP_INVOICES` (no schema prefix) in the
+  create form, and it was stored verbatim. The runner connects as **ADMIN**, so the bare name
+  resolved to `ADMIN.ATD_AP_INVOICES` → every run failed `ORA-00942` in prepare/reconcile →
+  `column_map_json` never persisted → no headers. (Minimal-create jobs auto-get `PROD.`; only a
+  user-typed bare name hit this.)
+- **Fixes:**
+  - Data: `UPDATE atd_otbi_jobs SET stage_table='PROD.ATD_AP_INVOICES'` for the affected job, and
+    reset it to READY (audited all jobs — no other unqualified stage/final names).
+  - Runner (`prepare.py`, deployed to all 3 VMs + restart): new `qualify(table)` defaults any
+    UNqualified staging/final table name to `PROD.<name>` in both prepare paths (create + drift,
+    oracledb + sqlcl); the qualified name is persisted back, so the stored value self-heals on the
+    first prepare. Compile-verified on each VM; all `active`.
+  - Frontend (committed): the job-detail review banner now distinguishes prepared vs not — a held
+    job with an empty map reads "Not prepared yet …" instead of falsely claiming "prepared".
+- **Note:** the stale-RUNNING reaper (`_reap_stale_runs`) was already deployed on all 3 VMs and is
+  working; run 1456 ended on the real ORA-00942, not as a reaped orphan (correct behaviour).
+
 ## 2026-06-26 — Dashboard scoped to real job loads
 
 - **Recent Runs / Alerts / 24h KPIs showed phantom rows for deleted jobs (db/13, redeployed).**

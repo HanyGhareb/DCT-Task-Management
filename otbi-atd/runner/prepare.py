@@ -123,6 +123,15 @@ def slug(text):
     return n[:26]
 
 
+def qualify(table):
+    """Default an UNqualified table name to the PROD schema. The runner connects as
+    ADMIN, so a bare name (e.g. a user-typed 'ATD_AP_INVOICES' in the job form) would
+    resolve to ADMIN.<name> and fail ORA-00942 — every managed staging/final table
+    lives in PROD. An already-qualified ('owner.name') or empty value is left as-is."""
+    t = (table or "").strip()
+    return t if (not t or "." in t) else "PROD." + t
+
+
 def derive_table(path):
     """PROD.ATD_<leaf> table name from an analysis path."""
     leaf = (path or "").rstrip("/").split("/")[-1]
@@ -404,10 +413,10 @@ def ensure_prepared_oracledb(conn, job, csv_text):
     cols, n = profile(csv_text)
     cur = conn.cursor()
     if _needs_prep(job):
-        stage = (job.get("stage_table") or "").strip() or ("PROD." + derive_table(job.get("source_ref", "")))
+        stage = qualify(job.get("stage_table")) or ("PROD." + derive_table(job.get("source_ref", "")))
         cmap = json.dumps(column_map(cols), ensure_ascii=False)
         recon = []
-        for tbl in [stage, (job.get("final_table") or "").strip()]:
+        for tbl in [stage, qualify(job.get("final_table"))]:
             if not tbl:
                 continue
             if _table_exists_ora(conn, tbl):
@@ -433,10 +442,10 @@ def ensure_prepared_oracledb(conn, job, csv_text):
         return recon
 
     cur_map = json.loads(job["column_map_json"])
-    table_cols = _table_columns_ora(conn, job["stage_table"])
+    table_cols = _table_columns_ora(conn, qualify(job["stage_table"]))
     adds, widens, removed, incompat, new_map = _plan_drift(cols, cur_map, table_cols)
     if adds or widens:
-        for tbl in [job["stage_table"], (job.get("final_table") or "").strip()]:
+        for tbl in [qualify(job["stage_table"]), qualify(job.get("final_table"))]:
             if not tbl:
                 continue
             for h, name, typ in adds:
@@ -482,9 +491,9 @@ def ensure_prepared_sqlcl(job, csv_text):
     import sqlrun
     cols, n = profile(csv_text)
     if _needs_prep(job):
-        stage = (job.get("stage_table") or "").strip() or ("PROD." + derive_table(job.get("source_ref", "")))
+        stage = qualify(job.get("stage_table")) or ("PROD." + derive_table(job.get("source_ref", "")))
         cmap = json.dumps(column_map(cols), ensure_ascii=False)
-        for tbl in [stage, (job.get("final_table") or "").strip()]:
+        for tbl in [stage, qualify(job.get("final_table"))]:
             if tbl and not _table_exists_sqlcl(tbl):
                 sqlrun.run_sql(create_table_sql(tbl, cols) + ";")
         jn = job["job_name"].replace("'", "''"); cm = cmap.replace("'", "''")
@@ -497,11 +506,11 @@ def ensure_prepared_sqlcl(job, csv_text):
         return []
 
     cur_map = json.loads(job["column_map_json"])
-    table_cols = _table_columns_sqlcl(job["stage_table"])
+    table_cols = _table_columns_sqlcl(qualify(job["stage_table"]))
     adds, widens, removed, incompat, new_map = _plan_drift(cols, cur_map, table_cols)
     if adds or widens:
         ddl = []
-        for tbl in [job["stage_table"], (job.get("final_table") or "").strip()]:
+        for tbl in [qualify(job["stage_table"]), qualify(job.get("final_table"))]:
             if not tbl:
                 continue
             for h, name, typ in adds:
