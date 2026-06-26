@@ -186,6 +186,8 @@
   "atd.action.close": "إغلاق",
   "atd.cat.label": "الفئات",
   "atd.cat.manage": "إدارة الفئات",
+  "atd.cat.newCat": "فئة جديدة",
+  "atd.cat.existing": "الفئات الحالية",
   "atd.cat.all": "كل الفئات",
   "atd.cat.assign": "الفئات",
   "atd.cat.none": "لا توجد فئات",

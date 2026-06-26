@@ -186,6 +186,8 @@
   "atd.action.close": "Close",
   "atd.cat.label": "Categories",
   "atd.cat.manage": "Manage Categories",
+  "atd.cat.newCat": "New category",
+  "atd.cat.existing": "Existing categories",
   "atd.cat.all": "All categories",
   "atd.cat.assign": "Categories",
   "atd.cat.none": "No categories",

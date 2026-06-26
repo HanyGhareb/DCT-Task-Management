@@ -47,9 +47,11 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
     `GET /jobs?category=CODE`).
   - Drawer **category picker** (`fmCategories`, toggle chips) — sent as `categories:[codes]` on
     create/update (replace-set).
-  - **Manage Categories** modal (`openCatMgr`/`editCat`/`saveCat`/`delCat`): list / add / rename /
-    color / order / activate-deactivate, over `/categories`. Delete is blocked while in use (→
-    deactivate). Chips localize EN/AR (`catLabel`) and colour from the category (`chipStyle`).
+  - **Manage Categories** right-edge **drawer** (shared `.ed-*` chrome; `openCatMgr`/`editCat`/
+    `saveCat`/`delCat`) with **New · Close · Save** actions in the drawer header: add / edit form +
+    the existing-categories list (rename / color / order / activate-deactivate), over `/categories`.
+    Delete is blocked while in use (→ deactivate). Chips localize EN/AR (`catLabel`) and colour from
+    the category (`chipStyle`).
 
 ## Job detail (`jobDetail`)
 - `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)` ·

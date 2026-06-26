@@ -15,10 +15,13 @@ Tag jobs with any number of **categories** (ATD-native lookup) to simplify job m
   `categories:[codes]` (PUT = replace-set). **Redeploy ran `13 → 20 → 26 → 31 → 32`** (32 is
   additive and must follow any 13 rebuild — the chain is now five scripts). Verified all 12 handlers
   registered; tag round-trip + filter + PK-dup-block + delete-in-use guard all pass.
-- **Frontend:** Jobs list Category column + filter + **Manage Categories** modal; drawer category
-  picker (toggle chips, no cap); jobDetail chips. Colored EN/AR chips. `atdService` category CRUD;
-  `app.css` `.cat-chip*`/`.cat-swatch`; EN/AR i18n; APP_VERSION 1.13.0. (Static-verified: JS/JSON
-  clean; DB+ORDS live-verified.)
+- **Frontend:** Jobs list Category column + filter + **Manage Categories** right-edge **drawer**
+  (shared `.ed-*` chrome, New/Close/Save in the header — APP_VERSION **1.13.1**); drawer category
+  picker on the job form (toggle chips, no cap); jobDetail chips. Colored EN/AR chips. `atdService`
+  category CRUD; `app.css` `.cat-chip*`/`.cat-swatch`; EN/AR i18n.
+- **Live browser smoke test PASSED 11/11** (Playwright, SYS_ADMIN): create/edit/delete category,
+  tag/untag a job, list Category column + chips, category filter, drawer header actions, Arabic RTL
+  in the drawer — all verified end-to-end (UI→ORDS→DB), test self-cleaned (no prod residue).
 
 ## 2026-06-25/26 — Production-workload hardening (Phases 0–2) + Track A spike
 
