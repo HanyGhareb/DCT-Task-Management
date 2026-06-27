@@ -1459,11 +1459,12 @@ BEGIN
     JOIN   dct_approval_templates t   ON t.template_id  = ai.template_id
     JOIN   dct_approval_steps     ast ON ast.template_id = ai.template_id
                                      AND ast.step_seq    = ai.current_step_seq
-    JOIN   dct_roles              rol ON rol.role_id     = ast.required_role_id
+    LEFT JOIN dct_roles           rol ON rol.role_id     = ast.required_role_id
     JOIN   dct_users              sub ON sub.user_id     = ai.submitted_by
     WHERE  ai.overall_status = 'PENDING'
       AND (INSTR(l_roles, ',' || rol.role_code || ',') > 0
            OR INSTR(l_roles, ',SYS_ADMIN,') > 0
+           OR (ast.step_type = 'USER_SPECIFIC' AND ai.dynamic_approver_user_id = l_uid)
            OR EXISTS (
                 SELECT 1 FROM dct_delegations dg
                 JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id

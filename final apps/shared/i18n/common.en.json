@@ -1,4 +1,10 @@
 {
+  "set.grp.ai": "Document AI",
+  "set.grp.selfreg": "Self-Registration",
+  "set.grp.uploads": "Document Uploads",
+  "set.grp.notif": "Notifications",
+  "set.grp.features": "Features",
+  "set.grp.general": "General",
   "suite.name": "i-Finance",
   "suite.modules": "i-Finance modules",
   "shell.soon": "soon",

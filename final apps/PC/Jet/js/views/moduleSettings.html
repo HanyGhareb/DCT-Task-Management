@@ -95,9 +95,9 @@
   <!-- /ko -->
 
   <!-- ── Module settings ───────────────────────────────────────────────── -->
-  <!-- ko if: items().length -->
-  <div class="card">
-    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('set.general')"></div>
+  <!-- ko foreach: groups -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t(titleKey)"></div>
     <!-- ko foreach: items -->
     <div class="switch-row">
       <div style="flex:1">

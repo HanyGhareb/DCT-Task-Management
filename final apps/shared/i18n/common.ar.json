@@ -1,4 +1,10 @@
 {
+  "set.grp.ai": "الذكاء الاصطناعي للمستندات",
+  "set.grp.selfreg": "التسجيل الذاتي",
+  "set.grp.uploads": "رفع المستندات",
+  "set.grp.notif": "الإشعارات",
+  "set.grp.features": "الميزات",
+  "set.grp.general": "عام",
   "suite.name": "آي-فاينانس",
   "suite.modules": "وحدات آي-فاينانس",
   "shell.soon": "قريباً",

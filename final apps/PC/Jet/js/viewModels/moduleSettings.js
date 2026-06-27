@@ -16,6 +16,32 @@ function (ko, settingService, regionPicker) {
     /* installs self.region/palette/borderColors/pickers/contrastInfo/previewRegion */
     var rp = regionPicker.install(self);
 
+    self.groups = ko.observableArray([]);   // settings grouped into themed cards
+    var GROUP_DEFS = [
+      { titleKey: 'set.grp.ai',       test: function (k) { return /^AI_/.test(k); } },
+      { titleKey: 'set.grp.selfreg',  keys: ['ALLOW_SELF_REGISTRATION', 'FEATURE_FL_PORTAL',
+              'REG_OTP_EXPIRY_MIN', 'REG_OTP_MAX_ATTEMPTS', 'REG_OTP_DEV_ECHO', 'DUP_BLOCK_ON_EXACT'] },
+      { titleKey: 'set.grp.uploads',  test: function (k) { return /UPLOAD/.test(k); } },
+      { titleKey: 'set.grp.notif',    test: function (k) { return /NOTIF/.test(k); } },
+      { titleKey: 'set.grp.features', test: function (k) { return /^FEATURE_/.test(k); } }
+    ];
+    function groupItems(list) {
+      var used = {}, groups = [];
+      GROUP_DEFS.forEach(function (def) {
+        var gi = list.filter(function (it) {
+          if (used[it.settingKey]) return false;
+          var hit = def.keys ? def.keys.indexOf(it.settingKey) >= 0
+                             : (def.test && def.test(it.settingKey));
+          if (hit) used[it.settingKey] = true;
+          return hit;
+        });
+        if (gi.length) groups.push({ titleKey: def.titleKey, items: gi });
+      });
+      var leftover = list.filter(function (it) { return !used[it.settingKey]; });
+      if (leftover.length) groups.push({ titleKey: 'set.grp.general', items: leftover });
+      return groups;
+    }
+
     function makeItem(s) {
       // APEX_JSON omits NULL fields — default every bound key first
       s = Object.assign({
@@ -60,6 +86,7 @@ function (ko, settingService, regionPicker) {
         else rest.push(item);
       });
       self.items(rest);
+      self.groups(groupItems(rest));
       rp.setRegion(regionItems);
     }
 
