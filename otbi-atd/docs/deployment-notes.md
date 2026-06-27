@@ -1,5 +1,37 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-06-27 — Fusion session auto-heal: keep-alive + cross-worker failover (App 208, APP_VERSION 1.15.3)
+
+The recurring "session expired mid-run" failure (Fusion SSO/MFA session dies between sparse
+jobs or at its absolute lifetime) is now largely self-healing — two layers on top of the
+existing once-daily relogin + aging nudge:
+
+- **Tier 1 — keep-alive (prevention).** An idle `--forever` worker pings its warm Fusion
+  session every `ATD_SESSION_KEEPALIVE_MIN` min (**default 3** — comfortably under any OBIEE
+  idle timeout) via the cheap `auth._validate` GET, which resets OBIEE's idle timer (no MFA).
+  A live session never idle-expires between jobs. A ping that fails for `ATD_KEEPALIVE_STRIKES`
+  **consecutive** tries (default 2 — a 2-strike guard so a transient network blip doesn't trigger
+  a needless MFA) marks the session dead → pauses claiming + self-heals via a **rate-limited
+  forced re-login** (one MFA, gated by `ATD_REAUTH_COOLDOWN`).
+- **Tier 2 — cross-worker failover (resilience).** A mid-run session bounce is logged
+  **`REQUEUED`** (neutral, not `FAILED` → no chronic-fail alert) and the job is **released back
+  to the queue** (`atd_queue_pkg.release_job`) for a peer with a healthy session — instead of
+  being consumed as FAILED. The bouncing worker pauses claiming until it re-auths. Budget
+  `ATD_REQUEUE_MAX` (default 6) cross-worker bounces/60 min, then the job is marked FAILED so a
+  genuinely stuck job still surfaces.
+- **Unavoidable:** the *first* recovery after every session death still needs **one Telegram MFA
+  approval** (SSO is MFA-gated) — but only one, and keep-alive then holds the session open.
+- **DB:** `db/12` (+ `release_job` in `atd_queue_pkg`, recompiled VALID — additive, backward-
+  compatible with the old runner) + `db/35` (MERGE-seed `ATD_SESSION_KEEPALIVE_MIN` +
+  `ATD_REQUEUE_MAX`, UI-editable on Runner Settings; also added to `db/14` for fresh installs).
+  No ORDS rebuild needed (queue pkg isn't ORDS).
+- **Runner — DEPLOYED to all 3 VMs 2026-06-27:** `runner.py` only (keep-alive block, `_relogin`
+  + `_recent_requeues` helpers, session-bounce → REQUEUED/release, claim gating on a dead
+  session). scp + `systemctl restart atd-worker`; all `active`, `[config] applied 25 runner
+  settings` (was 23 → the 2 new keys load).
+- **Frontend:** neutral `REQUEUED` status pill (`app.css` `.rstat--REQUEUED`, ↻) + REQUEUED/HELD
+  added to the Run Logs status filter. APP_VERSION 1.15.3.
+
 ## 2026-06-27 — Unlabelled-OTBI-column fix + editable source header (App 208, APP_VERSION 1.15.1)
 
 OTBI sometimes exports a column with **no heading**. The column map was keyed by header, so

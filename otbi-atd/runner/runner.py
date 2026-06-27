@@ -174,16 +174,17 @@ def _make_run_one_oracledb(conn, load):
             print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
             return True
         except extract.SessionExpired:
-            # The warm session died mid-run. Log THIS attempt as FAILED, then re-raise
-            # so the worker can refresh the session (one MFA push) and retry the job.
-            # Roll back the uncommitted load first (same reason as the general case).
+            # The warm session died mid-run. Log THIS attempt as REQUEUED (neutral,
+            # retryable — NOT a FAILED, so it doesn't trip the chronic-failure alert),
+            # then re-raise so the worker re-auths (one MFA) and/or hands the job to a
+            # healthy peer. Roll back the uncommitted load first (general-case reason).
             try:
                 conn.rollback()
             except Exception:  # noqa: BLE001
                 pass
-            _log_end(conn, run_id, "FAILED",
-                     msg="; ".join(drift + ["session expired mid-run; re-authenticating"])[:3900])
-            print(f"[FAIL] {name}: session expired mid-run; re-authenticating")
+            _log_end(conn, run_id, "REQUEUED",
+                     msg="; ".join(drift + ["session expired mid-run; requeued for retry"])[:3900])
+            print(f"[requeue] {name}: session expired mid-run; requeued for retry")
             raise
         except Exception as e:  # noqa: BLE001
             # discard the failed (uncommitted) delete+insert so the table keeps its
@@ -420,6 +421,42 @@ def _post_mark_health(conn, host, vm, job, ok):
         print(f"[worker {host}] health-check error: {e}", flush=True)
 
 
+def _relogin(p, host, en, envd, ctx_by_env, browser_by_env, browsers):
+    """Drop env `en`'s cached browser and FORCE a fresh Fusion login (one MFA push).
+    Returns True on success. Shared by the mid-run self-heal and the idle keep-alive."""
+    dead = browser_by_env.pop(en, None)
+    ctx_by_env.pop(en, None)
+    if dead:
+        try:
+            dead.close()
+        except Exception:  # noqa: BLE001
+            pass
+    try:
+        browser, ctx = auth.authenticate(p, envd, force=True)
+        browsers.append(browser)
+        browser_by_env[en] = browser
+        ctx_by_env[en] = (envd, ctx)
+        print(f"[worker {host}] re-login OK ({en})", flush=True)
+        return True
+    except Exception as e:  # noqa: BLE001 (incl. MFA-not-approved / still expired)
+        print(f"[worker {host}] re-login failed ({en}): {e}", flush=True)
+        return False
+
+
+def _recent_requeues(conn, job, minutes=60):
+    """How many times this job bounced on a dead session (REQUEUED) in the last
+    `minutes` — the cross-worker failover budget guard. Best-effort -> 0 on error."""
+    try:
+        cur = conn.cursor()
+        cur.execute("select count(*) from prod.atd_load_run_log "
+                    "where job_name=:j and status='REQUEUED' "
+                    "  and started > CAST(SYSTIMESTAMP AS TIMESTAMP) - NUMTODSINTERVAL(:m,'MINUTE')",
+                    j=job, m=minutes)
+        return cur.fetchone()[0]
+    except Exception:  # noqa: BLE001
+        return 0
+
+
 def _enqueue(conn, only):
     n = conn.cursor().callfunc("prod.atd_queue_pkg.enqueue", int, [only])
     print(f"[enqueue] marked {n} job(s) READY" + (f" ({only})" if only else ""))
@@ -438,6 +475,13 @@ def _run_worker(conn, load, forever):
     browsers = []
     reauth_at = {}          # env_name -> monotonic time of last self-heal re-auth attempt
     reauth_cooldown = int(os.environ.get("ATD_REAUTH_COOLDOWN", "1800"))  # 30 min
+    # Tier 1 (keep-alive) + Tier 2 (cross-worker failover) session auto-heal.
+    keepalive_min = float(os.environ.get("ATD_SESSION_KEEPALIVE_MIN", "3") or 0)
+    keepalive_strikes = max(1, int(os.environ.get("ATD_KEEPALIVE_STRIKES", "2") or 2))
+    requeue_max   = int(os.environ.get("ATD_REQUEUE_MAX", "6") or 0)
+    last_keepalive = 0.0
+    session_dead = {}       # env_name -> True while its session is known dead (pause claiming)
+    ping_fails = {}         # env_name -> consecutive failed keep-alive pings (2-strike guard)
     # crash recovery: return any jobs left CLAIMED by a dead worker past the lease
     reaped = conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
     print(f"[worker {host}] starting (lease={lease}m, forever={forever}"
@@ -448,7 +492,10 @@ def _run_worker(conn, load, forever):
                 # Break window: pause ALL work (claim nothing; in-flight jobs already
                 # claimed will have finished). Resumes automatically at break-end.
                 in_break = _in_break(conn)
-                name = None if in_break else conn.cursor().callfunc(
+                # While THIS host's session is dead, stop claiming so a peer with a
+                # healthy session drains the queue (we re-auth on the idle path below).
+                hold_claim = bool(session_dead)
+                name = None if (in_break or hold_claim) else conn.cursor().callfunc(
                     "prod.atd_queue_pkg.claim_next", str, [host])
                 if not name:
                     if forever:
@@ -462,6 +509,51 @@ def _run_worker(conn, load, forever):
                         _reap_stale_runs(conn, int(os.environ.get("ATD_RUN_REAP_MINUTES", "60")))
                         _alert_stale_workers(conn)
                         _alert_aging_session(conn, host, vm, in_break)
+                        # Tier 1: keep warm sessions alive so they don't idle-expire
+                        # between sparse jobs (a cheap authenticated GET resets OBIEE's
+                        # idle timer — no MFA). If a ping finds the session already dead,
+                        # mark it (pauses claiming) and self-heal via a rate-limited
+                        # forced re-login (one MFA), so the fix is automatic.
+                        if keepalive_min > 0 and not in_break and ctx_by_env:
+                            now = time.monotonic()
+                            if (now - last_keepalive) >= keepalive_min * 60:
+                                last_keepalive = now
+                                for en, (envd, c) in list(ctx_by_env.items()):
+                                    alive = False
+                                    try:
+                                        alive = auth._validate(c, envd)
+                                    except Exception as e:  # noqa: BLE001
+                                        print(f"[worker {host}] keepalive error ({en}): {e}", flush=True)
+                                    if alive:
+                                        ping_fails[en] = 0
+                                        if session_dead.pop(en, None):
+                                            print(f"[worker {host}] keepalive: {en} recovered", flush=True)
+                                    else:
+                                        # 2-strike guard: one failed ping can be a transient blip,
+                                        # so only declare the session dead (-> pause claiming + MFA
+                                        # re-login) after N consecutive misses.
+                                        ping_fails[en] = ping_fails.get(en, 0) + 1
+                                        if ping_fails[en] >= keepalive_strikes:
+                                            if not session_dead.get(en):
+                                                print(f"[worker {host}] keepalive: {en} session dead "
+                                                      f"({ping_fails[en]} consecutive misses)", flush=True)
+                                            session_dead[en] = True
+                                        else:
+                                            print(f"[worker {host}] keepalive: {en} ping miss "
+                                                  f"{ping_fails[en]}/{keepalive_strikes} (transient?)", flush=True)
+                        for en in list(session_dead):
+                            now = time.monotonic()
+                            if now - reauth_at.get(en, 0.0) < reauth_cooldown:
+                                continue
+                            reauth_at[en] = now
+                            envd = (ctx_by_env.get(en) or (None,))[0]
+                            if not envd:
+                                d = config.get_default_browser_env(conn)
+                                envd = ({"env_name": en, "analytics_base_url": d["analytics_base_url"],
+                                         "credential_ref": d.get("credential_ref") or en} if d else None)
+                            if envd and _relogin(p, host, en, envd, ctx_by_env, browser_by_env, browsers):
+                                session_dead.pop(en, None)
+                                ping_fails[en] = 0
                         if not in_break:
                             try:
                                 # reuse the worker's warm Playwright (p) — opening a
@@ -489,44 +581,53 @@ def _run_worker(conn, load, forever):
                     ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
                 env, ctx = ctx_by_env[env_name]
                 _heartbeat(conn, "BUSY", name)
+                session_bounce = False
                 try:
                     ok = run_one(ctx, env, job)
                 except extract.SessionExpired as se:
-                    # The cached warm session died mid-life. Drop it, FORCE a fresh
-                    # login (sends ONE MFA push) and retry the job once — so the fleet
-                    # self-heals after a single approval instead of failing every job
-                    # until someone manually restarts the worker. A cooldown stops an
-                    # un-approved expiry (e.g. overnight) from re-prompting MFA / blocking
-                    # the worker on every cycle.
+                    # The cached warm session died mid-run. Try a rate-limited forced
+                    # re-login (one MFA) + a single retry on THIS host; if that doesn't
+                    # land, fall through to hand the job back to the queue (Tier 2) so a
+                    # peer with a healthy session retries it (cooldown stops an un-approved
+                    # expiry from re-prompting MFA every cycle).
                     ok = False
+                    session_bounce = True
                     now = time.monotonic()
                     if now - reauth_at.get(env_name, 0.0) < reauth_cooldown:
                         wait = int(reauth_cooldown - (now - reauth_at.get(env_name, 0.0)))
-                        print(f"[worker {host}] {name}: {se} -> session dead, re-auth on "
-                              f"cooldown ({wait}s left); failing without re-prompt")
+                        print(f"[worker {host}] {name}: {se} -> re-auth on cooldown "
+                              f"({wait}s left); handing back to the queue")
                     else:
                         reauth_at[env_name] = now
                         print(f"[worker {host}] {name}: {se} -> re-authenticating (forced)")
-                        dead = browser_by_env.pop(env_name, None)
-                        ctx_by_env.pop(env_name, None)
-                        if dead:
-                            try:
-                                dead.close()
-                            except Exception:  # noqa: BLE001
-                                pass
-                        try:
-                            browser, ctx = auth.authenticate(p, _env_of(job, env_name), force=True)
-                            browsers.append(browser)
-                            browser_by_env[env_name] = browser
-                            ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
+                        if _relogin(p, host, env_name, _env_of(job, env_name),
+                                    ctx_by_env, browser_by_env, browsers):
                             env, ctx = ctx_by_env[env_name]
-                            ok = run_one(ctx, env, job)        # retry once, fresh session
-                        except Exception as e:  # noqa: BLE001 (incl. MFA-not-approved / still expired)
-                            print(f"[worker {host}] {name}: re-auth/retry failed: {e}")
-                            ok = False
-                conn.cursor().callproc(
-                    "prod.atd_queue_pkg." + ("mark_done" if ok else "mark_failed"), [name])
-                _post_mark_health(conn, host, vm, name, ok)   # chronic-failure alert / clear
+                            try:
+                                ok = run_one(ctx, env, job)        # retry once, fresh session
+                                session_bounce = not ok
+                            except extract.SessionExpired:
+                                ok = False
+                            except Exception as e:  # noqa: BLE001
+                                print(f"[worker {host}] {name}: retry failed: {e}")
+                                ok = False
+                if ok:
+                    session_dead.pop(env_name, None)
+                    ping_fails[env_name] = 0
+                    conn.cursor().callproc("prod.atd_queue_pkg.mark_done", [name])
+                    _post_mark_health(conn, host, vm, name, True)   # clears the job's fail flag
+                elif session_bounce and requeue_max > 0 and _recent_requeues(conn, name) < requeue_max:
+                    # cross-worker failover: pause claiming here, release the job READY.
+                    session_dead[env_name] = True
+                    conn.cursor().callproc("prod.atd_queue_pkg.release_job", [name])
+                    print(f"[worker {host}] {name}: released back to the queue "
+                          f"(session dead) -> a healthy worker will retry", flush=True)
+                else:
+                    if session_bounce:
+                        session_dead[env_name] = True
+                        print(f"[worker {host}] {name}: requeue budget exhausted -> FAILED", flush=True)
+                    conn.cursor().callproc("prod.atd_queue_pkg.mark_failed", [name])
+                    _post_mark_health(conn, host, vm, name, False)  # chronic-failure alert
                 processed += 1
                 failures += 0 if ok else 1
         finally:

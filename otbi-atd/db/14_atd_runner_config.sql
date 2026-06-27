@@ -57,6 +57,12 @@ INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_v
   VALUES ('ATD_TRUNCATION_CAPS', '25000,50000,65000,75000,100000,250000,500000', 'STRING', NULL, 'Row counts that flag a likely OTBI export truncation', 80);
 INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
   VALUES ('ATD_EXPECTED_MIN', '', 'NUMBER', NULL, 'Warn if a load returns fewer rows than this (0/blank = off)', 90);
+INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
+  VALUES ('ATD_SESSION_KEEPALIVE_MIN', '3', 'NUMBER', NULL, 'Minutes between idle keep-alive pings that keep the Fusion session warm so it does not idle-expire between jobs (0 = off)', 55);
+INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
+  VALUES ('ATD_KEEPALIVE_STRIKES', '2', 'NUMBER', NULL, 'Consecutive failed keep-alive pings before a session is declared dead (guards against a transient blip triggering a needless MFA)', 56);
+INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
+  VALUES ('ATD_REQUEUE_MAX', '6', 'NUMBER', NULL, 'On a session-expiry bounce, how many times a job is handed back to the queue for a healthy worker before it is marked FAILED', 57);
 COMMIT;
 
 SET ECHO OFF

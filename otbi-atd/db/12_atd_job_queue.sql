@@ -63,6 +63,10 @@ CREATE OR REPLACE PACKAGE prod.atd_queue_pkg AS
   -- Mark a claimed job DONE / FAILED (records the run log id when known).
   PROCEDURE mark_done  (p_job VARCHAR2, p_run_id NUMBER DEFAULT NULL);
   PROCEDURE mark_failed(p_job VARCHAR2, p_run_id NUMBER DEFAULT NULL);
+  -- Hand a claimed job BACK to the queue (-> READY) WITHOUT marking it failed/done.
+  -- Used when a worker's Fusion session died mid-run so a peer with a healthy session
+  -- retries it (cross-worker failover) instead of the job being consumed as FAILED.
+  PROCEDURE release_job(p_job VARCHAR2);
   -- Queue (mark READY) all enabled jobs, or one named job. Returns count.
   FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER;
   -- Atomically claim the next QUEUED subject-area discovery (-> SCRAPING); SKIP LOCKED.
@@ -130,6 +134,14 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
      WHERE job_name = p_job;
     COMMIT;
   END mark_failed;
+
+  PROCEDURE release_job(p_job VARCHAR2) IS
+  BEGIN
+    UPDATE prod.atd_otbi_jobs
+       SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL
+     WHERE job_name = p_job;
+    COMMIT;
+  END release_job;
 
   FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
     n        NUMBER;

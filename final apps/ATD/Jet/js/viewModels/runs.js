@@ -10,7 +10,7 @@ function (ko, atd, api, i18n, toast, fmtDuration) {
     self.total = ko.observable(0);
     self.jobs = ko.observableArray([]);
     // WARNING = a SUCCESS run that carries a message (server interprets it specially)
-    self.statuses = ['SUCCESS', 'WARNING', 'FAILED', 'RUNNING'];
+    self.statuses = ['SUCCESS', 'WARNING', 'FAILED', 'REQUEUED', 'HELD', 'RUNNING'];
 
     self.fJob = ko.observable(''); self.fStatus = ko.observable('');
     self.fFrom = ko.observable(''); self.fTo = ko.observable('');
