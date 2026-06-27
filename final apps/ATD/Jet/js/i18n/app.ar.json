@@ -270,6 +270,7 @@
   "atd.schema.tableName": "اسم الجدول",
   "atd.schema.noTable": "لا يوجد جدول بعد — شغّل المهمة مرة لإنشائه ثم راجعه هنا.",
   "atd.schema.col.header": "ترويسة المصدر",
+  "atd.schema.unnamedHdr": "(بدون اسم في OTBI — اكتب ترويسة)",
   "atd.schema.col.name": "اسم العمود",
   "atd.schema.col.type": "نوع البيانات",
   "atd.schema.col.sample": "قيمة عينة",

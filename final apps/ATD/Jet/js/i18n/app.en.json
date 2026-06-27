@@ -270,6 +270,7 @@
   "atd.schema.tableName": "Table name",
   "atd.schema.noTable": "No table yet — run the job once to create it, then review here.",
   "atd.schema.col.header": "Source header",
+  "atd.schema.unnamedHdr": "(unnamed in OTBI — type a header)",
   "atd.schema.col.name": "Column name",
   "atd.schema.col.type": "Data type",
   "atd.schema.col.sample": "Sample value",

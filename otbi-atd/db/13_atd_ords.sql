@@ -983,6 +983,7 @@ DECLARE
   l_tbl    VARCHAR2(128);
   l_owner  VARCHAR2(128); l_tname VARCHAR2(128); l_dot NUMBER;
   l_cnt    NUMBER; l_name VARCHAR2(128); l_type VARCHAR2(60); l_hdr VARCHAR2(400);
+  l_key    VARCHAR2(400);
   l_ddl    CLOB := ''; l_map CLOB := ''; l_n NUMBER := 0;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
@@ -1014,11 +1015,17 @@ BEGIN
         '^(NUMBER(\([0-9]+(,[0-9]+)?\))?|VARCHAR2\([0-9]+\)|CHAR\([0-9]+\)|DATE|TIMESTAMP(\([0-9]+\))?|CLOB)$') THEN
       dct_rest.err(400,'Invalid data type for '||l_name||': '||l_type); RETURN; END IF;
     l_ddl := l_ddl || CASE WHEN LENGTH(l_ddl) > 0 THEN ', ' END || l_name || ' ' || l_type;
-    IF l_hdr IS NOT NULL THEN
-      l_map := l_map || CASE WHEN l_n > 0 THEN ',' END ||
-               '"'||REPLACE(REPLACE(l_hdr,'\','\\'),'"','\"')||'":"'||l_name||'"';
-      l_n := l_n + 1;
+    -- map key: a real source header keys by itself; an unlabelled OTBI column keys
+    -- by a positional sentinel (#__blankcol_<pos>__) so multiple blanks don't collide
+    -- onto one '' key (which silently dropped all but the last). pos = CSV ordinal = i
+    -- (editor columns are in column_id/CSV order; LOAD_TS is excluded above).
+    IF l_hdr IS NOT NULL AND TRIM(l_hdr) IS NOT NULL THEN
+      l_key := REPLACE(REPLACE(l_hdr,'\','\\'),'"','\"');
+    ELSE
+      l_key := '#__blankcol_'||i||'__';
     END IF;
+    l_map := l_map || CASE WHEN l_n > 0 THEN ',' END || '"'||l_key||'":"'||l_name||'"';
+    l_n := l_n + 1;
   END LOOP;
 
   -- recreate the staging table from the approved definition (data is transient: it

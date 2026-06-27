@@ -79,6 +79,10 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.typeOptions = ['NUMBER', 'VARCHAR2(20)', 'VARCHAR2(40)', 'VARCHAR2(100)',
                         'VARCHAR2(400)', 'VARCHAR2(1000)', 'DATE', 'TIMESTAMP'];
 
+    // a positional sentinel (#__blankcol_<pos>__) means the OTBI column has no
+    // heading - show it as blank/placeholder so the user can type a real header.
+    function isBlankKey(h) { return /^#__blankcol_\d+__$/.test(h || ''); }
+
     self.loadSchema = function () {
       self.schemaLoading(true);
       atd.getSchema(name).then(function (s) {
@@ -91,7 +95,9 @@ function (ko, atd, i18n, toast, fmtDuration) {
         self.schemaCols((s.columns || []).map(function (c) {
           // surface the column's current type as an extra option so it's never lost
           if (self.typeOptions.indexOf(c.type) === -1) self.typeOptions.push(c.type);
-          return { header: rev[String(c.name).toUpperCase()] || '',
+          var hdr = rev[String(c.name).toUpperCase()] || '';
+          if (isBlankKey(hdr)) hdr = '';      // unlabelled in OTBI -> blank (editable)
+          return { header: ko.observable(hdr),
                    name: ko.observable(c.name),
                    type: ko.observable(c.type),
                    sample: c.sample || '' };
@@ -113,7 +119,9 @@ function (ko, atd, i18n, toast, fmtDuration) {
       var body = {
         tableName: self.schemaTable(),
         columns: self.schemaCols().map(function (c) {
-          return { header: c.header, name: c.name(), type: c.type() };
+          // a header typed here is saved into the map; left blank, the server stores
+          // a positional sentinel so the column survives (and loads by position)
+          return { header: (c.header() || '').trim() || null, name: c.name(), type: c.type() };
         })
       };
       atd.applySchema(name, body).then(function () {

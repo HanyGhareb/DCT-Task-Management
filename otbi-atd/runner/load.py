@@ -16,7 +16,7 @@ import json
 import os
 from datetime import datetime
 
-from prepare import clean_cell, coerce_number   # OBIEE numeric normalization (shared w/ profiler)
+from prepare import clean_cell, coerce_number, resolve_pairs   # shared w/ profiler
 
 DATE_FORMATS = ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S.%f",
                 "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d",
@@ -55,14 +55,15 @@ def _col_types(conn, table):
 
 
 def _parse_csv(csv_text, column_map):
-    reader = csv.DictReader(io.StringIO(csv_text))
-    headers = {h.strip().lower(): h for h in (reader.fieldnames or [])}
-    pairs = [(headers[k.strip().lower()], v)
-             for k, v in column_map.items() if k.strip().lower() in headers]
+    # positional reader: unlabelled OTBI columns (sentinel keys) resolve by CSV
+    # position, real headers by normalised text - so blank-header columns still load.
+    reader = csv.reader(io.StringIO(csv_text))
+    raw_headers = next(reader, [])
+    pairs = resolve_pairs(column_map, raw_headers)   # [(csv_index, TARGET_COL)]
     if not pairs:
         raise RuntimeError("no column_map header matched the CSV")
-    target_cols = [v.upper() for _, v in pairs]
-    rows = [[clean_cell(r.get(src)) for src, _ in pairs] for r in reader]
+    target_cols = [v for _, v in pairs]
+    rows = [[clean_cell(r[idx]) if idx < len(r) else None for idx, _ in pairs] for r in reader]
     return target_cols, rows
 
 

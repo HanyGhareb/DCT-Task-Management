@@ -161,6 +161,54 @@ def colname(header, used, pos=None):
     return n
 
 
+# ---- unlabelled-column handling -----------------------------------------
+# OTBI sometimes exports a column with NO heading. Keying the column map by header
+# would then collapse every blank header onto one '' key, so only the last survives
+# (the others vanish from the map -> blank source header in the editor + re-added as
+# drift every run). Instead, an unlabelled column keys by a POSITIONAL sentinel
+# (#__blankcol_<1-based CSV pos>__): distinct per column and stable across runs.
+BLANK_KEY_PREFIX = "#__blankcol_"
+
+
+def map_key(header, pos):
+    """Column-map key for a CSV column: a real header keys by itself; an unlabelled
+    (blank) header keys by a positional sentinel so blanks never collide."""
+    h = (header or "").strip()
+    return h if h else f"{BLANK_KEY_PREFIX}{pos}__"
+
+
+def is_blank_key(k):
+    """True for a positional sentinel produced by map_key for an unlabelled column."""
+    return isinstance(k, str) and bool(re.match(r"^#__blankcol_\d+__$", k))
+
+
+def blank_key_pos(k):
+    """The 1-based CSV position encoded in a sentinel key, or None."""
+    m = re.match(r"^#__blankcol_(\d+)__$", k or "")
+    return int(m.group(1)) if m else None
+
+
+def resolve_pairs(column_map, raw_headers):
+    """Map column_map entries to [(csv_index, TARGET_COL)] against the CSV's raw
+    header row. Real-header keys match by normalised header text; unlabelled
+    (sentinel) keys resolve by their stored 1-based CSV position. Shared by both
+    loaders so blank-header columns load their data positionally."""
+    norm = {}
+    for idx, h in enumerate(raw_headers):
+        norm.setdefault((h or "").strip().lower(), idx)
+    pairs = []
+    for k, v in column_map.items():
+        if is_blank_key(k):
+            pos = blank_key_pos(k)
+            if pos and 1 <= pos <= len(raw_headers):
+                pairs.append((pos - 1, v.upper()))
+        else:
+            i = norm.get((k or "").strip().lower())
+            if i is not None:
+                pairs.append((i, v.upper()))
+    return pairs
+
+
 def bucket(maxlen):
     want = max(int(maxlen * 1.5) + 1, 10)
     for b in LEN_BUCKETS:
@@ -266,8 +314,9 @@ def profile(csv_text):
 
 
 def column_map(cols):
-    """{CSV header -> target column name} from a profile()."""
-    return {c["header"]: c["name"] for c in cols}
+    """{CSV header -> target column name} from a profile(). Unlabelled columns key
+    by a positional sentinel (see map_key) so multiple blanks don't collide onto ''."""
+    return {map_key(c["header"], i + 1): c["name"] for i, c in enumerate(cols)}
 
 
 def create_table_sql(table, cols):
@@ -323,25 +372,26 @@ def _evolve(cur, live):
 def _plan_drift(cols, cur_map, table_cols):
     """Diff the live CSV (cols=profile()) against the stored map + table columns.
     Returns (adds, widens, removed, incompat, new_map)."""
-    by_header = {c["header"]: c for c in cols}
+    by_key = {map_key(c["header"], i + 1): c for i, c in enumerate(cols)}
     used = set(cur_map.values())
     adds, widens, removed, incompat = [], [], [], []
     new_map = dict(cur_map)
-    for c in cols:                       # columns the analysis grew
-        if c["header"] not in cur_map:
-            name = colname(c["header"], used)
-            adds.append((c["header"], name, c["type"]))
-            new_map[c["header"]] = name
-    for h in cur_map:                    # columns the analysis lost
-        if h not in by_header:
-            removed.append(h)
-    for h, col in cur_map.items():       # surviving columns: widen / flag
-        if h not in by_header:
+    for i, c in enumerate(cols):         # columns the analysis grew
+        k = map_key(c["header"], i + 1)
+        if k not in cur_map:
+            name = colname(c["header"], used, pos=i + 1)
+            adds.append((k, name, c["type"]))
+            new_map[k] = name
+    for k in cur_map:                    # columns the analysis lost
+        if k not in by_key:
+            removed.append(k)
+    for k, col in cur_map.items():       # surviving columns: widen / flag
+        if k not in by_key:
             continue
         meta = table_cols.get(col.upper())
         if not meta:
             continue
-        d = _evolve(meta, by_header[h])
+        d = _evolve(meta, by_key[k])
         if d and d[0] == "widen":
             widens.append((col, d[1]))
         elif d and d[0] == "incompat":
@@ -352,11 +402,13 @@ def _plan_drift(cols, cur_map, table_cols):
 def _drift_warnings(adds, widens, removed, incompat):
     w = []
     for h, name, typ in adds:
-        w.append(f"new column '{h}' added as {name} {typ}")
+        label = name if is_blank_key(h) else h
+        w.append(f"new column '{label}' added as {name} {typ}")
     for col, typ in widens:
         w.append(f"widened {col} -> {typ}")
     for h in removed:
-        w.append(f"column '{h}' no longer in the analysis - loading NULL")
+        label = "(unlabelled column)" if is_blank_key(h) else h
+        w.append(f"column '{label}' no longer in the analysis - loading NULL")
     for col, msg in incompat:
         w.append(f"{col}: {msg} - load may fail")
     return w

@@ -110,7 +110,8 @@
         </tr></thead>
         <tbody data-bind="foreach: schemaCols">
           <tr>
-            <td class="mono muted" data-bind="text: $data.header || '—'"></td>
+            <td><input class="form-control form-control--sm mono" data-bind="textInput: $data.header,
+                       attr: { placeholder: $vm.t('atd.schema.unnamedHdr') }"></td>
             <td><input class="form-control form-control--sm mono" data-bind="textInput: $data.name"></td>
             <td><select class="form-control form-control--sm mono" data-bind="value: $data.type, options: $vm.typeOptions"></select></td>
             <td class="mono muted truncate-cell" data-bind="text: $data.sample, attr:{ title: $data.sample }"></td>

@@ -1,5 +1,35 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-06-27 — Unlabelled-OTBI-column fix + editable source header (App 208, APP_VERSION 1.15.1)
+
+OTBI sometimes exports a column with **no heading**. The column map was keyed by header, so
+every blank header collapsed onto one `''` key — all but the last vanished from the map (→ blank
+"Source header" in the schema editor, re-added as drift every run) and the unlabelled columns
+**did not load their data** (the loaders matched map-key → CSV header, and `''` matched at most one).
+
+- **Fix (runner):** unlabelled columns now key by a **positional sentinel** `#__blankcol_<1-based CSV pos>__`
+  — distinct per column and stable across runs (survives renames). New `prepare.map_key` /
+  `is_blank_key` / `blank_key_pos` / **`resolve_pairs`** (shared); `column_map`, `_plan_drift`,
+  `_drift_warnings` use it. Both loaders (`load.py` `_parse_csv`, `loadsql.py` `_parse`) switched to a
+  **positional CSV reader** so blank-header columns load by position. Real-header jobs are byte-for-byte
+  unaffected (no blank keys → new branch never fires). Verified locally: 2-blank-header CSV → all cols
+  distinct, load positionally, re-run drift is a no-op (no re-add loop), rename survives re-runs.
+- **Fix (ORDS apply handler, `db/13` POST `/jobs/:name/schema`):** **no longer drops** a column whose
+  source header is blank — stores it under the positional sentinel (was `IF l_hdr IS NOT NULL` → skip).
+- **Editable source header (frontend):** the schema editor's "Source header" is now an editable input
+  (placeholder *"(unnamed in OTBI — type a header)"*); sentinel keys render blank; a typed header is
+  saved into the map on Apply. `jobDetail.js` (`isBlankKey`, `header` → observable), `jobDetail.html`,
+  EN/AR `atd.schema.unnamedHdr`.
+- **DB redeploy (one fresh SQLcl session):** `13 → 20 → 26 → 31 → 32 → 33` (13 `DELETE_MODULE`s
+  `atd.rest`, so additive scripts follow; 33 last re-adds approve-schema). All `PL/SQL procedure
+  successfully completed`, no ORA-/PLS-.
+- **Runner — DEPLOYED to all 3 VMs 2026-06-27:** `prepare.py`, `load.py`, `loadsql.py` scp'd to
+  `/root/otbi-atd/runner/` on atd-vm180 (canary, verified clean startup) then 181/182; `ast.parse`
+  syntax-check + `systemctl restart atd-worker` (all `active`, `[config] applied … settings`, clean).
+- **Note for users:** to get a heading shown (and to make a column self-describing), set a *Custom
+  Heading* on the column in the OTBI analysis; otherwise type one in the schema editor. Either way the
+  data now loads.
+
 ## 2026-06-26 — Existing-target-table fix + schema-review gate (App 208, APP_VERSION 1.14.0)
 
 Two linked changes to job create/update.
