@@ -8,7 +8,12 @@
 --           Settings. DCT_FL_AI_PKG.get_model uses this value when it is
 --           compatible with the active AI_PROVIDER (gemini* with GEMINI, claude*
 --           with ANTHROPIC); otherwise it falls back to the provider's model.
---           Sets the current value to gemini-2.0-flash.
+--           Sets the current value to gemini-2.5-flash.
+-- NOTE (2026-06-27): gemini-2.0-flash and gemini-1.5-flash were REMOVED from the
+--           list after a live probe with the production key: gemini-2.0-flash
+--           returns HTTP 429 (free-tier quota/rate exhausted) and gemini-1.5-flash
+--           returns HTTP 404 (model retired). gemini-2.5-flash and
+--           gemini-flash-latest both return HTTP 200 and extract correctly.
 -- Idempotent (MERGE then normalise).
 -- =============================================================================
 
@@ -19,7 +24,7 @@ SET SERVEROUTPUT ON
 DECLARE
     v_module_id dct_modules.module_id%TYPE;
     c_allowed CONSTANT VARCHAR2(300) :=
-        'gemini-2.0-flash|gemini-2.5-flash|gemini-flash-latest|gemini-1.5-flash|claude-sonnet-4-6|claude-haiku-4-5-20251001';
+        'gemini-2.5-flash|gemini-flash-latest|claude-sonnet-4-6|claude-haiku-4-5-20251001';
 BEGIN
     SELECT module_id INTO v_module_id FROM prod.dct_modules WHERE module_code = 'FREELANCERS';
 
@@ -30,23 +35,23 @@ BEGIN
     WHEN NOT MATCHED THEN
         INSERT (module_id, setting_key, setting_value, setting_label,
                 setting_description, value_type, allowed_values, default_value, effective_date)
-        VALUES (v_module_id, 'AI_MODEL', 'gemini-2.0-flash', 'AI Extraction Model',
+        VALUES (v_module_id, 'AI_MODEL', 'gemini-2.5-flash', 'AI Extraction Model',
                 'Vision model used for document extraction. Pick a gemini-* model when AI Provider = GEMINI, or a claude-* model when AI Provider = ANTHROPIC; an incompatible choice falls back to the provider default.',
-                'SELECT', c_allowed, 'gemini-2.0-flash', SYSDATE);
+                'SELECT', c_allowed, 'gemini-2.5-flash', SYSDATE);
 
     -- Convert the existing row to a dropdown and select gemini-2.0-flash.
     UPDATE prod.dct_module_settings
        SET value_type     = 'SELECT',
            allowed_values = c_allowed,
-           setting_value  = 'gemini-2.0-flash',
-           default_value  = 'gemini-2.0-flash',
+           setting_value  = 'gemini-2.5-flash',
+           default_value  = 'gemini-2.5-flash',
            setting_label  = 'AI Extraction Model',
            setting_description =
                 'Vision model used for document extraction. Pick a gemini-* model when AI Provider = GEMINI, or a claude-* model when AI Provider = ANTHROPIC; an incompatible choice falls back to the provider default.'
      WHERE module_id = v_module_id AND setting_key = 'AI_MODEL';
 
     COMMIT;
-    DBMS_OUTPUT.PUT_LINE('AI_MODEL is now a dropdown, set to gemini-2.0-flash.');
+    DBMS_OUTPUT.PUT_LINE('AI_MODEL is now a dropdown, set to gemini-2.5-flash.');
 END;
 /
 

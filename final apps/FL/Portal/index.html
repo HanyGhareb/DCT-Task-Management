@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Freelancer Portal · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.6.0';</script>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script>window.APP_VERSION = '1.9.0';</script>
 <link rel="stylesheet" id="portal-css">
 <script>
   document.getElementById('portal-css').href = 'css/portal.css?v=' + window.APP_VERSION;
@@ -14,137 +14,240 @@
 </head>
 <body>
 
-<!-- ════════════════ LOGIN / SET-PASSWORD ════════════════ -->
-<section class="login-stage" data-bind="visible: view() === 'login' || view() === 'setpwd'" style="display:none">
-  <div class="login-left">
-    <div class="mark">i-Finance <span class="mark-sub" data-bind="text: t('portalName')"></span></div>
-    <h2><span data-bind="html: t('loginHero')"></span></h2>
-    <p data-bind="text: t('loginHeroSub')"></p>
+<!-- ════════════════ DCT LANDING (login / set-password) ════════════════ -->
+<section class="dlp" data-bind="visible: view() === 'login' || view() === 'setpwd'" style="display:none">
+
+  <!-- full-bleed photo slider + maroon wash + gold pattern -->
+  <div class="dlp-bg">
+    <!-- ko foreach: slides -->
+    <div class="dlp-slide" data-bind="style: { background: bg }, css: { on: $index() === $root.slideIdx() }"></div>
+    <!-- /ko -->
+    <div class="dlp-wash"></div>
+    <div class="dlp-pattern"></div>
+    <div class="dlp-vignette"></div>
   </div>
-  <div class="login-right">
 
-    <!-- sign in -->
-    <div class="login-card" data-bind="visible: view() === 'login'">
-      <h3 data-bind="text: t('signIn')"></h3>
-      <div class="hint" data-bind="text: t('signInHint')"></div>
-      <div class="alert" data-bind="visible: loginError(), text: loginError()"></div>
-      <div class="fld">
-        <label data-bind="text: t('email')"></label>
-        <input type="email" autocomplete="username" data-bind="value: email, event: { keyup: onLoginKey }">
+  <!-- top bar -->
+  <header class="dlp-top">
+    <div class="dlp-brand">
+      <span class="dlp-diamond"></span>
+      <div>
+        <div class="dlp-brand-t">DCT · Abu Dhabi</div>
+        <div class="dlp-brand-s" data-bind="text: t('portalName')"></div>
       </div>
-      <div class="fld">
-        <label data-bind="text: t('password')"></label>
-        <input type="password" autocomplete="current-password" data-bind="value: password, event: { keyup: onLoginKey }">
+    </div>
+    <div class="dlp-topacts">
+      <button class="dlp-pill" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
+      <button class="dlp-pill dlp-pill--solid" data-bind="click: openLogin, text: t('signIn')"></button>
+    </div>
+  </header>
+
+  <!-- main: hero + AI registration card -->
+  <div class="dlp-body">
+    <div class="dlp-hero">
+      <div class="dlp-eyebrow" data-bind="text: t('dlpEyebrow')"></div>
+      <h1 class="dlp-h1" data-bind="html: t('dlpHeadline')"></h1>
+      <p class="dlp-lede" data-bind="text: t('dlpLede')"></p>
+      <div class="dlp-trust">
+        <span class="dlp-trust-i"><i class="dlp-live"></i><span data-bind="text: t('dlpTrust1')"></span></span>
+        <span class="dlp-trust-sep"></span>
+        <span class="dlp-trust-i"><b class="dlp-uaepass">UAE&nbsp;PASS</b><span data-bind="text: t('dlpTrust2')"></span></span>
       </div>
-      <button class="btn btn-brand btn-block" data-bind="click: doLogin, disable: busy">
-        <span data-bind="text: busy() ? '…' : t('continue')"></span>
-      </button>
-      <div class="alt"><span data-bind="text: t('firstTime')"></span></div>
-      <div class="alt"><a href="#" style="color:inherit;font-weight:600" data-bind="click: openRegister, text: t('registerLink')"></a></div>
     </div>
 
-    <!-- set password (invite link) -->
-    <div class="login-card" data-bind="visible: view() === 'setpwd'">
-      <h3 data-bind="text: t('setPwdTitle')"></h3>
-      <div class="hint" data-bind="text: t('setPwdHint')"></div>
-      <div class="alert" data-bind="visible: loginError(), text: loginError()"></div>
-      <div class="fld">
-        <label data-bind="text: t('newPassword')"></label>
-        <input type="password" autocomplete="new-password" data-bind="value: password">
+    <aside class="dlp-card">
+      <div class="dlp-chip"><i></i><span data-bind="text: t('dlpAiTag')"></span></div>
+      <h2 class="dlp-cardh" data-bind="text: t('dlpCardTitle')"></h2>
+      <p class="dlp-cardp" data-bind="text: t('dlpCardSub')"></p>
+      <div class="dlp-steps">
+        <div class="dlp-step"><span class="dlp-stepn">1</span><div><b data-bind="text: t('dlpStep1')"></b><i data-bind="text: t('dlpStep1s')"></i></div></div>
+        <div class="dlp-step"><span class="dlp-stepn">2</span><div><b data-bind="text: t('dlpStep2')"></b><i data-bind="text: t('dlpStep2s')"></i></div></div>
+        <div class="dlp-step"><span class="dlp-stepn">3</span><div><b data-bind="text: t('dlpStep3')"></b><i data-bind="text: t('dlpStep3s')"></i></div></div>
       </div>
-      <div class="fld">
-        <label data-bind="text: t('confirmPassword')"></label>
-        <input type="password" autocomplete="new-password" data-bind="value: password2">
-      </div>
-      <button class="btn btn-brand btn-block" data-bind="click: doSetPassword, disable: busy">
-        <span data-bind="text: busy() ? '…' : t('setPwdBtn')"></span>
-      </button>
-    </div>
+      <button class="dlp-cta" data-bind="click: openRegister"><span data-bind="text: t('dlpRegister')"></span> &rarr;</button>
+      <div class="dlp-cardalt"><span data-bind="text: t('dlpAlready')"></span> <a href="#" data-bind="click: openLogin, text: t('signIn')"></a></div>
+    </aside>
+  </div>
 
-    <button class="lang-flip lang-flip--floating" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
+  <!-- footer strip: location + slider + benefits -->
+  <footer class="dlp-foot">
+    <div class="dlp-loc"><span class="dlp-locdot"></span><span data-bind="text: activeSlideName"></span></div>
+    <div class="dlp-slider">
+      <button class="dlp-nav" data-bind="click: slidePrev" aria-label="Previous">&lsaquo;</button>
+      <div class="dlp-dots">
+        <!-- ko foreach: slides -->
+        <button class="dlp-dot" data-bind="css: { on: $index() === $root.slideIdx() }, click: function () { $root.slideGo($index()); }" aria-label="slide"></button>
+        <!-- /ko -->
+      </div>
+      <button class="dlp-nav" data-bind="click: slideNext" aria-label="Next">&rsaquo;</button>
+    </div>
+    <div class="dlp-benefits">
+      <span class="dlp-benefit" data-bind="text: t('dlpBenefit1')"></span>
+      <span class="dlp-benefit" data-bind="text: t('dlpBenefit2')"></span>
+      <span class="dlp-benefit" data-bind="text: t('dlpBenefit3')"></span>
+    </div>
+  </footer>
+
+  <!-- ── auth overlay: sign in / set password ─────────────────────────── -->
+  <div class="dlp-auth" data-bind="visible: loginOpen() || view() === 'setpwd'" style="display:none">
+    <div class="dlp-authbox">
+      <button class="dlp-authx" data-bind="click: closeLogin, visible: view() === 'login'">&times;</button>
+
+      <!-- sign in -->
+      <div data-bind="visible: view() === 'login'">
+        <div class="dlp-authmark"><span class="dlp-diamond"></span><span data-bind="text: t('portalName')"></span></div>
+        <h3 class="dlp-authh" data-bind="text: t('signIn')"></h3>
+        <div class="dlp-authsub" data-bind="text: t('signInHint')"></div>
+        <div class="dlp-autherr" data-bind="visible: loginError(), text: loginError()"></div>
+        <label class="dlp-lbl" data-bind="text: t('email')"></label>
+        <input class="dlp-inp" type="email" autocomplete="username" data-bind="value: email, event: { keyup: onLoginKey }">
+        <label class="dlp-lbl" data-bind="text: t('password')"></label>
+        <input class="dlp-inp" type="password" autocomplete="current-password" data-bind="value: password, event: { keyup: onLoginKey }">
+        <button class="dlp-cta dlp-cta--full" data-bind="click: doLogin, disable: busy"><span data-bind="text: busy() ? '…' : t('continue')"></span></button>
+        <div class="dlp-authalt"><span data-bind="text: t('firstTime')"></span> <a href="#" data-bind="click: openRegister, text: t('registerLink')"></a></div>
+      </div>
+
+      <!-- set password (invite link) -->
+      <div data-bind="visible: view() === 'setpwd'">
+        <div class="dlp-authmark"><span class="dlp-diamond"></span><span data-bind="text: t('portalName')"></span></div>
+        <h3 class="dlp-authh" data-bind="text: t('setPwdTitle')"></h3>
+        <div class="dlp-authsub" data-bind="text: t('setPwdHint')"></div>
+        <div class="dlp-autherr" data-bind="visible: loginError(), text: loginError()"></div>
+        <label class="dlp-lbl" data-bind="text: t('newPassword')"></label>
+        <input class="dlp-inp" type="password" autocomplete="new-password" data-bind="value: password">
+        <label class="dlp-lbl" data-bind="text: t('confirmPassword')"></label>
+        <input class="dlp-inp" type="password" autocomplete="new-password" data-bind="value: password2">
+        <button class="dlp-cta dlp-cta--full" data-bind="click: doSetPassword, disable: busy"><span data-bind="text: busy() ? '…' : t('setPwdBtn')"></span></button>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- ════════════════ SELF-REGISTRATION WIZARD ════════════════ -->
-<section class="login-stage" data-bind="visible: view() === 'register'" style="display:none">
-  <div class="login-left">
-    <div class="mark">i-Finance <span class="mark-sub" data-bind="text: t('portalName')"></span></div>
-    <h2><span data-bind="text: t('regTitle')"></span></h2>
-    <p data-bind="text: t('loginHeroSub')"></p>
+<!-- ════════════════ SELF-REGISTRATION WIZARD (maroon/gold) ════════════════ -->
+<section class="dlp dlp--wiz" data-bind="visible: view() === 'register'" style="display:none">
+
+  <!-- shared full-bleed slider + maroon wash + gold pattern -->
+  <div class="dlp-bg">
+    <!-- ko foreach: slides -->
+    <div class="dlp-slide" data-bind="style: { background: bg }, css: { on: $index() === $root.slideIdx() }"></div>
+    <!-- /ko -->
+    <div class="dlp-wash"></div>
+    <div class="dlp-pattern"></div>
+    <div class="dlp-vignette"></div>
   </div>
-  <div class="login-right">
-    <div class="login-card">
-      <h3 data-bind="text: t('regTitle')"></h3>
-      <div class="alert" data-bind="visible: regError(), text: regError()"></div>
+
+  <!-- top bar -->
+  <header class="dlp-top">
+    <div class="dlp-brand">
+      <span class="dlp-diamond"></span>
+      <div>
+        <div class="dlp-brand-t">DCT · Abu Dhabi</div>
+        <div class="dlp-brand-s" data-bind="text: t('portalName')"></div>
+      </div>
+    </div>
+    <div class="dlp-topacts">
+      <button class="dlp-pill" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
+      <button class="dlp-pill dlp-pill--solid" data-bind="click: regBackToLogin, text: t('signIn')"></button>
+    </div>
+  </header>
+
+  <!-- centered wizard card -->
+  <div class="dlp-wizwrap">
+    <div class="dlp-wizbox">
+      <div class="dlp-chip"><i></i><span data-bind="text: t('dlpAiTag')"></span></div>
+      <h2 class="dlp-wizh" data-bind="text: t('regTitle')"></h2>
+      <p class="dlp-wizsub" data-bind="text: t('loginHeroSub')"></p>
+
+      <!-- step rail -->
+      <div class="dlp-rail" data-bind="visible: regStep() !== 'done'">
+        <div class="dlp-rail-i" data-bind="css: { on: regStep() === 'email', done: regStepIdx() > 0 }"><span>1</span><b data-bind="text: t('regStepEmail')"></b></div>
+        <div class="dlp-rail-i" data-bind="css: { on: regStep() === 'otp',   done: regStepIdx() > 1 }"><span>2</span><b data-bind="text: t('regStepVerify')"></b></div>
+        <div class="dlp-rail-i" data-bind="css: { on: regStep() === 'docs',  done: regStepIdx() > 2 }"><span>3</span><b data-bind="text: t('regStepDocs')"></b></div>
+        <div class="dlp-rail-i" data-bind="css: { on: regStep() === 'details', done: regStepIdx() > 3 }"><span>4</span><b data-bind="text: t('regStepDetails')"></b></div>
+        <div class="dlp-rail-i" data-bind="css: { on: regStep() === 'review', done: regStepIdx() > 4 }"><span>5</span><b data-bind="text: t('regStepReview')"></b></div>
+      </div>
+
+      <div class="dlp-autherr" data-bind="visible: regError(), text: regError()"></div>
 
       <!-- step: email -->
       <div data-bind="visible: regStep() === 'email'">
-        <div class="hint" data-bind="text: t('regEmailHint')"></div>
-        <div class="fld"><label data-bind="text: t('email')"></label>
-          <input type="email" data-bind="value: rgEmail"></div>
-        <button class="btn btn-brand btn-block" data-bind="click: regStart, disable: regBusy, text: regBusy() ? '…' : t('sendCode')"></button>
-        <div class="alt"><a href="#" data-bind="click: regBackToLogin, text: t('backToLogin')"></a></div>
+        <div class="dlp-wizhint" data-bind="text: t('regEmailHint')"></div>
+        <label class="dlp-lbl" data-bind="text: t('email')"></label>
+        <input class="dlp-inp" type="email" data-bind="value: rgEmail">
+        <button class="dlp-cta dlp-cta--full" data-bind="click: regStart, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('sendCode')"></span></button>
+        <div class="dlp-authalt"><a href="#" data-bind="click: regBackToLogin, text: t('backToLogin')"></a></div>
       </div>
 
       <!-- step: otp -->
       <div data-bind="visible: regStep() === 'otp'">
-        <div class="hint" data-bind="text: t('regCodeHint')"></div>
-        <div class="hint" style="background:#fff5d6;border:1px dashed #c79a00;color:#7a5c00;border-radius:6px;padding:6px 8px" data-bind="visible: regDevCode()">
+        <div class="dlp-wizhint" data-bind="text: t('regCodeHint')"></div>
+        <div class="dlp-devcode" data-bind="visible: regDevCode()">
           DEV mode — your code: <strong data-bind="text: regDevCode"></strong></div>
-        <div class="fld"><label data-bind="text: t('code')"></label>
-          <input type="text" inputmode="numeric" maxlength="6" data-bind="value: rgCode"></div>
-        <button class="btn btn-brand btn-block" data-bind="click: regVerify, disable: regBusy, text: regBusy() ? '…' : t('verifyCode')"></button>
-        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('email'); }, text: t('back')"></a></div>
-      </div>
-
-      <!-- step: details -->
-      <div data-bind="visible: regStep() === 'details'">
-        <div class="fld"><label data-bind="text: t('firstNameEn')"></label><input type="text" data-bind="value: rgFirstName"></div>
-        <div class="fld"><label data-bind="text: t('lastNameEn')"></label><input type="text" data-bind="value: rgLastName"></div>
-        <div class="fld"><label data-bind="text: t('dob')"></label><input type="date" data-bind="value: rgDob"></div>
-        <div class="fld"><label data-bind="text: t('nationality')"></label>
-          <select data-bind="options: rgNats, optionsText: 'name', optionsValue: 'code', optionsCaption: '—', value: rgNat"></select></div>
-        <div class="fld"><label data-bind="text: t('mobileLbl')"></label><input type="text" data-bind="value: rgMobile"></div>
-        <button class="btn btn-brand btn-block" data-bind="click: regSaveDetails, disable: regBusy, text: regBusy() ? '…' : t('saveContinue')"></button>
-        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
+        <label class="dlp-lbl" data-bind="text: t('code')"></label>
+        <input class="dlp-inp dlp-inp--otp" type="text" inputmode="numeric" maxlength="6" data-bind="value: rgCode">
+        <button class="dlp-cta dlp-cta--full" data-bind="click: regVerify, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('verifyCode')"></span></button>
+        <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('email'); }, text: t('back')"></a></div>
       </div>
 
       <!-- step: docs (first after OTP) -->
       <div data-bind="visible: regStep() === 'docs'">
-        <div class="hint" data-bind="text: regAiEnabled() ? t('regDocsHintAi') : t('regDocsHintManual')"></div>
+        <div class="dlp-wizhint" data-bind="text: regAiEnabled() ? t('regDocsHintAi') : t('regDocsHintManual')"></div>
         <!-- ko foreach: rgDocs -->
-        <div class="fld" style="border:1px solid #e3e3e3;border-radius:8px;padding:10px;margin-bottom:8px">
-          <label data-bind="text: label"></label>
-          <input type="file" accept="image/*,application/pdf" data-bind="event: { change: function(d,e){ return $root.regPickDoc($data, e); } }">
-          <div style="font-size:12px;margin-top:4px" data-bind="visible: fileName(), text: fileName"></div>
-          <button class="btn btn-block" style="margin-top:6px" data-bind="visible: $root.regAiEnabled(), click: function(){ return $root.regExtract($data); }, disable: $root.regBusy() || !docId(), text: $root.t('aiExtract')"></button>
-          <div style="font-size:12px;margin-top:4px" data-bind="visible: aiMsg(), text: aiMsg, style: { color: aiOk() === false ? '#c0392b' : '#1a7f4b' }"></div>
+        <div class="dlp-doc">
+          <label class="dlp-doc-lbl" data-bind="text: label"></label>
+          <input class="dlp-file" type="file" accept="image/*,application/pdf" data-bind="event: { change: function(d,e){ return $root.regPickDoc($data, e); } }">
+          <div class="dlp-doc-file" data-bind="visible: fileName(), text: fileName"></div>
+          <button class="dlp-ghost" data-bind="visible: $root.regAiEnabled(), click: function(){ return $root.regExtract($data); }, disable: $root.regBusy() || !docId(), text: $root.t('aiExtract')"></button>
+          <div class="dlp-doc-msg" data-bind="visible: aiMsg(), text: aiMsg, css: { bad: aiOk() === false }"></div>
+          <!-- ko if: extracted().length -->
+          <div class="dlp-extract">
+            <div class="dlp-extract-h" data-bind="text: $root.t('extractedTitle')"></div>
+            <!-- ko foreach: extracted -->
+            <div class="dlp-extract-row"><span data-bind="text: label"></span><b data-bind="text: value"></b></div>
+            <!-- /ko -->
+          </div>
+          <!-- /ko -->
         </div>
         <!-- /ko -->
-        <button class="btn btn-brand btn-block" data-bind="click: regDocsContinue, disable: regBusy, text: regBusy() ? '…' : t('next')"></button>
-        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('otp'); }, text: t('back')"></a></div>
+        <button class="dlp-cta dlp-cta--full" data-bind="click: regDocsContinue, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('next')"></span></button>
+        <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('otp'); }, text: t('back')"></a></div>
+      </div>
+
+      <!-- step: details -->
+      <div data-bind="visible: regStep() === 'details'">
+        <div class="dlp-grid2">
+          <div><label class="dlp-lbl" data-bind="text: t('firstNameEn')"></label><input class="dlp-inp" type="text" data-bind="value: rgFirstName"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('lastNameEn')"></label><input class="dlp-inp" type="text" data-bind="value: rgLastName"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('dob')"></label><input class="dlp-inp" type="date" data-bind="value: rgDob"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('nationality')"></label>
+            <select class="dlp-inp" data-bind="options: rgNats, optionsText: 'name', optionsValue: 'code', optionsCaption: '—', value: rgNat"></select></div>
+          <div class="dlp-grid2-full"><label class="dlp-lbl" data-bind="text: t('mobileLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgMobile"></div>
+        </div>
+        <button class="dlp-cta dlp-cta--full" data-bind="click: regSaveDetails, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('saveContinue')"></span></button>
+        <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
       </div>
 
       <!-- step: review -->
       <div data-bind="visible: regStep() === 'review'">
-        <div class="fld"><label data-bind="text: t('emiratesId')"></label><input type="text" data-bind="value: rgNationalId"></div>
-        <div class="fld"><label data-bind="text: t('passportNo')"></label><input type="text" data-bind="value: rgPassport"></div>
-        <div class="fld"><label data-bind="text: t('bankNameLbl')"></label><input type="text" data-bind="value: rgBankName"></div>
-        <div class="fld"><label data-bind="text: t('ibanLbl')"></label><input type="text" data-bind="value: rgBankIban"></div>
-        <div class="fld"><label data-bind="text: t('lineMgrEmail')"></label><input type="email" data-bind="value: rgLineMgrEmail"></div>
-        <div class="fld"><label data-bind="text: t('lineMgrName')"></label><input type="text" data-bind="value: rgLineMgrName"></div>
-        <button class="btn btn-brand btn-block" data-bind="click: regSubmit, disable: regBusy, text: regBusy() ? '…' : t('submitReg')"></button>
-        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
+        <div class="dlp-grid2">
+          <div><label class="dlp-lbl" data-bind="text: t('emiratesId')"></label><input class="dlp-inp" type="text" data-bind="value: rgNationalId"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('passportNo')"></label><input class="dlp-inp" type="text" data-bind="value: rgPassport"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('bankNameLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankName"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('ibanLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankIban"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('lineMgrEmail')"></label><input class="dlp-inp" type="email" data-bind="value: rgLineMgrEmail"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('lineMgrName')"></label><input class="dlp-inp" type="text" data-bind="value: rgLineMgrName"></div>
+        </div>
+        <button class="dlp-cta dlp-cta--full" data-bind="click: regSubmit, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('submitReg')"></span></button>
+        <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
       </div>
 
       <!-- step: done -->
-      <div data-bind="visible: regStep() === 'done'">
-        <h3 data-bind="text: t('regDoneTitle')"></h3>
-        <p data-bind="text: t('regDoneMsg')"></p>
-        <button class="btn btn-brand btn-block" data-bind="click: regBackToLogin, text: t('backToLogin')"></button>
+      <div data-bind="visible: regStep() === 'done'" class="dlp-done">
+        <div class="dlp-done-mark">&#10003;</div>
+        <h3 class="dlp-wizh" data-bind="text: t('regDoneTitle')"></h3>
+        <p class="dlp-wizsub" data-bind="text: t('regDoneMsg')"></p>
+        <button class="dlp-cta dlp-cta--full" data-bind="click: regBackToLogin, text: t('backToLogin')"></button>
       </div>
-
-      <button class="lang-flip lang-flip--floating" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
     </div>
   </div>
 </section>

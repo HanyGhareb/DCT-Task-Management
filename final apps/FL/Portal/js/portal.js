@@ -98,7 +98,41 @@
     regDoneMsg:      { en: 'Thank you. Your request is now with your line manager for endorsement, then Finance approval. You will be e-mailed when it is approved.', ar: 'شكراً لك. طلبك الآن لدى مديرك المباشر للاعتماد ثم موافقة المالية. سنرسل لك بريداً عند الموافقة.' },
     backToLogin:     { en: '← Back to sign in', ar: '→ العودة لتسجيل الدخول' },
     next:            { en: 'Next →', ar: 'التالي ←' },
-    back:            { en: '← Back', ar: '→ رجوع' }
+    back:            { en: '← Back', ar: '→ رجوع' },
+    regStepEmail:    { en: 'E-mail', ar: 'البريد' },
+    regStepVerify:   { en: 'Verify', ar: 'التحقق' },
+    regStepDocs:     { en: 'Documents', ar: 'المستندات' },
+    regStepDetails:  { en: 'Details', ar: 'البيانات' },
+    regStepReview:   { en: 'Review', ar: 'المراجعة' },
+    extractedTitle:  { en: 'Extracted by AI', ar: 'تم استخراجه بالذكاء الاصطناعي' },
+    expiryLbl:       { en: 'EXPIRY DATE', ar: 'تاريخ الانتهاء' },
+    nameEnLbl:       { en: 'NAME (EN)', ar: 'الاسم (إنجليزي)' },
+    nameArLbl:       { en: 'NAME (AR)', ar: 'الاسم (عربي)' },
+    accountNameLbl:  { en: 'ACCOUNT HOLDER', ar: 'اسم صاحب الحساب' },
+    accountNoLbl:    { en: 'ACCOUNT NUMBER', ar: 'رقم الحساب' },
+    swiftLbl:        { en: 'SWIFT', ar: 'سويفت' },
+    currencyLbl:     { en: 'CURRENCY', ar: 'العملة' },
+
+    /* ── DCT landing (public portal) ── */
+    dlpEyebrow:      { en: 'DEPARTMENT OF CULTURE AND TOURISM — ABU DHABI', ar: 'دائرة الثقافة والسياحة — أبوظبي' },
+    dlpHeadline:     { en: 'Create.<br>Get recognised.<br><span class="it">Get paid.</span>', ar: 'أبدع.<br>كن معترفاً بك.<br><span class="it">واحصل على أجرك.</span>' },
+    dlpLede:         { en: "Abu Dhabi's freelance creatives belong here. Register with AI in minutes and start working with the DCT family — artists, photographers, performers, guides and producers all welcome.", ar: 'المبدعون المستقلون في أبوظبي مكانهم هنا. سجّل بالذكاء الاصطناعي خلال دقائق وابدأ العمل مع عائلة دائرة الثقافة والسياحة — فنانون ومصورون وفنانو أداء ومرشدون ومنتجون، الجميع مرحب بهم.' },
+    dlpTrust1:       { en: 'Government-backed & secure', ar: 'مدعوم حكومياً وآمن' },
+    dlpTrust2:       { en: 'sign-in supported', ar: 'تسجيل الدخول مدعوم' },
+    dlpAiTag:        { en: 'AI SELF-REGISTRATION', ar: 'التسجيل الذاتي بالذكاء الاصطناعي' },
+    dlpCardTitle:    { en: 'Join the DCT family today.', ar: 'انضم إلى عائلة الدائرة اليوم.' },
+    dlpCardSub:      { en: 'Scan your Emirates ID — our AI fills your profile, validates your documents and guides you the whole way.', ar: 'امسح هويتك الإماراتية — يملأ الذكاء الاصطناعي ملفك ويتحقق من مستنداتك ويرشدك خطوة بخطوة.' },
+    dlpStep1:        { en: 'Scan your Emirates ID', ar: 'امسح هويتك الإماراتية' },
+    dlpStep1s:       { en: 'OCR reads your details instantly', ar: 'يقرأ النظام بياناتك فوراً' },
+    dlpStep2:        { en: 'AI fills your profile', ar: 'الذكاء الاصطناعي يملأ ملفك' },
+    dlpStep2s:       { en: '& checks every document for completeness', ar: 'ويتحقق من اكتمال كل مستند' },
+    dlpStep3:        { en: 'Review & submit', ar: 'راجع وأرسل' },
+    dlpStep3s:       { en: 'Done in minutes, not weeks', ar: 'يكتمل خلال دقائق وليس أسابيع' },
+    dlpRegister:     { en: 'Register with AI', ar: 'سجّل بالذكاء الاصطناعي' },
+    dlpAlready:      { en: 'Already registered?', ar: 'مسجّل بالفعل؟' },
+    dlpBenefit1:     { en: 'Paid on time', ar: 'الدفع في الموعد' },
+    dlpBenefit2:     { en: 'Real DCT projects', ar: 'مشاريع حقيقية للدائرة' },
+    dlpBenefit3:     { en: 'One place for everything', ar: 'كل شيء في مكان واحد' }
   };
 
   /* ── tiny fetch wrapper ────────────────────────────────────────── */
@@ -135,6 +169,33 @@
     self.password2 = ko.observable('');
     self.inviteToken = '';
 
+    /* ── landing: sign-in overlay + Abu Dhabi photo slider ── */
+    self.loginOpen = ko.observable(false);
+    self.slideIdx  = ko.observable(0);
+    self.slides = [
+      { name: 'Louvre Abu Dhabi',          bg: "url('assets/photos/abudhabi-1.jpg') center/cover no-repeat, radial-gradient(130% 130% at 75% 18%, #5a1426 0%, #1a070d 70%)" },
+      { name: 'Sheikh Zayed Grand Mosque', bg: "url('assets/photos/abudhabi-2.jpg') center/cover no-repeat, radial-gradient(130% 130% at 28% 30%, #3a0e1c 0%, #150509 70%)" },
+      { name: 'Saadiyat Cultural District',bg: "url('assets/photos/abudhabi-3.jpg') center/cover no-repeat, radial-gradient(130% 130% at 62% 72%, #4a1020 0%, #1a070d 70%)" },
+      { name: 'Abu Dhabi Creatives',       bg: "url('assets/photos/abudhabi-4.jpg') center/cover no-repeat, linear-gradient(130deg, #3c0a16 0%, #1a070d 100%)" }
+    ];
+    self.activeSlideName = ko.pureComputed(function () {
+      var s = self.slides[self.slideIdx()]; return s ? s.name : '';
+    });
+    var _slideTimer = null;
+    function _autoplay() {
+      clearInterval(_slideTimer);
+      _slideTimer = setInterval(function () {
+        self.slideIdx((self.slideIdx() + 1) % self.slides.length);
+      }, 5500);
+    }
+    self.slideGo   = function (n) { self.slideIdx((n + self.slides.length) % self.slides.length); _autoplay(); };
+    self.slideNext = function () { self.slideGo(self.slideIdx() + 1); };
+    self.slidePrev = function () { self.slideGo(self.slideIdx() - 1); };
+    _autoplay();
+
+    self.openLogin  = function () { self.loginError(''); self.view('login'); self.loginOpen(true); };
+    self.closeLogin = function () { self.loginOpen(false); };
+
     /* ── self-registration wizard state ── */
     self.regStep   = ko.observable('email');   // email|otp|details|docs|review|done
     self.regBusy   = ko.observable(false);
@@ -142,6 +203,9 @@
     self.regToken  = '';
     self.regId     = ko.observable(null);
     self.regAiEnabled = ko.observable(false);
+    self.regStepIdx = ko.computed(function () {       // drives the wizard step-rail "done" marks
+      return ['email', 'otp', 'docs', 'details', 'review', 'done'].indexOf(self.regStep());
+    });
     self.regDevCode   = ko.observable('');   // DEV-only OTP echo (REG_OTP_DEV_ECHO=Y)
     self.rgEmail   = ko.observable('');
     self.rgCode    = ko.observable('');
@@ -167,9 +231,9 @@
     self.rgRequestorName  = ko.observable('');
     self.rgNats      = ko.observableArray([]);
     self.rgDocs      = ko.observableArray([
-      { code: 'PASSPORT',    label: 'Passport',    docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null) },
-      { code: 'EMIRATES_ID', label: 'Emirates ID', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null) },
-      { code: 'BANK_LETTER', label: 'Bank Letter', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null) }
+      { code: 'PASSPORT',    label: 'Passport',    docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
+      { code: 'EMIRATES_ID', label: 'Emirates ID', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
+      { code: 'BANK_LETTER', label: 'Bank Letter', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) }
     ]);
 
     self.session = ko.observable(JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') || {});
@@ -295,6 +359,7 @@
 
     /* ── self-registration wizard ────────────────────────────────── */
     self.openRegister = function () {
+      self.loginOpen(false);
       self.regError(''); self.regStep('email'); self.view('register');
       if (self.rgNats().length === 0) {
         api('GET', '/reg/public/nationalities').then(function (r) { self.rgNats(r.items || []); }).catch(function () {});
@@ -377,7 +442,7 @@
       ev.target.value = '';
       if (!file) return;
       self.regError(''); self.regBusy(true);
-      doc.aiMsg(''); doc.aiOk(null);
+      doc.aiMsg(''); doc.aiOk(null); doc.extracted.removeAll();
       api('POST', '/reg/public/' + self.regToken + '/documents', { docTypeCode: doc.code, documentName: file.name, mimeType: file.type })
         .then(function (r) { return uploadBytes(r.documentId, file).then(function () { doc.docId(r.documentId); doc.fileName(file.name); }); })
         .then(function () {
@@ -392,7 +457,7 @@
     self.regExtract = function (doc) {
       if (!self.regAiEnabled()) { return; }
       if (!doc.docId()) { self.regError('Upload the file first.'); return; }
-      self.regError(''); doc.aiMsg('Reading…'); doc.aiOk(null); self.regBusy(true);
+      self.regError(''); doc.aiMsg('Reading…'); doc.aiOk(null); doc.extracted.removeAll(); self.regBusy(true);
       api('POST', '/reg/public/' + self.regToken + '/documents/' + doc.docId() + '/extract', {})
         .then(function (res) {
           self.regBusy(false);
@@ -466,6 +531,37 @@
             set(self.rgBankSwift, f.swift);
             set(self.rgBankCurrency, f.currency);
           }
+          // Build a friendly read-only summary of what the AI actually read, so
+          // the applicant sees the extracted values immediately (before the form).
+          doc.extracted.removeAll();
+          (function () {
+            function row(label, val) {
+              if (val === null || val === undefined || String(val).trim() === '') return;
+              doc.extracted.push({ label: label, value: String(val) });
+            }
+            if (doc.code === 'PASSPORT') {
+              row(self.t('firstNameEn'), titleCase(f.given_names));
+              row(self.t('lastNameEn'),  titleCase(f.surname));
+              row(self.t('passportNo'),  f.passport_number);
+              row(self.t('nationality'), f.nationality);
+              row(self.t('dob'),         f.date_of_birth ? String(f.date_of_birth).slice(0,10) : '');
+              row(self.t('expiryLbl'),   f.expiry_date ? String(f.expiry_date).slice(0,10) : '');
+            } else if (doc.code === 'EMIRATES_ID') {
+              row(self.t('nameEnLbl'),   f.name_en);
+              row(self.t('nameArLbl'),   f.name_ar);
+              row(self.t('emiratesId'),  f.emirates_id);
+              row(self.t('nationality'), f.nationality);
+              row(self.t('dob'),         f.date_of_birth ? String(f.date_of_birth).slice(0,10) : '');
+              row(self.t('expiryLbl'),   f.card_expiry ? String(f.card_expiry).slice(0,10) : '');
+            } else if (doc.code === 'BANK_LETTER') {
+              row(self.t('bankNameLbl'),    f.bank_name);
+              row(self.t('ibanLbl'),        f.iban);
+              row(self.t('accountNameLbl'), f.account_holder_name);
+              row(self.t('accountNoLbl'),   f.account_number);
+              row(self.t('swiftLbl'),       f.swift);
+              row(self.t('currencyLbl'),    f.currency);
+            }
+          })();
           var warns = res.warnings || [];
           if (res.nameMismatch) {
             // Name doesn't match another uploaded document -> possibly two people.

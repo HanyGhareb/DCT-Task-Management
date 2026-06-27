@@ -67,6 +67,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_ai_pkg AS
     c_api_url   CONSTANT VARCHAR2(100) := 'https://api.anthropic.com/v1/messages';
     c_max_bytes CONSTANT NUMBER        := 20 * 1024 * 1024;   -- Anthropic vision cap
 
+    -- Which provider/model actually served the last call_ai (may differ from the
+    -- configured one when the Gemini->Claude auto-fallback fires). Read by
+    -- extract_document for the audit row + envelope note.
+    g_used_provider VARCHAR2(40);
+    g_used_model    VARCHAR2(200);
+    g_fellback      BOOLEAN := FALSE;
+
     -- ------------------------------------------------------------------ helpers
     -- Active provider = AI_PROVIDER setting (ANTHROPIC | GEMINI), resolved against
     -- the shared dct_ar_ai_providers registry. Switch providers from Admin >
@@ -96,6 +103,19 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_ai_pkg AS
             o_format := NULL; o_base := NULL; o_model := NULL; o_key := NULL;
         END;
     END get_provider;
+
+    -- Fetch a SPECIFIC provider row by code (used by the Gemini->Claude fallback).
+    PROCEDURE get_provider_by (p_code IN VARCHAR2, o_format OUT VARCHAR2,
+                               o_base OUT VARCHAR2, o_model OUT VARCHAR2, o_key OUT VARCHAR2) IS
+    BEGIN
+        SELECT api_format, base_url, model_id, api_key
+        INTO   o_format, o_base, o_model, o_key
+        FROM   prod.dct_ar_ai_providers
+        WHERE  UPPER(provider_code) = UPPER(p_code) AND is_active = 'Y'
+        FETCH FIRST 1 ROW ONLY;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+        o_format := NULL; o_base := NULL; o_model := NULL; o_key := NULL;
+    END get_provider_by;
 
     -- Model = the AI_MODEL setting when it is compatible with the active provider
     -- (gemini* with GEMINI, claude* with ANTHROPIC); otherwise the provider row's
@@ -199,23 +219,114 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_ai_pkg AS
         p_prompt IN VARCHAR2,
         p_raw    OUT CLOB
     ) RETURN CLOB IS
-        v_payload   CLOB;
         v_b64       CLOB;
-        v_body_blob BLOB;
-        v_doff      INTEGER := 1;
-        v_soff      INTEGER := 1;
-        v_lang      INTEGER := DBMS_LOB.DEFAULT_LANG_CTX;
-        v_warn      INTEGER;
-        v_resp      DBMS_CLOUD_TYPES.resp;
-        v_status    NUMBER;
+        v_mt        VARCHAR2(100);
+        v_is_pdf    BOOLEAN := (p_mime = 'application/pdf');
         v_format    VARCHAR2(40);
         v_base      VARCHAR2(400);
         v_model     VARCHAR2(200);
         v_key       VARCHAR2(400);
-        v_url       VARCHAR2(600);
-        v_headers   VARCHAR2(1000);
-        v_mt        VARCHAR2(100);
-        v_is_pdf    BOOLEAN := (p_mime = 'application/pdf');
+        v_res       CLOB;
+        v_fb        BOOLEAN := NVL(prod.dct_fl_pkg.get_setting('AI_FALLBACK_CLAUDE'),'Y') = 'Y';
+        f2 VARCHAR2(40); b2 VARCHAR2(400); m2 VARCHAR2(200); k2 VARCHAR2(400);
+
+        -- Build the provider-specific vision payload (Anthropic messages API or
+        -- Google Gemini generateContent), POST it with backoff retries, and return
+        -- the model's text answer. RAISES -20002 on any non-200 / quota / network
+        -- failure (DBMS_CLOUD surfaces the HTTP code in the message). Reads the
+        -- shared base64 (v_b64) / mime (v_mt) / prompt from the enclosing scope.
+        FUNCTION do_call (p_format IN VARCHAR2, p_base IN VARCHAR2,
+                          p_model IN VARCHAR2, p_key IN VARCHAR2) RETURN CLOB IS
+            v_payload   CLOB;
+            v_body_blob BLOB;
+            v_doff      INTEGER := 1;
+            v_soff      INTEGER := 1;
+            v_lang      INTEGER := DBMS_LOB.DEFAULT_LANG_CTX;
+            v_warn      INTEGER;
+            v_resp      DBMS_CLOUD_TYPES.resp;
+            v_status    NUMBER := 0;
+            v_errm      VARCHAR2(600);
+            v_url       VARCHAR2(600);
+            v_headers   VARCHAR2(1000);
+        BEGIN
+            DBMS_LOB.CREATETEMPORARY(v_payload, TRUE);
+            IF p_format = 'GEMINI' THEN
+                clob_append(v_payload,
+                    '{"contents":[{"parts":[{"inline_data":{"mime_type":"'||v_mt||'","data":"');
+                DBMS_LOB.APPEND(v_payload, v_b64);
+                clob_append(v_payload, '"}},{"text":' || APEX_JSON.STRINGIFY(p_prompt)
+                    || '}]}],"generationConfig":{"maxOutputTokens":' || get_max_tokens
+                    || ',"temperature":0,"response_mime_type":"application/json"}}');
+                v_url := NVL(p_base, 'https://generativelanguage.googleapis.com/v1beta/models/')
+                         || p_model || ':generateContent';
+                v_headers := '{"content-type":"application/json","x-goog-api-key":"'||p_key||'"}';
+            ELSE   -- ANTHROPIC
+                clob_append(v_payload, '{"model":"'||p_model||'","max_tokens":'||get_max_tokens
+                    ||',"messages":[{"role":"user","content":[');
+                IF v_is_pdf THEN
+                    clob_append(v_payload, '{"type":"document","source":{"type":"base64","media_type":"application/pdf","data":"');
+                ELSE
+                    clob_append(v_payload, '{"type":"image","source":{"type":"base64","media_type":"'||v_mt||'","data":"');
+                END IF;
+                DBMS_LOB.APPEND(v_payload, v_b64);
+                clob_append(v_payload, '"}},');
+                clob_append(v_payload, '{"type":"text","text":'||APEX_JSON.STRINGIFY(p_prompt)||'}]}]}');
+                v_url := NVL(p_base, 'https://api.anthropic.com/v1/messages');
+                v_headers := '{"anthropic-version":"2023-06-01","x-api-key":"'||p_key||'","content-type":"application/json"}';
+            END IF;
+
+            DBMS_LOB.CREATETEMPORARY(v_body_blob, TRUE);
+            DBMS_LOB.CONVERTTOBLOB(v_body_blob, v_payload,
+                DBMS_LOB.GETLENGTH(v_payload), v_doff, v_soff,
+                NLS_CHARSET_ID('AL32UTF8'), v_lang, v_warn);
+            DBMS_LOB.FREETEMPORARY(v_payload);
+
+            FOR v_try IN 1 .. 4 LOOP
+                BEGIN
+                    v_resp   := DBMS_CLOUD.SEND_REQUEST(uri=>v_url, method=>'POST',
+                                  headers=>v_headers, body=>v_body_blob);
+                    v_status := DBMS_CLOUD.GET_RESPONSE_STATUS_CODE(v_resp);
+                    p_raw    := DBMS_CLOUD.GET_RESPONSE_TEXT(v_resp);
+                    EXIT WHEN v_status = 200;
+                    IF v_status IN (429, 500, 502, 503, 529) AND v_try < 4 THEN
+                        DBMS_SESSION.SLEEP(v_try * 3);
+                    ELSE
+                        EXIT;
+                    END IF;
+                EXCEPTION WHEN OTHERS THEN
+                    -- Only 429/5xx are transient; a 4xx (bad model/key/request)
+                    -- never recovers by retrying.
+                    v_errm := SQLERRM;
+                    IF v_try < 4 AND (v_errm LIKE '%HTTP 429%' OR v_errm LIKE '%HTTP 500%'
+                           OR v_errm LIKE '%HTTP 502%' OR v_errm LIKE '%HTTP 503%'
+                           OR v_errm LIKE '%HTTP 529%') THEN
+                        DBMS_SESSION.SLEEP(v_try * 3);
+                    ELSE
+                        DBMS_LOB.FREETEMPORARY(v_body_blob);
+                        RAISE_APPLICATION_ERROR(-20002,
+                            'AI provider (' || p_format || ', model ' || p_model
+                            || ') request failed: ' || SUBSTR(v_errm, 1, 220));
+                    END IF;
+                END;
+            END LOOP;
+            DBMS_LOB.FREETEMPORARY(v_body_blob);
+
+            IF v_status != 200 THEN
+                RAISE_APPLICATION_ERROR(-20002,
+                    'AI provider (' || p_format || ', model ' || p_model || ') HTTP '
+                    || v_status || ': ' || SUBSTR(p_raw, 1, 200));
+            END IF;
+
+            -- JSON_VALUE must read a local CLOB, not the OUT param, in PL/SQL context.
+            DECLARE v_loc CLOB := p_raw;
+            BEGIN
+                IF p_format = 'GEMINI' THEN
+                    RETURN JSON_VALUE(v_loc, '$.candidates[0].content.parts[0].text' RETURNING CLOB);
+                ELSE
+                    RETURN JSON_VALUE(v_loc, '$.content[0].text' RETURNING CLOB);
+                END IF;
+            END;
+        END do_call;
     BEGIN
         get_provider(v_format, v_base, v_model, v_key);
         v_format := UPPER(NVL(v_format, 'ANTHROPIC'));
@@ -230,92 +341,39 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_ai_pkg AS
                 'Document too large for AI processing (max 20 MB). Upload a smaller scan.');
         END IF;
 
-        v_mt := CASE WHEN v_is_pdf THEN 'application/pdf' ELSE NVL(p_mime,'image/jpeg') END;
-        DBMS_LOB.CREATETEMPORARY(v_payload, TRUE);
+        v_mt  := CASE WHEN v_is_pdf THEN 'application/pdf' ELSE NVL(p_mime,'image/jpeg') END;
         v_b64 := blob_to_base64(p_blob);
 
-        IF v_format = 'GEMINI' THEN
-            clob_append(v_payload,
-                '{"contents":[{"parts":[{"inline_data":{"mime_type":"'||v_mt||'","data":"');
-            DBMS_LOB.APPEND(v_payload, v_b64);
-            clob_append(v_payload, '"}},{"text":' || APEX_JSON.STRINGIFY(p_prompt)
-                || '}]}],"generationConfig":{"maxOutputTokens":' || get_max_tokens
-                || ',"temperature":0,"response_mime_type":"application/json"}}');
-            v_url := NVL(v_base, 'https://generativelanguage.googleapis.com/v1beta/models/')
-                     || v_model || ':generateContent';
-            v_headers := '{"content-type":"application/json","x-goog-api-key":"'||v_key||'"}';
-        ELSE   -- ANTHROPIC
-            clob_append(v_payload, '{"model":"'||v_model||'","max_tokens":'||get_max_tokens
-                ||',"messages":[{"role":"user","content":[');
-            IF v_is_pdf THEN
-                clob_append(v_payload, '{"type":"document","source":{"type":"base64","media_type":"application/pdf","data":"');
-            ELSE
-                clob_append(v_payload, '{"type":"image","source":{"type":"base64","media_type":"'||v_mt||'","data":"');
-            END IF;
-            DBMS_LOB.APPEND(v_payload, v_b64);
-            clob_append(v_payload, '"}},');
-            clob_append(v_payload, '{"type":"text","text":'||APEX_JSON.STRINGIFY(p_prompt)||'}]}]}');
-            v_url := NVL(v_base, 'https://api.anthropic.com/v1/messages');
-            v_headers := '{"anthropic-version":"2023-06-01","x-api-key":"'||v_key||'","content-type":"application/json"}';
-        END IF;
-        DBMS_LOB.FREETEMPORARY(v_b64);
-
-        DBMS_LOB.CREATETEMPORARY(v_body_blob, TRUE);
-        DBMS_LOB.CONVERTTOBLOB(v_body_blob, v_payload,
-            DBMS_LOB.GETLENGTH(v_payload), v_doff, v_soff,
-            NLS_CHARSET_ID('AL32UTF8'), v_lang, v_warn);
-        DBMS_LOB.FREETEMPORARY(v_payload);
-
-        -- Send with backoff retries. Free-tier providers return transient
-        -- 429/5xx ("overloaded") under load -- AND DBMS_CLOUD RAISES (e.g.
-        -- ORA-20503) on some of these rather than returning the status, so we
-        -- retry on both a bad status and a raised exception.
-        v_status := 0;
-        FOR v_try IN 1 .. 4 LOOP
-            BEGIN
-                v_resp   := DBMS_CLOUD.SEND_REQUEST(uri=>v_url, method=>'POST',
-                              headers=>v_headers, body=>v_body_blob);
-                v_status := DBMS_CLOUD.GET_RESPONSE_STATUS_CODE(v_resp);
-                p_raw    := DBMS_CLOUD.GET_RESPONSE_TEXT(v_resp);
-                EXIT WHEN v_status = 200;
-                IF v_status IN (429, 500, 502, 503, 529) AND v_try < 4 THEN
-                    DBMS_SESSION.SLEEP(v_try * 3);          -- 3s, 6s, 9s
-                ELSE
-                    EXIT;
-                END IF;
-            EXCEPTION WHEN OTHERS THEN
-                IF v_try < 4 THEN
-                    DBMS_SESSION.SLEEP(v_try * 3);          -- transient raise -> retry
-                ELSE
-                    DBMS_LOB.FREETEMPORARY(v_body_blob);
-                    RAISE_APPLICATION_ERROR(-20002,
-                        'The AI service (' || active_code || ') is busy right now. '
-                        || 'Please try again in a moment, or enter the fields manually.');
-                END IF;
-            END;
-        END LOOP;
-        DBMS_LOB.FREETEMPORARY(v_body_blob);
-
-        IF v_status != 200 THEN
-            IF v_status IN (429, 500, 502, 503, 529) THEN
-                RAISE_APPLICATION_ERROR(-20002,
-                    'The AI service (' || active_code || ') is busy right now (HTTP '
-                    || v_status || '). Please try again in a moment, or enter the fields manually.');
-            ELSE
-                RAISE_APPLICATION_ERROR(-20002,
-                    'AI API error (' || active_code || ') ' || v_status || ': ' || SUBSTR(p_raw, 1, 300));
-            END IF;
-        END IF;
-
-        -- JSON_VALUE must read a local CLOB, not the OUT param, in PL/SQL context.
-        DECLARE v_loc CLOB := p_raw;
+        g_used_provider := v_format;
+        g_used_model    := v_model;
+        g_fellback      := FALSE;
         BEGIN
-            IF v_format = 'GEMINI' THEN
-                RETURN JSON_VALUE(v_loc, '$.candidates[0].content.parts[0].text' RETURNING CLOB);
+            v_res := do_call(v_format, v_base, v_model, v_key);
+        EXCEPTION WHEN OTHERS THEN
+            -- AUTOMATIC FALLBACK: if the active provider is GEMINI and it failed
+            -- (free-tier 429 / throttle / outage), transparently re-run the SAME
+            -- document through Claude so extraction stays reliable. Gated by the
+            -- AI_FALLBACK_CLAUDE setting (default Y) and an Anthropic key existing.
+            IF v_format = 'GEMINI' AND v_fb THEN
+                get_provider_by('ANTHROPIC', f2, b2, m2, k2);
+                IF k2 IS NOT NULL THEN
+                    g_used_provider := 'ANTHROPIC';
+                    g_used_model    := NVL(m2, 'claude-sonnet-4-6');
+                    g_fellback      := TRUE;
+                    BEGIN
+                        v_res := do_call('ANTHROPIC', b2, g_used_model, k2);
+                    EXCEPTION WHEN OTHERS THEN
+                        DBMS_LOB.FREETEMPORARY(v_b64); RAISE;
+                    END;
+                ELSE
+                    DBMS_LOB.FREETEMPORARY(v_b64); RAISE;
+                END IF;
             ELSE
-                RETURN JSON_VALUE(v_loc, '$.content[0].text' RETURNING CLOB);
+                DBMS_LOB.FREETEMPORARY(v_b64); RAISE;
             END IF;
         END;
+        DBMS_LOB.FREETEMPORARY(v_b64);
+        RETURN v_res;
     END call_ai;
 
     -- Trim model output to the outermost { } object.
@@ -497,6 +555,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_ai_pkg AS
         BEGIN
             v_text   := call_ai(v_blob, v_mime, prompt_for(v_code), v_raw);
             v_fields := json_only(v_text);
+            v_model  := NVL(g_used_model, v_model);   -- record the model that actually served it
         EXCEPTION WHEN OTHERS THEN
             DECLARE v_err VARCHAR2(4000) := SUBSTR(SQLERRM, 1, 4000);
             BEGIN
@@ -581,6 +640,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_ai_pkg AS
             END LOOP;
         END IF;
 
+        -- note the transparent provider fallback (Gemini busy -> read with Claude)
+        IF g_fellback THEN
+            add_warn(v_warn, 'The selected AI provider was unavailable, so this document '
+                     || 'was read with Claude instead.');
+        END IF;
+
         -- ---- persist the extract audit row ----------------------------------
         INSERT INTO prod.dct_fl_doc_extracts (registration_id, doc_id, doc_type_code,
             model, status, confidence, extracted_json, raw_response, created_by)
@@ -602,11 +667,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_ai_pkg AS
         -- ---- return suggestion envelope -------------------------------------
         DBMS_LOB.CREATETEMPORARY(v_out, TRUE);
         clob_append(v_out, '{"extractId":' || v_extract_id
+            || ',"provider":' || NVL(APEX_JSON.STRINGIFY(g_used_provider), 'null')
+            || ',"fellback":' || CASE WHEN g_fellback THEN 'true' ELSE 'false' END
             || ',"docType":' || APEX_JSON.STRINGIFY(v_code)
             || ',"detectedKind":' || NVL(APEX_JSON.STRINGIFY(v_kind), 'null')
             || ',"typeMismatch":' || CASE WHEN v_mismatch THEN 'true' ELSE 'false' END
             || ',"nameMismatch":' || CASE WHEN v_namemis THEN 'true' ELSE 'false' END
-            || ',"confidence":' || NVL(TO_CHAR(v_conf), 'null')
+            -- TO_CHAR(0.98) yields ".98" (no leading zero) which is INVALID JSON and
+            -- makes the browser drop the whole envelope -> force a valid JSON number.
+            || ',"confidence":' || CASE WHEN v_conf IS NULL THEN 'null'
+                   ELSE TO_CHAR(ROUND(v_conf,4),'FM9999990.0000',
+                                'NLS_NUMERIC_CHARACTERS=''.,''') END
             || ',"warnings":[' || NVL(v_warn,'') || ']'
             || ',"fields":');
         DBMS_LOB.APPEND(v_out, NVL(v_fields, TO_CLOB('{}')));
