@@ -443,6 +443,20 @@ def _relogin(p, host, en, envd, ctx_by_env, browser_by_env, browsers):
         return False
 
 
+def _log_orphan(conn, name, status, msg):
+    """Write a run-log row for a job handed back / failed WITHOUT a run actually
+    starting (e.g. the Fusion login failed before run_one). Keeps the failover budget
+    (_recent_requeues counts REQUEUED) honest and makes the event visible in Run Logs."""
+    try:
+        conn.cursor().execute(
+            "insert into prod.atd_load_run_log(job_name, track, status, finished, row_count, host_id, message) "
+            "values (:n,'BROWSER',:s,systimestamp,0,:h,:m)",
+            n=name[:80], s=status, h=_worker_id()[:120], m=(msg or "")[:3900])
+        conn.commit()
+    except Exception:  # noqa: BLE001
+        pass
+
+
 def _recent_requeues(conn, job, minutes=60):
     """How many times this job bounced on a dead session (REQUEUED) in the last
     `minutes` — the cross-worker failover budget guard. Best-effort -> 0 on error."""
@@ -575,10 +589,35 @@ def _run_worker(conn, load, forever):
                 job = jobs[0]
                 env_name = job["env_name"]
                 if env_name not in ctx_by_env:
-                    browser, ctx = auth.authenticate(p, _env_of(job, env_name))
-                    browsers.append(browser)
-                    browser_by_env[env_name] = browser
-                    ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
+                    # Opening the session for a claimed job can need a fresh login (one MFA).
+                    # If that FAILS (MFA not approved, or the session is dead at its absolute
+                    # lifetime) DON'T let the exception escape — that would crash the worker
+                    # and leave the job orphaned in CLAIMED until the 30-min reap. Instead
+                    # apply the same Tier 2 failover: pause claiming here and hand the job
+                    # back to the queue for a peer with a live session (or FAIL past the cap).
+                    try:
+                        browser, ctx = auth.authenticate(p, _env_of(job, env_name))
+                        browsers.append(browser)
+                        browser_by_env[env_name] = browser
+                        ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
+                    except Exception as e:  # noqa: BLE001 (MFA timeout / still expired)
+                        session_dead[env_name] = True
+                        reauth_at[env_name] = time.monotonic()
+                        if requeue_max > 0 and _recent_requeues(conn, name) < requeue_max:
+                            _log_orphan(conn, name, "REQUEUED",
+                                        f"login failed before run; requeued for a healthy worker: {e}")
+                            conn.cursor().callproc("prod.atd_queue_pkg.release_job", [name])
+                            print(f"[worker {host}] {name}: login failed -> released back to the "
+                                  f"queue ({e})", flush=True)
+                        else:
+                            _log_orphan(conn, name, "FAILED",
+                                        f"login failed before run; requeue budget exhausted: {e}")
+                            conn.cursor().callproc("prod.atd_queue_pkg.mark_failed", [name])
+                            _post_mark_health(conn, host, vm, name, False)
+                            print(f"[worker {host}] {name}: login failed; requeue budget "
+                                  f"exhausted -> FAILED ({e})", flush=True)
+                        failures += 1
+                        continue
                 env, ctx = ctx_by_env[env_name]
                 _heartbeat(conn, "BUSY", name)
                 session_bounce = False

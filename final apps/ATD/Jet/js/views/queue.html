@@ -2,8 +2,10 @@
   <div class="page-header-row">
     <h1 class="page-title" data-bind="text: t('atd.queue.title')"></h1>
     <div class="page-actions">
-      <input class="form-control form-control--sm" type="number" style="max-width:90px" data-bind="value: lease" title="lease minutes">
-      <button class="btn btn-secondary" data-bind="click: reap, text: t('atd.queue.reap')"></button>
+      <input class="form-control form-control--sm" type="number" style="max-width:130px"
+             data-bind="value: lease, attr:{ title: t('atd.queue.lease.hint'), placeholder: t('atd.queue.lease') }">
+      <button class="btn btn-secondary"
+              data-bind="click: reap, text: t('atd.queue.reap'), attr:{ title: t('atd.queue.reap.hint') }"></button>
       <button class="btn btn-primary" data-bind="click: enqueueAll, text: t('atd.queue.enqueueAll')"></button>
     </div>
   </div>

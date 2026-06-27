@@ -32,6 +32,19 @@ existing once-daily relogin + aging nudge:
 - **Frontend:** neutral `REQUEUED` status pill (`app.css` `.rstat--REQUEUED`, ↻) + REQUEUED/HELD
   added to the Run Logs status filter. APP_VERSION 1.15.3.
 
+### 2026-06-27 follow-up — pre-run auth gap + Queue wording (APP_VERSION 1.15.4)
+- **Bug closed (`runner.py`, all 3 VMs):** the Tier 2 failover only covered a session death
+  *inside* a run. A login failure **before** the run (opening the session for a claimed job — MFA
+  timeout, or a session dead at its absolute lifetime) escaped the loop, **crashed the worker, and
+  left the job orphaned in `CLAIMED`** with no run-log row until the 30-min reap (hit live: GL_ACCOUNTS_
+  COMBINATIONS, claimed by vm182 09:24, no run row; auto-recovered at the reap → vm181 ran it SUCCESS
+  9 338 rows 09:55). Now the pre-run `auth.authenticate()` is wrapped: on failure it marks the host
+  session dead, writes a visible `REQUEUED` (or `FAILED` past `ATD_REQUEUE_MAX`) run-log row via the
+  new `_log_orphan`, and **releases the job to a healthy peer** (`release_job`) instead of crashing.
+- **UI wording:** Queue page **"Reap Stale" → "Recover Stuck"** + the lease box **"Lease (min)" →
+  "Stuck after (min)"**, both with explanatory tooltips (`atd.queue.reap.hint` / `atd.queue.lease.hint`,
+  EN+AR). No behaviour change — clearer label for returning stuck `CLAIMED` jobs to the queue.
+
 ## 2026-06-27 — Unlabelled-OTBI-column fix + editable source header (App 208, APP_VERSION 1.15.1)
 
 OTBI sometimes exports a column with **no heading**. The column map was keyed by header, so
