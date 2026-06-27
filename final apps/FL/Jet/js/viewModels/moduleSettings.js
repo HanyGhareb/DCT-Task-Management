@@ -8,8 +8,37 @@ function (ko, flService, regionPicker) {
     var self = this;
 
     self.loading    = ko.observable(true);
-    self.items      = ko.observableArray([]);   // non-region settings
+    self.items      = ko.observableArray([]);   // non-region settings (flat, for save)
+    self.groups     = ko.observableArray([]);   // same items grouped for display
     self.successMsg = ko.observable('');
+
+    // Ordered group definitions; a setting falls into the first group it matches,
+    // anything unmatched lands in "General" so nothing is ever hidden.
+    var GROUP_DEFS = [
+      { titleKey: 'set.grp.ai',       test: function (k) { return /^AI_/.test(k); } },
+      { titleKey: 'set.grp.selfreg',  keys: ['ALLOW_SELF_REGISTRATION', 'FEATURE_FL_PORTAL',
+              'REG_OTP_EXPIRY_MIN', 'REG_OTP_MAX_ATTEMPTS', 'REG_OTP_DEV_ECHO', 'DUP_BLOCK_ON_EXACT'] },
+      { titleKey: 'set.grp.uploads',  test: function (k) { return /UPLOAD/.test(k); } },
+      { titleKey: 'set.grp.notif',    test: function (k) { return /NOTIF/.test(k); } },
+      { titleKey: 'set.grp.features', test: function (k) { return /^FEATURE_/.test(k); } }
+    ];
+
+    function groupItems(list) {
+      var used = {}, groups = [];
+      GROUP_DEFS.forEach(function (def) {
+        var gi = list.filter(function (it) {
+          if (used[it.settingKey]) return false;
+          var hit = def.keys ? def.keys.indexOf(it.settingKey) >= 0
+                             : (def.test && def.test(it.settingKey));
+          if (hit) used[it.settingKey] = true;
+          return hit;
+        });
+        if (gi.length) groups.push({ titleKey: def.titleKey, items: gi });
+      });
+      var leftover = list.filter(function (it) { return !used[it.settingKey]; });
+      if (leftover.length) groups.push({ titleKey: 'set.grp.general', items: leftover });
+      return groups;
+    }
     self.errorMsg   = ko.observable('');
     self.saving     = ko.observable(false);
 
@@ -49,6 +78,7 @@ function (ko, flService, regionPicker) {
         else rest.push(item);
       });
       self.items(rest);
+      self.groups(groupItems(rest));
       rp.setRegion(regionItems);
       self.loading(false);
     }).catch(function (err) {

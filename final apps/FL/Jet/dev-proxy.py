@@ -121,7 +121,7 @@ class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
             resp = None
             for i in range(attempts):
                 try:
-                    resp = urllib.request.urlopen(req, timeout=30)
+                    resp = urllib.request.urlopen(req, timeout=180)
                     break
                 except urllib.error.HTTPError:
                     raise                      # real HTTP status — pass through

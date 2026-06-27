@@ -40,7 +40,7 @@ CREATE OR REPLACE PACKAGE prod.dct_fl_pkg AS
     -- Profile change approval callback
     PROCEDURE apply_profile_change (p_change_request_id IN NUMBER);
 
-    -- Daily scheduled job — document expiry notifications
+    -- Daily scheduled job â€” document expiry notifications
     PROCEDURE send_expiry_alerts;
 
     -- Mirror a contract's header budget coding into the unified
@@ -48,7 +48,7 @@ CREATE OR REPLACE PACKAGE prod.dct_fl_pkg AS
     -- line_num 1). Call on contract approval and after renewal creation.
     PROCEDURE mirror_contract_coding (p_contract_id IN NUMBER);
 
-    -- Public helper — read a FREELANCERS module setting value
+    -- Public helper â€” read a FREELANCERS module setting value
     FUNCTION get_setting (p_key IN VARCHAR2) RETURN VARCHAR2;
 
 
@@ -100,8 +100,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- CREATE_FREELANCER_PROFILE
     -- Called from the FL_REGISTRATION_APPROVAL final-approval APEX process.
     -- Creates:
-    --   1. DCT_FL_FREELANCERS   — the approved freelancer record
-    --   2. DCT_USERS (external) — portal login account (username = lower(email))
+    --   1. DCT_FL_FREELANCERS   â€” the approved freelancer record
+    --   2. DCT_USERS (external) â€” portal login account (username = lower(email))
     -- Idempotent: silently exits if a DCT_FL_FREELANCERS row already exists for
     -- this registration_id (handles double-click / retry scenarios).
     -- =========================================================================
@@ -177,7 +177,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             AND    is_external = 'Y';
 
             IF SQL%ROWCOUNT = 0 THEN
-                -- First registration — create new external user
+                -- First registration â€” create new external user
                 INSERT INTO prod.dct_users (
                     username,        email,
                     display_name,    first_name,      last_name,
@@ -194,6 +194,24 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                 ) RETURNING user_id INTO v_user_id;
             END IF;
         END;
+
+        -- Create the primary bank account from the registration's bank capture
+        -- (Phase 1: bank details are collected at registration / AI-extracted).
+        IF v_reg.bank_iban IS NOT NULL OR v_reg.bank_account_number IS NOT NULL THEN
+            INSERT INTO prod.dct_fl_bank_accounts (
+                freelancer_id, bank_name, account_number, iban, account_name,
+                currency_code, is_primary, is_active,
+                created_by, created_at, updated_by, updated_at
+            ) VALUES (
+                v_fl_id,
+                NVL(v_reg.bank_name, '(unspecified)'),
+                NVL(v_reg.bank_account_number, NVL(v_reg.bank_iban, '(unspecified)')),
+                v_reg.bank_iban,
+                NVL(v_reg.bank_account_name, v_reg.first_name_en || ' ' || v_reg.last_name_en),
+                NVL(v_reg.bank_currency_code, 'AED'),
+                'Y', 'Y', 'SYSTEM', SYSTIMESTAMP, 'SYSTEM', SYSTIMESTAMP
+            );
+        END IF;
 
         -- Carry the registration's uploaded documents over to the new freelancer
         -- so they are not orphaned (FL convention: reference_id = freelancer_id).
@@ -237,8 +255,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- GENERATE_PAYMENT_SCHEDULE
     -- Called from contract approval (and internally from CREATE_RENEWED_CONTRACT).
     -- MONTHLY : one row per calendar month, due_date = last day of month
-    -- WEEKLY  : one row per ISO week (Mon–Sun), due_date = Sunday of that week
-    -- PER_COUNT: no auto-generation — rows added manually via admin UI
+    -- WEEKLY  : one row per ISO week (Monâ€“Sun), due_date = Sunday of that week
+    -- PER_COUNT: no auto-generation â€” rows added manually via admin UI
     -- Amount per period = billing_unit_amount if set, else total_amount / periods
     -- Idempotent: exits silently if schedule rows already exist for this contract.
     -- =========================================================================
@@ -335,14 +353,14 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- REBUILD_PAYMENT_SCHEDULE
     -- Called from FL_AMENDMENT_APPROVAL final-approval APEX process.
     -- Rules:
-    --   • PAID and SKIPPED rows are preserved exactly as-is
-    --   • VOUCHER_GENERATED rows are reset to PENDING before deletion
+    --   â€¢ PAID and SKIPPED rows are preserved exactly as-is
+    --   â€¢ VOUCHER_GENERATED rows are reset to PENDING before deletion
     --     (corresponding vouchers should be cancelled by the APEX process before
-    --      calling this procedure — see amendment approval warning in BRD §5.1)
-    --   • All PENDING rows are deleted
-    --   • New PENDING rows are generated from the first period after the last
+    --      calling this procedure â€” see amendment approval warning in BRD Â§5.1)
+    --   â€¢ All PENDING rows are deleted
+    --   â€¢ New PENDING rows are generated from the first period after the last
     --     PAID/SKIPPED row, using the contract's updated dates and amounts
-    --   • Remaining amount = contract.total_amount − SUM(PAID rows)
+    --   â€¢ Remaining amount = contract.total_amount âˆ’ SUM(PAID rows)
     -- =========================================================================
     PROCEDURE rebuild_payment_schedule (p_contract_id IN NUMBER) IS
         v_con          prod.dct_fl_contracts%ROWTYPE;
@@ -713,7 +731,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     --               (is_primary='N', is_active='Y') and stores its PK as a
     --               numeric string in requested_value.  This procedure promotes
     --               it to primary and deactivates the previous primary account.
-    -- OTHER       : No automated field update — admin reviews change_request
+    -- OTHER       : No automated field update â€” admin reviews change_request
     --               notes and applies the change manually.
     -- =========================================================================
     PROCEDURE apply_profile_change (p_change_request_id IN NUMBER) IS
@@ -802,8 +820,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- Intended to run daily via DBMS_SCHEDULER (see job created below).
     -- Scans the unified DCT_DOCUMENTS (source_module = 'FL'; reference_id =
     -- freelancer_id) for ACTIVE documents where:
-    --   expiry_date < SYSDATE                           → EXPIRED
-    --   expiry_date BETWEEN SYSDATE AND SYSDATE + N     → EXPIRING_SOON
+    --   expiry_date < SYSDATE                           â†’ EXPIRED
+    --   expiry_date BETWEEN SYSDATE AND SYSDATE + N     â†’ EXPIRING_SOON
     -- For each qualifying document, notifies all FL_ADMIN users once per day
     -- (skips if an alert of the same type was already sent today for that doc).
     -- Inserts one unified DCT_DOC_EXPIRY_ALERTS row per notification sent.
@@ -863,8 +881,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                     p_notification_type => 'ALERT',
                     p_title_en          => CASE rec.alert_type
                                                WHEN 'EXPIRED'
-                                               THEN 'Document Expired — ' || rec.freelancer_name
-                                               ELSE 'Document Expiring Soon — ' || rec.freelancer_name
+                                               THEN 'Document Expired â€” ' || rec.freelancer_name
+                                               ELSE 'Document Expiring Soon â€” ' || rec.freelancer_name
                                            END,
                     p_body_en           => rec.doc_type_name
                                           || ' for ' || rec.freelancer_name
@@ -906,7 +924,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
 
 
     -- =========================================================================
-    -- Phase 4 workflow extension — private helpers
+    -- Phase 4 workflow extension â€” private helpers
     -- =========================================================================
     FUNCTION wf_username_of (p_user_id IN NUMBER) RETURN VARCHAR2 IS
         v VARCHAR2(100);
@@ -991,11 +1009,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         p_source_module IN VARCHAR2,   -- FL_REGISTRATION ...
         p_source_id    IN NUMBER,
         p_source_ref   IN VARCHAR2,
-        p_user_id      IN NUMBER
+        p_user_id      IN NUMBER,
+        p_dynamic_approver IN NUMBER DEFAULT NULL  -- per-instance named approver (line manager)
     ) RETURN NUMBER IS
         v_tmpl_id NUMBER;
         v_first   NUMBER;
         v_inst_id NUMBER;
+        v_first_type VARCHAR2(20);
         v_uname   VARCHAR2(100) := wf_username_of(p_user_id);
     BEGIN
         SELECT at.template_id INTO v_tmpl_id
@@ -1009,19 +1029,30 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         SELECT MIN(step_seq) INTO v_first
         FROM   prod.dct_approval_steps WHERE template_id = v_tmpl_id;
 
+        SELECT step_type INTO v_first_type
+        FROM   prod.dct_approval_steps
+        WHERE  template_id = v_tmpl_id AND step_seq = v_first;
+
         INSERT INTO prod.dct_approval_instances (
             template_id, source_module, source_record_id, source_record_ref,
             current_step_seq, overall_status, submitted_by, submitted_at,
-            created_by, updated_by)
+            dynamic_approver_user_id, created_by, updated_by)
         VALUES (
             v_tmpl_id, p_source_module, p_source_id, p_source_ref,
             v_first, 'PENDING', p_user_id, SYSTIMESTAMP,
-            v_uname, v_uname)
+            p_dynamic_approver, v_uname, v_uname)
         RETURNING instance_id INTO v_inst_id;
 
-        wf_notify_step(v_tmpl_id, v_first,
-            'Freelancer Approval Pending',
-            p_source_ref || ' is awaiting your approval.');
+        -- USER_SPECIFIC first step (e.g. line-manager endorsement) is routed to
+        -- the named approver; role-based steps notify the whole role.
+        IF v_first_type = 'USER_SPECIFIC' AND p_dynamic_approver IS NOT NULL THEN
+            wf_notify_user(p_dynamic_approver, 'Freelancer Approval Pending',
+                p_source_ref || ' is awaiting your endorsement.');
+        ELSE
+            wf_notify_step(v_tmpl_id, v_first,
+                'Freelancer Approval Pending',
+                p_source_ref || ' is awaiting your approval.');
+        END IF;
         RETURN v_inst_id;
     END wf_create_instance;
 
@@ -1034,6 +1065,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         v_uname   VARCHAR2(100) := wf_username_of(p_user_id);
         v_missing VARCHAR2(4000);
         v_cnt     NUMBER;
+        v_lm_id   NUMBER;
+        v_lm_name VARCHAR2(200);
+        v_dup     CLOB;
+        v_dobj    JSON_OBJECT_T;
+        v_has_exact BOOLEAN := FALSE;
+        v_fuzzy_n NUMBER := 0;
     BEGIN
         SELECT * INTO v_reg FROM prod.dct_fl_registrations
         WHERE registration_id = p_id FOR UPDATE NOWAIT;
@@ -1112,11 +1149,58 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             END IF;
         END IF;
 
+        -- Line manager is the first approver: resolve the email to a DCT user.
+        IF v_reg.line_manager_email IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20140, 'A line manager email is required before submission.');
+        END IF;
+        BEGIN
+            SELECT user_id, display_name INTO v_lm_id, v_lm_name
+            FROM   prod.dct_users
+            WHERE  LOWER(email) = LOWER(v_reg.line_manager_email)
+            AND    is_active = 'Y'
+            FETCH FIRST 1 ROW ONLY;
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20141,
+                'The line manager email (' || v_reg.line_manager_email
+                || ') does not match an active DCT user, so they cannot approve.');
+        END;
+
+        -- Duplicate detection: block exact matches (unless an admin has overridden),
+        -- flag fuzzy matches for reviewer attention.
+        v_dup  := prod.dct_fl_reg_pkg.find_duplicates(p_id);
+        v_dobj := JSON_OBJECT_T.parse(v_dup);
+        BEGIN v_has_exact := v_dobj.get_boolean('hasExact'); EXCEPTION WHEN OTHERS THEN v_has_exact := FALSE; END;
+        BEGIN v_fuzzy_n   := v_dobj.get_array('fuzzy').get_size; EXCEPTION WHEN OTHERS THEN v_fuzzy_n := 0; END;
+
+        IF v_has_exact THEN
+            IF NVL(v_reg.dup_status,'NONE') = 'OVERRIDDEN' THEN
+                NULL;  -- an FL admin explicitly overrode the exact match
+            ELSIF NVL(get_setting('DUP_BLOCK_ON_EXACT'),'Y') = 'Y' THEN
+                UPDATE prod.dct_fl_registrations
+                SET    dup_status = 'REVIEW', dup_match_json = v_dup, updated_at = SYSTIMESTAMP
+                WHERE  registration_id = p_id;
+                COMMIT;
+                RAISE_APPLICATION_ERROR(-20001,
+                    'A freelancer with the same Emirates ID / passport / email / IBAN already exists. '
+                    || 'An FL administrator must override this duplicate before it can be submitted.');
+            END IF;
+        END IF;
+
+        IF v_has_exact OR v_fuzzy_n > 0 THEN
+            UPDATE prod.dct_fl_registrations
+            SET    dup_status = CASE WHEN NVL(dup_status,'NONE') = 'OVERRIDDEN' THEN 'OVERRIDDEN' ELSE 'REVIEW' END,
+                   dup_match_json = v_dup, updated_at = SYSTIMESTAMP
+            WHERE  registration_id = p_id;
+        END IF;
+
         v_inst := wf_create_instance('REGISTRATION', 'FL_REGISTRATION',
-                                     p_id, v_reg.registration_number, p_user_id);
+                                     p_id, v_reg.registration_number, p_user_id,
+                                     p_dynamic_approver => v_lm_id);
 
         UPDATE prod.dct_fl_registrations
         SET    status = 'SUBMITTED', approval_instance_id = v_inst,
+               line_manager_user_id = v_lm_id,
+               line_manager_name = NVL(line_manager_name, v_lm_name),
                updated_by = v_uname, updated_at = SYSTIMESTAMP
         WHERE  registration_id = p_id;
 
@@ -1321,7 +1405,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     END submit_profile_change;
 
     -- =========================================================================
-    -- ACT_ON_APPROVAL — advance/complete an FL approval instance and dispatch
+    -- ACT_ON_APPROVAL â€” advance/complete an FL approval instance and dispatch
     -- the per-type final-approval callbacks. Mirrors DCT_CC_PKG.act_on_approval.
     -- =========================================================================
     PROCEDURE act_on_approval (

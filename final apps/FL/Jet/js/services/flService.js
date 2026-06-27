@@ -39,6 +39,24 @@ define(['services/api'], function (api) {
                      { photo_data_b64: b64, mime_type: mime, file_name: name });
     },
 
+    /* ── Phase 1: AI extraction, duplicates, user lookup ───────────────── */
+    /* AI vision extraction of an uploaded reg document → {fields,confidence,warnings} */
+    extractRegistrationDocument: function (regId, docId) {
+      return api.post('/registrations/' + regId + '/documents/' + docId + '/extract', {});
+    },
+    /* Duplicate matches for a registration → {hasExact, exact[], fuzzy[]} */
+    getRegistrationDuplicates: function (regId) {
+      return api.get('/registrations/' + regId + '/duplicates');
+    },
+    /* FL_ADMIN: override an exact/fuzzy duplicate so the reg can be submitted */
+    overrideRegistrationDuplicate: function (regId) {
+      return api.post('/registrations/' + regId + '/duplicate-override', {});
+    },
+    /* Resolve a requestor / line-manager email to a DCT user → {found,userId,name,email} */
+    lookupUser: function (email) {
+      return api.get('/users/lookup?email=' + encodeURIComponent(email), { silent: true });
+    },
+
     /* ── freelancers ───────────────────────────────────────────────────── */
     getFreelancers: function (opts) { return api.get('/freelancers/' + qs(opts || {}, ['status', 'search'])); },
     getFreelancer:  function (id)   { return api.get('/freelancers/' + id); },

@@ -66,7 +66,39 @@
     stateVoucher:    { en: 'VOUCHER RAISED',               ar: 'تم إنشاء السند' },
     loginFailed:     { en: 'Invalid e-mail or password.',  ar: 'البريد الإلكتروني أو كلمة المرور غير صحيحة.' },
     footOrg:         { en: 'Finance Division · i-Finance', ar: 'قطاع المالية · i-Finance' },
-    footNote:        { en: 'Statements reflect approved vouchers only', ar: 'تعكس الكشوف السندات المعتمدة فقط' }
+    footNote:        { en: 'Statements reflect approved vouchers only', ar: 'تعكس الكشوف السندات المعتمدة فقط' },
+    /* ── self-registration wizard ── */
+    registerLink:    { en: 'New freelancer? Register here →', ar: 'مستقل جديد؟ سجّل هنا ←' },
+    regTitle:        { en: 'Freelancer registration', ar: 'تسجيل مستقل' },
+    regEmailHint:    { en: 'Enter your e-mail to receive a verification code.', ar: 'أدخل بريدك الإلكتروني لاستلام رمز التحقق.' },
+    sendCode:        { en: 'Send code →', ar: 'إرسال الرمز ←' },
+    regCodeHint:     { en: 'Enter the 6-digit code we e-mailed you.', ar: 'أدخل الرمز المكون من ٦ أرقام المرسل إلى بريدك.' },
+    verifyCode:      { en: 'Verify →', ar: 'تحقق ←' },
+    code:            { en: 'VERIFICATION CODE', ar: 'رمز التحقق' },
+    firstNameEn:     { en: 'FIRST NAME', ar: 'الاسم الأول' },
+    lastNameEn:      { en: 'LAST NAME', ar: 'اسم العائلة' },
+    dob:             { en: 'DATE OF BIRTH', ar: 'تاريخ الميلاد' },
+    nationality:     { en: 'NATIONALITY', ar: 'الجنسية' },
+    emiratesId:      { en: 'EMIRATES ID', ar: 'الهوية الإماراتية' },
+    passportNo:      { en: 'PASSPORT NUMBER', ar: 'رقم الجواز' },
+    mobileLbl:       { en: 'MOBILE', ar: 'الهاتف' },
+    lineMgrEmail:    { en: 'LINE MANAGER E-MAIL', ar: 'بريد المدير المباشر' },
+    lineMgrName:     { en: 'LINE MANAGER NAME', ar: 'اسم المدير المباشر' },
+    bankNameLbl:     { en: 'BANK NAME', ar: 'اسم البنك' },
+    ibanLbl:         { en: 'IBAN', ar: 'الآيبان' },
+    saveContinue:    { en: 'Save & continue →', ar: 'حفظ ومتابعة ←' },
+    regDocsHint:     { en: 'Upload your Passport, Emirates ID and Bank Letter. We can read them for you with AI.', ar: 'ارفع الجواز والهوية الإماراتية وخطاب البنك. يمكننا قراءتها بالذكاء الاصطناعي.' },
+    regDocsHintAi:     { en: 'Upload your Passport, Emirates ID and Bank Letter — we read each one automatically and fill the form for you. Or just continue and type the details yourself.', ar: 'ارفع الجواز والهوية الإماراتية وخطاب البنك — نقرأ كل مستند تلقائياً ونملأ النموذج نيابة عنك. أو تابع وأدخل البيانات بنفسك.' },
+    regDocsHintManual: { en: 'Upload your Passport, Emirates ID and Bank Letter (optional now), then continue to fill in your details.', ar: 'ارفع الجواز والهوية الإماراتية وخطاب البنك (اختياري الآن)، ثم تابع لإدخال بياناتك.' },
+    aiExtract:       { en: '✨ Read with AI', ar: '✨ قراءة بالذكاء الاصطناعي' },
+    upload:          { en: 'Upload', ar: 'رفع' },
+    reviewSubmit:    { en: 'Review & submit →', ar: 'مراجعة وإرسال ←' },
+    submitReg:       { en: 'Submit registration →', ar: 'إرسال التسجيل ←' },
+    regDoneTitle:    { en: 'Registration submitted', ar: 'تم إرسال التسجيل' },
+    regDoneMsg:      { en: 'Thank you. Your request is now with your line manager for endorsement, then Finance approval. You will be e-mailed when it is approved.', ar: 'شكراً لك. طلبك الآن لدى مديرك المباشر للاعتماد ثم موافقة المالية. سنرسل لك بريداً عند الموافقة.' },
+    backToLogin:     { en: '← Back to sign in', ar: '→ العودة لتسجيل الدخول' },
+    next:            { en: 'Next →', ar: 'التالي ←' },
+    back:            { en: '← Back', ar: '→ رجوع' }
   };
 
   /* ── tiny fetch wrapper ────────────────────────────────────────── */
@@ -102,6 +134,43 @@
     self.password  = ko.observable('');
     self.password2 = ko.observable('');
     self.inviteToken = '';
+
+    /* ── self-registration wizard state ── */
+    self.regStep   = ko.observable('email');   // email|otp|details|docs|review|done
+    self.regBusy   = ko.observable(false);
+    self.regError  = ko.observable('');
+    self.regToken  = '';
+    self.regId     = ko.observable(null);
+    self.regAiEnabled = ko.observable(false);
+    self.regDevCode   = ko.observable('');   // DEV-only OTP echo (REG_OTP_DEV_ECHO=Y)
+    self.rgEmail   = ko.observable('');
+    self.rgCode    = ko.observable('');
+    self.rgFirstName = ko.observable('');
+    self.rgLastName  = ko.observable('');
+    self.rgFirstNameAr = ko.observable('');
+    self.rgLastNameAr  = ko.observable('');
+    self.rgDob       = ko.observable('');
+    self.rgNat       = ko.observable('');
+    self.rgNationalId = ko.observable('');
+    self.rgPassport  = ko.observable('');
+    self.rgMobile    = ko.observable('');
+    self.rgSpec      = ko.observable('');
+    self.rgBankName  = ko.observable('');
+    self.rgBankIban  = ko.observable('');
+    self.rgBankAccountName = ko.observable('');
+    self.rgBankAccountNumber = ko.observable('');
+    self.rgBankSwift = ko.observable('');
+    self.rgBankCurrency = ko.observable('AED');
+    self.rgLineMgrEmail = ko.observable('');
+    self.rgLineMgrName  = ko.observable('');
+    self.rgRequestorEmail = ko.observable('');
+    self.rgRequestorName  = ko.observable('');
+    self.rgNats      = ko.observableArray([]);
+    self.rgDocs      = ko.observableArray([
+      { code: 'PASSPORT',    label: 'Passport',    docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null) },
+      { code: 'EMIRATES_ID', label: 'Emirates ID', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null) },
+      { code: 'BANK_LETTER', label: 'Bank Letter', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null) }
+    ]);
 
     self.session = ko.observable(JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') || {});
     self.me        = ko.observable({});
@@ -223,6 +292,217 @@
         authed('GET', '/portal/vouchers').then(function (r) { self.vouchers(r.items || []); }).catch(function () {});
       }
     };
+
+    /* ── self-registration wizard ────────────────────────────────── */
+    self.openRegister = function () {
+      self.regError(''); self.regStep('email'); self.view('register');
+      if (self.rgNats().length === 0) {
+        api('GET', '/reg/public/nationalities').then(function (r) { self.rgNats(r.items || []); }).catch(function () {});
+      }
+    };
+    self.regBackToLogin = function () { self.view('login'); };
+
+    self.regStart = function () {
+      self.regError(''); self.regBusy(true); self.regDevCode('');
+      api('POST', '/reg/public/start', { email: self.rgEmail() })
+        .then(function (r) {
+          self.regBusy(false);
+          // DEV echo: prefill the code so testing needs no email relay.
+          if (r && r.devCode) { self.regDevCode(r.devCode); self.rgCode(r.devCode); }
+          self.regStep('otp');
+        })
+        .catch(function (e) { self.regBusy(false); self.regError(e.message); });
+    };
+
+    self.regVerify = function () {
+      self.regError(''); self.regBusy(true);
+      api('POST', '/reg/public/verify', { email: self.rgEmail(), code: self.rgCode() })
+        .then(function (r) {
+          self.regToken = r.intakeToken;
+          self.regAiEnabled(!!r.aiEnabled);
+          self.rgRequestorEmail(self.rgEmail());
+          // Create the empty draft up-front so documents can be uploaded first.
+          return api('POST', '/reg/public/' + self.regToken + '/draft', {});
+        })
+        .then(function (r) {
+          self.regBusy(false); self.regId(r.registrationId); self.regStep('docs');
+        })
+        .catch(function (e) { self.regBusy(false); self.regError(e.message); });
+    };
+
+    function regDetailPayload() {
+      return {
+        firstNameEn: self.rgFirstName(), lastNameEn: self.rgLastName(),
+        firstNameAr: self.rgFirstNameAr(), lastNameAr: self.rgLastNameAr(),
+        dateOfBirth: self.rgDob(), nationalityCode: self.rgNat(),
+        nationalId: self.rgNationalId(), passportNumber: self.rgPassport(),
+        mobile: self.rgMobile(), specialization: self.rgSpec(),
+        bankName: self.rgBankName(), bankIban: self.rgBankIban(),
+        bankAccountName: self.rgBankAccountName(), bankAccountNumber: self.rgBankAccountNumber(),
+        bankSwift: self.rgBankSwift(), bankCurrencyCode: self.rgBankCurrency(),
+        lineManagerEmail: self.rgLineMgrEmail(), lineManagerName: self.rgLineMgrName(),
+        requestorEmail: self.rgRequestorEmail(), requestorName: self.rgRequestorName()
+      };
+    }
+
+    function regPut() {
+      return api('PUT', '/reg/public/' + self.regToken, regDetailPayload());
+    }
+
+    // Documents step is first (after OTP). Continue to the detail form whether
+    // or not files were uploaded (AI auto-fills them when documents were read).
+    self.regDocsContinue = function () { self.regError(''); self.regStep('details'); };
+
+    self.regSaveDetails = function () {
+      self.regError('');
+      if (!self.rgFirstName() || !self.rgLastName() || !self.rgDob() || !self.rgNat()) {
+        self.regError('First name, last name, date of birth and nationality are required.'); return;
+      }
+      self.regBusy(true);
+      regPut().then(function (r) {
+        self.regBusy(false); self.regId(r.registrationId); self.regStep('review');
+      }).catch(function (e) { self.regBusy(false); self.regError(e.message); });
+    };
+
+    /* raw-binary upload (file IS the body; name/mime in the query string) */
+    function uploadBytes(docId, file) {
+      var q = '?file_name=' + encodeURIComponent(file.name) + '&mime_type=' + encodeURIComponent(file.type || 'application/octet-stream');
+      return fetch(API_BASE + '/reg/public/' + self.regToken + '/documents/' + docId + '/file' + q,
+        { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file })
+        .then(function (r) { if (!r.ok) throw new Error('Upload failed (' + r.status + ')'); return r.json(); });
+    }
+
+    self.regPickDoc = function (doc, ev) {
+      var file = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return;
+      self.regError(''); self.regBusy(true);
+      doc.aiMsg(''); doc.aiOk(null);
+      api('POST', '/reg/public/' + self.regToken + '/documents', { docTypeCode: doc.code, documentName: file.name, mimeType: file.type })
+        .then(function (r) { return uploadBytes(r.documentId, file).then(function () { doc.docId(r.documentId); doc.fileName(file.name); }); })
+        .then(function () {
+          self.regBusy(false);
+          // Auto-start AI reading on upload when the feature is enabled.
+          if (self.regAiEnabled()) self.regExtract(doc);
+        })
+        .catch(function (e) { self.regBusy(false); self.regError(e.message); });
+      return true;
+    };
+
+    self.regExtract = function (doc) {
+      if (!self.regAiEnabled()) { return; }
+      if (!doc.docId()) { self.regError('Upload the file first.'); return; }
+      self.regError(''); doc.aiMsg('Reading…'); doc.aiOk(null); self.regBusy(true);
+      api('POST', '/reg/public/' + self.regToken + '/documents/' + doc.docId() + '/extract', {})
+        .then(function (res) {
+          self.regBusy(false);
+          // Unparseable / empty server response — never claim success.
+          if (!res || res.extractId === undefined || res.extractId === null) {
+            doc.aiOk(false);
+            doc.aiMsg('✕ Could not read this document. Please try again or fill the form manually.');
+            return;
+          }
+          // Wrong file in the slot: do NOT fill the form, show a clear error.
+          if (res.typeMismatch) {
+            doc.aiOk(false);
+            var w = (res.warnings && res.warnings[0]) ||
+                    ('This does not look like a ' + doc.label + '. Please upload the correct file.');
+            doc.aiMsg('✕ ' + w);
+            return;
+          }
+          var f = res.fields || {};
+          var applied = 0;
+          function set(obs, val, onlyIfEmpty) {
+            if (val === null || val === undefined || val === '') return;
+            if (onlyIfEmpty && obs()) { return; }
+            obs(val); applied++;
+          }
+          // ALL-CAPS scans -> readable Title Case.
+          function titleCase(s) {
+            return String(s || '').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); });
+          }
+          // Resolve a nationality name/code (e.g. "Egypt", "Egyptian", "EGY")
+          // to one of the dropdown option codes; '' if no confident match.
+          function resolveNat(val) {
+            if (!val) return '';
+            var v = String(val).trim().toLowerCase();
+            var rows = self.rgNats();
+            var i, n;
+            for (i = 0; i < rows.length; i++) { if (String(rows[i].code).toLowerCase() === v) return rows[i].code; }
+            for (i = 0; i < rows.length; i++) { if (String(rows[i].name).toLowerCase() === v) return rows[i].code; }
+            for (i = 0; i < rows.length; i++) {
+              n = String(rows[i].name).toLowerCase();
+              if (n.indexOf(v) === 0 || v.indexOf(n) === 0) return rows[i].code;   // Egypt <-> Egyptian / EGY
+            }
+            return '';
+          }
+          // Split a single full name into first / rest (best-effort).
+          function firstOf(full) { var p = String(full || '').trim().split(/\s+/); return p[0] || ''; }
+          function restOf(full)  { var p = String(full || '').trim().split(/\s+/); return p.slice(1).join(' '); }
+
+          if (doc.code === 'PASSPORT') {
+            set(self.rgPassport, f.passport_number);
+            set(self.rgDob, f.date_of_birth ? String(f.date_of_birth).slice(0,10) : '', true);
+            set(self.rgLastName, titleCase(f.surname), true);
+            set(self.rgFirstName, titleCase(f.given_names), true);
+            set(self.rgNat, resolveNat(f.nationality), true);
+          } else if (doc.code === 'EMIRATES_ID') {
+            set(self.rgNationalId, f.emirates_id);
+            set(self.rgDob, f.date_of_birth ? String(f.date_of_birth).slice(0,10) : '', true);
+            if (f.name_en) {
+              set(self.rgFirstName, titleCase(firstOf(f.name_en)), true);
+              set(self.rgLastName,  titleCase(restOf(f.name_en)),  true);
+            }
+            if (f.name_ar) {
+              set(self.rgFirstNameAr, firstOf(f.name_ar), true);
+              set(self.rgLastNameAr,  restOf(f.name_ar),  true);
+            }
+            set(self.rgNat, resolveNat(f.nationality), true);
+          } else if (doc.code === 'BANK_LETTER') {
+            set(self.rgBankIban, f.iban);
+            set(self.rgBankName, f.bank_name);
+            set(self.rgBankAccountName, f.account_holder_name);
+            set(self.rgBankAccountNumber, f.account_number);
+            set(self.rgBankSwift, f.swift);
+            set(self.rgBankCurrency, f.currency);
+          }
+          var warns = res.warnings || [];
+          if (res.nameMismatch) {
+            // Name doesn't match another uploaded document -> possibly two people.
+            doc.aiOk(false);
+            doc.aiMsg('⚠ ' + (warns.join('; ')
+                      || 'The name on this document does not match your other documents.'));
+          } else if (applied === 0) {
+            // Read OK but nothing usable — likely the wrong kind of file.
+            doc.aiOk(false);
+            doc.aiMsg('⚠ Read, but no ' + doc.label + ' fields were found'
+                      + (warns.length ? ' — ' + warns.join('; ') : '. Check the file is correct.'));
+          } else {
+            doc.aiOk(true);
+            doc.aiMsg('✓ Read — ' + applied + ' field(s) filled'
+                      + (warns.length ? '. ' + warns.join('; ') : '.'));
+          }
+        })
+        .catch(function (e) { self.regBusy(false); doc.aiMsg(''); doc.aiOk(null); self.regError(e.message); });
+    };
+
+    self.regToReview = function () {
+      self.regError(''); self.regBusy(true);
+      regPut().then(function () { self.regBusy(false); self.regStep('review'); })
+        .catch(function (e) { self.regBusy(false); self.regError(e.message); });
+    };
+
+    self.regSubmit = function () {
+      self.regError('');
+      if (!self.rgLineMgrEmail()) { self.regError('A line manager e-mail is required.'); return; }
+      self.regBusy(true);
+      regPut().then(function () {
+        return api('POST', '/reg/public/' + self.regToken + '/submit', {});
+      }).then(function () { self.regBusy(false); self.regStep('done'); })
+        .catch(function (e) { self.regBusy(false); self.regError(e.message); });
+    };
+
+    self.regGoto = function (step) { self.regError(''); self.regStep(step); };
 
     /* ── boot: invite deep link beats stored session ─────────────── */
     var m = (location.hash || '').match(/^#set-password=([0-9a-f]+)$/i);

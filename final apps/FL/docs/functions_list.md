@@ -111,6 +111,10 @@ The `portal/*` endpoints serve the external freelancer self-service Portal (sepa
 | Settings | `GET settings` · `PUT settings/:id` |
 | Notifications | `GET notifications/` · `POST notifications/:id/read` · `POST notifications/mark-all-read` |
 | Portal (external) | `POST portal/auth/login` · `POST portal/auth/set-password` · `POST portal/auth/logout` · `GET portal/me` · `GET portal/contracts` · `GET portal/schedule` · `GET portal/vouchers` |
+| Phase 1 — AI / dedup / lookup (auth) | `POST registrations/:id/documents/:docId/extract` (AI extract) · `GET registrations/:id/duplicates` · `POST registrations/:id/duplicate-override` (FL_ADMIN) · `GET users/lookup?email=` |
+| Phase 1 — Public self-registration (token-gated; gate = `FEATURE_FL_PORTAL` OR `ALLOW_SELF_REGISTRATION`) | `POST reg/public/start` *(returns `devCode` when `REG_OTP_DEV_ECHO=Y`)* · `POST reg/public/verify` *(returns `aiEnabled`)* · `GET reg/public/nationalities` · `GET reg/public/:token` *(returns `aiEnabled`)* · `POST reg/public/:token/draft` *(empty draft, documents-first)* · `PUT reg/public/:token` · `POST reg/public/:token/documents` · `PUT reg/public/:token/documents/:docId/file` · `POST reg/public/:token/documents/:docId/extract` *(returns `detectedKind`/`typeMismatch`)* · `POST reg/public/:token/submit` |
+
+**Registration editor (`registrationEdit`) — Phase 1 methods:** `resolveLineManager` (email→DCT user hint), `loadDuplicates` / `overrideDuplicate`, `runExtract` / `applyExtract` / `closeAi` (AI review modal). New `flService` methods: `extractRegistrationDocument`, `getRegistrationDuplicates`, `overrideRegistrationDuplicate`, `lookupUser`. Backend packages: `DCT_FL_AI_PKG.extract_document`, `DCT_FL_REG_PKG.{find_duplicates,add_duplicate_override,start_public_registration,verify_public_otp,public_email,public_registration_id,set_public_registration}`.
 
 ---
 

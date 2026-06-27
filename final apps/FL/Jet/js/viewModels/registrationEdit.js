@@ -1,8 +1,9 @@
-define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'shared/docUpload'], function (ko, flService, formGuard, i18n, docUpload) {
+define(['knockout', 'services/flService', 'services/authService', 'shared/formGuard', 'shared/i18n', 'shared/docUpload'], function (ko, flService, authService, formGuard, i18n, docUpload) {
   'use strict';
 
   function RegistrationEditViewModel() {
     var self = this;
+    var me = (authService.getCurrentUser && authService.getCurrentUser()) || {};
 
     var editId = sessionStorage.getItem('flEditRegId') || 'new';
     self.isNew   = editId === 'new';
@@ -29,6 +30,39 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'sh
     self.notes         = ko.observable('');
     self.photoSrc      = ko.observable('');
     self.nationalities = ko.observableArray([]);
+
+    // Phase 1 — requestor + line manager (line manager = first approver)
+    self.requestorEmail    = ko.observable('');
+    self.requestorName     = ko.observable('');
+    self.lineManagerEmail  = ko.observable('');
+    self.lineManagerName   = ko.observable('');
+    self.lineManagerHint   = ko.observable('');   // resolution feedback
+
+    // Phase 1 — bank capture at registration (flows to bank account on approval)
+    self.bankName          = ko.observable('');
+    self.bankIban          = ko.observable('');
+    self.bankAccountName   = ko.observable('');
+    self.bankAccountNumber = ko.observable('');
+    self.bankSwift         = ko.observable('');
+    self.bankCurrencyCode  = ko.observable('AED');
+
+    // Phase 1 — duplicate detection state
+    self.dupStatus   = ko.observable('NONE');
+    self.dupExact    = ko.observableArray([]);
+    self.dupFuzzy    = ko.observableArray([]);
+    self.isAdmin     = ko.observable(false);
+    self.hasDupWarning = ko.computed(function () {
+      return self.dupExact().length > 0 || self.dupFuzzy().length > 0;
+    });
+
+    // Phase 1 — AI extraction review modal
+    self.aiOpen      = ko.observable(false);
+    self.aiBusy      = ko.observable(false);
+    self.aiDocType   = ko.observable('');
+    self.aiConfidence = ko.observable(null);
+    self.aiWarnings  = ko.observableArray([]);
+    self.aiFields    = ko.observableArray([]);   // [{key,label,value,target}]
+    self._aiRaw      = null;
 
     // Required documents
     self.docRequirements = ko.observableArray([]);   // from /doc-requirements?context=REGISTRATION
@@ -83,6 +117,13 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'sh
       ]);
     }
 
+    // Requestor defaults to the signed-in staff member (STAFF channel).
+    self.isAdmin(authService.isFlAdmin && authService.isFlAdmin());
+    if (self.isNew) {
+      self.requestorName(me.displayName || '');
+      self.requestorEmail(me.email || '');
+    }
+
     function load() {
       if (self.isNew) { self.loading(false); initGuard(); return; }
       flService.getRegistration(self.regId()).then(function (r) {
@@ -101,10 +142,22 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'sh
         self.mobile(r.mobile || '');
         self.specialization(r.specialization || '');
         self.notes(r.notes || '');
+        self.requestorEmail(r.requestorEmail || me.email || '');
+        self.requestorName(r.requestorName || me.displayName || '');
+        self.lineManagerEmail(r.lineManagerEmail || '');
+        self.lineManagerName(r.lineManagerName || '');
+        self.bankName(r.bankName || '');
+        self.bankIban(r.bankIban || '');
+        self.bankAccountName(r.bankAccountName || '');
+        self.bankAccountNumber(r.bankAccountNumber || '');
+        self.bankSwift(r.bankSwift || '');
+        self.bankCurrencyCode(r.bankCurrencyCode || 'AED');
+        self.dupStatus(r.dupStatus || 'NONE');
         self.photoSrc('https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/fl/registrations/' + self.regId() + '/photo?t=' + Date.now());
         self.loading(false);
         initGuard();
         self.loadRegDocs();
+        self.loadDuplicates();
       }).catch(function () { self.loading(false); initGuard(); });
     }
 
@@ -140,9 +193,55 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'sh
         email:       self.email().trim(),
         mobile:      self.mobile().trim(),
         specialization: self.specialization().trim(),
-        notes:       self.notes().trim()
+        notes:       self.notes().trim(),
+        requestorEmail:   self.requestorEmail().trim(),
+        requestorName:    self.requestorName().trim(),
+        lineManagerEmail: self.lineManagerEmail().trim(),
+        lineManagerName:  self.lineManagerName().trim(),
+        bankName:          self.bankName().trim(),
+        bankIban:          self.bankIban().trim(),
+        bankAccountName:   self.bankAccountName().trim(),
+        bankAccountNumber: self.bankAccountNumber().trim(),
+        bankSwift:         self.bankSwift().trim(),
+        bankCurrencyCode:  (self.bankCurrencyCode() || 'AED').trim()
       };
     }
+
+    // Resolve the line-manager email to a DCT user (on blur) — they become the
+    // first approver, so they must be a registered active DCT user.
+    self.resolveLineManager = function () {
+      var em = self.lineManagerEmail().trim();
+      self.lineManagerHint('');
+      if (!em) return true;
+      flService.lookupUser(em).then(function (r) {
+        if (r && r.found) {
+          self.lineManagerName(r.name || self.lineManagerName());
+          self.lineManagerHint('✓ ' + (r.name || em));
+        } else {
+          self.lineManagerHint('⚠ Not a registered DCT user — they cannot approve.');
+        }
+      }).catch(function () {});
+      return true;
+    };
+
+    // ---- Duplicate detection ---------------------------------------------
+    self.loadDuplicates = function () {
+      if (!self.regId()) return;
+      flService.getRegistrationDuplicates(self.regId()).then(function (r) {
+        self.dupExact((r && r.exact) || []);
+        self.dupFuzzy((r && r.fuzzy) || []);
+      }).catch(function () {});
+    };
+
+    self.overrideDuplicate = function () {
+      if (!self.regId()) return;
+      flService.overrideRegistrationDuplicate(self.regId()).then(function () {
+        self.dupStatus('OVERRIDDEN');
+        flash('Duplicate override recorded.');
+      }).catch(function (err) {
+        self.errorMsg((err && err.message) || 'Override failed');
+      });
+    };
 
     function flash(msg) {
       self.successMsg(msg);
@@ -243,6 +342,11 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'sh
       // "at least one ID" is a submit-only requirement (a draft may have neither yet).
       if (!draft && !self.nationalId().trim() && !self.passportNumber().trim()) {
         self.err.passportNumber('Provide an Emirates ID or a passport number.');
+        ok = false;
+      }
+      // Line manager (first approver) is required to submit.
+      if (!draft && !self.lineManagerEmail().trim()) {
+        self.errorMsg('A line manager email is required before submission.');
         ok = false;
       }
       // Required documents gate Submit only (drafts may be saved without them).
@@ -382,6 +486,75 @@ define(['knockout', 'services/flService', 'shared/formGuard', 'shared/i18n', 'sh
       if (!item.docId) return;
       window.open('https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/fl/documents/' + item.docId + '/file', '_blank');
     };
+
+    // ---- AI extraction (Passport / Emirates ID / Bank Letter) ------------
+    // Maps the model's JSON keys to form observables, per document type.
+    var AI_MAP = {
+      PASSPORT: [
+        { key: 'passport_number', label: 'Passport No.', set: self.passportNumber },
+        { key: 'date_of_birth',   label: 'Date of Birth', set: self.dateOfBirth },
+        { key: 'surname',         label: 'Surname',      set: self.lastNameEn },
+        { key: 'given_names',     label: 'Given Names',  set: self.firstNameEn },
+        { key: 'nationality',     label: 'Nationality',  set: null }
+      ],
+      EMIRATES_ID: [
+        { key: 'emirates_id',  label: 'Emirates ID',  set: self.nationalId },
+        { key: 'name_en',      label: 'Name (EN)',    set: null },
+        { key: 'name_ar',      label: 'Name (AR)',    set: null },
+        { key: 'date_of_birth', label: 'Date of Birth', set: self.dateOfBirth },
+        { key: 'card_expiry',  label: 'Card Expiry',  set: null }
+      ],
+      BANK_LETTER: [
+        { key: 'account_holder_name', label: 'Account Holder', set: self.bankAccountName },
+        { key: 'bank_name',     label: 'Bank',     set: self.bankName },
+        { key: 'iban',          label: 'IBAN',     set: self.bankIban },
+        { key: 'account_number', label: 'Account No.', set: self.bankAccountNumber },
+        { key: 'swift',         label: 'SWIFT',    set: self.bankSwift },
+        { key: 'currency',      label: 'Currency', set: self.bankCurrencyCode }
+      ]
+    };
+
+    self.runExtract = function (item) {
+      if (!item.docId) { self.docError('Upload the document first, then extract.'); return; }
+      self.docError('');
+      self.aiBusy(true); self.aiOpen(true);
+      self.aiDocType(item.docTypeCode); self.aiWarnings([]); self.aiFields([]); self.aiConfidence(null);
+      flService.extractRegistrationDocument(self.regId(), item.docId).then(function (res) {
+        self.aiBusy(false);
+        self._aiRaw = (res && res.fields) || {};
+        self.aiConfidence(res && res.confidence != null ? Math.round(res.confidence * 100) : null);
+        self.aiWarnings((res && res.warnings) || []);
+        var map = AI_MAP[item.docTypeCode] || [];
+        var rows = [];
+        map.forEach(function (m) {
+          var v = self._aiRaw[m.key];
+          if (v !== undefined && v !== null && String(v) !== '') {
+            rows.push({ key: m.key, label: m.label, value: String(v), set: m.set, apply: ko.observable(!!m.set) });
+          }
+        });
+        self.aiFields(rows);
+      }).catch(function (err) {
+        self.aiBusy(false); self.aiOpen(false);
+        self.docError((err && err.message) || 'AI extraction failed.');
+      });
+    };
+
+    self.applyExtract = function () {
+      self.aiFields().forEach(function (f) {
+        if (f.set && f.apply()) {
+          var v = f.value;
+          if (f.key === 'date_of_birth' || f.key === 'card_expiry') {
+            // normalise to YYYY-MM-DD if the model returned a parseable date
+            var d = new Date(v); if (!isNaN(d.getTime())) v = d.toISOString().slice(0, 10);
+          }
+          f.set(v);
+        }
+      });
+      self.aiOpen(false);
+      flash('Applied AI-extracted values — please review.');
+    };
+
+    self.closeAi = function () { self.aiOpen(false); };
 
     self.back = function () { if (window._jetApp) window._jetApp.navigate('registrations'); };
   }

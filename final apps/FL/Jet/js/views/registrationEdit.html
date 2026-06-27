@@ -7,7 +7,7 @@
           data-bind="text: status(), css: { 'badge--draft': status()==='DRAFT', 'badge--submitted': status()==='SUBMITTED',
                      'badge--approved': status()==='APPROVED', 'badge--rejected': status()==='REJECTED', 'badge--returned': status()==='RETURNED' }"></span><!-- /ko -->
       </div>
-      <div class="page-subtitle">Submitting routes to FL Manager &rarr; FL Admin approval</div>
+      <div class="page-subtitle">Submitting routes to Line Manager &rarr; FL Manager &rarr; FL Admin approval</div>
     </div>
     <div class="page-actions">
       <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
@@ -23,6 +23,27 @@
   <!-- /ko -->
   <!-- ko if: errorMsg() -->
   <div class="alert-banner alert-banner--danger" style="margin-bottom:14px">&#9888; <span data-bind="text: errorMsg()"></span></div>
+  <!-- /ko -->
+
+  <!-- ko if: hasDupWarning() && dupStatus() !== 'OVERRIDDEN' -->
+  <div class="alert-banner alert-banner--warning" style="margin-bottom:14px">
+    <b>&#9888; Possible duplicate freelancer.</b>
+    <!-- ko foreach: dupExact -->
+    <div style="margin-top:4px">Exact match (<span data-bind="text: matchedOn"></span>): <b data-bind="text: name"></b> <span data-bind="text: '(' + type + ' ' + ref + ')'"></span></div>
+    <!-- /ko -->
+    <!-- ko foreach: dupFuzzy -->
+    <div style="margin-top:4px">Similar: <b data-bind="text: name"></b> <span data-bind="text: '(' + type + ' ' + ref + ')'"></span> — <span data-bind="text: matchedOn"></span></div>
+    <!-- /ko -->
+    <!-- ko if: isAdmin() -->
+    <button class="btn btn-secondary btn-sm" style="margin-top:8px" data-bind="click: overrideDuplicate">Override (FL Admin)</button>
+    <!-- /ko -->
+    <!-- ko ifnot: isAdmin() -->
+    <div style="margin-top:6px;font-size:11.5px">An FL administrator must override an exact match before this can be submitted.</div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+  <!-- ko if: dupStatus() === 'OVERRIDDEN' -->
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#10003; Duplicate override recorded by an FL administrator.</div>
   <!-- /ko -->
 
   <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
@@ -117,6 +138,63 @@
       </div>
     </div>
 
+    <div class="section-heading-row" style="margin-top:18px">
+      <h3 class="section-heading">Requestor &amp; Line Manager</h3>
+    </div>
+    <p class="fl-legend">The line manager is the <b>first approver</b> and must be a registered DCT user.</p>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Requestor Name</label>
+        <input class="form-control" type="text" data-bind="value: requestorName, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Requestor Email</label>
+        <input class="form-control" type="email" data-bind="value: requestorEmail, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Line Manager Email *</label>
+        <input class="form-control" type="email" placeholder="manager@dct.gov.ae"
+               data-bind="value: lineManagerEmail, valueUpdate: 'input', enable: editable() || isNew,
+               event: { blur: function () { return $vm.resolveLineManager(); } }">
+        <!-- ko if: lineManagerHint() --><span class="form-hint" data-bind="text: lineManagerHint()"></span><!-- /ko -->
+      </div>
+      <div class="form-group">
+        <label class="form-label">Line Manager Name</label>
+        <input class="form-control" type="text" data-bind="value: lineManagerName, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+    </div>
+
+    <div class="section-heading-row" style="margin-top:18px">
+      <h3 class="section-heading">Bank Details</h3>
+    </div>
+    <p class="fl-legend">Captured now (AI-extractable from the bank letter); the primary account is created on approval.</p>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Bank Name</label>
+        <input class="form-control" type="text" data-bind="value: bankName, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+      <div class="form-group">
+        <label class="form-label">IBAN</label>
+        <input class="form-control" type="text" placeholder="AE…" data-bind="value: bankIban, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Holder Name</label>
+        <input class="form-control" type="text" data-bind="value: bankAccountName, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account Number</label>
+        <input class="form-control" type="text" data-bind="value: bankAccountNumber, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+      <div class="form-group">
+        <label class="form-label">SWIFT</label>
+        <input class="form-control" type="text" data-bind="value: bankSwift, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Currency</label>
+        <input class="form-control" type="text" data-bind="value: bankCurrencyCode, valueUpdate: 'input', enable: editable() || isNew">
+      </div>
+    </div>
+
     <audit-info params="data: audit"></audit-info>
 
   </div><!-- /card -->
@@ -146,6 +224,9 @@
         </div>
         <div class="reg-doc-actions">
           <!-- ko if: uploaded -->
+          <!-- ko if: ['PASSPORT','EMIRATES_ID','BANK_LETTER'].indexOf(docTypeCode) >= 0 -->
+          <button class="btn btn-primary btn-sm" data-bind="click: function () { return $vm.runExtract($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()" title="Extract data with AI">&#10024; AI Extract</button>
+          <!-- /ko -->
           <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.viewDoc($data); }">View</button>
           <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.pickDocFile($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()">Replace</button>
           <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.removeDoc($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()">&times;</button>
@@ -182,5 +263,46 @@
     </div>
   </aside>
   </div><!-- /reg-layout -->
+  <!-- /ko -->
+
+  <!-- AI extraction review modal -->
+  <!-- ko if: aiOpen() -->
+  <div class="modal-overlay">
+    <div class="modal-box">
+      <div class="modal-header">
+        <h3>&#10024; AI Extraction — <span data-bind="text: aiDocType()"></span></h3>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeAi">&times;</button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- ko if: aiBusy() --><list-skeleton params="rows: 4"></list-skeleton><!-- /ko -->
+        <!-- ko ifnot: aiBusy() -->
+        <!-- ko if: aiConfidence() !== null -->
+        <p class="fl-legend">Overall confidence: <b data-bind="text: aiConfidence() + '%'"></b>. Review each value, untick anything wrong, then Apply.</p>
+        <!-- /ko -->
+        <!-- ko foreach: aiWarnings -->
+        <div class="alert-banner alert-banner--warning" style="margin-bottom:8px">&#9888; <span data-bind="text: $data"></span></div>
+        <!-- /ko -->
+        <!-- ko if: aiFields().length === 0 -->
+        <p class="reg-doc-note">The AI could not read any fields from this document.</p>
+        <!-- /ko -->
+        <!-- ko foreach: aiFields -->
+        <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+          <input type="checkbox" data-bind="checked: apply, enable: !!set" style="pointer-events:auto">
+          <div style="flex:1">
+            <label class="form-label" data-bind="text: label"></label>
+            <input class="form-control" type="text" data-bind="value: value">
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+      <div class="modal-footer" style="display:flex;justify-content:flex-end;gap:8px">
+        <button class="btn btn-secondary" data-bind="click: closeAi">Cancel</button>
+        <button class="btn btn-primary" data-bind="click: applyExtract, enable: !aiBusy() && aiFields().length > 0">Apply to form</button>
+      </div>
+    </div>
+  </div>
   <!-- /ko -->
 </div>

@@ -6,7 +6,7 @@
 <title>Freelancer Portal · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.0.0';</script>
+<script>window.APP_VERSION = '1.6.0';</script>
 <link rel="stylesheet" id="portal-css">
 <script>
   document.getElementById('portal-css').href = 'css/portal.css?v=' + window.APP_VERSION;
@@ -40,6 +40,7 @@
         <span data-bind="text: busy() ? '…' : t('continue')"></span>
       </button>
       <div class="alt"><span data-bind="text: t('firstTime')"></span></div>
+      <div class="alt"><a href="#" style="color:inherit;font-weight:600" data-bind="click: openRegister, text: t('registerLink')"></a></div>
     </div>
 
     <!-- set password (invite link) -->
@@ -61,6 +62,90 @@
     </div>
 
     <button class="lang-flip lang-flip--floating" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
+  </div>
+</section>
+
+<!-- ════════════════ SELF-REGISTRATION WIZARD ════════════════ -->
+<section class="login-stage" data-bind="visible: view() === 'register'" style="display:none">
+  <div class="login-left">
+    <div class="mark">i-Finance <span class="mark-sub" data-bind="text: t('portalName')"></span></div>
+    <h2><span data-bind="text: t('regTitle')"></span></h2>
+    <p data-bind="text: t('loginHeroSub')"></p>
+  </div>
+  <div class="login-right">
+    <div class="login-card">
+      <h3 data-bind="text: t('regTitle')"></h3>
+      <div class="alert" data-bind="visible: regError(), text: regError()"></div>
+
+      <!-- step: email -->
+      <div data-bind="visible: regStep() === 'email'">
+        <div class="hint" data-bind="text: t('regEmailHint')"></div>
+        <div class="fld"><label data-bind="text: t('email')"></label>
+          <input type="email" data-bind="value: rgEmail"></div>
+        <button class="btn btn-brand btn-block" data-bind="click: regStart, disable: regBusy, text: regBusy() ? '…' : t('sendCode')"></button>
+        <div class="alt"><a href="#" data-bind="click: regBackToLogin, text: t('backToLogin')"></a></div>
+      </div>
+
+      <!-- step: otp -->
+      <div data-bind="visible: regStep() === 'otp'">
+        <div class="hint" data-bind="text: t('regCodeHint')"></div>
+        <div class="hint" style="background:#fff5d6;border:1px dashed #c79a00;color:#7a5c00;border-radius:6px;padding:6px 8px" data-bind="visible: regDevCode()">
+          DEV mode — your code: <strong data-bind="text: regDevCode"></strong></div>
+        <div class="fld"><label data-bind="text: t('code')"></label>
+          <input type="text" inputmode="numeric" maxlength="6" data-bind="value: rgCode"></div>
+        <button class="btn btn-brand btn-block" data-bind="click: regVerify, disable: regBusy, text: regBusy() ? '…' : t('verifyCode')"></button>
+        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('email'); }, text: t('back')"></a></div>
+      </div>
+
+      <!-- step: details -->
+      <div data-bind="visible: regStep() === 'details'">
+        <div class="fld"><label data-bind="text: t('firstNameEn')"></label><input type="text" data-bind="value: rgFirstName"></div>
+        <div class="fld"><label data-bind="text: t('lastNameEn')"></label><input type="text" data-bind="value: rgLastName"></div>
+        <div class="fld"><label data-bind="text: t('dob')"></label><input type="date" data-bind="value: rgDob"></div>
+        <div class="fld"><label data-bind="text: t('nationality')"></label>
+          <select data-bind="options: rgNats, optionsText: 'name', optionsValue: 'code', optionsCaption: '—', value: rgNat"></select></div>
+        <div class="fld"><label data-bind="text: t('mobileLbl')"></label><input type="text" data-bind="value: rgMobile"></div>
+        <button class="btn btn-brand btn-block" data-bind="click: regSaveDetails, disable: regBusy, text: regBusy() ? '…' : t('saveContinue')"></button>
+        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
+      </div>
+
+      <!-- step: docs (first after OTP) -->
+      <div data-bind="visible: regStep() === 'docs'">
+        <div class="hint" data-bind="text: regAiEnabled() ? t('regDocsHintAi') : t('regDocsHintManual')"></div>
+        <!-- ko foreach: rgDocs -->
+        <div class="fld" style="border:1px solid #e3e3e3;border-radius:8px;padding:10px;margin-bottom:8px">
+          <label data-bind="text: label"></label>
+          <input type="file" accept="image/*,application/pdf" data-bind="event: { change: function(d,e){ return $root.regPickDoc($data, e); } }">
+          <div style="font-size:12px;margin-top:4px" data-bind="visible: fileName(), text: fileName"></div>
+          <button class="btn btn-block" style="margin-top:6px" data-bind="visible: $root.regAiEnabled(), click: function(){ return $root.regExtract($data); }, disable: $root.regBusy() || !docId(), text: $root.t('aiExtract')"></button>
+          <div style="font-size:12px;margin-top:4px" data-bind="visible: aiMsg(), text: aiMsg, style: { color: aiOk() === false ? '#c0392b' : '#1a7f4b' }"></div>
+        </div>
+        <!-- /ko -->
+        <button class="btn btn-brand btn-block" data-bind="click: regDocsContinue, disable: regBusy, text: regBusy() ? '…' : t('next')"></button>
+        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('otp'); }, text: t('back')"></a></div>
+      </div>
+
+      <!-- step: review -->
+      <div data-bind="visible: regStep() === 'review'">
+        <div class="fld"><label data-bind="text: t('emiratesId')"></label><input type="text" data-bind="value: rgNationalId"></div>
+        <div class="fld"><label data-bind="text: t('passportNo')"></label><input type="text" data-bind="value: rgPassport"></div>
+        <div class="fld"><label data-bind="text: t('bankNameLbl')"></label><input type="text" data-bind="value: rgBankName"></div>
+        <div class="fld"><label data-bind="text: t('ibanLbl')"></label><input type="text" data-bind="value: rgBankIban"></div>
+        <div class="fld"><label data-bind="text: t('lineMgrEmail')"></label><input type="email" data-bind="value: rgLineMgrEmail"></div>
+        <div class="fld"><label data-bind="text: t('lineMgrName')"></label><input type="text" data-bind="value: rgLineMgrName"></div>
+        <button class="btn btn-brand btn-block" data-bind="click: regSubmit, disable: regBusy, text: regBusy() ? '…' : t('submitReg')"></button>
+        <div class="alt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
+      </div>
+
+      <!-- step: done -->
+      <div data-bind="visible: regStep() === 'done'">
+        <h3 data-bind="text: t('regDoneTitle')"></h3>
+        <p data-bind="text: t('regDoneMsg')"></p>
+        <button class="btn btn-brand btn-block" data-bind="click: regBackToLogin, text: t('backToLogin')"></button>
+      </div>
+
+      <button class="lang-flip lang-flip--floating" data-bind="click: toggleLang, text: lang() === 'en' ? 'عربي' : 'English'"></button>
+    </div>
   </div>
 </section>
 

@@ -197,6 +197,24 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             END IF;
         END;
 
+        -- Create the primary bank account from the registration's bank capture
+        -- (Phase 1: bank details are collected at registration / AI-extracted).
+        IF v_reg.bank_iban IS NOT NULL OR v_reg.bank_account_number IS NOT NULL THEN
+            INSERT INTO prod.dct_fl_bank_accounts (
+                freelancer_id, bank_name, account_number, iban, account_name,
+                currency_code, is_primary, is_active,
+                created_by, created_at, updated_by, updated_at
+            ) VALUES (
+                v_fl_id,
+                NVL(v_reg.bank_name, '(unspecified)'),
+                NVL(v_reg.bank_account_number, NVL(v_reg.bank_iban, '(unspecified)')),
+                v_reg.bank_iban,
+                NVL(v_reg.bank_account_name, v_reg.first_name_en || ' ' || v_reg.last_name_en),
+                NVL(v_reg.bank_currency_code, 'AED'),
+                'Y', 'Y', 'SYSTEM', SYSTIMESTAMP, 'SYSTEM', SYSTIMESTAMP
+            );
+        END IF;
+
         -- Carry the registration's uploaded documents over to the new freelancer
         -- so they are not orphaned (FL convention: reference_id = freelancer_id).
         UPDATE prod.dct_documents
