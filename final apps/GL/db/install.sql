@@ -1,0 +1,14 @@
+-- ===========================================================================
+-- General Ledger (App 210) - master install
+-- Run each in SQLcl: sql -name prod_mcp
+-- IMPORTANT: 01 (synonyms) and 05 (ORDS) must each run in their OWN fresh
+-- session (ORA-01471 self-referencing-synonym rule). Run 06 with
+-- -Dfile.encoding=UTF-8 (Arabic class-type names).
+-- ===========================================================================
+-- @01_gl_synonyms.sql      -- fresh session
+-- @02_gl_ddl.sql
+-- @03_gl_pkg.sql
+-- @04_gl_views.sql
+-- @06_gl_seed.sql          -- JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8
+-- @05_gl_ords.sql          -- fresh session
+PROMPT GL install: run scripts 01..06 individually per the header notes.

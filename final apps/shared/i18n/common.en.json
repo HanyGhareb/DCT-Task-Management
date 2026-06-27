@@ -22,6 +22,7 @@
   "mod.ar": "Accounts Receivable", "mod.ar.desc": "Event P&L analysis & revenue assurance",
   "mod.tm": "Task Management", "mod.tm.desc": "Teams, objectives, tasks & deliverables",
   "mod.atd": "Analytics Loader", "mod.atd.desc": "OTBI → ATD jobs, queue & run logs",
+  "mod.gl": "General Ledger", "mod.gl.desc": "CoA classifications: Sector, Chapter, DCT Program",
 
   "common.search": "Search…",
   "common.loading": "Loading…",

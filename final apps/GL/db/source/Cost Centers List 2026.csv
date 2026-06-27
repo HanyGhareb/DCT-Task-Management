@@ -1,0 +1,138 @@
+Changed across the years from ,to,Inactive / Yet to be discarded,< remarks as of 2025 ,,,,,,,,
+,,,,,,,,,,,
+CostCenter_2018_2019,CostCenter_2020_2023,CostCenter_2024_2025,Department,Sector,Entity,Activity,Status & Remarks as of 2023,Status & Remarks as of 2024,Status & Remarks as of 2025,,RLS
+4510100,4510100,4510100,DCT - Executive Management,Executive Office,DCT,Support Operations,,,,,PARENT
+4510011,4510011,4510011,DCT - Executive Affairs,Executive Office,DCT,Support Operations,,NEW - 2024,,,TBC
+4510110,4510110,4510110,DCT - Executive Management Office (Central),Executive Office,DCT,Support Operations,,,,,DCT - Executive Management Office (Central)
+4510140,4510140,4510140,DCT - Internal Audit Office,Internal Audit,DCT,Support Operations,,,,,DCT - Internal Audit Office
+4510150,4510150,4510150,DCT - Projects Management & Engineering ,Projects Management & Engineering,DCT,Support Operations,,,,,DCT - Projects Management & Engineering
+4510260,4510155,4510155,DCT - Tendering and Projects Control ,Tendering and Projects Control,DCT,Support Operations,,,,,DCT - Tendering and Projects Control
+4510155,4510155,4510155,DCT - Tendering and Projects Control ,Tendering and Projects Control,DCT,Support Operations,,,,,DCT - Tendering and Projects Control
+4510160,4510160,4510160,DCT - Legal & Government Affairs ,Legal & Government Affairs,DCT,Support Operations,,,,,DCT - Legal & Government Affairs
+4518113,4518113,4518113,DCT - AD Gaming Business Development Department,Executive Office,DCT,Support Operations,NEW (JUL),,,,DCT - AD Gaming Business Development Department
+4512600,4512600,4512600,DCT - Sandstorm Comics Department,Executive Office,DCT,Support Operations,,,,New 2026,TBC
+4510200,4510200,4510200,DCT - Support Services,Support Service,DCT,Support Operations,,,,,PARENT
+4510201,4510201,4510201,DCT - Support Services (Central) ,Support Service,DCT,Support Operations,,,,,DCT - Support Services (Central)
+4510290,4510290,-,DCT - Abrahamic Family House,Support Service,DCT,Support Operations,,,,,DCT - Abrahamic Family House
+4510210,4510210,4510210,DCT - Finance ,Support Service,DCT,Support Operations,,,,,DCT - Finance
+4510220,4510220,4510220,DCT - People & Performance ,Support Service,DCT,Support Operations,,,,,DCT - People & Performance
+4510230,4510230,4510230,DCT - Facility & General Services Management,Support Service,DCT,Support Operations,,,,,DCT - Facility & General Services Management
+4510240,4510240,4510240,DCT - Supply Management ,Support Service,DCT,Support Operations,,,,,DCT - Supply Management
+4510250,4510250,4510250,DCT - Technology Department,Support Service,DCT,Support Operations,,,,,DCT - Technology Department
+4510202,4510202,4510202,Museums Shared Services,Museums,Museums,Support Operations,NEW (SEP),,,,Museums Shared Services
+4514000,4514000,4514000,MSS - Museums Shared Services,Museum Shared Services,Museums,Support Operations,,,,,PARENT
+4514140,4514140,4514140,DCT - MSS - People and Performance,Museum Shared Services,Museums,Support Operations,NEW (SEP),,,,DCT - MSS - People and Performance
+4514120,4514120,4514120,DCT - MSS - Finance,Museum Shared Services,Museums,Support Operations,NEW (SEP),,,,DCT - MSS - Finance
+4514121,4514121,4514121,DCT - MSS - FIN Abrahamic Family House,Museum Shared Services,Museums,Support Operations,NEW (SEP),,,,TBC
+4514160,4514160,4514160,DCT - MSS - Supply Managements,Museum Shared Services,Museums,Support Operations,NEW (SEP),,,,TBC
+4514180,4514180,4514180,DCT - MSS - Technology,Museum Shared Services,Museums,Support Operations,NEW (SEP),,,,DCT - MSS - Technology
+4514130,4514130,4514130,MSS - Technical Operations Department,Museum Shared Services,Museums,Support Operations,,,,New 2026,TBC
+4514150,4514150,4514150,MSS - Visitor Experience and Event Management Department,Museum Shared Services,Museums,Support Operations,,,,New 2026,TBC
+4510190,4510190,4510410,DCT - Guggenheim Abu Dhabi Museum,AD-Guggenheim Museum,Museums,Core Operations,MSS,,,,DCT - Guggenheim Abu Dhabi Museum
+4510410,4510410,4510410,DCT - Guggenheim Abu Dhabi Museum,AD-Guggenheim Museum,Museums,Core Operations,NEW (OCT),,,,DCT - Guggenheim Abu Dhabi Museum
+4511012,4511012,-,DCT - Natural History Museum Abu Dhabi,Culture,DCT,Core Operations,NEW (AUG),,,,INACTIVE
+4510310,4510310,4510310,DCT - Natural History Museum,Natural History Museum,Museums,Core Operations,NEW (OCT),,,,DCT - Natural History Museum
+4510311,4510311,4510311,NHMAD - Museum Director,Natural History Museum,Museums,Core Operations,,,,,TBC
+4510320,4510320,4510320,"NHMAD - Scientific, Curatorial and Collections (sector)",Natural History Museum,Museums,Core Operations,,,,,TBC
+4510321,4510321,4510321,NHMAD - Curatorial Department,Natural History Museum,Museums,Core Operations,,,,,TBC
+4510322,4510322,4510322,NHMAD - Collections Department,Natural History Museum,Museums,Core Operations,,,,,TBC
+4510330,4510330,4510330,NHMAD - Learning and Experience (sector),Natural History Museum,Museums,Core Operations,,,,,TBC
+4510331,4510331,4510331,NHMAD - Education Department,Natural History Museum,Museums,Core Operations,,,,,TBC
+4510332,4510332,4510332,NHMAD - Visitor Experience & Communications Department,Natural History Museum,Museums,Core Operations,,,,,TBC
+4510340,4510340,4510340,NHMAD - Museum Development & Operations (sector),Natural History Museum,Museums,Core Operations,,,,,TBC
+4510341,4510341,4510341,NHMAD - Partnerships and Commercial Department,Natural History Museum,Museums,Core Operations,,,,,TBC
+4510342,4510342,4510342,NHMAD - Operations Department,Natural History Museum,Museums,Core Operations,,,,,TBC
+4510142,4510142,4510142,DCT - TeamLab,TeamLab,Museums,Core Operations,,,,,TBC
+4510180,4510180,4510180,DCT - Zayed National Museum ,Zayed National Museum,Museums,Core Operations,MSS,,,,DCT - Zayed National Museum
+4510181,4510181,4510181,DCT - ZNM - Curatorial & Collection Management,Zayed National Museum,Museums,Core Operations,NEW (OCT),,,,DCT - ZNM - Curatorial & Collection Management
+4510182,4510182,4510182,DCT - ZNM - Learning & Public Engagement,Zayed National Museum,Museums,Core Operations,NEW (OCT),,,,DCT - ZNM - Learning & Public Engagement
+4510183,4510183,4510183,DCT - ZNM - Development & Commercial Services,Zayed National Museum,Museums,Core Operations,NEW (OCT),,,,DCT - ZNM - Development & Commercial Services
+4510184,4510184,4510184,DCT - ZNM - Operations,Zayed National Museum,Museums,Core Operations,NEW (OCT),,,,DCT - ZNM - Operations
+4510185,4510185,4510185,DCT - ZNM - Marketing & Communications,Zayed National Museum,Museums,Core Operations,NEW (OCT),,,,DCT - ZNM - Marketing & Communications
+4510120,4510120,4510120,DCT - Louvre Abu Dhabi,Louvre Abu Dhabi,Museums,Core Operations,,,,,DCT - Louvre Abu Dhabi
+4510121,4510121,4510121,DCT - Louvre AD - Director's Office,Louvre Abu Dhabi,Museums,Core Operations,,,,,DCT - Louvre AD - Director's Office
+4510122,4510122,4510122,"DCT - Louvre AD - Scientific, Curatorial and Collection Management",Louvre Abu Dhabi,Museums,Core Operations,,,,,"DCT - Louvre AD - Scientific, Curatorial and Collection Management"
+4510123,4510123,4510123,DCT - Louvre AD - Education and Cultural Engagement,Louvre Abu Dhabi,Museums,Core Operations,,,,,DCT - Louvre AD - Education and Cultural Engagement
+4510124,4510124,4510124,DCT - Louvre AD - Marketing and Communication,Louvre Abu Dhabi,Museums,Core Operations,,,,,DCT - Louvre AD - Marketing and Communication
+4510125,4510125,4510125,DCT - Louvre AD - Visitor Experience and Event Management,Louvre Abu Dhabi,Museums,Core Operations,,,,,DCT - Louvre AD - Visitor Experience and Event Management
+4510126,4510126,4510126,DCT - Louvre AD - Business Support,Louvre Abu Dhabi,Museums,Core Operations,,,,,?
+4510127,4510127,4510127,DCT - Louvre AD - Technical Operations,Louvre Abu Dhabi,Museums,Core Operations,,,,,DCT - Louvre AD - Technical Operations
+4511000,4511000,4511000,DCT - Culture,Culture,DCT,Core Operations,,,,,PARENT
+4511010,4511010,4511010,DCT - Culture (Central) ,Culture,DCT,Core Operations,,,,,DCT - Culture (Central)
+4511011,4511011,4511011,DCT - Abu Dhabi Public Art,Culture,DCT,Core Operations,,NEW - 2024,,,DCT - Abu Dhabi Public Art
+4511020,4511020,4511020,DCT - Culture Sector Policy and Development Office,Culture,DCT,Core Operations,,,,New 2026,TBC
+4511100,4511150,4511150,"DCT - Scientific, Curatorial and Collection Department",Culture,DCT,Core Operations,,,,,"DCT - Scientific, Curatorial and Collection Department"
+4511150,4511150,4511150,"DCT - Scientific, Curatorial and Collection Department",Culture,DCT,Core Operations,,,,,"DCT - Scientific, Curatorial and Collection Department"
+4511200,4511250,4511250,DCT - Culture Sites Management Department,Culture,DCT,Core Operations,,,,,DCT - Culture Sites Management Department
+4511250,4511250,4511250,DCT - Culture Sites Management Department,Culture,DCT,Core Operations,,,,,DCT - Culture Sites Management Department
+4511300,4511300,4511300,DCT - Historic Environment ,Culture,DCT,Core Operations,,,,,DCT - Historic Environment
+4511400,4510150,4510150,DCT - Projects Management & Engineering ,CWIP,DCT,Support Operations,,,,,DCT - Projects Management & Engineering
+4511600,4511600,4511600,DCT - Intangible Cultural Heritage Department,Culture,DCT,Core Operations,,,,,DCT - Intangible Cultural Heritage Department
+4511700,4511700,4511700,DCT - Culture Programming Department,Culture,DCT,Core Operations,,,,,DCT - Culture Programming Department
+4511800,4511800,4511800,DCT - Education & Outreach ,Culture,DCT,Core Operations,,,,,DCT - Education & Outreach
+4511550,4511550,4511550,DCT - Culture Sector Marketing Department,Culture,DCT,Core Operations,,,,,DCT - Culture Sector Marketing Department
+4511900,4511250,4511250,DCT - Culture Sites Management Department,Culture,DCT,Core Operations,,,,,DCT - Culture Sites Management Department
+4511950,4511250,4511250,DCT - Culture Sites Management Department,Culture,DCT,Core Operations,,,,,DCT - Culture Sites Management Department
+4511750,4511750,4511750,DCT - Culture Festivals & Platforms ,Culture,DCT,Core Operations,,,,,DCT - Culture Festivals & Platforms
+4513800,4511550,4511550,DCT - Culture Sector Marketing Department,Culture,DCT,Core Operations,,,,,DCT - Culture Sector Marketing Department
+4512000,4512000,4512000,DCT - Strategic Affairs,Strategic Affairs,DCT,Support Operations,,,,,PARENT
+4512010,4512010,4512010,DCT - Office of the Strategic Affairs Executive Director,Strategic Affairs,DCT,Support Operations,,,,,DCT - Office of the Strategic Affairs Executive Director
+4512100,4512100,4512100,DCT - Strategic Planning,Strategic Affairs,DCT,Support Operations,,,,,DCT - Strategic Planning
+4512200,4512200,4512200,DCT - Data & AI Department,Strategic Affairs,DCT,Support Operations,,,,,DCT - Data & AI Department
+4512300,4512300,4512300,DCT - Business Excellence and Continuity Department,Strategic Affairs,DCT,Support Operations,,,,,DCT - Business Excellence and Continuity Department
+4510130,4510130,4510130,DCT - Strategy Affairs,Strategy & Policy,DCT,Support Operations,,,,,?
+4512400,4512400,-,DCT - Achievement & Performance ,Strategic Affairs,DCT,Support Operations,,,,,DCT - Achievement & Performance
+4512500,4512500,4512500,DCT - Organization Developments & Change Enablement Department,Strategic Affairs,DCT,Support Operations,,,,New 2026,TBC
+4515000,4515000,4515000,DCT - Tourism,Tourism,DCT,Core Operations,,,,,PARENT
+4515010,4515010,4515010,DCT - Tourism Sector Management Office,Tourism,DCT,Core Operations,,,,,DCT - Tourism Sector Management Office
+4515100,4515100,4515100,DCT - International Operations,Tourism,DCT,Core Operations,,,,,DCT - International Operations
+4515300,4515300,4515300,DCT - Visitors Experience,Tourism,DCT,Core Operations,,,,,DCT - Visitors Experience
+4515900,4515900,4515900,DCT - Tourism Products Development,Tourism,DCT,Core Operations,NEW (OCT),,,,DCT - Tourism Products Development
+4515400,4515400,4515400,DCT - Abu Dhabi Conventions & Exhibition Bureau,Tourism,DCT,Core Operations,,,,,DCT - Abu Dhabi Conventions & Exhibition Bureau
+4515500,4515500,4515500,DCT - Abu Dhabi Events Bureau,Tourism,DCT,Core Operations,,,,,DCT - Abu Dhabi Events Bureau
+4515700,4515700,4515700,DCT - Destination Management,Tourism,DCT,Core Operations,NEW (MAR),,,,DCT - Destination Management
+4510170,4510170,4510170,DCT - Licensing & Regulatory Compliance,Support Service,DCT,Core Operations,,,,,DCT - Licensing & Regulatory Compliance
+4510270,4510170,4510170,DCT - Licensing & Regulatory Compliance,Support Service,DCT,Core Operations,,,,,DCT - Licensing & Regulatory Compliance
+4515200,4510170,4510170,DCT - Licensing & Regulatory Compliance,Support Service,DCT,Core Operations,,,,,DCT - Licensing & Regulatory Compliance
+4515600,4515600,4515600,DCT - Tourist Destination Marketing & Promotion  ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Tourist Destination Marketing & Promotion
+4513010,4515600,4515600,DCT - Tourist Destination Marketing & Promotion  ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Tourist Destination Marketing & Promotion
+4513100,4515600,4515600,DCT - Tourist Destination Marketing & Promotion  ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Tourist Destination Marketing & Promotion
+4513300,4515600,4515600,DCT - Tourist Destination Marketing & Promotion  ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Tourist Destination Marketing & Promotion
+4513400,4515600,4515600,DCT - Tourist Destination Marketing & Promotion  ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Tourist Destination Marketing & Promotion
+4513500,4515600,4515600,DCT - Tourist Destination Marketing & Promotion  ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Tourist Destination Marketing & Promotion
+4513600,4510175,4510175,DCT - Media Affairs ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Media Affairs
+4513700,4515600,4515600,DCT - Tourist Destination Marketing & Promotion  ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Tourist Destination Marketing & Promotion
+4515020,4515020,4515020,DCT - Emiratization & Capability Development Office,Tourism,DCT,Core Operations,,,,,TBC
+4515030,4515030,4515030,"DCT - ED Office Events, Retail & Culinary Fund ",Tourism,DCT,Core Operations,,,,,TBC
+4515040,4515040,4515040,DCT - ED Office VX & Tourism Product Development ,Tourism,DCT,Core Operations,,,,,TBC
+4515001,4515001,4515001,DCT - DG Office Tourism,Tourism,DCT,Core Operations,,,,,TBC
+4516000,4516000,-,DCT - Dar Al Kuteb,-,DCT,Core Operations,,,,,PARENT
+4516010,4516010,-,DCT - Dar Al Kuteb (Central),Culture,DCT,Core Operations,,,,,INACTIVE
+4516100,4516100,4516100,DCT - Library Management Department,Culture,DCT,Core Operations,,,,,DCT - Library Management Department
+4516150,4516150,-,DCT - Exhibitions & Programmes Affairs ,ALC,ALC,Core Operations,,,,,DCT - Exhibitions & Programmes Affairs
+4516200,4516200,-,DCT - Publishing ,ALC,ALC,Core Operations,,,,,DCT - Publishing
+4516300,4516300,-,DCT - Sh. Zayed Book Award ,ALC,ALC,Core Operations,,,,,DCT - Sh. Zayed Book Award
+4517000,4517000,4517000,DCT - Cultural Programs/Heritage Festivals Ctee,Heritage & Culture Committee,Heritage & Culture Committee,Heritage & Culture Committee,,,,,PARENT
+4517010,4517010,4517010,DCT - Board Cultural Programs/Heritage Festivals Ctee,Heritage & Culture Committee,Heritage & Culture Committee,Heritage & Culture Committee,,,,,INACTIVE
+4517100,4517100,4517100,DCT - Logistics & Procurement Cultural Programs/Heritage Festivals Ctee,Heritage & Culture Committee,Heritage & Culture Committee,Heritage & Culture Committee,,,,,INACTIVE
+4517150,4517150,4517150,DCT - Communications Cultural Programs/Heritage Festivals Ctee,Heritage & Culture Committee,Heritage & Culture Committee,Heritage & Culture Committee,,,,,INACTIVE
+4517200,4517200,4517200,DCT - Finance Cultural Programs/Heritage Festivals Ctee,Heritage & Culture Committee,Heritage & Culture Committee,Heritage & Culture Committee,,,,,INACTIVE
+4517250,4517250,4517250,DCT - HR Cultural Programs/Heritage Festivals Ctee,Heritage & Culture Committee,Heritage & Culture Committee,Heritage & Culture Committee,,,,,INACTIVE
+4519810,4519810,-,DCT - Stimulus,Stimulus,DCT,Stimulus,,,,,DCT - Stimulus
+4510195,4510195,4510195,ALC - Arabic Language Centre (Central),ALC,ALC,ALC,,,,,ALC - Arabic Language Centre (Central)
+4519196,4519196,4519196,ALC - Marketing & Communications,ALC,ALC,ALC,NEW (AUG),,,,TBC
+4519197,4519197,4519197,ALC - Education & Research,ALC,ALC,ALC,NEW (AUG),,,,TBC
+4519198,4519198,4519198,ALC - Corporate Communication Office,ALC,ALC,ALC,NEW (AUG),,,,TBC
+4519199,4519199,4519199,ALC - Creative Content ,ALC,ALC,ALC,NEW (AUG),,,,TBC
+4519200,4519200,4519200,ALC - Bookfair & Events ,ALC,ALC,ALC,NEW (AUG),,,,TBC
+4519201,4519201,4519201,ALC - Literature Awards ,ALC,ALC,ALC,NEW (AUG),,,,TBC
+4519202,4519202,4519202,ALC - Specialized Libraries,ALC,ALC,ALC,NEW (AUG),,,,TBC
+4519203,4519203,4519203,ALC - Strategic Planning Office,ALC,ALC,ALC,NEW (AUG),,,,ALC - Strategic Planning Office
+4519204,4519204,4519204,ALC - Corporate Communication Office Head,ALC,ALC,ALC,,,,,TBC
+4513000,4513000,4513000,DCT - Strategic Marketing & Communication ,Strategic Marketing & Communication,DCT,Core Operations,NEW - 2023,,,,PARENT
+4510175,4510175,4510175,DCT - Media Affairs ,Strategic Marketing & Communication,DCT,Core Operations,,,,,DCT - Media Affairs
+4513111,4513111,4513111,DCT - Central Strategic MarComms,Strategic Marketing & Communication,DCT,Core Operations,,NEW - 2024,,,DCT - Central Strategic MarComms
+4513110,4513110,4513110,"DCT - Creative, Social, & Digital",Strategic Marketing & Communication,DCT,Core Operations,NEW - 2023,,,,"DCT - Creative, Social, & Digital"
+4513120,4513120,4513120,DCT - Strategic Communications ,Strategic Marketing & Communication,DCT,Core Operations,NEW - 2023,,,,DCT - Strategic Communications
+4513130,4513130,4513130,"DCT - Planning, Strategy & Operations ",Strategic Marketing & Communication,DCT,Core Operations,NEW - 2023,,,,"DCT - Planning, Strategy & Operations"
+4513140,4513140,4513140,DCT - Sector Marketing ,Strategic Marketing & Communication,DCT,Core Operations,NEW - 2023,,,,DCT - Sector Marketing
