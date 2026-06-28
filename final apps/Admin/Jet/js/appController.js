@@ -130,6 +130,7 @@ define(
           { id: 'systemSettings',    labelKey: 'nav.systemSettings',    icon: '&#9881;'   },
           { id: 'sessions',          labelKey: 'nav.sessions',          icon: '&#128274;' },
           { id: 'auditLog',          labelKey: 'nav.auditLog',          icon: '&#128218;' },
+          { id: 'runners',           labelKey: 'nav.runners',           icon: '&#129302;' },
         ]
       },
     ];

@@ -96,6 +96,12 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 **Audit Log** (`auditLog`) — searchable audit trail with before/after diff modal + CSV export.
 - `reload` · `toggleExpand` (diff snapshot) · `exportCsv` · `formatDate` / `getActionBadgeClass`.
 
+**Automation Registry** (`runners`) — catalogue of every automation runner/script (location,
+purpose, how-to-use, deps/schedule, optional inline text + stored binary copy); full CRUD via
+the shared `<edit-drawer>` + `<doc-upload>`.
+- `reload` · `doSearch` / `clearFilters` · `openNew` / `openEdit` / `closeEdit` / `saveEdit` · `del`
+  · `onFilePicked` (shared doc-upload) / `downloadFile` · `statusClass`.
+
 ## 9. Dashboard
 
 **Dashboard** (`dashboard`) — customisable KPI/widget home.
@@ -129,6 +135,7 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | Approval Templates | `GET approval-templates/` · `GET approval-templates/:id` · `PUT approval-templates/:id` · `POST approval-templates/:id/clone` · `POST approval-templates/:id/activate` · `PUT approval-templates/:id/steps` · `POST approval-templates/:id/restore` |
 | Audit | `GET audit/` · `GET audit/:id` · `GET audit/export` |
 | Sessions | `GET sessions/` · `POST sessions/revoke` |
+| Automation Registry | `GET runners/` · `GET runners/meta` · `POST runners/` · `GET runners/:id` · `PUT runners/:id` · `DELETE runners/:id` · `PUT runners/:id/file` · `GET runners/:id/file` *(db/v2/31)* |
 | Delegations | `GET delegations/` · `POST delegations/` · `POST delegations/:id/cancel` |
 | Announcements | `GET announcements/` · `POST announcements/` · `PUT announcements/:id` · `GET announcements/active` |
 
@@ -152,3 +159,4 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | `sessionService` | active sessions + revoke. |
 | `delegationService` | approval delegations. |
 | `announcementService` | announcement banners. |
+| `runnerService` | automation registry CRUD + meta + binary file up/download (`putBinary`/`fetchBlobUrl`). |

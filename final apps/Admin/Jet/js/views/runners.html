@@ -1,0 +1,165 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: t('runner.title')"></div>
+    <div class="page-subtitle">
+      <span class="mono" data-bind="text: total()"></span> <span data-bind="text: t('runner.subtitle')"></span>
+    </div>
+  </div>
+
+  <!-- Toolbar: search + category/runtime/status filters + actions -->
+  <div class="view-toolbar">
+    <input class="search-box" type="text"
+           data-bind="value: search, valueUpdate: 'input',
+                      event: { keyup: function(d,e){ if(e.keyCode===13) doSearch(); return true; } },
+                      attr: { placeholder: t('runner.searchPh') }">
+    <input class="form-control" style="max-width:180px" list="runnerCatList"
+           data-bind="value: fCategory, attr:{ placeholder: t('runner.allCategories') }">
+    <datalist id="runnerCatList">
+      <!-- ko foreach: categories --><option data-bind="value: $data"></option><!-- /ko -->
+    </datalist>
+    <select class="form-control" style="max-width:150px" data-bind="value: fRuntime">
+      <option value="" data-bind="text: t('runner.allRuntimes')"></option>
+      <!-- ko foreach: runtimes --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+    </select>
+    <select class="form-control" style="max-width:150px" data-bind="value: fStatus">
+      <option value="" data-bind="text: t('runner.allStatuses')"></option>
+      <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+    </select>
+    <button class="btn btn-primary btn-sm" data-bind="click: doSearch, text: t('runner.search')"></button>
+    <button class="btn btn-secondary btn-sm" data-bind="click: clearFilters, text: t('runner.clear')"></button>
+    <span class="toolbar-spacer"></span>
+    <button class="btn btn-secondary btn-sm" data-bind="click: reload, text: '↻ ' + t('common.refresh')"></button>
+    <button class="btn btn-primary btn-sm" data-bind="click: openNew, text: '+ ' + t('runner.new')"></button>
+  </div>
+
+  <div class="data-table-wrap">
+    <!-- ko if: loading() --><list-skeleton params="rows: 10"></list-skeleton><!-- /ko -->
+
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: loadError() -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#9888;</div>
+      <div class="empty-state__msg" data-bind="text: t('empty.loadFailed')"></div>
+      <button class="btn btn-primary" data-bind="click: reload, text: t('common.retry')"></button>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loadError() -->
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-bind="text: t('runner.col.code')"></th>
+          <th data-bind="text: t('runner.col.name')"></th>
+          <th data-bind="text: t('runner.col.category')"></th>
+          <th data-bind="text: t('runner.col.runtime')"></th>
+          <th data-bind="text: t('runner.col.status')"></th>
+          <th data-bind="text: t('runner.col.location')"></th>
+          <th data-bind="text: t('runner.col.file')"></th>
+          <th data-bind="text: t('runner.col.updated')"></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: runners() -->
+        <tr style="cursor:pointer" data-bind="click: function(){ $parent.openEdit($data); }">
+          <td class="mono" data-bind="text: runnerCode"></td>
+          <td data-bind="text: name"></td>
+          <td><span class="badge" data-bind="text: $data.category || '—'"></span></td>
+          <td class="mono" style="font-size:12px" data-bind="text: $data.runtime || '—'"></td>
+          <td><span data-bind="css: $parent.statusClass($data.status), text: status"></span></td>
+          <td class="mono" style="font-size:11.5px;max-width:220px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
+              data-bind="text: $data.hostLocation || '—', attr:{ title: ($data.filePath || '') }"></td>
+          <td style="text-align:center">
+            <!-- ko if: hasFile === 'Y' --><span title="stored copy attached">&#128206;</span><!-- /ko -->
+            <!-- ko ifnot: hasFile === 'Y' --><span style="color:var(--text-3)">—</span><!-- /ko -->
+          </td>
+          <td class="mono" style="font-size:11.5px;white-space:nowrap" data-bind="text: $data.updatedAt || ''"></td>
+          <td class="cell-actions" style="text-align:end;" data-bind="click: function(){ return true; }, clickBubble: false">
+            <button class="btn btn-xs btn-secondary" data-bind="click: function(){ $parent.openEdit($data); }, text: $parent.t('runner.edit')"></button>
+            <button class="btn btn-xs btn-danger" data-bind="click: function(){ $parent.del($data); }, text: $parent.t('runner.delete')"></button>
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: runners().length === 0 -->
+        <tr><td colspan="9">
+          <div class="empty-state">
+            <div class="empty-state__icon">&#129302;</div>
+            <div class="empty-state__msg" data-bind="text: t('runner.empty')"></div>
+            <div class="empty-state__sub" data-bind="text: t('runner.emptySub')"></div>
+          </div>
+        </td></tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+    <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
+  <!-- create / edit — shared slide-in drawer -->
+  <edit-drawer params="open: showEdit, vm: $data,
+                       title: (isNew() ? t('runner.newTitle') : t('runner.editTitle')),
+                       saveLabel: t('runner.save'), cancelLabel: t('runner.cancel'),
+                       onSave: saveEdit, width: '720px'">
+    <!-- ko if: editError() -->
+    <div class="form-error" style="margin-bottom:12px" data-bind="text: editError()"></div>
+    <!-- /ko -->
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.code')"></label>
+        <input class="form-control mono" data-bind="textInput: fmCode, attr:{ placeholder: 'COPY_ANALYSIS' }"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.name')"></label>
+        <input class="form-control" data-bind="textInput: fmName"></div>
+
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.category')"></label>
+        <input class="form-control" list="runnerCatList2" data-bind="textInput: fmCategory">
+        <datalist id="runnerCatList2"><!-- ko foreach: categories --><option data-bind="value: $data"></option><!-- /ko --></datalist></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.runtime')"></label>
+        <select class="form-control" data-bind="value: fmRuntime, options: runtimes"></select></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.status')"></label>
+        <select class="form-control" data-bind="value: fmStatus, options: statuses"></select></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.owner')"></label>
+        <input class="form-control" data-bind="textInput: fmOwner"></div>
+
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.host')"></label>
+        <input class="form-control" data-bind="textInput: fmHost, attr:{ placeholder: 'atd-vm180 / local / ADB' }"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.schedule')"></label>
+        <input class="form-control" data-bind="textInput: fmSchedule, attr:{ placeholder: 'systemd / Task Scheduler / manual' }"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('runner.f.filePath')"></label>
+        <input class="form-control mono" data-bind="textInput: fmFilePath"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('runner.f.repoPath')"></label>
+        <input class="form-control mono" data-bind="textInput: fmRepoPath"></div>
+
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('runner.f.purpose')"></label>
+        <textarea class="form-control" rows="2" data-bind="textInput: fmPurpose"></textarea></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('runner.f.usage')"></label>
+        <textarea class="form-control mono" rows="3" data-bind="textInput: fmUsage,
+                  attr:{ placeholder: 'python copy_analysis.py --copy ... --to ...' }"></textarea></div>
+
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.dependencies')"></label>
+        <input class="form-control" data-bind="textInput: fmDeps"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('runner.f.tags')"></label>
+        <input class="form-control" data-bind="textInput: fmTags, attr:{ placeholder: 'comma,separated' }"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('runner.f.links')"></label>
+        <input class="form-control" data-bind="textInput: fmLinks"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('runner.f.notes')"></label>
+        <textarea class="form-control" rows="2" data-bind="textInput: fmNotes"></textarea></div>
+
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('runner.f.content')"></label>
+        <textarea class="form-control mono" rows="8" style="font-size:12px"
+                  data-bind="textInput: fmContent, attr:{ placeholder: t('runner.f.contentPh') }"></textarea></div>
+
+      <!-- stored binary copy: shared <doc-upload> (only for an existing runner) -->
+      <div class="form-group form-group--full">
+        <label class="form-label" data-bind="text: t('runner.f.file')"></label>
+        <!-- ko if: isNew() -->
+        <p class="muted" style="margin:0" data-bind="text: t('runner.saveFirst')"></p>
+        <!-- /ko -->
+        <!-- ko ifnot: isNew() -->
+        <doc-upload params="fileName: fmFileName, busy: uploading,
+                            accept: '*', maxMb: 10, onPick: onFilePicked, onView: downloadFile,
+                            hint: t('runner.f.fileHint')"></doc-upload>
+        <!-- /ko -->
+      </div>
+    </div>
+  </edit-drawer>
+</div>
