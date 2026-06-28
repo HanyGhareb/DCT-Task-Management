@@ -11,6 +11,51 @@
   </div>
   <div class="muted" style="margin-bottom:16px" data-bind="text: t('atd.discovery.hint')"></div>
 
+  <!-- ── Generate Schedule OTBI Data ─────────────────────────────────── -->
+  <div class="section-heading-row">
+    <h2 class="section-heading" data-bind="text: t('atd.schedgen.title')"></h2>
+  </div>
+  <div class="card" style="margin-bottom:26px">
+    <p class="muted" style="margin-top:0" data-bind="text: t('atd.schedgen.hint')"></p>
+    <div class="view-toolbar" style="flex-wrap:wrap;gap:10px">
+      <input class="form-control" style="min-width:420px;flex:1"
+             data-bind="textInput: sgFolder, attr:{ placeholder: t('atd.schedgen.folderPh') }">
+      <span style="display:inline-flex;align-items:center;gap:6px">
+        <input type="checkbox" id="sgSubChk" data-bind="checked: sgSub">
+        <label for="sgSubChk" style="margin:0;cursor:pointer" data-bind="text: t('atd.schedgen.includeSub')"></label>
+      </span>
+      <button class="btn btn-primary" data-bind="click: generateSchedule, disable: sgBusy,
+              text: (sgBusy() ? t('atd.common.loading') : t('atd.schedgen.generate'))"></button>
+    </div>
+
+    <!-- ko ifnot: sgLoading -->
+    <!-- ko if: sgRequests().length > 0 -->
+    <div class="data-table-wrap" style="margin-top:14px">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.schedgen.col.folder')"></th>
+          <th data-bind="text: t('atd.schedgen.col.sub')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.col.message')"></th>
+          <th data-bind="text: t('atd.discovery.col.requestedBy')"></th>
+          <th data-bind="text: t('atd.col.finished')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: sgRequests">
+          <tr>
+            <td class="mono truncate-cell" style="max-width:340px" data-bind="text: $data.folderPath, attr:{ title: $data.folderPath }"></td>
+            <td style="text-align:center" data-bind="text: ($data.includeSubfolders==='Y' ? '✓' : '—')"></td>
+            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td class="muted" data-bind="text: $data.message || ''"></td>
+            <td data-bind="text: $data.requestedBy || ''"></td>
+            <td class="mono" style="font-size:11.5px;white-space:nowrap" data-bind="text: $data.finished || $data.created || ''"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
   <!-- ── 1. Discovery requests ───────────────────────────────────────── -->
   <div class="section-heading-row">
     <h2 class="section-heading" data-bind="text: t('atd.discovery.requests')"></h2>

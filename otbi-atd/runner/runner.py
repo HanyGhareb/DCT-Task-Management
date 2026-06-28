@@ -970,12 +970,13 @@ def main(argv):
     build = "--build" in args
     discover = "--discover" in args
     do_actions = "--actions" in args
+    schedgen = "--schedgen" in args
     only = next((a for a in args if not a.startswith("-")), None)
     mode = _resolve_mode()
 
     # queue commands require oracledb (the function lives in the DB; the loop
     # claims via a live oracledb connection)
-    if enqueue or worker or build or discover or do_actions:
+    if enqueue or worker or build or discover or do_actions or schedgen:
         if mode != "oracledb":
             print("[queue] --enqueue/--worker/--build/--discover/--actions require oracledb "
                   "mode (set ATD_DB_USER/PASSWORD + ATD_WALLET_PASSWORD)")
@@ -985,6 +986,9 @@ def main(argv):
         config.apply_runner_config(conn)
         if do_actions:                  # drain Fusion write-back actions (AP invoices...)
             sys.exit(1 if _run_action_worker(conn, forever) else 0)
+        if schedgen:                    # drain "Generate Schedule OTBI Data" requests
+            import schedgen as _sg
+            sys.exit(0 if _sg.drain_requests(conn) >= 0 else 1)
         if discover:                    # drain subject-area column-picker scrapes
             sys.exit(1 if _discover_requests(conn) else 0)
         if build:                       # drain "Add New OTBI Analysis" requests

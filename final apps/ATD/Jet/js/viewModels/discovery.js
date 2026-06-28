@@ -73,7 +73,36 @@ function (ko, atd, i18n, toast, fmtDuration) {
       }).catch(function () { self.buildLoading(false); });
     };
 
-    self.refresh = function () { self.loadRequests(); self.loadRuns(); self.loadBuilds(); };
+    // ── 4. "Generate Schedule OTBI Data" (atd_schedgen_request) ──
+    // Point it at a catalog folder; the runner creates <name>_F/_UH/_U10M for each
+    // base analysis (optionally recursing subfolders).
+    self.sgFolder  = ko.observable('');
+    self.sgSub     = ko.observable(false);
+    self.sgBusy    = ko.observable(false);
+    self.sgLoading = ko.observable(true);
+    self.sgRequests = ko.observableArray([]);
+
+    self.loadScheduleGen = function () {
+      self.sgLoading(true);
+      atd.listScheduleGen().then(function (r) {
+        self.sgRequests(r.items || []); self.sgLoading(false);
+      }).catch(function () { self.sgLoading(false); });
+    };
+
+    self.generateSchedule = function () {
+      var folder = (self.sgFolder() || '').trim();
+      if (!folder) { toast.error(self.t('atd.schedgen.needFolder')); return; }
+      self.sgBusy(true);
+      atd.scheduleGen(folder, self.sgSub()).then(function () {
+        self.sgBusy(false);
+        toast.success(self.t('atd.schedgen.queued'));
+        self.sgFolder(''); self.sgSub(false); self.loadScheduleGen();
+      }).catch(function () { self.sgBusy(false); });
+    };
+
+    self.refresh = function () {
+      self.loadRequests(); self.loadRuns(); self.loadBuilds(); self.loadScheduleGen();
+    };
 
     // ── "Add New OTBI Analysis" drawer (builds an analysis via create_analysis.py) ──
     self.showAnalysisForm = ko.observable(false);

@@ -33,6 +33,12 @@ function (api) {
     listAnalyses:   function ()        { return api.get('/analyses'); },
     createAnalysis: function (body)    { return api.post('/analyses', body); },
 
+    // "Generate Schedule OTBI Data" — bulk F/UH/U10M variants for a folder
+    // (runner --schedgen picks it up); includeSubfolders recurses.
+    scheduleGen:     function (folderPath, includeSubfolders) {
+      return api.post('/schedule-gen/', { folderPath: folderPath, includeSubfolders: !!includeSubfolders }); },
+    listScheduleGen: function ()       { return api.get('/schedule-gen/'); },
+
     // subject-area column catalog — picker for "Add New OTBI Analysis"
     // (runner --discover scrapes the OTBI tree into the cache these read)
     listSubjectAreas:      function ()       { return api.get('/subject-areas'); },

@@ -24,6 +24,13 @@ try {
   Add-Content -Path $log -Encoding utf8 -Value (
     "=== $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [discover] ===`r`n" + $out.TrimEnd() +
     "`r`n--- end discover (exit $LASTEXITCODE) ---")
+
+  # Drain "Generate Schedule OTBI Data" requests on the same cadence (shares this
+  # browser lock; --schedgen early-exits with no browser/MFA when the queue is empty).
+  $sg = (& python runner.py --schedgen 2>&1 | Out-String)
+  Add-Content -Path $log -Encoding utf8 -Value (
+    "=== $(Get-Date -Format 'yyyy-MM-dd HH:mm:ss') [schedgen] ===`r`n" + $sg.TrimEnd() +
+    "`r`n--- end schedgen (exit $LASTEXITCODE) ---")
 }
 finally {
   if ($fs) { $fs.Close() }
