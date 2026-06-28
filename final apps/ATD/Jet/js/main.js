@@ -19,7 +19,8 @@ requirejs.config({
 });
 
 require(
-  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager', 'shared/editDrawer'],
+  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager', 'shared/editDrawer',
+   'components/statusLegend'],
   function (AppController, ko, i18n) {
 
   ko.bindingHandlers.module = {

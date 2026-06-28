@@ -29,8 +29,28 @@
 /* session-expiry bounce: neutral + retryable (job handed back to the queue) */
 .rstat--REQUEUED { background:#EEF1F4; color:#5A6570; }
 .rstat--REQUEUED::before { content:"\21BB"; margin-inline-end:4px; }  /* ↻ */
+/* prepared-but-not-loaded: on hold awaiting schema review/approval */
+.rstat--HELD     { background:#FCEFD6; color:#9A6A12; }
+.rstat--HELD::before { content:"\23F8"; margin-inline-end:4px; }  /* ⏸ */
 /* failed-run message text in the Job run-history table */
 .rstat--FAILED-text { color:#C13A30; }
+
+/* ---- status legend (page footer, shared <status-legend> component) -- */
+.status-legend { margin-top:26px; background:#f7f8fa; border:1px solid var(--border,#e2e6ea);
+                 border-radius:12px; padding:16px 22px 20px; }
+.status-legend__head { display:flex; align-items:center; gap:8px; margin-bottom:16px;
+                       font-size:12px; font-weight:700; letter-spacing:.06em;
+                       text-transform:uppercase; color:#6b7480; }
+.status-legend__head svg { width:15px; height:15px; opacity:.65; flex:0 0 auto; }
+.status-legend__cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr));
+                       gap:20px 48px; }
+.status-legend__group { font-size:11px; font-weight:700; letter-spacing:.05em;
+                        text-transform:uppercase; color:#9aa4ae; margin-bottom:10px;
+                        padding-bottom:7px; border-bottom:1px dashed var(--border,#e6e9ed); }
+.status-legend__row { display:grid; grid-template-columns:104px 1fr; align-items:start;
+                      gap:14px; padding:6px 0; font-size:12.5px; line-height:1.5; }
+.status-legend__row .rstat { justify-self:start; }
+.status-legend__desc { color:#5a6570; }
 
 /* schema-editor "remove column" button (small, muted -> red on hover) */
 .sch-col-x { padding:2px 7px; line-height:1; color:#9AA4AE; background:transparent;
