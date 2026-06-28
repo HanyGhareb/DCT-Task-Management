@@ -113,6 +113,11 @@ function (ko, atd, i18n, toast, fmtDuration) {
       return true;
     };
 
+    // Drop a column from the editor list. It's removed from the table only when you
+    // click Apply (which recreates the staging table from the remaining columns), so
+    // Reload restores it. Used to clean up leftover columns the analysis no longer returns.
+    self.removeCol = function (col) { self.schemaCols.remove(col); return false; };
+
     self.applySchema = function () {
       if (!self.schemaCols().length) { toast.error(self.t('atd.schema.empty')); return; }
       if (!window.confirm(self.t('atd.schema.confirmApply'))) return;

@@ -32,6 +32,11 @@
 /* failed-run message text in the Job run-history table */
 .rstat--FAILED-text { color:#C13A30; }
 
+/* schema-editor "remove column" button (small, muted -> red on hover) */
+.sch-col-x { padding:2px 7px; line-height:1; color:#9AA4AE; background:transparent;
+             border:1px solid var(--border,#e2e6ea); font-size:12px; }
+.sch-col-x:hover { color:#fff; background:#C13A30; border-color:#C13A30; }
+
 /* ---- monospace cells (paths, tables, checksums) -------------------- */
 .mono { font-family: 'Fira Code', ui-monospace, SFMono-Regular, Menlo, monospace; font-size:12px; }
 .truncate-cell { max-width:280px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }

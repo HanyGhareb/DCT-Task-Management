@@ -40,6 +40,15 @@ WHEN NOT MATCHED THEN
   INSERT (config_key, config_value, value_type, description, display_order)
   VALUES (s.k, s.v, s.ty, s.d, s.ord);
 
+MERGE INTO prod.atd_runner_config t
+USING (SELECT 'ATD_DOWNLOAD_TIMEOUT_SEC' AS k, '300' AS v, 'NUMBER' AS ty,
+              'Seconds to wait for an OTBI CSV download before failing the run; raise it for large/slow reports' AS d,
+              58 AS ord FROM dual) s
+ON (t.config_key = s.k)
+WHEN NOT MATCHED THEN
+  INSERT (config_key, config_value, value_type, description, display_order)
+  VALUES (s.k, s.v, s.ty, s.d, s.ord);
+
 COMMIT;
 
 SET ECHO OFF

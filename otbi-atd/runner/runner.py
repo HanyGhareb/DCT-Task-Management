@@ -140,7 +140,7 @@ def _log_end(conn, run_id, status, n=None, ck=None, msg=None):
     conn.cursor().execute(
         "update prod.atd_load_run_log set finished=systimestamp, status=:s, "
         "row_count=:rc, csv_checksum=:ck, message=:m where run_id=:id",
-        s=status, rc=n, ck=ck, m=msg, id=run_id)
+        s=status, rc=n, ck=ck, m=checks.scrub(msg), id=run_id)
     conn.commit()
 
 
@@ -451,7 +451,7 @@ def _log_orphan(conn, name, status, msg):
         conn.cursor().execute(
             "insert into prod.atd_load_run_log(job_name, track, status, finished, row_count, host_id, message) "
             "values (:n,'BROWSER',:s,systimestamp,0,:h,:m)",
-            n=name[:80], s=status, h=_worker_id()[:120], m=(msg or "")[:3900])
+            n=name[:80], s=status, h=_worker_id()[:120], m=checks.scrub(msg or "")[:3900])
         conn.commit()
     except Exception:  # noqa: BLE001
         pass

@@ -10,7 +10,18 @@ lowercase 'path' and the path value is fully percent-encoded (slashes -> %2F).
 Capital 'Path' returns a WebLogic 404. Returns the CSV text; raises if the
 response is HTML (i.e. the session expired and it bounced to login).
 """
+import os
 import urllib.parse
+
+
+def _download_timeout_ms():
+    """CSV download timeout in ms. Config ATD_DOWNLOAD_TIMEOUT_SEC (default 300s);
+    raise it for large/slow OTBI reports that exceed the default (the cause of a
+    'Timeout … exceeded' FAILED on big analyses)."""
+    try:
+        return max(10, int(os.environ.get("ATD_DOWNLOAD_TIMEOUT_SEC", "300"))) * 1000
+    except (TypeError, ValueError):
+        return 300000
 
 
 class SessionExpired(RuntimeError):
@@ -40,7 +51,7 @@ def build_url(analytics_base, analysis_path, fmt="csv", extra=None):
 def download_csv(ctx, env, analysis_path, params=None, fmt="csv"):
     """Download via the Playwright context's request API (shares the session cookies)."""
     url = build_url(env["analytics_base_url"], analysis_path, fmt, params)
-    resp = ctx.request.get(url, timeout=180000)
+    resp = ctx.request.get(url, timeout=_download_timeout_ms())
     ctype = resp.headers.get("content-type", "").lower()
     body = resp.body()
     is_html = "html" in ctype or body[:15].lstrip().lower().startswith(b"<!doctype")

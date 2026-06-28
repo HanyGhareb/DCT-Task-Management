@@ -107,6 +107,7 @@
           <th data-bind="text: t('atd.schema.col.name')"></th>
           <th data-bind="text: t('atd.schema.col.type')"></th>
           <th data-bind="text: t('atd.schema.col.sample')"></th>
+          <th style="width:38px"></th>
         </tr></thead>
         <tbody data-bind="foreach: schemaCols">
           <tr>
@@ -115,6 +116,10 @@
             <td><input class="form-control form-control--sm mono" data-bind="textInput: $data.name"></td>
             <td><select class="form-control form-control--sm mono" data-bind="value: $data.type, options: $vm.typeOptions"></select></td>
             <td class="mono muted truncate-cell" data-bind="text: $data.sample, attr:{ title: $data.sample }"></td>
+            <td style="text-align:center">
+              <button class="btn btn-sm sch-col-x" data-bind="click: function(){ return $vm.removeCol($data); },
+                      attr:{ title: $vm.t('atd.schema.removeHint') }">&#10005;</button>
+            </td>
           </tr>
         </tbody>
       </table>

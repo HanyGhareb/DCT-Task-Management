@@ -63,6 +63,8 @@ INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_v
   VALUES ('ATD_KEEPALIVE_STRIKES', '2', 'NUMBER', NULL, 'Consecutive failed keep-alive pings before a session is declared dead (guards against a transient blip triggering a needless MFA)', 56);
 INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
   VALUES ('ATD_REQUEUE_MAX', '6', 'NUMBER', NULL, 'On a session-expiry bounce, how many times a job is handed back to the queue for a healthy worker before it is marked FAILED', 57);
+INSERT INTO prod.atd_runner_config (config_key, config_value, value_type, enum_values, description, display_order)
+  VALUES ('ATD_DOWNLOAD_TIMEOUT_SEC', '300', 'NUMBER', NULL, 'Seconds to wait for an OTBI CSV download before failing the run; raise it for large/slow reports', 58);
 COMMIT;
 
 SET ECHO OFF
