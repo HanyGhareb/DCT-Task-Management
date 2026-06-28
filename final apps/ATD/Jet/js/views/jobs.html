@@ -8,15 +8,23 @@
   </div>
 
   <div class="view-toolbar">
-    <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('atd.jobs.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13){ offset(0); load(); } return true; } }">
-    <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fStatus">
+    <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('atd.jobs.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13){ search(); } return true; } }">
+    <select class="form-control form-control--sm" style="max-width:160px" data-bind="value: fStatus">
       <option value="" data-bind="text: t('atd.jobs.allStatuses')"></option>
       <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
     </select>
-    <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fCategory">
+    <select class="form-control form-control--sm" style="max-width:170px" data-bind="value: fCategory">
       <option value="" data-bind="text: t('atd.cat.all')"></option>
-      <!-- ko foreach: activeCategories --><option data-bind="value: code, text: $vm.catLabel($data)"></option><!-- /ko -->
+      <!-- ko foreach: topCategories --><option data-bind="value: code, text: $vm.catLabel($data)"></option><!-- /ko -->
     </select>
+    <!-- ko if: subCategories().length > 0 -->
+    <select class="form-control form-control--sm" style="max-width:170px" data-bind="value: fSubCategory">
+      <option value="" data-bind="text: t('atd.cat.allSub')"></option>
+      <!-- ko foreach: subCategories --><option data-bind="value: code, text: $vm.catLabel($data)"></option><!-- /ko -->
+    </select>
+    <!-- /ko -->
+    <button class="btn btn-sm btn-primary" data-bind="click: search, text: t('atd.filter.search')"></button>
+    <button class="btn btn-sm btn-secondary" data-bind="click: clearFilters, text: t('atd.filter.clear')"></button>
     <span class="toolbar-spacer"></span>
     <!-- ko ifnot: loading --><span class="muted" data-bind="text: total() + ' ' + t('atd.common.results')"></span><!-- /ko -->
   </div>
@@ -212,6 +220,11 @@
           <input class="form-control" type="color" data-bind="value: cmColor"></div>
         <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.order')"></label>
           <input class="form-control" type="number" data-bind="value: cmOrder"></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.parent')"></label>
+          <select class="form-control" data-bind="value: cmParent">
+            <option value="" data-bind="text: t('atd.cat.parentNone')"></option>
+            <!-- ko foreach: parentOptions --><option data-bind="value: code, text: $vm.catLabel($data)"></option><!-- /ko -->
+          </select></div>
         <div class="form-group"><label class="form-label" data-bind="text: t('atd.cat.active')"></label>
           <div><input type="checkbox" data-bind="checked: cmActive"></div></div>
       </div>
@@ -226,6 +239,7 @@
             <th data-bind="text: t('atd.cat.code')"></th>
             <th data-bind="text: t('atd.cat.nameEn')"></th>
             <th data-bind="text: t('atd.cat.nameAr')"></th>
+            <th data-bind="text: t('atd.cat.parent')"></th>
             <th data-bind="text: t('atd.cat.order')"></th>
             <th data-bind="text: t('atd.cat.active')"></th>
             <th data-bind="text: t('atd.cat.usage')"></th>
@@ -237,6 +251,7 @@
               <td class="mono" data-bind="text: $data.code"></td>
               <td data-bind="text: $data.nameEn"></td>
               <td dir="rtl" data-bind="text: $data.nameAr || '—'"></td>
+              <td data-bind="text: $data.parentName || '—'"></td>
               <td data-bind="text: $data.displayOrder"></td>
               <td><span class="badge" data-bind="text: $data.active, css:{ 'badge--active': $data.active==='Y', 'badge--idle': $data.active!=='Y' }"></span></td>
               <td data-bind="text: $data.usage"></td>

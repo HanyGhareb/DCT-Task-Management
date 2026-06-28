@@ -17,6 +17,8 @@
     </select>
     <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fFrom">
     <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fTo">
+    <button class="btn btn-sm btn-primary" data-bind="click: search, text: t('atd.filter.search')"></button>
+    <button class="btn btn-sm btn-secondary" data-bind="click: clearFilters, text: t('atd.filter.clear')"></button>
     <span class="toolbar-spacer"></span>
     <!-- ko ifnot: loading --><span class="muted" data-bind="text: total() + ' ' + t('atd.common.results')"></span><!-- /ko -->
   </div>

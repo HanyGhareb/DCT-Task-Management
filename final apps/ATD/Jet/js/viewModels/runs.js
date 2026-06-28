@@ -1,5 +1,5 @@
-define(['knockout', 'services/atdService', 'services/api', 'shared/i18n', 'shared/toast', 'util/duration'],
-function (ko, atd, api, i18n, toast, fmtDuration) {
+define(['knockout', 'services/atdService', 'services/api', 'shared/i18n', 'shared/toast', 'util/duration', 'util/filterStore'],
+function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
   'use strict';
   return function Runs() {
     var self = this;
@@ -30,6 +30,19 @@ function (ko, atd, api, i18n, toast, fmtDuration) {
         .then(function (r) { self.runs(r.items || []); self.total(r.total || 0); self.loading(false); })
         .catch(function () { self.loading(false); });
     };
+
+    // explicit Search / Clear (criteria remembered across refresh via filterStore)
+    self.search = function () { self.offset(0); self.load(); };
+    self.clearFilters = function () {
+      self.fJob(''); self.fStatus(''); self.fFrom(''); self.fTo('');
+      self._filterStore.clear(); self.offset(0); self.load();
+    };
+
+    // persist filter criteria so a refresh restores them (BEFORE the reload subscriptions
+    // + initial load so restored values are applied without an extra reload).
+    self._filterStore = filterStore.bind('runs', {
+      job: self.fJob, status: self.fStatus, from: self.fFrom, to: self.fTo
+    });
 
     // Reload when a filter changes — reset to the first page first. Drive off the
     // observable subscription (fires AFTER the value binding writes), not the DOM

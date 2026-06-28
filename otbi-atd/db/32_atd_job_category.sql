@@ -114,8 +114,12 @@ BEGIN
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (SELECT c.category_code, c.name_en, c.name_ar, c.color, c.display_order, c.active,
+                   c.parent_code,
+                   (SELECT p.name_en FROM atd_job_category p WHERE p.category_code=c.parent_code) AS parent_name,
                    (SELECT COUNT(*) FROM atd_job_category_map m WHERE m.category_code=c.category_code) AS usage
-              FROM atd_job_category c ORDER BY c.display_order, c.category_code) LOOP
+              FROM atd_job_category c
+             ORDER BY NVL(c.parent_code, c.category_code), c.parent_code NULLS FIRST,
+                      c.display_order, c.category_code) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.category_code);
     APEX_JSON.write('nameEn', r.name_en);
@@ -123,6 +127,8 @@ BEGIN
     APEX_JSON.write('color', NVL(r.color,''));
     APEX_JSON.write('displayOrder', r.display_order);
     APEX_JSON.write('active', r.active);
+    APEX_JSON.write('parentCode', NVL(r.parent_code,''));
+    APEX_JSON.write('parentName', NVL(r.parent_name,''));
     APEX_JSON.write('usage', r.usage);
     APEX_JSON.close_object;
   END LOOP;
@@ -146,11 +152,12 @@ BEGIN
   l_code := UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'code')));
   l_name := APEX_JSON.get_varchar2(p_path=>'nameEn');
   IF l_code IS NULL OR l_name IS NULL THEN dct_rest.err(400,'code and nameEn are required'); RETURN; END IF;
-  INSERT INTO atd_job_category (category_code, name_en, name_ar, color, display_order, active, created_by)
+  INSERT INTO atd_job_category (category_code, name_en, name_ar, color, display_order, active, parent_code, created_by)
   VALUES (l_code, l_name, APEX_JSON.get_varchar2(p_path=>'nameAr'),
           APEX_JSON.get_varchar2(p_path=>'color'),
           NVL(APEX_JSON.get_number(p_path=>'displayOrder'),100),
-          NVL(UPPER(APEX_JSON.get_varchar2(p_path=>'active')),'Y'), l_user);
+          NVL(UPPER(APEX_JSON.get_varchar2(p_path=>'active')),'Y'),
+          NULLIF(UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'parentCode'))), l_code), l_user);
   COMMIT;
   OWA_UTIL.status_line(201, NULL, FALSE);
   dct_rest.json_header; APEX_JSON.initialize_output;
@@ -179,6 +186,9 @@ BEGIN
     color         = CASE WHEN APEX_JSON.does_exist(p_path=>'color')        THEN APEX_JSON.get_varchar2(p_path=>'color')        ELSE color END,
     display_order = CASE WHEN APEX_JSON.does_exist(p_path=>'displayOrder') THEN APEX_JSON.get_number(p_path=>'displayOrder')   ELSE display_order END,
     active        = CASE WHEN APEX_JSON.does_exist(p_path=>'active')       THEN UPPER(APEX_JSON.get_varchar2(p_path=>'active')) ELSE active END,
+    parent_code   = CASE WHEN APEX_JSON.does_exist(p_path=>'parentCode')
+                         THEN NULLIF(UPPER(TRIM(APEX_JSON.get_varchar2(p_path=>'parentCode'))), UPPER([COLON]code))
+                         ELSE parent_code END,
     updated_at    = SYSTIMESTAMP, updated_by = l_user
   WHERE category_code = UPPER([COLON]code);
   l_n := SQL%ROWCOUNT; COMMIT;
@@ -203,6 +213,10 @@ BEGIN
   SELECT COUNT(*) INTO l_usage FROM atd_job_category_map WHERE category_code = UPPER([COLON]code);
   IF l_usage > 0 THEN
     dct_rest.err(400,'Category is in use by '||l_usage||' job(s) - deactivate it instead'); RETURN;
+  END IF;
+  SELECT COUNT(*) INTO l_usage FROM atd_job_category WHERE parent_code = UPPER([COLON]code);
+  IF l_usage > 0 THEN
+    dct_rest.err(400,'Category has '||l_usage||' sub-categor(y/ies) - remove or reparent them first'); RETURN;
   END IF;
   DELETE FROM atd_job_category WHERE category_code = UPPER([COLON]code);
   l_n := SQL%ROWCOUNT; COMMIT;

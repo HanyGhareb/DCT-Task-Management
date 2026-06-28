@@ -51,9 +51,16 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   **job detail** (`approveSchema` → `POST /jobs/:name/approve-schema`): the page shows an "Awaiting
   schema review" notice + **Approve schema** button (replacing Enqueue while held); the Schema panel
   edits/recreates the table if the mapping needs fixing, then Approve releases it.
-- **Job Categories** (ATD-native lookup, `db/32`): tag a job with any number of categories.
-  - List **Category column** (colored chips) + a toolbar **category filter** (`fCategory` →
-    `GET /jobs?category=CODE`).
+- **Filter bar** (`fSearch`/`fStatus`/`fCategory`/`fSubCategory`): live filters + an explicit
+  **Search** (`search`) and **Clear** (`clearFilters`) button. Criteria are **remembered across a
+  page refresh** via `util/filterStore` (localStorage `atd.filters.jobs`). Same pattern on Run Logs
+  (`atd.filters.runs`) and Queue (`atd.filters.queue`).
+- **Job Categories** (ATD-native lookup, `db/32`; **hierarchical** via `parent_code`, `db/36`):
+  tag a job with any number of categories.
+  - List **Category column** (colored chips) + a two-level toolbar filter: **Category**
+    (`fCategory` = top-level) → **Sub-category** (`fSubCategory`, shown when the chosen category has
+    children) → `GET /jobs?category=CODE` (a parent code includes all its sub-categories server-side).
+    `topCategories`/`subCategories`/`parentOptions` computeds drive the dropdowns.
   - Drawer **category picker** (`fmCategories`, toggle chips) — sent as `categories:[codes]` on
     create/update (replace-set).
   - **Manage Categories** right-edge **drawer** (shared `.ed-*` chrome; `openCatMgr`/`editCat`/
@@ -65,11 +72,13 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Job detail (`jobDetail`)
 - `refresh` (full config + run history) · `enqueue` · `back` · `reprepare(rebuild)` ·
   `fmtDuration`. The run-history table includes a **Duration** column (`durationSec` per run).
-- **Schema panel** (`toggleSchema` · `loadSchema` · `applySchema`): shows the live staging-table
-  structure — **Source header · Column name (editable) · Data type (editable dropdown) · Sample
-  value** — plus an editable **table name**. **Apply** validates and drops + recreates the staging
-  table from the edited definition, rebuilds the column map, renames the table if changed, and the
-  job reloads on the next run. Nothing changes until Apply (the staging table is load-only/disposable).
+- **Schema panel** (`toggleSchema` · `loadSchema` · `applySchema` · `removeCol`): shows the live
+  staging-table structure — **Source header (editable) · Column name (editable) · Data type (editable
+  dropdown) · Sample value · ✕ remove** — plus an editable **table name**. **`removeCol`** drops a
+  column from the editor list (a leftover the analysis no longer returns); it's removed from the table
+  only on **Apply** (Reload restores it). **Apply** validates and drops + recreates the staging table
+  from the remaining definition, rebuilds the column map, renames the table if changed, and the job
+  reloads on the next run. Nothing changes until Apply (the staging table is load-only/disposable).
 - **Re-prepare** recovers a job whose stored column map / table no longer fits the live
   analysis. **Re-map** (`reprepare(false)`) clears `column_map_json` so the next run
   re-derives it (table + rows kept). **Rebuild table** (`reprepare(true)`, danger, confirm)
@@ -153,8 +162,8 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET | `/lookups` | envs + targets for pickers |
 | GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec`, +`categories[]`; **`?category=CODE`** filter) / create job — POST needs only `sourceRef`; optional `frequencyMinutes`, `categories[]` |
 | GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes` + `categories[]`) / update (incl. `frequencyMinutes`, `categories[]` replace-set) / delete job |
-| GET / POST | `/categories` | list categories (+`usage` count) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`). SYS_ADMIN |
-| PUT / DELETE | `/categories/:code` | update (partial) / delete — 400 if in use (deactivate instead). SYS_ADMIN |
+| GET / POST | `/categories` | list categories (+`usage` count, +`parentCode`/`parentName`) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`,`parentCode`). SYS_ADMIN |
+| PUT / DELETE | `/categories/:code` | update (partial, incl. `parentCode`) / delete — 400 if in use by jobs OR has sub-categories (deactivate/reparent instead). SYS_ADMIN |
 | POST | `/jobs/:name/approve-schema` | release a job held for schema review (`schema_reviewed`→'Y'); it loads on next run. SYS_ADMIN |
 | GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
 | GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |

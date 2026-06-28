@@ -12,6 +12,28 @@
 
   <div class="muted" style="margin-bottom:12px" data-bind="text: t('atd.queue.hint')"></div>
 
+  <div class="view-toolbar">
+    <input class="search-box" type="text" data-bind="textInput: fSearch, attr:{placeholder: t('atd.jobs.search')}, event:{ keyup: function(d,e){ if(e.keyCode===13){ search(); } return true; } }">
+    <select class="form-control form-control--sm" style="max-width:160px" data-bind="value: fStatus">
+      <option value="" data-bind="text: t('atd.jobs.allStatuses')"></option>
+      <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+    </select>
+    <select class="form-control form-control--sm" style="max-width:170px" data-bind="value: fCategory">
+      <option value="" data-bind="text: t('atd.cat.all')"></option>
+      <!-- ko foreach: topCategories --><option data-bind="value: code, text: $vm.catLabel($data)"></option><!-- /ko -->
+    </select>
+    <!-- ko if: subCategories().length > 0 -->
+    <select class="form-control form-control--sm" style="max-width:170px" data-bind="value: fSubCategory">
+      <option value="" data-bind="text: t('atd.cat.allSub')"></option>
+      <!-- ko foreach: subCategories --><option data-bind="value: code, text: $vm.catLabel($data)"></option><!-- /ko -->
+    </select>
+    <!-- /ko -->
+    <button class="btn btn-sm btn-primary" data-bind="click: search, text: t('atd.filter.search')"></button>
+    <button class="btn btn-sm btn-secondary" data-bind="click: clearFilters, text: t('atd.filter.clear')"></button>
+    <span class="toolbar-spacer"></span>
+    <!-- ko ifnot: loading --><span class="muted" data-bind="text: total() + ' ' + t('atd.common.results')"></span><!-- /ko -->
+  </div>
+
   <!-- ko if: loading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
 
   <!-- ko ifnot: loading -->

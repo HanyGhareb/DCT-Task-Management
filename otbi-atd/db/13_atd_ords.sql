@@ -216,7 +216,10 @@ BEGIN
      AND (l_search IS NULL OR UPPER(j.job_name||' '||j.source_ref||' '||j.stage_table)
           LIKE '%'||UPPER(l_search)||'%')
      AND (l_cat IS NULL OR EXISTS (SELECT 1 FROM atd_job_category_map m
-            WHERE m.job_name = j.job_name AND m.category_code = l_cat));
+            WHERE m.job_name = j.job_name
+              AND (m.category_code = l_cat
+                   OR m.category_code IN (SELECT child.category_code FROM atd_job_category child
+                                           WHERE child.parent_code = l_cat))));
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
@@ -242,7 +245,10 @@ BEGIN
       AND (l_search IS NULL OR UPPER(j.job_name||' '||j.source_ref||' '||j.stage_table)
            LIKE '%'||UPPER(l_search)||'%')
       AND (l_cat IS NULL OR EXISTS (SELECT 1 FROM atd_job_category_map m
-             WHERE m.job_name = j.job_name AND m.category_code = l_cat))
+             WHERE m.job_name = j.job_name
+               AND (m.category_code = l_cat
+                    OR m.category_code IN (SELECT child.category_code FROM atd_job_category child
+                                            WHERE child.parent_code = l_cat))))
     ORDER BY lr.run_id DESC NULLS LAST, j.priority, j.run_order, j.job_name
     OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
   ) LOOP

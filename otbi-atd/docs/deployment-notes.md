@@ -32,6 +32,40 @@ existing once-daily relogin + aging nudge:
 - **Frontend:** neutral `REQUEUED` status pill (`app.css` `.rstat--REQUEUED`, ↻) + REQUEUED/HELD
   added to the Run Logs status filter. APP_VERSION 1.15.3.
 
+### 2026-06-28 — job sub-categories + remembered filters with Search/Clear (APP_VERSION 1.16.0)
+- **Sub-categories (hierarchical categories):** `db/36` adds `ATD_JOB_CATEGORY.parent_code`
+  (self-FK + "not its own parent" CHECK + index). A category with `parent_code = NULL` is top-level
+  (Purchasing); one with a parent is a SUB-category (PO/PR/REC). `db/32` `/categories` GET/POST/PUT
+  now carry `parentCode`/`parentName`; DELETE also blocks a parent that still has children. `db/13`
+  `/jobs` category filter now **includes children** (selecting a parent matches jobs tagged to it OR
+  any of its sub-categories). **Redeploy chain: `36 → 13 → 20 → 26 → 31 → 32 → 33`** (13 rebuilds the
+  module). Existing 6 categories stay top-level; create sub-categories in **Manage Categories** (new
+  **Parent** dropdown + column). Jobs/Queue filter bars gain a **Sub-category** dropdown that appears
+  once the chosen category has children.
+- **Remembered filters + Search/Clear (UX):** new `js/util/filterStore.js` persists each page's filter
+  criteria in `localStorage` (key `atd.filters.<page>`) and restores them on load — fixing "criteria
+  reset on browser refresh". Added a **Search** button (apply/refresh) + **Clear** button (reset all)
+  to **Jobs**, **Run Logs**, and **Queue** (Queue also gained search + status + category filters it
+  didn't have). Filters still apply live as you change them; the buttons are explicit apply/reset.
+- **Frontend only for the UX part** (jobs/runs/queue VMs+views, filterStore, i18n `atd.cat.allSub`/
+  `atd.cat.parent`/`atd.cat.parentNone`/`atd.filter.search`/`atd.filter.clear`, EN+AR). APP_VERSION 1.16.0.
+
+### 2026-06-28 — schema-editor remove-column + download timeout + cookie scrubbing (APP_VERSION 1.15.6)
+- **Schema editor "remove column" (✕):** each row in the Table Schema editor now has a ✕ that drops
+  the column from the list (`jobDetail.removeCol`); it's removed from the table only on **Apply**
+  (recreate from the remaining cols; Reload restores). For leftover columns the analysis no longer
+  returns (the runner keeps dropped columns loading NULL — never auto-drops). Frontend only.
+- **(b) CSV download timeout configurable (`extract.py`):** the hard-coded 180 s Go-URL download
+  timeout is now `ATD_DOWNLOAD_TIMEOUT_SEC` (default **300**, Runner Settings editable) — raise it for
+  large/slow reports (was the cause of the AP Invoice Lines "Timeout 180000ms exceeded" FAILED).
+- **(c) secret scrubbing (`checks.scrub`):** a failed Go-URL download's Playwright error dumps the
+  full request incl. the `cookie:` header (live JSESSIONID / ORA_OCIS_CG_SESSION / _WL_AUTHCOOKIE —
+  replayable). All run-log writers now scrub cookie/auth/Bearer values to `[redacted]` before storing
+  (`runner._log_end` + `_log_orphan`, `loadsql.log_failure` + `log_held`). Verified on the real leaked
+  message — tokens gone, useful text kept.
+- **DB:** `db/35` MERGE + `db/14` add `ATD_DOWNLOAD_TIMEOUT_SEC`. **Runner — all 3 VMs 2026-06-28:**
+  `checks.py`/`extract.py`/`runner.py`/`loadsql.py` + restart (`applied 27 runner settings`).
+
 ### 2026-06-27 follow-up — pre-run auth gap + Queue wording (APP_VERSION 1.15.4)
 - **Bug closed (`runner.py`, all 3 VMs):** the Tier 2 failover only covered a session death
   *inside* a run. A login failure **before** the run (opening the session for a claimed job — MFA

@@ -1,5 +1,5 @@
-define(['knockout', 'services/atdService', 'shared/i18n', 'shared/toast', 'util/duration'],
-function (ko, atd, i18n, toast, fmtDuration) {
+define(['knockout', 'services/atdService', 'shared/i18n', 'shared/toast', 'util/duration', 'util/filterStore'],
+function (ko, atd, i18n, toast, fmtDuration, filterStore) {
   'use strict';
   return function Jobs() {
     var self = this;
@@ -14,8 +14,9 @@ function (ko, atd, i18n, toast, fmtDuration) {
 
     self.fSearch = ko.observable('');
     self.fStatus = ko.observable('');
-    self.fCategory = ko.observable('');           // category filter (code or '')
-    self.categories = ko.observableArray([]);     // all categories (lookup)
+    self.fCategory = ko.observable('');           // top-level category filter (code or '')
+    self.fSubCategory = ko.observable('');        // sub-category filter (code or '')
+    self.categories = ko.observableArray([]);     // all categories (lookup, flat)
 
     // server pagination (envelope {items,total,limit,offset}); 20 rows/page
     self.offset = ko.observable(0);
@@ -40,6 +41,20 @@ function (ko, atd, i18n, toast, fmtDuration) {
     // ---- category helpers (chips + picker) ----
     self.activeCategories = ko.computed(function () {
       return self.categories().filter(function (c) { return c.active === 'Y'; });
+    });
+    // two-level filter: top-level categories (no parent) + children of the selected one
+    self.topCategories = ko.computed(function () {
+      return self.activeCategories().filter(function (c) { return !c.parentCode; });
+    });
+    self.subCategories = ko.computed(function () {
+      var p = self.fCategory();
+      if (!p) return [];
+      return self.activeCategories().filter(function (c) { return c.parentCode === p; });
+    });
+    // parent options for the Manage-Categories form = top-level cats only (no 3rd level;
+    // a category can't be its own parent — enforced server-side).
+    self.parentOptions = ko.computed(function () {
+      return self.categories().filter(function (c) { return !c.parentCode; });
     });
     self.catLabel = function (c) {              // c may be a lookup row or a job-tag {code,name}
       var ar = (i18n.lang && i18n.lang() === 'ar');
@@ -72,7 +87,9 @@ function (ko, atd, i18n, toast, fmtDuration) {
 
     self.load = function () {
       self.loading(true);
-      atd.listJobs({ search: self.fSearch(), status: self.fStatus(), category: self.fCategory(),
+      // a sub-category narrows to the leaf; otherwise the top category (server includes its children)
+      var cat = self.fSubCategory() || self.fCategory();
+      atd.listJobs({ search: self.fSearch(), status: self.fStatus(), category: cat,
                      limit: self.limit(), offset: self.offset() })
         .then(function (r) {
           self.jobs(r.items || []);
@@ -83,11 +100,32 @@ function (ko, atd, i18n, toast, fmtDuration) {
     };
     self.reload = self.load;                     // pager onChange (offset already set)
 
-    // Reload on status change via the observable subscription (fires after the value
-    // binding writes) — the DOM change event fires before KO updates the observable.
-    // Reset to page 1 when the filter changes.
+    // explicit Search / Clear (criteria are remembered across refresh via filterStore)
+    self.search = function () { self.offset(0); self.load(); };
+    self.clearFilters = function () {
+      self._resetSub = true;
+      self.fSearch(''); self.fStatus(''); self.fCategory(''); self.fSubCategory('');
+      self._resetSub = false;
+      self._filterStore.clear(); self.offset(0); self.load();
+    };
+
+    // persist the filter criteria so a page refresh restores them (must run BEFORE the
+    // reload subscriptions + initial load below so restored values are applied).
+    self._filterStore = filterStore.bind('jobs', {
+      search: self.fSearch, status: self.fStatus, category: self.fCategory, sub: self.fSubCategory
+    });
+
+    // Reload on filter change via observable subscriptions (the DOM change event fires
+    // before KO writes the observable). Reset to page 1 on any filter change. Picking a
+    // top category clears the sub (guarded so it doesn't double-load).
     self.fStatus.subscribe(function () { self.offset(0); self.load(); });
-    self.fCategory.subscribe(function () { self.offset(0); self.load(); });
+    self.fCategory.subscribe(function () {
+      self._resetSub = true; self.fSubCategory(''); self._resetSub = false;
+      self.offset(0); self.load();
+    });
+    self.fSubCategory.subscribe(function () {
+      if (self._resetSub) return; self.offset(0); self.load();
+    });
 
     self.loadCategories();
     atd.getLookups().then(function (l) {
@@ -201,14 +239,16 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.catEdit = ko.observable(null);          // code being edited; null = new
     self.cmCode = ko.observable(''); self.cmNameEn = ko.observable(''); self.cmNameAr = ko.observable('');
     self.cmColor = ko.observable('#2C6CB0'); self.cmOrder = ko.observable(100); self.cmActive = ko.observable(true);
+    self.cmParent = ko.observable('');           // '' = top-level category; else a sub-category
     self.resetCatForm = function () {
       self.catEdit(null); self.cmCode(''); self.cmNameEn(''); self.cmNameAr('');
-      self.cmColor('#2C6CB0'); self.cmOrder(100); self.cmActive(true);
+      self.cmColor('#2C6CB0'); self.cmOrder(100); self.cmActive(true); self.cmParent('');
     };
     self.openCatMgr = function () { self.resetCatForm(); self.loadCategories(); self.showCatMgr(true); };
     self.editCat = function (c) {
       self.catEdit(c.code); self.cmCode(c.code); self.cmNameEn(c.nameEn); self.cmNameAr(c.nameAr || '');
       self.cmColor(c.color || '#2C6CB0'); self.cmOrder(c.displayOrder); self.cmActive(c.active === 'Y');
+      self.cmParent(c.parentCode || '');
       // bring the (now-populated) form into view + focus so the edit is obvious
       setTimeout(function () {
         var body = document.querySelector('.cat-mgr .ed-drawer__body');
@@ -220,7 +260,8 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.saveCat = function () {
       if (!self.cmNameEn()) { toast.error(self.t('atd.cat.nameEn')); return; }
       var body = { nameEn: self.cmNameEn(), nameAr: self.cmNameAr(), color: self.cmColor(),
-                   displayOrder: Number(self.cmOrder()), active: self.cmActive() ? 'Y' : 'N' };
+                   displayOrder: Number(self.cmOrder()), active: self.cmActive() ? 'Y' : 'N',
+                   parentCode: self.cmParent() || '' };
       var p;
       if (self.catEdit()) { p = atd.updateCategory(self.catEdit(), body); }
       else {
