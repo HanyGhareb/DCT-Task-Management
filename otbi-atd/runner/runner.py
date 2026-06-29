@@ -106,7 +106,7 @@ def _run_one_sqlcl(ctx, env, job):
         csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
         # first run: derive table + column map; later runs: auto-adapt to schema drift
         drift = prepare.ensure_prepared_sqlcl(job, csv_text)
-        if drift:
+        if drift and not prepare.is_no_data_drift(drift):   # never Telegram a no-data run
             notify.send(notify.render("ATD_DRIFT_MSG", "otbi-atd {job} schema drift: {drift}",
                                       job=name, drift="; ".join(drift)))
         if str(job.get("schema_reviewed") or "Y").upper() == "N":
@@ -154,7 +154,7 @@ def _make_run_one_oracledb(conn, load):
             csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
             # first run: derive table + map; later runs: auto-adapt to schema drift
             drift = prepare.ensure_prepared_oracledb(conn, job, csv_text)
-            if drift:
+            if drift and not prepare.is_no_data_drift(drift):   # never Telegram a no-data run
                 notify.send(notify.render("ATD_DRIFT_MSG", "otbi-atd {job} schema drift: {drift}",
                                           job=name, drift="; ".join(drift)))
             # Schema-review gate: the table + column map are now prepared (so the

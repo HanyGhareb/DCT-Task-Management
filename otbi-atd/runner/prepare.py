@@ -399,6 +399,19 @@ def _plan_drift(cols, cur_map, table_cols):
     return adds, widens, removed, incompat, new_map
 
 
+# Emitted (in place of the per-column "no longer in the analysis" cascade) when a
+# run profiles ZERO data rows: OTBI's "no results" CSV export comes back with a
+# reduced/placeholder header, so the drift diff would otherwise flag every stored
+# column as removed. This is a normal "nothing to load this run", NOT schema drift,
+# so it is logged for visibility but never sent to Telegram (see is_no_data_drift).
+NO_DATA_MSG = "analysis returned no data this run (0 rows) - nothing loaded"
+
+
+def is_no_data_drift(warns):
+    """True when the only 'drift' is the no-data note -> log it, but don't alert."""
+    return warns == [NO_DATA_MSG]
+
+
 def _drift_warnings(adds, widens, removed, incompat):
     w = []
     for h, name, typ in adds:
@@ -493,6 +506,12 @@ def ensure_prepared_oracledb(conn, job, csv_text):
                   f"auto-named {blanks} — rename in the schema editor if needed")
         return recon
 
+    if n == 0:
+        # No data rows -> the live header is OTBI's degenerate "no results" export,
+        # not a real schema change. Skip drift detection (every stored column would
+        # falsely look "removed"); log one concise note instead and don't alert.
+        print(f"[drift] {job['job_name']}: {NO_DATA_MSG}")
+        return [NO_DATA_MSG]
     cur_map = json.loads(job["column_map_json"])
     table_cols = _table_columns_ora(conn, qualify(job["stage_table"]))
     adds, widens, removed, incompat, new_map = _plan_drift(cols, cur_map, table_cols)
@@ -557,6 +576,11 @@ def ensure_prepared_sqlcl(job, csv_text):
               f"({n} sample rows)")
         return []
 
+    if n == 0:
+        # No data rows -> degenerate "no results" header, not real drift (see the
+        # oracledb path). Log one concise note instead of the per-column cascade.
+        print(f"[drift] {job['job_name']}: {NO_DATA_MSG}")
+        return [NO_DATA_MSG]
     cur_map = json.loads(job["column_map_json"])
     table_cols = _table_columns_sqlcl(qualify(job["stage_table"]))
     adds, widens, removed, incompat, new_map = _plan_drift(cols, cur_map, table_cols)
