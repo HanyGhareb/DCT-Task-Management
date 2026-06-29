@@ -2,7 +2,7 @@
 
 Generic, config-driven:
   - column_map_json maps {"CSV Header": "TARGET_COL"}
-  - TRUNCATE_INSERT clears the staging table first; MERGE upserts stage->final
+  - both modes clear the staging table first; MERGE then upserts stage->final
     on key_columns. Stage and final are assumed to share column names.
   - DATE/TIMESTAMP target columns are parsed in Python (mixed date-only and
     datetime values are handled), so no NLS dependency. Empty -> NULL.
@@ -91,13 +91,15 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
         conv.append(out)
 
     cur = conn.cursor()
-    if load_mode == "TRUNCATE_INSERT":
-        # DELETE (not TRUNCATE) so the clear-out stays in the same transaction as
-        # the INSERTs below — committed together at the end. A failed reload thus
-        # rolls back and the table keeps its prior load (caller must rollback on
-        # error before logging; TRUNCATE is DDL and would auto-commit the empty
-        # state). Volumes here are the OTBI export cap, so undo cost is negligible.
-        cur.execute(f"delete from {stage_table}")
+    # Always clear the staging table first so it holds ONLY the current extract.
+    # TRUNCATE_INSERT: stage IS the destination -> atomic replace. MERGE: stage is a
+    # scratch table merged into final; if old rows lingered, a re-extracted key would
+    # appear twice in the merge source -> ORA-30926. DELETE (not TRUNCATE) keeps the
+    # clear-out in the same transaction as the INSERTs below — committed together at
+    # the end. A failed reload thus rolls back and the table keeps its prior load
+    # (caller must rollback on error before logging; TRUNCATE is DDL and would
+    # auto-commit the empty state). Volumes here are the OTBI export cap, so cheap.
+    cur.execute(f"delete from {stage_table}")
 
     # chunked array-bind insert: fast (one round-trip per chunk) and memory-bounded
     binds = ", ".join(f":{i+1}" for i in range(len(target_cols)))
@@ -107,6 +109,12 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
         cur.executemany(insert_sql, conv[i:i + chunk])
 
     if load_mode == "MERGE" and final_table:
+        # stage and final MUST differ: the staging clear-out above empties stage, so a
+        # same-table MERGE would wipe the data then self-merge an empty source.
+        if stage_table.strip().upper() == final_table.strip().upper():
+            raise RuntimeError(
+                f"MERGE misconfigured: stage_table and final_table are the same "
+                f"({final_table}). Point Final Table at a separate base table.")
         keys = [k.strip().upper() for k in (key_columns or "").split(",") if k.strip()]
         cols = target_cols
         on = " and ".join(f"t.{k}=s.{k}" for k in keys)

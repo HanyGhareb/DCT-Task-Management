@@ -1,5 +1,59 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-06-29 — MERGE load mode: staging-clear fix + GRN incremental-upsert runbook
+
+### Runner fix (`runner/load.py`) — REQUIRED before any MERGE job is used
+The oracledb loader only cleared the staging table for `TRUNCATE_INSERT`; in `MERGE` mode it
+re-inserted each extract on top of the previous run's rows. On the **2nd run** a re-extracted key
+then appeared twice in the merge source → `ORA-30926 "unable to get a stable set of rows in the
+source tables"`, and the staging table grew unbounded. Fix: the staging `DELETE` is now
+**unconditional** (both modes) so staging always holds *only* the current extract; behaviour for
+`TRUNCATE_INSERT` is unchanged (stage IS the destination → atomic replace). Also added a guard that
+raises a clear error if a MERGE job is misconfigured with `stage_table == final_table`.
+**Deploy:** copy `runner/load.py` to all worker VMs + `systemctl restart atd-worker`. (SQLcl-mode
+`loadsql.py` still rejects MERGE with `NotImplementedError` — prod runs oracledb, so MERGE works.)
+
+### How MERGE mode works (for the Edit Job form)
+A MERGE job uses **two** tables. **Target Table** (`stage_table`) is the scratch landing zone the
+fresh OTBI extract loads into each run; **Final Table (MERGE)** (`final_table`) is the persistent
+base table you query. After staging loads, the runner runs
+`MERGE INTO final USING stage ON (key_columns)` — updating matched rows, inserting new ones. Stage
+and final **must be different tables**, and **`key_columns` must be UNIQUE per row in a single
+extract** or the merge fails with ORA-30926. Neither table needs pre-creating — `prepare.py` builds
+both from the live CSV on first run (and ALTERs both on schema drift).
+
+### GRN incremental conversion (GRN Updates 10Min → MERGE) — PENDING a unique key
+There are 3 GRN jobs sharing staging `PROD.ATD_GRN`: **GRN Full** (`GRN_ALL_F`, daily, real map),
+**GRN Hourly** (`GRN_ALL_UH`, 60 min), **GRN Updates 10Min** (`GRN_ALL_U10M`, 10 min, currently
+disabled). The plan: keep **staging = `ATD_GRN`**, MERGE into **base = `GRN`**.
+
+**Blocker:** the GRN extract is accounting-line-level and has **no unique key** — `TRANSACTION_ID`
+yields only 2,802 distinct of 6,943 rows (up to 5 lines/txn: Dr/Cr signs, multiple CC_IDs); even a
+5-column composite (`TXN+CC+SIGN+GL_BATCH+LEDGER_AMOUNT`) still leaves 16 collisions. MERGE needs a
+truly unique key. **Decision (2026-06-29): add a true accounting-line unique id to the OTBI
+analysis** (e.g. the receipt-accounting distribution id, or XLA `AE_HEADER_ID`+`AE_LINE_NUM` / GL
+link id). Add it to `GRN_ALL_U10M` (ideally all three, so the shared `ATD_GRN`/`GRN` carry it
+consistently); the runner auto-adds the new column on the next run via schema-drift handling.
+
+**Once the analysis emits the unique id column (call it `<KEY_COL>`):**
+1. (One-time) Seed/own the base table `GRN`. Options: make **GRN Full** also write the base — either
+   MERGE Full into `GRN` on `<KEY_COL>` (daily full upsert) or TRUNCATE_INSERT Full directly into
+   `GRN` (daily full rebuild) — or seed `GRN` once from `ATD_GRN` then let increments maintain it.
+2. Drop the stray junk column once no job's column map references it:
+   `ALTER TABLE prod.atd_grn DROP COLUMN the_query_resulted_in_no_r;`
+3. Reconfigure GRN Updates 10Min:
+   ```sql
+   UPDATE prod.atd_otbi_jobs
+      SET load_mode='MERGE', stage_table='PROD.ATD_GRN', final_table='PROD.GRN',
+          key_columns='<KEY_COL>', column_map_json=NULL, updated_at=SYSTIMESTAMP
+    WHERE job_name='GRN Updates 10Min';
+   COMMIT;
+   ```
+   (Set `column_map_json=NULL` only if the analysis structure changed, to force a clean re-profile.)
+4. Verify: enable + run it **twice**. Both SUCCESS; staging row count = latest extract (not growing);
+   `GRN` reflects upserts (changed rows updated in place, only new keys add rows). Confirm
+   `SELECT <KEY_COL>, COUNT(*) FROM prod.grn GROUP BY <KEY_COL> HAVING COUNT(*)>1` returns nothing.
+
 ## 2026-06-27 — Fusion session auto-heal: keep-alive + cross-worker failover (App 208, APP_VERSION 1.15.3)
 
 The recurring "session expired mid-run" failure (Fusion SSO/MFA session dies between sparse
