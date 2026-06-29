@@ -37,11 +37,18 @@
 
 /* ---- status legend (page footer, shared <status-legend> component) -- */
 .status-legend { margin-top:26px; background:#f7f8fa; border:1px solid var(--border,#e2e6ea);
-                 border-radius:12px; padding:16px 22px 20px; }
-.status-legend__head { display:flex; align-items:center; gap:8px; margin-bottom:16px;
+                 border-radius:12px; padding:14px 22px; }
+.status-legend--open { padding-bottom:20px; }
+.status-legend__head { display:flex; align-items:center; gap:8px; cursor:pointer;
+                       -webkit-user-select:none; user-select:none; margin-bottom:0;
                        font-size:12px; font-weight:700; letter-spacing:.06em;
                        text-transform:uppercase; color:#6b7480; }
+.status-legend__head:hover { color:#3a4350; }
+.status-legend--open .status-legend__head { margin-bottom:16px; }
 .status-legend__head svg { width:15px; height:15px; opacity:.65; flex:0 0 auto; }
+.status-legend__chev { margin-inline-start:auto; font-size:13px; opacity:.6;
+                       transition:transform .18s ease; }
+.status-legend--open .status-legend__chev { transform:rotate(90deg); }
 .status-legend__cols { display:grid; grid-template-columns:repeat(auto-fit, minmax(380px, 1fr));
                        gap:20px 48px; }
 .status-legend__group { font-size:11px; font-weight:700; letter-spacing:.05em;
