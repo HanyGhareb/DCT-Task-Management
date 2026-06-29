@@ -445,6 +445,20 @@ def _table_columns_ora(conn, table):
     return {r[0].upper(): {"type": r[1].upper(), "len": (r[3] or r[2])} for r in cur.fetchall()}
 
 
+def _add_col_ora(cur, table, name, typ):
+    """Idempotent ALTER TABLE ADD. Peer jobs share one target table and up to three
+    workers run in parallel, so a column this job thinks is 'new' may already have
+    been added by a peer between our check and our ADD. Tolerate ORA-01430 (column
+    already exists) as benign; re-raise anything else."""
+    try:
+        cur.execute(f"alter table {table} add ({name} {typ})")
+        return True
+    except Exception as e:  # noqa: BLE001
+        if "ORA-01430" in str(e):
+            return False
+        raise
+
+
 def _reconcile_existing(conn, table, cols):
     """First-run prep against a table that ALREADY exists: align it to the live
     profile WITHOUT recreating it (keeps any peer job's data). ADD columns the
@@ -458,8 +472,8 @@ def _reconcile_existing(conn, table, cols):
         if up == "LOAD_TS":
             continue
         if up not in have:
-            cur.execute(f"alter table {table} add ({name} {c['type']})")
-            notes.append(f"added {name} {c['type']} to existing {table}")
+            if _add_col_ora(cur, table, name, c["type"]):
+                notes.append(f"added {name} {c['type']} to existing {table}")
         else:
             d = _evolve(have[up], c)
             if d and d[0] == "widen":
@@ -519,10 +533,16 @@ def ensure_prepared_oracledb(conn, job, csv_text):
         for tbl in [qualify(job["stage_table"]), qualify(job.get("final_table"))]:
             if not tbl:
                 continue
+            # Re-read THIS table's real columns: a peer job sharing the table may have
+            # already evolved it, and stage vs final can differ. Only touch what's
+            # actually missing/outgrown; _add_col_ora absorbs the parallel-worker race.
+            have = _table_columns_ora(conn, tbl)
             for h, name, typ in adds:
-                cur.execute(f"alter table {tbl} add ({name} {typ})")
+                if name.upper() not in have:
+                    _add_col_ora(cur, tbl, name, typ)
             for col, typ in widens:
-                cur.execute(f"alter table {tbl} modify ({col} {typ})")
+                if col.upper() in have:
+                    cur.execute(f"alter table {tbl} modify ({col} {typ})")
         cmap = json.dumps(new_map, ensure_ascii=False)
         cur.execute("update prod.atd_otbi_jobs set column_map_json=:m where job_name=:j",
                     m=cmap, j=job["job_name"])
@@ -589,10 +609,14 @@ def ensure_prepared_sqlcl(job, csv_text):
         for tbl in [qualify(job["stage_table"]), qualify(job.get("final_table"))]:
             if not tbl:
                 continue
+            # skip columns a peer job already evolved on the shared table (ORA-01430)
+            have = _table_columns_sqlcl(tbl)
             for h, name, typ in adds:
-                ddl.append(f"ALTER TABLE {tbl} ADD ({name} {typ});")
+                if name.upper() not in have:
+                    ddl.append(f"ALTER TABLE {tbl} ADD ({name} {typ});")
             for col, typ in widens:
-                ddl.append(f"ALTER TABLE {tbl} MODIFY ({col} {typ});")
+                if col.upper() in have:
+                    ddl.append(f"ALTER TABLE {tbl} MODIFY ({col} {typ});")
         cm = json.dumps(new_map, ensure_ascii=False).replace("'", "''")
         jn = job["job_name"].replace("'", "''")
         ddl.append(f"UPDATE prod.atd_otbi_jobs SET column_map_json='{cm}' WHERE job_name='{jn}';")
