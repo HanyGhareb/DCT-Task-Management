@@ -49,6 +49,10 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-06-30** — **Refresh Actuals button** (APP_VERSION 1.17.2). New `POST /atd/actuals/refresh`
+  (`otbi-atd/db/39_atd_actuals_refresh_ords.sql`, additive to `atd.rest`, fresh session) calls
+  `prod.dct_actuals_refresh` to rebuild `DCT_GL_COA_SNAP`; Dashboard header gains a **Refresh
+  Actuals** button (`atdService.refreshActuals`). Same proc as the GL app + hourly job (db/v2/35).
 - **2026-06-21** — **Runner code MUST be redeployed to the worker VMs** (atd-vm180/181/182). The
   workers run as a long-lived systemd service (`atd-worker`, `--worker --forever`) on each VM, so a
   change to `otbi-atd/runner/*.py` does NOT take effect until each VM is re-synced **and the service

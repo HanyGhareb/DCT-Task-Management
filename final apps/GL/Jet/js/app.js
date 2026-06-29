@@ -80,7 +80,62 @@
     segAccount:{en:'Account',ar:'الحساب'}, segAppropriation:{en:'Appropriation',ar:'الاعتماد'},
     segBudgetGroup:{en:'Budget Group',ar:'مجموعة الموازنة'}, segEntitySpecific:{en:'Entity Specific',ar:'خاص بالجهة'},
     segFuture1:{en:'Future 1',ar:'مستقبلي ١'}, segFuture2:{en:'Future 2',ar:'مستقبلي ٢'},
-    segIntercompany:{en:'Intercompany',ar:'بين الشركات'}, segProgram:{en:'Program',ar:'البرنامج'}
+    segIntercompany:{en:'Intercompany',ar:'بين الشركات'}, segProgram:{en:'Program',ar:'البرنامج'},
+
+    /* ── Actuals (Budget vs Actual) report ── */
+    navActuals:{en:'Actuals',ar:'الفعلي'}, navDashboard:{en:'Dashboard',ar:'لوحة المعلومات'},
+    acTitle:{en:'Budget vs Actual',ar:'الموازنة مقابل الفعلي'},
+    acSub:{en:'Year-to-date budget, encumbrance and actual spend per GL combination.',ar:'الموازنة والارتباطات والإنفاق الفعلي حتى تاريخه لكل تركيبة محاسبية.'},
+    fPeriod:{en:'Accounting period',ar:'الفترة المحاسبية'}, fSectorL:{en:'Sector',ar:'القطاع'},
+    fChapterL:{en:'Chapter',ar:'الباب'}, fProgramL:{en:'DCT Program',ar:'برنامج الدائرة'},
+    fApprL:{en:'Appropriation',ar:'الاعتماد'}, fSearchL:{en:'Search',ar:'بحث'},
+    allPrograms:{en:'All programs',ar:'كل البرامج'}, allApprops:{en:'All appropriations',ar:'كل الاعتمادات'},
+    searchActuals:{en:'Cost center, account, code…',ar:'مركز التكلفة، الحساب، الرمز…'},
+    btnSearch:{en:'Search',ar:'بحث'}, btnReset:{en:'Reset',ar:'إعادة تعيين'},
+    cBudget:{en:'Budget',ar:'الموازنة'}, cEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
+    cActual:{en:'GL Actual',ar:'الفعلي'}, cFunds:{en:'Funds available',ar:'المتاح'},
+    cGrn:{en:'GRN actual',ar:'الاستلام الفعلي'}, cApDirect:{en:'AP direct',ar:'مباشر دائنون'},
+    cVariance:{en:'Variance',ar:'الفرق'},
+    thCombo:{en:'Combination',ar:'التركيبة'}, thAppr:{en:'Appropriation',ar:'الاعتماد'},
+    periodRequired:{en:'Please choose an accounting period.',ar:'الرجاء اختيار فترة محاسبية.'},
+    noActuals:{en:'No combinations match these criteria.',ar:'لا توجد تركيبات مطابقة.'},
+    rowsOf:{en:'of',ar:'من'},
+    hBudget:{en:'Total approved budget YTD (initial + adjustments).',ar:'إجمالي الموازنة المعتمدة حتى تاريخه (الأولية + التعديلات).'},
+    hEncumbrance:{en:'Commitments + obligations + other encumbrances booked in GL.',ar:'الالتزامات + التعهدات + ارتباطات أخرى المسجلة في دفتر الأستاذ.'},
+    hActual:{en:'Actual expenditure recognised in GL, YTD.',ar:'الإنفاق الفعلي المعترف به في دفتر الأستاذ حتى تاريخه.'},
+    hFunds:{en:'Budget − encumbrance − actual = funds still available.',ar:'الموازنة − الارتباطات − الفعلي = الأموال المتاحة.'},
+    hGrn:{en:'Goods/services received (GRN) against POs, AED, YTD.',ar:'البضائع/الخدمات المستلمة مقابل أوامر الشراء، بالدرهم، حتى تاريخه.'},
+    hApDirect:{en:'Invoiced directly in AP without a PO match, AED, YTD.',ar:'مفوتر مباشرة في الدائنون دون مطابقة أمر شراء، بالدرهم، حتى تاريخه.'},
+    hCombo:{en:'Hover to see the full 10-segment account combination.',ar:'مرر للاطلاع على التركيبة المحاسبية الكاملة (10 بنود).'},
+    drillTotal:{en:'Total',ar:'الإجمالي'}, noLines:{en:'No supporting lines for this period.',ar:'لا توجد بنود داعمة لهذه الفترة.'},
+    mBudget:{en:'Budget',ar:'الموازنة'}, mEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
+    mGlactual:{en:'GL Actual',ar:'الفعلي'}, mGrn:{en:'GRN actual',ar:'الاستلام الفعلي'}, mApdirect:{en:'AP direct',ar:'مباشر دائنون'},
+    refreshActuals:{en:'Refresh actuals',ar:'تحديث الفعلي'}, refreshing:{en:'Refreshing…',ar:'جارٍ التحديث…'},
+    refreshed:{en:'Actuals snapshot refreshed',ar:'تم تحديث لقطة الفعلي'},
+    refreshHint:{en:'Rebuild the classification snapshot so the report reflects the latest GL/ATD data and mapping edits.',ar:'إعادة بناء لقطة التصنيف لتعكس أحدث بيانات دفتر الأستاذ والربط.'},
+    asOfRefresh:{en:'Updated',ar:'حُدّث'},
+
+    /* ── Executive dashboard ── */
+    dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
+    dashSub:{en:'Where the budget is going — spend, commitments and momentum at a glance.',ar:'إلى أين تتجه الموازنة — الإنفاق والارتباطات والاتجاه في لمحة.'},
+    kUtil:{en:'Budget utilised',ar:'الموازنة المستخدمة'}, kCommit:{en:'Committed',ar:'مرتبط'},
+    kPoTotal:{en:'PO commitments',ar:'التزامات أوامر الشراء'}, kPoCount:{en:'purchase orders',ar:'أمر شراء'},
+    kCombos:{en:'active combinations',ar:'تركيبة نشطة'},
+    secUtil:{en:'Budget utilisation',ar:'استخدام الموازنة'},
+    secBySector:{en:'Actual spend by sector',ar:'الإنفاق الفعلي حسب القطاع'},
+    secByProgram:{en:'Actual spend by DCT program',ar:'الإنفاق الفعلي حسب برنامج الدائرة'},
+    secByAppr:{en:'PO commitments by appropriation',ar:'التزامات أوامر الشراء حسب الاعتماد'},
+    secTrend:{en:'Actual spend — period over period',ar:'الإنفاق الفعلي — فترة بعد فترة'},
+    secInsights:{en:'Insights',ar:'رؤى'},
+    ofBudget:{en:'of budget spent',ar:'من الموازنة'}, committedOf:{en:'committed',ar:'مرتبط'},
+    lblActual:{en:'Actual',ar:'الفعلي'}, lblBudget:{en:'Budget',ar:'الموازنة'},
+    lblPoTotal:{en:'PO total',ar:'إجمالي الشراء'}, lblPoCount:{en:'POs',ar:'أوامر'},
+    dashNoData:{en:'No data for this period.',ar:'لا توجد بيانات لهذه الفترة.'},
+    insUtil:{en:'Budget utilisation is {p}% — {a} of {b} AED spent year-to-date.',ar:'استخدام الموازنة {p}% — صُرف {a} من {b} درهم حتى تاريخه.'},
+    insCommit:{en:'A further {p}% is committed via encumbrances; {f} AED remains available.',ar:'إضافةً إلى {p}% مرتبطة عبر الارتباطات؛ يتبقى {f} درهم متاح.'},
+    insTopSector:{en:'{s} leads actual spend at {a} AED ({p}% of total).',ar:'{s} يتصدر الإنفاق الفعلي بـ {a} درهم ({p}% من الإجمالي).'},
+    insTopAppr:{en:'{s} carries the largest PO commitment: {a} AED across {n} orders.',ar:'{s} يحمل أكبر التزام شراء: {a} درهم عبر {n} أمر.'},
+    insGrowth:{en:'Actual spend rose from {a} ({p1}) to {b} ({p2}) — {x}× across the year.',ar:'ارتفع الإنفاق الفعلي من {a} ({p1}) إلى {b} ({p2}) — {x}× خلال العام.'}
   };
 
   function VM() {
@@ -156,6 +211,10 @@
       if (v === 'classifications') self.loadValues();
       else if (v === 'mapping') self.loadSegOptions();
       else if (v === 'explorer') self.loadCombos(0);
+      else if (v === 'actuals') {
+        if (!self.acFiltersLoaded()) self.loadAcFilters().then(function () { self.runActuals(0); });
+        else self.runActuals(0);
+      } else if (v === 'dashboard') self.loadDashboard();
     };
     self.signOut = function () { location.href = ADMIN_LOGIN; };
 
@@ -315,6 +374,188 @@
       api('GET', '/class-values?type=SECTOR').then(function (d) { self.sectorOpts((d.items || []).filter(function (v) { return v.isActive === 'Y'; })); });
       api('GET', '/class-values?type=CHAPTER').then(function (d) { self.chapterOpts((d.items || []).filter(function (v) { return v.isActive === 'Y'; })); });
     };
+
+    /* ════ formatting helpers (AED) ════ */
+    self.money = function (n) { if (n == null || n === '') return '—'; return Math.round(Number(n)).toLocaleString('en-US'); };
+    self.compact = function (n) {
+      if (n == null || n === '') return '—'; var v = Number(n), a = Math.abs(v), s = v < 0 ? '-' : '';
+      if (a >= 1e9) return s + (a / 1e9).toFixed(2) + 'B';
+      if (a >= 1e6) return s + (a / 1e6).toFixed(1) + 'M';
+      if (a >= 1e3) return s + (a / 1e3).toFixed(0) + 'K';
+      return s + Math.round(a);
+    };
+
+    /* ════ snapshot refresh (manual button + Overview) ════ */
+    self.refreshing = ko.observable(false);
+    self.lastRefreshed = ko.observable('');
+    self.refreshActuals = function () {
+      if (self.refreshing()) return;
+      self.refreshing(true);
+      api('POST', '/actuals/refresh', {}).then(function (d) {
+        self.lastRefreshed(d.refreshedAt || '');
+        self.refreshing(false);
+        toast(self.t('refreshed'));
+        if (self.view() === 'actuals') self.runActuals(self.acOffset());
+        else if (self.view() === 'dashboard') self.loadDashboard();
+      }).catch(function (e) { self.refreshing(false); toast(e.message, true); });
+    };
+
+    /* ════ ACTUALS — Budget vs Actual report ════ */
+    self.acFiltersLoaded = ko.observable(false);
+    self.periods = ko.observableArray([]);
+    self.acSectors = ko.observableArray([]); self.acChapters = ko.observableArray([]);
+    self.acPrograms = ko.observableArray([]); self.acAppropriations = ko.observableArray([]);
+    self.acPeriod = ko.observable(''); self.acSector = ko.observable(''); self.acChapter = ko.observable('');
+    self.acProgram = ko.observable(''); self.acAppr = ko.observable(''); self.acSearch = ko.observable('');
+    self.acItems = ko.observableArray([]); self.acTotals = ko.observable({});
+    self.acTotal = ko.observable(0); self.acOffset = ko.observable(0); self.acLimit = 100;
+    self.acLoading = ko.observable(false);
+
+    self.loadAcFilters = function () {
+      return api('GET', '/actuals/filters').then(function (d) {
+        self.periods(d.periods || []);
+        self.acSectors(d.sectors || []); self.acChapters(d.chapters || []);
+        self.acPrograms(d.programs || []); self.acAppropriations(d.appropriations || []);
+        if (!self.acPeriod()) self.acPeriod(d.defaultPeriod || (d.periods && d.periods[0] && d.periods[0].period) || '');
+        self.acFiltersLoaded(true);
+      }).catch(fail);
+    };
+    self.acParams = function (offset, limit) {
+      return { period: self.acPeriod(), sector: self.acSector(), chapter: self.acChapter(),
+        program: self.acProgram(), appropriation: self.acAppr(), search: self.acSearch(),
+        limit: limit || self.acLimit, offset: offset || 0 };
+    };
+    self.runActuals = function (offset) {
+      if (!self.acPeriod()) { toast(self.t('periodRequired'), true); return; }
+      offset = Math.max(0, offset || 0); self.acLoading(true);
+      return api('GET', '/actuals' + qs(self.acParams(offset))).then(function (d) {
+        self.acItems(d.items || []); self.acTotals(d.totals || {});
+        self.acTotal(d.total || 0); self.acOffset(offset); self.acLoading(false);
+      }).catch(function (e) { self.acLoading(false); fail(e); });
+    };
+    self.acReset = function () {
+      self.acSector(''); self.acChapter(''); self.acProgram(''); self.acAppr(''); self.acSearch('');
+      var cur = self.periods().filter(function (p) { return p.isCurrent === 'Y'; })[0];
+      if (cur) self.acPeriod(cur.period);
+      self.runActuals(0);
+    };
+    self.acRange = ko.computed(function () {
+      if (!self.acTotal()) return '';
+      var a = self.acOffset() + 1, b = Math.min(self.acOffset() + self.acLimit, self.acTotal());
+      return a + '–' + b + ' ' + self.t('rowsOf') + ' ' + self.fmt(self.acTotal());
+    });
+    // pull the business-question total for a summary card
+    self.tot = function (k) { var t = self.acTotals() || {}; return t[k]; };
+
+    /* ── drill-down: a single figure → its supporting lines ── */
+    self.drillModal = ko.observable(false); self.drillLoading = ko.observable(false);
+    self.drillTitle = ko.observable(''); self.drillCols = ko.observableArray([]);
+    self.drillRows = ko.observableArray([]); self.drillTotalV = ko.observable(0);
+    self.openDrill = function (row, metric) {
+      self.drillTitle(self.t('m' + metric.charAt(0).toUpperCase() + metric.slice(1)) + ' · ' + row.ccString);
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0);
+      self.drillModal(true); self.drillLoading(true);
+      api('GET', '/actuals/lines' + qs({ period: self.acPeriod(), cc: row.ccString, metric: metric }))
+        .then(function (d) {
+          self.drillCols(d.columns || []); self.drillRows(d.rows || []); self.drillTotalV(d.total || 0);
+          self.drillLoading(false);
+        }).catch(function (e) { self.drillLoading(false); self.drillModal(false); toast(e.message, true); });
+    };
+    self.closeDrill = function () { self.drillModal(false); };
+    self.cell = function (row, col) {
+      var v = row[col.key];
+      if (col.type === 'money') return self.money(v);
+      if (col.type === 'num') return (v == null ? '' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 4 }));
+      return (v == null ? '' : v);
+    };
+    self.drillFooterSpan = ko.computed(function () { return Math.max(1, self.drillCols().length - 1); });
+
+    self.acExportCsv = function () {
+      api('GET', '/actuals' + qs(self.acParams(0, 5000))).then(function (d) {
+        var rows = d.items || [];
+        var cols = [['ccString', 'Combination'], ['costCenterCode', 'Cost Center'], ['costCenterDesc', 'Cost Center Desc'],
+          ['accountCode', 'Account'], ['accountDesc', 'Account Desc'], ['sectorName', 'Sector'], ['chapterName', 'Chapter'],
+          ['programName', 'DCT Program'], ['appropriationCode', 'Appropriation'], ['appropriationDesc', 'Appropriation Desc'],
+          ['budget', 'Budget'], ['encumbrance', 'Encumbrance'], ['glActual', 'GL Actual'], ['fundsAvailable', 'Funds Available'],
+          ['grnActual', 'GRN Actual'], ['apDirect', 'AP Direct'], ['variance', 'Variance']];
+        var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
+          return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
+        }).join('\n');
+        var blob = new Blob([csv], { type: 'text/csv' }); var u = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = u; a.download = 'gl_actuals_' + self.acPeriod() + '.csv'; a.click(); URL.revokeObjectURL(u);
+      }).catch(fail);
+    };
+
+    /* ════ DASHBOARD — executive analytics ════ */
+    self.dashLoaded = ko.observable(false); self.dashLoading = ko.observable(false);
+    self.dashPeriod = ko.observable(''); self.dash = ko.observable(null);
+    self.loadDashboard = function () {
+      var run = function () {
+        if (!self.dashPeriod()) self.dashPeriod(self.acPeriod() || (self.periods()[0] || {}).period || '');
+        self.dashLoading(true);
+        return api('GET', '/dashboard' + qs({ period: self.dashPeriod() })).then(function (d) {
+          self.dash(d); self.dashLoaded(true); self.dashLoading(false);
+          if (d && d.period && d.period !== self.dashPeriod()) self.dashPeriod(d.period);
+        }).catch(function (e) { self.dashLoading(false); fail(e); });
+      };
+      if (!self.acFiltersLoaded()) return self.loadAcFilters().then(run);
+      return run();
+    };
+    self.dashPeriod.subscribe(function () { if (self.view() === 'dashboard' && self.dashLoaded()) self.loadDashboard(); });
+
+    function cloneWithPct(arr, key) {
+      var max = 1; arr.forEach(function (x) { max = Math.max(max, Math.abs(Number(x[key]) || 0)); });
+      return arr.map(function (x) { var o = {}; for (var k in x) o[k] = x[k]; o._pct = Math.round((Math.abs(Number(x[key]) || 0)) * 100 / max); return o; });
+    }
+    self.kpis = ko.computed(function () { var d = self.dash(); return (d && d.kpis) || {}; });
+    self.sectorBars = ko.computed(function () { var d = self.dash(); return d ? cloneWithPct((d.bySector || []).slice(), 'actual') : []; });
+    self.programBars = ko.computed(function () { var d = self.dash(); return d ? cloneWithPct((d.byProgram || []).slice(), 'actual') : []; });
+    self.apprBars = ko.computed(function () { var d = self.dash(); return d ? cloneWithPct((d.byAppropriation || []).slice(), 'poTotal') : []; });
+
+    // utilisation radial gauge geometry
+    self.gauge = ko.computed(function () {
+      var k = self.kpis(), r = 60, C = 2 * Math.PI * r;
+      var util = Math.max(0, Math.min(100, Number(k.utilizationPct) || 0));
+      var commit = Math.max(0, Math.min(100, Number(k.commitmentPct) || 0));
+      return { util: util, commit: commit, C: C.toFixed(1),
+        dash: ((util / 100) * C).toFixed(1) + ' ' + C.toFixed(1),
+        dashCommit: ((commit / 100) * C).toFixed(1) + ' ' + C.toFixed(1) };
+    });
+
+    // period-over-period actual trend (SVG line + area, scaled to actual max)
+    self.trend = ko.computed(function () {
+      var d = self.dash(); if (!d || !d.trend || !d.trend.length) return null;
+      var t = d.trend, W = 560, H = 170, pl = 12, pb = 26, pt = 14;
+      var maxV = 1; t.forEach(function (p) { maxV = Math.max(maxV, Number(p.actual) || 0); });
+      var n = t.length, xs = function (i) { return pl + (n === 1 ? 0 : i * (W - 2 * pl) / (n - 1)); };
+      var ys = function (v) { return (H - pb) - (Number(v) || 0) / maxV * (H - pb - pt); };
+      var pts = t.map(function (p, i) { return { x: +xs(i).toFixed(1), y: +ys(p.actual).toFixed(1), period: p.period, actual: p.actual }; });
+      var line = pts.map(function (p) { return p.x + ',' + p.y; }).join(' ');
+      var area = 'M' + pts[0].x + ',' + (H - pb) + ' L' + line.split(' ').join(' L') + ' L' + pts[n - 1].x + ',' + (H - pb) + ' Z';
+      return { W: W, H: H, baseY: H - pb, line: line, area: area, pts: pts, maxV: maxV };
+    });
+
+    // auto-generated executive insights
+    self.insights = ko.computed(function () {
+      var d = self.dash(); if (!d || !d.kpis) return [];
+      var k = d.kpis, out = [], M = self.money, C = self.compact;
+      function sub(s, o) { for (var key in o) s = s.replace('{' + key + '}', o[key]); return s; }
+      out.push(sub(self.t('insUtil'), { p: k.utilizationPct || 0, a: C(k.actual), b: C(k.budget) }));
+      out.push(sub(self.t('insCommit'), { p: k.commitmentPct || 0, f: C(k.fundsAvailable) }));
+      var sectors = (d.bySector || []).filter(function (x) { return (Number(x.actual) || 0) > 0; });
+      if (sectors.length) {
+        var top = sectors[0], pct = k.actual > 0 ? Math.round(top.actual * 100 / k.actual) : 0;
+        out.push(sub(self.t('insTopSector'), { s: top.name, a: C(top.actual), p: pct }));
+      }
+      var apprs = (d.byAppropriation || []).filter(function (x) { return (Number(x.poTotal) || 0) > 0; });
+      if (apprs.length) out.push(sub(self.t('insTopAppr'), { s: apprs[0].name, a: C(apprs[0].poTotal), n: apprs[0].poCount }));
+      var tr = (d.trend || []).filter(function (x) { return (Number(x.actual) || 0) > 0; });
+      if (tr.length >= 2) {
+        var a = tr[0], b = tr[tr.length - 1], x = a.actual > 0 ? (b.actual / a.actual).toFixed(1) : '—';
+        out.push(sub(self.t('insGrowth'), { a: C(a.actual), p1: a.period, b: C(b.actual), p2: b.period, x: x }));
+      }
+      return out;
+    });
 
     /* ── init ── */
     api('GET', '/boot').then(function (d) {

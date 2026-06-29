@@ -177,7 +177,106 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 /* ── footer ──────────────────────────────────────────────────────── */
 .pfoot{display:flex;gap:10px;padding:16px 26px;border-top:1px solid var(--line);color:var(--muted);font-size:12px;background:var(--surface)}
 
+/* ════════════════════════════════════════════════════════════════════
+   ACTUALS (Budget vs Actual) + EXECUTIVE DASHBOARD
+   ════════════════════════════════════════════════════════════════════ */
+
+/* ── search-criteria card ─────────────────────────────────────────── */
+.filter-card{padding:16px 18px;margin-bottom:16px}
+.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;align-items:end}
+.filter-grid .field{gap:5px}
+.filter-actions{flex-direction:row;gap:9px;align-items:end}
+.filter-actions .btn{flex:1;justify-content:center}
+
+/* ── KPI / business-question strip ────────────────────────────────── */
+.kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:18px}
+.kstat{background:var(--surface);border:1px solid var(--line);border-top:3px solid var(--brand);border-radius:var(--r-sm);
+  padding:13px 15px;box-shadow:var(--shadow)}
+.kstat .kk{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.kstat .kv{font-family:var(--serif);font-size:25px;font-weight:500;color:var(--ink);line-height:1.15;margin-top:5px}
+.kstat .kd{font-size:11px;color:var(--muted);margin-top:2px}
+.kstat.budget{border-top-color:var(--info)} .kstat.budget .kv{color:var(--info)}
+.kstat.encumb{border-top-color:var(--warn)} .kstat.encumb .kv{color:var(--warn)}
+.kstat.actual{border-top-color:var(--brand)} .kstat.actual .kv{color:var(--brand-dark)}
+.kstat.funds{border-top-color:var(--ok)} .kstat.funds .kv{color:var(--ok)}
+.kstat.grn{border-top-color:var(--gold)} .kstat.grn .kv{color:#8a6a1e}
+.kstat.apd{border-top-color:#6C4AB6} .kstat.apd .kv{color:#6C4AB6}
+.kstat.po{border-top-color:var(--gold)} .kstat.po .kv{color:#8a6a1e}
+
+/* ── actuals table tuning ─────────────────────────────────────────── */
+table.tbl th.num,table.tbl td.num{text-align:end}
+.actuals-tbl td .sub-d{color:var(--muted);font-size:11px;margin-top:1px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.actuals-tbl td.combo{min-width:330px;max-width:330px;overflow:hidden;text-overflow:ellipsis}
+.actuals-tbl td.num{white-space:nowrap}
+.actuals-tbl td.strong{font-weight:700;color:var(--brand-dark)}
+.actuals-tbl td.neg{color:var(--bad)}
+.money-cell{cursor:pointer;position:relative}
+.money-cell:hover{color:var(--brand);text-decoration:underline dotted;text-underline-offset:3px}
+.dash{color:var(--muted)}
+table.tbl th[title]{cursor:help}
+
+/* ── dashboard layout ─────────────────────────────────────────────── */
+.dash-row{display:grid;gap:16px;margin-bottom:16px}
+.dash-row.two{grid-template-columns:1fr 1fr}
+.dash-sec{margin:0 0 14px}
+.kpi-strip.dash{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+
+/* ── utilisation gauge ────────────────────────────────────────────── */
+.gauge-card{display:flex;flex-direction:column}
+.gauge-wrap{position:relative;width:200px;height:200px;margin:6px auto 4px}
+.gauge-svg{width:200px;height:200px;transform:rotate(-90deg)}
+.gauge-svg circle{fill:none;stroke-width:16;stroke-linecap:round}
+.g-track{stroke:var(--brand-soft)}
+.g-commit{stroke:var(--gold);opacity:.55}
+.g-util{stroke:var(--brand);transition:stroke-dasharray .6s cubic-bezier(.34,1.56,.64,1)}
+.gauge-center{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none}
+.gauge-center .gv{font-family:var(--serif);font-size:38px;font-weight:600;color:var(--brand-dark);line-height:1}
+.gauge-center .gl{font-size:11px;color:var(--muted);margin-top:3px;text-transform:uppercase;letter-spacing:.05em}
+.gauge-legend{display:flex;gap:18px;justify-content:center;margin-top:6px;font-size:12.5px;color:var(--ink)}
+.gauge-legend span{display:inline-flex;align-items:center;gap:6px}
+.gdot{width:11px;height:11px;border-radius:3px;display:inline-block}
+.gdot.util{background:var(--brand)} .gdot.commit{background:var(--gold)}
+
+/* ── period-over-period trend ─────────────────────────────────────── */
+.trend-card{min-height:240px}
+.trend-svg{width:100%;height:auto;display:block;overflow:visible}
+.trend-area{fill:rgba(var(--brand-rgb),.12)}
+.trend-line{fill:none;stroke:var(--brand);stroke-width:2.5;stroke-linejoin:round;stroke-linecap:round}
+.trend-dot{fill:#fff;stroke:var(--brand);stroke-width:2.5}
+.trend-v{fill:var(--brand-dark);font-size:10px;font-weight:600;text-anchor:middle;font-family:var(--sans)}
+.trend-x{fill:var(--muted);font-size:10px;text-anchor:middle;font-family:var(--sans)}
+
+/* ── horizontal bar charts ────────────────────────────────────────── */
+.bars{display:flex;flex-direction:column;gap:9px}
+.bar-row{display:grid;grid-template-columns:170px 1fr 92px;gap:12px;align-items:center}
+.bar-row.appr{grid-template-columns:230px 1fr 92px 70px}
+.bar-label{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{height:13px;background:var(--brand-soft);border-radius:99px;overflow:hidden}
+.bar-fill{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-dark));border-radius:99px;
+  min-width:3px;transition:width .6s cubic-bezier(.22,1,.36,1)}
+.bar-track.gold{background:var(--gold-soft)}
+.bar-fill.gold{background:linear-gradient(90deg,var(--gold),#a9842f)}
+.bar-val{text-align:end;font-size:12.5px;font-weight:700;color:var(--brand-dark)}
+.bar-cnt{text-align:end;font-size:11px;color:var(--muted)}
+html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--brand-dark))}
+
+/* ── insights ─────────────────────────────────────────────────────── */
+.insights .ins-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:11px}
+.ins-list li{display:flex;align-items:flex-start;gap:11px;font-size:13.5px;line-height:1.5;color:var(--ink)}
+.ins-dot{width:7px;height:7px;border-radius:50%;background:var(--gold);margin-top:7px;flex:none;box-shadow:0 0 0 4px var(--gold-soft)}
+
+/* ── wide drill-down modal ────────────────────────────────────────── */
+.modal.wide{width:780px}
+.drill-tbl{font-size:12.5px}
+.drill-tbl td.num{text-align:end;white-space:nowrap}
+.drill-total{text-align:end;background:var(--brand-soft);color:var(--brand-dark);font-weight:600;padding:11px 14px}
+.drill-total b{margin-inline-start:8px;font-size:14px}
+
 @media (max-width:720px){
   .wrap{padding:20px 16px 60px}.grid2{grid-template-columns:1fr}
   .pbar{padding:10px 16px;gap:10px}.who .nm,.who .vn{display:none}
+  .dash-row.two{grid-template-columns:1fr}
+  .bar-row{grid-template-columns:120px 1fr 70px}
+  .bar-row.appr{grid-template-columns:120px 1fr 70px}
+  .bar-row.appr .bar-cnt{display:none}
 }

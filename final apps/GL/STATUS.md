@@ -10,12 +10,21 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | Package `DCT_GL_CLASS_PKG` + context `GL_CTX` | ✅ Deployed — norm / set_asof / resolve_value_id / validate_map |
 | Views `DCT_GL_COA_V` (+`GL_COA_V`) / `DCT_GL_BALANCES_V` | ✅ Deployed — COA view = 9,338 rows (no fan-out), 8,485 (91%) have a Sector |
 | Seed | ✅ 21 Sectors / 7 Chapters / 41 PBB Programs; 109 sector + 74 chapter + 33 program mappings |
-| ORDS `gl.rest` (`/ords/admin/gl/`) | ✅ Deployed — 8 route groups; auth + overlap-guard + as-of verified |
-| Frontend (Portal-style KO SPA, `Jet/`) | ✅ Live — Overview / Classifications / Mapping / Explorer; EN-AR-RTL; E2E passed |
+| ORDS `gl.rest` (`/ords/admin/gl/`) | ✅ Deployed — route groups incl. actuals/dashboard/refresh; auth + overlap-guard + as-of verified |
+| Actuals reporting (`db/v2/32–35`) | ✅ Deployed — `DCT_ACTUAL_V` / `DCT_BUDGET_ACTUAL_V` / `DCT_BUDGET_ACTUAL_PERIOD_V` (+appropriation) + indexed `DCT_GL_COA_SNAP` + hourly `DCT_ACTUALS_REFRESH_JOB` |
+| Frontend (Portal-style KO SPA, `Jet/`) | ✅ Live — Overview / Actuals / Dashboard / Classifications / Mapping / Explorer; EN-AR-RTL; E2E + mock-render passed |
 | Registration | ✅ shell switcher + common i18n + proxies (auto-derived) + CLAUDE.md Module Status |
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-06-30** — **Actuals reporting + Executive dashboard** (`APP_VERSION` 1.1.0). Added the
+  **Actuals** (Budget vs Actual, YTD per combination — period/sector/chapter/program/appropriation
+  filters, business-question cards, per-figure drill-down, combination tooltip, CSV) and
+  **Dashboard** (utilisation gauge, period-over-period trend, by sector/program/appropriation,
+  auto-insights — hand-built SVG/CSS) pages; **Refresh actuals** button (Overview/Actuals/Dashboard
+  + ATD). ORDS `/actuals/filters|/actuals|/actuals/lines|/dashboard|POST /actuals/refresh`. DB
+  `db/v2/34` (+appropriation) + `db/v2/35` (hourly job). Verified via live SQL probes, handler JSON
+  harness, and a Playwright mock-render (0 console errors).
 - **2026-06-28** — Initial build, all layers deployed to PROD and verified end-to-end.
   Brand `#3F6F5F`. `APP_VERSION` 1.0.0. Source CSVs preserved in `db/source/`.
 

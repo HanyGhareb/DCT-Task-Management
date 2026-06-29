@@ -16,6 +16,18 @@ function (ko, atd, i18n, charts, toast) {
     self._sessAge = {};                    // workerId -> {sessionStarted, sessionAgeMin}
     self.go = function (id) { window._jetApp.navigate(id); };
 
+    // rebuild the GL actuals classification snapshot (also a button in the GL app
+    // + an hourly job); handy to run straight after a load completes here.
+    self.refreshingActuals = ko.observable(false);
+    self.refreshActuals = function () {
+      if (self.refreshingActuals()) return;
+      self.refreshingActuals(true);
+      atd.refreshActuals()
+        .then(function () { toast.success(i18n.t('atd.dash.refreshActualsOk')); })
+        .catch(function () { toast.error(i18n.t('atd.dash.refreshActualsFail')); })
+        .then(function () { self.refreshingActuals(false); });
+    };
+
     atd.getActionStats().then(function (a) { self.actions(a); }).catch(function () {});
     atd.listWorkers().then(function (r) { self.workers((r && r.items) || []); }).catch(function () {});
     // observability: break window + per-VM session age + per-job freshness

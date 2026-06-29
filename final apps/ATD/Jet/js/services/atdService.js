@@ -21,6 +21,9 @@ function (api) {
     getDashboard: function ()          { return api.get('/dashboard'); },
     getLookups:   function ()          { return api.get('/lookups'); },
 
+    // rebuild the GL classification snapshot the actuals reporting views read
+    refreshActuals: function ()        { return api.post('/actuals/refresh', {}); },
+
     // jobs
     listJobs:     function (params)    { return api.get('/jobs' + qs(params)); },
     getJob:       function (name)      { return api.get('/jobs/' + encodeURIComponent(name)); },

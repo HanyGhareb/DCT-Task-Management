@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.0.6';</script>
+<script>window.APP_VERSION='1.1.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -43,6 +43,8 @@
 
   <nav class="pnav">
     <a data-bind="css:{on:view()==='overview'}, click:go.bind($data,'overview'), text:t('navOverview')"></a>
+    <a data-bind="css:{on:view()==='actuals'}, click:go.bind($data,'actuals'), text:t('navActuals')"></a>
+    <a data-bind="css:{on:view()==='dashboard'}, click:go.bind($data,'dashboard'), text:t('navDashboard')"></a>
     <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
     <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
     <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
@@ -52,8 +54,17 @@
 
     <!-- ── OVERVIEW ── -->
     <div data-bind="visible:view()==='overview'">
-      <h1 class="greet"><span data-bind="text:t('ovTitle')"></span></h1>
-      <div class="greet-sub" data-bind="text:t('ovSub')"></div>
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('ovTitle')"></h1>
+          <div class="greet-sub" style="margin:0" data-bind="text:t('ovSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:lastRefreshed(), text:t('asOfRefresh')+' '+lastRefreshed()"></span>
+          <button class="btn btn-primary btn-sm" data-bind="click:refreshActuals, enable:!refreshing(), attr:{title:t('refreshHint')}">
+            <span class="spin" data-bind="visible:refreshing()" style="border-top-color:#fff;border-color:rgba(255,255,255,.4)"></span>
+            <span data-bind="text:refreshing()?t('refreshing'):t('refreshActuals')"></span>
+          </button>
+        </div>
+      </div>
       <div class="hero">
         <div class="card stat"><div class="k" data-bind="text:t('combos')"></div>
           <div class="v mono" data-bind="text:fmt(combinationCount())"></div>
@@ -196,6 +207,204 @@
       </div>
     </div>
 
+    <!-- ── ACTUALS (Budget vs Actual) ── -->
+    <div data-bind="visible:view()==='actuals'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('acTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('acSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:acTotal(), text:acRange()"></span>
+          <button class="btn btn-sm" data-bind="click:acExportCsv, enable:acTotal()>0, text:t('exportCsv')"></button>
+          <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
+        </div>
+      </div>
+
+      <!-- search criteria -->
+      <div class="card filter-card">
+        <div class="filter-grid">
+          <div class="field"><label class="lbl" data-bind="text:t('fPeriod')+' *'"></label>
+            <select class="inp" data-bind="options:periods, optionsText:'period', optionsValue:'period', value:acPeriod"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
+            <select class="inp" data-bind="options:acSectors, optionsText:'name', optionsValue:'code', value:acSector, optionsCaption:t('allSectors')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
+            <select class="inp" data-bind="options:acChapters, optionsText:'name', optionsValue:'code', value:acChapter, optionsCaption:t('allChapters')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fProgramL')"></label>
+            <select class="inp" data-bind="options:acPrograms, optionsText:'name', optionsValue:'code', value:acProgram, optionsCaption:t('allPrograms')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fApprL')"></label>
+            <select class="inp" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAppr, optionsCaption:t('allApprops')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+            <input class="inp" type="text" data-bind="textInput:acSearch, attr:{placeholder:t('searchActuals')}, event:{keydown:function(d,e){if(e.keyCode===13){runActuals(0);}return true;}}"></div>
+          <div class="field filter-actions">
+            <button class="btn btn-primary" data-bind="click:function(){runActuals(0)}, text:t('btnSearch')"></button>
+            <button class="btn" data-bind="click:acReset, text:t('btnReset')"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- business-question answer cards -->
+      <div class="kpi-strip">
+        <div class="kstat budget"><div class="kk" data-bind="text:t('cBudget')"></div><div class="kv mono" data-bind="text:compact(tot('budget')), attr:{title:money(tot('budget'))}"></div></div>
+        <div class="kstat encumb"><div class="kk" data-bind="text:t('cEncumbrance')"></div><div class="kv mono" data-bind="text:compact(tot('encumbrance')), attr:{title:money(tot('encumbrance'))}"></div></div>
+        <div class="kstat actual"><div class="kk" data-bind="text:t('cActual')"></div><div class="kv mono" data-bind="text:compact(tot('glActual')), attr:{title:money(tot('glActual'))}"></div></div>
+        <div class="kstat funds"><div class="kk" data-bind="text:t('cFunds')"></div><div class="kv mono" data-bind="text:compact(tot('fundsAvailable')), attr:{title:money(tot('fundsAvailable'))}"></div></div>
+        <div class="kstat grn"><div class="kk" data-bind="text:t('cGrn')"></div><div class="kv mono" data-bind="text:compact(tot('grnActual')), attr:{title:money(tot('grnActual'))}"></div></div>
+        <div class="kstat apd"><div class="kk" data-bind="text:t('cApDirect')"></div><div class="kv mono" data-bind="text:compact(tot('apDirect')), attr:{title:money(tot('apDirect'))}"></div></div>
+      </div>
+
+      <!-- results table -->
+      <div class="tbl-wrap">
+        <table class="tbl actuals-tbl">
+          <thead><tr>
+            <th class="combo" data-bind="text:t('thCombo'), attr:{title:t('hCombo')}"></th>
+            <th data-bind="text:t('costCenter')"></th>
+            <th data-bind="text:t('account')"></th>
+            <th data-bind="text:t('fSectorL')"></th>
+            <th data-bind="text:t('program')"></th>
+            <th data-bind="text:t('thAppr')"></th>
+            <th class="num" data-bind="text:t('cBudget'), attr:{title:t('hBudget')}"></th>
+            <th class="num" data-bind="text:t('cEncumbrance'), attr:{title:t('hEncumbrance')}"></th>
+            <th class="num" data-bind="text:t('cActual'), attr:{title:t('hActual')}"></th>
+            <th class="num" data-bind="text:t('cFunds'), attr:{title:t('hFunds')}"></th>
+            <th class="num" data-bind="text:t('cGrn'), attr:{title:t('hGrn')}"></th>
+            <th class="num" data-bind="text:t('cApDirect'), attr:{title:t('hApDirect')}"></th>
+          </tr></thead>
+          <tbody>
+            <!-- ko foreach: acItems -->
+            <tr>
+              <td class="mono combo" data-bind="text:ccString, event:{mouseover:$root.comboHover, mousemove:$root.comboMove, mouseout:$root.comboOut}"></td>
+              <td><b class="mono" data-bind="text:costCenterCode"></b><div class="sub-d" data-bind="text:$data.costCenterDesc||''"></div></td>
+              <td><span class="mono" data-bind="text:accountCode"></span><div class="sub-d" data-bind="text:$data.accountDesc||''"></div></td>
+              <td><span class="chip" data-bind="visible:$data.sectorName, text:$data.sectorName||''"></span><span data-bind="visible:!$data.sectorName" class="dash">—</span></td>
+              <td data-bind="text:$data.programName||'—'"></td>
+              <td><span class="mono" data-bind="text:$data.appropriationCode||'—'"></span></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openDrill(d,'budget')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.encumbrance), attr:{title:$root.money($data.encumbrance)}, click:function(d){$root.openDrill(d,'encumbrance')}"></td>
+              <td class="num mono money-cell strong" data-bind="text:$root.compact($data.glActual), attr:{title:$root.money($data.glActual)}, click:function(d){$root.openDrill(d,'glactual')}"></td>
+              <td class="num mono" data-bind="text:$root.compact($data.fundsAvailable), attr:{title:$root.money($data.fundsAvailable)}, css:{neg:$data.fundsAvailable<0}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.grnActual), attr:{title:$root.money($data.grnActual)}, click:function(d){$root.openDrill(d,'grn')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.apDirect), attr:{title:$root.money($data.apDirect)}, click:function(d){$root.openDrill(d,'apdirect')}"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+        <div class="empty pad" data-bind="visible:acLoading()"><span class="spin"></span></div>
+        <div class="empty pad" data-bind="visible:!acLoading() && acItems().length===0, text:t('noActuals')"></div>
+      </div>
+      <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
+        <span class="t-dates" data-bind="text:acRange()"></span>
+        <button class="btn btn-sm" data-bind="click:function(){runActuals(acOffset()-acLimit)}, enable:acOffset()>0, text:t('prev')"></button>
+        <button class="btn btn-sm" data-bind="click:function(){runActuals(acOffset()+acLimit)}, enable:(acOffset()+acLimit)<acTotal(), text:t('next')"></button>
+      </div>
+    </div>
+
+    <!-- ── DASHBOARD (executive analytics) ── -->
+    <div data-bind="visible:view()==='dashboard'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('dashTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('dashSub')"></div></div>
+        <div class="page-actions">
+          <label class="lbl" style="align-self:center" data-bind="text:t('fPeriod')"></label>
+          <select class="inp" data-bind="options:periods, optionsText:'period', optionsValue:'period', value:dashPeriod"></select>
+          <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing(), text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
+        </div>
+      </div>
+
+      <div class="empty pad" data-bind="visible:dashLoading()"><span class="spin"></span></div>
+
+      <!-- ko if: !dashLoading() && dash() -->
+      <div class="kpi-strip dash">
+        <div class="kstat budget"><div class="kk" data-bind="text:t('cBudget')"></div><div class="kv mono" data-bind="text:compact(kpis().budget), attr:{title:money(kpis().budget)}"></div></div>
+        <div class="kstat actual"><div class="kk" data-bind="text:t('cActual')"></div><div class="kv mono" data-bind="text:compact(kpis().actual), attr:{title:money(kpis().actual)}"></div></div>
+        <div class="kstat funds"><div class="kk" data-bind="text:t('cFunds')"></div><div class="kv mono" data-bind="text:compact(kpis().fundsAvailable), attr:{title:money(kpis().fundsAvailable)}"></div></div>
+        <div class="kstat encumb"><div class="kk" data-bind="text:t('cEncumbrance')"></div><div class="kv mono" data-bind="text:compact(kpis().encumbrance), attr:{title:money(kpis().encumbrance)}"></div></div>
+        <div class="kstat po"><div class="kk" data-bind="text:t('kPoTotal')"></div><div class="kv mono" data-bind="text:compact(kpis().poTotal), attr:{title:money(kpis().poTotal)}"></div><div class="kd" data-bind="text:fmt(kpis().poCount)+' '+t('kPoCount')"></div></div>
+      </div>
+
+      <div class="dash-row two">
+        <div class="card gauge-card">
+          <h2 class="sec dash-sec"><span data-bind="text:t('secUtil')"></span><span class="rule"></span></h2>
+          <div class="gauge-wrap">
+            <svg viewBox="0 0 160 160" class="gauge-svg">
+              <circle cx="80" cy="80" r="60" class="g-track"></circle>
+              <circle cx="80" cy="80" r="60" class="g-commit" data-bind="attr:{'stroke-dasharray':gauge().dashCommit}"></circle>
+              <circle cx="80" cy="80" r="60" class="g-util" data-bind="attr:{'stroke-dasharray':gauge().dash}"></circle>
+            </svg>
+            <div class="gauge-center"><div class="gv mono" data-bind="text:(kpis().utilizationPct||0)+'%'"></div><div class="gl" data-bind="text:t('ofBudget')"></div></div>
+          </div>
+          <div class="gauge-legend">
+            <span><i class="gdot util"></i><span data-bind="text:t('kUtil')+': '+(kpis().utilizationPct||0)+'%'"></span></span>
+            <span><i class="gdot commit"></i><span data-bind="text:t('kCommit')+': '+(kpis().commitmentPct||0)+'%'"></span></span>
+          </div>
+        </div>
+        <div class="card trend-card">
+          <h2 class="sec dash-sec"><span data-bind="text:t('secTrend')"></span><span class="rule"></span></h2>
+          <!-- ko if: trend() -->
+          <svg class="trend-svg" data-bind="attr:{viewBox:'0 0 '+trend().W+' '+trend().H}">
+            <path class="trend-area" data-bind="attr:{d:trend().area}"></path>
+            <polyline class="trend-line" data-bind="attr:{points:trend().line}"></polyline>
+            <!-- ko foreach: trend().pts -->
+            <circle class="trend-dot" r="3.5" data-bind="attr:{cx:$data.x, cy:$data.y}"></circle>
+            <text class="trend-v" data-bind="attr:{x:$data.x, y:$data.y-8}, text:$root.compact($data.actual)"></text>
+            <text class="trend-x" data-bind="attr:{x:$data.x, y:$root.trend().baseY+16}, text:$data.period"></text>
+            <!-- /ko -->
+          </svg>
+          <!-- /ko -->
+        </div>
+      </div>
+
+      <div class="dash-row two">
+        <div class="card">
+          <h2 class="sec dash-sec"><span data-bind="text:t('secBySector')"></span><span class="rule"></span></h2>
+          <div class="bars">
+            <!-- ko foreach: sectorBars -->
+            <div class="bar-row">
+              <div class="bar-label" data-bind="text:name, attr:{title:name}"></div>
+              <div class="bar-track"><i class="bar-fill" data-bind="style:{width:_pct+'%'}"></i></div>
+              <div class="bar-val mono" data-bind="text:$root.compact(actual), attr:{title:$root.money(actual)}"></div>
+            </div>
+            <!-- /ko -->
+            <div class="empty pad" data-bind="visible:sectorBars().length===0, text:t('dashNoData')"></div>
+          </div>
+        </div>
+        <div class="card">
+          <h2 class="sec dash-sec"><span data-bind="text:t('secByProgram')"></span><span class="rule"></span></h2>
+          <div class="bars">
+            <!-- ko foreach: programBars -->
+            <div class="bar-row">
+              <div class="bar-label" data-bind="text:name, attr:{title:name}"></div>
+              <div class="bar-track"><i class="bar-fill" data-bind="style:{width:_pct+'%'}"></i></div>
+              <div class="bar-val mono" data-bind="text:$root.compact(actual), attr:{title:$root.money(actual)}"></div>
+            </div>
+            <!-- /ko -->
+            <div class="empty pad" data-bind="visible:programBars().length===0, text:t('dashNoData')"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2 class="sec dash-sec"><span data-bind="text:t('secByAppr')"></span><span class="rule"></span></h2>
+        <div class="bars">
+          <!-- ko foreach: apprBars -->
+          <div class="bar-row appr">
+            <div class="bar-label" data-bind="text:name, attr:{title:name}"></div>
+            <div class="bar-track gold"><i class="bar-fill gold" data-bind="style:{width:_pct+'%'}"></i></div>
+            <div class="bar-val mono" data-bind="text:$root.compact(poTotal), attr:{title:$root.money(poTotal)}"></div>
+            <div class="bar-cnt mono" data-bind="text:$root.fmt(poCount)+' '+$root.t('lblPoCount')"></div>
+          </div>
+          <!-- /ko -->
+          <div class="empty pad" data-bind="visible:apprBars().length===0, text:t('dashNoData')"></div>
+        </div>
+      </div>
+
+      <div class="card insights">
+        <h2 class="sec dash-sec"><span data-bind="text:t('secInsights')"></span><span class="rule"></span></h2>
+        <ul class="ins-list" data-bind="foreach:insights">
+          <li><span class="ins-dot"></span><span data-bind="text:$data"></span></li>
+        </ul>
+      </div>
+      <!-- /ko -->
+    </div>
+
   </div>
 
   <div class="pfoot"><span class="diamond"></span><span data-bind="text:t('footOrg')"></span><span class="grow"></span>
@@ -248,6 +457,37 @@
         <div class="field"><label class="lbl" data-bind="text:t('endDate')+' ('+t('optional')+')'"></label><input class="inp" type="date" data-bind="value:mEnd"></div>
         <div class="field full"><label class="lbl" data-bind="text:t('notes')"></label><input class="inp" data-bind="value:mNotes"></div>
       </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════ DRILL-DOWN MODAL (a figure → its supporting lines) ═══════════ -->
+<div class="ov" data-bind="visible:drillModal" style="display:none">
+  <div class="modal wide">
+    <div class="modal-h"><h3 data-bind="text:drillTitle"></h3>
+      <button class="btn btn-sm" data-bind="click:closeDrill, text:t('cancel')"></button></div>
+    <div class="modal-b">
+      <div class="empty pad" data-bind="visible:drillLoading()"><span class="spin"></span></div>
+      <!-- ko if: !drillLoading() -->
+      <div class="tbl-wrap" data-bind="visible:drillRows().length>0">
+        <table class="tbl drill-tbl">
+          <thead><tr data-bind="foreach:drillCols">
+            <th data-bind="text:label, css:{num:type==='money'||type==='num'}"></th>
+          </tr></thead>
+          <tbody>
+            <!-- ko foreach: drillRows -->
+            <tr>
+              <!-- ko foreach: $root.drillCols -->
+              <td data-bind="text:$root.cell($parent,$data), css:{'num mono':$data.type==='money'||$data.type==='num'}"></td>
+              <!-- /ko -->
+            </tr>
+            <!-- /ko -->
+          </tbody>
+          <tfoot><tr><td class="drill-total" data-bind="attr:{colspan:drillCols().length}"><span data-bind="text:t('drillTotal')"></span> <b class="mono" data-bind="text:money(drillTotalV())"></b></td></tr></tfoot>
+        </table>
+      </div>
+      <div class="empty pad" data-bind="visible:drillRows().length===0, text:t('noLines')"></div>
+      <!-- /ko -->
     </div>
   </div>
 </div>

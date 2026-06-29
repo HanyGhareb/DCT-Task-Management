@@ -1,6 +1,13 @@
 <div class="page">
   <div class="page-header-row">
     <h1 class="page-title" data-bind="text: t('atd.dash.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-primary btn-sm" type="button"
+              data-bind="click: refreshActuals, disable: refreshingActuals,
+                         attr:{ title: t('atd.dash.refreshActualsHint') }">
+        <span data-bind="text: refreshingActuals() ? t('atd.dash.refreshingActuals') : t('atd.dash.refreshActuals')"></span>
+      </button>
+    </div>
   </div>
 
   <!-- Break window banner: a paused fleet should read as intentional, not broken -->

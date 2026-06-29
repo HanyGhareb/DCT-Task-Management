@@ -17,6 +17,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-06-30 — Actuals reporting + Executive dashboard (v1.1.0).** New **Actuals** (Budget vs
+  Actual) and **Dashboard** pages over the actuals reporting layer (`db/v2/32–35`):
+  - DB: added `appropriation_code`/`_desc` to `DCT_BUDGET_ACTUAL_PERIOD_V` (`db/v2/34`); new hourly
+    job `DCT_ACTUALS_REFRESH_JOB` for `prod.dct_actuals_refresh` (`db/v2/35`).
+  - ORDS (`05_gl_ords.sql`, re-run whole module, fresh session): `/actuals/filters`, `/actuals`,
+    `/actuals/lines`, `/dashboard`, `POST /actuals/refresh` + 9 new ADMIN→PROD synonyms
+    (period view, snapshot, refresh proc, base AP/PO/GRN/GL views).
+  - Frontend: Actuals report (mandatory period + Sector/Chapter/DCT-Program/Appropriation filters,
+    business-question answer cards, full-width table with header hints + combination tooltip + row
+    hover, per-figure drill-down modal, Search/Reset, CSV); Executive dashboard (utilisation gauge,
+    period-over-period trend, by sector/program/appropriation bars, auto-insights — all hand-built
+    SVG/CSS, no chart lib); **Refresh actuals** button on Overview/Actuals/Dashboard.
+  - Verified: live SQL probes + handler JSON harness against PROD; Playwright mock-render of both
+    pages + drill (0 console/binding errors). Deploy order: `db/v2/33` (snapshot, if not present) →
+    `db/v2/32` → `db/v2/34` → `db/v2/35` → `05_gl_ords.sql`.
 - **2026-06-28 — Initial release (v1.0.0).** All layers deployed + verified end-to-end (Playwright).
   COA view 9,338 rows (no fan-out), 91% sector-classified. Registered in switcher + i18n.
 

@@ -6,6 +6,9 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 ## Dashboard (`dashboard`)
 - KPIs (total/enabled jobs, 24h success rate, 24h runs, last finished), queue-state donut,
   recent runs, alerts (FAILED / truncation). `go(id)` — jump to a section.
+- **Refresh Actuals** header button (`refreshActuals` → `POST /atd/actuals/refresh`): rebuilds the
+  GL classification snapshot (`DCT_GL_COA_SNAP`) the actuals reporting views read — handy straight
+  after a load. Same proc as the GL app's button + the hourly `DCT_ACTUALS_REFRESH_JOB`.
 - **Worker Fleet** panel (`listWorkers` → `GET /atd/workers`): one row per parallel-worker VM
   (`worker_id`, status IDLE/BUSY/DOWN, current job, last-seen age, runs-24h) with a green/red
   online dot (`workerDot`, fresh ≤120s) and `workerAge`. Reflects the 3-VM fleet
@@ -158,6 +161,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 ## API Endpoints (ORDS) — `/ords/admin/atd/` (`otbi-atd/db/13_atd_ords.sql`, module `atd.rest`)
 | Method | Path | Purpose |
 |---|---|---|
+| POST | `/actuals/refresh` | rebuild `DCT_GL_COA_SNAP` (`prod.dct_actuals_refresh`) — `otbi-atd/db/39_atd_actuals_refresh_ords.sql` (additive to `atd.rest`); mirrors the GL app button + hourly job |
 | GET | `/dashboard` | KPIs + queue counts + recent + alerts (failures **and** runs with a warning message; each alert has `kind` WARNING/FAILED) |
 | GET | `/lookups` | envs + targets for pickers |
 | GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec`, +`categories[]`; **`?category=CODE`** filter) / create job — POST needs only `sourceRef`; optional `frequencyMinutes`, `categories[]` |
