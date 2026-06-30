@@ -95,10 +95,12 @@
     srcBudget:{en:'Has budget',ar:'له موازنة'}, srcCommitment:{en:'Has commitment (PR)',ar:'له التزام (طلب شراء)'},
     srcObligation:{en:'Has obligation (PO)',ar:'له تعهد (أمر شراء)'}, srcGlActual:{en:'Has GL actual',ar:'له فعلي بالأستاذ'},
     srcGrn:{en:'Has GRN received',ar:'له استلام'}, srcApDirect:{en:'Has AP direct',ar:'له مباشر دائنون'},
+    srcOpenCommitment:{en:'Has open commitment',ar:'له التزام مفتوح'}, srcOpenObligation:{en:'Has open obligation',ar:'له تعهد مفتوح'},
     searchActuals:{en:'Cost center, account, code…',ar:'مركز التكلفة، الحساب، الرمز…'},
     btnSearch:{en:'Search',ar:'بحث'}, btnReset:{en:'Reset',ar:'إعادة تعيين'},
     cBudget:{en:'Budget',ar:'الموازنة'}, cEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
     cCommitment:{en:'Commitment (PR)',ar:'الالتزام (طلب شراء)'}, cObligation:{en:'Obligation (PO)',ar:'التعهد (أمر شراء)'},
+    cOpenCommitment:{en:'Open Commitment (PR)',ar:'الالتزام المفتوح (طلب شراء)'}, cOpenObligation:{en:'Open Obligation (PO)',ar:'التعهد المفتوح (أمر شراء)'},
     cActual:{en:'GL Actual',ar:'الفعلي'}, cFunds:{en:'Funds available',ar:'المتاح'},
     cGrn:{en:'GRN actual',ar:'الاستلام الفعلي'}, cApDirect:{en:'AP direct',ar:'مباشر دائنون'},
     cVariance:{en:'Variance',ar:'الفرق'},
@@ -110,6 +112,8 @@
     hEncumbrance:{en:'Commitments + obligations + other encumbrances booked in GL.',ar:'الالتزامات + التعهدات + ارتباطات أخرى المسجلة في دفتر الأستاذ.'},
     hCommitment:{en:'Total purchase requisitions (PR-backed PO lines) charged here, AED, YTD. Click a figure for the PR lines.',ar:'إجمالي طلبات الشراء المحملة هنا، بالدرهم، حتى تاريخه. انقر الرقم لعرض بنود الطلب.'},
     hObligation:{en:'Total purchase orders (all PO lines) charged here, AED, YTD. Click a figure for the PO lines.',ar:'إجمالي أوامر الشراء المحملة هنا، بالدرهم، حتى تاريخه. انقر الرقم لعرض بنود الأمر.'},
+    hOpenCommitment:{en:'Open (unliquidated) commitment — PR-backed PO lines whose budget is still encumbered (Reserved / Partially Liquidated), AED, YTD. Click for the PR lines.',ar:'الالتزام المفتوح (غير المصفّى) — بنود أوامر الشراء الممولة من طلب شراء والتي لا تزال محجوزة على الموازنة (محجوزة / مصفّاة جزئياً)، بالدرهم، حتى تاريخه. انقر لعرض بنود الطلب.'},
+    hOpenObligation:{en:'Open (unliquidated) obligation — PO lines whose budget is still encumbered (Reserved / Partially Liquidated), not yet expended, AED, YTD. Click for the PO lines.',ar:'التعهد المفتوح (غير المصفّى) — بنود أوامر الشراء التي لا تزال محجوزة على الموازنة (محجوزة / مصفّاة جزئياً) ولم تُصرف بعد، بالدرهم، حتى تاريخه. انقر لعرض بنود الأمر.'},
     hActual:{en:'Actual expenditure recognised in GL, YTD.',ar:'الإنفاق الفعلي المعترف به في دفتر الأستاذ حتى تاريخه.'},
     hFunds:{en:'Budget − encumbrance − actual = funds still available.',ar:'الموازنة − الارتباطات − الفعلي = الأموال المتاحة.'},
     hGrn:{en:'Goods/services received (GRN) against POs, AED, YTD.',ar:'البضائع/الخدمات المستلمة مقابل أوامر الشراء، بالدرهم، حتى تاريخه.'},
@@ -118,6 +122,7 @@
     drillTotal:{en:'Total',ar:'الإجمالي'}, noLines:{en:'No supporting lines for this period.',ar:'لا توجد بنود داعمة لهذه الفترة.'},
     mBudget:{en:'Budget',ar:'الموازنة'}, mEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
     mCommitment:{en:'Commitment — PRs',ar:'الالتزام — طلبات الشراء'}, mObligation:{en:'Obligation — POs',ar:'التعهد — أوامر الشراء'},
+    mOpencommitment:{en:'Open commitment — PRs',ar:'الالتزام المفتوح — طلبات الشراء'}, mOpenobligation:{en:'Open obligation — POs',ar:'التعهد المفتوح — أوامر الشراء'},
     mGlactual:{en:'GL Actual',ar:'الفعلي'}, mGrn:{en:'GRN actual',ar:'الاستلام الفعلي'}, mApdirect:{en:'AP direct',ar:'مباشر دائنون'},
     refreshActuals:{en:'Refresh actuals',ar:'تحديث الفعلي'}, refreshing:{en:'Refreshing…',ar:'جارٍ التحديث…'},
     refreshed:{en:'Actuals snapshot refreshed',ar:'تم تحديث لقطة الفعلي'},
@@ -421,12 +426,14 @@
     // transaction-source filter — keeps a row only when that measure is non-zero
     self.acSources = ko.computed(function () {
       return [
-        { code: 'budget',     name: self.t('srcBudget') },
-        { code: 'commitment', name: self.t('srcCommitment') },
-        { code: 'obligation', name: self.t('srcObligation') },
-        { code: 'glActual',   name: self.t('srcGlActual') },
-        { code: 'grn',        name: self.t('srcGrn') },
-        { code: 'apDirect',   name: self.t('srcApDirect') }
+        { code: 'budget',         name: self.t('srcBudget') },
+        { code: 'commitment',     name: self.t('srcCommitment') },
+        { code: 'obligation',     name: self.t('srcObligation') },
+        { code: 'openCommitment', name: self.t('srcOpenCommitment') },
+        { code: 'openObligation', name: self.t('srcOpenObligation') },
+        { code: 'glActual',       name: self.t('srcGlActual') },
+        { code: 'grn',            name: self.t('srcGrn') },
+        { code: 'apDirect',       name: self.t('srcApDirect') }
       ];
     });
     self.acItems = ko.observableArray([]); self.acTotals = ko.observable({});
@@ -503,6 +510,7 @@
           ['accountCode', 'Account'], ['accountDesc', 'Account Desc'], ['sectorName', 'Sector'], ['chapterName', 'Chapter'],
           ['programName', 'DCT Program'], ['appropriationCode', 'Appropriation'], ['appropriationDesc', 'Appropriation Desc'],
           ['budget', 'Budget'], ['commitment', 'Commitment (PR)'], ['obligation', 'Obligation (PO)'],
+          ['openCommitment', 'Open Commitment (PR)'], ['openObligation', 'Open Obligation (PO)'],
           ['encumbrance', 'Encumbrance'], ['glActual', 'GL Actual'], ['fundsAvailable', 'Funds Available'],
           ['grnActual', 'GRN Actual'], ['apDirect', 'AP Direct'], ['variance', 'Variance']];
         var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {

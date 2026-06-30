@@ -206,9 +206,13 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 .kstat.po{border-top-color:var(--gold)} .kstat.po .kv{color:#8a6a1e}
 .kstat.commit{border-top-color:#2E8C9E} .kstat.commit .kv{color:#236F7D}
 .kstat.oblig{border-top-color:#5A6AC0} .kstat.oblig .kv{color:#414FA0}
+.kstat.ocommit{border-top-color:#7CC4D2} .kstat.ocommit .kv{color:#2E8C9E}
+.kstat.ooblig{border-top-color:#9AA5DE} .kstat.ooblig .kv{color:#5A6AC0}
 
 /* ── actuals table tuning ─────────────────────────────────────────── */
 table.tbl th.num,table.tbl td.num{text-align:end}
+.actuals-tbl th .hint-i{font-style:normal;font-size:11px;color:var(--muted);cursor:help;margin-inline-start:4px;opacity:.65}
+.actuals-tbl th .hint-i:hover{opacity:1;color:var(--brand-dark)}
 .actuals-tbl td .sub-d{color:var(--muted);font-size:11px;margin-top:1px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .actuals-tbl td.combo{min-width:330px;max-width:330px;overflow:hidden;text-overflow:ellipsis}
 .actuals-tbl td.num{white-space:nowrap}

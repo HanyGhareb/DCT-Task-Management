@@ -23,6 +23,10 @@
 --                     PR-backed subset of Obligation. (gl_balances.OBLIGATIONS is
 --                     0 in this Fusion config -- all encumbrance lands in
 --                     OTHER_ENCUMBRANCES -- so POs are read from po_distributions.)
+--   Open Obligation : the still-unliquidated subset of Obligation -- PO lines
+--                     whose budget is still encumbered (FUNDS_STATUS is Reserved
+--                     or Partially Liquidated), i.e. not yet fully turned into
+--                     actual expenditure. Open Commitment is its PR-backed subset.
 --
 -- Assumes fiscal year = calendar year and PERIOD_NAME = 'MM-YYYY' (monthly).
 -- Reconciles: Budget_ytd - Encumbrance_ytd - GL_Actual_ytd = Funds_Available_ytd.
@@ -84,15 +88,21 @@ po_base AS (  -- collapse duplicate physical distribution rows to one per natura
          MAX(budget_date)                          AS budget_date,
          MAX(distribution_amount * NVL(rate,1))    AS amt_aed,
          MAX(CASE WHEN pr_number IS NOT NULL
-                  THEN distribution_amount * NVL(rate,1) END) AS pr_amt_aed
+                  THEN distribution_amount * NVL(rate,1) END) AS pr_amt_aed,
+         MAX(CASE WHEN funds_status IN ('Reserved','Partially Liquidated')
+                  THEN distribution_amount * NVL(rate,1) END) AS open_amt_aed,
+         MAX(CASE WHEN funds_status IN ('Reserved','Partially Liquidated') AND pr_number IS NOT NULL
+                  THEN distribution_amount * NVL(rate,1) END) AS open_pr_amt_aed
   FROM prod.po_distributions
   WHERE charge_account IS NOT NULL
   GROUP BY po_header_id, po_line_id, distribution_number, charge_account
 ),
-po_ytd AS (  -- PO obligations / PR commitments cumulative to each period
+po_ytd AS (  -- PO obligations / PR commitments (+ open subsets) cumulative to each period
   SELECT b.charge_account AS cc_string, p.period_name,
-         SUM(b.amt_aed)             AS obligation,
-         SUM(NVL(b.pr_amt_aed,0))   AS commitment
+         SUM(b.amt_aed)                  AS obligation,
+         SUM(NVL(b.pr_amt_aed,0))        AS commitment,
+         SUM(NVL(b.open_amt_aed,0))      AS open_obligation,
+         SUM(NVL(b.open_pr_amt_aed,0))   AS open_commitment
   FROM po_base b
   JOIN periods p ON (b.budget_date IS NULL OR b.budget_date < p.p_next)
   GROUP BY b.charge_account, p.period_name
@@ -118,6 +128,8 @@ SELECT
   NVL(gl.encumbrance,0)     AS encumbrance_ytd,
   NVL(po.commitment,0)      AS commitment_ytd,
   NVL(po.obligation,0)      AS obligation_ytd,
+  NVL(po.open_commitment,0) AS open_commitment_ytd,
+  NVL(po.open_obligation,0) AS open_obligation_ytd,
   NVL(gl.gl_actual,0)       AS gl_actual_ytd,
   NVL(gl.funds_available,0) AS funds_available_ytd,
   NVL(grn.grn_actual,0)     AS grn_actual_ytd,

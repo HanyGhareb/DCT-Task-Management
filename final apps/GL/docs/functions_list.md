@@ -25,12 +25,12 @@ update on any view/method/endpoint change.
 
 ## Actuals (`view()==='actuals'`) — Budget vs Actual report (YTD per GL combination)
 - full-viewport width (the `.wrap.wide` modifier is applied on Actuals + Dashboard).
-- search criteria: `acPeriod` (**mandatory**, defaults to current period), `acSector`, `acChapter`, `acProgram`, `acAppr`, `acAccount`, `acCostCenter`, `acSource` (transaction-source — keep rows whose measure is non-zero; reactive list `acSources`), `acSearch` — populated by `loadAcFilters()` (`/actuals/filters`, now also returns `accounts` + `costCenters` LOVs).
+- search criteria: `acPeriod` (**mandatory**, defaults to current period), `acSector`, `acChapter`, `acProgram`, `acAppr`, `acAccount`, `acCostCenter`, `acSource` (transaction-source — keep rows whose measure is non-zero; reactive list `acSources` = budget/commitment/obligation/**openCommitment**/**openObligation**/glActual/grn/apDirect), `acSearch` — populated by `loadAcFilters()` (`/actuals/filters`, now also returns `accounts` + `costCenters` LOVs).
 - `runActuals(offset)` — run the report (`/actuals`), server-paginated; `acReset()` — clear filters, keep current period; `btnSearch`/`btnReset` buttons + Enter-to-search.
-- business-question answer cards: `tot(k)` reads the `totals` summary (budget, **commitment (PR)**, **obligation (PO)**, encumbrance, GL actual, funds available, GRN actual, AP direct) for the filtered set.
-- result table: budget · **commitment** · **obligation** · encumbrance · GL actual · funds · GRN · AP direct columns; full segment codes/descs per row reuse the combination hover popover (`comboHover`); column-header `title` hints; row-hover highlight.
-- drill-down: `openDrill(row, metric)` (`/actuals/lines`, metric ∈ budget|commitment|obligation|encumbrance|glactual|grn|apdirect) → wide modal (`drillCols`/`drillRows`/`drillTotalV`, rendered via `cell(row,col)`); `closeDrill()`. **commitment** drills to PR lines (PR #, line, description, requestor); **obligation** drills to PO lines (PO #, line, item, supplier, status).
-- `acExportCsv()` — CSV of the full filtered set (≤5000 rows, incl. commitment + obligation); `acRange` — “a–b of total”.
+- business-question answer cards: `tot(k)` reads the `totals` summary (budget, **commitment (PR)**, **obligation (PO)**, **open commitment (PR)**, **open obligation (PO)**, encumbrance, GL actual, funds available, GRN actual, AP direct) for the filtered set.
+- result table: budget · **commitment** · **obligation** · **open commitment** · **open obligation** · encumbrance · GL actual · funds · GRN · AP direct columns; full segment codes/descs per row reuse the combination hover popover (`comboHover`); the four PO-derived headers carry a **visible ⓘ hint marker** (`.hint-i`, `title` = `hCommitment`/`hObligation`/`hOpenCommitment`/`hOpenObligation`); row-hover highlight. *Open* = the unliquidated subset of obligation — PO lines whose budget is still encumbered (FUNDS_STATUS Reserved/Partially Liquidated); open commitment is its PR-backed subset.
+- drill-down: `openDrill(row, metric)` (`/actuals/lines`, metric ∈ budget|commitment|obligation|opencommitment|openobligation|encumbrance|glactual|grn|apdirect) → wide modal (`drillCols`/`drillRows`/`drillTotalV`, rendered via `cell(row,col)`); `closeDrill()`. **commitment**/**openCommitment** drill to PR lines (PR #, line, description, requestor); **obligation**/**openObligation** drill to PO lines (PO #, line, item, supplier, status).
+- `acExportCsv()` — CSV of the full filtered set (≤5000 rows, incl. commitment + obligation + open commitment + open obligation); `acRange` — “a–b of total”.
 
 ## Dashboard (`view()==='dashboard'`) — executive analytics
 - `dashPeriod` selector → `loadDashboard()` (`/dashboard`); KPI strip via `kpis()` (budget, actual, funds, encumbrance, PO total & count, utilisation/commitment %).
@@ -57,8 +57,8 @@ update on any view/method/endpoint change.
 | GET | `/combinations/:ccId` | single combination |
 | GET | `/balances` | budget balances enriched with Sector, `?asof=&sector=` |
 | GET | `/actuals/filters` | report LOVs in one call: periods (+default), sectors, chapters, programs, appropriations, **accounts**, **costCenters** |
-| GET | `/actuals` | Budget-vs-Actual per combination for one period (YTD), `?period(req)=&sector=&chapter=&program=&appropriation=&account=&costcenter=&source=&search=&limit=&offset=`; returns `{total, totals{…incl. commitment, obligation}, items[…incl. commitment, obligation]}` |
-| GET | `/actuals/lines` | drill-down lines behind a figure, `?period=&cc=&metric=` (budget\|commitment\|obligation\|encumbrance\|glActual\|grn\|apDirect); commitment→PR lines, obligation→PO lines |
+| GET | `/actuals` | Budget-vs-Actual per combination for one period (YTD), `?period(req)=&sector=&chapter=&program=&appropriation=&account=&costcenter=&source=&search=&limit=&offset=` (`source` accepts `openCommitment`/`openObligation`); returns `{total, totals{…incl. commitment, obligation, openCommitment, openObligation}, items[…incl. commitment, obligation, openCommitment, openObligation]}` |
+| GET | `/actuals/lines` | drill-down lines behind a figure, `?period=&cc=&metric=` (budget\|commitment\|obligation\|openCommitment\|openObligation\|encumbrance\|glActual\|grn\|apDirect); commitment/openCommitment→PR lines, obligation/openObligation→PO lines |
 | GET | `/dashboard` | executive analytics for a period: KPIs + by sector/program/appropriation + trend, `?period=` |
 | POST | `/actuals/refresh` | rebuild `DCT_GL_COA_SNAP` (manual; same proc as the hourly job) |
 
@@ -66,5 +66,5 @@ update on any view/method/endpoint change.
 - Tables: `DCT_GL_CLASS_TYPE` → `DCT_GL_CLASS_VALUE` → `DCT_GL_SEG_CLASS_MAP`.
 - Package: `DCT_GL_CLASS_PKG` (`norm`, `set_asof`/`clear_asof`/`get_asof`, `resolve_value_id`, `validate_map`); context `GL_CTX`.
 - Views: `DCT_GL_COA_V` (+`GL_COA_V`), `DCT_GL_BALANCES_V`.
-- Actuals reporting (db/v2/32–35): base pass-through views (`AP_*`/`PO_*`/`GRN_ALL_V2`/`GL_BALANCES`), `DCT_ACTUAL_V`, `DCT_BUDGET_ACTUAL_V`, `DCT_BUDGET_ACTUAL_PERIOD_V` (per-combination × period YTD; incl. `appropriation_code`/`_desc` and `commitment_ytd` [PR-backed PO lines] / `obligation_ytd` [all PO lines], read live from `po_distributions`); indexed snapshot `DCT_GL_COA_SNAP` + `prod.dct_actuals_refresh` (hourly job `DCT_ACTUALS_REFRESH_JOB`).
+- Actuals reporting (db/v2/32–35): base pass-through views (`AP_*`/`PO_*`/`GRN_ALL_V2`/`GL_BALANCES`), `DCT_ACTUAL_V`, `DCT_BUDGET_ACTUAL_V`, `DCT_BUDGET_ACTUAL_PERIOD_V` (per-combination × period YTD; incl. `appropriation_code`/`_desc`, `commitment_ytd` [PR-backed PO lines] / `obligation_ytd` [all PO lines] and `open_commitment_ytd` / `open_obligation_ytd` [the FUNDS_STATUS Reserved/Partially-Liquidated subset], read live from `po_distributions`); indexed snapshot `DCT_GL_COA_SNAP` + `prod.dct_actuals_refresh` (hourly job `DCT_ACTUALS_REFRESH_JOB`).
 - Bridge synonyms: `GL_SRC_*` → `ATD_GL_*` (rename-insulation).

@@ -17,6 +17,25 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-06-30 — Actuals report: Open Commitment / Open Obligation + visible hint (v1.3.0).**
+  - DB: added `open_commitment_ytd` + `open_obligation_ytd` to `DCT_BUDGET_ACTUAL_PERIOD_V`
+    (`db/v2/34`) — the **unliquidated** subset of obligation/commitment = PO distribution lines
+    whose budget is still encumbered (`FUNDS_STATUS IN ('Reserved','Partially Liquidated')`),
+    de-duped per natural key (the amount/`SCHEDULE_UNBILLED_AMOUNT` columns are unreliable in
+    this Fusion load, so "open" is driven by FUNDS_STATUS, not ordered−billed). Verified VALID;
+    06-2026 open = 723.08M (both), ⊆ commitment 1.504B ⊆ obligation 1.510B.
+  - ORDS (`05_gl_ords.sql`, whole module, fresh session — no new synonyms): `/actuals` emits
+    `openCommitment`/`openObligation` in `totals` + `items` and accepts them as `source` filter
+    values; `/actuals/lines` gains `openCommitment` (→ open PR lines) and `openObligation`
+    (→ open PO lines) drill metrics (same columns as commitment/obligation, FUNDS_STATUS-filtered).
+  - Frontend (v1.3.0): 2 new KPI cards (Open Commitment / Open Obligation) + 2 new drillable
+    table columns; the four PO-derived headers (Commitment/Obligation/Open Commitment/Open
+    Obligation) now show a **visible ⓘ hint marker** (`.hint-i`) carrying the explanatory tooltip
+    (kept the existing "Commitment (PR)" / "Obligation (PO)" wording); 2 new source-filter options;
+    CSV includes the open columns.
+  - Verified: view VALID + open figures match probe; all new handler queries executed live against
+    PROD (no ORA errors); `node --check`; Playwright mock-render of Actuals + Open-Obligation drill
+    + Dashboard (0 console/binding errors). Deploy order: `db/v2/34` → `05_gl_ords.sql` (fresh session).
 - **2026-06-30 — Actuals report: Commitment/Obligation + extra filters + full width (v1.2.0).**
   - DB: added `commitment_ytd` (PR-backed PO distribution lines) + `obligation_ytd` (all PO
     distribution lines) to `DCT_BUDGET_ACTUAL_PERIOD_V` (`db/v2/34`), read live from
