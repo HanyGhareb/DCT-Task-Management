@@ -661,6 +661,7 @@ BEGIN
   APEX_JSON.write('openCommitment', t_ocmt); APEX_JSON.write('openObligation', t_oobl);
   APEX_JSON.write('glActual', t_act);
   APEX_JSON.write('fundsAvailable', t_fun); APEX_JSON.write('grnActual', t_grn); APEX_JSON.write('apDirect', t_apd);
+  APEX_JSON.write('slaActual', t_grn + t_apd);
   APEX_JSON.write('variance', t_bud - t_act);
   APEX_JSON.close_object;
   APEX_JSON.open_array('items');
@@ -670,6 +671,7 @@ BEGIN
            p.chapter_code, p.chapter_name, p.program_class_code, p.program_name,
            p.budget_ytd, p.encumbrance_ytd, p.commitment_ytd, p.obligation_ytd,
            p.open_commitment_ytd, p.open_obligation_ytd,
+           p.po_count, p.pr_count,
            p.gl_actual_ytd, p.funds_available_ytd,
            p.grn_actual_ytd, p.ap_direct_actual_ytd, p.variance_ytd,
            s.entity_code, s.entity_desc, s.budget_group_code, s.budget_group_desc,
@@ -711,6 +713,8 @@ BEGIN
     APEX_JSON.write('openCommitment', r.open_commitment_ytd); APEX_JSON.write('openObligation', r.open_obligation_ytd);
     APEX_JSON.write('glActual', r.gl_actual_ytd); APEX_JSON.write('fundsAvailable', r.funds_available_ytd);
     APEX_JSON.write('grnActual', r.grn_actual_ytd); APEX_JSON.write('apDirect', r.ap_direct_actual_ytd);
+    APEX_JSON.write('slaActual', r.grn_actual_ytd + r.ap_direct_actual_ytd);
+    APEX_JSON.write('poCount', r.po_count); APEX_JSON.write('prCount', r.pr_count);
     APEX_JSON.write('variance', r.variance_ytd);
     -- full segment detail for the hover popover (same keys as /combinations)
     APEX_JSON.write('entityCode', NVL(r.entity_code,'')); APEX_JSON.write('entityDesc', NVL(r.entity_desc,''));
@@ -811,14 +815,8 @@ BEGIN
     FOR r IN (SELECT d.invoice_id, TO_CHAR(d.accounting_date,'YYYY-MM-DD') ad, d.distribution_description descr,
                      d.distribution_amount amt, NVL(d.distribution_amount_functi,d.distribution_amount) aed
               FROM prod.ap_invoice_distributions d
-              LEFT JOIN (SELECT ph.order_number po_number, pl.line po_line, pod.distribution_number po_dist_line, MAX(pod.charge_account) charge_account
-                         FROM prod.po_distributions pod
-                         JOIN prod.po_lines pl ON pl.po_header_id=pod.po_header_id AND pl.po_line_id=pod.po_line_id
-                         JOIN prod.po_headers ph ON ph.po_header_id=pod.po_header_id
-                         GROUP BY ph.order_number, pl.line, pod.distribution_number) pm
-                ON pm.po_number=d.po_number AND pm.po_line=d.po_line AND pm.po_dist_line=d.po_distribution_line
               JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
-              WHERE cid.cc_string = l_cc AND pm.charge_account IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y'
+              WHERE cid.cc_string = l_cc AND d.po_number IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y'
                 AND d.accounting_date >= l_ystart AND d.accounting_date < l_pnext
               ORDER BY d.accounting_date DESC FETCH FIRST 500 ROWS ONLY) LOOP
       APEX_JSON.open_object; APEX_JSON.write('invoice',TO_CHAR(r.invoice_id)); APEX_JSON.write('date',NVL(r.ad,'')); APEX_JSON.write('description',NVL(r.descr,'')); APEX_JSON.write('orig',r.amt); APEX_JSON.write('amount',r.aed); APEX_JSON.close_object;
@@ -826,14 +824,8 @@ BEGIN
     APEX_JSON.close_array;
     SELECT NVL(SUM(NVL(d.distribution_amount_functi,d.distribution_amount)),0) INTO l_total
       FROM prod.ap_invoice_distributions d
-      LEFT JOIN (SELECT ph.order_number po_number, pl.line po_line, pod.distribution_number po_dist_line, MAX(pod.charge_account) charge_account
-                 FROM prod.po_distributions pod
-                 JOIN prod.po_lines pl ON pl.po_header_id=pod.po_header_id AND pl.po_line_id=pod.po_line_id
-                 JOIN prod.po_headers ph ON ph.po_header_id=pod.po_header_id
-                 GROUP BY ph.order_number, pl.line, pod.distribution_number) pm
-        ON pm.po_number=d.po_number AND pm.po_line=d.po_line AND pm.po_dist_line=d.po_distribution_line
       JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
-      WHERE cid.cc_string = l_cc AND pm.charge_account IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y'
+      WHERE cid.cc_string = l_cc AND d.po_number IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y'
         AND d.accounting_date >= l_ystart AND d.accounting_date < l_pnext;
 
   ELSIF l_metric = 'obligation' THEN

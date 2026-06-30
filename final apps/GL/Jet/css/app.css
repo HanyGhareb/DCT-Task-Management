@@ -208,6 +208,7 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 .kstat.oblig{border-top-color:#5A6AC0} .kstat.oblig .kv{color:#414FA0}
 .kstat.ocommit{border-top-color:#7CC4D2} .kstat.ocommit .kv{color:#2E8C9E}
 .kstat.ooblig{border-top-color:#9AA5DE} .kstat.ooblig .kv{color:#5A6AC0}
+.kstat.sla{border-top-color:#A65B2E} .kstat.sla .kv{color:#8A4A24}
 
 /* ── actuals table tuning ─────────────────────────────────────────── */
 table.tbl th.num,table.tbl td.num{text-align:end}

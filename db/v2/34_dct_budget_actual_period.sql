@@ -11,9 +11,13 @@
 --     (GL_BALANCES is period-activity grained, so the running sum = YTD).
 --   GRN Actual      : received (AED via CONVERSION_RATE) with TRANSACTION_DATE
 --                     in [year-start, period-end].
---   AP-direct Actual: AP not matched to a PO (classified by its CC_ID charge
---                     account), AED via FUNCTI, reversed rows excluded, with
---                     ACCOUNTING_DATE in [year-start, period-end].
+--   AP-direct Actual: AP distribution lines with NO PO reference (PO_NUMBER IS
+--                     NULL) -- a true direct AP -- classified by their CC_ID
+--                     charge account, AED via FUNCTI, reversed rows excluded,
+--                     with ACCOUNTING_DATE in [year-start, period-end].
+--   PO_COUNT / PR_COUNT: distinct PO headers / distinct PR numbers charged to the
+--                     combination, cumulative to the period (for the report's
+--                     "Total PO amount / PO count" + "Total PR amount / PR count").
 --   Encumbrance = commitments + obligations + other_encumbrances.
 --   Commitment (PRs): AED value of PO distribution lines that originated from a
 --                     purchase requisition (PR_NUMBER present), cumulative to the
@@ -43,14 +47,6 @@ WITH periods AS (
          TRUNC(TO_DATE(period_name,'MM-YYYY'),'YEAR')  AS yr_start
   FROM (SELECT DISTINCT period_name FROM prod.gl_balances WHERE period_name IS NOT NULL)
 ),
-ap_po_match AS (
-  SELECT ph.order_number AS po_number, pl.line AS po_line,
-         pod.distribution_number AS po_dist_line, MAX(pod.charge_account) AS charge_account
-  FROM prod.po_distributions pod
-  JOIN prod.po_lines   pl ON pl.po_header_id = pod.po_header_id AND pl.po_line_id = pod.po_line_id
-  JOIN prod.po_headers ph ON ph.po_header_id = pod.po_header_id
-  GROUP BY ph.order_number, pl.line, pod.distribution_number
-),
 gl_ytd AS (
   SELECT REPLACE(g.concatenated_segments,'-','.') AS cc_string, p.period_name,
          SUM(g.total_budget)                                                   AS budget,
@@ -70,21 +66,20 @@ grn_ytd AS (
   JOIN periods p ON g.transaction_date >= p.yr_start AND g.transaction_date < p.p_next
   GROUP BY pod.charge_account, p.period_name
 ),
-ap_ytd AS (
+ap_ytd AS (  -- AP Direct = AP distribution lines with NO PO reference (po_number IS NULL)
   SELECT cid.cc_string, p.period_name,
          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS ap_actual
   FROM prod.ap_invoice_distributions d
-  LEFT JOIN ap_po_match pm ON pm.po_number = d.po_number
-                          AND pm.po_line   = d.po_line
-                          AND pm.po_dist_line = d.po_distribution_line
   JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
   JOIN periods p ON d.accounting_date >= p.yr_start AND d.accounting_date < p.p_next
-  WHERE pm.charge_account IS NULL
+  WHERE d.po_number IS NULL
     AND NVL(d.reversal_indicator,'N') <> 'Y'
   GROUP BY cid.cc_string, p.period_name
 ),
 po_base AS (  -- collapse duplicate physical distribution rows to one per natural key
   SELECT charge_account,
+         po_header_id,
+         MAX(pr_number)                            AS pr_number,
          MAX(budget_date)                          AS budget_date,
          MAX(distribution_amount * NVL(rate,1))    AS amt_aed,
          MAX(CASE WHEN pr_number IS NOT NULL
@@ -102,7 +97,9 @@ po_ytd AS (  -- PO obligations / PR commitments (+ open subsets) cumulative to e
          SUM(b.amt_aed)                  AS obligation,
          SUM(NVL(b.pr_amt_aed,0))        AS commitment,
          SUM(NVL(b.open_amt_aed,0))      AS open_obligation,
-         SUM(NVL(b.open_pr_amt_aed,0))   AS open_commitment
+         SUM(NVL(b.open_pr_amt_aed,0))   AS open_commitment,
+         COUNT(DISTINCT b.po_header_id)  AS po_count,
+         COUNT(DISTINCT b.pr_number)     AS pr_count
   FROM po_base b
   JOIN periods p ON (b.budget_date IS NULL OR b.budget_date < p.p_next)
   GROUP BY b.charge_account, p.period_name
@@ -130,6 +127,8 @@ SELECT
   NVL(po.obligation,0)      AS obligation_ytd,
   NVL(po.open_commitment,0) AS open_commitment_ytd,
   NVL(po.open_obligation,0) AS open_obligation_ytd,
+  NVL(po.po_count,0)        AS po_count,
+  NVL(po.pr_count,0)        AS pr_count,
   NVL(gl.gl_actual,0)       AS gl_actual_ytd,
   NVL(gl.funds_available,0) AS funds_available_ytd,
   NVL(grn.grn_actual,0)     AS grn_actual_ytd,

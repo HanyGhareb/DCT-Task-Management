@@ -17,6 +17,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-01 — Actuals: AP Direct redefine + SLA Actual + PO/PR counts (v1.4.0).** (User comments
+  batch A of 6; #3/#4/#6b pending the user's PR_HEADER/PR_LINES/PR_DISTRIBUTIONS tables.)
+  - **#1 AP Direct** now = AP distribution lines with **`po_number IS NULL`** (true direct AP, no PO
+    reference), replacing the old "unmatched-to-`po_distributions`" logic (dropped the `ap_po_match`
+    CTE in `db/v2/34` `ap_ytd` + the inline match subquery in the `apdirect` drill). Live impact:
+    06-2026 YTD AP Direct 1.322B → **1.292B** (the delta = AP lines that carry a po_number but don't
+    match a PO distribution — now excluded).
+  - **#2 SLA Actual** ("Subledger Actuals") = GRN Actual + AP Direct (≈ 2.27B). Emitted by `/actuals`
+    (`slaActual` in totals + items); new KPI card + non-drillable table column + ⓘ hint.
+  - **#5 PO/PR counts:** `DCT_BUDGET_ACTUAL_PERIOD_V` gained `po_count` (distinct po_header_id) +
+    `pr_count` (distinct pr_number) per combination; `/actuals` items emit `poCount`/`prCount`; the
+    Obligation/Commitment cells show the amount with a count sub-line ("N POs" / "N PRs"). PR count is
+    interim from `po_distributions` until the dedicated PR_* tables arrive (#3).
+  - Deploy order: `db/v2/34` → `05_gl_ords.sql` (fresh session, no new synonyms). Verified: view VALID,
+    AP Direct drill query ran live (no ORA errors), `node --check`, Playwright mock-render (0 errors).
 - **2026-06-30 — Actuals report: Open Commitment / Open Obligation + visible hint (v1.3.0).**
   - DB: added `open_commitment_ytd` + `open_obligation_ytd` to `DCT_BUDGET_ACTUAL_PERIOD_V`
     (`db/v2/34`) — the **unliquidated** subset of obligation/commitment = PO distribution lines
