@@ -934,3 +934,19 @@ The last processed `update_id` is persisted to `/root/otbi-atd/tgbot_offset.txt`
    contains NO `IBAN`, `Bank`, or `Account Name` fields.
 6. **Restart resilience** — `systemctl restart atd-tgbot`; send a message; should reply
    correctly with no duplicate responses.
+
+---
+
+## Fusion Actions — read PoC (2026-06-30)
+
+Driving Fusion via the extract-job session now has a dedicated hub:
+**`otbi-atd/docs/fusion-actions/`** (README + `fusion_invoice_lookup.py` + PoC writeup
++ evidence). PoC verified: looked up `INV/HQ/26032465` on atd-vm181 and returned its
+line description via the Payables UI.
+
+Key finding: **`fscmRestApi` returns 401 even with a full Fusion UI cookie session**
+(federated ADGOV SSO has no Fusion-local password/OAuth) → **UI robot is the only
+channel** for both reads and the AP write-back. ADF needs JS `el.click()`; Navigator
+sub-items are lazy (expand the group first). Push scripts to the VMs with
+base64-in-one-shot (a plain `scp` + separate run can leave a 0-byte file).
+See `fusion-actions/README.md`.
