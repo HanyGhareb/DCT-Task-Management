@@ -17,6 +17,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-06-30 — Actuals report: Commitment/Obligation + extra filters + full width (v1.2.0).**
+  - DB: added `commitment_ytd` (PR-backed PO distribution lines) + `obligation_ytd` (all PO
+    distribution lines) to `DCT_BUDGET_ACTUAL_PERIOD_V` (`db/v2/34`), read live from
+    `po_distributions` (de-duped per natural key; `gl_balances.OBLIGATIONS` is 0 in this Fusion
+    config so POs come from `po_distributions`; commitment = the PR-backed subset of obligation).
+  - ORDS (`05_gl_ords.sql`, re-run whole module, fresh session — no new synonyms):
+    `/actuals/filters` now also returns `accounts` + `costCenters` LOVs; `/actuals` gains
+    `account`/`costcenter`/`source` filters and emits `commitment`/`obligation` in totals + items;
+    `/actuals/lines` gains `commitment` (→ PR lines) and `obligation` (→ PO lines) drill metrics.
+  - Frontend (v1.2.0): Actuals + Dashboard pages now use the full viewport width (`.wrap.wide`);
+    3 new search criteria (Account, Cost center, Transaction source); 2 new KPI cards + 2 new
+    drillable table columns (Commitment / Obligation) with header hints; CSV includes them.
+  - Verified: view VALID + commitment⊆obligation (1.504B ⊆ 1.510B, 06-2026); all new handler
+    queries executed live against PROD (no ORA errors); `node --check` + KO comment balance.
+    Deploy order: `db/v2/34` → `05_gl_ords.sql` (fresh session).
 - **2026-06-30 — Actuals reporting + Executive dashboard (v1.1.0).** New **Actuals** (Budget vs
   Actual) and **Dashboard** pages over the actuals reporting layer (`db/v2/32–35`):
   - DB: added `appropriation_code`/`_desc` to `DCT_BUDGET_ACTUAL_PERIOD_V` (`db/v2/34`); new hourly

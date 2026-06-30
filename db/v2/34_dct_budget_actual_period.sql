@@ -15,6 +15,14 @@
 --                     account), AED via FUNCTI, reversed rows excluded, with
 --                     ACCOUNTING_DATE in [year-start, period-end].
 --   Encumbrance = commitments + obligations + other_encumbrances.
+--   Commitment (PRs): AED value of PO distribution lines that originated from a
+--                     purchase requisition (PR_NUMBER present), cumulative to the
+--                     period (BUDGET_DATE < period-end). De-duped per PO dist key.
+--   Obligation (POs): AED value of ALL PO distribution lines (whether or not
+--                     PR-backed), cumulative to the period. Commitment is the
+--                     PR-backed subset of Obligation. (gl_balances.OBLIGATIONS is
+--                     0 in this Fusion config -- all encumbrance lands in
+--                     OTHER_ENCUMBRANCES -- so POs are read from po_distributions.)
 --
 -- Assumes fiscal year = calendar year and PERIOD_NAME = 'MM-YYYY' (monthly).
 -- Reconciles: Budget_ytd - Encumbrance_ytd - GL_Actual_ytd = Funds_Available_ytd.
@@ -71,10 +79,29 @@ ap_ytd AS (
     AND NVL(d.reversal_indicator,'N') <> 'Y'
   GROUP BY cid.cc_string, p.period_name
 ),
+po_base AS (  -- collapse duplicate physical distribution rows to one per natural key
+  SELECT charge_account,
+         MAX(budget_date)                          AS budget_date,
+         MAX(distribution_amount * NVL(rate,1))    AS amt_aed,
+         MAX(CASE WHEN pr_number IS NOT NULL
+                  THEN distribution_amount * NVL(rate,1) END) AS pr_amt_aed
+  FROM prod.po_distributions
+  WHERE charge_account IS NOT NULL
+  GROUP BY po_header_id, po_line_id, distribution_number, charge_account
+),
+po_ytd AS (  -- PO obligations / PR commitments cumulative to each period
+  SELECT b.charge_account AS cc_string, p.period_name,
+         SUM(b.amt_aed)             AS obligation,
+         SUM(NVL(b.pr_amt_aed,0))   AS commitment
+  FROM po_base b
+  JOIN periods p ON (b.budget_date IS NULL OR b.budget_date < p.p_next)
+  GROUP BY b.charge_account, p.period_name
+),
 keys AS (
   SELECT cc_string, period_name FROM gl_ytd
   UNION SELECT cc_string, period_name FROM grn_ytd
   UNION SELECT cc_string, period_name FROM ap_ytd
+  UNION SELECT cc_string, period_name FROM po_ytd
 )
 SELECT
   k.period_name,
@@ -89,6 +116,8 @@ SELECT
   coa.program_code, coa.program_class_code, coa.program_name,
   NVL(gl.budget,0)          AS budget_ytd,
   NVL(gl.encumbrance,0)     AS encumbrance_ytd,
+  NVL(po.commitment,0)      AS commitment_ytd,
+  NVL(po.obligation,0)      AS obligation_ytd,
   NVL(gl.gl_actual,0)       AS gl_actual_ytd,
   NVL(gl.funds_available,0) AS funds_available_ytd,
   NVL(grn.grn_actual,0)     AS grn_actual_ytd,
@@ -98,6 +127,7 @@ FROM keys k
 LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = k.cc_string
 LEFT JOIN gl_ytd  gl  ON gl.cc_string  = k.cc_string AND gl.period_name  = k.period_name
 LEFT JOIN grn_ytd grn ON grn.cc_string = k.cc_string AND grn.period_name = k.period_name
-LEFT JOIN ap_ytd  ap  ON ap.cc_string  = k.cc_string AND ap.period_name  = k.period_name;
+LEFT JOIN ap_ytd  ap  ON ap.cc_string  = k.cc_string AND ap.period_name  = k.period_name
+LEFT JOIN po_ytd  po  ON po.cc_string  = k.cc_string AND po.period_name  = k.period_name;
 
 PROMPT DCT_BUDGET_ACTUAL_PERIOD_V created (per GL combination x period, YTD measures).

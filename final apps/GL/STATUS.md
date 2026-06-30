@@ -11,12 +11,19 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | Views `DCT_GL_COA_V` (+`GL_COA_V`) / `DCT_GL_BALANCES_V` | ✅ Deployed — COA view = 9,338 rows (no fan-out), 8,485 (91%) have a Sector |
 | Seed | ✅ 21 Sectors / 7 Chapters / 41 PBB Programs; 109 sector + 74 chapter + 33 program mappings |
 | ORDS `gl.rest` (`/ords/admin/gl/`) | ✅ Deployed — route groups incl. actuals/dashboard/refresh; auth + overlap-guard + as-of verified |
-| Actuals reporting (`db/v2/32–35`) | ✅ Deployed — `DCT_ACTUAL_V` / `DCT_BUDGET_ACTUAL_V` / `DCT_BUDGET_ACTUAL_PERIOD_V` (+appropriation) + indexed `DCT_GL_COA_SNAP` + hourly `DCT_ACTUALS_REFRESH_JOB` |
-| Frontend (Portal-style KO SPA, `Jet/`) | ✅ Live — Overview / Actuals / Dashboard / Classifications / Mapping / Explorer; EN-AR-RTL; E2E + mock-render passed |
+| Actuals reporting (`db/v2/32–35`) | ✅ Deployed — `DCT_ACTUAL_V` / `DCT_BUDGET_ACTUAL_V` / `DCT_BUDGET_ACTUAL_PERIOD_V` (+appropriation, +commitment_ytd/obligation_ytd) + indexed `DCT_GL_COA_SNAP` + hourly `DCT_ACTUALS_REFRESH_JOB` |
+| Frontend (Portal-style KO SPA, `Jet/`) | ✅ Live — Overview / Actuals (full-width, Commitment/Obligation cols + PR/PO drill, Account/Cost-center/Source filters) / Dashboard / Classifications / Mapping / Explorer; EN-AR-RTL; E2E + mock-render passed |
 | Registration | ✅ shell switcher + common i18n + proxies (auto-derived) + CLAUDE.md Module Status |
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-06-30** — **Actuals: Commitment/Obligation + filters + full width** (`APP_VERSION` 1.2.0).
+  Added `commitment_ytd` (PR-backed) + `obligation_ytd` (all PO) to `DCT_BUDGET_ACTUAL_PERIOD_V`
+  (`db/v2/34`, read live from `po_distributions`); ORDS `/actuals/filters` (+accounts/costCenters),
+  `/actuals` (+account/costcenter/source filters, +commitment/obligation), `/actuals/lines`
+  (+commitment→PR lines, +obligation→PO lines). Frontend: full-viewport-width Actuals + Dashboard,
+  3 new filters, 2 new KPI cards + 2 drillable columns, CSV updated. Verified via live SQL + handler
+  query harness (no ORA errors), `node --check`, KO balance.
 - **2026-06-30** — **Actuals reporting + Executive dashboard** (`APP_VERSION` 1.1.0). Added the
   **Actuals** (Budget vs Actual, YTD per combination — period/sector/chapter/program/appropriation
   filters, business-question cards, per-figure drill-down, combination tooltip, CSV) and

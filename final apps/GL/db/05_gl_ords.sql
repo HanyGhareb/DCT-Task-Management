@@ -585,6 +585,18 @@ BEGIN
     APEX_JSON.open_object; APEX_JSON.write('code', r.code); APEX_JSON.write('name', NVL(r.descr,r.code)); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
+  APEX_JSON.open_array('accounts');
+  FOR r IN (SELECT account_code code, MAX(account_desc) descr FROM prod.dct_gl_coa_snap
+            WHERE account_code IS NOT NULL GROUP BY account_code ORDER BY account_code) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('code', r.code); APEX_JSON.write('name', NVL(r.descr,r.code)); APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.open_array('costCenters');
+  FOR r IN (SELECT cost_center_code code, MAX(cost_center_desc) descr FROM prod.dct_gl_coa_snap
+            WHERE cost_center_code IS NOT NULL GROUP BY cost_center_code ORDER BY cost_center_code) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('code', r.code); APEX_JSON.write('name', NVL(r.descr,r.code)); APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -606,29 +618,43 @@ DECLARE
   l_chap   VARCHAR2(60)  := [COLON]chapter;
   l_prog   VARCHAR2(60)  := [COLON]program;
   l_appr   VARCHAR2(60)  := [COLON]appropriation;
+  l_acct   VARCHAR2(60)  := [COLON]account;
+  l_cc     VARCHAR2(60)  := [COLON]costcenter;
+  l_source VARCHAR2(30)  := [COLON]source;
   l_search VARCHAR2(200) := [COLON]search;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 1000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
-  t_bud NUMBER; t_enc NUMBER; t_act NUMBER; t_fun NUMBER; t_grn NUMBER; t_apd NUMBER;
+  t_bud NUMBER; t_enc NUMBER; t_cmt NUMBER; t_obl NUMBER; t_act NUMBER; t_fun NUMBER; t_grn NUMBER; t_apd NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF l_period IS NULL THEN dct_rest.err(400,'period is required'); RETURN; END IF;
-  SELECT COUNT(*), NVL(SUM(budget_ytd),0), NVL(SUM(encumbrance_ytd),0), NVL(SUM(gl_actual_ytd),0),
+  SELECT COUNT(*), NVL(SUM(budget_ytd),0), NVL(SUM(encumbrance_ytd),0), NVL(SUM(commitment_ytd),0),
+         NVL(SUM(obligation_ytd),0), NVL(SUM(gl_actual_ytd),0),
          NVL(SUM(funds_available_ytd),0), NVL(SUM(grn_actual_ytd),0), NVL(SUM(ap_direct_actual_ytd),0)
-    INTO l_total, t_bud, t_enc, t_act, t_fun, t_grn, t_apd
+    INTO l_total, t_bud, t_enc, t_cmt, t_obl, t_act, t_fun, t_grn, t_apd
     FROM prod.dct_budget_actual_period_v p
    WHERE p.period_name = l_period
      AND (l_sector IS NULL OR p.sector_code = l_sector)
      AND (l_chap   IS NULL OR p.chapter_code = l_chap)
      AND (l_prog   IS NULL OR p.program_class_code = l_prog)
      AND (l_appr   IS NULL OR p.appropriation_code = l_appr)
+     AND (l_acct   IS NULL OR p.account_code = l_acct)
+     AND (l_cc     IS NULL OR p.cost_center_code = l_cc)
+     AND (l_source IS NULL
+          OR (l_source='budget'      AND p.budget_ytd            <> 0)
+          OR (l_source='commitment'  AND p.commitment_ytd        <> 0)
+          OR (l_source='obligation'  AND p.obligation_ytd        <> 0)
+          OR (l_source='glActual'    AND p.gl_actual_ytd         <> 0)
+          OR (l_source='grn'         AND p.grn_actual_ytd        <> 0)
+          OR (l_source='apDirect'    AND p.ap_direct_actual_ytd  <> 0))
      AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%');
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
   APEX_JSON.write('period', l_period);
   APEX_JSON.open_object('totals');
-  APEX_JSON.write('budget', t_bud); APEX_JSON.write('encumbrance', t_enc); APEX_JSON.write('glActual', t_act);
+  APEX_JSON.write('budget', t_bud); APEX_JSON.write('encumbrance', t_enc);
+  APEX_JSON.write('commitment', t_cmt); APEX_JSON.write('obligation', t_obl); APEX_JSON.write('glActual', t_act);
   APEX_JSON.write('fundsAvailable', t_fun); APEX_JSON.write('grnActual', t_grn); APEX_JSON.write('apDirect', t_apd);
   APEX_JSON.write('variance', t_bud - t_act);
   APEX_JSON.close_object;
@@ -637,7 +663,8 @@ BEGIN
     SELECT p.cc_string, p.cc_id, p.cost_center_code, p.cost_center_desc, p.account_code, p.account_desc,
            p.appropriation_code, p.appropriation_desc, p.sector_code, p.sector_name,
            p.chapter_code, p.chapter_name, p.program_class_code, p.program_name,
-           p.budget_ytd, p.encumbrance_ytd, p.gl_actual_ytd, p.funds_available_ytd,
+           p.budget_ytd, p.encumbrance_ytd, p.commitment_ytd, p.obligation_ytd,
+           p.gl_actual_ytd, p.funds_available_ytd,
            p.grn_actual_ytd, p.ap_direct_actual_ytd, p.variance_ytd,
            s.entity_code, s.entity_desc, s.budget_group_code, s.budget_group_desc,
            s.entity_specific_code, s.entity_specific_desc, s.future1_code, s.future1_desc,
@@ -650,6 +677,15 @@ BEGIN
       AND (l_chap   IS NULL OR p.chapter_code = l_chap)
       AND (l_prog   IS NULL OR p.program_class_code = l_prog)
       AND (l_appr   IS NULL OR p.appropriation_code = l_appr)
+      AND (l_acct   IS NULL OR p.account_code = l_acct)
+      AND (l_cc     IS NULL OR p.cost_center_code = l_cc)
+      AND (l_source IS NULL
+           OR (l_source='budget'      AND p.budget_ytd            <> 0)
+           OR (l_source='commitment'  AND p.commitment_ytd        <> 0)
+           OR (l_source='obligation'  AND p.obligation_ytd        <> 0)
+           OR (l_source='glActual'    AND p.gl_actual_ytd         <> 0)
+           OR (l_source='grn'         AND p.grn_actual_ytd        <> 0)
+           OR (l_source='apDirect'    AND p.ap_direct_actual_ytd  <> 0))
       AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%')
     ORDER BY p.gl_actual_ytd DESC NULLS LAST, p.cc_string
     OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
@@ -663,6 +699,7 @@ BEGIN
     APEX_JSON.write('chapterCode', NVL(r.chapter_code,'')); APEX_JSON.write('chapterName', NVL(r.chapter_name,''));
     APEX_JSON.write('programClassCode', NVL(r.program_class_code,'')); APEX_JSON.write('programName', NVL(r.program_name,''));
     APEX_JSON.write('budget', r.budget_ytd); APEX_JSON.write('encumbrance', r.encumbrance_ytd);
+    APEX_JSON.write('commitment', r.commitment_ytd); APEX_JSON.write('obligation', r.obligation_ytd);
     APEX_JSON.write('glActual', r.gl_actual_ytd); APEX_JSON.write('fundsAvailable', r.funds_available_ytd);
     APEX_JSON.write('grnActual', r.grn_actual_ytd); APEX_JSON.write('apDirect', r.ap_direct_actual_ytd);
     APEX_JSON.write('variance', r.variance_ytd);
@@ -788,6 +825,52 @@ BEGIN
       JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
       WHERE cid.cc_string = l_cc AND pm.charge_account IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y'
         AND d.accounting_date >= l_ystart AND d.accounting_date < l_pnext;
+
+  ELSIF l_metric = 'obligation' THEN
+    APEX_JSON.open_array('columns'); col('po','PO #','text'); col('line','Line','text'); col('description','Item / description','text'); col('supplier','Supplier','text'); col('status','Status','text'); col('amount','Ordered (AED)','money'); APEX_JSON.close_array;
+    APEX_JSON.open_array('rows');
+    FOR r IN (SELECT order_number, po_line, item_description, supplier_name, po_status, amt FROM (
+                SELECT h.order_number, pl.line po_line, pl.item_description, h.supplier_name, h.status po_status,
+                       MAX(pd.distribution_amount*NVL(pd.rate,1)) amt
+                FROM prod.po_distributions pd
+                JOIN prod.po_headers h ON h.po_header_id = pd.po_header_id
+                LEFT JOIN prod.po_lines pl ON pl.po_header_id = pd.po_header_id AND pl.po_line_id = pd.po_line_id
+                WHERE pd.charge_account = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+                GROUP BY h.order_number, pl.line, pl.item_description, h.supplier_name, h.status,
+                         pd.po_header_id, pd.po_line_id, pd.distribution_number)
+              ORDER BY amt DESC NULLS LAST FETCH FIRST 500 ROWS ONLY) LOOP
+      APEX_JSON.open_object; APEX_JSON.write('po',NVL(TO_CHAR(r.order_number),'')); APEX_JSON.write('line',NVL(TO_CHAR(r.po_line),''));
+      APEX_JSON.write('description',NVL(r.item_description,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
+      APEX_JSON.write('status',NVL(r.po_status,'')); APEX_JSON.write('amount',r.amt); APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+    SELECT NVL(SUM(amt),0) INTO l_total FROM (
+      SELECT MAX(pd.distribution_amount*NVL(pd.rate,1)) amt FROM prod.po_distributions pd
+      WHERE pd.charge_account = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+      GROUP BY pd.po_header_id, pd.po_line_id, pd.distribution_number);
+
+  ELSIF l_metric = 'commitment' THEN
+    APEX_JSON.open_array('columns'); col('pr','PR #','text'); col('line','Line','text'); col('description','Description','text'); col('requestor','Requestor','text'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
+    APEX_JSON.open_array('rows');
+    FOR r IN (SELECT pr_number, pr_line, pr_description, requestor_name, amt FROM (
+                SELECT pd.pr_number, pd.pr_line, pd.pr_description, pd.requestor_name,
+                       MAX(pd.distribution_amount*NVL(pd.rate,1)) amt
+                FROM prod.po_distributions pd
+                WHERE pd.charge_account = l_cc AND pd.pr_number IS NOT NULL
+                  AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+                GROUP BY pd.pr_number, pd.pr_line, pd.pr_description, pd.requestor_name,
+                         pd.po_header_id, pd.po_line_id, pd.distribution_number)
+              ORDER BY amt DESC NULLS LAST FETCH FIRST 500 ROWS ONLY) LOOP
+      APEX_JSON.open_object; APEX_JSON.write('pr',NVL(TO_CHAR(r.pr_number),'')); APEX_JSON.write('line',NVL(TO_CHAR(r.pr_line),''));
+      APEX_JSON.write('description',NVL(r.pr_description,'')); APEX_JSON.write('requestor',NVL(r.requestor_name,''));
+      APEX_JSON.write('amount',r.amt); APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+    SELECT NVL(SUM(amt),0) INTO l_total FROM (
+      SELECT MAX(pd.distribution_amount*NVL(pd.rate,1)) amt FROM prod.po_distributions pd
+      WHERE pd.charge_account = l_cc AND pd.pr_number IS NOT NULL
+        AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+      GROUP BY pd.po_header_id, pd.po_line_id, pd.distribution_number);
 
   ELSE
     dct_rest.err(400,'Unknown metric'); RETURN;

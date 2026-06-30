@@ -89,10 +89,16 @@
     fPeriod:{en:'Accounting period',ar:'الفترة المحاسبية'}, fSectorL:{en:'Sector',ar:'القطاع'},
     fChapterL:{en:'Chapter',ar:'الباب'}, fProgramL:{en:'DCT Program',ar:'برنامج الدائرة'},
     fApprL:{en:'Appropriation',ar:'الاعتماد'}, fSearchL:{en:'Search',ar:'بحث'},
+    fAccountL:{en:'Account',ar:'الحساب'}, fCostCenterL:{en:'Cost center',ar:'مركز التكلفة'}, fSourceL:{en:'Transaction source',ar:'مصدر الحركة'},
     allPrograms:{en:'All programs',ar:'كل البرامج'}, allApprops:{en:'All appropriations',ar:'كل الاعتمادات'},
+    allAccounts:{en:'All accounts',ar:'كل الحسابات'}, allCostCenters:{en:'All cost centers',ar:'كل مراكز التكلفة'}, allSources:{en:'All sources',ar:'كل المصادر'},
+    srcBudget:{en:'Has budget',ar:'له موازنة'}, srcCommitment:{en:'Has commitment (PR)',ar:'له التزام (طلب شراء)'},
+    srcObligation:{en:'Has obligation (PO)',ar:'له تعهد (أمر شراء)'}, srcGlActual:{en:'Has GL actual',ar:'له فعلي بالأستاذ'},
+    srcGrn:{en:'Has GRN received',ar:'له استلام'}, srcApDirect:{en:'Has AP direct',ar:'له مباشر دائنون'},
     searchActuals:{en:'Cost center, account, code…',ar:'مركز التكلفة، الحساب، الرمز…'},
     btnSearch:{en:'Search',ar:'بحث'}, btnReset:{en:'Reset',ar:'إعادة تعيين'},
     cBudget:{en:'Budget',ar:'الموازنة'}, cEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
+    cCommitment:{en:'Commitment (PR)',ar:'الالتزام (طلب شراء)'}, cObligation:{en:'Obligation (PO)',ar:'التعهد (أمر شراء)'},
     cActual:{en:'GL Actual',ar:'الفعلي'}, cFunds:{en:'Funds available',ar:'المتاح'},
     cGrn:{en:'GRN actual',ar:'الاستلام الفعلي'}, cApDirect:{en:'AP direct',ar:'مباشر دائنون'},
     cVariance:{en:'Variance',ar:'الفرق'},
@@ -102,6 +108,8 @@
     rowsOf:{en:'of',ar:'من'},
     hBudget:{en:'Total approved budget YTD (initial + adjustments).',ar:'إجمالي الموازنة المعتمدة حتى تاريخه (الأولية + التعديلات).'},
     hEncumbrance:{en:'Commitments + obligations + other encumbrances booked in GL.',ar:'الالتزامات + التعهدات + ارتباطات أخرى المسجلة في دفتر الأستاذ.'},
+    hCommitment:{en:'Total purchase requisitions (PR-backed PO lines) charged here, AED, YTD. Click a figure for the PR lines.',ar:'إجمالي طلبات الشراء المحملة هنا، بالدرهم، حتى تاريخه. انقر الرقم لعرض بنود الطلب.'},
+    hObligation:{en:'Total purchase orders (all PO lines) charged here, AED, YTD. Click a figure for the PO lines.',ar:'إجمالي أوامر الشراء المحملة هنا، بالدرهم، حتى تاريخه. انقر الرقم لعرض بنود الأمر.'},
     hActual:{en:'Actual expenditure recognised in GL, YTD.',ar:'الإنفاق الفعلي المعترف به في دفتر الأستاذ حتى تاريخه.'},
     hFunds:{en:'Budget − encumbrance − actual = funds still available.',ar:'الموازنة − الارتباطات − الفعلي = الأموال المتاحة.'},
     hGrn:{en:'Goods/services received (GRN) against POs, AED, YTD.',ar:'البضائع/الخدمات المستلمة مقابل أوامر الشراء، بالدرهم، حتى تاريخه.'},
@@ -109,6 +117,7 @@
     hCombo:{en:'Hover to see the full 10-segment account combination.',ar:'مرر للاطلاع على التركيبة المحاسبية الكاملة (10 بنود).'},
     drillTotal:{en:'Total',ar:'الإجمالي'}, noLines:{en:'No supporting lines for this period.',ar:'لا توجد بنود داعمة لهذه الفترة.'},
     mBudget:{en:'Budget',ar:'الموازنة'}, mEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
+    mCommitment:{en:'Commitment — PRs',ar:'الالتزام — طلبات الشراء'}, mObligation:{en:'Obligation — POs',ar:'التعهد — أوامر الشراء'},
     mGlactual:{en:'GL Actual',ar:'الفعلي'}, mGrn:{en:'GRN actual',ar:'الاستلام الفعلي'}, mApdirect:{en:'AP direct',ar:'مباشر دائنون'},
     refreshActuals:{en:'Refresh actuals',ar:'تحديث الفعلي'}, refreshing:{en:'Refreshing…',ar:'جارٍ التحديث…'},
     refreshed:{en:'Actuals snapshot refreshed',ar:'تم تحديث لقطة الفعلي'},
@@ -405,8 +414,21 @@
     self.periods = ko.observableArray([]);
     self.acSectors = ko.observableArray([]); self.acChapters = ko.observableArray([]);
     self.acPrograms = ko.observableArray([]); self.acAppropriations = ko.observableArray([]);
+    self.acAccounts = ko.observableArray([]); self.acCostCenters = ko.observableArray([]);
     self.acPeriod = ko.observable(''); self.acSector = ko.observable(''); self.acChapter = ko.observable('');
     self.acProgram = ko.observable(''); self.acAppr = ko.observable(''); self.acSearch = ko.observable('');
+    self.acAccount = ko.observable(''); self.acCostCenter = ko.observable(''); self.acSource = ko.observable('');
+    // transaction-source filter — keeps a row only when that measure is non-zero
+    self.acSources = ko.computed(function () {
+      return [
+        { code: 'budget',     name: self.t('srcBudget') },
+        { code: 'commitment', name: self.t('srcCommitment') },
+        { code: 'obligation', name: self.t('srcObligation') },
+        { code: 'glActual',   name: self.t('srcGlActual') },
+        { code: 'grn',        name: self.t('srcGrn') },
+        { code: 'apDirect',   name: self.t('srcApDirect') }
+      ];
+    });
     self.acItems = ko.observableArray([]); self.acTotals = ko.observable({});
     self.acTotal = ko.observable(0); self.acOffset = ko.observable(0); self.acLimit = 100;
     self.acLoading = ko.observable(false);
@@ -416,13 +438,16 @@
         self.periods(d.periods || []);
         self.acSectors(d.sectors || []); self.acChapters(d.chapters || []);
         self.acPrograms(d.programs || []); self.acAppropriations(d.appropriations || []);
+        self.acAccounts(d.accounts || []); self.acCostCenters(d.costCenters || []);
         if (!self.acPeriod()) self.acPeriod(d.defaultPeriod || (d.periods && d.periods[0] && d.periods[0].period) || '');
         self.acFiltersLoaded(true);
       }).catch(fail);
     };
     self.acParams = function (offset, limit) {
       return { period: self.acPeriod(), sector: self.acSector(), chapter: self.acChapter(),
-        program: self.acProgram(), appropriation: self.acAppr(), search: self.acSearch(),
+        program: self.acProgram(), appropriation: self.acAppr(),
+        account: self.acAccount(), costcenter: self.acCostCenter(), source: self.acSource(),
+        search: self.acSearch(),
         limit: limit || self.acLimit, offset: offset || 0 };
     };
     self.runActuals = function (offset) {
@@ -435,6 +460,7 @@
     };
     self.acReset = function () {
       self.acSector(''); self.acChapter(''); self.acProgram(''); self.acAppr(''); self.acSearch('');
+      self.acAccount(''); self.acCostCenter(''); self.acSource('');
       var cur = self.periods().filter(function (p) { return p.isCurrent === 'Y'; })[0];
       if (cur) self.acPeriod(cur.period);
       self.runActuals(0);
@@ -476,7 +502,8 @@
         var cols = [['ccString', 'Combination'], ['costCenterCode', 'Cost Center'], ['costCenterDesc', 'Cost Center Desc'],
           ['accountCode', 'Account'], ['accountDesc', 'Account Desc'], ['sectorName', 'Sector'], ['chapterName', 'Chapter'],
           ['programName', 'DCT Program'], ['appropriationCode', 'Appropriation'], ['appropriationDesc', 'Appropriation Desc'],
-          ['budget', 'Budget'], ['encumbrance', 'Encumbrance'], ['glActual', 'GL Actual'], ['fundsAvailable', 'Funds Available'],
+          ['budget', 'Budget'], ['commitment', 'Commitment (PR)'], ['obligation', 'Obligation (PO)'],
+          ['encumbrance', 'Encumbrance'], ['glActual', 'GL Actual'], ['fundsAvailable', 'Funds Available'],
           ['grnActual', 'GRN Actual'], ['apDirect', 'AP Direct'], ['variance', 'Variance']];
         var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
           return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');

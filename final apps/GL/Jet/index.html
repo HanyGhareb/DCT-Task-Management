@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.1.0';</script>
+<script>window.APP_VERSION='1.2.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -50,7 +50,7 @@
     <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
   </nav>
 
-  <div class="wrap">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'}">
 
     <!-- ── OVERVIEW ── -->
     <div data-bind="visible:view()==='overview'">
@@ -232,6 +232,12 @@
             <select class="inp" data-bind="options:acPrograms, optionsText:'name', optionsValue:'code', value:acProgram, optionsCaption:t('allPrograms')"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fApprL')"></label>
             <select class="inp" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAppr, optionsCaption:t('allApprops')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fAccountL')"></label>
+            <select class="inp" data-bind="options:acAccounts, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAccount, optionsCaption:t('allAccounts')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fCostCenterL')"></label>
+            <select class="inp" data-bind="options:acCostCenters, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acCostCenter, optionsCaption:t('allCostCenters')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSourceL')"></label>
+            <select class="inp" data-bind="options:acSources, optionsText:'name', optionsValue:'code', value:acSource, optionsCaption:t('allSources')"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
             <input class="inp" type="text" data-bind="textInput:acSearch, attr:{placeholder:t('searchActuals')}, event:{keydown:function(d,e){if(e.keyCode===13){runActuals(0);}return true;}}"></div>
           <div class="field filter-actions">
@@ -244,6 +250,8 @@
       <!-- business-question answer cards -->
       <div class="kpi-strip">
         <div class="kstat budget"><div class="kk" data-bind="text:t('cBudget')"></div><div class="kv mono" data-bind="text:compact(tot('budget')), attr:{title:money(tot('budget'))}"></div></div>
+        <div class="kstat commit"><div class="kk" data-bind="text:t('cCommitment')"></div><div class="kv mono" data-bind="text:compact(tot('commitment')), attr:{title:money(tot('commitment'))}"></div></div>
+        <div class="kstat oblig"><div class="kk" data-bind="text:t('cObligation')"></div><div class="kv mono" data-bind="text:compact(tot('obligation')), attr:{title:money(tot('obligation'))}"></div></div>
         <div class="kstat encumb"><div class="kk" data-bind="text:t('cEncumbrance')"></div><div class="kv mono" data-bind="text:compact(tot('encumbrance')), attr:{title:money(tot('encumbrance'))}"></div></div>
         <div class="kstat actual"><div class="kk" data-bind="text:t('cActual')"></div><div class="kv mono" data-bind="text:compact(tot('glActual')), attr:{title:money(tot('glActual'))}"></div></div>
         <div class="kstat funds"><div class="kk" data-bind="text:t('cFunds')"></div><div class="kv mono" data-bind="text:compact(tot('fundsAvailable')), attr:{title:money(tot('fundsAvailable'))}"></div></div>
@@ -262,6 +270,8 @@
             <th data-bind="text:t('program')"></th>
             <th data-bind="text:t('thAppr')"></th>
             <th class="num" data-bind="text:t('cBudget'), attr:{title:t('hBudget')}"></th>
+            <th class="num" data-bind="text:t('cCommitment'), attr:{title:t('hCommitment')}"></th>
+            <th class="num" data-bind="text:t('cObligation'), attr:{title:t('hObligation')}"></th>
             <th class="num" data-bind="text:t('cEncumbrance'), attr:{title:t('hEncumbrance')}"></th>
             <th class="num" data-bind="text:t('cActual'), attr:{title:t('hActual')}"></th>
             <th class="num" data-bind="text:t('cFunds'), attr:{title:t('hFunds')}"></th>
@@ -278,6 +288,8 @@
               <td data-bind="text:$data.programName||'—'"></td>
               <td><span class="mono" data-bind="text:$data.appropriationCode||'—'"></span></td>
               <td class="num mono money-cell" data-bind="text:$root.compact($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openDrill(d,'budget')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.commitment), attr:{title:$root.money($data.commitment)}, click:function(d){$root.openDrill(d,'commitment')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.obligation), attr:{title:$root.money($data.obligation)}, click:function(d){$root.openDrill(d,'obligation')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.compact($data.encumbrance), attr:{title:$root.money($data.encumbrance)}, click:function(d){$root.openDrill(d,'encumbrance')}"></td>
               <td class="num mono money-cell strong" data-bind="text:$root.compact($data.glActual), attr:{title:$root.money($data.glActual)}, click:function(d){$root.openDrill(d,'glactual')}"></td>
               <td class="num mono" data-bind="text:$root.compact($data.fundsAvailable), attr:{title:$root.money($data.fundsAvailable)}, css:{neg:$data.fundsAvailable<0}"></td>

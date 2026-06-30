@@ -58,6 +58,8 @@ em{font-style:normal;color:var(--brand)}
 
 /* ── content ─────────────────────────────────────────────────────── */
 .wrap{max-width:1560px;margin:0 auto;padding:28px 26px 70px}
+/* data-dense pages (Actuals / Dashboard) use the full viewport width */
+.wrap.wide{max-width:none}
 .greet{font-family:var(--serif);font-weight:500;font-size:30px;letter-spacing:-.02em;margin:4px 0 2px}
 .greet-sub{color:var(--muted);margin-bottom:22px}
 .page-head{display:flex;align-items:flex-end;gap:16px;margin-bottom:18px;flex-wrap:wrap}
@@ -202,6 +204,8 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 .kstat.grn{border-top-color:var(--gold)} .kstat.grn .kv{color:#8a6a1e}
 .kstat.apd{border-top-color:#6C4AB6} .kstat.apd .kv{color:#6C4AB6}
 .kstat.po{border-top-color:var(--gold)} .kstat.po .kv{color:#8a6a1e}
+.kstat.commit{border-top-color:#2E8C9E} .kstat.commit .kv{color:#236F7D}
+.kstat.oblig{border-top-color:#5A6AC0} .kstat.oblig .kv{color:#414FA0}
 
 /* ── actuals table tuning ─────────────────────────────────────────── */
 table.tbl th.num,table.tbl td.num{text-align:end}
