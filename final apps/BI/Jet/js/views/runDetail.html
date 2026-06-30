@@ -1,0 +1,76 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">
+        <span data-bind="text: $root.t('rd.title')"></span>
+        <span data-bind="text: run() ? ('#' + run().runId) : ('#' + (runId || ''))"></span>
+      </div>
+      <div class="page-subtitle" data-bind="text: run() ? run().reportCode : ''"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: back, text: $root.t('btn.back')"></button>
+      <button class="btn btn-primary" data-bind="click: retry, text: $root.t('runs.retry')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <!-- ko ifnot: run() --><div class="empty-state" data-bind="text: $root.t('rd.notfound')"></div><!-- /ko -->
+
+  <!-- ko if: run() -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('rd.summary')"></div>
+    <div class="kv-grid">
+      <div><span class="kv-l" data-bind="text: $root.t('col.status')"></span><span data-bind="text: run().status, attr:{ class: $vm.badge(run().status) }"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('col.engine')"></span><span data-bind="text: run().engine"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('col.trigger')"></span><span data-bind="text: run().trigger"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('col.rows')"></span><span data-bind="text: run().rowCount"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('rd.requestedBy')"></span><span data-bind="text: run().requestedBy || '—'"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('rd.worker')"></span><span data-bind="text: run().workerId || '—'"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('col.created')"></span><span data-bind="text: run().createdAt"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('col.finished')"></span><span data-bind="text: run().finishedAt || '—'"></span></div>
+      <!-- ko if: run().error -->
+      <div class="kv-full"><span class="kv-l" data-bind="text: $root.t('rd.error')"></span><span style="color:var(--danger,#b3261e)" data-bind="text: run().error"></span></div>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('rd.outputs')"></div>
+    <!-- ko if: outputs().length === 0 --><div class="empty-state" data-bind="text: $root.t('rd.noOutputs')"></div><!-- /ko -->
+    <!-- ko if: outputs().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr><th data-bind="text: $root.t('col.formats')"></th><th data-bind="text: $root.t('rd.fileName')"></th><th data-bind="text: $root.t('rd.size')"></th><th style="text-align:right"></th></tr></thead>
+      <tbody><!-- ko foreach: outputs -->
+        <tr>
+          <td><span class="badge badge--info" data-bind="text: format"></span></td>
+          <td data-bind="text: $data.fileName || '—'"></td>
+          <td data-bind="text: $vm.fmtBytes($data.bytes)"></td>
+          <td style="text-align:right"><button class="btn btn-sm btn-primary" data-bind="click: function(){ $vm.download($data); }, text: $root.t('rd.download')"></button></td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+
+  <div class="card">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('rd.deliveries')"></div>
+    <!-- ko if: deliveries().length === 0 --><div class="empty-state" data-bind="text: $root.t('rd.noDeliveries')"></div><!-- /ko -->
+    <!-- ko if: deliveries().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr><th data-bind="text: $root.t('det.value')"></th><th data-bind="text: $root.t('det.channel')"></th><th data-bind="text: $root.t('col.status')"></th><th data-bind="text: $root.t('rd.sentAt')"></th><th data-bind="text: $root.t('rd.error')"></th></tr></thead>
+      <tbody><!-- ko foreach: deliveries -->
+        <tr>
+          <td data-bind="text: recipient"></td>
+          <td data-bind="text: channel"></td>
+          <td><span data-bind="text: status, attr:{ class: $vm.badge(status) }"></span></td>
+          <td data-bind="text: $data.sentAt || '—'"></td>
+          <td style="color:var(--text-3)" data-bind="text: $data.error || ''"></td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

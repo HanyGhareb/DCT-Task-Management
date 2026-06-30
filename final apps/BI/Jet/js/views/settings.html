@@ -1,0 +1,52 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('set.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('set.subtitle')"></div>
+    </div>
+    <button class="btn btn-primary" data-bind="click: saveAll, enable: hasDirty() && !saving(),
+            text: saving() ? $root.t('btn.saving') : ('✓ ' + $root.t('set.save'))"></button>
+  </div>
+
+  <div class="alert-banner alert-banner--info" style="margin-bottom:14px">&#9432; <span data-bind="text: $root.t('set.note')"></span></div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <div class="card">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('set.runtime')"></div>
+    <!-- ko foreach: rows -->
+    <div class="switch-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;font-family:monospace" data-bind="text: key"></div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:2px" data-bind="text: description"></div>
+        <!-- ko if: isSecret -->
+        <div style="font-size:11px;color:var(--text-3);margin-top:2px" data-bind="text: $root.t('set.secret')"></div>
+        <!-- /ko -->
+      </div>
+      <div style="flex:0 0 260px;margin-inline-start:20px">
+        <!-- ko if: isBool && !isSecret -->
+        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:flex-end" data-bind="click: function(){ $vm.toggle($data); }">
+          <span style="font-size:11.5px;color:var(--text-3)" data-bind="text: value() === 'Y' ? $root.t('common.on') : $root.t('common.off')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none" data-bind="checked: value() === 'Y', attr:{ 'aria-label': key }">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: isEnum && !isSecret -->
+        <select class="form-control" data-bind="options: allowed, value: value, style:{ 'border-color': dirty() ? 'var(--brand)' : '' }"></select>
+        <!-- /ko -->
+        <!-- ko if: !isBool && !isEnum -->
+        <input class="form-control" data-bind="value: value, valueUpdate:'input', enable: !isSecret,
+               attr:{ type: type === 'NUMBER' ? 'number' : 'text', 'aria-label': key, placeholder: isSecret ? '•••• (env)' : '' },
+               style:{ 'border-color': dirty() ? 'var(--brand)' : '' }">
+        <!-- /ko -->
+        <!-- ko if: dirty() -->
+        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block">&#9998; <span data-bind="text: $root.t('set.modified')"></span></span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>

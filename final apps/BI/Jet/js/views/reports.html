@@ -1,0 +1,134 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('rep.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('rep.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: openNew">+ <span data-bind="text: $root.t('rep.new')"></span></button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input class="form-control" style="max-width:280px" data-bind="value: search, valueUpdate:'input',
+             event: { keypress: function(d,e){ if(e.keyCode===13) $vm.applyFilter(); } }, attr:{ placeholder: $root.t('common.search') }">
+      <select class="form-control" style="max-width:180px" data-bind="value: engine, event: { change: applyFilter }">
+        <option value="" data-bind="text: $root.t('rep.allEngines')"></option>
+        <!-- ko foreach: engines --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+      </select>
+      <button class="btn btn-secondary btn-sm" data-bind="click: applyFilter, text: $root.t('common.search')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <div class="card">
+    <!-- ko if: items().length === 0 -->
+    <div class="empty-state" data-bind="text: $root.t('rep.none')"></div>
+    <!-- /ko -->
+    <!-- ko if: items().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('col.code')"></th>
+        <th data-bind="text: $root.t('col.name')"></th>
+        <th data-bind="text: $root.t('col.engine')"></th>
+        <th data-bind="text: $root.t('col.formats')"></th>
+        <th data-bind="text: $root.t('col.sched')"></th>
+        <th data-bind="text: $root.t('col.recips')"></th>
+        <th data-bind="text: $root.t('col.enabled')"></th>
+        <th style="text-align:right" data-bind="text: $root.t('col.actions')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: items -->
+        <tr>
+          <td><a href="#" data-bind="text: reportCode, click: function(){ $vm.openDetail($data); return false; }"></a></td>
+          <td data-bind="text: nameEn"></td>
+          <td><span class="badge badge--info" data-bind="text: engine"></span></td>
+          <td data-bind="text: formats"></td>
+          <td data-bind="text: $data.schedules"></td>
+          <td data-bind="text: $data.recipients"></td>
+          <td><span data-bind="text: enabled === 'Y' ? $root.t('common.yes') : $root.t('common.no'),
+                    attr: { class: enabled === 'Y' ? 'badge badge--success' : 'badge' }"></span></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-primary" data-bind="click: function(){ $vm.runNow($data); }, text: $root.t('rep.run')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.openDetail($data); }, text: $root.t('rep.open')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.openEdit($data); }, text: $root.t('btn.edit')"></button>
+            <button class="btn btn-sm btn-danger" data-bind="click: function(){ $vm.remove($data); }, text: $root.t('btn.delete')"></button>
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <div class="pager-row" style="display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:12px">
+      <span style="font-size:12px;color:var(--text-2)" data-bind="text: pageInfo"></span>
+      <button class="btn btn-sm btn-secondary" data-bind="click: prev, disable: offset() === 0">‹</button>
+      <button class="btn btn-sm btn-secondary" data-bind="click: next, disable: offset() + 25 >= total()">›</button>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ── create / edit drawer ────────────────────────────────────────── -->
+  <edit-drawer params="open: editing, vm: $vm,
+                       title: (isNew() ? $root.t('rep.new') : $root.t('rep.edit')),
+                       subtitle: (isNew() ? '' : fmCode()),
+                       saveLabel: (saving() ? $root.t('btn.saving') : $root.t('btn.save')),
+                       cancelLabel: $root.t('btn.cancel'), onSave: save, width: '720px'">
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('col.code')"></label>
+            <input class="form-control" data-bind="value: fmCode, enable: isNew(), attr:{ placeholder:'GL_BUDGET_ACTUAL' }">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('f.category')"></label>
+            <input class="form-control" data-bind="value: fmCategory">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('f.nameEn')"></label>
+            <input class="form-control" data-bind="value: fmNameEn">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('f.nameAr')"></label>
+            <input class="form-control" dir="rtl" data-bind="value: fmNameAr">
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: $root.t('f.desc')"></label>
+            <input class="form-control" data-bind="value: fmDesc">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('col.engine')"></label>
+            <select class="form-control" data-bind="options: engines, value: fmEngine"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('f.sourceType')"></label>
+            <select class="form-control" data-bind="options: sourceTypes, value: fmSourceType"></select>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: $root.t('f.sourceRef')"></label>
+            <textarea class="form-control" rows="4" style="font-family:monospace;font-size:12px" data-bind="value: fmSourceRef"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('col.formats')"></label>
+            <input class="form-control" data-bind="value: fmFormats, attr:{ placeholder:'PDF,XLSX' }">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('f.params')"></label>
+            <input class="form-control" placeholder='{"period":null}' data-bind="value: fmParams">
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: $root.t('f.subject')"></label>
+            <input class="form-control" placeholder="Budget vs Actual - {{ period }}" data-bind="value: fmSubject">
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: $root.t('f.body')"></label>
+            <textarea class="form-control" rows="3" data-bind="value: fmBody"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('col.enabled')"></label>
+            <div style="display:flex;align-items:center;gap:8px">
+              <input type="checkbox" data-bind="checked: fmEnabled">
+              <span style="font-size:12px;color:var(--text-2)" data-bind="text: fmEnabled() ? $root.t('common.yes') : $root.t('common.no')"></span>
+            </div>
+          </div>
+        </div>
+  </edit-drawer>
+</div>

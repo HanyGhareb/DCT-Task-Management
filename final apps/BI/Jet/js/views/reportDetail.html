@@ -1,0 +1,114 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: report() ? report().nameEn : reportCode"></div>
+      <div class="page-subtitle" data-bind="text: reportCode"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: back, text: $root.t('btn.back')"></button>
+      <button class="btn btn-secondary" data-bind="click: syncSched, text: $root.t('det.sync')"></button>
+      <button class="btn btn-primary" data-bind="click: runNow, text: $root.t('rep.run')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <!-- ko if: report() -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('det.definition')"></div>
+    <div class="kv-grid">
+      <div><span class="kv-l" data-bind="text: $root.t('col.engine')"></span><span class="badge badge--info" data-bind="text: report().engine"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('col.formats')"></span><span data-bind="text: report().formats"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('f.sourceType')"></span><span data-bind="text: report().sourceType"></span></div>
+      <div><span class="kv-l" data-bind="text: $root.t('col.enabled')"></span><span data-bind="text: report().enabled === 'Y' ? $root.t('common.yes') : $root.t('common.no')"></span></div>
+      <div class="kv-full"><span class="kv-l" data-bind="text: $root.t('f.desc')"></span><span data-bind="text: report().description || '—'"></span></div>
+      <div class="kv-full"><span class="kv-l" data-bind="text: $root.t('f.sourceRef')"></span><code style="font-size:11.5px;white-space:pre-wrap" data-bind="text: report().sourceRef"></code></div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── schedules ─────────────────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading-row">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('det.schedules')"></div>
+      <div class="region-actions"><button class="btn btn-sm btn-primary" data-bind="click: openSchNew">+ <span data-bind="text: $root.t('det.addSchedule')"></span></button></div>
+    </div>
+    <!-- ko if: schedules().length === 0 --><div class="empty-state" data-bind="text: $root.t('det.noSchedules')"></div><!-- /ko -->
+    <!-- ko if: schedules().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr><th data-bind="text: $root.t('col.name')"></th><th data-bind="text: $root.t('det.interval')"></th><th>TZ</th><th data-bind="text: $root.t('col.enabled')"></th><th data-bind="text: $root.t('det.lastRun')"></th><th style="text-align:right"></th></tr></thead>
+      <tbody><!-- ko foreach: schedules -->
+        <tr>
+          <td data-bind="text: $data.scheduleName || '—'"></td>
+          <td><code style="font-size:11.5px" data-bind="text: repeatInterval"></code></td>
+          <td data-bind="text: timezone"></td>
+          <td><span data-bind="text: enabled === 'Y' ? $root.t('common.yes') : $root.t('common.no'), attr:{ class: enabled === 'Y' ? 'badge badge--success' : 'badge' }"></span></td>
+          <td data-bind="text: $data.lastRunAt || '—'"></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.openSchEdit($data); }, text: $root.t('btn.edit')"></button>
+            <button class="btn btn-sm btn-danger" data-bind="click: function(){ $vm.removeSch($data); }, text: $root.t('btn.delete')"></button>
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ── recipients ────────────────────────────────────────────────────── -->
+  <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('det.recipients')"></div>
+      <div class="region-actions"><button class="btn btn-sm btn-primary" data-bind="click: openRcNew">+ <span data-bind="text: $root.t('det.addRecipient')"></span></button></div>
+    </div>
+    <!-- ko if: recipients().length === 0 --><div class="empty-state" data-bind="text: $root.t('det.noRecipients')"></div><!-- /ko -->
+    <!-- ko if: recipients().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr><th data-bind="text: $root.t('det.type')"></th><th data-bind="text: $root.t('det.value')"></th><th data-bind="text: $root.t('det.channel')"></th><th data-bind="text: $root.t('col.enabled')"></th><th style="text-align:right"></th></tr></thead>
+      <tbody><!-- ko foreach: recipients -->
+        <tr>
+          <td><span class="badge badge--info" data-bind="text: recipientType"></span></td>
+          <td data-bind="text: $data.recipientRef || '—'"></td>
+          <td data-bind="text: channel"></td>
+          <td><span data-bind="text: enabled === 'Y' ? $root.t('common.yes') : $root.t('common.no'), attr:{ class: enabled === 'Y' ? 'badge badge--success' : 'badge' }"></span></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.openRcEdit($data); }, text: $root.t('btn.edit')"></button>
+            <button class="btn btn-sm btn-danger" data-bind="click: function(){ $vm.removeRc($data); }, text: $root.t('btn.delete')"></button>
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- /ko -->
+
+  <!-- ── schedule drawer ───────────────────────────────────────────────── -->
+  <edit-drawer params="open: schEditing, vm: $vm,
+                       title: (schIsNew() ? $root.t('det.addSchedule') : $root.t('det.editSchedule')),
+                       saveLabel: (schSaving() ? $root.t('btn.saving') : $root.t('btn.save')),
+                       cancelLabel: $root.t('btn.cancel'), onSave: saveSch, width: '560px'">
+        <div class="form-grid">
+          <div class="form-group form-group--full"><label class="form-label" data-bind="text: $root.t('col.name')"></label><input class="form-control" data-bind="value: schName"></div>
+          <div class="form-group form-group--full"><label class="form-label" data-bind="text: $root.t('det.interval')"></label><input class="form-control" style="font-family:monospace" data-bind="value: schInterval, attr:{ placeholder:'FREQ=MONTHLY;BYMONTHDAY=3;BYHOUR=7' }"></div>
+          <div class="form-group"><label class="form-label">Timezone</label><input class="form-control" data-bind="value: schTz"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('col.enabled')"></label><div style="display:flex;align-items:center;gap:8px"><input type="checkbox" data-bind="checked: schEnabled"><span style="font-size:12px;color:var(--text-2)" data-bind="text: schEnabled() ? $root.t('common.yes') : $root.t('common.no')"></span></div></div>
+          <div class="form-group form-group--full"><label class="form-label" data-bind="text: $root.t('f.params')"></label><input class="form-control" placeholder='{"period":null}' data-bind="value: schCriteria"></div>
+        </div>
+  </edit-drawer>
+
+  <!-- ── recipient drawer ──────────────────────────────────────────────── -->
+  <edit-drawer params="open: rcEditing, vm: $vm,
+                       title: (rcIsNew() ? $root.t('det.addRecipient') : $root.t('det.editRecipient')),
+                       saveLabel: (rcSaving() ? $root.t('btn.saving') : $root.t('btn.save')),
+                       cancelLabel: $root.t('btn.cancel'), onSave: saveRc, width: '520px'">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('det.type')"></label><select class="form-control" data-bind="options: recipientTypes, value: rcType"></select></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('det.channel')"></label><select class="form-control" data-bind="options: channels, value: rcChannel"></select></div>
+          <!-- ko if: rcNeedsRef() -->
+          <div class="form-group form-group--full"><label class="form-label" data-bind="text: $root.t('det.value')"></label><input class="form-control" data-bind="value: rcRef, attr:{ placeholder: refHint() }"></div>
+          <!-- /ko -->
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('col.enabled')"></label><div style="display:flex;align-items:center;gap:8px"><input type="checkbox" data-bind="checked: rcEnabled"><span style="font-size:12px;color:var(--text-2)" data-bind="text: rcEnabled() ? $root.t('common.yes') : $root.t('common.no')"></span></div></div>
+        </div>
+  </edit-drawer>
+</div>

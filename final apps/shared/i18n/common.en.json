@@ -23,6 +23,7 @@
   "mod.tm": "Task Management", "mod.tm.desc": "Teams, objectives, tasks & deliverables",
   "mod.atd": "Analytics Loader", "mod.atd.desc": "OTBI → ATD jobs, queue & run logs",
   "mod.gl": "General Ledger", "mod.gl.desc": "CoA classifications: Sector, Chapter, DCT Program",
+  "mod.bi": "BI - Reporting", "mod.bi.desc": "Scheduled PDF/Excel reports, emailed to recipients",
 
   "common.search": "Search…",
   "common.loading": "Loading…",

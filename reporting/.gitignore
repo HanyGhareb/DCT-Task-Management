@@ -1,0 +1,7 @@
+# secrets & local state — never commit
+runner/env.ps1
+runner/.venv/
+runner/__pycache__/
+runner/**/__pycache__/
+rpt-run.log
+.rpt_runner.lock

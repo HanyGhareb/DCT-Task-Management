@@ -32,7 +32,9 @@ define([], function () {
     { key: 'atd',   code: 'AT', app: '208', color: '#3A4FB0', url: '/ATD/Jet/index.html',
       mc: 'ATD',          nameKey: 'mod.atd',   descKey: 'mod.atd.desc' },
     { key: 'gl',    code: 'GL', app: '210', color: '#3F6F5F', url: '/GL/Jet/index.html',
-      mc: 'GL',           nameKey: 'mod.gl',    descKey: 'mod.gl.desc' }
+      mc: 'GL',           nameKey: 'mod.gl',    descKey: 'mod.gl.desc' },
+    { key: 'bi',    code: 'BI', app: '211', color: '#1F6F8B', url: '/BI/Jet/index.html',
+      mc: 'REPORTING',    nameKey: 'mod.bi',    descKey: 'mod.bi.desc' }
   ];
 
   function byKey(key) {

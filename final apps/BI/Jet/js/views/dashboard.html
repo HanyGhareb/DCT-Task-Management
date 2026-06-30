@@ -1,0 +1,60 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('nav.dashboard')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('dash.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: function(){ $vm.go('settings'); }, text: $root.t('nav.settings')"></button>
+      <button class="btn btn-primary" data-bind="click: function(){ $vm.go('reports'); }, text: $root.t('dash.manage')"></button>
+    </div>
+  </div>
+
+  <!-- ko ifnot: emailEnabled() -->
+  <div class="alert-banner alert-banner--warn" style="margin-bottom:14px">&#9888; <span data-bind="text: $root.t('dash.emailOff')"></span></div>
+  <!-- /ko -->
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <div class="kpi-row">
+    <div class="card kpi"><div class="kpi-n" data-bind="text: totalReports"></div><div class="kpi-l" data-bind="text: $root.t('dash.reports')"></div></div>
+    <div class="card kpi"><div class="kpi-n kpi-ok" data-bind="text: succeeded"></div><div class="kpi-l" data-bind="text: $root.t('dash.succeeded')"></div></div>
+    <div class="card kpi"><div class="kpi-n kpi-bad" data-bind="text: failed"></div><div class="kpi-l" data-bind="text: $root.t('dash.failed')"></div></div>
+    <div class="card kpi"><div class="kpi-n" data-bind="text: running"></div><div class="kpi-l" data-bind="text: $root.t('dash.running')"></div></div>
+  </div>
+
+  <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('dash.recent')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.go('runs'); }, text: $root.t('dash.allRuns')"></button>
+      </div>
+    </div>
+    <!-- ko if: recent().length === 0 -->
+    <div class="empty-state" data-bind="text: $root.t('dash.none')"></div>
+    <!-- /ko -->
+    <!-- ko if: recent().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th>#</th>
+        <th data-bind="text: $root.t('col.report')"></th>
+        <th data-bind="text: $root.t('col.status')"></th>
+        <th data-bind="text: $root.t('col.rows')"></th>
+        <th data-bind="text: $root.t('col.finished')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: recent -->
+        <tr style="cursor:pointer" data-bind="click: function(){ $vm.openRun($data); }">
+          <td data-bind="text: runId"></td>
+          <td data-bind="text: reportCode"></td>
+          <td><span data-bind="text: status, attr: { class: $vm.badge(status) }"></span></td>
+          <td data-bind="text: $data.rowCount"></td>
+          <td data-bind="text: $data.finishedAt || ''"></td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- /ko -->
+</div>

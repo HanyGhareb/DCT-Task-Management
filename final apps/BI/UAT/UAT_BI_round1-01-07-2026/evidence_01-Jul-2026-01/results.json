@@ -1,0 +1,101 @@
+{
+  "total": 15,
+  "passed": 15,
+  "failed": 0,
+  "cases": [
+    {
+      "id": "AUTH",
+      "name": "Admin quick-login writes shared session",
+      "status": "PASS",
+      "note": "session present"
+    },
+    {
+      "id": "C01",
+      "name": "Dashboard KPIs + Recent Runs",
+      "status": "PASS",
+      "note": "4 KPI cards, 1 table(s); BI brand=True"
+    },
+    {
+      "id": "C02",
+      "name": "Reports list shows GL_BUDGET_ACTUAL / PYTHON",
+      "status": "PASS",
+      "note": "gl=True python_badge=True"
+    },
+    {
+      "id": "C03",
+      "name": "New Report opens <edit-drawer>",
+      "status": "PASS",
+      "note": "ed-drawer.ed-show present"
+    },
+    {
+      "id": "C04",
+      "name": "Cancel closes the drawer",
+      "status": "PASS",
+      "note": "drawer closed on Cancel"
+    },
+    {
+      "id": "C05",
+      "name": "Create report via drawer (Save closes + persists)",
+      "status": "PASS",
+      "note": "closed=True row_visible=True"
+    },
+    {
+      "id": "C06",
+      "name": "Edit report via drawer (Save persists)",
+      "status": "PASS",
+      "note": "open=True edited=True"
+    },
+    {
+      "id": "C07",
+      "name": "GL detail: Definition + Schedules + Recipients",
+      "status": "PASS",
+      "note": "defn=True sched=True recip=True"
+    },
+    {
+      "id": "C08",
+      "name": "Schedule drawer opens + Cancel closes",
+      "status": "PASS",
+      "note": "open=True closed=True"
+    },
+    {
+      "id": "C09",
+      "name": "Add recipient via drawer (Save closes + appears)",
+      "status": "PASS",
+      "note": "open=True saved=True"
+    },
+    {
+      "id": "C10",
+      "name": "Run History lists runs incl. SUCCESS",
+      "status": "PASS",
+      "note": "rows=2 success_badge=True"
+    },
+    {
+      "id": "C11",
+      "name": "Run detail: Summary + Generated Files(+Download) + Deliveries",
+      "status": "PASS",
+      "note": "summary=True files=True downloads=2 deliveries=True"
+    },
+    {
+      "id": "C11b",
+      "name": "Download a generated file (BLOB)",
+      "status": "PASS",
+      "note": "GL_BUDGET_ACTUAL_NATIVE_20260630_2024.pdf 763597 bytes"
+    },
+    {
+      "id": "C12",
+      "name": "Settings shows config rows + toggle",
+      "status": "PASS",
+      "note": "keys=True toggles=1"
+    },
+    {
+      "id": "C13",
+      "name": "Cleanup: delete UAT report (cascade)",
+      "status": "PASS",
+      "note": "removed"
+    }
+  ],
+  "console_errors": [
+    "Failed to load resource: the server responded with a status of 401 (Unauthorized)"
+  ],
+  "ords_failures": []
+}

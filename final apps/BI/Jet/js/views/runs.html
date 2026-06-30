@@ -1,0 +1,64 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('runs.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('runs.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: refresh, text: $root.t('runs.refresh')"></button>
+    </div>
+  </div>
+
+  <div class="card" style="margin-bottom:14px">
+    <div class="toolbar" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+      <input class="form-control" style="max-width:240px" data-bind="value: report, valueUpdate:'input',
+             event:{ keypress:function(d,e){ if(e.keyCode===13) $vm.applyFilter(); } }, attr:{ placeholder: $root.t('runs.byReport') }">
+      <select class="form-control" style="max-width:180px" data-bind="value: status, event:{ change: applyFilter }">
+        <option value="" data-bind="text: $root.t('runs.allStatuses')"></option>
+        <!-- ko foreach: statuses --><!-- ko if: $data --><option data-bind="value: $data, text: $data"></option><!-- /ko --><!-- /ko -->
+      </select>
+      <button class="btn btn-secondary btn-sm" data-bind="click: applyFilter, text: $root.t('common.search')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 10"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <div class="card">
+    <!-- ko if: items().length === 0 --><div class="empty-state" data-bind="text: $root.t('runs.none')"></div><!-- /ko -->
+    <!-- ko if: items().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th>#</th>
+        <th data-bind="text: $root.t('col.report')"></th>
+        <th data-bind="text: $root.t('col.trigger')"></th>
+        <th data-bind="text: $root.t('col.status')"></th>
+        <th data-bind="text: $root.t('col.rows')"></th>
+        <th data-bind="text: $root.t('col.created')"></th>
+        <th data-bind="text: $root.t('col.finished')"></th>
+        <th style="text-align:right" data-bind="text: $root.t('col.actions')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: items -->
+        <tr>
+          <td><a href="#" data-bind="text: runId, click: function(){ $vm.open($data); return false; }"></a></td>
+          <td data-bind="text: reportCode"></td>
+          <td data-bind="text: trigger"></td>
+          <td><span data-bind="text: status, attr:{ class: $vm.badge(status) }"></span></td>
+          <td data-bind="text: $data.rowCount"></td>
+          <td data-bind="text: createdAt"></td>
+          <td data-bind="text: $data.finishedAt || ''"></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.open($data); }, text: $root.t('rep.open')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.retry($data); }, text: $root.t('runs.retry')"></button>
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <div class="pager-row" style="display:flex;gap:10px;align-items:center;justify-content:flex-end;margin-top:12px">
+      <span style="font-size:12px;color:var(--text-2)" data-bind="text: pageInfo"></span>
+      <button class="btn btn-sm btn-secondary" data-bind="click: prev, disable: offset() === 0">‹</button>
+      <button class="btn btn-sm btn-secondary" data-bind="click: next, disable: offset() + 25 >= total()">›</button>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+</div>
