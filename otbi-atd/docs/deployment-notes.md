@@ -1,5 +1,31 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-07-01 — Run Logs: Job Set column + filter (App 208, APP_VERSION 1.19.0)
+
+Make the global **Run Logs** page set-aware so operators can see which Job Set a run's job
+belongs to and filter the log by set (the per-set Run History on the Job Set Detail page still
+exists; this adds visibility from the main log). Additive & backward-compatible.
+
+- **ORDS — `db/42_atd_runs_set_ords.sql` (new, ADDITIVE — no DELETE_MODULE):** REDEFINES the
+  `GET /runs` + `GET /runs/export` handlers to `LEFT JOIN atd_job_set_member → atd_job_set`
+  (a job is in ≤1 set → PK `job_name`, so no row fan-out), adding `setCode`/`setName` to each
+  run row + a `jobSet` CSV column, and accepting a `?setcode=` filter. Times stay `dct_to_local`.
+- **Deploy:** run `db/42` in a **FRESH SQLcl session** (synonym rule). It upserts only those two
+  handlers — job-sets/actions/etc. untouched. **NOTE:** because `13_atd_ords.sql` DELETE_MODULEs
+  and rebuilds `atd.rest` with the plain (no-set) `/runs` handlers, **always re-run `42` after `13`**
+  (same rule as `20_atd_action_ords.sql` for Actions). Header note added to `13`.
+- **Frontend (`final apps/ATD/Jet/`, APP_VERSION 1.19.0):** `runs.html` gains a **Job Set** column
+  (region-themed `.badge`, `—` when the job is in no set) + a **Job Set** filter `<select>` in the
+  toolbar; `runs.js` loads the set list via `listJobSets()`, passes `setcode`, and persists the
+  filter (filterStore). `atd.col.jobSet` / `atd.runs.allSets` added to EN + AR i18n.
+- **Verification:** deployed VALID (both handlers registered). Playwright E2E **9/9 PASS** against
+  the live `FULL_DATA` set — column header, per-row set badges, populated filter dropdown, filter
+  returns only that set's rows (20/20 tagged), AR/RTL header, and `GET /runs?setcode=` API
+  (100 rows all tagged & members). Non-destructive (no data created/deleted).
+- **Gotcha:** SPA route switching in tests — `page.goto('/index.html#runs')` does NOT reload the
+  app (hash-only change), so the route never switches; use `page.evaluate("window._jetApp.navigate('runs')")`
+  (or click the nav link) instead.
+
 ## 2026-07-01 — Manage Job Sets: grouped scheduling (App 208, APP_VERSION 1.18.0)
 
 Group jobs under **one shared schedule** so the operator can schedule / pause / run a *batch*

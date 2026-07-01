@@ -12,6 +12,11 @@
 --           ALWAYS run 20_atd_action_ords.sql RIGHT AFTER this script (same as
 --           the TM 06/14 rule), or the dashboard /actions/stats call 404s and the
 --           browser reports it as a CORS "Network error".
+--           Likewise the additive append scripts 26/31/32/33/38/39/41 and
+--           42_atd_runs_set_ords.sql are wiped on rebuild -- re-run them after
+--           this one. 42 REDEFINES the GET /runs + /runs/export handlers below
+--           to add the Job Set column + ?setcode= filter, so re-running 13
+--           reverts Run Logs to the plain (no-set) version until 42 runs again.
 -- =============================================================================
 -- Admin-only (SYS_ADMIN). Manages ATD_OTBI_ENV / ATD_TARGET_DB / ATD_OTBI_JOBS
 -- and reads ATD_LOAD_RUN_LOG. Queue ops delegate to PROD.ATD_QUEUE_PKG (enqueue

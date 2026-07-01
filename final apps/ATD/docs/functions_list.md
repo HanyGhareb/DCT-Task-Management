@@ -119,10 +119,15 @@ on the set's interval.
 - `load` · `newTarget` / `editTarget` (drawer) · `save` (create/update) · `del`.
 
 ## Run Logs (`runs`)
-- `load` (job/status/from/to filters, **server-paged** via `<list-pager>` — `offset`/`limit`/`total`) ·
+- `load` (job/status/**jobSet**/from/to filters, **server-paged** via `<list-pager>` — `offset`/`limit`/`total`) ·
   `open` (detail modal: message, checksum, rows, duration) · `closeDetail` · `exportCsv` (authed blob
   download) · `fmtDuration`.
 - **VM column** (`host`, from `ATD_LOAD_RUN_LOG.host_id`) shows which parallel worker ran each load.
+- **Job Set column + filter** (2026-07-01, APP_VERSION 1.19.0): each row shows the Job Set its job
+  belongs to (`setCode`/`setName` from a `LEFT JOIN atd_job_set_member → atd_job_set`; region-themed
+  `.badge`, `—` when the job is in no set), and a **Job Set** filter dropdown (options from
+  `listJobSets()`, sends `?setcode=`, remembered via `filterStore`). Export CSV honours the filter and
+  adds a `jobSet` column.
 - Status filter includes **WARNING** (a SUCCESS run that carries a message) alongside
   SUCCESS/FAILED/RUNNING — the server maps `status=WARNING` to `status='SUCCESS' AND message IS NOT NULL`.
 - The list + detail modal show a **Duration** column (`durationSec` = `finished − started` seconds,
@@ -192,7 +197,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / POST | `/categories` | list categories (+`usage` count, +`parentCode`/`parentName`) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`,`parentCode`). SYS_ADMIN |
 | PUT / DELETE | `/categories/:code` | update (partial, incl. `parentCode`) / delete — 400 if in use by jobs OR has sub-categories (deactivate/reparent instead). SYS_ADMIN |
 | POST | `/jobs/:name/approve-schema` | release a job held for schema review (`schema_reviewed`→'Y'); it loads on next run. SYS_ADMIN |
-| GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec`. `status=WARNING` → SUCCESS rows with a message |
+| GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec` + **`setCode`/`setName`** (the run's Job Set, via `atd_job_set_member`). `status=WARNING` → SUCCESS rows with a message; **`?setcode=`** filters to one set (db/42) |
 | GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
 | GET | `/jobs/health` | dashboard observability (additive, db/31) — `break` {enabled,active,start,end}, `workers[]` {workerId,sessionStarted,sessionAgeMin}, `jobs[]` (enabled) {jobName,lastSuccess,sinceMin,consecutiveFails,stuckRunning,alertSent,frequencyMin}. SYS_ADMIN |
 | POST | `/workers/:id/refresh` | request a worker re-login (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a fresh Fusion login (MFA). SYS_ADMIN |
@@ -208,7 +213,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |
-| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV |
+| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` filter (redefined by `otbi-atd/db/42_atd_runs_set_ords.sql`, additive; re-run after `13`) |
 | GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
 | GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |
 | GET | `/actions/:id` | action detail: payload, last error, source status history |

@@ -15,6 +15,10 @@
       <option value="" data-bind="text: t('atd.runs.allStatuses')"></option>
       <!-- ko foreach: statuses --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
     </select>
+    <select class="form-control form-control--sm" style="max-width:180px" data-bind="value: fSet">
+      <option value="" data-bind="text: t('atd.runs.allSets')"></option>
+      <!-- ko foreach: sets --><option data-bind="value: $data.code, text: $data.name"></option><!-- /ko -->
+    </select>
     <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fFrom">
     <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fTo">
     <button class="btn btn-sm btn-primary" data-bind="click: search, text: t('atd.filter.search')"></button>
@@ -33,6 +37,7 @@
       <thead><tr>
         <th data-bind="text: t('atd.col.run')"></th>
         <th data-bind="text: t('atd.col.job')"></th>
+        <th data-bind="text: t('atd.col.jobSet')"></th>
         <th data-bind="text: t('atd.col.host')"></th>
         <th data-bind="text: t('atd.col.track')"></th>
         <th data-bind="text: t('atd.col.status')"></th>
@@ -45,6 +50,12 @@
         <tr style="cursor:pointer" data-bind="click: function(){ $vm.open($data); }">
           <td data-bind="text: $data.runId"></td>
           <td class="mono" data-bind="text: $data.jobName"></td>
+          <td>
+            <!-- ko if: $data.setCode -->
+            <span class="badge" data-bind="text: $data.setCode, attr:{ title: $data.setName || $data.setCode }"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $data.setCode --><span class="muted">—</span><!-- /ko -->
+          </td>
           <td class="mono" data-bind="text: $data.host || '—'"></td>
           <td data-bind="text: $data.track || '—'"></td>
           <td>

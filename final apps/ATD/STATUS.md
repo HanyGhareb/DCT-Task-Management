@@ -46,6 +46,13 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
 - **2026-06-19** — **Run Logs pager + Warning filter** (APP_VERSION 1.3.4). Shared `<list-pager>`
   on Run Logs (server-paged, 50/page); status filter gains **WARNING** (`GET /runs` maps it to
   SUCCESS rows with a message). ORDS redeployed; browser-verified (WARNING→10; pager 7 pages).
+- **2026-07-01** — **Run Logs: Job Set column + filter** (APP_VERSION 1.19.0). The global Run Logs
+  page is now set-aware: a **Job Set** column (region-themed badge, `—` when the job is in no set) +
+  a **Job Set** filter dropdown. Additive ORDS `otbi-atd/db/42_atd_runs_set_ords.sql` REDEFINES
+  `GET /runs` + `/runs/export` (LEFT JOIN `atd_job_set_member`→`atd_job_set`, `setCode`/`setName`
+  fields + `?setcode=` filter; no DELETE_MODULE). **Always re-run 42 after 13** (13 rebuilds the
+  plain handlers). Frontend `runs.html`/`runs.js` + `atd.col.jobSet`/`atd.runs.allSets` (EN+AR).
+  Playwright E2E **9/9 PASS** (non-destructive, against the live FULL_DATA set).
 - **2026-07-01** — **Manage Job Sets** (APP_VERSION 1.18.0). Grouped scheduling: `otbi-atd/db/40`
   (`ATD_JOB_SET` + `ATD_JOB_SET_MEMBER` [PK job_name = one set/job] + `atd_set_gate_ok`/`atd_set_eff_freq`/
   `atd_set_next_run` + `ATD_SET_PKG` run_now/notify_sweep + `ATD_SET_NOTIFY_JOB`), db/12 enqueue
