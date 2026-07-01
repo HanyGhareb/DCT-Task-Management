@@ -17,6 +17,29 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-02 — Actuals: 3-figure Commitment/Obligation + Open Encumbrance + Funds calc (v1.5.0, Batch B).**
+  Real requisitions now drive Commitment; PO obligation split into three funds-status buckets with a
+  GRN-netted Open Obligation. Grouped-cell display.
+  - DB: `db/v2/36` `DCT_PR_COMMITMENT_PERIOD_V` → 3 figures (`pr_total_ytd`=Reserved+Liquidated,
+    `pr_open_commitment_ytd`=Reserved, `pr_pipeline_ytd`=Not-reserved, `pr_count`). `db/v2/34`
+    rewritten: PO de-duped by `po_distribution_id` → `total_po_ytd` (all except Failed/Passed),
+    `open_obligation_ytd` = (Reserved+Partially Liquidated) **netted by GRN** `GREATEST(amt−Σgrn,0)`
+    (grn via `grn_all_v2.po_distribution_id`), `po_pipeline_ytd` (Failed/Passed); LEFT JOIN the PR
+    view; `open_encumbrance_ytd` = open commitment + open obligation; `funds_available_calc_ytd` =
+    Budget − Open PO − Open PR − GRN − AP Direct (GL `funds_available_ytd` kept as the 2nd figure).
+  - ORDS (`05_gl_ords.sql`, whole module, fresh session — **no new synonyms**, all `prod.`-qualified):
+    `/actuals` emits prTotal/openCommitment/commitmentPipeline/totalPo/openObligation/poPipeline/
+    openEncumbrance/fundsAvailable/fundsAvailableCalc; `/actuals/lines` — commitment/openCommitment/
+    **commitmentPipeline** → real PR lines (`pr_distributions`+`pr_headers`, AED via `DCT_CURRENCY_CODES`),
+    obligation/**poPipeline** → PO lines, openObligation → GRN-netted (Ordered/Received/Open columns).
+  - Frontend v1.5.0: **grouped cells** — Commitment & Obligation each show Total/Open/Pipeline stacked
+    (count on the Total row), Funds Available cell shows GL/Calc; +Open Encumbrance column; 14 KPI cards.
+  - Verified: view VALID + figures reconcile (PR 1.89B/412.7M/4.71B, PO 1.52B/474.0M/2.1M, OpenEnc
+    886.7M); drill queries ran live; `node --check`; Playwright mock-render (0 console errors).
+    Deploy order: `db/v2/36` → `db/v2/34` → `05_gl_ords.sql` (fresh session).
+  - **Currency caveat:** non-AED PR distributions are converted via the `DCT_CURRENCY_CODES` snapshot
+    (manual ISO master, single RATE_DATE 19-May-2026) — the only rate source (PR tables carry none).
+    Pending user check of whether PR line details include a rate.
 - **2026-07-01 — PR reporting views created (Batch B step 1 — DB only, not yet integrated).**
   New `db/v2/36_dct_pr_views.sql`: base pass-throughs `prod.pr_headers`/`pr_lines`/`pr_distributions`
   (over the `ATD_PR_*` tables) + **`DCT_PR_COMMITMENT_PERIOD_V`** (per GL combination × period,

@@ -4,26 +4,22 @@
 -- Base pass-through views over the Fusion-loaded ATD_PR_* tables (mirrors the
 -- AP_/PO_/GRN_/GL base views in db/v2/32) + a per-(GL combination x fiscal
 -- period) PR commitment aggregate for the GL Actuals report (Batch B: real
--- Open Commitment sourced from requisitions, not from PO-embedded PR refs).
+-- Commitment / Open Commitment sourced from requisitions).
 --
 --   pr_headers / pr_lines / pr_distributions : SELECT * pass-throughs.
 --
 --   DCT_PR_COMMITMENT_PERIOD_V : one row per (charge_account = cc_string x period)
 --     with YEAR-TO-DATE-through-that-period measures, AED-converted via the
 --     DCT_CURRENCY_CODES snapshot rate (the PR tables carry NO transaction rate,
---     so this dated snapshot is the only source; AED = 1):
---       pr_commitment_ytd      = requisitions CURRENTLY reserved (FUNDS_STATUS =
---                                'Reserved'); Liquidated (already turned into a PO,
---                                shown under Obligation) and Not-reserved (draft)
---                                are BOTH excluded.
---       pr_open_commitment_ytd = OPEN requisitions = still Reserved AND NOT yet on
---                                a PO (FUNDS_STATUS='Reserved' AND the PR line has
---                                no PO_NUMBER) -- the disjoint-from-Open-PO
---                                requisition encumbrance that feeds Encumbrance =
---                                Open PR + Open PO and the calculated Funds Available.
---       pr_count / open_pr_count = distinct PR headers.
---   Excludes FUNDS_STATUS='Not reserved' (draft/pending requisitions -- never
---   encumbered; ~4.75B of raw draft value that must NOT count as commitment).
+--     so this dated snapshot is the only source; AED = 1). Three funds-status
+--     buckets (user-defined, 2026-07-02):
+--       pr_total_ytd          = requisitions that reserved budget
+--                               (FUNDS_STATUS IN ('Reserved','Liquidated')).
+--       pr_open_commitment_ytd= OPEN commitment = still reserved
+--                               (FUNDS_STATUS = 'Reserved').
+--       pr_pipeline_ytd       = commitment pipeline = draft/pending, never
+--                               encumbered (FUNDS_STATUS = 'Not reserved').
+--       pr_count              = distinct PR headers behind pr_total_ytd.
 --   Cumulative to period via BUDGET_DATE < period-end. Natural key
 --   (pr_header_id,pr_line_id,distribution_id) is unique -- no de-dup needed.
 -- ===========================================================================
@@ -45,22 +41,18 @@ pr_base AS (
          d.budget_date,
          d.distribution_amount * NVL(cc.exchange_rate_to_aed,1) AS amt_aed,
          d.funds_status,
-         CASE WHEN l.po_number IS NULL THEN 'Y' ELSE 'N' END    AS no_po,
          d.pr_header_id
   FROM prod.pr_distributions d
-  LEFT JOIN (SELECT pr_header_id, pr_line_id, MAX(po_number) AS po_number
-             FROM prod.pr_lines GROUP BY pr_header_id, pr_line_id) l
-    ON l.pr_header_id = d.pr_header_id AND l.pr_line_id = d.pr_line_id
   LEFT JOIN prod.dct_currency_codes cc ON cc.currency_code = d.currency_code
   WHERE d.charge_account IS NOT NULL
 )
 SELECT b.cc_string, p.period_name,
-       SUM(CASE WHEN b.funds_status = 'Reserved' THEN b.amt_aed END)                                  AS pr_commitment_ytd,
-       SUM(CASE WHEN b.funds_status = 'Reserved' AND b.no_po = 'Y' THEN b.amt_aed END)                AS pr_open_commitment_ytd,
-       COUNT(DISTINCT CASE WHEN b.funds_status = 'Reserved' THEN b.pr_header_id END)                  AS pr_count,
-       COUNT(DISTINCT CASE WHEN b.funds_status = 'Reserved' AND b.no_po = 'Y' THEN b.pr_header_id END) AS open_pr_count
+       SUM(CASE WHEN b.funds_status IN ('Reserved','Liquidated') THEN b.amt_aed END)                 AS pr_total_ytd,
+       SUM(CASE WHEN b.funds_status = 'Reserved'                 THEN b.amt_aed END)                  AS pr_open_commitment_ytd,
+       SUM(CASE WHEN b.funds_status = 'Not reserved'             THEN b.amt_aed END)                  AS pr_pipeline_ytd,
+       COUNT(DISTINCT CASE WHEN b.funds_status IN ('Reserved','Liquidated') THEN b.pr_header_id END)  AS pr_count
 FROM pr_base b
 JOIN periods p ON (b.budget_date IS NULL OR b.budget_date < p.p_next)
 GROUP BY b.cc_string, p.period_name;
 
-PROMPT PR views created (pr_headers/pr_lines/pr_distributions + DCT_PR_COMMITMENT_PERIOD_V).
+PROMPT PR views created (pr_headers/pr_lines/pr_distributions + DCT_PR_COMMITMENT_PERIOD_V, 3-figure model).

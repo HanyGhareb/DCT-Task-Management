@@ -11,12 +11,21 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | Views `DCT_GL_COA_V` (+`GL_COA_V`) / `DCT_GL_BALANCES_V` | ✅ Deployed — COA view = 9,338 rows (no fan-out), 8,485 (91%) have a Sector |
 | Seed | ✅ 21 Sectors / 7 Chapters / 41 PBB Programs; 109 sector + 74 chapter + 33 program mappings |
 | ORDS `gl.rest` (`/ords/admin/gl/`) | ✅ Deployed — route groups incl. actuals/dashboard/refresh; auth + overlap-guard + as-of verified |
-| Actuals reporting (`db/v2/32–35`) | ✅ Deployed — `DCT_ACTUAL_V` / `DCT_BUDGET_ACTUAL_V` / `DCT_BUDGET_ACTUAL_PERIOD_V` (+appropriation, +commitment_ytd/obligation_ytd, +open_commitment_ytd/open_obligation_ytd, +po_count/pr_count; **AP Direct = `po_number IS NULL`**) + indexed `DCT_GL_COA_SNAP` + hourly `DCT_ACTUALS_REFRESH_JOB` |
-| Frontend (Portal-style KO SPA, `Jet/`) | ✅ Live — Overview / Actuals (full-width; Commitment/Obligation [+PR/PO counts] + Open Commitment/Open Obligation cols w/ ⓘ hints + PR/PO drill; **SLA Actual** = GRN+AP Direct; Account/Cost-center/Source filters) / Dashboard / Classifications / Mapping / Explorer; EN-AR-RTL; E2E + mock-render passed |
+| Actuals reporting (`db/v2/32–36`) | ✅ Deployed — `DCT_ACTUAL_V` / `DCT_BUDGET_ACTUAL_V` / `DCT_BUDGET_ACTUAL_PERIOD_V` (3-figure Commitment from **`DCT_PR_COMMITMENT_PERIOD_V`** [db/v2/36 over `ATD_PR_*`] + 3-figure PO buckets w/ **GRN-netted Open Obligation** + `open_encumbrance_ytd` + `funds_available_calc_ytd`; **AP Direct = `po_number IS NULL`**) + indexed `DCT_GL_COA_SNAP` + hourly `DCT_ACTUALS_REFRESH_JOB` |
+| Frontend (Portal-style KO SPA, `Jet/`) | ✅ Live — Overview / Actuals (full-width; **grouped Commitment/Obligation cells** [Total/Open/Pipeline] + Open Encumbrance + Funds Available GL/Calc + SLA Actual; real PR/PO drills; filters + ⓘ hints) / Dashboard / Classifications / Mapping / Explorer; EN-AR-RTL; E2E + mock-render passed |
 | Registration | ✅ shell switcher + common i18n + proxies (auto-derived) + CLAUDE.md Module Status |
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-02** — **Actuals: 3-figure Commitment/Obligation + Open Encumbrance + Funds calc** (`APP_VERSION` 1.5.0, Batch B).
+  Real requisitions (`ATD_PR_*`, `db/v2/36` `DCT_PR_COMMITMENT_PERIOD_V`) drive Commitment
+  (Total=Reserved+Liquidated / Open=Reserved / Pipeline=Not-reserved). PO split into Total (ex
+  Failed/Passed) / Open (Reserved+Partial **GRN-netted**) / Pipeline (Failed/Passed), de-duped by
+  `po_distribution_id`. `db/v2/34` rewritten (+`open_encumbrance_ytd`, +`funds_available_calc_ytd`).
+  ORDS `/actuals` new figures + PR/PO/pipeline drills (`prod.`-qualified, no new synonyms). Frontend =
+  **grouped cells** (Total/Open/Pipeline) + Funds GL/Calc + 14 KPI cards. Deploy: `db/v2/36` →
+  `db/v2/34` → `05_gl_ords.sql`. Verified live SQL + drills + node --check + mock-render (0 err).
+  Currency caveat: PR AED via `DCT_CURRENCY_CODES` snapshot (only rate source).
 - **2026-07-01** — **Actuals: AP Direct redefine + SLA Actual + PO/PR counts** (`APP_VERSION` 1.4.0).
   #1 **AP Direct** = AP lines with `po_number IS NULL` (true direct AP; drops `ap_po_match`); 06-2026
   1.322B → 1.292B. #2 **SLA Actual** = GRN + AP Direct (≈2.27B) — KPI card + column. #5 **po_count/

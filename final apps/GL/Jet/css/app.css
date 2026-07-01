@@ -209,6 +209,17 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 .kstat.ocommit{border-top-color:#7CC4D2} .kstat.ocommit .kv{color:#2E8C9E}
 .kstat.ooblig{border-top-color:#9AA5DE} .kstat.ooblig .kv{color:#5A6AC0}
 .kstat.sla{border-top-color:#A65B2E} .kstat.sla .kv{color:#8A4A24}
+.kstat.cpipe{border-top-color:#B7C7CE} .kstat.cpipe .kv{color:#6B7A80}
+.kstat.ppipe{border-top-color:#BFC4DE} .kstat.ppipe .kv{color:#6E76A0}
+.kstat.oenc{border-top-color:#B8862B} .kstat.oenc .kv{color:#8a6a1e}
+.kstat.fundscalc{border-top-color:#6FA88C} .kstat.fundscalc .kv{color:#3E7C6A}
+/* grouped Commitment/Obligation/Funds cells (Total / Open / Pipeline stacked) */
+.actuals-tbl td.grp-cell{padding:4px 10px;vertical-align:middle;white-space:nowrap}
+.actuals-tbl td.grp-cell .grp-row{display:flex;align-items:baseline;gap:6px;padding:1px 2px;border-radius:3px;cursor:pointer}
+.actuals-tbl td.grp-cell .grp-row:hover{background:rgba(var(--brand-rgb),.09)}
+.actuals-tbl td.grp-cell .grp-l{flex:1;text-align:start;font-size:9px;letter-spacing:.03em;text-transform:uppercase;color:var(--muted);font-family:var(--sans,inherit)}
+.actuals-tbl td.grp-cell .grp-cnt{font-size:10px;color:var(--muted)}
+.actuals-tbl th.grp-h{min-width:132px}
 
 /* ── actuals table tuning ─────────────────────────────────────────── */
 table.tbl th.num,table.tbl td.num{text-align:end}
