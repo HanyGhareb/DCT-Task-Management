@@ -42,6 +42,7 @@ function (ko, config, authService, atd, i18n, shell) {
           { id: 'dashboard', labelKey: 'atd.nav.dashboard' } ] },
       { id: 'ops', labelKey: 'atd.nav.opsGroup', collapsed: ko.observable(false), items: [
           { id: 'jobs',      labelKey: 'atd.nav.jobs' },
+          { id: 'jobSets',   labelKey: 'atd.nav.jobSets' },
           { id: 'queue',     labelKey: 'atd.nav.queue' },
           { id: 'actions',   labelKey: 'atd.nav.actions' },
           { id: 'discovery', labelKey: 'atd.nav.discovery' },

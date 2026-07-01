@@ -1,5 +1,56 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-07-01 — Manage Job Sets: grouped scheduling (App 208, APP_VERSION 1.18.0)
+
+Group jobs under **one shared schedule** so the operator can schedule / pause / run a *batch*
+together instead of editing every job's frequency + enabled flag one by one. Fully additive and
+**backward-compatible** — a job in no set behaves exactly as before.
+
+- **What it does.** A **Job Set** = a run interval + an active window (Start/End dates, optional
+  daily HH:MI mask + day-of-week mask, all **local Asia/Dubai**) + per-member enable/disable +
+  notify-on-failure. It drives the LIVE browser track: the 15-min `enqueue` (db/12) only marks a
+  member `READY` while its set says "go now" (`atd_set_gate_ok`) and re-runs it on the set's
+  interval (`atd_set_eff_freq`). Plus **Run Set Now**, **Pause/Resume**, **≈ next-run** preview per
+  member, **set-scoped run history**, and **failure notifications** (DCT_NOTIFY → SYS_ADMINs).
+- **DB — `db/40_atd_job_set.sql` (new):** `ATD_JOB_SET` + `ATD_JOB_SET_MEMBER` (**PK `(job_name)`**
+  enforces *one set per job*), SQL-callable `atd_set_gate_ok` / `atd_set_eff_freq` / `atd_set_next_run`,
+  `ATD_SET_PKG` (`run_now` + `notify_sweep`), `ATD_SET_NOTIFY_JOB` (5-min sweep), config
+  `ATD_SET_NOTIFY_ENABLED` (Y/N, default **N**) + `ATD_SET_NOTIFY_WATERMARK`, ADMIN synonyms.
+- **DB — `db/12_atd_job_queue.sql` (2-token enqueue edit):** on the scheduled bulk path only,
+  `AND (p_only IS NOT NULL OR prod.atd_set_gate_ok(j.job_name)='Y')` + the frequency NVL now wraps
+  `prod.atd_set_eff_freq(j.job_name, j.frequency_minutes)`. Manual single-job enqueue (`p_only`)
+  bypasses the gate (operator override, like the break window).
+- **ORDS — `db/41_atd_job_set_ords.sql` (new, ADDITIVE — no DELETE_MODULE):** 11 handlers on
+  `atd.rest` — `/job-sets` (GET/POST), `/job-sets/:code` (GET/PUT/DELETE), `/job-sets/:code/members`
+  (POST), `/job-sets/:code/members/:job` (PUT/DELETE), `/job-sets/:code/run` (POST),
+  `/job-sets/:code/pause` (PUT), `/job-set-jobs` (GET candidate picker). SYS_ADMIN-gated.
+- **Deploy order (idempotent):** run **`40` first**, then **re-run `12`** (picks up the enqueue edit;
+  db/12 references the db/40 wrappers, so 12 is INVALID until 40 runs — auto-revalidates), then
+  **`41` in a FRESH SQLcl session** (synonyms). Verify all objects VALID + `ATD_SET_NOTIFY_JOB`
+  scheduled. **No runner change** (the queue pkg isn't ORDS; the runner drains READY as always).
+- **Gotchas hit & fixed:**
+  - **PLS-00231 (`function 'PTS' may not be used in SQL`)** — the create/update handlers first used
+    a nested `pts()` function inside the INSERT/UPDATE; a locally-declared PL/SQL function can't be
+    called from SQL DML (→ ORDS returned **HTTP 555**, a fresh-compile failure of the stored block, NOT
+    a caught runtime 500). Fixed by inlining the parse as a pure SQL expression
+    `TO_TIMESTAMP(REPLACE(SUBSTR(APEX_JSON.get_varchar2(...),1,16),'T',' '),'YYYY-MM-DD HH24:MI')`.
+  - **ORA-12860 on `DELETE FROM atd_job_set` in SQLcl** (auto parallel-DML sibling-lock via the
+    ON DELETE CASCADE chain) — a SQLcl-session artifact only; the ORDS DELETE handler runs serially
+    (like the existing `/jobs/:name` cascade delete) and is fine. For manual cleanup:
+    `ALTER SESSION DISABLE PARALLEL DML;` first.
+  - Re-running `db/12` ends with `UPDATE atd_otbi_jobs SET run_status='READY' WHERE enabled='Y'`
+    (its documented reset) — deploy during a quiet window / worker idle.
+- **Frontend (`final apps/ATD/Jet/`, APP_VERSION 1.18.0):** new nav item **Job Sets** (Operations),
+  `jobSets` list + `jobSetDetail` pages (shared `<edit-drawer>` create/edit with interval presets +
+  day chips + datetime/time windows; `.data-table` member manager with per-row enable toggle + order
+  + ≈ next-run; set-scoped run history; Run/Pause/Delete). `atdService` set methods; EN+AR i18n
+  (`atd.set.*`/`atd.nav.jobSets`/`atd.day.*`); no bespoke CSS (platform classes only).
+- **Full E2E — Playwright, SYS_ADMIN, 11/11 PASS (self-cleaned):** login → create set (DAILY) →
+  add member → toggle in-set → **Run Set Now** (worker actually ran AP Distributions Full, 23,555
+  rows SUCCESS, appeared in set-scoped history) → Pause → Edit drawer → Arabic RTL → Delete. Every
+  ORDS call returned 200. PL/SQL smoke separately verified the gate (in-window Y, paused/out-of-window/
+  disabled N), eff_freq (set-over-job), and run_now.
+
 ## 2026-06-29 — MERGE load mode: staging-clear fix + GRN incremental-upsert runbook
 
 ### Runner fix (`runner/load.py`) — REQUIRED before any MERGE job is used

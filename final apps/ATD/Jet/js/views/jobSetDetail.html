@@ -1,0 +1,197 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title">
+      <span data-bind="text: t('atd.set.detail.title') + ' · '"></span>
+      <span class="mono" data-bind="text: set().setCode || ''"></span>
+    </h1>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: back, text: t('atd.action.back')"></button>
+      <button class="btn btn-secondary" data-bind="click: togglePause,
+              text: (set().paused === 'Y' ? t('atd.set.resume') : t('atd.set.pause'))"></button>
+      <button class="btn btn-secondary btn-danger" data-bind="click: del, text: t('atd.action.delete')"></button>
+      <button class="btn btn-secondary" data-bind="click: openEdit, text: t('atd.set.editSchedule')"></button>
+      <button class="btn btn-primary" data-bind="click: runSet, text: t('atd.set.run')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading -->
+  <div class="muted" data-bind="text: t('atd.common.loading')"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <!-- ko if: set().paused === 'Y' -->
+  <div class="card review-notice">
+    <div><strong data-bind="text: t('atd.set.pausedNotice')"></strong>
+      <div class="muted" style="font-size:.86em; margin-top:2px" data-bind="text: t('atd.set.pausedNotice.hint')"></div></div>
+    <button class="btn btn-sm btn-primary" data-bind="click: togglePause, text: t('atd.set.resume')"></button>
+  </div>
+  <!-- /ko -->
+
+  <!-- schedule summary -->
+  <div class="card">
+    <div class="section-heading" data-bind="text: t('atd.set.schedule')"></div>
+    <div class="form-grid" style="padding:8px 0;">
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.nameEn')"></label><div data-bind="text: set().nameEn"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.nameAr')"></label><div dir="rtl" data-bind="text: set().nameAr || '—'"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.interval')"></label><div data-bind="text: intervalText"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.col.state')"></label>
+        <div>
+          <!-- ko if: set().paused === 'Y' --><span class="badge badge--idle" data-bind="text: t('atd.set.state.paused')"></span><!-- /ko -->
+          <!-- ko ifnot: set().paused === 'Y' --><span class="badge" data-bind="text: (set().active==='Y' ? t('atd.set.state.active') : t('atd.set.state.off')), css:{ 'badge--active': set().active==='Y', 'badge--idle': set().active!=='Y' }"></span><!-- /ko -->
+        </div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.startAt')"></label><div class="mono" data-bind="text: set().startAtDisp || '—'"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.endAt')"></label><div class="mono" data-bind="text: set().endAtDisp || '—'"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.dailyWindow')"></label>
+        <div class="mono" data-bind="text: (set().dailyStart && set().dailyEnd) ? (set().dailyStart + ' – ' + set().dailyEnd) : '—'"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.days')"></label>
+        <div data-bind="text: dowList().length ? dowList().join(', ') : t('atd.set.everyDay')"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.notify')"></label>
+        <div><span class="badge" data-bind="text: (set().notifyOnFailure==='Y' ? t('atd.common.yes') : t('atd.common.no')), css:{ 'badge--active': set().notifyOnFailure==='Y', 'badge--idle': set().notifyOnFailure!=='Y' }"></span></div></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.set.comments')"></label><div data-bind="text: set().comments || '—'"></div></div>
+    </div>
+  </div>
+
+  <!-- members -->
+  <div class="card" style="margin-top:16px;">
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: t('atd.set.members')"></div>
+      <div class="region-actions">
+        <select class="form-control form-control--sm mono" style="max-width:280px" data-bind="value: pickJob,
+                options: candidates, optionsText: 'jobName', optionsValue: 'jobName', optionsCaption: t('atd.set.pickJob')"></select>
+        <button class="btn btn-sm btn-primary" data-bind="click: addMember, text: t('atd.set.addMember'), enable: pickJob"></button>
+      </div>
+    </div>
+    <p class="muted" style="margin:2px 0 10px; font-size:.85em" data-bind="text: t('atd.set.members.hint')"></p>
+
+    <!-- ko if: members().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.set.noMembers')"></div>
+    <!-- /ko -->
+    <!-- ko if: members().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.col.job')"></th>
+          <th data-bind="text: t('atd.set.col.inset')"></th>
+          <th data-bind="text: t('atd.jobs.col.order')"></th>
+          <th data-bind="text: t('atd.jobs.col.enabled')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.set.col.nextRun')"></th>
+          <th data-bind="text: t('atd.jobs.col.lastRun')"></th>
+          <th style="width:60px"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: members">
+          <tr>
+            <td><span class="mono" data-bind="text: $data.jobName"></span></td>
+            <td>
+              <span class="badge" style="cursor:pointer"
+                    data-bind="click: function(){ return $vm.toggleMember($data); },
+                               text: ($data.enabledInSet() === 'Y' ? $vm.t('atd.set.on') : $vm.t('atd.set.off')),
+                               css:{ 'badge--active': $data.enabledInSet()==='Y', 'badge--idle': $data.enabledInSet()!=='Y' },
+                               attr:{ title: $vm.t('atd.set.toggleHint') }"></span>
+            </td>
+            <td><input class="form-control form-control--sm" type="number" style="width:72px"
+                       data-bind="value: $data.memberOrder, event:{ change: function(){ $vm.saveOrder($data); } }"></td>
+            <td><span class="badge" data-bind="text: $data.jobEnabled, css:{ 'badge--active': $data.jobEnabled==='Y', 'badge--idle': $data.jobEnabled!=='Y' }"></span></td>
+            <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus || '—'"></span></td>
+            <td class="mono muted" style="font-size:.85em" data-bind="text: $data.nextRun || $vm.t('atd.set.paused')"></td>
+            <td class="mono muted" style="font-size:.85em" data-bind="text: $data.lastFinished || '—'"></td>
+            <td class="cell-actions" style="text-align:end;">
+              <button class="btn btn-xs btn-icon btn-danger" data-bind="click: function(){ $vm.removeMember($data); },
+                      attr:{ title: $vm.t('atd.set.remove'), 'aria-label': $vm.t('atd.set.remove') }">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 6h18"/><path d="M8 6V4a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v2"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+              </button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- run history -->
+  <div class="card" style="margin-top:16px;">
+    <div class="section-heading" data-bind="text: t('atd.set.history')"></div>
+    <!-- ko if: runs().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.detail.noHistory')"></div>
+    <!-- /ko -->
+    <!-- ko if: runs().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.col.run')"></th>
+          <th data-bind="text: t('atd.col.job')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.col.rows')"></th>
+          <th data-bind="text: t('atd.col.started')"></th>
+          <th data-bind="text: t('atd.col.finished')"></th>
+          <th data-bind="text: t('atd.col.host')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: runs">
+          <tr>
+            <td data-bind="text: $data.runId"></td>
+            <td class="mono" data-bind="text: $data.jobName"></td>
+            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td data-bind="text: $data.rowCount"></td>
+            <td class="muted" style="font-size:.85em" data-bind="text: $data.started || '—'"></td>
+            <td class="muted" style="font-size:.85em" data-bind="text: $data.finished || '—'"></td>
+            <td class="mono muted" data-bind="text: $data.host || '—'"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- edit-schedule drawer -->
+  <edit-drawer params="open: showForm, vm: $vm,
+                       title: t('atd.set.editTitle'), saveLabel: t('atd.action.saveChanges'),
+                       cancelLabel: t('atd.action.cancel'), onSave: save, width: '640px'">
+    <div class="form-grid">
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.nameEn')"></label>
+        <input class="form-control" data-bind="textInput: fmNameEn"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.nameAr')"></label>
+        <input class="form-control" dir="rtl" data-bind="textInput: fmNameAr"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.set.comments')"></label>
+        <textarea class="form-control" rows="2" data-bind="textInput: fmComments"></textarea></div>
+
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.interval')"></label>
+        <select class="form-control" data-bind="value: fmPreset">
+          <!-- ko foreach: presets --><option data-bind="value: code, text: $vm.presetLabel(code)"></option><!-- /ko -->
+        </select></div>
+      <!-- ko if: isCustom -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.freqMin')"></label>
+        <input class="form-control" type="number" min="1" data-bind="value: fmFreq"></div>
+      <!-- /ko -->
+
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.startAt')"></label>
+        <input class="form-control" type="datetime-local" data-bind="value: fmStartAt"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.endAt')"></label>
+        <input class="form-control" type="datetime-local" data-bind="value: fmEndAt"></div>
+
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.dailyStart')"></label>
+        <input class="form-control" type="time" data-bind="value: fmDailyStart"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.dailyEnd')"></label>
+        <input class="form-control" type="time" data-bind="value: fmDailyEnd"></div>
+
+      <div class="form-group form-group--full">
+        <label class="form-label" data-bind="text: t('atd.set.days')"></label>
+        <div class="cat-picker">
+          <!-- ko foreach: days -->
+          <span class="badge cat-chip cat-chip--toggle"
+                data-bind="css:{ 'cat-chip--off': !$vm.isDay($data) },
+                           style: ($vm.isDay($data) ? { background: 'var(--brand)', color: '#fff' } : {}),
+                           click: function(){ $vm.toggleDay($data); return true; },
+                           text: $vm.dayLabel($data)"></span>
+          <!-- /ko -->
+        </div>
+        <p class="muted" style="margin:4px 0 0; font-size:.8em" data-bind="text: t('atd.set.days.hint')"></p>
+      </div>
+
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.active')"></label>
+        <div><input type="checkbox" data-bind="checked: fmActive"></div></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.set.notify')"></label>
+        <div><input type="checkbox" data-bind="checked: fmNotify"></div></div>
+    </div>
+  </edit-drawer>
+</div>

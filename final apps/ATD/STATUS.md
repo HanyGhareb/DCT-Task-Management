@@ -14,8 +14,9 @@ shared queue + run logs. Admin-only (SYS_ADMIN).
 | UAT package | ✅ round 1 — 26/26 PASS (2026-06-18); `UAT/uat_run_atd.py` + workbook + Word + evidence |
 | Runner Settings | ✅ ATD_RUNNER_CONFIG + /atd/config + page (db/14); runner reads at startup |
 
-## Views (7)
-dashboard · jobs · jobDetail · environments · targets · runs · queue
+## Views
+dashboard · jobs · jobDetail · **jobSets · jobSetDetail** · queue · actions · discovery · runs ·
+environments · targets · runnerSettings
 Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
 
 ## Deployment log
@@ -45,6 +46,15 @@ Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
 - **2026-06-19** — **Run Logs pager + Warning filter** (APP_VERSION 1.3.4). Shared `<list-pager>`
   on Run Logs (server-paged, 50/page); status filter gains **WARNING** (`GET /runs` maps it to
   SUCCESS rows with a message). ORDS redeployed; browser-verified (WARNING→10; pager 7 pages).
+- **2026-07-01** — **Manage Job Sets** (APP_VERSION 1.18.0). Grouped scheduling: `otbi-atd/db/40`
+  (`ATD_JOB_SET` + `ATD_JOB_SET_MEMBER` [PK job_name = one set/job] + `atd_set_gate_ok`/`atd_set_eff_freq`/
+  `atd_set_next_run` + `ATD_SET_PKG` run_now/notify_sweep + `ATD_SET_NOTIFY_JOB`), db/12 enqueue
+  gate/interval edit, additive ORDS `otbi-atd/db/41` (`/job-sets*` + `/job-set-jobs`). New views
+  `jobSets` + `jobSetDetail` (interval presets/day+time window, per-member enable/order, ≈ next-run,
+  Run Set Now / Pause, set run-history, failure-notify). **Deploy 40 → re-run 12 → 41 (fresh session).**
+  Full Playwright E2E **11/11 PASS** (create→member→toggle→run→pause→edit→AR→delete, all ORDS 200);
+  PL/SQL smoke verified the gate + eff_freq + run_now. Gotchas: PLS-00231 (a nested `pts()` fn used in
+  SQL → HTTP 555; fixed by inlining the TO_TIMESTAMP parse); ORA-12860 on SQLcl set-delete (PDML).
 
 ## How to run locally
 ```

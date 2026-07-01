@@ -6,6 +6,10 @@
 --   claimed_by  host id holding the job
 --   claimed_at  when claimed (lease expiry)
 --   last_run_id link to ATD_LOAD_RUN_LOG
+-- NOTE: enqueue() references prod.atd_set_gate_ok / prod.atd_set_eff_freq (Job Sets,
+--   db/40) so a set can gate/re-interval its members. Apply db/40 as well; until it is,
+--   those wrappers are missing and this package body is INVALID (auto-revalidates once
+--   db/40 runs). A job in no set behaves exactly as before.
 -- Rerunnable (ADD guarded against ORA-01430). Schema-qualified PROD. CRLF/UTF-8 no BOM.
 -- ===========================================================================
 SET DEFINE OFF
@@ -171,12 +175,16 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
        -- (re)queued (it would only re-HELD). A held job not yet prepared IS queued so
        -- the worker can prepare the table+map for review. Resumes once approved (->'Y').
        AND NOT (NVL(j.schema_reviewed,'Y') = 'N' AND j.column_map_json IS NOT NULL)
+       -- Job Set gate (db/40): on the scheduled bulk path only, hold a member while its
+       -- set is paused / inactive / outside its window. A manual single-job enqueue
+       -- (p_only) is an explicit operator override and bypasses the gate (like the break window).
+       AND (p_only IS NOT NULL OR prod.atd_set_gate_ok(j.job_name) = 'Y')
        AND (p_only IS NOT NULL
             OR NOT EXISTS (
                  SELECT 1 FROM prod.atd_load_run_log l
                   WHERE l.job_name = j.job_name
                     AND l.started > CAST(SYSTIMESTAMP AS TIMESTAMP)
-                        - NUMTODSINTERVAL(NVL(j.frequency_minutes, v_defreq), 'MINUTE')));
+                        - NUMTODSINTERVAL(NVL(prod.atd_set_eff_freq(j.job_name, j.frequency_minutes), v_defreq), 'MINUTE')));
     n := SQL%ROWCOUNT;
     COMMIT;
     RETURN n;

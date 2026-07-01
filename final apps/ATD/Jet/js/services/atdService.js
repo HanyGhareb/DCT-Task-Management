@@ -79,6 +79,19 @@ function (api) {
     // observability: break window + per-VM session age + per-job freshness
     getJobHealth: function ()          { return api.get('/jobs/health'); },
 
+    // job sets (grouped scheduling)
+    listJobSets:    function ()             { return api.get('/job-sets'); },
+    getJobSet:      function (code)         { return api.get('/job-sets/' + encodeURIComponent(code)); },
+    createJobSet:   function (body)         { return api.post('/job-sets', body); },
+    updateJobSet:   function (code, body)   { return api.put('/job-sets/' + encodeURIComponent(code), body); },
+    deleteJobSet:   function (code)         { return api.delete('/job-sets/' + encodeURIComponent(code)); },
+    addSetMembers:  function (code, body)   { return api.post('/job-sets/' + encodeURIComponent(code) + '/members', body); },
+    updateSetMember:function (code, job, body) { return api.put('/job-sets/' + encodeURIComponent(code) + '/members/' + encodeURIComponent(job), body); },
+    removeSetMember:function (code, job)    { return api.delete('/job-sets/' + encodeURIComponent(code) + '/members/' + encodeURIComponent(job)); },
+    runJobSet:      function (code)         { return api.post('/job-sets/' + encodeURIComponent(code) + '/run', {}); },
+    pauseJobSet:    function (code, paused) { return api.put('/job-sets/' + encodeURIComponent(code) + '/pause', { paused: paused ? 'Y' : 'N' }); },
+    listSetCandidates: function ()          { return api.get('/job-set-jobs'); },
+
     // job categories (lookup + tagging)
     listCategories:  function ()           { return api.get('/categories'); },
     createCategory:  function (body)       { return api.post('/categories', body); },

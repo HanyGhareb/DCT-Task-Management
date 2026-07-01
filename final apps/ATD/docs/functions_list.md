@@ -89,6 +89,29 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   the way to accept an **incompatible** column change (a NUMBER/DATE column the analysis
   now sends as text); currently loaded rows are lost.
 
+## Job Sets (`jobSets`, `jobSetDetail`)
+Group jobs under **one shared schedule** so a batch can be scheduled / paused / run together, instead
+of editing each job's frequency + enabled flag one by one. A job belongs to **at most one set** (member
+PK); a job in no set keeps its own schedule (fully backward-compatible). Drives the live browser track:
+the 15-min `enqueue` (db/12) only marks a member READY while its set's gate says "go now" and re-runs it
+on the set's interval.
+- **List (`jobSets`)** — `load` (from `/job-sets`), `newSet` / `editSet` (shared `<edit-drawer>`),
+  `save` (create/update), `open` (→ `jobSetDetail`), `runSet` (Run Set Now), `togglePause`
+  (Pause/Resume), `del`. Table columns: Set (code + name), Interval, Active window, Members (on/total),
+  State (Active/Off/Paused), Notify + row actions (run · pause · edit · delete). `intervalText` renders
+  the preset/minutes; `presetLabel`/`dayLabel`/`toggleDay`/`isDay` drive the interval presets + day chips.
+- **Create/edit drawer** — flat `fm*` observables: set code (create-only), name EN/AR, comment,
+  **Run interval** (preset select → minutes; `CUSTOM` reveals a minutes input), **Start/End** window
+  (`datetime-local`), **Daily from/until** (`time`), **Run on days** (Mon–Sun toggle chips),
+  Active + Notify-on-failure. All dates/times are **local Asia/Dubai**; leave a field blank for no bound.
+- **Detail (`jobSetDetail`)** — header actions: Back · Pause/Resume · Delete · **Edit** (`openEdit` →
+  same drawer) · **Run Set Now** (`runSet`). Schedule summary card (read-only). **Members** card:
+  add-member picker (`pickJob` from `/job-set-jobs` candidates not in any set) + `addMember`; a
+  `.data-table` of members with per-row **In set** toggle (`toggleMember` → enable/disable within the
+  set), **Order** input (`saveOrder`), Job-enabled, Status, **≈ Next run** (`atd_set_next_run`; shows
+  "Set paused" when gated off), Last run, and `removeMember`. **Set Run History** card = set-scoped
+  `atd_load_run_log` rows. A paused set shows an amber notice.
+
 ## Environments (`environments`)
 - `load` · `newEnv` / `editEnv` (drawer) · `save` (create/update) · `del`.
 
@@ -190,13 +213,20 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |
 | GET | `/actions/:id` | action detail: payload, last error, source status history |
 | POST | `/actions/:id/retry` · `/actions/:id/cancel` | re-arm FAILED/CANCELLED → READY · cancel (not-DONE) |
+| GET / POST | `/job-sets` | list job sets (+ member/enabled counts, interval, window, state) / create a set — `otbi-atd/db/41_atd_job_set_ords.sql` (additive to `atd.rest`). SYS_ADMIN |
+| GET / PUT / DELETE | `/job-sets/:code` | detail (schedule + members[+`nextRun`] + recent runs) / partial update (schedule/window/flags) / delete (cascades membership) |
+| POST | `/job-sets/:code/members` | add member(s) (`{jobName}` or `{jobNames:[…]}`; a job already in a set is skipped + reported) |
+| PUT / DELETE | `/job-sets/:code/members/:job` | toggle `enabledInSet` / set `memberOrder` · remove a member |
+| POST | `/job-sets/:code/run` | Run Set Now — top-priority enqueue every enabled member (`atd_set_pkg.run_now`) |
+| PUT | `/job-sets/:code/pause` | pause / resume the whole set (`{paused:'Y'/'N'}`) |
+| GET | `/job-set-jobs` | candidate picker — every job + its current set (if any); the detail add-member list filters to unassigned jobs |
 
 All handlers: `dct_rest.validate_session` → 401, `dct_auth.has_role(user,'SYS_ADMIN')` → 403.
 
 ## Services / Data layer
 | File | Role |
 |---|---|
-| `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction` |
+| `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction`; job sets `listJobSets` / `getJobSet` / `createJobSet` / `updateJobSet` / `deleteJobSet` / `addSetMembers` / `updateSetMember` / `removeSetMember` / `runJobSet` / `pauseJobSet` / `listSetCandidates` |
 | `js/services/api.js` | re-export of `shared/js/api.js` (Bearer + 401 handling) |
 | `js/services/authService.js` | session reader (shared `ifinance_jet_session`) |
 | `js/services/config.js` | `apiBase=/ords/admin/atd`, `authBase=/ords/admin/dct` |
