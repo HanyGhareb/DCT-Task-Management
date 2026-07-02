@@ -1,0 +1,56 @@
+{
+"param":"preview"
+,"items":[
+{
+"value":"Executive Office"
+,"label":"Executive Office"
+}
+,{
+"value":"Internal Audit"
+,"label":"Internal Audit"
+}
+,{
+"value":"Culture"
+,"label":"Culture"
+}
+,{
+"value":"Support Service"
+,"label":"Support Service"
+}
+,{
+"value":"Tourism"
+,"label":"Tourism"
+}
+,{
+"value":"ALC"
+,"label":"ALC"
+}
+,{
+"value":"CWIP"
+,"label":"CWIP"
+}
+,{
+"value":"Legal \u0026 Government Affairs"
+,"label":"Legal \u0026 Government Affairs"
+}
+,{
+"value":"Strategic Marketing \u0026 Communication"
+,"label":"Strategic Marketing \u0026 Communication"
+}
+,{
+"value":"Tendering and Projects Control"
+,"label":"Tendering and Projects Control"
+}
+,{
+"value":"Strategic Affairs"
+,"label":"Strategic Affairs"
+}
+]
+,"total":11
+}
+
+{"error": "ORA-20001: LOV must be a query"}
+
+{"error": "ORA-20001: LOV queries must be bind-free"}
+
+{"error": "Admin only"}

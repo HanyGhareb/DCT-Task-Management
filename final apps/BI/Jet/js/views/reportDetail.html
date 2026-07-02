@@ -16,7 +16,12 @@
 
   <!-- ko if: report() -->
   <div class="card" style="margin-bottom:16px">
-    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('det.definition')"></div>
+    <div class="section-heading-row">
+      <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('det.definition')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: openParamSpec, text: $root.t('det.psEdit')"></button>
+      </div>
+    </div>
     <div class="kv-grid">
       <div><span class="kv-l" data-bind="text: $root.t('col.engine')"></span><span class="badge badge--info" data-bind="text: report().engine"></span></div>
       <div><span class="kv-l" data-bind="text: $root.t('col.formats')"></span><span data-bind="text: report().formats"></span></div>
@@ -127,6 +132,45 @@
           </div>
           <!-- /ko -->
         </div>
+  </edit-drawer>
+
+  <!-- ── run-parameter spec drawer (labels / hints / required / LOV SQL) ── -->
+  <edit-drawer params="open: psEditing, vm: $vm,
+                       title: $root.t('det.psTitle'),
+                       saveLabel: (psSaving() ? $root.t('btn.saving') : $root.t('btn.save')),
+                       cancelLabel: $root.t('btn.cancel'), onSave: saveParamSpec, width: '720px'">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:12px" data-bind="text: $root.t('det.psHint')"></div>
+        <!-- ko if: psRows().length === 0 -->
+        <div class="empty-state" data-bind="text: $root.t('det.psNone')"></div>
+        <!-- /ko -->
+        <!-- ko foreach: psRows -->
+        <div class="card" style="margin-bottom:12px;padding:12px 14px">
+          <div class="section-heading-row">
+            <div class="section-heading" style="margin-top:0"><code style="font-size:13px" data-bind="text: name"></code></div>
+            <div class="region-actions" style="display:flex;align-items:center;gap:6px">
+              <input type="checkbox" data-bind="checked: required" />
+              <span style="font-size:12px" data-bind="text: $root.t('det.psRequired')"></span>
+            </div>
+          </div>
+          <div class="form-grid form-grid--compact">
+            <div class="form-group"><div class="form-label" data-bind="text: $root.t('det.psLabel')"></div><input class="form-control" data-bind="value: label" /></div>
+            <div class="form-group"><div class="form-label" data-bind="text: $root.t('det.psLabelAr')"></div><input class="form-control" dir="rtl" data-bind="value: labelAr" /></div>
+            <div class="form-group"><div class="form-label" data-bind="text: $root.t('det.psHintEn')"></div><input class="form-control" data-bind="value: hint" /></div>
+            <div class="form-group"><div class="form-label" data-bind="text: $root.t('det.psHintAr')"></div><input class="form-control" dir="rtl" data-bind="value: hintAr" /></div>
+            <div class="form-group form-group--full">
+              <div class="form-label" data-bind="text: $root.t('det.psLov')"></div>
+              <textarea class="form-control" rows="2" style="font-family:ui-monospace,Consolas,monospace;font-size:12px"
+                        placeholder="SELECT value, label FROM prod.my_view ORDER BY 2"
+                        data-bind="value: lovSql"></textarea>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
+                <button class="btn btn-sm btn-secondary"
+                        data-bind="click: function () { $parent.testLov($data); }, disable: testBusy, text: $root.t('det.psTest')"></button>
+                <span style="font-size:11.5px;color:var(--text-2)" data-bind="text: testResult"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- /ko -->
   </edit-drawer>
 
   <!-- ── recipient drawer ──────────────────────────────────────────────── -->

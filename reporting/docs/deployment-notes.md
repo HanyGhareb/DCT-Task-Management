@@ -87,6 +87,54 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-03 — LOV convergence + param-spec editor + IR round 4 (breaks/highlights) + shared-layer
+  promotion + BI_USER rollout helper (BI APP_VERSION 1.7.0) — DEPLOYED; smoke 24/24, E2E 27/27,
+  UAT round 2 29/29.** Completes the follow-up flagged in the MERGE NOTE below: **ONE parameter-metadata
+  column — `PARAM_SPEC_JSON`**. The canonical **re-run list after any 04 re-run is now: 08b, 09a, 10,
+  12b** (13/13a are RETIRED — deleted from the repo; their handlers folded into 12b).
+  - **DB `14_rpt_lov_converge.sql`:** folds every legacy `PARAMS_LOV_JSON` query into the matching
+    `PARAM_SPEC_JSON` entry's `lov_sql` (admin edits win; dynamic SQL so it no-ops once the column is
+    gone), seeds the GL_BUDGET_ACTUAL `period` entry for fresh installs, adds the `IS JSON` guard
+    (`ck_dct_rpt_def_pspec`), then **DROPS `PARAMS_LOV_JSON`**. Run AFTER 10 and BEFORE re-running
+    12a/12b. Gotcha hit: PL/SQL JSON object types can't be referenced inside a SQL statement —
+    `UPDATE ... SET col = l_obj.to_clob` raises **ORA-40573**; assign `l_out := l_obj.to_string` first.
+  - **PKG `12a` (in place):** `run_lov` now reads the param's `lov_sql` from `PARAM_SPEC_JSON`; new
+    **`preview_lov(p_sql, p_max_rows=50)`** for the editor's Test button (same guards: query-keyword +
+    bind-free; shared `exec_lov` core).
+  - **ORDS `12b` (in place, now 10 ir/* handlers):** catalog emits **`params[]`**
+    (`{name,label,labelAr,hint,hintAr,required,hasLov}` merged from params_json defaults + the spec —
+    the viewer renders labels/hints/required from it; `lovParams` kept for back-compat) and absorbs
+    13a's `GET ir/reports/:code/lov`; new **`GET/PUT ir/reports/:code/paramspec`** (SYS_ADMIN — raw
+    spec editor payload; PUT accepts `{paramSpec:{...}}`, `{}` clears) and **`POST ir/lov/preview`**
+    (SYS_ADMIN). Gotcha hit: a CLOB `=` comparison inside handler SQL (`CASE WHEN l_spec = '{}'`)
+    raises **ORA-22848 at parse time → uncatchable ORDS 555** (even the handler's 404/400 paths die);
+    same class as `JSON_QUERY(... RETURNING CLOB)` in a PL/SQL expression — keep both in SQL-from-dual
+    or plain PL/SQL. `install.sql` order: `... 07 → 10 → 12 → 14 → 12a → 12b` (also fixed the stale
+    `@@10_rpt_ir.sql`-era references left by the merge).
+  - **DB `15_bi_user_rollout.sql`:** idempotent BI_USER grant helper — edit the username list, run any
+    time; skips missing/inactive users and existing holders, prints the current holder list.
+  - **Frontend (BI 1.7.0):** irViewer parameter card shows EN/AR labels, hints and required markers
+    from the catalog `params[]`; **reportDetail "Parameters" drawer** (SYS_ADMIN) edits the spec
+    per param (label/label_ar/hint/hint_ar/required/lov_sql) with a **Test** button running the draft
+    query via preview. **`<interactive-report>` round 4:** **control breaks** (break toggle per column
+    in the column manager + break chips; bands `Label: value`; per-group **subtotal rows** when any
+    aggregate is set — structural repage subscribes to `hasAggs`, NOT the select's change event, which
+    can fire before the value binding writes) and **highlight rules** (row/cell scope, 5-color soft
+    palette, operators per column type, count badge on the toolbar); both persist in layouts +
+    autosave and are dropped for unknown columns on apply.
+  - **Shared-layer promotion:** the component now lives in **`final apps/shared/js/components/`**
+    (`interactiveReport.js/.html`, `irExpr.js`; require as `'shared/components/interactiveReport'`),
+    `.ir-*` grid styles moved to **platform.css**, component `ir.*` i18n keys moved to
+    **`shared/i18n/common.*.json`** (viewer-page `ir.viewer.*` keys stay in BI). Autosave key is now
+    app-agnostic: **`ifinance.ir.<code>::<section>`**. Shared change ⇒ **APP_VERSION bumped in all 10
+    consumer apps** (Admin 4.5.10, PC/DT/CC/AR 4.5.8, HR/FL 4.6.3, TM 4.8.3, ATD 1.19.1, BI 1.7.0).
+    Contract documented in `SHARED_JET_ARCHITECTURE.md`.
+  - **Regression fixed:** BI `Jet/index.html` had shipped (commit 2077121) with the APP_VERSION
+    `<script>` tag unterminated — a rebase-conflict artifact; fresh loads threw "Invalid or unexpected
+    token" and the login view never mounted. Restored `;</script>`.
+  - **UAT round 2** (`final apps/BI/UAT/UAT_BI_round2-03-07-2026/`, runner
+    `assessment-3/phase4/tests/uat_run_bi.py`): 29/29 PASS across Viewer & Parameters / Grid Features /
+    Admin Param Spec / API & Security; master `UAT_BI_TestScript.xlsx` created at the UAT root.
 - **2026-07-03 — MERGE NOTE (parallel sessions).** Two branches shipped the same day: the param-spec/worker-fleet branch below (v1.3.0, `10_rpt_param_lov.sql`, PARAM_SPEC_JSON for the admin Run drawer) and the Interactive Report branch (v1.3.0–1.5.0). The IR scripts were renumbered `10*/11*` → **`12/12a/12b/13/13a`** to clear the number collision, and the merged frontend ships as **APP_VERSION 1.6.0**. The two LOV columns coexist: `PARAM_SPEC_JSON` (admin Run drawer: label/hint/required/lov_sql via `/reports/:code/params`) and `PARAMS_LOV_JSON` (BI_USER viewer via `/ir/reports/:code/lov`) — converging them is a known follow-up. Full re-run list after any 04 re-run: **08b, 09a, 10, 12b, 13a**.
 - **2026-07-03 — IR round 3: parameter LOVs (BI APP_VERSION 1.5.0) — DEPLOYED + E2E 6/6.** Run-parameter
   inputs become dropdowns. A definition may carry **`PARAMS_LOV_JSON`** = `{ "<param>": "<query>" }` —

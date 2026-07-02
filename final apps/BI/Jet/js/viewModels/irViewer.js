@@ -5,7 +5,7 @@
  * data fetch handed to the <interactive-report> grid.
  */
 define(['knockout', 'services/rptService', 'services/authService', 'shared/toast',
-        'shared/i18n', 'components/interactiveReport'],
+        'shared/i18n', 'shared/components/interactiveReport'],
 function (ko, rpt, authService, toast, i18n) {
   'use strict';
 
@@ -70,22 +70,42 @@ function (ko, rpt, authService, toast, i18n) {
       var defaults = defaultsOf(item);
       var required = {};
       (item.requiredParams || []).forEach(function (k) { required[String(k).toLowerCase()] = true; });
-      var lov = {};
-      (item.lovParams || []).forEach(function (k) { lov[String(k).toLowerCase()] = true; });
-      var keys = Object.keys(defaults);
-      (item.requiredParams || []).forEach(function (k) {
-        if (keys.indexOf(k) === -1 && keys.indexOf(String(k).toLowerCase()) === -1) keys.push(k);
-      });
-      self.runParams(keys.map(function (k) {
-        var d = defaults[k];
+      function rowOf(key, spec) {
+        var d = defaults.hasOwnProperty(key) ? defaults[key] : defaults[String(key).toLowerCase()];
+        spec = spec || {};
         return {
-          key: k,
-          required: !!required[String(k).toLowerCase()],
-          hasLov: !!lov[String(k).toLowerCase()],
+          key: key,
+          label: spec.label || key,
+          labelAr: spec.labelAr || '',
+          hint: spec.hint || '',
+          hintAr: spec.hintAr || '',
+          required: spec.required === true || !!required[String(key).toLowerCase()],
+          hasLov: spec.hasLov === true,
           options: ko.observableArray([]),
           value: ko.observable(d === null || d === undefined ? '' : String(d))
         };
-      }));
+      }
+      var rows;
+      if ((item.params || []).length) {
+        // spec-driven (catalog params[] carries labels/hints/required/hasLov)
+        rows = item.params.map(function (p) { return rowOf(p.name, p); });
+        var have = rows.map(function (r) { return String(r.key).toLowerCase(); });
+        (item.requiredParams || []).forEach(function (k) {
+          if (have.indexOf(String(k).toLowerCase()) === -1) rows.push(rowOf(k, { required: true }));
+        });
+      } else {
+        // legacy fallback: derive from defaults + MULTI required[]
+        var lov = {};
+        (item.lovParams || []).forEach(function (k) { lov[String(k).toLowerCase()] = true; });
+        var keys = Object.keys(defaults);
+        (item.requiredParams || []).forEach(function (k) {
+          if (keys.indexOf(k) === -1 && keys.indexOf(String(k).toLowerCase()) === -1) keys.push(k);
+        });
+        rows = keys.map(function (k) {
+          return rowOf(k, { hasLov: !!lov[String(k).toLowerCase()] });
+        });
+      }
+      self.runParams(rows);
       // populate the dropdowns (params declared in the definition's LOV map)
       self.runParams().forEach(function (p) {
         if (!p.hasLov) return;
@@ -112,7 +132,9 @@ function (ko, rpt, authService, toast, i18n) {
       self.runParams().forEach(function (p) {
         var v = String(p.value() === null || p.value() === undefined ? '' : p.value()).trim();
         if (v === '') {
-          if (p.required) missing.push(p.key);
+          if (p.required) {
+            missing.push((i18n.lang() === 'ar' && p.labelAr) ? p.labelAr : (p.label || p.key));
+          }
           return;
         }
         params[p.key] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v;

@@ -1,11 +1,13 @@
 /**
- * interactiveReport.js — <interactive-report> Knockout component (App 211).
+ * shared/js/components/interactiveReport.js — <interactive-report> Knockout
+ * component (SHARED layer — any app may use it; first consumer: BI, App 211).
  *
  * APEX-Interactive-Report-like grid over a one-shot capped server fetch.
  * Everything after the fetch is client-side: global search, per-column filter
- * chips, multi-sort, column show/hide + reorder, calculated columns (safe
- * irExpr engine — no eval), aggregates row, CSV/XLSX export, server-saved
- * named layouts + localStorage last-state autosave.
+ * chips, multi-sort, column show/hide + reorder + rename, control breaks
+ * (group bands + per-group subtotals), highlight rules (row/cell), calculated
+ * columns (safe irExpr engine — no eval), aggregates row, CSV/XLSX export,
+ * server-saved named layouts + localStorage last-state autosave.
  *
  * Usage:
  *   <interactive-report params="reportCode: irCode, section: irSection,
@@ -20,12 +22,18 @@
  *   layoutsApi  object|null        {list(code), create(data), update(id,data),
  *                                  remove(id)} — all Promise; null hides layouts
  *
+ * Consuming-app requirements (see SHARED_JET_ARCHITECTURE.md):
+ *   - requirejs path 'xlsx' (SheetJS CDN) for the Excel export;
+ *   - the ir.* keys live in shared/i18n/common.<lang>.json (loaded everywhere);
+ *   - the .ir-* structural styles live in shared/css/platform.css.
+ *
  * Perf contract: master/filtered rows live in PLAIN arrays; only the current
- * page enters an observableArray. Rows are normalized on ingest (APEX_JSON
- * omits NULL keys — missing keys become null so bindings never break).
+ * page enters an observableArray (as {kind:'break'|'row'|'sub'} stream
+ * entries). Rows are normalized on ingest (APEX_JSON omits NULL keys —
+ * missing keys become null so bindings never break).
  */
-define(['knockout', 'shared/i18n', 'shared/toast', 'components/irExpr',
-        'text!components/interactiveReport.html'],
+define(['knockout', 'shared/i18n', 'shared/toast', 'shared/components/irExpr',
+        'text!shared/components/interactiveReport.html'],
 function (ko, i18n, toast, irExpr, templateHtml) {
   'use strict';
 
@@ -36,6 +44,21 @@ function (ko, i18n, toast, irExpr, templateHtml) {
   };
   var AGG_CHOICES = ['', 'sum', 'avg', 'min', 'max', 'count'];
   var PAGE_SIZES = [25, 50, 100, 200];
+  /* highlight palette — soft fill + readable text; rules reference the id so
+     saved layouts survive palette tweaks */
+  var HL_COLORS = [
+    { id: 'red',    bg: '#FDE7E9', fg: '#8C1D18' },
+    { id: 'amber',  bg: '#FFF2D6', fg: '#7A4F00' },
+    { id: 'green',  bg: '#E3F3E6', fg: '#1E5E2C' },
+    { id: 'blue',   bg: '#E2EEFA', fg: '#164B7E' },
+    { id: 'purple', bg: '#EFE7F8', fg: '#4F2D7F' }
+  ];
+  function hlColorOf(id) {
+    for (var i = 0; i < HL_COLORS.length; i++) {
+      if (HL_COLORS[i].id === id) return HL_COLORS[i];
+    }
+    return HL_COLORS[1];
+  }
 
   function isNil(v) { return v === null || v === undefined || v === ''; }
   function famOf(type) {
@@ -80,7 +103,9 @@ function (ko, i18n, toast, irExpr, templateHtml) {
                            .extend({ rateLimit: { timeout: 250, method: 'notifyWhenChangesStop' } });
     self.filters       = ko.observableArray([]);   // [{col,op,val,val2}]
     self.sorts         = ko.observableArray([]);   // [{col,dir}]
-    self.openPanel     = ko.observable(null);      // 'cols'|'filter'|'layouts'|null
+    self.breaks        = ko.observableArray([]);   // [colKey] control-break columns
+    self.highlights    = ko.observableArray([]);   // [{col,op,val,val2,scope,color}]
+    self.openPanel     = ko.observable(null);      // 'cols'|'filter'|'highlight'|'layouts'|null
 
     // effective column = base meta + the user's header-label override (renameable)
     function effCol(e) {
@@ -140,6 +165,7 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       if (newContext) {
         self.calcCols([]); self._calcFns = {};
         self.filters([]); self.sorts([]); self.search('');
+        self.breaks([]); self.highlights([]);
         rebuildColIndex();
         resetColState();
         self.appliedLayout(null);
@@ -258,6 +284,27 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       };
     }
 
+    function activeBreaks() {
+      return self.breaks().filter(function (k) { return !!self.colByKey[k]; });
+    }
+    function breakKeyOf(row, brks) {
+      var parts = [];
+      for (var i = 0; i < brks.length; i++) {
+        var v = row[brks[i]];
+        parts.push(isNil(v) ? '\\u0000' : String(v));
+      }
+      return parts.join('\\u0001');
+    }
+    function breakLabelOf(row, brks) {
+      return brks.map(function (k) {
+        var v = row[k];
+        var c = self.colByKey[k];
+        var txt = isNil(v) ? '—'
+          : (c && c.type === 'date' ? String(v).substring(0, 10) : String(v));
+        return self.colLabel(k) + ': ' + txt;
+      }).join('  ·  ');
+    }
+
     function recompute() {
       if (suspend || !self.hasData()) return;
       var rows = applyCalc(self.masterRows);
@@ -281,21 +328,56 @@ function (ko, i18n, toast, irExpr, templateHtml) {
           return true;
         });
       }
-      var srt = self.sorts();
-      if (srt.length) { rows = rows.slice().sort(comparator(srt)); }
+      // control breaks force their columns to lead the sort (asc), user
+      // sorts then order rows inside each group
+      var brks = activeBreaks();
+      var effSorts = brks.map(function (k) { return { col: k, dir: 'asc' }; });
+      self.sorts().forEach(function (s) {
+        if (brks.indexOf(s.col) === -1) effSorts.push(s);
+      });
+      if (effSorts.length) { rows = rows.slice().sort(comparator(effSorts)); }
       self._filtered = rows;
+      self._groups = {};
+      if (brks.length) {
+        rows.forEach(function (r) {
+          var k = breakKeyOf(r, brks);
+          (self._groups[k] || (self._groups[k] = [])).push(r);
+        });
+      }
       self.filteredCount(rows.length);
       self.filteredRev(self.filteredRev() + 1);
       repage();
     }
     self.recompute = recompute;
 
+    // pageRows is a render stream: {kind:'break',label} group band /
+    // {kind:'row',row} data row / {kind:'sub',rows} per-group subtotal
     function repage() {
       var size = self.pageSize();
       var pages = Math.max(1, Math.ceil(self._filtered.length / size));
       if (self.pageIndex() >= pages) self.pageIndex(pages - 1);
       var off = self.pageIndex() * size;
-      self.pageRows(self._filtered.slice(off, off + size));
+      var slice = self._filtered.slice(off, off + size);
+      var brks = activeBreaks();
+      if (!brks.length) {
+        self.pageRows(slice.map(function (r) { return { kind: 'row', row: r }; }));
+        return;
+      }
+      var out = [];
+      var withSubs = self.hasAggs();
+      var prevKey = (off > 0) ? breakKeyOf(self._filtered[off - 1], brks) : null;
+      for (var i = 0; i < slice.length; i++) {
+        var r = slice[i];
+        var k = breakKeyOf(r, brks);
+        if (k !== prevKey) out.push({ kind: 'break', label: breakLabelOf(r, brks) });
+        out.push({ kind: 'row', row: r });
+        var next = self._filtered[off + i + 1];
+        if (withSubs && (!next || breakKeyOf(next, brks) !== k)) {
+          out.push({ kind: 'sub', rows: self._groups[k] || [] });
+        }
+        prevKey = k;
+      }
+      self.pageRows(out);
     }
 
     subs.push(self.searchLive.subscribe(function () { self.pageIndex(0); recompute(); }));
@@ -396,7 +478,26 @@ function (ko, i18n, toast, irExpr, templateHtml) {
     self.showAllCols = function () {
       self.colState().forEach(function (e) { e.visible(true); });
     };
-    self.onAggChange = function () { self.filteredRev(self.filteredRev() + 1); return true; };
+    self.onAggChange = function () {
+      self.filteredRev(self.filteredRev() + 1);   // refresh aggFor cell texts
+      return true;
+    };
+
+    // ── control breaks ────────────────────────────────────────────────────
+    self.isBreak = function (key) { return self.breaks.indexOf(key) !== -1; };
+    self.toggleBreak = function (key) {
+      var list = self.breaks().slice();
+      var i = list.indexOf(key);
+      if (i === -1) list.push(key); else list.splice(i, 1);
+      self.breaks(list);
+      self.pageIndex(0);
+      recompute();
+    };
+    self.removeBreak = function (key) {
+      self.breaks(self.breaks().filter(function (k) { return k !== key; }));
+      self.pageIndex(0);
+      recompute();
+    };
 
     // header-label rename (persists in layouts/autosave via entry.label)
     self.renameColKey  = ko.observable(null);
@@ -431,13 +532,20 @@ function (ko, i18n, toast, irExpr, templateHtml) {
     self.hasAggs = ko.computed(function () {
       return self.colState().some(function (e) { return e.visible() && e.agg(); });
     });
-    self.aggFor = function (col) {
+    // structural: per-group subtotal rows appear/disappear with the first/last
+    // agg — do NOT rely on the select's change event (it can fire before the
+    // value binding writes the observable)
+    subs.push(self.hasAggs.subscribe(function () {
+      if (!suspend && activeBreaks().length) repage();
+    }));
+    // rowsOpt: per-group subtotal rows; default = the whole filtered set
+    self.aggFor = function (col, rowsOpt) {
       self.filteredRev();
       var entry = null;
       self.colState().forEach(function (e) { if (e.key === col.key) entry = e; });
       if (!entry || !entry.agg()) return '';
       var kind = entry.agg();
-      var rows = self._filtered, n = 0, sum = 0, min = null, max = null, i, v;
+      var rows = rowsOpt || self._filtered, n = 0, sum = 0, min = null, max = null, i, v;
       for (i = 0; i < rows.length; i++) {
         v = rows[i][col.key];
         if (isNil(v)) continue;
@@ -538,6 +646,102 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       return lbl + ' ' + op + ' ' + f.val;
     };
 
+    // ── highlight rules (conditional row/cell coloring) ───────────────────
+    self.hlColors    = HL_COLORS;
+    self.hlCol       = ko.observable('');
+    self.hlOp        = ko.observable('eq');
+    self.hlVal       = ko.observable('');
+    self.hlVal2      = ko.observable('');
+    self.hlScope     = ko.observable('row');       // 'row' | 'cell'
+    self.hlColorSel  = ko.observable('amber');
+    self.hlEditIndex = ko.observable(-1);
+
+    self.hlColFam = ko.computed(function () {
+      var c = self.colByKey[self.hlCol()];
+      return famOf(c ? c.type : 'text');
+    });
+    self.hlOps = ko.computed(function () { return OPS[self.hlColFam()]; });
+    self.hlNeedsVal = ko.computed(function () {
+      return self.hlOp() !== 'null' && self.hlOp() !== 'notnull';
+    });
+    self.hlNeedsVal2 = ko.computed(function () { return self.hlOp() === 'between'; });
+    self.hlInputType = ko.computed(function () {
+      var fam = self.hlColFam();
+      return fam === 'num' ? 'number' : (fam === 'date' ? 'date' : 'text');
+    });
+    subs.push(self.hlCol.subscribe(function () {
+      if (self.hlOps().indexOf(self.hlOp()) === -1) self.hlOp(self.hlOps()[0]);
+    }));
+
+    self.openHighlightNew = function () {
+      self.hlEditIndex(-1);
+      if (!self.hlCol() && self.allColumnOptions().length) self.hlCol(self.allColumnOptions()[0].key);
+      self.openPanel('highlight');
+    };
+    self.editHighlight = function (h) {
+      var idx = self.highlights().indexOf(h);
+      self.hlEditIndex(idx);
+      self.hlCol(h.col); self.hlOp(h.op);
+      self.hlVal(h.val === null || h.val === undefined ? '' : h.val);
+      self.hlVal2(h.val2 === null || h.val2 === undefined ? '' : h.val2);
+      self.hlScope(h.scope || 'row');
+      self.hlColorSel(h.color || 'amber');
+      self.openPanel('highlight');
+    };
+    self.applyHighlight = function () {
+      if (!self.hlCol()) return;
+      if (self.hlNeedsVal() && String(self.hlVal()).trim() === '') {
+        toast.warn(self.t('ir.filter.needValue')); return;
+      }
+      if (self.hlNeedsVal2() && String(self.hlVal2()).trim() === '') {
+        toast.warn(self.t('ir.filter.needValue')); return;
+      }
+      var h = { col: self.hlCol(), op: self.hlOp(),
+                val: self.hlNeedsVal() ? self.hlVal() : null,
+                val2: self.hlNeedsVal2() ? self.hlVal2() : null,
+                scope: self.hlScope(), color: self.hlColorSel() };
+      var list = self.highlights().slice();
+      if (self.hlEditIndex() >= 0) list[self.hlEditIndex()] = h; else list.push(h);
+      self.highlights(list);
+      self.hlVal(''); self.hlVal2(''); self.hlEditIndex(-1);
+    };
+    self.removeHighlight = function (h) { self.highlights.remove(h); };
+    self.clearHighlights = function () { self.highlights([]); };
+    self.hlText = function (h) {
+      var txt = self.chipText(h);
+      return txt + ' — ' + self.t(h.scope === 'cell' ? 'ir.hl.scopeCell' : 'ir.hl.scopeRow');
+    };
+    self.hlDotStyle = function (id) {
+      var c = hlColorOf(id);
+      return { backgroundColor: c.bg, borderColor: c.fg };
+    };
+
+    // style bindings: reading highlights() makes KO re-evaluate when rules
+    // change; always return explicit resets — the KO style binding does not
+    // clear properties it set earlier otherwise
+    self.rowStyle = function (row) {
+      var rules = self.highlights();
+      for (var i = 0; i < rules.length; i++) {
+        var h = rules[i];
+        if (h.scope !== 'cell' && self.colByKey[h.col] && passesFilter(row, h)) {
+          var c = hlColorOf(h.color);
+          return { backgroundColor: c.bg, color: c.fg };
+        }
+      }
+      return { backgroundColor: '', color: '' };
+    };
+    self.cellStyle = function (row, col) {
+      var rules = self.highlights();
+      for (var i = 0; i < rules.length; i++) {
+        var h = rules[i];
+        if (h.scope === 'cell' && h.col === col.key && passesFilter(row, h)) {
+          var c = hlColorOf(h.color);
+          return { backgroundColor: c.bg, color: c.fg, fontWeight: '600' };
+        }
+      }
+      return { backgroundColor: '', color: '', fontWeight: '' };
+    };
+
     // ── calculated columns ────────────────────────────────────────────────
     self.calcOpen    = ko.observable(false);
     self.calcName    = ko.observable('');
@@ -623,6 +827,8 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       delete self._calcFns[key];
       self.filters(self.filters().filter(function (f) { return f.col !== key; }));
       self.sorts(self.sorts().filter(function (s) { return s.col !== key; }));
+      self.breaks(self.breaks().filter(function (k) { return k !== key; }));
+      self.highlights(self.highlights().filter(function (h) { return h.col !== key; }));
       rebuildColIndex();
       self.colState(self.colState().filter(function (e) { return e.key !== key; }));
       recompute();
@@ -656,6 +862,10 @@ function (ko, i18n, toast, irExpr, templateHtml) {
         }),
         filters: self.filters().map(function (f) { return { col: f.col, op: f.op, val: f.val, val2: f.val2 }; }),
         sorts:   self.sorts().map(function (s) { return { col: s.col, dir: s.dir }; }),
+        breaks:  self.breaks().slice(),
+        highlights: self.highlights().map(function (h) {
+          return { col: h.col, op: h.op, val: h.val, val2: h.val2, scope: h.scope, color: h.color };
+        }),
         calc:    self.calcCols().map(function (c) { return { key: c.key, label: c.label, expr: c.expr }; }),
         aggs:    self.colState().filter(function (e) { return !!e.agg(); })
                      .map(function (e) { return { key: e.key, agg: e.agg() }; }),
@@ -697,6 +907,8 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       self.colState(entries);
       self.filters((st.filters || []).filter(function (f) { return !!self.colByKey[f.col]; }));
       self.sorts((st.sorts || []).filter(function (s) { return !!self.colByKey[s.col]; }));
+      self.breaks((st.breaks || []).filter(function (k) { return !!self.colByKey[k]; }));
+      self.highlights((st.highlights || []).filter(function (h) { return h && !!self.colByKey[h.col]; }));
       self.search(st.search || '');
       if (PAGE_SIZES.indexOf(st.pageSize) !== -1) self.pageSize(st.pageSize);
       self.pageIndex(0);
@@ -709,6 +921,7 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       rebuildColIndex();
       resetColState();
       self.filters([]); self.sorts([]); self.search('');
+      self.breaks([]); self.highlights([]);
       self.appliedLayout(null);
       self.pageIndex(0);
       suspend = false;
@@ -716,8 +929,9 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       try { localStorage.removeItem(lsKey()); } catch (e) { /* ignore */ }
     };
 
-    // autosave (browser last-state; separate from named layouts)
-    function lsKey() { return 'bi.ir.' + stateKey; }
+    // autosave (browser last-state; separate from named layouts). The key is
+    // app-agnostic on purpose: the same report opened from any app shares it.
+    function lsKey() { return 'ifinance.ir.' + stateKey; }
     subs.push(self.stateJson.subscribe(function (json) {
       if (!self.hasData() || !stateKey) return;
       try { localStorage.setItem(lsKey(), json); } catch (e) { /* storage full — ignore */ }

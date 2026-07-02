@@ -14,6 +14,10 @@
     <button class="btn btn-sm btn-secondary" data-bind="click: openFilterNew">
       <span data-bind="text: t('ir.toolbar.addFilter')"></span>
     </button>
+    <button class="btn btn-sm btn-secondary" data-bind="click: openHighlightNew">
+      <span data-bind="text: t('ir.toolbar.highlight')"></span>
+      <!-- ko if: highlights().length --><span class="ir-count-badge" data-bind="text: highlights().length"></span><!-- /ko -->
+    </button>
     <!-- ko if: layoutsApi -->
     <button class="btn btn-sm btn-secondary ir-layouts-btn" data-bind="click: function () { togglePanel('layouts'); }">
       <span data-bind="text: appliedLayout() ? appliedLayout().name : t('ir.toolbar.layouts')"></span>
@@ -28,15 +32,23 @@
                        html: maximized() ? '&#10530;' : '&#10529;'"></button>
   </div>
 
-  <!-- ko if: filters().length -->
+  <!-- ko if: filters().length || breaks().length -->
   <div class="ir-chips">
+    <!-- ko foreach: breaks -->
+    <span class="ir-chip ir-chip--break">
+      <span class="ir-chip__txt" data-bind="text: $component.t('ir.break.chip') + ': ' + $component.colLabel($data)"></span>
+      <button class="ir-chip__x" data-bind="click: function () { $component.removeBreak($data); }">&times;</button>
+    </span>
+    <!-- /ko -->
     <!-- ko foreach: filters -->
     <span class="ir-chip">
       <span class="ir-chip__txt" data-bind="text: $component.chipText($data), click: function () { $component.editFilter($data); }"></span>
       <button class="ir-chip__x" data-bind="click: function () { $component.removeFilter($data); }">&times;</button>
     </span>
     <!-- /ko -->
+    <!-- ko if: filters().length -->
     <button class="btn btn-sm ir-chips__clear" data-bind="click: clearFilters, text: t('ir.filter.clearAll')"></button>
+    <!-- /ko -->
   </div>
   <!-- /ko -->
 
@@ -81,6 +93,11 @@
         <!-- /ko -->
         <!-- /ko -->
         <span class="ir-colrow__grow"></span>
+        <button class="btn btn-sm ir-colrow__break"
+                data-bind="click: function (d, e) { e.stopPropagation(); $component.toggleBreak($data.key); },
+                           css: { 'ir-colrow__break--on': $component.isBreak($data.key) },
+                           attr: { title: $component.t($component.isBreak($data.key) ? 'ir.break.remove' : 'ir.break.add') },
+                           text: $component.t('ir.break.chip')"></button>
         <!-- ko if: $component.colIsNum($data.key) -->
         <select class="form-control ir-colrow__agg"
                 data-bind="value: agg, click: function (d, e) { e.stopPropagation(); return true; }, event: { change: $component.onAggChange }">
@@ -135,6 +152,74 @@
       </div>
       <!-- /ko -->
     </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ highlight rules panel ═══ -->
+  <!-- ko if: openPanel() === 'highlight' -->
+  <div class="card ir-panel">
+    <div class="section-heading-row">
+      <div class="section-heading ir-panel__title"
+           data-bind="text: hlEditIndex() >= 0 ? t('ir.hl.editTitle') : t('ir.hl.title')"></div>
+      <div class="region-actions">
+        <!-- ko if: highlights().length -->
+        <button class="btn btn-sm" data-bind="click: clearHighlights, text: t('ir.filter.clearAll')"></button>
+        <!-- /ko -->
+        <button class="btn btn-sm" data-bind="click: closePanel, text: t('ir.close')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: applyHighlight, text: t('ir.hl.apply')"></button>
+      </div>
+    </div>
+    <div class="form-grid form-grid--compact ir-filter-grid">
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.column')"></div>
+        <select class="form-control"
+                data-bind="options: allColumnOptions, optionsText: 'label', optionsValue: 'key', value: hlCol"></select>
+      </div>
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.operator')"></div>
+        <select class="form-control"
+                data-bind="options: hlOps, optionsText: function (op) { return $component.t('ir.op.' + op); }, value: hlOp"></select>
+      </div>
+      <!-- ko if: hlNeedsVal -->
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.value')"></div>
+        <input class="form-control" data-bind="attr: { type: hlInputType }, value: hlVal" />
+      </div>
+      <!-- /ko -->
+      <!-- ko if: hlNeedsVal2 -->
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.value2')"></div>
+        <input class="form-control" data-bind="attr: { type: hlInputType }, value: hlVal2" />
+      </div>
+      <!-- /ko -->
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.hl.scope')"></div>
+        <select class="form-control" data-bind="value: hlScope">
+          <option value="row" data-bind="text: t('ir.hl.scopeRow')"></option>
+          <option value="cell" data-bind="text: t('ir.hl.scopeCell')"></option>
+        </select>
+      </div>
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.hl.color')"></div>
+        <div class="ir-hl-swatches" data-bind="foreach: hlColors">
+          <span class="ir-hl-swatch"
+                data-bind="style: { backgroundColor: bg, borderColor: fg },
+                           css: { 'ir-hl-swatch--on': $component.hlColorSel() === id },
+                           click: function () { $component.hlColorSel(id); },
+                           attr: { title: $component.t('ir.hl.c.' + id) }"></span>
+        </div>
+      </div>
+    </div>
+    <!-- ko if: highlights().length -->
+    <div class="ir-hl-list" data-bind="foreach: highlights">
+      <div class="ir-hl-row">
+        <span class="ir-hl-dot" data-bind="style: $component.hlDotStyle(color)"></span>
+        <span class="ir-hl-row__txt" data-bind="text: $component.hlText($data), click: function () { $component.editHighlight($data); }"></span>
+        <span class="ir-colrow__grow"></span>
+        <button class="btn btn-sm btn-danger" data-bind="click: function () { $component.removeHighlight($data); }">&times;</button>
+      </div>
+    </div>
+    <!-- /ko -->
   </div>
   <!-- /ko -->
 
@@ -210,9 +295,22 @@
         </tr>
       </thead>
       <tbody data-bind="foreach: pageRows">
-        <tr data-bind="foreach: $component.visibleColumns()">
-          <td data-bind="text: $component.cellText($parent, $data), css: $component.cellClass($data)"></td>
+        <!-- ko if: kind === 'break' -->
+        <tr class="ir-break-row">
+          <td data-bind="attr: { colspan: $component.visibleColumns().length }, text: label"></td>
         </tr>
+        <!-- /ko -->
+        <!-- ko if: kind === 'row' -->
+        <tr data-bind="style: $component.rowStyle(row), foreach: $component.visibleColumns()">
+          <td data-bind="text: $component.cellText($parent.row, $data), css: $component.cellClass($data),
+                         style: $component.cellStyle($parent.row, $data)"></td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: kind === 'sub' -->
+        <tr class="ir-subtotal-row" data-bind="foreach: $component.visibleColumns()">
+          <td class="ir-agg-cell" data-bind="text: $component.aggFor($data, $parent.rows), css: $component.cellClass($data)"></td>
+        </tr>
+        <!-- /ko -->
       </tbody>
       <!-- ko if: hasAggs -->
       <tfoot>

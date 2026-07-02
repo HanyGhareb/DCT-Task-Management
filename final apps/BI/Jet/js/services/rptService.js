@@ -69,10 +69,15 @@ define(['services/api'], function (api) {
     getIrCatalog:   function ()           { return api.get('/ir/catalog'); },
     /* body: { section?, params? } — one-shot capped fetch the grid works on */
     getIrData:      function (code, body) { return api.post('/ir/reports/' + encodeURIComponent(code) + '/data', body || {}); },
-    /* dropdown values for one run parameter (definitions with params_lov_json) */
+    /* dropdown values for one run parameter (PARAM_SPEC_JSON lov_sql) */
     getIrLov:       function (code, param) {
       return api.get('/ir/reports/' + encodeURIComponent(code) + '/lov?param=' + encodeURIComponent(param));
     },
+    /* run-parameter spec editor (SYS_ADMIN): raw PARAM_SPEC_JSON + defaults */
+    getParamSpec:   function (code)       { return api.get('/ir/reports/' + encodeURIComponent(code) + '/paramspec'); },
+    putParamSpec:   function (code, spec) { return api.put('/ir/reports/' + encodeURIComponent(code) + '/paramspec', { paramSpec: spec }); },
+    /* test a draft lov_sql before saving (SYS_ADMIN, cap 50) */
+    previewLov:     function (sql)        { return api.post('/ir/lov/preview', { sql: sql }); },
     getIrLayouts:   function (code)       { return api.get('/ir/reports/' + encodeURIComponent(code) + '/layouts'); },
     createIrLayout: function (data)       { return api.post('/ir/layouts', data); },
     updateIrLayout: function (id, data)   { return api.put('/ir/layouts/' + id, data); },

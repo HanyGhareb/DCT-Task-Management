@@ -54,6 +54,74 @@ define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], funct
       rpt.syncSchedules().then(function () { toast.success('Scheduler jobs rebuilt'); }).catch(function () {});
     };
 
+    // ── run-parameter spec editor (labels / hints / required / LOV SQL) ─
+    // Edits PARAM_SPEC_JSON via GET/PUT ir/reports/:code/paramspec; the
+    // Test button runs a draft lov_sql through POST ir/lov/preview (cap 50).
+    self.psEditing = ko.observable(false);
+    self.psSaving  = ko.observable(false);
+    self.psRows    = ko.observableArray([]);
+
+    self.openParamSpec = function () {
+      rpt.getParamSpec(self.reportCode).then(function (d) {
+        var spec = {}, defaults = {};
+        try { spec = JSON.parse(d.paramSpec || '{}') || {}; } catch (e) { spec = {}; }
+        try { defaults = JSON.parse(d.paramsJson || '{}') || {}; } catch (e) { defaults = {}; }
+        var names = Object.keys(defaults);
+        Object.keys(spec).forEach(function (k) {
+          var hit = names.some(function (n) { return n.toLowerCase() === k.toLowerCase(); });
+          if (!hit) names.push(k);
+        });
+        self.psRows(names.map(function (n) {
+          var e = spec[n] || spec[n.toLowerCase()] || {};
+          return {
+            name: n,
+            label:      ko.observable(e.label || ''),
+            labelAr:    ko.observable(e.label_ar || ''),
+            hint:       ko.observable(e.hint || ''),
+            hintAr:     ko.observable(e.hint_ar || ''),
+            required:   ko.observable(e.required === true),
+            lovSql:     ko.observable(e.lov_sql || ''),
+            testResult: ko.observable(''),
+            testBusy:   ko.observable(false)
+          };
+        }));
+        self.psEditing(true);
+      }).catch(function () {});
+    };
+
+    self.testLov = function (row) {
+      var sql = (row.lovSql() || '').trim();
+      if (!sql) { row.testResult(''); return; }
+      row.testBusy(true);
+      rpt.previewLov(sql).then(function (r) {
+        var vals = (r.items || []).map(function (x) { return x.label || x.value; });
+        row.testResult(i18n.t('det.psTestOk', [r.total]) + ' ' +
+                       vals.slice(0, 8).join(', ') + (vals.length > 8 ? ' …' : ''));
+      }).catch(function () {
+        row.testResult(i18n.t('det.psTestFail'));
+      }).then(function () { row.testBusy(false); });
+    };
+
+    self.saveParamSpec = function () {
+      if (self.psSaving()) return;
+      var spec = {};
+      self.psRows().forEach(function (r) {
+        var e = {};
+        if ((r.label()   || '').trim()) e.label    = r.label().trim();
+        if ((r.labelAr() || '').trim()) e.label_ar = r.labelAr().trim();
+        if ((r.hint()    || '').trim()) e.hint     = r.hint().trim();
+        if ((r.hintAr()  || '').trim()) e.hint_ar  = r.hintAr().trim();
+        if (r.required()) e.required = true;
+        if ((r.lovSql()  || '').trim()) e.lov_sql  = r.lovSql().trim();
+        if (Object.keys(e).length) spec[r.name.toLowerCase()] = e;
+      });
+      self.psSaving(true);
+      rpt.putParamSpec(self.reportCode, spec).then(function () {
+        self.psSaving(false); self.psEditing(false);
+        toast.success(i18n.t('det.psSaved'));
+      }).catch(function () { self.psSaving(false); });
+    };
+
     self.loadAll = function () {
       self.loading(true);
       rpt.getReport(self.reportCode).then(function (d) { self.report(d); }).catch(function () {});

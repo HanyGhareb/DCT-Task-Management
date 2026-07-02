@@ -14,15 +14,24 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 ## Interactive Reports (`irViewer`) — BI_USER + SYS_ADMIN
 - Catalog: `select(item)` (auto-runs param-less reports) / `backToCatalog` / search + category filter
   (`catSearch`/`catCategory`); deep-link via `navigate('irViewer', { reportCode, section? })`.
-- Runner: parameter inputs prefilled from the definition's `params_json` defaults (MULTI adds a
-  section picker + `required[]` enforcement); parameters listed in the definition's
-  `params_lov_json` render as **LOV dropdowns** (values via `GET ir/reports/:code/lov?param=`);
+- Runner: parameter inputs built from the catalog's spec-driven `params[]` — **EN/AR labels, hints
+  and required markers from the definition's `PARAM_SPEC_JSON`** (fallback: raw keys from
+  `params_json` defaults); MULTI adds a section picker + `required[]` enforcement; params with a
+  `lov_sql` render as **LOV dropdowns** (values via `GET ir/reports/:code/lov?param=`);
   `run()` — one capped POST `ir/reports/:code/data`, envelope handed to the `<interactive-report>` grid.
-- `<interactive-report>` component (`js/components/interactiveReport.js` + `.html`, engine
-  `js/components/irExpr.js`) — all client-side over the fetched set:
+- `<interactive-report>` component — **SHARED since 2026-07-03**
+  (`final apps/shared/js/components/interactiveReport.js` + `.html`, engine `irExpr.js`; require as
+  `'shared/components/interactiveReport'`; `.ir-*` styles in platform.css, `ir.*` keys in
+  `shared/i18n/common.*.json`) — all client-side over the fetched set:
   - column manager: show/hide, up/down reorder, **rename header** (pencil → inline input; empty
     reverts to default; persists in layouts + autosave), per-column aggregate (sum/avg/min/max/count
-    → footer row over the FILTERED set), reset view;
+    → footer row over the FILTERED set), **Break toggle per column**, reset view;
+  - **control breaks**: break columns lead the sort; group **band rows** (`Label: value`) + break
+    chips (× removes); with any aggregate set, **per-group subtotal rows** at each group end plus
+    the grand-total footer;
+  - **highlight rules**: toolbar Highlight panel — column + typed operator + row/cell scope +
+    5-color soft palette; row scope fills the whole row, cell scope the one column; rule list with
+    click-to-edit/×; count badge on the toolbar button; persists in layouts + autosave;
   - themed header (full `--region-hd-bg/-fg` region fill) + **maximize toggle** (⤢ at toolbar right
     → fullscreen overlay, Esc restores);
   - filters: typed operator popover (text contains/=/≠/starts/empty; number =/≠/>/≥/</≤/between;
@@ -34,7 +43,7 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
     (SheetJS, lazy-loaded via the requirejs `xlsx` path);
   - layouts: server-saved named layouts per report (`Save` / `Save as` / `Apply` / `Rename` /
     `Delete` / `Make default` [auto-applies on load] / admin-only `Share`), dirty-dot vs the applied
-    layout, plus localStorage last-state autosave (`bi.ir.<code>::<section>`);
+    layout, plus localStorage last-state autosave (`ifinance.ir.<code>::<section>`);
   - truncation banner when the server capped the fetch (`IR_MAX_ROWS`).
 
 ## Reports (`reports`) — definition CRUD
@@ -51,6 +60,11 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
   `queueRun(params)` POSTs the params object as the run body.
 - Schedules: `openSchNew` / `openSchEdit` / `saveSch` / `removeSch`.
 - Recipients: `openRcNew` / `openRcEdit` / `saveRc` / `removeRc` (USER/ROLE/ORG/EMAIL/SELF × channel).
+- **Run-parameter spec editor** (Definition card → `Parameters`, SYS_ADMIN): `openParamSpec` — loads
+  `GET ir/reports/:code/paramspec` and lists one card per param (names = params_json defaults ∪
+  spec keys) with label EN/AR, hint EN/AR, Required toggle and the LOV SQL; `testLov(row)` — runs
+  the draft query via `POST ir/lov/preview` (cap 50) and shows the value count + samples inline;
+  `saveParamSpec` — collapses empty fields and `PUT ir/reports/:code/paramspec`.
 
 ## Workers (`workers`) — engine monitoring + control
 - `load` / `refresh` — workers + derived health (ONLINE < 90s heartbeat, STALE < 10min, else OFFLINE), queue stats (queued/running/failed today/success today/oldest queued age) and the two DCT_RPT_* scheduler jobs. Auto-refreshes every 10s while the page is open.
@@ -96,12 +110,14 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | GET/POST | `recipients/` | list / create |
 | PUT/DELETE | `recipients/:id` | update / delete |
 | GET/PUT | `config` | runtime/SMTP config editor |
-| GET | `ir/catalog` | enabled definitions for the viewer (+ MULTI sections/required + lovParams) — BI_USER or SYS_ADMIN |
-| GET | `ir/reports/:code/lov?param=` | dropdown values for one run parameter (definition `params_lov_json`, bind-free query, cap 500) — BI_USER or SYS_ADMIN |
+| GET | `ir/catalog` | enabled definitions for the viewer (+ spec-driven `params[]` labels/hints/required/hasLov + MULTI sections/required + lovParams) — BI_USER or SYS_ADMIN |
+| GET | `ir/reports/:code/lov?param=` | dropdown values for one run parameter (the param's `lov_sql` in `PARAM_SPEC_JSON`, bind-free query, cap 500) — BI_USER or SYS_ADMIN |
 | POST | `ir/reports/:code/data` | one-shot capped data fetch (body `{section?, params?}`) via `DCT_RPT_IR_PKG` — BI_USER or SYS_ADMIN |
 | GET | `ir/reports/:code/layouts` | own + shared saved layouts — BI_USER or SYS_ADMIN |
 | POST | `ir/layouts` | save a layout (409 dup name; sharing = SYS_ADMIN only) |
 | PUT/DELETE | `ir/layouts/:id` | rename / re-share / default / update json / delete (owner-or-admin) |
+| GET/PUT | `ir/reports/:code/paramspec` | raw `PARAM_SPEC_JSON` + defaults for the editor / replace the spec (`{paramSpec:{…}}`, `{}` clears) — SYS_ADMIN |
+| POST | `ir/lov/preview` | test a draft `lov_sql` (`{sql}`; query-keyword + bind-free guards, cap 50) — SYS_ADMIN |
 
 ## Services / Data layer
 | File | Role |
@@ -109,6 +125,6 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | `js/services/config.js` | `apiBase=/ords/admin/rpt`, `authBase=/ords/admin/dct`, `adminPortalUrl` |
 | `js/services/api.js` | re-export of `shared/api` (Bearer + 401 handling) |
 | `js/services/authService.js` | shared-session reader; `isReportAdmin()` (SYS_ADMIN), `isReportUser()` (BI_USER or SYS_ADMIN) |
-| `js/services/rptService.js` | all `/rpt` endpoint wrappers (incl. `getIrCatalog`/`getIrData`/`getIrLayouts`/`createIrLayout`/`updateIrLayout`/`deleteIrLayout`) |
-| `js/components/interactiveReport.js` (+ `.html`) | `<interactive-report>` KO component — the reusable IR grid |
-| `js/components/irExpr.js` | safe expression compiler for calculated columns (no eval) |
+| `js/services/rptService.js` | all `/rpt` endpoint wrappers (incl. `getIrCatalog`/`getIrData`/`getIrLov`/`getIrLayouts`/`createIrLayout`/`updateIrLayout`/`deleteIrLayout`/`getParamSpec`/`putParamSpec`/`previewLov`) |
+| `shared/js/components/interactiveReport.js` (+ `.html`) | `<interactive-report>` KO component — the reusable IR grid (SHARED layer since 2026-07-03) |
+| `shared/js/components/irExpr.js` | safe expression compiler for calculated columns (no eval) |

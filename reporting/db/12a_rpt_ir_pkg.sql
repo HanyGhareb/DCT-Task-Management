@@ -3,7 +3,9 @@
 -- File   : reporting/db/12a_rpt_ir_pkg.sql
 -- Schema : PROD package + ADMIN synonym
 -- Run as : sql -name prod_mcp   (FRESH session -- synonym rule, ORA-01471)
---          Requires 13_rpt_ir_lov.sql FIRST (run_lov reads params_lov_json).
+--          Requires the PARAM_SPEC_JSON column (10_rpt_param_lov.sql) --
+--          run_lov reads each param entry's lov_sql from it (queries were
+--          converged there by 14_rpt_lov_converge.sql; params_lov_json is gone).
 -- Purpose: runs a report definition's stored source one time with ONLY its
 --          declared bind parameters bound (never any user-supplied SQL) and
 --          streams the whole JSON envelope the browser grid works on:
@@ -39,6 +41,10 @@ CREATE OR REPLACE PACKAGE prod.dct_rpt_ir_pkg AS
     p_report_code IN VARCHAR2,
     p_param       IN VARCHAR2,
     p_max_rows    IN NUMBER   DEFAULT 500);
+
+  PROCEDURE preview_lov(
+    p_sql      IN CLOB,
+    p_max_rows IN NUMBER DEFAULT 50);
 
 END dct_rpt_ir_pkg;
 /
@@ -389,64 +395,27 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rpt_ir_pkg AS
   END run_report;
 
   ------------------------------------------------------------------
-  -- parameter list of values: run the definition's PARAMS_LOV_JSON
-  -- entry for one parameter (bind-free query; col 1 = value, optional
+  -- guard + execute one bind-free LOV query (col 1 = value, optional
   -- col 2 = label) and stream {param, items:[{value,label}], total}
   ------------------------------------------------------------------
-  PROCEDURE run_lov(
-    p_report_code IN VARCHAR2,
-    p_param       IN VARCHAR2,
-    p_max_rows    IN NUMBER DEFAULT 500) IS
+  PROCEDURE exec_lov(
+    p_param    IN VARCHAR2,
+    p_sql      IN CLOB,
+    p_max_rows IN NUMBER) IS
 
-    l_lov     CLOB;
-    l_enabled CHAR(1);
-    l_spec    JSON_OBJECT_T;
-    l_keys    JSON_KEY_LIST;
-    l_sql     CLOB;
-    l_scan    VARCHAR2(32767);
-    l_kw      VARCHAR2(30);
-    l_binds   t_names;
-    l_cur     INTEGER;
-    l_cnt     INTEGER;
-    l_desc    DBMS_SQL.DESC_TAB2;
-    l_ign     INTEGER;
-    l_v1      VARCHAR2(4000);
-    l_v2      VARCHAR2(4000);
-    l_rows    PLS_INTEGER := 0;
-    l_max     NUMBER := GREATEST(NVL(p_max_rows, 500), 1);
+    l_scan  VARCHAR2(32767);
+    l_kw    VARCHAR2(30);
+    l_binds t_names;
+    l_cur   INTEGER;
+    l_cnt   INTEGER;
+    l_desc  DBMS_SQL.DESC_TAB2;
+    l_ign   INTEGER;
+    l_v1    VARCHAR2(4000);
+    l_v2    VARCHAR2(4000);
+    l_rows  PLS_INTEGER := 0;
+    l_max   NUMBER := GREATEST(NVL(p_max_rows, 500), 1);
   BEGIN
-    IF p_param IS NULL THEN
-      RAISE_APPLICATION_ERROR(-20001, 'param is required');
-    END IF;
-    BEGIN
-      SELECT params_lov_json, enabled
-        INTO l_lov, l_enabled
-        FROM dct_rpt_definition
-       WHERE report_code = p_report_code;
-    EXCEPTION WHEN NO_DATA_FOUND THEN
-      RAISE_APPLICATION_ERROR(-20404, 'Report not found');
-    END;
-    IF l_enabled <> 'Y' THEN
-      RAISE_APPLICATION_ERROR(-20404, 'Report not found');
-    END IF;
-    IF l_lov IS NULL THEN
-      RAISE_APPLICATION_ERROR(-20001, 'no lists of values defined for this report');
-    END IF;
-    BEGIN
-      l_spec := JSON_OBJECT_T.parse(l_lov);
-    EXCEPTION WHEN OTHERS THEN
-      RAISE_APPLICATION_ERROR(-20001, 'report LOV spec is not valid JSON');
-    END;
-    l_keys := l_spec.get_keys;
-    FOR i IN 1 .. l_keys.COUNT LOOP
-      IF LOWER(l_keys(i)) = LOWER(p_param) THEN
-        l_sql := l_spec.get_clob(l_keys(i));
-      END IF;
-    END LOOP;
-    IF l_sql IS NULL THEN
-      RAISE_APPLICATION_ERROR(-20001, 'no list of values for parameter ' || p_param);
-    END IF;
-    l_scan := scrub(l_sql);
+    l_scan := scrub(p_sql);
     l_kw   := UPPER(REGEXP_SUBSTR(l_scan, '[A-Za-z]+', 1, 1));
     IF l_kw IS NULL OR l_kw NOT IN ('SELECT', 'WITH') THEN
       RAISE_APPLICATION_ERROR(-20001, 'LOV must be a query');
@@ -455,10 +424,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rpt_ir_pkg AS
     IF l_binds.COUNT > 0 THEN
       RAISE_APPLICATION_ERROR(-20001, 'LOV queries must be bind-free');
     END IF;
-
     l_cur := DBMS_SQL.OPEN_CURSOR;
     BEGIN
-      DBMS_SQL.PARSE(l_cur, l_sql, DBMS_SQL.NATIVE);
+      DBMS_SQL.PARSE(l_cur, p_sql, DBMS_SQL.NATIVE);
       DBMS_SQL.DESCRIBE_COLUMNS2(l_cur, l_cnt, l_desc);
       DBMS_SQL.DEFINE_COLUMN(l_cur, 1, l_v1, 4000);
       IF l_cnt >= 2 THEN
@@ -494,7 +462,72 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rpt_ir_pkg AS
       END IF;
       RAISE;
     END;
+  END exec_lov;
+
+  ------------------------------------------------------------------
+  -- parameter list of values: run the lov_sql of one parameter's
+  -- PARAM_SPEC_JSON entry (bind-free, admin-authored)
+  ------------------------------------------------------------------
+  PROCEDURE run_lov(
+    p_report_code IN VARCHAR2,
+    p_param       IN VARCHAR2,
+    p_max_rows    IN NUMBER DEFAULT 500) IS
+
+    l_raw     CLOB;
+    l_enabled CHAR(1);
+    l_spec    JSON_OBJECT_T;
+    l_entry   JSON_OBJECT_T;
+    l_keys    JSON_KEY_LIST;
+    l_sql     CLOB;
+  BEGIN
+    IF p_param IS NULL THEN
+      RAISE_APPLICATION_ERROR(-20001, 'param is required');
+    END IF;
+    BEGIN
+      SELECT param_spec_json, enabled
+        INTO l_raw, l_enabled
+        FROM dct_rpt_definition
+       WHERE report_code = p_report_code;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20404, 'Report not found');
+    END;
+    IF l_enabled <> 'Y' THEN
+      RAISE_APPLICATION_ERROR(-20404, 'Report not found');
+    END IF;
+    IF l_raw IS NULL THEN
+      RAISE_APPLICATION_ERROR(-20001, 'no lists of values defined for this report');
+    END IF;
+    BEGIN
+      l_spec := JSON_OBJECT_T.parse(l_raw);
+    EXCEPTION WHEN OTHERS THEN
+      RAISE_APPLICATION_ERROR(-20001, 'report parameter spec is not valid JSON');
+    END;
+    l_keys := l_spec.get_keys;
+    FOR i IN 1 .. l_keys.COUNT LOOP
+      IF LOWER(l_keys(i)) = LOWER(p_param) AND l_spec.get(l_keys(i)).is_object THEN
+        l_entry := TREAT(l_spec.get(l_keys(i)) AS JSON_OBJECT_T);
+        l_sql   := l_entry.get_clob('lov_sql');
+      END IF;
+    END LOOP;
+    IF l_sql IS NULL THEN
+      RAISE_APPLICATION_ERROR(-20001, 'no list of values for parameter ' || p_param);
+    END IF;
+    exec_lov(p_param, l_sql, p_max_rows);
   END run_lov;
+
+  ------------------------------------------------------------------
+  -- admin editor Test button: run a draft lov_sql (same guards as a
+  -- stored one -- query-only + bind-free) with a small cap
+  ------------------------------------------------------------------
+  PROCEDURE preview_lov(
+    p_sql      IN CLOB,
+    p_max_rows IN NUMBER DEFAULT 50) IS
+  BEGIN
+    IF p_sql IS NULL OR NVL(DBMS_LOB.GETLENGTH(p_sql), 0) = 0 THEN
+      RAISE_APPLICATION_ERROR(-20001, 'sql is required');
+    END IF;
+    exec_lov('preview', p_sql, LEAST(GREATEST(NVL(p_max_rows, 50), 1), 500));
+  END preview_lov;
 
 END dct_rpt_ir_pkg;
 /

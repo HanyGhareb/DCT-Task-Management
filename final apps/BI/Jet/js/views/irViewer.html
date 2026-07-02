@@ -82,7 +82,8 @@
       <!-- ko foreach: runParams -->
       <div class="form-group">
         <div class="form-label">
-          <span data-bind="text: key"></span><!-- ko if: required --><span class="ir-req">*</span><!-- /ko -->
+          <span data-bind="text: ($root.lang() === 'ar' && $data.labelAr) ? $data.labelAr : ($data.label || key)"></span>
+          <!-- ko if: required --><span class="ir-req">*</span><!-- /ko -->
         </div>
         <!-- ko if: hasLov -->
         <select class="form-control"
@@ -92,6 +93,10 @@
         <!-- ko ifnot: hasLov -->
         <input class="form-control"
                data-bind="value: value, event: { keypress: function (d, e) { if (e.keyCode === 13) { $vm.run(); } return true; } }" />
+        <!-- /ko -->
+        <!-- ko if: ($root.lang() === 'ar' && $data.hintAr) || $data.hint -->
+        <div class="ir-param-hint"
+             data-bind="text: ($root.lang() === 'ar' && $data.hintAr) ? $data.hintAr : $data.hint"></div>
         <!-- /ko -->
       </div>
       <!-- /ko -->
