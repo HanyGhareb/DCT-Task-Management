@@ -5,6 +5,8 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
     var self = this;
     var st = (window._jetApp && window._jetApp.getState()) || {};
     self.reportCode = st.reportCode || '';
+    var autoRun = !!st.autoRun;          // routed from the Reports list "Run now"
+    st.autoRun = false;                  // one-shot: don't re-open on later visits
 
     self.loading    = ko.observable(true);
     self.report     = ko.observable(null);
@@ -60,7 +62,10 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
 
     self.loadAll = function () {
       self.loading(true);
-      rpt.getReport(self.reportCode).then(function (d) { self.report(d); }).catch(function () {});
+      rpt.getReport(self.reportCode).then(function (d) {
+        self.report(d);
+        if (autoRun) { autoRun = false; self.runNow(); }
+      }).catch(function () {});
       rpt.getSchedules(self.reportCode).then(function (r) { self.schedules(r.items || []); }).catch(function () {});
       rpt.getRecipients(self.reportCode).then(function (r) { self.recipients(r.items || []); })
         .catch(function () {}).then(function () { self.loading(false); });

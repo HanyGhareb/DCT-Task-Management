@@ -103,7 +103,10 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
           var obj = JSON.parse(d.paramsJson || '');
           hasParams = obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).length > 0;
         } catch (e) { /* no params */ }
-        if (hasParams) { self.openDetail(row); return; }
+        if (hasParams) {
+          window._jetApp.navigate('reportDetail', { reportCode: row.reportCode, autoRun: true });
+          return;
+        }
         return rpt.runReport(row.reportCode).then(function (r) {
           toast.success('Queued run #' + r.runId);
           window._jetApp.navigate('runs');
