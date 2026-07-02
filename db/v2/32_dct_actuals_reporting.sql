@@ -63,8 +63,9 @@ CREATE OR REPLACE VIEW prod.grn_all_v2               AS SELECT * FROM prod.atd_g
 CREATE OR REPLACE VIEW prod.gl_balances              AS SELECT * FROM prod.atd_gl_balances;
 CREATE OR REPLACE VIEW prod.projects                 AS SELECT * FROM prod.atd_projects;
 CREATE OR REPLACE VIEW prod.tasks                    AS SELECT * FROM prod.atd_tasks;
+CREATE OR REPLACE VIEW prod.projects_budget          AS SELECT * FROM prod.atd_projects_budget;
 
-PROMPT Base pass-through views created (AP_*/PO_*/GRN_ALL_V2/GL_BALANCES/PROJECTS/TASKS).
+PROMPT Base pass-through views created (AP_*/PO_*/GRN_ALL_V2/GL_BALANCES/PROJECTS/TASKS/PROJECTS_BUDGET).
 
 -- ---------------------------------------------------------------------------
 -- 2. DCT_ACTUAL_V - unified transaction fact (AP branch first sets the types)
