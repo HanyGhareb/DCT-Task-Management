@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.6.0';</script>
+<script>window.APP_VERSION='1.8.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -359,13 +359,13 @@
         </div>
       </div>
 
-      <!-- totals answer cards -->
+      <!-- totals answer cards (the 4 measure cards drill to all supporting lines) -->
       <div class="kpi-strip">
         <div class="kstat budget"><div class="kk" data-bind="text:t('cBudget')"></div><div class="kv mono" data-bind="text:compact(buTot('budget')), attr:{title:money(buTot('budget'))}"></div></div>
-        <div class="kstat apd"><div class="kk" data-bind="text:t('cActualAp')"></div><div class="kv mono" data-bind="text:compact(buTot('actualAp')), attr:{title:money(buTot('actualAp'))}"></div></div>
-        <div class="kstat grn"><div class="kk" data-bind="text:t('cActualGrn')"></div><div class="kv mono" data-bind="text:compact(buTot('actualGrn')), attr:{title:money(buTot('actualGrn'))}"></div></div>
-        <div class="kstat ocommit"><div class="kk" data-bind="text:t('cCommitPr')"></div><div class="kv mono" data-bind="text:compact(buTot('commitmentPr')), attr:{title:money(buTot('commitmentPr'))}"></div></div>
-        <div class="kstat ooblig"><div class="kk" data-bind="text:t('cObligPo')"></div><div class="kv mono" data-bind="text:compact(buTot('obligationPo')), attr:{title:money(buTot('obligationPo'))}"></div></div>
+        <div class="kstat apd kstat-click" data-bind="click:function(){openBuAgg('ap')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cActualAp')"></div><div class="kv mono" data-bind="text:compact(buTot('actualAp'))"></div></div>
+        <div class="kstat grn kstat-click" data-bind="click:function(){openBuAgg('grn')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cActualGrn')"></div><div class="kv mono" data-bind="text:compact(buTot('actualGrn'))"></div></div>
+        <div class="kstat ocommit kstat-click" data-bind="click:function(){openBuAgg('pr')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cCommitPr')"></div><div class="kv mono" data-bind="text:compact(buTot('commitmentPr'))"></div></div>
+        <div class="kstat ooblig kstat-click" data-bind="click:function(){openBuAgg('po')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cObligPo')"></div><div class="kv mono" data-bind="text:compact(buTot('obligationPo'))"></div></div>
         <div class="kstat funds"><div class="kk" data-bind="text:t('cFundAvail')"></div><div class="kv mono" data-bind="text:compact(buTot('fundAvailable')), attr:{title:money(buTot('fundAvailable'))}"></div></div>
       </div>
 
@@ -385,10 +385,10 @@
             <th data-bind="text:t('program')"></th>
             <th data-bind="text:t('cEtype')"></th>
             <th class="num" data-bind="text:t('cBudget')"></th>
-            <th class="num" data-bind="text:t('cActualAp')"></th>
-            <th class="num" data-bind="text:t('cActualGrn')"></th>
-            <th class="num" data-bind="text:t('cCommitPr')"></th>
-            <th class="num" data-bind="text:t('cObligPo')"></th>
+            <th class="num" data-bind="text:t('cActualAp'), attr:{title:t('buDrillHint')}"></th>
+            <th class="num" data-bind="text:t('cActualGrn'), attr:{title:t('buDrillHint')}"></th>
+            <th class="num" data-bind="text:t('cCommitPr'), attr:{title:t('buDrillHint')}"></th>
+            <th class="num" data-bind="text:t('cObligPo'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cFundAvail')"></th>
           </tr></thead>
           <tbody>
@@ -406,10 +406,10 @@
               <td data-bind="text:$data.program||'—'"></td>
               <td data-bind="text:$data.expenditureType||'—'"></td>
               <td class="num mono" data-bind="text:$root.compact($data.budget), attr:{title:$root.money($data.budget)}"></td>
-              <td class="num mono" data-bind="text:$root.compact($data.actualAp), attr:{title:$root.money($data.actualAp)}"></td>
-              <td class="num mono" data-bind="text:$root.compact($data.actualGrn), attr:{title:$root.money($data.actualGrn)}"></td>
-              <td class="num mono" data-bind="text:$root.compact($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}"></td>
-              <td class="num mono" data-bind="text:$root.compact($data.obligationPo), attr:{title:$root.money($data.obligationPo)}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.actualAp), attr:{title:$root.money($data.actualAp)}, click:function(d){$root.openBuDrill(d,'ap')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.actualGrn), attr:{title:$root.money($data.actualGrn)}, click:function(d){$root.openBuDrill(d,'grn')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}, click:function(d){$root.openBuDrill(d,'pr')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.compact($data.obligationPo), attr:{title:$root.money($data.obligationPo)}, click:function(d){$root.openBuDrill(d,'po')}"></td>
               <td class="num mono strong" data-bind="text:$root.compact($data.fundAvailable), attr:{title:$root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}"></td>
             </tr>
             <!-- /ko -->
@@ -619,6 +619,43 @@
     </div>
   </div>
 </div>
+
+<!-- ═══════════ DRILL-DOWN DRAWER (Budget Utilization figure → supporting lines) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:drillDrawer}, click:closeDrawer" style="display:none"></div>
+<aside class="dw-drawer" data-bind="css:{show:drillDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:drillSub"></div>
+      <div class="dw-title" data-bind="text:drillTitle"></div>
+    </div>
+    <button class="btn btn-sm" data-bind="click:closeDrawer, text:t('cancel')"></button>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="visible:drillCtx, text:drillCtx"></div>
+    <div class="empty pad" data-bind="visible:drillLoading()"><span class="spin"></span></div>
+    <!-- ko if: !drillLoading() -->
+    <div class="dw-cap" data-bind="visible:drillCapNote(), text:drillCapNote"></div>
+    <div class="tbl-wrap" data-bind="visible:drillRows().length>0">
+      <table class="tbl drill-tbl">
+        <thead><tr data-bind="foreach:drillCols">
+          <th data-bind="text:label, css:{num:type==='money'||type==='num'}"></th>
+        </tr></thead>
+        <tbody>
+          <!-- ko foreach: drillRows -->
+          <tr>
+            <!-- ko foreach: $root.drillCols -->
+            <td data-bind="text:$root.cell($parent,$data), css:{'num mono':$data.type==='money'||$data.type==='num'}"></td>
+            <!-- /ko -->
+          </tr>
+          <!-- /ko -->
+        </tbody>
+        <tfoot><tr><td class="drill-total" data-bind="attr:{colspan:drillCols().length}"><span data-bind="text:t('drillTotal')"></span> <b class="mono" data-bind="text:money(drillTotalV())"></b></td></tr></tfoot>
+      </table>
+    </div>
+    <div class="empty pad" data-bind="visible:drillRows().length===0, text:t('noLines')"></div>
+    <!-- /ko -->
+  </div>
+</aside>
 
 <!-- combination segment popover -->
 <div class="combo-tip" data-bind="visible:tipShow, style:{left:tipX()+'px', top:tipY()+'px'}" style="display:none">

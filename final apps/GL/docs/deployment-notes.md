@@ -17,6 +17,45 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-02 — Budget Utilization KPI-card (aggregate) drill-down (v1.8.0).** Follow-up to v1.7.0:
+  the user expected the prominent **KPI cards** (Actual AP / GRN / Commitment PR / Obligation PO) to be
+  clickable, not just the table cells. Now both are: cards drill the **whole filtered set** (aggregate),
+  table cells drill the single row. DEPLOYED as ADMIN (`sql` ADMIN@prod_high, fresh session) — VALID.
+  - ORDS `07_gl_butil_ords`: `/gl/butil/lines` now takes `year+metric` with EITHER `project[+task+etype]`
+    (row) OR `projecttype/sector/search` (card aggregate). ONE `kys` key-set CTE (`SELECT … FROM dual
+    WHERE :project IS NOT NULL UNION ALL SELECT … FROM dct_budget_utilization_v WHERE :project IS NULL
+    AND <filters>`) drives both; fact totals via `COUNT/SUM OVER ()` windows (rows capped 1000, total/count
+    full). Response adds `aggregate` + `count`. **Fan-out fix:** the PO branch's `po_headers`+`po_lines`
+    joins and the PR branch's `pr_headers` join are now de-duped via grouped subqueries — a raw join
+    inflated aggregate PO (30.9M vs true 25.19M) when a PO line had duplicate header/line rows.
+  - Frontend v1.8.0: `openBuAgg(metric)` + `.kstat-click` cards (hover ⤢ + dotted underline) + `drillCount`/
+    `drillCapNote` ("showing top N of M"); aggregate drawer adds Project/Task columns + filter context.
+  - Verified against LIVE data (ADMIN): row totals ap 43,966/grn 1,059,704/pr 200,734/po 972,771 and
+    aggregate (sector=Culture) ap 50,030,599/grn 130,050,118/pr 107,576,885/po 25,188,034 ALL reconcile
+    to the card/row figures; handler compiled clean; both endpoint modes route (401 unauth); drawer
+    Playwright-verified (card→aggregate w/ cap note, cell→row).
+- **2026-07-02 — Budget Utilization figure drill-down (v1.7.0).** The four money figures on each
+  Budget Utilization row (Actual AP / Actual GRN / Commitment PR / Obligation PO) are now clickable
+  and drill to their supporting transaction lines in a **right-edge slide-in drawer** (mirrors the
+  platform edit-drawer template; brand-themed, RTL-aware). Each drill total reconciles exactly to
+  the row figure.
+  - ORDS: `07_gl_budget_util_ords.sql` — **ADDITIVE**, new `GET /gl/butil/lines?year=&project=&task=&etype=&metric=`
+    (metric `ap|grn|pr|po`). Filters/amounts replicate the `DCT_BUDGET_UTILIZATION_V` fact CTEs
+    (db/v2/37) keyed by the same grain (year × project_number × task_number × expenditure_type, all
+    charge accounts). **`ap`** = no-PO validated invoice distributions (invoice #, date, vendor,
+    currency, invoice amount, distribution AED, validation, **derived payment status** from
+    `invoice_amount_paid`, description); **`grn`** = receipts; **`pr`** = Reserved PR distributions;
+    **`po`** = Reserved/Partially-Liquidated PO distributions, **GRN-netted open** amount.
+    **Run as ADMIN in a fresh SQLcl session** (`sql -name prod_mcp @07_gl_budget_util_ords.sql`) —
+    ORDS modules are ADMIN-owned; re-run 07 again if `05_gl_ords.sql` is ever re-run.
+  - Frontend v1.7.0: `openBuDrill(row, metric)` → `.dw-*` drawer (new CSS in `app.css`, markup in
+    `index.html`), reuses the existing drill observables; four `.money-cell` cells + header hint
+    tooltips. `node --check` clean; drawer visually verified via Playwright (mocked API): brand
+    header, eyebrow=project·name, context=task·expenditure type, 9-col AP table, total reconciles.
+  - Verified against live data (PROD, as user `prod`): all four drill totals reconcile to a real
+    2026 row (AP 43,966 / GRN 1,059,704 / PR 200,734 / PO 972,771); handler body compiled + ran as
+    a throwaway PROD procedure (APEX_JSON scaffolding clean) — final ORDS registration still needs
+    the ADMIN deploy above.
 - **2026-07-02 — Budget Utilization page (v1.6.0) + self-healing refresh + PROJECT_NUMBER type fix.**
   New project-costing report: ONE row per Budget Year × Project × Task × Expenditure Type
   (budget > 0 only), **Budget Year is a mandatory filter**. Budget from the new

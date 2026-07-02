@@ -17,7 +17,18 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
-- **2026-07-02** — **Actuals: 3-figure Commitment/Obligation + Open Encumbrance + Funds calc** (`APP_VERSION` 1.5.0, Batch B).
+- **2026-07-02** — **Budget Utilization: KPI-card aggregate drill-down** (`APP_VERSION` 1.8.0). The four
+  KPI cards (Actual AP/GRN/Commitment PR/Obligation PO) are now clickable → all supporting lines across
+  the current filters, in the same drawer (adds Project/Task cols + "top N of M" note). `/gl/butil/lines`
+  extended: `year+metric` with `project[+task+etype]` (row) OR `projecttype/sector/search` (aggregate),
+  one `kys` CTE + window totals; PO/PR header/line joins de-duped (fixed aggregate PO fan-out). DEPLOYED
+  as ADMIN; live totals reconcile row + aggregate; drawer Playwright-verified.
+- **2026-07-02** — **Budget Utilization: per-figure drill-down** (`APP_VERSION` 1.7.0). The four money
+  cells (Actual AP / Actual GRN / Commitment PR / Obligation PO) on each Budget Utilization row are
+  clickable → supporting transaction lines in a **right-edge slide-in drawer** (`.dw-*`, mirrors the
+  platform edit-drawer). Additive ORDS `GET /gl/butil/lines?year=&project=&task=&etype=&metric=`
+  (`ap|grn|pr|po`) in `db/07` — totals reconcile to the row figure (verified against live 2026 data).
+  **Deploy `db/07` as ADMIN in a fresh session** (ORDS is ADMIN-owned).
   Real requisitions (`ATD_PR_*`, `db/v2/36` `DCT_PR_COMMITMENT_PERIOD_V`) drive Commitment
   (Total=Reserved+Liquidated / Open=Reserved / Pipeline=Not-reserved). PO split into Total (ex
   Failed/Passed) / Open (Reserved+Partial **GRN-netted**) / Pipeline (Failed/Passed), de-duped by

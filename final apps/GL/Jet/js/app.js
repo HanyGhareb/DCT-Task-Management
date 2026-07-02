@@ -158,6 +158,14 @@
     cActualAp:{en:'Actual AP',ar:'فعلي الدائنين'}, cActualGrn:{en:'Actual GRN',ar:'فعلي الاستلام'},
     cCommitPr:{en:'Commitment (PR)',ar:'الالتزام (طلب شراء)'}, cObligPo:{en:'Obligation (PO)',ar:'التعهد (أمر شراء)'},
     cFundAvail:{en:'Fund available',ar:'المتاح'},
+    buDrillAp:{en:'Actual AP — invoices',ar:'فعلي الدائنين — الفواتير'},
+    buDrillGrn:{en:'Actual GRN — receipts',ar:'فعلي الاستلام — الإيصالات'},
+    buDrillPr:{en:'Commitment (PR) — lines',ar:'الالتزام (طلب شراء) — البنود'},
+    buDrillPo:{en:'Obligation (PO) — lines',ar:'التعهد (أمر شراء) — البنود'},
+    buDrillHint:{en:'Click a figure to see its supporting AP / GRN / PR / PO lines.',ar:'انقر رقماً لعرض بنود الدائنين / الاستلام / طلب الشراء / أمر الشراء الداعمة له.'},
+    buCardHint:{en:'Click to see all supporting lines (current filters).',ar:'انقر لعرض كل البنود الداعمة (حسب عوامل التصفية الحالية).'},
+    buAllLines:{en:'All budget lines',ar:'كل بنود الموازنة'},
+    buShowing:{en:'Showing top {n} of {c} lines by amount.',ar:'عرض أعلى {n} من {c} بند حسب المبلغ.'},
 
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
@@ -617,6 +625,45 @@
         var a = document.createElement('a'); a.href = u; a.download = 'gl_budget_utilization_' + self.buYear() + '.csv'; a.click(); URL.revokeObjectURL(u);
       }).catch(fail);
     };
+
+    /* ── drill-down: a figure → its supporting lines (slide-in drawer) ── */
+    self.drillDrawer = ko.observable(false);
+    self.drillSub = ko.observable(''); self.drillCtx = ko.observable(''); self.drillCount = ko.observable(0);
+    // "showing top N of M" note when the line set is capped
+    self.drillCapNote = ko.computed(function () {
+      var c = self.drillCount(), n = self.drillRows().length;
+      return c > n ? self.t('buShowing').replace('{n}', self.fmt(n)).replace('{c}', self.fmt(c)) : '';
+    });
+    function fillDrill(d) {
+      self.drillCols(d.columns || []); self.drillRows(d.rows || []);
+      self.drillTotalV(d.total || 0); self.drillCount(d.count || (d.rows || []).length);
+      self.drillLoading(false);
+    }
+    function drillFail(e) { self.drillLoading(false); self.drillDrawer(false); toast(e.message, true); }
+    // row cell → that single budget line's supporting transactions
+    self.openBuDrill = function (row, metric) {
+      var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
+      self.drillTitle(self.t('buDrill' + cap));
+      self.drillSub((row.projectNumber || '') + (row.projectName ? ' · ' + row.projectName : ''));
+      self.drillCtx([row.taskNumber, row.expenditureType].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      api('GET', '/butil/lines' + qs({ year: self.buYear(), project: row.projectNumber,
+        task: row.taskNumber, etype: row.expenditureType, metric: metric })).then(fillDrill).catch(drillFail);
+    };
+    // KPI card → all supporting lines across the filtered set (aggregate)
+    self.openBuAgg = function (metric) {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
+      self.drillTitle(self.t('buDrill' + cap));
+      self.drillSub(self.t('buAllLines') + ' · ' + self.buYear());
+      self.drillCtx([self.buType(), self.buSector(), self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      api('GET', '/butil/lines' + qs({ year: self.buYear(), metric: metric,
+        projecttype: self.buType(), sector: self.buSector(), search: self.buSearch() })).then(fillDrill).catch(drillFail);
+    };
+    self.closeDrawer = function () { self.drillDrawer(false); };
 
     /* ════ DASHBOARD — executive analytics ════ */
     self.dashLoaded = ko.observable(false); self.dashLoading = ko.observable(false);

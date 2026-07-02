@@ -9,7 +9,10 @@
 --   GET /gl/butil/filters  -> years (default = latest) + project types + sectors
 --   GET /gl/butil?year=    -> {total, totals{...}, items[...]} -- year REQUIRED,
 --       optional projecttype / sector / search / limit / offset.
--- Source  : prod.dct_budget_utilization_v (db/v2/37).
+--   GET /gl/butil/lines?year=&project=&task=&etype=&metric=  -> a single figure
+--       (metric ap|grn|pr|po) of a butil row drilled to its supporting lines
+--       {metric, total, columns[], rows[]}; totals reconcile to the row figure.
+-- Source  : prod.dct_budget_utilization_v (db/v2/37) + the same base facts.
 -- =============================================================================
 
 SET DEFINE OFF
@@ -139,6 +142,270 @@ BEGIN
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
+    -- BUDGET UTILIZATION DRILL-DOWN -- a figure -> its supporting lines.
+    --   GET /gl/butil/lines?year=&metric=[&project=&task=&etype=]
+    --                       [&projecttype=&sector=&search=]
+    --   metric in ap | grn | pr | po (Actual AP / Actual GRN / Commitment PR /
+    --     Obligation PO). Two modes off ONE query (a `kys` key-set CTE):
+    --     * ROW drill  (project [+task+etype] supplied) -> that one budget line.
+    --     * CARD drill (project omitted) -> aggregate across every budget line
+    --       matching the /gl/butil filters (projecttype/sector/search) -- the
+    --       KPI-card totals; adds Project/Task columns.
+    --   Filters + amounts mirror prod.dct_budget_utilization_v (db/v2/37) so the
+    --   drill total always reconciles to the on-screen figure. Rows capped at
+    --   1000 (top by amount); `total`+`count` are the FULL windowed aggregates.
+    --   Returns {metric, aggregate, total, count, columns[{key,label,type}], rows[]}.
+    -- =========================================================================
+    def_template('butil/lines');
+    def_handler('butil/lines', 'GET', q'!
+DECLARE
+  l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_year    NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
+  l_project VARCHAR2(120) := [COLON]project;
+  l_task    VARCHAR2(120) := [COLON]task;
+  l_etype   VARCHAR2(255) := [COLON]etype;
+  l_metric  VARCHAR2(10)  := LOWER([COLON]metric);
+  l_ptype   VARCHAR2(100) := [COLON]projecttype;
+  l_sector  VARCHAR2(200) := [COLON]sector;
+  l_search  VARCHAR2(200) := [COLON]search;
+  l_agg     BOOLEAN;
+  l_total   NUMBER := 0;
+  l_count   NUMBER := 0;
+  PROCEDURE col(p_key VARCHAR2, p_label VARCHAR2, p_type VARCHAR2) IS
+  BEGIN
+    APEX_JSON.open_object; APEX_JSON.write('key',p_key); APEX_JSON.write('label',p_label); APEX_JSON.write('type',p_type); APEX_JSON.close_object;
+  END;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF l_year IS NULL OR l_metric IS NULL THEN dct_rest.err(400,'year and metric are required'); RETURN; END IF;
+  -- project/task/etype set -> single row drill; project omitted -> aggregate
+  -- drill (KPI card) filtered by projecttype/sector/search, like /gl/butil.
+  IF l_project = '' THEN l_project := NULL; END IF;
+  IF l_task    = '' THEN l_task    := NULL; END IF;
+  IF l_etype   = '' THEN l_etype   := NULL; END IF;
+  IF l_ptype   = '' THEN l_ptype   := NULL; END IF;
+  IF l_sector  = '' THEN l_sector  := NULL; END IF;
+  IF l_search  = '' THEN l_search  := NULL; END IF;
+  l_agg := (l_project IS NULL);
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
+  APEX_JSON.write('metric', l_metric);
+  APEX_JSON.write('aggregate', CASE WHEN l_agg THEN 'Y' ELSE 'N' END);
+
+  IF l_metric = 'ap' THEN
+    APEX_JSON.open_array('columns');
+    IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
+    col('invoice','Invoice #','text'); col('date','Invoice date','date'); col('vendor','Vendor','text');
+    col('currency','Cur','text'); col('invAmount','Invoice amount','money'); col('amount','Distribution (AED)','money');
+    col('validation','Validation','text'); col('payment','Payment','text'); col('description','Description','text');
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('rows');
+    FOR r IN (
+      WITH kys AS (
+             SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
+             UNION ALL
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             WHERE l_project IS NULL AND v.budget_year = l_year
+               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
+           proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
+           tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
+      SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)) pkey,
+             COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END) tkey,
+             i.invoice_number, TO_CHAR(i.invoice_date,'YYYY-MM-DD') idate, i.supplier_name,
+             NVL(i.invoice_currency,'AED') cur, i.invoice_amount inv_amt,
+             NVL(d.distribution_amount_functi, d.distribution_amount) amt_aed,
+             i.validation_status, d.distribution_description descr,
+             CASE WHEN NVL(i.invoice_amount,0) = 0 THEN ''
+                  WHEN ABS(NVL(i.invoice_amount_paid,0)) >= ABS(NVL(i.invoice_amount,0)) - 0.005 THEN 'Paid'
+                  WHEN NVL(i.invoice_amount_paid,0) <> 0 THEN 'Partially Paid'
+                  ELSE 'Unpaid' END pay_status,
+             COUNT(*) OVER () full_n, SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) OVER () full_tot
+      FROM prod.ap_invoice_distributions d
+      JOIN prod.ap_invoices i     ON i.invoice_id = d.invoice_id
+      JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
+      LEFT JOIN proj pj ON pj.project_id = d.project_id
+      LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
+      WHERE d.po_number IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y' AND d.project_id IS NOT NULL
+        AND i.validation_status IN ('Validated','Unpaid','Available')
+        AND EXTRACT(YEAR FROM d.accounting_date) = l_year
+        AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)),
+             NVL(COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),'~'),
+             NVL(d.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
+      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+    ) LOOP
+      l_count := r.full_n; l_total := r.full_tot;
+      APEX_JSON.open_object;
+      IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
+      APEX_JSON.write('invoice', NVL(r.invoice_number,'')); APEX_JSON.write('date', NVL(r.idate,''));
+      APEX_JSON.write('vendor', NVL(r.supplier_name,'')); APEX_JSON.write('currency', NVL(r.cur,''));
+      APEX_JSON.write('invAmount', r.inv_amt); APEX_JSON.write('amount', r.amt_aed);
+      APEX_JSON.write('validation', NVL(r.validation_status,'')); APEX_JSON.write('payment', NVL(r.pay_status,''));
+      APEX_JSON.write('description', NVL(r.descr,''));
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+
+  ELSIF l_metric = 'grn' THEN
+    APEX_JSON.open_array('columns');
+    IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
+    col('receipt','Receipt #','text'); col('date','Date','date'); col('currency','Cur','text');
+    col('rate','Rate','num'); col('amount','Amount (AED)','money');
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('rows');
+    FOR r IN (
+      WITH kys AS (
+             SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
+             UNION ALL
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             WHERE l_project IS NULL AND v.budget_year = l_year
+               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
+           proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
+           tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
+           po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account FROM prod.po_distributions GROUP BY po_distribution_id)
+      SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)) pkey,
+             COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) tkey,
+             g.receipt_number, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, g.currency_code,
+             g.conversion_rate, g.transaction_amount * NVL(g.conversion_rate,1) amt_aed,
+             COUNT(*) OVER () full_n, SUM(g.transaction_amount * NVL(g.conversion_rate,1)) OVER () full_tot
+      FROM prod.grn_all_v2 g
+      JOIN po_dist pod ON pod.po_distribution_id = g.po_distribution_id
+      LEFT JOIN proj pj ON pj.project_id = g.project_id
+      LEFT JOIN tsk  tk ON tk.task_id    = g.task_id
+      WHERE g.project_id IS NOT NULL AND pod.charge_account IS NOT NULL
+        AND EXTRACT(YEAR FROM g.transaction_date) = l_year
+        AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)),
+             NVL(COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END),'~'),
+             NVL(g.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
+      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+    ) LOOP
+      l_count := r.full_n; l_total := r.full_tot;
+      APEX_JSON.open_object;
+      IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
+      APEX_JSON.write('receipt', NVL(TO_CHAR(r.receipt_number),'')); APEX_JSON.write('date', NVL(r.td,''));
+      APEX_JSON.write('currency', NVL(r.currency_code,'AED')); APEX_JSON.write('rate', NVL(r.conversion_rate,1));
+      APEX_JSON.write('amount', r.amt_aed);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+
+  ELSIF l_metric = 'pr' THEN
+    APEX_JSON.open_array('columns');
+    IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
+    col('pr','PR #','text'); col('description','Description','text'); col('date','Budget date','date');
+    col('currency','Cur','text'); col('amount','Line amount (AED)','money');
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('rows');
+    FOR r IN (
+      WITH kys AS (
+             SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
+             UNION ALL
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             WHERE l_project IS NULL AND v.budget_year = l_year
+               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
+           proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
+           tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
+      SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)) pkey,
+             COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END) tkey,
+             d.requisition pr_number, h.description, TO_CHAR(d.budget_date,'YYYY-MM-DD') bd,
+             d.currency_code, d.distribution_amount * NVL(cc.exchange_rate_to_aed,1) amt_aed,
+             COUNT(*) OVER () full_n, SUM(d.distribution_amount * NVL(cc.exchange_rate_to_aed,1)) OVER () full_tot
+      FROM prod.pr_distributions d
+      LEFT JOIN (SELECT pr_header_id, MAX(description) description FROM prod.pr_headers GROUP BY pr_header_id) h
+             ON h.pr_header_id = d.pr_header_id
+      LEFT JOIN prod.dct_currency_codes cc ON cc.currency_code = d.currency_code
+      LEFT JOIN proj pj ON pj.project_id = d.project_id
+      LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
+      WHERE d.funds_status = 'Reserved' AND d.project_id IS NOT NULL AND d.charge_account IS NOT NULL
+        AND EXTRACT(YEAR FROM d.budget_date) = l_year
+        AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)),
+             NVL(COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),'~'),
+             NVL(d.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
+      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+    ) LOOP
+      l_count := r.full_n; l_total := r.full_tot;
+      APEX_JSON.open_object;
+      IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
+      APEX_JSON.write('pr', NVL(TO_CHAR(r.pr_number),'')); APEX_JSON.write('description', NVL(r.description,''));
+      APEX_JSON.write('date', NVL(r.bd,'')); APEX_JSON.write('currency', NVL(r.currency_code,'AED'));
+      APEX_JSON.write('amount', r.amt_aed);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+
+  ELSIF l_metric = 'po' THEN
+    APEX_JSON.open_array('columns');
+    IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
+    col('po','PO #','text'); col('line','Line','text'); col('date','Budget date','date'); col('vendor','Vendor','text');
+    col('status','Funds status','text'); col('poAmount','PO amount','money'); col('lineAmount','Line amount (AED)','money');
+    col('amount','Open (AED)','money');
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('rows');
+    FOR r IN (
+      WITH kys AS (
+             SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
+             UNION ALL
+             SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
+             WHERE l_project IS NULL AND v.budget_year = l_year
+               AND (l_ptype  IS NULL OR v.project_type = l_ptype)
+               AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
+           proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
+           tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
+           po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account, MAX(project_id) project_id, MAX(task_id) task_id,
+                              MAX(expenditure_type_name) expenditure_type, MAX(budget_date) budget_date, MAX(po_header_id) po_header_id,
+                              MAX(po_line_id) po_line_id, MAX(distribution_amount * NVL(rate,1)) amt_aed, MAX(funds_status) funds_status
+                       FROM prod.po_distributions GROUP BY po_distribution_id),
+           grn_per_dist AS (SELECT po_distribution_id, SUM(transaction_amount * NVL(conversion_rate,1)) grn_aed FROM prod.grn_all_v2 GROUP BY po_distribution_id)
+      SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)) pkey,
+             COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END) tkey,
+             h.order_number, pl.line po_line, TO_CHAR(b.budget_date,'YYYY-MM-DD') bd, h.supplier_name, b.funds_status,
+             TO_NUMBER(REGEXP_REPLACE(h.ordered_amount,'[^0-9.-]','') DEFAULT NULL ON CONVERSION ERROR) po_amt,
+             b.amt_aed line_aed, GREATEST(b.amt_aed - NVL(g.grn_aed,0),0) open_aed,
+             COUNT(*) OVER () full_n, SUM(GREATEST(b.amt_aed - NVL(g.grn_aed,0),0)) OVER () full_tot
+      FROM po_dist b
+      LEFT JOIN grn_per_dist g ON g.po_distribution_id = b.po_distribution_id
+      LEFT JOIN (SELECT po_header_id, MAX(order_number) order_number, MAX(supplier_name) supplier_name,
+                        MAX(ordered_amount) ordered_amount FROM prod.po_headers GROUP BY po_header_id) h
+             ON h.po_header_id = b.po_header_id
+      LEFT JOIN (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id) pl
+             ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id
+      LEFT JOIN proj pj ON pj.project_id = b.project_id
+      LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
+      WHERE b.funds_status IN ('Reserved','Partially Liquidated') AND b.project_id IS NOT NULL AND b.charge_account IS NOT NULL
+        AND EXTRACT(YEAR FROM b.budget_date) = l_year
+        AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)),
+             NVL(COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END),'~'),
+             NVL(b.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
+      ORDER BY open_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+    ) LOOP
+      l_count := r.full_n; l_total := r.full_tot;
+      APEX_JSON.open_object;
+      IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
+      APEX_JSON.write('po', NVL(TO_CHAR(r.order_number),'')); APEX_JSON.write('line', NVL(TO_CHAR(r.po_line),''));
+      APEX_JSON.write('date', NVL(r.bd,'')); APEX_JSON.write('vendor', NVL(r.supplier_name,''));
+      APEX_JSON.write('status', NVL(r.funds_status,'')); APEX_JSON.write('poAmount', r.po_amt);
+      APEX_JSON.write('lineAmount', r.line_aed); APEX_JSON.write('amount', r.open_aed);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+
+  ELSE
+    dct_rest.err(400,'Unknown metric'); RETURN;
+  END IF;
+
+  APEX_JSON.write('total', l_total);
+  APEX_JSON.write('count', l_count);
+  APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');

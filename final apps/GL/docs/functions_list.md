@@ -39,6 +39,10 @@ update on any view/method/endpoint change.
 - totals answer cards (6) via `buTot(k)`: budget, actualAp, actualGrn, commitmentPr (open PR), obligationPo (open PO, GRN-netted), fundAvailable (= Budget − AP − GRN − Open PR − Open PO).
 - result table (17 cols): Type / Sector / Department / Cost centre / Project (number + name) / Task / GL Account / Appropriation / Chapter / Program / Expenditure type + the 6 measures. Attributes resolve task-first (task `COST_CENTER`→SECTOR map, task `APPROPRIATION`→CHAPTER map, task `PROGRAM`), then transactions, then project.
 - `buExportCsv()` — CSV of the full filtered set (≤5000 rows); `buRange` — “a–b of total”.
+- drill-down (two entry points, one **right-edge slide-in drawer** — `.dw-*`, mirrors the platform edit-drawer; brand-themed header + eyebrow + context; `closeDrawer()`):
+  - `openBuDrill(row, metric)` — the four money **table cells** (`.money-cell`) drill that single budget line (`/butil/lines?year=&project=&task=&etype=&metric=`); eyebrow = project·name, context = task·expenditure type.
+  - `openBuAgg(metric)` — the four **KPI cards** (`.kstat-click`: Actual AP / Actual GRN / Commitment PR / Obligation PO) drill **all** supporting lines across the current filter set (`/butil/lines?year=&metric=&projecttype=&sector=&search=`); eyebrow = "All budget lines · <year>", context = active filters, adds Project/Task columns, and a `drillCapNote` "showing top N of M" when capped at 1000.
+  - metric ∈ ap|grn|pr|po; totals always reconcile: **ap**→AP invoices (invoice #, date, vendor, currency, invoice amount, distribution AED, validation, payment, description), **grn**→GRN receipts (receipt #, date, currency, rate, amount AED), **pr**→open-commitment PR lines (PR #, description, budget date, currency, line amount AED), **po**→open-obligation PO lines GRN-netted (PO #, line, budget date, vendor, funds status, PO amount, line amount AED, Open AED). Reuses the shared drill observables (`drillCols`/`drillRows`/`drillTotalV`/`drillCount`/`cell`).
 
 ## Dashboard (`view()==='dashboard'`) — executive analytics
 - `dashPeriod` selector → `loadDashboard()` (`/dashboard`); KPI strip via `kpis()` (budget, actual, funds, encumbrance, PO total & count, utilisation/commitment %).
@@ -71,6 +75,7 @@ update on any view/method/endpoint change.
 | POST | `/actuals/refresh` | rebuild `DCT_GL_COA_SNAP` + recompile INVALID PROD views (manual; same proc as the hourly job) |
 | GET | `/butil/filters` | Budget Utilization LOVs: years (+`defaultYear`), projectTypes, sectors (`07_gl_budget_util_ords.sql`, ADDITIVE — re-run after any 05 re-run) |
 | GET | `/butil` | Budget Utilization report, `?year(req)=&projecttype=&sector=&search=&limit=&offset=` → totals + items over `DCT_BUDGET_UTILIZATION_V` (db/v2/37) |
+| GET | `/butil/lines` | Budget Utilization figure drill-down, `?year(req)=&metric(req)=` (ap\|grn\|pr\|po) + EITHER `&project=&task=&etype=` (row drill) OR `&projecttype=&sector=&search=` (KPI-card aggregate) → `{metric, aggregate, total, count, columns[], rows[]}`; one `kys` key-set CTE drives both modes; filters/amounts mirror `DCT_BUDGET_UTILIZATION_V` so totals reconcile to the on-screen figure; rows capped 1000 (window `total`/`count` are full). PO/PR header+line joins de-duped to avoid fan-out (`07_gl_budget_util_ords.sql`, ADDITIVE — re-run after any 05 re-run) |
 
 ## Data layer (PROD)
 - Tables: `DCT_GL_CLASS_TYPE` → `DCT_GL_CLASS_VALUE` → `DCT_GL_SEG_CLASS_MAP`.
