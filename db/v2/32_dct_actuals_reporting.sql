@@ -108,7 +108,7 @@ SELECT
   i.supplier_name                                                       AS supplier_name,
   i.po_number                                                           AS order_number,
   pjn.project_id                                                        AS project_id,
-  l.project_number                                                      AS project_number,
+  TO_CHAR(l.project_number)                                             AS project_number,
   pjn.project_name                                                      AS project_name,
   CAST(NULL AS NUMBER)                                                  AS task_id,
   l.task_number                                                         AS task_number,
@@ -124,7 +124,7 @@ LEFT JOIN prod.dct_gl_coa_snap  coa ON coa.cc_string = COALESCE(pm.charge_accoun
 LEFT JOIN prod.ap_invoices      i   ON i.invoice_id = d.invoice_id
 LEFT JOIN prod.ap_invoice_lines l   ON l.invoice_id = d.invoice_id
                                    AND l.invoice_line_number = d.line_number
-LEFT JOIN proj                  pjn ON pjn.project_number = l.project_number
+LEFT JOIN proj                  pjn ON TO_CHAR(pjn.project_number) = TO_CHAR(l.project_number)
 LEFT JOIN task_num              tkn ON tkn.task_number   = l.task_number
 WHERE NVL(d.reversal_indicator,'N') <> 'Y'   -- exclude reversed/voided AP distributions
 UNION ALL
@@ -218,7 +218,7 @@ SELECT
   CAST(NULL AS VARCHAR2(150)),     -- supplier_name
   CAST(NULL AS NUMBER),            -- order_number
   CAST(NULL AS NUMBER),            -- project_id
-  CAST(NULL AS NUMBER),            -- project_number
+  CAST(NULL AS VARCHAR2(30)),      -- project_number
   CAST(NULL AS VARCHAR2(100)),     -- project_name
   CAST(NULL AS NUMBER),            -- task_id
   CAST(NULL AS VARCHAR2(60)),      -- task_number

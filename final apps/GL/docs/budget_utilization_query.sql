@@ -1,5 +1,5 @@
 -- ===========================================================================
--- Budget Utilization report (project-grain) -- FINAL query v5 (2026-07-02)
+-- Budget Utilization report (project-grain) -- FINAL query v7 (2026-07-02)
 -- ---------------------------------------------------------------------------
 -- One row per PROJECT x TASK x EXPENDITURE TYPE (only lines with budget > 0).
 --   Budget          : prod.projects_budget (ATD_PROJECTS_BUDGET), counted once.
@@ -11,12 +11,15 @@
 --   Obligation (PO) : OPEN obligation = Reserved/Partially Liquidated PO
 --                     distributions, GRN-netted per po_distribution_id.
 --   Fund Available  = Budget - AP - GRN - Open PR - Open PO.
--- Display attributes: sector/department/cost centre resolved from the row's
--- own transactions -> the project's transactions -> the task's organization
--- (prod.tasks.task_organization; name-matched to COA cost centres where
--- possible). GL account derived from the expenditure-type code prefix for
--- budget-only lines; appropriation/chapter fall back to the project master.
--- GL_COMBINATION = distinct full combinations behind the row ('|'-separated).
+-- Display attributes resolved task-first, then transactions, then project:
+--   Sector       : task COST_CENTER -> DEFINED SECTOR map (dct_gl_seg_class_map,
+--                  as of today) -> COA snap -> row/project transactions.
+--   Cost centre / Department: task COST_CENTER -> row txns -> project txns
+--                  -> raw task_organization name (department only).
+--   Appropriation: task APPROPRIATION (desc from COA) -> row txns -> project.
+--   Chapter      : appropriation -> DEFINED CHAPTER map -> COA -> project.
+--   Program      : task PROGRAM (LPAD 6, desc from COA) -> row txns.
+-- GL account derived from the expenditure-type code prefix for budget-only lines.
 -- All amounts AED. Requires prod.dct_gl_coa_snap (db/v2/33) + base views
 -- (db/v2/32 + 36). Verified live 2026-07-02: 5,313 rows, budget 24,064.4M.
 -- ===========================================================================
@@ -35,21 +38,50 @@ tsk_org AS (  -- task cost centre (organization) per task number
   SELECT task_number, MAX(task_organization) AS task_organization
   FROM prod.tasks GROUP BY task_number
 ),
-ccmap AS (    -- normalized cost-centre-desc -> code + sector (for org-name matching)
-  SELECT UPPER(REGEXP_REPLACE(cost_center_desc,'[^A-Za-z0-9]','')) AS norm,
-         MAX(cost_center_code) AS cost_center_code,
-         MAX(cost_center_desc) AS cost_center_desc,
-         MAX(sector_name)      AS sector_name
-  FROM prod.dct_gl_coa_snap WHERE cost_center_desc IS NOT NULL
-  GROUP BY UPPER(REGEXP_REPLACE(cost_center_desc,'[^A-Za-z0-9]',''))
+tsk_seg AS (  -- task-level segments (prod.tasks: COST_CENTER + APPROPRIATION) per project+task
+  SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number AS task_key,
+         MAX(TO_CHAR(t.cost_center))   AS cost_center_code,
+         MAX(TO_CHAR(t.appropriation)) AS appropriation_code,
+         MAX(CASE WHEN t.program IS NOT NULL THEN LPAD(TO_CHAR(t.program),6,'0') END) AS program_code
+  FROM prod.tasks t
+  JOIN proj pj ON pj.project_id = t.project_id
+  GROUP BY TO_CHAR(pj.project_number), t.task_number
+),
+cc_dim AS (   -- cost-centre code -> description + sector (from loaded combinations)
+  SELECT cost_center_code, MAX(cost_center_desc) AS cost_center_desc,
+         MAX(sector_name) AS sector_name
+  FROM prod.dct_gl_coa_snap WHERE cost_center_code IS NOT NULL
+  GROUP BY cost_center_code
+),
+sector_map AS (  -- DEFINED mapping: cost-centre segment -> Sector (GL class model, as of today)
+  SELECT m.segment_value AS cost_center_code, MAX(v.name_en) AS sector_name
+  FROM prod.dct_gl_seg_class_map m
+  JOIN prod.dct_gl_class_value v ON v.class_value_id = m.class_value_id
+  WHERE m.class_type_code = 'SECTOR'
+    AND TRUNC(SYSDATE) BETWEEN m.start_date AND NVL(m.end_date, DATE '9999-12-31')
+  GROUP BY m.segment_value
+),
+chapter_map AS ( -- DEFINED mapping: appropriation segment -> Chapter (GL class model, as of today)
+  SELECT m.segment_value AS appropriation_code, MAX(v.name_en) AS chapter_name
+  FROM prod.dct_gl_seg_class_map m
+  JOIN prod.dct_gl_class_value v ON v.class_value_id = m.class_value_id
+  WHERE m.class_type_code = 'CHAPTER'
+    AND TRUNC(SYSDATE) BETWEEN m.start_date AND NVL(m.end_date, DATE '9999-12-31')
+  GROUP BY m.segment_value
+),
+approp_dim AS (  -- appropriation code -> description
+  SELECT appropriation_code, MAX(appropriation_desc) AS appropriation_desc
+  FROM prod.dct_gl_coa_snap WHERE appropriation_code IS NOT NULL
+  GROUP BY appropriation_code
+),
+program_dim AS ( -- program code -> description
+  SELECT program_code, MAX(program_desc) AS program_desc
+  FROM prod.dct_gl_coa_snap WHERE program_code IS NOT NULL
+  GROUP BY program_code
 ),
 acct AS (
   SELECT account_code, MAX(account_desc) AS account_desc
   FROM prod.dct_gl_coa_snap GROUP BY account_code
-),
-approp_chap AS (
-  SELECT appropriation_code, MAX(chapter_name) AS chapter_name
-  FROM prod.dct_gl_coa_snap GROUP BY appropriation_code
 ),
 pb AS (
   SELECT COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(b.project_id)) AS project_key,
@@ -167,28 +199,42 @@ keys AS (
     MINUS
     SELECT project_key, task_key, expenditure_type FROM fact_keys
   )
-),
+)
 SELECT
   NVL(MAX(pj.project_type),'(not in projects master)') AS project_type,
-  COALESCE(MAX(coa.sector_name),
+  COALESCE(MAX(sm.sector_name),
+           MAX(tcd.sector_name),
+           MAX(coa.sector_name),
            MAX(MAX(coa.sector_name)) OVER (PARTITION BY k.project_key),
-           MAX(cm.sector_name))                            AS sector,
-  COALESCE(MAX(coa.cost_center_desc),
+           MAX(MAX(sm.sector_name)) OVER (PARTITION BY k.project_key))        AS sector,
+  COALESCE(MAX(tcd.cost_center_desc),
+           MAX(coa.cost_center_desc),
            MAX(MAX(coa.cost_center_desc)) OVER (PARTITION BY k.project_key),
-           MAX(torg.task_organization))                    AS department,
-  COALESCE(MAX(coa.cost_center_code),
+           MAX(MAX(tcd.cost_center_desc)) OVER (PARTITION BY k.project_key),
+           MAX(torg.task_organization))                                       AS department,
+  COALESCE(MAX(tcc.cost_center_code),
+           MAX(coa.cost_center_code),
            MAX(MAX(coa.cost_center_code)) OVER (PARTITION BY k.project_key),
-           MAX(cm.cost_center_code))                       AS cost_centre,
+           MAX(MAX(tcc.cost_center_code)) OVER (PARTITION BY k.project_key))  AS cost_centre,
   k.project_key             AS project_number,
   MAX(pj.project_name)      AS project_name,
   k.task_key                AS tasks,
   COALESCE(MAX(CASE WHEN coa.account_code IS NOT NULL THEN coa.account_code || ' - ' || coa.account_desc END),
            MAX(CASE WHEN ac.account_code  IS NOT NULL THEN ac.account_code  || ' - ' || ac.account_desc  END)) AS gl_account,
-  COALESCE(MAX(CASE WHEN coa.appropriation_code IS NOT NULL THEN coa.appropriation_code || ' - ' || coa.appropriation_desc END),
+  COALESCE(MAX(CASE WHEN tcc.appropriation_code IS NOT NULL
+                    THEN tcc.appropriation_code ||
+                         CASE WHEN ad.appropriation_desc IS NOT NULL THEN ' - ' || ad.appropriation_desc END END),
+           MAX(CASE WHEN coa.appropriation_code IS NOT NULL THEN coa.appropriation_code || ' - ' || coa.appropriation_desc END),
            MAX(CASE WHEN pj.appropriation IS NOT NULL THEN pj.appropriation || ' - ' || pj.appropriation_desc END)) AS appropriation,
-  COALESCE(MAX(coa.chapter_name), MAX(apc.chapter_name))   AS chapter,
+  COALESCE(MAX(cmap.chapter_name),
+           MAX(coa.chapter_name),
+           MAX(cmap_pj.chapter_name),
+           MAX(MAX(coa.chapter_name)) OVER (PARTITION BY k.project_key))      AS chapter,
+  COALESCE(MAX(CASE WHEN tcc.program_code IS NOT NULL
+                    THEN tcc.program_code ||
+                         CASE WHEN pgd.program_desc IS NOT NULL THEN ' - ' || pgd.program_desc END END),
+           MAX(CASE WHEN coa.program_code IS NOT NULL THEN coa.program_code || ' - ' || coa.program_desc END)) AS program,
   k.expenditure_type,
-  LISTAGG(DISTINCT k.cc_string, ' | ') WITHIN GROUP (ORDER BY k.cc_string) AS gl_combination,
   MAX(NVL(b.budget,0))              AS budget,
   SUM(NVL(ap.actual_ap,0))          AS actual_ap,
   SUM(NVL(grn.actual_grn,0))        AS actual_grn,
@@ -206,9 +252,14 @@ LEFT JOIN pb b  ON b.project_key = k.project_key
                AND NVL(b.expenditure_type,'~') = NVL(k.expenditure_type,'~')
 LEFT JOIN proj pj ON TO_CHAR(pj.project_number) = k.project_key
 LEFT JOIN tsk_org torg ON torg.task_number = k.task_key
-LEFT JOIN ccmap cm ON cm.norm = UPPER(REGEXP_REPLACE(torg.task_organization,'[^A-Za-z0-9]',''))
+LEFT JOIN tsk_seg tcc ON tcc.project_key = k.project_key AND tcc.task_key = k.task_key
+LEFT JOIN cc_dim tcd ON tcd.cost_center_code = tcc.cost_center_code
+LEFT JOIN sector_map sm ON sm.cost_center_code = tcc.cost_center_code
+LEFT JOIN approp_dim ad ON ad.appropriation_code = tcc.appropriation_code
+LEFT JOIN chapter_map cmap ON cmap.appropriation_code = tcc.appropriation_code
+LEFT JOIN chapter_map cmap_pj ON cmap_pj.appropriation_code = pj.appropriation
+LEFT JOIN program_dim pgd ON pgd.program_code = tcc.program_code
 LEFT JOIN acct ac ON ac.account_code = REGEXP_SUBSTR(k.expenditure_type,'^\d+')
-LEFT JOIN approp_chap apc ON apc.appropriation_code = pj.appropriation
 LEFT JOIN f_ap ap ON NVL(ap.cc_string,'~') = NVL(k.cc_string,'~')
                  AND ap.project_key = k.project_key
                  AND NVL(ap.task_key,'~')         = NVL(k.task_key,'~')
