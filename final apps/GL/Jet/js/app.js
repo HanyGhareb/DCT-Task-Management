@@ -142,6 +142,23 @@
     refreshHint:{en:'Rebuild the classification snapshot so the report reflects the latest GL/ATD data and mapping edits.',ar:'إعادة بناء لقطة التصنيف لتعكس أحدث بيانات دفتر الأستاذ والربط.'},
     asOfRefresh:{en:'Updated',ar:'حُدّث'},
 
+    /* ── Budget Utilization (project budget vs actual) ── */
+    navButil:{en:'Budget Utilization',ar:'استخدام الموازنة'},
+    buTitle:{en:'Budget Utilization',ar:'استخدام الموازنة'},
+    buSub:{en:'Project budget vs AP, GRN, open commitments and obligations — per task and expenditure type.',ar:'موازنة المشاريع مقابل الدائنين والاستلام والالتزامات والتعهدات المفتوحة — لكل مهمة ونوع إنفاق.'},
+    fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
+    allTypes:{en:'All types',ar:'كل الأنواع'},
+    searchButil:{en:'Project, task, department…',ar:'المشروع، المهمة، الإدارة…'},
+    yearRequired:{en:'Please choose a budget year.',ar:'الرجاء اختيار سنة الموازنة.'},
+    noButil:{en:'No budget lines match these criteria.',ar:'لا توجد بنود موازنة مطابقة.'},
+    cProjType:{en:'Type',ar:'النوع'}, cDept:{en:'Department',ar:'الإدارة'},
+    cProject:{en:'Project',ar:'المشروع'}, cTask:{en:'Task',ar:'المهمة'},
+    cGlAccount:{en:'GL Account',ar:'حساب الأستاذ'}, cChapter:{en:'Chapter',ar:'الباب'},
+    cEtype:{en:'Expenditure type',ar:'نوع الإنفاق'},
+    cActualAp:{en:'Actual AP',ar:'فعلي الدائنين'}, cActualGrn:{en:'Actual GRN',ar:'فعلي الاستلام'},
+    cCommitPr:{en:'Commitment (PR)',ar:'الالتزام (طلب شراء)'}, cObligPo:{en:'Obligation (PO)',ar:'التعهد (أمر شراء)'},
+    cFundAvail:{en:'Fund available',ar:'المتاح'},
+
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
     dashSub:{en:'Where the budget is going — spend, commitments and momentum at a glance.',ar:'إلى أين تتجه الموازنة — الإنفاق والارتباطات والاتجاه في لمحة.'},
@@ -242,6 +259,10 @@
         if (!self.acFiltersLoaded()) self.loadAcFilters().then(function () { self.runActuals(0); });
         else self.runActuals(0);
       } else if (v === 'dashboard') self.loadDashboard();
+      else if (v === 'butil') {
+        if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runButil(0); });
+        else self.runButil(0);
+      }
     };
     self.signOut = function () { location.href = ADMIN_LOGIN; };
 
@@ -533,6 +554,67 @@
         }).join('\n');
         var blob = new Blob([csv], { type: 'text/csv' }); var u = URL.createObjectURL(blob);
         var a = document.createElement('a'); a.href = u; a.download = 'gl_actuals_' + self.acPeriod() + '.csv'; a.click(); URL.revokeObjectURL(u);
+      }).catch(fail);
+    };
+
+    /* ════ BUDGET UTILIZATION — project budget vs actual (year mandatory) ════ */
+    self.buFiltersLoaded = ko.observable(false);
+    self.buYears = ko.observableArray([]);
+    self.buTypes = ko.observableArray([]);
+    self.buSectors = ko.observableArray([]);
+    self.buYear = ko.observable(''); self.buType = ko.observable(''); self.buSector = ko.observable('');
+    self.buSearch = ko.observable('');
+    self.buItems = ko.observableArray([]); self.buTotals = ko.observable({});
+    self.buTotal = ko.observable(0); self.buOffset = ko.observable(0); self.buLimit = 100;
+    self.buLoading = ko.observable(false);
+
+    self.loadBuFilters = function () {
+      return api('GET', '/butil/filters').then(function (d) {
+        self.buYears(d.years || []);
+        self.buTypes(d.projectTypes || []);
+        self.buSectors(d.sectors || []);
+        // KO nulls a <select> value when options were empty at bind time; re-assert.
+        if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
+        self.buFiltersLoaded(true);
+      }).catch(fail);
+    };
+    self.buParams = function (offset, limit) {
+      return { year: self.buYear(), projecttype: self.buType(), sector: self.buSector(),
+        search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
+    };
+    self.runButil = function (offset) {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      offset = Math.max(0, offset || 0); self.buLoading(true);
+      return api('GET', '/butil' + qs(self.buParams(offset))).then(function (d) {
+        self.buItems(d.items || []); self.buTotals(d.totals || {});
+        self.buTotal(d.total || 0); self.buOffset(offset); self.buLoading(false);
+      }).catch(function (e) { self.buLoading(false); fail(e); });
+    };
+    self.buReset = function () {
+      self.buType(''); self.buSector(''); self.buSearch('');
+      if (self.buYears().length) self.buYear(self.buYears()[0]);
+      self.runButil(0);
+    };
+    self.buRange = ko.computed(function () {
+      if (!self.buTotal()) return '';
+      var a = self.buOffset() + 1, b = Math.min(self.buOffset() + self.buLimit, self.buTotal());
+      return a + '–' + b + ' ' + self.t('rowsOf') + ' ' + self.fmt(self.buTotal());
+    });
+    self.buTot = function (k) { var t = self.buTotals() || {}; return t[k]; };
+    self.buExportCsv = function () {
+      api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
+        var rows = d.items || [];
+        var cols = [['projectType', 'Project Type'], ['sector', 'Sector'], ['department', 'Department'],
+          ['costCentre', 'Cost Centre'], ['projectNumber', 'Project Number'], ['projectName', 'Project Name'],
+          ['taskNumber', 'Task'], ['glAccount', 'GL Account'], ['appropriation', 'Appropriation'],
+          ['chapter', 'Chapter'], ['program', 'Program'], ['expenditureType', 'Expenditure Type'],
+          ['budget', 'Budget'], ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
+          ['commitmentPr', 'Commitment (PR)'], ['obligationPo', 'Obligation (PO)'], ['fundAvailable', 'Fund Available']];
+        var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
+          return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
+        }).join('\n');
+        var blob = new Blob([csv], { type: 'text/csv' }); var u = URL.createObjectURL(blob);
+        var a = document.createElement('a'); a.href = u; a.download = 'gl_budget_utilization_' + self.buYear() + '.csv'; a.click(); URL.revokeObjectURL(u);
       }).catch(fail);
     };
 

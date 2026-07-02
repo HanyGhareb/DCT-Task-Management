@@ -17,6 +17,28 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-02 — Budget Utilization page (v1.6.0) + self-healing refresh + PROJECT_NUMBER type fix.**
+  New project-costing report: ONE row per Budget Year × Project × Task × Expenditure Type
+  (budget > 0 only), **Budget Year is a mandatory filter**. Budget from the new
+  `ATD_PROJECTS_BUDGET` extract; AP/GRN/open PR/open PO year-scoped by their dates;
+  Fund Available = Budget − AP − GRN − Open PR − Open PO. Sector via the DEFINED SECTOR map from
+  the task's `COST_CENTER`; Appropriation/Program from `ATD_TASKS`; Chapter via the CHAPTER map.
+  - DB: `db/v2/37` `DCT_BUDGET_UTILIZATION_V` (re-run `db/v2/32` FIRST so `projects_budget`/`tasks`
+    pass-throughs expose `BUDGET_YEAR` + task `COST_CENTER`); `db/v2/33` `dct_actuals_refresh` now
+    also **recompiles INVALID PROD views** (2 passes) — hourly job + both Refresh buttons self-heal
+    after ATD reloads (NB: recompile only; a `SELECT *` base view still needs a 32/36 re-run to
+    EXPOSE new columns). Also in `db/v2/32`: `DCT_ACTUAL_V` ORA-01790 fix after
+    `ATD_PROJECTS.PROJECT_NUMBER` became VARCHAR2 ('T4514' Trust numbers).
+  - ORDS: `07_gl_budget_util_ords.sql` — **ADDITIVE** to gl.rest (`GET /gl/butil/filters`,
+    `GET /gl/butil?year=` [400 without year]). **If `05_gl_ords.sql` is ever re-run (it
+    DELETE_MODULEs gl.rest), re-run 07 right after it.**
+  - Frontend v1.6.0: new **Budget Utilization** nav page — mandatory Budget Year select (default =
+    latest), Project Type/Sector/Search filters, 6 totals cards, 17-column table, CSV, pagination.
+  - Verified: view VALID (2026: 1,352 rows / 5,277.4M, full-year aggregate 1.4 s), templates
+    registered, handler queries live-run, `node --check` clean.
+  - Known data gaps (source-side, tracked in `docs/budget_utilization_missing_data.md`): 73 lines
+    without Sector (tasks missing `COST_CENTER`), 13 lines without Chapter (unmapped appropriations
+    50723/50729/50730/0).
 - **2026-07-02 — Actuals: 3-figure Commitment/Obligation + Open Encumbrance + Funds calc (v1.5.0, Batch B).**
   Real requisitions now drive Commitment; PO obligation split into three funds-status buckets with a
   GRN-netted Open Obligation. Grouped-cell display.

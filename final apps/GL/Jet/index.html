@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.5.0';</script>
+<script>window.APP_VERSION='1.6.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -45,12 +45,13 @@
     <a data-bind="css:{on:view()==='overview'}, click:go.bind($data,'overview'), text:t('navOverview')"></a>
     <a data-bind="css:{on:view()==='actuals'}, click:go.bind($data,'actuals'), text:t('navActuals')"></a>
     <a data-bind="css:{on:view()==='dashboard'}, click:go.bind($data,'dashboard'), text:t('navDashboard')"></a>
+    <a data-bind="css:{on:view()==='butil'}, click:go.bind($data,'butil'), text:t('navButil')"></a>
     <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
     <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
     <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'}">
 
     <!-- ── OVERVIEW ── -->
     <div data-bind="visible:view()==='overview'">
@@ -325,6 +326,102 @@
         <span class="t-dates" data-bind="text:acRange()"></span>
         <button class="btn btn-sm" data-bind="click:function(){runActuals(acOffset()-acLimit)}, enable:acOffset()>0, text:t('prev')"></button>
         <button class="btn btn-sm" data-bind="click:function(){runActuals(acOffset()+acLimit)}, enable:(acOffset()+acLimit)<acTotal(), text:t('next')"></button>
+      </div>
+    </div>
+
+    <!-- ── BUDGET UTILIZATION (project budget vs actual, per task & expenditure type) ── -->
+    <div data-bind="visible:view()==='butil'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('buTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('buSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:buTotal(), text:buRange()"></span>
+          <button class="btn btn-sm" data-bind="click:buExportCsv, enable:buTotal()>0, text:t('exportCsv')"></button>
+          <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
+        </div>
+      </div>
+
+      <!-- search criteria (budget year is mandatory) -->
+      <div class="card filter-card">
+        <div class="filter-grid">
+          <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+            <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
+            <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
+            <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+            <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
+          <div class="field filter-actions">
+            <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, text:t('btnSearch')"></button>
+            <button class="btn" data-bind="click:buReset, text:t('btnReset')"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- totals answer cards -->
+      <div class="kpi-strip">
+        <div class="kstat budget"><div class="kk" data-bind="text:t('cBudget')"></div><div class="kv mono" data-bind="text:compact(buTot('budget')), attr:{title:money(buTot('budget'))}"></div></div>
+        <div class="kstat apd"><div class="kk" data-bind="text:t('cActualAp')"></div><div class="kv mono" data-bind="text:compact(buTot('actualAp')), attr:{title:money(buTot('actualAp'))}"></div></div>
+        <div class="kstat grn"><div class="kk" data-bind="text:t('cActualGrn')"></div><div class="kv mono" data-bind="text:compact(buTot('actualGrn')), attr:{title:money(buTot('actualGrn'))}"></div></div>
+        <div class="kstat ocommit"><div class="kk" data-bind="text:t('cCommitPr')"></div><div class="kv mono" data-bind="text:compact(buTot('commitmentPr')), attr:{title:money(buTot('commitmentPr'))}"></div></div>
+        <div class="kstat ooblig"><div class="kk" data-bind="text:t('cObligPo')"></div><div class="kv mono" data-bind="text:compact(buTot('obligationPo')), attr:{title:money(buTot('obligationPo'))}"></div></div>
+        <div class="kstat funds"><div class="kk" data-bind="text:t('cFundAvail')"></div><div class="kv mono" data-bind="text:compact(buTot('fundAvailable')), attr:{title:money(buTot('fundAvailable'))}"></div></div>
+      </div>
+
+      <!-- results table -->
+      <div class="tbl-wrap">
+        <table class="tbl actuals-tbl">
+          <thead><tr>
+            <th data-bind="text:t('cProjType')"></th>
+            <th data-bind="text:t('fSectorL')"></th>
+            <th data-bind="text:t('cDept')"></th>
+            <th data-bind="text:t('costCenter')"></th>
+            <th data-bind="text:t('cProject')"></th>
+            <th data-bind="text:t('cTask')"></th>
+            <th data-bind="text:t('cGlAccount')"></th>
+            <th data-bind="text:t('thAppr')"></th>
+            <th data-bind="text:t('cChapter')"></th>
+            <th data-bind="text:t('program')"></th>
+            <th data-bind="text:t('cEtype')"></th>
+            <th class="num" data-bind="text:t('cBudget')"></th>
+            <th class="num" data-bind="text:t('cActualAp')"></th>
+            <th class="num" data-bind="text:t('cActualGrn')"></th>
+            <th class="num" data-bind="text:t('cCommitPr')"></th>
+            <th class="num" data-bind="text:t('cObligPo')"></th>
+            <th class="num" data-bind="text:t('cFundAvail')"></th>
+          </tr></thead>
+          <tbody>
+            <!-- ko foreach: buItems -->
+            <tr>
+              <td data-bind="text:$data.projectType||'—'"></td>
+              <td><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
+              <td data-bind="text:$data.department||'—'"></td>
+              <td class="mono" data-bind="text:$data.costCentre||'—'"></td>
+              <td><b class="mono" data-bind="text:$data.projectNumber"></b><div class="sub-d" data-bind="text:$data.projectName||''"></div></td>
+              <td data-bind="text:$data.taskNumber||'—'"></td>
+              <td data-bind="text:$data.glAccount||'—'"></td>
+              <td data-bind="text:$data.appropriation||'—'"></td>
+              <td data-bind="text:$data.chapter||'—'"></td>
+              <td data-bind="text:$data.program||'—'"></td>
+              <td data-bind="text:$data.expenditureType||'—'"></td>
+              <td class="num mono" data-bind="text:$root.compact($data.budget), attr:{title:$root.money($data.budget)}"></td>
+              <td class="num mono" data-bind="text:$root.compact($data.actualAp), attr:{title:$root.money($data.actualAp)}"></td>
+              <td class="num mono" data-bind="text:$root.compact($data.actualGrn), attr:{title:$root.money($data.actualGrn)}"></td>
+              <td class="num mono" data-bind="text:$root.compact($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}"></td>
+              <td class="num mono" data-bind="text:$root.compact($data.obligationPo), attr:{title:$root.money($data.obligationPo)}"></td>
+              <td class="num mono strong" data-bind="text:$root.compact($data.fundAvailable), attr:{title:$root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}"></td>
+            </tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+        <div class="empty pad" data-bind="visible:buLoading()"><span class="spin"></span></div>
+        <div class="empty pad" data-bind="visible:!buLoading() && buItems().length===0, text:t('noButil')"></div>
+      </div>
+      <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
+        <span class="t-dates" data-bind="text:buRange()"></span>
+        <button class="btn btn-sm" data-bind="click:function(){runButil(buOffset()-buLimit)}, enable:buOffset()>0, text:t('prev')"></button>
+        <button class="btn btn-sm" data-bind="click:function(){runButil(buOffset()+buLimit)}, enable:(buOffset()+buLimit)<buTotal(), text:t('next')"></button>
       </div>
     </div>
 

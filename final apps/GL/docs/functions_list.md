@@ -32,6 +32,14 @@ update on any view/method/endpoint change.
 - drill-down: `openDrill(row, metric)` (`/actuals/lines`, metric ∈ budget|commitment|opencommitment|commitmentpipeline|obligation|openobligation|popipeline|glactual|grn|apdirect) → wide modal; `closeDrill()`. **commitment/openCommitment/commitmentPipeline** → real PR lines (PR #, description, requester, funds status); **obligation/poPipeline** → PO lines; **openObligation** → PO lines with Ordered / Received (GRN) / Open columns (the netting made visible).
 - `acExportCsv()` — CSV of the full filtered set (≤5000 rows, incl. all 3-figure Commitment/Obligation + Open Encumbrance + both Funds Available); `acRange` — “a–b of total”.
 
+## Budget Utilization (`view()==='butil'`) — project budget vs actual (per task & expenditure type)
+- full-viewport width (`.wrap.wide` also applied on this view). One row per **Budget Year × Project × Task × Expenditure Type**, budget > 0 lines only.
+- search criteria: `buYear` (**mandatory**, defaults to latest year), `buType` (project type), `buSector`, `buSearch` — LOVs from `loadBuFilters()` (`/butil/filters`).
+- `runButil(offset)` — run the report (`/butil`, server-paginated); `buReset()`; `btnSearch`/`btnReset` + Enter-to-search; `yearRequired` toast when no year.
+- totals answer cards (6) via `buTot(k)`: budget, actualAp, actualGrn, commitmentPr (open PR), obligationPo (open PO, GRN-netted), fundAvailable (= Budget − AP − GRN − Open PR − Open PO).
+- result table (17 cols): Type / Sector / Department / Cost centre / Project (number + name) / Task / GL Account / Appropriation / Chapter / Program / Expenditure type + the 6 measures. Attributes resolve task-first (task `COST_CENTER`→SECTOR map, task `APPROPRIATION`→CHAPTER map, task `PROGRAM`), then transactions, then project.
+- `buExportCsv()` — CSV of the full filtered set (≤5000 rows); `buRange` — “a–b of total”.
+
 ## Dashboard (`view()==='dashboard'`) — executive analytics
 - `dashPeriod` selector → `loadDashboard()` (`/dashboard`); KPI strip via `kpis()` (budget, actual, funds, encumbrance, PO total & count, utilisation/commitment %).
 - `gauge()` — utilisation radial gauge (SVG); `trend()` — period-over-period actual SVG area+line; `sectorBars`/`programBars`/`apprBars` — horizontal bar charts (actual / PO commitments); `insights()` — auto-generated executive sentences. All charts are hand-built SVG/CSS (no chart library).
@@ -60,7 +68,9 @@ update on any view/method/endpoint change.
 | GET | `/actuals` | Budget-vs-Actual per combination for one period (YTD), `?period(req)=&sector=&chapter=&program=&appropriation=&account=&costcenter=&source=&search=&limit=&offset=`; totals + items include `prTotal`, `openCommitment`, `commitmentPipeline`, `totalPo`, `openObligation` (GRN-netted), `poPipeline`, `openEncumbrance`, `fundsAvailable` (GL), `fundsAvailableCalc`, `slaActual`, `poCount`/`prCount` |
 | GET | `/actuals/lines` | drill-down lines behind a figure, `?period=&cc=&metric=` (budget\|commitment\|opencommitment\|commitmentpipeline\|obligation\|openobligation\|popipeline\|glActual\|grn\|apDirect); commitment/openCommitment/commitmentPipeline→real PR lines (`pr_*`), obligation/poPipeline→PO lines, openObligation→PO lines GRN-netted (Ordered/Received/Open) |
 | GET | `/dashboard` | executive analytics for a period: KPIs + by sector/program/appropriation + trend, `?period=` |
-| POST | `/actuals/refresh` | rebuild `DCT_GL_COA_SNAP` (manual; same proc as the hourly job) |
+| POST | `/actuals/refresh` | rebuild `DCT_GL_COA_SNAP` + recompile INVALID PROD views (manual; same proc as the hourly job) |
+| GET | `/butil/filters` | Budget Utilization LOVs: years (+`defaultYear`), projectTypes, sectors (`07_gl_budget_util_ords.sql`, ADDITIVE — re-run after any 05 re-run) |
+| GET | `/butil` | Budget Utilization report, `?year(req)=&projecttype=&sector=&search=&limit=&offset=` → totals + items over `DCT_BUDGET_UTILIZATION_V` (db/v2/37) |
 
 ## Data layer (PROD)
 - Tables: `DCT_GL_CLASS_TYPE` → `DCT_GL_CLASS_VALUE` → `DCT_GL_SEG_CLASS_MAP`.

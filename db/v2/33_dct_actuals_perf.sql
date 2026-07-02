@@ -46,12 +46,26 @@ PROMPT DCT_GL_COA_SNAP created (CTAS) + indexed on cc_id / cc_string.
 
 -- Atomic refresh: DELETE + INSERT in one transaction (9k rows; no empty window
 -- as TRUNCATE would cause). Call from the ATD loader / a scheduler job.
+-- Also RECOMPILES any INVALID PROD views: ATD reloads drop/recreate the ATD_*
+-- tables, which knocks the reporting views INVALID; the hourly job and the two
+-- Refresh buttons now self-heal them (2 passes for dependency chains). NB this
+-- fixes INVALIDity only -- a SELECT * base view still needs a re-run of
+-- db/v2/32 or 36 to EXPOSE newly added columns.
 CREATE OR REPLACE PROCEDURE prod.dct_actuals_refresh AS
 BEGIN
   DELETE FROM prod.dct_gl_coa_snap;
   INSERT INTO prod.dct_gl_coa_snap SELECT * FROM prod.dct_gl_coa_v;
   COMMIT;
   DBMS_STATS.GATHER_TABLE_STATS('PROD','DCT_GL_COA_SNAP');
+  FOR pass IN 1..2 LOOP
+    FOR v IN (SELECT object_name FROM user_objects
+              WHERE object_type = 'VIEW' AND status = 'INVALID') LOOP
+      BEGIN
+        EXECUTE IMMEDIATE 'ALTER VIEW "' || v.object_name || '" COMPILE';
+      EXCEPTION WHEN OTHERS THEN NULL;
+      END;
+    END LOOP;
+  END LOOP;
 END;
 /
 
