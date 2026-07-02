@@ -47,6 +47,7 @@ function (ko, config, authService, rptService, i18n, shell) {
         { id: 'dashboard', labelKey: 'nav.dashboard' },
         { id: 'reports',   labelKey: 'nav.reports' },
         { id: 'runs',      labelKey: 'nav.runs' },
+        { id: 'workers',   labelKey: 'nav.workers' },
         { id: 'settings',  labelKey: 'nav.settings' },
       ] }
     ];

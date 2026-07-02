@@ -12,7 +12,7 @@
 --            6 Reserved purchase requisitions
 --          Parameters: year (budget year, REQUIRED), sector (REQUIRED),
 --          projecttype (optional), costcenter (optional).
---          Data views live in db/v2/38 (+ 37).
+--          Data views live in db/v2/39 (+ 37).
 -- Runs two children (one big statement per file; run from the WINDOWS SQLcl
 -- via sql -name prod_mcp -- the Linux dev-VM SQLcl 26.1 has a script-reader
 -- bug that echoes/skips these big blocks; diagnose with SET ECHO ON):

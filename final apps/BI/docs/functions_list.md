@@ -21,6 +21,12 @@ SYS_ADMIN-gated; consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 - Schedules: `openSchNew` / `openSchEdit` / `saveSch` / `removeSch`.
 - Recipients: `openRcNew` / `openRcEdit` / `saveRc` / `removeRc` (USER/ROLE/ORG/EMAIL/SELF × channel).
 
+## Workers (`workers`) — engine monitoring + control
+- `load` / `refresh` — workers + derived health (ONLINE < 90s heartbeat, STALE < 10min, else OFFLINE), queue stats (queued/running/failed today/success today/oldest queued age) and the two DCT_RPT_* scheduler jobs. Auto-refreshes every 10s while the page is open.
+- `pause(w)` / `resume(w)` / `stop(w)` — write the worker's `command`; the Python worker obeys on its next loop (STOP exits after the current run). `remove(w)` — delete an OFFLINE registry row.
+- `reclaim` — requeue stuck RUNNING runs (`DCT_RPT_PKG.reclaim_stuck`).
+- `toggleJob(j)` — enable/disable `DCT_RPT_NATIVE_JOB` (NATIVE sweep) / `DCT_RPT_MAINT_JOB` (maintenance).
+
 ## Run History (`runs`)
 - `load` / `applyFilter` / `refresh` / `prev` / `next` — list with report + status filters + paging.
 - `open(row)` — run detail. `retry(row)` — re-queue. `badge(status)`.
@@ -47,6 +53,11 @@ SYS_ADMIN-gated; consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | GET | `runs/:id` | run detail (+ outputs + deliveries) |
 | GET | `runs/:id/output/:fmt` | authed BLOB download |
 | POST | `runs/:id/retry` | re-queue a run |
+| GET | `workers/` | workers + health + queue stats + DCT_RPT_* scheduler jobs |
+| POST | `workers/command` | `{workerId, command: PAUSE\|RESUME\|STOP\|CLEAR}` |
+| POST | `workers/remove` | `{workerId}` — delete a dead/stopped registry row |
+| POST | `workers/reclaim` | requeue stuck RUNNING runs |
+| POST | `workers/job` | `{jobName, enabled}` — toggle DCT_RPT_NATIVE_JOB / DCT_RPT_MAINT_JOB |
 | GET/POST | `schedules/` | list / create |
 | PUT/DELETE | `schedules/:id` | update / delete |
 | POST | `schedules/sync` | rebuild DBMS_SCHEDULER jobs |

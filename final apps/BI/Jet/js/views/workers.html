@@ -1,0 +1,119 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('wrk.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('wrk.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <span style="font-size:11.5px;color:var(--text-2);align-self:center" data-bind="visible: lastRefreshed()">
+        <span data-bind="text: $root.t('wrk.refreshed')"></span> <span data-bind="text: lastRefreshed"></span>
+      </span>
+      <button class="btn btn-secondary" data-bind="click: reclaim, text: $root.t('wrk.reclaim')"></button>
+      <button class="btn btn-primary" data-bind="click: refresh, text: $root.t('runs.refresh')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <div class="kpi-row">
+    <div class="card kpi"><div class="kpi-n kpi-ok" data-bind="text: onlineCount"></div><div class="kpi-l" data-bind="text: $root.t('wrk.online')"></div></div>
+    <div class="card kpi"><div class="kpi-n" data-bind="text: queued"></div><div class="kpi-l" data-bind="text: $root.t('wrk.queued')"></div></div>
+    <div class="card kpi"><div class="kpi-n" data-bind="text: running"></div><div class="kpi-l" data-bind="text: $root.t('wrk.running')"></div></div>
+    <div class="card kpi"><div class="kpi-n kpi-ok" data-bind="text: successToday"></div><div class="kpi-l" data-bind="text: $root.t('wrk.successToday')"></div></div>
+    <div class="card kpi"><div class="kpi-n kpi-bad" data-bind="text: failedToday"></div><div class="kpi-l" data-bind="text: $root.t('wrk.failedToday')"></div></div>
+  </div>
+
+  <!-- ko if: queued() > 0 && oldestQueued() >= 5 -->
+  <div class="card" style="margin-bottom:14px;border-left:4px solid var(--warn,#B58900)">
+    <span data-bind="text: $root.t('wrk.backlog').replace('{0}', queued()).replace('{1}', oldestQueued())"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Python engine workers ─────────────────────────────────────────── -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('wrk.workers')"></div>
+    <!-- ko if: workers().length === 0 --><div class="empty-state" data-bind="text: $root.t('wrk.none')"></div><!-- /ko -->
+    <!-- ko if: workers().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('wrk.worker')"></th>
+        <th data-bind="text: $root.t('wrk.health')"></th>
+        <th data-bind="text: $root.t('col.status')"></th>
+        <th data-bind="text: $root.t('wrk.heartbeat')"></th>
+        <th data-bind="text: $root.t('wrk.currentRun')"></th>
+        <th data-bind="text: $root.t('wrk.done')"></th>
+        <th data-bind="text: $root.t('wrk.failed')"></th>
+        <th data-bind="text: $root.t('wrk.started')"></th>
+        <th style="text-align:right" data-bind="text: $root.t('col.actions')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: workers -->
+        <tr>
+          <td>
+            <div style="font-weight:600" data-bind="text: workerId"></div>
+            <div style="font-size:11px;color:var(--text-2)"><span data-bind="text: $data.hostname"></span> · PID <span data-bind="text: $data.pid"></span> · <span data-bind="text: engine"></span></div>
+          </td>
+          <td><span data-bind="text: health, attr:{ class: $vm.healthBadge(health) }"></span></td>
+          <td>
+            <span data-bind="text: status, attr:{ class: $vm.statusBadge(status) }"></span>
+            <!-- ko if: $data.command --><span class="badge badge--warn" style="margin-left:4px" data-bind="text: '→ ' + $data.command"></span><!-- /ko -->
+          </td>
+          <td data-bind="text: $vm.hbAgo($data)"></td>
+          <td data-bind="text: $data.currentRunId || '—'"></td>
+          <td data-bind="text: runsDone"></td>
+          <td data-bind="text: runsFailed"></td>
+          <td style="font-size:11.5px" data-bind="text: $data.startedAt"></td>
+          <td style="text-align:right;white-space:nowrap">
+            <!-- ko if: $vm.canPause($data) -->
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.pause($data); }, text: $root.t('wrk.pause')"></button>
+            <!-- /ko -->
+            <!-- ko if: $vm.canResume($data) -->
+            <button class="btn btn-sm btn-primary" data-bind="click: function(){ $vm.resume($data); }, text: $root.t('wrk.resume')"></button>
+            <!-- /ko -->
+            <!-- ko if: health !== 'OFFLINE' -->
+            <button class="btn btn-sm btn-danger" data-bind="click: function(){ $vm.stop($data); }, text: $root.t('wrk.stop')"></button>
+            <!-- /ko -->
+            <!-- ko if: $vm.canRemove($data) -->
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.remove($data); }, text: $root.t('btn.delete')"></button>
+            <!-- /ko -->
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ── In-database scheduler jobs (NATIVE sweep + maintenance) ───────── -->
+  <div class="card">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('wrk.jobs')"></div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('wrk.job')"></th>
+        <th data-bind="text: $root.t('col.enabled')"></th>
+        <th data-bind="text: $root.t('col.status')"></th>
+        <th data-bind="text: $root.t('wrk.lastRun')"></th>
+        <th data-bind="text: $root.t('wrk.nextRun')"></th>
+        <th style="text-align:right" data-bind="text: $root.t('col.actions')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: jobs -->
+        <tr>
+          <td>
+            <div style="font-weight:600" data-bind="text: jobName"></div>
+            <div style="font-size:11px;color:var(--text-2)" data-bind="text: jobName === 'DCT_RPT_NATIVE_JOB' ? $root.t('wrk.nativeDesc') : $root.t('wrk.maintDesc')"></div>
+          </td>
+          <td><span data-bind="text: enabled === 'TRUE' ? $root.t('common.yes') : $root.t('common.no'), attr:{ class: $vm.jobBadge($data) }"></span></td>
+          <td data-bind="text: state"></td>
+          <td style="font-size:11.5px" data-bind="text: $data.lastRun || '—'"></td>
+          <td style="font-size:11.5px" data-bind="text: $data.nextRun || '—'"></td>
+          <td style="text-align:right">
+            <button class="btn btn-sm" data-bind="click: function(){ $vm.toggleJob($data); },
+                    css: enabled === 'TRUE' ? 'btn-danger' : 'btn-primary',
+                    text: enabled === 'TRUE' ? $root.t('wrk.disable') : $root.t('wrk.enable')"></button>
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+  </div>
+
+  <!-- /ko -->
+</div>

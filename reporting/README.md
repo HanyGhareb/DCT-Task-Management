@@ -18,7 +18,7 @@ Admin **Reports** page (Phase 2).
 ## Layout
 ```
 reporting/
-  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · 08 Budget-Util-by-Sector (MULTI) · install.sql
+  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · 08 Budget-Util-by-Sector (MULTI) · 09/09a workers · install.sql
   runner/  Python microservice (Phase 1)
   docs/    deployment-notes.md · functions_list.md
   tests/   render + e2e
@@ -49,7 +49,8 @@ Order matters: DDL → lookups → package → ORDS → scheduler → seed. The 
 run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the definition defaults) ·
 `GET runs/` · `GET runs/:id` · `GET runs/:id/output/:fmt` (authed download) · `POST runs/:id/retry` ·
 `GET/POST schedules/` · `PUT/DELETE schedules/:id` · `POST schedules/sync` ·
-`GET/POST recipients/` · `PUT/DELETE recipients/:id` · `GET/PUT config` · `GET meta`
+`GET/POST recipients/` · `PUT/DELETE recipients/:id` · `GET/PUT config` · `GET meta` ·
+`GET workers/` + `POST workers/command|remove|reclaim|job` (worker registry + queue + scheduler jobs)
 
 ## Status
 - **Phase 0 (control plane):** ✅ DEPLOYED to PROD 2026-06-30 — 14 objects VALID, `rpt.rest` PUBLISHED,
@@ -67,6 +68,6 @@ run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the d
   6-part executive Budget Utilization by Sector pack (overview KPIs · utilization rows · unpaid /
   partially-paid invoices · uninvoiced GRN · open POs · reserved PRs; landscape PDF, grouped
   Actual/Encumbrance headers, reconciling totals). Params: `year` + `sector` required,
-  `projecttype` + `costcenter` optional. Data views: `db/v2/38` over the GL actuals layer.
+  `projecttype` + `costcenter` optional. Data views: `db/v2/39` over the GL actuals layer.
 
 Plan: `.claude/plans/i-want-to-find-agile-steele.md`.

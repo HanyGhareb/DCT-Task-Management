@@ -52,6 +52,13 @@ define(['services/api'], function (api) {
     updateRecipient: function (id, data) { return api.put('/recipients/' + id, data); },
     deleteRecipient: function (id)     { return api.delete('/recipients/' + id); },
 
+    /* workers (Python engine processes + DCT_RPT_* scheduler jobs) */
+    getWorkers:    function ()            { return api.get('/workers/'); },
+    workerCommand: function (id, command) { return api.post('/workers/command', { workerId: id, command: command }); },
+    workerRemove:  function (id)          { return api.post('/workers/remove', { workerId: id }); },
+    reclaimStuck:  function ()            { return api.post('/workers/reclaim', {}); },
+    toggleJob:     function (job, enabled) { return api.post('/workers/job', { jobName: job, enabled: enabled }); },
+
     /* runtime / SMTP config */
     getConfig: function ()      { return api.get('/config'); },
     putConfig: function (items) { return api.put('/config', { items: items }); },

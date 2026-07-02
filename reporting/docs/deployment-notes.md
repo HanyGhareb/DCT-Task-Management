@@ -87,13 +87,28 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-02 — Workers monitoring + control page (BI APP_VERSION 1.2.0).** New **Workers** nav page:
+  live Python-engine worker registry (health ONLINE/STALE/OFFLINE from heartbeat age, status, current
+  run, done/failed counters), queue KPIs (queued / running / succeeded+failed today, backlog banner
+  with oldest-queued age), Requeue-stuck button, and the two in-DB scheduler jobs
+  (`DCT_RPT_NATIVE_JOB` / `DCT_RPT_MAINT_JOB`) with enable/disable. Auto-refreshes every 10s.
+  - **DB:** `reporting/db/09_rpt_workers.sql` (`DCT_RPT_WORKER` heartbeat/command table + synonym) +
+    `09a_rpt_workers_ords.sql` (5 ADDITIVE rpt.rest endpoints — **re-run 09a after any 04 re-run**).
+    Deployed + verified on PROD (small one-block statements — safe on the Linux SQLcl).
+  - **Runner:** `--forever` workers register as `<host>/py<pid>`, heartbeat every loop, and obey the
+    page's commands — PAUSE (stops claiming, status PAUSED), RESUME, STOP (exit after current run);
+    counters per run. One-shot drains stay unregistered. Pause→resume round-trip verified live.
+  - **Gotcha:** `user_scheduler_jobs.last_start_date/next_run_date` are TIMESTAMP WITH TIME ZONE
+    already in the job's own timezone (Asia/Dubai here) — display with `AT TIME ZONE 'Asia/Dubai'`,
+    NOT `dct_to_local` (that double-shifts +4h). `dct_to_local` stays correct for the plain-TIMESTAMP
+    UTC columns (worker heartbeats etc.).
 - **2026-07-02 — Budget Utilization by Sector executive report (BUDGET_UTIL_SECTOR) + MULTI engine
   support (BI APP_VERSION 1.1.0).** New 6-part sector pack on the PYTHON engine: 1 Sector overview
   (master details + KPI cards) · 2 Budget utilization rows (budget/AP/GRN/PR/PO/fund) · 3 Unpaid +
   partially-paid invoices · 4 Uninvoiced GRN · 5 Open POs (GRN-netted) · 6 Reserved PRs. Params:
   `year`+`sector` REQUIRED, `projecttype`/`costcenter` optional; landscape PDF (grouped
   Actual/Encumbrance header + reconciling totals rows) + one-sheet-per-section XLSX + sectioned CSV.
-  - **DB:** `db/v2/38_dct_rpt_butil_details.sql` (5 PROD views: `DCT_BUTIL_SCOPE_V`,
+  - **DB:** `db/v2/39_dct_rpt_butil_details.sql` (renumbered from 38 — the GL Rebuild-views wave took `db/v2/38` the same day) (5 PROD views: `DCT_BUTIL_SCOPE_V`,
     `DCT_UNPAID_INVOICES_V`, `DCT_UNINVOICED_GRN_V`, `DCT_OPEN_PO_LINES_V`,
     `DCT_RESERVED_PR_LINES_V` — same project/task key fallback grain as
     `DCT_BUDGET_UTILIZATION_V` so every part reconciles; re-run after 32/36/37 re-runs) +

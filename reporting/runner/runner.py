@@ -15,6 +15,7 @@ Usage:
 import argparse
 import hashlib
 import json
+import os
 import socket
 import sys
 import time
@@ -30,8 +31,13 @@ import deliver
 import notify
 
 DUBAI = timezone(timedelta(hours=4))           # Asia/Dubai (fixed +04:00, no DST)
-WORKER_ID = (socket.gethostname() or "rpt") + "/py"
+HOSTNAME = socket.gethostname() or "rpt"
+WORKER_ID = f"{HOSTNAME}/py{os.getpid()}"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+# worker registry (DCT_RPT_WORKER) is only maintained by long-running --forever
+# workers; one-shot drains stay invisible to the BI Workers page
+_registered = False
 
 
 def _now():
@@ -44,6 +50,57 @@ def _read(v):
 
 def _sha256(data):
     return hashlib.sha256(data).hexdigest()
+
+
+def beat(conn, status, current_run=None, done=0, failed=0, stopped=False):
+    """Upsert this worker's DCT_RPT_WORKER row (no-op unless --forever)."""
+    if not _registered:
+        return
+    try:
+        conn.cursor().execute(
+            """
+            merge into prod.dct_rpt_worker w
+            using (select :wid as worker_id from dual) s on (w.worker_id = s.worker_id)
+            when matched then update set
+              w.status = :st,
+              w.current_run_id = :run,
+              w.runs_done = w.runs_done + :done,
+              w.runs_failed = w.runs_failed + :failed,
+              w.last_heartbeat = systimestamp,
+              w.stopped_at = case when :stopped = 1 then systimestamp else w.stopped_at end
+            when not matched then insert
+              (worker_id, engine, hostname, pid, status, started_at, last_heartbeat)
+            values (:wid, 'PYTHON', :host, :pid, :st, systimestamp, systimestamp)
+            """,
+            wid=WORKER_ID, st=status, run=current_run, done=done, failed=failed,
+            stopped=(1 if stopped else 0), host=HOSTNAME, pid=os.getpid())
+        conn.commit()
+    except Exception as e:  # noqa: BLE001 - registry must never kill the worker
+        print(f"[worker] heartbeat failed: {e}", file=sys.stderr)
+
+
+def read_command(conn):
+    """The BI Workers page's desired action for this worker (PAUSE/RESUME/STOP)."""
+    if not _registered:
+        return None
+    try:
+        cur = conn.cursor()
+        cur.execute("select command from prod.dct_rpt_worker where worker_id = :wid",
+                    wid=WORKER_ID)
+        row = cur.fetchone()
+        return row[0] if row else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def clear_command(conn):
+    try:
+        conn.cursor().execute(
+            "update prod.dct_rpt_worker set command = null where worker_id = :wid",
+            wid=WORKER_ID)
+        conn.commit()
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def claim(conn):
@@ -220,8 +277,10 @@ def process_one(conn, conf):
     job = claim(conn)
     if not job:
         return False
+    beat(conn, "RUNNING", current_run=job["run_id"])
     try:
         process(conn, conf, job)
+        beat(conn, "IDLE", done=1)
     except Exception as e:  # noqa: BLE001
         msg = f"{type(e).__name__}: {e}"
         print(f"[run {job['run_id']}] {job['report_code']} FAILED: {msg}", file=sys.stderr)
@@ -229,6 +288,7 @@ def process_one(conn, conf):
             mark(conn, job["run_id"], "FAILED", error=msg[:3900])
         except Exception:  # noqa: BLE001
             pass
+        beat(conn, "IDLE", failed=1)
         notify.send(f"i-Finance report {job['report_code']} (run {job['run_id']}) FAILED: {msg}")
     return True
 
@@ -269,16 +329,35 @@ def main(argv=None):
         print(f"enqueued run {rid} for {args.run}")
 
     if args.forever:
+        global _registered
+        _registered = True
         idle = int(config.cfg(conf, "WORKER_IDLE_SEC", "20"))
         print(f"[worker {WORKER_ID}] forever (idle={idle}s)")
-        while True:
-            try:
-                if not process_one(conn, conf):
+        beat(conn, "IDLE")
+        try:
+            while True:
+                try:
+                    cmd = read_command(conn)
+                    if cmd == "STOP":
+                        print(f"[worker {WORKER_ID}] STOP command received — exiting")
+                        clear_command(conn)
+                        beat(conn, "STOPPED", stopped=True)
+                        return 0
+                    if cmd == "PAUSE":
+                        beat(conn, "PAUSED")
+                        time.sleep(idle)
+                        continue
+                    if cmd == "RESUME":
+                        clear_command(conn)
+                    if not process_one(conn, conf):
+                        beat(conn, "IDLE")
+                        time.sleep(idle)
+                    conf = config.load_config(conn)   # pick up UI config changes
+                except Exception as e:  # noqa: BLE001
+                    print(f"[worker] loop error: {e}", file=sys.stderr)
                     time.sleep(idle)
-                conf = config.load_config(conn)   # pick up UI config changes
-            except Exception as e:  # noqa: BLE001
-                print(f"[worker] loop error: {e}", file=sys.stderr)
-                time.sleep(idle)
+        finally:
+            beat(conn, "STOPPED", stopped=True)
 
     if args.once:
         process_one(conn, conf)
