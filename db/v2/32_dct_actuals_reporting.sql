@@ -20,8 +20,9 @@
 --                        unique (order,line,distribution) key so AP stays 1:1.
 --   PO distributions  -> COA via CHARGE_ACCOUNT      = CC_STRING
 --   GRN               -> no GL account; inherits its PO distribution's charge acct
---   GL balances       -> COA via REPLACE(CONCATENATED_SEGMENTS,'-','.') = CC_STRING
---                        (period-activity grained; SUM over periods = YTD.)
+--   GL balances       -> COA via GL_BALANCES_CC.cc_string (canonical segment
+--                        re-order of CONCATENATED_SEGMENTS - see section 1b;
+--                        period-activity grained; SUM over periods = YTD.)
 --
 -- Currency -> AED (the org's functional/ledger currency):
 --   AP  : amount_aed = NVL(DISTRIBUTION_AMOUNT_FUNCTI, DISTRIBUTION_AMOUNT).
@@ -66,6 +67,52 @@ CREATE OR REPLACE VIEW prod.tasks                    AS SELECT * FROM prod.atd_t
 CREATE OR REPLACE VIEW prod.projects_budget          AS SELECT * FROM prod.atd_projects_budget;
 
 PROMPT Base pass-through views created (AP_*/PO_*/GRN_ALL_V2/GL_BALANCES/PROJECTS/TASKS/PROJECTS_BUDGET).
+
+-- ---------------------------------------------------------------------------
+-- 1b. GL_BALANCES_CC - balances + CANONICAL combination string (cc_string).
+--     The 2026-07-02 reload changed CONCATENATED_SEGMENTS: dot-separated and
+--     in a DIFFERENT segment order than the COA canonical string --
+--       balances : entity.program.cost_center.budget_group.account.
+--                  entity_specific.appropriation.intercompany.future1.future2
+--       canonical: entity.cost_center.account.appropriation.budget_group.
+--                  entity_specific.future1.future2.intercompany.program
+--     This view is the ONE place that re-orders it (verified 9,508/10,351
+--     matched vs COA). A dash-separated value is treated as the legacy
+--     canonical format. ALL gl_balances<->COA joins go through this view
+--     (dct_actual_v / dct_budget_actual_v here, db/v2/34; 04_gl_views.sql
+--     inlines the same expression - keep in sync).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE VIEW prod.gl_balances_cc AS
+SELECT
+  b.ledger_name, b.concatenated_segments, b.status, b.enabled,
+  b.initial_budget, b.budget_adjustments, b.total_budget, b.unreleased_budget,
+  b.funds_available_amount, b.commitments, b.obligations, b.expenditures,
+  b.other_encumbrances, b.payables_expenditures, b.project_expenditures,
+  b.receipt_expenditures, b.reserved_commitments, b.reserved_obligations,
+  b.miscellaneous_expenditures, b.load_ts, b.period_name,
+  CASE
+    WHEN b.concatenated_segments IS NULL THEN NULL
+    WHEN INSTR(b.concatenated_segments,'-') > 0
+      THEN REPLACE(b.concatenated_segments,'-','.')
+    ELSE b.s1||'.'||b.s3||'.'||b.s5||'.'||b.s7||'.'||b.s4||'.'||b.s6||'.'
+       ||b.s9||'.'||b.s10||'.'||b.s8||'.'||b.s2
+  END AS cc_string
+FROM (
+  SELECT g.*,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,1)  AS s1,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,2)  AS s2,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,3)  AS s3,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,4)  AS s4,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,5)  AS s5,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,6)  AS s6,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,7)  AS s7,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,8)  AS s8,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,9)  AS s9,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,10) AS s10
+  FROM prod.gl_balances g
+) b;
+
+PROMPT GL_BALANCES_CC created (canonical combination string).
 
 -- ---------------------------------------------------------------------------
 -- 2. DCT_ACTUAL_V - unified transaction fact (AP branch first sets the types)
@@ -225,8 +272,8 @@ SELECT
   CAST(NULL AS VARCHAR2(60)),      -- task_name
   CAST(NULL AS VARCHAR2(150)),     -- expenditure_type
   g.ledger_name
-FROM prod.gl_balances g
-LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = REPLACE(g.concatenated_segments,'-','.');
+FROM prod.gl_balances_cc g
+LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = g.cc_string;
 
 PROMPT DCT_ACTUAL_V created (unified AP/PO/GRN/GL fact, AED-converted).
 
@@ -255,15 +302,15 @@ ap_eff AS (
   WHERE NVL(d.reversal_indicator,'N') <> 'Y'   -- exclude reversed/voided AP distributions
 ),
 spine AS (
-  SELECT REPLACE(concatenated_segments,'-','.') AS cc_string
-    FROM prod.gl_balances WHERE concatenated_segments IS NOT NULL
+  SELECT cc_string
+    FROM prod.gl_balances_cc WHERE cc_string IS NOT NULL
   UNION
   SELECT charge_account FROM prod.po_distributions WHERE charge_account IS NOT NULL
   UNION
   SELECT cc_string FROM ap_eff WHERE cc_string IS NOT NULL
 ),
 gl_agg AS (
-  SELECT REPLACE(concatenated_segments,'-','.') AS cc_string,
+  SELECT cc_string,
          SUM(initial_budget)         AS initial_budget,
          SUM(budget_adjustments)     AS budget_adjustments,
          SUM(total_budget)           AS total_budget,
@@ -272,8 +319,9 @@ gl_agg AS (
          SUM(obligations)            AS gl_obligations,
          SUM(expenditures)           AS gl_expenditures,
          SUM(other_encumbrances)     AS gl_other_encumbrances
-    FROM prod.gl_balances
-   GROUP BY REPLACE(concatenated_segments,'-','.')
+    FROM prod.gl_balances_cc
+   WHERE cc_string IS NOT NULL
+   GROUP BY cc_string
 ),
 po_agg AS (
   SELECT pd.charge_account AS cc_string,

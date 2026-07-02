@@ -141,6 +141,11 @@
     refreshed:{en:'Actuals snapshot refreshed',ar:'تم تحديث لقطة الفعلي'},
     refreshHint:{en:'Rebuild the classification snapshot so the report reflects the latest GL/ATD data and mapping edits.',ar:'إعادة بناء لقطة التصنيف لتعكس أحدث بيانات دفتر الأستاذ والربط.'},
     asOfRefresh:{en:'Updated',ar:'حُدّث'},
+    rebuildViews:{en:'Rebuild views',ar:'إعادة بناء العروض'}, rebuilding:{en:'Rebuilding…',ar:'جارٍ إعادة البناء…'},
+    rebuildHint:{en:'Use ONLY after a data reload that changed table structure (new or renamed columns). Re-creates the reporting base views over the ATD tables, recompiles anything invalid, then refreshes the snapshot. For a normal data reload, “Refresh actuals” is enough.',ar:'يُستخدم فقط بعد تحميل بيانات غيّر بنية الجداول (أعمدة جديدة أو معاد تسميتها): يعيد إنشاء عروض التقارير الأساسية فوق جداول ATD ويعيد ترجمة غير الصالح ثم يحدّث اللقطة. بعد تحميل بيانات اعتيادي يكفي «تحديث الفعلي».'},
+    rebuildConfirm:{en:'Rebuild the reporting base views?\n\nUse this after a data reload that CHANGED table structure (new/renamed columns) — e.g. a report errors or a new column is missing even after “Refresh actuals”.\n\nSafe and repeatable; takes under a minute.',ar:'إعادة بناء عروض التقارير الأساسية؟\n\nيُستخدم بعد تحميل بيانات غيّر بنية الجداول (أعمدة جديدة/معاد تسميتها) — مثلاً عند ظهور خطأ في تقرير أو غياب عمود جديد رغم «تحديث الفعلي».\n\nإجراء آمن وقابل للتكرار ويستغرق أقل من دقيقة.'},
+    rebuilt:{en:'Base views rebuilt & snapshot refreshed',ar:'أُعيد بناء العروض وتحديث اللقطة'},
+    rebuiltLeft:{en:'Still invalid (needs a script fix):',ar:'ما زال غير صالح (يتطلب تعديل السكربت):'},
 
     /* ── Budget Utilization (project budget vs actual) ── */
     navButil:{en:'Budget Utilization',ar:'استخدام الموازنة'},
@@ -454,6 +459,24 @@
         if (self.view() === 'actuals') self.runActuals(self.acOffset());
         else if (self.view() === 'dashboard') self.loadDashboard();
       }).catch(function (e) { self.refreshing(false); toast(e.message, true); });
+    };
+
+    // structural-reload recovery: POST /actuals/rebuild -> prod.dct_views_rebuild
+    // (re-creates the SELECT * base views, recompiles, refreshes the snapshot)
+    self.rebuilding = ko.observable(false);
+    self.rebuildViews = function () {
+      if (self.rebuilding() || self.refreshing()) return;
+      if (!window.confirm(self.t('rebuildConfirm'))) return;
+      self.rebuilding(true);
+      api('POST', '/actuals/rebuild', {}).then(function (d) {
+        self.rebuilding(false);
+        self.lastRefreshed(d.refreshedAt || '');
+        if (d.invalidRemaining) toast(self.t('rebuiltLeft') + ' ' + d.invalidRemaining, true);
+        else toast(self.t('rebuilt'));
+        if (self.view() === 'actuals') self.runActuals(self.acOffset());
+        else if (self.view() === 'butil') self.runButil(self.buOffset());
+        else if (self.view() === 'dashboard') self.loadDashboard();
+      }).catch(function (e) { self.rebuilding(false); toast(e.message, true); });
     };
 
     /* ════ ACTUALS — Budget vs Actual report ════ */

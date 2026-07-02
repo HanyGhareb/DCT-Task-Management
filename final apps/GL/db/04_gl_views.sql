@@ -5,8 +5,9 @@
 --                     descriptions + Sector/Chapter/DCT-Program effective on
 --                     the as-of date (default SYSDATE; set via
 --                     DCT_GL_CLASS_PKG.set_asof). Short synonym GL_COA_V.
---  DCT_GL_BALANCES_V  ATD_GL_BALANCES enriched with the effective Sector
---                     (chapter/program await a populated balances feed).
+--  DCT_GL_BALANCES_V  ATD_GL_BALANCES enriched with cost centre / account /
+--                     effective Sector via DCT_GL_COA_V on the combination
+--                     string (the slim reloaded table has no dimension cols).
 -- ===========================================================================
 SET DEFINE OFF
 SET SQLBLANKLINES ON
@@ -97,20 +98,27 @@ LEFT JOIN prod.dct_gl_class_value pv ON pv.class_value_id = pm.class_value_id;
 CREATE OR REPLACE SYNONYM prod.gl_coa_v FOR prod.dct_gl_coa_v;
 
 -- ---------------------------------------------------------------------------
--- Budget balances enriched with the effective Sector. Chapter/Program will be
--- added once ATD_GL_BALANCES carries a parseable combination / segment feed.
+-- Budget balances enriched with cost centre / account / effective Sector.
+-- REWRITTEN 2026-07-02: the reloaded ATD_GL_BALANCES no longer carries
+-- COST_CENTER / ACCOUNT_CODE / GL_COMBINATION / FUNDS_AVAILABLE columns --
+-- only CONCATENATED_SEGMENTS (dot-separated, DIFFERENT segment order than the
+-- COA string). Reads prod.GL_BALANCES_CC (db/v2/32 -- the ONE canonical
+-- combination-string remap; deploy 32 before re-running this script) and takes
+-- all dimensions from the as-of-aware DCT_GL_COA_V (same GL_CTX semantics the
+-- /balances handler already sets).
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE VIEW prod.dct_gl_balances_v AS
 SELECT
   b.*,
-  sv.value_code AS sector_code,
-  sv.name_en    AS sector_name
-FROM prod.gl_src_balances b
-LEFT JOIN prod.dct_gl_seg_class_map sm
-       ON sm.class_type_code = 'SECTOR'
-      AND sm.segment_value   = prod.dct_gl_class_pkg.norm(b.cost_center,7)
-      AND NVL(TO_DATE(SYS_CONTEXT('GL_CTX','ASOF'),'YYYY-MM-DD'),TRUNC(SYSDATE))
-            BETWEEN sm.start_date AND NVL(sm.end_date, DATE '4000-01-01')
-LEFT JOIN prod.dct_gl_class_value sv ON sv.class_value_id = sm.class_value_id;
+  coa.cost_center_code     AS cost_center,
+  coa.cost_center_desc     AS cost_center_name,
+  coa.account_code,
+  coa.account_desc         AS account_name,
+  b.funds_available_amount AS funds_available,
+  coa.sector_code,
+  coa.sector_name
+FROM prod.gl_balances_cc b
+LEFT JOIN prod.dct_gl_coa_v coa
+       ON coa.cc_string = b.cc_string;
 
 PROMPT DCT_GL_COA_V (+ GL_COA_V) and DCT_GL_BALANCES_V created.

@@ -44,15 +44,17 @@ WITH periods AS (
   FROM (SELECT DISTINCT period_name FROM prod.gl_balances WHERE period_name IS NOT NULL)
 ),
 gl_ytd AS (
-  SELECT REPLACE(g.concatenated_segments,'-','.') AS cc_string, p.period_name,
+  -- canonical cc_string via GL_BALANCES_CC (db/v2/32) -- the reloaded feed's
+  -- CONCATENATED_SEGMENTS carries a different segment order than the COA string
+  SELECT g.cc_string, p.period_name,
          SUM(g.total_budget)                                                   AS budget,
          SUM(NVL(g.commitments,0)+NVL(g.obligations,0)+NVL(g.other_encumbrances,0)) AS encumbrance,
          SUM(g.expenditures)                                                   AS gl_actual,
          SUM(g.funds_available_amount)                                         AS funds_available
-  FROM prod.gl_balances g
+  FROM prod.gl_balances_cc g
   JOIN periods p ON TO_DATE(g.period_name,'MM-YYYY') BETWEEN p.yr_start AND p.p_start
-  WHERE g.concatenated_segments IS NOT NULL
-  GROUP BY REPLACE(g.concatenated_segments,'-','.'), p.period_name
+  WHERE g.cc_string IS NOT NULL
+  GROUP BY g.cc_string, p.period_name
 ),
 grn_ytd AS (
   SELECT pod.charge_account AS cc_string, p.period_name,

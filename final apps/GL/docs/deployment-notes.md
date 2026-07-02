@@ -9,7 +9,12 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    - `02_gl_ddl.sql` → `03_gl_pkg.sql` → `04_gl_views.sql`.
    - `06_gl_seed.sql` — run with `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8` (Arabic class-type names);
      regenerate from CSVs first with `python db/gen_seed.py` if `db/source/*.csv` changed.
-   - `05_gl_ords.sql` — **own fresh session**.
+   - `05_gl_ords.sql` — **own fresh session**. It DELETE_MODULEs gl.rest — **always re-run the
+     ADDITIVE scripts `07` (butil) and `08` (rebuild endpoint) right after any 05 re-run.**
+   - After a **structural** ATD reload (new/renamed columns): UI **Rebuild views** button
+     (= `POST /gl/actuals/rebuild` → `prod.dct_views_rebuild`, db/v2/38) re-creates the base
+     pass-throughs + recompiles + refreshes. If it reports views still invalid → edit/re-run the
+     owning script (`db/v2/32`/`34`/`36`/`37`, `04_gl_views.sql`).
 2. **Frontend** — bump `window.APP_VERSION` in `Jet/index.html`. A change under `final apps/shared/`
    requires bumping `APP_VERSION` in ALL apps (cache-bust).
 3. **Smoke** — `python Jet/dev-proxy.py` (DEV_PROXY_PORT=8090), quick-login via Admin, load
@@ -17,6 +22,34 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-02 — Rebuild-views button (v1.9.0) + GL balances feed format fix (GL_BALANCES_CC).**
+  Two things: a UI recovery button for structural ATD reloads, and an incident fix it immediately
+  surfaced — the reloaded `ATD_GL_BALANCES` lost its dimension columns (`COST_CENTER`/`ACCOUNT_CODE`/
+  `GL_COMBINATION`/`FUNDS_AVAILABLE`…) AND its `CONCATENATED_SEGMENTS` came back dot-separated in a
+  **different segment order** (`entity.program.cost_center.budget_group.account.entity_specific.`
+  `appropriation.intercompany.future1.future2`) — every gl_balances↔COA join silently matched ZERO
+  rows (Actuals Budget/GL-Actual/Funds-GL figures empty).
+  - DB: `db/v2/38` **`prod.dct_views_rebuild`** (re-creates the 16 `SELECT *` pass-throughs over
+    `ATD_*`, calls `dct_actuals_refresh` [snapshot + 2-pass recompile], returns rebuilt count + any
+    views still INVALID; +`GRANT CREATE VIEW TO PROD` — definer-rights needs the direct grant).
+    `db/v2/32` adds **`GL_BALANCES_CC`** — the ONE canonical remap of the re-ordered
+    `CONCATENATED_SEGMENTS` (legacy dash format still accepted); `DCT_ACTUAL_V` GL branch +
+    `DCT_BUDGET_ACTUAL_V` re-pointed. `db/v2/34` `gl_ytd` re-pointed. `04_gl_views.sql`
+    `DCT_GL_BALANCES_V` rewritten (dimensions via `DCT_GL_COA_V` on `GL_BALANCES_CC.cc_string` —
+    **re-run 32 before 04**). Dropped orphaned live-only draft `DCT_PROJECT_BUDGET_V` (referenced
+    long-gone `PROJECT_BALANCES`).
+  - ORDS: `08_gl_views_rebuild_ords.sql` — **ADDITIVE** `POST /gl/actuals/rebuild` (+ ADMIN synonym
+    `dct_views_rebuild`, fresh session). `05_gl_ords.sql` had 9 direct
+    `REPLACE(concatenated_segments,'-','.')` joins (drill budget/encumbrance/glactual + dashboard
+    bySector/byProgram/byAppropriation) — all re-pointed to `gl_balances_cc.cc_string` and the whole
+    module re-published (then 07 + 08 re-run per the rule). **After any 05 re-run, re-run 07 AND 08.**
+  - Frontend v1.9.0: **Rebuild views** button (Overview + Budget Utilization page heads) with tooltip
+    hint + confirm — "use only after a reload that changed table structure; plain reload → Refresh
+    actuals"; toast lists views still invalid (= script edit needed).
+  - Verified: rebuild proc live-run (16 rebuilt, invalid none); GL figures restored — 07-2026 Budget
+    17,181.2M / GL Actual 1,728.1M / Funds GL 9,955.4M; balances match 9,508/10,351 vs COA (843
+    combos absent from the `ATD_GL_CODE_COMBINATIONS` extract — source-side gap); `/balances` view
+    9,508 with cost-centre / 9,464 with sector; endpoint registered; `node --check` clean.
 - **2026-07-02 — Budget Utilization KPI-card (aggregate) drill-down (v1.8.0).** Follow-up to v1.7.0:
   the user expected the prominent **KPI cards** (Actual AP / GRN / Commitment PR / Obligation PO) to be
   clickable, not just the table cells. Now both are: cards drill the **whole filtered set** (aggregate),

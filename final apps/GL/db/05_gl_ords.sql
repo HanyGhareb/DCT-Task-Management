@@ -770,37 +770,37 @@ BEGIN
     APEX_JSON.open_array('columns'); col('period','Period','text'); col('initial','Initial budget','money'); col('adjustments','Adjustments','money'); col('amount','Total budget','money'); APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
     FOR r IN (SELECT g.period_name, SUM(g.initial_budget) ib, SUM(g.budget_adjustments) adj, SUM(g.total_budget) tb
-              FROM prod.gl_balances g WHERE REPLACE(g.concatenated_segments,'-','.') = l_cc
+              FROM prod.gl_balances_cc g WHERE g.cc_string = l_cc
                 AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart
               GROUP BY g.period_name ORDER BY TO_DATE(g.period_name,'MM-YYYY')) LOOP
       APEX_JSON.open_object; APEX_JSON.write('period',r.period_name); APEX_JSON.write('initial',r.ib); APEX_JSON.write('adjustments',r.adj); APEX_JSON.write('amount',r.tb); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
-    SELECT NVL(SUM(g.total_budget),0) INTO l_total FROM prod.gl_balances g WHERE REPLACE(g.concatenated_segments,'-','.') = l_cc AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart;
+    SELECT NVL(SUM(g.total_budget),0) INTO l_total FROM prod.gl_balances_cc g WHERE g.cc_string = l_cc AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart;
 
   ELSIF l_metric = 'encumbrance' THEN
     APEX_JSON.open_array('columns'); col('period','Period','text'); col('commitments','Commitments','money'); col('obligations','Obligations','money'); col('other','Other','money'); col('amount','Encumbrance','money'); APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
     FOR r IN (SELECT g.period_name, SUM(NVL(g.commitments,0)) c, SUM(NVL(g.obligations,0)) o, SUM(NVL(g.other_encumbrances,0)) oe
-              FROM prod.gl_balances g WHERE REPLACE(g.concatenated_segments,'-','.') = l_cc
+              FROM prod.gl_balances_cc g WHERE g.cc_string = l_cc
                 AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart
               GROUP BY g.period_name ORDER BY TO_DATE(g.period_name,'MM-YYYY')) LOOP
       APEX_JSON.open_object; APEX_JSON.write('period',r.period_name); APEX_JSON.write('commitments',r.c); APEX_JSON.write('obligations',r.o); APEX_JSON.write('other',r.oe); APEX_JSON.write('amount',r.c+r.o+r.oe); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
-    SELECT NVL(SUM(NVL(g.commitments,0)+NVL(g.obligations,0)+NVL(g.other_encumbrances,0)),0) INTO l_total FROM prod.gl_balances g WHERE REPLACE(g.concatenated_segments,'-','.') = l_cc AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart;
+    SELECT NVL(SUM(NVL(g.commitments,0)+NVL(g.obligations,0)+NVL(g.other_encumbrances,0)),0) INTO l_total FROM prod.gl_balances_cc g WHERE g.cc_string = l_cc AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart;
 
   ELSIF l_metric = 'glactual' THEN
     APEX_JSON.open_array('columns'); col('period','Period','text'); col('amount','Actual expenditure','money'); APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
     FOR r IN (SELECT g.period_name, SUM(g.expenditures) e
-              FROM prod.gl_balances g WHERE REPLACE(g.concatenated_segments,'-','.') = l_cc
+              FROM prod.gl_balances_cc g WHERE g.cc_string = l_cc
                 AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart
               GROUP BY g.period_name ORDER BY TO_DATE(g.period_name,'MM-YYYY')) LOOP
       APEX_JSON.open_object; APEX_JSON.write('period',r.period_name); APEX_JSON.write('amount',r.e); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
-    SELECT NVL(SUM(g.expenditures),0) INTO l_total FROM prod.gl_balances g WHERE REPLACE(g.concatenated_segments,'-','.') = l_cc AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart;
+    SELECT NVL(SUM(g.expenditures),0) INTO l_total FROM prod.gl_balances_cc g WHERE g.cc_string = l_cc AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart;
 
   ELSIF l_metric = 'grn' THEN
     APEX_JSON.open_array('columns'); col('receipt','Receipt #','text'); col('date','Date','date'); col('supplier','Supplier','text'); col('currency','Cur','text'); col('rate','Rate','num'); col('amount','Amount (AED)','money'); col('type','Type','text'); APEX_JSON.close_array;
@@ -974,7 +974,7 @@ BEGIN
   APEX_JSON.open_array('bySector');
   FOR r IN (
     WITH gl AS (SELECT s.sector_code, SUM(g.total_budget) bud, SUM(g.expenditures) act
-                FROM prod.gl_balances g JOIN prod.dct_gl_coa_snap s ON s.cc_string = REPLACE(g.concatenated_segments,'-','.')
+                FROM prod.gl_balances_cc g JOIN prod.dct_gl_coa_snap s ON s.cc_string = g.cc_string
                 WHERE TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart AND s.sector_code IS NOT NULL
                 GROUP BY s.sector_code),
          po AS (SELECT s.sector_code, COUNT(DISTINCT h.order_number) pc, SUM(pd.distribution_amount*NVL(pd.rate,1)) pt
@@ -995,7 +995,7 @@ BEGIN
   APEX_JSON.open_array('byProgram');
   FOR r IN (
     WITH gl AS (SELECT s.program_class_code code, SUM(g.total_budget) bud, SUM(g.expenditures) act
-                FROM prod.gl_balances g JOIN prod.dct_gl_coa_snap s ON s.cc_string = REPLACE(g.concatenated_segments,'-','.')
+                FROM prod.gl_balances_cc g JOIN prod.dct_gl_coa_snap s ON s.cc_string = g.cc_string
                 WHERE TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart AND s.program_class_code IS NOT NULL
                 GROUP BY s.program_class_code),
          po AS (SELECT s.program_class_code code, COUNT(DISTINCT h.order_number) pc, SUM(pd.distribution_amount*NVL(pd.rate,1)) pt
@@ -1016,7 +1016,7 @@ BEGIN
   APEX_JSON.open_array('byAppropriation');
   FOR r IN (
     WITH gl AS (SELECT s.appropriation_code code, SUM(g.total_budget) bud, SUM(g.expenditures) act
-                FROM prod.gl_balances g JOIN prod.dct_gl_coa_snap s ON s.cc_string = REPLACE(g.concatenated_segments,'-','.')
+                FROM prod.gl_balances_cc g JOIN prod.dct_gl_coa_snap s ON s.cc_string = g.cc_string
                 WHERE TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart AND s.appropriation_code IS NOT NULL
                 GROUP BY s.appropriation_code),
          po AS (SELECT s.appropriation_code code, COUNT(DISTINCT h.order_number) pc, SUM(pd.distribution_amount*NVL(pd.rate,1)) pt

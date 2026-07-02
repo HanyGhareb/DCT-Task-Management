@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.8.0';</script>
+<script>window.APP_VERSION='1.9.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -60,7 +60,11 @@
           <div class="greet-sub" style="margin:0" data-bind="text:t('ovSub')"></div></div>
         <div class="page-actions">
           <span class="chip muted" data-bind="visible:lastRefreshed(), text:t('asOfRefresh')+' '+lastRefreshed()"></span>
-          <button class="btn btn-primary btn-sm" data-bind="click:refreshActuals, enable:!refreshing(), attr:{title:t('refreshHint')}">
+          <button class="btn btn-sm" data-bind="click:rebuildViews, enable:!rebuilding() && !refreshing(), attr:{title:t('rebuildHint')}">
+            <span class="spin" data-bind="visible:rebuilding()"></span>
+            <span data-bind="text:rebuilding()?t('rebuilding'):t('rebuildViews')"></span>
+          </button>
+          <button class="btn btn-primary btn-sm" data-bind="click:refreshActuals, enable:!refreshing() && !rebuilding(), attr:{title:t('refreshHint')}">
             <span class="spin" data-bind="visible:refreshing()" style="border-top-color:#fff;border-color:rgba(255,255,255,.4)"></span>
             <span data-bind="text:refreshing()?t('refreshing'):t('refreshActuals')"></span>
           </button>
@@ -337,7 +341,8 @@
         <div class="page-actions">
           <span class="chip muted" data-bind="visible:buTotal(), text:buRange()"></span>
           <button class="btn btn-sm" data-bind="click:buExportCsv, enable:buTotal()>0, text:t('exportCsv')"></button>
-          <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
+          <button class="btn btn-sm" data-bind="click:rebuildViews, enable:!rebuilding() && !refreshing(), attr:{title:t('rebuildHint')}, text:rebuilding()?t('rebuilding'):t('rebuildViews')"></button>
+          <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing() && !rebuilding(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
         </div>
       </div>
 
