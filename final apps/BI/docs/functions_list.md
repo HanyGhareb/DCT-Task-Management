@@ -11,13 +11,15 @@ SYS_ADMIN-gated; consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 ## Reports (`reports`) — definition CRUD
 - `load` / `applyFilter` / `prev` / `next` — list + search + engine filter + paging.
 - `openNew` / `openEdit(row)` / `save` — create/edit definition via the shared `<edit-drawer>` (code, names, source, engine, formats, templates, params, enabled). Drawer Cancel/Esc/scrim close via the `editing` observable.
-- `runNow(row)` — enqueue an on-demand run; definitions with `params_json` keys route to the detail page's Run Parameters drawer instead of queueing blind. `openDetail(row)` — open report detail. `remove(row)` — delete.
+- `runNow(row)` — fetches the param spec (`GET reports/:code/params`); parameterized definitions open the **Run Parameters drawer in place on the list** (LOV dropdowns + EN/AR labels/hints + required-field validation) — no navigation to detail; param-less definitions queue immediately. `submitRun` posts the collected params. `openDetail(row)` — open report detail. `remove(row)` — delete.
 
 ## Report Detail (`reportDetail`) — schedules + recipients
 - `loadAll` / `back` / `syncSched` (rebuild DBMS_SCHEDULER jobs).
-- `runNow` — when the definition declares `params_json` keys, opens the **Run Parameters drawer**
-  (one field per key; empty = report default, numeric strings sent as numbers); otherwise queues
-  immediately. `submitRun` / `queueRun(params)` — POST the params object as the run body.
+- `runNow` — fetches the param spec (`GET reports/:code/params`) and opens the **Run Parameters
+  drawer** (LOV dropdowns from the definition's `param_spec_json` lov_sql, EN/AR labels + hints,
+  required markers; empty optional field = report default, numeric strings sent as numbers);
+  no declared params → queues immediately. `submitRun` validates required fields, then
+  `queueRun(params)` POSTs the params object as the run body.
 - Schedules: `openSchNew` / `openSchEdit` / `saveSch` / `removeSch`.
 - Recipients: `openRcNew` / `openRcEdit` / `saveRc` / `removeRc` (USER/ROLE/ORG/EMAIL/SELF × channel).
 
@@ -49,6 +51,7 @@ SYS_ADMIN-gated; consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | GET/POST | `reports/` | list / create definitions |
 | GET/PUT/DELETE | `reports/:code` | detail / update / delete |
 | POST | `reports/:code/run` | enqueue on-demand run (optional JSON body = run parameters; absent/`{}` keeps definition defaults) |
+| GET | `reports/:code/params` | run-parameter spec for the Run drawer: name/label/labelAr/hint/hintAr/required + LOV values (each `param_spec_json` lov_sql executed, max 500 rows) — `reporting/db/10` |
 | GET | `runs/` | run history (paged) |
 | GET | `runs/:id` | run detail (+ outputs + deliveries) |
 | GET | `runs/:id/output/:fmt` | authed BLOB download |

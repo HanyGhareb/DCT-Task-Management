@@ -87,6 +87,25 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-02 — Run-parameter LOVs + hints, drawer on the Reports list (BI APP_VERSION 1.3.0).**
+  The Run Parameters drawer now shows a **dropdown (LOV) per parameter with an EN/AR label, a hint
+  line and a required marker**, and opens **in place on the Reports list** (clicking Run now no
+  longer navigates to the report detail page; the detail page's own Run now uses the same drawer).
+  - **DB:** `reporting/db/10_rpt_param_lov.sql` — new nullable column
+    `DCT_RPT_DEFINITION.PARAM_SPEC_JSON` (per-param UI metadata `{label, label_ar, hint, hint_ar,
+    required, lov_sql}`; kept SEPARATE from `PARAMS_JSON` so runtime defaults stay a flat object the
+    runner binds directly) + ADDITIVE `GET /rpt/reports/:code/params` (executes each `lov_sql` as
+    ADMIN, max 500 rows — reference PROD objects with the `prod.` prefix) + the BUDGET_UTIL_SECTOR
+    spec seed (LOVs from `DCT_BUTIL_SCOPE_V`: year/sector/projecttype/costcenter). **Re-run 10 after
+    any 04 re-run** (04 DELETE_MODULEs rpt.rest). Deployed + endpoint smoke-tested on PROD.
+  - **Frontend:** `rptService.getReportParams`; reports.js + reportDetail.js share the same drawer
+    logic (required-field validation with toast; empty optional field omitted; numeric strings sent
+    as numbers). E2E Playwright: drawer in place on `#reports`, 4 LOV selects + hints + 2 required
+    stars, empty-submit validation, run queued with `year=2026&sector=Tourism` → SUCCESS (run 28).
+  - **Worker fleet:** `runner.py` honours `RPT_WORKER_NAME` (worker display name override for cloned
+    VMs) and new `reporting/runner/deploy_worker.sh` installs a permanent systemd worker
+    (`rpt-worker.service`, Restart=always, creds in root-only `/etc/rpt-worker.env`) on any Linux VM:
+    `export RPT_DB_PASSWORD=…; export SSHPASS=…; ./deploy_worker.sh <host> <name>`.
 - **2026-07-02 — Workers monitoring + control page (BI APP_VERSION 1.2.0).** New **Workers** nav page:
   live Python-engine worker registry (health ONLINE/STALE/OFFLINE from heartbeat age, status, current
   run, done/failed counters), queue KPIs (queued / running / succeeded+failed today, backlog banner

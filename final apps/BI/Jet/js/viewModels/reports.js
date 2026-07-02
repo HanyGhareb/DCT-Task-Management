@@ -1,4 +1,4 @@
-define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, toast) {
+define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], function (ko, rpt, toast, i18n) {
   'use strict';
 
   function ReportsViewModel() {
@@ -94,24 +94,43 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
       }).catch(function () { self.saving(false); });
     };
 
+    // ── run with parameters (in-page drawer — no navigation to detail) ──
+    self.runEditing = ko.observable(false);
+    self.runSaving  = ko.observable(false);
+    self.runCode    = ko.observable('');
+    self.runName    = ko.observable('');
+    self.runParams  = ko.observableArray([]);   // spec rows + value: ko.observable
+
     self.runNow = function (row) {
-      // parameterized definitions are run from the detail page (Run Parameters
-      // drawer) — the list rows don't carry paramsJson, so fetch the definition
-      rpt.getReport(row.reportCode).then(function (d) {
-        var hasParams = false;
-        try {
-          var obj = JSON.parse(d.paramsJson || '');
-          hasParams = obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).length > 0;
-        } catch (e) { /* no params */ }
-        if (hasParams) {
-          window._jetApp.navigate('reportDetail', { reportCode: row.reportCode, autoRun: true });
-          return;
+      rpt.getReportParams(row.reportCode).then(function (d) {
+        var spec = (d && d.params) || [];
+        if (!spec.length) {
+          return rpt.runReport(row.reportCode).then(function (r) {
+            toast.success('Queued run #' + r.runId);
+            window._jetApp.navigate('runs');
+          });
         }
-        return rpt.runReport(row.reportCode).then(function (r) {
-          toast.success('Queued run #' + r.runId);
-          window._jetApp.navigate('runs');
-        });
+        self.runCode(row.reportCode); self.runName(row.nameEn || row.reportCode);
+        self.runParams(spec.map(function (p) { p.value = ko.observable(''); return p; }));
+        self.runEditing(true);
       }).catch(function () {});
+    };
+
+    self.submitRun = function () {
+      if (self.runSaving()) return;
+      var params = {}, missing = [];
+      self.runParams().forEach(function (p) {
+        var v = (p.value() || '').trim();
+        if (v === '') { if (p.required) missing.push(p.label || p.name); return; }
+        params[p.name] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v;
+      });
+      if (missing.length) { toast.error(i18n.t('det.paramRequired') + ' ' + missing.join(', ')); return; }
+      self.runSaving(true);
+      rpt.runReport(self.runCode(), null, Object.keys(params).length ? params : null).then(function (r) {
+        self.runSaving(false); self.runEditing(false);
+        toast.success('Queued run #' + r.runId);
+        window._jetApp.navigate('runs');
+      }).catch(function () { self.runSaving(false); });
     };
 
     self.openDetail = function (row) { window._jetApp.navigate('reportDetail', { reportCode: row.reportCode }); };

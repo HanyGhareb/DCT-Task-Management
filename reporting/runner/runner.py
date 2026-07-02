@@ -31,7 +31,7 @@ import deliver
 import notify
 
 DUBAI = timezone(timedelta(hours=4))           # Asia/Dubai (fixed +04:00, no DST)
-HOSTNAME = socket.gethostname() or "rpt"
+HOSTNAME = os.environ.get("RPT_WORKER_NAME") or socket.gethostname() or "rpt"
 WORKER_ID = f"{HOSTNAME}/py{os.getpid()}"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 

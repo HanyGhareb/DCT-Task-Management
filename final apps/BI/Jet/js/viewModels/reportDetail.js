@@ -1,12 +1,10 @@
-define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, toast) {
+define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], function (ko, rpt, toast, i18n) {
   'use strict';
 
   function ReportDetailViewModel() {
     var self = this;
     var st = (window._jetApp && window._jetApp.getState()) || {};
     self.reportCode = st.reportCode || '';
-    var autoRun = !!st.autoRun;          // routed from the Reports list "Run now"
-    st.autoRun = false;                  // one-shot: don't re-open on later visits
 
     self.loading    = ko.observable(true);
     self.report     = ko.observable(null);
@@ -18,25 +16,19 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
     self.back   = function () { window._jetApp.navigate('reports'); };
 
     // ── run with parameters ─────────────────────────────────────────────
-    // When the definition declares params (params_json keys), prompt for
-    // values in a drawer; otherwise queue immediately with the defaults.
+    // The param spec (labels/hints/required/LOVs) comes from
+    // GET /reports/:code/params; no params declared → queue immediately.
     self.runEditing = ko.observable(false);
     self.runSaving  = ko.observable(false);
-    self.runParams  = ko.observableArray([]);   // [{ key, value: ko.observable }]
-
-    function definitionParams() {
-      var raw = (self.report() && self.report().paramsJson) || '';
-      try {
-        var obj = JSON.parse(raw);
-        return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? Object.keys(obj) : [];
-      } catch (e) { return []; }
-    }
+    self.runParams  = ko.observableArray([]);   // spec rows + value: ko.observable
 
     self.runNow = function () {
-      var keys = definitionParams();
-      if (!keys.length) { self.queueRun(null); return; }
-      self.runParams(keys.map(function (k) { return { key: k, value: ko.observable('') }; }));
-      self.runEditing(true);
+      rpt.getReportParams(self.reportCode).then(function (d) {
+        var spec = (d && d.params) || [];
+        if (!spec.length) { self.queueRun(null); return; }
+        self.runParams(spec.map(function (p) { p.value = ko.observable(''); return p; }));
+        self.runEditing(true);
+      }).catch(function () {});
     };
 
     self.queueRun = function (params) {
@@ -49,11 +41,13 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
     };
 
     self.submitRun = function () {
-      var params = {};
+      var params = {}, missing = [];
       self.runParams().forEach(function (p) {
         var v = (p.value() || '').trim();
-        if (v !== '') { params[p.key] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v; }
+        if (v === '') { if (p.required) missing.push(p.label || p.name); return; }
+        params[p.name] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v;
       });
+      if (missing.length) { toast.error(i18n.t('det.paramRequired') + ' ' + missing.join(', ')); return; }
       self.queueRun(Object.keys(params).length ? params : null);
     };
     self.syncSched = function () {
@@ -62,10 +56,7 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
 
     self.loadAll = function () {
       self.loading(true);
-      rpt.getReport(self.reportCode).then(function (d) {
-        self.report(d);
-        if (autoRun) { autoRun = false; self.runNow(); }
-      }).catch(function () {});
+      rpt.getReport(self.reportCode).then(function (d) { self.report(d); }).catch(function () {});
       rpt.getSchedules(self.reportCode).then(function (r) { self.schedules(r.items || []); }).catch(function () {});
       rpt.getRecipients(self.reportCode).then(function (r) { self.recipients(r.items || []); })
         .catch(function () {}).then(function () { self.loading(false); });

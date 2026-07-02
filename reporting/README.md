@@ -18,7 +18,7 @@ Admin **Reports** page (Phase 2).
 ## Layout
 ```
 reporting/
-  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · 08 Budget-Util-by-Sector (MULTI) · 09/09a workers · install.sql
+  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · 08 Budget-Util-by-Sector (MULTI) · 09/09a workers · 10 param spec + LOV endpoint · install.sql
   runner/  Python microservice (Phase 1)
   docs/    deployment-notes.md · functions_list.md
   tests/   render + e2e

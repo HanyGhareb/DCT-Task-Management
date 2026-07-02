@@ -131,4 +131,33 @@
           </div>
         </div>
   </edit-drawer>
+
+  <!-- ── run-parameters drawer (opens in-page; no navigation) ─────────── -->
+  <edit-drawer params="open: runEditing, vm: $vm,
+                       title: $root.t('det.runParams'), subtitle: runName(),
+                       saveLabel: (runSaving() ? $root.t('btn.saving') : $root.t('rep.run')),
+                       cancelLabel: $root.t('btn.cancel'), onSave: submitRun, width: '480px'">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:12px" data-bind="text: $root.t('det.runParamsHint')"></div>
+        <div class="form-grid">
+          <!-- ko foreach: runParams -->
+          <div class="form-group form-group--full">
+            <label class="form-label">
+              <span data-bind="text: ($root.lang() === 'ar' && $data.labelAr) ? $data.labelAr : ($data.label || $data.name)"></span>
+              <!-- ko if: $data.required --><span style="color:#C0392B"> *</span><!-- /ko -->
+            </label>
+            <!-- ko if: ($data.lov || []).length -->
+            <select class="form-control" data-bind="options: $data.lov, value: value,
+                    optionsCaption: ($data.required ? $root.t('det.paramSelect') : $root.t('det.paramAll'))"></select>
+            <!-- /ko -->
+            <!-- ko ifnot: ($data.lov || []).length -->
+            <input class="form-control" data-bind="value: value, valueUpdate: 'input'">
+            <!-- /ko -->
+            <!-- ko if: ($root.lang() === 'ar' && $data.hintAr) || $data.hint -->
+            <div style="font-size:11.5px;color:var(--text-2);margin-top:4px;line-height:1.5"
+                 data-bind="text: ($root.lang() === 'ar' && $data.hintAr) ? $data.hintAr : $data.hint"></div>
+            <!-- /ko -->
+          </div>
+          <!-- /ko -->
+        </div>
+  </edit-drawer>
 </div>

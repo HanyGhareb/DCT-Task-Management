@@ -26,6 +26,8 @@ define(['services/api'], function (api) {
     createReport: function (data)   { return api.post('/reports/', data); },
     updateReport: function (code, data) { return api.put('/reports/' + encodeURIComponent(code), data); },
     deleteReport: function (code)   { return api.delete('/reports/' + encodeURIComponent(code)); },
+    /* run-parameter spec: [{ name, label, labelAr, hint, hintAr, required, lov: [...] }] */
+    getReportParams: function (code) { return api.get('/reports/' + encodeURIComponent(code) + '/params'); },
     /* params: plain object of run parameters — sent as the POST body; the
        server keeps the definition defaults when the body is absent/empty */
     runReport:    function (code, formats, params) {
