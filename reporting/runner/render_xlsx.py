@@ -20,8 +20,36 @@ def _is_number(v):
 
 def build_xlsx(columns, rows, title="Report", meta=None, sheet_name="Report"):
     wb = Workbook()
-    ws = wb.active
-    ws.title = (sheet_name or "Report")[:31]
+    _fill_sheet(wb.active, columns, rows, title, meta, sheet_name)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+def build_xlsx_multi(sections, title="Report", meta=None):
+    """Multi-section workbook: one styled sheet per section.
+
+    sections = [{key, title, columns, rows}] (a MULTI definition's output).
+    Key-value sections render like any table (their single row spreads down
+    naturally in two-column form is not needed for Excel consumers).
+    """
+    wb = Workbook()
+    first = True
+    for i, s in enumerate(sections, start=1):
+        ws = wb.active if first else wb.create_sheet()
+        first = False
+        sheet = f"{i}. {s.get('title') or s.get('key') or 'Section'}"
+        _fill_sheet(ws, s["columns"], s["rows"], s.get("title") or title, meta, sheet)
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
+
+
+_BAD_SHEET = str.maketrans({c: " " for c in "[]:*?/\\"})
+
+
+def _fill_sheet(ws, columns, rows, title, meta, sheet_name):
+    ws.title = (str(sheet_name or "Report").translate(_BAD_SHEET))[:31]
 
     ncols = max(1, len(columns))
     # title + meta band
@@ -57,7 +85,3 @@ def build_xlsx(columns, rows, title="Report", meta=None, sheet_name="Report"):
     for j, w in enumerate(widths, start=1):
         ws.column_dimensions[get_column_letter(j)].width = min(48, max(10, w))
     ws.freeze_panes = ws.cell(row=head_row + 1, column=1)
-
-    buf = io.BytesIO()
-    wb.save(buf)
-    return buf.getvalue()

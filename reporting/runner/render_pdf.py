@@ -45,13 +45,13 @@ def render_html(ctx, template_name="report.html.j2"):
     return _env.get_template(template_name).render(**ctx)
 
 
-def html_to_pdf(html, renderer="PLAYWRIGHT"):
+def html_to_pdf(html, renderer="PLAYWRIGHT", landscape=False):
     if (renderer or "PLAYWRIGHT").upper() == "WEASYPRINT":
         return _weasyprint(html)
-    return _playwright(html)
+    return _playwright(html, landscape=landscape)
 
 
-def _playwright(html):
+def _playwright(html, landscape=False):
     from playwright.sync_api import sync_playwright
     with sync_playwright() as p:
         browser = p.chromium.launch(args=["--no-sandbox"])
@@ -60,6 +60,7 @@ def _playwright(html):
             page.set_content(html, wait_until="networkidle")
             return page.pdf(
                 format="A4",
+                landscape=landscape,
                 print_background=True,
                 margin={"top": "14mm", "bottom": "16mm", "left": "12mm", "right": "12mm"},
             )
@@ -73,4 +74,5 @@ def _weasyprint(html):
 
 
 def build_pdf(ctx, template_name="report.html.j2", renderer="PLAYWRIGHT"):
-    return html_to_pdf(render_html(ctx, template_name), renderer)
+    return html_to_pdf(render_html(ctx, template_name), renderer,
+                       landscape=bool(ctx.get("landscape")))

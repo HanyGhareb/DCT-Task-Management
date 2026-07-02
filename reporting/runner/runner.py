@@ -75,10 +75,10 @@ def claim(conn):
 
 def _definition_extras(conn, code):
     cur = conn.cursor()
-    cur.execute("select name_en, email_subject_tpl, email_body_tpl "
+    cur.execute("select name_en, email_subject_tpl, email_body_tpl, pdf_template "
                 "from prod.dct_rpt_definition where report_code = :c", c=code)
     row = cur.fetchone()
-    return row if row else (code, None, None)
+    return row if row else (code, None, None, None)
 
 
 def record_output(conn, run_id, fmt, name, mime, data):
@@ -94,41 +94,89 @@ def mark(conn, run_id, status, row_count=None, error=None):
     conn.cursor().callproc("prod.dct_rpt_pkg.mark_status", [run_id, status, row_count, error])
 
 
+def _headers(columns):
+    return [str(c).replace("_", " ").title() for c in columns]
+
+
+_MONEY_COLS = {"actual_ap", "actual_grn", "commitment_pr", "obligation_po",
+               "fund_available", "balance_due", "matched_aed"}
+
+
+def _is_money_col(name):
+    n = str(name).lower()
+    return n in _MONEY_COLS or n.endswith("_aed") or "amount" in n or "budget" in n
+
+
+def _totals(columns, rows):
+    """Per-column sums for money columns only (None elsewhere) — keeps the
+    totals row meaningful (no sums of line numbers / counts / years)."""
+    totals = [None] * len(columns)
+    money = [_is_money_col(c) for c in columns]
+    for row in rows:
+        for j, v in enumerate(row):
+            if money[j] and isinstance(v, (int, float)) and not isinstance(v, bool):
+                totals[j] = (totals[j] or 0) + v
+    return totals
+
+
 def process(conn, conf, job):
     run_id = job["run_id"]
     code = job["report_code"]
     params = json.loads(job["params"]) if job.get("params") else {}
-    name_en, subj_tpl, body_tpl = _definition_extras(conn, code)
-
-    columns, rows = datasource.fetch(conn, job["source_type"], job["source_ref"], params)
+    name_en, subj_tpl, body_tpl, pdf_tpl = _definition_extras(conn, code)
+    source_type = (job.get("source_type") or "SQL").upper()
     stamp = _now().strftime("%Y%m%d_%H%M")
     period = params.get("period")
-    meta = f"Generated {_now().strftime('%Y-%m-%d %I:%M %p')} | {len(rows)} rows" + \
-           (f" | period {period}" if period else "")
+
+    sections = None
+    if source_type == "MULTI":
+        spec, sections = datasource.fetch_multi(conn, job["source_ref"], params)
+        for s in sections:
+            s["headers"] = _headers(s["columns"])
+            s["totals"] = _totals(s["columns"], s["rows"]) if s["layout"] == "table" else None
+        columns, rows = [], []
+        row_count = sum(len(s["rows"]) for s in sections)
+        crumbs = " | ".join(f"{k} {v}" for k, v in params.items() if v not in (None, ""))
+        meta = f"Generated {_now().strftime('%Y-%m-%d %I:%M %p')} | {row_count} lines" + \
+               (f" | {crumbs}" if crumbs else "")
+        landscape = (spec.get("orientation") or "").lower() == "landscape"
+    else:
+        columns, rows = datasource.fetch(conn, source_type, job["source_ref"], params)
+        row_count = len(rows)
+        meta = f"Generated {_now().strftime('%Y-%m-%d %I:%M %p')} | {row_count} rows" + \
+               (f" | period {period}" if period else "")
+        landscape = False
+
     ctx = {
         "report_code": code, "report_name": name_en or code,
-        "period": period, "generated_at": _now().strftime("%Y-%m-%d %I:%M %p"),
-        "row_count": len(rows), "requested_by": job.get("requested_by"),
-        "headers": [str(c).replace("_", " ").title() for c in columns],
-        "columns": columns, "rows": rows, "meta": meta, "brand": "#1F6F8B",
+        "period": period, "params": params,
+        "generated_at": _now().strftime("%Y-%m-%d %I:%M %p"),
+        "row_count": row_count, "requested_by": job.get("requested_by"),
+        "headers": _headers(columns),
+        "columns": columns, "rows": rows, "sections": sections,
+        "meta": meta, "brand": "#1F6F8B", "landscape": landscape,
     }
 
     formats = [f.strip().upper() for f in (job.get("formats") or "PDF,XLSX").split(",") if f.strip()]
     renderer = config.cfg(conf, "PDF_RENDERER", "PLAYWRIGHT")
     attachments = []
     if "PDF" in formats:
-        pdf = render_pdf.build_pdf(ctx, renderer=renderer)
+        pdf = render_pdf.build_pdf(ctx, template_name=(pdf_tpl or "report.html.j2"),
+                                   renderer=renderer)
         fn = f"{code}_{stamp}.pdf"
         record_output(conn, run_id, "PDF", fn, "application/pdf", pdf)
         attachments.append((fn, "application/pdf", pdf))
     if "XLSX" in formats:
-        xlsx = render_xlsx.build_xlsx(columns, rows, title=name_en or code, meta=meta,
-                                      sheet_name=code)
+        if sections is not None:
+            xlsx = render_xlsx.build_xlsx_multi(sections, title=name_en or code, meta=meta)
+        else:
+            xlsx = render_xlsx.build_xlsx(columns, rows, title=name_en or code, meta=meta,
+                                          sheet_name=code)
         fn = f"{code}_{stamp}.xlsx"
         record_output(conn, run_id, "XLSX", fn, XLSX_MIME, xlsx)
         attachments.append((fn, XLSX_MIME, xlsx))
     if "CSV" in formats:
-        csv_bytes = _csv(columns, rows)
+        csv_bytes = _csv_multi(sections) if sections is not None else _csv(columns, rows)
         fn = f"{code}_{stamp}.csv"
         record_output(conn, run_id, "CSV", fn, "text/csv", csv_bytes)
         attachments.append((fn, "text/csv", csv_bytes))
@@ -137,8 +185,8 @@ def process(conn, conf, job):
     if (config.cfg(conf, "EMAIL_ENABLED", "N") or "N").upper() == "Y" and attachments:
         sent, failed = deliver.send_report(conn, conf, run_id, ctx, subj_tpl, body_tpl, attachments)
 
-    mark(conn, run_id, "SUCCESS", row_count=len(rows))
-    print(f"[run {run_id}] {code} OK: {len(rows)} rows, formats={','.join(formats)}, "
+    mark(conn, run_id, "SUCCESS", row_count=row_count)
+    print(f"[run {run_id}] {code} OK: {row_count} rows, formats={','.join(formats)}, "
           f"email sent={sent} failed={failed}")
 
 
@@ -150,6 +198,21 @@ def _csv(columns, rows):
     w.writerow(columns)
     for r in rows:
         w.writerow(r)
+    return ("﻿" + buf.getvalue()).encode("utf-8")   # BOM so Excel reads Arabic
+
+
+def _csv_multi(sections):
+    import io
+    import csv as _c
+    buf = io.StringIO()
+    w = _c.writer(buf)
+    for i, s in enumerate(sections):
+        if i:
+            w.writerow([])
+        w.writerow([s.get("title") or s.get("key") or "Section"])
+        w.writerow(s["columns"])
+        for r in s["rows"]:
+            w.writerow(r)
     return ("﻿" + buf.getvalue()).encode("utf-8")   # BOM so Excel reads Arabic
 
 
@@ -186,6 +249,8 @@ def main(argv=None):
     ap.add_argument("--reclaim", action="store_true", help="requeue stuck runs and exit")
     ap.add_argument("--run", metavar="REPORT_CODE", help="enqueue this report then drain")
     ap.add_argument("--period", help="value for the :period bind (with --run)")
+    ap.add_argument("--params", metavar="JSON",
+                    help='run parameters as JSON, e.g. \'{"year":2026,"sector":"..."}\' (with --run)')
     args = ap.parse_args(argv)
 
     conn = config.connect()
@@ -197,7 +262,10 @@ def main(argv=None):
         return 0
 
     if args.run:
-        rid = enqueue(conn, args.run, {"period": args.period} if args.period else {})
+        run_params = json.loads(args.params) if args.params else {}
+        if args.period:
+            run_params.setdefault("period", args.period)
+        rid = enqueue(conn, args.run, run_params)
         print(f"enqueued run {rid} for {args.run}")
 
     if args.forever:

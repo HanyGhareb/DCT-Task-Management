@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_name }}</title>
+<style>
+  :root { --brand: {{ brand|default('#1F6F8B') }}; --actual: #B58900; --enc: #C25E10;
+          --ok: #1E7B4D; --bad: #B3352B; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1f2933;
+         margin: 0; font-size: 10px; }
+  .head { border-bottom: 3px solid var(--brand); padding: 0 0 10px; margin-bottom: 12px; }
+  .brandrow { display: flex; align-items: baseline; justify-content: space-between; }
+  .title { font-size: 20px; font-weight: 700; color: var(--brand); margin: 0; }
+  .org { font-size: 10px; letter-spacing: .12em; text-transform: uppercase; color: #7b8794; }
+  .meta { margin-top: 4px; font-size: 9.5px; color: #52606d; }
+  .params { margin-top: 6px; }
+  .params span { display: inline-block; background: #eef4f6; border: 1px solid #d3e0e5;
+                 border-radius: 3px; padding: 2px 8px; margin-right: 6px; font-size: 9.5px;
+                 color: #33525e; }
+  .params b { color: var(--brand); }
+
+  .section { margin-top: 14px; }
+  .section + .section { page-break-before: always; }
+  .sec-h { display: flex; align-items: baseline; justify-content: space-between;
+           border-left: 4px solid var(--brand); padding: 3px 8px; background: #f0f5f7;
+           margin-bottom: 8px; }
+  .sec-title { font-size: 13px; font-weight: 700; color: #24404b; margin: 0; }
+  .sec-no { font-size: 9px; color: #7b8794; letter-spacing: .08em; text-transform: uppercase; }
+
+  table { border-collapse: collapse; width: 100%; }
+  thead th { background: var(--brand); color: #fff; font-weight: 600; text-align: left;
+             padding: 5px 6px; font-size: 9px; border: 1px solid #17596f; }
+  thead th.grp { text-align: center; }
+  thead th.g-actual { background: var(--actual); border-color: #93700a; }
+  thead th.g-enc { background: var(--enc); border-color: #9c4b0c; }
+  tbody td { padding: 4px 6px; border: 1px solid #e4e7eb; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #f5f7fa; }
+  td.num, tfoot td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  tfoot td { padding: 5px 6px; border: 1px solid #cbd2d9; background: #e3ecef;
+             font-weight: 700; color: #24404b; }
+  .neg { color: var(--bad); }
+  .empty { padding: 18px; text-align: center; color: #7b8794; font-style: italic;
+           border: 1px dashed #d3dce2; }
+  .foot { margin-top: 12px; font-size: 8.5px; color: #9aa5b1; text-align: center; }
+
+  /* intro (part 1) */
+  .id-grid { display: grid; grid-template-columns: 170px 1fr; gap: 4px 14px; margin-bottom: 12px; }
+  .id-grid .lbl { color: #61707c; font-size: 9.5px; padding-top: 2px; }
+  .id-grid .val { font-size: 11px; font-weight: 600; color: #23323b; }
+  .val.ar { direction: rtl; text-align: left; font-size: 12px; }
+  .kpis { display: flex; gap: 8px; flex-wrap: wrap; }
+  .kpi { flex: 1 1 120px; border: 1px solid #d8e2e7; border-top: 3px solid var(--brand);
+         border-radius: 4px; padding: 7px 9px; background: #fbfdfe; }
+  .kpi.k-actual { border-top-color: var(--actual); }
+  .kpi.k-enc { border-top-color: var(--enc); }
+  .kpi.k-fund { border-top-color: var(--ok); }
+  .kpi .k-lbl { font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #7b8794; }
+  .kpi .k-val { font-size: 14px; font-weight: 700; color: #23323b; margin-top: 2px;
+                font-variant-numeric: tabular-nums; }
+  @page { size: A4 landscape; }
+</style>
+</head>
+<body>
+  <div class="head">
+    <div class="brandrow">
+      <h1 class="title">{{ report_name }}</h1>
+      <div class="org">i-Finance · Reporting</div>
+    </div>
+    <div class="meta">{{ meta }}</div>
+    <div class="params">
+      {% if params.year %}<span>Budget year <b>{{ params.year }}</b></span>{% endif %}
+      {% if params.sector %}<span>Sector <b>{{ params.sector }}</b></span>{% endif %}
+      {% if params.projecttype %}<span>Project type <b>{{ params.projecttype }}</b></span>{% endif %}
+      {% if params.costcenter %}<span>Cost centre <b>{{ params.costcenter }}</b></span>{% endif %}
+    </div>
+  </div>
+
+  {% for s in sections %}
+  <div class="section">
+    <div class="sec-h">
+      <h2 class="sec-title">{{ s.title }}</h2>
+      <span class="sec-no">Part {{ loop.index }} of {{ sections|length }}{% if s.layout != 'kv' %} · {{ s.rows|length }} lines{% endif %}</span>
+    </div>
+
+    {% if s.layout == 'kv' %}
+      {% if s.rows and s.rows|length > 0 %}
+        {% set row = s.rows[0] %}
+        {% set kpi_cols = ['budget','actual_ap','actual_grn','commitment_pr','obligation_po','fund_available','utilization_pct'] %}
+        <div class="id-grid">
+          {% for c in s.columns %}{% if c not in kpi_cols %}
+          <div class="lbl">{{ s.headers[loop.index0] }}</div>
+          <div class="val{{ ' ar' if c == 'sector_name_arabic' else '' }}">{{ row[loop.index0]|fmt if row[loop.index0] is not none else '—' }}</div>
+          {% endif %}{% endfor %}
+        </div>
+        <div class="kpis">
+          {% for c in kpi_cols %}{% if c in s.columns %}
+          {% set i = s.columns.index(c) %}
+          <div class="kpi {{ 'k-actual' if c in ['actual_ap','actual_grn'] else 'k-enc' if c in ['commitment_pr','obligation_po'] else 'k-fund' if c in ['fund_available','utilization_pct'] else '' }}">
+            <div class="k-lbl">{{ s.headers[i] }}</div>
+            <div class="k-val{{ ' neg' if row[i] is num and row[i] < 0 else '' }}">{{ row[i]|fmt if row[i] is not none else '—' }}{% if c == 'utilization_pct' and row[i] is not none %}%{% endif %}</div>
+          </div>
+          {% endif %}{% endfor %}
+        </div>
+      {% else %}
+      <div class="empty">No sector details for the selected criteria.</div>
+      {% endif %}
+
+    {% else %}
+      {% if s.rows and s.rows|length > 0 %}
+      <table>
+        <thead>
+          {% if s.key == 'utilization' and 'actual_ap' in s.columns %}
+          {% set ap_i = s.columns.index('actual_ap') %}
+          <tr>
+            {% for h in s.headers[:ap_i - 1] %}<th rowspan="2">{{ h }}</th>{% endfor %}
+            <th rowspan="2">{{ s.headers[ap_i - 1] }}</th>
+            <th colspan="2" class="grp g-actual">Actual</th>
+            <th colspan="2" class="grp g-enc">Encumbrances</th>
+            {% for h in s.headers[ap_i + 4:] %}<th rowspan="2">{{ h }}</th>{% endfor %}
+          </tr>
+          <tr>
+            <th class="g-actual">AP</th><th class="g-actual">GRN</th>
+            <th class="g-enc">PR</th><th class="g-enc">PO</th>
+          </tr>
+          {% else %}
+          <tr>{% for h in s.headers %}<th>{{ h }}</th>{% endfor %}</tr>
+          {% endif %}
+        </thead>
+        <tbody>
+          {% for row in s.rows %}
+          <tr>{% for cell in row %}<td class="{{ 'num' if cell is num else '' }}{{ ' neg' if cell is num and cell < 0 else '' }}">{{ cell|fmt }}</td>{% endfor %}</tr>
+          {% endfor %}
+        </tbody>
+        {% if s.totals and s.totals is iterable %}
+        <tfoot>
+          <tr>{% for t in s.totals %}<td class="{{ 'num' if t is not none else '' }}{{ ' neg' if t is not none and t < 0 else '' }}">{% if loop.first and t is none %}Total{% elif t is not none %}{{ t|fmt }}{% endif %}</td>{% endfor %}</tr>
+        </tfoot>
+        {% endif %}
+      </table>
+      {% else %}
+      <div class="empty">No data for the selected criteria.</div>
+      {% endif %}
+    {% endif %}
+  </div>
+  {% endfor %}
+
+  <div class="foot">Generated {{ generated_at }} (Asia/Dubai) · {{ report_code }} · Amounts in AED</div>
+</body>
+</html>

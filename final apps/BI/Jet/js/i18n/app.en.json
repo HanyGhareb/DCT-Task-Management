@@ -107,5 +107,7 @@
   "common.no": "No",
   "common.on": "On",
   "common.off": "Off",
+  "det.runParams": "Run Parameters",
+  "det.runParamsHint": "Fill the run parameters (leave a field empty to use the report default). Numbers are sent as numbers.",
   "common.search": "Search…"
 }

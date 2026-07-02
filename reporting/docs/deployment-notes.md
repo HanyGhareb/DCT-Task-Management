@@ -87,6 +87,54 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-02 — Budget Utilization by Sector executive report (BUDGET_UTIL_SECTOR) + MULTI engine
+  support (BI APP_VERSION 1.1.0).** New 6-part sector pack on the PYTHON engine: 1 Sector overview
+  (master details + KPI cards) · 2 Budget utilization rows (budget/AP/GRN/PR/PO/fund) · 3 Unpaid +
+  partially-paid invoices · 4 Uninvoiced GRN · 5 Open POs (GRN-netted) · 6 Reserved PRs. Params:
+  `year`+`sector` REQUIRED, `projecttype`/`costcenter` optional; landscape PDF (grouped
+  Actual/Encumbrance header + reconciling totals rows) + one-sheet-per-section XLSX + sectioned CSV.
+  - **DB:** `db/v2/38_dct_rpt_butil_details.sql` (5 PROD views: `DCT_BUTIL_SCOPE_V`,
+    `DCT_UNPAID_INVOICES_V`, `DCT_UNINVOICED_GRN_V`, `DCT_OPEN_PO_LINES_V`,
+    `DCT_RESERVED_PR_LINES_V` — same project/task key fallback grain as
+    `DCT_BUDGET_UTILIZATION_V` so every part reconciles; re-run after 32/36/37 re-runs) +
+    `reporting/db/08_rpt_butil_sector.sql` (MULTI lookup value, definition seed [idempotent,
+    refreshes machine-owned fields on re-run], SELF recipient, disabled monthly schedule, and the
+    **params-aware run handler**: `POST /rpt/reports/:code/run` now reads an optional JSON body of
+    run params — body absent or `{}` keeps definition defaults; invalid JSON → 400).
+  - **Runner (Python engine):** `source_type='MULTI'` — `source_ref` JSON
+    `{orientation, required[], sections:[{key,title,layout,sql}]}`; `datasource.fetch_multi`
+    (missing required params → clear FAILED error), per-definition `pdf_template` template
+    (`budget_util_sector.html.j2`), landscape `page.pdf`, `render_xlsx.build_xlsx_multi`
+    (sheet-name char sanitising), money-only totals (`_totals` skips line numbers/counts),
+    `--params '<json>'` CLI. Render tests 8/8.
+  - **BI app 1.1.0:** Run now opens a **Run Parameters drawer** when the definition declares
+    `params_json` keys (numeric strings sent as numbers; empty fields omitted → defaults);
+    definition card shows Params; `rptService.runReport(code, formats, params)` posts the body.
+    i18n `det.runParams`/`det.runParamsHint` EN+AR.
+  - **DEPLOY STATE:** `38` + the seed portion of `08` ran on PROD (PROD-user SQLcl session) and were
+    verified live: all 6 stored section SQLs executed with binds year=2026 / sector=Tourism (250
+    utilization rows, 60 unpaid invoices, 76 uninvoiced GRN, 204 open PO, 269 reserved PR) and the
+    real data rendered through the actual pipeline into a 45-page landscape PDF + 6-sheet XLSX whose
+    totals reconcile (e.g. Reserved PR total 139,664,892.47 = the Commitment PR KPI).
+    **COMPLETED same day as ADMIN:** the user supplied the ADMIN password, a `prod_mcp` connection
+    was saved on the Linux dev VM, and the params-aware run handler was published + verified
+    (`user_ords_handlers` source contains the params body logic; definition/lookup/recipient/
+    schedule/Arabic name all re-verified clean). Rule: **re-run 08 after any 04 re-run** (04
+    DELETE_MODULEs rpt.rest and rebuilds the plain run handler).
+  - **SQLcl gotchas found (Linux dev-VM SQLcl 26.1)** — cost hours, remember these:
+    1. With `SET SQLBLANKLINES ON`, an anonymous PL/SQL block containing `MERGE` is **silently
+       swallowed** (no error, no output) when run via `@file` — minimal reproducer confirmed;
+       removing the SET makes the same block run.
+    2. Independently, very large (~10 KB) DECLARE blocks in a script get **echoed instead of
+       executed** on this build regardless of settings (script-reader bug; nested `@`, direct
+       `@` and stdin all affected; the same shape deploys fine from the Windows SQLcl — the
+       identically-shaped pilot `07_rpt_seed.sql` proved it).
+    3. A `--` inside a `PROMPT` line merges the following statement into the prompt (already a
+       known repo rule — it bit again during verification).
+    Because of (2), `08` is now a thin driver that `@@`-invokes `08a_rpt_butil_seed.sql` (seed,
+    one statement) + `08b_rpt_butil_run_handler.sql` (handler, one statement); keep zero blank
+    lines inside statements and deploy 08 from the Windows `prod_mcp` SQLcl. Diagnose any silent
+    skip with `SET ECHO ON`.
 - **2026-07-01 — BI app round 1 review + fix + UAT (APP_VERSION 1.0.1).** Converted the three record
   forms (Reports create/edit; Report-detail Schedule + Recipient) from the legacy `modal-overlay`/
   `modal-box` to the shared **`<edit-drawer>`** (robust close on Cancel/Save/Esc/scrim). Fixed a latent

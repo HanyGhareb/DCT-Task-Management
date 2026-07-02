@@ -14,10 +14,45 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
     self.channels       = ['EMAIL', 'INAPP', 'PUSH', 'WEBHOOK'];
 
     self.back   = function () { window._jetApp.navigate('reports'); };
+
+    // ── run with parameters ─────────────────────────────────────────────
+    // When the definition declares params (params_json keys), prompt for
+    // values in a drawer; otherwise queue immediately with the defaults.
+    self.runEditing = ko.observable(false);
+    self.runSaving  = ko.observable(false);
+    self.runParams  = ko.observableArray([]);   // [{ key, value: ko.observable }]
+
+    function definitionParams() {
+      var raw = (self.report() && self.report().paramsJson) || '';
+      try {
+        var obj = JSON.parse(raw);
+        return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? Object.keys(obj) : [];
+      } catch (e) { return []; }
+    }
+
     self.runNow = function () {
-      rpt.runReport(self.reportCode).then(function (r) {
+      var keys = definitionParams();
+      if (!keys.length) { self.queueRun(null); return; }
+      self.runParams(keys.map(function (k) { return { key: k, value: ko.observable('') }; }));
+      self.runEditing(true);
+    };
+
+    self.queueRun = function (params) {
+      if (self.runSaving()) return;
+      self.runSaving(true);
+      rpt.runReport(self.reportCode, null, params).then(function (r) {
+        self.runSaving(false); self.runEditing(false);
         toast.success('Queued run #' + r.runId); window._jetApp.navigate('runs');
-      }).catch(function () {});
+      }).catch(function () { self.runSaving(false); });
+    };
+
+    self.submitRun = function () {
+      var params = {};
+      self.runParams().forEach(function (p) {
+        var v = (p.value() || '').trim();
+        if (v !== '') { params[p.key] = /^-?\d+(\.\d+)?$/.test(v) ? Number(v) : v; }
+      });
+      self.queueRun(Object.keys(params).length ? params : null);
     };
     self.syncSched = function () {
       rpt.syncSchedules().then(function () { toast.success('Scheduler jobs rebuilt'); }).catch(function () {});

@@ -23,6 +23,9 @@
       <div><span class="kv-l" data-bind="text: $root.t('f.sourceType')"></span><span data-bind="text: report().sourceType"></span></div>
       <div><span class="kv-l" data-bind="text: $root.t('col.enabled')"></span><span data-bind="text: report().enabled === 'Y' ? $root.t('common.yes') : $root.t('common.no')"></span></div>
       <div class="kv-full"><span class="kv-l" data-bind="text: $root.t('f.desc')"></span><span data-bind="text: report().description || '—'"></span></div>
+      <!-- ko if: report().paramsJson -->
+      <div class="kv-full"><span class="kv-l" data-bind="text: $root.t('f.params')"></span><code style="font-size:11.5px;white-space:pre-wrap" data-bind="text: report().paramsJson"></code></div>
+      <!-- /ko -->
       <div class="kv-full"><span class="kv-l" data-bind="text: $root.t('f.sourceRef')"></span><code style="font-size:11.5px;white-space:pre-wrap" data-bind="text: report().sourceRef"></code></div>
     </div>
   </div>
@@ -94,6 +97,22 @@
           <div class="form-group"><label class="form-label">Timezone</label><input class="form-control" data-bind="value: schTz"></div>
           <div class="form-group"><label class="form-label" data-bind="text: $root.t('col.enabled')"></label><div style="display:flex;align-items:center;gap:8px"><input type="checkbox" data-bind="checked: schEnabled"><span style="font-size:12px;color:var(--text-2)" data-bind="text: schEnabled() ? $root.t('common.yes') : $root.t('common.no')"></span></div></div>
           <div class="form-group form-group--full"><label class="form-label" data-bind="text: $root.t('f.params')"></label><input class="form-control" placeholder='{"period":null}' data-bind="value: schCriteria"></div>
+        </div>
+  </edit-drawer>
+
+  <!-- ── run-parameters drawer ─────────────────────────────────────────── -->
+  <edit-drawer params="open: runEditing, vm: $vm,
+                       title: $root.t('det.runParams'),
+                       saveLabel: (runSaving() ? $root.t('btn.saving') : $root.t('rep.run')),
+                       cancelLabel: $root.t('btn.cancel'), onSave: submitRun, width: '480px'">
+        <div style="font-size:12px;color:var(--text-2);margin-bottom:12px" data-bind="text: $root.t('det.runParamsHint')"></div>
+        <div class="form-grid">
+          <!-- ko foreach: runParams -->
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: key"></label>
+            <input class="form-control" data-bind="value: value, valueUpdate: 'input'">
+          </div>
+          <!-- /ko -->
         </div>
   </edit-drawer>
 

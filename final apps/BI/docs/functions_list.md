@@ -14,7 +14,10 @@ SYS_ADMIN-gated; consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 - `runNow(row)` — enqueue an on-demand run. `openDetail(row)` — open report detail. `remove(row)` — delete.
 
 ## Report Detail (`reportDetail`) — schedules + recipients
-- `loadAll` / `back` / `runNow` / `syncSched` (rebuild DBMS_SCHEDULER jobs).
+- `loadAll` / `back` / `syncSched` (rebuild DBMS_SCHEDULER jobs).
+- `runNow` — when the definition declares `params_json` keys, opens the **Run Parameters drawer**
+  (one field per key; empty = report default, numeric strings sent as numbers); otherwise queues
+  immediately. `submitRun` / `queueRun(params)` — POST the params object as the run body.
 - Schedules: `openSchNew` / `openSchEdit` / `saveSch` / `removeSch`.
 - Recipients: `openRcNew` / `openRcEdit` / `saveRc` / `removeRc` (USER/ROLE/ORG/EMAIL/SELF × channel).
 
@@ -39,7 +42,7 @@ SYS_ADMIN-gated; consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | GET | `meta` | dropdown vocabularies |
 | GET/POST | `reports/` | list / create definitions |
 | GET/PUT/DELETE | `reports/:code` | detail / update / delete |
-| POST | `reports/:code/run` | enqueue on-demand run |
+| POST | `reports/:code/run` | enqueue on-demand run (optional JSON body = run parameters; absent/`{}` keeps definition defaults) |
 | GET | `runs/` | run history (paged) |
 | GET | `runs/:id` | run detail (+ outputs + deliveries) |
 | GET | `runs/:id/output/:fmt` | authed BLOB download |

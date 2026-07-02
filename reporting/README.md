@@ -18,7 +18,7 @@ Admin **Reports** page (Phase 2).
 ## Layout
 ```
 reporting/
-  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · install.sql
+  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · 08 Budget-Util-by-Sector (MULTI) · install.sql
   runner/  Python microservice (Phase 1)
   docs/    deployment-notes.md · functions_list.md
   tests/   render + e2e
@@ -45,7 +45,8 @@ Order matters: DDL → lookups → package → ORDS → scheduler → seed. The 
 **not** follow an `ALTER SESSION SET CURRENT_SCHEMA=PROD` (ORA-01471 self-reference).
 
 ## API — `/ords/admin/rpt/` (SYS_ADMIN only)
-`GET/POST reports/` · `GET/PUT/DELETE reports/:code` · `POST reports/:code/run` ·
+`GET/POST reports/` · `GET/PUT/DELETE reports/:code` · `POST reports/:code/run` (optional JSON body =
+run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the definition defaults) ·
 `GET runs/` · `GET runs/:id` · `GET runs/:id/output/:fmt` (authed download) · `POST runs/:id/retry` ·
 `GET/POST schedules/` · `PUT/DELETE schedules/:id` · `POST schedules/sync` ·
 `GET/POST recipients/` · `PUT/DELETE recipients/:id` · `GET/PUT config` · `GET meta`
@@ -59,5 +60,13 @@ Order matters: DDL → lookups → package → ORDS → scheduler → seed. The 
   copy `env.ps1.example`→`env.ps1`. Run: `python runner.py --run GL_BUDGET_ACTUAL`.
 - **Phase 2 (UI):** new **"BI - Reporting"** module app under `final apps/BI/` (SYS_ADMIN-gated).
 - **Phase 3 (native engine):** `06_rpt_native_pkg.sql` (APEX_DATA_EXPORT + APEX_MAIL).
+- **Multi-section reports (2026-07-02):** source type **`MULTI`** — `source_ref` is JSON
+  (`{orientation, required[], sections:[{key,title,layout,sql}]}`); the Python engine runs every
+  section with the shared params and renders a per-definition template (`pdf_template` column), a
+  one-sheet-per-section workbook, and a sectioned CSV. First report: **`BUDGET_UTIL_SECTOR`** —
+  6-part executive Budget Utilization by Sector pack (overview KPIs · utilization rows · unpaid /
+  partially-paid invoices · uninvoiced GRN · open POs · reserved PRs; landscape PDF, grouped
+  Actual/Encumbrance headers, reconciling totals). Params: `year` + `sector` required,
+  `projecttype` + `costcenter` optional. Data views: `db/v2/38` over the GL actuals layer.
 
 Plan: `.claude/plans/i-want-to-find-agile-steele.md`.
