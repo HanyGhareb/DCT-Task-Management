@@ -95,9 +95,19 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
     };
 
     self.runNow = function (row) {
-      rpt.runReport(row.reportCode).then(function (r) {
-        toast.success('Queued run #' + r.runId);
-        window._jetApp.navigate('runs');
+      // parameterized definitions are run from the detail page (Run Parameters
+      // drawer) — the list rows don't carry paramsJson, so fetch the definition
+      rpt.getReport(row.reportCode).then(function (d) {
+        var hasParams = false;
+        try {
+          var obj = JSON.parse(d.paramsJson || '');
+          hasParams = obj && typeof obj === 'object' && !Array.isArray(obj) && Object.keys(obj).length > 0;
+        } catch (e) { /* no params */ }
+        if (hasParams) { self.openDetail(row); return; }
+        return rpt.runReport(row.reportCode).then(function (r) {
+          toast.success('Queued run #' + r.runId);
+          window._jetApp.navigate('runs');
+        });
       }).catch(function () {});
     };
 

@@ -11,7 +11,7 @@ SYS_ADMIN-gated; consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 ## Reports (`reports`) — definition CRUD
 - `load` / `applyFilter` / `prev` / `next` — list + search + engine filter + paging.
 - `openNew` / `openEdit(row)` / `save` — create/edit definition via the shared `<edit-drawer>` (code, names, source, engine, formats, templates, params, enabled). Drawer Cancel/Esc/scrim close via the `editing` observable.
-- `runNow(row)` — enqueue an on-demand run. `openDetail(row)` — open report detail. `remove(row)` — delete.
+- `runNow(row)` — enqueue an on-demand run; definitions with `params_json` keys route to the detail page's Run Parameters drawer instead of queueing blind. `openDetail(row)` — open report detail. `remove(row)` — delete.
 
 ## Report Detail (`reportDetail`) — schedules + recipients
 - `loadAll` / `back` / `syncSched` (rebuild DBMS_SCHEDULER jobs).
