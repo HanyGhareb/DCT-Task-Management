@@ -64,10 +64,17 @@ function (config, api) {
       return !!(user && user.roles && user.roles.includes(role));
     },
 
-    // BI - Reporting is admin-only (SYS_ADMIN). The ORDS /rpt module enforces it too.
+    // Admin surface (definitions/runs/workers/settings) is SYS_ADMIN-only.
     isReportAdmin: function () {
       var user = this.getCurrentUser();
       return !!(user && user.roles && user.roles.includes('SYS_ADMIN'));
+    },
+
+    // Viewer surface (dashboard + interactive reports): BI_USER or SYS_ADMIN.
+    isReportUser: function () {
+      var user = this.getCurrentUser();
+      return !!(user && user.roles &&
+                (user.roles.includes('BI_USER') || user.roles.includes('SYS_ADMIN')));
     },
 
     QUICK_LOGINS: [

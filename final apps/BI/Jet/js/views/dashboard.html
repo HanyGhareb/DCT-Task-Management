@@ -5,11 +5,26 @@
       <div class="page-subtitle" data-bind="text: $root.t('dash.subtitle')"></div>
     </div>
     <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: function(){ $vm.go('irViewer'); }, text: $root.t('dash.openIr')"></button>
+      <!-- ko if: isAdmin -->
       <button class="btn btn-secondary" data-bind="click: function(){ $vm.go('settings'); }, text: $root.t('nav.settings')"></button>
       <button class="btn btn-primary" data-bind="click: function(){ $vm.go('reports'); }, text: $root.t('dash.manage')"></button>
+      <!-- /ko -->
     </div>
   </div>
 
+  <!-- ko ifnot: isAdmin -->
+  <div class="card empty-state">
+    <div class="empty-state__icon">&#128202;</div>
+    <div class="empty-state__msg" data-bind="text: $root.t('dash.userHero')"></div>
+    <div class="empty-state__sub" data-bind="text: $root.t('dash.userHeroSub')"></div>
+    <div style="margin-top:14px">
+      <button class="btn btn-primary" data-bind="click: function(){ $vm.go('irViewer'); }, text: $root.t('dash.openIr')"></button>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: isAdmin -->
   <!-- ko ifnot: emailEnabled() -->
   <div class="alert-banner alert-banner--warn" style="margin-bottom:14px">&#9888; <span data-bind="text: $root.t('dash.emailOff')"></span></div>
   <!-- /ko -->
@@ -56,5 +71,6 @@
     <!-- /ko -->
   </div>
 
+  <!-- /ko -->
   <!-- /ko -->
 </div>

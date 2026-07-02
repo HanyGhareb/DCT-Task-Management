@@ -1,4 +1,4 @@
-define(['knockout', 'services/rptService'], function (ko, rpt) {
+define(['knockout', 'services/rptService', 'services/authService'], function (ko, rpt, authService) {
   'use strict';
 
   var BADGE = { SUCCESS: 'badge badge--success', FAILED: 'badge badge--danger',
@@ -6,7 +6,8 @@ define(['knockout', 'services/rptService'], function (ko, rpt) {
 
   function DashboardViewModel() {
     var self = this;
-    self.loading      = ko.observable(true);
+    self.isAdmin      = authService.isReportAdmin();
+    self.loading      = ko.observable(self.isAdmin);
     self.totalReports = ko.observable(0);
     self.recent       = ko.observableArray([]);
     self.succeeded    = ko.observable(0);
@@ -18,21 +19,24 @@ define(['knockout', 'services/rptService'], function (ko, rpt) {
     self.openRun = function (r) { window._jetApp.navigate('runDetail', { runId: r.runId }); };
     self.badge   = function (s) { return BADGE[s] || 'badge'; };
 
-    rpt.getReports({ limit: 1 }).then(function (r) { self.totalReports(r.total || 0); }).catch(function () {});
+    // Ops widgets hit admin-gated endpoints — skip them for BI_USER viewers.
+    if (self.isAdmin) {
+      rpt.getReports({ limit: 1 }).then(function (r) { self.totalReports(r.total || 0); }).catch(function () {});
 
-    rpt.getRuns({ limit: 12 }).then(function (r) {
-      var items = r.items || [];
-      self.recent(items);
-      self.succeeded(items.filter(function (x) { return x.status === 'SUCCESS'; }).length);
-      self.failed(items.filter(function (x) { return x.status === 'FAILED'; }).length);
-      self.running(items.filter(function (x) { return x.status === 'RUNNING' || x.status === 'QUEUED'; }).length);
-    }).catch(function () {}).then(function () { self.loading(false); });
+      rpt.getRuns({ limit: 12 }).then(function (r) {
+        var items = r.items || [];
+        self.recent(items);
+        self.succeeded(items.filter(function (x) { return x.status === 'SUCCESS'; }).length);
+        self.failed(items.filter(function (x) { return x.status === 'FAILED'; }).length);
+        self.running(items.filter(function (x) { return x.status === 'RUNNING' || x.status === 'QUEUED'; }).length);
+      }).catch(function () {}).then(function () { self.loading(false); });
 
-    rpt.getConfig().then(function (r) {
-      (r.items || []).forEach(function (c) {
-        if (c.key === 'EMAIL_ENABLED') self.emailEnabled((c.value || 'N').toUpperCase() === 'Y');
-      });
-    }).catch(function () {});
+      rpt.getConfig().then(function (r) {
+        (r.items || []).forEach(function (c) {
+          if (c.key === 'EMAIL_ENABLED') self.emailEnabled((c.value || 'N').toUpperCase() === 'Y');
+        });
+      }).catch(function () {});
+    }
   }
 
   return DashboardViewModel;

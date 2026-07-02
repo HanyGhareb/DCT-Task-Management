@@ -1,0 +1,114 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('ir.viewer.title')"></div>
+      <div class="page-subtitle"
+           data-bind="text: selected() ? (($root.lang() === 'ar' && selected().nameAr) ? selected().nameAr : selected().nameEn) : $root.t('ir.viewer.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: selected -->
+      <button class="btn btn-secondary" data-bind="click: backToCatalog, text: $root.t('ir.viewer.back')"></button>
+      <button class="btn btn-primary" data-bind="click: run, disable: irLoading, text: $root.t('ir.viewer.run')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ═══ catalog ═══ -->
+  <!-- ko ifnot: selected -->
+  <!-- ko if: catLoading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: catLoading() -->
+  <div class="view-toolbar">
+    <div class="search-box">
+      <input class="form-control" data-bind="textInput: catSearch, attr: { placeholder: $root.t('ir.viewer.searchPh') }" />
+    </div>
+    <select class="form-control ir-cat-select" data-bind="value: catCategory">
+      <option value="" data-bind="text: $root.t('ir.viewer.allCategories')"></option>
+      <!-- ko foreach: categories -->
+      <option data-bind="value: $data, text: $data"></option>
+      <!-- /ko -->
+    </select>
+    <span class="toolbar-spacer"></span>
+    <span class="result-count" data-bind="text: filteredCatalog().length"></span>
+  </div>
+
+  <!-- ko if: filteredCatalog().length === 0 -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#128202;</div>
+    <div class="empty-state__msg" data-bind="text: $root.t('ir.viewer.noReports')"></div>
+  </div>
+  <!-- /ko -->
+  <!-- ko if: filteredCatalog().length > 0 -->
+  <div class="data-table-wrap"><table class="data-table">
+    <thead><tr>
+      <th data-bind="text: $root.t('ir.viewer.colReport')"></th>
+      <th data-bind="text: $root.t('ir.viewer.colCategory')"></th>
+      <th data-bind="text: $root.t('ir.viewer.colDescription')"></th>
+      <th></th>
+    </tr></thead>
+    <tbody><!-- ko foreach: filteredCatalog -->
+      <tr class="ir-cat-row" data-bind="click: function () { $vm.select($data); }">
+        <td>
+          <div class="ir-cat-name" data-bind="text: ($root.lang() === 'ar' && $data.nameAr) ? $data.nameAr : nameEn"></div>
+          <div class="ir-cat-code" data-bind="text: reportCode"></div>
+        </td>
+        <td><span class="badge badge--info" data-bind="text: $data.category || ''"></span></td>
+        <td class="ir-cat-desc" data-bind="text: $data.description || ''"></td>
+        <td class="table-actions">
+          <button class="btn btn-sm btn-primary"
+                  data-bind="click: function (d, e) { e.stopPropagation(); $vm.select($data); }, text: $root.t('ir.viewer.open')"></button>
+        </td>
+      </tr>
+    <!-- /ko --></tbody>
+  </table></div>
+  <!-- /ko -->
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ═══ runner ═══ -->
+  <!-- ko if: selected -->
+  <!-- ko if: runParams().length > 0 || sections().length > 0 -->
+  <div class="card ir-runner">
+    <div class="section-heading-row">
+      <div class="section-heading ir-panel__title" data-bind="text: $root.t('ir.viewer.params')"></div>
+    </div>
+    <div class="form-grid form-grid--compact ir-runner-grid">
+      <!-- ko if: sections().length > 0 -->
+      <div class="form-group">
+        <div class="form-label" data-bind="text: $root.t('ir.viewer.section')"></div>
+        <select class="form-control"
+                data-bind="options: sections, optionsText: 'title', optionsValue: 'key', value: sectionSel"></select>
+      </div>
+      <!-- /ko -->
+      <!-- ko foreach: runParams -->
+      <div class="form-group">
+        <div class="form-label">
+          <span data-bind="text: key"></span><!-- ko if: required --><span class="ir-req">*</span><!-- /ko -->
+        </div>
+        <!-- ko if: hasLov -->
+        <select class="form-control"
+                data-bind="options: options, optionsText: 'label', optionsValue: 'value',
+                           optionsCaption: $root.t('ir.viewer.select'), value: value"></select>
+        <!-- /ko -->
+        <!-- ko ifnot: hasLov -->
+        <input class="form-control"
+               data-bind="value: value, event: { keypress: function (d, e) { if (e.keyCode === 13) { $vm.run(); } return true; } }" />
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: irLoading() --><list-skeleton params="rows: 10"></list-skeleton><!-- /ko -->
+  <!-- ko if: !irLoading() && !irData() -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#9654;</div>
+    <div class="empty-state__msg" data-bind="text: $root.t('ir.viewer.hint')"></div>
+  </div>
+  <!-- /ko -->
+  <!-- ko if: !irLoading() && irData() -->
+  <interactive-report params="reportCode: irCode, section: irSection, data: irData,
+                              isAdmin: isAdmin, layoutsApi: layoutsApi"></interactive-report>
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

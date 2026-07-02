@@ -87,6 +87,75 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-03 — MERGE NOTE (parallel sessions).** Two branches shipped the same day: the param-spec/worker-fleet branch below (v1.3.0, `10_rpt_param_lov.sql`, PARAM_SPEC_JSON for the admin Run drawer) and the Interactive Report branch (v1.3.0–1.5.0). The IR scripts were renumbered `10*/11*` → **`12/12a/12b/13/13a`** to clear the number collision, and the merged frontend ships as **APP_VERSION 1.6.0**. The two LOV columns coexist: `PARAM_SPEC_JSON` (admin Run drawer: label/hint/required/lov_sql via `/reports/:code/params`) and `PARAMS_LOV_JSON` (BI_USER viewer via `/ir/reports/:code/lov`) — converging them is a known follow-up. Full re-run list after any 04 re-run: **08b, 09a, 10, 12b, 13a**.
+- **2026-07-03 — IR round 3: parameter LOVs (BI APP_VERSION 1.5.0) — DEPLOYED + E2E 6/6.** Run-parameter
+  inputs become dropdowns. A definition may carry **`PARAMS_LOV_JSON`** = `{ "<param>": "<query>" }` —
+  admin-authored **bind-free** query per parameter (same trust level as source_ref; col 1 = value,
+  optional col 2 = display label, capped 500 rows).
+  - **DB:** `reporting/db/13_rpt_ir_lov.sql` — guarded ALTER adds the column (+ IS JSON check) and
+    seeds the two pilots: BUDGET_UTIL_SECTOR (year/sector/projecttype/costcenter over
+    `dct_budget_utilization_v` / `dct_butil_scope_v`) and GL_BUDGET_ACTUAL (period, ordered by
+    `MAX(period_date) DESC` via GROUP BY — DISTINCT can't ORDER BY an unselected column).
+  - **PKG:** `12a` updated in place — `DCT_RPT_IR_PKG.run_lov(code, param)`: case-insensitive param
+    match, scrub + query-keyword guard, **rejects binds**, streams `{param, items:[{value,label}],
+    total}`. **Run 13 BEFORE re-running 12a** (the body reads the new column — ORA-00904 otherwise;
+    install.sql order fixed to 12 → 13 → 12a → 12b → 13a).
+  - **ORDS:** `13a_rpt_ir_lov_ords.sql` (ADDITIVE) — redefines `GET ir/catalog` (adds `lovParams[]`
+    per definition) + new `GET ir/reports/:code/lov?param=x`, both gated BI_USER-or-SYS_ADMIN.
+    **Re-run list after any 04 re-run is now: 08b, 09a, 10, 12b, 13a** (13a AFTER 12b — it overrides
+    10b's catalog handler).
+  - **Frontend:** irViewer renders a `<select>` (optionsCaption "— Select —") for any param in the
+    catalog's `lovParams`, plain input otherwise; values fetched per param via
+    `rptService.getIrLov`. Numeric coercion on submit unchanged. i18n `ir.viewer.select` EN+AR.
+  - **Verified:** API smoke (catalog lovParams, 4 LOVs return sorted values, unknown-param 400,
+    no-LOV-map 400, unauth 401) + Playwright 6/6 (5 selects render, year/sector populated, run with
+    dropdown values, required-param still enforced, no page errors).
+- **2026-07-03 — IR round 2: themed header + maximize + header rename (BI APP_VERSION 1.4.0) — E2E 6/6.**
+  Frontend-only (no DB change): (1) grid header now uses the FULL region-theme header treatment
+  (`--region-hd-bg/-fg/-accent` fill+font, auto-follows the Admin Region Appearance palette) —
+  **selector must be `table.data-table.ir-table thead th`**, plain `.ir-table thead th` LOSES the
+  specificity fight to platform's `table.data-table thead th` and silently no-ops; (2) **maximize
+  toggle** (⤢ icon at toolbar right) — fullscreen fixed overlay (`.ir-max`), sticky toolbar inside,
+  Esc restores (Esc also closes panels/dialog first), body scroll locked while maximized, listener
+  removed in dispose; (3) **rename column headers** (pencil in the column manager → inline input;
+  empty/unchanged reverts to default) — override lives in colState `label` observable, flows to grid/
+  chips/filter options/exports, persists in layout JSON (`columns[].label`) + autosave. i18n
+  `ir.toolbar.maximize/restore` + `ir.cols.rename` EN+AR. Playwright round-2 6/6 (th bg === resolved
+  `--region-hd-bg`, fixed overlay fills viewport, Esc restores, rename + persistence, no page errors).
+  grid for business users: one capped server fetch, then column show/hide + reorder, filter chips,
+  multi-sort (Shift+click), global search, **calculated columns** (safe client parser `irExpr.js` —
+  no eval; ROUND/ABS/NVL/UPPER/LOWER), aggregates footer (sum/avg/min/max/count over the filtered
+  set), CSV (BOM) + real **XLSX** export (SheetJS via requirejs `xlsx` path), **server-saved named
+  layouts** (default auto-apply, SYS_ADMIN-only sharing) + localStorage last-state autosave.
+  - **DB:** `reporting/db/12_rpt_ir.sql` — `DCT_RPT_IR_LAYOUT` (unique name per report+owner,
+    `layout_json IS JSON`), **REPORTING module row** in `dct_modules` (module_id 101) + **BI_USER
+    role** (assign via Admin roles UI), `IR_MAX_ROWS` config (default 10000).
+  - **Executor:** `12a_rpt_ir_pkg.sql` — `DCT_RPT_IR_PKG.run_report` runs a definition's stored
+    source ONCE with only its declared binds bound (DBMS_SQL parse/describe/typed fetch; literal+
+    comment scrub before the bind scan so `'HH24:MI'` never fakes a `:MI` bind — verified; SELECT/
+    WITH-only guard → 400; VIEW refs via DBMS_ASSERT; MULTI = one section per call, `required[]`
+    enforced with the Python engine's exact failure text). Streams
+    `{columns:[{key,label,type text|num|money|date}], items, total, truncated, maxRows}`; domain
+    dates emitted as literal ISO (deliberately NOT `dct_to_local`); CLOBs substr'd to 4000.
+  - **ORDS:** `12b_rpt_ir_ords.sql` — 6 ADDITIVE `rpt.rest` handlers, ALL gated **BI_USER OR
+    SYS_ADMIN**: `GET ir/catalog` (enabled defs + MULTI sections/required), `POST
+    ir/reports/:code/data` (body `{section?, params?}`), `GET ir/reports/:code/layouts`,
+    `POST ir/layouts` (409 dup, share=admin-only), `PUT/DELETE ir/layouts/:id` (owner-or-admin,
+    404 no-leak). **Re-run 12b after any 04 re-run** (with 08b + 09a + 10 + 13a).
+  - **Frontend:** BI-local `<interactive-report>` KO component (`js/components/interactiveReport.js`
+    + `.html` template + `irExpr.js`; `.ir-*` styles in `css/app.css` composing platform classes) +
+    **Interactive Reports** viewer page (`irViewer`) with catalog + params/section runner. Nav is
+    role-filtered: BI_USER-only users see Dashboard + Interactive Reports; admin routes reroute; the
+    dashboard skips admin-gated fetches for viewers. `main.js` adds the SheetJS `xlsx` requirejs path.
+  - **Verified:** API smoke 17/17 + truncation (IR_MAX_ROWS=5 → `truncated:true`) + VIEW-type +
+    non-SELECT guard + phantom-bind literal test (scratch definitions, cleaned up); Playwright E2E
+    **22/22** (hide/reorder/filter/sort/search/calc/aggregate/exports/layout save/autosave restore/
+    BI_USER nav+reroute+403/no console errors). Perf: master rows in plain arrays, only the visible
+    page in an observableArray (10k rows OK).
+  - **Gotchas:** rows are normalized on ingest (APEX_JSON omits NULL keys); `.data-table th` is
+    CSS-uppercased (test with case-insensitive match); the app router reads the hash only at BOOT —
+    Playwright must `reload()` after a same-document `#hash` goto; a stale dev-proxy from another
+    app on 8080 serves ITS app for root-absolute paths — probe `announcements?module=` to spot it.
 - **2026-07-02 — Run-parameter LOVs + hints, drawer on the Reports list (BI APP_VERSION 1.3.0).**
   The Run Parameters drawer now shows a **dropdown (LOV) per parameter with an EN/AR label, a hint
   line and a required marker**, and opens **in place on the Reports list** (clicking Run now no

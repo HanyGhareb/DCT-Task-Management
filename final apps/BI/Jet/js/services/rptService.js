@@ -64,5 +64,18 @@ define(['services/api'], function (api) {
     /* runtime / SMTP config */
     getConfig: function ()      { return api.get('/config'); },
     putConfig: function (items) { return api.put('/config', { items: items }); },
+
+    /* interactive report (viewer: BI_USER or SYS_ADMIN) */
+    getIrCatalog:   function ()           { return api.get('/ir/catalog'); },
+    /* body: { section?, params? } — one-shot capped fetch the grid works on */
+    getIrData:      function (code, body) { return api.post('/ir/reports/' + encodeURIComponent(code) + '/data', body || {}); },
+    /* dropdown values for one run parameter (definitions with params_lov_json) */
+    getIrLov:       function (code, param) {
+      return api.get('/ir/reports/' + encodeURIComponent(code) + '/lov?param=' + encodeURIComponent(param));
+    },
+    getIrLayouts:   function (code)       { return api.get('/ir/reports/' + encodeURIComponent(code) + '/layouts'); },
+    createIrLayout: function (data)       { return api.post('/ir/layouts', data); },
+    updateIrLayout: function (id, data)   { return api.put('/ir/layouts/' + id, data); },
+    deleteIrLayout: function (id)         { return api.delete('/ir/layouts/' + id); },
   };
 });

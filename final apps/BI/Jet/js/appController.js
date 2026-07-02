@@ -45,13 +45,21 @@ function (ko, config, authService, rptService, i18n, shell) {
     var NAV_GROUPS = [
       { id: 'main', items: [
         { id: 'dashboard', labelKey: 'nav.dashboard' },
-        { id: 'reports',   labelKey: 'nav.reports' },
-        { id: 'runs',      labelKey: 'nav.runs' },
-        { id: 'workers',   labelKey: 'nav.workers' },
-        { id: 'settings',  labelKey: 'nav.settings' },
+        { id: 'irViewer',  labelKey: 'nav.irviewer' },
+        { id: 'reports',   labelKey: 'nav.reports',  admin: true },
+        { id: 'runs',      labelKey: 'nav.runs',     admin: true },
+        { id: 'workers',   labelKey: 'nav.workers',  admin: true },
+        { id: 'settings',  labelKey: 'nav.settings', admin: true },
       ] }
     ];
-    self.navGroups = ko.computed(function () { return NAV_GROUPS; });
+    // BI_USER (business user) sees dashboard + interactive reports only.
+    self.navGroups = ko.computed(function () {
+      self.currentUser();
+      var admin = authService.isReportAdmin();
+      return NAV_GROUPS.map(function (g) {
+        return { id: g.id, items: g.items.filter(function (it) { return admin || !it.admin; }) };
+      });
+    });
 
     self.userInitials = ko.computed(function () {
       var user = self.currentUser();
@@ -62,7 +70,12 @@ function (ko, config, authService, rptService, i18n, shell) {
         : (parts[0] || '?')[0].toUpperCase();
     });
 
+    var ADMIN_ROUTES = ['reports', 'reportDetail', 'runs', 'runDetail', 'workers', 'settings'];
+
     self._loadRoute = function (path) {
+      if (ADMIN_ROUTES.indexOf(path) !== -1 && !authService.isReportAdmin()) {
+        path = 'dashboard';
+      }
       if (path === 'login') {
         if (window.location.hash) {
           try { history.replaceState(null, '', window.location.pathname); } catch (e) {}

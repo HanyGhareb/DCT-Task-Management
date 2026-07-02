@@ -13,6 +13,7 @@ requirejs.config({
     'text':     CDN + '/3rdparty/require/text',
     'shared':   '/shared/js',
     'chartjs':  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min',
+    'xlsx':     'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min',
   }
 });
 

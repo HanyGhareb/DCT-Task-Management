@@ -1,0 +1,280 @@
+<!-- interactive-report component template (bindings resolve on the component VM) -->
+<!-- ko if: hasData -->
+<div class="ir-wrap" data-bind="css: { 'ir-max': maximized }">
+
+  <div class="view-toolbar ir-toolbar">
+    <div class="search-box">
+      <input class="form-control" data-bind="textInput: search, attr: { placeholder: t('ir.toolbar.search') }" />
+    </div>
+    <span class="result-count" data-bind="text: pageInfo"></span>
+    <span class="toolbar-spacer"></span>
+    <button class="btn btn-sm btn-secondary" data-bind="click: function () { togglePanel('cols'); }">
+      <span data-bind="text: t('ir.toolbar.columns')"></span>
+    </button>
+    <button class="btn btn-sm btn-secondary" data-bind="click: openFilterNew">
+      <span data-bind="text: t('ir.toolbar.addFilter')"></span>
+    </button>
+    <!-- ko if: layoutsApi -->
+    <button class="btn btn-sm btn-secondary ir-layouts-btn" data-bind="click: function () { togglePanel('layouts'); }">
+      <span data-bind="text: appliedLayout() ? appliedLayout().name : t('ir.toolbar.layouts')"></span>
+      <span class="ir-dirty-dot" data-bind="visible: layoutDirty"></span>
+    </button>
+    <!-- /ko -->
+    <button class="btn btn-sm btn-secondary" data-bind="click: exportCsv, text: t('ir.toolbar.csv')"></button>
+    <button class="btn btn-sm btn-primary" data-bind="click: exportXlsx, text: t('ir.toolbar.xlsx')"></button>
+    <button class="btn btn-sm btn-icon ir-btn-max"
+            data-bind="click: toggleMax,
+                       attr: { title: maximized() ? t('ir.toolbar.restore') : t('ir.toolbar.maximize') },
+                       html: maximized() ? '&#10530;' : '&#10529;'"></button>
+  </div>
+
+  <!-- ko if: filters().length -->
+  <div class="ir-chips">
+    <!-- ko foreach: filters -->
+    <span class="ir-chip">
+      <span class="ir-chip__txt" data-bind="text: $component.chipText($data), click: function () { $component.editFilter($data); }"></span>
+      <button class="ir-chip__x" data-bind="click: function () { $component.removeFilter($data); }">&times;</button>
+    </span>
+    <!-- /ko -->
+    <button class="btn btn-sm ir-chips__clear" data-bind="click: clearFilters, text: t('ir.filter.clearAll')"></button>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: truncated -->
+  <div class="alert-banner alert-banner--warn ir-truncated">&#9888;
+    <span data-bind="text: t('ir.truncated', [maxRows()])"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ column manager panel ═══ -->
+  <!-- ko if: openPanel() === 'cols' -->
+  <div class="card ir-panel">
+    <div class="section-heading-row">
+      <div class="section-heading ir-panel__title" data-bind="text: t('ir.cols.title')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm" data-bind="click: showAllCols, text: t('ir.cols.showAll')"></button>
+        <button class="btn btn-sm btn-secondary" data-bind="click: openCalcNew, text: t('ir.calc.add')"></button>
+        <button class="btn btn-sm" data-bind="click: resetState, text: t('ir.cols.reset')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: closePanel, text: t('ir.close')"></button>
+      </div>
+    </div>
+    <div class="ir-colmgr">
+      <!-- ko foreach: colState -->
+      <div class="ir-colrow" data-bind="click: function () { $component.toggleCol($data); }">
+        <input type="checkbox" tabindex="-1" data-bind="checked: visible" />
+        <!-- ko if: $component.renameColKey() === $data.key -->
+        <input class="form-control ir-colrow__rename"
+               data-bind="value: $component.renameColText,
+                          click: function (d, e) { e.stopPropagation(); return true; },
+                          event: { keypress: function (d, e) { if (e.keyCode === 13) { $component.applyRenameCol($data); } return true; } }" />
+        <button class="btn btn-sm btn-primary" data-bind="click: function (d, e) { e.stopPropagation(); $component.applyRenameCol($data); }, text: $component.t('ir.ok')"></button>
+        <button class="btn btn-sm" data-bind="click: function (d, e) { e.stopPropagation(); $component.cancelRenameCol(); }, text: $component.t('ir.cancel')"></button>
+        <!-- /ko -->
+        <!-- ko if: $component.renameColKey() !== $data.key -->
+        <span class="ir-colrow__label" data-bind="text: $component.colLabel($data.key)"></span>
+        <span class="badge badge--info ir-colrow__type"
+              data-bind="text: $component.colByKey[$data.key] ? $component.colByKey[$data.key].type : ''"></span>
+        <button class="btn btn-sm ir-colrow__pencil" data-bind="click: function (d, e) { e.stopPropagation(); $component.startRenameCol($data); }, attr: { title: $component.t('ir.cols.rename') }">&#9998;</button>
+        <!-- ko if: $component.colIsCalc($data.key) -->
+        <button class="btn btn-sm" data-bind="click: function (d, e) { e.stopPropagation(); $component.editCalc($data.key); }, text: $component.t('ir.calc.edit')"></button>
+        <button class="btn btn-sm btn-danger" data-bind="click: function (d, e) { e.stopPropagation(); $component.removeCalc($data.key); }">&times;</button>
+        <!-- /ko -->
+        <!-- /ko -->
+        <span class="ir-colrow__grow"></span>
+        <!-- ko if: $component.colIsNum($data.key) -->
+        <select class="form-control ir-colrow__agg"
+                data-bind="value: agg, click: function (d, e) { e.stopPropagation(); return true; }, event: { change: $component.onAggChange }">
+          <option value="" data-bind="text: $component.t('ir.agg.none')"></option>
+          <option value="sum" data-bind="text: $component.t('ir.agg.sum')"></option>
+          <option value="avg" data-bind="text: $component.t('ir.agg.avg')"></option>
+          <option value="min" data-bind="text: $component.t('ir.agg.min')"></option>
+          <option value="max" data-bind="text: $component.t('ir.agg.max')"></option>
+          <option value="count" data-bind="text: $component.t('ir.agg.count')"></option>
+        </select>
+        <!-- /ko -->
+        <button class="btn btn-sm ir-colrow__move" data-bind="click: function (d, e) { e.stopPropagation(); $component.moveUp($data); }">&#9650;</button>
+        <button class="btn btn-sm ir-colrow__move" data-bind="click: function (d, e) { e.stopPropagation(); $component.moveDown($data); }">&#9660;</button>
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ filter panel ═══ -->
+  <!-- ko if: openPanel() === 'filter' -->
+  <div class="card ir-panel">
+    <div class="section-heading-row">
+      <div class="section-heading ir-panel__title"
+           data-bind="text: fltEditIndex() >= 0 ? t('ir.filter.editTitle') : t('ir.filter.title')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm" data-bind="click: closePanel, text: t('ir.cancel')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: applyFilter, text: t('ir.filter.apply')"></button>
+      </div>
+    </div>
+    <div class="form-grid form-grid--compact ir-filter-grid">
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.column')"></div>
+        <select class="form-control"
+                data-bind="options: allColumnOptions, optionsText: 'label', optionsValue: 'key', value: fltCol"></select>
+      </div>
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.operator')"></div>
+        <select class="form-control"
+                data-bind="options: fltOps, optionsText: function (op) { return $component.t('ir.op.' + op); }, value: fltOp"></select>
+      </div>
+      <!-- ko if: fltNeedsVal -->
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.value')"></div>
+        <input class="form-control" data-bind="attr: { type: fltInputType }, value: fltVal" />
+      </div>
+      <!-- /ko -->
+      <!-- ko if: fltNeedsVal2 -->
+      <div class="form-group">
+        <div class="form-label" data-bind="text: t('ir.filter.value2')"></div>
+        <input class="form-control" data-bind="attr: { type: fltInputType }, value: fltVal2" />
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ layouts panel ═══ -->
+  <!-- ko if: openPanel() === 'layouts' -->
+  <div class="card ir-panel">
+    <div class="section-heading-row">
+      <div class="section-heading ir-panel__title" data-bind="text: t('ir.layout.title')"></div>
+      <div class="region-actions">
+        <!-- ko if: appliedLayout() && appliedLayout().mine -->
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: saveLayout, enable: layoutDirty, text: t('ir.layout.save')"></button>
+        <!-- /ko -->
+        <button class="btn btn-sm btn-primary" data-bind="click: closePanel, text: t('ir.close')"></button>
+      </div>
+    </div>
+    <div class="ir-saveas">
+      <input class="form-control" data-bind="value: saveAsName, attr: { placeholder: t('ir.layout.namePh') }" />
+      <button class="btn btn-sm btn-primary" data-bind="click: saveLayoutAs, text: t('ir.layout.saveAs')"></button>
+    </div>
+    <!-- ko if: layouts().length === 0 -->
+    <div class="empty-state" data-bind="text: t('ir.layout.none')"></div>
+    <!-- /ko -->
+    <div class="ir-layout-list">
+      <!-- ko foreach: layouts -->
+      <div class="ir-layout-row">
+        <!-- ko if: $component.renameId() === $data.layoutId -->
+        <input class="form-control ir-layout-row__rename" data-bind="value: $component.renameText" />
+        <button class="btn btn-sm btn-primary" data-bind="click: function () { $component.applyRename($data); }, text: $component.t('ir.ok')"></button>
+        <button class="btn btn-sm" data-bind="click: $component.cancelRename, text: $component.t('ir.cancel')"></button>
+        <!-- /ko -->
+        <!-- ko if: $component.renameId() !== $data.layoutId -->
+        <span class="ir-layout-row__name" data-bind="text: layoutName, click: function () { $component.applyLayout($data); }"></span>
+        <!-- ko if: isDefault === 'Y' --><span class="badge badge--active" data-bind="text: $component.t('ir.layout.default')"></span><!-- /ko -->
+        <!-- ko if: isShared === 'Y' --><span class="badge badge--info" data-bind="text: $component.t('ir.layout.shared')"></span><!-- /ko -->
+        <!-- ko if: isMine !== 'Y' --><span class="badge" data-bind="text: $data.owner || ''"></span><!-- /ko -->
+        <span class="ir-colrow__grow"></span>
+        <button class="btn btn-sm" data-bind="click: function () { $component.applyLayout($data); }, text: $component.t('ir.layout.apply')"></button>
+        <!-- ko if: isMine === 'Y' -->
+        <button class="btn btn-sm" data-bind="click: function () { $component.setDefaultLayout($data); }, text: isDefault === 'Y' ? $component.t('ir.layout.unsetDefault') : $component.t('ir.layout.setDefault')"></button>
+        <!-- /ko -->
+        <!-- ko if: $component.isAdmin -->
+        <button class="btn btn-sm" data-bind="click: function () { $component.toggleShareLayout($data); }, text: isShared === 'Y' ? $component.t('ir.layout.unshare') : $component.t('ir.layout.share')"></button>
+        <!-- /ko -->
+        <!-- ko if: isMine === 'Y' || $component.isAdmin -->
+        <button class="btn btn-sm" data-bind="click: function () { $component.startRename($data); }, text: $component.t('ir.layout.rename')"></button>
+        <button class="btn btn-sm btn-danger" data-bind="click: function () { $component.deleteLayout($data); }">&times;</button>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ the grid ═══ -->
+  <!-- ko if: filteredCount() === 0 -->
+  <div class="empty-state">
+    <div class="empty-state__icon">&#128269;</div>
+    <div class="empty-state__msg" data-bind="text: t('ir.empty')"></div>
+  </div>
+  <!-- /ko -->
+  <!-- ko if: filteredCount() > 0 -->
+  <div class="data-table-wrap ir-table-wrap">
+    <table class="data-table ir-table">
+      <thead>
+        <tr data-bind="foreach: visibleColumns">
+          <th data-bind="click: function (d, e) { return $component.onHeaderClick($data, e); },
+                         css: $component.cellClass($data)" class="ir-th">
+            <span data-bind="text: label"></span>
+            <span class="ir-sort" data-bind="text: $component.sortBadge($data.key)"></span>
+          </th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: pageRows">
+        <tr data-bind="foreach: $component.visibleColumns()">
+          <td data-bind="text: $component.cellText($parent, $data), css: $component.cellClass($data)"></td>
+        </tr>
+      </tbody>
+      <!-- ko if: hasAggs -->
+      <tfoot>
+        <tr data-bind="foreach: visibleColumns">
+          <td class="ir-agg-cell" data-bind="text: $component.aggFor($data), css: $component.cellClass($data)"></td>
+        </tr>
+      </tfoot>
+      <!-- /ko -->
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ footer pager ═══ -->
+  <div class="pager ir-pager">
+    <span class="pager__info" data-bind="text: pageInfo"></span>
+    <span class="pager__grow"></span>
+    <label class="pager__size-lbl" data-bind="text: t('ir.page.perPage')"></label>
+    <select data-bind="value: pageSizeSel">
+      <option value="25">25</option><option value="50">50</option>
+      <option value="100">100</option><option value="200">200</option>
+    </select>
+    <button class="pager__btn" data-bind="click: prevPage, disable: prevDisabled"><span>&#8249;</span></button>
+    <button class="pager__btn" data-bind="click: nextPage, disable: nextDisabled"><span>&#8250;</span></button>
+  </div>
+
+</div>
+<!-- /ko -->
+
+<!-- ═══ calculated column dialog ═══ -->
+<!-- ko if: calcOpen -->
+<div class="modal-overlay">
+  <div class="modal-box ir-calc-box">
+    <div class="modal-header">
+      <div class="modal-title"
+           data-bind="text: calcEditKey() ? t('ir.calc.editTitle') : t('ir.calc.title')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm" data-bind="click: closeCalc, text: t('ir.cancel')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: saveCalc, text: t('ir.calc.save')"></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid form-grid--1">
+        <div class="form-group">
+          <div class="form-label" data-bind="text: t('ir.calc.name')"></div>
+          <input class="form-control" data-bind="value: calcName, attr: { placeholder: t('ir.calc.namePh') }" />
+        </div>
+        <div class="form-group">
+          <div class="form-label" data-bind="text: t('ir.calc.expr')"></div>
+          <textarea class="form-control ir-calc-expr" rows="3"
+                    data-bind="textInput: calcExpr, attr: { placeholder: t('ir.calc.exprPh') }"></textarea>
+          <div class="ir-calc-hint" data-bind="text: t('ir.calc.hint')"></div>
+        </div>
+      </div>
+      <!-- ko if: calcError -->
+      <div class="field-error" data-bind="text: calcError"></div>
+      <!-- /ko -->
+      <!-- ko if: !calcError() && calcPreview() -->
+      <div class="ir-calc-preview">
+        <span data-bind="text: t('ir.calc.preview')"></span>: <strong data-bind="text: calcPreview"></strong>
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+</div>
+<!-- /ko -->

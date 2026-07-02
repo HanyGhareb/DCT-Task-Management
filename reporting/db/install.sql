@@ -15,7 +15,15 @@ SET SQLBLANKLINES ON
 @@05_rpt_sched_sync.sql
 @@06_rpt_native_pkg.sql
 @@07_rpt_seed.sql
+-- (08/08a/08b Budget-Util-by-Sector pack and 09/09a workers layer run
+--  separately: 08 needs the db/v2/39 data views deployed first)
+@@10_rpt_ir.sql
+@@11_rpt_ir_lov.sql
+@@10a_rpt_ir_pkg.sql
+@@10b_rpt_ir_ords.sql
+@@11a_rpt_ir_lov_ords.sql
 PROMPT ============================================================
-PROMPT  Reporting Platform Phase 0 install complete.
+PROMPT  Reporting Platform install complete (incl. Interactive Report).
 PROMPT  Next: EXEC prod.dct_rpt_sched_sync; to build schedule jobs.
+PROMPT  If 04 is ever re-run, re-run 08b + 09a + 10 + 12b + 13a after it.
 PROMPT ============================================================

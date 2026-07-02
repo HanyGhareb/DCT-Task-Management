@@ -32,3 +32,104 @@
 @media (max-width: 720px) {
   .kv-grid { grid-template-columns: 1fr; }
 }
+
+/* ── Interactive Report (<interactive-report>) ─────────────────────────────
+   Composes platform.css primitives (.view-toolbar/.data-table/.badge/.pager/
+   .card/.form-*); only the IR-specific layout lives here. */
+.ir-wrap { position: relative; }
+.ir-toolbar { flex-wrap: wrap; row-gap: 8px; }
+.ir-toolbar .search-box { min-width: 220px; }
+
+/* active-filter chips */
+.ir-chips { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 12px; }
+.ir-chip { display: inline-flex; align-items: center; gap: 6px; padding: 4px 8px 4px 12px;
+           border-radius: 999px; background: var(--brand-soft); border: 1px solid var(--brand);
+           color: var(--brand-dark); font-size: 12px; }
+.ir-chip__txt { cursor: pointer; }
+.ir-chip__x { border: 0; background: none; cursor: pointer; font-size: 15px; line-height: 1;
+              color: var(--brand-dark); padding: 0 2px; }
+.ir-chip__x:hover { color: #b3261e; }
+.ir-chips__clear { margin-inline-start: 4px; }
+
+.ir-truncated { margin-bottom: 12px; }
+
+/* dropdown work panels (columns / filter / layouts) */
+.ir-panel { margin-bottom: 14px; padding: 14px 16px; }
+.ir-panel__title { margin-top: 0; }
+
+/* column manager rows */
+.ir-colmgr { max-height: 340px; overflow-y: auto; display: flex; flex-direction: column; gap: 2px; }
+.ir-colrow { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 6px;
+             cursor: pointer; font-size: 13px; }
+.ir-colrow:hover { background: var(--surface-2); }
+.ir-colrow input[type="checkbox"] { pointer-events: none; }  /* row click toggles — never double-fire */
+.ir-colrow__label { font-weight: 500; }
+.ir-colrow__type { text-transform: none; }
+.ir-colrow__grow { flex: 1; }
+.ir-colrow__agg { width: auto; min-width: 96px; padding: 2px 6px; font-size: 12px; }
+.ir-colrow__move { padding: 2px 7px; font-size: 10px; }
+
+/* filter editor */
+.ir-filter-grid { align-items: end; }
+
+/* layouts panel */
+.ir-saveas { display: flex; gap: 8px; margin-bottom: 12px; }
+.ir-saveas .form-control { max-width: 320px; }
+.ir-layout-list { display: flex; flex-direction: column; gap: 2px; }
+.ir-layout-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+                 border-radius: 6px; font-size: 13px; }
+.ir-layout-row:hover { background: var(--surface-2); }
+.ir-layout-row__name { cursor: pointer; font-weight: 600; color: var(--brand-dark); }
+.ir-layout-row__name:hover { text-decoration: underline; }
+.ir-layout-row__rename { max-width: 240px; }
+.ir-layouts-btn { position: relative; }
+.ir-dirty-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%;
+                background: #F0883E; margin-inline-start: 6px; vertical-align: middle;
+                animation: ir-pulse 1.6s ease-in-out infinite; }
+@keyframes ir-pulse { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+
+/* grid — header uses the FULL region-theme header treatment (fill + font),
+   auto-follows the Admin Region Appearance palette; never hard-code colors */
+.ir-table-wrap { max-height: calc(100vh - 320px); overflow: auto; }
+/* double-class selector outranks platform's table.data-table thead th */
+table.data-table.ir-table thead th { position: sticky; top: 0; z-index: 1;
+                     background: var(--region-hd-bg); color: var(--region-hd-fg);
+                     border-block-end: 2px solid var(--region-hd-accent);
+                     font-size: 11.5px; letter-spacing: .06em; padding: 11px 14px; }
+table.data-table.ir-table thead th:hover { filter: brightness(1.12); }
+.ir-th { cursor: pointer; -webkit-user-select: none; user-select: none; }
+table.data-table.ir-table thead th .ir-sort { margin-inline-start: 4px; font-size: 10px;
+                     color: var(--region-hd-fg); opacity: .95; }
+
+/* maximize — fullscreen overlay (⤡/⤢ toggle at the table's top right; Esc exits) */
+.ir-btn-max { font-size: 15px; line-height: 1; padding: 4px 9px; }
+.ir-wrap.ir-max { position: fixed; inset: 0; z-index: 1200;
+                  background: var(--bg, #f5f7fa); padding: 14px 18px;
+                  overflow: auto; display: flex; flex-direction: column; }
+.ir-wrap.ir-max .ir-table-wrap { max-height: none; flex: 1 1 auto; }
+.ir-wrap.ir-max .ir-toolbar { position: sticky; top: 0; z-index: 2;
+                              background: var(--bg, #f5f7fa); padding-block: 4px; }
+
+/* header rename (column manager) */
+.ir-colrow__pencil { padding: 2px 7px; font-size: 12px; }
+.ir-colrow__rename { max-width: 220px; padding: 3px 8px; font-size: 12px; }
+.ir-num { text-align: end; font-variant-numeric: tabular-nums; }
+.ir-agg-cell { font-weight: 700; background: var(--region-hd-soft); font-size: 12px;
+               padding: 8px 14px; border-block-start: 2px solid var(--region-hd-accent); }
+.ir-pager { margin-top: 10px; }
+
+/* viewer catalog + runner */
+.ir-cat-select { width: auto; min-width: 180px; }
+.ir-cat-row { cursor: pointer; }
+.ir-cat-name { font-weight: 600; }
+.ir-cat-code { font-size: 11px; color: var(--text-3); font-family: ui-monospace, Consolas, monospace; }
+.ir-cat-desc { max-width: 420px; }
+.ir-runner { margin-bottom: 14px; padding: 14px 16px; }
+.ir-runner-grid { align-items: end; }
+.ir-req { color: #b3261e; margin-inline-start: 3px; }
+
+/* calculated-column dialog */
+.ir-calc-box { max-width: 560px; }
+.ir-calc-expr { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 13px; }
+.ir-calc-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
+.ir-calc-preview { margin-top: 10px; font-size: 13px; color: var(--text-2); }
