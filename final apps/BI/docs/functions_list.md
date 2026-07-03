@@ -38,7 +38,11 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
     date on/before/after/between) → chips row (click chip = edit, × = remove, clear all);
   - sort: header click asc→desc→off, Shift+click multi-sort (indexed ▲▼ badges); global search box;
   - calculated columns: name + expression dialog with live first-row preview + inline validation
-    (safe parser — ROUND/ABS/NVL/UPPER/LOWER, + - * / % ( ) 'text' ||; no eval);
+    (safe parser — ROUND/ABS/NVL/UPPER/LOWER, + - * / % ( ) 'text' ||; no eval); **formula
+    autocomplete** (typing suggests columns by key/label + functions; ↑↓ + Enter/Tab or click
+    inserts; Esc closes the dropdown only) + **click-to-insert column & function chips** under the
+    textarea; header-label aliases (type the header text with underscores — renamed headers too)
+    and **did-you-mean** unknown-column errors;
   - export: CSV (UTF-8 BOM, filtered+sorted rows, visible columns in display order) and XLSX
     (SheetJS, lazy-loaded via the requirejs `xlsx` path);
   - layouts: server-saved named layouts per report (`Save` / `Save as` / `Apply` / `Rename` /

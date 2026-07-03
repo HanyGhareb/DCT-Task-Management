@@ -1199,7 +1199,27 @@ table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
 .ir-pager { margin-top: 10px; }
 
 /* calculated-column dialog */
-.ir-calc-box { max-width: 560px; }
+.ir-calc-box { max-width: 600px; }
 .ir-calc-expr { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 13px; }
 .ir-calc-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
 .ir-calc-preview { margin-top: 10px; font-size: 13px; color: var(--text-2); }
+
+/* calc dialog — formula autocomplete + click-to-insert chips */
+.ir-calc-exprwrap { position: relative; }
+.ir-ac { position: absolute; top: 100%; inset-inline: 0; z-index: 20;
+         background: var(--surface, #fff); border: 1px solid var(--border, #d5dbe3);
+         border-radius: 6px; box-shadow: 0 8px 22px rgba(0,0,0,.14);
+         max-height: 210px; overflow-y: auto; }
+.ir-ac__row { display: flex; align-items: center; gap: 8px; padding: 6px 10px;
+              cursor: pointer; font-size: 12.5px; }
+.ir-ac__row--sel, .ir-ac__row:hover { background: var(--brand-soft, #eef4f7); }
+.ir-ac__kind { text-transform: none; font-size: 9.5px; }
+.ir-ac__key { font-family: ui-monospace, Consolas, monospace; font-weight: 600; }
+.ir-ac__label { color: var(--text-3, #7a869a); font-size: 11.5px; }
+.ir-calc-chips { display: flex; flex-wrap: wrap; gap: 6px; max-height: 110px;
+                 overflow-y: auto; padding: 2px 0; }
+.ir-calc-chip { border: 1px solid var(--border, #d5dbe3); background: var(--surface-2, #f6f8fa);
+                border-radius: 999px; padding: 3px 10px; font-size: 12px; cursor: pointer; }
+.ir-calc-chip:hover { border-color: var(--brand); color: var(--brand-dark); background: var(--brand-soft); }
+.ir-calc-chip--fn { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; }
+.ir-calc-subhead { margin-top: 8px; }

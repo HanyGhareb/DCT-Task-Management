@@ -16,7 +16,11 @@
  * treats null as ''.
  *
  * compile(src, columns) -> { eval(row) -> value, type: 'num'|'text' }
- * columns: [{key, type}]  — throws Error(message) on any syntax/name problem.
+ * columns: [{key, type, label?}] — throws Error(message) on any syntax/name
+ * problem. When a label is supplied, its identifier form (spaces → '_') is
+ * accepted as an alias for the key, so users can type what the header shows
+ * ("Budget Ytd" → BUDGET_YTD, and renamed headers too). Unknown-column errors
+ * include a closest-match suggestion.
  */
 define([], function () {
   'use strict';
@@ -28,6 +32,51 @@ define([], function () {
     UPPER: { min: 1, max: 1, type: 'text' },
     LOWER: { min: 1, max: 1, type: 'text' }
   };
+  /* autocomplete metadata for the calc dialog */
+  var FUNC_LIST = [
+    { name: 'ROUND', sig: 'ROUND(x, n)' },
+    { name: 'ABS',   sig: 'ABS(x)' },
+    { name: 'NVL',   sig: 'NVL(x, y)' },
+    { name: 'UPPER', sig: 'UPPER(s)' },
+    { name: 'LOWER', sig: 'LOWER(s)' }
+  ];
+
+  function labelAlias(label) {
+    if (!label) return null;
+    var a = String(label).trim().replace(/\s+/g, '_');
+    return /^[A-Za-z_][A-Za-z0-9_]*$/.test(a) ? a.toLowerCase() : null;
+  }
+
+  function levenshtein(a, b) {
+    var m = a.length, n = b.length, i, j, prev, tmp;
+    if (Math.abs(m - n) > 3) return 99;
+    var row = [];
+    for (j = 0; j <= n; j++) row[j] = j;
+    for (i = 1; i <= m; i++) {
+      prev = row[0];
+      row[0] = i;
+      for (j = 1; j <= n; j++) {
+        tmp = row[j];
+        row[j] = Math.min(row[j] + 1, row[j - 1] + 1,
+                          prev + (a.charAt(i - 1) === b.charAt(j - 1) ? 0 : 1));
+        prev = tmp;
+      }
+    }
+    return row[n];
+  }
+
+  function closest(word, columns) {
+    var w = word.toLowerCase(), best = null, bestScore = 99;
+    (columns || []).forEach(function (c) {
+      var k = String(c.key).toLowerCase();
+      var score;
+      if (k.indexOf(w) === 0 || w.indexOf(k) === 0) score = 1;
+      else if (k.indexOf(w) !== -1 || w.indexOf(k) !== -1) score = 2;
+      else score = levenshtein(w, k);
+      if (score < bestScore) { bestScore = score; best = c.key; }
+    });
+    return bestScore <= 3 ? best : null;
+  }
 
   function tokenize(src) {
     var toks = [], i = 0, n = src.length, c, j, buf;
@@ -77,6 +126,11 @@ define([], function () {
     if (!src || !String(src).trim()) throw new Error('expression is empty');
     var colMap = {};
     (columns || []).forEach(function (c) { colMap[c.key.toLowerCase()] = c; });
+    // header labels double as aliases (never shadowing a real key)
+    (columns || []).forEach(function (c) {
+      var a = labelAlias(c.label);
+      if (a && !colMap[a]) colMap[a] = c;
+    });
 
     var toks = tokenize(String(src));
     var pos = 0;
@@ -133,7 +187,11 @@ define([], function () {
           return { k: 'fn', fn: up, args: args };
         }
         var col = colMap[tok.v.toLowerCase()];
-        if (!col) throw new Error('unknown column: ' + tok.v);
+        if (!col) {
+          var hint = closest(tok.v, columns);
+          throw new Error('unknown column: ' + tok.v +
+                          (hint ? ' — did you mean ' + hint + '?' : ''));
+        }
         return { k: 'col', key: col.key, ctype: col.type };
       }
       throw new Error('unexpected token: ' + (tok.v !== undefined ? tok.v : tok.t));
@@ -214,5 +272,5 @@ define([], function () {
     };
   }
 
-  return { compile: compile };
+  return { compile: compile, functions: FUNC_LIST };
 });

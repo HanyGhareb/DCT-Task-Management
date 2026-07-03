@@ -522,7 +522,8 @@ function (ko, i18n, toast, irExpr, templateHtml) {
     };
     function onKeyDown(e) {
       if (e.key !== 'Escape') return;
-      if (self.calcOpen()) { self.calcOpen(false); }
+      if (self.acOpen()) { self.acOpen(false); }
+      else if (self.calcOpen()) { self.calcOpen(false); }
       else if (self.openPanel()) { self.closePanel(); }
       else if (self.maximized()) { self.toggleMax(); }
     }
@@ -750,10 +751,16 @@ function (ko, i18n, toast, irExpr, templateHtml) {
     self.calcPreview = ko.observable('');
     self.calcEditKey = ko.observable(null);
 
+    // {key,type,label} with rename-aware labels — labels double as irExpr
+    // aliases so users can type what the header shows
     function calcColumnsUniverse() {
-      var cols = self.baseCols.slice();
+      var cols = self.baseCols.map(function (c) {
+        return { key: c.key, type: c.type, label: self.colLabel(c.key) };
+      });
       self.calcCols().forEach(function (c) {
-        if (c.key !== self.calcEditKey()) cols.push({ key: c.key, type: c.type });
+        if (c.key !== self.calcEditKey()) {
+          cols.push({ key: c.key, type: c.type, label: self.colLabel(c.key) });
+        }
       });
       return cols;
     }
@@ -779,6 +786,7 @@ function (ko, i18n, toast, irExpr, templateHtml) {
     self.openCalcNew = function () {
       self.calcEditKey(null); self.calcName(''); self.calcExpr('');
       self.calcError(''); self.calcPreview('');
+      acReset();
       self.calcOpen(true);
     };
     self.editCalc = function (key) {
@@ -787,9 +795,110 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       if (!c) return;
       self.calcEditKey(c.key); self.calcName(c.label); self.calcExpr(c.expr);
       self.calcError(''); self.calcPreview('');
+      acReset();
       self.calcOpen(true);
     };
-    self.closeCalc = function () { self.calcOpen(false); };
+    self.closeCalc = function () { self.calcOpen(false); self.acOpen(false); };
+
+    // ── calc dialog: insert chips + formula autocomplete ──────────────────
+    self.calcFuncs = irExpr.functions;
+    self.calcInsertCols = ko.computed(function () {
+      if (!self.calcOpen()) return [];
+      self.filteredRev();                      // refresh labels after renames
+      return calcColumnsUniverse();
+    });
+
+    var acEl = null;                           // the expression textarea
+    var acStart = 0;                           // offset of the word being typed
+    self.acOpen  = ko.observable(false);
+    self.acItems = ko.observableArray([]);
+    self.acIndex = ko.observable(0);
+
+    function acReset() { acEl = null; self.acOpen(false); }
+
+    function acRefresh(el) {
+      acEl = el;
+      var pos = el.selectionStart;
+      var text = el.value;
+      var quotes = (text.slice(0, pos).match(/'/g) || []).length;
+      if (quotes % 2 === 1) { self.acOpen(false); return; }   // inside 'string'
+      var start = pos;
+      while (start > 0 && /[A-Za-z0-9_]/.test(text.charAt(start - 1))) start--;
+      var word = text.slice(start, pos);
+      if (!word || !/^[A-Za-z_]/.test(word)) { self.acOpen(false); return; }
+      var w = word.toLowerCase();
+      var starts = [], contains = [];
+      calcColumnsUniverse().forEach(function (c) {
+        var k = c.key.toLowerCase(), l = String(c.label || '').toLowerCase();
+        var item = { kind: 'col', insert: c.key, key: c.key, label: c.label || c.key };
+        if (k.indexOf(w) === 0 || l.indexOf(w) === 0) starts.push(item);
+        else if (k.indexOf(w) !== -1 || l.indexOf(w) !== -1) contains.push(item);
+      });
+      irExpr.functions.forEach(function (f) {
+        if (f.name.toLowerCase().indexOf(w) === 0) {
+          starts.push({ kind: 'fn', insert: f.name + '(', key: f.name, label: f.sig });
+        }
+      });
+      var items = starts.concat(contains).slice(0, 8);
+      acStart = start;
+      self.acItems(items);
+      self.acIndex(0);
+      self.acOpen(items.length > 0);
+    }
+
+    self.acAccept = function (item) {
+      if (!item || !acEl) return;
+      var text = acEl.value;
+      var pos = acEl.selectionStart;
+      var out = text.slice(0, acStart) + item.insert + text.slice(pos);
+      var caret = acStart + item.insert.length;
+      self.calcExpr(out);
+      self.acOpen(false);
+      setTimeout(function () {
+        try { acEl.focus(); acEl.setSelectionRange(caret, caret); } catch (e) { /* ignore */ }
+      }, 0);
+    };
+
+    self.onCalcExprKeyDown = function (d, e) {
+      if (self.acOpen()) {
+        if (e.key === 'ArrowDown') { self.acIndex(Math.min(self.acIndex() + 1, self.acItems().length - 1)); return false; }
+        if (e.key === 'ArrowUp')   { self.acIndex(Math.max(self.acIndex() - 1, 0)); return false; }
+        if (e.key === 'Enter' || e.key === 'Tab') { self.acAccept(self.acItems()[self.acIndex()]); return false; }
+        if (e.key === 'Escape') { self.acOpen(false); e.stopPropagation(); return false; }
+      }
+      return true;
+    };
+    self.onCalcExprKeyUp = function (d, e) {
+      var k = e.key;
+      if (k === 'ArrowDown' || k === 'ArrowUp' || k === 'Enter' || k === 'Tab' || k === 'Escape') return true;
+      acRefresh(e.target);
+      return true;
+    };
+    self.onCalcExprClick = function (d, e) { acRefresh(e.target); return true; };
+
+    // click-to-insert (column / function chips below the textarea)
+    function insertCalcToken(token) {
+      if (acEl && self.calcOpen()) {
+        var t = acEl.value;
+        var pos = acEl.selectionStart !== null && acEl.selectionStart !== undefined
+                  ? acEl.selectionStart : t.length;
+        var end = acEl.selectionEnd !== null && acEl.selectionEnd !== undefined
+                  ? acEl.selectionEnd : pos;
+        var out = t.slice(0, pos) + token + t.slice(end);
+        var caret = pos + token.length;
+        self.calcExpr(out);
+        self.acOpen(false);
+        setTimeout(function () {
+          try { acEl.focus(); acEl.setSelectionRange(caret, caret); } catch (e) { /* ignore */ }
+        }, 0);
+      } else {
+        var cur = String(self.calcExpr() || '');
+        self.calcExpr(cur + (cur && !/\s$/.test(cur) ? ' ' : '') + token);
+      }
+    }
+    self.insertColChip = function (c) { insertCalcToken(c.key); };
+    self.insertFnChip = function (f) { insertCalcToken(f.name + '('); };
+    self.captureCalcExprEl = function (d, e) { acEl = e.target; return true; };
 
     function nextCalcKey() {
       var max = 0;
@@ -841,7 +950,7 @@ function (ko, i18n, toast, irExpr, templateHtml) {
       (calcDefs || []).forEach(function (c) {
         try {
           var cols = self.baseCols.slice();
-          out.forEach(function (p) { cols.push({ key: p.key, type: p.type }); });
+          out.forEach(function (p) { cols.push({ key: p.key, type: p.type, label: p.label }); });
           var fn = irExpr.compile(c.expr, cols);
           self._calcFns[c.key] = fn;
           out.push({ key: c.key, label: c.label, expr: c.expr, type: fn.type === 'num' ? 'num' : 'text' });

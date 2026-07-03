@@ -87,6 +87,22 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-03 — IR round 5: formula autocomplete + insert chips + label aliases (BI APP_VERSION
+  1.8.0) — E2E 13/13.** Frontend-only (shared component; no DB change). Root cause of the user
+  report ("`Budget_ytd` gives an error"): the engine was already case-insensitive on KEYS, but the
+  Budget Utilization report's column is `BUDGET` (no `_YTD`) — the error just gave no help finding
+  that. (1) The expression textarea now has **autocomplete**: typing an identifier suggests matching
+  columns (by key OR header label, prefix-ranked) and functions; ArrowUp/Down navigate, Enter/Tab or
+  click inserts, Esc closes the dropdown only (Esc chain: autocomplete → dialog → panel → maximize);
+  suggestions are suppressed inside 'string' literals. (2) **Click-to-insert chips** under the
+  textarea — every column (rename-aware label, key in the tooltip) plus the 5 functions; inserts at
+  the caret. (3) **irExpr header-label aliases**: a column's displayed label in identifier form
+  (spaces→`_`, case-insensitive) resolves to the key — header "Budget Ytd" ⇒ `Budget_Ytd` compiles,
+  renamed headers included; aliases never shadow real keys; the layout-restore recompile path passes
+  labels so saved expressions keep resolving. (4) **Did-you-mean errors**: unknown-column errors
+  suggest the closest key (prefix/substring/Levenshtein ≤ 3), e.g. "unknown column: Budget_ytd — did
+  you mean BUDGET?". i18n: `ir.calc.hint` reworded + `ir.calc.insertCols`/`insertFns` EN+AR in
+  `shared/i18n/common.*.json`. Shared change ⇒ APP_VERSION bumped in all 10 consumer apps (BI 1.8.0).
 - **2026-07-03 — LOV convergence + param-spec editor + IR round 4 (breaks/highlights) + shared-layer
   promotion + BI_USER rollout helper (BI APP_VERSION 1.7.0) — DEPLOYED; smoke 24/24, E2E 27/27,
   UAT round 2 29/29.** Completes the follow-up flagged in the MERGE NOTE below: **ONE parameter-metadata

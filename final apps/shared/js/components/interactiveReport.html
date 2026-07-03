@@ -359,9 +359,44 @@
         </div>
         <div class="form-group">
           <div class="form-label" data-bind="text: t('ir.calc.expr')"></div>
-          <textarea class="form-control ir-calc-expr" rows="3"
-                    data-bind="textInput: calcExpr, attr: { placeholder: t('ir.calc.exprPh') }"></textarea>
+          <div class="ir-calc-exprwrap">
+            <textarea class="form-control ir-calc-expr" rows="3"
+                      data-bind="textInput: calcExpr, attr: { placeholder: t('ir.calc.exprPh') },
+                                 event: { keydown: onCalcExprKeyDown, keyup: onCalcExprKeyUp,
+                                          click: onCalcExprClick, focus: captureCalcExprEl }"></textarea>
+            <!-- ko if: acOpen -->
+            <div class="ir-ac">
+              <!-- ko foreach: acItems -->
+              <div class="ir-ac__row"
+                   data-bind="css: { 'ir-ac__row--sel': $component.acIndex() === $index() },
+                              click: function () { $component.acAccept($data); }">
+                <span class="badge badge--info ir-ac__kind" data-bind="text: kind === 'fn' ? 'fx' : 'col'"></span>
+                <span class="ir-ac__key" data-bind="text: insert"></span>
+                <span class="ir-ac__label" data-bind="text: kind === 'fn' ? label : (label !== key ? label : '')"></span>
+              </div>
+              <!-- /ko -->
+            </div>
+            <!-- /ko -->
+          </div>
           <div class="ir-calc-hint" data-bind="text: t('ir.calc.hint')"></div>
+        </div>
+        <div class="form-group">
+          <div class="form-label" data-bind="text: t('ir.calc.insertCols')"></div>
+          <div class="ir-calc-chips">
+            <!-- ko foreach: calcInsertCols -->
+            <button type="button" class="ir-calc-chip"
+                    data-bind="click: function () { $component.insertColChip($data); }, attr: { title: key }">
+              <span data-bind="text: label || key"></span>
+            </button>
+            <!-- /ko -->
+          </div>
+          <div class="form-label ir-calc-subhead" data-bind="text: t('ir.calc.insertFns')"></div>
+          <div class="ir-calc-chips">
+            <!-- ko foreach: calcFuncs -->
+            <button type="button" class="ir-calc-chip ir-calc-chip--fn"
+                    data-bind="click: function () { $component.insertFnChip($data); }, text: sig"></button>
+            <!-- /ko -->
+          </div>
         </div>
       </div>
       <!-- ko if: calcError -->
