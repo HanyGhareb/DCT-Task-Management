@@ -1198,14 +1198,15 @@ table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
                padding: 8px 14px; border-block-start: 2px solid var(--region-hd-accent); }
 .ir-pager { margin-top: 10px; }
 
-/* calculated-column dialog */
-.ir-calc-box { max-width: 600px; }
+/* calculated-column drawer (shared <edit-drawer>, width set by the component) */
 .ir-calc-expr { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 13px; }
 .ir-calc-hint { font-size: 11px; color: var(--text-3); margin-top: 4px; }
 .ir-calc-preview { margin-top: 10px; font-size: 13px; color: var(--text-2); }
 
 /* calc dialog — formula autocomplete + click-to-insert chips */
 .ir-calc-exprwrap { position: relative; }
+/* the wrap takes the textarea out of .form-group's flex stretch — restore it */
+.ir-calc-exprwrap .form-control { width: 100%; box-sizing: border-box; }
 .ir-ac { position: absolute; top: 100%; inset-inline: 0; z-index: 20;
          background: var(--surface, #fff); border: 1px solid var(--border, #d5dbe3);
          border-radius: 6px; box-shadow: 0 8px 22px rgba(0,0,0,.14);

@@ -339,66 +339,41 @@
 </div>
 <!-- /ko -->
 
-<!-- ═══ calculated column dialog ═══ -->
-<!-- ko if: calcOpen -->
-<div class="modal-overlay">
-  <div class="modal-box ir-calc-box">
-    <div class="modal-header">
-      <div class="modal-title"
-           data-bind="text: calcEditKey() ? t('ir.calc.editTitle') : t('ir.calc.title')"></div>
-      <div class="region-actions">
-        <button class="btn btn-sm" data-bind="click: closeCalc, text: t('ir.cancel')"></button>
-        <button class="btn btn-sm btn-primary" data-bind="click: saveCalc, text: t('ir.calc.save')"></button>
-      </div>
+<!-- ═══ calculated column drawer (shared <edit-drawer>; body binds to the
+     component VM via vm: $component — inside foreach use $parent, NOT
+     $component, which would resolve to the drawer) ═══ -->
+<edit-drawer params="open: calcOpen, vm: $component,
+                     title: calcEditKey() ? t('ir.calc.editTitle') : t('ir.calc.title'),
+                     saveLabel: t('ir.calc.save'), cancelLabel: t('ir.cancel'),
+                     onSave: saveCalc, width: '760px'">
+  <div class="form-grid form-grid--1">
+    <div class="form-group">
+      <div class="form-label" data-bind="text: t('ir.calc.name')"></div>
+      <input class="form-control" data-bind="value: calcName, valueUpdate: 'input',
+                                             attr: { placeholder: t('ir.calc.namePh') }" />
     </div>
-    <div class="modal-body">
-      <div class="form-grid form-grid--1">
-        <div class="form-group">
-          <div class="form-label" data-bind="text: t('ir.calc.name')"></div>
-          <input class="form-control" data-bind="value: calcName, attr: { placeholder: t('ir.calc.namePh') }" />
-        </div>
-        <div class="form-group">
-          <div class="form-label" data-bind="text: t('ir.calc.expr')"></div>
-          <div class="ir-calc-exprwrap">
-            <textarea class="form-control ir-calc-expr" rows="3"
-                      data-bind="textInput: calcExpr, attr: { placeholder: t('ir.calc.exprPh') },
-                                 event: { keydown: onCalcExprKeyDown, keyup: onCalcExprKeyUp,
-                                          click: onCalcExprClick, focus: captureCalcExprEl }"></textarea>
-            <!-- ko if: acOpen -->
-            <div class="ir-ac">
-              <!-- ko foreach: acItems -->
-              <div class="ir-ac__row"
-                   data-bind="css: { 'ir-ac__row--sel': $component.acIndex() === $index() },
-                              click: function () { $component.acAccept($data); }">
-                <span class="badge badge--info ir-ac__kind" data-bind="text: kind === 'fn' ? 'fx' : 'col'"></span>
-                <span class="ir-ac__key" data-bind="text: insert"></span>
-                <span class="ir-ac__label" data-bind="text: kind === 'fn' ? label : (label !== key ? label : '')"></span>
-              </div>
-              <!-- /ko -->
-            </div>
-            <!-- /ko -->
+    <div class="form-group">
+      <div class="form-label" data-bind="text: t('ir.calc.expr')"></div>
+      <div class="ir-calc-exprwrap">
+        <textarea class="form-control ir-calc-expr" rows="4"
+                  data-bind="textInput: calcExpr, attr: { placeholder: t('ir.calc.exprPh') },
+                             event: { keydown: onCalcExprKeyDown, keyup: onCalcExprKeyUp,
+                                      click: onCalcExprClick, focus: captureCalcExprEl }"></textarea>
+        <!-- ko if: acOpen -->
+        <div class="ir-ac">
+          <!-- ko foreach: acItems -->
+          <div class="ir-ac__row"
+               data-bind="css: { 'ir-ac__row--sel': $parent.acIndex() === $index() },
+                          click: function () { $parent.acAccept($data); }">
+            <span class="badge badge--info ir-ac__kind" data-bind="text: kind === 'fn' ? 'fx' : 'col'"></span>
+            <span class="ir-ac__key" data-bind="text: insert"></span>
+            <span class="ir-ac__label" data-bind="text: kind === 'fn' ? label : (label !== key ? label : '')"></span>
           </div>
-          <div class="ir-calc-hint" data-bind="text: t('ir.calc.hint')"></div>
+          <!-- /ko -->
         </div>
-        <div class="form-group">
-          <div class="form-label" data-bind="text: t('ir.calc.insertCols')"></div>
-          <div class="ir-calc-chips">
-            <!-- ko foreach: calcInsertCols -->
-            <button type="button" class="ir-calc-chip"
-                    data-bind="click: function () { $component.insertColChip($data); }, attr: { title: key }">
-              <span data-bind="text: label || key"></span>
-            </button>
-            <!-- /ko -->
-          </div>
-          <div class="form-label ir-calc-subhead" data-bind="text: t('ir.calc.insertFns')"></div>
-          <div class="ir-calc-chips">
-            <!-- ko foreach: calcFuncs -->
-            <button type="button" class="ir-calc-chip ir-calc-chip--fn"
-                    data-bind="click: function () { $component.insertFnChip($data); }, text: sig"></button>
-            <!-- /ko -->
-          </div>
-        </div>
+        <!-- /ko -->
       </div>
+      <div class="ir-calc-hint" data-bind="text: t('ir.calc.hint')"></div>
       <!-- ko if: calcError -->
       <div class="field-error" data-bind="text: calcError"></div>
       <!-- /ko -->
@@ -408,6 +383,23 @@
       </div>
       <!-- /ko -->
     </div>
+    <div class="form-group">
+      <div class="form-label" data-bind="text: t('ir.calc.insertCols')"></div>
+      <div class="ir-calc-chips">
+        <!-- ko foreach: calcInsertCols -->
+        <button type="button" class="ir-calc-chip"
+                data-bind="click: function () { $parent.insertColChip($data); }, attr: { title: key }">
+          <span data-bind="text: label || key"></span>
+        </button>
+        <!-- /ko -->
+      </div>
+      <div class="form-label ir-calc-subhead" data-bind="text: t('ir.calc.insertFns')"></div>
+      <div class="ir-calc-chips">
+        <!-- ko foreach: calcFuncs -->
+        <button type="button" class="ir-calc-chip ir-calc-chip--fn"
+                data-bind="click: function () { $parent.insertFnChip($data); }, text: sig"></button>
+        <!-- /ko -->
+      </div>
+    </div>
   </div>
-</div>
-<!-- /ko -->
+</edit-drawer>

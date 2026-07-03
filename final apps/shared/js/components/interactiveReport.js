@@ -33,8 +33,9 @@
  * missing keys become null so bindings never break).
  */
 define(['knockout', 'shared/i18n', 'shared/toast', 'shared/components/irExpr',
+        'shared/editDrawer',
         'text!shared/components/interactiveReport.html'],
-function (ko, i18n, toast, irExpr, templateHtml) {
+function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
   'use strict';
 
   var OPS = {
@@ -766,6 +767,12 @@ function (ko, i18n, toast, irExpr, templateHtml) {
     }
     self.calcExprLive = ko.computed(function () { return self.calcExpr(); })
                           .extend({ rateLimit: { timeout: 300, method: 'notifyWhenChangesStop' } });
+    // typing a name clears a lingering "give the column a name" error
+    subs.push(self.calcName.subscribe(function (v) {
+      if (String(v || '').trim() && self.calcError() === self.t('ir.calc.needName')) {
+        self.calcError('');
+      }
+    }));
     subs.push(self.calcExprLive.subscribe(function (txt) {
       if (!self.calcOpen()) return;
       if (!String(txt || '').trim()) { self.calcError(''); self.calcPreview(''); return; }

@@ -42,7 +42,7 @@ class DevProxyHandler(http.server.SimpleHTTPRequestHandler):
             parts = [p for p in clean[len('/shared/'):].split('/') if p and p != '..']
             return os.path.join(SHARED_DIR, *parts)
         seg = [p for p in clean.split('/') if p]
-        if len(seg) >= 2 and seg[0] in SIBLING_APPS and seg[1] == 'Jet':
+        if len(seg) >= 2 and seg[0] in SIBLING_APPS and seg[1] in ('Jet', 'Portal'):
             parts = [p for p in seg if p != '..']
             return os.path.join(APPS_ROOT, *parts)
         return super().translate_path(path)

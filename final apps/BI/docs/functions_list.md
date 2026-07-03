@@ -37,7 +37,8 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
   - filters: typed operator popover (text contains/=/≠/starts/empty; number =/≠/>/≥/</≤/between;
     date on/before/after/between) → chips row (click chip = edit, × = remove, clear all);
   - sort: header click asc→desc→off, Shift+click multi-sort (indexed ▲▼ badges); global search box;
-  - calculated columns: name + expression dialog with live first-row preview + inline validation
+  - calculated columns: name + expression editor in a wide (760px) right-edge `<edit-drawer>`
+    with live first-row preview + inline validation
     (safe parser — ROUND/ABS/NVL/UPPER/LOWER, + - * / % ( ) 'text' ||; no eval); **formula
     autocomplete** (typing suggests columns by key/label + functions; ↑↓ + Enter/Tab or click
     inserts; Esc closes the dropdown only) + **click-to-insert column & function chips** under the

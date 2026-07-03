@@ -87,6 +87,18 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-03 — IR round 5b: calc editor converted to a wide drawer (BI APP_VERSION 1.8.1) —
+  E2E 17/17.** The calculated-column editor is no longer a centred `.modal-box` — it is the shared
+  right-edge **`<edit-drawer>`** at **760px** (matches the platform's record-editor pattern; Save/
+  Cancel in the themed header). The component itself now `define`s `'shared/editDrawer'` (guarded
+  self-registration) so consuming apps don't need it in their boot list. Gotchas worth keeping:
+  inside `<edit-drawer>` body markup, **`$component` resolves to the DRAWER VM**, not the host —
+  in nested `foreach` blocks reference the host via `$parent`; and a positioning wrapper around a
+  `.form-control` breaks `.form-group`'s flex stretch (the control has no width rule) — the wrapped
+  textarea needs an explicit `width: 100%` (`.ir-calc-exprwrap .form-control`). Esc interplay
+  verified: autocomplete open → dropdown only (textarea handler stops propagation before the
+  drawer's own Esc listener); otherwise the drawer closes. Also: typing a column name now clears a
+  lingering "give the column a name" validation error. Shared change ⇒ all 10 apps bumped (BI 1.8.1).
 - **2026-07-03 — IR round 5: formula autocomplete + insert chips + label aliases (BI APP_VERSION
   1.8.0) — E2E 13/13.** Frontend-only (shared component; no DB change). Root cause of the user
   report ("`Budget_ytd` gives an error"): the engine was already case-insensitive on KEYS, but the

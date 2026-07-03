@@ -396,15 +396,16 @@ def main():
 
         c = case('BI-IRG-10', 'Grid Features', 'Calculated columns', 'Add a calculated column',
                  '1. Columns panel > + Calculated column\n2. Name TESTCALC, expr ROUND(1+1, 0)\n3. Save',
-                 'TESTCALC joins the grid with computed values')
+                 'The drawer opens; TESTCALC joins the grid with computed values')
         try:
             open_cols()
             page.get_by_role('button', name=re.compile('calculated column', re.I)).click()
-            page.wait_for_timeout(400)
-            page.locator('.ir-calc-box input').fill('TESTCALC')
+            page.wait_for_timeout(600)
+            drawer = page.locator('.ed-drawer.ed-show')
+            drawer.locator('input.form-control').first.fill('TESTCALC')
             page.locator('.ir-calc-expr').fill('ROUND(1 + 1, 0)')
             page.wait_for_timeout(700)
-            page.locator('.ir-calc-box').get_by_role('button', name=re.compile('^save$', re.I)).click()
+            drawer.get_by_role('button', name=re.compile('^save$', re.I)).click()
             page.wait_for_timeout(600)
             heads = ' '.join(page.locator('table.ir-table thead th').all_inner_texts()).lower()
             ok = 'testcalc' in heads
