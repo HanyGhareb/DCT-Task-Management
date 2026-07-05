@@ -75,6 +75,15 @@
     endDate:{en:'End date',ar:'تاريخ النهاية'}, optional:{en:'optional',ar:'اختياري'}, notes:{en:'Notes',ar:'ملاحظات'},
     editAssign:{en:'Edit assignment',ar:'تعديل ارتباط'}, newAssign:{en:'New assignment',ar:'ارتباط جديد'},
     saved:{en:'Saved',ar:'تم الحفظ'}, deleted:{en:'Deleted',ar:'تم الحذف'}, confirmDel:{en:'Delete this item?',ar:'حذف هذا العنصر؟'},
+    close:{en:'Close',ar:'إغلاق'}, descriptionL:{en:'Description',ar:'الوصف'},
+    saving:{en:'Saving…',ar:'جارٍ الحفظ…'},
+    addAssignment:{en:'+ Add',ar:'+ إضافة'},
+    noAssignments:{en:'No assignments yet — click + Add to map a segment to this value.',ar:'لا توجد تعيينات بعد — انقر + إضافة لربط بند بهذه القيمة.'},
+    segRequired:{en:'Every new row needs a segment value.',ar:'كل سطر جديد يحتاج قيمة بند.'},
+    startRequired:{en:'Every row needs a start date.',ar:'كل سطر يحتاج تاريخ بداية.'},
+    nothingToSave:{en:'No changes to save.',ar:'لا توجد تغييرات للحفظ.'},
+    clsRowHint:{en:'Click a row to view and manage its assignments.',ar:'انقر على أي سطر لعرض وإدارة تعييناته.'},
+    clsDrillCtx:{en:'Every segment mapped to this value. Edit dates or notes inline, + Add to map a new segment, then Save.',ar:'كل البنود المرتبطة بهذه القيمة. عدّل التواريخ أو الملاحظات مباشرة، + إضافة لربط بند جديد، ثم احفظ.'},
     segments:{en:'Segments',ar:'البنود'},
     segEntity:{en:'Entity',ar:'الجهة'}, segCostCenter:{en:'Cost Center',ar:'مركز التكلفة'},
     segAccount:{en:'Account',ar:'الحساب'}, segAppropriation:{en:'Appropriation',ar:'الاعتماد'},
@@ -336,6 +345,108 @@
       api('DELETE', '/class-values/' + r.classValueId)
         .then(function () { toast(self.t('deleted')); self.loadValues(); })
         .catch(function (e) { toast(e.message, true); });
+    };
+
+    /* ── classification assignments drawer (row click on the values table) ── */
+    self.clsDrawer = ko.observable(false);
+    self.clsDrillVal = ko.observable(null);
+    self.clsDrillTitle = ko.observable('');
+    self.clsDrillSub = ko.observable('');
+    self.clsRows = ko.observableArray([]);
+    self.clsSegOptions = ko.observableArray([]);
+    self.clsDrillLoading = ko.observable(false);
+    self.clsSaving = ko.observable(false);
+    self.clsDrawerErr = ko.observable('');
+
+    function clsRow(m) {
+      var r = {
+        mapId: m ? m.mapId : null,
+        isNew: ko.observable(!m),
+        segmentValue: ko.observable(m ? m.segmentValue : ''),
+        segmentDesc: ko.observable(m ? (m.segmentDesc || '') : ''),
+        startDate: ko.observable(m ? m.startDate : today()),
+        endDate: ko.observable(m ? (m.endDate || '') : ''),
+        notes: ko.observable(m ? (m.notes || '') : ''),
+        isCurrent: m ? m.isCurrent : 'Y',
+        dirty: ko.observable(false)
+      };
+      function mark() { r.dirty(true); }
+      r.startDate.subscribe(mark); r.endDate.subscribe(mark); r.notes.subscribe(mark);
+      r.segmentValue.subscribe(function (v) {
+        if (!r.isNew()) return;
+        var o = self.clsSegOptions().filter(function (x) { return x.segmentValue === v; })[0];
+        r.segmentDesc(o ? (o.description || '') : '');
+      });
+      return r;
+    }
+    function clsLoadRows(v) {
+      return api('GET', '/mappings' + qs({ type: self.clsType(), valueid: v.classValueId }))
+        .then(function (d) { self.clsRows((d.items || []).map(clsRow)); });
+    }
+    self.openClsDrill = function (v) {
+      self.clsDrillVal(v); self.clsDrawerErr(''); self.clsRows([]);
+      var d = dimByCode(self.clsType());
+      self.clsDrillSub(d ? self.dimName(d) : self.clsType());
+      var nm = (self.lang() === 'ar' && v.nameAr) ? v.nameAr : v.nameEn;
+      self.clsDrillTitle((nm || '') + ' · ' + (v.valueCode || ''));
+      self.clsDrawer(true); self.clsDrillLoading(true);
+      var pOpts = d
+        ? api('GET', '/segments/' + d.segmentKey + '/values' + qs({ limit: 500 }))
+            .then(function (r) { self.clsSegOptions(r.items || []); })
+            .catch(function () { self.clsSegOptions([]); })
+        : Promise.resolve();
+      Promise.all([pOpts, clsLoadRows(v)])
+        .then(function () { self.clsDrillLoading(false); })
+        .catch(function (e) { self.clsDrillLoading(false); self.clsDrawer(false); toast(e.message, true); });
+    };
+    self.clsAddRow = function () { self.clsRows.push(clsRow(null)); };
+    self.clsRemoveRow = function (r) {
+      if (r.isNew()) { self.clsRows.remove(r); return; }
+      if (!confirm(self.t('confirmDel'))) return;
+      api('DELETE', '/mappings/' + r.mapId).then(function () {
+        self.clsRows.remove(r); toast(self.t('deleted'));
+        self.loadValues(); self.refreshFilters();
+      }).catch(function (e) { toast(e.message, true); });
+    };
+    self.closeClsDrill = function () { self.clsDrawer(false); };
+    self.clsSaveAll = function () {
+      if (self.clsSaving()) return;
+      self.clsDrawerErr('');
+      var v = self.clsDrillVal(); if (!v) return;
+      var rows = self.clsRows(), i, r;
+      for (i = 0; i < rows.length; i++) {
+        r = rows[i];
+        if (r.isNew() && !r.segmentValue()) { self.clsDrawerErr(self.t('segRequired')); return; }
+        if ((r.isNew() || r.dirty()) && !r.startDate()) { self.clsDrawerErr(self.t('startRequired')); return; }
+      }
+      var chain = Promise.resolve(), changed = 0;
+      rows.forEach(function (row) {
+        if (row.isNew()) {
+          changed++;
+          chain = chain.then(function () {
+            return api('POST', '/mappings', {
+              type: self.clsType(), segmentValue: row.segmentValue(), classValueId: v.classValueId,
+              startDate: row.startDate(), endDate: row.endDate() || null, notes: row.notes()
+            }).then(function (res) { row.mapId = res.mapId; row.isNew(false); row.dirty(false); });
+          });
+        } else if (row.dirty()) {
+          changed++;
+          chain = chain.then(function () {
+            return api('PUT', '/mappings/' + row.mapId, {
+              classValueId: v.classValueId,
+              startDate: row.startDate(), endDate: row.endDate() || null, notes: row.notes()
+            }).then(function () { row.dirty(false); });
+          });
+        }
+      });
+      if (!changed) { toast(self.t('nothingToSave')); return; }
+      self.clsSaving(true);
+      chain.then(function () {
+        toast(self.t('saved'));
+        self.loadValues(); self.refreshFilters();
+        return clsLoadRows(v);
+      }).then(function () { self.clsSaving(false); })
+        .catch(function (e) { self.clsSaving(false); self.clsDrawerErr(e.message); });
     };
 
     /* ════ MAPPING ════ */

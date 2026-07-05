@@ -12,6 +12,7 @@ update on any view/method/endpoint change.
 - `loadValues()` — list values for the selected dimension.
 - `addValue()` / `editValue(r)` / `saveValue()` — create/update (code, EN/AR name, **3 alt names**, tag, parent, order, active).
 - `deleteValue(r)` — delete (blocked with a message if assignments reference it).
+- **Assignments drawer (row click)** — `openClsDrill(v)`: clicking a value row opens an extra-wide (1120px) right-edge drawer (`.dw-drawer.dw-xw`) listing **every segment mapped to that value** (`GET /mappings?type=&valueid=` — segment code, description, editable start/end dates + notes, CURRENT/PAST chip). Top-right buttons: **+ Add** (`clsAddRow` — new row with a datalist segment picker from `/segments/:key/values`, description auto-fills), **Close** (`closeClsDrill`), **Save** (`clsSaveAll` — POSTs new rows / PUTs dirty rows sequentially; overlap 400s surface in the drawer error bar; refreshes the values list + counts). Per-row ✕ = `clsRemoveRow` (DELETE for saved rows, confirm-guarded). Edit/Delete row buttons use `clickBubble:false` so they don't trigger the drill.
 
 ## Segment Mapping (`view()==='mapping'`) — date-tracked assignments
 - `mapType` — dimension; `segSearch` + `segOptions` + `mapSegment` — real-data segment-value picker.
@@ -64,7 +65,7 @@ update on any view/method/endpoint change.
 | GET/POST | `/class-values` | list (by `?type=`) / create classification value |
 | PUT/DELETE | `/class-values/:id` | update / delete value |
 | GET | `/segments/:key/values` | distinct segment values + description (picker; `?search=&limit=`) |
-| GET/POST | `/mappings` | list (`?type=&segment=`) / create assignment (overlap-validated) |
+| GET/POST | `/mappings` | list (`?type=&segment=&valueid=`; each row carries `segmentDesc` from the GL_SRC_* dimension) / create assignment (overlap-validated). GET upgraded by `09_gl_class_drill_ords.sql` (ADDITIVE, DEFINE_HANDLER-only; source synced into 05 so an 05 re-run already carries it) |
 | PUT/DELETE | `/mappings/:id` | update / delete assignment |
 | GET | `/combinations` | unified COA view, paginated, `?search=&sector=&chapter=&program=&asof=` |
 | GET | `/combinations/:ccId` | single combination |

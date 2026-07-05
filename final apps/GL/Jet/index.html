@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.9.0';</script>
+<script>window.APP_VERSION='1.10.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -108,7 +108,7 @@
           </tr></thead>
           <tbody>
             <!-- ko foreach: values -->
-            <tr data-bind="css:{child: !!$data.parentValueId}">
+            <tr data-bind="css:{child: !!$data.parentValueId}, click:function(){$root.openClsDrill($data)}, attr:{title:$root.t('clsRowHint')}" style="cursor:pointer">
               <td class="mono" data-bind="text:valueCode"></td>
               <td><b data-bind="text:nameEn"></b><span data-bind="visible:$data.nameAr, text:' · '+($data.nameAr||'')" style="color:var(--muted)"></span></td>
               <td style="color:var(--muted);font-size:12px" data-bind="text:[$data.altName1,$data.altName2,$data.altName3].filter(Boolean).join(' · ')||'—'"></td>
@@ -116,8 +116,8 @@
               <td style="text-align:center" class="mono" data-bind="text:mapCount"></td>
               <td><span class="chip" data-bind="css:isActive==='Y'?'ok':'muted', text:isActive==='Y'?$root.t('yes'):$root.t('no')"></span></td>
               <td><div class="row-act">
-                <button class="btn btn-sm btn-ghost" data-bind="click:function(){$root.editValue($data)}, text:$root.t('edit')"></button>
-                <button class="btn btn-sm btn-ghost btn-danger" data-bind="click:function(){$root.deleteValue($data)}, text:$root.t('del')"></button>
+                <button class="btn btn-sm btn-ghost" data-bind="click:function(){$root.editValue($data)}, clickBubble:false, text:$root.t('edit')"></button>
+                <button class="btn btn-sm btn-ghost btn-danger" data-bind="click:function(){$root.deleteValue($data)}, clickBubble:false, text:$root.t('del')"></button>
               </div></td>
             </tr>
             <!-- /ko -->
@@ -659,6 +659,69 @@
     </div>
     <div class="empty pad" data-bind="visible:drillRows().length===0, text:t('noLines')"></div>
     <!-- /ko -->
+  </div>
+</aside>
+
+<!-- ═══════════ CLASSIFICATION ASSIGNMENTS DRAWER (Classifications row → manage assignments) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:clsDrawer}, click:closeClsDrill" style="display:none"></div>
+<aside class="dw-drawer dw-xw" data-bind="css:{show:clsDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:clsDrillSub"></div>
+      <div class="dw-title" data-bind="text:clsDrillTitle"></div>
+    </div>
+    <div style="display:flex;gap:8px;flex:none">
+      <button class="btn btn-sm" data-bind="click:clsAddRow, enable:!clsDrillLoading(), text:t('addAssignment')"></button>
+      <button class="btn btn-sm" data-bind="click:closeClsDrill, text:t('close')"></button>
+      <button class="btn btn-sm solid" data-bind="click:clsSaveAll, enable:!clsSaving() && !clsDrillLoading(), text:clsSaving()?t('saving'):t('save')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="text:t('clsDrillCtx')"></div>
+    <div class="dw-err" data-bind="visible:clsDrawerErr(), text:clsDrawerErr"></div>
+    <div class="empty pad" data-bind="visible:clsDrillLoading()"><span class="spin"></span></div>
+    <!-- ko if: !clsDrillLoading() -->
+    <div class="tbl-wrap" data-bind="visible:clsRows().length>0">
+      <table class="tbl clsdw-tbl">
+        <thead><tr>
+          <th data-bind="text:t('segment')"></th>
+          <th data-bind="text:t('descriptionL')"></th>
+          <th data-bind="text:t('startDate')"></th>
+          <th data-bind="text:t('endDate')"></th>
+          <th data-bind="text:t('notes')"></th>
+          <th data-bind="text:t('active')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          <!-- ko foreach: clsRows -->
+          <tr>
+            <td class="mono">
+              <!-- ko if: isNew -->
+              <input class="inp" list="cls-seg-dl" data-bind="value:segmentValue, valueUpdate:'change'" placeholder="000000">
+              <!-- /ko -->
+              <!-- ko ifnot: isNew --><span data-bind="text:segmentValue"></span><!-- /ko -->
+            </td>
+            <td style="color:var(--muted)" data-bind="text:segmentDesc"></td>
+            <td><input type="date" class="inp" data-bind="value:startDate"></td>
+            <td><input type="date" class="inp" data-bind="value:endDate"></td>
+            <td><input class="inp" data-bind="value:notes"></td>
+            <td>
+              <!-- ko if: isNew --><span class="chip gold">NEW</span><!-- /ko -->
+              <!-- ko ifnot: isNew --><span class="chip" data-bind="css:isCurrent==='Y'?'ok':'muted', text:isCurrent==='Y'?$root.t('current'):$root.t('past')"></span><!-- /ko -->
+            </td>
+            <td><button class="btn btn-sm btn-ghost btn-danger" data-bind="click:function(){$root.clsRemoveRow($data)}, text:'✕'"></button></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <div class="empty pad" data-bind="visible:clsRows().length===0, text:t('noAssignments')"></div>
+    <!-- /ko -->
+    <datalist id="cls-seg-dl">
+      <!-- ko foreach: clsSegOptions -->
+      <option data-bind="attr:{value:segmentValue}, text:description"></option>
+      <!-- /ko -->
+    </datalist>
   </div>
 </aside>
 

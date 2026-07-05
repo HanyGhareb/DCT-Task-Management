@@ -22,6 +22,23 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-05 — Classifications assignments drawer (v1.10.0).** Clicking a row on the
+  Classifications values table opens an **extra-wide (1120px) right-edge drawer** with that value's
+  full assignment list — segment code + dimension description, editable start/end dates + notes,
+  CURRENT/PAST/NEW chips — with top-right **+ Add / Close / Save** buttons. Add = new row with a
+  datalist segment picker (`/segments/:key/values`, description auto-fills); Save = sequential
+  POST (new) / PUT (dirty) with overlap errors surfaced in a drawer error bar; per-row ✕ deletes.
+  - ORDS: `09_gl_class_drill_ords.sql` — **ADDITIVE, DEFINE_HANDLER-only** upgrade of
+    `GET /gl/mappings`: `?valueid=` filter + `segmentDesc` per row (GL_SRC_* dimension matched on
+    the normalized segment value; live coverage 214/216). Source is **synced into 05**, so a full
+    05 re-run already carries it — 09 exists to deploy without republishing the module. NB the
+    platform gotcha: `ORDS.DEFINE_TEMPLATE` on an existing template silently DROPS its other
+    handlers — 09 deliberately never calls it (POST /mappings verified surviving).
+  - Frontend v1.10.0: row click + `clickBubble:false` on the row Edit/Delete buttons; `.dw-xw`
+    wide-drawer modifier + `.dw-h .btn.solid` (inverted Save) + `.dw-err` + `.clsdw-tbl` styles.
+  - Verified: handler live-run (CULTURE → its 13 assignments with descriptions), POST handler
+    intact, `node --check` clean, Playwright mock-render PASS (open → +Add → desc autofill →
+    Save → Close; 0 console errors).
 - **2026-07-02 — Rebuild-views button (v1.9.0) + GL balances feed format fix (GL_BALANCES_CC).**
   Two things: a UI recovery button for structural ATD reloads, and an incident fix it immediately
   surfaced — the reloaded `ATD_GL_BALANCES` lost its dimension columns (`COST_CENTER`/`ACCOUNT_CODE`/

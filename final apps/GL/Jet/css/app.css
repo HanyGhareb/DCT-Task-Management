@@ -314,6 +314,20 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
 .dw-ctx{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:14px;padding-bottom:12px;
   border-bottom:1px dashed var(--line)}
 .dw-cap{font-size:12px;color:var(--muted);font-style:italic;margin-bottom:10px}
+.dw-err{font-size:12.5px;font-weight:600;color:#B3261E;background:#FBEBE9;border:1px solid #F3C1BB;
+  border-radius:8px;padding:8px 12px;margin-bottom:12px}
+
+/* classification assignments drawer (extra-wide, editable rows) */
+.dw-drawer.dw-xw{width:min(1120px,96vw)}
+.dw-h .btn.solid{background:#fff;color:var(--brand-dark);border-color:#fff;font-weight:700}
+.dw-h .btn.solid:hover{background:rgba(255,255,255,.88);color:var(--brand-dark)}
+.dw-h .btn.solid:disabled{opacity:.55}
+.clsdw-tbl .inp{width:100%;min-width:0;padding:6px 8px;font-size:13px}
+.clsdw-tbl td{vertical-align:middle}
+.clsdw-tbl th:nth-child(1){width:150px}
+.clsdw-tbl th:nth-child(3),.clsdw-tbl th:nth-child(4){width:150px}
+.clsdw-tbl th:nth-child(6){width:90px}
+.clsdw-tbl th:nth-child(7){width:46px}
 
 /* clickable KPI cards (Budget Utilization measure cards drill to their lines) */
 .kstat-click{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
