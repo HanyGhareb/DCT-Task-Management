@@ -205,8 +205,14 @@
       <div class="section-heading-row">
         <h3 class="section-heading">Required Documents</h3>
       </div>
+      <!-- ko if: aiEnabled -->
+      <div class="reg-ai-hint">
+        <span class="reg-ai-hint-ic">&#10024;</span>
+        <span class="reg-ai-hint-tx"><b>Let AI fill the form for you.</b> Upload the <b>Passport</b>, <b>Emirates ID</b> or <b>Bank Letter</b>, then click <b>&#10024; AI Extract</b> on that document &mdash; it reads the file and fills the fields for you to review.</span>
+      </div>
+      <!-- /ko -->
       <!-- ko if: !regId() -->
-      <p class="reg-doc-note">&#9888; Save the draft first, then attach the documents below.</p>
+      <p class="reg-doc-note">Attaching a document or photo <b>automatically starts a draft</b> &mdash; you can fill in the details afterwards.</p>
       <!-- /ko -->
 
       <!-- ko foreach: docChecklist -->
@@ -224,7 +230,7 @@
         </div>
         <div class="reg-doc-actions">
           <!-- ko if: uploaded -->
-          <!-- ko if: ['PASSPORT','EMIRATES_ID','BANK_LETTER'].indexOf(docTypeCode) >= 0 -->
+          <!-- ko if: $parent.aiEnabled() && ['PASSPORT','EMIRATES_ID','BANK_LETTER'].indexOf(docTypeCode) >= 0 -->
           <button class="btn btn-primary btn-sm" data-bind="click: function () { return $vm.runExtract($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()" title="Extract data with AI">&#10024; AI Extract</button>
           <!-- /ko -->
           <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.viewDoc($data); }">View</button>
@@ -256,13 +262,87 @@
         <li>Fill in the freelancer's personal details. Fields marked <b>*</b> are required.</li>
         <li>Provide a valid <b>email</b> &mdash; it becomes the freelancer's portal login on approval.</li>
         <li>Attach a <b>photo</b> and the <b>required documents</b> (passport always; Emirates ID for UAE nationals; residence visa for expats; bank letter).</li>
-        <li>Use <b>Save Draft</b> anytime to keep partial work &mdash; documents can be attached after the first save.</li>
+        <!-- ko if: aiEnabled -->
+        <li><b>&#10024; Save time with AI:</b> after uploading the Passport, Emirates ID or Bank Letter, click <b>AI Extract</b> on it to auto-fill the form &mdash; you review the values before saving.</li>
+        <!-- /ko -->
+        <li>Use <b>Save Draft</b> anytime to keep partial work &mdash; or just attach a document/photo and a draft starts automatically.</li>
         <li>When everything is complete, click <b>Submit for Approval</b>. The request routes to the <b>FL Manager</b>, then <b>FL Admin</b>.</li>
       </ol>
       <p class="reg-help-note">Documents accepted as clear photos (JPG/PNG) or small PDFs. Images are optimised automatically.</p>
     </div>
   </aside>
   </div><!-- /reg-layout -->
+
+  <!-- ── Approval History ────────────────────────────────────────────── -->
+  <!-- ko if: showApproval() -->
+  <div class="card" style="margin-top:16px">
+    <div class="section-heading-row">
+      <h3 class="section-heading">Approval History</h3>
+      <div class="region-actions">
+        <!-- ko if: canForceApprove() -->
+        <button class="btn btn-primary btn-sm" data-bind="click: forceApprove, enable: !forcing()"
+                title="FL Admin: approve now, overriding the remaining steps">
+          &#9889; <span data-bind="text: forcing() ? 'Approving…' : 'Force Approve'"></span>
+        </button>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <!-- ko if: approvalLoading() --><list-skeleton params="rows: 3"></list-skeleton><!-- /ko -->
+
+    <!-- ko ifnot: approvalLoading() -->
+    <!-- ko if: approvalMeta() -->
+    <p class="fl-legend">
+      Submitted by <b data-bind="text: approvalMeta().submittedByName"></b>
+      on <span data-bind="text: approvalMeta().submittedAt"></span> &middot;
+      overall status
+      <span data-bind="text: approvalMeta().overallStatus, attr: { class: $vm.stepClass(approvalMeta().overallStatus) }"></span><!-- ko if: approvalMeta().completedAt --> &middot; completed <span data-bind="text: approvalMeta().completedAt"></span><!-- /ko -->
+    </p>
+
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th style="width:34px">#</th>
+            <th>Step</th>
+            <th>Approver</th>
+            <th>Status</th>
+            <th>Received On</th>
+            <th>Acted On</th>
+            <th>By</th>
+            <th>Comments</th>
+          </tr>
+        </thead>
+        <tbody>
+          <!-- ko foreach: approvalSteps -->
+          <tr data-bind="style: { background: isCurrent === 'Y' ? 'var(--brand-soft, #eef6f6)' : '' }">
+            <td data-bind="text: seq"></td>
+            <td data-bind="text: stepName"></td>
+            <td data-bind="text: approver"></td>
+            <td>
+              <span data-bind="text: status, attr: { class: $vm.stepClass(status) }"></span>
+              <!-- ko if: isCurrent === 'Y' --><span class="badge badge--warn" style="margin-inline-start:4px">pending here</span><!-- /ko -->
+            </td>
+            <td data-bind="text: $data.receivedAt || '—'"></td>
+            <td data-bind="text: $data.actionedAt || '—'"></td>
+            <td data-bind="text: $data.actionedBy || '—'"></td>
+            <td style="white-space:normal;max-width:280px" data-bind="text: $data.comments || '—'"></td>
+          </tr>
+          <!-- /ko -->
+          <!-- ko if: approvalSteps().length === 0 -->
+          <tr><td colspan="8" class="empty-state">No approval steps recorded.</td></tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: approvalMeta() -->
+    <p class="reg-doc-note">This registration has not been submitted for approval yet.</p>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
   <!-- /ko -->
 
   <!-- AI extraction review modal -->
@@ -276,7 +356,15 @@
         </div>
       </div>
       <div class="modal-body">
-        <!-- ko if: aiBusy() --><list-skeleton params="rows: 4"></list-skeleton><!-- /ko -->
+        <!-- ko if: aiBusy() -->
+        <div class="ai-working">
+          <div class="ai-spinner" aria-hidden="true"></div>
+          <div class="ai-working-tx">
+            <b>&#10024; Reading your document with AI&hellip;</b>
+            <span>Extracting the details from <span data-bind="text: aiDocType()"></span>. This usually takes a few seconds &mdash; please wait.</span>
+          </div>
+        </div>
+        <!-- /ko -->
         <!-- ko ifnot: aiBusy() -->
         <!-- ko if: aiConfidence() !== null -->
         <p class="fl-legend">Overall confidence: <b data-bind="text: aiConfidence() + '%'"></b>. Review each value, untick anything wrong, then Apply.</p>

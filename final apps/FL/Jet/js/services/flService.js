@@ -52,6 +52,14 @@ define(['services/api'], function (api) {
     overrideRegistrationDuplicate: function (regId) {
       return api.post('/registrations/' + regId + '/duplicate-override', {});
     },
+    /* Approval trail for a submitted registration (route steps + actions + pending-with) */
+    getApprovalHistory: function (regId) {
+      return api.get('/registrations/' + regId + '/approval-history');
+    },
+    /* FL_ADMIN: drive the approval to completion, recorded as a forced action */
+    forceApproveRegistration: function (regId, comments) {
+      return api.post('/registrations/' + regId + '/force-approve', { comments: comments });
+    },
     /* Resolve a requestor / line-manager email to a DCT user → {found,userId,name,email} */
     lookupUser: function (email) {
       return api.get('/users/lookup?email=' + encodeURIComponent(email), { silent: true });

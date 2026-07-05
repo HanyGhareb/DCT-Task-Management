@@ -260,7 +260,7 @@ DECLARE
   -- read every JSON field into a local first, then use the locals in the DML.
   l_fn  VARCHAR2(200); l_ln   VARCHAR2(200); l_fa  VARCHAR2(200); l_la   VARCHAR2(200);
   l_dob VARCHAR2(40);  l_nat  VARCHAR2(40);  l_nid VARCHAR2(100); l_pass VARCHAR2(100);
-  l_mob VARCHAR2(60);  l_spec VARCHAR2(400);
+  l_mob VARCHAR2(60);  l_spec VARCHAR2(400); l_notes VARCHAR2(4000);
   l_bn  VARCHAR2(200); l_iban VARCHAR2(60);  l_ban VARCHAR2(200); l_bacc VARCHAR2(60);
   l_swift VARCHAR2(40); l_curr VARCHAR2(10);
   l_re  VARCHAR2(200); l_rn   VARCHAR2(200); l_lme VARCHAR2(200); l_lmn  VARCHAR2(200);
@@ -273,10 +273,14 @@ BEGIN
   l_dob  := g('dateOfBirth');  l_nat  := g('nationalityCode');
   l_nid  := g('nationalId');   l_pass := g('passportNumber');
   l_mob  := g('mobile');       l_spec := g('specialization');
+  l_notes := g('notes');
   l_bn   := g('bankName');     l_iban := g('bankIban');
   l_ban  := g('bankAccountName'); l_bacc := g('bankAccountNumber');
   l_swift := g('bankSwift');   l_curr := NVL(g('bankCurrencyCode'),'AED');
-  l_re   := g('requestorEmail');    l_rn  := g('requestorName');
+  -- For self-registration the requestor is the applicant; never let a missing
+  -- value wipe what the /draft endpoint seeded.
+  l_re   := NVL(g('requestorEmail'), l_email);
+  l_rn   := NVL(g('requestorName'), TRIM(l_fn||' '||l_ln));
   l_lme  := g('lineManagerEmail');  l_lmn := g('lineManagerName');
   IF l_fn IS NULL OR l_ln IS NULL OR l_dob IS NULL OR l_nat IS NULL THEN
     dct_rest.err(400,'First name, last name, date of birth and nationality are required.'); RETURN;
@@ -288,7 +292,7 @@ BEGIN
     INSERT INTO dct_fl_registrations (
       registration_number, first_name_en, last_name_en, first_name_ar, last_name_ar,
       date_of_birth, nationality_code, national_id, passport_number, email, mobile,
-      specialization, bank_name, bank_iban, bank_account_name, bank_account_number,
+      specialization, notes, bank_name, bank_iban, bank_account_name, bank_account_number,
       bank_swift, bank_currency_code, requestor_email, requestor_name,
       line_manager_email, line_manager_name, email_verified, submitted_by,
       submitted_by_user_id, status, created_by)
@@ -296,7 +300,7 @@ BEGIN
       'FL-REG-' || TO_CHAR(seq_fl_reg_number.NEXTVAL),
       l_fn, l_ln, l_fa, l_la,
       TO_DATE(l_dob,'YYYY-MM-DD'), l_nat, l_nid,
-      l_pass, l_email, l_mob, l_spec,
+      l_pass, l_email, l_mob, l_spec, l_notes,
       l_bn, l_iban, l_ban, l_bacc,
       l_swift, l_curr,
       l_re, l_rn, l_lme, l_lmn,
@@ -310,7 +314,7 @@ BEGIN
       date_of_birth=TO_DATE(l_dob,'YYYY-MM-DD'),
       nationality_code=l_nat, national_id=l_nid,
       passport_number=l_pass, mobile=l_mob,
-      specialization=l_spec, bank_name=l_bn,
+      specialization=l_spec, notes=l_notes, bank_name=l_bn,
       bank_iban=l_iban, bank_account_name=l_ban,
       bank_account_number=l_bacc, bank_swift=l_swift,
       bank_currency_code=l_curr,
@@ -457,10 +461,16 @@ BEGIN
   APEX_JSON.open_object; APEX_JSON.write('ok',TRUE); APEX_JSON.write('registrationId',l_rid);
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN
-  dct_rest.err(CASE SQLCODE WHEN -20001 THEN 400 WHEN -20130 THEN 400 WHEN -20131 THEN 400
-    WHEN -20132 THEN 400 WHEN -20133 THEN 400 WHEN -20134 THEN 400 WHEN -20135 THEN 400
-    WHEN -20136 THEN 400 WHEN -20137 THEN 400 WHEN -20138 THEN 400 WHEN -20139 THEN 400
-    WHEN -20140 THEN 400 WHEN -20141 THEN 400 WHEN -20142 THEN 400 ELSE 500 END, SQLERRM);
+  -- -20001 = duplicate block. A public applicant can't do an admin override, so
+  -- give them self-service guidance to go back and reset/correct their details.
+  IF SQLCODE = -20001 THEN
+    dct_rest.err(400, 'These details match a registration that already exists (same Emirates ID, passport, email or IBAN). Please go back and reset or correct your details, then try again. If you have already registered before, you do not need to register again - please contact the Finance team for help.');
+  ELSE
+    dct_rest.err(CASE SQLCODE WHEN -20130 THEN 400 WHEN -20131 THEN 400
+      WHEN -20132 THEN 400 WHEN -20133 THEN 400 WHEN -20134 THEN 400 WHEN -20135 THEN 400
+      WHEN -20136 THEN 400 WHEN -20137 THEN 400 WHEN -20138 THEN 400 WHEN -20139 THEN 400
+      WHEN -20140 THEN 400 WHEN -20141 THEN 400 WHEN -20142 THEN 400 ELSE 500 END, SQLERRM);
+  END IF;
 END;
 ]');
 

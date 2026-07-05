@@ -14,6 +14,12 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
     self.errorMsg   = ko.observable('');
     self.audit      = ko.observable(null);
 
+    // Approval history — the route steps + actions, loaded once submitted.
+    self.approvalMeta    = ko.observable(null);
+    self.approvalSteps   = ko.observableArray([]);
+    self.approvalLoading = ko.observable(false);
+    self.forcing         = ko.observable(false);
+
     self.registrationNumber = ko.observable('');
     self.status        = ko.observable('DRAFT');
     self.firstNameEn   = ko.observable('');
@@ -63,6 +69,7 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
     self.aiWarnings  = ko.observableArray([]);
     self.aiFields    = ko.observableArray([]);   // [{key,label,value,target}]
     self._aiRaw      = null;
+    self.aiEnabled   = ko.observable(false);      // AI_FEATURES_ENABLED (module setting)
 
     // Required documents
     self.docRequirements = ko.observableArray([]);   // from /doc-requirements?context=REGISTRATION
@@ -82,11 +89,15 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
       var hasEid = !!(self.nationalId() || '').trim();
       var uploaded = self.regDocs();
       var ar = self.lang() === 'ar';
-      return self.docRequirements().filter(function (req) {
-        if (req.docTypeCode === 'EMIRATES_ID')    return nat === 'AE' || hasEid;
-        if (req.docTypeCode === 'RESIDENCE_VISA')  return !!nat && nat !== 'AE';
-        return true;
-      }).map(function (req) {
+      // Show ALL configured documents up front (so the applicant sees the full
+      // set immediately). Whether a nationality-specific document is REQUIRED to
+      // submit mirrors the server rule in submit_registration: Emirates ID is
+      // required for UAE nationals (or anyone who entered an EID); the Residence
+      // Visa is required for expats (non-UAE). Others follow their config flag.
+      return self.docRequirements().map(function (req) {
+        var mandatory = req.isMandatory === 'Y';
+        if (req.docTypeCode === 'EMIRATES_ID')    mandatory = mandatory && (nat === 'AE' || hasEid);
+        if (req.docTypeCode === 'RESIDENCE_VISA')  mandatory = mandatory && (!!nat && nat !== 'AE');
         var up = null;
         for (var i = 0; i < uploaded.length; i++) {
           if (uploaded[i].docTypeId === req.docTypeId && uploaded[i].hasFile === 'Y') { up = uploaded[i]; break; }
@@ -95,7 +106,7 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
           docTypeId:   req.docTypeId,
           docTypeCode: req.docTypeCode,
           name:        ar ? (req.docTypeNameAr || req.docTypeName) : req.docTypeName,
-          mandatory:   req.isMandatory === 'Y',
+          mandatory:   mandatory,
           uploaded:    !!up,
           docId:       up ? up.documentId : null,
           fileName:    up ? up.documentName : ''
@@ -158,8 +169,59 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
         initGuard();
         self.loadRegDocs();
         self.loadDuplicates();
+        self.loadApprovalHistory();
       }).catch(function () { self.loading(false); initGuard(); });
     }
+
+    // ---- Approval history + Force Approval --------------------------------
+    self.loadApprovalHistory = function () {
+      if (!self.regId()) { self.approvalSteps([]); self.approvalMeta(null); return; }
+      self.approvalLoading(true);
+      flService.getApprovalHistory(self.regId()).then(function (r) {
+        if (r && r.hasInstance) { self.approvalMeta(r); self.approvalSteps(r.steps || []); }
+        else { self.approvalMeta(null); self.approvalSteps([]); }
+      }).catch(function () {
+        self.approvalMeta(null); self.approvalSteps([]);
+      }).then(function () { self.approvalLoading(false); });
+    };
+
+    // Show the region once the request has entered the workflow.
+    self.showApproval = ko.computed(function () {
+      return !!self.approvalMeta()
+             || ['SUBMITTED', 'APPROVED', 'REJECTED', 'RETURNED'].indexOf(self.status()) >= 0;
+    });
+
+    // FL Admin may force-approve only while the request is still SUBMITTED.
+    self.canForceApprove = ko.computed(function () {
+      return self.isAdmin() && self.status() === 'SUBMITTED';
+    });
+
+    self.stepClass = function (st) {
+      return { APPROVED: 'badge badge--success', DONE: 'badge badge--success',
+               PENDING: 'badge badge--warn', WAITING: 'badge',
+               REJECTED: 'badge badge--danger', RETURNED: 'badge badge--danger'
+             }[st] || 'badge';
+    };
+
+    self.forceApprove = function () {
+      if (!self.regId() || self.forcing()) return;
+      var note = window.prompt(
+        'Force-approve this registration?\n\nThis overrides the remaining approval steps and '
+        + 'creates the freelancer. It is recorded in the approval history as a forced approval.\n\n'
+        + 'Optional note:', '');
+      if (note === null) return;   // cancelled
+      self.forcing(true);
+      self.errorMsg('');
+      flService.forceApproveRegistration(self.regId(), note).then(function (r) {
+        self.forcing(false);
+        self.status((r && r.overallStatus) || 'APPROVED');
+        flash('Force-approved.');
+        load();                    // refresh the record (status, audit)
+      }).catch(function (err) {
+        self.forcing(false);
+        self.errorMsg((err && err.message) || 'Force approval failed');
+      });
+    };
 
     self.loadRegDocs = function () {
       if (!self.regId()) { self.regDocs([]); return; }
@@ -178,6 +240,12 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
 
     flService.getDocRequirements('REGISTRATION').then(function (reqs) {
       self.docRequirements(reqs);
+    }).catch(function () {});
+
+    // Is AI document extraction switched on for this module? Gates the AI-fill UI.
+    flService.getSettings().then(function (items) {
+      var ai = (items || []).filter(function (i) { return i.key === 'AI_FEATURES_ENABLED'; })[0];
+      self.aiEnabled(!!ai && /^(Y|TRUE|1|ON)$/i.test(String(ai.value || '')));
     }).catch(function () {});
 
     function payload() {
@@ -397,6 +465,7 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
       }).then(function () {
         self.status('SUBMITTED');
         flash('Submitted for approval.');
+        self.loadApprovalHistory();
       }).catch(function (err) {
         if (err && err.message) self.errorMsg(err.message);
       });
@@ -410,10 +479,15 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
     self.photoSelected = function (vm, event) {
       var file = event.target.files && event.target.files[0];
       event.target.value = '';
-      if (!file || !self.regId()) {
-        if (!self.regId()) self.errorMsg('Save the draft first, then attach the photo.');
-        return;
-      }
+      if (!file) return;
+      if (self.regId()) { processPhoto(file); return; }
+      // No draft yet — auto-save a blank draft first, then upload the photo.
+      var s = self.saveDraft();
+      if (!s) { self.errorMsg('Please correct the highlighted fields, then add the photo again.'); return; }
+      s.then(function () { processPhoto(file); }).catch(function () {});
+    };
+
+    function processPhoto(file) {
       var url = URL.createObjectURL(file);
       var img = new Image();
       img.onload = function () {
@@ -443,9 +517,16 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
     // uploads its raw bytes: createDocument (metadata) → putBinary (the file).
     self.pickDocFile = function (item) {
       self.docError('');
-      if (!self.regId()) { self.docError('Save the draft first, then attach documents.'); return; }
+      // Open the native picker FIRST (it must run inside the click gesture), then —
+      // if no draft exists yet — auto-save a blank draft (draft validation is
+      // format-only) so documents can be attached (and AI-extracted) before the
+      // details are typed. Mirrors the public Portal's documents-first flow.
       docUpload.choose({ accept: 'image/*,application/pdf', maxMb: 10 }).then(function (file) {
-        if (file) uploadDocBlob(item, file);
+        if (!file) return;
+        if (self.regId()) { uploadDocBlob(item, file); return; }
+        var s = self.saveDraft();
+        if (!s) { self.docError('Please correct the highlighted fields, then attach the document again.'); return; }
+        s.then(function () { uploadDocBlob(item, file); }).catch(function () {});
       });
     };
 
@@ -488,6 +569,43 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
     };
 
     // ---- AI extraction (Passport / Emirates ID / Bank Letter) ------------
+    // A passport reports nationality as an ISO-3 code (EGY, ARE) or a name
+    // (Egyptian, Egypt); the dropdown uses ISO-2 codes (EG, AE) with adjective
+    // names (Egyptian). Map ISO-3 -> ISO-2 for the common nationalities, then
+    // fall back to exact-code / exact-name / prefix matching against the list.
+    var ISO3_TO_ISO2 = {
+      ARE:'AE', EGY:'EG', SAU:'SA', KWT:'KW', QAT:'QA', BHR:'BH', OMN:'OM',
+      IND:'IN', PAK:'PK', BGD:'BD', LKA:'LK', NPL:'NP', PHL:'PH', IDN:'ID',
+      LBN:'LB', SYR:'SY', JOR:'JO', PSE:'PS', IRQ:'IQ', YEM:'YE', SDN:'SD',
+      MAR:'MA', DZA:'DZ', TUN:'TN', LBY:'LY', SOM:'SO', ETH:'ET', KEN:'KE',
+      NGA:'NG', GHA:'GH', ZAF:'ZA', TUR:'TR', IRN:'IR', AFG:'AF',
+      GBR:'GB', USA:'US', CAN:'CA', AUS:'AU', FRA:'FR', DEU:'DE', ITA:'IT',
+      ESP:'ES', NLD:'NL', RUS:'RU', UKR:'UA', CHN:'CN', JPN:'JP', KOR:'KR',
+      THA:'TH', MYS:'MY', SGP:'SG', VNM:'VN', BRA:'BR', ARG:'AR'
+    };
+    function resolveNat(val) {
+      if (!val) return '';
+      var raw = String(val).trim();
+      var v = raw.toLowerCase();
+      var rows = self.nationalities();
+      var i, n, alias = ISO3_TO_ISO2[raw.toUpperCase()];
+      if (alias) {
+        for (i = 0; i < rows.length; i++) { if (String(rows[i].code).toUpperCase() === alias) return rows[i].code; }
+      }
+      for (i = 0; i < rows.length; i++) { if (String(rows[i].code).toLowerCase() === v) return rows[i].code; }
+      for (i = 0; i < rows.length; i++) { if (String(rows[i].name).toLowerCase() === v) return rows[i].code; }
+      for (i = 0; i < rows.length; i++) {
+        n = String(rows[i].name).toLowerCase();
+        if (n && (n.indexOf(v) === 0 || v.indexOf(n) === 0)) return rows[i].code;
+      }
+      return '';
+    }
+    function natName(code) {
+      var rows = self.nationalities();
+      for (var i = 0; i < rows.length; i++) { if (rows[i].code === code) return rows[i].name; }
+      return '';
+    }
+
     // Maps the model's JSON keys to form observables, per document type.
     var AI_MAP = {
       PASSPORT: [
@@ -495,7 +613,7 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
         { key: 'date_of_birth',   label: 'Date of Birth', set: self.dateOfBirth },
         { key: 'surname',         label: 'Surname',      set: self.lastNameEn },
         { key: 'given_names',     label: 'Given Names',  set: self.firstNameEn },
-        { key: 'nationality',     label: 'Nationality',  set: null }
+        { key: 'nationality',     label: 'Nationality',  set: self.nationalityCode, resolve: true }
       ],
       EMIRATES_ID: [
         { key: 'emirates_id',  label: 'Emirates ID',  set: self.nationalId },
@@ -529,7 +647,12 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
         map.forEach(function (m) {
           var v = self._aiRaw[m.key];
           if (v !== undefined && v !== null && String(v) !== '') {
-            rows.push({ key: m.key, label: m.label, value: String(v), set: m.set, apply: ko.observable(!!m.set) });
+            var display = String(v);
+            // Nationality: show the resolved dropdown name (e.g. "EGY" -> "Egyptian")
+            // so the user sees exactly what will be applied; keep raw if unmatched.
+            if (m.resolve) { var c = resolveNat(v); if (c) display = natName(c) || display; }
+            rows.push({ key: m.key, label: m.label, value: display, set: m.set,
+                        resolve: !!m.resolve, apply: ko.observable(!!m.set) });
           }
         });
         self.aiFields(rows);
@@ -547,7 +670,13 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
             // normalise to YYYY-MM-DD if the model returned a parseable date
             var d = new Date(v); if (!isNaN(d.getTime())) v = d.toISOString().slice(0, 10);
           }
-          f.set(v);
+          if (f.resolve) {
+            // Nationality → map the value to a dropdown code; only set on a match.
+            var code = resolveNat(v);
+            if (code) f.set(code);
+          } else {
+            f.set(v);
+          }
         }
       });
       self.aiOpen(false);

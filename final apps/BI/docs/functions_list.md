@@ -87,6 +87,7 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 
 ## Settings (`settings`) — runtime / SMTP config editor
 - `load` / `saveAll` / `toggle(row)` — edit `DCT_RPT_CONFIG` (EMAIL_ENABLED, SMTP_*, PDF_RENDERER, retention…).
+- `sendTest` — **Send Test Email** card: posts to `config/test-email` (via `rptService.sendTestEmail(to)`) and shows the result (`testTo`/`testing`/`testMsg`/`testOk`); recipient pre-filled from `SMTP_FROM`.
   Secrets (SMTP password) live in the runner's env, not here.
 
 ## Login (`login`)
@@ -115,6 +116,7 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | GET/POST | `recipients/` | list / create |
 | PUT/DELETE | `recipients/:id` | update / delete |
 | GET/PUT | `config` | runtime/SMTP config editor |
+| POST | `config/test-email` | send a test email via APEX_MAIL (SYS_ADMIN); `reporting/db/11` |
 | GET | `ir/catalog` | enabled definitions for the viewer (+ spec-driven `params[]` labels/hints/required/hasLov + MULTI sections/required + lovParams) — BI_USER or SYS_ADMIN |
 | GET | `ir/reports/:code/lov?param=` | dropdown values for one run parameter (the param's `lov_sql` in `PARAM_SPEC_JSON`, bind-free query, cap 500) — BI_USER or SYS_ADMIN |
 | POST | `ir/reports/:code/data` | one-shot capped data fetch (body `{section?, params?}`) via `DCT_RPT_IR_PKG` — BI_USER or SYS_ADMIN |

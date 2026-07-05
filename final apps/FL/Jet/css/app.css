@@ -85,20 +85,45 @@
 
 /* required-document checklist */
 .reg-doc-note { font-size: 12px; color: var(--text-3); margin: 6px 0 10px; }
-.reg-doc-row { display: flex; align-items: center; justify-content: space-between;
-  gap: 10px; padding: 10px 0; border-block-end: 1px solid var(--border); }
+/* Row stacks: document info on top, action buttons on their own wrapping line
+   below — the side panel is too narrow to hold the name + 4 buttons on one row. */
+.reg-doc-row { display: flex; flex-direction: column; gap: 9px;
+  padding: 12px 0; border-block-end: 1px solid var(--border); }
 .reg-doc-row:last-child { border-block-end: none; }
 .reg-doc-info { display: flex; align-items: flex-start; gap: 10px; min-width: 0; }
 .reg-doc-icon { display: inline-flex; align-items: center; justify-content: center;
   width: 22px; height: 22px; border-radius: 50%; flex: 0 0 auto;
   background: var(--surface-2); color: var(--text-3); font-size: 13px; font-weight: 700; }
 .reg-doc-icon--ok { background: var(--green-soft); color: var(--green); }
-.reg-doc-name { font-size: 13px; font-weight: 600; color: var(--text); }
+.reg-doc-name { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.35; }
 .reg-doc-req { color: var(--red); margin-inline-start: 2px; }
-.reg-doc-file { font-size: 11px; color: var(--text-3); max-width: 180px;
+.reg-doc-file { font-size: 11px; color: var(--text-3); max-width: 100%;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .reg-doc-file--missing { color: var(--amber, #B45309); }
-.reg-doc-actions { display: flex; gap: 4px; flex: 0 0 auto; }
+/* actions align under the document name (past the 22px icon + 10px gap) and wrap */
+.reg-doc-actions { display: flex; gap: 6px; flex-wrap: wrap; padding-inline-start: 32px; }
+.reg-doc-row--ok { background: var(--green-soft, rgba(34,197,94,.06));
+  margin-inline: -12px; padding-inline: 12px; border-radius: 10px; }
+
+/* AI-fill callout at the top of the Required Documents card */
+.reg-ai-hint { display: flex; gap: 9px; align-items: flex-start;
+  background: var(--brand-soft, rgba(124,77,190,.08));
+  border: 1px solid var(--brand-soft, rgba(124,77,190,.25));
+  border-radius: 10px; padding: 10px 12px; margin: 2px 0 12px; }
+.reg-ai-hint-ic { font-size: 15px; line-height: 1.3; flex: 0 0 auto; }
+.reg-ai-hint-tx { font-size: 11.5px; color: var(--text-2); line-height: 1.45; }
+
+/* AI extraction "working" state — a spinner so the user knows something runs */
+.ai-working { display: flex; align-items: center; gap: 16px; padding: 22px 4px; }
+.ai-spinner { width: 40px; height: 40px; flex: 0 0 auto; border-radius: 50%;
+  border: 4px solid var(--brand-soft, rgba(124,77,190,.20));
+  border-top-color: var(--brand, #7C4DBE);
+  animation: ai-spin 0.7s linear infinite; }
+@keyframes ai-spin { to { transform: rotate(360deg); } }
+.ai-working-tx { display: flex; flex-direction: column; gap: 4px; }
+.ai-working-tx b { font-size: 14px; color: var(--text); }
+.ai-working-tx span { font-size: 12px; color: var(--text-3); line-height: 1.45; }
+@media (prefers-reduced-motion: reduce) { .ai-spinner { animation-duration: 2s; } }
 
 /* how-to-complete help panel */
 .reg-help-steps { margin: 4px 0 0; padding-inline-start: 18px; }

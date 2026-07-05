@@ -8,7 +8,9 @@
 > photo with no way to upload → **US-09 ✅ shipped** (FL JET 4.7.0, Portal 1.10.0; E2E PASS).
 > (2) Required-vs-optional documents (and photo) configurable in settings → **US-10 ✅ shipped**
 > (endpoint verified live). (3) Uploaded documents are saved → **US-11 ✅ verified in PROD** +
-> visible "saved" indicators added.
+> visible "saved" indicators added. (4) Docs step was missing an upload control for a configured
+> required doc (UAE Residence Visa) → **US-12 ✅ shipped** (Portal 1.11.0; docs step now data-driven;
+> E2E PASS).
 
 ---
 
@@ -136,6 +138,21 @@
   model, add a management endpoint + UI. `submit_registration`'s document check reads `is_mandatory`
   (respecting the AE / non-AE conditional applicability already in code).
 
+### US-12 — Docs step shows an upload control for every configured document *(new — fixes a blocking gap)*
+*As either applicant, I get an upload control for each document the admin configured — required or optional.*
+- **Given** the admin has configured the REGISTRATION document set (Passport / Emirates ID / **Residence
+  Visa** / Bank Letter, each Required or Optional) **When** I reach the Portal documents step **Then** I
+  see one upload card **per configured document** (driven by `GET reg/public/:token` → `docRequirements`),
+  each with its Required/Optional badge — not a hardcoded 3-doc list.
+- **Given** a document is set **Optional** **Then** its card still appears (badge Optional) and submit is
+  not blocked on it.
+- **Given** a non-AI-extractable document (e.g. Residence Visa) **Then** no "Read with AI" button /
+  auto-extract runs for it (AI only for Passport / Emirates ID / Bank Letter); it is upload-only.
+- **Bug reference:** the wizard hardcoded only Passport / Emirates ID / Bank Letter, so a non-AE
+  applicant could never upload the required **UAE Residence Visa** → submit always failed with
+  `-20142 Required document(s) missing: UAE Residence Visa`. Also the raw `ORA-#####:` prefix leaked
+  into the user-facing error.
+
 ### US-11 — Uploaded documents are reliably persisted *(new — verification)*
 *As the platform, every document a user uploads is stored and retrievable.*
 - **Given** any upload (staff or Portal) **Then** the bytes land in `DCT_DOCUMENTS.file_blob` with a
@@ -168,6 +185,7 @@
 | **D15** | **Doc-requirements management** — `PUT doc-requirements/:id` (edit `is_mandatory`); submit check already reads `is_mandatory`; GET exposes `photoRequired`/`docRequirements` | `FL/db/15` + `07_fl_pkg_workflow.sql` (already data-driven) | ✅ Done (verified live) |
 | **D16** | **Settings UI** — *Registration Documents* section (Required/Optional per doc + Photo required) | `FL/Jet/views/moduleSettings.html` + `viewModels/moduleSettings.js` + `services/flService.js` (FL JET 4.7.0) | ✅ Done |
 | **D17** | **Portal "saved ✓"** indicator per uploaded doc + review summary | `FL/Portal/*` | ✅ Done (E2E PASS) |
+| **D18** | **Dynamic docs step** — build `rgDocs` from `GET :token` `docRequirements` (one card per configured doc incl. Residence Visa); AI only for AI-capable codes; localized card names; strip `ORA-#####:` from errors | `FL/Portal/index.html` · `js/portal.js` (Portal 1.11.0) | ✅ Done (US-12, E2E PASS) |
 
 ---
 
@@ -198,6 +216,8 @@
 | **T19** | Photo oversize → **413** (`MAX_UPLOAD_MB` guard in handler) | Boundary | ✅ (same guard as doc upload, verified pattern) |
 | **T20** | `PUT doc-requirements/:id`: valid→200, invalid value→400, no-auth→401; DB flips | Happy+Error | ✅ **verified live (minted admin session)** (US-10) |
 | **T21** | Uploaded docs persist: `docs == docs_with_bytes` | Happy | ✅ **verified in PROD 2026-07-05** (US-11) |
+| **T22** | Docs step renders 4 cards incl. **UAE Residence Visa**; visa has no AI button | Happy | ✅ **Playwright E2E PASS** (US-12) |
+| **T23** | Non-AE applicant with all 4 docs + photo → submit succeeds (no `-20142`) | Happy | 🟡 to E2E (visa card now uploadable) |
 
 Legend: ✅ passed · 🟡 pending live gate / SMTP · ⬜ not run.
 
@@ -218,6 +238,8 @@ Legend: ✅ passed · 🟡 pending live gate / SMTP · ⬜ not run.
 | P5 | AI reliability wave (confidence-JSON fix, per-model picker, fallback) | ✅ 2026-07-03 (`db/12,20,22`) |
 | P6 | Deployment-notes + functions_list + FL memory updated | ✅ |
 | P7 | **US-09/10/11 review fixes** — `db/15` re-run (photo PUT + doc-req PUT + GET extras), FL JET **4.7.0** + Portal **1.10.0**, settings UI, saved indicators | ✅ 2026-07-05 (E2E + endpoint verified) |
+| P8 | **US-12 dynamic docs step** — Portal **1.11.0** (rgDocs from `docRequirements`, Residence Visa card, AI-capable guard, ORA-prefix strip). **Frontend only** — no DB/ORDS change | ✅ 2026-07-05 (E2E PASS) |
+| P9 | **UX polish** — Portal **1.12.0**: per-document **gold header bands** + **mobile required** on Details (5 required-field asterisks). Frontend only | ✅ 2026-07-05 (E2E PASS) |
 
 **⚠️ Go-live gate checklist (must do before production cut-over):**
 - [ ] Configure instance **SMTP** for real OTP email.

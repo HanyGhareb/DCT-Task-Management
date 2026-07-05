@@ -5,3 +5,4 @@ runner/__pycache__/
 runner/**/__pycache__/
 rpt-run.log
 .rpt_runner.lock
+runner/.wallet/

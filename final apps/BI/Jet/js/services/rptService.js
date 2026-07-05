@@ -64,6 +64,8 @@ define(['services/api'], function (api) {
     /* runtime / SMTP config */
     getConfig: function ()      { return api.get('/config'); },
     putConfig: function (items) { return api.put('/config', { items: items }); },
+    /* send a test email via APEX_MAIL to confirm outbound email works */
+    sendTestEmail: function (to) { return api.post('/config/test-email', { to: to }); },
 
     /* interactive report (viewer: BI_USER or SYS_ADMIN) */
     getIrCatalog:   function ()           { return api.get('/ir/catalog'); },

@@ -77,6 +77,10 @@
     code:            { en: 'VERIFICATION CODE', ar: 'رمز التحقق' },
     firstNameEn:     { en: 'FIRST NAME', ar: 'الاسم الأول' },
     lastNameEn:      { en: 'LAST NAME', ar: 'اسم العائلة' },
+    firstNameArLbl:  { en: 'FIRST NAME (ARABIC)', ar: 'الاسم الأول (عربي)' },
+    lastNameArLbl:   { en: 'LAST NAME (ARABIC)', ar: 'اسم العائلة (عربي)' },
+    specializationLbl:{ en: 'SPECIALIZATION', ar: 'التخصص' },
+    notesLbl:        { en: 'NOTES', ar: 'ملاحظات' },
     dob:             { en: 'DATE OF BIRTH', ar: 'تاريخ الميلاد' },
     nationality:     { en: 'NATIONALITY', ar: 'الجنسية' },
     emiratesId:      { en: 'EMIRATES ID', ar: 'الهوية الإماراتية' },
@@ -84,6 +88,11 @@
     mobileLbl:       { en: 'MOBILE', ar: 'الهاتف' },
     lineMgrEmail:    { en: 'LINE MANAGER E-MAIL', ar: 'بريد المدير المباشر' },
     lineMgrName:     { en: 'LINE MANAGER NAME', ar: 'اسم المدير المباشر' },
+    lineMgrHint:     { en: 'The line manager is the first approver and must be a registered DCT user.', ar: 'المدير المباشر هو المعتمد الأول ويجب أن يكون مستخدماً مسجلاً في الدائرة.' },
+    secPersonal:     { en: 'Personal details', ar: 'البيانات الشخصية' },
+    secApprover:     { en: 'Requestor & line manager', ar: 'مقدم الطلب والمدير المباشر' },
+    secBank:         { en: 'Bank details', ar: 'التفاصيل البنكية' },
+    bankHint:        { en: 'Extractable from your bank letter; your account is created on approval.', ar: 'يمكن استخراجها من خطاب البنك؛ يُنشأ حسابك عند الموافقة.' },
     bankNameLbl:     { en: 'BANK NAME', ar: 'اسم البنك' },
     ibanLbl:         { en: 'IBAN', ar: 'الآيبان' },
     saveContinue:    { en: 'Save & continue →', ar: 'حفظ ومتابعة ←' },
@@ -120,6 +129,7 @@
     uploadedDocsTitle:{ en: 'Uploaded documents', ar: 'المستندات المرفوعة' },
     regPhotoNeeded:  { en: 'Please add your personal photo before continuing.', ar: 'يرجى إضافة صورتك الشخصية قبل المتابعة.' },
     regPhotoImgOnly: { en: 'Please choose an image file for your photo.', ar: 'يرجى اختيار ملف صورة.' },
+    regDetailsRequired: { en: 'First name, last name, date of birth, nationality and mobile number are required.', ar: 'الاسم الأول واسم العائلة وتاريخ الميلاد والجنسية ورقم الجوال حقول مطلوبة.' },
 
     /* ── DCT landing (public portal) ── */
     dlpEyebrow:      { en: 'DEPARTMENT OF CULTURE AND TOURISM — ABU DHABI', ar: 'دائرة الثقافة والسياحة — أبوظبي' },
@@ -154,7 +164,7 @@
     return fetch(API_BASE + path, opts).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (d) {
         if (!r.ok) {
-          var err = new Error(d.error || ('HTTP ' + r.status));
+          var err = new Error((d.error || ('HTTP ' + r.status)).replace(/^ORA-\d+:\s*/, ''));
           err.status = r.status;
           throw err;
         }
@@ -227,6 +237,7 @@
     self.rgPassport  = ko.observable('');
     self.rgMobile    = ko.observable('');
     self.rgSpec      = ko.observable('');
+    self.rgNotes     = ko.observable('');
     self.rgBankName  = ko.observable('');
     self.rgBankIban  = ko.observable('');
     self.rgBankAccountName = ko.observable('');
@@ -238,10 +249,31 @@
     self.rgRequestorEmail = ko.observable('');
     self.rgRequestorName  = ko.observable('');
     self.rgNats      = ko.observableArray([]);
+    // Emirates ID is required only for UAE nationals (mirrors the staff form).
+    self.rgNeedsEid  = ko.computed(function () { return self.rgNat() === 'AE'; });
+    // Document checklist is built dynamically from the server's doc-requirements
+    // config (context REGISTRATION) so EVERY required/optional document — incl.
+    // UAE Residence Visa — gets an upload control. AI extraction only runs for
+    // the three AI-capable document types; other docs are upload-only.
+    var AI_DOC_CODES = ['PASSPORT', 'EMIRATES_ID', 'BANK_LETTER'];
+    function makeRgDoc(code, nameEn, nameAr, mandatory) {
+      return {
+        code: code,
+        nameEn: nameEn || code,
+        nameAr: nameAr || nameEn || code,
+        aiCapable: AI_DOC_CODES.indexOf(code) >= 0,
+        mandatory: ko.observable(!!mandatory),
+        docId: ko.observable(null),
+        fileName: ko.observable(''),
+        aiMsg: ko.observable(''),
+        aiOk: ko.observable(null),
+        extracted: ko.observableArray([])
+      };
+    }
     self.rgDocs      = ko.observableArray([
-      { code: 'PASSPORT',    label: 'Passport',    mandatory: ko.observable(true), docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
-      { code: 'EMIRATES_ID', label: 'Emirates ID', mandatory: ko.observable(true), docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
-      { code: 'BANK_LETTER', label: 'Bank Letter', mandatory: ko.observable(true), docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) }
+      makeRgDoc('PASSPORT',    'Passport',    'جواز السفر',           true),
+      makeRgDoc('EMIRATES_ID', 'Emirates ID', 'الهوية الإماراتية',    true),
+      makeRgDoc('BANK_LETTER', 'Bank Letter', 'خطاب حساب بنكي / IBAN', true)
     ]);
     // Personal photo (US-09): separate from the document checklist; stored on
     // the registration's photo_blob. Required-ness driven by PHOTO_REQUIRED.
@@ -413,10 +445,13 @@
           return api('GET', '/reg/public/' + self.regToken).then(function (g) {
             self.regPhotoRequired(!!g.photoRequired);
             self.regHasPhoto(!!g.hasPhoto);
-            (g.docRequirements || []).forEach(function (rq) {
-              var d = self.rgDocs().filter(function (x) { return x.code === rq.code; })[0];
-              if (d) d.mandatory(!!rq.mandatory);
-            });
+            // Rebuild the document cards from the admin-configured requirement set
+            // (required AND optional) so every configured doc gets an upload control.
+            if (g.docRequirements && g.docRequirements.length) {
+              self.rgDocs(g.docRequirements.map(function (rq) {
+                return makeRgDoc(rq.code, rq.name, rq.nameAr, rq.mandatory);
+              }));
+            }
           }).catch(function () {});
         })
         .then(function () { self.regBusy(false); self.regStep('docs'); })
@@ -429,7 +464,7 @@
         firstNameAr: self.rgFirstNameAr(), lastNameAr: self.rgLastNameAr(),
         dateOfBirth: self.rgDob(), nationalityCode: self.rgNat(),
         nationalId: self.rgNationalId(), passportNumber: self.rgPassport(),
-        mobile: self.rgMobile(), specialization: self.rgSpec(),
+        mobile: self.rgMobile(), specialization: self.rgSpec(), notes: self.rgNotes(),
         bankName: self.rgBankName(), bankIban: self.rgBankIban(),
         bankAccountName: self.rgBankAccountName(), bankAccountNumber: self.rgBankAccountNumber(),
         bankSwift: self.rgBankSwift(), bankCurrencyCode: self.rgBankCurrency(),
@@ -454,9 +489,13 @@
 
     self.regSaveDetails = function () {
       self.regError('');
-      if (!self.rgFirstName() || !self.rgLastName() || !self.rgDob() || !self.rgNat()) {
-        self.regError('First name, last name, date of birth and nationality are required.'); return;
+      if (!self.rgFirstName() || !self.rgLastName() || !self.rgDob() || !self.rgNat()
+          || !(self.rgMobile() && self.rgMobile().trim())) {
+        self.regError(self.t('regDetailsRequired')); return;
       }
+      // For self-registration the requestor IS the applicant.
+      if (!self.rgRequestorEmail()) self.rgRequestorEmail(self.rgEmail());
+      self.rgRequestorName((self.rgFirstName() + ' ' + self.rgLastName()).trim());
       self.regBusy(true);
       regPut().then(function (r) {
         self.regBusy(false); self.regId(r.registrationId); self.regStep('review');
@@ -481,8 +520,9 @@
         .then(function (r) { return uploadBytes(r.documentId, file).then(function () { doc.docId(r.documentId); doc.fileName(file.name); }); })
         .then(function () {
           self.regBusy(false);
-          // Auto-start AI reading on upload when the feature is enabled.
-          if (self.regAiEnabled()) self.regExtract(doc);
+          // Auto-start AI reading on upload when enabled AND the doc type is
+          // AI-extractable (Passport / Emirates ID / Bank Letter only).
+          if (self.regAiEnabled() && doc.aiCapable) self.regExtract(doc);
         })
         .catch(function (e) { self.regBusy(false); self.regError(e.message); });
       return true;
@@ -544,18 +584,32 @@
           function titleCase(s) {
             return String(s || '').toLowerCase().replace(/\b\w/g, function (c) { return c.toUpperCase(); });
           }
-          // Resolve a nationality name/code (e.g. "Egypt", "Egyptian", "EGY")
-          // to one of the dropdown option codes; '' if no confident match.
+          // Resolve a nationality name/code (e.g. "Egypt", "Egyptian", "EGY",
+          // "ARE") to one of the dropdown ISO-2 codes; '' if no confident match.
+          var ISO3_TO_ISO2 = {
+            ARE:'AE', EGY:'EG', SAU:'SA', KWT:'KW', QAT:'QA', BHR:'BH', OMN:'OM',
+            IND:'IN', PAK:'PK', BGD:'BD', LKA:'LK', NPL:'NP', PHL:'PH', IDN:'ID',
+            LBN:'LB', SYR:'SY', JOR:'JO', PSE:'PS', IRQ:'IQ', YEM:'YE', SDN:'SD',
+            MAR:'MA', DZA:'DZ', TUN:'TN', LBY:'LY', SOM:'SO', ETH:'ET', KEN:'KE',
+            NGA:'NG', GHA:'GH', ZAF:'ZA', TUR:'TR', IRN:'IR', AFG:'AF',
+            GBR:'GB', USA:'US', CAN:'CA', AUS:'AU', FRA:'FR', DEU:'DE', ITA:'IT',
+            ESP:'ES', NLD:'NL', RUS:'RU', UKR:'UA', CHN:'CN', JPN:'JP', KOR:'KR',
+            THA:'TH', MYS:'MY', SGP:'SG', VNM:'VN', BRA:'BR', ARG:'AR'
+          };
           function resolveNat(val) {
             if (!val) return '';
-            var v = String(val).trim().toLowerCase();
+            var raw = String(val).trim();
+            var v = raw.toLowerCase();
             var rows = self.rgNats();
-            var i, n;
+            var i, n, alias = ISO3_TO_ISO2[raw.toUpperCase()];
+            if (alias) {
+              for (i = 0; i < rows.length; i++) { if (String(rows[i].code).toUpperCase() === alias) return rows[i].code; }
+            }
             for (i = 0; i < rows.length; i++) { if (String(rows[i].code).toLowerCase() === v) return rows[i].code; }
             for (i = 0; i < rows.length; i++) { if (String(rows[i].name).toLowerCase() === v) return rows[i].code; }
             for (i = 0; i < rows.length; i++) {
               n = String(rows[i].name).toLowerCase();
-              if (n.indexOf(v) === 0 || v.indexOf(n) === 0) return rows[i].code;   // Egypt <-> Egyptian / EGY
+              if (n && (n.indexOf(v) === 0 || v.indexOf(n) === 0)) return rows[i].code;   // Egypt <-> Egyptian / EGY
             }
             return '';
           }

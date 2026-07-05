@@ -70,6 +70,10 @@
   "set.runtime": "Runtime & Email",
   "set.secret": "Secret — managed in env.ps1, not editable here",
   "set.modified": "Modified",
+  "set.testTitle": "Send Test Email",
+  "set.testHint": "Send a test message via the database mail (APEX_MAIL) to confirm outbound email works. Uses the sender in SMTP_FROM; delivery also needs the APEX instance SMTP settings configured.",
+  "set.testBtn": "Send Test Email",
+  "set.testSending": "Sending…",
 
   "col.report": "Report",
   "col.status": "Status",

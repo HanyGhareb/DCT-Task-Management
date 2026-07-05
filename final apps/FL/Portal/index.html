@@ -6,7 +6,7 @@
 <title>Freelancer Portal · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.10.0';</script>
+<script>window.APP_VERSION = '1.14.0';</script>
 <link rel="stylesheet" id="portal-css">
 <script>
   document.getElementById('portal-css').href = 'css/portal.css?v=' + window.APP_VERSION;
@@ -195,14 +195,14 @@
         <!-- ko foreach: rgDocs -->
         <div class="dlp-doc">
           <label class="dlp-doc-lbl">
-            <span data-bind="text: label"></span>
+            <span data-bind="text: $root.lang() === 'ar' ? nameAr : nameEn"></span>
             <!-- ko if: mandatory --><span class="dlp-tag dlp-tag--req" data-bind="text: $root.t('reqTag')"></span><!-- /ko -->
             <!-- ko ifnot: mandatory --><span class="dlp-tag dlp-tag--opt" data-bind="text: $root.t('optTag')"></span><!-- /ko -->
           </label>
           <input class="dlp-file" type="file" accept="image/*,application/pdf" data-bind="event: { change: function(d,e){ return $root.regPickDoc($data, e); } }">
           <div class="dlp-doc-file" data-bind="visible: fileName(), text: fileName"></div>
           <div class="dlp-saved" data-bind="visible: fileName(), text: $root.t('savedTag')"></div>
-          <button class="dlp-ghost" data-bind="visible: $root.regAiEnabled(), click: function(){ return $root.regExtract($data); }, disable: $root.regBusy() || !docId(), text: $root.t('aiExtract')"></button>
+          <button class="dlp-ghost" data-bind="visible: $root.regAiEnabled() && aiCapable, click: function(){ return $root.regExtract($data); }, disable: $root.regBusy() || !docId(), text: $root.t('aiExtract')"></button>
           <div class="dlp-doc-msg" data-bind="visible: aiMsg(), text: aiMsg, css: { bad: aiOk() === false }"></div>
           <!-- ko if: extracted().length -->
           <div class="dlp-extract">
@@ -236,35 +236,52 @@
         <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('otp'); }, text: t('back')"></a></div>
       </div>
 
-      <!-- step: details -->
+      <!-- step: details (personal) -->
       <div data-bind="visible: regStep() === 'details'">
+        <div class="dlp-formsec" data-bind="text: t('secPersonal')"></div>
         <div class="dlp-grid2">
-          <div><label class="dlp-lbl" data-bind="text: t('firstNameEn')"></label><input class="dlp-inp" type="text" data-bind="value: rgFirstName"></div>
-          <div><label class="dlp-lbl" data-bind="text: t('lastNameEn')"></label><input class="dlp-inp" type="text" data-bind="value: rgLastName"></div>
-          <div><label class="dlp-lbl" data-bind="text: t('dob')"></label><input class="dlp-inp" type="date" data-bind="value: rgDob"></div>
-          <div><label class="dlp-lbl" data-bind="text: t('nationality')"></label>
+          <div><label class="dlp-lbl"><span data-bind="text: t('firstNameEn')"></span><b class="dlp-req">*</b></label><input class="dlp-inp" type="text" data-bind="value: rgFirstName"></div>
+          <div><label class="dlp-lbl"><span data-bind="text: t('lastNameEn')"></span><b class="dlp-req">*</b></label><input class="dlp-inp" type="text" data-bind="value: rgLastName"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('firstNameArLbl')"></label><input class="dlp-inp" type="text" dir="rtl" data-bind="value: rgFirstNameAr"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('lastNameArLbl')"></label><input class="dlp-inp" type="text" dir="rtl" data-bind="value: rgLastNameAr"></div>
+          <div><label class="dlp-lbl"><span data-bind="text: t('dob')"></span><b class="dlp-req">*</b></label><input class="dlp-inp" type="date" data-bind="value: rgDob"></div>
+          <div><label class="dlp-lbl"><span data-bind="text: t('nationality')"></span><b class="dlp-req">*</b></label>
             <select class="dlp-inp" data-bind="options: rgNats, optionsText: 'name', optionsValue: 'code', optionsCaption: '—', value: rgNat"></select></div>
-          <div class="dlp-grid2-full"><label class="dlp-lbl" data-bind="text: t('mobileLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgMobile"></div>
+          <div><label class="dlp-lbl"><span data-bind="text: t('emiratesId')"></span><!-- ko if: rgNeedsEid --><b class="dlp-req">*</b><!-- /ko --></label><input class="dlp-inp" type="text" placeholder="784-XXXX-XXXXXXX-X" data-bind="value: rgNationalId"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('passportNo')"></label><input class="dlp-inp" type="text" data-bind="value: rgPassport"></div>
+          <div><label class="dlp-lbl"><span data-bind="text: t('mobileLbl')"></span><b class="dlp-req">*</b></label><input class="dlp-inp" type="text" data-bind="value: rgMobile"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('specializationLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgSpec"></div>
+          <div class="dlp-grid2-full"><label class="dlp-lbl" data-bind="text: t('notesLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgNotes"></div>
         </div>
         <button class="dlp-cta dlp-cta--full" data-bind="click: regSaveDetails, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('saveContinue')"></span></button>
         <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
       </div>
 
-      <!-- step: review -->
+      <!-- step: review (approver + bank + uploaded documents) -->
       <div data-bind="visible: regStep() === 'review'">
+        <div class="dlp-formsec" data-bind="text: t('secApprover')"></div>
+        <div class="dlp-wizhint" data-bind="text: t('lineMgrHint')"></div>
         <div class="dlp-grid2">
-          <div><label class="dlp-lbl" data-bind="text: t('emiratesId')"></label><input class="dlp-inp" type="text" data-bind="value: rgNationalId"></div>
-          <div><label class="dlp-lbl" data-bind="text: t('passportNo')"></label><input class="dlp-inp" type="text" data-bind="value: rgPassport"></div>
-          <div><label class="dlp-lbl" data-bind="text: t('bankNameLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankName"></div>
-          <div><label class="dlp-lbl" data-bind="text: t('ibanLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankIban"></div>
-          <div><label class="dlp-lbl" data-bind="text: t('lineMgrEmail')"></label><input class="dlp-inp" type="email" data-bind="value: rgLineMgrEmail"></div>
+          <div><label class="dlp-lbl"><span data-bind="text: t('lineMgrEmail')"></span><b class="dlp-req">*</b></label><input class="dlp-inp" type="email" placeholder="manager@ifinance.com" data-bind="value: rgLineMgrEmail"></div>
           <div><label class="dlp-lbl" data-bind="text: t('lineMgrName')"></label><input class="dlp-inp" type="text" data-bind="value: rgLineMgrName"></div>
         </div>
+
+        <div class="dlp-formsec" data-bind="text: t('secBank')"></div>
+        <div class="dlp-wizhint" data-bind="text: t('bankHint')"></div>
+        <div class="dlp-grid2">
+          <div><label class="dlp-lbl" data-bind="text: t('bankNameLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankName"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('ibanLbl')"></label><input class="dlp-inp" type="text" placeholder="AE…" data-bind="value: rgBankIban"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('accountNameLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankAccountName"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('accountNoLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankAccountNumber"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('swiftLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankSwift"></div>
+          <div><label class="dlp-lbl" data-bind="text: t('currencyLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankCurrency"></div>
+        </div>
+
         <div class="dlp-revdocs">
           <div class="dlp-revdocs-h" data-bind="text: t('uploadedDocsTitle')"></div>
           <!-- ko foreach: rgDocs -->
           <!-- ko if: fileName() -->
-          <div class="dlp-revdoc"><span data-bind="text: label"></span><b class="dlp-saved" data-bind="text: $root.t('savedTag')"></b></div>
+          <div class="dlp-revdoc"><span data-bind="text: $root.lang() === 'ar' ? nameAr : nameEn"></span><b class="dlp-saved" data-bind="text: $root.t('savedTag')"></b></div>
           <!-- /ko -->
           <!-- /ko -->
           <!-- ko if: regHasPhoto -->
@@ -272,7 +289,7 @@
           <!-- /ko -->
         </div>
         <button class="dlp-cta dlp-cta--full" data-bind="click: regSubmit, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('submitReg')"></span></button>
-        <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>
+        <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('details'); }, text: t('back')"></a></div>
       </div>
 
       <!-- step: done -->

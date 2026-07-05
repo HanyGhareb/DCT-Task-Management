@@ -30,6 +30,17 @@ SELECT
   r.mobile,
   r.specialization,
   r.first_deal_with_dct,
+  r.requestor_email,
+  r.requestor_name,
+  r.line_manager_email,
+  r.line_manager_name,
+  r.bank_name,
+  r.bank_iban,
+  r.bank_account_name,
+  r.bank_account_number,
+  r.bank_swift,
+  r.bank_currency_code,
+  r.dup_status,
   r.submitted_by,
   r.submitted_by_user_id,
   su.display_name                              AS submitted_by_name,
@@ -42,7 +53,8 @@ SELECT
   r.updated_by,
   r.updated_at
 FROM prod.dct_fl_registrations  r
-JOIN  prod.dct_nationality       n   ON n.nationality_code = r.nationality_code
+-- LEFT JOIN so a documents-first DRAFT (nationality not yet chosen) still appears.
+LEFT JOIN prod.dct_nationality   n   ON n.nationality_code = r.nationality_code
 LEFT JOIN prod.dct_users         su  ON su.user_id = r.submitted_by_user_id
 LEFT JOIN prod.dct_users         cb  ON cb.username = r.created_by;
 
