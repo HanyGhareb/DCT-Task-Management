@@ -92,6 +92,64 @@
   </div>
   <!-- /ko -->
 
+  <!-- ── Registration Documents — required / optional per document (US-10) ── -->
+  <!-- ko if: docReqs().length || photoItem() -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('set.grp.regdocs')"></div>
+    <div style="font-size:12px;color:var(--text-2);margin-bottom:8px" data-bind="text: $root.t('set.regdocs.hint')"></div>
+    <!-- ko foreach: docReqs -->
+    <div class="switch-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600" data-bind="text: label"></div>
+        <div style="font-size:11.5px;color:var(--text-3);font-family:monospace" data-bind="text: code"></div>
+      </div>
+      <div style="flex:0 0 240px;margin-inline-start:20px">
+        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:flex-end"
+             data-bind="click: flip">
+          <span style="font-size:11.5px;color:var(--text-3)"
+                data-bind="text: mandatory() ? $root.t('set.req') : $root.t('set.opt')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none"
+                   data-bind="checked: mandatory, attr: { 'aria-label': code }">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+        <!-- ko if: dirty() -->
+        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block">&#9998; <span data-bind="text: $root.t('set.modified')"></span></span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+    <!-- personal photo (PHOTO_REQUIRED) -->
+    <!-- ko if: photoItem -->
+    <!-- ko with: photoItem -->
+    <div class="switch-row">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600" data-bind="text: label"></div>
+        <div style="font-size:11.5px;color:var(--text-3);font-family:monospace" data-bind="text: settingKey"></div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:2px" data-bind="text: description"></div>
+      </div>
+      <div style="flex:0 0 240px;margin-inline-start:20px">
+        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:flex-end"
+             data-bind="click: flip">
+          <span style="font-size:11.5px;color:var(--text-3)"
+                data-bind="text: toggleOn() ? $root.t('set.req') : $root.t('set.opt')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none"
+                   data-bind="checked: toggleOn(), attr: { 'aria-label': settingKey }">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+        <!-- ko if: dirty() -->
+        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block">&#9998; <span data-bind="text: $root.t('set.modified')"></span></span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
   <!-- ── Module settings — grouped into themed region-header cards ───────── -->
   <!-- ko foreach: groups -->
   <div class="card" style="margin-bottom:16px">

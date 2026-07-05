@@ -112,6 +112,14 @@
     accountNoLbl:    { en: 'ACCOUNT NUMBER', ar: 'رقم الحساب' },
     swiftLbl:        { en: 'SWIFT', ar: 'سويفت' },
     currencyLbl:     { en: 'CURRENCY', ar: 'العملة' },
+    regPhotoLbl:     { en: 'Personal photo', ar: 'الصورة الشخصية' },
+    regPhotoHint:    { en: 'A clear passport-style photo of your face.', ar: 'صورة واضحة لوجهك بنمط جواز السفر.' },
+    reqTag:          { en: 'Required', ar: 'مطلوب' },
+    optTag:          { en: 'Optional', ar: 'اختياري' },
+    savedTag:        { en: '✓ Saved', ar: '✓ تم الحفظ' },
+    uploadedDocsTitle:{ en: 'Uploaded documents', ar: 'المستندات المرفوعة' },
+    regPhotoNeeded:  { en: 'Please add your personal photo before continuing.', ar: 'يرجى إضافة صورتك الشخصية قبل المتابعة.' },
+    regPhotoImgOnly: { en: 'Please choose an image file for your photo.', ar: 'يرجى اختيار ملف صورة.' },
 
     /* ── DCT landing (public portal) ── */
     dlpEyebrow:      { en: 'DEPARTMENT OF CULTURE AND TOURISM — ABU DHABI', ar: 'دائرة الثقافة والسياحة — أبوظبي' },
@@ -231,10 +239,16 @@
     self.rgRequestorName  = ko.observable('');
     self.rgNats      = ko.observableArray([]);
     self.rgDocs      = ko.observableArray([
-      { code: 'PASSPORT',    label: 'Passport',    docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
-      { code: 'EMIRATES_ID', label: 'Emirates ID', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
-      { code: 'BANK_LETTER', label: 'Bank Letter', docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) }
+      { code: 'PASSPORT',    label: 'Passport',    mandatory: ko.observable(true), docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
+      { code: 'EMIRATES_ID', label: 'Emirates ID', mandatory: ko.observable(true), docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) },
+      { code: 'BANK_LETTER', label: 'Bank Letter', mandatory: ko.observable(true), docId: ko.observable(null), fileName: ko.observable(''), aiMsg: ko.observable(''), aiOk: ko.observable(null), extracted: ko.observableArray([]) }
     ]);
+    // Personal photo (US-09): separate from the document checklist; stored on
+    // the registration's photo_blob. Required-ness driven by PHOTO_REQUIRED.
+    self.regPhotoRequired = ko.observable(false);
+    self.regHasPhoto      = ko.observable(false);
+    self.regPhotoName     = ko.observable('');
+    self.regPhotoPreview  = ko.observable('');
 
     self.session = ko.observable(JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') || {});
     self.me        = ko.observable({});
@@ -361,6 +375,9 @@
     self.openRegister = function () {
       self.loginOpen(false);
       self.regError(''); self.regStep('email'); self.view('register');
+      // reset any prior photo selection
+      if (self.regPhotoPreview()) { try { URL.revokeObjectURL(self.regPhotoPreview()); } catch (e) {} }
+      self.regPhotoPreview(''); self.regPhotoName(''); self.regHasPhoto(false);
       if (self.rgNats().length === 0) {
         api('GET', '/reg/public/nationalities').then(function (r) { self.rgNats(r.items || []); }).catch(function () {});
       }
@@ -390,8 +407,19 @@
           return api('POST', '/reg/public/' + self.regToken + '/draft', {});
         })
         .then(function (r) {
-          self.regBusy(false); self.regId(r.registrationId); self.regStep('docs');
+          self.regId(r.registrationId);
+          // Load photo/document-requirement config so the wizard reflects what
+          // the admin marked required vs optional (and whether a photo is needed).
+          return api('GET', '/reg/public/' + self.regToken).then(function (g) {
+            self.regPhotoRequired(!!g.photoRequired);
+            self.regHasPhoto(!!g.hasPhoto);
+            (g.docRequirements || []).forEach(function (rq) {
+              var d = self.rgDocs().filter(function (x) { return x.code === rq.code; })[0];
+              if (d) d.mandatory(!!rq.mandatory);
+            });
+          }).catch(function () {});
         })
+        .then(function () { self.regBusy(false); self.regStep('docs'); })
         .catch(function (e) { self.regBusy(false); self.regError(e.message); });
     };
 
@@ -416,7 +444,13 @@
 
     // Documents step is first (after OTP). Continue to the detail form whether
     // or not files were uploaded (AI auto-fills them when documents were read).
-    self.regDocsContinue = function () { self.regError(''); self.regStep('details'); };
+    self.regDocsContinue = function () {
+      self.regError('');
+      if (self.regPhotoRequired() && !self.regHasPhoto()) {
+        self.regError(self.t('regPhotoNeeded')); return;
+      }
+      self.regStep('details');
+    };
 
     self.regSaveDetails = function () {
       self.regError('');
@@ -451,6 +485,30 @@
           if (self.regAiEnabled()) self.regExtract(doc);
         })
         .catch(function (e) { self.regBusy(false); self.regError(e.message); });
+      return true;
+    };
+
+    /* personal photo — raw binary -> registration photo_blob (US-09) */
+    function uploadPhotoBytes(file) {
+      var q = '?file_name=' + encodeURIComponent(file.name) + '&mime_type=' + encodeURIComponent(file.type || 'image/jpeg');
+      return fetch(API_BASE + '/reg/public/' + self.regToken + '/photo' + q,
+        { method: 'PUT', headers: { 'Content-Type': file.type || 'image/jpeg' }, body: file })
+        .then(function (r) { if (!r.ok) throw new Error('Photo upload failed (' + r.status + ')'); return r.json(); });
+    }
+
+    self.regPickPhoto = function (vm, ev) {
+      var file = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!file) return true;
+      if (!/^image\//.test(file.type || '')) { self.regError(self.t('regPhotoImgOnly')); return true; }
+      self.regError(''); self.regBusy(true);
+      uploadPhotoBytes(file).then(function () {
+        self.regBusy(false);
+        if (self.regPhotoPreview()) { try { URL.revokeObjectURL(self.regPhotoPreview()); } catch (e) {} }
+        self.regPhotoPreview(URL.createObjectURL(file));
+        self.regPhotoName(file.name);
+        self.regHasPhoto(true);
+      }).catch(function (e) { self.regBusy(false); self.regError(e.message); });
       return true;
     };
 

@@ -78,8 +78,8 @@ Module: **Freelancers** · Brand: `#7C4DBE` · ORDS base: `/ords/admin/fl`
 **Notifications** (`notifications`) — `markRead` / `markAll` · `typeClass`.
 
 ## 11. Configuration
-**Module Settings** (`moduleSettings`) — module settings + region appearance.
-- `saveAll`.
+**Module Settings** (`moduleSettings`) — module settings + region appearance + **Registration Documents** (required/optional per document + Photo required — UD-FL-01 US-10).
+- `saveAll` (persists dirty settings **and** dirty doc-requirement toggles via `flService.updateDocRequirement`).
 
 ---
 
@@ -97,7 +97,7 @@ The `portal/*` endpoints serve the external freelancer self-service Portal (sepa
 |---|---|
 | Dashboard | `GET dashboard/stats` · `GET dashboard/charts` |
 | Registrations | `GET registrations/` · `POST registrations/` · `GET registrations/:id` · `PUT registrations/:id` · `POST registrations/:id/submit` · `PUT registrations/:id/photo` · `GET registrations/:id/photo` *(media)* · `GET registrations/:id/documents` |
-| Doc requirements | `GET doc-requirements/?context=…` |
+| Doc requirements | `GET doc-requirements/?context=…` · `PUT doc-requirements/:id` *(FL_ADMIN — toggle `isMandatory` required/optional; UD-FL-01 US-10)* |
 | Freelancers | `GET freelancers/` · `GET freelancers/:id` · `PUT freelancers/:id` · `PUT freelancers/:id/photo` · `GET freelancers/:id/photo` *(media)* · `POST freelancers/:id/bank-accounts` · `PUT bank-accounts/:id` · `POST freelancers/:id/portal-invite` |
 | Contracts | `GET contracts/` · `POST contracts/` · `GET contracts/:id` · `PUT contracts/:id` · `POST contracts/:id/submit` · `GET contracts/:id/schedule` · `GET contracts/:id/amendments` · `POST contracts/:id/amendments` · `POST amendments/:id/submit` |
 | Renewals | `GET renewals/` · `POST renewals/` · `POST renewals/:id/submit` |
@@ -112,7 +112,7 @@ The `portal/*` endpoints serve the external freelancer self-service Portal (sepa
 | Notifications | `GET notifications/` · `POST notifications/:id/read` · `POST notifications/mark-all-read` |
 | Portal (external) | `POST portal/auth/login` · `POST portal/auth/set-password` · `POST portal/auth/logout` · `GET portal/me` · `GET portal/contracts` · `GET portal/schedule` · `GET portal/vouchers` |
 | Phase 1 — AI / dedup / lookup (auth) | `POST registrations/:id/documents/:docId/extract` (AI extract) · `GET registrations/:id/duplicates` · `POST registrations/:id/duplicate-override` (FL_ADMIN) · `GET users/lookup?email=` |
-| Phase 1 — Public self-registration (token-gated; gate = `FEATURE_FL_PORTAL` OR `ALLOW_SELF_REGISTRATION`) | `POST reg/public/start` *(returns `devCode` when `REG_OTP_DEV_ECHO=Y`)* · `POST reg/public/verify` *(returns `aiEnabled`)* · `GET reg/public/nationalities` · `GET reg/public/:token` *(returns `aiEnabled`)* · `POST reg/public/:token/draft` *(empty draft, documents-first)* · `PUT reg/public/:token` · `POST reg/public/:token/documents` · `PUT reg/public/:token/documents/:docId/file` · `POST reg/public/:token/documents/:docId/extract` *(returns `detectedKind`/`typeMismatch`)* · `POST reg/public/:token/submit` |
+| Phase 1 — Public self-registration (token-gated; gate = `FEATURE_FL_PORTAL` OR `ALLOW_SELF_REGISTRATION`) | `POST reg/public/start` *(returns `devCode` when `REG_OTP_DEV_ECHO=Y`)* · `POST reg/public/verify` *(returns `aiEnabled`)* · `GET reg/public/nationalities` · `GET reg/public/:token` *(returns `aiEnabled` + `photoRequired`/`docsRequiredForSubmit`/`hasPhoto`/`docRequirements[]` — UD-FL-01)* · `POST reg/public/:token/draft` *(empty draft, documents-first)* · `PUT reg/public/:token` · `POST reg/public/:token/documents` · `PUT reg/public/:token/documents/:docId/file` · `PUT reg/public/:token/photo` *(raw-binary personal photo → `photo_blob`, `MAX_UPLOAD_MB` 413 guard; UD-FL-01 US-09)* · `POST reg/public/:token/documents/:docId/extract` *(returns `detectedKind`/`typeMismatch`)* · `POST reg/public/:token/submit` *(`-20132` photo-required now maps to 400)* |
 
 **Registration editor (`registrationEdit`) — Phase 1 methods:** `resolveLineManager` (email→DCT user hint), `loadDuplicates` / `overrideDuplicate`, `runExtract` / `applyExtract` / `closeAi` (AI review modal). New `flService` methods: `extractRegistrationDocument`, `getRegistrationDuplicates`, `overrideRegistrationDuplicate`, `lookupUser`. Backend packages: `DCT_FL_AI_PKG.extract_document`, `DCT_FL_REG_PKG.{find_duplicates,add_duplicate_override,start_public_registration,verify_public_otp,public_email,public_registration_id,set_public_registration}`.
 

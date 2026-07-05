@@ -411,6 +411,27 @@ h2.sec .rule{flex:1; height:1px; background:var(--line)}
 .dlp-doc-file{font:500 12px 'Libre Franklin'; color:rgba(255,255,255,.7); margin-top:7px}
 .dlp-doc-msg{font:500 12px 'Libre Franklin'; color:#7fe0a6; margin-top:7px}
 .dlp-doc-msg.bad{color:#ff9d96}
+/* required/optional tag on document & photo cards (US-10) */
+.dlp-tag{display:inline-block; margin-inline-start:8px; padding:2px 8px; border-radius:999px;
+  font:600 9.5px 'Libre Franklin'; letter-spacing:.08em; text-transform:uppercase; vertical-align:middle}
+.dlp-tag--req{background:rgba(231,196,134,.16); border:1px solid rgba(231,196,134,.5); color:var(--dlp-accent)}
+.dlp-tag--opt{background:rgba(255,255,255,.06); border:1px solid rgba(255,255,255,.2); color:rgba(255,255,255,.6)}
+/* saved-confirmation chip (US-11) */
+.dlp-saved{font:600 11.5px 'Libre Franklin'; color:#7fe0a6; margin-top:7px}
+/* personal photo upload (US-09) */
+.dlp-photo-row{display:flex; align-items:center; gap:12px}
+.dlp-photo-prev{width:56px; height:56px; border-radius:10px; object-fit:cover;
+  border:1px solid rgba(231,196,134,.5); flex:none}
+/* uploaded-documents summary on the review step (US-11) */
+.dlp-revdocs{border:1px solid rgba(231,196,134,.28); border-radius:11px;
+  background:rgba(231,196,134,.06); padding:11px 13px; margin:2px 0 16px}
+.dlp-revdocs-h{font:600 10px 'Libre Franklin'; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--dlp-accent); margin:0 0 8px}
+.dlp-revdoc{display:flex; justify-content:space-between; gap:14px; padding:4px 0;
+  border-top:1px solid rgba(255,255,255,.06); font:500 12.5px 'Libre Franklin'; color:rgba(255,255,255,.82)}
+.dlp-revdoc:first-of-type{border-top:none}
+.dlp-revdoc b{color:#7fe0a6; font-weight:600}
+[dir=rtl] .dlp-revdocs-h{letter-spacing:0}
 /* AI-extracted field summary (shown immediately after a successful read) */
 .dlp-extract{margin-top:11px; border:1px solid rgba(231,196,134,.28); border-radius:11px;
   background:rgba(231,196,134,.07); padding:11px 13px}

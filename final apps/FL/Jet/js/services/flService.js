@@ -134,6 +134,10 @@ define(['services/api'], function (api) {
       return api.get('/registrations/' + regId + '/documents')
         .then(function (r) { return r.items || []; });
     },
+    // Toggle a registration document required <-> optional (FL_ADMIN).
+    updateDocRequirement: function (docReqId, isMandatory) {
+      return api.put('/doc-requirements/' + docReqId, { isMandatory: isMandatory });
+    },
 
     /* ── profile change requests ───────────────────────────────────────── */
     getProfileChanges: function (opts) {

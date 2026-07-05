@@ -217,14 +217,34 @@ BEGIN
   APEX_JSON.write('email', l_email);
   APEX_JSON.write('registrationId', l_rid);
   APEX_JSON.write('aiEnabled', NVL(dct_fl_pkg.get_setting('AI_FEATURES_ENABLED'),'N')='Y');
+  APEX_JSON.write('photoRequired', NVL(dct_fl_pkg.get_setting('PHOTO_REQUIRED'),'Y')='Y');
+  APEX_JSON.write('docsRequiredForSubmit', NVL(dct_fl_pkg.get_setting('DOCS_REQUIRED_FOR_SUBMIT'),'Y')='Y');
   IF l_rid IS NOT NULL THEN
     FOR r IN (SELECT * FROM dct_fl_registrations WHERE registration_id = l_rid) LOOP
       APEX_JSON.write('firstNameEn', r.first_name_en);
       APEX_JSON.write('lastNameEn',  r.last_name_en);
       APEX_JSON.write('status',      r.status);
       APEX_JSON.write('dupStatus',   r.dup_status);
+      APEX_JSON.write('hasPhoto',    (r.photo_blob IS NOT NULL));
     END LOOP;
   END IF;
+  -- required/optional document checklist (admin-configurable via doc-requirements)
+  APEX_JSON.open_array('docRequirements');
+  FOR dr IN (
+    SELECT dt.doc_type_code, dt.doc_type_name_en, dt.doc_type_name_ar, r2.is_mandatory
+    FROM   dct_doc_requirements r2
+    JOIN   dct_document_types   dt ON dt.doc_type_id = r2.doc_type_id
+    WHERE  r2.source_module='FL' AND r2.context_code='REGISTRATION' AND r2.is_active='Y'
+    ORDER BY r2.display_seq
+  ) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('code',      dr.doc_type_code);
+    APEX_JSON.write('name',      dr.doc_type_name_en);
+    APEX_JSON.write('nameAr',    NVL(dr.doc_type_name_ar, dr.doc_type_name_en));
+    APEX_JSON.write('mandatory', dr.is_mandatory='Y');
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -438,9 +458,68 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN
   dct_rest.err(CASE SQLCODE WHEN -20001 THEN 400 WHEN -20130 THEN 400 WHEN -20131 THEN 400
-    WHEN -20133 THEN 400 WHEN -20134 THEN 400 WHEN -20135 THEN 400 WHEN -20136 THEN 400
-    WHEN -20137 THEN 400 WHEN -20138 THEN 400 WHEN -20139 THEN 400 WHEN -20140 THEN 400
-    WHEN -20141 THEN 400 WHEN -20142 THEN 400 ELSE 500 END, SQLERRM);
+    WHEN -20132 THEN 400 WHEN -20133 THEN 400 WHEN -20134 THEN 400 WHEN -20135 THEN 400
+    WHEN -20136 THEN 400 WHEN -20137 THEN 400 WHEN -20138 THEN 400 WHEN -20139 THEN 400
+    WHEN -20140 THEN 400 WHEN -20141 THEN 400 WHEN -20142 THEN 400 ELSE 500 END, SQLERRM);
+END;
+]');
+
+    -- ===================== PUBLIC: upload personal photo ====================
+    -- Raw-binary photo -> DCT_FL_REGISTRATIONS.photo_blob (mirrors the staff
+    -- registrations/:id/photo, but token-gated for the self-service applicant).
+    deft('reg/public/[COLON]token/photo');
+    defh('reg/public/[COLON]token/photo', 'PUT', q'[
+DECLARE
+  v_blob BLOB := [COLON]body;     -- deref ONCE
+  l_email VARCHAR2(200);
+  l_rid NUMBER; v_len NUMBER; v_max NUMBER;
+BEGIN
+  l_email := dct_fl_reg_pkg.public_email([COLON]token);
+  IF l_email IS NULL THEN dct_rest.err(401,'Invalid or expired session.'); RETURN; END IF;
+  l_rid := dct_fl_reg_pkg.public_registration_id([COLON]token);
+  IF l_rid IS NULL THEN dct_rest.err(400,'Save your details before uploading a photo.'); RETURN; END IF;
+  IF v_blob IS NULL OR DBMS_LOB.GETLENGTH(v_blob)=0 THEN
+    dct_rest.err(400,'Request body (photo bytes) is required'); RETURN; END IF;
+  v_len := DBMS_LOB.GETLENGTH(v_blob);
+  v_max := NVL(TO_NUMBER(dct_fl_pkg.get_setting('MAX_UPLOAD_MB') DEFAULT NULL ON CONVERSION ERROR),10);
+  IF v_len > v_max*1024*1024 THEN
+    dct_rest.err(413,'Photo exceeds the maximum upload size of '||v_max||' MB'); RETURN; END IF;
+  UPDATE dct_fl_registrations SET photo_blob=v_blob,
+    photo_mime_type=NVL([COLON]mime_type,'image/jpeg'),
+    photo_filename =NVL([COLON]file_name,'photo.jpg'),
+    updated_by='fl.selfservice', updated_at=SYSTIMESTAMP
+  WHERE registration_id=l_rid AND status IN ('DRAFT','RETURNED');
+  IF SQL%ROWCOUNT=0 THEN ROLLBACK; dct_rest.err(404,'Registration not found or not editable'); RETURN; END IF;
+  COMMIT;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok',TRUE); APEX_JSON.write('fileSize',v_len);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+]');
+
+    -- =============== AUTH: FL_ADMIN edits a document requirement ============
+    -- Toggle a registration document required <-> optional. The submit check in
+    -- DCT_FL_PKG.submit_registration is already data-driven on is_mandatory.
+    deft('doc-requirements/[COLON]id');
+    defh('doc-requirements/[COLON]id', 'PUT', q'[
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_mand VARCHAR2(1);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user,'FL_ADMIN') AND NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only FL Admin can change document requirements'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_mand := UPPER(NVL(APEX_JSON.get_varchar2(p_path=>'isMandatory'),'Y'));
+  IF l_mand NOT IN ('Y','N') THEN dct_rest.err(400,'isMandatory must be Y or N'); RETURN; END IF;
+  UPDATE dct_doc_requirements SET is_mandatory=l_mand
+  WHERE doc_req_id=[COLON]id AND source_module='FL';
+  IF SQL%ROWCOUNT=0 THEN ROLLBACK; dct_rest.err(404,'Requirement not found'); RETURN; END IF;
+  COMMIT;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object; APEX_JSON.write('ok',TRUE); APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 ]');
 

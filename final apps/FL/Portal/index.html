@@ -6,7 +6,7 @@
 <title>Freelancer Portal · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=Public+Sans:wght@300;400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=Libre+Franklin:wght@400;500;600;700&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.9.0';</script>
+<script>window.APP_VERSION = '1.10.0';</script>
 <link rel="stylesheet" id="portal-css">
 <script>
   document.getElementById('portal-css').href = 'css/portal.css?v=' + window.APP_VERSION;
@@ -194,9 +194,14 @@
         <div class="dlp-wizhint" data-bind="text: regAiEnabled() ? t('regDocsHintAi') : t('regDocsHintManual')"></div>
         <!-- ko foreach: rgDocs -->
         <div class="dlp-doc">
-          <label class="dlp-doc-lbl" data-bind="text: label"></label>
+          <label class="dlp-doc-lbl">
+            <span data-bind="text: label"></span>
+            <!-- ko if: mandatory --><span class="dlp-tag dlp-tag--req" data-bind="text: $root.t('reqTag')"></span><!-- /ko -->
+            <!-- ko ifnot: mandatory --><span class="dlp-tag dlp-tag--opt" data-bind="text: $root.t('optTag')"></span><!-- /ko -->
+          </label>
           <input class="dlp-file" type="file" accept="image/*,application/pdf" data-bind="event: { change: function(d,e){ return $root.regPickDoc($data, e); } }">
           <div class="dlp-doc-file" data-bind="visible: fileName(), text: fileName"></div>
+          <div class="dlp-saved" data-bind="visible: fileName(), text: $root.t('savedTag')"></div>
           <button class="dlp-ghost" data-bind="visible: $root.regAiEnabled(), click: function(){ return $root.regExtract($data); }, disable: $root.regBusy() || !docId(), text: $root.t('aiExtract')"></button>
           <div class="dlp-doc-msg" data-bind="visible: aiMsg(), text: aiMsg, css: { bad: aiOk() === false }"></div>
           <!-- ko if: extracted().length -->
@@ -209,6 +214,24 @@
           <!-- /ko -->
         </div>
         <!-- /ko -->
+
+        <!-- personal photo (US-09) -->
+        <div class="dlp-doc">
+          <label class="dlp-doc-lbl">
+            <span data-bind="text: t('regPhotoLbl')"></span>
+            <!-- ko if: regPhotoRequired --><span class="dlp-tag dlp-tag--req" data-bind="text: t('reqTag')"></span><!-- /ko -->
+            <!-- ko ifnot: regPhotoRequired --><span class="dlp-tag dlp-tag--opt" data-bind="text: t('optTag')"></span><!-- /ko -->
+          </label>
+          <div class="dlp-wizhint" data-bind="text: t('regPhotoHint')"></div>
+          <div class="dlp-photo-row">
+            <!-- ko if: regPhotoPreview -->
+            <img class="dlp-photo-prev" data-bind="attr: { src: regPhotoPreview }" alt="photo">
+            <!-- /ko -->
+            <input class="dlp-file" type="file" accept="image/*" data-bind="event: { change: function(d,e){ return regPickPhoto($data, e); } }">
+          </div>
+          <div class="dlp-saved" data-bind="visible: regHasPhoto"><span data-bind="text: t('savedTag')"></span> <span data-bind="text: regPhotoName"></span></div>
+        </div>
+
         <button class="dlp-cta dlp-cta--full" data-bind="click: regDocsContinue, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('next')"></span></button>
         <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('otp'); }, text: t('back')"></a></div>
       </div>
@@ -236,6 +259,17 @@
           <div><label class="dlp-lbl" data-bind="text: t('ibanLbl')"></label><input class="dlp-inp" type="text" data-bind="value: rgBankIban"></div>
           <div><label class="dlp-lbl" data-bind="text: t('lineMgrEmail')"></label><input class="dlp-inp" type="email" data-bind="value: rgLineMgrEmail"></div>
           <div><label class="dlp-lbl" data-bind="text: t('lineMgrName')"></label><input class="dlp-inp" type="text" data-bind="value: rgLineMgrName"></div>
+        </div>
+        <div class="dlp-revdocs">
+          <div class="dlp-revdocs-h" data-bind="text: t('uploadedDocsTitle')"></div>
+          <!-- ko foreach: rgDocs -->
+          <!-- ko if: fileName() -->
+          <div class="dlp-revdoc"><span data-bind="text: label"></span><b class="dlp-saved" data-bind="text: $root.t('savedTag')"></b></div>
+          <!-- /ko -->
+          <!-- /ko -->
+          <!-- ko if: regHasPhoto -->
+          <div class="dlp-revdoc"><span data-bind="text: t('regPhotoLbl')"></span><b class="dlp-saved" data-bind="text: t('savedTag')"></b></div>
+          <!-- /ko -->
         </div>
         <button class="dlp-cta dlp-cta--full" data-bind="click: regSubmit, disable: regBusy"><span data-bind="text: regBusy() ? '…' : t('submitReg')"></span></button>
         <div class="dlp-authalt"><a href="#" data-bind="click: function(){ return $root.regGoto('docs'); }, text: t('back')"></a></div>

@@ -11,6 +11,8 @@ function (ko, flService, regionPicker) {
     self.items      = ko.observableArray([]);   // non-region settings (flat, for save)
     self.groups     = ko.observableArray([]);   // same items grouped for display
     self.successMsg = ko.observable('');
+    self.docReqs    = ko.observableArray([]);   // registration doc required/optional (US-10)
+    self.photoItem  = ko.observable(null);      // PHOTO_REQUIRED setting, rendered in the docs section
 
     // Ordered group definitions; a setting falls into the first group it matches,
     // anything unmatched lands in "General" so nothing is ever hidden.
@@ -66,6 +68,26 @@ function (ko, flService, regionPicker) {
       return item;
     }
 
+    // Registration document required/optional rows (drive DCT_DOC_REQUIREMENTS).
+    function makeReq(r) {
+      var obs  = ko.observable(r.isMandatory === 'Y');
+      var item = {
+        docReqId: r.docReqId,
+        code:     r.docTypeCode,
+        label:    r.docTypeName || r.docTypeCode,
+        mandatory: obs,
+        original:  r.isMandatory === 'Y',
+        dirty:     ko.observable(false)
+      };
+      item.flip = function () { obs(!obs()); };
+      obs.subscribe(function (v) { item.dirty(v !== item.original); });
+      return item;
+    }
+
+    flService.getDocRequirements('REGISTRATION').then(function (rows) {
+      self.docReqs((rows || []).map(makeReq));
+    }).catch(function () { /* section simply stays empty on error */ });
+
     flService.getSettings().then(function (rows) {
       var regionItems = {};
       var keyMap = { THEME_REGION_HEADER_BG: 'bg', THEME_REGION_HEADER_FG: 'fg',
@@ -78,7 +100,10 @@ function (ko, flService, regionPicker) {
         else rest.push(item);
       });
       self.items(rest);
-      self.groups(groupItems(rest));
+      // PHOTO_REQUIRED is shown inside the Registration Documents section, not
+      // the generic grid (kept in self.items so saveAll still persists it).
+      self.photoItem(rest.filter(function (i) { return i.settingKey === 'PHOTO_REQUIRED'; })[0] || null);
+      self.groups(groupItems(rest.filter(function (i) { return i.settingKey !== 'PHOTO_REQUIRED'; })));
       rp.setRegion(regionItems);
       self.loading(false);
     }).catch(function (err) {
@@ -97,18 +122,24 @@ function (ko, flService, regionPicker) {
 
     self.hasDirty = ko.computed(function () {
       self.region();
-      return allItems().some(function (s) { return s.dirty(); });
+      var reqDirty = self.docReqs().some(function (r) { return r.dirty(); });
+      return reqDirty || allItems().some(function (s) { return s.dirty(); });
     });
 
     self.saveAll = function () {
-      var dirty = allItems().filter(function (s) { return s.dirty(); });
-      if (!dirty.length) return;
+      var dirty     = allItems().filter(function (s) { return s.dirty(); });
+      var dirtyReqs = self.docReqs().filter(function (r) { return r.dirty(); });
+      if (!dirty.length && !dirtyReqs.length) return;
       self.saving(true);
       self.successMsg(''); self.errorMsg('');
-      Promise.all(dirty.map(function (s) {
+      var jobs = dirty.map(function (s) {
         return flService.updateSetting(s.settingId, s.value());
-      })).then(function () {
+      }).concat(dirtyReqs.map(function (r) {
+        return flService.updateDocRequirement(r.docReqId, r.mandatory() ? 'Y' : 'N');
+      }));
+      Promise.all(jobs).then(function () {
         dirty.forEach(function (s) { s.original = s.value(); s.dirty(false); });
+        dirtyReqs.forEach(function (r) { r.original = r.mandatory(); r.dirty(false); });
         self.saving(false);
         self.successMsg('Settings saved.');
         setTimeout(function () { self.successMsg(''); }, 3000);
