@@ -178,6 +178,8 @@
   "login.signIn": "تسجيل الدخول",
   "login.signingIn": "جارٍ تسجيل الدخول…",
   "login.quick": "دخول سريع (تجريبي)",
+  "login.freelancerNote": "هل أنت متعاون حر؟ هذه البوابة لموظفي الدائرة.",
+  "login.freelancerLink": "انتقل إلى بوابة المتعاونين ←",
   "pa.subtitle": "لديك {0} عنصر بانتظار إجرائك",
   "pa.caughtUp": "أنجزت كل شيء!",
   "pa.caughtUpSub": "لا توجد موافقات معلقة تتطلب إجراءك",

@@ -191,6 +191,8 @@
   "login.signIn": "Sign In",
   "login.signingIn": "Signing in…",
   "login.quick": "Quick login (demo)",
+  "login.freelancerNote": "Are you a freelancer? This portal is for DCT staff.",
+  "login.freelancerLink": "Go to the Freelancer Portal →",
   "pa.subtitle": "You have {0} item(s) awaiting your action",
   "pa.caughtUp": "All caught up!",
   "pa.caughtUpSub": "No pending approvals require your action",
