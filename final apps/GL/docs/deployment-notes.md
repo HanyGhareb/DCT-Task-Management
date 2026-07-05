@@ -22,6 +22,24 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-06 — PR/PO charge-account format fix (`prod.dct_cc_canon`, db/v2/40).** The 2026-07-05
+  ATD reload flipped `CHARGE_ACCOUNT` on `ATD_PR_DISTRIBUTIONS`/`ATD_PO_DISTRIBUTIONS` to the same
+  **re-ordered dot format** that hit `ATD_GL_BALANCES` on 07-02 — every charge_account↔COA join
+  matched ZERO rows (PR 0/4,559, PO 0/2,783), so the Actuals report showed **Commitment (PR) and
+  Obligation (PO) all zeros** (user-reported). Fix = **`prod.dct_cc_canon(cc)`** function with
+  format auto-detection (dash = legacy → dots; dot w/ 7-digit token#2 = already canonical;
+  6-digit token#2 = program-first re-ordered feed → re-order) — self-heals if a future reload
+  flips back. **RULE: every `charge_account` ↔ COA join/key goes through `prod.dct_cc_canon`**
+  (GL_BALANCES keeps the pure-SQL `GL_BALANCES_CC` view).
+  - Re-pointed: `db/v2/36` (PR view cc), `db/v2/32` (`DCT_ACTUAL_V` ap_po_match/PO/GRN branches +
+    `DCT_BUDGET_ACTUAL_V` spine/po_agg/grn_agg), `db/v2/34` (grn_ytd + po_base), `db/v2/37`
+    (po_dist + f_pr attribute cc), `05_gl_ords.sql` (8 drill filters + 3 dashboard snap joins) —
+    then 05 republished + 07 + 08 re-run per the rule.
+  - Verified: canon unit test (all 3 forms); PR 4,547/4,559 + PO 2,782/2,783 matched; 07-2026
+    report rows carry Commitment 1,940.3M / Open 448.3M / PO 1,514.8M / Open 475.3M with sectors;
+    drill + dashboard queries return rows; butil 2026 totals intact AND **sector coverage now
+    100%** (canon fixed the transaction-based sector fallback); 19 templates; 0 invalid objects.
+    No frontend change (APP_VERSION stays 1.10.0).
 - **2026-07-05 — Classifications assignments drawer (v1.10.0).** Clicking a row on the
   Classifications values table opens an **extra-wide (1120px) right-edge drawer** with that value's
   full assignment list — segment code + dimension description, editable start/end dates + notes,

@@ -112,8 +112,9 @@ pb AS (
            b.expenditure_type
 ),
 po_dist AS (
+  -- charge_account canonicalized via prod.dct_cc_canon (db/v2/40, re-ordered feed)
   SELECT po_distribution_id,
-         MAX(charge_account)                    AS charge_account,
+         prod.dct_cc_canon(MAX(charge_account)) AS charge_account,
          MAX(project_id)                        AS project_id,
          MAX(task_id)                           AS task_id,
          MAX(expenditure_type_name)             AS expenditure_type,
@@ -170,7 +171,7 @@ f_grn AS (
 ),
 f_pr AS (
   SELECT EXTRACT(YEAR FROM d.budget_date) AS budget_year,
-         d.charge_account AS cc_string,
+         prod.dct_cc_canon(d.charge_account) AS cc_string,
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(d.project_id)) AS project_key,
          COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END) AS task_key,
          d.expenditure_type,
@@ -182,7 +183,7 @@ f_pr AS (
   WHERE d.funds_status = 'Reserved'
     AND d.project_id IS NOT NULL
     AND d.charge_account IS NOT NULL
-  GROUP BY EXTRACT(YEAR FROM d.budget_date), d.charge_account,
+  GROUP BY EXTRACT(YEAR FROM d.budget_date), prod.dct_cc_canon(d.charge_account),
            COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(d.project_id)),
            COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),
            d.expenditure_type

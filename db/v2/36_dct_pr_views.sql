@@ -37,7 +37,9 @@ WITH periods AS (
   FROM (SELECT DISTINCT period_name FROM prod.gl_balances WHERE period_name IS NOT NULL)
 ),
 pr_base AS (
-  SELECT d.charge_account                                      AS cc_string,
+  -- charge_account canonicalized via prod.dct_cc_canon (db/v2/40) - the
+  -- 2026-07-05 reload flipped the feed to the re-ordered segment format
+  SELECT prod.dct_cc_canon(d.charge_account)                   AS cc_string,
          d.budget_date,
          d.distribution_amount * NVL(cc.exchange_rate_to_aed,1) AS amt_aed,
          d.funds_status,

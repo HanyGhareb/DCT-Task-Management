@@ -830,13 +830,13 @@ BEGIN
                      g.currency_code, g.conversion_rate, g.transaction_amount*NVL(g.conversion_rate,1) aed, g.transaction_type
               FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
               LEFT JOIN prod.po_headers h ON h.po_header_id = g.po_header_id
-              WHERE pod.charge_account = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext
+              WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext
               ORDER BY g.transaction_date DESC FETCH FIRST 500 ROWS ONLY) LOOP
       APEX_JSON.open_object; APEX_JSON.write('receipt',r.receipt_number); APEX_JSON.write('date',NVL(r.td,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
       APEX_JSON.write('currency',NVL(r.currency_code,'AED')); APEX_JSON.write('rate',NVL(r.conversion_rate,1)); APEX_JSON.write('amount',r.aed); APEX_JSON.write('type',NVL(r.transaction_type,'')); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
-    SELECT NVL(SUM(g.transaction_amount*NVL(g.conversion_rate,1)),0) INTO l_total FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id WHERE pod.charge_account = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext;
+    SELECT NVL(SUM(g.transaction_amount*NVL(g.conversion_rate,1)),0) INTO l_total FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext;
 
   ELSIF l_metric = 'apdirect' THEN
     APEX_JSON.open_array('columns'); col('invoice','Invoice','text'); col('date','Acct date','date'); col('description','Description','text'); col('orig','Amount (orig)','money'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
@@ -866,7 +866,7 @@ BEGIN
                 FROM prod.po_distributions pd
                 JOIN prod.po_headers h ON h.po_header_id = pd.po_header_id
                 LEFT JOIN prod.po_lines pl ON pl.po_header_id = pd.po_header_id AND pl.po_line_id = pd.po_line_id
-                WHERE pd.charge_account = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+                WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
                   AND ( (l_metric='obligation' AND NVL(pd.funds_status,'x') NOT IN ('Failed','Passed'))
                      OR (l_metric='popipeline' AND pd.funds_status IN ('Failed','Passed')) )
                 GROUP BY h.order_number, pl.line, pl.item_description, h.supplier_name, pd.funds_status, pd.po_distribution_id)
@@ -878,7 +878,7 @@ BEGIN
     APEX_JSON.close_array;
     SELECT NVL(SUM(amt),0) INTO l_total FROM (
       SELECT MAX(pd.distribution_amount*NVL(pd.rate,1)) amt FROM prod.po_distributions pd
-      WHERE pd.charge_account = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+      WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
         AND ( (l_metric='obligation' AND NVL(pd.funds_status,'x') NOT IN ('Failed','Passed'))
            OR (l_metric='popipeline' AND pd.funds_status IN ('Failed','Passed')) )
       GROUP BY pd.po_distribution_id);
@@ -894,7 +894,7 @@ BEGIN
                 LEFT JOIN prod.po_lines pl ON pl.po_header_id = pd.po_header_id AND pl.po_line_id = pd.po_line_id
                 LEFT JOIN (SELECT po_distribution_id, SUM(transaction_amount*NVL(conversion_rate,1)) grn FROM prod.grn_all_v2 GROUP BY po_distribution_id) g
                   ON g.po_distribution_id = pd.po_distribution_id
-                WHERE pd.charge_account = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+                WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
                   AND pd.funds_status IN ('Reserved','Partially Liquidated')
                 GROUP BY h.order_number, pl.line, pl.item_description, pd.funds_status, pd.po_distribution_id)
               ORDER BY open_amt DESC NULLS LAST FETCH FIRST 500 ROWS ONLY) LOOP
@@ -908,7 +908,7 @@ BEGIN
       FROM prod.po_distributions pd
       LEFT JOIN (SELECT po_distribution_id, SUM(transaction_amount*NVL(conversion_rate,1)) grn FROM prod.grn_all_v2 GROUP BY po_distribution_id) g
         ON g.po_distribution_id = pd.po_distribution_id
-      WHERE pd.charge_account = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+      WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
         AND pd.funds_status IN ('Reserved','Partially Liquidated')
       GROUP BY pd.po_distribution_id);
 
@@ -920,7 +920,7 @@ BEGIN
               FROM prod.pr_distributions d
               JOIN prod.pr_headers h ON h.pr_header_id = d.pr_header_id
               LEFT JOIN prod.dct_currency_codes c ON c.currency_code = d.currency_code
-              WHERE d.charge_account = l_cc AND (d.budget_date IS NULL OR d.budget_date < l_pnext)
+              WHERE prod.dct_cc_canon(d.charge_account) = l_cc AND (d.budget_date IS NULL OR d.budget_date < l_pnext)
                 AND ( (l_metric='commitment'         AND d.funds_status IN ('Reserved','Liquidated'))
                    OR (l_metric='opencommitment'     AND d.funds_status = 'Reserved')
                    OR (l_metric='commitmentpipeline' AND d.funds_status = 'Not reserved') )
@@ -934,7 +934,7 @@ BEGIN
     SELECT NVL(SUM(d.distribution_amount*NVL(c.exchange_rate_to_aed,1)),0) INTO l_total
       FROM prod.pr_distributions d
       LEFT JOIN prod.dct_currency_codes c ON c.currency_code = d.currency_code
-      WHERE d.charge_account = l_cc AND (d.budget_date IS NULL OR d.budget_date < l_pnext)
+      WHERE prod.dct_cc_canon(d.charge_account) = l_cc AND (d.budget_date IS NULL OR d.budget_date < l_pnext)
         AND ( (l_metric='commitment'         AND d.funds_status IN ('Reserved','Liquidated'))
            OR (l_metric='opencommitment'     AND d.funds_status = 'Reserved')
            OR (l_metric='commitmentpipeline' AND d.funds_status = 'Not reserved') );
@@ -1000,7 +1000,7 @@ BEGIN
                 GROUP BY s.sector_code),
          po AS (SELECT s.sector_code, COUNT(DISTINCT h.order_number) pc, SUM(pd.distribution_amount*NVL(pd.rate,1)) pt
                 FROM prod.po_distributions pd JOIN prod.po_headers h ON h.po_header_id=pd.po_header_id
-                JOIN prod.dct_gl_coa_snap s ON s.cc_string = pd.charge_account
+                JOIN prod.dct_gl_coa_snap s ON s.cc_string = prod.dct_cc_canon(pd.charge_account)
                 WHERE (pd.budget_date IS NULL OR pd.budget_date < l_pnext) AND s.sector_code IS NOT NULL
                 GROUP BY s.sector_code),
          dim AS (SELECT sector_code, MAX(sector_name) nm FROM prod.dct_gl_coa_snap WHERE sector_code IS NOT NULL GROUP BY sector_code)
@@ -1021,7 +1021,7 @@ BEGIN
                 GROUP BY s.program_class_code),
          po AS (SELECT s.program_class_code code, COUNT(DISTINCT h.order_number) pc, SUM(pd.distribution_amount*NVL(pd.rate,1)) pt
                 FROM prod.po_distributions pd JOIN prod.po_headers h ON h.po_header_id=pd.po_header_id
-                JOIN prod.dct_gl_coa_snap s ON s.cc_string = pd.charge_account
+                JOIN prod.dct_gl_coa_snap s ON s.cc_string = prod.dct_cc_canon(pd.charge_account)
                 WHERE (pd.budget_date IS NULL OR pd.budget_date < l_pnext) AND s.program_class_code IS NOT NULL
                 GROUP BY s.program_class_code),
          dim AS (SELECT program_class_code code, MAX(program_name) nm FROM prod.dct_gl_coa_snap WHERE program_class_code IS NOT NULL GROUP BY program_class_code)
@@ -1042,7 +1042,7 @@ BEGIN
                 GROUP BY s.appropriation_code),
          po AS (SELECT s.appropriation_code code, COUNT(DISTINCT h.order_number) pc, SUM(pd.distribution_amount*NVL(pd.rate,1)) pt
                 FROM prod.po_distributions pd JOIN prod.po_headers h ON h.po_header_id=pd.po_header_id
-                JOIN prod.dct_gl_coa_snap s ON s.cc_string = pd.charge_account
+                JOIN prod.dct_gl_coa_snap s ON s.cc_string = prod.dct_cc_canon(pd.charge_account)
                 WHERE (pd.budget_date IS NULL OR pd.budget_date < l_pnext) AND s.appropriation_code IS NOT NULL
                 GROUP BY s.appropriation_code),
          dim AS (SELECT appropriation_code code, MAX(appropriation_desc) nm FROM prod.dct_gl_coa_snap WHERE appropriation_code IS NOT NULL GROUP BY appropriation_code)

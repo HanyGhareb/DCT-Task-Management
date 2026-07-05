@@ -57,12 +57,13 @@ gl_ytd AS (
   GROUP BY g.cc_string, p.period_name
 ),
 grn_ytd AS (
-  SELECT pod.charge_account AS cc_string, p.period_name,
+  -- charge_account canonicalized via prod.dct_cc_canon (db/v2/40, re-ordered feed)
+  SELECT prod.dct_cc_canon(pod.charge_account) AS cc_string, p.period_name,
          SUM(g.transaction_amount * NVL(g.conversion_rate,1)) AS grn_actual
   FROM prod.grn_all_v2 g
   JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
   JOIN periods p ON g.transaction_date >= p.yr_start AND g.transaction_date < p.p_next
-  GROUP BY pod.charge_account, p.period_name
+  GROUP BY prod.dct_cc_canon(pod.charge_account), p.period_name
 ),
 ap_ytd AS (  -- AP Direct = AP distribution lines with NO PO reference (po_number IS NULL)
   SELECT cid.cc_string, p.period_name,
@@ -81,7 +82,7 @@ grn_per_dist AS (  -- total GRN received per PO distribution (for Open Obligatio
 ),
 po_base AS (  -- one row per PO distribution (collapse physical dups by po_distribution_id)
   SELECT po_distribution_id,
-         MAX(charge_account)                    AS charge_account,
+         prod.dct_cc_canon(MAX(charge_account)) AS charge_account,
          MAX(po_header_id)                      AS po_header_id,
          MAX(budget_date)                       AS budget_date,
          MAX(distribution_amount * NVL(rate,1)) AS amt_aed,

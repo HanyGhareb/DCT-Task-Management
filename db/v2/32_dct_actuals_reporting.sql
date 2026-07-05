@@ -120,7 +120,7 @@ PROMPT GL_BALANCES_CC created (canonical combination string).
 CREATE OR REPLACE VIEW prod.dct_actual_v AS
 WITH ap_po_match AS (
   SELECT ph.order_number AS po_number, pl.line AS po_line,
-         pod.distribution_number AS po_dist_line, MAX(pod.charge_account) AS charge_account
+         pod.distribution_number AS po_dist_line, prod.dct_cc_canon(MAX(pod.charge_account)) AS charge_account
   FROM prod.po_distributions pod
   JOIN prod.po_lines   pl ON pl.po_header_id = pod.po_header_id AND pl.po_line_id = pod.po_line_id
   JOIN prod.po_headers ph ON ph.po_header_id = pod.po_header_id
@@ -204,7 +204,7 @@ SELECT
   pd.expenditure_type_name,
   pd.pr_description
 FROM prod.po_distributions pd
-LEFT JOIN prod.dct_gl_coa_snap   coa ON coa.cc_string = pd.charge_account
+LEFT JOIN prod.dct_gl_coa_snap   coa ON coa.cc_string = prod.dct_cc_canon(pd.charge_account)
 LEFT JOIN prod.po_headers        h   ON h.po_header_id = pd.po_header_id
 LEFT JOIN proj                   pj  ON pj.project_id = pd.project_id
 LEFT JOIN prod.tasks             tk  ON tk.task_id    = pd.task_id
@@ -239,7 +239,7 @@ SELECT
   g.transaction_type
 FROM prod.grn_all_v2 g
 LEFT JOIN prod.po_distributions  pod ON pod.po_distribution_id = g.po_distribution_id
-LEFT JOIN prod.dct_gl_coa_snap   coa ON coa.cc_string = pod.charge_account
+LEFT JOIN prod.dct_gl_coa_snap   coa ON coa.cc_string = prod.dct_cc_canon(pod.charge_account)
 LEFT JOIN prod.po_headers        h   ON h.po_header_id = g.po_header_id
 LEFT JOIN proj                   pj  ON pj.project_id = g.project_id
 LEFT JOIN prod.tasks             tk  ON tk.task_id    = g.task_id
@@ -283,7 +283,7 @@ PROMPT DCT_ACTUAL_V created (unified AP/PO/GRN/GL fact, AED-converted).
 CREATE OR REPLACE VIEW prod.dct_budget_actual_v AS
 WITH ap_po_match AS (
   SELECT ph.order_number AS po_number, pl.line AS po_line,
-         pod.distribution_number AS po_dist_line, MAX(pod.charge_account) AS charge_account
+         pod.distribution_number AS po_dist_line, prod.dct_cc_canon(MAX(pod.charge_account)) AS charge_account
   FROM prod.po_distributions pod
   JOIN prod.po_lines   pl ON pl.po_header_id = pod.po_header_id AND pl.po_line_id = pod.po_line_id
   JOIN prod.po_headers ph ON ph.po_header_id = pod.po_header_id
@@ -305,7 +305,7 @@ spine AS (
   SELECT cc_string
     FROM prod.gl_balances_cc WHERE cc_string IS NOT NULL
   UNION
-  SELECT charge_account FROM prod.po_distributions WHERE charge_account IS NOT NULL
+  SELECT prod.dct_cc_canon(charge_account) FROM prod.po_distributions WHERE charge_account IS NOT NULL
   UNION
   SELECT cc_string FROM ap_eff WHERE cc_string IS NOT NULL
 ),
@@ -324,17 +324,17 @@ gl_agg AS (
    GROUP BY cc_string
 ),
 po_agg AS (
-  SELECT pd.charge_account AS cc_string,
+  SELECT prod.dct_cc_canon(pd.charge_account) AS cc_string,
          SUM(pd.distribution_amount * NVL(pd.rate,1)) AS po_committed
     FROM prod.po_distributions pd
-   GROUP BY pd.charge_account
+   GROUP BY prod.dct_cc_canon(pd.charge_account)
 ),
 grn_agg AS (
-  SELECT pod.charge_account AS cc_string,
+  SELECT prod.dct_cc_canon(pod.charge_account) AS cc_string,
          SUM(g.transaction_amount * NVL(g.conversion_rate,1)) AS grn_received
     FROM prod.grn_all_v2 g
     JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
-   GROUP BY pod.charge_account
+   GROUP BY prod.dct_cc_canon(pod.charge_account)
 ),
 ap_agg AS (
   SELECT cc_string, SUM(amount) AS ap_invoiced
