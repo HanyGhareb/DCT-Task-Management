@@ -1,130 +1,341 @@
 -- =============================================================================
--- i-Finance V2 — Authentication & Authorization Package
--- File    : 03_dct_auth_pkg.sql
--- Schema  : PROD
--- Sprint  : 1 — Foundation
--- =============================================================================
--- Prerequisite: GRANT EXECUTE ON DBMS_CRYPTO TO PROD;
+-- 41_dct_sso.sql  --  Cross-UI single sign-on hand-off (JET <-> APEX App 200)
 --
--- APEX Configuration (App 200):
---   Authentication Scheme Type : Custom
---   Authentication Function    : dct_auth.authenticate
---   Post-Authentication Proc   : dct_auth.post_login
+-- One-time, single-use, hashed hand-off codes bridged over the existing
+-- DCT_AUTH / DCT_SESSIONS backbone (authorization-code style):
 --
--- Adding a new auth scheme later (e.g. OCI IAM):
---   1. Add new APEX authentication scheme in App 200
---   2. That scheme handles credential validation externally
---   3. post_login still fires — no changes needed to this package
---   4. Update DCT_SYSTEM_SETTINGS key DEFAULT_AUTH_METHOD to 'OCI_IAM'
+--   JET -> APEX : POST /dct/sso/code issues a JET2APEX code; the APEX login
+--                 page (9999) exchanges it via apex_authentication.login with
+--                 the sentinel password SSO$<code>, which dct_auth.authenticate
+--                 redeems below. Normal APEX login flow then completes.
+--   APEX -> JET : an authenticated APEX page issues an APEX2JET code and
+--                 redirects to the Admin JET app with #sso=<code>; the app
+--                 exchanges it at POST /dct/auth/sso for a bearer session.
+--
+-- Objects:
+--   PROD.DCT_SSO_CODES        one-time codes (hash at rest, TTL, single-use)
+--   PROD.DCT_SSO_PKG          issue_code / peek_username / redeem_code
+--   PROD.DCT_AUTH             body replaced: authenticate gains the SSO$ branch
+--   Lookup category SSO_DIRECTION (JET2APEX / APEX2JET)
+--   Settings: FEATURE_SSO_HANDOFF (N), SSO_CODE_TTL_SECS (60),
+--             APEX_SSO_URL, JET_SSO_URL           (category SECURITY)
+--
+-- FEATURE_SSO_HANDOFF ships to every app via GET /dct/boot automatically
+-- (the boot handler already whitelists all FEATURE_ keys).
+--
+-- Rerunnable. Run as ADMIN via SQLcl (all objects prod.-qualified).
+-- ORDS endpoints live in 41b_dct_sso_ords.sql (fresh session).
 -- =============================================================================
+SET DEFINE OFF
+SET SQLBLANKLINES ON
 
--- =============================================================================
--- PACKAGE SPEC
--- =============================================================================
-CREATE OR REPLACE PACKAGE dct_auth AS
+PROMPT === 1. Table PROD.DCT_SSO_CODES ===
 
-    -- -------------------------------------------------------------------------
-    -- APEX Custom Authentication entry point.
-    -- Called by APEX when authentication scheme = Custom.
-    -- Returns TRUE  → APEX creates the session.
-    -- Returns FALSE → Login page re-rendered with error.
-    -- -------------------------------------------------------------------------
-    FUNCTION authenticate (
-        p_username IN VARCHAR2,
-        p_password IN VARCHAR2
-    ) RETURN BOOLEAN;
-
-    -- -------------------------------------------------------------------------
-    -- Post-authentication initialisation.
-    -- Called as APEX Post-Authentication Procedure immediately after login.
-    -- Loads role/permission/org data into APEX application items.
-    -- Also called manually after any mid-session role change.
-    -- -------------------------------------------------------------------------
-    PROCEDURE post_login (
-        p_username IN VARCHAR2 DEFAULT NULL  -- defaults to V('APP_USER')
-    );
-
-    -- -------------------------------------------------------------------------
-    -- Permission & role checks — called from APEX Authorization Schemes.
-    -- -------------------------------------------------------------------------
-    FUNCTION has_permission (
-        p_username        IN VARCHAR2,
-        p_permission_code IN VARCHAR2
-    ) RETURN BOOLEAN;
-
-    FUNCTION has_role (
-        p_username  IN VARCHAR2,
-        p_role_code IN VARCHAR2
-    ) RETURN BOOLEAN;
-
-    FUNCTION has_module_access (
-        p_username    IN VARCHAR2,
-        p_module_code IN VARCHAR2
-    ) RETURN BOOLEAN;
-
-    -- -------------------------------------------------------------------------
-    -- Utility — used by domain apps and APEX computations.
-    -- -------------------------------------------------------------------------
-    FUNCTION get_user_id (
-        p_username IN VARCHAR2
-    ) RETURN NUMBER;
-
-    FUNCTION get_user_roles (
-        p_username IN VARCHAR2
-    ) RETURN VARCHAR2;  -- Comma-separated role_code list
-
-    FUNCTION get_user_org_ids (
-        p_username IN VARCHAR2
-    ) RETURN VARCHAR2;  -- Comma-separated org_id list
-
-    -- -------------------------------------------------------------------------
-    -- Delegation resolver.
-    -- Returns p_username unchanged unless the user is acting as a delegate;
-    -- in that case returns the delegator's username so permission checks
-    -- reflect the delegated authority.
-    -- -------------------------------------------------------------------------
-    FUNCTION get_effective_user (
-        p_username IN VARCHAR2
-    ) RETURN VARCHAR2;
-
-    -- -------------------------------------------------------------------------
-    -- Password management (DB auth method only).
-    -- -------------------------------------------------------------------------
-    FUNCTION hash_password (
-        p_plain_text IN VARCHAR2
-    ) RETURN VARCHAR2;
-
-    PROCEDURE set_password (
-        p_username  IN VARCHAR2,
-        p_password  IN VARCHAR2
-    );
-
-    -- -------------------------------------------------------------------------
-    -- Session management.
-    -- -------------------------------------------------------------------------
-    PROCEDURE open_session (
-        p_username   IN VARCHAR2,
-        p_session_id IN VARCHAR2,
-        p_ip         IN VARCHAR2 DEFAULT NULL,
-        p_agent      IN VARCHAR2 DEFAULT NULL,
-        p_auth_method IN VARCHAR2 DEFAULT 'DB'
-    );
-
-    PROCEDURE close_session (
-        p_session_id IN VARCHAR2
-    );
-
-    PROCEDURE touch_session (
-        p_session_id IN VARCHAR2
-    );
-
-END dct_auth;
+BEGIN
+    EXECUTE IMMEDIATE q'[
+CREATE TABLE prod.dct_sso_codes (
+    code_hash         VARCHAR2(64)   NOT NULL PRIMARY KEY,
+    user_id           NUMBER         NOT NULL,
+    username          VARCHAR2(100)  NOT NULL,
+    direction         VARCHAR2(20)   NOT NULL,
+    issued_session_id VARCHAR2(100),
+    ip_address        VARCHAR2(50),
+    user_agent        VARCHAR2(500),
+    created_at        TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
+    expires_at        TIMESTAMP      NOT NULL,
+    used_at           TIMESTAMP,
+    CONSTRAINT fk_dct_ssoc_user FOREIGN KEY (user_id) REFERENCES prod.dct_users(user_id)
+)]';
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLCODE != -955 THEN RAISE; END IF;   -- already exists
+END;
 /
 
--- =============================================================================
--- PACKAGE BODY
--- =============================================================================
-CREATE OR REPLACE PACKAGE BODY dct_auth AS
+COMMENT ON TABLE prod.dct_sso_codes IS
+    'One-time SSO hand-off codes between the JET suite and APEX App 200. Code value is stored hashed; rows are single-use and short-lived.';
+
+PROMPT === 2. Lookup category SSO_DIRECTION ===
+
+DECLARE
+    v_cat NUMBER;
+
+    PROCEDURE upsert_category (p_code VARCHAR2, p_en VARCHAR2, p_ar VARCHAR2, o_id OUT NUMBER) IS
+    BEGIN
+        MERGE INTO prod.dct_lookup_categories t
+        USING (SELECT p_code AS category_code FROM dual) s
+        ON (t.category_code = s.category_code)
+        WHEN NOT MATCHED THEN
+            INSERT (category_code, category_name_en, category_name_ar, module_id, is_system, is_active)
+            VALUES (p_code, p_en, p_ar, NULL, 'Y', 'Y')
+        WHEN MATCHED THEN
+            UPDATE SET t.category_name_en = p_en, t.category_name_ar = p_ar;
+        SELECT category_id INTO o_id FROM prod.dct_lookup_categories WHERE category_code = p_code;
+    END;
+
+    PROCEDURE upsert_value (p_cat NUMBER, p_code VARCHAR2, p_en VARCHAR2, p_ar VARCHAR2, p_ord NUMBER) IS
+    BEGIN
+        MERGE INTO prod.dct_lookup_values t
+        USING (SELECT p_cat AS category_id, p_code AS value_code FROM dual) s
+        ON (t.category_id = s.category_id AND t.value_code = s.value_code)
+        WHEN NOT MATCHED THEN
+            INSERT (category_id, value_code, value_name_en, value_name_ar, display_order, is_default, is_active)
+            VALUES (p_cat, p_code, p_en, p_ar, p_ord, 'N', 'Y')
+        WHEN MATCHED THEN
+            UPDATE SET t.value_name_en = p_en, t.value_name_ar = p_ar, t.display_order = p_ord;
+    END;
+BEGIN
+    upsert_category('SSO_DIRECTION', 'SSO Hand-off Direction', 'اتجاه الدخول الموحد', v_cat);
+    upsert_value(v_cat, 'JET2APEX', 'JET to APEX', 'من JET إلى APEX', 10);
+    upsert_value(v_cat, 'APEX2JET', 'APEX to JET', 'من APEX إلى JET', 20);
+    COMMIT;
+END;
+/
+
+PROMPT === 3. Package PROD.DCT_SSO_PKG ===
+
+CREATE OR REPLACE PACKAGE prod.dct_sso_pkg AS
+
+    -- Issue a one-time hand-off code for an active user. Returns the clear
+    -- code (64 hex chars); only its SHA-256 is stored. Raises:
+    --   -20403 when FEATURE_SSO_HANDOFF is not Y
+    --   -20404 when the user does not exist or is inactive
+    FUNCTION issue_code (
+        p_username   IN VARCHAR2,
+        p_direction  IN VARCHAR2,               -- JET2APEX / APEX2JET
+        p_session_id IN VARCHAR2 DEFAULT NULL,  -- issuing side session reference
+        p_ip         IN VARCHAR2 DEFAULT NULL,
+        p_agent      IN VARCHAR2 DEFAULT NULL
+    ) RETURN VARCHAR2;
+
+    -- Non-consuming username lookup of a still-valid code. Returns NULL when
+    -- the code is unknown / used / expired (the APEX login page falls back to
+    -- the normal credential form on NULL).
+    FUNCTION peek_username (p_code IN VARCHAR2) RETURN VARCHAR2;
+
+    -- Consume a code exactly once (atomic). Returns the username. Raises:
+    --   -20401 when the code is invalid, expired, already used, of the wrong
+    --          direction, or the user is no longer active
+    --   -20403 when FEATURE_SSO_HANDOFF is not Y
+    FUNCTION redeem_code (p_code IN VARCHAR2, p_direction IN VARCHAR2) RETURN VARCHAR2;
+
+END dct_sso_pkg;
+/
+
+CREATE OR REPLACE PACKAGE BODY prod.dct_sso_pkg AS
+
+    -- -------------------------------------------------------------------------
+    -- PRIVATE: SHA-256 of the clear code (64 hex chars). Only hashes at rest.
+    -- -------------------------------------------------------------------------
+    FUNCTION hash_code (p_code IN VARCHAR2) RETURN VARCHAR2 IS
+    BEGIN
+        IF p_code IS NULL OR LENGTH(p_code) > 200 THEN
+            RETURN NULL;
+        END IF;
+        RETURN RAWTOHEX(
+            DBMS_CRYPTO.HASH(
+                UTL_I18N.STRING_TO_RAW(p_code, 'AL32UTF8'),
+                DBMS_CRYPTO.HASH_SH256
+            )
+        );
+    END hash_code;
+
+    -- -------------------------------------------------------------------------
+    -- PRIVATE: audit trail — never blocks the auth path on a logging failure.
+    -- -------------------------------------------------------------------------
+    PROCEDURE p_audit (
+        p_username IN VARCHAR2,
+        p_action   IN VARCHAR2,
+        p_status   IN VARCHAR2,
+        p_detail   IN VARCHAR2 DEFAULT NULL
+    ) IS
+        PRAGMA AUTONOMOUS_TRANSACTION;
+        l_user_id prod.dct_users.user_id%TYPE;
+    BEGIN
+        BEGIN
+            SELECT user_id INTO l_user_id
+            FROM   prod.dct_users
+            WHERE  UPPER(username) = UPPER(p_username)
+              AND  ROWNUM = 1;
+        EXCEPTION WHEN NO_DATA_FOUND THEN l_user_id := NULL;
+        END;
+
+        INSERT INTO prod.dct_audit_log (
+            username, user_id, action, object_type, object_id, status, error_message
+        ) VALUES (
+            p_username, l_user_id, p_action, 'DCT_SSO_CODES', p_username, p_status, p_detail
+        );
+        COMMIT;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END p_audit;
+
+    -- -------------------------------------------------------------------------
+    -- PRIVATE: feature gate.
+    -- -------------------------------------------------------------------------
+    PROCEDURE gate_check IS
+        l_val prod.dct_system_settings.setting_value%TYPE;
+    BEGIN
+        BEGIN
+            SELECT setting_value INTO l_val
+            FROM   prod.dct_system_settings
+            WHERE  setting_key = 'FEATURE_SSO_HANDOFF';
+        EXCEPTION WHEN NO_DATA_FOUND THEN l_val := 'N';
+        END;
+        IF NVL(l_val, 'N') != 'Y' THEN
+            RAISE_APPLICATION_ERROR(-20403, 'SSO hand-off is disabled');
+        END IF;
+    END gate_check;
+
+    -- -------------------------------------------------------------------------
+    -- PRIVATE: configured TTL in seconds, bounded 10..600.
+    -- -------------------------------------------------------------------------
+    FUNCTION code_ttl RETURN NUMBER IS
+        l_ttl NUMBER;
+    BEGIN
+        SELECT TO_NUMBER(setting_value) INTO l_ttl
+        FROM   prod.dct_system_settings
+        WHERE  setting_key = 'SSO_CODE_TTL_SECS';
+        RETURN GREATEST(10, LEAST(600, NVL(l_ttl, 60)));
+    EXCEPTION WHEN OTHERS THEN RETURN 60;
+    END code_ttl;
+
+    -- -------------------------------------------------------------------------
+    -- issue_code
+    -- -------------------------------------------------------------------------
+    FUNCTION issue_code (
+        p_username   IN VARCHAR2,
+        p_direction  IN VARCHAR2,
+        p_session_id IN VARCHAR2 DEFAULT NULL,
+        p_ip         IN VARCHAR2 DEFAULT NULL,
+        p_agent      IN VARCHAR2 DEFAULT NULL
+    ) RETURN VARCHAR2 IS
+        l_user_id prod.dct_users.user_id%TYPE;
+        l_code    VARCHAR2(64);
+        l_hash    VARCHAR2(64);   -- body-private fns cannot appear in SQL (PLS-00231):
+        l_ttl     NUMBER;         -- assign hash_code/code_ttl to locals before SQL use
+    BEGIN
+        gate_check;
+        prod.dct_lookup_pkg.validate_lookup('SSO_DIRECTION', p_direction);
+
+        BEGIN
+            SELECT user_id INTO l_user_id
+            FROM   prod.dct_users
+            WHERE  UPPER(username) = UPPER(p_username)
+              AND  is_active = 'Y'
+              AND  ROWNUM = 1;
+        EXCEPTION
+            WHEN NO_DATA_FOUND THEN
+                p_audit(p_username, 'SSO_ISSUE', 'FAILURE', 'User not found or inactive');
+                RAISE_APPLICATION_ERROR(-20404, 'User not found or inactive');
+        END;
+
+        -- Opportunistic housekeeping: expired codes have no forensic value
+        -- beyond one hour (issue/redeem outcomes live in dct_audit_log).
+        -- expires_at is a plain TIMESTAMP holding UTC; compare via
+        -- SYS_EXTRACT_UTC or the session time zone skews the comparison.
+        DELETE FROM prod.dct_sso_codes
+        WHERE  expires_at < SYS_EXTRACT_UTC(SYSTIMESTAMP) - INTERVAL '1' HOUR;
+
+        l_code := RAWTOHEX(DBMS_CRYPTO.RANDOMBYTES(32));
+        l_hash := hash_code(l_code);
+        l_ttl  := code_ttl;
+
+        INSERT INTO prod.dct_sso_codes (
+            code_hash, user_id, username, direction,
+            issued_session_id, ip_address, user_agent, expires_at
+        ) VALUES (
+            l_hash, l_user_id, UPPER(p_username), p_direction,
+            p_session_id, p_ip, SUBSTR(p_agent, 1, 500),
+            SYS_EXTRACT_UTC(SYSTIMESTAMP) + NUMTODSINTERVAL(l_ttl, 'SECOND')
+        );
+        COMMIT;
+
+        p_audit(p_username, 'SSO_ISSUE', 'SUCCESS', p_direction);
+        RETURN l_code;
+    END issue_code;
+
+    -- -------------------------------------------------------------------------
+    -- peek_username
+    -- -------------------------------------------------------------------------
+    FUNCTION peek_username (p_code IN VARCHAR2) RETURN VARCHAR2 IS
+        l_username prod.dct_sso_codes.username%TYPE;
+        l_hash     VARCHAR2(64);
+    BEGIN
+        gate_check;
+        l_hash := hash_code(p_code);
+        IF l_hash IS NULL THEN
+            RETURN NULL;
+        END IF;
+        SELECT username INTO l_username
+        FROM   prod.dct_sso_codes
+        WHERE  code_hash  = l_hash
+          AND  used_at    IS NULL
+          AND  expires_at > SYS_EXTRACT_UTC(SYSTIMESTAMP);
+        RETURN l_username;
+    EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+    END peek_username;
+
+    -- -------------------------------------------------------------------------
+    -- redeem_code
+    -- -------------------------------------------------------------------------
+    FUNCTION redeem_code (p_code IN VARCHAR2, p_direction IN VARCHAR2) RETURN VARCHAR2 IS
+        l_username prod.dct_sso_codes.username%TYPE;
+        l_active   prod.dct_users.is_active%TYPE;
+        l_hash     VARCHAR2(64);
+    BEGIN
+        gate_check;
+
+        l_hash := hash_code(p_code);
+        IF l_hash IS NULL THEN
+            p_audit('UNKNOWN', 'SSO_REDEEM', 'FAILURE', 'Malformed code (' || p_direction || ')');
+            RAISE_APPLICATION_ERROR(-20401, 'Invalid or expired SSO code');
+        END IF;
+
+        -- Atomic single-use consumption: only one caller can flip used_at.
+        UPDATE prod.dct_sso_codes
+        SET    used_at    = SYSTIMESTAMP
+        WHERE  code_hash  = l_hash
+          AND  used_at    IS NULL
+          AND  expires_at > SYS_EXTRACT_UTC(SYSTIMESTAMP)
+          AND  direction  = p_direction
+        RETURNING username INTO l_username;
+
+        IF SQL%ROWCOUNT = 0 THEN
+            COMMIT;
+            p_audit('UNKNOWN', 'SSO_REDEEM', 'FAILURE',
+                    'Invalid, expired or already-used code (' || p_direction || ')');
+            RAISE_APPLICATION_ERROR(-20401, 'Invalid or expired SSO code');
+        END IF;
+        COMMIT;
+
+        -- The account must still be active at redemption time.
+        BEGIN
+            SELECT is_active INTO l_active
+            FROM   prod.dct_users
+            WHERE  UPPER(username) = UPPER(l_username)
+              AND  ROWNUM = 1;
+        EXCEPTION WHEN NO_DATA_FOUND THEN l_active := 'N';
+        END;
+        IF l_active != 'Y' THEN
+            p_audit(l_username, 'SSO_REDEEM', 'FAILURE', 'Account inactive at redemption');
+            RAISE_APPLICATION_ERROR(-20401, 'Invalid or expired SSO code');
+        END IF;
+
+        p_audit(l_username, 'SSO_REDEEM', 'SUCCESS', p_direction);
+        RETURN l_username;
+    END redeem_code;
+
+END dct_sso_pkg;
+/
+
+SHOW ERRORS PACKAGE BODY prod.dct_sso_pkg
+
+PROMPT === 4. DCT_AUTH body — authenticate gains the SSO hand-off branch ===
+-- Full body replace (spec unchanged). Source of truth 03_dct_auth_pkg.sql
+-- carries the same code; the only change vs the previous body is the
+-- SSO$ branch inside authenticate.
+
+CREATE OR REPLACE PACKAGE BODY prod.dct_auth AS
 
     -- -------------------------------------------------------------------------
     -- PRIVATE: Hash a plain-text password with SHA-512.
@@ -611,12 +822,49 @@ CREATE OR REPLACE PACKAGE BODY dct_auth AS
 END dct_auth;
 /
 
--- =============================================================================
--- SYNONYM for convenience (optional — lets domain apps call dct_auth without
--- schema prefix if they are in the same schema)
--- =============================================================================
--- CREATE OR REPLACE PUBLIC SYNONYM dct_auth FOR prod.dct_auth;
--- GRANT EXECUTE ON dct_auth TO PUBLIC;  -- restrict to app schema only in prod
+SHOW ERRORS PACKAGE BODY prod.dct_auth
 
-SHOW ERRORS PACKAGE BODY dct_auth;
--- End of 03_dct_auth_pkg.sql
+PROMPT === 5. System settings (category SECURITY) ===
+
+INSERT INTO prod.dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+SELECT 'FEATURE_SSO_HANDOFF', 'N', 'BOOLEAN', 'SECURITY',
+       'Enable the one-time hand-off single sign-on between the JET suite and APEX App 200.', 'Y', 'SYSTEM'
+FROM dual WHERE NOT EXISTS
+  (SELECT 1 FROM prod.dct_system_settings WHERE setting_key = 'FEATURE_SSO_HANDOFF');
+
+INSERT INTO prod.dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+SELECT 'SSO_CODE_TTL_SECS', '60', 'NUMBER', 'SECURITY',
+       'Lifetime in seconds of a one-time SSO hand-off code (bounded 10-600).', 'Y', 'SYSTEM'
+FROM dual WHERE NOT EXISTS
+  (SELECT 1 FROM prod.dct_system_settings WHERE setting_key = 'SSO_CODE_TTL_SECS');
+
+INSERT INTO prod.dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+SELECT 'APEX_SSO_URL',
+       'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/f?p=200:9999:0::::P9999_SSO_CODE:',
+       'STRING', 'SECURITY',
+       'APEX App 200 login URL prefix for the JET-to-APEX hand-off; the one-time code is appended.', 'Y', 'SYSTEM'
+FROM dual WHERE NOT EXISTS
+  (SELECT 1 FROM prod.dct_system_settings WHERE setting_key = 'APEX_SSO_URL');
+
+INSERT INTO prod.dct_system_settings (setting_key, setting_value, value_type, category, description_en, is_system, created_by)
+SELECT 'JET_SSO_URL', 'http://localhost:8080/index.html', 'STRING', 'SECURITY',
+       'Admin JET app URL for the APEX-to-JET hand-off; #sso=<code> is appended. Set to the production host when JET hosting is finalised.', 'Y', 'SYSTEM'
+FROM dual WHERE NOT EXISTS
+  (SELECT 1 FROM prod.dct_system_settings WHERE setting_key = 'JET_SSO_URL');
+
+COMMIT;
+
+PROMPT === 6. Verify ===
+
+SELECT setting_key, setting_value
+FROM   prod.dct_system_settings
+WHERE  setting_key IN ('FEATURE_SSO_HANDOFF','SSO_CODE_TTL_SECS','APEX_SSO_URL','JET_SSO_URL')
+ORDER  BY setting_key;
+
+SELECT object_name, object_type, status
+FROM   dba_objects
+WHERE  owner = 'PROD'
+AND    object_name IN ('DCT_SSO_CODES','DCT_SSO_PKG','DCT_AUTH')
+ORDER  BY object_name, object_type;
+
+PROMPT === 41_dct_sso.sql complete ===

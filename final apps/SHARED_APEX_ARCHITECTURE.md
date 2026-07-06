@@ -201,6 +201,11 @@ Use this checklist when starting any new module app:
 - [ ] Oracle Fusion CSS applied (copy from App 200 Shared Components)
 - [ ] Navigation menu configured
 - [ ] App alias set (e.g. `PC`, `HR`, `BUDGET`)
+- [ ] **Cross-UI SSO wired** (see `Admin/docs/apex-sso-setup.md` § App mapping):
+      login page 9999 gets `P9999_SSO_CODE` (hidden, unrestricted) + the
+      `SSO_AUTO_LOGIN` Before-Header process, Page Access Protection =
+      Unrestricted, then append the app id to the `APEX_SSO_APPS` setting —
+      the JET module's APEX button then lands users directly in THIS app
 
 ---
 

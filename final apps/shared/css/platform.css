@@ -148,6 +148,8 @@ button { cursor: pointer; border: none; background: none; font: inherit; }
   transition: background var(--transition);
 }
 .tb-btn:hover { background: var(--chrome-border); }
+/* cross-UI SSO hand-off button injected by shared/js/shell.js (db/v2/41) */
+.tb-btn.tb-apex { width: auto; padding: 0 10px; font: 700 11px var(--font); letter-spacing: .4px; }
 .tb-dotn {
   position: absolute; inset-block-start: -3px; inset-inline-end: -3px;
   min-width: 15px; height: 15px; border-radius: 8px; padding: 0 3px;

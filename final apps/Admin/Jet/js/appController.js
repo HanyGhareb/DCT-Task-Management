@@ -310,6 +310,13 @@ define(
                 shell.applyBrand(self._bootSettings.THEME_BRAND_COLOR);
               }
               shell.applyRegionTheme(self._bootSettings);
+              // Cross-UI SSO hand-off (db/v2/41): module apps get the APEX
+              // button via shell.initRegionTheme; Admin injects it here.
+              if (self._bootSettings.FEATURE_SSO_HANDOFF === 'Y') {
+                require(['services/config'], function (config) {
+                  shell.injectApexLink(config.authBase || config.apiBase);
+                });
+              }
               if (self._idleWarn && self._bootSettings.SESSION_TIMEOUT_MINS) {
                 self._idleWarn.setTimeoutMins(Number(self._bootSettings.SESSION_TIMEOUT_MINS));
               }
@@ -531,7 +538,22 @@ define(
     // ── Boot: load initial route (URL hash survives F5) ────────────────
     if (self.currentUser()) self._bootstrap();
     var bootRoute = (window.location.hash || '').replace(/^#/, '');
-    self._loadRoute(self.currentUser() ? (bootRoute || 'dashboard') : 'login');
+    if (/^sso=/.test(bootRoute)) {
+      // APEX -> JET hand-off (db/v2/41): exchange the one-time code for a
+      // bearer session. Scrub the code from the URL first (history/bookmarks),
+      // show the login view while exchanging; an invalid or expired code just
+      // leaves the normal login form up.
+      var ssoCode = decodeURIComponent(bootRoute.slice(4));
+      try {
+        history.replaceState(null, '', window.location.pathname + window.location.search);
+      } catch (e) {}
+      self._loadRoute('login');
+      authService.ssoExchange(ssoCode)
+        .then(function (user) { self.onLogin(user); })
+        .catch(function () {});
+    } else {
+      self._loadRoute(self.currentUser() ? (bootRoute || 'dashboard') : 'login');
+    }
   }
 
   return AppController;

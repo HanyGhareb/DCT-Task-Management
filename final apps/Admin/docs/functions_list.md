@@ -21,6 +21,10 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 - `quickLogin` — one-click UAT/demo login as a seeded user.
 - `onKeyDown` — Enter-to-submit handler.
 
+**Cross-UI SSO hand-off** (shell + `appController`, db/v2/41 — gated `FEATURE_SSO_HANDOFF`)
+- **APEX** topbar button (all shared-shell apps, injected by `shared/js/shell.js`) — `POST /dct/sso/code` then opens APEX App 200 signed-in in a new tab.
+- `#sso=<code>` boot hook (`appController`) — APEX→JET landing: scrubs the code from the URL, `authService.ssoExchange(code)`, then `onLogin`; invalid code falls back to the login form.
+
 **Active Sessions** (`sessions`) — view/revoke live sessions across the platform.
 - `reload` · `revoke` (terminate a session) · `isOwn` (flag current session) · `fmt`.
 
@@ -122,7 +126,8 @@ and read is **PUT** `notifications/:id/read` (not POST).
 
 | Area | Method & Path |
 |---|---|
-| Auth | `POST auth/login` · `POST auth/logout` |
+| Auth | `POST auth/login` · `POST auth/logout` · `POST auth/sso` *(public — redeem an APEX2JET one-time code for a bearer session; db/v2/41b)* |
+| SSO hand-off | `POST sso/code` *(bearer — issue a JET2APEX one-time code; body `{app}` = calling JET module's app number, honored when on the `APEX_SSO_APPS` allowlist else falls back to 200; returns `{code, expiresInSecs, apexUrl, targetApp}`; gated `FEATURE_SSO_HANDOFF`; db/v2/41b+41c)* |
 | Boot / shared | `GET boot` · `GET branding` *(public)* · `GET stats/` · `GET prefs/` · `PUT prefs/:prefkey` |
 | Users | `GET users/` · `POST users/` · `GET users/:id` · `PUT users/:id` · `DELETE users/:id` · `PUT users/:id/photo` |
 | Roles & Permissions | `GET roles/` · `POST roles/` · `GET roles/:id` · `PUT roles/:id` · `DELETE roles/:id` · `GET permissions/` |
@@ -147,7 +152,7 @@ and read is **PUT** `notifications/:id/read` (not POST).
 |---|---|
 | `api.js` | Bearer-token fetch wrapper; auto-navigates to `login` on 401. |
 | `config.js` | `apiBase` toggle (mock vs `/ords/admin/dct`). |
-| `authService` | login / logout / validate session. |
+| `authService` | login / logout / validate session / `ssoExchange(code)` (APEX→JET hand-off, db/v2/41). |
 | `userService` | user CRUD + `getPage()` server pagination. |
 | `roleService` | roles CRUD + `getPermissionMatrix()` + `setRolePermissions()`. |
 | `orgService` | org hierarchy CRUD. |

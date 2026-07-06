@@ -163,6 +163,7 @@ define([], function () {
    */
   function initRegionTheme(authBase, getModuleRowsPromise) {
     var sys = {}, mod = {};
+    var ssoOn = false;
     var token = null;
     try {
       var raw = localStorage.getItem('ifinance_jet_session');
@@ -174,6 +175,8 @@ define([], function () {
           .then(function (d) {
             (d.settings || []).forEach(function (s) {
               if (REGION_KEYS.indexOf(s.key) >= 0) sys[s.key] = s.value;
+              /* cross-UI SSO hand-off rides the same boot fetch (db/v2/41) */
+              if (s.key === 'FEATURE_SSO_HANDOFF') ssoOn = (s.value === 'Y');
             });
           }).catch(function () {})
       : Promise.resolve();
@@ -198,7 +201,64 @@ define([], function () {
         if (v !== undefined && v !== null && String(v) !== '') out[k] = v;
       });
       applyRegionTheme(out);
+      if (ssoOn) injectApexLink(authBase);
     });
+  }
+
+  /* ── cross-UI SSO hand-off (db/v2/41 + 41b) ─────────────────────────────
+     When FEATURE_SSO_HANDOFF = Y (delivered by GET /dct/boot) every app shows
+     an APEX button in the topbar. Click: POST /dct/sso/code issues a one-time
+     code, then APEX login page 9999 (P9999_SSO_CODE) signs the user in without
+     credentials. Vanilla DOM — same pattern as the announcement banner.
+     Module apps get this for free via initRegionTheme; Admin calls
+     injectApexLink from its own /boot handling. */
+  /* Which module app is this page? Derived from the URL path against the
+     registry, so the APEX button targets the CORRESPONDING APEX app
+     (PC 201 -> APEX 201...). Server falls back to App 200 unless the target
+     is on the APEX_SSO_APPS allowlist (its login page must be SSO-wired). */
+  function moduleAppFromPath() {
+    var path = (window.location.pathname || '');
+    for (var i = 0; i < MODULES.length; i++) {
+      if (path.indexOf(MODULES[i].url.replace('index.html', '')) === 0) return MODULES[i].app;
+    }
+    return '200';
+  }
+
+  function openApex(authBase) {
+    var token = null;
+    try {
+      var raw = localStorage.getItem('ifinance_jet_session');
+      token = raw ? (JSON.parse(raw).sessionId || null) : null;
+    } catch (e) {}
+    if (!token) return;
+    /* open the tab synchronously — popup blockers kill window.open calls
+       made after an async fetch resolves */
+    var win = window.open('', '_blank');
+    fetch(authBase + '/sso/code', {
+      method: 'POST',
+      headers: { 'Authorization': 'Bearer ' + token, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ app: moduleAppFromPath() })
+    }).then(function (r) { if (!r.ok) throw new Error('sso ' + r.status); return r.json(); })
+      .then(function (d) {
+        if (win && d.code && d.apexUrl) win.location = d.apexUrl + d.code;
+        else if (win) win.close();
+      })
+      .catch(function () { if (win) { try { win.close(); } catch (e) {} } });
+  }
+
+  function injectApexLink(authBase) {
+    if (!authBase || document.getElementById('ifSsoApexBtn')) return;
+    var host = document.querySelector('.topbar .head-end');
+    if (!host) return;
+    var isAr = (document.documentElement.lang || '').toLowerCase() === 'ar';
+    var btn = document.createElement('button');
+    btn.id = 'ifSsoApexBtn';
+    btn.type = 'button';
+    btn.className = 'tb-btn tb-apex';
+    btn.textContent = 'APEX';
+    btn.title = isAr ? 'فتح تطبيق APEX — دخول موحد' : 'Open the APEX app — single sign-on';
+    btn.onclick = function () { openApex(authBase); };
+    host.insertBefore(btn, host.firstChild);
   }
 
   /* ── platform announcement banner (Phase 4) ────────────────────────────
@@ -307,5 +367,6 @@ define([], function () {
   return { MODULES: MODULES, byKey: byKey, applyBrand: applyBrand,
            initBrand: initBrand, initAnnouncements: initAnnouncements,
            applyRegionTheme: applyRegionTheme, initRegionTheme: initRegionTheme,
-           setFeatures: setFeatures, featureEnabled: featureEnabled };
+           setFeatures: setFeatures, featureEnabled: featureEnabled,
+           injectApexLink: injectApexLink };
 });

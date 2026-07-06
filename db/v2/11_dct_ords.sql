@@ -182,6 +182,8 @@ CREATE OR REPLACE SYNONYM dct_notify                FOR prod.dct_notify;
 --  ones below are the Admin-only additions)
 CREATE OR REPLACE SYNONYM dct_delegations           FOR prod.dct_delegations;
 CREATE OR REPLACE SYNONYM dct_announcements         FOR prod.dct_announcements;
+-- Cross-UI SSO hand-off (41_dct_sso.sql / 41b)
+CREATE OR REPLACE SYNONYM dct_sso_pkg               FOR prod.dct_sso_pkg;
 
 -- =============================================================================
 -- 4. Define ORDS module + all templates + handlers
@@ -320,6 +322,147 @@ BEGIN
   APEX_JSON.open_object;
   APEX_JSON.write('ok', TRUE);
   APEX_JSON.close_object;
+END;
+!');
+
+    -- -------------------------------------------------------------------------
+    -- POST auth/sso — redeem an APEX-to-JET one-time hand-off code for a
+    -- bearer session (41_dct_sso.sql / 41b). Public: the code IS the
+    -- credential. Response payload mirrors auth/login exactly.
+    -- -------------------------------------------------------------------------
+    def_template('auth/sso');
+    def_handler('auth/sso', 'POST', q'!
+DECLARE
+  l_code   VARCHAR2(200);
+  l_uname  VARCHAR2(100);
+  l_sid    VARCHAR2(100);
+  l_user   dct_users%ROWTYPE;
+  l_roles  VARCHAR2(4000);
+  l_org_nm dct_organizations.org_name_en%TYPE;
+BEGIN
+  dct_rest.parse_body([COLON]body);
+  l_code := APEX_JSON.get_varchar2(p_path => 'code');
+  IF l_code IS NULL THEN
+    dct_rest.err(400, 'code is required');
+    RETURN;
+  END IF;
+
+  l_uname := dct_sso_pkg.redeem_code(l_code, 'APEX2JET');
+
+  l_sid := RAWTOHEX(SYS_GUID());
+  dct_auth.open_session(
+    p_username    => l_uname,
+    p_session_id  => l_sid,
+    p_ip          => OWA_UTIL.get_cgi_env('REMOTE_ADDR'),
+    p_agent       => OWA_UTIL.get_cgi_env('HTTP_USER_AGENT'),
+    p_auth_method => 'SSO'
+  );
+
+  SELECT * INTO l_user FROM dct_users WHERE UPPER(username) = UPPER(l_uname) AND ROWNUM = 1;
+  BEGIN
+    SELECT org_name_en INTO l_org_nm FROM dct_organizations WHERE org_id = l_user.org_id;
+  EXCEPTION WHEN NO_DATA_FOUND THEN l_org_nm := NULL;
+  END;
+
+  l_roles := dct_auth.get_user_roles(l_uname);
+
+  UPDATE dct_users SET last_login_at = SYSTIMESTAMP WHERE user_id = l_user.user_id;
+  COMMIT;
+
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('sessionId',    l_sid);
+  APEX_JSON.write('userId',       l_user.user_id);
+  APEX_JSON.write('username',     l_user.username);
+  APEX_JSON.write('displayName',  l_user.display_name);
+  APEX_JSON.write('displayNameAr',l_user.display_name_ar);
+  APEX_JSON.write('email',        l_user.email);
+  APEX_JSON.write('phone',        l_user.mobile);
+  APEX_JSON.write('orgId',        l_user.org_id);
+  APEX_JSON.write('orgName',      l_org_nm);
+  APEX_JSON.write('color',        l_user.color_hex);
+  APEX_JSON.write('photoUrl',     l_user.photo_url);
+  APEX_JSON.write('isExternal',   l_user.is_external);
+  APEX_JSON.write('rolesCsv',     l_roles);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN OTHERS THEN
+    IF    SQLCODE = -20401 THEN dct_rest.err(401, 'Invalid or expired SSO code');
+    ELSIF SQLCODE = -20403 THEN dct_rest.err(403, 'SSO hand-off is disabled');
+    ELSE  dct_rest.err(500, SQLERRM);
+    END IF;
+END;
+!');
+
+    -- -------------------------------------------------------------------------
+    -- POST sso/code — issue a one-time JET-to-APEX hand-off code for the
+    -- calling user (41_dct_sso.sql / 41b / 41c). Bearer-protected.
+    -- Optional body { app } = the calling JET module's app number; when that
+    -- APEX app is on the APEX_SSO_APPS allowlist (login page SSO-wired) the
+    -- returned apexUrl targets it, otherwise falls back to App 200.
+    -- -------------------------------------------------------------------------
+    def_template('sso/code');
+    def_handler('sso/code', 'POST', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_code VARCHAR2(64);
+  l_ttl  NUMBER;
+  l_url  VARCHAR2(500);
+  l_app  VARCHAR2(10);
+  l_list VARCHAR2(400);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+
+  BEGIN
+    dct_rest.parse_body([COLON]body);
+    l_app := REGEXP_SUBSTR(APEX_JSON.get_varchar2(p_path => 'app'), '^\d{1,6}$');
+  EXCEPTION WHEN OTHERS THEN l_app := NULL;
+  END;
+
+  BEGIN
+    SELECT setting_value INTO l_list
+    FROM   dct_system_settings WHERE setting_key = 'APEX_SSO_APPS';
+  EXCEPTION WHEN NO_DATA_FOUND THEN l_list := '200';
+  END;
+  IF l_app IS NULL
+     OR INSTR(',' || REPLACE(l_list, ' ', '') || ',', ',' || l_app || ',') = 0 THEN
+    l_app := '200';
+  END IF;
+
+  l_code := dct_sso_pkg.issue_code(
+      p_username  => l_user,
+      p_direction => 'JET2APEX',
+      p_ip        => OWA_UTIL.get_cgi_env('REMOTE_ADDR'),
+      p_agent     => OWA_UTIL.get_cgi_env('HTTP_USER_AGENT'));
+
+  BEGIN
+    SELECT setting_value INTO l_url
+    FROM   dct_system_settings WHERE setting_key = 'APEX_SSO_URL';
+  EXCEPTION WHEN NO_DATA_FOUND THEN l_url := NULL;
+  END;
+  l_url := REPLACE(l_url, '%APP%', l_app);
+
+  BEGIN
+    SELECT GREATEST(10, LEAST(600, TO_NUMBER(setting_value))) INTO l_ttl
+    FROM   dct_system_settings WHERE setting_key = 'SSO_CODE_TTL_SECS';
+  EXCEPTION WHEN OTHERS THEN l_ttl := 60;
+  END;
+
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('code',          l_code);
+  APEX_JSON.write('expiresInSecs', l_ttl);
+  APEX_JSON.write('apexUrl',       l_url);
+  APEX_JSON.write('targetApp',     l_app);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN OTHERS THEN
+    IF    SQLCODE = -20403 THEN dct_rest.err(403, 'SSO hand-off is disabled');
+    ELSIF SQLCODE = -20404 THEN dct_rest.err(404, 'User not found or inactive');
+    ELSE  dct_rest.err(500, SQLERRM);
+    END IF;
 END;
 !');
 

@@ -135,3 +135,9 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | `js/services/rptService.js` | all `/rpt` endpoint wrappers (incl. `getIrCatalog`/`getIrData`/`getIrLov`/`getIrLayouts`/`createIrLayout`/`updateIrLayout`/`deleteIrLayout`/`getParamSpec`/`putParamSpec`/`previewLov`) |
 | `shared/js/components/interactiveReport.js` (+ `.html`) | `<interactive-report>` KO component — the reusable IR grid (SHARED layer since 2026-07-03) |
 | `shared/js/components/irExpr.js` | safe expression compiler for calculated columns (no eval) |
+
+---
+
+## Shared shell — Cross-UI SSO hand-off (2026-07-06)
+
+When `FEATURE_SSO_HANDOFF` = Y (delivered by `GET /dct/boot`), the shared shell (`final apps/shared/js/shell.js`) injects an **APEX** button into the topbar: it calls `POST /dct/sso/code` (shared `/dct/` module, db/v2/41b) to issue a one-time code, then opens APEX App 200 already signed-in in a new tab. No app-local code — the button arrives via `shell.initRegionTheme`'s existing boot fetch.

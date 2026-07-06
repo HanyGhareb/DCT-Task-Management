@@ -28,6 +28,18 @@ function (api, refCache) {
         });
     },
 
+    /* Cross-UI SSO (db/v2/41): exchange an APEX-issued one-time hand-off code
+       (arrives as #sso=<code> on the app URL) for a bearer session. Same
+       post-processing as login(). */
+    ssoExchange: function (code) {
+      return api.post('/auth/sso', { code: code }).then(function (data) {
+        data.roles    = (data.rolesCsv || '').split(',').filter(Boolean);
+        data.initials = getInitials(data.displayName);
+        localStorage.setItem(SESSION_KEY, JSON.stringify(data));
+        return data;
+      });
+    },
+
     logout: function () {
       var token = this.getToken();
       if (token) {

@@ -116,3 +116,9 @@ All other calls (incl. TM's own `GET boot`/`prefs`) hit `/ords/admin/tm/`. Notif
 | `authService` | login / session validate. |
 | `tmService` | teams, tasks, members, objectives + key results, documents, roles, reports. |
 | `notificationService` | notifications + count. |
+
+---
+
+## Shared shell — Cross-UI SSO hand-off (2026-07-06)
+
+When `FEATURE_SSO_HANDOFF` = Y (delivered by `GET /dct/boot`), the shared shell (`final apps/shared/js/shell.js`) injects an **APEX** button into the topbar: it calls `POST /dct/sso/code` (shared `/dct/` module, db/v2/41b) to issue a one-time code, then opens APEX App 200 already signed-in in a new tab. No app-local code — the button arrives via `shell.initRegionTheme`'s existing boot fetch.
