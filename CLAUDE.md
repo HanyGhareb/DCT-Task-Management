@@ -76,6 +76,17 @@ ifinance-mobile/     ← App 209 — React Native + Expo (TypeScript) cross-plat
                        approvals + notifications + delegations + profile + biometric login + push.
                        tsc + Metro bundle clean; see ifinance-mobile/README.md + docs/deployment-notes.md
 
+webtier/             ← PRODUCTION web tier (deployment Option C, LIVE 2026-07-06):
+                       nginx on OCI VM `ifinance-web` (E2.1.Micro Always Free,
+                       129.151.159.189, me-abudhabi-1) serves `final apps/` as one
+                       web root + reverse-proxies /ords/ to ADB (same-origin) +
+                       rate-limits the public FL portal endpoints. WEB TIER ONLY —
+                       workers stay on the local vm180-182 fleet. Deploy frontends
+                       with webtier/deploy_frontend.sh (tar-over-ssh, symlink
+                       releases); runbook + gotchas in webtier/README.md (dnf OOMs
+                       on the micro — use direct rpm; ORDS redirect rewrite needs
+                       the literal host in proxy_redirect)
+
 apps/ifinance-v2/    ← LEGACY: vanilla JS task management prototype (localStorage only)
                        Superseded by final apps/ — do not add features here
 
