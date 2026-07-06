@@ -15,6 +15,7 @@ Full option analysis / comparison: `.claude/plans` deployment proposal
 
 | File | Purpose |
 |---|---|
+| `DEPLOYMENT.md` | **Day-to-day "how do I ship a change" steps** (frontend redeploy, rollback, config refresh, troubleshooting). Start there. |
 | `nginx/ifinance.conf` | Server config (HTTP→HTTPS redirect, TLS, headers, rate limits, static root, `/ords/` proxy). Placeholders substituted at provision time. |
 | `nginx/ifinance-ords.inc` | Shared `/ords/` reverse-proxy snippet (180s read timeout for FL AI extraction; Bearer `Authorization` passes through untouched). |
 | `provision_webtier.sh` | One-shot VM setup over ssh: installs nginx, self-signed bootstrap cert, config, SELinux boolean, firewall. Idempotent. |
