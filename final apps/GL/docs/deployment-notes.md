@@ -10,7 +10,9 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    - `06_gl_seed.sql` — run with `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8` (Arabic class-type names);
      regenerate from CSVs first with `python db/gen_seed.py` if `db/source/*.csv` changed.
    - `05_gl_ords.sql` — **own fresh session**. It DELETE_MODULEs gl.rest — **always re-run the
-     ADDITIVE scripts `07` (butil) and `08` (rebuild endpoint) right after any 05 re-run.**
+     ADDITIVE scripts `07` (butil), `08` (rebuild endpoint), `09` (mappings drill) and `10`
+     (actuals/lines doc numbers) right after any 05 re-run.** (09 and 10 are also source-synced
+     into 05, so a full 05 re-run carries their changes — re-running them is still harmless.)
    - After a **structural** ATD reload (new/renamed columns): UI **Rebuild views** button
      (= `POST /gl/actuals/rebuild` → `prod.dct_views_rebuild`, db/v2/38) re-creates the base
      pass-throughs + recompiles + refreshes. If it reports views still invalid → edit/re-run the
@@ -22,6 +24,26 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-07 — Drill-down drawers: document number + line, no zero-amount lines (DB-only).**
+  User request: every drill-down drawer identifies rows by **document number + line number**
+  (AP invoice #/line, GRN #/line, PR #/line, PO #/line) instead of transaction-id-looking values,
+  and hides zero-amount lines. No frontend change (drawer columns are server-driven) —
+  APP_VERSION stays 1.10.0.
+  - `07_gl_budget_util_ords.sql` (re-run whole, fresh session) — `GET /gl/butil/lines`, all four
+    metrics, both row + aggregate modes: **ap** + `Line` (`ap_invoice_distributions.line_number`);
+    **grn** relabelled `GRN #` + `Line` (`grn_all_v2.receipt_line_number`); **pr** + `Line`
+    (`pr_lines.pr_line` via de-duped `pr_line_id` join); **po** already had PO #/Line. Zero-amount
+    filters: ap/grn/pr `amount <> 0`, po `open > 0` (fully-received lines vanish). Zeros add
+    nothing to SUM, so **drill totals still reconcile** to the row/card figures.
+  - NEW `10_gl_actuals_lines_docnum.sql` — **ADDITIVE, DEFINE_HANDLER-only** upgrade of
+    `GET /gl/actuals/lines` (source synced into 05): **apdirect** drawer showed the raw
+    **`invoice_id` transaction id** — now the real AP invoice number (de-duped `ap_invoices`
+    join, `#id` fallback) + invoice line + zero-amount filter; **grn** drawer relabelled `GRN #`
+    + receipt line. Other actuals metrics untouched (PO drawers already show PO #/Line; the PR
+    drawer aggregates at PR-header grain by design).
+  - Verified: SQLcl reconciliation harness — all 4 butil drills PASS (drill total == row figure,
+    0 zero rows, 0 null lines); live HTTP smoke as NASER.ALKHAJA **31/31 PASS** (agg + row modes
+    reconcile; apdirect 0 id-fallbacks; actuals grn sample receipt 4513075482 line 1).
 - **2026-07-06 — PR/PO charge-account format fix (`prod.dct_cc_canon`, db/v2/40).** The 2026-07-05
   ATD reload flipped `CHARGE_ACCOUNT` on `ATD_PR_DISTRIBUTIONS`/`ATD_PO_DISTRIBUTIONS` to the same
   **re-ordered dot format** that hit `ATD_GL_BALANCES` on 07-02 — every charge_account↔COA join

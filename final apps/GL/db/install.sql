@@ -11,4 +11,8 @@
 -- @04_gl_views.sql
 -- @06_gl_seed.sql          -- JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8
 -- @05_gl_ords.sql          -- fresh session
-PROMPT GL install: run scripts 01..06 individually per the header notes.
+-- @07_gl_budget_util_ords.sql      -- ADDITIVE, fresh session (re-run after any 05)
+-- @08_gl_views_rebuild_ords.sql    -- ADDITIVE, fresh session (re-run after any 05)
+-- @09_gl_class_drill_ords.sql      -- ADDITIVE (synced into 05; re-run after any 05)
+-- @10_gl_actuals_lines_docnum.sql  -- ADDITIVE (synced into 05; re-run after any 05)
+PROMPT GL install: run scripts 01..10 individually per the header notes.

@@ -824,31 +824,35 @@ BEGIN
     SELECT NVL(SUM(g.expenditures),0) INTO l_total FROM prod.gl_balances_cc g WHERE g.cc_string = l_cc AND TO_DATE(g.period_name,'MM-YYYY') BETWEEN l_ystart AND l_pstart;
 
   ELSIF l_metric = 'grn' THEN
-    APEX_JSON.open_array('columns'); col('receipt','Receipt #','text'); col('date','Date','date'); col('supplier','Supplier','text'); col('currency','Cur','text'); col('rate','Rate','num'); col('amount','Amount (AED)','money'); col('type','Type','text'); APEX_JSON.close_array;
+    APEX_JSON.open_array('columns'); col('receipt','GRN #','text'); col('line','Line','text'); col('date','Date','date'); col('supplier','Supplier','text'); col('currency','Cur','text'); col('rate','Rate','num'); col('amount','Amount (AED)','money'); col('type','Type','text'); APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
-    FOR r IN (SELECT g.receipt_number, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, h.supplier_name,
+    FOR r IN (SELECT g.receipt_number, g.receipt_line_number line_no, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, h.supplier_name,
                      g.currency_code, g.conversion_rate, g.transaction_amount*NVL(g.conversion_rate,1) aed, g.transaction_type
               FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
               LEFT JOIN prod.po_headers h ON h.po_header_id = g.po_header_id
               WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext
               ORDER BY g.transaction_date DESC FETCH FIRST 500 ROWS ONLY) LOOP
-      APEX_JSON.open_object; APEX_JSON.write('receipt',r.receipt_number); APEX_JSON.write('date',NVL(r.td,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
+      APEX_JSON.open_object; APEX_JSON.write('receipt',r.receipt_number); APEX_JSON.write('line',NVL(TO_CHAR(r.line_no),'')); APEX_JSON.write('date',NVL(r.td,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
       APEX_JSON.write('currency',NVL(r.currency_code,'AED')); APEX_JSON.write('rate',NVL(r.conversion_rate,1)); APEX_JSON.write('amount',r.aed); APEX_JSON.write('type',NVL(r.transaction_type,'')); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
     SELECT NVL(SUM(g.transaction_amount*NVL(g.conversion_rate,1)),0) INTO l_total FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext;
 
   ELSIF l_metric = 'apdirect' THEN
-    APEX_JSON.open_array('columns'); col('invoice','Invoice','text'); col('date','Acct date','date'); col('description','Description','text'); col('orig','Amount (orig)','money'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
+    APEX_JSON.open_array('columns'); col('invoice','Invoice #','text'); col('line','Line','text'); col('date','Acct date','date'); col('description','Description','text'); col('orig','Amount (orig)','money'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
-    FOR r IN (SELECT d.invoice_id, TO_CHAR(d.accounting_date,'YYYY-MM-DD') ad, d.distribution_description descr,
+    FOR r IN (SELECT NVL(i.invoice_number,'#'||TO_CHAR(d.invoice_id)) inv_no, d.line_number line_no,
+                     TO_CHAR(d.accounting_date,'YYYY-MM-DD') ad, d.distribution_description descr,
                      d.distribution_amount amt, NVL(d.distribution_amount_functi,d.distribution_amount) aed
               FROM prod.ap_invoice_distributions d
+              LEFT JOIN (SELECT invoice_id, MAX(invoice_number) invoice_number FROM prod.ap_invoices GROUP BY invoice_id) i
+                     ON i.invoice_id = d.invoice_id
               JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
               WHERE cid.cc_string = l_cc AND d.po_number IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y'
+                AND NVL(NVL(d.distribution_amount_functi,d.distribution_amount),0) <> 0
                 AND d.accounting_date >= l_ystart AND d.accounting_date < l_pnext
               ORDER BY d.accounting_date DESC FETCH FIRST 500 ROWS ONLY) LOOP
-      APEX_JSON.open_object; APEX_JSON.write('invoice',TO_CHAR(r.invoice_id)); APEX_JSON.write('date',NVL(r.ad,'')); APEX_JSON.write('description',NVL(r.descr,'')); APEX_JSON.write('orig',r.amt); APEX_JSON.write('amount',r.aed); APEX_JSON.close_object;
+      APEX_JSON.open_object; APEX_JSON.write('invoice',NVL(r.inv_no,'')); APEX_JSON.write('line',NVL(TO_CHAR(r.line_no),'')); APEX_JSON.write('date',NVL(r.ad,'')); APEX_JSON.write('description',NVL(r.descr,'')); APEX_JSON.write('orig',r.amt); APEX_JSON.write('amount',r.aed); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
     SELECT NVL(SUM(NVL(d.distribution_amount_functi,d.distribution_amount)),0) INTO l_total
