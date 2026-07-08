@@ -259,7 +259,8 @@ BEGIN
   ELSIF l_metric = 'grn' THEN
     APEX_JSON.open_array('columns');
     IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
-    col('receipt','GRN #','text'); col('line','Line','text'); col('date','Date','date'); col('currency','Cur','text');
+    col('receipt','GRN #','text'); col('line','Line','text'); col('date','Date','date');
+    col('po','PO #','text'); col('poLine','PO Line','text'); col('supplier','Supplier','text'); col('currency','Cur','text');
     col('rate','Rate','num'); col('amount','Amount (AED)','money');
     APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
@@ -274,14 +275,19 @@ BEGIN
                AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
            proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
-           po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account FROM prod.po_distributions GROUP BY po_distribution_id)
+           po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account FROM prod.po_distributions GROUP BY po_distribution_id),
+           poh AS (SELECT po_header_id, MAX(order_number) order_number, MAX(supplier_name) supplier_name FROM prod.po_headers GROUP BY po_header_id),
+           pol AS (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) tkey,
              g.receipt_number, g.receipt_line_number line_no, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, g.currency_code,
+             ph.order_number po_number, pl.line po_line, ph.supplier_name,
              g.conversion_rate, g.transaction_amount * NVL(g.conversion_rate,1) amt_aed,
              COUNT(*) OVER () full_n, SUM(g.transaction_amount * NVL(g.conversion_rate,1)) OVER () full_tot
       FROM prod.grn_all_v2 g
       JOIN po_dist pod ON pod.po_distribution_id = g.po_distribution_id
+      LEFT JOIN poh ph ON ph.po_header_id = g.po_header_id
+      LEFT JOIN pol pl ON pl.po_header_id = g.po_header_id AND pl.po_line_id = g.po_line_id
       LEFT JOIN proj pj ON pj.project_id = g.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = g.task_id
       WHERE g.project_id IS NOT NULL AND pod.charge_account IS NOT NULL
@@ -297,6 +303,8 @@ BEGIN
       IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
       APEX_JSON.write('receipt', NVL(TO_CHAR(r.receipt_number),'')); APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
       APEX_JSON.write('date', NVL(r.td,''));
+      APEX_JSON.write('po', NVL(TO_CHAR(r.po_number),'')); APEX_JSON.write('poLine', NVL(TO_CHAR(r.po_line),''));
+      APEX_JSON.write('supplier', NVL(r.supplier_name,''));
       APEX_JSON.write('currency', NVL(r.currency_code,'AED')); APEX_JSON.write('rate', NVL(r.conversion_rate,1));
       APEX_JSON.write('amount', r.amt_aed);
       APEX_JSON.close_object;

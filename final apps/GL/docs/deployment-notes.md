@@ -24,6 +24,16 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-08 — Butil GRN drawer: + PO #, PO Line, Supplier (DB-only) + web-tier release.**
+  The Budget Utilization "Actual GRN — receipts" drawer now also traces each receipt to its PO:
+  `07_gl_budget_util_ords.sql` grn metric gained `po`/`poLine`/`supplier` columns (de-duped
+  `po_headers`/`po_lines` joins via `grn_all_v2.po_header_id`/`po_line_id`, same pattern as the
+  PO drawer). Redeployed 07 (fresh session); no frontend change. Also pushed web-tier release
+  `20260708225930` via `webtier/deploy_frontend.sh` (no APP_VERSION bump — no frontend files
+  changed; ORDS changes are live through the nginx `/ords/` proxy regardless).
+  Verified through BOTH the ADB URL and `https://129.151.159.189/`: project 4511000854 GRN drill
+  → 3 receipts, all PO 451102006105 line 1 supplier BEST MOMENTS EVENTS L.L.C, total 20,549,700
+  reconciles; aggregate mode 1000 rows with 0 missing PO #.
 - **2026-07-07 — Drill-down drawers: document number + line, no zero-amount lines (DB-only).**
   User request: every drill-down drawer identifies rows by **document number + line number**
   (AP invoice #/line, GRN #/line, PR #/line, PO #/line) instead of transaction-id-looking values,
