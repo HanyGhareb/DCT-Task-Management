@@ -110,6 +110,14 @@
             <label class="form-label" data-bind="text: $root.t('col.formats')"></label>
             <input class="form-control" data-bind="value: fmFormats, attr:{ placeholder:'PDF,XLSX' }">
           </div>
+          <!-- ko if: fmEngine() === 'PYTHON' -->
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('f.pdfTemplate')"></label>
+            <select class="form-control" data-bind="options: templateNames, value: fmPdfTemplate,
+                    optionsCaption: $root.t('f.pdfTemplateDefault')"></select>
+          </div>
+          <!-- /ko -->
+          <div class="form-group"></div>
           <div class="form-group">
             <label class="form-label" data-bind="text: $root.t('f.params')"></label>
             <input class="form-control" placeholder='{"period":null}' data-bind="value: fmParams">

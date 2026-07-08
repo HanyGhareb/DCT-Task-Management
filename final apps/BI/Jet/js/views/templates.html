@@ -1,0 +1,101 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('tpl.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('tpl.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: openGuide, text: $root.t('tpl.guide')"></button>
+      <button class="btn btn-primary" data-bind="click: openUpload">+ <span data-bind="text: $root.t('tpl.upload')"></span></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+  <div class="card">
+    <!-- ko if: items().length === 0 -->
+    <div class="empty-state" data-bind="text: $root.t('tpl.none')"></div>
+    <!-- /ko -->
+    <!-- ko if: items().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('tpl.name')"></th>
+        <th data-bind="text: $root.t('tpl.kind')"></th>
+        <th data-bind="text: $root.t('f.desc')"></th>
+        <th data-bind="text: $root.t('tpl.size')"></th>
+        <th data-bind="text: $root.t('tpl.usedBy')"></th>
+        <th data-bind="text: $root.t('tpl.updated')"></th>
+        <th style="text-align:right" data-bind="text: $root.t('col.actions')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: items -->
+        <tr>
+          <td><code style="font-size:12px" data-bind="text: name"></code></td>
+          <td><span data-bind="text: kind === 'DOCX' ? 'Word' : 'HTML',
+                    attr: { class: kind === 'DOCX' ? 'badge badge--info' : 'badge' }"></span></td>
+          <td data-bind="text: $data.description || '—'"></td>
+          <td data-bind="text: $vm.fmtBytes($data.fileSize)"></td>
+          <td>
+            <!-- ko if: usedBy > 0 --><span class="badge badge--success" data-bind="text: usedBy"></span><!-- /ko -->
+            <!-- ko if: usedBy === 0 --><span style="color:var(--text-2)">—</span><!-- /ko -->
+          </td>
+          <td style="white-space:nowrap"><span data-bind="text: $data.updatedAt || '—'"></span>
+            <span style="color:var(--text-2);font-size:11.5px" data-bind="text: $data.updatedBy ? ' · ' + $data.updatedBy : ''"></span></td>
+          <td style="text-align:right;white-space:nowrap">
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.download($data); }, text: $root.t('tpl.download')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.openReplace($data); }, text: $root.t('tpl.replace')"></button>
+            <button class="btn btn-sm btn-danger" data-bind="click: function(){ $vm.remove($data); },
+                    disable: usedBy > 0, attr: { title: usedBy > 0 ? $root.t('tpl.inUse') : '' },
+                    text: $root.t('btn.delete')"></button>
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ── upload / replace drawer ─────────────────────────────────────────── -->
+  <edit-drawer params="open: upEditing, vm: $vm,
+                       title: (upIsNew() ? $root.t('tpl.uploadTitle') : $root.t('tpl.replaceTitle')),
+                       subtitle: (upIsNew() ? '' : upName()),
+                       saveLabel: (upSaving() ? $root.t('btn.saving') : $root.t('tpl.upload')),
+                       cancelLabel: $root.t('btn.cancel'), onSave: saveUpload, width: '520px'">
+        <div class="form-grid">
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: $root.t('tpl.name')"></label>
+            <input class="form-control" data-bind="value: upName, enable: upIsNew(), attr:{ placeholder:'my_report.docx' }">
+            <div style="font-size:11.5px;color:var(--text-2);margin-top:4px;line-height:1.5"
+                 data-bind="text: $root.t('tpl.nameHint')"></div>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label" data-bind="text: $root.t('tpl.descr')"></label>
+            <input class="form-control" data-bind="value: upDescr">
+          </div>
+          <div class="form-group form-group--full">
+            <div style="display:flex;align-items:center;gap:10px">
+              <button class="btn btn-secondary btn-sm" data-bind="click: chooseFile, text: $root.t('tpl.chooseFile')"></button>
+              <span style="font-size:12px" data-bind="text: upFile() ? upFile().name + ' (' + $vm.fmtBytes(upFile().size) + ')' : $root.t('tpl.noFile'),
+                    style: { color: upFile() ? 'inherit' : 'var(--text-2)' }"></span>
+            </div>
+          </div>
+        </div>
+  </edit-drawer>
+
+  <!-- ── authoring guide drawer ──────────────────────────────────────────── -->
+  <edit-drawer params="open: guideOpen, vm: $vm,
+                       title: $root.t('tpl.guideTitle'),
+                       saveLabel: $root.t('tpl.starterDownload'),
+                       cancelLabel: $root.t('btn.close'), onSave: downloadStarter, width: '640px'">
+        <p style="font-size:12.5px;line-height:1.7" data-bind="text: $root.t('tpl.guideIntro')"></p>
+        <p style="font-size:12.5px;line-height:1.7" data-bind="text: $root.t('tpl.guideStarter')"></p>
+        <div class="section-heading" data-bind="text: $root.t('tpl.guideVars')"></div>
+        <ul style="font-size:12px;line-height:1.9;padding-inline-start:18px">
+          <li data-bind="text: $root.t('tpl.guideVarsData')"></li>
+          <li data-bind="text: $root.t('tpl.guideVarsRows')"></li>
+          <li data-bind="text: $root.t('tpl.guideVarsMeta')"></li>
+          <li data-bind="text: $root.t('tpl.guideVarsSections')"></li>
+          <li data-bind="text: $root.t('tpl.guideVarsFmt')"></li>
+        </ul>
+        <p style="font-size:12px;line-height:1.7;color:var(--text-2)" data-bind="text: $root.t('tpl.guideNote')"></p>
+  </edit-drawer>
+</div>

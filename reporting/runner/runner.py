@@ -25,6 +25,7 @@ import oracledb
 
 import config
 import datasource
+import render_docx
 import render_pdf
 import render_xlsx
 import deliver
@@ -164,6 +165,13 @@ def _is_money_col(name):
     return n in _MONEY_COLS or n.endswith("_aed") or "amount" in n or "budget" in n
 
 
+def _dicts(columns, rows):
+    """Rows as dicts keyed by lower-case column name -- the Word-template-friendly
+    shape ({% for r in data %}{{ r.sector_name }}{% endfor %})."""
+    keys = [str(c).lower() for c in columns]
+    return [dict(zip(keys, row)) for row in rows]
+
+
 def _totals(columns, rows):
     """Per-column sums for money columns only (None elsewhere) — keeps the
     totals row meaningful (no sums of line numbers / counts / years)."""
@@ -190,6 +198,7 @@ def process(conn, conf, job):
         spec, sections = datasource.fetch_multi(conn, job["source_ref"], params)
         for s in sections:
             s["headers"] = _headers(s["columns"])
+            s["data"] = _dicts(s["columns"], s["rows"])
             s["totals"] = _totals(s["columns"], s["rows"]) if s["layout"] == "table" else None
         columns, rows = [], []
         row_count = sum(len(s["rows"]) for s in sections)
@@ -210,7 +219,8 @@ def process(conn, conf, job):
         "generated_at": _now().strftime("%Y-%m-%d %I:%M %p"),
         "row_count": row_count, "requested_by": job.get("requested_by"),
         "headers": _headers(columns),
-        "columns": columns, "rows": rows, "sections": sections,
+        "columns": columns, "rows": rows, "data": _dicts(columns, rows),
+        "sections": sections,
         "meta": meta, "brand": "#1F6F8B", "landscape": landscape,
     }
 
@@ -218,8 +228,18 @@ def process(conn, conf, job):
     renderer = config.cfg(conf, "PDF_RENDERER", "PLAYWRIGHT")
     attachments = []
     if "PDF" in formats:
-        pdf = render_pdf.build_pdf(ctx, template_name=(pdf_tpl or "report.html.j2"),
-                                   renderer=renderer)
+        tpl_name = pdf_tpl or "report.html.j2"
+        if tpl_name.lower().endswith(".docx"):
+            # Word template (docxtpl -> LibreOffice); stored in DCT_RPT_TEMPLATE
+            pdf = render_docx.build_pdf(
+                conn, tpl_name, ctx,
+                timeout=int(config.cfg(conf, "DOCX_PDF_TIMEOUT_SEC", 480)))
+        else:
+            # Jinja2 HTML -> Chromium; DB-stored template wins over the bundled file
+            src = render_docx.fetch_template(conn, tpl_name)
+            pdf = render_pdf.build_pdf(
+                ctx, template_name=tpl_name, renderer=renderer,
+                source=src.decode("utf-8") if src is not None else None)
         fn = f"{code}_{stamp}.pdf"
         record_output(conn, run_id, "PDF", fn, "application/pdf", pdf)
         attachments.append((fn, "application/pdf", pdf))

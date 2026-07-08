@@ -1,6 +1,10 @@
 -- =============================================================================
 -- i-Finance Reporting -- "Send Test Email" endpoint (additive to rpt.rest)
 -- File    : 11_rpt_test_email.sql
+-- SUPERSEDED 2026-07-07 by 19_rpt_test_email_python.sql -- the APEX_MAIL path
+-- below hands mail to OCI Email Delivery but it never arrives; the handler now
+-- enqueues an EMAIL_TEST PYTHON run instead. Do NOT re-run this script (it
+-- would restore the dead APEX_MAIL handler); after any 04 re-run, run 19.
 -- Schema  : registered under ADMIN. Base /ords/admin/rpt/.
 -- Run     : sql -name prod_mcp @11_rpt_test_email.sql   (ANY session -- adds ONE
 --           new template/handler to rpt.rest; no module rebuild, no synonyms.)

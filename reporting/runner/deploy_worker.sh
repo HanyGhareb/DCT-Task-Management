@@ -11,6 +11,9 @@
 #
 # Args : $1 = host/IP    $2 = worker display name (RPT_WORKER_NAME; default $1)
 # Env  : RPT_DB_PASSWORD (required)  RPT_WALLET_PASSWORD (default = db password)
+#        RPT_SMTP_PASSWORD (optional but needed for EMAIL delivery -- the SMTP
+#          app password; without it the worker renders fine but every delivery
+#          FAILS with gmail "530 5.7.0 Authentication Required")
 #        WALLET_SRC (default /opt/oracle-wallet/Wallet_prod)  SSH_USER (default root)
 #
 # What it does on the target:
@@ -51,8 +54,19 @@ echo "== [$HOST] copying runner code + wallet"
 
 echo "== [$HOST] installing python deps (this can take a few minutes)"
 "${SSH[@]}" "python3 -m pip --version >/dev/null 2>&1 || dnf install -y -q python3-pip;
-             python3 -m pip install --quiet oracledb jinja2 openpyxl playwright &&
+             python3 -m pip install --quiet oracledb jinja2 openpyxl playwright docxtpl &&
              python3 -m playwright install chromium >/dev/null"
+
+# Word (.docx) templates: docxtpl renders, headless LibreOffice converts to PDF.
+# Arabic reports need an Arabic font or the PDF shows boxes (Noto Sans Arabic).
+echo "== [$HOST] installing LibreOffice + fonts (Word template -> PDF path)"
+"${SSH[@]}" "rpm -q libreoffice-writer >/dev/null 2>&1 ||
+               dnf install -y -q libreoffice-writer;
+             rpm -qa | grep -qi 'noto.*arabic' ||
+               dnf install -y -q google-noto-sans-arabic-vf-fonts ||
+               dnf install -y -q google-noto-sans-arabic-fonts || true;
+             rpm -q liberation-fonts >/dev/null 2>&1 ||
+               dnf install -y -q liberation-fonts || true"
 
 # playwright install --with-deps assumes apt; on RHEL/OL resolve the browser's
 # missing shared libraries as dnf soname capabilities instead
@@ -76,6 +90,7 @@ echo "== [$HOST] writing /etc/rpt-worker.env + systemd unit"
 "${SSH[@]}" "umask 177 && cat > /etc/rpt-worker.env" <<EOF
 RPT_DB_PASSWORD=$RPT_DB_PASSWORD
 RPT_WALLET_PASSWORD=$RPT_WALLET_PASSWORD
+RPT_SMTP_PASSWORD=${RPT_SMTP_PASSWORD:-}
 EOF
 "${SSH[@]}" "cat > /etc/systemd/system/rpt-worker.service" <<EOF
 [Unit]

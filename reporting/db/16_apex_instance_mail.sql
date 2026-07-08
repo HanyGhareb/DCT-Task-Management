@@ -24,9 +24,11 @@ BEGIN
 END;
 /
 
--- NOTE: On this Autonomous DB the APEX_MAIL send already has outbound egress and
--- works WITHOUT this manual ACL (verified 2026-07-06). Kept as belt-and-suspenders;
--- the EXCEPTION handler swallows failures so a missing/duplicate ACL is non-fatal.
+-- SUPERSEDED 2026-07-07 -- this script's gmail config NEVER delivered: ADB
+-- network policy blocks outbound SMTP to non-OCI hosts, and the ACL below
+-- cannot even be created (ORA-24244 invalid host/port). The earlier "works
+-- without ACL" note was wrong (only the Python/VM channel had been verified).
+-- The working in-DB config is 18_oci_email_delivery.sql (OCI Email Delivery).
 BEGIN
   DBMS_NETWORK_ACL_ADMIN.APPEND_HOST_ACE(
     host       => 'smtp.gmail.com',

@@ -22,10 +22,13 @@ SET SQLBLANKLINES ON
 @@14_rpt_lov_converge.sql
 @@12a_rpt_ir_pkg.sql
 @@12b_rpt_ir_ords.sql
+@@20_rpt_templates.sql
+@@20a_rpt_templates_ords.sql
 -- (15_bi_user_rollout.sql is optional -- edit its username list, then run
 --  it whenever business users need the BI_USER role)
+-- (after 20a, seed the bundled templates: runner/upload_template.py --seed)
 PROMPT ============================================================
 PROMPT  Reporting Platform install complete (incl. Interactive Report).
 PROMPT  Next: EXEC prod.dct_rpt_sched_sync; to build schedule jobs.
-PROMPT  If 04 is ever re-run, re-run 08b + 09a + 10 + 12b after it.
+PROMPT  If 04 is ever re-run, re-run 08b + 09a + 10 + 12b + 19 + 20a after it.
 PROMPT ============================================================

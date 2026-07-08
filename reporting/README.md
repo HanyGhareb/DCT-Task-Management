@@ -18,7 +18,7 @@ Admin **Reports** page (Phase 2).
 ## Layout
 ```
 reporting/
-  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · 08 Budget-Util-by-Sector (MULTI) · 09/09a workers · 10 param spec + LOV endpoint · install.sql
+  db/      01 DDL · 02 lookups · 03 DCT_RPT_PKG · 04 ORDS (/ords/admin/rpt/) · 05 scheduler · 06 native (P3) · 07 seed · 08 Budget-Util-by-Sector (MULTI) · 09/09a workers · 10 param spec + LOV endpoint · 20/20a report templates (DCT_RPT_TEMPLATE + /rpt/templates*) · install.sql
   runner/  Python microservice (Phase 1)
   docs/    deployment-notes.md · functions_list.md
   tests/   render + e2e
@@ -50,7 +50,8 @@ run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the d
 `GET runs/` · `GET runs/:id` · `GET runs/:id/output/:fmt` (authed download) · `POST runs/:id/retry` ·
 `GET/POST schedules/` · `PUT/DELETE schedules/:id` · `POST schedules/sync` ·
 `GET/POST recipients/` · `PUT/DELETE recipients/:id` · `GET/PUT config` · `GET meta` ·
-`GET workers/` + `POST workers/command|remove|reclaim|job` (worker registry + queue + scheduler jobs)
+`GET workers/` + `POST workers/command|remove|reclaim|job` (worker registry + queue + scheduler jobs) ·
+`GET templates/` + `GET/PUT/DELETE templates/:name` (DB-stored PDF templates; PUT = raw-binary body)
 
 ## Status
 - **Phase 0 (control plane):** ✅ DEPLOYED to PROD 2026-06-30 — 14 objects VALID, `rpt.rest` PUBLISHED,
@@ -70,4 +71,17 @@ run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the d
   Actual/Encumbrance headers, reconciling totals). Params: `year` + `sector` required,
   `projecttype` + `costcenter` optional. Data views: `db/v2/39` over the GL actuals layer.
 
-Plan: `.claude/plans/i-want-to-find-agile-steele.md`.
+- **Word (.docx) report templates — GUI-manageable layouts (2026-07-07):** report PDF layouts are
+  now **DB-stored** (`DCT_RPT_TEMPLATE`, `reporting/db/20` + `/rpt/templates*` endpoints `20a`) and
+  managed from the BI app's **Templates** page (upload/replace/download/delete + authoring guide;
+  report editor gets a PDF-template dropdown). Two kinds by extension: **`.docx`** — authored in
+  Microsoft Word with Jinja2 tags (same variables + new `data` rows-as-dicts), rendered by
+  **docxtpl** and converted by **headless LibreOffice** on the worker (`runner/render_docx.py`;
+  page size/orientation come from the Word doc itself); **`.j2`** — the existing Jinja2-HTML →
+  Chromium path, now ALSO loaded DB-first with bundled-file fallback. A template save applies on
+  the next run on every worker — no redeploy. Starter file `report_starter.docx` + the two bundled
+  `.j2` are seeded by `runner/upload_template.py --seed` (direct-DB or `--ords`). Workers need
+  `docxtpl` + `libreoffice-writer` + Noto Arabic fonts (deploy_worker.sh installs them).
+  docxtpl gotcha: each `{%tr%}`/`{%tc%}` loop tag must sit in its OWN table row/cell.
+
+Plan: `.claude/plans/i-want-to-find-agile-steele.md`. Word-templates plan: `docs/DOCX_TEMPLATES_PLAN.md`.

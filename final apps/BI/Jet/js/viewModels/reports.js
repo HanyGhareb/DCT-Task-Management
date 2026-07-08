@@ -14,6 +14,14 @@ define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], funct
     self.engines     = ['PYTHON', 'NATIVE'];
     self.sourceTypes = ['SQL', 'VIEW', 'PKG'];
 
+    // PDF templates stored in DCT_RPT_TEMPLATE (Templates page manages them)
+    self.templateNames = ko.observableArray([]);
+    rpt.getTemplates()
+      .then(function (r) {
+        self.templateNames((r.items || []).map(function (t) { return t.name; }));
+      })
+      .catch(function () {});
+
     // ── modal form ──────────────────────────────────────────────────────
     self.editing = ko.observable(false);
     self.isNew   = ko.observable(false);
@@ -27,6 +35,7 @@ define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], funct
     self.fmSourceRef  = ko.observable('');
     self.fmEngine  = ko.observable('PYTHON');
     self.fmFormats = ko.observable('PDF,XLSX');
+    self.fmPdfTemplate = ko.observable('');
     self.fmSubject = ko.observable('');
     self.fmBody    = ko.observable('');
     self.fmParams  = ko.observable('');
@@ -54,6 +63,7 @@ define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], funct
       self.isNew(true);
       self.fmCode(''); self.fmNameEn(''); self.fmNameAr(''); self.fmDesc(''); self.fmCategory('');
       self.fmSourceType('SQL'); self.fmSourceRef(''); self.fmEngine('PYTHON'); self.fmFormats('PDF,XLSX');
+      self.fmPdfTemplate('');
       self.fmSubject(''); self.fmBody(''); self.fmParams(''); self.fmEnabled(true);
       self.editing(true);
     };
@@ -65,6 +75,7 @@ define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], funct
         self.fmDesc(d.description || ''); self.fmCategory(d.category || '');
         self.fmSourceType(d.sourceType || 'SQL'); self.fmSourceRef(d.sourceRef || '');
         self.fmEngine(d.engine || 'PYTHON'); self.fmFormats(d.formats || 'PDF,XLSX');
+        self.fmPdfTemplate(d.pdfTemplate || '');
         self.fmSubject(d.emailSubjectTpl || ''); self.fmBody(d.emailBodyTpl || '');
         self.fmParams(d.paramsJson || ''); self.fmEnabled((d.enabled || 'Y') === 'Y');
         self.editing(true);
@@ -82,6 +93,7 @@ define(['knockout', 'services/rptService', 'shared/toast', 'shared/i18n'], funct
         description: self.fmDesc(), category: self.fmCategory(),
         sourceType: self.fmSourceType(), sourceRef: self.fmSourceRef(),
         engine: self.fmEngine(), formats: self.fmFormats(),
+        pdfTemplate: self.fmPdfTemplate() || null,
         emailSubjectTpl: self.fmSubject(), emailBodyTpl: self.fmBody(),
         paramsJson: self.fmParams() || null, enabled: self.fmEnabled() ? 'Y' : 'N'
       };

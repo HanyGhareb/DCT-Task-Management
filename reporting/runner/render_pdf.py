@@ -40,8 +40,11 @@ _env.filters["fmt"] = _fmt
 _env.tests["num"] = _isnum
 
 
-def render_html(ctx, template_name="report.html.j2"):
-    """Render the report HTML from a template in templates/ with the run context."""
+def render_html(ctx, template_name="report.html.j2", source=None):
+    """Render the report HTML with the run context. `source` (DB-stored template
+    text, DCT_RPT_TEMPLATE) wins over the bundled file of the same name."""
+    if source is not None:
+        return _env.from_string(source).render(**ctx)
     return _env.get_template(template_name).render(**ctx)
 
 
@@ -73,6 +76,6 @@ def _weasyprint(html):
     return HTML(string=html, base_url=_TPL_DIR).write_pdf()
 
 
-def build_pdf(ctx, template_name="report.html.j2", renderer="PLAYWRIGHT"):
-    return html_to_pdf(render_html(ctx, template_name), renderer,
+def build_pdf(ctx, template_name="report.html.j2", renderer="PLAYWRIGHT", source=None):
+    return html_to_pdf(render_html(ctx, template_name, source=source), renderer,
                        landscape=bool(ctx.get("landscape")))

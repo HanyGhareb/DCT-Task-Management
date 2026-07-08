@@ -61,6 +61,16 @@ define(['services/api'], function (api) {
     reclaimStuck:  function ()            { return api.post('/workers/reclaim', {}); },
     toggleJob:     function (job, enabled) { return api.post('/workers/job', { jobName: job, enabled: enabled }); },
 
+    /* PDF templates (.docx Word / .j2 HTML) stored in DCT_RPT_TEMPLATE */
+    getTemplates:   function ()     { return api.get('/templates/'); },
+    templateUrl:    function (name) { return api.fetchBlobUrl('/templates/' + encodeURIComponent(name)); },
+    /* raw-binary upload — file bytes are the body, descr rides in the query */
+    uploadTemplate: function (name, file, descr) {
+      return api.putBinary('/templates/' + encodeURIComponent(name), file,
+                           { query: { descr: descr || '' } });
+    },
+    deleteTemplate: function (name) { return api.delete('/templates/' + encodeURIComponent(name)); },
+
     /* runtime / SMTP config */
     getConfig: function ()      { return api.get('/config'); },
     putConfig: function (items) { return api.put('/config', { items: items }); },

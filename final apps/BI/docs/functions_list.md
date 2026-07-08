@@ -53,7 +53,7 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 
 ## Reports (`reports`) — definition CRUD
 - `load` / `applyFilter` / `prev` / `next` — list + search + engine filter + paging.
-- `openNew` / `openEdit(row)` / `save` — create/edit definition via the shared `<edit-drawer>` (code, names, source, engine, formats, templates, params, enabled). Drawer Cancel/Esc/scrim close via the `editing` observable.
+- `openNew` / `openEdit(row)` / `save` — create/edit definition via the shared `<edit-drawer>` (code, names, source, engine, formats, templates, params, enabled). Drawer Cancel/Esc/scrim close via the `editing` observable. PYTHON-engine definitions get a **PDF template dropdown** (`fmPdfTemplate` — names from `GET templates/`; blank = engine default `report.html.j2`).
 - `runNow(row)` — fetches the param spec (`GET reports/:code/params`); parameterized definitions open the **Run Parameters drawer in place on the list** (LOV dropdowns + EN/AR labels/hints + required-field validation) — no navigation to detail; param-less definitions queue immediately. `submitRun` posts the collected params. `openDetail(row)` — open report detail. `remove(row)` — delete.
 
 ## Report Detail (`reportDetail`) — schedules + recipients
@@ -70,6 +70,17 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
   spec keys) with label EN/AR, hint EN/AR, Required toggle and the LOV SQL; `testLov(row)` — runs
   the draft query via `POST ir/lov/preview` (cap 50) and shows the value count + samples inline;
   `saveParamSpec` — collapses empty fields and `PUT ir/reports/:code/paramspec`.
+
+## Templates (`templates`) — PDF layout files (2026-07-07)
+- Manages `DCT_RPT_TEMPLATE` — Word (`.docx`, docxtpl → LibreOffice PDF) and HTML (`.j2`, Jinja2 →
+  Chromium PDF) layouts. A saved template applies on the NEXT run on every worker — no redeploy.
+- `load` — list (name, kind badge, description, size, `usedBy` definition count, updated by/at).
+- `openUpload` / `openReplace(row)` / `chooseFile` (`shared/docUpload.choose`, `.docx,.j2`, 10 MB) /
+  `saveUpload` — raw-binary upload via `api.putBinary` (name locked when replacing; extension validated).
+- `download(row)` — authed BLOB download. `remove(row)` — delete (button disabled while `usedBy > 0`;
+  server also 409s). `fmtBytes(n)`.
+- `openGuide` / `downloadStarter` — **Authoring guide** drawer (variables: `data`, `headers`/`rows`,
+  `sections`, `params`, `|fmt` …) with a "Download starter" primary action (`report_starter.docx`).
 
 ## Workers (`workers`) — engine monitoring + control
 - `load` / `refresh` — workers + derived health (ONLINE < 90s heartbeat, STALE < 10min, else OFFLINE), queue stats (queued/running/failed today/success today/oldest queued age) and the two DCT_RPT_* scheduler jobs. Auto-refreshes every 10s while the page is open.
@@ -116,7 +127,11 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | GET/POST | `recipients/` | list / create |
 | PUT/DELETE | `recipients/:id` | update / delete |
 | GET/PUT | `config` | runtime/SMTP config editor |
-| POST | `config/test-email` | send a test email via APEX_MAIL (SYS_ADMIN); `reporting/db/11` |
+| POST | `config/test-email` | queue an `EMAIL_TEST` PYTHON run delivered by the worker channel (SYS_ADMIN); `reporting/db/19` (superseded APEX_MAIL version: `db/11`) |
+| GET | `templates/` | template list: name, kind (DOCX/HTML), size, `usedBy` count — SYS_ADMIN; `reporting/db/20a` |
+| GET | `templates/:name` | authed template download |
+| PUT | `templates/:name` | raw-binary upload/replace (body = file bytes; `?mime=&descr=`; `TEMPLATE_MAX_MB` guard → 413; name must end `.docx`/`.j2`) |
+| DELETE | `templates/:name` | delete; **409** while referenced by a definition |
 | GET | `ir/catalog` | enabled definitions for the viewer (+ spec-driven `params[]` labels/hints/required/hasLov + MULTI sections/required + lovParams) — BI_USER or SYS_ADMIN |
 | GET | `ir/reports/:code/lov?param=` | dropdown values for one run parameter (the param's `lov_sql` in `PARAM_SPEC_JSON`, bind-free query, cap 500) — BI_USER or SYS_ADMIN |
 | POST | `ir/reports/:code/data` | one-shot capped data fetch (body `{section?, params?}`) via `DCT_RPT_IR_PKG` — BI_USER or SYS_ADMIN |
@@ -132,7 +147,7 @@ Consumes the Reporting Platform ORDS module `/ords/admin/rpt/`.
 | `js/services/config.js` | `apiBase=/ords/admin/rpt`, `authBase=/ords/admin/dct`, `adminPortalUrl` |
 | `js/services/api.js` | re-export of `shared/api` (Bearer + 401 handling) |
 | `js/services/authService.js` | shared-session reader; `isReportAdmin()` (SYS_ADMIN), `isReportUser()` (BI_USER or SYS_ADMIN) |
-| `js/services/rptService.js` | all `/rpt` endpoint wrappers (incl. `getIrCatalog`/`getIrData`/`getIrLov`/`getIrLayouts`/`createIrLayout`/`updateIrLayout`/`deleteIrLayout`/`getParamSpec`/`putParamSpec`/`previewLov`) |
+| `js/services/rptService.js` | all `/rpt` endpoint wrappers (incl. `getTemplates`/`templateUrl`/`uploadTemplate`/`deleteTemplate`, `getIrCatalog`/`getIrData`/`getIrLov`/`getIrLayouts`/`createIrLayout`/`updateIrLayout`/`deleteIrLayout`/`getParamSpec`/`putParamSpec`/`previewLov`) |
 | `shared/js/components/interactiveReport.js` (+ `.html`) | `<interactive-report>` KO component — the reusable IR grid (SHARED layer since 2026-07-03) |
 | `shared/js/components/irExpr.js` | safe expression compiler for calculated columns (no eval) |
 

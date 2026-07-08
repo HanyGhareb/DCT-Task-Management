@@ -47,6 +47,7 @@ function (ko, config, authService, rptService, i18n, shell) {
         { id: 'dashboard', labelKey: 'nav.dashboard' },
         { id: 'irViewer',  labelKey: 'nav.irviewer' },
         { id: 'reports',   labelKey: 'nav.reports',  admin: true },
+        { id: 'templates', labelKey: 'nav.templates', admin: true },
         { id: 'runs',      labelKey: 'nav.runs',     admin: true },
         { id: 'workers',   labelKey: 'nav.workers',  admin: true },
         { id: 'settings',  labelKey: 'nav.settings', admin: true },
@@ -70,7 +71,7 @@ function (ko, config, authService, rptService, i18n, shell) {
         : (parts[0] || '?')[0].toUpperCase();
     });
 
-    var ADMIN_ROUTES = ['reports', 'reportDetail', 'runs', 'runDetail', 'workers', 'settings'];
+    var ADMIN_ROUTES = ['reports', 'reportDetail', 'templates', 'runs', 'runDetail', 'workers', 'settings'];
 
     self._loadRoute = function (path) {
       if (ADMIN_ROUTES.indexOf(path) !== -1 && !authService.isReportAdmin()) {

@@ -3,5 +3,6 @@ oracledb>=2.2        # thin-mode DB access (PyPI name is "oracledb")
 jinja2>=3.1          # HTML + email-body templating (dynamic variables)
 openpyxl>=3.1        # styled Excel output
 playwright>=1.44     # HTML -> PDF via Chromium page.pdf() (run: playwright install chromium)
+docxtpl>=0.16        # Word (.docx) report templates -> PDF via headless LibreOffice (soffice)
 # optional alternative PDF engine (set PDF_RENDERER=WEASYPRINT in DCT_RPT_CONFIG):
 # weasyprint>=62

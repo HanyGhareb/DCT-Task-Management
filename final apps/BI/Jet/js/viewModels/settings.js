@@ -52,14 +52,14 @@ define(['knockout', 'services/rptService', 'shared/toast'], function (ko, rpt, t
       self.testing(true); self.testMsg('');
       rpt.sendTestEmail(to).then(function (r) {
         self.testing(false); self.testOk(true);
-        self.testMsg('Test email sent to ' + to + '. Check the inbox (and spam)'
-          + (r && r.emailEnabled === 'N'
-             ? ' — note: EMAIL_ENABLED is N, so scheduled reports remain generate-only.' : '.'));
-        toast.success('Test email sent');
+        self.testMsg('Test email queued' + (r && r.runId ? ' (run #' + r.runId + ')' : '')
+          + ' to ' + to + '. A Python worker delivers it within about a minute — '
+          + 'check the inbox (and spam), and track the run on Run History.');
+        toast.success('Test email queued');
       }).catch(function (err) {
         self.testing(false); self.testOk(false);
         self.testMsg((err && err.message)
-          || 'Send failed. Verify the SMTP settings and the APEX instance mail configuration.');
+          || 'Send failed. Verify the SMTP settings and that a Python worker is running (Workers page).');
       });
     };
 
