@@ -191,6 +191,7 @@
     buFiltersActive:{en:'active filters',ar:'عوامل تصفية نشطة'},
     buMaxT:{en:'Maximize table (full screen)',ar:'تكبير الجدول (ملء الشاشة)'},
     buRestoreT:{en:'Exit full screen (Esc)',ar:'الخروج من ملء الشاشة (Esc)'},
+    loadingData:{en:'Loading data',ar:'جارٍ تحميل البيانات'},
 
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
@@ -816,6 +817,11 @@
         var a = document.createElement('a'); a.href = u; a.download = 'gl_budget_utilization_' + self.buYear() + '.csv'; a.click(); URL.revokeObjectURL(u);
       }).catch(fail);
     };
+
+    /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
+    function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
+    self.skRows = skArr(8);   // shimmer rows shown while /butil runs
+    self.skCols = skArr(17);  // one cell per results-table column
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};

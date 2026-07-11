@@ -24,6 +24,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-11 — Professional loading states: skeleton table + branded loader (v1.15.0, frontend-only).**
+  Every data-load slot upgraded from the bare 16px `.spin` dot. **Budget Utilization results
+  table** now shows **8 shimmer skeleton rows × 17 column-aligned cells** (`.sk-row`/`.sk`,
+  `skRows`/`skCols` VM arrays, `<!-- ko if: buLoading -->` swap in the tbody) + an
+  **indeterminate teal→gold sweep bar** (`.ldbar`) under the Results region header + a **busy
+  Search button** (`.btn.busy` inline spinner, Reset disabled). All other load slots — Actuals
+  table, Dashboard, Classifications values, Explorer combinations, both drill drawers + the
+  Actuals drill modal (`.ldr.sm` compact) — use the new **branded loader** `.ldr`: the GL gold
+  diamond pulsing inside twin counter-rotating teal/gold arcs + i18n "Loading data…" with
+  staggered animated dots (`loadingData` EN/AR). `prefers-reduced-motion` slows all loader
+  animations. The two small in-button spinners (Rebuild/Refresh) intentionally keep `.spin`.
+  APP_VERSION 1.14.0 → **1.15.0**. Verified live vs PROD with Playwright route-throttling
+  (5–6s delay on /butil*): skeleton 8×17 + sweep bar + busy button while loading, clean swap to
+  100 real rows after; branded loader visible in the drill drawer mid-flight then 1000 rows; all
+  5 views navigated with 0 page errors. No DB change.
 - **2026-07-11 — Open Obligation excludes 'Finally Closed' POs (DB-only, DEPLOYED + verified).**
   Fusion releases the remaining reserved funds when a PO is
   **finally closed**, but the PO **distributions keep their old `funds_status`**

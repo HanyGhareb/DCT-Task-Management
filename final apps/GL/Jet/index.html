@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.14.0';</script>
+<script>window.APP_VERSION='1.15.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -124,7 +124,10 @@
           </tbody>
         </table>
         <div class="empty pad" data-bind="visible:!loading() && values().length===0, text:t('noValues')"></div>
-        <div class="empty pad" data-bind="visible:loading()"><span class="spin"></span></div>
+        <div class="ldr" data-bind="visible:loading()">
+          <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+        </div>
       </div>
     </div>
 
@@ -202,7 +205,10 @@
             <!-- /ko -->
           </tbody>
         </table>
-        <div class="empty pad" data-bind="visible:loading()"><span class="spin"></span></div>
+        <div class="ldr" data-bind="visible:loading()">
+          <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+        </div>
         <div class="empty pad" data-bind="visible:!loading() && combos().length===0, text:t('noCombos')"></div>
       </div>
       <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
@@ -323,7 +329,10 @@
             <!-- /ko -->
           </tbody>
         </table>
-        <div class="empty pad" data-bind="visible:acLoading()"><span class="spin"></span></div>
+        <div class="ldr" data-bind="visible:acLoading()">
+          <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+        </div>
         <div class="empty pad" data-bind="visible:!acLoading() && acItems().length===0, text:t('noActuals')"></div>
       </div>
       <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
@@ -372,8 +381,8 @@
           <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
             <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
           <div class="field filter-actions">
-            <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, text:t('btnSearch')"></button>
-            <button class="btn" data-bind="click:buReset, text:t('btnReset')"></button>
+            <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, css:{busy:buLoading}, text:t('btnSearch')"></button>
+            <button class="btn" data-bind="click:buReset, enable:!buLoading(), text:t('btnReset')"></button>
           </div>
         </div>
         <!-- autocomplete option lists (per selected budget year) -->
@@ -467,6 +476,7 @@
           <span class="grow"></span>
           <button class="bu-maxbtn" data-bind="click:toggleBuMax, attr:{title:buMax()?t('buRestoreT'):t('buMaxT')}, text:buMax()?'⤡':'⤢'"></button>
         </div>
+        <div class="ldbar" data-bind="visible:buLoading()"><i></i></div>
       <div class="tbl-wrap">
         <table class="tbl actuals-tbl">
           <thead><tr>
@@ -489,6 +499,12 @@
             <th class="num" data-bind="text:t('cFundAvail')"></th>
           </tr></thead>
           <tbody>
+            <!-- ko if: buLoading -->
+            <!-- ko foreach: skRows -->
+            <tr class="sk-row"><!-- ko foreach: $root.skCols --><td><div class="sk"></div></td><!-- /ko --></tr>
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko ifnot: buLoading -->
             <!-- ko foreach: buItems -->
             <tr>
               <td data-bind="text:$data.projectType||'—'"></td>
@@ -510,9 +526,9 @@
               <td class="num mono strong" data-bind="text:$root.compact($data.fundAvailable), attr:{title:$root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}"></td>
             </tr>
             <!-- /ko -->
+            <!-- /ko -->
           </tbody>
         </table>
-        <div class="empty pad" data-bind="visible:buLoading()"><span class="spin"></span></div>
         <div class="empty pad" data-bind="visible:!buLoading() && buItems().length===0, text:t('noButil')"></div>
       </div>
       <div class="toolbar bu-pager">
@@ -535,7 +551,10 @@
         </div>
       </div>
 
-      <div class="empty pad" data-bind="visible:dashLoading()"><span class="spin"></span></div>
+      <div class="ldr" data-bind="visible:dashLoading()">
+        <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+        <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+      </div>
 
       <!-- ko if: !dashLoading() && dash() -->
       <div class="kpi-strip dash">
@@ -694,7 +713,10 @@
       <button class="btn btn-sm" data-bind="click:drillExportCsv, text:t('exportCsv'), visible:!drillLoading() && drillRows().length>0"></button>
       <button class="btn btn-sm" data-bind="click:closeDrill, text:t('cancel')"></button></div>
     <div class="modal-b">
-      <div class="empty pad" data-bind="visible:drillLoading()"><span class="spin"></span></div>
+      <div class="ldr sm" data-bind="visible:drillLoading()">
+        <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+        <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+      </div>
       <!-- ko if: !drillLoading() -->
       <div class="tbl-wrap" data-bind="visible:drillRows().length>0">
         <table class="tbl drill-tbl">
@@ -734,7 +756,10 @@
   </header>
   <div class="dw-b">
     <div class="dw-ctx" data-bind="visible:drillCtx, text:drillCtx"></div>
-    <div class="empty pad" data-bind="visible:drillLoading()"><span class="spin"></span></div>
+    <div class="ldr sm" data-bind="visible:drillLoading()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+    </div>
     <!-- ko if: !drillLoading() -->
     <div class="dw-cap" data-bind="visible:drillCapNote(), text:drillCapNote"></div>
     <div class="tbl-wrap" data-bind="visible:drillRows().length>0">
@@ -776,7 +801,10 @@
   <div class="dw-b">
     <div class="dw-ctx" data-bind="text:t('clsDrillCtx')"></div>
     <div class="dw-err" data-bind="visible:clsDrawerErr(), text:clsDrawerErr"></div>
-    <div class="empty pad" data-bind="visible:clsDrillLoading()"><span class="spin"></span></div>
+    <div class="ldr sm" data-bind="visible:clsDrillLoading()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+    </div>
     <!-- ko if: !clsDrillLoading() -->
     <div class="tbl-wrap" data-bind="visible:clsRows().length>0">
       <table class="tbl clsdw-tbl">
