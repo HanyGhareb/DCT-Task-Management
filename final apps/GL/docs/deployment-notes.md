@@ -24,6 +24,12 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-11 — Web-tier release `20260711234246` pushed** (`SSH_USER=opc
+  webtier/deploy_frontend.sh 129.151.159.189`): ships GL **v1.16.0** (Accounting-period YTD
+  filter) + v1.15.0 (loading states) to production users. Smoke through nginx: APP_VERSION
+  1.16.0 served, app.js 200 with the new features present, `/ords/admin/gl/butil?period=` routes
+  (401 unauthenticated as expected). Commits `94e1075` (period filter) + `83ff41b`
+  (document-inquiry views db/v2/43–47) pushed to origin/main.
 - **2026-07-11 — PO document views, all four levels (`db/v2/46_po_views.sql`, DB-only, DEPLOYED + verified).**
   End-user views over the ATD purchase-order tables: **`PO_HEADER_V`** (one row per PO — full
   descriptive info + statistics: line/schedule/distribution counts, project+task counts &
