@@ -265,6 +265,8 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 table.tbl th.num,table.tbl td.num{text-align:end}
 .actuals-tbl th .hint-i{font-style:normal;font-size:11px;color:var(--muted);cursor:help;margin-inline-start:4px;opacity:.65}
 .actuals-tbl th .hint-i:hover{opacity:1;color:var(--brand-dark)}
+.lbl .hint-i{font-style:normal;font-size:11px;color:var(--muted);cursor:help;margin-inline-start:4px;opacity:.7}
+.lbl .hint-i:hover{opacity:1;color:var(--brand-dark)}
 .actuals-tbl td .sub-d{color:var(--muted);font-size:11px;margin-top:1px;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .actuals-tbl td.combo{min-width:330px;max-width:330px;overflow:hidden;text-overflow:ellipsis}
 .actuals-tbl td.num{white-space:nowrap}

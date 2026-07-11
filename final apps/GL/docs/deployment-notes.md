@@ -24,6 +24,32 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-11 — Budget Utilization Accounting-period (YTD) filter + GRN accounted-date basis
+  (v1.16.0, DB + frontend, DEPLOYED + verified).** New **Accounting period** dropdown next to
+  Budget Year (Full year + the 12 MM-YYYY months of the selected year; **defaults to the current
+  period**, e.g. 07-2026, when the selected year is the current year — first load, Reset, and
+  year-change; ⓘ hint on label + select: "Year-to-date: figures include 1 January through the end
+  of the selected period. Budget stays annual."). Semantics = **YTD through the period end**; the
+  row set stays budget-driven (annual budget, HAVING budget>0) — only the measures shrink.
+  Mechanics: `DCT_GL_CLASS_PKG.set_butil_end/clear_butil_end` write
+  `SYS_CONTEXT('GL_CTX','BUTIL_END')` (03_gl_pkg.sql); `db/v2/37` fact CTEs (f_ap/f_grn/f_pr/f_po
+  **+ the grn_per_dist PO-netting**) gained `(BUTIL_END IS NULL OR date < end+1)` bounds — unset
+  context = unchanged full-year behavior for every existing consumer (hourly job, db/v2/39 pack).
+  `/gl/butil` accepts `period=MM-YYYY` (400 unless the month belongs to `year`), sets the context
+  before its two queries and **always clears it after + in the exception handler** (pooled ORDS
+  sessions); `/gl/butil/lines` takes the same `period` as **inline date bounds** on all four
+  metric queries incl. the PO netting so row/card drill totals keep reconciling. **GRN date basis
+  switched to `NVL(ACCOUNTED_DATE, TRANSACTION_DATE)`** (user rule: accounting date first) in the
+  view year attribution + drill filters + drawer Date column — the column was **just added to
+  ATD_GRN_ALL_V2**, so deploy started with `prod.dct_views_rebuild` (16 views re-expanded) to
+  expose it; currently accounted=transaction on all 2,259 rows so FY figures are unchanged
+  (verified: FY GRN still 1,057,258,560.95). Deploy order: rebuild → 03 → 37 (one session) → 07
+  (fresh session); 0 INVALID. Frontend: `buPeriod`/`buPeriodOpts` (client-generated months),
+  default logic in load/Reset/year-change, flows through `buParams` (report/pager/CSV) +
+  `openBuDrill`/`openBuAgg`; drawer eyebrow shows "YTD MM-YYYY". APP_VERSION 1.15.0 → **1.16.0**.
+  Verified E2E vs PROD: default 07-2026; Full-year totals byte-identical to pre-change; YTD
+  03-2026 = AP 921.2M / GRN 344.6M / PR 86.0M / PO 177.5M (matches SQL smoke); GRN KPI drill and a
+  row GRN drill both reconcile exactly under the period; Reset/AR-RTL pass.
 - **2026-07-11 — Professional loading states: skeleton table + branded loader (v1.15.0, frontend-only).**
   Every data-load slot upgraded from the bare 16px `.spin` dot. **Budget Utilization results
   table** now shows **8 shimmer skeleton rows × 17 column-aligned cells** (`.sk-row`/`.sk`,

@@ -192,6 +192,8 @@
     buMaxT:{en:'Maximize table (full screen)',ar:'تكبير الجدول (ملء الشاشة)'},
     buRestoreT:{en:'Exit full screen (Esc)',ar:'الخروج من ملء الشاشة (Esc)'},
     loadingData:{en:'Loading data',ar:'جارٍ تحميل البيانات'},
+    fullYear:{en:'Full year',ar:'السنة كاملة'}, ytd:{en:'YTD',ar:'منذ بداية السنة حتى'},
+    buPeriodHint:{en:'Year-to-date: figures include 1 January through the end of the selected period. Budget stays annual.',ar:'منذ بداية السنة: تشمل الأرقام الفترة من 1 يناير حتى نهاية الفترة المحددة. تبقى الموازنة سنوية.'},
 
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
@@ -722,6 +724,22 @@
     self.buCc = ko.observable(''); self.buProject = ko.observable('');
     self.buTask = ko.observable(''); self.buEtype = ko.observable('');
     self.buSearch = ko.observable('');
+    // YTD period (MM-YYYY within the selected year; '' = full year)
+    self.buPeriod = ko.observable('');
+    self.buPeriodOpts = ko.computed(function () {
+      var y = self.buYear(); if (!y) return [];
+      var a = [];
+      for (var m = 1; m <= 12; m++) a.push((m < 10 ? '0' + m : '' + m) + '-' + y);
+      return a;
+    });
+    function buDefaultPeriod(y) {
+      var now = new Date();
+      if (Number(y) === now.getFullYear()) {
+        var m = now.getMonth() + 1;
+        return (m < 10 ? '0' + m : '' + m) + '-' + y;
+      }
+      return '';
+    }
     self.buCcs = ko.observableArray([]); self.buProjects = ko.observableArray([]);
     self.buTasks = ko.observableArray([]); self.buEtypes = ko.observableArray([]);
     self.buItems = ko.observableArray([]); self.buTotals = ko.observable({});
@@ -739,7 +757,12 @@
         self.buTasks(d.tasks || []); self.buEtypes(d.etypes || []);
       }).catch(function () { buLovYear = null; });
     };
-    self.buYear.subscribe(function () { if (self.buFiltersLoaded()) self.loadBuLovs(); });
+    self.buYear.subscribe(function (y) {
+      if (!self.buFiltersLoaded()) return;
+      self.loadBuLovs();
+      // a period belongs to one year — re-default when the year changes
+      self.buPeriod(buDefaultPeriod(y));
+    });
 
     self.loadBuFilters = function () {
       return api('GET', '/butil/filters').then(function (d) {
@@ -749,12 +772,13 @@
         // KO nulls a <select> value when options were empty at bind time; re-assert.
         if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
         if (!self.buType() && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buType(BU_DEFAULT_TYPE);
+        self.buPeriod(buDefaultPeriod(self.buYear()));
         self.buFiltersLoaded(true);
         self.loadBuLovs();
       }).catch(fail);
     };
     self.buParams = function (offset, limit) {
-      return { year: self.buYear(), projecttype: self.buType(), sector: self.buSector(),
+      return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(),
         costcenter: self.buCc(), project: self.buProject(), task: self.buTask(), etype: self.buEtype(),
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
@@ -771,6 +795,7 @@
       self.buSector(''); self.buSearch('');
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       if (self.buYears().length) self.buYear(self.buYears()[0]);
+      self.buPeriod(buDefaultPeriod(self.buYear()));
       self.runButil(0);
     };
     self.buRange = ko.computed(function () {
@@ -883,7 +908,7 @@
       self.drillCtx([row.taskNumber, row.expenditureType].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
-      api('GET', '/butil/lines' + qs({ year: self.buYear(), project: row.projectNumber,
+      api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), project: row.projectNumber,
         task: row.taskNumber, etype: row.expenditureType, metric: metric })).then(fillDrill).catch(drillFail);
     };
     // KPI card → all supporting lines across the filtered set (aggregate)
@@ -891,12 +916,12 @@
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
       self.drillTitle(self.t('buDrill' + cap));
-      self.drillSub(self.t('buAllLines') + ' · ' + self.buYear());
+      self.drillSub(self.t('buAllLines') + ' · ' + (self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
       self.drillCtx([self.buType(), self.buSector(), self.buCc(), self.buProject(), self.buTask(), self.buEtype(),
         self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
-      api('GET', '/butil/lines' + qs({ year: self.buYear(), metric: metric,
+      api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), metric: metric,
         projecttype: self.buType(), sector: self.buSector(), search: self.buSearch(),
         costcenter: self.buCc(), fproject: self.buProject(), ftask: self.buTask(), fetype: self.buEtype() })).then(fillDrill).catch(drillFail);
     };

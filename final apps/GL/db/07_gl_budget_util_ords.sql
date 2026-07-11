@@ -12,13 +12,21 @@
 --       expenditure types -- distinct values of the given budget year.
 --   GET /gl/butil?year=    -> {total, totals{...}, items[...]} -- year REQUIRED,
 --       optional projecttype / sector / costcenter / project / task / etype
---       (contains-match, fed by the LOVs) / search / limit / offset.
+--       (contains-match, fed by the LOVs) / search / limit / offset, and
+--       period=MM-YYYY (must belong to the year) -> YTD THROUGH that period:
+--       sets SYS_CONTEXT('GL_CTX','BUTIL_END') via dct_gl_class_pkg.set_butil_end
+--       so the view's fact CTEs stop at the period end (budget stays annual);
+--       always cleared after the queries (and on error) -- pooled sessions.
 --   GET /gl/butil/lines?year=&project=&task=&etype=&metric=  -> a single figure
 --       (metric ap|grn|pr|po) of a butil row drilled to its supporting lines
 --       {metric, total, columns[], rows[]}; totals reconcile to the row figure.
 --       Every drawer identifies rows by document number + line number (AP
 --       invoice #/line, GRN #/line, PR #/line, PO #/line) and suppresses
 --       zero-amount lines (zeros add nothing, so totals still reconcile).
+--       Accepts the same period=MM-YYYY (YTD) -- applied as inline date bounds
+--       on the fact queries (incl. the PO GRN-netting) so drill totals keep
+--       reconciling to the period-filtered figures. GRN dates use
+--       NVL(ACCOUNTED_DATE, TRANSACTION_DATE) (accounting-period basis).
 -- Source  : prod.dct_budget_utilization_v (db/v2/37) + the same base facts.
 -- =============================================================================
 
@@ -147,6 +155,8 @@ DECLARE
   l_task   VARCHAR2(200) := [COLON]task;
   l_etype  VARCHAR2(255) := [COLON]etype;
   l_search VARCHAR2(200) := [COLON]search;
+  l_period VARCHAR2(10)  := [COLON]period;
+  l_end    DATE;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 5000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
@@ -154,6 +164,17 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
+  IF l_period = '' THEN l_period := NULL; END IF;
+  IF l_period IS NOT NULL THEN
+    IF NOT REGEXP_LIKE(l_period, '^(0[1-9]|1[0-2])-[0-9]{4}$')
+       OR TO_NUMBER(SUBSTR(l_period, 4)) <> l_year THEN
+      dct_rest.err(400,'period must be MM-YYYY within the selected year'); RETURN;
+    END IF;
+    l_end := LAST_DAY(TO_DATE('01-'||l_period, 'DD-MM-YYYY'));
+  END IF;
+  -- YTD window: view fact CTEs read GL_CTX.BUTIL_END; always cleared below
+  IF l_end IS NOT NULL THEN dct_gl_class_pkg.set_butil_end(l_end);
+  ELSE dct_gl_class_pkg.clear_butil_end; END IF;
   SELECT COUNT(*), NVL(SUM(budget),0), NVL(SUM(actual_ap),0), NVL(SUM(actual_grn),0),
          NVL(SUM(commitment_pr),0), NVL(SUM(obligation_po),0), NVL(SUM(fund_available),0)
     INTO l_total, t_bud, t_ap, t_grn, t_pr, t_po, t_fund
@@ -170,6 +191,7 @@ BEGIN
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
   APEX_JSON.write('year', l_year);
+  IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   APEX_JSON.open_object('totals');
   APEX_JSON.write('budget', t_bud); APEX_JSON.write('actualAp', t_ap); APEX_JSON.write('actualGrn', t_grn);
   APEX_JSON.write('commitmentPr', t_pr); APEX_JSON.write('obligationPo', t_po); APEX_JSON.write('fundAvailable', t_fund);
@@ -211,7 +233,8 @@ BEGIN
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
-EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+  dct_gl_class_pkg.clear_butil_end;
+EXCEPTION WHEN OTHERS THEN dct_gl_class_pkg.clear_butil_end; dct_rest.err(500, SQLERRM);
 END;
 !');
 
@@ -220,6 +243,7 @@ END;
     --   GET /gl/butil/lines?year=&metric=[&project=&task=&etype=]
     --                       [&projecttype=&sector=&search=]
     --                       [&costcenter=&fproject=&ftask=&fetype=]
+    --                       [&period=MM-YYYY]  (YTD through the period)
     --   metric in ap | grn | pr | po (Actual AP / Actual GRN / Commitment PR /
     --     Obligation PO). Two modes off ONE query (a `kys` key-set CTE):
     --     * ROW drill  (project [+task+etype] supplied) -> that one budget line.
@@ -247,6 +271,8 @@ DECLARE
   l_ftask   VARCHAR2(200) := [COLON]ftask;
   l_fetype  VARCHAR2(255) := [COLON]fetype;
   l_search  VARCHAR2(200) := [COLON]search;
+  l_period  VARCHAR2(10)  := [COLON]period;
+  l_end     DATE;
   l_agg     BOOLEAN;
   l_total   NUMBER := 0;
   l_count   NUMBER := 0;
@@ -271,6 +297,16 @@ BEGIN
   IF l_ftask   = '' THEN l_ftask   := NULL; END IF;
   IF l_fetype  = '' THEN l_fetype  := NULL; END IF;
   IF l_search  = '' THEN l_search  := NULL; END IF;
+  IF l_period  = '' THEN l_period  := NULL; END IF;
+  -- YTD period end (MM-YYYY within the year) -- inline date bound on the fact
+  -- queries below, mirroring the view's GL_CTX.BUTIL_END window exactly.
+  IF l_period IS NOT NULL THEN
+    IF NOT REGEXP_LIKE(l_period, '^(0[1-9]|1[0-2])-[0-9]{4}$')
+       OR TO_NUMBER(SUBSTR(l_period, 4)) <> l_year THEN
+      dct_rest.err(400,'period must be MM-YYYY within the selected year'); RETURN;
+    END IF;
+    l_end := LAST_DAY(TO_DATE('01-'||l_period, 'DD-MM-YYYY'));
+  END IF;
   l_agg := (l_project IS NULL);
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('metric', l_metric);
@@ -319,6 +355,7 @@ BEGIN
         AND i.validation_status IN ('Validated','Unpaid','Available')
         AND NVL(NVL(d.distribution_amount_functi, d.distribution_amount),0) <> 0
         AND EXTRACT(YEAR FROM d.accounting_date) = l_year
+        AND (l_end IS NULL OR d.accounting_date < l_end + 1)
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),'~'),
              NVL(d.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
@@ -366,7 +403,8 @@ BEGIN
       SELECT * FROM (
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) tkey,
-             g.receipt_number, g.receipt_line_number line_no, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, g.currency_code,
+             g.receipt_number, g.receipt_line_number line_no,
+             TO_CHAR(NVL(g.accounted_date, g.transaction_date),'YYYY-MM-DD') td, g.currency_code,
              ph.order_number po_number, pl.line po_line, ph.supplier_name,
              g.conversion_rate, g.ledger_amount amt_aed,
              COUNT(*) OVER () full_n, SUM(g.ledger_amount) OVER () full_tot
@@ -378,7 +416,8 @@ BEGIN
       LEFT JOIN tsk  tk ON tk.task_id    = g.task_id
       WHERE g.project_id IS NOT NULL AND pod.charge_account IS NOT NULL
         AND NVL(g.ledger_amount,0) <> 0
-        AND EXTRACT(YEAR FROM g.transaction_date) = l_year
+        AND EXTRACT(YEAR FROM NVL(g.accounted_date, g.transaction_date)) = l_year
+        AND (l_end IS NULL OR NVL(g.accounted_date, g.transaction_date) < l_end + 1)
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END),'~'),
              NVL(g.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
@@ -436,6 +475,7 @@ BEGIN
       WHERE d.funds_status = 'Reserved' AND d.project_id IS NOT NULL AND d.charge_account IS NOT NULL
         AND NVL(d.distribution_amount * NVL(cc.exchange_rate_to_aed,1),0) <> 0
         AND EXTRACT(YEAR FROM d.budget_date) = l_year
+        AND (l_end IS NULL OR d.budget_date < l_end + 1)
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),'~'),
              NVL(d.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
@@ -479,7 +519,9 @@ BEGIN
                               MAX(expenditure_type_name) expenditure_type, MAX(budget_date) budget_date, MAX(po_header_id) po_header_id,
                               MAX(po_line_id) po_line_id, MAX(distribution_amount * NVL(rate,1)) amt_aed, MAX(funds_status) funds_status
                        FROM prod.po_distributions GROUP BY po_distribution_id),
-           grn_per_dist AS (SELECT po_distribution_id, SUM(ledger_amount) grn_aed FROM prod.grn_all_v2 GROUP BY po_distribution_id)
+           grn_per_dist AS (SELECT po_distribution_id, SUM(ledger_amount) grn_aed FROM prod.grn_all_v2
+                            WHERE (l_end IS NULL OR NVL(accounted_date, transaction_date) < l_end + 1)
+                            GROUP BY po_distribution_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END) tkey,
              h.order_number, pl.line po_line, TO_CHAR(b.budget_date,'YYYY-MM-DD') bd, h.supplier_name, b.funds_status,
@@ -500,6 +542,7 @@ BEGIN
         AND NVL(h.po_status,'x') <> 'Finally Closed'
         AND NVL(GREATEST(b.amt_aed - NVL(g.grn_aed,0),0),0) > 0
         AND EXTRACT(YEAR FROM b.budget_date) = l_year
+        AND (l_end IS NULL OR b.budget_date < l_end + 1)
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END),'~'),
              NVL(b.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)

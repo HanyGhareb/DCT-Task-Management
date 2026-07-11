@@ -11,7 +11,8 @@
 --                     non-reversed, project/task/etype at distribution level,
 --                     year = accounting_date.
 --   Actual GRN      : receipts (charge account via PO distribution),
---                     year = transaction_date.
+--                     year = ACCOUNTED_DATE, falling back to TRANSACTION_DATE
+--                     when null (2026-07-11 - accounting-period basis).
 --   Commitment (PR) : OPEN commitment = PR distributions FUNDS_STATUS='Reserved',
 --                     year = budget_date.
 --   Obligation (PO) : OPEN obligation = Reserved / Partially Liquidated PO
@@ -31,9 +32,18 @@
 --   Program      : task PROGRAM (LPAD 6, desc from COA) -> row txns.
 --   GL account   : row txns -> derived from the expenditure-type code prefix.
 --
+-- YTD period filter (2026-07-11): when SYS_CONTEXT('GL_CTX','BUTIL_END') is
+-- set (a YYYY-MM-DD day, via prod.dct_gl_class_pkg.set_butil_end), every fact
+-- CTE (AP/GRN/PR/PO + the GRN netting) only counts transactions dated on or
+-- before that day - i.e. year-to-date THROUGH the selected period. Unset =
+-- full budget year (unchanged behavior for every existing consumer: the
+-- hourly refresh job, db/v2/39 report views, /gl/butil without ?period=).
+-- The budget column stays ANNUAL (ATD_PROJECTS_BUDGET has no period spread).
+--
 -- All amounts AED. Requires prod.dct_gl_coa_snap (db/v2/33) + base views
 -- (db/v2/32 + 36). DEPLOY ORDER: re-run 32 first after any ATD reload so the
--- SELECT * base views expose current columns (BUDGET_YEAR, task COST_CENTER).
+-- SELECT * base views expose current columns (BUDGET_YEAR, task COST_CENTER,
+-- GRN ACCOUNTED_DATE).
 -- ===========================================================================
 SET DEFINE OFF
 SET SQLBLANKLINES ON
@@ -136,6 +146,9 @@ grn_per_dist AS (
   SELECT po_distribution_id,
          SUM(ledger_amount) AS grn_aed
   FROM prod.grn_all_v2
+  WHERE (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+         OR NVL(accounted_date, transaction_date)
+            < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
   GROUP BY po_distribution_id
 ),
 f_ap AS (
@@ -154,13 +167,15 @@ f_ap AS (
     AND NVL(d.reversal_indicator,'N') <> 'Y'
     AND d.project_id IS NOT NULL
     AND i.validation_status IN ('Validated','Unpaid','Available')
+    AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+         OR d.accounting_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
   GROUP BY EXTRACT(YEAR FROM d.accounting_date), cid.cc_string,
            COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(d.project_id)),
            COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),
            d.expenditure_type
 ),
 f_grn AS (
-  SELECT EXTRACT(YEAR FROM g.transaction_date) AS budget_year,
+  SELECT EXTRACT(YEAR FROM NVL(g.accounted_date, g.transaction_date)) AS budget_year,
          pod.charge_account AS cc_string,
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(g.project_id)) AS project_key,
          COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) AS task_key,
@@ -172,7 +187,10 @@ f_grn AS (
   LEFT JOIN tsk  tk ON tk.task_id    = g.task_id
   WHERE g.project_id IS NOT NULL
     AND pod.charge_account IS NOT NULL
-  GROUP BY EXTRACT(YEAR FROM g.transaction_date), pod.charge_account,
+    AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+         OR NVL(g.accounted_date, g.transaction_date)
+            < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
+  GROUP BY EXTRACT(YEAR FROM NVL(g.accounted_date, g.transaction_date)), pod.charge_account,
            COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(g.project_id)),
            COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END),
            g.expenditure_type
@@ -191,6 +209,8 @@ f_pr AS (
   WHERE d.funds_status = 'Reserved'
     AND d.project_id IS NOT NULL
     AND d.charge_account IS NOT NULL
+    AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+         OR d.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
   GROUP BY EXTRACT(YEAR FROM d.budget_date), prod.dct_cc_canon(d.charge_account),
            COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(d.project_id)),
            COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),
@@ -212,6 +232,8 @@ f_po AS (
     AND NVL(hs.po_status,'x') <> 'Finally Closed'
     AND b.project_id IS NOT NULL
     AND b.charge_account IS NOT NULL
+    AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+         OR b.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
   GROUP BY EXTRACT(YEAR FROM b.budget_date), b.charge_account,
            COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(b.project_id)),
            COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END),
