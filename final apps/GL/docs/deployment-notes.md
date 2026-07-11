@@ -24,6 +24,28 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-11 — PO document views, all four levels (`db/v2/46_po_views.sql`, DB-only, DEPLOYED + verified).**
+  End-user views over the ATD purchase-order tables: **`PO_HEADER_V`** (one row per PO — full
+  descriptive info + statistics: line/schedule/distribution counts, project+task counts &
+  project-number/task-number lists (task_count = distinct task numbers, `#id` fallback for
+  ids missing from the tasks master, so count always equals the list), PR count/numbers from
+  **two sources** [backing `po_distributions.pr_number` +
+  `invoiced_pr_*` via `ap_invoice_distributions.requisition`], AP invoice count / matched amount /
+  gross amount / pro-rated paid + per-invoice Paid/Partial/Unpaid counts + invoice numbers, GRN
+  receipt count/amount/numbers, GRN-netted **open_obligation_aed** [0 when header Finally Closed],
+  %-received/%-invoiced/%-paid), **`PO_LINES_V`**, **`PO_SCHEDULES_V`**, **`PO_DISTRIBUTIONS_V`**
+  (charge-account COA classification via `dct_cc_canon`→`dct_gl_coa_snap`, project/task/exp-type
+  names, PR reference, GRN + AP rollups per distribution). Conventions inherited: PO AED =
+  `distribution_amount × NVL(rate,1)`; GRN AED = `ledger_amount`; AP AED = FUNCTI convention;
+  every view de-dups by natural key on `load_ts` (po_lines carries real dups: 3,011 rows / 2,935
+  ids). **AP amounts attributed to a PO are the MATCHED distribution portion** — invoice header
+  totals overstate (live case: 49.7M invoice with only 12.4M matched to its PO); the linked
+  invoices' full totals are exposed separately as `ap_invoice_gross_amount_aed`, and
+  `ap_paid_amount_aed` = matched × the invoice's paid ratio (capped 0..1). Verified: 0 INVALID;
+  row counts = 2,129/2,935/2,936/3,031; header open-obligation total = actuals layer
+  `open_obligation_ytd` (07-2026) to 4 fils; AP matched total = raw dists exactly; GRN total =
+  `grn_all_v2` raw; Finally-Closed PO 451102004832 shows 0 open obligation. Rerunnable; depends
+  on db/v2/32/33/40.
 - **2026-07-11 — Budget Utilization Accounting-period (YTD) filter + GRN accounted-date basis
   (v1.16.0, DB + frontend, DEPLOYED + verified).** New **Accounting period** dropdown next to
   Budget Year (Full year + the 12 MM-YYYY months of the selected year; **defaults to the current

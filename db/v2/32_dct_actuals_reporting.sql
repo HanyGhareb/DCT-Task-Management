@@ -56,7 +56,6 @@ SET SQLBLANKLINES ON
 -- 1. Base pass-through views (ATD_ prefix stripped)
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE VIEW prod.ap_invoices              AS SELECT * FROM prod.atd_ap_invoices;
-CREATE OR REPLACE VIEW prod.ap_invoice_header        AS SELECT * FROM prod.atd_ap_invoice_header;
 CREATE OR REPLACE VIEW prod.ap_invoice_lines         AS SELECT * FROM prod.atd_ap_invoice_lines;
 CREATE OR REPLACE VIEW prod.ap_invoice_distributions AS SELECT * FROM prod.atd_ap_invoice_distributions;
 CREATE OR REPLACE VIEW prod.po_headers               AS SELECT * FROM prod.atd_po_headers;

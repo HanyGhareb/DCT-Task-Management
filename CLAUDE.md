@@ -70,6 +70,10 @@ db/v2/               ← All DCT_* DDL, packages, ORDS setup (source of truth)
   29_user_photo_binary.sql ← raw-binary profile photo PUT /dct/users/:id/photobin (reads :body
                        BLOB, MAX_UPLOAD_MB guard) for mobile/modern clients; legacy base64
                        /users/:id/photo (web) untouched. DEPLOYED 2026-06-20
+  46_po_views.sql    ← PO document views PO_HEADER_V / PO_LINES_V / PO_SCHEDULES_V /
+                       PO_DISTRIBUTIONS_V (end-user info + header stats: counts, PR both
+                       sources, AP matched/gross/paid, GRN, GRN-netted open obligation).
+                       DEPLOYED 2026-07-11
 
 ifinance-mobile/     ← App 209 — React Native + Expo (TypeScript) cross-platform mobile client
                        (iOS+Android). Thin native client over the shared /dct/ ORDS APIs; MVP =
