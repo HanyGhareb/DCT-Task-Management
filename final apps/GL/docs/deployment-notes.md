@@ -24,6 +24,99 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-11 — Budget Utilization page regions + table maximize (v1.14.0, frontend-only).**
+  The page is now organized into three **brand-headed regions** (`.bu-sec` / `.bu-sec-h` — teal
+  gradient header bar, white uppercase title, echoes the platform region theming):
+  **Search** (the filter grid, collapsible), **Overview** (the KPI answer band, collapsible) and
+  **Results** (the table + pager, maximizable). Collapse: chevron header click (`toggleBuSec`),
+  rotates closed (RTL-flipped), state **persisted per browser** in `localStorage('gl_bu_ui')`;
+  while collapsed the header shows a live summary — Search: "<year> · N active filters"
+  (`buSearchSummary`/`buActiveFilters`; the DCT OPEX default counts), Overview: "Budget X · Fund
+  available Y" (`buKpiSummary`). Maximize: ⤢ button in the Results header (`buMax`/`toggleBuMax`)
+  turns the region into a **full-screen fixed surface** (z-index **55** — deliberately BELOW the
+  drill drawer 70/71, modal 60 and toast 80 so cell/KPI drills still open above it); flex column =
+  header / scrollable `.tbl-wrap` (sticky thead works inside) / pinned pager; body scroll locked;
+  button flips to ⤡; **Esc restores** — guarded to do nothing while a drawer/modal is open.
+  Pager toolbar moved off inline styles to `.toolbar.bu-pager`. 6 new i18n keys (`buSecSearch`/
+  `buSecOverview`/`buSecResults`/`buFiltersActive`/`buMaxT`/`buRestoreT`). APP_VERSION 1.13.0 →
+  **1.14.0**. Verified live vs PROD (dev-proxy + Playwright): collapse/summaries/persist-across-
+  reload, maximize = exact viewport + scroll lock, drill drawer opens above the maximized table,
+  Esc guard then restore, EN + AR/RTL headers. No DB change.
+- **2026-07-11 — Budget Utilization KPI answer band redesign (v1.13.0, frontend-only).** The six
+  totals cards are now a **visually distinct answer band** (new `.bu-kpis`/`.bk-*` styles, scoped to
+  Budget Utilization — the Actuals/Dashboard `.kstat` strips are untouched): per-measure gradient
+  tint + 4px accent spine + rounded **icon chip** (inline stroke SVGs: database/invoice/package/
+  clock/clipboard/shield) + big Fraunces value in the measure color + a **%-of-budget context
+  line** + a **mini utilization bar**. Budget tile shows the filtered row count ("N budget
+  lines"); Fund Available shows "% of budget remaining" and flips the whole tile red (`.neg`,
+  `--bad`) with "over budget" when negative (bar clamps to 0). New VM helpers `buPct`/`buBarW`/
+  `buPctTxt`/`buFundSub` (all derived from `buTotals()` so they re-render reactively) + i18n keys
+  `buLinesLbl`/`buOfBudget`/`buRemaining`/`buOverBudget`. The 4 drillable tiles keep the
+  lift + ⤢ affordance (`.bk-click`). Responsive columns 6→3→2→1 (breakpoints 1500/920/560px) so
+  rows never orphan a tile. APP_VERSION 1.12.0 → **1.13.0**. Verified live vs PROD (dev-proxy +
+  Playwright): bars sum to ~100% with Fund Available (19.4 AP + 19.7 GRN + 8.6 PR + 8.6 PO + 43.6
+  remaining), AP tile drill total = KPI figure exactly, simulated negative fund renders red
+  "over budget", EN + AR/RTL both clean (spine/chip/bar flip via inline-start). No DB change.
+- **2026-07-11 — Budget Utilization filter LOVs + DCT OPEX default (v1.12.0, DB + frontend).**
+  Four new **autocomplete LOV filters** on the Budget Utilization search bar — Cost Center
+  (option label = department), Project (option value = number, dropdown label = name;
+  contains-match on number OR name), Task, Expenditure Type — implemented as native
+  `<datalist>` pickers (same pattern as the Classifications segment picker), plus **Project
+  Type now defaults to `DCT OPEX Project Type`** on first load and after Reset (falls back to
+  All types if the value ever disappears from the LOV). DB (`07_gl_budget_util_ords.sql`,
+  re-run whole script, fresh session): NEW `GET /gl/butil/lov?year=` returns the four distinct
+  lists per budget year (51 CCs / 523 projects / 309 tasks / 81 e-types for 2026); `/gl/butil`
+  gained `costcenter`/`project`/`task`/`etype` contains-match params (count + items + totals);
+  `/gl/butil/lines` aggregate (KPI-card) mode gained the same four as
+  `costcenter`/`fproject`/`ftask`/`fetype` (f-prefixed — `project`/`task`/`etype` are the
+  row-drill key params) in all four metric `kys` CTEs, so card drills keep reconciling to the
+  filtered KPI figures. Frontend: `buCc`/`buProject`/`buTask`/`buEtype` observables +
+  `loadBuLovs()` (re-fetches when `buYear` changes), filters flow through `buParams()` (report,
+  pager, CSV export) and `openBuAgg()` (drill + context line); Enter-to-search on every input;
+  `buReset()` restores the OPEX default. APP_VERSION 1.11.0 → **1.12.0**. Verified E2E against
+  PROD (dev-proxy + Playwright): default type applied (1,355 = exact OPEX row count), LOV counts
+  match DB, CC filter 43 rows all-matching, partial project name "IMEX" resolves, task+etype
+  narrow to 1 row, KPI GRN card drill total 104,725.2464 = on-screen KPI exactly, Reset restores
+  default.
+- **2026-07-10 — GRN drill drawers sorted by GRN # + Line (DB-only).** Both GRN drill queries now
+  display rows ordered by `receipt_number, receipt_line_number` instead of amount-desc (butil) /
+  date-desc (actuals). The row-cap SELECTION is preserved by wrapping: the inner query still keeps
+  top-1000-by-amount (butil, so the "top N of M" cap note stays true) / most-recent-500 (actuals),
+  and only the outer SELECT re-orders for display — pattern `SELECT * FROM (… ORDER BY … FETCH
+  FIRST n ROWS ONLY) ORDER BY receipt_number, line_no`. Side benefit: correction rows (negative
+  re-receipts of the same GRN #) now sit adjacent to their original. Changed `07` (butil grn) +
+  `10` (actuals grn; source synced into `05`); redeployed 07 + 10 (fresh sessions, compile clean);
+  verified via SQL replica on project 4511000943 (14 lines, receipt-ascending, corrections
+  adjacent). No frontend change.
+- **2026-07-10 — Export CSV on every drill-down surface (v1.11.0, frontend-only).** New shared
+  `drillExportCsv()` in `Jet/js/app.js` + **Export CSV** button in BOTH drill headers: the Actuals
+  drill **modal** (`.modal-h`, before Cancel) and the Budget Utilization slide-in **drawer**
+  (`.dw-h`, buttons grouped in new `.dw-acts` flex wrapper — `.dw-h` is space-between, so ungrouped
+  buttons would spread). Serializes the server-driven `drillCols`/`drillRows` as-loaded (raw
+  values, quote-escaped, UTF-8 **BOM** for Excel-safe Arabic supplier names) + a Total
+  reconciliation footer row; filename `gl_drill_<title>_<sub>.csv`; button hidden while loading or
+  when 0 lines. `openDrill` now clears `drillSub`/`drillCtx` (they were only set by the butil
+  drawer and would leak a stale subtitle into the modal's export filename). APP_VERSION 1.10.0 →
+  **1.11.0**. Verified: `node --check` + Playwright mocked-ORDS smoke (drawer + modal: button
+  renders, download fires, CSV headers/rows/quote-escaping/Total row correct; 0 console errors).
+  No DB/ORDS change.
+- **2026-07-10 — GRN AED amounts: LEDGER_AMOUNT replaces TRANSACTION_AMOUNT × CONVERSION_RATE (DB-only).**
+  Root-caused a negative Fund Available (−226K on project 4511000943 / Partnership Fees): the GRN
+  extract's `TRANSACTION_AMOUNT` is **already the AED (ledger) figure** (doc amount × rate at
+  source — verified against PO 451102006219 = EUR 23,000 → GRN txn 97,956.06 = 23,000 × 4.258959),
+  so multiplying by `CONVERSION_RATE` **double-converted every FX receipt** (EUR ×4.26, USD ×3.67;
+  platform GRN total was 1.79B vs the true 1.065B). All GRN AED expressions now read
+  `ledger_amount` (equal to txn×rate on AED rows, the correct AED on FX rows; `SLA_LEDGER_AMOUNT`
+  is unusable — uniformly 3× from a source-join artifact). Changed: `db/v2/32` (DCT_ACTUAL_V GRN
+  branch + DCT_BUDGET_ACTUAL_V grn_agg + currency-contract header comment), `db/v2/34` (grn_ytd +
+  grn_per_dist netting), `db/v2/37` (f_grn + grn_per_dist), `db/v2/39` (uninvoiced-GRN +
+  open-PO-netting views), `07_gl_budget_util_ords.sql` (butil grn drill rows/total/filter + PO
+  open netting), `10_gl_actuals_lines_docnum.sql` + source-synced `05_gl_ords.sql` (actuals grn
+  drill + openobligation netting), and the two docs analysis queries. Deploy order: 32→34→37→39
+  (one fresh session) → 07 → 10 (own sessions); recompile pass → 0 INVALID. Verified: sample row
+  GRN 854K→212,489, Fund Available −226K→+416,248; DCT_ACTUAL_V GRN total 1,065,124,042.55 =
+  Σ ledger_amount. No frontend change (drawer amounts are server-computed).
+  **Gotcha: never multiply `grn_all_v2` amounts by `CONVERSION_RATE`** — see Gotchas below.
 - **2026-07-08 — Butil GRN drawer: + PO #, PO Line, Supplier (DB-only) + web-tier release.**
   The Budget Utilization "Actual GRN — receipts" drawer now also traces each receipt to its PO:
   `07_gl_budget_util_ords.sql` grn metric gained `po`/`poLine`/`supplier` columns (de-duped
@@ -279,6 +372,17 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   COA view 9,338 rows (no fan-out), 91% sector-classified. Registered in switcher + i18n.
 
 ## Gotchas (GL-specific)
+- **GRN amounts are already AED — use `LEDGER_AMOUNT`, never × `CONVERSION_RATE`** (2026-07-10;
+  **CORRECTED 2026-07-11**): the OTBI CSV proved the ATD loader maps `TRANSACTION_AMOUNT` ← OTBI
+  **"Ledger Amount"** (the true doc-currency "Transaction Amount" never reaches ATD), which is why
+  the DB column is "already AED". BUT OTBI Ledger Amount = **k × true** (k = # charge-class
+  receipt-accounting lines; SLA = (k+2) × true): clean rows k=1 (SLA/Ledger=3, 2,161 rows);
+  **defect k=3 (SLA/Ledger=5/3) on 54+3 rows / 45 distributions = 7,865,481.59 AED overstated**
+  (e.g. project 4511001235's −438K fund). `sla_ledger_amount` itself is never usable. ROOT FIX
+  (pending): extract OTBI's true Transaction Amount into ATD, then GRN AED = `txn × NVL(rate,1)`
+  again; detect bad rows via `ROUND(sla_ledger_amount/ledger_amount,2) NOT IN (3,-3)`. Contrast:
+  `po_distributions.distribution_amount` IS doc-currency and DOES need `* NVL(rate,1)`; AP uses
+  `NVL(distribution_amount_functi, distribution_amount)` — documented in `db/v2/32` header.
 - **`GL_SRC_*` synonyms** are the only thing that knows the base table is `ATD_GL_*`. On the
   planned rename to `GL_*`, re-run `01_gl_synonyms.sql` with the new targets — nothing else changes.
 - **Description-list fan-out:** the Fusion list tables contain duplicate codes (e.g. program `0` =

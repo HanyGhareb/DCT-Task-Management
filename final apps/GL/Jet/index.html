@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.10.0';</script>
+<script>window.APP_VERSION='1.14.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -346,8 +346,14 @@
         </div>
       </div>
 
-      <!-- search criteria (budget year is mandatory) -->
-      <div class="card filter-card">
+      <!-- search criteria (budget year is mandatory) — collapsible region -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('search');return true}, css:{closed:!buSecSearchOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecSearch')"></span>
+          <span class="bu-sec-sum" data-bind="text:buSearchSummary()"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:buSecSearchOpen">
         <div class="filter-grid">
           <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
             <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
@@ -355,6 +361,14 @@
             <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('costCenter')"></label>
+            <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('cProject')"></label>
+            <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('cTask')"></label>
+            <input class="inp" type="text" list="bu-task-dl" data-bind="textInput:buTask, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('cEtype')"></label>
+            <input class="inp" type="text" list="bu-et-dl" data-bind="textInput:buEtype, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
             <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
           <div class="field filter-actions">
@@ -362,19 +376,97 @@
             <button class="btn" data-bind="click:buReset, text:t('btnReset')"></button>
           </div>
         </div>
+        <!-- autocomplete option lists (per selected budget year) -->
+        <datalist id="bu-cc-dl">
+          <!-- ko foreach: buCcs --><option data-bind="attr:{value:cc}, text:dept"></option><!-- /ko -->
+        </datalist>
+        <datalist id="bu-proj-dl">
+          <!-- ko foreach: buProjects --><option data-bind="attr:{value:p}, text:n"></option><!-- /ko -->
+        </datalist>
+        <datalist id="bu-task-dl">
+          <!-- ko foreach: buTasks --><option data-bind="attr:{value:$data}"></option><!-- /ko -->
+        </datalist>
+        <datalist id="bu-et-dl">
+          <!-- ko foreach: buEtypes --><option data-bind="attr:{value:$data}"></option><!-- /ko -->
+        </datalist>
+        </div>
       </div>
 
-      <!-- totals answer cards (the 4 measure cards drill to all supporting lines) -->
-      <div class="kpi-strip">
-        <div class="kstat budget"><div class="kk" data-bind="text:t('cBudget')"></div><div class="kv mono" data-bind="text:compact(buTot('budget')), attr:{title:money(buTot('budget'))}"></div></div>
-        <div class="kstat apd kstat-click" data-bind="click:function(){openBuAgg('ap')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cActualAp')"></div><div class="kv mono" data-bind="text:compact(buTot('actualAp'))"></div></div>
-        <div class="kstat grn kstat-click" data-bind="click:function(){openBuAgg('grn')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cActualGrn')"></div><div class="kv mono" data-bind="text:compact(buTot('actualGrn'))"></div></div>
-        <div class="kstat ocommit kstat-click" data-bind="click:function(){openBuAgg('pr')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cCommitPr')"></div><div class="kv mono" data-bind="text:compact(buTot('commitmentPr'))"></div></div>
-        <div class="kstat ooblig kstat-click" data-bind="click:function(){openBuAgg('po')}, attr:{title:t('buCardHint')}"><div class="kk" data-bind="text:t('cObligPo')"></div><div class="kv mono" data-bind="text:compact(buTot('obligationPo'))"></div></div>
-        <div class="kstat funds"><div class="kk" data-bind="text:t('cFundAvail')"></div><div class="kv mono" data-bind="text:compact(buTot('fundAvailable')), attr:{title:money(buTot('fundAvailable'))}"></div></div>
+      <!-- totals answer band (tinted stat tiles; the 4 measure tiles drill to all supporting lines) — collapsible region -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('kpis');return true}, css:{closed:!buSecKpisOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecOverview')"></span>
+          <span class="bu-sec-sum" data-bind="text:buKpiSummary()"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:buSecKpisOpen">
+        <div class="bu-kpis">
+        <div class="bk bk-budget">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cBudget')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buTot('budget')), attr:{title:money(buTot('budget'))}"></div>
+            <div class="bk-sub" data-bind="text:buTotal() ? fmt(buTotal()) + ' ' + t('buLinesLbl') : ''"></div>
+            <div class="bk-bar"><i style="width:100%"></i></div>
+          </div>
+        </div>
+        <div class="bk bk-ap bk-click" data-bind="click:function(){openBuAgg('ap')}, attr:{title:t('buCardHint')}">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cActualAp')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buTot('actualAp')), attr:{title:money(buTot('actualAp'))}"></div>
+            <div class="bk-sub" data-bind="text:buPctTxt('actualAp')"></div>
+            <div class="bk-bar"><i data-bind="style:{width:buBarW('actualAp')}"></i></div>
+          </div>
+        </div>
+        <div class="bk bk-grn bk-click" data-bind="click:function(){openBuAgg('grn')}, attr:{title:t('buCardHint')}">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cActualGrn')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buTot('actualGrn')), attr:{title:money(buTot('actualGrn'))}"></div>
+            <div class="bk-sub" data-bind="text:buPctTxt('actualGrn')"></div>
+            <div class="bk-bar"><i data-bind="style:{width:buBarW('actualGrn')}"></i></div>
+          </div>
+        </div>
+        <div class="bk bk-pr bk-click" data-bind="click:function(){openBuAgg('pr')}, attr:{title:t('buCardHint')}">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cCommitPr')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buTot('commitmentPr')), attr:{title:money(buTot('commitmentPr'))}"></div>
+            <div class="bk-sub" data-bind="text:buPctTxt('commitmentPr')"></div>
+            <div class="bk-bar"><i data-bind="style:{width:buBarW('commitmentPr')}"></i></div>
+          </div>
+        </div>
+        <div class="bk bk-po bk-click" data-bind="click:function(){openBuAgg('po')}, attr:{title:t('buCardHint')}">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cObligPo')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buTot('obligationPo')), attr:{title:money(buTot('obligationPo'))}"></div>
+            <div class="bk-sub" data-bind="text:buPctTxt('obligationPo')"></div>
+            <div class="bk-bar"><i data-bind="style:{width:buBarW('obligationPo')}"></i></div>
+          </div>
+        </div>
+        <div class="bk bk-fund" data-bind="css:{neg:(buTot('fundAvailable')||0)<0}">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cFundAvail')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buTot('fundAvailable')), attr:{title:money(buTot('fundAvailable'))}"></div>
+            <div class="bk-sub" data-bind="text:buFundSub()"></div>
+            <div class="bk-bar"><i data-bind="style:{width:buBarW('fundAvailable')}"></i></div>
+          </div>
+        </div>
+      </div>
+        </div>
       </div>
 
-      <!-- results table -->
+      <!-- results table — maximizable region (Esc restores) -->
+      <div class="bu-sec bu-results" data-bind="css:{maxed:buMax}">
+        <div class="bu-sec-h bu-res-h">
+          <span class="bu-sec-t" data-bind="text:t('buSecResults')"></span>
+          <span class="bu-sec-sum" data-bind="text:buRange()"></span>
+          <span class="grow"></span>
+          <button class="bu-maxbtn" data-bind="click:toggleBuMax, attr:{title:buMax()?t('buRestoreT'):t('buMaxT')}, text:buMax()?'⤡':'⤢'"></button>
+        </div>
       <div class="tbl-wrap">
         <table class="tbl actuals-tbl">
           <thead><tr>
@@ -423,10 +515,11 @@
         <div class="empty pad" data-bind="visible:buLoading()"><span class="spin"></span></div>
         <div class="empty pad" data-bind="visible:!buLoading() && buItems().length===0, text:t('noButil')"></div>
       </div>
-      <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
+      <div class="toolbar bu-pager">
         <span class="t-dates" data-bind="text:buRange()"></span>
         <button class="btn btn-sm" data-bind="click:function(){runButil(buOffset()-buLimit)}, enable:buOffset()>0, text:t('prev')"></button>
         <button class="btn btn-sm" data-bind="click:function(){runButil(buOffset()+buLimit)}, enable:(buOffset()+buLimit)<buTotal(), text:t('next')"></button>
+      </div>
       </div>
     </div>
 
@@ -598,6 +691,7 @@
 <div class="ov" data-bind="visible:drillModal" style="display:none">
   <div class="modal wide">
     <div class="modal-h"><h3 data-bind="text:drillTitle"></h3>
+      <button class="btn btn-sm" data-bind="click:drillExportCsv, text:t('exportCsv'), visible:!drillLoading() && drillRows().length>0"></button>
       <button class="btn btn-sm" data-bind="click:closeDrill, text:t('cancel')"></button></div>
     <div class="modal-b">
       <div class="empty pad" data-bind="visible:drillLoading()"><span class="spin"></span></div>
@@ -633,7 +727,10 @@
       <div class="dw-eyebrow" data-bind="text:drillSub"></div>
       <div class="dw-title" data-bind="text:drillTitle"></div>
     </div>
-    <button class="btn btn-sm" data-bind="click:closeDrawer, text:t('cancel')"></button>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:drillExportCsv, text:t('exportCsv'), visible:!drillLoading() && drillRows().length>0"></button>
+      <button class="btn btn-sm" data-bind="click:closeDrawer, text:t('cancel')"></button>
+    </div>
   </header>
   <div class="dw-b">
     <div class="dw-ctx" data-bind="visible:drillCtx, text:drillCtx"></div>

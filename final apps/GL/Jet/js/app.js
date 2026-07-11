@@ -163,6 +163,7 @@
     fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
     allTypes:{en:'All types',ar:'كل الأنواع'},
     searchButil:{en:'Project, task, department…',ar:'المشروع، المهمة، الإدارة…'},
+    lovHint:{en:'All — type to search…',ar:'الكل — اكتب للبحث…'},
     yearRequired:{en:'Please choose a budget year.',ar:'الرجاء اختيار سنة الموازنة.'},
     noButil:{en:'No budget lines match these criteria.',ar:'لا توجد بنود موازنة مطابقة.'},
     cProjType:{en:'Type',ar:'النوع'}, cDept:{en:'Department',ar:'الإدارة'},
@@ -180,6 +181,16 @@
     buCardHint:{en:'Click to see all supporting lines (current filters).',ar:'انقر لعرض كل البنود الداعمة (حسب عوامل التصفية الحالية).'},
     buAllLines:{en:'All budget lines',ar:'كل بنود الموازنة'},
     buShowing:{en:'Showing top {n} of {c} lines by amount.',ar:'عرض أعلى {n} من {c} بند حسب المبلغ.'},
+    buLinesLbl:{en:'budget lines',ar:'بند موازنة'},
+    buOfBudget:{en:'of budget',ar:'من الموازنة'},
+    buRemaining:{en:'of budget remaining',ar:'من الموازنة متبقٍّ'},
+    buOverBudget:{en:'over budget',ar:'تجاوز الموازنة'},
+    buSecSearch:{en:'Search',ar:'البحث'},
+    buSecOverview:{en:'Overview',ar:'نظرة عامة'},
+    buSecResults:{en:'Results',ar:'النتائج'},
+    buFiltersActive:{en:'active filters',ar:'عوامل تصفية نشطة'},
+    buMaxT:{en:'Maximize table (full screen)',ar:'تكبير الجدول (ملء الشاشة)'},
+    buRestoreT:{en:'Exit full screen (Esc)',ar:'الخروج من ملء الشاشة (Esc)'},
 
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
@@ -662,6 +673,7 @@
     self.drillRows = ko.observableArray([]); self.drillTotalV = ko.observable(0);
     self.openDrill = function (row, metric) {
       self.drillTitle(self.t('m' + metric.charAt(0).toUpperCase() + metric.slice(1)) + ' · ' + row.ccString);
+      self.drillSub(''); self.drillCtx('');
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0);
       self.drillModal(true); self.drillLoading(true);
       api('GET', '/actuals/lines' + qs({ period: self.acPeriod(), cc: row.ccString, metric: metric }))
@@ -700,15 +712,33 @@
     };
 
     /* ════ BUDGET UTILIZATION — project budget vs actual (year mandatory) ════ */
+    var BU_DEFAULT_TYPE = 'DCT OPEX Project Type';
     self.buFiltersLoaded = ko.observable(false);
     self.buYears = ko.observableArray([]);
     self.buTypes = ko.observableArray([]);
     self.buSectors = ko.observableArray([]);
     self.buYear = ko.observable(''); self.buType = ko.observable(''); self.buSector = ko.observable('');
+    self.buCc = ko.observable(''); self.buProject = ko.observable('');
+    self.buTask = ko.observable(''); self.buEtype = ko.observable('');
     self.buSearch = ko.observable('');
+    self.buCcs = ko.observableArray([]); self.buProjects = ko.observableArray([]);
+    self.buTasks = ko.observableArray([]); self.buEtypes = ko.observableArray([]);
     self.buItems = ko.observableArray([]); self.buTotals = ko.observable({});
     self.buTotal = ko.observable(0); self.buOffset = ko.observable(0); self.buLimit = 100;
     self.buLoading = ko.observable(false);
+
+    // autocomplete LOVs (cost centre / project / task / expenditure type) — per year
+    var buLovYear = null;
+    self.loadBuLovs = function () {
+      var y = self.buYear();
+      if (!y || y === buLovYear) return;
+      buLovYear = y;
+      api('GET', '/butil/lov' + qs({ year: y })).then(function (d) {
+        self.buCcs(d.costCenters || []); self.buProjects(d.projects || []);
+        self.buTasks(d.tasks || []); self.buEtypes(d.etypes || []);
+      }).catch(function () { buLovYear = null; });
+    };
+    self.buYear.subscribe(function () { if (self.buFiltersLoaded()) self.loadBuLovs(); });
 
     self.loadBuFilters = function () {
       return api('GET', '/butil/filters').then(function (d) {
@@ -717,11 +747,14 @@
         self.buSectors(d.sectors || []);
         // KO nulls a <select> value when options were empty at bind time; re-assert.
         if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
+        if (!self.buType() && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buType(BU_DEFAULT_TYPE);
         self.buFiltersLoaded(true);
+        self.loadBuLovs();
       }).catch(fail);
     };
     self.buParams = function (offset, limit) {
       return { year: self.buYear(), projecttype: self.buType(), sector: self.buSector(),
+        costcenter: self.buCc(), project: self.buProject(), task: self.buTask(), etype: self.buEtype(),
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -733,7 +766,9 @@
       }).catch(function (e) { self.buLoading(false); fail(e); });
     };
     self.buReset = function () {
-      self.buType(''); self.buSector(''); self.buSearch('');
+      self.buType(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? BU_DEFAULT_TYPE : '');
+      self.buSector(''); self.buSearch('');
+      self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.runButil(0);
     };
@@ -743,6 +778,28 @@
       return a + '–' + b + ' ' + self.t('rowsOf') + ' ' + self.fmt(self.buTotal());
     });
     self.buTot = function (k) { var t = self.buTotals() || {}; return t[k]; };
+    // KPI band context: each measure as a share of the filtered budget
+    self.buPct = function (k) {
+      var t = self.buTotals() || {}; var b = Number(t.budget) || 0;
+      if (!b) return null;
+      return (Number(t[k]) || 0) / b * 100;
+    };
+    self.buBarW = function (k) {
+      var p = self.buPct(k);
+      return (p == null ? 0 : Math.max(0, Math.min(100, p))) + '%';
+    };
+    self.buPctTxt = function (k) {
+      var p = self.buPct(k);
+      if (p == null) return '';
+      return (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '% ' + self.t('buOfBudget');
+    };
+    self.buFundSub = ko.computed(function () {
+      var t = self.buTotals() || {}; var b = Number(t.budget) || 0;
+      if (!b) return '';
+      var f = Number(t.fundAvailable) || 0;
+      if (f < 0) return self.t('buOverBudget');
+      return (f / b * 100).toFixed(1) + '% ' + self.t('buRemaining');
+    });
     self.buExportCsv = function () {
       api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
         var rows = d.items || [];
@@ -759,6 +816,44 @@
         var a = document.createElement('a'); a.href = u; a.download = 'gl_budget_utilization_' + self.buYear() + '.csv'; a.click(); URL.revokeObjectURL(u);
       }).catch(fail);
     };
+
+    /* ── collapsible regions (Search / Overview) + results maximize ── */
+    var buUi = {};
+    try { buUi = JSON.parse(localStorage.getItem('gl_bu_ui') || '{}'); } catch (e) { buUi = {}; }
+    self.buSecSearchOpen = ko.observable(buUi.search !== false);
+    self.buSecKpisOpen = ko.observable(buUi.kpis !== false);
+    function saveBuUi() {
+      localStorage.setItem('gl_bu_ui', JSON.stringify({ search: self.buSecSearchOpen(), kpis: self.buSecKpisOpen() }));
+    }
+    self.toggleBuSec = function (k) {
+      var o = (k === 'search') ? self.buSecSearchOpen : self.buSecKpisOpen;
+      o(!o()); saveBuUi();
+    };
+    self.buActiveFilters = ko.computed(function () {
+      return [self.buType(), self.buSector(), self.buCc(), self.buProject(),
+        self.buTask(), self.buEtype(), self.buSearch()].filter(Boolean).length;
+    });
+    // header summaries shown only while the region is collapsed
+    self.buSearchSummary = ko.computed(function () {
+      if (self.buSecSearchOpen()) return '';
+      var n = self.buActiveFilters();
+      return (self.buYear() || '') + (n ? ' · ' + n + ' ' + self.t('buFiltersActive') : '');
+    });
+    self.buKpiSummary = ko.computed(function () {
+      if (self.buSecKpisOpen()) return '';
+      var t = self.buTotals() || {};
+      if (t.budget == null) return '';
+      return self.t('cBudget') + ' ' + self.compact(t.budget) + '  ·  ' + self.t('cFundAvail') + ' ' + self.compact(t.fundAvailable);
+    });
+    self.buMax = ko.observable(false);
+    self.toggleBuMax = function () {
+      self.buMax(!self.buMax());
+      document.body.style.overflow = self.buMax() ? 'hidden' : '';
+    };
+    document.addEventListener('keydown', function (e) {
+      // Esc restores the table — unless a drawer/modal is open above it (it owns Esc-like close)
+      if (e.key === 'Escape' && self.buMax() && !self.drillDrawer() && !self.drillModal()) self.toggleBuMax();
+    });
 
     /* ── drill-down: a figure → its supporting lines (slide-in drawer) ── */
     self.drillDrawer = ko.observable(false);
@@ -791,13 +886,35 @@
       var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
       self.drillTitle(self.t('buDrill' + cap));
       self.drillSub(self.t('buAllLines') + ' · ' + self.buYear());
-      self.drillCtx([self.buType(), self.buSector(), self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
+      self.drillCtx([self.buType(), self.buSector(), self.buCc(), self.buProject(), self.buTask(), self.buEtype(),
+        self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
       api('GET', '/butil/lines' + qs({ year: self.buYear(), metric: metric,
-        projecttype: self.buType(), sector: self.buSector(), search: self.buSearch() })).then(fillDrill).catch(drillFail);
+        projecttype: self.buType(), sector: self.buSector(), search: self.buSearch(),
+        costcenter: self.buCc(), fproject: self.buProject(), ftask: self.buTask(), fetype: self.buEtype() })).then(fillDrill).catch(drillFail);
     };
     self.closeDrawer = function () { self.drillDrawer(false); };
+    // export the loaded drill lines — modal + drawer share drillCols/drillRows
+    self.drillExportCsv = function () {
+      var cols = self.drillCols(), rows = self.drillRows();
+      if (!cols.length || !rows.length) return;
+      var esc = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
+      var lines = [cols.map(function (c) { return esc(c.label); }).join(',')];
+      rows.forEach(function (r) {
+        lines.push(cols.map(function (c) { return esc(r[c.key]); }).join(','));
+      });
+      // reconciliation footer: label in the first column, total under the last (amount) column
+      lines.push(cols.map(function (c, i) {
+        return esc(i === 0 ? self.t('drillTotal') : (i === cols.length - 1 ? self.drillTotalV() : ''));
+      }).join(','));
+      var name = (self.drillTitle() + (self.drillSub() ? '_' + self.drillSub() : ''))
+        .replace(/[^\w\u0600-\u06FF]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase() || 'lines';
+      var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      var u = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = u; a.download = 'gl_drill_' + name + '.csv';
+      a.click(); URL.revokeObjectURL(u);
+    };
 
     /* ════ DASHBOARD — executive analytics ════ */
     self.dashLoaded = ko.observable(false); self.dashLoading = ko.observable(false);

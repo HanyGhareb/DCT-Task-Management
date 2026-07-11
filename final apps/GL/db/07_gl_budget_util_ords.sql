@@ -7,8 +7,12 @@
 --            re-run THIS script right after it (same rule as ATD db/42).
 -- Endpoints:
 --   GET /gl/butil/filters  -> years (default = latest) + project types + sectors
+--   GET /gl/butil/lov?year= -> autocomplete LOVs for the filter bar: cost
+--       centres (code + department), projects (number + name), tasks,
+--       expenditure types -- distinct values of the given budget year.
 --   GET /gl/butil?year=    -> {total, totals{...}, items[...]} -- year REQUIRED,
---       optional projecttype / sector / search / limit / offset.
+--       optional projecttype / sector / costcenter / project / task / etype
+--       (contains-match, fed by the LOVs) / search / limit / offset.
 --   GET /gl/butil/lines?year=&project=&task=&etype=&metric=  -> a single figure
 --       (metric ap|grn|pr|po) of a butil row drilled to its supporting lines
 --       {metric, total, columns[], rows[]}; totals reconcile to the row figure.
@@ -77,9 +81,59 @@ END;
 !');
 
     -- =========================================================================
+    -- FILTER LOVs -- autocomplete lists for the search bar, per budget year.
+    --   GET /gl/butil/lov?year=  (year optional -> all years)
+    --   -> {costCenters[{cc,dept}], projects[{p,n}], tasks[], etypes[]}
+    -- =========================================================================
+    def_template('butil/lov');
+    def_handler('butil/lov', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_year NUMBER := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
+  APEX_JSON.write('year', l_year);
+  APEX_JSON.open_array('costCenters');
+  FOR r IN (SELECT cost_centre cc, MAX(department) dept FROM prod.dct_budget_utilization_v
+            WHERE cost_centre IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+            GROUP BY cost_centre ORDER BY cost_centre) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('cc', r.cc); APEX_JSON.write('dept', NVL(r.dept,'')); APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.open_array('projects');
+  FOR r IN (SELECT project_number p, MAX(project_name) n FROM prod.dct_budget_utilization_v
+            WHERE project_number IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+            GROUP BY project_number ORDER BY project_number) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('p', r.p); APEX_JSON.write('n', NVL(r.n,'')); APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.open_array('tasks');
+  FOR r IN (SELECT DISTINCT task_number t FROM prod.dct_budget_utilization_v
+            WHERE task_number IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+            ORDER BY task_number) LOOP
+    APEX_JSON.write(r.t);
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.open_array('etypes');
+  FOR r IN (SELECT DISTINCT expenditure_type et FROM prod.dct_budget_utilization_v
+            WHERE expenditure_type IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+            ORDER BY expenditure_type) LOOP
+    APEX_JSON.write(r.et);
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- =========================================================================
     -- BUDGET UTILIZATION -- one row per project x task x expenditure type.
-    --   GET /gl/butil?year=&projecttype=&sector=&search=&limit=&offset=
-    --   year is REQUIRED (400 otherwise). Returns {total, totals{...}, items[...]}.
+    --   GET /gl/butil?year=&projecttype=&sector=&costcenter=&project=&task=
+    --                 &etype=&search=&limit=&offset=
+    --   year is REQUIRED (400 otherwise). costcenter/project/task/etype are
+    --   contains-match filters fed by /gl/butil/lov (project matches number
+    --   OR name). Returns {total, totals{...}, items[...]}.
     -- =========================================================================
     def_template('butil');
     def_handler('butil', 'GET', q'!
@@ -88,6 +142,10 @@ DECLARE
   l_year   NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
   l_ptype  VARCHAR2(100) := [COLON]projecttype;
   l_sector VARCHAR2(200) := [COLON]sector;
+  l_cc     VARCHAR2(100) := [COLON]costcenter;
+  l_proj   VARCHAR2(200) := [COLON]project;
+  l_task   VARCHAR2(200) := [COLON]task;
+  l_etype  VARCHAR2(255) := [COLON]etype;
   l_search VARCHAR2(200) := [COLON]search;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 5000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
@@ -103,6 +161,10 @@ BEGIN
    WHERE v.budget_year = l_year
      AND (l_ptype  IS NULL OR v.project_type = l_ptype)
      AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
+     AND (l_proj   IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
+     AND (l_task   IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_task)||'%')
+     AND (l_etype  IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_etype)||'%')
      AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '
                                    ||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%');
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
@@ -118,6 +180,10 @@ BEGIN
     WHERE v.budget_year = l_year
       AND (l_ptype  IS NULL OR v.project_type = l_ptype)
       AND (l_sector IS NULL OR v.sector = l_sector)
+      AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
+      AND (l_proj   IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
+      AND (l_task   IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_task)||'%')
+      AND (l_etype  IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_etype)||'%')
       AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '
                                     ||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')
     ORDER BY v.project_type, v.project_number, v.task_number, v.expenditure_type
@@ -153,6 +219,7 @@ END;
     -- BUDGET UTILIZATION DRILL-DOWN -- a figure -> its supporting lines.
     --   GET /gl/butil/lines?year=&metric=[&project=&task=&etype=]
     --                       [&projecttype=&sector=&search=]
+    --                       [&costcenter=&fproject=&ftask=&fetype=]
     --   metric in ap | grn | pr | po (Actual AP / Actual GRN / Commitment PR /
     --     Obligation PO). Two modes off ONE query (a `kys` key-set CTE):
     --     * ROW drill  (project [+task+etype] supplied) -> that one budget line.
@@ -175,6 +242,10 @@ DECLARE
   l_metric  VARCHAR2(10)  := LOWER([COLON]metric);
   l_ptype   VARCHAR2(100) := [COLON]projecttype;
   l_sector  VARCHAR2(200) := [COLON]sector;
+  l_cc      VARCHAR2(100) := [COLON]costcenter;
+  l_fproj   VARCHAR2(200) := [COLON]fproject;
+  l_ftask   VARCHAR2(200) := [COLON]ftask;
+  l_fetype  VARCHAR2(255) := [COLON]fetype;
   l_search  VARCHAR2(200) := [COLON]search;
   l_agg     BOOLEAN;
   l_total   NUMBER := 0;
@@ -187,12 +258,18 @@ BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF l_year IS NULL OR l_metric IS NULL THEN dct_rest.err(400,'year and metric are required'); RETURN; END IF;
   -- project/task/etype set -> single row drill; project omitted -> aggregate
-  -- drill (KPI card) filtered by projecttype/sector/search, like /gl/butil.
+  -- drill (KPI card) filtered like /gl/butil: projecttype/sector/search plus
+  -- the LOV filters costcenter/fproject/ftask/fetype (f-prefixed so they do
+  -- not collide with the row-drill key params project/task/etype).
   IF l_project = '' THEN l_project := NULL; END IF;
   IF l_task    = '' THEN l_task    := NULL; END IF;
   IF l_etype   = '' THEN l_etype   := NULL; END IF;
   IF l_ptype   = '' THEN l_ptype   := NULL; END IF;
   IF l_sector  = '' THEN l_sector  := NULL; END IF;
+  IF l_cc      = '' THEN l_cc      := NULL; END IF;
+  IF l_fproj   = '' THEN l_fproj   := NULL; END IF;
+  IF l_ftask   = '' THEN l_ftask   := NULL; END IF;
+  IF l_fetype  = '' THEN l_fetype  := NULL; END IF;
   IF l_search  = '' THEN l_search  := NULL; END IF;
   l_agg := (l_project IS NULL);
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
@@ -215,6 +292,10 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
+               AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
+               AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
+               AND (l_fetype IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_fetype)||'%')
                AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
            proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
@@ -272,18 +353,23 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
+               AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
+               AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
+               AND (l_fetype IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_fetype)||'%')
                AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
            proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
            po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account FROM prod.po_distributions GROUP BY po_distribution_id),
            poh AS (SELECT po_header_id, MAX(order_number) order_number, MAX(supplier_name) supplier_name FROM prod.po_headers GROUP BY po_header_id),
            pol AS (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id)
+      SELECT * FROM (
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) tkey,
              g.receipt_number, g.receipt_line_number line_no, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, g.currency_code,
              ph.order_number po_number, pl.line po_line, ph.supplier_name,
-             g.conversion_rate, g.transaction_amount * NVL(g.conversion_rate,1) amt_aed,
-             COUNT(*) OVER () full_n, SUM(g.transaction_amount * NVL(g.conversion_rate,1)) OVER () full_tot
+             g.conversion_rate, g.ledger_amount amt_aed,
+             COUNT(*) OVER () full_n, SUM(g.ledger_amount) OVER () full_tot
       FROM prod.grn_all_v2 g
       JOIN po_dist pod ON pod.po_distribution_id = g.po_distribution_id
       LEFT JOIN poh ph ON ph.po_header_id = g.po_header_id
@@ -291,12 +377,13 @@ BEGIN
       LEFT JOIN proj pj ON pj.project_id = g.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = g.task_id
       WHERE g.project_id IS NOT NULL AND pod.charge_account IS NOT NULL
-        AND NVL(g.transaction_amount * NVL(g.conversion_rate,1),0) <> 0
+        AND NVL(g.ledger_amount,0) <> 0
         AND EXTRACT(YEAR FROM g.transaction_date) = l_year
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END),'~'),
              NVL(g.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
       ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+      ) ORDER BY receipt_number, line_no
     ) LOOP
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
@@ -326,6 +413,10 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
+               AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
+               AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
+               AND (l_fetype IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_fetype)||'%')
                AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
            proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
@@ -377,6 +468,10 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
+               AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
+               AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
+               AND (l_fetype IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_fetype)||'%')
                AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
            proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
@@ -384,7 +479,7 @@ BEGIN
                               MAX(expenditure_type_name) expenditure_type, MAX(budget_date) budget_date, MAX(po_header_id) po_header_id,
                               MAX(po_line_id) po_line_id, MAX(distribution_amount * NVL(rate,1)) amt_aed, MAX(funds_status) funds_status
                        FROM prod.po_distributions GROUP BY po_distribution_id),
-           grn_per_dist AS (SELECT po_distribution_id, SUM(transaction_amount * NVL(conversion_rate,1)) grn_aed FROM prod.grn_all_v2 GROUP BY po_distribution_id)
+           grn_per_dist AS (SELECT po_distribution_id, SUM(ledger_amount) grn_aed FROM prod.grn_all_v2 GROUP BY po_distribution_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END) tkey,
              h.order_number, pl.line po_line, TO_CHAR(b.budget_date,'YYYY-MM-DD') bd, h.supplier_name, b.funds_status,
@@ -439,5 +534,5 @@ SHOW ERRORS
 EXECUTE setup_gl_butil_ords_tmp
 DROP PROCEDURE setup_gl_butil_ords_tmp;
 
-PROMPT gl.rest Budget Utilization endpoints published (/gl/butil + /gl/butil/filters).
+PROMPT gl.rest Budget Utilization endpoints published (/gl/butil + filters + lov + lines).
 EXIT

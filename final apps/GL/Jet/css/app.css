@@ -310,6 +310,7 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
 .dw-title{font-family:var(--serif);font-weight:500;font-size:19px;line-height:1.2}
 .dw-h .btn{border-color:rgba(255,255,255,.45);background:transparent;color:#fff;flex:none}
 .dw-h .btn:hover{background:rgba(255,255,255,.15);color:#fff}
+.dw-acts{display:flex;align-items:center;gap:8px;flex:none}
 .dw-b{flex:1;overflow-y:auto;padding:18px 22px 26px}
 .dw-ctx{font-size:12.5px;color:var(--muted);font-weight:600;margin-bottom:14px;padding-bottom:12px;
   border-bottom:1px dashed var(--line)}
@@ -336,6 +337,75 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
 .kstat-click::after{content:"⤢";position:absolute;top:8px;inset-inline-end:10px;font-size:11px;color:var(--muted);opacity:0;transition:opacity .12s}
 .kstat{position:relative}
 .kstat-click:hover::after{opacity:.7}
+
+/* ── Budget Utilization page regions ──────────────────────────────────
+   Collapsible "Search" + "Overview" regions and a maximizable "Results"
+   region. Brand-colored header bar (echoes the platform region theming),
+   chevron collapse with a collapsed-state summary, and a full-screen
+   table mode (⤢ toggles, Esc restores; drawers/toasts layer above). */
+.bu-sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
+  margin-bottom:16px;overflow:hidden}
+.bu-sec-h{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;-webkit-user-select:none;user-select:none;
+  background:linear-gradient(120deg,var(--brand),var(--brand-dark));color:#fff}
+.bu-sec-h.bu-res-h{cursor:default}
+.bu-sec-t{font-size:12px;font-weight:700;letter-spacing:.09em;text-transform:uppercase}
+.bu-sec-sum{font-size:12px;color:rgba(255,255,255,.78);font-weight:500;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bu-sec-ch{display:grid;place-items:center;width:18px;height:18px;flex:none}
+.bu-sec-ch svg{width:15px;height:15px;transition:transform .18s ease}
+.bu-sec-h.closed .bu-sec-ch svg{transform:rotate(-90deg)}
+html[dir=rtl] .bu-sec-h.closed .bu-sec-ch svg{transform:rotate(90deg)}
+.bu-sec-b{padding:15px 16px}
+.bu-sec-b .bu-kpis{margin-bottom:0}
+/* results region: the table sits flush under the header */
+.bu-results .tbl-wrap{border:none;border-radius:0;box-shadow:none}
+.bu-results .toolbar.bu-pager{justify-content:flex-end;margin:10px 14px 12px}
+.bu-maxbtn{border:1px solid rgba(255,255,255,.45);background:rgba(255,255,255,.12);color:#fff;border-radius:7px;
+  width:26px;height:26px;font-size:13px;line-height:1;cursor:pointer;display:grid;place-items:center;font-family:inherit;flex:none}
+.bu-maxbtn:hover{background:rgba(255,255,255,.26)}
+/* maximized: the region becomes a full-screen surface (below drawers/modals) */
+.bu-results.maxed{position:fixed;inset:0;z-index:55;margin:0;border:none;border-radius:0;
+  display:flex;flex-direction:column}
+.bu-results.maxed .tbl-wrap{flex:1;overflow:auto}
+.bu-results.maxed .toolbar.bu-pager{flex:none}
+
+/* ── Budget Utilization answer band ───────────────────────────────────
+   Tinted stat tiles, deliberately distinct from the white filter card
+   above: per-measure gradient tint + accent spine + icon chip + big
+   Fraunces value + %-of-budget context line + mini utilization bar.
+   Colors follow the measure palette used across the Actuals report. */
+.bu-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:13px;margin-bottom:20px}
+.bk{--bk-c:var(--brand);--bk-soft:var(--brand-soft);
+  position:relative;display:flex;gap:12px;align-items:flex-start;
+  padding:14px 16px 13px 18px;border:1px solid var(--line);border-radius:12px;
+  background:linear-gradient(135deg,var(--surface) 42%,var(--bk-soft) 140%);
+  box-shadow:var(--shadow);overflow:hidden}
+html[dir=rtl] .bk{padding:14px 18px 13px 16px}
+.bk::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--bk-c)}
+.bk-ico{width:38px;height:38px;border-radius:11px;flex:none;display:grid;place-items:center;
+  background:var(--bk-soft);color:var(--bk-c);box-shadow:inset 0 0 0 1px rgba(27,42,39,.07)}
+.bk-ico svg{width:19px;height:19px}
+.bk-body{flex:1;min-width:0}
+.bk-k{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-v{font-family:var(--serif);font-size:26px;font-weight:500;color:var(--bk-c);line-height:1.12;margin-top:3px}
+.bk-sub{font-size:11px;color:var(--muted);margin-top:1px;min-height:16px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-bar{height:4px;border-radius:99px;background:rgba(27,42,39,.08);margin-top:7px;overflow:hidden}
+.bk-bar i{display:block;height:100%;border-radius:99px;background:var(--bk-c);transition:width .45s ease}
+/* per-measure palette (accent + soft tint) */
+.bk-budget{--bk-c:#3A6EA5;--bk-soft:#E9F0F8}
+.bk-ap{--bk-c:#6C4AB6;--bk-soft:#F0EBF8}
+.bk-grn{--bk-c:#B8862B;--bk-soft:#F6EFDC}
+.bk-pr{--bk-c:#2E8C9E;--bk-soft:#E3F1F4}
+.bk-po{--bk-c:#5163B9;--bk-soft:#EAEDF8}
+.bk-fund{--bk-c:#2E7D5B;--bk-soft:#E4F1EA}
+.bk-fund.neg{--bk-c:var(--bad);--bk-soft:#F8E9E6}
+/* drillable tiles keep the lift + ⤢ affordance */
+.bk-click{cursor:pointer;transition:transform .12s ease,box-shadow .12s ease}
+.bk-click:hover{transform:translateY(-2px);box-shadow:0 8px 24px -10px rgba(27,42,39,.32)}
+.bk-click::after{content:"⤢";position:absolute;top:9px;inset-inline-end:11px;font-size:11px;color:var(--bk-c);opacity:0;transition:opacity .12s}
+.bk-click:hover::after{opacity:.85}
+@media (max-width:1500px){.bu-kpis{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:920px){.bu-kpis{grid-template-columns:repeat(2,1fr)}.bk{padding:12px 13px 11px 15px}.bk-v{font-size:22px}.bk-ico{width:32px;height:32px;border-radius:9px}.bk-ico svg{width:16px;height:16px}}
+@media (max-width:560px){.bu-kpis{grid-template-columns:1fr}}
 
 @media (max-width:720px){
   .wrap{padding:20px 16px 60px}.grid2{grid-template-columns:1fr}
