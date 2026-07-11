@@ -59,7 +59,7 @@ gl_ytd AS (
 grn_ytd AS (
   -- charge_account canonicalized via prod.dct_cc_canon (db/v2/40, re-ordered feed)
   SELECT prod.dct_cc_canon(pod.charge_account) AS cc_string, p.period_name,
-         SUM(g.transaction_amount * NVL(g.conversion_rate,1)) AS grn_actual
+         SUM(g.ledger_amount) AS grn_actual
   FROM prod.grn_all_v2 g
   JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
   JOIN periods p ON g.transaction_date >= p.yr_start AND g.transaction_date < p.p_next
@@ -76,7 +76,7 @@ ap_ytd AS (  -- AP Direct = AP distribution lines with NO PO reference (po_numbe
   GROUP BY cid.cc_string, p.period_name
 ),
 grn_per_dist AS (  -- total GRN received per PO distribution (for Open Obligation netting)
-  SELECT po_distribution_id, SUM(transaction_amount * NVL(conversion_rate,1)) AS grn_aed
+  SELECT po_distribution_id, SUM(ledger_amount) AS grn_aed
   FROM prod.grn_all_v2
   GROUP BY po_distribution_id
 ),

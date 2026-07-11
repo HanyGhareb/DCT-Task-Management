@@ -30,8 +30,11 @@
 --         invoices; AED invoices have FUNCTI NULL so the entered amount is AED.
 --   PO  : amount_aed = DISTRIBUTION_AMOUNT * NVL(PO_DISTRIBUTIONS.RATE,1)
 --         (its own transaction-time FX-to-AED rate; AED rows = 1).
---   GRN : amount_aed = TRANSACTION_AMOUNT  * NVL(CONVERSION_RATE,1) (its own
---         transaction-time rate column; AED rows have CONVERSION_RATE NULL).
+--   GRN : amount_aed = LEDGER_AMOUNT (already AED). The extract's
+--         TRANSACTION_AMOUNT is ALSO already AED-converted (doc amount x rate
+--         at source), so multiplying by CONVERSION_RATE double-converted FX
+--         receipts (EUR x4.26, USD x3.67) - fixed 2026-07-10. Never multiply
+--         GRN amounts by CONVERSION_RATE; SLA_LEDGER_AMOUNT is unusable (3x).
 --   GL  : already AED (ledger currency); amount_aed = amount, rate = 1.
 --   (All rates are each source's own transaction-time FX-to-AED rate.)
 --
@@ -223,7 +226,7 @@ SELECT
   g.transaction_amount,
   g.currency_code,
   NVL(g.conversion_rate,1),
-  g.transaction_amount * NVL(g.conversion_rate,1),
+  g.ledger_amount,
   g.transaction_date,
   CAST(NULL AS VARCHAR2(20)),
   h.supplier_number,
@@ -331,7 +334,7 @@ po_agg AS (
 ),
 grn_agg AS (
   SELECT prod.dct_cc_canon(pod.charge_account) AS cc_string,
-         SUM(g.transaction_amount * NVL(g.conversion_rate,1)) AS grn_received
+         SUM(g.ledger_amount) AS grn_received
     FROM prod.grn_all_v2 g
     JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
    GROUP BY prod.dct_cc_canon(pod.charge_account)

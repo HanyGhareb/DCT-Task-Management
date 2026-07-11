@@ -85,17 +85,19 @@ BEGIN
   ELSIF l_metric = 'grn' THEN
     APEX_JSON.open_array('columns'); col('receipt','GRN #','text'); col('line','Line','text'); col('date','Date','date'); col('supplier','Supplier','text'); col('currency','Cur','text'); col('rate','Rate','num'); col('amount','Amount (AED)','money'); col('type','Type','text'); APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
-    FOR r IN (SELECT g.receipt_number, g.receipt_line_number line_no, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, h.supplier_name,
-                     g.currency_code, g.conversion_rate, g.transaction_amount*NVL(g.conversion_rate,1) aed, g.transaction_type
+    FOR r IN (SELECT * FROM (
+              SELECT g.receipt_number, g.receipt_line_number line_no, TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, h.supplier_name,
+                     g.currency_code, g.conversion_rate, g.ledger_amount aed, g.transaction_type
               FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
               LEFT JOIN prod.po_headers h ON h.po_header_id = g.po_header_id
               WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext
-              ORDER BY g.transaction_date DESC FETCH FIRST 500 ROWS ONLY) LOOP
+              ORDER BY g.transaction_date DESC FETCH FIRST 500 ROWS ONLY
+              ) ORDER BY receipt_number, line_no) LOOP
       APEX_JSON.open_object; APEX_JSON.write('receipt',r.receipt_number); APEX_JSON.write('line',NVL(TO_CHAR(r.line_no),'')); APEX_JSON.write('date',NVL(r.td,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
       APEX_JSON.write('currency',NVL(r.currency_code,'AED')); APEX_JSON.write('rate',NVL(r.conversion_rate,1)); APEX_JSON.write('amount',r.aed); APEX_JSON.write('type',NVL(r.transaction_type,'')); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
-    SELECT NVL(SUM(g.transaction_amount*NVL(g.conversion_rate,1)),0) INTO l_total FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext;
+    SELECT NVL(SUM(g.ledger_amount),0) INTO l_total FROM prod.grn_all_v2 g JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext;
 
   ELSIF l_metric = 'apdirect' THEN
     APEX_JSON.open_array('columns'); col('invoice','Invoice #','text'); col('line','Line','text'); col('date','Acct date','date'); col('description','Description','text'); col('orig','Amount (orig)','money'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
@@ -155,7 +157,7 @@ BEGIN
                 FROM prod.po_distributions pd
                 JOIN prod.po_headers h ON h.po_header_id = pd.po_header_id
                 LEFT JOIN prod.po_lines pl ON pl.po_header_id = pd.po_header_id AND pl.po_line_id = pd.po_line_id
-                LEFT JOIN (SELECT po_distribution_id, SUM(transaction_amount*NVL(conversion_rate,1)) grn FROM prod.grn_all_v2 GROUP BY po_distribution_id) g
+                LEFT JOIN (SELECT po_distribution_id, SUM(ledger_amount) grn FROM prod.grn_all_v2 GROUP BY po_distribution_id) g
                   ON g.po_distribution_id = pd.po_distribution_id
                 WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
                   AND pd.funds_status IN ('Reserved','Partially Liquidated')
@@ -169,7 +171,7 @@ BEGIN
     SELECT NVL(SUM(GREATEST(ordered-grn,0)),0) INTO l_total FROM (
       SELECT MAX(pd.distribution_amount*NVL(pd.rate,1)) ordered, NVL(MAX(g.grn),0) grn
       FROM prod.po_distributions pd
-      LEFT JOIN (SELECT po_distribution_id, SUM(transaction_amount*NVL(conversion_rate,1)) grn FROM prod.grn_all_v2 GROUP BY po_distribution_id) g
+      LEFT JOIN (SELECT po_distribution_id, SUM(ledger_amount) grn FROM prod.grn_all_v2 GROUP BY po_distribution_id) g
         ON g.po_distribution_id = pd.po_distribution_id
       WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
         AND pd.funds_status IN ('Reserved','Partially Liquidated')

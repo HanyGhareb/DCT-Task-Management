@@ -126,7 +126,7 @@ po_dist AS (
 ),
 grn_per_dist AS (
   SELECT po_distribution_id,
-         SUM(transaction_amount * NVL(conversion_rate,1)) AS grn_aed
+         SUM(ledger_amount) AS grn_aed
   FROM prod.grn_all_v2
   GROUP BY po_distribution_id
 ),
@@ -157,7 +157,7 @@ f_grn AS (
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(g.project_id)) AS project_key,
          COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) AS task_key,
          g.expenditure_type,
-         SUM(g.transaction_amount * NVL(g.conversion_rate,1)) AS actual_grn
+         SUM(g.ledger_amount) AS actual_grn
   FROM prod.grn_all_v2 g
   JOIN po_dist pod ON pod.po_distribution_id = g.po_distribution_id
   LEFT JOIN proj pj ON pj.project_id = g.project_id

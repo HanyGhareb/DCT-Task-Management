@@ -120,7 +120,7 @@ po_dist AS (
 ),
 grn AS (
   SELECT po_distribution_id,
-         SUM(transaction_amount * NVL(conversion_rate,1)) AS received_aed,
+         SUM(ledger_amount) AS received_aed,
          MAX(transaction_date)                            AS last_receipt_date,
          COUNT(*)                                         AS receipt_lines
   FROM prod.grn_all_v2
@@ -196,7 +196,7 @@ po_dist AS (
 ),
 grn_per_dist AS (
   SELECT po_distribution_id,
-         SUM(transaction_amount * NVL(conversion_rate,1)) AS received_aed
+         SUM(ledger_amount) AS received_aed
   FROM prod.grn_all_v2
   GROUP BY po_distribution_id
 )

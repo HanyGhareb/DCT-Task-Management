@@ -61,7 +61,7 @@ proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.project
 tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
 po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account FROM prod.po_distributions GROUP BY po_distribution_id)
 SELECT TO_CHAR(g.transaction_date,'YYYY-MM') AS mth, k.cc,
-       ROUND(SUM(g.transaction_amount * NVL(g.conversion_rate,1)),2) AS grn_aed
+       ROUND(SUM(g.ledger_amount),2) AS grn_aed
 FROM prod.grn_all_v2 g
 JOIN po_dist pod ON pod.po_distribution_id = g.po_distribution_id
 LEFT JOIN proj pj ON pj.project_id = g.project_id
