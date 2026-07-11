@@ -148,7 +148,7 @@ BEGIN
            OR (l_metric='popipeline' AND pd.funds_status IN ('Failed','Passed')) )
       GROUP BY pd.po_distribution_id);
 
-  ELSIF l_metric = 'openobligation' THEN   -- (Reserved + Partially Liquidated) NETTED by GRN received
+  ELSIF l_metric = 'openobligation' THEN   -- (Reserved + Partially Liquidated) NETTED by GRN received, excl. Finally Closed POs (remainder released)
     APEX_JSON.open_array('columns'); col('po','PO #','text'); col('line','Line','text'); col('description','Item / description','text'); col('status','Funds status','text'); col('ordered','Ordered (AED)','money'); col('grn','Received (AED)','money'); col('amount','Open (AED)','money'); APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
     FOR r IN (SELECT order_number, po_line, item_description, po_status, ordered, grn, GREATEST(ordered-grn,0) open_amt FROM (
@@ -161,6 +161,8 @@ BEGIN
                   ON g.po_distribution_id = pd.po_distribution_id
                 WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
                   AND pd.funds_status IN ('Reserved','Partially Liquidated')
+                  AND NOT EXISTS (SELECT 1 FROM prod.po_headers hx
+                                  WHERE hx.po_header_id = pd.po_header_id AND hx.status = 'Finally Closed')
                 GROUP BY h.order_number, pl.line, pl.item_description, pd.funds_status, pd.po_distribution_id)
               ORDER BY open_amt DESC NULLS LAST FETCH FIRST 500 ROWS ONLY) LOOP
       APEX_JSON.open_object; APEX_JSON.write('po',NVL(TO_CHAR(r.order_number),'')); APEX_JSON.write('line',NVL(TO_CHAR(r.po_line),''));
@@ -175,6 +177,8 @@ BEGIN
         ON g.po_distribution_id = pd.po_distribution_id
       WHERE prod.dct_cc_canon(pd.charge_account) = l_cc AND (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
         AND pd.funds_status IN ('Reserved','Partially Liquidated')
+        AND NOT EXISTS (SELECT 1 FROM prod.po_headers hx
+                        WHERE hx.po_header_id = pd.po_header_id AND hx.status = 'Finally Closed')
       GROUP BY pd.po_distribution_id);
 
   ELSIF l_metric IN ('commitment','opencommitment','commitmentpipeline') THEN   -- PR drills (real requisitions, db/v2/36)

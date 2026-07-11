@@ -22,6 +22,11 @@
 --                                 per distribution GREATEST(amt_AED - GRN_received, 0)
 --                                 (GRN via grn_all_v2.po_distribution_id) -- the
 --                                 unreceived balance of still-encumbered POs.
+--                                 EXCLUDES POs whose header STATUS = 'Finally Closed'
+--                                 (2026-07-11): Fusion releases the reserved funds on
+--                                 final close, but the distributions keep their old
+--                                 funds_status, so the un-received remainder must not
+--                                 count as open obligation.
 --       po_pipeline_ytd         = FUNDS_STATUS IN ('Failed','Passed').
 --   OPEN ENCUMBRANCE = open_commitment_ytd + open_obligation_ytd.
 --   Funds Available (calc)      = Budget - Open PO - Open PR - GRN - AP Direct
@@ -91,11 +96,17 @@ po_base AS (  -- one row per PO distribution (collapse physical dups by po_distr
   WHERE charge_account IS NOT NULL
   GROUP BY po_distribution_id
 ),
+po_hdr_status AS (  -- header STATUS: 'Finally Closed' releases the un-received remainder
+  SELECT po_header_id, MAX(status) AS po_status
+  FROM prod.po_headers
+  GROUP BY po_header_id
+),
 po_ytd AS (  -- PO obligation 3-figure buckets cumulative to each period
   SELECT b.charge_account AS cc_string, p.period_name,
          SUM(CASE WHEN NVL(b.funds_status,'x') NOT IN ('Failed','Passed')
                   THEN b.amt_aed END)                                              AS total_po,
          SUM(CASE WHEN b.funds_status IN ('Reserved','Partially Liquidated')
+                   AND NVL(hs.po_status,'x') <> 'Finally Closed'
                   THEN GREATEST(b.amt_aed - NVL(g.grn_aed,0), 0) END)              AS open_obligation,
          SUM(CASE WHEN b.funds_status IN ('Failed','Passed')
                   THEN b.amt_aed END)                                              AS po_pipeline,
@@ -103,6 +114,7 @@ po_ytd AS (  -- PO obligation 3-figure buckets cumulative to each period
                              THEN b.po_header_id END)                              AS po_count
   FROM po_base b
   LEFT JOIN grn_per_dist g ON g.po_distribution_id = b.po_distribution_id
+  LEFT JOIN po_hdr_status hs ON hs.po_header_id = b.po_header_id
   JOIN periods p ON (b.budget_date IS NULL OR b.budget_date < p.p_next)
   GROUP BY b.charge_account, p.period_name
 ),

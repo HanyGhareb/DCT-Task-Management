@@ -28,6 +28,8 @@
 --                            Reserved / Partially Liquidated), GRN-netted
 --                            open amount, same filters as the utilization
 --                            obligation_po figure. Zero-open rows excluded.
+--                            Header STATUS 'Finally Closed' excluded
+--                            (2026-07-11): final close releases the remainder.
 --   DCT_RESERVED_PR_LINES_V: PR distributions with funds_status Reserved
 --                            (the open-commitment lines), AED via the
 --                            DCT_CURRENCY_CODES snapshot rate.
@@ -222,6 +224,7 @@ LEFT JOIN prod.po_lines  pl ON pl.po_header_id = b.po_header_id AND pl.po_line_i
 LEFT JOIN proj pj ON pj.project_id = b.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
 WHERE b.funds_status IN ('Reserved','Partially Liquidated')
+  AND NVL(h.status,'x') <> 'Finally Closed'   -- final close releases the un-received remainder (2026-07-11)
   AND b.project_id IS NOT NULL
   AND b.charge_account IS NOT NULL
   AND GREATEST(b.line_aed - NVL(g.received_aed,0), 0) > 0.005;

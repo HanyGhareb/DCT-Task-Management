@@ -16,7 +16,9 @@
 --                     year = budget_date.
 --   Obligation (PO) : OPEN obligation = Reserved / Partially Liquidated PO
 --                     distributions, GRN-netted per po_distribution_id,
---                     year = budget_date.
+--                     year = budget_date. POs whose header STATUS =
+--                     'Finally Closed' are excluded (2026-07-11): Fusion
+--                     releases the remaining reserved funds on final close.
 --   Fund Available  = Budget - AP - GRN - Open PR - Open PO.
 --
 -- Display attributes resolved task-first, then transactions, then project:
@@ -115,6 +117,7 @@ po_dist AS (
   -- charge_account canonicalized via prod.dct_cc_canon (db/v2/40, re-ordered feed)
   SELECT po_distribution_id,
          prod.dct_cc_canon(MAX(charge_account)) AS charge_account,
+         MAX(po_header_id)                      AS po_header_id,
          MAX(project_id)                        AS project_id,
          MAX(task_id)                           AS task_id,
          MAX(expenditure_type_name)             AS expenditure_type,
@@ -123,6 +126,11 @@ po_dist AS (
          MAX(funds_status)                      AS funds_status
   FROM prod.po_distributions
   GROUP BY po_distribution_id
+),
+po_hdr_status AS (  -- header STATUS: 'Finally Closed' releases the un-received remainder
+  SELECT po_header_id, MAX(status) AS po_status
+  FROM prod.po_headers
+  GROUP BY po_header_id
 ),
 grn_per_dist AS (
   SELECT po_distribution_id,
@@ -197,9 +205,11 @@ f_po AS (
          SUM(GREATEST(b.amt_aed - NVL(g.grn_aed,0), 0)) AS open_obligation_po
   FROM po_dist b
   LEFT JOIN grn_per_dist g ON g.po_distribution_id = b.po_distribution_id
+  LEFT JOIN po_hdr_status hs ON hs.po_header_id = b.po_header_id
   LEFT JOIN proj pj ON pj.project_id = b.project_id
   LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
   WHERE b.funds_status IN ('Reserved','Partially Liquidated')
+    AND NVL(hs.po_status,'x') <> 'Finally Closed'
     AND b.project_id IS NOT NULL
     AND b.charge_account IS NOT NULL
   GROUP BY EXTRACT(YEAR FROM b.budget_date), b.charge_account,

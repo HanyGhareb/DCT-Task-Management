@@ -489,13 +489,15 @@ BEGIN
       FROM po_dist b
       LEFT JOIN grn_per_dist g ON g.po_distribution_id = b.po_distribution_id
       LEFT JOIN (SELECT po_header_id, MAX(order_number) order_number, MAX(supplier_name) supplier_name,
-                        MAX(ordered_amount) ordered_amount FROM prod.po_headers GROUP BY po_header_id) h
+                        MAX(ordered_amount) ordered_amount, MAX(status) po_status
+                 FROM prod.po_headers GROUP BY po_header_id) h
              ON h.po_header_id = b.po_header_id
       LEFT JOIN (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id) pl
              ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id
       LEFT JOIN proj pj ON pj.project_id = b.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
       WHERE b.funds_status IN ('Reserved','Partially Liquidated') AND b.project_id IS NOT NULL AND b.charge_account IS NOT NULL
+        AND NVL(h.po_status,'x') <> 'Finally Closed'
         AND NVL(GREATEST(b.amt_aed - NVL(g.grn_aed,0),0),0) > 0
         AND EXTRACT(YEAR FROM b.budget_date) = l_year
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)),

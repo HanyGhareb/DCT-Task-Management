@@ -24,6 +24,27 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-11 — Open Obligation excludes 'Finally Closed' POs (DB-only, DEPLOYED + verified).**
+  Fusion releases the remaining reserved funds when a PO is
+  **finally closed**, but the PO **distributions keep their old `funds_status`**
+  (Reserved/Partially Liquidated) — so the un-received remainder kept counting as Open Obligation
+  (example PO `451102004832`: ordered 3,600,000.22, GRN received 879,515.24, header STATUS
+  'Finally Closed' → 2,720,484.98 wrongly held as open). Fix: every open-obligation expression now
+  also requires **header `ATD_PO_HEADERS.STATUS <> 'Finally Closed'`** (via a grouped
+  `po_hdr_status` CTE or `NOT EXISTS` on `prod.po_headers`). Measured impact at deploy time:
+  **2,738,255.44 AED across 4 distributions / 5 finally-closed POs** leaves Open Obligation (and
+  Open Encumbrance; Funds Available Calc / butil Fund Available rise by the same amount).
+  Total PO and PO Pipeline are unchanged (the order still happened). 'Canceled' POs need no rule —
+  their distributions lose the Reserved status. Touched: `db/v2/34` (period view — open_obligation,
+  open_encumbrance + funds_available_calc derive), `db/v2/37` (butil view obligation_po +
+  fund_available), `db/v2/39` (`DCT_OPEN_PO_LINES_V` → BI report pack section 5 self-corrects),
+  `GL/db/05` (source sync only — do NOT re-run), `GL/db/07` (butil PO drill, both row-cell and
+  KPI-card agg mode), `GL/db/10` (actuals/lines `openobligation` rows + total). Deploy order:
+  `db/v2/34` → `37` → `39` (one session) → `GL/db/07` + `GL/db/10` (fresh session; both additive,
+  no 05 re-run needed). Verified in PROD 2026-07-11: `DCT_OPEN_PO_LINES_V` = 0 Finally-Closed
+  rows; example butil row (4511000283 / Utilities-N / 423931) obligation 1,707,735.07 (the
+  2,720,484.98 remainder gone, fund available now +2,455,467.26); 07-2026 platform Open
+  Obligation 458.4M / Open Encumbrance 919.5M; 0 INVALID objects.
 - **2026-07-11 — Web-tier release `20260711203106` pushed** (`SSH_USER=opc
   webtier/deploy_frontend.sh 129.151.159.189` from Git Bash): ships GL v1.14.0 (all three
   same-day waves — filter LOVs + KPI answer band + regions/maximize) + the pending v1.11.0 drill
@@ -378,6 +399,14 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   COA view 9,338 rows (no fan-out), 91% sector-classified. Registered in switcher + i18n.
 
 ## Gotchas (GL-specific)
+- **'Finally Closed' POs keep stale `funds_status` on their distributions** (2026-07-11): Fusion
+  releases the un-received remainder of a finally-closed PO back to budget, but
+  `po_distributions.funds_status` stays 'Reserved'/'Partially Liquidated'. Any open-obligation /
+  open-encumbrance / funds-available expression MUST also exclude header
+  `po_headers.STATUS = 'Finally Closed'` (dup-safe: grouped `MAX(status)` CTE or `NOT EXISTS`).
+  Header status lives ONLY on `ATD_PO_HEADERS.STATUS` ('Open', 'Closed', 'Closed for Receiving',
+  'Finally Closed', 'Canceled', …) — 'Closed'/'Closed for Receiving' do NOT release funds; only
+  'Finally Closed' does. 'Canceled' needs no rule (distributions lose Reserved status).
 - **GRN amounts are already AED — use `LEDGER_AMOUNT`, never × `CONVERSION_RATE`** (2026-07-10;
   **CORRECTED 2026-07-11**): the OTBI CSV proved the ATD loader maps `TRANSACTION_AMOUNT` ← OTBI
   **"Ledger Amount"** (the true doc-currency "Transaction Amount" never reaches ATD), which is why
