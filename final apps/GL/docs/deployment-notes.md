@@ -24,6 +24,12 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-11 — Web-tier release `20260711203106` pushed** (`SSH_USER=opc
+  webtier/deploy_frontend.sh 129.151.159.189` from Git Bash): ships GL v1.14.0 (all three
+  same-day waves — filter LOVs + KPI answer band + regions/maximize) + the pending v1.11.0 drill
+  Export CSV. Smoke through nginx: index/app.js/app.css 200, APP_VERSION 1.14.0 served, new
+  `/ords/admin/gl/butil/lov` routes (401 unauthenticated as expected). Commits `6cecdc6` (GRN
+  ledger_amount fix) + `5028cc1` (butil UX waves) pushed to origin/main.
 - **2026-07-11 — Budget Utilization page regions + table maximize (v1.14.0, frontend-only).**
   The page is now organized into three **brand-headed regions** (`.bu-sec` / `.bu-sec-h` — teal
   gradient header bar, white uppercase title, echoes the platform region theming):
