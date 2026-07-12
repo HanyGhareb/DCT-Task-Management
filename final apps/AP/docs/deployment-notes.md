@@ -43,3 +43,12 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 - **2026-07-12** — Initial deploy: 01→04 to PROD; `ap.rest` 9 routes live; API smoke 14/14;
   browser smoke 23/23; platform registration (shell + i18n + all-apps APP_VERSION bump).
   Web-tier release `20260712231423` shipped same day (whole fleet; AP live at /AP/Jet/).
+- **2026-07-12 (round 2)** — `db/04` re-run: dists register/export now join `po_lines`
+  (order_number/line) → `po_distributions` (schedule/distribution_number) for the
+  PO-sourced charge account; `glCombination` = `dct_cc_canon(COALESCE(po, ap))`
+  (the PO extract stores charge accounts in the FLIPPED segment order — canon fixes it),
+  `chargeSource` PO/AP + full invoice-detail columns. Coverage: 9,910 PO-matched dists,
+  4,430 with a loaded PO dist row, 0 canonical mismatches. Frontend 1.1.0: full-width
+  dashboard (`page-wrap--full`), ONE metadata-driven register table (all levels),
+  per-user column chooser saved to `/dct/prefs` key `ap.dash.cols` + localStorage.
+  Browser smoke 30/30. Web-tier redeployed.

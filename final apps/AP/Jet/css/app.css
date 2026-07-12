@@ -117,3 +117,8 @@
 .ap-tab { padding: 8px 14px; background: none; border: 0; border-bottom: 2px solid transparent;
           cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-2); }
 .ap-tab.on { color: var(--brand); border-bottom-color: var(--brand); }
+
+/* column chooser panel (register region) */
+.ap-region { position: relative; }
+.ap-cols-panel { position: absolute; top: 46px; inset-inline-end: 12px; z-index: 60;
+                 width: 300px; padding: 12px; box-shadow: 0 10px 32px rgba(0,0,0,.16); }

@@ -1,13 +1,11 @@
 {
   "nav.home": "Home",
   "nav.dashboard": "AP Dashboard",
-
   "home.title": "Accounts Payable",
   "home.subtitle": "Invoice follow-up workspace for the AP team",
   "home.openDash": "Open AP Dashboard",
   "home.placeholder": "Home page content coming soon",
   "home.placeholderHint": "This page will be designed later. Use the AP Dashboard to analyse and follow up invoices.",
-
   "dash.title": "AP Dashboard",
   "dash.subtitle": "Aging, register and spend status across suppliers, sectors, departments, projects, POs and PRs",
   "dash.print": "Print report",
@@ -17,7 +15,6 @@
   "dash.levelHeader": "Invoice header",
   "dash.levelLine": "Invoice line",
   "dash.levelDist": "Distribution",
-
   "f.filters": "Search filters",
   "f.search": "Search invoices…",
   "f.find": "Type to filter…",
@@ -48,7 +45,6 @@
   "f.refs": "PO / PR / Task",
   "f.clear": "Clear all",
   "f.applied": "Applied filters",
-
   "kpi.invoices": "Invoices",
   "kpi.suppliers": "Suppliers",
   "kpi.totalAed": "Total (AED)",
@@ -56,7 +52,6 @@
   "kpi.outstandingAed": "Outstanding (AED)",
   "kpi.overdueAed": "Overdue (AED)",
   "kpi.cancelled": "Cancelled",
-
   "rg.analytics": "Analytics",
   "rg.register": "AP Register",
   "rg.collapse": "Collapse",
@@ -67,7 +62,6 @@
   "rg.exportXlsx": "Export Excel",
   "rg.exportPng": "Export charts",
   "rg.exportData": "Export data",
-
   "ch.aging": "AP aging — outstanding balance (AED)",
   "ch.trend": "Monthly invoiced amount (AED)",
   "ch.payment": "Paid vs unpaid",
@@ -76,14 +70,12 @@
   "ch.topSuppliers": "Top suppliers (AED)",
   "ch.bySector": "Spend by sector (AED)",
   "ch.byPayGroup": "Spend by pay group (AED)",
-
   "ag.current": "Not due",
   "ag.b1": "1–30 days",
   "ag.b2": "31–60 days",
   "ag.b3": "61–90 days",
   "ag.b4": "91–180 days",
   "ag.b5": "180+ days",
-
   "tbl.invoiceNo": "Invoice #",
   "tbl.date": "Date",
   "tbl.supplier": "Supplier",
@@ -129,7 +121,6 @@
   "tbl.totalAmount": "Total amount (AED)",
   "tbl.totalBalance": "Total balance (AED)",
   "tbl.none": "No rows match the current filters",
-
   "dr.title": "Invoice detail",
   "dr.header": "Header",
   "dr.lines": "Lines",
@@ -151,7 +142,6 @@
   "dr.cancelledBy": "Cancelled by",
   "dr.cancelledOn": "Cancelled on",
   "dr.attachment": "Attachment",
-
   "pr.title": "Accounts Payable Dashboard Report",
   "pr.generated": "Generated",
   "pr.by": "By",
@@ -162,9 +152,20 @@
   "pr.charts": "Analytics",
   "pr.register": "Register",
   "pr.showing": "Showing first {0} of {1} rows",
-
   "msg.loading": "Loading…",
   "msg.error": "Something went wrong. Please try again.",
   "msg.exportStarted": "Preparing download…",
-  "msg.printPopup": "Allow pop-ups to print the report"
+  "msg.printPopup": "Allow pop-ups to print the report",
+  "tbl.invType": "Invoice type",
+  "tbl.poLine": "PO line",
+  "tbl.glComb": "GL combination",
+  "tbl.chargeSrc": "Charge source",
+  "tbl.poCharge": "PO charge account",
+  "tbl.chargeAcct": "Charge account",
+  "tbl.distDesc": "Dist description",
+  "tbl.invDesc": "Invoice description",
+  "cols.button": "Columns",
+  "cols.title": "Show / hide columns",
+  "cols.showAll": "Show all",
+  "cols.reset": "Reset to default"
 }

@@ -25,7 +25,9 @@ Blank by design — content will be designed later.
 - `toggleCharts()` / `toggleChartsMax()`.
 
 **Region 2 — AP Register** (collapsible / maximizable / exportable)
-- Server-paginated table at the selected level (`reloadRows`, `<list-pager>`), sortable headers (`sortBy`: date/amount/balance/supplier).
+- Server-paginated metadata-driven table at the selected level (`reloadRows`, `<list-pager>`), sortable headers (`sortBy`: date/amount/balance/supplier).
+- **Column chooser** (`toggleColsPanel`, `toggleCol`, `showAllCols`, `resetCols`): per-level show/hide over the full column catalog (`COLS`), persisted per user — localStorage autosave + server preference `ap.dash.cols` via `/dct/prefs` (BI-viewer style, roams across machines). The print report mirrors the visible columns.
+- Distribution level exposes the **effective charge account**: `glCombination` (canonical full GL combination via `dct_cc_canon`; sourced from the **PO distribution line** for PO-matched invoices, AP dist fallback), `chargeSource` (PO/AP), `poChargeAccount`, plus the full invoice-detail column set (descriptions, pay group, terms, method, voucher, chapter/program, posting, accounting date…).
 - `exportCsv()` — server CSV of the full filtered set (header 10k / line-dist 25k cap); `exportXlsx()` — SheetJS Excel from the same export.
 - `openDrill(row)` / `closeDrill()` / `setDrillTab(tab)` — invoice drill modal (Header KV + Lines + Distributions tabs).
 - `toggleTable()` / `toggleTableMax()`.

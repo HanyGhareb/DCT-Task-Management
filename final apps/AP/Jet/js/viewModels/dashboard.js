@@ -1,5 +1,5 @@
-define(['knockout', 'services/apService', 'services/authService', 'shared/i18n', 'shared/toast', 'shared/chartLoader'],
-function (ko, ap, authService, i18n, toast, charts) {
+define(['knockout', 'services/apService', 'services/api', 'services/authService', 'shared/i18n', 'shared/toast', 'shared/chartLoader'],
+function (ko, ap, api, authService, i18n, toast, charts) {
   'use strict';
 
   // Aging ramp — single-hue ordinal steps (validated light->dark, brand hue)
@@ -8,6 +8,104 @@ function (ko, ap, authService, i18n, toast, charts) {
   var AG_ORDER = ['CURRENT', 'D1_30', 'D31_60', 'D61_90', 'D91_180', 'D180P'];
   var AG_KEYS  = ['ag.current', 'ag.b1', 'ag.b2', 'ag.b3', 'ag.b4', 'ag.b5'];
   var PAY_COLORS = { 'Paid': '#0ca30c', 'Unpaid': '#fab219' };
+
+  // Register column catalog per level. hide = off by default (the chooser can
+  // re-enable); badge renders status pills; clip = ellipsis + hover title;
+  // titleKey = companion field shown as the cell tooltip; sort = server key.
+  var COLS = {
+    header: [
+      { key: 'invoiceNumber',    labelKey: 'tbl.invoiceNo' },
+      { key: 'invoiceDate',      labelKey: 'tbl.date', sort: 'date' },
+      { key: 'supplier',         labelKey: 'tbl.supplier', sort: 'supplier', clip: true },
+      { key: 'description',      labelKey: 'tbl.description', clip: true },
+      { key: 'invoiceType',      labelKey: 'tbl.invType', hide: true },
+      { key: 'currency',         labelKey: 'tbl.currency' },
+      { key: 'amount',           labelKey: 'tbl.amount', amt: true, hide: true },
+      { key: 'amountAed',        labelKey: 'tbl.amountAed', amt: true, sort: 'amount' },
+      { key: 'amountPaid',       labelKey: 'tbl.paidAmt', amt: true, hide: true },
+      { key: 'balanceAed',       labelKey: 'tbl.balance', amt: true, sort: 'balance' },
+      { key: 'daysPastDue',      labelKey: 'tbl.dpd' },
+      { key: 'validationStatus', labelKey: 'tbl.validation', badge: 'val' },
+      { key: 'accountingStatus', labelKey: 'tbl.accounting', badge: 'acc' },
+      { key: 'paymentStatus',    labelKey: 'tbl.payStatus', badge: 'pay' },
+      { key: 'fundsStatus',      labelKey: 'tbl.funds', hide: true },
+      { key: 'invoiceStatus',    labelKey: 'tbl.status', hide: true },
+      { key: 'termsDate',        labelKey: 'tbl.terms', hide: true },
+      { key: 'paymentTerms',     labelKey: 'dr.payTerms', hide: true },
+      { key: 'payGroup',         labelKey: 'tbl.payGroup' },
+      { key: 'paymentMethod',    labelKey: 'tbl.method', hide: true },
+      { key: 'poNumbers',        labelKey: 'tbl.po', clip: true },
+      { key: 'prNumbers',        labelKey: 'tbl.pr', hide: true, clip: true },
+      { key: 'voucherNum',       labelKey: 'tbl.voucher', hide: true },
+      { key: 'source',           labelKey: 'dr.source', hide: true },
+    ],
+    line: [
+      { key: 'invoiceNumber',    labelKey: 'tbl.invoiceNo' },
+      { key: 'invoiceDate',      labelKey: 'tbl.date', sort: 'date' },
+      { key: 'supplier',         labelKey: 'tbl.supplier', clip: true },
+      { key: 'lineNumber',       labelKey: 'tbl.line' },
+      { key: 'lineType',         labelKey: 'tbl.lineType' },
+      { key: 'description',      labelKey: 'tbl.description', clip: true },
+      { key: 'currency',         labelKey: 'tbl.currency', hide: true },
+      { key: 'amount',           labelKey: 'tbl.amount', amt: true, hide: true },
+      { key: 'amountAed',        labelKey: 'tbl.amountAed', amt: true, sort: 'amount' },
+      { key: 'activeHolds',      labelKey: 'tbl.holds', hide: true },
+      { key: 'fundStatus',       labelKey: 'tbl.funds', hide: true },
+      { key: 'poNumber',         labelKey: 'tbl.po' },
+      { key: 'poLine',           labelKey: 'tbl.poLine', hide: true },
+      { key: 'receiptNumber',    labelKey: 'tbl.receipt' },
+      { key: 'projectNumber',    labelKey: 'tbl.project', titleKey: 'projectName' },
+      { key: 'taskNumber',       labelKey: 'tbl.task', titleKey: 'taskName' },
+      { key: 'expType',          labelKey: 'tbl.etype', clip: true },
+      { key: 'department',       labelKey: 'tbl.dept', clip: true },
+      { key: 'period',           labelKey: 'tbl.period', hide: true },
+      { key: 'validationStatus', labelKey: 'tbl.validation', badge: 'val', hide: true },
+      { key: 'accountingStatus', labelKey: 'tbl.accounting', badge: 'acc', hide: true },
+      { key: 'paymentStatus',    labelKey: 'tbl.payStatus', badge: 'pay', hide: true },
+    ],
+    dist: [
+      { key: 'invoiceNumber',     labelKey: 'tbl.invoiceNo' },
+      { key: 'invoiceDate',       labelKey: 'tbl.date', sort: 'date' },
+      { key: 'supplier',          labelKey: 'tbl.supplier', clip: true },
+      { key: 'lineNumber',        labelKey: 'tbl.line' },
+      { key: 'distNumber',        labelKey: 'tbl.dist' },
+      { key: 'distType',          labelKey: 'tbl.distType', hide: true },
+      { key: 'currency',          labelKey: 'tbl.currency', hide: true },
+      { key: 'amount',            labelKey: 'tbl.amount', amt: true, hide: true },
+      { key: 'amountAed',         labelKey: 'tbl.amountAed', amt: true, sort: 'amount' },
+      { key: 'glCombination',     labelKey: 'tbl.glComb', clip: true },
+      { key: 'chargeSource',      labelKey: 'tbl.chargeSrc' },
+      { key: 'poChargeAccount',   labelKey: 'tbl.poCharge', hide: true, clip: true },
+      { key: 'chargeAccount',     labelKey: 'tbl.chargeAcct', hide: true, clip: true },
+      { key: 'accountCode',       labelKey: 'tbl.account', titleKey: 'accountDesc' },
+      { key: 'costCenterCode',    labelKey: 'tbl.cc', titleKey: 'costCenterDesc' },
+      { key: 'sector',            labelKey: 'tbl.sector', clip: true },
+      { key: 'chapter',           labelKey: 'tbl.chapter', hide: true },
+      { key: 'program',           labelKey: 'tbl.program', hide: true },
+      { key: 'appropriationCode', labelKey: 'tbl.approp', hide: true, titleKey: 'appropriationDesc' },
+      { key: 'projectNumber',     labelKey: 'tbl.project', titleKey: 'projectName' },
+      { key: 'taskNumber',        labelKey: 'tbl.task' },
+      { key: 'expType',           labelKey: 'tbl.etype', hide: true, clip: true },
+      { key: 'poNumber',          labelKey: 'tbl.po' },
+      { key: 'prNumber',          labelKey: 'tbl.pr' },
+      { key: 'requestor',         labelKey: 'tbl.requestor', clip: true },
+      { key: 'distDescription',   labelKey: 'tbl.distDesc', hide: true, clip: true },
+      { key: 'invoiceDescription', labelKey: 'tbl.invDesc', hide: true, clip: true },
+      { key: 'invoiceType',       labelKey: 'tbl.invType', hide: true },
+      { key: 'payGroup',          labelKey: 'tbl.payGroup', hide: true },
+      { key: 'paymentMethod',     labelKey: 'tbl.method', hide: true },
+      { key: 'termsDate',         labelKey: 'tbl.terms', hide: true },
+      { key: 'invFundsStatus',    labelKey: 'tbl.funds', hide: true },
+      { key: 'voucherNum',        labelKey: 'tbl.voucher', hide: true },
+      { key: 'distStatus',        labelKey: 'tbl.status', hide: true },
+      { key: 'postingStatus',     labelKey: 'tbl.posting', hide: true },
+      { key: 'accountingDate',    labelKey: 'tbl.acctDate', hide: true },
+      { key: 'period',            labelKey: 'tbl.period', hide: true },
+      { key: 'validationStatus',  labelKey: 'tbl.validation', badge: 'val', hide: true },
+      { key: 'accountingStatus',  labelKey: 'tbl.accounting', badge: 'acc', hide: true },
+      { key: 'paymentStatus',     labelKey: 'tbl.payStatus', badge: 'pay', hide: true },
+    ]
+  };
 
   // facet groups: counted = checkbox list w/ counts, searchable = mini filter,
   // coded = {code,name} pairs (value=code, label=code — name)
@@ -69,6 +167,77 @@ function (ko, ap, authService, i18n, toast, charts) {
 
     self._charts = {};
     self._lastSummary = null;
+
+    // ── register columns: show/hide per user (BI-viewer style) ──────────
+    var COLS_PREF = 'ap.dash.cols';                 // server pref (follows the user)
+    var COLS_LS   = 'ifinance.ap.cols';             // instant local autosave
+    function hiddenDefaults(level) {
+      return COLS[level].filter(function (c) { return c.hide; }).map(function (c) { return c.key; });
+    }
+    self._hidden = {
+      header: ko.observableArray(hiddenDefaults('header')),
+      line:   ko.observableArray(hiddenDefaults('line')),
+      dist:   ko.observableArray(hiddenDefaults('dist')),
+    };
+    self.colsOpen = ko.observable(false);
+    self.toggleColsPanel = function () { self.colsOpen(!self.colsOpen()); };
+    self.levelCols   = ko.computed(function () { return COLS[self.level()]; });
+    self.visibleCols = ko.computed(function () {
+      var hidden = self._hidden[self.level()]();
+      return COLS[self.level()].filter(function (c) { return hidden.indexOf(c.key) === -1; });
+    });
+    self.isColOn = function (col) {
+      return self._hidden[self.level()]().indexOf(col.key) === -1;
+    };
+    function applyColPrefs(obj) {
+      ['header', 'line', 'dist'].forEach(function (lvl) {
+        if (obj && Array.isArray(obj[lvl])) self._hidden[lvl](obj[lvl]);
+      });
+    }
+    var colsSaveTimer = null;
+    function persistCols() {
+      var obj = { header: self._hidden.header(), line: self._hidden.line(), dist: self._hidden.dist() };
+      try { localStorage.setItem(COLS_LS, JSON.stringify(obj)); } catch (e) {}
+      clearTimeout(colsSaveTimer);
+      colsSaveTimer = setTimeout(function () {
+        api.put('/prefs/' + COLS_PREF, { value: JSON.stringify(obj) }, { base: 'auth', silent: true })
+          .catch(function () {});
+      }, 800);
+    }
+    self.toggleCol = function (col) {
+      var hidden = self._hidden[self.level()];
+      var i = hidden.indexOf(col.key);
+      if (i === -1) {
+        if (self.visibleCols().length <= 1) return;      // never hide the last column
+        hidden.push(col.key);
+      } else {
+        hidden.splice(i, 1);
+      }
+      persistCols();
+    };
+    self.showAllCols = function () { self._hidden[self.level()]([]); persistCols(); };
+    self.resetCols = function () { self._hidden[self.level()](hiddenDefaults(self.level())); persistCols(); };
+    self.badgeCls = function (type, val) {
+      if (type === 'val') return self.valBadge(val);
+      if (type === 'acc') return self.accBadge(val);
+      return self.payBadge(val);
+    };
+    self.cellVal = function (row, col) {
+      var v = row[col.key];
+      if (v === null || v === undefined) return '';
+      return col.amt ? self.fmtAmt(v) : v;
+    };
+    self.cellTitle = function (row, col) {
+      if (col.titleKey) return row[col.titleKey] || '';
+      if (col.clip) return row[col.key] || '';
+      return '';
+    };
+    // local autosave first (instant), then the server pref wins (roams w/ user)
+    try { applyColPrefs(JSON.parse(localStorage.getItem(COLS_LS) || 'null')); } catch (e) {}
+    api.get('/prefs/', { base: 'auth', silent: true }).then(function (d) {
+      var hit = ((d && d.items) || []).filter(function (p) { return p.key === COLS_PREF; })[0];
+      if (hit && hit.value) { try { applyColPrefs(JSON.parse(hit.value)); } catch (e) {} }
+    }).catch(function () {});
 
     // ── formatting helpers ──────────────────────────────────────────────
     self.fmtAmt = function (n) {
@@ -460,33 +629,13 @@ function (ko, ap, authService, i18n, toast, charts) {
         .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 
-    var PRINT_COLS = {
-      header: [
-        ['invoiceNumber', 'tbl.invoiceNo'], ['invoiceDate', 'tbl.date'], ['supplier', 'tbl.supplier'],
-        ['description', 'tbl.description'], ['currency', 'tbl.currency'], ['amountAed', 'tbl.amountAed', 'amt'],
-        ['balanceAed', 'tbl.balance', 'amt'], ['daysPastDue', 'tbl.dpd'], ['validationStatus', 'tbl.validation'],
-        ['accountingStatus', 'tbl.accounting'], ['paymentStatus', 'tbl.payStatus'],
-        ['payGroup', 'tbl.payGroup'], ['poNumbers', 'tbl.po']],
-      line: [
-        ['invoiceNumber', 'tbl.invoiceNo'], ['invoiceDate', 'tbl.date'], ['supplier', 'tbl.supplier'],
-        ['lineNumber', 'tbl.line'], ['lineType', 'tbl.lineType'], ['description', 'tbl.description'],
-        ['amountAed', 'tbl.amountAed', 'amt'], ['poNumber', 'tbl.po'], ['projectNumber', 'tbl.project'],
-        ['taskNumber', 'tbl.task'], ['expType', 'tbl.etype'], ['department', 'tbl.dept']],
-      dist: [
-        ['invoiceNumber', 'tbl.invoiceNo'], ['invoiceDate', 'tbl.date'], ['supplier', 'tbl.supplier'],
-        ['lineNumber', 'tbl.line'], ['distNumber', 'tbl.dist'], ['amountAed', 'tbl.amountAed', 'amt'],
-        ['accountCode', 'tbl.account'], ['costCenterCode', 'tbl.cc'], ['sector', 'tbl.sector'],
-        ['projectNumber', 'tbl.project'], ['taskNumber', 'tbl.task'], ['poNumber', 'tbl.po'],
-        ['prNumber', 'tbl.pr'], ['requestor', 'tbl.requestor']]
-    };
-
     function buildPrintHtml(rowsData) {
       var t = i18n.t, rtl = i18n.lang() === 'ar';
       var user = authService.getCurrentUser() || {};
       var k = self.kpis() || {};
       var chipList = self.chips();
       var lvl = self.level();
-      var cols = PRINT_COLS[lvl];
+      var cols = self.visibleCols();      // the print report mirrors the user's column view
       var rows = rowsData.items || [];
       var total = rowsData.total || 0;
 
@@ -539,13 +688,13 @@ function (ko, ap, authService, i18n, toast, charts) {
       }
 
       h.push('<h2>' + esc(t('pr.register')) + '</h2><table><thead><tr>');
-      cols.forEach(function (c) { h.push('<th class="' + (c[2] || '') + '">' + esc(t(c[1])) + '</th>'); });
+      cols.forEach(function (c) { h.push('<th class="' + (c.amt ? 'amt' : '') + '">' + esc(t(c.labelKey)) + '</th>'); });
       h.push('</tr></thead><tbody>');
       rows.forEach(function (r) {
         h.push('<tr>');
         cols.forEach(function (c) {
-          var v = r[c[0]];
-          h.push('<td class="' + (c[2] || '') + '">' + (c[2] === 'amt' ? self.fmtAmt(v) : esc(v)) + '</td>');
+          var v = r[c.key];
+          h.push('<td class="' + (c.amt ? 'amt' : '') + '">' + (c.amt ? self.fmtAmt(v) : esc(v)) + '</td>');
         });
         h.push('</tr>');
       });

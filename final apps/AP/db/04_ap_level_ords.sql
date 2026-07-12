@@ -17,6 +17,12 @@
 --           directly (lines: dept/project/task/etype/po; dists: sector/cc/
 --           project/task/etype/account/approp/po/pr/req) so a filtered
 --           line/dist view only shows the matching rows, not whole invoices.
+--           Dist rows also expose the EFFECTIVE charge account: for
+--           PO-matched invoices it comes from the PO distribution line
+--           (po_lines.order_number/line -> po_distributions schedule/
+--           distribution_number), AP dist charge as fallback; glCombination
+--           = prod.dct_cc_canon of that value + chargeSource PO/AP, plus the
+--           full invoice-detail columns (description/pay group/terms/etc).
 -- =============================================================================
 
 SET DEFINE OFF
@@ -264,16 +270,27 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT d.invoice_id, d.invoice_number, TO_CHAR(d.invoice_date,'YYYY-MM-DD') inv_dt, d.supplier_name,
-           d.validation_status, d.accounting_status, d.payment_status,
+           d.validation_status, d.accounting_status, d.payment_status, d.invoice_type,
            d.invoice_line_number, d.distribution_line_number, d.distribution_type,
-           d.invoice_currency, d.distribution_amount, d.distribution_amount_aed,
+           d.distribution_description, d.invoice_currency, d.distribution_amount, d.distribution_amount_aed,
            d.distribution_status, d.posting_status, d.fund_status,
            TO_CHAR(d.accounting_date,'YYYY-MM-DD') acct_dt, d.period_name,
            d.po_number, d.pr_number, d.pr_preparer, d.project_number, d.project_name,
            d.task_number, d.expenditure_type, d.account_code, d.account_desc,
            d.cost_center_code, d.cost_center_desc, d.appropriation_code, d.appropriation_desc,
-           d.sector_name, d.chapter_name, d.program_name
+           d.sector_name, d.chapter_name, d.program_name,
+           d.charge_account, pd.charge_account po_charge_account,
+           prod.dct_cc_canon(COALESCE(pd.charge_account, d.charge_account)) gl_combination,
+           CASE WHEN pd.charge_account IS NOT NULL THEN 'PO' ELSE 'AP' END charge_source,
+           h.invoice_description, h.pay_group, h.payment_method,
+           TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, h.funds_status inv_funds, h.voucher_num
       FROM prod.ap_invoice_distributions_v d
+      LEFT JOIN prod.ap_invoices_header_v h ON h.invoice_id = d.invoice_id
+      LEFT JOIN prod.po_lines pl
+             ON TO_CHAR(pl.order_number) = TO_CHAR(d.po_number) AND pl.line = d.po_line
+      LEFT JOIN prod.po_distributions pd
+             ON pd.po_line_id = pl.po_line_id AND pd.schedule = d.po_schedule
+            AND pd.distribution_number = d.po_distribution_line
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
        AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
        AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
@@ -312,6 +329,12 @@ BEGIN
     APEX_JSON.write('appropriationCode', r.appropriation_code); APEX_JSON.write('appropriationDesc', r.appropriation_desc);
     APEX_JSON.write('sector', r.sector_name); APEX_JSON.write('chapter', r.chapter_name);
     APEX_JSON.write('program', r.program_name);
+    APEX_JSON.write('invoiceType', r.invoice_type); APEX_JSON.write('distDescription', r.distribution_description);
+    APEX_JSON.write('chargeAccount', r.charge_account); APEX_JSON.write('poChargeAccount', r.po_charge_account);
+    APEX_JSON.write('glCombination', r.gl_combination); APEX_JSON.write('chargeSource', r.charge_source);
+    APEX_JSON.write('invoiceDescription', r.invoice_description); APEX_JSON.write('payGroup', r.pay_group);
+    APEX_JSON.write('paymentMethod', r.payment_method); APEX_JSON.write('termsDate', r.terms_dt);
+    APEX_JSON.write('invFundsStatus', r.inv_funds); APEX_JSON.write('voucherNum', r.voucher_num);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -373,7 +396,7 @@ BEGIN
   HTP.p('Content-Disposition: attachment; filename="ap-distributions-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Supplier,Line,Dist,Dist Type,Currency,Amount,Amount AED,Dist Status,Posting,Fund Status,Accounting Date,Period,PO,PR,Requestor,Project,Task,Expenditure Type,Account Code,Account,Cost Center Code,Cost Center,Appropriation,Sector,Chapter,Program,Validation,Accounting,Paid Status');
+  HTP.print('Invoice Number,Invoice Date,Supplier,Line,Dist,Dist Type,Currency,Amount,Amount AED,GL Combination,Charge Source,PO Charge Account,Dist Status,Posting,Fund Status,Accounting Date,Period,PO,PR,Requestor,Project,Task,Expenditure Type,Account Code,Account,Cost Center Code,Cost Center,Appropriation,Sector,Chapter,Program,Validation,Accounting,Paid Status,Invoice Description,Pay Group,Payment Method,Terms Date,Voucher');
   FOR r IN (
     SELECT d.invoice_number, TO_CHAR(d.invoice_date,'YYYY-MM-DD') inv_dt, d.supplier_name,
            d.invoice_line_number, d.distribution_line_number, d.distribution_type, d.invoice_currency,
@@ -382,8 +405,19 @@ BEGIN
            d.po_number, d.pr_number, d.pr_preparer, d.project_number, d.task_number, d.expenditure_type,
            d.account_code, d.account_desc, d.cost_center_code, d.cost_center_desc,
            d.appropriation_code, d.appropriation_desc, d.sector_name, d.chapter_name, d.program_name,
-           d.validation_status, d.accounting_status, d.payment_status
+           d.validation_status, d.accounting_status, d.payment_status,
+           pd.charge_account po_charge_account,
+           prod.dct_cc_canon(COALESCE(pd.charge_account, d.charge_account)) gl_combination,
+           CASE WHEN pd.charge_account IS NOT NULL THEN 'PO' ELSE 'AP' END charge_source,
+           h.invoice_description, h.pay_group, h.payment_method,
+           TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, h.voucher_num
       FROM prod.ap_invoice_distributions_v d
+      LEFT JOIN prod.ap_invoices_header_v h ON h.invoice_id = d.invoice_id
+      LEFT JOIN prod.po_lines pl
+             ON TO_CHAR(pl.order_number) = TO_CHAR(d.po_number) AND pl.line = d.po_line
+      LEFT JOIN prod.po_distributions pd
+             ON pd.po_line_id = pl.po_line_id AND pd.schedule = d.po_schedule
+            AND pd.distribution_number = d.po_distribution_line
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
        AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
        AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
@@ -402,13 +436,16 @@ BEGIN
       esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.supplier_name) || ',' ||
       r.invoice_line_number || ',' || r.distribution_line_number || ',' || esc(r.distribution_type) || ',' ||
       r.invoice_currency || ',' || r.distribution_amount || ',' || r.distribution_amount_aed || ',' ||
+      esc(r.gl_combination) || ',' || r.charge_source || ',' || esc(r.po_charge_account) || ',' ||
       esc(r.distribution_status) || ',' || esc(r.posting_status) || ',' || esc(r.fund_status) || ',' ||
       r.acct_dt || ',' || esc(r.period_name) || ',' || r.po_number || ',' || r.pr_number || ',' ||
       esc(r.pr_preparer) || ',' || esc(r.project_number) || ',' || esc(r.task_number) || ',' ||
       esc(r.expenditure_type) || ',' || esc(r.account_code) || ',' || esc(r.account_desc) || ',' ||
       esc(r.cost_center_code) || ',' || esc(r.cost_center_desc) || ',' || esc(r.appropriation_code) || ',' ||
       esc(r.sector_name) || ',' || esc(r.chapter_name) || ',' || esc(r.program_name) || ',' ||
-      esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status));
+      esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status) || ',' ||
+      esc(r.invoice_description) || ',' || esc(r.pay_group) || ',' || esc(r.payment_method) || ',' ||
+      r.terms_dt || ',' || r.voucher_num);
   END LOOP;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;

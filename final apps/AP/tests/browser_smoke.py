@@ -79,6 +79,38 @@ with sync_playwright() as p:
     heads = page.locator('.data-table thead th').all_inner_texts()
     check('line columns (Department)', any('DEPARTMENT' in h.upper() for h in heads), '')
 
+    # 5b full-width + GL combination + charge source at dist level
+    check('full-width page', page.locator('.page-wrap.page-wrap--full').count() == 1)
+    page.locator('.ap-seg-btn', has_text='Distribution').click()
+    page.wait_for_timeout(5000)
+    heads2 = [h.upper() for h in page.locator('.data-table thead th').all_inner_texts()]
+    check('dist GL combination col', any('GL COMBINATION' in h for h in heads2))
+    check('dist charge source col', any('CHARGE SOURCE' in h for h in heads2))
+
+    # 5c column chooser: hide Supplier, verify, persist, show all
+    n_before = page.locator('.data-table thead th').count()
+    page.locator('.region-actions button', has_text='Columns').click()
+    page.wait_for_timeout(400)
+    check('cols panel opens', page.locator('.ap-cols-panel').count() == 1)
+    page.locator('.ap-cols-panel .fct-item', has_text='Supplier').first.click()
+    page.wait_for_timeout(600)
+    n_after = page.locator('.data-table thead th').count()
+    check('column hidden', n_after == n_before - 1, '%d -> %d' % (n_before, n_after))
+    ls = page.evaluate("localStorage.getItem('ifinance.ap.cols')")
+    check('layout persisted locally', ls is not None and 'supplier' in ls)
+    page.locator('.ap-cols-panel .btn-primary').click()
+    page.wait_for_timeout(300)
+    # reload the route and confirm the hidden column stays hidden
+    page.locator('.nav-item', has_text='Home').click(); page.wait_for_timeout(1200)
+    page.locator('.nav-item', has_text='AP Dashboard').click(); page.wait_for_timeout(6000)
+    page.locator('.ap-seg-btn', has_text='Distribution').click(); page.wait_for_timeout(4000)
+    heads3 = [h.upper() for h in page.locator('.data-table thead th').all_inner_texts()]
+    check('hidden col survives reload', not any(h.strip() == 'SUPPLIER' for h in heads3))
+    page.locator('.region-actions button', has_text='Columns').click(); page.wait_for_timeout(300)
+    page.locator('.ap-cols-panel button', has_text='Reset to default').click(); page.wait_for_timeout(400)
+    page.locator('.ap-cols-panel .btn-primary').click(); page.wait_for_timeout(300)
+    page.screenshot(path=EV+'09_columns.png')
+
     # 6 collapse + maximize analytics
     page.locator('.ap-region').first.locator('.region-actions button').nth(3).click()
     page.wait_for_timeout(400)

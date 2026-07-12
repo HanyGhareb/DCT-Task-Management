@@ -1,4 +1,4 @@
-<div class="page-wrap">
+<div class="page-wrap page-wrap--full">
 
   <!-- ── Header: title + level selector + actions (top-right) ─────────── -->
   <div class="page-header-row">
@@ -192,6 +192,7 @@
                   data-bind="text: ' · ' + fmtInt(total()) + ' ' + $root.t('tbl.rows')"></span>
           </div>
           <div class="region-actions">
+            <button class="btn btn-sm btn-secondary" data-bind="click: toggleColsPanel, text: $root.t('cols.button')"></button>
             <button class="btn btn-sm btn-secondary" data-bind="click: exportCsv, text: $root.t('rg.exportCsv')"></button>
             <button class="btn btn-sm btn-secondary" data-bind="click: exportXlsx, text: $root.t('rg.exportXlsx')"></button>
             <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableMax,
@@ -202,6 +203,25 @@
           </div>
         </div>
 
+        <!-- ko if: colsOpen() -->
+        <div class="card ap-cols-panel">
+          <div class="fct-title" data-bind="text: $root.t('cols.title')"></div>
+          <div class="fct-list" style="max-height:320px">
+            <!-- ko foreach: levelCols -->
+            <div class="fct-item" data-bind="click: function () { $vm.toggleCol($data); }, css: { on: $vm.isColOn($data) }">
+              <input type="checkbox" tabindex="-1" data-bind="checked: $vm.isColOn($data)">
+              <span class="fct-lbl" data-bind="text: $vm.t($data.labelKey)"></span>
+            </div>
+            <!-- /ko -->
+          </div>
+          <div style="display:flex;gap:6px;margin-top:8px;justify-content:flex-end">
+            <button class="btn btn-sm btn-secondary" data-bind="click: showAllCols, text: $root.t('cols.showAll')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: resetCols, text: $root.t('cols.reset')"></button>
+            <button class="btn btn-sm btn-primary" data-bind="click: toggleColsPanel, text: $root.t('dr.close')"></button>
+          </div>
+        </div>
+        <!-- /ko -->
+
         <!-- ko ifnot: tableCollapsed() -->
         <!-- ko if: loadingRows() --><list-skeleton params="rows: 10"></list-skeleton><!-- /ko -->
         <!-- ko ifnot: loadingRows() -->
@@ -210,147 +230,40 @@
         <!-- /ko -->
         <!-- ko if: rows().length > 0 -->
 
-        <!-- header level -->
-        <!-- ko if: level() === 'header' -->
+        <!-- one metadata-driven register table for all three levels -->
         <div class="data-table-wrap"><table class="data-table">
           <thead><tr>
-            <th data-bind="text: $root.t('tbl.invoiceNo')"></th>
-            <th class="ap-th-sort" data-bind="click: function(){ $vm.sortBy('date'); }">
-              <span data-bind="text: $root.t('tbl.date')"></span> <span class="arr" data-bind="text: sortArrow('date')"></span></th>
-            <th class="ap-th-sort" data-bind="click: function(){ $vm.sortBy('supplier'); }">
-              <span data-bind="text: $root.t('tbl.supplier')"></span> <span class="arr" data-bind="text: sortArrow('supplier')"></span></th>
-            <th data-bind="text: $root.t('tbl.description')"></th>
-            <th data-bind="text: $root.t('tbl.currency')"></th>
-            <th class="ap-amount ap-th-sort" data-bind="click: function(){ $vm.sortBy('amount'); }">
-              <span data-bind="text: $root.t('tbl.amountAed')"></span> <span class="arr" data-bind="text: sortArrow('amount')"></span></th>
-            <th class="ap-amount ap-th-sort" data-bind="click: function(){ $vm.sortBy('balance'); }">
-              <span data-bind="text: $root.t('tbl.balance')"></span> <span class="arr" data-bind="text: sortArrow('balance')"></span></th>
-            <th data-bind="text: $root.t('tbl.dpd')"></th>
-            <th data-bind="text: $root.t('tbl.validation')"></th>
-            <th data-bind="text: $root.t('tbl.accounting')"></th>
-            <th data-bind="text: $root.t('tbl.payStatus')"></th>
-            <th data-bind="text: $root.t('tbl.payGroup')"></th>
-            <th data-bind="text: $root.t('tbl.po')"></th>
+            <!-- ko foreach: visibleCols -->
+            <th data-bind="css: { 'ap-amount': !!$data.amt, 'ap-th-sort': !!$data.sort },
+                           click: function () { if ($data.sort) $vm.sortBy($data.sort); return true; }">
+              <span data-bind="text: $vm.t($data.labelKey)"></span>
+              <!-- ko if: $data.sort --><span class="arr" data-bind="text: $vm.sortArrow($data.sort)"></span><!-- /ko -->
+            </th>
+            <!-- /ko -->
           </tr></thead>
           <tbody><!-- ko foreach: rows -->
-            <tr class="ap-row-click" data-bind="click: function(){ $vm.openDrill($data); }">
-              <td style="white-space:nowrap"><a href="#" data-bind="text: $data.invoiceNumber, click: function(){ $vm.openDrill($data); return false; }"></a></td>
-              <td style="white-space:nowrap" data-bind="text: $data.invoiceDate"></td>
-              <td data-bind="text: $data.supplier, attr: { title: $data.supplier }"></td>
-              <td style="max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                  data-bind="text: $data.description || '', attr: { title: $data.description || '' }"></td>
-              <td data-bind="text: $data.currency"></td>
-              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.amountAed)"></td>
-              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.balanceAed)"></td>
-              <td data-bind="text: $data.daysPastDue != null ? $data.daysPastDue : ''"></td>
-              <td><span data-bind="text: $data.validationStatus, attr: { class: $vm.valBadge($data.validationStatus) }"></span></td>
-              <td><span data-bind="text: $data.accountingStatus, attr: { class: $vm.accBadge($data.accountingStatus) }"></span></td>
-              <td><span data-bind="text: $data.paymentStatus, attr: { class: $vm.payBadge($data.paymentStatus) }"></span></td>
-              <td data-bind="text: $data.payGroup || ''"></td>
-              <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                  data-bind="text: $data.poNumbers || '', attr: { title: $data.poNumbers || '' }"></td>
+            <tr class="ap-row-click" data-bind="click: function () { $vm.openDrill($data); }">
+              <!-- ko foreach: $vm.visibleCols -->
+              <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
+                             attr: { title: $vm.cellTitle($parent, $data) }">
+                <!-- ko if: $data.badge -->
+                <span data-bind="text: $parent[$data.key] || '', attr: { class: $vm.badgeCls($data.badge, $parent[$data.key]) }"></span>
+                <!-- /ko -->
+                <!-- ko ifnot: $data.badge -->
+                <span data-bind="text: $vm.cellVal($parent, $data)"></span>
+                <!-- /ko -->
+              </td>
+              <!-- /ko -->
             </tr>
           <!-- /ko --></tbody>
         </table></div>
         <!-- ko if: rowTotals() -->
         <div class="ap-table-note">
           <b data-bind="text: $root.t('tbl.totalAmount') + ': ' + fmtAmt(rowTotals().amountAed)"></b>
-          <span data-bind="text: ' · ' + $root.t('tbl.totalBalance') + ': ' + fmtAmt(rowTotals().balanceAed)"></span>
+          <!-- ko if: level() === 'header' -->
+          <span data-bind="text: ' \u00b7 ' + $root.t('tbl.totalBalance') + ': ' + fmtAmt(rowTotals().balanceAed)"></span>
+          <!-- /ko -->
         </div>
-        <!-- /ko -->
-        <!-- /ko -->
-
-        <!-- line level -->
-        <!-- ko if: level() === 'line' -->
-        <div class="data-table-wrap"><table class="data-table">
-          <thead><tr>
-            <th data-bind="text: $root.t('tbl.invoiceNo')"></th>
-            <th class="ap-th-sort" data-bind="click: function(){ $vm.sortBy('date'); }">
-              <span data-bind="text: $root.t('tbl.date')"></span> <span class="arr" data-bind="text: sortArrow('date')"></span></th>
-            <th data-bind="text: $root.t('tbl.supplier')"></th>
-            <th data-bind="text: $root.t('tbl.line')"></th>
-            <th data-bind="text: $root.t('tbl.lineType')"></th>
-            <th data-bind="text: $root.t('tbl.description')"></th>
-            <th class="ap-amount ap-th-sort" data-bind="click: function(){ $vm.sortBy('amount'); }">
-              <span data-bind="text: $root.t('tbl.amountAed')"></span> <span class="arr" data-bind="text: sortArrow('amount')"></span></th>
-            <th data-bind="text: $root.t('tbl.po')"></th>
-            <th data-bind="text: $root.t('tbl.receipt')"></th>
-            <th data-bind="text: $root.t('tbl.project')"></th>
-            <th data-bind="text: $root.t('tbl.task')"></th>
-            <th data-bind="text: $root.t('tbl.etype')"></th>
-            <th data-bind="text: $root.t('tbl.dept')"></th>
-          </tr></thead>
-          <tbody><!-- ko foreach: rows -->
-            <tr class="ap-row-click" data-bind="click: function(){ $vm.openDrill($data); }">
-              <td style="white-space:nowrap" data-bind="text: $data.invoiceNumber"></td>
-              <td style="white-space:nowrap" data-bind="text: $data.invoiceDate"></td>
-              <td data-bind="text: $data.supplier, attr: { title: $data.supplier }"></td>
-              <td data-bind="text: $data.lineNumber"></td>
-              <td data-bind="text: $data.lineType || ''"></td>
-              <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                  data-bind="text: $data.description || '', attr: { title: $data.description || '' }"></td>
-              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.amountAed)"></td>
-              <td data-bind="text: $data.poNumber || ''"></td>
-              <td data-bind="text: $data.receiptNumber || ''"></td>
-              <td data-bind="text: $data.projectNumber || '', attr: { title: $data.projectName || '' }"></td>
-              <td data-bind="text: $data.taskNumber || '', attr: { title: $data.taskName || '' }"></td>
-              <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                  data-bind="text: $data.expType || '', attr: { title: $data.expType || '' }"></td>
-              <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                  data-bind="text: $data.department || '', attr: { title: $data.department || '' }"></td>
-            </tr>
-          <!-- /ko --></tbody>
-        </table></div>
-        <!-- ko if: rowTotals() -->
-        <div class="ap-table-note"><b data-bind="text: $root.t('tbl.totalAmount') + ': ' + fmtAmt(rowTotals().amountAed)"></b></div>
-        <!-- /ko -->
-        <!-- /ko -->
-
-        <!-- distribution level -->
-        <!-- ko if: level() === 'dist' -->
-        <div class="data-table-wrap"><table class="data-table">
-          <thead><tr>
-            <th data-bind="text: $root.t('tbl.invoiceNo')"></th>
-            <th class="ap-th-sort" data-bind="click: function(){ $vm.sortBy('date'); }">
-              <span data-bind="text: $root.t('tbl.date')"></span> <span class="arr" data-bind="text: sortArrow('date')"></span></th>
-            <th data-bind="text: $root.t('tbl.supplier')"></th>
-            <th data-bind="text: $root.t('tbl.line')"></th>
-            <th data-bind="text: $root.t('tbl.dist')"></th>
-            <th class="ap-amount ap-th-sort" data-bind="click: function(){ $vm.sortBy('amount'); }">
-              <span data-bind="text: $root.t('tbl.amountAed')"></span> <span class="arr" data-bind="text: sortArrow('amount')"></span></th>
-            <th data-bind="text: $root.t('tbl.account')"></th>
-            <th data-bind="text: $root.t('tbl.cc')"></th>
-            <th data-bind="text: $root.t('tbl.sector')"></th>
-            <th data-bind="text: $root.t('tbl.project')"></th>
-            <th data-bind="text: $root.t('tbl.task')"></th>
-            <th data-bind="text: $root.t('tbl.po')"></th>
-            <th data-bind="text: $root.t('tbl.pr')"></th>
-            <th data-bind="text: $root.t('tbl.requestor')"></th>
-          </tr></thead>
-          <tbody><!-- ko foreach: rows -->
-            <tr class="ap-row-click" data-bind="click: function(){ $vm.openDrill($data); }">
-              <td style="white-space:nowrap" data-bind="text: $data.invoiceNumber"></td>
-              <td style="white-space:nowrap" data-bind="text: $data.invoiceDate"></td>
-              <td data-bind="text: $data.supplier, attr: { title: $data.supplier }"></td>
-              <td data-bind="text: $data.lineNumber"></td>
-              <td data-bind="text: $data.distNumber"></td>
-              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.amountAed)"></td>
-              <td data-bind="text: $data.accountCode || '', attr: { title: $data.accountDesc || '' }"></td>
-              <td data-bind="text: $data.costCenterCode || '', attr: { title: $data.costCenterDesc || '' }"></td>
-              <td style="max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                  data-bind="text: $data.sector || '', attr: { title: $data.sector || '' }"></td>
-              <td data-bind="text: $data.projectNumber || '', attr: { title: $data.projectName || '' }"></td>
-              <td data-bind="text: $data.taskNumber || ''"></td>
-              <td data-bind="text: $data.poNumber || ''"></td>
-              <td data-bind="text: $data.prNumber || ''"></td>
-              <td style="max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
-                  data-bind="text: $data.requestor || '', attr: { title: $data.requestor || '' }"></td>
-            </tr>
-          <!-- /ko --></tbody>
-        </table></div>
-        <!-- ko if: rowTotals() -->
-        <div class="ap-table-note"><b data-bind="text: $root.t('tbl.totalAmount') + ': ' + fmtAmt(rowTotals().amountAed)"></b></div>
-        <!-- /ko -->
         <!-- /ko -->
 
         <list-pager params="offset: offset, limit: limit, total: total, onChange: reloadRows"></list-pager>
