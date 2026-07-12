@@ -1,4 +1,5 @@
-define(['knockout', 'services/apService', 'services/api', 'services/authService', 'shared/i18n', 'shared/toast', 'shared/chartLoader'],
+define(['knockout', 'services/apService', 'services/api', 'services/authService', 'shared/i18n', 'shared/toast', 'shared/chartLoader',
+        'shared/components/interactiveReport'],
 function (ko, ap, api, authService, i18n, toast, charts) {
   'use strict';
 
@@ -363,8 +364,54 @@ function (ko, ap, api, authService, i18n, toast, charts) {
 
     function sortParam() { return self.sortKey() + '_' + self.sortDir(); }
 
+    // ── interactive-report mode (shared <interactive-report> component) ──
+    // One-shot capped fetch of the whole filtered set; rename / calculated
+    // columns / aggregates / control breaks / highlights come from the
+    // shared component. layoutsApi null = localStorage-autosaved layouts.
+    var IR_MAX = 10000;
+    var IR_DATE_KEYS = { invoiceDate: 1, termsDate: 1, accountingDate: 1 };
+    var IR_NUM_KEYS  = { daysPastDue: 1, lineNumber: 1, distNumber: 1, activeHolds: 1,
+                         poNumber: 1, poLine: 1, prNumber: 1, receiptNumber: 1,
+                         voucherNum: 1, lineCount: 1, distCount: 1 };
+    self.viewMode = ko.observable('standard');          // standard | ir
+    self.irData   = ko.observable(null);
+    function irType(c) {
+      if (c.amt) return 'money';
+      if (IR_DATE_KEYS[c.key]) return 'date';
+      if (IR_NUM_KEYS[c.key]) return 'num';
+      return 'text';
+    }
+    function irEnvelope(d) {
+      var items = d.items || [];
+      return {
+        columns: COLS[self.level()].map(function (c) {
+          return { key: c.key, label: i18n.t(c.labelKey), type: irType(c) };
+        }),
+        items: items,
+        total: d.total || items.length,
+        truncated: (d.total || 0) > items.length,
+        maxRows: IR_MAX,
+        section: self.level(),          // scopes the component's autosave per level
+      };
+    }
+    self.toggleViewMode = function () {
+      self.viewMode(self.viewMode() === 'standard' ? 'ir' : 'standard');
+      self.offset(0);
+      loadRows();
+    };
+
     function loadRows() {
       self.loadingRows(true);
+      if (self.viewMode() === 'ir') {
+        var pi = Object.assign({}, buildParams(), { limit: IR_MAX, offset: 0, sort: sortParam() });
+        ap.getRows(self.level(), pi).then(function (d) {
+          self.total(d.total || 0);
+          self.rowTotals(d.totals || null);
+          self.irData(irEnvelope(d));
+          self.loadingRows(false);
+        }).catch(function () { self.loadingRows(false); toast.error(i18n.t('msg.error')); });
+        return;
+      }
       var p = Object.assign({}, buildParams(),
         { limit: self.limit(), offset: self.offset(), sort: sortParam() });
       ap.getRows(self.level(), p).then(function (d) {

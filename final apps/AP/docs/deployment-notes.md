@@ -52,3 +52,10 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   dashboard (`page-wrap--full`), ONE metadata-driven register table (all levels),
   per-user column chooser saved to `/dct/prefs` key `ap.dash.cols` + localStorage.
   Browser smoke 30/30. Web-tier redeployed.
+- **2026-07-12 (round 3)** — Interactive view on the register: shared `<interactive-report>`
+  component embedded (rename cols / calculated cols / aggregates / breaks / highlights;
+  `layoutsApi: null` = localStorage layouts only — the server-layout endpoints are BI-gated).
+  Register endpoint caps raised 500 → 10000 for the one-shot IR fetch (03 + 04 re-run;
+  remember 03 rebuilds ap.rest → always re-run 04 after it). The envelope must carry
+  `section` — the component scopes its autosave key from env.section, not the param.
+  APP_VERSION 1.2.0; browser smoke 37/37.

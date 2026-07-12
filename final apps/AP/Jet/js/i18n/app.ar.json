@@ -167,5 +167,7 @@
   "cols.button": "الأعمدة",
   "cols.title": "إظهار / إخفاء الأعمدة",
   "cols.showAll": "إظهار الكل",
-  "cols.reset": "إعادة الافتراضي"
+  "cols.reset": "إعادة الافتراضي",
+  "rg.irView": "عرض تفاعلي",
+  "rg.stdView": "عرض قياسي"
 }

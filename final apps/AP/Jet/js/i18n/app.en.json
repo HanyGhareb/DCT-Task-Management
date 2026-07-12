@@ -167,5 +167,7 @@
   "cols.button": "Columns",
   "cols.title": "Show / hide columns",
   "cols.showAll": "Show all",
-  "cols.reset": "Reset to default"
+  "cols.reset": "Reset to default",
+  "rg.irView": "Interactive view",
+  "rg.stdView": "Standard view"
 }

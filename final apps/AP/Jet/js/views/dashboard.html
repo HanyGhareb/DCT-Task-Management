@@ -192,7 +192,11 @@
                   data-bind="text: ' · ' + fmtInt(total()) + ' ' + $root.t('tbl.rows')"></span>
           </div>
           <div class="region-actions">
+            <button class="btn btn-sm btn-secondary" data-bind="click: toggleViewMode,
+                    text: viewMode() === 'standard' ? $root.t('rg.irView') : $root.t('rg.stdView')"></button>
+            <!-- ko if: viewMode() === 'standard' -->
             <button class="btn btn-sm btn-secondary" data-bind="click: toggleColsPanel, text: $root.t('cols.button')"></button>
+            <!-- /ko -->
             <button class="btn btn-sm btn-secondary" data-bind="click: exportCsv, text: $root.t('rg.exportCsv')"></button>
             <button class="btn btn-sm btn-secondary" data-bind="click: exportXlsx, text: $root.t('rg.exportXlsx')"></button>
             <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableMax,
@@ -225,6 +229,18 @@
         <!-- ko ifnot: tableCollapsed() -->
         <!-- ko if: loadingRows() --><list-skeleton params="rows: 10"></list-skeleton><!-- /ko -->
         <!-- ko ifnot: loadingRows() -->
+
+        <!-- interactive-report mode: shared APEX-IR-like grid (rename columns,
+             calculated columns, aggregates, control breaks, highlights, layouts) -->
+        <!-- ko if: viewMode() === 'ir' -->
+        <!-- ko if: irData() -->
+        <interactive-report params="reportCode: 'AP_REGISTER', section: level,
+                                    data: irData, isAdmin: false,
+                                    layoutsApi: null"></interactive-report>
+        <!-- /ko -->
+        <!-- /ko -->
+
+        <!-- ko ifnot: viewMode() === 'ir' -->
         <!-- ko if: rows().length === 0 -->
         <div class="empty-state" data-bind="text: $root.t('tbl.none')"></div>
         <!-- /ko -->
@@ -267,6 +283,7 @@
         <!-- /ko -->
 
         <list-pager params="offset: offset, limit: limit, total: total, onChange: reloadRows"></list-pager>
+        <!-- /ko -->
         <!-- /ko -->
         <!-- /ko -->
         <!-- /ko -->

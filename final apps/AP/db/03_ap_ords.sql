@@ -313,7 +313,7 @@ BEGIN
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_ids    apex_t_number;
-  l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 50), 500);
+  l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 50), 10000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_sort   VARCHAR2(30) := LOWER([COLON]sort);
   l_amt NUMBER; l_bal NUMBER;
