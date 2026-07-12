@@ -1,0 +1,119 @@
+/* Accounts Payable (App 212) — brand tokens + module-specific components only.
+   Structural styles live in /shared/css/platform.css. The live brand colour is
+   loaded at boot from the module registry (#8E3B5C) via shared/js/shell.js. */
+:root {
+  --brand: #8E3B5C;
+  --brand-rgb: 142, 59, 92;
+  --brand-dark: #6d2c46;
+  --brand-soft: #f4e9ee;
+  /* legacy aliases */
+  --primary: var(--brand);
+  --primary-dark: var(--brand-dark);
+}
+
+/* ── KPI stat tiles (analytics region) ─────────────────────────────────── */
+.kpi-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+.kpi { flex: 1 1 150px; min-width: 140px; text-align: center; padding: 14px 12px;
+       border: 1px solid var(--border, #E3E6EB); border-radius: 10px; background: #fff; }
+.kpi-n { font-size: 24px; font-weight: 800; color: var(--brand); line-height: 1.15; }
+.kpi-n.kpi-ok   { color: #0ca30c; }
+.kpi-n.kpi-warn { color: #b26a00; }
+.kpi-n.kpi-bad  { color: #b3261e; }
+.kpi-l { font-size: 11px; color: var(--text-2); margin-top: 5px; text-transform: uppercase; letter-spacing: .06em; }
+
+/* ── Dashboard shell: facet rail + work area ───────────────────────────── */
+.ap-body { display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 14px; align-items: start; }
+@media (max-width: 980px) { .ap-body { grid-template-columns: 1fr; } }
+.ap-facets { position: sticky; top: 8px; max-height: calc(100vh - 90px);
+             overflow-y: auto; padding: 12px; }
+.ap-facets .fct-title { font-size: 12px; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: .06em; color: var(--text-2); margin-bottom: 8px; }
+
+/* facet groups (APEX faceted-search style) */
+.fct-group { border-top: 1px solid var(--border, #E3E6EB); }
+.fct-group:first-of-type { border-top: 0; }
+.fct-head { display: flex; align-items: center; gap: 6px; width: 100%; padding: 9px 2px;
+            background: none; border: 0; cursor: pointer; font: inherit; font-size: 12.5px;
+            font-weight: 600; color: var(--text-1, #1f2733); text-align: start; }
+.fct-head .fct-chev { margin-inline-start: auto; font-size: 10px; color: var(--text-3);
+                      transition: transform .15s; }
+.fct-group.open .fct-head .fct-chev { transform: rotate(180deg); }
+.fct-sel { min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px;
+           background: var(--brand); color: #fff; font-size: 10.5px; font-weight: 700;
+           display: inline-flex; align-items: center; justify-content: center; }
+.fct-body { padding: 0 2px 10px; }
+.fct-mini { height: 28px; font-size: 12px; margin-bottom: 6px; }
+.fct-list { max-height: 200px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
+.fct-item { display: flex; align-items: center; gap: 7px; padding: 4px 6px; border-radius: 6px;
+            cursor: pointer; font-size: 12.5px; user-select: none; }
+.fct-item:hover { background: var(--brand-soft); }
+.fct-item.on { background: var(--brand-soft); font-weight: 600; }
+.fct-item input[type="checkbox"] { pointer-events: none; accent-color: var(--brand); flex: 0 0 auto; }
+.fct-lbl { flex: 1 1 auto; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fct-count { font-size: 10.5px; color: var(--text-3); font-variant-numeric: tabular-nums; }
+.fct-none { font-size: 12px; color: var(--text-3); padding: 6px; }
+.fct-text { margin-bottom: 8px; }
+.fct-text .form-label { font-size: 11px; }
+.fct-dates { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+
+/* level segmented control (radio-style) */
+.ap-seg { display: inline-flex; border: 1px solid var(--border, #E3E6EB); border-radius: 9px;
+          overflow: hidden; background: #fff; }
+.ap-seg-btn { display: inline-flex; align-items: center; gap: 7px; padding: 7px 14px;
+              background: none; border: 0; border-inline-start: 1px solid var(--border, #E3E6EB);
+              cursor: pointer; font: inherit; font-size: 12.5px; font-weight: 600;
+              color: var(--text-2); }
+.ap-seg-btn:first-child { border-inline-start: 0; }
+.ap-seg-btn .dot { width: 12px; height: 12px; border-radius: 50%;
+                   border: 2px solid var(--text-3); background: transparent; flex: 0 0 auto; }
+.ap-seg-btn.on { background: var(--brand); color: #fff; }
+.ap-seg-btn.on .dot { border-color: #fff; background: #fff;
+                      box-shadow: inset 0 0 0 2.5px var(--brand); }
+
+/* applied-filter chips */
+.ap-chips { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-bottom: 12px; }
+.ap-chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 8px 3px 10px;
+           background: var(--brand-soft); border: 1px solid rgba(var(--brand-rgb), .25);
+           border-radius: 20px; font-size: 12px; }
+.ap-chip b { font-weight: 600; color: var(--brand-dark); }
+.ap-chip-x { border: 0; background: none; cursor: pointer; color: var(--brand-dark);
+             font-size: 13px; line-height: 1; padding: 0 2px; }
+.ap-chip-clear { font-size: 12px; }
+
+/* analytics charts grid */
+.ap-charts { display: grid; grid-template-columns: repeat(12, 1fr); gap: 12px; }
+.ap-chart-card { grid-column: span 6; border: 1px solid var(--border, #E3E6EB);
+                 border-radius: 10px; padding: 12px 14px; background: #fff; min-width: 0; }
+.ap-chart-card.c-4  { grid-column: span 4; }
+.ap-chart-card.c-8  { grid-column: span 8; }
+.ap-chart-card.c-12 { grid-column: span 12; }
+@media (max-width: 1200px) { .ap-chart-card, .ap-chart-card.c-4, .ap-chart-card.c-8 { grid-column: span 6; } }
+@media (max-width: 760px)  { .ap-chart-card, .ap-chart-card.c-4, .ap-chart-card.c-8, .ap-chart-card.c-12 { grid-column: span 12; } }
+.ap-chart-title { font-size: 12.5px; font-weight: 700; color: var(--text-1, #1f2733); margin-bottom: 8px; }
+.ap-chart-body { position: relative; height: 240px; }
+.ap-chart-card.c-12 .ap-chart-body { height: 210px; }
+
+/* collapsible / maximizable regions */
+.ap-region { margin-bottom: 14px; }
+.ap-region--max { position: fixed; inset: 10px; z-index: 900; overflow-y: auto;
+                  box-shadow: 0 12px 48px rgba(0,0,0,.28); }
+.ap-region .region-actions .btn { white-space: nowrap; }
+
+/* register table refinements */
+.ap-table-note { font-size: 12px; color: var(--text-2); margin: 6px 0 0; }
+.ap-th-sort { cursor: pointer; user-select: none; white-space: nowrap; }
+.ap-th-sort .arr { font-size: 10px; color: var(--text-3); }
+.ap-amount { text-align: end; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ap-row-click { cursor: pointer; }
+.ap-row-click:hover { background: var(--brand-soft); }
+
+/* drill modal key/value grid */
+.kv-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px 24px; }
+.kv-grid > div { font-size: 13px; min-width: 0; overflow-wrap: anywhere; }
+.kv-l { display: block; font-size: 10.5px; color: var(--text-3); text-transform: uppercase;
+        letter-spacing: .05em; margin-bottom: 2px; }
+@media (max-width: 900px) { .kv-grid { grid-template-columns: repeat(2, minmax(0,1fr)); } }
+.ap-tabs { display: flex; gap: 4px; margin-bottom: 12px; border-bottom: 1px solid var(--border, #E3E6EB); }
+.ap-tab { padding: 8px 14px; background: none; border: 0; border-bottom: 2px solid transparent;
+          cursor: pointer; font: inherit; font-size: 13px; font-weight: 600; color: var(--text-2); }
+.ap-tab.on { color: var(--brand); border-bottom-color: var(--brand); }

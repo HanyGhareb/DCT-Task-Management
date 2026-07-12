@@ -1,0 +1,20 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('home.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('home.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: openDashboard, text: $root.t('home.openDash')"></button>
+    </div>
+  </div>
+
+  <!-- Blank home page by design — the content will be designed later. -->
+  <div class="card">
+    <div class="empty-state" style="padding:64px 24px">
+      <div style="font-size:40px;margin-bottom:12px">&#128203;</div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:6px" data-bind="text: $root.t('home.placeholder')"></div>
+      <div style="font-size:13px;color:var(--text-2)" data-bind="text: $root.t('home.placeholderHint')"></div>
+    </div>
+  </div>
+</div>
