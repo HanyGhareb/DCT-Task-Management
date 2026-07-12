@@ -42,4 +42,4 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 - **2026-07-12** — Initial deploy: 01→04 to PROD; `ap.rest` 9 routes live; API smoke 14/14;
   browser smoke 23/23; platform registration (shell + i18n + all-apps APP_VERSION bump).
-  Webtier frontend ship PENDING.
+  Web-tier release `20260712231423` shipped same day (whole fleet; AP live at /AP/Jet/).

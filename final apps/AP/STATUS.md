@@ -12,10 +12,11 @@
 | Platform registration | ✅ Done 2026-07-12 | shell.js MODULES + common i18n (`mod.ap`) + APP_VERSION bumped in ALL apps (shared change) |
 | API smoke | ✅ 14/14 PASS | reconciliations (aging Σ = outstanding; summary count = register total), 401/404/boundary |
 | Browser smoke | ✅ 23/23 PASS | Playwright: home, facets, 8 charts, 3 levels, collapse/maximize, drill, print, RTL |
-| Webtier ship | ⬜ Pending | `webtier/deploy_frontend.sh` — ALL apps need redeploy (shared/ changed) |
+| Webtier ship | ✅ Live 2026-07-12 | release `20260712231423` (all apps + shared + AP); AP 200-OK on https://129.151.159.189/AP/Jet/ |
 | UAT package | ⬜ Not started | Admin-convention round to be run with the AP team |
 | APEX pages | ⬜ Not started | |
 
 ## Deployment log
 
 - **2026-07-12** — Initial build: db/01→04 deployed to PROD (fresh sessions), `ap.rest` published with 9 templates/9 handlers. Perf rework in `DCT_AP_PKG.filtered_ids` (correlated `OR EXISTS` → per-facet id-set scans + `MULTISET INTERSECT`; filtered summary >5 min → ~1.4 s). Aging made credit-inclusive (`balance_due <> 0`) so Σaging = outstanding KPI. Frontend built + registered platform-wide.
+- **2026-07-12** — Pushed to origin (`26ebaa8`) and shipped web-tier release `20260712231423` (whole fleet — shared/ changed). Production smoke: AP index 200, shell.js carries the AP entry, `/ords/admin/ap/*` proxied (401 w/o token as expected).
