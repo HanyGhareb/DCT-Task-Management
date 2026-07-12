@@ -102,7 +102,8 @@ on the row). Verified on `INV/HQ/26032465` → top candidate
 | ORDS `/atd/actions*` | `otbi-atd/db/20_atd_action_ords.sql` |
 | HR supplier‑map ORDS | `final apps/HR/db/07_hr_supplier_map_ords.sql` |
 | Approval hooks | `final apps/PC/db/06_pc_ords.sql`, `db/v2/14_dct_approval_pkg.sql` |
-| Runner (write) | `otbi-atd/runner/actions/` (`__init__.py`, `ap_invoice.py`), `runner.py --actions` |
+| Runner (write) | `otbi-atd/runner/actions/` (`__init__.py`, `ap_invoice.py`, `ppm_task_addl.py`), `runner.py --actions` |
+| PPM plan-task action | `otbi-atd/runner/actions/ppm_task_addl.py` + `smoke_ppm_task.py` + `otbi-atd/db/43_atd_action_ppm.sql` (type `PPM_TASK_ADDL_INFO`, 2026-07-09 — set a plan task's *Organization Reference* DFF via Manage Financial Project Plan; UI-based idempotency, `ATD_ACTION_LIVE` gate) |
 | Runner (read PoC) | `otbi-atd/docs/fusion-actions/fusion_invoice_lookup.py` |
 | Scheduler | `otbi-atd/runner/run_atd_actions.ps1` |
 | Plan / build log | `C:\Users\hanyg\.claude\plans\as-we-build-otbi-atd-graceful-minsky.md` |

@@ -76,6 +76,14 @@ function (ko, config, authService, i18n, shell) {
         ]
       },
       {
+        id: 'customers', labelKey: 'nav.customersGroup', auth: 'arUser',
+        collapsed: ko.observable(false),
+        items: [
+          { id: 'arCustomers',    labelKey: 'nav.arCustomers' },
+          { id: 'arCustomerForm', labelKey: 'nav.newArCustomer' },
+        ]
+      },
+      {
         id: 'admin', labelKey: 'nav.adminGroup', auth: 'arAdmin',
         collapsed: ko.observable(true),
         items: [

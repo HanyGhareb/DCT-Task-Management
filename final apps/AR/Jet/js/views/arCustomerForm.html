@@ -1,0 +1,91 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div>
+      <div class="page-title" data-bind="text: isEdit ? t('cust.editTitle') : t('cust.newTitle')"></div>
+      <div class="page-subtitle" style="display:flex; align-items:center; gap:10px">
+        <span data-bind="text: t('cust.formSubtitle')"></span>
+        <!-- ko if: isEdit -->
+        <span data-bind="class: statusClass(), text: status()"></span>
+        <!-- ko if: fusionCode() -->
+        <span class="mono" data-bind="text: t('cust.colFusion') + ': ' + fusionCode()"></span>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: back, text: t('common.back')"></button>
+      <!-- ko ifnot: readOnly() -->
+      <button class="btn btn-secondary"
+              data-bind="click: saveDraft, disable: saving(),
+                         text: saving() ? '…' : t('cust.saveDraft')"></button>
+      <button class="btn btn-primary"
+              data-bind="click: saveAndSubmit, disable: saving(),
+                         text: saving() ? '…' : t('cust.saveSubmit')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ko if: errorMessage() -->
+  <div class="card" style="padding:10px 14px; margin-bottom:12px; border-inline-start:4px solid #C0392B">
+    <strong data-bind="text: t('cust.lastError')"></strong>&nbsp;
+    <span data-bind="text: errorMessage()"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: readOnly() -->
+  <div class="card" style="padding:10px 14px; margin-bottom:12px; border-inline-start:4px solid var(--brand)">
+    <span data-bind="text: t('cust.readOnlyNote')"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: wsLive() -->
+  <div class="card" style="padding:10px 14px; margin-bottom:12px; border-inline-start:4px solid var(--brand)">
+    <span data-bind="text: t('cust.mockBanner')"></span>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko foreach: { data: sections, as: 'sec' } -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: $vm.t('cust.sec.' + sec.key)"></div>
+    </div>
+    <div class="form-grid" style="padding:14px">
+      <!-- ko foreach: { data: sec.fields, as: 'fld' } -->
+      <div class="form-group">
+        <div class="form-label">
+          <span data-bind="text: $vm.t('cust.f.' + fld.key)"></span>
+          <!-- ko if: fld.req --><span style="color:#C0392B">&nbsp;*</span><!-- /ko -->
+        </div>
+
+        <!-- ko if: fld.type === 'text' -->
+        <input class="form-control" type="text"
+               data-bind="value: $vm.f[fld.key], disable: $vm.readOnly()">
+        <!-- /ko -->
+
+        <!-- ko if: fld.type === 'date' -->
+        <input class="form-control" type="date"
+               data-bind="value: $vm.f[fld.key], disable: $vm.readOnly()">
+        <!-- /ko -->
+
+        <!-- ko if: fld.type === 'select' -->
+        <select class="form-control"
+                data-bind="value: $vm.f[fld.key], disable: $vm.readOnly(),
+                           options: fld.options,
+                           optionsValue: 'code',
+                           optionsText: $vm.lovText,
+                           optionsCaption: ''"></select>
+        <!-- /ko -->
+
+        <!-- ko if: fld.type === 'yn' -->
+        <select class="form-control" data-bind="value: $vm.f[fld.key], disable: $vm.readOnly()">
+          <option value=""></option>
+          <option value="Y" data-bind="text: $vm.t('cust.yes')"></option>
+          <option value="N" data-bind="text: $vm.t('cust.no')"></option>
+        </select>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

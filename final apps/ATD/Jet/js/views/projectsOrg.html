@@ -1,0 +1,165 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.porg.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: function(){ $root.navigate('actions'); }, text: t('atd.porg.viewActions')"></button>
+      <button class="btn btn-secondary" data-bind="click: loadRecent, text: t('atd.common.refresh')"></button>
+    </div>
+  </div>
+
+  <div class="muted" style="margin-bottom:14px" data-bind="text: t('atd.porg.hint')"></div>
+
+  <!-- ============ single update ============ -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.porg.single.title')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-primary"
+                data-bind="click: submitSingle, enable: !singleBusy(),
+                           text: singleBusy() ? t('atd.porg.enqueueing') : t('atd.porg.enqueue')"></button>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('atd.porg.f.projectNumber')"></span> *</label>
+        <input class="form-control mono" data-bind="textInput: fProject" placeholder="4511000682">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('atd.porg.f.taskNumber')"></span> *</label>
+        <input class="form-control" data-bind="textInput: fTask" placeholder="Annual Reports">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('atd.porg.f.orgReference')"></span> *</label>
+        <input class="form-control mono" data-bind="textInput: fOrg" placeholder="4510195">
+      </div>
+    </div>
+    <div style="margin-top:8px;">
+      <a href="#" data-bind="click: function(){ moreOpen(!moreOpen()); return false; },
+                             text: (moreOpen() ? '▾ ' : '▸ ') + t('atd.porg.moreSegments')"></a>
+    </div>
+    <!-- ko if: moreOpen -->
+    <div class="form-grid" style="margin-top:8px;">
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.porg.f.entitySpecific')"></label>
+        <input class="form-control mono" data-bind="textInput: fEntity"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.porg.f.appropriation')"></label>
+        <input class="form-control mono" data-bind="textInput: fAppr"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.porg.f.program')"></label>
+        <input class="form-control mono" data-bind="textInput: fProgram"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.porg.f.bgOverride')"></label>
+        <input class="form-control mono" data-bind="textInput: fBg"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.porg.f.revenueAccountOverride')"></label>
+        <input class="form-control mono" data-bind="textInput: fRev"></div>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ============ bulk update (Excel) ============ -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.porg.bulk.title')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: downloadTemplate, text: t('atd.porg.bulk.template')"></button>
+        <button class="btn btn-sm btn-secondary" data-bind="click: chooseFile, text: t('atd.porg.bulk.choose')"></button>
+        <!-- ko if: bulkRows().length > 0 -->
+        <button class="btn btn-sm btn-secondary" data-bind="click: clearBulk, text: t('atd.porg.bulk.clear')"></button>
+        <button class="btn btn-sm btn-primary"
+                data-bind="click: submitBulk, enable: bulkValidCount() > 0 && !bulkBusy(),
+                           text: bulkBusy() ? t('atd.porg.enqueueing')
+                                            : t('atd.porg.bulk.enqueue', [bulkValidCount()])"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="muted" data-bind="text: t('atd.porg.bulk.hint')"></div>
+
+    <!-- ko if: bulkRows().length === 0 -->
+    <div class="empty-state" style="margin-top:12px;" data-bind="text: t('atd.porg.bulk.empty')"></div>
+    <!-- /ko -->
+
+    <!-- ko if: bulkRows().length > 0 -->
+    <div style="display:flex; gap:10px; flex-wrap:wrap; margin:12px 0;">
+      <span class="badge" data-bind="text: t('atd.porg.bulk.file') + ': ' + bulkFileName()"></span>
+      <span class="badge badge--active" data-bind="text: t('atd.porg.bulk.valid') + ': ' + bulkValidCount()"></span>
+      <!-- ko if: bulkErrorCount() > 0 -->
+      <span class="badge badge--idle" data-bind="text: t('atd.porg.bulk.invalid') + ': ' + bulkErrorCount()"></span>
+      <!-- /ko -->
+    </div>
+    <div class="data-table-wrap" style="max-height:420px; overflow:auto;">
+      <table class="data-table">
+        <thead><tr>
+          <th>#</th>
+          <th data-bind="text: t('atd.porg.f.projectNumber')"></th>
+          <th data-bind="text: t('atd.porg.f.taskNumber')"></th>
+          <th data-bind="text: t('atd.porg.f.orgReference')"></th>
+          <th data-bind="text: t('atd.porg.col.segments')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: bulkRows">
+          <tr>
+            <td class="mono" data-bind="text: $data.row"></td>
+            <td class="mono" data-bind="text: $data.projectNumber || '—'"></td>
+            <td data-bind="text: $data.taskNumber || '—'"></td>
+            <td class="mono" data-bind="text: $data.orgReference || '—'"></td>
+            <td class="muted" data-bind="text: $data.segments || ''"></td>
+            <td>
+              <!-- ko if: $data.error -->
+              <span class="rstat rstat--FAILED" data-bind="text: $data.error, attr:{ title: $data.error }"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.error -->
+              <span data-bind="css: $vm.statusClass($data.status || ''), text: $data.status || $vm.t('atd.porg.bulk.pending')"></span>
+              <!-- /ko -->
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ============ recent PPM actions ============ -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('atd.porg.recent.title')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: loadRecent, text: t('atd.common.refresh')"></button>
+      </div>
+    </div>
+    <!-- ko if: recentLoading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+    <!-- ko ifnot: recentLoading -->
+    <!-- ko if: recent().length === 0 --><div class="empty-state" data-bind="text: t('atd.porg.recent.empty')"></div><!-- /ko -->
+    <!-- ko if: recent().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th>#</th>
+          <th data-bind="text: t('atd.actions.col.source')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.actions.col.attempts')"></th>
+          <th data-bind="text: t('atd.actions.lastError')"></th>
+          <th data-bind="text: t('atd.actions.col.updated')"></th>
+          <th style="width:140px;"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: recent">
+          <tr>
+            <td class="mono" data-bind="text: $data.actionId"></td>
+            <td class="mono" data-bind="text: $data.sourceRef || $data.idemKey"></td>
+            <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+            <td data-bind="text: $data.attempts + '/' + $data.maxAttempts"></td>
+            <td class="truncate-cell" style="max-width:280px;"
+                data-bind="text: $data.lastError || '—', attr:{ title: $data.lastError || '' }"></td>
+            <td data-bind="text: $data.updatedAt || '—'"></td>
+            <td class="cell-actions" style="text-align:end;">
+              <!-- ko if: $data.runStatus === 'FAILED' || $data.runStatus === 'CANCELLED' -->
+              <button class="btn btn-xs" data-bind="click: function(){ $vm.retry($data); }, text: $vm.t('atd.actions.retry')"></button>
+              <!-- /ko -->
+              <!-- ko if: $data.runStatus !== 'DONE' && $data.runStatus !== 'CANCELLED' -->
+              <button class="btn btn-xs" data-bind="click: function(){ $vm.cancel($data); }, text: $vm.t('atd.actions.cancel')"></button>
+              <!-- /ko -->
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</div>

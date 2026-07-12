@@ -53,6 +53,30 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+- **2026-07-08 — AR Customer (DoF Fusion Receivables SOAP) — APP_VERSION 4.6.0:**
+  new AR Customers pages (`arCustomers` list + `arCustomerForm`, 67 form fields / 69 wire
+  attributes, 8 sections, LOV defaults, EN/AR) over the government API gateway
+  (`ADGSoapWraperProcess` wrapper — operations `CreateCustomers` + `getEntityCustomerDtls`).
+  DB: `db/08` (DCT_AR_CUSTOMERS + 17 AR_CUST_* lookup sets + AR_WS_* module settings +
+  4 encrypted system-setting secrets + network ACL), `db/09` (DCT_AR_WS_PKG), `db/10`
+  (**ADDITIVE** ORDS `customers/*` ×9 — **re-run 10 after any re-run of 05**, which
+  DELETE_MODULEs ar.rest). Mock-mode lifecycle verified end-to-end (unit 8/8, API 12/12,
+  browser 19/19). Spec: `docs/ws/receivables-customer-ws.md`. Gotchas:
+  - `dct_module_settings.value_type` has no SECRET — secrets go to `DCT_SYSTEM_SETTINGS`
+    (`STRING` + `is_encrypted='Y'` + category SECURITY); `dct_ar_ws_pkg.get_ws_setting`
+    reads module settings first, then falls back to system settings.
+  - `dct_request_status_history.changed_by` is NOT NULL + numeric — resolve
+    `dct_users.user_id` from the session username before inserting.
+  - Fusion CreateCustomers is **asynchronous**: success = accepted into the interface
+    (row → SENT); the Fusion customer code only appears later via
+    `getEntityCustomerDtls` + `STATUS=PROCESSED` (row → PROCESSED via `customers/:id/sync`).
+  - PROD gateway (`api.abudhabi.ae`) is IP-whitelisted (TCP reset) — whitelisting of the
+    ADB outbound IP 129.151.135.88 requested; STAGE (`stage-api.abudhabi.ae`) is open from
+    the ADB. `AR_WS_LIVE=N` (mock) until the STAGE Basic-auth password is confirmed
+    (set `AR_WS_PASSWORD_STAGE`, currently CHANGE_ME).
+  - The generic Fusion-response row parser (`response_rows_json`) is a heuristic — refine
+    against the first captured live response.
+
 - **2026-06-15 — Region header flush (AR APP_VERSION 4.5.3→4.5.4; shared/ change → all 8 apps bumped):** shared `platform.css` flush rule (see Admin/FL notes) removes the gap between every in-card header and the border. No AR markup change — the settings page uses bespoke `.set-region__head` (not `.section-heading`), so it is unaffected; version bumped for the shared/ change. Frontend/CSS only.
 - 2026-06-12: module built + deployed (DB, DCT_AR_AI_PKG, ar.rest, JET SPA). Round 2 same day: Gemini support.
 - 2026-06-13: settings redesign deployed (grouped regions, provider registry db/07, 17/17 ORDS + 22/22 E2E green); `06_ar_patch_gemini.sql` superseded.

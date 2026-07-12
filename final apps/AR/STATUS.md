@@ -20,7 +20,11 @@ contract, organizer P&L, post-event report).
 | ORDS `ar.rest` at `/ords/admin/ar/` | ✅ Published + smoke-tested | `db/05_ar_ords.sql` — ~30 handlers; run in a FRESH SQLcl session (synonyms) |
 | JET SPA (`Jet/`) | ✅ Built | 10 routes: dashboard, events, eventForm, eventDetail (overview/files/P&L/findings tabs), uploadWizard, whatIf, reports, pnlCategories, docCategories, settings |
 | Platform registration | ✅ Done | `shared/js/shell.js` MODULES + `mod.ar` i18n keys + `AR` in all dev-proxy `SIBLING_APPS` + `DCT_MODULES` row (App 206) |
-| APEX pages | ⬜ Not started | Per standing rule: build in APEX Builder 24.2 first |
+| APEX pages | ⬜ Not started |
+| AR Customer DB (`DCT_AR_CUSTOMERS` + lookups + AR_WS_* settings) | ✅ Deployed 2026-07-08 | `db/08_ar_customer_ddl.sql` — secrets in DCT_SYSTEM_SETTINGS (encrypted) |
+| AR Customer WS package `DCT_AR_WS_PKG` | ✅ Deployed + unit-tested (mock 8/8) | `db/09_ar_customer_ws_pkg.sql` — envelope/gateway/parse/mock; STAGE reachable from ADB, PROD awaits IP whitelisting |
+| AR Customer ORDS (`customers/*` ×9, additive) | ✅ Published + API-smoked 12/12 | `db/10_ar_customer_ords.sql` — RE-RUN after any 05 re-run |
+| AR Customer JET pages (`arCustomers` + `arCustomerForm`) | ✅ Built + browser-smoked 19/19 | APP_VERSION 4.6.0; 67-field form, Fusion lookup modal, mock banner | Per standing rule: build in APEX Builder 24.2 first |
 
 ## AI live-test results
 

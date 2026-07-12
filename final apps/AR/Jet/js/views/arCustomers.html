@@ -1,0 +1,167 @@
+<div class="page-wrap">
+  <div class="page-header">
+    <div class="page-title" data-bind="text: t('cust.listTitle')"></div>
+    <div class="page-subtitle"><span class="mono" data-bind="text: total()"></span>&nbsp;<span data-bind="text: t('cust.listCount')"></span></div>
+    <div style="margin-inline-start:auto; display:flex; gap:8px">
+      <button class="btn btn-secondary" data-bind="click: openLookup, text: t('cust.fusionLookup')"></button>
+      <button class="btn btn-primary" data-bind="click: newCustomer, text: t('cust.newCustomer')"></button>
+    </div>
+  </div>
+
+  <!-- ko ifnot: wsLive() -->
+  <div class="card" style="padding:10px 14px; margin-bottom:12px; border-inline-start:4px solid var(--brand)">
+    <span data-bind="text: t('cust.mockBanner')"></span>
+  </div>
+  <!-- /ko -->
+
+  <div class="view-toolbar">
+    <input class="search-box" type="text"
+           data-bind="value: searchText, valueUpdate: 'input', attr: { placeholder: t('cust.searchPh') }">
+    <select class="form-control" style="width:210px" data-bind="value: statusFilter">
+      <option value="" data-bind="text: t('cust.allStatuses')"></option>
+      <!-- ko foreach: statuses() -->
+      <option data-bind="value: code, text: nameEn"></option>
+      <!-- /ko -->
+    </select>
+  </div>
+
+  <div class="data-table-wrap">
+    <!-- ko if: loading() -->
+    <list-skeleton params="rows: 8"></list-skeleton>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: loadError() -->
+    <div class="empty-state">
+      <div class="empty-state__icon">&#9888;</div>
+      <div class="empty-state__msg" data-bind="text: t('empty.loadFailed')"></div>
+      <button class="btn btn-primary" data-bind="click: reload, text: t('common.retry')"></button>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loadError() -->
+    <table class="data-table">
+      <thead>
+        <tr>
+          <th data-bind="text: t('cust.colName')"></th>
+          <th data-bind="text: t('cust.colOper')"></th>
+          <th data-bind="text: t('cust.colLegacy')"></th>
+          <th data-bind="text: t('cust.colLicense')"></th>
+          <th data-bind="text: t('cust.colVat')"></th>
+          <th data-bind="text: t('cust.colStatus')"></th>
+          <th data-bind="text: t('cust.colFusion')"></th>
+          <th data-bind="text: t('cust.colSubmitted')"></th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <!-- ko foreach: items() -->
+        <tr>
+          <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+            <span class="link-text" data-bind="text: name, click: $parent.openCustomer.bind($parent, $data)"></span>
+            <!-- ko if: $data.nameAr --><div class="text-muted" style="font-size:12px" data-bind="text: $data.nameAr"></div><!-- /ko -->
+          </td>
+          <td class="mono" data-bind="text: $data.trxOper || '—'"></td>
+          <td class="mono" data-bind="text: $data.legacyNumber || '—'"></td>
+          <td class="mono" data-bind="text: $data.tradeLicense || '—'"></td>
+          <td class="mono" data-bind="text: $data.vatNumber || '—'"></td>
+          <td>
+            <span data-bind="class: $parent.statusClass(status), text: status"></span>
+            <!-- ko if: $data.errorMessage -->
+            <div class="text-muted" style="font-size:11px; max-width:180px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap"
+                 data-bind="text: $data.errorMessage, attr: { title: $data.errorMessage }"></div>
+            <!-- /ko -->
+          </td>
+          <td class="mono" data-bind="text: $data.fusionCode || '—'"></td>
+          <td class="mono" data-bind="text: $data.submittedAt || '—'"></td>
+          <td class="table-actions" style="white-space:nowrap">
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: $parent.openCustomer.bind($parent, $data),
+                               text: $parent.canEdit($data) ? $parent.t('common.edit') : $parent.t('cust.open')"></button>
+            <!-- ko if: $parent.canSubmit($data) -->
+            <button class="btn btn-primary btn-sm"
+                    data-bind="click: $parent.submitRow.bind($parent, $data),
+                               disable: $parent.busyId() === id,
+                               text: $parent.busyId() === id ? '…' : $parent.t('cust.submit')"></button>
+            <!-- /ko -->
+            <!-- ko if: $parent.canSync($data) -->
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: $parent.syncRow.bind($parent, $data),
+                               disable: $parent.busyId() === id,
+                               text: $parent.busyId() === id ? '…' : $parent.t('cust.checkStatus')"></button>
+            <!-- /ko -->
+            <!-- ko if: $parent.canDelete($data) -->
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: $parent.deleteRow.bind($parent, $data), text: $parent.t('common.delete')"></button>
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+        <!-- ko if: items().length === 0 -->
+        <tr>
+          <td colspan="9">
+            <div class="empty-state">
+              <div class="empty-state__icon">&#128101;</div>
+              <div class="empty-state__msg" data-bind="text: t('cust.emptyList')"></div>
+            </div>
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+    <list-pager params="offset: offset, limit: limit, total: total, onChange: reload"></list-pager>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
+  <!-- ── Fusion lookup modal ─────────────────────────────────────── -->
+  <!-- ko if: lookupOpen() -->
+  <div class="modal-overlay">
+    <div class="modal-box" style="max-width:860px">
+      <div class="modal-header">
+        <div class="modal-title" data-bind="text: t('cust.fusionLookup')"></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeLookup, text: t('common.close')"></button>
+          <button class="btn btn-primary btn-sm"
+                  data-bind="click: runLookup, disable: lookupBusy(),
+                             text: lookupBusy() ? '…' : t('common.search')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('cust.lookupName')"></div>
+            <input class="form-control" type="text" data-bind="value: lookupName, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('cust.lookupCode')"></div>
+            <input class="form-control" type="text" data-bind="value: lookupCode, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('cust.lookupVat')"></div>
+            <input class="form-control" type="text" data-bind="value: lookupVat, valueUpdate: 'input'">
+          </div>
+        </div>
+
+        <!-- ko if: lookupRan() -->
+        <!-- ko if: lookupRows().length === 0 -->
+        <div class="empty-state" style="padding:18px">
+          <div class="empty-state__msg" data-bind="text: t('cust.lookupNoRows')"></div>
+        </div>
+        <!-- /ko -->
+        <!-- ko foreach: lookupRows() -->
+        <div class="card" style="padding:10px 14px; margin-top:10px">
+          <!-- ko foreach: $parent.rowPairs($data) -->
+          <div style="display:flex; gap:8px; font-size:13px; padding:1px 0">
+            <span class="mono text-muted" style="min-width:220px" data-bind="text: k"></span>
+            <span data-bind="text: v"></span>
+          </div>
+          <!-- /ko -->
+        </div>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

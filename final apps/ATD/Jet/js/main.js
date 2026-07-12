@@ -15,6 +15,8 @@ requirejs.config({
     'shared':   '/shared/js',
     // Chart.js MUST load via RequireJS (its UMD calls define(); a <script> tag breaks)
     'chartjs':  'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min',
+    // SheetJS for the Manage Projects Org Excel upload/template (same build as BI)
+    'xlsx':     'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min',
   }
 });
 

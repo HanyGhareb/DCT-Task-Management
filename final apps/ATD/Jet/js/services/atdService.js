@@ -115,5 +115,7 @@ function (api) {
     getAction:      function (id)       { return api.get('/actions/' + id); },
     retryAction:    function (id)       { return api.post('/actions/' + id + '/retry', {}); },
     cancelAction:   function (id)       { return api.post('/actions/' + id + '/cancel', {}); },
+    // Manage Projects Org — bulk-enqueue PPM_TASK_ADDL_INFO actions
+    enqueuePpmActions: function (rows)  { return api.post('/actions/enqueue', { rows: rows }); },
   };
 });

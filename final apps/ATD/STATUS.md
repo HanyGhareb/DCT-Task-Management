@@ -15,11 +15,19 @@ shared queue + run logs. Admin-only (SYS_ADMIN).
 | Runner Settings | ✅ ATD_RUNNER_CONFIG + /atd/config + page (db/14); runner reads at startup |
 
 ## Views
-dashboard · jobs · jobDetail · **jobSets · jobSetDetail** · queue · actions · discovery · runs ·
-environments · targets · runnerSettings
+dashboard · jobs · jobDetail · **jobSets · jobSetDetail** · queue · actions · **projectsOrg** ·
+discovery · runs · environments · targets · runnerSettings
 Brand `#3A4FB0` (indigo). Shared platform shell + EN/AR + module switcher.
 
 ## Deployment log
+- **2026-07-09** — **Manage Projects Org** (APP_VERSION 1.20.0). New Operations page enqueuing
+  `PPM_TASK_ADDL_INFO` Fusion actions (financial-plan task Additional Information / Organization
+  Reference): single form (3 required + 5 optional DFF segments) + **Excel bulk upload** (SheetJS
+  client-side parse, template download, chunked enqueue with per-row `READY #id` results) + recent
+  actions list (retry/cancel). Additive ORDS `otbi-atd/db/44_atd_ppm_org_ords.sql`
+  (`POST /atd/actions/enqueue`, ≤500 rows/req) **DEPLOYED**; **after any 13 re-run, re-run
+  20/38/41/42/44**. requirejs `'xlsx'` path added to `main.js`. API + Playwright browser-verified
+  (0 console errors); frontend ship to webtier pending.
 - **2026-06-18** — App 208 built. ORDS `atd.rest` deployed; JET app (`final apps/ATD/Jet/`)
   live; registered in `shared/js/shell.js` MODULES + `shared/i18n/common.*`; all 8 sibling
   APP_VERSIONs bumped (shared shell change); CLAUDE.md Module Status row added.

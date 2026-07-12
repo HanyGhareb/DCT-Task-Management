@@ -13,7 +13,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 import actions                       # noqa: E402
-from actions import ap_invoice, DryRun  # noqa: E402
+from actions import ap_invoice, ppm_task_addl, DryRun  # noqa: E402
 
 
 class _Resp:
@@ -74,6 +74,32 @@ def main():
         assert False
     except RuntimeError as e:
         assert "unknown action_type" in str(e)
+
+    # PPM_TASK_ADDL_INFO: payload validation (all three keys required)
+    p, t, o = ppm_task_addl.validate_payload(
+        {"projectNumber": "4511000682", "taskNumber": "Annual Reports",
+         "orgReference": 4510195})
+    assert (p, t, o) == ("4511000682", "Annual Reports", "4510195")
+    for bad in ({}, {"projectNumber": "X"},
+                {"projectNumber": "X", "taskNumber": "Y"},
+                {"projectNumber": "X", "taskNumber": "Y", "orgReference": " "}):
+        try:
+            ppm_task_addl.validate_payload(bad)
+            assert False, f"payload {bad} must be rejected"
+        except RuntimeError as e:
+            assert "payload needs" in str(e)
+
+    # dispatch routes PPM_TASK_ADDL_INFO to its handler (validation fires first,
+    # so no browser is touched with a bad payload)
+    try:
+        actions.dispatch(None, env, {"action_type": "PPM_TASK_ADDL_INFO",
+                                     "payload_json": "{}"})
+        assert False
+    except RuntimeError as e:
+        assert "PPM_TASK_ADDL_INFO payload needs" in str(e)
+
+    # NOTE: like AP_INVOICE, the navigate/fill/save path needs Playwright and is
+    # exercised by the HEADED smoke harness (smoke_ppm_task.py).
 
     print("ALL ACTION UNIT TESTS PASSED")
 

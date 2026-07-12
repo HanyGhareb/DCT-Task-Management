@@ -29,7 +29,7 @@ class DryRun(RuntimeError):
 
 def dispatch(ctx, env, action):
     """Route an action row to its handler. Returns (fusion_id, ref)."""
-    from . import ap_invoice
+    from . import ap_invoice, ppm_task_addl
 
     atype = (action.get("action_type") or "").upper()
     raw = action.get("payload_json")
@@ -37,5 +37,7 @@ def dispatch(ctx, env, action):
 
     if atype == "AP_INVOICE":
         return ap_invoice.create(ctx, env, data, action)
+    if atype == "PPM_TASK_ADDL_INFO":
+        return ppm_task_addl.update(ctx, env, data, action)
 
     raise RuntimeError(f"unknown action_type: {atype!r}")

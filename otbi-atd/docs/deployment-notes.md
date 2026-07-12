@@ -1027,3 +1027,75 @@ channel** for both reads and the AP write-back. ADF needs JS `el.click()`; Navig
 sub-items are lazy (expand the group first). Push scripts to the VMs with
 base64-in-one-shot (a plain `scp` + separate run can leave a 0-byte file).
 See `fusion-actions/README.md`.
+
+---
+
+## Fusion Action #2 — PPM_TASK_ADDL_INFO (financial-plan task Organization Reference, 2026-07-09)
+
+Second write-back action type: **update a task's "Additional Information" DFF on a project's
+financial plan** (first use: set the *Organization Reference* cost-centre segment). Requested
+flow replicated 1:1: My Projects → search Project Number → open project → Tasks drawer →
+*Manage Financial Project Plan* → Display=**List** → QBE-filter Task Number → row's
+*Additional Information* icon → popup → fill Organization Reference (LOV autosuggest) → OK → Save.
+
+- **DB:** `otbi-atd/db/43_atd_action_ppm.sql` — seeds `PPM_TASK_ADDL_INFO` into the
+  `ATD_ACTION_TYPE` lookup. **DEPLOYED 2026-07-09.** That is the ONLY DB change — queue,
+  `ATD_ACTION_PKG`, `/atd/actions*` ORDS and the App 208 Actions page are all generic over
+  `action_type`. (Script uses plain INSERT-if-absent, no MERGE block — the Linux SQLcl 26.1
+  MERGE-swallow gotcha.)
+- **Runner:** `actions/ppm_task_addl.py` (+ dispatch branch in `actions/__init__.py`).
+  Built on the PROVEN ADF patterns from the read PoC (`docs/fusion-actions/`): `_jsclick`
+  (`el.click()` in-DOM — ADF intercepts normal clicks), lazy Navigator groups (expand
+  `groupNode_projects` first), `_fill_label` for label-adjacent inputs, long ADF waits.
+  **No REST anywhere** — `fscmRestApi` is 401 under ADGOV SSO (PoC finding), so idempotency
+  is **UI-based**: the handler reads the popup's current Organization Reference and returns
+  "already set — idempotent skip" without saving when it already carries the target. An
+  UPDATE is also naturally idempotent (re-applying the same value is a no-op).
+- **Payload** (`payload_json`): `{"projectNumber": "...", "taskNumber": "...", "orgReference": "..."}`
+  (+ optional `entitySpecific` / `appropriation` / `program` / `bgOverride` /
+  `revenueAccountOverride` — the other popup segments). Suggested `idem_key`:
+  `PPM-ORGREF:<project>:<task>:<cc>` (include the cc — a later re-point of the same task to a
+  NEW cost centre must be a NEW idem_key; DONE rows are never re-armed).
+- **Safety:** `ATD_ACTION_LIVE=1` gates the page-level Save; a dry run navigates, filters,
+  fills the popup and clicks OK (all in-memory on the ADF page) then raises `DryRun` BEFORE
+  Save. After a live Save the handler re-opens the popup and verifies the value stuck
+  (read-back) before marking DONE. Step screenshots via `ATD_ACTION_SHOT_DIR` (set
+  automatically by the smoke) — the headless-VM way to tune selectors.
+- **Smoke:** `smoke_ppm_task.py` + `payload_ppm_task.json` (first trial: project 4511000682,
+  task "Annual Reports", cost centre 4510195). HEADLESS by default with screenshots to
+  `./ppm_smoke_shots/`; `--headed` on a desktop. On a worker VM:
+  ```bash
+  # push the two new/changed files base64-in-one-shot (race-free), then dry-run
+  for f in actions/ppm_task_addl.py actions/__init__.py smoke_ppm_task.py payload_ppm_task.json; do
+    base64 otbi-atd/runner/$f | ssh -i $KEY root@192.168.1.181 "base64 -d > /root/otbi-atd/runner/$f"
+  done
+  ssh -i $KEY root@192.168.1.181 "cd ~/otbi-atd/runner && source ~/otbi-atd/env.sh && \
+    ~/otbi-atd/venv/bin/python -u smoke_ppm_task.py payload_ppm_task.json"
+  # review ppm_smoke_shots/*.png; when selectors are confirmed:
+  #   ATD_ACTION_LIVE=1 ~/otbi-atd/venv/bin/python -u smoke_ppm_task.py payload_ppm_task.json
+  ```
+- **Enqueue (via the queue instead of the smoke):**
+  ```sql
+  DECLARE
+    v_id NUMBER;
+  BEGIN
+    v_id := prod.atd_action_pkg.enqueue_action(
+      p_action_type   => 'PPM_TASK_ADDL_INFO',
+      p_source_module => 'ATD', p_source_type => 'ADHOC', p_source_id => NULL,
+      p_source_ref    => 'Annual Reports @ 4511000682',
+      p_idem_key      => 'PPM-ORGREF:4511000682:Annual Reports:4510195',
+      p_payload       => '{"projectNumber":"4511000682","taskNumber":"Annual Reports","orgReference":"4510195"}');
+  END;
+  /
+  ```
+  The scheduled `runner.py --actions` sweep picks it up (worker must run with
+  `ATD_ACTION_LIVE=1` to actually save; otherwise the row fails with the DryRun note).
+- **Selector status:** first cut, screenshot-derived — **pending the dry-run validation on a
+  worker VM** (same lifecycle as `ap_invoice.py`). Navigator item id for the PFM work area is
+  guessed from the proven Payables pattern (`itemNode_projects*financial*`) with a text
+  fallback. Unit tests: `tests/test_actions.py` (payload validation + dispatch routing) PASS.
+- **UI (2026-07-09, ATD APP_VERSION 1.20.0):** App 208 **"Manage Projects Org"** page (route
+  `projectsOrg`) — single-row form + **Excel bulk upload** (SheetJS client-side parse + template
+  download) + recent-actions list. Backed by additive **`otbi-atd/db/44_atd_ppm_org_ords.sql`**
+  (`POST /atd/actions/enqueue`, ≤500 rows/req, per-row result; DEPLOYED + API/browser-verified).
+  **13 re-run ⇒ re-run 20, 38, 41, 42, 44.** Details in `final apps/ATD/docs/deployment-notes.md`.

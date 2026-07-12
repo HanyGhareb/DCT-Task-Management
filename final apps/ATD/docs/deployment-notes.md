@@ -201,3 +201,41 @@ table columns (`_plan_drift`) and reconciles:
 - If very large analyses ever run on a tight cadence, the next lever is to **fuse profiling into
   the load's existing CSV parse** (one pass instead of two) — deferred; not worth the coupling at
   current data sizes.
+
+---
+
+## Manage Projects Org page (2026-07-09, APP_VERSION 1.20.0)
+
+New nav page (Operations → **Projects Org**, route `projectsOrg`) to enqueue **`PPM_TASK_ADDL_INFO`**
+Fusion actions — update a financial-plan task's *Additional Information* (Organization Reference cost
+centre + 5 optional DFF segments) via *Manage Financial Project Plan*. Runner `--actions` performs
+them; see `otbi-atd/docs/deployment-notes.md` § Fusion Action #2 for the handler/smoke lifecycle.
+
+- **ORDS:** `otbi-atd/db/44_atd_ppm_org_ords.sql` (**DEPLOYED 2026-07-09**) — additive
+  `POST /atd/actions/enqueue` on a NEW template ⇒ safe alongside db/20's `/actions*`.
+  Body `{rows:[{projectNumber,taskNumber,orgReference, +optional entitySpecific/appropriation/
+  program/bgOverride/revenueAccountOverride}]}` (≤500 rows); per row builds the payload
+  (`JSON_OBJECT … ABSENT ON NULL` — via `SELECT … INTO FROM dual`, and note **`ABSENT ON NULL` is a
+  single clause of the whole JSON_OBJECT, not per-entry** — per-entry = block won't compile = ORDS
+  **555**), idem_key `PPM-ORGREF:<project>:<task>:<cc>`, calls `atd_action_pkg.enqueue_action`
+  (DONE keys never re-arm), returns `{total,enqueued,errors,items:[{row,actionId,idemKey,status,error}]}`.
+  **After ANY re-run of `13_atd_ords.sql`, re-run 20, 38, 41, 42 AND 44** (13 rebuilds `atd.rest`).
+- **Frontend:** `views/projectsOrg.html` + `viewModels/projectsOrg.js` + nav item + i18n
+  `atd.porg.*`/`atd.nav.projectsOrg` (EN+AR) + `atdService.enqueuePpmActions`. Three cards:
+  Single Update form (3 required + "More segments" disclosure), **Bulk Update (Excel)** — SheetJS
+  (`'xlsx'` requirejs path added to ATD `main.js`, same CDN build as BI) parses the first sheet
+  client-side (headers matched case/space-insensitively; `COST_CENTRE`/`CC` alias `ORG_REFERENCE`),
+  preview + per-row validation, chunked enqueue (200/POST) with per-row `READY #id` results, and a
+  client-generated `projects_org_template.xlsx` — and Recent Projects Org Actions
+  (`/actions?type=PPM_TASK_ADDL_INFO`, retry/cancel).
+- **KO gotcha (hit live):** after bulk enqueue the Status column stayed "pending" — KO `foreach`
+  skips re-render when the array is re-set with the **same row object references**; fix = replace
+  each updated row object (`Object.assign({}, r, {...})`) before `bulkRows(all.slice())`.
+- **Verified (Playwright, headless):** page loads 0 console errors; single enqueue → toast +
+  Recent row READY; template download; xlsx upload (2 valid + 1 invalid) → badges + red row error;
+  bulk enqueue → both rows `READY #id`; idempotent re-enqueue returns the same actionId; auth 401
+  without token; test actions cancelled after the run (queue left clean).
+- **SHIPPED to the production webtier 2026-07-12** (release `20260712144229` via
+  `webtier/deploy_frontend.sh`, now runnable from the Linux dev VM — its SSH key was authorized on
+  `opc@129.151.159.189` + `root@atd-vm180/181/182` on 2026-07-12); live check: `/ATD/Jet/index.html`
+  serves APP_VERSION 1.20.0 and both `projectsOrg.*` files return 200.
