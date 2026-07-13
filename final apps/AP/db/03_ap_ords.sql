@@ -68,71 +68,71 @@ BEGIN
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('minDate', l_min); APEX_JSON.write('maxDate', l_max);
   APEX_JSON.open_array('paymentStatus');
-  FOR r IN (SELECT payment_status v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY payment_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT payment_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY payment_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('validationStatus');
-  FOR r IN (SELECT validation_status v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY validation_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT validation_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY validation_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('accountingStatus');
-  FOR r IN (SELECT accounting_status v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY accounting_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT accounting_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY accounting_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('invoiceStatus');
-  FOR r IN (SELECT invoice_status v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY invoice_status ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT invoice_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY invoice_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('invoiceType');
-  FOR r IN (SELECT invoice_type v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY invoice_type ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT invoice_type v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY invoice_type ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('currency');
-  FOR r IN (SELECT invoice_currency v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY invoice_currency ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT invoice_currency v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY invoice_currency ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('payGroup');
-  FOR r IN (SELECT NVL(pay_group,'(None)') v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY NVL(pay_group,'(None)') ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT NVL(pay_group,'(None)') v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY NVL(pay_group,'(None)') ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('paymentMethod');
-  FOR r IN (SELECT payment_method v, COUNT(*) c FROM prod.ap_invoices_header_v GROUP BY payment_method ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT payment_method v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY payment_method ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('sectors');
-  FOR r IN (SELECT NVL(sector_name,'Unclassified') v, COUNT(DISTINCT invoice_id) c FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' GROUP BY NVL(sector_name,'Unclassified') ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT NVL(sector_name,'Unclassified') v, COUNT(DISTINCT invoice_id) c FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY NVL(sector_name,'Unclassified') ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('suppliers');
-  FOR r IN (SELECT DISTINCT supplier_name v FROM prod.ap_invoices_header_v WHERE supplier_name IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT supplier_name v FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND supplier_name IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('departments');
-  FOR r IN (SELECT DISTINCT expenditure_organization v FROM prod.ap_invoice_lines_v WHERE expenditure_organization IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT expenditure_organization v FROM prod.ap_invoice_lines_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND expenditure_organization IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('requestors');
-  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND pr_preparer IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND pr_preparer IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('expTypes');
-  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND expenditure_type IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND expenditure_type IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('costCenters');
-  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND cost_center_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND cost_center_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('accounts');
-  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND account_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND account_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('appropriations');
-  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND appropriation_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND appropriation_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('projects');
-  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND project_number IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND project_number IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.close_object;
@@ -258,14 +258,14 @@ BEGIN
     nco(r.v, r.c, r.a);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('trend');
-  -- month basis = Invoice Received Date (invoice date fallback when not recorded)
+  -- month basis = Invoice Received Date (creation date fallback when not recorded)
   FOR r IN (SELECT m, c, a FROM (
-              SELECT TO_CHAR(NVL(h.invoice_received_date, h.invoice_date),'YYYY-MM') m,
+              SELECT TO_CHAR(COALESCE(h.invoice_received_date, h.created_date, h.invoice_date),'YYYY-MM') m,
                      COUNT(*) c, NVL(SUM(h.invoice_amount_aed),0) a
                 FROM prod.ap_invoices_header_v h
                WHERE h.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
-                 AND (l_trendfloor IS NULL OR NVL(h.invoice_received_date, h.invoice_date) >= l_trendfloor)
-               GROUP BY TO_CHAR(NVL(h.invoice_received_date, h.invoice_date),'YYYY-MM')
+                 AND (l_trendfloor IS NULL OR COALESCE(h.invoice_received_date, h.created_date, h.invoice_date) >= l_trendfloor)
+               GROUP BY TO_CHAR(COALESCE(h.invoice_received_date, h.created_date, h.invoice_date),'YYYY-MM')
                ORDER BY m DESC FETCH FIRST 60 ROWS ONLY) ORDER BY m) LOOP
     APEX_JSON.open_object; APEX_JSON.write('month', r.m);
     APEX_JSON.write('count', r.c); APEX_JSON.write('amount', ROUND(r.a,2));

@@ -308,78 +308,122 @@
     </div><!-- /.ap-main -->
   </div><!-- /.ap-body -->
 
-  <!-- ── Invoice drill modal ───────────────────────────────────────────── -->
+  <!-- ── Invoice drill window: master header region + top-right Summary card
+       (amounts + statuses) + detail region with Lines / Distributions tabs;
+       ⤢ maximizes the window to full screen (Esc restores, then closes) ── -->
   <!-- ko if: showDrill() && drill() -->
   <div class="modal-overlay" data-bind="click: closeDrill">
-    <div class="modal-box" style="max-width:1060px;width:94vw" data-bind="click: function(){ return false; }, clickBubble: false">
+    <div class="modal-box inv-box" data-bind="css: { 'inv-max': invMax() }, click: function(){ return false; }, clickBubble: false">
       <div class="modal-header">
         <div>
           <div class="modal-title">
             <span data-bind="text: $root.t('dr.title')"></span>
-            <span style="font-weight:400" data-bind="text: ' · ' + drill().header.invoiceNumber"></span>
+            <span style="font-weight:400" data-bind="text: ' \u00b7 ' + drill().header.invoiceNumber"></span>
           </div>
           <div style="font-size:12px;color:var(--text-2)" data-bind="text: drill().header.supplier"></div>
         </div>
         <div class="region-actions">
+          <button class="btn btn-sm btn-secondary" data-bind="click: toggleInvMax,
+                  attr: { title: invMax() ? $root.t('rg.restore') : $root.t('rg.maximize') },
+                  text: invMax() ? '\u2921' : '\u2922'"></button>
           <button class="btn btn-sm btn-secondary" data-bind="click: closeDrill, text: $root.t('dr.close')"></button>
         </div>
       </div>
-      <div class="modal-body" style="max-height:72vh;overflow-y:auto">
+      <div class="modal-body inv-body">
 
-        <div class="ap-tabs">
-          <button class="ap-tab" data-bind="click: function(){ $vm.setDrillTab('header'); }, css: { on: drillTab() === 'header' },
-                  text: $root.t('dr.header')"></button>
-          <button class="ap-tab" data-bind="click: function(){ $vm.setDrillTab('lines'); }, css: { on: drillTab() === 'lines' }">
-            <span data-bind="text: $root.t('dr.lines') + ' (' + drill().lines.length + ')'"></span></button>
-          <button class="ap-tab" data-bind="click: function(){ $vm.setDrillTab('dists'); }, css: { on: drillTab() === 'dists' }">
-            <span data-bind="text: $root.t('dr.dists') + ' (' + drill().distributions.length + ')'"></span></button>
+        <!-- master region: invoice identity + grouped header fields, summary card top-right -->
+        <div class="inv-master" data-bind="with: drill().header">
+          <div class="inv-id">
+            <div class="inv-eyebrow" data-bind="text: $vm.t('dr.invHeader')"></div>
+            <div class="inv-number" data-bind="text: $data.invoiceNumber"></div>
+            <div class="inv-supplier">
+              <span data-bind="text: $data.supplier"></span>
+              <!-- ko if: $data.isBeneficiary === 'Y' -->
+              <span class="badge badge--info" data-bind="text: $vm.t('dr.beneficiary')"></span>
+              <!-- /ko -->
+              <span class="badge badge--idle" data-bind="text: $data.invoiceType || ''"></span>
+            </div>
+            <div class="inv-desc" data-bind="text: $data.description || ''"></div>
+
+            <div class="inv-sec" data-bind="text: $vm.t('dr.secSupplier')"></div>
+            <div class="inv-grid">
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.supplierNo')"></span><span data-bind="text: $data.supplierNumber || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.site')"></span><span data-bind="text: $data.supplierSite || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.cityCountry')"></span>
+                <span data-bind="text: [$data.city, $data.country].filter(function (x) { return x; }).join(', ')"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.email')"></span><span data-bind="text: $data.supplierEmail || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.beneficiary')"></span><span data-bind="text: $data.beneficiary || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.po')"></span><span data-bind="text: $data.poNumbers || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.pr')"></span><span data-bind="text: $data.prNumbers || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.voucher')"></span><span data-bind="text: $data.voucherNum || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.source')"></span><span data-bind="text: $data.source || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.batch')"></span><span data-bind="text: $data.batchName || ''"></span></div>
+            </div>
+
+            <div class="inv-sec" data-bind="text: $vm.t('dr.secPayment')"></div>
+            <div class="inv-grid">
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.payTerms')"></span><span data-bind="text: $data.paymentTerms || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.terms')"></span><span data-bind="text: $data.termsDate || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.method')"></span><span data-bind="text: $data.paymentMethod || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.payGroup')"></span><span data-bind="text: $data.payGroup || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.payCurr')"></span><span data-bind="text: $data.paymentCurrency || ''"></span></div>
+            </div>
+
+            <div class="inv-sec" data-bind="text: $vm.t('dr.secDates')"></div>
+            <div class="inv-grid">
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.date')"></span><span data-bind="text: $data.invoiceDate || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.glDate')"></span><span data-bind="text: $data.glDate || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.received')"></span><span data-bind="text: $data.receivedDate || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.createdBy')"></span><span data-bind="text: $data.createdBy || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.created')"></span><span data-bind="text: $data.createdDate || ''"></span></div>
+              <!-- ko if: $data.cancelledDate -->
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.cancelledBy')"></span><span data-bind="text: $data.cancelledBy || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.cancelledOn')"></span><span data-bind="text: $data.cancelledDate || ''"></span></div>
+              <!-- /ko -->
+            </div>
+          </div>
+
+          <!-- summary card: hero amount + money rows + status stack -->
+          <aside class="inv-sum">
+            <div class="inv-eyebrow" data-bind="text: $vm.t('dr.summary')"></div>
+            <div class="inv-amount" data-bind="text: $vm.fmtAmt($data.amountAed)"></div>
+            <div class="inv-amount-l" data-bind="text: $vm.t('tbl.amountAed')"></div>
+            <!-- ko if: $data.currency && $data.currency !== 'AED' -->
+            <div class="inv-fx" data-bind="text: $vm.fmtAmt($data.amount) + ' ' + $data.currency
+                 + ($data.conversionRate ? ' \u00d7 ' + $data.conversionRate : '')"></div>
+            <!-- /ko -->
+            <div class="inv-rows">
+              <div><span data-bind="text: $vm.t('tbl.paidAmt')"></span><b data-bind="text: $vm.fmtAmt($data.amountPaid)"></b></div>
+              <div><span data-bind="text: $vm.t('tbl.balance')"></span><b data-bind="text: $vm.fmtAmt($data.balanceDue)"></b></div>
+              <div><span data-bind="text: $vm.t('dr.tax')"></span><b data-bind="text: $vm.fmtAmt($data.taxCharged)"></b></div>
+            </div>
+            <div class="inv-badges">
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.status')"></span>
+                <span data-bind="text: $data.invoiceStatus || '', attr: { class: $vm.valBadge($data.invoiceStatus) }"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.validation')"></span>
+                <span data-bind="text: $data.validationStatus || '', attr: { class: $vm.valBadge($data.validationStatus) }"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.accounting')"></span>
+                <span data-bind="text: $data.accountingStatus || '', attr: { class: $vm.accBadge($data.accountingStatus) }"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.payStatus')"></span>
+                <span data-bind="text: $data.paymentStatus || '', attr: { class: $vm.payBadge($data.paymentStatus) }"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.funds')"></span>
+                <span class="badge badge--idle" data-bind="text: $data.fundsStatus || ''"></span></div>
+            </div>
+            <!-- ko if: $data.cancelledDate -->
+            <div class="inv-cxl" data-bind="text: $vm.t('dr.cancelledNote') + ' ' + $data.cancelledDate"></div>
+            <!-- /ko -->
+          </aside>
         </div>
 
-        <!-- ko if: drillTab() === 'header' -->
-        <div class="kv-grid" data-bind="with: drill().header">
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.invoiceNo')"></span><span data-bind="text: $data.invoiceNumber"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.date')"></span><span data-bind="text: $data.invoiceDate"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.status')"></span>
-            <span data-bind="text: $data.invoiceStatus, attr: { class: $vm.valBadge($data.invoiceStatus) }"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.supplier')"></span><span data-bind="text: $data.supplier"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.beneficiary')"></span><span data-bind="text: $data.beneficiary || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.isBenef')"></span><span data-bind="text: $data.isBeneficiary || 'N'"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.site')"></span><span data-bind="text: $data.supplierSite || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.currency')"></span><span data-bind="text: $data.currency"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.amount')"></span><span data-bind="text: $vm.fmtAmt($data.amount)"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.amountAed')"></span><span data-bind="text: $vm.fmtAmt($data.amountAed)"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.tax')"></span><span data-bind="text: $vm.fmtAmt($data.taxCharged)"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.paidAmt')"></span><span data-bind="text: $vm.fmtAmt($data.amountPaid)"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.balance')"></span><span data-bind="text: $vm.fmtAmt($data.balanceDue)"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.validation')"></span>
-            <span data-bind="text: $data.validationStatus, attr: { class: $vm.valBadge($data.validationStatus) }"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.accounting')"></span>
-            <span data-bind="text: $data.accountingStatus, attr: { class: $vm.accBadge($data.accountingStatus) }"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.payStatus')"></span>
-            <span data-bind="text: $data.paymentStatus, attr: { class: $vm.payBadge($data.paymentStatus) }"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.funds')"></span><span data-bind="text: $data.fundsStatus || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.payTerms')"></span><span data-bind="text: $data.paymentTerms || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.terms')"></span><span data-bind="text: $data.termsDate || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.method')"></span><span data-bind="text: $data.paymentMethod || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.payGroup')"></span><span data-bind="text: $data.payGroup || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.payCurr')"></span><span data-bind="text: $data.paymentCurrency || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.voucher')"></span><span data-bind="text: $data.voucherNum || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.source')"></span><span data-bind="text: $data.source || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.batch')"></span><span data-bind="text: $data.batchName || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.glDate')"></span><span data-bind="text: $data.glDate || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.received')"></span><span data-bind="text: $data.receivedDate || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.po')"></span><span data-bind="text: $data.poNumbers || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('tbl.pr')"></span><span data-bind="text: $data.prNumbers || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.createdBy')"></span><span data-bind="text: $data.createdBy || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.created')"></span><span data-bind="text: $data.createdDate || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.cancelledBy')"></span><span data-bind="text: $data.cancelledBy || ''"></span></div>
-          <div><span class="kv-l" data-bind="text: $root.t('dr.cancelledOn')"></span><span data-bind="text: $data.cancelledDate || ''"></span></div>
-          <div class="kv-full" style="grid-column:1 / -1"><span class="kv-l" data-bind="text: $root.t('tbl.description')"></span>
-            <span data-bind="text: $data.description || ''"></span></div>
-        </div>
-        <!-- /ko -->
-
-        <!-- ko if: drillTab() === 'lines' -->
+        <!-- detail region: Lines / Distributions -->
+        <div class="inv-detail">
+          <div class="ap-tabs">
+            <button class="ap-tab" data-bind="click: function(){ $vm.setDrillTab('lines'); }, css: { on: drillTab() === 'lines' }">
+              <span data-bind="text: $root.t('dr.lines') + ' (' + drill().lines.length + ')'"></span></button>
+            <button class="ap-tab" data-bind="click: function(){ $vm.setDrillTab('dists'); }, css: { on: drillTab() === 'dists' }">
+              <span data-bind="text: $root.t('dr.dists') + ' (' + drill().distributions.length + ')'"></span></button>
+          </div>
+          <!-- ko if: drillTab() === 'lines' -->
         <div class="data-table-wrap"><table class="data-table">
           <thead><tr>
             <th data-bind="text: $root.t('tbl.line')"></th>
@@ -449,6 +493,7 @@
           <!-- /ko --></tbody>
         </table></div>
         <!-- /ko -->
+        </div><!-- /.inv-detail -->
 
       </div>
     </div>

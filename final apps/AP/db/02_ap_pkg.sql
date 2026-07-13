@@ -52,7 +52,7 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_pkg AS
         -- enhancement round 2026-07-13: chart drills + new criteria ---------
         p_gldatefrom VARCHAR2 DEFAULT NULL,  -- YYYY-MM-DD, on gl_date
         p_gldateto   VARCHAR2 DEFAULT NULL,
-        p_rcvfrom    VARCHAR2 DEFAULT NULL,  -- YYYY-MM-DD, on NVL(invoice_received_date, invoice_date)
+        p_rcvfrom    VARCHAR2 DEFAULT NULL,  -- YYYY-MM-DD, on COALESCE(invoice_received_date, created_date, invoice_date)
         p_rcvto      VARCHAR2 DEFAULT NULL,
         p_esupplier  VARCHAR2 DEFAULT NULL,  -- multi, EFFECTIVE supplier (beneficiary-aware; top-suppliers drill)
         p_aging      VARCHAR2 DEFAULT NULL,  -- single aging bucket CURRENT|D1_30|D31_60|D61_90|D91_180|D180P
@@ -120,8 +120,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
            AND (l_to   IS NULL OR h.invoice_date <  l_to + 1)
            AND (l_glfrom IS NULL OR h.gl_date >= l_glfrom)
            AND (l_glto   IS NULL OR h.gl_date <  l_glto + 1)
-           AND (l_rcvfrom IS NULL OR NVL(h.invoice_received_date, h.invoice_date) >= l_rcvfrom)
-           AND (l_rcvto   IS NULL OR NVL(h.invoice_received_date, h.invoice_date) <  l_rcvto + 1)
+           AND (l_rcvfrom IS NULL OR COALESCE(h.invoice_received_date, h.created_date, h.invoice_date) >= l_rcvfrom)
+           AND (l_rcvto   IS NULL OR COALESCE(h.invoice_received_date, h.created_date, h.invoice_date) <  l_rcvto + 1)
            AND (NVL(p_inclcxl,'Y') = 'Y' OR h.invoice_status <> 'Cancelled')
            AND (p_esupplier IS NULL OR dct_ap_pkg.in_list(p_esupplier,
                     CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL

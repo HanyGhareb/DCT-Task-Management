@@ -123,3 +123,25 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   DB verify: 31 pkg args, 7 handlers w/ new binds, item-only present in filters+summary;
   7/7 SQL reconciliation tests PASS (cxl 5484−406=5078; Unclassified 78=78; aging D1_30
   428=428; GL-date 1383=1383; rcv-month 1112=1112; esupplier 457=457). APP_VERSION 1.4.0.
+- **2026-07-13 (round 4b + invoice window, v1.5.0)** — follow-ups to round 4:
+  1. **Include Cancelled Invoices? now defaults to UNCHECKED** (cancelled excluded
+     everywhere by default; ticking it shows a "Yes" chip). The **/filters facet
+     counts + LOVs follow the checkbox** — every count/LOV query in the filters
+     handler takes the `inclcxl` bind (`NULL/'Y'` = include for API back-compat;
+     the frontend always sends it and re-fetches `/filters` on toggle, preserving
+     the user's selections and open groups).
+  2. **Received-date fallback = invoice CREATION date** (was invoice date):
+     `COALESCE(invoice_received_date, created_date, invoice_date)` in the pkg
+     rcv facets + the /summary trend (all 277 received-date-less headers have a
+     created_date; 0 fall through to invoice_date).
+  3. **Invoice window redesigned** (/senior-frontend + /frontend-design):
+     document-style **master region** (big invoice number + effective supplier +
+     type/beneficiary chips + grouped sections Supplier & references / Payment /
+     Dates & audit) with a **Summary card top-right** (hero AED amount, FX line
+     when non-AED, Paid/Balance/Tax rows, status badge stack, cancelled ribbon)
+     and a **detail region with 2 tabs (Lines, Distributions)** — the old Header
+     tab dissolved into the master region; **⤢ maximize** turns the window
+     full-screen (`.inv-max`; Esc restores first, second Esc closes).
+  Deploy 02 → 03 → 04; verify: filters/summary carry the new logic; SQL smoke —
+  rcv-month 2026-05 engine 1,140 = direct 1,140 (moved from 1,112 under the old
+  fallback), exclude-cancelled 5,078 = 5,078. APP_VERSION 1.5.0.

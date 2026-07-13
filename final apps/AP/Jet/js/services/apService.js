@@ -24,8 +24,8 @@ define(['services/api', 'services/config'], function (api, config) {
 
   return {
 
-    /** Facet LOVs + global counts. */
-    getFilters: function () { return api.get('/filters'); },
+    /** Facet LOVs + counts (inclcxl=N excludes cancelled invoices from them). */
+    getFilters: function (params) { return api.get('/filters' + qs(params)); },
 
     /** KPIs + chart datasets for the current facet selection. */
     getSummary: function (params) { return api.get('/summary' + qs(params)); },

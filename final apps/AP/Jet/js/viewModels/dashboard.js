@@ -144,7 +144,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     self.dateto   = ko.observable('');
     self.gldatefrom = ko.observable('');
     self.gldateto   = ko.observable('');
-    self.inclCancelled = ko.observable(true);          // include cancelled invoices?
+    self.inclCancelled = ko.observable(false);         // include cancelled invoices? (default OFF)
     self.po   = ko.observable('');
     self.pr   = ko.observable('');
     self.task = ko.observable('');
@@ -338,9 +338,10 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       }
       add(self.datefrom, 'f.datefrom'); add(self.dateto, 'f.dateto');
       add(self.gldatefrom, 'f.glfrom'); add(self.gldateto, 'f.glto');
-      if (!self.inclCancelled()) {
-        out.push({ label: i18n.t('f.inclCxl'), value: i18n.t('f.no'),
-                   clear: function () { self.inclCancelled(true); scheduleReload(); } });
+      // cancelled invoices are EXCLUDED by default — chip marks the deviation
+      if (self.inclCancelled()) {
+        out.push({ label: i18n.t('f.inclCxl'), value: i18n.t('f.yes'),
+                   clear: function () { self.inclCancelled(false); } });
       }
       add(self.po, 'f.po'); add(self.pr, 'f.pr'); add(self.task, 'f.task');
       add(self.search, 'f.search');
@@ -353,7 +354,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
         g.filter('');
       });
       self.datefrom(''); self.dateto('');
-      self.gldatefrom(''); self.gldateto(''); self.inclCancelled(true);
+      self.gldatefrom(''); self.gldateto(''); self.inclCancelled(false);
       self.po(''); self.pr(''); self.task(''); self.search('');
       scheduleReload();
     };
@@ -702,16 +703,19 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       });
     };
 
-    // ── drill ───────────────────────────────────────────────────────────
+    // ── drill (invoice window: master header + summary card + detail tabs) ──
+    self.invMax = ko.observable(false);
+    self.toggleInvMax = function () { self.invMax(!self.invMax()); };
     self.openDrill = function (row) {
       if (!row || !row.id) return;
       ap.getInvoice(row.id).then(function (d) {
         self.drill(d);
-        self.drillTab('header');
+        self.drillTab('lines');            // header lives in the master region now
+        self.invMax(false);
         self.showDrill(true);
       }).catch(function () { toast.error(i18n.t('msg.error')); });
     };
-    self.closeDrill = function () { self.showDrill(false); self.drill(null); };
+    self.closeDrill = function () { self.showDrill(false); self.drill(null); self.invMax(false); };
     self.setDrillTab = function (tab) { self.drillTab(tab); };
 
     // ── chart drill-down drawer (GL Budget Utilization pattern: right-edge
@@ -770,7 +774,10 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     if (window.__apDashEsc) document.removeEventListener('keydown', window.__apDashEsc);
     window.__apDashEsc = function (e) {
       if (e.key !== 'Escape') return;
-      if (self.showDrill())  { self.closeDrill(); return; }     // invoice modal is topmost
+      if (self.showDrill()) {                                    // invoice window is topmost
+        if (self.invMax()) { self.invMax(false); } else { self.closeDrill(); }
+        return;
+      }
       if (self.dwMax())      { self.dwMax(false); return; }     // restore maximized drawer first
       if (self.dwOpen())     { self.closeDw(); return; }
       if (self.chartsMax())  { self.toggleChartsMax(); return; }
@@ -894,10 +901,32 @@ function (ko, ap, api, authService, i18n, toast, charts) {
      self.po, self.pr, self.task, self.search]
       .forEach(function (obs) { obs.subscribe(scheduleReload); });
 
-    ap.getFilters().then(function (f) {
-      self.groups(GROUP_DEFS.map(function (def) { return makeGroup(def, f[def.src]); }));
-      self.loadingFilters(false);
-    }).catch(function () { self.loadingFilters(false); toast.error(i18n.t('msg.error')); });
+    // Facet LOVs + counts follow the include-cancelled setting; a re-fetch
+    // keeps the user's selections and which groups are open.
+    function loadFilters() {
+      self.loadingFilters(true);
+      var p = self.inclCancelled() ? { inclcxl: 'Y' } : { inclcxl: 'N' };
+      ap.getFilters(p).then(function (f) {
+        var sel = {}, openSt = {};
+        self.groups().forEach(function (g) {
+          sel[g.key] = g.items().filter(function (i) { return i.checked(); })
+                                .map(function (i) { return i.value; });
+          openSt[g.key] = g.open();
+        });
+        self.groups(GROUP_DEFS.map(function (def) {
+          var g = makeGroup(def, f[def.src]);
+          if (def.key in openSt) g.open(openSt[def.key]);
+          (sel[def.key] || []).forEach(function (v) {
+            var hit = g.items().filter(function (i) { return i.value === v; })[0];
+            if (hit) hit.checked(true);
+          });
+          return g;
+        }));
+        self.loadingFilters(false);
+      }).catch(function () { self.loadingFilters(false); toast.error(i18n.t('msg.error')); });
+    }
+    self.inclCancelled.subscribe(loadFilters);
+    loadFilters();
 
     loadSummary();
     loadRows();
