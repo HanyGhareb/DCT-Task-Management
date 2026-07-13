@@ -31,10 +31,44 @@ function (ko, atd, i18n, toast, docUpload) {
 
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
 
+    // durationSecs -> '45s' / '4m 12s' / '1h 03m' ('—' when never started)
+    self.fmtDur = function (secs) {
+      if (secs === null || secs === undefined || secs === '') { return '—'; }
+      var s = Math.max(0, Math.round(Number(secs)));
+      if (s < 60) { return s + 's'; }
+      var m = Math.floor(s / 60);
+      if (m < 60) { return m + 'm ' + (s % 60) + 's'; }
+      var h = Math.floor(m / 60);
+      return h + 'h ' + String(m % 60).padStart(2, '0') + 'm';
+    };
+
     // ---------------- single update ----------------
     self.fProject = ko.observable('');
     self.fTask    = ko.observable('');
     self.fOrg     = ko.observable('');
+
+    // LOV suggestion lists (datalists) from the Fusion-loaded extract tables.
+    // SUGGESTIONS ONLY — the extract is a snapshot, so the inputs stay free
+    // text (a task created in Fusion today may not be in the extract yet).
+    self.lovProjects = ko.observableArray([]);   // {code, name, status}
+    self.lovTasks    = ko.observableArray([]);   // {code, name} for fProject
+    self.lovCcs      = ko.observableArray([]);   // {code, name}
+    atd.ppmLov('project').then(function (r) { self.lovProjects(r.items || []); })
+       .catch(function () {});
+    atd.ppmLov('cc').then(function (r) { self.lovCcs(r.items || []); })
+       .catch(function () {});
+    var taskLovTimer = null;
+    self.fProject.subscribe(function (v) {
+      v = (v || '').trim();
+      self.lovTasks([]);
+      if (!v) { return; }
+      clearTimeout(taskLovTimer);
+      taskLovTimer = setTimeout(function () {
+        atd.ppmLov('task', { project: v })
+          .then(function (r) { self.lovTasks(r.items || []); })
+          .catch(function () {});   // unknown project number = just no suggestions
+      }, 400);
+    });
     self.moreOpen = ko.observable(false);
     self.fEntity  = ko.observable('');
     self.fAppr    = ko.observable('');

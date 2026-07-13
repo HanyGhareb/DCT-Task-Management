@@ -49,6 +49,9 @@ CREATE TABLE prod.atd_action_request (
   fusion_invoice_id VARCHAR2(60),                      -- Fusion InvoiceId read back after save
   fusion_ref        VARCHAR2(200),                     -- optional secondary ref
   last_run_id       NUMBER,
+  worker_host       VARCHAR2(120),                     -- VM that (last) ran it (db/46)
+  started_at        TIMESTAMP,                         -- claim time, persists after finish
+  finished_at       TIMESTAMP,                         -- DONE/FAILED/CANCELLED time
   created_by        VARCHAR2(120),
   created_at        TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
   updated_at        TIMESTAMP     DEFAULT SYSTIMESTAMP NOT NULL,
@@ -125,6 +128,9 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_action_pkg AS
                  last_error    = NULL,
                  claimed_by    = NULL,
                  claimed_at    = NULL,
+                 worker_host   = NULL,
+                 started_at    = NULL,
+                 finished_at   = NULL,
                  attempts      = 0,
                  run_status    = CASE WHEN t.run_status IN ('FAILED','CANCELLED')
                                       THEN 'READY' ELSE t.run_status END,
@@ -155,6 +161,9 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_action_pkg AS
       UPDATE prod.atd_action_request
          SET run_status = 'CLAIMED', claimed_by = p_host,
              claimed_at = CAST(SYSTIMESTAMP AS TIMESTAMP),
+             worker_host = p_host,
+             started_at  = CAST(SYSTIMESTAMP AS TIMESTAMP),
+             finished_at = NULL,
              attempts   = attempts + 1,
              updated_at = SYSTIMESTAMP
        WHERE action_id = v_id;
@@ -187,6 +196,7 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_action_pkg AS
            last_error        = NULL,
            claimed_by        = NULL,
            claimed_at        = NULL,
+           finished_at       = CAST(SYSTIMESTAMP AS TIMESTAMP),
            updated_at        = SYSTIMESTAMP
      WHERE action_id = p_id;
     COMMIT;
@@ -199,6 +209,7 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_action_pkg AS
            last_error = SUBSTR(p_err, 1, 4000),
            claimed_by = NULL,
            claimed_at = NULL,
+           finished_at = CAST(SYSTIMESTAMP AS TIMESTAMP),
            updated_at = SYSTIMESTAMP
      WHERE action_id = p_id;
     COMMIT;
@@ -210,6 +221,7 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_action_pkg AS
        SET run_status = 'CANCELLED',
            claimed_by = NULL,
            claimed_at = NULL,
+           finished_at = CAST(SYSTIMESTAMP AS TIMESTAMP),
            updated_at = SYSTIMESTAMP
      WHERE action_id = p_id AND run_status <> 'DONE';
     COMMIT;

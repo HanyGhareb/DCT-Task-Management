@@ -49,6 +49,35 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-07-13 (b)** — **Recent Actions telemetry** (APP_VERSION **1.22.0**, webtier release
+  20260713185640). `otbi-atd/db/46_atd_action_telemetry.sql`: persistent `worker_host` /
+  `started_at` / `finished_at` on `ATD_ACTION_REQUEST` (the queue NULLs `claimed_*` on finish, so
+  worker + timings were lost), `ATD_ACTION_PKG` writes them (claim stamps worker/started + clears
+  finished; done/failed/cancel stamp finished; enqueue re-arm clears all three), and
+  `GET /atd/actions` adds `workerVm`/`startedAt`/`finishedAt`/`durationSecs` (in-flight rows show
+  live now−started)/`submittedBy` — same sources synced into db/19 + db/20 (post-13 re-run list
+  unchanged: 20 carries the handler). Projects Org "Recent" table gains Worker VM / Started /
+  Ended / Duration / Submitted by / Submitted on columns (dropped Updated; `fmtDur`; rows older
+  than db/46 show — for telemetry). **DEPLOY GOTCHA (bit us live):** running db/46 via Linux SQLcl
+  silently swallowed BOTH the keyword-bearing ALTER block AND the MERGE-bearing package body while
+  executing the ORDS handler block — leaving `GET /atd/actions` 555 (handler referenced missing
+  columns). Recovery: apply DDL + package body via **python-oracledb on a worker VM** (venv +
+  env.sh creds), then the handler is valid. For any script mixing DDL/MERGE-package/ORDS, deploy
+  the PL/SQL parts via oracledb (or Windows SQLcl) and verify `all_objects.last_ddl_time` moved.
+- **2026-07-13** — **Projects Org LOVs + actions drained by the fleet** (APP_VERSION **1.21.0**,
+  webtier release 20260713182708). (1) NEW additive ORDS `otbi-atd/db/45_atd_ppm_lov_ords.sql` =
+  `GET /atd/actions/ppmlov?type=project|task|cc[&search=][&project=]` (SYS_ADMIN; sources
+  `prod.atd_projects` / `prod.atd_tasks` / `prod.dct_gl_coa_v`; **param is `search` — `q` is a
+  reserved ORDS filter param and 400s**; validate type/project BEFORE `json_header` or the 400
+  becomes a 200). **Post-13 re-run list now 20, 38, 41, 42, 44, 45.** (2) Manage Projects Org form:
+  the 3 required inputs gained `<datalist>` type-ahead (project searchable by number OR name via
+  option label; tasks reload per typed project, 400ms debounce; cc = code + description) —
+  suggestion-only, inputs stay free-text (extract is a snapshot). Browser smoke 7/7. (3) **Worker
+  fleet now drains the ACTIONS queue**: `runner.py` `_drain_actions_idle` wired into the
+  `--worker --forever` idle path (previously NOTHING ran `--actions` on the VMs, so UI-enqueued
+  rows sat READY forever) + `ATD_ACTION_LIVE=1` added to each VM's `env.sh`; fleet re-synced +
+  `atd-worker` restarted ×3. NOTE actions queue (`ATD_ACTION_REQUEST`) is SEPARATE from the extract
+  job queue (`ATD_OTBI_JOBS`) — same fleet/session, different tables.
 - **2026-06-30** — **Refresh Actuals button** (APP_VERSION 1.17.2). New `POST /atd/actuals/refresh`
   (`otbi-atd/db/39_atd_actuals_refresh_ords.sql`, additive to `atd.rest`, fresh session) calls
   `prod.dct_actuals_refresh` to rebuild `DCT_GL_COA_SNAP`; Dashboard header gains a **Refresh

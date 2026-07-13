@@ -117,5 +117,8 @@ function (api) {
     cancelAction:   function (id)       { return api.post('/actions/' + id + '/cancel', {}); },
     // Manage Projects Org — bulk-enqueue PPM_TASK_ADDL_INFO actions
     enqueuePpmActions: function (rows)  { return api.post('/actions/enqueue', { rows: rows }); },
+    // type-ahead suggestion lists for the Manage Projects Org form
+    // (type=project|task|cc; NOTE the param is `search`, not `q` — ORDS reserves q)
+    ppmLov: function (type, opts)       { return api.get('/actions/ppmlov' + qs(Object.assign({ type: type }, opts || {}))); },
   };
 });

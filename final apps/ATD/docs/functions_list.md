@@ -160,6 +160,12 @@ Program / BG Override / Revenue Account Override) via *Manage Financial Project 
 `PPM-ORGREF:<project>:<task>:<cc>` key.
 - `submitSingle` (+ `fProject`/`fTask`/`fOrg`, `moreOpen` disclosure with `fEntity`/`fAppr`/
   `fProgram`/`fBg`/`fRev`): single-row form → POST `/actions/enqueue` (rows:[1]); clears on success.
+- **Type-ahead LOVs (1.21.0)** — `lovProjects`/`lovTasks`/`lovCcs` feed native `<datalist>`s on the
+  three required inputs via GET `/actions/ppmlov`: projects (all ~800, searchable by number OR name
+  — option label carries `name · status`), tasks (reloaded 400ms-debounced from the typed
+  `fProject`), cost centres (code + description from `DCT_GL_COA_V`). SUGGESTIONS ONLY — inputs
+  stay free-text because the extract tables are a snapshot (a task created in Fusion today may not
+  be there yet). Param is `search=`, NOT `q=` (ORDS reserves `q`).
 - `chooseFile` (shared `docUpload.choose`, `.xlsx/.xls/.csv` ≤10MB) → SheetJS (`require(['xlsx'])`)
   parse of the first sheet: header row mapped case/space-insensitively (`PROJECT_NUMBER`,
   `TASK_NUMBER`, `ORG_REFERENCE` [aliases `COST_CENTRE`/`COST_CENTER`/`CC`] + the 5 optional
@@ -170,7 +176,10 @@ Program / BG Override / Revenue Account Override) via *Manage Financial Project 
 - `downloadTemplate`: generates `projects_org_template.xlsx` client-side (SheetJS, sample row).
 - `clearBulk`; `bulkValidCount`/`bulkErrorCount` computeds.
 - **Recent Projects Org Actions** (`loadRecent` from `/actions?type=PPM_TASK_ADDL_INFO`):
-  last 20 with status chip, attempts, last error; `retry(row)`/`cancel(row)` as on Fusion Actions.
+  last 20 with status chip, **Worker VM / Started / Ended / Duration (`fmtDur`) / Submitted by /
+  Submitted on** (db/46 telemetry: `workerVm`/`startedAt`/`finishedAt`/`durationSecs`/`submittedBy`;
+  rows enqueued before db/46 show — for the first four), attempts, last error;
+  `retry(row)`/`cancel(row)` as on Fusion Actions.
 - Header link `viewActions` → the Fusion Actions page (`$root.navigate('actions')`).
 
 ## OTBI Discovery (`discovery`)
@@ -235,11 +244,12 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |
 | GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` filter (redefined by `otbi-atd/db/42_atd_runs_set_ords.sql`, additive; re-run after `13`) |
-| GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
+| GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`; incl. db/46 telemetry `workerVm`/`startedAt`/`finishedAt`/`durationSecs`/`submittedBy`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
 | GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |
 | GET | `/actions/:id` | action detail: payload, last error, source status history |
 | POST | `/actions/:id/retry` · `/actions/:id/cancel` | re-arm FAILED/CANCELLED → READY · cancel (not-DONE) |
 | POST | `/actions/enqueue` | bulk-enqueue `PPM_TASK_ADDL_INFO` actions (`{rows:[{projectNumber,taskNumber,orgReference,…}]}`, ≤500/req; per-row result) — `otbi-atd/db/44_atd_ppm_org_ords.sql` (additive; Manage Projects Org page) |
+| GET | `/actions/ppmlov` | type-ahead suggestion lists for Manage Projects Org (`?type=project\|task\|cc [&search=][&project=]`; `search` not `q` — ORDS reserves `q`) from `ATD_PROJECTS`/`ATD_TASKS`/`DCT_GL_COA_V` — `otbi-atd/db/45_atd_ppm_lov_ords.sql` (additive) |
 | GET / POST | `/job-sets` | list job sets (+ member/enabled counts, interval, window, state) / create a set — `otbi-atd/db/41_atd_job_set_ords.sql` (additive to `atd.rest`). SYS_ADMIN |
 | GET / PUT / DELETE | `/job-sets/:code` | detail (schedule + members[+`nextRun`] + recent runs) / partial update (schedule/window/flags) / delete (cascades membership) |
 | POST | `/job-sets/:code/members` | add member(s) (`{jobName}` or `{jobNames:[…]}`; a job already in a set is skipped + reported) |

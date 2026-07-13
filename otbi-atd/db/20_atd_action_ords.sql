@@ -66,11 +66,17 @@ BEGIN
   FOR r IN (
     SELECT a.action_id, a.action_type, a.env_name, a.source_module, a.source_type,
            a.source_ref, a.idem_key, a.run_status, a.priority, a.attempts, a.max_attempts,
-           a.claimed_by, a.fusion_invoice_id,
+           a.claimed_by, a.fusion_invoice_id, a.created_by, a.worker_host,
            NVL(DBMS_LOB.SUBSTR(a.last_error,300,1),'') AS last_err,
            TO_CHAR( dct_to_local(a.claimed_at),'YYYY-MM-DD HH:MI AM') AS claimed_s,
            TO_CHAR( dct_to_local(a.created_at),'YYYY-MM-DD HH:MI AM') AS created_s,
-           TO_CHAR( dct_to_local(a.updated_at),'YYYY-MM-DD HH:MI AM') AS updated_s
+           TO_CHAR( dct_to_local(a.updated_at),'YYYY-MM-DD HH:MI AM') AS updated_s,
+           TO_CHAR( dct_to_local(a.started_at),'YYYY-MM-DD HH:MI AM') AS started_s,
+           TO_CHAR( dct_to_local(a.finished_at),'YYYY-MM-DD HH:MI AM') AS finished_s,
+           CASE WHEN a.started_at IS NOT NULL THEN
+             ROUND((CAST(NVL(a.finished_at, CAST(SYSTIMESTAMP AS TIMESTAMP)) AS DATE)
+                    - CAST(a.started_at AS DATE)) * 86400)
+           END AS dur_secs
     FROM atd_action_request a
     WHERE (l_status IS NULL OR a.run_status = l_status)
       AND (l_type   IS NULL OR a.action_type = l_type)
@@ -93,6 +99,11 @@ BEGIN
     APEX_JSON.write('maxAttempts', r.max_attempts);
     APEX_JSON.write('claimedBy', NVL(r.claimed_by,''));
     APEX_JSON.write('claimedAt', NVL(r.claimed_s,''));
+    APEX_JSON.write('workerVm', NVL(r.worker_host,''));
+    APEX_JSON.write('startedAt', NVL(r.started_s,''));
+    APEX_JSON.write('finishedAt', NVL(r.finished_s,''));
+    IF r.dur_secs IS NOT NULL THEN APEX_JSON.write('durationSecs', r.dur_secs); END IF;
+    APEX_JSON.write('submittedBy', NVL(r.created_by,''));
     APEX_JSON.write('fusionInvoiceId', NVL(r.fusion_invoice_id,''));
     APEX_JSON.write('lastError', r.last_err);
     APEX_JSON.write('createdAt', NVL(r.created_s,''));

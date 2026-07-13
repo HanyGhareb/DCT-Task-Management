@@ -364,8 +364,10 @@ def _addl_icon_id(page, task_number):
     failed rounds 12-13)."""
     js = """(task)=>{const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
       const vis=e=>e.offsetParent!==null&&e.getBoundingClientRect().width>0;
-      for(const s of document.querySelectorAll('span[id$=":tNum::content"]')){
-        if(norm(s.innerText)===task && vis(s))
+      for(const s of document.querySelectorAll(
+          'span[id$=":tNum::content"], input[id$=":tNum::content"]')){
+        const txt = s.tagName==='INPUT' ? s.value : s.innerText;
+        if(norm(txt)===task && vis(s))
           return s.id.slice(0,-'tNum::content'.length)+'dffIL1';}
       return null;}"""
     try:
@@ -374,10 +376,38 @@ def _addl_icon_id(page, task_number):
         return None
 
 
+def _find_popup(page):
+    """Locator for the OPEN Additional Information dialog, or None. ADF
+    panelWindow popups carry NO role="dialog" (round-14: the popup was open
+    on-screen and the role-based detector missed it) — so anchor on the
+    visible title text and walk up to the smallest div that holds the DFF
+    inputs + the Organization Reference label."""
+    js = """(title)=>{const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
+      const vis=e=>e.offsetParent!==null&&e.getBoundingClientRect().width>0;
+      for(const el of document.querySelectorAll('div,span,td,h1,h2')){
+        if(el.children.length===0 && norm(el.innerText)===title && vis(el)){
+          let p=el.parentElement;
+          while(p){
+            if(p.tagName==='DIV'
+               && p.querySelectorAll('input:not([type=hidden])').length>=3
+               && p.innerText.indexOf('Organization Reference')>=0){
+              if(!p.id) p.id='atdAddlPopup';
+              return p.id;}
+            p=p.parentElement;}}}
+      return null;}"""
+    try:
+        pid = page.evaluate(js, POPUP_TITLE)
+    except Exception:  # noqa: BLE001
+        pid = None
+    return page.locator(f'[id="{pid}"]') if pid else None
+
+
 def _open_addl_popup(page, task_number):
     """Open the task row's Additional Information popup via a REAL pointer
-    click on the icon anchor located BY ID (see _addl_icon_id). The popup only
-    counts as open when a VISIBLE dialog with actual inputs is present."""
+    click on the icon anchor located BY ID (see _addl_icon_id)."""
+    dlg = _find_popup(page)
+    if dlg is not None:  # already open (e.g. read-back after Save)
+        return dlg
     icon_id = _addl_icon_id(page, task_number)
     if not icon_id:
         raise RuntimeError(f"task {task_number!r} not found on the financial plan "
@@ -393,14 +423,9 @@ def _open_addl_popup(page, task_number):
             _jsclick(page, f'[id="{icon_id}"]', "Additional Information icon",
                      required=False)
         time.sleep(5)
-        dlg = page.locator(f'div[role="dialog"]:has-text("{POPUP_TITLE}")')
-        for i in range(dlg.count() - 1, -1, -1):  # dialogs render last in DOM
-            d = dlg.nth(i)
-            try:
-                if d.is_visible() and d.locator('input:not([type=hidden])').count() > 0:
-                    return d
-            except Exception:  # noqa: BLE001
-                pass
+        dlg = _find_popup(page)
+        if dlg is not None:
+            return dlg
     raise RuntimeError("Additional Information popup did not open")
 
 
@@ -433,16 +458,35 @@ def _fill_lov(page, field, value):
         field.type(str(value), delay=40)
     time.sleep(3)
     # the suggest list renders in a floating popup (e.g. "DCT Finance | 4510195")
-    if not _jsclick(page, [f'li:has-text("{value}")', f'td:has-text("{value}")',
-                           f'div[role="option"]:has-text("{value}")'],
-                    f"LOV pick {value}", required=False):
+    # — REAL click on the VISIBLE entry (round-15: the JS click left the list
+    # open, so the pick had not registered with the ADF component)
+    picked = False
+    for sel in (f'li:has-text("{value}")', f'td:has-text("{value}")',
+                f'div[role="option"]:has-text("{value}")'):
+        loc = page.locator(sel)
+        for i in range(min(loc.count(), 8)):
+            el = loc.nth(i)
+            try:
+                if el.is_visible():
+                    el.click(timeout=3000)
+                    picked = True
+                    break
+            except Exception:  # noqa: BLE001
+                pass
+        if picked:
+            break
+    if not picked:
         field.press("Tab")  # let ADF auto-match the unique value
     time.sleep(2)
 
 
 def _fill_popup(page, dlg, data, org_ref):
-    """Fill Organization Reference (+ any other provided segments). Returns the
-    pre-existing Organization Reference value (for the idempotency verdict)."""
+    """Fill Organization Reference (+ any other provided segments). Returns
+    (current, resolved): the pre-existing Organization Reference value (for
+    the idempotency verdict) and the DISPLAY text the LOV resolved the code to
+    (Fusion shows the description, e.g. 'DCT ALC Executive Director's Office
+    Division' for 4510195 — the read-back after Save must compare against
+    THAT, not the code)."""
     org_field = _popup_field(dlg, ADDL_FIELDS["orgReference"])
     if org_field is None:
         raise RuntimeError("Organization Reference field not found in the popup")
@@ -452,7 +496,7 @@ def _fill_popup(page, dlg, data, org_ref):
     except Exception:  # noqa: BLE001
         pass
     if org_ref in current:
-        return current  # already set — caller skips the save
+        return current, current  # already set — caller skips the save
     for key, label in ADDL_FIELDS.items():
         if key == "orgReference":
             continue
@@ -464,7 +508,12 @@ def _fill_popup(page, dlg, data, org_ref):
             raise RuntimeError(f"popup field {label!r} not found")
         _fill_lov(page, fld, val)
     _fill_lov(page, org_field, org_ref)
-    return current
+    resolved = ""
+    try:
+        resolved = (org_field.input_value() or "").strip()
+    except Exception:  # noqa: BLE001
+        pass
+    return current, resolved
 
 
 def _raise_on_adf_error(page):
@@ -496,7 +545,7 @@ def update(ctx, env, data, action):
         _shot(page, "ppm_03_plan_list.png")
         dlg = _open_addl_popup(page, task)
 
-        current = _fill_popup(page, dlg, data, org_ref)
+        current, resolved = _fill_popup(page, dlg, data, org_ref)
         _shot(page, "ppm_04_popup_filled.png")
         if org_ref in current:
             # idempotency: the target cost centre is already on the task
@@ -513,17 +562,39 @@ def update(ctx, env, data, action):
                          f"orgReference={org_ref} but ATD_ACTION_LIVE!=1 -> NOT saved "
                          "(set ATD_ACTION_LIVE=1 to update for real)")
 
-        _jsclick(page, ['//button[normalize-space(.)="Save"]'], "Save")
+        # page-level Save: NOT a <button> in this skin (round-17: the XPath
+        # matched nothing while the button was plainly on screen) — real click
+        # on the first VISIBLE element with exact text 'Save' ('Save and
+        # Close' cannot match an exact-text locator)
+        saved_click = False
+        loc = page.get_by_text("Save", exact=True)
+        for i in range(min(loc.count(), 10)):
+            el = loc.nth(i)
+            try:
+                if el.is_visible():
+                    el.click(timeout=5000)
+                    saved_click = True
+                    break
+            except Exception:  # noqa: BLE001
+                pass
+        if not saved_click:
+            _jsclick(page, ['//button[normalize-space(.)="Save"]',
+                            '//a[normalize-space(.)="Save"]'], "Save")
         time.sleep(8)
         _raise_on_adf_error(page)
 
-        # read-back: re-open the popup on the same row and confirm the value stuck
+        # read-back: re-open the popup on the same row and confirm the value
+        # stuck — Fusion shows the LOV DESCRIPTION after commit, so match the
+        # code OR the resolved display text captured at fill time
         dlg = _open_addl_popup(page, task)
         fld = _popup_field(dlg, ADDL_FIELDS["orgReference"])
         saved = (fld.input_value() or "").strip() if fld is not None else ""
-        if org_ref not in saved:
+        norm = " ".join(saved.split())
+        ok = (org_ref in saved) or (resolved and norm == " ".join(resolved.split()))
+        if not ok:
             raise RuntimeError(f"PPM_TASK_ADDL_INFO {project}/{task}: Save did not stick "
-                               f"(popup now shows {saved!r}) — not marking DONE so it can retry")
+                               f"(popup now shows {saved!r}, expected {resolved or org_ref!r})"
+                               " — not marking DONE so it can retry")
         _jsclick(dlg, ['//button[normalize-space(.)="Cancel"]', 'a:has-text("Cancel")'],
                  "popup Cancel", required=False)
         _shot(page, "ppm_05_saved.png")

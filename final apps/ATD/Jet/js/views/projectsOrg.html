@@ -22,15 +22,26 @@
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label"><span data-bind="text: t('atd.porg.f.projectNumber')"></span> *</label>
-        <input class="form-control mono" data-bind="textInput: fProject" placeholder="4511000682">
+        <input class="form-control mono" list="porg-lov-projects" data-bind="textInput: fProject"
+               placeholder="4511000682">
+        <datalist id="porg-lov-projects" data-bind="foreach: lovProjects">
+          <option data-bind="attr: { value: $data.code,
+                                     label: ($data.name || '') + ($data.status ? ' · ' + $data.status : '') }"></option>
+        </datalist>
       </div>
       <div class="form-group">
         <label class="form-label"><span data-bind="text: t('atd.porg.f.taskNumber')"></span> *</label>
-        <input class="form-control" data-bind="textInput: fTask" placeholder="Annual Reports">
+        <input class="form-control" list="porg-lov-tasks" data-bind="textInput: fTask" placeholder="Annual Reports">
+        <datalist id="porg-lov-tasks" data-bind="foreach: lovTasks">
+          <option data-bind="attr: { value: $data.code, label: $data.name || '' }"></option>
+        </datalist>
       </div>
       <div class="form-group">
         <label class="form-label"><span data-bind="text: t('atd.porg.f.orgReference')"></span> *</label>
-        <input class="form-control mono" data-bind="textInput: fOrg" placeholder="4510195">
+        <input class="form-control mono" list="porg-lov-cc" data-bind="textInput: fOrg" placeholder="4510195">
+        <datalist id="porg-lov-cc" data-bind="foreach: lovCcs">
+          <option data-bind="attr: { value: $data.code, label: $data.name || '' }"></option>
+        </datalist>
       </div>
     </div>
     <div style="margin-top:8px;">
@@ -133,9 +144,14 @@
           <th>#</th>
           <th data-bind="text: t('atd.actions.col.source')"></th>
           <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.actions.col.worker')"></th>
+          <th data-bind="text: t('atd.actions.col.started')"></th>
+          <th data-bind="text: t('atd.actions.col.ended')"></th>
+          <th data-bind="text: t('atd.actions.col.duration')"></th>
+          <th data-bind="text: t('atd.actions.col.submittedBy')"></th>
+          <th data-bind="text: t('atd.actions.col.submittedOn')"></th>
           <th data-bind="text: t('atd.actions.col.attempts')"></th>
           <th data-bind="text: t('atd.actions.lastError')"></th>
-          <th data-bind="text: t('atd.actions.col.updated')"></th>
           <th style="width:140px;"></th>
         </tr></thead>
         <tbody data-bind="foreach: recent">
@@ -143,10 +159,15 @@
             <td class="mono" data-bind="text: $data.actionId"></td>
             <td class="mono" data-bind="text: $data.sourceRef || $data.idemKey"></td>
             <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+            <td class="mono" data-bind="text: $data.workerVm || '—'"></td>
+            <td data-bind="text: $data.startedAt || '—'"></td>
+            <td data-bind="text: $data.finishedAt || '—'"></td>
+            <td class="mono" data-bind="text: $vm.fmtDur($data.durationSecs)"></td>
+            <td data-bind="text: $data.submittedBy || '—'"></td>
+            <td data-bind="text: $data.createdAt || '—'"></td>
             <td data-bind="text: $data.attempts + '/' + $data.maxAttempts"></td>
             <td class="truncate-cell" style="max-width:280px;"
                 data-bind="text: $data.lastError || '—', attr:{ title: $data.lastError || '' }"></td>
-            <td data-bind="text: $data.updatedAt || '—'"></td>
             <td class="cell-actions" style="text-align:end;">
               <!-- ko if: $data.runStatus === 'FAILED' || $data.runStatus === 'CANCELLED' -->
               <button class="btn btn-xs" data-bind="click: function(){ $vm.retry($data); }, text: $vm.t('atd.actions.retry')"></button>

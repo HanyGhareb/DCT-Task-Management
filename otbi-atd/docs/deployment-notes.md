@@ -1090,12 +1090,50 @@ flow replicated 1:1: My Projects → search Project Number → open project → 
   ```
   The scheduled `runner.py --actions` sweep picks it up (worker must run with
   `ATD_ACTION_LIVE=1` to actually save; otherwise the row fails with the DryRun note).
-- **Selector status:** first cut, screenshot-derived — **pending the dry-run validation on a
-  worker VM** (same lifecycle as `ap_invoice.py`). Navigator item id for the PFM work area is
-  guessed from the proven Payables pattern (`itemNode_projects*financial*`) with a text
-  fallback. Unit tests: `tests/test_actions.py` (payload validation + dispatch routing) PASS.
+- **Selector status: VALIDATED LIVE 2026-07-13** — E2E on vm180 (headless): dry-run PASS
+  (popup filled, DryRun gate held) then **LIVE run PASS** (Save + read-back verified; trial
+  project 4511000682 / task "Annual Reports" / cc 4510195 now carries *DCT ALC Executive
+  Director's Office Division*). Final handler synced to vm180/181/182 (md5-verified);
+  **restart `atd-worker` on the fleet** so the long-running workers import the new module.
+  Unit tests: `tests/test_actions.py` PASS. **ADF selector laws learned in the 19-round tune
+  (apply to every future UI action):**
+  1. **Visible-first, always** — ADF keeps HIDDEN duplicates in the DOM (topbar Personalize
+     spans, pre-rendered dialog buttons) that match text/title selectors FIRST in document
+     order. Iterate matches and act on the first `is_visible()` one; in JS filters use
+     `offsetParent!==null && getBoundingClientRect().width>0`.
+  2. **The af:query Search panel lands COLLAPSED with its inputs NOT in the DOM** — expand
+     via a REAL Playwright click on the anchor `a[id$="_afrDscl"]` / `[title="Expand Search"]`
+     (header-text clicks and JS clicks never expand it).
+  3. **JS value-set does not register in ADF component state** — the query ran empty despite
+     the input visually holding the value. Fill with REAL typing (`press_sequentially`) + Tab
+     blur; LOV autosuggest also only fires on real keystrokes, and the suggest entry needs a
+     REAL click on the VISIBLE row.
+  4. **Saved-search defaults over-constrain** — My Projects pre-fills Team Member + Project
+     Status=Approved; clear them (Ctrl+A, Delete, Tab) before searching by number.
+  5. **Never walk <tr> ancestors to find a row** — the whole page is nested tables + a
+     frozen/scrollable grid split. Use the deterministic id scheme instead: Task Number cell
+     `…:tt1:<row>:tNum::content` (span in display mode, **input in edit mode** — match both)
+     ↔ same row's Additional Information icon `…:tt1:<row>:dffIL1` (swap the suffix).
+  6. **ADF panelWindow popups carry NO `role="dialog"`** — detect by the visible title text,
+     then walk up to the smallest div containing the field inputs.
+  7. **Page-level Save is not a `<button>`** — click the first VISIBLE exact-text "Save"
+     element (`get_by_text("Save", exact=True)`).
+  8. **After an LOV commit Fusion displays the DESCRIPTION, not the code** — read-back must
+     accept the resolved display text captured at fill time (and the idempotency fast-path
+     only triggers when the code is visible in the field).
 - **UI (2026-07-09, ATD APP_VERSION 1.20.0):** App 208 **"Manage Projects Org"** page (route
   `projectsOrg`) — single-row form + **Excel bulk upload** (SheetJS client-side parse + template
   download) + recent-actions list. Backed by additive **`otbi-atd/db/44_atd_ppm_org_ords.sql`**
   (`POST /atd/actions/enqueue`, ≤500 rows/req, per-row result; DEPLOYED + API/browser-verified).
-  **13 re-run ⇒ re-run 20, 38, 41, 42, 44.** Details in `final apps/ATD/docs/deployment-notes.md`.
+  **13 re-run ⇒ re-run 20, 38, 41, 42, 44, 45.** Details in `final apps/ATD/docs/deployment-notes.md`.
+- **LOVs + fleet actions drain (2026-07-13, ATD APP_VERSION 1.21.0):** additive
+  **`otbi-atd/db/45_atd_ppm_lov_ords.sql`** = `GET /atd/actions/ppmlov?type=project|task|cc
+  [&search=][&project=]` type-ahead lists (sources `prod.atd_projects`/`prod.atd_tasks`/
+  `prod.dct_gl_coa_v`; **`q=` is reserved by ORDS — use `search=`**; validate params BEFORE
+  `json_header`) feeding `<datalist>`s on the 3 required form inputs (project searchable by number
+  or name; tasks per typed project; suggestion-only, free text preserved — the extract is a
+  snapshot). AND the worker fleet now drains the ACTIONS queue: `runner.py`
+  `_drain_actions_idle` runs in the `--worker --forever` idle path (before this, NOTHING on the
+  VMs ran `--actions`, so UI-enqueued actions sat READY forever); `ATD_ACTION_LIVE=1` set in each
+  VM's `env.sh`; fleet synced + restarted. The actions queue (`ATD_ACTION_REQUEST`) is SEPARATE
+  from the extract queue (`ATD_OTBI_JOBS`) — same fleet + SSO session, different tables/claim pkgs.

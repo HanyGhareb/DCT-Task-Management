@@ -500,6 +500,24 @@ def _run_worker(conn, load, forever):
     reaped = conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
     print(f"[worker {host}] starting (lease={lease}m, forever={forever}"
           + (f", reaped {reaped} stale" if reaped else "") + ")")
+
+    def _action_env_ctx(en, action):
+        """(env, ctx) for an idle-path Fusion action — reuses the worker's warm
+        session for that env (or logs in once), and overlays fusion_apps_url
+        (the extract env dicts don't carry it)."""
+        if en not in ctx_by_env:
+            envd = {"env_name": en,
+                    "analytics_base_url": action["analytics_base_url"],
+                    "credential_ref": action.get("credential_ref") or en}
+            browser, c = auth.authenticate(p, envd)
+            browsers.append(browser)
+            browser_by_env[en] = browser
+            ctx_by_env[en] = (envd, c)
+        envd, c = ctx_by_env[en]
+        env = dict(envd)
+        env["fusion_apps_url"] = action.get("fusion_apps_url") or env.get("fusion_apps_url")
+        return env, c
+
     with sync_playwright() as p:
         try:
             while True:
@@ -575,8 +593,12 @@ def _run_worker(conn, load, forever):
                                 # the asyncio loop".
                                 _discover_requests(conn, pw=p)
                                 _build_requests(conn, load, pw=p)
+                                # Fusion write-back actions (PPM org ref, AP invoice…):
+                                # nothing else on the fleet runs --actions, so drain
+                                # the action queue here too (2026-07-13)
+                                _drain_actions_idle(conn, host, ctx_by_env, _action_env_ctx)
                             except Exception as e:  # noqa: BLE001
-                                print(f"[worker {host}] idle discover/build error: {e}")
+                                print(f"[worker {host}] idle discover/build/actions error: {e}")
                         time.sleep(idle)
                         continue
                     break
@@ -688,6 +710,68 @@ def _action_result_callback(conn, action, fusion_id, ref):
     if mod == "PC":
         conn.cursor().callproc("prod.dct_pc_fusion_pkg.receive_fusion_result",
                                [action.get("source_type"), int(sid), fusion_id, ref])
+
+
+def _drain_actions_idle(conn, host, ctx_by_env, get_env_ctx):
+    """Idle-path drain of ATD_ACTION_REQUEST reusing the LOAD worker's warm
+    session (2026-07-13: the fleet's atd-worker runs --worker --forever, and
+    nothing ran --actions — enqueued UI actions sat READY forever). Mirrors
+    _run_action_worker's claim loop for one pass until the queue is empty.
+    get_env_ctx(env_name, action) must return (env_dict, browser_ctx) with
+    fusion_apps_url populated (the extract env dicts lack it)."""
+    import actions
+    live = os.environ.get("ATD_ACTION_LIVE", "0") == "1"
+    lease = int(os.environ.get("ATD_ACTION_LEASE_MINUTES",
+                               os.environ.get("ATD_LEASE_MINUTES", "30")))
+    conn.cursor().callfunc("prod.atd_action_pkg.reap_stale_actions", int, [lease])
+    while True:
+        aid = conn.cursor().callfunc("prod.atd_action_pkg.claim_next_action", int, [host])
+        if not aid:
+            return
+        action = config.get_action(conn, aid)
+        if not action:
+            conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                   [aid, "no action row after claim"])
+            continue
+        env_name = action.get("env_name")
+        if not env_name or not action.get("analytics_base_url"):
+            dflt = config.get_default_browser_env(conn)
+            if not dflt:
+                conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                       [aid, "no enabled BROWSER env configured"])
+                continue
+            env_name = dflt["env_name"]
+            action["analytics_base_url"] = dflt["analytics_base_url"]
+            action["fusion_apps_url"] = dflt.get("fusion_apps_url")
+            action["credential_ref"] = dflt.get("credential_ref")
+        try:
+            env, ctx = get_env_ctx(env_name, action)
+        except Exception as e:  # noqa: BLE001
+            conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                   [aid, f"env/session unavailable: {e}"[:3900]])
+            continue
+        if not live:
+            print(f"[action {aid}] ATD_ACTION_LIVE != 1 — dry run only", flush=True)
+        try:
+            fusion_id, ref = actions.dispatch(ctx, env, action)
+            conn.cursor().callproc("prod.atd_action_pkg.mark_action_done",
+                                   [aid, fusion_id, ref])
+            _action_result_callback(conn, action, fusion_id, ref)
+            conn.commit()
+            print(f"[action {aid}] DONE {action['action_type']} "
+                  f"{action.get('source_ref') or ''} -> {fusion_id} ({ref})", flush=True)
+        except actions.DryRun as d:
+            conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                   [aid, str(d)[:3900]])
+            print(f"[action {aid}] DRY-RUN: {d}", flush=True)
+        except Exception as e:  # noqa: BLE001
+            try:
+                conn.rollback()
+            except Exception:  # noqa: BLE001
+                pass
+            conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                   [aid, str(e)[:3900]])
+            print(f"[action {aid}] FAILED: {e}", flush=True)
 
 
 def _run_action_worker(conn, forever):
