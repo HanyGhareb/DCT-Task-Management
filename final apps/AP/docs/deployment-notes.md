@@ -84,8 +84,9 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   keeps the RAW supplier + beneficiary + flag (detail view). Deploy order was 05 → 02 →
   03 → 04. The supplier FACET still lists the generic `BENEFICIARY` value (filtering is
   by real supplier record); find a payee via free-text search.
-- **2026-07-13 (canonical GL combination)** — platform rule: every combination string uses
-  the canonical order `entity.cc.account.appr.bg.es.f1.f2.ic.program`. AP was already
+- **2026-07-13 (canonical GL combination)** — platform rule (user-confirmed same day):
+  every combination string uses the canonical **Fusion** order
+  `entity.program.cc.bg.account.es.appr.ic.f1.f2`. AP was already
   canonical (`glCombination`/`chargeAccount` via `dct_cc_canon`/COA snap); the raw
   `poChargeAccount` (register + CSV) is now wrapped in `dct_cc_canon` too (db/04).
   NOTE: `db/v2/43` (old AP view DDL) RETIRED — `AP/db/05_ap_views.sql` is the only source.

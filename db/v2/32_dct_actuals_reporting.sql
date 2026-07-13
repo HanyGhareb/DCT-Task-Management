@@ -72,17 +72,17 @@ PROMPT Base pass-through views created (AP_*/PO_*/GRN_ALL_V2/GL_BALANCES/PROJECT
 
 -- ---------------------------------------------------------------------------
 -- 1b. GL_BALANCES_CC - balances + CANONICAL combination string (cc_string).
---     The 2026-07-02 reload changed CONCATENATED_SEGMENTS: dot-separated and
---     in a DIFFERENT segment order than the COA canonical string --
---       balances : entity.program.cost_center.budget_group.account.
---                  entity_specific.appropriation.intercompany.future1.future2
---       canonical: entity.cost_center.account.appropriation.budget_group.
---                  entity_specific.future1.future2.intercompany.program
---     This view is the ONE place that re-orders it (verified 9,508/10,351
---     matched vs COA). A dash-separated value is treated as the legacy
---     canonical format. ALL gl_balances<->COA joins go through this view
---     (dct_actual_v / dct_budget_actual_v here, db/v2/34; 04_gl_views.sql
---     inlines the same expression - keep in sync).
+--     Since 2026-07-13 the platform canonical IS the Fusion segment sequence
+--       entity.program.cost_center.budget_group.account.entity_specific.
+--       appropriation.intercompany.future1.future2
+--     which is exactly how the balances feed delivers CONCATENATED_SEGMENTS -
+--     so the current feed passes through unchanged. The CASE still self-heals
+--     the two legacy formats: a dash-separated value and a dot value with a
+--     7-digit token#2 are the OLD canonical order (entity.cc.account.appr.bg.
+--     es.f1.f2.ic.program) and get re-ordered to Fusion. ALL gl_balances<->COA
+--     joins go through this view (dct_actual_v / dct_budget_actual_v here,
+--     db/v2/34); keep in lock-step with prod.dct_cc_canon (db/v2/40) and
+--     DCT_GL_COA_V.cc_string (GL/db/04).
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE VIEW prod.gl_balances_cc AS
 SELECT
@@ -94,23 +94,23 @@ SELECT
   b.miscellaneous_expenditures, b.load_ts, b.period_name,
   CASE
     WHEN b.concatenated_segments IS NULL THEN NULL
-    WHEN INSTR(b.concatenated_segments,'-') > 0
-      THEN REPLACE(b.concatenated_segments,'-','.')
-    ELSE b.s1||'.'||b.s3||'.'||b.s5||'.'||b.s7||'.'||b.s4||'.'||b.s6||'.'
-       ||b.s9||'.'||b.s10||'.'||b.s8||'.'||b.s2
+    WHEN INSTR(b.concatenated_segments,'-') > 0 OR LENGTH(b.s2) = 7
+      THEN b.s1||'.'||b.s10||'.'||b.s2||'.'||b.s5||'.'||b.s3||'.'||b.s6||'.'
+         ||b.s4||'.'||b.s9||'.'||b.s7||'.'||b.s8
+    ELSE b.concatenated_segments
   END AS cc_string
 FROM (
   SELECT g.*,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,1)  AS s1,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,2)  AS s2,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,3)  AS s3,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,4)  AS s4,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,5)  AS s5,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,6)  AS s6,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,7)  AS s7,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,8)  AS s8,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,9)  AS s9,
-         REGEXP_SUBSTR(g.concatenated_segments,'[^.]+',1,10) AS s10
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,1)  AS s1,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,2)  AS s2,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,3)  AS s3,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,4)  AS s4,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,5)  AS s5,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,6)  AS s6,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,7)  AS s7,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,8)  AS s8,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,9)  AS s9,
+         REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,10) AS s10
   FROM prod.gl_balances g
 ) b;
 

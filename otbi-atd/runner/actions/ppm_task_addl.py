@@ -86,16 +86,30 @@ def validate_payload(data):
 
 
 def _jsclick(scope, selectors, label, required=True):
-    """Fire el.click() in-DOM on the first present selector (ADF intercepts
-    normal Playwright clicks — proven in the fusion-actions read PoC)."""
+    """Fire el.click() in-DOM on the first VISIBLE match of the first matching
+    selector (ADF intercepts normal Playwright clicks — proven in the
+    fusion-actions read PoC). Visible-first matters: ADF keeps hidden
+    duplicates in the DOM (topbar Personalize spans, pre-rendered dialog
+    buttons) that match text selectors earlier in document order. Falls back
+    to the first match when no match reports visible."""
     if isinstance(selectors, str):
         selectors = [selectors]
     for s in selectors:
         try:
             loc = scope.locator(s)
-            if loc.count() > 0:
-                loc.first.evaluate("el => el.click()")
-                return True
+            n = loc.count()
+            if n == 0:
+                continue
+            target = loc.first
+            for i in range(min(n, 12)):
+                try:
+                    if loc.nth(i).is_visible():
+                        target = loc.nth(i)
+                        break
+                except Exception:  # noqa: BLE001
+                    pass
+            target.evaluate("el => el.click()")
+            return True
         except Exception:  # noqa: BLE001
             pass
     if required:
@@ -116,6 +130,66 @@ def _fill_label(page, label_text, value):
             p=p.parentElement;d++;}}}return false;}"""
     try:
         return bool(page.evaluate(js, [label_text, value]))
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _label_input_id(page, label_text):
+    """The DOM id of the visible input adjacent to a visible label, or None."""
+    js = """(label)=>{const norm=s=>(s||'').replace(/\\s+/g,' ').replace(/^\\*+\\s*/,'').trim();
+      const vis=e=>e.offsetParent!==null&&e.getBoundingClientRect().width>0;
+      for(const l of document.querySelectorAll('label,span,div')){
+        if(norm(l.innerText)===label && vis(l)){let p=l.closest('tr,div');let d=0;
+          while(p&&d<5){const inp=p.querySelector('input:not([type=hidden]),textarea');
+            if(inp && vis(inp)) return inp.id||null;
+            p=p.parentElement;d++;}}}return null;}"""
+    try:
+        return page.evaluate(js, label_text)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _fill_label_real(page, label_text, value):
+    """Fill the input adjacent to a visible label with REAL keyboard input +
+    Tab blur. Round-10 proved the JS value-set (_fill_label) does NOT register
+    in ADF's client component state on af:query fields — the search ran with
+    an empty Project Number. ADF syncs the component on real typing/blur."""
+    iid = _label_input_id(page, label_text)
+    if not iid:
+        return False
+    # ADF ids contain ':' — attribute selector avoids CSS escaping issues
+    loc = page.locator(f'[id="{iid}"]')
+    try:
+        loc.click(timeout=5000)
+        loc.fill("")
+        try:
+            loc.press_sequentially(value, delay=30)
+        except AttributeError:  # older Playwright
+            loc.type(value, delay=30)
+        page.keyboard.press("Tab")
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _clear_label_field(page, label_text):
+    """Clear a pre-filled query field (LOV combobox) with real keystrokes.
+    The 'My Active Projects' saved search pre-fills Team Member + Project
+    Status, which over-constrain the Project Number query (round-11: the
+    number was typed correctly but the combined criteria returned 0 rows)."""
+    iid = _label_input_id(page, label_text)
+    if not iid:
+        return False
+    loc = page.locator(f'[id="{iid}"]')
+    try:
+        if not (loc.input_value() or "").strip():
+            return True
+        loc.click(timeout=5000)
+        page.keyboard.press("Control+a")
+        page.keyboard.press("Delete")
+        page.keyboard.press("Tab")
+        time.sleep(1)
+        return True
     except Exception:  # noqa: BLE001
         return False
 
@@ -194,61 +268,63 @@ def _search_input_ready(page):
 
 def _expand_search_panel(page):
     """My Projects lands with the '▶ Search' region COLLAPSED and its form
-    fields NOT in the DOM (lazy panel). The disclosure needs a REAL pointer
-    click (round-5 shot: JS el.click() on the header text toggled the
-    Basic/Advanced MODE but never expanded the panel) — so: real Playwright
-    click on the exact header text first, then a JS click on the textless
-    twisty icon beside it as fallback. Header says 'Search' in Basic mode and
-    'Advanced Search' after the Advanced toggle."""
-    # CRITICAL (round-6 diag): the topbar holds a HIDDEN 'Search' span
-    # (Personalize Global Search, display:none) that matches exact-text FIRST
-    # in document order — every click must be restricted to VISIBLE elements.
+    fields NOT in the DOM (lazy panel). The af:query disclosure is an anchor
+    with title="Expand Search" and id ending '::_afrDscl' (round-9 diag HTML
+    dump) — a REAL Playwright pointer click on that VISIBLE anchor expands the
+    panel (verified: visible inputs 1 -> 12). Text-based clicks NEVER work: the
+    header <h1>Search</h1> ignores clicks, and the topbar holds a HIDDEN
+    'Search' span (Personalize Global Search, display:none) that matches
+    exact-text first in document order."""
     for _ in range(3):
         if _search_input_ready(page):
             return
-        # 1) real pointer click on the VISIBLE disclosure header text
-        for txt in ("Search", "Advanced Search"):
-            loc = page.get_by_text(txt, exact=True)
+        for sel in ('a[title="Expand Search"]',
+                    'a[id$="_afrDscl"][title*="Expand" i]',
+                    '[title*="Expand Search" i]',
+                    '[title*="Expand" i]'):
+            loc = page.locator(sel)
+            clicked = False
             for i in range(min(loc.count(), 10)):
                 el = loc.nth(i)
                 try:
                     if el.is_visible():
                         el.click(timeout=3000)
+                        clicked = True
                         break
                 except Exception:  # noqa: BLE001
                     pass
-            time.sleep(3)
-            if _search_input_ready(page):
-                return
-        # 2) JS click the textless twisty (a/img) beside the VISIBLE header
-        js = """()=>{const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
-          const vis=e=>e.offsetParent!==null&&e.getBoundingClientRect().width>0;
-          for(const s of document.querySelectorAll('span,div,a,h2')){
-            const t=norm(s.innerText);
-            if((t==='Search'||t==='Advanced Search') && s.children.length===0 && vis(s)){
-              let p=s.parentElement,d=0;
-              while(p&&d<3){
-                for(const tw of p.querySelectorAll('a,img')){
-                  if(norm(tw.innerText)==='' && vis(tw)){tw.click();return true;}}
-                p=p.parentElement;d++;}}}
-          return false;}"""
-        try:
-            page.evaluate(js)
-        except Exception:  # noqa: BLE001
-            pass
+            if clicked:
+                time.sleep(4)
+                if _search_input_ready(page):
+                    return
         time.sleep(3)
 
 
 def _open_project(page, project_number):
     """Search My Projects by project number and open the project overview."""
     _expand_search_panel(page)
-    if not _fill_label(page, "Project Number", project_number):
+    # widen the query: the saved search pre-fills these two (see helper doc)
+    _clear_label_field(page, "Team Member")
+    _clear_label_field(page, "Project Status")
+    if not _fill_label_real(page, "Project Number", project_number):
         loc = page.locator('input[aria-label*="Project Number"], input[id*="ProjectNumber"]')
         if loc.count() == 0:
             raise RuntimeError("Project Number search field not found on My Projects")
+        loc.first.click()
         loc.first.fill(project_number)
-    _jsclick(page, ['//button[normalize-space(.)="Search"]', 'button[id$="search"]'],
-             "Search")
+        page.keyboard.press("Tab")
+    _shot(page, "ppm_01b_search_filled.png")
+    # real pointer click on the visible Search button (query submit)
+    btn = page.locator('button:has-text("Search")')
+    clicked = False
+    for i in range(min(btn.count(), 10)):
+        if btn.nth(i).is_visible() and btn.nth(i).inner_text().strip() == "Search":
+            btn.nth(i).click(timeout=5000)
+            clicked = True
+            break
+    if not clicked:
+        _jsclick(page, ['//button[normalize-space(.)="Search"]', 'button[id$="search"]'],
+                 "Search")
     time.sleep(8)
     if not _jsclick(page, f'a:has-text("{project_number}")',
                     "open project", required=False):
@@ -278,40 +354,53 @@ def _open_financial_plan(page):
     time.sleep(5)
 
 
-def _find_task_row(page, task_number):
-    """QBE-filter the tasks table by Task Number and return the matching row.
-    Plan tables are editable, so the Task Number cell is an <input>."""
-    row = page.locator(f'tr:has(input[value="{task_number}"])')
-    if row.count() == 0:
-        # filter: the QBE input above the Task Number column (first filter cell)
-        flt = page.locator('input[id*="afrFltr" i], input[id*=":filter" i]')
-        if flt.count() > 0:
-            flt.first.fill(task_number)
-            flt.first.press("Enter")
-            time.sleep(5)
-            row = page.locator(f'tr:has(input[value="{task_number}"])')
-    if row.count() == 0:
-        row = page.locator(f'tr:has-text("{task_number}")')
-    if row.count() == 0:
+def _addl_icon_id(page, task_number):
+    """The DOM id of the task row's Additional Information icon anchor.
+    Ground truth (diag3 on the live plan): the Task Number cell renders as
+    span id '…:tt1:<row>:tNum::content' and the SAME row's icon anchor is
+    '…:tt1:<row>:dffIL1' — identical prefix, so locate the span by exact text
+    and swap the suffix. No tr/row heuristics (the ADF page is nested tables
+    and rows split across frozen/scrollable grids — every row-walk guess
+    failed rounds 12-13)."""
+    js = """(task)=>{const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
+      const vis=e=>e.offsetParent!==null&&e.getBoundingClientRect().width>0;
+      for(const s of document.querySelectorAll('span[id$=":tNum::content"]')){
+        if(norm(s.innerText)===task && vis(s))
+          return s.id.slice(0,-'tNum::content'.length)+'dffIL1';}
+      return null;}"""
+    try:
+        return page.evaluate(js, task_number)
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _open_addl_popup(page, task_number):
+    """Open the task row's Additional Information popup via a REAL pointer
+    click on the icon anchor located BY ID (see _addl_icon_id). The popup only
+    counts as open when a VISIBLE dialog with actual inputs is present."""
+    icon_id = _addl_icon_id(page, task_number)
+    if not icon_id:
         raise RuntimeError(f"task {task_number!r} not found on the financial plan "
                            "(check the Task Number and that Display=List)")
-    return row.first
-
-
-def _open_addl_popup(page, row):
-    """Click the row's Additional Information icon; return the popup locator."""
-    if not _jsclick(row, ['a[title*="Additional Information"]',
-                          'img[title*="Additional Information"]',
-                          '[title*="Additional"]'],
-                    "Additional Information icon", required=False):
-        raise RuntimeError("Additional Information icon not found on the task row "
+    icon = page.locator(f'[id="{icon_id}"]')
+    if icon.count() == 0:
+        raise RuntimeError(f"Additional Information icon {icon_id!r} not in DOM "
                            "(column may be hidden — check View > Columns)")
-    time.sleep(4)
-    for s in (f'div[role="dialog"]:has-text("{POPUP_TITLE}")',
-              f'div[id$="::content"]:has-text("{POPUP_TITLE}")'):
-        dlg = page.locator(s)
-        if dlg.count() > 0:
-            return dlg.last
+    for _ in range(3):
+        try:
+            icon.first.click(timeout=5000)
+        except Exception:  # noqa: BLE001
+            _jsclick(page, f'[id="{icon_id}"]', "Additional Information icon",
+                     required=False)
+        time.sleep(5)
+        dlg = page.locator(f'div[role="dialog"]:has-text("{POPUP_TITLE}")')
+        for i in range(dlg.count() - 1, -1, -1):  # dialogs render last in DOM
+            d = dlg.nth(i)
+            try:
+                if d.is_visible() and d.locator('input:not([type=hidden])').count() > 0:
+                    return d
+            except Exception:  # noqa: BLE001
+                pass
     raise RuntimeError("Additional Information popup did not open")
 
 
@@ -333,9 +422,15 @@ def _popup_field(dlg, label):
 
 
 def _fill_lov(page, field, value):
-    """Fill an LOV-backed segment and pick the autosuggest entry carrying value."""
+    """Fill an LOV-backed segment and pick the autosuggest entry carrying value.
+    Must TYPE for real: fill() sets the value without keystrokes, so the ADF
+    autosuggest never fires and the component state stays empty (round-10)."""
+    field.click()
     field.fill("")
-    field.fill(str(value))
+    try:
+        field.press_sequentially(str(value), delay=40)
+    except AttributeError:  # older Playwright
+        field.type(str(value), delay=40)
     time.sleep(3)
     # the suggest list renders in a floating popup (e.g. "DCT Finance | 4510195")
     if not _jsclick(page, [f'li:has-text("{value}")', f'td:has-text("{value}")',
@@ -399,8 +494,7 @@ def update(ctx, env, data, action):
         _shot(page, "ppm_02_project_overview.png")
         _open_financial_plan(page)
         _shot(page, "ppm_03_plan_list.png")
-        row = _find_task_row(page, task)
-        dlg = _open_addl_popup(page, row)
+        dlg = _open_addl_popup(page, task)
 
         current = _fill_popup(page, dlg, data, org_ref)
         _shot(page, "ppm_04_popup_filled.png")
@@ -424,7 +518,7 @@ def update(ctx, env, data, action):
         _raise_on_adf_error(page)
 
         # read-back: re-open the popup on the same row and confirm the value stuck
-        dlg = _open_addl_popup(page, _find_task_row(page, task))
+        dlg = _open_addl_popup(page, task)
         fld = _popup_field(dlg, ADDL_FIELDS["orgReference"])
         saved = (fld.input_value() or "").strip() if fld is not None else ""
         if org_ref not in saved:

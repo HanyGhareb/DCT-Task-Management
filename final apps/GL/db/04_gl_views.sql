@@ -37,17 +37,21 @@ SELECT
   f2.future_2_description     AS future2_desc,
   ic.intercompany_description AS intercompany_desc,
   pr.program_description      AS program_desc,
-  -- full dotted combination string
+  -- full dotted combination string - the platform CANONICAL order, which since
+  -- 2026-07-13 is the FUSION segment sequence (entity.program.cost_center.
+  -- budget_group.account.entity_specific.appropriation.intercompany.f1.f2).
+  -- MUST stay in lock-step with prod.dct_cc_canon (db/v2/40) and
+  -- GL_BALANCES_CC (db/v2/32) - every combination join compares these strings.
   prod.dct_gl_class_pkg.norm(c.entity_code,3)     || '.' ||
+  prod.dct_gl_class_pkg.norm(c.program_code,6)    || '.' ||
   prod.dct_gl_class_pkg.norm(c.cost_center,7)     || '.' ||
-  prod.dct_gl_class_pkg.norm(c.gl_account,6)      || '.' ||
-  prod.dct_gl_class_pkg.norm(c.appropriation,6)   || '.' ||
   prod.dct_gl_class_pkg.norm(c.budget_group,1)    || '.' ||
+  prod.dct_gl_class_pkg.norm(c.gl_account,6)      || '.' ||
   prod.dct_gl_class_pkg.norm(c.entity_specific,7) || '.' ||
-  prod.dct_gl_class_pkg.norm(c.future_1,6)        || '.' ||
-  prod.dct_gl_class_pkg.norm(c.future_2,6)        || '.' ||
+  prod.dct_gl_class_pkg.norm(c.appropriation,6)   || '.' ||
   prod.dct_gl_class_pkg.norm(c.intercompany,3)    || '.' ||
-  prod.dct_gl_class_pkg.norm(c.program_code,6)    AS cc_string,
+  prod.dct_gl_class_pkg.norm(c.future_1,6)        || '.' ||
+  prod.dct_gl_class_pkg.norm(c.future_2,6)        AS cc_string,
   -- date-tracked classifications (effective on the as-of date)
   sv.value_code AS sector_code,   sv.name_en AS sector_name,
   hv.value_code AS chapter_code,  hv.name_en AS chapter_name,

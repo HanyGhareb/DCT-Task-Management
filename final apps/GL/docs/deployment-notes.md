@@ -539,3 +539,18 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   updated for fresh installs; TRG_DCT_GL_UPD recompiled). Verified: zero non-canonical
   strings in PO_DISTRIBUTIONS_V / COA snap / AP outputs; 0 INVALID. RULE for new work:
   any exposed charge_account/combination column goes through `prod.dct_cc_canon`.
+- **2026-07-13 (same day, order FLIPPED after user confirmation)** — the canonical
+  combination order is the **FUSION sequence**: `entity(3).program(6).cost_center(7).
+  budget_group(1).account(6).entity_specific(7).appropriation(6).intercompany(3).
+  future1(6).future2(6)` — exactly as the Fusion UI shows a distribution combination
+  (the earlier entry's old COA order is obsolete). The WHOLE derivation chain flipped
+  together so every join stays consistent: `prod.dct_cc_canon` (db/v2/40 — now returns
+  the feed as-is when token#2 is 6-wide and re-orders OLD-canonical/dash strings),
+  `DCT_GL_COA_V.cc_string` (GL/db/04), `GL_BALANCES_CC` (db/v2/32 — feed passes through,
+  legacy forms re-ordered), `DCT_GL_COA_SNAP` (refreshed), `DCT_GL_CODE_COMBINATIONS.
+  cc_code` (db/v2/48 re-run; guard is order-aware — NOTE `all_tab_columns.data_default`
+  is LONG: fetch it plain into a PL/SQL VARCHAR2, SQL SUBSTR on it = ORA-00932).
+  Verified: butil totals unchanged (budget 5.54B / AP 1.04B / GRN 1.06B), balances↔COA
+  match 10,102/10,961 (~92%, same as pre-flip), AP glCombination matches the Fusion UI
+  string byte-for-byte, 0 INVALID. RULE: keep the three cc_string producers in lock-step;
+  new views wrap feed charge_accounts with `prod.dct_cc_canon`.

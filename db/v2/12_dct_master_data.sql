@@ -84,9 +84,10 @@ CREATE INDEX ix_dct_grade_active ON dct_employee_grades(is_active);
 -- 2. DCT_GL_CODE_COMBINATIONS
 --    10-segment chart-of-accounts coding table.
 --    cc_code is a VIRTUAL column in the platform CANONICAL segment order
---    (2026-07-13 rule - same order everywhere a combination string appears):
---      entity(3).cost_center(7).account(6).appropriation(6).budget_group(1).
---      entity_specific(7).future1(6).future2(6).intercompany(3).program(6)
+--    (2026-07-13 rule - same order everywhere a combination string appears),
+--    which is the FUSION sequence:
+--      entity(3).program(6).cost_center(7).budget_group(1).account(6).
+--      entity_specific(7).appropriation(6).intercompany(3).future1(6).future2(6)
 --    All budget-coding modules (DT, PC, FL, CC) FK to cc_id here.
 --    (Deployed installs were migrated by db/v2/48_gl_cc_code_canonical.sql.)
 -- =============================================================================
@@ -133,18 +134,18 @@ CREATE TABLE dct_gl_code_combinations (
     intercompany_code      VARCHAR2(3)     DEFAULT '000' NOT NULL,
     intercompany_desc      VARCHAR2(255),
 
-    -- Full combination code — derived virtual column, CANONICAL order
+    -- Full combination code — derived virtual column, CANONICAL (Fusion) order
     cc_code                VARCHAR2(200)   GENERATED ALWAYS AS (
                                entity_code           || '.' ||
+                               program_code          || '.' ||
                                cost_center_code      || '.' ||
-                               account_code          || '.' ||
-                               appropriation_code    || '.' ||
                                budget_group_code     || '.' ||
+                               account_code          || '.' ||
                                entity_specific_code  || '.' ||
-                               future1_code          || '.' ||
-                               future2_code          || '.' ||
+                               appropriation_code    || '.' ||
                                intercompany_code     || '.' ||
-                               program_code
+                               future1_code          || '.' ||
+                               future2_code
                            ) VIRTUAL,
 
     -- Optional summary description for the full combination
