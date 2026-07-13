@@ -3,8 +3,8 @@
   <!-- ── Header: title + level selector + actions (top-right) ─────────── -->
   <div class="page-header-row">
     <div class="page-header">
-      <div class="page-title" data-bind="text: $root.t('dash.title')"></div>
-      <div class="page-subtitle" data-bind="text: $root.t('dash.subtitle')"></div>
+      <div class="page-title" data-bind="text: $vm.t('dash.title')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('dash.subtitle')"></div>
     </div>
     <div class="page-actions">
       <button class="btn btn-secondary" data-bind="click: resetFilters, text: $root.t('dash.reset')"></button>
@@ -147,7 +147,7 @@
           <div class="kpi"><div class="kpi-n" data-bind="text: fmtInt(kpis().invoices)"></div>
             <div class="kpi-l" data-bind="text: $root.t('kpi.invoices')"></div></div>
           <div class="kpi"><div class="kpi-n" data-bind="text: fmtInt(kpis().suppliers)"></div>
-            <div class="kpi-l" data-bind="text: $root.t('kpi.suppliers')"></div></div>
+            <div class="kpi-l" data-bind="text: $vm.t('kpi.suppliers')"></div></div>
           <div class="kpi"><div class="kpi-n" data-bind="text: fmtCompact(kpis().totalAed), attr: { title: fmtAmt(kpis().totalAed) }"></div>
             <div class="kpi-l" data-bind="text: $root.t('kpi.totalAed')"></div></div>
           <div class="kpi"><div class="kpi-n kpi-ok" data-bind="text: fmtCompact(kpis().paidAed), attr: { title: fmtAmt(kpis().paidAed) }"></div>
@@ -175,7 +175,7 @@
             <div class="ap-chart-body"><canvas id="apChartTrend"></canvas></div>
           </div>
           <div class="ap-chart-card c-6">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.topSuppliers')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.topSuppliers.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $vm.t('ch.topSuppliers')"></span><i class="ap-hint" data-bind="attr: { title: $vm.t('ch.topSuppliers.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartSup"></canvas></div>
           </div>
           <div class="ap-chart-card c-6">
@@ -203,7 +203,7 @@
       <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() }">
         <div class="section-heading-row">
           <div class="section-heading">
-            <span data-bind="text: $root.t('rg.register')"></span>
+            <span data-bind="text: $vm.t('rg.register')"></span>
             <span style="font-weight:400;font-size:12px;color:var(--text-2)"
                   data-bind="text: ' · ' + fmtInt(total()) + ' ' + $root.t('tbl.rows')"></span>
           </div>
@@ -250,7 +250,7 @@
              calculated columns, aggregates, control breaks, highlights, layouts) -->
         <!-- ko if: viewMode() === 'ir' -->
         <!-- ko if: irData() -->
-        <interactive-report params="reportCode: 'AP_REGISTER', section: level,
+        <interactive-report params="reportCode: $vm.irCode, section: level,
                                     data: irData, isAdmin: false,
                                     layoutsApi: null"></interactive-report>
         <!-- /ko -->

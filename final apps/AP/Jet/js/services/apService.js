@@ -4,7 +4,9 @@
  *
  * Facet params object (all optional): datefrom, dateto, supplier, paid, val,
  * acc, inv, itype, curr, paygroup, paymethod, sector, dept, cc, project,
- * task, etype, account, approp, po, pr, req, search — multi-value facets are
+ * task, etype, account, approp, po, pr, req, search, esupplier, aging,
+ * suppnum (supplier number — the Beneficiaries dashboard locks it to 26553),
+ * glfrom/glto, rcvfrom/rcvto, inclcxl — multi-value facets are
  * pipe-delimited strings (a|b|c). Level = 'header' | 'line' | 'dist'.
  */
 define(['services/api', 'services/config'], function (api, config) {

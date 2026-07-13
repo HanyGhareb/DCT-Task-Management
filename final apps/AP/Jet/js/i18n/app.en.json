@@ -212,5 +212,15 @@
   "seg.future2": "Future 2",
   "dr.approval": "Approval",
   "f.appr": "Approval status",
-  "dr.fusionOpen": "Open in Oracle Fusion (new tab)"
+  "dr.fusionOpen": "Open in Oracle Fusion (new tab)",
+  "nav.beneficiaries": "Beneficiaries",
+  "ben.title": "Beneficiaries Dashboard",
+  "ben.subtitle": "Aging, register and spend status for beneficiary payments — scoped to the Beneficiary supplier (26553); the beneficiary name is the supplier and the site number is the beneficiary's supplier number",
+  "ben.kpiCount": "Beneficiaries",
+  "ben.chTop": "Top beneficiaries (AED)",
+  "ben.chTop.hint": "Top 10 beneficiaries by invoiced amount (AED). Click a bar to list that beneficiary's invoices.",
+  "ben.name": "Beneficiary",
+  "ben.suppNo": "Supplier No",
+  "ben.register": "Beneficiary Register",
+  "ben.prTitle": "AP Beneficiaries Dashboard Report"
 }

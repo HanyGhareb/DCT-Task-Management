@@ -235,3 +235,26 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   because the region binds `with: header`. `.inv-reflist` wraps multi-document
   lists. Deploy 03 → 04 (03 rebuilds ap.rest). APP_VERSION 1.7.1, release
   20260713230157.
+- **2026-07-13 (Beneficiaries dashboard, v1.8.0)** — NEW nav page `beneficiaries`:
+  the full AP dashboard locked to the generic BENEFICIARY supplier (supplier
+  number 26553), where the beneficiary name acts as the supplier name and the
+  supplier SITE number as the beneficiary's supplier number. DB: `db/02` adds
+  `p_suppnum` (multi, `supplier_number`) to `filtered_ids`; `db/03` threads
+  `suppnum=` through /filters (every LOV/count scoped; the suppliers LOV lists
+  EFFECTIVE supplier names under suppnum), /summary, /invoices (+`supplierSite`
+  in rows + `Site` CSV column); `db/04` same for lines/dists (+exports) with a
+  `supplierSite` header join. Frontend: `viewModels/beneficiaries.js` mounts the
+  SAME `dashboard.html` via a nested `module` binding with
+  `DashboardViewModel({benef:true, suppnum:'26553'})` — benef mode relabels
+  Supplier→Beneficiary (register/facet/KPI/top chart/print, `ben.*` i18n EN+AR),
+  swaps the Is-Beneficiary column for a visible Supplier No (site) column at all
+  3 levels + drill drawer, maps the supplier facet to `esupplier=`, keeps its
+  own column prefs (`ap.benef.cols`) and IR code (`AP_BENEF_REGISTER`), and
+  prefixes exports `ap-beneficiaries-*`. Standard dashboard also gained a
+  hidden-by-default *Supplier site* column. GOTCHA: `renderCharts` has a local
+  `var tr = d.trend` — a constructor-level helper named `tr` gets shadowed there
+  (was "tr is not a function"); the label-override helper is named `lt`.
+  Deploy 02 → 03 → 04 (fresh sessions). Tests: `tests/benef_api_smoke.py` 18/18,
+  `tests/api_smoke.py` regression 14/14, `tests/benef_browser_smoke.py` 24/24
+  (scoped KPIs 2,604 invoices / 1,064 beneficiaries vs 5,080 unscoped).
+  APP_VERSION 1.8.0. Web-tier deploy pending.

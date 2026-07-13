@@ -42,6 +42,15 @@ Blank by design — content will be designed later.
 - `printReport()` — pixel-formatted A4-landscape print window: title block, generated-by, the applied search criteria, KPIs, chart images, first 200 register rows at the current level.
 - `refresh()` — reload summary + rows.
 
+## Beneficiaries Dashboard (`views/beneficiaries.html` + `viewModels/beneficiaries.js`) — v1.8.0
+
+The full AP Dashboard locked to the generic **BENEFICIARY supplier (supplier number 26553)**. `beneficiaries.js` mounts the SAME `dashboard.html` view with `new DashboardViewModel({ benef: true, suppnum: '26553' })` via a nested `module` binding — zero duplicated markup, the two dashboards can never drift. Every feature above (levels, facets, charts + drill drawer, register, interactive view, column chooser, exports, print, invoice window) works identically inside the scope. Benef-mode differences (all inside `dashboard.js`):
+- `buildParams()` always sends `suppnum=26553` (never shown as a chip); `/filters` is called with it so every LOV + count is scoped.
+- **Beneficiary name = supplier name**: the register/drawer Supplier column is relabeled *Beneficiary*; the supplier facet group becomes *Beneficiary* and sends `esupplier=` (the scoped `/filters` suppliers LOV lists beneficiary names); the invoice window shows the beneficiary as the supplier headline; KPI label = *Beneficiaries*; chart = *Top beneficiaries (AED)*.
+- **Site number = the beneficiary's supplier number**: the `Is Beneficiary` column is replaced by a visible **Supplier No** column bound to `supplierSite` (all 3 levels + drill drawer); the standard AP dashboard gains the same field as a hidden-by-default *Supplier site* column.
+- Own column-chooser persistence (`ap.benef.cols` server pref + `ifinance.ap.benef.cols` localStorage) and own interactive-report code `AP_BENEF_REGISTER`, so layouts never clash with the AP Dashboard.
+- Exports/print are prefixed `ap-beneficiaries-*` and the print title is the Beneficiaries report title (EN/AR `ben.*` i18n keys).
+
 ## API Endpoints (ORDS — `ap.rest`, base `/ords/admin/ap/`)
 
 | Method | Path | Purpose |
@@ -56,7 +65,7 @@ Blank by design — content will be designed later.
 | GET | `/ap/dists` | Paged distribution-level register (own-grain facets re-applied) |
 | GET | `/ap/dists/export` | CSV (25k cap) |
 
-All protected by `dct_rest.validate_session`; facet params: `datefrom dateto supplier paid val acc inv itype curr paygroup paymethod sector dept cc project task etype account approp po pr req search glfrom glto rcvfrom rcvto esupplier aging inclcxl` (+ `limit offset sort`), multi-values pipe-delimited. `aging` = one bucket code (`CURRENT|D1_30|D31_60|D61_90|D91_180|D180P`); `esupplier` matches the beneficiary-aware effective supplier; `inclcxl=N` excludes cancelled invoices (frontend DEFAULT since v1.5.0; `/filters` also honours it for counts + LOVs). `appr=` filters by approval status (multi, display labels; v1.6.4). Received-date facets/trend use `COALESCE(invoice_received_date, created_date, invoice_date)`. **Item-only rule (2026-07-13):** all distribution-grain facets, dist-based LOVs and the bySector dataset consider `distribution_type='Item'` rows only, so facet counts reconcile with the KPIs/charts.
+All protected by `dct_rest.validate_session`; facet params: `datefrom dateto supplier paid val acc inv itype curr paygroup paymethod sector dept cc project task etype account approp po pr req search glfrom glto rcvfrom rcvto esupplier aging suppnum inclcxl` (+ `limit offset sort`), multi-values pipe-delimited. `suppnum=` (multi, `supplier_number`; 2026-07-13 Beneficiaries round) scopes `filtered_ids` AND the `/filters` LOVs/counts — with it, the `suppliers` LOV lists the beneficiary-aware **effective** supplier names; register/drill rows at every level carry `supplierSite` (lines/dists via a header join) and the header CSV exports gained a `Site` column. `aging` = one bucket code (`CURRENT|D1_30|D31_60|D61_90|D91_180|D180P`); `esupplier` matches the beneficiary-aware effective supplier; `inclcxl=N` excludes cancelled invoices (frontend DEFAULT since v1.5.0; `/filters` also honours it for counts + LOVs). `appr=` filters by approval status (multi, display labels; v1.6.4). Received-date facets/trend use `COALESCE(invoice_received_date, created_date, invoice_date)`. **Item-only rule (2026-07-13):** all distribution-grain facets, dist-based LOVs and the bySector dataset consider `distribution_type='Item'` rows only, so facet counts reconcile with the KPIs/charts.
 
 ## Services / Data layer
 

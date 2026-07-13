@@ -135,9 +135,49 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     { key: 'req',       labelKey: 'f.req',       src: 'requestors',       searchable: true },
   ];
 
-  function DashboardViewModel() {
+  // opts.benef: Beneficiaries-dashboard mode — the same dashboard locked to
+  // the generic BENEFICIARY supplier (opts.suppnum, default 26553). The
+  // beneficiary name acts as the supplier name (effective supplier) and the
+  // supplier SITE number as the beneficiary's supplier number.
+  function DashboardViewModel(opts) {
+    opts = opts || {};
     var self = this;
-    self.t = i18n.t;
+    var benef = !!opts.benef;
+    var SUPPNUM = opts.suppnum || '26553';
+    var FP = benef ? 'ap-beneficiaries-' : 'ap-';          // export file prefix
+    var LBL = benef ? {
+      'dash.title': 'ben.title',        'dash.subtitle': 'ben.subtitle',
+      'kpi.suppliers': 'ben.kpiCount',  'ch.topSuppliers': 'ben.chTop',
+      'ch.topSuppliers.hint': 'ben.chTop.hint',
+      'tbl.supplier': 'ben.name',       'f.supplier': 'ben.name',
+      'rg.register': 'ben.register',    'pr.title': 'ben.prTitle'
+    } : {};
+    var _t = i18n.t;
+    function lt(key, args) { return _t(LBL[key] || key, args); }
+    self.t = lt;
+    self.irCode = benef ? 'AP_BENEF_REGISTER' : 'AP_REGISTER';
+
+    // per-instance column catalog: benef replaces the Is-Beneficiary column
+    // with the site number (= the beneficiary's supplier number); the standard
+    // dashboard gains the site as a hidden-by-default column
+    var cols = {};
+    ['header', 'line', 'dist'].forEach(function (lvl) {
+      var arr = COLS[lvl].map(function (c) { return Object.assign({}, c); });
+      var at = arr.map(function (c) { return c.key; }).indexOf('isBeneficiary');
+      if (benef) {
+        arr.splice(at, 1, { key: 'supplierSite', labelKey: 'ben.suppNo' });
+      } else {
+        arr.splice(at + 1, 0, { key: 'supplierSite', labelKey: 'dr.site', hide: true });
+      }
+      cols[lvl] = arr;
+    });
+
+    // facet groups: benef swaps the raw supplier-name facet for the effective
+    // supplier (the /filters suppliers LOV lists beneficiary names then)
+    var groupDefs = GROUP_DEFS.map(function (d) { return Object.assign({}, d); });
+    if (benef) {
+      groupDefs.filter(function (d) { return d.key === 'supplier'; })[0].key = 'esupplier';
+    }
 
     // ── state ───────────────────────────────────────────────────────────
     self.level   = ko.observable('header');            // header | line | dist
@@ -178,10 +218,10 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self._lastSummary = null;
 
     // ── register columns: show/hide per user (BI-viewer style) ──────────
-    var COLS_PREF = 'ap.dash.cols';                 // server pref (follows the user)
-    var COLS_LS   = 'ifinance.ap.cols';             // instant local autosave
+    var COLS_PREF = benef ? 'ap.benef.cols' : 'ap.dash.cols';       // server pref (follows the user)
+    var COLS_LS   = benef ? 'ifinance.ap.benef.cols' : 'ifinance.ap.cols';  // instant local autosave
     function hiddenDefaults(level) {
-      return COLS[level].filter(function (c) { return c.hide; }).map(function (c) { return c.key; });
+      return cols[level].filter(function (c) { return c.hide; }).map(function (c) { return c.key; });
     }
     self._hidden = {
       header: ko.observableArray(hiddenDefaults('header')),
@@ -190,10 +230,10 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     };
     self.colsOpen = ko.observable(false);
     self.toggleColsPanel = function () { self.colsOpen(!self.colsOpen()); };
-    self.levelCols   = ko.computed(function () { return COLS[self.level()]; });
+    self.levelCols   = ko.computed(function () { return cols[self.level()]; });
     self.visibleCols = ko.computed(function () {
       var hidden = self._hidden[self.level()]();
-      return COLS[self.level()].filter(function (c) { return hidden.indexOf(c.key) === -1; });
+      return cols[self.level()].filter(function (c) { return hidden.indexOf(c.key) === -1; });
     });
     self.isColOn = function (col) {
       return self._hidden[self.level()]().indexOf(col.key) === -1;
@@ -335,6 +375,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       if ((self.pr() || '').trim())     p.pr     = self.pr().trim();
       if ((self.task() || '').trim())   p.task   = self.task().trim();
       if ((self.search() || '').trim()) p.search = self.search().trim();
+      if (benef) p.suppnum = SUPPNUM;                // locked scope, never a chip
       return p;
     }
     self.buildParams = buildParams;
@@ -345,14 +386,14 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       self.groups().forEach(function (g) {
         g.items().forEach(function (i) {
           if (i.checked()) {
-            out.push({ label: i18n.t(g.labelKey), value: trunc(i.label, 34),
+            out.push({ label: lt(g.labelKey), value: trunc(i.label, 34),
                        clear: function () { i.checked(false); scheduleReload(); } });
           }
         });
       });
       function add(obs, key) {
         if ((obs() || '').trim && (obs() || '').trim() !== '' || (obs() && !obs().trim)) {
-          out.push({ label: i18n.t(key), value: obs(),
+          out.push({ label: lt(key), value: obs(),
                      clear: function () { obs(''); scheduleReload(); } });
         }
       }
@@ -360,7 +401,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       add(self.gldatefrom, 'f.glfrom'); add(self.gldateto, 'f.glto');
       // cancelled invoices are EXCLUDED by default — chip marks the deviation
       if (self.inclCancelled()) {
-        out.push({ label: i18n.t('f.inclCxl'), value: i18n.t('f.yes'),
+        out.push({ label: lt('f.inclCxl'), value: lt('f.yes'),
                    clear: function () { self.inclCancelled(false); } });
       }
       add(self.po, 'f.po'); add(self.pr, 'f.pr'); add(self.task, 'f.task');
@@ -396,7 +437,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         self.kpis(d.kpis || null);
         self.loadingSummary(false);
         setTimeout(function () { renderCharts(d); }, 0);
-      }).catch(function () { self.loadingSummary(false); toast.error(i18n.t('msg.error')); });
+      }).catch(function () { self.loadingSummary(false); toast.error(lt('msg.error')); });
     }
 
     function sortParam() { return self.sortKey() + '_' + self.sortDir(); }
@@ -421,8 +462,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     function irEnvelope(d) {
       var items = d.items || [];
       return {
-        columns: COLS[self.level()].map(function (c) {
-          return { key: c.key, label: i18n.t(c.labelKey), type: irType(c) };
+        columns: cols[self.level()].map(function (c) {
+          return { key: c.key, label: lt(c.labelKey), type: irType(c) };
         }),
         items: items,
         total: d.total || items.length,
@@ -446,7 +487,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
           self.rowTotals(d.totals || null);
           self.irData(irEnvelope(d));
           self.loadingRows(false);
-        }).catch(function () { self.loadingRows(false); toast.error(i18n.t('msg.error')); });
+        }).catch(function () { self.loadingRows(false); toast.error(lt('msg.error')); });
         return;
       }
       var p = Object.assign({}, buildParams(),
@@ -456,7 +497,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         self.total(d.total || 0);
         self.rowTotals(d.totals || null);
         self.loadingRows(false);
-      }).catch(function () { self.loadingRows(false); toast.error(i18n.t('msg.error')); });
+      }).catch(function () { self.loadingRows(false); toast.error(lt('msg.error')); });
     }
     self.reloadRows = loadRows;
 
@@ -529,7 +570,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
               title: function (items) { return (rows[items[0].dataIndex] || {}).name || ''; },
               label: function (ctx) {
                 var r = rows[ctx.dataIndex] || {};
-                return self.fmtAmt(r.amount) + ' AED · ' + self.fmtInt(r.count) + ' ' + i18n.t('tbl.rows');
+                return self.fmtAmt(r.amount) + ' AED · ' + self.fmtInt(r.count) + ' ' + lt('tbl.rows');
               } } }
           },
           scales: compactTicks('x')
@@ -546,19 +587,19 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       mk('apChartAging', {
         type: 'bar',
         data: {
-          labels: AG_KEYS.map(function (k) { return i18n.t(k); }),
+          labels: AG_KEYS.map(function (k) { return lt(k); }),
           datasets: [{ data: AG_ORDER.map(function (b) { return byB[b] ? byB[b].amount : 0; }),
                        backgroundColor: RAMP, borderRadius: 4, maxBarThickness: 48 }]
         },
         options: {
           onClick: pickIdx(AG_ORDER, function (bucket, i) {
-            openChartDrill('ch.aging', i18n.t(AG_KEYS[i]), { aging: bucket }, 'balance_desc');
+            openChartDrill('ch.aging', lt(AG_KEYS[i]), { aging: bucket }, 'balance_desc');
           }),
           plugins: {
             legend: { display: false },
             tooltip: { callbacks: { label: function (ctx) {
               var b = byB[AG_ORDER[ctx.dataIndex]] || { count: 0 };
-              return self.fmtAmt(ctx.parsed.y) + ' AED · ' + self.fmtInt(b.count) + ' ' + i18n.t('kpi.invoices');
+              return self.fmtAmt(ctx.parsed.y) + ' AED · ' + self.fmtInt(b.count) + ' ' + lt('kpi.invoices');
             } } }
           },
           scales: compactTicks('y')
@@ -613,7 +654,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
             legend: { display: false },
             tooltip: { callbacks: { label: function (ctx) {
               var r = tr[ctx.dataIndex] || {};
-              return self.fmtAmt(r.amount) + ' AED · ' + self.fmtInt(r.count) + ' ' + i18n.t('kpi.invoices');
+              return self.fmtAmt(r.amount) + ' AED · ' + self.fmtInt(r.count) + ' ' + lt('kpi.invoices');
             } } }
           },
           scales: compactTicks('y')
@@ -655,26 +696,26 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     }
 
     self.exportCsv = function () {
-      toast.info(i18n.t('msg.exportStarted'));
+      toast.info(lt('msg.exportStarted'));
       ap.getExportBlobUrl(self.level(), buildParams()).then(function (url) {
-        downloadBlobUrl(url, 'ap-' + self.level() + '-' + today() + '.csv');
-      }).catch(function () { toast.error(i18n.t('msg.error')); });
+        downloadBlobUrl(url, FP + self.level() + '-' + today() + '.csv');
+      }).catch(function () { toast.error(lt('msg.error')); });
     };
 
     self.exportXlsx = function () {
-      toast.info(i18n.t('msg.exportStarted'));
+      toast.info(lt('msg.exportStarted'));
       ap.getExportCsvText(self.level(), buildParams()).then(function (csv) {
         require(['xlsx'], function (X) {
           var wb = X.read(csv, { type: 'string' });
-          X.writeFile(wb, 'ap-' + self.level() + '-' + today() + '.xlsx');
+          X.writeFile(wb, FP + self.level() + '-' + today() + '.xlsx');
         });
-      }).catch(function () { toast.error(i18n.t('msg.error')); });
+      }).catch(function () { toast.error(lt('msg.error')); });
     };
 
     self.exportSummaryCsv = function () {
       var d = self._lastSummary;
       if (!d) return;
-      var L = ['﻿AP Analytics — ' + today()];
+      var L = ['﻿' + (benef ? 'AP Beneficiaries Analytics — ' : 'AP Analytics — ') + today()];
       var k = d.kpis || {};
       L.push('');
       L.push('KPI,Value');
@@ -697,7 +738,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       section('Sector', d.bySector);
       section('Pay group', d.byPayGroup);
       var blob = new Blob([L.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-      downloadBlobUrl(URL.createObjectURL(blob), 'ap-analytics-' + today() + '.csv');
+      downloadBlobUrl(URL.createObjectURL(blob), FP + 'analytics-' + today() + '.csv');
     };
 
     self.exportChartsPng = function () {
@@ -719,7 +760,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         y += p.h + pad;
       });
       cvs.toBlob(function (b) {
-        downloadBlobUrl(URL.createObjectURL(b), 'ap-charts-' + today() + '.png');
+        downloadBlobUrl(URL.createObjectURL(b), FP + 'charts-' + today() + '.png');
       });
     };
 
@@ -736,13 +777,17 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         if (d && d.header) {
           d.header.poRefs = d.poRefs || [];
           d.header.prRefs = d.prRefs || [];
+          // benef mode: the beneficiary name IS the supplier name
+          if (benef && d.header.isBeneficiary === 'Y' && d.header.beneficiary) {
+            d.header.supplier = d.header.beneficiary;
+          }
         }
         self.drill(d);
         self.drillTab('lines');            // header lives in the master region now
         self.invMax(false);
         self.invAuditOpen(false);
         self.showDrill(true);
-      }).catch(function () { toast.error(i18n.t('msg.error')); });
+      }).catch(function () { toast.error(lt('msg.error')); });
     };
 
     // ── GL-Actuals-style COA segment popover (Distributions tab hover) ──
@@ -770,7 +815,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self.ccHover = function (r, e) {
       if (!r || !r.chargeAccount) return true;
       self.tipRows(SEG_DEFS.map(function (s) {
-        return { label: i18n.t(s[0]), code: r[s[1]] || '', desc: r[s[2]] || '' };
+        return { label: lt(s[0]), code: r[s[1]] || '', desc: r[s[2]] || '' };
       }));
       placeTip(e); self.tipShow(true); return true;
     };
@@ -796,6 +841,10 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       { key: 'validationStatus', labelKey: 'tbl.validation', badge: 'val' },
       { key: 'daysPastDue',      labelKey: 'tbl.dpd' },
     ];
+    if (benef) {
+      DW_COLS = DW_COLS.slice();
+      DW_COLS.splice(3, 0, { key: 'supplierSite', labelKey: 'ben.suppNo' });
+    }
     self.dwCols    = DW_COLS;
     self.dwOpen    = ko.observable(false);
     self.dwMax     = ko.observable(false);
@@ -809,11 +858,11 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self.dwCapNote = ko.computed(function () {
       var t = self.dwTotal(), n = self.dwRows().length;
       return t > n
-        ? i18n.t('dw.showing').replace('{n}', self.fmtInt(n)).replace('{c}', self.fmtInt(t)) : '';
+        ? lt('dw.showing').replace('{n}', self.fmtInt(n)).replace('{c}', self.fmtInt(t)) : '';
     });
     function openChartDrill(chartKey, segment, extra, sort) {
       self.dwTitle(segment);
-      self.dwEyebrow(i18n.t(chartKey));
+      self.dwEyebrow(lt(chartKey));
       self.dwCtx(self.chips().map(function (c) { return c.label + ': ' + c.value; }).join('   ·   '));
       self.dwRows([]); self.dwTotal(0); self.dwAmount(0);
       self.dwOpen(true); self.dwLoading(true);
@@ -825,7 +874,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         self.dwAmount((d.totals || {}).amountAed || 0);
         self.dwLoading(false);
       }).catch(function () {
-        self.dwLoading(false); self.dwOpen(false); toast.error(i18n.t('msg.error'));
+        self.dwLoading(false); self.dwOpen(false); toast.error(lt('msg.error'));
       });
     }
     self.closeDw    = function () { self.dwOpen(false); self.dwMax(false); };
@@ -850,17 +899,17 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       var rows = self.dwRows();
       if (!rows.length) return;
       var esc2 = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
-      var L = [DW_COLS.map(function (c) { return esc2(i18n.t(c.labelKey)); }).join(',')];
+      var L = [DW_COLS.map(function (c) { return esc2(lt(c.labelKey)); }).join(',')];
       rows.forEach(function (r) {
         L.push(DW_COLS.map(function (c) { return esc2(r[c.key]); }).join(','));
       });
       L.push(DW_COLS.map(function (c, i) {
-        return esc2(i === 0 ? i18n.t('dw.total') : (c.key === 'amountAed' ? self.dwAmount() : ''));
+        return esc2(i === 0 ? lt('dw.total') : (c.key === 'amountAed' ? self.dwAmount() : ''));
       }).join(','));
       var name = (self.dwEyebrow() + '_' + self.dwTitle())
         .replace(/[^\w\u0600-\u06FF]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase() || 'drill';
       var blob = new Blob(['\uFEFF' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' });
-      downloadBlobUrl(URL.createObjectURL(blob), 'ap-drill-' + name + '-' + today() + '.csv');
+      downloadBlobUrl(URL.createObjectURL(blob), FP + 'drill-' + name + '-' + today() + '.csv');
     };
 
     // ── print (pixel report window, same criteria) ──────────────────────
@@ -870,7 +919,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     }
 
     function buildPrintHtml(rowsData) {
-      var t = i18n.t, rtl = i18n.lang() === 'ar';
+      var t = lt, rtl = i18n.lang() === 'ar';
       var user = authService.getCurrentUser() || {};
       var k = self.kpis() || {};
       var chipList = self.chips();
@@ -950,11 +999,11 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       var p = Object.assign({}, buildParams(), { limit: 200, offset: 0, sort: sortParam() });
       ap.getRows(self.level(), p).then(function (rowsData) {
         var win = window.open('', '_blank');
-        if (!win) { toast.error(i18n.t('msg.printPopup')); return; }
+        if (!win) { toast.error(lt('msg.printPopup')); return; }
         win.document.write(buildPrintHtml(rowsData));
         win.document.close();
         setTimeout(function () { try { win.focus(); win.print(); } catch (e) {} }, 500);
-      }).catch(function () { toast.error(i18n.t('msg.error')); });
+      }).catch(function () { toast.error(lt('msg.error')); });
     };
 
     // ── boot ────────────────────────────────────────────────────────────
@@ -967,6 +1016,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     function loadFilters() {
       self.loadingFilters(true);
       var p = self.inclCancelled() ? { inclcxl: 'Y' } : { inclcxl: 'N' };
+      if (benef) p.suppnum = SUPPNUM;
       ap.getFilters(p).then(function (f) {
         var sel = {}, openSt = {};
         self.groups().forEach(function (g) {
@@ -974,7 +1024,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
                                 .map(function (i) { return i.value; });
           openSt[g.key] = g.open();
         });
-        self.groups(GROUP_DEFS.map(function (def) {
+        self.groups(groupDefs.map(function (def) {
           var g = makeGroup(def, f[def.src]);
           if (def.key in openSt) g.open(openSt[def.key]);
           (sel[def.key] || []).forEach(function (v) {
@@ -984,7 +1034,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
           return g;
         }));
         self.loadingFilters(false);
-      }).catch(function () { self.loadingFilters(false); toast.error(i18n.t('msg.error')); });
+      }).catch(function () { self.loadingFilters(false); toast.error(lt('msg.error')); });
     }
     self.inclCancelled.subscribe(loadFilters);
     loadFilters();

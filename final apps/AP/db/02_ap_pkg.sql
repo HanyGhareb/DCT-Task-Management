@@ -63,6 +63,7 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_pkg AS
         p_rcvto      VARCHAR2 DEFAULT NULL,
         p_esupplier  VARCHAR2 DEFAULT NULL,  -- multi, EFFECTIVE supplier (beneficiary-aware; top-suppliers drill)
         p_aging      VARCHAR2 DEFAULT NULL,  -- single aging bucket CURRENT|D1_30|D31_60|D61_90|D91_180|D180P
+        p_suppnum    VARCHAR2 DEFAULT NULL,  -- multi, supplier_number (Beneficiaries dashboard locks it to 26553)
         p_inclcxl    VARCHAR2 DEFAULT 'Y'    -- 'N' = exclude cancelled invoices
     ) RETURN apex_t_number;
 
@@ -108,6 +109,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
         p_rcvto      VARCHAR2 DEFAULT NULL,
         p_esupplier  VARCHAR2 DEFAULT NULL,
         p_aging      VARCHAR2 DEFAULT NULL,
+        p_suppnum    VARCHAR2 DEFAULT NULL,
         p_inclcxl    VARCHAR2 DEFAULT 'Y'
     ) RETURN apex_t_number IS
         -- performance note: the dist/line facets each run ONE scan of their
@@ -131,6 +133,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
            AND (l_rcvfrom IS NULL OR COALESCE(h.invoice_received_date, h.created_date, h.invoice_date) >= l_rcvfrom)
            AND (l_rcvto   IS NULL OR COALESCE(h.invoice_received_date, h.created_date, h.invoice_date) <  l_rcvto + 1)
            AND (NVL(p_inclcxl,'Y') = 'Y' OR h.invoice_status <> 'Cancelled')
+           AND (p_suppnum IS NULL OR dct_ap_pkg.in_list(p_suppnum, TO_CHAR(h.supplier_number)) = 1)
            AND (p_esupplier IS NULL OR dct_ap_pkg.in_list(p_esupplier,
                     CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                          THEN h.beneficiary_name ELSE h.supplier_name END) = 1)
