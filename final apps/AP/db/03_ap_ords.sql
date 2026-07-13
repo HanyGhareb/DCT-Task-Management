@@ -100,7 +100,21 @@ BEGIN
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('sectors');
-  FOR r IN (SELECT NVL(sector_name,'Unclassified') v, COUNT(DISTINCT invoice_id) c FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY NVL(sector_name,'Unclassified') ORDER BY 2 DESC) LOOP
+  -- per-invoice classification: one bucket each (single sector / Multiple / Unclassified),
+  -- so the sector counts sum exactly to the invoices KPI
+  FOR r IN (SELECT sect v, COUNT(*) c FROM (
+              SELECT h.invoice_id,
+                     CASE WHEN COUNT(DISTINCT CASE WHEN d.invoice_id IS NOT NULL
+                                                   THEN NVL(d.sector_name,'Unclassified') END) > 1
+                          THEN '(Multiple sectors)'
+                          ELSE NVL(MAX(NVL(d.sector_name,'Unclassified')),'Unclassified') END sect
+                FROM prod.ap_invoices_header_v h
+                LEFT JOIN prod.ap_invoice_distributions_v d
+                       ON d.invoice_id = h.invoice_id
+                      AND d.distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax')
+               WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR h.invoice_status <> 'Cancelled')
+               GROUP BY h.invoice_id)
+             GROUP BY sect ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('suppliers');
@@ -112,27 +126,27 @@ BEGIN
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('requestors');
-  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND pr_preparer IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND pr_preparer IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('expTypes');
-  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND expenditure_type IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND expenditure_type IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('costCenters');
-  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND cost_center_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND cost_center_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('accounts');
-  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND account_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND account_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('appropriations');
-  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND appropriation_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND appropriation_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('projects');
-  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND project_number IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND project_number IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.close_object;
@@ -283,11 +297,22 @@ BEGIN
     nco(r.v, r.c, r.a);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('bySector');
-  FOR r IN (SELECT NVL(d.sector_name,'Unclassified') v, COUNT(DISTINCT d.invoice_id) c, NVL(SUM(d.distribution_amount_aed),0) a
-              FROM prod.ap_invoice_distributions_v d
-             WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
-               AND d.distribution_type = 'Item'
-             GROUP BY NVL(d.sector_name,'Unclassified') ORDER BY 3 DESC FETCH FIRST 12 ROWS ONLY) LOOP
+  -- classification grouping (matches the facet + its drill): one bucket per
+  -- invoice; amount = its non-tax distributed AED
+  FOR r IN (SELECT sect v, COUNT(*) c, NVL(SUM(amt),0) a FROM (
+              SELECT h.invoice_id,
+                     CASE WHEN COUNT(DISTINCT CASE WHEN d.invoice_id IS NOT NULL
+                                                   THEN NVL(d.sector_name,'Unclassified') END) > 1
+                          THEN '(Multiple sectors)'
+                          ELSE NVL(MAX(NVL(d.sector_name,'Unclassified')),'Unclassified') END sect,
+                     SUM(d.distribution_amount_aed) amt
+                FROM prod.ap_invoices_header_v h
+                LEFT JOIN prod.ap_invoice_distributions_v d
+                       ON d.invoice_id = h.invoice_id
+                      AND d.distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax')
+               WHERE h.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
+               GROUP BY h.invoice_id)
+             GROUP BY sect ORDER BY 3 DESC FETCH FIRST 14 ROWS ONLY) LOOP
     nco(r.v, r.c, r.a);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('byPayGroup');

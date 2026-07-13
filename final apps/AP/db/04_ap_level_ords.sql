@@ -271,7 +271,7 @@ BEGIN
   SELECT COUNT(*), NVL(SUM(d.distribution_amount_aed),0) INTO l_cnt, l_amt
     FROM prod.ap_invoice_distributions_v d
    WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
-     AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
+     AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
      AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
      AND ([COLON]project IS NULL OR prod.dct_ap_pkg.in_list([COLON]project, d.project_number) = 1)
      AND ([COLON]task IS NULL OR UPPER(d.task_number) = UPPER(TRIM([COLON]task)))
@@ -312,7 +312,7 @@ BEGIN
              ON pd.po_line_id = pl.po_line_id AND pd.schedule = d.po_schedule
             AND pd.distribution_number = d.po_distribution_line
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
-       AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
+       AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
        AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
        AND ([COLON]project IS NULL OR prod.dct_ap_pkg.in_list([COLON]project, d.project_number) = 1)
        AND ([COLON]task IS NULL OR UPPER(d.task_number) = UPPER(TRIM([COLON]task)))
@@ -446,7 +446,7 @@ BEGIN
              ON pd.po_line_id = pl.po_line_id AND pd.schedule = d.po_schedule
             AND pd.distribution_number = d.po_distribution_line
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
-       AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
+       AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
        AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
        AND ([COLON]project IS NULL OR prod.dct_ap_pkg.in_list([COLON]project, d.project_number) = 1)
        AND ([COLON]task IS NULL OR UPPER(d.task_number) = UPPER(TRIM([COLON]task)))

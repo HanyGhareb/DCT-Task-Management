@@ -184,7 +184,7 @@
   "ch.validation.hint": "Invoiced amount (AED) by validation status for the current filters. Click a bar to list its invoices.",
   "ch.accounting.hint": "Invoiced amount (AED) by accounting status for the current filters. Click a bar to list its invoices.",
   "ch.topSuppliers.hint": "Top 10 suppliers by invoiced amount (AED). Where the supplier is the generic BENEFICIARY record, the beneficiary name is used as the effective supplier. Click a bar to list that supplier's invoices.",
-  "ch.bySector.hint": "Distributed amount (AED) by sector from invoice Item distributions only (top 12) — tax and other non-item lines are excluded. Click a bar to list the sector's invoices.",
+  "ch.bySector.hint": "Distributed amount (AED) by sector — each invoice is classified once: to its single sector, to \"(Multiple sectors)\" when its item-line distributions span several, or to \"Unclassified\". Tax distributions are excluded. Counts therefore sum to the Invoices KPI. Click a bar to list its invoices.",
   "ch.byPayGroup.hint": "Invoiced amount (AED) by pay group (top 10). Click a bar to list its invoices.",
   "f.yes": "Yes",
   "dr.invHeader": "Invoice header",

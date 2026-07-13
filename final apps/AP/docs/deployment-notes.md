@@ -179,3 +179,21 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   helpers but never defined in ANY stylesheet (status pills rendered colorless
   platform-app-wide) — now defined in AP app.css with the platform soft palette,
   colouring the register/drawer/window badges everywhere. APP_VERSION 1.6.2.
+- **2026-07-13 (sector reconciliation, v1.6.3)** — two corrections after user review:
+  1. **Item-only rule was WRONG → non-tax rule.** PO-matched Item lines produce
+     `Accrual` (+ Conversion rate variance / Retainage / Tax rate variance)
+     distributions, NOT `Item` — 1,801 invoices had vanished from every dist-grain
+     facet. All 10 pkg facet scans, the /filters dist LOVs and bySector now use
+     `distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax')` (= exactly
+     the distributions of Item lines; tax rows stay excluded). Dist-grain coverage
+     3,381 → 5,390 of 5,486 invoices.
+  2. **Sector became a per-invoice CLASSIFICATION facet** (user: "for invoices that
+     span more than one sector, show it as separate"): each invoice lands in exactly
+     one bucket — its single sector, `(Multiple sectors)` (88), or `Unclassified`
+     (93, incl. invoices with no distributions) — so the facet counts now SUM TO the
+     invoices KPI (5,080 non-cancelled). Applied in lock-step to the pkg `p_sector`
+     match (header LEFT JOIN + per-invoice bucket), /filters counts, the bySector
+     chart dataset (amount = invoice's non-tax distributed AED), and the dists
+     register/export sector predicate (a `(Multiple sectors)` selection passes its
+     invoices' rows through). Deploy 02 → 03 → 04; combined facet query ~0.3s.
+  Frontend: bySector ⓘ hint rewritten (EN/AR). APP_VERSION 1.6.3.

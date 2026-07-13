@@ -9,11 +9,17 @@
 --           Multi-value facet params arrive pipe-delimited, e.g. a|b|c.
 --           Reads the Fusion-loaded views ap_invoices_header_v,
 --           ap_invoice_lines_v, ap_invoice_distributions_v (read-only).
---           RULE (2026-07-13): every distribution-grain facet considers ITEM
---           distributions only (distribution_type = 'Item') -- tax/freight
---           rows carry unmapped cost centers and were dragging classified
---           invoices into Unclassified, so facet counts missed the KPIs.
---           /filters LOVs + the bySector dataset apply the same rule.
+--           RULE (2026-07-13, corrected same day): every distribution-grain
+--           facet considers NON-TAX distributions (distribution_type NOT IN
+--           Recoverable/Nonrecoverable tax) = the distributions of Item lines.
+--           A plain = 'Item' test was WRONG: PO-matched item lines produce
+--           'Accrual' (+ variance/retainage) distributions and 1,801 invoices
+--           vanished from the dist facets. Tax rows carry unmapped cost
+--           centers and stay excluded. /filters LOVs + bySector same rule.
+--           SECTOR is a per-invoice CLASSIFICATION facet: one bucket per
+--           invoice -- its single sector, '(Multiple sectors)' when its
+--           distributions span several, or 'Unclassified' (incl. invoices
+--           with no distributions) -- so the facet counts sum to the KPI.
 -- =============================================================================
 
 SET DEFINE OFF
@@ -150,72 +156,81 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
                 LIKE '%' || UPPER(p_search) || '%');
 
         IF p_sector IS NOT NULL THEN
-            SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
-              FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
-               AND dct_ap_pkg.in_list(p_sector, NVL(d.sector_name, 'Unclassified')) = 1;
+            -- classification match: each invoice belongs to exactly one bucket
+            SELECT invoice_id BULK COLLECT INTO l_tmp FROM (
+                SELECT h.invoice_id,
+                       CASE WHEN COUNT(DISTINCT CASE WHEN d.invoice_id IS NOT NULL
+                                                     THEN NVL(d.sector_name, 'Unclassified') END) > 1
+                            THEN '(Multiple sectors)'
+                            ELSE NVL(MAX(NVL(d.sector_name, 'Unclassified')), 'Unclassified') END sect
+                  FROM prod.ap_invoices_header_v h
+                  LEFT JOIN prod.ap_invoice_distributions_v d
+                         ON d.invoice_id = h.invoice_id
+                        AND d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
+                 GROUP BY h.invoice_id)
+             WHERE dct_ap_pkg.in_list(p_sector, sect) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_cc IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND dct_ap_pkg.in_list(p_cc, d.cost_center_code) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_project IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND dct_ap_pkg.in_list(p_project, d.project_number) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_task IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND UPPER(d.task_number) = UPPER(TRIM(p_task));
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_etype IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND dct_ap_pkg.in_list(p_etype, d.expenditure_type) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_account IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND dct_ap_pkg.in_list(p_account, d.account_code) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_approp IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND dct_ap_pkg.in_list(p_approp, d.appropriation_code) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_po IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND TO_CHAR(d.po_number) = TRIM(p_po);
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_pr IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND TO_CHAR(d.pr_number) = TRIM(p_pr);
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
         IF p_req IS NOT NULL THEN
             SELECT DISTINCT d.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_distributions_v d
-             WHERE d.distribution_type = 'Item'
+             WHERE d.distribution_type NOT IN ('Recoverable tax', 'Nonrecoverable tax')
                AND dct_ap_pkg.in_list(p_req, d.pr_preparer) = 1;
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
