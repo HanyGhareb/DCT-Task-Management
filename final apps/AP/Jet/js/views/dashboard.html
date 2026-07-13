@@ -125,7 +125,7 @@
       <!-- Region 1 — Analytics -->
       <div class="card ap-region" data-bind="css: { 'ap-region--max': chartsMax() }">
         <div class="section-heading-row">
-          <div class="section-heading" data-bind="text: $root.t('rg.analytics')"></div>
+          <div class="section-heading ap-rh"><span data-bind="text: $root.t('rg.analytics')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('analytics', e); }, mousemove: function (d, e) { return $vm.hintMove('analytics', e); }, mouseout: $vm.hintOut }" aria-label="region hint">i</i></div>
           <div class="region-actions">
             <button class="btn btn-sm btn-secondary" data-bind="click: exportSummaryCsv,
                     text: $root.t('rg.exportData'), attr: { title: $root.t('rg.exportData') }"></button>
@@ -163,35 +163,35 @@
 
         <div class="ap-charts">
           <div class="ap-chart-card c-8">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.aging')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.aging.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.aging')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('aging', e); }, mousemove: function (d, e) { return $vm.hintMove('aging', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartAging"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.payment')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.payment.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.payment')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('payment', e); }, mousemove: function (d, e) { return $vm.hintMove('payment', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartPay"></canvas></div>
           </div>
           <div class="ap-chart-card c-12">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.trend')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.trend.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.trend')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('trend', e); }, mousemove: function (d, e) { return $vm.hintMove('trend', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartTrend"></canvas></div>
           </div>
           <div class="ap-chart-card c-6">
-            <div class="ap-chart-title"><span data-bind="text: $vm.t('ch.topSuppliers')"></span><i class="ap-hint" data-bind="attr: { title: $vm.t('ch.topSuppliers.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $vm.t('ch.topSuppliers')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('suppliers', e); }, mousemove: function (d, e) { return $vm.hintMove('suppliers', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartSup"></canvas></div>
           </div>
           <div class="ap-chart-card c-6">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.bySector')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.bySector.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.bySector')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('sector', e); }, mousemove: function (d, e) { return $vm.hintMove('sector', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartSector"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.validation')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.validation.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.validation')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('validation', e); }, mousemove: function (d, e) { return $vm.hintMove('validation', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartVal"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.accounting')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.accounting.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.accounting')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('accounting', e); }, mousemove: function (d, e) { return $vm.hintMove('accounting', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartAcc"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.byPayGroup')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.byPayGroup.hint') }" aria-label="chart hint">i</i></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.byPayGroup')"></span><i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('paygroup', e); }, mousemove: function (d, e) { return $vm.hintMove('paygroup', e); }, mouseout: $vm.hintOut }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartPg"></canvas></div>
           </div>
         </div>
@@ -202,10 +202,11 @@
       <!-- Region 2 — AP Register -->
       <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() }">
         <div class="section-heading-row">
-          <div class="section-heading">
+          <div class="section-heading ap-rh">
             <span data-bind="text: $vm.t('rg.register')"></span>
             <span style="font-weight:400;font-size:12px;color:var(--text-2)"
                   data-bind="text: ' · ' + fmtInt(total()) + ' ' + $root.t('tbl.rows')"></span>
+            <i class="ap-hint" data-bind="event: { mouseover: function (d, e) { return $vm.hintOver('register', e); }, mousemove: function (d, e) { return $vm.hintMove('register', e); }, mouseout: $vm.hintOut }" aria-label="region hint">i</i>
           </div>
           <div class="region-actions">
             <button class="btn btn-sm btn-secondary" data-bind="click: toggleViewMode,
@@ -569,6 +570,18 @@
     </div>
   </div>
   <!-- /ko -->
+
+  <!-- ── Rich hint popover (chart / region ⓘ hover): title + description +
+       live figures for the current filter selection ─────────────────────── -->
+  <div class="ap-tip" data-bind="visible: hintShow, style: { left: hintX() + 'px', top: hintY() + 'px' }" style="display:none">
+    <div class="ap-tip-h" data-bind="text: hintTitle"></div>
+    <div class="ap-tip-d" data-bind="text: hintDesc"></div>
+    <!-- ko if: hintRows().length > 0 -->
+    <div class="ap-tip-rows" data-bind="foreach: hintRows">
+      <div class="ap-tip-row"><span data-bind="text: l"></span><b data-bind="text: v"></b></div>
+    </div>
+    <!-- /ko -->
+  </div>
 
   <!-- ── COA segment popover (Distributions tab GL-combination hover) ──── -->
   <div class="combo-tip" data-bind="visible: tipShow, style: { left: tipX() + 'px', top: tipY() + 'px' }" style="display:none">

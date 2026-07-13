@@ -73,7 +73,7 @@ SELECT
   d.expenditure_type,
   i.invoice_number,
   MAX(i.invoice_date)                                                   AS invoice_date,
-  MAX(i.supplier_name)                                                  AS supplier_name,
+  MAX(se.supplier_name)                                                 AS supplier_name,
   MAX(NVL(i.invoice_currency,'AED'))                                    AS invoice_currency,
   MAX(i.invoice_amount)                                                 AS invoice_amount,
   MAX(NVL(i.invoice_amount_paid,0))                                     AS invoice_amount_paid,
@@ -87,6 +87,9 @@ SELECT
   MAX(CASE WHEN d.po_number IS NOT NULL THEN 'Y' ELSE 'N' END)          AS has_po
 FROM prod.ap_invoice_distributions d
 JOIN prod.ap_invoices i ON i.invoice_id = d.invoice_id
+-- beneficiary-aware vendor (db/v2/51): the generic BENEFICIARY supplier
+-- resolves to the beneficiary's name
+LEFT JOIN prod.dct_ap_supplier_eff_v se ON se.invoice_id = i.invoice_id
 LEFT JOIN proj pj ON pj.project_id = d.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
 WHERE NVL(d.reversal_indicator,'N') <> 'Y'

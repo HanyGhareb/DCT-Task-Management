@@ -351,7 +351,7 @@ BEGIN
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END) tkey,
-             i.invoice_id, i.invoice_number, d.line_number line_no, TO_CHAR(i.invoice_date,'YYYY-MM-DD') idate, i.supplier_name,
+             i.invoice_id, i.invoice_number, d.line_number line_no, TO_CHAR(i.invoice_date,'YYYY-MM-DD') idate, se.supplier_name,
              NVL(i.invoice_currency,'AED') cur, i.invoice_amount inv_amt,
              NVL(d.distribution_amount_functi, d.distribution_amount) amt_aed,
              i.validation_status, d.distribution_description descr,
@@ -362,6 +362,7 @@ BEGIN
              COUNT(*) OVER () full_n, SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) OVER () full_tot
       FROM prod.ap_invoice_distributions d
       JOIN prod.ap_invoices i     ON i.invoice_id = d.invoice_id
+      LEFT JOIN prod.dct_ap_supplier_eff_v se ON se.invoice_id = d.invoice_id
       JOIN prod.dct_gl_coa_snap cid ON cid.cc_id = d.cc_id
       LEFT JOIN proj pj ON pj.project_id = d.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = d.task_id

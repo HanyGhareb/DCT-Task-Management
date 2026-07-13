@@ -185,13 +185,31 @@ td.ap-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-
 .ap-cols-panel { position: absolute; top: 46px; inset-inline-end: 12px; z-index: 60;
                  width: 300px; padding: 12px; box-shadow: 0 10px 32px rgba(0,0,0,.16); }
 
-/* ── chart hint icon (ⓘ per chart — explains content, basis and criteria) ── */
+/* ── chart / region hint icon (ⓘ — opens the rich hint popover) ── */
 .ap-chart-title { display: flex; align-items: center; gap: 6px; }
+.ap-rh { display: flex; align-items: center; gap: 8px; }
 .ap-hint { flex: 0 0 auto; width: 15px; height: 15px; border-radius: 50%;
            display: inline-flex; align-items: center; justify-content: center;
            font-size: 10px; font-weight: 700; font-style: normal; cursor: help;
            color: var(--brand-dark); background: var(--brand-soft);
            border: 1px solid rgba(var(--brand-rgb), .35); }
+.section-heading .ap-hint { background: rgba(255,255,255,.88); }
+
+/* rich hint popover (chart / region ⓘ hover): brand header + description +
+   live figures for the current filter selection */
+.ap-tip { position: fixed; z-index: 950; width: 380px; max-width: 92vw; overflow: hidden;
+          background: var(--surface, #fff); border: 1px solid var(--border, #E3E6EB);
+          border-radius: 12px; box-shadow: 0 18px 50px rgba(15,22,30,.30); pointer-events: none; }
+.ap-tip-h { font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #fff;
+            font-weight: 700; background: var(--brand); padding: 7px 14px; }
+.ap-tip-d { font-size: 12px; line-height: 1.55; color: var(--text-2); padding: 10px 14px 11px; }
+.ap-tip-rows { border-top: 1px dashed var(--border, #E3E6EB); padding: 9px 14px 12px;
+               display: grid; gap: 5px; background: rgba(var(--brand-rgb), .03); }
+.ap-tip-row { display: flex; justify-content: space-between; align-items: baseline; gap: 14px;
+              font-size: 12px; }
+.ap-tip-row span { color: var(--brand-dark); font-weight: 600; }
+.ap-tip-row b { font-variant-numeric: tabular-nums; text-align: end; white-space: nowrap;
+                overflow: hidden; text-overflow: ellipsis; max-width: 240px; }
 .ap-chart-body canvas { cursor: pointer; }   /* every chart drills down */
 
 /* ── chart drill-down drawer (right-edge slide-in — GL Budget Utilization

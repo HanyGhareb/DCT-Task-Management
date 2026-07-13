@@ -154,7 +154,7 @@ SELECT
   d.accounting_date                                                     AS txn_date,
   d.period_name                                                         AS period_name,
   i.supplier_number                                                     AS supplier_number,
-  i.supplier_name                                                       AS supplier_name,
+  se.supplier_name                                                      AS supplier_name,
   i.po_number                                                           AS order_number,
   pjn.project_id                                                        AS project_id,
   TO_CHAR(l.project_number)                                             AS project_number,
@@ -171,6 +171,8 @@ LEFT JOIN ap_po_match           pm  ON pm.po_number = d.po_number
 LEFT JOIN prod.dct_gl_coa_snap  cid ON cid.cc_id = d.cc_id
 LEFT JOIN prod.dct_gl_coa_snap  coa ON coa.cc_string = COALESCE(pm.charge_account, cid.cc_string)
 LEFT JOIN prod.ap_invoices      i   ON i.invoice_id = d.invoice_id
+-- beneficiary-aware vendor (db/v2/51): generic BENEFICIARY -> beneficiary name
+LEFT JOIN prod.dct_ap_supplier_eff_v se ON se.invoice_id = d.invoice_id
 LEFT JOIN prod.ap_invoice_lines l   ON l.invoice_id = d.invoice_id
                                    AND l.invoice_line_number = d.line_number
 LEFT JOIN proj                  pjn ON TO_CHAR(pjn.project_number) = TO_CHAR(l.project_number)

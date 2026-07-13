@@ -270,3 +270,26 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   pkg recompiled by 05). Generic rows 429 → 4 (2 sites whose name was never
   recorded on any invoice). benef API smoke 18/18 + regression 14/14. No
   frontend change / no web-tier deploy needed.
+- **2026-07-14 (beneficiary name PLATFORM-WIDE, DB-only)** — user caught the generic
+  BENEFICIARY vendor on the GL Budget-Utilization AP drill. Full sweep of every
+  surface that displays an AP-invoice vendor: NEW `db/v2/51_ap_supplier_eff.sql`
+  `DCT_AP_SUPPLIER_EFF_V` (invoice_id → beneficiary-aware effective supplier w/
+  same-site fallback) now joined by the GL butil AP drill (`GL/db/07` re-run),
+  `DCT_UNPAID_INVOICES_V` (`db/v2/39` re-run → BUDGET_UTIL_SECTOR report) and
+  `DCT_ACTUAL_V`'s AP branch (`db/v2/32`, surgical single-view redeploy). BI
+  definitions scanned — only BUDGET_UTIL_SECTOR touches supplier (covered via 39).
+  PO/GRN/PR surfaces show real suppliers (beneficiary payments are AP-direct).
+  Live-verified: the reported invoice DCT2026MARSUP002 now returns
+  "UAE AL WATHBA STABLES FSTVL BGT AC" from /gl/butil/lines?metric=ap.
+- **2026-07-14 (rich chart/region hints, v1.9.0)** — the plain title-attr tooltips
+  on the 8 chart ⓘ icons became a styled popover (`.ap-tip`: brand header +
+  description + LIVE figures for the current filters), and the Analytics +
+  Register region headings gained ⓘ hints too. Per-chart stats: aging
+  (outstanding/overdue/unpaid count/largest bucket), payment (per-status
+  count·amount + paid share), trend (months/total/peak/latest), validation +
+  accounting (statuses/largest/share), top suppliers (count/#1/top-10 share),
+  sector (buckets/#1/unclassified), pay group (groups/#1+share); regions show
+  KPIs/level/rows/active-filter count. Benef mode reuses everything with its
+  own labels + scope wording (`rg.*.hint`→`ben.*.hint` via LBL). 41 new i18n
+  keys EN+AR. Playwright hint test 15/15 + browser smoke 24/24 on BOTH
+  dashboards. APP_VERSION 1.9.0.

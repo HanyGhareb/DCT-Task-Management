@@ -150,7 +150,9 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       'kpi.suppliers': 'ben.kpiCount',  'ch.topSuppliers': 'ben.chTop',
       'ch.topSuppliers.hint': 'ben.chTop.hint',
       'tbl.supplier': 'ben.name',       'f.supplier': 'ben.name',
-      'rg.register': 'ben.register',    'pr.title': 'ben.prTitle'
+      'rg.register': 'ben.register',    'pr.title': 'ben.prTitle',
+      'rg.analytics.hint': 'ben.analytics.hint',
+      'rg.register.hint': 'ben.register.hint'
     } : {};
     var _t = i18n.t;
     function lt(key, args) { return _t(LBL[key] || key, args); }
@@ -821,6 +823,124 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     };
     self.ccMove = function (r, e) { placeTip(e); return true; };
     self.ccOut  = function () { self.tipShow(false); return true; };
+
+    // ── rich hint popover (ⓘ on charts + regions): title + description +
+    //    live figures computed from the loaded summary/register state ──────
+    var HINT_DEFS = {
+      aging:      { t: 'ch.aging',        d: 'ch.aging.hint' },
+      payment:    { t: 'ch.payment',      d: 'ch.payment.hint' },
+      trend:      { t: 'ch.trend',        d: 'ch.trend.hint' },
+      validation: { t: 'ch.validation',   d: 'ch.validation.hint' },
+      accounting: { t: 'ch.accounting',   d: 'ch.accounting.hint' },
+      suppliers:  { t: 'ch.topSuppliers', d: 'ch.topSuppliers.hint' },
+      sector:     { t: 'ch.bySector',     d: 'ch.bySector.hint' },
+      paygroup:   { t: 'ch.byPayGroup',   d: 'ch.byPayGroup.hint' },
+      analytics:  { t: 'rg.analytics',    d: 'rg.analytics.hint' },
+      register:   { t: 'rg.register',     d: 'rg.register.hint' },
+    };
+    self.hintShow  = ko.observable(false);
+    self.hintX     = ko.observable(0);
+    self.hintY     = ko.observable(0);
+    self.hintTitle = ko.observable('');
+    self.hintDesc  = ko.observable('');
+    self.hintRows  = ko.observableArray([]);
+    function placeHint(e) {
+      var w = 380, x = e.clientX + 16, y = e.clientY + 14;
+      if (x + w > window.innerWidth) x = Math.max(12, e.clientX - w - 16);
+      if (y + 340 > window.innerHeight) y = Math.max(12, window.innerHeight - 350);
+      self.hintX(x); self.hintY(y);
+    }
+    function pctOf(part, whole) {
+      if (!whole || !isFinite(part / whole)) return '';
+      return (100 * part / whole).toLocaleString('en-AE', { maximumFractionDigits: 1 }) + '%';
+    }
+    function maxBy(rows, key) {
+      return (rows || []).reduce(function (m, r) {
+        return (!m || (r[key] || 0) > (m[key] || 0)) ? r : m;
+      }, null);
+    }
+    function sumBy(rows, key) {
+      return (rows || []).reduce(function (a, r) { return a + (r[key] || 0); }, 0);
+    }
+    function hintStats(key) {
+      var d = self._lastSummary || {};
+      var k = self.kpis() || {};
+      var R = [];
+      function add(l, v) { if (v !== '' && v !== null && v !== undefined) R.push({ l: l, v: '' + v }); }
+      function nameAmt(r, n) { return trunc(r.name || '(None)', n || 28) + ' — ' + self.fmtAmt(r.amount); }
+      if (key === 'aging') {
+        var ag = d.aging || [];
+        var mx = maxBy(ag, 'amount');
+        add(lt('kpi.outstandingAed'), self.fmtAmt(k.outstandingAed));
+        add(lt('kpi.overdueAed'), self.fmtAmt(k.overdueAed));
+        add(lt('ht.unpaidCnt'), self.fmtInt(sumBy(ag, 'count')));
+        if (mx) add(lt('ht.largest'), lt(AG_KEYS[AG_ORDER.indexOf(mx.bucket)]) + ' — ' + self.fmtAmt(mx.amount));
+      } else if (key === 'payment') {
+        var pay = d.paymentStatus || [];
+        pay.slice(0, 4).forEach(function (r) {
+          add(r.name, self.fmtInt(r.count) + ' · ' + self.fmtAmt(r.amount));
+        });
+        var paid = pay.filter(function (r) { return r.name === 'Paid'; })[0];
+        if (paid) add(lt('ht.paidShare'), pctOf(paid.amount, sumBy(pay, 'amount')));
+      } else if (key === 'trend') {
+        var tr2 = d.trend || [];
+        var pk = maxBy(tr2, 'amount'), lastM = tr2[tr2.length - 1];
+        add(lt('ht.months'), self.fmtInt(tr2.length));
+        add(lt('kpi.totalAed'), self.fmtAmt(sumBy(tr2, 'amount')));
+        if (pk) add(lt('ht.peak'), pk.month + ' — ' + self.fmtAmt(pk.amount));
+        if (lastM) add(lt('ht.latest'), lastM.month + ' — ' + self.fmtAmt(lastM.amount));
+      } else if (key === 'validation' || key === 'accounting') {
+        var st = (key === 'validation' ? d.validationStatus : d.accountingStatus) || [];
+        var big = maxBy(st, 'amount');
+        add(lt('ht.statuses'), self.fmtInt(st.length));
+        if (big) {
+          add(lt('ht.largestStatus'), trunc(big.name || '', 24) + ' — ' + self.fmtInt(big.count) + ' · ' + self.fmtAmt(big.amount));
+          add(lt('ht.share'), pctOf(big.amount, k.totalAed));
+        }
+      } else if (key === 'suppliers') {
+        var tops = d.topSuppliers || [];
+        add(lt('kpi.suppliers'), self.fmtInt(k.suppliers));
+        if (tops[0]) add(lt('ht.top'), nameAmt(tops[0]));
+        add(lt('ht.topShare'), pctOf(sumBy(tops, 'amount'), k.totalAed));
+      } else if (key === 'sector') {
+        var sec = d.bySector || [];
+        var unc = sec.filter(function (r) { return r.name === 'Unclassified'; })[0];
+        add(lt('ht.sectors'), self.fmtInt(sec.length));
+        if (sec[0]) add(lt('ht.top'), nameAmt(sec[0]));
+        if (unc) add(lt('ht.unclassified'), self.fmtInt(unc.count));
+      } else if (key === 'paygroup') {
+        var pg = d.byPayGroup || [];
+        add(lt('ht.groups'), self.fmtInt(pg.length));
+        if (pg[0]) {
+          var share = pctOf(pg[0].amount, k.totalAed);
+          add(lt('ht.top'), nameAmt(pg[0], 24) + (share ? ' (' + share + ')' : ''));
+        }
+      } else if (key === 'analytics') {
+        add(lt('kpi.invoices'), self.fmtInt(k.invoices));
+        add(lt('kpi.suppliers'), self.fmtInt(k.suppliers));
+        add(lt('kpi.totalAed'), self.fmtAmt(k.totalAed));
+        add(lt('kpi.outstandingAed'), self.fmtAmt(k.outstandingAed));
+        add(lt('ht.filters'), self.fmtInt(self.chips().length));
+      } else if (key === 'register') {
+        var lvlKey = self.level() === 'header' ? 'dash.levelHeader'
+                   : self.level() === 'line' ? 'dash.levelLine' : 'dash.levelDist';
+        add(lt('ht.level'), lt(lvlKey));
+        add(lt('ht.rows'), self.fmtInt(self.total()));
+        if (self.rowTotals()) add(lt('tbl.totalAmount'), self.fmtAmt(self.rowTotals().amountAed));
+        add(lt('ht.filters'), self.fmtInt(self.chips().length));
+      }
+      return R;
+    }
+    self.hintOver = function (key, e) {
+      var def = HINT_DEFS[key];
+      if (!def) return true;
+      self.hintTitle(lt(def.t));
+      self.hintDesc(lt(def.d));
+      self.hintRows(hintStats(key));
+      placeHint(e); self.hintShow(true); return true;
+    };
+    self.hintMove = function (key, e) { placeHint(e); return true; };
+    self.hintOut  = function () { self.hintShow(false); return true; };
     self.closeDrill = function () { self.showDrill(false); self.drill(null); self.invMax(false); };
     self.setDrillTab = function (tab) { self.drillTab(tab); };
 

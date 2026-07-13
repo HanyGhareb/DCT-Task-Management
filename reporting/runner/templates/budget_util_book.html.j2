@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_name }}</title>
+{#- ── helpers ─────────────────────────────────────────────────────────── -#}
+{%- set S = {} -%}
+{%- for s in sections %}{% set _ = S.update({s.key: s}) %}{% endfor -%}
+{%- set O = (S.overview.data[0] if S.overview and S.overview.data else {}) -%}
+{%- set SEC = S.by_sector.data if S.by_sector else [] -%}
+{%- set PRS = S.pressure.data if S.pressure else [] -%}
+{%- set AP  = S.ap_lines.data if S.ap_lines else [] -%}
+{%- set GRN = S.grn_lines.data if S.grn_lines else [] -%}
+{%- set PO  = S.open_po.data if S.open_po else [] -%}
+{%- set PR  = S.open_pr.data if S.open_pr else [] -%}
+{%- macro money(v) -%}
+  {%- if v is none %}&mdash;
+  {%- elif v|abs >= 1000000000 %}{{ (v/1000000000)|round(2)|fmt }}&nbsp;B
+  {%- elif v|abs >= 1000000 %}{{ (v/1000000)|round(1)|fmt }}&nbsp;M
+  {%- elif v|abs >= 1000 %}{{ (v/1000)|round(0)|int|fmt }}&nbsp;K
+  {%- else %}{{ v|round(0)|int|fmt }}{%- endif -%}
+{%- endmacro -%}
+{%- macro dt(v) -%}{%- if v %}{{ v.strftime('%Y-%m-%d') if v.strftime is defined else v }}{% else %}&mdash;{% endif -%}{%- endmacro -%}
+<style>
+  :root { --brand: {{ brand|default('#1F6F8B') }}; --brand-d: #17596F; --gold: #B58900;
+          --enc: #C25E10; --ok: #1E7B4D; --bad: #B3352B; --ink: #1F2933; --mut: #7B8794; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink);
+         margin: 0; font-size: 10px; }
+  @page { size: A4 landscape; }
+  .page { page-break-after: always; }
+  .page:last-child { page-break-after: auto; }
+
+  /* ── cover ─────────────────────────────────────────────────────────── */
+  .cover { height: 172mm; position: relative; overflow: hidden;
+           background: linear-gradient(135deg, #FFFFFF 55%, #F0F5F7 100%); }
+  .cv-band { position: absolute; top: 0; left: 0; right: 0; height: 14mm;
+             background: linear-gradient(90deg, var(--brand-d), var(--brand) 60%, #3E93AF); }
+  .cv-band2 { position: absolute; bottom: 0; left: 0; right: 0; height: 6mm;
+              background: linear-gradient(90deg, var(--gold), var(--enc)); }
+  .cv-org { margin: 26mm 0 0 18mm; font-size: 12px; letter-spacing: .22em;
+            text-transform: uppercase; color: var(--mut); }
+  .cv-title { margin: 6mm 0 0 18mm; font-size: 46px; line-height: 1.08; font-weight: 800;
+              color: var(--brand-d); }
+  .cv-sub { margin: 4mm 0 0 18mm; font-size: 18px; color: var(--gold); font-weight: 700;
+            letter-spacing: .04em; }
+  .cv-scope { margin: 10mm 0 0 18mm; display: flex; gap: 8px; flex-wrap: wrap; max-width: 200mm; }
+  .cv-scope span { background: #fff; border: 1px solid #D3E0E5; border-left: 4px solid var(--brand);
+                   border-radius: 3px; padding: 5px 12px; font-size: 11px; color: #33525E; }
+  .cv-scope b { color: var(--brand-d); }
+  .cv-desc { margin: 8mm 0 0 18mm; max-width: 150mm; font-size: 11px; line-height: 1.65;
+             color: #52606D; }
+  .cv-prep { position: absolute; bottom: 12mm; left: 18mm; font-size: 10.5px; color: var(--mut); }
+  .cv-prep b { display: block; font-size: 13.5px; color: var(--brand-d); margin-top: 2px; }
+  .cv-prep i { display: block; font-style: normal; color: #52606D; margin-top: 1px; }
+  .cv-date { position: absolute; bottom: 12mm; right: 18mm; text-align: right;
+             font-size: 10px; color: var(--mut); }
+  .cv-date b { display: block; font-size: 12px; color: var(--ink); }
+
+  /* ── table of contents ─────────────────────────────────────────────── */
+  .toc-h { border-bottom: 3px solid var(--brand); padding-bottom: 8px; margin-bottom: 12px; }
+  .toc-h h2 { margin: 0; font-size: 22px; color: var(--brand-d); }
+  .toc { width: 100%; border-collapse: collapse; }
+  .toc td { padding: 9px 10px; border-bottom: 1px solid #E4E7EB; vertical-align: top; }
+  .toc .no { width: 52px; font-size: 17px; font-weight: 800; color: var(--brand);
+             font-variant-numeric: tabular-nums; }
+  .toc .t { font-size: 13px; font-weight: 700; color: var(--ink); }
+  .toc .d { font-size: 10px; color: var(--mut); margin-top: 2px; }
+  .toc .n { width: 130px; text-align: right; font-size: 10px; color: #52606D;
+            font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+  /* ── part banner + section furniture ───────────────────────────────── */
+  .pt-band { display: flex; align-items: center; gap: 12px; background:
+             linear-gradient(90deg, var(--brand-d), var(--brand)); color: #fff;
+             border-radius: 4px; padding: 8px 14px; margin-bottom: 10px; }
+  .pt-no { font-size: 22px; font-weight: 800; opacity: .85; }
+  .pt-t { font-size: 16px; font-weight: 700; }
+  .pt-s { margin-left: auto; font-size: 9.5px; opacity: .85; text-align: right; }
+  .sub-h { border-left: 4px solid var(--brand); background: #F0F5F7; padding: 4px 8px;
+           font-size: 11.5px; font-weight: 700; color: #24404B; margin: 12px 0 6px; }
+  .sub-h small { font-weight: 400; color: var(--mut); }
+
+  /* ── KPI tiles ─────────────────────────────────────────────────────── */
+  .kpis { display: flex; gap: 7px; flex-wrap: wrap; margin-bottom: 10px; }
+  .kpi { flex: 1 1 100px; border: 1px solid #D8E2E7; border-top: 3px solid var(--brand);
+         border-radius: 4px; padding: 6px 9px; background: #FBFDFE; }
+  .kpi.k-act { border-top-color: var(--gold); }
+  .kpi.k-enc { border-top-color: var(--enc); }
+  .kpi.k-ok { border-top-color: var(--ok); }
+  .kpi.k-bad { border-top-color: var(--bad); }
+  .k-lbl { font-size: 8px; letter-spacing: .06em; text-transform: uppercase; color: var(--mut); }
+  .k-val { font-size: 15px; font-weight: 800; margin-top: 1px; font-variant-numeric: tabular-nums; }
+  .k-sub { font-size: 8.5px; color: var(--mut); margin-top: 1px; }
+  .neg { color: var(--bad); }
+
+  /* ── charts (pure CSS/HTML — deterministic in print) ───────────────── */
+  .charts { display: flex; gap: 14px; align-items: flex-start; }
+  .chart { flex: 1 1 0; border: 1px solid #E0E8EC; border-radius: 4px; padding: 8px 10px;
+           background: #fff; }
+  .ch-t { font-size: 10px; font-weight: 700; color: #24404B; margin-bottom: 6px; }
+  .hb-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  .hb-lbl { flex: 0 0 118px; font-size: 8.5px; color: #3E4C59; text-align: right;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .hb-track { flex: 1 1 0; background: #EEF2F5; border-radius: 2px; height: 9px; }
+  .hb-bar { height: 9px; border-radius: 2px; background: var(--brand); min-width: 1px; }
+  .hb-bar.warn { background: var(--enc); } .hb-bar.bad { background: var(--bad); }
+  .hb-bar.gold { background: var(--gold); } .hb-bar.ok { background: var(--ok); }
+  .hb-val { flex: 0 0 64px; font-size: 8.5px; color: #33525E; font-variant-numeric: tabular-nums;
+            white-space: nowrap; }
+  /* stacked composition bar */
+  .stack { display: flex; height: 20px; border-radius: 3px; overflow: hidden; margin: 4px 0 6px; }
+  .stack div { height: 20px; }
+  .lg { display: flex; gap: 12px; flex-wrap: wrap; font-size: 8.5px; color: #3E4C59; }
+  .lg i { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 4px; }
+  /* monthly column chart */
+  .cols { display: flex; align-items: flex-end; gap: 8px; height: 110px; padding-top: 4px; }
+  .col-g { flex: 1 1 0; display: flex; align-items: flex-end; gap: 2px; height: 100px;
+           border-bottom: 2px solid #CBD2D9; }
+  .col-g div { flex: 1 1 0; border-radius: 2px 2px 0 0; }
+  .col-ap { background: var(--brand); } .col-grn { background: var(--gold); }
+  .col-lbl { font-size: 7.5px; color: var(--mut); text-align: center; margin-top: 3px; }
+
+  /* ── data tables ───────────────────────────────────────────────────── */
+  table.data { border-collapse: collapse; width: 100%; }
+  table.data thead th { background: var(--brand); color: #fff; font-weight: 600; text-align: left;
+                        padding: 4px 6px; font-size: 8.5px; border: 1px solid var(--brand-d); }
+  table.data tbody td { padding: 3px 6px; border: 1px solid #E4E7EB; vertical-align: top;
+                        font-size: 8.5px; }
+  table.data tbody tr:nth-child(even) td { background: #F5F7FA; }
+  td.num, tfoot td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.data tfoot td { padding: 4px 6px; border: 1px solid #CBD2D9; background: #E3ECEF;
+                        font-weight: 700; color: #24404B; font-size: 8.5px; }
+  .empty { padding: 16px; text-align: center; color: var(--mut); font-style: italic;
+           border: 1px dashed #D3DCE2; }
+  .pill { display: inline-block; border-radius: 8px; padding: 0 6px; font-size: 8px; }
+  .pill.paid { background: #E1F3E8; color: var(--ok); }
+  .pill.part { background: #FCF0DE; color: #8A5E00; }
+  .pill.unp  { background: #FBE4E1; color: var(--bad); }
+
+  /* ── insights ──────────────────────────────────────────────────────── */
+  .ins { border: 1px solid #E0E8EC; border-left: 4px solid var(--brand); border-radius: 4px;
+         background: #FBFDFE; padding: 9px 12px; margin-bottom: 8px; }
+  .ins .i-t { font-size: 11px; font-weight: 700; color: var(--brand-d); margin-bottom: 2px; }
+  .ins .i-b { font-size: 10px; line-height: 1.55; color: #3E4C59; }
+  .ins b { color: var(--ink); }
+  .meth { margin-top: 12px; border: 1px dashed #C9D6DC; border-radius: 4px; padding: 9px 12px;
+          background: #F7FAFB; }
+  .meth h4 { margin: 0 0 5px; font-size: 10px; color: var(--brand-d); text-transform: uppercase;
+             letter-spacing: .08em; }
+  .meth div { font-size: 9px; color: #52606D; line-height: 1.6; }
+  .meth b { color: #33525E; }
+  .foot { margin-top: 10px; font-size: 8px; color: #9AA5B1; text-align: center; }
+</style>
+</head>
+<body>
+
+{#- ═══ COVER ═══════════════════════════════════════════════════════════ -#}
+<div class="page cover">
+  <div class="cv-band"></div>
+  <div class="cv-org">i-Finance &middot; Reporting Platform</div>
+  <div class="cv-title">Budget Utilization<br>Briefing Book</div>
+  <div class="cv-sub">Budget Year {{ params.year }}</div>
+  <div class="cv-scope">
+    <span>Scope <b>{{ params.sector if params.sector else 'All sectors' }}</b></span>
+    {% if params.projecttype %}<span>Project type <b>{{ params.projecttype }}</b></span>{% endif %}
+    {% if params.costcenter %}<span>Cost centre <b>{{ params.costcenter }}</b></span>{% endif %}
+    <span>Sectors <b>{{ O.sectors|fmt if O.sectors is not none else '—' }}</b></span>
+    <span>Projects <b>{{ O.projects|fmt if O.projects is not none else '—' }}</b></span>
+    <span>Budget lines <b>{{ O.budget_lines|fmt if O.budget_lines is not none else '—' }}</b></span>
+  </div>
+  <div class="cv-desc">
+    This briefing book presents the consolidated budget utilization position for budget year
+    {{ params.year }}{{ ' — ' + params.sector + ' sector' if params.sector else ' across all sectors' }}:
+    an executive overview with key indicators, the full register of actuals (supplier invoices and
+    goods receipts), open obligations (purchase orders) and open commitments (purchase requisitions),
+    closing with observations prepared for management review. All amounts are in AED.
+  </div>
+  <div class="cv-prep">Prepared by
+    <b>Financial Planning and Budgeting</b>
+    <i>Finance Department</i>
+  </div>
+  <div class="cv-date">Generated<b>{{ generated_at }} (Asia/Dubai)</b>{{ report_code }}</div>
+  <div class="cv-band2"></div>
+</div>
+
+{#- ═══ INDEX ═══════════════════════════════════════════════════════════ -#}
+<div class="page">
+  <div class="toc-h"><h2>Contents</h2></div>
+  <table class="toc">
+    <tr><td class="no">01</td>
+        <td><div class="t">Budget Utilization Overview</div>
+            <div class="d">Key indicators for the year, budget composition, utilization by sector and the budget lines under the most pressure.</div></td>
+        <td class="n">{{ SEC|length }} sectors &middot; {{ O.budget_lines|fmt if O.budget_lines is not none else '—' }} budget lines</td></tr>
+    <tr><td class="no">02</td>
+        <td><div class="t">Actuals — Supplier Invoices &amp; Goods Receipts</div>
+            <div class="d">Every actual charged to the budget: direct AP invoices (not PO-matched) and GRN goods receipts, with monthly trend and supplier concentration.</div></td>
+        <td class="n">{{ AP|length|fmt }} invoices &middot; {{ GRN|length|fmt }} receipt lines</td></tr>
+    <tr><td class="no">03</td>
+        <td><div class="t">Open Obligations — Purchase Orders</div>
+            <div class="d">Funds-reserved purchase-order lines net of goods received: what remains contractually committed to suppliers.</div></td>
+        <td class="n">{{ PO|length|fmt }} PO lines</td></tr>
+    <tr><td class="no">04</td>
+        <td><div class="t">Open Commitments — Purchase Requisitions</div>
+            <div class="d">Funds-reserved requisition lines not yet converted to purchase orders: demand in the pipeline.</div></td>
+        <td class="n">{{ PR|length|fmt }} PR lines</td></tr>
+    <tr><td class="no">05</td>
+        <td><div class="t">Observations &amp; Insights</div>
+            <div class="d">What the numbers say: pacing, pressure points, concentration and pipeline coverage — with the methodology behind every figure.</div></td>
+        <td class="n">&nbsp;</td></tr>
+  </table>
+  <div class="foot">{{ meta }}</div>
+</div>
+
+{#- ═══ PART 1 — OVERVIEW ═══════════════════════════════════════════════ -#}
+{% set spent = (O.actual_total or 0) + (O.obligation_po or 0) + (O.commitment_pr or 0) %}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">01</span><span class="pt-t">Budget Utilization Overview</span>
+    <span class="pt-s">Budget year {{ params.year }} &middot; {{ params.sector or 'All sectors' }}</span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k-lbl">Approved Budget</div><div class="k-val">{{ money(O.budget) }}</div><div class="k-sub">AED &middot; {{ O.budget_lines|fmt }} lines</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Actual — AP</div><div class="k-val">{{ money(O.actual_ap) }}</div><div class="k-sub">{{ AP|length|fmt }} invoices</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Actual — GRN</div><div class="k-val">{{ money(O.actual_grn) }}</div><div class="k-sub">{{ GRN|length|fmt }} receipt lines</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Open Obligation (PO)</div><div class="k-val">{{ money(O.obligation_po) }}</div><div class="k-sub">{{ PO|length|fmt }} PO lines</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Open Commitment (PR)</div><div class="k-val">{{ money(O.commitment_pr) }}</div><div class="k-sub">{{ PR|length|fmt }} PR lines</div></div>
+    <div class="kpi {{ 'k-bad' if O.fund_available is not none and O.fund_available < 0 else 'k-ok' }}">
+      <div class="k-lbl">Fund Available</div><div class="k-val {{ 'neg' if O.fund_available is not none and O.fund_available < 0 }}">{{ money(O.fund_available) }}</div>
+      <div class="k-sub">{{ O.over_budget_lines|fmt }} lines over budget</div></div>
+    <div class="kpi {{ 'k-bad' if O.utilization_pct is not none and O.utilization_pct > 100 else '' }}">
+      <div class="k-lbl">Utilization</div><div class="k-val">{{ O.utilization_pct|fmt if O.utilization_pct is not none else '—' }}%</div>
+      <div class="k-sub">actual + open encumbrance</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart" style="flex: 1.2 1 0">
+      <div class="ch-t">Budget composition — where the {{ money(O.budget) }} stands</div>
+      {% set B = O.budget or 0 %}
+      {% if B > 0 %}
+      {% set w_ap  = (100 * (O.actual_ap or 0) / B)|round(2) %}
+      {% set w_grn = (100 * (O.actual_grn or 0) / B)|round(2) %}
+      {% set w_po  = (100 * (O.obligation_po or 0) / B)|round(2) %}
+      {% set w_pr  = (100 * (O.commitment_pr or 0) / B)|round(2) %}
+      {% set w_fd  = 100 - w_ap - w_grn - w_po - w_pr %}
+      <div class="stack">
+        <div style="width:{{ [w_ap,0]|max }}%; background: var(--brand);"></div>
+        <div style="width:{{ [w_grn,0]|max }}%; background: var(--gold);"></div>
+        <div style="width:{{ [w_po,0]|max }}%; background: var(--enc);"></div>
+        <div style="width:{{ [w_pr,0]|max }}%; background: #D98E2B;"></div>
+        <div style="width:{{ [w_fd,0]|max }}%; background: #DDE7EB;"></div>
+      </div>
+      <div class="lg">
+        <span><i style="background:var(--brand)"></i>AP {{ w_ap }}%</span>
+        <span><i style="background:var(--gold)"></i>GRN {{ w_grn }}%</span>
+        <span><i style="background:var(--enc)"></i>Open PO {{ w_po }}%</span>
+        <span><i style="background:#D98E2B"></i>Open PR {{ w_pr }}%</span>
+        <span><i style="background:#DDE7EB"></i>Available {{ w_fd|round(2) }}%</span>
+      </div>
+      {% else %}<div class="empty">No approved budget in scope.</div>{% endif %}
+
+      <div class="ch-t" style="margin-top:12px">Top sectors by approved budget</div>
+      {% set mx = (SEC|map(attribute='budget')|select('number')|max) if SEC else 0 %}
+      {% for r in SEC[:8] %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.sector }}</div>
+        <div class="hb-track"><div class="hb-bar" style="width:{{ (100*(r.budget or 0)/mx)|round(1) if mx else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.budget) }}</div></div>
+      {% endfor %}
+    </div>
+    <div class="chart">
+      <div class="ch-t">Utilization by sector — actual + open encumbrance vs budget</div>
+      {% for r in (SEC|sort(attribute='utilization_pct', reverse=true))[:14] %}
+      {% set u = r.utilization_pct or 0 %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.sector }}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if u > 100 else 'warn' if u > 85 else '' }}"
+             style="width:{{ [u, 100]|min|round(1) }}%"></div></div>
+        <div class="hb-val">{{ u|fmt }}%</div></div>
+      {% endfor %}
+      {% if not SEC %}<div class="empty">No sector data.</div>{% endif %}
+    </div>
+  </div>
+  <div class="foot">Part 1 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">1.1 &nbsp; Utilization by sector <small>&mdash; all figures AED</small></div>
+  {% if SEC %}
+  <table class="data">
+    <thead><tr><th>Sector</th><th>Projects</th><th>Budget</th><th>Actual AP</th><th>Actual GRN</th>
+      <th>Open PO</th><th>Open PR</th><th>Fund Available</th><th>Utilization %</th></tr></thead>
+    <tbody>
+      {% for r in SEC %}
+      <tr><td>{{ r.sector }}</td><td class="num">{{ r.projects|fmt }}</td>
+        <td class="num">{{ r.budget|fmt }}</td><td class="num">{{ r.actual_ap|fmt }}</td>
+        <td class="num">{{ r.actual_grn|fmt }}</td><td class="num">{{ r.obligation_po|fmt }}</td>
+        <td class="num">{{ r.commitment_pr|fmt }}</td>
+        <td class="num {{ 'neg' if r.fund_available is not none and r.fund_available < 0 }}">{{ r.fund_available|fmt }}</td>
+        <td class="num">{{ r.utilization_pct|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td>Total</td><td class="num">{{ O.projects|fmt }}</td>
+      <td class="num">{{ O.budget|fmt }}</td><td class="num">{{ O.actual_ap|fmt }}</td>
+      <td class="num">{{ O.actual_grn|fmt }}</td><td class="num">{{ O.obligation_po|fmt }}</td>
+      <td class="num">{{ O.commitment_pr|fmt }}</td>
+      <td class="num {{ 'neg' if O.fund_available is not none and O.fund_available < 0 }}">{{ O.fund_available|fmt }}</td>
+      <td class="num">{{ O.utilization_pct|fmt }}</td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No data for the selected criteria.</div>{% endif %}
+
+  <div class="sub-h">1.2 &nbsp; Budget lines under pressure <small>&mdash; lowest remaining funds first (top {{ PRS|length }})</small></div>
+  {% if PRS %}
+  <table class="data">
+    <thead><tr><th>Sector</th><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>Budget</th><th>Actual</th><th>Open PO</th><th>Open PR</th><th>Fund Available</th><th>Util %</th></tr></thead>
+    <tbody>
+      {% for r in PRS %}
+      <tr><td>{{ r.sector or '—' }}</td><td>{{ r.project_number }}</td><td>{{ r.project_name or '—' }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ r.expenditure_type or '—' }}</td>
+        <td class="num">{{ r.budget|fmt }}</td><td class="num">{{ r.actual|fmt }}</td>
+        <td class="num">{{ r.obligation_po|fmt }}</td><td class="num">{{ r.commitment_pr|fmt }}</td>
+        <td class="num {{ 'neg' if r.fund_available is not none and r.fund_available < 0 }}">{{ r.fund_available|fmt }}</td>
+        <td class="num">{{ r.utilization_pct|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No budget lines in scope.</div>{% endif %}
+  <div class="foot">Part 1 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 2 — ACTUALS ════════════════════════════════════════════════ -#}
+{#- monthly trend + supplier concentration computed from the line data -#}
+{%- set mo = namespace(d={}) -%}
+{%- for r in AP %}{% if r.invoice_date and r.invoice_date.strftime is defined %}
+  {%- set k = r.invoice_date.strftime('%Y-%m') %}{% set c = mo.d.get(k, [0, 0]) %}
+  {%- set _ = mo.d.update({k: [c[0] + (r.matched_aed or 0), c[1]]}) %}{% endif %}{% endfor -%}
+{%- for r in GRN %}{% if r.last_receipt_date and r.last_receipt_date.strftime is defined %}
+  {%- set k = r.last_receipt_date.strftime('%Y-%m') %}{% set c = mo.d.get(k, [0, 0]) %}
+  {%- set _ = mo.d.update({k: [c[0], c[1] + (r.received_aed or 0)]}) %}{% endif %}{% endfor -%}
+{%- set months = mo.d.items()|sort(attribute='0') -%}
+{%- set mmax = months|map(attribute='1')|map('max')|max if months else 0 -%}
+{%- set sup = namespace(d={}) -%}
+{%- for r in AP %}{% set k = r.supplier_name or '(Unknown supplier)' %}
+  {%- set _ = sup.d.update({k: sup.d.get(k, 0) + (r.matched_aed or 0)}) %}{% endfor -%}
+{%- for r in GRN %}{% set k = r.supplier_name or '(Unknown supplier)' %}
+  {%- set _ = sup.d.update({k: sup.d.get(k, 0) + (r.received_aed or 0)}) %}{% endfor -%}
+{%- set top_sup = sup.d.items()|sort(attribute='1', reverse=true) -%}
+{%- set ap_total = AP|map(attribute='matched_aed')|select('number')|sum -%}
+{%- set grn_total = GRN|map(attribute='received_aed')|select('number')|sum -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">02</span><span class="pt-t">Actuals — Supplier Invoices &amp; Goods Receipts</span>
+    <span class="pt-s">{{ AP|length|fmt }} AP invoices &middot; {{ GRN|length|fmt }} GRN lines</span></div>
+
+  <div class="kpis">
+    <div class="kpi k-act"><div class="k-lbl">Total Actual</div><div class="k-val">{{ money(O.actual_total) }}</div><div class="k-sub">{{ (100 * (O.actual_total or 0) / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
+    <div class="kpi"><div class="k-lbl">AP Invoices (direct)</div><div class="k-val">{{ money(ap_total) }}</div><div class="k-sub">{{ AP|length|fmt }} invoices</div></div>
+    <div class="kpi k-act"><div class="k-lbl">GRN Receipts</div><div class="k-val">{{ money(grn_total) }}</div><div class="k-sub">{{ GRN|length|fmt }} receipt lines</div></div>
+    <div class="kpi"><div class="k-lbl">Active Suppliers</div><div class="k-val">{{ sup.d|length|fmt }}</div><div class="k-sub">across AP + GRN</div></div>
+    <div class="kpi"><div class="k-lbl">Top Supplier Share</div>
+      <div class="k-val">{{ (100 * top_sup[0][1] / (ap_total + grn_total))|round(1) if top_sup and (ap_total + grn_total) else '—' }}%</div>
+      <div class="k-sub">{{ top_sup[0][0]|truncate(26) if top_sup else '—' }}</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart" style="flex: 1.25 1 0">
+      <div class="ch-t">Monthly actuals — <i style="color:var(--brand)">AP</i> vs <i style="color:var(--gold)">GRN</i> (AED)</div>
+      {% if months %}
+      <div class="cols">
+        {% for m, v in months %}
+        <div style="flex:1 1 0">
+          <div class="col-g">
+            <div class="col-ap" style="height:{{ (100 * v[0] / mmax)|round(1) if mmax else 0 }}px"></div>
+            <div class="col-grn" style="height:{{ (100 * v[1] / mmax)|round(1) if mmax else 0 }}px"></div>
+          </div>
+          <div class="col-lbl">{{ m[5:] }}/{{ m[2:4] }}</div>
+        </div>
+        {% endfor %}
+      </div>
+      {% else %}<div class="empty">No dated actuals in scope.</div>{% endif %}
+    </div>
+    <div class="chart">
+      <div class="ch-t">Top 10 suppliers by actual spend</div>
+      {% for name, amt in top_sup[:10] %}
+      <div class="hb-row"><div class="hb-lbl">{{ name|truncate(30) }}</div>
+        <div class="hb-track"><div class="hb-bar gold" style="width:{{ (100 * amt / top_sup[0][1])|round(1) if top_sup[0][1] else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(amt) }}</div></div>
+      {% endfor %}
+      {% if not top_sup %}<div class="empty">No supplier activity.</div>{% endif %}
+    </div>
+  </div>
+  <div class="foot">Part 2 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">2.1 &nbsp; AP invoices charged directly to the budget <small>&mdash; {{ AP|length|fmt }} invoices, not PO-matched</small></div>
+  {% if AP %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>Invoice #</th><th>Invoice Date</th><th>Supplier</th><th>Curr</th>
+      <th>Charged AED</th><th>Payment</th></tr></thead>
+    <tbody>
+      {% for r in AP %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(38) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(30) }}</td>
+        <td>{{ r.invoice_number }}</td><td>{{ dt(r.invoice_date) }}</td>
+        <td>{{ (r.supplier_name or '—')|truncate(34) }}</td><td>{{ r.currency or 'AED' }}</td>
+        <td class="num">{{ r.matched_aed|fmt }}</td>
+        <td><span class="pill {{ 'paid' if r.payment_status == 'Paid' else 'part' if r.payment_status == 'Partially Paid' else 'unp' }}">{{ r.payment_status }}</span></td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="8">Total — AP invoices</td><td class="num">{{ ap_total|fmt }}</td><td></td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No direct AP invoices for the selected criteria.</div>{% endif %}
+  <div class="foot">Part 2.1 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">2.2 &nbsp; Goods receipts (GRN) <small>&mdash; {{ GRN|length|fmt }} receipt lines by purchase-order distribution</small></div>
+  {% if GRN %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>PO #</th><th>Line</th><th>Supplier</th><th>Last Receipt</th><th>Receipts</th>
+      <th>Received AED</th><th>Invoiced AED</th><th>Uninvoiced AED</th></tr></thead>
+    <tbody>
+      {% for r in GRN %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(34) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(28) }}</td>
+        <td>{{ r.po_number }}</td><td class="num">{{ r.po_line }}</td>
+        <td>{{ (r.supplier_name or '—')|truncate(30) }}</td><td>{{ dt(r.last_receipt_date) }}</td>
+        <td class="num">{{ r.receipt_lines|fmt }}</td><td class="num">{{ r.received_aed|fmt }}</td>
+        <td class="num">{{ r.invoiced_aed|fmt }}</td><td class="num">{{ r.uninvoiced_aed|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="9">Total — goods receipts</td>
+      <td class="num">{{ grn_total|fmt }}</td>
+      <td class="num">{{ GRN|map(attribute='invoiced_aed')|select('number')|sum|fmt }}</td>
+      <td class="num">{{ GRN|map(attribute='uninvoiced_aed')|select('number')|sum|fmt }}</td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No goods receipts for the selected criteria.</div>{% endif %}
+  <div class="foot">Part 2.2 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 3 — OPEN OBLIGATIONS ═══════════════════════════════════════ -#}
+{%- set po_sup = namespace(d={}) -%}
+{%- for r in PO %}{% set k = r.supplier_name or '(Unknown supplier)' %}
+  {%- set _ = po_sup.d.update({k: po_sup.d.get(k, 0) + (r.open_aed or 0)}) %}{% endfor -%}
+{%- set po_top = po_sup.d.items()|sort(attribute='1', reverse=true) -%}
+{%- set po_total = PO|map(attribute='open_aed')|select('number')|sum -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">03</span><span class="pt-t">Open Obligations — Purchase Orders</span>
+    <span class="pt-s">{{ PO|length|fmt }} funds-reserved PO lines, net of goods received</span></div>
+
+  <div class="kpis">
+    <div class="kpi k-enc"><div class="k-lbl">Open Obligation</div><div class="k-val">{{ money(po_total) }}</div><div class="k-sub">{{ (100 * po_total / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
+    <div class="kpi"><div class="k-lbl">PO Lines</div><div class="k-val">{{ PO|length|fmt }}</div><div class="k-sub">Reserved / Partially Liquidated</div></div>
+    <div class="kpi"><div class="k-lbl">Suppliers</div><div class="k-val">{{ po_sup.d|length|fmt }}</div><div class="k-sub">holding open orders</div></div>
+    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(PO[0].open_aed) if PO else '—' }}</div><div class="k-sub">{{ (PO[0].supplier_name or '—')|truncate(26) if PO else '' }}</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="ch-t">Top 10 suppliers by open obligation</div>
+      {% for name, amt in po_top[:10] %}
+      <div class="hb-row"><div class="hb-lbl">{{ name|truncate(30) }}</div>
+        <div class="hb-track"><div class="hb-bar warn" style="width:{{ (100 * amt / po_top[0][1])|round(1) if po_top[0][1] else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(amt) }}</div></div>
+      {% endfor %}
+      {% if not po_top %}<div class="empty">No open purchase orders.</div>{% endif %}
+    </div>
+    <div class="chart">
+      <div class="ch-t">Largest open PO lines</div>
+      {% for r in PO[:10] %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.po_number }}/{{ r.po_line }} &middot; {{ (r.supplier_name or '')|truncate(18) }}</div>
+        <div class="hb-track"><div class="hb-bar" style="width:{{ (100 * (r.open_aed or 0) / PO[0].open_aed)|round(1) if PO[0].open_aed else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.open_aed) }}</div></div>
+      {% endfor %}
+      {% if not PO %}<div class="empty">No open purchase orders.</div>{% endif %}
+    </div>
+  </div>
+  <div class="foot">Part 3 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">3.1 &nbsp; Open purchase-order lines <small>&mdash; ordered by open amount, GRN-netted</small></div>
+  {% if PO %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>PO #</th><th>Line</th><th>Budget Date</th><th>Supplier</th><th>Funds Status</th>
+      <th>Line AED</th><th>Received AED</th><th>Open AED</th></tr></thead>
+    <tbody>
+      {% for r in PO %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(32) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(28) }}</td>
+        <td>{{ r.po_number }}</td><td class="num">{{ r.po_line }}</td><td>{{ dt(r.budget_date) }}</td>
+        <td>{{ (r.supplier_name or '—')|truncate(30) }}</td><td>{{ r.funds_status }}</td>
+        <td class="num">{{ r.line_aed|fmt }}</td><td class="num">{{ r.received_aed|fmt }}</td>
+        <td class="num">{{ r.open_aed|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="9">Total — open obligations</td>
+      <td class="num">{{ PO|map(attribute='line_aed')|select('number')|sum|fmt }}</td>
+      <td class="num">{{ PO|map(attribute='received_aed')|select('number')|sum|fmt }}</td>
+      <td class="num">{{ po_total|fmt }}</td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No open purchase orders for the selected criteria.</div>{% endif %}
+  <div class="foot">Part 3.1 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 4 — OPEN COMMITMENTS ═══════════════════════════════════════ -#}
+{%- set pr_total = PR|map(attribute='amount_aed')|select('number')|sum -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">04</span><span class="pt-t">Open Commitments — Purchase Requisitions</span>
+    <span class="pt-s">{{ PR|length|fmt }} funds-reserved PR lines awaiting purchase orders</span></div>
+
+  <div class="kpis">
+    <div class="kpi k-enc"><div class="k-lbl">Open Commitment</div><div class="k-val">{{ money(pr_total) }}</div><div class="k-sub">{{ (100 * pr_total / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
+    <div class="kpi"><div class="k-lbl">PR Lines</div><div class="k-val">{{ PR|length|fmt }}</div><div class="k-sub">funds status Reserved</div></div>
+    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(PR[0].amount_aed) if PR else '—' }}</div><div class="k-sub">{{ (PR[0].pr_number or '')|truncate(24) if PR else '' }}</div></div>
+    <div class="kpi"><div class="k-lbl">Pipeline (PO + PR)</div><div class="k-val">{{ money((O.obligation_po or 0) + (O.commitment_pr or 0)) }}</div><div class="k-sub">total open encumbrance</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="ch-t">Largest open requisition lines</div>
+      {% for r in PR[:12] %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.pr_number }} &middot; {{ (r.project_number or '')|truncate(14) }}</div>
+        <div class="hb-track"><div class="hb-bar warn" style="width:{{ (100 * (r.amount_aed or 0) / PR[0].amount_aed)|round(1) if PR[0].amount_aed else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.amount_aed) }}</div></div>
+      {% endfor %}
+      {% if not PR %}<div class="empty">No open requisitions.</div>{% endif %}
+    </div>
+  </div>
+  <div class="foot">Part 4 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+<div class="page">
+  <div class="sub-h">4.1 &nbsp; Open purchase-requisition lines <small>&mdash; ordered by amount</small></div>
+  {% if PR %}
+  <table class="data">
+    <thead><tr><th>Project</th><th>Project Name</th><th>Task</th><th>Expenditure Type</th>
+      <th>PR #</th><th>Description</th><th>Budget Date</th><th>Curr</th>
+      <th>Amount</th><th>Amount AED</th></tr></thead>
+    <tbody>
+      {% for r in PR %}
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(30) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(26) }}</td>
+        <td>{{ r.pr_number }}</td><td>{{ (r.description or '—')|truncate(46) }}</td>
+        <td>{{ dt(r.budget_date) }}</td><td>{{ r.currency or 'AED' }}</td>
+        <td class="num">{{ r.distribution_amount|fmt }}</td><td class="num">{{ r.amount_aed|fmt }}</td></tr>
+      {% endfor %}
+    </tbody>
+    <tfoot><tr><td colspan="9">Total — open commitments</td><td class="num">{{ pr_total|fmt }}</td></tr></tfoot>
+  </table>
+  {% else %}<div class="empty">No open requisitions for the selected criteria.</div>{% endif %}
+  <div class="foot">Part 4.1 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 5 — INSIGHTS ═══════════════════════════════════════════════ -#}
+{%- set gy = generated_at[:4]|int -%}
+{%- set gm = generated_at[5:7]|int -%}
+{%- set yr = params.year|int -%}
+{%- set elapsed = 100 if yr < gy else ((100 * gm / 12)|round(0)|int if yr == gy else 0) -%}
+{%- set actual_pct = (100 * (O.actual_total or 0) / O.budget)|round(1) if O.budget else 0 -%}
+{%- set oldest_po = (PO|selectattr('budget_date')|sort(attribute='budget_date')|list|first) if PO else none -%}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">05</span><span class="pt-t">Observations &amp; Insights</span>
+    <span class="pt-s">prepared for management review</span></div>
+
+  <div class="ins"><div class="i-t">Pacing — spend vs time</div>
+    <div class="i-b">With <b>{{ elapsed }}%</b> of budget year {{ params.year }} elapsed, committed
+    utilization stands at <b>{{ O.utilization_pct|fmt }}%</b> ({{ money(spent) }} of {{ money(O.budget) }})
+    while cash-realised actuals alone are <b>{{ actual_pct }}%</b>.
+    {% if O.utilization_pct is not none %}{% if O.utilization_pct > elapsed + 10 %}Utilization is running
+    <b>ahead of the calendar</b> — remaining funds may be exhausted before year-end at the current pace.
+    {% elif O.utilization_pct < elapsed - 25 %}Utilization is running <b>well behind the calendar</b> —
+    review whether planned initiatives are delayed or budgets can be reallocated.
+    {% else %}Utilization is broadly <b>in line with the calendar</b>.{% endif %}{% endif %}</div></div>
+
+  <div class="ins"><div class="i-t">Budget pressure</div>
+    <div class="i-b"><b>{{ O.over_budget_lines|fmt }}</b> budget line(s) are over budget (negative fund
+    available){% if PRS %}; the tightest is <b>{{ PRS[0].project_number }}</b>
+    {{ '· ' + PRS[0].expenditure_type if PRS[0].expenditure_type }} at
+    <b class="{{ 'neg' if PRS[0].fund_available < 0 }}">{{ PRS[0].fund_available|fmt }} AED</b> remaining
+    ({{ PRS[0].utilization_pct|fmt }}% utilized){% endif %}. Part 1.2 lists the {{ PRS|length }} lines
+    with the least headroom.</div></div>
+
+  <div class="ins"><div class="i-t">Supplier concentration</div>
+    <div class="i-b">{% if top_sup %}The top supplier, <b>{{ top_sup[0][0] }}</b>, accounts for
+    <b>{{ (100 * top_sup[0][1] / (ap_total + grn_total))|round(1) if (ap_total + grn_total) else 0 }}%</b>
+    of all actuals ({{ money(top_sup[0][1]) }}); the top five suppliers hold
+    <b>{{ (100 * (top_sup[:5]|map(attribute='1')|sum) / (ap_total + grn_total))|round(1) if (ap_total + grn_total) else 0 }}%</b>
+    across {{ sup.d|length }} active suppliers.{% else %}No supplier activity recorded in scope.{% endif %}</div></div>
+
+  <div class="ins"><div class="i-t">Delivery pipeline</div>
+    <div class="i-b">Open encumbrances total <b>{{ money((O.obligation_po or 0) + (O.commitment_pr or 0)) }}</b> —
+    {{ money(O.obligation_po) }} contractually obligated on {{ PO|length|fmt }} PO lines plus
+    {{ money(O.commitment_pr) }} requested on {{ PR|length|fmt }} PR lines. If everything open is
+    delivered and invoiced, utilization reaches the committed <b>{{ O.utilization_pct|fmt }}%</b>.
+    {% if oldest_po %}The oldest open PO line dates to <b>{{ dt(oldest_po.budget_date) }}</b>
+    ({{ oldest_po.po_number }}, {{ (oldest_po.supplier_name or '—')|truncate(34) }}) — aged open orders
+    are candidates for close-out to release funds.{% endif %}</div></div>
+
+  <div class="ins"><div class="i-t">Uninvoiced deliveries</div>
+    <div class="i-b">{% set uninv = GRN|map(attribute='uninvoiced_aed')|select('number')|sum %}
+    Goods worth <b>{{ money(uninv) }}</b> have been received but not yet invoiced by suppliers
+    (Part 2.2, Uninvoiced AED) — an accrual to anticipate in upcoming AP volumes.</div></div>
+
+  <div class="meth">
+    <h4>Methodology</h4>
+    <div>
+      <b>Actual — AP</b>: validated supplier-invoice distributions charged directly to projects (not PO-matched), AED functional amounts. &nbsp;
+      <b>Actual — GRN</b>: goods-receipt ledger amounts per purchase-order distribution. &nbsp;
+      <b>Open Obligation (PO)</b>: purchase-order distributions with funds status Reserved / Partially Liquidated, net of goods received; finally-closed orders excluded. &nbsp;
+      <b>Open Commitment (PR)</b>: requisition distributions with funds status Reserved, AED via the corporate rate snapshot. &nbsp;
+      <b>Fund Available</b> = Budget &minus; Actuals &minus; Open PO &minus; Open PR. &nbsp;
+      <b>Utilization %</b> = (Actuals + Open PO + Open PR) &divide; Budget.
+      Source: i-Finance GL Budget Utilization layer (prod.dct_budget_utilization_v and its detail views), Fusion-loaded data as of the generation time.
+    </div>
+  </div>
+  <div class="foot">Part 5 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot;
+    Generated {{ generated_at }} (Asia/Dubai) &middot; {{ report_code }} &middot;
+    Prepared by Financial Planning and Budgeting — Finance Department</div>
+</div>
+
+</body>
+</html>
