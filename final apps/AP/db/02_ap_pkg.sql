@@ -43,6 +43,7 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_pkg AS
         p_curr      VARCHAR2 DEFAULT NULL,   -- multi, invoice_currency
         p_paygroup  VARCHAR2 DEFAULT NULL,   -- multi, (None) = blank
         p_paymethod VARCHAR2 DEFAULT NULL,   -- multi
+        p_appr      VARCHAR2 DEFAULT NULL,   -- multi, approval_status (display labels)
         p_sector    VARCHAR2 DEFAULT NULL,   -- multi, dists; Unclassified = blank
         p_dept      VARCHAR2 DEFAULT NULL,   -- multi, lines expenditure_organization
         p_cc        VARCHAR2 DEFAULT NULL,   -- multi, dists cost_center_code
@@ -88,6 +89,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
         p_curr      VARCHAR2 DEFAULT NULL,
         p_paygroup  VARCHAR2 DEFAULT NULL,
         p_paymethod VARCHAR2 DEFAULT NULL,
+        p_appr      VARCHAR2 DEFAULT NULL,
         p_sector    VARCHAR2 DEFAULT NULL,
         p_dept      VARCHAR2 DEFAULT NULL,
         p_cc        VARCHAR2 DEFAULT NULL,
@@ -144,6 +146,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
            AND (p_paid      IS NULL OR dct_ap_pkg.in_list(p_paid,      h.payment_status)     = 1)
            AND (p_val       IS NULL OR dct_ap_pkg.in_list(p_val,       h.validation_status)  = 1)
            AND (p_acc       IS NULL OR dct_ap_pkg.in_list(p_acc,       h.accounting_status)  = 1)
+           AND (p_appr      IS NULL OR dct_ap_pkg.in_list(p_appr,      h.approval_status)    = 1)
            AND (p_inv       IS NULL OR dct_ap_pkg.in_list(p_inv,       h.invoice_status)     = 1)
            AND (p_itype     IS NULL OR dct_ap_pkg.in_list(p_itype,     h.invoice_type)       = 1)
            AND (p_curr      IS NULL OR dct_ap_pkg.in_list(p_curr,      h.invoice_currency)   = 1)

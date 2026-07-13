@@ -65,7 +65,7 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
-    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT COUNT(*), NVL(SUM(ln.line_amount_aed),0) INTO l_cnt, l_amt
@@ -178,7 +178,7 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
-    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
@@ -265,7 +265,7 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
-    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT COUNT(*), NVL(SUM(d.distribution_amount_aed),0) INTO l_cnt, l_amt
@@ -413,7 +413,7 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
-    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');

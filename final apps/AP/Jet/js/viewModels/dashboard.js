@@ -30,6 +30,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       { key: 'validationStatus', labelKey: 'tbl.validation', badge: 'val' },
       { key: 'accountingStatus', labelKey: 'tbl.accounting', badge: 'acc' },
       { key: 'paymentStatus',    labelKey: 'tbl.payStatus', badge: 'pay' },
+      { key: 'approvalStatus',   labelKey: 'f.appr', badge: 'appr', hide: true },
       { key: 'fundsStatus',      labelKey: 'tbl.funds', hide: true },
       { key: 'invoiceStatus',    labelKey: 'tbl.status', hide: true },
       { key: 'termsDate',        labelKey: 'tbl.terms', hide: true },
@@ -117,6 +118,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     { key: 'paid',      labelKey: 'f.paid',      src: 'paymentStatus',    counted: true, open: true },
     { key: 'val',       labelKey: 'f.val',       src: 'validationStatus', counted: true, open: true },
     { key: 'acc',       labelKey: 'f.acc',       src: 'accountingStatus', counted: true },
+    { key: 'appr',      labelKey: 'f.appr',      src: 'approvalStatus',   counted: true },
     { key: 'inv',       labelKey: 'f.inv',       src: 'invoiceStatus',    counted: true },
     { key: 'itype',     labelKey: 'f.itype',     src: 'invoiceType',      counted: true },
     { key: 'curr',      labelKey: 'f.curr',      src: 'currency',         counted: true },
@@ -227,6 +229,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     self.badgeCls = function (type, val) {
       if (type === 'val') return self.valBadge(val);
       if (type === 'acc') return self.accBadge(val);
+      if (type === 'appr') return self.apprBadge(val);
       return self.payBadge(val);
     };
     self.cellVal = function (row, col) {

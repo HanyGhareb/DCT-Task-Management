@@ -197,3 +197,10 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
      register/export sector predicate (a `(Multiple sectors)` selection passes its
      invoices' rows through). Deploy 02 → 03 → 04; combined facet query ~0.3s.
   Frontend: bySector ⓘ hint rewritten (EN/AR). APP_VERSION 1.6.3.
+- **2026-07-13 (approval facet, v1.6.4)** — Approval Status added as a search
+  criterion: `p_appr` facet in `filtered_ids` (multi, header `approval_status`
+  display labels) + `appr=` bind in all 7 facet handlers; `/filters` gains the
+  `approvalStatus` counted list (inclcxl-aware, placed after Accounting status);
+  header register + CSV export gained the `approvalStatus` column (hidden by
+  default, `appr` badge). Verified: facet Workflow Approved 4,480 = direct;
+  multi-value `Rejected|Stopped` = 23. Deploy 02 → 03 → 04. APP_VERSION 1.6.4.

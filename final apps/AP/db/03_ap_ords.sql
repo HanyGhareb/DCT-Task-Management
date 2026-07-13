@@ -79,6 +79,10 @@ BEGIN
   FOR r IN (SELECT accounting_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY accounting_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
+  APEX_JSON.open_array('approvalStatus');
+  FOR r IN (SELECT approval_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY approval_status ORDER BY 2 DESC) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
+  END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('invoiceStatus');
   FOR r IN (SELECT invoice_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') GROUP BY invoice_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
@@ -208,7 +212,7 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
-    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT COUNT(*),
@@ -372,7 +376,7 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
-    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT NVL(SUM(h.invoice_amount_aed),0),
@@ -395,6 +399,7 @@ BEGIN
            h.invoice_amount, h.invoice_amount_aed, NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
+           h.approval_status,
            TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, h.payment_terms, h.pay_group, h.payment_method,
            h.po_numbers, h.pr_numbers, h.voucher_num, h.invoice_source, h.line_count, h.distribution_count,
            CASE WHEN h.payment_status = 'Unpaid' AND NVL(h.balance_due,0) > 0
@@ -432,6 +437,7 @@ BEGIN
     APEX_JSON.write('paymentStatus', r.payment_status);
     APEX_JSON.write('fundsStatus', r.funds_status);
     APEX_JSON.write('invoiceStatus', r.invoice_status);
+    APEX_JSON.write('approvalStatus', r.approval_status);
     APEX_JSON.write('termsDate', r.terms_dt);
     APEX_JSON.write('paymentTerms', r.payment_terms);
     APEX_JSON.write('payGroup', r.pay_group);
@@ -500,14 +506,14 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
-    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-register-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Terms Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
+  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Approval,Terms Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
   FOR r IN (
     SELECT h.invoice_number, TO_CHAR(h.invoice_date,'YYYY-MM-DD') inv_dt, h.invoice_type,
            CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
@@ -517,6 +523,7 @@ BEGIN
            NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            ROUND(NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1),2) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
+           h.approval_status,
            TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt,
            CASE WHEN h.payment_status = 'Unpaid' AND NVL(h.balance_due,0) > 0
                 THEN GREATEST(TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)), 0) END days_past_due,
@@ -532,7 +539,7 @@ BEGIN
       r.invoice_amount || ',' || r.invoice_amount_aed || ',' || r.amount_paid || ',' ||
       r.balance_due || ',' || r.balance_aed || ',' ||
       esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status) || ',' ||
-      esc(r.funds_status) || ',' || esc(r.invoice_status) || ',' || r.terms_dt || ',' || r.days_past_due || ',' ||
+      esc(r.funds_status) || ',' || esc(r.invoice_status) || ',' || esc(r.approval_status) || ',' || r.terms_dt || ',' || r.days_past_due || ',' ||
       esc(r.pay_group) || ',' || esc(r.payment_method) || ',' || esc(r.po_numbers) || ',' ||
       esc(r.pr_numbers) || ',' || r.voucher_num || ',' || esc(r.invoice_source));
   END LOOP;
