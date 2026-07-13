@@ -351,7 +351,7 @@ BEGIN
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END) tkey,
-             i.invoice_number, d.line_number line_no, TO_CHAR(i.invoice_date,'YYYY-MM-DD') idate, i.supplier_name,
+             i.invoice_id, i.invoice_number, d.line_number line_no, TO_CHAR(i.invoice_date,'YYYY-MM-DD') idate, i.supplier_name,
              NVL(i.invoice_currency,'AED') cur, i.invoice_amount inv_amt,
              NVL(d.distribution_amount_functi, d.distribution_amount) amt_aed,
              i.validation_status, d.distribution_description descr,
@@ -378,7 +378,8 @@ BEGIN
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
       IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
-      APEX_JSON.write('invoice', NVL(r.invoice_number,'')); APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
+      APEX_JSON.write('invoice', NVL(r.invoice_number,'')); APEX_JSON.write('invoiceId', r.invoice_id);
+      APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
       APEX_JSON.write('date', NVL(r.idate,''));
       APEX_JSON.write('vendor', NVL(r.supplier_name,'')); APEX_JSON.write('currency', NVL(r.cur,''));
       APEX_JSON.write('invAmount', r.inv_amt); APEX_JSON.write('amount', r.amt_aed);
@@ -422,7 +423,7 @@ BEGIN
              COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) tkey,
              g.receipt_number, g.receipt_line_number line_no,
              TO_CHAR(NVL(g.accounted_date, g.transaction_date),'YYYY-MM-DD') td, g.currency_code,
-             ph.order_number po_number, pl.line po_line, ph.supplier_name,
+             ph.order_number po_number, pl.line po_line, ph.supplier_name, g.po_header_id,
              g.conversion_rate, g.ledger_amount amt_aed,
              COUNT(*) OVER () full_n, SUM(g.ledger_amount) OVER () full_tot
       FROM prod.grn_all_v2 g
@@ -446,7 +447,8 @@ BEGIN
       IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
       APEX_JSON.write('receipt', NVL(TO_CHAR(r.receipt_number),'')); APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
       APEX_JSON.write('date', NVL(r.td,''));
-      APEX_JSON.write('po', NVL(TO_CHAR(r.po_number),'')); APEX_JSON.write('poLine', NVL(TO_CHAR(r.po_line),''));
+      APEX_JSON.write('po', NVL(TO_CHAR(r.po_number),'')); APEX_JSON.write('poHeaderId', r.po_header_id);
+      APEX_JSON.write('poLine', NVL(TO_CHAR(r.po_line),''));
       APEX_JSON.write('supplier', NVL(r.supplier_name,''));
       APEX_JSON.write('currency', NVL(r.currency_code,'AED')); APEX_JSON.write('rate', NVL(r.conversion_rate,1));
       APEX_JSON.write('amount', r.amt_aed);
@@ -482,7 +484,7 @@ BEGIN
            prl  AS (SELECT pr_line_id, MAX(pr_line) pr_line FROM prod.pr_lines GROUP BY pr_line_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END) tkey,
-             d.requisition pr_number, pl.pr_line line_no, h.description, TO_CHAR(d.budget_date,'YYYY-MM-DD') bd,
+             d.requisition pr_number, d.pr_header_id, pl.pr_line line_no, h.description, TO_CHAR(d.budget_date,'YYYY-MM-DD') bd,
              d.currency_code, d.distribution_amount * NVL(cc.exchange_rate_to_aed,1) amt_aed,
              COUNT(*) OVER () full_n, SUM(d.distribution_amount * NVL(cc.exchange_rate_to_aed,1)) OVER () full_tot
       FROM prod.pr_distributions d
@@ -504,7 +506,8 @@ BEGIN
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
       IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
-      APEX_JSON.write('pr', NVL(TO_CHAR(r.pr_number),'')); APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
+      APEX_JSON.write('pr', NVL(TO_CHAR(r.pr_number),'')); APEX_JSON.write('prHeaderId', r.pr_header_id);
+      APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
       APEX_JSON.write('description', NVL(r.description,''));
       APEX_JSON.write('date', NVL(r.bd,'')); APEX_JSON.write('currency', NVL(r.currency_code,'AED'));
       APEX_JSON.write('amount', r.amt_aed);
@@ -547,7 +550,7 @@ BEGIN
                             GROUP BY po_distribution_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END) tkey,
-             h.order_number, pl.line po_line, TO_CHAR(b.budget_date,'YYYY-MM-DD') bd, h.supplier_name, b.funds_status,
+             h.order_number, b.po_header_id, pl.line po_line, TO_CHAR(b.budget_date,'YYYY-MM-DD') bd, h.supplier_name, b.funds_status,
              TO_NUMBER(REGEXP_REPLACE(h.ordered_amount,'[^0-9.-]','') DEFAULT NULL ON CONVERSION ERROR) po_amt,
              b.amt_aed line_aed, GREATEST(b.amt_aed - NVL(g.grn_aed,0),0) open_aed,
              COUNT(*) OVER () full_n, SUM(GREATEST(b.amt_aed - NVL(g.grn_aed,0),0)) OVER () full_tot
@@ -574,7 +577,8 @@ BEGIN
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
       IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
-      APEX_JSON.write('po', NVL(TO_CHAR(r.order_number),'')); APEX_JSON.write('line', NVL(TO_CHAR(r.po_line),''));
+      APEX_JSON.write('po', NVL(TO_CHAR(r.order_number),'')); APEX_JSON.write('poHeaderId', r.po_header_id);
+      APEX_JSON.write('line', NVL(TO_CHAR(r.po_line),''));
       APEX_JSON.write('date', NVL(r.bd,'')); APEX_JSON.write('vendor', NVL(r.supplier_name,''));
       APEX_JSON.write('status', NVL(r.funds_status,'')); APEX_JSON.write('poAmount', r.po_amt);
       APEX_JSON.write('lineAmount', r.line_aed); APEX_JSON.write('amount', r.open_aed);

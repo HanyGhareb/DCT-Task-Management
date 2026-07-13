@@ -192,6 +192,7 @@
     buMaxT:{en:'Maximize table (full screen)',ar:'تكبير الجدول (ملء الشاشة)'},
     buRestoreT:{en:'Exit full screen (Esc)',ar:'الخروج من ملء الشاشة (Esc)'},
     loadingData:{en:'Loading data',ar:'جارٍ تحميل البيانات'},
+    fusionOpen:{en:'Open in Oracle Fusion (new tab)',ar:'فتح في أوراكل فيوجن (نافذة جديدة)'},
     fullYear:{en:'Full year',ar:'السنة كاملة'}, ytd:{en:'YTD',ar:'منذ بداية السنة حتى'},
     buPeriodHint:{en:'Year-to-date: figures include 1 January through the end of the selected period. Budget stays annual.',ar:'منذ بداية السنة: تشمل الأرقام الفترة من 1 يناير حتى نهاية الفترة المحددة. تبقى الموازنة سنوية.'},
 
@@ -691,6 +692,17 @@
       if (col.type === 'money') return self.money(v);
       if (col.type === 'num') return (v == null ? '' : Number(v).toLocaleString('en-US', { maximumFractionDigits: 4 }));
       return (v == null ? '' : v);
+    };
+    // Fusion deep-link for a drill cell (shared /shared/js/fusionLinks.js UMD
+    // global) — Invoice/PO/PR numbers link to Fusion when the row carries the
+    // FUSION internal id (invoiceId / poHeaderId / prHeaderId); null = plain text
+    self.drillLink = function (row, col) {
+      var F = window.FusionLinks;
+      if (!F || !row || !col || !row[col.key]) return null;
+      if (col.key === 'invoice' && row.invoiceId) return F.invoice(row.invoiceId);
+      if (col.key === 'po' && row.poHeaderId)     return F.purchaseOrder(row.poHeaderId);
+      if (col.key === 'pr' && row.prHeaderId)     return F.requisition(row.prHeaderId);
+      return null;
     };
     self.drillFooterSpan = ko.computed(function () { return Math.max(1, self.drillCols().length - 1); });
 

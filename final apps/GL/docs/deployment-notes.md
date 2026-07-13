@@ -554,3 +554,14 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   match 10,102/10,961 (~92%, same as pre-flip), AP glCombination matches the Fusion UI
   string byte-for-byte, 0 INVALID. RULE: keep the three cc_string producers in lock-step;
   new views wrap feed charge_accounts with `prod.dct_cc_canon`.
+- **2026-07-13 (Fusion deep-links in butil drill drawers, v1.20.0)** — Invoice/PO/PR
+  numbers in the Budget Utilization drill drawer (all four metrics, both row-cell and
+  KPI-card drills) now open Oracle Fusion in a new tab via the SHARED
+  `shared/js/fusionLinks.js` (made **UMD** this round: AMD for the JET-shell apps +
+  `window.FusionLinks` global for portal-style plain-KO apps like GL — index.html loads
+  it before app.js, app still boots if it 404s). DB: `GL/db/07` `/butil/lines` rows now
+  carry the FUSION internal ids — `invoiceId` (ap metric), `poHeaderId` (grn + po
+  metrics), `prHeaderId` (pr metric) — all from joins the queries already had. FE:
+  `drillLink(row,col)` maps invoice/po/pr columns to deeplinks (`.fus-link` style, ↗);
+  CSV export unchanged (numbers only). Deploy: 07 re-run (standalone-safe) + webtier
+  release 20260713232809. APP_VERSION 1.20.0.

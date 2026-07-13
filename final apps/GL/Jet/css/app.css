@@ -354,6 +354,10 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
 .drill-tbl td.num{text-align:end;white-space:nowrap}
 .drill-total{text-align:end;background:var(--brand-soft);color:var(--brand-dark);font-weight:600;padding:11px 14px}
 .drill-total b{margin-inline-start:8px;font-size:14px}
+/* Fusion deep-link on Invoice/PO/PR numbers in drill drawers (shared fusionLinks) */
+.fus-link{color:var(--brand-dark);font-weight:600;text-decoration:none;white-space:nowrap}
+.fus-link:hover{text-decoration:underline}
+.fus-link::after{content:"\2197";font-size:9px;margin-inline-start:3px;opacity:.65;vertical-align:super}
 
 /* ── drill-down drawer (right-edge slide-in — mirrors platform edit-drawer) ── */
 .dw-scrim{position:fixed;inset:0;z-index:70;background:rgba(27,42,39,.42);backdrop-filter:blur(2px);

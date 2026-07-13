@@ -1,7 +1,11 @@
 /**
  * fusionLinks.js — Oracle Fusion deep-link builders (shared, all apps).
  *
- * Usage:  define(['shared/fusionLinks'], function (fusion) { ... })
+ * UMD: works in BOTH app styles.
+ *   JET shell apps (requirejs):  define(['shared/fusionLinks'], function (fusion) { ... })
+ *   Portal-style plain-KO apps:  <script src="/shared/js/fusionLinks.js"></script>
+ *                                then use the window.FusionLinks global.
+ *
  *   fusion.invoice(invoiceId)      → View AP Invoice        (AP_VIEWINVOICE)
  *   fusion.purchaseOrder(poHdrId)  → View Purchase Order    (PURCHASE_ORDER)
  *   fusion.requisition(prHdrId)    → View Requisition       (PURCHASE_REQUISITION_LOBUSER)
@@ -12,7 +16,10 @@
  * Render with target="_blank" rel="noopener noreferrer" — deep links always
  * open in a separate tab. All builders return '#' for a null/empty id.
  */
-define([], function () {
+(function (root, factory) {
+  if (typeof define === 'function' && define.amd) { define([], factory); }
+  else { root.FusionLinks = factory(); }
+}(typeof self !== 'undefined' ? self : this, function () {
   'use strict';
 
   var BASE = 'https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink';
@@ -29,4 +36,4 @@ define([], function () {
     purchaseOrder: function (id) { return link('PURCHASE_ORDER', 'poHeaderId', id); },
     requisition:   function (id) { return link('PURCHASE_REQUISITION_LOBUSER', 'requisitionHeaderId', id); },
   };
-});
+}));

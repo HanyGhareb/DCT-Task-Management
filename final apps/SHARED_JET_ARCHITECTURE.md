@@ -289,6 +289,12 @@ define(['shared/fusionLinks'], function (fusion) {
 });
 ```
 
+The module is **UMD** (2026-07-13): JET-shell apps require it via AMD as above;
+portal-style plain-KO apps (GL, FL Portal) load it with a plain
+`<script src="/shared/js/fusionLinks.js?v=' + APP_VERSION>` tag before their
+app script and use the `window.FusionLinks` global (guard with
+`if (window.FusionLinks)` so the app still works if the file fails to load).
+
 Rules: the ids are the FUSION internal ids from the loaded extracts
 (`invoice_id` / `po_headers.po_header_id` / `pr_headers.pr_header_id`), NOT the
 document numbers — endpoints must ship the id alongside the number. Render as
@@ -296,6 +302,7 @@ document numbers — endpoints must ship the id alongside the number. Render as
 separate tab). Inside a clickable row, bind
 `click: function () { return true; }, clickBubble: false` on the anchor so the
 row handler doesn't fire and default navigation is kept. Builders return `'#'`
-for a null id. First consumer: AP (register invoice/PO/PR numbers, chart-drill
-drawer, invoice window). The pod host lives ONLY in this module.
+for a null id. Consumers: AP (register invoice/PO/PR numbers, chart-drill
+drawer, invoice window incl. header poRefs/prRefs) and GL (Budget Utilization
+drill drawers via `drillLink(row,col)`). The pod host lives ONLY in this module.
 
