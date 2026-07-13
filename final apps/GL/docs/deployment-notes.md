@@ -526,3 +526,16 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   was already safe (`dct_gl_class_pkg.norm`). RULE: any new view reading ATD task/project
   segment attributes must LPAD to the segment width — never bare TO_CHAR. (Files also
   CRLF-normalised: 37/45/47 were LF-only = silently skipped by Linux SQLcl.)
+- **2026-07-13** — **Canonical GL-combination rule enforced platform-wide** (user directive):
+  every view/table that exposes a combination string MUST use the COA canonical order
+  `entity(3).cost_center(7).account(6).appropriation(6).budget_group(1).entity_specific(7).
+  future1(6).future2(6).intercompany(3).program(6)` — exactly `DCT_GL_COA_V.cc_string` /
+  `prod.dct_cc_canon` output; never the re-ordered Fusion feed/display order
+  (entity.program.cc.bg.acct.es.appr.ic.f1.f2). Audit result: COA view, GL_BALANCES_CC,
+  COA snap, actuals/butil/PR/AP fact views already canonical; FIXED `PO_DISTRIBUTIONS_V.
+  charge_account` (db/v2/46 — was raw feed) and AP `poChargeAccount` (AP/db/04); NEW
+  `db/v2/48` migrated `DCT_GL_CODE_COMBINATIONS.cc_code` (was 9-seg Fusion order) to the
+  10-seg canonical virtual column incl. new `intercompany_code` ('000' default; db/v2/12
+  updated for fresh installs; TRG_DCT_GL_UPD recompiled). Verified: zero non-canonical
+  strings in PO_DISTRIBUTIONS_V / COA snap / AP outputs; 0 INVALID. RULE for new work:
+  any exposed charge_account/combination column goes through `prod.dct_cc_canon`.

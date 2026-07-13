@@ -79,6 +79,7 @@
   "tbl.invoiceNo": "رقم الفاتورة",
   "tbl.date": "التاريخ",
   "tbl.supplier": "المورد",
+  "tbl.isBenef": "مستفيد؟",
   "tbl.description": "الوصف",
   "tbl.currency": "العملة",
   "tbl.amount": "المبلغ",

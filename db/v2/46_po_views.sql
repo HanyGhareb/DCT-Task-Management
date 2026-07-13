@@ -126,8 +126,10 @@ SELECT
   d.budget_date,
   d.destination_type,
   d.location_name,
-  -- charge account and its classification
-  d.charge_account,
+  -- charge account and its classification. ALWAYS the canonical segment order
+  -- (entity.cc.account.appr.bg.es.f1.f2.ic.program) even though the ATD feed
+  -- arrives re-ordered - platform rule 2026-07-13: never expose a raw feed string.
+  prod.dct_cc_canon(d.charge_account)        AS charge_account,
   prod.dct_cc_canon(d.charge_account)        AS cc_string,
   coa.account_code,        coa.account_desc,
   coa.cost_center_code,    coa.cost_center_desc,

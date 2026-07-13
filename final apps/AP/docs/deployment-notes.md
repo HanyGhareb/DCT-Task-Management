@@ -72,3 +72,20 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   definitions (minus `has_attachment`); drill handler no longer selects/returns it
   (03+04 re-run); `dr.attachment` i18n keys dropped. Zero INVALID in PROD, API smoke
   14/14, GL butil verified. APP_VERSION 1.2.1.
+- **2026-07-13 (beneficiary round, v1.3.0)** — supplier `BENEFICIARY` is a generic Fusion
+  supplier record (2,723 of 5,456 invoices; the real payee is in header `BENEFICIARY_NAME`,
+  populated on 2,295 of them and ONLY on BENEFICIARY rows). All three register levels,
+  their CSV exports, the top-suppliers chart, the suppliers KPI and the supplier sort now
+  use the **effective supplier** (`CASE WHEN supplier_name='BENEFICIARY' AND beneficiary_name
+  IS NOT NULL THEN beneficiary_name ELSE supplier_name END`) + a new **Is Beneficiary Y/N**
+  column everywhere (visible by default at header level, in the chooser at line/dist).
+  Free-text `search=` now also matches `beneficiary_name` (db/02). Lines + dists views
+  gained `BENEFICIARY_NAME` (db/05 — the header attr joined via `ap_invoices`). The drill
+  keeps the RAW supplier + beneficiary + flag (detail view). Deploy order was 05 → 02 →
+  03 → 04. The supplier FACET still lists the generic `BENEFICIARY` value (filtering is
+  by real supplier record); find a payee via free-text search.
+- **2026-07-13 (canonical GL combination)** — platform rule: every combination string uses
+  the canonical order `entity.cc.account.appr.bg.es.f1.f2.ic.program`. AP was already
+  canonical (`glCombination`/`chargeAccount` via `dct_cc_canon`/COA snap); the raw
+  `poChargeAccount` (register + CSV) is now wrapped in `dct_cc_canon` too (db/04).
+  NOTE: `db/v2/43` (old AP view DDL) RETIRED — `AP/db/05_ap_views.sql` is the only source.

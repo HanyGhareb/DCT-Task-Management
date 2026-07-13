@@ -105,6 +105,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
            AND (p_paymethod IS NULL OR dct_ap_pkg.in_list(p_paymethod, h.payment_method)     = 1)
            AND (p_search IS NULL OR
                 UPPER(h.invoice_number || ' ' || h.supplier_name || ' ' ||
+                      h.beneficiary_name || ' ' ||
                       h.invoice_description || ' ' || h.po_numbers)
                 LIKE '%' || UPPER(p_search) || '%');
 

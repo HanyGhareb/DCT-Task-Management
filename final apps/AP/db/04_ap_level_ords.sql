@@ -78,7 +78,10 @@ BEGIN
   APEX_JSON.open_object('totals'); APEX_JSON.write('amountAed', ROUND(l_amt,2)); APEX_JSON.close_object;
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT ln.invoice_id, ln.invoice_number, TO_CHAR(ln.invoice_date,'YYYY-MM-DD') inv_dt, ln.supplier_name,
+    SELECT ln.invoice_id, ln.invoice_number, TO_CHAR(ln.invoice_date,'YYYY-MM-DD') inv_dt,
+           CASE WHEN ln.supplier_name = 'BENEFICIARY' AND ln.beneficiary_name IS NOT NULL
+                THEN ln.beneficiary_name ELSE ln.supplier_name END supplier_name,
+           CASE WHEN ln.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
            ln.invoice_type, ln.invoice_status, ln.validation_status, ln.accounting_status, ln.payment_status,
            ln.invoice_line_number, ln.invoice_line_type, ln.line_description, ln.invoice_currency,
            ln.line_amount, ln.line_amount_aed, NVL(ln.active_holds,0) active_holds, ln.fund_status,
@@ -100,7 +103,9 @@ BEGIN
     APEX_JSON.open_object;
     APEX_JSON.write('id', r.invoice_id);
     APEX_JSON.write('invoiceNumber', r.invoice_number); APEX_JSON.write('invoiceDate', r.inv_dt);
-    APEX_JSON.write('supplier', r.supplier_name); APEX_JSON.write('invoiceType', r.invoice_type);
+    APEX_JSON.write('supplier', r.supplier_name);
+    APEX_JSON.write('isBeneficiary', r.is_beneficiary);
+    APEX_JSON.write('invoiceType', r.invoice_type);
     APEX_JSON.write('invoiceStatus', r.invoice_status); APEX_JSON.write('validationStatus', r.validation_status);
     APEX_JSON.write('accountingStatus', r.accounting_status); APEX_JSON.write('paymentStatus', r.payment_status);
     APEX_JSON.write('lineNumber', r.invoice_line_number); APEX_JSON.write('lineType', r.invoice_line_type);
@@ -174,9 +179,12 @@ BEGIN
   HTP.p('Content-Disposition: attachment; filename="ap-lines-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Supplier,Line,Line Type,Description,Currency,Line Amount,Line Amount AED,Fund Status,Active Holds,PO Number,PO Line,Receipt,Project,Project Name,Task,Task Name,Expenditure Type,Department,Period,Validation,Accounting,Paid Status');
+  HTP.print('Invoice Number,Invoice Date,Supplier,Is Beneficiary,Line,Line Type,Description,Currency,Line Amount,Line Amount AED,Fund Status,Active Holds,PO Number,PO Line,Receipt,Project,Project Name,Task,Task Name,Expenditure Type,Department,Period,Validation,Accounting,Paid Status');
   FOR r IN (
-    SELECT ln.invoice_number, TO_CHAR(ln.invoice_date,'YYYY-MM-DD') inv_dt, ln.supplier_name,
+    SELECT ln.invoice_number, TO_CHAR(ln.invoice_date,'YYYY-MM-DD') inv_dt,
+           CASE WHEN ln.supplier_name = 'BENEFICIARY' AND ln.beneficiary_name IS NOT NULL
+                THEN ln.beneficiary_name ELSE ln.supplier_name END supplier_name,
+           CASE WHEN ln.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
            ln.invoice_line_number, ln.invoice_line_type, ln.line_description, ln.invoice_currency,
            ln.line_amount, ln.line_amount_aed, ln.fund_status, NVL(ln.active_holds,0) active_holds,
            ln.po_number, ln.po_line_number, ln.receipt_number, ln.project_number, ln.project_name,
@@ -193,7 +201,7 @@ BEGIN
      FETCH FIRST 25000 ROWS ONLY)
   LOOP
     HTP.print(
-      esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.supplier_name) || ',' ||
+      esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.supplier_name) || ',' || r.is_beneficiary || ',' ||
       r.invoice_line_number || ',' || esc(r.invoice_line_type) || ',' || esc(r.line_description) || ',' ||
       r.invoice_currency || ',' || r.line_amount || ',' || r.line_amount_aed || ',' ||
       esc(r.fund_status) || ',' || r.active_holds || ',' || r.po_number || ',' || r.po_line_number || ',' ||
@@ -269,7 +277,10 @@ BEGIN
   APEX_JSON.open_object('totals'); APEX_JSON.write('amountAed', ROUND(l_amt,2)); APEX_JSON.close_object;
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT d.invoice_id, d.invoice_number, TO_CHAR(d.invoice_date,'YYYY-MM-DD') inv_dt, d.supplier_name,
+    SELECT d.invoice_id, d.invoice_number, TO_CHAR(d.invoice_date,'YYYY-MM-DD') inv_dt,
+           CASE WHEN d.supplier_name = 'BENEFICIARY' AND d.beneficiary_name IS NOT NULL
+                THEN d.beneficiary_name ELSE d.supplier_name END supplier_name,
+           CASE WHEN d.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
            d.validation_status, d.accounting_status, d.payment_status, d.invoice_type,
            d.invoice_line_number, d.distribution_line_number, d.distribution_type,
            d.distribution_description, d.invoice_currency, d.distribution_amount, d.distribution_amount_aed,
@@ -279,7 +290,7 @@ BEGIN
            d.task_number, d.expenditure_type, d.account_code, d.account_desc,
            d.cost_center_code, d.cost_center_desc, d.appropriation_code, d.appropriation_desc,
            d.sector_name, d.chapter_name, d.program_name,
-           d.charge_account, pd.charge_account po_charge_account,
+           d.charge_account, prod.dct_cc_canon(pd.charge_account) po_charge_account,
            prod.dct_cc_canon(COALESCE(pd.charge_account, d.charge_account)) gl_combination,
            CASE WHEN pd.charge_account IS NOT NULL THEN 'PO' ELSE 'AP' END charge_source,
            h.invoice_description, h.pay_group, h.payment_method,
@@ -312,6 +323,7 @@ BEGIN
     APEX_JSON.write('id', r.invoice_id);
     APEX_JSON.write('invoiceNumber', r.invoice_number); APEX_JSON.write('invoiceDate', r.inv_dt);
     APEX_JSON.write('supplier', r.supplier_name);
+    APEX_JSON.write('isBeneficiary', r.is_beneficiary);
     APEX_JSON.write('validationStatus', r.validation_status); APEX_JSON.write('accountingStatus', r.accounting_status);
     APEX_JSON.write('paymentStatus', r.payment_status);
     APEX_JSON.write('lineNumber', r.invoice_line_number); APEX_JSON.write('distNumber', r.distribution_line_number);
@@ -396,9 +408,12 @@ BEGIN
   HTP.p('Content-Disposition: attachment; filename="ap-distributions-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Supplier,Line,Dist,Dist Type,Currency,Amount,Amount AED,GL Combination,Charge Source,PO Charge Account,Dist Status,Posting,Fund Status,Accounting Date,Period,PO,PR,Requestor,Project,Task,Expenditure Type,Account Code,Account,Cost Center Code,Cost Center,Appropriation,Sector,Chapter,Program,Validation,Accounting,Paid Status,Invoice Description,Pay Group,Payment Method,Terms Date,Voucher');
+  HTP.print('Invoice Number,Invoice Date,Supplier,Is Beneficiary,Line,Dist,Dist Type,Currency,Amount,Amount AED,GL Combination,Charge Source,PO Charge Account,Dist Status,Posting,Fund Status,Accounting Date,Period,PO,PR,Requestor,Project,Task,Expenditure Type,Account Code,Account,Cost Center Code,Cost Center,Appropriation,Sector,Chapter,Program,Validation,Accounting,Paid Status,Invoice Description,Pay Group,Payment Method,Terms Date,Voucher');
   FOR r IN (
-    SELECT d.invoice_number, TO_CHAR(d.invoice_date,'YYYY-MM-DD') inv_dt, d.supplier_name,
+    SELECT d.invoice_number, TO_CHAR(d.invoice_date,'YYYY-MM-DD') inv_dt,
+           CASE WHEN d.supplier_name = 'BENEFICIARY' AND d.beneficiary_name IS NOT NULL
+                THEN d.beneficiary_name ELSE d.supplier_name END supplier_name,
+           CASE WHEN d.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
            d.invoice_line_number, d.distribution_line_number, d.distribution_type, d.invoice_currency,
            d.distribution_amount, d.distribution_amount_aed, d.distribution_status, d.posting_status,
            d.fund_status, TO_CHAR(d.accounting_date,'YYYY-MM-DD') acct_dt, d.period_name,
@@ -406,7 +421,7 @@ BEGIN
            d.account_code, d.account_desc, d.cost_center_code, d.cost_center_desc,
            d.appropriation_code, d.appropriation_desc, d.sector_name, d.chapter_name, d.program_name,
            d.validation_status, d.accounting_status, d.payment_status,
-           pd.charge_account po_charge_account,
+           prod.dct_cc_canon(pd.charge_account) po_charge_account,
            prod.dct_cc_canon(COALESCE(pd.charge_account, d.charge_account)) gl_combination,
            CASE WHEN pd.charge_account IS NOT NULL THEN 'PO' ELSE 'AP' END charge_source,
            h.invoice_description, h.pay_group, h.payment_method,
@@ -433,7 +448,7 @@ BEGIN
      FETCH FIRST 25000 ROWS ONLY)
   LOOP
     HTP.print(
-      esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.supplier_name) || ',' ||
+      esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.supplier_name) || ',' || r.is_beneficiary || ',' ||
       r.invoice_line_number || ',' || r.distribution_line_number || ',' || esc(r.distribution_type) || ',' ||
       r.invoice_currency || ',' || r.distribution_amount || ',' || r.distribution_amount_aed || ',' ||
       esc(r.gl_combination) || ',' || r.charge_source || ',' || esc(r.po_charge_account) || ',' ||

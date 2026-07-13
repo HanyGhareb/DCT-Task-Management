@@ -327,6 +327,7 @@
             <span data-bind="text: $data.invoiceStatus, attr: { class: $vm.valBadge($data.invoiceStatus) }"></span></div>
           <div><span class="kv-l" data-bind="text: $root.t('tbl.supplier')"></span><span data-bind="text: $data.supplier"></span></div>
           <div><span class="kv-l" data-bind="text: $root.t('dr.beneficiary')"></span><span data-bind="text: $data.beneficiary || ''"></span></div>
+          <div><span class="kv-l" data-bind="text: $root.t('tbl.isBenef')"></span><span data-bind="text: $data.isBeneficiary || 'N'"></span></div>
           <div><span class="kv-l" data-bind="text: $root.t('dr.site')"></span><span data-bind="text: $data.supplierSite || ''"></span></div>
           <div><span class="kv-l" data-bind="text: $root.t('tbl.currency')"></span><span data-bind="text: $data.currency"></span></div>
           <div><span class="kv-l" data-bind="text: $root.t('tbl.amount')"></span><span data-bind="text: $vm.fmtAmt($data.amount)"></span></div>

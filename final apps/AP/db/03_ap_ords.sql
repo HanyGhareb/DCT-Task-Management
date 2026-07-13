@@ -188,7 +188,10 @@ BEGIN
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
-  SELECT COUNT(*), COUNT(DISTINCT h.supplier_name), NVL(SUM(h.invoice_amount_aed),0),
+  SELECT COUNT(*),
+         COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                             THEN h.beneficiary_name ELSE h.supplier_name END),
+         NVL(SUM(h.invoice_amount_aed),0),
          NVL(SUM(NVL(h.amount_paid,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1)),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) ELSE 0 END),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' AND NVL(h.balance_due,0) <> 0
@@ -257,10 +260,14 @@ BEGIN
     APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('topSuppliers');
-  FOR r IN (SELECT h.supplier_name v, COUNT(*) c, NVL(SUM(h.invoice_amount_aed),0) a
+  FOR r IN (SELECT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                        THEN h.beneficiary_name ELSE h.supplier_name END v,
+                   COUNT(*) c, NVL(SUM(h.invoice_amount_aed),0) a
               FROM prod.ap_invoices_header_v h
              WHERE h.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
-             GROUP BY h.supplier_name ORDER BY 3 DESC FETCH FIRST 10 ROWS ONLY) LOOP
+             GROUP BY CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                           THEN h.beneficiary_name ELSE h.supplier_name END
+             ORDER BY 3 DESC FETCH FIRST 10 ROWS ONLY) LOOP
     nco(r.v, r.c, r.a);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('bySector');
@@ -340,7 +347,10 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT h.invoice_id, h.invoice_number, TO_CHAR(h.invoice_date,'YYYY-MM-DD') inv_dt, h.invoice_type,
-           h.supplier_name, h.supplier_number, h.invoice_description, h.invoice_currency,
+           CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                THEN h.beneficiary_name ELSE h.supplier_name END supplier_name,
+           CASE WHEN h.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
+           h.supplier_number, h.invoice_description, h.invoice_currency,
            h.invoice_amount, h.invoice_amount_aed, NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
@@ -354,8 +364,10 @@ BEGIN
               CASE WHEN l_sort = 'amount_desc'   THEN h.invoice_amount_aed END DESC,
               CASE WHEN l_sort = 'amount_asc'    THEN h.invoice_amount_aed END ASC,
               CASE WHEN l_sort = 'balance_desc'  THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) END DESC,
-              CASE WHEN l_sort = 'supplier_asc'  THEN h.supplier_name END ASC,
-              CASE WHEN l_sort = 'supplier_desc' THEN h.supplier_name END DESC,
+              CASE WHEN l_sort = 'supplier_asc'  THEN CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                                           THEN h.beneficiary_name ELSE h.supplier_name END END ASC,
+              CASE WHEN l_sort = 'supplier_desc' THEN CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                                           THEN h.beneficiary_name ELSE h.supplier_name END END DESC,
               h.invoice_date DESC, h.invoice_id DESC
      OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY)
   LOOP
@@ -365,6 +377,7 @@ BEGIN
     APEX_JSON.write('invoiceDate', r.inv_dt);
     APEX_JSON.write('invoiceType', r.invoice_type);
     APEX_JSON.write('supplier', r.supplier_name);
+    APEX_JSON.write('isBeneficiary', r.is_beneficiary);
     APEX_JSON.write('supplierNumber', r.supplier_number);
     APEX_JSON.write('description', r.invoice_description);
     APEX_JSON.write('currency', r.invoice_currency);
@@ -450,9 +463,12 @@ BEGIN
   HTP.p('Content-Disposition: attachment; filename="ap-register-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Terms Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
+  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Terms Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
   FOR r IN (
-    SELECT h.invoice_number, TO_CHAR(h.invoice_date,'YYYY-MM-DD') inv_dt, h.invoice_type, h.supplier_name,
+    SELECT h.invoice_number, TO_CHAR(h.invoice_date,'YYYY-MM-DD') inv_dt, h.invoice_type,
+           CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                THEN h.beneficiary_name ELSE h.supplier_name END supplier_name,
+           CASE WHEN h.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
            h.invoice_description, h.invoice_currency, h.invoice_amount, h.invoice_amount_aed,
            NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            ROUND(NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1),2) balance_aed,
@@ -468,7 +484,7 @@ BEGIN
   LOOP
     HTP.print(
       esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.invoice_type) || ',' ||
-      esc(r.supplier_name) || ',' || esc(r.invoice_description) || ',' || r.invoice_currency || ',' ||
+      esc(r.supplier_name) || ',' || r.is_beneficiary || ',' || esc(r.invoice_description) || ',' || r.invoice_currency || ',' ||
       r.invoice_amount || ',' || r.invoice_amount_aed || ',' || r.amount_paid || ',' ||
       r.balance_due || ',' || r.balance_aed || ',' ||
       esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status) || ',' ||
@@ -518,6 +534,7 @@ BEGIN
   FOR h IN (
     SELECT invoice_id, invoice_number, TO_CHAR(invoice_date,'YYYY-MM-DD') inv_dt, invoice_type,
            invoice_description, invoice_status, supplier_number, supplier_name, beneficiary_name,
+           CASE WHEN supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
            supplier_site, party_site_city, party_site_country, supplier_email,
            invoice_currency, invoice_amount, total_tax_charged, invoice_amount_aed, conversion_rate,
            NVL(amount_paid,0) amount_paid, NVL(balance_due,0) balance_due,
@@ -537,7 +554,9 @@ BEGIN
     APEX_JSON.write('invoiceDate', h.inv_dt); APEX_JSON.write('invoiceType', h.invoice_type);
     APEX_JSON.write('description', h.invoice_description); APEX_JSON.write('invoiceStatus', h.invoice_status);
     APEX_JSON.write('supplierNumber', h.supplier_number); APEX_JSON.write('supplier', h.supplier_name);
-    APEX_JSON.write('beneficiary', h.beneficiary_name); APEX_JSON.write('supplierSite', h.supplier_site);
+    APEX_JSON.write('beneficiary', h.beneficiary_name);
+    APEX_JSON.write('isBeneficiary', h.is_beneficiary);
+    APEX_JSON.write('supplierSite', h.supplier_site);
     APEX_JSON.write('city', h.party_site_city); APEX_JSON.write('country', h.party_site_country);
     APEX_JSON.write('supplierEmail', h.supplier_email);
     APEX_JSON.write('currency', h.invoice_currency); APEX_JSON.write('amount', h.invoice_amount);

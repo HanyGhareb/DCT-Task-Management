@@ -82,11 +82,13 @@ CREATE INDEX ix_dct_grade_active ON dct_employee_grades(is_active);
 
 -- =============================================================================
 -- 2. DCT_GL_CODE_COMBINATIONS
---    9-segment chart-of-accounts coding table.
---    cc_code is a VIRTUAL column derived from all 9 segment codes:
---      S1.S2.S3.S4.S5.S6.S7.S8.S9
---    Segment widths: 3.6.7.1.6.7.6.6.6
+--    10-segment chart-of-accounts coding table.
+--    cc_code is a VIRTUAL column in the platform CANONICAL segment order
+--    (2026-07-13 rule - same order everywhere a combination string appears):
+--      entity(3).cost_center(7).account(6).appropriation(6).budget_group(1).
+--      entity_specific(7).future1(6).future2(6).intercompany(3).program(6)
 --    All budget-coding modules (DT, PC, FL, CC) FK to cc_id here.
+--    (Deployed installs were migrated by db/v2/48_gl_cc_code_canonical.sql.)
 -- =============================================================================
 CREATE TABLE dct_gl_code_combinations (
     cc_id                  NUMBER          GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -127,17 +129,22 @@ CREATE TABLE dct_gl_code_combinations (
     future2_code           VARCHAR2(6)     DEFAULT '000000' NOT NULL,
     future2_desc           VARCHAR2(255),
 
-    -- Full combination code — derived virtual column
+    -- Seg 10 — Intercompany (3)
+    intercompany_code      VARCHAR2(3)     DEFAULT '000' NOT NULL,
+    intercompany_desc      VARCHAR2(255),
+
+    -- Full combination code — derived virtual column, CANONICAL order
     cc_code                VARCHAR2(200)   GENERATED ALWAYS AS (
                                entity_code           || '.' ||
-                               program_code          || '.' ||
                                cost_center_code      || '.' ||
-                               budget_group_code     || '.' ||
                                account_code          || '.' ||
-                               entity_specific_code  || '.' ||
                                appropriation_code    || '.' ||
+                               budget_group_code     || '.' ||
+                               entity_specific_code  || '.' ||
                                future1_code          || '.' ||
-                               future2_code
+                               future2_code          || '.' ||
+                               intercompany_code     || '.' ||
+                               program_code
                            ) VIRTUAL,
 
     -- Optional summary description for the full combination

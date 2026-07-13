@@ -79,6 +79,7 @@
   "tbl.invoiceNo": "Invoice #",
   "tbl.date": "Date",
   "tbl.supplier": "Supplier",
+  "tbl.isBenef": "Is Beneficiary",
   "tbl.description": "Description",
   "tbl.currency": "Curr",
   "tbl.amount": "Amount",
