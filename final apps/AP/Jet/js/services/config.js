@@ -14,5 +14,9 @@ define([], function () {
 
     // shared api.js: where to send the browser when the session dies
     adminPortalUrl: '/Admin/Jet/index.html',
+
+    // Oracle Fusion deep-link: view an AP invoice (append the invoice_id)
+    fusionInvoiceUrl: 'https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink' +
+                      '?objType=AP_VIEWINVOICE&action=VIEW&objKey=InvoiceId=',
   };
 });

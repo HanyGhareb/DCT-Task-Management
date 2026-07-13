@@ -204,3 +204,11 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   header register + CSV export gained the `approvalStatus` column (hidden by
   default, `appr` badge). Verified: facet Workflow Approved 4,480 = direct;
   multi-value `Rejected|Stopped` = 23. Deploy 02 → 03 → 04. APP_VERSION 1.6.4.
+- **2026-07-13 (Fusion deep-links, v1.6.5, frontend-only)** — invoice numbers are
+  links to Oracle Fusion (`fscmUI/faces/deeplink?objType=AP_VIEWINVOICE&action=VIEW
+  &objKey=InvoiceId=<invoice_id>`; base URL in `config.js` `fusionInvoiceUrl`),
+  opening in a NEW TAB (`target=_blank rel=noopener`; ↗ affordance). Applied in the
+  AP Register (all 3 levels via the generic invoiceNumber cell — the anchor uses
+  `click: return true` + `clickBubble: false` so the row-drill doesn't fire), the
+  chart drill-drawer table, and the invoice window's big header number.
+  APP_VERSION 1.6.5.

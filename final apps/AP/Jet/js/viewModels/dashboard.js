@@ -1,6 +1,6 @@
-define(['knockout', 'services/apService', 'services/api', 'services/authService', 'shared/i18n', 'shared/toast', 'shared/chartLoader',
+define(['knockout', 'services/apService', 'services/api', 'services/authService', 'services/config', 'shared/i18n', 'shared/toast', 'shared/chartLoader',
         'shared/components/interactiveReport'],
-function (ko, ap, api, authService, i18n, toast, charts) {
+function (ko, ap, api, authService, config, i18n, toast, charts) {
   'use strict';
 
   // Aging ramp — single-hue ordinal steps (validated light->dark, brand hue)
@@ -241,6 +241,10 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       if (col.titleKey) return row[col.titleKey] || '';
       if (col.clip) return row[col.key] || '';
       return '';
+    };
+    // Fusion deep-link: view the invoice in Oracle Fusion (new tab)
+    self.fusionUrl = function (id) {
+      return id ? config.fusionInvoiceUrl + id : '#';
     };
     // local autosave first (instant), then the server pref wins (roams w/ user)
     try { applyColPrefs(JSON.parse(localStorage.getItem(COLS_LS) || 'null')); } catch (e) {}
