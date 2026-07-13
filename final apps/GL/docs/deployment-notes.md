@@ -515,3 +515,14 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   shown on the butil initial load (NEW `buFiltersLoading` covers `/butil/filters`) AND on every
   `/butil` search/pager run (`buBusy` = filters OR rows loading). Search region stays usable;
   skeleton rows/ldbar/busy button kept beneath the frosted scrim. APP_VERSION 1.19.0.
+- **2026-07-13** — **GL segment codes zero-padded everywhere** (user-reported: butil showed
+  Appropriation `50729` instead of `050729`): `ATD_TASKS.COST_CENTER/APPROPRIATION/PROGRAM`
+  are NUMBER, so bare `TO_CHAR` drops leading zeros and the COA-description + chapter-map
+  joins silently miss. Fixed `db/v2/37` (butil view), `45_tasks_v`, `47_projects_v` — every
+  task segment attr is now `LPAD(TO_CHAR(x), <width>, '0')` (cost centre 7 / appropriation 6 /
+  program 6, matching the platform segment widths). DEPLOYED + verified: all 1,373 butil-2026
+  appropriations 6-digit, `050729/050730` rows get desc + Chapter 2 (50730 had NO chapter
+  before), only `000000 - Un Specified` remains unmapped; 0 INVALID. GL/db/05's segment LOV
+  was already safe (`dct_gl_class_pkg.norm`). RULE: any new view reading ATD task/project
+  segment attributes must LPAD to the segment width — never bare TO_CHAR. (Files also
+  CRLF-normalised: 37/45/47 were LF-only = silently skipped by Linux SQLcl.)

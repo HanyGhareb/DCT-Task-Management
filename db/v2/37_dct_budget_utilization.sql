@@ -27,9 +27,13 @@
 --                  as of today) -> COA snap -> row/project transactions.
 --   Cost centre / Department: task COST_CENTER -> row txns -> project txns
 --                  -> raw task_organization name (department only).
---   Appropriation: task APPROPRIATION (desc from COA) -> row txns -> project.
+--   Appropriation: task APPROPRIATION (LPAD 6, desc from COA) -> row txns -> project.
 --   Chapter      : appropriation -> DEFINED CHAPTER map -> COA -> project.
 --   Program      : task PROGRAM (LPAD 6, desc from COA) -> row txns.
+--   NOTE the ATD_TASKS segment attrs are NUMBER - every segment code must be
+--   LPAD'ed to its width (cost centre 7 / appropriation 6 / program 6) or the
+--   leading zero is lost (050729 -> 50729) and the COA desc + chapter-map
+--   joins silently miss. Same rule in 45_tasks_v / 47_projects_v.
 --   GL account   : row txns -> derived from the expenditure-type code prefix.
 --
 -- YTD period filter (2026-07-11): when SYS_CONTEXT('GL_CTX','BUTIL_END') is
@@ -66,8 +70,8 @@ tsk_org AS (
 ),
 tsk_seg AS (
   SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number AS task_key,
-         MAX(TO_CHAR(t.cost_center))   AS cost_center_code,
-         MAX(TO_CHAR(t.appropriation)) AS appropriation_code,
+         MAX(CASE WHEN t.cost_center   IS NOT NULL THEN LPAD(TO_CHAR(t.cost_center),7,'0')   END) AS cost_center_code,
+         MAX(CASE WHEN t.appropriation IS NOT NULL THEN LPAD(TO_CHAR(t.appropriation),6,'0') END) AS appropriation_code,
          MAX(CASE WHEN t.program IS NOT NULL THEN LPAD(TO_CHAR(t.program),6,'0') END) AS program_code
   FROM prod.tasks t
   JOIN proj pj ON pj.project_id = t.project_id

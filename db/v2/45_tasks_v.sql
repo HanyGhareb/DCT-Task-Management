@@ -106,8 +106,8 @@ tsk AS (
          MAX(actual_finish_date)    AS actual_finish_date,
          MAX(creation_date)         AS task_created_date,
          MAX(last_update_date)      AS task_last_updated,
-         MAX(TO_CHAR(cost_center))  AS cost_center_code,
-         MAX(TO_CHAR(appropriation)) AS task_appropriation_code,
+         MAX(CASE WHEN cost_center   IS NOT NULL THEN LPAD(TO_CHAR(cost_center),7,'0')   END) AS cost_center_code,
+         MAX(CASE WHEN appropriation IS NOT NULL THEN LPAD(TO_CHAR(appropriation),6,'0') END) AS task_appropriation_code,
          MAX(CASE WHEN program IS NOT NULL THEN LPAD(TO_CHAR(program),6,'0') END) AS program_code
   FROM prod.tasks
   GROUP BY task_id

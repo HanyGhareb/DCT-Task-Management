@@ -108,7 +108,7 @@ task_agg AS (
 -- distinct task-level classification codes per project ----------------------
 tsk_dim AS (
   SELECT DISTINCT project_id,
-         TO_CHAR(cost_center) AS cost_center_code,
+         CASE WHEN cost_center IS NOT NULL THEN LPAD(TO_CHAR(cost_center),7,'0') END AS cost_center_code,
          CASE WHEN program IS NOT NULL THEN LPAD(TO_CHAR(program),6,'0') END AS program_code
   FROM prod.tasks
   WHERE project_id IS NOT NULL
