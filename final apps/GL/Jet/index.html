@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.17.0';</script>
+<script>window.APP_VERSION='1.18.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -747,13 +747,14 @@
 
 <!-- ═══════════ DRILL-DOWN DRAWER (Budget Utilization figure → supporting lines) ═══════════ -->
 <div class="dw-scrim" data-bind="css:{show:drillDrawer}, click:closeDrawer" style="display:none"></div>
-<aside class="dw-drawer" data-bind="css:{show:drillDrawer}" role="dialog" aria-modal="true">
+<aside class="dw-drawer dw-wide" data-bind="css:{show:drillDrawer, 'dw-full':drillMax}" role="dialog" aria-modal="true">
   <header class="dw-h">
     <div class="dw-h-txt">
       <div class="dw-eyebrow" data-bind="text:drillSub"></div>
       <div class="dw-title" data-bind="text:drillTitle"></div>
     </div>
     <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:toggleDrillMax, attr:{title:drillMax()?t('buRestoreT'):t('buMaxT')}, text:drillMax()?'⤡ ':'⤢ '"></button>
       <button class="btn btn-sm" data-bind="click:drillExportCsv, text:t('exportCsv'), visible:!drillLoading() && drillRows().length>0"></button>
       <button class="btn btn-sm" data-bind="click:closeDrawer, text:t('cancel')"></button>
     </div>

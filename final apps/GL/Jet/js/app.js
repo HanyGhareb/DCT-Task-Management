@@ -891,6 +891,12 @@
 
     /* ── drill-down: a figure → its supporting lines (slide-in drawer) ── */
     self.drillDrawer = ko.observable(false);
+    self.drillMax = ko.observable(false);
+    self.toggleDrillMax = function () { self.drillMax(!self.drillMax()); };
+    document.addEventListener('keydown', function (e) {
+      // Esc inside a maximized drawer restores it first (second Esc closes via scrim/cancel)
+      if (e.key === 'Escape' && self.drillDrawer() && self.drillMax()) self.drillMax(false);
+    });
     self.drillSub = ko.observable(''); self.drillCtx = ko.observable(''); self.drillCount = ko.observable(0);
     // "showing top N of M" note when the line set is capped
     self.drillCapNote = ko.computed(function () {
@@ -928,7 +934,7 @@
         projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapter(), search: self.buSearch(),
         costcenter: self.buCc(), fproject: self.buProject(), ftask: self.buTask(), fetype: self.buEtype() })).then(fillDrill).catch(drillFail);
     };
-    self.closeDrawer = function () { self.drillDrawer(false); };
+    self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); };
     // export the loaded drill lines — modal + drawer share drillCols/drillRows
     self.drillExportCsv = function () {
       var cols = self.drillCols(), rows = self.drillRows();

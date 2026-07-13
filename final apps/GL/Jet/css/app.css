@@ -362,6 +362,8 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
 
 /* classification assignments drawer (extra-wide, editable rows) */
 .dw-drawer.dw-xw{width:min(1120px,96vw)}
+.dw-drawer.dw-wide{width:min(1360px,96vw)}
+.dw-drawer.dw-full{width:100vw !important;max-width:none}
 .dw-h .btn.solid{background:#fff;color:var(--brand-dark);border-color:#fff;font-weight:700}
 .dw-h .btn.solid:hover{background:rgba(255,255,255,.88);color:var(--brand-dark)}
 .dw-h .btn.solid:disabled{opacity:.55}

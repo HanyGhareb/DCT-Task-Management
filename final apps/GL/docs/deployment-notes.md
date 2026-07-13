@@ -506,3 +506,6 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   reconcile); frontend Chapter dropdown in the butil Search region (report/pager/CSV/aggregate
   drills all flow through buParams). APP_VERSION 1.17.0. NOTE: 07 was LF-only in the repo —
   re-normalised to CRLF for Linux SQLcl deploys.
+- **2026-07-13** — Butil drill drawer UX: default width 940 → `min(1360px,96vw)` (`.dw-wide`)
+  + full-screen toggle ⤢/⤡ in the drawer header (`.dw-full` = 100vw; Esc restores first,
+  close resets). Classifications drawer (.dw-xw) untouched. APP_VERSION 1.18.0.
