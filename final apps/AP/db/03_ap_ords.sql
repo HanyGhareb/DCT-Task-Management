@@ -557,7 +557,7 @@ BEGIN
            supplier_site, party_site_city, party_site_country, supplier_email,
            invoice_currency, invoice_amount, total_tax_charged, invoice_amount_aed, conversion_rate,
            NVL(amount_paid,0) amount_paid, NVL(balance_due,0) balance_due,
-           payment_status, validation_status, accounting_status, funds_status,
+           payment_status, validation_status, accounting_status, funds_status, approval_status,
            payment_terms, TO_CHAR(terms_date,'YYYY-MM-DD') terms_dt, payment_method, pay_group,
            payment_currency, voucher_num, invoice_source, batch_name,
            TO_CHAR(gl_date,'YYYY-MM-DD') gl_dt, TO_CHAR(invoice_received_date,'YYYY-MM-DD') rcv_dt,
@@ -585,6 +585,7 @@ BEGIN
     APEX_JSON.write('amountPaid', h.amount_paid); APEX_JSON.write('balanceDue', h.balance_due);
     APEX_JSON.write('paymentStatus', h.payment_status); APEX_JSON.write('validationStatus', h.validation_status);
     APEX_JSON.write('accountingStatus', h.accounting_status); APEX_JSON.write('fundsStatus', h.funds_status);
+    APEX_JSON.write('approvalStatus', h.approval_status);
     APEX_JSON.write('paymentTerms', h.payment_terms); APEX_JSON.write('termsDate', h.terms_dt);
     APEX_JSON.write('paymentMethod', h.payment_method); APEX_JSON.write('payGroup', h.pay_group);
     APEX_JSON.write('paymentCurrency', h.payment_currency); APEX_JSON.write('voucherNum', h.voucher_num);

@@ -160,3 +160,14 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
      canonical Fusion order with descriptions (`.combo-tip`, z 950 above the modal; header
      ⓘ hint on the column). Snap join coverage 5,024/5,041 Item dists.
   Deploy: 03 → 04 re-run (02 untouched). APP_VERSION 1.6.0.
+- **2026-07-13 (approval status, v1.6.1)** — user added `APPROVAL_STATUS` to
+  `ATD_AP_INVOICES` via the OTBI analysis (data gap from the invoice-window round
+  closed). Recovery-playbook flow: `prod.dct_views_rebuild` (15 pass-throughs,
+  0 invalid — `ap_invoices` picks up the column) → 05 re-run (header view maps
+  Fusion codes to display labels: WFAPPROVED→'Workflow Approved', else INITCAP;
+  4,480 Workflow Approved / 496 Required / 407 Not Required / 79 Initiated /
+  14 Rejected / 10 Stopped) → 03 → 04. Drill handler emits `approvalStatus`;
+  the invoice-window Summary card gained the Approval badge row (`apprBadge`:
+  approved=green, Rejected/Stopped=red, Not Required=idle, else amber).
+  Facet/register column for approval status NOT added yet (only the Summary was
+  requested). APP_VERSION 1.6.1.

@@ -412,6 +412,8 @@
             <div class="inv-badges">
               <div><span class="kv-l" data-bind="text: $vm.t('tbl.status')"></span>
                 <span data-bind="text: $data.invoiceStatus || '', attr: { class: $vm.valBadge($data.invoiceStatus) }"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.approval')"></span>
+                <span data-bind="text: $data.approvalStatus || '', attr: { class: $vm.apprBadge($data.approvalStatus) }"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('tbl.validation')"></span>
                 <span data-bind="text: $data.validationStatus || '', attr: { class: $vm.valBadge($data.validationStatus) }"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('tbl.accounting')"></span>

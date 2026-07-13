@@ -209,5 +209,6 @@
   "seg.appropriation": "Appropriation",
   "seg.intercompany": "Intercompany",
   "seg.future1": "Future 1",
-  "seg.future2": "Future 2"
+  "seg.future2": "Future 2",
+  "dr.approval": "Approval"
 }

@@ -267,6 +267,12 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       return 'badge badge--warn';
     };
     self.accBadge = function (s) { return s === 'Accounted' ? 'badge badge--success' : 'badge badge--warn'; };
+    self.apprBadge = function (s) {
+      if (s === 'Workflow Approved') return 'badge badge--success';
+      if (s === 'Rejected' || s === 'Stopped') return 'badge badge--danger';
+      if (s === 'Not Required') return 'badge badge--idle';
+      return 'badge badge--warn';                      // Required / Initiated
+    };
 
     // ── facet groups ────────────────────────────────────────────────────
     function makeGroup(def, raw) {
