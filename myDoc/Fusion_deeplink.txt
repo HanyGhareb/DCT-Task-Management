@@ -31,3 +31,25 @@ https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink?objType=@{1}&@acti
 AP_VIEWPAYMENT
 VIEW
 Check ID
+
+
+*********************************************************************************************************************************
+            PR
+************************************************************************************************
+
+https://<Host>/fndSetup/faces/deeplink?objType=PURCHASE_REQUISITION&objKey=requisitionHeaderId=111111&action=VIEW
+
+https://<Host>/fndSetup/faces/deeplink?objType=PURCHASE_REQUISITION_LOBUSER&objKey=requisitionHeaderId=111111&action=VIEW
+
+Example for End user
+======================
+
+https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink?objType=PURCHASE_REQUISITION_LOBUSER&objKey=requisitionHeaderId=300000573265216&action=VIEW
+
+
+
+*********************************************************************************************************************************
+           PO
+************************************************************************************************
+
+https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink?objType=PURCHASE_ORDER&objKey=poHeaderId=300000519638093&action=VIEW
