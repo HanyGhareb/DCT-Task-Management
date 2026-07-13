@@ -231,9 +231,22 @@ define([], function () {
     })();
   }
 
+  /* Which registry module is this page? Path-prefix match, like
+     moduleAppFromPath. Returns null off the deployed layout (e.g. a
+     dev-proxy serving an app at '/'), which disables the URL guard there. */
+  function moduleFromPath() {
+    var path = (window.location.pathname || '');
+    for (var i = 0; i < MODULES.length; i++) {
+      if (path.indexOf(MODULES[i].url.replace('index.html', '')) === 0) return MODULES[i];
+    }
+    return null;
+  }
+
   /** initModuleAccess(authBase) — module apps get this via initRegionTheme;
       Admin calls it from its own /boot handling. Silently no-ops without a
-      session. */
+      session. Besides hiding switcher entries, guards against URL override:
+      booting an app whose module is denied redirects to the first allowed
+      app (the ORDS-side gate in DCT_REST blocks the data regardless). */
   function initModuleAccess(authBase) {
     var token = null;
     try {
@@ -243,7 +256,20 @@ define([], function () {
     if (!token || !authBase) return;
     fetch(authBase + '/my/modules', { headers: { 'Authorization': 'Bearer ' + token } })
       .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (d) { if (d) applyModuleAccess(d.denied || []); })
+      .then(function (d) {
+        if (!d) return;
+        var denied = d.denied || [];
+        applyModuleAccess(denied);
+        var cur = moduleFromPath();
+        if (cur && denied.indexOf(cur.mc) >= 0) {
+          for (var i = 0; i < MODULES.length; i++) {
+            if (denied.indexOf(MODULES[i].mc) < 0) {
+              window.location.replace(MODULES[i].url);
+              return;
+            }
+          }
+        }
+      })
       .catch(function () {});
   }
 

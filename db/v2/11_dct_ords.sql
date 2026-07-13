@@ -57,11 +57,71 @@ END dct_rest;
 
 CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
 
+    -- One-shot suppression flag for the module-access deny path. When the
+    -- gate writes its 403 and returns NULL, the calling handler still runs
+    -- its standard err(401) -- this flag makes that follow-up call a no-op
+    -- so the response body stays a single clean JSON object. Armed ONLY by
+    -- the deny path, consumed by the next err() call, and reset at every
+    -- validate_session entry (pooled DB sessions carry package state
+    -- across HTTP requests).
+    g_deny_sent BOOLEAN := FALSE;
+
+    -- module-access gate (db/v2/50): 1 = deny. Fail-open on any error.
+    FUNCTION module_denied (p_username IN VARCHAR2) RETURN NUMBER IS
+        l_path VARCHAR2(400);
+        l_seg  VARCHAR2(30);
+        l_mod  VARCHAR2(40);
+        l_n    NUMBER;
+    BEGIN
+        l_path := OWA_UTIL.get_cgi_env('X-APEX-PATH');
+        IF l_path IS NULL OR INSTR(l_path, '/') = 0 THEN RETURN 0; END IF;
+        l_seg := LOWER(SUBSTR(l_path, 1, INSTR(l_path, '/') - 1));
+        l_mod := CASE l_seg
+                   WHEN 'pc'  THEN 'PETTY_CASH'
+                   WHEN 'dt'  THEN 'DUTY_TRAVEL'
+                   WHEN 'hr'  THEN 'HR'
+                   WHEN 'fl'  THEN 'FREELANCERS'
+                   WHEN 'cc'  THEN 'CREDIT_CARDS'
+                   WHEN 'ar'  THEN 'AR'
+                   WHEN 'tm'  THEN 'TASK_MGMT'
+                   WHEN 'atd' THEN 'ATD'
+                   WHEN 'gl'  THEN 'GL'
+                   WHEN 'rpt' THEN 'REPORTING'
+                   WHEN 'ap'  THEN 'AP'
+                   ELSE NULL   -- 'dct' shared platform + unknown segments: exempt
+                 END;
+        IF l_mod IS NULL THEN RETURN 0; END IF;
+
+        SELECT COUNT(*) INTO l_n
+        FROM   dct_module_roles mr
+        JOIN   dct_modules      m ON m.module_id = mr.module_id
+        WHERE  m.module_code = l_mod;
+        IF l_n = 0 THEN RETURN 0; END IF;   -- unrestricted module
+
+        SELECT COUNT(*) INTO l_n
+        FROM   dct_user_roles ur
+        JOIN   dct_users      u  ON u.user_id  = ur.user_id
+        JOIN   dct_roles      ro ON ro.role_id = ur.role_id
+        WHERE  UPPER(u.username) = UPPER(p_username)
+          AND  ur.is_active = 'Y'
+          AND  ro.is_active = 'Y'
+          AND  TRUNC(SYSDATE) >= TRUNC(ur.start_date)
+          AND  (ur.end_date IS NULL OR TRUNC(SYSDATE) <= TRUNC(ur.end_date))
+          AND  (ro.role_code = 'SYS_ADMIN'
+                OR ro.role_id IN (SELECT mr.role_id
+                                  FROM   dct_module_roles mr
+                                  JOIN   dct_modules m ON m.module_id = mr.module_id
+                                  WHERE  m.module_code = l_mod));
+        RETURN CASE WHEN l_n = 0 THEN 1 ELSE 0 END;
+    EXCEPTION WHEN OTHERS THEN RETURN 0;
+    END module_denied;
+
     FUNCTION validate_session RETURN VARCHAR2 IS
         l_hdr     VARCHAR2(4000);
         l_token    VARCHAR2(200);
         l_username VARCHAR2(100);
     BEGIN
+        g_deny_sent := FALSE;
         -- ADB managed ORDS uses 'AUTHORIZATION' (no HTTP_ prefix); fall back to HTTP_ for on-prem
         l_hdr := OWA_UTIL.get_cgi_env('AUTHORIZATION');
         IF l_hdr IS NULL THEN
@@ -87,6 +147,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
           AND  ROWNUM = 1;
 
         dct_auth.touch_session(l_token);
+
+        -- module-access gate (db/v2/50): valid session but the target ORDS
+        -- module is restricted to roles this user does not hold. Writes the
+        -- 403 itself and returns NULL; the handler's follow-up err(401) lands
+        -- harmlessly after the closed 403 header block.
+        IF module_denied(l_username) = 1 THEN
+            err(403, 'Module access denied');
+            g_deny_sent := TRUE;
+            RETURN NULL;
+        END IF;
+
         RETURN l_username;
     EXCEPTION WHEN OTHERS THEN RETURN NULL;
     END validate_session;
@@ -104,9 +175,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
     PROCEDURE err(p_status PLS_INTEGER, p_msg VARCHAR2) IS
         c_col CONSTANT VARCHAR2(1) := CHR(58);
     BEGIN
+        -- Module-access deny already wrote the 403 -- swallow the handler's
+        -- follow-up err(401) so the body stays one clean JSON object.
+        IF g_deny_sent THEN
+            g_deny_sent := FALSE;
+            RETURN;
+        END IF;
         -- Do NOT use APEX_JSON here: initialize_output resets the HTP buffer
         -- and silently wipes the status line (every error returned HTTP 200
-        -- until this was fixed — discovered in the Phase 1 smoke test).
+        -- until this was fixed -- discovered in the Phase 1 smoke test).
         OWA_UTIL.status_line(p_status, NULL, FALSE);
         OWA_UTIL.mime_header('application/json', FALSE);
         HTP.p('Access-Control-Allow-Origin'  || c_col || ' *');
