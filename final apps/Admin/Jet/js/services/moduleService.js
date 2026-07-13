@@ -43,6 +43,16 @@ define(['services/api', 'shared/refCache'], function (api, refCache) {
       return api.put('/modules/' + moduleId, data);
     },
 
+    /* Module access (db/v2/49): which roles may see this app in the module
+       switcher. Empty grant set = unrestricted (visible to everyone). */
+    getRoles: function (moduleId) {
+      return api.get('/modules/' + moduleId + '/roles');
+    },
+
+    setRoles: function (moduleId, roleIds) {
+      return api.put('/modules/' + moduleId + '/roles', { roleIds: roleIds });
+    },
+
     /* currentActive = current isActive value ('Y' or 'N') */
     toggleActive: function (moduleId, currentActive) {
       refCache.invalidate('modules');

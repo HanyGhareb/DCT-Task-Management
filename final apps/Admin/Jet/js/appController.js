@@ -292,6 +292,11 @@ define(
     self._bootSettings = {};   // key → value from /boot (LANDING_*, FEATURE_*, theme)
     self._bootstrap = function () {
       if (!self.currentUser()) return Promise.resolve();
+      // Module switcher visibility (db/v2/49): module apps get this via
+      // shell.initRegionTheme; Admin triggers it here. Fail-open.
+      require(['services/config'], function (config) {
+        shell.initModuleAccess(config.authBase || config.apiBase);
+      });
       return new Promise(function (resolve) {
         require(['services/api'], function (api) {
           api.get('/boot', { silent: true }).then(function (b) {

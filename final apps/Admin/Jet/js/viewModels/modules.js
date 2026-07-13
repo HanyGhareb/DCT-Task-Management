@@ -71,6 +71,66 @@ define(['knockout', 'services/moduleService'], function (ko, moduleService) {
         loadModules();
       });
     };
+
+    // ── Module access (db/v2/49) — which roles see the app in the switcher ──
+    self.accessTarget  = ko.observable(null);   // { moduleId, nameEn }
+    self.accessRoles   = ko.observableArray([]);
+    self.showAccess    = ko.observable(false);
+    self.accessLoading = ko.observable(false);
+    self.accessSaving  = ko.observable(false);
+    self.accessError   = ko.observable('');
+
+    self.grantedCount = ko.computed(function () {
+      return self.accessRoles().filter(function (r) { return r.checked(); }).length;
+    });
+
+    self.openAccess = function (mod) {
+      self.accessTarget({ moduleId: mod.moduleId, nameEn: mod.nameEn });
+      self.accessRoles([]);
+      self.accessError('');
+      self.accessLoading(true);
+      self.showAccess(true);
+      moduleService.getRoles(mod.moduleId).then(function (r) {
+        self.accessRoles((r.items || []).map(function (it) {
+          return {
+            roleId:   it.roleId,
+            roleCode: it.roleCode,
+            nameEn:   it.nameEn,
+            nameAr:   it.nameAr || '',
+            checked:  ko.observable(it.granted === 'Y'),
+          };
+        }));
+        self.accessLoading(false);
+      }).catch(function () {
+        self.accessLoading(false);
+        self.accessError('load');
+      });
+    };
+
+    self.closeAccess = function () {
+      self.showAccess(false);
+      self.accessTarget(null);
+      self.accessRoles([]);
+    };
+
+    self.clearAccess = function () {
+      self.accessRoles().forEach(function (r) { r.checked(false); });
+    };
+
+    self.saveAccess = function () {
+      var t = self.accessTarget();
+      if (!t || self.accessSaving()) return;
+      var ids = self.accessRoles().filter(function (r) { return r.checked(); })
+                                  .map(function (r) { return r.roleId; });
+      self.accessSaving(true);
+      moduleService.setRoles(t.moduleId, ids).then(function () {
+        self.accessSaving(false);
+        self.closeAccess();
+      }).catch(function () {
+        self.accessSaving(false);
+        self.accessError('save');
+      });
+    };
   }
 
   return ModulesViewModel;

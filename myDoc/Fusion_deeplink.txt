@@ -1,0 +1,33 @@
+oracle doc: 2603149.1
+=======================
+=======================
+
+
+View Invoice Details:
+------------------------
+https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink?objType=@{1}&@action=@{2}&objKey=InvoiceId=@{3}
+
+
+
+ex: https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink?objType=AP_VIEWINVOICE&action=VIEW&objKey=InvoiceId=XXX
+AP_VIEWINVOICE
+VIEW
+Invoice ID
+
+
+Edit an Invoice Details:
+------------------------
+https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink?objType=@{1}&@action=@{2}&objKey=InvoiceId=@{3}
+
+AP_EDITINVOICE
+EDIT
+Invoice ID
+
+
+View Payment Details:
+------------------------
+https://iaaibv.fa.ocs.oraclecloud29.com/fscmUI/faces/deeplink?objType=@{1}&@action=@{2}&objKey=CheckId=@{3}
+
+AP_VIEWPAYMENT
+VIEW
+Check ID

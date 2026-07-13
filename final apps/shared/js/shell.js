@@ -205,6 +205,46 @@ define([], function () {
       applyRegionTheme(out);
       if (ssoOn) injectApexLink(authBase);
     });
+    /* module switcher visibility (db/v2/49) — independent fetch, fail-open */
+    initModuleAccess(authBase);
+  }
+
+  /* ── module access (db/v2/49) ───────────────────────────────────────────
+     GET /dct/my/modules returns { denied: [module_code, ...] } — modules
+     restricted via DCT_MODULE_ROLES that none of the session user's roles
+     grant (SYS_ADMIN is never denied). Denied entries are hidden from the
+     module switcher. Fail-open by construction: fetch errors, missing rows
+     or unknown codes leave everything visible — per-handler ORDS role
+     checks remain the security boundary, this is launcher visibility only.
+     The switcher items are rendered by each app's `foreach: modules` over
+     this same MODULES array, so DOM order mirrors registry order. */
+  function applyModuleAccess(denied) {
+    if (!denied || !denied.length) return;
+    var tries = 0;
+    (function hide() {
+      var items = document.querySelectorAll('.modsw-menu .modsw-item');
+      /* bindings may not have rendered yet on a cold start — retry briefly */
+      if (items.length < MODULES.length && tries++ < 10) { setTimeout(hide, 300); return; }
+      for (var i = 0; i < MODULES.length && i < items.length; i++) {
+        if (denied.indexOf(MODULES[i].mc) >= 0) items[i].style.display = 'none';
+      }
+    })();
+  }
+
+  /** initModuleAccess(authBase) — module apps get this via initRegionTheme;
+      Admin calls it from its own /boot handling. Silently no-ops without a
+      session. */
+  function initModuleAccess(authBase) {
+    var token = null;
+    try {
+      var raw = localStorage.getItem('ifinance_jet_session');
+      token = raw ? (JSON.parse(raw).sessionId || null) : null;
+    } catch (e) {}
+    if (!token || !authBase) return;
+    fetch(authBase + '/my/modules', { headers: { 'Authorization': 'Bearer ' + token } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) { if (d) applyModuleAccess(d.denied || []); })
+      .catch(function () {});
   }
 
   /* ── cross-UI SSO hand-off (db/v2/41 + 41b) ─────────────────────────────
@@ -370,5 +410,5 @@ define([], function () {
            initBrand: initBrand, initAnnouncements: initAnnouncements,
            applyRegionTheme: applyRegionTheme, initRegionTheme: initRegionTheme,
            setFeatures: setFeatures, featureEnabled: featureEnabled,
-           injectApexLink: injectApexLink };
+           injectApexLink: injectApexLink, initModuleAccess: initModuleAccess };
 });

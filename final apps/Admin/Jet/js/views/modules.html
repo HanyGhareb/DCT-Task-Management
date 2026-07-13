@@ -64,6 +64,67 @@
   </div>
   <!-- /ko -->
 
+  <!-- Module access dialog (db/v2/49): which roles see this app in the switcher -->
+  <!-- ko if: showAccess() -->
+  <div class="modal-overlay">
+    <div class="modal-box" style="max-width:520px">
+      <div class="modal-header">
+        <h3 style="margin:0">
+          <span data-bind="text: $root.t('vw.modules.accessTitle')"></span>
+          <!-- ko with: accessTarget() -->
+          <span style="font-weight:400">&mdash; <span data-bind="text: nameEn"></span></span>
+          <!-- /ko -->
+        </h3>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeAccess, text: $root.t('common.cancel')"></button>
+          <button class="btn btn-primary btn-sm"
+                  data-bind="click: saveAccess, disable: accessLoading() || accessSaving()">
+            &#10003; <span data-bind="text: $root.t('common.save')"></span>
+          </button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div style="font-size:12.5px;color:var(--text-muted,#667);margin-bottom:12px"
+             data-bind="text: $root.t('vw.modules.accessHint')"></div>
+
+        <!-- ko if: accessLoading() -->
+        <div class="empty-state" style="padding:24px" data-bind="text: $root.t('common.loading')"></div>
+        <!-- /ko -->
+
+        <!-- ko ifnot: accessLoading() -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <!-- ko if: grantedCount() === 0 -->
+          <span class="badge badge--active" data-bind="text: $root.t('vw.modules.accessEveryone')"></span>
+          <!-- /ko -->
+          <!-- ko if: grantedCount() > 0 -->
+          <span class="badge badge--inactive"
+                data-bind="text: $root.t('vw.modules.accessRestricted') + ' (' + grantedCount() + ')'"></span>
+          <!-- /ko -->
+          <button class="btn btn-secondary btn-sm" data-bind="click: clearAccess,
+                  visible: grantedCount() > 0, text: $root.t('vw.modules.accessClear')"></button>
+        </div>
+        <div style="max-height:320px;overflow:auto;border:1px solid var(--border,#e3e8ee);border-radius:8px;padding:6px">
+          <!-- ko foreach: accessRoles -->
+          <div style="display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;cursor:pointer"
+               data-bind="click: function () { checked(!checked()); }">
+            <input type="checkbox" style="pointer-events:none" data-bind="checked: checked">
+            <div>
+              <div style="font-size:13px;font-weight:600" data-bind="text: $root.lang() === 'ar' && nameAr ? nameAr : nameEn"></div>
+              <div style="font-size:11px;color:#98a2b3" data-bind="text: roleCode"></div>
+            </div>
+          </div>
+          <!-- /ko -->
+        </div>
+        <!-- ko if: accessError() -->
+        <div style="color:var(--danger,#c0392b);font-size:12.5px;margin-top:10px"
+             data-bind="text: $root.t('vw.modules.accessError')"></div>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
   <div class="module-grid">
     <!-- ko foreach: filteredModules() -->
     <div class="module-card" style="text-align:left;padding:16px">
@@ -93,6 +154,8 @@
         <!-- /ko -->
         <div style="display:flex;gap:4px">
           <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.openEdit.bind($parent, $data)" title="Edit">&#9998;</button>
+          <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.openAccess.bind($parent, $data),
+                                                                       attr: { title: $root.t('vw.modules.access') }">&#128273;</button>
           <button class="btn btn-secondary btn-sm btn-icon" data-bind="click: $parent.toggleActive.bind($parent, $data)" title="Toggle Active">&#128260;</button>
         </div>
       </div>
