@@ -257,4 +257,4 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   Deploy 02 → 03 → 04 (fresh sessions). Tests: `tests/benef_api_smoke.py` 18/18,
   `tests/api_smoke.py` regression 14/14, `tests/benef_browser_smoke.py` 24/24
   (scoped KPIs 2,604 invoices / 1,064 beneficiaries vs 5,080 unscoped).
-  APP_VERSION 1.8.0. Web-tier deploy pending.
+  APP_VERSION 1.8.0. Web-tier release 20260713233720 LIVE 2026-07-13 (prod smoke: index 1.8.0, beneficiaries files 200, ORDS proxy 401 w/o token); pushed as c9a6170.
