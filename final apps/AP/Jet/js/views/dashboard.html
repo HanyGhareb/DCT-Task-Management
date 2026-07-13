@@ -374,13 +374,25 @@
               <div><span class="kv-l" data-bind="text: $vm.t('tbl.date')"></span><span data-bind="text: $data.invoiceDate || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.glDate')"></span><span data-bind="text: $data.glDate || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.received')"></span><span data-bind="text: $data.receivedDate || ''"></span></div>
+            </div>
+
+            <!-- Audit info — collapsible, collapsed by default -->
+            <button class="inv-aud-h" data-bind="click: function () { $vm.toggleInvAudit(); }, css: { open: $vm.invAuditOpen() }">
+              <span data-bind="text: $vm.t('dr.auditInfo')"></span>
+              <span class="chev">&#9660;</span>
+            </button>
+            <!-- ko if: $vm.invAuditOpen -->
+            <div class="inv-grid">
               <div><span class="kv-l" data-bind="text: $vm.t('dr.createdBy')"></span><span data-bind="text: $data.createdBy || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.created')"></span><span data-bind="text: $data.createdDate || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.updatedBy')"></span><span data-bind="text: $data.lastUpdatedBy || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('dr.updated')"></span><span data-bind="text: $data.lastUpdatedDate || ''"></span></div>
               <!-- ko if: $data.cancelledDate -->
               <div><span class="kv-l" data-bind="text: $vm.t('dr.cancelledBy')"></span><span data-bind="text: $data.cancelledBy || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.cancelledOn')"></span><span data-bind="text: $data.cancelledDate || ''"></span></div>
               <!-- /ko -->
             </div>
+            <!-- /ko -->
           </div>
 
           <!-- summary card: hero amount + money rows + status stack -->
@@ -464,6 +476,7 @@
             <th data-bind="text: $root.t('tbl.dist')"></th>
             <th data-bind="text: $root.t('tbl.distType')"></th>
             <th class="ap-amount" data-bind="text: $root.t('tbl.amountAed')"></th>
+            <th data-bind="text: $root.t('tbl.glComb'), attr: { title: $root.t('dr.ccHint') }"></th>
             <th data-bind="text: $root.t('tbl.account')"></th>
             <th data-bind="text: $root.t('tbl.cc')"></th>
             <th data-bind="text: $root.t('tbl.approp')"></th>
@@ -480,6 +493,8 @@
               <td data-bind="text: $data.distNumber"></td>
               <td data-bind="text: $data.distType || ''"></td>
               <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.amountAed)"></td>
+              <td class="inv-cc" data-bind="text: $data.chargeAccount || '',
+                  event: { mouseover: $vm.ccHover, mousemove: $vm.ccMove, mouseout: $vm.ccOut }"></td>
               <td data-bind="text: $data.accountCode || '', attr: { title: $data.accountDesc || '' }"></td>
               <td data-bind="text: $data.costCenterCode || '', attr: { title: $data.costCenterDesc || '' }"></td>
               <td data-bind="text: $data.appropriationCode || '', attr: { title: $data.appropriationDesc || '' }"></td>
@@ -499,6 +514,18 @@
     </div>
   </div>
   <!-- /ko -->
+
+  <!-- ── COA segment popover (Distributions tab GL-combination hover) ──── -->
+  <div class="combo-tip" data-bind="visible: tipShow, style: { left: tipX() + 'px', top: tipY() + 'px' }" style="display:none">
+    <div class="ctip-h" data-bind="text: $root.t('dr.segments')"></div>
+    <table><tbody data-bind="foreach: tipRows">
+      <tr>
+        <td class="ctip-l" data-bind="text: label"></td>
+        <td class="ctip-c" data-bind="text: $data.code || ''"></td>
+        <td class="ctip-d" data-bind="text: $data.desc || ''"></td>
+      </tr>
+    </tbody></table>
+  </div>
 
   <!-- ── Chart drill-down drawer (right-edge slide-in — GL butil pattern):
        chart segment → related invoices; ⤢ full-screen, Esc restores/closes,

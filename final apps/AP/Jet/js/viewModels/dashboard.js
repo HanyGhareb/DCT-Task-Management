@@ -706,15 +706,50 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     // ── drill (invoice window: master header + summary card + detail tabs) ──
     self.invMax = ko.observable(false);
     self.toggleInvMax = function () { self.invMax(!self.invMax()); };
+    self.invAuditOpen = ko.observable(false);          // Audit info — collapsed by default
+    self.toggleInvAudit = function () { self.invAuditOpen(!self.invAuditOpen()); };
     self.openDrill = function (row) {
       if (!row || !row.id) return;
       ap.getInvoice(row.id).then(function (d) {
         self.drill(d);
         self.drillTab('lines');            // header lives in the master region now
         self.invMax(false);
+        self.invAuditOpen(false);
         self.showDrill(true);
       }).catch(function () { toast.error(i18n.t('msg.error')); });
     };
+
+    // ── GL-Actuals-style COA segment popover (Distributions tab hover) ──
+    var SEG_DEFS = [
+      ['seg.entity',        'entityCode',         'entityDesc'],
+      ['seg.program',       'programCode',        'programDesc'],
+      ['seg.cc',            'costCenterCode',     'costCenterDesc'],
+      ['seg.budgetGroup',   'budgetGroupCode',    'budgetGroupDesc'],
+      ['seg.account',       'accountCode',        'accountDesc'],
+      ['seg.entitySpecific','entitySpecificCode', 'entitySpecificDesc'],
+      ['seg.appropriation', 'appropriationCode',  'appropriationDesc'],
+      ['seg.intercompany',  'intercompanyCode',   'intercompanyDesc'],
+      ['seg.future1',       'future1Code',        'future1Desc'],
+      ['seg.future2',       'future2Code',        'future2Desc'],
+    ];
+    self.tipRows = ko.observableArray([]);
+    self.tipShow = ko.observable(false);
+    self.tipX = ko.observable(0); self.tipY = ko.observable(0);
+    function placeTip(e) {
+      var w = 470, x = e.clientX + 16, y = e.clientY + 14;
+      if (x + w > window.innerWidth) x = e.clientX - w - 16;
+      if (y + 360 > window.innerHeight) y = Math.max(12, window.innerHeight - 370);
+      self.tipX(x); self.tipY(y);
+    }
+    self.ccHover = function (r, e) {
+      if (!r || !r.chargeAccount) return true;
+      self.tipRows(SEG_DEFS.map(function (s) {
+        return { label: i18n.t(s[0]), code: r[s[1]] || '', desc: r[s[2]] || '' };
+      }));
+      placeTip(e); self.tipShow(true); return true;
+    };
+    self.ccMove = function (r, e) { placeTip(e); return true; };
+    self.ccOut  = function () { self.tipShow(false); return true; };
     self.closeDrill = function () { self.showDrill(false); self.drill(null); self.invMax(false); };
     self.setDrillTab = function (tab) { self.drillTab(tab); };
 

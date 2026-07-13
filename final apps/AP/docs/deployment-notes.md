@@ -145,3 +145,18 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   Deploy 02 → 03 → 04; verify: filters/summary carry the new logic; SQL smoke —
   rcv-month 2026-05 engine 1,140 = direct 1,140 (moved from 1,112 under the old
   fallback), exclude-cancelled 5,078 = 5,078. APP_VERSION 1.5.0.
+- **2026-07-13 (invoice window round 2, v1.6.0)** — user-review refinements:
+  1. **Summary card fills the master-region height** (align-self stretch + flex column;
+     the status stack anchors to the card foot). **Approval status: DATA GAP** — neither
+     `AP_INVOICES` nor `ATD_AP_INVOICES` carries an approval-status column (checked
+     `%APPR%/%WORKFLOW%` across all AP tables); the OTBI analysis must add Fusion's
+     "Approval Status" field before it can be surfaced (then: view 05 + drill handler + card row).
+  2. **Audit info collapsible** (collapsed by default) in the master region: created
+     by/on + last updated by/on (drill handler now emits `lastUpdatedBy/lastUpdatedDate`)
+     + cancelled by/on when present; the Dates section keeps invoice/GL/received dates only.
+  3. **Distributions tab: full GL combination column** + GL-Actuals-style hover popover —
+     the drill handler LEFT JOINs `dct_gl_coa_snap` on the (already canonical)
+     `charge_account` and emits all 10 segment codes+descs; the popover lists them in the
+     canonical Fusion order with descriptions (`.combo-tip`, z 950 above the modal; header
+     ⓘ hint on the column). Snap join coverage 5,024/5,041 Item dists.
+  Deploy: 03 → 04 re-run (02 untouched). APP_VERSION 1.6.0.

@@ -131,8 +131,7 @@ td.ap-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-
 .inv-body { max-height: 76vh; overflow-y: auto; }
 .inv-box.inv-max .inv-body { max-height: none; flex: 1 1 auto; }
 
-.inv-master { display: grid; grid-template-columns: minmax(0, 1fr) 330px;
-              gap: 22px; align-items: start; }
+.inv-master { display: grid; grid-template-columns: minmax(0, 1fr) 330px; gap: 22px; }
 @media (max-width: 940px) { .inv-master { grid-template-columns: 1fr; } }
 
 .inv-eyebrow { font-size: 10.5px; font-weight: 700; letter-spacing: .12em;
@@ -150,7 +149,8 @@ td.ap-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-
 @media (max-width: 1120px) { .inv-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
 .inv-grid > div { min-width: 0; font-size: 13px; overflow-wrap: anywhere; }
 
-.inv-sum { position: relative; align-self: start; overflow: hidden;
+.inv-sum { position: relative; align-self: stretch; display: flex; flex-direction: column;
+           overflow: hidden;
            border: 1px solid rgba(var(--brand-rgb), .22); border-radius: 12px;
            padding: 16px 18px 14px;
            background: linear-gradient(160deg, #fff 0%, var(--brand-soft) 135%);
@@ -169,7 +169,8 @@ td.ap-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-
 .inv-rows span { color: var(--text-2); }
 .inv-rows b { font-variant-numeric: tabular-nums; }
 .inv-badges { border-top: 1px dashed rgba(var(--brand-rgb), .30); padding-top: 10px;
-              display: grid; gap: 7px; }
+              display: grid; gap: 7px; align-content: start;
+              margin-top: auto; }   /* statuses anchor to the card foot — the card fills the region height */
 .inv-badges > div { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
 .inv-badges .kv-l { margin: 0; }
 .inv-cxl { margin-top: 12px; font-size: 12px; font-weight: 600; color: #b3261e;
@@ -226,3 +227,28 @@ td.ap-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-
 .dw-total { text-align: end; background: var(--brand-soft); color: var(--brand-dark);
             font-weight: 600; padding: 11px 14px; }
 .dw-total b { margin-inline-start: 8px; font-size: 14px; font-variant-numeric: tabular-nums; }
+
+/* audit-info collapsible header (invoice window master region) */
+.inv-aud-h { display: flex; align-items: center; gap: 8px; width: 100%; margin: 18px 0 9px;
+             padding: 0 0 4px; background: none; border: 0; border-bottom: 1px solid var(--brand-soft);
+             cursor: pointer; font: inherit; font-size: 11px; font-weight: 700;
+             letter-spacing: .08em; text-transform: uppercase; color: var(--brand); text-align: start; }
+.inv-aud-h .chev { margin-inline-start: auto; font-size: 9px; color: var(--text-3);
+                   transition: transform .15s; transform: rotate(-90deg); }
+.inv-aud-h.open .chev { transform: none; }
+
+/* GL-combination cell + COA segment popover (mirrors GL Actuals) */
+td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: hidden;
+            text-overflow: ellipsis; cursor: help; font-variant-numeric: tabular-nums;
+            text-decoration: underline dotted var(--border, #E3E6EB); text-underline-offset: 3px; }
+.combo-tip { position: fixed; z-index: 950; max-width: 470px; overflow: hidden;
+             background: var(--surface, #fff); border: 1px solid var(--border, #E3E6EB);
+             border-radius: 12px; box-shadow: 0 18px 50px rgba(15,22,30,.30); pointer-events: none; }
+.combo-tip .ctip-h { font-size: 10px; letter-spacing: .12em; text-transform: uppercase;
+                     color: #fff; font-weight: 700; background: var(--brand); padding: 6px 12px; }
+.combo-tip table { border-collapse: collapse; font-size: 12.5px; margin: 6px 10px 8px; }
+.combo-tip td { padding: 3px 10px 3px 0; vertical-align: top; line-height: 1.35; }
+.combo-tip tr:nth-child(even) { background: var(--brand-soft); }
+.ctip-l { color: var(--brand-dark); font-weight: 700; white-space: nowrap; }
+.ctip-c { font-weight: 600; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
+.ctip-d { color: var(--text-2); }

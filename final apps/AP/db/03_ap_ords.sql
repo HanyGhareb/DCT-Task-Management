@@ -562,6 +562,7 @@ BEGIN
            payment_currency, voucher_num, invoice_source, batch_name,
            TO_CHAR(gl_date,'YYYY-MM-DD') gl_dt, TO_CHAR(invoice_received_date,'YYYY-MM-DD') rcv_dt,
            created_by, TO_CHAR(created_date,'YYYY-MM-DD') created_dt,
+           last_updated_by, TO_CHAR(last_updated_date,'YYYY-MM-DD') updated_dt,
            TO_CHAR(cancelled_date,'YYYY-MM-DD') cxl_dt, cancelled_by,
            line_count, distribution_count, po_numbers, pr_numbers
       FROM prod.ap_invoices_header_v WHERE invoice_id = l_id)
@@ -590,6 +591,7 @@ BEGIN
     APEX_JSON.write('source', h.invoice_source); APEX_JSON.write('batchName', h.batch_name);
     APEX_JSON.write('glDate', h.gl_dt); APEX_JSON.write('receivedDate', h.rcv_dt);
     APEX_JSON.write('createdBy', h.created_by); APEX_JSON.write('createdDate', h.created_dt);
+    APEX_JSON.write('lastUpdatedBy', h.last_updated_by); APEX_JSON.write('lastUpdatedDate', h.updated_dt);
     APEX_JSON.write('cancelledDate', h.cxl_dt); APEX_JSON.write('cancelledBy', h.cancelled_by);
     APEX_JSON.write('lineCount', h.line_count); APEX_JSON.write('distCount', h.distribution_count);
     APEX_JSON.write('poNumbers', h.po_numbers); APEX_JSON.write('prNumbers', h.pr_numbers);
@@ -616,14 +618,25 @@ BEGIN
     END LOOP;
     APEX_JSON.close_array;
     APEX_JSON.open_array('distributions');
-    FOR r IN (SELECT invoice_line_number, distribution_line_number, distribution_type,
-                     distribution_amount, distribution_amount_aed, distribution_status, posting_status,
-                     fund_status, TO_CHAR(accounting_date,'YYYY-MM-DD') acct_dt, period_name,
-                     po_number, pr_number, pr_preparer, project_number, task_number, expenditure_type,
-                     charge_account, account_code, account_desc, cost_center_code, cost_center_desc,
-                     appropriation_code, appropriation_desc, sector_name, chapter_name, program_name
-                FROM prod.ap_invoice_distributions_v WHERE invoice_id = l_id
-               ORDER BY invoice_line_number, distribution_line_number) LOOP
+    -- full COA segment breakdown per distribution (GL-Actuals-style hover):
+    -- the view's charge_account is already canonical, so it joins the snap 1:1
+    FOR r IN (SELECT d.invoice_line_number, d.distribution_line_number, d.distribution_type,
+                     d.distribution_amount, d.distribution_amount_aed, d.distribution_status, d.posting_status,
+                     d.fund_status, TO_CHAR(d.accounting_date,'YYYY-MM-DD') acct_dt, d.period_name,
+                     d.po_number, d.pr_number, d.pr_preparer, d.project_number, d.task_number, d.expenditure_type,
+                     d.charge_account, d.account_code, d.account_desc, d.cost_center_code, d.cost_center_desc,
+                     d.appropriation_code, d.appropriation_desc, d.sector_name, d.chapter_name, d.program_name,
+                     g.entity_code ent_code, g.entity_desc ent_desc,
+                     g.budget_group_code bg_code, g.budget_group_desc bg_desc,
+                     g.entity_specific_code es_code, g.entity_specific_desc es_desc,
+                     g.future1_code f1_code, g.future1_desc f1_desc,
+                     g.future2_code f2_code, g.future2_desc f2_desc,
+                     g.intercompany_code ic_code, g.intercompany_desc ic_desc,
+                     g.program_code prog_code, g.program_desc prog_desc
+                FROM prod.ap_invoice_distributions_v d
+                LEFT JOIN prod.dct_gl_coa_snap g ON g.cc_string = d.charge_account
+               WHERE d.invoice_id = l_id
+               ORDER BY d.invoice_line_number, d.distribution_line_number) LOOP
       APEX_JSON.open_object;
       APEX_JSON.write('lineNumber', r.invoice_line_number); APEX_JSON.write('distNumber', r.distribution_line_number);
       APEX_JSON.write('distType', r.distribution_type);
@@ -641,6 +654,13 @@ BEGIN
       APEX_JSON.write('appropriationCode', r.appropriation_code); APEX_JSON.write('appropriationDesc', r.appropriation_desc);
       APEX_JSON.write('sector', r.sector_name); APEX_JSON.write('chapter', r.chapter_name);
       APEX_JSON.write('program', r.program_name);
+      APEX_JSON.write('entityCode', r.ent_code); APEX_JSON.write('entityDesc', r.ent_desc);
+      APEX_JSON.write('budgetGroupCode', r.bg_code); APEX_JSON.write('budgetGroupDesc', r.bg_desc);
+      APEX_JSON.write('entitySpecificCode', r.es_code); APEX_JSON.write('entitySpecificDesc', r.es_desc);
+      APEX_JSON.write('future1Code', r.f1_code); APEX_JSON.write('future1Desc', r.f1_desc);
+      APEX_JSON.write('future2Code', r.f2_code); APEX_JSON.write('future2Desc', r.f2_desc);
+      APEX_JSON.write('intercompanyCode', r.ic_code); APEX_JSON.write('intercompanyDesc', r.ic_desc);
+      APEX_JSON.write('programCode', r.prog_code); APEX_JSON.write('programDesc', r.prog_desc);
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
