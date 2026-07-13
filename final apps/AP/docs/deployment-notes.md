@@ -90,3 +90,36 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   canonical (`glCombination`/`chargeAccount` via `dct_cc_canon`/COA snap); the raw
   `poChargeAccount` (register + CSV) is now wrapped in `dct_cc_canon` too (db/04).
   NOTE: `db/v2/43` (old AP view DDL) RETIRED — `AP/db/05_ap_views.sql` is the only source.
+- **2026-07-13 (dashboard enhancements round 4, v1.4.0)** — six-part UX/analytics round:
+  1. **Include Cancelled Invoices?** checkbox in Search Filters (default ON = previous
+     behaviour; OFF sends `inclcxl=N` → engine excludes `invoice_status='Cancelled'`).
+  2. **GL Date from/to** filter (`glfrom`/`glto` on header `gl_date`).
+  3. **Monthly trend re-based**: month basis is now `NVL(invoice_received_date,
+     invoice_date)` (was `invoice_date`; 5,207 of 5,484 headers carry a received date)
+     and the default window starts at the **current budget year** (Jan 1) — any explicit
+     date facet (invoice/GL/received) restores the full filtered range (cap 60 months).
+  4. **Chart drill-down on ALL 8 charts** — GL Budget-Utilization-style right-edge
+     drawer (`.dw-*` in app.css): click any bar/slice/point → related invoice list
+     (current facets + the clicked segment), wide default + ⤢ full-screen (Esc restores,
+     then closes), CSV export w/ reconciliation footer, "top N of M" cap note (500),
+     row click opens the invoice-detail modal ABOVE the drawer. New engine facets:
+     `aging=<CURRENT|D1_30|D31_60|D61_90|D91_180|D180P>`, `esupplier=` (effective,
+     beneficiary-aware — the top-suppliers bars), `rcvfrom/rcvto` (trend months),
+     plus `glfrom/glto/inclcxl` (7 new `filtered_ids` params, 31 args total).
+  5. **Maximize fixed**: `.ap-region { position:relative }` was declared AFTER
+     `.ap-region--max { position:fixed }` at equal specificity, so the fixed positioning
+     silently lost and the ⤢ button looked dead. Rules merged; region-max z lowered
+     900 → 750 so drawers (760/761) and the platform modal (800) layer above it.
+  6. **Chart hints**: ⓘ icon on every chart title (native tooltip, EN+AR) explaining
+     content, date basis and criteria.
+  **Item-only rule (reconciliation fix, user-reported)**: every distribution-grain
+  analysis now counts **`distribution_type = 'Item'` rows only** — tax/freight dists
+  carry unmapped cost centers and dragged classified invoices into sector
+  'Unclassified' (facet said 4,887; Item-only truth = 78). Applied to all 10 dist
+  facet scans in `dct_ap_pkg.filtered_ids`, the `/filters` dist-based LOVs + sector
+  counts, and the `/summary` bySector dataset, so facet counts == KPIs == charts.
+  The dist-level REGISTER still lists all dist rows of matching invoices (a register,
+  not an analysis). Deploy order 02 → 03 → 04 (03 rebuilds ap.rest — 04 right after).
+  DB verify: 31 pkg args, 7 handlers w/ new binds, item-only present in filters+summary;
+  7/7 SQL reconciliation tests PASS (cxl 5484−406=5078; Unclassified 78=78; aging D1_30
+  428=428; GL-date 1383=1383; rcv-month 1112=1112; esupplier 457=457). APP_VERSION 1.4.0.

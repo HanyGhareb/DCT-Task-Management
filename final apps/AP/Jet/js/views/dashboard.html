@@ -62,6 +62,22 @@
       </div>
 
       <div class="fct-text">
+        <label class="form-label" data-bind="text: $root.t('f.gldates')"></label>
+        <div class="fct-dates">
+          <input class="form-control" type="date" data-bind="value: gldatefrom, attr: { title: $root.t('f.glfrom') }">
+          <input class="form-control" type="date" data-bind="value: gldateto, attr: { title: $root.t('f.glto') }">
+        </div>
+      </div>
+
+      <!-- include-cancelled toggle (div + pointer-events:none input — never wrap in <label>) -->
+      <div class="fct-text">
+        <div class="fct-item" data-bind="click: toggleInclCxl, css: { on: inclCancelled() }">
+          <input type="checkbox" tabindex="-1" data-bind="checked: inclCancelled">
+          <span class="fct-lbl" data-bind="text: $root.t('f.inclCxl'), attr: { title: $root.t('f.inclCxlHint') }"></span>
+        </div>
+      </div>
+
+      <div class="fct-text">
         <label class="form-label" data-bind="text: $root.t('f.refs')"></label>
         <div style="display:grid;gap:6px">
           <input class="form-control" data-bind="value: po, valueUpdate: 'change', attr: { placeholder: $root.t('f.po') }">
@@ -147,35 +163,35 @@
 
         <div class="ap-charts">
           <div class="ap-chart-card c-8">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.aging')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.aging')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.aging.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartAging"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.payment')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.payment')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.payment.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartPay"></canvas></div>
           </div>
           <div class="ap-chart-card c-12">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.trend')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.trend')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.trend.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartTrend"></canvas></div>
           </div>
           <div class="ap-chart-card c-6">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.topSuppliers')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.topSuppliers')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.topSuppliers.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartSup"></canvas></div>
           </div>
           <div class="ap-chart-card c-6">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.bySector')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.bySector')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.bySector.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartSector"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.validation')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.validation')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.validation.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartVal"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.accounting')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.accounting')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.accounting.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartAcc"></canvas></div>
           </div>
           <div class="ap-chart-card c-4">
-            <div class="ap-chart-title" data-bind="text: $root.t('ch.byPayGroup')"></div>
+            <div class="ap-chart-title"><span data-bind="text: $root.t('ch.byPayGroup')"></span><i class="ap-hint" data-bind="attr: { title: $root.t('ch.byPayGroup.hint') }" aria-label="chart hint">i</i></div>
             <div class="ap-chart-body"><canvas id="apChartPg"></canvas></div>
           </div>
         </div>
@@ -438,5 +454,66 @@
     </div>
   </div>
   <!-- /ko -->
+
+  <!-- ── Chart drill-down drawer (right-edge slide-in — GL butil pattern):
+       chart segment → related invoices; ⤢ full-screen, Esc restores/closes,
+       CSV export, reconciling AED total; row click opens the invoice modal -->
+  <div class="dw-scrim" data-bind="css: { show: dwOpen }, click: closeDw"></div>
+  <aside class="dw-drawer" data-bind="css: { show: dwOpen, 'dw-full': dwMax }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: dwEyebrow"></div>
+        <div class="dw-title" data-bind="text: dwTitle"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-sm" data-bind="click: toggleDwMax,
+                attr: { title: dwMax() ? $root.t('rg.restore') : $root.t('rg.maximize') },
+                text: dwMax() ? '⤡' : '⤢'"></button>
+        <button class="btn btn-sm" data-bind="click: dwExportCsv, text: $root.t('rg.exportCsv'),
+                visible: !dwLoading() && dwRows().length > 0"></button>
+        <button class="btn btn-sm" data-bind="click: closeDw, text: $root.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <div class="dw-ctx" data-bind="visible: dwCtx(), text: dwCtx"></div>
+      <!-- ko if: dwLoading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+      <!-- ko ifnot: dwLoading() -->
+      <div class="dw-cap" data-bind="visible: dwCapNote(), text: dwCapNote"></div>
+      <!-- ko if: dwRows().length === 0 -->
+      <div class="empty-state" data-bind="text: $root.t('tbl.none')"></div>
+      <!-- /ko -->
+      <!-- ko if: dwRows().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <!-- ko foreach: dwCols -->
+          <th data-bind="css: { 'ap-amount': !!$data.amt }">
+            <span data-bind="text: $vm.t($data.labelKey)"></span>
+          </th>
+          <!-- /ko -->
+        </tr></thead>
+        <tbody><!-- ko foreach: dwRows -->
+          <tr class="ap-row-click" data-bind="click: function () { $vm.openDrill($data); }">
+            <!-- ko foreach: $vm.dwCols -->
+            <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
+                           attr: { title: $vm.cellTitle($parent, $data) }">
+              <!-- ko if: $data.badge -->
+              <span data-bind="text: $parent[$data.key] || '', attr: { class: $vm.badgeCls($data.badge, $parent[$data.key]) }"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.badge -->
+              <span data-bind="text: $vm.cellVal($parent, $data)"></span>
+              <!-- /ko -->
+            </td>
+            <!-- /ko -->
+          </tr>
+        <!-- /ko --></tbody>
+        <tfoot><tr><td class="dw-total" data-bind="attr: { colspan: dwCols.length }">
+          <span data-bind="text: $root.t('dw.total')"></span>
+          <b data-bind="text: fmtAmt(dwAmount())"></b>
+        </td></tr></tfoot>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  </aside>
 
 </div>

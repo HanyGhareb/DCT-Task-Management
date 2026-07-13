@@ -100,7 +100,7 @@ BEGIN
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('sectors');
-  FOR r IN (SELECT NVL(sector_name,'Unclassified') v, COUNT(DISTINCT invoice_id) c FROM prod.ap_invoice_distributions_v GROUP BY NVL(sector_name,'Unclassified') ORDER BY 2 DESC) LOOP
+  FOR r IN (SELECT NVL(sector_name,'Unclassified') v, COUNT(DISTINCT invoice_id) c FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' GROUP BY NVL(sector_name,'Unclassified') ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('suppliers');
@@ -112,27 +112,27 @@ BEGIN
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('requestors');
-  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE pr_preparer IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT pr_preparer v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND pr_preparer IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('expTypes');
-  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE expenditure_type IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT expenditure_type v FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND expenditure_type IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.write(r.v);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('costCenters');
-  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE cost_center_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT cost_center_code cd, cost_center_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND cost_center_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('accounts');
-  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE account_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT account_code cd, account_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND account_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('appropriations');
-  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE appropriation_code IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT appropriation_code cd, appropriation_desc nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND appropriation_code IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('projects');
-  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE project_number IS NOT NULL ORDER BY 1) LOOP
+  FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type = 'Item' AND project_number IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.close_object;
@@ -172,6 +172,12 @@ DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_ids  apex_t_number;
   k_cnt NUMBER; k_sup NUMBER; k_tot NUMBER; k_paid NUMBER; k_out NUMBER; k_over NUMBER; k_cxl NUMBER;
+  -- trend default window: no explicit date criteria = start at the current
+  -- budget year (Jan 1); any date facet supplied = show the filtered range
+  l_trendfloor DATE := CASE WHEN [COLON]datefrom IS NULL AND [COLON]dateto IS NULL
+                             AND [COLON]rcvfrom IS NULL AND [COLON]rcvto IS NULL
+                             AND [COLON]glfrom  IS NULL AND [COLON]glto  IS NULL
+                            THEN TRUNC(SYSDATE,'YYYY') END;
   PROCEDURE nco(p_n VARCHAR2, p_c NUMBER, p_a NUMBER) IS
   BEGIN
     APEX_JSON.open_object; APEX_JSON.write('name', p_n);
@@ -187,7 +193,10 @@ BEGIN
     p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
-    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT COUNT(*),
          COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                              THEN h.beneficiary_name ELSE h.supplier_name END),
@@ -249,12 +258,15 @@ BEGIN
     nco(r.v, r.c, r.a);
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('trend');
+  -- month basis = Invoice Received Date (invoice date fallback when not recorded)
   FOR r IN (SELECT m, c, a FROM (
-              SELECT TO_CHAR(h.invoice_date,'YYYY-MM') m, COUNT(*) c, NVL(SUM(h.invoice_amount_aed),0) a
+              SELECT TO_CHAR(NVL(h.invoice_received_date, h.invoice_date),'YYYY-MM') m,
+                     COUNT(*) c, NVL(SUM(h.invoice_amount_aed),0) a
                 FROM prod.ap_invoices_header_v h
                WHERE h.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
-               GROUP BY TO_CHAR(h.invoice_date,'YYYY-MM')
-               ORDER BY m DESC FETCH FIRST 24 ROWS ONLY) ORDER BY m) LOOP
+                 AND (l_trendfloor IS NULL OR NVL(h.invoice_received_date, h.invoice_date) >= l_trendfloor)
+               GROUP BY TO_CHAR(NVL(h.invoice_received_date, h.invoice_date),'YYYY-MM')
+               ORDER BY m DESC FETCH FIRST 60 ROWS ONLY) ORDER BY m) LOOP
     APEX_JSON.open_object; APEX_JSON.write('month', r.m);
     APEX_JSON.write('count', r.c); APEX_JSON.write('amount', ROUND(r.a,2));
     APEX_JSON.close_object;
@@ -274,6 +286,7 @@ BEGIN
   FOR r IN (SELECT NVL(d.sector_name,'Unclassified') v, COUNT(DISTINCT d.invoice_id) c, NVL(SUM(d.distribution_amount_aed),0) a
               FROM prod.ap_invoice_distributions_v d
              WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
+               AND d.distribution_type = 'Item'
              GROUP BY NVL(d.sector_name,'Unclassified') ORDER BY 3 DESC FETCH FIRST 12 ROWS ONLY) LOOP
     nco(r.v, r.c, r.a);
   END LOOP; APEX_JSON.close_array;
@@ -333,7 +346,10 @@ BEGIN
     p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
-    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT NVL(SUM(h.invoice_amount_aed),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) ELSE 0 END),0)
     INTO l_amt, l_bal
@@ -458,7 +474,10 @@ BEGIN
     p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
-    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-register-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;

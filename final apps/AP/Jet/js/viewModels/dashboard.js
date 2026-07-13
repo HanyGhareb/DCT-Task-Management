@@ -142,6 +142,9 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     self.groups  = ko.observableArray([]);
     self.datefrom = ko.observable('');
     self.dateto   = ko.observable('');
+    self.gldatefrom = ko.observable('');
+    self.gldateto   = ko.observable('');
+    self.inclCancelled = ko.observable(true);          // include cancelled invoices?
     self.po   = ko.observable('');
     self.pr   = ko.observable('');
     self.task = ko.observable('');
@@ -305,6 +308,9 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       });
       if (self.datefrom())        p.datefrom = self.datefrom();
       if (self.dateto())          p.dateto   = self.dateto();
+      if (self.gldatefrom())      p.glfrom   = self.gldatefrom();
+      if (self.gldateto())        p.glto     = self.gldateto();
+      if (!self.inclCancelled())  p.inclcxl  = 'N';
       if ((self.po() || '').trim())     p.po     = self.po().trim();
       if ((self.pr() || '').trim())     p.pr     = self.pr().trim();
       if ((self.task() || '').trim())   p.task   = self.task().trim();
@@ -312,6 +318,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       return p;
     }
     self.buildParams = buildParams;
+    self.toggleInclCxl = function () { self.inclCancelled(!self.inclCancelled()); };
 
     self.chips = ko.computed(function () {
       var out = [];
@@ -330,6 +337,11 @@ function (ko, ap, api, authService, i18n, toast, charts) {
         }
       }
       add(self.datefrom, 'f.datefrom'); add(self.dateto, 'f.dateto');
+      add(self.gldatefrom, 'f.glfrom'); add(self.gldateto, 'f.glto');
+      if (!self.inclCancelled()) {
+        out.push({ label: i18n.t('f.inclCxl'), value: i18n.t('f.no'),
+                   clear: function () { self.inclCancelled(true); scheduleReload(); } });
+      }
       add(self.po, 'f.po'); add(self.pr, 'f.pr'); add(self.task, 'f.task');
       add(self.search, 'f.search');
       return out;
@@ -341,6 +353,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
         g.filter('');
       });
       self.datefrom(''); self.dateto('');
+      self.gldatefrom(''); self.gldateto(''); self.inclCancelled(true);
       self.po(''); self.pr(''); self.task(''); self.search('');
       scheduleReload();
     };
@@ -469,7 +482,15 @@ function (ko, ap, api, authService, i18n, toast, charts) {
       return o;
     }
 
-    function hbar(id, rows, color) {
+    // Chart.js onClick adapter: clicked element index -> its data row
+    function pickIdx(rows, onPick) {
+      if (!onPick) return undefined;
+      return function (evt, els) {
+        if (els && els.length && rows[els[0].index] !== undefined) onPick(rows[els[0].index], els[0].index);
+      };
+    }
+
+    function hbar(id, rows, color, onPick) {
       rows = rows || [];
       mk(id, {
         type: 'bar',
@@ -480,6 +501,7 @@ function (ko, ap, api, authService, i18n, toast, charts) {
         },
         options: {
           indexAxis: 'y',
+          onClick: pickIdx(rows, onPick),
           plugins: {
             legend: { display: false },
             tooltip: { callbacks: {
@@ -508,6 +530,9 @@ function (ko, ap, api, authService, i18n, toast, charts) {
                        backgroundColor: RAMP, borderRadius: 4, maxBarThickness: 48 }]
         },
         options: {
+          onClick: pickIdx(AG_ORDER, function (bucket, i) {
+            openChartDrill('ch.aging', i18n.t(AG_KEYS[i]), { aging: bucket }, 'balance_desc');
+          }),
           plugins: {
             legend: { display: false },
             tooltip: { callbacks: { label: function (ctx) {
@@ -531,6 +556,9 @@ function (ko, ap, api, authService, i18n, toast, charts) {
         },
         options: {
           cutout: '62%',
+          onClick: pickIdx(pay, function (r) {
+            openChartDrill('ch.payment', r.name, { paid: r.name });
+          }),
           plugins: {
             legend: { position: 'bottom' },
             tooltip: { callbacks: { label: function (ctx) {
@@ -552,6 +580,14 @@ function (ko, ap, api, authService, i18n, toast, charts) {
                        fill: true, tension: 0.3, pointRadius: 2.5, borderWidth: 2 }]
         },
         options: {
+          onClick: pickIdx(tr, function (r) {
+            // month bar -> invoices whose Received Date falls in that month
+            var p = (r.month || '').split('-');
+            if (p.length !== 2) return;
+            var last = new Date(Date.UTC(+p[0], +p[1], 0)).getUTCDate();
+            openChartDrill('ch.trend', r.month,
+              { rcvfrom: r.month + '-01', rcvto: r.month + '-' + ('0' + last).slice(-2) });
+          }),
           plugins: {
             legend: { display: false },
             tooltip: { callbacks: { label: function (ctx) {
@@ -563,11 +599,16 @@ function (ko, ap, api, authService, i18n, toast, charts) {
         }
       });
 
-      hbar('apChartVal', d.validationStatus, BRAND);
-      hbar('apChartAcc', d.accountingStatus, BRAND_MID);
-      hbar('apChartSup', d.topSuppliers, BRAND);
-      hbar('apChartSector', d.bySector, BRAND_MID);
-      hbar('apChartPg', d.byPayGroup, BRAND);
+      hbar('apChartVal', d.validationStatus, BRAND,
+        function (r) { openChartDrill('ch.validation', r.name, { val: r.name }); });
+      hbar('apChartAcc', d.accountingStatus, BRAND_MID,
+        function (r) { openChartDrill('ch.accounting', r.name, { acc: r.name }); });
+      hbar('apChartSup', d.topSuppliers, BRAND,
+        function (r) { openChartDrill('ch.topSuppliers', r.name, { esupplier: r.name }); });
+      hbar('apChartSector', d.bySector, BRAND_MID,
+        function (r) { openChartDrill('ch.bySector', r.name, { sector: r.name }); });
+      hbar('apChartPg', d.byPayGroup, BRAND,
+        function (r) { openChartDrill('ch.byPayGroup', r.name, { paygroup: r.name }); });
     }
 
     // ── region controls ─────────────────────────────────────────────────
@@ -673,6 +714,87 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     self.closeDrill = function () { self.showDrill(false); self.drill(null); };
     self.setDrillTab = function (tab) { self.drillTab(tab); };
 
+    // ── chart drill-down drawer (GL Budget Utilization pattern: right-edge
+    //    slide-in, wide by default + ⤢ full-screen toggle, Esc restores then
+    //    closes, CSV export, reconciling total). Every chart segment drills
+    //    to the related invoices = current facets + the clicked segment. ──
+    var DW_LIMIT = 500;
+    var DW_COLS = [
+      { key: 'invoiceNumber',    labelKey: 'tbl.invoiceNo' },
+      { key: 'invoiceDate',      labelKey: 'tbl.date' },
+      { key: 'supplier',         labelKey: 'tbl.supplier', clip: true },
+      { key: 'description',      labelKey: 'tbl.description', clip: true },
+      { key: 'currency',         labelKey: 'tbl.currency' },
+      { key: 'amountAed',        labelKey: 'tbl.amountAed', amt: true },
+      { key: 'balanceAed',       labelKey: 'tbl.balance', amt: true },
+      { key: 'paymentStatus',    labelKey: 'tbl.payStatus', badge: 'pay' },
+      { key: 'validationStatus', labelKey: 'tbl.validation', badge: 'val' },
+      { key: 'daysPastDue',      labelKey: 'tbl.dpd' },
+    ];
+    self.dwCols    = DW_COLS;
+    self.dwOpen    = ko.observable(false);
+    self.dwMax     = ko.observable(false);
+    self.dwLoading = ko.observable(false);
+    self.dwTitle   = ko.observable('');
+    self.dwEyebrow = ko.observable('');
+    self.dwCtx     = ko.observable('');
+    self.dwRows    = ko.observableArray([]);
+    self.dwTotal   = ko.observable(0);     // matching invoices (server count)
+    self.dwAmount  = ko.observable(0);     // AED total over ALL matches (reconciles to the chart figure)
+    self.dwCapNote = ko.computed(function () {
+      var t = self.dwTotal(), n = self.dwRows().length;
+      return t > n
+        ? i18n.t('dw.showing').replace('{n}', self.fmtInt(n)).replace('{c}', self.fmtInt(t)) : '';
+    });
+    function openChartDrill(chartKey, segment, extra, sort) {
+      self.dwTitle(segment);
+      self.dwEyebrow(i18n.t(chartKey));
+      self.dwCtx(self.chips().map(function (c) { return c.label + ': ' + c.value; }).join('   ·   '));
+      self.dwRows([]); self.dwTotal(0); self.dwAmount(0);
+      self.dwOpen(true); self.dwLoading(true);
+      var p = Object.assign({}, buildParams(), extra,
+        { limit: DW_LIMIT, offset: 0, sort: sort || 'amount_desc' });
+      ap.getRows('header', p).then(function (d) {
+        self.dwRows(d.items || []);
+        self.dwTotal(d.total || 0);
+        self.dwAmount((d.totals || {}).amountAed || 0);
+        self.dwLoading(false);
+      }).catch(function () {
+        self.dwLoading(false); self.dwOpen(false); toast.error(i18n.t('msg.error'));
+      });
+    }
+    self.closeDw    = function () { self.dwOpen(false); self.dwMax(false); };
+    self.toggleDwMax = function () { self.dwMax(!self.dwMax()); };
+    // one document-level Esc handler; replace any previous mount's listener
+    // (the module router recreates the VM on every navigation)
+    if (window.__apDashEsc) document.removeEventListener('keydown', window.__apDashEsc);
+    window.__apDashEsc = function (e) {
+      if (e.key !== 'Escape') return;
+      if (self.showDrill())  { self.closeDrill(); return; }     // invoice modal is topmost
+      if (self.dwMax())      { self.dwMax(false); return; }     // restore maximized drawer first
+      if (self.dwOpen())     { self.closeDw(); return; }
+      if (self.chartsMax())  { self.toggleChartsMax(); return; }
+      if (self.tableMax())   { self.toggleTableMax(); }
+    };
+    document.addEventListener('keydown', window.__apDashEsc);
+    // CSV of the loaded drill rows + reconciliation total footer (UTF-8 BOM)
+    self.dwExportCsv = function () {
+      var rows = self.dwRows();
+      if (!rows.length) return;
+      var esc2 = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
+      var L = [DW_COLS.map(function (c) { return esc2(i18n.t(c.labelKey)); }).join(',')];
+      rows.forEach(function (r) {
+        L.push(DW_COLS.map(function (c) { return esc2(r[c.key]); }).join(','));
+      });
+      L.push(DW_COLS.map(function (c, i) {
+        return esc2(i === 0 ? i18n.t('dw.total') : (c.key === 'amountAed' ? self.dwAmount() : ''));
+      }).join(','));
+      var name = (self.dwEyebrow() + '_' + self.dwTitle())
+        .replace(/[^\w\u0600-\u06FF]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase() || 'drill';
+      var blob = new Blob(['\uFEFF' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      downloadBlobUrl(URL.createObjectURL(blob), 'ap-drill-' + name + '-' + today() + '.csv');
+    };
+
     // ── print (pixel report window, same criteria) ──────────────────────
     function esc(s) {
       return String(s == null ? '' : s)
@@ -768,7 +890,8 @@ function (ko, ap, api, authService, i18n, toast, charts) {
     };
 
     // ── boot ────────────────────────────────────────────────────────────
-    [self.datefrom, self.dateto, self.po, self.pr, self.task, self.search]
+    [self.datefrom, self.dateto, self.gldatefrom, self.gldateto, self.inclCancelled,
+     self.po, self.pr, self.task, self.search]
       .forEach(function (obs) { obs.subscribe(scheduleReload); });
 
     ap.getFilters().then(function (f) {

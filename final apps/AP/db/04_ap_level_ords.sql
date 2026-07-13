@@ -64,7 +64,10 @@ BEGIN
     p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
-    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT COUNT(*), NVL(SUM(ln.line_amount_aed),0) INTO l_cnt, l_amt
     FROM prod.ap_invoice_lines_v ln
    WHERE ln.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
@@ -174,7 +177,10 @@ BEGIN
     p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
-    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-lines-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
@@ -258,7 +264,10 @@ BEGIN
     p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
-    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   SELECT COUNT(*), NVL(SUM(d.distribution_amount_aed),0) INTO l_cnt, l_amt
     FROM prod.ap_invoice_distributions_v d
    WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
@@ -403,7 +412,10 @@ BEGIN
     p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
     p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
     p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
-    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search);
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_inclcxl => [COLON]inclcxl);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-distributions-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
