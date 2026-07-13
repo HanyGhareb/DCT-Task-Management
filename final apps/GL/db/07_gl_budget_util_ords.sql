@@ -11,7 +11,7 @@
 --       centres (code + department), projects (number + name), tasks,
 --       expenditure types -- distinct values of the given budget year.
 --   GET /gl/butil?year=    -> {total, totals{...}, items[...]} -- year REQUIRED,
---       optional projecttype / sector / costcenter / project / task / etype
+--       optional projecttype / sector / chapter / costcenter / project / task / etype
 --       (contains-match, fed by the LOVs) / search / limit / offset, and
 --       period=MM-YYYY (must belong to the year) -> YTD THROUGH that period:
 --       sets SYS_CONTEXT('GL_CTX','BUTIL_END') via dct_gl_class_pkg.set_butil_end
@@ -83,6 +83,11 @@ BEGIN
     APEX_JSON.write(r.s);
   END LOOP;
   APEX_JSON.close_array;
+  APEX_JSON.open_array('chapters');
+  FOR r IN (SELECT DISTINCT chapter ch FROM prod.dct_budget_utilization_v WHERE chapter IS NOT NULL ORDER BY chapter) LOOP
+    APEX_JSON.write(r.ch);
+  END LOOP;
+  APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -150,6 +155,7 @@ DECLARE
   l_year   NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
   l_ptype  VARCHAR2(100) := [COLON]projecttype;
   l_sector VARCHAR2(200) := [COLON]sector;
+  l_chapter VARCHAR2(200) := [COLON]chapter;
   l_cc     VARCHAR2(100) := [COLON]costcenter;
   l_proj   VARCHAR2(200) := [COLON]project;
   l_task   VARCHAR2(200) := [COLON]task;
@@ -182,6 +188,7 @@ BEGIN
    WHERE v.budget_year = l_year
      AND (l_ptype  IS NULL OR v.project_type = l_ptype)
      AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_chapter IS NULL OR v.chapter = l_chapter)
      AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
      AND (l_proj   IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
      AND (l_task   IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_task)||'%')
@@ -202,6 +209,8 @@ BEGIN
     WHERE v.budget_year = l_year
       AND (l_ptype  IS NULL OR v.project_type = l_ptype)
       AND (l_sector IS NULL OR v.sector = l_sector)
+      AND (l_chapter IS NULL OR v.chapter = l_chapter)
+     AND (l_chapter IS NULL OR v.chapter = l_chapter)
       AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
       AND (l_proj   IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
       AND (l_task   IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_task)||'%')
@@ -266,6 +275,7 @@ DECLARE
   l_metric  VARCHAR2(10)  := LOWER([COLON]metric);
   l_ptype   VARCHAR2(100) := [COLON]projecttype;
   l_sector  VARCHAR2(200) := [COLON]sector;
+  l_chapter VARCHAR2(200) := [COLON]chapter;
   l_cc      VARCHAR2(100) := [COLON]costcenter;
   l_fproj   VARCHAR2(200) := [COLON]fproject;
   l_ftask   VARCHAR2(200) := [COLON]ftask;
@@ -292,6 +302,7 @@ BEGIN
   IF l_etype   = '' THEN l_etype   := NULL; END IF;
   IF l_ptype   = '' THEN l_ptype   := NULL; END IF;
   IF l_sector  = '' THEN l_sector  := NULL; END IF;
+  IF l_chapter = '' THEN l_chapter := NULL; END IF;
   IF l_cc      = '' THEN l_cc      := NULL; END IF;
   IF l_fproj   = '' THEN l_fproj   := NULL; END IF;
   IF l_ftask   = '' THEN l_ftask   := NULL; END IF;
@@ -328,6 +339,9 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_chapter IS NULL OR v.chapter = l_chapter)
+      AND (l_chapter IS NULL OR v.chapter = l_chapter)
+     AND (l_chapter IS NULL OR v.chapter = l_chapter)
                AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
                AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
                AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
@@ -390,6 +404,9 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_chapter IS NULL OR v.chapter = l_chapter)
+      AND (l_chapter IS NULL OR v.chapter = l_chapter)
+     AND (l_chapter IS NULL OR v.chapter = l_chapter)
                AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
                AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
                AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
@@ -452,6 +469,9 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_chapter IS NULL OR v.chapter = l_chapter)
+      AND (l_chapter IS NULL OR v.chapter = l_chapter)
+     AND (l_chapter IS NULL OR v.chapter = l_chapter)
                AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
                AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
                AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
@@ -508,6 +528,9 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+               AND (l_chapter IS NULL OR v.chapter = l_chapter)
+      AND (l_chapter IS NULL OR v.chapter = l_chapter)
+     AND (l_chapter IS NULL OR v.chapter = l_chapter)
                AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
                AND (l_fproj  IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
                AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')

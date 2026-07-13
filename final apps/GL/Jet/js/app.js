@@ -720,7 +720,9 @@
     self.buYears = ko.observableArray([]);
     self.buTypes = ko.observableArray([]);
     self.buSectors = ko.observableArray([]);
+    self.buChapters = ko.observableArray([]);
     self.buYear = ko.observable(''); self.buType = ko.observable(''); self.buSector = ko.observable('');
+    self.buChapter = ko.observable('');
     self.buCc = ko.observable(''); self.buProject = ko.observable('');
     self.buTask = ko.observable(''); self.buEtype = ko.observable('');
     self.buSearch = ko.observable('');
@@ -769,6 +771,7 @@
         self.buYears(d.years || []);
         self.buTypes(d.projectTypes || []);
         self.buSectors(d.sectors || []);
+        self.buChapters(d.chapters || []);
         // KO nulls a <select> value when options were empty at bind time; re-assert.
         if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
         if (!self.buType() && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buType(BU_DEFAULT_TYPE);
@@ -778,7 +781,7 @@
       }).catch(fail);
     };
     self.buParams = function (offset, limit) {
-      return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(),
+      return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapter(),
         costcenter: self.buCc(), project: self.buProject(), task: self.buTask(), etype: self.buEtype(),
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
@@ -792,7 +795,7 @@
     };
     self.buReset = function () {
       self.buType(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? BU_DEFAULT_TYPE : '');
-      self.buSector(''); self.buSearch('');
+      self.buSector(''); self.buChapter(''); self.buSearch('');
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));
@@ -861,7 +864,7 @@
       o(!o()); saveBuUi();
     };
     self.buActiveFilters = ko.computed(function () {
-      return [self.buType(), self.buSector(), self.buCc(), self.buProject(),
+      return [self.buType(), self.buSector(), self.buChapter(), self.buCc(), self.buProject(),
         self.buTask(), self.buEtype(), self.buSearch()].filter(Boolean).length;
     });
     // header summaries shown only while the region is collapsed
@@ -917,12 +920,12 @@
       var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
       self.drillTitle(self.t('buDrill' + cap));
       self.drillSub(self.t('buAllLines') + ' · ' + (self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
-      self.drillCtx([self.buType(), self.buSector(), self.buCc(), self.buProject(), self.buTask(), self.buEtype(),
+      self.drillCtx([self.buType(), self.buSector(), self.buChapter(), self.buCc(), self.buProject(), self.buTask(), self.buEtype(),
         self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
       api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), metric: metric,
-        projecttype: self.buType(), sector: self.buSector(), search: self.buSearch(),
+        projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapter(), search: self.buSearch(),
         costcenter: self.buCc(), fproject: self.buProject(), ftask: self.buTask(), fetype: self.buEtype() })).then(fillDrill).catch(drillFail);
     };
     self.closeDrawer = function () { self.drillDrawer(false); };

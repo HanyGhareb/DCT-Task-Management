@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.16.1';</script>
+<script>window.APP_VERSION='1.17.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -372,6 +372,8 @@
             <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
+            <select class="inp" data-bind="options:buChapters, value:buChapter, optionsCaption:t('allChapters')"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('costCenter')"></label>
             <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('cProject')"></label>

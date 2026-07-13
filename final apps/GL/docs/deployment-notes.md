@@ -500,3 +500,9 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   parallel-enabled table → ORA-12839).
 - **As-of:** `DCT_GL_CLASS_PKG.set_asof(date)` then SELECT the view; the `/combinations?asof=` and
   `/balances?asof=` handlers set/clear the `GL_CTX` context per request.
+- **2026-07-13** — Budget Utilization **Chapter filter**: `GL/db/07` re-run — `/butil/filters`
+  adds `chapters[]`, `/butil` + `/butil/lines` take `chapter=` (exact match, applied in every
+  spot the sector predicate appears incl. all lines-metric CTEs so KPI-card drills still
+  reconcile); frontend Chapter dropdown in the butil Search region (report/pager/CSV/aggregate
+  drills all flow through buParams). APP_VERSION 1.17.0. NOTE: 07 was LF-only in the repo —
+  re-normalised to CRLF for Linux SQLcl deploys.
