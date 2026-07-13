@@ -1,6 +1,6 @@
-define(['knockout', 'services/apService', 'services/api', 'services/authService', 'services/config', 'shared/i18n', 'shared/toast', 'shared/chartLoader',
-        'shared/components/interactiveReport'],
-function (ko, ap, api, authService, config, i18n, toast, charts) {
+define(['knockout', 'services/apService', 'services/api', 'services/authService', 'shared/i18n', 'shared/toast', 'shared/chartLoader',
+        'shared/fusionLinks', 'shared/components/interactiveReport'],
+function (ko, ap, api, authService, i18n, toast, charts, fusion) {
   'use strict';
 
   // Aging ramp — single-hue ordinal steps (validated light->dark, brand hue)
@@ -242,9 +242,16 @@ function (ko, ap, api, authService, config, i18n, toast, charts) {
       if (col.clip) return row[col.key] || '';
       return '';
     };
-    // Fusion deep-link: view the invoice in Oracle Fusion (new tab)
-    self.fusionUrl = function (id) {
-      return id ? config.fusionInvoiceUrl + id : '#';
+    // Fusion deep-links (shared/fusionLinks) — always open in a new tab
+    self.fusionUrl   = fusion.invoice;
+    self.fusionPoUrl = fusion.purchaseOrder;
+    self.fusionPrUrl = fusion.requisition;
+    // register/drawer cells: {href, text} when this column deep-links out
+    self.cellLink = function (row, col) {
+      if (col.key === 'invoiceNumber' && row.id)    return { href: fusion.invoice(row.id), text: row.invoiceNumber };
+      if (col.key === 'poNumber' && row.poHeaderId) return { href: fusion.purchaseOrder(row.poHeaderId), text: row.poNumber };
+      if (col.key === 'prNumber' && row.prHeaderId) return { href: fusion.requisition(row.prHeaderId), text: row.prNumber };
+      return null;
     };
     // local autosave first (instant), then the server pref wins (roams w/ user)
     try { applyColPrefs(JSON.parse(localStorage.getItem(COLS_LS) || 'null')); } catch (e) {}

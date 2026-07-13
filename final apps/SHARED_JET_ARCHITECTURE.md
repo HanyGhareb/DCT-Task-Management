@@ -274,3 +274,28 @@ shared/
 - **Audit region standard:** every edit/view page or modal includes `<audit-info params="data: obj"></audit-info>` (shared/js/auditInfo.js, registered in each main.js). It renders Created/Last-updated (by + timestamp) from the standard `createdBy/createdAt/updatedBy/updatedAt` JSON keys, and renders nothing for new records. Detail/list ORDS handlers must emit those four keys (`TO_CHAR(.., 'YYYY-MM-DD HH24:MI')`); when a service flattens/remaps API objects it must carry the audit keys through (bit the lookups flattener).
 - **Router (Admin):** the current route is mirrored to `location.hash` and restored on boot - F5 keeps the page. Logout posts `/auth/logout` with `{}` + `{silent:true}` BEFORE clearing the token (a bodyless POST gets ORDS 400; clearing first leaks the server session). `/auth/*` 401s bypass the global expired-session redirect so login forms can render the server's error inline.
 - Dev: each app's dev-proxy.py serves `/shared/*` from the sibling folder. Deploy: ship `final apps/` as one web root (module switcher uses root-absolute /App/Jet/index.html URLs).
+
+## Fusion deep-links (`shared/js/fusionLinks.js`, 2026-07-13)
+
+Reusable Oracle Fusion deep-link builders for ALL apps — never hard-code the
+Fusion host/deeplink format in a module app:
+
+```js
+define(['shared/fusionLinks'], function (fusion) {
+  fusion.invoice(invoiceId);       // AP_VIEWINVOICE               (InvoiceId)
+  fusion.purchaseOrder(poHdrId);   // PURCHASE_ORDER               (poHeaderId)
+  fusion.requisition(prHdrId);     // PURCHASE_REQUISITION_LOBUSER (requisitionHeaderId)
+  fusion.link(objType, keyName, id); // any other deeplink objType
+});
+```
+
+Rules: the ids are the FUSION internal ids from the loaded extracts
+(`invoice_id` / `po_headers.po_header_id` / `pr_headers.pr_header_id`), NOT the
+document numbers — endpoints must ship the id alongside the number. Render as
+`<a target="_blank" rel="noopener noreferrer">` (deep links always open in a
+separate tab). Inside a clickable row, bind
+`click: function () { return true; }, clickBubble: false` on the anchor so the
+row handler doesn't fire and default navigation is kept. Builders return `'#'`
+for a null id. First consumer: AP (register invoice/PO/PR numbers, chart-drill
+drawer, invoice window). The pod host lives ONLY in this module.
+

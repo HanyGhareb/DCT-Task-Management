@@ -87,7 +87,7 @@ Admin is the platform **identity provider**: all 10 module apps authenticate thr
 9. **Role assignment audit view** — surface `DCT_USER_ROLES` start/end history in the user detail (data already end-dated, not displayed).
 10. **UAT housekeeping automation** — schedule the rerunnable cleanup scripts (db/v2/21, 23).
 
-11. **Module-access management UI** — `DCT_MODULE_ROLES` (module → role App-Launcher access) is seeded in db/v2/04 and exposed via `DCT_USER_MODULES_V`, but no Admin page manages it and the JET module switcher does not consume it (it shows all modules; gating happens inside each app by role). Either wire the switcher/boot to it and add a Modules-page editor, or retire the table.
+11. ~~**Module-access management UI**~~ — ✅ **DONE 2026-07-13 (db/v2/49, APP_VERSION 4.6.3).** `DCT_MODULE_ROLES` is live: Admin → Modules → 🔑 Access modal sets which roles see each app in the module switcher (`GET/PUT /modules/:id/roles`); the shared shell hides denied entries via `GET /my/modules`. Zero rows = everyone (fail-open), SYS_ADMIN always sees all. ATD + GL registry rows gap-filled. Follow-ups: the Admin dashboard "modules directory" cards are not filtered (switcher only), and denied users can still open an app by direct URL — in-app ORDS role checks remain the security boundary.
 
 ### Ideas / backlog (not committed)
 - 2FA / OTP option on top of DCT_AUTH (portal already has email-OTP infrastructure).

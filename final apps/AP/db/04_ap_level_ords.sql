@@ -88,7 +88,7 @@ BEGIN
            ln.invoice_type, ln.invoice_status, ln.validation_status, ln.accounting_status, ln.payment_status,
            ln.invoice_line_number, ln.invoice_line_type, ln.line_description, ln.invoice_currency,
            ln.line_amount, ln.line_amount_aed, NVL(ln.active_holds,0) active_holds, ln.fund_status,
-           ln.po_number, ln.po_line_number, ln.receipt_number, ln.project_number, ln.project_name,
+           ln.po_number, ln.po_line_number, ln.po_header_id, ln.receipt_number, ln.project_number, ln.project_name,
            ln.task_number, ln.task_name, ln.expenditure_type, ln.expenditure_organization, ln.period_name
       FROM prod.ap_invoice_lines_v ln
      WHERE ln.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
@@ -116,6 +116,7 @@ BEGIN
     APEX_JSON.write('amount', r.line_amount); APEX_JSON.write('amountAed', r.line_amount_aed);
     APEX_JSON.write('activeHolds', r.active_holds); APEX_JSON.write('fundStatus', r.fund_status);
     APEX_JSON.write('poNumber', r.po_number); APEX_JSON.write('poLine', r.po_line_number);
+    APEX_JSON.write('poHeaderId', r.po_header_id);
     APEX_JSON.write('receiptNumber', r.receipt_number);
     APEX_JSON.write('projectNumber', r.project_number); APEX_JSON.write('projectName', r.project_name);
     APEX_JSON.write('taskNumber', r.task_number); APEX_JSON.write('taskName', r.task_name);
@@ -295,7 +296,8 @@ BEGIN
            d.distribution_description, d.invoice_currency, d.distribution_amount, d.distribution_amount_aed,
            d.distribution_status, d.posting_status, d.fund_status,
            TO_CHAR(d.accounting_date,'YYYY-MM-DD') acct_dt, d.period_name,
-           d.po_number, d.pr_number, d.pr_preparer, d.project_number, d.project_name,
+           d.po_number, d.pr_number, d.po_header_id, d.pr_header_id,
+           d.pr_preparer, d.project_number, d.project_name,
            d.task_number, d.expenditure_type, d.account_code, d.account_desc,
            d.cost_center_code, d.cost_center_desc, d.appropriation_code, d.appropriation_desc,
            d.sector_name, d.chapter_name, d.program_name,
@@ -342,6 +344,7 @@ BEGIN
     APEX_JSON.write('fundStatus', r.fund_status); APEX_JSON.write('accountingDate', r.acct_dt);
     APEX_JSON.write('period', r.period_name);
     APEX_JSON.write('poNumber', r.po_number); APEX_JSON.write('prNumber', r.pr_number);
+    APEX_JSON.write('poHeaderId', r.po_header_id); APEX_JSON.write('prHeaderId', r.pr_header_id);
     APEX_JSON.write('requestor', r.pr_preparer);
     APEX_JSON.write('projectNumber', r.project_number); APEX_JSON.write('projectName', r.project_name);
     APEX_JSON.write('taskNumber', r.task_number); APEX_JSON.write('expType', r.expenditure_type);

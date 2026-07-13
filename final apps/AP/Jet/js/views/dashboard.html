@@ -278,17 +278,18 @@
               <!-- ko foreach: $vm.visibleCols -->
               <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
                              attr: { title: $vm.cellTitle($parent, $data) }">
-                <!-- ko if: $data.key === 'invoiceNumber' -->
+                <!-- ko with: $vm.cellLink($parent, $data) -->
                 <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
-                   data-bind="attr: { href: $vm.fusionUrl($parent.id), title: $vm.t('dr.fusionOpen') },
-                              text: $parent.invoiceNumber,
+                   data-bind="attr: { href: href, title: $vm.t('dr.fusionOpen') }, text: text,
                               click: function () { return true; }, clickBubble: false"></a>
                 <!-- /ko -->
-                <!-- ko if: $data.badge && $data.key !== 'invoiceNumber' -->
+                <!-- ko ifnot: $vm.cellLink($parent, $data) -->
+                <!-- ko if: $data.badge -->
                 <span data-bind="text: $parent[$data.key] || '', attr: { class: $vm.badgeCls($data.badge, $parent[$data.key]) }"></span>
                 <!-- /ko -->
-                <!-- ko if: !$data.badge && $data.key !== 'invoiceNumber' -->
+                <!-- ko ifnot: $data.badge -->
                 <span data-bind="text: $vm.cellVal($parent, $data)"></span>
+                <!-- /ko -->
                 <!-- /ko -->
               </td>
               <!-- /ko -->
@@ -467,7 +468,13 @@
               <td style="max-width:280px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"
                   data-bind="text: $data.description || '', attr: { title: $data.description || '' }"></td>
               <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.amountAed)"></td>
-              <td data-bind="text: $data.poNumber || ''"></td>
+              <td>
+                <!-- ko if: $data.poHeaderId -->
+                <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
+                   data-bind="attr: { href: $vm.fusionPoUrl($data.poHeaderId), title: $vm.t('dr.fusionOpen') }, text: $data.poNumber"></a>
+                <!-- /ko -->
+                <!-- ko ifnot: $data.poHeaderId --><span data-bind="text: $data.poNumber || ''"></span><!-- /ko -->
+              </td>
               <td data-bind="text: $data.receiptNumber || ''"></td>
               <td data-bind="text: $data.projectNumber || '', attr: { title: $data.projectName || '' }"></td>
               <td data-bind="text: $data.taskNumber || '', attr: { title: $data.taskName || '' }"></td>
@@ -511,8 +518,20 @@
               <td data-bind="text: $data.sector || ''"></td>
               <td data-bind="text: $data.projectNumber || ''"></td>
               <td data-bind="text: $data.taskNumber || ''"></td>
-              <td data-bind="text: $data.poNumber || ''"></td>
-              <td data-bind="text: $data.prNumber || ''"></td>
+              <td>
+                <!-- ko if: $data.poHeaderId -->
+                <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
+                   data-bind="attr: { href: $vm.fusionPoUrl($data.poHeaderId), title: $vm.t('dr.fusionOpen') }, text: $data.poNumber"></a>
+                <!-- /ko -->
+                <!-- ko ifnot: $data.poHeaderId --><span data-bind="text: $data.poNumber || ''"></span><!-- /ko -->
+              </td>
+              <td>
+                <!-- ko if: $data.prHeaderId -->
+                <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
+                   data-bind="attr: { href: $vm.fusionPrUrl($data.prHeaderId), title: $vm.t('dr.fusionOpen') }, text: $data.prNumber"></a>
+                <!-- /ko -->
+                <!-- ko ifnot: $data.prHeaderId --><span data-bind="text: $data.prNumber || ''"></span><!-- /ko -->
+              </td>
               <td data-bind="text: $data.accountingDate || ''"></td>
             </tr>
           <!-- /ko --></tbody>
@@ -578,17 +597,18 @@
             <!-- ko foreach: $vm.dwCols -->
             <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
                            attr: { title: $vm.cellTitle($parent, $data) }">
-              <!-- ko if: $data.key === 'invoiceNumber' -->
+              <!-- ko with: $vm.cellLink($parent, $data) -->
               <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
-                 data-bind="attr: { href: $vm.fusionUrl($parent.id), title: $vm.t('dr.fusionOpen') },
-                            text: $parent.invoiceNumber,
+                 data-bind="attr: { href: href, title: $vm.t('dr.fusionOpen') }, text: text,
                             click: function () { return true; }, clickBubble: false"></a>
               <!-- /ko -->
-              <!-- ko if: $data.badge && $data.key !== 'invoiceNumber' -->
+              <!-- ko ifnot: $vm.cellLink($parent, $data) -->
+              <!-- ko if: $data.badge -->
               <span data-bind="text: $parent[$data.key] || '', attr: { class: $vm.badgeCls($data.badge, $parent[$data.key]) }"></span>
               <!-- /ko -->
-              <!-- ko if: !$data.badge && $data.key !== 'invoiceNumber' -->
+              <!-- ko ifnot: $data.badge -->
               <span data-bind="text: $vm.cellVal($parent, $data)"></span>
+              <!-- /ko -->
               <!-- /ko -->
             </td>
             <!-- /ko -->

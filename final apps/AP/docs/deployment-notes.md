@@ -212,3 +212,16 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   `click: return true` + `clickBubble: false` so the row-drill doesn't fire), the
   chart drill-drawer table, and the invoice window's big header number.
   APP_VERSION 1.6.5.
+- **2026-07-13 (PO/PR deep-links + shared fusionLinks, v1.7.0)** — deep-link
+  builders promoted to `shared/js/fusionLinks.js` (invoice / purchaseOrder /
+  requisition / generic `link()`; contract in SHARED_JET_ARCHITECTURE.md —
+  shared change ⇒ APP_VERSION bumped in ALL 11 apps). PR/PO numbers link to
+  Fusion (PURCHASE_REQUISITION_LOBUSER / PURCHASE_ORDER deeplinks) wherever a
+  single number shows: register line+dist levels, invoice-window Lines/Dists
+  tabs (header-level PO/PR are comma-separated LISTAGGs — not linked). The
+  deeplinks need the FUSION ids, so `AP/db/05` lines view gained `PO_HEADER_ID`
+  and the dists view `PO_HEADER_ID`+`PR_HEADER_ID` (from `po_headers.po_header_id`
+  / `pr_headers.pr_header_id`, 100%% populated) and 03 drill + 04 lines/dists emit
+  `poHeaderId`/`prHeaderId`. Frontend: generic `cellLink(row,col)` drives the
+  register/drawer anchors (invoice/PO/PR in one place); `config.fusionInvoiceUrl`
+  retired. Deploy 05 → 03 → 04. APP_VERSION 1.7.0.

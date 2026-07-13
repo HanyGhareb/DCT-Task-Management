@@ -60,6 +60,9 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 
 **Modules** (`modules`) — register/configure module apps (PC, DT, HR…).
 - `openEdit` / `saveEdit` / `closeEdit` · `toggleActive`.
+- Module access (db/v2/49): `openAccess` / `saveAccess` / `closeAccess` / `clearAccess` —
+  per-module role grant set controlling App-Launcher (module switcher) visibility;
+  empty set = visible to everyone, SYS_ADMIN always sees every app.
 
 ## 5. Approvals & Delegation
 
@@ -131,7 +134,8 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | Boot / shared | `GET boot` · `GET branding` *(public)* · `GET stats/` · `GET prefs/` · `PUT prefs/:prefkey` |
 | Users | `GET users/` · `POST users/` · `GET users/:id` · `PUT users/:id` · `DELETE users/:id` · `PUT users/:id/photo` |
 | Roles & Permissions | `GET roles/` · `POST roles/` · `GET roles/:id` · `PUT roles/:id` · `DELETE roles/:id` · `GET permissions/` |
-| Modules | `GET modules/` · `PUT modules/:id` |
+| Modules | `GET modules/` · `PUT modules/:id` · `GET modules/:id/roles` · `PUT modules/:id/roles` *(module access grant set, SYS_ADMIN; db/v2/49)* |
+| Module access | `GET my/modules` *(denied module codes for the session user — consumed by `shared/js/shell.js` to hide switcher entries; db/v2/49)* |
 | Org Hierarchy | `GET orgs/` · `POST orgs/` · `PUT orgs/:id` |
 | Lookups | `GET lookups/` · `POST lookups/values` · `PUT lookups/values/:id` |
 | Settings | `GET settings/` · `PUT settings/:setkey` |
@@ -156,7 +160,7 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | `userService` | user CRUD + `getPage()` server pagination. |
 | `roleService` | roles CRUD + `getPermissionMatrix()` + `setRolePermissions()`. |
 | `orgService` | org hierarchy CRUD. |
-| `moduleService` | module app registry. |
+| `moduleService` | module app registry + module access grant set (`getRoles`/`setRoles`, db/v2/49). |
 | `settingService` | system/module settings. |
 | `themeService` | brand + region theme. |
 | `notificationService` | notifications + count. |
