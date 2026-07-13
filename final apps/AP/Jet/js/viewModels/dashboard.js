@@ -731,6 +731,12 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self.openDrill = function (row) {
       if (!row || !row.id) return;
       ap.getInvoice(row.id).then(function (d) {
+        // hoist the referenced-document deep-link arrays onto the header
+        // (the master region binds `with: header`)
+        if (d && d.header) {
+          d.header.poRefs = d.poRefs || [];
+          d.header.prRefs = d.prRefs || [];
+        }
         self.drill(d);
         self.drillTab('lines');            // header lives in the master region now
         self.invMax(false);

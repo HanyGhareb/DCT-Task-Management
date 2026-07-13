@@ -629,6 +629,29 @@ BEGIN
     APEX_JSON.write('lineCount', h.line_count); APEX_JSON.write('distCount', h.distribution_count);
     APEX_JSON.write('poNumbers', h.po_numbers); APEX_JSON.write('prNumbers', h.pr_numbers);
     APEX_JSON.close_object;
+    -- distinct referenced documents with their Fusion internal ids (header deep-links)
+    APEX_JSON.open_array('poRefs');
+    FOR r IN (SELECT po_number, MAX(po_header_id) po_header_id
+                FROM (SELECT po_number, po_header_id FROM prod.ap_invoice_lines_v WHERE invoice_id = l_id
+                      UNION ALL
+                      SELECT po_number, po_header_id FROM prod.ap_invoice_distributions_v WHERE invoice_id = l_id)
+               WHERE po_number IS NOT NULL
+               GROUP BY po_number ORDER BY po_number) LOOP
+      APEX_JSON.open_object;
+      APEX_JSON.write('num', r.po_number); APEX_JSON.write('id', r.po_header_id);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('prRefs');
+    FOR r IN (SELECT pr_number, MAX(pr_header_id) pr_header_id
+                FROM prod.ap_invoice_distributions_v
+               WHERE invoice_id = l_id AND pr_number IS NOT NULL
+               GROUP BY pr_number ORDER BY pr_number) LOOP
+      APEX_JSON.open_object;
+      APEX_JSON.write('num', r.pr_number); APEX_JSON.write('id', r.pr_header_id);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
     APEX_JSON.open_array('lines');
     FOR r IN (SELECT invoice_line_number, invoice_line_type, line_description, invoice_currency,
                      line_amount, line_amount_aed, NVL(active_holds,0) active_holds, fund_status,

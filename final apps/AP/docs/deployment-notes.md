@@ -225,3 +225,13 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   `poHeaderId`/`prHeaderId`. Frontend: generic `cellLink(row,col)` drives the
   register/drawer anchors (invoice/PO/PR in one place); `config.fusionInvoiceUrl`
   retired. Deploy 05 → 03 → 04. APP_VERSION 1.7.0.
+- **2026-07-13 (invoice-header PO/PR deep-links, v1.7.1)** — the invoice window's
+  Supplier & References PO/PR fields (header level) are now links too: the 03
+  drill handler emits `poRefs`/`prRefs` arrays of distinct `{num, id}` referenced
+  documents (POs = UNION of lines+dists grouped by number, PRs from dists;
+  `MAX(header_id)` per number), and the master region renders each number as a
+  Fusion anchor (`foreach` over the refs, falls back to the plain LISTAGG string
+  when a ref has no id). `openDrill` hoists `d.poRefs/prRefs` onto `d.header`
+  because the region binds `with: header`. `.inv-reflist` wraps multi-document
+  lists. Deploy 03 → 04 (03 rebuilds ap.rest). APP_VERSION 1.7.1, release
+  20260713230157.

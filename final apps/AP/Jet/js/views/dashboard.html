@@ -362,8 +362,34 @@
                 <span data-bind="text: [$data.city, $data.country].filter(function (x) { return x; }).join(', ')"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.email')"></span><span data-bind="text: $data.supplierEmail || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.beneficiary')"></span><span data-bind="text: $data.beneficiary || ''"></span></div>
-              <div><span class="kv-l" data-bind="text: $vm.t('tbl.po')"></span><span data-bind="text: $data.poNumbers || ''"></span></div>
-              <div><span class="kv-l" data-bind="text: $vm.t('tbl.pr')"></span><span data-bind="text: $data.prNumbers || ''"></span></div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.po')"></span>
+                <!-- ko if: ($data.poRefs || []).length -->
+                <span class="inv-reflist" data-bind="foreach: $data.poRefs">
+                  <!-- ko if: $data.id -->
+                  <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
+                     data-bind="attr: { href: $vm.fusionPoUrl($data.id), title: $vm.t('dr.fusionOpen') }, text: $data.num"></a>
+                  <!-- /ko -->
+                  <!-- ko ifnot: $data.id --><span data-bind="text: $data.num"></span><!-- /ko -->
+                </span>
+                <!-- /ko -->
+                <!-- ko ifnot: ($data.poRefs || []).length -->
+                <span data-bind="text: $data.poNumbers || ''"></span>
+                <!-- /ko -->
+              </div>
+              <div><span class="kv-l" data-bind="text: $vm.t('tbl.pr')"></span>
+                <!-- ko if: ($data.prRefs || []).length -->
+                <span class="inv-reflist" data-bind="foreach: $data.prRefs">
+                  <!-- ko if: $data.id -->
+                  <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
+                     data-bind="attr: { href: $vm.fusionPrUrl($data.id), title: $vm.t('dr.fusionOpen') }, text: $data.num"></a>
+                  <!-- /ko -->
+                  <!-- ko ifnot: $data.id --><span data-bind="text: $data.num"></span><!-- /ko -->
+                </span>
+                <!-- /ko -->
+                <!-- ko ifnot: ($data.prRefs || []).length -->
+                <span data-bind="text: $data.prNumbers || ''"></span>
+                <!-- /ko -->
+              </div>
               <div><span class="kv-l" data-bind="text: $vm.t('tbl.voucher')"></span><span data-bind="text: $data.voucherNum || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.source')"></span><span data-bind="text: $data.source || ''"></span></div>
               <div><span class="kv-l" data-bind="text: $vm.t('dr.batch')"></span><span data-bind="text: $data.batchName || ''"></span></div>
