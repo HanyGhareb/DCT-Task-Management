@@ -527,7 +527,7 @@ BEGIN
            TO_CHAR(gl_date,'YYYY-MM-DD') gl_dt, TO_CHAR(invoice_received_date,'YYYY-MM-DD') rcv_dt,
            created_by, TO_CHAR(created_date,'YYYY-MM-DD') created_dt,
            TO_CHAR(cancelled_date,'YYYY-MM-DD') cxl_dt, cancelled_by,
-           line_count, distribution_count, po_numbers, pr_numbers, has_attachment
+           line_count, distribution_count, po_numbers, pr_numbers
       FROM prod.ap_invoices_header_v WHERE invoice_id = l_id)
   LOOP
     l_found := TRUE;
@@ -555,7 +555,6 @@ BEGIN
     APEX_JSON.write('cancelledDate', h.cxl_dt); APEX_JSON.write('cancelledBy', h.cancelled_by);
     APEX_JSON.write('lineCount', h.line_count); APEX_JSON.write('distCount', h.distribution_count);
     APEX_JSON.write('poNumbers', h.po_numbers); APEX_JSON.write('prNumbers', h.pr_numbers);
-    APEX_JSON.write('hasAttachment', h.has_attachment);
     APEX_JSON.close_object;
     APEX_JSON.open_array('lines');
     FOR r IN (SELECT invoice_line_number, invoice_line_type, line_description, invoice_currency,

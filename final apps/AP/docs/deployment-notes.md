@@ -38,6 +38,14 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 - Line/dist registers re-apply their own-grain facets directly to the rows (a sector
   filter shows only that sector's distributions, not all rows of matching invoices).
 
+- **ATD_AP_* structural reload playbook** (hit 2026-07-13 when the OTBI analysis
+  dropped `Attachment Flag` from `ATD_AP_INVOICES` and ALL three `AP_*_V` views +
+  `DCT_AP_PKG` body + five GL-layer views went INVALID): run
+  `prod.dct_views_rebuild(l_rebuilt, l_invalid)` (two OUT params) to fix the
+  pass-throughs + GL layer, then `@05_ap_views.sql` (recreates the `AP_*_V`
+  views — now the source of truth in the repo — and recompiles `dct_ap_pkg`),
+  then `@03` + `@04`. Verify `all_objects WHERE status='INVALID'` is empty.
+
 ## Deployment history
 
 - **2026-07-12** — Initial deploy: 01→04 to PROD; `ap.rest` 9 routes live; API smoke 14/14;
@@ -59,3 +67,8 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   remember 03 rebuilds ap.rest → always re-run 04 after it). The envelope must carry
   `section` — the component scopes its autosave key from env.section, not the param.
   APP_VERSION 1.2.0; browser smoke 37/37.
+- **2026-07-13** — `Attachment Flag` removed from the OTBI analysis / `ATD_AP_INVOICES`.
+  Recovery per the playbook above; NEW `db/05_ap_views.sql` captures the three view
+  definitions (minus `has_attachment`); drill handler no longer selects/returns it
+  (03+04 re-run); `dr.attachment` i18n keys dropped. Zero INVALID in PROD, API smoke
+  14/14, GL butil verified. APP_VERSION 1.2.1.
