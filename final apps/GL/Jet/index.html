@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.18.0';</script>
+<script>window.APP_VERSION='1.19.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -405,6 +405,15 @@
         </div>
       </div>
 
+      <!-- Overview + Results live in one relative body so the busy overlay covers both.
+           Overlay = Oracle-JET-style indeterminate progress circle (oj-progress-circle
+           replica) shown on the initial filters load AND on every /butil search. -->
+      <div class="bu-body">
+      <div class="bu-load-ov" data-bind="visible:buBusy" aria-live="polite">
+        <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
+        <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+      </div>
+
       <!-- totals answer band (tinted stat tiles; the 4 measure tiles drill to all supporting lines) — collapsible region -->
       <div class="bu-sec">
         <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('kpis');return true}, css:{closed:!buSecKpisOpen()}">
@@ -541,6 +550,7 @@
         <button class="btn btn-sm" data-bind="click:function(){runButil(buOffset()+buLimit)}, enable:(buOffset()+buLimit)<buTotal(), text:t('next')"></button>
       </div>
       </div>
+      </div><!-- /bu-body -->
     </div>
 
     <!-- ── DASHBOARD (executive analytics) ── -->

@@ -183,8 +183,29 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 .btn.busy{pointer-events:none;opacity:.8}
 .btn.busy::before{content:"";width:12px;height:12px;border:2px solid rgba(255,255,255,.4);border-top-color:#fff;
   border-radius:50%;display:inline-block;animation:sp .7s linear infinite;margin-inline-end:7px;vertical-align:-2px}
+/* butil page-busy overlay + Oracle-JET-style indeterminate progress circle
+   (oj-progress-circle replica: neutral track ring + a brand arc that grows/
+   shrinks while the circle rotates). Covers Overview+Results only — the Search
+   region stays usable; z 30 keeps it below maximize 55 / modal 60 / drawer 70. */
+.bu-body{position:relative}
+.bu-load-ov{position:absolute;inset:0;z-index:30;display:flex;flex-direction:column;align-items:center;
+  justify-content:flex-start;padding-top:110px;gap:14px;border-radius:14px;
+  background:rgba(250,249,246,.62);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px)}
+.ojpc{width:54px;height:54px;transform-origin:center;animation:ojpc-rot 1.8s linear infinite;
+  filter:drop-shadow(0 2px 6px rgba(var(--brand-rgb),.25))}
+.ojpc circle{fill:none;stroke-width:4.5}
+.ojpc-tr{stroke:rgba(var(--brand-rgb),.14)}
+.ojpc-v{stroke:var(--brand);stroke-linecap:round;stroke-dasharray:1,200;stroke-dashoffset:0;
+  animation:ojpc-dash 1.5s ease-in-out infinite}
+@keyframes ojpc-rot{100%{transform:rotate(360deg)}}
+@keyframes ojpc-dash{
+  0%{stroke-dasharray:1,200;stroke-dashoffset:0}
+  50%{stroke-dasharray:89,200;stroke-dashoffset:-35}
+  100%{stroke-dasharray:89,200;stroke-dashoffset:-124}
+}
 @media (prefers-reduced-motion:reduce){
   .ldr-ring,.ldr-ring2,.ldr-gem,.ldr-t .d,.sk,.ldbar i{animation-duration:2.6s}
+  .ojpc,.ojpc-v{animation-duration:3.4s}
 }
 
 /* ── modal ───────────────────────────────────────────────────────── */

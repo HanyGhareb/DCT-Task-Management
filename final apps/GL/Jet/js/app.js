@@ -747,6 +747,9 @@
     self.buItems = ko.observableArray([]); self.buTotals = ko.observable({});
     self.buTotal = ko.observable(0); self.buOffset = ko.observable(0); self.buLimit = 100;
     self.buLoading = ko.observable(false);
+    self.buFiltersLoading = ko.observable(false);
+    // one busy flag for the page overlay: initial filters load OR a running /butil search
+    self.buBusy = ko.computed(function () { return self.buLoading() || self.buFiltersLoading(); });
 
     // autocomplete LOVs (cost centre / project / task / expenditure type) — per year
     var buLovYear = null;
@@ -767,6 +770,7 @@
     });
 
     self.loadBuFilters = function () {
+      self.buFiltersLoading(true);
       return api('GET', '/butil/filters').then(function (d) {
         self.buYears(d.years || []);
         self.buTypes(d.projectTypes || []);
@@ -777,8 +781,9 @@
         if (!self.buType() && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buType(BU_DEFAULT_TYPE);
         self.buPeriod(buDefaultPeriod(self.buYear()));
         self.buFiltersLoaded(true);
+        self.buFiltersLoading(false);
         self.loadBuLovs();
-      }).catch(fail);
+      }).catch(function (e) { self.buFiltersLoading(false); fail(e); });
     };
     self.buParams = function (offset, limit) {
       return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapter(),

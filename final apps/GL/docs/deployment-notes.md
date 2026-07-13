@@ -509,3 +509,9 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
 - **2026-07-13** — Butil drill drawer UX: default width 940 → `min(1360px,96vw)` (`.dw-wide`)
   + full-screen toggle ⤢/⤡ in the drawer header (`.dw-full` = 100vw; Esc restores first,
   close resets). Classifications drawer (.dw-xw) untouched. APP_VERSION 1.18.0.
+- **2026-07-13** — Butil page-busy overlay: Oracle-JET-style indeterminate progress circle
+  (`oj-progress-circle` replica — neutral track + brand arc, Material dash sweep) over the
+  Overview+Results regions (`.bu-body`/`.bu-load-ov`/`.ojpc`, z 30 below maximize/modal/drawer)
+  shown on the butil initial load (NEW `buFiltersLoading` covers `/butil/filters`) AND on every
+  `/butil` search/pager run (`buBusy` = filters OR rows loading). Search region stays usable;
+  skeleton rows/ldbar/busy button kept beneath the frosted scrim. APP_VERSION 1.19.0.
