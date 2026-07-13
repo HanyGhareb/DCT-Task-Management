@@ -171,3 +171,11 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   approved=green, Rejected/Stopped=red, Not Required=idle, else amber).
   Facet/register column for approval status NOT added yet (only the Summary was
   requested). APP_VERSION 1.6.1.
+- **2026-07-13 (UI polish, v1.6.2, frontend-only)** — Summary-card statuses show a
+  glyph instead of the badge dot (✓ success / ✕ danger / ! warn / – idle; scoped
+  `.inv-badges .badge::before` overrides the platform 5px dot). Audit-info chevron
+  moved next to the label, brand-colored, larger (was far-right, barely visible).
+  ALSO fixed a latent gap: `badge--success/--warn/--danger` were emitted by the VM
+  helpers but never defined in ANY stylesheet (status pills rendered colorless
+  platform-app-wide) — now defined in AP app.css with the platform soft palette,
+  colouring the register/drawer/window badges everywhere. APP_VERSION 1.6.2.

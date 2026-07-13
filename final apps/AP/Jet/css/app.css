@@ -233,9 +233,10 @@ td.ap-clip { max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-
              padding: 0 0 4px; background: none; border: 0; border-bottom: 1px solid var(--brand-soft);
              cursor: pointer; font: inherit; font-size: 11px; font-weight: 700;
              letter-spacing: .08em; text-transform: uppercase; color: var(--brand); text-align: start; }
-.inv-aud-h .chev { margin-inline-start: auto; font-size: 9px; color: var(--text-3);
+.inv-aud-h .chev { margin-inline-start: 4px; font-size: 11px; color: var(--brand);
                    transition: transform .15s; transform: rotate(-90deg); }
 .inv-aud-h.open .chev { transform: none; }
+.inv-aud-h:hover .chev { color: var(--brand-dark); }
 
 /* GL-combination cell + COA segment popover (mirrors GL Actuals) */
 td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: hidden;
@@ -252,3 +253,17 @@ td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: 
 .ctip-l { color: var(--brand-dark); font-weight: 700; white-space: nowrap; }
 .ctip-c { font-weight: 600; white-space: nowrap; font-size: 12px; font-variant-numeric: tabular-nums; }
 .ctip-d { color: var(--text-2); }
+
+/* AP status badge variants — the VM helpers emit badge--success/--warn/--danger,
+   which platform.css never defined (pills rendered colorless). Defined here. */
+.badge--success { background: var(--green-soft, #E4F4E4); color: var(--green, #1B7F3B); }
+.badge--danger  { background: var(--red-soft, #FBEBE9); color: var(--red, #B3261E); }
+.badge--warn    { background: var(--amber-soft, #FCF0DC); color: #B05E1A; }
+
+/* summary-card statuses: glyph instead of the badge dot (green check / red cross) */
+.inv-badges .badge::before { content: "\2022"; width: auto; height: auto; border-radius: 0;
+                             background: none; font-weight: 800; font-size: 11px; line-height: 1; }
+.inv-badges .badge--success::before { content: "\2713"; }   /* check */
+.inv-badges .badge--danger::before  { content: "\2715"; }   /* cross */
+.inv-badges .badge--warn::before    { content: "!"; }
+.inv-badges .badge--idle::before    { content: "\2013"; }
