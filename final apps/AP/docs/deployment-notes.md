@@ -258,3 +258,15 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   `tests/api_smoke.py` regression 14/14, `tests/benef_browser_smoke.py` 24/24
   (scoped KPIs 2,604 invoices / 1,064 beneficiaries vs 5,080 unscoped).
   APP_VERSION 1.8.0. Web-tier release 20260713233720 LIVE 2026-07-13 (prod smoke: index 1.8.0, beneficiaries files 200, ORDS proxy 401 w/o token); pushed as c9a6170.
+- **2026-07-13 (beneficiary-name enrichment, DB-only)** — user caught generic
+  "BENEFICIARY" names still showing on the Beneficiaries dashboard: 429/2,727
+  invoices of supplier 26553 arrive from Fusion with NULL `beneficiary_name`.
+  Fix in `db/05_ap_views.sql`: all three `AP_*_V` views now derive the name
+  from a `benef_site` map (per supplier_number+site `MAX(beneficiary_name)`
+  where recorded — the site uniquely identifies the person) via
+  `COALESCE(i.beneficiary_name, bs.beneficiary_name)`. One view-level fix
+  covers the facet engine, /filters LOVs, registers, exports, charts and the
+  drill with ZERO handler changes (no 03/04 re-run — handler source untouched;
+  pkg recompiled by 05). Generic rows 429 → 4 (2 sites whose name was never
+  recorded on any invoice). benef API smoke 18/18 + regression 14/14. No
+  frontend change / no web-tier deploy needed.

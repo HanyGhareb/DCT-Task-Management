@@ -11,6 +11,11 @@
 --           re-add them. After any STRUCTURAL ATD_AP_* reload run
 --           prod.dct_views_rebuild first (pass-throughs + GL layer), then
 --           re-run this script, then recompile prod.dct_ap_pkg.
+--           BENEFICIARY_NAME is ENRICHED (2026-07-13): invoices of the generic
+--           BENEFICIARY supplier whose beneficiary_name arrives NULL from
+--           Fusion take the name recorded for the SAME supplier site on other
+--           invoices (benef_site map -- the site uniquely identifies the
+--           person). Keeps the generic supplier name out of the dashboards.
 -- =============================================================================
 
 SET DEFINE OFF
@@ -41,6 +46,12 @@ dist_agg AS (
            WITHIN GROUP (ORDER BY TO_CHAR(requisition)) AS pr_numbers
   FROM prod.ap_invoice_distributions
   GROUP BY invoice_id
+),
+benef_site AS (
+  SELECT supplier_number, site, MAX(beneficiary_name) AS beneficiary_name
+  FROM prod.ap_invoices
+  WHERE supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
+  GROUP BY supplier_number, site
 )
 SELECT
   i.invoice_id,
@@ -54,7 +65,7 @@ SELECT
   -- supplier ------------------------------------------------------------
   i.supplier_number,
   i.supplier_name,
-  i.beneficiary_name,
+  COALESCE(i.beneficiary_name, bs.beneficiary_name)            AS beneficiary_name,
   i.site                                                       AS supplier_site,
   i.party_site_name,
   i.party_site_city,
@@ -121,7 +132,9 @@ SELECT
   NVL(da.distributed_amount_aed,0)                             AS distributed_amount_aed
 FROM prod.ap_invoices i
 LEFT JOIN line_agg la ON la.invoice_id = i.invoice_id
-LEFT JOIN dist_agg da ON da.invoice_id = i.invoice_id;
+LEFT JOIN dist_agg da ON da.invoice_id = i.invoice_id
+LEFT JOIN benef_site bs ON bs.supplier_number = i.supplier_number
+                       AND bs.site = i.site;
 
 CREATE OR REPLACE FORCE EDITIONABLE VIEW "PROD"."AP_INVOICE_LINES_V" ("INVOICE_ID", "INVOICE_NUMBER", "SUPPLIER_NAME", "BENEFICIARY_NAME", "INVOICE_DATE", "INVOICE_TYPE", "INVOICE_STATUS", "VALIDATION_STATUS", "ACCOUNTING_STATUS", "INVOICE_FUNDS_STATUS", "PAYMENT_STATUS", "CANCELLED_DATE", "INVOICE_LINE_NUMBER", "INVOICE_LINE_TYPE", "LINE_DESCRIPTION", "INVOICE_CURRENCY", "LINE_AMOUNT", "INCLUDED_TAX_AMOUNT", "LINE_AMOUNT_AED", "RETAINED_AMOUNT", "ACTIVE_HOLDS", "FUND_STATUS", "COMPLETION_FLAG", "ASSET_FLAG", "BUDGET_DATE", "PERIOD_NAME", "PO_NUMBER", "PO_LINE_NUMBER", "PO_SCHEDULE", "PO_DISTRIBUTION_LINE", "PO_DESCRIPTION", "PO_STATUS", "PO_HEADER_ID", "RECEIPT_NUMBER", "RECEIPT_LINE", "RECEIPT_DATE", "PROJECT_NUMBER", "PROJECT_NAME", "TASK_NUMBER", "TASK_NAME", "EXPENDITURE_TYPE", "EXPENDITURE_ITEM_DATE", "EXPENDITURE_ORGANIZATION", "CREATED_BY", "CREATION_DATE", "LAST_UPDATED_BY", "LAST_UPDATED_DATE", "DISTRIBUTION_COUNT", "DISTRIBUTED_AMOUNT_AED") DEFAULT COLLATION "USING_NLS_COMP"  AS
   WITH proj_by_num AS (
@@ -149,12 +162,18 @@ dist_agg AS (
                   THEN NVL(distribution_amount_functi, distribution_amount) END) AS distributed_amount_aed
   FROM prod.ap_invoice_distributions
   GROUP BY invoice_id, line_number
+),
+benef_site AS (
+  SELECT supplier_number, site, MAX(beneficiary_name) AS beneficiary_name
+  FROM prod.ap_invoices
+  WHERE supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
+  GROUP BY supplier_number, site
 )
 SELECT
   l.invoice_id,
   i.invoice_number,
   i.supplier_name,
-  i.beneficiary_name,
+  COALESCE(i.beneficiary_name, bs.beneficiary_name)            AS beneficiary_name,
   i.invoice_date,
   i.invoice_type,
   -- invoice-level statuses (from the invoice header) -----------------------
@@ -215,6 +234,8 @@ SELECT
   NVL(da.distributed_amount_aed,0)                             AS distributed_amount_aed
 FROM prod.ap_invoice_lines l
 LEFT JOIN prod.ap_invoices i  ON i.invoice_id = l.invoice_id
+LEFT JOIN benef_site bs       ON bs.supplier_number = i.supplier_number
+                             AND bs.site = i.site
 LEFT JOIN proj_by_num pj      ON TO_CHAR(pj.project_number) = TO_CHAR(l.project_number)
 LEFT JOIN task_by_num tk      ON tk.task_number = l.task_number
 LEFT JOIN po_hdr ph           ON ph.order_number = l.po_number
@@ -257,12 +278,18 @@ task_by_id AS (
   SELECT task_id, MAX(task_number) AS task_number, MAX(task_name) AS task_name
   FROM prod.tasks
   GROUP BY task_id
+),
+benef_site AS (
+  SELECT supplier_number, site, MAX(beneficiary_name) AS beneficiary_name
+  FROM prod.ap_invoices
+  WHERE supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
+  GROUP BY supplier_number, site
 )
 SELECT
   d.invoice_id,
   i.invoice_number,
   i.supplier_name,
-  i.beneficiary_name,
+  COALESCE(i.beneficiary_name, bs.beneficiary_name)            AS beneficiary_name,
   i.invoice_date,
   i.invoice_type,
   -- invoice-level statuses (from the invoice header) -----------------------
@@ -338,6 +365,8 @@ SELECT
   d.last_updated_date
 FROM prod.ap_invoice_distributions d
 LEFT JOIN prod.ap_invoices i   ON i.invoice_id = d.invoice_id
+LEFT JOIN benef_site bs        ON bs.supplier_number = i.supplier_number
+                              AND bs.site = i.site
 LEFT JOIN ap_po_match pm       ON pm.po_number    = d.po_number
                               AND pm.po_line      = d.po_line
                               AND pm.po_dist_line = d.po_distribution_line
