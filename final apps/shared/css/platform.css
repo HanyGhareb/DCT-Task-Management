@@ -1226,3 +1226,93 @@ table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
 .ir-calc-chip:hover { border-color: var(--brand); color: var(--brand-dark); background: var(--brand-soft); }
 .ir-calc-chip--fn { font-family: ui-monospace, Consolas, monospace; font-size: 11.5px; }
 .ir-calc-subhead { margin-top: 8px; }
+
+/* ==========================================================================
+   Workflow platform components (<wf-worklist> / <wf-timeline> / <wf-action-bar>)
+   Structural only — colour comes from the region/brand theme vars, so these
+   inherit each app's brand automatically. Never hard-code a brand colour here.
+   ========================================================================== */
+
+/* ── action bar ───────────────────────────────────────────────────────────── */
+.wf-bar            { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.wf-bar--sm .btn   { padding: 3px 10px; font-size: .78rem; }
+.wf-bar-empty      { color: var(--text-muted, #7a7a7a); font-size: .82rem; }
+
+/* Outcome buttons are coloured by the outcome's OWN `color` value, which is data.
+   A new outcome with color=success needs no CSS change. */
+.wf-oc                 { border: 1px solid var(--border, #d8d8d8); background: #fff; }
+.wf-oc--success        { border-color: #1d8b45; color: #14682f; }
+.wf-oc--success:hover  { background: #eaf7ef; }
+.wf-oc--danger         { border-color: #c0392b; color: #a32b1f; }
+.wf-oc--danger:hover   { background: #fdeeec; }
+.wf-oc--warning        { border-color: #b5820a; color: #8a6407; }
+.wf-oc--warning:hover  { background: #fdf5e3; }
+.wf-oc--info           { border-color: #2b6cb0; color: #23558a; }
+.wf-oc--info:hover     { background: #eaf2fb; }
+.wf-oc--default:hover  { background: #f3f3f3; }
+.wf-cmt                { max-width: 560px; }
+.wf-req                { color: #c0392b; }
+
+/* ── worklist ─────────────────────────────────────────────────────────────── */
+.wf-wl-filter        { max-width: 220px; display: inline-block; }
+.wf-wl-table td      { vertical-align: middle; }
+.wf-num              { text-align: end; font-variant-numeric: tabular-nums; }
+.wf-actions-col      { width: 1%; white-space: nowrap; }
+.wf-ref              { font-weight: 600; text-decoration: none; color: var(--brand, #333); }
+.wf-ref:hover        { text-decoration: underline; }
+.wf-step-of          { margin-inline-start: 6px; font-size: .75rem; color: var(--text-muted, #7a7a7a); }
+.wf-muted            { color: var(--text-muted, #7a7a7a); }
+.wf-overdue          { background: #fffaf5; }
+.wf-due-late         { color: #c0392b; font-weight: 600; }
+.wf-badge-deleg      { margin-inline-start: 6px; background: #eef3fb; color: #23558a; }
+.wf-badge-eng        { margin-inline-start: 6px; font-size: .68rem; letter-spacing: .04em; }
+.wf-eng--legacy      { background: #f0f0f0; color: #666; }
+.wf-eng--wf          { background: #e8f5ee; color: #14682f; }
+.wf-badge-sys        { margin-inline-start: 6px; background: #f0f0f0; color: #666; font-size: .68rem; }
+
+/* ── timeline / chain ─────────────────────────────────────────────────────── */
+.wf-chain            { list-style: none; margin: 0; padding: 0; position: relative; }
+.wf-chain li         { position: relative; padding: 0 0 18px 22px; }
+/* logical properties, not left/right — this has to work in RTL */
+.wf-chain li         { padding-inline-start: 22px; padding-inline-end: 0; }
+.wf-chain li::before { content: ''; position: absolute; inset-inline-start: 5px; top: 14px;
+                       bottom: -4px; width: 2px; background: var(--border, #e2e2e2); }
+.wf-chain li:last-child::before { display: none; }
+.wf-dot              { position: absolute; inset-inline-start: 0; top: 4px;
+                       width: 12px; height: 12px; border-radius: 50%;
+                       background: #fff; border: 2px solid var(--border, #cfcfcf); }
+.wf-chain--done .wf-dot { background: #1d8b45; border-color: #1d8b45; }
+.wf-chain--now  .wf-dot { background: #fff; border-color: var(--brand, #b5820a);
+                          box-shadow: 0 0 0 3px rgba(var(--brand-rgb, 181,130,10), .18); }
+.wf-chain--rej  .wf-dot { background: #c0392b; border-color: #c0392b; }
+.wf-chain--skip .wf-dot { background: #fff; border-style: dashed; }
+.wf-chain--skip .wf-chain-body { opacity: .62; }
+.wf-chain-head       { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.wf-chain-name       { font-weight: 600; }
+.wf-chain-meta       { font-size: .8rem; color: var(--text-muted, #7a7a7a); margin-top: 2px; }
+.wf-chain-cmt        { margin-top: 4px; font-size: .84rem;
+                       border-inline-start: 3px solid var(--border, #e2e2e2);
+                       padding-inline-start: 8px; }
+.wf-sep              { margin: 0 5px; color: var(--border, #cfcfcf); }
+
+.wf-st--approved, .wf-st--endorse, .wf-st--endorsed { background: #e8f5ee; color: #14682f; }
+.wf-st--pending      { background: #fdf5e3; color: #8a6407; }
+.wf-st--waiting      { background: #f4f4f4; color: #777; }
+.wf-st--skipped      { background: #f4f4f4; color: #888; font-style: italic; }
+.wf-st--rejected     { background: #fdeeec; color: #a32b1f; }
+
+.wf-events           { list-style: none; margin: 0; padding: 0; }
+.wf-events li        { padding: 6px 0; border-bottom: 1px solid var(--border, #efefef);
+                       font-size: .84rem; }
+.wf-events li:last-child { border-bottom: none; }
+.wf-ev-at            { color: var(--text-muted, #7a7a7a); margin-inline-end: 8px;
+                       font-variant-numeric: tabular-nums; }
+.wf-ev-what          { font-weight: 600; }
+.wf-ev-cmt           { margin-top: 3px; color: #555; }
+.wf-tl-hh            { margin-top: 18px; }
+
+/* "Skipped: duration 4 months is not >= 6" — the question every auditor asks and
+   the legacy engine could never answer. Make it legible, not a footnote. */
+.wf-skip             { margin-top: 4px; padding: 4px 8px; border-radius: 4px;
+                       background: #f7f7f5; color: #6a6a60; font-size: .8rem;
+                       border-inline-start: 3px solid #cfcfc4; }
