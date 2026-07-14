@@ -15,8 +15,10 @@ SET SQLBLANKLINES ON
 @@05_rpt_sched_sync.sql
 @@06_rpt_native_pkg.sql
 @@07_rpt_seed.sql
--- (08/08a/08b Budget-Util-by-Sector pack and 09/09a workers layer run
---  separately: 08 needs the db/v2/39 data views deployed first)
+-- (08/08a/08b Budget-Util-by-Sector pack, 09/09a workers layer and the
+--  21 Budget-Utilization-Briefing-Book seed run separately: 08 + 21 need
+--  the db/v2/37+39 data views deployed first; 21 is MERGE-bearing -- deploy
+--  from Windows SQLcl or python-oracledb, never this Linux SQLcl)
 @@10_rpt_param_lov.sql
 @@12_rpt_ir.sql
 @@14_rpt_lov_converge.sql

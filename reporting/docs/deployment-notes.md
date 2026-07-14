@@ -87,6 +87,37 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-08 — Budget Utilization Briefing Book (`BUDGET_UTIL_BOOK`, `reporting/db/21` + template
+  `budget_util_book.html.j2`) DEPLOYED + E2E PASS.** Second MULTI/PYTHON report over the GL
+  utilization layer, rendered as an executive **briefing book**: cover page (scope chips +
+  "Prepared by Financial Planning and Budgeting — Finance Department") → contents → Part 1
+  overview (7 KPI tiles, budget-composition stacked bar, top-sectors + utilization-by-sector bar
+  charts, sector rollup table w/ totals, top-15 budget-pressure lines) → Part 2 actuals (monthly
+  AP-vs-GRN column chart + top-10 supplier bars + FULL registers: direct AP invoices, all GRN
+  receipts) → Part 3 open obligations (top-supplier/largest-line bars + GRN-netted PO register) →
+  Part 4 open commitments (reserved PR register) → Part 5 auto-computed observations (pacing vs
+  calendar, pressure, supplier concentration, delivery pipeline incl. oldest open PO, uninvoiced
+  deliveries) + methodology box. 7 sections: overview/by_sector/pressure from
+  `dct_budget_utilization_v`; ap_lines from `dct_unpaid_invoices_v` (has_po='N' = the Actual-AP
+  register, ALL payment statuses); **grn_lines inlined** (db/v2/39's `dct_uninvoiced_grn_v` keeps
+  only uninvoiced>0 rows — the book lists every receipt, so the seed carries the receipts query
+  with an AP-invoiced-per-distribution join); open_po/open_pr from the 39 views. Params: `year`
+  REQUIRED, `sector`/`projecttype`/`costcenter` optional (all-org when empty; spec seeded with
+  LOVs from `dct_butil_scope_v`, sector marked optional unlike BUDGET_UTIL_SECTOR). PDF-only
+  definition; charts are **pure CSS/HTML** (no Chart.js/CDN — deterministic in Chromium print).
+  **Deploy path (Linux):** 21 is MERGE-bearing → executed via python-oracledb ON vm180 (generic
+  chunk-executor splitting PL/SQL on lone `/`; scratchpad deploy_21.py pattern), then template
+  uploaded with `upload_template.py --ords`; template fixes round-trip through the DB with **no
+  worker redeploy** (proved live: first run FAILED in-template, re-upload, next run green).
+  **Template gotchas:** (1) Jinja `truncate` on numeric columns (PR numbers are NUMBER) raises
+  `TypeError: object of type 'int' has no len()` — always `|string|truncate(n)`; (2) a
+  full-bleed cover must stay ≤ ~172mm tall on A4-landscape or an absolute-positioned bottom band
+  spills onto a blank page 2. E2E: year=2026 all-sectors → run 62 SUCCESS on vm182, **273-page
+  3.0 MB PDF, 8,661 detail lines**, cover/contents/KPIs/charts/registers/insights all verified
+  from page rasters; BI Run-Parameters drawer LOVs verified via `/reports/BUDGET_UTIL_BOOK/params`
+  (year required + 11 sectors / 2 types / 51 cost centres). Also re-uploaded
+  `budget_util_sector.html.j2` after removing stray committed keyboard-garbage in its CSS
+  (`}Y!M(h-exYeR...` — shipped 2026-07-06, harmless but could void the `.params b` rule).
 - **2026-07-07 — Word (.docx) report templates, GUI-manageable (`reporting/db/20` + `20a`; BI APP_VERSION
   1.9.3→**1.10.0**; plan `docs/DOCX_TEMPLATES_PLAN.md`).** Report PDF layouts are now **DB-stored and
   UI-managed** — no worker redeploy to change a layout. **DB (20, DEPLOYED):** `DCT_RPT_TEMPLATE`

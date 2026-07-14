@@ -84,4 +84,20 @@ run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the d
   `docxtpl` + `libreoffice-writer` + Noto Arabic fonts (deploy_worker.sh installs them).
   docxtpl gotcha: each `{%tr%}`/`{%tc%}` loop tag must sit in its OWN table row/cell.
 
+- **Budget Utilization Briefing Book (2026-07-08):** `BUDGET_UTIL_BOOK` (`reporting/db/21`) —
+  executive "briefing book" PDF over the same GL utilization layer: professional cover
+  (scope + "Prepared by Financial Planning and Budgeting — Finance Department") + contents page,
+  Part 1 overview (KPI tiles, budget-composition stacked bar, utilization-by-sector bars, sector
+  rollup + top-15 pressure lines), Part 2 the FULL actuals register (all direct AP invoices + all
+  GRN receipts, monthly AP-vs-GRN trend, top-10 supplier bars), Part 3 open obligations
+  (GRN-netted PO lines), Part 4 open commitments (reserved PRs), Part 5 auto-computed
+  observations (pacing vs calendar, pressure, supplier concentration, pipeline, uninvoiced
+  deliveries) + methodology. MULTI/PYTHON, 7 sections over `dct_budget_utilization_v` +
+  db/v2/39 detail views (GRN receipts inlined — the 39 view keeps only uninvoiced balances);
+  charts are pure CSS/HTML in `runner/templates/budget_util_book.html.j2` (Chromium PDF, also
+  DB-stored). Params: `year` REQUIRED; `sector`/`projecttype`/`costcenter` optional (empty
+  sector = whole organisation). E2E: 2026 all-sectors → 273-page PDF, 8,661 lines. Template
+  gotcha: Jinja `truncate` needs `|string` first — numeric columns (PR numbers) raise
+  "object of type 'int' has no len()".
+
 Plan: `.claude/plans/i-want-to-find-agile-steele.md`. Word-templates plan: `docs/DOCX_TEMPLATES_PLAN.md`.

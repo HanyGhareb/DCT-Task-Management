@@ -355,7 +355,7 @@
     <div class="kpi"><div class="k-lbl">Active Suppliers</div><div class="k-val">{{ sup.d|length|fmt }}</div><div class="k-sub">across AP + GRN</div></div>
     <div class="kpi"><div class="k-lbl">Top Supplier Share</div>
       <div class="k-val">{{ (100 * top_sup[0][1] / (ap_total + grn_total))|round(1) if top_sup and (ap_total + grn_total) else '—' }}%</div>
-      <div class="k-sub">{{ top_sup[0][0]|truncate(26) if top_sup else '—' }}</div></div>
+      <div class="k-sub">{{ top_sup[0][0]|string|truncate(26) if top_sup else '—' }}</div></div>
   </div>
 
   <div class="charts">
@@ -378,7 +378,7 @@
     <div class="chart">
       <div class="ch-t">Top 10 suppliers by actual spend</div>
       {% for name, amt in top_sup[:10] %}
-      <div class="hb-row"><div class="hb-lbl">{{ name|truncate(30) }}</div>
+      <div class="hb-row"><div class="hb-lbl">{{ name|string|truncate(30) }}</div>
         <div class="hb-track"><div class="hb-bar gold" style="width:{{ (100 * amt / top_sup[0][1])|round(1) if top_sup[0][1] else 0 }}%"></div></div>
         <div class="hb-val">{{ money(amt) }}</div></div>
       {% endfor %}
@@ -397,10 +397,10 @@
       <th>Charged AED</th><th>Payment</th></tr></thead>
     <tbody>
       {% for r in AP %}
-      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(38) }}</td>
-        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(30) }}</td>
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(38) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(30) }}</td>
         <td>{{ r.invoice_number }}</td><td>{{ dt(r.invoice_date) }}</td>
-        <td>{{ (r.supplier_name or '—')|truncate(34) }}</td><td>{{ r.currency or 'AED' }}</td>
+        <td>{{ (r.supplier_name or '—')|string|truncate(34) }}</td><td>{{ r.currency or 'AED' }}</td>
         <td class="num">{{ r.matched_aed|fmt }}</td>
         <td><span class="pill {{ 'paid' if r.payment_status == 'Paid' else 'part' if r.payment_status == 'Partially Paid' else 'unp' }}">{{ r.payment_status }}</span></td></tr>
       {% endfor %}
@@ -420,10 +420,10 @@
       <th>Received AED</th><th>Invoiced AED</th><th>Uninvoiced AED</th></tr></thead>
     <tbody>
       {% for r in GRN %}
-      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(34) }}</td>
-        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(28) }}</td>
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(34) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(28) }}</td>
         <td>{{ r.po_number }}</td><td class="num">{{ r.po_line }}</td>
-        <td>{{ (r.supplier_name or '—')|truncate(30) }}</td><td>{{ dt(r.last_receipt_date) }}</td>
+        <td>{{ (r.supplier_name or '—')|string|truncate(30) }}</td><td>{{ dt(r.last_receipt_date) }}</td>
         <td class="num">{{ r.receipt_lines|fmt }}</td><td class="num">{{ r.received_aed|fmt }}</td>
         <td class="num">{{ r.invoiced_aed|fmt }}</td><td class="num">{{ r.uninvoiced_aed|fmt }}</td></tr>
       {% endfor %}
@@ -451,14 +451,14 @@
     <div class="kpi k-enc"><div class="k-lbl">Open Obligation</div><div class="k-val">{{ money(po_total) }}</div><div class="k-sub">{{ (100 * po_total / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
     <div class="kpi"><div class="k-lbl">PO Lines</div><div class="k-val">{{ PO|length|fmt }}</div><div class="k-sub">Reserved / Partially Liquidated</div></div>
     <div class="kpi"><div class="k-lbl">Suppliers</div><div class="k-val">{{ po_sup.d|length|fmt }}</div><div class="k-sub">holding open orders</div></div>
-    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(PO[0].open_aed) if PO else '—' }}</div><div class="k-sub">{{ (PO[0].supplier_name or '—')|truncate(26) if PO else '' }}</div></div>
+    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(PO[0].open_aed) if PO else '—' }}</div><div class="k-sub">{{ (PO[0].supplier_name or '—')|string|truncate(26) if PO else '' }}</div></div>
   </div>
 
   <div class="charts">
     <div class="chart">
       <div class="ch-t">Top 10 suppliers by open obligation</div>
       {% for name, amt in po_top[:10] %}
-      <div class="hb-row"><div class="hb-lbl">{{ name|truncate(30) }}</div>
+      <div class="hb-row"><div class="hb-lbl">{{ name|string|truncate(30) }}</div>
         <div class="hb-track"><div class="hb-bar warn" style="width:{{ (100 * amt / po_top[0][1])|round(1) if po_top[0][1] else 0 }}%"></div></div>
         <div class="hb-val">{{ money(amt) }}</div></div>
       {% endfor %}
@@ -467,7 +467,7 @@
     <div class="chart">
       <div class="ch-t">Largest open PO lines</div>
       {% for r in PO[:10] %}
-      <div class="hb-row"><div class="hb-lbl">{{ r.po_number }}/{{ r.po_line }} &middot; {{ (r.supplier_name or '')|truncate(18) }}</div>
+      <div class="hb-row"><div class="hb-lbl">{{ r.po_number }}/{{ r.po_line }} &middot; {{ (r.supplier_name or '')|string|truncate(18) }}</div>
         <div class="hb-track"><div class="hb-bar" style="width:{{ (100 * (r.open_aed or 0) / PO[0].open_aed)|round(1) if PO[0].open_aed else 0 }}%"></div></div>
         <div class="hb-val">{{ money(r.open_aed) }}</div></div>
       {% endfor %}
@@ -486,10 +486,10 @@
       <th>Line AED</th><th>Received AED</th><th>Open AED</th></tr></thead>
     <tbody>
       {% for r in PO %}
-      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(32) }}</td>
-        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(28) }}</td>
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(32) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(28) }}</td>
         <td>{{ r.po_number }}</td><td class="num">{{ r.po_line }}</td><td>{{ dt(r.budget_date) }}</td>
-        <td>{{ (r.supplier_name or '—')|truncate(30) }}</td><td>{{ r.funds_status }}</td>
+        <td>{{ (r.supplier_name or '—')|string|truncate(30) }}</td><td>{{ r.funds_status }}</td>
         <td class="num">{{ r.line_aed|fmt }}</td><td class="num">{{ r.received_aed|fmt }}</td>
         <td class="num">{{ r.open_aed|fmt }}</td></tr>
       {% endfor %}
@@ -512,7 +512,7 @@
   <div class="kpis">
     <div class="kpi k-enc"><div class="k-lbl">Open Commitment</div><div class="k-val">{{ money(pr_total) }}</div><div class="k-sub">{{ (100 * pr_total / O.budget)|round(1) if O.budget else '—' }}% of budget</div></div>
     <div class="kpi"><div class="k-lbl">PR Lines</div><div class="k-val">{{ PR|length|fmt }}</div><div class="k-sub">funds status Reserved</div></div>
-    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(PR[0].amount_aed) if PR else '—' }}</div><div class="k-sub">{{ (PR[0].pr_number or '')|truncate(24) if PR else '' }}</div></div>
+    <div class="kpi"><div class="k-lbl">Largest Single Line</div><div class="k-val">{{ money(PR[0].amount_aed) if PR else '—' }}</div><div class="k-sub">{{ (PR[0].pr_number or '')|string|truncate(24) if PR else '' }}</div></div>
     <div class="kpi"><div class="k-lbl">Pipeline (PO + PR)</div><div class="k-val">{{ money((O.obligation_po or 0) + (O.commitment_pr or 0)) }}</div><div class="k-sub">total open encumbrance</div></div>
   </div>
 
@@ -520,7 +520,7 @@
     <div class="chart">
       <div class="ch-t">Largest open requisition lines</div>
       {% for r in PR[:12] %}
-      <div class="hb-row"><div class="hb-lbl">{{ r.pr_number }} &middot; {{ (r.project_number or '')|truncate(14) }}</div>
+      <div class="hb-row"><div class="hb-lbl">{{ r.pr_number }} &middot; {{ (r.project_number or '')|string|truncate(14) }}</div>
         <div class="hb-track"><div class="hb-bar warn" style="width:{{ (100 * (r.amount_aed or 0) / PR[0].amount_aed)|round(1) if PR[0].amount_aed else 0 }}%"></div></div>
         <div class="hb-val">{{ money(r.amount_aed) }}</div></div>
       {% endfor %}
@@ -539,9 +539,9 @@
       <th>Amount</th><th>Amount AED</th></tr></thead>
     <tbody>
       {% for r in PR %}
-      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|truncate(30) }}</td>
-        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|truncate(26) }}</td>
-        <td>{{ r.pr_number }}</td><td>{{ (r.description or '—')|truncate(46) }}</td>
+      <tr><td>{{ r.project_number }}</td><td>{{ (r.project_name or '—')|string|truncate(30) }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(26) }}</td>
+        <td>{{ r.pr_number }}</td><td>{{ (r.description or '—')|string|truncate(46) }}</td>
         <td>{{ dt(r.budget_date) }}</td><td>{{ r.currency or 'AED' }}</td>
         <td class="num">{{ r.distribution_amount|fmt }}</td><td class="num">{{ r.amount_aed|fmt }}</td></tr>
       {% endfor %}
@@ -594,7 +594,7 @@
     {{ money(O.commitment_pr) }} requested on {{ PR|length|fmt }} PR lines. If everything open is
     delivered and invoiced, utilization reaches the committed <b>{{ O.utilization_pct|fmt }}%</b>.
     {% if oldest_po %}The oldest open PO line dates to <b>{{ dt(oldest_po.budget_date) }}</b>
-    ({{ oldest_po.po_number }}, {{ (oldest_po.supplier_name or '—')|truncate(34) }}) — aged open orders
+    ({{ oldest_po.po_number }}, {{ (oldest_po.supplier_name or '—')|string|truncate(34) }}) — aged open orders
     are candidates for close-out to release funds.{% endif %}</div></div>
 
   <div class="ins"><div class="i-t">Uninvoiced deliveries</div>
