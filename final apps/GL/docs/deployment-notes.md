@@ -24,6 +24,9 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-14 — Web-tier release `20260714045940` pushed** (`SSH_USER=opc bash
+  webtier/deploy_frontend.sh 129.151.159.189`): GL v1.21.0 (Briefing Book button) + BI 1.10.4
+  live; verified `APP_VERSION` + `runBuBook` served from https://129.151.159.189/.
 - **2026-07-14 — Briefing Book button on Budget Utilization (GL v1.21.0 + `db/11_gl_butil_book_ords.sql`,
   DEPLOYED + E2E PASS).** Any GL user can now generate the Reporting-Platform **BUDGET_UTIL_BOOK**
   executive PDF (reporting/db/21 — cover/contents/overview/actuals/open-PO/open-PR/insights)
