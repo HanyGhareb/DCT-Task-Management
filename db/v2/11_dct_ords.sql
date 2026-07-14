@@ -1622,92 +1622,82 @@ END;
 !');
 
     -- =========================================================================
-    -- APPROVALS — unified cross-module queue + monitor + templates (UAT 2026-06-11)
-    -- Source modules: PETTY_CASH / REIMBURSEMENT / CLEARING (PC) and
-    -- TRAVEL_REQUEST / SETTLEMENT (DT). Reads need the PC/DT ADMIN synonyms
-    -- (dct_petty_cash, dt_requests, ... — created by the module ORDS scripts).
+    -- =========================================================================
+    -- APPROVALS -- the unified cross-module worklist.
+    --
+    -- These two handlers used to carry the approval engine IN THEIR BODY. That
+    -- is why db/v2/11b and 11c existed, and why they had to be re-run after
+    -- every re-run of THIS file. Both are now thin facades:
+    --
+    --   GET  approvals/pending    -> PROD.DCT_WF_INBOX_V   (one view, both engines)
+    --   POST approvals/[COLON]id/action -> PROD.DCT_WF_COMPAT.ACT (routes on the id)
+    --
+    -- The re-run coupling is therefore DEAD. Approval behaviour now changes with
+    -- CREATE OR REPLACE PACKAGE BODY -- no ORDS churn, no fresh SQLcl session, no
+    -- ordering to remember. 11b and 11c are archived; do not resurrect them.
+    --
+    -- The response is a strict SUPERSET of what it returned before: every key
+    -- keeps its name, type and format (so App 209 and every module JET page are
+    -- unaffected), and `engine`, `dueAt` and `outcomes[]` are additive.
+    -- `instanceId` carries the ROUTER KEY -- a legacy instance_id (< 900,000,000)
+    -- or a new-engine task_id (>= 900,000,000). The ranges cannot collide.
     -- =========================================================================
     def_template('approvals/pending');
     def_handler('approvals/pending', 'GET', q'!
 DECLARE
-  l_user  VARCHAR2(100) := dct_rest.validate_session;
-  l_uid   NUMBER;
-  l_roles VARCHAR2(4000);
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  l_uid   := dct_auth.get_user_id(l_user);
-  l_roles := ',' || dct_auth.get_user_roles(l_user) || ',';
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT ai.instance_id, ai.source_module, ai.source_record_ref,
-           ai.submitted_at, t.template_name,
-           ast.step_name, sub.display_name AS submitted_by_name,
-           (SELECT COUNT(*) FROM dct_approval_steps s2 WHERE s2.template_id = ai.template_id) AS total_steps,
-           (SELECT COUNT(*) FROM dct_approval_steps s3 WHERE s3.template_id = ai.template_id
-             AND s3.step_seq <= ai.current_step_seq) AS current_step,
-           NVL(CASE ai.source_module
-             WHEN 'PETTY_CASH'     THEN (SELECT amount       FROM dct_petty_cash       WHERE pc_id        = ai.source_record_id)
-             WHEN 'REIMBURSEMENT'  THEN (SELECT amount       FROM dct_pc_reimbursements WHERE reimb_id    = ai.source_record_id)
-             WHEN 'CLEARING'       THEN (SELECT amount_spent FROM dct_pc_clearing       WHERE clearing_id = ai.source_record_id)
-             WHEN 'TRAVEL_REQUEST' THEN (SELECT total_advance_aed FROM dt_requests      WHERE request_id  = ai.source_record_id)
-             WHEN 'SETTLEMENT'     THEN (SELECT total_actual_aed  FROM dt_settlement    WHERE settlement_id = ai.source_record_id)
-             WHEN 'FL_CONTRACT'       THEN (SELECT total_amount     FROM dct_fl_contracts           WHERE contract_id      = ai.source_record_id)
-             WHEN 'FL_AMENDMENT'      THEN (SELECT new_total_amount FROM dct_fl_contract_amendments WHERE amendment_id     = ai.source_record_id)
-             WHEN 'FL_VOUCHER'        THEN (SELECT amount           FROM dct_fl_payment_vouchers    WHERE voucher_id       = ai.source_record_id)
-             WHEN 'FL_RENEWAL'        THEN (SELECT new_total_amount FROM dct_fl_contract_renewals   WHERE renewal_id       = ai.source_record_id)
-             WHEN 'CC_REQUEST'        THEN (SELECT requested_limit  FROM dct_cc_requests            WHERE request_id       = ai.source_record_id)
-             WHEN 'CC_REPLENISHMENT'  THEN (SELECT total_amount     FROM dct_cc_replenishments      WHERE replenishment_id = ai.source_record_id)
-           END, 0) AS amount,
-           CASE WHEN INSTR(l_roles, ',' || rol.role_code || ',') > 0
-                  OR INSTR(l_roles, ',SYS_ADMIN,') > 0
-                THEN NULL
-                ELSE (SELECT MAX(du.display_name)
-                      FROM dct_delegations dg
-                      JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
-                                             AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
-                      JOIN dct_users du ON du.user_id = dg.delegator_id
-                      WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
-                        AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
-                        AND (dg.scope = 'ALL_ROLES'
-                             OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
-                             OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id)))
-           END AS acting_for
-    FROM   dct_approval_instances ai
-    JOIN   dct_approval_templates t   ON t.template_id  = ai.template_id
-    JOIN   dct_approval_steps     ast ON ast.template_id = ai.template_id
-                                     AND ast.step_seq    = ai.current_step_seq
-    LEFT JOIN dct_roles           rol ON rol.role_id     = ast.required_role_id
-    JOIN   dct_users              sub ON sub.user_id     = ai.submitted_by
-    WHERE  ai.overall_status = 'PENDING'
-      AND (INSTR(l_roles, ',' || rol.role_code || ',') > 0
-           OR INSTR(l_roles, ',SYS_ADMIN,') > 0
-           OR (ast.step_type = 'USER_SPECIFIC' AND ai.dynamic_approver_user_id = l_uid)
-           OR EXISTS (
-                SELECT 1 FROM dct_delegations dg
-                JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
-                                       AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
-                WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
-                  AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
-                  AND (dg.scope = 'ALL_ROLES'
-                       OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
-                       OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id))))
-    ORDER BY ai.submitted_at
+    SELECT id, engine, instance_id, request_ref, source_module, template_name,
+           requested_by, submitted_at, amount, currency, current_step, total_steps,
+           current_step_name, acting_for, due_at, outcome_set_code
+    FROM   dct_wf_inbox_v
+    WHERE  user_id = l_uid
+    ORDER BY submitted_at
   ) LOOP
     APEX_JSON.open_object;
-    APEX_JSON.write('instanceId',      r.instance_id);
-    APEX_JSON.write('requestRef',      NVL(r.source_record_ref, '-'));
+    APEX_JSON.write('instanceId',      r.id);
+    APEX_JSON.write('requestRef',      r.request_ref);
     APEX_JSON.write('module',          r.source_module);
-    APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
-    APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('templateName',    r.template_name);
+    APEX_JSON.write('requestedBy',     r.requested_by);
+    APEX_JSON.write('requestedAt',     TO_CHAR(dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('amount',          r.amount);
-    APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
-    APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));
-    APEX_JSON.write('currentStepName', NVL(r.step_name, '-'));
+    APEX_JSON.write('currentStep',     r.current_step);
+    APEX_JSON.write('totalSteps',      r.total_steps);
+    APEX_JSON.write('currentStepName', r.current_step_name);
     APEX_JSON.write('actingFor',       r.acting_for);
+    APEX_JSON.write('engine',          r.engine);
+    IF r.due_at IS NOT NULL THEN
+      APEX_JSON.write('dueAt', TO_CHAR(dct_to_local(r.due_at),'YYYY-MM-DD HH:MI AM'));
+    END IF;
+    IF r.outcome_set_code IS NOT NULL THEN
+      APEX_JSON.open_array('outcomes');
+      FOR o IN (SELECT o.outcome_code, o.label_en, o.label_ar, o.semantic,
+                       o.is_positive, o.requires_comment, o.color
+                FROM   dct_wf_outcome o
+                JOIN   dct_wf_outcome_set s ON s.set_id = o.set_id
+                WHERE  s.set_code = r.outcome_set_code
+                ORDER BY o.display_order) LOOP
+        APEX_JSON.open_object;
+        APEX_JSON.write('code',            o.outcome_code);
+        APEX_JSON.write('labelEn',         o.label_en);
+        APEX_JSON.write('labelAr',         o.label_ar);
+        APEX_JSON.write('semantic',        o.semantic);
+        APEX_JSON.write('isPositive',      o.is_positive);
+        APEX_JSON.write('requiresComment', o.requires_comment);
+        APEX_JSON.write('color',           o.color);
+        APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+    END IF;
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1779,24 +1769,10 @@ END;
     def_handler('approvals/[COLON]id/action', 'POST', q'!
 DECLARE
   l_user     VARCHAR2(100) := dct_rest.validate_session;
-  l_iid      NUMBER        := [COLON]id;
+  l_id       NUMBER        := [COLON]id;
   l_uid      NUMBER;
-  l_action   VARCHAR2(20);
+  l_action   VARCHAR2(32);
   l_comments VARCHAR2(4000);
-  l_inst     dct_approval_instances%ROWTYPE;
-  l_step_id  NUMBER;
-  l_amount   NUMBER := 0;
-  l_next     NUMBER := NULL;
-  l_owner    NUMBER := NULL;
-
-  PROCEDURE hist(p_type VARCHAR2, p_old VARCHAR2, p_new VARCHAR2, p_cmt VARCHAR2) IS
-  BEGIN
-    INSERT INTO dct_request_status_history (
-      source_module, source_type, source_id, old_status, new_status, changed_by, comments)
-    VALUES (CASE WHEN l_inst.source_module IN ('TRAVEL_REQUEST','SETTLEMENT') THEN 'DT' ELSE 'PC' END,
-            p_type, l_inst.source_record_id, p_old, p_new, l_uid, p_cmt);
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   l_uid := dct_auth.get_user_id(l_user);
@@ -1804,172 +1780,7 @@ BEGIN
   l_action   := UPPER(APEX_JSON.get_varchar2(p_path => 'action'));
   l_comments := APEX_JSON.get_varchar2(p_path => 'comments');
 
-  IF l_action NOT IN ('APPROVED','REJECTED','RETURNED') THEN
-    dct_rest.err(400,'Invalid action. Use APPROVED, REJECTED, or RETURNED'); RETURN;
-  END IF;
-  IF l_comments IS NULL THEN dct_rest.err(400,'Comments are required'); RETURN; END IF;
-
-  SELECT * INTO l_inst FROM dct_approval_instances WHERE instance_id = l_iid;
-  IF l_inst.overall_status != 'PENDING' THEN
-    dct_rest.err(400,'Approval instance is not PENDING'); RETURN;
-  END IF;
-
-  -- FL and CC instances are acted on by their packages (step conditions,
-  -- final-approval callbacks, notifications and history live there)
-  IF l_inst.source_module LIKE 'FL_%' THEN
-    dct_fl_pkg.act_on_approval(l_iid, l_uid, l_action, l_comments);
-    dct_rest.json_header;
-    APEX_JSON.initialize_output;
-    APEX_JSON.open_object;
-    APEX_JSON.write('ok', TRUE); APEX_JSON.write('action', l_action);
-    APEX_JSON.close_object;
-    RETURN;
-  ELSIF l_inst.source_module LIKE 'CC_%' THEN
-    dct_cc_pkg.act_on_approval(l_iid, l_uid, l_action, l_comments);
-    dct_rest.json_header;
-    APEX_JSON.initialize_output;
-    APEX_JSON.open_object;
-    APEX_JSON.write('ok', TRUE); APEX_JSON.write('action', l_action);
-    APEX_JSON.close_object;
-    RETURN;
-  END IF;
-
-  SELECT step_id INTO l_step_id
-  FROM dct_approval_steps
-  WHERE template_id = l_inst.template_id AND step_seq = l_inst.current_step_seq;
-
-  INSERT INTO dct_approval_actions (instance_id, step_id, actioned_by, action, comments)
-  VALUES (l_iid, l_step_id, l_uid, l_action, l_comments);
-
-  -- requester (for notification)
-  BEGIN
-    SELECT submitted_by INTO l_owner FROM dct_approval_instances WHERE instance_id = l_iid;
-  EXCEPTION WHEN OTHERS THEN NULL;
-  END;
-
-  IF l_action = 'APPROVED' THEN
-    BEGIN
-      IF    l_inst.source_module = 'PETTY_CASH'     THEN SELECT amount       INTO l_amount FROM dct_petty_cash        WHERE pc_id         = l_inst.source_record_id;
-      ELSIF l_inst.source_module = 'REIMBURSEMENT'  THEN SELECT amount       INTO l_amount FROM dct_pc_reimbursements WHERE reimb_id      = l_inst.source_record_id;
-      ELSIF l_inst.source_module = 'CLEARING'       THEN SELECT amount_spent INTO l_amount FROM dct_pc_clearing       WHERE clearing_id   = l_inst.source_record_id;
-      ELSIF l_inst.source_module = 'TRAVEL_REQUEST' THEN SELECT total_advance_aed INTO l_amount FROM dt_requests      WHERE request_id    = l_inst.source_record_id;
-      ELSIF l_inst.source_module = 'SETTLEMENT'     THEN SELECT total_actual_aed  INTO l_amount FROM dt_settlement    WHERE settlement_id = l_inst.source_record_id;
-      END IF;
-    EXCEPTION WHEN OTHERS THEN l_amount := 0; END;
-
-    FOR nxt IN (
-      SELECT step_seq FROM dct_approval_steps
-      WHERE template_id    = l_inst.template_id
-        AND step_seq       > l_inst.current_step_seq
-        AND (condition_type = 'ALWAYS'
-             OR (condition_type = 'AMOUNT' AND amount_operator = '>='  AND l_amount >= amount_threshold)
-             OR (condition_type = 'AMOUNT' AND amount_operator = '>'   AND l_amount >  amount_threshold)
-             OR (condition_type = 'AMOUNT' AND amount_operator = '<='  AND l_amount <= amount_threshold)
-             OR (condition_type = 'AMOUNT' AND amount_operator = '<'   AND l_amount <  amount_threshold))
-      ORDER BY step_seq FETCH FIRST 1 ROW ONLY
-    ) LOOP
-      l_next := nxt.step_seq;
-    END LOOP;
-
-    IF l_next IS NOT NULL THEN
-      UPDATE dct_approval_instances SET
-        current_step_seq = l_next, last_action_at = SYSTIMESTAMP,
-        updated_by = l_user, updated_at = SYSTIMESTAMP
-      WHERE instance_id = l_iid;
-      IF l_inst.source_module = 'PETTY_CASH' THEN
-        UPDATE dct_petty_cash SET status = 'PENDING_APPROVAL', updated_by = l_user
-        WHERE pc_id = l_inst.source_record_id AND status = 'SUBMITTED';
-        hist('PC','SUBMITTED','PENDING_APPROVAL','Step approved (Admin inbox): ' || l_comments);
-      ELSIF l_inst.source_module = 'REIMBURSEMENT' THEN
-        UPDATE dct_pc_reimbursements SET status = 'PENDING_APPROVAL', updated_by = l_user
-        WHERE reimb_id = l_inst.source_record_id AND status = 'SUBMITTED';
-      ELSIF l_inst.source_module = 'CLEARING' THEN
-        UPDATE dct_pc_clearing SET status = 'PENDING_APPROVAL', updated_by = l_user
-        WHERE clearing_id = l_inst.source_record_id AND status = 'SUBMITTED';
-      END IF;
-    ELSE
-      UPDATE dct_approval_instances SET
-        overall_status = 'APPROVED', current_step_seq = NULL,
-        completed_at = SYSTIMESTAMP, last_action_at = SYSTIMESTAMP,
-        updated_by = l_user, updated_at = SYSTIMESTAMP
-      WHERE instance_id = l_iid;
-
-      IF l_inst.source_module = 'PETTY_CASH' THEN
-        -- stays PENDING_APPROVAL until Finance disburses (-> ACTIVE)
-        UPDATE dct_petty_cash SET status = 'PENDING_APPROVAL', updated_by = l_user
-        WHERE pc_id = l_inst.source_record_id;
-        hist('PC', NULL, 'PENDING_APPROVAL', 'Fully approved - awaiting disbursement: ' || l_comments);
-      ELSIF l_inst.source_module = 'REIMBURSEMENT' THEN
-        UPDATE dct_pc_reimbursements SET status = 'APPROVED', updated_by = l_user
-        WHERE reimb_id = l_inst.source_record_id;
-        hist('PC_REIMB', NULL, 'APPROVED', 'Final approval: ' || l_comments);
-      ELSIF l_inst.source_module = 'CLEARING' THEN
-        UPDATE dct_pc_clearing SET status = 'APPROVED', updated_by = l_user
-        WHERE clearing_id = l_inst.source_record_id;
-        hist('PC_CLEAR', NULL, 'APPROVED', 'Final approval: ' || l_comments);
-        DECLARE
-          l_pcid NUMBER;
-        BEGIN
-          SELECT pc_id INTO l_pcid FROM dct_pc_clearing WHERE clearing_id = l_inst.source_record_id;
-          UPDATE dct_petty_cash SET status = 'CLOSED', closed_date = SYSDATE, updated_by = l_user
-          WHERE pc_id = l_pcid;
-          INSERT INTO dct_request_status_history (
-            source_module, source_type, source_id, old_status, new_status, changed_by, comments)
-          VALUES ('PC','PC', l_pcid, NULL, 'CLOSED', l_uid,
-                  'Closed by approved clearing ' || l_inst.source_record_ref);
-        EXCEPTION WHEN OTHERS THEN NULL;
-        END;
-      ELSIF l_inst.source_module = 'TRAVEL_REQUEST' THEN
-        UPDATE dt_requests SET status = 'APPROVED', updated_by = l_user, updated_at = SYSTIMESTAMP
-        WHERE request_id = l_inst.source_record_id;
-      ELSIF l_inst.source_module = 'SETTLEMENT' THEN
-        UPDATE dt_settlement SET status = 'APPROVED', updated_by = l_user, updated_at = SYSTIMESTAMP
-        WHERE settlement_id = l_inst.source_record_id;
-      END IF;
-
-      BEGIN
-        dct_notify.send(l_owner, 'STATUS_UPDATE', 'Request Approved',
-          'Your request ' || l_inst.source_record_ref || ' has been fully approved.',
-          p_module_code => CASE WHEN l_inst.source_module IN ('TRAVEL_REQUEST','SETTLEMENT')
-                                THEN 'DUTY_TRAVEL' ELSE 'PETTY_CASH' END);
-      EXCEPTION WHEN OTHERS THEN NULL; END;
-    END IF;
-
-  ELSE
-    -- REJECTED or RETURNED
-    UPDATE dct_approval_instances SET
-      overall_status = l_action, current_step_seq = NULL,
-      completed_at = SYSTIMESTAMP, last_action_at = SYSTIMESTAMP,
-      updated_by = l_user, updated_at = SYSTIMESTAMP
-    WHERE instance_id = l_iid;
-
-    IF l_inst.source_module = 'PETTY_CASH' THEN
-      UPDATE dct_petty_cash SET status = l_action, updated_by = l_user
-      WHERE pc_id = l_inst.source_record_id;
-      hist('PC', NULL, l_action, l_action || ' (Admin inbox): ' || l_comments);
-    ELSIF l_inst.source_module = 'REIMBURSEMENT' THEN
-      UPDATE dct_pc_reimbursements SET status = l_action, updated_by = l_user
-      WHERE reimb_id = l_inst.source_record_id;
-      hist('PC_REIMB', NULL, l_action, l_action || ': ' || l_comments);
-    ELSIF l_inst.source_module = 'CLEARING' THEN
-      UPDATE dct_pc_clearing SET status = l_action, updated_by = l_user
-      WHERE clearing_id = l_inst.source_record_id;
-      hist('PC_CLEAR', NULL, l_action, l_action || ': ' || l_comments);
-    ELSIF l_inst.source_module = 'TRAVEL_REQUEST' THEN
-      UPDATE dt_requests SET status = l_action, updated_by = l_user, updated_at = SYSTIMESTAMP
-      WHERE request_id = l_inst.source_record_id;
-    ELSIF l_inst.source_module = 'SETTLEMENT' THEN
-      UPDATE dt_settlement SET status = l_action, updated_by = l_user, updated_at = SYSTIMESTAMP
-      WHERE settlement_id = l_inst.source_record_id;
-    END IF;
-
-    BEGIN
-      dct_notify.send(l_owner, 'STATUS_UPDATE', 'Request ' || INITCAP(l_action),
-        'Your request ' || l_inst.source_record_ref || ' was ' || LOWER(l_action) || ': ' || l_comments,
-        p_module_code => CASE WHEN l_inst.source_module IN ('TRAVEL_REQUEST','SETTLEMENT')
-                              THEN 'DUTY_TRAVEL' ELSE 'PETTY_CASH' END);
-    EXCEPTION WHEN OTHERS THEN NULL; END;
-  END IF;
+  dct_wf_compat.act(l_id, l_uid, l_user, l_action, l_comments);
 
   COMMIT;
   dct_rest.json_header;
@@ -1977,8 +1788,15 @@ BEGIN
   APEX_JSON.open_object;
   APEX_JSON.write('ok', TRUE);
   APEX_JSON.write('action', l_action);
+  APEX_JSON.write('engine', dct_wf_compat.engine_of(l_id));
   APEX_JSON.close_object;
-EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+EXCEPTION WHEN OTHERS THEN ROLLBACK;
+  IF SQLCODE IN (-20147, -20303) THEN dct_rest.err(403, SQLERRM);
+  ELSIF SQLCODE = -20404 THEN dct_rest.err(404, SQLERRM);
+  ELSIF SQLCODE IN (-20001, -20090, -20304, -20305, -20307, -20308, -20309)
+     OR SQLCODE BETWEEN -20160 AND -20131 THEN dct_rest.err(400, SQLERRM);
+  ELSE dct_rest.err(500, SQLERRM);
+  END IF;
 END;
 !');
 

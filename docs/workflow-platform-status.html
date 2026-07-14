@@ -1,0 +1,734 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>i-Finance Workflow Platform — Status Board</title>
+<style>
+  /* ---------------------------------------------------------------
+     Roles, not raw hex. Light + dark are each *selected* steps,
+     validated against their own surface — not an automatic flip.
+     --------------------------------------------------------------- */
+  .viz-root {
+    color-scheme: light;
+    --surface-1:      #fcfcfb;   /* chart surface */
+    --plane:          #f9f9f7;   /* page plane   */
+    --text-primary:   #0b0b0b;
+    --text-secondary: #52514e;
+    --text-muted:     #898781;
+    --grid:           #e1e0d9;
+    --baseline:       #c3c2b7;
+    --hairline:       rgba(11,11,11,0.10);
+
+    /* emphasis pair — validated: adjacent CVD ΔE 55.8 (light) */
+    --accent:         #2a78d6;
+    --deemph:         #898781;
+
+    /* status — these colours MEAN state, so the status palette is correct.
+       Validated: worst adjacent CVD ΔE 16.9 (protan), well clear of the ≥12
+       target. Light-surface contrast on `warning` is 1.79:1 BY DESIGN, so the
+       relief rule applies: every segment carries a visible label and a table
+       view exists. Colour never carries meaning alone here. */
+    --st-approved:    #0ca30c;   /* good     */
+    --st-pending:     #fab219;   /* warning  */
+    --st-rejected:    #d03b3b;   /* critical */
+    --st-cancelled:   #898781;   /* inert — reads grey on purpose */
+
+    --good-ink:       #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:where(:not([data-theme="light"])) .viz-root {
+      color-scheme: dark;
+      --surface-1:      #1a1a19;
+      --plane:          #0d0d0d;
+      --text-primary:   #ffffff;
+      --text-secondary: #c3c2b7;
+      --text-muted:     #898781;
+      --grid:           #2c2c2a;
+      --baseline:       #383835;
+      --hairline:       rgba(255,255,255,0.10);
+      --accent:         #3987e5;
+      --deemph:         #898781;
+      --good-ink:       #0ca30c;
+    }
+  }
+  :root[data-theme="dark"] .viz-root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --plane:          #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --grid:           #2c2c2a;
+    --baseline:       #383835;
+    --hairline:       rgba(255,255,255,0.10);
+    --accent:         #3987e5;
+    --deemph:         #898781;
+    --good-ink:       #0ca30c;
+  }
+
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+
+  .viz-root {
+    background: var(--plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    padding: 32px 20px 64px;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; }
+
+  header.page { margin-bottom: 28px; }
+  h1 { font-size: 24px; font-weight: 650; margin: 0 0 6px; letter-spacing: -0.01em; }
+  .sub { color: var(--text-secondary); margin: 0; max-width: 74ch; }
+  .asof { color: var(--text-muted); font-size: 12px; margin-top: 10px; }
+
+  section { margin-top: 36px; }
+  h2 {
+    font-size: 12px; font-weight: 650; letter-spacing: 0.08em;
+    text-transform: uppercase; color: var(--text-muted);
+    margin: 0 0 14px; padding-bottom: 8px;
+    border-bottom: 1px solid var(--grid);
+  }
+  .note { color: var(--text-secondary); margin: 0 0 18px; max-width: 78ch; }
+
+  /* ---------- cards ---------- */
+  .card {
+    background: var(--surface-1);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 20px 22px;
+  }
+  .card + .card { margin-top: 16px; }
+  .card h3 { font-size: 15px; font-weight: 620; margin: 0 0 4px; }
+  .card .cap { color: var(--text-secondary); font-size: 13px; margin: 0 0 18px; max-width: 72ch; }
+
+  /* ---------- hero + stat tiles ---------- */
+  .kpis { display: grid; grid-template-columns: 1.5fr 1fr 1fr 1fr; gap: 16px; }
+  @media (max-width: 860px) { .kpis { grid-template-columns: 1fr 1fr; } }
+  @media (max-width: 520px) { .kpis { grid-template-columns: 1fr; } }
+
+  .tile {
+    background: var(--surface-1);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 18px 20px;
+  }
+  .tile .lab {
+    font-size: 12px; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600;
+  }
+  /* proportional figures on hero + tile values — never tabular-nums here */
+  .tile .val { font-size: 34px; font-weight: 640; line-height: 1.1; margin-top: 8px; }
+  .tile.hero .val { font-size: 56px; }
+  .tile .foot { font-size: 12.5px; color: var(--text-secondary); margin-top: 8px; }
+  .tile .foot strong { color: var(--good-ink); font-weight: 600; }
+
+  /* ---------- bars ---------- */
+  .row { display: grid; grid-template-columns: 152px 1fr 56px; gap: 12px; align-items: center; margin-bottom: 10px; }
+  .row:last-child { margin-bottom: 0; }
+  .rlab { font-size: 12.5px; color: var(--text-secondary); text-align: right; }
+  .rlab .n { display: block; color: var(--text-muted); font-size: 11px; }
+  .rval { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  .track { position: relative; height: 26px; display: flex; align-items: stretch; }
+  .track::before {                        /* recessive hairline baseline */
+    content: ""; position: absolute; left: 0; right: 0; bottom: -3px;
+    height: 1px; background: var(--grid);
+  }
+  /* thin marks; 4px rounded data-end; 2px surface gap between adjacent fills */
+  .seg {
+    position: relative; min-width: 3px; height: 22px; align-self: center;
+    border-right: 2px solid var(--surface-1);   /* the 2px gap, not a border-as-separator */
+    display: flex; align-items: center; justify-content: center;
+    cursor: default;
+  }
+  .seg:first-child { border-radius: 4px 0 0 4px; }
+  .seg:last-child  { border-radius: 0 4px 4px 0; border-right: 0; }
+  .seg:only-child  { border-radius: 4px; border-right: 0; }
+  .seg .inlab {
+    font-size: 11px; font-weight: 650; color: #fff;
+    font-variant-numeric: tabular-nums;
+    padding: 0 5px; white-space: nowrap;
+  }
+  .seg.lite .inlab { color: #0b0b0b; }        /* on the light warning fill */
+  /* only render the in-mark label when it actually fits */
+  .seg.tight .inlab { display: none; }
+
+  .bar { height: 22px; border-radius: 4px; align-self: center; min-width: 3px; cursor: default; }
+
+  /* hit target ≥24px even though the mark is 22px */
+  .track, .bar { padding-block: 1px; }
+
+  /* ---------- legend ---------- */
+  .legend { display: flex; flex-wrap: wrap; gap: 16px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--grid); }
+  .lg { display: flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-secondary); }
+  .sw { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+
+  /* ---------- table view ---------- */
+  details { margin-top: 16px; }
+  summary {
+    font-size: 12.5px; color: var(--text-secondary); cursor: pointer;
+    padding: 5px 0; user-select: none; width: fit-content;
+  }
+  summary:hover { color: var(--text-primary); }
+  table { border-collapse: collapse; width: 100%; margin-top: 10px; font-size: 13px; }
+  th, td {
+    text-align: left; padding: 8px 12px 8px 0;
+    border-bottom: 1px solid var(--grid);
+  }
+  th { font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); font-weight: 600; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tbody tr:last-child td { border-bottom: 0; }
+  .tot td { font-weight: 650; border-top: 1px solid var(--baseline); }
+
+  /* ---------- verdict / callouts ---------- */
+  .verdict td.v { font-weight: 620; white-space: nowrap; }
+  .no  { color: #d03b3b; }
+  .yes { color: var(--good-ink); }
+  .part { color: var(--text-secondary); }
+
+  .blocker {
+    border: 1px solid var(--hairline);
+    border-left: 3px solid #d03b3b;
+    border-radius: 8px; padding: 14px 16px; margin-top: 12px;
+    background: var(--surface-1);
+  }
+  .blocker h4 { margin: 0 0 5px; font-size: 13.5px; font-weight: 640; }
+  .blocker p { margin: 0; font-size: 13px; color: var(--text-secondary); }
+  code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 12.5px;
+    background: color-mix(in srgb, var(--text-primary) 7%, transparent);
+    padding: 1px 5px; border-radius: 4px;
+  }
+
+  .steps td.ph { font-weight: 620; white-space: nowrap; }
+  .pill {
+    display: inline-block; font-size: 11px; font-weight: 640;
+    padding: 2px 8px; border-radius: 999px;
+    background: color-mix(in srgb, var(--accent) 14%, transparent);
+    color: var(--accent);
+  }
+
+  /* ---------- tooltip ---------- */
+  #tip {
+    position: fixed; z-index: 50; pointer-events: none; opacity: 0;
+    transition: opacity .09s ease;
+    background: var(--surface-1);
+    color: var(--text-primary);
+    border: 1px solid var(--hairline);
+    box-shadow: 0 6px 20px rgba(0,0,0,.16);
+    border-radius: 8px; padding: 9px 11px;
+    font-size: 12.5px; line-height: 1.45; white-space: nowrap;
+  }
+  #tip .t { font-weight: 650; margin-bottom: 3px; }
+  #tip .r { color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  #tip .r b { color: var(--text-primary); font-weight: 620; }
+
+  footer.page { margin-top: 44px; padding-top: 16px; border-top: 1px solid var(--grid); color: var(--text-muted); font-size: 12px; }
+  footer.page p { margin: 0 0 5px; }
+
+  @media (prefers-reduced-motion: reduce) { #tip { transition: none; } }
+</style>
+</head>
+<body>
+<div class="viz-root">
+<div class="wrap">
+
+  <header class="page">
+    <h1>i-Finance Workflow Platform — status board</h1>
+    <p class="sub">
+      Replacing four divergent copies of approval logic with one metadata-driven engine.
+      Oracle APEX Workflow was evaluated as the execution engine and <strong>rejected</strong>;
+      the platform runs on a native PL/SQL executor. Phase&nbsp;0 is live in PROD.
+    </p>
+    <p class="asof">
+      Figures queried live from the PROD Autonomous Database on 14 Jul 2026. Not illustrative.
+    </p>
+  </header>
+
+  <!-- ============================ KPIs ============================ -->
+  <section aria-label="Headline figures">
+    <div class="kpis">
+      <div class="tile hero">
+        <div class="lab">Live approvals still pending</div>
+        <div class="val">5</div>
+        <div class="foot">
+          Across the whole legacy engine — 4 credit-card replenishments and 1 petty cash.
+          <strong>This is what makes migration cheap:</strong> drain, don&rsquo;t backfill.
+        </div>
+      </div>
+      <div class="tile">
+        <div class="lab">Legacy instances, all time</div>
+        <div class="val">28</div>
+        <div class="foot">Since the engine went live, across 6 request types.</div>
+      </div>
+      <div class="tile">
+        <div class="lab">New tables live in PROD</div>
+        <div class="val">24</div>
+        <div class="foot"><code>DCT_WF_*</code> + 21 indexes. Additive; nothing switched on.</div>
+      </div>
+      <div class="tile">
+        <div class="lab">Evaluator tests</div>
+        <div class="val">48 / 48</div>
+        <div class="foot"><strong>8 of 8</strong> SQL-injection attempts rejected at compile.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= THE APEX VERDICT ======================= -->
+  <section>
+    <h2>The engine decision</h2>
+    <p class="note">
+      The brief was to assess whether the Oracle APEX Workflow engine could carry these
+      requirements. It cannot — for two reasons found in the database itself, not in the
+      documentation. Everything is still delivered, by our own metadata.
+    </p>
+
+    <div class="card">
+      <table class="verdict">
+        <thead>
+          <tr>
+            <th>Requirement</th>
+            <th class="v">APEX</th>
+            <th class="v">DWP (native)</th>
+            <th>Why</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>1 · Edit approval chains from end-user UI</td>
+            <td class="v no">No</td>
+            <td class="v yes">Yes</td>
+            <td>APEX has no runtime API to create or modify a workflow definition — they are App&nbsp;Builder metadata.</td>
+          </tr>
+          <tr>
+            <td>2 · Custom outcomes (Endorse, Agree, FYI&hellip;)</td>
+            <td class="v no">No</td>
+            <td class="v yes">Yes</td>
+            <td>Every APEX outcome column is 8 characters, restricted to APPROVED/REJECTED.</td>
+          </tr>
+          <tr>
+            <td>3 · Customisable bilingual notifications</td>
+            <td class="v part">Partial</td>
+            <td class="v yes">Yes</td>
+            <td>Templates with EN+AR mandatory at publish — today no caller populates the Arabic columns at all.</td>
+          </tr>
+          <tr>
+            <td>4 · One worklist across all modules</td>
+            <td class="v part">Partial</td>
+            <td class="v yes">Yes</td>
+            <td>APEX&rsquo;s task list lives inside APEX; the real UI is the JET SPAs.</td>
+          </tr>
+          <tr>
+            <td>5 · Dynamic approval levels from conditions</td>
+            <td class="v no">No</td>
+            <td class="v yes">Yes</td>
+            <td>Conditions must be authorable at runtime; APEX fixes them at definition time.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="blocker">
+        <h4>Blocker 1 — custom outcomes cannot be stored</h4>
+        <p>
+          <code>WWV_FLOW_TASKS$.OUTCOME</code> is <code>VARCHAR2(8)</code> with
+          <code>CHECK (outcome IN ('APPROVED','REJECTED'))</code>. There is nowhere to put
+          <code>ENDORSE</code> or <code>RETURN_FOR_INFO</code>. The API&rsquo;s
+          <code>t_task_outcome VARCHAR2(32)</code> subtype is a red herring — the
+          <em>parameter</em> is 32 chars; the <em>storage</em> is 8 and constrained.
+        </p>
+      </div>
+      <div class="blocker">
+        <h4>Blocker 2 — definitions are not runtime-editable</h4>
+        <p>
+          <code>APEX_WORKFLOW</code> exposes only start / terminate / suspend / resume / retry.
+          Changing a chain would mean an application export and deploy.
+        </p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== CHART A — legacy load ==================== -->
+  <section>
+    <h2>What the legacy engine is actually carrying</h2>
+
+    <div class="card">
+      <h3>Legacy approval instances by request type and status</h3>
+      <p class="cap">
+        The whole engine holds 28 instances, and only <strong>5 are still pending</strong>.
+        In-flight migration was the feared cost of a cutover; at this volume it simply
+        isn&rsquo;t one. Every segment is labelled, because the pending fill sits below
+        3:1 contrast on the light surface.
+      </p>
+
+      <div id="chartA"></div>
+
+      <div class="legend" id="legendA"></div>
+
+      <details>
+        <summary>Table view</summary>
+        <table>
+          <thead>
+            <tr>
+              <th>Request type</th>
+              <th class="num">Approved</th>
+              <th class="num">Pending</th>
+              <th class="num">Rejected</th>
+              <th class="num">Cancelled</th>
+              <th class="num">Total</th>
+            </tr>
+          </thead>
+          <tbody id="tableA"></tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
+  <!-- ================= CHART B — duplication ================= -->
+  <section>
+    <h2>The duplication being retired</h2>
+
+    <div class="card">
+      <h3>Copies of the same logic across the codebase</h3>
+      <p class="cap">
+        Approval logic is implemented four times over, divergently — and the copies have
+        already drifted apart. The sweep job&rsquo;s final-approval routine omits all six
+        Freelancer modules entirely, so an auto-approved registration marks itself
+        APPROVED while the freelancer profile is silently never created. One engine
+        collapses every bar below to&nbsp;1.
+      </p>
+
+      <div id="chartB"></div>
+
+      <details>
+        <summary>Table view</summary>
+        <table>
+          <thead><tr><th>Duplicated artefact</th><th class="num">Copies</th><th>Collapses to</th></tr></thead>
+          <tbody id="tableB"></tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
+  <!-- ================= CHART C — chain complexity ================= -->
+  <section>
+    <h2>Where the complexity lives</h2>
+
+    <div class="card">
+      <h3>Approval steps per module <span style="font-weight:500;color:var(--text-muted)">(active templates)</span></h3>
+      <p class="cap">
+        Freelancers is highlighted because it is the pilot — and it carries more approval
+        steps than every other module combined. Its 7-step contract chain, org-scoped
+        approver map and 6-month conditional step exercise every requirement at once.
+      </p>
+
+      <div id="chartC"></div>
+
+      <details>
+        <summary>Table view</summary>
+        <table>
+          <thead><tr><th>Module</th><th class="num">Active templates</th><th class="num">Approval steps</th></tr></thead>
+          <tbody id="tableC"></tbody>
+        </table>
+      </details>
+    </div>
+  </section>
+
+  <!-- ================= migration sequence ================= -->
+  <section>
+    <h2>Migration sequence</h2>
+    <p class="note">
+      Strangler-fig: both engines run side by side behind one unified inbox, so users never
+      see two worklists. Simplest chains first; the newest and most visible chain
+      (the Freelancer termsheet, live only since 14&nbsp;Jul) goes <strong>last</strong>.
+      Cutover and rollback are each a single <code>UPDATE</code> to <code>DCT_WF_ROUTE</code>.
+    </p>
+
+    <div class="card">
+      <table class="steps">
+        <thead>
+          <tr><th>Phase</th><th>Request types</th><th class="num">Drain cap</th><th>Rationale</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td class="ph">0 <span class="pill">done</span></td>
+            <td>Foundation — no behaviour change</td>
+            <td class="num">&mdash;</td>
+            <td>24 tables, outcome vocabulary, condition evaluator. All 13 modules stay on <code>LEGACY</code>.</td>
+          </tr>
+          <tr>
+            <td class="ph">1</td>
+            <td>FL_REGISTRATION <span class="pill">pilot</span></td>
+            <td class="num">30 d</td>
+            <td>Shortest chain, one callback, lowest blast radius.</td>
+          </tr>
+          <tr>
+            <td class="ph">2</td>
+            <td>FL_PROFILE_CHANGE</td>
+            <td class="num">30 d</td>
+            <td>Single step, same package — doubles the pilot&rsquo;s evidence for free.</td>
+          </tr>
+          <tr>
+            <td class="ph">3</td>
+            <td>CC_REQUEST, CC_REPLENISHMENT</td>
+            <td class="num">45 d</td>
+            <td>Retires the smallest of the three private engines.</td>
+          </tr>
+          <tr>
+            <td class="ph">4</td>
+            <td>PETTY_CASH, REIMBURSEMENT, CLEARING</td>
+            <td class="num">60 d</td>
+            <td>Retires the inline ORDS chain. Month-end and quarter-end must both pass.</td>
+          </tr>
+          <tr>
+            <td class="ph">5</td>
+            <td>TRAVEL_REQUEST, SETTLEMENT</td>
+            <td class="num">60 d</td>
+            <td>Simplest chains — deliberately late, as the safest thing to leave alone.</td>
+          </tr>
+          <tr>
+            <td class="ph">6</td>
+            <td>FL_CONTRACT, AMENDMENT, RENEWAL, VOUCHER</td>
+            <td class="num">45 d</td>
+            <td>Last. The 7-step termsheet chain has not completed one production cycle yet.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <footer class="page">
+    <p><strong>Source:</strong> <code>prod.dct_approval_instances</code>, <code>dct_approval_templates</code>, <code>dct_approval_steps</code>, <code>dct_wf_*</code> — queried 14 Jul 2026.</p>
+    <p><strong>Palette:</strong> status colours validated at worst-adjacent CVD ΔE 16.9; emphasis pair at ΔE 55.8. Light-surface contrast on the pending fill is 1.79:1 by design, so every segment is directly labelled and a table view accompanies each chart.</p>
+    <p><strong>Plan:</strong> <code>~/.claude/plans/design-new-workflow-solution-woolly-sun.md</code></p>
+  </footer>
+
+</div>
+</div>
+
+<div id="tip" role="status" aria-live="polite"></div>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------------- data (queried from PROD, not synthetic) --------------- */
+  /* Ink is chosen per fill by measured WCAG contrast, not by habit — a white
+     numeral on the green or the grey would sit at 3.4:1 / 3.6:1 and fail.
+       approved  #0ca30c : black 6.24:1  (white 3.37 ✗)
+       pending   #fab219 : black 11.4:1
+       rejected  #d03b3b : white 4.82:1  (black 4.37 ✗)
+       cancelled #898781 : black 5.78:1  (white 3.63 ✗)                        */
+  const STATUS = [
+    { key: "APPROVED",  label: "Approved",  css: "--st-approved",  darkInk: true  },
+    { key: "PENDING",   label: "Pending",   css: "--st-pending",   darkInk: true  },
+    { key: "REJECTED",  label: "Rejected",  css: "--st-rejected",  darkInk: false },
+    { key: "CANCELLED", label: "Cancelled", css: "--st-cancelled", darkInk: true  }
+  ];
+
+  const A = [
+    { name: "Credit card request",   note: "CC_REQUEST",       APPROVED: 10, PENDING: 0, REJECTED: 1, CANCELLED: 3 },
+    { name: "Petty cash",            note: "PETTY_CASH",       APPROVED: 3,  PENDING: 1, REJECTED: 2, CANCELLED: 0 },
+    { name: "Card replenishment",    note: "CC_REPLENISHMENT", APPROVED: 0,  PENDING: 4, REJECTED: 0, CANCELLED: 0 },
+    { name: "Travel request",        note: "TRAVEL_REQUEST",   APPROVED: 1,  PENDING: 0, REJECTED: 1, CANCELLED: 0 },
+    { name: "Freelancer reg.",       note: "FL_REGISTRATION",  APPROVED: 1,  PENDING: 0, REJECTED: 0, CANCELLED: 0 },
+    { name: "Reimbursement",         note: "REIMBURSEMENT",    APPROVED: 1,  PENDING: 0, REJECTED: 0, CANCELLED: 0 }
+  ];
+
+  const B = [
+    { name: "Amount CASE block",        note: "copy-pasted per inbox", n: 5, to: "one fact view" },
+    { name: "Inbox queries",            note: "/dct /pc /dt /cc /fl",  n: 5, to: "one union view" },
+    { name: "Condition evaluators",     note: "all mutually divergent", n: 4, to: "DCT_WF_EXPR" },
+    { name: "Final-approval routines",  note: "one omits all of FL",    n: 3, to: "registered hooks" },
+    { name: "ORDS inbox patch files",   note: "11b + 11c",              n: 2, to: "deleted" }
+  ];
+
+  const C = [
+    { name: "Freelancers",  note: "6 active templates", steps: 27, tpl: 6, hl: true  },
+    { name: "Petty Cash",   note: "3 active templates", steps: 8,  tpl: 3, hl: false },
+    { name: "Credit Cards", note: "4 active templates", steps: 7,  tpl: 4, hl: false },
+    { name: "Duty Travel",  note: "2 active templates", steps: 4,  tpl: 2, hl: false }
+  ];
+
+  /* ---------------------------- tooltip ---------------------------------- */
+  const tip = document.getElementById("tip");
+  function showTip(html, e) {
+    tip.innerHTML = html;
+    tip.style.opacity = "1";
+    moveTip(e);
+  }
+  function moveTip(e) {
+    const pad = 14;
+    const r = tip.getBoundingClientRect();
+    let x = e.clientX + pad, y = e.clientY + pad;
+    if (x + r.width  > window.innerWidth  - 8) x = e.clientX - r.width  - pad;
+    if (y + r.height > window.innerHeight - 8) y = e.clientY - r.height - pad;
+    tip.style.left = x + "px";
+    tip.style.top  = y + "px";
+  }
+  function hideTip() { tip.style.opacity = "0"; }
+
+  function bindTip(el, html) {
+    el.addEventListener("mouseenter", e => showTip(html, e));
+    el.addEventListener("mousemove", moveTip);
+    el.addEventListener("mouseleave", hideTip);
+    el.tabIndex = 0;                                  // keyboard reaches the same content
+    el.addEventListener("focus", e => {
+      const r = el.getBoundingClientRect();
+      showTip(html, { clientX: r.left + r.width / 2, clientY: r.top });
+    });
+    el.addEventListener("blur", hideTip);
+  }
+
+  const el = (tag, cls) => { const n = document.createElement(tag); if (cls) n.className = cls; return n; };
+
+  /* ------------------------- chart A — stacked --------------------------- */
+  const maxA = Math.max(...A.map(d => STATUS.reduce((s, st) => s + d[st.key], 0)));
+  const cA = document.getElementById("chartA");
+
+  A.forEach(d => {
+    const total = STATUS.reduce((s, st) => s + d[st.key], 0);
+
+    const row = el("div", "row");
+    const lab = el("div", "rlab");
+    lab.innerHTML = d.name + '<span class="n">' + d.note + "</span>";
+    row.appendChild(lab);
+
+    const track = el("div", "track");
+    track.style.width = (total / maxA * 100) + "%";
+
+    STATUS.forEach(st => {
+      const v = d[st.key];
+      if (!v) return;
+      const seg = el("div", "seg" + (st.darkInk ? " lite" : ""));
+      seg.style.flex = String(v);
+      seg.style.background = "var(" + st.css + ")";
+      // only label inside the mark when it genuinely fits
+      const share = v / total;
+      const px = share * (total / maxA) * 640;
+      if (px < 22) seg.classList.add("tight");
+      const inlab = el("span", "inlab");
+      inlab.textContent = v;
+      seg.appendChild(inlab);
+      bindTip(seg,
+        '<div class="t">' + d.name + '</div>' +
+        '<div class="r">' + st.label + ': <b>' + v + '</b></div>' +
+        '<div class="r">of ' + total + ' total</div>');
+      track.appendChild(seg);
+    });
+
+    const wrapT = el("div");
+    wrapT.appendChild(track);
+    row.appendChild(wrapT);
+
+    const val = el("div", "rval");
+    val.textContent = total;
+    row.appendChild(val);
+
+    cA.appendChild(row);
+  });
+
+  const legA = document.getElementById("legendA");
+  STATUS.forEach(st => {
+    const g = el("div", "lg");
+    const sw = el("span", "sw");
+    sw.style.background = "var(" + st.css + ")";
+    g.appendChild(sw);
+    g.appendChild(document.createTextNode(st.label));
+    legA.appendChild(g);
+  });
+
+  const tA = document.getElementById("tableA");
+  let sums = { APPROVED: 0, PENDING: 0, REJECTED: 0, CANCELLED: 0 };
+  A.forEach(d => {
+    const tr = el("tr");
+    const total = STATUS.reduce((s, st) => s + d[st.key], 0);
+    let html = "<td>" + d.name + "</td>";
+    STATUS.forEach(st => {
+      sums[st.key] += d[st.key];
+      html += '<td class="num">' + (d[st.key] || "—") + "</td>";
+    });
+    html += '<td class="num">' + total + "</td>";
+    tr.innerHTML = html;
+    tA.appendChild(tr);
+  });
+  const trT = el("tr", "tot");
+  trT.innerHTML = "<td>Total</td>" +
+    STATUS.map(st => '<td class="num">' + sums[st.key] + "</td>").join("") +
+    '<td class="num">28</td>';
+  tA.appendChild(trT);
+
+  /* ------------------------- chart B — one hue --------------------------- */
+  const maxB = Math.max(...B.map(d => d.n));
+  const cB = document.getElementById("chartB");
+  B.forEach(d => {
+    const row = el("div", "row");
+    const lab = el("div", "rlab");
+    lab.innerHTML = d.name + '<span class="n">' + d.note + "</span>";
+    row.appendChild(lab);
+
+    const track = el("div", "track");
+    const bar = el("div", "bar");
+    bar.style.width = (d.n / maxB * 100) + "%";
+    bar.style.background = "var(--accent)";       // nominal categories → ONE colour
+    bindTip(bar,
+      '<div class="t">' + d.name + '</div>' +
+      '<div class="r">Copies today: <b>' + d.n + '</b></div>' +
+      '<div class="r">After: <b>' + d.to + '</b></div>');
+    track.appendChild(bar);
+    row.appendChild(track);
+
+    const val = el("div", "rval");
+    val.textContent = d.n;
+    row.appendChild(val);
+    cB.appendChild(row);
+  });
+
+  const tB = document.getElementById("tableB");
+  B.forEach(d => {
+    const tr = el("tr");
+    tr.innerHTML = "<td>" + d.name + "</td><td class='num'>" + d.n + "</td><td>" + d.to + "</td>";
+    tB.appendChild(tr);
+  });
+
+  /* ---------------------- chart C — emphasis ----------------------------- */
+  const maxC = Math.max(...C.map(d => d.steps));
+  const cC = document.getElementById("chartC");
+  C.forEach(d => {
+    const row = el("div", "row");
+    const lab = el("div", "rlab");
+    lab.innerHTML = d.name + '<span class="n">' + d.note + "</span>";
+    row.appendChild(lab);
+
+    const track = el("div", "track");
+    const bar = el("div", "bar");
+    bar.style.width = (d.steps / maxC * 100) + "%";
+    // emphasis: the pilot carries the accent; context recedes to grey
+    bar.style.background = d.hl ? "var(--accent)" : "var(--deemph)";
+    bindTip(bar,
+      '<div class="t">' + d.name + (d.hl ? " — pilot" : "") + '</div>' +
+      '<div class="r">Approval steps: <b>' + d.steps + '</b></div>' +
+      '<div class="r">Active templates: <b>' + d.tpl + '</b></div>');
+    track.appendChild(bar);
+    row.appendChild(track);
+
+    const val = el("div", "rval");
+    val.textContent = d.steps;
+    row.appendChild(val);
+    cC.appendChild(row);
+  });
+
+  const tC = document.getElementById("tableC");
+  C.forEach(d => {
+    const tr = el("tr");
+    tr.innerHTML = "<td>" + d.name + "</td><td class='num'>" + d.tpl + "</td><td class='num'>" + d.steps + "</td>";
+    tC.appendChild(tr);
+  });
+})();
+</script>
+</body>
+</html>

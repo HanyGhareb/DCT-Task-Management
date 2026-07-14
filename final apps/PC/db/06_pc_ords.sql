@@ -1426,56 +1426,54 @@ END;
     -- APPROVALS
     -- =========================================================================
     def_template('approvals/pending');
+    -- =========================================================================
+    -- APPROVALS INBOX -- served by the SHARED worklist view, PROD.DCT_WF_INBOX_V.
+    -- The near-duplicate query that used to live here is gone; eligibility is
+    -- defined ONCE for the whole platform (db/v2/64). This module's own response
+    -- keys are preserved EXACTLY -- its JET page parses them.
+    --
+    -- The POST action handler below is deliberately UNTOUCHED. It is NOT routed
+    -- through DCT_WF_COMPAT, because this module's handler calls
+    -- dct_pc_fusion_pkg.enqueue_* and the Admin one does not -- consolidating them
+    -- would silently change which approvals post an AP invoice to Fusion. That is a
+    -- business decision, not a refactor. Safe today because DCT_WF_INBOX_V only
+    -- surfaces WF tasks for modules actually routed to 'WF' in DCT_WF_ROUTE, so this
+    -- handler can never be handed a task id it does not understand.
+    -- =========================================================================
     def_handler('approvals/pending', 'GET', q'!
 DECLARE
-  l_user  VARCHAR2(100) := dct_rest.validate_session;
-  l_roles VARCHAR2(4000);
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  l_roles := ',' || dct_auth.get_user_roles(l_user) || ',';
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
-  APEX_JSON.open_array;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT ai.instance_id, ai.source_module, ai.source_record_id,
-           ai.source_record_ref, ai.submitted_at, ai.overall_status,
-           ast.step_name, rol.role_code AS required_role,
-           sub.display_name AS submitted_by_name,
-           CASE ai.source_module
-             WHEN 'PETTY_CASH'    THEN pc.amount
-             WHEN 'REIMBURSEMENT' THEN rb.amount
-             WHEN 'CLEARING'      THEN cl.amount_spent
-           END AS amount
-    FROM   dct_approval_instances ai
-    JOIN   dct_approval_steps     ast ON ast.template_id = ai.template_id
-                                     AND ast.step_seq    = ai.current_step_seq
-    JOIN   dct_roles              rol ON rol.role_id     = ast.required_role_id
-    JOIN   dct_users              sub ON sub.user_id     = ai.submitted_by
-    LEFT JOIN dct_petty_cash       pc ON pc.pc_id        = ai.source_record_id
-                                     AND ai.source_module = 'PETTY_CASH'
-    LEFT JOIN dct_pc_reimbursements rb ON rb.reimb_id    = ai.source_record_id
-                                     AND ai.source_module = 'REIMBURSEMENT'
-    LEFT JOIN dct_pc_clearing      cl ON cl.clearing_id  = ai.source_record_id
-                                     AND ai.source_module = 'CLEARING'
-    WHERE  ai.overall_status = 'PENDING'
-      AND  ai.source_module IN ('PETTY_CASH','REIMBURSEMENT','CLEARING')
-      AND  (INSTR(l_roles, ',' || rol.role_code || ',') > 0
-            OR INSTR(l_roles, ',SYS_ADMIN,') > 0)
-    ORDER BY ai.submitted_at
+    SELECT id, engine, source_record_id, request_ref, source_module,
+           requested_by, submitted_at, amount, current_step_name
+    FROM   dct_wf_inbox_v
+    WHERE  user_id = l_uid
+      AND  source_module IN ('PETTY_CASH','REIMBURSEMENT','CLEARING')
+    ORDER BY submitted_at
   ) LOOP
     APEX_JSON.open_object;
-    APEX_JSON.write('instanceId',     r.instance_id);
-    APEX_JSON.write('requestRef',     r.source_record_ref);
+    APEX_JSON.write('instanceId',     r.id);
+    APEX_JSON.write('requestRef',     r.request_ref);
     APEX_JSON.write('requestType',    r.source_module);
     APEX_JSON.write('sourceRecordId', r.source_record_id);
-    APEX_JSON.write('submittedBy',    r.submitted_by_name);
-    APEX_JSON.write('submittedAt',    TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
-    APEX_JSON.write('currentStep',    r.step_name);
+    APEX_JSON.write('submittedBy',    r.requested_by);
+    APEX_JSON.write('submittedAt',    TO_CHAR(dct_to_local(r.submitted_at),'YYYY-MM-DD"T"HH24":"MI":"SS'));
+    APEX_JSON.write('currentStep',    r.current_step_name);
     APEX_JSON.write('amount',         r.amount);
-    APEX_JSON.write('overallStatus',  r.overall_status);
+    APEX_JSON.write('overallStatus',  'PENDING');
+    APEX_JSON.write('engine',         r.engine);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
+  APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');

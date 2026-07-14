@@ -1099,78 +1099,50 @@ END;
     -- APPROVALS (CC instances; delegation-aware, same pattern as the FL module)
     -- =========================================================================
     def_template('approvals/pending');
+    -- =========================================================================
+    -- APPROVALS INBOX -- served by the SHARED worklist view, PROD.DCT_WF_INBOX_V.
+    -- The near-duplicate query that used to live here is gone; eligibility is
+    -- defined ONCE for the whole platform (db/v2/64). This module's own response
+    -- keys are preserved EXACTLY -- its JET page parses them.
+    --
+    -- The POST action handler below is deliberately UNTOUCHED. It is NOT routed
+    -- through DCT_WF_COMPAT, because it delegates to dct_cc_pkg, which owns
+    -- CC's step conditions and final-approval callbacks. Safe today because DCT_WF_INBOX_V only
+    -- surfaces WF tasks for modules actually routed to 'WF' in DCT_WF_ROUTE, so this
+    -- handler can never be handed a task id it does not understand.
+    -- =========================================================================
     def_handler('approvals/pending', 'GET', q'!
 DECLARE
-  l_user  VARCHAR2(100) := dct_rest.validate_session;
-  l_uid   NUMBER;
-  l_roles VARCHAR2(4000);
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  l_uid   := dct_auth.get_user_id(l_user);
-  l_roles := ',' || dct_auth.get_user_roles(l_user) || ',';
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT ai.instance_id, ai.source_module, ai.source_record_ref,
-           ai.submitted_at, t.template_name, ast.step_name,
-           rol.role_code AS required_role,
-           sub.display_name AS submitted_by_name,
-           (SELECT COUNT(*) FROM dct_approval_steps s2 WHERE s2.template_id = ai.template_id) AS total_steps,
-           (SELECT COUNT(*) FROM dct_approval_steps s3 WHERE s3.template_id = ai.template_id
-             AND s3.step_seq <= ai.current_step_seq) AS current_step,
-           NVL(CASE ai.source_module
-             WHEN 'CC_REQUEST'       THEN (SELECT requested_limit FROM dct_cc_requests       WHERE request_id       = ai.source_record_id)
-             WHEN 'CC_REPLENISHMENT' THEN (SELECT total_amount    FROM dct_cc_replenishments WHERE replenishment_id = ai.source_record_id)
-           END, 0) AS amount,
-           CASE WHEN INSTR(l_roles, ',' || rol.role_code || ',') > 0
-                  OR INSTR(l_roles, ',SYS_ADMIN,') > 0
-                THEN NULL
-                ELSE (SELECT MAX(du.display_name)
-                      FROM dct_delegations dg
-                      JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
-                                             AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
-                      JOIN dct_users du ON du.user_id = dg.delegator_id
-                      WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
-                        AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
-                        AND (dg.scope = 'ALL_ROLES'
-                             OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
-                             OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id)))
-           END AS acting_for
-    FROM   dct_approval_instances ai
-    JOIN   dct_approval_templates t   ON t.template_id   = ai.template_id
-    JOIN   dct_approval_steps     ast ON ast.template_id = ai.template_id
-                                     AND ast.step_seq    = ai.current_step_seq
-    JOIN   dct_roles              rol ON rol.role_id     = ast.required_role_id
-    JOIN   dct_users              sub ON sub.user_id     = ai.submitted_by
-    WHERE  ai.overall_status = 'PENDING'
-      AND  ai.source_module IN ('CC_REQUEST','CC_REPLENISHMENT')
-      AND (INSTR(l_roles, ',' || rol.role_code || ',') > 0
-           OR INSTR(l_roles, ',SYS_ADMIN,') > 0
-           OR EXISTS (
-                SELECT 1 FROM dct_delegations dg
-                JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
-                                       AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
-                WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
-                  AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
-                  AND (dg.scope = 'ALL_ROLES'
-                       OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
-                       OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id))))
-    ORDER BY ai.submitted_at
+    SELECT id, engine, request_ref, source_module, template_name, requested_by,
+           submitted_at, amount, current_step, total_steps, current_step_name, acting_for
+    FROM   dct_wf_inbox_v
+    WHERE  user_id = l_uid
+      AND  source_module IN ('CC_REQUEST','CC_REPLENISHMENT')
+    ORDER BY submitted_at
   ) LOOP
     APEX_JSON.open_object;
-    APEX_JSON.write('instanceId',      r.instance_id);
-    APEX_JSON.write('requestRef',      NVL(r.source_record_ref, '-'));
+    APEX_JSON.write('instanceId',      r.id);
+    APEX_JSON.write('requestRef',      r.request_ref);
     APEX_JSON.write('module',          r.source_module);
-    APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
-    APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('templateName',    r.template_name);
+    APEX_JSON.write('requestedBy',     r.requested_by);
+    APEX_JSON.write('requestedAt',     TO_CHAR(dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('amount',          r.amount);
-    APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
-    APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));
-    APEX_JSON.write('currentStepName', NVL(r.step_name, '-'));
+    APEX_JSON.write('currentStep',     r.current_step);
+    APEX_JSON.write('totalSteps',      r.total_steps);
+    APEX_JSON.write('currentStepName', r.current_step_name);
     APEX_JSON.write('actingFor',       r.acting_for);
+    APEX_JSON.write('engine',          r.engine);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
