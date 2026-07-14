@@ -3,6 +3,7 @@
     <div class="page-title" data-bind="text: t('cust.listTitle')"></div>
     <div class="page-subtitle"><span class="mono" data-bind="text: total()"></span>&nbsp;<span data-bind="text: t('cust.listCount')"></span></div>
     <div style="margin-inline-start:auto; display:flex; gap:8px">
+      <button class="btn btn-secondary" data-bind="click: openGenerator, text: t('cust.genTitle')"></button>
       <button class="btn btn-secondary" data-bind="click: openLookup, text: t('cust.fusionLookup')"></button>
       <button class="btn btn-primary" data-bind="click: newCustomer, text: t('cust.newCustomer')"></button>
     </div>
@@ -159,6 +160,94 @@
           <!-- /ko -->
         </div>
         <!-- /ko -->
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ── SoapUI project generator modal ──────────────────────────── -->
+  <!-- ko if: genOpen() -->
+  <div class="modal-overlay">
+    <div class="modal-box" style="max-width:760px">
+      <div class="modal-header">
+        <div class="modal-title" data-bind="text: t('cust.genTitle')"></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeGenerator, text: t('common.close')"></button>
+          <button class="btn btn-primary btn-sm"
+                  data-bind="click: genDownload, disable: !genReady(),
+                             text: genBusy() ? '…' : t('cust.genDownload')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="text-muted" style="margin-bottom:12px" data-bind="text: t('cust.genHint')"></div>
+
+        <div class="form-grid">
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('cust.genEnv')"></div>
+            <select class="form-control" data-bind="value: genEnv">
+              <option value="stage">STAGE (UAT)</option>
+              <option value="prod">PROD</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('cust.genChunk')"></div>
+            <input class="form-control" type="number" min="1" max="500"
+                   data-bind="value: genChunk, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <div class="form-label" data-bind="text: t('cust.genPwd')"></div>
+            <input class="form-control" type="password" autocomplete="new-password"
+                   data-bind="value: genPassword, valueUpdate: 'input',
+                              attr: { placeholder: t('cust.genPwdPh') }">
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:center; margin-top:6px; flex-wrap:wrap">
+          <button class="btn btn-secondary btn-sm" data-bind="click: genTemplate, text: t('cust.genTemplate')"></button>
+          <button class="btn btn-secondary btn-sm" data-bind="click: genChooseFile, text: t('cust.genChoose')"></button>
+          <!-- ko if: genFileName() -->
+          <span class="mono" data-bind="text: genFileName()"></span>
+          <!-- /ko -->
+        </div>
+
+        <!-- ko if: genErrors().length -->
+        <div class="card" style="padding:10px 14px; margin-top:12px; border-inline-start:4px solid #C0392B">
+          <strong data-bind="text: t('cust.genErrors')"></strong>
+          <!-- ko foreach: genErrors() -->
+          <div style="font-size:13px; padding:1px 0" data-bind="text: $data"></div>
+          <!-- /ko -->
+        </div>
+        <!-- /ko -->
+
+        <!-- ko if: genCustomers().length && !genErrors().length -->
+        <div class="card" style="padding:10px 14px; margin-top:12px; border-inline-start:4px solid var(--brand)">
+          <span data-bind="text: t('cust.genSummary', [genCustomers().length])"></span>
+          <div class="data-table-wrap" style="max-height:220px; overflow:auto; margin-top:8px">
+            <table class="data-table">
+              <thead><tr>
+                <th data-bind="text: t('cust.colName')"></th>
+                <th data-bind="text: t('cust.colOper')"></th>
+                <th data-bind="text: t('cust.colLegacy')"></th>
+                <th data-bind="text: t('cust.colVat')"></th>
+              </tr></thead>
+              <tbody>
+                <!-- ko foreach: genCustomers().slice(0, 50) -->
+                <tr>
+                  <td data-bind="text: $data.CUSTOMER_NAME"></td>
+                  <td class="mono" data-bind="text: $data.TRX_OPER"></td>
+                  <td class="mono" data-bind="text: $data.LEGACY_CUSTOMER_NUMBER || '—'"></td>
+                  <td class="mono" data-bind="text: $data.VAT_NUMBER || '—'"></td>
+                </tr>
+                <!-- /ko -->
+              </tbody>
+            </table>
+          </div>
+          <!-- ko if: genCustomers().length > 50 -->
+          <div class="text-muted" style="font-size:12px; margin-top:6px"
+               data-bind="text: t('cust.genMore', [genCustomers().length - 50])"></div>
+          <!-- /ko -->
+        </div>
         <!-- /ko -->
       </div>
     </div>

@@ -49,6 +49,8 @@ CC-specific DB notes:
 
 ## 5. Deployment history
 
+- **2026-07-14 — Notifications page KO binding fix (APP_VERSION 4.5.16→4.5.17, webtier release 20260714201814):** `notifications.html` bound the type badge as bare `notifType || notif_type`, but the notifications handler emits the key `type` — KO threw `notifType is not defined` and aborted the list foreach. Fixed to `$data.notifType || $data.type` (same fix in FL/HR/CC/TM; see FL deployment-notes 2026-07-14 hotfix round). Frontend only.
+
 - **2026-06-15 — Region header flush + missing region headers (CC APP_VERSION 4.5.3→4.5.4; shared/ change → all 8 apps bumped):** shared `platform.css` flush rule (see Admin/FL notes) removes the gap between every in-card header and the border. Added/normalized themed headers: requestDetail (Request Details; flushed Documents), requestNew (Request Details on step 2; flushed doc step), replenishmentDetail (normalized Merchant Expense Lines into `.section-heading-row` + Submission Details), myCard (Card Details — new `card.details` i18n key EN+AR). Frontend/CSS only — no DB/ORDS change.
 - 2026-06-12 (Phase 4): `cc.rest` + 13-view JET app deployed live; seeded cards incl. CC-2026-00002 (20,000 AED, SHAIKHA.ALSUWAIDI); UAT 29 cases (29P automated run).
 - 2026-06-13: wizard step buttons moved into the page header; register/proxy/replenishment modal footers moved into modal headers; inline approval confirm moved beside its label (platform top-right rule). Frontend-only; bump APP_VERSION on next deploy.

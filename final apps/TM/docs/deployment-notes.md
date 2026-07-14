@@ -5,6 +5,8 @@ Canonical platform-wide SQLcl/ORDS rules live in **Admin → docs/deployment-not
 
 ## 0. Deployment history (most recent first)
 
+- **2026-07-14 — Notifications page KO binding fix (APP_VERSION 4.8.11→4.8.12, webtier release 20260714201814):** `notifications.html` bound the type badge as bare `notifType || notif_type`, but the notifications handler emits the key `type` — KO threw `notifType is not defined` and aborted the list foreach. Fixed to `$data.notifType || $data.type` (same fix in FL/HR/CC/TM; see FL deployment-notes 2026-07-14 hotfix round). Frontend only.
+
 - **2026-06-20 — Reporting-Cycle engine + Executive Visibility + Roles (Phase A). APP_VERSION → 4.7.0.**
   - **Business need:** management visibility across all DCT departments/sectors; per-team reporting cadence with pre-deadline reminders + executive consolidation; strict per-team isolation with explicit cross-team exceptions; admin-definable roles; team parent-child hierarchy.
   - **New DB scripts (run in order, after the base install):**

@@ -35,8 +35,8 @@
         <div class="notif-title" data-bind="text: title"></div>
         <div class="notif-body"  data-bind="text: body"></div>
         <div style="display:flex;align-items:center;gap:8px;margin-top:6px">
-          <div class="notif-time"  data-bind="text: new Date(createdAt || created_at).toLocaleString('en-GB')"></div>
-          <span data-bind="class: $parent.typeClass(notifType || notif_type), text: notifType || notif_type || '—'"></span>
+          <div class="notif-time"  data-bind="text: new Date($data.createdAt || $data.created_at).toLocaleString('en-GB')"></div>
+          <span data-bind="class: $parent.typeClass($data.notifType || $data.type), text: $data.notifType || $data.type || '—'"></span>
         </div>
       </div>
     </div>

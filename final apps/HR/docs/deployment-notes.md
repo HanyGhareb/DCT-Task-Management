@@ -46,6 +46,8 @@ HR-specific DB notes:
 
 ## 5. Deployment history
 
+- **2026-07-14 — Notifications page KO binding fix (APP_VERSION 4.6.11→4.6.12, webtier release 20260714201814):** `notifications.html` bound the type badge as bare `notifType || notif_type`, but the notifications handler emits the key `type` — KO threw `notifType is not defined` and aborted the list foreach. Fixed to `$data.notifType || $data.type` (same fix in FL/HR/CC/TM; see FL deployment-notes 2026-07-14 hotfix round). Frontend only.
+
 - **2026-06-15 — Region header flush + missing region headers (HR APP_VERSION 4.5.3→4.5.4; shared/ change → all 8 apps bumped):** shared `platform.css` flush rule (see Admin/FL notes) removes the gap between every in-card header and the border. Normalized the four employeeDetail tab faux-headers (Assignment History / Employment Contracts / Salary History / Employee Documents) into themed `.section-heading-row`s with the add-buttons in `.region-actions`; the Overview tab's existing `.section-heading` flushes automatically. Frontend/CSS only — no DB/ORDS change.
 - DB + ORDS 100% deployed (`hr.rest` at `/ords/admin/hr/`); JET SPA live; APEX pages pending in Builder.
 - 2026-06-11: UAT lifecycle data E1101-03; hr-employees server pagination (Phase 3).

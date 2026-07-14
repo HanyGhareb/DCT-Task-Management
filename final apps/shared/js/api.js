@@ -35,6 +35,23 @@ define(['services/config', 'shared/toast'], function (config, toast) {
     }
   }
 
+  /* Which ORDS module does this call go to?
+       undefined → the app's own module   (config.apiBase, e.g. /ords/admin/fl)
+       'auth'    → the Admin/shared module (config.authBase, e.g. /ords/admin/dct)
+       'wf'      → the WORKFLOW platform   (/ords/admin/wf)
+
+     /wf/ is cross-module by design — it is the one worklist, spanning every app —
+     so it is NOT any single app's apiBase. Rather than add a wfBase to all ten
+     config.js files (and then discover the one that was missed at runtime), derive
+     it by swapping the module segment. config.wfBase still wins if an app sets it. */
+  function resolveBase(which) {
+    if (which === 'auth' && config.authBase) return config.authBase;
+    if (which !== 'wf') return config.apiBase;
+    if (config.wfBase) return config.wfBase;
+    var root = config.authBase || config.apiBase || '';
+    return root.replace(/\/(dct|pc|dt|hr|fl|cc|ar|tm|atd|gl|rpt|ap)$/, '/wf');
+  }
+
   function call(method, path, body, opts) {
     opts = opts || {};
     /* No Content-Type on body-less requests — ORDS rejects a DELETE that
@@ -43,7 +60,7 @@ define(['services/config', 'shared/toast'], function (config, toast) {
     var token = getToken();
     if (token) headers['Authorization'] = 'Bearer ' + token;
 
-    var base = (opts.base === 'auth' && config.authBase) ? config.authBase : config.apiBase;
+    var base = resolveBase(opts.base);
 
     /* 401 on /auth/* is a credential failure the caller must render inline
        (e.g. "Invalid credentials" on the login form) — redirecting there

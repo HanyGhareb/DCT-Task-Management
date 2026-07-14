@@ -1,0 +1,49 @@
+<!-- shared/js/components/wfActionBar.html — <wf-action-bar>
+     Renders the outcomes THIS STEP offers. There is no Approve/Reject in this
+     markup, on purpose: the buttons are data. -->
+<div class="wf-bar" data-bind="css: { 'wf-bar--sm': isSmall }">
+
+  <!-- ko foreach: outcomes -->
+  <button type="button"
+          class="btn btn-sm wf-oc"
+          data-bind="click: function () { return $component.pick($data); },
+                     css: 'wf-oc--' + ($data.color || 'default'),
+                     attr: { title: $component.hint($data),
+                             disabled: $component.busy() },
+                     text: $component.label($data)"></button>
+  <!-- /ko -->
+
+  <!-- ko if: !outcomes().length -->
+  <span class="wf-bar-empty" data-bind="text: $root.t('wf.noActions')"></span>
+  <!-- /ko -->
+</div>
+
+<!-- comment prompt — shown when the chosen outcome requires a reason -->
+<!-- ko if: prompting() -->
+<div class="modal-overlay" data-bind="click: cancel">
+  <div class="modal-box wf-cmt" data-bind="click: function () { return true; }">
+    <div class="modal-header">
+      <h3 data-bind="text: promptTitle()"></h3>
+      <div class="region-actions">
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: cancel, text: $root.t('common.cancel')"></button>
+        <button type="button" class="btn btn-primary btn-sm"
+                data-bind="click: confirm,
+                           attr: { disabled: busy() || !commentOk() },
+                           text: $root.t('common.confirm')"></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('wf.comments')"></label>
+        <textarea class="form-control" rows="4"
+                  data-bind="value: comment, valueUpdate: 'input',
+                             attr: { placeholder: $root.t('wf.commentsPh') }"></textarea>
+        <!-- ko if: commentRequired() && !commentOk() -->
+        <div class="form-hint wf-req" data-bind="text: $root.t('wf.commentRequired')"></div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+</div>
+<!-- /ko -->

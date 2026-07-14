@@ -18,6 +18,7 @@
 --   POST   customers/:id/sync    poll Fusion for PROCESSED + capture code
 --   GET    customers/wssearch    live gateway customer query (dup check)
 --   GET    customers/lovs        all AR_CUST_* value sets + countries + ws flags
+--   GET    customers/soapui-config  gateway env config for the SoapUI generator (AR_ADMIN)
 -- =============================================================================
 
 ALTER SESSION SET CURRENT_SCHEMA = ADMIN;
@@ -572,6 +573,39 @@ BEGIN
 
   APEX_JSON.write('wsLive', NVL(dct_ar_ws_pkg.get_ws_setting('AR_WS_LIVE'), 'N') = 'Y');
   APEX_JSON.write('wsEnv',  NVL(dct_ar_ws_pkg.get_ws_setting('AR_WS_ENV'), 'STAGE'));
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+]');
+
+    -- =========================================================================
+    -- CUSTOMERS -- SoapUI generator config (endpoint + key + password per env;
+    -- AR_ADMIN / SYS_ADMIN only -- these are gateway credentials)
+    -- =========================================================================
+    def_tpl('customers/soapui-config');
+    def_plsql('customers/soapui-config', 'GET', q'[
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT (dct_auth.has_role(l_user, 'AR_ADMIN') OR dct_auth.has_role(l_user, 'SYS_ADMIN')) THEN
+    dct_rest.err(403, 'AR_ADMIN role required'); RETURN;
+  END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('username', NVL(dct_ar_ws_pkg.get_ws_setting('AR_WS_USER'), 'ADGE_DCT_INTG_SVC'));
+  APEX_JSON.open_object('stage');
+  APEX_JSON.write('endpoint', dct_ar_ws_pkg.get_ws_setting('AR_WS_URL_STAGE'));
+  APEX_JSON.write('apikey',   dct_ar_ws_pkg.get_ws_setting('AR_WS_APIKEY_STAGE'));
+  APEX_JSON.write('password', dct_ar_ws_pkg.get_ws_setting('AR_WS_PASSWORD_STAGE'));
+  APEX_JSON.close_object;
+  APEX_JSON.open_object('prod');
+  APEX_JSON.write('endpoint', dct_ar_ws_pkg.get_ws_setting('AR_WS_URL_PROD'));
+  APEX_JSON.write('apikey',   dct_ar_ws_pkg.get_ws_setting('AR_WS_APIKEY_PROD'));
+  APEX_JSON.write('password', dct_ar_ws_pkg.get_ws_setting('AR_WS_PASSWORD_PROD'));
+  APEX_JSON.close_object;
   APEX_JSON.close_object;
 EXCEPTION
   WHEN OTHERS THEN dct_rest.err(500, SQLERRM);

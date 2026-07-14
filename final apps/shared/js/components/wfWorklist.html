@@ -1,0 +1,97 @@
+<!-- shared/js/components/wfWorklist.html — <wf-worklist>
+     ONE list, every module, both engines. Requirement 4. -->
+<div class="wf-wl">
+
+  <div class="section-heading-row">
+    <h2 class="section-heading" data-bind="text: heading()"></h2>
+    <div class="region-actions">
+      <!-- ko if: modules().length > 1 -->
+      <select class="form-control wf-wl-filter"
+              data-bind="options: modules,
+                         optionsText: function (m) { return $component.moduleLabel(m); },
+                         value: filter"></select>
+      <!-- /ko -->
+      <button type="button" class="btn btn-secondary btn-sm"
+              data-bind="click: load, attr: { disabled: loading() },
+                         text: $root.t('common.refresh')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 4, cols: 6"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+
+    <!-- ko if: !rows().length -->
+    <div class="empty-state">
+      <div class="empty-state-icon">&#10003;</div>
+      <p data-bind="text: $root.t('wf.empty')"></p>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: rows().length -->
+    <div class="data-table-wrap">
+      <table class="data-table wf-wl-table">
+        <thead>
+          <tr>
+            <th data-bind="text: $root.t('wf.request')"></th>
+            <th data-bind="text: $root.t('wf.module')"></th>
+            <th data-bind="text: $root.t('wf.requestedBy')"></th>
+            <th class="wf-num" data-bind="text: $root.t('wf.amount')"></th>
+            <th data-bind="text: $root.t('wf.step')"></th>
+            <th data-bind="text: $root.t('wf.due')"></th>
+            <th class="wf-actions-col" data-bind="text: $root.t('wf.actions')"></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: rows">
+          <tr data-bind="css: { 'wf-overdue': $data.overdue === 'Y' }">
+            <td>
+              <a href="#" class="wf-ref"
+                 data-bind="text: $data.requestRef,
+                            click: function () { return $component.open($data); }"></a>
+              <!-- a delegate is acting FOR someone: say whose work this is -->
+              <!-- ko if: $data.actingFor -->
+              <span class="badge wf-badge-deleg"
+                    data-bind="text: $root.t('wf.actingFor') + ' ' + $data.actingFor"></span>
+              <!-- /ko -->
+            </td>
+            <td>
+              <span data-bind="text: $component.moduleLabel($data.module)"></span>
+              <!-- the engine badge is for US during the migration, not for users.
+                   It only appears while both engines are live. -->
+              <!-- ko if: $component.showEngine() -->
+              <span class="badge wf-badge-eng"
+                    data-bind="text: $data.engine,
+                               css: 'wf-eng--' + $data.engine.toLowerCase()"></span>
+              <!-- /ko -->
+            </td>
+            <td data-bind="text: $data.requestedBy"></td>
+            <td class="wf-num"
+                data-bind="text: $component.money($data.amount, $data.currency)"></td>
+            <td>
+              <span data-bind="text: $data.currentStepName"></span>
+              <span class="wf-step-of"
+                    data-bind="text: $data.currentStep + '/' + $data.totalSteps"></span>
+            </td>
+            <td>
+              <!-- ko if: $data.dueAt -->
+              <span data-bind="text: $data.dueAt,
+                               css: { 'wf-due-late': $data.overdue === 'Y' }"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.dueAt -->
+              <span class="wf-muted">&ndash;</span>
+              <!-- /ko -->
+            </td>
+            <td class="wf-actions-col">
+              <wf-action-bar params="task: $data, small: true,
+                                     onDone: $component.afterAction"></wf-action-bar>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+
+  <!-- /ko -->
+</div>

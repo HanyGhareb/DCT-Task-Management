@@ -56,6 +56,20 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
                    WHEN 'gl'  THEN 'GL'
                    WHEN 'rpt' THEN 'REPORTING'
                    WHEN 'ap'  THEN 'AP'
+                   -- ---------------------------------------------------------
+                   -- /wf/ IS DELIBERATELY EXEMPT. DO NOT MAP IT TO A MODULE.
+                   -- The workflow platform's worklist is CROSS-MODULE by
+                   -- definition: it shows a user every task they can act on, in
+                   -- every module. Mapping 'wf' to any module_code would 403 the
+                   -- worklist for everyone who lacks that module's role -- i.e.
+                   -- almost everyone. Authorization for /wf/ is PER TASK, inside
+                   -- the engine (the participant check in dct_wf_engine.can_act),
+                   -- which is strictly stronger than a per-module gate.
+                   -- This WHEN is redundant with the ELSE below, ON PURPOSE: the
+                   -- bare omission looks like a bug and invites someone to "fix"
+                   -- it. This line is the fix's refusal note.
+                   WHEN 'wf'  THEN NULL
+                   -- ---------------------------------------------------------
                    ELSE NULL   -- 'dct' shared platform + unknown segments: exempt
                  END;
         IF l_mod IS NULL THEN RETURN 0; END IF;

@@ -31,5 +31,8 @@ function (config, api) {
 
     // all AR_CUST_* value sets + countries + ws mode flags
     lovs:   function ()            { return api.get('/customers/lovs'); },
+
+    // gateway env config for the SoapUI generator (AR_ADMIN/SYS_ADMIN only)
+    soapuiConfig: function ()      { return api.get('/customers/soapui-config'); },
   };
 });

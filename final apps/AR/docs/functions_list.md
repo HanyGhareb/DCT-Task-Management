@@ -65,6 +65,9 @@ Auth + shell are shared (`shared/` layer). The app boots into the dashboard.
 **AR Customer form** (`arCustomerForm`) — full 67-field CreateCustomers form (8 sections; the wire payload adds server-stamped `ORG_CODE` + `SOURCE_SYSTEM` = 69 attributes), required markers, LOV dropdowns (incl. countries), read-only once sent.
 - `saveDraft` · `saveAndSubmit` · `back` · `lovText` · client required-field validation.
 
+**SoapUI Generator** (modal on `arCustomers`, AR_ADMIN/SYS_ADMIN) — Excel upload → downloadable SoapUI project XML for bulk CreateCustomers (client-side via SheetJS + `services/soapuiGen.js`; credentials fetched from `customers/soapui-config`, never bundled).
+- `openGenerator` / `closeGenerator` · `genTemplate` (Excel template download) · `genChooseFile` (parse + validate, per-row errors) · `genDownload` (env STAGE/PROD, chunk size, password override; blocks CHANGE_ME) · `genReady`.
+
 ---
 
 ## API Endpoints (ORDS)
@@ -88,7 +91,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | Stats | `GET stats/dashboard` · `GET stats/events/:id` |
 | Settings & Providers | `GET settings/` · `PUT settings/` · `GET providers/` · `POST providers/` · `PUT providers/:id` · `DELETE providers/:id` |
 | Meta | `GET meta/lookups` |
-| AR Customers (db/10, ADDITIVE — re-run after any 05 re-run) | `GET customers/` · `POST customers/` · `GET customers/:id` · `PUT customers/:id` · `DELETE customers/:id` · `POST customers/:id/submit` · `POST customers/:id/sync` · `GET customers/wssearch` · `GET customers/lovs` |
+| AR Customers (db/10, ADDITIVE — re-run after any 05 re-run) | `GET customers/` · `POST customers/` · `GET customers/:id` · `PUT customers/:id` · `DELETE customers/:id` · `POST customers/:id/submit` · `POST customers/:id/sync` · `GET customers/wssearch` · `GET customers/lovs` · `GET customers/soapui-config` (AR_ADMIN) |
 
 ---
 
@@ -102,6 +105,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | `arService` | events, P&L lines, files, AI jobs, what-if, categories. |
 | `settingService` | module/system settings + AI providers. |
 | `arCustomerService` | AR Customer submissions CRUD + submit/sync + Fusion lookup + form LOVs. |
+| `soapuiGen` | client-side Excel→SoapUI-project generator (wire catalog, parse/validate, envelope + project XML, template) — keep in sync with `AR/tools/soapui-customers/generate_soapui_customers.py`. |
 
 ---
 

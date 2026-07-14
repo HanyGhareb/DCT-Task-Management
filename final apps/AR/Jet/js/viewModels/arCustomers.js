@@ -1,5 +1,5 @@
-define(['knockout', 'services/arCustomerService', 'shared/i18n', 'shared/toast'],
-function (ko, custService, i18n, toast) {
+define(['knockout', 'services/arCustomerService', 'services/soapuiGen', 'shared/i18n', 'shared/toast', 'shared/docUpload'],
+function (ko, custService, soapuiGen, i18n, toast, docUpload) {
   'use strict';
 
   function ArCustomersViewModel() {
@@ -153,6 +153,96 @@ function (ko, custService, i18n, toast) {
     // stable key/value pairs for rendering arbitrary Fusion row shapes
     self.rowPairs = function (row) {
       return Object.keys(row).map(function (k) { return { k: k, v: row[k] }; });
+    };
+
+    /* ── SoapUI project generator (Excel -> importable project XML) ── */
+    self.genOpen      = ko.observable(false);
+    self.genEnv       = ko.observable('stage');       // stage | prod
+    self.genChunk     = ko.observable('50');
+    self.genPassword  = ko.observable('');            // Basic-auth override
+    self.genFileName  = ko.observable('');
+    self.genCustomers = ko.observableArray([]);
+    self.genErrors    = ko.observableArray([]);
+    self.genBusy      = ko.observable(false);
+    var genConfig = null;                              // soapui-config payload
+
+    self.openGenerator = function () {
+      self.genFileName(''); self.genCustomers([]); self.genErrors([]);
+      self.genPassword('');
+      self.genOpen(true);
+      if (!genConfig) {
+        custService.soapuiConfig().then(function (cfg) {
+          genConfig = cfg;
+        }).catch(function (err) {
+          self.genOpen(false);
+          toast.error((err && err.status === 403)
+            ? self.t('cust.genForbidden')
+            : ((err && err.message) || self.t('empty.loadFailed')));
+        });
+      }
+    };
+    self.closeGenerator = function () { self.genOpen(false); };
+
+    self.genTemplate = function () {
+      require(['xlsx'], function (XLSX) {
+        soapuiGen.downloadTemplate(XLSX);
+      }, function () { toast.error(self.t('cust.genLibFail')); });
+    };
+
+    self.genChooseFile = function () {
+      docUpload.choose({ accept: '.xlsx,.xls', maxMb: 10 }).then(function (file) {
+        if (!file) { return; }
+        file.arrayBuffer().then(function (buf) {
+          require(['xlsx'], function (XLSX) {
+            try {
+              var res = soapuiGen.parseWorkbook(XLSX, buf);
+              self.genFileName(file.name);
+              self.genCustomers(res.customers);
+              self.genErrors(res.errors);
+              if (!res.errors.length && res.customers.length) {
+                toast.success(self.t('cust.genParsed', [res.customers.length]));
+              }
+            } catch (e) { toast.error(e.message || String(e)); }
+          }, function () { toast.error(self.t('cust.genLibFail')); });
+        });
+      });
+    };
+
+    self.genReady = ko.computed(function () {
+      return self.genCustomers().length > 0 && self.genErrors().length === 0 && !self.genBusy();
+    });
+
+    self.genDownload = function () {
+      if (!self.genReady()) { return; }
+      if (!genConfig) { toast.error(self.t('empty.loadFailed')); return; }
+      var envName = self.genEnv() === 'prod' ? 'PROD' : 'STAGE';
+      var env = genConfig[self.genEnv()] || {};
+      var pwd = self.genPassword() || env.password || '';
+      if (!env.endpoint || !env.apikey) { toast.error(self.t('cust.genNoConfig')); return; }
+      if (!pwd || pwd === 'CHANGE_ME') { toast.error(self.t('cust.genNoPwd')); return; }
+      self.genBusy(true);
+      try {
+        var xml = soapuiGen.buildProject(self.genCustomers(), {
+          envName:  envName,
+          endpoint: env.endpoint,
+          apikey:   env.apikey,
+          username: genConfig.username,
+          password: pwd,
+          chunk:    parseInt(self.genChunk(), 10) || 50,
+        });
+        var blob = new Blob([xml], { type: 'application/xml' });
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = 'DCT-CreateCustomers-' + envName + '-soapui-project.xml';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function () { URL.revokeObjectURL(a.href); }, 5000);
+        toast.success(self.t('cust.genDone'));
+      } catch (e) {
+        toast.error(e.message || String(e));
+      }
+      self.genBusy(false);
     };
 
     self.reload();

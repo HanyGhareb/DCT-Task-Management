@@ -53,6 +53,16 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+- **2026-07-08 — SoapUI Generator in the UI (APP_VERSION 4.7.0):** AR Customers page gains a
+  **SoapUI Generator** modal — upload the filled Excel template (SheetJS client-side parse,
+  per-row required-field validation, defaults auto-applied) and download a ready-to-import
+  SoapUI project XML for bulk `CreateCustomers` (env STAGE/PROD select, chunking, password
+  override). New `js/services/soapuiGen.js` (browser port of
+  `tools/soapui-customers/generate_soapui_customers.py` — **keep the two in sync**) + additive
+  ORDS `GET customers/soapui-config` in `db/10` (re-run of 10; endpoint is **AR_ADMIN/SYS_ADMIN
+  gated** — it returns gateway credentials; generation refuses a stored CHANGE_ME password).
+  Browser smoke 15/15 (incl. 403 for non-admins, bad-workbook error surfacing, downloaded XML
+  reconciles: 3 postCustomerData, escaping/dates/defaults).
 - **2026-07-08 — AR Customer (DoF Fusion Receivables SOAP) — APP_VERSION 4.6.0:**
   new AR Customers pages (`arCustomers` list + `arCustomerForm`, 67 form fields / 69 wire
   attributes, 8 sections, LOV defaults, EN/AR) over the government API gateway

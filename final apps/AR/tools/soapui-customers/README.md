@@ -7,6 +7,10 @@ pre-wired (one `<postCustomerData>` per Excel row).
 
 Wire spec: `final apps/AR/docs/ws/receivables-customer-ws.md`.
 
+> The AR JET app has the same generator built into the **AR Customers** page
+> (SoapUI Generator button, AR_ADMIN only) — `Jet/js/services/soapuiGen.js` is a
+> browser port of this script; **keep the two in sync** when the wire catalog changes.
+
 ## Requirements
 
 Python 3.8+ with `openpyxl` (`pip install openpyxl`). SoapUI 5.x on your machine.
