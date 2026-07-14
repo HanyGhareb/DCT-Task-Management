@@ -24,6 +24,29 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-14 — Briefing Book now honours ALL page filters (GL v1.22.0, DEPLOYED + verified).**
+  User review: the book ignored most page parameters. Now `runBuBook` sends the FULL butil
+  filter set — Year, **Period (YTD)**, Project type, Sector, **Chapter**, Cost center, **Project,
+  Task, Expenditure type, Search** — and the report applies them with the page's exact predicate
+  semantics (sector/chapter/type exact; cc/project/task/etype/search contains-match, project on
+  number OR name), so the book always equals the page. Pieces: `db/11` bridge forwards the new
+  params + validates `period` (MM-YYYY within year → 400); `reporting/db/21` seed rebuilt (all
+  9 binds in every section, line sections join `dct_butil_scope_v` on the FULL fact key
+  project+task+etype, GRN register rebased to the page's receipt-date year basis, param spec +
+  LOVs for chapter/etype); `db/v2/39` scope view + `chapter`/`expenditure_type` cols and the
+  AP/PO/PR line views honour `GL_CTX.BUTIL_END` (same date bases as 37's fact CTEs; unset =
+  unchanged); runner MULTI spec gained **`pre_sql`/`post_sql` hooks** (set/ALWAYS-clear the
+  period context — the worker session is reused across runs); template cover/Part-bands/insights
+  print the applied scope and the pacing clock stops at the period end. **Also fixed a real
+  over-count**: ATD `po_headers`/`po_lines` attribute joins in the registers multiplied amounts
+  on duplicate rows (76 dup po_lines keys → GRN +35.5M, PO +59M platform-wide) — all 39/21
+  attribute joins now de-duped (the same fan-out rule 07's drills already follow). Verified:
+  SQL reconcile **20/20 PASS** (register Σ = Part-1 KPI to the fils across 5 filter combos incl.
+  YTD periods), bridge E2E run 67 (Tourism + 06-2026: every KPI tile = the page's `/butil`
+  totals, cover chips + 50%-elapsed pacing correct, bad-period 400s), browser smoke ALL PASS
+  (default current-month period + sector flow from the UI into the PDF). Deploy: 39+21 via
+  python-oracledb on vm180, `datasource.py` to vm180-182 + worker restarts, GL/db/11 via SQLcl,
+  template re-upload via ORDS.
 - **2026-07-14 — Web-tier release `20260714045940` pushed** (`SSH_USER=opc bash
   webtier/deploy_frontend.sh 129.151.159.189`): GL v1.21.0 (Briefing Book button) + BI 1.10.4
   live; verified `APP_VERSION` + `runBuBook` served from https://129.151.159.189/.

@@ -9,9 +9,11 @@
 -- (project_number else #project_id ; task_number else #task_id), so every
 -- report part reconciles with the utilization figures.
 --
---   DCT_BUTIL_SCOPE_V      : distinct sector / project-type / cost-centre
---                            attributes per budget_year x project x task --
---                            the report's sector filter joins through this.
+--   DCT_BUTIL_SCOPE_V      : distinct sector / chapter / project-type /
+--                            cost-centre attributes per budget_year x project
+--                            x task x expenditure-type -- report scope filters
+--                            join through this (BUDGET_UTIL_BOOK mirrors ALL
+--                            GL butil page filters against it, 2026-07-14).
 --   DCT_UNPAID_INVOICES_V  : project-costed AP invoices with a computed
 --                            payment status (Unpaid / Partially Paid / Paid,
 --                            from invoice_amount_paid vs invoice_amount) at
@@ -38,21 +40,29 @@
 -- prod.dct_budget_utilization_v (db/v2/37). Re-run AFTER 37 whenever 32/36
 -- are re-run. Run with the prod. prefix in a fresh session; ADMIN synonyms
 -- are NOT needed (the Python engine queries prod.* directly).
+-- YTD period (2026-07-14): the AP / open-PO / reserved-PR views honour
+-- SYS_CONTEXT('GL_CTX','BUTIL_END') with the SAME date bases as the db/v2/37
+-- fact CTEs (AP accounting_date, PO budget_date + receipt-dated GRN netting,
+-- PR budget_date). Context unset = full year -- existing consumers unaffected.
 -- ===========================================================================
 SET DEFINE OFF
 SET SQLBLANKLINES ON
 
 PROMPT === 1. DCT_BUTIL_SCOPE_V ===
+-- chapter + expenditure_type added 2026-07-14 so BUDGET_UTIL_BOOK can mirror
+-- the GL butil page's full filter set at the fact grain (triple-key scope).
 CREATE OR REPLACE VIEW prod.dct_butil_scope_v AS
 SELECT DISTINCT
        budget_year,
        sector,
+       chapter,
        project_type,
        cost_centre,
        department,
        project_number,
        project_name,
-       task_number
+       task_number,
+       expenditure_type
 FROM prod.dct_budget_utilization_v;
 
 PROMPT === 2. DCT_UNPAID_INVOICES_V ===
@@ -95,6 +105,10 @@ LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
 WHERE NVL(d.reversal_indicator,'N') <> 'Y'
   AND d.project_id IS NOT NULL
   AND i.validation_status IN ('Validated','Unpaid','Available')
+  -- YTD window (2026-07-14): honours GL_CTX.BUTIL_END exactly like the
+  -- db/v2/37 f_ap fact CTE; unset context = full year (consumers unaffected)
+  AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+       OR d.accounting_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
 GROUP BY EXTRACT(YEAR FROM d.accounting_date),
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(d.project_id)),
          COALESCE(tk.task_number,
@@ -168,8 +182,16 @@ SELECT
 FROM po_dist b
 JOIN grn g               ON g.po_distribution_id = b.po_distribution_id
 LEFT JOIN ap_per_dist a  ON a.po_distribution_id = b.po_distribution_id
-LEFT JOIN prod.po_headers h ON h.po_header_id = b.po_header_id
-LEFT JOIN prod.po_lines  pl ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id
+-- ATD-loaded po_headers/po_lines can hold duplicate rows per key (76 dup
+-- po_lines keys on 2026-07-14): attribute joins MUST be deduped or every
+-- duplicate multiplies the amount row (the 37 fact CTEs never join them)
+LEFT JOIN (SELECT po_header_id, MAX(order_number) AS order_number,
+                  MAX(supplier_name) AS supplier_name
+           FROM prod.po_headers GROUP BY po_header_id) h
+       ON h.po_header_id = b.po_header_id
+LEFT JOIN (SELECT po_header_id, po_line_id, MAX(line) AS line
+           FROM prod.po_lines GROUP BY po_header_id, po_line_id) pl
+       ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id
 LEFT JOIN proj pj ON pj.project_id = b.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
 WHERE b.project_id IS NOT NULL
@@ -203,6 +225,10 @@ grn_per_dist AS (
   SELECT po_distribution_id,
          SUM(ledger_amount) AS received_aed
   FROM prod.grn_all_v2
+  -- YTD window (2026-07-14): netting receipts bounded like 37's grn_per_dist
+  WHERE (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+         OR NVL(accounted_date, transaction_date)
+            < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
   GROUP BY po_distribution_id
 )
 SELECT
@@ -222,14 +248,22 @@ SELECT
   GREATEST(b.line_aed - NVL(g.received_aed,0), 0)                       AS open_aed
 FROM po_dist b
 LEFT JOIN grn_per_dist g ON g.po_distribution_id = b.po_distribution_id
-LEFT JOIN prod.po_headers h ON h.po_header_id = b.po_header_id
-LEFT JOIN prod.po_lines  pl ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id
+-- deduped attribute joins (duplicate ATD rows multiply open_aed otherwise)
+LEFT JOIN (SELECT po_header_id, MAX(order_number) AS order_number,
+                  MAX(supplier_name) AS supplier_name, MAX(status) AS status
+           FROM prod.po_headers GROUP BY po_header_id) h
+       ON h.po_header_id = b.po_header_id
+LEFT JOIN (SELECT po_header_id, po_line_id, MAX(line) AS line
+           FROM prod.po_lines GROUP BY po_header_id, po_line_id) pl
+       ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id
 LEFT JOIN proj pj ON pj.project_id = b.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
 WHERE b.funds_status IN ('Reserved','Partially Liquidated')
   AND NVL(h.status,'x') <> 'Finally Closed'   -- final close releases the un-received remainder (2026-07-11)
   AND b.project_id IS NOT NULL
   AND b.charge_account IS NOT NULL
+  AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+       OR b.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
   AND GREATEST(b.line_aed - NVL(g.received_aed,0), 0) > 0.005;
 
 PROMPT === 5. DCT_RESERVED_PR_LINES_V ===
@@ -256,16 +290,20 @@ SELECT
   d.distribution_amount * NVL(cc.exchange_rate_to_aed,1)                AS amount_aed,
   d.funds_status
 FROM prod.pr_distributions d
-LEFT JOIN prod.pr_headers h ON h.pr_header_id = d.pr_header_id
+LEFT JOIN (SELECT pr_header_id, MAX(description) AS description
+           FROM prod.pr_headers GROUP BY pr_header_id) h
+       ON h.pr_header_id = d.pr_header_id
 LEFT JOIN prod.dct_currency_codes cc ON cc.currency_code = d.currency_code
 LEFT JOIN proj pj ON pj.project_id = d.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
 WHERE d.funds_status = 'Reserved'
   AND d.project_id IS NOT NULL
-  AND d.charge_account IS NOT NULL;
+  AND d.charge_account IS NOT NULL
+  AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+       OR d.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1);
 
 PROMPT ============================================================
-PROMPT  38_dct_rpt_butil_details.sql complete.
+PROMPT  39_dct_rpt_butil_details.sql complete.
 PROMPT  5 views: butil scope, unpaid invoices, uninvoiced GRN,
 PROMPT  open PO lines, reserved PR lines.
 PROMPT ============================================================

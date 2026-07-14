@@ -13,6 +13,18 @@
 {%- set GRN = S.grn_lines.data if S.grn_lines else [] -%}
 {%- set PO  = S.open_po.data if S.open_po else [] -%}
 {%- set PR  = S.open_pr.data if S.open_pr else [] -%}
+{#- applied report scope — mirrors the GL Budget Utilization page filters -#}
+{%- set flt = [] -%}
+{%- if params.period %}{% set _ = flt.append('YTD through ' ~ params.period) %}{% endif -%}
+{%- if params.sector %}{% set _ = flt.append('Sector: ' ~ params.sector) %}{% endif -%}
+{%- if params.chapter %}{% set _ = flt.append('Chapter: ' ~ params.chapter) %}{% endif -%}
+{%- if params.projecttype %}{% set _ = flt.append('Project type: ' ~ params.projecttype) %}{% endif -%}
+{%- if params.costcenter %}{% set _ = flt.append('Cost centre: ' ~ params.costcenter) %}{% endif -%}
+{%- if params.project %}{% set _ = flt.append('Project: ' ~ params.project) %}{% endif -%}
+{%- if params.task %}{% set _ = flt.append('Task: ' ~ params.task) %}{% endif -%}
+{%- if params.etype %}{% set _ = flt.append('Expenditure type: ' ~ params.etype) %}{% endif -%}
+{%- if params.search %}{% set _ = flt.append('Search: ' ~ params.search) %}{% endif -%}
+{%- set scopeline = flt|join(' · ') if flt else 'Whole organisation · Full year' -%}
 {%- macro money(v) -%}
   {%- if v is none %}&mdash;
   {%- elif v|abs >= 1000000000 %}{{ (v/1000000000)|round(2)|fmt }}&nbsp;B
@@ -161,21 +173,33 @@
   <div class="cv-band"></div>
   <div class="cv-org">i-Finance &middot; Reporting Platform</div>
   <div class="cv-title">Budget Utilization<br>Briefing Book</div>
-  <div class="cv-sub">Budget Year {{ params.year }}</div>
+  <div class="cv-sub">Budget Year {{ params.year }}{% if params.period %} &mdash; YTD through {{ params.period }}{% endif %}</div>
   <div class="cv-scope">
     <span>Scope <b>{{ params.sector if params.sector else 'All sectors' }}</b></span>
+    {% if params.period %}<span>Period <b>YTD {{ params.period }}</b></span>{% endif %}
+    {% if params.chapter %}<span>Chapter <b>{{ params.chapter }}</b></span>{% endif %}
     {% if params.projecttype %}<span>Project type <b>{{ params.projecttype }}</b></span>{% endif %}
     {% if params.costcenter %}<span>Cost centre <b>{{ params.costcenter }}</b></span>{% endif %}
+    {% if params.project %}<span>Project <b>{{ params.project }}</b></span>{% endif %}
+    {% if params.task %}<span>Task <b>{{ params.task }}</b></span>{% endif %}
+    {% if params.etype %}<span>Expenditure type <b>{{ params.etype }}</b></span>{% endif %}
+    {% if params.search %}<span>Search <b>{{ params.search }}</b></span>{% endif %}
     <span>Sectors <b>{{ O.sectors|fmt if O.sectors is not none else '—' }}</b></span>
     <span>Projects <b>{{ O.projects|fmt if O.projects is not none else '—' }}</b></span>
     <span>Budget lines <b>{{ O.budget_lines|fmt if O.budget_lines is not none else '—' }}</b></span>
   </div>
   <div class="cv-desc">
     This briefing book presents the consolidated budget utilization position for budget year
-    {{ params.year }}{{ ' — ' + params.sector + ' sector' if params.sector else ' across all sectors' }}:
+    {{ params.year }}{% if params.period %} (year-to-date through {{ params.period }}){% endif %},
+    covering {{ 'the ' + params.sector + ' sector' if params.sector else 'all sectors' }}
+    {%- if params.chapter %}, chapter &ldquo;{{ params.chapter }}&rdquo;{% endif %}
+    {%- if params.projecttype %}, {{ params.projecttype }} projects{% endif %}
+    {%- if params.costcenter or params.project or params.task or params.etype or params.search %},
+    narrowed further by the filters shown above{% endif %}:
     an executive overview with key indicators, the full register of actuals (supplier invoices and
     goods receipts), open obligations (purchase orders) and open commitments (purchase requisitions),
-    closing with observations prepared for management review. All amounts are in AED.
+    closing with observations prepared for management review. All amounts are in AED. The scope
+    matches the Budget Utilization page filters the report was launched with.
   </div>
   <div class="cv-prep">Prepared by
     <b>Financial Planning and Budgeting</b>
@@ -217,7 +241,7 @@
 {% set spent = (O.actual_total or 0) + (O.obligation_po or 0) + (O.commitment_pr or 0) %}
 <div class="page">
   <div class="pt-band"><span class="pt-no">01</span><span class="pt-t">Budget Utilization Overview</span>
-    <span class="pt-s">Budget year {{ params.year }} &middot; {{ params.sector or 'All sectors' }}</span></div>
+    <span class="pt-s">Budget year {{ params.year }} &middot; {{ scopeline|truncate(80) }}</span></div>
 
   <div class="kpis">
     <div class="kpi"><div class="k-lbl">Approved Budget</div><div class="k-val">{{ money(O.budget) }}</div><div class="k-sub">AED &middot; {{ O.budget_lines|fmt }} lines</div></div>
@@ -555,8 +579,9 @@
 </div>
 
 {#- ═══ PART 5 — INSIGHTS ═══════════════════════════════════════════════ -#}
-{%- set gy = generated_at[:4]|int -%}
-{%- set gm = generated_at[5:7]|int -%}
+{#- with a YTD period the pacing clock stops at the period end, not today -#}
+{%- set gy = (params.period[3:]|int) if params.period else generated_at[:4]|int -%}
+{%- set gm = (params.period[:2]|int) if params.period else generated_at[5:7]|int -%}
 {%- set yr = params.year|int -%}
 {%- set elapsed = 100 if yr < gy else ((100 * gm / 12)|round(0)|int if yr == gy else 0) -%}
 {%- set actual_pct = (100 * (O.actual_total or 0) / O.budget)|round(1) if O.budget else 0 -%}
@@ -576,7 +601,8 @@
   {%- set uninv_heavy = O.budget and uninv > 0.02 * O.budget -%}
 
   <div class="ins"><div class="i-t">Pacing — spending versus time</div>
-    <div class="i-b">With <b>{{ elapsed }}%</b> of budget year {{ params.year }} elapsed, committed
+    <div class="i-b">With <b>{{ elapsed }}%</b> of budget year {{ params.year }} elapsed{% if params.period %}
+    (reporting year-to-date through {{ params.period }}){% endif %}, committed
     utilization stands at <b class="{{ 'i-bad' if (pace_ahead or pace_behind) else 'i-good' }}">{{ O.utilization_pct|fmt }}%</b>
     ({{ money(spent) }} of {{ money(O.budget) }}) while delivered-and-invoiced spending alone is
     <b>{{ actual_pct }}%</b>.
@@ -620,9 +646,10 @@
 
   <div class="ins"><div class="i-t">Uninvoiced deliveries</div>
     <div class="i-b">Goods worth
-    <b class="{{ 'i-bad' if uninv_heavy else '' }}">{{ money(uninv) }}</b> have been received but not
-    yet invoiced by suppliers (Part 2.2) — invoices for these deliveries should be expected in the
-    coming payment cycles{% if uninv_heavy %}; <span class="i-bad">this is a sizeable amount</span>
+    <b class="{{ 'i-bad' if uninv_heavy else '' }}">{{ money(uninv) }}</b> were received
+    {{ 'in the reporting period' if params.period else 'during the year' }} without a matching
+    supplier invoice in the same window (Part 2.2) — invoices for these deliveries should be expected
+    in the coming payment cycles{% if uninv_heavy %}; <span class="i-bad">this is a sizeable amount</span>
     relative to the budget and worth chasing with the suppliers{% endif %}.</div></div>
 
   <div class="meth">
@@ -634,8 +661,10 @@
       <b>Open Commitment (PR)</b>: purchase-requisition lines with funds reserved that have not yet become purchase orders. &nbsp;
       <b>Fund Available</b> = Budget &minus; Actuals &minus; Open PO &minus; Open PR. &nbsp;
       <b>Utilization %</b> = (Actuals + Open PO + Open PR) &divide; Budget.
-      Zero-amount lines are excluded from the registers. Source: the i-Finance budget-utilization
-      reporting layer, reflecting Oracle Fusion data as of the generation time.
+      Zero-amount lines are excluded from the registers. The report scope — including any
+      year-to-date period — applies the same filters, in the same way, as the Budget Utilization
+      page it was launched from, so every figure here matches the page. Source: the i-Finance
+      budget-utilization reporting layer, reflecting Oracle Fusion data as of the generation time.
     </div>
   </div>
   <div class="foot">Part 5 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot;

@@ -87,6 +87,23 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-14 — BUDGET_UTIL_BOOK mirrors the FULL GL butil page filter set + MULTI `pre_sql`/`post_sql` hooks.**
+  Review: launching the book from the GL page ignored most page parameters. The definition now
+  takes all 9 page filters (`year` req; `period` YTD MM-YYYY, `sector`, `chapter`, `projecttype`,
+  `costcenter`, `project`, `task`, `etype`, `search`) with the page handler's verbatim predicate
+  semantics; line sections join `dct_butil_scope_v` on the FULL fact key (project+task+etype;
+  scope view gained `chapter`+`expenditure_type`, db/v2/39). **Engine feature:** MULTI `source_ref`
+  may now carry `pre_sql`/`post_sql` PL/SQL blocks (bind-filtered like sections; post ALWAYS runs,
+  finally) — the book uses them to set/clear `GL_CTX.BUTIL_END` for the YTD period, and the 39
+  AP/PO/PR line views honour that context with 37's exact date bases. GRN register rebased to the
+  page's receipt-date year basis (was PO budget-date year). **Fan-out fix:** de-duped the ATD
+  `po_headers`/`po_lines` attribute joins in 39+21 — duplicate rows (76 po_lines keys) were
+  multiplying register amounts (GRN +35.5M / PO +59M platform-wide, silently, since the book
+  shipped). Reconcile suite 20/20 PASS (every register Σ = its Part-1 KPI to the fils, 5 combos
+  incl. periods); bridge E2E run 67 = page-parity on all KPI tiles. Deploys: 39+21 python-oracledb
+  on vm180; `runner/datasource.py` scp'd to vm180-182 + `systemctl restart rpt-worker`; template
+  re-upload via `upload_template.py --ords`. Param-spec drawer in BI picks the new params up
+  automatically (chapter/etype LOVs from the scope view).
 - **2026-07-14 — Briefing Book refinements (review comments) + GL-app launch.** (1) **Zero-amount
   rows excluded from all registers** — seed `21` adds `ABS(NVL(amount,0)) > 0.005` to the AP and PR
   sections (GRN/PO already filtered in their sources); redeployed via the vm180 python-oracledb

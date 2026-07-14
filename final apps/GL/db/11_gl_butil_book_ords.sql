@@ -11,7 +11,11 @@
 --           gated, so the GL app talks to these thin GL-gated bridges instead;
 --           the run itself is processed by the normal PYTHON worker fleet.
 -- Endpoints:
---   POST /gl/butil/book          {year, sector?, projecttype?, costcenter?}
+--   POST /gl/butil/book          {year, period?, sector?, chapter?,
+--                                 projecttype?, costcenter?, project?, task?,
+--                                 etype?, search?}  -- the FULL butil page
+--                                filter set (2026-07-14); period = MM-YYYY
+--                                within the year (YTD), validated like /butil
 --                                -> {runId}; enqueues BUDGET_UTIL_BOOK (PDF)
 --   GET  /gl/butil/book/:id      -> {runId, status, rowCount, error, hasPdf}
 --                                   (BUDGET_UTIL_BOOK runs only)
@@ -48,25 +52,32 @@ BEGIN
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_year   NUMBER;
+  l_period VARCHAR2(10);
   l_params CLOB;
   l_run    NUMBER;
+  PROCEDURE put(p_key VARCHAR2) IS
+    l_val VARCHAR2(500) := APEX_JSON.get_varchar2(p_path => p_key);
+  BEGIN
+    IF l_val IS NOT NULL THEN APEX_JSON.write(p_key, l_val); END IF;
+  END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
   l_year := APEX_JSON.get_number(p_path=>'year');
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
+  l_period := APEX_JSON.get_varchar2(p_path=>'period');
+  IF l_period IS NOT NULL THEN
+    IF NOT REGEXP_LIKE(l_period, '^(0[1-9]|1[0-2])-[0-9]{4}$')
+       OR TO_NUMBER(SUBSTR(l_period, 4)) <> l_year THEN
+      dct_rest.err(400,'period must be MM-YYYY within the selected year'); RETURN;
+    END IF;
+  END IF;
   APEX_JSON.initialize_clob_output;
   APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
-  IF APEX_JSON.get_varchar2(p_path=>'sector') IS NOT NULL THEN
-    APEX_JSON.write('sector', APEX_JSON.get_varchar2(p_path=>'sector'));
-  END IF;
-  IF APEX_JSON.get_varchar2(p_path=>'projecttype') IS NOT NULL THEN
-    APEX_JSON.write('projecttype', APEX_JSON.get_varchar2(p_path=>'projecttype'));
-  END IF;
-  IF APEX_JSON.get_varchar2(p_path=>'costcenter') IS NOT NULL THEN
-    APEX_JSON.write('costcenter', APEX_JSON.get_varchar2(p_path=>'costcenter'));
-  END IF;
+  IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
+  put('sector'); put('chapter'); put('projecttype'); put('costcenter');
+  put('project'); put('task'); put('etype'); put('search');
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;

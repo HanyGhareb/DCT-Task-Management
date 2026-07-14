@@ -4,8 +4,13 @@ source_type:
   SQL   -> source_ref is a SELECT (may contain :named binds drawn from params)
   VIEW  -> source_ref is a view/table name -> SELECT * FROM <name>
   MULTI -> source_ref is JSON: {"orientation"?, "required"?: [param, ...],
+           "pre_sql"?: block | [block, ...], "post_sql"?: block | [block, ...],
            "sections": [{"key","title","layout","sql"}, ...]} -- each section
-           SQL runs with the same params (see fetch_multi)
+           SQL runs with the same params (see fetch_multi). pre_sql blocks run
+           BEFORE the first section and post_sql blocks ALWAYS run after the
+           last (even on failure) -- use them for session state such as the
+           GL_CTX.BUTIL_END YTD context (BUDGET_UTIL_BOOK); the worker keeps
+           one connection across runs, so post_sql MUST undo what pre_sql set.
   PKG   -> source_ref is a PL/SQL expression returning a ref cursor (not used yet)
 
 Only binds that actually appear in the SQL are passed, so a definition's default
@@ -37,13 +42,30 @@ def fetch(conn, source_type, source_ref, params):
     return columns, rows
 
 
+def _blocks(v):
+    """Normalise a pre_sql/post_sql value to a list of PL/SQL blocks."""
+    if not v:
+        return []
+    return [v] if isinstance(v, str) else list(v)
+
+
+def _exec_block(conn, block, params):
+    """Execute a PL/SQL block, binding only the :names it references."""
+    names = set(m.group(1).lower() for m in _BIND.finditer(block))
+    binds = {n: params.get(n) for n in names}
+    cur = conn.cursor()
+    cur.execute(block, binds) if binds else cur.execute(block)
+
+
 def fetch_multi(conn, source_ref, params):
     """MULTI source: run every section's SQL with the shared params.
 
     Returns (spec, sections): spec is the parsed JSON (orientation etc.),
     sections is [{key, title, layout, columns, rows}]. Raises ValueError when
     a spec-required parameter is missing/blank so the run FAILS with a clear
-    message instead of producing an empty report.
+    message instead of producing an empty report. Optional spec.pre_sql blocks
+    run before the first section; spec.post_sql blocks always run afterwards
+    (finally) so session state never leaks into the worker's next run.
     """
     spec = json.loads(source_ref)
     params = params or {}
@@ -51,13 +73,22 @@ def fetch_multi(conn, source_ref, params):
     if missing:
         raise ValueError("missing required run parameter(s): " + ", ".join(missing))
     sections = []
-    for s in spec.get("sections") or []:
-        columns, rows = fetch(conn, "SQL", s["sql"], params)
-        sections.append({
-            "key": s.get("key"),
-            "title": s.get("title") or s.get("key"),
-            "layout": (s.get("layout") or "table").lower(),
-            "columns": columns,
-            "rows": rows,
-        })
+    try:
+        for block in _blocks(spec.get("pre_sql")):
+            _exec_block(conn, block, params)
+        for s in spec.get("sections") or []:
+            columns, rows = fetch(conn, "SQL", s["sql"], params)
+            sections.append({
+                "key": s.get("key"),
+                "title": s.get("title") or s.get("key"),
+                "layout": (s.get("layout") or "table").lower(),
+                "columns": columns,
+                "rows": rows,
+            })
+    finally:
+        for block in _blocks(spec.get("post_sql")):
+            try:
+                _exec_block(conn, block, params)
+            except Exception:
+                pass  # cleanup must never mask the real error
     return spec, sections

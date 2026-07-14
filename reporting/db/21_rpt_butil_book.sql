@@ -7,11 +7,18 @@
 --          Part 2 actuals (all direct AP invoices + all GRN receipts),
 --          Part 3 open obligations (PO, GRN-netted),
 --          Part 4 open commitments (reserved PR), Part 5 insights.
---          Params: year REQUIRED; sector / projecttype / costcenter optional
---          (empty sector = the whole organisation).
--- Data   : prod.dct_budget_utilization_v (db/v2/37) + detail views (db/v2/39);
---          the GRN section inlines the receipts query (the 39 view only keeps
---          uninvoiced balances; the book lists ALL receipts).
+--          Params (2026-07-14): the FULL GL butil page filter set -- year
+--          REQUIRED; period (YTD MM-YYYY) / sector / chapter / projecttype /
+--          costcenter / project / task / etype / search optional, with the
+--          page's exact predicate semantics (sector+chapter+type exact,
+--          costcenter/project/task/etype/search contains-match, project on
+--          number OR name) so the book always shows the page's scope.
+-- Data   : prod.dct_budget_utilization_v (db/v2/37) + detail views (db/v2/39,
+--          BUTIL_END-aware since 2026-07-14); the GRN section inlines the
+--          receipts query on the SAME receipt-date year basis as the page's
+--          Actual GRN figure (37's f_grn). YTD period = GL_CTX.BUTIL_END set
+--          by the MULTI spec's pre_sql and ALWAYS cleared by post_sql (the
+--          worker holds one connection across runs).
 -- Deploy : Windows SQLcl (sql -name prod_mcp) OR python-oracledb (the Linux
 --          SQLcl 26.1 script reader swallows big MERGE-bearing blocks).
 --          After seeding, upload the template:
@@ -25,21 +32,25 @@ SET SERVEROUTPUT ON SIZE UNLIMITED
 
 PROMPT === 1. BUDGET_UTIL_BOOK definition (MULTI, 7 sections) ===
 DECLARE
-  l_bscope VARCHAR2(400);
-  l_scope  VARCHAR2(1000);
-  l_ov     VARCHAR2(2000);
-  l_sec    VARCHAR2(2000);
-  l_prs    VARCHAR2(2000);
-  l_ap     VARCHAR2(2000);
-  l_grn    VARCHAR2(4000);
-  l_po     VARCHAR2(2000);
-  l_pr     VARCHAR2(2000);
+  l_bscope VARCHAR2(2000);
+  l_scope  VARCHAR2(4000);
+  l_ov     VARCHAR2(4000);
+  l_sec    VARCHAR2(4000);
+  l_prs    VARCHAR2(4000);
+  l_ap     VARCHAR2(4000);
+  l_grn    VARCHAR2(10000);
+  l_po     VARCHAR2(4000);
+  l_pr     VARCHAR2(4000);
   l_src    CLOB;
   l_body   CLOB;
 BEGIN
-  -- shared predicates: butil view directly / detail views via the scope view
-  l_bscope := q'! WHERE budget_year = [COLON]year AND ([COLON]sector IS NULL OR sector = [COLON]sector) AND ([COLON]projecttype IS NULL OR project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR cost_centre = [COLON]costcenter)!';
-  l_scope  := q'! AND (x.project_number, NVL(x.task_number,'~')) IN (SELECT s.project_number, NVL(s.task_number,'~') FROM prod.dct_butil_scope_v s WHERE s.budget_year = [COLON]year AND ([COLON]sector IS NULL OR s.sector = [COLON]sector) AND ([COLON]projecttype IS NULL OR s.project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR s.cost_centre = [COLON]costcenter))!';
+  -- shared predicates -- VERBATIM mirror of the GL /gl/butil page handler
+  -- (GL/db/07): sector/chapter/projecttype exact, costcenter/project/task/
+  -- etype/search contains-match (project matches number OR name). Aggregate
+  -- sections filter the butil fact view directly; line sections join the
+  -- scope view on the FULL fact key (project, task, expenditure type).
+  l_bscope := q'! WHERE budget_year = [COLON]year AND ([COLON]sector IS NULL OR sector = [COLON]sector) AND ([COLON]chapter IS NULL OR chapter = [COLON]chapter) AND ([COLON]projecttype IS NULL OR project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR cost_centre LIKE '%'||[COLON]costcenter||'%') AND ([COLON]project IS NULL OR UPPER(project_number||' '||project_name) LIKE '%'||UPPER([COLON]project)||'%') AND ([COLON]task IS NULL OR UPPER(task_number) LIKE '%'||UPPER([COLON]task)||'%') AND ([COLON]etype IS NULL OR UPPER(expenditure_type) LIKE '%'||UPPER([COLON]etype)||'%') AND ([COLON]search IS NULL OR UPPER(project_number||' '||project_name||' '||task_number||' '||department||' '||cost_centre||' '||expenditure_type) LIKE '%'||UPPER([COLON]search)||'%')!';
+  l_scope  := q'! AND (x.project_number, NVL(x.task_number,'~'), NVL(x.expenditure_type,'~')) IN (SELECT s.project_number, NVL(s.task_number,'~'), NVL(s.expenditure_type,'~') FROM prod.dct_butil_scope_v s WHERE s.budget_year = [COLON]year AND ([COLON]sector IS NULL OR s.sector = [COLON]sector) AND ([COLON]chapter IS NULL OR s.chapter = [COLON]chapter) AND ([COLON]projecttype IS NULL OR s.project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR s.cost_centre LIKE '%'||[COLON]costcenter||'%') AND ([COLON]project IS NULL OR UPPER(s.project_number||' '||s.project_name) LIKE '%'||UPPER([COLON]project)||'%') AND ([COLON]task IS NULL OR UPPER(s.task_number) LIKE '%'||UPPER([COLON]task)||'%') AND ([COLON]etype IS NULL OR UPPER(s.expenditure_type) LIKE '%'||UPPER([COLON]etype)||'%') AND ([COLON]search IS NULL OR UPPER(s.project_number||' '||s.project_name||' '||s.task_number||' '||s.department||' '||s.cost_centre||' '||s.expenditure_type) LIKE '%'||UPPER([COLON]search)||'%'))!';
   -- part 1a: one-row overview (KPIs)
   l_ov := q'!SELECT COUNT(DISTINCT sector) AS sectors, COUNT(DISTINCT project_number) AS projects, COUNT(DISTINCT project_number||'~'||NVL(task_number,'~')) AS tasks, COUNT(*) AS budget_lines, SUM(budget) AS budget, SUM(actual_ap) AS actual_ap, SUM(actual_grn) AS actual_grn, SUM(actual_ap)+SUM(actual_grn) AS actual_total, SUM(obligation_po) AS obligation_po, SUM(commitment_pr) AS commitment_pr, SUM(fund_available) AS fund_available, ROUND(100*(SUM(actual_ap)+SUM(actual_grn)+SUM(commitment_pr)+SUM(obligation_po))/NULLIF(SUM(budget),0),1) AS utilization_pct, COUNT(CASE WHEN fund_available < -0.005 THEN 1 END) AS over_budget_lines FROM prod.dct_budget_utilization_v!' || l_bscope;
   -- part 1b: sector rollup (table + charts)
@@ -47,16 +58,26 @@ BEGIN
   -- part 1c: budget lines under pressure (least remaining funds)
   l_prs := q'!SELECT sector, project_number, project_name, task_number, expenditure_type, budget, actual_ap + actual_grn AS actual, obligation_po, commitment_pr, fund_available, ROUND(100*(actual_ap+actual_grn+commitment_pr+obligation_po)/NULLIF(budget,0),1) AS utilization_pct FROM prod.dct_budget_utilization_v!' || l_bscope || q'! AND budget > 0 ORDER BY fund_available ASC NULLS LAST FETCH FIRST 15 ROWS ONLY!';
   -- part 2a: ALL direct AP invoices (the utilization Actual AP register);
-  -- zero-amount lines excluded (they add nothing, totals still reconcile)
+  -- zero-amount lines excluded (they add nothing, totals still reconcile);
+  -- the 39 view is BUTIL_END-aware so the YTD period applies inside it
   l_ap := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.invoice_number, x.invoice_date, x.supplier_name, x.invoice_currency AS currency, x.matched_aed, x.payment_status FROM prod.dct_unpaid_invoices_v x WHERE x.budget_year = [COLON]year AND x.has_po = 'N' AND ABS(NVL(x.matched_aed,0)) > 0.005!' || l_scope || q'! ORDER BY x.matched_aed DESC!';
-  -- part 2b: ALL GRN receipts per PO distribution (inline; 39's view keeps
-  -- only uninvoiced balances, the book lists every receipt)
-  l_grn := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.po_number, x.po_line, x.supplier_name, x.last_receipt_date, x.receipt_lines, x.received_aed, x.invoiced_aed, x.received_aed - x.invoiced_aed AS uninvoiced_aed FROM (SELECT EXTRACT(YEAR FROM b.budget_date) AS budget_year, COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(b.project_id)) AS project_number, pj.project_name, COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END) AS task_number, b.expenditure_type, h.order_number AS po_number, pl.line AS po_line, h.supplier_name, g.last_receipt_date, g.receipt_lines, g.received_aed, NVL(a.invoiced_aed,0) AS invoiced_aed FROM (SELECT po_distribution_id, MAX(po_header_id) AS po_header_id, MAX(po_line_id) AS po_line_id, MAX(charge_account) AS charge_account, MAX(project_id) AS project_id, MAX(task_id) AS task_id, MAX(expenditure_type_name) AS expenditure_type, MAX(budget_date) AS budget_date FROM prod.po_distributions GROUP BY po_distribution_id) b JOIN (SELECT po_distribution_id, SUM(ledger_amount) AS received_aed, MAX(transaction_date) AS last_receipt_date, COUNT(*) AS receipt_lines FROM prod.grn_all_v2 GROUP BY po_distribution_id) g ON g.po_distribution_id = b.po_distribution_id LEFT JOIN (SELECT pk.po_distribution_id, SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS invoiced_aed FROM prod.ap_invoice_distributions d JOIN (SELECT ph2.order_number AS po_number, pl2.line AS po_line, pod.distribution_number AS po_dist_line, MAX(pod.po_distribution_id) AS po_distribution_id FROM prod.po_distributions pod JOIN prod.po_lines pl2 ON pl2.po_header_id = pod.po_header_id AND pl2.po_line_id = pod.po_line_id JOIN prod.po_headers ph2 ON ph2.po_header_id = pod.po_header_id GROUP BY ph2.order_number, pl2.line, pod.distribution_number) pk ON pk.po_number = d.po_number AND pk.po_line = d.po_line AND pk.po_dist_line = d.po_distribution_line WHERE NVL(d.reversal_indicator,'N') <> 'Y' GROUP BY pk.po_distribution_id) a ON a.po_distribution_id = b.po_distribution_id LEFT JOIN prod.po_headers h ON h.po_header_id = b.po_header_id LEFT JOIN prod.po_lines pl ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id LEFT JOIN (SELECT project_id, MAX(project_number) AS project_number, MAX(project_name) AS project_name FROM prod.projects GROUP BY project_id) pj ON pj.project_id = b.project_id LEFT JOIN (SELECT task_id, MAX(task_number) AS task_number FROM prod.tasks GROUP BY task_id) tk ON tk.task_id = b.task_id WHERE b.project_id IS NOT NULL AND b.charge_account IS NOT NULL AND g.received_aed > 0.005) x WHERE x.budget_year = [COLON]year!' || l_scope || q'! ORDER BY x.received_aed DESC!';
+  -- part 2b: GRN receipts per PO distribution, on the SAME receipt-date year
+  -- basis as the page's Actual GRN figure (37's f_grn: year + YTD window on
+  -- NVL(accounted_date, transaction_date), keys from the GRN rows) so Part 2.2
+  -- reconciles with the Part 1 KPI. invoiced_aed = AP matched to the same
+  -- distributions in the same year/window (uninvoiced may be negative when
+  -- invoicing crosses years). Zero-amount rows excluded.
+  l_grn := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.po_number, x.po_line, x.supplier_name, x.last_receipt_date, x.receipt_lines, x.received_aed, x.invoiced_aed, x.received_aed - x.invoiced_aed AS uninvoiced_aed FROM (SELECT COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(g.project_id)) AS project_number, pj.project_name, COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) AS task_number, g.expenditure_type, h.order_number AS po_number, pl.line AS po_line, h.supplier_name, g.last_receipt_date, g.receipt_lines, g.received_aed, NVL(a.invoiced_aed,0) AS invoiced_aed FROM (SELECT po_distribution_id, MAX(project_id) AS project_id, MAX(task_id) AS task_id, MAX(expenditure_type) AS expenditure_type, SUM(ledger_amount) AS received_aed, MAX(NVL(accounted_date, transaction_date)) AS last_receipt_date, COUNT(*) AS receipt_lines FROM prod.grn_all_v2 WHERE project_id IS NOT NULL AND EXTRACT(YEAR FROM NVL(accounted_date, transaction_date)) = [COLON]year AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL OR NVL(accounted_date, transaction_date) < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1) GROUP BY po_distribution_id) g JOIN (SELECT po_distribution_id, MAX(po_header_id) AS po_header_id, MAX(po_line_id) AS po_line_id, MAX(charge_account) AS charge_account FROM prod.po_distributions GROUP BY po_distribution_id) b ON b.po_distribution_id = g.po_distribution_id LEFT JOIN (SELECT pk.po_distribution_id, SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) AS invoiced_aed FROM prod.ap_invoice_distributions d JOIN (SELECT ph2.order_number AS po_number, pl2.line AS po_line, pod.distribution_number AS po_dist_line, MAX(pod.po_distribution_id) AS po_distribution_id FROM prod.po_distributions pod JOIN prod.po_lines pl2 ON pl2.po_header_id = pod.po_header_id AND pl2.po_line_id = pod.po_line_id JOIN prod.po_headers ph2 ON ph2.po_header_id = pod.po_header_id GROUP BY ph2.order_number, pl2.line, pod.distribution_number) pk ON pk.po_number = d.po_number AND pk.po_line = d.po_line AND pk.po_dist_line = d.po_distribution_line WHERE NVL(d.reversal_indicator,'N') <> 'Y' AND EXTRACT(YEAR FROM d.accounting_date) = [COLON]year AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL OR d.accounting_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1) GROUP BY pk.po_distribution_id) a ON a.po_distribution_id = g.po_distribution_id LEFT JOIN (SELECT po_header_id, MAX(order_number) AS order_number, MAX(supplier_name) AS supplier_name FROM prod.po_headers GROUP BY po_header_id) h ON h.po_header_id = b.po_header_id LEFT JOIN (SELECT po_header_id, po_line_id, MAX(line) AS line FROM prod.po_lines GROUP BY po_header_id, po_line_id) pl ON pl.po_header_id = b.po_header_id AND pl.po_line_id = b.po_line_id LEFT JOIN (SELECT project_id, MAX(project_number) AS project_number, MAX(project_name) AS project_name FROM prod.projects GROUP BY project_id) pj ON pj.project_id = g.project_id LEFT JOIN (SELECT task_id, MAX(task_number) AS task_number FROM prod.tasks GROUP BY task_id) tk ON tk.task_id = g.task_id WHERE b.charge_account IS NOT NULL AND ABS(g.received_aed) > 0.005) x WHERE 1 = 1!' || l_scope || q'! ORDER BY x.received_aed DESC!';
   -- part 3: open obligations (GRN-netted PO lines)
   l_po := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.po_number, x.po_line, x.budget_date, x.supplier_name, x.funds_status, x.line_aed, x.received_aed, x.open_aed FROM prod.dct_open_po_lines_v x WHERE x.budget_year = [COLON]year!' || l_scope || q'! ORDER BY x.open_aed DESC!';
   -- part 4: open commitments (reserved PR lines); zero-amount lines excluded
   l_pr := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.pr_number, x.description, x.budget_date, x.currency_code AS currency, x.distribution_amount, x.amount_aed FROM prod.dct_reserved_pr_lines_v x WHERE x.budget_year = [COLON]year AND ABS(NVL(x.amount_aed,0)) > 0.005!' || l_scope || q'! ORDER BY x.amount_aed DESC!';
-  l_src := '{"orientation":"landscape","required":["year"],"sections":['
+  -- YTD period: pre_sql sets GL_CTX.BUTIL_END exactly like the /gl/butil page
+  -- handler; post_sql ALWAYS clears it (worker keeps one session across runs)
+  l_src := '{"orientation":"landscape","required":["year"],'
+        || '"pre_sql":"BEGIN IF [COLON]period IS NULL THEN prod.dct_gl_class_pkg.clear_butil_end; ELSE prod.dct_gl_class_pkg.set_butil_end(LAST_DAY(TO_DATE(''01-''||[COLON]period,''DD-MM-YYYY''))); END IF; END;",'
+        || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_end; END;",'
+        || '"sections":['
         || '{"key":"overview","title":"Overview","layout":"kv","sql":"' || l_ov || '"}' || ','
         || '{"key":"by_sector","title":"Utilization by Sector","layout":"table","sql":"' || l_sec || '"}' || ','
         || '{"key":"pressure","title":"Budget Lines under Pressure","layout":"table","sql":"' || l_prs || '"}' || ','
@@ -86,22 +107,23 @@ BEGIN
     ('BUDGET_UTIL_BOOK',
      'Budget Utilization Briefing Book',
      UNISTR('\0643\062A\064A\0628 \0627\0633\062A\062E\062F\0627\0645 \0627\0644\0645\0648\0627\0632\0646\0629'),
-     'Briefing-book PDF: cover + contents, utilization overview with KPIs and charts, full actuals register (direct AP invoices + GRN receipts), open obligations (PO, GRN-netted), open commitments (reserved PR) and management insights. Parameters: year (required); sector, projecttype, costcenter (optional -- empty sector = whole organisation).',
+     'Briefing-book PDF: cover + contents, utilization overview with KPIs and charts, full actuals register (direct AP invoices + GRN receipts), open obligations (PO, GRN-netted), open commitments (reserved PR) and management insights. Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional -- empty = whole organisation, full year).',
      'General Ledger', 'MULTI', l_src, 'PYTHON', 'PDF',
      'budget_util_book.html.j2',
      'Budget Utilization Briefing Book - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      l_body,
-     '{"year":null,"sector":null,"projecttype":null,"costcenter":null}',
+     '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null}',
      'Y', 'SETUP', 'SETUP')
   WHEN MATCHED THEN UPDATE SET
      t.source_type       = 'MULTI',
+     t.description       = 'Briefing-book PDF: cover + contents, utilization overview with KPIs and charts, full actuals register (direct AP invoices + GRN receipts), open obligations (PO, GRN-netted), open commitments (reserved PR) and management insights. Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional -- empty = whole organisation, full year).',
      t.source_ref        = l_src,
      t.engine            = 'PYTHON',
      t.default_formats   = 'PDF',
      t.pdf_template      = 'budget_util_book.html.j2',
      t.email_subject_tpl = 'Budget Utilization Briefing Book - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      t.email_body_tpl    = l_body,
-     t.params_json       = '{"year":null,"sector":null,"projecttype":null,"costcenter":null}',
+     t.params_json       = '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null}',
      t.updated_by        = 'SETUP',
      t.updated_at        = SYSTIMESTAMP;
   MERGE INTO prod.dct_rpt_recipient t
@@ -125,7 +147,7 @@ BEGIN
 END;
 /
 
-PROMPT === 2. Parameter spec (labels + hints + LOVs; sector OPTIONAL here) ===
+PROMPT === 2. Parameter spec (labels + hints + LOVs; mirrors the GL page filters) ===
 UPDATE prod.dct_rpt_definition
    SET param_spec_json =
        '{"year":{"label":"Budget Year","label_ar":"'
@@ -133,11 +155,21 @@ UPDATE prod.dct_rpt_definition
     || '","hint":"Required. The budget year the briefing book covers (e.g. 2026).","hint_ar":"'
     || UNISTR('\0625\0644\0632\0627\0645\064A\0020\2014\0020\0633\0646\0629\0020\0627\0644\0645\064A\0632\0627\0646\064A\0629\0020\0627\0644\062A\064A\0020\064A\063A\0637\064A\0647\0627\0020\0627\0644\062A\0642\0631\064A\0631\0020\0028\0645\062B\0627\0644\0020\0032\0030\0032\0036\0029\002E')
     || '","required":true,"lov_sql":"SELECT DISTINCT TO_CHAR(budget_year) FROM prod.dct_butil_scope_v WHERE budget_year IS NOT NULL ORDER BY 1 DESC"},'
+    || '"period":{"label":"Period (YTD, MM-YYYY)","label_ar":"'
+    || UNISTR('\0627\0644\0641\062A\0631\0629')
+    || '","hint":"Optional. Year-to-date through the end of this month (MM-YYYY within the year, e.g. 03-2026); leave empty for the full year.","hint_ar":"'
+    || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\062D\062A\0649\0020\0646\0647\0627\064A\0629\0020\0627\0644\0634\0647\0631\0020\0627\0644\0645\062D\062F\062F\0020\0028\0634\0647\0631\002D\0633\0646\0629\0029\002E')
+    || '","required":false},'
     || '"sector":{"label":"Sector","label_ar":"'
     || UNISTR('\0627\0644\0642\0637\0627\0639')
     || '","hint":"Optional. Focus the book on one sector; leave empty for the whole organisation.","hint_ar":"'
     || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\0627\062A\0631\0643\0647\0020\0641\0627\0631\063A\0627\064B\0020\0644\062A\063A\0637\064A\0629\0020\062C\0645\064A\0639\0020\0627\0644\0642\0637\0627\0639\0627\062A\002E')
     || '","required":false,"lov_sql":"SELECT DISTINCT sector FROM prod.dct_butil_scope_v WHERE sector IS NOT NULL ORDER BY 1"},'
+    || '"chapter":{"label":"Chapter","label_ar":"'
+    || UNISTR('\0627\0644\0628\0627\0628')
+    || '","hint":"Optional. Filter to one appropriation chapter; leave empty to include all chapters.","hint_ar":"'
+    || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\062A\0635\0641\064A\0629\0020\062D\0633\0628\0020\0627\0644\0628\0627\0628\002E')
+    || '","required":false,"lov_sql":"SELECT DISTINCT chapter FROM prod.dct_butil_scope_v WHERE chapter IS NOT NULL ORDER BY 1"},'
     || '"projecttype":{"label":"Project Type","label_ar":"'
     || UNISTR('\0646\0648\0639\0020\0627\0644\0645\0634\0631\0648\0639')
     || '","hint":"Optional. Filter to one project type; leave empty to include all types.","hint_ar":"'
@@ -145,9 +177,29 @@ UPDATE prod.dct_rpt_definition
     || '","required":false,"lov_sql":"SELECT DISTINCT project_type FROM prod.dct_butil_scope_v WHERE project_type IS NOT NULL ORDER BY 1"},'
     || '"costcenter":{"label":"Cost Center","label_ar":"'
     || UNISTR('\0645\0631\0643\0632\0020\0627\0644\062A\0643\0644\0641\0629')
-    || '","hint":"Optional. Filter to one cost center; leave empty to include all cost centers.","hint_ar":"'
+    || '","hint":"Optional. Cost center contains-match, like the GL page filter.","hint_ar":"'
     || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\062A\0635\0641\064A\0629\0020\062D\0633\0628\0020\0645\0631\0643\0632\0020\0627\0644\062A\0643\0644\0641\0629\002E')
-    || '","required":false,"lov_sql":"SELECT DISTINCT cost_centre FROM prod.dct_butil_scope_v WHERE cost_centre IS NOT NULL ORDER BY 1"}}'
+    || '","required":false,"lov_sql":"SELECT DISTINCT cost_centre FROM prod.dct_butil_scope_v WHERE cost_centre IS NOT NULL ORDER BY 1"},'
+    || '"project":{"label":"Project","label_ar":"'
+    || UNISTR('\0627\0644\0645\0634\0631\0648\0639')
+    || '","hint":"Optional. Contains-match on project number OR name, like the GL page filter.","hint_ar":"'
+    || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\0631\0642\0645\0020\0627\0644\0645\0634\0631\0648\0639\0020\0623\0648\0020\0627\0633\0645\0647\002E')
+    || '","required":false},'
+    || '"task":{"label":"Task","label_ar":"'
+    || UNISTR('\0627\0644\0645\0647\0645\0629')
+    || '","hint":"Optional. Contains-match on the task number.","hint_ar":"'
+    || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\0631\0642\0645\0020\0627\0644\0645\0647\0645\0629\002E')
+    || '","required":false},'
+    || '"etype":{"label":"Expenditure Type","label_ar":"'
+    || UNISTR('\0646\0648\0639\0020\0627\0644\0625\0646\0641\0627\0642')
+    || '","hint":"Optional. Contains-match on the expenditure type.","hint_ar":"'
+    || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\062A\0635\0641\064A\0629\0020\062D\0633\0628\0020\0646\0648\0639\0020\0627\0644\0625\0646\0641\0627\0642\002E')
+    || '","required":false,"lov_sql":"SELECT DISTINCT expenditure_type FROM prod.dct_butil_scope_v WHERE expenditure_type IS NOT NULL ORDER BY 1"},'
+    || '"search":{"label":"Search","label_ar":"'
+    || UNISTR('\0628\062D\062B')
+    || '","hint":"Optional. Free-text contains-match across project, task, department, cost center and expenditure type (the GL page search box).","hint_ar":"'
+    || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\0628\062D\062B\0020\0646\0635\064A\0020\0641\064A\0020\0646\0637\0627\0642\0020\0627\0644\062A\0642\0631\064A\0631\002E')
+    || '","required":false}}'
  WHERE report_code = 'BUDGET_UTIL_BOOK';
 COMMIT;
 

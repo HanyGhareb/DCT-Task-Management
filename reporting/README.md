@@ -93,11 +93,16 @@ run parameters, e.g. `{"year":2026,"sector":"Tourism"}`; absent/`{}` keeps the d
   (GRN-netted PO lines), Part 4 open commitments (reserved PRs), Part 5 auto-computed
   observations (pacing vs calendar, pressure, supplier concentration, pipeline, uninvoiced
   deliveries) + methodology. MULTI/PYTHON, 7 sections over `dct_budget_utilization_v` +
-  db/v2/39 detail views (GRN receipts inlined — the 39 view keeps only uninvoiced balances);
+  db/v2/39 detail views (GRN receipts inlined, on the page's receipt-date year basis);
   charts are pure CSS/HTML in `runner/templates/budget_util_book.html.j2` (Chromium PDF, also
-  DB-stored). Params: `year` REQUIRED; `sector`/`projecttype`/`costcenter` optional (empty
-  sector = whole organisation). E2E: 2026 all-sectors → 273-page PDF, 8,661 lines. Template
-  gotcha: Jinja `truncate` needs `|string` first — numeric columns (PR numbers) raise
-  "object of type 'int' has no len()".
+  DB-stored). Params (2026-07-14): the FULL GL Budget Utilization page filter set — `year`
+  REQUIRED; `period` (YTD, MM-YYYY), `sector`, `chapter`, `projecttype`, `costcenter`,
+  `project`, `task`, `etype`, `search` optional — applied with the page's exact predicate
+  semantics so the book always matches the page (cover prints the applied scope). The YTD
+  period rides the MULTI spec's `pre_sql`/`post_sql` hooks (set/always-clear
+  `GL_CTX.BUTIL_END`; the 39 line views honour the context). E2E: 2026 all-sectors →
+  273-page PDF; filtered runs reconcile register-to-KPI 20/20 and KPI-to-page exactly.
+  Template gotcha: Jinja `truncate` needs `|string` first — numeric columns (PR numbers)
+  raise "object of type 'int' has no len()".
 
 Plan: `.claude/plans/i-want-to-find-agile-steele.md`. Word-templates plan: `docs/DOCX_TEMPLATES_PLAN.md`.

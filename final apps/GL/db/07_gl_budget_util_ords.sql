@@ -210,7 +210,6 @@ BEGIN
       AND (l_ptype  IS NULL OR v.project_type = l_ptype)
       AND (l_sector IS NULL OR v.sector = l_sector)
       AND (l_chapter IS NULL OR v.chapter = l_chapter)
-     AND (l_chapter IS NULL OR v.chapter = l_chapter)
       AND (l_cc     IS NULL OR v.cost_centre LIKE '%'||l_cc||'%')
       AND (l_proj   IS NULL OR UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
       AND (l_task   IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_task)||'%')

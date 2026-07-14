@@ -167,7 +167,7 @@
     yearRequired:{en:'Please choose a budget year.',ar:'الرجاء اختيار سنة الموازنة.'},
     buBook:{en:'Briefing Book',ar:'كتيب الإحاطة'},
     buBookRunning:{en:'Preparing book…',ar:'جارٍ إعداد الكتيب…'},
-    buBookHint:{en:'Generate the Budget Utilization Briefing Book PDF for the selected Year, Sector, Project type and Cost center (other filters do not apply). Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب الإحاطة لاستخدام الموازنة (PDF) للسنة والقطاع ونوع المشروع ومركز التكلفة المختارة (بقية عوامل التصفية لا تنطبق). يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    buBookHint:{en:'Generate the Budget Utilization Briefing Book PDF using ALL the current page filters (Year, Period, Type, Sector, Chapter, Cost center, Project, Task, Expenditure type, Search) — the book scope matches this page. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب الإحاطة لاستخدام الموازنة (PDF) وفق جميع عوامل تصفية الصفحة الحالية — نطاق الكتيب يطابق الصفحة. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     buBookQueued:{en:'Briefing book queued — run #',ar:'تم إرسال كتيب الإحاطة — تشغيل رقم '},
     buBookReady:{en:'Briefing book downloaded.',ar:'تم تنزيل كتيب الإحاطة.'},
     buBookFailed:{en:'Briefing book failed: ',ar:'فشل إنشاء كتيب الإحاطة: '},
@@ -893,9 +893,13 @@
       if (self.buBookBusy()) return;
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.buBookBusy(true);
+      // full page filter set (mirrors buParams) so the book scope = the page scope
       api('POST', '/butil/book', {
-        year: Number(self.buYear()), sector: self.buSector() || null,
-        projecttype: self.buType() || null, costcenter: self.buCc() || null
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        sector: self.buSector() || null, chapter: self.buChapter() || null,
+        projecttype: self.buType() || null, costcenter: self.buCc() || null,
+        project: self.buProject() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
       }).then(function (d) {
         var runId = d.runId;
         toast(self.t('buBookQueued') + runId);
