@@ -13,7 +13,10 @@
 --           uses the prod. prefix directly, so no new ADMIN synonyms are
 --           needed. validate_session on every route. Amount KPIs are AED
 --           (paid/balance converted per invoice with amount_aed/amount).
---           Aging = unpaid balance bucketed by days past terms_date.
+--           Aging = unpaid balance bucketed by days past the header view's
+--           DUE_DATE = received date (fallback created -> invoice) + payment-
+--           terms credit days (user-confirmed 2026-07-14; terms_date is NOT
+--           the aging basis). Overdue KPI + daysPastDue use the same column.
 --           suppnum= (multi, supplier_number) scopes /filters LOVs + every
 --           facet call -- the Beneficiaries dashboard locks it to 26553 (the
 --           generic BENEFICIARY supplier; the beneficiary name acts as the
@@ -231,7 +234,7 @@ BEGIN
          NVL(SUM(NVL(h.amount_paid,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1)),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) ELSE 0 END),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' AND NVL(h.balance_due,0) <> 0
-                       AND TRUNC(NVL(h.terms_date, h.invoice_date)) < TRUNC(SYSDATE)
+                       AND h.due_date < TRUNC(SYSDATE)
                       THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) ELSE 0 END),0),
          COUNT(CASE WHEN h.invoice_status = 'Cancelled' THEN 1 END)
     INTO k_cnt, k_sup, k_tot, k_paid, k_out, k_over, k_cxl
@@ -247,11 +250,11 @@ BEGIN
   APEX_JSON.open_array('aging');
   FOR r IN (
     SELECT b, COUNT(*) c, NVL(SUM(bal),0) amt FROM (
-      SELECT CASE WHEN TRUNC(NVL(h.terms_date, h.invoice_date)) >= TRUNC(SYSDATE) THEN 'CURRENT'
-                  WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 30 THEN 'D1_30'
-                  WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 60 THEN 'D31_60'
-                  WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 90 THEN 'D61_90'
-                  WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 180 THEN 'D91_180'
+      SELECT CASE WHEN h.due_date >= TRUNC(SYSDATE) THEN 'CURRENT'
+                  WHEN TRUNC(SYSDATE) - h.due_date <= 30 THEN 'D1_30'
+                  WHEN TRUNC(SYSDATE) - h.due_date <= 60 THEN 'D31_60'
+                  WHEN TRUNC(SYSDATE) - h.due_date <= 90 THEN 'D61_90'
+                  WHEN TRUNC(SYSDATE) - h.due_date <= 180 THEN 'D91_180'
                   ELSE 'D180P' END b,
              NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) bal
         FROM prod.ap_invoices_header_v h
@@ -409,10 +412,11 @@ BEGIN
            NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
            h.approval_status,
-           TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, h.payment_terms, h.pay_group, h.payment_method,
+           TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, TO_CHAR(h.due_date,'YYYY-MM-DD') due_dt,
+           h.payment_terms, h.pay_group, h.payment_method,
            h.po_numbers, h.pr_numbers, h.voucher_num, h.invoice_source, h.line_count, h.distribution_count,
            CASE WHEN h.payment_status = 'Unpaid' AND NVL(h.balance_due,0) > 0
-                THEN GREATEST(TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)), 0) END days_past_due
+                THEN GREATEST(TRUNC(SYSDATE) - h.due_date, 0) END days_past_due
       FROM prod.ap_invoices_header_v h
      WHERE h.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
      ORDER BY CASE WHEN l_sort = 'date_asc'      THEN h.invoice_date END ASC,
@@ -449,6 +453,7 @@ BEGIN
     APEX_JSON.write('invoiceStatus', r.invoice_status);
     APEX_JSON.write('approvalStatus', r.approval_status);
     APEX_JSON.write('termsDate', r.terms_dt);
+    APEX_JSON.write('dueDate', r.due_dt);
     APEX_JSON.write('paymentTerms', r.payment_terms);
     APEX_JSON.write('payGroup', r.pay_group);
     APEX_JSON.write('paymentMethod', r.payment_method);
@@ -523,7 +528,7 @@ BEGIN
   HTP.p('Content-Disposition: attachment; filename="ap-register-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Site,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Approval,Terms Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
+  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Site,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Approval,Terms Date,Due Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
   FOR r IN (
     SELECT h.invoice_number, TO_CHAR(h.invoice_date,'YYYY-MM-DD') inv_dt, h.invoice_type,
            CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
@@ -534,9 +539,9 @@ BEGIN
            ROUND(NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1),2) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
            h.approval_status,
-           TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt,
+           TO_CHAR(h.terms_date,'YYYY-MM-DD') terms_dt, TO_CHAR(h.due_date,'YYYY-MM-DD') due_dt,
            CASE WHEN h.payment_status = 'Unpaid' AND NVL(h.balance_due,0) > 0
-                THEN GREATEST(TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)), 0) END days_past_due,
+                THEN GREATEST(TRUNC(SYSDATE) - h.due_date, 0) END days_past_due,
            h.pay_group, h.payment_method, h.po_numbers, h.pr_numbers, h.voucher_num, h.invoice_source
       FROM prod.ap_invoices_header_v h
      WHERE h.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
@@ -549,7 +554,7 @@ BEGIN
       r.invoice_amount || ',' || r.invoice_amount_aed || ',' || r.amount_paid || ',' ||
       r.balance_due || ',' || r.balance_aed || ',' ||
       esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status) || ',' ||
-      esc(r.funds_status) || ',' || esc(r.invoice_status) || ',' || esc(r.approval_status) || ',' || r.terms_dt || ',' || r.days_past_due || ',' ||
+      esc(r.funds_status) || ',' || esc(r.invoice_status) || ',' || esc(r.approval_status) || ',' || r.terms_dt || ',' || r.due_dt || ',' || r.days_past_due || ',' ||
       esc(r.pay_group) || ',' || esc(r.payment_method) || ',' || esc(r.po_numbers) || ',' ||
       esc(r.pr_numbers) || ',' || r.voucher_num || ',' || esc(r.invoice_source));
   END LOOP;
@@ -600,7 +605,8 @@ BEGIN
            invoice_currency, invoice_amount, total_tax_charged, invoice_amount_aed, conversion_rate,
            NVL(amount_paid,0) amount_paid, NVL(balance_due,0) balance_due,
            payment_status, validation_status, accounting_status, funds_status, approval_status,
-           payment_terms, TO_CHAR(terms_date,'YYYY-MM-DD') terms_dt, payment_method, pay_group,
+           payment_terms, TO_CHAR(terms_date,'YYYY-MM-DD') terms_dt,
+           TO_CHAR(due_date,'YYYY-MM-DD') due_dt, payment_method, pay_group,
            payment_currency, voucher_num, invoice_source, batch_name,
            TO_CHAR(gl_date,'YYYY-MM-DD') gl_dt, TO_CHAR(invoice_received_date,'YYYY-MM-DD') rcv_dt,
            created_by, TO_CHAR(created_date,'YYYY-MM-DD') created_dt,
@@ -629,6 +635,7 @@ BEGIN
     APEX_JSON.write('accountingStatus', h.accounting_status); APEX_JSON.write('fundsStatus', h.funds_status);
     APEX_JSON.write('approvalStatus', h.approval_status);
     APEX_JSON.write('paymentTerms', h.payment_terms); APEX_JSON.write('termsDate', h.terms_dt);
+    APEX_JSON.write('dueDate', h.due_dt);
     APEX_JSON.write('paymentMethod', h.payment_method); APEX_JSON.write('payGroup', h.pay_group);
     APEX_JSON.write('paymentCurrency', h.payment_currency); APEX_JSON.write('voucherNum', h.voucher_num);
     APEX_JSON.write('source', h.invoice_source); APEX_JSON.write('batchName', h.batch_name);

@@ -19,8 +19,8 @@ Blank by design — content will be designed later.
 - `chips` — applied-filter chips with per-chip clear; `resetFilters()` — clear everything.
 
 **Region 1 — Analytics** (collapsible / maximizable / exportable)
-- 7 KPI tiles: invoices, suppliers, total/paid/outstanding/overdue AED, cancelled.
-- 8 charts (Chart.js via `shared/chartLoader`): AP aging (terms-date buckets, ordinal ramp), Paid vs unpaid doughnut, monthly trend, validation status, accounting status, top-10 suppliers, spend by sector, spend by pay group.
+- 7 KPI tiles: invoices, suppliers, total/paid/outstanding/overdue AED, cancelled. Overdue + Days-past-due follow the same DUE_DATE basis as aging; the register gains a hidden-by-default Due date column (also in CSV export + invoice-window Payment section).
+- 8 charts (Chart.js via `shared/chartLoader`): AP aging (DUE-DATE buckets — due date = received date [→created→invoice] + payment-terms days, v1.10.0), Paid vs unpaid doughnut, monthly trend, validation status, accounting status, top-10 suppliers, spend by sector, spend by pay group. **Branded data tooltips (v1.10.0)**: hovering any bar/slice/point shows a white brand-bordered card (`tipOpts()`) with labeled rows — Amount (AED) / Invoices / Share of total — and a "Click to list the invoices" footer; no raw `count · amount` strings anywhere (also fixed in the hint-popover rows).
 - `exportSummaryCsv()` — analytics datasets as sectioned CSV; `exportChartsPng()` — composite PNG of all charts.
 - `toggleCharts()` / `toggleChartsMax()`.
 

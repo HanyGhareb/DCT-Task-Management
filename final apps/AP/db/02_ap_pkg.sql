@@ -30,6 +30,12 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_pkg AS
     -- 1 when p_val is one of the pipe-delimited entries in p_list
     FUNCTION in_list(p_list VARCHAR2, p_val VARCHAR2) RETURN NUMBER DETERMINISTIC;
 
+    -- payment-terms name -> credit days ('Immediate' -> 0, 'Net 30' -> 30);
+    -- the aging due date = received date (fallback created -> invoice) +
+    -- these days (user-confirmed basis 2026-07-14). Used by the header view's
+    -- DUE_DATE column -- every aging/overdue figure derives from that column.
+    FUNCTION terms_days(p_terms VARCHAR2) RETURN NUMBER DETERMINISTIC;
+
     -- ids of the invoices matching every supplied facet (NULL facet = no filter)
     FUNCTION filtered_ids(
         p_datefrom  VARCHAR2 DEFAULT NULL,   -- YYYY-MM-DD, on invoice_date
@@ -77,6 +83,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
         RETURN CASE WHEN INSTR('|' || p_list || '|', '|' || p_val || '|') > 0
                     THEN 1 ELSE 0 END;
     END in_list;
+
+    FUNCTION terms_days(p_terms VARCHAR2) RETURN NUMBER DETERMINISTIC IS
+    BEGIN
+        -- first number in the terms name; no number (Immediate/NULL) = 0 days
+        RETURN NVL(TO_NUMBER(REGEXP_SUBSTR(p_terms, '\d+')), 0);
+    END terms_days;
 
     FUNCTION filtered_ids(
         p_datefrom  VARCHAR2 DEFAULT NULL,
@@ -137,13 +149,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
            AND (p_esupplier IS NULL OR dct_ap_pkg.in_list(p_esupplier,
                     CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                          THEN h.beneficiary_name ELSE h.supplier_name END) = 1)
+           -- aging basis = header-view DUE_DATE (received -> created -> invoice
+           -- date + payment-terms days), user-confirmed 2026-07-14
            AND (p_aging IS NULL OR (
                     h.payment_status = 'Unpaid' AND NVL(h.balance_due,0) <> 0 AND
-                    CASE WHEN TRUNC(NVL(h.terms_date, h.invoice_date)) >= TRUNC(SYSDATE) THEN 'CURRENT'
-                         WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 30 THEN 'D1_30'
-                         WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 60 THEN 'D31_60'
-                         WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 90 THEN 'D61_90'
-                         WHEN TRUNC(SYSDATE) - TRUNC(NVL(h.terms_date, h.invoice_date)) <= 180 THEN 'D91_180'
+                    CASE WHEN h.due_date >= TRUNC(SYSDATE) THEN 'CURRENT'
+                         WHEN TRUNC(SYSDATE) - h.due_date <= 30 THEN 'D1_30'
+                         WHEN TRUNC(SYSDATE) - h.due_date <= 60 THEN 'D31_60'
+                         WHEN TRUNC(SYSDATE) - h.due_date <= 90 THEN 'D61_90'
+                         WHEN TRUNC(SYSDATE) - h.due_date <= 180 THEN 'D91_180'
                          ELSE 'D180P' END = UPPER(TRIM(p_aging))))
            AND (p_supplier  IS NULL OR dct_ap_pkg.in_list(p_supplier,  h.supplier_name)      = 1)
            AND (p_paid      IS NULL OR dct_ap_pkg.in_list(p_paid,      h.payment_status)     = 1)

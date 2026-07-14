@@ -293,3 +293,20 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   own labels + scope wording (`rg.*.hint`→`ben.*.hint` via LBL). 41 new i18n
   keys EN+AR. Playwright hint test 15/15 + browser smoke 24/24 on BOTH
   dashboards. APP_VERSION 1.9.0.
+- **2026-07-14 (aging re-base + branded chart tooltips, v1.10.0)** — user-confirmed
+  aging basis change: **due date = invoice received date (fallback created →
+  invoice date) + payment-terms credit days** (`DCT_AP_PKG.terms_days` parses the
+  first number in the terms name: Immediate→0, Net 30→30; the data has only those
+  two values). NEW `DUE_DATE` column on `AP_INVOICES_HEADER_V` (05) is THE single
+  source — the aging chart/facet (02), Overdue KPI, daysPastDue, register+CSV
+  `Due Date` column and the invoice-window Payment section (03) all derive from
+  it; terms_date remains displayed but is no longer the aging basis. Deploy
+  02→05→03→04 (pkg body transiently INVALID between 02 and 05 — 05's COMPILE
+  BODY fixes it). Validated: due_date exact for all 5,486 rows, aging buckets
+  Σ == Outstanding KPI. Frontend: Chart.js data tooltips (hovering bars/slices/
+  points) restyled to a branded white card via `tipOpts()` — title + labeled
+  rows (Amount (AED) / Invoices / Share of total) + italic "Click to list the
+  invoices" footer, on all 8 charts, both dashboards; hint-popover rows no
+  longer join count·amount with an interpunct (user-reported unreadable) —
+  counts sit in the label ("Paid (2,514 Invoices)"), amounts stay plain
+  99,999,999.99. APP_VERSION 1.10.0; smokes 18/18 + 14/14 + browser 5/5.

@@ -178,7 +178,7 @@
   "f.no": "No",
   "dw.total": "Total (AED) — all matching invoices",
   "dw.showing": "Showing top {n} of {c} invoices by amount — refine the filters or use Export CSV on the register for the full list",
-  "ch.aging.hint": "Outstanding (unpaid) balance in AED, bucketed by days past the payment terms date (invoice date when no terms date exists). Only unpaid invoices with a remaining balance are counted. Click a bar to list its invoices.",
+  "ch.aging.hint": "Outstanding (unpaid) balance in AED, bucketed by days past the DUE DATE. The due date = the invoice received date (falling back to the creation date, then the invoice date) plus the payment-terms credit days (Immediate = +0, Net 30 = +30). Only unpaid invoices with a remaining balance are counted. Click a bar to list its invoices.",
   "ch.payment.hint": "Invoice count by payment status for the current filters; amounts appear in the tooltip. Click a slice to list its invoices.",
   "ch.trend.hint": "Total invoiced amount (AED) per month, based on the Invoice Received Date (the invoice creation date is used when no received date is recorded). Starts at the current budget year unless a date filter is applied. Click a point to list that month's invoices.",
   "ch.validation.hint": "Invoiced amount (AED) by validation status for the current filters. Click a bar to list its invoices.",
@@ -243,5 +243,7 @@
   "ht.groups": "Groups listed",
   "ht.filters": "Active filters",
   "ht.level": "Detail level",
-  "ht.rows": "Rows (filtered)"
+  "ht.rows": "Rows (filtered)",
+  "ht.dueDate": "Due date",
+  "ht.clickList": "Click to list the invoices"
 }

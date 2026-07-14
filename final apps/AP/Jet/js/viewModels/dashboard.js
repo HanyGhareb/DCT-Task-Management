@@ -34,6 +34,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       { key: 'fundsStatus',      labelKey: 'tbl.funds', hide: true },
       { key: 'invoiceStatus',    labelKey: 'tbl.status', hide: true },
       { key: 'termsDate',        labelKey: 'tbl.terms', hide: true },
+      { key: 'dueDate',          labelKey: 'ht.dueDate', hide: true },
       { key: 'paymentTerms',     labelKey: 'dr.payTerms', hide: true },
       { key: 'payGroup',         labelKey: 'tbl.payGroup' },
       { key: 'paymentMethod',    labelKey: 'tbl.method', hide: true },
@@ -449,7 +450,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     // columns / aggregates / control breaks / highlights come from the
     // shared component. layoutsApi null = localStorage-autosaved layouts.
     var IR_MAX = 10000;
-    var IR_DATE_KEYS = { invoiceDate: 1, termsDate: 1, accountingDate: 1 };
+    var IR_DATE_KEYS = { invoiceDate: 1, termsDate: 1, dueDate: 1, accountingDate: 1 };
     var IR_NUM_KEYS  = { daysPastDue: 1, lineNumber: 1, distNumber: 1, activeHolds: 1,
                          poNumber: 1, poLine: 1, prNumber: 1, receiptNumber: 1,
                          voucherNum: 1, lineCount: 1, distCount: 1 };
@@ -554,6 +555,30 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       };
     }
 
+    // branded Chart.js data tooltip (hovering bars/slices/points): white card,
+    // brand border/title, labeled rows (amount / invoices / share) + click note
+    function tipOpts(cbs) {
+      return Object.assign({
+        backgroundColor: '#ffffff',
+        titleColor: BRAND,
+        bodyColor: '#3a4553',
+        footerColor: '#8a93a3',
+        borderColor: BRAND,
+        borderWidth: 1.2,
+        cornerRadius: 10,
+        padding: 12,
+        caretSize: 7,
+        displayColors: false,
+        titleFont: { weight: 'bold', size: 12.5 },
+        bodyFont: { size: 12 },
+        footerFont: { size: 10.5, style: 'italic' },
+        titleMarginBottom: 8,
+        footerMarginTop: 8,
+        bodySpacing: 5,
+      }, { callbacks: cbs });
+    }
+    function tipFooter() { return lt('ht.clickList'); }
+
     function hbar(id, rows, color, onPick) {
       rows = rows || [];
       mk(id, {
@@ -568,12 +593,19 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
           onClick: pickIdx(rows, onPick),
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: {
-              title: function (items) { return (rows[items[0].dataIndex] || {}).name || ''; },
+            tooltip: tipOpts({
+              title: function (items) { return (rows[items[0].dataIndex] || {}).name || '(None)'; },
               label: function (ctx) {
                 var r = rows[ctx.dataIndex] || {};
-                return self.fmtAmt(r.amount) + ' AED · ' + self.fmtInt(r.count) + ' ' + lt('tbl.rows');
-              } } }
+                var k = self.kpis() || {};
+                return [
+                  lt('tbl.amountAed') + ':  ' + self.fmtAmt(r.amount),
+                  lt('kpi.invoices') + ':  ' + self.fmtInt(r.count),
+                  lt('ht.share') + ':  ' + (pctOf(r.amount, k.totalAed) || '0%')
+                ];
+              },
+              footer: tipFooter
+            })
           },
           scales: compactTicks('x')
         }
@@ -585,7 +617,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       destroyCharts();
 
       // AP aging — ordinal single-hue ramp over the ordered buckets
-      var byB = {}; (d.aging || []).forEach(function (a) { byB[a.bucket] = a; });
+      var byB = {}, agTot = 0;
+      (d.aging || []).forEach(function (a) { byB[a.bucket] = a; agTot += a.amount || 0; });
       mk('apChartAging', {
         type: 'bar',
         data: {
@@ -599,10 +632,18 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
           }),
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: function (ctx) {
-              var b = byB[AG_ORDER[ctx.dataIndex]] || { count: 0 };
-              return self.fmtAmt(ctx.parsed.y) + ' AED · ' + self.fmtInt(b.count) + ' ' + lt('kpi.invoices');
-            } } }
+            tooltip: tipOpts({
+              title: function (items) { return lt(AG_KEYS[items[0].dataIndex]); },
+              label: function (ctx) {
+                var b = byB[AG_ORDER[ctx.dataIndex]] || { count: 0, amount: 0 };
+                return [
+                  lt('tbl.amountAed') + ':  ' + self.fmtAmt(b.amount || 0),
+                  lt('kpi.invoices') + ':  ' + self.fmtInt(b.count),
+                  lt('ht.share') + ':  ' + (pctOf(b.amount || 0, agTot) || '0%')
+                ];
+              },
+              footer: tipFooter
+            })
           },
           scales: compactTicks('y')
         }
@@ -625,10 +666,19 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
           }),
           plugins: {
             legend: { position: 'bottom' },
-            tooltip: { callbacks: { label: function (ctx) {
-              var r = pay[ctx.dataIndex] || {};
-              return ' ' + r.name + ': ' + self.fmtInt(r.count) + ' · ' + self.fmtAmt(r.amount) + ' AED';
-            } } }
+            tooltip: tipOpts({
+              title: function (items) { return (pay[items[0].dataIndex] || {}).name || ''; },
+              label: function (ctx) {
+                var r = pay[ctx.dataIndex] || {};
+                var totC = pay.reduce(function (a, x) { return a + (x.count || 0); }, 0);
+                return [
+                  lt('kpi.invoices') + ':  ' + self.fmtInt(r.count),
+                  lt('tbl.amountAed') + ':  ' + self.fmtAmt(r.amount),
+                  lt('ht.share') + ':  ' + (pctOf(r.count, totC) || '0%')
+                ];
+              },
+              footer: tipFooter
+            })
           }
         }
       });
@@ -654,10 +704,16 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
           }),
           plugins: {
             legend: { display: false },
-            tooltip: { callbacks: { label: function (ctx) {
-              var r = tr[ctx.dataIndex] || {};
-              return self.fmtAmt(r.amount) + ' AED · ' + self.fmtInt(r.count) + ' ' + lt('kpi.invoices');
-            } } }
+            tooltip: tipOpts({
+              label: function (ctx) {
+                var r = tr[ctx.dataIndex] || {};
+                return [
+                  lt('tbl.amountAed') + ':  ' + self.fmtAmt(r.amount),
+                  lt('kpi.invoices') + ':  ' + self.fmtInt(r.count)
+                ];
+              },
+              footer: tipFooter
+            })
           },
           scales: compactTicks('y')
         }
@@ -877,8 +933,9 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         if (mx) add(lt('ht.largest'), lt(AG_KEYS[AG_ORDER.indexOf(mx.bucket)]) + ' — ' + self.fmtAmt(mx.amount));
       } else if (key === 'payment') {
         var pay = d.paymentStatus || [];
-        pay.slice(0, 4).forEach(function (r) {
-          add(r.name, self.fmtInt(r.count) + ' · ' + self.fmtAmt(r.amount));
+        pay.slice(0, 3).forEach(function (r) {
+          add(r.name + ' (' + self.fmtInt(r.count) + ' ' + lt('kpi.invoices') + ')',
+              self.fmtAmt(r.amount));
         });
         var paid = pay.filter(function (r) { return r.name === 'Paid'; })[0];
         if (paid) add(lt('ht.paidShare'), pctOf(paid.amount, sumBy(pay, 'amount')));
@@ -894,7 +951,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         var big = maxBy(st, 'amount');
         add(lt('ht.statuses'), self.fmtInt(st.length));
         if (big) {
-          add(lt('ht.largestStatus'), trunc(big.name || '', 24) + ' — ' + self.fmtInt(big.count) + ' · ' + self.fmtAmt(big.amount));
+          add(lt('ht.largestStatus') + ' (' + self.fmtInt(big.count) + ' ' + lt('kpi.invoices') + ')',
+              trunc(big.name || '', 20) + ' — ' + self.fmtAmt(big.amount));
           add(lt('ht.share'), pctOf(big.amount, k.totalAed));
         }
       } else if (key === 'suppliers') {
