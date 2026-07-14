@@ -24,6 +24,18 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-14 — Butil "Figures in" display-unit selector (GL v1.24.0) + web-tier release
+  `20260714151925`.** New **Figures in** field in the Budget Utilization Search region:
+  Auto (B/M/K, the old compact default) | Billions | Millions | Thousands | Exact number.
+  Display-only — switching re-renders instantly with NO re-query: `buUnit` observable
+  (persisted in `localStorage('gl_bu_ui')` alongside the region-collapse state) +
+  `buNum(n)` unit-aware formatter (locale grouping on the scaled value, e.g. `2,097.8M` /
+  `2,097,828K` / full separated number for Exact) applied to the 4 KPI tiles + duo
+  breakdown rows + collapsed-band summary + all 6 results-table money columns; exact-value
+  tooltips (`money()`) unchanged; CSV export stays raw numbers. i18n `fUnitL`/`unit*`
+  EN+AR. Frontend-only; APP_VERSION 1.24.0. Playwright verify 11/11 PASS (5 options, M/K/
+  B/Exact renders match computed expectations, persistence across reload, Auto restore,
+  no JS errors); webtier verified serving 1.24.0.
 - **2026-07-14 — Butil KPI breakdown %-of-budget suffixes (GL v1.23.1) + web-tier release
   `20260714151110`.** Each breakdown row in the two composite Budget Utilization KPI tiles
   (Actual AP / Actual GRN under Total Actual; Commitment PR / Obligation PO under Total

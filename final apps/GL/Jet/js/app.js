@@ -119,6 +119,12 @@
     cTotalActual:{en:'Total Actual',ar:'إجمالي الفعلي'},
     cTotalEncumbrance:{en:'Total Encumbrance',ar:'إجمالي الارتباطات'},
     multiHint:{en:'Multi-select: every pick is added as a chip; the report matches ANY of the chips. Remove a chip with ×.',ar:'اختيار متعدد: كل اختيار يُضاف كشريحة؛ يطابق التقرير أياً من الشرائح. أزل الشريحة بعلامة ×.'},
+    fUnitL:{en:'Figures in',ar:'عرض الأرقام'},
+    unitAuto:{en:'Auto (B/M/K)',ar:'تلقائي (B/M/K)'},
+    unitB:{en:'Billions (B)',ar:'مليارات (B)'},
+    unitM:{en:'Millions (M)',ar:'ملايين (M)'},
+    unitK:{en:'Thousands (K)',ar:'آلاف (K)'},
+    unitExact:{en:'Exact number',ar:'الرقم الكامل'},
     cBudget:{en:'Budget',ar:'الموازنة'}, cEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
     cCommitment:{en:'Commitment (PR)',ar:'الالتزام (طلب شراء)'}, cObligation:{en:'Obligation (PO)',ar:'التعهد (أمر شراء)'},
     cOpenCommitment:{en:'Open Commitment (PR)',ar:'الالتزام المفتوح (طلب شراء)'}, cOpenObligation:{en:'Open Obligation (PO)',ar:'التعهد المفتوح (أمر شراء)'},
@@ -1079,9 +1085,32 @@
     try { buUi = JSON.parse(localStorage.getItem('gl_bu_ui') || '{}'); } catch (e) { buUi = {}; }
     self.buSecSearchOpen = ko.observable(buUi.search !== false);
     self.buSecKpisOpen = ko.observable(buUi.kpis !== false);
+    // display unit for every butil figure (search-criteria field; display-only, no re-query)
+    self.buUnit = ko.observable(['auto', 'B', 'M', 'K', 'X'].indexOf(buUi.unit) >= 0 ? buUi.unit : 'auto');
     function saveBuUi() {
-      localStorage.setItem('gl_bu_ui', JSON.stringify({ search: self.buSecSearchOpen(), kpis: self.buSecKpisOpen() }));
+      localStorage.setItem('gl_bu_ui', JSON.stringify({ search: self.buSecSearchOpen(), kpis: self.buSecKpisOpen(), unit: self.buUnit() }));
     }
+    self.buUnit.subscribe(saveBuUi);
+    self.buUnitOpts = ko.computed(function () {
+      return [
+        { v: 'auto', l: self.t('unitAuto') },
+        { v: 'B', l: self.t('unitB') },
+        { v: 'M', l: self.t('unitM') },
+        { v: 'K', l: self.t('unitK') },
+        { v: 'X', l: self.t('unitExact') }
+      ];
+    });
+    // unit-aware formatter for all butil figures (KPI band + results table)
+    self.buNum = function (n) {
+      if (n == null || n === '') return '—';
+      var u = self.buUnit();
+      if (u === 'auto') return self.compact(n);
+      if (u === 'X') return self.money(n);
+      var v = Number(n), s = v < 0 ? '-' : '', a = Math.abs(v);
+      if (u === 'B') return s + (a / 1e9).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + 'B';
+      if (u === 'M') return s + (a / 1e6).toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 }) + 'M';
+      return s + Math.round(a / 1e3).toLocaleString('en-US') + 'K';
+    };
     self.toggleBuSec = function (k) {
       var o = (k === 'search') ? self.buSecSearchOpen : self.buSecKpisOpen;
       o(!o()); saveBuUi();
@@ -1100,10 +1129,10 @@
       if (self.buSecKpisOpen()) return '';
       var t = self.buTotals() || {};
       if (t.budget == null) return '';
-      return self.t('cBudget') + ' ' + self.compact(t.budget)
-        + '  ·  ' + self.t('cTotalActual') + ' ' + self.compact(self.buActualTot())
-        + '  ·  ' + self.t('cTotalEncumbrance') + ' ' + self.compact(self.buEncumbTot())
-        + '  ·  ' + self.t('cFundAvail') + ' ' + self.compact(t.fundAvailable);
+      return self.t('cBudget') + ' ' + self.buNum(t.budget)
+        + '  ·  ' + self.t('cTotalActual') + ' ' + self.buNum(self.buActualTot())
+        + '  ·  ' + self.t('cTotalEncumbrance') + ' ' + self.buNum(self.buEncumbTot())
+        + '  ·  ' + self.t('cFundAvail') + ' ' + self.buNum(t.fundAvailable);
     });
     self.buMax = ko.observable(false);
     self.toggleBuMax = function () {
