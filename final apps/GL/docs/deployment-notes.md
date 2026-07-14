@@ -24,6 +24,10 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-14 — Web-tier release `20260714053705` pushed** (`SSH_USER=opc bash
+  webtier/deploy_frontend.sh 129.151.159.189`): GL v1.22.0 (Briefing Book = full page-filter
+  parity) live; verified `APP_VERSION` + the new `runBuBook` payload served from
+  https://129.151.159.189/.
 - **2026-07-14 — Briefing Book now honours ALL page filters (GL v1.22.0, DEPLOYED + verified).**
   User review: the book ignored most page parameters. Now `runBuBook` sends the FULL butil
   filter set — Year, **Period (YTD)**, Project type, Sector, **Chapter**, Cost center, **Project,
