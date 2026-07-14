@@ -442,7 +442,7 @@ html[dir=rtl] .bu-sec-h.closed .bu-sec-ch svg{transform:rotate(90deg)}
    above: per-measure gradient tint + accent spine + icon chip + big
    Fraunces value + %-of-budget context line + mini utilization bar.
    Colors follow the measure palette used across the Actuals report. */
-.bu-kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:13px;margin-bottom:20px}
+.bu-kpis{display:grid;grid-template-columns:1fr 1.35fr 1.35fr 1fr;gap:13px;margin-bottom:20px}
 .bk{--bk-c:var(--brand);--bk-soft:var(--brand-soft);
   position:relative;display:flex;gap:12px;align-items:flex-start;
   padding:14px 16px 13px 18px;border:1px solid var(--line);border-radius:12px;
@@ -472,9 +472,9 @@ html[dir=rtl] .bk{padding:14px 18px 13px 16px}
 .bk-click:hover{transform:translateY(-2px);box-shadow:0 8px 24px -10px rgba(27,42,39,.32)}
 .bk-click::after{content:"⤢";position:absolute;top:9px;inset-inline-end:11px;font-size:11px;color:var(--bk-c);opacity:0;transition:opacity .12s}
 .bk-click:hover::after{opacity:.85}
-@media (max-width:1500px){.bu-kpis{grid-template-columns:repeat(3,1fr)}}
-@media (max-width:920px){.bu-kpis{grid-template-columns:repeat(2,1fr)}.bk{padding:12px 13px 11px 15px}.bk-v{font-size:22px}.bk-ico{width:32px;height:32px;border-radius:9px}.bk-ico svg{width:16px;height:16px}}
-@media (max-width:560px){.bu-kpis{grid-template-columns:1fr}}
+@media (max-width:1500px){.bu-kpis{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:920px){.bk{padding:12px 13px 11px 15px}.bk-v{font-size:22px}.bk-ico{width:32px;height:32px;border-radius:9px}.bk-ico svg{width:16px;height:16px}}
+@media (max-width:760px){.bu-kpis{grid-template-columns:1fr}}
 
 @media (max-width:720px){
   .wrap{padding:20px 16px 60px}.grid2{grid-template-columns:1fr}
@@ -484,3 +484,90 @@ html[dir=rtl] .bk{padding:14px 18px 13px 16px}
   .bar-row.appr{grid-template-columns:120px 1fr 70px}
   .bar-row.appr .bar-cnt{display:none}
 }
+
+/* ═══ Actuals report parameters drawer + applied-criteria bar (2026-07-14) ═══ */
+.dw-drawer.dw-filter{width:min(720px,94vw)}
+.fbadge{display:inline-grid;place-items:center;min-width:18px;height:18px;padding:0 5px;border-radius:99px;
+  background:#fff;color:var(--brand-dark);font-size:11px;font-weight:800;line-height:1;margin-inline-start:2px}
+.ac-chipbar{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin-bottom:16px;padding:10px 14px;
+  background:var(--surface);border:1px dashed var(--line);border-radius:var(--r);cursor:pointer;transition:border-color .15s}
+.ac-chipbar:hover{border-color:var(--brand)}
+.ac-chip{display:inline-flex;align-items:center;gap:6px;padding:4px 11px;border-radius:999px;font-size:12px;
+  background:rgba(var(--brand-rgb),.07);border:1px solid rgba(var(--brand-rgb),.22);color:var(--ink)}
+.ac-chip b{font-size:10.5px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);font-weight:700}
+.ac-chip.period{background:var(--brand);border-color:var(--brand-dark);color:#fff}
+.ac-chip.period b{color:rgba(255,255,255,.75)}
+.ac-chip-hint{font-size:11.5px;color:var(--muted);font-style:italic;margin-inline-start:auto}
+.fd-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px 16px}
+.fd-grid .field{display:flex;flex-direction:column;gap:6px;min-width:0}
+.fd-grid .fd-full{grid-column:1 / -1}
+.inp-lg,select.inp-lg{padding:11px 13px;font-size:14px}
+.fd-foot{display:flex;gap:10px;justify-content:flex-end;margin-top:20px;padding-top:16px;border-top:1px solid var(--line)}
+@media (max-width:640px){.fd-grid{grid-template-columns:1fr}}
+
+/* ═══ Actuals grouped KPI cards (14 flat tiles -> 6 measure groups) ═══ */
+.kgrid{display:grid;grid-template-columns:repeat(6,1fr);gap:13px;margin-bottom:18px}
+.kg{--kg-c:var(--brand);--kg-soft:var(--brand-soft);
+  position:relative;background:linear-gradient(160deg,var(--kg-soft) 0%,var(--surface) 46%);
+  border:1px solid var(--line);border-radius:12px;padding:13px 15px 12px 17px;overflow:hidden;
+  box-shadow:var(--shadow);display:flex;flex-direction:column;min-width:0}
+html[dir=rtl] .kg{padding:13px 17px 12px 15px}
+.kg::before{content:"";position:absolute;inset-inline-start:0;top:0;bottom:0;width:4px;background:var(--kg-c)}
+.kg-h{display:flex;align-items:center;gap:8px;min-width:0}
+.kg-ico{width:28px;height:28px;border-radius:8px;flex:none;display:grid;place-items:center;
+  background:var(--kg-soft);color:var(--kg-c)}
+.kg-ico svg{width:15px;height:15px}
+.kg-k{font-size:10.5px;letter-spacing:.07em;text-transform:uppercase;color:var(--muted);font-weight:700;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kg-v{font-family:var(--serif);font-size:24px;font-weight:500;color:var(--kg-c);line-height:1.12;margin-top:7px}
+.kg-sub{font-size:11px;color:var(--muted);margin-top:2px;min-height:15px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kg-bar{height:4px;border-radius:99px;background:rgba(27,42,39,.08);margin-top:8px;overflow:hidden}
+.kg-bar i{display:block;height:100%;border-radius:99px;background:var(--kg-c);transition:width .45s ease}
+.kg-rows{margin-top:8px;border-top:1px dashed var(--line);padding-top:6px;display:flex;flex-direction:column;gap:3px}
+.kg-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}
+.kg-rl{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kg-rv{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap}
+.kg-rv.neg{color:var(--bad)}
+.kg-budget{--kg-c:#3A6EA5;--kg-soft:#E9F0F8}
+.kg-pr{--kg-c:#2E8C9E;--kg-soft:#E3F1F4}
+.kg-po{--kg-c:#5163B9;--kg-soft:#EAEDF8}
+.kg-oenc{--kg-c:#B8862B;--kg-soft:#F6EFDC}
+.kg-act{--kg-c:#3F6F5F;--kg-soft:#E4F1EA}
+.kg-funds{--kg-c:#2E7D5B;--kg-soft:#E4F1EA}
+.kg-funds.neg{--kg-c:var(--bad);--kg-soft:#F8E9E6}
+@media (max-width:1500px){.kgrid{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:920px){.kgrid{grid-template-columns:repeat(2,1fr)}.kg-v{font-size:21px}}
+@media (max-width:560px){.kgrid{grid-template-columns:1fr}}
+
+/* ═══ Butil multi-select chips (Chapter / Cost centre / Project) ═══ */
+.mchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.mchip{display:inline-flex;align-items:center;gap:5px;padding:3px 6px 3px 10px;border-radius:999px;
+  background:rgba(var(--brand-rgb),.08);border:1px solid rgba(var(--brand-rgb),.25);
+  color:var(--brand-dark);font-size:12px;font-weight:600;line-height:1.4;max-width:100%}
+html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
+.mchip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mchip i{font-style:normal;cursor:pointer;width:16px;height:16px;border-radius:50%;display:grid;place-items:center;
+  font-size:12px;line-height:1;color:var(--brand-dark);background:rgba(var(--brand-rgb),.12);flex:none;transition:background .12s,color .12s}
+.mchip i:hover{background:var(--bad);color:#fff}
+
+/* ═══ Butil consolidated KPI tiles: Total Actual / Total Encumbrance ═══ */
+.bk-act{--bk-c:#59468F;--bk-soft:#EEEAF7}
+.bk-enc{--bk-c:#9A6B1F;--bk-soft:#F6EFDC}
+.bk-duo{--seg1:#6C4AB6;--seg2:#B8862B}
+.bk-enc.bk-duo{--seg1:#2E8C9E;--seg2:#5163B9}
+.bk-seg{display:flex;height:6px;border-radius:99px;background:rgba(27,42,39,.08);margin-top:7px;overflow:hidden}
+.bk-seg i{display:block;height:100%;transition:width .45s ease}
+.bk-seg .s1{background:var(--seg1)}
+.bk-seg .s2{background:var(--seg2)}
+.bk-duo-rows{margin-top:7px;border-top:1px dashed var(--line);padding-top:5px;display:flex;flex-direction:column;gap:2px}
+.bk-duo-row{display:flex;align-items:center;gap:7px;min-width:0;padding:3px 6px;margin:0 -6px;border-radius:7px;cursor:pointer;
+  transition:background .12s}
+.bk-duo-row:hover{background:rgba(27,42,39,.06)}
+.bk-duo-row:hover .v{text-decoration:underline dotted;text-underline-offset:3px}
+.bk-duo-row .dot{width:8px;height:8px;border-radius:50%;flex:none}
+.bk-duo-row .dot.d1{background:var(--seg1)}
+.bk-duo-row .dot.d2{background:var(--seg2)}
+.bk-duo-row .l{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bk-duo-row .v{margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap}
+.mchips-bar{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
+.mchip b{font-weight:800;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.6;margin-inline-end:2px}

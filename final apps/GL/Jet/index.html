@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.22.0';</script>
+<script>window.APP_VERSION='1.23.0';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -225,55 +225,91 @@
           <div class="greet-sub" data-bind="text:t('acSub')"></div></div>
         <div class="page-actions">
           <span class="chip muted" data-bind="visible:acTotal(), text:acRange()"></span>
+          <button class="btn btn-sm btn-primary" data-bind="click:openAcFilters">
+            <span>⚙</span> <span data-bind="text:t('acFilters')"></span>
+            <span class="fbadge" data-bind="visible:acActiveCount()>0, text:acActiveCount"></span>
+          </button>
           <button class="btn btn-sm" data-bind="click:acExportCsv, enable:acTotal()>0, text:t('exportCsv')"></button>
           <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
         </div>
       </div>
 
-      <!-- search criteria -->
-      <div class="card filter-card">
-        <div class="filter-grid">
-          <div class="field"><label class="lbl" data-bind="text:t('fPeriod')+' *'"></label>
-            <select class="inp" data-bind="options:periods, optionsText:'period', optionsValue:'period', value:acPeriod"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
-            <select class="inp" data-bind="options:acSectors, optionsText:'name', optionsValue:'code', value:acSector, optionsCaption:t('allSectors')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
-            <select class="inp" data-bind="options:acChapters, optionsText:'name', optionsValue:'code', value:acChapter, optionsCaption:t('allChapters')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fProgramL')"></label>
-            <select class="inp" data-bind="options:acPrograms, optionsText:'name', optionsValue:'code', value:acProgram, optionsCaption:t('allPrograms')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fApprL')"></label>
-            <select class="inp" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAppr, optionsCaption:t('allApprops')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fAccountL')"></label>
-            <select class="inp" data-bind="options:acAccounts, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAccount, optionsCaption:t('allAccounts')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fCostCenterL')"></label>
-            <select class="inp" data-bind="options:acCostCenters, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acCostCenter, optionsCaption:t('allCostCenters')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fSourceL')"></label>
-            <select class="inp" data-bind="options:acSources, optionsText:'name', optionsValue:'code', value:acSource, optionsCaption:t('allSources')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
-            <input class="inp" type="text" data-bind="textInput:acSearch, attr:{placeholder:t('searchActuals')}, event:{keydown:function(d,e){if(e.keyCode===13){runActuals(0);}return true;}}"></div>
-          <div class="field filter-actions">
-            <button class="btn btn-primary" data-bind="click:function(){runActuals(0)}, text:t('btnSearch')"></button>
-            <button class="btn" data-bind="click:acReset, text:t('btnReset')"></button>
-          </div>
-        </div>
+      <!-- applied-criteria summary bar (click anywhere to edit in the drawer) -->
+      <div class="ac-chipbar" data-bind="click:openAcFilters, attr:{title:t('acEditFilters')}">
+        <span class="ac-chip period"><b data-bind="text:t('fPeriod')"></b><span class="mono" data-bind="text:acPeriod"></span></span>
+        <!-- ko foreach: acFilterChips -->
+        <span class="ac-chip"><b data-bind="text:label"></b><span data-bind="text:value"></span></span>
+        <!-- /ko -->
+        <span class="ac-chip-hint" data-bind="text:acActiveCount()?t('acEditFilters'):t('acNoFilters')"></span>
       </div>
 
-      <!-- business-question answer cards -->
-      <div class="kpi-strip">
-        <div class="kstat budget"><div class="kk" data-bind="text:t('cBudget')"></div><div class="kv mono" data-bind="text:compact(tot('budget')), attr:{title:money(tot('budget'))}"></div></div>
-        <div class="kstat commit"><div class="kk" data-bind="text:t('cTotalPr')"></div><div class="kv mono" data-bind="text:compact(tot('prTotal')), attr:{title:money(tot('prTotal'))}"></div></div>
-        <div class="kstat ocommit"><div class="kk" data-bind="text:t('cOpenCommitment')"></div><div class="kv mono" data-bind="text:compact(tot('openCommitment')), attr:{title:money(tot('openCommitment'))}"></div></div>
-        <div class="kstat cpipe"><div class="kk" data-bind="text:t('cCommitmentPipeline')"></div><div class="kv mono" data-bind="text:compact(tot('commitmentPipeline')), attr:{title:money(tot('commitmentPipeline'))}"></div></div>
-        <div class="kstat oblig"><div class="kk" data-bind="text:t('cTotalPo')"></div><div class="kv mono" data-bind="text:compact(tot('totalPo')), attr:{title:money(tot('totalPo'))}"></div></div>
-        <div class="kstat ooblig"><div class="kk" data-bind="text:t('cOpenObligation')"></div><div class="kv mono" data-bind="text:compact(tot('openObligation')), attr:{title:money(tot('openObligation'))}"></div></div>
-        <div class="kstat ppipe"><div class="kk" data-bind="text:t('cPoPipeline')"></div><div class="kv mono" data-bind="text:compact(tot('poPipeline')), attr:{title:money(tot('poPipeline'))}"></div></div>
-        <div class="kstat oenc"><div class="kk" data-bind="text:t('cOpenEncumbrance')"></div><div class="kv mono" data-bind="text:compact(tot('openEncumbrance')), attr:{title:money(tot('openEncumbrance'))}"></div></div>
-        <div class="kstat actual"><div class="kk" data-bind="text:t('cActual')"></div><div class="kv mono" data-bind="text:compact(tot('glActual')), attr:{title:money(tot('glActual'))}"></div></div>
-        <div class="kstat grn"><div class="kk" data-bind="text:t('cGrn')"></div><div class="kv mono" data-bind="text:compact(tot('grnActual')), attr:{title:money(tot('grnActual'))}"></div></div>
-        <div class="kstat apd"><div class="kk" data-bind="text:t('cApDirect')"></div><div class="kv mono" data-bind="text:compact(tot('apDirect')), attr:{title:money(tot('apDirect'))}"></div></div>
-        <div class="kstat sla"><div class="kk" data-bind="text:t('cSla')"></div><div class="kv mono" data-bind="text:compact(tot('slaActual')), attr:{title:money(tot('slaActual'))}"></div></div>
-        <div class="kstat funds"><div class="kk" data-bind="text:t('cFundsGl')"></div><div class="kv mono" data-bind="text:compact(tot('fundsAvailable')), attr:{title:money(tot('fundsAvailable'))}"></div></div>
-        <div class="kstat fundscalc"><div class="kk" data-bind="text:t('cFundsCalc')"></div><div class="kv mono" data-bind="text:compact(tot('fundsAvailableCalc')), attr:{title:money(tot('fundsAvailableCalc'))}"></div></div>
+      <!-- business-question answer band — 6 grouped measure cards -->
+      <div class="kgrid">
+        <div class="kg kg-budget">
+          <div class="kg-h">
+            <span class="kg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></span>
+            <span class="kg-k" data-bind="text:t('cBudget')"></span>
+          </div>
+          <div class="kg-v mono" data-bind="text:compact(tot('budget')), attr:{title:money(tot('budget'))}"></div>
+          <div class="kg-sub" data-bind="text:acUtilTxt()"></div>
+          <div class="kg-bar"><i data-bind="style:{width:acPctW('glActual')}"></i></div>
+        </div>
+        <div class="kg kg-pr">
+          <div class="kg-h">
+            <span class="kg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+            <span class="kg-k" data-bind="text:t('cCommitment')"></span>
+          </div>
+          <div class="kg-v mono" data-bind="text:compact(tot('prTotal')), attr:{title:money(tot('prTotal'))}"></div>
+          <div class="kg-rows">
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('lblOpen')"></span><span class="kg-rv mono" data-bind="text:compact(tot('openCommitment')), attr:{title:money(tot('openCommitment'))}"></span></div>
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('lblPipe')"></span><span class="kg-rv mono" data-bind="text:compact(tot('commitmentPipeline')), attr:{title:money(tot('commitmentPipeline'))}"></span></div>
+          </div>
+        </div>
+        <div class="kg kg-po">
+          <div class="kg-h">
+            <span class="kg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></span>
+            <span class="kg-k" data-bind="text:t('cObligation')"></span>
+          </div>
+          <div class="kg-v mono" data-bind="text:compact(tot('totalPo')), attr:{title:money(tot('totalPo'))}"></div>
+          <div class="kg-rows">
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('lblOpen')"></span><span class="kg-rv mono" data-bind="text:compact(tot('openObligation')), attr:{title:money(tot('openObligation'))}"></span></div>
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('lblPipe')"></span><span class="kg-rv mono" data-bind="text:compact(tot('poPipeline')), attr:{title:money(tot('poPipeline'))}"></span></div>
+          </div>
+        </div>
+        <div class="kg kg-oenc">
+          <div class="kg-h">
+            <span class="kg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></span>
+            <span class="kg-k" data-bind="text:t('cOpenEncumbrance')"></span>
+          </div>
+          <div class="kg-v mono" data-bind="text:compact(tot('openEncumbrance')), attr:{title:money(tot('openEncumbrance'))}"></div>
+          <div class="kg-rows">
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('lblOpenPr')"></span><span class="kg-rv mono" data-bind="text:compact(tot('openCommitment')), attr:{title:money(tot('openCommitment'))}"></span></div>
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('lblOpenPo')"></span><span class="kg-rv mono" data-bind="text:compact(tot('openObligation')), attr:{title:money(tot('openObligation'))}"></span></div>
+          </div>
+        </div>
+        <div class="kg kg-act">
+          <div class="kg-h">
+            <span class="kg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></span>
+            <span class="kg-k" data-bind="text:t('cActual')"></span>
+          </div>
+          <div class="kg-v mono" data-bind="text:compact(tot('glActual')), attr:{title:money(tot('glActual'))}"></div>
+          <div class="kg-rows">
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('cGrn')"></span><span class="kg-rv mono" data-bind="text:compact(tot('grnActual')), attr:{title:money(tot('grnActual'))}"></span></div>
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('cApDirect')"></span><span class="kg-rv mono" data-bind="text:compact(tot('apDirect')), attr:{title:money(tot('apDirect'))}"></span></div>
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('cSla')"></span><span class="kg-rv mono" data-bind="text:compact(tot('slaActual')), attr:{title:money(tot('slaActual'))}"></span></div>
+          </div>
+        </div>
+        <div class="kg kg-funds" data-bind="css:{neg:(tot('fundsAvailable')||0)<0}">
+          <div class="kg-h">
+            <span class="kg-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/></svg></span>
+            <span class="kg-k" data-bind="text:t('cFunds')"></span>
+          </div>
+          <div class="kg-v mono" data-bind="text:compact(tot('fundsAvailable')), attr:{title:money(tot('fundsAvailable'))}"></div>
+          <div class="kg-rows">
+            <div class="kg-row"><span class="kg-rl" data-bind="text:t('lblCalc')"></span><span class="kg-rv mono" data-bind="text:compact(tot('fundsAvailableCalc')), attr:{title:money(tot('fundsAvailableCalc'))}, css:{neg:(tot('fundsAvailableCalc')||0)<0}"></span></div>
+          </div>
+          <div class="kg-sub" data-bind="text:acFundsTxt()"></div>
+        </div>
       </div>
 
       <!-- results table -->
@@ -373,12 +409,12 @@
             <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
-            <select class="inp" data-bind="options:buChapters, value:buChapter, optionsCaption:t('allChapters')"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('costCenter')"></label>
-            <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
-          <div class="field"><label class="lbl" data-bind="text:t('cProject')"></label>
-            <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buChapters, value:buChapterPick, optionsCaption:t('allChapters'), event:{change:buChapterAdd}"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{change:buCcCommit, keydown:function(d,e){if(e.keyCode===13){buCcCommit();runButil(0);}return true;}}"></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{change:buProjCommit, keydown:function(d,e){if(e.keyCode===13){buProjCommit();runButil(0);}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('cTask')"></label>
             <input class="inp" type="text" list="bu-task-dl" data-bind="textInput:buTask, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('cEtype')"></label>
@@ -389,6 +425,18 @@
             <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, css:{busy:buLoading}, text:t('btnSearch')"></button>
             <button class="btn" data-bind="click:buReset, enable:!buLoading(), text:t('btnReset')"></button>
           </div>
+        </div>
+        <!-- multi-select chips (Chapter / Cost centre / Project) — one labelled bar -->
+        <div class="mchips mchips-bar" data-bind="visible:buChapterSel().length + buCcSel().length + buProjSel().length > 0">
+          <!-- ko foreach: buChapterSel -->
+          <span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buChapterSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+          <!-- ko foreach: buCcSel -->
+          <span class="mchip"><b data-bind="text:$root.t('costCenter')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buCcSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+          <!-- ko foreach: buProjSel -->
+          <span class="mchip"><b data-bind="text:$root.t('cProject')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buProjSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
         </div>
         <!-- autocomplete option lists (per selected budget year) -->
         <datalist id="bu-cc-dl">
@@ -433,40 +481,42 @@
             <div class="bk-bar"><i style="width:100%"></i></div>
           </div>
         </div>
-        <div class="bk bk-ap bk-click" data-bind="click:function(){openBuAgg('ap')}, attr:{title:t('buCardHint')}">
-          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+        <div class="bk bk-ap bk-duo">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
           <div class="bk-body">
-            <div class="bk-k" data-bind="text:t('cActualAp')"></div>
-            <div class="bk-v mono" data-bind="text:compact(buTot('actualAp')), attr:{title:money(buTot('actualAp'))}"></div>
-            <div class="bk-sub" data-bind="text:buPctTxt('actualAp')"></div>
-            <div class="bk-bar"><i data-bind="style:{width:buBarW('actualAp')}"></i></div>
+            <div class="bk-k" data-bind="text:t('cTotalActual')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buActualTot()), attr:{title:money(buActualTot())}"></div>
+            <div class="bk-sub" data-bind="text:buTotPctTxt(buActualTot())"></div>
+            <div class="bk-seg" data-bind="attr:{title:t('cActualAp')+' + '+t('cActualGrn')}">
+              <i class="s1" data-bind="style:{width:buSegW(buTot('actualAp'), buActualTot())}"></i><i class="s2" data-bind="style:{width:buSegW(buTot('actualGrn'), buActualTot())}"></i>
+            </div>
+            <div class="bk-duo-rows">
+              <div class="bk-duo-row" data-bind="click:function(){openBuAgg('ap')}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d1"></i><span class="l" data-bind="text:t('cActualAp')"></span><span class="v mono" data-bind="text:compact(buTot('actualAp')), attr:{title:money(buTot('actualAp'))}"></span>
+              </div>
+              <div class="bk-duo-row" data-bind="click:function(){openBuAgg('grn')}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d2"></i><span class="l" data-bind="text:t('cActualGrn')"></span><span class="v mono" data-bind="text:compact(buTot('actualGrn')), attr:{title:money(buTot('actualGrn'))}"></span>
+              </div>
+            </div>
           </div>
         </div>
-        <div class="bk bk-grn bk-click" data-bind="click:function(){openBuAgg('grn')}, attr:{title:t('buCardHint')}">
-          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><polyline points="3.27 6.96 12 12.01 20.73 6.96"/><line x1="12" y1="22.08" x2="12" y2="12"/></svg></div>
+        <div class="bk bk-enc bk-duo">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
           <div class="bk-body">
-            <div class="bk-k" data-bind="text:t('cActualGrn')"></div>
-            <div class="bk-v mono" data-bind="text:compact(buTot('actualGrn')), attr:{title:money(buTot('actualGrn'))}"></div>
-            <div class="bk-sub" data-bind="text:buPctTxt('actualGrn')"></div>
-            <div class="bk-bar"><i data-bind="style:{width:buBarW('actualGrn')}"></i></div>
-          </div>
-        </div>
-        <div class="bk bk-pr bk-click" data-bind="click:function(){openBuAgg('pr')}, attr:{title:t('buCardHint')}">
-          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
-          <div class="bk-body">
-            <div class="bk-k" data-bind="text:t('cCommitPr')"></div>
-            <div class="bk-v mono" data-bind="text:compact(buTot('commitmentPr')), attr:{title:money(buTot('commitmentPr'))}"></div>
-            <div class="bk-sub" data-bind="text:buPctTxt('commitmentPr')"></div>
-            <div class="bk-bar"><i data-bind="style:{width:buBarW('commitmentPr')}"></i></div>
-          </div>
-        </div>
-        <div class="bk bk-po bk-click" data-bind="click:function(){openBuAgg('po')}, attr:{title:t('buCardHint')}">
-          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg></div>
-          <div class="bk-body">
-            <div class="bk-k" data-bind="text:t('cObligPo')"></div>
-            <div class="bk-v mono" data-bind="text:compact(buTot('obligationPo')), attr:{title:money(buTot('obligationPo'))}"></div>
-            <div class="bk-sub" data-bind="text:buPctTxt('obligationPo')"></div>
-            <div class="bk-bar"><i data-bind="style:{width:buBarW('obligationPo')}"></i></div>
+            <div class="bk-k" data-bind="text:t('cTotalEncumbrance')"></div>
+            <div class="bk-v mono" data-bind="text:compact(buEncumbTot()), attr:{title:money(buEncumbTot())}"></div>
+            <div class="bk-sub" data-bind="text:buTotPctTxt(buEncumbTot())"></div>
+            <div class="bk-seg" data-bind="attr:{title:t('cCommitPr')+' + '+t('cObligPo')}">
+              <i class="s1" data-bind="style:{width:buSegW(buTot('commitmentPr'), buEncumbTot())}"></i><i class="s2" data-bind="style:{width:buSegW(buTot('obligationPo'), buEncumbTot())}"></i>
+            </div>
+            <div class="bk-duo-rows">
+              <div class="bk-duo-row" data-bind="click:function(){openBuAgg('pr')}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d1"></i><span class="l" data-bind="text:t('cCommitPr')"></span><span class="v mono" data-bind="text:compact(buTot('commitmentPr')), attr:{title:money(buTot('commitmentPr'))}"></span>
+              </div>
+              <div class="bk-duo-row" data-bind="click:function(){openBuAgg('po')}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d2"></i><span class="l" data-bind="text:t('cObligPo')"></span><span class="v mono" data-bind="text:compact(buTot('obligationPo')), attr:{title:money(buTot('obligationPo'))}"></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="bk bk-fund" data-bind="css:{neg:(buTot('fundAvailable')||0)<0}">
@@ -871,6 +921,49 @@
       <option data-bind="attr:{value:segmentValue}, text:description"></option>
       <!-- /ko -->
     </datalist>
+  </div>
+</aside>
+
+<!-- ═══════════ ACTUALS FILTER DRAWER (report parameters) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:acFilterDrawer}, click:closeAcFilters" style="display:none"></div>
+<aside class="dw-drawer dw-filter" data-bind="css:{show:acFilterDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:t('acTitle')"></div>
+      <div class="dw-title" data-bind="text:t('acFilterTitle')"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:acDrawerReset, text:t('btnReset')"></button>
+      <button class="btn btn-sm" data-bind="click:closeAcFilters, text:t('cancel')"></button>
+      <button class="btn btn-sm solid" data-bind="click:applyAcFilters, text:t('btnApply')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="text:t('acFilterSub')"></div>
+    <div class="fd-grid">
+      <div class="field fd-full"><label class="lbl" data-bind="text:t('fPeriod')+' *'"></label>
+        <select class="inp inp-lg" data-bind="options:periods, optionsText:'period', optionsValue:'period', value:acPeriod"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
+        <select class="inp inp-lg" data-bind="options:acSectors, optionsText:'name', optionsValue:'code', value:acSector, optionsCaption:t('allSectors')"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
+        <select class="inp inp-lg" data-bind="options:acChapters, optionsText:'name', optionsValue:'code', value:acChapter, optionsCaption:t('allChapters')"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fProgramL')"></label>
+        <select class="inp inp-lg" data-bind="options:acPrograms, optionsText:'name', optionsValue:'code', value:acProgram, optionsCaption:t('allPrograms')"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fApprL')"></label>
+        <select class="inp inp-lg" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAppr, optionsCaption:t('allApprops')"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fAccountL')"></label>
+        <select class="inp inp-lg" data-bind="options:acAccounts, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAccount, optionsCaption:t('allAccounts')"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fCostCenterL')"></label>
+        <select class="inp inp-lg" data-bind="options:acCostCenters, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acCostCenter, optionsCaption:t('allCostCenters')"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fSourceL')"></label>
+        <select class="inp inp-lg" data-bind="options:acSources, optionsText:'name', optionsValue:'code', value:acSource, optionsCaption:t('allSources')"></select></div>
+      <div class="field fd-full"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+        <input class="inp inp-lg" type="text" data-bind="textInput:acSearch, attr:{placeholder:t('searchActuals')}, event:{keydown:function(d,e){if(e.keyCode===13){applyAcFilters();}return true;}}"></div>
+    </div>
+    <div class="fd-foot">
+      <button class="btn btn-primary" data-bind="click:applyAcFilters, text:t('btnApply')"></button>
+      <button class="btn" data-bind="click:acDrawerReset, text:t('btnReset')"></button>
+    </div>
   </div>
 </aside>
 

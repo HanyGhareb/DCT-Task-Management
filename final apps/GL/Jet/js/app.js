@@ -107,6 +107,18 @@
     srcOpenCommitment:{en:'Has open commitment',ar:'له التزام مفتوح'}, srcOpenObligation:{en:'Has open obligation',ar:'له تعهد مفتوح'},
     searchActuals:{en:'Cost center, account, code…',ar:'مركز التكلفة، الحساب، الرمز…'},
     btnSearch:{en:'Search',ar:'بحث'}, btnReset:{en:'Reset',ar:'إعادة تعيين'},
+    btnApply:{en:'Apply',ar:'تطبيق'},
+    acFilters:{en:'Filters',ar:'عوامل التصفية'},
+    acFilterTitle:{en:'Report parameters',ar:'معايير التقرير'},
+    acFilterSub:{en:'Choose the accounting period and any optional criteria, then Apply. The report, totals and exports all follow these parameters.',ar:'اختر الفترة المحاسبية وأي معايير اختيارية ثم اضغط تطبيق. يتبع التقرير والإجماليات والتصدير هذه المعايير.'},
+    acEditFilters:{en:'Click to edit filters',ar:'انقر لتعديل عوامل التصفية'},
+    acNoFilters:{en:'No filters applied — click to add',ar:'لا توجد عوامل تصفية — انقر للإضافة'},
+    acUtilized:{en:'of budget spent (GL actual)',ar:'من الموازنة منصرف (فعلي الأستاذ)'},
+    acRemainingLbl:{en:'of budget remaining',ar:'من الموازنة متبقٍّ'},
+    lblOpenPr:{en:'Open PR',ar:'طلبات مفتوحة'}, lblOpenPo:{en:'Open PO',ar:'أوامر مفتوحة'},
+    cTotalActual:{en:'Total Actual',ar:'إجمالي الفعلي'},
+    cTotalEncumbrance:{en:'Total Encumbrance',ar:'إجمالي الارتباطات'},
+    multiHint:{en:'Multi-select: every pick is added as a chip; the report matches ANY of the chips. Remove a chip with ×.',ar:'اختيار متعدد: كل اختيار يُضاف كشريحة؛ يطابق التقرير أياً من الشرائح. أزل الشريحة بعلامة ×.'},
     cBudget:{en:'Budget',ar:'الموازنة'}, cEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
     cCommitment:{en:'Commitment (PR)',ar:'الالتزام (طلب شراء)'}, cObligation:{en:'Obligation (PO)',ar:'التعهد (أمر شراء)'},
     cOpenCommitment:{en:'Open Commitment (PR)',ar:'الالتزام المفتوح (طلب شراء)'}, cOpenObligation:{en:'Open Obligation (PO)',ar:'التعهد المفتوح (أمر شراء)'},
@@ -677,6 +689,62 @@
     });
     // pull the business-question total for a summary card
     self.tot = function (k) { var t = self.acTotals() || {}; return t[k]; };
+    // KPI-group context: a measure as a share of the filtered budget
+    self.acPct = function (k) {
+      var t = self.acTotals() || {}; var b = Number(t.budget) || 0;
+      if (!b) return null;
+      return (Number(t[k]) || 0) / b * 100;
+    };
+    self.acPctW = function (k) {
+      var p = self.acPct(k);
+      return (p == null ? 0 : Math.max(0, Math.min(100, p))) + '%';
+    };
+    self.acUtilTxt = ko.computed(function () {
+      var p = self.acPct('glActual');
+      if (p == null) return '';
+      return (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '% ' + self.t('acUtilized');
+    });
+    self.acFundsTxt = ko.computed(function () {
+      var p = self.acPct('fundsAvailable');
+      if (p == null) return '';
+      return (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '% ' + self.t('acRemainingLbl');
+    });
+
+    /* ── report parameters drawer (filters moved off the page, 2026-07-14) ── */
+    self.acFilterDrawer = ko.observable(false);
+    self.openAcFilters = function () { self.acFilterDrawer(true); };
+    self.closeAcFilters = function () { self.acFilterDrawer(false); };
+    self.applyAcFilters = function () { self.acFilterDrawer(false); self.runActuals(0); };
+    // Reset inside the drawer: clear criteria + re-run, but keep the drawer open
+    self.acDrawerReset = function () { self.acReset(); };
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && self.acFilterDrawer()) self.acFilterDrawer(false);
+    });
+    self.acActiveCount = ko.computed(function () {
+      return [self.acSector(), self.acChapter(), self.acProgram(), self.acAppr(),
+        self.acAccount(), self.acCostCenter(), self.acSource(), self.acSearch()].filter(Boolean).length;
+    });
+    // applied-criteria chips on the page (label + resolved display value)
+    function lovName(arr, code, both) {
+      var hit = (arr() || []).filter(function (x) { return x.code === code; })[0];
+      if (!hit) return code;
+      return both ? (hit.code + ' · ' + hit.name) : (hit.name || hit.code);
+    }
+    self.acFilterChips = ko.computed(function () {
+      var c = [];
+      if (self.acSector())     c.push({ label: self.t('fSectorL'),     value: lovName(self.acSectors, self.acSector()) });
+      if (self.acChapter())    c.push({ label: self.t('fChapterL'),    value: lovName(self.acChapters, self.acChapter()) });
+      if (self.acProgram())    c.push({ label: self.t('fProgramL'),    value: lovName(self.acPrograms, self.acProgram()) });
+      if (self.acAppr())       c.push({ label: self.t('fApprL'),       value: self.acAppr() });
+      if (self.acAccount())    c.push({ label: self.t('fAccountL'),    value: self.acAccount() });
+      if (self.acCostCenter()) c.push({ label: self.t('fCostCenterL'), value: self.acCostCenter() });
+      if (self.acSource()) {
+        var s = self.acSources().filter(function (x) { return x.code === self.acSource(); })[0];
+        c.push({ label: self.t('fSourceL'), value: s ? s.name : self.acSource() });
+      }
+      if (self.acSearch())     c.push({ label: self.t('fSearchL'),     value: '“' + self.acSearch() + '”' });
+      return c;
+    });
 
     /* ── drill-down: a single figure → its supporting lines ── */
     self.drillModal = ko.observable(false); self.drillLoading = ko.observable(false);
@@ -741,10 +809,52 @@
     self.buSectors = ko.observableArray([]);
     self.buChapters = ko.observableArray([]);
     self.buYear = ko.observable(''); self.buType = ko.observable(''); self.buSector = ko.observable('');
-    self.buChapter = ko.observable('');
     self.buCc = ko.observable(''); self.buProject = ko.observable('');
     self.buTask = ko.observable(''); self.buEtype = ko.observable('');
     self.buSearch = ko.observable('');
+
+    /* ── multi-select filters (Chapter / Cost centre / Project, 2026-07-14) ──
+       Every pick becomes a chip; the server matches ANY chip (pipe-delimited
+       exact list). A free-typed pipe-less value keeps the original
+       contains-match semantics. */
+    self.buChapterSel = ko.observableArray([]);
+    self.buCcSel = ko.observableArray([]);
+    self.buProjSel = ko.observableArray([]);
+    self.buChapterPick = ko.observable('');
+    self.buChapterAdd = function () {
+      var v = self.buChapterPick();
+      if (v && self.buChapterSel.indexOf(v) < 0) self.buChapterSel.push(v);
+      self.buChapterPick('');
+      return true;
+    };
+    self.buChipRemove = function (arr, v) { arr.remove(v); };
+    // datalist inputs: an exact LOV value becomes a chip and clears the input
+    self.buCcCommit = function () {
+      var v = (self.buCc() || '').trim();
+      if (v && self.buCcs().some(function (x) { return x.cc === v; })) {
+        if (self.buCcSel.indexOf(v) < 0) self.buCcSel.push(v);
+        self.buCc('');
+      }
+      return true;
+    };
+    self.buProjCommit = function () {
+      var v = (self.buProject() || '').trim();
+      if (v && self.buProjects().some(function (x) { return x.p === v; })) {
+        if (self.buProjSel.indexOf(v) < 0) self.buProjSel.push(v);
+        self.buProject('');
+      }
+      return true;
+    };
+    // chips + any residual free text -> one pipe-delimited request value
+    function buMulti(selArr, txtObs) {
+      var a = selArr().slice();
+      var t = (txtObs() || '').trim();
+      if (t && a.indexOf(t) < 0) a.push(t);
+      return a.length > 1 ? a.join('|') : (a[0] || '');
+    }
+    self.buChapterParam = function () { return self.buChapterSel().join('|'); };
+    self.buCcParam = function () { return buMulti(self.buCcSel, self.buCc); };
+    self.buProjParam = function () { return buMulti(self.buProjSel, self.buProject); };
     // YTD period (MM-YYYY within the selected year; '' = full year)
     self.buPeriod = ko.observable('');
     self.buPeriodOpts = ko.computed(function () {
@@ -805,8 +915,8 @@
       }).catch(function (e) { self.buFiltersLoading(false); fail(e); });
     };
     self.buParams = function (offset, limit) {
-      return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapter(),
-        costcenter: self.buCc(), project: self.buProject(), task: self.buTask(), etype: self.buEtype(),
+      return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(),
+        costcenter: self.buCcParam(), project: self.buProjParam(), task: self.buTask(), etype: self.buEtype(),
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -819,7 +929,9 @@
     };
     self.buReset = function () {
       self.buType(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? BU_DEFAULT_TYPE : '');
-      self.buSector(''); self.buChapter(''); self.buSearch('');
+      self.buSector(''); self.buSearch('');
+      self.buChapterSel.removeAll(); self.buCcSel.removeAll(); self.buProjSel.removeAll();
+      self.buChapterPick('');
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));
@@ -853,6 +965,30 @@
       if (f < 0) return self.t('buOverBudget');
       return (f / b * 100).toFixed(1) + '% ' + self.t('buRemaining');
     });
+    // consolidated KPI tiles (2026-07-14): Total Actual = AP + GRN,
+    // Total Encumbrance = open Commitment (PR) + open Obligation (PO)
+    self.buActualTot = ko.computed(function () {
+      var t = self.buTotals() || {};
+      if (t.actualAp == null && t.actualGrn == null) return null;
+      return (Number(t.actualAp) || 0) + (Number(t.actualGrn) || 0);
+    });
+    self.buEncumbTot = ko.computed(function () {
+      var t = self.buTotals() || {};
+      if (t.commitmentPr == null && t.obligationPo == null) return null;
+      return (Number(t.commitmentPr) || 0) + (Number(t.obligationPo) || 0);
+    });
+    // width of one component inside the tile's stacked composition bar
+    self.buSegW = function (part, total) {
+      total = Number(total) || 0;
+      if (!total) return '0%';
+      return Math.max(0, Math.min(100, (Number(part) || 0) / total * 100)) + '%';
+    };
+    self.buTotPctTxt = function (v) {
+      var t = self.buTotals() || {}; var b = Number(t.budget) || 0;
+      if (!b || v == null) return '';
+      var p = v / b * 100;
+      return (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '% ' + self.t('buOfBudget');
+    };
     self.buExportCsv = function () {
       api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
         var rows = d.items || [];
@@ -896,9 +1032,9 @@
       // full page filter set (mirrors buParams) so the book scope = the page scope
       api('POST', '/butil/book', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
-        sector: self.buSector() || null, chapter: self.buChapter() || null,
-        projecttype: self.buType() || null, costcenter: self.buCc() || null,
-        project: self.buProject() || null, task: self.buTask() || null,
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
         etype: self.buEtype() || null, search: self.buSearch() || null
       }).then(function (d) {
         var runId = d.runId;
@@ -944,7 +1080,7 @@
       o(!o()); saveBuUi();
     };
     self.buActiveFilters = ko.computed(function () {
-      return [self.buType(), self.buSector(), self.buChapter(), self.buCc(), self.buProject(),
+      return [self.buType(), self.buSector(), self.buChapterParam(), self.buCcParam(), self.buProjParam(),
         self.buTask(), self.buEtype(), self.buSearch()].filter(Boolean).length;
     });
     // header summaries shown only while the region is collapsed
@@ -957,7 +1093,10 @@
       if (self.buSecKpisOpen()) return '';
       var t = self.buTotals() || {};
       if (t.budget == null) return '';
-      return self.t('cBudget') + ' ' + self.compact(t.budget) + '  ·  ' + self.t('cFundAvail') + ' ' + self.compact(t.fundAvailable);
+      return self.t('cBudget') + ' ' + self.compact(t.budget)
+        + '  ·  ' + self.t('cTotalActual') + ' ' + self.compact(self.buActualTot())
+        + '  ·  ' + self.t('cTotalEncumbrance') + ' ' + self.compact(self.buEncumbTot())
+        + '  ·  ' + self.t('cFundAvail') + ' ' + self.compact(t.fundAvailable);
     });
     self.buMax = ko.observable(false);
     self.toggleBuMax = function () {
@@ -1006,13 +1145,14 @@
       var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
       self.drillTitle(self.t('buDrill' + cap));
       self.drillSub(self.t('buAllLines') + ' · ' + (self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
-      self.drillCtx([self.buType(), self.buSector(), self.buChapter(), self.buCc(), self.buProject(), self.buTask(), self.buEtype(),
+      self.drillCtx([self.buType(), self.buSector(), self.buChapterParam().split('|').join(', '),
+        self.buCcParam().split('|').join(', '), self.buProjParam().split('|').join(', '), self.buTask(), self.buEtype(),
         self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
       api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), metric: metric,
-        projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapter(), search: self.buSearch(),
-        costcenter: self.buCc(), fproject: self.buProject(), ftask: self.buTask(), fetype: self.buEtype() })).then(fillDrill).catch(drillFail);
+        projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(), search: self.buSearch(),
+        costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype() })).then(fillDrill).catch(drillFail);
     };
     self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); };
     // export the loaded drill lines — modal + drawer share drillCols/drillRows

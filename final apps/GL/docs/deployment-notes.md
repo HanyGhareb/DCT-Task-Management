@@ -24,6 +24,44 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-14 — Web-tier release `20260714145511` pushed** (`SSH_USER=opc bash
+  webtier/deploy_frontend.sh 129.151.159.189`): GL v1.23.0 (Actuals parameters drawer +
+  grouped KPI cards; butil multi-select filters + consolidated KPI tiles) live; verified
+  `APP_VERSION` 1.23.0 + the new `.kgrid`/`.mchips-bar`/`.dw-filter` CSS and
+  `buChapterParam`/`acFilterDrawer`/`buEncumbTot` JS served from https://129.151.159.189/.
+- **2026-07-14 — Actuals parameters drawer + grouped KPI cards; butil MULTI-SELECT filters +
+  consolidated KPI tiles (GL v1.23.0, DEPLOYED + E2E 24/24).** User review round:
+  1) **Actuals filter drawer** — the inline filter card moved into a big right-edge drawer
+     (`.dw-filter`, min(720px,94vw); Apply/Reset/Cancel in the header + a bottom Apply, Esc
+     closes) opened by a page-head **Filters** button with an active-criteria count badge;
+     the page shows a clickable applied-criteria chip bar (`.ac-chipbar`, period always first).
+  2) **Actuals KPI redesign** — the 14 flat `.kstat` tiles became 6 grouped measure cards
+     (`.kgrid`/`.kg-*`): Budget (+GL-actual utilization bar), Commitment (PR) Total/Open/Pipeline,
+     Obligation (PO) Total/Open/Pipeline, Open Encumbrance (Open PR + Open PO), GL Actual
+     (GRN / AP Direct / SLA), Funds Available GL/Calc (+% remaining, red when over budget).
+  3) **Butil multi-select Chapter / Cost centre / Project** — picks become chips in a labelled
+     bar under the filter grid (`.mchips-bar`; × removes); requests carry a **pipe-delimited
+     exact any-of list** while a single free-typed value keeps contains-match. `GL/db/07`
+     re-run: `/butil` + `/butil/lines` predicates are pipe-aware everywhere (INSTR pattern,
+     params widened to VARCHAR2(2000)); `GL/db/11` re-run (put() 500→2000); the BOOK seed's
+     l_bscope/l_scope predicates updated in lock-step (`reporting/db/21`) so a multi-filtered
+     Briefing Book matches the page.
+  4) **Butil consolidated KPI band** — 6 tiles → 4: Budget | **Total Actual = AP + GRN** |
+     **Total Encumbrance = Commitment (PR) + Obligation (PO)** | Fund Available. The two
+     composite `.bk-duo` tiles show a stacked composition bar + two drillable breakdown rows
+     (colour-dotted AP/GRN and PR/PO, each opens its `openBuAgg` drawer); totals reconcile
+     exactly (verified 2.098B = 1.040B + 1.058B on live data).
+  Also re-verified the "all figures zero" complaint on Actuals: data-side it was already fixed
+  by the 2026-07-13 canonical flip (db/v2/48) + snapshot refresh — live page-1 rows now carry
+  real PR/PO figures (E2E asserts non-zero Commitment/Obligation on page 1).
+  **DEPLOY GOTCHA (repeat offender)**: `reporting/db/21` ran "clean" from Linux SQLcl but the
+  MERGE-bearing PL/SQL block was SILENTLY SWALLOWED (source_ref unchanged, updated_at stale).
+  Recovery = a small-line PL/SQL surgery block that REPLACEd the six predicate fragments inside
+  the stored `source_ref` CLOB (+ `IS JSON` guard) — verify with an INSTR count (21 pipe-INSTRs)
+  and `updated_at`. The 21 script itself stays the source of truth for Windows/worker re-runs.
+  E2E: Playwright 24/24 (drawer open/apply/badge/Esc, KPI groups, non-zero rows, drill modal,
+  4 tiles + reconciliation, chapter+CC chips, multi search 1,365→1,272 rows, chip remove,
+  AP breakdown drill). APP_VERSION 1.23.0.
 - **2026-07-14 — Web-tier release `20260714053705` pushed** (`SSH_USER=opc bash
   webtier/deploy_frontend.sh 129.151.159.189`): GL v1.22.0 (Briefing Book = full page-filter
   parity) live; verified `APP_VERSION` + the new `runBuBook` payload served from

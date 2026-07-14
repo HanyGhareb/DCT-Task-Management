@@ -56,7 +56,8 @@ DECLARE
   l_params CLOB;
   l_run    NUMBER;
   PROCEDURE put(p_key VARCHAR2) IS
-    l_val VARCHAR2(500) := APEX_JSON.get_varchar2(p_path => p_key);
+    -- 2000: chapter/costcenter/project may carry a pipe-delimited multi-select list (2026-07-14)
+    l_val VARCHAR2(2000) := APEX_JSON.get_varchar2(p_path => p_key);
   BEGIN
     IF l_val IS NOT NULL THEN APEX_JSON.write(p_key, l_val); END IF;
   END;
