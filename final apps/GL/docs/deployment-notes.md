@@ -24,6 +24,14 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-14 — Butil KPI breakdown %-of-budget suffixes (GL v1.23.1) + web-tier release
+  `20260714151110`.** Each breakdown row in the two composite Budget Utilization KPI tiles
+  (Actual AP / Actual GRN under Total Actual; Commitment PR / Obligation PO under Total
+  Encumbrance) now shows its **% of budget in brackets** after the amount, e.g.
+  `Actual AP 1.04B (18.8%)`; the two sub-percentages sum to the tile's own "x% of budget"
+  line. New `buPartPct(v)` helper in app.js + `.pp` muted suffix span on the 4 rows
+  (css `.bk-duo-row .pp`). Frontend-only; APP_VERSION 1.23.1. Playwright verify 3/3 PASS
+  (suffix format, reconciliation to tile %, no JS errors); webtier verified serving 1.23.1.
 - **2026-07-14 — Web-tier release `20260714145511` pushed** (`SSH_USER=opc bash
   webtier/deploy_frontend.sh 129.151.159.189`): GL v1.23.0 (Actuals parameters drawer +
   grouped KPI cards; butil multi-select filters + consolidated KPI tiles) live; verified

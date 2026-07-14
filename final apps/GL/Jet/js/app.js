@@ -989,6 +989,13 @@
       var p = v / b * 100;
       return (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '% ' + self.t('buOfBudget');
     };
+    // "(x.x%)" of-budget suffix on the duo-tile breakdown rows (AP/GRN/PR/PO)
+    self.buPartPct = function (v) {
+      var t = self.buTotals() || {}; var b = Number(t.budget) || 0;
+      if (!b || v == null) return '';
+      var p = (Number(v) || 0) / b * 100;
+      return '(' + (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '%)';
+    };
     self.buExportCsv = function () {
       api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
         var rows = d.items || [];

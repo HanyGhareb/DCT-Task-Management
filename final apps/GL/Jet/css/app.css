@@ -569,5 +569,7 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .bk-duo-row .dot.d2{background:var(--seg2)}
 .bk-duo-row .l{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bk-duo-row .v{margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap}
+.bk-duo-row .pp{font-size:10.5px;font-weight:600;color:var(--muted);white-space:nowrap}
+.bk-duo-row:hover .pp{color:var(--ink)}
 .mchips-bar{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
 .mchip b{font-weight:800;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.6;margin-inline-end:2px}

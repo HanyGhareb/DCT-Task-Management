@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.23.0';</script>
+<script>window.APP_VERSION='1.23.1';</script>
 <link rel="stylesheet" id="app-css">
 <script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
 </head>
@@ -492,10 +492,10 @@
             </div>
             <div class="bk-duo-rows">
               <div class="bk-duo-row" data-bind="click:function(){openBuAgg('ap')}, clickBubble:false, attr:{title:t('buCardHint')}">
-                <i class="dot d1"></i><span class="l" data-bind="text:t('cActualAp')"></span><span class="v mono" data-bind="text:compact(buTot('actualAp')), attr:{title:money(buTot('actualAp'))}"></span>
+                <i class="dot d1"></i><span class="l" data-bind="text:t('cActualAp')"></span><span class="v mono" data-bind="text:compact(buTot('actualAp')), attr:{title:money(buTot('actualAp'))}"></span><span class="pp mono" data-bind="text:buPartPct(buTot('actualAp'))"></span>
               </div>
               <div class="bk-duo-row" data-bind="click:function(){openBuAgg('grn')}, clickBubble:false, attr:{title:t('buCardHint')}">
-                <i class="dot d2"></i><span class="l" data-bind="text:t('cActualGrn')"></span><span class="v mono" data-bind="text:compact(buTot('actualGrn')), attr:{title:money(buTot('actualGrn'))}"></span>
+                <i class="dot d2"></i><span class="l" data-bind="text:t('cActualGrn')"></span><span class="v mono" data-bind="text:compact(buTot('actualGrn')), attr:{title:money(buTot('actualGrn'))}"></span><span class="pp mono" data-bind="text:buPartPct(buTot('actualGrn'))"></span>
               </div>
             </div>
           </div>
@@ -511,10 +511,10 @@
             </div>
             <div class="bk-duo-rows">
               <div class="bk-duo-row" data-bind="click:function(){openBuAgg('pr')}, clickBubble:false, attr:{title:t('buCardHint')}">
-                <i class="dot d1"></i><span class="l" data-bind="text:t('cCommitPr')"></span><span class="v mono" data-bind="text:compact(buTot('commitmentPr')), attr:{title:money(buTot('commitmentPr'))}"></span>
+                <i class="dot d1"></i><span class="l" data-bind="text:t('cCommitPr')"></span><span class="v mono" data-bind="text:compact(buTot('commitmentPr')), attr:{title:money(buTot('commitmentPr'))}"></span><span class="pp mono" data-bind="text:buPartPct(buTot('commitmentPr'))"></span>
               </div>
               <div class="bk-duo-row" data-bind="click:function(){openBuAgg('po')}, clickBubble:false, attr:{title:t('buCardHint')}">
-                <i class="dot d2"></i><span class="l" data-bind="text:t('cObligPo')"></span><span class="v mono" data-bind="text:compact(buTot('obligationPo')), attr:{title:money(buTot('obligationPo'))}"></span>
+                <i class="dot d2"></i><span class="l" data-bind="text:t('cObligPo')"></span><span class="v mono" data-bind="text:compact(buTot('obligationPo')), attr:{title:money(buTot('obligationPo'))}"></span><span class="pp mono" data-bind="text:buPartPct(buTot('obligationPo'))"></span>
               </div>
             </div>
           </div>
