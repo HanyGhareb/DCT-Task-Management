@@ -1,0 +1,75 @@
+<!-- shared/js/components/wfTimeline.html — <wf-timeline>
+     The chain (who is being asked, and what they decided) plus, optionally, the
+     full audit trail. Works for a legacy request and a workflow one identically. -->
+<div class="wf-tl">
+
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 4, cols: 3"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+
+    <!-- ko if: !steps().length -->
+    <div class="empty-state">
+      <p data-bind="text: $root.t('wf.noChain')"></p>
+    </div>
+    <!-- /ko -->
+
+    <ol class="wf-chain" data-bind="foreach: steps">
+      <li data-bind="css: $component.stepClass($data)">
+        <span class="wf-dot"></span>
+        <div class="wf-chain-body">
+          <div class="wf-chain-head">
+            <span class="wf-chain-name" data-bind="text: $data.stepName"></span>
+            <span class="badge"
+                  data-bind="text: $component.statusLabel($data.status),
+                             css: 'wf-st--' + String($data.status || '').toLowerCase()"></span>
+          </div>
+          <div class="wf-chain-meta">
+            <span data-bind="text: $root.t('wf.approver') + ': ' + ($data.approver || '–')"></span>
+            <!-- ko if: $data.actionedBy -->
+            <span class="wf-sep">&middot;</span>
+            <span data-bind="text: $data.actionedBy"></span>
+            <!-- /ko -->
+            <!-- ko if: $data.actionedAt -->
+            <span class="wf-sep">&middot;</span>
+            <span class="wf-muted" data-bind="text: $data.actionedAt"></span>
+            <!-- /ko -->
+          </div>
+          <!-- ko if: $data.comments -->
+          <div class="wf-chain-cmt" data-bind="text: $data.comments"></div>
+          <!-- /ko -->
+        </div>
+      </li>
+    </ol>
+
+    <!-- ko if: showHistory && events().length -->
+    <div class="section-heading-row wf-tl-hh">
+      <h3 class="section-heading" data-bind="text: $root.t('wf.history')"></h3>
+    </div>
+    <ul class="wf-events" data-bind="foreach: events">
+      <li>
+        <span class="wf-ev-at" data-bind="text: $data.at"></span>
+        <span class="wf-ev-what" data-bind="text: $component.eventLabel($data)"></span>
+        <!-- ko if: $data.actor && $data.actorKind === 'USER' -->
+        <span class="wf-muted" data-bind="text: '— ' + $data.actor"></span>
+        <!-- /ko -->
+        <!-- ko if: $data.actorKind !== 'USER' -->
+        <span class="badge wf-badge-sys" data-bind="text: $data.actorKind"></span>
+        <!-- /ko -->
+
+        <!-- THIS is the line the legacy engine could never produce: why a step
+             did not run. It is the single most-asked question in an audit. -->
+        <!-- ko if: $data.skipReason -->
+        <div class="wf-skip" data-bind="text: $data.skipReason"></div>
+        <!-- /ko -->
+
+        <!-- ko if: $data.comments -->
+        <div class="wf-ev-cmt" data-bind="text: $data.comments"></div>
+        <!-- /ko -->
+      </li>
+    </ul>
+    <!-- /ko -->
+
+  <!-- /ko -->
+</div>
