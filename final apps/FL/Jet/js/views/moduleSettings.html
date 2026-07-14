@@ -98,16 +98,25 @@
     <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('set.grp.regdocs')"></div>
     <div style="font-size:12px;color:var(--text-2);margin-bottom:8px" data-bind="text: $root.t('set.regdocs.hint')"></div>
     <!-- ko foreach: docReqs -->
-    <div class="switch-row">
+    <div class="switch-row" data-bind="css: { 'dr-hidden': !visible() }">
       <div style="flex:1">
         <div style="font-size:13px;font-weight:600" data-bind="text: label"></div>
         <div style="font-size:11.5px;color:var(--text-3);font-family:monospace" data-bind="text: code"></div>
       </div>
-      <div style="flex:0 0 240px;margin-inline-start:20px">
-        <div style="display:flex;align-items:center;gap:10px;cursor:pointer;justify-content:flex-end"
-             data-bind="click: flip">
-          <span style="font-size:11.5px;color:var(--text-3)"
-                data-bind="text: mandatory() ? $root.t('set.req') : $root.t('set.opt')"></span>
+      <!-- shown on the checklist? (is_active) -->
+      <div class="dr-sw">
+        <div class="dr-sw-in" data-bind="click: flipVis">
+          <span class="dr-sw-lbl" data-bind="text: visible() ? $root.t('set.shown') : $root.t('set.hidden')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none" data-bind="checked: visible">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+      </div>
+      <!-- required or optional? (is_mandatory) — only meaningful while shown -->
+      <div class="dr-sw">
+        <div class="dr-sw-in" data-bind="click: flip, style: { opacity: visible() ? 1 : .45 }">
+          <span class="dr-sw-lbl" data-bind="text: mandatory() ? $root.t('set.req') : $root.t('set.opt')"></span>
           <div class="switch" style="pointer-events:none">
             <input type="checkbox" style="pointer-events:none"
                    data-bind="checked: mandatory, attr: { 'aria-label': code }">
@@ -115,11 +124,18 @@
           </div>
         </div>
         <!-- ko if: dirty() -->
-        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block">&#9998; <span data-bind="text: $root.t('set.modified')"></span></span>
+        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block;text-align:end">&#9998; <span data-bind="text: $root.t('set.modified')"></span></span>
         <!-- /ko -->
       </div>
     </div>
     <!-- /ko -->
+    <div class="dr-add">
+      <select class="form-control" style="max-width:280px"
+              data-bind="options: addRegOptions, optionsText: 'name', optionsValue: 'docTypeId',
+                         optionsCaption: '— Add a document —', value: addRegType, enable: !docBusy()"></select>
+      <button class="btn btn-secondary btn-sm" data-bind="click: addRegDoc, enable: addRegType() && !docBusy(),
+              text: $root.t('set.adddoc')"></button>
+    </div>
     <!-- personal photo (PHOTO_REQUIRED) -->
     <!-- ko if: photoItem -->
     <!-- ko with: photoItem -->
@@ -147,6 +163,51 @@
     </div>
     <!-- /ko -->
     <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Contract Documents — required / optional / hidden per document ────── -->
+  <!-- ko if: docReqsContract().length || docTypeCatalog().length -->
+  <div class="card" style="margin-bottom:16px">
+    <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('set.grp.condocs')"></div>
+    <div style="font-size:12px;color:var(--text-2);margin-bottom:8px" data-bind="text: $root.t('set.condocs.hint')"></div>
+    <!-- ko foreach: docReqsContract -->
+    <div class="switch-row" data-bind="css: { 'dr-hidden': !visible() }">
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600" data-bind="text: label"></div>
+        <div style="font-size:11.5px;color:var(--text-3);font-family:monospace" data-bind="text: code"></div>
+      </div>
+      <div class="dr-sw">
+        <div class="dr-sw-in" data-bind="click: flipVis">
+          <span class="dr-sw-lbl" data-bind="text: visible() ? $root.t('set.shown') : $root.t('set.hidden')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none" data-bind="checked: visible">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+      </div>
+      <div class="dr-sw">
+        <div class="dr-sw-in" data-bind="click: flip, style: { opacity: visible() ? 1 : .45 }">
+          <span class="dr-sw-lbl" data-bind="text: mandatory() ? $root.t('set.req') : $root.t('set.opt')"></span>
+          <div class="switch" style="pointer-events:none">
+            <input type="checkbox" style="pointer-events:none"
+                   data-bind="checked: mandatory, attr: { 'aria-label': code }">
+            <span class="switch-slider"></span>
+          </div>
+        </div>
+        <!-- ko if: dirty() -->
+        <span style="font-size:10px;color:var(--brand-dark);margin-top:2px;display:block;text-align:end">&#9998; <span data-bind="text: $root.t('set.modified')"></span></span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+    <div class="dr-add">
+      <select class="form-control" style="max-width:280px"
+              data-bind="options: addConOptions, optionsText: 'name', optionsValue: 'docTypeId',
+                         optionsCaption: '— Add a document —', value: addConType, enable: !docBusy()"></select>
+      <button class="btn btn-secondary btn-sm" data-bind="click: addConDoc, enable: addConType() && !docBusy(),
+              text: $root.t('set.adddoc')"></button>
+    </div>
   </div>
   <!-- /ko -->
 

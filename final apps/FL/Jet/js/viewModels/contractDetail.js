@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService'], function (ko, flService) {
+define(['knockout', 'services/flService', 'services/authService'], function (ko, flService, authService) {
   'use strict';
 
   function ContractDetailViewModel() {
@@ -12,6 +12,7 @@ define(['knockout', 'services/flService'], function (ko, flService) {
     self.schedule   = ko.observableArray([]);
     self.amendments = ko.observableArray([]);
     self.renewals   = ko.observableArray([]);
+    self.approval   = ko.observable({ hasInstance: false, steps: [] });
     self.successMsg = ko.observable('');
     self.errorMsg   = ko.observable('');
 
@@ -29,11 +30,75 @@ define(['knockout', 'services/flService'], function (ko, flService) {
         self.amendments(rs[2]);
         self.renewals(rs[3]);
         self.loading(false);
+        self.loadApprovalHistory();
       }).catch(function () { self.loading(false); });
     };
     self.reload();
 
     self.setTab = function (t) { self.tab(t); };
+
+    /* ── Phase 2: 7-step chain trail + FL_ADMIN force approval ──────────── */
+    self.loadApprovalHistory = function () {
+      flService.getContractApprovalHistory(id).then(function (r) {
+        self.approval(r && typeof r === 'object' ? r : { hasInstance: false, steps: [] });
+      }).catch(function () {});
+    };
+    self.canForceApprove = ko.computed(function () {
+      return authService.isFlAdmin() && self.data().status === 'SUBMITTED';
+    });
+    self.forceApprove = function () {
+      var why = window.prompt('Force-approve this contract? Every remaining step is recorded as a forced action.\nComments:');
+      if (why === null) return;
+      flService.forceApproveContract(id, why || undefined).then(function () {
+        flash('Contract force-approved.');
+        self.reload();
+      }).catch(function (err) { self.errorMsg((err && err.message) || 'Force approval failed'); });
+    };
+    /* ── Phase 2 (D1/D3): termsheet PDF — enqueue → poll fleet → download → file */
+    self.tsBusy  = ko.observable(false);
+    self.tsLabel = ko.observable('');
+    self.generateTermsheet = function () {
+      if (self.tsBusy()) return;
+      self.tsBusy(true); self.tsLabel('Queued…'); self.errorMsg('');
+      var runId, tries = 0;
+      flService.generateTermsheetPdf(id).then(function (r) {
+        runId = r.runId;
+        return new Promise(function (resolve, reject) {
+          (function poll() {
+            tries += 1;
+            if (tries > 40) { reject(new Error('The termsheet is taking too long — check the Reporting workers.')); return; }
+            flService.getTermsheetRun(id, runId).then(function (st) {
+              self.tsLabel((st.status || '…') + '…');
+              if (st.status === 'SUCCESS' && st.hasPdf) resolve();
+              else if (st.status === 'FAILED') reject(new Error(st.error || 'Termsheet run failed'));
+              else setTimeout(poll, 5000);
+            }).catch(function () { setTimeout(poll, 5000); });
+          })();
+        });
+      }).then(function () {
+        self.tsLabel('Downloading…');
+        return flService.fetchTermsheetPdf(id, runId);
+      }).then(function (url) {
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = (self.data().termsheetRef || 'termsheet') + '.pdf';
+        document.body.appendChild(a); a.click(); a.remove();
+        // D3: file the generated PDF on the contract (system of record)
+        return flService.attachTermsheet(id, runId);
+      }).then(function () {
+        self.tsBusy(false);
+        flash('Termsheet PDF downloaded and filed on the contract.');
+      }).catch(function (err) {
+        self.tsBusy(false);
+        self.errorMsg((err && err.message) || 'Termsheet generation failed');
+      });
+    };
+
+    self.stepBadge = function (s) {
+      return { APPROVED: 'badge--approved', PENDING: 'badge--submitted',
+               WAITING: 'badge--draft', REJECTED: 'badge--rejected',
+               RETURNED: 'badge--cancelled', DONE: 'badge--approved' }[s] || 'badge--draft';
+    };
 
     self.billPct = ko.computed(function () {
       var d = self.data();

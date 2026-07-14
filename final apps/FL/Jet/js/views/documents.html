@@ -29,6 +29,7 @@
     <table class="data-table">
       <thead><tr>
         <th>Freelancer</th><th>Type</th><th>Name</th><th>Context</th><th>Expiry</th><th>Days</th><th>Status</th><th>Required</th>
+        <th style="text-align:right">File</th>
       </tr></thead>
       <tbody>
         <!-- ko foreach: items -->
@@ -41,6 +42,17 @@
           <td class="mono" data-bind="text: $data.daysToExpiry !== undefined && $data.daysToExpiry !== null ? $data.daysToExpiry : '—'"></td>
           <td><span class="exp-chip" data-bind="text: $data.expiryStatus || 'VALID', css: $vm.expChip($data.expiryStatus)"></span></td>
           <td data-bind="text: $data.isRequired === 'Y' ? 'Yes' : 'No'"></td>
+          <td style="text-align:right;white-space:nowrap">
+            <!-- ko if: $vm.hasFile($data) -->
+            <button class="btn btn-secondary btn-sm" title="Open the file in a new tab"
+                    data-bind="click: function () { return $vm.viewDoc($data); }, clickBubble: false">&#128065; View</button>
+            <button class="btn btn-secondary btn-sm" style="margin-inline-start:6px" title="Download the file"
+                    data-bind="click: function () { return $vm.downloadDoc($data); }, clickBubble: false">&#11015; Download</button>
+            <!-- /ko -->
+            <!-- ko ifnot: $vm.hasFile($data) -->
+            <span class="text-muted" style="font-size:12px">No file</span>
+            <!-- /ko -->
+          </td>
         </tr>
         <!-- /ko -->
       </tbody>

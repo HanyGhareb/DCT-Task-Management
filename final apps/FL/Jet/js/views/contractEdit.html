@@ -6,7 +6,7 @@
         <!-- ko ifnot: isNew --><span class="badge" style="vertical-align:3px;margin-inline-start:8px"
           data-bind="text: status(), css: { 'badge--draft': status()==='DRAFT', 'badge--submitted': status()==='SUBMITTED', 'badge--approved': status()==='ACTIVE' }"></span><!-- /ko -->
       </div>
-      <div class="page-subtitle">FL Manager approval; FL Admin joins above AED 50,000</div>
+      <div class="page-subtitle">Termsheet + 7-step endorsement chain: Line Manager &#8594; Finance BP &#8594; AP Ops &#8594; Finance Director &#8594; Org Dev (6&#43; months) &#8594; TA Manager &#8594; HR Director</div>
     </div>
     <div class="page-actions">
       <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
@@ -36,14 +36,15 @@
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label">Freelancer <span class="required">*</span></label>
-        <select class="form-control" data-bind="options: freelancerOptions, optionsText: 'label', optionsValue: 'id',
-                 optionsCaption: '— Select —', value: freelancerId, enable: editable()"></select>
+        <lov-input params="options: freelancerOptions, value: freelancerId, valueField: 'id', textField: 'label',
+                    placeholder: 'Type a freelancer name or vendor number…', enable: editable"></lov-input>
         <span class="fl-readonly" data-bind="text: freelancerDisp"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Title <span class="required">*</span></label>
-        <input class="form-control" type="text" data-bind="value: title, valueUpdate: 'input', enable: editable()">
-        <span class="fl-readonly" data-bind="text: title() || '—'"></span>
+        <label class="form-label">Title <span class="opt">optional</span></label>
+        <lov-input params="options: titleOptions, value: title, valueField: 'code', textField: 'name',
+                    placeholder: 'Type to search titles…', enable: editable"></lov-input>
+        <span class="fl-readonly" data-bind="text: titleDisp"></span>
       </div>
       <div class="form-group">
         <label class="form-label">Start Date <span class="required">*</span></label>
@@ -51,14 +52,15 @@
         <span class="fl-readonly" data-bind="text: startDate() || '—'"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">End Date <span class="opt">optional</span></label>
+        <label class="form-label">Expected Completion Date <span class="required">*</span></label>
         <input class="form-control" type="date" data-bind="value: endDate, enable: editable()">
-        <span class="form-hint">Open-ended contracts schedule 12 months ahead</span>
+        <span class="form-hint">Required before submission &#8212; drives the 6-month Org Development step</span>
         <span class="fl-readonly" data-bind="text: endDateDisp"></span>
       </div>
       <div class="form-group">
         <label class="form-label">Total Amount (AED) <span class="required">*</span></label>
-        <input class="form-control mono" type="number" data-bind="value: totalAmount, enable: editable()">
+        <input class="form-control mono" type="number"
+               data-bind="value: totalAmount, valueUpdate: 'input', enable: editable()">
         <span class="fl-readonly" data-bind="text: totalAmountDisp"></span>
       </div>
       <div class="form-group">
@@ -89,39 +91,263 @@
       </div>
     </div>
 
-    <div class="section-heading">Budget Coding</div>
+    <div class="section-heading">Termsheet &#8212; Engagement</div>
     <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Coding Type</label>
-        <select class="form-control" data-bind="value: codingType, enable: editable()">
-          <option value="GL">GL</option>
-          <option value="PROJECT">PROJECT</option>
-        </select>
-        <span class="fl-readonly" data-bind="text: codingType() || '—'"></span>
+        <label class="form-label">Contract Type <span class="required">*</span></label>
+        <select class="form-control" data-bind="options: contractTypes, optionsText: 'name', optionsValue: 'code',
+                 optionsCaption: '— Select —', value: contractType, enable: editable()"></select>
+        <span class="fl-readonly" data-bind="text: contractTypeDisp"></span>
       </div>
-      <!-- ko if: codingType() === 'GL' -->
       <div class="form-group">
-        <label class="form-label">GL Code Combination <span class="required">*</span></label>
-        <select class="form-control" data-bind="options: glOptions, optionsText: 'ccCode', optionsValue: 'ccId',
-                 optionsCaption: '— Select —', value: ccIdGl, enable: editable()"></select>
-        <span class="fl-readonly" data-bind="text: glDisp"></span>
+        <label class="form-label">Initiative / Project <span class="opt">optional</span></label>
+        <input class="form-control" type="text" data-bind="value: initiative, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: initiative() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Contract Manager / End User <span class="required">*</span></label>
+        <input class="form-control" type="email" placeholder="manager@dctabudhabi.ae"
+               data-bind="value: contractManagerEmail, event: { change: lookupContractManager }, enable: editable()">
+        <span class="form-hint" data-bind="text: contractManagerHint(), style: { color: contractManagerUserId() ? 'var(--green)' : '' }"></span>
+        <span class="fl-readonly" data-bind="text: contractManagerName() || '—'"></span>
+      </div>
+      <div class="form-group form-group--full">
+        <label class="form-label">Contract Description <span class="required">*</span></label>
+        <textarea class="form-control" rows="2" data-bind="value: description, valueUpdate: 'input', enable: editable()"></textarea>
+        <span class="fl-readonly" data-bind="text: description() || '—'"></span>
+      </div>
+      <div class="form-group form-group--full">
+        <label class="form-label">Summary of Services / Key Deliverables <span class="required">*</span></label>
+        <textarea class="form-control" rows="2" data-bind="value: servicesSummary, valueUpdate: 'input', enable: editable()"></textarea>
+        <span class="fl-readonly" data-bind="text: servicesSummary() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Will the freelancer convert to a full-time role? <span class="required">*</span></label>
+        <select class="form-control" data-bind="options: fteOptions, optionsText: 'name', optionsValue: 'code',
+                 optionsCaption: '— Select —', value: fteConversion, enable: editable()"></select>
+        <span class="fl-readonly" data-bind="text: fteDisp"></span>
+      </div>
+    </div>
+
+    <div class="section-heading">Termsheet &#8212; Commercial Terms</div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Terms of Payment <span class="required">*</span></label>
+        <lov-input params="options: paymentTermOptions, value: paymentTerms, valueField: 'code', textField: 'name',
+                    placeholder: 'In Arrears / In Advance', enable: editable"></lov-input>
+        <span class="fl-readonly" data-bind="text: paymentTermsDisp"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Advance Payment <span class="opt">optional</span></label>
+        <input class="form-control" type="text" data-bind="value: advancePayment, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: advancePayment() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Retention <span class="opt">if applicable</span></label>
+        <input class="form-control" type="text" data-bind="value: retentionTerms, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: retentionTerms() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Performance Bond <span class="opt">if applicable</span></label>
+        <input class="form-control" type="text" data-bind="value: performanceBond, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: performanceBond() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Parent Company Guarantee <span class="opt">if applicable</span></label>
+        <input class="form-control" type="text" data-bind="value: parentCoGuarantee, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: parentCoGuarantee() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Details of Insurance Required <span class="opt">optional</span></label>
+        <input class="form-control" type="text" data-bind="value: insuranceDetails, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: insuranceDetails() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Procurement Department Involvement <span class="required">*</span></label>
+        <select class="form-control" data-bind="value: procurementInvolved, enable: editable()">
+          <option value="">— Select —</option>
+          <option value="Y">Yes</option>
+          <option value="N">No</option>
+        </select>
+        <span class="fl-readonly" data-bind="text: procurementDisp"></span>
+      </div>
+      <!-- ko if: procurementInvolved() === 'N' -->
+      <div class="form-group">
+        <label class="form-label">Why is Procurement not involved? <span class="required">*</span></label>
+        <input class="form-control" type="text" data-bind="value: procurementWhy, valueUpdate: 'input', enable: editable()">
+        <span class="fl-readonly" data-bind="text: procurementWhy() || '—'"></span>
       </div>
       <!-- /ko -->
-      <!-- ko if: codingType() === 'PROJECT' -->
+    </div>
+
+    <div class="section-heading">Termsheet &#8212; Routing</div>
+    <div class="form-grid">
       <div class="form-group">
-        <label class="form-label">Project Number <span class="required">*</span></label>
-        <input class="form-control mono" type="text" data-bind="value: projectNumber, valueUpdate: 'input', enable: editable()">
-        <span class="fl-readonly" data-bind="text: projectNumber() || '—'"></span>
+        <label class="form-label">Line Manager Email <span class="required">*</span></label>
+        <input class="form-control" type="email" placeholder="manager@dctabudhabi.ae"
+               data-bind="value: lineManagerEmail, event: { change: lookupLineManager }, enable: editable()">
+        <span class="form-hint" data-bind="text: lineManagerHint(), style: { color: lineManagerName() ? 'var(--green)' : '' }"></span>
+        <span class="fl-readonly" data-bind="text: (lineManagerName() || lineManagerEmail() || '—')"></span>
       </div>
       <div class="form-group">
-        <label class="form-label">Task Number <span class="opt">optional</span></label>
-        <input class="form-control mono" type="text" data-bind="value: taskNumber, valueUpdate: 'input', enable: editable()">
+        <label class="form-label">Memo From &#8212; Department Director <span class="opt">optional</span></label>
+        <input class="form-control" type="email" placeholder="director@dctabudhabi.ae"
+               data-bind="value: memoFromEmail, event: { change: lookupMemoFrom }, enable: editable()">
+        <span class="form-hint" data-bind="text: memoFromHint(), style: { color: memoFromUserId() ? 'var(--green)' : '' }"></span>
+        <span class="fl-readonly" data-bind="text: memoFromName() || '—'"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Memo To &#8212; Executive Director <span class="opt">optional</span></label>
+        <input class="form-control" type="email" placeholder="executive@dctabudhabi.ae"
+               data-bind="value: memoToEmail, event: { change: lookupMemoTo }, enable: editable()">
+        <span class="form-hint" data-bind="text: memoToHint(), style: { color: memoToUserId() ? 'var(--green)' : '' }"></span>
+        <span class="fl-readonly" data-bind="text: memoToName() || '—'"></span>
+      </div>
+    </div>
+
+    <!-- ko if: hasRecord -->
+    <div class="section-heading-row">
+      <div class="section-heading">Required Documents</div>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: refreshRequirements">&#8635; Refresh</button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>Document</th><th>Status</th><th>File</th><th>Expiry</th><th></th></tr></thead>
+        <tbody>
+          <!-- ko foreach: requirements -->
+          <tr>
+            <td data-bind="text: $data.name"></td>
+            <td>
+              <!-- ko if: $data.satisfiedBy === 'PROFILE' --><span class="badge badge--info">From freelancer record</span><!-- /ko -->
+              <!-- ko if: $data.satisfiedBy === 'CONTRACT' --><span class="badge badge--approved">Uploaded on contract</span><!-- /ko -->
+              <!-- ko ifnot: $data.satisfiedBy -->
+              <span class="badge badge--rejected">Missing</span>
+              <!-- ko if: $data.profileExpired === 'Y' -->
+              <div class="form-hint" style="color:var(--red)">
+                On the freelancer record but expired on <span data-bind="text: $data.profileExpiredOn"></span> — upload a current copy.
+              </div>
+              <!-- /ko -->
+              <!-- /ko -->
+            </td>
+            <td data-bind="text: $data.fileName || '—'"></td>
+            <td class="mono">
+              <!-- ko if: $data.expiryDate -->
+              <span data-bind="text: $data.expiryDate, css: { 'exp-chip--soon': $data.expiryStatus === 'EXPIRING_SOON' }"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.expiryDate --><span data-bind="text: $data.satisfiedBy ? 'No expiry' : '—'"></span><!-- /ko -->
+            </td>
+            <td style="text-align:end;white-space:nowrap">
+              <!-- ko if: $data.docId -->
+              <button class="btn btn-secondary btn-sm" title="Open the file in a new tab"
+                      data-bind="click: function () { return $vm.viewDoc($data); }">&#128065; View</button>
+              <button class="btn btn-secondary btn-sm" style="margin-inline-start:6px" title="Download the file"
+                      data-bind="click: function () { return $vm.downloadDoc($data); }">&#11015; Download</button>
+              <!-- /ko -->
+              <!-- ko if: $vm.editable() -->
+              <button class="btn btn-secondary btn-sm" style="margin-inline-start:6px"
+                      data-bind="click: $vm.uploadRequirement.bind($vm, $data),
+                                 text: $data.docId ? '\u21e5 Replace' : '\u21e5 Upload'"></button>
+              <!-- /ko -->
+            </td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <div class="form-hint" style="margin:6px 0 14px">Documents are taken from the <b>freelancer's record</b> whenever they are on file and not expired — nothing to re-attach. Anything you upload here is filed on the freelancer's record too, so it satisfies their future contracts as well. All documents are required before submission.</div>
+    <!-- /ko -->
+
+    <div class="section-heading-row">
+      <div class="section-heading">Budget Allocation</div>
+      <div class="region-actions">
+        <span class="badge badge--info" data-bind="text: 'Budget Year ' + budgetYear()"></span>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">Allocation Level</label>
+        <select class="form-control" data-bind="value: codingType, enable: editable()">
+          <option value="PROJECT">Project</option>
+          <option value="GL">GL Level</option>
+        </select>
+        <span class="fl-readonly" data-bind="text: codingType() === 'GL' ? 'GL Level' : 'Project'"></span>
+      </div>
+
+      <!-- ── GL level — cascading segment LOVs over the GL combinations ──── -->
+      <!-- ko if: codingType() === 'GL' -->
+      <div class="form-group">
+        <label class="form-label">Entity</label>
+        <lov-input params="options: glEntities, value: glEntity, valueField: 'code', textField: 'label',
+                    placeholder: 'Type to search entities…', enable: editable"></lov-input>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Cost Centre</label>
+        <lov-input params="options: glCostCentres, value: glCostCentre, valueField: 'code', textField: 'label',
+                    placeholder: 'Type to search cost centres…', enable: editable"></lov-input>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Account</label>
+        <lov-input params="options: glAccounts, value: glAccount, valueField: 'code', textField: 'label',
+                    placeholder: 'Type to search accounts…', enable: editable"></lov-input>
+      </div>
+      <div class="form-group form-group--full">
+        <label class="form-label">GL Code Combination <span class="required">*</span></label>
+        <lov-input params="options: glCombos, value: ccIdGl, valueField: 'ccId', textField: 'label',
+                    placeholder: 'Type any segment or account name…', enable: editable,
+                    onSearch: $vm.searchGlCombos"></lov-input>
+        <span class="fl-readonly" data-bind="text: glDisp"></span>
+        <div class="form-hint" data-bind="visible: editable(), text: glComboHint"></div>
+      </div>
+      <!-- /ko -->
+
+      <!-- ── Project level — dependent LOVs over the project balances view ── -->
+      <!-- ko if: codingType() === 'PROJECT' -->
+      <div class="form-group">
+        <label class="form-label">Project <span class="required">*</span></label>
+        <lov-input params="options: buProjects, value: projectNumber, valueField: 'projectNumber', textField: 'label',
+                    placeholder: 'Type a project number or name…', enable: editable,
+                    onSearch: $vm.searchBuProjects"></lov-input>
+        <span class="fl-readonly" data-bind="text: projectNumber() || '—'"></span>
+        <!-- ko if: buHint() -->
+        <div class="form-hint" style="color:var(--red)" data-bind="text: buHint"></div>
+        <!-- /ko -->
+      </div>
+      <div class="form-group">
+        <label class="form-label">Task <span class="opt">optional</span></label>
+        <lov-input params="options: buTasks, value: taskNumber, valueField: 'taskNumber', textField: 'label',
+                    placeholder: 'Type to search tasks…', enable: buTaskEnabled"></lov-input>
         <span class="fl-readonly" data-bind="text: taskNumber() || '—'"></span>
       </div>
       <div class="form-group">
         <label class="form-label">Expenditure Type <span class="opt">optional</span></label>
-        <input class="form-control" type="text" data-bind="value: expenditureType, valueUpdate: 'input', enable: editable()">
+        <lov-input params="options: buEtypes, value: expenditureType, valueField: 'expenditureType', textField: 'label',
+                    placeholder: 'Type to search expenditure types…', enable: buTaskEnabled"></lov-input>
         <span class="fl-readonly" data-bind="text: expenditureType() || '—'"></span>
+      </div>
+
+      <!-- fund availability flag for the selected budget line -->
+      <div class="form-group form-group--full">
+        <!-- ko if: fundBusy() -->
+        <div class="alert-banner alert-banner--info">&#8987; <span>Checking available fund…</span></div>
+        <!-- /ko -->
+        <!-- ko if: !fundBusy() && fund() && fund().sufficient === 'Y' -->
+        <div class="alert-banner fl-fund-ok">&#9989;
+          <span><b>Fund available</b> — AED <span data-bind="text: $vm.money(fund().fundAvailable)"></span>
+            remaining on this budget line for <span data-bind="text: fund().year"></span>,
+            against a contract of AED <span data-bind="text: $vm.money(fund().required)"></span>.
+            <span class="fl-fund-sub" data-bind="text: $vm.fundBreakdown(fund())"></span></span>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: !fundBusy() && fund() && fund().sufficient !== 'Y' -->
+        <div class="alert-banner alert-banner--danger">&#9940;
+          <span><b>No budget available</b> — <span data-bind="text: $vm.fundShortMsg(fund())"></span><br>
+            Raise a <b>Fund Transfer</b> to move budget onto this line, or request an <b>additional fund</b>
+            allocation, before submitting this contract.
+            <span class="fl-fund-sub" data-bind="text: $vm.fundBreakdown(fund())"></span></span>
+        </div>
+        <!-- /ko -->
       </div>
       <!-- /ko -->
       <div class="form-group form-group--full">

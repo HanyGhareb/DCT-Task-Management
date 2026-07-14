@@ -44,9 +44,9 @@
   "nav.approvalsGroup": "Approvals",
   "nav.approvals": "Pending Approvals",
   "nav.adminGroup": "Administration",
+  "nav.approverMap": "Approver Assignments",
   "nav.moduleSettings": "Module Settings",
   "nav.notifications": "Notifications",
-
   "dash.title": "Freelancer Operations",
   "dash.subtitle": "Registrations, contracts and payments at a glance",
   "dash.activeFreelancers": "Active Freelancers",
@@ -55,7 +55,6 @@
   "dash.docsExpiring": "Documents Expiring",
   "dash.chartSpend": "Contract Spend — Committed vs Paid (by org)",
   "dash.chartExpiry": "Document Expiry Horizon",
-
   "reg.title": "Registrations",
   "reg.subtitle": "Freelancer registration requests and their approval state",
   "reg.new": "New Registration",
@@ -75,5 +74,10 @@
   "pa.title": "Pending Approvals",
   "pa.subtitle": "{0} item(s) awaiting your action",
   "set.title": "Module Settings",
-  "set.subtitle": "Freelancers module configuration"
+  "set.subtitle": "Freelancers module configuration",
+  "set.grp.condocs": "Contract Documents",
+  "set.condocs.hint": "Choose which documents a contract needs before it can be submitted for approval. A document is taken from the freelancer's record when it is on file and not expired. Hidden documents never appear on the checklist; optional ones appear but never block submission.",
+  "set.shown": "Shown",
+  "set.hidden": "Hidden",
+  "set.adddoc": "Add"
 }

@@ -386,9 +386,10 @@ EXCEPTION
   WHEN OTHERS THEN
     ROLLBACK;
     -- Validation / business-rule errors (field formats -20131..-20139,
-    -- missing required docs -20142, lookup/generic -20001/-20090) are client
+    -- missing required docs -20142, staff-email collision -20148,
+    -- lookup/generic -20001/-20090) are client
     -- faults -> 400; auth/forbidden/not-found keep their codes; else 500.
-    IF SQLCODE IN (-20001, -20090) OR SQLCODE BETWEEN -20142 AND -20131 THEN
+    IF SQLCODE IN (-20001, -20090) OR SQLCODE BETWEEN -20148 AND -20131 THEN
       dct_rest.err(400, SQLERRM);
     ELSIF SQLCODE = -20401 THEN dct_rest.err(401, SQLERRM);
     ELSIF SQLCODE = -20403 THEN dct_rest.err(403, SQLERRM);
@@ -1305,6 +1306,9 @@ BEGIN
       s.coding_type, s.cc_id_gl, s.project_number, s.task_number, s.expenditure_type,
       'N', 'DRAFT', 'PENDING', l_user, l_user
     ) RETURNING voucher_id INTO l_id;
+    UPDATE dct_fl_payment_schedule
+    SET    status = 'VOUCHER_GENERATED', voucher_id = l_id, updated_at = SYSTIMESTAMP
+    WHERE  schedule_id = s.schedule_id;
     l_ids.EXTEND;  l_ids(l_ids.COUNT)   := l_id;
     l_nums.EXTEND; l_nums(l_nums.COUNT) := l_num;
   END LOOP;
@@ -1431,6 +1435,10 @@ BEGIN
     l_con.coding_type, l_con.cc_id_gl, l_con.project_number, l_con.task_number, l_con.expenditure_type,
     'N', 'DRAFT', 'PENDING', l_user, l_user
   ) RETURNING voucher_id INTO l_id;
+  -- the schedule row now carries the voucher: PENDING -> VOUCHER_GENERATED
+  UPDATE dct_fl_payment_schedule
+  SET    status = 'VOUCHER_GENERATED', voucher_id = l_id, updated_at = SYSTIMESTAMP
+  WHERE  schedule_id = l_sched;
   COMMIT;
   l_new := dct_audit_pkg.snap('DCT_FL_PAYMENT_VOUCHERS','voucher_id', TO_CHAR(l_id));
   dct_audit_pkg.log(l_user,'CREATE','DCT_FL_PAYMENT_VOUCHERS', TO_CHAR(l_id), 'FL',
@@ -1493,21 +1501,78 @@ EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
 
+    -- admin-editable generated voucher (37): amount / due date / period label are
+    -- admin-only; an admin may also correct a voucher already SUBMITTED.
     def_handler('vouchers/[COLON]id', 'PUT', q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20);
+  l_pstat  VARCHAR2(20);
+  l_sched  NUMBER;
+  l_admin  BOOLEAN;
+  l_privd  BOOLEAN;
+  l_amt    NUMBER;
+  l_due    DATE;
   l_old    CLOB;
   l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  SELECT status INTO l_status FROM dct_fl_payment_vouchers WHERE voucher_id = [COLON]id;
-  IF l_status != 'DRAFT' THEN
-    dct_rest.err(400,'Voucher can only be edited in DRAFT status'); RETURN;
-  END IF;
-  l_old := dct_audit_pkg.snap('DCT_FL_PAYMENT_VOUCHERS','voucher_id', TO_CHAR([COLON]id));
+
+  BEGIN
+    SELECT status, payment_status, schedule_id
+      INTO l_status, l_pstat, l_sched
+      FROM dct_fl_payment_vouchers WHERE voucher_id = [COLON]id;
+  EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Voucher not found'); RETURN;
+  END;
+
+  l_admin := dct_auth.has_role(l_user,'FL_ADMIN') OR dct_auth.has_role(l_user,'SYS_ADMIN');
+
   dct_rest.parse_body([COLON]body);
+
+  l_privd := APEX_JSON.does_exist(p_path => 'amount')
+          OR APEX_JSON.does_exist(p_path => 'dueDate')
+          OR APEX_JSON.does_exist(p_path => 'periodLabel');
+  IF l_privd AND NOT l_admin THEN
+    dct_rest.err(403,'Only an FL administrator can change the amount, due date or period of a voucher');
+    RETURN;
+  END IF;
+
+  IF l_status = 'DRAFT' THEN
+    NULL;
+  ELSIF l_status = 'SUBMITTED' AND l_admin THEN
+    NULL;
+  ELSE
+    dct_rest.err(400,'This voucher can no longer be edited (status ' || l_status || ')');
+    RETURN;
+  END IF;
+  IF l_pstat = 'PAID' THEN
+    dct_rest.err(400,'A paid voucher cannot be edited'); RETURN;
+  END IF;
+
+  IF APEX_JSON.does_exist(p_path => 'amount') THEN
+    l_amt := APEX_JSON.get_number(p_path => 'amount');
+    IF l_amt IS NULL OR l_amt <= 0 THEN
+      dct_rest.err(400,'Amount must be greater than zero'); RETURN;
+    END IF;
+  END IF;
+  IF APEX_JSON.does_exist(p_path => 'dueDate') THEN
+    BEGIN
+      l_due := TO_DATE(APEX_JSON.get_varchar2(p_path => 'dueDate'),'YYYY-MM-DD');
+    EXCEPTION WHEN OTHERS THEN
+      dct_rest.err(400,'Due date must be a valid date (YYYY-MM-DD)'); RETURN;
+    END;
+    IF l_due IS NULL THEN dct_rest.err(400,'Due date is required'); RETURN; END IF;
+  END IF;
+
+  l_old := dct_audit_pkg.snap('DCT_FL_PAYMENT_VOUCHERS','voucher_id', TO_CHAR([COLON]id));
+
   UPDATE dct_fl_payment_vouchers SET
+    amount         = CASE WHEN APEX_JSON.does_exist(p_path => 'amount')
+                          THEN l_amt ELSE amount END,
+    due_date       = CASE WHEN APEX_JSON.does_exist(p_path => 'dueDate')
+                          THEN l_due ELSE due_date END,
+    period_label   = CASE WHEN APEX_JSON.does_exist(p_path => 'periodLabel')
+                          THEN APEX_JSON.get_varchar2(p_path => 'periodLabel') ELSE period_label END,
     invoice_number = CASE WHEN APEX_JSON.does_exist(p_path => 'invoiceNumber')
                           THEN APEX_JSON.get_varchar2(p_path => 'invoiceNumber') ELSE invoice_number END,
     invoice_date   = CASE WHEN APEX_JSON.does_exist(p_path => 'invoiceDate')
@@ -1521,13 +1586,31 @@ BEGIN
                           THEN APEX_JSON.get_varchar2(p_path => 'notes') ELSE notes END,
     updated_by     = l_user, updated_at = SYSTIMESTAMP
   WHERE voucher_id = [COLON]id;
+
+  IF l_sched IS NOT NULL AND l_privd THEN
+    UPDATE dct_fl_payment_schedule SET
+      amount       = CASE WHEN APEX_JSON.does_exist(p_path => 'amount')
+                          THEN l_amt ELSE amount END,
+      due_date     = CASE WHEN APEX_JSON.does_exist(p_path => 'dueDate')
+                          THEN l_due ELSE due_date END,
+      period_label = CASE WHEN APEX_JSON.does_exist(p_path => 'periodLabel')
+                          THEN APEX_JSON.get_varchar2(p_path => 'periodLabel') ELSE period_label END,
+      updated_at   = SYSTIMESTAMP
+    WHERE schedule_id = l_sched;
+  END IF;
+
   COMMIT;
+
   l_new := dct_audit_pkg.snap('DCT_FL_PAYMENT_VOUCHERS','voucher_id', TO_CHAR([COLON]id));
   dct_audit_pkg.log(l_user,'UPDATE','DCT_FL_PAYMENT_VOUCHERS', TO_CHAR([COLON]id), 'FL',
                     p_old=>l_old, p_new=>l_new);
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
-  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('scheduleSynced', CASE WHEN l_sched IS NOT NULL AND l_privd THEN 'Y' ELSE 'N' END);
+  APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
 END;
 !');
@@ -1747,6 +1830,8 @@ BEGIN
     APEX_JSON.write('docTypeName',   NVL(r.document_type_name, '-'));
     APEX_JSON.write('documentName',  r.document_name);
     APEX_JSON.write('mimeType',      NVL(r.file_mime_type, ''));
+    APEX_JSON.write('fileSize',      NVL(r.file_size, 0));
+    APEX_JSON.write('hasFile',       CASE WHEN NVL(r.file_size, 0) > 0 THEN 'Y' ELSE 'N' END);
     APEX_JSON.write('expiryDate',    TO_CHAR( dct_to_local(r.expiry_date), 'YYYY-MM-DD'));
     APEX_JSON.write('expiryStatus',  r.expiry_status);
     APEX_JSON.write('daysToExpiry',  r.days_to_expiry);
@@ -1952,82 +2037,80 @@ END;
     -- =========================================================================
     -- APPROVALS (FL scope; delegation-aware)
     -- =========================================================================
+    -- =========================================================================
+    -- APPROVALS -- now served by the SHARED worklist view, PROD.DCT_WF_INBOX_V.
+    --
+    -- The query that used to live here was a near-duplicate of the Admin one --
+    -- and a STRICTLY WORSE one. It inner-joined dct_roles on required_role_id,
+    -- so every USER_SPECIFIC step with a NULL role (the line-manager step, and
+    -- the scoped Finance-Business-Partner step) was dropped from FL's own inbox
+    -- entirely. It also had no named-approver clause at all. The result: FL line
+    -- managers and named approvers could only find their tasks in the ADMIN app.
+    -- Reading the shared view fixes that by construction -- there is nothing left
+    -- here to get wrong.
+    --
+    -- The POST routes on the id: >= 900,000,000 is a new-engine task, anything
+    -- else is a legacy instance and goes to dct_fl_pkg exactly as before. The
+    -- -20147 named-approver guard now correctly answers 403 instead of 500.
+    -- =========================================================================
     def_template('approvals/pending');
     def_handler('approvals/pending', 'GET', q'!
 DECLARE
-  l_user  VARCHAR2(100) := dct_rest.validate_session;
-  l_uid   NUMBER;
-  l_roles VARCHAR2(4000);
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  l_uid   := dct_auth.get_user_id(l_user);
-  l_roles := ',' || dct_auth.get_user_roles(l_user) || ',';
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT ai.instance_id, ai.source_module, ai.source_record_ref,
-           ai.submitted_at, t.template_name, ast.step_name,
-           rol.role_code AS required_role,
-           sub.display_name AS submitted_by_name,
-           (SELECT COUNT(*) FROM dct_approval_steps s2 WHERE s2.template_id = ai.template_id) AS total_steps,
-           (SELECT COUNT(*) FROM dct_approval_steps s3 WHERE s3.template_id = ai.template_id
-             AND s3.step_seq <= ai.current_step_seq) AS current_step,
-           NVL(CASE ai.source_module
-             WHEN 'FL_CONTRACT'  THEN (SELECT total_amount     FROM dct_fl_contracts            WHERE contract_id      = ai.source_record_id)
-             WHEN 'FL_AMENDMENT' THEN (SELECT new_total_amount FROM dct_fl_contract_amendments  WHERE amendment_id     = ai.source_record_id)
-             WHEN 'FL_VOUCHER'   THEN (SELECT amount           FROM dct_fl_payment_vouchers     WHERE voucher_id       = ai.source_record_id)
-             WHEN 'FL_RENEWAL'   THEN (SELECT new_total_amount FROM dct_fl_contract_renewals    WHERE renewal_id       = ai.source_record_id)
-           END, 0) AS amount,
-           CASE WHEN INSTR(l_roles, ',' || rol.role_code || ',') > 0
-                  OR INSTR(l_roles, ',SYS_ADMIN,') > 0
-                THEN NULL
-                ELSE (SELECT MAX(du.display_name)
-                      FROM dct_delegations dg
-                      JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
-                                             AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
-                      JOIN dct_users du ON du.user_id = dg.delegator_id
-                      WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
-                        AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
-                        AND (dg.scope = 'ALL_ROLES'
-                             OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
-                             OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id)))
-           END AS acting_for
-    FROM   dct_approval_instances ai
-    JOIN   dct_approval_templates t   ON t.template_id   = ai.template_id
-    JOIN   dct_approval_steps     ast ON ast.template_id = ai.template_id
-                                     AND ast.step_seq    = ai.current_step_seq
-    JOIN   dct_roles              rol ON rol.role_id     = ast.required_role_id
-    JOIN   dct_users              sub ON sub.user_id     = ai.submitted_by
-    WHERE  ai.overall_status = 'PENDING'
-      AND  ai.source_module IN ('FL_REGISTRATION','FL_CONTRACT','FL_AMENDMENT',
-                                'FL_VOUCHER','FL_RENEWAL','FL_PROFILE_CHANGE')
-      AND (INSTR(l_roles, ',' || rol.role_code || ',') > 0
-           OR INSTR(l_roles, ',SYS_ADMIN,') > 0
-           OR EXISTS (
-                SELECT 1 FROM dct_delegations dg
-                JOIN dct_user_roles ur2 ON ur2.user_id = dg.delegator_id
-                                       AND ur2.role_id = rol.role_id AND ur2.is_active = 'Y'
-                WHERE dg.delegate_id = l_uid AND dg.status = 'ACTIVE'
-                  AND TRUNC(SYSDATE) BETWEEN dg.start_date AND dg.end_date
-                  AND (dg.scope = 'ALL_ROLES'
-                       OR (dg.scope = 'SPECIFIC_ROLE' AND dg.role_id = rol.role_id)
-                       OR (dg.scope = 'MODULE' AND dg.module_id = t.module_id))))
-    ORDER BY ai.submitted_at
+    SELECT id, engine, request_ref, source_module, template_name, requested_by,
+           submitted_at, amount, current_step, total_steps, current_step_name,
+           acting_for, due_at, outcome_set_code
+    FROM   dct_wf_inbox_v
+    WHERE  user_id = l_uid
+      AND  source_module IN ('FL_REGISTRATION','FL_CONTRACT','FL_AMENDMENT',
+                             'FL_VOUCHER','FL_RENEWAL','FL_PROFILE_CHANGE')
+    ORDER BY submitted_at
   ) LOOP
     APEX_JSON.open_object;
-    APEX_JSON.write('instanceId',      r.instance_id);
-    APEX_JSON.write('requestRef',      NVL(r.source_record_ref, '-'));
+    APEX_JSON.write('instanceId',      r.id);
+    APEX_JSON.write('requestRef',      r.request_ref);
     APEX_JSON.write('module',          r.source_module);
-    APEX_JSON.write('templateName',    NVL(r.template_name, '-'));
-    APEX_JSON.write('requestedBy',     NVL(r.submitted_by_name, '-'));
-    APEX_JSON.write('requestedAt',     TO_CHAR( dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('templateName',    r.template_name);
+    APEX_JSON.write('requestedBy',     r.requested_by);
+    APEX_JSON.write('requestedAt',     TO_CHAR(dct_to_local(r.submitted_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.write('amount',          r.amount);
-    APEX_JSON.write('currentStep',     NVL(r.current_step, 1));
-    APEX_JSON.write('totalSteps',      NVL(r.total_steps, 1));
-    APEX_JSON.write('currentStepName', NVL(r.step_name, '-'));
+    APEX_JSON.write('currentStep',     r.current_step);
+    APEX_JSON.write('totalSteps',      r.total_steps);
+    APEX_JSON.write('currentStepName', r.current_step_name);
     APEX_JSON.write('actingFor',       r.acting_for);
+    APEX_JSON.write('engine',          r.engine);
+    IF r.due_at IS NOT NULL THEN
+      APEX_JSON.write('dueAt', TO_CHAR(dct_to_local(r.due_at),'YYYY-MM-DD HH:MI AM'));
+    END IF;
+    IF r.outcome_set_code IS NOT NULL THEN
+      APEX_JSON.open_array('outcomes');
+      FOR o IN (SELECT o.outcome_code, o.label_en, o.label_ar, o.semantic,
+                       o.is_positive, o.requires_comment, o.color
+                FROM   dct_wf_outcome o
+                JOIN   dct_wf_outcome_set s ON s.set_id = o.set_id
+                WHERE  s.set_code = r.outcome_set_code
+                ORDER BY o.display_order) LOOP
+        APEX_JSON.open_object;
+        APEX_JSON.write('code',            o.outcome_code);
+        APEX_JSON.write('labelEn',         o.label_en);
+        APEX_JSON.write('labelAr',         o.label_ar);
+        APEX_JSON.write('semantic',        o.semantic);
+        APEX_JSON.write('isPositive',      o.is_positive);
+        APEX_JSON.write('requiresComment', o.requires_comment);
+        APEX_JSON.write('color',           o.color);
+        APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+    END IF;
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -2040,18 +2123,36 @@ END;
     def_handler('approvals/[COLON]id/action', 'POST', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_id   NUMBER        := [COLON]id;
+  l_uid  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_uid := dct_auth.get_user_id(l_user);
   dct_rest.parse_body([COLON]body);
-  dct_fl_pkg.act_on_approval(
-    p_instance_id => [COLON]id,
-    p_user_id     => dct_auth.get_user_id(l_user),
-    p_action      => APEX_JSON.get_varchar2(p_path => 'action'),
-    p_comments    => APEX_JSON.get_varchar2(p_path => 'comments'));
+
+  IF l_id >= 900000000 THEN
+    dct_wf_engine.complete_task(l_id, l_uid,
+      UPPER(APEX_JSON.get_varchar2(p_path => 'action')),
+      APEX_JSON.get_varchar2(p_path => 'comments'));
+  ELSE
+    dct_fl_pkg.act_on_approval(
+      p_instance_id => l_id,
+      p_user_id     => l_uid,
+      p_action      => APEX_JSON.get_varchar2(p_path => 'action'),
+      p_comments    => APEX_JSON.get_varchar2(p_path => 'comments'));
+  END IF;
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
-  APEX_JSON.open_object; APEX_JSON.write('ok', TRUE); APEX_JSON.close_object;
-EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK;
+  IF SQLCODE IN (-20147, -20303) THEN dct_rest.err(403, SQLERRM);
+  ELSIF SQLCODE IN (-20001, -20090, -20304, -20305, -20307, -20308, -20309)
+     OR SQLCODE BETWEEN -20160 AND -20131 THEN dct_rest.err(400, SQLERRM);
+  ELSE dct_rest.err(500, SQLERRM);
+  END IF;
 END;
 !');
 
@@ -2394,7 +2495,7 @@ BEGIN
     JOIN dct_fl_contracts c ON c.contract_id = s.contract_id
     LEFT JOIN dct_fl_payment_vouchers v ON v.voucher_id = s.voucher_id
     WHERE c.freelancer_id = l_frl
-      AND s.status IN ('PENDING','VOUCHER_GENERATED')
+      AND s.status IN ('PENDING','VOUCHER_GENERATED','VOUCHER_APPROVED')
     ORDER BY s.due_date
     FETCH FIRST 1 ROWS ONLY
   ) LOOP

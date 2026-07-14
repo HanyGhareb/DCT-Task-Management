@@ -117,6 +117,7 @@ function (ko, config, authService, flService, i18n, shell) {
         id: 'admin', labelKey: 'nav.adminGroup', auth: 'admin',
         collapsed: ko.observable(false),
         items: [
+          { id: 'approverMap',    labelKey: 'nav.approverMap',    icon: '&#128101;' },
           { id: 'moduleSettings', labelKey: 'nav.moduleSettings', icon: '&#9881;' },
         ]
       },

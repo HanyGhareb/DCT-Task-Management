@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService'], function (ko, flService) {
+define(['knockout', 'services/flService', 'services/docFile'], function (ko, flService, docFile) {
   'use strict';
 
   function FreelancerDetailViewModel() {
@@ -126,6 +126,19 @@ define(['knockout', 'services/flService'], function (ko, flService) {
     self.expChip = function (s) {
       return { VALID: 'exp-chip--valid', EXPIRING_SOON: 'exp-chip--soon', EXPIRED: 'exp-chip--expired' }[s] || 'exp-chip--valid';
     };
+
+    /* ── document file actions ─────────────────────────────────────────── */
+    self.hasFile     = docFile.hasFile;
+    self.viewDoc     = function (d) { docFile.view(d); };
+    self.downloadDoc = function (d) { docFile.download(d); };
+    self.fileSizeTxt = function (d) {
+      var b = Number((d && d.fileSize) || 0);
+      if (!b) return '—';
+      if (b < 1024) return b + ' B';
+      if (b < 1024 * 1024) return Math.round(b / 1024) + ' KB';
+      return (b / 1024 / 1024).toFixed(1) + ' MB';
+    };
+
     self.statusBadge = function (s) {
       return { ACTIVE: 'badge--approved', INACTIVE: 'badge--draft', BLACKLISTED: 'badge--blacklisted' }[s] || 'badge--draft';
     };

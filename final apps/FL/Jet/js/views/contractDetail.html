@@ -11,6 +11,8 @@
       <div class="page-subtitle" data-bind="text: (data().freelancerName || '') + ' · ' + (data().title || '') + ' · ' + (data().billingMethod || '')"></div>
     </div>
     <div style="display:flex;gap:8px">
+      <button class="btn btn-secondary" data-bind="click: generateTermsheet, enable: !tsBusy(),
+              text: tsBusy() ? tsLabel() : '🖶 Termsheet PDF'"></button>
       <!-- ko if: data().status === 'DRAFT' -->
       <button class="btn btn-secondary" data-bind="click: openEdit">&#9998; Edit</button>
       <button class="btn btn-primary" data-bind="click: submit">&#10003; Submit</button>
@@ -52,8 +54,55 @@
       Amendments (<span data-bind="text: amendments().length"></span>)</div>
     <div class="fl-tab" data-bind="css: { 'fl-tab--on': tab() === 'renewals' }, click: setTab.bind($data, 'renewals')">
       Renewals (<span data-bind="text: renewals().length"></span>)</div>
+    <div class="fl-tab" data-bind="css: { 'fl-tab--on': tab() === 'approval' }, click: setTab.bind($data, 'approval')">Approval Chain</div>
     <div class="fl-tab" data-bind="css: { 'fl-tab--on': tab() === 'info' }, click: setTab.bind($data, 'info')">Details</div>
   </div>
+
+  <!-- ko if: tab() === 'approval' -->
+  <div class="card">
+    <div class="section-heading-row">
+      <div class="section-heading">Approval Chain</div>
+      <div class="region-actions">
+        <!-- ko if: canForceApprove() -->
+        <button class="btn btn-primary btn-sm" data-bind="click: forceApprove">&#9889; Force Approve</button>
+        <!-- /ko -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: loadApprovalHistory">&#8635; Refresh</button>
+      </div>
+    </div>
+    <!-- ko ifnot: approval().hasInstance -->
+    <div class="empty-state" style="padding:30px"><div class="empty-state__msg">Not submitted yet &#8212; the endorsement chain starts at submission</div></div>
+    <!-- /ko -->
+    <!-- ko if: approval().hasInstance -->
+    <div class="form-hint" style="margin-bottom:10px">
+      Submitted by <b data-bind="text: approval().submittedByName || '-'"></b>
+      on <span class="mono" data-bind="text: approval().submittedAt || ''"></span>
+      · Overall: <span class="badge" data-bind="text: approval().overallStatus, css: statusBadge(approval().overallStatus)"></span>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th>#</th><th>Step</th><th>Approver</th><th>Status</th><th>Received</th><th>Actioned By</th><th>Actioned At</th><th>Comments</th></tr></thead>
+        <tbody>
+          <!-- ko foreach: approval().steps -->
+          <tr data-bind="style: { background: $data.isCurrent === 'Y' ? 'var(--brand-soft)' : '' }">
+            <td class="mono" data-bind="text: $index() + 1"></td>
+            <td style="font-weight:600">
+              <span data-bind="text: $data.stepName"></span>
+              <!-- ko if: $data.conditional === 'Y' --><span class="badge badge--info" style="margin-inline-start:6px">6+ months</span><!-- /ko -->
+            </td>
+            <td data-bind="text: $data.approver || '-'"></td>
+            <td><span class="badge" data-bind="text: $data.status, css: $vm.stepBadge($data.status)"></span></td>
+            <td class="mono" style="font-size:11px" data-bind="text: $data.receivedAt || ''"></td>
+            <td data-bind="text: $data.actionedBy || ''"></td>
+            <td class="mono" style="font-size:11px" data-bind="text: $data.actionedAt || ''"></td>
+            <td style="font-size:12px" data-bind="text: $data.comments || ''"></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
 
   <!-- ko if: tab() === 'schedule' -->
   <div class="card">
@@ -157,6 +206,38 @@
       <div class="section-heading">Contract Details</div>
     </div>
     <div class="form-grid">
+      <div class="form-group"><label class="form-label">Termsheet Ref</label>
+        <div class="mono" data-bind="text: data().termsheetRef || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Contract Type</label>
+        <div data-bind="text: data().contractTypeName || data().contractType || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Initiative / Project</label>
+        <div data-bind="text: data().initiative || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Contract Manager / End User</label>
+        <div data-bind="text: data().contractManagerName || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Line Manager</label>
+        <div data-bind="text: data().lineManagerName || data().lineManagerEmail || '—'"></div></div>
+      <div class="form-group"><label class="form-label">FTE Conversion</label>
+        <div data-bind="text: data().fteConversionName || '—'"></div></div>
+      <div class="form-group form-group--full"><label class="form-label">Description</label>
+        <div data-bind="text: data().description || '—'"></div></div>
+      <div class="form-group form-group--full"><label class="form-label">Services / Key Deliverables</label>
+        <div data-bind="text: data().servicesSummary || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Terms of Payment</label>
+        <div data-bind="text: data().paymentTerms || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Advance Payment</label>
+        <div data-bind="text: data().advancePayment || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Retention</label>
+        <div data-bind="text: data().retentionTerms || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Performance Bond</label>
+        <div data-bind="text: data().performanceBond || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Parent Company Guarantee</label>
+        <div data-bind="text: data().parentCoGuarantee || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Insurance Required</label>
+        <div data-bind="text: data().insuranceDetails || '—'"></div></div>
+      <div class="form-group"><label class="form-label">Procurement Involvement</label>
+        <div data-bind="text: data().procurementInvolved === 'Y' ? 'Yes' : (data().procurementInvolved === 'N' ? ('No — ' + (data().procurementWhy || '')) : '—')"></div></div>
+      <div class="form-group"><label class="form-label">Memo From / To</label>
+        <div data-bind="text: (data().memoFromName || '—') + ' → ' + (data().memoToName || '—')"></div></div>
       <div class="form-group"><label class="form-label">Freelancer</label>
         <div data-bind="text: data().freelancerName || ''"></div></div>
       <div class="form-group"><label class="form-label">Organisation</label>

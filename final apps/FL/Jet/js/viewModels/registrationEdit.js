@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService', 'services/authService', 'shared/formGuard', 'shared/i18n', 'shared/docUpload'], function (ko, flService, authService, formGuard, i18n, docUpload) {
+define(['knockout', 'services/flService', 'services/authService', 'services/docFile', 'shared/formGuard', 'shared/i18n', 'shared/docUpload'], function (ko, flService, authService, docFile, formGuard, i18n, docUpload) {
   'use strict';
 
   function RegistrationEditViewModel() {
@@ -563,10 +563,11 @@ define(['knockout', 'services/flService', 'services/authService', 'shared/formGu
       });
     };
 
-    self.viewDoc = function (item) {
-      if (!item.docId) return;
-      window.open('https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/fl/documents/' + item.docId + '/file', '_blank');
-    };
+    // Authed fetch through the configured API base (never the raw ADB host —
+    // that bypasses the web-tier proxy and carries no Bearer token).
+    self.hasFile     = docFile.hasFile;
+    self.viewDoc     = function (item) { docFile.view(item); };
+    self.downloadDoc = function (item) { docFile.download(item); };
 
     // ---- AI extraction (Passport / Emirates ID / Bank Letter) ------------
     // A passport reports nationality as an ISO-3 code (EGY, ARE) or a name

@@ -59,7 +59,8 @@ define(['knockout', 'services/flService'], function (ko, flService) {
 
     self.generateVoucher = function (row) {
       flService.generateVoucher(row.scheduleId).then(function (r) {
-        self.successMsg('Voucher ' + r.voucherNumber + ' created (DRAFT).');
+        self.successMsg('Voucher ' + r.voucherNumber + ' generated — this period is now "Generated". ' +
+                        'It becomes "Approved" when the voucher is approved, and "Paid" once payment is confirmed.');
         setTimeout(function () { self.successMsg(''); }, 3000);
         self.reload();
       }).catch(function (err) {
@@ -73,9 +74,16 @@ define(['knockout', 'services/flService'], function (ko, flService) {
       if (window._jetApp) window._jetApp.navigate('contractDetail');
     };
 
+    // The schedule row mirrors its voucher's lifecycle:
+    // PENDING -> VOUCHER_GENERATED (voucher raised) -> VOUCHER_APPROVED -> PAID.
     self.badgeFor = function (s) {
       return { PENDING: 'badge--pendingp', VOUCHER_GENERATED: 'badge--vchgen',
-               PAID: 'badge--paid', SKIPPED: 'badge--cancelled' }[s] || 'badge--pendingp';
+               VOUCHER_APPROVED: 'badge--submitted', PAID: 'badge--paid',
+               SKIPPED: 'badge--cancelled' }[s] || 'badge--pendingp';
+    };
+    self.statusLabel = function (s) {
+      return { PENDING: 'Pending', VOUCHER_GENERATED: 'Generated',
+               VOUCHER_APPROVED: 'Approved', PAID: 'Paid', SKIPPED: 'Skipped' }[s] || s;
     };
     self.isOverdue = function (row) {
       return row.status === 'PENDING' && row.dueDate && row.dueDate < new Date().toISOString().substring(0, 10);

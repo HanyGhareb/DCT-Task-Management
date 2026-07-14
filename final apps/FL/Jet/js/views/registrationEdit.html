@@ -233,7 +233,8 @@
           <!-- ko if: $parent.aiEnabled() && ['PASSPORT','EMIRATES_ID','BANK_LETTER'].indexOf(docTypeCode) >= 0 -->
           <button class="btn btn-primary btn-sm" data-bind="click: function () { return $vm.runExtract($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()" title="Extract data with AI">&#10024; AI Extract</button>
           <!-- /ko -->
-          <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.viewDoc($data); }">View</button>
+          <button class="btn btn-secondary btn-sm" title="Open the file in a new tab" data-bind="click: function () { return $vm.viewDoc($data); }">&#128065; View</button>
+          <button class="btn btn-secondary btn-sm" title="Download the file" data-bind="click: function () { return $vm.downloadDoc($data); }">&#11015; Download</button>
           <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.pickDocFile($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()">Replace</button>
           <button class="btn btn-secondary btn-sm" data-bind="click: function () { return $vm.removeDoc($data); }, enable: ($parent.editable() || $parent.isNew) && !$parent.docBusy()">&times;</button>
           <!-- /ko -->

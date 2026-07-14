@@ -201,10 +201,10 @@ DECLARE
             'Allow Voucher Amount Override',
             'Y = admin can change the voucher amount from the scheduled amount.',
             'BOOLEAN', 'Y|N', 'N'),
-        t_setting('DEFAULT_PAYMENT_METHOD', 'BANK_TRANSFER',
+        t_setting('DEFAULT_PAYMENT_METHOD', 'EFT',
             'Default Payment Method',
             'Default value for payment_method on new vouchers. Must match FL_PAYMENT_METHOD lookup codes.',
-            'SELECT', 'BANK_TRANSFER|CHEQUE|CASH', 'BANK_TRANSFER'),
+            'SELECT', 'EFT|RATABI|TRUST', 'EFT'),
         t_setting('DEFAULT_PAY_GROUP', 'FREELANCER',
             'Default Pay Group',
             'Default value for pay_group on new vouchers. Must match FL_PAY_GROUP lookup codes.',
@@ -325,9 +325,9 @@ BEGIN
     -- Payment Methods
     upsert_category('FL_PAYMENT_METHOD', 'Freelancer Payment Methods', 'طرق الدفع',
                     v_module_id, v_cat_paymethod);
-    upsert_value(v_cat_paymethod, 'BANK_TRANSFER', 'Bank Transfer', 'تحويل بنكي', 10, 'Y');
-    upsert_value(v_cat_paymethod, 'CHEQUE',        'Cheque',        'شيك',         20);
-    upsert_value(v_cat_paymethod, 'CASH',          'Cash',          'نقد',         30);
+    upsert_value(v_cat_paymethod, 'EFT',    'EFT',    'تحويل إلكتروني', 10, 'Y');
+    upsert_value(v_cat_paymethod, 'RATABI', 'Ratabi', 'رواتبي',          20);
+    upsert_value(v_cat_paymethod, 'TRUST',  'Trust',  'ترست',            30);
 
     -- Pay Groups
     upsert_category('FL_PAY_GROUP', 'Freelancer Pay Groups', 'مجموعات الدفع',

@@ -68,25 +68,82 @@ function (ko, flService, regionPicker) {
       return item;
     }
 
-    // Registration document required/optional rows (drive DCT_DOC_REQUIREMENTS).
+    // Document-checklist rows (DCT_DOC_REQUIREMENTS). Each row carries TWO
+    // switches: required/optional (is_mandatory) and shown/hidden (is_active).
+    // A hidden row disappears from the checklist entirely; an optional one is
+    // still shown and can be uploaded, but never blocks submission.
     function makeReq(r) {
-      var obs  = ko.observable(r.isMandatory === 'Y');
+      var mand = ko.observable(r.isMandatory === 'Y');
+      var vis  = ko.observable(r.isActive === 'Y');
       var item = {
-        docReqId: r.docReqId,
-        code:     r.docTypeCode,
-        label:    r.docTypeName || r.docTypeCode,
-        mandatory: obs,
-        original:  r.isMandatory === 'Y',
+        docReqId:  r.docReqId,
+        docTypeId: r.docTypeId,
+        context:   r.contextCode,
+        code:      r.docTypeCode,
+        label:     r.docTypeName || r.docTypeCode,
+        mandatory: mand,
+        visible:   vis,
+        origMand:  r.isMandatory === 'Y',
+        origVis:   r.isActive === 'Y',
         dirty:     ko.observable(false)
       };
-      item.flip = function () { obs(!obs()); };
-      obs.subscribe(function (v) { item.dirty(v !== item.original); });
+      function recheck() { item.dirty(mand() !== item.origMand || vis() !== item.origVis); }
+      item.flip     = function () { mand(!mand()); };
+      item.flipVis  = function () { vis(!vis()); };
+      mand.subscribe(recheck);
+      vis.subscribe(recheck);
       return item;
     }
 
-    flService.getDocRequirements('REGISTRATION').then(function (rows) {
-      self.docReqs((rows || []).map(makeReq));
-    }).catch(function () { /* section simply stays empty on error */ });
+    // Both checklists are configurable: REGISTRATION (what an applicant must
+    // provide) and CONTRACT (what a contract needs before submission).
+    self.docReqsContract = ko.observableArray([]);
+    self.docTypeCatalog  = ko.observableArray([]);
+    self.addRegType      = ko.observable(null);
+    self.addConType      = ko.observable(null);
+    self.docBusy         = ko.observable(false);
+
+    function loadReqs() {
+      return Promise.all([
+        flService.getDocRequirementsAdmin('REGISTRATION', true),
+        flService.getDocRequirementsAdmin('CONTRACT', true),
+        flService.getDocTypeCatalog()
+      ]).then(function (rs) {
+        self.docReqs((rs[0] || []).map(makeReq));
+        self.docReqsContract((rs[1] || []).map(makeReq));
+        self.docTypeCatalog(rs[2] || []);
+      }).catch(function () { /* sections simply stay empty on error */ });
+    }
+    loadReqs();
+
+    // Document types not yet on a checklist — the "add document" pickers.
+    function availableFor(listObs) {
+      return ko.computed(function () {
+        var have = listObs().map(function (r) { return r.docTypeId; });
+        return self.docTypeCatalog().filter(function (t) { return have.indexOf(t.docTypeId) < 0; });
+      });
+    }
+    self.addRegOptions = availableFor(self.docReqs);
+    self.addConOptions = availableFor(self.docReqsContract);
+
+    function addReq(context, typeObs) {
+      var id = typeObs();
+      if (!id) return;
+      self.docBusy(true);
+      flService.addDocRequirement({ contextCode: context, docTypeId: Number(id), isMandatory: 'Y' })
+        .then(function () { typeObs(null); return loadReqs(); })
+        .then(function () {
+          self.docBusy(false);
+          self.successMsg('Document added to the checklist.');
+          setTimeout(function () { self.successMsg(''); }, 3000);
+        })
+        .catch(function (err) {
+          self.docBusy(false);
+          self.errorMsg((err && err.message) || 'Could not add the document');
+        });
+    }
+    self.addRegDoc = function () { addReq('REGISTRATION', self.addRegType); };
+    self.addConDoc = function () { addReq('CONTRACT',     self.addConType); };
 
     flService.getSettings().then(function (rows) {
       var regionItems = {};
@@ -120,26 +177,33 @@ function (ko, flService, regionPicker) {
       return list;
     }
 
+    function allReqs() { return self.docReqs().concat(self.docReqsContract()); }
+
     self.hasDirty = ko.computed(function () {
       self.region();
-      var reqDirty = self.docReqs().some(function (r) { return r.dirty(); });
+      var reqDirty = allReqs().some(function (r) { return r.dirty(); });
       return reqDirty || allItems().some(function (s) { return s.dirty(); });
     });
 
     self.saveAll = function () {
       var dirty     = allItems().filter(function (s) { return s.dirty(); });
-      var dirtyReqs = self.docReqs().filter(function (r) { return r.dirty(); });
+      var dirtyReqs = allReqs().filter(function (r) { return r.dirty(); });
       if (!dirty.length && !dirtyReqs.length) return;
       self.saving(true);
       self.successMsg(''); self.errorMsg('');
       var jobs = dirty.map(function (s) {
         return flService.updateSetting(s.settingId, s.value());
       }).concat(dirtyReqs.map(function (r) {
-        return flService.updateDocRequirement(r.docReqId, r.mandatory() ? 'Y' : 'N');
+        return flService.patchDocRequirement(r.docReqId, {
+          isMandatory: r.mandatory() ? 'Y' : 'N',
+          isActive:    r.visible()   ? 'Y' : 'N'
+        });
       }));
       Promise.all(jobs).then(function () {
         dirty.forEach(function (s) { s.original = s.value(); s.dirty(false); });
-        dirtyReqs.forEach(function (r) { r.original = r.mandatory(); r.dirty(false); });
+        dirtyReqs.forEach(function (r) {
+          r.origMand = r.mandatory(); r.origVis = r.visible(); r.dirty(false);
+        });
         self.saving(false);
         self.successMsg('Settings saved.');
         setTimeout(function () { self.successMsg(''); }, 3000);

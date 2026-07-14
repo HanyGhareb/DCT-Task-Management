@@ -35,12 +35,16 @@
   <div class="data-table-wrap">
     <table class="data-table">
       <thead><tr>
-        <th>Number</th><th>Freelancer</th><th>Title</th><th>Period</th><th>Amount</th><th>Billing</th><th>Status</th><th>Paid</th>
+        <th>Number</th><th>Type</th><th>Freelancer</th><th>Title</th><th>Period</th><th>Amount</th><th>Billing</th><th>Status</th><th>Paid</th>
       </tr></thead>
       <tbody>
         <!-- ko foreach: items -->
         <tr style="cursor:pointer" data-bind="click: $vm.openItem.bind($vm, $data)">
-          <td class="mono" style="font-size:12px" data-bind="text: contractNumber"></td>
+          <td class="mono" style="font-size:12px">
+            <div data-bind="text: contractNumber"></div>
+            <div style="font-size:10px;color:var(--text-3)" data-bind="text: $data.termsheetRef || ''"></div>
+          </td>
+          <td data-bind="text: $data.contractTypeName || '—'"></td>
           <td style="font-weight:600" data-bind="text: $data.freelancerName || ''"></td>
           <td data-bind="text: $data.title || ''"></td>
           <td class="mono" style="font-size:11px" data-bind="text: ($data.startDate || '') + ' → ' + ($data.endDate || 'open')"></td>

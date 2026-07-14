@@ -43,11 +43,20 @@ Module: **Freelancers** · Brand: `#7C4DBE` · ORDS base: `/ords/admin/fl`
 **Contracts** (`contracts`) — contract list.
 - `openNew` / `openItem` · `reload` · `badgeFor` / `billPct`.
 
-**Contract Editor** (`contractEdit`) — draft/submit a contract.
-- `saveDraft` / `submit` · `back`.
+**Contract Editor** (`contractEdit`) — draft/submit a contract on the Legal-Affairs **termsheet** (Phase 2: Engagement / Commercial Terms / Routing sections + review mode).
+- `saveDraft` / `submit` (submit pre-validates the termsheet — `validateTermsheet`) · `back`.
+- Email→user lookups: `lookupContractManager` · `lookupLineManager` · `lookupMemoFrom` · `lookupMemoTo`.
+- Required-documents checklist (context `FL/CONTRACT`): `refreshRequirements` · `uploadRequirement` (files the document on the **freelancer's record**, with expiry, so it satisfies their future contracts too) · `viewDoc` / `downloadDoc`. A requirement is satisfied by an **unexpired document on the freelancer's record** (preferred, shown as "From freelancer record") or a contract-only copy; an expired profile copy is flagged with its expiry date instead of counting (db/33).
+- **Budget Allocation** (db/31): Title + Terms of Payment are lookup selects (`titleOptions` / `paymentTermOptions` from `FL_CONTRACT_TITLE` / `FL_PAYMENT_TERMS`; Title optional). Allocation level defaults to **Project** — `budgetYear` (start-date year) · dependent LOVs `buProjects` / `buTasks` / `buEtypes` over the project balances view · fund flag `fund` / `fundBusy` / `fundBreakdown` / `fundShortMsg` (green = line covers the contract total; red = shortfall + raise a Fund Transfer / request additional fund). GL level = cascading segment LOVs `glEntities` / `glCostCentres` / `glAccounts` → `glCombos` (`glComboHint`). New `flService` methods: `getLookupValues` · `getBudgetProjects` / `getBudgetTasks` / `getBudgetEtypes` / `checkBudgetFund` · `getGlSegments` / `getGlCombinations`.
+- **Searchable LOVs**: all 10 LOV fields on this form (Freelancer, Title, Terms of Payment, Project, Task, Expenditure Type, GL Entity / Cost Centre / Account / Combination) use the `<lov-input>` type-ahead component (`Jet/js/components/lovInput.js`) — type to filter, resolves to the code, "No match" when it can't. Server-side search behind the capped lists: `searchBuProjects` · `searchGlCombos`.
 
-**Contract Detail** (`contractDetail`) — contract lifecycle (amend, renew, voucher).
+**Contract Detail** (`contractDetail`) — contract lifecycle (amend, renew, voucher, chain, termsheet PDF).
 - `setTab` · `openEdit` · `submit` · `generateVoucher`.
+- **Approval Chain tab** (Phase 2): `loadApprovalHistory` (7-step timeline w/ named approvers) · `stepBadge` · `canForceApprove` / `forceApprove` (FL_ADMIN).
+- **Termsheet PDF** (Phase 2, D1/D3): `generateTermsheet` — enqueue `FL_CONTRACT_TERMSHEET` via the bridge, poll (`tsBusy`/`tsLabel`), download, then auto-file on the contract (doc type `TERMSHEET`).
+
+**Approver Assignments** (`approverMap`) — Phase 2 (D2), Admin nav, FL_ADMIN-gated mutations. Who endorses per role per org unit (department → sector fallback → any role holder).
+- `reload` · `openAdd` / `saveAdd` · `lookupApprover` · `toggleActive` · `remove`.
 - Amendments: `openAmendment` / `saveAmendment` / `submitAmendment`.
 - Renewals: `openRenewal` / `saveRenewal` / `submitRenewal`.
 - `reload` · `back` · `statusBadge` / `schedBadge`.
@@ -64,12 +73,22 @@ Module: **Freelancers** · Brand: `#7C4DBE` · ORDS base: `/ords/admin/fl`
 **Vouchers** (`vouchers`) — payment voucher list.
 - `openItem` · `reload` · `badgeFor` / `payBadge`.
 
-**Voucher Detail** (`voucherDetail`) — voucher lifecycle.
+**Voucher Detail** (`voucherDetail`) — voucher lifecycle (db/35 + db/36 + db/37).
 - `saveDraft` / `submit` · `markPaid` · `openContract` · `reload` · `back` · `statusBadge` / `payBadge`.
+- **Admin edit of a generated voucher** (`editable` / `adminEdit` / `adminHint`): an FL_ADMIN/SYS_ADMIN may change **amount, due date, payment period, pay group and description** while the voucher is DRAFT *or* SUBMITTED (never once APPROVED / REJECTED / CANCELLED / PAID); the server 403s those fields for anyone else and re-syncs the payment-schedule row the voucher came from.
+- **Payment method / pay group** come from the managed lookups `FL_PAYMENT_METHOD` (**EFT · Ratabi · Trust**) and `FL_PAY_GROUP` (`paymentMethods` / `payGroups`); a stored value whose lookup entry has been retired is re-injected as its own option (`keepStored`) so historical vouchers never blank.
+- **Invoice number** is system-generated from `INVOICE_NUMBER_TEMPLATE` when `INVOICE_NUMBER_AUTO`=Y (`autoInvoice` / `invoiceHint`); the field falls back to user entry when the setting is off.
+- **Payment period From → To** + due/invoice facts + the contract's value / paid-to-date bar in the summary rail (`billingLabel` · `contractPct`).
+- **Budget Allocation**: project + name, task, expenditure type or GL combination, with live budget / actual / commitment / obligation / fund-available figures and a green-red fund verdict (`budget` / `hasBudget` / `budgetYear` / `budgetNote` / `usedPct` / `money`).
+- **Attachments** (source_type `VOUCHER`): `reloadAttachments` · `addAttachment` · `removeAttachment` · `viewAttachment` / `downloadAttachment` · `fileSizeTxt`. New `flService.getVoucherDocuments(id)`.
+
+**Payment schedule status** mirrors the voucher: `PENDING → VOUCHER_GENERATED (Generated) → VOUCHER_APPROVED (Approved) → PAID`; a rejected voucher releases the period back to Pending (`paymentSchedule`: `statusLabel` / `badgeFor`).
 
 ## 8. Documents
 **Documents** (`documents`) — document register with expiry tracking.
-- `openFreelancer` · `reload` · `expChip`.
+- `openFreelancer` · `reload` · `expChip` · `hasFile` / `viewDoc` / `downloadDoc` (per-row **View / Download** of the stored file).
+
+The same View / Download actions appear on the **freelancer detail → Documents tab** (`freelancerDetail`: `hasFile` / `viewDoc` / `downloadDoc` / `fileSizeTxt`) and on the **registration editor** document checklist (`registrationEdit`: `viewDoc` / `downloadDoc`). All three go through the shared FL service `docFile` (`js/services/docFile.js` — `view` / `download` / `hasFile`), which pulls `GET /fl/documents/:id/file` with the Bearer token via `api.fetchBlobUrl` (never the raw ADB host — that bypasses the web-tier proxy and sends no token) and opens the tab synchronously so the pop-up blocker doesn't swallow it. Non-inline types (Word/Excel) download instead of opening a blank tab.
 
 ## 9. Approvals
 **Approvals** (`approvals`) — unified approvals inbox (delegation-aware).
@@ -79,8 +98,10 @@ Module: **Freelancers** · Brand: `#7C4DBE` · ORDS base: `/ords/admin/fl`
 **Notifications** (`notifications`) — `markRead` / `markAll` · `typeClass`.
 
 ## 11. Configuration
-**Module Settings** (`moduleSettings`) — module settings + region appearance + **Registration Documents** (required/optional per document + Photo required — UD-FL-01 US-10).
-- `saveAll` (persists dirty settings **and** dirty doc-requirement toggles via `flService.updateDocRequirement`).
+**Module Settings** (`moduleSettings`) — module settings + region appearance + **Registration Documents** and **Contract Documents** checklists (db/34).
+- Each document row has TWO switches: **Shown/Hidden** (`is_active` — hidden documents never appear on the checklist) and **Required/Optional** (`is_mandatory` — optional ones appear but never block submission), plus **Add a document** from the doc-type catalogue. Photo Required (registration) stays a module setting.
+- `saveAll` (persists dirty settings **and** dirty doc-requirement toggles via `flService.patchDocRequirement`) · `addRegDoc` / `addConDoc` · `addRegOptions` / `addConOptions`.
+- New `flService` methods: `getDocRequirementsAdmin(context, includeHidden)` · `patchDocRequirement(id, {isMandatory, isActive, displaySeq})` · `addDocRequirement({contextCode, docTypeId, isMandatory})` · `getDocTypeCatalog()`.
 
 ---
 
@@ -101,6 +122,12 @@ The `portal/*` endpoints serve the external freelancer self-service Portal (sepa
 | Doc requirements | `GET doc-requirements/?context=…` · `PUT doc-requirements/:id` *(FL_ADMIN — toggle `isMandatory` required/optional; UD-FL-01 US-10)* |
 | Freelancers | `GET freelancers/` · `GET freelancers/:id` · `PUT freelancers/:id` · `PUT freelancers/:id/photo` · `GET freelancers/:id/photo` *(media)* · `POST freelancers/:id/bank-accounts` · `PUT bank-accounts/:id` · `POST freelancers/:id/portal-invite` |
 | Contracts | `GET contracts/` · `POST contracts/` · `GET contracts/:id` · `PUT contracts/:id` · `POST contracts/:id/submit` · `GET contracts/:id/schedule` · `GET contracts/:id/amendments` · `POST contracts/:id/amendments` · `POST amendments/:id/submit` |
+| Contracts — Phase 2 termsheet (db/28) | `GET contracts/:id/requirements` · `GET contracts/:id/approval-history` · `POST contracts/:id/force-approve` |
+| Vouchers — enhancements (db/35, db/36, db/37) | `POST vouchers/` *(stamps the schedule row + auto invoice number)* · `GET vouchers/:id` *(+ periodStart/periodEnd, full budget block, contract position)* · `GET vouchers/:id/documents` · `PUT vouchers/:id` *(admin-editable: amount / dueDate / periodLabel are FL_ADMIN-only → 403; DRAFT for anyone, SUBMITTED for an admin; re-syncs the payment-schedule row)* |
+| Document checklists — FL_ADMIN (db/34) | `GET doc-requirements/?context=&all=Y` · `POST doc-requirements/` · `PUT doc-requirements/:id` *(partial: isMandatory / isActive / displaySeq)* · `GET doc-types/` |
+| Contract LOVs + Budget Allocation (db/31) | `GET lookup-values?cat=` · `GET budget/projects?year=&search=` · `GET budget/tasks?year=&project=` · `GET budget/etypes?year=&project=&task=` · `GET budget/check?year=&project=&task=&etype=&amount=` · `GET gl/segments?seg=entity\|costcenter\|account` · `GET gl/combinations?entity=&costcenter=&account=&search=` |
+| Termsheet PDF bridge (db/29) | `POST contracts/:id/termsheet-pdf` · `GET contracts/:id/termsheet-pdf/:runId` · `GET contracts/:id/termsheet-pdf/:runId/pdf` · `POST contracts/:id/termsheet-pdf/:runId/attach` |
+| Approver assignments (db/28) | `GET approver-map/` · `POST approver-map/` · `PUT approver-map/:id` · `DELETE approver-map/:id` |
 | Renewals | `GET renewals/` · `POST renewals/` · `POST renewals/:id/submit` |
 | Payment Schedule | `GET schedule/` · `POST schedule/bulk-generate` |
 | Vouchers | `GET vouchers/` · `POST vouchers/` · `GET vouchers/:id` · `PUT vouchers/:id` · `POST vouchers/:id/submit` · `POST vouchers/:id/mark-paid` |

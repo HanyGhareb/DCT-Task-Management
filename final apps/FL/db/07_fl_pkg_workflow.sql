@@ -5,6 +5,12 @@
 -- Run     : After 04_fl_pkg.sql (this file fully replaces the package with the
 --           original nine procedures preserved verbatim plus the workflow API)
 -- Generated from 04_fl_pkg.sql -- edit the generator or 04, then regenerate.
+-- Phase 2 (2026-07-14, Contract termsheet chain): submit_contract termsheet
+--           validation + CONTRACT doc gate + line-manager-first; scoped
+--           approver resolution (dct_fl_approver_map -> dct_fl_instance_
+--           approvers); CUSTOM step condition FL_DURATION_GE_6M; amendments/
+--           renewals on the same chain; renewed contracts carry the termsheet.
+--           Requires 25_fl_contract_phase2_ddl + 26_fl_contract_phase2_seed.
 -- =============================================================================
 
 SET DEFINE OFF
@@ -73,6 +79,16 @@ CREATE OR REPLACE PACKAGE prod.dct_fl_pkg AS
         p_action      IN VARCHAR2,
         p_comments    IN VARCHAR2
     );
+
+    -- =========================================================================
+    -- Contract Phase 2 (termsheet chain) helpers
+    -- =========================================================================
+    -- Scoped approver for a role resolved from an org unit UPWARD through
+    -- dct_organizations parents against dct_fl_approver_map (nearest active
+    -- mapping wins: department first, then its sector). NULL = no mapping;
+    -- callers fall back to role-holder routing.
+    FUNCTION resolve_scoped_approver (p_role_code IN VARCHAR2, p_org_id IN NUMBER)
+        RETURN NUMBER;
 
 END dct_fl_pkg;
 /
@@ -166,6 +182,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
 
         BEGIN
             -- Re-registering freelancer: reactivate existing user record
+            -- (match by username OR email - both are unique on dct_users)
             UPDATE prod.dct_users
             SET    is_active   = 'Y',
                    display_name = v_reg.first_name_en || ' ' || v_reg.last_name_en,
@@ -173,10 +190,25 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                    last_name    = v_reg.last_name_en,
                    updated_by   = 'SYSTEM',
                    updated_at   = SYSTIMESTAMP
-            WHERE  username = v_username
+            WHERE  (username = v_username OR LOWER(email) = v_username)
             AND    is_external = 'Y';
 
             IF SQL%ROWCOUNT = 0 THEN
+                -- Guard: the email must not belong to an INTERNAL account (the
+                -- external match above already handled re-registrations) - fail
+                -- with a clear message instead of ORA-00001 on the unique email.
+                DECLARE
+                    v_taken prod.dct_users.username%TYPE;
+                BEGIN
+                    SELECT username INTO v_taken FROM prod.dct_users
+                    WHERE  LOWER(email) = v_username AND ROWNUM = 1;
+                    RAISE_APPLICATION_ERROR(-20148,
+                        'Cannot create the freelancer portal login: the email '
+                        || v_reg.email || ' already belongs to the i-Finance account "'
+                        || v_taken || '". Return the registration and change its '
+                        || 'email to the freelancer''s own address.');
+                EXCEPTION WHEN NO_DATA_FOUND THEN NULL;
+                END;
                 -- First registration â€” create new external user
                 INSERT INTO prod.dct_users (
                     username,        email,
@@ -570,6 +602,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             coding_type,              cc_id_gl,
             project_number,           task_number,          expenditure_type,
             status,                   notes,
+            contract_type,            initiative,           contract_manager_user_id,
+            description,              payment_terms,        advance_payment,
+            retention_terms,          performance_bond,     parent_co_guarantee,
+            insurance_details,        procurement_involved, procurement_why,
+            fte_conversion,           services_summary,     termsheet_ref,
+            line_manager_email,       line_manager_name,    line_manager_user_id,
+            memo_from_user_id,        memo_to_user_id,
             created_by,               created_at,
             updated_by,               updated_at
         ) VALUES (
@@ -586,6 +625,14 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             v_rnl.project_number,     v_rnl.task_number,    v_rnl.expenditure_type,
             'ACTIVE',
             'Renewed from ' || v_orig.contract_number || '. ' || v_rnl.reason,
+            v_orig.contract_type,     v_orig.initiative,    v_orig.contract_manager_user_id,
+            v_orig.description,       v_orig.payment_terms, v_orig.advance_payment,
+            v_orig.retention_terms,   v_orig.performance_bond, v_orig.parent_co_guarantee,
+            v_orig.insurance_details, v_orig.procurement_involved, v_orig.procurement_why,
+            v_orig.fte_conversion,    v_orig.services_summary,
+            REPLACE(v_con_num, 'FL-CON-', 'FL-TS-'),
+            v_orig.line_manager_email, v_orig.line_manager_name, v_orig.line_manager_user_id,
+            v_orig.memo_from_user_id, v_orig.memo_to_user_id,
             'SYSTEM',                 SYSTIMESTAMP,
             'SYSTEM',                 SYSTIMESTAMP
         ) RETURNING contract_id INTO v_new_id;
@@ -654,13 +701,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             RETURN;
         END IF;
 
-        -- Mark the linked schedule row as VOUCHER_GENERATED
+        -- The voucher is approved: the schedule row moves on to VOUCHER_APPROVED
+        -- (it was stamped VOUCHER_GENERATED when the voucher was created).
         IF v_v.schedule_id IS NOT NULL THEN
             UPDATE prod.dct_fl_payment_schedule
-            SET    status     = 'VOUCHER_GENERATED',
+            SET    status     = 'VOUCHER_APPROVED',
                    voucher_id = p_voucher_id,
                    updated_at = SYSTIMESTAMP
-            WHERE  schedule_id = v_v.schedule_id;
+            WHERE  schedule_id = v_v.schedule_id
+            AND    status IN ('PENDING','VOUCHER_GENERATED');
         END IF;
 
         prod.dct_audit.log(
@@ -985,8 +1034,115 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     EXCEPTION WHEN OTHERS THEN NULL;
     END wf_notify_step;
 
+    -- -------------------------------------------------------------------------
+    -- Contract Phase 2: scoped approver resolution + per-step named approvers
+    -- (dct_fl_approver_map / dct_fl_instance_approvers, plan D2)
+    -- -------------------------------------------------------------------------
+    FUNCTION resolve_scoped_approver (p_role_code IN VARCHAR2, p_org_id IN NUMBER)
+        RETURN NUMBER IS
+        v_user NUMBER;
+    BEGIN
+        IF p_org_id IS NULL OR p_role_code IS NULL THEN RETURN NULL; END IF;
+        SELECT user_id INTO v_user FROM (
+            SELECT m.user_id
+            FROM  (SELECT org_id, LEVEL AS lvl
+                   FROM   prod.dct_organizations
+                   START WITH org_id = p_org_id
+                   CONNECT BY PRIOR parent_org_id = org_id) o
+            JOIN   prod.dct_fl_approver_map m
+                   ON m.org_id = o.org_id AND m.is_active = 'Y'
+            JOIN   prod.dct_users u ON u.user_id = m.user_id AND u.is_active = 'Y'
+            WHERE  m.role_code = p_role_code
+            ORDER  BY o.lvl
+        ) WHERE ROWNUM = 1;
+        RETURN v_user;
+    EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+    END resolve_scoped_approver;
+
+    PROCEDURE wf_set_step_approver (
+        p_instance_id IN NUMBER, p_step_seq IN NUMBER, p_user_id IN NUMBER
+    ) IS
+    BEGIN
+        IF p_user_id IS NULL THEN RETURN; END IF;
+        MERGE INTO prod.dct_fl_instance_approvers a
+        USING (SELECT p_instance_id AS instance_id, p_step_seq AS step_seq FROM dual) src
+        ON    (a.instance_id = src.instance_id AND a.step_seq = src.step_seq)
+        WHEN NOT MATCHED THEN
+            INSERT (instance_id, step_seq, user_id)
+            VALUES (p_instance_id, p_step_seq, p_user_id)
+        WHEN MATCHED THEN
+            UPDATE SET user_id = p_user_id;
+    END wf_set_step_approver;
+
+    FUNCTION wf_step_approver (p_instance_id IN NUMBER, p_step_seq IN NUMBER)
+        RETURN NUMBER IS
+        v_u NUMBER;
+    BEGIN
+        SELECT user_id INTO v_u FROM prod.dct_fl_instance_approvers
+        WHERE  instance_id = p_instance_id AND step_seq = p_step_seq;
+        RETURN v_u;
+    EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+    END wf_step_approver;
+
+    -- Term length in months of the request's underlying contract period.
+    -- Drives the CUSTOM step condition FL_DURATION_GE_6M (Org Dev Head).
+    FUNCTION wf_months_of (p_source_module IN VARCHAR2, p_source_id IN NUMBER)
+        RETURN NUMBER IS
+        v_m NUMBER;
+    BEGIN
+        CASE p_source_module
+          WHEN 'FL_CONTRACT' THEN
+            SELECT MONTHS_BETWEEN(end_date, start_date) INTO v_m
+            FROM   prod.dct_fl_contracts WHERE contract_id = p_source_id;
+          WHEN 'FL_AMENDMENT' THEN
+            SELECT MONTHS_BETWEEN(NVL(a.new_end_date, c.end_date),
+                                  NVL(a.new_start_date, c.start_date)) INTO v_m
+            FROM   prod.dct_fl_contract_amendments a
+            JOIN   prod.dct_fl_contracts c ON c.contract_id = a.contract_id
+            WHERE  a.amendment_id = p_source_id;
+          WHEN 'FL_RENEWAL' THEN
+            SELECT MONTHS_BETWEEN(new_end_date, new_start_date) INTO v_m
+            FROM   prod.dct_fl_contract_renewals WHERE renewal_id = p_source_id;
+          ELSE
+            v_m := NULL;
+        END CASE;
+        RETURN v_m;
+    EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+    END wf_months_of;
+
+    -- Notify whoever owns a step of an instance: the stamped named approver
+    -- first, then the instance-level dynamic approver (legacy line-manager
+    -- mechanism), then the step's role holders.
+    PROCEDURE wf_notify_current (
+        p_instance_id IN NUMBER, p_template_id IN NUMBER, p_step_seq IN NUMBER,
+        p_title IN VARCHAR2, p_body IN VARCHAR2
+    ) IS
+        v_named NUMBER;
+        v_type  VARCHAR2(20);
+        v_dyn   NUMBER;
+    BEGIN
+        v_named := wf_step_approver(p_instance_id, p_step_seq);
+        IF v_named IS NOT NULL THEN
+            wf_notify_user(v_named, p_title, p_body);
+            RETURN;
+        END IF;
+        SELECT step_type INTO v_type FROM prod.dct_approval_steps
+        WHERE  template_id = p_template_id AND step_seq = p_step_seq;
+        IF v_type = 'USER_SPECIFIC' THEN
+            SELECT dynamic_approver_user_id INTO v_dyn
+            FROM   prod.dct_approval_instances WHERE instance_id = p_instance_id;
+            IF v_dyn IS NOT NULL THEN
+                wf_notify_user(v_dyn, p_title, p_body);
+                RETURN;
+            END IF;
+        END IF;
+        wf_notify_step(p_template_id, p_step_seq, p_title, p_body);
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END wf_notify_current;
+
     FUNCTION wf_next_step (
-        p_template_id IN NUMBER, p_after_seq IN NUMBER, p_amount IN NUMBER
+        p_template_id IN NUMBER, p_after_seq IN NUMBER, p_amount IN NUMBER,
+        p_months      IN NUMBER DEFAULT NULL
     ) RETURN NUMBER IS
         v_next NUMBER;
     BEGIN
@@ -998,7 +1154,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                OR (condition_type = 'AMOUNT' AND amount_operator = '>=' AND p_amount >= amount_threshold)
                OR (condition_type = 'AMOUNT' AND amount_operator = '>'  AND p_amount >  amount_threshold)
                OR (condition_type = 'AMOUNT' AND amount_operator = '<=' AND p_amount <= amount_threshold)
-               OR (condition_type = 'AMOUNT' AND amount_operator = '<'  AND p_amount <  amount_threshold));
+               OR (condition_type = 'AMOUNT' AND amount_operator = '<'  AND p_amount <  amount_threshold)
+               OR (condition_type = 'CUSTOM' AND custom_condition = 'FL_DURATION_GE_6M'
+                   AND NVL(p_months, 0) >= 6));
         RETURN v_next;
     END wf_next_step;
 
@@ -1010,12 +1168,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         p_source_id    IN NUMBER,
         p_source_ref   IN VARCHAR2,
         p_user_id      IN NUMBER,
-        p_dynamic_approver IN NUMBER DEFAULT NULL  -- per-instance named approver (line manager)
+        p_dynamic_approver IN NUMBER DEFAULT NULL, -- per-instance named approver (line manager)
+        p_org_id       IN NUMBER DEFAULT NULL      -- request org unit: scopes FBP-style steps
     ) RETURN NUMBER IS
         v_tmpl_id NUMBER;
         v_first   NUMBER;
         v_inst_id NUMBER;
-        v_first_type VARCHAR2(20);
         v_uname   VARCHAR2(100) := wf_username_of(p_user_id);
     BEGIN
         SELECT at.template_id INTO v_tmpl_id
@@ -1029,10 +1187,6 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         SELECT MIN(step_seq) INTO v_first
         FROM   prod.dct_approval_steps WHERE template_id = v_tmpl_id;
 
-        SELECT step_type INTO v_first_type
-        FROM   prod.dct_approval_steps
-        WHERE  template_id = v_tmpl_id AND step_seq = v_first;
-
         INSERT INTO prod.dct_approval_instances (
             template_id, source_module, source_record_id, source_record_ref,
             current_step_seq, overall_status, submitted_by, submitted_at,
@@ -1043,16 +1197,34 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             p_dynamic_approver, v_uname, v_uname)
         RETURNING instance_id INTO v_inst_id;
 
-        -- USER_SPECIFIC first step (e.g. line-manager endorsement) is routed to
-        -- the named approver; role-based steps notify the whole role.
-        IF v_first_type = 'USER_SPECIFIC' AND p_dynamic_approver IS NOT NULL THEN
-            wf_notify_user(p_dynamic_approver, 'Freelancer Approval Pending',
-                p_source_ref || ' is awaiting your endorsement.');
-        ELSE
-            wf_notify_step(v_tmpl_id, v_first,
-                'Freelancer Approval Pending',
-                p_source_ref || ' is awaiting your approval.');
-        END IF;
+        -- Stamp a named approver per USER_SPECIFIC step: steps with no role are
+        -- line-manager steps (take the dynamic approver); steps carrying a role
+        -- resolve through the scoped approver map from the request org upward.
+        -- No stamp row = the step falls back to the step role's holders.
+        FOR s IN (
+            SELECT st.step_seq, st.required_role_id
+            FROM   prod.dct_approval_steps st
+            WHERE  st.template_id = v_tmpl_id AND st.step_type = 'USER_SPECIFIC'
+            ORDER  BY st.step_seq
+        ) LOOP
+            IF s.required_role_id IS NULL THEN
+                wf_set_step_approver(v_inst_id, s.step_seq, p_dynamic_approver);
+            ELSE
+                DECLARE
+                    v_rc VARCHAR2(100);
+                BEGIN
+                    SELECT role_code INTO v_rc FROM prod.dct_roles
+                    WHERE  role_id = s.required_role_id;
+                    wf_set_step_approver(v_inst_id, s.step_seq,
+                        resolve_scoped_approver(v_rc, p_org_id));
+                EXCEPTION WHEN NO_DATA_FOUND THEN NULL;
+                END;
+            END IF;
+        END LOOP;
+
+        wf_notify_current(v_inst_id, v_tmpl_id, v_first,
+            'Freelancer Approval Pending',
+            p_source_ref || ' is awaiting your approval.');
         RETURN v_inst_id;
     END wf_create_instance;
 
@@ -1098,6 +1270,18 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         IF v_reg.email IS NULL
            OR NOT REGEXP_LIKE(v_reg.email, '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$') THEN
             RAISE_APPLICATION_ERROR(-20135, 'A valid email address is required.');
+        END IF;
+        -- The email becomes the freelancer's portal username on approval; it must
+        -- not collide with an existing INTERNAL (staff) i-Finance account, or the
+        -- final approval would fail on the unique-email constraint.
+        SELECT COUNT(*) INTO v_cnt FROM prod.dct_users
+        WHERE  LOWER(email) = LOWER(v_reg.email)
+        AND    NVL(is_external, 'N') = 'N';
+        IF v_cnt > 0 THEN
+            RAISE_APPLICATION_ERROR(-20148,
+                'The email ' || v_reg.email || ' belongs to an existing i-Finance '
+                || 'staff account. It becomes the freelancer''s portal login on '
+                || 'approval - use the freelancer''s own email address instead.');
         END IF;
         IF v_reg.national_id IS NOT NULL
            AND NOT REGEXP_LIKE(REGEXP_REPLACE(v_reg.national_id, '[^0-9]', ''), '^784[0-9]{12}$') THEN
@@ -1212,11 +1396,26 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
     -- =========================================================================
     -- SUBMIT_CONTRACT
     -- =========================================================================
+    -- Phase 2: termsheet validation + document gate + line-manager-first chain.
+    -- Error codes -20150..-20156 (handler maps the -20131..-20160 band to 400).
     PROCEDURE submit_contract (p_id IN NUMBER, p_user_id IN NUMBER) IS
-        v_con   prod.dct_fl_contracts%ROWTYPE;
-        v_inst  NUMBER;
-        v_exp   NUMBER;
-        v_uname VARCHAR2(100) := wf_username_of(p_user_id);
+        v_con     prod.dct_fl_contracts%ROWTYPE;
+        v_inst    NUMBER;
+        v_exp     NUMBER;
+        v_cnt     NUMBER;
+        v_missing VARCHAR2(4000);
+        v_lm_id   NUMBER;
+        v_lm_name VARCHAR2(200);
+        v_uname   VARCHAR2(100) := wf_username_of(p_user_id);
+
+        PROCEDURE need (p_ok IN BOOLEAN, p_label IN VARCHAR2) IS
+        BEGIN
+            IF NOT p_ok THEN
+                v_missing := v_missing
+                          || CASE WHEN v_missing IS NULL THEN NULL ELSE ', ' END
+                          || p_label;
+            END IF;
+        END;
     BEGIN
         SELECT * INTO v_con FROM prod.dct_fl_contracts
         WHERE contract_id = p_id FOR UPDATE NOWAIT;
@@ -1225,6 +1424,62 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             RAISE_APPLICATION_ERROR(-20133,
                 'Contract cannot be submitted in status ' || v_con.status || '.');
         END IF;
+
+        -- Termsheet completeness (Legal Affairs form parity)
+        need(v_con.contract_type IS NOT NULL,            'Contract type');
+        need(v_con.contract_manager_user_id IS NOT NULL, 'Contract manager / end user');
+        need(v_con.description IS NOT NULL,              'Contract description');
+        need(v_con.payment_terms IS NOT NULL,            'Terms of payment');
+        need(v_con.end_date IS NOT NULL,                 'Expected completion date');
+        need(v_con.procurement_involved IS NOT NULL,     'Procurement involvement');
+        need(v_con.fte_conversion IS NOT NULL,           'FTE conversion answer');
+        need(v_con.services_summary IS NOT NULL,         'Summary of services / key deliverables');
+        IF v_missing IS NOT NULL THEN
+            RAISE_APPLICATION_ERROR(-20150,
+                'Required termsheet field(s) missing: ' || v_missing || '.');
+        END IF;
+        IF v_con.procurement_involved NOT IN ('Y','N') THEN
+            RAISE_APPLICATION_ERROR(-20151, 'Procurement involvement must be Yes or No.');
+        END IF;
+        IF v_con.procurement_involved = 'N' AND v_con.procurement_why IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20151,
+                'Please explain why the Procurement Department is not involved.');
+        END IF;
+        prod.dct_lookup_pkg.validate_lookup('FL_CONTRACT_TYPE',  v_con.contract_type);
+        prod.dct_lookup_pkg.validate_lookup('FL_FTE_CONVERSION', v_con.fte_conversion);
+
+        -- Required attachments (DCT_DOC_REQUIREMENTS, context CONTRACT). A type
+        -- is satisfied by a document on the contract itself OR an unexpired
+        -- document already on the freelancer profile (reference_id convention).
+        IF NVL(get_setting('DOCS_REQUIRED_FOR_SUBMIT'),'Y') = 'Y' THEN
+            FOR req IN (
+                SELECT dr.doc_type_id, dt.doc_type_name_en
+                FROM   prod.dct_doc_requirements dr
+                JOIN   prod.dct_document_types   dt ON dt.doc_type_id = dr.doc_type_id
+                WHERE  dr.source_module = 'FL' AND dr.context_code = 'CONTRACT'
+                AND    dr.is_active = 'Y' AND dr.is_mandatory = 'Y'
+                ORDER BY dr.display_seq
+            ) LOOP
+                SELECT COUNT(*) INTO v_cnt FROM prod.dct_documents d
+                WHERE  d.source_module = 'FL'
+                AND    d.doc_type_id = req.doc_type_id
+                AND    d.is_active = 'Y' AND d.status = 'ACTIVE'
+                AND    d.file_blob IS NOT NULL
+                AND    (d.expiry_date IS NULL OR d.expiry_date >= SYSDATE)
+                AND   ((d.source_type = 'CONTRACT' AND d.source_id = p_id)
+                       OR d.reference_id = v_con.freelancer_id);
+                IF v_cnt = 0 THEN
+                    v_missing := v_missing
+                              || CASE WHEN v_missing IS NULL THEN NULL ELSE ', ' END
+                              || req.doc_type_name_en;
+                END IF;
+            END LOOP;
+            IF v_missing IS NOT NULL THEN
+                RAISE_APPLICATION_ERROR(-20152,
+                    'Required document(s) missing: ' || v_missing || '.');
+            END IF;
+        END IF;
+
         IF NVL(get_setting('BLOCK_CONTRACT_ON_EXPIRED_DOC'),'Y') = 'Y' THEN
             SELECT COUNT(*) INTO v_exp
             FROM   prod.dct_documents d
@@ -1239,13 +1494,59 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             END IF;
         END IF;
 
+        -- Line manager is the first endorser: resolve to an active DCT user
+        IF v_con.line_manager_user_id IS NOT NULL THEN
+            v_lm_id := v_con.line_manager_user_id;
+        ELSIF v_con.line_manager_email IS NOT NULL THEN
+            BEGIN
+                SELECT user_id, display_name INTO v_lm_id, v_lm_name
+                FROM   prod.dct_users
+                WHERE  LOWER(email) = LOWER(v_con.line_manager_email)
+                AND    is_active = 'Y'
+                FETCH FIRST 1 ROW ONLY;
+            EXCEPTION WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20154,
+                    'The line manager email (' || v_con.line_manager_email
+                    || ') does not match an active DCT user, so they cannot endorse.');
+            END;
+        ELSE
+            RAISE_APPLICATION_ERROR(-20153,
+                'A line manager email is required before submission.');
+        END IF;
+
         v_inst := wf_create_instance('CONTRACT', 'FL_CONTRACT',
-                                     p_id, v_con.contract_number, p_user_id);
+                                     p_id, v_con.contract_number, p_user_id,
+                                     p_dynamic_approver => v_lm_id,
+                                     p_org_id           => v_con.org_id);
 
         UPDATE prod.dct_fl_contracts
         SET    status = 'SUBMITTED', approval_instance_id = v_inst,
+               termsheet_ref = NVL(termsheet_ref,
+                                   REPLACE(contract_number, 'FL-CON-', 'FL-TS-')),
+               line_manager_user_id = v_lm_id,
+               line_manager_name = NVL(line_manager_name, v_lm_name),
                updated_by = v_uname, updated_at = SYSTIMESTAMP
         WHERE  contract_id = p_id;
+
+        -- Distribution-plan CC: Talent Acquisition Manager is copied at submit
+        BEGIN
+            FOR u IN (
+                SELECT ur.user_id
+                FROM   prod.dct_user_roles ur
+                JOIN   prod.dct_roles r ON r.role_id = ur.role_id
+                WHERE  r.role_code = 'TA_MANAGER' AND ur.is_active = 'Y'
+                AND   (ur.end_date IS NULL OR ur.end_date >= SYSDATE)
+            ) LOOP
+                prod.dct_notify.send(
+                    p_recipient_user_id => u.user_id,
+                    p_notification_type => 'INFO',
+                    p_title_en          => 'Freelancer Contract Submitted (CC)',
+                    p_body_en           => 'Contract ' || v_con.contract_number
+                                           || ' entered the approval chain. You are copied per the distribution plan.',
+                    p_module_code       => 'FREELANCERS');
+            END LOOP;
+        EXCEPTION WHEN OTHERS THEN NULL;
+        END;
 
         wf_log_status('FL_CONTRACT', p_id, v_con.status, 'SUBMITTED',
                       p_user_id, 'Contract ' || v_con.contract_number || ' submitted');
@@ -1272,7 +1573,23 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         SELECT c.contract_number || ' / AMD-' || v_amd.amendment_number INTO v_ref
         FROM   prod.dct_fl_contracts c WHERE c.contract_id = v_amd.contract_id;
 
-        v_inst := wf_create_instance('AMENDMENT', 'FL_AMENDMENT', p_id, v_ref, p_user_id);
+        -- Phase 2: the parent contract's line manager opens the chain; its org
+        -- unit scopes the Finance Business Partner step.
+        DECLARE
+            v_lm  NUMBER;
+            v_org NUMBER;
+        BEGIN
+            SELECT line_manager_user_id, org_id INTO v_lm, v_org
+            FROM   prod.dct_fl_contracts WHERE contract_id = v_amd.contract_id;
+            IF v_lm IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20153,
+                    'The contract has no line manager on record. Set the line manager '
+                    || 'on the contract before submitting the amendment.');
+            END IF;
+            v_inst := wf_create_instance('AMENDMENT', 'FL_AMENDMENT', p_id, v_ref, p_user_id,
+                                         p_dynamic_approver => v_lm,
+                                         p_org_id           => v_org);
+        END;
 
         UPDATE prod.dct_fl_contract_amendments
         SET    status = 'SUBMITTED', approval_instance_id = v_inst,
@@ -1356,8 +1673,24 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                 'Renewal cannot be submitted in status ' || v_rnl.status || '.');
         END IF;
 
-        v_inst := wf_create_instance('RENEWAL', 'FL_RENEWAL',
-                                     p_id, v_rnl.renewal_number, p_user_id);
+        -- Phase 2: the original contract's line manager opens the chain; its
+        -- org unit scopes the Finance Business Partner step.
+        DECLARE
+            v_lm  NUMBER;
+            v_org NUMBER;
+        BEGIN
+            SELECT line_manager_user_id, org_id INTO v_lm, v_org
+            FROM   prod.dct_fl_contracts WHERE contract_id = v_rnl.original_contract_id;
+            IF v_lm IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20153,
+                    'The contract has no line manager on record. Set the line manager '
+                    || 'on the contract before submitting the renewal.');
+            END IF;
+            v_inst := wf_create_instance('RENEWAL', 'FL_RENEWAL',
+                                         p_id, v_rnl.renewal_number, p_user_id,
+                                         p_dynamic_approver => v_lm,
+                                         p_org_id           => v_org);
+        END;
 
         UPDATE prod.dct_fl_contract_renewals
         SET    status = 'SUBMITTED', approval_instance_id = v_inst,
@@ -1414,17 +1747,22 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         p_action      IN VARCHAR2,
         p_comments    IN VARCHAR2
     ) IS
-        v_inst     prod.dct_approval_instances%ROWTYPE;
-        v_step_id  NUMBER;
-        v_amount   NUMBER := 0;
-        v_next     NUMBER;
-        v_action   VARCHAR2(20) := UPPER(p_action);
-        v_uname    VARCHAR2(100) := wf_username_of(p_user_id);
-        v_owner    NUMBER;
-        v_src_type VARCHAR2(30);
-        v_old      VARCHAR2(30);
-        v_rej_st   VARCHAR2(20);
-        v_ret_st   VARCHAR2(20);
+        v_inst      prod.dct_approval_instances%ROWTYPE;
+        v_step_id   NUMBER;
+        v_step_type VARCHAR2(20);
+        v_step_role NUMBER;
+        v_named     NUMBER;
+        v_months    NUMBER;
+        v_amount    NUMBER := 0;
+        v_next      NUMBER;
+        v_action    VARCHAR2(20) := UPPER(p_action);
+        v_uname     VARCHAR2(100) := wf_username_of(p_user_id);
+        v_owner     NUMBER;
+        v_src_type  VARCHAR2(30);
+        v_old       VARCHAR2(30);
+        v_rej_st    VARCHAR2(20);
+        v_ret_st    VARCHAR2(20);
+        v_is_admin  NUMBER;
     BEGIN
         IF v_action NOT IN ('APPROVED','REJECTED','RETURNED') THEN
             RAISE_APPLICATION_ERROR(-20143, 'Invalid action. Use APPROVED, REJECTED, or RETURNED.');
@@ -1444,9 +1782,43 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
             RAISE_APPLICATION_ERROR(-20146, 'Instance does not belong to the Freelancers module.');
         END IF;
 
-        SELECT step_id INTO v_step_id
+        SELECT step_id, step_type, required_role_id
+        INTO   v_step_id, v_step_type, v_step_role
         FROM   prod.dct_approval_steps
         WHERE  template_id = v_inst.template_id AND step_seq = v_inst.current_step_seq;
+
+        -- Phase 2 guard: a USER_SPECIFIC step belongs to its named approver
+        -- (stamped per-step row, else the instance-level dynamic approver).
+        -- Without a named approver the step falls back to its role's holders.
+        -- SYS_ADMIN and FL_ADMIN may always act (FL_ADMIN drives force-approve).
+        IF v_step_type = 'USER_SPECIFIC' THEN
+            SELECT COUNT(*) INTO v_is_admin
+            FROM   prod.dct_user_roles ur
+            JOIN   prod.dct_roles r ON r.role_id = ur.role_id
+            WHERE  ur.user_id = p_user_id AND r.role_code IN ('SYS_ADMIN','FL_ADMIN')
+            AND    ur.is_active = 'Y'
+            AND   (ur.end_date IS NULL OR ur.end_date >= SYSDATE);
+            IF v_is_admin = 0 THEN
+                v_named := NVL(wf_step_approver(p_instance_id, v_inst.current_step_seq),
+                               v_inst.dynamic_approver_user_id);
+                IF v_named IS NOT NULL THEN
+                    IF v_named != p_user_id THEN
+                        RAISE_APPLICATION_ERROR(-20147,
+                            'This step is assigned to a named approver; only they can action it.');
+                    END IF;
+                ELSIF v_step_role IS NOT NULL THEN
+                    SELECT COUNT(*) INTO v_is_admin
+                    FROM   prod.dct_user_roles ur
+                    WHERE  ur.user_id = p_user_id AND ur.role_id = v_step_role
+                    AND    ur.is_active = 'Y'
+                    AND   (ur.end_date IS NULL OR ur.end_date >= SYSDATE);
+                    IF v_is_admin = 0 THEN
+                        RAISE_APPLICATION_ERROR(-20147,
+                            'You do not hold the role required to action this step.');
+                    END IF;
+                END IF;
+            END IF;
+        END IF;
 
         -- per-module facts: history type, owner, amount, current + fallback statuses
         v_owner := v_inst.submitted_by;
@@ -1479,7 +1851,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
         VALUES (p_instance_id, v_step_id, p_user_id, v_action, p_comments);
 
         IF v_action = 'APPROVED' THEN
-            v_next := wf_next_step(v_inst.template_id, v_inst.current_step_seq, v_amount);
+            v_months := wf_months_of(v_inst.source_module, v_inst.source_record_id);
+            v_next   := wf_next_step(v_inst.template_id, v_inst.current_step_seq,
+                                     v_amount, v_months);
 
             IF v_next IS NOT NULL THEN
                 UPDATE prod.dct_approval_instances SET
@@ -1489,7 +1863,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
 
                 wf_log_status(v_src_type, v_inst.source_record_id, v_old, v_old,
                               p_user_id, 'Step approved; moved to next approval step: ' || p_comments);
-                wf_notify_step(v_inst.template_id, v_next,
+                wf_notify_current(p_instance_id, v_inst.template_id, v_next,
                     'Freelancer Approval Pending',
                     v_inst.source_record_ref || ' is awaiting your approval (next step).');
             ELSE
@@ -1543,14 +1917,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                     SET status = 'APPROVED', updated_by = v_uname, updated_at = SYSTIMESTAMP
                     WHERE voucher_id = v_inst.source_record_id;
                     push_to_fusion(v_inst.source_record_id);
-                    -- mark the linked schedule row even when not posting to Fusion
+                    -- mark the linked schedule row even when not posting to Fusion:
+                    -- PENDING / VOUCHER_GENERATED -> VOUCHER_APPROVED (awaiting payment)
                     UPDATE prod.dct_fl_payment_schedule s
-                    SET    s.status = 'VOUCHER_GENERATED',
+                    SET    s.status = 'VOUCHER_APPROVED',
                            s.voucher_id = v_inst.source_record_id,
                            s.updated_at = SYSTIMESTAMP
                     WHERE  s.schedule_id = (SELECT schedule_id FROM prod.dct_fl_payment_vouchers
                                             WHERE voucher_id = v_inst.source_record_id)
-                    AND    s.status = 'PENDING';
+                    AND    s.status IN ('PENDING','VOUCHER_GENERATED');
                     wf_log_status(v_src_type, v_inst.source_record_id, v_old, 'APPROVED', p_user_id, p_comments);
 
                   WHEN 'FL_RENEWAL' THEN
@@ -1596,6 +1971,16 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_fl_pkg AS
                     UPDATE prod.dct_fl_payment_vouchers SET status = v_new,
                         updated_by = v_uname, updated_at = SYSTIMESTAMP
                     WHERE voucher_id = v_inst.source_record_id;
+                    -- a rejected voucher releases its payment period: the schedule
+                    -- row goes back to PENDING so a fresh voucher can be raised
+                    IF v_new = 'REJECTED' THEN
+                        UPDATE prod.dct_fl_payment_schedule s
+                        SET    s.status = 'PENDING', s.voucher_id = NULL,
+                               s.updated_at = SYSTIMESTAMP
+                        WHERE  s.schedule_id = (SELECT schedule_id FROM prod.dct_fl_payment_vouchers
+                                                WHERE voucher_id = v_inst.source_record_id)
+                        AND    s.status = 'VOUCHER_GENERATED';
+                    END IF;
                   WHEN 'FL_RENEWAL' THEN
                     UPDATE prod.dct_fl_contract_renewals SET status = v_new,
                         updated_by = v_uname, updated_at = SYSTIMESTAMP

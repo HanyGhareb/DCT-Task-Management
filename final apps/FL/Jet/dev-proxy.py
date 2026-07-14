@@ -16,7 +16,7 @@ import sys
 import time
 
 ORDS_ORIGIN = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com'
-PORT = 8080
+PORT = int(os.environ.get('FL_PROXY_PORT', '8080'))
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 APPS_ROOT  = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))   # 'final apps'
 SHARED_DIR = os.path.join(APPS_ROOT, 'shared')

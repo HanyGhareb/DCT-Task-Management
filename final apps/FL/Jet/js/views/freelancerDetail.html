@@ -144,15 +144,27 @@
     </div>
     <div class="data-table-wrap">
       <table class="data-table">
-        <thead><tr><th>Type</th><th>Name</th><th>Expiry</th><th>Status</th><th>Required</th></tr></thead>
+        <thead><tr><th>Type</th><th>Name</th><th>Size</th><th>Expiry</th><th>Status</th><th>Required</th><th style="text-align:right">File</th></tr></thead>
         <tbody>
           <!-- ko foreach: documents -->
           <tr>
             <td style="font-weight:600" data-bind="text: $data.docTypeName || '-'"></td>
             <td data-bind="text: $data.documentName || ''"></td>
+            <td class="mono" data-bind="text: $vm.fileSizeTxt($data)"></td>
             <td class="mono" data-bind="text: $data.expiryDate || '—'"></td>
             <td><span class="exp-chip" data-bind="text: $data.expiryStatus || 'VALID', css: $vm.expChip($data.expiryStatus)"></span></td>
             <td data-bind="text: $data.isRequired === 'Y' ? 'Yes' : 'No'"></td>
+            <td style="text-align:right;white-space:nowrap">
+              <!-- ko if: $vm.hasFile($data) -->
+              <button class="btn btn-secondary btn-sm" title="Open the file in a new tab"
+                      data-bind="click: function () { return $vm.viewDoc($data); }">&#128065; View</button>
+              <button class="btn btn-secondary btn-sm" style="margin-inline-start:6px" title="Download the file"
+                      data-bind="click: function () { return $vm.downloadDoc($data); }">&#11015; Download</button>
+              <!-- /ko -->
+              <!-- ko ifnot: $vm.hasFile($data) -->
+              <span class="text-muted" style="font-size:12px">No file</span>
+              <!-- /ko -->
+            </td>
           </tr>
           <!-- /ko -->
         </tbody>

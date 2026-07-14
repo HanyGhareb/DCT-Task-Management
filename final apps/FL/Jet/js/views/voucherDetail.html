@@ -18,7 +18,10 @@
     <div class="page-actions">
       <button class="btn btn-secondary" data-bind="click: back">&#8592; Back</button>
       <!-- ko if: editable() -->
-      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving()">Save Draft</button>
+      <button class="btn btn-secondary" data-bind="click: saveDraft, enable: !saving(),
+              text: data().status === 'DRAFT' ? 'Save Draft' : 'Save Changes'"></button>
+      <!-- /ko -->
+      <!-- ko if: editable() && data().status === 'DRAFT' -->
       <button class="btn btn-primary" data-bind="click: submit, enable: !saving()">&#10003; Submit for Approval</button>
       <!-- /ko -->
       <!-- ko if: isAdmin && data().status === 'APPROVED' && data().paymentStatus === 'PENDING' -->
@@ -37,52 +40,249 @@
   <!-- ko if: loading() --><list-skeleton params="rows: 5"></list-skeleton><!-- /ko -->
 
   <!-- ko ifnot: loading() -->
-  <div class="card">
-    <div class="section-heading-row">
-      <div class="section-heading">Voucher Details</div>
-    </div>
-    <div class="form-grid">
-      <div class="form-group"><label class="form-label">Amount (AED)</label>
-        <div class="mono" style="font-size:20px;font-weight:800" data-bind="text: (data().amount || 0).toLocaleString()"></div></div>
-      <div class="form-group"><label class="form-label">Due Date</label>
-        <div class="mono" data-bind="text: data().dueDate || '—'"></div></div>
-      <div class="form-group">
-        <label class="form-label">Invoice Number *</label>
-        <input class="form-control" type="text" data-bind="value: invoiceNumber, valueUpdate: 'input', enable: editable()">
-        <span class="form-hint">Required before submission (module setting)</span>
+  <div class="vch-layout">
+
+    <!-- ── Left column: the editable voucher, its budget and its evidence ──── -->
+    <div class="vch-main">
+
+      <div class="card">
+        <div class="section-heading-row">
+          <div class="section-heading">Voucher Details</div>
+        </div>
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label">Invoice Number
+              <!-- ko if: autoInvoice() --><span class="opt">system-generated</span><!-- /ko -->
+              <!-- ko ifnot: autoInvoice() --><span class="required">*</span><!-- /ko -->
+            </label>
+            <input class="form-control mono" type="text"
+                   data-bind="value: invoiceNumber, valueUpdate: 'input', enable: editable() && !autoInvoice()">
+            <span class="form-hint" data-bind="text: invoiceHint()"></span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Invoice Date <span class="required">*</span></label>
+            <input class="form-control" type="date" data-bind="value: invoiceDate, enable: editable()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Method</label>
+            <select class="form-control"
+                    data-bind="options: paymentMethods, optionsText: 'name', optionsValue: 'code',
+                               value: paymentMethod, enable: editable()"></select>
+          </div>
+
+          <!-- ── Admin only: a generated voucher stays correctable until approval ── -->
+          <!-- ko if: adminEdit() -->
+          <div class="form-group">
+            <label class="form-label">Amount (AED) <span class="required">*</span></label>
+            <input class="form-control mono" type="number" min="0" step="0.01"
+                   data-bind="value: amount, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Due Date <span class="required">*</span></label>
+            <input class="form-control" type="date" data-bind="value: dueDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Payment Period</label>
+            <input class="form-control" type="text" data-bind="value: periodLabel, valueUpdate: 'input'">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Pay Group</label>
+            <select class="form-control"
+                    data-bind="options: payGroups, optionsText: 'name', optionsValue: 'code',
+                               value: payGroup"></select>
+          </div>
+          <div class="form-group form-group--full">
+            <label class="form-label">Description</label>
+            <input class="form-control" type="text" data-bind="value: description, valueUpdate: 'input'">
+          </div>
+          <div class="form-group form-group--full">
+            <span class="form-hint" data-bind="text: adminHint()"></span>
+          </div>
+          <!-- /ko -->
+
+          <!-- ko ifnot: adminEdit() -->
+          <div class="form-group"><label class="form-label">Pay Group</label>
+            <div data-bind="text: data().payGroup || '—'"></div></div>
+          <div class="form-group form-group--full"><label class="form-label">Description</label>
+            <div data-bind="text: data().description || '—'"></div></div>
+          <!-- /ko -->
+          <div class="form-group form-group--full">
+            <label class="form-label">Notes <span class="opt">optional</span></label>
+            <input class="form-control" type="text" data-bind="value: notes, valueUpdate: 'input', enable: editable()">
+          </div>
+          <!-- ko if: data().paymentStatus === 'PAID' -->
+          <div class="form-group"><label class="form-label">Paid On</label>
+            <div class="mono" data-bind="text: data().paymentDate || '—'"></div></div>
+          <div class="form-group"><label class="form-label">Payment Reference</label>
+            <div class="mono" data-bind="text: data().paymentReference || '—'"></div></div>
+          <!-- /ko -->
+        </div>
+        <audit-info params="data: data"></audit-info>
       </div>
-      <div class="form-group">
-        <label class="form-label">Invoice Date *</label>
-        <input class="form-control" type="date" data-bind="value: invoiceDate, enable: editable()">
+
+      <!-- ── Budget Allocation — the line this payment is charged to ─────────── -->
+      <div class="card">
+        <div class="section-heading-row">
+          <div class="section-heading">Budget Allocation</div>
+          <div class="region-actions">
+            <span class="badge badge--info"
+                  data-bind="text: (data().codingType === 'GL' ? 'GL Level' : 'Project') +
+                             ' · Budget Year ' + budgetYear()"></span>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <!-- ko if: data().codingType !== 'GL' -->
+          <div class="form-group"><label class="form-label">Project</label>
+            <div><span class="mono" data-bind="text: data().projectNumber || '—'"></span>
+              <span data-bind="text: data().projectName ? ' — ' + data().projectName : ''"></span></div></div>
+          <div class="form-group"><label class="form-label">Task</label>
+            <div data-bind="text: data().taskNumber || '—'"></div></div>
+          <div class="form-group form-group--full"><label class="form-label">Expenditure Type</label>
+            <div data-bind="text: data().expenditureType || '—'"></div></div>
+          <!-- /ko -->
+          <!-- ko if: data().codingType === 'GL' -->
+          <div class="form-group form-group--full"><label class="form-label">GL Code Combination</label>
+            <div class="mono" data-bind="text: data().glCombination || ('cc ' + (data().ccIdGl || '—'))"></div></div>
+          <!-- /ko -->
+        </div>
+
+        <!-- ko if: hasBudget() -->
+        <div class="vch-bud">
+          <div class="vch-bud-row">
+            <div class="vch-fig"><span class="vch-fig-lbl">Budget</span>
+              <span class="vch-fig-val" data-bind="text: money(budget().budget)"></span></div>
+            <div class="vch-fig"><span class="vch-fig-lbl">Actual (AP + GRN)</span>
+              <span class="vch-fig-val" data-bind="text: money(budget().actual)"></span></div>
+            <div class="vch-fig"><span class="vch-fig-lbl">Commitment (PR)</span>
+              <span class="vch-fig-val" data-bind="text: money(budget().commitment)"></span></div>
+            <div class="vch-fig"><span class="vch-fig-lbl">Obligation (PO)</span>
+              <span class="vch-fig-val" data-bind="text: money(budget().obligation)"></span></div>
+            <div class="vch-fig vch-fig--fund"><span class="vch-fig-lbl">Fund Available</span>
+              <span class="vch-fig-val" data-bind="text: money(budget().fundAvailable),
+                    css: { neg: (budget().fundAvailable || 0) < 0 }"></span></div>
+          </div>
+          <div class="vch-bar"><div class="vch-bar-fill" data-bind="style: { width: usedPct() + '%' }"></div></div>
+          <div class="vch-bar-cap" data-bind="text: usedPct() + '% of this budget line consumed'"></div>
+
+          <!-- ko if: budget().sufficient === 'Y' -->
+          <div class="alert-banner fl-fund-ok" style="margin-block-start:12px">&#9989;
+            <span>Covered — AED <span data-bind="text: money(budget().fundAvailable)"></span> remains on this line
+              against a payment of AED <span data-bind="text: money(data().amount)"></span>.</span>
+          </div>
+          <!-- /ko -->
+          <!-- ko ifnot: budget().sufficient === 'Y' -->
+          <div class="alert-banner alert-banner--danger" style="margin-block-start:12px">&#9940;
+            <span>Only AED <span data-bind="text: money(budget().fundAvailable)"></span> remains on this budget line
+              against a payment of AED <span data-bind="text: money(data().amount)"></span> —
+              raise a Fund Transfer or request additional fund.</span>
+          </div>
+          <!-- /ko -->
+        </div>
+        <!-- /ko -->
+        <!-- ko ifnot: hasBudget() -->
+        <div class="form-hint" data-bind="text: budgetNote()"></div>
+        <!-- /ko -->
       </div>
-      <div class="form-group">
-        <label class="form-label">Payment Method</label>
-        <select class="form-control" data-bind="value: paymentMethod, enable: editable()">
-          <option value="BANK_TRANSFER">BANK_TRANSFER</option>
-          <option value="CHEQUE">CHEQUE</option>
-          <option value="CASH">CASH</option>
-        </select>
+
+      <!-- ── Attachments ─────────────────────────────────────────────────────── -->
+      <div class="card">
+        <div class="section-heading-row">
+          <div class="section-heading">Attachments
+            <span class="badge badge--info" style="margin-inline-start:6px"
+                  data-bind="text: attachments().length"></span>
+          </div>
+          <div class="region-actions">
+            <button class="btn btn-secondary btn-sm" data-bind="click: reloadAttachments">&#8635; Refresh</button>
+            <!-- ko if: editable() -->
+            <button class="btn btn-primary btn-sm" data-bind="click: addAttachment, enable: !docBusy()">&#128206; Attach file</button>
+            <!-- /ko -->
+          </div>
+        </div>
+        <!-- ko if: attachments().length -->
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead><tr><th>Type</th><th>File</th><th>Size</th><th>Uploaded</th><th style="text-align:end">Actions</th></tr></thead>
+            <tbody>
+              <!-- ko foreach: attachments -->
+              <tr>
+                <td data-bind="text: $data.docTypeName || 'Attachment'"></td>
+                <td data-bind="text: $data.documentName || '—'"></td>
+                <td class="mono" data-bind="text: $vm.fileSizeTxt($data)"></td>
+                <td style="font-size:12px;color:var(--text-3)">
+                  <span data-bind="text: $data.uploadedAt || ''"></span>
+                  <!-- ko if: $data.uploadedBy --><span data-bind="text: ' · ' + $data.uploadedBy"></span><!-- /ko -->
+                </td>
+                <td style="text-align:end;white-space:nowrap">
+                  <button class="btn btn-secondary btn-sm" title="Open the file in a new tab"
+                          data-bind="click: function () { return $vm.viewAttachment($data); }">&#128065; View</button>
+                  <button class="btn btn-secondary btn-sm" style="margin-inline-start:6px" title="Download the file"
+                          data-bind="click: function () { return $vm.downloadAttachment($data); }">&#11015; Download</button>
+                  <!-- ko if: $vm.editable() -->
+                  <button class="btn btn-secondary btn-sm" style="margin-inline-start:6px" title="Remove the attachment"
+                          data-bind="click: function () { return $vm.removeAttachment($data); }, enable: !$vm.docBusy()">&times;</button>
+                  <!-- /ko -->
+                </td>
+              </tr>
+              <!-- /ko -->
+            </tbody>
+          </table>
+        </div>
+        <!-- /ko -->
+        <!-- ko ifnot: attachments().length -->
+        <div class="empty-state" style="padding:26px">
+          <div class="empty-state__icon">&#128206;</div>
+          <div class="empty-state__msg">No attachments yet — attach the freelancer's invoice, timesheet or any supporting document.</div>
+        </div>
+        <!-- /ko -->
       </div>
-      <div class="form-group"><label class="form-label">Pay Group</label>
-        <div data-bind="text: data().payGroup || ''"></div></div>
-      <div class="form-group form-group--full"><label class="form-label">Description</label>
-        <div data-bind="text: data().description || ''"></div></div>
-      <div class="form-group"><label class="form-label">Coding</label>
-        <div class="mono" style="font-size:12px"
-             data-bind="text: data().codingType === 'GL' ? ('GL · cc ' + (data().ccIdGl || '')) : ('PROJECT · ' + (data().projectNumber || ''))"></div></div>
-      <div class="form-group">
-        <label class="form-label">Notes</label>
-        <input class="form-control" type="text" data-bind="value: notes, valueUpdate: 'input', enable: editable()">
-      </div>
-      <!-- ko if: data().paymentStatus === 'PAID' -->
-      <div class="form-group"><label class="form-label">Paid On</label>
-        <div class="mono" data-bind="text: data().paymentDate || ''"></div></div>
-      <div class="form-group"><label class="form-label">Payment Reference</label>
-        <div class="mono" data-bind="text: data().paymentReference || ''"></div></div>
-      <!-- /ko -->
     </div>
 
-    <audit-info params="data: data"></audit-info>
+    <!-- ── Right rail: what is paid, for which period, against which contract ── -->
+    <aside class="vch-side">
+      <div class="card vch-sum">
+        <div class="vch-sum-lbl">Amount payable</div>
+        <div class="vch-sum-amt"><span class="vch-cur">AED</span>
+          <span data-bind="text: money(data().amount)"></span></div>
+
+        <div class="vch-sum-sep"></div>
+
+        <div class="vch-sum-k">Payment period</div>
+        <div class="vch-period">
+          <div class="vch-period-side">
+            <span class="vch-period-lbl">From</span>
+            <span class="vch-period-val mono" data-bind="text: data().periodStart || '—'"></span>
+          </div>
+          <span class="vch-period-arrow">&#8594;</span>
+          <div class="vch-period-side">
+            <span class="vch-period-lbl">To</span>
+            <span class="vch-period-val mono" data-bind="text: data().periodEnd || '—'"></span>
+          </div>
+        </div>
+        <div class="vch-period-note">
+          <span data-bind="text: data().periodLabel || ''"></span>
+          <span data-bind="text: data().billingMethod ? ' · ' + billingLabel(data().billingMethod) : ''"></span>
+        </div>
+
+        <div class="vch-sum-sep"></div>
+
+        <div class="vch-kv"><span>Due date</span><b class="mono" data-bind="text: data().dueDate || '—'"></b></div>
+        <div class="vch-kv"><span>Invoice no.</span><b class="mono" data-bind="text: data().invoiceNumber || '—'"></b></div>
+        <div class="vch-kv"><span>Invoice date</span><b class="mono" data-bind="text: data().invoiceDate || '—'"></b></div>
+
+        <div class="vch-sum-sep"></div>
+
+        <div class="vch-sum-k">Contract</div>
+        <div class="vch-kv"><span>Value</span><b class="mono" data-bind="text: money(data().contractAmount)"></b></div>
+        <div class="vch-kv"><span>Paid to date</span><b class="mono" data-bind="text: money(data().contractPaid)"></b></div>
+        <div class="vch-kv"><span>Period</span><b class="mono" style="font-size:11.5px"
+              data-bind="text: (data().contractStart || '—') + ' → ' + (data().contractEnd || 'open')"></b></div>
+        <div class="vch-bar" style="margin-block-start:10px">
+          <div class="vch-bar-fill vch-bar-fill--brand" data-bind="style: { width: contractPct() + '%' }"></div>
+        </div>
+        <div class="vch-bar-cap" data-bind="text: contractPct() + '% of the contract paid'"></div>
+      </div>
+    </aside>
 
   </div>
   <!-- /ko -->

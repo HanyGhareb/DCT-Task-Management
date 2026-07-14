@@ -1,4 +1,4 @@
-define(['knockout', 'services/flService'], function (ko, flService) {
+define(['knockout', 'services/flService', 'services/docFile'], function (ko, flService, docFile) {
   'use strict';
 
   function DocumentsViewModel() {
@@ -36,6 +36,11 @@ define(['knockout', 'services/flService'], function (ko, flService) {
     self.expChip = function (s) {
       return { VALID: 'exp-chip--valid', EXPIRING_SOON: 'exp-chip--soon', EXPIRED: 'exp-chip--expired' }[s] || 'exp-chip--valid';
     };
+
+    /* ── document file actions (the row click still opens the freelancer) ── */
+    self.hasFile     = docFile.hasFile;
+    self.viewDoc     = function (d) { docFile.view(d); };
+    self.downloadDoc = function (d) { docFile.download(d); };
   }
 
   return DocumentsViewModel;

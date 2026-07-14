@@ -1,7 +1,26 @@
 # Freelancers Module (App 203) — Status
 
-**Last updated:** 2026-06-12 (Phase 4)  
+**Last updated:** 2026-07-14 (Contract Phase 2)  
 **App alias:** FL | **Schema:** PROD | **APEX version:** 24.2
+
+## Contract Phase 2 — Legal-Affairs termsheet chain (2026-07-14, DEPLOYED)
+
+Plan `FL_CONTRACT_PHASE2_PLAN.md` (approved, D1–D8). All layers live in PROD +
+webtier release 20260714195221 (FL JET **4.10.0**):
+
+| Layer | Scripts | Verified |
+|---|---|---|
+| Structures + seed | `db/25` + `db/26` (termsheet cols, `DCT_FL_APPROVER_MAP`, `DCT_FL_INSTANCE_APPROVERS`, 6 roles, 2 lookup sets, 4 doc types + 6 FL/CONTRACT requirements, 3 chains rebuilt to 7 steps) | column/table/seed counts |
+| Workflow package | `db/07` recompiled (termsheet validation −20150.., doc gate −20152, scoped approvers, CUSTOM `FL_DURATION_GE_6M`, −20147 named-approver guard, amendments/renewals on the chain) | unit/E2E **19/19** |
+| Shared inbox | `db/v2/11c` (per-step named approvers; −20147→403) | in API smoke |
+| ORDS | `db/28` (view rebuild + contract handlers + requirements/approval-history/force-approve + approver-map CRUD + lookups) | API smoke **15/15** |
+| Frontend | termsheet form + docs checklist + Approval Chain tab + `approverMap` page | Playwright **11/11** |
+| Termsheet PDF | `reporting/db/22` + template `fl_contract_termsheet.docx` + `db/29` bridge (enqueue/status/pdf/attach→`TERMSHEET` doc) | fleet E2E **7/7** |
+
+**Post-08 re-run list: 15, 23, 24, 28, 29** (+ `db/v2/11c` after any `db/v2/11` re-run).
+**Before go-live (Admin data):** grant the chain roles + add `DCT_FL_APPROVER_MAP`
+rows (Approver Assignments page) for the real FBP per department/sector.
+Formal UAT round pending (next round folder per convention).
 
 ---
 

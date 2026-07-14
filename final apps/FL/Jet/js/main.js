@@ -19,7 +19,8 @@ requirejs.config({
 });
 
 require(
-  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager', 'shared/auditInfo', 'shared/docUpload'],
+  ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager', 'shared/auditInfo', 'shared/docUpload',
+   'components/lovInput'],
   function (AppController, ko, i18n) {
 
   ko.bindingHandlers.module = {
