@@ -24,6 +24,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-14 — Briefing Book button on Budget Utilization (GL v1.21.0 + `db/11_gl_butil_book_ords.sql`,
+  DEPLOYED + E2E PASS).** Any GL user can now generate the Reporting-Platform **BUDGET_UTIL_BOOK**
+  executive PDF (reporting/db/21 — cover/contents/overview/actuals/open-PO/open-PR/insights)
+  straight from the page: new GL-gated bridge endpoints `POST /gl/butil/book` (enqueues via
+  `dct_rpt_pkg.enqueue` as the calling user, params = the page's Year/Sector/Project-type/
+  Cost-center filters), `GET /butil/book/:id` (status, BUDGET_UTIL_BOOK-only) and
+  `GET /butil/book/:id/pdf` (authed download) — the `/rpt/` admin endpoints stay SYS_ADMIN-only,
+  and the render happens on the normal reporting worker fleet. Frontend: primary **Briefing Book**
+  button in the page head (tooltip explains which filters apply), 6s status polling with a
+  "Preparing book…" busy label, auto-download as `Budget_Utilization_Briefing_Book_<year>.pdf`.
+  **Re-run list after any 05 re-run is now 07 + 08 + 09 + 10 + 11.** API tests: 401 / 400-no-year /
+  enqueue→SUCCESS→download (Tourism-scoped run 63, 1,159 lines, 516 KB). Browser smoke ALL PASS
+  (button → busy → toast → real download, no JS errors). Same round: the book's timestamps now
+  carry the timezone — "…AM **GST (UTC+04:00)**, Asia/Dubai" on the cover, contents footer and
+  insights footer (template re-uploaded to DCT_RPT_TEMPLATE — no worker redeploy).
 - **2026-07-11 — Web-tier release `20260711234246` pushed** (`SSH_USER=opc
   webtier/deploy_frontend.sh 129.151.159.189`): ships GL **v1.16.0** (Accounting-period YTD
   filter) + v1.15.0 (loading states) to production users. Smoke through nginx: APP_VERSION

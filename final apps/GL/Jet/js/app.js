@@ -165,6 +165,13 @@
     searchButil:{en:'Project, task, department…',ar:'المشروع، المهمة، الإدارة…'},
     lovHint:{en:'All — type to search…',ar:'الكل — اكتب للبحث…'},
     yearRequired:{en:'Please choose a budget year.',ar:'الرجاء اختيار سنة الموازنة.'},
+    buBook:{en:'Briefing Book',ar:'كتيب الإحاطة'},
+    buBookRunning:{en:'Preparing book…',ar:'جارٍ إعداد الكتيب…'},
+    buBookHint:{en:'Generate the Budget Utilization Briefing Book PDF for the selected Year, Sector, Project type and Cost center (other filters do not apply). Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب الإحاطة لاستخدام الموازنة (PDF) للسنة والقطاع ونوع المشروع ومركز التكلفة المختارة (بقية عوامل التصفية لا تنطبق). يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    buBookQueued:{en:'Briefing book queued — run #',ar:'تم إرسال كتيب الإحاطة — تشغيل رقم '},
+    buBookReady:{en:'Briefing book downloaded.',ar:'تم تنزيل كتيب الإحاطة.'},
+    buBookFailed:{en:'Briefing book failed: ',ar:'فشل إنشاء كتيب الإحاطة: '},
+    buBookTimeout:{en:'Still running — check again shortly (run #',ar:'لا يزال قيد التشغيل — تحقق بعد قليل (تشغيل رقم '},
     noButil:{en:'No budget lines match these criteria.',ar:'لا توجد بنود موازنة مطابقة.'},
     cProjType:{en:'Type',ar:'النوع'}, cDept:{en:'Department',ar:'الإدارة'},
     cProject:{en:'Project',ar:'المشروع'}, cTask:{en:'Task',ar:'المهمة'},
@@ -861,6 +868,58 @@
         var blob = new Blob([csv], { type: 'text/csv' }); var u = URL.createObjectURL(blob);
         var a = document.createElement('a'); a.href = u; a.download = 'gl_budget_utilization_' + self.buYear() + '.csv'; a.click(); URL.revokeObjectURL(u);
       }).catch(fail);
+    };
+
+    /* ── Briefing Book (BUDGET_UTIL_BOOK via the /gl/butil/book bridge) ──
+       Enqueues the Reporting-Platform run with the page's Year / Sector /
+       Project type / Cost center filters, polls until the worker finishes,
+       then downloads the PDF with the session token. */
+    self.buBookBusy = ko.observable(false);
+    function buBookDownload(runId) {
+      return fetch(API + '/butil/book/' + runId + '/pdf',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('PDF download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Budget_Utilization_Briefing_Book_' + self.buYear() + '.pdf';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runBuBook = function () {
+      if (self.buBookBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.buBookBusy(true);
+      api('POST', '/butil/book', {
+        year: Number(self.buYear()), sector: self.buSector() || null,
+        projecttype: self.buType() || null, costcenter: self.buCc() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {                       // ~6 min ceiling
+            self.buBookBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/butil/book/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasPdf) {
+                buBookDownload(runId)
+                  .then(function () { self.buBookBusy(false); toast(self.t('buBookReady')); })
+                  .catch(function (e) { self.buBookBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.buBookBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });      // transient poll error: keep waiting
+          }, 6000);
+        })();
+      }).catch(function (e) { self.buBookBusy(false); fail(e); });
     };
 
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
