@@ -87,6 +87,19 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-14 — Briefing Book refinements (review comments) + GL-app launch.** (1) **Zero-amount
+  rows excluded from all registers** — seed `21` adds `ABS(NVL(amount,0)) > 0.005` to the AP and PR
+  sections (GRN/PO already filtered in their sources); redeployed via the vm180 python-oracledb
+  executor; all-org 2026 run went 8,661 → 8,655 lines. (2) **Insights page reworked for
+  executives**: no technical/database names anywhere (methodology now reads "the i-Finance
+  budget-utilization reporting layer"), and figures carry **verdict colours** — green `.i-good` /
+  red `.i-bad` on pacing vs calendar, over-budget line count, tightest remaining funds, supplier
+  concentration (>50% top-supplier = red, ≤30% = green), aged open POs (pre-budget-year = red) and
+  sizeable uninvoiced deliveries (>2% of budget = red). (3) **Timestamps carry the timezone** —
+  "GST (UTC+04:00), Asia/Dubai" on cover/contents/insights. (4) **GL-app launch**: the book is now
+  runnable from GL → Budget Utilization (GL v1.21.0 + `GL/db/11` bridge — see the GL
+  deployment-notes entry). Template round-tripped via `upload_template.py --ords` each time — no
+  worker redeploys.
 - **2026-07-08 — Budget Utilization Briefing Book (`BUDGET_UTIL_BOOK`, `reporting/db/21` + template
   `budget_util_book.html.j2`) DEPLOYED + E2E PASS.** Second MULTI/PYTHON report over the GL
   utilization layer, rendered as an executive **briefing book**: cover page (scope chips +

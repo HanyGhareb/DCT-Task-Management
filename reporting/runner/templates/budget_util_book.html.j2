@@ -143,6 +143,8 @@
   .ins .i-t { font-size: 11px; font-weight: 700; color: var(--brand-d); margin-bottom: 2px; }
   .ins .i-b { font-size: 10px; line-height: 1.55; color: #3E4C59; }
   .ins b { color: var(--ink); }
+  .i-good { color: var(--ok) !important; font-weight: 700; }
+  .i-bad { color: var(--bad) !important; font-weight: 700; }
   .meth { margin-top: 12px; border: 1px dashed #C9D6DC; border-radius: 4px; padding: 9px 12px;
           background: #F7FAFB; }
   .meth h4 { margin: 0 0 5px; font-size: 10px; color: var(--brand-d); text-transform: uppercase;
@@ -179,7 +181,7 @@
     <b>Financial Planning and Budgeting</b>
     <i>Finance Department</i>
   </div>
-  <div class="cv-date">Generated<b>{{ generated_at }} (Asia/Dubai)</b>{{ report_code }}</div>
+  <div class="cv-date">Generated<b>{{ generated_at }} GST (UTC+04:00)</b>Asia/Dubai &middot; {{ report_code }}</div>
   <div class="cv-band2"></div>
 </div>
 
@@ -208,7 +210,7 @@
             <div class="d">What the numbers say: pacing, pressure points, concentration and pipeline coverage — with the methodology behind every figure.</div></td>
         <td class="n">&nbsp;</td></tr>
   </table>
-  <div class="foot">{{ meta }}</div>
+  <div class="foot">{{ meta }} &middot; times in GST (UTC+04:00, Asia/Dubai)</div>
 </div>
 
 {#- ═══ PART 1 — OVERVIEW ═══════════════════════════════════════════════ -#}
@@ -563,59 +565,81 @@
   <div class="pt-band"><span class="pt-no">05</span><span class="pt-t">Observations &amp; Insights</span>
     <span class="pt-s">prepared for management review</span></div>
 
-  <div class="ins"><div class="i-t">Pacing — spend vs time</div>
+  {#- verdicts drive the red/green colouring: good = on track, bad = needs attention -#}
+  {%- set pace_ahead = O.utilization_pct is not none and O.utilization_pct > elapsed + 10 -%}
+  {%- set pace_behind = O.utilization_pct is not none and O.utilization_pct < elapsed - 25 -%}
+  {%- set over_lines = O.over_budget_lines or 0 -%}
+  {%- set conc_pct = (100 * top_sup[0][1] / (ap_total + grn_total))|round(1) if top_sup and (ap_total + grn_total) else 0 -%}
+  {%- set conc5_pct = (100 * (top_sup[:5]|map(attribute='1')|sum) / (ap_total + grn_total))|round(1) if top_sup and (ap_total + grn_total) else 0 -%}
+  {%- set po_aged = oldest_po and oldest_po.budget_date and oldest_po.budget_date.strftime is defined and oldest_po.budget_date.strftime('%Y')|int < yr -%}
+  {%- set uninv = GRN|map(attribute='uninvoiced_aed')|select('number')|sum -%}
+  {%- set uninv_heavy = O.budget and uninv > 0.02 * O.budget -%}
+
+  <div class="ins"><div class="i-t">Pacing — spending versus time</div>
     <div class="i-b">With <b>{{ elapsed }}%</b> of budget year {{ params.year }} elapsed, committed
-    utilization stands at <b>{{ O.utilization_pct|fmt }}%</b> ({{ money(spent) }} of {{ money(O.budget) }})
-    while cash-realised actuals alone are <b>{{ actual_pct }}%</b>.
-    {% if O.utilization_pct is not none %}{% if O.utilization_pct > elapsed + 10 %}Utilization is running
-    <b>ahead of the calendar</b> — remaining funds may be exhausted before year-end at the current pace.
-    {% elif O.utilization_pct < elapsed - 25 %}Utilization is running <b>well behind the calendar</b> —
+    utilization stands at <b class="{{ 'i-bad' if (pace_ahead or pace_behind) else 'i-good' }}">{{ O.utilization_pct|fmt }}%</b>
+    ({{ money(spent) }} of {{ money(O.budget) }}) while delivered-and-invoiced spending alone is
+    <b>{{ actual_pct }}%</b>.
+    {% if O.utilization_pct is not none %}{% if pace_ahead %}Utilization is running
+    <b class="i-bad">ahead of the calendar</b> — remaining funds may run out before year-end at the
+    current pace.
+    {% elif pace_behind %}Utilization is running <b class="i-bad">well behind the calendar</b> —
     review whether planned initiatives are delayed or budgets can be reallocated.
-    {% else %}Utilization is broadly <b>in line with the calendar</b>.{% endif %}{% endif %}</div></div>
+    {% else %}Utilization is broadly <b class="i-good">in line with the calendar</b>.{% endif %}{% endif %}</div></div>
 
   <div class="ins"><div class="i-t">Budget pressure</div>
-    <div class="i-b"><b>{{ O.over_budget_lines|fmt }}</b> budget line(s) are over budget (negative fund
-    available){% if PRS %}; the tightest is <b>{{ PRS[0].project_number }}</b>
-    {{ '· ' + PRS[0].expenditure_type if PRS[0].expenditure_type }} at
-    <b class="{{ 'neg' if PRS[0].fund_available < 0 }}">{{ PRS[0].fund_available|fmt }} AED</b> remaining
-    ({{ PRS[0].utilization_pct|fmt }}% utilized){% endif %}. Part 1.2 lists the {{ PRS|length }} lines
-    with the least headroom.</div></div>
+    <div class="i-b"><b class="{{ 'i-bad' if over_lines > 0 else 'i-good' }}">{{ over_lines|fmt }}</b>
+    budget line(s) have spent more than their approved budget{% if over_lines == 0 %} — every line still
+    has funds available{% endif %}{% if PRS %}; the tightest is <b>{{ PRS[0].project_number }}</b>
+    {{ '· ' + PRS[0].expenditure_type if PRS[0].expenditure_type }} with
+    <b class="{{ 'i-bad' if (PRS[0].fund_available or 0) < 0 else 'i-good' }}">{{ PRS[0].fund_available|fmt }} AED</b>
+    remaining ({{ PRS[0].utilization_pct|fmt }}% utilized){% endif %}. Part 1.2 lists the
+    {{ PRS|length }} lines with the least headroom.</div></div>
 
   <div class="ins"><div class="i-t">Supplier concentration</div>
     <div class="i-b">{% if top_sup %}The top supplier, <b>{{ top_sup[0][0] }}</b>, accounts for
-    <b>{{ (100 * top_sup[0][1] / (ap_total + grn_total))|round(1) if (ap_total + grn_total) else 0 }}%</b>
-    of all actuals ({{ money(top_sup[0][1]) }}); the top five suppliers hold
-    <b>{{ (100 * (top_sup[:5]|map(attribute='1')|sum) / (ap_total + grn_total))|round(1) if (ap_total + grn_total) else 0 }}%</b>
-    across {{ sup.d|length }} active suppliers.{% else %}No supplier activity recorded in scope.{% endif %}</div></div>
+    <b class="{{ 'i-bad' if conc_pct > 50 else 'i-good' if conc_pct <= 30 else '' }}">{{ conc_pct }}%</b>
+    of all actual spending ({{ money(top_sup[0][1]) }}); the top five suppliers hold
+    <b class="{{ 'i-bad' if conc5_pct > 80 else '' }}">{{ conc5_pct }}%</b>
+    across {{ sup.d|length }} active suppliers.
+    {% if conc_pct > 50 %}Spending is heavily concentrated in one supplier — a delivery or dispute
+    there puts the programme at risk.{% elif conc_pct <= 30 %}Spending is well spread across the
+    supplier base.{% endif %}{% else %}No supplier activity recorded in scope.{% endif %}</div></div>
 
   <div class="ins"><div class="i-t">Delivery pipeline</div>
-    <div class="i-b">Open encumbrances total <b>{{ money((O.obligation_po or 0) + (O.commitment_pr or 0)) }}</b> —
-    {{ money(O.obligation_po) }} contractually obligated on {{ PO|length|fmt }} PO lines plus
-    {{ money(O.commitment_pr) }} requested on {{ PR|length|fmt }} PR lines. If everything open is
+    <div class="i-b">Committed-but-not-yet-delivered spending totals
+    <b>{{ money((O.obligation_po or 0) + (O.commitment_pr or 0)) }}</b> —
+    {{ money(O.obligation_po) }} on {{ PO|length|fmt }} open purchase-order lines plus
+    {{ money(O.commitment_pr) }} on {{ PR|length|fmt }} open requisition lines. If everything open is
     delivered and invoiced, utilization reaches the committed <b>{{ O.utilization_pct|fmt }}%</b>.
-    {% if oldest_po %}The oldest open PO line dates to <b>{{ dt(oldest_po.budget_date) }}</b>
-    ({{ oldest_po.po_number }}, {{ (oldest_po.supplier_name or '—')|string|truncate(34) }}) — aged open orders
-    are candidates for close-out to release funds.{% endif %}</div></div>
+    {% if oldest_po %}The oldest open purchase-order line dates to
+    <b class="{{ 'i-bad' if po_aged else '' }}">{{ dt(oldest_po.budget_date) }}</b>
+    ({{ oldest_po.po_number }}, {{ (oldest_po.supplier_name or '—')|string|truncate(34) }})
+    {%- if po_aged %} — <span class="i-bad">orders open since before this budget year</span> should be
+    reviewed and closed out to release funds{% else %} — the open-order book is recent{% endif %}.{% endif %}</div></div>
 
   <div class="ins"><div class="i-t">Uninvoiced deliveries</div>
-    <div class="i-b">{% set uninv = GRN|map(attribute='uninvoiced_aed')|select('number')|sum %}
-    Goods worth <b>{{ money(uninv) }}</b> have been received but not yet invoiced by suppliers
-    (Part 2.2, Uninvoiced AED) — an accrual to anticipate in upcoming AP volumes.</div></div>
+    <div class="i-b">Goods worth
+    <b class="{{ 'i-bad' if uninv_heavy else '' }}">{{ money(uninv) }}</b> have been received but not
+    yet invoiced by suppliers (Part 2.2) — invoices for these deliveries should be expected in the
+    coming payment cycles{% if uninv_heavy %}; <span class="i-bad">this is a sizeable amount</span>
+    relative to the budget and worth chasing with the suppliers{% endif %}.</div></div>
 
   <div class="meth">
-    <h4>Methodology</h4>
+    <h4>How the figures are defined</h4>
     <div>
-      <b>Actual — AP</b>: validated supplier-invoice distributions charged directly to projects (not PO-matched), AED functional amounts. &nbsp;
-      <b>Actual — GRN</b>: goods-receipt ledger amounts per purchase-order distribution. &nbsp;
-      <b>Open Obligation (PO)</b>: purchase-order distributions with funds status Reserved / Partially Liquidated, net of goods received; finally-closed orders excluded. &nbsp;
-      <b>Open Commitment (PR)</b>: requisition distributions with funds status Reserved, AED via the corporate rate snapshot. &nbsp;
+      <b>Actual — AP</b>: approved supplier invoices charged directly to projects (not linked to a purchase order), in AED. &nbsp;
+      <b>Actual — GRN</b>: the value of goods and services received against purchase orders, in AED. &nbsp;
+      <b>Open Obligation (PO)</b>: purchase-order lines with funds reserved, less what has already been received; finally-closed orders excluded. &nbsp;
+      <b>Open Commitment (PR)</b>: purchase-requisition lines with funds reserved that have not yet become purchase orders. &nbsp;
       <b>Fund Available</b> = Budget &minus; Actuals &minus; Open PO &minus; Open PR. &nbsp;
       <b>Utilization %</b> = (Actuals + Open PO + Open PR) &divide; Budget.
-      Source: i-Finance GL Budget Utilization layer (prod.dct_budget_utilization_v and its detail views), Fusion-loaded data as of the generation time.
+      Zero-amount lines are excluded from the registers. Source: the i-Finance budget-utilization
+      reporting layer, reflecting Oracle Fusion data as of the generation time.
     </div>
   </div>
   <div class="foot">Part 5 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot;
-    Generated {{ generated_at }} (Asia/Dubai) &middot; {{ report_code }} &middot;
+    Generated {{ generated_at }} GST (UTC+04:00, Asia/Dubai) &middot; {{ report_code }} &middot;
     Prepared by Financial Planning and Budgeting — Finance Department</div>
 </div>
 
