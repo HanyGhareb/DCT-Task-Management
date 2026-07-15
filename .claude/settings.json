@@ -78,7 +78,9 @@
       "Bash('/c/Program Files/PuTTY/plink' -ssh -batch -pw Nono@2017 root@192.168.1.190 'dos2unix /tmp/create_vms.sh 2>/dev/null; sh /tmp/create_vms.sh')",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @c:\\\\tmp\\\\run07b.sql)",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @c:\\\\tmp\\\\verify_e2e.sql)",
-      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @c:\\\\tmp\\\\run14.sql)"
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp @c:\\\\tmp\\\\run14.sql)",
+      "Bash(SSH_USER=opc bash webtier/deploy_frontend.sh *)",
+      "Bash(bash webtier/deploy_frontend.sh *)"
     ]
   },
   "enabledPlugins": {

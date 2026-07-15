@@ -6,9 +6,17 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.24.0';</script>
+<script>window.APP_VERSION='1.26.0';</script>
+<!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
+     .btn, brand tokens) always win; it supplies the base classes the shared
+     <interactive-report> component needs (.data-table/.form-control/.badge/
+     .search-box/.modal-*/.ir-*/.ed-*) for the Projects Encumbrances tab. -->
+<link rel="stylesheet" id="platform-css">
 <link rel="stylesheet" id="app-css">
-<script>document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;</script>
+<script>
+  document.getElementById('platform-css').href='/shared/css/platform.css?v='+window.APP_VERSION;
+  document.getElementById('app-css').href='css/app.css?v='+window.APP_VERSION;
+</script>
 </head>
 <body>
 
@@ -46,12 +54,13 @@
     <a data-bind="css:{on:view()==='actuals'}, click:go.bind($data,'actuals'), text:t('navActuals')"></a>
     <a data-bind="css:{on:view()==='dashboard'}, click:go.bind($data,'dashboard'), text:t('navDashboard')"></a>
     <a data-bind="css:{on:view()==='butil'}, click:go.bind($data,'butil'), text:t('navButil')"></a>
+    <a data-bind="css:{on:view()==='encumbrances'}, click:go.bind($data,'encumbrances'), text:t('navEncumbrances')"></a>
     <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
     <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
     <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'}">
 
     <!-- ── OVERVIEW ── -->
     <div data-bind="visible:view()==='overview'">
@@ -606,6 +615,89 @@
       </div><!-- /bu-body -->
     </div>
 
+    <!-- ── PROJECTS ENCUMBRANCES (open PO/PR encumbrance lines, full GL combination) ── -->
+    <div data-bind="visible:view()==='encumbrances'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('enTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('enSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:enLoaded(), text:enCount()+' '+t('enLinesLabel')"></span>
+        </div>
+      </div>
+
+      <!-- search criteria — the SAME set as Budget Utilization (shares the bu* -->
+      <!-- filters + autocomplete option lists; the Search button runs this tab) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('search');return true}, css:{closed:!buSecSearchOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecSearch')"></span>
+          <span class="bu-sec-sum" data-bind="text:buSearchSummary()"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:buSecSearchOpen">
+        <div class="filter-grid">
+          <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+            <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
+            <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
+            <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buChapters, value:buChapterPick, optionsCaption:t('allChapters'), event:{change:buChapterAdd}"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{change:buCcCommit, keydown:function(d,e){if(e.keyCode===13){buCcCommit();runEncumbrances();}return true;}}"></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{change:buProjCommit, keydown:function(d,e){if(e.keyCode===13){buProjCommit();runEncumbrances();}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('cTask')"></label>
+            <input class="inp" type="text" list="bu-task-dl" data-bind="textInput:buTask, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runEncumbrances();}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('cEtype')"></label>
+            <input class="inp" type="text" list="bu-et-dl" data-bind="textInput:buEtype, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runEncumbrances();}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+            <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runEncumbrances();}return true;}}"></div>
+          <div class="field filter-actions">
+            <button class="btn btn-primary" data-bind="click:function(){runEncumbrances()}, css:{busy:enLoading}, text:t('btnSearch')"></button>
+            <button class="btn" data-bind="click:function(){buReset();runEncumbrances();}, enable:!enLoading(), text:t('btnReset')"></button>
+          </div>
+        </div>
+        <!-- multi-select chips (Chapter / Cost centre / Project) — shared with Budget Utilization -->
+        <div class="mchips mchips-bar" data-bind="visible:buChapterSel().length + buCcSel().length + buProjSel().length > 0">
+          <!-- ko foreach: buChapterSel -->
+          <span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buChapterSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+          <!-- ko foreach: buCcSel -->
+          <span class="mchip"><b data-bind="text:$root.t('costCenter')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buCcSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+          <!-- ko foreach: buProjSel -->
+          <span class="mchip"><b data-bind="text:$root.t('cProject')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buProjSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+        </div>
+        </div>
+      </div>
+
+      <!-- summary + shared interactive report (all IR features come from the component) -->
+      <!-- ko if: enIrError -->
+      <div class="en-note" data-bind="text:t('enIrErr')"></div>
+      <!-- /ko -->
+      <!-- ko ifnot: enIrError -->
+      <div class="card en-ir-wrap">
+        <div class="en-sum">
+          <span><b data-bind="text:enOpenTotalTxt"></b> <span class="en-sub" data-bind="text:t('enOpenLabel')"></span></span>
+          <span><b data-bind="text:enCount"></b> <span class="en-sub" data-bind="text:t('enLinesLabel')"></span></span>
+          <!-- ko if: enTruncated --><span class="en-sub" data-bind="text:t('enTruncNote')"></span><!-- /ko -->
+        </div>
+        <!-- ko if: enLoading() && !enData() -->
+        <div class="en-note" data-bind="text:t('enLoadingNote')"></div>
+        <!-- /ko -->
+        <!-- delegate hover on the wrapper: the GL-combination cell shows the -->
+        <!-- same 10-segment popover used on Actuals/Explorer (ko.contextFor) -->
+        <div data-bind="event:{mouseover:enGridOver, mousemove:enGridMove, mouseout:enGridOut}">
+        <interactive-report params="reportCode:'GL_PROJ_ENCUMBRANCES', section:'enc', data:enData, isAdmin:false, layoutsApi:null"></interactive-report>
+        </div>
+      </div>
+      <!-- /ko -->
+    </div>
+
     <!-- ── DASHBOARD (executive analytics) ── -->
     <div data-bind="visible:view()==='dashboard'">
       <div class="page-head">
@@ -986,14 +1078,47 @@
 
 <script src="https://static.oracle.com/cdn/jet/17.0.0/3rdparty/knockout/knockout-3.5.1.js"></script>
 <script>
-// shared Fusion deep-link builders (UMD -> window.FusionLinks), then the app;
-// boot the app even if the shared file fails to load (links just stay plain text)
+// Boot order matters:
+//   1. fusionLinks.js is UMD -> must load as a plain <script> BEFORE require.js,
+//      or its anonymous define() collides with requirejs ("Mismatched anonymous
+//      define"). It attaches window.FusionLinks (deep links stay plain if it fails).
+//   2. require.js, then a tiny config: reuse the ALREADY-loaded global Knockout
+//      (define('knockout') -> window.ko) so the shared AMD IR component registers
+//      its <interactive-report>/<edit-drawer> KO components on the SAME ko the app
+//      binds with, and map shared/text/xlsx paths.
+//   3. require the shared IR component (+ its i18n so the ir.* toolbar labels
+//      render), init shared i18n, THEN boot app.js (component registered first).
+//   Every step degrades gracefully: any load failure still boots the app (the
+//   Projects Encumbrances tab shows a notice via window._irLoadError).
 (function () {
-  function bootApp() { var s = document.createElement('script'); s.src = 'js/app.js?v=' + window.APP_VERSION; document.body.appendChild(s); }
-  var f = document.createElement('script');
-  f.src = '/shared/js/fusionLinks.js?v=' + window.APP_VERSION;
-  f.onload = bootApp; f.onerror = bootApp;
-  document.body.appendChild(f);
+  var APP = window.APP_VERSION, CDN = 'https://static.oracle.com/cdn/jet/17.0.0';
+  function bootApp() { var s = document.createElement('script'); s.src = 'js/app.js?v=' + APP; document.body.appendChild(s); }
+  function loadScript(src, ok, err) { var s = document.createElement('script'); s.src = src; s.onload = ok; s.onerror = err; document.body.appendChild(s); }
+  function afterRequire() {
+    try {
+      requirejs.config({
+        waitSeconds: 30,
+        paths: {
+          'shared': '/shared/js',
+          'text':   CDN + '/3rdparty/require/text',
+          'xlsx':   'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min'
+        },
+        urlArgs: (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) ? ('t=' + (window.performance ? Math.floor(performance.now()) : 1)) : ('v=' + APP)
+      });
+      define('knockout', [], function () { return window.ko; });   // reuse the global KO
+      require(['shared/i18n', 'shared/components/interactiveReport', 'shared/editDrawer'],
+        function (i18n) {
+          window._sharedI18n = i18n;
+          i18n.setLang(localStorage.getItem('gl_lang') || 'en', { system: true });
+          i18n.init().then(bootApp, bootApp);
+        },
+        function (e) { window._irLoadError = String(e && e.message || e); bootApp(); });
+    } catch (e) { window._irLoadError = String(e); bootApp(); }
+  }
+  // 1. fusionLinks (UMD, before requirejs), then 2. require.js, then 3. the rest
+  loadScript('/shared/js/fusionLinks.js?v=' + APP,
+    function () { loadScript(CDN + '/3rdparty/require/require.js', afterRequire, bootApp); },
+    function () { loadScript(CDN + '/3rdparty/require/require.js', afterRequire, bootApp); });
 })();
 </script>
 </body>

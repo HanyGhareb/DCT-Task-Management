@@ -176,6 +176,14 @@
 
     /* ── Budget Utilization (project budget vs actual) ── */
     navButil:{en:'Budget Utilization',ar:'استخدام الموازنة'},
+    navEncumbrances:{en:'Projects Encumbrances',ar:'ارتباطات المشاريع'},
+    enTitle:{en:'Open Projects Encumbrance Follow-up',ar:'متابعة ارتباطات المشاريع المفتوحة'},
+    enSub:{en:'Every open encumbrance line (Open Commitment PR + Open Obligation PO) with the full GL combination — all ten segments, code and name — for the selected Budget Utilization scope.',ar:'كل بند ارتباط مفتوح (التزام طلب شراء مفتوح + تعهد أمر شراء مفتوح) مع التركيبة المحاسبية الكاملة — جميع البنود العشرة رمزًا واسمًا — ضمن نطاق استخدام الموازنة المحدد.'},
+    enOpenLabel:{en:'Open / Reserved (AED)',ar:'المفتوح / المحجوز (درهم)'},
+    enLinesLabel:{en:'encumbrance lines',ar:'بنود الارتباط'},
+    enTruncNote:{en:'Showing the top 10,000 lines by open amount.',ar:'يتم عرض أعلى 10٬000 بند حسب المبلغ المفتوح.'},
+    enLoadingNote:{en:'Loading encumbrance lines…',ar:'جارٍ تحميل بنود الارتباط…'},
+    enIrErr:{en:'The interactive report component could not be loaded. Please refresh the page; if the problem persists, contact the administrator.',ar:'تعذّر تحميل مكوّن التقرير التفاعلي. يرجى تحديث الصفحة؛ وإذا استمرت المشكلة، تواصل مع المسؤول.'},
     buTitle:{en:'Budget Utilization',ar:'استخدام الموازنة'},
     buSub:{en:'Project budget vs AP, GRN, open commitments and obligations — per task and expenditure type.',ar:'موازنة المشاريع مقابل الدائنين والاستلام والالتزامات والتعهدات المفتوحة — لكل مهمة ونوع إنفاق.'},
     fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
@@ -252,7 +260,11 @@
     self.lang = ko.observable(localStorage.getItem('gl_lang') || 'en');
     self.t = function (k) { var e = STR[k]; return e ? (e[self.lang()] || e.en) : k; };
     function applyDir() { document.documentElement.dir = self.lang() === 'ar' ? 'rtl' : 'ltr'; document.documentElement.lang = self.lang(); }
-    self.toggleLang = function () { self.lang(self.lang() === 'en' ? 'ar' : 'en'); localStorage.setItem('gl_lang', self.lang()); applyDir(); };
+    self.toggleLang = function () {
+      self.lang(self.lang() === 'en' ? 'ar' : 'en'); localStorage.setItem('gl_lang', self.lang()); applyDir();
+      // keep the shared layer (used by the <interactive-report> component) in sync
+      if (window._sharedI18n) { try { window._sharedI18n.setLang(self.lang(), { system: true }); } catch (e) {} }
+    };
     applyDir();
     self.ready = ko.observable(false);
     self.view = ko.observable('overview');
@@ -288,18 +300,20 @@
     self.tipRows = ko.observableArray([]);
     self.tipShow = ko.observable(false);
     self.tipX = ko.observable(0); self.tipY = ko.observable(0);
+    // desc fields differ by source: Explorer/Actuals rows carry *Desc, the
+    // Projects-Encumbrances IR rows carry *Name — accept either.
     function comboRows(r) {
       return [
-        { label: self.t('segEntity'),        code: r.entityCode,         desc: r.entityDesc },
-        { label: self.t('segCostCenter'),    code: r.costCenterCode,     desc: r.costCenterDesc },
-        { label: self.t('segAccount'),       code: r.accountCode,        desc: r.accountDesc },
-        { label: self.t('segAppropriation'), code: r.appropriationCode,  desc: r.appropriationDesc },
-        { label: self.t('segBudgetGroup'),   code: r.budgetGroupCode,    desc: r.budgetGroupDesc },
-        { label: self.t('segEntitySpecific'),code: r.entitySpecificCode, desc: r.entitySpecificDesc },
-        { label: self.t('segFuture1'),       code: r.future1Code,        desc: r.future1Desc },
-        { label: self.t('segFuture2'),       code: r.future2Code,        desc: r.future2Desc },
-        { label: self.t('segIntercompany'),  code: r.intercompanyCode,   desc: r.intercompanyDesc },
-        { label: self.t('segProgram'),       code: r.programCode,        desc: r.programDesc }
+        { label: self.t('segEntity'),        code: r.entityCode,         desc: r.entityDesc || r.entityName },
+        { label: self.t('segCostCenter'),    code: r.costCenterCode,     desc: r.costCenterDesc || r.costCenterName },
+        { label: self.t('segAccount'),       code: r.accountCode,        desc: r.accountDesc || r.accountName },
+        { label: self.t('segAppropriation'), code: r.appropriationCode,  desc: r.appropriationDesc || r.appropriationName },
+        { label: self.t('segBudgetGroup'),   code: r.budgetGroupCode,    desc: r.budgetGroupDesc || r.budgetGroupName },
+        { label: self.t('segEntitySpecific'),code: r.entitySpecificCode, desc: r.entitySpecificDesc || r.entitySpecificName },
+        { label: self.t('segFuture1'),       code: r.future1Code,        desc: r.future1Desc || r.future1Name },
+        { label: self.t('segFuture2'),       code: r.future2Code,        desc: r.future2Desc || r.future2Name },
+        { label: self.t('segIntercompany'),  code: r.intercompanyCode,   desc: r.intercompanyDesc || r.intercompanyName },
+        { label: self.t('segProgram'),       code: r.programCode,        desc: r.programDesc || r.programName }
       ];
     }
     function place(e) {
@@ -311,6 +325,40 @@
     self.comboHover = function (r, e) { self.tipRows(comboRows(r)); place(e); self.tipShow(true); return true; };
     self.comboMove  = function (r, e) { place(e); return true; };
     self.comboOut   = function () { self.tipShow(false); return true; };
+
+    /* ── same combination popover over the shared <interactive-report> grid ──
+       The IR component owns its cells, so we delegate on the encumbrance wrapper
+       and resolve the hovered cell's row/column from its KO binding context
+       (ko.contextFor): $data = the column, $parent.row = the row. Only the
+       'combination' column triggers the hint. Keeps the whole feature GL-side —
+       no change to the shared component. */
+    function enResolveCell(target) {
+      var td = (target && target.closest) ? target.closest('td') : null;
+      if (!td) return null;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (e) { return null; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row || !ctx.$data) return null;
+      return { td: td, row: ctx.$parent.row, col: ctx.$data };
+    }
+    function enIsCombo(info) { return !!(info && info.col && info.col.key === 'combination' && info.row); }
+    self.enGridOver = function (d, e) {
+      var info = enResolveCell(e.target);
+      if (enIsCombo(info)) { info.td.style.cursor = 'help'; self.comboHover(info.row, e); }
+      else self.comboOut();
+      return true;
+    };
+    self.enGridMove = function (d, e) {
+      if (!self.tipShow()) return true;
+      var info = enResolveCell(e.target);
+      if (enIsCombo(info)) self.comboMove(info.row, e); else self.comboOut();
+      return true;
+    };
+    self.enGridOut = function (d, e) {
+      // only hide when the pointer actually leaves the grid wrapper (mouseout
+      // bubbles on every inner boundary — otherwise the tip would flicker)
+      if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) self.comboOut();
+      return true;
+    };
 
     self.go = function (v) {
       self.view(v);
@@ -324,6 +372,11 @@
       else if (v === 'butil') {
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runButil(0); });
         else self.runButil(0);
+      }
+      else if (v === 'encumbrances') {
+        // reuses the Budget Utilization filter set; run once on first open
+        if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runEncumbrances(); });
+        else if (!self.enLoaded()) self.runEncumbrances();
       }
     };
     self.signOut = function () { location.href = ADMIN_LOGIN; };
@@ -1073,6 +1126,42 @@
           }, 6000);
         })();
       }).catch(function (e) { self.buBookBusy(false); fail(e); });
+    };
+
+    /* ════ PROJECTS ENCUMBRANCES — open PO/PR lines with the full GL combination ══
+       Reuses the Budget Utilization filter bar (buParams) VERBATIM, so the scope
+       is identical to that page. The result set renders in the SHARED
+       <interactive-report> component (one-shot capped fetch; column show/hide,
+       filters, sort, calc columns, aggregates, control breaks, highlights, CSV/
+       XLSX export and saved layouts all come from the component). The Open total
+       reconciles to the butil Total Encumbrance (Commitment PR + Obligation PO). */
+    var EN_MAX = 10000;
+    self.enData = ko.observable(null);        // IR envelope, or null before first run
+    self.enLoading = ko.observable(false);
+    self.enLoaded = ko.observable(false);
+    self.enCount = ko.observable(0);
+    self.enOpenTotal = ko.observable(0);
+    self.enTruncated = ko.observable(false);
+    // set when the shared IR component failed to load (see index.html boot)
+    self.enIrError = ko.observable(!!window._irLoadError);
+    self.enOpenTotalTxt = ko.computed(function () {
+      return Number(self.enOpenTotal() || 0).toLocaleString('en-US',
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    });
+    self.runEncumbrances = function () {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.enLoading(true);
+      var p = self.buParams(0, EN_MAX);       // same filters as Budget Utilization
+      delete p.offset;
+      return api('GET', '/encumbrances' + qs(p)).then(function (d) {
+        self.enCount(d.count || 0);
+        self.enOpenTotal((d.totals && d.totals.openAed) || 0);
+        self.enTruncated(!!d.truncated);
+        self.enData({ columns: d.columns || [], items: d.items || [],
+          total: d.count || 0, truncated: !!d.truncated,
+          maxRows: d.maxRows || EN_MAX, section: 'enc' });
+        self.enLoaded(true); self.enLoading(false);
+      }).catch(function (e) { self.enLoading(false); fail(e); });
     };
 
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */

@@ -1235,7 +1235,11 @@ table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
 
 /* ── action bar ───────────────────────────────────────────────────────────── */
 .wf-bar            { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
-.wf-bar--sm .btn   { padding: 3px 10px; font-size: .78rem; }
+/* In a table row the outcomes must stay on ONE line — wrapping them turns every
+   row into a three-line block and the list stops being scannable. The cell is
+   nowrap, so the column simply takes the width it needs. */
+.wf-bar--sm        { flex-wrap: nowrap; justify-content: flex-end; }
+.wf-bar--sm .btn   { padding: 3px 10px; font-size: .78rem; white-space: nowrap; }
 .wf-bar-empty      { color: var(--text-muted, #7a7a7a); font-size: .82rem; }
 
 /* Outcome buttons are coloured by the outcome's OWN `color` value, which is data.

@@ -24,6 +24,74 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-15 — Projects Encumbrances: column reorder + GL-combination hint (GL v1.26.0)** —
+  user-requested. ①**Column order** (`GL/db/12`, server-defined; the IR renders the
+  server `columns[]` order for fresh/Reset users — a returning user's localStorage
+  layout `GL_PROJ_ENCUMBRANCES::enc` overrides it until they hit **Reset**): now
+  Sector · Chapter · Project name · Project # · Task · Expenditure type · Source ·
+  Document # · Line · Description/Vendor · Budget date · Cur · Line amount · Open/Reserved ·
+  GL combination · Program · Cost centre · Account · Appropriation · (then Entity ·
+  Budget group · Entity specific · Intercompany · Future 1 · Future 2), each segment code+name.
+  DB-only, additive, **standalone-safe re-run of 12** (deployed + verified handler source
+  order). ②**GL-combination hint**: the same 10-segment `.combo-tip` popover used on
+  Actuals/Explorer now shows on hover over the grid's **GL combination** cell — wired
+  **GL-side only** (no shared-component change): a delegated `mouseover/mousemove/mouseout`
+  on the encumbrance wrapper resolves the hovered IR cell's row/column via `ko.contextFor`
+  (`$data`=column, `$parent.row`=row) and triggers `comboHover` when key='combination';
+  `comboRows` now accepts `*Name` (IR rows) as well as `*Desc` (Actuals/Explorer rows).
+  Frontend files: `Jet/index.html` (wrapper + APP_VERSION 1.25.0→**1.26.0**), `Jet/js/app.js`.
+  **No `final apps/shared/` change → no all-apps bump.** Frontend ships via webtier release.
+- **2026-07-15 — Butil KPI-card drill row cap 1000 → 10000 (`GL/db/07`, DB-only)** —
+  user reported the aggregate "Actual AP" drill (1,040.1M) did not list all the invoices
+  a single budget-line drill showed (e.g. `4511000175 / Mission & Travel-N` = 93K / 7
+  invoices). **Root cause: not a data bug** — the 93K IS in the 1,040.1M. `/butil/lines`
+  aggregate mode returns `rows[]` capped `FETCH FIRST 1000 ROWS ONLY` ordered by amount
+  DESC, while `total`/`count` come from `COUNT(*)/SUM() OVER()` over the full set (line
+  371). The card drill spans ~2,985 AP lines; the 1,000th-largest is ~21K, and these
+  invoices are 13–20K, so they fell below the visible top-1000 even though counted.
+  Verified in PROD (2,985 lines / rank-1000 ≈ 21K / 1,947 lines ≤ 20K). Fix: raised all
+  four metric caps (ap/grn/pr/po) to 10000 (full base is ~3k → effectively exhaustive;
+  matches the encumbrance `EN_MAX`=10000). Deploy: **07 re-run, standalone-safe** (fresh
+  session; verified stored handler source = 4× `FETCH FIRST 10000`, 0× old). No frontend
+  change (server-only; `drillCapNote` "top {n} of {c}" still guards any future overflow).
+  The row-cell drill was always complete. See `budget_utilization_missing_data.md`.
+- **2026-07-15 — Web-tier release `20260715131150` pushed** (`SSH_USER=opc bash
+  webtier/deploy_frontend.sh 129.151.159.189`): GL v1.25.0 (Projects Encumbrances tab) live;
+  verified `APP_VERSION`, the requirejs bootstrap (`define('knockout'…)`) and `runEncumbrances`
+  served from https://129.151.159.189/, and `/gl/encumbrances` 401s without a token (deployed +
+  auth-enforced). The `db/12` endpoint was already live on PROD (reconciliation tested against
+  the production ORDS URL).
+- **2026-07-15 — Projects Encumbrances tab (GL v1.25.0) — new "Open Projects Encumbrance
+  Follow-up" report on the SHARED `<interactive-report>` component.** New nav tab + view
+  `encumbrances`: every OPEN encumbrance line (Open Commitment PR reserved + Open Obligation
+  PO GRN-netted) for the budget lines matching the Budget Utilization scope, exploded to the
+  FULL GL combination — all ten segments, **code + name** — plus sector/chapter. Rendered in
+  the same APEX-IR grid AP/BI use (column show/hide/reorder/rename, filter chips, multi-sort,
+  calc columns, aggregates, control breaks, highlight rules, CSV + XLSX export, per-user
+  localStorage layouts). **Search criteria = Budget Utilization verbatim** (reuses the `bu*`
+  filters, `buParams`, and the `bu-*` autocomplete datalists; the Open total reconciles to the
+  butil Total Encumbrance).
+  - DB: `db/12_gl_encumbrances_ords.sql` (ADDITIVE) `GET /encumbrances` — key-set CTE lifted
+    from `/butil/lines`, UNION PR+PO, joined to `DCT_GL_COA_SNAP` via `dct_cc_canon` for the 10
+    segment code/name pairs; returns `{columns[],items[],count,totals{openAed}}`; zero lines
+    excluded; capped 10 000 by open amount. Deployed via SQLcl (additive, no MERGE — fine on
+    Linux SQLcl). ORDS stores handler source uncompiled → validated at runtime.
+  - **Re-run list after any 05 re-run is now 07 + 08 + 09 + 10 + 11 + 12.**
+  - IR in a PORTAL app: GL has no requirejs, so `index.html` bootstraps a minimal one —
+    `fusionLinks.js` (UMD) loads as a plain `<script>` BEFORE require.js (else its anonymous
+    `define()` collides), then require.js + `define('knockout', [], ()=>window.ko)` reuses the
+    ALREADY-loaded global Knockout so the shared AMD IR component registers
+    `<interactive-report>`/`<edit-drawer>` on the SAME `ko` the app binds with; `shared/i18n` is
+    initialised for the `ir.*` toolbar labels and kept in sync by `toggleLang`. Every step
+    degrades gracefully (a load failure still boots the app; the tab shows `enIrError`).
+  - CSS: `platform.css` is linked **before** `app.css` (portal `body`/`.btn`/tokens still win)
+    so the IR gets its base classes (`.data-table`/`.form-control`/`.badge`/`.ir-*`/`.ed-*`); a
+    small var bridge in `app.css` maps the platform var NAMES to GL's portal tokens so the grid
+    renders in the GL green theme.
+  - Verified: endpoint Open total reconciles to butil Total Encumbrance to the fils across 4
+    filter combos (incl. YTD period) + 400/401 error paths; browser smoke 22/22 (component
+    registered on the app KO, full segment grid renders, filter re-run, EN/AR/RTL with the IR
+    toolbar localized, Budget Utilization tab unaffected by platform.css). APP_VERSION 1.25.0.
 - **2026-07-14 — Butil "Figures in" display-unit selector (GL v1.24.0) + web-tier release
   `20260714151925`.** New **Figures in** field in the Budget Utilization Search region:
   Auto (B/M/K, the old compact default) | Billions | Millions | Thousands | Exact number.

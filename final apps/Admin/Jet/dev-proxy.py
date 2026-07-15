@@ -16,7 +16,10 @@ import sys
 import time
 
 ORDS_ORIGIN = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com'
-PORT = 8080
+# Port may be overridden:  python dev-proxy.py 8099
+# Two dev-proxies cannot share 8080 -- give each test runner its own port
+# rather than killing whatever is already listening (it may be someone's app).
+PORT = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 APPS_ROOT  = os.path.normpath(os.path.join(SCRIPT_DIR, '..', '..'))   # 'final apps'
 SHARED_DIR = os.path.join(APPS_ROOT, 'shared')

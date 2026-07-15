@@ -270,7 +270,11 @@ END;
     --       KPI-card totals; adds Project/Task columns.
     --   Filters + amounts mirror prod.dct_budget_utilization_v (db/v2/37) so the
     --   drill total always reconciles to the on-screen figure. Rows capped at
-    --   1000 (top by amount); `total`+`count` are the FULL windowed aggregates.
+    --   10000 (top by amount; was 1000 -- the aggregate KPI-card drill spans the
+    --   whole filtered set (~3k AP lines) so a 1000-row cap truncated the small
+    --   lines out of the visible list even though `total`/`count` counted them:
+    --   the header showed the full figure, the body only the 1000 largest);
+    --   `total`+`count` are the FULL windowed aggregates.
     --   Returns {metric, aggregate, total, count, columns[{key,label,type}], rows[]}.
     -- =========================================================================
     def_template('butil/lines');
@@ -383,7 +387,7 @@ BEGIN
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),'~'),
              NVL(d.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
-      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 10000 ROWS ONLY
     ) LOOP
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
@@ -449,7 +453,7 @@ BEGIN
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END),'~'),
              NVL(g.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
-      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 10000 ROWS ONLY
       ) ORDER BY receipt_number, line_no
     ) LOOP
       l_count := r.full_n; l_total := r.full_tot;
@@ -511,7 +515,7 @@ BEGIN
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(d.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN d.task_id IS NOT NULL THEN '#'||TO_CHAR(d.task_id) END),'~'),
              NVL(d.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
-      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+      ORDER BY amt_aed DESC NULLS LAST FETCH FIRST 10000 ROWS ONLY
     ) LOOP
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
@@ -582,7 +586,7 @@ BEGIN
         AND (COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)),
              NVL(COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END),'~'),
              NVL(b.expenditure_type,'~')) IN (SELECT pk,tk,et FROM kys)
-      ORDER BY open_aed DESC NULLS LAST FETCH FIRST 1000 ROWS ONLY
+      ORDER BY open_aed DESC NULLS LAST FETCH FIRST 10000 ROWS ONLY
     ) LOOP
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
