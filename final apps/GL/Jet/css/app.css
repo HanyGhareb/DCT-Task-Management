@@ -573,3 +573,26 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .bk-duo-row:hover .pp{color:var(--ink)}
 .mchips-bar{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
 .mchip b{font-weight:800;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.6;margin-inline-end:2px}
+
+/* ═══════════ Projects Encumbrances tab — shared <interactive-report> bridge ═══
+   platform.css (linked before this file) supplies the IR/edit-drawer base
+   classes; these map the platform var NAMES the component reads to GL's portal
+   tokens so the grid + toolbar + drawer render in the GL green theme. GL's own
+   classes use different var names (--sans/--ink/…), so setting the platform
+   names here only reaches the IR/platform-classed elements. */
+:root{
+  --font:var(--sans); --text:var(--ink); --text-muted:var(--muted);
+  --surface-2:#EFF2EF; --radius:var(--r); --radius-sm:var(--r-sm);
+  --region-hd-bg:var(--brand); --region-hd-fg:#FFFFFF;
+  --region-hd-soft:var(--brand-soft); --region-hd-accent:var(--brand-dark);
+  --region-bd-color:var(--line); --region-bd-width:1px; --region-bd-style:solid;
+  --danger:var(--bad);
+}
+/* the IR grid sits in a GL card; give it breathing room + horizontal scroll */
+.en-ir-wrap{margin-top:14px}
+.en-ir-wrap .ir-wrap{overflow-x:auto}
+.en-note{margin:14px 0;padding:12px 16px;border:1px solid var(--line);border-radius:var(--r-sm);
+  background:var(--surface);color:var(--muted);font-size:13px}
+.en-sum{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:baseline;margin:2px 0 4px}
+.en-sum b{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--brand-dark)}
+.en-sum .en-sub{font-size:12px;color:var(--muted)}

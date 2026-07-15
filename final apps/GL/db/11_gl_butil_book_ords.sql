@@ -4,7 +4,7 @@
 -- Adds to : gl.rest (does NOT delete/redefine the module)
 -- Run     : sql -name prod_mcp @11_gl_butil_book_ords.sql  (fresh session)
 -- IMPORTANT: 05_gl_ords.sql DELETE_MODULEs gl.rest -- whenever 05 is re-run,
---            re-run 07 + 08 + 09 + 10 + THIS script right after it.
+--            re-run 07 + 08 + 09 + 10 + THIS script + 12 right after it.
 -- Purpose : lets any GL-authorized user run the BUDGET_UTIL_BOOK report
 --           (Reporting Platform, reporting/db/21) straight from the GL app's
 --           Budget Utilization page. The /rpt/ admin endpoints are SYS_ADMIN

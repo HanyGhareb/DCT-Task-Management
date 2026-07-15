@@ -24,6 +24,37 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-15 — Projects Encumbrances tab (GL v1.25.0) — new "Open Projects Encumbrance
+  Follow-up" report on the SHARED `<interactive-report>` component.** New nav tab + view
+  `encumbrances`: every OPEN encumbrance line (Open Commitment PR reserved + Open Obligation
+  PO GRN-netted) for the budget lines matching the Budget Utilization scope, exploded to the
+  FULL GL combination — all ten segments, **code + name** — plus sector/chapter. Rendered in
+  the same APEX-IR grid AP/BI use (column show/hide/reorder/rename, filter chips, multi-sort,
+  calc columns, aggregates, control breaks, highlight rules, CSV + XLSX export, per-user
+  localStorage layouts). **Search criteria = Budget Utilization verbatim** (reuses the `bu*`
+  filters, `buParams`, and the `bu-*` autocomplete datalists; the Open total reconciles to the
+  butil Total Encumbrance).
+  - DB: `db/12_gl_encumbrances_ords.sql` (ADDITIVE) `GET /encumbrances` — key-set CTE lifted
+    from `/butil/lines`, UNION PR+PO, joined to `DCT_GL_COA_SNAP` via `dct_cc_canon` for the 10
+    segment code/name pairs; returns `{columns[],items[],count,totals{openAed}}`; zero lines
+    excluded; capped 10 000 by open amount. Deployed via SQLcl (additive, no MERGE — fine on
+    Linux SQLcl). ORDS stores handler source uncompiled → validated at runtime.
+  - **Re-run list after any 05 re-run is now 07 + 08 + 09 + 10 + 11 + 12.**
+  - IR in a PORTAL app: GL has no requirejs, so `index.html` bootstraps a minimal one —
+    `fusionLinks.js` (UMD) loads as a plain `<script>` BEFORE require.js (else its anonymous
+    `define()` collides), then require.js + `define('knockout', [], ()=>window.ko)` reuses the
+    ALREADY-loaded global Knockout so the shared AMD IR component registers
+    `<interactive-report>`/`<edit-drawer>` on the SAME `ko` the app binds with; `shared/i18n` is
+    initialised for the `ir.*` toolbar labels and kept in sync by `toggleLang`. Every step
+    degrades gracefully (a load failure still boots the app; the tab shows `enIrError`).
+  - CSS: `platform.css` is linked **before** `app.css` (portal `body`/`.btn`/tokens still win)
+    so the IR gets its base classes (`.data-table`/`.form-control`/`.badge`/`.ir-*`/`.ed-*`); a
+    small var bridge in `app.css` maps the platform var NAMES to GL's portal tokens so the grid
+    renders in the GL green theme.
+  - Verified: endpoint Open total reconciles to butil Total Encumbrance to the fils across 4
+    filter combos (incl. YTD period) + 400/401 error paths; browser smoke 22/22 (component
+    registered on the app KO, full segment grid renders, filter re-run, EN/AR/RTL with the IR
+    toolbar localized, Budget Utilization tab unaffected by platform.css). APP_VERSION 1.25.0.
 - **2026-07-14 — Butil "Figures in" display-unit selector (GL v1.24.0) + web-tier release
   `20260714151925`.** New **Figures in** field in the Budget Utilization Search region:
   Auto (B/M/K, the old compact default) | Billions | Millions | Thousands | Exact number.
