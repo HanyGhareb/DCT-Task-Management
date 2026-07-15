@@ -10,9 +10,11 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    - `06_gl_seed.sql` — run with `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8` (Arabic class-type names);
      regenerate from CSVs first with `python db/gen_seed.py` if `db/source/*.csv` changed.
    - `05_gl_ords.sql` — **own fresh session**. It DELETE_MODULEs gl.rest — **always re-run the
-     ADDITIVE scripts `07` (butil), `08` (rebuild endpoint), `09` (mappings drill) and `10`
-     (actuals/lines doc numbers) right after any 05 re-run.** (09 and 10 are also source-synced
-     into 05, so a full 05 re-run carries their changes — re-running them is still harmless.)
+     ADDITIVE scripts `07` (butil), `08` (rebuild endpoint), `09` (mappings drill), `10`
+     (actuals/lines doc numbers), `11` (butil Briefing-Book bridge), `12` (Projects
+     Encumbrances) and `13` (Encumbrances Pending Approval + its book bridge) right after any
+     05 re-run.** (09 and 10 are also source-synced into 05, so a full 05 re-run carries
+     their changes — re-running them is still harmless.)
    - After a **structural** ATD reload (new/renamed columns): UI **Rebuild views** button
      (= `POST /gl/actuals/rebuild` → `prod.dct_views_rebuild`, db/v2/38) re-creates the base
      pass-throughs + recompiles + refreshes. If it reports views still invalid → edit/re-run the
@@ -24,6 +26,51 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-16 — Encumbrances – Pending Approval page + Briefing Book (GL v1.27.0)** — new nav
+  tab monitoring every PR / PO document PENDING APPROVAL in Fusion, on the butil criteria.
+  ①**DB view `PROD.DCT_PR_PO_PENDING_V`** (`db/v2/52`): the daily BIP snapshot
+  `atd_pr_po_pending_approval` (otbi-atd/db/47, loaded ~08:00 Dubai) joined to the PR/PO
+  distribution detail — PR leg on `TO_CHAR(pr_distributions.requisition) = document_number`,
+  PO leg via deduped `po_headers`/`po_distributions`; AED via the currency snapshot (PR) /
+  distribution rate (PO); `enc_open_aed` = the butil Open Commitment / GRN-netted Open
+  Obligation bases; GL_CTX.BUTIL_END-aware (budget_date window + GRN netting) like db/v2/39;
+  a third leg keeps snapshot docs with NO qualifying extract line (`in_extract='N'`, 256 PR +
+  73 PO on deploy day) so nothing pending is silently dropped. `submitted_for_approval_date`
+  is a DD-MM-YYYY STRING in the snapshot (user decision) → parsed with
+  `TO_DATE(... DEFAULT NULL ON CONVERSION ERROR)`.
+  ②**ORDS `GL/db/13`** (additive; **post-05 re-run list now = 07+08+09+10+11+12+13**):
+  `GET /gl/pending` (full butil param set incl. period-YTD via `set_butil_end`/ALWAYS-clear;
+  ONE scan streams the register [cap 10k, `limit=` — note the ORDS-reserved `:limit` bind
+  defaults to 100 when absent, the page always passes it] AND accumulates the monitoring
+  aggregates in the same loop, so `kpis{}` / `aging[]` (0-7/8-15/16-30/31+ at document grain)
+  / `approvers[]` (top 8 by value held) / `unmatched{}` / `totals{}` stay correct even when
+  the echoed rows are capped; per-doc dedupe via an assoc array keyed source|doc_number) +
+  `POST /gl/pending/book`, `GET /gl/pending/book/:id`, `GET /gl/pending/book/:id/pdf`
+  (clone of the 11 bridge, report_code `ENC_PENDING_BOOK`). API smoke 20/20; register sum ==
+  totals; aging/approver sums reconcile to KPIs; pending encOpen ⊆ /gl/encumbrances openAed.
+  ③**Frontend** (`view()==='pending'`, nav after Projects Encumbrances): reuses the bu*
+  filter bar + datalists verbatim (`runPending()`), 4 composite `.bk` tiles (Pending
+  documents PR/PO split · Pending amount · Funds reserved vs not-reserved [the not-reserved
+  slice is what would hit Fund Available on approval] · Approval aging w/ over-30 focus),
+  aging + top-approver mini tables (`.pn-grid2`/`.pn-mini`/`.pn-tbl` in app.css), unmatched
+  coverage note, and the SHARED `<interactive-report>` (reportCode `GL_ENC_PENDING`,
+  section `pend`) with the GL-combination hover popover reused from the encumbrances tab.
+  Briefing Book button = same poll/download pattern as butil (`/gl/pending/book`).
+  Browser smoke **21/21 EN + AR/RTL** (`tests/pending_browser_smoke.py`; networkidle never
+  settles on this app — wait for `ko.dataFor(document.body)` instead; Chrome innerText
+  applies the header text-transform → compare lower-case).
+  ④**Briefing Book `ENC_PENDING_BOOK`** (`reporting/db/23` + DB template
+  `enc_pending_book.html.j2`): MULTI/PYTHON landscape PDF — cover/TOC, Part 1 overview
+  (KPIs + composition/reservation stacks + budget-frame bars + aging/approver bars + aging
+  & sector tables), Part 2 approver follow-up (top 15 + oldest 20), Part 3 pending PR
+  register, Part 4 pending PO register, Part 5 computed insights (velocity, bottleneck
+  concentration, budget impact of approval, composition, extract coverage) + methodology,
+  Annex = unmatched docs. Params = the FULL butil filter set; `pre_sql`/`post_sql` set/clear
+  BUTIL_END; param_spec copied from BUDGET_UTIL_BOOK (kept in lock-step). **23 is
+  MERGE-bearing → deployed via python-oracledb on vm180** (template upserted via
+  `upload_template.py` there; bundled copy synced to vm180-182). E2E: run 81 SUCCESS,
+  1,427 lines, 67-page 845KB PDF, figures reconcile to the page. Webtier release
+  20260716025748 (deploy as `SSH_USER=opc`).
 - **2026-07-15 — Projects Encumbrances: column reorder + GL-combination hint (GL v1.26.0)** —
   user-requested. ①**Column order** (`GL/db/12`, server-defined; the IR renders the
   server `columns[]` order for fresh/Reset users — a returning user's localStorage

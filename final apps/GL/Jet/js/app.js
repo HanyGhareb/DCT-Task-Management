@@ -184,6 +184,40 @@
     enTruncNote:{en:'Showing the top 10,000 lines by open amount.',ar:'يتم عرض أعلى 10٬000 بند حسب المبلغ المفتوح.'},
     enLoadingNote:{en:'Loading encumbrance lines…',ar:'جارٍ تحميل بنود الارتباط…'},
     enIrErr:{en:'The interactive report component could not be loaded. Please refresh the page; if the problem persists, contact the administrator.',ar:'تعذّر تحميل مكوّن التقرير التفاعلي. يرجى تحديث الصفحة؛ وإذا استمرت المشكلة، تواصل مع المسؤول.'},
+
+    /* ── Encumbrances – Pending Approval (PR/PO documents awaiting approval) ── */
+    navPending:{en:'Encumbrances – Pending Approval',ar:'الارتباطات – قيد الاعتماد'},
+    pnTitle:{en:'Encumbrances – Pending Approval Follow-up',ar:'متابعة الارتباطات قيد الاعتماد'},
+    pnSub:{en:'Every PR / PO document awaiting approval in Fusion, with its budget lines, full GL combination and approval trail (preparer, submitted date, pending approver, days pending) — for the selected Budget Utilization scope.',ar:'كل مستند طلب شراء / أمر شراء بانتظار الاعتماد في فيوجن، مع بنود موازنته والتركيبة المحاسبية الكاملة ومسار الاعتماد (المُعدّ، تاريخ التقديم، المعتمد الحالي، أيام الانتظار) — ضمن نطاق استخدام الموازنة المحدد.'},
+    pnAsOf:{en:'Snapshot',ar:'اللقطة'},
+    pnLinesLabel:{en:'pending lines',ar:'بند قيد الاعتماد'},
+    pnAmtLabel:{en:'Pending amount (AED)',ar:'المبلغ قيد الاعتماد (درهم)'},
+    pnTruncNote:{en:'Showing the top 10,000 lines (oldest first).',ar:'يتم عرض أول 10٬000 بند (الأقدم أولًا).'},
+    pnLoadingNote:{en:'Loading pending approval lines…',ar:'جارٍ تحميل بنود قيد الاعتماد…'},
+    pnDocsK:{en:'Pending documents',ar:'المستندات قيد الاعتماد'},
+    pnAmtK:{en:'Pending amount',ar:'المبلغ قيد الاعتماد'},
+    pnResK:{en:'Funds reserved',ar:'الأموال المحجوزة'},
+    pnAgingK:{en:'Approval aging',ar:'تقادم الاعتماد'},
+    pnPrRow:{en:'Requisitions (PR)',ar:'طلبات الشراء (PR)'},
+    pnPoRow:{en:'Purchase orders (PO)',ar:'أوامر الشراء (PO)'},
+    pnReserved:{en:'Reserved (in encumbrance)',ar:'محجوز (ضمن الارتباطات)'},
+    pnUnreserved:{en:'Not reserved (pipeline)',ar:'غير محجوز (قيد الانتظار)'},
+    pnResSub:{en:'already counted in open encumbrance',ar:'محتسب ضمن الارتباطات المفتوحة'},
+    pnAvgDays:{en:'avg days pending',ar:'متوسط أيام الانتظار'},
+    pnOldest:{en:'Oldest',ar:'الأقدم'},
+    pnDaysUnit:{en:'days',ar:'يومًا'},
+    pnDocsUnit:{en:'docs',ar:'مستند'},
+    pnOver30:{en:'Over 30 days',ar:'أكثر من 30 يومًا'},
+    pnWithin30:{en:'30 days or less',ar:'30 يومًا أو أقل'},
+    pnAgingT:{en:'Aging analysis — days pending approval',ar:'تحليل التقادم — أيام انتظار الاعتماد'},
+    pnApproversT:{en:'Top pending approvers — follow-up focus',ar:'أبرز المعتمدين المعلّق لديهم — تركيز المتابعة'},
+    pnBucket:{en:'Days',ar:'الأيام'},
+    pnColDocs:{en:'Documents',ar:'المستندات'},
+    pnColAmt:{en:'Amount (AED)',ar:'المبلغ (درهم)'},
+    pnColMaxD:{en:'Max days',ar:'أقصى أيام'},
+    pnApprover:{en:'Pending with',ar:'معلّق لدى'},
+    pnUnmatchedNote:{en:'{n} pending documents ({pr} PR / {po} PO) are not yet matched to the budget extract — they are listed in the Briefing Book annex.',ar:'{n} مستندًا قيد الاعتماد ({pr} طلب شراء / {po} أمر شراء) لم تُطابَق بعد مع مستخرج الموازنة — ترد قائمتها في ملحق كتيب الإحاطة.'},
+    pnBookHint:{en:'Generate the Encumbrances Pending Approval Briefing Book PDF using ALL the current page filters — pending PR/PO registers, aging analysis, approver follow-up list and budget-impact insights. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب إحاطة الارتباطات قيد الاعتماد (PDF) وفق جميع عوامل تصفية الصفحة الحالية — سجلات طلبات وأوامر الشراء المعلقة وتحليل التقادم وقائمة متابعة المعتمدين وأثر الموازنة. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     buTitle:{en:'Budget Utilization',ar:'استخدام الموازنة'},
     buSub:{en:'Project budget vs AP, GRN, open commitments and obligations — per task and expenditure type.',ar:'موازنة المشاريع مقابل الدائنين والاستلام والالتزامات والتعهدات المفتوحة — لكل مهمة ونوع إنفاق.'},
     fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
@@ -377,6 +411,11 @@
         // reuses the Budget Utilization filter set; run once on first open
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runEncumbrances(); });
         else if (!self.enLoaded()) self.runEncumbrances();
+      }
+      else if (v === 'pending') {
+        // reuses the Budget Utilization filter set; run once on first open
+        if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runPending(); });
+        else if (!self.pnLoaded()) self.runPending();
       }
     };
     self.signOut = function () { location.href = ADMIN_LOGIN; };
@@ -1162,6 +1201,118 @@
           maxRows: d.maxRows || EN_MAX, section: 'enc' });
         self.enLoaded(true); self.enLoading(false);
       }).catch(function (e) { self.enLoading(false); fail(e); });
+    };
+
+    /* ════ ENCUMBRANCES – PENDING APPROVAL — PR/PO docs awaiting approval ════
+       Same Budget Utilization filter bar (buParams) and the same shared
+       <interactive-report> grid as the Projects Encumbrances tab, over
+       GET /gl/pending (daily Fusion BIP snapshot joined to the encumbrance
+       line detail, db/v2/52). The endpoint aggregates the monitoring KPIs /
+       aging buckets / top approvers over the FULL filtered set server-side,
+       so the tiles stay correct even when the register itself is capped. */
+    var PN_MAX = 10000;
+    self.pnData = ko.observable(null);        // IR envelope, or null before first run
+    self.pnLoading = ko.observable(false);
+    self.pnLoaded = ko.observable(false);
+    self.pnCount = ko.observable(0);
+    self.pnKpis = ko.observable(null);
+    self.pnAging = ko.observableArray([]);
+    self.pnApprovers = ko.observableArray([]);
+    self.pnUnmatched = ko.observable(null);
+    self.pnTruncated = ko.observable(false);
+    self.pnAsOf = ko.observable('');
+    self.pnTotAmt = ko.observable(0);
+    self.pnIrError = self.enIrError;          // same shared-component guard
+    self.pnK = function (k) { var o = self.pnKpis(); return (o && o[k] != null) ? o[k] : 0; };
+    self.pnPctTxt = function (part, total) {
+      if (!total) return '';
+      return Math.round(100 * (part || 0) / total) + '%';
+    };
+    self.pnSegW = function (part, total) {
+      if (!total) return '0%';
+      return Math.max(0, Math.min(100, 100 * (part || 0) / total)).toFixed(1) + '%';
+    };
+    self.pnTotAmtTxt = ko.computed(function () {
+      return Number(self.pnTotAmt() || 0).toLocaleString('en-US',
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    });
+    self.pnUnmatchedTxt = ko.computed(function () {
+      var u = self.pnUnmatched();
+      if (!u || !u.docs) return '';
+      return self.t('pnUnmatchedNote').replace('{n}', self.fmt(u.docs))
+        .replace('{pr}', self.fmt(u.prDocs || 0)).replace('{po}', self.fmt(u.poDocs || 0));
+    });
+    self.runPending = function () {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pnLoading(true);
+      var p = self.buParams(0, PN_MAX);       // same filters as Budget Utilization
+      delete p.offset;
+      return api('GET', '/pending' + qs(p)).then(function (d) {
+        self.pnCount(d.count || 0);
+        self.pnKpis(d.kpis || {});
+        self.pnAging(d.aging || []);
+        self.pnApprovers(d.approvers || []);
+        self.pnUnmatched(d.unmatched || null);
+        self.pnAsOf(d.asOf || '');
+        self.pnTotAmt((d.totals && d.totals.lineAed) || 0);
+        self.pnTruncated(!!d.truncated);
+        self.pnData({ columns: d.columns || [], items: d.items || [],
+          total: d.count || 0, truncated: !!d.truncated,
+          maxRows: d.maxRows || PN_MAX, section: 'pend' });
+        self.pnLoaded(true); self.pnLoading(false);
+      }).catch(function (e) { self.pnLoading(false); fail(e); });
+    };
+    /* Briefing Book (ENC_PENDING_BOOK via the /gl/pending/book bridge) */
+    self.pnBookBusy = ko.observable(false);
+    function pnBookDownload(runId) {
+      return fetch(API + '/pending/book/' + runId + '/pdf',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('PDF download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Encumbrances_Pending_Approval_Book_' + self.buYear() + '.pdf';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runPnBook = function () {
+      if (self.pnBookBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pnBookBusy(true);
+      // full page filter set (mirrors buParams) so the book scope = the page scope
+      api('POST', '/pending/book', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {                       // ~6 min ceiling
+            self.pnBookBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/pending/book/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasPdf) {
+                pnBookDownload(runId)
+                  .then(function () { self.pnBookBusy(false); toast(self.t('buBookReady')); })
+                  .catch(function (e) { self.pnBookBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.pnBookBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });      // transient poll error: keep waiting
+          }, 6000);
+        })();
+      }).catch(function (e) { self.pnBookBusy(false); fail(e); });
     };
 
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */

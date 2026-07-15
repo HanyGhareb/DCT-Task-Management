@@ -17,6 +17,17 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-16** — **Encumbrances – Pending Approval page + ENC_PENDING_BOOK briefing book**
+  (`APP_VERSION` 1.27.0). New nav tab: every PR/PO document PENDING APPROVAL in Fusion (daily BIP
+  snapshot `atd_pr_po_pending_approval`, otbi-atd/db/47) joined to the open-encumbrance line detail —
+  view `DCT_PR_PO_PENDING_V` (db/v2/52, BUTIL_END-aware, `in_extract` coverage leg), ORDS `GL/db/13`
+  (`GET /gl/pending` register + server-side KPIs/aging/approvers/unmatched in one scan; book bridge
+  `POST /gl/pending/book` + status + pdf). Page reuses the butil filter bar + shared
+  `<interactive-report>` (section `pend`), 4 composite KPI tiles + aging/top-approver mini tables +
+  extract-coverage note + Briefing Book button. Reporting: `ENC_PENDING_BOOK` (reporting/db/23,
+  MULTI/PYTHON, 9 sections; template `enc_pending_book.html.j2` DB-stored) — E2E 67-page PDF
+  reconciles to the page. API smoke 20/20 + browser smoke 21/21 EN/AR — webtier release
+  20260716025748. **GL post-05 re-run list now = 07+08+09+10+11+12+13.**
 - **2026-07-02** — **Budget Utilization: KPI-card aggregate drill-down** (`APP_VERSION` 1.8.0). The four
   KPI cards (Actual AP/GRN/Commitment PR/Obligation PO) are now clickable → all supporting lines across
   the current filters, in the same drawer (adds Project/Task cols + "top N of M" note). `/gl/butil/lines`

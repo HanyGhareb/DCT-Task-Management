@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.26.0';</script>
+<script>window.APP_VERSION='1.27.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -55,12 +55,13 @@
     <a data-bind="css:{on:view()==='dashboard'}, click:go.bind($data,'dashboard'), text:t('navDashboard')"></a>
     <a data-bind="css:{on:view()==='butil'}, click:go.bind($data,'butil'), text:t('navButil')"></a>
     <a data-bind="css:{on:view()==='encumbrances'}, click:go.bind($data,'encumbrances'), text:t('navEncumbrances')"></a>
+    <a data-bind="css:{on:view()==='pending'}, click:go.bind($data,'pending'), text:t('navPending')"></a>
     <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
     <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
     <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'}">
 
     <!-- ── OVERVIEW ── -->
     <div data-bind="visible:view()==='overview'">
@@ -693,6 +694,176 @@
         <!-- same 10-segment popover used on Actuals/Explorer (ko.contextFor) -->
         <div data-bind="event:{mouseover:enGridOver, mousemove:enGridMove, mouseout:enGridOut}">
         <interactive-report params="reportCode:'GL_PROJ_ENCUMBRANCES', section:'enc', data:enData, isAdmin:false, layoutsApi:null"></interactive-report>
+        </div>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- ── ENCUMBRANCES – PENDING APPROVAL (PR/PO docs awaiting approval + follow-up KPIs) ── -->
+    <div data-bind="visible:view()==='pending'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('pnTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('pnSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:pnAsOf(), text:t('pnAsOf')+' '+pnAsOf()"></span>
+          <span class="chip muted" data-bind="visible:pnLoaded(), text:pnCount()+' '+t('pnLinesLabel')"></span>
+          <button class="btn btn-sm btn-primary" data-bind="click:runPnBook, enable:!pnBookBusy(), css:{busy:pnBookBusy}, attr:{title:t('pnBookHint')}, text:pnBookBusy()?t('buBookRunning'):t('buBook')"></button>
+        </div>
+      </div>
+
+      <!-- search criteria — the SAME set as Budget Utilization (shares the bu* -->
+      <!-- filters + autocomplete option lists; the Search button runs this tab) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('search');return true}, css:{closed:!buSecSearchOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecSearch')"></span>
+          <span class="bu-sec-sum" data-bind="text:buSearchSummary()"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:buSecSearchOpen">
+        <div class="filter-grid">
+          <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+            <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
+            <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
+            <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buChapters, value:buChapterPick, optionsCaption:t('allChapters'), event:{change:buChapterAdd}"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{change:buCcCommit, keydown:function(d,e){if(e.keyCode===13){buCcCommit();runPending();}return true;}}"></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{change:buProjCommit, keydown:function(d,e){if(e.keyCode===13){buProjCommit();runPending();}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('cTask')"></label>
+            <input class="inp" type="text" list="bu-task-dl" data-bind="textInput:buTask, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runPending();}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('cEtype')"></label>
+            <input class="inp" type="text" list="bu-et-dl" data-bind="textInput:buEtype, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runPending();}return true;}}"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+            <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runPending();}return true;}}"></div>
+          <div class="field filter-actions">
+            <button class="btn btn-primary" data-bind="click:function(){runPending()}, css:{busy:pnLoading}, text:t('btnSearch')"></button>
+            <button class="btn" data-bind="click:function(){buReset();runPending();}, enable:!pnLoading(), text:t('btnReset')"></button>
+          </div>
+        </div>
+        <!-- multi-select chips (Chapter / Cost centre / Project) — shared with Budget Utilization -->
+        <div class="mchips mchips-bar" data-bind="visible:buChapterSel().length + buCcSel().length + buProjSel().length > 0">
+          <!-- ko foreach: buChapterSel -->
+          <span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buChapterSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+          <!-- ko foreach: buCcSel -->
+          <span class="mchip"><b data-bind="text:$root.t('costCenter')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buCcSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+          <!-- ko foreach: buProjSel -->
+          <span class="mchip"><b data-bind="text:$root.t('cProject')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buProjSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
+        </div>
+        </div>
+      </div>
+
+      <!-- monitoring KPI band (aggregated server-side over the FULL filtered set) -->
+      <div class="bu-sec" data-bind="visible:pnLoaded()">
+        <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('kpis');return true}, css:{closed:!buSecKpisOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecOverview')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:buSecKpisOpen">
+        <div class="bu-kpis">
+          <div class="bk bk-budget bk-duo">
+            <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg></div>
+            <div class="bk-body">
+              <div class="bk-k" data-bind="text:t('pnDocsK')"></div>
+              <div class="bk-v mono" data-bind="text:fmt(pnK('docs'))"></div>
+              <div class="bk-sub" data-bind="text:fmt(pnK('lines'))+' '+t('pnLinesLabel')"></div>
+              <div class="bk-seg"><i class="s1" data-bind="style:{width:pnSegW(pnK('docsPr'), pnK('docs'))}"></i><i class="s2" data-bind="style:{width:pnSegW(pnK('docsPo'), pnK('docs'))}"></i></div>
+              <div class="bk-duo-rows">
+                <div class="bk-duo-row"><i class="dot d1"></i><span class="l" data-bind="text:t('pnPrRow')"></span><span class="v mono" data-bind="text:fmt(pnK('docsPr'))"></span><span class="pp mono" data-bind="text:pnPctTxt(pnK('docsPr'), pnK('docs'))"></span></div>
+                <div class="bk-duo-row"><i class="dot d2"></i><span class="l" data-bind="text:t('pnPoRow')"></span><span class="v mono" data-bind="text:fmt(pnK('docsPo'))"></span><span class="pp mono" data-bind="text:pnPctTxt(pnK('docsPo'), pnK('docs'))"></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="bk bk-ap bk-duo">
+            <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
+            <div class="bk-body">
+              <div class="bk-k" data-bind="text:t('pnAmtK')"></div>
+              <div class="bk-v mono" data-bind="text:compact(pnK('amtTotal')), attr:{title:money(pnK('amtTotal'))}"></div>
+              <div class="bk-sub" data-bind="text:t('pnAmtLabel')"></div>
+              <div class="bk-seg"><i class="s1" data-bind="style:{width:pnSegW(pnK('amtPr'), pnK('amtTotal'))}"></i><i class="s2" data-bind="style:{width:pnSegW(pnK('amtPo'), pnK('amtTotal'))}"></i></div>
+              <div class="bk-duo-rows">
+                <div class="bk-duo-row"><i class="dot d1"></i><span class="l" data-bind="text:t('pnPrRow')"></span><span class="v mono" data-bind="text:compact(pnK('amtPr')), attr:{title:money(pnK('amtPr'))}"></span><span class="pp mono" data-bind="text:pnPctTxt(pnK('amtPr'), pnK('amtTotal'))"></span></div>
+                <div class="bk-duo-row"><i class="dot d2"></i><span class="l" data-bind="text:t('pnPoRow')"></span><span class="v mono" data-bind="text:compact(pnK('amtPo')), attr:{title:money(pnK('amtPo'))}"></span><span class="pp mono" data-bind="text:pnPctTxt(pnK('amtPo'), pnK('amtTotal'))"></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="bk bk-enc bk-duo">
+            <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+            <div class="bk-body">
+              <div class="bk-k" data-bind="text:t('pnResK')"></div>
+              <div class="bk-v mono" data-bind="text:compact(pnK('reservedAmt')), attr:{title:money(pnK('reservedAmt'))}"></div>
+              <div class="bk-sub" data-bind="text:t('pnResSub')"></div>
+              <div class="bk-seg"><i class="s1" data-bind="style:{width:pnSegW(pnK('reservedAmt'), pnK('amtTotal'))}"></i><i class="s2" data-bind="style:{width:pnSegW(pnK('unreservedAmt'), pnK('amtTotal'))}"></i></div>
+              <div class="bk-duo-rows">
+                <div class="bk-duo-row"><i class="dot d1"></i><span class="l" data-bind="text:t('pnReserved')"></span><span class="v mono" data-bind="text:compact(pnK('reservedAmt')), attr:{title:money(pnK('reservedAmt'))}"></span><span class="pp mono" data-bind="text:pnPctTxt(pnK('reservedAmt'), pnK('amtTotal'))"></span></div>
+                <div class="bk-duo-row"><i class="dot d2"></i><span class="l" data-bind="text:t('pnUnreserved')"></span><span class="v mono" data-bind="text:compact(pnK('unreservedAmt')), attr:{title:money(pnK('unreservedAmt'))}"></span><span class="pp mono" data-bind="text:pnPctTxt(pnK('unreservedAmt'), pnK('amtTotal'))"></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="bk bk-fund bk-duo" data-bind="css:{neg:pnK('over30Docs')>0}">
+            <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+            <div class="bk-body">
+              <div class="bk-k" data-bind="text:t('pnAgingK')"></div>
+              <div class="bk-v mono" data-bind="text:pnK('avgDays')+' '+t('pnDaysUnit')"></div>
+              <div class="bk-sub" data-bind="text:t('pnAvgDays')+' · '+t('pnOldest')+' '+pnK('maxDays')+' '+t('pnDaysUnit')"></div>
+              <div class="bk-duo-rows">
+                <div class="bk-duo-row"><i class="dot d1"></i><span class="l" data-bind="text:t('pnOver30')"></span><span class="v mono" data-bind="text:fmt(pnK('over30Docs'))+' '+t('pnDocsUnit')"></span><span class="pp mono" data-bind="text:compact(pnK('over30Amt')), attr:{title:money(pnK('over30Amt'))}"></span></div>
+                <div class="bk-duo-row"><i class="dot d2"></i><span class="l" data-bind="text:t('pnWithin30')"></span><span class="v mono" data-bind="text:fmt(pnK('docs')-pnK('over30Docs'))+' '+t('pnDocsUnit')"></span><span class="pp mono" data-bind="text:compact(pnK('amtTotal')-pnK('over30Amt')), attr:{title:money(pnK('amtTotal')-pnK('over30Amt'))}"></span></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- aging + top-approver follow-up mini tables -->
+        <div class="pn-grid2">
+          <div class="pn-mini">
+            <h4 data-bind="text:t('pnAgingT')"></h4>
+            <table class="pn-tbl">
+              <thead><tr><th data-bind="text:t('pnBucket')"></th><th class="num" data-bind="text:t('pnColDocs')"></th><th class="num" data-bind="text:t('pnColAmt')"></th></tr></thead>
+              <tbody data-bind="foreach:pnAging">
+                <tr><td data-bind="text:bucket"></td><td class="num mono" data-bind="text:$root.fmt(docs)"></td><td class="num mono" data-bind="text:$root.money(amt)"></td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="pn-mini">
+            <h4 data-bind="text:t('pnApproversT')"></h4>
+            <table class="pn-tbl">
+              <thead><tr><th data-bind="text:t('pnApprover')"></th><th class="num" data-bind="text:t('pnColDocs')"></th><th class="num" data-bind="text:t('pnColAmt')"></th><th class="num" data-bind="text:t('pnColMaxD')"></th></tr></thead>
+              <tbody data-bind="foreach:pnApprovers">
+                <tr><td data-bind="text:name"></td><td class="num mono" data-bind="text:$root.fmt(docs)"></td><td class="num mono" data-bind="text:$root.money(amt)"></td><td class="num mono" data-bind="text:$root.fmt(maxDays)"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <div class="en-note pn-um" data-bind="visible:pnUnmatchedTxt(), text:pnUnmatchedTxt()"></div>
+        </div>
+      </div>
+
+      <!-- summary + shared interactive report (all IR features come from the component) -->
+      <!-- ko if: pnIrError -->
+      <div class="en-note" data-bind="text:t('enIrErr')"></div>
+      <!-- /ko -->
+      <!-- ko ifnot: pnIrError -->
+      <div class="card en-ir-wrap">
+        <div class="en-sum">
+          <span><b data-bind="text:pnTotAmtTxt"></b> <span class="en-sub" data-bind="text:t('pnAmtLabel')"></span></span>
+          <span><b data-bind="text:pnCount"></b> <span class="en-sub" data-bind="text:t('pnLinesLabel')"></span></span>
+          <!-- ko if: pnTruncated --><span class="en-sub" data-bind="text:t('pnTruncNote')"></span><!-- /ko -->
+        </div>
+        <!-- ko if: pnLoading() && !pnData() -->
+        <div class="en-note" data-bind="text:t('pnLoadingNote')"></div>
+        <!-- /ko -->
+        <!-- delegate hover on the wrapper: the GL-combination cell shows the -->
+        <!-- same 10-segment popover used on Actuals/Explorer (ko.contextFor) -->
+        <div data-bind="event:{mouseover:enGridOver, mousemove:enGridMove, mouseout:enGridOut}">
+        <interactive-report params="reportCode:'GL_ENC_PENDING', section:'pend', data:pnData, isAdmin:false, layoutsApi:null"></interactive-report>
         </div>
       </div>
       <!-- /ko -->
