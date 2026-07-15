@@ -26,7 +26,10 @@ requirejs.config({
 
 require(
   ['appController', 'knockout', 'shared/i18n', 'shared/skeleton', 'shared/pager', 'shared/auditInfo',
-   'shared/editDrawer', 'shared/docUpload'],
+   'shared/editDrawer', 'shared/docUpload',
+   // workflow platform components — self-registering KO components
+   'shared/components/wfWorklist', 'shared/components/wfTimeline',
+   'shared/components/wfActionBar'],
   function (AppController, ko, i18n) {
 
   // Custom KO binding: swaps a view+viewModel pair into a container element.

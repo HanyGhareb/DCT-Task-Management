@@ -91,6 +91,7 @@ define(
           { id: 'profile',          labelKey: 'nav.profile',          icon: '&#128100;' },
           { id: 'notifications',    labelKey: 'nav.notifications',    icon: '&#128276;' },
           { id: 'pendingApprovals', labelKey: 'nav.pendingApprovals', icon: '&#9989;'   },
+          { id: 'myWorklist',       labelKey: 'nav.myWorklist',       icon: '&#128203;' },
         ]
       },
       {
