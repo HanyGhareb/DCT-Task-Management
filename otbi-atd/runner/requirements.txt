@@ -1,6 +1,8 @@
 # core (both DB modes)
 playwright>=1.44
 httpx>=0.27
+# BIP (.xdo) XLSX extracts (bip.py)
+openpyxl>=3.1
 # only for ATD_DB_MODE=oracledb (fast chunked load); not needed for default SQLcl mode
 # NOTE: the PyPI distribution name is "oracledb" (import name also oracledb), not "python-oracledb"
 oracledb>=2.2
