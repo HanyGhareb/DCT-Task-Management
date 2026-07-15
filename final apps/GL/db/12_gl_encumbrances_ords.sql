@@ -98,33 +98,39 @@ BEGIN
   APEX_JSON.write('year', l_year);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
 
-  -- server-defined column set (the IR grid renders exactly these) -------------
+  -- server-defined column set (the IR grid renders exactly these, in THIS order;
+  -- a returning user's saved localStorage layout overrides it -> Reset re-applies).
+  -- Order (2026-07-15, user-confirmed layout): identification (sector/chapter/
+  -- project/task/etype) -> document + amounts -> GL combination -> the four
+  -- meaningful segments (program/cost centre/account/appropriation, code+name)
+  -- -> the remaining segments (entity/budget group/entity specific/intercompany/
+  -- future 1/future 2).
   APEX_JSON.open_array('columns');
+  col('sector','Sector','text');
+  col('chapter','Chapter','text');
+  col('projectName','Project name','text');
+  col('projectNumber','Project #','text');
+  col('task','Task','text');
+  col('expenditureType','Expenditure type','text');
   col('source','Source','text');
   col('docNumber','Document #','text');
   col('docLine','Line','text');
   col('description','Description / Vendor','text');
-  col('projectNumber','Project #','text');
-  col('projectName','Project name','text');
-  col('task','Task','text');
-  col('expenditureType','Expenditure type','text');
   col('budgetDate','Budget date','date');
   col('currency','Cur','text');
   col('lineAmount','Line amount (AED)','money');
   col('openAmount','Open / Reserved (AED)','money');
   col('combination','GL combination','text');
-  col('entityCode','Entity','text');            col('entityName','Entity name','text');
   col('programCode','Program','text');          col('programName','Program name','text');
   col('costCenterCode','Cost centre','text');   col('costCenterName','Cost centre name','text');
-  col('budgetGroupCode','Budget group','text'); col('budgetGroupName','Budget group name','text');
   col('accountCode','Account','text');          col('accountName','Account name','text');
-  col('entitySpecificCode','Entity specific','text'); col('entitySpecificName','Entity specific name','text');
   col('appropriationCode','Appropriation','text');    col('appropriationName','Appropriation name','text');
+  col('entityCode','Entity','text');            col('entityName','Entity name','text');
+  col('budgetGroupCode','Budget group','text'); col('budgetGroupName','Budget group name','text');
+  col('entitySpecificCode','Entity specific','text'); col('entitySpecificName','Entity specific name','text');
   col('intercompanyCode','Intercompany','text');      col('intercompanyName','Intercompany name','text');
   col('future1Code','Future 1','text');         col('future1Name','Future 1 name','text');
   col('future2Code','Future 2','text');         col('future2Name','Future 2 name','text');
-  col('sector','Sector','text');
-  col('chapter','Chapter','text');
   APEX_JSON.close_array;
 
   APEX_JSON.open_array('items');

@@ -24,6 +24,37 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-15 — Projects Encumbrances: column reorder + GL-combination hint (GL v1.26.0)** —
+  user-requested. ①**Column order** (`GL/db/12`, server-defined; the IR renders the
+  server `columns[]` order for fresh/Reset users — a returning user's localStorage
+  layout `GL_PROJ_ENCUMBRANCES::enc` overrides it until they hit **Reset**): now
+  Sector · Chapter · Project name · Project # · Task · Expenditure type · Source ·
+  Document # · Line · Description/Vendor · Budget date · Cur · Line amount · Open/Reserved ·
+  GL combination · Program · Cost centre · Account · Appropriation · (then Entity ·
+  Budget group · Entity specific · Intercompany · Future 1 · Future 2), each segment code+name.
+  DB-only, additive, **standalone-safe re-run of 12** (deployed + verified handler source
+  order). ②**GL-combination hint**: the same 10-segment `.combo-tip` popover used on
+  Actuals/Explorer now shows on hover over the grid's **GL combination** cell — wired
+  **GL-side only** (no shared-component change): a delegated `mouseover/mousemove/mouseout`
+  on the encumbrance wrapper resolves the hovered IR cell's row/column via `ko.contextFor`
+  (`$data`=column, `$parent.row`=row) and triggers `comboHover` when key='combination';
+  `comboRows` now accepts `*Name` (IR rows) as well as `*Desc` (Actuals/Explorer rows).
+  Frontend files: `Jet/index.html` (wrapper + APP_VERSION 1.25.0→**1.26.0**), `Jet/js/app.js`.
+  **No `final apps/shared/` change → no all-apps bump.** Frontend ships via webtier release.
+- **2026-07-15 — Butil KPI-card drill row cap 1000 → 10000 (`GL/db/07`, DB-only)** —
+  user reported the aggregate "Actual AP" drill (1,040.1M) did not list all the invoices
+  a single budget-line drill showed (e.g. `4511000175 / Mission & Travel-N` = 93K / 7
+  invoices). **Root cause: not a data bug** — the 93K IS in the 1,040.1M. `/butil/lines`
+  aggregate mode returns `rows[]` capped `FETCH FIRST 1000 ROWS ONLY` ordered by amount
+  DESC, while `total`/`count` come from `COUNT(*)/SUM() OVER()` over the full set (line
+  371). The card drill spans ~2,985 AP lines; the 1,000th-largest is ~21K, and these
+  invoices are 13–20K, so they fell below the visible top-1000 even though counted.
+  Verified in PROD (2,985 lines / rank-1000 ≈ 21K / 1,947 lines ≤ 20K). Fix: raised all
+  four metric caps (ap/grn/pr/po) to 10000 (full base is ~3k → effectively exhaustive;
+  matches the encumbrance `EN_MAX`=10000). Deploy: **07 re-run, standalone-safe** (fresh
+  session; verified stored handler source = 4× `FETCH FIRST 10000`, 0× old). No frontend
+  change (server-only; `drillCapNote` "top {n} of {c}" still guards any future overflow).
+  The row-cell drill was always complete. See `budget_utilization_missing_data.md`.
 - **2026-07-15 — Web-tier release `20260715131150` pushed** (`SSH_USER=opc bash
   webtier/deploy_frontend.sh 129.151.159.189`): GL v1.25.0 (Projects Encumbrances tab) live;
   verified `APP_VERSION`, the requirejs bootstrap (`define('knockout'…)`) and `runEncumbrances`

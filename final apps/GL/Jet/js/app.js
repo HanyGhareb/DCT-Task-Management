@@ -300,18 +300,20 @@
     self.tipRows = ko.observableArray([]);
     self.tipShow = ko.observable(false);
     self.tipX = ko.observable(0); self.tipY = ko.observable(0);
+    // desc fields differ by source: Explorer/Actuals rows carry *Desc, the
+    // Projects-Encumbrances IR rows carry *Name — accept either.
     function comboRows(r) {
       return [
-        { label: self.t('segEntity'),        code: r.entityCode,         desc: r.entityDesc },
-        { label: self.t('segCostCenter'),    code: r.costCenterCode,     desc: r.costCenterDesc },
-        { label: self.t('segAccount'),       code: r.accountCode,        desc: r.accountDesc },
-        { label: self.t('segAppropriation'), code: r.appropriationCode,  desc: r.appropriationDesc },
-        { label: self.t('segBudgetGroup'),   code: r.budgetGroupCode,    desc: r.budgetGroupDesc },
-        { label: self.t('segEntitySpecific'),code: r.entitySpecificCode, desc: r.entitySpecificDesc },
-        { label: self.t('segFuture1'),       code: r.future1Code,        desc: r.future1Desc },
-        { label: self.t('segFuture2'),       code: r.future2Code,        desc: r.future2Desc },
-        { label: self.t('segIntercompany'),  code: r.intercompanyCode,   desc: r.intercompanyDesc },
-        { label: self.t('segProgram'),       code: r.programCode,        desc: r.programDesc }
+        { label: self.t('segEntity'),        code: r.entityCode,         desc: r.entityDesc || r.entityName },
+        { label: self.t('segCostCenter'),    code: r.costCenterCode,     desc: r.costCenterDesc || r.costCenterName },
+        { label: self.t('segAccount'),       code: r.accountCode,        desc: r.accountDesc || r.accountName },
+        { label: self.t('segAppropriation'), code: r.appropriationCode,  desc: r.appropriationDesc || r.appropriationName },
+        { label: self.t('segBudgetGroup'),   code: r.budgetGroupCode,    desc: r.budgetGroupDesc || r.budgetGroupName },
+        { label: self.t('segEntitySpecific'),code: r.entitySpecificCode, desc: r.entitySpecificDesc || r.entitySpecificName },
+        { label: self.t('segFuture1'),       code: r.future1Code,        desc: r.future1Desc || r.future1Name },
+        { label: self.t('segFuture2'),       code: r.future2Code,        desc: r.future2Desc || r.future2Name },
+        { label: self.t('segIntercompany'),  code: r.intercompanyCode,   desc: r.intercompanyDesc || r.intercompanyName },
+        { label: self.t('segProgram'),       code: r.programCode,        desc: r.programDesc || r.programName }
       ];
     }
     function place(e) {
@@ -323,6 +325,40 @@
     self.comboHover = function (r, e) { self.tipRows(comboRows(r)); place(e); self.tipShow(true); return true; };
     self.comboMove  = function (r, e) { place(e); return true; };
     self.comboOut   = function () { self.tipShow(false); return true; };
+
+    /* ── same combination popover over the shared <interactive-report> grid ──
+       The IR component owns its cells, so we delegate on the encumbrance wrapper
+       and resolve the hovered cell's row/column from its KO binding context
+       (ko.contextFor): $data = the column, $parent.row = the row. Only the
+       'combination' column triggers the hint. Keeps the whole feature GL-side —
+       no change to the shared component. */
+    function enResolveCell(target) {
+      var td = (target && target.closest) ? target.closest('td') : null;
+      if (!td) return null;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (e) { return null; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row || !ctx.$data) return null;
+      return { td: td, row: ctx.$parent.row, col: ctx.$data };
+    }
+    function enIsCombo(info) { return !!(info && info.col && info.col.key === 'combination' && info.row); }
+    self.enGridOver = function (d, e) {
+      var info = enResolveCell(e.target);
+      if (enIsCombo(info)) { info.td.style.cursor = 'help'; self.comboHover(info.row, e); }
+      else self.comboOut();
+      return true;
+    };
+    self.enGridMove = function (d, e) {
+      if (!self.tipShow()) return true;
+      var info = enResolveCell(e.target);
+      if (enIsCombo(info)) self.comboMove(info.row, e); else self.comboOut();
+      return true;
+    };
+    self.enGridOut = function (d, e) {
+      // only hide when the pointer actually leaves the grid wrapper (mouseout
+      // bubbles on every inner boundary — otherwise the tip would flicker)
+      if (!e.relatedTarget || !e.currentTarget.contains(e.relatedTarget)) self.comboOut();
+      return true;
+    };
 
     self.go = function (v) {
       self.view(v);
