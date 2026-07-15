@@ -24,6 +24,12 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-15 — Web-tier release `20260715131150` pushed** (`SSH_USER=opc bash
+  webtier/deploy_frontend.sh 129.151.159.189`): GL v1.25.0 (Projects Encumbrances tab) live;
+  verified `APP_VERSION`, the requirejs bootstrap (`define('knockout'…)`) and `runEncumbrances`
+  served from https://129.151.159.189/, and `/gl/encumbrances` 401s without a token (deployed +
+  auth-enforced). The `db/12` endpoint was already live on PROD (reconciliation tested against
+  the production ORDS URL).
 - **2026-07-15 — Projects Encumbrances tab (GL v1.25.0) — new "Open Projects Encumbrance
   Follow-up" report on the SHARED `<interactive-report>` component.** New nav tab + view
   `encumbrances`: every OPEN encumbrance line (Open Commitment PR reserved + Open Obligation
