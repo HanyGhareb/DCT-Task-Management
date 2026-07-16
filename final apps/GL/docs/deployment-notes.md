@@ -26,6 +26,37 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-16 — Review round 3: page UX + butil book/Excel + report covers (GL v1.30.0)** —
+  ①**Pending page UX**: busy overlay (the butil `.bu-load-ov` oj-progress-circle replica
+  wired to `pnLoading`, KPI band + Results wrapped in a `.bu-body`; `.pn-loading` min-height
+  covers the first load); **KPI drill-downs** — every tile breakdown row (PR/PO docs, PR/PO
+  amounts, Reserved/Not-reserved, Over-30/Within-30), every aging bucket row and every
+  top-approver row opens the SHARED right-edge drill drawer with the matching pending lines
+  (client-side slice of the loaded register `pnItems`, cap 1,000 w/ top-N note, total
+  reconciles, CSV export for free; drawer Document # cells deep-link to Fusion via a new
+  generic `drillLink` rule on key `docNumber` + row.source/fusionHeaderId); the aging/approver
+  **mini-table headers are region-header bands in the user-specified `#79C5AC`**
+  (`.pn-mini h4`, dark-green text for contrast, tables in `.pn-tbl-wrap`, hover tint on
+  clickable rows).
+  ②**Budget Utilization book (`reporting/db/21` + template redeployed)**: NEW **Part 5 —
+  Pending Approvals (PR & PO Queue)** (sections `pend_ov`/`pend_aging`/`pend_approvers` over
+  `DCT_PR_PO_PENDING_V`, reserved non-zero rule; KPI tiles + aging/approver bars + top-10
+  per-approver table), TOC row added, Observations renumbered Part 6 + a new **Approval
+  queue** insight (pending value as % of open encumbrance, over-30 focus).
+  ③**Budget Utilization Excel register**: NEW `BUDGET_UTIL_REGISTER` (`reporting/db/25`,
+  MULTI/PYTHON, XLSX-only — 6 sheets: utilization lines / direct AP / GRN receipts / open PO
+  / open PR / pending PR-PO queue; params = the butil set, param_spec copied from the book;
+  section SQLs kept in LOCK-STEP with db/21) + bridge `POST /gl/butil/xlsx` + `:id` +
+  `:id/file` (**GL/db/11 re-run**) + **Export Excel** button on the butil page head.
+  ④**Both report covers** (senior-frontend pass, both `.j2` templates + runner):
+  "Oracle Fusion i-Finance · Reporting Platform" brand line; generated stamp in the simple
+  form **"Thu 16-Jul-2026 10:04 pm"** (NEW additive runner ctx field `generated_at_pretty`
+  — runner.py synced to vm180-182 + rpt-workers restarted; `generated_at` unchanged for
+  other consumers); **Prepared-by card** (framed white card, brand accent spine, PREPARED BY
+  eyebrow, 16.5px name).
+  E2E runs 86/87/88 all SUCCESS (butil book 230pp w/ Part 5+6 verified; register 906KB
+  6-sheet workbook 9,483 rows; pending book cover verified); browser smoke **40/40**;
+  webtier release 20260716220623.
 - **2026-07-16 — Pending Approval Excel register (GL v1.29.0)** — user request: "the same
   report only table … in Excel format for internal analysis". NEW Reporting-Platform
   definition **`ENC_PENDING_REGISTER`** (`reporting/db/24`, MULTI/PYTHON,

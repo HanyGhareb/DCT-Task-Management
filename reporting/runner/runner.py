@@ -213,10 +213,14 @@ def process(conn, conf, job):
                (f" | period {period}" if period else "")
         landscape = False
 
+    _g = _now()
     ctx = {
         "report_code": code, "report_name": name_en or code,
         "period": period, "params": params,
-        "generated_at": _now().strftime("%Y-%m-%d %I:%M %p"),
+        "generated_at": _g.strftime("%Y-%m-%d %I:%M %p"),
+        # simple human form for report covers, e.g. "Thu 16-Jul-2026 2:49 pm"
+        "generated_at_pretty": _g.strftime("%a %d-%b-%Y ")
+                               + _g.strftime("%I:%M %p").lower().lstrip("0"),
         "row_count": row_count, "requested_by": job.get("requested_by"),
         "headers": _headers(columns),
         "columns": columns, "rows": rows, "data": _dicts(columns, rows),

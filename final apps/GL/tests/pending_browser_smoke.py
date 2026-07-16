@@ -137,6 +137,50 @@ def main():
         check("doc# click opens Fusion deep link", bool(opened) and "deeplink" in opened,
               "(%s...)" % (opened or "")[:70])
 
+        # v1.30.0 — busy overlay (Oracle-JET progress circle) wired to pnLoading
+        pg.evaluate("ko.dataFor(document.body).pnLoading(true)")
+        check("busy overlay shows", pend.locator(".bu-load-ov").is_visible())
+        pg.evaluate("ko.dataFor(document.body).pnLoading(false)")
+        check("busy overlay hides", not pend.locator(".bu-load-ov").is_visible())
+
+        # v1.30.0 — mini-table region headers use the requested #79C5AC band
+        bg = pend.locator(".pn-mini h4").first.evaluate("el => getComputedStyle(el).backgroundColor")
+        check("mini header #79C5AC", bg == "rgb(121, 197, 172)", "(%s)" % bg)
+
+        # v1.30.0 — KPI drill-down into the shared drawer (client-side slices)
+        pg.evaluate("ko.dataFor(document.body).openPnDrill('over30')")
+        pg.wait_for_timeout(400)
+        check("drill drawer opens", pg.evaluate("ko.dataFor(document.body).drillDrawer()"))
+        n_drill = pg.evaluate("ko.dataFor(document.body).drillRows().length")
+        vm_over30 = [r for r in pg.evaluate("ko.dataFor(document.body).pnItems") if (r.get("pendingDays") or 0) > 30]
+        check("drill rows = over-30 lines", n_drill == min(len(vm_over30), 1000), "(%d)" % n_drill)
+        tot = pg.evaluate("ko.dataFor(document.body).drillTotalV()")
+        check("drill total reconciles", abs(tot - sum(r.get("lineAmount") or 0 for r in vm_over30)) < 1)
+        # Document # cells in the drawer deep-link to Fusion
+        check("drawer doc links", pg.evaluate(
+            "ko.dataFor(document.body).drillLink(ko.dataFor(document.body).drillRows()[0],{key:'docNumber'})""") is not None)
+        pg.evaluate("ko.dataFor(document.body).closeDrawer()")
+        # aging bucket + approver rows drill too
+        pg.evaluate("ko.dataFor(document.body).openPnBucket(ko.dataFor(document.body).pnAging()[0])")
+        pg.wait_for_timeout(200)
+        b0 = pg.evaluate("ko.dataFor(document.body).drillRows().length")
+        check("aging bucket drill", pg.evaluate("ko.dataFor(document.body).drillDrawer()") and b0 > 0, "(%d)" % b0)
+        pg.evaluate("ko.dataFor(document.body).closeDrawer()")
+        pg.evaluate("ko.dataFor(document.body).openPnApprover(ko.dataFor(document.body).pnApprovers()[0])")
+        pg.wait_for_timeout(200)
+        check("approver drill", pg.evaluate("ko.dataFor(document.body).drillDrawer()")
+              and pg.evaluate("ko.dataFor(document.body).drillRows().length") > 0)
+        pg.evaluate("ko.dataFor(document.body).closeDrawer()")
+
+        # v1.30.0 — butil page gains its own Export Excel (BUDGET_UTIL_REGISTER)
+        pg.evaluate("ko.dataFor(document.body).go('butil')")
+        pg.wait_for_function("!ko.dataFor(document.body).buBusy()", timeout=120000)
+        bu = pg.locator("div[data-bind=\"visible:view()==='butil'\"]").first
+        bu_xls = bu.locator(".page-actions button", has_text="Export Excel")
+        check("butil export excel button", bu_xls.count() == 1 and bu_xls.is_enabled())
+        pg.evaluate("ko.dataFor(document.body).go('pending')")
+        pg.wait_for_timeout(300)
+
         # ── AR / RTL ──
         pg.evaluate("ko.dataFor(document.body).toggleLang()")
         pg.wait_for_timeout(800)

@@ -17,6 +17,14 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-16** — **Review round 3** (`APP_VERSION` 1.30.0). Pending page: busy overlay,
+  KPI/aging/approver drill-downs into the shared drawer (client-side slices, Fusion doc links,
+  CSV), #79C5AC mini-table region headers. Butil: NEW Part 5 "Pending Approvals — PR & PO Queue"
+  in BUDGET_UTIL_BOOK (db/21 + Approval-queue insight, Observations → Part 6) + NEW
+  BUDGET_UTIL_REGISTER 6-sheet Excel (db/25 + /gl/butil/xlsx bridge in GL/db/11 + Export Excel
+  button). Both report covers: "Oracle Fusion i-Finance · Reporting Platform", simple datetime
+  ("Thu 16-Jul-2026 10:04 pm", runner `generated_at_pretty`), framed Prepared-by card. E2E runs
+  86/87/88 SUCCESS; smoke 40/40 — webtier release 20260716220623.
 - **2026-07-16** — **Pending Approval Excel register** (`APP_VERSION` 1.29.0). New
   `ENC_PENDING_REGISTER` (reporting/db/24, XLSX-only, 2 sheets: 29-column flat pending PR/PO
   register on the book scope rule + extract-coverage annex) + GL bridge `POST /gl/pending/xlsx`

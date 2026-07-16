@@ -610,19 +610,23 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .pnk-age.hot{--bk-c:#B3352B;--bk-soft:#F8E9E6}
 .pn-kpis .bk{box-shadow:0 1px 2px rgba(27,42,39,.05),0 10px 24px -18px rgba(27,42,39,.28)}
 .pn-kpis .bk-v .bk-u{font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);margin-inline-start:5px}
-.pn-kpis .bk-duo-row.pn-row{cursor:default}
-.pn-kpis .bk-duo-row.pn-row:hover{background:rgba(27,42,39,.04)}
-.pn-kpis .bk-duo-row.pn-row:hover .v{text-decoration:none}
 .pn-kpis .bk-duo-row .pp{background:rgba(27,42,39,.06);border-radius:999px;padding:1px 8px;min-width:40px;text-align:center}
 .pn-kpis .pn-row-bad .l,.pn-kpis .pn-row-bad .v{color:var(--bad)}
+/* first-load overlay needs somewhere to sit before anything has rendered */
+.bu-body.pn-loading{min-height:320px}
 /* register: Document # cells deep-link to Oracle Fusion (hover affordance) */
 .pn-doclink{cursor:pointer;color:var(--brand-dark);text-decoration:underline dotted;text-underline-offset:3px}
 
 /* ── Encumbrances – Pending Approval: aging + approver follow-up mini tables ── */
 .pn-grid2{display:grid;grid-template-columns:1fr 1.5fr;gap:12px;margin-top:14px}
 @media (max-width:960px){.pn-grid2{grid-template-columns:1fr}}
-.pn-mini{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 16px}
-.pn-mini h4{margin:0 0 8px;font-size:12px;font-weight:700;color:var(--brand-dark);letter-spacing:.02em}
+.pn-mini{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:0;overflow:hidden}
+/* region header band (user-specified #79C5AC, 2026-07-16) */
+.pn-mini h4{margin:0;background:#79C5AC;color:#14382B;padding:9px 16px;font-size:12px;font-weight:700;
+  letter-spacing:.03em;border-bottom:1px solid rgba(20,56,43,.18)}
+.pn-tbl-wrap{padding:8px 16px 12px}
+.pn-tbl tbody tr.pn-click{cursor:pointer}
+.pn-tbl tbody tr.pn-click:hover td{background:rgba(121,197,172,.16)}
 .pn-tbl{width:100%;border-collapse:collapse;font-size:12px}
 .pn-tbl th{text-align:start;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
   border-bottom:1px solid var(--line);padding:4px 6px}
