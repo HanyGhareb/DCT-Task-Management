@@ -26,6 +26,34 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-16 — Pending Approval review round (GL v1.28.0)** — user's manual-review fixes, all
+  layers redeployed same day (webtier release 20260716050503).
+  ①**Book (`reporting/db/23` + template re-upserted via vm180)**: BUSINESS RULE — the book now
+  covers **funds-RESERVED, non-zero lines ONLY** (not-reserved documents and zero-value lines
+  excluded from every section; the GL page still shows them and keeps the reserved/not-reserved
+  split tile); ALL table text displays in full (no `|truncate` in any table cell — only chart
+  bar labels stay shortened); PR/PO registers + the oldest-20 table gained **Sector / Cost
+  centre (code+name) / Appropriation (code+name)** via `DCT_GL_COA_SNAP` (doc-grain rows show
+  "(Multiple)" when a document spans combinations — the `l_docg` inline view carries the
+  MIN=MAX collapse); **Cur + Funds columns removed**; overview lost the Not-Reserved tile +
+  reservation stack; budget-impact insight rewritten (everything in scope is already inside
+  open encumbrance). E2E run 82 SUCCESS — 1,385 lines (919 PR + 85 PO reserved non-zero).
+  ②**View (`db/v2/52`)**: + `fusion_header_id` (pr_header_id / po_header_id) — document
+  numbers alone cannot build Fusion deep links.
+  ③**ORDS (`GL/db/13` re-run)**: `GET /pending` + `source=` param (PR|PO, else 400; empty =
+  both) and `fusionHeaderId` on every item (NOT a column — the shared IR grid drops
+  undeclared row fields, so the frontend keeps a source|doc# → id side-map).
+  ④**Page**: Search gains **Source** (All/PR/PO, page-local `pnSource`, cleared by Reset) and
+  **"Showing figures in"** (the shared `buUnit` selector — KPI tiles + mini-table amounts now
+  format via `buNum`); **KPI band redesigned** (senior-frontend pass, `.pn-kpis`/`.pnk-*`
+  semantic accents: docs steel-blue / amount gold / reservation green-vs-red / aging amber
+  flipping `.hot` red while over-30 exists; pct pills, unit suffix, non-drillable rows lose
+  the pointer affordance); aging mini-table gets heat badges (`.pn-badge pnb0..3`), approver
+  max-days gets a red `.pn-days.bad` chip past 30; **Document # cells deep-link to Fusion**
+  (delegated `pnGridOver`/`pnGridClick` via ko.contextFor — hover underline + title, click
+  opens `FusionLinks.requisition/purchaseOrder(fusionHeaderId)` in a new tab; no
+  shared-component change). Browser smoke **29/29 EN + AR/RTL** (adds source-scope,
+  figures-in, hot-state, badge and deep-link cases).
 - **2026-07-16 — Encumbrances – Pending Approval page + Briefing Book (GL v1.27.0)** — new nav
   tab monitoring every PR / PO document PENDING APPROVAL in Fusion, on the butil criteria.
   ①**DB view `PROD.DCT_PR_PO_PENDING_V`** (`db/v2/52`): the daily BIP snapshot

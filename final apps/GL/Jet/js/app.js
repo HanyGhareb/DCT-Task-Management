@@ -217,7 +217,9 @@
     pnColMaxD:{en:'Max days',ar:'أقصى أيام'},
     pnApprover:{en:'Pending with',ar:'معلّق لدى'},
     pnUnmatchedNote:{en:'{n} pending documents ({pr} PR / {po} PO) are not yet matched to the budget extract — they are listed in the Briefing Book annex.',ar:'{n} مستندًا قيد الاعتماد ({pr} طلب شراء / {po} أمر شراء) لم تُطابَق بعد مع مستخرج الموازنة — ترد قائمتها في ملحق كتيب الإحاطة.'},
-    pnBookHint:{en:'Generate the Encumbrances Pending Approval Briefing Book PDF using ALL the current page filters — pending PR/PO registers, aging analysis, approver follow-up list and budget-impact insights. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب إحاطة الارتباطات قيد الاعتماد (PDF) وفق جميع عوامل تصفية الصفحة الحالية — سجلات طلبات وأوامر الشراء المعلقة وتحليل التقادم وقائمة متابعة المعتمدين وأثر الموازنة. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    pnBookHint:{en:'Generate the Encumbrances Pending Approval Briefing Book PDF using ALL the current page filters — pending PR/PO registers, aging analysis, approver follow-up list and budget-impact insights (funds-reserved, non-zero lines only). Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب إحاطة الارتباطات قيد الاعتماد (PDF) وفق جميع عوامل تصفية الصفحة الحالية — سجلات طلبات وأوامر الشراء المعلقة وتحليل التقادم وقائمة متابعة المعتمدين وأثر الموازنة (البنود المحجوزة غير الصفرية فقط). يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    pnSourceL:{en:'Source',ar:'المصدر'},
+    pnAllSources:{en:'All (PR + PO)',ar:'الكل (طلبات وأوامر الشراء)'},
     buTitle:{en:'Budget Utilization',ar:'استخدام الموازنة'},
     buSub:{en:'Project budget vs AP, GRN, open commitments and obligations — per task and expenditure type.',ar:'موازنة المشاريع مقابل الدائنين والاستلام والالتزامات والتعهدات المفتوحة — لكل مهمة ونوع إنفاق.'},
     fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
@@ -1211,6 +1213,7 @@
        aging buckets / top approvers over the FULL filtered set server-side,
        so the tiles stay correct even when the register itself is capped. */
     var PN_MAX = 10000;
+    self.pnSource = ko.observable('');        // '' = both, 'PR' | 'PO'
     self.pnData = ko.observable(null);        // IR envelope, or null before first run
     self.pnLoading = ko.observable(false);
     self.pnLoaded = ko.observable(false);
@@ -1247,7 +1250,15 @@
       self.pnLoading(true);
       var p = self.buParams(0, PN_MAX);       // same filters as Budget Utilization
       delete p.offset;
+      p.source = self.pnSource() || null;     // page-local PR / PO scope
       return api('GET', '/pending' + qs(p)).then(function (d) {
+        // Fusion deep-link map: docNumber alone cannot build a deep link, so
+        // keep source|doc# -> FUSION internal header id aside (the shared IR
+        // grid only keeps declared columns on its rows)
+        pnLinkMap = {};
+        (d.items || []).forEach(function (r) {
+          if (r.fusionHeaderId) { pnLinkMap[r.source + '|' + r.docNumber] = r.fusionHeaderId; }
+        });
         self.pnCount(d.count || 0);
         self.pnKpis(d.kpis || {});
         self.pnAging(d.aging || []);
@@ -1261,6 +1272,44 @@
           maxRows: d.maxRows || PN_MAX, section: 'pend' });
         self.pnLoaded(true); self.pnLoading(false);
       }).catch(function (e) { self.pnLoading(false); fail(e); });
+    };
+    /* ── Fusion deep-links on the register's Document # cells ──
+       Same delegated ko.contextFor pattern as the combination popover (no
+       shared-component change): hovering a docNumber cell shows the link
+       affordance, clicking opens the Fusion PR / PO deep link in a new tab
+       (shared fusionLinks.js builders over the FUSION internal header id). */
+    var pnLinkMap = {};
+    function pnDocHref(row) {
+      var F = window.FusionLinks;
+      if (!F || !row || !row.docNumber) return null;
+      var id = pnLinkMap[row.source + '|' + row.docNumber];
+      if (!id) return null;
+      return row.source === 'PR' ? F.requisition(id) : F.purchaseOrder(id);
+    }
+    function pnResolveCell(target) {
+      var td = (target && target.closest) ? target.closest('td') : null;
+      if (!td) return null;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (e) { return null; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row || !ctx.$data) return null;
+      return { td: td, row: ctx.$parent.row, col: ctx.$data };
+    }
+    self.pnGridOver = function (d, e) {
+      self.enGridOver(d, e);                  // combination popover behaviour
+      var info = pnResolveCell(e.target);
+      if (info && info.col.key === 'docNumber' && pnDocHref(info.row)) {
+        info.td.classList.add('pn-doclink');
+        info.td.title = self.t('fusionOpen');
+      }
+      return true;
+    };
+    self.pnGridClick = function (d, e) {
+      var info = pnResolveCell(e.target);
+      if (info && info.col.key === 'docNumber') {
+        var href = pnDocHref(info.row);
+        if (href && href !== '#') { window.open(href, '_blank', 'noopener'); return false; }
+      }
+      return true;
     };
     /* Briefing Book (ENC_PENDING_BOOK via the /gl/pending/book bridge) */
     self.pnBookBusy = ko.observable(false);

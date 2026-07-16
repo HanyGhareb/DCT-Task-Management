@@ -98,7 +98,41 @@ def main():
         check("kpis docs = PR + PO", kpis["docs"] == kpis["docsPr"] + kpis["docsPo"], str(kpis["docs"]))
         check("kpis reserved + unreserved = total",
               abs(kpis["reservedAmt"] + kpis["unreservedAmt"] - kpis["amtTotal"]) < 1)
+
+        # v1.28.0 — redesigned KPI band + aging heat badges
+        check("pn-kpis semantic accents", pend.locator(".pn-kpis .pnk-docs").count() == 1
+              and pend.locator(".pn-kpis .pnk-age").count() == 1)
+        check("aging hot state", pend.locator(".pnk-age.hot").count() == (1 if kpis["over30Docs"] > 0 else 0))
+        check("aging heat badges", pend.locator(".pn-badge").count() == 4)
         pg.screenshot(path="/root/DCT-Task-Management/final apps/GL/tests/pending_en.png", full_page=False)
+
+        # v1.28.0 — Source filter scopes to PR only, then back
+        all_count = pg.evaluate("ko.dataFor(document.body).pnCount()")
+        pg.evaluate("var v=ko.dataFor(document.body); v.pnSource('PR'); v.runPending();")
+        pg.wait_for_function("!ko.dataFor(document.body).pnLoading()", timeout=120000)
+        pr_kpis = pg.evaluate("ko.dataFor(document.body).pnKpis()")
+        check("source=PR scopes KPIs", pr_kpis["docsPo"] == 0 and pr_kpis["docsPr"] > 0,
+              "(PR docs %s)" % pr_kpis["docsPr"])
+        pg.evaluate("var v=ko.dataFor(document.body); v.pnSource(''); v.runPending();")
+        pg.wait_for_function("!ko.dataFor(document.body).pnLoading()", timeout=120000)
+        check("source reset restores", pg.evaluate("ko.dataFor(document.body).pnCount()") == all_count)
+
+        # v1.28.0 — "Showing figures in" drives the tile values (buUnit)
+        pg.evaluate("ko.dataFor(document.body).buUnit('M')")
+        amt_txt = pend.locator(".pnk-amt .bk-v").inner_text()
+        check("figures-in M unit", amt_txt.strip().endswith("M"), "(%s)" % amt_txt.strip())
+        pg.evaluate("ko.dataFor(document.body).buUnit('auto')")
+
+        # v1.28.0 — Document # cells deep-link to Oracle Fusion (new tab)
+        doc0 = pg.evaluate("ko.dataFor(document.body).pnData().items[0].docNumber")
+        cell = pend.locator("table.ir-table tbody td", has_text=doc0).first
+        cell.hover()
+        check("doc# link affordance", "pn-doclink" in (cell.get_attribute("class") or ""), "(%s)" % doc0)
+        pg.evaluate("window._lastOpen=null; window.open=function(u){window._lastOpen=u;}")
+        cell.click()
+        opened = pg.evaluate("window._lastOpen")
+        check("doc# click opens Fusion deep link", bool(opened) and "deeplink" in opened,
+              "(%s...)" % (opened or "")[:70])
 
         # ── AR / RTL ──
         pg.evaluate("ko.dataFor(document.body).toggleLang()")

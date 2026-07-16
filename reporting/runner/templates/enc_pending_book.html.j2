@@ -181,11 +181,12 @@
     <span>Pending documents <b>{{ O.docs|fmt if O.docs is not none else '—' }}</b></span>
     <span>Pending value <b>{{ money(O.amt_total) }} AED</b></span>
     <span>Avg wait <b>{{ O.avg_days|fmt }} days</b></span>
+    <span>Basis <b>Reserved, non-zero lines</b></span>
   </div>
   <div class="cv-desc">
-    This briefing book presents every purchase requisition and purchase order awaiting approval in
-    Oracle Fusion for budget year {{ params.year }}{% if params.period %} (year-to-date through
-    {{ params.period }}){% endif %}, covering
+    This briefing book presents every funds-reserved purchase requisition and purchase order awaiting
+    approval in Oracle Fusion for budget year {{ params.year }}{% if params.period %} (year-to-date
+    through {{ params.period }}){% endif %}, covering
     {{ 'the ' + params.sector + ' sector' if params.sector else 'all sectors' }}
     {%- if params.chapter %}, chapter &ldquo;{{ params.chapter }}&rdquo;{% endif %}
     {%- if params.projecttype %}, {{ params.projecttype }} projects{% endif %}: a monitoring overview
@@ -239,9 +240,8 @@
     <div class="kpi"><div class="k-lbl">Pending Documents</div><div class="k-val">{{ O.docs|fmt }}</div><div class="k-sub">{{ O.lines|fmt }} budget lines</div></div>
     <div class="kpi"><div class="k-lbl">Requisitions (PR)</div><div class="k-val">{{ O.pr_docs|fmt }}</div><div class="k-sub">{{ money(O.amt_pr) }} AED</div></div>
     <div class="kpi"><div class="k-lbl">Purchase Orders (PO)</div><div class="k-val">{{ O.po_docs|fmt }}</div><div class="k-sub">{{ money(O.amt_po) }} AED</div></div>
-    <div class="kpi k-enc"><div class="k-lbl">Pending Value</div><div class="k-val">{{ money(O.amt_total) }}</div><div class="k-sub">AED awaiting approval</div></div>
-    <div class="kpi k-ok"><div class="k-lbl">Reserved (in encumbrance)</div><div class="k-val">{{ money(O.reserved_aed) }}</div><div class="k-sub">already counted in open encumbrance</div></div>
-    <div class="kpi {{ 'k-bad' if O.unreserved_aed and O.unreserved_aed > 0.005 else '' }}"><div class="k-lbl">Not Reserved</div><div class="k-val">{{ money(O.unreserved_aed) }}</div><div class="k-sub">hits the budget on approval</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Pending Value</div><div class="k-val">{{ money(O.amt_total) }}</div><div class="k-sub">AED awaiting approval &middot; reserved lines</div></div>
+    <div class="kpi k-ok"><div class="k-lbl">In Open Encumbrance</div><div class="k-val">{{ money(O.enc_open_aed) }}</div><div class="k-sub">open amount already counted (PO GRN-netted)</div></div>
     <div class="kpi k-act"><div class="k-lbl">Average Wait</div><div class="k-val">{{ O.avg_days|fmt }}</div><div class="k-sub">days pending &middot; oldest {{ O.max_days|fmt }}</div></div>
     <div class="kpi {{ 'k-bad' if O.over30_docs else 'k-ok' }}"><div class="k-lbl">Over 30 Days</div><div class="k-val {{ 'neg' if O.over30_docs }}">{{ O.over30_docs|fmt }}</div><div class="k-sub">documents &middot; {{ money(O.over30_amt) }} AED</div></div>
   </div>
@@ -261,16 +261,6 @@
         <span><i style="background:var(--brand)"></i>Requisitions {{ w_pr }}%</span>
         <span><i style="background:var(--enc)"></i>Purchase orders {{ w_po|round(2) }}%</span>
       </div>
-      {% set w_res = (100 * (O.reserved_aed or 0) / T)|round(2) %}
-      <div class="ch-t" style="margin-top:10px">Funds reservation — is the queue already inside the encumbrance figures?</div>
-      <div class="stack">
-        <div style="width:{{ [w_res,0]|max }}%; background: var(--ok);"></div>
-        <div style="width:{{ [100 - w_res,0]|max }}%; background: var(--bad);"></div>
-      </div>
-      <div class="lg">
-        <span><i style="background:var(--ok)"></i>Reserved {{ w_res }}%</span>
-        <span><i style="background:var(--bad)"></i>Not reserved {{ (100 - w_res)|round(2) }}%</span>
-      </div>
       {% else %}<div class="empty">No pending value in scope.</div>{% endif %}
 
       <div class="ch-t" style="margin-top:12px">Where the pending demand lands — budget frame (AED)</div>
@@ -283,8 +273,8 @@
         <div class="hb-track"><div class="hb-bar warn" style="width:{{ (100*(B.open_encumbrance or 0)/bmax)|round(1) }}%"></div></div>
         <div class="hb-val">{{ money(B.open_encumbrance) }}</div></div>
       <div class="hb-row"><div class="hb-lbl">&hellip;of which pending approval</div>
-        <div class="hb-track"><div class="hb-bar gold" style="width:{{ (100*(O.reserved_aed or 0)/bmax)|round(1) }}%"></div></div>
-        <div class="hb-val">{{ money(O.reserved_aed) }}</div></div>
+        <div class="hb-track"><div class="hb-bar gold" style="width:{{ (100*(O.enc_open_aed or 0)/bmax)|round(1) }}%"></div></div>
+        <div class="hb-val">{{ money(O.enc_open_aed) }}</div></div>
       <div class="hb-row"><div class="hb-lbl">Fund available</div>
         <div class="hb-track"><div class="hb-bar {{ 'bad' if B.fund_available is not none and B.fund_available < 0 else 'ok' }}" style="width:{{ (100*((B.fund_available or 0)|abs)/bmax)|round(1) }}%"></div></div>
         <div class="hb-val">{{ money(B.fund_available) }}</div></div>
@@ -362,7 +352,7 @@
     <thead><tr><th>Pending With</th><th>Documents</th><th>Lines</th><th>Amount Held (AED)</th><th>Share</th><th>Longest Wait (days)</th><th>Oldest Submission</th></tr></thead>
     <tbody>
       {% for r in APV %}
-      <tr><td>{{ (r.pending_with or '(Unassigned)')|string|truncate(60) }}</td>
+      <tr><td>{{ r.pending_with or '(Unassigned)' }}</td>
         <td class="num">{{ r.docs|fmt }}</td><td class="num">{{ r.lines|fmt }}</td>
         <td class="num">{{ r.amount_aed|fmt }}</td>
         <td class="num">{{ (100*(r.amount_aed or 0)/O.amt_total)|round(1) if O.amt_total else '—' }}%</td>
@@ -376,15 +366,18 @@
   <div class="sub-h">2.2 &nbsp; The twenty longest-waiting documents <small>&mdash; document grain, oldest first</small></div>
   {% if OLD %}
   <table class="data">
-    <thead><tr><th>Type</th><th>Document #</th><th>Description / Supplier</th><th>Preparer / Buyer</th><th>Submitted</th><th>Days Pending</th><th>Pending With</th><th>Amount (AED)</th></tr></thead>
+    <thead><tr><th>Type</th><th>Document #</th><th>Description / Supplier</th><th>Preparer / Buyer</th><th>Submitted</th><th>Days Pending</th><th>Pending With</th><th>Sector</th><th>Cost Centre</th><th>Appropriation</th><th>Amount (AED)</th></tr></thead>
     <tbody>
       {% for r in OLD %}
       <tr><td>{{ r.source }}</td><td>{{ r.doc_number }}</td>
-        <td>{{ (r.description or '—')|string|truncate(48) }}</td>
-        <td>{{ (r.preparer_buyer or '—')|string|truncate(28) }}</td>
+        <td>{{ r.description or '—' }}</td>
+        <td>{{ r.preparer_buyer or '—' }}</td>
         <td class="num">{{ dt(r.submitted_date) }}</td>
         <td class="num {{ 'neg' if r.pending_days and r.pending_days > 30 }}">{{ r.pending_days|fmt }}</td>
-        <td>{{ (r.pending_with or '—')|string|truncate(32) }}</td>
+        <td>{{ r.pending_with or '—' }}</td>
+        <td>{{ r.sector or '—' }}</td>
+        <td>{{ r.cost_centre or '—' }}</td>
+        <td>{{ r.appropriation or '—' }}</td>
         <td class="num">{{ r.doc_amt|fmt }}</td></tr>
       {% endfor %}
     </tbody>
@@ -397,28 +390,30 @@
 <div class="page">
   <div class="pt-band"><span class="pt-no">03</span><span class="pt-t">Pending Purchase Requisitions</span>
     <span class="pt-s">{{ PRR|length|fmt }} lines &middot; {{ money(O.amt_pr) }} AED</span></div>
-  <div class="sub-h">3.1 &nbsp; Requisition lines awaiting approval <small>&mdash; oldest first; all figures AED</small></div>
+  <div class="sub-h">3.1 &nbsp; Requisition lines awaiting approval <small>&mdash; funds-reserved lines, oldest first; all figures AED</small></div>
   {% if PRR %}
   <table class="data">
     <thead><tr><th>PR #</th><th>Line</th><th>Description</th><th>Preparer</th><th>Submitted</th><th>Days</th><th>Pending With</th>
-      <th>Project</th><th>Task</th><th>Expenditure Type</th><th>Budget Date</th><th>Cur</th><th>Amount (AED)</th><th>Funds</th></tr></thead>
+      <th>Project</th><th>Task</th><th>Expenditure Type</th><th>Sector</th><th>Cost Centre</th><th>Appropriation</th><th>Budget Date</th><th>Amount (AED)</th></tr></thead>
     <tbody>
       {% for r in PRR %}
       <tr><td>{{ r.doc_number }}</td><td class="num">{{ r.doc_line }}</td>
-        <td>{{ (r.description or '—')|string|truncate(38) }}</td>
-        <td>{{ (r.preparer_buyer or '—')|string|truncate(22) }}</td>
+        <td>{{ r.description or '—' }}</td>
+        <td>{{ r.preparer_buyer or '—' }}</td>
         <td class="num">{{ dt(r.submitted_date) }}</td>
         <td class="num {{ 'neg' if r.pending_days and r.pending_days > 30 }}">{{ r.pending_days|fmt }}</td>
-        <td>{{ (r.pending_with or '—')|string|truncate(26) }}</td>
-        <td>{{ r.project_number }} {{ (r.project_name or '')|string|truncate(22) }}</td>
-        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(24) }}</td>
-        <td class="num">{{ dt(r.budget_date) }}</td><td>{{ r.currency }}</td>
-        <td class="num">{{ r.line_aed|fmt }}</td>
-        <td><span class="pill {{ 'res' if r.funds_status == 'Reserved' else 'unres' }}">{{ r.funds_status or '—' }}</span></td></tr>
+        <td>{{ r.pending_with or '—' }}</td>
+        <td>{{ r.project_number }} {{ r.project_name or '' }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ r.expenditure_type or '—' }}</td>
+        <td>{{ r.sector_name or '—' }}</td>
+        <td>{% if r.cost_center_code %}{{ r.cost_center_code }} - {{ r.cost_center_desc or '' }}{% else %}&mdash;{% endif %}</td>
+        <td>{% if r.appropriation_code %}{{ r.appropriation_code }} - {{ r.appropriation_desc or '' }}{% else %}&mdash;{% endif %}</td>
+        <td class="num">{{ dt(r.budget_date) }}</td>
+        <td class="num">{{ r.line_aed|fmt }}</td></tr>
       {% endfor %}
     </tbody>
-    <tfoot><tr><td colspan="12">Total — {{ PRR|length|fmt }} requisition lines</td>
-      <td class="num">{{ O.amt_pr|fmt }}</td><td></td></tr></tfoot>
+    <tfoot><tr><td colspan="14">Total — {{ PRR|length|fmt }} requisition lines</td>
+      <td class="num">{{ O.amt_pr|fmt }}</td></tr></tfoot>
   </table>
   {% else %}<div class="empty">No requisitions pending approval for the selected criteria.</div>{% endif %}
   <div class="foot">Part 3 &middot; Encumbrances Pending Approval Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
@@ -428,28 +423,30 @@
 <div class="page">
   <div class="pt-band"><span class="pt-no">04</span><span class="pt-t">Pending Purchase Orders</span>
     <span class="pt-s">{{ POR|length|fmt }} lines &middot; {{ money(O.amt_po) }} AED</span></div>
-  <div class="sub-h">4.1 &nbsp; Purchase-order lines awaiting approval <small>&mdash; oldest first; open = GRN-netted; all figures AED</small></div>
+  <div class="sub-h">4.1 &nbsp; Purchase-order lines awaiting approval <small>&mdash; funds-reserved lines, oldest first; open = GRN-netted; all figures AED</small></div>
   {% if POR %}
   <table class="data">
     <thead><tr><th>PO #</th><th>Line</th><th>Supplier</th><th>Buyer</th><th>Submitted</th><th>Days</th><th>Pending With</th>
-      <th>Project</th><th>Task</th><th>Expenditure Type</th><th>Budget Date</th><th>Line (AED)</th><th>Open (AED)</th><th>Funds</th></tr></thead>
+      <th>Project</th><th>Task</th><th>Expenditure Type</th><th>Sector</th><th>Cost Centre</th><th>Appropriation</th><th>Budget Date</th><th>Line (AED)</th><th>Open (AED)</th></tr></thead>
     <tbody>
       {% for r in POR %}
       <tr><td>{{ r.doc_number }}</td><td class="num">{{ r.doc_line }}</td>
-        <td>{{ (r.supplier_name or '—')|string|truncate(34) }}</td>
-        <td>{{ (r.preparer_buyer or '—')|string|truncate(22) }}</td>
+        <td>{{ r.supplier_name or '—' }}</td>
+        <td>{{ r.preparer_buyer or '—' }}</td>
         <td class="num">{{ dt(r.submitted_date) }}</td>
         <td class="num {{ 'neg' if r.pending_days and r.pending_days > 30 }}">{{ r.pending_days|fmt }}</td>
-        <td>{{ (r.pending_with or '—')|string|truncate(26) }}</td>
-        <td>{{ r.project_number }} {{ (r.project_name or '')|string|truncate(22) }}</td>
-        <td>{{ r.task_number or '—' }}</td><td>{{ (r.expenditure_type or '—')|string|truncate(24) }}</td>
+        <td>{{ r.pending_with or '—' }}</td>
+        <td>{{ r.project_number }} {{ r.project_name or '' }}</td>
+        <td>{{ r.task_number or '—' }}</td><td>{{ r.expenditure_type or '—' }}</td>
+        <td>{{ r.sector_name or '—' }}</td>
+        <td>{% if r.cost_center_code %}{{ r.cost_center_code }} - {{ r.cost_center_desc or '' }}{% else %}&mdash;{% endif %}</td>
+        <td>{% if r.appropriation_code %}{{ r.appropriation_code }} - {{ r.appropriation_desc or '' }}{% else %}&mdash;{% endif %}</td>
         <td class="num">{{ dt(r.budget_date) }}</td>
-        <td class="num">{{ r.line_aed|fmt }}</td><td class="num">{{ r.open_aed|fmt }}</td>
-        <td><span class="pill {{ 'res' if r.funds_status in ('Reserved','Partially Liquidated') else 'unres' }}">{{ r.funds_status or '—' }}</span></td></tr>
+        <td class="num">{{ r.line_aed|fmt }}</td><td class="num">{{ r.open_aed|fmt }}</td></tr>
       {% endfor %}
     </tbody>
-    <tfoot><tr><td colspan="11">Total — {{ POR|length|fmt }} purchase-order lines</td>
-      <td class="num">{{ O.amt_po|fmt }}</td><td class="num"></td><td></td></tr></tfoot>
+    <tfoot><tr><td colspan="14">Total — {{ POR|length|fmt }} purchase-order lines</td>
+      <td class="num">{{ O.amt_po|fmt }}</td><td class="num"></td></tr></tfoot>
   </table>
   {% else %}<div class="empty">No purchase orders pending approval for the selected criteria.</div>{% endif %}
   <div class="foot">Part 4 &middot; Encumbrances Pending Approval Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
@@ -458,11 +455,9 @@
 {#- ═══ PART 5 — INSIGHTS ═══════════════════════════════════════════════ -#}
 {%- set T = O.amt_total or 0 -%}
 {%- set over30_share = (100 * (O.over30_amt or 0) / T)|round(1) if T else 0 -%}
-{%- set res_share = (100 * (O.reserved_aed or 0) / T)|round(1) if T else 0 -%}
 {%- set top_apv = APV[0] if APV else none -%}
 {%- set top_share = (100 * (top_apv.amount_aed or 0) / T)|round(1) if top_apv and T else 0 -%}
-{%- set fund_hit = (100 * (O.unreserved_aed or 0) / B.fund_available)|round(1) if B.fund_available and B.fund_available > 0 else none -%}
-{%- set enc_share = (100 * (O.reserved_aed or 0) / B.open_encumbrance)|round(1) if B.open_encumbrance else 0 -%}
+{%- set enc_share = (100 * (O.enc_open_aed or 0) / B.open_encumbrance)|round(1) if B.open_encumbrance else 0 -%}
 <div class="page">
   <div class="pt-band"><span class="pt-no">05</span><span class="pt-t">Observations &amp; Insights</span>
     <span class="pt-s">prepared for management review &middot; {{ params.year }}</span></div>
@@ -483,12 +478,12 @@
   {% endif %}
 
   <div class="ins"><div class="i-t">Budget impact of approval</div><div class="i-b">
-    <b>{{ res_share }}%</b> of the pending value ({{ money(O.reserved_aed) }} AED) is already funds-<b>Reserved</b>, meaning it is
-    ALREADY inside the open-encumbrance figures on the Budget Utilization page ({{ enc_share }}% of the
-    {{ money(B.open_encumbrance) }} AED open encumbrance) — approving it changes workflow state, not the budget position.
-    {% if O.unreserved_aed and O.unreserved_aed > 0.005 %}The remaining <b>{{ money(O.unreserved_aed) }} AED</b> is NOT yet reserved:
-    {% if fund_hit is not none %}on approval it would consume about <span class="{{ 'i-bad' if fund_hit > 10 else 'i-good' }}">{{ fund_hit }}%</span> of the {{ money(B.fund_available) }} AED fund currently available in this scope.{% else %}on approval it will draw additional funds from a scope whose fund available is already {{ money(B.fund_available) }} AED.{% endif %}
-    {% else %}<span class="i-good">There is no unreserved pending value</span> — approvals in this scope will not move fund availability.{% endif %}
+    Every document in this book is already funds-<b>Reserved</b> (the report covers reserved, non-zero lines only),
+    so its value sits INSIDE the open-encumbrance figures on the Budget Utilization page:
+    <b>{{ money(O.enc_open_aed) }} AED</b> of open amount — {{ enc_share }}% of the
+    {{ money(B.open_encumbrance) }} AED open encumbrance in this scope. <span class="i-good">Approving these
+    documents changes workflow state, not the budget position</span>; fund available
+    ({{ money(B.fund_available) }} AED) is unaffected by the approvals themselves.
   </div></div>
 
   <div class="ins"><div class="i-t">Composition of the queue</div><div class="i-b">
@@ -517,10 +512,13 @@
       distribution budget date, the same sector / chapter / project-type / cost-centre / project / task /
       expenditure-type / search predicates{% if params.period %}, and the YTD window through {{ params.period }}{% endif %}.
       &nbsp;<b>Amounts.</b> AED; PR lines convert via the platform currency snapshot, PO lines via the distribution rate.
-      &nbsp;<b>Reserved.</b> A line is &ldquo;in encumbrance&rdquo; when its funds status is Reserved (PR) or
-      Reserved / Partially Liquidated with GRN netting (PO) — the same bases as the page's Open Commitment and
-      Open Obligation figures. &nbsp;<b>Days pending.</b> As reported by Fusion (workflow submission to snapshot time),
-      measured per document; document amounts sum that document's budget lines.
+      &nbsp;<b>Scope rule.</b> Funds-RESERVED, non-zero lines only: not-reserved documents and zero-value lines are
+      excluded from every figure and register in this book (business rule, 2026-07-16); the GL page still shows them.
+      &nbsp;<b>In encumbrance.</b> Reserved (PR) / Reserved-Partially Liquidated with GRN netting (PO) — the same
+      bases as the page's Open Commitment and Open Obligation figures. &nbsp;<b>Sector / Cost centre / Appropriation.</b>
+      Resolved from each line's canonical GL combination; document-grain rows show &ldquo;(Multiple)&rdquo; when a
+      document spans several combinations. &nbsp;<b>Days pending.</b> As reported by Fusion (workflow submission to
+      snapshot time), measured per document; document amounts sum that document's budget lines.
     </div>
   </div>
   <div class="foot">Part 5 &middot; Encumbrances Pending Approval Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
@@ -536,12 +534,12 @@
     <thead><tr><th>Type</th><th>Business Unit</th><th>Document #</th><th>Preparer / Buyer</th><th>Submitted</th><th>Days Pending</th><th>Pending With</th></tr></thead>
     <tbody>
       {% for r in UM %}
-      <tr><td>{{ r.source }}</td><td>{{ (r.business_unit or '—')|string|truncate(38) }}</td>
+      <tr><td>{{ r.source }}</td><td>{{ r.business_unit or '—' }}</td>
         <td>{{ r.doc_number }}</td>
-        <td>{{ (r.preparer_buyer or '—')|string|truncate(30) }}</td>
+        <td>{{ r.preparer_buyer or '—' }}</td>
         <td class="num">{{ dt(r.submitted_date) }}</td>
         <td class="num {{ 'neg' if r.pending_days and r.pending_days > 30 }}">{{ r.pending_days|fmt }}</td>
-        <td>{{ (r.pending_with or '—')|string|truncate(40) }}</td></tr>
+        <td>{{ r.pending_with or '—' }}</td></tr>
       {% endfor %}
     </tbody>
   </table>

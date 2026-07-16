@@ -18,7 +18,9 @@
 -- Data    : prod.dct_pr_po_pending_v (db/v2/52) + prod.dct_gl_coa_snap.
 -- Endpoints:
 --   GET  /gl/pending?year(req)=&period=&projecttype=&sector=&chapter=
---                    &costcenter=&project=&task=&etype=&search=&limit=
+--                    &costcenter=&project=&task=&etype=&search=&source=&limit=
+--        (source = PR | PO; empty = both. items carry fusionHeaderId — the
+--         FUSION internal pr/po header id for the shared deep-link builders)
 --        -> { year, period?, asOf, kpis{}, aging[], approvers[], unmatched{},
 --             columns[], items[], count, truncated, maxRows, totals{} }
 --        KPIs / aging / approvers aggregate over the FULL filtered set in the
@@ -69,6 +71,7 @@ DECLARE
   l_etype   VARCHAR2(255) := [COLON]etype;
   l_search  VARCHAR2(200) := [COLON]search;
   l_period  VARCHAR2(10)  := [COLON]period;
+  l_source  VARCHAR2(10)  := UPPER([COLON]source);
   l_end     DATE;
   l_limit   NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit DEFAULT NULL ON CONVERSION ERROR), 10000), 10000);
   l_rows    NUMBER := 0;
@@ -113,6 +116,10 @@ BEGIN
   IF l_etype   = '' THEN l_etype   := NULL; END IF;
   IF l_search  = '' THEN l_search  := NULL; END IF;
   IF l_period  = '' THEN l_period  := NULL; END IF;
+  IF l_source  = '' THEN l_source  := NULL; END IF;
+  IF l_source IS NOT NULL AND l_source NOT IN ('PR','PO') THEN
+    dct_rest.err(400,'source must be PR or PO'); RETURN;
+  END IF;
   IF l_period IS NOT NULL THEN
     IF NOT REGEXP_LIKE(l_period, '^(0[1-9]|1[0-2])-[0-9]{4}$')
        OR TO_NUMBER(SUBSTR(l_period, 4)) <> l_year THEN
@@ -200,7 +207,7 @@ BEGIN
            p.pending_days, p.pending_with, p.funds_status,
            p.project_number, p.project_name, p.task_number, p.expenditure_type,
            TO_CHAR(p.budget_date,'YYYY-MM-DD') budget_date, p.currency,
-           p.line_aed, p.enc_open_aed, p.cc_string,
+           p.line_aed, p.enc_open_aed, p.cc_string, p.fusion_header_id,
            coa.entity_code, coa.entity_desc,
            coa.program_code, coa.program_desc,
            coa.cost_center_code, coa.cost_center_desc,
@@ -219,6 +226,7 @@ BEGIN
     LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = p.cc_string
     WHERE p.in_extract = 'Y'
       AND p.budget_year = l_year
+      AND (l_source IS NULL OR p.source = l_source)
       AND (p.project_number, NVL(p.task_number,'~'), NVL(p.expenditure_type,'~'))
           IN (SELECT pk, tk, et FROM kys)
     ORDER BY p.pending_days DESC NULLS LAST, p.line_aed DESC NULLS LAST
@@ -266,6 +274,7 @@ BEGIN
       APEX_JSON.write('currency', NVL(r.currency,'AED'));
       APEX_JSON.write('lineAmount', r.line_aed);
       APEX_JSON.write('encOpenAmount', r.enc_open_aed);
+      APEX_JSON.write('fusionHeaderId', r.fusion_header_id);
       APEX_JSON.write('sector', NVL(r.sector_name,''));
       APEX_JSON.write('chapter', NVL(r.chapter_name,''));
       APEX_JSON.write('projectName', NVL(r.project_name,''));

@@ -17,6 +17,12 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-16** — **Pending Approval review round** (`APP_VERSION` 1.28.0). Book: reserved
+  non-zero lines only, full text (no truncation), +Sector/Cost centre/Appropriation (code+name)
+  in registers + oldest-20, Cur/Funds dropped (reporting/db/23 v2, E2E run 82 = 1,385 lines).
+  Page: Source (PR/PO) + "Showing figures in" filters, KPI band redesigned w/ semantic accents +
+  heat badges (senior-frontend pass), Document # cells deep-link to Fusion (view db/v2/52 +
+  GL/db/13 add fusion_header_id/source=). Browser smoke 29/29 — webtier release 20260716050503.
 - **2026-07-16** — **Encumbrances – Pending Approval page + ENC_PENDING_BOOK briefing book**
   (`APP_VERSION` 1.27.0). New nav tab: every PR/PO document PENDING APPROVAL in Fusion (daily BIP
   snapshot `atd_pr_po_pending_approval`, otbi-atd/db/47) joined to the open-encumbrance line detail —

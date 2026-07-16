@@ -40,6 +40,10 @@
 -- user decision 2026-07-16); parsed here with DEFAULT NULL ON CONVERSION
 -- ERROR so a malformed export row can never break the view.
 --
+-- fusion_header_id (2026-07-16): the FUSION internal id (pr_header_id /
+-- po_header_id) for the shared fusionLinks deep-link builders -- document
+-- numbers alone cannot build a Fusion deep link.
+--
 -- All amounts AED. Sources: base pass-through views (db/v2/32 + 36) +
 -- prod.atd_pr_po_pending_approval (otbi-atd/db/47). Re-run AFTER any
 -- structural ATD reload (dct_views_rebuild recompiles it). Run with the
@@ -134,6 +138,7 @@ SELECT p.source,
             THEN d.distribution_amount * NVL(cc.exchange_rate_to_aed,1)
             ELSE 0 END                                        AS enc_open_aed,
        prod.dct_cc_canon(d.charge_account)                    AS cc_string,
+       d.pr_header_id                                         AS fusion_header_id,
        'Y'                                                    AS in_extract
 FROM pend p
 JOIN prod.pr_distributions d ON TO_CHAR(d.requisition) = p.document_number
@@ -173,6 +178,7 @@ SELECT p.source,
             THEN GREATEST(b.amt_aed - NVL(g.grn_aed,0), 0)
             ELSE 0 END,
        b.charge_account,
+       b.po_header_id,
        'Y'
 FROM pend p
 JOIN po_hdr h  ON TO_CHAR(h.order_number) = p.document_number
@@ -198,7 +204,7 @@ SELECT p.source,
        p.pending_days,
        p.load_ts,
        NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
-       NULL, NULL, 0, NULL,
+       NULL, NULL, 0, NULL, NULL,
        'N'
 FROM pend p
 WHERE (p.source = 'PR' AND NOT EXISTS (
