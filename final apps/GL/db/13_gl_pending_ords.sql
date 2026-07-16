@@ -30,6 +30,10 @@
 --        enqueues ENC_PENDING_BOOK (Reporting Platform, reporting/db/23)
 --   GET  /gl/pending/book/[COLON]id     -> {runId, status, rowCount, error, hasPdf}
 --   GET  /gl/pending/book/[COLON]id/pdf -> authed PDF download of a finished run
+--   POST /gl/pending/xlsx         -- the same filter set + source -> {runId};
+--        enqueues ENC_PENDING_REGISTER (Excel register, reporting/db/24)
+--   GET  /gl/pending/xlsx/[COLON]id      -> {runId, status, rowCount, error, hasFile}
+--   GET  /gl/pending/xlsx/[COLON]id/file -> authed XLSX download of a finished run
 -- =============================================================================
 
 SET DEFINE OFF
@@ -462,6 +466,117 @@ BEGIN
   EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'PDF not found'); RETURN; END;
   OWA_UTIL.mime_header('application/pdf', FALSE);
   HTP.p('Content-Disposition[COLON] attachment; filename="'||NVL(l_name,'enc_pending_book.pdf')||'"');
+  OWA_UTIL.http_header_close;
+  WPG_DOCLOAD.download_file(l_blob);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('pending/xlsx');
+    def_handler('pending/xlsx', 'POST', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_year   NUMBER;
+  l_period VARCHAR2(10);
+  l_source VARCHAR2(10);
+  l_params CLOB;
+  l_run    NUMBER;
+  PROCEDURE put(p_key VARCHAR2) IS
+    l_val VARCHAR2(2000) := APEX_JSON.get_varchar2(p_path => p_key);
+  BEGIN
+    IF l_val IS NOT NULL THEN APEX_JSON.write(p_key, l_val); END IF;
+  END;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  dct_rest.parse_body([COLON]body);
+  l_year := APEX_JSON.get_number(p_path=>'year');
+  IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
+  l_period := APEX_JSON.get_varchar2(p_path=>'period');
+  IF l_period IS NOT NULL THEN
+    IF NOT REGEXP_LIKE(l_period, '^(0[1-9]|1[0-2])-[0-9]{4}$')
+       OR TO_NUMBER(SUBSTR(l_period, 4)) <> l_year THEN
+      dct_rest.err(400,'period must be MM-YYYY within the selected year'); RETURN;
+    END IF;
+  END IF;
+  l_source := UPPER(APEX_JSON.get_varchar2(p_path=>'source'));
+  IF l_source IS NOT NULL AND l_source NOT IN ('PR','PO') THEN
+    dct_rest.err(400,'source must be PR or PO'); RETURN;
+  END IF;
+  APEX_JSON.initialize_clob_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('year', l_year);
+  IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
+  IF l_source IS NOT NULL THEN APEX_JSON.write('source', l_source); END IF;
+  put('sector'); put('chapter'); put('projecttype'); put('costcenter');
+  put('project'); put('task'); put('etype'); put('search');
+  APEX_JSON.close_object;
+  l_params := APEX_JSON.get_clob_output;
+  APEX_JSON.free_output;
+  l_run := dct_rpt_pkg.enqueue(p_report_code  => 'ENC_PENDING_REGISTER',
+                               p_params       => l_params,
+                               p_trigger      => 'ONDEMAND',
+                               p_requested_by => l_user,
+                               p_formats      => 'XLSX');
+  COMMIT;
+  dct_rest.json_header; APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('runId', l_run);
+  APEX_JSON.close_object;
+EXCEPTION
+  WHEN OTHERS THEN
+    ROLLBACK;
+    IF SQLCODE = -20404 THEN dct_rest.err(404, SQLERRM);
+    ELSE dct_rest.err(500, SQLERRM); END IF;
+END;
+!');
+
+    def_template('pending/xlsx/[COLON]id');
+    def_handler('pending/xlsx/[COLON]id', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_xls  NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  FOR c IN (SELECT run_id, status, row_count, error_msg, started_at, finished_at
+              FROM dct_rpt_run
+             WHERE run_id = [COLON]id AND report_code = 'ENC_PENDING_REGISTER') LOOP
+    SELECT COUNT(*) INTO l_xls
+      FROM dct_rpt_output WHERE run_id = c.run_id AND format = 'XLSX';
+    dct_rest.json_header; APEX_JSON.initialize_output;
+    APEX_JSON.open_object;
+    APEX_JSON.write('runId', c.run_id);
+    APEX_JSON.write('status', c.status);
+    APEX_JSON.write('rowCount', c.row_count);
+    APEX_JSON.write('error', NVL(DBMS_LOB.SUBSTR(c.error_msg, 500, 1), ''));
+    APEX_JSON.write('startedAt', NVL(TO_CHAR(dct_to_local(c.started_at),'YYYY-MM-DD HH[COLON]MI AM'),''));
+    APEX_JSON.write('finishedAt', NVL(TO_CHAR(dct_to_local(c.finished_at),'YYYY-MM-DD HH[COLON]MI AM'),''));
+    APEX_JSON.write('hasFile', l_xls > 0);
+    APEX_JSON.close_object;
+    RETURN;
+  END LOOP;
+  dct_rest.err(404,'Run not found');
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('pending/xlsx/[COLON]id/file');
+    def_handler('pending/xlsx/[COLON]id/file', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_blob BLOB; l_name VARCHAR2(260); l_mime VARCHAR2(200);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  BEGIN
+    SELECT o.file_blob, o.file_name, o.mime_type INTO l_blob, l_name, l_mime FROM (
+      SELECT o.file_blob, o.file_name, o.mime_type
+        FROM dct_rpt_output o
+        JOIN dct_rpt_run r ON r.run_id = o.run_id
+       WHERE o.run_id = [COLON]id AND o.format = 'XLSX'
+         AND r.report_code = 'ENC_PENDING_REGISTER'
+       ORDER BY o.output_id DESC) o WHERE ROWNUM = 1;
+  EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'File not found'); RETURN; END;
+  OWA_UTIL.mime_header(NVL(l_mime,'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'), FALSE);
+  HTP.p('Content-Disposition[COLON] attachment; filename="'||NVL(l_name,'enc_pending_register.xlsx')||'"');
   OWA_UTIL.http_header_close;
   WPG_DOCLOAD.download_file(l_blob);
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);

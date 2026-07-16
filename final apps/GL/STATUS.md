@@ -17,6 +17,11 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-16** — **Pending Approval Excel register** (`APP_VERSION` 1.29.0). New
+  `ENC_PENDING_REGISTER` (reporting/db/24, XLSX-only, 2 sheets: 29-column flat pending PR/PO
+  register on the book scope rule + extract-coverage annex) + GL bridge `POST /gl/pending/xlsx`
+  + status/file routes (GL/db/13 re-run) + **Export Excel** page button. E2E run 83: 1,004+329
+  rows, 570.6M reconciles to the book. Smoke 30/30 — webtier release 20260716075119.
 - **2026-07-16** — **Pending Approval review round** (`APP_VERSION` 1.28.0). Book: reserved
   non-zero lines only, full text (no truncation), +Sector/Cost centre/Appropriation (code+name)
   in registers + oldest-20, Cur/Funds dropped (reporting/db/23 v2, E2E run 82 = 1,385 lines).

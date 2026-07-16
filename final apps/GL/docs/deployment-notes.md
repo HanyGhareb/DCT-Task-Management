@@ -26,6 +26,23 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-16 — Pending Approval Excel register (GL v1.29.0)** — user request: "the same
+  report only table … in Excel format for internal analysis". NEW Reporting-Platform
+  definition **`ENC_PENDING_REGISTER`** (`reporting/db/24`, MULTI/PYTHON,
+  **default_formats = XLSX only**, no template — `build_xlsx_multi` renders one styled sheet
+  per section): sheet 1 = ONE flat register of every funds-reserved pending PR/PO line
+  (same ENC_PENDING_BOOK scope rule) with ALL related info — 29 columns: approval trail
+  (preparer, submitted, days, pending-with), business unit, funds status, project/task/etype,
+  Sector, Chapter, Cost centre / Account / Appropriation / Program (code+name), budget date,
+  currency, AED amounts, canonical GL combination; sheet 2 = the extract-coverage annex.
+  Params = the butil set + `source` (param_spec = BUDGET_UTIL_BOOK's via **JSON_MERGEPATCH**
+  + a source entry). GL bridge (`GL/db/13` re-run): `POST /gl/pending/xlsx` (+source in
+  body) + `GET /gl/pending/xlsx/:id` (hasFile) + `/:id/file` (XLSX download). Page: **Export
+  Excel** button next to Briefing Book (`runPnXlsx`, 4-s poll, auto-download
+  `Encumbrances_Pending_Approval_Register_<year>.xlsx`). 24 is MERGE-bearing → deployed via
+  python-oracledb on vm180. E2E run 83 SUCCESS in ~10s: 1,004 register rows (919 PR + 85 PO)
+  + 329 annex rows, total 570,603,223.50 AED — exactly the book's reserved-scope pending
+  value. Browser smoke 30/30; webtier release 20260716075119.
 - **2026-07-16 — Pending Approval review round (GL v1.28.0)** — user's manual-review fixes, all
   layers redeployed same day (webtier release 20260716050503).
   ①**Book (`reporting/db/23` + template re-upserted via vm180)**: BUSINESS RULE — the book now

@@ -71,6 +71,7 @@ update on any view/method/endpoint change.
 - **Source filter** (`pnSource`, v1.28.0) — All / PR / PO dropdown in the Search region (page-local, cleared by Reset; `source=` on `/pending`) + **"Showing figures in"** (the shared `buUnit` selector — KPI tiles and mini-table amounts format via `buNum`).
 - **Fusion deep-links on Document #** (`pnGridOver`/`pnGridClick`, v1.28.0) — hovering a docNumber cell shows the link affordance (`.pn-doclink` + tooltip), clicking opens the Fusion PR/PO deep link in a new tab via the shared `fusionLinks.js` builders over `fusionHeaderId` (kept in a VM side-map keyed source|doc# — the shared IR grid drops undeclared row fields). Same delegated ko.contextFor pattern as the combination popover; no shared-component change.
 - `runPnBook()` — **Briefing Book** button → `POST /pending/book` with the full page filter set, 6-s poll (`GET /pending/book/:id`), auto-download of the PDF (`ENC_PENDING_BOOK`, reporting/db/23 — **funds-reserved non-zero lines only**, registers carry Sector/Cost centre/Appropriation code+name, full untruncated text).
+- `runPnXlsx()` — **Export Excel** button (v1.29.0, internal analysis) → `POST /pending/xlsx` with the full page filter set + source, 4-s poll (`GET /pending/xlsx/:id`), auto-download of `Encumbrances_Pending_Approval_Register_<year>.xlsx` (`ENC_PENDING_REGISTER`, reporting/db/24 — sheet 1 = the 29-column flat pending PR/PO register on the book scope rule; sheet 2 = the extract-coverage annex).
 
 ## Dashboard (`view()==='dashboard'`) — executive analytics
 - `dashPeriod` selector → `loadDashboard()` (`/dashboard`); KPI strip via `kpis()` (budget, actual, funds, encumbrance, PO total & count, utilisation/commitment %).
@@ -115,6 +116,9 @@ update on any view/method/endpoint change.
 | POST | `/pending/book` | **Pending-approval Briefing Book bridge** — same body contract as `/butil/book` → enqueues Reporting-Platform `ENC_PENDING_BOOK` (PDF, reporting/db/23) as the calling GL user → `{runId}` (`13_gl_pending_ords.sql`) |
 | GET | `/pending/book/:id` | run status (ENC_PENDING_BOOK runs only) → `{runId, status, rowCount, error, startedAt, finishedAt, hasPdf}` |
 | GET | `/pending/book/:id/pdf` | authed PDF download of a finished pending-approval briefing-book run |
+| POST | `/pending/xlsx` | **Excel register bridge** (v1.29.0) — same body contract as `/pending/book` + `source` (PR\|PO) → enqueues Reporting-Platform `ENC_PENDING_REGISTER` (XLSX, reporting/db/24) as the calling GL user → `{runId}` (`13_gl_pending_ords.sql`) |
+| GET | `/pending/xlsx/:id` | run status (ENC_PENDING_REGISTER runs only) → `{runId, status, rowCount, error, startedAt, finishedAt, hasFile}` |
+| GET | `/pending/xlsx/:id/file` | authed XLSX download of a finished register run (Content-Disposition attachment) |
 
 ## Data layer (PROD)
 - Tables: `DCT_GL_CLASS_TYPE` → `DCT_GL_CLASS_VALUE` → `DCT_GL_SEG_CLASS_MAP`.

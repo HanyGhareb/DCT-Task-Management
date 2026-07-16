@@ -67,6 +67,9 @@ def main():
         check("count chip", "pending lines" in chip, "(%s)" % chip)
         check("snapshot as-of chip", "Snapshot" in pend.locator(".page-actions .chip").nth(0).inner_text())
         check("briefing book button", pend.locator(".page-actions button.btn-primary").is_enabled())
+        # v1.29.0 — Export Excel (ENC_PENDING_REGISTER) sits next to the book button
+        xls_btn = pend.locator(".page-actions button", has_text="Export Excel")
+        check("export excel button", xls_btn.count() == 1 and xls_btn.is_enabled())
 
         # KPI band: 4 composite tiles with non-empty values
         tiles = pend.locator(".bu-kpis .bk")

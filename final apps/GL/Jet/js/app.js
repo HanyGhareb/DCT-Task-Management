@@ -220,6 +220,10 @@
     pnBookHint:{en:'Generate the Encumbrances Pending Approval Briefing Book PDF using ALL the current page filters — pending PR/PO registers, aging analysis, approver follow-up list and budget-impact insights (funds-reserved, non-zero lines only). Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب إحاطة الارتباطات قيد الاعتماد (PDF) وفق جميع عوامل تصفية الصفحة الحالية — سجلات طلبات وأوامر الشراء المعلقة وتحليل التقادم وقائمة متابعة المعتمدين وأثر الموازنة (البنود المحجوزة غير الصفرية فقط). يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     pnSourceL:{en:'Source',ar:'المصدر'},
     pnAllSources:{en:'All (PR + PO)',ar:'الكل (طلبات وأوامر الشراء)'},
+    pnXlsx:{en:'Export Excel',ar:'تصدير إكسل'},
+    pnXlsxRunning:{en:'Preparing Excel…',ar:'جارٍ إعداد الملف…'},
+    pnXlsxHint:{en:'Generate the Pending PR & PO Register (Excel, for internal analysis) using ALL the current page filters: one flat sheet of every funds-reserved pending line with the full approval trail, budget line and GL classification (Sector, Cost centre, Account, Appropriation, Program — code and name), plus the extract-coverage annex sheet. Prepared by the reporting workers — takes under a minute.',ar:'إنشاء سجل طلبات وأوامر الشراء المعلقة (إكسل للتحليل الداخلي) وفق جميع عوامل تصفية الصفحة الحالية: ورقة واحدة لكل بند محجوز معلق مع مسار الاعتماد الكامل وبند الموازنة والتصنيف المحاسبي، إضافةً إلى ورقة ملحق التغطية. يُجهَّز عبر خوادم التقارير — يستغرق أقل من دقيقة.'},
+    pnXlsxReady:{en:'Excel register downloaded.',ar:'تم تنزيل سجل الإكسل.'},
     buTitle:{en:'Budget Utilization',ar:'استخدام الموازنة'},
     buSub:{en:'Project budget vs AP, GRN, open commitments and obligations — per task and expenditure type.',ar:'موازنة المشاريع مقابل الدائنين والاستلام والالتزامات والتعهدات المفتوحة — لكل مهمة ونوع إنفاق.'},
     fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
@@ -1310,6 +1314,60 @@
         if (href && href !== '#') { window.open(href, '_blank', 'noopener'); return false; }
       }
       return true;
+    };
+    /* Excel register (ENC_PENDING_REGISTER via the /gl/pending/xlsx bridge) —
+       the analysis companion of the Briefing Book: one flat sheet of every
+       funds-reserved pending line + the extract-coverage annex sheet. */
+    self.pnXlsxBusy = ko.observable(false);
+    function pnXlsxDownload(runId) {
+      return fetch(API + '/pending/xlsx/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Encumbrances_Pending_Approval_Register_' + self.buYear() + '.xlsx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runPnXlsx = function () {
+      if (self.pnXlsxBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pnXlsxBusy(true);
+      api('POST', '/pending/xlsx', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        source: self.pnSource() || null,
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {
+            self.pnXlsxBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/pending/xlsx/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                pnXlsxDownload(runId)
+                  .then(function () { self.pnXlsxBusy(false); toast(self.t('pnXlsxReady')); })
+                  .catch(function (e) { self.pnXlsxBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.pnXlsxBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 4000);
+        })();
+      }).catch(function (e) { self.pnXlsxBusy(false); fail(e); });
     };
     /* Briefing Book (ENC_PENDING_BOOK via the /gl/pending/book bridge) */
     self.pnBookBusy = ko.observable(false);
