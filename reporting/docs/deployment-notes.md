@@ -87,6 +87,19 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-17 — `bu` (Business Unit) param on ENC_PENDING_BOOK + ENC_PENDING_REGISTER (`reporting/db/23`
+  + `24` re-seeded).** Pipe-delimited EXACT any-of list of Fusion BU names
+  (`([COLON]bu IS NULL OR INSTR('|'||[COLON]bu||'|','|'||x.business_unit||'|') > 0)`): the book adds it
+  to all 4 scoped sections AND the extract-coverage annex (`enc_pending_book.html.j2` cover gains a
+  Business-unit chip, pipes shown as commas); the register adds it to both sheets. `params_json` +
+  `param_spec_json` gain `bu` (spec via JSON_MERGEPATCH — the book's spec is no longer a straight copy
+  of BUDGET_UTIL_BOOK's). Fed by the GL pending page's new BU multi-select through the GL/db/13 bridges.
+  The pending snapshot is the platform's ONLY cross-BU source (OTBI extracts are DCT-scoped), so
+  BUDGET_UTIL_BOOK/REGISTER did NOT get the param — their butil/AP/GRN/PR/PO sections have no usable BU
+  column (and BUDGET_UTIL_BOOK's Part 5 pending sections follow the butil page scope, which has no BU
+  filter). Deployed via vm180 python-oracledb (deploy_seed.py); template upserted to DCT_RPT_TEMPLATE +
+  bundled copies synced to vm181/182. E2E runs 89/90/91 (bu=MSS|AFH → 0 register rows + 303-doc annex;
+  bu=DCT → 990 + 14; book cover chip renders).
 - **2026-07-14 — BUDGET_UTIL_BOOK mirrors the FULL GL butil page filter set + MULTI `pre_sql`/`post_sql` hooks.**
   Review: launching the book from the GL page ignored most page parameters. The definition now
   takes all 9 page filters (`year` req; `period` YTD MM-YYYY, `sector`, `chapter`, `projecttype`,

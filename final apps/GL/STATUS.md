@@ -17,6 +17,12 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-17** — **Business Unit multi-select** (`APP_VERSION` 1.31.0). Pending Approval page
+  gains a BU multi-select (chips; LOV = `businessUnits[]` from `/gl/pending`) → `bu=` exact
+  any-of list scoping register + KPIs + the unmatched coverage KPI (GL/db/13 re-run); forwarded
+  to ENC_PENDING_BOOK + ENC_PENDING_REGISTER (reporting/db/23+24 re-seeded, cover BU chip).
+  NOT added to the other GL/AP dashboards: the BIP snapshot is the only cross-BU source — the
+  OTBI extracts are DCT-scoped (AP has no BU column at all). E2E runs 89/90/91; smoke 45/45.
 - **2026-07-16** — **Pending page: zero-value lines excluded** (`APP_VERSION` 1.30.1). User rule:
   the page follows budget utilization, so 0-amount PR/PO lines never show (they reserve nothing) —
   `ABS(NVL(line_aed,0)) > 0.005` in the `GET /gl/pending` cursor (GL/db/13 re-run); the single-scan

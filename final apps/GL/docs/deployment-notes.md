@@ -26,6 +26,26 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-17 — Business Unit multi-select filter (GL v1.31.0)** — user request: BU as a search
+  criterion "in all dashboards in GL and AP + the reports", multi-select. **Data reality: the BIP
+  pending-approval snapshot is the ONLY cross-BU source on the platform** (DCT 713 / Museum Shared
+  Services 293 / Abrahamic Family House 10 docs; the non-DCT docs are 100% OUTSIDE the budget
+  extract). The OTBI extracts feeding every other surface are DCT-scoped single-value
+  (`ATD_PR_DISTRIBUTIONS.BUSINESS_UNIT` / `ATD_PO_HEADERS.*_BU` = one value; `ATD_AP_INVOICES`
+  has NO BU column; `ATD_PROJECTS.BUSINESS_UNIT_NAME` = literal placeholder 'BU'; budget lines /
+  GRN / GL balances = none) — so a BU filter elsewhere would be a one-value dropdown that never
+  changes results, and it was NOT added there (unlock = add BUSINESS_UNIT to the OTBI extracts,
+  then wire it like this one). Implemented where real: **Encumbrances – Pending Approval page**
+  gains a Business Unit multi-select (options from the new `businessUnits[]` LOV in the response;
+  picks = chips on the shared mchips bar; Reset clears) → `bu=` pipe-delimited EXACT any-of on
+  `GET /gl/pending`, scoping register + ALL KPIs/aging/approvers AND the unmatched coverage KPI
+  (GL/db/13 re-run); both bridges forward `bu`. Reports: `bu` param in ENC_PENDING_BOOK
+  (reporting/db/23 — all 4 scoped sections + the coverage annex + cover chip in
+  `enc_pending_book.html.j2`) and ENC_PENDING_REGISTER (reporting/db/24 — both sheets), each
+  param_spec gains the `bu` entry via JSON_MERGEPATCH (seeds deployed via vm180 python-oracledb;
+  template upserted + bundled copies synced to vm181/182). E2E: xlsx run 89 (bu=MSS|AFH) =
+  0 register rows + 303-doc annex; run 90 (bu=DCT) = 990 register rows (= page 992 minus the 2
+  not-reserved) + 14 annex; book run 91 cover shows the BU chip. Smoke +4 checks = **45/45**.
 - **2026-07-16 — Pending page: zero-value lines excluded (GL v1.30.1)** — user's round-4 review:
   the "Not reserved (pipeline)" drill still surfaced 0-amount lines. **User rule: the page follows
   budget utilization — a zero line never reserves funds — so zero-value lines are EXCLUDED from the

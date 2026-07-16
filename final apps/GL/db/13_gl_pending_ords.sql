@@ -22,11 +22,16 @@
 -- Data    : prod.dct_pr_po_pending_v (db/v2/52) + prod.dct_gl_coa_snap.
 -- Endpoints:
 --   GET  /gl/pending?year(req)=&period=&projecttype=&sector=&chapter=
---                    &costcenter=&project=&task=&etype=&search=&source=&limit=
---        (source = PR | PO; empty = both. items carry fusionHeaderId — the
---         FUSION internal pr/po header id for the shared deep-link builders)
---        -> { year, period?, asOf, kpis{}, aging[], approvers[], unmatched{},
---             columns[], items[], count, truncated, maxRows, totals{} }
+--                    &costcenter=&project=&task=&etype=&search=&source=&bu=&limit=
+--        (source = PR | PO; empty = both. bu = pipe-delimited EXACT any-of
+--         list of Business Units (Fusion BU names) — scopes the register,
+--         ALL aggregates AND the unmatched coverage KPI; only the BIP
+--         snapshot is cross-BU today, the OTBI extracts are DCT-scoped.
+--         items carry fusionHeaderId — the FUSION internal pr/po header id
+--         for the shared deep-link builders)
+--        -> { year, period?, asOf, businessUnits[], kpis{}, aging[],
+--             approvers[], unmatched{}, columns[], items[], count,
+--             truncated, maxRows, totals{} }
 --        KPIs / aging / approvers aggregate over the FULL filtered set in the
 --        same single scan that streams the register rows (the cap only limits
 --        the rows echoed back, never the aggregates).
@@ -80,6 +85,7 @@ DECLARE
   l_search  VARCHAR2(200) := [COLON]search;
   l_period  VARCHAR2(10)  := [COLON]period;
   l_source  VARCHAR2(10)  := UPPER([COLON]source);
+  l_bu      VARCHAR2(2000) := [COLON]bu;
   l_end     DATE;
   l_limit   NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit DEFAULT NULL ON CONVERSION ERROR), 10000), 10000);
   l_rows    NUMBER := 0;
@@ -125,6 +131,7 @@ BEGIN
   IF l_search  = '' THEN l_search  := NULL; END IF;
   IF l_period  = '' THEN l_period  := NULL; END IF;
   IF l_source  = '' THEN l_source  := NULL; END IF;
+  IF l_bu      = '' THEN l_bu      := NULL; END IF;
   IF l_source IS NOT NULL AND l_source NOT IN ('PR','PO') THEN
     dct_rest.err(400,'source must be PR or PO'); RETURN;
   END IF;
@@ -148,13 +155,26 @@ BEGIN
   SELECT NVL(SUM(CASE WHEN source = 'PR' THEN 1 ELSE 0 END),0),
          NVL(SUM(CASE WHEN source = 'PO' THEN 1 ELSE 0 END),0)
     INTO l_um_pr, l_um_po
-  FROM prod.dct_pr_po_pending_v WHERE in_extract = 'N';
+  FROM prod.dct_pr_po_pending_v
+  WHERE in_extract = 'N'
+    AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||business_unit||'|') > 0);
 
   dct_rest.json_header; APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   APEX_JSON.write('asOf', NVL(l_asof,''));
+
+  -- Business-unit LOV: every BU present in the snapshot (NOT scoped by the
+  -- current picks, so the multi-select options stay stable). Only the BIP
+  -- snapshot is cross-BU today -- the OTBI extracts are DCT-scoped.
+  APEX_JSON.open_array('businessUnits');
+  FOR b IN (SELECT DISTINCT business_unit bu
+              FROM prod.atd_pr_po_pending_approval
+             WHERE business_unit IS NOT NULL ORDER BY 1) LOOP
+    APEX_JSON.write(b.bu);
+  END LOOP;
+  APEX_JSON.close_array;
 
   -- server-defined column set (the IR grid renders exactly these, in THIS
   -- order): approval follow-up first (the page's purpose), then amounts,
@@ -236,6 +256,7 @@ BEGIN
       AND ABS(NVL(p.line_aed,0)) > 0.005
       AND p.budget_year = l_year
       AND (l_source IS NULL OR p.source = l_source)
+      AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||p.business_unit||'|') > 0)
       AND (p.project_number, NVL(p.task_number,'~'), NVL(p.expenditure_type,'~'))
           IN (SELECT pk, tk, et FROM kys)
     ORDER BY p.pending_days DESC NULLS LAST, p.line_aed DESC NULLS LAST
@@ -402,7 +423,7 @@ BEGIN
   APEX_JSON.write('year', l_year);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   put('sector'); put('chapter'); put('projecttype'); put('costcenter');
-  put('project'); put('task'); put('etype'); put('search');
+  put('project'); put('task'); put('etype'); put('search'); put('bu');
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;
@@ -513,7 +534,7 @@ BEGIN
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   IF l_source IS NOT NULL THEN APEX_JSON.write('source', l_source); END IF;
   put('sector'); put('chapter'); put('projecttype'); put('costcenter');
-  put('project'); put('task'); put('etype'); put('search');
+  put('project'); put('task'); put('etype'); put('search'); put('bu');
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;

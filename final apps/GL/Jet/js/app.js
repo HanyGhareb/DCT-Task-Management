@@ -220,6 +220,8 @@
     pnBookHint:{en:'Generate the Encumbrances Pending Approval Briefing Book PDF using ALL the current page filters — pending PR/PO registers, aging analysis, approver follow-up list and budget-impact insights (funds-reserved, non-zero lines only). Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب إحاطة الارتباطات قيد الاعتماد (PDF) وفق جميع عوامل تصفية الصفحة الحالية — سجلات طلبات وأوامر الشراء المعلقة وتحليل التقادم وقائمة متابعة المعتمدين وأثر الموازنة (البنود المحجوزة غير الصفرية فقط). يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     pnSourceL:{en:'Source',ar:'المصدر'},
     pnAllSources:{en:'All (PR + PO)',ar:'الكل (طلبات وأوامر الشراء)'},
+    pnBuL:{en:'Business unit',ar:'وحدة الأعمال'},
+    pnAllBus:{en:'All business units',ar:'كل وحدات الأعمال'},
     pnXlsx:{en:'Export Excel',ar:'تصدير إكسل'},
     pnXlsxRunning:{en:'Preparing Excel…',ar:'جارٍ إعداد الملف…'},
     pnXlsxHint:{en:'Generate the Pending PR & PO Register (Excel, for internal analysis) using ALL the current page filters: one flat sheet of every funds-reserved pending line with the full approval trail, budget line and GL classification (Sector, Cost centre, Account, Appropriation, Program — code and name), plus the extract-coverage annex sheet. Prepared by the reporting workers — takes under a minute.',ar:'إنشاء سجل طلبات وأوامر الشراء المعلقة (إكسل للتحليل الداخلي) وفق جميع عوامل تصفية الصفحة الحالية: ورقة واحدة لكل بند محجوز معلق مع مسار الاعتماد الكامل وبند الموازنة والتصنيف المحاسبي، إضافةً إلى ورقة ملحق التغطية. يُجهَّز عبر خوادم التقارير — يستغرق أقل من دقيقة.'},
@@ -1279,6 +1281,21 @@
        so the tiles stay correct even when the register itself is capped. */
     var PN_MAX = 10000;
     self.pnSource = ko.observable('');        // '' = both, 'PR' | 'PO'
+    /* Business Unit multi-select (2026-07-17): the BIP snapshot is the ONE
+       cross-BU source on the platform (the OTBI extracts are DCT-scoped), so
+       the filter lives on this page. Picks become chips; the server matches
+       ANY chip (pipe-delimited exact list) across register, KPIs AND the
+       unmatched coverage figures; options come from the /pending response. */
+    self.pnBus = ko.observableArray([]);
+    self.pnBuSel = ko.observableArray([]);
+    self.pnBuPick = ko.observable('');
+    self.pnBuAdd = function () {
+      var v = self.pnBuPick();
+      if (v && self.pnBuSel.indexOf(v) < 0) self.pnBuSel.push(v);
+      self.pnBuPick('');
+      return true;
+    };
+    self.pnBuParam = function () { return self.pnBuSel().join('|') || null; };
     self.pnItems = [];                        // raw register rows (KPI drill source)
     self.pnData = ko.observable(null);        // IR envelope, or null before first run
     self.pnLoading = ko.observable(false);
@@ -1317,6 +1334,7 @@
       var p = self.buParams(0, PN_MAX);       // same filters as Budget Utilization
       delete p.offset;
       p.source = self.pnSource() || null;     // page-local PR / PO scope
+      p.bu = self.pnBuParam();                // page-local Business Unit any-of list
       return api('GET', '/pending' + qs(p)).then(function (d) {
         // Fusion deep-link map: docNumber alone cannot build a deep link, so
         // keep source|doc# -> FUSION internal header id aside (the shared IR
@@ -1325,6 +1343,7 @@
         (d.items || []).forEach(function (r) {
           if (r.fusionHeaderId) { pnLinkMap[r.source + '|' + r.docNumber] = r.fusionHeaderId; }
         });
+        if (d.businessUnits) { self.pnBus(d.businessUnits); }
         self.pnItems = d.items || [];
         self.pnCount(d.count || 0);
         self.pnKpis(d.kpis || {});
@@ -1363,7 +1382,8 @@
       self.drillTitle(title);
       self.drillSub(self.t('pnTitle'));
       self.drillCtx([self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear(),
-        self.pnSource() || null].filter(Boolean).join('   ·   '));
+        self.pnSource() || null,
+        self.pnBuSel().join(', ') || null].filter(Boolean).join('   ·   '));
       self.drillCols(pnDrillCols());
       self.drillRows(rows.slice(0, PN_DRILL_CAP));
       self.drillTotalV(rows.reduce(function (s, r) { return s + (Number(r.lineAmount) || 0); }, 0));
@@ -1461,7 +1481,7 @@
       self.pnXlsxBusy(true);
       api('POST', '/pending/xlsx', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
-        source: self.pnSource() || null,
+        source: self.pnSource() || null, bu: self.pnBuParam(),
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
@@ -1514,6 +1534,7 @@
       // full page filter set (mirrors buParams) so the book scope = the page scope
       api('POST', '/pending/book', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.pnBuParam(),
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,

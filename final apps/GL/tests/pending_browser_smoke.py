@@ -127,6 +127,29 @@ def main():
         pg.wait_for_function("!ko.dataFor(document.body).pnLoading()", timeout=120000)
         check("source reset restores", pg.evaluate("ko.dataFor(document.body).pnCount()") == all_count)
 
+        # v1.31.0 — Business Unit multi-select: LOV shipped by /pending, a pick
+        # becomes a chip and scopes register + KPIs + the unmatched coverage KPI
+        bus = pg.evaluate("ko.dataFor(document.body).pnBus()")
+        check("BU LOV populated", len(bus) >= 1, "(%s)" % ", ".join(bus))
+        um_all = pg.evaluate("ko.dataFor(document.body).pnUnmatched()")["docs"]
+        other = [b for b in bus if b != "Department of Culture and Tourism"]
+        if other:
+            pg.evaluate("var v=ko.dataFor(document.body); v.pnBuSel(['%s']); v.runPending();" % other[0])
+            pg.wait_for_function("!ko.dataFor(document.body).pnLoading()", timeout=120000)
+            chip = pend.locator(".mchips-bar .mchip", has_text=other[0])
+            check("BU chip shown", chip.count() == 1, "(%s)" % other[0])
+            um_bu = pg.evaluate("ko.dataFor(document.body).pnUnmatched()")["docs"]
+            scoped = pg.evaluate("ko.dataFor(document.body).pnCount()")
+            check("BU pick scopes register + coverage",
+                  scoped < all_count and 0 < um_bu < um_all,
+                  "(rows %d, unmatched %d)" % (scoped, um_bu))
+        else:
+            check("BU chip shown", True, "(single-BU snapshot, pick skipped)")
+            check("BU pick scopes register + coverage", True, "(single-BU snapshot)")
+        pg.evaluate("var v=ko.dataFor(document.body); v.pnBuSel([]); v.runPending();")
+        pg.wait_for_function("!ko.dataFor(document.body).pnLoading()", timeout=120000)
+        check("BU reset restores", pg.evaluate("ko.dataFor(document.body).pnCount()") == all_count)
+
         # v1.28.0 — "Showing figures in" drives the tile values (buUnit)
         pg.evaluate("ko.dataFor(document.body).buUnit('M')")
         amt_txt = pend.locator(".pnk-amt .bk-v").inner_text()
