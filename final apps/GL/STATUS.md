@@ -17,6 +17,12 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-16** — **Pending page: zero-value lines excluded** (`APP_VERSION` 1.30.1). User rule:
+  the page follows budget utilization, so 0-amount PR/PO lines never show (they reserve nothing) —
+  `ABS(NVL(line_aed,0)) > 0.005` in the `GET /gl/pending` cursor (GL/db/13 re-run); the single-scan
+  design scopes register + KPIs + aging + approvers + client drills together (unmatched coverage
+  KPI untouched; book/Excel already had the stricter reserved-only rule). Subtitle states the rule.
+  Smoke 41/41 — webtier release 20260716223006.
 - **2026-07-16** — **Review round 3** (`APP_VERSION` 1.30.0). Pending page: busy overlay,
   KPI/aging/approver drill-downs into the shared drawer (client-side slices, Fusion doc links,
   CSV), #79C5AC mini-table region headers. Butil: NEW Part 5 "Pending Approvals — PR & PO Queue"

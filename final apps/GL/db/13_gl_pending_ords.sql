@@ -14,7 +14,11 @@
 -- Scope   : IDENTICAL to the GL Budget Utilization page -- the key-set CTE is
 --           lifted verbatim from /gl/encumbrances / /gl/butil/lines. The YTD
 --           period sets GL_CTX.BUTIL_END (the view is context-aware) and is
---           ALWAYS cleared, like /gl/butil.
+--           ALWAYS cleared, like /gl/butil. ZERO-VALUE lines are EXCLUDED
+--           (ABS(line_aed) > 0.005 -- user rule 2026-07-16: the page follows
+--           budget utilization, a zero line never reserves funds); the
+--           reserved / not-reserved split stays visible on the page (the book
+--           and Excel register additionally keep RESERVED lines only).
 -- Data    : prod.dct_pr_po_pending_v (db/v2/52) + prod.dct_gl_coa_snap.
 -- Endpoints:
 --   GET  /gl/pending?year(req)=&period=&projecttype=&sector=&chapter=
@@ -229,6 +233,7 @@ BEGIN
     FROM prod.dct_pr_po_pending_v p
     LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = p.cc_string
     WHERE p.in_extract = 'Y'
+      AND ABS(NVL(p.line_aed,0)) > 0.005
       AND p.budget_year = l_year
       AND (l_source IS NULL OR p.source = l_source)
       AND (p.project_number, NVL(p.task_number,'~'), NVL(p.expenditure_type,'~'))

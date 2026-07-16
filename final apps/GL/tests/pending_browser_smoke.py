@@ -102,6 +102,13 @@ def main():
         check("kpis reserved + unreserved = total",
               abs(kpis["reservedAmt"] + kpis["unreservedAmt"] - kpis["amtTotal"]) < 1)
 
+        # v1.30.1 — zero-value lines are excluded server-side (user rule:
+        # the page follows budget utilization; a zero line reserves nothing)
+        n_zero = pg.evaluate(
+            "ko.dataFor(document.body).pnItems"
+            ".filter(function(r){return Math.abs(r.lineAmount||0)<=0.005;}).length")
+        check("no zero-value lines in register", n_zero == 0, "(%d zero rows)" % n_zero)
+
         # v1.28.0 — redesigned KPI band + aging heat badges
         check("pn-kpis semantic accents", pend.locator(".pn-kpis .pnk-docs").count() == 1
               and pend.locator(".pn-kpis .pnk-age").count() == 1)

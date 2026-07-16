@@ -26,6 +26,18 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-16 — Pending page: zero-value lines excluded (GL v1.30.1)** — user's round-4 review:
+  the "Not reserved (pipeline)" drill still surfaced 0-amount lines. **User rule: the page follows
+  budget utilization — a zero line never reserves funds — so zero-value lines are EXCLUDED from the
+  PAGE too** (until now the rule applied only to the book/Excel register, which additionally keep
+  RESERVED lines only; the page keeps the reserved/not-reserved split). Fix = ONE predicate in the
+  `GET /gl/pending` cursor (`ABS(NVL(line_aed,0)) > 0.005`, GL/db/13 re-run) — the single-scan
+  design means register, KPIs, aging, approvers AND the client-side drill slices all pick it up
+  at once (the unmatched `in_extract='N'` coverage KPI is computed separately and is untouched).
+  Live: 1,035 → 992 lines, docs 712 (no real document lost; later snapshot 991/711 = one all-zero
+  doc dropped), totals reconcile; not-reserved slice = 2 real lines / 450K (rest was zero noise).
+  Page subtitle now states the rule (EN/AR). Smoke +1 check = **41/41** — webtier release
+  20260716223006.
 - **2026-07-16 — Review round 3: page UX + butil book/Excel + report covers (GL v1.30.0)** —
   ①**Pending page UX**: busy overlay (the butil `.bu-load-ov` oj-progress-circle replica
   wired to `pnLoading`, KPI band + Results wrapped in a `.bu-body`; `.pn-loading` min-height
