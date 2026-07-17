@@ -26,6 +26,10 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-18 — Web-tier release `20260718021355`** (`SSH_USER=opc bash
+  webtier/deploy_frontend.sh 129.151.159.189`): GL v1.32.1 live — verified `APP_VERSION` +
+  `app.js` now serves `runBuPpt`/`toggleGen`/`buGenBusy` (the dropdown, whose markup had shipped
+  earlier without its handler, is now functional) and `/gl/butil/ppt` 401s without a token.
 - **2026-07-18 — "Generate Report" dropdown + PowerPoint export (GL v1.32.1).** UX request:
   fold the Budget Utilization page's **Export Excel** + **Briefing Book** buttons into ONE
   **"Generate Report ▾"** split button and add a **PowerPoint** option. The menu (`.gen`/
