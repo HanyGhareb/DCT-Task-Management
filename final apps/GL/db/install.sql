@@ -15,4 +15,8 @@
 -- @08_gl_views_rebuild_ords.sql    -- ADDITIVE, fresh session (re-run after any 05)
 -- @09_gl_class_drill_ords.sql      -- ADDITIVE (synced into 05; re-run after any 05)
 -- @10_gl_actuals_lines_docnum.sql  -- ADDITIVE (synced into 05; re-run after any 05)
-PROMPT GL install: run scripts 01..10 individually per the header notes.
+-- @11_gl_butil_book_ords.sql       -- ADDITIVE, fresh session (re-run after any 05)
+-- @12_gl_encumbrances_ords.sql     -- ADDITIVE, fresh session (re-run after any 05)
+-- @13_gl_pending_ords.sql          -- ADDITIVE, fresh session (re-run after any 05;
+--                                      needs db/v2/52 view + reporting/db/23 seed)
+PROMPT GL install: run scripts 01..13 individually per the header notes.

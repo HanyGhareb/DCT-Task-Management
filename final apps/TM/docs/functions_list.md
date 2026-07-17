@@ -100,6 +100,7 @@ All other calls (incl. TM's own `GET boot`/`prefs`) hit `/ords/admin/tm/`. Notif
 | Visibility Grants (admin) | `views/visibilityGrants.html` + `viewModels/visibilityGrants.js` | `newGrant`, `save`, `revoke` (scope TEAM/TEAM_TREE/ORG/ALL × VIEWER/REPORTER) |
 | Team Roles (admin, full CRUD) | `views/teamRoles.html` + `viewModels/teamRoles.js` | `newRole`, `editRole`, `saveRole`, `retire`, `toggle` (clickable template CRUD matrix) |
 | Timeline / Gantt (per team) | `views/timeline.html` + `viewModels/timeline.js` | date-axis bars for tasks/deliverables/milestones (reached from teamDetail) |
+| Team Vacations (**DRAFT** — sample data until `/tm/vacations` ships) | `views/vacations.html` + `viewModels/vacations.js` | `load`, `prevMonth`/`nextMonth`/`goToday`, `setView` (APEX-style month calendar with lane-laid leave bars ↔ per-member team grid), `openVac`, `openAdd`/`dayClick`/`editVac`/`saveForm`/`removeVac` (local in draft); KPI band (on-leave-today / away-this-month / leave-days / peak-overlap) + validated 5-type legend; team selector scoped by `listTeams`/`listMembers` |
 
 **Phase B/C additions (2026-06-20):** exec scorecard gains achievement **badges** (`exec.js` `badges()` — perfect on-time / zero-overdue / all-on-track); **AI executive summary** per period in the teamCycle roster modal (`genAi`, `getAiSummary`); **weekly leader digest** (`DCT_TM_CYCLE_PKG.run_cycle_sweep` step 7, Sundays, gated by `CYCLE_WEEKLY_DIGEST`) — auto-fans to mobile push via the shared `DCT_NOTIFICATIONS`→`DCT_PUSH_OUTBOX` trigger (db/v2/28), so all `TM_CYCLE_*`/`TM_WEEKLY_DIGEST` notifications already reach App 209. New `tmService`: `getAiSummary`, `generateAiSummary`.
 
@@ -113,6 +114,7 @@ All other calls (incl. TM's own `GET boot`/`prefs`) hit `/ords/admin/tm/`. Notif
 |---|---|
 | `api.js` | Bearer-token fetch wrapper; 401 → login. |
 | `config.js` | `apiBase` toggle (mock vs `/ords/admin/tm`). |
+| `vacationService.js` | **DRAFT** — `getVacations({teamId,from,to,members})`; tries future `GET /tm/vacations`, falls back to a deterministic sample overlay on the real team roster. Delete the fallback when the endpoint ships. |
 | `authService` | login / session validate. |
 | `tmService` | teams, tasks, members, objectives + key results, documents, roles, reports. |
 | `notificationService` | notifications + count. |

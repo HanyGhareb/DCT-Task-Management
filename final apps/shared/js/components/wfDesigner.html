@@ -1,0 +1,352 @@
+<!-- shared/js/components/wfDesigner.html — <wf-designer>
+     A vertical step list, not a BPMN canvas: the mental model an approval admin
+     already has. Publish is safe (clone→draft→publish), conditions validate live,
+     and every choice list is DATA (outcome sets, fact fields, resolvers). -->
+<div class="wf-dz">
+
+  <!-- ko if: loading() -->
+  <list-skeleton params="rows: 6, cols: 5"></list-skeleton>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+
+  <!-- ko if: err() -->
+  <div class="form-error wf-dz-banner" data-bind="text: err()"></div>
+  <!-- /ko -->
+  <!-- ko if: note() -->
+  <div class="wf-dz-note" data-bind="text: note()"></div>
+  <!-- /ko -->
+
+  <!-- ═══ process list ═══ -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: $root.t('wf.dz.processes')"></h2>
+    </div>
+    <!-- ko if: !processes().length -->
+    <div class="empty-state"><p data-bind="text: $root.t('wf.dz.noProcesses')"></p></div>
+    <!-- /ko -->
+    <!-- ko if: processes().length -->
+    <div class="data-table-wrap">
+      <table class="data-table wf-dz-proc">
+        <thead><tr>
+          <th data-bind="text: $root.t('wf.dz.colCode')"></th>
+          <th data-bind="text: $root.t('wf.dz.colModule')"></th>
+          <th data-bind="text: $root.t('wf.dz.colName')"></th>
+          <th data-bind="text: $root.t('wf.dz.colVersion')"></th>
+          <th data-bind="text: $root.t('wf.dz.colEngine')"></th>
+          <th data-bind="text: $root.t('wf.dz.colSteps')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: processes">
+          <tr class="wf-dz-row" data-bind="css: { 'wf-dz-row--on': $component.isSelected($data) },
+                                            click: function () { return $component.selectProcess($data); }">
+            <td class="mono" data-bind="text: processCode"></td>
+            <td data-bind="text: module"></td>
+            <td data-bind="text: nameEn"></td>
+            <td><span class="badge" data-bind="text: $data.publishedVersion ? ('v' + $data.publishedVersion) : $root.t('wf.dz.noVersion')"></span></td>
+            <td><span class="badge" data-bind="text: routedTo,
+                      css: routedTo === 'WF' ? 'wf-badge-sys' : ''"></span></td>
+            <td data-bind="text: steps"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ═══ design panel ═══ -->
+  <!-- ko if: selected() && design() -->
+  <div class="card wf-dz-design">
+    <div class="section-heading-row">
+      <div>
+        <h2 class="section-heading" data-bind="text: selected().nameEn"></h2>
+        <span class="wf-dz-vchip badge"
+              data-bind="text: 'v' + design().versionNo + ' · ' + design().status,
+                         css: 'wf-st--' + String(design().status || '').toLowerCase()"></span>
+        <!-- ko ifnot: editable() -->
+        <span class="wf-dz-ro" data-bind="text: $root.t('wf.dz.readOnly')"></span>
+        <!-- /ko -->
+      </div>
+      <div class="region-actions">
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $component.openSim, text: $root.t('wf.dz.simulate')"></button>
+        <!-- ko ifnot: editable() -->
+        <button type="button" class="btn btn-primary btn-sm" data-bind="click: $component.editChain,
+                disable: busy(), text: $root.t('wf.dz.editChain')"></button>
+        <!-- /ko -->
+        <!-- ko if: editable() -->
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $component.validate, disable: busy(), text: $root.t('wf.dz.validate')"></button>
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $component.discard, disable: busy(), text: $root.t('wf.dz.discard')"></button>
+        <button type="button" class="btn btn-primary btn-sm"
+                data-bind="click: $component.publish, disable: busy(), text: $root.t('wf.dz.publish')"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <!-- steps -->
+    <div class="section-heading-row wf-dz-sub">
+      <h3 class="section-heading" data-bind="text: $root.t('wf.dz.steps')"></h3>
+      <!-- ko if: editable() -->
+      <div class="region-actions">
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $component.newStep, text: $root.t('wf.dz.addStep')"></button>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- ko if: !design().steps.length -->
+    <div class="empty-state"><p data-bind="text: $root.t('wf.dz.noSteps')"></p></div>
+    <!-- /ko -->
+
+    <ol class="wf-dz-steps" data-bind="foreach: design().steps">
+      <li class="wf-dz-step">
+        <span class="wf-dz-seq" data-bind="text: stepSeq"></span>
+        <div class="wf-dz-body">
+          <div class="wf-dz-head">
+            <span class="wf-dz-name" data-bind="text: nameEn"></span>
+            <span class="wf-dz-name-ar" data-bind="text: $data.nameAr || ''"></span>
+            <!-- ko if: $data.isFinalGate === 'Y' -->
+            <span class="badge wf-badge-sys" data-bind="text: $root.t('wf.dz.finalGate')"></span>
+            <!-- /ko -->
+            <!-- ko if: $data.stepKind && $data.stepKind !== 'HUMAN' -->
+            <span class="badge" data-bind="text: stepKind"></span>
+            <!-- /ko -->
+          </div>
+          <div class="wf-dz-meta">
+            <span class="wf-dz-tag"><b data-bind="text: $root.t('wf.dz.who')"></b>
+              <!-- ko foreach: ($data.participants || []) -->
+              <span class="wf-dz-chip" data-bind="text: $component.partSummary($data)"></span>
+              <!-- /ko -->
+              <!-- ko if: !($data.participants || []).length -->
+              <span class="wf-dz-muted" data-bind="text: '—'"></span>
+              <!-- /ko -->
+            </span>
+            <span class="wf-dz-tag"><b data-bind="text: $root.t('wf.dz.choices')"></b>
+              <span data-bind="text: $data.outcomeSetCode || '—'"></span></span>
+            <!-- ko if: $data.conditionKey -->
+            <span class="wf-dz-tag"><b data-bind="text: $root.t('wf.dz.when')"></b>
+              <code data-bind="text: $component.stepConditionExpr($data) || $data.conditionKey"></code></span>
+            <!-- /ko -->
+            <!-- ko if: $data.slaHours -->
+            <span class="wf-dz-tag"><b data-bind="text: $root.t('wf.dz.sla')"></b>
+              <span data-bind="text: $data.slaHours + 'h'"></span></span>
+            <!-- /ko -->
+          </div>
+        </div>
+        <!-- ko if: $component.editable() -->
+        <div class="wf-dz-ops">
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $component.editStep($data); }, text: $root.t('wf.dz.edit')"></button>
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $component.removeStep($data); }, text: $root.t('wf.dz.del')"></button>
+        </div>
+        <!-- /ko -->
+      </li>
+    </ol>
+
+    <!-- conditions -->
+    <div class="section-heading-row wf-dz-sub">
+      <h3 class="section-heading" data-bind="text: $root.t('wf.dz.conditions')"></h3>
+      <!-- ko if: editable() -->
+      <div class="region-actions">
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $component.newCondition, text: $root.t('wf.dz.addCondition')"></button>
+      </div>
+      <!-- /ko -->
+    </div>
+    <!-- ko if: !design().conditions.length -->
+    <div class="empty-state"><p data-bind="text: $root.t('wf.dz.noConditions')"></p></div>
+    <!-- /ko -->
+    <ul class="wf-dz-conds" data-bind="foreach: design().conditions">
+      <li class="wf-dz-cond">
+        <span class="mono wf-dz-condkey" data-bind="text: conditionKey"></span>
+        <code class="wf-dz-condexpr" data-bind="text: expr"></code>
+        <span class="badge" data-bind="text: $data.isValid === 'Y' ? $root.t('wf.dz.valid') : $root.t('wf.dz.invalid'),
+                                        css: $data.isValid === 'Y' ? 'wf-st--published' : 'wf-st--rejected'"></span>
+        <!-- ko if: $component.editable() -->
+        <span class="wf-dz-ops">
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $component.editCondition($data); }, text: $root.t('wf.dz.edit')"></button>
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $component.removeCondition($data); }, text: $root.t('wf.dz.del')"></button>
+        </span>
+        <!-- /ko -->
+      </li>
+    </ul>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ step editor modal ═══ -->
+  <!-- ko if: stepOpen() -->
+  <div class="modal-overlay" data-bind="click: function () { $component.stepOpen(false); return true; }">
+    <div class="modal-box wf-dz-modal" data-bind="click: function () { return true; }, clickBubble: false, modalTrap: function () { $component.stepOpen(false); }">
+      <div class="modal-header">
+        <h3 data-bind="text: $root.t(stepIsNew() ? 'wf.dz.newStep' : 'wf.dz.editStep')"></h3>
+        <div class="region-actions">
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $component.stepOpen(false); }, text: $root.t('wf.dz.cancel')"></button>
+          <button type="button" class="btn btn-primary btn-sm"
+                  data-bind="click: $component.saveStep, disable: busy(), text: $root.t('wf.dz.save')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.stepKey')"></label>
+            <input class="form-control mono" data-bind="textInput: fmStepKey, disable: !stepIsNew(),
+                   attr:{ placeholder: 'LEGAL_REVIEW' }"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.kind')"></label>
+            <select class="form-control" data-bind="value: fmKind, options: KINDS"></select></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.nameEn')"></label>
+            <input class="form-control" data-bind="textInput: fmNameEn"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.nameAr')"></label>
+            <input class="form-control" dir="rtl" data-bind="textInput: fmNameAr"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.outcomeSet')"></label>
+            <select class="form-control" data-bind="value: fmOutcome, options: outcomeSetCodes"></select></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.condition')"></label>
+            <select class="form-control" data-bind="value: fmCondition, options: conditionKeys,
+                    optionsText: function (k) { return k || $root.t('wf.dz.none'); }"></select></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.slaHours')"></label>
+            <input class="form-control" type="number" min="0" data-bind="textInput: fmSla"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.commentReq')"></label>
+            <select class="form-control" data-bind="value: fmComment, options: COMMENTS"></select></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.quorum')"></label>
+            <select class="form-control" data-bind="value: fmQuorum, options: QUORUMS"></select></div>
+          <div class="form-group wf-dz-check">
+            <div class="wf-dz-toggle"><input type="checkbox" data-bind="checked: fmFinalGate"></div>
+            <label class="form-label" data-bind="text: $root.t('wf.dz.finalGate')"></label></div>
+        </div>
+
+        <!-- participants -->
+        <div class="section-heading-row wf-dz-sub">
+          <h4 class="section-heading" data-bind="text: $root.t('wf.dz.who')"></h4>
+          <div class="region-actions">
+            <button type="button" class="btn btn-secondary btn-sm"
+                    data-bind="click: $component.addPart, text: $root.t('wf.dz.addParticipant')"></button>
+          </div>
+        </div>
+        <div data-bind="foreach: fmParts">
+          <div class="wf-dz-part">
+            <select class="form-control" data-bind="value: resolverType, options: $component.RESOLVERS"></select>
+            <!-- ko if: resolverType() === 'ROLE' || resolverType() === 'ROLE_SCOPED_ORG' -->
+            <input class="form-control mono" data-bind="textInput: roleCode, attr:{ placeholder: 'FL_MANAGER' }">
+            <!-- /ko -->
+            <!-- ko if: resolverType() === 'FACT_USER' -->
+            <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.lineManagerUserId' }">
+            <!-- /ko -->
+            <!-- ko if: resolverType() === 'STATIC_USER' -->
+            <input class="form-control" type="number" data-bind="textInput: staticUserId, attr:{ placeholder: 'user id' }">
+            <!-- /ko -->
+            <select class="form-control" data-bind="value: fallbackRule, options: $component.FALLBACKS"></select>
+            <label class="wf-dz-mini"><span class="wf-dz-toggle"><input type="checkbox" data-bind="checked: excludeInitiator"></span>
+              <span data-bind="text: $root.t('wf.dz.excludeInitiator')"></span></label>
+            <button type="button" class="btn btn-secondary btn-sm"
+                    data-bind="click: function () { $component.removePart($data); }, text: $root.t('wf.dz.del')"></button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ condition editor modal ═══ -->
+  <!-- ko if: condOpen() -->
+  <div class="modal-overlay" data-bind="click: function () { $component.condOpen(false); return true; }">
+    <div class="modal-box wf-dz-modal" data-bind="click: function () { return true; }, clickBubble: false, modalTrap: function () { $component.condOpen(false); }">
+      <div class="modal-header">
+        <h3 data-bind="text: $root.t(condIsNew() ? 'wf.dz.newCondition' : 'wf.dz.editCondition')"></h3>
+        <div class="region-actions">
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $component.condOpen(false); }, text: $root.t('wf.dz.cancel')"></button>
+          <button type="button" class="btn btn-primary btn-sm"
+                  data-bind="click: $component.saveCondition, disable: busy() || condValid() === false,
+                             text: $root.t('wf.dz.save')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.stepKey')"></label>
+            <input class="form-control mono" data-bind="textInput: fmCondKey, disable: !condIsNew(),
+                   attr:{ placeholder: 'DURATION_GE_6M' }"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.nameEn')"></label>
+            <input class="form-control" data-bind="textInput: fmCondNameEn"></div>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('wf.dz.expr')"></label>
+          <textarea class="form-control mono" rows="3" spellcheck="false"
+                    data-bind="textInput: fmCondExpr, attr:{ placeholder: 'contract_months >= 6' }"></textarea>
+          <!-- ko if: condValid() === true -->
+          <div class="wf-dz-ok" data-bind="text: $root.t('wf.dz.valid')"></div>
+          <!-- /ko -->
+          <!-- ko if: condValid() === false -->
+          <div class="form-error" data-bind="text: condError() || $root.t('wf.dz.invalid')"></div>
+          <!-- /ko -->
+        </div>
+        <!-- ko if: schemaFields().length -->
+        <div class="wf-dz-fields">
+          <div class="wf-dz-fields-h" data-bind="text: $root.t('wf.dz.factFields')"></div>
+          <!-- ko foreach: schemaFields -->
+          <span class="wf-dz-fchip" data-bind="text: fieldKey, attr:{ title: (labelEn || '') + ' (' + dataType + ')' }"></span>
+          <!-- /ko -->
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ simulate modal (dry run) ═══ -->
+  <!-- ko if: simOpen() -->
+  <div class="modal-overlay" data-bind="click: function () { $component.simOpen(false); return true; }">
+    <div class="modal-box wf-dz-modal wf-dz-modal--wide" data-bind="click: function () { return true; }, clickBubble: false, modalTrap: function () { $component.simOpen(false); }">
+      <div class="modal-header">
+        <h3 data-bind="text: $root.t('wf.dz.simTitle')"></h3>
+        <div class="region-actions">
+          <button type="button" class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $component.simOpen(false); }, text: $root.t('common.close')"></button>
+          <button type="button" class="btn btn-primary btn-sm"
+                  data-bind="click: $component.runSim, disable: simBusy(), text: $root.t('wf.dz.run')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <p class="wf-dz-simnote" data-bind="text: $root.t('wf.dz.simNote')"></p>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('wf.dz.facts')"></label>
+          <textarea class="form-control mono" rows="6" spellcheck="false" data-bind="textInput: simFacts"></textarea>
+        </div>
+        <!-- ko if: simErr() -->
+        <div class="form-error" data-bind="text: simErr()"></div>
+        <!-- /ko -->
+        <!-- ko if: simResult() -->
+        <ol class="wf-dz-steps wf-dz-simsteps" data-bind="foreach: (simResult().steps || [])">
+          <li class="wf-dz-step" data-bind="css: $component.simStepClass($data)">
+            <span class="wf-dz-seq" data-bind="text: $data.stepKey"></span>
+            <div class="wf-dz-body">
+              <div class="wf-dz-head">
+                <span class="wf-dz-name" data-bind="text: $data.name || $data.stepKey"></span>
+                <span class="badge" data-bind="text: ($data.fires === false || $data.fires === 'N') ? $root.t('wf.dz.simSkips') : $root.t('wf.dz.simFires')"></span>
+              </div>
+              <!-- ko if: $data.skipReason -->
+              <div class="wf-skip" data-bind="text: $data.skipReason"></div>
+              <!-- /ko -->
+              <!-- ko if: ($data.approvers || []).length -->
+              <div class="wf-dz-meta"><span class="wf-dz-tag"><b data-bind="text: $root.t('wf.dz.simApprovers')"></b>
+                <!-- ko foreach: $data.approvers -->
+                <span class="wf-dz-chip" data-bind="text: ($data.name || $data.displayName || $data)"></span>
+                <!-- /ko -->
+              </span></div>
+              <!-- /ko -->
+            </div>
+          </li>
+        </ol>
+        <!-- ko if: !(simResult().steps || []).length -->
+        <div class="empty-state"><p data-bind="text: $root.t('wf.dz.simEmpty')"></p></div>
+        <!-- /ko -->
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+</div>

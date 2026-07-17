@@ -63,6 +63,7 @@ function (ko, config, authService, tmService, i18n, shell) {
           { id: 'myWork', labelKey: 'nav.myWork', icon: '&#9989;' },
           { id: 'myUpdates', labelKey: 'nav.myUpdates', icon: '&#128221;' },
           { id: 'teams',  labelKey: 'nav.teams',  icon: '&#128101;' },
+          { id: 'vacations', labelKey: 'nav.vacations', icon: '&#127796;' },
           { id: 'library',labelKey: 'nav.library',icon: '&#128193;' } ] },
       { id: 'insights', labelKey: 'nav.insightsGroup', auth: 'mgr', collapsed: ko.observable(false), items: [
           { id: 'exec', labelKey: 'nav.execView', icon: '&#127970;' },

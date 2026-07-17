@@ -32,6 +32,7 @@ DATE_RE = re.compile(
     r"\d{4}-\d{2}-\d{2}" + _T +                          # 2026-01-15 [T/ HH:MI:SS[.fff]]
     r"|\d{1,2}-[A-Za-z]{3}-\d{2,4}" + _T +               # 15-Jan-2026 [time]
     r"|\d{1,2}/\d{1,2}/\d{4}" + _T +                     # 01/15/2026 [time]
+    r"|\d{1,2}-\d{1,2}-\d{4}" + _T +                     # 14-07-2026 day-first (BIP AE)
     r")$")
 # A matched date that carries fractional seconds -> needs TIMESTAMP (Oracle DATE
 # holds only whole seconds). Plain date / date+HH:MI:SS stays DATE.

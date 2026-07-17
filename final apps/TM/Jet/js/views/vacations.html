@@ -1,0 +1,166 @@
+<div class="page vac-page">
+  <div class="page-header-row">
+    <div>
+      <h1 class="page-title" data-bind="text: t('tm.vac.title')"></h1>
+      <div class="muted" data-bind="text: t('tm.vac.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <select class="form-control vac-teamsel" data-bind="options: teams, optionsValue: 'teamId', optionsText: 'nameEn', value: teamId"></select>
+      <span class="vac-seg">
+        <button class="btn btn-sm" data-bind="css: { 'btn-primary': view() === 'cal' }, click: function () { setView('cal'); }, text: t('tm.vac.viewCal')"></button>
+        <button class="btn btn-sm" data-bind="css: { 'btn-primary': view() === 'grid' }, click: function () { setView('grid'); }, text: t('tm.vac.viewGrid')"></button>
+      </span>
+      <button class="btn btn-sm btn-primary" data-bind="click: openAdd, text: '+ ' + t('tm.vac.add')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: loading --><div class="muted" data-bind="text: t('tm.common.loading')"></div><!-- /ko -->
+  <!-- ko ifnot: loading -->
+  <!-- ko if: teams().length === 0 --><div class="empty-state" data-bind="text: t('tm.vac.noTeam')"></div><!-- /ko -->
+  <!-- ko if: teams().length > 0 -->
+
+  <!-- KPI band + legend -->
+  <div class="vac-topline">
+    <div class="vac-kpis">
+      <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().today"></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.onToday')"></div></div>
+      <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().out"></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.outMonth')"></div></div>
+      <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().days"></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.days')"></div></div>
+      <div class="vac-kpi"><div class="vac-kpi-num"><span data-bind="text: kpis().peak"></span><span class="vac-kpi-sub" data-bind="text: kpis().peakDate ? ' · ' + kpis().peakDate : ''"></span></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.peak')"></div></div>
+    </div>
+    <div class="vac-legend">
+      <!-- ko foreach: typeOpts -->
+      <span><i class="vac-key" data-bind="css: 'vac-key--' + code"></i><span data-bind="text: label"></span></span>
+      <!-- /ko -->
+      <span class="vac-pendhint" data-bind="text: t('tm.vac.pendingHint')"></span>
+      <!-- ko if: sample --><span class="badge vac-samplebadge" data-bind="text: t('tm.vac.sample'), attr: { title: t('tm.vac.sampleTip') }"></span><!-- /ko -->
+    </div>
+  </div>
+
+  <!-- month header -->
+  <div class="section-heading-row">
+    <div class="section-heading" data-bind="text: monthTitle"></div>
+    <div class="region-actions">
+      <button class="btn btn-sm" data-bind="click: prevMonth, attr: { title: t('tm.vac.prev') }"><span class="vac-arrow">&#8249;</span></button>
+      <button class="btn btn-sm" data-bind="click: goToday, text: t('tm.vac.today')"></button>
+      <button class="btn btn-sm" data-bind="click: nextMonth, attr: { title: t('tm.vac.next') }"><span class="vac-arrow">&#8250;</span></button>
+    </div>
+  </div>
+
+  <!-- ═════ CALENDAR VIEW ═════ -->
+  <!-- ko if: view() === 'cal' -->
+  <div class="vac-cal">
+    <div class="vac-dow" data-bind="foreach: dowNames">
+      <div class="vac-dow-cell" data-bind="text: $data"></div>
+    </div>
+    <!-- ko foreach: weeks -->
+    <div class="vac-week" data-bind="attr: { style: 'min-height:' + minH + 'px' }">
+      <!-- ko foreach: days -->
+      <div data-bind="css: $vm.dayClass($data), click: function () { $vm.dayClick($data); return true; }">
+        <div class="vac-day-num" data-bind="text: num"></div>
+      </div>
+      <!-- /ko -->
+      <div class="vac-bars" data-bind="foreach: bars">
+        <div data-bind="css: cls, attr: { style: style, title: tip }, click: function () { $vm.openVac(vac); }, clickBubble: false">
+          <span data-bind="text: label"></span>
+        </div>
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- ko if: monthEmpty --><div class="muted vac-emptynote" data-bind="text: t('tm.vac.none')"></div><!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ═════ TEAM GRID VIEW ═════ -->
+  <!-- ko if: view() === 'grid' -->
+  <div class="vac-grid-wrap">
+    <table class="vac-grid">
+      <thead>
+        <tr>
+          <th class="vac-g-name" data-bind="text: t('tm.vac.member')"></th>
+          <!-- ko foreach: gridDays --><th class="vac-g-day" data-bind="css: { 'vac-g-we': we }, text: n"></th><!-- /ko -->
+          <th class="vac-g-day vac-g-tot" data-bind="text: t('tm.vac.daysL')"></th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: gridRows">
+        <tr>
+          <td class="vac-g-name"><span class="vac-avatar" data-bind="text: initials"></span><span data-bind="text: name"></span></td>
+          <!-- ko foreach: cells -->
+          <td data-bind="css: $vm.cellClass($data), attr: { title: tip }, click: function () { if ($data.vac) { $vm.openVac($data.vac); } return true; }">
+            <!-- ko if: t --><div data-bind="css: barCls"></div><!-- /ko -->
+          </td>
+          <!-- /ko -->
+          <td class="vac-g-day vac-g-tot" data-bind="text: total"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ═════ DETAIL MODAL ═════ -->
+  <!-- ko if: selVac -->
+  <div class="modal-overlay" data-bind="click: closeVac">
+  <div class="modal-box vac-modal" data-bind="click: function () { return true; }, clickBubble: false">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: t('tm.vac.detail')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm" data-bind="click: closeVac, text: t('tm.common.close')"></button>
+        <button class="btn btn-sm" data-bind="click: removeVac, text: t('tm.vac.remove')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: editVac, text: t('tm.vac.edit')"></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="vac-det-head">
+        <span class="vac-avatar vac-avatar--lg" data-bind="text: (selVac().memberName || '?').split(' ').map(function (p) { return p[0]; }).slice(0, 2).join('').toUpperCase()"></span>
+        <div>
+          <div class="vac-det-name" data-bind="text: selVac().memberName"></div>
+          <div>
+            <span data-bind="css: 'vac-chip vac--' + selVac().type, text: t('tm.vac.type.' + selVac().type)"></span>
+            <span data-bind="css: 'vac-chip vac-chip--' + selVac().status, text: t('tm.vac.status.' + selVac().status)"></span>
+          </div>
+        </div>
+      </div>
+      <div class="form-grid">
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.vac.from')"></label><input class="form-control" readonly data-bind="value: selVac().startDate"></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.vac.to')"></label><input class="form-control" readonly data-bind="value: selVac().endDate"></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.vac.daysL')"></label><input class="form-control" readonly data-bind="value: vacDays(selVac())"></div>
+        <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.vac.notes')"></label><textarea class="form-control" rows="2" readonly data-bind="value: $data.selVac().notes || ''"></textarea></div>
+      </div>
+    </div>
+  </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═════ PLAN / EDIT MODAL ═════ -->
+  <!-- ko if: formOpen -->
+  <div class="modal-overlay" data-bind="click: closeForm">
+  <div class="modal-box vac-modal" data-bind="click: function () { return true; }, clickBubble: false">
+    <div class="modal-header">
+      <div class="modal-title" data-bind="text: editId() ? t('tm.vac.edit') : t('tm.vac.add')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm" data-bind="click: closeForm, text: t('tm.common.cancel')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: saveForm, text: t('tm.common.save')"></button>
+      </div>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group form-group--full">
+          <label class="form-label" data-bind="text: t('tm.vac.member')"></label>
+          <select class="form-control" data-bind="options: rosterOpts, optionsValue: 'userId', optionsText: 'name', optionsCaption: t('tm.vac.selMember'), value: fmUser"></select>
+        </div>
+        <div class="form-group form-group--full">
+          <label class="form-label" data-bind="text: t('tm.vac.typeL')"></label>
+          <select class="form-control" data-bind="options: typeOpts, optionsValue: 'code', optionsText: 'label', value: fmType"></select>
+        </div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.vac.from')"></label><input type="date" class="form-control" data-bind="value: fmFrom"></div>
+        <div class="form-group"><label class="form-label" data-bind="text: t('tm.vac.to')"></label><input type="date" class="form-control" data-bind="value: fmTo"></div>
+        <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('tm.vac.notes')"></label><textarea class="form-control" rows="2" data-bind="textInput: fmNotes"></textarea></div>
+      </div>
+      <!-- ko if: fmErr --><div class="vac-err" data-bind="text: fmErr"></div><!-- /ko -->
+    </div>
+  </div>
+  </div>
+  <!-- /ko -->
+</div>

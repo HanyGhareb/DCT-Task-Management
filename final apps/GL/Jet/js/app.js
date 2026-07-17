@@ -184,6 +184,50 @@
     enTruncNote:{en:'Showing the top 10,000 lines by open amount.',ar:'يتم عرض أعلى 10٬000 بند حسب المبلغ المفتوح.'},
     enLoadingNote:{en:'Loading encumbrance lines…',ar:'جارٍ تحميل بنود الارتباط…'},
     enIrErr:{en:'The interactive report component could not be loaded. Please refresh the page; if the problem persists, contact the administrator.',ar:'تعذّر تحميل مكوّن التقرير التفاعلي. يرجى تحديث الصفحة؛ وإذا استمرت المشكلة، تواصل مع المسؤول.'},
+
+    /* ── Encumbrances – Pending Approval (PR/PO documents awaiting approval) ── */
+    navPending:{en:'Encumbrances – Pending Approval',ar:'الارتباطات – قيد الاعتماد'},
+    pnTitle:{en:'Encumbrances – Pending Approval Follow-up',ar:'متابعة الارتباطات قيد الاعتماد'},
+    pnSub:{en:'Every PR / PO document awaiting approval in Fusion, with its budget lines, full GL combination and approval trail (preparer, submitted date, pending approver, days pending) — for the selected Budget Utilization scope. Zero-value lines are excluded: only lines that will reserve funds are followed.',ar:'كل مستند طلب شراء / أمر شراء بانتظار الاعتماد في فيوجن، مع بنود موازنته والتركيبة المحاسبية الكاملة ومسار الاعتماد (المُعدّ، تاريخ التقديم، المعتمد الحالي، أيام الانتظار) — ضمن نطاق استخدام الموازنة المحدد. تُستبعد البنود ذات القيمة الصفرية: تتم متابعة البنود التي ستحجز أموالاً فقط.'},
+    pnAsOf:{en:'Snapshot',ar:'اللقطة'},
+    pnLinesLabel:{en:'pending lines',ar:'بند قيد الاعتماد'},
+    pnAmtLabel:{en:'Pending amount (AED)',ar:'المبلغ قيد الاعتماد (درهم)'},
+    pnTruncNote:{en:'Showing the top 10,000 lines (oldest first).',ar:'يتم عرض أول 10٬000 بند (الأقدم أولًا).'},
+    pnLoadingNote:{en:'Loading pending approval lines…',ar:'جارٍ تحميل بنود قيد الاعتماد…'},
+    pnDocsK:{en:'Pending documents',ar:'المستندات قيد الاعتماد'},
+    pnAmtK:{en:'Pending amount',ar:'المبلغ قيد الاعتماد'},
+    pnResK:{en:'Funds reserved',ar:'الأموال المحجوزة'},
+    pnAgingK:{en:'Approval aging',ar:'تقادم الاعتماد'},
+    pnPrRow:{en:'Requisitions (PR)',ar:'طلبات الشراء (PR)'},
+    pnPoRow:{en:'Purchase orders (PO)',ar:'أوامر الشراء (PO)'},
+    pnReserved:{en:'Reserved (in encumbrance)',ar:'محجوز (ضمن الارتباطات)'},
+    pnUnreserved:{en:'Not reserved (pipeline)',ar:'غير محجوز (قيد الانتظار)'},
+    pnResSub:{en:'already counted in open encumbrance',ar:'محتسب ضمن الارتباطات المفتوحة'},
+    pnAvgDays:{en:'avg days pending',ar:'متوسط أيام الانتظار'},
+    pnOldest:{en:'Oldest',ar:'الأقدم'},
+    pnDaysUnit:{en:'days',ar:'يومًا'},
+    pnDocsUnit:{en:'docs',ar:'مستند'},
+    pnOver30:{en:'Over 30 days',ar:'أكثر من 30 يومًا'},
+    pnWithin30:{en:'30 days or less',ar:'30 يومًا أو أقل'},
+    pnAgingT:{en:'Aging analysis — days pending approval',ar:'تحليل التقادم — أيام انتظار الاعتماد'},
+    pnApproversT:{en:'Top pending approvers — follow-up focus',ar:'أبرز المعتمدين المعلّق لديهم — تركيز المتابعة'},
+    pnBucket:{en:'Days',ar:'الأيام'},
+    pnColDocs:{en:'Documents',ar:'المستندات'},
+    pnColAmt:{en:'Amount (AED)',ar:'المبلغ (درهم)'},
+    pnColMaxD:{en:'Max days',ar:'أقصى أيام'},
+    pnApprover:{en:'Pending with',ar:'معلّق لدى'},
+    pnUnmatchedNote:{en:'{n} pending documents ({pr} PR / {po} PO) are not yet matched to the budget extract — they are listed in the Briefing Book annex.',ar:'{n} مستندًا قيد الاعتماد ({pr} طلب شراء / {po} أمر شراء) لم تُطابَق بعد مع مستخرج الموازنة — ترد قائمتها في ملحق كتيب الإحاطة.'},
+    pnBookHint:{en:'Generate the Encumbrances Pending Approval Briefing Book PDF using ALL the current page filters — pending PR/PO registers, aging analysis, approver follow-up list and budget-impact insights (funds-reserved, non-zero lines only). Prepared by the reporting workers — takes about a minute.',ar:'إنشاء كتيب إحاطة الارتباطات قيد الاعتماد (PDF) وفق جميع عوامل تصفية الصفحة الحالية — سجلات طلبات وأوامر الشراء المعلقة وتحليل التقادم وقائمة متابعة المعتمدين وأثر الموازنة (البنود المحجوزة غير الصفرية فقط). يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    pnSourceL:{en:'Source',ar:'المصدر'},
+    pnAllSources:{en:'All (PR + PO)',ar:'الكل (طلبات وأوامر الشراء)'},
+    pnBuL:{en:'Business unit',ar:'وحدة الأعمال'},
+    pnAllBus:{en:'All business units',ar:'كل وحدات الأعمال'},
+    pnXlsx:{en:'Export Excel',ar:'تصدير إكسل'},
+    pnXlsxRunning:{en:'Preparing Excel…',ar:'جارٍ إعداد الملف…'},
+    pnXlsxHint:{en:'Generate the Pending PR & PO Register (Excel, for internal analysis) using ALL the current page filters: one flat sheet of every funds-reserved pending line with the full approval trail, budget line and GL classification (Sector, Cost centre, Account, Appropriation, Program — code and name), plus the extract-coverage annex sheet. Prepared by the reporting workers — takes under a minute.',ar:'إنشاء سجل طلبات وأوامر الشراء المعلقة (إكسل للتحليل الداخلي) وفق جميع عوامل تصفية الصفحة الحالية: ورقة واحدة لكل بند محجوز معلق مع مسار الاعتماد الكامل وبند الموازنة والتصنيف المحاسبي، إضافةً إلى ورقة ملحق التغطية. يُجهَّز عبر خوادم التقارير — يستغرق أقل من دقيقة.'},
+    pnXlsxReady:{en:'Excel register downloaded.',ar:'تم تنزيل سجل الإكسل.'},
+    buXlsxHint:{en:'Generate the Budget Utilization Register (Excel, for internal analysis) using ALL the current page filters: the utilization lines plus every supporting detail list in its own worksheet — direct AP invoices, GRN receipts, open purchase orders, open requisitions and the pending-approval PR/PO queue. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء سجل استخدام الموازنة (إكسل للتحليل الداخلي) وفق جميع عوامل تصفية الصفحة الحالية: بنود الاستخدام مع كل قائمة تفاصيل داعمة في ورقة مستقلة — فواتير الدائنين المباشرة وإيصالات الاستلام وأوامر الشراء المفتوحة وطلبات الشراء المفتوحة وقائمة الانتظار قيد الاعتماد. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    pnDrillHint:{en:'Click to see the matching pending lines.',ar:'انقر لعرض البنود المعلقة المطابقة.'},
     buTitle:{en:'Budget Utilization',ar:'استخدام الموازنة'},
     buSub:{en:'Project budget vs AP, GRN, open commitments and obligations — per task and expenditure type.',ar:'موازنة المشاريع مقابل الدائنين والاستلام والالتزامات والتعهدات المفتوحة — لكل مهمة ونوع إنفاق.'},
     fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
@@ -377,6 +421,11 @@
         // reuses the Budget Utilization filter set; run once on first open
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runEncumbrances(); });
         else if (!self.enLoaded()) self.runEncumbrances();
+      }
+      else if (v === 'pending') {
+        // reuses the Budget Utilization filter set; run once on first open
+        if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runPending(); });
+        else if (!self.pnLoaded()) self.runPending();
       }
     };
     self.signOut = function () { location.href = ADMIN_LOGIN; };
@@ -836,6 +885,11 @@
       if (col.key === 'invoice' && row.invoiceId) return F.invoice(row.invoiceId);
       if (col.key === 'po' && row.poHeaderId)     return F.purchaseOrder(row.poHeaderId);
       if (col.key === 'pr' && row.prHeaderId)     return F.requisition(row.prHeaderId);
+      // pending-approval KPI drills: mixed PR/PO rows carry source + fusionHeaderId
+      if (col.key === 'docNumber' && row.fusionHeaderId) {
+        return row.source === 'PR' ? F.requisition(row.fusionHeaderId)
+                                   : F.purchaseOrder(row.fusionHeaderId);
+      }
       return null;
     };
     self.drillFooterSpan = ko.computed(function () { return Math.max(1, self.drillCols().length - 1); });
@@ -1128,6 +1182,60 @@
       }).catch(function (e) { self.buBookBusy(false); fail(e); });
     };
 
+    /* ── Excel register (BUDGET_UTIL_REGISTER via the /gl/butil/xlsx bridge) —
+       the analysis companion of the Briefing Book: every detail list in its
+       own worksheet (utilization lines, AP, GRN, open PO, open PR, pending). */
+    self.buXlsxBusy = ko.observable(false);
+    function buXlsxDownload(runId) {
+      return fetch(API + '/butil/xlsx/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Budget_Utilization_Register_' + self.buYear() + '.xlsx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runBuXlsx = function () {
+      if (self.buXlsxBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.buXlsxBusy(true);
+      api('POST', '/butil/xlsx', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {
+            self.buXlsxBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/butil/xlsx/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                buXlsxDownload(runId)
+                  .then(function () { self.buXlsxBusy(false); toast(self.t('pnXlsxReady')); })
+                  .catch(function (e) { self.buXlsxBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.buXlsxBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 5000);
+        })();
+      }).catch(function (e) { self.buXlsxBusy(false); fail(e); });
+    };
+
     /* ════ PROJECTS ENCUMBRANCES — open PO/PR lines with the full GL combination ══
        Reuses the Budget Utilization filter bar (buParams) VERBATIM, so the scope
        is identical to that page. The result set renders in the SHARED
@@ -1162,6 +1270,299 @@
           maxRows: d.maxRows || EN_MAX, section: 'enc' });
         self.enLoaded(true); self.enLoading(false);
       }).catch(function (e) { self.enLoading(false); fail(e); });
+    };
+
+    /* ════ ENCUMBRANCES – PENDING APPROVAL — PR/PO docs awaiting approval ════
+       Same Budget Utilization filter bar (buParams) and the same shared
+       <interactive-report> grid as the Projects Encumbrances tab, over
+       GET /gl/pending (daily Fusion BIP snapshot joined to the encumbrance
+       line detail, db/v2/52). The endpoint aggregates the monitoring KPIs /
+       aging buckets / top approvers over the FULL filtered set server-side,
+       so the tiles stay correct even when the register itself is capped. */
+    var PN_MAX = 10000;
+    self.pnSource = ko.observable('');        // '' = both, 'PR' | 'PO'
+    /* Business Unit multi-select (2026-07-17): the BIP snapshot is the ONE
+       cross-BU source on the platform (the OTBI extracts are DCT-scoped), so
+       the filter lives on this page. Picks become chips; the server matches
+       ANY chip (pipe-delimited exact list) across register, KPIs AND the
+       unmatched coverage figures; options come from the /pending response. */
+    self.pnBus = ko.observableArray([]);
+    self.pnBuSel = ko.observableArray([]);
+    self.pnBuPick = ko.observable('');
+    self.pnBuAdd = function () {
+      var v = self.pnBuPick();
+      if (v && self.pnBuSel.indexOf(v) < 0) self.pnBuSel.push(v);
+      self.pnBuPick('');
+      return true;
+    };
+    self.pnBuParam = function () { return self.pnBuSel().join('|') || null; };
+    self.pnItems = [];                        // raw register rows (KPI drill source)
+    self.pnData = ko.observable(null);        // IR envelope, or null before first run
+    self.pnLoading = ko.observable(false);
+    self.pnLoaded = ko.observable(false);
+    self.pnCount = ko.observable(0);
+    self.pnKpis = ko.observable(null);
+    self.pnAging = ko.observableArray([]);
+    self.pnApprovers = ko.observableArray([]);
+    self.pnUnmatched = ko.observable(null);
+    self.pnTruncated = ko.observable(false);
+    self.pnAsOf = ko.observable('');
+    self.pnTotAmt = ko.observable(0);
+    self.pnIrError = self.enIrError;          // same shared-component guard
+    self.pnK = function (k) { var o = self.pnKpis(); return (o && o[k] != null) ? o[k] : 0; };
+    self.pnPctTxt = function (part, total) {
+      if (!total) return '';
+      return Math.round(100 * (part || 0) / total) + '%';
+    };
+    self.pnSegW = function (part, total) {
+      if (!total) return '0%';
+      return Math.max(0, Math.min(100, 100 * (part || 0) / total)).toFixed(1) + '%';
+    };
+    self.pnTotAmtTxt = ko.computed(function () {
+      return Number(self.pnTotAmt() || 0).toLocaleString('en-US',
+        { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    });
+    self.pnUnmatchedTxt = ko.computed(function () {
+      var u = self.pnUnmatched();
+      if (!u || !u.docs) return '';
+      return self.t('pnUnmatchedNote').replace('{n}', self.fmt(u.docs))
+        .replace('{pr}', self.fmt(u.prDocs || 0)).replace('{po}', self.fmt(u.poDocs || 0));
+    });
+    self.runPending = function () {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pnLoading(true);
+      var p = self.buParams(0, PN_MAX);       // same filters as Budget Utilization
+      delete p.offset;
+      p.source = self.pnSource() || null;     // page-local PR / PO scope
+      p.bu = self.pnBuParam();                // page-local Business Unit any-of list
+      return api('GET', '/pending' + qs(p)).then(function (d) {
+        // Fusion deep-link map: docNumber alone cannot build a deep link, so
+        // keep source|doc# -> FUSION internal header id aside (the shared IR
+        // grid only keeps declared columns on its rows)
+        pnLinkMap = {};
+        (d.items || []).forEach(function (r) {
+          if (r.fusionHeaderId) { pnLinkMap[r.source + '|' + r.docNumber] = r.fusionHeaderId; }
+        });
+        if (d.businessUnits) { self.pnBus(d.businessUnits); }
+        self.pnItems = d.items || [];
+        self.pnCount(d.count || 0);
+        self.pnKpis(d.kpis || {});
+        self.pnAging(d.aging || []);
+        self.pnApprovers(d.approvers || []);
+        self.pnUnmatched(d.unmatched || null);
+        self.pnAsOf(d.asOf || '');
+        self.pnTotAmt((d.totals && d.totals.lineAed) || 0);
+        self.pnTruncated(!!d.truncated);
+        self.pnData({ columns: d.columns || [], items: d.items || [],
+          total: d.count || 0, truncated: !!d.truncated,
+          maxRows: d.maxRows || PN_MAX, section: 'pend' });
+        self.pnLoaded(true); self.pnLoading(false);
+      }).catch(function (e) { self.pnLoading(false); fail(e); });
+    };
+    /* ── KPI drill-downs — every tile breakdown row, aging bucket and top
+       approver opens the SHARED right-edge drill drawer with the matching
+       pending lines (client-side filter of the loaded register; Document #
+       cells deep-link to Fusion via drillLink's docNumber rule). ── */
+    var PN_DRILL_KEYS = ['source', 'docNumber', 'docLine', 'description', 'preparerBuyer',
+      'submittedDate', 'pendingDays', 'pendingWith', 'fundsStatus',
+      'projectNumber', 'task', 'expenditureType', 'lineAmount'];
+    var PN_DRILL_CAP = 1000;
+    function pnDrillCols() {
+      var byKey = {};
+      ((self.pnData() || {}).columns || []).forEach(function (c) { byKey[c.key] = c; });
+      return PN_DRILL_KEYS.map(function (k) {
+        var c = byKey[k] || { key: k, label: k, type: 'text' };
+        return { key: c.key, label: c.label, type: c.type };
+      });
+    }
+    function pnReservedRow(r) {
+      return r.fundsStatus === 'Reserved' || r.fundsStatus === 'Partially Liquidated';
+    }
+    function openPnList(rows, title) {
+      self.drillTitle(title);
+      self.drillSub(self.t('pnTitle'));
+      self.drillCtx([self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear(),
+        self.pnSource() || null,
+        self.pnBuSel().join(', ') || null].filter(Boolean).join('   ·   '));
+      self.drillCols(pnDrillCols());
+      self.drillRows(rows.slice(0, PN_DRILL_CAP));
+      self.drillTotalV(rows.reduce(function (s, r) { return s + (Number(r.lineAmount) || 0); }, 0));
+      self.drillCount(rows.length);
+      self.drillLoading(false);
+      self.drillDrawer(true);
+    }
+    self.openPnDrill = function (kind) {
+      var defs = {
+        pr:         { f: function (r) { return r.source === 'PR'; },        t: self.t('pnPrRow') },
+        po:         { f: function (r) { return r.source === 'PO'; },        t: self.t('pnPoRow') },
+        reserved:   { f: pnReservedRow,                                     t: self.t('pnReserved') },
+        unreserved: { f: function (r) { return !pnReservedRow(r); },        t: self.t('pnUnreserved') },
+        over30:     { f: function (r) { return (r.pendingDays || 0) > 30; },  t: self.t('pnOver30') },
+        within30:   { f: function (r) { return (r.pendingDays || 0) <= 30; }, t: self.t('pnWithin30') }
+      };
+      var d = defs[kind];
+      if (!d) return;
+      openPnList(self.pnItems.filter(d.f), d.t);
+    };
+    self.openPnBucket = function (b) {
+      // b = {bucket:'0-7'|'8-15'|'16-30'|'31+'}
+      var lo = { '0-7': 0, '8-15': 8, '16-30': 16, '31+': 31 }[b.bucket] || 0;
+      var hi = { '0-7': 7, '8-15': 15, '16-30': 30, '31+': Infinity }[b.bucket];
+      openPnList(self.pnItems.filter(function (r) {
+        var v = r.pendingDays || 0; return v >= lo && v <= hi;
+      }), self.t('pnBucket') + ' ' + b.bucket + ' ' + self.t('pnDaysUnit'));
+    };
+    self.openPnApprover = function (a) {
+      // mirror the server key: NVL(SUBSTR(pending_with,1,400),'(Unassigned)')
+      openPnList(self.pnItems.filter(function (r) {
+        return ((r.pendingWith || '(Unassigned)').substring(0, 400)) === a.name;
+      }), self.t('pnApprover') + ' · ' + a.name);
+    };
+
+    /* ── Fusion deep-links on the register's Document # cells ──
+       Same delegated ko.contextFor pattern as the combination popover (no
+       shared-component change): hovering a docNumber cell shows the link
+       affordance, clicking opens the Fusion PR / PO deep link in a new tab
+       (shared fusionLinks.js builders over the FUSION internal header id). */
+    var pnLinkMap = {};
+    function pnDocHref(row) {
+      var F = window.FusionLinks;
+      if (!F || !row || !row.docNumber) return null;
+      var id = pnLinkMap[row.source + '|' + row.docNumber];
+      if (!id) return null;
+      return row.source === 'PR' ? F.requisition(id) : F.purchaseOrder(id);
+    }
+    function pnResolveCell(target) {
+      var td = (target && target.closest) ? target.closest('td') : null;
+      if (!td) return null;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (e) { return null; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row || !ctx.$data) return null;
+      return { td: td, row: ctx.$parent.row, col: ctx.$data };
+    }
+    self.pnGridOver = function (d, e) {
+      self.enGridOver(d, e);                  // combination popover behaviour
+      var info = pnResolveCell(e.target);
+      if (info && info.col.key === 'docNumber' && pnDocHref(info.row)) {
+        info.td.classList.add('pn-doclink');
+        info.td.title = self.t('fusionOpen');
+      }
+      return true;
+    };
+    self.pnGridClick = function (d, e) {
+      var info = pnResolveCell(e.target);
+      if (info && info.col.key === 'docNumber') {
+        var href = pnDocHref(info.row);
+        if (href && href !== '#') { window.open(href, '_blank', 'noopener'); return false; }
+      }
+      return true;
+    };
+    /* Excel register (ENC_PENDING_REGISTER via the /gl/pending/xlsx bridge) —
+       the analysis companion of the Briefing Book: one flat sheet of every
+       funds-reserved pending line + the extract-coverage annex sheet. */
+    self.pnXlsxBusy = ko.observable(false);
+    function pnXlsxDownload(runId) {
+      return fetch(API + '/pending/xlsx/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Encumbrances_Pending_Approval_Register_' + self.buYear() + '.xlsx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runPnXlsx = function () {
+      if (self.pnXlsxBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pnXlsxBusy(true);
+      api('POST', '/pending/xlsx', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        source: self.pnSource() || null, bu: self.pnBuParam(),
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {
+            self.pnXlsxBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/pending/xlsx/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                pnXlsxDownload(runId)
+                  .then(function () { self.pnXlsxBusy(false); toast(self.t('pnXlsxReady')); })
+                  .catch(function (e) { self.pnXlsxBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.pnXlsxBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 4000);
+        })();
+      }).catch(function (e) { self.pnXlsxBusy(false); fail(e); });
+    };
+    /* Briefing Book (ENC_PENDING_BOOK via the /gl/pending/book bridge) */
+    self.pnBookBusy = ko.observable(false);
+    function pnBookDownload(runId) {
+      return fetch(API + '/pending/book/' + runId + '/pdf',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('PDF download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Encumbrances_Pending_Approval_Book_' + self.buYear() + '.pdf';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runPnBook = function () {
+      if (self.pnBookBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pnBookBusy(true);
+      // full page filter set (mirrors buParams) so the book scope = the page scope
+      api('POST', '/pending/book', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.pnBuParam(),
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {                       // ~6 min ceiling
+            self.pnBookBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/pending/book/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasPdf) {
+                pnBookDownload(runId)
+                  .then(function () { self.pnBookBusy(false); toast(self.t('buBookReady')); })
+                  .catch(function (e) { self.pnBookBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.pnBookBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });      // transient poll error: keep waiting
+          }, 6000);
+        })();
+      }).catch(function (e) { self.pnBookBusy(false); fail(e); });
     };
 
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */

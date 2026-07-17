@@ -13,6 +13,9 @@
 {%- set GRN = S.grn_lines.data if S.grn_lines else [] -%}
 {%- set PO  = S.open_po.data if S.open_po else [] -%}
 {%- set PR  = S.open_pr.data if S.open_pr else [] -%}
+{%- set POV = (S.pend_ov.data[0] if S.pend_ov and S.pend_ov.data else {}) -%}
+{%- set PAG = S.pend_aging.data if S.pend_aging else [] -%}
+{%- set PAP = S.pend_approvers.data if S.pend_approvers else [] -%}
 {#- applied report scope — mirrors the GL Budget Utilization page filters -#}
 {%- set flt = [] -%}
 {%- if params.period %}{% set _ = flt.append('YTD through ' ~ params.period) %}{% endif -%}
@@ -62,12 +65,18 @@
   .cv-scope b { color: var(--brand-d); }
   .cv-desc { margin: 8mm 0 0 18mm; max-width: 150mm; font-size: 11px; line-height: 1.65;
              color: #52606D; }
-  .cv-prep { position: absolute; bottom: 12mm; left: 18mm; font-size: 10.5px; color: var(--mut); }
-  .cv-prep b { display: block; font-size: 13.5px; color: var(--brand-d); margin-top: 2px; }
-  .cv-prep i { display: block; font-style: normal; color: #52606D; margin-top: 1px; }
+  .cv-prep { position: absolute; bottom: 12mm; left: 18mm; background: #fff;
+             border: 1px solid #D8E2E7; border-left: 5px solid var(--brand);
+             border-radius: 5px; padding: 10px 20px 11px 14px;
+             box-shadow: 0 2px 10px rgba(23,89,111,.12); }
+  .cv-prep .pb-eyebrow { font-size: 8.5px; letter-spacing: .18em; text-transform: uppercase;
+                         color: var(--mut); font-weight: 700; }
+  .cv-prep b { display: block; font-size: 16.5px; color: var(--brand-d); margin-top: 3px;
+               line-height: 1.2; }
+  .cv-prep i { display: block; font-style: normal; font-size: 11px; color: #52606D; margin-top: 3px; }
   .cv-date { position: absolute; bottom: 12mm; right: 18mm; text-align: right;
              font-size: 10px; color: var(--mut); }
-  .cv-date b { display: block; font-size: 12px; color: var(--ink); }
+  .cv-date b { display: block; font-size: 12.5px; color: var(--ink); margin-top: 1px; }
 
   /* ── table of contents ─────────────────────────────────────────────── */
   .toc-h { border-bottom: 3px solid var(--brand); padding-bottom: 8px; margin-bottom: 12px; }
@@ -171,7 +180,7 @@
 {#- ═══ COVER ═══════════════════════════════════════════════════════════ -#}
 <div class="page cover">
   <div class="cv-band"></div>
-  <div class="cv-org">i-Finance &middot; Reporting Platform</div>
+  <div class="cv-org">Oracle Fusion i-Finance &middot; Reporting Platform</div>
   <div class="cv-title">Budget Utilization<br>Briefing Book</div>
   <div class="cv-sub">Budget Year {{ params.year }}{% if params.period %} &mdash; YTD through {{ params.period }}{% endif %}</div>
   <div class="cv-scope">
@@ -201,11 +210,12 @@
     closing with observations prepared for management review. All amounts are in AED. The scope
     matches the Budget Utilization page filters the report was launched with.
   </div>
-  <div class="cv-prep">Prepared by
+  <div class="cv-prep">
+    <div class="pb-eyebrow">Prepared by</div>
     <b>Financial Planning and Budgeting</b>
     <i>Finance Department</i>
   </div>
-  <div class="cv-date">Generated<b>{{ generated_at }} GST (UTC+04:00)</b>Asia/Dubai &middot; {{ report_code }}</div>
+  <div class="cv-date">Generated<b>{{ generated_at_pretty|default(generated_at) }}</b>GST (UTC+04:00) &middot; {{ report_code }}</div>
   <div class="cv-band2"></div>
 </div>
 
@@ -230,6 +240,10 @@
             <div class="d">Funds-reserved requisition lines not yet converted to purchase orders: demand in the pipeline.</div></td>
         <td class="n">{{ PR|length|fmt }} PR lines</td></tr>
     <tr><td class="no">05</td>
+        <td><div class="t">Pending Approvals — PR &amp; PO Queue</div>
+            <div class="d">Demand still waiting in the Fusion approval queue (funds-reserved): how much, how long it has been waiting, and who is holding it — tomorrow's encumbrance movements.</div></td>
+        <td class="n">{{ POV.docs|fmt if POV.docs is not none else '—' }} documents &middot; {{ (POV.amt_total/1000000)|round(1)|fmt if POV.amt_total else '—' }} M AED</td></tr>
+    <tr><td class="no">06</td>
         <td><div class="t">Observations &amp; Insights</div>
             <div class="d">What the numbers say: pacing, pressure points, concentration and pipeline coverage — with the methodology behind every figure.</div></td>
         <td class="n">&nbsp;</td></tr>
@@ -578,7 +592,65 @@
   <div class="foot">Part 4.1 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
 </div>
 
-{#- ═══ PART 5 — INSIGHTS ═══════════════════════════════════════════════ -#}
+{#- ═══ PART 5 — PENDING APPROVALS (PR & PO QUEUE) ══════════════════════ -#}
+<div class="page">
+  <div class="pt-band"><span class="pt-no">05</span><span class="pt-t">Pending Approvals — PR &amp; PO Queue</span>
+    <span class="pt-s">documents PENDING APPROVAL in Fusion &middot; funds-reserved, non-zero lines</span></div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="k-lbl">Pending Documents</div><div class="k-val">{{ POV.docs|fmt }}</div><div class="k-sub">{{ POV.lines|fmt }} budget lines</div></div>
+    <div class="kpi"><div class="k-lbl">Requisitions (PR)</div><div class="k-val">{{ POV.pr_docs|fmt }}</div><div class="k-sub">{{ money(POV.amt_pr) }} AED</div></div>
+    <div class="kpi"><div class="k-lbl">Purchase Orders (PO)</div><div class="k-val">{{ POV.po_docs|fmt }}</div><div class="k-sub">{{ money(POV.amt_po) }} AED</div></div>
+    <div class="kpi k-enc"><div class="k-lbl">Pending Value</div><div class="k-val">{{ money(POV.amt_total) }}</div><div class="k-sub">already inside the open-encumbrance figures</div></div>
+    <div class="kpi k-act"><div class="k-lbl">Average Wait</div><div class="k-val">{{ POV.avg_days|fmt }}</div><div class="k-sub">days pending &middot; oldest {{ POV.max_days|fmt }}</div></div>
+    <div class="kpi {{ 'k-bad' if POV.over30_docs else 'k-ok' }}"><div class="k-lbl">Over 30 Days</div><div class="k-val {{ 'neg' if POV.over30_docs }}">{{ POV.over30_docs|fmt }}</div><div class="k-sub">documents &middot; {{ money(POV.over30_amt) }} AED</div></div>
+  </div>
+
+  <div class="charts">
+    <div class="chart">
+      <div class="ch-t">Aging — pending value and documents by days waiting</div>
+      {% set pagmax = (PAG|map(attribute='amount_aed')|select('number')|max) if PAG else 0 %}
+      {% for r in PAG %}
+      <div class="hb-row"><div class="hb-lbl">{{ r.bucket }} days</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if r.bucket == '31+' else 'warn' if r.bucket == '16-30' else '' }}"
+             style="width:{{ (100*(r.amount_aed or 0)/pagmax)|round(1) if pagmax else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.amount_aed) }} &middot; {{ r.docs|fmt }} docs</div></div>
+      {% endfor %}
+      {% if not PAG %}<div class="empty">No documents pending approval in scope.</div>{% endif %}
+    </div>
+    <div class="chart">
+      <div class="ch-t">Top pending approvers by value held</div>
+      {% set papmax = (PAP|map(attribute='amount_aed')|select('number')|max) if PAP else 0 %}
+      {% for r in PAP %}
+      <div class="hb-row"><div class="hb-lbl">{{ (r.pending_with or '(Unassigned)')|string|truncate(26) }}</div>
+        <div class="hb-track"><div class="hb-bar {{ 'bad' if r.max_days and r.max_days > 30 else 'warn' }}"
+             style="width:{{ (100*(r.amount_aed or 0)/papmax)|round(1) if papmax else 0 }}%"></div></div>
+        <div class="hb-val">{{ money(r.amount_aed) }} &middot; {{ r.docs|fmt }} docs</div></div>
+      {% endfor %}
+      {% if not PAP %}<div class="empty">No approver data.</div>{% endif %}
+    </div>
+  </div>
+
+  <div class="sub-h">5.1 &nbsp; Pending value per approver <small>&mdash; top {{ PAP|length }} by amount held; the full registers live in the Encumbrances Pending Approval Briefing Book</small></div>
+  {% if PAP %}
+  <table class="data">
+    <thead><tr><th>Pending With</th><th>Documents</th><th>Amount Held (AED)</th><th>Share of Pending Value</th><th>Longest Wait (days)</th><th>Oldest Submission</th></tr></thead>
+    <tbody>
+      {% for r in PAP %}
+      <tr><td>{{ r.pending_with or '(Unassigned)' }}</td>
+        <td class="num">{{ r.docs|fmt }}</td>
+        <td class="num">{{ r.amount_aed|fmt }}</td>
+        <td class="num">{{ (100*(r.amount_aed or 0)/POV.amt_total)|round(1) if POV.amt_total else '—' }}%</td>
+        <td class="num {{ 'neg' if r.max_days and r.max_days > 30 }}">{{ r.max_days|fmt }}</td>
+        <td class="num">{{ dt(r.oldest_submitted) }}</td></tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}<div class="empty">No documents pending approval for the selected criteria.</div>{% endif %}
+  <div class="foot">Part 5 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot; Amounts in AED</div>
+</div>
+
+{#- ═══ PART 6 — INSIGHTS ═══════════════════════════════════════════════ -#}
 {#- with a YTD period the pacing clock stops at the period end, not today -#}
 {%- set gy = (params.period[3:]|int) if params.period else generated_at[:4]|int -%}
 {%- set gm = (params.period[:2]|int) if params.period else generated_at[5:7]|int -%}
@@ -587,7 +659,7 @@
 {%- set actual_pct = (100 * (O.actual_total or 0) / O.budget)|round(1) if O.budget else 0 -%}
 {%- set oldest_po = (PO|selectattr('budget_date')|sort(attribute='budget_date')|list|first) if PO else none -%}
 <div class="page">
-  <div class="pt-band"><span class="pt-no">05</span><span class="pt-t">Observations &amp; Insights</span>
+  <div class="pt-band"><span class="pt-no">06</span><span class="pt-t">Observations &amp; Insights</span>
     <span class="pt-s">prepared for management review</span></div>
 
   {#- verdicts drive the red/green colouring: good = on track, bad = needs attention -#}
@@ -652,6 +724,19 @@
     in the coming payment cycles{% if uninv_heavy %}; <span class="i-bad">this is a sizeable amount</span>
     relative to the budget and worth chasing with the suppliers{% endif %}.</div></div>
 
+  {% if POV.docs %}
+  {%- set pend_enc_share = (100 * (POV.amt_total or 0) / ((O.obligation_po or 0) + (O.commitment_pr or 0)))|round(1) if (O.obligation_po or 0) + (O.commitment_pr or 0) else 0 -%}
+  <div class="ins"><div class="i-t">Approval queue</div>
+    <div class="i-b"><b>{{ POV.docs|fmt }} documents</b> worth <b>{{ money(POV.amt_total) }} AED</b>
+    ({{ pend_enc_share }}% of the open encumbrance) are still waiting in the Fusion approval queue
+    (Part 5), at an average of {{ POV.avg_days|fmt }} days pending.
+    {% if POV.over30_docs %}<span class="i-bad">{{ POV.over30_docs|fmt }} of them
+    ({{ money(POV.over30_amt) }} AED) have waited more than 30 days</span> — until approved, these
+    funds stay reserved without moving, so the utilization picture will not change for that value
+    until the queue clears.{% else %}<span class="i-good">Nothing has waited more than 30 days</span>
+    — the approval queue is turning over at a healthy pace.{% endif %}</div></div>
+  {% endif %}
+
   <div class="meth">
     <h4>How the figures are defined</h4>
     <div>
@@ -667,7 +752,7 @@
       budget-utilization reporting layer, reflecting Oracle Fusion data as of the generation time.
     </div>
   </div>
-  <div class="foot">Part 5 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot;
+  <div class="foot">Part 6 &middot; Budget Utilization Briefing Book &middot; {{ params.year }} &middot;
     Generated {{ generated_at }} GST (UTC+04:00, Asia/Dubai) &middot; {{ report_code }} &middot;
     Prepared by Financial Planning and Budgeting — Finance Department</div>
 </div>

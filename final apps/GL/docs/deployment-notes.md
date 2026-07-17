@@ -10,9 +10,11 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    - `06_gl_seed.sql` — run with `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8` (Arabic class-type names);
      regenerate from CSVs first with `python db/gen_seed.py` if `db/source/*.csv` changed.
    - `05_gl_ords.sql` — **own fresh session**. It DELETE_MODULEs gl.rest — **always re-run the
-     ADDITIVE scripts `07` (butil), `08` (rebuild endpoint), `09` (mappings drill) and `10`
-     (actuals/lines doc numbers) right after any 05 re-run.** (09 and 10 are also source-synced
-     into 05, so a full 05 re-run carries their changes — re-running them is still harmless.)
+     ADDITIVE scripts `07` (butil), `08` (rebuild endpoint), `09` (mappings drill), `10`
+     (actuals/lines doc numbers), `11` (butil Briefing-Book bridge), `12` (Projects
+     Encumbrances) and `13` (Encumbrances Pending Approval + its book bridge) right after any
+     05 re-run.** (09 and 10 are also source-synced into 05, so a full 05 re-run carries
+     their changes — re-running them is still harmless.)
    - After a **structural** ATD reload (new/renamed columns): UI **Rebuild views** button
      (= `POST /gl/actuals/rebuild` → `prod.dct_views_rebuild`, db/v2/38) re-creates the base
      pass-throughs + recompiles + refreshes. If it reports views still invalid → edit/re-run the
@@ -24,6 +26,159 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-17 — Business Unit multi-select filter (GL v1.31.0)** — user request: BU as a search
+  criterion "in all dashboards in GL and AP + the reports", multi-select. **Data reality: the BIP
+  pending-approval snapshot is the ONLY cross-BU source on the platform** (DCT 713 / Museum Shared
+  Services 293 / Abrahamic Family House 10 docs; the non-DCT docs are 100% OUTSIDE the budget
+  extract). The OTBI extracts feeding every other surface are DCT-scoped single-value
+  (`ATD_PR_DISTRIBUTIONS.BUSINESS_UNIT` / `ATD_PO_HEADERS.*_BU` = one value; `ATD_AP_INVOICES`
+  has NO BU column; `ATD_PROJECTS.BUSINESS_UNIT_NAME` = literal placeholder 'BU'; budget lines /
+  GRN / GL balances = none) — so a BU filter elsewhere would be a one-value dropdown that never
+  changes results, and it was NOT added there (unlock = add BUSINESS_UNIT to the OTBI extracts,
+  then wire it like this one). Implemented where real: **Encumbrances – Pending Approval page**
+  gains a Business Unit multi-select (options from the new `businessUnits[]` LOV in the response;
+  picks = chips on the shared mchips bar; Reset clears) → `bu=` pipe-delimited EXACT any-of on
+  `GET /gl/pending`, scoping register + ALL KPIs/aging/approvers AND the unmatched coverage KPI
+  (GL/db/13 re-run); both bridges forward `bu`. Reports: `bu` param in ENC_PENDING_BOOK
+  (reporting/db/23 — all 4 scoped sections + the coverage annex + cover chip in
+  `enc_pending_book.html.j2`) and ENC_PENDING_REGISTER (reporting/db/24 — both sheets), each
+  param_spec gains the `bu` entry via JSON_MERGEPATCH (seeds deployed via vm180 python-oracledb;
+  template upserted + bundled copies synced to vm181/182). E2E: xlsx run 89 (bu=MSS|AFH) =
+  0 register rows + 303-doc annex; run 90 (bu=DCT) = 990 register rows (= page 992 minus the 2
+  not-reserved) + 14 annex; book run 91 cover shows the BU chip. Smoke +4 checks = **45/45**.
+- **2026-07-16 — Pending page: zero-value lines excluded (GL v1.30.1)** — user's round-4 review:
+  the "Not reserved (pipeline)" drill still surfaced 0-amount lines. **User rule: the page follows
+  budget utilization — a zero line never reserves funds — so zero-value lines are EXCLUDED from the
+  PAGE too** (until now the rule applied only to the book/Excel register, which additionally keep
+  RESERVED lines only; the page keeps the reserved/not-reserved split). Fix = ONE predicate in the
+  `GET /gl/pending` cursor (`ABS(NVL(line_aed,0)) > 0.005`, GL/db/13 re-run) — the single-scan
+  design means register, KPIs, aging, approvers AND the client-side drill slices all pick it up
+  at once (the unmatched `in_extract='N'` coverage KPI is computed separately and is untouched).
+  Live: 1,035 → 992 lines, docs 712 (no real document lost; later snapshot 991/711 = one all-zero
+  doc dropped), totals reconcile; not-reserved slice = 2 real lines / 450K (rest was zero noise).
+  Page subtitle now states the rule (EN/AR). Smoke +1 check = **41/41** — webtier release
+  20260716223006.
+- **2026-07-16 — Review round 3: page UX + butil book/Excel + report covers (GL v1.30.0)** —
+  ①**Pending page UX**: busy overlay (the butil `.bu-load-ov` oj-progress-circle replica
+  wired to `pnLoading`, KPI band + Results wrapped in a `.bu-body`; `.pn-loading` min-height
+  covers the first load); **KPI drill-downs** — every tile breakdown row (PR/PO docs, PR/PO
+  amounts, Reserved/Not-reserved, Over-30/Within-30), every aging bucket row and every
+  top-approver row opens the SHARED right-edge drill drawer with the matching pending lines
+  (client-side slice of the loaded register `pnItems`, cap 1,000 w/ top-N note, total
+  reconciles, CSV export for free; drawer Document # cells deep-link to Fusion via a new
+  generic `drillLink` rule on key `docNumber` + row.source/fusionHeaderId); the aging/approver
+  **mini-table headers are region-header bands in the user-specified `#79C5AC`**
+  (`.pn-mini h4`, dark-green text for contrast, tables in `.pn-tbl-wrap`, hover tint on
+  clickable rows).
+  ②**Budget Utilization book (`reporting/db/21` + template redeployed)**: NEW **Part 5 —
+  Pending Approvals (PR & PO Queue)** (sections `pend_ov`/`pend_aging`/`pend_approvers` over
+  `DCT_PR_PO_PENDING_V`, reserved non-zero rule; KPI tiles + aging/approver bars + top-10
+  per-approver table), TOC row added, Observations renumbered Part 6 + a new **Approval
+  queue** insight (pending value as % of open encumbrance, over-30 focus).
+  ③**Budget Utilization Excel register**: NEW `BUDGET_UTIL_REGISTER` (`reporting/db/25`,
+  MULTI/PYTHON, XLSX-only — 6 sheets: utilization lines / direct AP / GRN receipts / open PO
+  / open PR / pending PR-PO queue; params = the butil set, param_spec copied from the book;
+  section SQLs kept in LOCK-STEP with db/21) + bridge `POST /gl/butil/xlsx` + `:id` +
+  `:id/file` (**GL/db/11 re-run**) + **Export Excel** button on the butil page head.
+  ④**Both report covers** (senior-frontend pass, both `.j2` templates + runner):
+  "Oracle Fusion i-Finance · Reporting Platform" brand line; generated stamp in the simple
+  form **"Thu 16-Jul-2026 10:04 pm"** (NEW additive runner ctx field `generated_at_pretty`
+  — runner.py synced to vm180-182 + rpt-workers restarted; `generated_at` unchanged for
+  other consumers); **Prepared-by card** (framed white card, brand accent spine, PREPARED BY
+  eyebrow, 16.5px name).
+  E2E runs 86/87/88 all SUCCESS (butil book 230pp w/ Part 5+6 verified; register 906KB
+  6-sheet workbook 9,483 rows; pending book cover verified); browser smoke **40/40**;
+  webtier release 20260716220623.
+- **2026-07-16 — Pending Approval Excel register (GL v1.29.0)** — user request: "the same
+  report only table … in Excel format for internal analysis". NEW Reporting-Platform
+  definition **`ENC_PENDING_REGISTER`** (`reporting/db/24`, MULTI/PYTHON,
+  **default_formats = XLSX only**, no template — `build_xlsx_multi` renders one styled sheet
+  per section): sheet 1 = ONE flat register of every funds-reserved pending PR/PO line
+  (same ENC_PENDING_BOOK scope rule) with ALL related info — 29 columns: approval trail
+  (preparer, submitted, days, pending-with), business unit, funds status, project/task/etype,
+  Sector, Chapter, Cost centre / Account / Appropriation / Program (code+name), budget date,
+  currency, AED amounts, canonical GL combination; sheet 2 = the extract-coverage annex.
+  Params = the butil set + `source` (param_spec = BUDGET_UTIL_BOOK's via **JSON_MERGEPATCH**
+  + a source entry). GL bridge (`GL/db/13` re-run): `POST /gl/pending/xlsx` (+source in
+  body) + `GET /gl/pending/xlsx/:id` (hasFile) + `/:id/file` (XLSX download). Page: **Export
+  Excel** button next to Briefing Book (`runPnXlsx`, 4-s poll, auto-download
+  `Encumbrances_Pending_Approval_Register_<year>.xlsx`). 24 is MERGE-bearing → deployed via
+  python-oracledb on vm180. E2E run 83 SUCCESS in ~10s: 1,004 register rows (919 PR + 85 PO)
+  + 329 annex rows, total 570,603,223.50 AED — exactly the book's reserved-scope pending
+  value. Browser smoke 30/30; webtier release 20260716075119.
+- **2026-07-16 — Pending Approval review round (GL v1.28.0)** — user's manual-review fixes, all
+  layers redeployed same day (webtier release 20260716050503).
+  ①**Book (`reporting/db/23` + template re-upserted via vm180)**: BUSINESS RULE — the book now
+  covers **funds-RESERVED, non-zero lines ONLY** (not-reserved documents and zero-value lines
+  excluded from every section; the GL page still shows them and keeps the reserved/not-reserved
+  split tile); ALL table text displays in full (no `|truncate` in any table cell — only chart
+  bar labels stay shortened); PR/PO registers + the oldest-20 table gained **Sector / Cost
+  centre (code+name) / Appropriation (code+name)** via `DCT_GL_COA_SNAP` (doc-grain rows show
+  "(Multiple)" when a document spans combinations — the `l_docg` inline view carries the
+  MIN=MAX collapse); **Cur + Funds columns removed**; overview lost the Not-Reserved tile +
+  reservation stack; budget-impact insight rewritten (everything in scope is already inside
+  open encumbrance). E2E run 82 SUCCESS — 1,385 lines (919 PR + 85 PO reserved non-zero).
+  ②**View (`db/v2/52`)**: + `fusion_header_id` (pr_header_id / po_header_id) — document
+  numbers alone cannot build Fusion deep links.
+  ③**ORDS (`GL/db/13` re-run)**: `GET /pending` + `source=` param (PR|PO, else 400; empty =
+  both) and `fusionHeaderId` on every item (NOT a column — the shared IR grid drops
+  undeclared row fields, so the frontend keeps a source|doc# → id side-map).
+  ④**Page**: Search gains **Source** (All/PR/PO, page-local `pnSource`, cleared by Reset) and
+  **"Showing figures in"** (the shared `buUnit` selector — KPI tiles + mini-table amounts now
+  format via `buNum`); **KPI band redesigned** (senior-frontend pass, `.pn-kpis`/`.pnk-*`
+  semantic accents: docs steel-blue / amount gold / reservation green-vs-red / aging amber
+  flipping `.hot` red while over-30 exists; pct pills, unit suffix, non-drillable rows lose
+  the pointer affordance); aging mini-table gets heat badges (`.pn-badge pnb0..3`), approver
+  max-days gets a red `.pn-days.bad` chip past 30; **Document # cells deep-link to Fusion**
+  (delegated `pnGridOver`/`pnGridClick` via ko.contextFor — hover underline + title, click
+  opens `FusionLinks.requisition/purchaseOrder(fusionHeaderId)` in a new tab; no
+  shared-component change). Browser smoke **29/29 EN + AR/RTL** (adds source-scope,
+  figures-in, hot-state, badge and deep-link cases).
+- **2026-07-16 — Encumbrances – Pending Approval page + Briefing Book (GL v1.27.0)** — new nav
+  tab monitoring every PR / PO document PENDING APPROVAL in Fusion, on the butil criteria.
+  ①**DB view `PROD.DCT_PR_PO_PENDING_V`** (`db/v2/52`): the daily BIP snapshot
+  `atd_pr_po_pending_approval` (otbi-atd/db/47, loaded ~08:00 Dubai) joined to the PR/PO
+  distribution detail — PR leg on `TO_CHAR(pr_distributions.requisition) = document_number`,
+  PO leg via deduped `po_headers`/`po_distributions`; AED via the currency snapshot (PR) /
+  distribution rate (PO); `enc_open_aed` = the butil Open Commitment / GRN-netted Open
+  Obligation bases; GL_CTX.BUTIL_END-aware (budget_date window + GRN netting) like db/v2/39;
+  a third leg keeps snapshot docs with NO qualifying extract line (`in_extract='N'`, 256 PR +
+  73 PO on deploy day) so nothing pending is silently dropped. `submitted_for_approval_date`
+  is a DD-MM-YYYY STRING in the snapshot (user decision) → parsed with
+  `TO_DATE(... DEFAULT NULL ON CONVERSION ERROR)`.
+  ②**ORDS `GL/db/13`** (additive; **post-05 re-run list now = 07+08+09+10+11+12+13**):
+  `GET /gl/pending` (full butil param set incl. period-YTD via `set_butil_end`/ALWAYS-clear;
+  ONE scan streams the register [cap 10k, `limit=` — note the ORDS-reserved `:limit` bind
+  defaults to 100 when absent, the page always passes it] AND accumulates the monitoring
+  aggregates in the same loop, so `kpis{}` / `aging[]` (0-7/8-15/16-30/31+ at document grain)
+  / `approvers[]` (top 8 by value held) / `unmatched{}` / `totals{}` stay correct even when
+  the echoed rows are capped; per-doc dedupe via an assoc array keyed source|doc_number) +
+  `POST /gl/pending/book`, `GET /gl/pending/book/:id`, `GET /gl/pending/book/:id/pdf`
+  (clone of the 11 bridge, report_code `ENC_PENDING_BOOK`). API smoke 20/20; register sum ==
+  totals; aging/approver sums reconcile to KPIs; pending encOpen ⊆ /gl/encumbrances openAed.
+  ③**Frontend** (`view()==='pending'`, nav after Projects Encumbrances): reuses the bu*
+  filter bar + datalists verbatim (`runPending()`), 4 composite `.bk` tiles (Pending
+  documents PR/PO split · Pending amount · Funds reserved vs not-reserved [the not-reserved
+  slice is what would hit Fund Available on approval] · Approval aging w/ over-30 focus),
+  aging + top-approver mini tables (`.pn-grid2`/`.pn-mini`/`.pn-tbl` in app.css), unmatched
+  coverage note, and the SHARED `<interactive-report>` (reportCode `GL_ENC_PENDING`,
+  section `pend`) with the GL-combination hover popover reused from the encumbrances tab.
+  Briefing Book button = same poll/download pattern as butil (`/gl/pending/book`).
+  Browser smoke **21/21 EN + AR/RTL** (`tests/pending_browser_smoke.py`; networkidle never
+  settles on this app — wait for `ko.dataFor(document.body)` instead; Chrome innerText
+  applies the header text-transform → compare lower-case).
+  ④**Briefing Book `ENC_PENDING_BOOK`** (`reporting/db/23` + DB template
+  `enc_pending_book.html.j2`): MULTI/PYTHON landscape PDF — cover/TOC, Part 1 overview
+  (KPIs + composition/reservation stacks + budget-frame bars + aging/approver bars + aging
+  & sector tables), Part 2 approver follow-up (top 15 + oldest 20), Part 3 pending PR
+  register, Part 4 pending PO register, Part 5 computed insights (velocity, bottleneck
+  concentration, budget impact of approval, composition, extract coverage) + methodology,
+  Annex = unmatched docs. Params = the FULL butil filter set; `pre_sql`/`post_sql` set/clear
+  BUTIL_END; param_spec copied from BUDGET_UTIL_BOOK (kept in lock-step). **23 is
+  MERGE-bearing → deployed via python-oracledb on vm180** (template upserted via
+  `upload_template.py` there; bundled copy synced to vm180-182). E2E: run 81 SUCCESS,
+  1,427 lines, 67-page 845KB PDF, figures reconcile to the page. Webtier release
+  20260716025748 (deploy as `SSH_USER=opc`).
 - **2026-07-15 — Projects Encumbrances: column reorder + GL-combination hint (GL v1.26.0)** —
   user-requested. ①**Column order** (`GL/db/12`, server-defined; the IR renders the
   server `columns[]` order for fresh/Reset users — a returning user's localStorage

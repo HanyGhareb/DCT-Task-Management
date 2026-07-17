@@ -1,0 +1,13 @@
+<!-- Admin — Approval Processes (the process designer, requirement 1).
+     The whole page is one shared component: a business admin edits an approval
+     chain here, publishes a new version, and in-flight work is untouched. -->
+<div class="page-wrap page-wrap--full">
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: $root.t('wf.dz.title')"></h1>
+      <p class="page-sub" data-bind="text: $root.t('wf.dz.sub')"></p>
+    </div>
+  </div>
+
+  <wf-designer></wf-designer>
+</div>

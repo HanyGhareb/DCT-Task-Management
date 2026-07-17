@@ -41,6 +41,10 @@ DECLARE
   l_grn    VARCHAR2(10000);
   l_po     VARCHAR2(4000);
   l_pr     VARCHAR2(4000);
+  l_pdocg  VARCHAR2(6000);
+  l_pov    VARCHAR2(8000);
+  l_pag    VARCHAR2(8000);
+  l_papv   VARCHAR2(8000);
   l_src    CLOB;
   l_body   CLOB;
 BEGIN
@@ -76,6 +80,15 @@ BEGIN
   l_po := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.po_number, x.po_line, x.budget_date, x.supplier_name, x.funds_status, x.line_aed, x.received_aed, x.open_aed FROM prod.dct_open_po_lines_v x WHERE x.budget_year = [COLON]year!' || l_scope || q'! ORDER BY x.open_aed DESC!';
   -- part 4: open commitments (reserved PR lines); zero-amount lines excluded
   l_pr := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.pr_number, x.description, x.budget_date, x.currency_code AS currency, x.distribution_amount, x.amount_aed FROM prod.dct_reserved_pr_lines_v x WHERE x.budget_year = [COLON]year AND ABS(NVL(x.amount_aed,0)) > 0.005!' || l_scope || q'! ORDER BY x.amount_aed DESC!';
+  -- part 5 (2026-07-16): the PR/PO approval queue -- documents PENDING APPROVAL
+  -- in Fusion (daily BIP snapshot joined to the distribution detail,
+  -- prod.dct_pr_po_pending_v, db/v2/52). SAME rule as ENC_PENDING_BOOK:
+  -- funds-RESERVED, non-zero lines only. Document-grain inline view shared by
+  -- the three pending sections.
+  l_pdocg := q'!(SELECT x.source, x.doc_number, MAX(x.descr) AS description, MAX(x.preparer_buyer) AS preparer_buyer, MAX(x.submitted_date) AS submitted_date, NVL(MAX(x.pending_days),0) AS pending_days, MAX(x.pending_with) AS pending_with, COUNT(*) AS doc_lines, SUM(x.line_aed) AS doc_amt, SUM(x.enc_open_aed) AS enc_open_aed FROM prod.dct_pr_po_pending_v x WHERE x.in_extract = 'Y' AND x.budget_year = [COLON]year AND x.funds_status IN ('Reserved','Partially Liquidated') AND ABS(x.line_aed) > 0.005!' || l_scope || q'! GROUP BY x.source, x.doc_number)!';
+  l_pov := q'!SELECT COUNT(*) AS docs, SUM(CASE WHEN source = 'PR' THEN 1 ELSE 0 END) AS pr_docs, SUM(CASE WHEN source = 'PO' THEN 1 ELSE 0 END) AS po_docs, SUM(doc_lines) AS lines, SUM(doc_amt) AS amt_total, SUM(CASE WHEN source = 'PR' THEN doc_amt ELSE 0 END) AS amt_pr, SUM(CASE WHEN source = 'PO' THEN doc_amt ELSE 0 END) AS amt_po, SUM(enc_open_aed) AS enc_open_aed, ROUND(AVG(pending_days),1) AS avg_days, MAX(pending_days) AS max_days, SUM(CASE WHEN pending_days > 30 THEN 1 ELSE 0 END) AS over30_docs, SUM(CASE WHEN pending_days > 30 THEN doc_amt ELSE 0 END) AS over30_amt FROM !' || l_pdocg;
+  l_pag := q'!SELECT CASE WHEN pending_days <= 7 THEN '0-7' WHEN pending_days <= 15 THEN '8-15' WHEN pending_days <= 30 THEN '16-30' ELSE '31+' END AS bucket, COUNT(*) AS docs, SUM(CASE WHEN source = 'PR' THEN 1 ELSE 0 END) AS pr_docs, SUM(CASE WHEN source = 'PO' THEN 1 ELSE 0 END) AS po_docs, SUM(doc_amt) AS amount_aed FROM !' || l_pdocg || q'! GROUP BY CASE WHEN pending_days <= 7 THEN '0-7' WHEN pending_days <= 15 THEN '8-15' WHEN pending_days <= 30 THEN '16-30' ELSE '31+' END ORDER BY MIN(CASE WHEN pending_days <= 7 THEN 1 WHEN pending_days <= 15 THEN 2 WHEN pending_days <= 30 THEN 3 ELSE 4 END)!';
+  l_papv := q'!SELECT pending_with, COUNT(*) AS docs, SUM(doc_amt) AS amount_aed, MAX(pending_days) AS max_days, MIN(submitted_date) AS oldest_submitted FROM !' || l_pdocg || q'! GROUP BY pending_with ORDER BY 3 DESC NULLS LAST FETCH FIRST 10 ROWS ONLY!';
   -- YTD period: pre_sql sets GL_CTX.BUTIL_END exactly like the /gl/butil page
   -- handler; post_sql ALWAYS clears it (worker keeps one session across runs)
   l_src := '{"orientation":"landscape","required":["year"],'
@@ -88,7 +101,10 @@ BEGIN
         || '{"key":"ap_lines","title":"Actuals - AP Invoices","layout":"table","sql":"' || l_ap || '"}' || ','
         || '{"key":"grn_lines","title":"Actuals - Goods Receipts","layout":"table","sql":"' || l_grn || '"}' || ','
         || '{"key":"open_po","title":"Open Obligations - Purchase Orders","layout":"table","sql":"' || l_po || '"}' || ','
-        || '{"key":"open_pr","title":"Open Commitments - Purchase Requisitions","layout":"table","sql":"' || l_pr || '"}'
+        || '{"key":"open_pr","title":"Open Commitments - Purchase Requisitions","layout":"table","sql":"' || l_pr || '"}' || ','
+        || '{"key":"pend_ov","title":"Pending Approvals - Overview","layout":"kv","sql":"' || l_pov || '"}' || ','
+        || '{"key":"pend_aging","title":"Pending Approvals - Aging","layout":"table","sql":"' || l_pag || '"}' || ','
+        || '{"key":"pend_approvers","title":"Pending Approvals - Approvers","layout":"table","sql":"' || l_papv || '"}'
         || ']}';
   l_src := REPLACE(l_src, '[COLON]', CHR(58));
   l_body :=
@@ -111,7 +127,7 @@ BEGIN
     ('BUDGET_UTIL_BOOK',
      'Budget Utilization Briefing Book',
      UNISTR('\0643\062A\064A\0628 \0627\0633\062A\062E\062F\0627\0645 \0627\0644\0645\0648\0627\0632\0646\0629'),
-     'Briefing-book PDF: cover + contents, utilization overview with KPIs and charts, full actuals register (direct AP invoices + GRN receipts), open obligations (PO, GRN-netted), open commitments (reserved PR) and management insights. Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional -- empty = whole organisation, full year).',
+     'Briefing-book PDF: cover + contents, utilization overview with KPIs and charts, full actuals register (direct AP invoices + GRN receipts), open obligations (PO, GRN-netted), open commitments (reserved PR), the PR/PO approval queue (documents pending approval in Fusion, funds-reserved non-zero basis) and management insights. Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional -- empty = whole organisation, full year).',
      'General Ledger', 'MULTI', l_src, 'PYTHON', 'PDF',
      'budget_util_book.html.j2',
      'Budget Utilization Briefing Book - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
@@ -120,7 +136,7 @@ BEGIN
      'Y', 'SETUP', 'SETUP')
   WHEN MATCHED THEN UPDATE SET
      t.source_type       = 'MULTI',
-     t.description       = 'Briefing-book PDF: cover + contents, utilization overview with KPIs and charts, full actuals register (direct AP invoices + GRN receipts), open obligations (PO, GRN-netted), open commitments (reserved PR) and management insights. Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional -- empty = whole organisation, full year).',
+     t.description       = 'Briefing-book PDF: cover + contents, utilization overview with KPIs and charts, full actuals register (direct AP invoices + GRN receipts), open obligations (PO, GRN-netted), open commitments (reserved PR), the PR/PO approval queue (documents pending approval in Fusion, funds-reserved non-zero basis) and management insights. Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional -- empty = whole organisation, full year).',
      t.source_ref        = l_src,
      t.engine            = 'PYTHON',
      t.default_formats   = 'PDF',

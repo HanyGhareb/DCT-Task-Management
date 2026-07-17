@@ -596,3 +596,51 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .en-sum{display:flex;flex-wrap:wrap;gap:10px 22px;align-items:baseline;margin:2px 0 4px}
 .en-sum b{font-family:var(--serif);font-weight:600;font-size:18px;color:var(--brand-dark)}
 .en-sum .en-sub{font-size:12px;color:var(--muted)}
+
+/* ── Encumbrances – Pending Approval: KPI band (senior-frontend pass) ──
+   Semantic measure accents over the shared .bk tile system: documents =
+   steel blue, amount = amber/gold, funds reservation = green vs red,
+   aging = amber flipping hot-red while anything is stalled over 30 days.
+   Refinements: unit suffix on the value, pct pills, calmer breakdown rows
+   (informational, not drillable — no pointer/underline affordance). */
+.pnk-docs{--bk-c:#3A6EA5;--bk-soft:#E9F0F8;--seg1:#3A6EA5;--seg2:#7FA8CB}
+.pnk-amt{--bk-c:#8A5E00;--bk-soft:#F6EFDC;--seg1:#B58900;--seg2:#C25E10}
+.pnk-res{--bk-c:#2E7D5B;--bk-soft:#E4F1EA;--seg1:#2E7D5B;--seg2:#C4453A}
+.pnk-age{--bk-c:#B8862B;--bk-soft:#F6EFDC;--seg1:#C4453A;--seg2:#8FBCA5}
+.pnk-age.hot{--bk-c:#B3352B;--bk-soft:#F8E9E6}
+.pn-kpis .bk{box-shadow:0 1px 2px rgba(27,42,39,.05),0 10px 24px -18px rgba(27,42,39,.28)}
+.pn-kpis .bk-v .bk-u{font-family:inherit;font-size:13px;font-weight:600;color:var(--muted);margin-inline-start:5px}
+.pn-kpis .bk-duo-row .pp{background:rgba(27,42,39,.06);border-radius:999px;padding:1px 8px;min-width:40px;text-align:center}
+.pn-kpis .pn-row-bad .l,.pn-kpis .pn-row-bad .v{color:var(--bad)}
+/* first-load overlay needs somewhere to sit before anything has rendered */
+.bu-body.pn-loading{min-height:320px}
+/* register: Document # cells deep-link to Oracle Fusion (hover affordance) */
+.pn-doclink{cursor:pointer;color:var(--brand-dark);text-decoration:underline dotted;text-underline-offset:3px}
+
+/* ── Encumbrances – Pending Approval: aging + approver follow-up mini tables ── */
+.pn-grid2{display:grid;grid-template-columns:1fr 1.5fr;gap:12px;margin-top:14px}
+@media (max-width:960px){.pn-grid2{grid-template-columns:1fr}}
+.pn-mini{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);padding:0;overflow:hidden}
+/* region header band (user-specified #79C5AC, 2026-07-16) */
+.pn-mini h4{margin:0;background:#79C5AC;color:#14382B;padding:9px 16px;font-size:12px;font-weight:700;
+  letter-spacing:.03em;border-bottom:1px solid rgba(20,56,43,.18)}
+.pn-tbl-wrap{padding:8px 16px 12px}
+.pn-tbl tbody tr.pn-click{cursor:pointer}
+.pn-tbl tbody tr.pn-click:hover td{background:rgba(121,197,172,.16)}
+.pn-tbl{width:100%;border-collapse:collapse;font-size:12px}
+.pn-tbl th{text-align:start;font-size:10.5px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);
+  border-bottom:1px solid var(--line);padding:4px 6px}
+.pn-tbl td{padding:5px 6px;border-bottom:1px solid var(--line)}
+.pn-tbl tr:last-child td{border-bottom:none}
+.pn-tbl th.num,.pn-tbl td.num{text-align:end}
+.pn-tbl tbody tr:nth-child(even) td{background:rgba(27,42,39,.025)}
+/* aging heat badges (0-7 calm -> 31+ hot) + stalled-days chip */
+.pn-badge{display:inline-block;border-radius:999px;padding:1px 9px;font-size:11px;font-weight:700}
+.pn-badge.pnb0{background:#E4F1EA;color:#2E7D5B}
+.pn-badge.pnb1{background:#F6EFDC;color:#8A5E00}
+.pn-badge.pnb2{background:#FBEFDD;color:#B26312}
+.pn-badge.pnb3{background:#F8E9E6;color:#B3352B}
+.pn-days{display:inline-block;border-radius:999px;padding:1px 8px;min-width:34px;text-align:center;
+  background:rgba(27,42,39,.05);font-weight:700}
+.pn-days.bad{background:#F8E9E6;color:#B3352B}
+.pn-um{margin-top:12px}

@@ -1,5 +1,54 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-07-16 — PR/PO Pending Approval extract: FIRST BIP (.xdo/xmlpserver) job (db/47 + runner bip.py)
+
+New daily snapshot of every PR + PO in **PENDING APPROVAL** status, from the BI Publisher report
+`ADG Document Status Report` (NOT an OTBI analysis — this introduced first-class **BIP report
+support** in the Track B runner).
+
+- **Target:** `PROD.ATD_PR_PO_PENDING_APPROVAL` (8 report columns + `load_ts`), full refresh
+  (`TRUNCATE_INSERT`) — the table always holds the CURRENT pending list; approved/rejected
+  documents drop out on the next run.
+- **Job:** `PR PO Pending Approval` (env `FUSION_ADGOV`, `output_format='xlsx'`,
+  `source_ref='/Custom/ADGE Procurement Reports/Purchasing/ADG Document Status Report.xdo'`).
+  Params in `params_json`: `_xt` (template), `_paramsP_BU=*`, `_paramsP_DOCTYPE=["REQUISITION","STANDARD"]`
+  (a JSON ARRAY repeats the URL key — BIP multi-select), `_paramsP_STATUS=PENDING APPROVAL`, and the
+  runner directive `_atd_require="Document Number"` (rows without a Document Number are excluded;
+  banner/blank rows always are). Column map keeps ONLY the 8 wanted report columns.
+- **Schedule:** job set `PRPO_PENDING` — daily window **06:30–08:30 Asia/Dubai**, freq 1440
+  (+ job `frequency_minutes=1440`); category tag `PO`. NOTE the fleet **break window ends 08:00**,
+  so in practice the run lands 08:00–08:30. History = the normal `ATD_LOAD_RUN_LOG` / Run Logs page.
+- **DB deploy:** `db/47_atd_pr_po_pending.sql` — **MERGE-bearing → deployed via python-oracledb on
+  vm180** (Linux SQLcl swallows MERGE blocks), verified: table + job + set + member + category all in.
+- **Runner (`bip.py` NEW + `extract.py`/`runner.py`/`config.py` touched, `openpyxl` added):**
+  a `source_ref` ending `.xdo` routes to `bip.download_csv`: fetch
+  `{xmlpserver}/<path>.xdo?_xpt=1&_xf=xlsx&_xautorun=true&_paramsP_*=…` via the warm session
+  cookies (**`_xpt=1` returns the document itself — no viewer, no 'Apply' click**), convert
+  XLSX→CSV (openpyxl; header row auto-detected below BIP's title/banner rows; headers matched
+  case-insensitively but emitted under the column-map's own key text so `resolve_pairs` hits),
+  then the UNCHANGED prepare/load pipeline runs. Job selects now also fetch
+  `output_format`/`xmlpserver_base_url`. Unit tests `runner/tests/test_bip.py` (7/7).
+- **Why the converter projects mapped columns only:** prepare's drift engine ADDs any unmapped
+  CSV column to the table — emitting only the mapped headers is what enforces "extract only these
+  columns" AND keeps drift quiet if the report gains columns.
+- **SSO gotcha (protects every future .xdo job):** the FIRST xmlpserver touch of a session can
+  bounce to sign-in even with live cookies — the IDCS/Entra hop needs a JS auto-post that
+  `ctx.request` can't run. `bip.download_bytes` primes once via a real `page.goto(xmlpserver)/`
+  then retries before raising SessionExpired (which still triggers the worker's normal
+  re-auth+retry). Error triage mirrors the Go-URL: HTML while still on /xmlpserver = ReportError
+  (bad path/params — re-auth won't help); bounced off = SessionExpired.
+- **Fleet rollout:** bip/extract/runner/config/requirements + `pip install openpyxl` synced to
+  vm180/181/182, `systemctl restart atd-worker` — all three active clean.
+- **FIRST LIVE RUN — SUCCESS (2026-07-16 ~02:20 Dubai, 1,060 rows = 916 REQUISITION + 144
+  STANDARD; zero null/duplicate Document Numbers).** One finding: the BIP template exports
+  `Submitted for Approval Date` as **text `DD-MM-YYYY`** (`14-07-2026`), which the loader's
+  date formats didn't know → run 1 warned (drift: "column is DATE … load may fail") and loaded
+  the dates NULL. The user resolved it live by altering the column to **VARCHAR2(20)** (kept as
+  verbatim text — user decision; db/47 updated to match) and re-running clean. The runner ALSO
+  gained the day-first `%d-%m-%Y` format (load.DATE_FORMATS + prepare.DATE_RE), so a FUTURE BIP
+  job with such dates auto-types/parses to real DATE from run 1. NOTE: the legacy SQLcl loadsql
+  path still emits only ISO TO_DATE — fleet is oracledb, so not extended.
+
 ## 2026-07-01 — Run Logs: Job Set column + filter (App 208, APP_VERSION 1.19.0)
 
 Make the global **Run Logs** page set-aware so operators can see which Job Set a run's job

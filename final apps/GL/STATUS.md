@@ -17,6 +17,48 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-17** — **Business Unit multi-select** (`APP_VERSION` 1.31.0). Pending Approval page
+  gains a BU multi-select (chips; LOV = `businessUnits[]` from `/gl/pending`) → `bu=` exact
+  any-of list scoping register + KPIs + the unmatched coverage KPI (GL/db/13 re-run); forwarded
+  to ENC_PENDING_BOOK + ENC_PENDING_REGISTER (reporting/db/23+24 re-seeded, cover BU chip).
+  NOT added to the other GL/AP dashboards: the BIP snapshot is the only cross-BU source — the
+  OTBI extracts are DCT-scoped (AP has no BU column at all). E2E runs 89/90/91; smoke 45/45.
+- **2026-07-16** — **Pending page: zero-value lines excluded** (`APP_VERSION` 1.30.1). User rule:
+  the page follows budget utilization, so 0-amount PR/PO lines never show (they reserve nothing) —
+  `ABS(NVL(line_aed,0)) > 0.005` in the `GET /gl/pending` cursor (GL/db/13 re-run); the single-scan
+  design scopes register + KPIs + aging + approvers + client drills together (unmatched coverage
+  KPI untouched; book/Excel already had the stricter reserved-only rule). Subtitle states the rule.
+  Smoke 41/41 — webtier release 20260716223006.
+- **2026-07-16** — **Review round 3** (`APP_VERSION` 1.30.0). Pending page: busy overlay,
+  KPI/aging/approver drill-downs into the shared drawer (client-side slices, Fusion doc links,
+  CSV), #79C5AC mini-table region headers. Butil: NEW Part 5 "Pending Approvals — PR & PO Queue"
+  in BUDGET_UTIL_BOOK (db/21 + Approval-queue insight, Observations → Part 6) + NEW
+  BUDGET_UTIL_REGISTER 6-sheet Excel (db/25 + /gl/butil/xlsx bridge in GL/db/11 + Export Excel
+  button). Both report covers: "Oracle Fusion i-Finance · Reporting Platform", simple datetime
+  ("Thu 16-Jul-2026 10:04 pm", runner `generated_at_pretty`), framed Prepared-by card. E2E runs
+  86/87/88 SUCCESS; smoke 40/40 — webtier release 20260716220623.
+- **2026-07-16** — **Pending Approval Excel register** (`APP_VERSION` 1.29.0). New
+  `ENC_PENDING_REGISTER` (reporting/db/24, XLSX-only, 2 sheets: 29-column flat pending PR/PO
+  register on the book scope rule + extract-coverage annex) + GL bridge `POST /gl/pending/xlsx`
+  + status/file routes (GL/db/13 re-run) + **Export Excel** page button. E2E run 83: 1,004+329
+  rows, 570.6M reconciles to the book. Smoke 30/30 — webtier release 20260716075119.
+- **2026-07-16** — **Pending Approval review round** (`APP_VERSION` 1.28.0). Book: reserved
+  non-zero lines only, full text (no truncation), +Sector/Cost centre/Appropriation (code+name)
+  in registers + oldest-20, Cur/Funds dropped (reporting/db/23 v2, E2E run 82 = 1,385 lines).
+  Page: Source (PR/PO) + "Showing figures in" filters, KPI band redesigned w/ semantic accents +
+  heat badges (senior-frontend pass), Document # cells deep-link to Fusion (view db/v2/52 +
+  GL/db/13 add fusion_header_id/source=). Browser smoke 29/29 — webtier release 20260716050503.
+- **2026-07-16** — **Encumbrances – Pending Approval page + ENC_PENDING_BOOK briefing book**
+  (`APP_VERSION` 1.27.0). New nav tab: every PR/PO document PENDING APPROVAL in Fusion (daily BIP
+  snapshot `atd_pr_po_pending_approval`, otbi-atd/db/47) joined to the open-encumbrance line detail —
+  view `DCT_PR_PO_PENDING_V` (db/v2/52, BUTIL_END-aware, `in_extract` coverage leg), ORDS `GL/db/13`
+  (`GET /gl/pending` register + server-side KPIs/aging/approvers/unmatched in one scan; book bridge
+  `POST /gl/pending/book` + status + pdf). Page reuses the butil filter bar + shared
+  `<interactive-report>` (section `pend`), 4 composite KPI tiles + aging/top-approver mini tables +
+  extract-coverage note + Briefing Book button. Reporting: `ENC_PENDING_BOOK` (reporting/db/23,
+  MULTI/PYTHON, 9 sections; template `enc_pending_book.html.j2` DB-stored) — E2E 67-page PDF
+  reconciles to the page. API smoke 20/20 + browser smoke 21/21 EN/AR — webtier release
+  20260716025748. **GL post-05 re-run list now = 07+08+09+10+11+12+13.**
 - **2026-07-02** — **Budget Utilization: KPI-card aggregate drill-down** (`APP_VERSION` 1.8.0). The four
   KPI cards (Actual AP/GRN/Commitment PR/Obligation PO) are now clickable → all supporting lines across
   the current filters, in the same drawer (adds Project/Task cols + "top N of M" note). `/gl/butil/lines`

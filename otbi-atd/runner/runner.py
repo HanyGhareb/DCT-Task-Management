@@ -78,6 +78,7 @@ def _drive(jobs, run_one_fn):
             j0 = env_jobs[0]
             env = {"env_name": env_name,
                    "analytics_base_url": j0["analytics_base_url"],
+                   "xmlpserver_base_url": j0.get("xmlpserver_base_url"),
                    "credential_ref": j0.get("credential_ref") or env_name}
             browser, ctx = auth.authenticate(p, env)
             try:
@@ -103,7 +104,7 @@ def _run_one_sqlcl(ctx, env, job):
     drift = []
     try:
         params = json.loads(job["params_json"]) if job.get("params_json") else None
-        csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
+        csv_text = extract.download_job(ctx, env, job, params)
         # first run: derive table + column map; later runs: auto-adapt to schema drift
         drift = prepare.ensure_prepared_sqlcl(job, csv_text)
         if drift and not prepare.is_no_data_drift(drift):   # never Telegram a no-data run
@@ -151,7 +152,7 @@ def _make_run_one_oracledb(conn, load):
         drift = []
         try:
             params = json.loads(job["params_json"]) if job.get("params_json") else None
-            csv_text = extract.download_csv(ctx, env, job["source_ref"], params)
+            csv_text = extract.download_job(ctx, env, job, params)
             # first run: derive table + map; later runs: auto-adapt to schema drift
             drift = prepare.ensure_prepared_oracledb(conn, job, csv_text)
             if drift and not prepare.is_no_data_drift(drift):   # never Telegram a no-data run
@@ -210,6 +211,7 @@ def _env_of(job, env_name):
     """The env dict auth.authenticate expects, built from a claimed job row."""
     return {"env_name": env_name,
             "analytics_base_url": job["analytics_base_url"],
+            "xmlpserver_base_url": job.get("xmlpserver_base_url"),
             "credential_ref": job.get("credential_ref") or env_name}
 
 
@@ -900,6 +902,7 @@ def _register_built_job(conn, spec, analysis_path):
 
 def _run_job_now(job, run_one):
     env = {"env_name": job["env_name"], "analytics_base_url": job["analytics_base_url"],
+           "xmlpserver_base_url": job.get("xmlpserver_base_url"),
            "credential_ref": job.get("credential_ref") or job["env_name"]}
     with sync_playwright() as p:
         browser, ctx = auth.authenticate(p, env)

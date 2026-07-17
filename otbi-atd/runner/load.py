@@ -21,7 +21,11 @@ from prepare import clean_cell, coerce_number, resolve_pairs   # shared w/ profi
 DATE_FORMATS = ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S.%f",
                 "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d",
                 "%d-%b-%Y %H:%M:%S", "%d-%b-%y %H:%M:%S", "%d-%b-%Y", "%d-%b-%y",
-                "%m/%d/%Y %H:%M:%S", "%m/%d/%Y")
+                "%m/%d/%Y %H:%M:%S", "%m/%d/%Y",
+                # day-first numeric dashes (BIP templates on this AE pod emit
+                # '14-07-2026'; a US month-first value would fail %d-%m and fall
+                # through to None exactly as before this format existed)
+                "%d-%m-%Y %H:%M:%S", "%d-%m-%Y")
 
 
 def _to_dt(s):
