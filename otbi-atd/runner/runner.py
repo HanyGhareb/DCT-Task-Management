@@ -46,7 +46,9 @@ import json
 import os
 import socket
 import sys
+import threading
 import time
+import uuid
 from datetime import datetime
 
 from playwright.sync_api import sync_playwright
@@ -205,6 +207,56 @@ def _make_run_one_oracledb(conn, load):
 # ---- multi-host shared queue (oracledb mode, design #3) -----------------
 def _worker_id():
     return os.environ.get("ATD_WORKER_ID") or socket.gethostname()
+
+
+class _LeaseKeeper:
+    """Renew one claimed job from a separate DB session while Playwright/download/load
+    blocks the worker's main thread. A token mismatch means this worker no longer owns
+    the job and must not mark it complete."""
+    def __init__(self, job, host, token, lease_minutes):
+        self.job = job
+        self.host = host
+        self.token = token
+        self.lease_minutes = max(1, int(lease_minutes))
+        self.interval = max(15, min(120, self.lease_minutes * 60 // 3))
+        self.stop_event = threading.Event()
+        self.lost = False
+        self.thread = None
+
+    def start(self):
+        self.thread = threading.Thread(target=self._run, name="atd-lease-renew", daemon=True)
+        self.thread.start()
+        return self
+
+    def _run(self):
+        conn = None
+        try:
+            conn = config.connect()
+            while not self.stop_event.wait(self.interval):
+                n = conn.cursor().callfunc(
+                    "prod.atd_queue_pkg.renew_lease", int,
+                    [self.job, self.host, self.token, self.lease_minutes])
+                if int(n or 0) != 1:
+                    self.lost = True
+                    print(f"[lease] {self.job}: ownership lost; completion will be rejected",
+                          flush=True)
+                    return
+        except Exception as e:  # noqa: BLE001
+            # Do not immediately declare loss on a transient DB error. The DB expiry and
+            # token-fenced completion remain the authority; report it for operations.
+            print(f"[lease] {self.job}: renewal error: {e}", flush=True)
+        finally:
+            if conn:
+                try:
+                    conn.close()
+                except Exception:  # noqa: BLE001
+                    pass
+
+    def stop(self):
+        self.stop_event.set()
+        if self.thread:
+            self.thread.join(timeout=5)
+        return not self.lost
 
 
 def _env_of(job, env_name):
@@ -529,8 +581,9 @@ def _run_worker(conn, load, forever):
                 # While THIS host's session is dead, stop claiming so a peer with a
                 # healthy session drains the queue (we re-auth on the idle path below).
                 hold_claim = bool(session_dead)
+                claim_token = uuid.uuid4().hex
                 name = None if (in_break or hold_claim) else conn.cursor().callfunc(
-                    "prod.atd_queue_pkg.claim_next", str, [host])
+                    "prod.atd_queue_pkg.claim_next", str, [host, claim_token, lease])
                 if not name:
                     if forever:
                         # idle (or paused for the Break window): keep liveness fresh,
@@ -607,10 +660,12 @@ def _run_worker(conn, load, forever):
                 jobs = config.get_browser_jobs(conn, only=name)
                 if not jobs:
                     print(f"[worker {host}] claimed {name} but no job row -> FAILED")
-                    conn.cursor().callproc("prod.atd_queue_pkg.mark_failed", [name])
+                    conn.cursor().callproc("prod.atd_queue_pkg.mark_failed",
+                                           [name, host, claim_token, None])
                     failures += 1
                     continue
                 job = jobs[0]
+                lease_keeper = _LeaseKeeper(name, host, claim_token, lease).start()
                 env_name = job["env_name"]
                 if env_name not in ctx_by_env:
                     # Opening the session for a claimed job can need a fresh login (one MFA).
@@ -630,13 +685,17 @@ def _run_worker(conn, load, forever):
                         if requeue_max > 0 and _recent_requeues(conn, name) < requeue_max:
                             _log_orphan(conn, name, "REQUEUED",
                                         f"login failed before run; requeued for a healthy worker: {e}")
-                            conn.cursor().callproc("prod.atd_queue_pkg.release_job", [name])
+                            lease_keeper.stop()
+                            conn.cursor().callproc("prod.atd_queue_pkg.release_job",
+                                                   [name, host, claim_token])
                             print(f"[worker {host}] {name}: login failed -> released back to the "
                                   f"queue ({e})", flush=True)
                         else:
                             _log_orphan(conn, name, "FAILED",
                                         f"login failed before run; requeue budget exhausted: {e}")
-                            conn.cursor().callproc("prod.atd_queue_pkg.mark_failed", [name])
+                            lease_keeper.stop()
+                            conn.cursor().callproc("prod.atd_queue_pkg.mark_failed",
+                                                   [name, host, claim_token, None])
                             _post_mark_health(conn, host, vm, name, False)
                             print(f"[worker {host}] {name}: login failed; requeue budget "
                                   f"exhausted -> FAILED ({e})", flush=True)
@@ -677,19 +736,25 @@ def _run_worker(conn, load, forever):
                 if ok:
                     session_dead.pop(env_name, None)
                     ping_fails[env_name] = 0
-                    conn.cursor().callproc("prod.atd_queue_pkg.mark_done", [name])
+                    lease_keeper.stop()
+                    conn.cursor().callproc("prod.atd_queue_pkg.mark_done",
+                                           [name, host, claim_token, None])
                     _post_mark_health(conn, host, vm, name, True)   # clears the job's fail flag
                 elif session_bounce and requeue_max > 0 and _recent_requeues(conn, name) < requeue_max:
                     # cross-worker failover: pause claiming here, release the job READY.
                     session_dead[env_name] = True
-                    conn.cursor().callproc("prod.atd_queue_pkg.release_job", [name])
+                    lease_keeper.stop()
+                    conn.cursor().callproc("prod.atd_queue_pkg.release_job",
+                                           [name, host, claim_token])
                     print(f"[worker {host}] {name}: released back to the queue "
                           f"(session dead) -> a healthy worker will retry", flush=True)
                 else:
                     if session_bounce:
                         session_dead[env_name] = True
                         print(f"[worker {host}] {name}: requeue budget exhausted -> FAILED", flush=True)
-                    conn.cursor().callproc("prod.atd_queue_pkg.mark_failed", [name])
+                    lease_keeper.stop()
+                    conn.cursor().callproc("prod.atd_queue_pkg.mark_failed",
+                                           [name, host, claim_token, None])
                     _post_mark_health(conn, host, vm, name, False)  # chronic-failure alert
                 processed += 1
                 failures += 0 if ok else 1

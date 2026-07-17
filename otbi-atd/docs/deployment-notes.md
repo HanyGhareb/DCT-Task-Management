@@ -1,5 +1,17 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-07-17 — Renewable extract-job leases and claim fencing (db/48)
+
+- PROD `ATD_OTBI_JOBS` now carries `CLAIM_TOKEN` and `LEASE_EXPIRES_AT`.
+  `ATD_QUEUE_PKG` renews leases and requires job + worker + token ownership for
+  completion, failure, or release.
+- `runner.py` renews an active lease from a separate DB session while a long
+  OTBI/BIP download or database load blocks the main worker thread.
+- Coordinated rollout completed on vm180/181/182. Package spec/body are VALID,
+  both columns are present, runner checksums match, and all workers are active/IDLE.
+- The legacy claim overload remains temporarily for rolling-deploy compatibility;
+  all production workers now use the token overload.
+
 ## 2026-07-16 — PR/PO Pending Approval extract: FIRST BIP (.xdo/xmlpserver) job (db/47 + runner bip.py)
 
 New daily snapshot of every PR + PO in **PENDING APPROVAL** status, from the BI Publisher report
