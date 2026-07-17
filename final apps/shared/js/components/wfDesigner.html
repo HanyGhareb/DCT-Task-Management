@@ -87,18 +87,33 @@
     <!-- steps -->
     <div class="section-heading-row wf-dz-sub">
       <h3 class="section-heading" data-bind="text: $root.t('wf.dz.steps')"></h3>
-      <!-- ko if: editable() -->
       <div class="region-actions">
+        <div class="wf-viewtoggle">
+          <button type="button" class="btn btn-sm"
+                  data-bind="click: function () { $component.viewMode('list'); },
+                             css: { 'btn-primary': viewMode() === 'list', 'btn-secondary': viewMode() !== 'list' },
+                             text: $root.t('wf.dg.list')"></button>
+          <button type="button" class="btn btn-sm"
+                  data-bind="click: function () { $component.viewMode('diagram'); },
+                             css: { 'btn-primary': viewMode() === 'diagram', 'btn-secondary': viewMode() !== 'diagram' },
+                             text: $root.t('wf.dg.diagram')"></button>
+        </div>
+        <!-- ko if: editable() -->
         <button type="button" class="btn btn-secondary btn-sm"
                 data-bind="click: $component.newStep, text: $root.t('wf.dz.addStep')"></button>
+        <!-- /ko -->
       </div>
-      <!-- /ko -->
     </div>
 
     <!-- ko if: !design().steps.length -->
     <div class="empty-state"><p data-bind="text: $root.t('wf.dz.noSteps')"></p></div>
     <!-- /ko -->
 
+    <!-- ko if: viewMode() === 'diagram' && design().steps.length -->
+    <wf-diagram params="nodes: diagramNodes"></wf-diagram>
+    <!-- /ko -->
+
+    <!-- ko if: viewMode() === 'list' -->
     <ol class="wf-dz-steps" data-bind="foreach: design().steps">
       <li class="wf-dz-step">
         <span class="wf-dz-seq" data-bind="text: stepSeq"></span>
@@ -144,6 +159,7 @@
         <!-- /ko -->
       </li>
     </ol>
+    <!-- /ko -->
 
     <!-- conditions -->
     <div class="section-heading-row wf-dz-sub">

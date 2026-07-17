@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.31.1';</script>
+<script>window.APP_VERSION='1.32.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -395,8 +395,21 @@
           <div class="greet-sub" data-bind="text:t('buSub')"></div></div>
         <div class="page-actions">
           <span class="chip muted" data-bind="visible:buTotal(), text:buRange()"></span>
-          <button class="btn btn-sm" data-bind="click:runBuXlsx, enable:!buXlsxBusy(), css:{busy:buXlsxBusy}, attr:{title:t('buXlsxHint')}, text:buXlsxBusy()?t('pnXlsxRunning'):t('pnXlsx')"></button>
-          <button class="btn btn-sm btn-primary" data-bind="click:runBuBook, enable:!buBookBusy(), css:{busy:buBookBusy}, attr:{title:t('buBookHint')}, text:buBookBusy()?t('buBookRunning'):t('buBook')"></button>
+          <!-- one "Generate Report" button with a format dropdown (PDF / Excel / PowerPoint) -->
+          <div class="gen" data-bind="css:{open:genOpen}">
+            <button class="btn btn-sm btn-primary gen-btn" data-bind="click:toggleGen, clickBubble:false, css:{busy:buGenBusy}, text:buGenBusy()?t('genRunning'):t('genReport')"></button>
+            <!-- ko if: genOpen -->
+            <div class="gen-back" data-bind="click:closeGen"></div>
+            <div class="gen-menu">
+              <button class="gen-item" data-bind="click:function(){closeGen();runBuBook();}, attr:{title:t('buBookHint')}">
+                <span class="gen-ic">📄</span><span class="gen-tx"><b data-bind="text:t('repBook')"></b><small data-bind="text:t('repBookSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){closeGen();runBuXlsx();}, attr:{title:t('buXlsxHint')}">
+                <span class="gen-ic">📊</span><span class="gen-tx"><b data-bind="text:t('repXlsx')"></b><small data-bind="text:t('repXlsxSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){closeGen();runBuPpt();}, attr:{title:t('buPptHint')}">
+                <span class="gen-ic">📑</span><span class="gen-tx"><b data-bind="text:t('repPpt')"></b><small data-bind="text:t('repPptSub')"></small></span></button>
+            </div>
+            <!-- /ko -->
+          </div>
           <button class="btn btn-sm" data-bind="click:buExportCsv, enable:buTotal()>0, text:t('exportCsv')"></button>
           <button class="btn btn-sm" data-bind="click:rebuildViews, enable:!rebuilding() && !refreshing(), attr:{title:t('rebuildHint')}, text:rebuilding()?t('rebuilding'):t('rebuildViews')"></button>
           <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing() && !rebuilding(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>

@@ -23,8 +23,9 @@
  *   showHistory bool               show the audit trail under the chain
  */
 define(['knockout', 'shared/i18n', 'shared/wfService', 'shared/skeleton',
+        'shared/components/wfDiagram',
         'text!shared/components/wfTimeline.html'],
-function (ko, i18n, wf, skeletonReg, templateHtml) {
+function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
   'use strict';
 
   function unwrap(v) { return ko.isObservable(v) ? v() : v; }
@@ -37,6 +38,11 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
     self.steps       = ko.observableArray([]);
     self.events      = ko.observableArray([]);
     self.showHistory = !!unwrap(params.showHistory);
+
+    // list vs. graphical (flowchart) view of the same chain
+    self.viewMode = ko.observable('list');   // 'list' | 'diagram'
+    self.mod = params.module;                 // pass-through to <wf-diagram>
+    self.rec = params.record;
 
     self.statusLabel = function (s) {
       var k = i18n.t('wf.st.' + String(s || '').toLowerCase());

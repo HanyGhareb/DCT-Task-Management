@@ -20,8 +20,9 @@
  *   modules  array|null  optional source_module filter (null = every process)
  */
 define(['knockout', 'shared/i18n', 'shared/wfService', 'shared/skeleton',
+        'shared/components/wfDiagram',
         'text!shared/components/wfDesigner.html'],
-function (ko, i18n, wf, skeletonReg, templateHtml) {
+function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
   'use strict';
 
   var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'FACT_USER', 'STATIC_USER',
@@ -63,6 +64,30 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
     self.conditionKeys = ko.pureComputed(function () {
       var d = self.design();
       return [''].concat(((d && d.conditions) || []).map(function (c) { return c.conditionKey; }));
+    });
+
+    /* ── list vs. graphical (flowchart) view of the chain ───────────────── */
+    self.viewMode = ko.observable('list');   // 'list' | 'diagram'
+    self.diagramNodes = ko.pureComputed(function () {
+      var d = self.design(); if (!d) return [];
+      var conds = {};
+      (d.conditions || []).forEach(function (c) { conds[c.conditionKey] = c.expr; });
+      return (d.steps || []).slice()
+        .sort(function (a, b) { return (a.stepSeq || 0) - (b.stepSeq || 0); })
+        .map(function (s) {
+          var who = (s.participants || []).map(function (p) { return self.partSummary(p); }).join(', ');
+          return {
+            key: s.stepKey,
+            title: s.nameEn || s.stepKey,
+            titleAr: s.nameAr || s.nameEn || s.stepKey,
+            condition: s.conditionKey ? (conds[s.conditionKey] || s.conditionKey) : null,
+            outcomeSet: s.outcomeSetCode || null,
+            who: who || null,
+            isFinalGate: s.isFinalGate === 'Y',
+            parallelGroup: s.parallelGroup || null,
+            state: null, meta: null
+          };
+        });
     });
 
     /* ── formatting helpers ─────────────────────────────────────────────── */

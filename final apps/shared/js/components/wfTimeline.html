@@ -15,6 +15,28 @@
     </div>
     <!-- /ko -->
 
+    <!-- ko if: steps().length -->
+    <div class="section-heading-row wf-tl-hh">
+      <div class="region-actions">
+        <div class="wf-viewtoggle">
+          <button type="button" class="btn btn-sm"
+                  data-bind="click: function () { $component.viewMode('list'); },
+                             css: { 'btn-primary': viewMode() === 'list', 'btn-secondary': viewMode() !== 'list' },
+                             text: $root.t('wf.dg.list')"></button>
+          <button type="button" class="btn btn-sm"
+                  data-bind="click: function () { $component.viewMode('diagram'); },
+                             css: { 'btn-primary': viewMode() === 'diagram', 'btn-secondary': viewMode() !== 'diagram' },
+                             text: $root.t('wf.dg.diagram')"></button>
+        </div>
+      </div>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: viewMode() === 'diagram' && steps().length -->
+    <wf-diagram params="module: mod, record: rec"></wf-diagram>
+    <!-- /ko -->
+
+    <!-- ko if: viewMode() === 'list' -->
     <ol class="wf-chain" data-bind="foreach: steps">
       <li data-bind="css: $component.stepClass($data)">
         <span class="wf-dot"></span>
@@ -42,6 +64,7 @@
         </div>
       </li>
     </ol>
+    <!-- /ko -->
 
     <!-- ko if: showHistory && events().length -->
     <div class="section-heading-row wf-tl-hh">
