@@ -237,6 +237,14 @@
             <!-- ko if: resolverType() === 'STATIC_USER' -->
             <input class="form-control" type="number" data-bind="textInput: staticUserId, attr:{ placeholder: 'user id' }">
             <!-- /ko -->
+            <!-- ko if: resolverType() === 'FACT_LINE_MANAGER' -->
+            <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.onBehalfOfUserId' }">
+            <!-- /ko -->
+            <!-- ko if: resolverType() === 'LINE_MANAGER' || resolverType() === 'ORG_HEAD' || resolverType() === 'FACT_LINE_MANAGER' -->
+            <input class="form-control" type="number" min="0" style="max-width:7rem"
+                   title="levels up (0 = direct manager)"
+                   data-bind="textInput: levelsUp, attr:{ placeholder: 'levels up' }">
+            <!-- /ko -->
             <select class="form-control" data-bind="value: fallbackRule, options: $component.FALLBACKS"></select>
             <label class="wf-dz-mini"><span class="wf-dz-toggle"><input type="checkbox" data-bind="checked: excludeInitiator"></span>
               <span data-bind="text: $root.t('wf.dz.excludeInitiator')"></span></label>

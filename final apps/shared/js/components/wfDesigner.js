@@ -25,6 +25,7 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
   'use strict';
 
   var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'FACT_USER', 'STATIC_USER',
+                   'LINE_MANAGER', 'FACT_LINE_MANAGER', 'ORG_HEAD',
                    'PREVIOUS_ACTOR', 'INITIATOR'];
   var FALLBACKS  = ['ANY_ROLE_HOLDER', 'BUSINESS_ADMIN', 'ORG_HEAD', 'FAIL', 'NONE'];
   var COMMENTS   = ['ON_NEGATIVE', 'ALWAYS', 'NEVER'];
@@ -77,7 +78,7 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
     };
     self.partSummary = function (p) {
       if (p.resolverType === 'ROLE' || p.resolverType === 'ROLE_SCOPED_ORG') return p.roleCode || p.resolverType;
-      if (p.resolverType === 'FACT_USER') return p.factPath || 'fact';
+      if (p.resolverType === 'FACT_USER' || p.resolverType === 'FACT_LINE_MANAGER') return p.factPath || 'fact';
       if (p.resolverType === 'STATIC_USER') return '#' + (p.staticUserId || '?');
       return p.resolverType;
     };
@@ -209,6 +210,7 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
           roleCode: ko.observable(p.roleCode || ''),
           factPath: ko.observable(p.factPath || ''),
           staticUserId: ko.observable(p.staticUserId || ''),
+          levelsUp: ko.observable(p.levelsUp == null ? 0 : p.levelsUp),
           fallbackRule: ko.observable(p.fallbackRule || 'ANY_ROLE_HOLDER'),
           excludeInitiator: ko.observable(p.excludeInitiator === 'Y')
         };
@@ -221,7 +223,7 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
     self.addPart = function () {
       self.fmParts.push({
         ruleId: null, resolverType: ko.observable('ROLE'), roleCode: ko.observable(''),
-        factPath: ko.observable(''), staticUserId: ko.observable(''),
+        factPath: ko.observable(''), staticUserId: ko.observable(''), levelsUp: ko.observable(0),
         fallbackRule: ko.observable('ANY_ROLE_HOLDER'), excludeInitiator: ko.observable(true)
       });
     };
@@ -252,6 +254,7 @@ function (ko, i18n, wf, skeletonReg, templateHtml) {
             resolverType: p.resolverType(), roleCode: p.roleCode() || null,
             factPath: p.factPath() || null,
             staticUserId: p.staticUserId() === '' ? null : Number(p.staticUserId()),
+            levelsUp: (p.levelsUp() === '' || p.levelsUp() == null) ? 0 : Number(p.levelsUp()),
             fallbackRule: p.fallbackRule(), excludeInitiator: p.excludeInitiator() ? 'Y' : 'N'
           });
         }).concat(toDelete.map(function (id) { return wf.deleteParticipant(vid, id); }));

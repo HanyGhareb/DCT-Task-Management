@@ -756,11 +756,16 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
     PROCEDURE line_manager (p_prins IN OUT NOCOPY t_prins,
                             p_seen  IN OUT NOCOPY t_seen,
                             p_uid   IN NUMBER,
-                            p_up    IN NUMBER) IS
+                            p_up    IN NUMBER,
+                            p_via   IN VARCHAR2 DEFAULT 'LINE_MANAGER') IS
         v_person NUMBER;
         v_mgr    NUMBER;
         v_user   NUMBER;
     BEGIN
+        -- p_uid is the SUBJECT the chain climbs from: the initiator for
+        -- LINE_MANAGER, or a fact-referenced person for FACT_LINE_MANAGER
+        -- (the "on behalf of" case -- route to the BENEFICIARY's manager,
+        -- never the submitter's). Same walk, different starting user.
         SELECT person_id INTO v_person FROM prod.dct_users WHERE user_id = p_uid;
         IF v_person IS NULL THEN RETURN; END IF;
 
@@ -776,7 +781,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
 
         SELECT MIN(user_id) INTO v_user
           FROM prod.dct_users WHERE person_id = v_mgr AND is_active = 'Y';
-        add_prin(p_prins, p_seen, v_user, 'LINE_MANAGER');
+        add_prin(p_prins, p_seen, v_user, p_via);
     EXCEPTION WHEN OTHERS THEN
         NULL;
     END;
@@ -874,6 +879,28 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
                         END IF;
                     END IF;
                     add_prin(o_prins, v_seen, v_uid, 'FACT', SUBSTR(r.fact_path, 1, 100));
+
+                WHEN 'FACT_LINE_MANAGER' THEN
+                    -- "on behalf of": resolve the SUBJECT user from a fact
+                    -- (id or email, same as FACT_USER), then climb to THEIR
+                    -- line manager -- not the submitter's. levels_up skips N.
+                    v_uid := fact_num(p_facts, r.fact_path);
+                    IF v_uid IS NULL THEN
+                        v_txt := fact_str(p_facts, r.fact_path);
+                        IF v_txt IS NOT NULL AND INSTR(v_txt, '@') > 0 THEN
+                            BEGIN
+                                SELECT MIN(user_id) INTO v_uid
+                                  FROM prod.dct_users
+                                 WHERE UPPER(email) = UPPER(TRIM(v_txt))
+                                   AND is_active = 'Y';
+                            EXCEPTION WHEN OTHERS THEN v_uid := NULL;
+                            END;
+                        END IF;
+                    END IF;
+                    IF v_uid IS NOT NULL THEN
+                        line_manager(o_prins, v_seen, v_uid, r.levels_up,
+                                     'FACT_LINE_MANAGER');
+                    END IF;
 
                 WHEN 'INITIATOR' THEN
                     add_prin(o_prins, v_seen, p_initiator, 'INITIATOR');

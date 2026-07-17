@@ -263,8 +263,8 @@ CREATE TABLE prod.dct_wf_participant_rule (
     CONSTRAINT chk_wf_pr_pt CHECK (participant_type IN
         ('POTENTIAL_OWNER','BUSINESS_ADMIN','INITIATOR','VIEWER')),
     CONSTRAINT chk_wf_pr_rt CHECK (resolver_type IN
-        ('ROLE','ROLE_SCOPED_ORG','ORG_HEAD','LINE_MANAGER','FACT_USER',
-         'STATIC_USER','PREVIOUS_ACTOR','INITIATOR')),
+        ('ROLE','ROLE_SCOPED_ORG','ORG_HEAD','LINE_MANAGER','FACT_LINE_MANAGER',
+         'FACT_USER','STATIC_USER','PREVIOUS_ACTOR','INITIATOR')),
     CONSTRAINT chk_wf_pr_os CHECK (org_scope IN
         ('NONE','REQUEST_ORG','INITIATOR_ORG','FACT','STATIC')),
     CONSTRAINT chk_wf_pr_fb CHECK (fallback_rule IN
