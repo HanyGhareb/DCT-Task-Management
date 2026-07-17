@@ -14,6 +14,7 @@ WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK
 PROMPT OTBI Loader production upgrade
 PROMPT Applying additive migrations registered for this release.
 @@48_atd_job_lease_fencing.sql
+@@49_atd_load_warnings.sql
 
 PROMPT OTBI Loader upgrade complete.
 WHENEVER SQLERROR CONTINUE

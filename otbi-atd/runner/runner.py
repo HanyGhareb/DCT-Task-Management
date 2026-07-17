@@ -169,9 +169,17 @@ def _make_run_one_oracledb(conn, load):
                 print(f"[held] {name}: prepared, awaiting schema review (not loaded)")
                 return True
             ck = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
+            date_warnings = {"total": 0, "items": []}
             n = load.load(conn, csv_text, job["stage_table"], job["final_table"],
-                          job["load_mode"], job["key_columns"], job["column_map_json"])
+                          job["load_mode"], job["key_columns"], job["column_map_json"],
+                          run_id=run_id, job_name=name, warning_state=date_warnings)
             note = _warn_truncation(name, n)
+            if date_warnings["total"]:
+                shown = len(date_warnings["items"])
+                date_note = (f"WARNING: {date_warnings['total']} invalid date value(s) loaded "
+                             f"as NULL; {shown} detail sample(s) recorded")
+                drift.append(date_note)
+                print(f"[WARN] {name}: {date_note}")
             _log_end(conn, run_id, "SUCCESS", n=n, ck=ck,
                      msg="; ".join(drift + ([note] if note else [])) or None)
             print(f"[ok] {name}: {n} rows -> {job['stage_table']}")

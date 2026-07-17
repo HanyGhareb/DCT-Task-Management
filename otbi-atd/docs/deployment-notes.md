@@ -1,5 +1,19 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-07-18 — Non-blocking invalid-date warnings (db/49, ATD 1.23.0)
+
+- Invalid values in DATE/TIMESTAMP target columns now load as NULL without stopping
+  the extract. The successful run message carries the total and up to 200 samples are
+  stored in `PROD.ATD_LOAD_ROW_WARNING` with source row, target column, raw value,
+  warning code, and reason.
+- `GET /atd/runs/:id` returns `warningCount` + `warnings[]`; Run Details renders the
+  warning table in EN/AR. Protected-route smoke returned 401 without a token as expected.
+- PROD verification: warning table/9 columns present, exactly one GET handler on
+  `atd.rest` `runs/:id`, zero invalid ATD objects.
+- Runner/load sources synced to vm180/181/182; syntax clean, matching checksums, all
+  services active. Partial web release `20260718000149-atd49` activated from the prior
+  live release with only ATD files overlaid; served `APP_VERSION=1.23.0`.
+
 ## 2026-07-17 — Renewable extract-job leases and claim fencing (db/48)
 
 - PROD `ATD_OTBI_JOBS` now carries `CLAIM_TOKEN` and `LEASE_EXPIRES_AT`.

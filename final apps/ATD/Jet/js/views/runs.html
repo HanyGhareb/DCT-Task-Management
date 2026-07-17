@@ -101,6 +101,26 @@
           <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.runs.detail.message')"></label>
             <pre class="mono" style="white-space:pre-wrap;margin:0;max-height:240px;overflow:auto" data-bind="text: detail().message || '—'"></pre></div>
         </div>
+        <!-- ko if: detail().warnings && detail().warnings.length -->
+        <div style="margin-top:20px">
+          <h4 style="margin:0 0 6px" data-bind="text: t('atd.runs.detail.dataWarnings')"></h4>
+          <p class="muted" style="margin:0 0 10px" data-bind="text: t('atd.runs.detail.dataWarningsHint')"></p>
+          <div class="data-table-wrap" style="max-height:260px;overflow:auto">
+            <table class="data-table">
+              <thead><tr>
+                <th data-bind="text: t('atd.runs.detail.row')"></th>
+                <th data-bind="text: t('atd.runs.detail.column')"></th>
+                <th data-bind="text: t('atd.runs.detail.badValue')"></th>
+                <th data-bind="text: t('atd.runs.detail.reason')"></th>
+              </tr></thead>
+              <tbody data-bind="foreach: detail().warnings">
+                <tr><td data-bind="text: rowNumber"></td><td class="mono" data-bind="text: columnName"></td>
+                  <td class="mono" data-bind="text: rawValue || '—'"></td><td data-bind="text: reason"></td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+        <!-- /ko -->
       </div>
     </div>
   </div>

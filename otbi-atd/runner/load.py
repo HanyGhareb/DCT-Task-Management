@@ -71,7 +71,8 @@ def _parse_csv(csv_text, column_map):
     return target_cols, rows
 
 
-def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, column_map_json):
+def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, column_map_json,
+         run_id=None, job_name=None, warning_state=None):
     column_map = json.loads(column_map_json)
     target_cols, rows = _parse_csv(csv_text, column_map)
     types = _col_types(conn, stage_table)
@@ -81,12 +82,27 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     # everything else kept as the (lightly-cleaned) string.
     is_date = [types.get(c, "").startswith(("DATE", "TIMESTAMP")) for c in target_cols]
     is_num = [types.get(c, "").startswith("NUMBER") for c in target_cols]
+    warnings = warning_state if warning_state is not None else {"total": 0, "items": []}
+    warnings.setdefault("total", 0)
+    warnings.setdefault("items", [])
+    warning_limit = max(0, int(os.environ.get("ATD_WARNING_SAMPLE_LIMIT", "200")))
     conv = []
-    for r in rows:
+    for row_idx, r in enumerate(rows, start=2):  # CSV row 1 is the header
         out = []
         for i, v in enumerate(r):
             if is_date[i]:
-                out.append(_to_dt(v))
+                parsed = _to_dt(v)
+                if parsed is None and v is not None and str(v).strip() != "":
+                    warnings["total"] += 1
+                    if len(warnings["items"]) < warning_limit:
+                        warnings["items"].append({
+                            "row_number": row_idx,
+                            "column_name": target_cols[i],
+                            "raw_value": str(v)[:1000],
+                            "warning_code": "INVALID_DATE",
+                            "message": "Value is not a supported date; NULL loaded",
+                        })
+                out.append(parsed)
             elif is_num[i]:
                 cv = coerce_number(v)
                 out.append(None if (cv is None or cv == "") else cv)
@@ -111,6 +127,18 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     chunk = int(os.environ.get("ATD_DB_CHUNK", "5000"))
     for i in range(0, len(conv), chunk):
         cur.executemany(insert_sql, conv[i:i + chunk])
+
+    # Store samples in the same transaction as the data load. If the load rolls
+    # back, its warnings roll back too. The total can exceed the sample limit and
+    # is carried in ATD_LOAD_RUN_LOG.message by runner.py.
+    if run_id is not None and warnings["items"]:
+        cur.executemany(
+            "insert into prod.atd_load_row_warning "
+            "(run_id, job_name, row_number, column_name, raw_value, warning_code, message) "
+            "values (:1,:2,:3,:4,:5,:6,:7)",
+            [(run_id, (job_name or "")[:80], w["row_number"], w["column_name"],
+              w["raw_value"], w["warning_code"], w["message"])
+             for w in warnings["items"]])
 
     if load_mode == "MERGE" and final_table:
         # stage and final MUST differ: the staging clear-out above empties stage, so a

@@ -119,6 +119,9 @@ on the set's interval.
 - `load` · `newTarget` / `editTarget` (drawer) · `save` (create/update) · `del`.
 
 ## Run Logs (`runs`)
+- Run Detail shows non-blocking **data warnings** for invalid dates: source row,
+  target column, original value, and reason. The job remains SUCCESS and loads NULL
+  for the invalid cell; diagnostic samples are stored by run (`db/49`).
 - `load` (job/status/**jobSet**/from/to filters, **server-paged** via `<list-pager>` — `offset`/`limit`/`total`) ·
   `open` (detail modal: message, checksum, rows, duration) · `closeDetail` · `exportCsv` (authed blob
   download) · `fmtDuration`.
@@ -243,7 +246,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |
-| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` filter (redefined by `otbi-atd/db/42_atd_runs_set_ords.sql`, additive; re-run after `13`) |
+| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` filter (db/42); detail adds `warningCount` + `warnings[]` with row/column/value/reason for non-blocking invalid-date warnings (db/49). Re-run both additive scripts after `13`. |
 | GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`; incl. db/46 telemetry `workerVm`/`startedAt`/`finishedAt`/`durationSecs`/`submittedBy`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
 | GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |
 | GET | `/actions/:id` | action detail: payload, last error, source status history |
