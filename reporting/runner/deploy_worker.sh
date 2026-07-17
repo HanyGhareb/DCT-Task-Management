@@ -20,7 +20,7 @@
 #   /opt/rpt-worker            <- runner code (this directory)
 #   /opt/oracle-wallet/...     <- wallet copy
 #   /etc/rpt-worker.env (600)  <- DB + wallet passwords
-#   pip: oracledb jinja2 openpyxl playwright  + playwright chromium (+deps)
+#   pip: oracledb jinja2 openpyxl playwright docxtpl python-pptx  + chromium (+deps)
 #   systemd: rpt-worker.service enabled + started
 # The worker then appears on the BI app Workers page as <name>/py<pid> and
 # obeys PAUSE / RESUME / STOP from the UI.
@@ -54,7 +54,7 @@ echo "== [$HOST] copying runner code + wallet"
 
 echo "== [$HOST] installing python deps (this can take a few minutes)"
 "${SSH[@]}" "python3 -m pip --version >/dev/null 2>&1 || dnf install -y -q python3-pip;
-             python3 -m pip install --quiet oracledb jinja2 openpyxl playwright docxtpl &&
+             python3 -m pip install --quiet oracledb jinja2 openpyxl playwright docxtpl python-pptx &&
              python3 -m playwright install chromium >/dev/null"
 
 # Word (.docx) templates: docxtpl renders, headless LibreOffice converts to PDF.

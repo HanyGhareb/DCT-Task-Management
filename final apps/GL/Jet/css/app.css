@@ -644,3 +644,19 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
   background:rgba(27,42,39,.05);font-weight:700}
 .pn-days.bad{background:#F8E9E6;color:#B3352B}
 .pn-um{margin-top:12px}
+
+/* ── "Generate Report" split dropdown (Budget Utilization page actions) ── */
+.gen{position:relative;display:inline-block}
+.gen-btn::after{content:"";display:inline-block}
+.gen-back{position:fixed;inset:0;z-index:40}
+.gen-menu{position:absolute;top:calc(100% + 6px);inset-inline-end:0;z-index:41;min-width:270px;
+  background:var(--surface);border:1px solid var(--line);border-radius:var(--r-sm);
+  box-shadow:var(--shadow);padding:6px;overflow:hidden}
+.gen-item{display:flex;align-items:center;gap:11px;width:100%;text-align:start;
+  background:transparent;border:0;border-radius:8px;padding:9px 11px;cursor:pointer;color:var(--ink)}
+.gen-item:hover{background:var(--brand-soft)}
+.gen-ic{font-size:18px;line-height:1;flex:none;width:24px;text-align:center;filter:grayscale(.15)}
+.gen-tx{display:flex;flex-direction:column;gap:1px;min-width:0}
+.gen-tx b{font-size:13px;font-weight:600}
+.gen-tx small{font-size:11px;color:var(--muted)}
+html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}

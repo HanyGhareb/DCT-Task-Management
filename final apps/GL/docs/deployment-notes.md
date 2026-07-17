@@ -26,6 +26,27 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-18 — "Generate Report" dropdown + PowerPoint export (GL v1.32.1).** UX request:
+  fold the Budget Utilization page's **Export Excel** + **Briefing Book** buttons into ONE
+  **"Generate Report ▾"** split button and add a **PowerPoint** option. The menu (`.gen`/
+  `.gen-menu`/`.gen-item`, click-outside `.gen-back`) offers Briefing Book (PDF), Excel Register
+  (XLSX) and PowerPoint (PPTX); Export CSV / Rebuild views / Refresh actuals stay separate.
+  - **PowerPoint is a NEW output format for the whole Reporting Platform.** Backend:
+    `reporting/runner/render_pptx.py` (python-pptx) builds an executive 16:9 deck from the same
+    MULTI sections as the Briefing Book — cover + KPI overview + utilization-by-sector chart+table
+    + budget composition doughnut + lines under pressure + actuals & supplier concentration +
+    open obligations/commitments + observations & insights + methodology (native, editable
+    tables/charts; figures match the PDF/Excel). `runner.py` gains a `PPTX` format branch;
+    `reporting/db/26` (+ db/02 source) registers `PPTX` in the `RPT_FORMAT` lookup (else
+    `record_output` → ORA-20090). python-pptx added to the fleet (vm180-182) + `deploy_worker.sh`.
+  - PPT reuses `BUDGET_UTIL_BOOK`: the GL bridge `POST /gl/butil/ppt` enqueues it with
+    `formats='PPTX'` (+ `GET /butil/ppt/:id` status, `/butil/ppt/:id/file` download) — added to
+    `db/11_gl_butil_book_ords.sql` alongside the book/xlsx routes. **Post-05 re-run of 11 unchanged.**
+  - Verified: local deck render (8 slides, visual QA of cover/KPI/sector/insights); fleet E2E
+    run 101 SUCCESS (valid 8-slide deck from real 2026/Tourism data); HTTP bridge E2E run 102
+    (POST→SUCCESS→valid 64 KB .pptx, 400 no-year / 401 no-token); browser smoke 14/14 (dropdown
+    replaces the two buttons, 3 format options, PowerPoint generates + downloads a valid 8-slide
+    deck, EN/AR menu localized). APP_VERSION 1.32.1.
 - **2026-07-17 — Business Unit multi-select filter (GL v1.31.0)** — user request: BU as a search
   criterion "in all dashboards in GL and AP + the reports", multi-select. **Data reality: the BIP
   pending-approval snapshot is the ONLY cross-BU source on the platform** (DCT 713 / Museum Shared

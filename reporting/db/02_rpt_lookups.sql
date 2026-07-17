@@ -57,6 +57,7 @@ BEGIN
   upsert_category('RPT_FORMAT', 'Report Format', 'صيغة التقرير', v_cat);
   upsert_value(v_cat, 'PDF',  'PDF',   'PDF',   10, 'Y');
   upsert_value(v_cat, 'XLSX', 'Excel', 'إكسل',  20);
+  upsert_value(v_cat, 'PPTX', 'PowerPoint', 'باوربوينت', 25);
   upsert_value(v_cat, 'CSV',  'CSV',   'CSV',   30);
 
   -- run status

@@ -242,6 +242,16 @@
     buBookReady:{en:'Briefing book downloaded.',ar:'تم تنزيل كتيب الإحاطة.'},
     buBookFailed:{en:'Briefing book failed: ',ar:'فشل إنشاء كتيب الإحاطة: '},
     buBookTimeout:{en:'Still running — check again shortly (run #',ar:'لا يزال قيد التشغيل — تحقق بعد قليل (تشغيل رقم '},
+    genReport:{en:'Generate Report ▾',ar:'إنشاء تقرير ▾'},
+    genRunning:{en:'Generating…',ar:'جارٍ الإنشاء…'},
+    repBook:{en:'Briefing Book (PDF)',ar:'كتيب الإحاطة (PDF)'},
+    repBookSub:{en:'Executive briefing document',ar:'وثيقة إحاطة تنفيذية'},
+    repXlsx:{en:'Excel Register (XLSX)',ar:'سجل إكسل (XLSX)'},
+    repXlsxSub:{en:'Full detail lists for analysis',ar:'قوائم تفصيلية كاملة للتحليل'},
+    repPpt:{en:'PowerPoint (PPTX)',ar:'باوربوينت (PPTX)'},
+    repPptSub:{en:'Executive slide deck',ar:'عرض شرائح تنفيذي'},
+    buPptHint:{en:'Generate an executive PowerPoint deck using ALL the current page filters — cover, KPI overview, utilization by sector, budget composition, lines under pressure, actuals and supplier concentration, open obligations & commitments, and management insights. Native, editable slides. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء عرض شرائح تنفيذي (باوربوينت) وفق جميع عوامل تصفية الصفحة الحالية — غلاف ومؤشرات أداء واستخدام حسب القطاع وتكوين الموازنة والبنود تحت الضغط والفعلي وتركّز الموردين والالتزامات والتعهدات المفتوحة ورؤى الإدارة. شرائح أصلية قابلة للتحرير. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
+    pnPptReady:{en:'PowerPoint deck downloaded.',ar:'تم تنزيل عرض الشرائح.'},
     noButil:{en:'No budget lines match these criteria.',ar:'لا توجد بنود موازنة مطابقة.'},
     cProjType:{en:'Type',ar:'النوع'}, cDept:{en:'Department',ar:'الإدارة'},
     cProject:{en:'Project',ar:'المشروع'}, cTask:{en:'Task',ar:'المهمة'},
@@ -1235,6 +1245,67 @@
         })();
       }).catch(function (e) { self.buXlsxBusy(false); fail(e); });
     };
+
+    /* ── PowerPoint deck (BUDGET_UTIL_BOOK rendered as PPTX via /gl/butil/ppt) —
+       an executive slide deck of the same data as the Briefing Book. */
+    self.buPptBusy = ko.observable(false);
+    function buPptDownload(runId) {
+      return fetch(API + '/butil/ppt/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('PowerPoint download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Budget_Utilization_Briefing_' + self.buYear() + '.pptx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runBuPpt = function () {
+      if (self.buPptBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.buPptBusy(true);
+      api('POST', '/butil/ppt', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {
+            self.buPptBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/butil/ppt/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                buPptDownload(runId)
+                  .then(function () { self.buPptBusy(false); toast(self.t('pnPptReady')); })
+                  .catch(function (e) { self.buPptBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.buPptBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 6000);
+        })();
+      }).catch(function (e) { self.buPptBusy(false); fail(e); });
+    };
+
+    /* ── "Generate Report" dropdown (Briefing Book PDF / Excel / PowerPoint) ── */
+    self.genOpen = ko.observable(false);
+    self.toggleGen = function () { self.genOpen(!self.genOpen()); return true; };
+    self.closeGen = function () { self.genOpen(false); return true; };
+    self.buGenBusy = ko.computed(function () {
+      return self.buBookBusy() || self.buXlsxBusy() || self.buPptBusy();
+    });
 
     /* ════ PROJECTS ENCUMBRANCES — open PO/PR lines with the full GL combination ══
        Reuses the Budget Utilization filter bar (buParams) VERBATIM, so the scope

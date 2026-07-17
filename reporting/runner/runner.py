@@ -35,6 +35,7 @@ DUBAI = timezone(timedelta(hours=4))           # Asia/Dubai (fixed +04:00, no DS
 HOSTNAME = os.environ.get("RPT_WORKER_NAME") or socket.gethostname() or "rpt"
 WORKER_ID = f"{HOSTNAME}/py{os.getpid()}"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 # worker registry (DCT_RPT_WORKER) is only maintained by long-running --forever
 # workers; one-shot drains stay invisible to the BI Workers page
@@ -261,6 +262,13 @@ def process(conn, conf, job):
         fn = f"{code}_{stamp}.csv"
         record_output(conn, run_id, "CSV", fn, "text/csv", csv_bytes)
         attachments.append((fn, "text/csv", csv_bytes))
+    if "PPTX" in formats:
+        # executive PowerPoint deck — MULTI reports only (built from the sections)
+        import render_pptx
+        pptx_bytes = render_pptx.build_deck(sections, ctx)
+        fn = f"{code}_{stamp}.pptx"
+        record_output(conn, run_id, "PPTX", fn, PPTX_MIME, pptx_bytes)
+        attachments.append((fn, PPTX_MIME, pptx_bytes))
 
     sent = failed = 0
     if (config.cfg(conf, "EMAIL_ENABLED", "N") or "N").upper() == "Y" and attachments:
