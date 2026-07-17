@@ -2,6 +2,7 @@
  * settingService.js — system settings & lookup values
  * ORDS: GET  /settings/           — list all settings
  *       PUT  /settings/:key       — update a setting by key
+ *       POST /maintenance/log-cleanup — run configured ATD log retention
  *       GET  /lookups/            — list categories + nested values
  *       PUT  /lookups/values/:id  — update a lookup value
  *
@@ -70,6 +71,59 @@ define(['services/api', 'shared/refCache'], function (api, refCache) {
     /* settingKey-based update (ORDS uses key, not numeric ID) */
     updateSetting: function (settingKey, value) {
       return api.put('/settings/' + settingKey, { value: String(value) });
+    },
+
+    runLogCleanup: function () {
+      return api.post('/maintenance/log-cleanup', {});
+    },
+
+    getStorageHealth: function () {
+      return api.get('/maintenance/storage-health', { silent: true });
+    },
+
+    getStorageHistory: function () {
+      return api.get('/maintenance/storage-history', { silent: true });
+    },
+
+    getDatabaseHealth: function () {
+      return api.get('/maintenance/db-health', { silent: true });
+    },
+
+    runDatabaseHealth: function () {
+      return api.post('/maintenance/db-health', {}, { silent: true });
+    },
+
+    getDataIntegrity: function () {
+      return api.get('/maintenance/data-integrity', { silent: true });
+    },
+
+    runDataIntegrity: function () {
+      return api.post('/maintenance/data-integrity', {}, { silent: true });
+    },
+
+    getSqlPerformance: function () {
+      return api.get('/maintenance/sql-performance', { silent: true });
+    },
+
+    refreshSqlPerformance: function () {
+      return api.post('/maintenance/sql-performance', {}, { silent: true });
+    },
+
+    getDatabaseLocks: function () {
+      return api.get('/maintenance/database-locks', { silent: true });
+    },
+
+    refreshDatabaseLocks: function () {
+      return api.post('/maintenance/database-locks', {}, { silent: true });
+    },
+
+    terminateDatabaseBlocker: function (lock, reason) {
+      return api.post('/maintenance/database-locks/terminate', {
+        instanceId: Number(lock.blockerInstance),
+        sid: Number(lock.blockerSid),
+        serial: Number(lock.blockerSerial),
+        reason: reason
+      }, { silent: true });
     },
 
     getSettingsByCategory: function () {

@@ -15,7 +15,7 @@
   <!-- /ko -->
 
   <!-- ── Region Appearance — THEME_REGION_* palette picker ─────────────── -->
-  <!-- ko if: region() -->
+  <!-- ko if: false -->
   <div class="card" style="margin-bottom:16px">
     <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('sys.region.title')"></div>
     <div style="font-size:12px;color:var(--text-2);margin-bottom:14px" data-bind="text: $root.t('sys.region.subtitle')"></div>
@@ -86,7 +86,7 @@
   <!-- /ko -->
 
   <!-- ── Field Focus Highlight — THEME_FOCUS_COLOR + FEATURE_FOCUS_HIGHLIGHT ── -->
-  <!-- ko if: focus() -->
+  <!-- ko if: false -->
   <div class="card" style="margin-bottom:16px">
     <div class="section-heading" style="margin-top:0" data-bind="text: $root.t('sys.focus.title')"></div>
     <div style="font-size:12px;color:var(--text-2);margin-bottom:14px" data-bind="text: $root.t('sys.focus.subtitle')"></div>
@@ -131,6 +131,296 @@
   <!-- ko foreach: categories -->
   <div class="card" style="margin-bottom:16px">
     <div class="section-heading" style="margin-top:0" data-bind="text: label"></div>
+    <!-- ko if: label === 'DATA_MAINTENANCE' -->
+    <div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;padding:4px 10px 16px;border-bottom:1px solid var(--border)">
+      <div style="flex:1;min-width:260px">
+        <div style="font-size:13px;font-weight:650" data-bind="text: $root.t('sys.cleanup.title')"></div>
+        <div style="font-size:12px;color:var(--text-2);margin-top:3px" data-bind="text: $root.t('sys.cleanup.subtitle')"></div>
+        <!-- ko if: $vm.hasDirty() -->
+        <div style="font-size:11px;color:#8a5a00;margin-top:7px" data-bind="text: $root.t('sys.cleanup.saveFirst')"></div>
+        <!-- /ko -->
+      </div>
+      <!-- ko if: $vm.isSysAdmin -->
+      <button class="btn btn-secondary" data-bind="click: $vm.runLogCleanup, enable: $vm.canRunCleanup">
+        <!-- ko if: $vm.cleanupRunning() --><span data-bind="text: $root.t('sys.cleanup.running')"></span><!-- /ko -->
+        <!-- ko ifnot: $vm.cleanupRunning() --><span data-bind="text: $root.t('sys.cleanup.run')"></span><!-- /ko -->
+      </button>
+      <!-- /ko -->
+    </div>
+    <!-- ko if: $vm.cleanupMsg() -->
+    <div class="alert-banner alert-banner--info" style="margin:12px 10px 0" data-bind="text: $vm.cleanupMsg"></div>
+    <!-- /ko -->
+    <!-- ko if: $vm.isSysAdmin -->
+    <div style="margin:16px 10px 4px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,#f7f7f6)">
+      <!-- ko if: $vm.storageLoading() -->
+      <div class="muted" style="font-size:12px" data-bind="text: $root.t('sys.storage.loading')"></div>
+      <!-- /ko -->
+      <!-- ko with: $vm.storageHealth -->
+      <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:18px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--text-3)" data-bind="text: $root.t('sys.storage.current')"></div>
+          <div style="font-size:24px;font-weight:700;line-height:1.15;margin-top:3px"><span data-bind="text: currentMb"></span> <small style="font-size:12px;font-weight:600;color:var(--text-2)">MB</small></div>
+        </div>
+        <div style="display:flex;gap:24px;font-size:12px;color:var(--text-2)">
+          <span><span data-bind="text: $root.t('sys.storage.documents')"></span> <b data-bind="text: documentsMb + ' MB'"></b></span>
+          <span><span data-bind="text: $root.t('sys.storage.reports')"></span> <b data-bind="text: reportsMb + ' MB'"></b></span>
+          <span><span data-bind="text: $root.t('sys.storage.limit')"></span> <b data-bind="text: thresholdMb + ' MB'"></b></span>
+        </div>
+      </div>
+      <div style="height:7px;border-radius:999px;background:#dedbd6;overflow:hidden;margin-top:12px">
+        <div style="height:100%;border-radius:inherit;transition:width .25s ease;background:#3f7d61"
+             data-bind="style:{ width:$vm.storageBarWidth(), background: status === 'WARNING' ? '#c74634' : '#3f7d61' }"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:6px;font-size:11px;color:var(--text-3)">
+        <span data-bind="text: percent + '% ' + $root.t('sys.storage.used')"></span>
+        <span data-bind="text: status === 'WARNING' ? $root.t('sys.storage.warning') : $root.t('sys.storage.healthy')"></span>
+      </div>
+      <!-- /ko -->
+
+      <!-- ko with: $vm.storageHistory -->
+      <div style="margin-top:16px;padding-top:14px;border-top:1px solid var(--border)">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap">
+          <div>
+            <div style="font-size:13px;font-weight:650" data-bind="text: $root.t('sys.storage.growthTitle')"></div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px">
+              <span data-bind="text: $root.t('sys.storage.schemaSize')"></span>
+              <b data-bind="text: schemaMb + ' MB'"></b>
+              · <span data-bind="text: $root.t('sys.storage.lastSnapshot')"></span>
+              <span data-bind="text: latestDate || '—'"></span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <div style="min-width:92px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)">
+              <div style="font-size:10px;color:var(--text-3)" data-bind="text: $root.t('sys.storage.days7')"></div>
+              <b style="font-size:13px" data-bind="text: $vm.growthText($data.growth7)"></b>
+            </div>
+            <div style="min-width:92px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)">
+              <div style="font-size:10px;color:var(--text-3)" data-bind="text: $root.t('sys.storage.days30')"></div>
+              <b style="font-size:13px" data-bind="text: $vm.growthText($data.growth30)"></b>
+            </div>
+            <div style="min-width:92px;padding:8px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)">
+              <div style="font-size:10px;color:var(--text-3)" data-bind="text: $root.t('sys.storage.days90')"></div>
+              <b style="font-size:13px" data-bind="text: $vm.growthText($data.growth90)"></b>
+            </div>
+          </div>
+        </div>
+        <!-- ko if: snapshotCount < 2 -->
+        <div style="font-size:11px;color:var(--text-3);margin-top:10px" data-bind="text: $root.t('sys.storage.collecting')"></div>
+        <!-- /ko -->
+        <!-- ko if: $data.topGrowth && $data.topGrowth.length -->
+        <div style="margin-top:12px">
+          <div style="font-size:11px;font-weight:650;color:var(--text-2);margin-bottom:6px" data-bind="text: $root.t('sys.storage.fastest')"></div>
+          <div style="display:flex;gap:7px;flex-wrap:wrap" data-bind="foreach: $data.topGrowth">
+            <span style="font:11px monospace;padding:5px 8px;border-radius:5px;background:#ece9e4">
+              <span data-bind="text: tableName"></span>
+              <b data-bind="text: ' +' + Number(growthMb).toFixed(2) + ' MB'"></b>
+            </span>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <div style="margin:12px 10px 4px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,#f7f7f6)">
+      <!-- ko if: $vm.healthLoading() && !$vm.databaseHealth() -->
+      <div class="muted" style="font-size:12px" data-bind="text: $root.t('sys.dbHealth.loading')"></div>
+      <!-- /ko -->
+      <!-- ko with: $vm.databaseHealth -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:11px">
+          <span style="width:10px;height:10px;border-radius:50%;box-shadow:0 0 0 4px rgba(63,125,97,.12)"
+                data-bind="style:{ background:status === 'HEALTHY' ? '#3f7d61' : '#c74634',
+                                  'box-shadow':status === 'HEALTHY' ? '0 0 0 4px rgba(63,125,97,.12)' : '0 0 0 4px rgba(199,70,52,.12)' }"></span>
+          <div>
+            <div style="font-size:13px;font-weight:650" data-bind="text: $root.t('sys.dbHealth.title')"></div>
+            <div style="font-size:11px;color:var(--text-3);margin-top:2px">
+              <span data-bind="text: status === 'HEALTHY' ? $root.t('sys.dbHealth.healthy') : $root.t('sys.dbHealth.warning')"></span>
+              · <span data-bind="text: $root.t('sys.dbHealth.checked')"></span>
+              <span data-bind="text: checkedAt"></span>
+            </div>
+          </div>
+        </div>
+        <button class="btn btn-secondary" data-bind="click:$vm.runDatabaseHealth,disable:$vm.healthRunning">
+          <!-- ko if: $vm.healthRunning() --><span data-bind="text:$root.t('sys.dbHealth.running')"></span><!-- /ko -->
+          <!-- ko ifnot: $vm.healthRunning() --><span data-bind="text:$root.t('sys.dbHealth.run')"></span><!-- /ko -->
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:13px">
+        <div style="padding:9px 10px;border-radius:6px;background:var(--surface-1,#fff);border:1px solid var(--border)"><b data-bind="text:invalidObjects"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.dbHealth.invalid')"></span></div>
+        <div style="padding:9px 10px;border-radius:6px;background:var(--surface-1,#fff);border:1px solid var(--border)"><b data-bind="text:unusableIndexes"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.dbHealth.indexes')"></span></div>
+        <div style="padding:9px 10px;border-radius:6px;background:var(--surface-1,#fff);border:1px solid var(--border)"><b data-bind="text:unusablePartitions"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.dbHealth.partitions')"></span></div>
+      </div>
+      <!-- ko if: issues && issues.length -->
+      <div style="margin-top:10px;border-top:1px solid var(--border)" data-bind="foreach:issues">
+        <div style="display:grid;grid-template-columns:minmax(180px,1fr) 150px 110px;gap:12px;padding:8px 2px;border-bottom:1px solid var(--border);font-size:11px">
+          <b style="font-family:monospace" data-bind="text:objectName"></b><span data-bind="text:objectType"></span><span style="color:#b3261e;font-weight:650" data-bind="text:status"></span>
+        </div>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- ko if: $vm.healthMsg() -->
+      <div class="alert-banner alert-banner--info" style="margin-top:10px" data-bind="text:$vm.healthMsg"></div>
+      <!-- /ko -->
+    </div>
+
+    <div style="margin:12px 10px 4px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,#f7f7f6)">
+      <!-- ko if: $vm.integrityLoading() && !$vm.dataIntegrity() -->
+      <div class="muted" style="font-size:12px" data-bind="text:$root.t('sys.integrity.loading')"></div>
+      <!-- /ko -->
+      <!-- ko with: $vm.dataIntegrity -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:50%" data-bind="style:{background:status === 'HEALTHY' ? '#3f7d61' : '#c74634'}"></span>
+            <div style="font-size:13px;font-weight:650" data-bind="text:$root.t('sys.integrity.title')"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+            <span data-bind="text:status === 'HEALTHY' ? $root.t('sys.integrity.healthy') : $root.t('sys.integrity.warning')"></span>
+            · <span data-bind="text:$root.t('sys.integrity.checked')"></span> <span data-bind="text:checkedAt"></span>
+          </div>
+        </div>
+        <button class="btn btn-secondary" data-bind="click:$vm.runDataIntegrity,disable:$vm.integrityRunning">
+          <!-- ko if: $vm.integrityRunning() --><span data-bind="text:$root.t('sys.integrity.running')"></span><!-- /ko -->
+          <!-- ko ifnot: $vm.integrityRunning() --><span data-bind="text:$root.t('sys.integrity.run')"></span><!-- /ko -->
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:13px">
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:constraintWarnings"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.integrity.constraints')"></span></div>
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:orphanRows,style:{color:Number(orphanRows)>0?'#b3261e':''}"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.integrity.orphans')"></span></div>
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:duplicateGroups"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.integrity.duplicates')"></span></div>
+      </div>
+      <!-- ko if: issues && issues.length -->
+      <div style="margin-top:11px;border-top:1px solid var(--border)" data-bind="foreach:issues">
+        <div style="display:grid;grid-template-columns:42px minmax(190px,1fr) 120px 60px;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--border);font-size:11px">
+          <b style="color:var(--text-3)" data-bind="text:moduleCode"></b>
+          <span><b style="font-family:monospace" data-bind="text:tableName"></b><small style="display:block;color:var(--text-3)" data-bind="text:constraintName"></small></span>
+          <span data-bind="text:ruleType === 'ORPHAN_ROWS' ? $root.t('sys.integrity.orphanRule') : $root.t('sys.integrity.validationRule')"></span>
+          <b style="text-align:end" data-bind="text:issueCount,style:{color:Number(issueCount)>0?'#b3261e':'var(--text-2)'}"></b>
+        </div>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- ko if: $vm.integrityMsg() -->
+      <div class="alert-banner alert-banner--info" style="margin-top:10px" data-bind="text:$vm.integrityMsg"></div>
+      <!-- /ko -->
+    </div>
+
+    <div style="margin:12px 10px 4px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,#f7f7f6)">
+      <!-- ko if: $vm.perfLoading() && !$vm.sqlPerformance() -->
+      <div class="muted" style="font-size:12px" data-bind="text:$root.t('sys.perf.loading')"></div>
+      <!-- /ko -->
+      <!-- ko with: $vm.sqlPerformance -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:50%" data-bind="style:{background:status === 'HEALTHY' ? '#3f7d61' : '#c74634'}"></span>
+            <div style="font-size:13px;font-weight:650" data-bind="text:$root.t('sys.perf.title')"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+            <span data-bind="text:$root.t('sys.perf.subtitle')"></span>
+            · <span data-bind="text:$root.t('sys.perf.checked')"></span> <span data-bind="text:checkedAt"></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <button class="btn btn-secondary" data-bind="click:$vm.refreshSqlPerformance,disable:$vm.perfRunning">
+            <!-- ko if: $vm.perfRunning() --><span data-bind="text:$root.t('sys.perf.running')"></span><!-- /ko -->
+            <!-- ko ifnot: $vm.perfRunning() --><span data-bind="text:$root.t('sys.perf.run')"></span><!-- /ko -->
+          </button>
+          <button class="btn btn-secondary" style="min-width:42px;padding-inline:12px"
+                  data-bind="click:$vm.toggleSqlPerformance,
+                             attr:{'aria-expanded':$vm.perfExpanded(),'aria-label':$vm.perfExpanded()?$root.t('sys.perf.collapse'):$root.t('sys.perf.expand'),
+                                   title:$vm.perfExpanded()?$root.t('sys.perf.collapse'):$root.t('sys.perf.expand')}"
+                  type="button"><span aria-hidden="true" data-bind="text:$vm.perfExpanded()?'▴':'▾'"></span></button>
+        </div>
+      </div>
+      <!-- ko if: $vm.perfExpanded -->
+      <div style="display:flex;gap:10px;align-items:flex-start;margin-top:12px;padding:10px 12px;border-inline-start:3px solid #0572ce;border-radius:4px;background:#eef6fb;color:var(--text-2);font-size:11.5px;line-height:1.45">
+        <span style="color:#0572ce;font-weight:800" aria-hidden="true">i</span>
+        <span data-bind="text:$root.t('sys.perf.hint')"></span>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:13px">
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:trackedCount"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.perf.tracked')"></span></div>
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:slowCount,style:{color:Number(slowCount)>0?'#b3261e':''}"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.perf.slow')"></span></div>
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:topAvgSeconds + ' s'"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.perf.slowest')"></span></div>
+      </div>
+      <!-- ko if: $data.items && $data.items.length -->
+      <div style="margin-top:11px;border-top:1px solid var(--border)" data-bind="foreach:$data.items.slice(0,10)">
+        <div style="display:grid;grid-template-columns:50px 92px minmax(240px,1fr) 85px 85px;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--border);font-size:11px">
+          <b style="color:var(--text-3)" data-bind="text:moduleCode"></b>
+          <span style="font-family:monospace" data-bind="text:sqlId"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text:sqlPreview,attr:{title:sqlPreview}"></span>
+          <span><b data-bind="text:avgSeconds + ' s'"></b> <small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.perf.average')"></small></span>
+          <span><b data-bind="text:executions"></b> <small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.perf.executions')"></small></span>
+        </div>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- ko if: $vm.perfMsg() -->
+      <div class="alert-banner alert-banner--info" style="margin-top:10px" data-bind="text:$vm.perfMsg"></div>
+      <!-- /ko -->
+    </div>
+
+    <div style="margin:12px 10px 4px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,#f7f7f6)">
+      <!-- ko if: $vm.locksLoading() && !$vm.databaseLocks() -->
+      <div class="muted" style="font-size:12px" data-bind="text:$root.t('sys.locks.loading')"></div>
+      <!-- /ko -->
+      <!-- ko with: $vm.databaseLocks -->
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:18px;flex-wrap:wrap">
+        <div>
+          <div style="display:flex;align-items:center;gap:8px">
+            <span style="width:8px;height:8px;border-radius:50%" data-bind="style:{background:status === 'HEALTHY' ? '#3f7d61' : '#c74634'}"></span>
+            <div style="font-size:13px;font-weight:650" data-bind="text:$root.t('sys.locks.title')"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);margin-top:4px">
+            <span data-bind="text:status === 'HEALTHY' ? $root.t('sys.locks.healthy') : $root.t('sys.locks.warning')"></span>
+            · <span data-bind="text:$root.t('sys.locks.checked')"></span> <span data-bind="text:checkedAt"></span>
+          </div>
+        </div>
+        <button class="btn btn-secondary" data-bind="click:$vm.refreshDatabaseLocks,disable:$vm.locksRunning">
+          <!-- ko if: $vm.locksRunning() --><span data-bind="text:$root.t('sys.locks.running')"></span><!-- /ko -->
+          <!-- ko ifnot: $vm.locksRunning() --><span data-bind="text:$root.t('sys.locks.run')"></span><!-- /ko -->
+        </button>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:13px">
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:blockedCount,style:{color:Number(blockedCount)>0?'#b3261e':''}"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.locks.blocked')"></span></div>
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:longestWaitSeconds + ' s'"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.locks.longest')"></span></div>
+        <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:alertSeconds + ' s'"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.locks.threshold')"></span></div>
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--text-3)" data-bind="text:$root.t('sys.locks.hint')"></div>
+      <!-- ko if: $data.items && $data.items.length -->
+      <div style="margin-top:10px;border-top:1px solid var(--border)" data-bind="foreach:$data.items">
+        <div style="display:grid;grid-template-columns:105px 105px minmax(150px,1fr) 80px 210px;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--border);font-size:11px">
+          <span><small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.locks.waiting')"></small><b data-bind="text:$data.waitingSession || '—'"></b></span>
+          <span><small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.locks.blocker')"></small><b data-bind="text:$data.blockerSession || '—'"></b></span>
+          <span><small style="display:block;color:var(--text-3)" data-bind="text:objectType"></small><b style="font-family:monospace" data-bind="text:objectName"></b></span>
+          <b style="text-align:end;color:#b3261e" data-bind="text:waitSeconds + ' s'"></b>
+          <span style="display:flex;justify-content:flex-end;gap:6px">
+            <button class="btn btn-secondary" style="padding:5px 8px;font-size:10.5px" type="button"
+                    data-bind="click:$vm.toggleLockDetails,text:$root.t('sys.locks.details')"></button>
+            <button class="btn btn-danger" style="padding:5px 8px;font-size:10.5px" type="button"
+                    data-bind="click:$vm.terminateBlocker,disable:$vm.terminatingLock() === $data.blockerSession,
+                               text:$vm.terminatingLock() === $data.blockerSession ? $root.t('sys.locks.terminating') : $root.t('sys.locks.terminate')"></button>
+          </span>
+        </div>
+        <!-- ko if: $vm.lockDetails() === $data -->
+        <div style="display:grid;grid-template-columns:repeat(4,minmax(130px,1fr));gap:8px;padding:10px 12px;background:var(--surface-1,#fff);border-bottom:1px solid var(--border);font-size:11px">
+          <span><small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.locks.waitSql')"></small><b style="font-family:monospace" data-bind="text:$data.waitingSqlId || '—'"></b></span>
+          <span><small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.locks.blockSql')"></small><b style="font-family:monospace" data-bind="text:$data.blockerSqlId || '—'"></b></span>
+          <span><small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.locks.modules')"></small><b data-bind="text:($data.waitingModule || '—') + ' / ' + ($data.blockerModule || '—')"></b></span>
+          <span><small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.locks.event')"></small><b data-bind="text:$data.waitEvent || '—'"></b></span>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- ko if: $vm.locksMsg() -->
+      <div class="alert-banner alert-banner--info" style="margin-top:10px" data-bind="text:$vm.locksMsg"></div>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
     <!-- ko foreach: settings -->
     <div class="switch-row">
       <div style="flex:1">
@@ -154,8 +444,13 @@
         </div>
         <!-- /ko -->
         <!-- ko ifnot: $data.isToggle -->
-        <input class="form-control" type="text"
-               data-bind="value: value, valueUpdate: 'input', attr: { 'aria-label': settingKey },
+        <input class="form-control"
+               data-bind="value: value, valueUpdate: 'input', disable: isEditable === 'N',
+                          attr: { 'aria-label': settingKey, type: isNumber ? 'number' : 'text',
+                                  min: settingKey === 'ATD_SUCCESS_LOG_RETENTION_DAYS' ? 7 :
+                                       (settingKey === 'ATD_ISSUE_LOG_RETENTION_DAYS' ? 30 :
+                                       (settingKey === 'LOB_STORAGE_ALERT_MB' ? 100 : null)),
+                                  max: isNumber ? 3650 : null, step: isNumber ? 1 : null },
                           style: { 'border-color': dirty() ? '#0572CE' : '', 'background': dirty() ? '#f0f7ff' : '' }">
         <!-- /ko -->
         <!-- ko if: dirty() -->

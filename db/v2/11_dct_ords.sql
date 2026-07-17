@@ -1516,12 +1516,24 @@ DECLARE
   l_val    VARCHAR2(4000);
   l_secret BOOLEAN := ([COLON]setkey LIKE '%API_KEY%' OR [COLON]setkey LIKE '%SECRET%'
                        OR [COLON]setkey LIKE '%PASSWORD%' OR [COLON]setkey LIKE '%TOKEN%');
+  l_num    NUMBER;
   l_old    CLOB;
   l_new    CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.parse_body([COLON]body);
   l_val := APEX_JSON.get_varchar2(p_path => 'value');
+  IF [COLON]setkey IN ('ATD_SUCCESS_LOG_RETENTION_DAYS','ATD_ISSUE_LOG_RETENTION_DAYS') THEN
+    IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+      dct_rest.err(403,'Only SYS_ADMIN may change technical log retention'); RETURN;
+    END IF;
+    l_num := TO_NUMBER(l_val DEFAULT NULL ON CONVERSION ERROR);
+    IF l_num IS NULL OR l_num != TRUNC(l_num)
+       OR ([COLON]setkey = 'ATD_SUCCESS_LOG_RETENTION_DAYS' AND l_num NOT BETWEEN 7 AND 3650)
+       OR ([COLON]setkey = 'ATD_ISSUE_LOG_RETENTION_DAYS' AND l_num NOT BETWEEN 30 AND 3650) THEN
+      dct_rest.err(400,'Invalid retention days'); RETURN;
+    END IF;
+  END IF;
   IF l_val = '********' THEN
     dct_rest.json_header;
     APEX_JSON.initialize_output;
@@ -1560,6 +1572,40 @@ BEGIN
   APEX_JSON.write('ok', TRUE);
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK; dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- Manual technical-log retention cleanup. The package and nightly job are
+    -- installed by 74_dct_technical_log_cleanup.sql.
+    def_template('maintenance/log-cleanup');
+    def_handler('maintenance/log-cleanup', 'POST', q'!
+DECLARE
+  l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_success NUMBER;
+  l_issue   NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF NOT dct_auth.has_role(l_user, 'SYS_ADMIN') THEN
+    dct_rest.err(403,'Only SYS_ADMIN may run technical log cleanup'); RETURN;
+  END IF;
+  dct_log_cleanup_pkg.run_cleanup(l_success, l_issue);
+  dct_audit_pkg.log(l_user, 'DELETE', 'ATD_LOAD_RUN_LOG', 'RETENTION', 'ADMIN',
+    p_object_ref => 'Manual retention cleanup: success=' || l_success ||
+                    ', warning/failed=' || l_issue);
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.write('ok', TRUE);
+  APEX_JSON.write('successDeleted', l_success);
+  APEX_JSON.write('issueDeleted', l_issue);
+  APEX_JSON.write('totalDeleted', l_success + l_issue);
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN
+  dct_audit_pkg.log(l_user, 'DELETE', 'ATD_LOAD_RUN_LOG', 'RETENTION', 'ADMIN',
+                    p_status => 'FAILED', p_error => SQLERRM);
+  IF SQLCODE = -20071 THEN dct_rest.err(400, SQLERRM);
+  ELSE dct_rest.err(500, SQLERRM);
+  END IF;
 END;
 !');
 
@@ -1928,6 +1974,7 @@ DECLARE
   l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_search VARCHAR2(200) := [COLON]search;
   l_action VARCHAR2(100) := UPPER([COLON]action);
+  l_category VARCHAR2(100) := UPPER([COLON]category);
   l_from   DATE          := TO_DATE([COLON]fromdt DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
   l_to     DATE          := TO_DATE([COLON]todt   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
   l_total  NUMBER;
@@ -1937,10 +1984,11 @@ BEGIN
   SELECT COUNT(*) INTO l_total
   FROM   dct_audit_log
   WHERE (l_action IS NULL OR action = l_action)
+    AND (l_category IS NULL OR NVL(module_code,'UNCATEGORIZED') = l_category)
     AND (l_from   IS NULL OR logged_at >= l_from)
     AND (l_to     IS NULL OR logged_at <  l_to + 1)
     AND (l_search IS NULL OR
-         UPPER(NVL(username,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
+         UPPER(NVL(username,'') || ' ' || NVL(module_code,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
          LIKE '%' || UPPER(l_search) || '%');
 
   dct_rest.json_header;
@@ -1951,14 +1999,15 @@ BEGIN
   APEX_JSON.write('offset', l_offset);
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT log_id, username, action, object_type, object_id,
+    SELECT log_id, username, module_code, action, object_type, object_id,
            status, error_message, logged_at
     FROM   dct_audit_log
     WHERE (l_action IS NULL OR action = l_action)
+      AND (l_category IS NULL OR NVL(module_code,'UNCATEGORIZED') = l_category)
       AND (l_from   IS NULL OR logged_at >= l_from)
       AND (l_to     IS NULL OR logged_at <  l_to + 1)
       AND (l_search IS NULL OR
-           UPPER(NVL(username,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
+           UPPER(NVL(username,'') || ' ' || NVL(module_code,'') || ' ' || NVL(object_type,'') || ' ' || NVL(object_id,''))
            LIKE '%' || UPPER(l_search) || '%')
     ORDER BY logged_at DESC
     OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY
@@ -1966,6 +2015,7 @@ BEGIN
     APEX_JSON.open_object;
     APEX_JSON.write('logId',       r.log_id);
     APEX_JSON.write('username',    r.username);
+    APEX_JSON.write('category',    NVL(r.module_code,'UNCATEGORIZED'));
     APEX_JSON.write('action',      r.action);
     APEX_JSON.write('objectType',  r.object_type);
     APEX_JSON.write('objectId',    r.object_id);

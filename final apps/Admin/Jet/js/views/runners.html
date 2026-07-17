@@ -6,6 +6,44 @@
     </div>
   </div>
 
+  <!-- Live Oracle database scheduler health (SYS_ADMIN endpoint). -->
+  <!-- ko if: dbJobsLoading() || dbJobs().length -->
+  <div class="card" style="margin-bottom:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+      <div>
+        <div class="section-heading" style="margin:0" data-bind="text: t('runner.jobs.title')"></div>
+        <div class="muted" style="font-size:12px;margin-top:3px" data-bind="text: t('runner.jobs.subtitle')"></div>
+      </div>
+      <button class="btn btn-secondary btn-sm" data-bind="click: reload, text: '↻ ' + t('common.refresh')"></button>
+    </div>
+    <!-- ko if: dbJobsLoading() --><list-skeleton params="rows: 3"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: dbJobsLoading() -->
+    <div class="data-table-wrap" style="margin:0">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('runner.jobs.name')"></th>
+          <th data-bind="text: t('runner.jobs.status')"></th>
+          <th data-bind="text: t('runner.jobs.state')"></th>
+          <th data-bind="text: t('runner.jobs.failures')"></th>
+          <th data-bind="text: t('runner.jobs.last')"></th>
+          <th data-bind="text: t('runner.jobs.next')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: dbJobs">
+          <tr>
+            <td class="mono" data-bind="text: jobName"></td>
+            <td><span data-bind="css: $parent.jobStatusClass(lastStatus), text: lastStatus"></span></td>
+            <td data-bind="text: state"></td>
+            <td class="mono" data-bind="text: failureCount"></td>
+            <td class="mono" style="white-space:nowrap" data-bind="text: lastRun || '—'"></td>
+            <td class="mono" style="white-space:nowrap" data-bind="text: nextRun || '—'"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
   <!-- Toolbar: search + category/runtime/status filters + actions -->
   <div class="view-toolbar">
     <input class="search-box" type="text"

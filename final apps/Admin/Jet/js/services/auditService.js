@@ -15,6 +15,7 @@ define(['services/api'], function (api) {
     return {
       auditId:    r.logId,
       actionBy:   r.username,
+      category:   r.category || 'UNCATEGORIZED',
       actionType: r.action,
       objectType: r.objectType,
       objectId:   r.objectId,
@@ -45,6 +46,17 @@ define(['services/api'], function (api) {
       });
     },
 
+    getAuditStats: function () {
+      return api.get('/audit/stats', { silent: true });
+    },
+
+    purgeAudit: function (category, olderThanDays) {
+      return api.post('/audit-maintenance/purge', {
+        category: category,
+        olderThanDays: Number(olderThanDays)
+      });
+    },
+
     /**
      * Phase 3 server-side pagination (+ enh-2 round: fromdt/todt, YYYY-MM-DD).
      * opts: { limit, offset, search, action, fromdt, todt }
@@ -55,6 +67,7 @@ define(['services/api'], function (api) {
       var q = '?limit=' + (opts.limit || 50) + '&offset=' + (opts.offset || 0);
       if (opts.search) q += '&search=' + encodeURIComponent(opts.search);
       if (opts.action) q += '&action=' + encodeURIComponent(opts.action);
+      if (opts.category) q += '&category=' + encodeURIComponent(opts.category);
       if (opts.fromdt) q += '&fromdt=' + encodeURIComponent(opts.fromdt);
       if (opts.todt)   q += '&todt='   + encodeURIComponent(opts.todt);
       return api.get('/audit/' + q).then(function (r) {

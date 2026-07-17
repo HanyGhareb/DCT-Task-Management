@@ -1,5 +1,5 @@
-define(['knockout', 'services/auditService', 'shared/i18n'],
-function (ko, auditService, i18n) {
+define(['knockout', 'services/auditService', 'services/authService', 'shared/i18n'],
+function (ko, auditService, authService, i18n) {
   'use strict';
 
   function AuditLogViewModel() {
@@ -10,9 +10,30 @@ function (ko, auditService, i18n) {
     self.loading   = ko.observable(true);
     self.loadError = ko.observable(false);
     self.entries   = ko.observableArray([]);
+    var currentUser = authService.getCurrentUser();
+    self.isSysAdmin = !!(currentUser && (currentUser.roles || []).indexOf('SYS_ADMIN') >= 0);
+    self.stats = ko.observable(null);
+    self.statsLoading = ko.observable(false);
+    self.purgeCategory = ko.observable('');
+    self.purgeDays = ko.observable(365);
+    self.purging = ko.observable(false);
+    self.purgeMsg = ko.observable('');
+
+    self.loadStats = function () {
+      if (!self.isSysAdmin) return;
+      self.statsLoading(true);
+      auditService.getAuditStats().then(function (r) {
+        self.stats(r);
+      }).catch(function () {
+        self.stats(null);
+      }).then(function () {
+        self.statsLoading(false);
+      });
+    };
 
     self.searchBy     = ko.observable('');
     self.actionFilter = ko.observable('');             // '', LOGIN, CREATE, UPDATE, DELETE…
+    self.categoryFilter = ko.observable('');
     self.fromDate     = ko.observable('');             // enh-3: YYYY-MM-DD, inclusive
     self.toDate       = ko.observable('');
 
@@ -34,6 +55,7 @@ function (ko, auditService, i18n) {
         offset: self.offset(),
         search: self.searchBy().trim() || null,
         action: self.actionFilter() || null,
+        category: self.categoryFilter() || null,
         fromdt: self.fromDate() || null,
         todt:   self.toDate() || null
       }).then(function (r) {
@@ -44,11 +66,13 @@ function (ko, auditService, i18n) {
         self.loading(false);
         self.loadError(true);
       });
+      self.loadStats();
     };
 
     self.searchBy.extend({ rateLimit: { timeout: 300, method: 'notifyWhenChangesStop' } });
     self.searchBy.subscribe(function () { self.offset(0); self.reload(); });
     self.actionFilter.subscribe(function () { self.offset(0); self.reload(); });
+    self.categoryFilter.subscribe(function () { self.offset(0); self.reload(); });
     self.fromDate.subscribe(function () { self.offset(0); self.reload(); });
     self.toDate.subscribe(function () { self.offset(0); self.reload(); });
 
@@ -115,6 +139,32 @@ function (ko, auditService, i18n) {
         document.body.removeChild(a);
         URL.revokeObjectURL(a.href);
       }).catch(function () { self.exporting(false); });
+    };
+
+    self.canPurge = ko.pureComputed(function () {
+      var d = Number(self.purgeDays());
+      return self.isSysAdmin && !self.purging() && !!self.purgeCategory() &&
+             Number.isInteger(d) && d >= 30 && d <= 3650;
+    });
+
+    self.purge = function () {
+      if (!self.canPurge()) return;
+      var ar = document.documentElement.lang === 'ar';
+      var message = ar
+        ? 'حذف سجلات التدقيق في الفئة ' + self.purgeCategory() + ' الأقدم من ' + self.purgeDays() + ' يومًا؟ لا يمكن التراجع عن هذا الإجراء.'
+        : 'Permanently delete ' + self.purgeCategory() + ' audit records older than ' + self.purgeDays() + ' days? This cannot be undone.';
+      if (!window.confirm(message)) return;
+      self.purging(true);
+      self.purgeMsg('');
+      auditService.purgeAudit(self.purgeCategory(), self.purgeDays()).then(function (r) {
+        self.purgeMsg(ar ? 'تم حذف ' + r.deleted + ' سجل.' : r.deleted + ' audit record(s) deleted.');
+        self.offset(0);
+        self.reload();
+      }).catch(function (e) {
+        self.purgeMsg((ar ? 'فشل الحذف: ' : 'Purge failed: ') + ((e && e.message) || 'Unknown error'));
+      }).then(function () {
+        self.purging(false);
+      });
     };
 
     self.reload();
