@@ -6,10 +6,15 @@
     </div>
     <div class="page-actions">
       <select class="form-control vac-teamsel" data-bind="options: teams, optionsValue: 'teamId', optionsText: 'nameEn', value: teamId"></select>
+      <span class="vac-seg vac-scale" data-bind="foreach: scaleOpts">
+        <button class="btn btn-sm" data-bind="css: { 'btn-primary': $vm.scale() === code }, click: function () { $vm.setScale(code); }, text: $vm.t(label)"></button>
+      </span>
+      <!-- ko if: scale() === 'month' -->
       <span class="vac-seg">
         <button class="btn btn-sm" data-bind="css: { 'btn-primary': view() === 'cal' }, click: function () { setView('cal'); }, text: t('tm.vac.viewCal')"></button>
         <button class="btn btn-sm" data-bind="css: { 'btn-primary': view() === 'grid' }, click: function () { setView('grid'); }, text: t('tm.vac.viewGrid')"></button>
       </span>
+      <!-- /ko -->
       <button class="btn btn-sm btn-primary" data-bind="click: openAdd, text: '+ ' + t('tm.vac.add')"></button>
     </div>
   </div>
@@ -23,8 +28,8 @@
   <div class="vac-topline">
     <div class="vac-kpis">
       <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().today"></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.onToday')"></div></div>
-      <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().out"></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.outMonth')"></div></div>
-      <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().days"></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.days')"></div></div>
+      <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().out"></div><div class="vac-kpi-lbl" data-bind="text: kpis().awayLabel"></div></div>
+      <div class="vac-kpi"><div class="vac-kpi-num" data-bind="text: kpis().days"></div><div class="vac-kpi-lbl" data-bind="text: kpis().daysLabel"></div></div>
       <div class="vac-kpi"><div class="vac-kpi-num"><span data-bind="text: kpis().peak"></span><span class="vac-kpi-sub" data-bind="text: kpis().peakDate ? ' · ' + kpis().peakDate : ''"></span></div><div class="vac-kpi-lbl" data-bind="text: t('tm.vac.kpi.peak')"></div></div>
     </div>
     <div class="vac-legend">
@@ -36,18 +41,67 @@
     </div>
   </div>
 
-  <!-- month header -->
+  <!-- range header -->
   <div class="section-heading-row">
-    <div class="section-heading" data-bind="text: monthTitle"></div>
+    <div class="section-heading" data-bind="text: rangeTitle"></div>
     <div class="region-actions">
-      <button class="btn btn-sm" data-bind="click: prevMonth, attr: { title: t('tm.vac.prev') }"><span class="vac-arrow">&#8249;</span></button>
+      <button class="btn btn-sm" data-bind="click: prev, attr: { title: t('tm.vac.prev') }"><span class="vac-arrow">&#8249;</span></button>
       <button class="btn btn-sm" data-bind="click: goToday, text: t('tm.vac.today')"></button>
-      <button class="btn btn-sm" data-bind="click: nextMonth, attr: { title: t('tm.vac.next') }"><span class="vac-arrow">&#8250;</span></button>
+      <button class="btn btn-sm" data-bind="click: next, attr: { title: t('tm.vac.next') }"><span class="vac-arrow">&#8250;</span></button>
     </div>
   </div>
 
-  <!-- ═════ CALENDAR VIEW ═════ -->
-  <!-- ko if: view() === 'cal' -->
+  <!-- ═════ DAY VIEW (agenda) ═════ -->
+  <!-- ko if: scale() === 'day' -->
+  <!-- ko if: dayList().length === 0 --><div class="empty-state" data-bind="text: t('tm.vac.noneRange')"></div><!-- /ko -->
+  <div class="vac-agenda" data-bind="foreach: dayList">
+    <div class="vac-ag-item" data-bind="click: function () { $vm.openVac(vac); return true; }">
+      <span class="vac-avatar" data-bind="text: initials"></span>
+      <div class="vac-ag-main">
+        <div class="vac-ag-name" data-bind="text: name"></div>
+        <div class="vac-ag-sub"><span data-bind="text: range"></span> · <span data-bind="text: $vm.t('tm.vac.dayWord') + ' ' + dayOf"></span></div>
+      </div>
+      <div class="vac-ag-chips">
+        <span data-bind="css: typeCls, text: typeLabel"></span>
+        <span data-bind="css: statusCls, text: statusLabel"></span>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═════ WEEK VIEW (member × 7 days) ═════ -->
+  <!-- ko if: scale() === 'week' -->
+  <div class="vac-grid-wrap vac-weekgrid">
+    <table class="vac-grid">
+      <thead>
+        <tr>
+          <th class="vac-g-name" data-bind="text: t('tm.vac.member')"></th>
+          <!-- ko foreach: weekCols -->
+          <th class="vac-g-day vac-wd" data-bind="css: { 'vac-g-we': we, 'vac-wd--today': today }">
+            <div class="vac-wd-dow" data-bind="text: label"></div><div class="vac-wd-num" data-bind="text: num"></div>
+          </th>
+          <!-- /ko -->
+          <th class="vac-g-day vac-g-tot" data-bind="text: t('tm.vac.daysL')"></th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: weekRows">
+        <tr>
+          <td class="vac-g-name"><span class="vac-avatar" data-bind="text: initials"></span><span data-bind="text: name"></span></td>
+          <!-- ko foreach: cells -->
+          <td data-bind="css: $vm.cellClass($data), attr: { title: tip }, click: function () { $vm.gridCellClick($data); return true; }">
+            <!-- ko if: t --><div data-bind="css: barCls"></div><!-- /ko -->
+          </td>
+          <!-- /ko -->
+          <td class="vac-g-day vac-g-tot" data-bind="text: total"></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+  <!-- ko if: rangeEmpty --><div class="muted vac-emptynote" data-bind="text: t('tm.vac.noneRange')"></div><!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ═════ MONTH VIEW — calendar ═════ -->
+  <!-- ko if: scale() === 'month' && view() === 'cal' -->
   <div class="vac-cal">
     <div class="vac-dow" data-bind="foreach: dowNames">
       <div class="vac-dow-cell" data-bind="text: $data"></div>
@@ -70,8 +124,8 @@
   <!-- ko if: monthEmpty --><div class="muted vac-emptynote" data-bind="text: t('tm.vac.none')"></div><!-- /ko -->
   <!-- /ko -->
 
-  <!-- ═════ TEAM GRID VIEW ═════ -->
-  <!-- ko if: view() === 'grid' -->
+  <!-- ═════ MONTH VIEW — team grid ═════ -->
+  <!-- ko if: scale() === 'month' && view() === 'grid' -->
   <div class="vac-grid-wrap">
     <table class="vac-grid">
       <thead>
@@ -85,7 +139,7 @@
         <tr>
           <td class="vac-g-name"><span class="vac-avatar" data-bind="text: initials"></span><span data-bind="text: name"></span></td>
           <!-- ko foreach: cells -->
-          <td data-bind="css: $vm.cellClass($data), attr: { title: tip }, click: function () { if ($data.vac) { $vm.openVac($data.vac); } return true; }">
+          <td data-bind="css: $vm.cellClass($data), attr: { title: tip }, click: function () { $vm.gridCellClick($data); return true; }">
             <!-- ko if: t --><div data-bind="css: barCls"></div><!-- /ko -->
           </td>
           <!-- /ko -->
@@ -94,6 +148,42 @@
       </tbody>
     </table>
   </div>
+  <!-- /ko -->
+
+  <!-- ═════ YEAR VIEW (member × 12 months heat) ═════ -->
+  <!-- ko if: scale() === 'year' -->
+  <div class="vac-grid-wrap vac-yeargrid">
+    <table class="vac-grid">
+      <thead>
+        <tr>
+          <th class="vac-g-name" data-bind="text: t('tm.vac.member')"></th>
+          <!-- ko foreach: yearCols --><th class="vac-g-mon" data-bind="css: { 'vac-mon--now': isNow }, text: label"></th><!-- /ko -->
+          <th class="vac-g-day vac-g-tot" data-bind="text: t('tm.vac.daysL')"></th>
+        </tr>
+      </thead>
+      <tbody data-bind="foreach: yearRows">
+        <tr>
+          <td class="vac-g-name"><span class="vac-avatar" data-bind="text: initials"></span><span data-bind="text: name"></span></td>
+          <!-- ko foreach: cells -->
+          <td class="vac-g-yrcell" data-bind="attr: { title: tip }, click: function () { $vm.drillMonth(mIdx); return true; }">
+            <div data-bind="css: cls"><!-- ko if: cnt --><span data-bind="text: cnt"></span><!-- /ko --></div>
+          </td>
+          <!-- /ko -->
+          <td class="vac-g-day vac-g-tot" data-bind="text: total"></td>
+        </tr>
+      </tbody>
+      <tfoot>
+        <tr class="vac-yr-foot">
+          <td class="vac-g-name" data-bind="text: t('tm.vac.teamTotal')"></td>
+          <!-- ko foreach: yearFoot -->
+          <td class="vac-g-yrcell vac-yr-footcell" data-bind="text: v || '', click: function () { $vm.drillMonth(mIdx); return true; }"></td>
+          <!-- /ko -->
+          <td class="vac-g-day vac-g-tot" data-bind="text: yearTotal"></td>
+        </tr>
+      </tfoot>
+    </table>
+  </div>
+  <!-- ko if: rangeEmpty --><div class="muted vac-emptynote" data-bind="text: t('tm.vac.noneRange')"></div><!-- /ko -->
   <!-- /ko -->
 
   <!-- /ko -->

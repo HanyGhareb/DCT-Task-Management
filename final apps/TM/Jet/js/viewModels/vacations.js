@@ -1,9 +1,9 @@
 /**
  * vacations.js — Team Vacations planner (App 207). DRAFT PAGE.
- * APEX-Calendar-style month grid with multi-day leave bars (lane layout),
- * plus a per-member "team grid" matrix view. Data comes from
- * vacationService (live /tm/vacations when it ships; deterministic sample
- * overlay on the real team roster until then).
+ * A time-scale calendar of team leave: Day (agenda) · Week (member×7-day grid) ·
+ * Month (APEX-Calendar grid, with a Team-grid layout toggle) · Year (member×12-
+ * month heat matrix). Data comes from vacationService (live /tm/vacations when it
+ * ships; deterministic sample overlay on the real team roster until then).
  */
 define(['knockout', 'services/tmService', 'services/vacationService', 'shared/i18n'],
 function (ko, tm, vacSvc, i18n) {
@@ -15,9 +15,24 @@ function (ko, tm, vacSvc, i18n) {
   function addDays(dt, n) { var x = new Date(dt); x.setDate(x.getDate() + n); return x; }
   function diffDays(a, b) { return Math.round((a - b) / 864e5); }
   function monIdx(dt) { return (dt.getDay() + 6) % 7; }   // Mon=0 … Sun=6 (UAE weekend = Sat+Sun)
+  function isWe(dt) { return dt.getDay() === 6 || dt.getDay() === 0; }
+  function midnight(dt) { return new Date(dt.getFullYear(), dt.getMonth(), dt.getDate()); }
+  function initialsOf(name) {
+    var p = (name || '').split(' ').filter(Boolean);
+    return (p.length >= 2 ? p[0][0] + p[p.length - 1][0] : (p[0] || '?')[0]).toUpperCase();
+  }
 
   var TYPES = ['ANNUAL', 'SICK', 'MISSION', 'TRAINING', 'OTHER'];
+  var SCALES = ['day', 'week', 'month', 'year'];
   var LANE_H = 24, BARS_TOP = 32;
+
+  // First day of the semantic period a scale+anchor represents.
+  function normalizeAnchor(scale, dt) {
+    if (scale === 'day')   return midnight(dt);
+    if (scale === 'week')  return addDays(midnight(dt), -monIdx(dt));
+    if (scale === 'year')  return new Date(dt.getFullYear(), 0, 1);
+    return new Date(dt.getFullYear(), dt.getMonth(), 1);            // month
+  }
 
   return function Vacations() {
     var self = this;
@@ -28,22 +43,35 @@ function (ko, tm, vacSvc, i18n) {
     self.sample  = ko.observable(false);
     self.teams   = ko.observableArray([]);
     self.teamId  = ko.observable(st.teamId || null);
-    self.view    = ko.observable('cal');            // 'cal' | 'grid'
-    self.anchor  = ko.observable(new Date(new Date().getFullYear(), new Date().getMonth(), 1));
+    self.scale   = ko.observable(SCALES.indexOf(st.vacScale) >= 0 ? st.vacScale : 'month');
+    self.view    = ko.observable('cal');            // month layout: 'cal' | 'grid'
+    self.anchor  = ko.observable(new Date());
 
     self.items  = [];        // vacations in the fetched window
-    self.roster = [];        // members shown in grid + plan form
-    var localAdds = [];      // draft-mode adds survive month navigation
+    self.roster = [];        // members shown in grids + plan form
+    var localAdds = [];      // draft-mode adds survive navigation
 
-    self.monthTitle = ko.observable('');
-    self.dowNames   = ko.observableArray([]);
-    self.weeks      = ko.observableArray([]);
-    self.gridDays   = ko.observableArray([]);
-    self.gridRows   = ko.observableArray([]);
-    self.monthEmpty = ko.observable(false);
-    self.kpis       = ko.observable({ today: 0, out: 0, days: 0, peak: 0, peakDate: '' });
+    self.rangeTitle = ko.observable('');
+    self.rangeEmpty = ko.observable(false);
+    self.kpis       = ko.observable({ today: 0, out: 0, days: 0, peak: 0, peakDate: '',
+                                      awayLabel: '', daysLabel: '' });
     self.rosterOpts = ko.observableArray([]);
     self.typeOpts   = TYPES.map(function (c) { return { code: c, label: i18n.t('tm.vac.type.' + c) }; });
+    self.scaleOpts  = SCALES.map(function (s) { return { code: s, label: 'tm.vac.scale.' + s }; });
+
+    // per-scale render state
+    self.dowNames = ko.observableArray([]);   // month calendar weekday header
+    self.weeks    = ko.observableArray([]);   // month calendar week rows (lane bars)
+    self.gridDays = ko.observableArray([]);   // month team-grid day header
+    self.gridRows = ko.observableArray([]);   // month team-grid member rows
+    self.monthEmpty = ko.observable(false);
+    self.dayList  = ko.observableArray([]);   // day agenda
+    self.weekCols = ko.observableArray([]);   // week grid day header
+    self.weekRows = ko.observableArray([]);   // week grid member rows
+    self.yearCols = ko.observableArray([]);   // year matrix month header
+    self.yearRows = ko.observableArray([]);   // year matrix member rows
+    self.yearFoot = ko.observableArray([]);   // year matrix team totals
+    self.yearTotal = ko.observable(0);
 
     // ── modal state ─────────────────────────────────────────────────────
     self.selVac   = ko.observable(null);
@@ -56,41 +84,51 @@ function (ko, tm, vacSvc, i18n) {
     self.fmNotes  = ko.observable('');
     self.fmErr    = ko.observable('');
 
-    var win = null;          // last built window {calStart, calEnd, mStart, mEnd}
+    var win = null;   // snapshot of the built window (scale, anchor, ranges)
 
-    // ── build the month calendar + grid + KPIs from self.items ─────────
-    function build() {
-      var mStart = win.mStart, mEnd = win.mEnd;
-      // resolve the locale HERE, not at construction — the language observable
-      // may settle after the VM is created (Latin digits forced for Arabic)
-      var fmtLoc = (i18n.lang && i18n.lang() === 'ar') ? 'ar-AE-u-nu-latn' : 'en';
-      self.monthTitle(new Intl.DateTimeFormat(fmtLoc, { month: 'long', year: 'numeric' }).format(mStart));
+    function loc() { return (i18n.lang && i18n.lang() === 'ar') ? 'ar-AE-u-nu-latn' : 'en'; }
+    function fmt(dt, opts, l) { return new Intl.DateTimeFormat(l, opts).format(dt); }
 
-      var vacs = self.items.map(function (v) {
-        return { vac: v, s: d(v.startDate), e: d(v.endDate) };
-      }).sort(function (a, b) { return (a.s - b.s) || ((b.e - b.s) - (a.e - a.s)); });
+    // ── a member × days matrix (shared by Week grid and Month team-grid) ──
+    function matrixRows(days, vacs) {
+      return self.roster.map(function (mem) {
+        var mine = vacs.filter(function (x) { return x.vac.userId === mem.userId; });
+        var total = 0;
+        var cells = days.map(function (dd) {
+          var hit = null;
+          for (var j = 0; j < mine.length; j++) {
+            if (mine[j].s <= dd && mine[j].e >= dd) { hit = mine[j]; break; }
+          }
+          if (hit) total++;
+          return {
+            we: isWe(dd), iso: iso(dd),
+            t: hit ? hit.vac.type : '', vac: hit ? hit.vac : null,
+            barCls: hit ? ('vac-cellbar vac-cell--' + hit.vac.type
+                    + (hit.vac.status === 'PENDING' ? ' vac-cellbar--pending' : '')
+                    + (diffDays(dd, hit.s) === 0 ? ' vac-cellbar--capL' : '')
+                    + (diffDays(hit.e, dd) === 0 ? ' vac-cellbar--capR' : '')) : '',
+            tip: hit ? (mem.name + ' • ' + i18n.t('tm.vac.type.' + hit.vac.type)
+                 + ' • ' + hit.vac.startDate + ' → ' + hit.vac.endDate) : ''
+          };
+        });
+        return { name: mem.name, initials: initialsOf(mem.name), cells: cells, total: total };
+      });
+    }
 
-      // weekday header
+    // ── MONTH: APEX-Calendar grid (lane bars) + team-grid matrix ──────────
+    function buildMonth(vacs, l) {
+      var mStart = win.mStart, mEnd = win.mEnd, todayIso = iso(new Date());
       var dows = [];
-      for (var i = 0; i < 7; i++) {
-        dows.push(new Intl.DateTimeFormat(fmtLoc, { weekday: 'short' }).format(addDays(win.calStart, i)));
-      }
+      for (var i = 0; i < 7; i++) dows.push(fmt(addDays(win.calStart, i), { weekday: 'short' }, l));
       self.dowNames(dows);
 
-      // weeks with lane-laid bars
-      var todayIso = iso(new Date());
       var weeks = [];
       for (var ws = new Date(win.calStart); ws <= win.calEnd; ws = addDays(ws, 7)) {
-        var we = addDays(ws, 6);
-        var days = [];
+        var we = addDays(ws, 6), days = [];
         for (var k = 0; k < 7; k++) {
           var dd = addDays(ws, k);
-          days.push({
-            num: dd.getDate(), iso: iso(dd),
-            inMonth: dd.getMonth() === mStart.getMonth(),
-            we: dd.getDay() === 6 || dd.getDay() === 0,
-            today: iso(dd) === todayIso
-          });
+          days.push({ num: dd.getDate(), iso: iso(dd), inMonth: dd.getMonth() === mStart.getMonth(),
+                      we: isWe(dd), today: iso(dd) === todayIso });
         }
         var lanes = [], bars = [];
         vacs.forEach(function (x) {
@@ -101,116 +139,212 @@ function (ko, tm, vacSvc, i18n) {
           while (lane < lanes.length && lanes[lane] >= s0) lane++;
           lanes[lane] = e0;
           var v = x.vac;
-          var cls = 'vac-bar vac--' + v.type
-                  + (v.status === 'PENDING' ? ' vac-bar--pending' : '')
-                  + (x.s < ws ? ' vac-bar--contL' : '') + (x.e > we ? ' vac-bar--contR' : '');
           bars.push({
-            vac: v, cls: cls, label: v.memberName,
+            vac: v, label: v.memberName,
+            cls: 'vac-bar vac--' + v.type + (v.status === 'PENDING' ? ' vac-bar--pending' : '')
+               + (x.s < ws ? ' vac-bar--contL' : '') + (x.e > we ? ' vac-bar--contR' : ''),
             tip: v.memberName + ' • ' + i18n.t('tm.vac.type.' + v.type) + ' • '
                + v.startDate + ' → ' + v.endDate + ' (' + i18n.t('tm.vac.status.' + v.status) + ')',
             style: 'inset-inline-start:calc(' + (s0 / 7 * 100) + '% + 2px);'
-                 + 'width:calc(' + ((e0 - s0 + 1) / 7 * 100) + '% - 5px);'
-                 + 'top:' + (lane * LANE_H) + 'px'
+                 + 'width:calc(' + ((e0 - s0 + 1) / 7 * 100) + '% - 5px);top:' + (lane * LANE_H) + 'px'
           });
         });
-        weeks.push({ days: days, bars: bars,
-                     minH: Math.max(96, BARS_TOP + lanes.length * LANE_H + 6) });
+        weeks.push({ days: days, bars: bars, minH: Math.max(96, BARS_TOP + lanes.length * LANE_H + 6) });
       }
       self.weeks(weeks);
 
-      // team grid matrix
-      var dim = mEnd.getDate();
-      var gDays = [];
+      var dim = mEnd.getDate(), gDays = [], monthDates = [];
       for (var n = 1; n <= dim; n++) {
         var gd = new Date(mStart.getFullYear(), mStart.getMonth(), n);
-        gDays.push({ n: n, we: gd.getDay() === 6 || gd.getDay() === 0 });
+        gDays.push({ n: n, we: isWe(gd) }); monthDates.push(gd);
       }
       self.gridDays(gDays);
-      self.gridRows(self.roster.map(function (mem) {
-        var mine = vacs.filter(function (x) { return x.vac.userId === mem.userId; });
-        var total = 0, cells = [];
-        for (var n2 = 1; n2 <= dim; n2++) {
-          var cd = new Date(mStart.getFullYear(), mStart.getMonth(), n2);
-          var hit = null;
-          for (var j = 0; j < mine.length; j++) {
-            if (mine[j].s <= cd && mine[j].e >= cd) { hit = mine[j]; break; }
-          }
-          if (hit) total++;
-          cells.push({
-            we: gDays[n2 - 1].we,
-            t: hit ? hit.vac.type : '', vac: hit ? hit.vac : null,
-            barCls: hit ? ('vac-cellbar vac-cell--' + hit.vac.type
-                    + (hit.vac.status === 'PENDING' ? ' vac-cellbar--pending' : '')
-                    + (diffDays(cd, hit.s) === 0 ? ' vac-cellbar--capL' : '')
-                    + (diffDays(hit.e, cd) === 0 ? ' vac-cellbar--capR' : '')) : '',
-            tip: hit ? (mem.name + ' • ' + i18n.t('tm.vac.type.' + hit.vac.type)
-                 + ' • ' + hit.vac.startDate + ' → ' + hit.vac.endDate) : ''
-          });
-        }
-        var parts = (mem.name || '').split(' ');
-        return { name: mem.name, cells: cells, total: total,
-                 initials: (parts.length >= 2 ? parts[0][0] + parts[parts.length - 1][0]
-                                              : (parts[0] || '?')[0]).toUpperCase() };
-      }));
+      self.gridRows(matrixRows(monthDates, vacs));
+      self.monthEmpty(vacs.filter(function (x) { return x.s <= mEnd && x.e >= mStart; }).length === 0);
+    }
 
-      // KPIs over the anchor month
-      var inMonth = vacs.filter(function (x) { return x.s <= mEnd && x.e >= mStart; });
-      var today = d(todayIso);
+    // ── WEEK: member × 7-day grid ─────────────────────────────────────────
+    function buildWeek(vacs, l) {
+      var todayIso = iso(new Date()), cols = [], days = [];
+      for (var k = 0; k < 7; k++) {
+        var dd = addDays(win.rangeStart, k);
+        cols.push({ label: fmt(dd, { weekday: 'short' }, l), num: dd.getDate(),
+                    iso: iso(dd), we: isWe(dd), today: iso(dd) === todayIso });
+        days.push(dd);
+      }
+      self.weekCols(cols);
+      self.weekRows(matrixRows(days, vacs));
+    }
+
+    // ── DAY: agenda of who is out ─────────────────────────────────────────
+    function buildDay(vacs, l) {
+      var day = win.rangeStart;
+      var out = vacs.filter(function (x) { return x.s <= day && x.e >= day; });
+      self.dayList(out.map(function (x) {
+        var v = x.vac;
+        return { vac: v, name: v.memberName, initials: initialsOf(v.memberName),
+                 typeCls: 'vac-chip vac--' + v.type, typeLabel: i18n.t('tm.vac.type.' + v.type),
+                 statusCls: 'vac-chip vac-chip--' + v.status, statusLabel: i18n.t('tm.vac.status.' + v.status),
+                 range: v.startDate + ' → ' + v.endDate,
+                 dayOf: (diffDays(day, x.s) + 1) + '/' + (diffDays(x.e, x.s) + 1),
+                 notes: v.notes || '' };
+      }));
+    }
+
+    // ── YEAR: member × 12-month leave-day heat matrix ─────────────────────
+    function buildYear(vacs, l) {
+      var yr = win.a.getFullYear(), now = new Date();
+      var cols = [];
+      for (var m = 0; m < 12; m++) {
+        cols.push({ label: fmt(new Date(yr, m, 1), { month: 'short' }, l), mIdx: m,
+                    isNow: now.getFullYear() === yr && now.getMonth() === m });
+      }
+      self.yearCols(cols);
+      var foot = [], t = 0;
+      for (var f = 0; f < 12; f++) foot.push(0);
+      self.yearRows(self.roster.map(function (mem) {
+        var mine = vacs.filter(function (x) { return x.vac.userId === mem.userId; });
+        var total = 0;
+        var cells = cols.map(function (c) {
+          var ms = new Date(yr, c.mIdx, 1), me = new Date(yr, c.mIdx + 1, 0), cnt = 0;
+          mine.forEach(function (x) {
+            if (x.s <= me && x.e >= ms) cnt += diffDays(x.e < me ? x.e : me, x.s > ms ? x.s : ms) + 1;
+          });
+          total += cnt; foot[c.mIdx] += cnt;
+          var lvl = cnt === 0 ? 0 : cnt <= 2 ? 1 : cnt <= 6 ? 2 : 3;
+          return { cnt: cnt, mIdx: c.mIdx, cls: 'vac-yr vac-yr--' + lvl,
+                   tip: cnt ? (mem.name + ' • ' + cnt + ' ' + i18n.t('tm.vac.daysL') + ' • ' + c.label) : '' };
+        });
+        return { name: mem.name, initials: initialsOf(mem.name), cells: cells, total: total };
+      }));
+      foot.forEach(function (v) { t += v; });
+      self.yearFoot(foot.map(function (v, i) { return { v: v, mIdx: i }; }));
+      self.yearTotal(t);
+    }
+
+    function buildKpis(vacs, l) {
+      var s = win.rangeStart, e = win.rangeEnd, today = midnight(new Date());
+      var inRange = vacs.filter(function (x) { return x.s <= e && x.e >= s; });
       var uToday = {}, uOut = {}, days = 0, peak = 0, peakD = null;
-      inMonth.forEach(function (x) {
+      inRange.forEach(function (x) {
         uOut[x.vac.userId] = 1;
         if (x.s <= today && x.e >= today && x.vac.status === 'APPROVED') uToday[x.vac.userId] = 1;
-        days += diffDays(x.e < mEnd ? x.e : mEnd, x.s > mStart ? x.s : mStart) + 1;
+        days += diffDays(x.e < e ? x.e : e, x.s > s ? x.s : s) + 1;
       });
-      for (var dd2 = new Date(mStart); dd2 <= mEnd; dd2 = addDays(dd2, 1)) {
+      for (var dd = new Date(s); dd <= e; dd = addDays(dd, 1)) {
         var c = 0;
-        inMonth.forEach(function (x) { if (x.s <= dd2 && x.e >= dd2) c++; });
-        if (c > peak) { peak = c; peakD = new Date(dd2); }
+        inRange.forEach(function (x) { if (x.s <= dd && x.e >= dd) c++; });
+        if (c > peak) { peak = c; peakD = new Date(dd); }
       }
       self.kpis({
         today: Object.keys(uToday).length, out: Object.keys(uOut).length, days: days, peak: peak,
-        peakDate: peakD ? new Intl.DateTimeFormat(fmtLoc, { day: 'numeric', month: 'short' }).format(peakD) : ''
+        peakDate: peakD ? fmt(peakD, { day: 'numeric', month: 'short' }, l) : '',
+        awayLabel: i18n.t('tm.vac.kpi.away') + ' ' + i18n.t('tm.vac.scope.' + win.scale),
+        daysLabel: i18n.t('tm.vac.kpi.days') + ' (' + i18n.t('tm.vac.scopeShort.' + win.scale) + ')'
       });
-      self.monthEmpty(inMonth.length === 0);
+      self.rangeEmpty(inRange.length === 0);
+    }
+
+    function title(l) {
+      var a = win.a;
+      if (win.scale === 'day')   return fmt(a, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }, l);
+      if (win.scale === 'week')  return fmt(a, { day: 'numeric', month: 'short' }, l) + ' – '
+                                      + fmt(win.rangeEnd, { day: 'numeric', month: 'short', year: 'numeric' }, l);
+      if (win.scale === 'year')  return fmt(a, { year: 'numeric' }, l);
+      return fmt(a, { month: 'long', year: 'numeric' }, l);
+    }
+
+    // ── build the active scale's view from self.items ─────────────────────
+    function build() {
+      var l = loc();
+      var vacs = self.items.map(function (v) { return { vac: v, s: d(v.startDate), e: d(v.endDate) }; })
+                           .sort(function (a, b) { return (a.s - b.s) || ((b.e - b.s) - (a.e - a.s)); });
+      self.rangeTitle(title(l));
+      buildKpis(vacs, l);
+      if (win.scale === 'day')       buildDay(vacs, l);
+      else if (win.scale === 'week') buildWeek(vacs, l);
+      else if (win.scale === 'year') buildYear(vacs, l);
+      else                           buildMonth(vacs, l);
       self.rosterOpts(self.roster);
     }
 
     // ── data loading ────────────────────────────────────────────────────
     self.load = function () {
       self.loading(true);
-      var a = self.anchor();
-      var mStart = a, mEnd = new Date(a.getFullYear(), a.getMonth() + 1, 0);
-      var calStart = addDays(mStart, -monIdx(mStart));
-      var calEnd = addDays(mEnd, 6 - monIdx(mEnd));
-      win = { calStart: calStart, calEnd: calEnd, mStart: mStart, mEnd: mEnd };
+      var scale = self.scale(), a = normalizeAnchor(scale, self.anchor());
+      var rangeStart, rangeEnd, fetchStart, fetchEnd, mStart, mEnd, calStart, calEnd;
+      if (scale === 'month') {
+        mStart = a; mEnd = new Date(a.getFullYear(), a.getMonth() + 1, 0);
+        calStart = addDays(mStart, -monIdx(mStart)); calEnd = addDays(mEnd, 6 - monIdx(mEnd));
+        rangeStart = mStart; rangeEnd = mEnd; fetchStart = calStart; fetchEnd = calEnd;
+      } else if (scale === 'week') {
+        rangeStart = a; rangeEnd = addDays(a, 6); fetchStart = a; fetchEnd = rangeEnd;
+        mStart = a; mEnd = rangeEnd;
+      } else if (scale === 'day') {
+        rangeStart = rangeEnd = fetchStart = fetchEnd = mStart = mEnd = a;
+      } else {
+        rangeStart = new Date(a.getFullYear(), 0, 1); rangeEnd = new Date(a.getFullYear(), 11, 31);
+        fetchStart = rangeStart; fetchEnd = rangeEnd; mStart = rangeStart; mEnd = rangeEnd;
+      }
+      win = { scale: scale, a: a, calStart: calStart, calEnd: calEnd, mStart: mStart, mEnd: mEnd,
+              rangeStart: rangeStart, rangeEnd: rangeEnd };
       var mp = self.teamId()
         ? tm.listMembers(self.teamId()).then(function (r) {
             return (r.items || []).map(function (m) { return { userId: m.userId, name: m.name }; });
           }).catch(function () { return []; })
         : Promise.resolve([]);
       mp.then(function (members) {
-        return vacSvc.getVacations({ teamId: self.teamId(), from: iso(calStart), to: iso(calEnd), members: members });
+        return vacSvc.getVacations({ teamId: self.teamId(), from: iso(fetchStart), to: iso(fetchEnd), members: members });
       }).then(function (res) {
         self.sample(res.sample);
         self.roster = res.roster || [];
         self.items = (res.items || []).concat(localAdds.filter(function (v) {
-          return v.startDate <= iso(calEnd) && v.endDate >= iso(calStart);
+          return v.startDate <= iso(fetchEnd) && v.endDate >= iso(fetchStart);
         }));
         build();
         self.loading(false);
       });
     };
 
-    self.prevMonth = function () { var a = self.anchor(); self.anchor(new Date(a.getFullYear(), a.getMonth() - 1, 1)); self.load(); };
-    self.nextMonth = function () { var a = self.anchor(); self.anchor(new Date(a.getFullYear(), a.getMonth() + 1, 1)); self.load(); };
-    self.goToday   = function () { var n = new Date(); self.anchor(new Date(n.getFullYear(), n.getMonth(), 1)); self.load(); };
-    self.setView   = function (v) { self.view(v); };
+    // ── navigation ───────────────────────────────────────────────────────
+    function step(dir) {
+      var s = self.scale(), a = normalizeAnchor(s, self.anchor());
+      if (s === 'day')       a = addDays(a, dir);
+      else if (s === 'week') a = addDays(a, dir * 7);
+      else if (s === 'year') a = new Date(a.getFullYear() + dir, 0, 1);
+      else                   a = new Date(a.getFullYear(), a.getMonth() + dir, 1);
+      self.anchor(a); self.load();
+    }
+    self.prev = function () { step(-1); };
+    self.next = function () { step(1); };
+    self.goToday = function () { self.anchor(new Date()); self.load(); };
+    self.setView = function (v) { self.view(v); };
+    self.setScale = function (s) {
+      if (s === self.scale()) return;
+      // keep context: if the period on screen contains today, land on today
+      var cur = normalizeAnchor(self.scale(), self.anchor());
+      var curEnd = self.scale() === 'day' ? cur
+                 : self.scale() === 'week' ? addDays(cur, 6)
+                 : self.scale() === 'year' ? new Date(cur.getFullYear(), 11, 31)
+                 : new Date(cur.getFullYear(), cur.getMonth() + 1, 0);
+      var now = midnight(new Date());
+      if (now >= cur && now <= curEnd) self.anchor(now);
+      st.vacScale = s; self.scale(s); self.load();
+    };
+    self.drillMonth = function (mIdx) {
+      self.anchor(new Date(win.a.getFullYear(), mIdx, 1));
+      st.vacScale = 'month'; self.scale('month'); self.load();
+    };
 
+    // ── cell / day interactions ──────────────────────────────────────────
     self.dayClass = function (day) {
       return 'vac-day' + (day.inMonth ? '' : ' vac-day--out') + (day.we ? ' vac-day--we' : '')
            + (day.today ? ' vac-day--today' : '');
     };
     self.cellClass = function (cell) { return 'vac-g-cell' + (cell.we ? ' vac-g-we' : ''); };
+    self.gridCellClick = function (cell) {
+      if (cell.vac) { self.openVac(cell.vac); } else if (cell.iso) { resetForm(cell.iso); self.formOpen(true); }
+    };
 
     // ── detail modal ────────────────────────────────────────────────────
     self.openVac  = function (v) { self.selVac(v); };
@@ -230,7 +364,7 @@ function (ko, tm, vacSvc, i18n) {
       self.editId(null); self.fmUser(null); self.fmType('ANNUAL');
       self.fmFrom(dateIso || ''); self.fmTo(dateIso || ''); self.fmNotes(''); self.fmErr('');
     }
-    self.openAdd  = function () { resetForm(''); self.formOpen(true); };
+    self.openAdd  = function () { resetForm(win && win.scale === 'day' ? iso(win.rangeStart) : ''); self.formOpen(true); };
     self.dayClick = function (day) { if (day.inMonth) { resetForm(day.iso); self.formOpen(true); } };
     self.editVac  = function () {
       var v = self.selVac(); if (!v) return;
@@ -252,8 +386,7 @@ function (ko, tm, vacSvc, i18n) {
         });
       } else {
         var nv = { vacId: 'L' + new Date().getTime(), userId: uid, memberName: mem.name || '',
-                   type: self.fmType(), status: 'PENDING',
-                   startDate: f, endDate: t2, notes: self.fmNotes() };
+                   type: self.fmType(), status: 'PENDING', startDate: f, endDate: t2, notes: self.fmNotes() };
         localAdds.push(nv); self.items.push(nv);
       }
       self.formOpen(false); build();

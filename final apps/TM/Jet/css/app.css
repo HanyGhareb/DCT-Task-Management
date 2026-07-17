@@ -419,3 +419,36 @@ tbody .vac-g-name { font-weight:600; }
 .vac-chip--APPROVED { background:#ddf4e4; color:#2A7D3A; border-color:#3FB950; }
 .vac-chip--PENDING { background:#FDF3D7; color:#8a6d1a; border-color:#d9b64e; border-style:dashed; }
 .vac-err { margin-top:10px; font-size:12.5px; color:#C13A30; background:#FDECEA; border:1px solid #F5C6C0; border-radius:8px; padding:6px 10px; }
+
+/* ── vacations: time-scale views (Day / Week / Year) ───────────────────── */
+.vac-scale .btn { min-width:52px; }
+
+/* Day agenda */
+.vac-agenda { display:flex; flex-direction:column; gap:8px; }
+.vac-ag-item { display:flex; align-items:center; gap:12px; padding:10px 14px; border:1px solid var(--border,#e3e6eb); border-radius:12px; background:var(--surface,#fff); cursor:pointer; }
+.vac-ag-item:hover { border-color:var(--brand,#0E8A8A); background:var(--brand-soft,#E6F4F4); }
+.vac-ag-main { flex:1 1 auto; min-width:0; }
+.vac-ag-name { font-size:14px; font-weight:700; color:var(--text,#1c252e); }
+.vac-ag-sub { font-size:12px; color:var(--text-2,#6a747e); margin-top:2px; }
+.vac-ag-chips { display:flex; gap:6px; flex-wrap:wrap; justify-content:flex-end; }
+
+/* Week grid — taller two-line day header (reuses .vac-grid / .vac-g-*) */
+.vac-weekgrid .vac-grid { min-width:640px; }
+.vac-wd { min-width:74px; width:auto; line-height:1.25; }
+.vac-wd-dow { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+.vac-wd-num { font-size:12.5px; font-weight:800; color:var(--text,#1c252e); }
+.vac-wd--today .vac-wd-num { color:var(--brand,#0E8A8A); }
+
+/* Year heat matrix — single-hue teal ramp (magnitude = sequential) */
+.vac-yeargrid .vac-grid { min-width:720px; }
+.vac-g-mon { min-width:52px; text-align:center; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--text-2,#6a747e); padding:6px 4px; border-inline-start:1px solid var(--surface-2,#eef1f4); }
+.vac-mon--now { color:var(--brand-dark,#0A6A6A); text-decoration:underline; }
+.vac-g-yrcell { text-align:center; padding:3px; border-inline-start:1px solid var(--surface-2,#eef1f4); border-top:1px solid var(--surface-2,#f0f2f5); cursor:pointer; }
+.vac-g-yrcell .vac-yr { height:28px; display:flex; align-items:center; justify-content:center; border-radius:6px; font-size:12px; font-weight:800; }
+.vac-yr--0 { background:transparent; }
+.vac-yr--1 { background:#D5EFEE; color:#0B6F6C; }
+.vac-yr--2 { background:#8FD3CF; color:#08514F; }
+.vac-yr--3 { background:#2FA39C; color:#fff; }
+.vac-g-yrcell:hover .vac-yr { outline:2px solid var(--brand,#0E8A8A); outline-offset:-2px; }
+.vac-yr-foot td { background:var(--surface-2,#f6f8f9); font-weight:800; }
+.vac-yr-footcell { font-size:12px; color:var(--text-2,#5b6573); text-align:center; cursor:pointer; }
