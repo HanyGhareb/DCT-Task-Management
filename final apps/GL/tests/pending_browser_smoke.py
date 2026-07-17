@@ -66,10 +66,22 @@ def main():
         chip = pend.locator(".page-actions .chip").nth(1).inner_text()
         check("count chip", "pending lines" in chip, "(%s)" % chip)
         check("snapshot as-of chip", "Snapshot" in pend.locator(".page-actions .chip").nth(0).inner_text())
-        check("briefing book button", pend.locator(".page-actions button.btn-primary").is_enabled())
-        # v1.29.0 — Export Excel (ENC_PENDING_REGISTER) sits next to the book button
-        xls_btn = pend.locator(".page-actions button", has_text="Export Excel")
-        check("export excel button", xls_btn.count() == 1 and xls_btn.is_enabled())
+        # v1.33.0 — the Briefing Book + Export Excel buttons are folded into one
+        # "Generate Report ▾" dropdown offering PDF / Excel / PowerPoint
+        gen_btn = pend.locator(".page-actions .gen > button.gen-btn")
+        check("generate report button", gen_btn.count() == 1 and gen_btn.is_enabled())
+        gen_btn.click()
+        items = pend.locator(".page-actions .gen .gen-menu .gen-item")
+        check("dropdown 3 formats", items.count() == 3, "(%d items)" % items.count())
+        labels = " | ".join(items.locator("b").all_inner_texts())
+        check("dropdown has PowerPoint", "PowerPoint" in labels, "(%s)" % labels)
+        # the PowerPoint item is wired to runPnPpt (spy so no live ~1-min run/poll
+        # churns the dev-proxy and skews the exact-count reset checks below)
+        pg.evaluate("var v=ko.dataFor(document.body); window._pptWired=false;"
+                    "v._realRunPnPpt=v.runPnPpt; v.runPnPpt=function(){window._pptWired=true;};")
+        items.nth(2).click()
+        check("powerpoint item wired to runPnPpt", pg.evaluate("window._pptWired") is True)
+        pg.evaluate("var v=ko.dataFor(document.body); v.runPnPpt=v._realRunPnPpt;")
 
         # KPI band: 4 composite tiles with non-empty values
         tiles = pend.locator(".bu-kpis .bk")
@@ -206,8 +218,9 @@ def main():
         pg.evaluate("ko.dataFor(document.body).go('butil')")
         pg.wait_for_function("!ko.dataFor(document.body).buBusy()", timeout=120000)
         bu = pg.locator("div[data-bind=\"visible:view()==='butil'\"]").first
-        bu_xls = bu.locator(".page-actions button", has_text="Export Excel")
-        check("butil export excel button", bu_xls.count() == 1 and bu_xls.is_enabled())
+        # v1.32.1 — butil Export Excel / Briefing Book folded into a Generate Report dropdown
+        bu_gen = bu.locator(".page-actions .gen > button.gen-btn")
+        check("butil generate report button", bu_gen.count() == 1 and bu_gen.is_enabled())
         pg.evaluate("ko.dataFor(document.body).go('pending')")
         pg.wait_for_timeout(300)
 
