@@ -26,6 +26,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-18 — Business Unit filter on Budget Utilization + Projects Encumbrances (GL v1.34.0)** —
+  follow-through of the BU rollout after the user's extract fixes: `ATD_PROJECTS.BUSINESS_UNIT_NAME`
+  now carries the REAL BU name (was junk 'BU'), so **every budget line takes its PROJECT's Business
+  Unit**. `db/v2/37` butil view + `db/v2/39` `DCT_BUTIL_SCOPE_V` gain `business_unit` (re-run +
+  recompile sweep to 0 INVALID); `GL/db/07` adds `bu=` exact any-of to `/butil` + `/butil/lines`
+  (all 6 chapter-predicate spots) + `businessUnits[]` in `/butil/filters`; `GL/db/12` `/encumbrances`
+  same; `GL/db/11` all three bridges (book/xlsx/ppt) + GL/db/13's ppt bridge forward `bu`;
+  reporting/db/21+25 bind it in `l_bscope`/`l_scope` (params+spec via the BUDGET_UTIL_BOOK spec,
+  cover chip in `budget_util_book.html.j2`) — deployed via vm180 python-oracledb. Frontend: shared
+  **Business unit** multi-select chips on the butil + encumbrances Search regions (LOV from
+  /butil/filters; single value today — grows automatically as more BUs reach the extracts); the
+  Pending Approval page KEEPS its own snapshot-document BU filter (runPending overrides `p.bu`).
+  Butil BU today = one value (projects are all DCT) — the AP dashboards got the real cross-BU data
+  (see AP notes). E2E: BUDGET_UTIL_REGISTER runs 109 (bu=DCT, 9,530 rows) / 110 (bogus BU, 0 rows);
+  spot check 7/7; pending regression 47/47.
 - **2026-07-18 — Web-tier release `20260718021355`** (`SSH_USER=opc bash
   webtier/deploy_frontend.sh 129.151.159.189`): GL v1.32.1 live — verified `APP_VERSION` +
   `app.js` now serves `runBuPpt`/`toggleGen`/`buGenBusy` (the dropdown, whose markup had shipped

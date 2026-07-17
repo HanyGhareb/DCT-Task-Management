@@ -57,6 +57,7 @@ WITH
 proj AS (
   SELECT project_id, project_number, MAX(project_name) AS project_name,
          MAX(project_type) AS project_type,
+         MAX(business_unit_name) AS business_unit,
          MAX(appropriation) AS appropriation, MAX(appropriation_description) AS appropriation_desc
   FROM prod.projects GROUP BY project_id, project_number
 ),
@@ -277,6 +278,7 @@ SELECT
            MAX(MAX(tcc.cost_center_code)) OVER (PARTITION BY k.budget_year, k.project_key))  AS cost_centre,
   k.project_key             AS project_number,
   MAX(pj.project_name)      AS project_name,
+  MAX(pj.business_unit)     AS business_unit,
   k.task_key                AS task_number,
   COALESCE(MAX(CASE WHEN coa.account_code IS NOT NULL THEN coa.account_code || ' - ' || coa.account_desc END),
            MAX(CASE WHEN ac.account_code  IS NOT NULL THEN ac.account_code  || ' - ' || ac.account_desc  END)) AS gl_account,

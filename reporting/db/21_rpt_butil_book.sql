@@ -57,8 +57,8 @@ BEGIN
   -- contains-match, project matches number OR name). Aggregate sections
   -- filter the butil fact view directly; line sections join the scope view
   -- on the FULL fact key (project, task, expenditure type).
-  l_bscope := q'! WHERE budget_year = [COLON]year AND ([COLON]sector IS NULL OR sector = [COLON]sector) AND ([COLON]chapter IS NULL OR INSTR('|'||[COLON]chapter||'|', '|'||chapter||'|') > 0) AND ([COLON]projecttype IS NULL OR project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR (INSTR([COLON]costcenter,'|') = 0 AND cost_centre LIKE '%'||[COLON]costcenter||'%') OR INSTR('|'||[COLON]costcenter||'|', '|'||cost_centre||'|') > 0) AND ([COLON]project IS NULL OR (INSTR([COLON]project,'|') = 0 AND UPPER(project_number||' '||project_name) LIKE '%'||UPPER([COLON]project)||'%') OR INSTR('|'||[COLON]project||'|', '|'||project_number||'|') > 0) AND ([COLON]task IS NULL OR UPPER(task_number) LIKE '%'||UPPER([COLON]task)||'%') AND ([COLON]etype IS NULL OR UPPER(expenditure_type) LIKE '%'||UPPER([COLON]etype)||'%') AND ([COLON]search IS NULL OR UPPER(project_number||' '||project_name||' '||task_number||' '||department||' '||cost_centre||' '||expenditure_type) LIKE '%'||UPPER([COLON]search)||'%')!';
-  l_scope  := q'! AND (x.project_number, NVL(x.task_number,'~'), NVL(x.expenditure_type,'~')) IN (SELECT s.project_number, NVL(s.task_number,'~'), NVL(s.expenditure_type,'~') FROM prod.dct_butil_scope_v s WHERE s.budget_year = [COLON]year AND ([COLON]sector IS NULL OR s.sector = [COLON]sector) AND ([COLON]chapter IS NULL OR INSTR('|'||[COLON]chapter||'|', '|'||s.chapter||'|') > 0) AND ([COLON]projecttype IS NULL OR s.project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR (INSTR([COLON]costcenter,'|') = 0 AND s.cost_centre LIKE '%'||[COLON]costcenter||'%') OR INSTR('|'||[COLON]costcenter||'|', '|'||s.cost_centre||'|') > 0) AND ([COLON]project IS NULL OR (INSTR([COLON]project,'|') = 0 AND UPPER(s.project_number||' '||s.project_name) LIKE '%'||UPPER([COLON]project)||'%') OR INSTR('|'||[COLON]project||'|', '|'||s.project_number||'|') > 0) AND ([COLON]task IS NULL OR UPPER(s.task_number) LIKE '%'||UPPER([COLON]task)||'%') AND ([COLON]etype IS NULL OR UPPER(s.expenditure_type) LIKE '%'||UPPER([COLON]etype)||'%') AND ([COLON]search IS NULL OR UPPER(s.project_number||' '||s.project_name||' '||s.task_number||' '||s.department||' '||s.cost_centre||' '||s.expenditure_type) LIKE '%'||UPPER([COLON]search)||'%'))!';
+  l_bscope := q'! WHERE budget_year = [COLON]year AND ([COLON]sector IS NULL OR sector = [COLON]sector) AND ([COLON]chapter IS NULL OR INSTR('|'||[COLON]chapter||'|', '|'||chapter||'|') > 0) AND ([COLON]projecttype IS NULL OR project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR (INSTR([COLON]costcenter,'|') = 0 AND cost_centre LIKE '%'||[COLON]costcenter||'%') OR INSTR('|'||[COLON]costcenter||'|', '|'||cost_centre||'|') > 0) AND ([COLON]project IS NULL OR (INSTR([COLON]project,'|') = 0 AND UPPER(project_number||' '||project_name) LIKE '%'||UPPER([COLON]project)||'%') OR INSTR('|'||[COLON]project||'|', '|'||project_number||'|') > 0) AND ([COLON]task IS NULL OR UPPER(task_number) LIKE '%'||UPPER([COLON]task)||'%') AND ([COLON]etype IS NULL OR UPPER(expenditure_type) LIKE '%'||UPPER([COLON]etype)||'%') AND ([COLON]search IS NULL OR UPPER(project_number||' '||project_name||' '||task_number||' '||department||' '||cost_centre||' '||expenditure_type) LIKE '%'||UPPER([COLON]search)||'%') AND ([COLON]bu IS NULL OR INSTR('|'||[COLON]bu||'|', '|'||business_unit||'|') > 0)!';
+  l_scope  := q'! AND (x.project_number, NVL(x.task_number,'~'), NVL(x.expenditure_type,'~')) IN (SELECT s.project_number, NVL(s.task_number,'~'), NVL(s.expenditure_type,'~') FROM prod.dct_butil_scope_v s WHERE s.budget_year = [COLON]year AND ([COLON]sector IS NULL OR s.sector = [COLON]sector) AND ([COLON]chapter IS NULL OR INSTR('|'||[COLON]chapter||'|', '|'||s.chapter||'|') > 0) AND ([COLON]projecttype IS NULL OR s.project_type = [COLON]projecttype) AND ([COLON]costcenter IS NULL OR (INSTR([COLON]costcenter,'|') = 0 AND s.cost_centre LIKE '%'||[COLON]costcenter||'%') OR INSTR('|'||[COLON]costcenter||'|', '|'||s.cost_centre||'|') > 0) AND ([COLON]project IS NULL OR (INSTR([COLON]project,'|') = 0 AND UPPER(s.project_number||' '||s.project_name) LIKE '%'||UPPER([COLON]project)||'%') OR INSTR('|'||[COLON]project||'|', '|'||s.project_number||'|') > 0) AND ([COLON]task IS NULL OR UPPER(s.task_number) LIKE '%'||UPPER([COLON]task)||'%') AND ([COLON]etype IS NULL OR UPPER(s.expenditure_type) LIKE '%'||UPPER([COLON]etype)||'%') AND ([COLON]search IS NULL OR UPPER(s.project_number||' '||s.project_name||' '||s.task_number||' '||s.department||' '||s.cost_centre||' '||s.expenditure_type) LIKE '%'||UPPER([COLON]search)||'%') AND ([COLON]bu IS NULL OR INSTR('|'||[COLON]bu||'|', '|'||s.business_unit||'|') > 0))!';
   -- part 1a: one-row overview (KPIs)
   l_ov := q'!SELECT COUNT(DISTINCT sector) AS sectors, COUNT(DISTINCT project_number) AS projects, COUNT(DISTINCT project_number||'~'||NVL(task_number,'~')) AS tasks, COUNT(*) AS budget_lines, SUM(budget) AS budget, SUM(actual_ap) AS actual_ap, SUM(actual_grn) AS actual_grn, SUM(actual_ap)+SUM(actual_grn) AS actual_total, SUM(obligation_po) AS obligation_po, SUM(commitment_pr) AS commitment_pr, SUM(fund_available) AS fund_available, ROUND(100*(SUM(actual_ap)+SUM(actual_grn)+SUM(commitment_pr)+SUM(obligation_po))/NULLIF(SUM(budget),0),1) AS utilization_pct, COUNT(CASE WHEN fund_available < -0.005 THEN 1 END) AS over_budget_lines FROM prod.dct_budget_utilization_v!' || l_bscope;
   -- part 1b: sector rollup (table + charts)
@@ -132,7 +132,7 @@ BEGIN
      'budget_util_book.html.j2',
      'Budget Utilization Briefing Book - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      l_body,
-     '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null}',
+     '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null}',
      'Y', 'SETUP', 'SETUP')
   WHEN MATCHED THEN UPDATE SET
      t.source_type       = 'MULTI',
@@ -143,7 +143,7 @@ BEGIN
      t.pdf_template      = 'budget_util_book.html.j2',
      t.email_subject_tpl = 'Budget Utilization Briefing Book - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      t.email_body_tpl    = l_body,
-     t.params_json       = '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null}',
+     t.params_json       = '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null}',
      t.updated_by        = 'SETUP',
      t.updated_at        = SYSTIMESTAMP;
   MERGE INTO prod.dct_rpt_recipient t
@@ -219,7 +219,12 @@ UPDATE prod.dct_rpt_definition
     || UNISTR('\0628\062D\062B')
     || '","hint":"Optional. Free-text contains-match across project, task, department, cost center and expenditure type (the GL page search box).","hint_ar":"'
     || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\0628\062D\062B\0020\0646\0635\064A\0020\0641\064A\0020\0646\0637\0627\0642\0020\0627\0644\062A\0642\0631\064A\0631\002E')
-    || '","required":false}}'
+    || '","required":false},'
+    || '"bu":{"label":"Business unit(s)","label_ar":"'
+    || UNISTR('\0648\062D\062F\0629\0020\0627\0644\0623\0639\0645\0627\0644')
+    || '","hint":"Optional. Pipe-separated exact list of Business Units (project attribution); empty = all.","hint_ar":"'
+    || UNISTR('\0627\062E\062A\064A\0627\0631\064A\0020\2014\0020\0642\0627\0626\0645\0629\0020\0648\062D\062F\0627\062A\0020\0627\0644\0623\0639\0645\0627\0644\0020\0645\0641\0635\0648\0644\0629\0020\0628\0640\0020\007C\002E')
+    || '","required":false,"lov_sql":"SELECT DISTINCT business_unit FROM prod.dct_butil_scope_v WHERE business_unit IS NOT NULL ORDER BY 1"}}'
  WHERE report_code = 'BUDGET_UTIL_BOOK';
 COMMIT;
 

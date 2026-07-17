@@ -61,6 +61,7 @@ SELECT DISTINCT
        department,
        project_number,
        project_name,
+       business_unit,
        task_number,
        expenditure_type
 FROM prod.dct_budget_utilization_v;

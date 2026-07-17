@@ -87,7 +87,7 @@ BEGIN
   APEX_JSON.write('year', l_year);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   put('sector'); put('chapter'); put('projecttype'); put('costcenter');
-  put('project'); put('task'); put('etype'); put('search');
+  put('project'); put('task'); put('etype'); put('search'); put('bu');
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;
@@ -192,7 +192,7 @@ BEGIN
   APEX_JSON.write('year', l_year);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   put('sector'); put('chapter'); put('projecttype'); put('costcenter');
-  put('project'); put('task'); put('etype'); put('search');
+  put('project'); put('task'); put('etype'); put('search'); put('bu');
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;
@@ -299,7 +299,7 @@ BEGIN
   APEX_JSON.write('year', l_year);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   put('sector'); put('chapter'); put('projecttype'); put('costcenter');
-  put('project'); put('task'); put('etype'); put('search');
+  put('project'); put('task'); put('etype'); put('search'); put('bu');
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;

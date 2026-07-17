@@ -245,5 +245,6 @@
   "ht.level": "Detail level",
   "ht.rows": "Rows (filtered)",
   "ht.dueDate": "Due date",
-  "ht.clickList": "Click to list the invoices"
+  "ht.clickList": "Click to list the invoices",
+  "f.bu": "Business unit"
 }

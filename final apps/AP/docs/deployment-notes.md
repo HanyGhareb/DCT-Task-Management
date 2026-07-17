@@ -48,6 +48,19 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 ## Deployment history
 
+- **2026-07-18 — Business Unit facet + CROSS-BU data (AP v1.11.0).** The user added *Business
+  Unit Name* to the AP Invoices OTBI analyses and the extract now loads **cross-BU** data:
+  DCT 5,757 + Museum Shared Services 2,166 + Abrahamic Family House 232 invoices (was 5,456
+  DCT-only — every AP figure platform-wide grew accordingly, by design). Wiring: `ATD_AP_INVOICES.
+  BUSINESS_UNIT_NAME` → all 3 `AP_*_V` views gain `BUSINESS_UNIT` (05), `DCT_AP_PKG.filtered_ids`
+  gains `p_bu` (multi, header grain; 02), every handler passes `bu=` + `/filters` ships a counted
+  `businessUnits[]` LOV (03+04), registers/CSVs at all 3 levels carry the column. **Deploy gotcha:
+  the new extract column requires `prod.dct_views_rebuild` BEFORE 05** (the `prod.ap_invoices`
+  pass-through predates the column; without the rebuild 05 compiles INVALID with ORA-00904).
+  Frontend: **Business unit** counted facet group (both dashboards incl. Beneficiaries), visible
+  `businessUnit` register column (hidden at line/dist levels). API verified: all=8,155 / MSS=2,166 /
+  MSS register rows all-MSS; browser spot-check PASS.
+
 - **2026-07-12** — Initial deploy: 01→04 to PROD; `ap.rest` 9 routes live; API smoke 14/14;
   browser smoke 23/23; platform registration (shell + i18n + all-apps APP_VERSION bump).
   Web-tier release `20260712231423` shipped same day (whole fleet; AP live at /AP/Jet/).

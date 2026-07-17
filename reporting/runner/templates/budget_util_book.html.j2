@@ -27,6 +27,7 @@
 {%- if params.task %}{% set _ = flt.append('Task: ' ~ params.task) %}{% endif -%}
 {%- if params.etype %}{% set _ = flt.append('Expenditure type: ' ~ params.etype) %}{% endif -%}
 {%- if params.search %}{% set _ = flt.append('Search: ' ~ params.search) %}{% endif -%}
+{%- if params.bu %}{% set _ = flt.append('Business unit: ' ~ params.bu|replace('|', ', ')) %}{% endif -%}
 {%- set scopeline = flt|join(' · ') if flt else 'Whole organisation · Full year' -%}
 {%- macro money(v) -%}
   {%- if v is none %}&mdash;
@@ -193,6 +194,7 @@
     {% if params.task %}<span>Task <b>{{ params.task }}</b></span>{% endif %}
     {% if params.etype %}<span>Expenditure type <b>{{ params.etype }}</b></span>{% endif %}
     {% if params.search %}<span>Search <b>{{ params.search }}</b></span>{% endif %}
+    {% if params.bu %}<span>Business unit <b>{{ params.bu|replace('|', ', ') }}</b></span>{% endif %}
     <span>Sectors <b>{{ O.sectors|fmt if O.sectors is not none else '—' }}</b></span>
     <span>Projects <b>{{ O.projects|fmt if O.projects is not none else '—' }}</b></span>
     <span>Budget lines <b>{{ O.budget_lines|fmt if O.budget_lines is not none else '—' }}</b></span>

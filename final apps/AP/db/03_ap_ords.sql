@@ -75,6 +75,12 @@ BEGIN
    WHERE ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1);
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('minDate', l_min); APEX_JSON.write('maxDate', l_max);
+  -- Business Units (header BU name; cross-BU since the 2026-07-18 extract change)
+  APEX_JSON.open_array('businessUnits');
+  FOR r IN (SELECT business_unit v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE business_unit IS NOT NULL AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY business_unit ORDER BY 2 DESC) LOOP
+    APEX_JSON.open_object; APEX_JSON.write('v', r.v); APEX_JSON.write('c', r.c); APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
   APEX_JSON.open_array('paymentStatus');
   FOR r IN (SELECT payment_status v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY payment_status ORDER BY 2 DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
@@ -226,7 +232,8 @@ BEGIN
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
-    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum, p_inclcxl => [COLON]inclcxl);
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
   SELECT COUNT(*),
          COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                              THEN h.beneficiary_name ELSE h.supplier_name END),
@@ -390,7 +397,8 @@ BEGIN
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
-    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum, p_inclcxl => [COLON]inclcxl);
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
   SELECT NVL(SUM(h.invoice_amount_aed),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) ELSE 0 END),0)
     INTO l_amt, l_bal
@@ -407,7 +415,7 @@ BEGIN
            CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                 THEN h.beneficiary_name ELSE h.supplier_name END supplier_name,
            CASE WHEN h.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
-           h.supplier_number, h.supplier_site, h.invoice_description, h.invoice_currency,
+           h.supplier_number, h.supplier_site, h.business_unit, h.invoice_description, h.invoice_currency,
            h.invoice_amount, h.invoice_amount_aed, NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
@@ -439,6 +447,7 @@ BEGIN
     APEX_JSON.write('isBeneficiary', r.is_beneficiary);
     APEX_JSON.write('supplierNumber', r.supplier_number);
     APEX_JSON.write('supplierSite', r.supplier_site);
+    APEX_JSON.write('businessUnit', NVL(r.business_unit,''));
     APEX_JSON.write('description', r.invoice_description);
     APEX_JSON.write('currency', r.invoice_currency);
     APEX_JSON.write('amount', r.invoice_amount);
@@ -523,18 +532,19 @@ BEGIN
     p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
-    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum, p_inclcxl => [COLON]inclcxl);
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-register-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
   HTP.prn(UNISTR('\FEFF'));
-  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Site,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Approval,Terms Date,Due Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
+  HTP.print('Invoice Number,Invoice Date,Type,Supplier,Is Beneficiary,Site,Business Unit,Description,Currency,Amount,Amount AED,Amount Paid,Balance Due,Balance AED,Validation,Accounting,Paid Status,Funds,Invoice Status,Approval,Terms Date,Due Date,Days Past Due,Pay Group,Payment Method,PO Numbers,PR Numbers,Voucher,Source');
   FOR r IN (
     SELECT h.invoice_number, TO_CHAR(h.invoice_date,'YYYY-MM-DD') inv_dt, h.invoice_type,
            CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                 THEN h.beneficiary_name ELSE h.supplier_name END supplier_name,
            CASE WHEN h.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
-           h.supplier_site, h.invoice_description, h.invoice_currency, h.invoice_amount, h.invoice_amount_aed,
+           h.supplier_site, h.business_unit, h.invoice_description, h.invoice_currency, h.invoice_amount, h.invoice_amount_aed,
            NVL(h.amount_paid,0) amount_paid, NVL(h.balance_due,0) balance_due,
            ROUND(NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1),2) balance_aed,
            h.validation_status, h.accounting_status, h.payment_status, h.funds_status, h.invoice_status,
@@ -550,7 +560,7 @@ BEGIN
   LOOP
     HTP.print(
       esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.invoice_type) || ',' ||
-      esc(r.supplier_name) || ',' || r.is_beneficiary || ',' || esc(r.supplier_site) || ',' || esc(r.invoice_description) || ',' || r.invoice_currency || ',' ||
+      esc(r.supplier_name) || ',' || r.is_beneficiary || ',' || esc(r.supplier_site) || ',' || esc(r.business_unit) || ',' || esc(r.invoice_description) || ',' || r.invoice_currency || ',' ||
       r.invoice_amount || ',' || r.invoice_amount_aed || ',' || r.amount_paid || ',' ||
       r.balance_due || ',' || r.balance_aed || ',' ||
       esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status) || ',' ||

@@ -252,6 +252,7 @@
     repPptSub:{en:'Executive slide deck',ar:'عرض شرائح تنفيذي'},
     buPptHint:{en:'Generate an executive PowerPoint deck using ALL the current page filters — cover, KPI overview, utilization by sector, budget composition, lines under pressure, actuals and supplier concentration, open obligations & commitments, and management insights. Native, editable slides. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء عرض شرائح تنفيذي (باوربوينت) وفق جميع عوامل تصفية الصفحة الحالية — غلاف ومؤشرات أداء واستخدام حسب القطاع وتكوين الموازنة والبنود تحت الضغط والفعلي وتركّز الموردين والالتزامات والتعهدات المفتوحة ورؤى الإدارة. شرائح أصلية قابلة للتحرير. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     pnPptReady:{en:'PowerPoint deck downloaded.',ar:'تم تنزيل عرض الشرائح.'},
+    pnPptHint:{en:'Generate an executive PowerPoint deck of the pending approvals using ALL the current page filters — cover, pending-approval overview, aging analysis, pending value by sector, approver follow-up, longest-waiting documents and management insights (funds-reserved, non-zero lines only). Native, editable slides. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء عرض شرائح تنفيذي (باوربوينت) للاعتمادات المعلقة وفق جميع عوامل تصفية الصفحة الحالية — غلاف ونظرة عامة على الاعتمادات المعلقة وتحليل التقادم والقيمة المعلقة حسب القطاع ومتابعة المعتمدين وأقدم المستندات ورؤى الإدارة (البنود المحجوزة غير الصفرية فقط). شرائح أصلية قابلة للتحرير. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     noButil:{en:'No budget lines match these criteria.',ar:'لا توجد بنود موازنة مطابقة.'},
     cProjType:{en:'Type',ar:'النوع'}, cDept:{en:'Department',ar:'الإدارة'},
     cProject:{en:'Project',ar:'المشروع'}, cTask:{en:'Task',ar:'المهمة'},
@@ -951,6 +952,21 @@
       return true;
     };
     self.buChipRemove = function (arr, v) { arr.remove(v); };
+    /* Business Unit multi-select (2026-07-18) — butil scope: every budget line
+       takes its PROJECT's Business Unit (projects master, real names since the
+       extract fix); one pick-list + chips shared by the Budget Utilization and
+       Projects Encumbrances pages. The Pending Approval page keeps its OWN
+       snapshot-document BU filter (pnBuSel) and overrides p.bu in runPending. */
+    self.buBus = ko.observableArray([]);
+    self.buBuSel = ko.observableArray([]);
+    self.buBuPick = ko.observable('');
+    self.buBuAdd = function () {
+      var v = self.buBuPick();
+      if (v && self.buBuSel.indexOf(v) < 0) self.buBuSel.push(v);
+      self.buBuPick('');
+      return true;
+    };
+    self.buBuParam = function () { return self.buBuSel().join('|') || null; };
     // datalist inputs: an exact LOV value becomes a chip and clears the input
     self.buCcCommit = function () {
       var v = (self.buCc() || '').trim();
@@ -1028,6 +1044,7 @@
         self.buTypes(d.projectTypes || []);
         self.buSectors(d.sectors || []);
         self.buChapters(d.chapters || []);
+        self.buBus(d.businessUnits || []);
         // KO nulls a <select> value when options were empty at bind time; re-assert.
         if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
         if (!self.buType() && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buType(BU_DEFAULT_TYPE);
@@ -1040,6 +1057,7 @@
     self.buParams = function (offset, limit) {
       return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(),
         costcenter: self.buCcParam(), project: self.buProjParam(), task: self.buTask(), etype: self.buEtype(),
+        bu: self.buBuParam(),
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -1054,7 +1072,7 @@
       self.buType(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? BU_DEFAULT_TYPE : '');
       self.buSector(''); self.buSearch('');
       self.buChapterSel.removeAll(); self.buCcSel.removeAll(); self.buProjSel.removeAll();
-      self.buChapterPick('');
+      self.buChapterPick(''); self.buBuSel.removeAll(); self.buBuPick('');
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));
@@ -1162,6 +1180,7 @@
       // full page filter set (mirrors buParams) so the book scope = the page scope
       api('POST', '/butil/book', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.buBuParam(),
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
@@ -1216,6 +1235,7 @@
       self.buXlsxBusy(true);
       api('POST', '/butil/xlsx', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.buBuParam(),
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
@@ -1269,6 +1289,7 @@
       self.buPptBusy(true);
       api('POST', '/butil/ppt', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.buBuParam(),
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
@@ -1635,6 +1656,68 @@
         })();
       }).catch(function (e) { self.pnBookBusy(false); fail(e); });
     };
+    /* PowerPoint deck (ENC_PENDING_BOOK formats=PPTX via /gl/pending/ppt) —
+       the executive companion of the Briefing Book: the same pending-approval
+       data as native, editable slides (overview · aging · sector · approvers ·
+       longest-waiting · insights). */
+    self.pnPptBusy = ko.observable(false);
+    function pnPptDownload(runId) {
+      return fetch(API + '/pending/ppt/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('PowerPoint download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Encumbrances_Pending_Approval_' + self.buYear() + '.pptx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runPnPpt = function () {
+      if (self.pnPptBusy()) return;
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pnPptBusy(true);
+      api('POST', '/pending/ppt', {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.pnBuParam(),
+        sector: self.buSector() || null, chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
+        project: self.buProjParam() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null
+      }).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('buBookQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) {
+            self.pnPptBusy(false);
+            toast(self.t('buBookTimeout') + runId + ')', true);
+            return;
+          }
+          setTimeout(function () {
+            api('GET', '/pending/ppt/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                pnPptDownload(runId)
+                  .then(function () { self.pnPptBusy(false); toast(self.t('pnPptReady')); })
+                  .catch(function (e) { self.pnPptBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.pnPptBusy(false);
+                toast(self.t('buBookFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 6000);
+        })();
+      }).catch(function (e) { self.pnPptBusy(false); fail(e); });
+    };
+    /* ── pending page "Generate Report" dropdown (PDF / Excel / PowerPoint) ── */
+    self.pnGenOpen = ko.observable(false);
+    self.togglePnGen = function () { self.pnGenOpen(!self.pnGenOpen()); return true; };
+    self.closePnGen = function () { self.pnGenOpen(false); return true; };
+    self.pnGenBusy = ko.computed(function () {
+      return self.pnBookBusy() || self.pnXlsxBusy() || self.pnPptBusy();
+    });
 
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }

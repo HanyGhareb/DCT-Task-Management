@@ -87,6 +87,13 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-18 — `bu` (Business Unit) param on BUDGET_UTIL_BOOK + BUDGET_UTIL_REGISTER (`reporting/db/21`
+  + `25` re-seeded).** Same exact any-of semantics as the pending pair, but bound in `l_bscope`/`l_scope`
+  (project-attribution BU via the butil/scope views, which gained `business_unit` in db/v2/37+39) so ALL
+  sections of a workbook/book — including 21's Part 5 pending sections via `l_scope` — cut consistently.
+  BUDGET_UTIL_BOOK's authored param_spec gains the `bu` entry (LOV over `dct_butil_scope_v`); 25 inherits
+  it by copy. Cover chip added to `budget_util_book.html.j2`. Deployed via vm180 python-oracledb;
+  E2E runs 109 (bu=DCT → 9,530 rows) / 110 (bogus → 0 rows).
 - **2026-07-18 — PowerPoint (PPTX): a NEW output format for the platform + BUDGET_UTIL_BOOK deck.** `reporting/runner/render_pptx.py` (python-pptx) builds an executive 16:9 slide deck from the SAME MULTI sections the Briefing Book renders (overview/by_sector/pressure/ap_lines/grn_lines/open_po/open_pr) — cover · KPI overview · utilization-by-sector chart+table · budget-composition doughnut · lines under pressure · actuals & top-suppliers · open obligations/commitments · observations & insights · methodology; native editable PPTX tables + charts, same computed insights as the PDF so figures match. `runner.py` gains a `PPTX` format branch (built only for MULTI runs, from `sections`); enqueue any MULTI report with `p_formats='PPTX'` to get a deck. **`reporting/db/26` (+ db/02 source) registers `PPTX` in the `RPT_FORMAT` lookup** — WITHOUT it `dct_rpt_pkg.record_output` raises ORA-20090 (it `validate_lookup`s the format). python-pptx added to the fleet (vm180-182 pip) + `runner/deploy_worker.sh`. First consumer: the GL Budget Utilization page's **Generate Report → PowerPoint** (bridge `POST /gl/butil/ppt` enqueues BUDGET_UTIL_BOOK formats=PPTX; GL/db/11). Verified: local 8-slide deck (visual QA) + fleet E2E run 101 SUCCESS + HTTP bridge run 102 (valid 64 KB .pptx). No server-side LibreOffice needed — the .pptx is delivered as-is; opens in PowerPoint. db/26 deployed via python-oracledb on vm180 (MERGE-bearing).
 - **2026-07-17 — `bu` (Business Unit) param on ENC_PENDING_BOOK + ENC_PENDING_REGISTER (`reporting/db/23`
   + `24` re-seeded).** Pipe-delimited EXACT any-of list of Fusion BU names

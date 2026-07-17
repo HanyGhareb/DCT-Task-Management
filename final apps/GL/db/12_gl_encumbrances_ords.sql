@@ -58,6 +58,7 @@ DECLARE
   l_ptype   VARCHAR2(100) := [COLON]projecttype;
   l_sector  VARCHAR2(200) := [COLON]sector;
   l_chapter VARCHAR2(2000) := [COLON]chapter;
+  l_bu      VARCHAR2(2000) := [COLON]bu;
   l_cc      VARCHAR2(2000) := [COLON]costcenter;
   l_proj    VARCHAR2(2000) := [COLON]project;
   l_task    VARCHAR2(200) := [COLON]task;
@@ -78,6 +79,7 @@ BEGIN
   IF l_ptype   = '' THEN l_ptype   := NULL; END IF;
   IF l_sector  = '' THEN l_sector  := NULL; END IF;
   IF l_chapter = '' THEN l_chapter := NULL; END IF;
+  IF l_bu = '' THEN l_bu := NULL; END IF;
   IF l_cc      = '' THEN l_cc      := NULL; END IF;
   IF l_proj    = '' THEN l_proj    := NULL; END IF;
   IF l_task    = '' THEN l_task    := NULL; END IF;
@@ -142,6 +144,7 @@ BEGIN
         AND (l_ptype   IS NULL OR v.project_type = l_ptype)
         AND (l_sector  IS NULL OR v.sector = l_sector)
         AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+        AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
         AND (l_cc      IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
         AND (l_proj    IS NULL OR (INSTR(l_proj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')

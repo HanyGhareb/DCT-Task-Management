@@ -17,6 +17,11 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-07-18** — **Business Unit filter on butil + encumbrances** (`APP_VERSION` 1.34.0).
+  Projects master BU fixed by the user's extract change → butil/scope views carry `business_unit`
+  (project attribution); `bu=` on /butil, /butil/lines, /encumbrances + businessUnits[] LOV +
+  all report bridges; reporting 21/25 bind it; shared BU chips on both pages (pending keeps its
+  snapshot-BU filter). E2E runs 109/110; smoke 47/47.
 - **2026-07-17** — **Business Unit multi-select** (`APP_VERSION` 1.31.0). Pending Approval page
   gains a BU multi-select (chips; LOV = `businessUnits[]` from `/gl/pending`) → `bu=` exact
   any-of list scoping register + KPIs + the unmatched coverage KPI (GL/db/13 re-run); forwarded
