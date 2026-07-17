@@ -78,7 +78,7 @@ BEGIN
   -- Business Units (header BU name; cross-BU since the 2026-07-18 extract change)
   APEX_JSON.open_array('businessUnits');
   FOR r IN (SELECT business_unit v, COUNT(*) c FROM prod.ap_invoices_header_v WHERE business_unit IS NOT NULL AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(supplier_number)) = 1) GROUP BY business_unit ORDER BY 2 DESC) LOOP
-    APEX_JSON.open_object; APEX_JSON.write('v', r.v); APEX_JSON.write('c', r.c); APEX_JSON.close_object;
+    APEX_JSON.open_object; APEX_JSON.write('name', r.v); APEX_JSON.write('count', r.c); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('paymentStatus');

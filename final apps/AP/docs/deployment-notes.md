@@ -48,6 +48,18 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 ## Deployment history
 
+- **2026-07-18 — BU facet fix round (AP v1.11.1).** User screenshot: the Business-unit
+  facet rendered three "(None)" rows — the `/filters` `businessUnits[]` LOV was emitted as
+  `{v,c}` (the GL LOV shape) but the counted-facet renderer expects `{name,count}` like every
+  other counted array; 03 re-run with the corrected shape (then 04 — 03 rebuilds ap.rest).
+  Also per user: the group moved to the TOP of the facet rail (open by default) and
+  **Department of Culture and Tourism is pre-selected on first load** — `loadFilters` checks
+  the `^Department of Culture` item on the first fetch only and the initial summary/register
+  load now runs AFTER filters resolve, so the page opens DCT-scoped (5,321 invoices,
+  cancelled excluded) with a clearable chip; re-fetches keep user selections as before.
+  Applies to BOTH dashboards (the beneficiary scope spans all 3 BUs too). Browser check 9/9.
+  APP_VERSION 1.11.1.
+
 - **2026-07-18 — Business Unit facet + CROSS-BU data (AP v1.11.0).** The user added *Business
   Unit Name* to the AP Invoices OTBI analyses and the extract now loads **cross-BU** data:
   DCT 5,757 + Museum Shared Services 2,166 + Abrahamic Family House 232 invoices (was 5,456

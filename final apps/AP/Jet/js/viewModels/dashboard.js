@@ -119,6 +119,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
   // facet groups: counted = checkbox list w/ counts, searchable = mini filter,
   // coded = {code,name} pairs (value=code, label=code — name)
   var GROUP_DEFS = [
+    { key: 'bu',        labelKey: 'f.bu',        src: 'businessUnits',    counted: true, open: true },
     { key: 'paid',      labelKey: 'f.paid',      src: 'paymentStatus',    counted: true, open: true },
     { key: 'val',       labelKey: 'f.val',       src: 'validationStatus', counted: true, open: true },
     { key: 'acc',       labelKey: 'f.acc',       src: 'accountingStatus', counted: true },
@@ -129,7 +130,6 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     { key: 'paygroup',  labelKey: 'f.paygroup',  src: 'payGroup',         counted: true, searchable: true },
     { key: 'paymethod', labelKey: 'f.paymethod', src: 'paymentMethod',    counted: true },
     { key: 'sector',    labelKey: 'f.sector',    src: 'sectors',          counted: true },
-    { key: 'bu',        labelKey: 'f.bu',        src: 'businessUnits',    counted: true },
     { key: 'supplier',  labelKey: 'f.supplier',  src: 'suppliers',        searchable: true },
     { key: 'dept',      labelKey: 'f.dept',      src: 'departments',      searchable: true },
     { key: 'cc',        labelKey: 'f.cc',        src: 'costCenters',      searchable: true, coded: true },
@@ -1194,7 +1194,10 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       .forEach(function (obs) { obs.subscribe(scheduleReload); });
 
     // Facet LOVs + counts follow the include-cancelled setting; a re-fetch
-    // keeps the user's selections and which groups are open.
+    // keeps the user's selections and which groups are open. On the very
+    // first load the Business-unit facet defaults to the DCT BU, and the
+    // initial summary/register load waits for it so the page opens scoped.
+    var firstFilters = true;
     function loadFilters() {
       self.loadingFilters(true);
       var p = self.inclCancelled() ? { inclcxl: 'Y' } : { inclcxl: 'N' };
@@ -1213,16 +1216,23 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
             var hit = g.items().filter(function (i) { return i.value === v; })[0];
             if (hit) hit.checked(true);
           });
+          if (firstFilters && def.key === 'bu') {
+            var dct = g.items().filter(function (i) {
+              return /^Department of Culture/i.test(i.value || '');
+            })[0];
+            if (dct) dct.checked(true);
+          }
           return g;
         }));
         self.loadingFilters(false);
-      }).catch(function () { self.loadingFilters(false); toast.error(lt('msg.error')); });
+        if (firstFilters) { firstFilters = false; loadSummary(); loadRows(); }
+      }).catch(function () {
+        self.loadingFilters(false); toast.error(lt('msg.error'));
+        if (firstFilters) { firstFilters = false; loadSummary(); loadRows(); }
+      });
     }
     self.inclCancelled.subscribe(loadFilters);
     loadFilters();
-
-    loadSummary();
-    loadRows();
   }
 
   return DashboardViewModel;
