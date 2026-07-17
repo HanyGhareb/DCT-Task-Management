@@ -1320,3 +1320,73 @@ table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
 .wf-skip             { margin-top: 4px; padding: 4px 8px; border-radius: 4px;
                        background: #f7f7f5; color: #6a6a60; font-size: .8rem;
                        border-inline-start: 3px solid #cfcfc4; }
+
+/* version-status chips (designer) */
+.wf-st--published    { background: #e8f5ee; color: #14682f; }
+.wf-st--draft        { background: #fdf5e3; color: #8a6407; }
+.wf-st--retired      { background: #f4f4f4; color: #888; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+   <wf-designer> — the process designer (requirement 1). Logical properties
+   throughout so it mirrors correctly in RTL.
+   ───────────────────────────────────────────────────────────────────────── */
+.wf-dz-banner        { margin-block-end: 12px; }
+.wf-dz-note          { margin-block-end: 12px; padding: 8px 12px; border-radius: 8px;
+                       background: #e8f5ee; color: #14682f; font-size: .86rem; }
+.wf-dz-proc tbody tr.wf-dz-row { cursor: pointer; }
+.wf-dz-row:hover     { background: var(--brand-soft, #f2f6ff); }
+.wf-dz-row--on       { background: var(--brand-soft, #eaf1ff); box-shadow: inset 3px 0 0 var(--brand, #2b6cb0); }
+.wf-dz-design        { margin-top: 18px; }
+.wf-dz-vchip         { margin-inline-start: 10px; font-variant-numeric: tabular-nums; }
+.wf-dz-ro            { margin-inline-start: 10px; color: var(--text-muted, #7a7a7a); font-size: .8rem; }
+.wf-dz-sub           { margin-top: 18px; }
+
+.wf-dz-steps         { list-style: none; margin: 8px 0 0; padding: 0; }
+.wf-dz-step          { display: flex; gap: 12px; align-items: flex-start; padding: 12px 0;
+                       border-block-end: 1px solid var(--border, #eee); }
+.wf-dz-step:last-child { border-block-end: none; }
+.wf-dz-seq           { flex: 0 0 auto; min-width: 30px; height: 30px; border-radius: 50%;
+                       display: inline-flex; align-items: center; justify-content: center;
+                       background: var(--brand, #2b6cb0); color: #fff; font-size: .8rem;
+                       font-weight: 700; font-variant-numeric: tabular-nums; padding: 0 6px; }
+.wf-dz-body          { flex: 1 1 auto; min-width: 0; }
+.wf-dz-head          { display: flex; gap: 8px; align-items: baseline; flex-wrap: wrap; }
+.wf-dz-name          { font-weight: 600; }
+.wf-dz-name-ar       { color: var(--text-muted, #7a7a7a); font-size: .86rem; }
+.wf-dz-meta          { display: flex; gap: 16px; flex-wrap: wrap; margin-top: 5px;
+                       font-size: .82rem; color: #555; }
+.wf-dz-tag b         { color: var(--text-muted, #8a8a8a); font-weight: 600; margin-inline-end: 5px;
+                       text-transform: uppercase; font-size: .72rem; letter-spacing: .03em; }
+.wf-dz-chip          { display: inline-block; padding: 1px 8px; margin-inline-end: 4px; border-radius: 10px;
+                       background: #eef1f5; color: #33465c; font-size: .78rem; }
+.wf-dz-muted         { color: #9aa0a6; }
+.wf-dz-ops           { flex: 0 0 auto; display: flex; gap: 6px; }
+
+.wf-dz-conds         { list-style: none; margin: 8px 0 0; padding: 0; }
+.wf-dz-cond          { display: flex; gap: 10px; align-items: center; flex-wrap: wrap;
+                       padding: 8px 0; border-block-end: 1px solid var(--border, #f0f0f0); }
+.wf-dz-condkey       { flex: 0 0 auto; font-weight: 600; }
+.wf-dz-condexpr      { flex: 1 1 200px; background: #f7f7f5; padding: 2px 8px; border-radius: 4px;
+                       color: #444; overflow-wrap: anywhere; }
+
+.wf-dz-modal         { width: min(640px, 94vw); }
+.wf-dz-modal--wide   { width: min(820px, 96vw); }
+.wf-dz-check         { display: flex; align-items: center; gap: 8px; }
+.wf-dz-toggle        { display: inline-flex; }
+.wf-dz-part          { display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+                       padding: 8px; margin-block-end: 8px; border: 1px solid var(--border, #e6e6e6);
+                       border-radius: 8px; }
+.wf-dz-part .form-control { flex: 1 1 130px; min-width: 110px; }
+.wf-dz-mini          { display: inline-flex; align-items: center; gap: 5px; font-size: .8rem;
+                       color: #555; white-space: nowrap; }
+.wf-dz-fields        { margin-top: 8px; }
+.wf-dz-fields-h      { font-size: .74rem; text-transform: uppercase; letter-spacing: .03em;
+                       color: var(--text-muted, #8a8a8a); margin-block-end: 5px; }
+.wf-dz-fchip         { display: inline-block; padding: 2px 8px; margin: 0 4px 4px 0; border-radius: 6px;
+                       background: #eef1f5; color: #33465c; font-family: var(--mono, monospace);
+                       font-size: .78rem; cursor: help; }
+.wf-dz-ok            { margin-top: 5px; color: #14682f; font-size: .82rem; }
+.wf-dz-simnote       { color: var(--text-muted, #7a7a7a); font-size: .84rem; margin-block-end: 10px; }
+.wf-dz-simsteps      { margin-top: 12px; }
+.wf-dz-sim--skip .wf-dz-seq { background: #b9b9b9; }
+.wf-dz-sim--skip .wf-dz-name { color: #888; }

@@ -115,9 +115,44 @@ define(['shared/api'], function (api) {
      * and who would actually be asked, by name.
      */
     simulate: function (processCode, facts) {
+      // send facts as a JSON STRING: the server reads it with APEX_JSON.get_clob,
+      // which raises ORA-06502 on a nested object member. A string round-trips
+      // cleanly (the engine parses it back with JSON_OBJECT_T).
       return api.post('/processes/' + encodeURIComponent(processCode) + '/simulate',
-                      { facts: facts }, WF);
+                      { facts: typeof facts === 'string' ? facts : JSON.stringify(facts) }, WF);
     },
+
+    /* ── designer WRITES (WF_ADMIN + owner_role_id) — requirement 1 ──────── */
+
+    /** Full editable definition of a version: steps (+ their participants) + conditions. */
+    design: function (versionId) {
+      return api.get('/versions/' + versionId + '/design', WF);
+    },
+
+    /** The fact fields of a schema, for the condition builder's guided rows. */
+    schemaFields: function (schemaId) {
+      return api.get('/schemas/' + schemaId + '/fields', WF)
+                .then(function (r) { return (r && r.fields) || []; });
+    },
+
+    /**
+     * Clone the latest version of a process into an editable DRAFT. IDEMPOTENT:
+     * returns the open draft if one already exists (one draft per process), so a
+     * live PUBLISHED version is never edited in place — in-flight work is safe.
+     */
+    cloneDraft: function (processCode) {
+      return api.post('/processes/' + encodeURIComponent(processCode) + '/draft', {}, WF);
+    },
+
+    saveStep:          function (vid, step) { return api.put('/versions/' + vid + '/step', step, WF); },
+    deleteStep:        function (vid, key)  { return api.delete('/versions/' + vid + '/step/' + encodeURIComponent(key), WF); },
+    saveCondition:     function (vid, cond) { return api.put('/versions/' + vid + '/condition', cond, WF); },
+    deleteCondition:   function (vid, key)  { return api.delete('/versions/' + vid + '/condition/' + encodeURIComponent(key), WF); },
+    saveParticipant:   function (vid, rule) { return api.put('/versions/' + vid + '/participant', rule, WF); },
+    deleteParticipant: function (vid, rid)  { return api.delete('/versions/' + vid + '/participant/' + rid, WF); },
+    validateVersion:   function (vid)       { return api.post('/versions/' + vid + '/validate', {}, WF); },
+    publishVersion:    function (vid)       { return api.post('/versions/' + vid + '/publish', {}, WF); },
+    discardDraft:      function (vid)       { return api.delete('/versions/' + vid, WF); },
 
     /** Shadow-mode drift: what the old engine decided vs what the new one would. */
     parity: function () {
