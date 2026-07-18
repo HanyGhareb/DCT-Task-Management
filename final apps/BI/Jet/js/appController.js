@@ -133,6 +133,15 @@ function (ko, config, authService, rptService, i18n, shell) {
     };
 
     var bootRoute = (window.location.hash || '').replace(/^#/, '');
+    // cross-app deep link: #irViewer/<REPORT_CODE> — the suffix rides into
+    // _state so the viewer preselects (and auto-runs) that report
+    if (bootRoute.indexOf('/') > 0) {
+      var bootParts = bootRoute.split('/');
+      bootRoute = bootParts[0];
+      if (bootParts[1]) {
+        self._state.reportCode = decodeURIComponent(bootParts[1]);
+      }
+    }
     if (self.currentUser()) {
       self._loadRoute(bootRoute || 'dashboard');
     } else {

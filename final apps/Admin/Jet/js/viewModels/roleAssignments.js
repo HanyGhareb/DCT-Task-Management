@@ -293,6 +293,12 @@ function (ko, api, wf, i18n) {
         document.body.appendChild(a); a.click(); a.remove();
       });
     };
+    // the same audit as a BI Interactive Report (column chooser, control
+    // breaks, saved layouts, XLSX). Root-absolute so webtier + dev-proxy
+    // sibling apps both serve it; the hash suffix preselects and auto-runs.
+    self.openBiReport = function () {
+      window.open('/BI/Jet/index.html#irViewer/WF_ROLE_ASSIGN_AUDIT', '_blank');
+    };
 
     self.setTab = function (t) {
       self.tab(t);

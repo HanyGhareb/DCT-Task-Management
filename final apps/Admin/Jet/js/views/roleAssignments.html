@@ -17,6 +17,7 @@
       <button class="btn btn-primary" data-bind="click: openNew, text: '+ ' + $root.t('vw.ra.add')"></button>
       <!-- /ko -->
       <!-- ko if: tab() === 'audit' -->
+      <button class="btn btn-secondary" data-bind="click: openBiReport, text: $root.t('vw.ra.biReport')"></button>
       <button class="btn btn-secondary" data-bind="click: exportCsv, text: $root.t('vw.ra.exportCsv')"></button>
       <!-- /ko -->
     </div>
