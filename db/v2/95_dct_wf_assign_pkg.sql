@@ -69,6 +69,14 @@ CREATE OR REPLACE PACKAGE prod.dct_wf_assign AS
                               p_role IN VARCHAR2,
                               p_asof IN DATE DEFAULT NULL) RETURN sys.odcinumberlist;
 
+    -- flip a role between single-assignee and multi. The check only runs at
+    -- save time, so switching BACK to single grandfathers overlaps created
+    -- while multi -- the return value is how many (object x role) groups
+    -- currently overlap, so the UI can warn.
+    FUNCTION set_role_policy (p_actor  IN VARCHAR2,
+                              p_role   IN VARCHAR2,
+                              p_single IN VARCHAR2) RETURN NUMBER;
+
 END dct_wf_assign;
 /
 
@@ -554,6 +562,56 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_assign AS
         END IF;
         RETURN v_out;
     END;
+
+    FUNCTION set_role_policy (p_actor  IN VARCHAR2,
+                              p_role   IN VARCHAR2,
+                              p_single IN VARCHAR2) RETURN NUMBER IS
+        v_cnt  NUMBER;
+        v_over NUMBER := 0;
+        v_old  VARCHAR2(1);
+    BEGIN
+        IF p_single NOT IN ('Y', 'N') THEN
+            RAISE_APPLICATION_ERROR(-20001, 'singleAssignee must be Y or N');
+        END IF;
+        SELECT COUNT(*) INTO v_cnt FROM prod.dct_roles
+         WHERE role_code = p_role AND role_type = 'DATA' AND is_active = 'Y';
+        IF v_cnt = 0 THEN
+            RAISE_APPLICATION_ERROR(-20404, 'Unknown or inactive DATA role ' || p_role);
+        END IF;
+
+        BEGIN
+            SELECT single_assignee INTO v_old
+              FROM prod.dct_wf_role_policy WHERE role_code = p_role FOR UPDATE;
+            UPDATE prod.dct_wf_role_policy
+               SET single_assignee = p_single WHERE role_code = p_role;
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            v_old := 'N';
+            INSERT INTO prod.dct_wf_role_policy (role_code, single_assignee)
+            VALUES (p_role, p_single);
+        END;
+
+        -- switching to single: report how many object groups already carry
+        -- overlapping active assignments (grandfathered until ended)
+        IF p_single = 'Y' THEN
+            SELECT COUNT(*) INTO v_over FROM (
+                SELECT a.object_type_code, a.object_key, NVL(a.object_key2, '#')
+                  FROM prod.dct_wf_role_assignment a
+                 WHERE a.role_code = p_role AND a.is_active = 'Y'
+                   AND NVL(a.end_date, DATE_MAX) >= TRUNC(SYSDATE)
+                 GROUP BY a.object_type_code, a.object_key, NVL(a.object_key2, '#')
+                HAVING COUNT(*) > 1);
+        END IF;
+
+        prod.dct_audit_pkg.log(
+            p_username    => p_actor,
+            p_action      => 'ASSIGN_POLICY',
+            p_object_type => 'WF_ROLE_POLICY',
+            p_object_id   => p_role,
+            p_module_code => 'ADMIN',
+            p_old         => '{"singleAssignee":"' || v_old || '"}',
+            p_new         => '{"singleAssignee":"' || p_single || '"}');
+        RETURN v_over;
+    END set_role_policy;
 
 END dct_wf_assign;
 /

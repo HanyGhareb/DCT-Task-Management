@@ -234,6 +234,32 @@ function (ko, api, wf, i18n) {
        .catch(function (e) { self.actError((e && e.message) || 'Error'); });
     };
 
+    /* ── role policies modal (single-assignee vs group, per role) ──────── */
+    self.polOpen = ko.observable(false);
+    self.polMsg  = ko.observable(null);   // { warn: bool, text }
+    self.polBusy = ko.observable(false);
+    self.openPolicies = function () { self.polMsg(null); self.polOpen(true); };
+    self.togglePolicy = function (role) {
+      if (self.polBusy()) return;
+      var toSingle = role.singleAssignee !== 'Y';
+      self.polBusy(true); self.polMsg(null);
+      wf.assignSetPolicy(role.roleCode, toSingle).then(function (r) {
+        // refresh the roles list so every consumer sees the new policy
+        return wf.assignMeta().then(function (m) {
+          self.roles((m && m.roles) || []);
+          if (toSingle && r && r.overlapGroups > 0) {
+            // flipping to single grandfathers existing overlaps -- say so
+            self.polMsg({ warn: true,
+              text: i18n.t('vw.ra.polOverlapWarn') + ' ' + r.overlapGroups });
+          } else {
+            self.polMsg({ warn: false, text: i18n.t('vw.ra.polSaved') });
+          }
+        });
+      }).catch(function (e) {
+        self.polMsg({ warn: true, text: (e && e.message) || 'Error' });
+      }).then(function () { self.polBusy(false); });
+    };
+
     /* ── timeline modal ────────────────────────────────────────────────── */
     self.tlItems = ko.observableArray([]);
     self.tlOpen  = ko.observable(false);

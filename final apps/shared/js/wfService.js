@@ -213,6 +213,17 @@ define(['shared/api'], function (api) {
       return api.get('/assign/audit' + (q ? '?' + q : ''), WF);
     },
 
+    /**
+     * Flip a role's assignment cardinality (Y = single assignee, N = group).
+     * Resolves to { roleCode, overlapGroups } — overlapGroups > 0 on a flip to
+     * single means grandfathered overlapping assignments still resolve until
+     * ended (the check only runs at save time).
+     */
+    assignSetPolicy: function (roleCode, single) {
+      return api.put('/assign/policy/' + encodeURIComponent(roleCode),
+                     { singleAssignee: single ? 'Y' : 'N' }, WF);
+    },
+
     /** Authed CSV download of the audit trail (object URL). */
     assignAuditCsv: function (f) {
       f = f || {};
