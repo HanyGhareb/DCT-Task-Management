@@ -88,6 +88,48 @@ BEGIN
 END;
 /
 
+-- Push failures must never block the notification, but they must be visible.
+DECLARE
+  n NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO n FROM dba_tables
+   WHERE owner='PROD' AND table_name='DCT_PUSH_ERROR_LOG';
+  IF n=0 THEN
+    EXECUTE IMMEDIATE q'[
+      CREATE TABLE prod.dct_push_error_log (
+        error_id        NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+        notification_id NUMBER,
+        user_id         NUMBER,
+        push_token      VARCHAR2(400),
+        error_stage     VARCHAR2(30) NOT NULL,
+        error_message   VARCHAR2(2000) NOT NULL,
+        created_at      TIMESTAMP WITH TIME ZONE DEFAULT SYSTIMESTAMP NOT NULL
+      )]';
+    EXECUTE IMMEDIATE
+      'CREATE INDEX prod.ix_dct_pusherr_created ON prod.dct_push_error_log(created_at)';
+  END IF;
+END;
+/
+
+CREATE OR REPLACE PROCEDURE prod.dct_push_log_error (
+  p_notification_id IN NUMBER,
+  p_user_id         IN NUMBER,
+  p_push_token      IN VARCHAR2,
+  p_error_stage     IN VARCHAR2,
+  p_error_message   IN VARCHAR2
+) AUTHID DEFINER AS
+  PRAGMA AUTONOMOUS_TRANSACTION;
+BEGIN
+  INSERT INTO prod.dct_push_error_log
+    (notification_id,user_id,push_token,error_stage,error_message)
+  VALUES
+    (p_notification_id,p_user_id,SUBSTR(p_push_token,1,400),
+     SUBSTR(p_error_stage,1,30),SUBSTR(p_error_message,1,2000));
+  COMMIT;
+EXCEPTION WHEN OTHERS THEN NULL;
+END dct_push_log_error;
+/
+
 -- =============================================================================
 -- 3. Trigger -- fan a new notification out to the recipient active devices.
 --    Keeps DCT_NOTIFY untouched; deep-link payload carries module + link.
@@ -106,11 +148,18 @@ BEGIN
     SELECT push_token FROM prod.dct_device_tokens
      WHERE user_id = :NEW.recipient_user_id AND is_active = 'Y'
   ) LOOP
-    INSERT INTO prod.dct_push_outbox (notification_id, user_id, push_token, title, body, data_json)
-    VALUES (:NEW.notification_id, :NEW.recipient_user_id, d.push_token,
-            :NEW.title_en, :NEW.body_en, l_data);
+    BEGIN
+      INSERT INTO prod.dct_push_outbox (notification_id, user_id, push_token, title, body, data_json)
+      VALUES (:NEW.notification_id, :NEW.recipient_user_id, d.push_token,
+              :NEW.title_en, :NEW.body_en, l_data);
+    EXCEPTION WHEN OTHERS THEN
+      prod.dct_push_log_error(:NEW.notification_id,:NEW.recipient_user_id,
+                              d.push_token,'ENQUEUE',SQLERRM);
+    END;
   END LOOP;
-EXCEPTION WHEN OTHERS THEN NULL;  -- a push failure must never block the notification insert
+EXCEPTION WHEN OTHERS THEN
+  prod.dct_push_log_error(:NEW.notification_id,:NEW.recipient_user_id,
+                          NULL,'TRIGGER',SQLERRM);
 END;
 /
 
