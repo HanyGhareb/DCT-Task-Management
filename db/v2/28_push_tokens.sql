@@ -66,11 +66,24 @@ BEGIN
         status          VARCHAR2(10)   DEFAULT 'PENDING' NOT NULL,
         attempts        NUMBER         DEFAULT 0 NOT NULL,
         error_msg       VARCHAR2(2000),
+        receipt_id     VARCHAR2(100),
         created_at      TIMESTAMP      DEFAULT SYSTIMESTAMP NOT NULL,
         sent_at         TIMESTAMP,
         CONSTRAINT chk_dct_pushob_status CHECK (status IN ('PENDING','SENT','FAILED'))
       )]';
     EXECUTE IMMEDIATE 'CREATE INDEX prod.ix_dct_pushob_status ON prod.dct_push_outbox(status, created_at)';
+  END IF;
+END;
+/
+
+-- Added after initial deployment: store Expo ticket id for later receipt checks.
+DECLARE
+  n NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO n FROM dba_tab_columns
+   WHERE owner='PROD' AND table_name='DCT_PUSH_OUTBOX' AND column_name='RECEIPT_ID';
+  IF n=0 THEN
+    EXECUTE IMMEDIATE 'ALTER TABLE prod.dct_push_outbox ADD receipt_id VARCHAR2(100)';
   END IF;
 END;
 /
@@ -139,11 +152,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
 
   PROCEDURE send_pending(p_limit IN NUMBER DEFAULT 100) IS
     TYPE t_id_list IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
+    TYPE t_token_list IS TABLE OF VARCHAR2(400) INDEX BY PLS_INTEGER;
     l_body  CLOB;
     l_res   CLOB;
     l_first BOOLEAN := TRUE;
     l_err   VARCHAR2(2000);
     l_ids   t_id_list;
+    l_tokens t_token_list;
+    l_count PLS_INTEGER;
+    l_status VARCHAR2(20);
+    l_code VARCHAR2(100);
+    l_message VARCHAR2(2000);
   BEGIN
     -- Build a single Expo push batch from PENDING rows (one JSON array).
     l_body := '[';
@@ -155,6 +174,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
       FETCH FIRST p_limit ROWS ONLY
     ) LOOP
       l_ids(l_ids.COUNT + 1) := r.outbox_id;
+      l_tokens(l_tokens.COUNT + 1) := r.push_token;
       IF NOT l_first THEN l_body := l_body || ','; END IF;
       l_first := FALSE;
       l_body := l_body
@@ -181,6 +201,34 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
                  p_url         => 'https://exp.host/--/api/v2/push/send',
                  p_http_method => 'POST',
                  p_body        => l_body);
+      IF APEX_WEB_SERVICE.g_status_code != 200 THEN
+        RAISE_APPLICATION_ERROR(-20028,'Expo HTTP status '||APEX_WEB_SERVICE.g_status_code);
+      END IF;
+      APEX_JSON.parse(l_res);
+      l_count := APEX_JSON.get_count('data');
+      IF l_count != l_ids.COUNT THEN
+        RAISE_APPLICATION_ERROR(-20029,'Expo ticket count does not match submitted batch');
+      END IF;
+      FOR i IN 1 .. l_ids.COUNT LOOP
+        l_status := APEX_JSON.get_varchar2('data['||i||'].status');
+        IF l_status='ok' THEN
+          UPDATE prod.dct_push_outbox
+             SET status='SENT',sent_at=SYSTIMESTAMP,error_msg=NULL,
+                 receipt_id=APEX_JSON.get_varchar2('data['||i||'].id')
+           WHERE outbox_id=l_ids(i);
+        ELSE
+          l_code:=APEX_JSON.get_varchar2('data['||i||'].details.error');
+          l_message:=SUBSTR(APEX_JSON.get_varchar2('data['||i||'].message'),1,2000);
+          UPDATE prod.dct_push_outbox
+             SET status='FAILED',sent_at=NULL,receipt_id=NULL,
+                 error_msg=SUBSTR(NVL(l_code,'ExpoError')||': '||l_message,1,2000)
+           WHERE outbox_id=l_ids(i);
+          IF l_code='DeviceNotRegistered' THEN
+            UPDATE prod.dct_device_tokens SET is_active='N'
+             WHERE push_token=l_tokens(i);
+          END IF;
+        END IF;
+      END LOOP;
       COMMIT;
     EXCEPTION WHEN OTHERS THEN
       l_err := SUBSTR(SQLERRM,1,2000);  -- capture before ROLLBACK; SQLERRM is not valid inside SQL DML
