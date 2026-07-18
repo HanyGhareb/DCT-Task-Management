@@ -32,6 +32,10 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 - `saveProfile` · `changePassword` · `pickPhoto` / `photoSelected` (profile photo upload).
 - `createDelegation` / `cancelDelegation` / `openDelModal` · `isMyOutgoing` · `delBadge`.
 
+**My Delegations** (`myDelegations`) — the self-service **vacation rule**, visible to EVERY user (Workspace nav). Always scoped to the caller (`GET /dct/delegations/?mine=Y`; the server 403s creating for anyone else without SYS_ADMIN).
+- `openNew` / `saveEdit` — create a delegation in a shared `<edit-drawer>` (delegate + scope All-roles/One-module + date window + reason).
+- `cancel` (own ACTIVE outgoing only) · `outgoing` / `incoming` split (I delegated vs delegated to me) · `scopeLabel` / `statusBadge`.
+
 ## 2. User Management
 
 **Users** (`users`) — paginated, searchable user directory (server pagination).
@@ -76,7 +80,7 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 **Pending Approvals** (`pendingApprovals`) — unified approvals inbox (all modules).
 - `startApprove` / `startReject` / `startAction` · `confirmAction` / `cancelAction` · `getStepArray` / `stepState`.
 
-**Delegations** (`delegations`) — admin view of approval delegations.
+**Delegations** (`delegations`) — admin oversight view of everyone's approval delegations (self-service lives at Workspace → My Delegations).
 - `reload` · `cancel` · `scopeLabel` / `statusBadge`.
 
 **Approval Processes** (`processes`) — the DWP process designer (shared `<wf-designer>`): clone a published chain to a draft, edit steps/conditions/participants (incl. the `ASSIGNED_ROLE` resolver), simulate (which steps fire/skip and who resolves), publish. List / **Diagram** (flowchart) toggle via shared `<wf-diagram>`.

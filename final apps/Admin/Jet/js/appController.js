@@ -92,6 +92,7 @@ define(
           { id: 'notifications',    labelKey: 'nav.notifications',    icon: '&#128276;' },
           { id: 'pendingApprovals', labelKey: 'nav.pendingApprovals', icon: '&#9989;'   },
           { id: 'myWorklist',       labelKey: 'nav.myWorklist',       icon: '&#128203;' },
+          { id: 'myDelegations',    labelKey: 'nav.myDelegations',    icon: '&#127958;' },
         ]
       },
       {
@@ -362,7 +363,7 @@ define(
     /* Wave 3 (4.3): per-role landing page — a LANDING_<ROLE> system setting
        (e.g. LANDING_MANAGER = pendingApprovals) decides the post-login route.
        First of the user's roles with a configured, valid route wins. */
-    var KNOWN_ROUTES = ['dashboard', 'profile', 'notifications', 'pendingApprovals',
+    var KNOWN_ROUTES = ['dashboard', 'profile', 'notifications', 'pendingApprovals', 'myDelegations',
       'users', 'roles', 'permissions', 'orgHierarchy', 'modules', 'approvalTemplates',
       'approvalMonitor', 'delegations', 'announcements', 'lookups', 'appearance',
       'systemSettings', 'sessions', 'auditLog'];
