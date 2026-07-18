@@ -138,10 +138,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
   END unregister;
 
   PROCEDURE send_pending(p_limit IN NUMBER DEFAULT 100) IS
+    TYPE t_id_list IS TABLE OF NUMBER INDEX BY PLS_INTEGER;
     l_body  CLOB;
     l_res   CLOB;
     l_first BOOLEAN := TRUE;
     l_err   VARCHAR2(2000);
+    l_ids   t_id_list;
   BEGIN
     -- Build a single Expo push batch from PENDING rows (one JSON array).
     l_body := '[';
@@ -152,6 +154,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
       ORDER  BY created_at
       FETCH FIRST p_limit ROWS ONLY
     ) LOOP
+      l_ids(l_ids.COUNT + 1) := r.outbox_id;
       IF NOT l_first THEN l_body := l_body || ','; END IF;
       l_first := FALSE;
       l_body := l_body
@@ -182,11 +185,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_push_pkg AS
     EXCEPTION WHEN OTHERS THEN
       l_err := SUBSTR(SQLERRM,1,2000);  -- capture before ROLLBACK; SQLERRM is not valid inside SQL DML
       ROLLBACK;
-      UPDATE prod.dct_push_outbox
-         SET attempts = attempts + 1,
-             status = CASE WHEN attempts + 1 >= 5 THEN 'FAILED' ELSE 'PENDING' END,
-             error_msg = l_err
-       WHERE status = 'PENDING';
+      IF l_ids.COUNT > 0 THEN
+        FORALL i IN 1 .. l_ids.COUNT
+          UPDATE prod.dct_push_outbox
+             SET attempts = attempts + 1,
+                 status = CASE WHEN attempts + 1 >= 5 THEN 'FAILED' ELSE 'PENDING' END,
+                 error_msg = l_err
+           WHERE outbox_id = l_ids(i)
+             AND status = 'PENDING';
+      END IF;
       COMMIT;
     END;
   END send_pending;
