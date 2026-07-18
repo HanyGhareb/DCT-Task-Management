@@ -84,7 +84,7 @@ BEGIN
     FOR r IN (SELECT rule_id, rule_seq, participant_type, resolver_type, role_code, org_scope,
                      org_fact_path, static_org_id, static_user_id, fact_path, ref_step_key,
                      levels_up, resolution_mode, fallback_rule, min_resolved, include_delegates,
-                     exclude_initiator
+                     exclude_initiator, object_type_code, key2_fact_path
                 FROM dct_wf_participant_rule WHERE step_id = s.step_id ORDER BY rule_seq) LOOP
       APEX_JSON.open_object;
       APEX_JSON.write('ruleId', r.rule_id);
@@ -104,6 +104,8 @@ BEGIN
       APEX_JSON.write('minResolved', r.min_resolved);
       APEX_JSON.write('includeDelegates', r.include_delegates);
       APEX_JSON.write('excludeInitiator', r.exclude_initiator);
+      APEX_JSON.write('objectTypeCode', r.object_type_code);
+      APEX_JSON.write('key2FactPath', r.key2_fact_path);
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;

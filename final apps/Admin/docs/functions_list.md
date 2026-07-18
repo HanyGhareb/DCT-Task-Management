@@ -79,6 +79,12 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 **Delegations** (`delegations`) — admin view of approval delegations.
 - `reload` · `cancel` · `scopeLabel` / `statusBadge`.
 
+**Approval Processes** (`processes`) — the DWP process designer (shared `<wf-designer>`): clone a published chain to a draft, edit steps/conditions/participants (incl. the `ASSIGNED_ROLE` resolver), simulate (which steps fire/skip and who resolves), publish. List / **Diagram** (flowchart) toggle via shared `<wf-diagram>`.
+
+**Role Assignments** (`roleAssignments`) — date-tracked assignment of users to workflow DATA roles (FBP, PBP, Approver, Planner, FYI Group) per business object (Sector, Department, HR Org, Cost Center, Project, Task, Appropriation, PO, GL Account, Entity). WF_ADMIN/SYS_ADMIN.
+- Tab Assignments: `search` / `resetFilters` / `nextPage` / `prevPage` · `openNew` / `saveEdit` / `closeEdit` (type-driven object picker: `searchObjects` / `searchParents`; live holder preview `refreshPreview`) · `openAct` / `saveAct` / `closeAct` (End / Replace / Void) · `openTimeline`.
+- Tab Audit: `auditSearch` / `aNext` / `aPrev` · `exportCsv` (Arabic-safe CSV). Same data also registered as BI Interactive Report `WF_ROLE_ASSIGN_AUDIT`.
+
 ## 6. System Configuration
 
 **System Settings** (`systemSettings`) — platform-wide settings (branding, feature flags, secrets).
@@ -147,6 +153,14 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | Automation Registry | `GET runners/` · `GET runners/meta` · `POST runners/` · `GET runners/:id` · `PUT runners/:id` · `DELETE runners/:id` · `PUT runners/:id/file` · `GET runners/:id/file` *(db/v2/31)* |
 | Delegations | `GET delegations/` · `POST delegations/` · `POST delegations/:id/cancel` |
 | Announcements | `GET announcements/` · `POST announcements/` · `PUT announcements/:id` · `GET announcements/active` |
+
+Module `wf.rest` · base path **`/ords/admin/wf/`** · defined in `db/v2/67` + `69` (designer) + `96` (role assignments). Cross-module by design (EXEMPT from the module-access gate → every route self-gates); consumed via `shared/js/wfService.js`.
+
+| Area | Endpoints |
+|---|---|
+| Worklist & actions | `GET worklist` · `POST tasks/:id/action` · `claim` / `release` / `delegate` / `request-info` · `GET instances/:id/history` · `GET chain` |
+| Designer (WF_ADMIN) | `GET processes` · `versions/:id/steps` · `versions/:id/design` · `outcome-sets` · `schemas/:id/fields` · `POST processes/:code/draft` · `PUT/DELETE versions/:id/step(/:key)` · `condition(/:key)` · `participant(/:rid)` · `POST versions/:id/validate` / `publish` · `DELETE versions/:id` · `POST conditions/compile` · `POST processes/:code/simulate` |
+| Role assignments (WF_ADMIN) | `GET assign/object-types` · `GET assign/lov` · `GET assign/list` · `POST assign/` (create / replace) · `PUT assign/:id` (end / update / void) · `GET assign/timeline` · `GET assign/preview` · `GET assign/audit` · `GET assign/audit/export` *(db/v2/96)* |
 
 ---
 

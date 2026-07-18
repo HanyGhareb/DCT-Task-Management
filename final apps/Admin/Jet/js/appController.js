@@ -123,6 +123,7 @@ define(
         items: [
           { id: 'modules',           labelKey: 'nav.modules',           icon: '&#9707;'   },
           { id: 'processes',         labelKey: 'nav.processes',         icon: '&#128736;' },
+          { id: 'roleAssignments',   labelKey: 'nav.roleAssignments',   icon: '&#129333;' },
           { id: 'approvalTemplates', labelKey: 'nav.approvalTemplates', icon: '&#128196;' },
           { id: 'approvalMonitor',   labelKey: 'nav.approvalMonitor',   icon: '&#128065;' },
           { id: 'delegations',       labelKey: 'nav.delegations',       icon: '&#129309;' },

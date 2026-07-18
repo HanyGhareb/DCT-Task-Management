@@ -197,11 +197,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_designer AS
                 (step_id, rule_seq, participant_type, resolver_type, role_code, org_scope,
                  org_fact_path, static_org_id, static_user_id, fact_path, ref_step_key,
                  levels_up, resolution_mode, fallback_rule, min_resolved, include_delegates,
-                 exclude_initiator)
+                 exclude_initiator, object_type_code, key2_fact_path)
             VALUES (v_maps, r.rule_seq, r.participant_type, r.resolver_type, r.role_code,
                  r.org_scope, r.org_fact_path, r.static_org_id, r.static_user_id, r.fact_path,
                  r.ref_step_key, r.levels_up, r.resolution_mode, r.fallback_rule, r.min_resolved,
-                 r.include_delegates, r.exclude_initiator);
+                 r.include_delegates, r.exclude_initiator, r.object_type_code, r.key2_fact_path);
         END LOOP;
 
         RETURN v_new;
@@ -389,6 +389,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_designer AS
         l_os    VARCHAR2(20); l_ofp VARCHAR2(200); l_soi NUMBER; l_sui NUMBER;
         l_fp    VARCHAR2(200); l_rsk VARCHAR2(40); l_lu NUMBER; l_rm VARCHAR2(12);
         l_fb    VARCHAR2(20); l_mr NUMBER; l_id VARCHAR2(1); l_ei VARCHAR2(1);
+        l_otc   VARCHAR2(30); l_k2  VARCHAR2(200); l_k2col VARCHAR2(60);
+        v_cnt   NUMBER;
     BEGIN
         assert_draft(p_version_id);
         v_skey := js(o, 'stepKey');
@@ -407,13 +409,39 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_designer AS
         l_fp  := js(o,'factPath');       l_rsk := js(o,'refStepKey');  l_lu  := jn(o,'levelsUp',0);
         l_rm  := js(o,'resolutionMode','UNION'); l_fb := js(o,'fallbackRule','ANY_ROLE_HOLDER');
         l_mr  := jn(o,'minResolved',1);  l_id  := jyn(o,'includeDelegates','Y'); l_ei := jyn(o,'excludeInitiator','Y');
+        l_otc := js(o,'objectTypeCode'); l_k2  := js(o,'key2FactPath');
+
+        IF l_rt = 'ASSIGNED_ROLE' THEN
+            IF l_rc IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20001, 'ASSIGNED_ROLE needs a role code.');
+            END IF;
+            IF l_fp IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20001, 'ASSIGNED_ROLE needs a fact path for the object key.');
+            END IF;
+            IF l_otc IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20001, 'ASSIGNED_ROLE needs an object type.');
+            END IF;
+            BEGIN
+                SELECT lov_key2_col INTO l_k2col FROM prod.dct_wf_object_type
+                 WHERE object_type_code = l_otc AND is_active = 'Y';
+            EXCEPTION WHEN NO_DATA_FOUND THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Unknown or inactive object type ' || l_otc || '.');
+            END;
+            IF l_k2col IS NOT NULL AND l_k2 IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20001,
+                    l_otc || ' is a two-part object: a second fact path (key2FactPath) is required.');
+            END IF;
+        ELSE
+            l_otc := NULL; l_k2 := NULL;
+        END IF;
 
         IF v_rid IS NOT NULL THEN
             UPDATE prod.dct_wf_participant_rule SET
                  rule_seq = l_seq, participant_type = l_pt, resolver_type = l_rt, role_code = l_rc,
                  org_scope = l_os, org_fact_path = l_ofp, static_org_id = l_soi, static_user_id = l_sui,
                  fact_path = l_fp, ref_step_key = l_rsk, levels_up = l_lu, resolution_mode = l_rm,
-                 fallback_rule = l_fb, min_resolved = l_mr, include_delegates = l_id, exclude_initiator = l_ei
+                 fallback_rule = l_fb, min_resolved = l_mr, include_delegates = l_id, exclude_initiator = l_ei,
+                 object_type_code = l_otc, key2_fact_path = l_k2
             WHERE rule_id = v_rid AND step_id = v_sid
             RETURNING rule_id INTO o_rule_id;
             IF o_rule_id IS NULL THEN RAISE_APPLICATION_ERROR(-20404, 'Rule ' || v_rid || ' not found on this step.'); END IF;
@@ -421,9 +449,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_designer AS
             INSERT INTO prod.dct_wf_participant_rule
                 (step_id, rule_seq, participant_type, resolver_type, role_code, org_scope,
                  org_fact_path, static_org_id, static_user_id, fact_path, ref_step_key, levels_up,
-                 resolution_mode, fallback_rule, min_resolved, include_delegates, exclude_initiator)
+                 resolution_mode, fallback_rule, min_resolved, include_delegates, exclude_initiator,
+                 object_type_code, key2_fact_path)
             VALUES (v_sid, l_seq, l_pt, l_rt, l_rc, l_os, l_ofp, l_soi, l_sui, l_fp, l_rsk, l_lu,
-                 l_rm, l_fb, l_mr, l_id, l_ei)
+                 l_rm, l_fb, l_mr, l_id, l_ei, l_otc, l_k2)
             RETURNING rule_id INTO o_rule_id;
         END IF;
     END save_participant_rule;
@@ -482,6 +511,25 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_designer AS
         SELECT COUNT(*) INTO v_n FROM prod.dct_wf_step
         WHERE version_id = p_version_id AND is_final_gate = 'Y';
         IF v_n = 0 THEN add('no final-gate step marked'); END IF;
+
+        -- ASSIGNED_ROLE rules: incomplete config, and the fallback trap --
+        -- nobody holds a DATA role globally, so ANY_ROLE_HOLDER resolves
+        -- nobody and the step would skip silently
+        FOR r IN (SELECT s.step_key, pr.role_code, pr.object_type_code,
+                         pr.fact_path, pr.fallback_rule
+                  FROM prod.dct_wf_participant_rule pr
+                  JOIN prod.dct_wf_step s ON s.step_id = pr.step_id
+                  WHERE s.version_id = p_version_id
+                    AND pr.resolver_type = 'ASSIGNED_ROLE'
+                  ORDER BY s.step_seq, pr.rule_seq) LOOP
+            IF r.role_code IS NULL OR r.object_type_code IS NULL OR r.fact_path IS NULL THEN
+                add('step "' || r.step_key || '" has an incomplete ASSIGNED_ROLE rule');
+            END IF;
+            IF r.fallback_rule = 'ANY_ROLE_HOLDER' THEN
+                add('step "' || r.step_key || '": ASSIGNED_ROLE with fallback ANY_ROLE_HOLDER'
+                    || ' will resolve nobody when unassigned; use BUSINESS_ADMIN or FAIL');
+            END IF;
+        END LOOP;
 
         RETURN v_probs;
     END validate_version;

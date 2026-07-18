@@ -1,0 +1,354 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $root.t('vw.ra.title')"></div>
+      <div class="page-subtitle" data-bind="text: $root.t('vw.ra.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-sm"
+              data-bind="click: function () { $vm.setTab('list'); },
+                         css: { 'btn-primary': tab() === 'list', 'btn-secondary': tab() !== 'list' },
+                         text: $root.t('vw.ra.tabAssignments')"></button>
+      <button class="btn btn-sm"
+              data-bind="click: function () { $vm.setTab('audit'); },
+                         css: { 'btn-primary': tab() === 'audit', 'btn-secondary': tab() !== 'audit' },
+                         text: $root.t('vw.ra.tabAudit')"></button>
+      <!-- ko if: tab() === 'list' -->
+      <button class="btn btn-primary" data-bind="click: openNew, text: '+ ' + $root.t('vw.ra.add')"></button>
+      <!-- /ko -->
+      <!-- ko if: tab() === 'audit' -->
+      <button class="btn btn-secondary" data-bind="click: exportCsv, text: $root.t('vw.ra.exportCsv')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger">&#9888; <span data-bind="text: error()"></span></div>
+  <!-- /ko -->
+
+  <!-- ═══ tab 1: assignments ═══ -->
+  <!-- ko if: tab() === 'list' -->
+  <div class="view-toolbar" style="flex-wrap:wrap;gap:8px">
+    <select class="form-control" style="width:170px" data-bind="value: fType,
+            options: objTypes, optionsText: function (t) { return $vm.typeName(t.code); },
+            optionsValue: 'code', optionsCaption: $root.t('vw.ra.anyType')"></select>
+    <input class="search-box" style="width:200px" type="text"
+           data-bind="value: fKey, attr: { placeholder: $root.t('vw.ra.objectSearch') }">
+    <select class="form-control" style="width:190px" data-bind="value: fRole,
+            options: roles, optionsText: function (r) { return $vm.roleName(r.roleCode); },
+            optionsValue: 'roleCode', optionsCaption: $root.t('vw.ra.anyRole')"></select>
+    <select class="form-control" style="width:130px" data-bind="value: fStatus,
+            options: ['ACTIVE','FUTURE','ENDED','VOID'],
+            optionsCaption: $root.t('vw.ra.anyStatus')"></select>
+    <label class="form-label" style="margin:0" data-bind="text: $root.t('vw.ra.activeOn')"></label>
+    <input class="form-control" style="width:150px" type="date" data-bind="value: fActiveOn">
+    <button class="btn btn-primary btn-sm" data-bind="click: search, text: $root.t('vw.ra.search')"></button>
+    <button class="btn btn-secondary btn-sm" data-bind="click: resetFilters, text: $root.t('vw.ra.reset')"></button>
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('vw.ra.objectType')"></th>
+        <th data-bind="text: $root.t('vw.ra.object')"></th>
+        <th data-bind="text: $root.t('vw.ra.role')"></th>
+        <th data-bind="text: $root.t('vw.ra.assignee')"></th>
+        <th data-bind="text: $root.t('vw.ra.from')"></th>
+        <th data-bind="text: $root.t('vw.ra.to')"></th>
+        <th data-bind="text: $root.t('vw.ra.status')"></th>
+        <th></th>
+      </tr></thead>
+      <tbody data-bind="foreach: rows">
+        <tr>
+          <td data-bind="text: $vm.typeName(objectType)"></td>
+          <td>
+            <div data-bind="text: $data.objectLabel || objectKey"></div>
+            <div class="wf-muted" style="font-size:.75rem"
+                 data-bind="text: objectKey + ($data.objectKey2 ? ' / ' + $data.objectKey2 : '')"></div>
+          </td>
+          <td data-bind="text: $vm.roleName(roleCode)"></td>
+          <td data-bind="text: $data.assigneeName || userId"></td>
+          <td data-bind="text: startDate"></td>
+          <td data-bind="text: $data.endDate || '—'"></td>
+          <td><span class="badge" data-bind="text: status, css: $vm.statusClass(status)"></span></td>
+          <td style="white-space:nowrap;text-align:end">
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: function () { $vm.openTimeline($data); }, text: $root.t('vw.ra.timeline')"></button>
+            <!-- ko if: status === 'ACTIVE' || status === 'FUTURE' -->
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: function () { $vm.openAct($data, 'end'); }, text: $root.t('vw.ra.end')"></button>
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: function () { $vm.openAct($data, 'replace'); }, text: $root.t('vw.ra.replace')"></button>
+            <button class="btn btn-secondary btn-sm"
+                    data-bind="click: function () { $vm.openAct($data, 'void'); }, text: $root.t('vw.ra.void')"></button>
+            <!-- /ko -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- ko if: !loading() && !rows().length -->
+    <div class="empty-state"><p data-bind="text: $root.t('vw.ra.empty')"></p></div>
+    <!-- /ko -->
+  </div>
+  <div class="view-toolbar" style="justify-content:flex-end;gap:8px">
+    <button class="btn btn-secondary btn-sm" data-bind="click: prevPage">&lsaquo;</button>
+    <span data-bind="text: pageInfo()"></span>
+    <button class="btn btn-secondary btn-sm" data-bind="click: nextPage">&rsaquo;</button>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ tab 2: audit ═══ -->
+  <!-- ko if: tab() === 'audit' -->
+  <div class="view-toolbar" style="flex-wrap:wrap;gap:8px">
+    <input class="form-control" style="width:145px" type="date" data-bind="value: aFrom"
+           data-title="from">
+    <input class="form-control" style="width:145px" type="date" data-bind="value: aTo">
+    <input class="search-box" style="width:140px" type="text"
+           data-bind="value: aActor, attr: { placeholder: $root.t('vw.ra.actor') }">
+    <select class="form-control" style="width:160px" data-bind="value: aType,
+            options: objTypes, optionsText: function (t) { return $vm.typeName(t.code); },
+            optionsValue: 'code', optionsCaption: $root.t('vw.ra.anyType')"></select>
+    <input class="search-box" style="width:160px" type="text"
+           data-bind="value: aKey, attr: { placeholder: $root.t('vw.ra.objectSearch') }">
+    <select class="form-control" style="width:170px" data-bind="value: aRole,
+            options: roles, optionsText: function (r) { return $vm.roleName(r.roleCode); },
+            optionsValue: 'roleCode', optionsCaption: $root.t('vw.ra.anyRole')"></select>
+    <select class="form-control" style="width:170px" data-bind="value: aAction,
+            options: ACTIONS, optionsCaption: $root.t('vw.ra.anyAction')"></select>
+    <button class="btn btn-primary btn-sm" data-bind="click: auditSearch, text: $root.t('vw.ra.search')"></button>
+  </div>
+
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $root.t('vw.ra.when')"></th>
+        <th data-bind="text: $root.t('vw.ra.actor')"></th>
+        <th data-bind="text: $root.t('vw.ra.action')"></th>
+        <th data-bind="text: $root.t('vw.ra.object')"></th>
+        <th data-bind="text: $root.t('vw.ra.role')"></th>
+        <th data-bind="text: $root.t('vw.ra.assignee')"></th>
+        <th data-bind="text: $root.t('vw.ra.from')"></th>
+        <th data-bind="text: $root.t('vw.ra.to')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: aRows">
+        <tr>
+          <td data-bind="text: at"></td>
+          <td data-bind="text: actor"></td>
+          <td><span class="badge" data-bind="text: action"></span></td>
+          <td>
+            <div data-bind="text: $data.objectLabel || $data.objectKey"></div>
+            <div class="wf-muted" style="font-size:.75rem" data-bind="text: $data.objectTypeName"></div>
+          </td>
+          <td data-bind="text: roleCode"></td>
+          <td data-bind="text: $data.assigneeName || ''"></td>
+          <td data-bind="text: $data.startDate || ''"></td>
+          <td data-bind="text: $data.endDate || '—'"></td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- ko if: !loading() && !aRows().length -->
+    <div class="empty-state"><p data-bind="text: $root.t('vw.ra.empty')"></p></div>
+    <!-- /ko -->
+  </div>
+  <div class="view-toolbar" style="justify-content:flex-end;gap:8px">
+    <button class="btn btn-secondary btn-sm" data-bind="click: aPrev">&lsaquo;</button>
+    <span data-bind="text: aPageInfo()"></span>
+    <button class="btn btn-secondary btn-sm" data-bind="click: aNext">&rsaquo;</button>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ create drawer ═══ -->
+  <!-- ko if: showEdit() -->
+  <div class="modal-overlay" data-bind="click: closeEdit, clickBubble: false">
+    <div class="modal-box" style="max-width:560px"
+         data-bind="click: function () { return true; }, clickBubble: false, modalTrap: closeEdit">
+      <div class="modal-header">
+        <h3 data-bind="text: $root.t('vw.ra.newAssignment')"></h3>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeEdit, text: $root.t('vw.ra.cancel')"></button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveEdit, enable: !saving(), text: $root.t('vw.ra.save')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- ko if: editError() -->
+        <div class="alert-banner alert-banner--danger">&#9888; <span data-bind="text: editError()"></span></div>
+        <!-- /ko -->
+        <div class="form-grid">
+          <div class="form-group">
+            <label class="form-label"><span data-bind="text: $root.t('vw.ra.objectType')"></span> <span class="required">*</span></label>
+            <select class="form-control" data-bind="value: cType,
+                    options: objTypes, optionsText: function (t) { return $vm.typeName(t.code); },
+                    optionsValue: 'code', optionsCaption: $root.t('vw.ra.pick')"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span data-bind="text: $root.t('vw.ra.role')"></span> <span class="required">*</span></label>
+            <select class="form-control" data-bind="value: cRole,
+                    options: roles, optionsText: function (r) { return $vm.roleName(r.roleCode); },
+                    optionsValue: 'roleCode', optionsCaption: $root.t('vw.ra.pick')"></select>
+          </div>
+
+          <!-- ko if: cTwoPart() -->
+          <div class="form-group" style="grid-column:1 / -1">
+            <label class="form-label" data-bind="text: $root.t('vw.ra.parentObject')"></label>
+            <div style="display:flex;gap:6px">
+              <input class="form-control" data-bind="textInput: cParentSearch,
+                     attr: { placeholder: $root.t('vw.ra.typeToSearch') }">
+              <button class="btn btn-secondary btn-sm" data-bind="click: searchParents, text: $root.t('vw.ra.find')"></button>
+            </div>
+            <select class="form-control" size="4" style="margin-top:6px"
+                    data-bind="value: cParentKey, options: cParentOptions,
+                               optionsText: 'label', optionsValue: 'key',
+                               visible: cParentOptions().length"></select>
+          </div>
+          <!-- /ko -->
+
+          <div class="form-group" style="grid-column:1 / -1">
+            <label class="form-label">
+              <span data-bind="text: cTwoPart() ? cKey2Label() : $root.t('vw.ra.object')"></span>
+              <span class="required">*</span></label>
+            <div style="display:flex;gap:6px">
+              <input class="form-control" data-bind="textInput: cObjSearch,
+                     attr: { placeholder: $root.t('vw.ra.typeToSearch') }">
+              <button class="btn btn-secondary btn-sm" data-bind="click: searchObjects, text: $root.t('vw.ra.find')"></button>
+            </div>
+            <select class="form-control mono" size="6" style="margin-top:6px;white-space:pre"
+                    data-bind="value: cObjKey, options: cObjOptions,
+                               optionsText: 'label', optionsValue: 'key',
+                               visible: cObjOptions().length"></select>
+          </div>
+
+          <div class="form-group" style="grid-column:1 / -1">
+            <label class="form-label"><span data-bind="text: $root.t('vw.ra.assignee')"></span> <span class="required">*</span></label>
+            <select class="form-control" data-bind="value: cUserId,
+                    options: users, optionsText: 'name', optionsValue: 'id',
+                    optionsCaption: $root.t('vw.ra.pick')"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label"><span data-bind="text: $root.t('vw.ra.from')"></span> <span class="required">*</span></label>
+            <input class="form-control" type="date" data-bind="value: cStart">
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('vw.ra.toOptional')"></label>
+            <input class="form-control" type="date" data-bind="value: cEnd">
+          </div>
+          <div class="form-group" style="grid-column:1 / -1">
+            <label class="form-label" data-bind="text: $root.t('vw.ra.notes')"></label>
+            <input class="form-control" type="text" data-bind="textInput: cNotes">
+          </div>
+        </div>
+
+        <!-- who holds it today — surfaces single-assignee conflicts BEFORE saving -->
+        <!-- ko if: cPreview() -->
+        <div class="alert-banner" style="margin-top:10px">
+          <b data-bind="text: $root.t('vw.ra.currently')"></b>
+          <!-- ko if: cPreview().count -->
+          <span data-bind="text: cPreview().users.map(function (u) { return u.name; }).join(', ')"></span>
+          <!-- /ko -->
+          <!-- ko ifnot: cPreview().count -->
+          <span data-bind="text: $root.t('vw.ra.nobody')"></span>
+          <!-- /ko -->
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ end / replace / void dialog ═══ -->
+  <!-- ko if: actTarget() -->
+  <div class="modal-overlay" data-bind="click: closeAct, clickBubble: false">
+    <div class="modal-box" style="max-width:440px"
+         data-bind="click: function () { return true; }, clickBubble: false, modalTrap: closeAct">
+      <div class="modal-header">
+        <h3 data-bind="text: $root.t('vw.ra.' + actKind())"></h3>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: closeAct, text: $root.t('vw.ra.cancel')"></button>
+          <button class="btn btn-primary btn-sm" data-bind="click: saveAct, text: $root.t('vw.ra.confirm')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- ko if: actError() -->
+        <div class="alert-banner alert-banner--danger">&#9888; <span data-bind="text: actError()"></span></div>
+        <!-- /ko -->
+        <p>
+          <span data-bind="text: actTarget().objectLabel || actTarget().objectKey"></span> ·
+          <b data-bind="text: $vm.roleName(actTarget().roleCode)"></b> ·
+          <span data-bind="text: actTarget().assigneeName"></span>
+        </p>
+        <div class="form-grid">
+          <!-- ko if: actKind() === 'end' -->
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('vw.ra.endDate')"></label>
+            <input class="form-control" type="date" data-bind="value: actDate">
+          </div>
+          <!-- /ko -->
+          <!-- ko if: actKind() === 'replace' -->
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('vw.ra.newAssignee')"></label>
+            <select class="form-control" data-bind="value: actUserId,
+                    options: users, optionsText: 'name', optionsValue: 'id',
+                    optionsCaption: $root.t('vw.ra.pick')"></select>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('vw.ra.effectiveDate')"></label>
+            <input class="form-control" type="date" data-bind="value: actDate">
+          </div>
+          <div class="form-group" style="grid-column:1 / -1">
+            <div class="wf-muted" data-bind="text: $root.t('vw.ra.replaceHint')"></div>
+          </div>
+          <!-- /ko -->
+          <!-- ko if: actKind() !== 'replace' -->
+          <div class="form-group" style="grid-column:1 / -1">
+            <label class="form-label" data-bind="text: actKind() === 'void' ? $root.t('vw.ra.reason') : $root.t('vw.ra.notes')"></label>
+            <input class="form-control" type="text" data-bind="textInput: actNote">
+          </div>
+          <!-- /ko -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- ═══ timeline modal ═══ -->
+  <!-- ko if: tlOpen() -->
+  <div class="modal-overlay" data-bind="click: function () { tlOpen(false); }, clickBubble: false">
+    <div class="modal-box" style="max-width:640px"
+         data-bind="click: function () { return true; }, clickBubble: false,
+                    modalTrap: function () { $vm.tlOpen(false); }">
+      <div class="modal-header">
+        <h3><span data-bind="text: $root.t('vw.ra.timeline')"></span> — <span data-bind="text: tlTitle()"></span></h3>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm"
+                  data-bind="click: function () { $vm.tlOpen(false); }, text: $root.t('vw.ra.close')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <ol class="wf-chain" data-bind="foreach: tlItems">
+          <li data-bind="css: $data.isActive === 'N' ? 'wf-chain--rej' : ($data.endDate ? 'wf-chain--wait' : 'wf-chain--done')">
+            <span class="wf-dot"></span>
+            <div class="wf-chain-body">
+              <div class="wf-chain-head">
+                <span class="wf-chain-name" data-bind="text: assigneeName"></span>
+                <span class="badge" data-bind="text: startDate + ' → ' + ($data.endDate || '…')"></span>
+                <!-- ko if: $data.isActive === 'N' -->
+                <span class="badge badge-danger" data-bind="text: $root.t('vw.ra.voided')"></span>
+                <!-- /ko -->
+              </div>
+              <div class="wf-chain-meta">
+                <span data-bind="text: $root.t('vw.ra.createdBy') + ': ' + ($data.createdBy || '—') + ' · ' + ($data.createdAt || '')"></span>
+                <!-- ko if: $data.endedBy -->
+                <span class="wf-sep">&middot;</span>
+                <span data-bind="text: $root.t('vw.ra.endedBy') + ': ' + $data.endedBy"></span>
+                <!-- /ko -->
+              </div>
+              <!-- ko if: $data.notes -->
+              <div class="wf-chain-cmt" data-bind="text: $data.notes"></div>
+              <!-- /ko -->
+            </div>
+          </li>
+        </ol>
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>

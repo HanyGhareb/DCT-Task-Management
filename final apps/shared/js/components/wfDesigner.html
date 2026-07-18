@@ -247,6 +247,16 @@
             <!-- ko if: resolverType() === 'ROLE' || resolverType() === 'ROLE_SCOPED_ORG' -->
             <input class="form-control mono" data-bind="textInput: roleCode, attr:{ placeholder: 'FL_MANAGER' }">
             <!-- /ko -->
+            <!-- ko if: resolverType() === 'ASSIGNED_ROLE' -->
+            <input class="form-control mono" data-bind="textInput: roleCode, attr:{ placeholder: 'WF_FBP' }">
+            <select class="form-control" data-bind="value: objectTypeCode,
+                    options: $component.objTypes, optionsText: 'nameEn', optionsValue: 'code',
+                    optionsCaption: $root.t('wf.dz.objectType')"></select>
+            <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.projectNumber' }">
+            <!-- ko if: $component.typeTwoPart(objectTypeCode()) -->
+            <input class="form-control mono" data-bind="textInput: key2FactPath, attr:{ placeholder: '$.taskNumber' }">
+            <!-- /ko -->
+            <!-- /ko -->
             <!-- ko if: resolverType() === 'FACT_USER' -->
             <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.lineManagerUserId' }">
             <!-- /ko -->

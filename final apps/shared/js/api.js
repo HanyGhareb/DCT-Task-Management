@@ -141,7 +141,7 @@ define(['services/config', 'shared/toast'], function (config, toast) {
     var headers = {};
     var token = getToken();
     if (token) headers['Authorization'] = 'Bearer ' + token;
-    return fetch(config.apiBase + path, { method: 'GET', headers: headers }).then(function (r) {
+    return fetch(resolveBase(opts.base) + path, { method: 'GET', headers: headers }).then(function (r) {
       if (r.status === 401) {
         handleExpiredSession();
         return Promise.reject({ status: 401, message: 'Session expired. Please log in again.' });

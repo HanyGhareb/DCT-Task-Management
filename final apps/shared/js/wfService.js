@@ -157,6 +157,68 @@ define(['shared/api'], function (api) {
     /** Shadow-mode drift: what the old engine decided vs what the new one would. */
     parity: function () {
       return api.get('/parity', WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /* ── dynamic role assignments (WF_ADMIN) — role x business object, date-tracked ── */
+
+    /** Registry (object types) + the DATA roles, in one call. */
+    assignMeta: function () { return api.get('/assign/object-types', WF); },
+
+    /** Object picker rows for one type: { key, label, parent?, extra? }. */
+    assignLov: function (type, search, parent) {
+      var q = '?type=' + encodeURIComponent(type);
+      if (search) q += '&search=' + encodeURIComponent(search);
+      if (parent) q += '&parent=' + encodeURIComponent(parent);
+      return api.get('/assign/lov' + q, WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Filtered, paged assignment list. filters: {type,key,role,userid,activeon,status,limit,offset} */
+    assignList: function (f) {
+      f = f || {};
+      var q = Object.keys(f).filter(function (k) { return f[k] !== '' && f[k] != null; })
+        .map(function (k) { return k + '=' + encodeURIComponent(f[k]); }).join('&');
+      return api.get('/assign/list' + (q ? '?' + q : ''), WF);
+    },
+
+    assignCreate:  function (body)     { return api.post('/assign/', body, WF); },
+    /** op: 'end' {endDate,note} | 'void' {reason} | 'update' {notes,endDate,clearEnd} */
+    assignAct:     function (id, body) { return api.put('/assign/' + id, body, WF); },
+    assignReplace: function (id, newUserId, effectiveDate) {
+      return api.post('/assign/', { action: 'replace', assignmentId: id,
+                                    newUserId: newUserId, effectiveDate: effectiveDate }, WF);
+    },
+
+    /** Full date-ordered history of one (object, role). */
+    assignTimeline: function (type, key, key2, role) {
+      var q = '?type=' + encodeURIComponent(type) + '&key=' + encodeURIComponent(key);
+      if (key2) q += '&key2=' + encodeURIComponent(key2);
+      if (role) q += '&role=' + encodeURIComponent(role);
+      return api.get('/assign/timeline' + q, WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Who holds the role on the object as of a date (today when omitted). */
+    assignPreview: function (type, key, key2, role, asof) {
+      var q = '?type=' + encodeURIComponent(type) + '&key=' + encodeURIComponent(key)
+            + '&role=' + encodeURIComponent(role);
+      if (key2) q += '&key2=' + encodeURIComponent(key2);
+      if (asof) q += '&asof=' + encodeURIComponent(asof);
+      return api.get('/assign/preview' + q, WF);
+    },
+
+    /** The audit trail, filtered + paged. */
+    assignAudit: function (f) {
+      f = f || {};
+      var q = Object.keys(f).filter(function (k) { return f[k] !== '' && f[k] != null; })
+        .map(function (k) { return k + '=' + encodeURIComponent(f[k]); }).join('&');
+      return api.get('/assign/audit' + (q ? '?' + q : ''), WF);
+    },
+
+    /** Authed CSV download of the audit trail (object URL). */
+    assignAuditCsv: function (f) {
+      f = f || {};
+      var q = Object.keys(f).filter(function (k) { return f[k] !== '' && f[k] != null; })
+        .map(function (k) { return k + '=' + encodeURIComponent(f[k]); }).join('&');
+      return api.fetchBlobUrl('/assign/audit/export' + (q ? '?' + q : ''), { base: 'wf' });
     }
   };
 });

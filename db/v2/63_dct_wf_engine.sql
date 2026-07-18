@@ -702,50 +702,125 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
         END LOOP;
     END;
 
-    -- the FL approver-map walk, generalised: nearest mapped ancestor org wins
+    -- ------------------------------------------------------------------
+    -- ASSIGNED_ROLE: date-tracked role assignments against business
+    -- objects (dct_wf_role_assignment, registry dct_wf_object_type).
+    -- p_asof is the request's SUBMISSION date, so a returned-and-
+    -- resubmitted request keeps the chain it entered with. Types with
+    -- hierarchy_kind ORG climb the org tree, nearest mapped ancestor
+    -- wins (the old approver-map walk). Cross-type fallback (task ->
+    -- project -> cost center -> sector) is NOT here: it is an ordered
+    -- rule cascade with resolution_mode FIRST_MATCH.
+    -- ------------------------------------------------------------------
+    PROCEDURE assigned_holders (p_prins   IN OUT NOCOPY t_prins,
+                                p_seen    IN OUT NOCOPY t_seen,
+                                p_role    IN VARCHAR2,
+                                p_type    IN VARCHAR2,
+                                p_key     IN VARCHAR2,
+                                p_key2    IN VARCHAR2,
+                                p_asof    IN DATE,
+                                p_exclude IN NUMBER) IS
+        v_num  VARCHAR2(1);
+        v_hier VARCHAR2(10);
+        v_key  VARCHAR2(100);
+        v_key2 VARCHAR2(100);
+        v_org  NUMBER;
+        v_lvl  NUMBER;
+        v_asof DATE := NVL(TRUNC(p_asof), TRUNC(SYSDATE));
+    BEGIN
+        IF p_key IS NULL OR p_type IS NULL OR p_role IS NULL THEN RETURN; END IF;
+
+        BEGIN
+            SELECT key_is_numeric, hierarchy_kind INTO v_num, v_hier
+              FROM prod.dct_wf_object_type
+             WHERE object_type_code = p_type AND is_active = 'Y';
+        EXCEPTION WHEN NO_DATA_FOUND THEN RETURN;
+        END;
+
+        -- canonicalize exactly as DCT_WF_ASSIGN.canon does on write: trim,
+        -- and numeric keys lose leading zeros so '0410' matches '410'
+        v_key  := TRIM(p_key);
+        v_key2 := TRIM(p_key2);
+        IF v_num = 'Y' THEN
+            BEGIN
+                v_key := TO_CHAR(TO_NUMBER(v_key));
+            EXCEPTION WHEN OTHERS THEN NULL;
+            END;
+        END IF;
+
+        IF v_hier = 'ORG' THEN
+            BEGIN
+                v_org := TO_NUMBER(v_key);
+            EXCEPTION WHEN OTHERS THEN RETURN;
+            END;
+
+            SELECT MIN(o.lvl) INTO v_lvl
+              FROM (SELECT org_id, LEVEL AS lvl
+                      FROM prod.dct_organizations
+                     START WITH org_id = v_org
+                   CONNECT BY PRIOR parent_org_id = org_id) o
+              JOIN prod.dct_wf_role_assignment ra
+                ON ra.object_key = TO_CHAR(o.org_id)
+             WHERE ra.object_type_code = p_type
+               AND ra.role_code  = p_role
+               AND ra.is_active  = 'Y'
+               AND ra.start_date <= v_asof
+               AND (ra.end_date IS NULL OR ra.end_date >= v_asof);
+
+            IF v_lvl IS NULL THEN RETURN; END IF;
+
+            FOR u IN (SELECT ra.user_id
+                        FROM (SELECT org_id, LEVEL AS lvl
+                                FROM prod.dct_organizations
+                               START WITH org_id = v_org
+                             CONNECT BY PRIOR parent_org_id = org_id) o
+                        JOIN prod.dct_wf_role_assignment ra
+                          ON ra.object_key = TO_CHAR(o.org_id)
+                       WHERE ra.object_type_code = p_type
+                         AND ra.role_code  = p_role
+                         AND ra.is_active  = 'Y'
+                         AND o.lvl = v_lvl
+                         AND ra.start_date <= v_asof
+                         AND (ra.end_date IS NULL OR ra.end_date >= v_asof))
+            LOOP
+                IF p_exclude IS NULL OR u.user_id <> p_exclude THEN
+                    -- via_ref is the bare role code on purpose: a SPECIFIC_ROLE
+                    -- delegation matches on it. Do not decorate it.
+                    add_prin(p_prins, p_seen, u.user_id, 'ASSIGNED', p_role);
+                END IF;
+            END LOOP;
+        ELSE
+            FOR u IN (SELECT ra.user_id
+                        FROM prod.dct_wf_role_assignment ra
+                       WHERE ra.object_type_code = p_type
+                         AND ra.object_key = v_key
+                         AND NVL(ra.object_key2, '#') = NVL(v_key2, '#')
+                         AND ra.role_code  = p_role
+                         AND ra.is_active  = 'Y'
+                         AND ra.start_date <= v_asof
+                         AND (ra.end_date IS NULL OR ra.end_date >= v_asof))
+            LOOP
+                IF p_exclude IS NULL OR u.user_id <> p_exclude THEN
+                    add_prin(p_prins, p_seen, u.user_id, 'ASSIGNED', p_role);
+                END IF;
+            END LOOP;
+        END IF;
+    END;
+
+    -- ROLE_SCOPED_ORG, kept for saved rules and the designer: since the
+    -- role-assignment layer (db/v2/94) this delegates to assigned_holders
+    -- with object type DEPARTMENT, which absorbed the (always empty)
+    -- dct_wf_approver_map AND fixed its SYSDATE-not-submission-date gap.
     PROCEDURE scoped_holders (p_prins   IN OUT NOCOPY t_prins,
                               p_seen    IN OUT NOCOPY t_seen,
                               p_role    IN VARCHAR2,
                               p_org     IN NUMBER,
-                              p_proc    IN VARCHAR2,
+                              p_asof    IN DATE,
                               p_exclude IN NUMBER) IS
-        v_lvl NUMBER;
     BEGIN
         IF p_org IS NULL THEN RETURN; END IF;
-
-        SELECT MIN(o.lvl) INTO v_lvl
-          FROM (SELECT org_id, LEVEL AS lvl
-                  FROM prod.dct_organizations
-                 START WITH org_id = p_org
-               CONNECT BY PRIOR parent_org_id = org_id) o
-          JOIN prod.dct_wf_approver_map am ON am.org_id = o.org_id
-         WHERE am.role_code = p_role
-           AND am.is_active = 'Y'
-           AND (am.valid_from IS NULL OR am.valid_from <= SYSDATE)
-           AND (am.valid_to   IS NULL OR am.valid_to   >= SYSDATE)
-           AND (am.process_code IS NULL OR am.process_code = p_proc);
-
-        IF v_lvl IS NULL THEN RETURN; END IF;
-
-        FOR u IN (SELECT am.user_id, o.org_id
-                    FROM (SELECT org_id, LEVEL AS lvl
-                            FROM prod.dct_organizations
-                           START WITH org_id = p_org
-                         CONNECT BY PRIOR parent_org_id = org_id) o
-                    JOIN prod.dct_wf_approver_map am ON am.org_id = o.org_id
-                   WHERE am.role_code = p_role
-                     AND am.is_active = 'Y'
-                     AND o.lvl = v_lvl
-                     AND (am.valid_from IS NULL OR am.valid_from <= SYSDATE)
-                     AND (am.valid_to   IS NULL OR am.valid_to   >= SYSDATE)
-                     AND (am.process_code IS NULL OR am.process_code = p_proc))
-        LOOP
-            IF p_exclude IS NULL OR u.user_id <> p_exclude THEN
-                -- via_ref is the bare role code on purpose: a SPECIFIC_ROLE
-                -- delegation matches on it. Do not decorate it with the org.
-                add_prin(p_prins, p_seen, u.user_id, 'MAP', p_role);
-            END IF;
-        END LOOP;
+        assigned_holders(p_prins, p_seen, p_role, 'DEPARTMENT',
+                         TO_CHAR(p_org), NULL, p_asof, p_exclude);
     END;
 
     -- LINE_MANAGER and ORG_HEAD are written, correct, and return NOBODY today:
@@ -814,7 +889,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
                                     p_process     IN  VARCHAR2,
                                     p_module_id   IN  NUMBER,
                                     o_prins       OUT NOCOPY t_prins,
-                                    o_reason      OUT VARCHAR2) IS
+                                    o_reason      OUT VARCHAR2,
+                                    p_asof        IN  DATE DEFAULT NULL) IS
         v_seen  t_seen;
         v_deleg t_prins;
         v_dseen t_seen;
@@ -823,8 +899,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
         v_drole VARCHAR2(100);   -- the role a given principal was resolved BY
         v_uid   NUMBER;
         v_txt   VARCHAR2(200);
+        v_txt2  VARCHAR2(200);
         v_org   NUMBER;
         v_first BOOLEAN := TRUE;
+        -- assignments resolve as of the request's SUBMISSION date (NULL,
+        -- e.g. from simulate, means "as of now")
+        v_asof  DATE := NVL(TRUNC(p_asof), TRUNC(SYSDATE));
     BEGIN
         FOR r IN (SELECT * FROM prod.dct_wf_participant_rule
                    WHERE step_id = p_step_id
@@ -856,8 +936,26 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
                                  'ROLE');
 
                 WHEN 'ROLE_SCOPED_ORG' THEN
-                    scoped_holders(o_prins, v_seen, r.role_code, v_org, p_process,
+                    scoped_holders(o_prins, v_seen, r.role_code, v_org, v_asof,
                                    CASE WHEN r.exclude_initiator = 'Y' THEN p_initiator END);
+
+                WHEN 'ASSIGNED_ROLE' THEN
+                    -- date-tracked assignment lookup: role x business object,
+                    -- object key(s) read from the request's facts. Fallback
+                    -- across the dimension hierarchy (task -> project -> cost
+                    -- center -> sector) = an ordered cascade of these rules
+                    -- with resolution_mode FIRST_MATCH.
+                    v_txt  := fact_str(p_facts, r.fact_path);
+                    IF v_txt IS NULL THEN
+                        v_txt := TO_CHAR(fact_num(p_facts, r.fact_path));
+                    END IF;
+                    v_txt2 := CASE WHEN r.key2_fact_path IS NOT NULL
+                                   THEN NVL(fact_str(p_facts, r.key2_fact_path),
+                                            TO_CHAR(fact_num(p_facts, r.key2_fact_path)))
+                              END;
+                    assigned_holders(o_prins, v_seen, r.role_code,
+                                     r.object_type_code, v_txt, v_txt2, v_asof,
+                                     CASE WHEN r.exclude_initiator = 'Y' THEN p_initiator END);
 
                 WHEN 'STATIC_USER' THEN
                     add_prin(o_prins, v_seen, r.static_user_id, 'STATIC');
@@ -1095,9 +1193,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
         END IF;
 
         -- ---------- resolve who ----------
+        -- as-of = the request's submission date: assignments are evaluated
+        -- against who held the role when the request entered the system,
+        -- for every step, even after a return-and-resubmit.
         resolve_participants(p_step_id, p_instance_id, v_inst.fact_doc,
                              v_inst.initiator_user_id, v_inst.initiator_org_id,
-                             v_pcode, v_mid, v_prins, v_reason);
+                             v_pcode, v_mid, v_prins, v_reason,
+                             p_asof => CAST(v_inst.started_at AS DATE));
 
         -- how many principals (delegates do not count toward quorum -- they act
         -- FOR a principal, they are not an extra approver)

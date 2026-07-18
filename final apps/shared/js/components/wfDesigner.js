@@ -25,7 +25,7 @@ define(['knockout', 'shared/i18n', 'shared/wfService', 'shared/skeleton',
 function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
   'use strict';
 
-  var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'FACT_USER', 'STATIC_USER',
+  var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'ASSIGNED_ROLE', 'FACT_USER', 'STATIC_USER',
                    'LINE_MANAGER', 'FACT_LINE_MANAGER', 'ORG_HEAD',
                    'PREVIOUS_ACTOR', 'INITIATOR'];
   var FALLBACKS  = ['ANY_ROLE_HOLDER', 'BUSINESS_ADMIN', 'ORG_HEAD', 'FAIL', 'NONE'];
@@ -103,14 +103,24 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
     };
     self.partSummary = function (p) {
       if (p.resolverType === 'ROLE' || p.resolverType === 'ROLE_SCOPED_ORG') return p.roleCode || p.resolverType;
+      if (p.resolverType === 'ASSIGNED_ROLE') return (p.roleCode || '?') + '@' + (p.objectTypeCode || '?');
       if (p.resolverType === 'FACT_USER' || p.resolverType === 'FACT_LINE_MANAGER') return p.factPath || 'fact';
       if (p.resolverType === 'STATIC_USER') return '#' + (p.staticUserId || '?');
       return p.resolverType;
     };
 
     /* ── loading ────────────────────────────────────────────────────────── */
+    self.objTypes = ko.observableArray([]);   // ASSIGNED_ROLE object-type registry
+    self.typeTwoPart = function (code) {
+      var t = self.objTypes().filter(function (x) { return x.code === code; })[0];
+      return !!(t && t.twoPart === 'Y');
+    };
     self.load = function () {
       self.loading(true); self.err(null);
+      // the assignment registry is optional context (a non-WF_ADMIN designer
+      // reader may 403 on it) -- never let it block the page
+      wf.assignMeta().then(function (m) { self.objTypes((m && m.items) || []); })
+                     .catch(function () { self.objTypes([]); });
       return Promise.all([wf.processes(), wf.outcomeSets()]).then(function (r) {
         var items = r[0] || [];
         if (scope && scope.length) {
@@ -236,6 +246,8 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
           factPath: ko.observable(p.factPath || ''),
           staticUserId: ko.observable(p.staticUserId || ''),
           levelsUp: ko.observable(p.levelsUp == null ? 0 : p.levelsUp),
+          objectTypeCode: ko.observable(p.objectTypeCode || ''),
+          key2FactPath: ko.observable(p.key2FactPath || ''),
           fallbackRule: ko.observable(p.fallbackRule || 'ANY_ROLE_HOLDER'),
           excludeInitiator: ko.observable(p.excludeInitiator === 'Y')
         };
@@ -249,6 +261,7 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
       self.fmParts.push({
         ruleId: null, resolverType: ko.observable('ROLE'), roleCode: ko.observable(''),
         factPath: ko.observable(''), staticUserId: ko.observable(''), levelsUp: ko.observable(0),
+        objectTypeCode: ko.observable(''), key2FactPath: ko.observable(''),
         fallbackRule: ko.observable('ANY_ROLE_HOLDER'), excludeInitiator: ko.observable(true)
       });
     };
@@ -280,6 +293,8 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
             factPath: p.factPath() || null,
             staticUserId: p.staticUserId() === '' ? null : Number(p.staticUserId()),
             levelsUp: (p.levelsUp() === '' || p.levelsUp() == null) ? 0 : Number(p.levelsUp()),
+            objectTypeCode: p.objectTypeCode() || null,
+            key2FactPath: p.key2FactPath() || null,
             fallbackRule: p.fallbackRule(), excludeInitiator: p.excludeInitiator() ? 'Y' : 'N'
           });
         }).concat(toDelete.map(function (id) { return wf.deleteParticipant(vid, id); }));
