@@ -371,5 +371,14 @@
   "wf.st.skipped": "Skipped",
   "wf.st.waiting": "Not yet reached",
   "wf.step": "Step",
-  "wf.worklist": "My Approvals"
+  "wf.worklist": "My Approvals",
+  "wf.dz.timers": "Timers — reminders, escalation, expiration",
+  "wf.dz.reminders": "Reminder offsets (hours before due)",
+  "wf.dz.remindersHint": "Comma-separated hours before the due time, largest first — e.g. 48,24,4. Blank = no reminders.",
+  "wf.dz.escRole": "Escalate to role",
+  "wf.dz.escRoleHint": "After the hours below past due, holders of this role are ADDED to the task (not just notified).",
+  "wf.dz.escHours": "Escalate after (hours past due)",
+  "wf.dz.autoOutcome": "Auto-action outcome",
+  "wf.dz.autoOutcomeHint": "If nobody acts for this many hours, the engine records this outcome itself — history marks it as a timer, never a person.",
+  "wf.dz.autoHours": "Auto-action after (hours)"
 }

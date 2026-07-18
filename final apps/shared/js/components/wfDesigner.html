@@ -233,6 +233,28 @@
             <label class="form-label" data-bind="text: $root.t('wf.dz.finalGate')"></label></div>
         </div>
 
+        <!-- timers: reminders / escalation / expiration (executed by the engine sweep) -->
+        <div class="section-heading-row wf-dz-sub">
+          <h4 class="section-heading" data-bind="text: $root.t('wf.dz.timers')"></h4>
+        </div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.reminders')"></label>
+            <input class="form-control mono" placeholder="48,24,4" data-bind="textInput: fmReminders">
+            <div class="wf-dz-hint" data-bind="text: $root.t('wf.dz.remindersHint')"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.escRole')"></label>
+            <input class="form-control mono" placeholder="FIN_DIRECTOR" data-bind="textInput: fmEscRole"
+                   style="text-transform:uppercase">
+            <div class="wf-dz-hint" data-bind="text: $root.t('wf.dz.escRoleHint')"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.escHours')"></label>
+            <input class="form-control" type="number" min="1" data-bind="textInput: fmEscHours"></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.autoOutcome')"></label>
+            <input class="form-control mono" placeholder="APPROVE" data-bind="textInput: fmAutoOutcome"
+                   style="text-transform:uppercase">
+            <div class="wf-dz-hint" data-bind="text: $root.t('wf.dz.autoOutcomeHint')"></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: $root.t('wf.dz.autoHours')"></label>
+            <input class="form-control" type="number" min="1" data-bind="textInput: fmAutoHours"></div>
+        </div>
+
         <!-- participants -->
         <div class="section-heading-row wf-dz-sub">
           <h4 class="section-heading" data-bind="text: $root.t('wf.dz.who')"></h4>

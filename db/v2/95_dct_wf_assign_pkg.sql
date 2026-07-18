@@ -77,6 +77,43 @@ CREATE OR REPLACE PACKAGE prod.dct_wf_assign AS
                               p_role   IN VARCHAR2,
                               p_single IN VARCHAR2) RETURN NUMBER;
 
+    -- ── management (Manage Roles / Manage Objects drawers) ─────────────────
+
+    -- create or update a DATA role (+ its cardinality policy) from the UI.
+    -- A role_code that already exists as a NON-DATA (security) role is an
+    -- error, never a silent takeover. Returns the number of ACTIVE assignments
+    -- carrying the role when it is being DEactivated (0 otherwise) so the UI
+    -- can warn -- deactivation hides the role from pickers and stops
+    -- ASSIGNED_ROLE resolution, but existing assignment rows are kept.
+    FUNCTION save_data_role (p_actor   IN VARCHAR2,
+                             p_role    IN VARCHAR2,
+                             p_name_en IN VARCHAR2,
+                             p_name_ar IN VARCHAR2,
+                             p_single  IN VARCHAR2,
+                             p_active  IN VARCHAR2) RETURN NUMBER;
+
+    -- create or update an object-type registry row. SYS_ADMIN only (the row
+    -- names a view + columns). Everything is validated against the data
+    -- dictionary before it is stored -- an unknown view or column can never
+    -- enter the registry. Returns the number of ACTIVE assignments on the
+    -- type when it is being DEactivated (0 otherwise).
+    FUNCTION save_object_type (p_actor      IN VARCHAR2,
+                               p_code       IN VARCHAR2,
+                               p_name_en    IN VARCHAR2,
+                               p_name_ar    IN VARCHAR2,
+                               p_view       IN VARCHAR2,
+                               p_key_col    IN VARCHAR2,
+                               p_label_col  IN VARCHAR2,
+                               p_key2_col   IN VARCHAR2,
+                               p_parent_col IN VARCHAR2,
+                               p_key2_en    IN VARCHAR2,
+                               p_key2_ar    IN VARCHAR2,
+                               p_numeric    IN VARCHAR2,
+                               p_hier       IN VARCHAR2,
+                               p_validate   IN VARCHAR2,
+                               p_active     IN VARCHAR2,
+                               p_order      IN NUMBER) RETURN NUMBER;
+
 END dct_wf_assign;
 /
 
@@ -612,6 +649,218 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_assign AS
             p_new         => '{"singleAssignee":"' || p_single || '"}');
         RETURN v_over;
     END set_role_policy;
+
+    -- ------------------------------------------------------------------
+    -- Manage Roles drawer: create / update a DATA role + its policy row
+    -- ------------------------------------------------------------------
+    FUNCTION save_data_role (p_actor   IN VARCHAR2,
+                             p_role    IN VARCHAR2,
+                             p_name_en IN VARCHAR2,
+                             p_name_ar IN VARCHAR2,
+                             p_single  IN VARCHAR2,
+                             p_active  IN VARCHAR2) RETURN NUMBER IS
+        v_code   VARCHAR2(100) := UPPER(TRIM(p_role));
+        v_cnt    NUMBER;
+        v_type   VARCHAR2(20);
+        v_oldjs  VARCHAR2(1000);
+        v_dummy  NUMBER;
+        v_inuse  NUMBER := 0;
+    BEGIN
+        IF v_code IS NULL OR NOT REGEXP_LIKE(v_code, '^[A-Z][A-Z0-9_]{1,90}$') THEN
+            RAISE_APPLICATION_ERROR(-20001,
+                'Role code must be letters/digits/underscore starting with a letter');
+        END IF;
+        IF TRIM(p_name_en) IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20001, 'English name is required');
+        END IF;
+        IF NVL(p_single, 'N') NOT IN ('Y', 'N')
+           OR NVL(p_active, 'Y') NOT IN ('Y', 'N') THEN
+            RAISE_APPLICATION_ERROR(-20001, 'singleAssignee/isActive must be Y or N');
+        END IF;
+
+        BEGIN
+            SELECT role_type,
+                   '{"nameEn":"' || REPLACE(role_name_en, '"', '') || '","isActive":"'
+                       || is_active || '"}'
+              INTO v_type, v_oldjs
+              FROM prod.dct_roles WHERE role_code = v_code FOR UPDATE;
+
+            IF v_type <> 'DATA' THEN
+                RAISE_APPLICATION_ERROR(-20001, 'Role ' || v_code
+                    || ' already exists as a ' || v_type
+                    || ' (security) role -- pick a different code');
+            END IF;
+
+            UPDATE prod.dct_roles
+               SET role_name_en = TRIM(p_name_en),
+                   role_name_ar = TRIM(p_name_ar),
+                   is_active    = NVL(p_active, 'Y'),
+                   updated_by   = p_actor,
+                   updated_at   = SYSTIMESTAMP
+             WHERE role_code = v_code;
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            v_oldjs := NULL;
+            INSERT INTO prod.dct_roles
+                (role_code, role_name_en, role_name_ar, role_type,
+                 is_system_role, is_active, created_by)
+            VALUES (v_code, TRIM(p_name_en), TRIM(p_name_ar), 'DATA',
+                    'N', NVL(p_active, 'Y'), p_actor);
+        END;
+
+        -- cardinality policy rides along (set_role_policy audits it separately
+        -- only when flipped from the Policies drawer; here it is part of the row)
+        UPDATE prod.dct_wf_role_policy
+           SET single_assignee = NVL(p_single, 'N')
+         WHERE role_code = v_code;
+        IF SQL%ROWCOUNT = 0 THEN
+            INSERT INTO prod.dct_wf_role_policy (role_code, single_assignee)
+            VALUES (v_code, NVL(p_single, 'N'));
+        END IF;
+
+        IF NVL(p_active, 'Y') = 'N' THEN
+            SELECT COUNT(*) INTO v_inuse
+              FROM prod.dct_wf_role_assignment a
+             WHERE a.role_code = v_code AND a.is_active = 'Y'
+               AND NVL(a.end_date, DATE_MAX) >= TRUNC(SYSDATE);
+        END IF;
+
+        prod.dct_audit_pkg.log(
+            p_username    => p_actor,
+            p_action      => 'ASSIGN_ROLE_DEF',
+            p_object_type => 'WF_DATA_ROLE',
+            p_object_id   => v_code,
+            p_module_code => 'ADMIN',
+            p_old         => v_oldjs,
+            p_new         => '{"nameEn":"' || REPLACE(TRIM(p_name_en), '"', '')
+                             || '","singleAssignee":"' || NVL(p_single, 'N')
+                             || '","isActive":"' || NVL(p_active, 'Y') || '"}');
+        RETURN v_inuse;
+    END save_data_role;
+
+    -- ------------------------------------------------------------------
+    -- Manage Objects drawer: create / update a registry row (SYS_ADMIN)
+    -- ------------------------------------------------------------------
+    FUNCTION save_object_type (p_actor      IN VARCHAR2,
+                               p_code       IN VARCHAR2,
+                               p_name_en    IN VARCHAR2,
+                               p_name_ar    IN VARCHAR2,
+                               p_view       IN VARCHAR2,
+                               p_key_col    IN VARCHAR2,
+                               p_label_col  IN VARCHAR2,
+                               p_key2_col   IN VARCHAR2,
+                               p_parent_col IN VARCHAR2,
+                               p_key2_en    IN VARCHAR2,
+                               p_key2_ar    IN VARCHAR2,
+                               p_numeric    IN VARCHAR2,
+                               p_hier       IN VARCHAR2,
+                               p_validate   IN VARCHAR2,
+                               p_active     IN VARCHAR2,
+                               p_order      IN NUMBER) RETURN NUMBER IS
+        v_code  VARCHAR2(30)  := UPPER(TRIM(p_code));
+        v_view  VARCHAR2(128) := UPPER(TRIM(p_view));
+        v_cnt   NUMBER;
+        v_oldjs VARCHAR2(1000);
+        v_inuse NUMBER := 0;
+    BEGIN
+        IF NOT prod.dct_auth.has_role(p_actor, 'SYS_ADMIN') THEN
+            RAISE_APPLICATION_ERROR(-20403,
+                'SYS_ADMIN required to manage object types');
+        END IF;
+        IF v_code IS NULL OR NOT REGEXP_LIKE(v_code, '^[A-Z][A-Z0-9_]{1,28}$') THEN
+            RAISE_APPLICATION_ERROR(-20001,
+                'Type code must be letters/digits/underscore starting with a letter');
+        END IF;
+        IF TRIM(p_name_en) IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20001, 'English name is required');
+        END IF;
+        IF NVL(p_hier, 'NONE') NOT IN ('NONE', 'ORG') THEN
+            RAISE_APPLICATION_ERROR(-20001, 'hierarchy must be NONE or ORG');
+        END IF;
+        IF NVL(p_numeric, 'N') NOT IN ('Y', 'N')
+           OR NVL(p_validate, 'Y') NOT IN ('Y', 'N')
+           OR NVL(p_active, 'Y') NOT IN ('Y', 'N') THEN
+            RAISE_APPLICATION_ERROR(-20001, 'flag values must be Y or N');
+        END IF;
+
+        -- the whole injection story lives here: the stored view/column names
+        -- must be real PROD identifiers BEFORE they are ever stored
+        v_view := DBMS_ASSERT.simple_sql_name(v_view);
+        SELECT COUNT(*) INTO v_cnt FROM all_views
+         WHERE owner = 'PROD' AND view_name = v_view;
+        IF v_cnt = 0 THEN
+            SELECT COUNT(*) INTO v_cnt FROM all_tables
+             WHERE owner = 'PROD' AND table_name = v_view;
+        END IF;
+        IF v_cnt = 0 THEN
+            RAISE_APPLICATION_ERROR(-20001,
+                'View ' || v_view || ' does not exist in PROD');
+        END IF;
+        assert_col(v_view, p_key_col);
+        assert_col(v_view, p_label_col);
+        IF TRIM(p_key2_col)   IS NOT NULL THEN assert_col(v_view, p_key2_col);   END IF;
+        IF TRIM(p_parent_col) IS NOT NULL THEN assert_col(v_view, p_parent_col); END IF;
+        IF TRIM(p_key2_col) IS NOT NULL AND TRIM(p_key2_en) IS NULL THEN
+            RAISE_APPLICATION_ERROR(-20001,
+                'A two-part type needs an English label for the second key');
+        END IF;
+
+        BEGIN
+            SELECT '{"nameEn":"' || REPLACE(name_en, '"', '') || '","view":"'
+                       || lov_view || '","isActive":"' || is_active || '"}'
+              INTO v_oldjs
+              FROM prod.dct_wf_object_type
+             WHERE object_type_code = v_code FOR UPDATE;
+
+            UPDATE prod.dct_wf_object_type
+               SET name_en        = TRIM(p_name_en),
+                   name_ar        = TRIM(p_name_ar),
+                   lov_view       = v_view,
+                   lov_key_col    = UPPER(TRIM(p_key_col)),
+                   lov_label_col  = UPPER(TRIM(p_label_col)),
+                   lov_key2_col   = UPPER(TRIM(p_key2_col)),
+                   lov_parent_col = UPPER(TRIM(p_parent_col)),
+                   key2_label_en  = TRIM(p_key2_en),
+                   key2_label_ar  = TRIM(p_key2_ar),
+                   key_is_numeric = NVL(p_numeric, 'N'),
+                   hierarchy_kind = NVL(p_hier, 'NONE'),
+                   validate_key   = NVL(p_validate, 'Y'),
+                   is_active      = NVL(p_active, 'Y'),
+                   display_order  = NVL(p_order, 999)
+             WHERE object_type_code = v_code;
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            v_oldjs := NULL;
+            INSERT INTO prod.dct_wf_object_type
+                (object_type_code, name_en, name_ar, lov_view, lov_key_col,
+                 lov_label_col, lov_key2_col, lov_parent_col, key2_label_en,
+                 key2_label_ar, key_is_numeric, hierarchy_kind, validate_key,
+                 is_active, display_order, created_by)
+            VALUES (v_code, TRIM(p_name_en), TRIM(p_name_ar), v_view,
+                    UPPER(TRIM(p_key_col)), UPPER(TRIM(p_label_col)),
+                    UPPER(TRIM(p_key2_col)), UPPER(TRIM(p_parent_col)),
+                    TRIM(p_key2_en), TRIM(p_key2_ar), NVL(p_numeric, 'N'),
+                    NVL(p_hier, 'NONE'), NVL(p_validate, 'Y'),
+                    NVL(p_active, 'Y'), NVL(p_order, 999), p_actor);
+        END;
+
+        IF NVL(p_active, 'Y') = 'N' THEN
+            SELECT COUNT(*) INTO v_inuse
+              FROM prod.dct_wf_role_assignment a
+             WHERE a.object_type_code = v_code AND a.is_active = 'Y'
+               AND NVL(a.end_date, DATE_MAX) >= TRUNC(SYSDATE);
+        END IF;
+
+        prod.dct_audit_pkg.log(
+            p_username    => p_actor,
+            p_action      => 'ASSIGN_OBJTYPE',
+            p_object_type => 'WF_OBJECT_TYPE',
+            p_object_id   => v_code,
+            p_module_code => 'ADMIN',
+            p_old         => v_oldjs,
+            p_new         => '{"nameEn":"' || REPLACE(TRIM(p_name_en), '"', '')
+                             || '","view":"' || v_view
+                             || '","isActive":"' || NVL(p_active, 'Y') || '"}');
+        RETURN v_inuse;
+    END save_object_type;
 
 END dct_wf_assign;
 /

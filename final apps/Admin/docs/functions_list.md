@@ -84,7 +84,9 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 **Role Assignments** (`roleAssignments`) — date-tracked assignment of users to workflow DATA roles (FBP, PBP, Approver, Planner, FYI Group) per business object (Sector, Department, HR Org, Cost Center, Project, Task, Appropriation, PO, GL Account, Entity). WF_ADMIN/SYS_ADMIN.
 - Tab Assignments: `search` / `resetFilters` / `nextPage` / `prevPage` · `openNew` / `saveEdit` / `closeEdit` (type-driven object picker: `searchObjects` / `searchParents`; live holder preview `refreshPreview`) · `openAct` / `saveAct` / `closeAct` (End / Replace / Void) · `openTimeline`.
 - Tab Audit: `auditSearch` / `aNext` / `aPrev` · `exportCsv` (Arabic-safe CSV) · `openBiReport` (deep-links the BI Interactive Report `WF_ROLE_ASSIGN_AUDIT` — `#irViewer/<CODE>` auto-runs a parameter-less report).
-- **Role Policies** modal: `openPolicies` / `togglePolicy` — flip a role between single-assignee and group (`PUT /wf/assign/policy/:role`, db/v2/97; warns with the overlap count when flipping to single leaves grandfathered overlaps).
+- **Role Policies** drawer: `openPolicies` / `togglePolicy` — flip a role between single-assignee and group (`PUT /wf/assign/policy/:role`, db/v2/97; warns with the overlap count when flipping to single leaves grandfathered overlaps). Shared `<edit-drawer>`.
+- **Manage Roles** drawer (WF_ADMIN): `openManageRoles` / `mrNew` / `mrEdit` / `mrSave` — create/rename/deactivate DATA assignment roles + cardinality from the UI (`GET/POST /wf/assign/manage/roles`, db/v2/98); deactivation warns with the active-assignment count; pickers refresh immediately (`refreshMeta`).
+- **Manage Objects** drawer (SYS_ADMIN): `openManageObjects` / `moNew` / `moEdit` / `moSave` / `moSearchViews` / `moLoadCols` — create/edit object-type registry rows with the LOV view and every column chosen from data-dictionary dropdowns (`GET/POST /wf/assign/manage/object-types` + `GET /wf/assign/dict`, db/v2/98); nothing free-typed reaches the registry.
 
 ## 6. System Configuration
 
@@ -161,7 +163,7 @@ Module `wf.rest` · base path **`/ords/admin/wf/`** · defined in `db/v2/67` + `
 |---|---|
 | Worklist & actions | `GET worklist` · `POST tasks/:id/action` · `claim` / `release` / `delegate` / `request-info` · `GET instances/:id/history` · `GET chain` |
 | Designer (WF_ADMIN) | `GET processes` · `versions/:id/steps` · `versions/:id/design` · `outcome-sets` · `schemas/:id/fields` · `POST processes/:code/draft` · `PUT/DELETE versions/:id/step(/:key)` · `condition(/:key)` · `participant(/:rid)` · `POST versions/:id/validate` / `publish` · `DELETE versions/:id` · `POST conditions/compile` · `POST processes/:code/simulate` |
-| Role assignments (WF_ADMIN) | `GET assign/object-types` · `GET assign/lov` · `GET assign/list` · `POST assign/` (create / replace) · `PUT assign/:id` (end / update / void) · `GET assign/timeline` · `GET assign/preview` · `GET assign/audit` · `GET assign/audit/export` *(db/v2/96)* · `PUT assign/policy/:role` *(db/v2/97)* |
+| Role assignments (WF_ADMIN) | `GET assign/object-types` · `GET assign/lov` · `GET assign/list` · `POST assign/` (create / replace) · `PUT assign/:id` (end / update / void) · `GET assign/timeline` · `GET assign/preview` · `GET assign/audit` · `GET assign/audit/export` *(db/v2/96)* · `PUT assign/policy/:role` *(db/v2/97)* · `GET/POST assign/manage/roles` · `GET/POST assign/manage/object-types` (SYS_ADMIN) · `GET assign/dict` (SYS_ADMIN) · `POST tasks/:id/reassign` *(db/v2/98)* |
 
 ---
 

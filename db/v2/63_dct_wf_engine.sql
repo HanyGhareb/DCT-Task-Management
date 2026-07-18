@@ -2396,6 +2396,64 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
             END;
         END LOOP;
 
+        -- ---- late delegations (the vacation case) ----
+        -- Participants expand at task CREATION, so a delegation created after a
+        -- task already exists would never see it: the principal goes on leave and
+        -- the pending task sits with them anyway. This pass attaches the delegate
+        -- to every open task of the delegator, with the SAME scope semantics as
+        -- resolve-time (ALL_ROLES / MODULE / SPECIFIC_ROLE -- dct_delegations'
+        -- own vocabulary, see resolve_participants). Idempotent: NOT EXISTS.
+        FOR d IN (SELECT t.task_id, t.instance_id, i.version_id,
+                         si.step_id, s.name_en,
+                         tp.user_id AS principal_id, dg.delegate_id
+                    FROM prod.dct_wf_task t
+                    JOIN prod.dct_wf_task_participant tp
+                      ON tp.task_id = t.task_id
+                     AND tp.participant_type = 'POTENTIAL_OWNER'
+                     AND tp.is_active = 'Y'
+                     AND tp.via <> 'DELEGATE'
+                    JOIN prod.dct_wf_instance i ON i.instance_id = t.instance_id
+                    JOIN prod.dct_wf_step_instance si ON si.step_instance_id = t.step_instance_id
+                    JOIN prod.dct_wf_step s ON s.step_id = si.step_id
+                    JOIN prod.dct_delegations dg
+                      ON dg.delegator_id = tp.user_id
+                     AND dg.status = 'ACTIVE'
+                     AND TRUNC(SYSDATE) BETWEEN TRUNC(dg.start_date)
+                                            AND TRUNC(dg.end_date)
+                    LEFT JOIN prod.dct_roles r ON r.role_id = dg.role_id
+                    LEFT JOIN prod.dct_modules m ON m.module_code = t.module_code
+                   WHERE t.state IN ('UNASSIGNED', 'ASSIGNED', 'INFO_REQUESTED')
+                     AND i.status = 'RUNNING'
+                     AND (dg.scope = 'ALL_ROLES'
+                          OR (dg.scope = 'MODULE'
+                              AND dg.module_id IS NOT NULL
+                              AND dg.module_id = m.module_id)
+                          OR (dg.scope = 'SPECIFIC_ROLE'
+                              AND tp.via IN ('ROLE', 'MAP', 'FALLBACK_ROLE')
+                              AND r.role_code = tp.via_ref))
+                     AND dg.delegate_id <> tp.user_id
+                     AND NOT EXISTS (SELECT 1 FROM prod.dct_wf_task_participant x
+                                      WHERE x.task_id = t.task_id
+                                        AND x.user_id = dg.delegate_id))
+        LOOP
+            BEGIN
+                INSERT INTO prod.dct_wf_task_participant
+                    (task_id, user_id, participant_type, via, via_ref)
+                VALUES (d.task_id, d.delegate_id, 'POTENTIAL_OWNER',
+                        'DELEGATE', TO_CHAR(d.principal_id));
+
+                hist(d.instance_id, 'TASK_DELEGATED', NULL, d.task_id,
+                     p_actor_kind => 'SYSTEM', p_to_state => 'ASSIGNED',
+                     p_note => 'late delegation: user ' || d.principal_id
+                               || ' -> ' || d.delegate_id);
+
+                notify_user(d.delegate_id, d.instance_id, d.task_id, 'TASK_ASSIGNED',
+                            d.version_id, d.step_id, d.name_en);
+            EXCEPTION WHEN OTHERS THEN
+                NULL;   -- one bad row must not stop the sweep
+            END;
+        END LOOP;
+
         COMMIT;
     END;
 

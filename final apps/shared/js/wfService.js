@@ -224,6 +224,42 @@ define(['shared/api'], function (api) {
                      { singleAssignee: single ? 'Y' : 'N' }, WF);
     },
 
+    /* ── management drawers (Manage Roles = WF_ADMIN, Manage Objects = SYS_ADMIN) ── */
+
+    /** Full DATA-role list INCLUDING inactive, with active-assignment counts. */
+    manageRoles: function () {
+      return api.get('/assign/manage/roles', WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Create or update a DATA role (+ its cardinality policy). */
+    saveRole: function (body) { return api.post('/assign/manage/roles', body, WF); },
+
+    /** Full object-type registry INCLUDING inactive, with all columns + counts. */
+    manageObjectTypes: function () {
+      return api.get('/assign/manage/object-types', WF).then(function (r) { return (r && r.items) || []; });
+    },
+
+    /** Create or update an object-type registry row (SYS_ADMIN). */
+    saveObjectType: function (body) { return api.post('/assign/manage/object-types', body, WF); },
+
+    /** PROD views matching a search (SYS_ADMIN; feeds the Manage Objects view picker). */
+    dictViews: function (search) {
+      return api.get('/assign/dict' + (search ? '?search=' + encodeURIComponent(search) : ''), WF)
+                .then(function (r) { return (r && r.views) || []; });
+    },
+
+    /** Columns of one PROD view (SYS_ADMIN). */
+    dictColumns: function (view) {
+      return api.get('/assign/dict?view=' + encodeURIComponent(view), WF)
+                .then(function (r) { return (r && r.columns) || []; });
+    },
+
+    /** Admin reassignment — REPLACES the task owner (the leaver/vacation case). */
+    reassign: function (taskId, toUserId, reason) {
+      return api.post('/tasks/' + taskId + '/reassign',
+                      { toUserId: toUserId, reason: reason || null }, WF);
+    },
+
     /** Authed CSV download of the audit trail (object URL). */
     assignAuditCsv: function (f) {
       f = f || {};

@@ -11,8 +11,9 @@
  *        timeline; a live preview shows who holds the role before saving.
  * Tab 2: audit — every create/end/replace/void with search criteria + CSV.
  */
-define(['knockout', 'shared/api', 'shared/wfService', 'shared/i18n'],
-function (ko, api, wf, i18n) {
+define(['knockout', 'shared/api', 'shared/wfService', 'shared/i18n',
+        'services/authService'],
+function (ko, api, wf, i18n, auth) {
   'use strict';
 
   function today() {
@@ -234,11 +235,18 @@ function (ko, api, wf, i18n) {
        .catch(function (e) { self.actError((e && e.message) || 'Error'); });
     };
 
-    /* ── role policies modal (single-assignee vs group, per role) ──────── */
+    // Manage Objects is SYS_ADMIN-only (the registry names DB views/columns)
+    self.isSysAdmin = (function () {
+      var u = auth.getCurrentUser();
+      return !!(u && u.roles && u.roles.indexOf('SYS_ADMIN') >= 0);
+    })();
+
+    /* ── role policies drawer (single-assignee vs group, per role) ─────── */
     self.polOpen = ko.observable(false);
     self.polMsg  = ko.observable(null);   // { warn: bool, text }
     self.polBusy = ko.observable(false);
     self.openPolicies = function () { self.polMsg(null); self.polOpen(true); };
+    self.closePolicies = function () { self.polOpen(false); };
     self.togglePolicy = function (role) {
       if (self.polBusy()) return;
       var toSingle = role.singleAssignee !== 'Y';
@@ -258,6 +266,185 @@ function (ko, api, wf, i18n) {
       }).catch(function (e) {
         self.polMsg({ warn: true, text: (e && e.message) || 'Error' });
       }).then(function () { self.polBusy(false); });
+    };
+
+    // refresh the picker metadata after any role/object-type change so the
+    // create drawer + filters see the new definitions immediately
+    function refreshMeta() {
+      return wf.assignMeta().then(function (m) {
+        self.objTypes((m && m.items) || []);
+        self.roles((m && m.roles) || []);
+      });
+    }
+
+    /* ── Manage Roles drawer (WF_ADMIN) ────────────────────────────────── */
+    self.mrOpen    = ko.observable(false);
+    self.mrRows    = ko.observableArray([]);
+    self.mrMsg     = ko.observable(null);     // { warn: bool, text }
+    self.mrBusy    = ko.observable(false);
+    self.mrEditing = ko.observable(false);    // the inline form is showing
+    self.mrIsNew   = ko.observable(true);
+    self.mrCode    = ko.observable('');
+    self.mrNameEn  = ko.observable('');
+    self.mrNameAr  = ko.observable('');
+    self.mrSingle  = ko.observable(false);
+    self.mrActive  = ko.observable(true);
+
+    // the drawer's primary button doubles as Close when no form is open
+    self.mrSaveLabel = ko.pureComputed(function () {
+      return self.mrEditing() ? i18n.t('vw.ra.save') : i18n.t('vw.ra.close');
+    });
+
+    self.mrLoad = function () {
+      return wf.manageRoles().then(function (items) { self.mrRows(items); })
+        .catch(function (e) { self.mrMsg({ warn: true, text: (e && e.message) || 'Error' }); });
+    };
+    self.openManageRoles = function () {
+      self.mrMsg(null); self.mrEditing(false);
+      self.mrLoad(); self.mrOpen(true);
+    };
+    self.mrNew = function () {
+      self.mrIsNew(true); self.mrCode(''); self.mrNameEn(''); self.mrNameAr('');
+      self.mrSingle(false); self.mrActive(true); self.mrMsg(null);
+      self.mrEditing(true);
+    };
+    self.mrEdit = function (row) {
+      self.mrIsNew(false); self.mrCode(row.roleCode);
+      self.mrNameEn(row.nameEn || ''); self.mrNameAr(row.nameAr || '');
+      self.mrSingle(row.singleAssignee === 'Y');
+      self.mrActive(row.isActive === 'Y');
+      self.mrMsg(null); self.mrEditing(true);
+    };
+    // the drawer's Save button: saves the form when it is open, else closes
+    self.mrSave = function () {
+      if (!self.mrEditing()) { self.mrOpen(false); return; }
+      if (!self.mrCode() || !self.mrNameEn()) {
+        self.mrMsg({ warn: true, text: i18n.t('vw.ra.needAll') }); return;
+      }
+      self.mrBusy(true); self.mrMsg(null);
+      wf.saveRole({
+        roleCode: self.mrCode(), nameEn: self.mrNameEn(),
+        nameAr: self.mrNameAr() || null,
+        singleAssignee: self.mrSingle() ? 'Y' : 'N',
+        isActive: self.mrActive() ? 'Y' : 'N'
+      }).then(function (r) {
+        self.mrEditing(false);
+        if (r && r.activeAssignments > 0) {
+          // deactivated a role that still has active assignments -- warn
+          self.mrMsg({ warn: true,
+            text: i18n.t('vw.ra.mrInUseWarn') + ' ' + r.activeAssignments });
+        } else {
+          self.mrMsg({ warn: false, text: i18n.t('vw.ra.saved') });
+        }
+        return self.mrLoad().then(refreshMeta);
+      }).catch(function (e) {
+        self.mrMsg({ warn: true, text: (e && e.message) || 'Error' });
+      }).then(function () { self.mrBusy(false); });
+    };
+
+    /* ── Manage Objects drawer (SYS_ADMIN) ─────────────────────────────── */
+    self.moOpen    = ko.observable(false);
+    self.moRows    = ko.observableArray([]);
+    self.moMsg     = ko.observable(null);
+    self.moBusy    = ko.observable(false);
+    self.moEditing = ko.observable(false);
+    self.moIsNew   = ko.observable(true);
+    self.moCode    = ko.observable('');
+    self.moNameEn  = ko.observable('');
+    self.moNameAr  = ko.observable('');
+    self.moView    = ko.observable('');
+    self.moViewSearch  = ko.observable('');
+    self.moViewOptions = ko.observableArray([]);
+    self.moCols    = ko.observableArray([]);   // columns of the chosen view
+    self.moKeyCol   = ko.observable('');
+    self.moLabelCol = ko.observable('');
+    self.moKey2Col  = ko.observable('');
+    self.moParentCol = ko.observable('');
+    self.moKey2En  = ko.observable('');
+    self.moKey2Ar  = ko.observable('');
+    self.moNumeric = ko.observable(false);
+    self.moHier    = ko.observable('NONE');
+    self.moValidate = ko.observable(true);
+    self.moActive  = ko.observable(true);
+    self.moOrder   = ko.observable('');
+
+    self.moSaveLabel = ko.pureComputed(function () {
+      return self.moEditing() ? i18n.t('vw.ra.save') : i18n.t('vw.ra.close');
+    });
+
+    self.moLoad = function () {
+      return wf.manageObjectTypes().then(function (items) { self.moRows(items); })
+        .catch(function (e) { self.moMsg({ warn: true, text: (e && e.message) || 'Error' }); });
+    };
+    self.openManageObjects = function () {
+      self.moMsg(null); self.moEditing(false);
+      self.moLoad(); self.moOpen(true);
+    };
+    self.moSearchViews = function () {
+      wf.dictViews(self.moViewSearch()).then(function (views) {
+        self.moViewOptions(views);
+      }).catch(function () { self.moViewOptions([]); });
+    };
+    // choosing a view loads its columns so every column field is a dropdown --
+    // nothing free-typed ever reaches the registry
+    self.moLoadCols = function () {
+      var v = self.moView();
+      if (!v) { self.moCols([]); return; }
+      wf.dictColumns(v).then(function (cols) {
+        self.moCols(cols.map(function (c) { return c.name; }));
+      }).catch(function () { self.moCols([]); });
+    };
+    self.moView.subscribe(self.moLoadCols);
+
+    self.moNew = function () {
+      self.moIsNew(true); self.moCode(''); self.moNameEn(''); self.moNameAr('');
+      self.moView(''); self.moViewSearch(''); self.moViewOptions([]); self.moCols([]);
+      self.moKeyCol(''); self.moLabelCol(''); self.moKey2Col(''); self.moParentCol('');
+      self.moKey2En(''); self.moKey2Ar(''); self.moNumeric(false); self.moHier('NONE');
+      self.moValidate(true); self.moActive(true); self.moOrder('');
+      self.moMsg(null); self.moEditing(true);
+    };
+    self.moEdit = function (row) {
+      self.moIsNew(false); self.moCode(row.code);
+      self.moNameEn(row.nameEn || ''); self.moNameAr(row.nameAr || '');
+      self.moViewSearch(''); self.moViewOptions([row.lovView]);
+      self.moView(row.lovView);
+      self.moKeyCol(row.keyCol || ''); self.moLabelCol(row.labelCol || '');
+      self.moKey2Col(row.key2Col || ''); self.moParentCol(row.parentCol || '');
+      self.moKey2En(row.key2LabelEn || ''); self.moKey2Ar(row.key2LabelAr || '');
+      self.moNumeric(row.keyIsNumeric === 'Y'); self.moHier(row.hierarchy || 'NONE');
+      self.moValidate(row.validateKey !== 'N'); self.moActive(row.isActive === 'Y');
+      self.moOrder(row.displayOrder == null ? '' : row.displayOrder);
+      self.moMsg(null); self.moEditing(true);
+    };
+    self.moSave = function () {
+      if (!self.moEditing()) { self.moOpen(false); return; }
+      if (!self.moCode() || !self.moNameEn() || !self.moView()
+          || !self.moKeyCol() || !self.moLabelCol()) {
+        self.moMsg({ warn: true, text: i18n.t('vw.ra.needAll') }); return;
+      }
+      self.moBusy(true); self.moMsg(null);
+      wf.saveObjectType({
+        code: self.moCode(), nameEn: self.moNameEn(), nameAr: self.moNameAr() || null,
+        lovView: self.moView(), keyCol: self.moKeyCol(), labelCol: self.moLabelCol(),
+        key2Col: self.moKey2Col() || null, parentCol: self.moParentCol() || null,
+        key2LabelEn: self.moKey2En() || null, key2LabelAr: self.moKey2Ar() || null,
+        keyIsNumeric: self.moNumeric() ? 'Y' : 'N', hierarchy: self.moHier(),
+        validateKey: self.moValidate() ? 'Y' : 'N',
+        isActive: self.moActive() ? 'Y' : 'N',
+        displayOrder: self.moOrder() === '' ? null : Number(self.moOrder())
+      }).then(function (r) {
+        self.moEditing(false);
+        if (r && r.activeAssignments > 0) {
+          self.moMsg({ warn: true,
+            text: i18n.t('vw.ra.moInUseWarn') + ' ' + r.activeAssignments });
+        } else {
+          self.moMsg({ warn: false, text: i18n.t('vw.ra.saved') });
+        }
+        return self.moLoad().then(refreshMeta);
+      }).catch(function (e) {
+        self.moMsg({ warn: true, text: (e && e.message) || 'Error' });
+      }).then(function () { self.moBusy(false); });
     };
 
     /* ── timeline modal ────────────────────────────────────────────────── */

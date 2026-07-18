@@ -219,6 +219,13 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
     self.fmComment   = ko.observable('ON_NEGATIVE');
     self.fmFinalGate = ko.observable(false);
     self.fmQuorum    = ko.observable('ALL');
+    // timers: reminders BEFORE due ('48,24,4'), escalation + auto-action AFTER
+    // due -- all executed by the 15-min engine sweep, all plain step data
+    self.fmReminders   = ko.observable('');
+    self.fmEscRole     = ko.observable('');
+    self.fmEscHours    = ko.observable('');
+    self.fmAutoOutcome = ko.observable('');
+    self.fmAutoHours   = ko.observable('');
     self.fmParts     = ko.observableArray([]);
     self._origParts  = [];
 
@@ -227,6 +234,8 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
       self.fmStepKey(''); self.fmNameEn(''); self.fmNameAr(''); self.fmKind('HUMAN');
       self.fmOutcome(self.outcomeSetCodes()[0] || ''); self.fmCondition('');
       self.fmSla(''); self.fmComment('ON_NEGATIVE'); self.fmFinalGate(false); self.fmQuorum('ALL');
+      self.fmReminders(''); self.fmEscRole(''); self.fmEscHours('');
+      self.fmAutoOutcome(''); self.fmAutoHours('');
       self.fmParts([]); self._origParts = [];
       self.stepOpen(true);
     };
@@ -238,6 +247,11 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
       self.fmCondition(step.conditionKey || ''); self.fmSla(step.slaHours == null ? '' : step.slaHours);
       self.fmComment(step.commentRequired || 'ON_NEGATIVE');
       self.fmFinalGate(step.isFinalGate === 'Y'); self.fmQuorum(step.quorumType || 'ALL');
+      self.fmReminders(step.reminderOffsets || '');
+      self.fmEscRole(step.escalateRoleCode || '');
+      self.fmEscHours(step.escalateAfterHours == null ? '' : step.escalateAfterHours);
+      self.fmAutoOutcome(step.autoActionOutcome || '');
+      self.fmAutoHours(step.autoActionAfterHours == null ? '' : step.autoActionAfterHours);
       var parts = (step.participants || []).map(function (p) {
         return {
           ruleId: p.ruleId,
@@ -278,7 +292,12 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
         conditionKey: self.fmCondition() || null,
         slaHours: self.fmSla() === '' ? null : Number(self.fmSla()),
         commentRequired: self.fmComment(), isFinalGate: self.fmFinalGate() ? 'Y' : 'N',
-        quorumType: self.fmQuorum()
+        quorumType: self.fmQuorum(),
+        reminderOffsets: self.fmReminders() || null,
+        escalateRoleCode: (self.fmEscRole() || '').trim().toUpperCase() || null,
+        escalateAfterHours: self.fmEscHours() === '' ? null : Number(self.fmEscHours()),
+        autoActionOutcome: (self.fmAutoOutcome() || '').trim().toUpperCase() || null,
+        autoActionAfterHours: self.fmAutoHours() === '' ? null : Number(self.fmAutoHours())
       };
       var vid = d.versionId;
       wf.saveStep(vid, stepBody).then(function () {

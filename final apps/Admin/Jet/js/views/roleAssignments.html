@@ -14,6 +14,10 @@
                          css: { 'btn-primary': tab() === 'audit', 'btn-secondary': tab() !== 'audit' },
                          text: $root.t('vw.ra.tabAudit')"></button>
       <!-- ko if: tab() === 'list' -->
+      <button class="btn btn-secondary" data-bind="click: openManageRoles, text: $root.t('vw.ra.manageRoles')"></button>
+      <!-- ko if: isSysAdmin -->
+      <button class="btn btn-secondary" data-bind="click: openManageObjects, text: $root.t('vw.ra.manageObjects')"></button>
+      <!-- /ko -->
       <button class="btn btn-secondary" data-bind="click: openPolicies, text: $root.t('vw.ra.policies')"></button>
       <button class="btn btn-primary" data-bind="click: openNew, text: '+ ' + $root.t('vw.ra.add')"></button>
       <!-- /ko -->
@@ -311,52 +315,278 @@
   </div>
   <!-- /ko -->
 
-  <!-- ═══ role policies modal ═══ -->
-  <!-- ko if: polOpen() -->
-  <div class="modal-overlay" data-bind="click: function () { polOpen(false); }, clickBubble: false">
-    <div class="modal-box" style="max-width:520px"
-         data-bind="click: function () { return true; }, clickBubble: false,
-                    modalTrap: function () { $vm.polOpen(false); }">
-      <div class="modal-header">
-        <h3 data-bind="text: $root.t('vw.ra.policiesTitle')"></h3>
-        <div class="region-actions">
-          <button class="btn btn-secondary btn-sm"
-                  data-bind="click: function () { $vm.polOpen(false); }, text: $root.t('vw.ra.close')"></button>
-        </div>
-      </div>
-      <div class="modal-body">
-        <p class="wf-muted" data-bind="text: $root.t('vw.ra.polHint')"></p>
-        <!-- ko if: polMsg() -->
-        <div data-bind="css: polMsg().warn ? 'alert-banner alert-banner--danger' : 'alert-banner'">
-          <span data-bind="text: polMsg().text"></span>
-        </div>
-        <!-- /ko -->
-        <table class="data-table">
-          <thead><tr>
-            <th data-bind="text: $root.t('vw.ra.role')"></th>
-            <th data-bind="text: $root.t('vw.ra.polMode')"></th>
-            <th></th>
-          </tr></thead>
-          <tbody data-bind="foreach: roles">
-            <tr>
-              <td data-bind="text: $vm.roleName(roleCode)"></td>
-              <td>
-                <span class="badge"
-                      data-bind="text: singleAssignee === 'Y' ? $root.t('vw.ra.polSingle') : $root.t('vw.ra.polMulti'),
-                                 css: singleAssignee === 'Y' ? 'badge-info' : 'badge-success'"></span>
-              </td>
-              <td style="text-align:end">
-                <button class="btn btn-secondary btn-sm"
-                        data-bind="click: function () { $vm.togglePolicy($data); }, enable: !$vm.polBusy(),
-                                   text: singleAssignee === 'Y' ? $root.t('vw.ra.polMakeMulti') : $root.t('vw.ra.polMakeSingle')"></button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+  <!-- ═══ role policies drawer ═══ -->
+  <edit-drawer params="open: polOpen, vm: $vm,
+                       title: $root.t('vw.ra.policiesTitle'),
+                       saveLabel: $root.t('vw.ra.close'), cancelLabel: $root.t('vw.ra.cancel'),
+                       onSave: closePolicies, width: '560px'">
+    <p class="wf-muted" data-bind="text: $root.t('vw.ra.polHint')"></p>
+    <!-- ko if: polMsg() -->
+    <div data-bind="css: polMsg().warn ? 'alert-banner alert-banner--danger' : 'alert-banner'">
+      <span data-bind="text: polMsg().text"></span>
+    </div>
+    <!-- /ko -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('vw.ra.role')"></th>
+          <th data-bind="text: $root.t('vw.ra.polMode')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: roles">
+          <tr>
+            <td data-bind="text: $parent.roleName(roleCode)"></td>
+            <td>
+              <span class="badge"
+                    data-bind="text: singleAssignee === 'Y' ? $root.t('vw.ra.polSingle') : $root.t('vw.ra.polMulti'),
+                               css: singleAssignee === 'Y' ? 'badge-info' : 'badge-success'"></span>
+            </td>
+            <td style="text-align:end">
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function () { $parent.togglePolicy($data); }, enable: !$parent.polBusy(),
+                                 text: singleAssignee === 'Y' ? $root.t('vw.ra.polMakeMulti') : $root.t('vw.ra.polMakeSingle')"></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </edit-drawer>
+
+  <!-- ═══ Manage Roles drawer (WF_ADMIN) ═══ -->
+  <edit-drawer params="open: mrOpen, vm: $vm,
+                       title: $root.t('vw.ra.manageRolesTitle'),
+                       saveLabel: mrSaveLabel, cancelLabel: $root.t('vw.ra.cancel'),
+                       onSave: mrSave, width: '640px'">
+    <p class="wf-muted" data-bind="text: $root.t('vw.ra.mrHint')"></p>
+    <!-- ko if: mrMsg() -->
+    <div data-bind="css: mrMsg().warn ? 'alert-banner alert-banner--danger' : 'alert-banner'">
+      <span data-bind="text: mrMsg().text"></span>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: mrEditing() -->
+    <div class="section-heading-row" style="margin-top:4px">
+      <div class="section-heading" data-bind="text: $root.t('vw.ra.mrList')"></div>
+      <div class="region-actions">
+        <button class="btn btn-primary btn-sm" data-bind="click: mrNew, text: '+ ' + $root.t('vw.ra.mrAdd')"></button>
       </div>
     </div>
-  </div>
-  <!-- /ko -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('vw.ra.mrCode')"></th>
+          <th data-bind="text: $root.t('vw.ra.mrName')"></th>
+          <th data-bind="text: $root.t('vw.ra.polMode')"></th>
+          <th data-bind="text: $root.t('vw.ra.status')"></th>
+          <th data-bind="text: $root.t('vw.ra.mrInUse')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: mrRows">
+          <tr>
+            <td class="mono" data-bind="text: roleCode"></td>
+            <td data-bind="text: $parent.roleName(roleCode)"></td>
+            <td><span class="badge"
+                  data-bind="text: singleAssignee === 'Y' ? $root.t('vw.ra.polSingle') : $root.t('vw.ra.polMulti'),
+                             css: singleAssignee === 'Y' ? 'badge-info' : 'badge-success'"></span></td>
+            <td><span class="badge"
+                  data-bind="text: isActive === 'Y' ? $root.t('vw.ra.mrActive') : $root.t('vw.ra.mrInactive'),
+                             css: isActive === 'Y' ? 'badge-success' : 'badge-muted'"></span></td>
+            <td data-bind="text: activeAssignments"></td>
+            <td style="text-align:end">
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function () { $parent.mrEdit($data); }, text: $root.t('vw.ra.edit')"></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: mrEditing() -->
+    <div class="section-heading-row" style="margin-top:4px">
+      <div class="section-heading"
+           data-bind="text: mrIsNew() ? $root.t('vw.ra.mrAdd') : $root.t('vw.ra.edit')"></div>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm"
+                data-bind="click: function () { mrEditing(false); }, text: $root.t('vw.ra.back')"></button>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.mrCode')"></span> <span class="required">*</span></label>
+        <input class="form-control mono" data-bind="textInput: mrCode, enable: mrIsNew()"
+               placeholder="WF_BUDGET_CTRL" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.moFlags')"></label>
+        <div style="display:flex;gap:14px;align-items:center;height:38px">
+          <span style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" data-bind="checked: mrSingle">
+            <span data-bind="text: $root.t('vw.ra.polSingle')"></span>
+          </span>
+          <span style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" data-bind="checked: mrActive">
+            <span data-bind="text: $root.t('vw.ra.mrActive')"></span>
+          </span>
+        </div>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.mrNameEn')"></span> <span class="required">*</span></label>
+        <input class="form-control" data-bind="textInput: mrNameEn">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.mrNameAr')"></label>
+        <input class="form-control" dir="rtl" data-bind="textInput: mrNameAr">
+      </div>
+    </div>
+    <!-- /ko -->
+  </edit-drawer>
+
+  <!-- ═══ Manage Objects drawer (SYS_ADMIN) ═══ -->
+  <edit-drawer params="open: moOpen, vm: $vm,
+                       title: $root.t('vw.ra.manageObjectsTitle'),
+                       saveLabel: moSaveLabel, cancelLabel: $root.t('vw.ra.cancel'),
+                       onSave: moSave, width: '760px'">
+    <p class="wf-muted" data-bind="text: $root.t('vw.ra.moHint')"></p>
+    <!-- ko if: moMsg() -->
+    <div data-bind="css: moMsg().warn ? 'alert-banner alert-banner--danger' : 'alert-banner'">
+      <span data-bind="text: moMsg().text"></span>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: moEditing() -->
+    <div class="section-heading-row" style="margin-top:4px">
+      <div class="section-heading" data-bind="text: $root.t('vw.ra.moList')"></div>
+      <div class="region-actions">
+        <button class="btn btn-primary btn-sm" data-bind="click: moNew, text: '+ ' + $root.t('vw.ra.moAdd')"></button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('vw.ra.mrCode')"></th>
+          <th data-bind="text: $root.t('vw.ra.mrName')"></th>
+          <th data-bind="text: $root.t('vw.ra.moView')"></th>
+          <th data-bind="text: $root.t('vw.ra.status')"></th>
+          <th data-bind="text: $root.t('vw.ra.mrInUse')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: moRows">
+          <tr>
+            <td class="mono" data-bind="text: code"></td>
+            <td data-bind="text: $parent.typeName(code)"></td>
+            <td class="mono" style="font-size:.75rem" data-bind="text: lovView"></td>
+            <td><span class="badge"
+                  data-bind="text: isActive === 'Y' ? $root.t('vw.ra.mrActive') : $root.t('vw.ra.mrInactive'),
+                             css: isActive === 'Y' ? 'badge-success' : 'badge-muted'"></span></td>
+            <td data-bind="text: activeAssignments"></td>
+            <td style="text-align:end">
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function () { $parent.moEdit($data); }, text: $root.t('vw.ra.edit')"></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: moEditing() -->
+    <div class="section-heading-row" style="margin-top:4px">
+      <div class="section-heading"
+           data-bind="text: moIsNew() ? $root.t('vw.ra.moAdd') : $root.t('vw.ra.edit')"></div>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm"
+                data-bind="click: function () { moEditing(false); }, text: $root.t('vw.ra.back')"></button>
+      </div>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.mrCode')"></span> <span class="required">*</span></label>
+        <input class="form-control mono" data-bind="textInput: moCode, enable: moIsNew()"
+               placeholder="SUPPLIER" style="text-transform:uppercase">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.moOrder')"></label>
+        <input class="form-control" type="number" data-bind="textInput: moOrder">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.mrNameEn')"></span> <span class="required">*</span></label>
+        <input class="form-control" data-bind="textInput: moNameEn">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.mrNameAr')"></label>
+        <input class="form-control" dir="rtl" data-bind="textInput: moNameAr">
+      </div>
+
+      <div class="form-group" style="grid-column:1 / -1">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.moView')"></span> <span class="required">*</span></label>
+        <div style="display:flex;gap:6px">
+          <input class="form-control mono" data-bind="textInput: moViewSearch"
+                 placeholder="V_DCT_WF_OBJ_">
+          <button class="btn btn-secondary btn-sm" data-bind="click: moSearchViews, text: $root.t('vw.ra.find')"></button>
+        </div>
+        <select class="form-control mono" data-bind="value: moView, options: moViewOptions,
+                optionsCaption: $root.t('vw.ra.pick')" style="margin-top:6px"></select>
+        <div class="wf-muted" style="font-size:.75rem;margin-top:4px"
+             data-bind="text: $root.t('vw.ra.moViewHint')"></div>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.moKeyCol')"></span> <span class="required">*</span></label>
+        <select class="form-control mono" data-bind="value: moKeyCol, options: moCols,
+                optionsCaption: $root.t('vw.ra.pick')"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.moLabelCol')"></span> <span class="required">*</span></label>
+        <select class="form-control mono" data-bind="value: moLabelCol, options: moCols,
+                optionsCaption: $root.t('vw.ra.pick')"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.moKey2Col')"></label>
+        <select class="form-control mono" data-bind="value: moKey2Col, options: moCols,
+                optionsCaption: '—'"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.moParentCol')"></label>
+        <select class="form-control mono" data-bind="value: moParentCol, options: moCols,
+                optionsCaption: '—'"></select>
+      </div>
+
+      <!-- ko if: moKey2Col() -->
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: $root.t('vw.ra.moKey2En')"></span> <span class="required">*</span></label>
+        <input class="form-control" data-bind="textInput: moKey2En">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.moKey2Ar')"></label>
+        <input class="form-control" dir="rtl" data-bind="textInput: moKey2Ar">
+      </div>
+      <!-- /ko -->
+
+      <div class="form-group" style="grid-column:1 / -1">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.moFlags')"></label>
+        <div style="display:flex;gap:18px;align-items:center;flex-wrap:wrap;height:auto;min-height:38px">
+          <span style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" data-bind="checked: moNumeric">
+            <span data-bind="text: $root.t('vw.ra.moNumeric')"></span>
+          </span>
+          <span style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" data-bind="checked: moValidate">
+            <span data-bind="text: $root.t('vw.ra.moValidate')"></span>
+          </span>
+          <span style="display:flex;gap:6px;align-items:center">
+            <input type="checkbox" data-bind="checked: moActive">
+            <span data-bind="text: $root.t('vw.ra.mrActive')"></span>
+          </span>
+          <span style="display:flex;gap:6px;align-items:center">
+            <span data-bind="text: $root.t('vw.ra.moHier')"></span>
+            <select class="form-control" style="width:auto" data-bind="value: moHier, options: ['NONE','ORG']"></select>
+          </span>
+        </div>
+      </div>
+    </div>
+    <!-- /ko -->
+  </edit-drawer>
 
   <!-- ═══ timeline modal ═══ -->
   <!-- ko if: tlOpen() -->
