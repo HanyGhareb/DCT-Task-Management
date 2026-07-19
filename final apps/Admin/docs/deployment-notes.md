@@ -99,7 +99,7 @@ Script inventory (`db/v2/`, run order = `install.sql` 01→12, then numbered pat
 - Rotate any leaked keys immediately (an ANTHROPIC_API_KEY leak was rotated during Phase 1).
 - **2026-06-13 — Settings palette picker extracted to shared (APP_VERSION 4.4.0):** `Admin/Jet/js/viewModels/systemSettings.js` refactored to consume the new `shared/js/regionPicker.js` (PALETTE/contrast/pickers/live-preview) — no behaviour change. Same helper now powers the Region Appearance panel on every module's settings page. Shared/ change → APP_VERSION bumped to 4.4.0 in all 7 apps.
 
-- **2026-07-19 — Security Console (Fusion-style RBAC) Phase 0+1 LIVE (APP_VERSION 4.7.0):**
+- **2026-07-19 — Security Console (Fusion-style RBAC) Phase 0+1 LIVE (APP_VERSION 4.7.0; webtier release `20260719165634` LIVE):**
   db/v2/99 (DDL: `role_category` ABSTRACT/DUTY/JOB on DCT_ROLES [40 legacy roles → JOB],
   `verb` on DCT_PERMISSIONS, 12 new DCT_SEC_* tables — priv groups/items, role hierarchy,
   exclusions ROLE+USER, profiles+scopes+user assignments, materialized closure

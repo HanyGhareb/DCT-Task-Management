@@ -932,7 +932,7 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   CSV export unchanged (numbers only). Deploy: 07 re-run (standalone-safe) + webtier
   release 20260713232809. APP_VERSION 1.20.0.
 
-- **2026-07-19 — Security Console adoption (first module) — APP_VERSION 1.34.4:**
+- **2026-07-19 — Security Console adoption (first module) — APP_VERSION 1.34.4 (webtier release `20260719165634` LIVE):**
   GL/db/07/09/11/12/13 re-run with (a) a privilege gate after every 401 check —
   `prod.dct_sec.has_priv_or_role(l_user,'<PRIV>',NULL,'GL')` (NULL legacy role = the
   historical any-valid-session behaviour survives while `FEATURE_SEC_ENFORCE_GL`=N;
