@@ -149,35 +149,9 @@
       <!-- ko if: detailTab() === 'roles' -->
       <div class="re-panel">
         <div class="re-panel-label">Job and abstract roles (duty roles cannot be assigned directly)</div>
-        <div class="rm-table-panel">
-          <table class="rm-table">
-            <thead><tr><th>Role</th><th>Category</th><th>Start</th><th>End</th><th>Status</th><th style="width:90px"></th></tr></thead>
-            <tbody>
-              <!-- ko foreach: roleRows -->
-              <tr class="rm-row">
-                <td class="rm-cell-name">
-                  <span data-bind="text: name"></span>
-                  <code class="rm-code-badge" style="margin-inline-start:6px" data-bind="text: code"></code>
-                </td>
-                <td><span class="rm-sc-pill" data-bind="text: category,
-                      css: { 'rm-sc-pill--abstract': category === 'ABSTRACT', 'rm-sc-pill--job': category === 'JOB' }"></span></td>
-                <td data-bind="text: startDate"></td>
-                <td data-bind="text: $data.endDate || '—'"></td>
-                <td><span class="rm-status" data-bind="text: status,
-                      css: { 'rm-status--on': status === 'ACTIVE', 'rm-status--off': status !== 'ACTIVE' }"></span></td>
-                <td>
-                  <!-- ko if: status === 'ACTIVE' || status === 'FUTURE' -->
-                  <button class="rm-btn-sm rm-btn-sm--danger"
-                          data-bind="click: $parent.endRole.bind($parent, $data)">End</button>
-                  <!-- /ko -->
-                </td>
-              </tr>
-              <!-- /ko -->
-              <!-- ko if: roleRows().length === 0 -->
-              <tr><td colspan="6"><div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>No role assignments</div></div></td></tr>
-              <!-- /ko -->
-            </tbody>
-          </table>
+        <div class="rm-ir-embed" data-bind="event: { click: rolesGridClick }">
+          <interactive-report params="reportCode: 'SEC_USER_ROLES', section: '',
+                                      data: rolesIr, isAdmin: false, layoutsApi: null"></interactive-report>
         </div>
         <div class="rm-inline-form">
           <div style="flex:1 1 240px">
@@ -201,35 +175,10 @@
       <!-- security profiles tab -->
       <!-- ko if: detailTab() === 'profiles' -->
       <div class="re-panel">
-        <div class="re-panel-label">Data security — the rows this user is allowed to see</div>
-        <div class="rm-table-panel">
-          <table class="rm-table">
-            <thead><tr><th>Profile</th><th>Scope rows</th><th>Start</th><th>End</th><th>Status</th><th style="width:90px"></th></tr></thead>
-            <tbody>
-              <!-- ko foreach: profileRows -->
-              <tr class="rm-row">
-                <td class="rm-cell-name">
-                  <span data-bind="text: name"></span>
-                  <code class="rm-code-badge" style="margin-inline-start:6px" data-bind="text: code"></code>
-                </td>
-                <td data-bind="text: scopeCount"></td>
-                <td data-bind="text: startDate"></td>
-                <td data-bind="text: $data.endDate || '—'"></td>
-                <td><span class="rm-status" data-bind="text: status,
-                      css: { 'rm-status--on': status === 'ACTIVE', 'rm-status--off': status !== 'ACTIVE' }"></span></td>
-                <td>
-                  <!-- ko if: status === 'ACTIVE' || status === 'FUTURE' -->
-                  <button class="rm-btn-sm rm-btn-sm--danger"
-                          data-bind="click: $parent.endProfile.bind($parent, $data)">End</button>
-                  <!-- /ko -->
-                </td>
-              </tr>
-              <!-- /ko -->
-              <!-- ko if: profileRows().length === 0 -->
-              <tr><td colspan="6"><div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>Unrestricted — no security profile assigned</div></div></td></tr>
-              <!-- /ko -->
-            </tbody>
-          </table>
+        <div class="re-panel-label">Data security — the rows this user is allowed to see (no profile = unrestricted)</div>
+        <div class="rm-ir-embed" data-bind="event: { click: profilesGridClick }">
+          <interactive-report params="reportCode: 'SEC_USER_PROFILES', section: '',
+                                      data: profilesIr, isAdmin: false, layoutsApi: null"></interactive-report>
         </div>
         <div class="rm-inline-form">
           <div style="flex:1 1 260px">
@@ -246,27 +195,9 @@
       <!-- ko if: detailTab() === 'exclusions' -->
       <div class="re-panel">
         <div class="re-panel-label">Privileges withheld from this user even though their roles grant them</div>
-        <div class="rm-table-panel">
-          <table class="rm-table">
-            <thead><tr><th>Privilege</th><th>Reason</th><th>Since</th><th style="width:100px"></th></tr></thead>
-            <tbody>
-              <!-- ko foreach: exclusionRows -->
-              <tr class="rm-row">
-                <td class="rm-cell-name">
-                  <span data-bind="text: permName"></span>
-                  <code class="rm-code-badge" style="margin-inline-start:6px" data-bind="text: permCode"></code>
-                </td>
-                <td data-bind="text: $data.reason || '—'"></td>
-                <td data-bind="text: $data.createdAt || ''"></td>
-                <td><button class="rm-btn-sm rm-btn-sm--danger"
-                            data-bind="click: $parent.endExclusion.bind($parent, $data)">Remove</button></td>
-              </tr>
-              <!-- /ko -->
-              <!-- ko if: exclusionRows().length === 0 -->
-              <tr><td colspan="4"><div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>No exclusions</div></div></td></tr>
-              <!-- /ko -->
-            </tbody>
-          </table>
+        <div class="rm-ir-embed" data-bind="event: { click: exclGridClick }">
+          <interactive-report params="reportCode: 'SEC_USER_EXCLUSIONS', section: '',
+                                      data: exclIr, isAdmin: false, layoutsApi: null"></interactive-report>
         </div>
         <div class="rm-inline-form">
           <div style="flex:1 1 280px">
@@ -286,27 +217,12 @@
       <!-- effective tab -->
       <!-- ko if: detailTab() === 'effective' -->
       <div class="re-panel">
-        <div class="re-panel-label">Everything this user can do right now, grouped by the role that grants it</div>
+        <div class="re-panel-label">Everything this user can do right now, with the role that grants it</div>
         <!-- ko if: detailLoading --><div class="rm-spinner-sm"></div><!-- /ko -->
-        <!-- ko foreach: effectiveGroups -->
-        <div style="margin-bottom:16px">
-          <div class="rm-cell-name" style="margin-bottom:6px">
-            <span class="rm-sc-pill rm-sc-pill--job" data-bind="text: role"></span>
-            <span style="margin-inline-start:8px" data-bind="text: roleName"></span>
-          </div>
-          <div class="rm-chipbar">
-            <!-- ko foreach: privs -->
-            <span class="rm-chip" data-bind="attr: { title: code + ($data.viaRole ? ' — via duty ' + viaRole : '') + ($data.viaGroup ? ' — via group ' + viaGroup : '') }">
-              <span data-bind="text: name"></span>
-              <!-- ko if: $data.viaRole --><span class="rm-sc-pill rm-sc-pill--duty" data-bind="text: viaRole"></span><!-- /ko -->
-            </span>
-            <!-- /ko -->
-          </div>
+        <div class="rm-ir-embed">
+          <interactive-report params="reportCode: 'SEC_USER_EFFECTIVE', section: '',
+                                      data: effIr, isAdmin: false, layoutsApi: null"></interactive-report>
         </div>
-        <!-- /ko -->
-        <!-- ko if: effectiveGroups().length === 0 -->
-        <div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>No effective privileges — assign a job role first</div></div>
-        <!-- /ko -->
       </div>
       <!-- /ko -->
 

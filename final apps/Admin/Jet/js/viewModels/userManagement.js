@@ -48,6 +48,13 @@ function (ko, secService, userService) {
     self.exclusionRows = ko.observableArray([]);
     self.effectiveRows = ko.observableArray([]);
 
+    // interactive-report envelopes for the 4 detail tabs
+    self.rolesIr    = ko.observable(null);
+    self.profilesIr = ko.observable(null);
+    self.exclIr     = ko.observable(null);
+    self.effIr      = ko.observable(null);
+    self._roleMap = {}; self._profMap = {}; self._exclMap = {};
+
     // catalogs
     self.assignableRoles = ko.observableArray([]);  // ABSTRACT + JOB
     self.allProfiles     = ko.observableArray([]);
@@ -65,17 +72,107 @@ function (ko, secService, userService) {
       return Math.max(1, Math.ceil(self.total() / self.pageSize));
     });
 
-    self.effectiveGroups = ko.computed(function () {
-      var groups = {};
-      self.effectiveRows().forEach(function (r) {
-        var k = r.viaRoot;
-        if (!groups[k]) groups[k] = { role: r.viaRoot, roleName: r.viaRootName, privs: [] };
-        groups[k].privs.push(r);
-      });
-      return Object.keys(groups).sort().map(function (k) { return groups[k]; });
-    });
-
     function flash(msg) { self.okMsg(msg); setTimeout(function () { self.okMsg(''); }, 2500); }
+
+    // ── tab grids (shared <interactive-report>) ─────────────────────────
+    function irEnv(cols, items) { return { columns: cols, items: items, total: items.length }; }
+
+    function buildTabGrids() {
+      self._roleMap = {}; self._profMap = {}; self._exclMap = {};
+
+      self.rolesIr(irEnv(
+        [{ key: 'name', label: 'Role', type: 'text' },
+         { key: 'code', label: 'Code', type: 'text' },
+         { key: 'category', label: 'Category', type: 'text' },
+         { key: 'module', label: 'Module', type: 'text' },
+         { key: 'startDate', label: 'Start', type: 'date' },
+         { key: 'endDate', label: 'End', type: 'date' },
+         { key: 'status', label: 'Status', type: 'text' },
+         { key: 'action', label: 'Action', type: 'text' }],
+        self.roleRows().map(function (r) {
+          self._roleMap[[r.code, r.startDate, r.status].join('|')] = r.urId;
+          return {
+            name: r.name, code: r.code, category: r.category,
+            module: r.module || '', startDate: r.startDate,
+            endDate: r.endDate || '', status: r.status,
+            action: (r.status === 'ACTIVE' || r.status === 'FUTURE') ? 'End' : ''
+          };
+        })));
+
+      self.profilesIr(irEnv(
+        [{ key: 'name', label: 'Profile', type: 'text' },
+         { key: 'code', label: 'Code', type: 'text' },
+         { key: 'scopeCount', label: 'Scope rows', type: 'num' },
+         { key: 'startDate', label: 'Start', type: 'date' },
+         { key: 'endDate', label: 'End', type: 'date' },
+         { key: 'status', label: 'Status', type: 'text' },
+         { key: 'action', label: 'Action', type: 'text' }],
+        self.profileRows().map(function (r) {
+          self._profMap[[r.code, r.startDate, r.status].join('|')] = r.upId;
+          return {
+            name: r.name, code: r.code, scopeCount: r.scopeCount,
+            startDate: r.startDate, endDate: r.endDate || '', status: r.status,
+            action: (r.status === 'ACTIVE' || r.status === 'FUTURE') ? 'End' : ''
+          };
+        })));
+
+      self.exclIr(irEnv(
+        [{ key: 'permName', label: 'Privilege', type: 'text' },
+         { key: 'permCode', label: 'Code', type: 'text' },
+         { key: 'reason', label: 'Reason', type: 'text' },
+         { key: 'createdAt', label: 'Since', type: 'text' },
+         { key: 'action', label: 'Action', type: 'text' }],
+        self.exclusionRows().map(function (r) {
+          self._exclMap[r.permCode] = r.id;
+          return { permName: r.permName, permCode: r.permCode,
+                   reason: r.reason || '', createdAt: r.createdAt || '',
+                   action: 'Remove' };
+        })));
+
+      self.effIr(irEnv(
+        [{ key: 'name', label: 'Privilege', type: 'text' },
+         { key: 'code', label: 'Code', type: 'text' },
+         { key: 'module', label: 'Module', type: 'text' },
+         { key: 'viaRootName', label: 'Granted by role', type: 'text' },
+         { key: 'viaRole', label: 'Via duty', type: 'text' },
+         { key: 'viaGroup', label: 'Via group', type: 'text' }],
+        self.effectiveRows().map(function (r) {
+          return { name: r.name, code: r.code, module: r.module || '',
+                   viaRootName: r.viaRootName || r.viaRoot || '',
+                   viaRole: r.viaRole || '', viaGroup: r.viaGroup || '' };
+        })));
+    }
+
+    /* delegated action-cell click: the shared IR grid renders declared
+       columns only, so row identity rides a side-map keyed on visible
+       cell values (the GL pending-page pattern) */
+    function gridAction(e, keyCols, map, fn) {
+      var td = e.target && e.target.closest ? e.target.closest('td[data-key="action"]') : null;
+      if (!td || !td.textContent.trim()) return true;
+      var tr = td.closest('tr');
+      if (!tr) return true;
+      var parts = [], ok = true;
+      keyCols.forEach(function (k) {
+        var c = tr.querySelector('td[data-key="' + k + '"]');
+        if (!c) { ok = false; } else { parts.push(c.textContent.trim()); }
+      });
+      if (!ok) return true;
+      var id = map[parts.join('|')];
+      if (id != null) fn(id);
+      return true;
+    }
+    self.rolesGridClick = function (d, e) {
+      return gridAction(e, ['code', 'startDate', 'status'], self._roleMap,
+        function (id) { self.endRole({ urId: id }); });
+    };
+    self.profilesGridClick = function (d, e) {
+      return gridAction(e, ['code', 'startDate', 'status'], self._profMap,
+        function (id) { self.endProfile({ upId: id }); });
+    };
+    self.exclGridClick = function (d, e) {
+      return gridAction(e, ['permCode'], self._exclMap,
+        function (id) { self.endExclusion({ id: id }); });
+    };
 
     function loadList() {
       self.listLoading(true);
@@ -112,6 +209,7 @@ function (ko, secService, userService) {
         self.profileRows(res[0].profiles || []);
         self.exclusionRows(res[0].exclusions || []);
         self.effectiveRows(res[1].items || []);
+        buildTabGrids();
       }).catch(function (e) { self.errorMsg(e.message || 'Load failed'); })
         .then(function () { self.detailLoading(false); });
     }

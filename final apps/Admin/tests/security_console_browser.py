@@ -239,13 +239,38 @@ try:
             bad('aligned form grid missing on profile tab')
         pg.locator('.rm-tab', has_text='Effective Privileges').click()
         pg.wait_for_timeout(2000)
-        ok('user management: effective privileges tab rendered')
+        if pg.locator('.rm-ir-embed .ir-table').count() >= 1:
+            ok('user management: effective privileges tab is an interactive report')
+        else:
+            bad('effective privileges tab missing the IR grid')
         pg.locator('.rm-tab', has_text='Role Assignments').click()
-        pg.wait_for_timeout(1200)
+        pg.wait_for_timeout(1500)
+        heads = [h.strip().lower() for h in
+                 pg.locator('.rm-ir-embed .ir-table thead th').all_inner_texts()]
+        if any('role' in h for h in heads) and any('status' in h for h in heads) \
+           and any('action' in h for h in heads):
+            ok('user management: role assignments tab is an IR grid with an action column')
+        else:
+            bad(f'role assignments IR headers unexpected: {heads}')
         if pg.locator('.rm-inline-form select').count() >= 1:
             ok('user management: dated role-assignment form present')
         else:
             bad('role assignment form missing')
+        # empty tabs still mount the IR component (toolbar + its own empty state)
+        pg.locator('.rm-tab', has_text='Security Profile').click()
+        pg.wait_for_timeout(1200)
+        if pg.locator('.rm-ir-embed .ir-toolbar').count() >= 1:
+            ok('user management: security profile tab is an interactive report')
+        else:
+            bad('security profile tab missing the IR grid')
+        pg.locator('.rm-tab', has_text='Exclusions').click()
+        pg.wait_for_timeout(1200)
+        if pg.locator('.rm-ir-embed .ir-toolbar').count() >= 1:
+            ok('user management: exclusions tab is an interactive report')
+        else:
+            bad('exclusions tab missing the IR grid')
+        pg.locator('.rm-tab', has_text='Role Assignments').click()
+        pg.wait_for_timeout(1200)
 
         # new user drawer
         pg.locator('.rm-page-head .rm-btn-add').click()

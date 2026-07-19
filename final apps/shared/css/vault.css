@@ -790,6 +790,16 @@ html[lang="ar"] {
 }
 .rm-ir-panel .ir-table tbody tr { cursor: pointer; }
 
+/* borderless IR embed for grids nested inside an re-panel (User Management
+   detail tabs) — rows are not clickable; only the action cell acts */
+.rm-ir-embed { margin: 4px 0 14px; }
+.rm-ir-embed .ir-table td[data-key="action"] span {
+  color: var(--vault-red);
+  font-weight: 600;
+  cursor: pointer;
+}
+.rm-ir-embed .ir-table td[data-key="action"] span:hover { text-decoration: underline; }
+
 /* strict two-column form grid — labels above fields, uniform widths.
    Every field cell stretches; span the full row with .rm-fg-span. */
 .rm-form-grid {
