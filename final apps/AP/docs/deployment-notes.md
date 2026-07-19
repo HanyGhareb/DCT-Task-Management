@@ -48,6 +48,20 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 ## Deployment history
 
+- **2026-07-19 — AP rebrand: plum → green (#8E3B5C → #14682F).** All fills/
+  backgrounds and the chart palette move to the new brand green: `app.css`
+  tokens (`--brand #14682F` / `--brand-rgb 20,104,47` / `--brand-dark #0F4E23`
+  / `--brand-soft #E8F3EC` — every component styled off the vars follows for
+  free), `dashboard.js` chart constants (`BRAND`/`BRAND_MID` + the 6-step aging
+  ordinal RAMP rebuilt light→dark on the green hue: #9ECBAD → #0B3A1A; print
+  report + drawers + tooltips inherit via BRAND), the shared shell module
+  registry color (`shared/js/shell.js` — switcher dot + boot brand; shared
+  change ⇒ all-apps APP_VERSION bump) and the `DCT_MODULES` row
+  (icon_color/bg_color, seed `db/01` + live UPDATE in PROD). No AP
+  `THEME_BRAND_COLOR` module-setting row exists, so the registry default is
+  what boots. Semantic status colors (paid green / warn amber / error red) and
+  the region-theme settings are unchanged. Webtier release 20260719171839.
+
 - **2026-07-19 — Interactive-view deep-links + register COA popover (AP v1.12.0).**
   User-reported: in the Interactive view (shared `<interactive-report>`) at Line/Dist
   level the Invoice/PO/PR numbers were plain text and PO/PR rendered comma-grouped

@@ -1,6 +1,6 @@
 # Accounts Payable (App 212) — Status
 
-**Module:** AP · **Brand:** `#8E3B5C` · **ORDS:** `/ords/admin/ap/` (`ap.rest`) · **Data:** read-only over `PROD.AP_INVOICES_HEADER_V` / `AP_INVOICE_LINES_V` / `AP_INVOICE_DISTRIBUTIONS_V`
+**Module:** AP · **Brand:** `#14682F` · **ORDS:** `/ords/admin/ap/` (`ap.rest`) · **Data:** read-only over `PROD.AP_INVOICES_HEADER_V` / `AP_INVOICE_LINES_V` / `AP_INVOICE_DISTRIBUTIONS_V`
 
 | Layer | Status | Notes |
 |---|---|---|

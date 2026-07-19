@@ -4,8 +4,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
   'use strict';
 
   // Aging ramp — single-hue ordinal steps (validated light->dark, brand hue)
-  var RAMP  = ['#D293AC', '#BE7392', '#A85578', '#8E3B5C', '#742B48', '#5A1F37'];
-  var BRAND = '#8E3B5C', BRAND_MID = '#A85578';
+  var RAMP  = ['#9ECBAD', '#6FAF83', '#3C8B54', '#14682F', '#0F4E23', '#0B3A1A'];
+  var BRAND = '#14682F', BRAND_MID = '#3C8B54';
   var AG_ORDER = ['CURRENT', 'D1_30', 'D31_60', 'D61_90', 'D91_180', 'D180P'];
   var AG_KEYS  = ['ag.current', 'ag.b1', 'ag.b2', 'ag.b3', 'ag.b4', 'ag.b5'];
   var PAY_COLORS = { 'Paid': '#0ca30c', 'Unpaid': '#fab219' };

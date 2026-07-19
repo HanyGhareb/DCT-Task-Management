@@ -1,11 +1,11 @@
 /* Accounts Payable (App 212) — brand tokens + module-specific components only.
    Structural styles live in /shared/css/platform.css. The live brand colour is
-   loaded at boot from the module registry (#8E3B5C) via shared/js/shell.js. */
+   loaded at boot from the module registry (#14682F) via shared/js/shell.js. */
 :root {
-  --brand: #8E3B5C;
-  --brand-rgb: 142, 59, 92;
-  --brand-dark: #6d2c46;
-  --brand-soft: #f4e9ee;
+  --brand: #14682F;
+  --brand-rgb: 20, 104, 47;
+  --brand-dark: #0F4E23;
+  --brand-soft: #e8f3ec;
   /* legacy aliases */
   --primary: var(--brand);
   --primary-dark: var(--brand-dark);

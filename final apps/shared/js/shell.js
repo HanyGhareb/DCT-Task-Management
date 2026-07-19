@@ -35,7 +35,7 @@ define([], function () {
       mc: 'GL',           nameKey: 'mod.gl',    descKey: 'mod.gl.desc' },
     { key: 'bi',    code: 'BI', app: '211', color: '#1F6F8B', url: '/BI/Jet/index.html',
       mc: 'REPORTING',    nameKey: 'mod.bi',    descKey: 'mod.bi.desc' },
-    { key: 'ap',    code: 'AP', app: '212', color: '#8E3B5C', url: '/AP/Jet/index.html',
+    { key: 'ap',    code: 'AP', app: '212', color: '#14682F', url: '/AP/Jet/index.html',
       mc: 'AP',           nameKey: 'mod.ap',    descKey: 'mod.ap.desc' }
   ];
 
