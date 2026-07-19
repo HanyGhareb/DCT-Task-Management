@@ -129,7 +129,7 @@
   "tm.tl.subtitle": "Milestones, deliverables & tasks on a date axis",
   "tm.tl.none": "Nothing with dates to plot yet.",
 
-  "tm.dashboard.title": "Task Management Overview",
+  "tm.dashboard.title": "Team Management Overview",
   "tm.kpi.myTeams": "My Teams",
   "tm.kpi.myOpenTasks": "My Open Tasks",
   "tm.kpi.myOverdue": "Overdue (Mine)",

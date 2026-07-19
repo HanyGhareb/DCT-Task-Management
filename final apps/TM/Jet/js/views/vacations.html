@@ -56,7 +56,7 @@
   <!-- ko if: dayList().length === 0 --><div class="empty-state" data-bind="text: t('tm.vac.noneRange')"></div><!-- /ko -->
   <div class="vac-agenda" data-bind="foreach: dayList">
     <div class="vac-ag-item" data-bind="click: function () { $vm.openVac(vac); return true; }">
-      <span class="vac-avatar" data-bind="text: initials"></span>
+      <span class="vac-avatar"><span class="vac-avatar-ini" data-bind="text: initials"></span><!-- ko if: photoUrl --><img class="vac-avatar-img" data-bind="attr: { src: photoUrl, alt: name }, event: { error: $vm.photoErr }"><!-- /ko --></span>
       <div class="vac-ag-main">
         <div class="vac-ag-name" data-bind="text: name"></div>
         <div class="vac-ag-sub"><span data-bind="text: range"></span> · <span data-bind="text: $vm.t('tm.vac.dayWord') + ' ' + dayOf"></span></div>
@@ -86,7 +86,7 @@
       </thead>
       <tbody data-bind="foreach: weekRows">
         <tr>
-          <td class="vac-g-name"><span class="vac-avatar" data-bind="text: initials"></span><span data-bind="text: name"></span></td>
+          <td class="vac-g-name"><span class="vac-avatar"><span class="vac-avatar-ini" data-bind="text: initials"></span><!-- ko if: photoUrl --><img class="vac-avatar-img" data-bind="attr: { src: photoUrl, alt: name }, event: { error: $vm.photoErr }"><!-- /ko --></span><span data-bind="text: name"></span></td>
           <!-- ko foreach: cells -->
           <td data-bind="css: $vm.cellClass($data), attr: { title: tip }, click: function () { $vm.gridCellClick($data); return true; }">
             <!-- ko if: t --><div data-bind="css: barCls"></div><!-- /ko -->
@@ -137,7 +137,7 @@
       </thead>
       <tbody data-bind="foreach: gridRows">
         <tr>
-          <td class="vac-g-name"><span class="vac-avatar" data-bind="text: initials"></span><span data-bind="text: name"></span></td>
+          <td class="vac-g-name"><span class="vac-avatar"><span class="vac-avatar-ini" data-bind="text: initials"></span><!-- ko if: photoUrl --><img class="vac-avatar-img" data-bind="attr: { src: photoUrl, alt: name }, event: { error: $vm.photoErr }"><!-- /ko --></span><span data-bind="text: name"></span></td>
           <!-- ko foreach: cells -->
           <td data-bind="css: $vm.cellClass($data), attr: { title: tip }, click: function () { $vm.gridCellClick($data); return true; }">
             <!-- ko if: t --><div data-bind="css: barCls"></div><!-- /ko -->
@@ -163,7 +163,7 @@
       </thead>
       <tbody data-bind="foreach: yearRows">
         <tr>
-          <td class="vac-g-name"><span class="vac-avatar" data-bind="text: initials"></span><span data-bind="text: name"></span></td>
+          <td class="vac-g-name"><span class="vac-avatar"><span class="vac-avatar-ini" data-bind="text: initials"></span><!-- ko if: photoUrl --><img class="vac-avatar-img" data-bind="attr: { src: photoUrl, alt: name }, event: { error: $vm.photoErr }"><!-- /ko --></span><span data-bind="text: name"></span></td>
           <!-- ko foreach: cells -->
           <td class="vac-g-yrcell" data-bind="attr: { title: tip }, click: function () { $vm.drillMonth(mIdx); return true; }">
             <div data-bind="css: cls"><!-- ko if: cnt --><span data-bind="text: cnt"></span><!-- /ko --></div>
@@ -203,7 +203,7 @@
     </div>
     <div class="modal-body">
       <div class="vac-det-head">
-        <span class="vac-avatar vac-avatar--lg" data-bind="text: (selVac().memberName || '?').split(' ').map(function (p) { return p[0]; }).slice(0, 2).join('').toUpperCase()"></span>
+        <span class="vac-avatar vac-avatar--lg"><span class="vac-avatar-ini" data-bind="text: selVacInitials"></span><!-- ko if: selVacPhoto --><img class="vac-avatar-img" data-bind="attr: { src: selVacPhoto, alt: selVac().memberName }, event: { error: $vm.photoErr }"><!-- /ko --></span>
         <div>
           <div class="vac-det-name" data-bind="text: selVac().memberName"></div>
           <div>

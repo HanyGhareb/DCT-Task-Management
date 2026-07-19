@@ -49,6 +49,7 @@ function (ko, tm, vacSvc, i18n) {
 
     self.items  = [];        // vacations in the fetched window
     self.roster = [];        // members shown in grids + plan form
+    self.photoBy = {};       // userId → profile-photo URL (real members only)
     var localAdds = [];      // draft-mode adds survive navigation
 
     self.rangeTitle = ko.observable('');
@@ -111,7 +112,7 @@ function (ko, tm, vacSvc, i18n) {
                  + ' • ' + hit.vac.startDate + ' → ' + hit.vac.endDate) : ''
           };
         });
-        return { name: mem.name, initials: initialsOf(mem.name), cells: cells, total: total };
+        return { name: mem.name, initials: initialsOf(mem.name), photoUrl: mem.photoUrl || null, cells: cells, total: total };
       });
     }
 
@@ -182,7 +183,7 @@ function (ko, tm, vacSvc, i18n) {
       var out = vacs.filter(function (x) { return x.s <= day && x.e >= day; });
       self.dayList(out.map(function (x) {
         var v = x.vac;
-        return { vac: v, name: v.memberName, initials: initialsOf(v.memberName),
+        return { vac: v, name: v.memberName, initials: initialsOf(v.memberName), photoUrl: self.photoBy[v.userId] || null,
                  typeCls: 'vac-chip vac--' + v.type, typeLabel: i18n.t('tm.vac.type.' + v.type),
                  statusCls: 'vac-chip vac-chip--' + v.status, statusLabel: i18n.t('tm.vac.status.' + v.status),
                  range: v.startDate + ' → ' + v.endDate,
@@ -215,7 +216,7 @@ function (ko, tm, vacSvc, i18n) {
           return { cnt: cnt, mIdx: c.mIdx, cls: 'vac-yr vac-yr--' + lvl,
                    tip: cnt ? (mem.name + ' • ' + cnt + ' ' + i18n.t('tm.vac.daysL') + ' • ' + c.label) : '' };
         });
-        return { name: mem.name, initials: initialsOf(mem.name), cells: cells, total: total };
+        return { name: mem.name, initials: initialsOf(mem.name), photoUrl: mem.photoUrl || null, cells: cells, total: total };
       }));
       foot.forEach(function (v) { t += v; });
       self.yearFoot(foot.map(function (v, i) { return { v: v, mIdx: i }; }));
@@ -290,7 +291,12 @@ function (ko, tm, vacSvc, i18n) {
               rangeStart: rangeStart, rangeEnd: rangeEnd };
       var mp = self.teamId()
         ? tm.listMembers(self.teamId()).then(function (r) {
-            return (r.items || []).map(function (m) { return { userId: m.userId, name: m.name }; });
+            return (r.items || []).map(function (m) {
+              // profile photo served by the shared Admin media handler (no auth
+              // header needed — it's an ORDS media source); falls back to initials
+              return { userId: m.userId, name: m.name,
+                       photoUrl: '/ords/admin/dct/users/' + m.userId + '/photo' };
+            });
           }).catch(function () { return []; })
         : Promise.resolve([]);
       mp.then(function (members) {
@@ -298,6 +304,8 @@ function (ko, tm, vacSvc, i18n) {
       }).then(function (res) {
         self.sample(res.sample);
         self.roster = res.roster || [];
+        self.photoBy = {};
+        self.roster.forEach(function (m) { if (m.photoUrl) self.photoBy[m.userId] = m.photoUrl; });
         self.items = (res.items || []).concat(localAdds.filter(function (v) {
           return v.startDate <= iso(fetchEnd) && v.endDate >= iso(fetchStart);
         }));
@@ -350,6 +358,11 @@ function (ko, tm, vacSvc, i18n) {
     self.openVac  = function (v) { self.selVac(v); };
     self.closeVac = function () { self.selVac(null); };
     self.vacDays  = function (v) { return diffDays(d(v.endDate), d(v.startDate)) + 1; };
+    // No profile photo for this member (or a canned sample row) → drop the broken
+    // <img> so the initials underneath show through.
+    self.photoErr = function (data, ev) { if (ev && ev.target) { ev.target.style.display = 'none'; } return true; };
+    self.selVacPhoto    = ko.computed(function () { var v = self.selVac(); return v ? (self.photoBy[v.userId] || null) : null; });
+    self.selVacInitials = ko.computed(function () { var v = self.selVac(); return v ? initialsOf(v.memberName) : ''; });
 
     self.removeVac = function () {
       var v = self.selVac(); if (!v) return;
