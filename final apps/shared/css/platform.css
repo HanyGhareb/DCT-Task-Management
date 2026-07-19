@@ -1196,6 +1196,11 @@ table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
 .ir-colrow__pencil { padding: 2px 7px; font-size: 12px; }
 .ir-colrow__rename { max-width: 220px; padding: 3px 8px; font-size: 12px; }
 .ir-num { text-align: end; font-variant-numeric: tabular-nums; }
+/* cell deep-link (envelope cellLink hook — e.g. Fusion document links) */
+.ir-link { color: var(--brand, #1F6F8B); font-weight: 600; text-decoration: none; white-space: nowrap; }
+.ir-link:hover { text-decoration: underline; }
+.ir-link::after { content: "\2197"; font-size: 9px; margin-inline-start: 3px;
+                  opacity: .65; vertical-align: super; }
 .ir-agg-cell { font-weight: 700; background: var(--region-hd-soft); font-size: 12px;
                padding: 8px 14px; border-block-start: 2px solid var(--region-hd-accent); }
 .ir-pager { margin-top: 10px; }

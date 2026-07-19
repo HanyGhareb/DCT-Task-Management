@@ -17,7 +17,12 @@
  *   reportCode  string|observable  persistence scope (required)
  *   section     string|observable  MULTI section key ('' when N/A)
  *   data        ko.observable      REQUIRED — envelope {columns:[{key,label,type}],
- *                                  items:[], total, truncated, maxRows} or null
+ *                                  items:[], total, truncated, maxRows} or null.
+ *                                  Optional envelope hook cellLink(row, colKey)
+ *                                  -> href|null renders that cell as a new-tab
+ *                                  anchor (.ir-link, e.g. Fusion deep-links);
+ *                                  cells also carry data-key="<colKey>" for
+ *                                  app-level delegated hover/click handlers.
  *   isAdmin     bool               enables layout sharing controls
  *   layoutsApi  object|null        {list(code), create(data), update(id,data),
  *                                  remove(id)} — all Promise; null hides layouts
@@ -160,6 +165,7 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
       if (!env) { self.hasData(false); self.pageRows([]); return; }
       suspend = true;
       self.baseCols = env.columns || [];
+      self.linkFn = (typeof env.cellLink === 'function') ? env.cellLink : null;
       var key = ko.unwrap(self.reportCode) + '::' + (env.section || '');
       var newContext = (key !== stateKey);
       stateKey = key;
@@ -1228,6 +1234,13 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
     };
     self.cellClass = function (col) {
       return famOf(col.type) === 'num' ? 'ir-num' : '';
+    };
+    // optional envelope hook: env.cellLink(row, colKey) -> href|null renders the
+    // cell as a new-tab anchor (base columns only — calc columns stay text)
+    self.linkFn = null;
+    self.cellHref = function (row, col) {
+      if (!self.linkFn || col.isCalc || isNil(row[col.key])) return null;
+      try { return self.linkFn(row, col.key) || null; } catch (e) { return null; }
     };
 
     // consume the envelope that may already be present

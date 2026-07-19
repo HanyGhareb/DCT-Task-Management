@@ -9,7 +9,7 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
    - `db/02_ap_pkg.sql` — `PROD.DCT_AP_PKG`. Verify both spec+body VALID.
    - `db/03_ap_ords.sql` — **fresh session**. Rebuilds `ap.rest` from scratch (DELETE_MODULE):
      **always re-run `04` right after any `03` re-run.** Verify 5 templates / 5 handlers.
-   - `db/04_ap_level_ords.sql` — **fresh session**, additive lines/dists (+exports). Verify 9/9.
+   - `db/04_ap_level_ords.sql` — **fresh session**, additive lines/dists (+exports + cc lookup). Verify 10/10.
 2. **Frontend**: bump `window.APP_VERSION` in `Jet/index.html`; if anything under
    `final apps/shared/` changed, bump ALL apps. Ship via `webtier/deploy_frontend.sh`.
 3. **Smoke**: run `scratch` API suite (or curl `/ap/filters` + `/ap/summary?sector=Culture&paid=Unpaid`
@@ -47,6 +47,27 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   then `@03` + `@04`. Verify `all_objects WHERE status='INVALID'` is empty.
 
 ## Deployment history
+
+- **2026-07-19 — Interactive-view deep-links + register COA popover (AP v1.12.0).**
+  User-reported: in the Interactive view (shared `<interactive-report>`) at Line/Dist
+  level the Invoice/PO/PR numbers were plain text and PO/PR rendered comma-grouped
+  like ids (they were typed `num` in the IR envelope). Fixes: ① the SHARED IR
+  component gained an optional envelope hook `cellLink(row, colKey) → href|null`
+  (renders the cell as a new-tab `.ir-link` anchor, base columns only; cells now
+  carry `data-key` for app-level delegated handlers; `.ir-link` style in
+  platform.css) — AP's envelope passes an adapter over the existing
+  `cellLink(row,col)` rule set, so the IR grid links Invoice # (row.id), PO
+  (poHeaderId) and PR (prHeaderId) exactly like the standard table; ② PO/PR/
+  receipt/voucher numbers dropped from `IR_NUM_KEYS` → typed text, no thousands
+  grouping; ③ **GL Combination popover**: the 10-segment code+desc popover (same
+  as the invoice window's Distributions tab) now shows on hover over the
+  register's `glCombination`/`chargeAccount`/`poChargeAccount` cells in BOTH
+  views (and the Beneficiaries dashboard — same VM): delegated
+  `ccRegOver/Move/Out` on the register region + NEW additive `GET /ap/cc?cc=`
+  (04 part 5 — one snap row by cc_string, `found:'N'` when absent), lazy-cached
+  per combination. Shared change ⇒ APP_VERSION bumped in ALL 12 apps
+  (AP 1.12.0). Deploy: 04 re-run (10/10 templates+handlers), webtier release
+  20260719152633; sanity 50/50 register combinations resolve in the snap.
 
 - **2026-07-18 — BU facet fix round (AP v1.11.1).** User screenshot: the Business-unit
   facet rendered three "(None)" rows — the `/filters` `businessUnits[]` LOV was emitted as

@@ -455,9 +455,10 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     // shared component. layoutsApi null = localStorage-autosaved layouts.
     var IR_MAX = 10000;
     var IR_DATE_KEYS = { invoiceDate: 1, termsDate: 1, dueDate: 1, accountingDate: 1 };
+    // document numbers (PO/PR/receipt/voucher) are TEXT — 'num' would render
+    // them comma-grouped like amounts (451,102,007,704) and they'd read as ids
     var IR_NUM_KEYS  = { daysPastDue: 1, lineNumber: 1, distNumber: 1, activeHolds: 1,
-                         poNumber: 1, poLine: 1, prNumber: 1, receiptNumber: 1,
-                         voucherNum: 1, lineCount: 1, distCount: 1 };
+                         poLine: 1, lineCount: 1, distCount: 1 };
     self.viewMode = ko.observable('standard');          // standard | ir
     self.irData   = ko.observable(null);
     function irType(c) {
@@ -477,6 +478,11 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         truncated: (d.total || 0) > items.length,
         maxRows: IR_MAX,
         section: self.level(),          // scopes the component's autosave per level
+        // Fusion deep-links inside the IR grid (same rule set as the standard table)
+        cellLink: function (row, colKey) {
+          var l = self.cellLink(row, { key: colKey });
+          return l ? l.href : null;
+        },
       };
     }
     self.toggleViewMode = function () {
@@ -883,6 +889,49 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     };
     self.ccMove = function (r, e) { placeTip(e); return true; };
     self.ccOut  = function () { self.tipShow(false); return true; };
+
+    // ── the same popover on the REGISTER's combination columns (standard
+    //    table + interactive view), delegated on the region container; the
+    //    cell carries only the cc string, so segments come from GET /ap/cc
+    //    (lazy, cached per combination) ──────────────────────────────────
+    var CC_HOVER_KEYS = { glCombination: 1, chargeAccount: 1, poChargeAccount: 1 };
+    var ccCache = {};                                // cc -> seg obj | 'P' | 'NF'
+    var ccHoverCc = null;
+    function ccCellFrom(e) {
+      var el = e && e.target;
+      var td = el && el.closest ? el.closest('td[data-key]') : null;
+      return (td && CC_HOVER_KEYS[td.getAttribute('data-key')]) ? td : null;
+    }
+    function showCcTip(r, e) {
+      self.tipRows(SEG_DEFS.map(function (s) {
+        return { label: lt(s[0]), code: r[s[1]] || '', desc: r[s[2]] || '' };
+      }));
+      placeTip(e); self.tipShow(true);
+    }
+    self.ccRegOver = function (d, e) {
+      var td = ccCellFrom(e);
+      if (!td) return true;
+      var cc = (td.textContent || '').trim();
+      if (!cc || cc.indexOf('.') < 0) return true;
+      ccHoverCc = cc;
+      var hit = ccCache[cc];
+      if (hit && typeof hit === 'object') { showCcTip(hit, e); return true; }
+      if (hit === 'P' || hit === 'NF') return true;
+      ccCache[cc] = 'P';
+      api.get('/cc?cc=' + encodeURIComponent(cc), { silent: true }).then(function (r) {
+        if (r && r.found === 'Y') { ccCache[cc] = r; if (ccHoverCc === cc) showCcTip(r, e); }
+        else { ccCache[cc] = 'NF'; }
+      }).catch(function () { delete ccCache[cc]; });
+      return true;
+    };
+    self.ccRegMove = function (d, e) {
+      if (self.tipShow() && ccCellFrom(e)) placeTip(e);
+      return true;
+    };
+    self.ccRegOut = function (d, e) {
+      if (ccCellFrom(e)) { ccHoverCc = null; self.tipShow(false); }
+      return true;
+    };
 
     // ── rich hint popover (ⓘ on charts + regions): title + description +
     //    live figures computed from the loaded summary/register state ──────

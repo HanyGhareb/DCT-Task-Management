@@ -200,7 +200,8 @@
       </div>
 
       <!-- Region 2 — AP Register -->
-      <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() }">
+      <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() },
+           event: { mouseover: ccRegOver, mousemove: ccRegMove, mouseout: ccRegOut }">
         <div class="section-heading-row">
           <div class="section-heading ap-rh">
             <span data-bind="text: $vm.t('rg.register')"></span>
@@ -278,7 +279,7 @@
             <tr class="ap-row-click" data-bind="click: function () { $vm.openDrill($data); }">
               <!-- ko foreach: $vm.visibleCols -->
               <td data-bind="css: { 'ap-amount': !!$data.amt, 'ap-clip': !!$data.clip },
-                             attr: { title: $vm.cellTitle($parent, $data) }">
+                             attr: { title: $vm.cellTitle($parent, $data), 'data-key': $data.key }">
                 <!-- ko with: $vm.cellLink($parent, $data) -->
                 <a class="ap-inv-link" target="_blank" rel="noopener noreferrer"
                    data-bind="attr: { href: href, title: $vm.t('dr.fusionOpen') }, text: text,

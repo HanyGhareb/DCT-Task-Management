@@ -302,8 +302,17 @@
         <!-- /ko -->
         <!-- ko if: kind === 'row' -->
         <tr data-bind="style: $component.rowStyle(row), foreach: $component.visibleColumns()">
-          <td data-bind="text: $component.cellText($parent.row, $data), css: $component.cellClass($data),
-                         style: $component.cellStyle($parent.row, $data)"></td>
+          <td data-bind="css: $component.cellClass($data), style: $component.cellStyle($parent.row, $data),
+                         attr: { 'data-key': $data.key }">
+            <!-- ko if: $component.cellHref($parent.row, $data) -->
+            <a class="ir-link" target="_blank" rel="noopener noreferrer"
+               data-bind="attr: { href: $component.cellHref($parent.row, $data) },
+                          text: $component.cellText($parent.row, $data)"></a>
+            <!-- /ko -->
+            <!-- ko ifnot: $component.cellHref($parent.row, $data) -->
+            <span data-bind="text: $component.cellText($parent.row, $data)"></span>
+            <!-- /ko -->
+          </td>
         </tr>
         <!-- /ko -->
         <!-- ko if: kind === 'sub' -->

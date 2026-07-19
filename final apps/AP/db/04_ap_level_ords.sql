@@ -12,6 +12,10 @@
 --   GET /ap/lines/export     CSV download (25k cap)
 --   GET /ap/dists            paged distribution rows {items,total,totals,...}
 --   GET /ap/dists/export     CSV download (25k cap)
+--   GET /ap/cc?cc=           GL combination lookup: the 10 segment code+desc
+--                            pairs from prod.dct_gl_coa_snap for one canonical
+--                            cc_string (feeds the register combination popover;
+--                            found:'N' when the combination is not in the snap)
 -- Notes   : header-grain facets narrow via dct_ap_pkg.filtered_ids; facets
 --           that live on the row's own grain are re-applied to the rows
 --           directly (lines: dept/project/task/etype/po; dists: sector/cc/
@@ -514,11 +518,77 @@ DROP PROCEDURE setup_ap_lvl_t4;
 
 PROMPT level part 4 done (dists export)
 
-PROMPT === verification -- expect 9 templates, 9 handlers on ap.rest ===
+CREATE OR REPLACE PROCEDURE setup_ap_lvl_t5 AS
+    c_mod CONSTANT VARCHAR2(30) := 'ap.rest';
+    PROCEDURE def_template(p_pattern VARCHAR2) IS
+    BEGIN
+        ORDS.DEFINE_TEMPLATE(p_module_name => c_mod, p_pattern => REPLACE(p_pattern, '[COLON]', CHR(58)));
+    END;
+    PROCEDURE def_handler(p_pattern VARCHAR2, p_method VARCHAR2, p_source CLOB) IS
+    BEGIN
+        ORDS.DEFINE_HANDLER(
+            p_module_name => c_mod,
+            p_pattern     => REPLACE(p_pattern, '[COLON]', CHR(58)),
+            p_method      => p_method,
+            p_source_type => ORDS.source_type_plsql,
+            p_source      => REPLACE(p_source, '[COLON]', CHR(58)));
+    END;
+BEGIN
+    def_template('cc');
+    def_handler('cc', 'GET', q'!
+DECLARE
+  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  l_cc    VARCHAR2(200) := [COLON]cc;
+  l_found BOOLEAN := FALSE;
+BEGIN
+  IF l_cc IS NULL THEN dct_rest.err(400, 'cc is required'); RETURN; END IF;
+  FOR r IN (SELECT entity_code, entity_desc, program_code, program_desc,
+                   cost_center_code, cost_center_desc, budget_group_code, budget_group_desc,
+                   account_code, account_desc, entity_specific_code, entity_specific_desc,
+                   appropriation_code, appropriation_desc, intercompany_code, intercompany_desc,
+                   future1_code, future1_desc, future2_code, future2_desc
+              FROM prod.dct_gl_coa_snap
+             WHERE cc_string = l_cc
+             FETCH FIRST 1 ROWS ONLY)
+  LOOP
+    l_found := TRUE;
+    dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
+    APEX_JSON.write('cc', l_cc); APEX_JSON.write('found', 'Y');
+    APEX_JSON.write('entityCode', r.entity_code); APEX_JSON.write('entityDesc', r.entity_desc);
+    APEX_JSON.write('programCode', r.program_code); APEX_JSON.write('programDesc', r.program_desc);
+    APEX_JSON.write('costCenterCode', r.cost_center_code); APEX_JSON.write('costCenterDesc', r.cost_center_desc);
+    APEX_JSON.write('budgetGroupCode', r.budget_group_code); APEX_JSON.write('budgetGroupDesc', r.budget_group_desc);
+    APEX_JSON.write('accountCode', r.account_code); APEX_JSON.write('accountDesc', r.account_desc);
+    APEX_JSON.write('entitySpecificCode', r.entity_specific_code); APEX_JSON.write('entitySpecificDesc', r.entity_specific_desc);
+    APEX_JSON.write('appropriationCode', r.appropriation_code); APEX_JSON.write('appropriationDesc', r.appropriation_desc);
+    APEX_JSON.write('intercompanyCode', r.intercompany_code); APEX_JSON.write('intercompanyDesc', r.intercompany_desc);
+    APEX_JSON.write('future1Code', r.future1_code); APEX_JSON.write('future1Desc', r.future1_desc);
+    APEX_JSON.write('future2Code', r.future2_code); APEX_JSON.write('future2Desc', r.future2_desc);
+    APEX_JSON.close_object;
+  END LOOP;
+  IF NOT l_found THEN
+    dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
+    APEX_JSON.write('cc', l_cc); APEX_JSON.write('found', 'N');
+    APEX_JSON.close_object;
+  END IF;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    COMMIT;
+END setup_ap_lvl_t5;
+/
+
+BEGIN setup_ap_lvl_t5; END;
+/
+DROP PROCEDURE setup_ap_lvl_t5;
+
+PROMPT level part 5 done (cc combination lookup)
+
+PROMPT === verification -- expect 10 templates, 10 handlers on ap.rest ===
 SELECT COUNT(*) templates FROM user_ords_templates t
   JOIN user_ords_modules m ON m.id = t.module_id WHERE m.name = 'ap.rest';
 SELECT COUNT(*) handlers FROM user_ords_handlers h
   JOIN user_ords_templates t ON t.id = h.template_id
   JOIN user_ords_modules m ON m.id = t.module_id WHERE m.name = 'ap.rest';
 
-PROMPT ap.rest level endpoints published (lines + dists + exports)
+PROMPT ap.rest level endpoints published (lines + dists + exports + cc lookup)
