@@ -57,6 +57,29 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 **Permission Matrix** (`permissions`) — role × permission grid by module.
 - `togglePerm` · `hasPerm` · `getPermsByModule` · `saveAll`.
 
+## 3b. Security Console (2026-07-19 — Fusion-style RBAC over /dct/sec/)
+
+**Privileges** (`privileges`) — verb-first privilege catalog (server-paginated).
+- `search` / `reload` / `prevPage` / `nextPage` · `addPrivilege` / `editPrivilege` / `saveEdit` (client + server verb-first validation) · `confirmDelete` / `doDelete` (soft).
+
+**Privilege Groups** (`privilegeGroups`) — card grid of privilege bundles.
+- `addGroup` / `editGroup` / `saveEdit` (full `permIds[]` sync) · `togglePriv` · `confirmDelete` / `doDelete`.
+
+**Abstract / Duty / Job Roles** (`abstractRoles` / `dutyRoles` / `jobRoles`) — one shared implementation (`secRolesBase.js`) parameterized by `role_category`.
+- `addRole` / `editRole` (→ `secRoleEdit`) · `startCopy` / `doCopy` (deep copy of the definition, never assignments) · `confirmDelete` / `doDelete`.
+
+**Role Editor** (`secRoleEdit`) — tabs: Privileges & Groups / Nested Duties / Exclusions / Effective Privileges.
+- `save` (syncs `permIds` + `groupIds` + `dutyIds` [cycle/depth guarded server-side] + `exclusionPermIds`) · `togglePriv` / `toggleGroup` / `toggleDuty` / `toggleExcl` · `setTab` / `backToList`.
+
+**Security Profiles** (`secProfiles`) — data-security profiles (10 dimensions: BU, Sector, Department, CC, Project, Task, GL Account, Appropriation, DCT Program, Chapter).
+- `addProfile` / `editProfile` / `saveEdit` · `addScope` (dimension LOV search via `/sec/lov`, `include_children` for hierarchy dims) / `removeScope` · `confirmDelete` / `doDelete`.
+
+**User Management** (`userManagement`) — master–detail replacement for users/userEdit (legacy pages retire after UAT).
+- List: `search` / `prevPage` / `nextPage` / `selectUser` / `newUser`.
+- Profile tab: `saveProfile`. Roles tab: `assignRole` (dated) / `endRole` (GREATEST end-date rule). Profiles tab: `assignProfile` / `endProfile`. Exclusions tab: `addExclusion` / `endExclusion`. Effective tab: `effectiveGroups` (grouped by granting role, with via-duty/via-group provenance).
+
+**`<security-info>`** (shared component, `shared/js/components/securityInfo.js`) — SYS_ADMIN-only "Security Info" drawer on any page; renders the page registry (`GET /dct/sec/pageinfo`): view privilege, artifacts (buttons/tabs/endpoints) and the roles granting each privilege. GL portal has a `.dw-*` twin in `GL/Jet` (`openSecurityInfo`).
+
 ## 4. Organisation & Modules
 
 **Org Hierarchy** (`orgHierarchy`) — org unit tree (divisions/departments/sections).
@@ -160,6 +183,7 @@ and read is **PUT** `notifications/:id/read` (not POST).
 | Automation Registry | `GET runners/` · `GET runners/meta` · `POST runners/` · `GET runners/:id` · `PUT runners/:id` · `DELETE runners/:id` · `PUT runners/:id/file` · `GET runners/:id/file` *(db/v2/31)* |
 | Delegations | `GET delegations/` · `POST delegations/` · `POST delegations/:id/cancel` |
 | Announcements | `GET announcements/` · `POST announcements/` · `PUT announcements/:id` · `GET announcements/active` |
+| Security Console *(db/v2/101 — ALL SYS_ADMIN-gated; re-run 101 after any 11 re-run)* | `GET sec/meta` · `GET/POST sec/privileges` · `PUT/DELETE sec/privileges/:id` · `GET/POST sec/groups` · `GET/PUT/DELETE sec/groups/:id` · `GET/POST sec/roles` · `GET/PUT/DELETE sec/roles/:id` · `POST sec/roles/:id/copy` · `GET/POST sec/profiles` · `GET/PUT/DELETE sec/profiles/:id` · `GET sec/lov` · `GET sec/users/:id/security` · `POST sec/users/:id/roles\|profiles\|exclusions` · `GET sec/users/:id/effective` · `GET/POST sec/pages` · `GET sec/pageinfo` *(the Security Info drawer route)* |
 
 Module `wf.rest` · base path **`/ords/admin/wf/`** · defined in `db/v2/67` + `69` (designer) + `96` (role assignments). Cross-module by design (EXEMPT from the module-access gate → every route self-gates); consumed via `shared/js/wfService.js`.
 
@@ -188,5 +212,6 @@ Module `wf.rest` · base path **`/ords/admin/wf/`** · defined in `db/v2/67` + `
 | `auditService` | audit log + export. |
 | `sessionService` | active sessions + revoke. |
 | `delegationService` | approval delegations. |
+| `secService` | Security Console client (`/dct/sec/`): privileges, groups, roles+hierarchy+copy, profiles+LOV, per-user security/effective, page registry. |
 | `announcementService` | announcement banners. |
 | `runnerService` | automation registry CRUD + meta + binary file up/download (`putBinary`/`fetchBlobUrl`). |

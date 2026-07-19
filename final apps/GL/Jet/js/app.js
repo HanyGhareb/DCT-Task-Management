@@ -326,6 +326,36 @@
     self.userName = session.displayName || session.username || '';
     self.initials = (function () { var n = (self.userName || '').split(' ').filter(Boolean); return ((n[0] || ' ')[0] + ((n[1] || '')[0] || '')).toUpperCase(); })();
     self.dimName = function (d) { return self.lang() === 'ar' ? (d.nameAr || d.nameEn) : d.nameEn; };
+
+    // Security Info drawer (SYS_ADMIN only) — reads the Security Console page
+    // registry for the ACTIVE tab. Portal-style twin of <security-info>.
+    self.isSysAdmin = ((session.rolesCsv || '').split(',').indexOf('SYS_ADMIN') >= 0);
+    self.secDrawer = ko.observable(false);
+    self.secLoading = ko.observable(false);
+    self.secErr = ko.observable('');
+    self.secInfo = ko.observable(null);
+    self.secArts = ko.observableArray([]);
+    self.openSecurityInfo = function () {
+      var page = self.view();
+      self.secDrawer(true); self.secLoading(true); self.secErr('');
+      self.secInfo(null); self.secArts([]);
+      fetch('/ords/admin/dct/sec/pageinfo?module=GL&page=' + encodeURIComponent(page),
+            { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (r.status === 404) { throw new Error('notreg'); }
+          if (!r.ok) { throw new Error('HTTP ' + r.status); }
+          return r.json();
+        })
+        .then(function (d) { self.secInfo(d); self.secArts(d.artifacts || []); })
+        .catch(function (e) {
+          self.secErr(e.message === 'notreg'
+            ? 'This page is not registered in the security catalog yet.'
+            : ('Load failed: ' + e.message));
+        })
+        .then(function () { self.secLoading(false); });
+    };
+    self.closeSecurityInfo = function () { self.secDrawer(false); };
+
     self.loading = ko.observable(false);
     self.modalErr = ko.observable('');
 

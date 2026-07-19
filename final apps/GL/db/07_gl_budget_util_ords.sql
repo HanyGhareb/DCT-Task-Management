@@ -68,9 +68,14 @@ BEGIN
     def_handler('butil/filters', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
   SELECT MAX(budget_year) INTO l_year FROM prod.dct_budget_utilization_v;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('defaultYear', l_year);
@@ -115,9 +120,14 @@ END;
     def_handler('butil/lov', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year NUMBER := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
   APEX_JSON.open_array('costCenters');
@@ -165,6 +175,8 @@ END;
     def_handler('butil', 'GET', q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year   NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
   l_ptype  VARCHAR2(100) := [COLON]projecttype;
   l_sector VARCHAR2(200) := [COLON]sector;
@@ -183,6 +195,9 @@ DECLARE
   t_bud NUMBER; t_ap NUMBER; t_grn NUMBER; t_pr NUMBER; t_po NUMBER; t_fund NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
   IF l_period = '' THEN l_period := NULL; END IF;
   IF l_period IS NOT NULL THEN
@@ -202,6 +217,7 @@ BEGIN
    WHERE v.budget_year = l_year
      AND (l_ptype  IS NULL OR v.project_type = l_ptype)
      AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
      AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
      AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
@@ -226,6 +242,7 @@ BEGIN
     WHERE v.budget_year = l_year
       AND (l_ptype  IS NULL OR v.project_type = l_ptype)
       AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
       AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
       AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
@@ -291,6 +308,8 @@ END;
     def_handler('butil/lines', 'GET', q'!
 DECLARE
   l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year    NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
   l_project VARCHAR2(120) := [COLON]project;
   l_task    VARCHAR2(120) := [COLON]task;
@@ -316,6 +335,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
+  END IF;
   IF l_year IS NULL OR l_metric IS NULL THEN dct_rest.err(400,'year and metric are required'); RETURN; END IF;
   -- project/task/etype set -> single row drill; project omitted -> aggregate
   -- drill (KPI card) filtered like /gl/butil: projecttype/sector/search plus
@@ -364,6 +386,7 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
@@ -432,6 +455,7 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
@@ -499,6 +523,7 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
@@ -560,6 +585,7 @@ BEGIN
              WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')

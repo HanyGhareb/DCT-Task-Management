@@ -29,7 +29,8 @@ require(
    'shared/editDrawer', 'shared/docUpload',
    // workflow platform components — self-registering KO components
    'shared/components/wfWorklist', 'shared/components/wfTimeline',
-   'shared/components/wfActionBar', 'shared/components/wfDesigner'],
+   'shared/components/wfActionBar', 'shared/components/wfDesigner',
+   'shared/components/securityInfo'],
   function (AppController, ko, i18n) {
 
   // Custom KO binding: swaps a view+viewModel pair into a container element.

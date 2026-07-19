@@ -1,0 +1,202 @@
+<div class="re-page rm-page">
+
+  <div class="rm-page-head rm-page-head--back">
+    <div style="display:flex; align-items:center; gap:12px">
+      <button class="rm-back-btn" data-bind="click: backToList" title="Back">&#8592;</button>
+      <div>
+        <h1 class="rm-title" data-bind="text: pageTitle"></h1>
+        <p class="rm-subtitle">
+          <span class="rm-sc-pill" data-bind="text: category(),
+                css: { 'rm-sc-pill--abstract': category() === 'ABSTRACT',
+                       'rm-sc-pill--duty': category() === 'DUTY',
+                       'rm-sc-pill--job': category() === 'JOB' }"></span>
+          <!-- ko if: copiedFrom -->
+          <span class="rm-kv" style="margin-inline-start:8px">copied from <b data-bind="text: copiedFrom"></b></span>
+          <!-- /ko -->
+        </p>
+      </div>
+    </div>
+    <div style="display:flex; gap:8px">
+      <button class="rm-btn-sm" data-bind="click: backToList">Cancel</button>
+      <button class="rm-btn-add" data-bind="click: save, enable: !saving()">
+        <span data-bind="text: saving() ? 'Saving…' : 'Save Role'"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ko if: errorMsg --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
+
+  <!-- ko if: loading() -->
+  <div class="rm-skeleton-rows"><div class="rm-skeleton-row"></div><div class="rm-skeleton-row"></div><div class="rm-skeleton-row"></div></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading() -->
+  <div class="re-layout" style="display:block">
+
+    <div class="re-panel">
+      <div class="re-panel-label">Definition</div>
+      <div class="re-field re-field--inline">
+        <div style="flex:1">
+          <label class="re-label">Code <span class="re-req">*</span></label>
+          <input class="re-input re-input--mono" data-bind="value: fCode, enable: isNew">
+        </div>
+        <div style="flex:1">
+          <label class="re-label">Module</label>
+          <select class="re-input" data-bind="options: modules, optionsCaption: 'Platform-wide', value: fModule, enable: isNew"></select>
+        </div>
+        <div style="flex:0 0 130px">
+          <label class="re-label">Status</label>
+          <div class="re-toggle-row" data-bind="click: function () { fActive(!fActive()); return true; }">
+            <span class="rm-status" data-bind="text: fActive() ? 'Active' : 'Inactive',
+                  css: { 'rm-status--on': fActive(), 'rm-status--off': !fActive() }"></span>
+          </div>
+        </div>
+      </div>
+      <div class="re-field re-field--inline">
+        <div style="flex:1">
+          <label class="re-label">Name <span class="re-req">*</span></label>
+          <input class="re-input" data-bind="value: fName">
+        </div>
+        <div style="flex:1">
+          <label class="re-label">Name (Arabic)</label>
+          <input class="re-input" dir="rtl" data-bind="value: fNameAr">
+        </div>
+      </div>
+      <div class="re-field">
+        <label class="re-label">Description</label>
+        <textarea class="re-textarea" rows="2" data-bind="value: fDesc"></textarea>
+      </div>
+    </div>
+
+    <div class="rm-tabs">
+      <button class="rm-tab" data-bind="css: { 'rm-tab--on': activeTab() === 'grants' }, click: setTab.bind($data, 'grants')">
+        Privileges &amp; Groups (<span data-bind="text: selPrivs().length + selGroups().length"></span>)
+      </button>
+      <button class="rm-tab" data-bind="css: { 'rm-tab--on': activeTab() === 'duties' }, click: setTab.bind($data, 'duties')">
+        Nested Duties (<span data-bind="text: selDuties().length"></span>)
+      </button>
+      <button class="rm-tab" data-bind="css: { 'rm-tab--on': activeTab() === 'exclusions' }, click: setTab.bind($data, 'exclusions')">
+        Exclusions (<span data-bind="text: selExcl().length"></span>)
+      </button>
+      <!-- ko ifnot: isNew -->
+      <button class="rm-tab" data-bind="css: { 'rm-tab--on': activeTab() === 'effective' }, click: setTab.bind($data, 'effective')">
+        Effective Privileges (<span data-bind="text: effective().length"></span>)
+      </button>
+      <!-- /ko -->
+    </div>
+
+    <!-- ko if: activeTab() === 'grants' -->
+    <div class="re-panel">
+      <div class="re-panel-label">Privilege groups granted to this role</div>
+      <div class="re-perm-grid">
+        <!-- ko foreach: allGroups -->
+        <div class="re-perm-item" data-bind="css: { 're-perm-item--on': $parent.selGroups.indexOf(id) >= 0 },
+                                             click: $parent.toggleGroup.bind($parent, $data)">
+          <div class="re-perm-toggle"><div class="re-perm-toggle-dot"></div></div>
+          <div class="re-perm-info">
+            <div class="re-perm-name" data-bind="text: name"></div>
+            <span class="re-perm-code" data-bind="text: code"></span>
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: allGroups().length === 0 -->
+        <p class="rm-sc-note">No privilege groups defined yet — create them on the Privilege Groups page.</p>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="re-panel">
+      <div class="re-panel-label">Direct privileges</div>
+      <input class="re-input" placeholder="Filter privileges&hellip;"
+             data-bind="value: privSearch, valueUpdate: 'input'" style="margin-bottom:8px; max-width:340px">
+      <div class="re-perm-grid" style="max-height:320px; overflow-y:auto">
+        <!-- ko foreach: filteredPrivs -->
+        <div class="re-perm-item" data-bind="css: { 're-perm-item--on': $parent.selPrivs.indexOf(id) >= 0 },
+                                             click: $parent.togglePriv.bind($parent, $data)">
+          <div class="re-perm-toggle"><div class="re-perm-toggle-dot"></div></div>
+          <div class="re-perm-info">
+            <div class="re-perm-name" data-bind="text: name"></div>
+            <span class="re-perm-code" data-bind="text: ($data.module ? module + ' · ' : '') + code"></span>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: activeTab() === 'duties' -->
+    <div class="re-panel">
+      <div class="re-panel-label">Duty roles nested inside this role</div>
+      <p class="rm-sc-note" style="margin-bottom:10px">
+        A duty is never assigned to a user directly — it always works through a job or abstract role like this one.
+        Nesting depth is capped at 5 and cycles are rejected.
+      </p>
+      <div class="re-perm-grid">
+        <!-- ko foreach: dutiesAvailable -->
+        <div class="re-perm-item" data-bind="css: { 're-perm-item--on': $parent.selDuties.indexOf(id) >= 0 },
+                                             click: $parent.toggleDuty.bind($parent, $data)">
+          <div class="re-perm-toggle"><div class="re-perm-toggle-dot"></div></div>
+          <div class="re-perm-info">
+            <div class="re-perm-name" data-bind="text: name"></div>
+            <span class="re-perm-code" data-bind="text: code"></span>
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: dutiesAvailable().length === 0 -->
+        <p class="rm-sc-note">No duty roles defined yet — create them on the Duty Roles page.</p>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: activeTab() === 'exclusions' -->
+    <div class="re-panel">
+      <div class="re-panel-label">Privileges excluded from this role</div>
+      <p class="rm-sc-note" style="margin-bottom:10px">
+        An exclusion removes a privilege this role would otherwise inherit. It applies to this role only —
+        the same privilege gained through another role survives.
+      </p>
+      <input class="re-input" placeholder="Filter privileges&hellip;"
+             data-bind="value: privSearch, valueUpdate: 'input'" style="margin-bottom:8px; max-width:340px">
+      <div class="re-perm-grid" style="max-height:320px; overflow-y:auto">
+        <!-- ko foreach: filteredPrivs -->
+        <div class="re-perm-item" data-bind="css: { 're-perm-item--on': $parent.selExcl.indexOf(id) >= 0 },
+                                             click: $parent.toggleExcl.bind($parent, $data)">
+          <div class="re-perm-toggle"><div class="re-perm-toggle-dot"></div></div>
+          <div class="re-perm-info">
+            <div class="re-perm-name" data-bind="text: name"></div>
+            <span class="re-perm-code" data-bind="text: code"></span>
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: activeTab() === 'effective' -->
+    <div class="re-panel">
+      <div class="re-panel-label">Everything this role grants (after nesting, groups and exclusions)</div>
+      <div class="rm-table-panel" style="margin-top:8px">
+        <table class="rm-table">
+          <thead><tr><th>Privilege</th><th>Code</th><th>Module</th></tr></thead>
+          <tbody>
+            <!-- ko foreach: effective -->
+            <tr class="rm-row">
+              <td class="rm-cell-name" data-bind="text: name"></td>
+              <td><code class="rm-code-badge" data-bind="text: code"></code></td>
+              <td data-bind="text: $data.module || 'Platform'"></td>
+            </tr>
+            <!-- /ko -->
+            <!-- ko if: effective().length === 0 -->
+            <tr><td colspan="3"><div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>This role grants nothing yet</div></div></td></tr>
+            <!-- /ko -->
+          </tbody>
+        </table>
+      </div>
+      <p class="rm-sc-note">Saved state — save the role to refresh this preview.</p>
+    </div>
+    <!-- /ko -->
+
+  </div>
+  <!-- /ko -->
+
+</div>

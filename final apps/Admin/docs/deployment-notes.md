@@ -98,3 +98,28 @@ Script inventory (`db/v2/`, run order = `install.sql` 01→12, then numbered pat
 - ADB ORDS returns a 400 HTML error page for **body-less requests carrying `Content-Type: application/json`** (e.g. DELETE). Fixed in `shared/js/api.js` (Content-Type only when a body exists) — don't regress.
 - Rotate any leaked keys immediately (an ANTHROPIC_API_KEY leak was rotated during Phase 1).
 - **2026-06-13 — Settings palette picker extracted to shared (APP_VERSION 4.4.0):** `Admin/Jet/js/viewModels/systemSettings.js` refactored to consume the new `shared/js/regionPicker.js` (PALETTE/contrast/pickers/live-preview) — no behaviour change. Same helper now powers the Region Appearance panel on every module's settings page. Shared/ change → APP_VERSION bumped to 4.4.0 in all 7 apps.
+
+- **2026-07-19 — Security Console (Fusion-style RBAC) Phase 0+1 LIVE (APP_VERSION 4.7.0):**
+  db/v2/99 (DDL: `role_category` ABSTRACT/DUTY/JOB on DCT_ROLES [40 legacy roles → JOB],
+  `verb` on DCT_PERMISSIONS, 12 new DCT_SEC_* tables — priv groups/items, role hierarchy,
+  exclusions ROLE+USER, profiles+scopes+user assignments, materialized closure
+  DCT_SEC_ROLE_PRIV_FLAT, version row, page+artifact registry; DUTY-assignment BEFORE
+  INSERT trigger on DCT_USER_ROLES; abstract-role seeds EMPLOYEE/MANAGER/SUPPLIER/FREELANCER;
+  DCT_WF_OBJECT_TYPE gains use_in_security/use_in_wf + BUSINESS_UNIT/DCT_PROGRAM/CHAPTER dims,
+  hierarchy_kind now allows CLASS), db/v2/100 (V_DCT_USER_PRIVS_EFF + V_DCT_SEC_USER_SCOPE
+  [ORG + CLASS descendants pre-expanded] + DCT_SEC pkg [has_priv w/ per-session version cache,
+  has_priv_or_role grandfather helper — NULL legacy role = any-valid-session until
+  FEATURE_SEC_ENFORCE_<MOD>=Y, refresh_flat full closure rebuild, copy_role, add/remove_hierarchy
+  w/ cycle+depth≤5 guards] + DCT_SEC_DATA.is_unrestricted fail-open gate), db/v2/101
+  (30 handlers under /dct/sec/ — **RE-RUN 101 AFTER ANY 11 RE-RUN**), db/v2/102 (GL+ADMIN seeds).
+  Tests: 100t 32/32 (incl. the equivalence invariant: v_dct_user_privs_eff ≡ v_dct_user_permissions
+  for every user), 101t API 44/44, security_console_browser.py 19/19 EN+AR/RTL.
+  Admin JET: new nav group **Security Console** (privileges / privilegeGroups / abstractRoles /
+  dutyRoles / jobRoles / secProfiles / userManagement + secRoleEdit), `services/secService.js`,
+  Vault-styled (`rm-sc-*` additions in shared vault.css). Shared: `<security-info>` component
+  (`shared/js/components/securityInfo.js`, `.si-*` in platform.css, `si.*` keys in common i18n)
+  — SYS_ADMIN-only page-security drawer; registered in Admin main.js. Shared change ⇒ APP_VERSION
+  bumped in ALL apps. Legacy users/userEdit/roles/permissions pages UNCHANGED and still routable —
+  they retire only after User Management passes UAT. Gotchas: `POST /dct/users` requires `roles: []`
+  (FOR 1..get_count(NULL) = ORA-06502); test-user profile end-dating must backdate start_date
+  (chk_sec_up_dates); exclusions are branch-scoped (role A's exclusion never kills role B's grant).

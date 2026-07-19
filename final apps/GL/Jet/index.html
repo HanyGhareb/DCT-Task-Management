@@ -6,7 +6,7 @@
 <title>General Ledger · i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.34.3';</script>
+<script>window.APP_VERSION='1.34.4';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -59,6 +59,10 @@
     <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
     <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
     <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
+    <!-- ko if: isSysAdmin -->
+    <button type="button" class="sec-link" data-bind="click: openSecurityInfo"
+            style="margin-inline-start:auto; opacity:.75; background:none; border:none; cursor:pointer; font:inherit; color:inherit">&#128737; <span data-bind="text: lang()==='ar' ? 'معلومات الأمان' : 'Security Info'"></span></button>
+    <!-- /ko -->
   </nav>
 
   <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'}">
@@ -1186,6 +1190,67 @@
 </aside>
 
 <!-- ═══════════ CLASSIFICATION ASSIGNMENTS DRAWER (Classifications row → manage assignments) ═══════════ -->
+<!-- Security Info drawer (SYS_ADMIN) — page registry from the Security Console -->
+<div class="dw-scrim" data-bind="css:{show:secDrawer}, click:closeSecurityInfo" style="display:none"></div>
+<aside class="dw-drawer" data-bind="css:{show:secDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow">GL / <span data-bind="text:view"></span></div>
+      <div class="dw-title" data-bind="text: lang()==='ar' ? 'أمان الصفحة' : 'Page Security'"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:closeSecurityInfo, text:t('cancel')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="ldr sm" data-bind="visible:secLoading()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span></div>
+    </div>
+    <div class="dw-err" data-bind="visible:secErr(), text:secErr"></div>
+    <!-- ko if: secInfo() && !secLoading() -->
+    <div style="border-bottom:1px solid #e0e5e2; padding-bottom:10px; margin-bottom:12px">
+      <div style="font-weight:700; font-size:15px" data-bind="text: secInfo().name"></div>
+      <!-- ko if: secInfo().viewPriv -->
+      <div style="font-size:12px; color:#5a6b62; margin-top:4px">
+        View privilege: <code data-bind="text: secInfo().viewPriv"></code>
+        <span data-bind="text: ' — ' + (secInfo().viewPrivName || '')"></span>
+      </div>
+      <!-- /ko -->
+    </div>
+    <!-- ko foreach: secArts -->
+    <div style="border:1px solid #e0e5e2; border-radius:10px; padding:10px 12px; margin-bottom:10px">
+      <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap">
+        <span style="font-size:10px; font-weight:700; letter-spacing:.05em; border:1px solid #9dbfae; color:#3F6F5F; border-radius:999px; padding:1px 8px" data-bind="text: type"></span>
+        <span style="font-weight:600; font-size:13px" data-bind="text: $data.label || code"></span>
+        <code style="font-size:11px; background:rgba(0,0,0,.05); border-radius:4px; padding:1px 5px" data-bind="text: code"></code>
+      </div>
+      <!-- ko if: $data.privCode -->
+      <div style="font-size:12px; color:#5a6b62; margin-top:5px">
+        Guarded by <code data-bind="text: privCode"></code>
+        <span data-bind="text: ' — ' + ($data.privName || '')"></span>
+      </div>
+      <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:6px">
+        <!-- ko foreach: grantedTo -->
+        <span style="font-size:11px; border-radius:999px; padding:2px 9px; background:rgba(63,111,95,.08); border:1px solid rgba(63,111,95,.25)" data-bind="text: name || code, attr:{title: category}"></span>
+        <!-- /ko -->
+        <!-- ko if: (grantedTo || []).length === 0 -->
+        <span style="font-size:11px; color:#b26a00">no role currently grants this privilege</span>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: $data.privCode -->
+      <div style="font-size:12px; color:#b26a00; margin-top:5px">No privilege registered — this artifact is not secured.</div>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+    <!-- ko if: secInfo() && secArts().length === 0 -->
+    <div style="color:#777; font-size:13px">No secured artifacts are registered on this page.</div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</aside>
+
 <div class="dw-scrim" data-bind="css:{show:clsDrawer}, click:closeClsDrill" style="display:none"></div>
 <aside class="dw-drawer dw-xw" data-bind="css:{show:clsDrawer}" role="dialog" aria-modal="true">
   <header class="dw-h">

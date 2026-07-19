@@ -494,5 +494,13 @@
   "vw.mydel.loadError": "Could not load delegations",
   "vw.mydel.needDelegate": "Pick who will act on your behalf.",
   "vw.mydel.needEnd": "An end date is required.",
-  "vw.mydel.needModule": "Pick the module this delegation covers."
+  "vw.mydel.needModule": "Pick the module this delegation covers.",
+  "nav.securityConsole": "Security Console",
+  "nav.privileges": "Privileges",
+  "nav.privilegeGroups": "Privilege Groups",
+  "nav.abstractRoles": "Abstract Roles",
+  "nav.dutyRoles": "Duty Roles",
+  "nav.jobRoles": "Job Roles",
+  "nav.secProfiles": "Security Profiles",
+  "nav.userManagement": "User Management"
 }

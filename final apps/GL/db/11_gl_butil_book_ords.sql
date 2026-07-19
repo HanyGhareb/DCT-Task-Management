@@ -72,6 +72,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   dct_rest.parse_body([COLON]body);
   l_year := APEX_JSON.get_number(p_path=>'year');
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
@@ -116,6 +119,9 @@ DECLARE
   l_pdf  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   FOR c IN (SELECT run_id, status, row_count, error_msg, started_at, finished_at
               FROM dct_rpt_run
              WHERE run_id = [COLON]id AND report_code = 'BUDGET_UTIL_BOOK') LOOP
@@ -145,6 +151,9 @@ DECLARE
   l_blob BLOB; l_name VARCHAR2(260);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   BEGIN
     SELECT o.file_blob, o.file_name INTO l_blob, l_name FROM (
       SELECT o.file_blob, o.file_name
@@ -177,6 +186,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   dct_rest.parse_body([COLON]body);
   l_year := APEX_JSON.get_number(p_path=>'year');
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
@@ -221,6 +233,9 @@ DECLARE
   l_xls  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   FOR c IN (SELECT run_id, status, row_count, error_msg, started_at, finished_at
               FROM dct_rpt_run
              WHERE run_id = [COLON]id AND report_code = 'BUDGET_UTIL_REGISTER') LOOP
@@ -250,6 +265,9 @@ DECLARE
   l_blob BLOB; l_name VARCHAR2(260); l_mime VARCHAR2(200);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   BEGIN
     SELECT o.file_blob, o.file_name, o.mime_type INTO l_blob, l_name, l_mime FROM (
       SELECT o.file_blob, o.file_name, o.mime_type
@@ -284,6 +302,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   dct_rest.parse_body([COLON]body);
   l_year := APEX_JSON.get_number(p_path=>'year');
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
@@ -328,6 +349,9 @@ DECLARE
   l_ppt  NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   FOR c IN (SELECT run_id, status, row_count, error_msg, started_at, finished_at
               FROM dct_rpt_run
              WHERE run_id = [COLON]id AND report_code = 'BUDGET_UTIL_BOOK') LOOP
@@ -357,6 +381,9 @@ DECLARE
   l_blob BLOB; l_name VARCHAR2(260); l_mime VARCHAR2(200);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_RUN_BRIEFING_BOOK', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_RUN_BRIEFING_BOOK required'); RETURN;
+  END IF;
   BEGIN
     SELECT o.file_blob, o.file_name, o.mime_type INTO l_blob, l_name, l_mime FROM (
       SELECT o.file_blob, o.file_name, o.mime_type

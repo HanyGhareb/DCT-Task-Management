@@ -1,0 +1,321 @@
+<div class="rm-page">
+
+  <div class="rm-page-head">
+    <div>
+      <security-info params="module: 'ADMIN', page: 'userManagement'"></security-info>
+      <h1 class="rm-title">User Management</h1>
+      <p class="rm-subtitle">Master–detail: profile, dated role assignments, security profile, exclusions and the effective privilege preview</p>
+    </div>
+    <button class="rm-btn-add" data-bind="click: newUser">
+      <span class="rm-btn-plus">+</span> New User
+    </button>
+  </div>
+
+  <!-- ko if: okMsg --><div class="rm-alert rm-alert--success" data-bind="text: okMsg"></div><!-- /ko -->
+  <!-- ko if: errorMsg --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
+
+  <div class="rm-split">
+
+    <!-- ── master: user list ─────────────────────────────────────────── -->
+    <div class="rm-split-list">
+      <div class="rm-search-wrap" style="margin-bottom:10px">
+        <span class="rm-search-icon">&#9906;</span>
+        <input class="rm-search" type="text" placeholder="Search users&hellip;"
+               data-bind="value: searchTerm, valueUpdate: 'input',
+                          event: { keyup: function (d, e) { if (e.keyCode === 13) search(); return true; } }">
+      </div>
+      <!-- ko if: listLoading() -->
+      <div class="rm-skeleton-rows"><div class="rm-skeleton-row"></div><div class="rm-skeleton-row"></div><div class="rm-skeleton-row"></div></div>
+      <!-- /ko -->
+      <!-- ko ifnot: listLoading() -->
+      <div class="rm-table-panel" style="padding:6px">
+        <!-- ko foreach: users -->
+        <button class="rm-user-item"
+                data-bind="click: $parent.selectUser.bind($parent, $data),
+                           css: { 'rm-user-item--on': $parent.selected() === $data }">
+          <span class="rm-avatar-sm" data-bind="text: $parent.initials($data)"></span>
+          <span style="min-width:0">
+            <span class="u-name" data-bind="text: $data.displayName || $data.username"></span>
+            <span class="u-sub" data-bind="text: ($data.username || '') + ($data.email ? ' · ' + $data.email : '')"></span>
+          </span>
+          <!-- ko if: ($data.isActive || 'Y') !== 'Y' -->
+          <span class="rm-status rm-status--off" style="margin-inline-start:auto">Off</span>
+          <!-- /ko -->
+        </button>
+        <!-- /ko -->
+        <!-- ko if: users().length === 0 -->
+        <div class="rm-empty"><div class="rm-empty-icon">&#8856;</div><div>No users match</div></div>
+        <!-- /ko -->
+      </div>
+      <div class="rm-toolbar" style="justify-content:space-between; margin-top:8px">
+        <button class="rm-btn-sm" data-bind="click: prevPage, enable: page() > 0">&#8249;</button>
+        <span class="rm-kv" data-bind="text: (page() + 1) + ' / ' + pageCount()"></span>
+        <button class="rm-btn-sm" data-bind="click: nextPage, enable: page() + 1 < pageCount()">&#8250;</button>
+      </div>
+      <!-- /ko -->
+    </div>
+
+    <!-- ── detail ────────────────────────────────────────────────────── -->
+    <div class="rm-split-detail">
+      <!-- ko ifnot: selected() -->
+      <div class="rm-empty" style="padding:80px 0">
+        <div class="rm-empty-icon">&#128100;</div>
+        <div>Select a user to manage their profile, roles and data security</div>
+      </div>
+      <!-- /ko -->
+
+      <!-- ko if: selected() -->
+      <div class="re-panel" style="margin-bottom:0">
+        <div style="display:flex; align-items:center; gap:12px">
+          <span class="rm-avatar-sm" style="width:40px;height:40px;flex-basis:40px;font-size:14px"
+                data-bind="text: initials(selected())"></span>
+          <div>
+            <div class="rm-cell-name" style="font-size:15px" data-bind="text: selected().displayName || fUsername() || 'New user'"></div>
+            <span class="rm-kv" data-bind="text: fUsername"></span>
+          </div>
+        </div>
+      </div>
+
+      <div class="rm-tabs">
+        <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'profile' }, click: setTab.bind($data, 'profile')">Profile</button>
+        <!-- ko ifnot: isNew() -->
+        <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'roles' }, click: setTab.bind($data, 'roles')">
+          Role Assignments (<span data-bind="text: roleRows().length"></span>)
+        </button>
+        <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'profiles' }, click: setTab.bind($data, 'profiles')">
+          Security Profile (<span data-bind="text: profileRows().length"></span>)
+        </button>
+        <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'exclusions' }, click: setTab.bind($data, 'exclusions')">
+          Exclusions (<span data-bind="text: exclusionRows().length"></span>)
+        </button>
+        <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'effective' }, click: setTab.bind($data, 'effective')">
+          Effective Privileges (<span data-bind="text: effectiveRows().length"></span>)
+        </button>
+        <!-- /ko -->
+      </div>
+
+      <!-- profile tab -->
+      <!-- ko if: detailTab() === 'profile' -->
+      <div class="re-panel">
+        <div class="re-field re-field--inline">
+          <div style="flex:1">
+            <label class="re-label">Username <span class="re-req">*</span></label>
+            <input class="re-input re-input--mono" data-bind="value: fUsername, enable: isNew()">
+          </div>
+          <div style="flex:0 0 130px">
+            <label class="re-label">Status</label>
+            <div class="re-toggle-row" data-bind="click: function () { fActive(!fActive()); return true; }">
+              <span class="rm-status" data-bind="text: fActive() ? 'Active' : 'Inactive',
+                    css: { 'rm-status--on': fActive(), 'rm-status--off': !fActive() }"></span>
+            </div>
+          </div>
+        </div>
+        <div class="re-field re-field--inline">
+          <div style="flex:1">
+            <label class="re-label">Display name <span class="re-req">*</span></label>
+            <input class="re-input" data-bind="value: fDisplayName">
+          </div>
+          <div style="flex:1">
+            <label class="re-label">Display name (Arabic)</label>
+            <input class="re-input" dir="rtl" data-bind="value: fDisplayNameAr">
+          </div>
+        </div>
+        <div class="re-field re-field--inline">
+          <div style="flex:1">
+            <label class="re-label">Email <span class="re-req">*</span></label>
+            <input class="re-input" type="email" data-bind="value: fEmail">
+          </div>
+          <div style="flex:1">
+            <label class="re-label">Mobile</label>
+            <input class="re-input" data-bind="value: fPhone">
+          </div>
+        </div>
+        <div class="re-field re-field--inline">
+          <div style="flex:1">
+            <label class="re-label">Organization</label>
+            <select class="re-input" data-bind="options: orgOptions, optionsText: 'label', optionsValue: 'value',
+                    optionsCaption: 'None', value: fOrgId"></select>
+          </div>
+          <div style="flex:1">
+            <label class="re-label" data-bind="text: isNew() ? 'Password' : 'Reset password (optional)'"></label>
+            <input class="re-input" type="password" autocomplete="new-password" data-bind="value: fPassword">
+          </div>
+        </div>
+        <div style="display:flex; justify-content:flex-end">
+          <button class="rm-btn-add" data-bind="click: saveProfile, enable: !saving()">
+            <span data-bind="text: saving() ? 'Saving…' : 'Save Profile'"></span>
+          </button>
+        </div>
+      </div>
+      <!-- /ko -->
+
+      <!-- roles tab -->
+      <!-- ko if: detailTab() === 'roles' && !isNew() -->
+      <div class="re-panel">
+        <div class="re-panel-label">Job and abstract roles (duty roles cannot be assigned directly)</div>
+        <div class="rm-table-panel">
+          <table class="rm-table">
+            <thead><tr><th>Role</th><th>Category</th><th>Start</th><th>End</th><th>Status</th><th style="width:90px"></th></tr></thead>
+            <tbody>
+              <!-- ko foreach: roleRows -->
+              <tr class="rm-row">
+                <td class="rm-cell-name">
+                  <span data-bind="text: name"></span>
+                  <code class="rm-code-badge" style="margin-inline-start:6px" data-bind="text: code"></code>
+                </td>
+                <td><span class="rm-sc-pill" data-bind="text: category,
+                      css: { 'rm-sc-pill--abstract': category === 'ABSTRACT', 'rm-sc-pill--job': category === 'JOB' }"></span></td>
+                <td data-bind="text: startDate"></td>
+                <td data-bind="text: $data.endDate || '—'"></td>
+                <td><span class="rm-status" data-bind="text: status,
+                      css: { 'rm-status--on': status === 'ACTIVE', 'rm-status--off': status !== 'ACTIVE' }"></span></td>
+                <td>
+                  <!-- ko if: status === 'ACTIVE' || status === 'FUTURE' -->
+                  <button class="rm-btn-sm rm-btn-sm--danger"
+                          data-bind="click: $parent.endRole.bind($parent, $data)">End</button>
+                  <!-- /ko -->
+                </td>
+              </tr>
+              <!-- /ko -->
+              <!-- ko if: roleRows().length === 0 -->
+              <tr><td colspan="6"><div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>No role assignments</div></div></td></tr>
+              <!-- /ko -->
+            </tbody>
+          </table>
+        </div>
+        <div class="rm-inline-form">
+          <div style="flex:1 1 240px">
+            <label class="re-label">Role</label>
+            <select class="re-input" data-bind="options: assignableRoles, optionsText: 'name', optionsValue: 'id',
+                    optionsCaption: 'Choose a role…', value: newRoleId"></select>
+          </div>
+          <div style="flex:0 0 150px">
+            <label class="re-label">Start (optional)</label>
+            <input class="re-input" type="date" data-bind="value: newRoleStart">
+          </div>
+          <div style="flex:0 0 150px">
+            <label class="re-label">End (optional)</label>
+            <input class="re-input" type="date" data-bind="value: newRoleEnd">
+          </div>
+          <button class="rm-btn-add" data-bind="click: assignRole, enable: newRoleId">Assign</button>
+        </div>
+      </div>
+      <!-- /ko -->
+
+      <!-- security profiles tab -->
+      <!-- ko if: detailTab() === 'profiles' && !isNew() -->
+      <div class="re-panel">
+        <div class="re-panel-label">Data security — the rows this user is allowed to see</div>
+        <div class="rm-table-panel">
+          <table class="rm-table">
+            <thead><tr><th>Profile</th><th>Scope rows</th><th>Start</th><th>End</th><th>Status</th><th style="width:90px"></th></tr></thead>
+            <tbody>
+              <!-- ko foreach: profileRows -->
+              <tr class="rm-row">
+                <td class="rm-cell-name">
+                  <span data-bind="text: name"></span>
+                  <code class="rm-code-badge" style="margin-inline-start:6px" data-bind="text: code"></code>
+                </td>
+                <td data-bind="text: scopeCount"></td>
+                <td data-bind="text: startDate"></td>
+                <td data-bind="text: $data.endDate || '—'"></td>
+                <td><span class="rm-status" data-bind="text: status,
+                      css: { 'rm-status--on': status === 'ACTIVE', 'rm-status--off': status !== 'ACTIVE' }"></span></td>
+                <td>
+                  <!-- ko if: status === 'ACTIVE' || status === 'FUTURE' -->
+                  <button class="rm-btn-sm rm-btn-sm--danger"
+                          data-bind="click: $parent.endProfile.bind($parent, $data)">End</button>
+                  <!-- /ko -->
+                </td>
+              </tr>
+              <!-- /ko -->
+              <!-- ko if: profileRows().length === 0 -->
+              <tr><td colspan="6"><div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>Unrestricted — no security profile assigned</div></div></td></tr>
+              <!-- /ko -->
+            </tbody>
+          </table>
+        </div>
+        <div class="rm-inline-form">
+          <div style="flex:1 1 260px">
+            <label class="re-label">Security profile</label>
+            <select class="re-input" data-bind="options: allProfiles, optionsText: 'name', optionsValue: 'id',
+                    optionsCaption: 'Choose a profile…', value: newProfileId"></select>
+          </div>
+          <button class="rm-btn-add" data-bind="click: assignProfile, enable: newProfileId">Assign</button>
+        </div>
+      </div>
+      <!-- /ko -->
+
+      <!-- exclusions tab -->
+      <!-- ko if: detailTab() === 'exclusions' && !isNew() -->
+      <div class="re-panel">
+        <div class="re-panel-label">Privileges withheld from this user even though their roles grant them</div>
+        <div class="rm-table-panel">
+          <table class="rm-table">
+            <thead><tr><th>Privilege</th><th>Reason</th><th>Since</th><th style="width:100px"></th></tr></thead>
+            <tbody>
+              <!-- ko foreach: exclusionRows -->
+              <tr class="rm-row">
+                <td class="rm-cell-name">
+                  <span data-bind="text: permName"></span>
+                  <code class="rm-code-badge" style="margin-inline-start:6px" data-bind="text: permCode"></code>
+                </td>
+                <td data-bind="text: $data.reason || '—'"></td>
+                <td data-bind="text: $data.createdAt || ''"></td>
+                <td><button class="rm-btn-sm rm-btn-sm--danger"
+                            data-bind="click: $parent.endExclusion.bind($parent, $data)">Remove</button></td>
+              </tr>
+              <!-- /ko -->
+              <!-- ko if: exclusionRows().length === 0 -->
+              <tr><td colspan="4"><div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>No exclusions</div></div></td></tr>
+              <!-- /ko -->
+            </tbody>
+          </table>
+        </div>
+        <div class="rm-inline-form">
+          <div style="flex:1 1 280px">
+            <label class="re-label">Privilege to exclude</label>
+            <select class="re-input" data-bind="options: allPrivs, optionsText: 'name', optionsValue: 'id',
+                    optionsCaption: 'Choose a privilege…', value: newExclPrivId"></select>
+          </div>
+          <div style="flex:1 1 200px">
+            <label class="re-label">Reason</label>
+            <input class="re-input" data-bind="value: newExclReason">
+          </div>
+          <button class="rm-btn-add" data-bind="click: addExclusion, enable: newExclPrivId">Exclude</button>
+        </div>
+      </div>
+      <!-- /ko -->
+
+      <!-- effective tab -->
+      <!-- ko if: detailTab() === 'effective' && !isNew() -->
+      <div class="re-panel">
+        <div class="re-panel-label">Everything this user can do right now, grouped by the role that grants it</div>
+        <!-- ko if: detailLoading --><div class="rm-spinner-sm"></div><!-- /ko -->
+        <!-- ko foreach: effectiveGroups -->
+        <div style="margin-bottom:16px">
+          <div class="rm-cell-name" style="margin-bottom:6px">
+            <span class="rm-sc-pill rm-sc-pill--job" data-bind="text: role"></span>
+            <span style="margin-inline-start:8px" data-bind="text: roleName"></span>
+          </div>
+          <div class="rm-chipbar">
+            <!-- ko foreach: privs -->
+            <span class="rm-chip" data-bind="attr: { title: code + ($data.viaRole ? ' — via duty ' + viaRole : '') + ($data.viaGroup ? ' — via group ' + viaGroup : '') }">
+              <span data-bind="text: name"></span>
+              <!-- ko if: $data.viaRole --><span class="rm-sc-pill rm-sc-pill--duty" data-bind="text: viaRole"></span><!-- /ko -->
+            </span>
+            <!-- /ko -->
+          </div>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: effectiveGroups().length === 0 -->
+        <div class="rm-empty"><div class="rm-empty-icon">&#8709;</div><div>No effective privileges — assign a job role first</div></div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+
+      <!-- /ko -->
+    </div>
+  </div>
+
+</div>

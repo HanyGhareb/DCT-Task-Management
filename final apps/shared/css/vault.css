@@ -671,3 +671,82 @@ html[lang="ar"] {
   --vault-font: var(--font-ar, 'IBM Plex Sans Arabic', sans-serif);
   --vault-mono: var(--mono-ar, 'IBM Plex Mono', monospace);
 }
+
+/* ============================================================
+   Security Console additions (rm-sc-*) — 2026-07-19
+   Tabs, category pills, chips, master-detail split, small buttons
+   ============================================================ */
+.rm-sc-pill {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  font-size: 10px; font-weight: 700; letter-spacing: .06em;
+  border: 1px solid var(--vault-border); color: var(--vault-muted);
+}
+.rm-sc-pill--abstract { color: #58A6FF; border-color: rgba(88,166,255,.4); background: rgba(88,166,255,.08); }
+.rm-sc-pill--duty     { color: #D2A8FF; border-color: rgba(210,168,255,.4); background: rgba(210,168,255,.08); }
+.rm-sc-pill--job      { color: var(--vault-amber); border-color: rgba(240,136,62,.4); background: rgba(240,136,62,.08); }
+.rm-sc-pill--excl     { color: var(--vault-red); border-color: rgba(248,81,73,.4); background: rgba(248,81,73,.08); }
+.rm-tabs {
+  display: flex; gap: 4px; border-bottom: 1px solid var(--vault-border);
+  margin: 18px 0 14px;
+}
+.rm-tab {
+  appearance: none; background: none; border: none; cursor: pointer;
+  font-family: var(--vault-font); font-size: 12.5px; font-weight: 600;
+  color: var(--vault-muted); padding: 8px 14px; border-bottom: 2px solid transparent;
+}
+.rm-tab--on { color: var(--vault-amber); border-bottom-color: var(--vault-amber); }
+.rm-split { display: flex; gap: 16px; align-items: flex-start; }
+.rm-split-list { flex: 0 0 320px; min-width: 0; }
+.rm-split-detail { flex: 1 1 auto; min-width: 0; }
+.rm-user-item {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 12px; border: 1px solid transparent; border-radius: 8px;
+  background: none; cursor: pointer; text-align: start;
+  font-family: var(--vault-font); color: var(--vault-text);
+}
+.rm-user-item:hover { background: rgba(240,136,62,.05); }
+.rm-user-item--on { background: rgba(240,136,62,.09); border-color: rgba(240,136,62,.4); }
+.rm-user-item .u-name { font-size: 12.5px; font-weight: 600; display: block; }
+.rm-user-item .u-sub  { font-size: 10.5px; color: var(--vault-muted); display: block; }
+.rm-avatar-sm {
+  width: 28px; height: 28px; border-radius: 50%; flex: 0 0 28px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(88,166,255,.15); color: #58A6FF;
+  font-size: 10.5px; font-weight: 700;
+}
+.rm-btn-sm {
+  appearance: none; cursor: pointer; border-radius: 7px;
+  border: 1px solid var(--vault-border); background: var(--vault-surface);
+  color: var(--vault-text); font-family: var(--vault-font);
+  font-size: 11.5px; font-weight: 600; padding: 6px 12px;
+}
+.rm-btn-sm:hover { border-color: var(--vault-amber); color: var(--vault-amber); }
+.rm-btn-sm--danger:hover { border-color: var(--vault-red); color: var(--vault-red); }
+.rm-chipbar { display: flex; flex-wrap: wrap; gap: 6px; }
+.rm-chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px; border-radius: 999px; font-size: 11px;
+  border: 1px solid var(--vault-border); color: var(--vault-text);
+  background: var(--vault-surface);
+}
+.rm-chip .x {
+  cursor: pointer; color: var(--vault-muted); font-weight: 700;
+  background: none; border: none; font-size: 12px; padding: 0;
+}
+.rm-chip .x:hover { color: var(--vault-red); }
+.rm-inline-form {
+  display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-end;
+  padding: 12px; border: 1px dashed var(--vault-border); border-radius: 10px;
+  margin-top: 10px;
+}
+.rm-kv { font-size: 11px; color: var(--vault-muted); }
+.rm-kv b { color: var(--vault-text); font-weight: 600; }
+.rm-group-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; }
+.rm-group-card {
+  background: var(--vault-surface); border: 1px solid var(--vault-border);
+  border-radius: 12px; padding: 14px 16px; cursor: pointer;
+  transition: border-color .15s;
+}
+.rm-group-card:hover { border-color: var(--vault-amber); }
+.rm-group-card h4 { margin: 0 0 2px; font-size: 13px; color: var(--vault-text); }
+.rm-sc-note { font-size: 11px; color: var(--vault-muted); margin: 6px 0 0; }

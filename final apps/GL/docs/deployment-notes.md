@@ -931,3 +931,23 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   `drillLink(row,col)` maps invoice/po/pr columns to deeplinks (`.fus-link` style, ↗);
   CSV export unchanged (numbers only). Deploy: 07 re-run (standalone-safe) + webtier
   release 20260713232809. APP_VERSION 1.20.0.
+
+- **2026-07-19 — Security Console adoption (first module) — APP_VERSION 1.34.4:**
+  GL/db/07/09/11/12/13 re-run with (a) a privilege gate after every 401 check —
+  `prod.dct_sec.has_priv_or_role(l_user,'<PRIV>',NULL,'GL')` (NULL legacy role = the
+  historical any-valid-session behaviour survives while `FEATURE_SEC_ENFORCE_GL`=N;
+  flip to Y ⇒ privilege-only, SYS_ADMIN exempt, rollback = flip back — no deploy) and
+  (b) the SECTOR data-security predicate on /gl/butil (both report+totals, 6 spots) +
+  /gl/encumbrances + /gl/pending: `l_secok = 1 OR v.sector IN (value_code→name_en map
+  of V_DCT_SEC_USER_SCOPE)`. Privileges per script: 07=GL_VIEW_BUDGET_UTILIZATION,
+  09=GL_VIEW_CLASSIFICATIONS, 11=GL_RUN_BRIEFING_BOOK, 12=GL_VIEW_ENCUMBRANCES,
+  13=GL_VIEW_PENDING_APPROVALS. Seeds in db/v2/102 (14 verb-first GL privileges, groups
+  "Financial Planning and Reporting" + "GL Administration", duties GL_DUTY_FIN_REPORTING/
+  CLASSIFICATION/DATA_OPS nested in jobs GL_ANALYST/GL_ACCOUNTANT, page+artifact registry
+  for all 9 tabs). **The post-05 re-run list (07..13) now ALSO requires db/v2/99-102
+  deployed first** (handlers reference prod.dct_sec/dct_sec_data). Frontend: SYS_ADMIN-only
+  **Security Info** button at the end of the pnav (a `<button>`, NOT an `<a>` — the pending
+  smoke asserts `nav.pnav a` count == 9) opening a `.dw-*` drawer over GET /dct/sec/pageinfo
+  for the ACTIVE tab. Tests: GL/tests/sec_scope_smoke.py 10/10 (grandfather equivalence,
+  sector scoping [scoped user sees ONLY their sector, totals reconcile], enforce flip 403,
+  GL_ANALYST job role restores access, scope holds under enforcement) + drawer browser 7/7.

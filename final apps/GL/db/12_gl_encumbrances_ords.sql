@@ -54,6 +54,8 @@ BEGIN
     def_handler('encumbrances', 'GET', q'!
 DECLARE
   l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_uid NUMBER := dct_auth.get_user_id(l_user);
+  l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year    NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
   l_ptype   VARCHAR2(100) := [COLON]projecttype;
   l_sector  VARCHAR2(200) := [COLON]sector;
@@ -75,6 +77,9 @@ DECLARE
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_ENCUMBRANCES', NULL, 'GL') = FALSE THEN
+    dct_rest.err(403,'GL_VIEW_ENCUMBRANCES required'); RETURN;
+  END IF;
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
   IF l_ptype   = '' THEN l_ptype   := NULL; END IF;
   IF l_sector  = '' THEN l_sector  := NULL; END IF;
@@ -143,6 +148,7 @@ BEGIN
       WHERE v.budget_year = l_year
         AND (l_ptype   IS NULL OR v.project_type = l_ptype)
         AND (l_sector  IS NULL OR v.sector = l_sector)
+     AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
         AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
         AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
         AND (l_cc      IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')

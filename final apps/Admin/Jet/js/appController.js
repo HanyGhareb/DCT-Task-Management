@@ -105,6 +105,19 @@ define(
         ]
       },
       {
+        id: 'securityConsole', labelKey: 'nav.securityConsole', auth: 'admin',
+        collapsed: ko.observable(false),
+        items: [
+          { id: 'privileges',      labelKey: 'nav.privileges',      icon: '&#128272;' },
+          { id: 'privilegeGroups', labelKey: 'nav.privilegeGroups', icon: '&#128450;' },
+          { id: 'abstractRoles',   labelKey: 'nav.abstractRoles',   icon: '&#129489;' },
+          { id: 'dutyRoles',       labelKey: 'nav.dutyRoles',       icon: '&#129513;' },
+          { id: 'jobRoles',        labelKey: 'nav.jobRoles',        icon: '&#128188;' },
+          { id: 'secProfiles',     labelKey: 'nav.secProfiles',     icon: '&#128274;' },
+          { id: 'userManagement',  labelKey: 'nav.userManagement',  icon: '&#128101;' },
+        ]
+      },
+      {
         id: 'organisation', labelKey: 'nav.organisation', auth: 'admin',
         collapsed: ko.observable(false),
         items: [
@@ -366,7 +379,9 @@ define(
     var KNOWN_ROUTES = ['dashboard', 'profile', 'notifications', 'pendingApprovals', 'myDelegations',
       'users', 'roles', 'permissions', 'orgHierarchy', 'modules', 'approvalTemplates',
       'approvalMonitor', 'delegations', 'announcements', 'lookups', 'appearance',
-      'systemSettings', 'sessions', 'auditLog'];
+      'systemSettings', 'sessions', 'auditLog',
+      'privileges', 'privilegeGroups', 'abstractRoles', 'dutyRoles', 'jobRoles',
+      'secRoleEdit', 'secProfiles', 'userManagement'];
     self._landingRoute = function () {
       var user = self.currentUser();
       if (user && user.roles) {

@@ -494,5 +494,13 @@
   "vw.mydel.loadError": "تعذر تحميل التفويضات",
   "vw.mydel.needDelegate": "اختر من سيتصرف نيابة عنك.",
   "vw.mydel.needEnd": "تاريخ الانتهاء مطلوب.",
-  "vw.mydel.needModule": "اختر التطبيق الذي يغطيه التفويض."
+  "vw.mydel.needModule": "اختر التطبيق الذي يغطيه التفويض.",
+  "nav.securityConsole": "وحدة التحكم الأمني",
+  "nav.privileges": "الصلاحيات",
+  "nav.privilegeGroups": "مجموعات الصلاحيات",
+  "nav.abstractRoles": "الأدوار العامة",
+  "nav.dutyRoles": "أدوار المهام",
+  "nav.jobRoles": "الأدوار الوظيفية",
+  "nav.secProfiles": "ملفات أمان البيانات",
+  "nav.userManagement": "إدارة المستخدمين"
 }
