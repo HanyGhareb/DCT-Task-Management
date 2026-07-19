@@ -7,6 +7,11 @@
       <div class="page-subtitle" data-bind="text: $vm.t('dash.subtitle')"></div>
     </div>
     <div class="page-actions">
+      <!-- ko if: $vm.benefMode -->
+      <button class="btn btn-secondary ai-btn" data-bind="click: runAiDup">
+        &#10024; <span data-bind="text: $vm.t('ai.btn')"></span>
+      </button>
+      <!-- /ko -->
       <button class="btn btn-secondary" data-bind="click: resetFilters, text: $root.t('dash.reset')"></button>
       <button class="btn btn-secondary" data-bind="click: refresh, text: $root.t('dash.refresh')"></button>
       <button class="btn btn-primary" data-bind="click: printReport">
@@ -664,5 +669,80 @@
       <!-- /ko -->
     </div>
   </aside>
+
+  <!-- ── AI duplicate-beneficiary drawer (Beneficiaries dashboard only) ── -->
+  <!-- ko if: $vm.benefMode -->
+  <div class="dw-scrim" data-bind="css: { show: aiOpen }, click: closeAiDup"></div>
+  <aside class="dw-drawer" data-bind="css: { show: aiOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('ai.eyebrow')"></div>
+        <div class="dw-title" data-bind="text: $vm.t('ai.title')"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-sm" data-bind="click: aiExportCsv, text: $root.t('rg.exportCsv'),
+                visible: !aiLoading() && aiGroups().length > 0"></button>
+        <button class="btn btn-sm" data-bind="click: closeAiDup, text: $root.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: aiLoading() -->
+      <div class="ai-running">
+        <list-skeleton params="rows: 6"></list-skeleton>
+        <div class="ai-running-note" data-bind="text: $vm.t('ai.running')"></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: aiLoading() -->
+      <!-- ko if: aiError() -->
+      <div class="ai-err" data-bind="text: aiError"></div>
+      <!-- /ko -->
+      <!-- ko ifnot: aiError() -->
+      <div class="dw-ctx" data-bind="visible: aiMetaTxt(), text: aiMetaTxt"></div>
+      <!-- ko if: aiMeta() && aiGroups().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('ai.none')"></div>
+      <!-- /ko -->
+      <!-- ko foreach: aiGroups -->
+      <div class="ai-group">
+        <div class="ai-group-h">
+          <span class="ai-group-no" data-bind="text: '#' + ($index() + 1)"></span>
+          <b class="ai-group-name" data-bind="text: $data.canonical"></b>
+          <span data-bind="text: $vm.aiConfTxt($data.confidence),
+                           attr: { class: $vm.aiConfCls($data.confidence) }"></span>
+          <span class="ai-group-tot">
+            <span data-bind="text: $vm.fmtInt($data.invoices) + ' ' + $vm.t('ai.colInvs')"></span>
+            · <b data-bind="text: $vm.fmtAmt($data.totalAed)"></b>
+          </span>
+        </div>
+        <div class="ai-group-reason" data-bind="text: $data.reason || ''"></div>
+        <div class="data-table-wrap"><table class="data-table">
+          <thead><tr>
+            <th data-bind="text: $vm.t('ben.name')"></th>
+            <th data-bind="text: $vm.t('dr.site')"></th>
+            <th class="ap-amount" data-bind="text: $vm.t('ai.colInvs')"></th>
+            <th class="ap-amount" data-bind="text: $vm.t('tbl.amountAed')"></th>
+            <th data-bind="text: $vm.t('ai.colFirst')"></th>
+            <th data-bind="text: $vm.t('ai.colLast')"></th>
+          </tr></thead>
+          <tbody data-bind="foreach: $data.members">
+            <tr>
+              <td data-bind="text: $data.name"></td>
+              <td data-bind="text: $data.site || ''"></td>
+              <td class="ap-amount" data-bind="text: $vm.fmtInt($data.invoices)"></td>
+              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.totalAed)"></td>
+              <td data-bind="text: $data.firstInvoice || ''"></td>
+              <td data-bind="text: $data.lastInvoice || ''"></td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: aiMeta() && aiGroups().length > 0 -->
+      <div class="ai-note" data-bind="text: $vm.t('ai.note')"></div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  </aside>
+  <!-- /ko -->
 
 </div>

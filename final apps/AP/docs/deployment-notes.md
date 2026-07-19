@@ -48,6 +48,31 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 ## Deployment history
 
+- **2026-07-19 — AI duplicate-beneficiary detection (AP v1.13.0, NEW db/06).**
+  Beneficiaries dashboard gains a **"Check duplicate using AI…"** header button:
+  one call clusters all distinct beneficiary names (same person registered
+  multiple times — spacing, capitalisation, Mohamed/Mohammed transliterations,
+  swapped order, titles, typos) into likely-duplicate groups shown in a
+  right-edge drawer (canonical name + confidence badge + reason + member rows
+  w/ site, invoice count, total AED, first/last invoice; CSV export;
+  verify-before-merging disclaimer). NEW `db/06_ap_ai_dupcheck.sql`:
+  `PROD.DCT_AP_AI_PKG.benef_dup_check` — AI config is the FL module's
+  (user requirement): provider registry `prod.dct_ar_ai_providers` + the
+  FREELANCERS module settings AI_PROVIDER/AI_MODEL/AI_FALLBACK_CLAUDE, text-only
+  DBMS_CLOUD call with 4-try backoff + GEMINI→ANTHROPIC fallback (mirrors
+  DCT_FL_AI_PKG); prompt sends `id|name` lines, answer references ids only;
+  additive `POST /ap/benef/dupcheck?suppnum=` (**re-run 06 after any 03**).
+  Live-tested: 1,374 names → 135 groups in ~23 s on gemini-2.5-flash.
+  GOTCHAS hit: ① `APEX_JSON.STRINGIFY` has no CLOB overload — a ~50 KB prompt
+  needs a chunk-safe `json_escape_clob`; ② gemini-2.5-* burn THINKING tokens
+  out of `maxOutputTokens` and truncate the JSON on big lists — set
+  `thinkingConfig:{thinkingBudget:0}` (+60k budget); ③ `IS JSON` is a SQL-only
+  condition — test via `SELECT … WHERE v IS JSON`; ④ CLOB responses must be
+  HTP.prn'd in chunks; ⑤ `dct_rest.validate_session` RETURNS NULL rather than
+  raising — every handler needs the explicit `IF l_user IS NULL THEN err(401)`
+  guard (first deploy shipped without it = unauthenticated route; fixed same
+  hour). Webtier release 20260719175106.
+
 - **2026-07-19 — AP rebrand: plum → green (#8E3B5C → #14682F).** All fills/
   backgrounds and the chart palette move to the new brand green: `app.css`
   tokens (`--brand #14682F` / `--brand-rgb 20,104,47` / `--brand-dark #0F4E23`

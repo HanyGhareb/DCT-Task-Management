@@ -163,6 +163,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     function lt(key, args) { return _t(LBL[key] || key, args); }
     self.t = lt;
     self.irCode = benef ? 'AP_BENEF_REGISTER' : 'AP_REGISTER';
+    self.benefMode = benef;                     // view flag (AI dup-check button etc.)
 
     // per-instance column catalog: benef replaces the Is-Beneficiary column
     // with the site number (= the beneficiary's supplier number); the standard
@@ -1119,6 +1120,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         if (self.invMax()) { self.invMax(false); } else { self.closeDrill(); }
         return;
       }
+      if (self.aiOpen())     { self.closeAiDup(); return; }     // AI duplicates drawer
       if (self.dwMax())      { self.dwMax(false); return; }     // restore maximized drawer first
       if (self.dwOpen())     { self.closeDw(); return; }
       if (self.chartsMax())  { self.toggleChartsMax(); return; }
@@ -1141,6 +1143,65 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         .replace(/[^\w\u0600-\u06FF]+/g, '_').replace(/^_+|_+$/g, '').toLowerCase() || 'drill';
       var blob = new Blob(['\uFEFF' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       downloadBlobUrl(URL.createObjectURL(blob), FP + 'drill-' + name + '-' + today() + '.csv');
+    };
+
+    // \u2500\u2500 AI duplicate-beneficiary detection (Beneficiaries dashboard) \u2500\u2500\u2500\u2500
+    // One POST /ap/benef/dupcheck \u2014 the server clusters the distinct
+    // beneficiary names with the FL-configured AI provider/model and returns
+    // drawer-ready groups (member stats included). Results shown in a
+    // right-edge drawer with CSV export.
+    self.aiOpen    = ko.observable(false);
+    self.aiLoading = ko.observable(false);
+    self.aiError   = ko.observable('');
+    self.aiMeta    = ko.observable(null);
+    self.aiGroups  = ko.observableArray([]);
+    self.runAiDup = function () {
+      self.aiOpen(true);
+      if (self.aiLoading()) return;
+      self.aiLoading(true); self.aiError(''); self.aiGroups([]); self.aiMeta(null);
+      api.post('/benef/dupcheck?suppnum=' + encodeURIComponent(SUPPNUM), {}).then(function (d) {
+        var groups = (d.groups || []).slice()
+          .sort(function (a, b) { return (b.totalAed || 0) - (a.totalAed || 0); });
+        self.aiGroups(groups);
+        self.aiMeta({
+          analyzed: d.analyzed, groupCount: d.groupCount,
+          provider: d.provider, model: d.model,
+          fellback: d.fellback === 'Y', elapsedSecs: d.elapsedSecs
+        });
+        self.aiLoading(false);
+      }).catch(function (e) {
+        self.aiLoading(false);
+        self.aiError((e && e.message) || lt('msg.error'));
+      });
+    };
+    self.closeAiDup = function () { self.aiOpen(false); };
+    self.aiConfCls = function (c) {
+      return c >= 0.85 ? 'badge badge--success' : (c >= 0.6 ? 'badge badge--warn' : 'badge badge--idle');
+    };
+    self.aiConfTxt = function (c) { return Math.round((c || 0) * 100) + '%'; };
+    self.aiMetaTxt = ko.pureComputed(function () {
+      var m = self.aiMeta();
+      if (!m) return '';
+      return lt('ai.meta', [self.fmtInt(m.analyzed), self.fmtInt(m.groupCount)])
+        + ' \u00B7 ' + m.model + (m.fellback ? ' (' + lt('ai.fellback') + ')' : '')
+        + ' \u00B7 ' + m.elapsedSecs + 's';
+    });
+    self.aiExportCsv = function () {
+      var groups = self.aiGroups();
+      if (!groups.length) return;
+      var esc2 = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
+      var L = [[lt('ai.colGroup'), lt('ai.colCanonical'), lt('ai.colConf'), lt('ai.colReason'),
+                lt('ben.name'), lt('dr.site'), lt('ai.colInvs'), lt('tbl.amountAed'),
+                lt('ai.colFirst'), lt('ai.colLast')].map(esc2).join(',')];
+      groups.forEach(function (g, gi) {
+        (g.members || []).forEach(function (m) {
+          L.push([gi + 1, g.canonical, self.aiConfTxt(g.confidence), g.reason,
+                  m.name, m.site, m.invoices, m.totalAed, m.firstInvoice, m.lastInvoice]
+                 .map(esc2).join(','));
+        });
+      });
+      var blob = new Blob(['\uFEFF' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      downloadBlobUrl(URL.createObjectURL(blob), FP + 'ai-duplicates-' + today() + '.csv');
     };
 
     // ── print (pixel report window, same criteria) ──────────────────────
