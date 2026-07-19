@@ -33,7 +33,7 @@
   var STR = {
     appName:{en:'General Ledger',ar:'دفتر الأستاذ العام'}, appSub:{en:'CHART OF ACCOUNTS',ar:'دليل الحسابات'},
     signOut:{en:'Sign out',ar:'خروج'}, apps:{en:'Apps',ar:'التطبيقات'},
-    home:{en:'i-Finance Home',ar:'الرئيسية'}, switchApp:{en:'Switch application',ar:'الانتقال إلى تطبيق'},
+    home:{en:'Fusion i-Finance Home',ar:'الرئيسية'}, switchApp:{en:'Switch application',ar:'الانتقال إلى تطبيق'},
     navOverview:{en:'Overview',ar:'نظرة عامة'}, navClass:{en:'Classifications',ar:'التصنيفات'},
     navMapping:{en:'Segment Mapping',ar:'ربط البنود'}, navExplorer:{en:'Explorer',ar:'المستكشف'},
     ovTitle:{en:'Chart of Accounts classifications',ar:'تصنيفات دليل الحسابات'},
@@ -64,7 +64,7 @@
     costCenter:{en:'Cost center',ar:'مركز التكلفة'}, account:{en:'Account',ar:'الحساب'},
     program:{en:'Program',ar:'البرنامج'}, prev:{en:'‹ Prev',ar:'السابق ›'}, next:{en:'Next ›',ar:'‹ التالي'},
     noCombos:{en:'No combinations match.',ar:'لا توجد تركيبات مطابقة.'},
-    footOrg:{en:'Finance Department · i-Finance',ar:'إدارة المالية · i-Finance'},
+    footOrg:{en:'Finance Department · Fusion i-Finance',ar:'إدارة المالية · Fusion i-Finance'},
     footNote:{en:'Classifications are date-tracked',ar:'التصنيفات مؤرخة زمنياً'},
     editValue:{en:'Edit value',ar:'تعديل قيمة'}, newValue:{en:'New value',ar:'قيمة جديدة'},
     cancel:{en:'Cancel',ar:'إلغاء'}, save:{en:'Save',ar:'حفظ'}, dimension:{en:'Dimension',ar:'البُعد'},

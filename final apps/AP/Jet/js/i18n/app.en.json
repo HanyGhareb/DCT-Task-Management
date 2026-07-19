@@ -228,6 +228,7 @@
   "ben.analytics.hint": "Key figures and charts for beneficiary payments only — every number is scoped to the Beneficiary supplier (26553) plus the current search filters. Click any chart segment to open the list of its invoices. Use the header buttons to export the datasets (CSV) or the charts (PNG image).",
   "ben.register.hint": "The beneficiary invoice register at the selected detail level — header, line or distribution. Beneficiary is the payee's name and Supplier No is their site number. Click the underlined column headers to sort, use Columns to show or hide fields, switch to the Interactive view for grouping and calculations, and export to CSV or Excel. Click a row to open the invoice window.",
   "ai.btn": "Check duplicate using AI…",
+  "ai.btn.hint": "Runs an AI analysis over ALL registered beneficiary names to find likely duplicates — the same person or company registered more than once with extra spaces, different capitalisation, spelling or transliteration variants (Mohamed/Mohammed), swapped name order, titles or typos. Results open in a side panel with each group's invoices and amounts, and can be exported to CSV. Takes up to a minute; suggestions must be verified before merging records.",
   "ai.eyebrow": "AI duplicate analysis",
   "ai.title": "Possible duplicate beneficiaries",
   "ai.running": "Analysing all beneficiary names with AI — this can take up to a minute…",

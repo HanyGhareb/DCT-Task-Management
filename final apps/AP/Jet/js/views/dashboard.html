@@ -8,7 +8,8 @@
     </div>
     <div class="page-actions">
       <!-- ko if: $vm.benefMode -->
-      <button class="btn btn-secondary ai-btn" data-bind="click: runAiDup">
+      <button class="btn btn-secondary ai-btn" data-bind="click: runAiDup,
+              attr: { title: $vm.t('ai.btn.hint') }">
         &#10024; <span data-bind="text: $vm.t('ai.btn')"></span>
       </button>
       <!-- /ko -->

@@ -48,6 +48,20 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 ## Deployment history
 
+- **2026-07-19 — AI-button hint + PLATFORM rebrand "Fusion i-Finance" + DCT logo.**
+  ① The Beneficiaries "Check duplicate using AI…" button gained a rich `title`
+  hint (`ai.btn.hint` EN/AR) explaining what the analysis does, how long it
+  takes and that suggestions must be verified. ② PLATFORM-WIDE rebrand (user
+  request): suite name **i-Finance → "Fusion i-Finance"** — shared i18n
+  `suite.name` EN/AR, every app's `<title>` + side-nav `FUSION i-FINANCE · APP
+  nnn`, GL portal strings, FL Portal wordmark, and the DB login branding
+  (`DCT_SYSTEM_SETTINGS` APP_NAME/'Fusion i-Finance' + APP_NAME_AR) — and the
+  topbar **iF cube replaced by the official DCT crest logo** in all 11 shell
+  apps: NEW shared asset `shared/img/dct-logo.png` (136×79 PNG recovered from
+  the legacy APEX app-101 static-file export via hex-decode) rendered by the
+  new `.suite-logo` white tile in platform.css. Shared change ⇒ all 12 apps
+  bumped; webtier release 20260719180511.
+
 - **2026-07-19 — AI duplicate-beneficiary detection (AP v1.13.0, NEW db/06).**
   Beneficiaries dashboard gains a **"Check duplicate using AI…"** header button:
   one call clusters all distinct beneficiary names (same person registered
