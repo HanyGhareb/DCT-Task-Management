@@ -15,7 +15,8 @@
  * Usage (any shared-shell app):
  *   <security-info params="module: 'GL', page: 'butil'"></security-info>
  */
-define(['knockout', 'shared/api', 'shared/i18n'], function (ko, api, i18n) {
+define(['knockout', 'shared/api', 'shared/i18n',
+        'shared/components/interactiveReport'], function (ko, api, i18n) {
   'use strict';
 
   function isSysAdmin() {
@@ -40,6 +41,10 @@ define(['knockout', 'shared/api', 'shared/i18n'], function (ko, api, i18n) {
     self.notFound   = ko.observable(false);
     self.info       = ko.observable(null);
     self.artifacts  = ko.observableArray([]);
+    self.irData     = ko.observable(null);
+    self.irSection  = ko.computed(function () {
+      return (self.module() || '') + '_' + (self.page() || '');
+    });
 
     self.t = function (k) { return i18n.t(k); };
 
@@ -47,6 +52,34 @@ define(['knockout', 'shared/api', 'shared/i18n'], function (ko, api, i18n) {
       var k = i18n.t('si.type.' + String(type || '').toLowerCase());
       return k.indexOf('si.type.') === 0 ? type : k;
     };
+
+    /* the artifact register renders in the shared <interactive-report> */
+    function buildIr(arts) {
+      var cols = [
+        { key: 'type',      label: self.t('si.col.type'),      type: 'text' },
+        { key: 'label',     label: self.t('si.col.artifact'),  type: 'text' },
+        { key: 'code',      label: self.t('si.col.key'),       type: 'text' },
+        { key: 'privCode',  label: self.t('si.col.privilege'), type: 'text' },
+        { key: 'privName',  label: self.t('si.col.privName'),  type: 'text' },
+        { key: 'grantedTo', label: self.t('si.col.grantedTo'), type: 'text' },
+        { key: 'notes',     label: self.t('si.col.notes'),     type: 'text' }
+      ];
+      var rows = (arts || []).map(function (a) {
+        return {
+          type: self.typeLabel(a.type),
+          label: a.label || a.code,
+          code: a.code,
+          privCode: a.privCode || self.t('si.unguarded'),
+          privName: a.privName || '',
+          grantedTo: (a.grantedTo || []).map(function (g) {
+            return g.name || g.code;
+          }).join(', ') || (a.privCode ? self.t('si.noRoles') : ''),
+          notes: a.notes || ''
+        };
+      });
+      self.irData({ columns: cols, items: rows, total: rows.length,
+                    truncated: false, maxRows: rows.length });
+    }
 
     self.show = function () {
       self.open(true);
@@ -57,10 +90,12 @@ define(['knockout', 'shared/api', 'shared/i18n'], function (ko, api, i18n) {
         .then(function (r) {
           self.info(r);
           self.artifacts(r.artifacts || []);
+          buildIr(r.artifacts || []);
         })
         .catch(function (e) {
           self.info(null);
           self.artifacts([]);
+          self.irData(null);
           self.notFound(true);
         })
         .then(function () { self.loading(false); });
@@ -84,7 +119,7 @@ define(['knockout', 'shared/api', 'shared/i18n'], function (ko, api, i18n) {
       '</button>' +
       '<div class="ed-scrim" data-bind="css:{ \'ed-show\': open }, click: close"></div>' +
       '<aside class="ed-drawer si-drawer" role="dialog" aria-modal="true" ' +
-             'data-bind="css:{ \'ed-show\': open }, style:{ width: \'640px\' }, event:{ keydown: onKey }">' +
+             'data-bind="css:{ \'ed-show\': open }, style:{ width: \'820px\' }, event:{ keydown: onKey }">' +
         '<header class="ed-drawer__header">' +
           '<div>' +
             '<div class="ed-drawer__eyebrow" data-bind="text: (module() || \'\') + \' / \' + (page() || \'\')"></div>' +
@@ -113,33 +148,10 @@ define(['knockout', 'shared/api', 'shared/i18n'], function (ko, api, i18n) {
             '<div class="si-kv" data-bind="text: t(\'si.noViewPriv\')"></div>' +
             '<!-- /ko -->' +
           '</div>' +
-          '<!-- ko foreach: artifacts -->' +
-          '<div class="si-art">' +
-            '<div class="si-art-head">' +
-              '<span class="si-type" data-bind="text: $component.typeLabel(type)"></span>' +
-              '<span class="si-art-label" data-bind="text: $data.label || code"></span>' +
-              '<code class="si-code" data-bind="text: code"></code>' +
-            '</div>' +
-            '<!-- ko if: $data.privCode -->' +
-            '<div class="si-kv">' +
-              '<span data-bind="text: $component.t(\'si.guardedBy\')"></span> ' +
-              '<code class="si-code" data-bind="text: privCode"></code>' +
-              '<span data-bind="text: \' — \' + ($data.privName || \'\')"></span>' +
-            '</div>' +
-            '<div class="si-roles">' +
-              '<span class="si-kv" data-bind="text: $component.t(\'si.grantedTo\')"></span>' +
-              '<!-- ko foreach: grantedTo -->' +
-              '<span class="si-role" data-bind="text: name || code, attr:{ title: category }"></span>' +
-              '<!-- /ko -->' +
-              '<!-- ko if: (grantedTo || []).length === 0 -->' +
-              '<span class="si-kv si-warn" data-bind="text: $component.t(\'si.noRoles\')"></span>' +
-              '<!-- /ko -->' +
-            '</div>' +
-            '<!-- /ko -->' +
-            '<!-- ko ifnot: $data.privCode -->' +
-            '<div class="si-kv si-warn" data-bind="text: $component.t(\'si.unguarded\')"></div>' +
-            '<!-- /ko -->' +
-            '<!-- ko if: $data.notes --><div class="si-kv" data-bind="text: notes"></div><!-- /ko -->' +
+          '<!-- ko if: artifacts().length > 0 -->' +
+          '<div class="si-ir">' +
+            '<interactive-report params="reportCode: \'SEC_PAGEINFO\', section: irSection, ' +
+                                        'data: irData, isAdmin: false, layoutsApi: null"></interactive-report>' +
           '</div>' +
           '<!-- /ko -->' +
           '<!-- ko if: info() && artifacts().length === 0 -->' +

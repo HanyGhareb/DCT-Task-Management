@@ -932,6 +932,7 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   CSV export unchanged (numbers only). Deploy: 07 re-run (standalone-safe) + webtier
   release 20260713232809. APP_VERSION 1.20.0.
 
+- **2026-07-19 — Security Console review round (GL side) — APP_VERSION 1.34.6:** the Page Security drawer now renders its artifact register in the SHARED `<interactive-report>` (report code `GL_SEC_PAGEINFO`, section per tab; drawer widened `.dw-wide`; envelope built client-side in `buildSecIr` with EN/AR labels). GL descriptions for all 14 GL privileges + duties/jobs/groups seeded platform-wide by `db/v2/103`. Smoke: drawer IR renders the overview page's 2 button artifacts with granted-to rollup, 0 JS errors.
 - **2026-07-19 — Security Console adoption (first module) — APP_VERSION 1.34.4 (webtier release `20260719165634` LIVE):**
   GL/db/07/09/11/12/13 re-run with (a) a privilege gate after every 401 check —
   `prod.dct_sec.has_priv_or_role(l_user,'<PRIV>',NULL,'GL')` (NULL legacy role = the

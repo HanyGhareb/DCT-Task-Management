@@ -399,5 +399,12 @@
   "si.type.tab": "Tab",
   "si.type.report": "Report",
   "si.type.endpoint": "Endpoint",
-  "si.type.action": "Action"
+  "si.type.action": "Action",
+  "si.col.type": "Type",
+  "si.col.artifact": "Artifact",
+  "si.col.key": "Key",
+  "si.col.privilege": "Privilege",
+  "si.col.privName": "Privilege Name",
+  "si.col.grantedTo": "Granted To",
+  "si.col.notes": "Notes"
 }

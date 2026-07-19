@@ -57,24 +57,21 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 **Permission Matrix** (`permissions`) — role × permission grid by module.
 - `togglePerm` · `hasPerm` · `getPermsByModule` · `saveAll`.
 
-## 3b. Security Console (2026-07-19 — Fusion-style RBAC over /dct/sec/)
+## 3b. Security Console (2026-07-19 — Fusion-style RBAC over /dct/sec/; review round same day: every catalog renders in the SHARED `<interactive-report>` [who columns Created/Updated By/On included], every create/edit form lives in a shared `<edit-drawer>`, and Description is REQUIRED on every artifact)
 
-**Privileges** (`privileges`) — verb-first privilege catalog (server-paginated).
-- `search` / `reload` / `prevPage` / `nextPage` · `addPrivilege` / `editPrivilege` / `saveEdit` (client + server verb-first validation) · `confirmDelete` / `doDelete` (soft).
+**Privileges** (`privileges`) — verb-first privilege catalog in an interactive report (`SEC_PRIVILEGES`; one-shot load, row click = edit).
+- `reload` · `gridClick` (delegated row click → editor drawer) · `addPrivilege` / `editPrivilege` / `saveEdit` (verb-first + description-required validation) · `askDeactivate` / `doDelete` (soft, from inside the drawer).
 
-**Privilege Groups** (`privilegeGroups`) — card grid of privilege bundles.
-- `addGroup` / `editGroup` / `saveEdit` (full `permIds[]` sync) · `togglePriv` · `confirmDelete` / `doDelete`.
+**Privilege Groups** (`privilegeGroups`) — interactive report of privilege bundles (`SEC_PRIV_GROUPS`; replaced the card grid).
+- `gridClick` · `addGroup` / `editGroup` / `saveEdit` (full `permIds[]` sync, 760px drawer) · `togglePriv` · `askDeactivate` / `doDelete`.
 
-**Abstract / Duty / Job Roles** (`abstractRoles` / `dutyRoles` / `jobRoles`) — one shared implementation (`secRolesBase.js`) parameterized by `role_category`.
-- `addRole` / `editRole` (→ `secRoleEdit`) · `startCopy` / `doCopy` (deep copy of the definition, never assignments) · `confirmDelete` / `doDelete`.
+**Abstract / Duty / Job Roles** (`abstractRoles` / `dutyRoles` / `jobRoles`) — one shared implementation (`secRolesBase.js`) parameterized by `role_category`; interactive-report catalogs (`SEC_ROLES_<CAT>`). The FULL role editor (definition + Privileges & Groups / Nested Duties / Exclusions / Effective Privileges tabs) lives in a 920px `<edit-drawer>` opened by row click — the separate `secRoleEdit` route was RETIRED in the review round.
+- `gridClick` · `addRole` / `editRole` · `saveEdit` (syncs `permIds` + `groupIds` + `dutyIds` [cycle/depth guarded server-side] + `exclusionPermIds`) · `togglePriv` / `toggleGroup` / `toggleDuty` / `toggleExcl` / `setTab` · `startCopy` / `doCopy` (copy drawer; deep copy of the definition, never assignments) · `askDeactivate` / `doDelete`.
 
-**Role Editor** (`secRoleEdit`) — tabs: Privileges & Groups / Nested Duties / Exclusions / Effective Privileges.
-- `save` (syncs `permIds` + `groupIds` + `dutyIds` [cycle/depth guarded server-side] + `exclusionPermIds`) · `togglePriv` / `toggleGroup` / `toggleDuty` / `toggleExcl` · `setTab` / `backToList`.
+**Security Profiles** (`secProfiles`) — data-security profiles (10 dimensions: BU, Sector, Department, CC, Project, Task, GL Account, Appropriation, DCT Program, Chapter) in an interactive report (`SEC_PROFILES`).
+- `gridClick` · `addProfile` / `editProfile` / `saveEdit` (800px drawer) · `addScope` (dimension LOV search via `/sec/lov`, `include_children` for hierarchy dims) / `removeScope` · `askDeactivate` / `doDelete`.
 
-**Security Profiles** (`secProfiles`) — data-security profiles (10 dimensions: BU, Sector, Department, CC, Project, Task, GL Account, Appropriation, DCT Program, Chapter).
-- `addProfile` / `editProfile` / `saveEdit` · `addScope` (dimension LOV search via `/sec/lov`, `include_children` for hierarchy dims) / `removeScope` · `confirmDelete` / `doDelete`.
-
-**User Management** (`userManagement`) — master–detail replacement for users/userEdit (legacy pages retire after UAT).
+**User Management** (`userManagement`) — master–detail replacement for users/userEdit (legacy pages retire after UAT). Profile tab uses the strict `.rm-form-grid` two-column layout (Save top-right); **New User opens in a 640px drawer** (`saveNewUser` → lands on the Role Assignments tab, since a user has no access until a role is assigned).
 - List: `search` / `prevPage` / `nextPage` / `selectUser` / `newUser`.
 - Profile tab: `saveProfile`. Roles tab: `assignRole` (dated) / `endRole` (GREATEST end-date rule). Profiles tab: `assignProfile` / `endProfile`. Exclusions tab: `addExclusion` / `endExclusion`. Effective tab: `effectiveGroups` (grouped by granting role, with via-duty/via-group provenance).
 

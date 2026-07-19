@@ -776,3 +776,42 @@ html[lang="ar"] {
 .rm-group-card:hover { border-color: var(--vault-amber); }
 .rm-group-card h4 { margin: 0 0 2px; font-size: 13px; color: var(--vault-text); }
 .rm-sc-note { font-size: 11px; color: var(--vault-muted); margin: 6px 0 0; }
+
+/* ============================================================
+   Security Console review round (2026-07-19)
+   Interactive-report panel, aligned form grid, drawer chrome
+   ============================================================ */
+/* white panel that hosts the shared <interactive-report> grid */
+.rm-ir-panel {
+  background: var(--vault-surface);
+  border: 1px solid var(--vault-border);
+  border-radius: 12px;
+  padding: 14px 16px 16px;
+}
+.rm-ir-panel .ir-table tbody tr { cursor: pointer; }
+
+/* strict two-column form grid — labels above fields, uniform widths.
+   Every field cell stretches; span the full row with .rm-fg-span. */
+.rm-form-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 14px 18px;
+  align-items: start;
+}
+.rm-form-grid .re-field { margin-bottom: 0; min-width: 0; }
+.rm-form-grid .re-input,
+.rm-form-grid .re-textarea,
+.rm-form-grid select.re-input { width: 100%; }
+.rm-fg-span { grid-column: 1 / -1; }
+@media (max-width: 720px) { .rm-form-grid { grid-template-columns: 1fr; } }
+
+/* quiet destructive action at the bottom of an edit drawer */
+.rm-danger-link {
+  appearance: none; background: none; border: none; cursor: pointer;
+  font-family: var(--vault-font); font-size: 12px; font-weight: 600;
+  color: var(--vault-red); padding: 6px 0; text-align: start;
+}
+.rm-danger-link:hover { text-decoration: underline; }
+
+/* drawer body breathing room when hosting vault fields */
+.ed-drawer__body .re-panel { border: none; padding: 0; background: transparent; }

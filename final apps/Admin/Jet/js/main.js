@@ -18,6 +18,8 @@ requirejs.config({
     'shared':         '/shared/js',
     // Chart.js MUST load via RequireJS (its UMD calls define(); a <script> tag breaks)
     'chartjs':        'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min',
+    // SheetJS — required by the shared <interactive-report> XLSX export
+    'xlsx':           'https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min',
   },
   shim: {
     'hammerjs': { exports: 'Hammer' }
@@ -30,7 +32,7 @@ require(
    // workflow platform components — self-registering KO components
    'shared/components/wfWorklist', 'shared/components/wfTimeline',
    'shared/components/wfActionBar', 'shared/components/wfDesigner',
-   'shared/components/securityInfo'],
+   'shared/components/securityInfo', 'shared/components/interactiveReport'],
   function (AppController, ko, i18n) {
 
   // Custom KO binding: swaps a view+viewModel pair into a container element.

@@ -76,6 +76,12 @@ BEGIN
     DELETE FROM prod.dct_notifications WHERE recipient_user_id IN
         (SELECT user_id FROM prod.dct_users WHERE username = 'sec.smoke1');
     DELETE FROM prod.dct_users WHERE username = 'sec.smoke1';
+    DELETE FROM prod.dct_user_roles WHERE role_id IN
+        (SELECT role_id FROM prod.dct_roles WHERE role_code LIKE 'TSEC101%');
+    DELETE FROM prod.dct_module_roles WHERE role_id IN
+        (SELECT role_id FROM prod.dct_roles WHERE role_code LIKE 'TSEC101%');
+    DELETE FROM prod.dct_sec_exclusion WHERE role_id IN
+        (SELECT role_id FROM prod.dct_roles WHERE role_code LIKE 'TSEC101%');
     DELETE FROM prod.dct_sec_role_hierarchy WHERE parent_role_id IN
         (SELECT role_id FROM prod.dct_roles WHERE role_code LIKE 'TSEC101%')
         OR child_role_id IN
@@ -100,8 +106,11 @@ END;
 EXIT
 """
     fd, path = tempfile.mkstemp(suffix='.sql')
-    os.write(fd, script.encode()); os.close(fd)
-    subprocess.run(['sql', '-name', 'prod_mcp', '@' + path], capture_output=True, text=True)
+    # CRLF is mandatory: this Linux SQLcl silently swallows LF-only blocks
+    os.write(fd, script.replace('\r\n', '\n').replace('\n', '\r\n').encode()); os.close(fd)
+    r = subprocess.run(['sql', '-name', 'prod_mcp', '@' + path], capture_output=True, text=True)
+    if 'ORA-' in (r.stdout or ''):
+        print('  WARN cleanup reported:', [l for l in r.stdout.splitlines() if 'ORA-' in l][:2])
     os.unlink(path)
 
 

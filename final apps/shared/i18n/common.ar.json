@@ -399,5 +399,12 @@
   "si.type.tab": "تبويب",
   "si.type.report": "تقرير",
   "si.type.endpoint": "نقطة نهاية",
-  "si.type.action": "إجراء"
+  "si.type.action": "إجراء",
+  "si.col.type": "النوع",
+  "si.col.artifact": "العنصر",
+  "si.col.key": "المفتاح",
+  "si.col.privilege": "الصلاحية",
+  "si.col.privName": "اسم الصلاحية",
+  "si.col.grantedTo": "ممنوحة إلى",
+  "si.col.notes": "ملاحظات"
 }

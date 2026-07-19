@@ -138,6 +138,7 @@ BEGIN
     SELECT p.permission_id, p.permission_code, p.permission_name,
            p.permission_name_ar, p.action_type, p.verb, p.is_active,
            p.description_en, m.module_code,
+           p.created_by, p.created_at, p.updated_by, p.updated_at,
            (SELECT COUNT(*) FROM dct_sec_priv_group_item gi WHERE gi.permission_id = p.permission_id) AS group_count,
            (SELECT COUNT(*) FROM dct_role_permissions rp WHERE rp.permission_id = p.permission_id) AS role_count,
            COUNT(*) OVER () AS total_rows
@@ -162,6 +163,10 @@ BEGIN
     APEX_JSON.write('isActive', r.is_active);
     APEX_JSON.write('groupCount', r.group_count);
     APEX_JSON.write('roleCount', r.role_count);
+    APEX_JSON.write('createdBy', r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(dct_to_local(r.created_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('updatedBy', r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(dct_to_local(r.updated_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -340,6 +345,7 @@ BEGIN
   FOR r IN (
     SELECT g.group_id, g.group_code, g.name_en, g.name_ar, g.description_en,
            g.is_active, m.module_code,
+           g.created_by, g.created_at, g.updated_by, g.updated_at,
            (SELECT COUNT(*) FROM dct_sec_priv_group_item gi WHERE gi.group_id = g.group_id) AS priv_count,
            (SELECT COUNT(*) FROM dct_sec_role_priv_group rg WHERE rg.group_id = g.group_id) AS role_count
       FROM dct_sec_priv_group g
@@ -358,6 +364,10 @@ BEGIN
     APEX_JSON.write('isActive', r.is_active);
     APEX_JSON.write('privCount', r.priv_count);
     APEX_JSON.write('roleCount', r.role_count);
+    APEX_JSON.write('createdBy', r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(dct_to_local(r.created_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('updatedBy', r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(dct_to_local(r.updated_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -589,6 +599,7 @@ BEGIN
     SELECT ro.role_id, ro.role_code, ro.role_name_en, ro.role_name_ar,
            ro.role_category, ro.role_type, ro.is_system_role, ro.is_active,
            ro.description_en, ro.created_from_role_id, m.module_code,
+           ro.created_by, ro.created_at, ro.updated_by, ro.updated_at,
            src.role_code AS copied_from,
            (SELECT COUNT(*) FROM dct_user_roles ur
              WHERE ur.role_id = ro.role_id AND ur.is_active='Y') AS member_count,
@@ -620,6 +631,10 @@ BEGIN
     APEX_JSON.write('memberCount', r.member_count);
     APEX_JSON.write('dutyCount', r.duty_count);
     APEX_JSON.write('privCount', r.priv_count);
+    APEX_JSON.write('createdBy', r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(dct_to_local(r.created_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('updatedBy', r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(dct_to_local(r.updated_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
@@ -1004,6 +1019,7 @@ BEGIN
   FOR r IN (
     SELECT p.profile_id, p.profile_code, p.name_en, p.name_ar,
            p.description_en, p.is_active,
+           p.created_by, p.created_at, p.updated_by, p.updated_at,
            (SELECT COUNT(*) FROM dct_sec_profile_scope s WHERE s.profile_id = p.profile_id) AS scope_count,
            (SELECT COUNT(*) FROM dct_sec_user_profile up
              WHERE up.profile_id = p.profile_id AND up.is_active='Y'
@@ -1023,6 +1039,10 @@ BEGIN
     APEX_JSON.write('isActive', r.is_active);
     APEX_JSON.write('scopeCount', r.scope_count);
     APEX_JSON.write('userCount', r.user_count);
+    APEX_JSON.write('createdBy', r.created_by);
+    APEX_JSON.write('createdAt', TO_CHAR(dct_to_local(r.created_at),'YYYY-MM-DD HH:MI AM'));
+    APEX_JSON.write('updatedBy', r.updated_by);
+    APEX_JSON.write('updatedAt', TO_CHAR(dct_to_local(r.updated_at),'YYYY-MM-DD HH:MI AM'));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;

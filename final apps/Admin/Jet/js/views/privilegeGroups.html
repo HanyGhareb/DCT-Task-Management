@@ -4,7 +4,7 @@
     <div>
       <security-info params="module: 'ADMIN', page: 'privilegeGroups'"></security-info>
       <h1 class="rm-title">Privilege Groups</h1>
-      <p class="rm-subtitle" data-bind="text: loading() ? 'Loading…' : items().length + ' group' + (items().length === 1 ? '' : 's') + ' — bundle related privileges for one-step granting'"></p>
+      <p class="rm-subtitle" data-bind="text: loading() ? 'Loading…' : items().length + ' group' + (items().length === 1 ? '' : 's') + ' — bundle related privileges for one-step granting. Click a row to edit.'"></p>
     </div>
     <button class="rm-btn-add" data-bind="click: addGroup">
       <span class="rm-btn-plus">+</span> New Group
@@ -14,60 +14,29 @@
   <!-- ko if: okMsg --><div class="rm-alert rm-alert--success" data-bind="text: okMsg"></div><!-- /ko -->
   <!-- ko if: errorMsg() && !showEdit() --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
 
-  <div class="rm-toolbar">
-    <div class="rm-search-wrap">
-      <span class="rm-search-icon">&#9906;</span>
-      <input class="rm-search" type="text" placeholder="Search groups&hellip;"
-             data-bind="value: searchTerm, valueUpdate: 'input'">
-    </div>
-  </div>
-
   <!-- ko if: loading() -->
   <div class="rm-skeleton-rows"><div class="rm-skeleton-row"></div><div class="rm-skeleton-row"></div><div class="rm-skeleton-row"></div></div>
   <!-- /ko -->
 
   <!-- ko ifnot: loading() -->
-  <div class="rm-group-list">
-    <!-- ko foreach: filteredItems -->
-    <div class="rm-group-card" data-bind="click: $parent.editGroup.bind($parent, $data)">
-      <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px">
-        <h4 data-bind="text: name"></h4>
-        <!-- ko if: isActive !== 'Y' --><span class="rm-status rm-status--off">Inactive</span><!-- /ko -->
-      </div>
-      <code class="rm-code-badge" data-bind="text: code"></code>
-      <p class="rm-sc-note" data-bind="text: $data.description || ''"></p>
-      <div style="display:flex; gap:14px; margin-top:10px; align-items:center">
-        <span class="rm-kv"><b data-bind="text: privCount"></b> privileges</span>
-        <span class="rm-kv"><b data-bind="text: roleCount"></b> roles use it</span>
-        <span class="rm-kv" data-bind="text: $data.module || 'Platform'"></span>
-        <button class="rm-action-btn rm-action-btn--del" style="margin-inline-start:auto" title="Deactivate group"
-                data-bind="click: $parent.confirmDelete.bind($parent, $data), clickBubble: false">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
-        </button>
-      </div>
-    </div>
-    <!-- /ko -->
-    <!-- ko if: filteredItems().length === 0 -->
-    <div class="rm-empty"><div class="rm-empty-icon">&#8856;</div><div>No privilege groups yet</div></div>
-    <!-- /ko -->
+  <div class="rm-ir-panel" data-bind="event: { click: gridClick }">
+    <interactive-report params="reportCode: 'SEC_PRIV_GROUPS', section: '',
+                                data: irData, isAdmin: false, layoutsApi: null"></interactive-report>
   </div>
   <!-- /ko -->
 
-  <!-- Editor modal -->
-  <!-- ko if: showEdit() -->
-  <div class="rm-modal-backdrop">
-    <div class="rm-modal" style="max-width:680px; text-align:start">
-      <h3 class="rm-modal-title" data-bind="text: editId() ? 'Edit Privilege Group' : 'New Privilege Group'"></h3>
-      <!-- ko if: errorMsg --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
-      <div class="re-field re-field--inline">
-        <div style="flex:1">
-          <label class="re-label">Code <span class="re-req">*</span></label>
-          <input class="re-input re-input--mono" data-bind="value: fCode, enable: !editId()" placeholder="FIN_PLANNING_REPORTING">
-        </div>
-        <div style="flex:1">
-          <label class="re-label">Module</label>
-          <select class="re-input" data-bind="options: modules, optionsCaption: 'Platform-wide', value: fModule"></select>
-        </div>
+  <!-- Editor drawer -->
+  <edit-drawer params="open: showEdit, vm: $vm, title: drawerTitle,
+                       saveLabel: 'Save', onSave: saveEdit, width: '760px'">
+    <!-- ko if: errorMsg --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
+    <div class="rm-form-grid">
+      <div class="re-field">
+        <label class="re-label">Code <span class="re-req">*</span></label>
+        <input class="re-input re-input--mono" data-bind="value: fCode, enable: !editId()" placeholder="FIN_PLANNING_REPORTING">
+      </div>
+      <div class="re-field">
+        <label class="re-label">Module</label>
+        <select class="re-input" data-bind="options: modules, optionsCaption: 'Platform-wide', value: fModule"></select>
       </div>
       <div class="re-field">
         <label class="re-label">Name <span class="re-req">*</span></label>
@@ -77,16 +46,17 @@
         <label class="re-label">Name (Arabic)</label>
         <input class="re-input" dir="rtl" data-bind="value: fNameAr">
       </div>
-      <div class="re-field">
-        <label class="re-label">Description</label>
-        <textarea class="re-textarea" rows="2" data-bind="value: fDesc"></textarea>
+      <div class="re-field rm-fg-span">
+        <label class="re-label">Description <span class="re-req">*</span></label>
+        <textarea class="re-textarea" rows="2" data-bind="value: fDesc"
+                  placeholder="What this bundle grants, in words an end user understands"></textarea>
       </div>
-      <div class="re-field">
+      <div class="re-field rm-fg-span">
         <label class="re-label">Privileges in this group
           (<span data-bind="text: selected().length"></span> selected)</label>
         <input class="re-input" placeholder="Filter privileges&hellip;"
                data-bind="value: privSearch, valueUpdate: 'input'" style="margin-bottom:8px">
-        <div class="re-perm-grid" style="max-height:280px; overflow-y:auto">
+        <div class="re-perm-grid" style="max-height:300px; overflow-y:auto">
           <!-- ko foreach: filteredPrivs -->
           <div class="re-perm-item" data-bind="css: { 're-perm-item--on': $parent.selected.indexOf(id) >= 0 },
                                                click: $parent.togglePriv.bind($parent, $data)">
@@ -99,14 +69,13 @@
           <!-- /ko -->
         </div>
       </div>
-      <div class="rm-modal-actions">
-        <button class="rm-modal-cancel" data-bind="click: cancelEdit">Cancel</button>
-        <button class="rm-modal-confirm" style="background:var(--vault-amber)"
-                data-bind="click: saveEdit, enable: !saving(), text: saving() ? 'Saving…' : 'Save'"></button>
-      </div>
     </div>
-  </div>
-  <!-- /ko -->
+    <!-- ko if: editId -->
+    <button class="rm-danger-link" style="margin-top:18px" data-bind="click: askDeactivate">
+      Deactivate this group&hellip;
+    </button>
+    <!-- /ko -->
+  </edit-drawer>
 
   <!-- Delete confirm -->
   <!-- ko if: showDeleteConfirm() -->

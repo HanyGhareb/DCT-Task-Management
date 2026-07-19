@@ -3,14 +3,18 @@
 security_console_browser.py -- browser test for the Admin Security Console.
 
 Drives the REAL Admin JET app against PROD ORDS and asserts the Fusion-style
-security pages actually render and behave:
+security pages actually render and behave after the 2026-07-19 review round:
 
-  Privileges          catalog + verb-first create validation
-  Privilege Groups    "Financial Planning and Reporting" card from the GL seed
-  Duty / Job roles    the seeded GL duties and jobs, nested-duty editor
-  Security Profiles   list page
-  User Management     master-detail + the effective-privileges preview
-  <security-info>     the SYS_ADMIN page-security drawer (shared component)
+  Privileges          interactive-report catalog + who columns + drawer editor
+                      with verb-first AND description-required validation
+  Privilege Groups    interactive-report (card view replaced)
+  Duty / Job roles    interactive-report catalogs; the FULL role editor
+                      (definition + grants/duties/exclusions/effective tabs)
+                      now lives in a wide edit-drawer opened by row click
+  Security Profiles   interactive-report catalog
+  User Management     master-detail + aligned form grid + New User drawer
+  <security-info>     page-security drawer, artifact register as an
+                      interactive-report
 
 Plus the AR/RTL pass, restoring EN at the end (the shell persists the choice).
 READ-ONLY on business data: everything it opens it cancels.
@@ -57,7 +61,12 @@ def set_lang(pg, lang):
 
 def nav(pg, route, selector):
     pg.evaluate(f"() => window._jetApp.navigate('{route}')")
-    pg.wait_for_selector(selector, timeout=20000)
+    pg.wait_for_selector(selector, timeout=25000)
+
+
+def open_drawer(pg):
+    """the open (non-security-info) edit drawer"""
+    return pg.locator('.ed-drawer.ed-show:not(.si-drawer)').first
 
 
 print('=== Security Console -- browser test ===\n')
@@ -88,104 +97,146 @@ try:
         else:
             bad('Security Console nav group missing')
 
-        # ---- privileges ---------------------------------------------------
-        nav(pg, 'privileges', '.rm-page')
-        pg.wait_for_selector('.rm-table .rm-row', timeout=20000)
-        pg.fill('.rm-search', 'GL_VIEW')
-        pg.keyboard.press('Enter')
-        pg.wait_for_timeout(1500)
-        rows = pg.locator('.rm-table .rm-row')
-        if rows.count() >= 5:
-            ok(f'privileges catalog lists the GL seeds ({rows.count()} GL_VIEW rows)')
+        # ---- privileges: interactive report -------------------------------
+        nav(pg, 'privileges', '.rm-ir-panel')
+        pg.wait_for_selector('.rm-ir-panel .ir-table tbody tr', timeout=25000)
+        # Chrome innerText applies the th text-transform — compare lower-case
+        head_txt = pg.locator('.rm-ir-panel .ir-table thead').inner_text().lower()
+        if 'created by' in head_txt and 'updated on' in head_txt:
+            ok('privileges grid shows the who columns')
         else:
-            bad(f'privileges catalog rows = {rows.count()}')
+            bad(f'who columns missing from grid header: {head_txt[:120]}')
+        if 'description' in head_txt:
+            ok('privileges grid shows the Description column')
+        else:
+            bad('Description column missing')
 
-        # verb-first validation, client-side
+        pg.locator('.rm-ir-panel .ir-wrap input.form-control').first.fill('GL_VIEW')
+        pg.wait_for_timeout(1200)
+        rows = pg.locator('.rm-ir-panel .ir-table tbody tr')
+        if rows.count() >= 5:
+            ok(f'IR global search filters the catalog ({rows.count()} GL_VIEW rows)')
+        else:
+            bad(f'IR search rows = {rows.count()}')
+        pg.locator('.rm-ir-panel .ir-wrap input.form-control').first.fill('')
+        pg.wait_for_timeout(800)
+
+        # ---- privilege editor drawer + validation -------------------------
         pg.click('.rm-btn-add')
-        pg.wait_for_selector('.rm-modal')
-        pg.fill('.rm-modal input.re-input--mono', 'TBROWSER_X')
-        pg.locator('.rm-modal input.re-input:not(.re-input--mono)').first.fill('Budget things')
-        pg.locator('.rm-modal .rm-modal-confirm').click()
+        pg.wait_for_selector('.ed-drawer.ed-show:not(.si-drawer)', timeout=10000)
+        dr = open_drawer(pg)
+        dr.locator('input.re-input--mono').fill('TBROWSER_X')
+        dr.locator('input.re-input:not(.re-input--mono)').first.fill('Budget things')
+        dr.locator('header .btn-primary').click()
         pg.wait_for_timeout(600)
-        if 'verb' in (pg.locator('.rm-modal .rm-alert--error').inner_text() or '').lower():
-            ok('verb-first rule enforced in the create dialog')
+        if 'verb' in (dr.locator('.rm-alert--error').inner_text() or '').lower():
+            ok('verb-first rule enforced in the editor drawer')
         else:
             bad('verb-first rule not enforced client-side')
-        pg.locator('.rm-modal .rm-modal-cancel').click()
+        dr.locator('input.re-input:not(.re-input--mono)').first.fill('View budget things')
+        dr.locator('header .btn-primary').click()
+        pg.wait_for_timeout(600)
+        if 'description' in (dr.locator('.rm-alert--error').inner_text() or '').lower():
+            ok('description-required rule enforced in the editor drawer')
+        else:
+            bad('description-required rule not enforced')
+        dr.locator('header .btn:not(.btn-primary)').first.click()
+        pg.wait_for_timeout(500)
 
-        # ---- security info drawer (shared component) ----------------------
+        # ---- row click opens the editor drawer ----------------------------
+        pg.locator('.rm-ir-panel td[data-key="code"]', has_text='ADMIN_MANAGE_SECURITY').first.click()
+        pg.wait_for_selector('.ed-drawer.ed-show:not(.si-drawer)', timeout=10000)
+        dr = open_drawer(pg)
+        if 'Manage Security Console' in (dr.locator('input.re-input:not(.re-input--mono)').first.input_value() or ''):
+            ok('row click opens the privilege editor pre-filled')
+        else:
+            bad('row click editor not pre-filled')
+        dr.locator('header .btn:not(.btn-primary)').first.click()
+        pg.wait_for_timeout(500)
+
+        # ---- security info drawer (shared component, IR register) ---------
         pg.locator('.si-link').first.click()
         pg.wait_for_selector('.si-drawer.ed-show', timeout=15000)
         pg.wait_for_timeout(1500)
-        body = pg.locator('.si-drawer .ed-drawer__body').inner_text()
+        # .first: the embedded interactive-report carries its own nested
+        # edit-drawer (the calc-column editor), so the selector matches twice
+        body = pg.locator('.si-drawer .ed-drawer__body').first.inner_text()
         if 'ADMIN_MANAGE_SECURITY' in body:
             ok('<security-info> drawer shows the page view privilege')
         else:
             bad(f'security-info drawer content unexpected: {body[:120]}')
-        if pg.locator('.si-drawer .si-art').count() >= 1:
-            ok('security-info drawer lists registered artifacts')
+        if pg.locator('.si-drawer .ir-table tbody tr').count() >= 1:
+            ok('security-info drawer renders artifacts as an interactive report')
         else:
-            bad('security-info drawer shows no artifacts')
-        pg.keyboard.press('Escape')
+            bad('security-info artifact interactive report missing')
+        pg.locator('.si-drawer header .btn').first.click()
         pg.wait_for_timeout(400)
 
         # ---- privilege groups ---------------------------------------------
-        nav(pg, 'privilegeGroups', '.rm-group-list')
-        pg.wait_for_timeout(1200)
+        nav(pg, 'privilegeGroups', '.rm-ir-panel')
+        pg.wait_for_selector('.rm-ir-panel .ir-table tbody tr', timeout=25000)
         if pg.locator('text=Financial Planning and Reporting').count() > 0:
-            ok('privilege group "Financial Planning and Reporting" rendered')
+            ok('privilege group "Financial Planning and Reporting" in the grid')
         else:
-            bad('GL privilege group card missing')
+            bad('GL privilege group missing from grid')
+        grp_txt = pg.locator('.rm-ir-panel .ir-table tbody').inner_text()
+        if 'Bundles the' in grp_txt:
+            ok('group descriptions visible in the grid')
+        else:
+            bad('group descriptions missing')
 
         # ---- duty + job roles ---------------------------------------------
-        nav(pg, 'dutyRoles', '.rm-page')
-        pg.wait_for_selector('.rm-table .rm-row', timeout=20000)
-        duty_names = pg.locator('.rm-table').inner_text()
-        if 'GL_DUTY_FIN_REPORTING' in duty_names:
-            ok('duty roles catalog lists the GL duties')
+        nav(pg, 'dutyRoles', '.rm-ir-panel')
+        pg.wait_for_selector('.rm-ir-panel .ir-table tbody tr', timeout=25000)
+        if 'GL_DUTY_FIN_REPORTING' in pg.locator('.rm-ir-panel .ir-table tbody').inner_text():
+            ok('duty roles grid lists the GL duties')
         else:
-            bad('GL duties missing from duty catalog')
+            bad('GL duties missing from duty grid')
 
-        nav(pg, 'jobRoles', '.rm-page')
-        pg.wait_for_selector('.rm-table .rm-row', timeout=20000)
-        jobs = pg.locator('.rm-table').inner_text()
+        nav(pg, 'jobRoles', '.rm-ir-panel')
+        pg.wait_for_selector('.rm-ir-panel .ir-table tbody tr', timeout=25000)
+        jobs = pg.locator('.rm-ir-panel .ir-table tbody').inner_text()
         if 'GL_ACCOUNTANT' in jobs and 'GL_ANALYST' in jobs:
-            ok('job roles catalog lists GL Analyst + GL Accountant')
+            ok('job roles grid lists GL Analyst + GL Accountant')
         else:
             bad('GL job roles missing')
 
-        # open the GL Accountant editor -> duties + effective tabs
-        row = pg.locator('.rm-row', has_text='GL_ACCOUNTANT').first
-        row.locator('.rm-action-btn--edit').first.click()
-        pg.wait_for_selector('.rm-tabs', timeout=20000)
-        pg.wait_for_timeout(1500)
-        tabs_txt = pg.locator('.rm-tabs').inner_text()
+        # ---- role editor drawer -------------------------------------------
+        pg.locator('.rm-ir-panel td[data-key="code"]', has_text='GL_ACCOUNTANT').first.click()
+        pg.wait_for_selector('.ed-drawer.ed-show:not(.si-drawer)', timeout=10000)
+        dr = open_drawer(pg)
+        pg.wait_for_timeout(2000)
+        tabs_txt = dr.locator('.rm-tabs').inner_text()
         m = re.search(r'Nested Duties \((\d+)\)', tabs_txt)
         if m and int(m.group(1)) >= 3:
-            ok(f'role editor: GL Accountant nests {m.group(1)} duties')
+            ok(f'role editor drawer: GL Accountant nests {m.group(1)} duties')
         else:
             bad(f'role editor duties count wrong: {tabs_txt}')
-        pg.locator('.rm-tab', has_text='Effective Privileges').click()
+        dr.locator('.rm-tab', has_text='Effective Privileges').click()
         pg.wait_for_timeout(800)
-        eff_rows = pg.locator('.rm-table .rm-row')
+        eff_rows = dr.locator('.rm-table .rm-row')
         if eff_rows.count() >= 10:
-            ok(f'role editor: effective closure renders ({eff_rows.count()} privileges)')
+            ok(f'role editor drawer: effective closure renders ({eff_rows.count()} privileges)')
         else:
             bad(f'effective closure rows = {eff_rows.count()}')
-        pg.locator('.rm-back-btn').click()
-        pg.wait_for_timeout(800)
+        dr.locator('header .btn:not(.btn-primary)').first.click()
+        pg.wait_for_timeout(600)
 
         # ---- security profiles --------------------------------------------
-        nav(pg, 'secProfiles', '.rm-page')
-        pg.wait_for_timeout(1200)
-        ok('security profiles page rendered')
+        nav(pg, 'secProfiles', '.rm-ir-panel')
+        pg.wait_for_timeout(1500)
+        ok('security profiles page rendered as an interactive report')
 
         # ---- user management ----------------------------------------------
         nav(pg, 'userManagement', '.rm-split')
-        pg.wait_for_selector('.rm-user-item', timeout=20000)
+        pg.wait_for_selector('.rm-user-item', timeout=25000)
         pg.locator('.rm-user-item').first.click()
-        pg.wait_for_selector('.rm-tabs', timeout=20000)
+        pg.wait_for_selector('.rm-tabs', timeout=25000)
         ok('user management: master-detail opened')
+        if pg.locator('.rm-form-grid').count() >= 1:
+            ok('user management: profile uses the aligned form grid')
+        else:
+            bad('aligned form grid missing on profile tab')
         pg.locator('.rm-tab', has_text='Effective Privileges').click()
         pg.wait_for_timeout(2000)
         ok('user management: effective privileges tab rendered')
@@ -195,6 +246,17 @@ try:
             ok('user management: dated role-assignment form present')
         else:
             bad('role assignment form missing')
+
+        # new user drawer
+        pg.locator('.rm-page-head .rm-btn-add').click()
+        pg.wait_for_selector('.ed-drawer.ed-show:not(.si-drawer)', timeout=10000)
+        dr = open_drawer(pg)
+        if dr.locator('input.re-input--mono').count() >= 1:
+            ok('user management: New User opens in a drawer')
+        else:
+            bad('New User drawer missing username field')
+        dr.locator('header .btn:not(.btn-primary)').first.click()
+        pg.wait_for_timeout(500)
 
         pg.screenshot(path=os.path.join(HERE, 'security_console_en.png'), full_page=True)
 
@@ -206,9 +268,9 @@ try:
         else:
             bad(f'AR pass: dir={dir_attr}')
         nav(pg, 'privileges', '.rm-page')
-        pg.wait_for_timeout(1500)
-        if pg.locator('.rm-table .rm-row, .rm-empty').count() > 0:
-            ok('AR pass: privileges page renders under RTL')
+        pg.wait_for_timeout(2000)
+        if pg.locator('.rm-ir-panel .ir-table tbody tr, .rm-empty').count() > 0:
+            ok('AR pass: privileges grid renders under RTL')
         else:
             bad('AR pass: privileges page empty under RTL')
         pg.screenshot(path=os.path.join(HERE, 'security_console_ar.png'), full_page=True)

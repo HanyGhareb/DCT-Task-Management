@@ -4,15 +4,18 @@ define(['knockout', 'services/secService'], function (ko, secService) {
   function PrivilegeGroupsViewModel() {
     var self = this;
 
-    self.items      = ko.observableArray([]);
-    self.loading    = ko.observable(true);
-    self.searchTerm = ko.observable('');
-    self.modules    = ko.observableArray([]);
-    self.allPrivs   = ko.observableArray([]);   // {id, code, name, module}
-    self.errorMsg   = ko.observable('');
-    self.okMsg      = ko.observable('');
+    self.items    = ko.observableArray([]);
+    self.loading  = ko.observable(true);
+    self.modules  = ko.observableArray([]);
+    self.allPrivs = ko.observableArray([]);   // {id, code, name, module}
+    self.errorMsg = ko.observable('');
+    self.okMsg    = ko.observable('');
 
-    // editor
+    // interactive report
+    self.irData = ko.observable(null);
+    var byCode = {};
+
+    // editor drawer
     self.showEdit   = ko.observable(false);
     self.editId     = ko.observable(null);
     self.fCode      = ko.observable('');
@@ -23,17 +26,12 @@ define(['knockout', 'services/secService'], function (ko, secService) {
     self.selected   = ko.observableArray([]);   // permission ids
     self.privSearch = ko.observable('');
     self.saving     = ko.observable(false);
+    self.drawerTitle = ko.computed(function () {
+      return self.editId() ? 'Edit Privilege Group' : 'New Privilege Group';
+    });
 
     self.deleteTarget      = ko.observable(null);
     self.showDeleteConfirm = ko.observable(false);
-
-    self.filteredItems = ko.computed(function () {
-      var q = self.searchTerm().toLowerCase().trim();
-      if (!q) return self.items();
-      return self.items().filter(function (g) {
-        return g.code.toLowerCase().indexOf(q) >= 0 || g.name.toLowerCase().indexOf(q) >= 0;
-      });
-    });
 
     self.filteredPrivs = ko.computed(function () {
       var q = self.privSearch().toLowerCase().trim();
@@ -45,21 +43,61 @@ define(['knockout', 'services/secService'], function (ko, secService) {
 
     function flash(msg) { self.okMsg(msg); setTimeout(function () { self.okMsg(''); }, 2500); }
 
+    var IR_COLS = [
+      { key: 'name',        label: 'Group',        type: 'text' },
+      { key: 'code',        label: 'Code',         type: 'text' },
+      { key: 'module',      label: 'Module',       type: 'text' },
+      { key: 'description', label: 'Description',  type: 'text' },
+      { key: 'privCount',   label: 'Privileges',   type: 'num'  },
+      { key: 'roleCount',   label: 'Used By Roles', type: 'num' },
+      { key: 'status',      label: 'Status',       type: 'text' },
+      { key: 'createdBy',   label: 'Created By',   type: 'text' },
+      { key: 'createdAt',   label: 'Created On',   type: 'text' },
+      { key: 'updatedBy',   label: 'Updated By',   type: 'text' },
+      { key: 'updatedAt',   label: 'Updated On',   type: 'text' }
+    ];
+
+    function buildIr(list) {
+      byCode = {};
+      var rows = list.map(function (g) {
+        byCode[g.code] = g;
+        return {
+          name: g.name, code: g.code, module: g.module || 'Platform',
+          description: g.description || '',
+          privCount: g.privCount, roleCount: g.roleCount,
+          status: g.isActive === 'Y' ? 'Active' : 'Inactive',
+          createdBy: g.createdBy || '', createdAt: g.createdAt || '',
+          updatedBy: g.updatedBy || '', updatedAt: g.updatedAt || ''
+        };
+      });
+      self.irData({ columns: IR_COLS, items: rows, total: rows.length,
+                    truncated: false, maxRows: rows.length });
+    }
+
     function load() {
       self.loading(true);
       secService.getGroups({ search: '' })
-        .then(function (r) { self.items(r.items || []); })
+        .then(function (r) { self.items(r.items || []); buildIr(r.items || []); })
         .catch(function (e) { self.errorMsg(e.message || 'Load failed'); })
         .then(function () { self.loading(false); });
     }
     self.reload = load;
+
+    self.gridClick = function (vm, e) {
+      var td = e.target.closest ? e.target.closest('.ir-table tbody td[data-key]') : null;
+      if (!td) return true;
+      var tr = td.closest('tr');
+      var cell = tr && tr.querySelector('td[data-key="code"]');
+      var row = cell && byCode[(cell.textContent || '').trim()];
+      if (row) self.editGroup(row);
+      return true;
+    };
 
     self.togglePriv = function (p) {
       var i = self.selected.indexOf(p.id);
       if (i >= 0) self.selected.splice(i, 1); else self.selected.push(p.id);
       return true;
     };
-    self.isSelected = function (p) { return self.selected.indexOf(p.id) >= 0; };
 
     self.addGroup = function () {
       self.editId(null);
@@ -79,15 +117,16 @@ define(['knockout', 'services/secService'], function (ko, secService) {
       }).catch(function (e) { self.errorMsg(e.message || 'Load failed'); });
     };
 
-    self.cancelEdit = function () { self.showEdit(false); };
-
     self.saveEdit = function () {
       if (!(self.fName() || '').trim() || (!self.editId() && !(self.fCode() || '').trim())) {
         self.errorMsg('Code and name are required'); return;
       }
+      if (!(self.fDesc() || '').trim()) {
+        self.errorMsg('Description is required — explain the purpose for end users'); return;
+      }
       var body = {
         name: self.fName().trim(), nameAr: self.fNameAr() || null,
-        module: self.fModule() || null, description: self.fDesc() || null,
+        module: self.fModule() || null, description: self.fDesc().trim(),
         permIds: self.selected()
       };
       self.saving(true); self.errorMsg('');
@@ -102,14 +141,20 @@ define(['knockout', 'services/secService'], function (ko, secService) {
         .then(function () { self.saving(false); });
     };
 
-    self.confirmDelete = function (g) { self.deleteTarget(g); self.showDeleteConfirm(true); };
-    self.cancelDelete  = function () { self.showDeleteConfirm(false); self.deleteTarget(null); };
+    self.askDeactivate = function () {
+      var id = self.editId();
+      if (!id) return;
+      var row = self.items().find(function (g) { return g.id === id; });
+      self.deleteTarget(row || { id: id, name: self.fName() });
+      self.showDeleteConfirm(true);
+    };
+    self.cancelDelete = function () { self.showDeleteConfirm(false); self.deleteTarget(null); };
     self.doDelete = function () {
       var t = self.deleteTarget();
       self.cancelDelete();
       if (t) {
         secService.deleteGroup(t.id)
-          .then(function () { flash('Group deactivated'); load(); })
+          .then(function () { self.showEdit(false); flash('Group deactivated'); load(); })
           .catch(function (e) { self.errorMsg(e.message || 'Delete failed'); });
       }
     };

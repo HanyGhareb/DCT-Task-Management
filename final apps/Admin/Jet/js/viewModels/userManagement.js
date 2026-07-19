@@ -20,8 +20,7 @@ function (ko, secService, userService) {
     self.errorMsg     = ko.observable('');
     self.okMsg        = ko.observable('');
 
-    // profile form
-    self.isNew        = ko.observable(false);
+    // profile form (existing user)
     self.fUsername    = ko.observable('');
     self.fDisplayName = ko.observable('');
     self.fDisplayNameAr = ko.observable('');
@@ -32,6 +31,16 @@ function (ko, secService, userService) {
     self.fPassword    = ko.observable('');
     self.orgOptions   = ko.observableArray([]);
     self.saving       = ko.observable(false);
+
+    // new-user drawer
+    self.showNewUser  = ko.observable(false);
+    self.nUsername    = ko.observable('');
+    self.nDisplayName = ko.observable('');
+    self.nDisplayNameAr = ko.observable('');
+    self.nEmail       = ko.observable('');
+    self.nPhone       = ko.observable('');
+    self.nOrgId       = ko.observable(null);
+    self.nPassword    = ko.observable('');
 
     // security data
     self.roleRows   = ko.observableArray([]);
@@ -109,7 +118,6 @@ function (ko, secService, userService) {
 
     self.selectUser = function (u) {
       self.selected(u);
-      self.isNew(false);
       self.errorMsg('');
       self.detailTab('profile');
       var id = u.userId || u.id;
@@ -126,23 +134,49 @@ function (ko, secService, userService) {
       loadSecurity();
     };
 
+    // ── new user drawer ────────────────────────────────────────────────
     self.newUser = function () {
-      self.selected({ displayName: 'New user' });
-      self.isNew(true);
-      self.detailTab('profile');
-      self.fUsername(''); self.fDisplayName(''); self.fDisplayNameAr('');
-      self.fEmail(''); self.fPhone(''); self.fOrgId(null);
-      self.fActive(true); self.fPassword('');
-      self.roleRows([]); self.profileRows([]); self.exclusionRows([]); self.effectiveRows([]);
+      self.nUsername(''); self.nDisplayName(''); self.nDisplayNameAr('');
+      self.nEmail(''); self.nPhone(''); self.nOrgId(null); self.nPassword('');
       self.errorMsg('');
+      self.showNewUser(true);
+    };
+
+    self.saveNewUser = function () {
+      if (!(self.nUsername() || '').trim() || !(self.nDisplayName() || '').trim()
+          || !(self.nEmail() || '').trim()) {
+        self.errorMsg('Username, display name and email are required'); return;
+      }
+      var body = {
+        username: self.nUsername().trim(),
+        displayName: self.nDisplayName().trim(),
+        displayNameAr: self.nDisplayNameAr() || null,
+        email: self.nEmail().trim(),
+        phone: self.nPhone() || null,
+        orgId: self.nOrgId() || null,
+        isActive: 'Y',
+        roles: []
+      };
+      if (self.nPassword()) body.password = self.nPassword();
+      self.saving(true); self.errorMsg('');
+      userService.create(body).then(function (r) {
+        var id = r.userId || r.id;
+        self.showNewUser(false);
+        flash('User created — assign their roles below');
+        loadList();
+        self.selectUser({ userId: id, displayName: body.displayName,
+                          username: body.username, email: body.email });
+        self.detailTab('roles');
+      }).catch(function (e) { self.errorMsg(e.message || 'Save failed'); })
+        .then(function () { self.saving(false); });
     };
 
     self.setTab = function (t) { self.detailTab(t); };
+    self.toggleActive = function () { self.fActive(!self.fActive()); return true; };
 
     self.saveProfile = function () {
-      if (!(self.fDisplayName() || '').trim() || !(self.fEmail() || '').trim()
-          || (self.isNew() && !(self.fUsername() || '').trim())) {
-        self.errorMsg('Username, display name and email are required'); return;
+      if (!(self.fDisplayName() || '').trim() || !(self.fEmail() || '').trim()) {
+        self.errorMsg('Display name and email are required'); return;
       }
       var body = {
         displayName: self.fDisplayName().trim(),
@@ -152,26 +186,12 @@ function (ko, secService, userService) {
         orgId: self.fOrgId() || null,
         isActive: self.fActive() ? 'Y' : 'N'
       };
+      if (self.fPassword()) body.password = self.fPassword();
       self.saving(true); self.errorMsg('');
-      var p;
-      if (self.isNew()) {
-        body.username = self.fUsername().trim();
-        body.roles = [];
-        if (self.fPassword()) body.password = self.fPassword();
-        p = userService.create(body).then(function (r) {
-          var id = r.userId || r.id;
-          self.selected({ userId: id, displayName: body.displayName, email: body.email });
-          self.isNew(false);
-          loadList();
-          loadSecurity();
-        });
-      } else {
-        if (self.fPassword()) body.password = self.fPassword();
-        p = userService.update(userId(), body).then(function () { loadList(); });
-      }
-      p.then(function () { flash('User saved'); })
-       .catch(function (e) { self.errorMsg(e.message || 'Save failed'); })
-       .then(function () { self.saving(false); });
+      userService.update(userId(), body)
+        .then(function () { loadList(); flash('User saved'); })
+        .catch(function (e) { self.errorMsg(e.message || 'Save failed'); })
+        .then(function () { self.saving(false); });
     };
 
     // ── role assignments ───────────────────────────────────────────────

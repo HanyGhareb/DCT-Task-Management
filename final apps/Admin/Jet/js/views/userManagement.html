@@ -12,7 +12,7 @@
   </div>
 
   <!-- ko if: okMsg --><div class="rm-alert rm-alert--success" data-bind="text: okMsg"></div><!-- /ko -->
-  <!-- ko if: errorMsg --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
+  <!-- ko if: errorMsg() && !showNewUser() --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
 
   <div class="rm-split">
 
@@ -47,7 +47,7 @@
         <div class="rm-empty"><div class="rm-empty-icon">&#8856;</div><div>No users match</div></div>
         <!-- /ko -->
       </div>
-      <div class="rm-toolbar" style="justify-content:space-between; margin-top:8px">
+      <div class="rm-toolbar" style="display:flex; justify-content:space-between; margin-top:8px">
         <button class="rm-btn-sm" data-bind="click: prevPage, enable: page() > 0">&#8249;</button>
         <span class="rm-kv" data-bind="text: (page() + 1) + ' / ' + pageCount()"></span>
         <button class="rm-btn-sm" data-bind="click: nextPage, enable: page() + 1 < pageCount()">&#8250;</button>
@@ -69,16 +69,18 @@
         <div style="display:flex; align-items:center; gap:12px">
           <span class="rm-avatar-sm" style="width:40px;height:40px;flex-basis:40px;font-size:14px"
                 data-bind="text: initials(selected())"></span>
-          <div>
-            <div class="rm-cell-name" style="font-size:15px" data-bind="text: selected().displayName || fUsername() || 'New user'"></div>
+          <div style="min-width:0">
+            <div class="rm-cell-name" style="font-size:15px" data-bind="text: selected().displayName || fUsername()"></div>
             <span class="rm-kv" data-bind="text: fUsername"></span>
           </div>
+          <span class="rm-status" style="margin-inline-start:auto"
+                data-bind="text: fActive() ? 'Active' : 'Inactive',
+                           css: { 'rm-status--on': fActive(), 'rm-status--off': !fActive() }"></span>
         </div>
       </div>
 
       <div class="rm-tabs">
         <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'profile' }, click: setTab.bind($data, 'profile')">Profile</button>
-        <!-- ko ifnot: isNew() -->
         <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'roles' }, click: setTab.bind($data, 'roles')">
           Role Assignments (<span data-bind="text: roleRows().length"></span>)
         </button>
@@ -91,66 +93,60 @@
         <button class="rm-tab" data-bind="css: { 'rm-tab--on': detailTab() === 'effective' }, click: setTab.bind($data, 'effective')">
           Effective Privileges (<span data-bind="text: effectiveRows().length"></span>)
         </button>
-        <!-- /ko -->
       </div>
 
       <!-- profile tab -->
       <!-- ko if: detailTab() === 'profile' -->
       <div class="re-panel">
-        <div class="re-field re-field--inline">
-          <div style="flex:1">
-            <label class="re-label">Username <span class="re-req">*</span></label>
-            <input class="re-input re-input--mono" data-bind="value: fUsername, enable: isNew()">
+        <div class="re-panel-label" style="display:flex; align-items:center; justify-content:space-between">
+          <span>Profile</span>
+          <button class="rm-btn-add" data-bind="click: saveProfile, enable: !saving()">
+            <span data-bind="text: saving() ? 'Saving…' : 'Save Profile'"></span>
+          </button>
+        </div>
+        <div class="rm-form-grid">
+          <div class="re-field">
+            <label class="re-label">Username</label>
+            <input class="re-input re-input--mono" data-bind="value: fUsername" disabled>
           </div>
-          <div style="flex:0 0 130px">
+          <div class="re-field">
             <label class="re-label">Status</label>
-            <div class="re-toggle-row" data-bind="click: function () { fActive(!fActive()); return true; }">
+            <div class="re-toggle-row" data-bind="click: toggleActive">
               <span class="rm-status" data-bind="text: fActive() ? 'Active' : 'Inactive',
                     css: { 'rm-status--on': fActive(), 'rm-status--off': !fActive() }"></span>
             </div>
           </div>
-        </div>
-        <div class="re-field re-field--inline">
-          <div style="flex:1">
+          <div class="re-field">
             <label class="re-label">Display name <span class="re-req">*</span></label>
             <input class="re-input" data-bind="value: fDisplayName">
           </div>
-          <div style="flex:1">
+          <div class="re-field">
             <label class="re-label">Display name (Arabic)</label>
             <input class="re-input" dir="rtl" data-bind="value: fDisplayNameAr">
           </div>
-        </div>
-        <div class="re-field re-field--inline">
-          <div style="flex:1">
+          <div class="re-field">
             <label class="re-label">Email <span class="re-req">*</span></label>
             <input class="re-input" type="email" data-bind="value: fEmail">
           </div>
-          <div style="flex:1">
+          <div class="re-field">
             <label class="re-label">Mobile</label>
             <input class="re-input" data-bind="value: fPhone">
           </div>
-        </div>
-        <div class="re-field re-field--inline">
-          <div style="flex:1">
+          <div class="re-field">
             <label class="re-label">Organization</label>
             <select class="re-input" data-bind="options: orgOptions, optionsText: 'label', optionsValue: 'value',
                     optionsCaption: 'None', value: fOrgId"></select>
           </div>
-          <div style="flex:1">
-            <label class="re-label" data-bind="text: isNew() ? 'Password' : 'Reset password (optional)'"></label>
+          <div class="re-field">
+            <label class="re-label">Reset password (optional)</label>
             <input class="re-input" type="password" autocomplete="new-password" data-bind="value: fPassword">
           </div>
-        </div>
-        <div style="display:flex; justify-content:flex-end">
-          <button class="rm-btn-add" data-bind="click: saveProfile, enable: !saving()">
-            <span data-bind="text: saving() ? 'Saving…' : 'Save Profile'"></span>
-          </button>
         </div>
       </div>
       <!-- /ko -->
 
       <!-- roles tab -->
-      <!-- ko if: detailTab() === 'roles' && !isNew() -->
+      <!-- ko if: detailTab() === 'roles' -->
       <div class="re-panel">
         <div class="re-panel-label">Job and abstract roles (duty roles cannot be assigned directly)</div>
         <div class="rm-table-panel">
@@ -203,7 +199,7 @@
       <!-- /ko -->
 
       <!-- security profiles tab -->
-      <!-- ko if: detailTab() === 'profiles' && !isNew() -->
+      <!-- ko if: detailTab() === 'profiles' -->
       <div class="re-panel">
         <div class="re-panel-label">Data security — the rows this user is allowed to see</div>
         <div class="rm-table-panel">
@@ -247,7 +243,7 @@
       <!-- /ko -->
 
       <!-- exclusions tab -->
-      <!-- ko if: detailTab() === 'exclusions' && !isNew() -->
+      <!-- ko if: detailTab() === 'exclusions' -->
       <div class="re-panel">
         <div class="re-panel-label">Privileges withheld from this user even though their roles grant them</div>
         <div class="rm-table-panel">
@@ -288,7 +284,7 @@
       <!-- /ko -->
 
       <!-- effective tab -->
-      <!-- ko if: detailTab() === 'effective' && !isNew() -->
+      <!-- ko if: detailTab() === 'effective' -->
       <div class="re-panel">
         <div class="re-panel-label">Everything this user can do right now, grouped by the role that grants it</div>
         <!-- ko if: detailLoading --><div class="rm-spinner-sm"></div><!-- /ko -->
@@ -317,5 +313,45 @@
       <!-- /ko -->
     </div>
   </div>
+
+  <!-- New user drawer -->
+  <edit-drawer params="open: showNewUser, vm: $vm, title: 'New User',
+                       saveLabel: 'Create User', onSave: saveNewUser, width: '640px'">
+    <!-- ko if: errorMsg --><div class="rm-alert rm-alert--error" data-bind="text: errorMsg"></div><!-- /ko -->
+    <div class="rm-form-grid">
+      <div class="re-field">
+        <label class="re-label">Username <span class="re-req">*</span></label>
+        <input class="re-input re-input--mono" data-bind="value: nUsername">
+      </div>
+      <div class="re-field">
+        <label class="re-label">Password (optional)</label>
+        <input class="re-input" type="password" autocomplete="new-password" data-bind="value: nPassword">
+      </div>
+      <div class="re-field">
+        <label class="re-label">Display name <span class="re-req">*</span></label>
+        <input class="re-input" data-bind="value: nDisplayName">
+      </div>
+      <div class="re-field">
+        <label class="re-label">Display name (Arabic)</label>
+        <input class="re-input" dir="rtl" data-bind="value: nDisplayNameAr">
+      </div>
+      <div class="re-field">
+        <label class="re-label">Email <span class="re-req">*</span></label>
+        <input class="re-input" type="email" data-bind="value: nEmail">
+      </div>
+      <div class="re-field">
+        <label class="re-label">Mobile</label>
+        <input class="re-input" data-bind="value: nPhone">
+      </div>
+      <div class="re-field rm-fg-span">
+        <label class="re-label">Organization</label>
+        <select class="re-input" data-bind="options: orgOptions, optionsText: 'label', optionsValue: 'value',
+                optionsCaption: 'None', value: nOrgId"></select>
+      </div>
+    </div>
+    <p class="rm-sc-note" style="margin-top:14px">
+      After creating the user you land on their Role Assignments tab — a user has no access until a job or abstract role is assigned.
+    </p>
+  </edit-drawer>
 
 </div>

@@ -335,6 +335,29 @@
     self.secErr = ko.observable('');
     self.secInfo = ko.observable(null);
     self.secArts = ko.observableArray([]);
+    self.secIr = ko.observable(null);
+    self.secIrSection = ko.computed(function () { return 'GL_' + self.view(); });
+    function buildSecIr(arts) {
+      var ar = self.lang() === 'ar';
+      var cols = [
+        { key: 'type',      label: ar ? 'النوع' : 'Type',            type: 'text' },
+        { key: 'label',     label: ar ? 'العنصر' : 'Artifact',       type: 'text' },
+        { key: 'code',      label: ar ? 'المفتاح' : 'Key',           type: 'text' },
+        { key: 'privCode',  label: ar ? 'الصلاحية' : 'Privilege',    type: 'text' },
+        { key: 'privName',  label: ar ? 'اسم الصلاحية' : 'Privilege Name', type: 'text' },
+        { key: 'grantedTo', label: ar ? 'ممنوحة إلى' : 'Granted To', type: 'text' }
+      ];
+      var rows = (arts || []).map(function (a) {
+        return {
+          type: a.type, label: a.label || a.code, code: a.code,
+          privCode: a.privCode || (ar ? 'غير مؤمّن' : 'not secured'),
+          privName: a.privName || '',
+          grantedTo: (a.grantedTo || []).map(function (g) { return g.name || g.code; }).join(', ')
+        };
+      });
+      self.secIr({ columns: cols, items: rows, total: rows.length,
+                   truncated: false, maxRows: rows.length });
+    }
     self.openSecurityInfo = function () {
       var page = self.view();
       self.secDrawer(true); self.secLoading(true); self.secErr('');
@@ -346,7 +369,7 @@
           if (!r.ok) { throw new Error('HTTP ' + r.status); }
           return r.json();
         })
-        .then(function (d) { self.secInfo(d); self.secArts(d.artifacts || []); })
+        .then(function (d) { self.secInfo(d); self.secArts(d.artifacts || []); buildSecIr(d.artifacts || []); })
         .catch(function (e) {
           self.secErr(e.message === 'notreg'
             ? 'This page is not registered in the security catalog yet.'

@@ -4,14 +4,17 @@ define(['knockout', 'services/secService'], function (ko, secService) {
   function SecProfilesViewModel() {
     var self = this;
 
-    self.items      = ko.observableArray([]);
-    self.loading    = ko.observable(true);
-    self.searchTerm = ko.observable('');
+    self.items       = ko.observableArray([]);
+    self.loading     = ko.observable(true);
     self.objectTypes = ko.observableArray([]);  // {code, nameEn, hierarchy}
-    self.errorMsg   = ko.observable('');
-    self.okMsg      = ko.observable('');
+    self.errorMsg    = ko.observable('');
+    self.okMsg       = ko.observable('');
 
-    // editor
+    // interactive report
+    self.irData = ko.observable(null);
+    var byCode = {};
+
+    // editor drawer
     self.showEdit = ko.observable(false);
     self.editId   = ko.observable(null);
     self.fCode    = ko.observable('');
@@ -20,6 +23,9 @@ define(['knockout', 'services/secService'], function (ko, secService) {
     self.fDesc    = ko.observable('');
     self.scopes   = ko.observableArray([]);  // {objectType, typeName, objectKey, label, includeChildren}
     self.saving   = ko.observable(false);
+    self.drawerTitle = ko.computed(function () {
+      return self.editId() ? 'Edit Security Profile' : 'New Security Profile';
+    });
 
     // scope adder
     self.newDim      = ko.observable('');
@@ -31,14 +37,6 @@ define(['knockout', 'services/secService'], function (ko, secService) {
     self.deleteTarget      = ko.observable(null);
     self.showDeleteConfirm = ko.observable(false);
 
-    self.filteredItems = ko.computed(function () {
-      var q = self.searchTerm().toLowerCase().trim();
-      if (!q) return self.items();
-      return self.items().filter(function (p) {
-        return p.code.toLowerCase().indexOf(q) >= 0 || p.name.toLowerCase().indexOf(q) >= 0;
-      });
-    });
-
     self.newDimMeta = ko.computed(function () {
       var code = self.newDim();
       return self.objectTypes().find(function (t) { return t.code === code; }) || null;
@@ -46,14 +44,53 @@ define(['knockout', 'services/secService'], function (ko, secService) {
 
     function flash(msg) { self.okMsg(msg); setTimeout(function () { self.okMsg(''); }, 2500); }
 
+    var IR_COLS = [
+      { key: 'name',        label: 'Profile',     type: 'text' },
+      { key: 'code',        label: 'Code',        type: 'text' },
+      { key: 'description', label: 'Description', type: 'text' },
+      { key: 'scopeCount',  label: 'Scope Rows',  type: 'num'  },
+      { key: 'userCount',   label: 'Users',       type: 'num'  },
+      { key: 'status',      label: 'Status',      type: 'text' },
+      { key: 'createdBy',   label: 'Created By',  type: 'text' },
+      { key: 'createdAt',   label: 'Created On',  type: 'text' },
+      { key: 'updatedBy',   label: 'Updated By',  type: 'text' },
+      { key: 'updatedAt',   label: 'Updated On',  type: 'text' }
+    ];
+
+    function buildIr(list) {
+      byCode = {};
+      var rows = list.map(function (p) {
+        byCode[p.code] = p;
+        return {
+          name: p.name, code: p.code, description: p.description || '',
+          scopeCount: p.scopeCount, userCount: p.userCount,
+          status: p.isActive === 'Y' ? 'Active' : 'Inactive',
+          createdBy: p.createdBy || '', createdAt: p.createdAt || '',
+          updatedBy: p.updatedBy || '', updatedAt: p.updatedAt || ''
+        };
+      });
+      self.irData({ columns: IR_COLS, items: rows, total: rows.length,
+                    truncated: false, maxRows: rows.length });
+    }
+
     function load() {
       self.loading(true);
       secService.getProfiles({})
-        .then(function (r) { self.items(r.items || []); })
+        .then(function (r) { self.items(r.items || []); buildIr(r.items || []); })
         .catch(function (e) { self.errorMsg(e.message || 'Load failed'); })
         .then(function () { self.loading(false); });
     }
     self.reload = load;
+
+    self.gridClick = function (vm, e) {
+      var td = e.target.closest ? e.target.closest('.ir-table tbody td[data-key]') : null;
+      if (!td) return true;
+      var tr = td.closest('tr');
+      var cell = tr && tr.querySelector('td[data-key="code"]');
+      var row = cell && byCode[(cell.textContent || '').trim()];
+      if (row) self.editProfile(row);
+      return true;
+    };
 
     var lovTimer = null;
     function refreshLov() {
@@ -85,6 +122,7 @@ define(['knockout', 'services/secService'], function (ko, secService) {
       });
     };
     self.removeScope = function (s) { self.scopes.remove(s); };
+    self.toggleChildren = function () { self.newChildren(!self.newChildren()); return true; };
 
     self.addProfile = function () {
       self.editId(null);
@@ -108,15 +146,16 @@ define(['knockout', 'services/secService'], function (ko, secService) {
       }).catch(function (e) { self.errorMsg(e.message || 'Load failed'); });
     };
 
-    self.cancelEdit = function () { self.showEdit(false); };
-
     self.saveEdit = function () {
       if (!(self.fName() || '').trim() || (!self.editId() && !(self.fCode() || '').trim())) {
         self.errorMsg('Code and name are required'); return;
       }
+      if (!(self.fDesc() || '').trim()) {
+        self.errorMsg('Description is required — explain the purpose for end users'); return;
+      }
       var body = {
         name: self.fName().trim(), nameAr: self.fNameAr() || null,
-        description: self.fDesc() || null,
+        description: self.fDesc().trim(),
         scopes: self.scopes().map(function (s) {
           return { objectType: s.objectType, objectKey: s.objectKey,
                    label: s.label, includeChildren: s.includeChildren };
@@ -134,14 +173,20 @@ define(['knockout', 'services/secService'], function (ko, secService) {
         .then(function () { self.saving(false); });
     };
 
-    self.confirmDelete = function (p) { self.deleteTarget(p); self.showDeleteConfirm(true); };
-    self.cancelDelete  = function () { self.showDeleteConfirm(false); self.deleteTarget(null); };
+    self.askDeactivate = function () {
+      var id = self.editId();
+      if (!id) return;
+      var row = self.items().find(function (p) { return p.id === id; });
+      self.deleteTarget(row || { id: id, name: self.fName() });
+      self.showDeleteConfirm(true);
+    };
+    self.cancelDelete = function () { self.showDeleteConfirm(false); self.deleteTarget(null); };
     self.doDelete = function () {
       var t = self.deleteTarget();
       self.cancelDelete();
       if (t) {
         secService.deleteProfile(t.id)
-          .then(function () { flash('Profile deactivated'); load(); })
+          .then(function () { self.showEdit(false); flash('Profile deactivated'); load(); })
           .catch(function (e) { self.errorMsg(e.message || 'Delete failed'); });
       }
     };

@@ -381,7 +381,7 @@ define(
       'approvalMonitor', 'delegations', 'announcements', 'lookups', 'appearance',
       'systemSettings', 'sessions', 'auditLog',
       'privileges', 'privilegeGroups', 'abstractRoles', 'dutyRoles', 'jobRoles',
-      'secRoleEdit', 'secProfiles', 'userManagement'];
+      'secProfiles', 'userManagement'];
     self._landingRoute = function () {
       var user = self.currentUser();
       if (user && user.roles) {
