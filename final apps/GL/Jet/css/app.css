@@ -577,7 +577,22 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .bk-duo-row .v{margin-inline-start:auto;font-size:12.5px;font-weight:700;color:var(--ink);white-space:nowrap}
 .bk-duo-row .pp{font-size:10.5px;font-weight:600;color:var(--muted);white-space:nowrap}
 .bk-duo-row:hover .pp{color:var(--ink)}
-.mchips-bar{margin-top:12px;padding-top:11px;border-top:1px dashed var(--line)}
+/* applied-criteria tray — the Search region's OUTPUT: a brand-tinted band
+   opened by the GL gold diamond + an "Applied filters" eyebrow; chips invert
+   to white surfaces so they read against the tint. Logical props = RTL-safe. */
+.mchips-bar{margin-top:12px;padding:9px 13px;border-radius:10px;align-items:center;
+  background:linear-gradient(180deg,rgba(var(--brand-rgb),.10),rgba(var(--brand-rgb),.045));
+  border:1px solid rgba(var(--brand-rgb),.22);
+  border-inline-start:3px solid var(--brand);
+  animation:mchipsIn .28s ease}
+@keyframes mchipsIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.mchips-bar{animation:none}}
+.mchips-lab{display:inline-flex;align-items:center;gap:7px;font-size:9.5px;font-weight:800;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--brand-dark);opacity:.8;
+  margin-inline-end:4px;white-space:nowrap}
+.mchips-lab .mlab-diamond{width:8px;height:8px;background:linear-gradient(135deg,var(--gold),#a9842f);
+  transform:rotate(45deg);border-radius:1.5px;flex:none}
+.mchips-bar .mchip{background:#fff;border-color:rgba(var(--brand-rgb),.35);box-shadow:0 1px 2px rgba(27,42,39,.05)}
 .mchip b{font-weight:800;font-size:9.5px;letter-spacing:.05em;text-transform:uppercase;opacity:.6;margin-inline-end:2px}
 
 /* ═══════════ Projects Encumbrances tab — shared <interactive-report> bridge ═══

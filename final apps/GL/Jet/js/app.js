@@ -281,6 +281,7 @@
     buSecOverview:{en:'Overview',ar:'نظرة عامة'},
     buSecResults:{en:'Results',ar:'النتائج'},
     buFiltersActive:{en:'active filters',ar:'عوامل تصفية نشطة'},
+    appliedFilters:{en:'Applied filters',ar:'عوامل التصفية المطبقة'},
     buMaxT:{en:'Maximize table (full screen)',ar:'تكبير الجدول (ملء الشاشة)'},
     buRestoreT:{en:'Exit full screen (Esc)',ar:'الخروج من ملء الشاشة (Esc)'},
     loadingData:{en:'Loading data',ar:'جارٍ تحميل البيانات'},

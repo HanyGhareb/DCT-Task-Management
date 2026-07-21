@@ -26,6 +26,13 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-21 — Applied-filters tray (GL v1.38.0)** — the multi-select chip bar (`.mchips-bar`,
+  shared by the butil / encumbrances / pending Search regions) is now a highlighted
+  **applied-criteria tray**: brand-green tinted band w/ 3px inline-start accent spine (logical
+  props → mirrors in RTL), opened by the GL gold-diamond mark + a small-caps "Applied filters"
+  eyebrow (`.mchips-lab`, i18n `appliedFilters` EN/AR); chips invert to white surfaces against the
+  tint; soft one-shot entrance animation (reduced-motion aware). CSS-only + label span in the 3
+  bars; verified EN + AR/RTL, no JS errors.
 - **2026-07-21 — Period-aware Budget: Annual + YTD Budget columns w/ drill-down (GL v1.37.0)** —
   the user added `ACCOUNTING_PERIOD` (MM-YYYY — the SAME format the page's period param sends) to
   `ATD_PROJECTS_BUDGET`, so the Budget figure is now period-aware. Data profile at build time:
