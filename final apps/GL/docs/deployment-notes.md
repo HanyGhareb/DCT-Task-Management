@@ -1012,3 +1012,9 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   session, then re-run the post-05 chain 07→13** (05 DELETE_MODULEs gl.rest); then webtier
   frontend deploy. Verified against PROD data (01-2026): all 5 account types present; totals
   reconcile; accounttype=4 ⇒ all GL Actual (93.83M) & PR/PO (20.23M) as expected.
+
+- **2026-07-22 — Actuals Account Type is now MANDATORY, default Expense — APP_VERSION 1.39.1:**
+  `acAccTypeSel` defaults to `['4']` (Expense) on load and on Reset; `runActuals` refuses an
+  empty selection (`accTypeRequired` toast); the drawer chip tray won't remove the last
+  account-type chip; drawer label marked ` *`. Frontend-only (no DB/ORDS change). Browser
+  smoke 9/9 (default Expense loads, rows all Expense, chip bar + required marker, guard rails).

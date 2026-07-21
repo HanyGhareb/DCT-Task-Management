@@ -61,7 +61,8 @@
     searchCombos:{en:'Search combinations…',ar:'بحث في التركيبات…'},
     allSectors:{en:'All sectors',ar:'كل القطاعات'}, allChapters:{en:'All chapters',ar:'كل الأبواب'},
     fAccTypeL:{en:'Account Type',ar:'نوع الحساب'}, thAccType:{en:'Account Type',ar:'نوع الحساب'},
-    allAccTypes:{en:'All account types',ar:'كل أنواع الحسابات'},
+    allAccTypes:{en:'Add account type…',ar:'أضف نوع حساب…'},
+    accTypeRequired:{en:'Account Type is required',ar:'نوع الحساب مطلوب'},
     atAssets:{en:'Assets',ar:'الأصول'}, atLiability:{en:'Liabilities',ar:'الالتزامات'},
     atRevenue:{en:'Revenue',ar:'الإيرادات'}, atExpense:{en:'Expense',ar:'المصروفات'},
     atEquity:{en:"Owner's Equity",ar:'حقوق الملكية'},
@@ -843,7 +844,8 @@
     self.acApprSel = ko.observableArray([]);       self.acApprPick = ko.observable('');
     self.acAccountSel = ko.observableArray([]);    self.acAccountPick = ko.observable('');
     self.acCostCenterSel = ko.observableArray([]); self.acCostCenterPick = ko.observable('');
-    self.acAccTypeSel = ko.observableArray([]);    self.acAccTypePick = ko.observable('');
+    // Account Type is a MANDATORY filter — defaults to Expense ('4')
+    self.acAccTypeSel = ko.observableArray(['4']);  self.acAccTypePick = ko.observable('');
     // account type LOV (leading account digit: 1=Assets…5=Owner's Equity), bilingual
     self.acAccTypes = ko.computed(function () {
       return [
@@ -863,7 +865,11 @@
     };
     // append the current pick to its chip array (ignores blank / duplicate)
     self.acAddSel = function (sel, pick) { var v = pick(); if (v && sel.indexOf(v) < 0) sel.push(v); pick(''); return true; };
-    self.acChipRemove = function (arr, v) { arr.remove(v); };
+    self.acChipRemove = function (arr, v) {
+      // Account Type is mandatory — never let the tray empty it
+      if (arr === self.acAccTypeSel && self.acAccTypeSel().length <= 1) { toast(self.t('accTypeRequired'), true); return; }
+      arr.remove(v);
+    };
     // transaction-source filter — keeps a row only when that measure is non-zero
     self.acSources = ko.computed(function () {
       return [
@@ -902,6 +908,7 @@
     };
     self.runActuals = function (offset) {
       if (!self.acPeriod()) { toast(self.t('periodRequired'), true); return; }
+      if (!self.acAccTypeSel().length) { toast(self.t('accTypeRequired'), true); return; }
       offset = Math.max(0, offset || 0); self.acLoading(true);
       return api('GET', '/actuals' + qs(self.acParams(offset))).then(function (d) {
         self.acItems(d.items || []); self.acTotals(d.totals || {});
@@ -911,7 +918,7 @@
     self.acReset = function () {
       self.acSectorSel.removeAll(); self.acChapterSel.removeAll(); self.acProgramSel.removeAll();
       self.acApprSel.removeAll(); self.acAccountSel.removeAll(); self.acCostCenterSel.removeAll();
-      self.acAccTypeSel.removeAll(); self.acSearch(''); self.acSource('');
+      self.acAccTypeSel(['4']); self.acSearch(''); self.acSource('');  // mandatory — reset to Expense
       self.acSectorPick(''); self.acChapterPick(''); self.acProgramPick(''); self.acApprPick('');
       self.acAccountPick(''); self.acCostCenterPick(''); self.acAccTypePick('');
       var cur = self.periods().filter(function (p) { return p.isCurrent === 'Y'; })[0];

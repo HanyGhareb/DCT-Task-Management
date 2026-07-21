@@ -6,7 +6,7 @@
 <title>General Ledger · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.39.0';</script>
+<script>window.APP_VERSION='1.39.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -1406,7 +1406,7 @@
         <select class="inp inp-lg" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acApprPick, optionsCaption:t('allApprops'), event:{change:function(){return acAddSel(acApprSel,acApprPick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fAccountL')"></label>
         <select class="inp inp-lg" data-bind="options:acAccounts, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAccountPick, optionsCaption:t('allAccounts'), event:{change:function(){return acAddSel(acAccountSel,acAccountPick);}}"></select></div>
-      <div class="field"><label class="lbl" data-bind="text:t('fAccTypeL')"></label>
+      <div class="field"><label class="lbl" data-bind="text:t('fAccTypeL')+' *'"></label>
         <select class="inp inp-lg" data-bind="options:acAccTypes, optionsText:'name', optionsValue:'code', value:acAccTypePick, optionsCaption:t('allAccTypes'), event:{change:function(){return acAddSel(acAccTypeSel,acAccTypePick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fCostCenterL')"></label>
         <select class="inp inp-lg" data-bind="options:acCostCenters, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acCostCenterPick, optionsCaption:t('allCostCenters'), event:{change:function(){return acAddSel(acCostCenterSel,acCostCenterPick);}}"></select></div>
