@@ -685,3 +685,6 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 .calc-tbl .calc-em{font-weight:600}
 .calc-notes{margin:12px 0 0;padding-inline-start:18px;display:flex;flex-direction:column;gap:4px;
     font-size:12px;color:var(--muted)}
+
+/* budget KPI duo tile: seg1 = YTD share of annual, seg2 = remainder */
+.bk-budget.bk-duo{--seg1:#3A6EA5;--seg2:#B9CCE2}

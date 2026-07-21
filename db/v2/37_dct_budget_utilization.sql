@@ -4,8 +4,14 @@
 -- DCT_BUDGET_UTILIZATION_V : project-costing budget-vs-actual, ONE row per
 -- BUDGET_YEAR x PROJECT x TASK x EXPENDITURE TYPE (only lines with budget > 0).
 --
---   Budget          : prod.projects_budget (ATD_PROJECTS_BUDGET, BUDGET_YEAR
---                     dimension), counted once per line.
+--   Budget          : prod.projects_budget (ATD_PROJECTS_BUDGET, BUDGET_YEAR x
+--                     ACCOUNTING_PERIOD MM-YYYY grain since 2026-07-21). TWO
+--                     figures per line: BUDGET_ANNUAL = sum of ALL period rows;
+--                     BUDGET (the period-aware figure every consumer reads) =
+--                     sum of period rows on/before BUTIL_END - equal to
+--                     BUDGET_ANNUAL when no period is set. NULL/unparseable
+--                     periods count as annual (always included). Line set =
+--                     BUDGET_ANNUAL > 0 (stable across period picks).
 --   Actual AP       : no-PO invoice distributions (PO_NUMBER IS NULL), invoice
 --                     validation_status IN (Validated, Unpaid, Available),
 --                     non-reversed, project/task/etype at distribution level,
@@ -42,7 +48,9 @@
 -- before that day - i.e. year-to-date THROUGH the selected period. Unset =
 -- full budget year (unchanged behavior for every existing consumer: the
 -- hourly refresh job, db/v2/39 report views, /gl/butil without ?period=).
--- The budget column stays ANNUAL (ATD_PROJECTS_BUDGET has no period spread).
+-- Since 2026-07-21 the BUDGET column is period-aware too (YTD sum of the
+-- line's ACCOUNTING_PERIOD rows; see the pb CTE) and BUDGET_ANNUAL carries
+-- the full-year figure - FUND_AVAILABLE = BUDGET(YTD) - consumption.
 --
 -- All amounts AED. Requires prod.dct_gl_coa_snap (db/v2/33) + base views
 -- (db/v2/32 + 36). DEPLOY ORDER: re-run 32 first after any ATD reload so the
@@ -115,11 +123,20 @@ acct AS (
   FROM prod.dct_gl_coa_snap GROUP BY account_code
 ),
 pb AS (
+  -- budget_annual = ALL period rows of the line; budget_ytd = period rows whose
+  -- ACCOUNTING_PERIOD (MM-YYYY) falls on or before BUTIL_END. A NULL/unparseable
+  -- period falls back to 1900-01-01 = ALWAYS included (un-spread budget counts
+  -- as annual). BUTIL_END unset -> budget_ytd = budget_annual (full year).
   SELECT b.budget_year,
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(b.project_id)) AS project_key,
          COALESCE(tk.task_number, '#'||TO_CHAR(b.task_id))                AS task_key,
          b.expenditure_type,
-         SUM(b.budget) AS budget
+         SUM(b.budget) AS budget_annual,
+         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL THEN b.budget
+                  WHEN NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                           DATE '1900-01-01')
+                       < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
+                  THEN b.budget END) AS budget_ytd
   FROM prod.projects_budget b
   LEFT JOIN proj pj ON pj.project_id = b.project_id
   LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
@@ -296,13 +313,14 @@ SELECT
                          CASE WHEN pgd.program_desc IS NOT NULL THEN ' - ' || pgd.program_desc END END),
            MAX(CASE WHEN coa.program_code IS NOT NULL THEN coa.program_code || ' - ' || coa.program_desc END)) AS program,
   k.expenditure_type,
-  MAX(NVL(b.budget,0))              AS budget,
+  MAX(NVL(b.budget_annual,0))       AS budget_annual,
+  MAX(NVL(b.budget_ytd,0))          AS budget,
   SUM(NVL(ap.actual_ap,0))          AS actual_ap,
   SUM(NVL(grn.actual_grn,0))        AS actual_grn,
   SUM(NVL(pr.open_commitment_pr,0)) AS commitment_pr,
   SUM(NVL(po.open_obligation_po,0)) AS obligation_po,
   CASE WHEN MAX(b.project_key) IS NOT NULL THEN
-    MAX(NVL(b.budget,0))
+    MAX(NVL(b.budget_ytd,0))
       - SUM( NVL(ap.actual_ap,0) + NVL(grn.actual_grn,0)
            + NVL(pr.open_commitment_pr,0) + NVL(po.open_obligation_po,0) )
   END AS fund_available
@@ -343,6 +361,6 @@ LEFT JOIN f_po po ON po.budget_year = k.budget_year
                  AND NVL(po.task_key,'~')         = NVL(k.task_key,'~')
                  AND NVL(po.expenditure_type,'~') = NVL(k.expenditure_type,'~')
 GROUP BY k.budget_year, k.project_key, k.task_key, k.expenditure_type
-HAVING MAX(NVL(b.budget,0)) > 0;
+HAVING MAX(NVL(b.budget_annual,0)) > 0;
 
 PROMPT DCT_BUDGET_UTILIZATION_V created (budget-year x project x task x expenditure type).

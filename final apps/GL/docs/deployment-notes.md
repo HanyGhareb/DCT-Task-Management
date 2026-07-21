@@ -26,6 +26,30 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-21 — Period-aware Budget: Annual + YTD Budget columns w/ drill-down (GL v1.37.0)** —
+  the user added `ACCOUNTING_PERIOD` (MM-YYYY — the SAME format the page's period param sends) to
+  `ATD_PROJECTS_BUDGET`, so the Budget figure is now period-aware. Data profile at build time:
+  1,836 rows, 0 NULL periods/budgets, most lines lumped in 01-2026, ATD total = view total exactly.
+  - **DB (`db/v2/37` re-run; `dct_views_rebuild` FIRST — the pass-through lacked the new column):**
+    pb CTE now emits `BUDGET_ANNUAL` (sum of ALL period rows) and `BUDGET` = **YTD** (period rows
+    on/before `GL_CTX.BUTIL_END`; NULL/unparseable period → DATE 1900 fallback = always included,
+    i.e. un-spread budget counts as annual). `FUND_AVAILABLE = BUDGET(YTD) − consumption`; line set
+    = `HAVING BUDGET_ANNUAL > 0` (rows never appear/disappear when the period changes). Acceptance:
+    full-year totals byte-identical to before; Jan YTD 6.66B < annual 7.57B; **Dec YTD = annual to
+    the penny (PASS)**; line count 1,724 stable across periods. Every consumer that sets BUTIL_END
+    (page, briefing book pre_sql) gets the YTD budget automatically; all others see annual.
+  - **ORDS (`GL/db/07` re-run):** `/gl/butil` rows + `totals` gain `budgetAnnual`; `/gl/butil/lines`
+    gains metrics **`budget`** (YTD periods) and **`budgetannual`** (all periods) — rows = the
+    line's `projects_budget` period records (period/amount/updatedBy/updatedOn), both drill modes
+    (row + aggregate KPI). **GOTCHA: `l_metric` was `VARCHAR2(10)` and 'budgetannual' is 12 chars —
+    a DECLARE-section VALUE_ERROR is uncatchable → ORDS 555. Widened to VARCHAR2(20); size handler
+    DECLARE vars for the longest routed value.**
+  - **Frontend (v1.37.0):** results table shows **Annual Budget + YTD Budget** columns (equal on
+    Full year), BOTH drillable to the period drawer; Budget KPI tile became a duo tile (hero = YTD
+    which drives Fund/Utilization; rows Annual/YTD w/ YTD-of-annual %, both aggregate-drillable;
+    seg bar = YTD share of annual); CSV export gains the annual column; skeleton 17→18 cols;
+    Calculation Logic region + period ⓘ hint updated (budget no longer "stays annual"). Browser E2E
+    7/7 (columns, duo tile, both drills, YTD < annual under a period, calc region 6 rows).
 - **2026-07-21 — Calculation Logic region on Budget Utilization (GL v1.36.0)** — new fourth
   collapsible `.bu-sec` at the BOTTOM of the butil page (collapsed by default; state persisted in
   `localStorage('gl_bu_ui').calc`) documenting, in the UI itself, how every figure is computed from

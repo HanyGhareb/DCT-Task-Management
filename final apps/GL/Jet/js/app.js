@@ -263,6 +263,10 @@
     cFundAvail:{en:'Fund available',ar:'المتاح'},
     buDrillAp:{en:'Actual AP — invoices',ar:'فعلي الدائنين — الفواتير'},
     buDrillGrn:{en:'Actual GRN — receipts',ar:'فعلي الاستلام — الإيصالات'},
+    buDrillBudget:{en:'YTD Budget — accounting periods',ar:'الموازنة منذ بداية السنة — الفترات المحاسبية'},
+    buDrillBudgetannual:{en:'Annual Budget — accounting periods',ar:'الموازنة السنوية — الفترات المحاسبية'},
+    cBudgetAnnual:{en:'Annual Budget',ar:'الموازنة السنوية'},
+    cBudgetYtd:{en:'YTD Budget',ar:'الموازنة منذ بداية السنة'},
     buDrillPr:{en:'Commitment (PR) — lines',ar:'الالتزام (طلب شراء) — البنود'},
     buDrillPo:{en:'Obligation (PO) — lines',ar:'التعهد (أمر شراء) — البنود'},
     buDrillHint:{en:'Click a figure to see its supporting AP / GRN / PR / PO lines.',ar:'انقر رقماً لعرض بنود الدائنين / الاستلام / طلب الشراء / أمر الشراء الداعمة له.'},
@@ -282,7 +286,7 @@
     loadingData:{en:'Loading data',ar:'جارٍ تحميل البيانات'},
     fusionOpen:{en:'Open in Oracle Fusion (new tab)',ar:'فتح في أوراكل فيوجن (نافذة جديدة)'},
     fullYear:{en:'Full year',ar:'السنة كاملة'}, ytd:{en:'YTD',ar:'منذ بداية السنة حتى'},
-    buPeriodHint:{en:'Year-to-date: figures include 1 January through the end of the selected period. Budget stays annual.',ar:'منذ بداية السنة: تشمل الأرقام الفترة من 1 يناير حتى نهاية الفترة المحددة. تبقى الموازنة سنوية.'},
+    buPeriodHint:{en:'Year-to-date: every figure — including YTD Budget — covers 1 January through the end of the selected period. Annual Budget always shows the full year.',ar:'منذ بداية السنة: يشمل كل رقم — بما فيه الموازنة منذ بداية السنة — الفترة من 1 يناير حتى نهاية الفترة المحددة. تعرض الموازنة السنوية السنة كاملة دائماً.'},
 
     /* ── butil calculation-logic region ── */
     buSecCalc:{en:'Calculation Logic',ar:'منهجية الاحتساب'},
@@ -290,8 +294,10 @@
     calcThFig:{en:'Figure',ar:'الرقم'},
     calcThWhat:{en:'What it counts',ar:'ما يشمله'},
     calcThPeriod:{en:'Accounting Period (YTD) effect',ar:'أثر الفترة المحاسبية (منذ بداية السنة)'},
-    calcBudgetWhat:{en:'Approved annual budget of the line (budget year × project × task × expenditure type).',ar:'الموازنة السنوية المعتمدة للبند (سنة الميزانية × المشروع × المهمة × نوع الإنفاق).'},
-    calcBudgetPeriod:{en:'Not filtered — always the FULL annual budget (the budget has no monthly spread).',ar:'لا تتأثر — دائماً الموازنة السنوية كاملة (لا يوجد توزيع شهري للموازنة).'},
+    calcBudgetWhat:{en:'Sum of ALL the line\'s accounting-period budget rows (budget year × project × task × expenditure type) — the approved full-year budget.',ar:'مجموع كل سجلات الموازنة بفترها المحاسبية للبند (سنة الميزانية × المشروع × المهمة × نوع الإنفاق) — الموازنة السنوية المعتمدة.'},
+    calcBudgetPeriod:{en:'Not filtered — always the full year.',ar:'لا تتأثر — دائماً السنة كاملة.'},
+    calcBudYtdWhat:{en:'Sum of the line\'s accounting-period budget rows up to the selected period. Drives Fund Available and Utilization %.',ar:'مجموع سجلات موازنة البند حتى الفترة المحددة. يُحتسب عليه المتاح ونسبة الاستخدام.'},
+    calcBudYtdPeriod:{en:'Budget periods (MM-YYYY) on/before the selected month; budget with no period counts as annual (always included).',ar:'فترات الموازنة (شهر-سنة) حتى الشهر المحدد؛ الموازنة بلا فترة تُحسب سنوية (تُضمّن دائماً).'},
     calcApWhat:{en:'Validated supplier-invoice distributions with no PO match, in AED.',ar:'توزيعات فواتير الموردين المدققة غير المرتبطة بأمر شراء، بالدرهم.'},
     calcApPeriod:{en:'Invoice accounting date up to the selected period end.',ar:'تاريخ القيد المحاسبي للفاتورة حتى نهاية الفترة المحددة.'},
     calcGrnWhat:{en:'Goods/services receipts at ledger amount (already AED).',ar:'استلامات السلع/الخدمات بقيمة الأستاذ (بالدرهم أصلاً).'},
@@ -301,8 +307,8 @@
     calcPoWhat:{en:'Open purchase-order distributions (Reserved / Partially Liquidated), net of received GRN: the greater of (amount − receipts) and zero.',ar:'توزيعات أوامر الشراء المفتوحة (محجوزة / مسيّلة جزئياً) بعد خصم الاستلامات: الأكبر من (المبلغ − الاستلامات) وصفر.'},
     calcPoPeriod:{en:'PO budget date up to the period end.',ar:'تاريخ موازنة أمر الشراء حتى نهاية الفترة.'},
     calcNoteYear:{en:'Budget Year picks the annual budget and scopes every transaction to that year\'s budget lines.',ar:'تحدد سنة الميزانية الموازنة السنوية وتحصر كل الحركات في بنود موازنة تلك السنة.'},
-    calcNotePeriod:{en:'With an Accounting Period selected, Fund Available reads: full-year budget minus everything consumed up to that month-end (year-to-date) — not a prorated monthly budget.',ar:'عند اختيار فترة محاسبية يكون المتاح: الموازنة السنوية كاملة ناقص كل ما استُهلك حتى نهاية ذلك الشهر (منذ بداية السنة) — وليس موازنة شهرية نسبية.'},
-    calcUtilNote:{en:'Utilization % = (Actual AP + Actual GRN + Commitment PR + Obligation PO) ÷ Budget.',ar:'نسبة الاستخدام % = (فعلي الدائنين + فعلي الاستلام + الالتزام + التعهد) ÷ الموازنة.'},
+    calcNotePeriod:{en:'With an Accounting Period selected, Fund Available reads: YTD Budget minus everything consumed up to that month-end (year-to-date). Full year = the two budget figures are equal.',ar:'عند اختيار فترة محاسبية يكون المتاح: الموازنة منذ بداية السنة ناقص كل ما استُهلك حتى نهاية ذلك الشهر. عند اختيار السنة كاملة يتساوى الرقمان.'},
+    calcUtilNote:{en:'Utilization % = (Actual AP + Actual GRN + Commitment PR + Obligation PO) ÷ YTD Budget.',ar:'نسبة الاستخدام % = (فعلي الدائنين + فعلي الاستلام + الالتزام + التعهد) ÷ الموازنة منذ بداية السنة.'},
 
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
@@ -1221,6 +1227,13 @@
       var p = (Number(v) || 0) / b * 100;
       return '(' + (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '%)';
     };
+    // "(x.x%)" YTD-share-of-annual suffix on the Budget tile's YTD row
+    self.buYtdOfAnnual = function () {
+      var t = self.buTotals() || {}; var a = Number(t.budgetAnnual) || 0;
+      if (!a || t.budget == null) return '';
+      var p = (Number(t.budget) || 0) / a * 100;
+      return '(' + (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '%)';
+    };
     self.buExportCsv = function () {
       api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
         var rows = d.items || [];
@@ -1228,7 +1241,7 @@
           ['costCentre', 'Cost Centre'], ['projectNumber', 'Project Number'], ['projectName', 'Project Name'],
           ['taskNumber', 'Task'], ['glAccount', 'GL Account'], ['appropriation', 'Appropriation'],
           ['chapter', 'Chapter'], ['program', 'Program'], ['expenditureType', 'Expenditure Type'],
-          ['budget', 'Budget'], ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
+          ['budgetAnnual', 'Annual Budget'], ['budget', 'YTD Budget'], ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
           ['commitmentPr', 'Commitment (PR)'], ['obligationPo', 'Obligation (PO)'], ['fundAvailable', 'Fund Available']];
         var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
           return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
@@ -1806,7 +1819,7 @@
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
     self.skRows = skArr(8);   // shimmer rows shown while /butil runs
-    self.skCols = skArr(17);  // one cell per results-table column
+    self.skCols = skArr(18);  // one cell per results-table column
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};
@@ -1910,7 +1923,9 @@
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
       self.drillTitle(self.t('buDrill' + cap));
-      self.drillSub(self.t('buAllLines') + ' · ' + (self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
+      // the annual-budget drill ignores the period window — label it by year
+      self.drillSub(self.t('buAllLines') + ' · ' + (metric !== 'budgetannual' && self.buPeriod()
+        ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
       self.drillCtx([self.buType(), self.buSector(), self.buChapterParam().split('|').join(', '),
         self.buCcParam().split('|').join(', '), self.buProjParam().split('|').join(', '), self.buTask(), self.buEtype(),
         self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));

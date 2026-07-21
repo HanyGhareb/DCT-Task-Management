@@ -6,7 +6,7 @@
 <title>General Ledger · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.36.0';</script>
+<script>window.APP_VERSION='1.37.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -511,13 +511,23 @@
         </div>
         <div class="bu-sec-b" data-bind="visible:buSecKpisOpen">
         <div class="bu-kpis">
-        <div class="bk bk-budget">
+        <div class="bk bk-budget bk-duo">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
           <div class="bk-body">
             <div class="bk-k" data-bind="text:t('cBudget')"></div>
             <div class="bk-v mono" data-bind="text:buNum(buTot('budget')), attr:{title:money(buTot('budget'))}"></div>
             <div class="bk-sub" data-bind="text:buTotal() ? fmt(buTotal()) + ' ' + t('buLinesLbl') : ''"></div>
-            <div class="bk-bar"><i style="width:100%"></i></div>
+            <div class="bk-seg" data-bind="attr:{title:t('cBudgetYtd')+' / '+t('cBudgetAnnual')}">
+              <i class="s1" data-bind="style:{width:buSegW(buTot('budget'), buTot('budgetAnnual'))}"></i><i class="s2" data-bind="style:{width:buSegW((buTot('budgetAnnual')||0)-(buTot('budget')||0), buTot('budgetAnnual'))}"></i>
+            </div>
+            <div class="bk-duo-rows">
+              <div class="bk-duo-row" data-bind="click:function(){openBuAgg('budgetannual')}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d2"></i><span class="l" data-bind="text:t('cBudgetAnnual')"></span><span class="v mono" data-bind="text:buNum(buTot('budgetAnnual')), attr:{title:money(buTot('budgetAnnual'))}"></span><span class="pp mono"></span>
+              </div>
+              <div class="bk-duo-row" data-bind="click:function(){openBuAgg('budget')}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d1"></i><span class="l" data-bind="text:t('cBudgetYtd')"></span><span class="v mono" data-bind="text:buNum(buTot('budget')), attr:{title:money(buTot('budget'))}"></span><span class="pp mono" data-bind="text:buYtdOfAnnual()"></span>
+              </div>
+            </div>
           </div>
         </div>
         <div class="bk bk-ap bk-duo">
@@ -594,7 +604,8 @@
             <th data-bind="text:t('cChapter')"></th>
             <th data-bind="text:t('program')"></th>
             <th data-bind="text:t('cEtype')"></th>
-            <th class="num" data-bind="text:t('cBudget')"></th>
+            <th class="num" data-bind="text:t('cBudgetAnnual'), attr:{title:t('buDrillHint')}"></th>
+            <th class="num" data-bind="text:t('cBudgetYtd'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cActualAp'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cActualGrn'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cCommitPr'), attr:{title:t('buDrillHint')}"></th>
@@ -621,7 +632,8 @@
               <td data-bind="text:$data.chapter||'—'"></td>
               <td data-bind="text:$data.program||'—'"></td>
               <td data-bind="text:$data.expenditureType||'—'"></td>
-              <td class="num mono" data-bind="text:$root.buNum($data.budget), attr:{title:$root.money($data.budget)}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.buNum($data.budgetAnnual), attr:{title:$root.money($data.budgetAnnual)}, click:function(d){$root.openBuDrill(d,'budgetannual')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.buNum($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openBuDrill(d,'budget')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualAp), attr:{title:$root.money($data.actualAp)}, click:function(d){$root.openBuDrill(d,'ap')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualGrn), attr:{title:$root.money($data.actualGrn)}, click:function(d){$root.openBuDrill(d,'grn')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}, click:function(d){$root.openBuDrill(d,'pr')}"></td>
@@ -653,7 +665,7 @@
           <div class="calc-formula">
             <span class="cf cf-fund" data-bind="text:t('cFundAvail')"></span>
             <span class="cf-op">=</span>
-            <span class="cf cf-bud" data-bind="text:t('cBudget')"></span>
+            <span class="cf cf-bud" data-bind="text:t('cBudgetYtd')"></span>
             <span class="cf-op">−</span>
             <span class="cf-op">(</span>
             <span class="cf cf-ap" data-bind="text:t('cActualAp')"></span>
@@ -672,9 +684,12 @@
               <th data-bind="text:t('calcThPeriod')"></th>
             </tr></thead>
             <tbody>
-              <tr><td><span class="cf cf-bud" data-bind="text:t('cBudget')"></span></td>
+              <tr><td><span class="cf cf-bud" data-bind="text:t('cBudgetAnnual')"></span></td>
                   <td data-bind="text:t('calcBudgetWhat')"></td>
                   <td class="calc-em" data-bind="text:t('calcBudgetPeriod')"></td></tr>
+              <tr><td><span class="cf cf-bud" data-bind="text:t('cBudgetYtd')"></span></td>
+                  <td data-bind="text:t('calcBudYtdWhat')"></td>
+                  <td data-bind="text:t('calcBudYtdPeriod')"></td></tr>
               <tr><td><span class="cf cf-ap" data-bind="text:t('cActualAp')"></span></td>
                   <td data-bind="text:t('calcApWhat')"></td>
                   <td data-bind="text:t('calcApPeriod')"></td></tr>
