@@ -55,7 +55,15 @@ SELECT
   -- date-tracked classifications (effective on the as-of date)
   sv.value_code AS sector_code,   sv.name_en AS sector_name,
   hv.value_code AS chapter_code,  hv.name_en AS chapter_name,
-  pv.value_code AS program_class_code, pv.name_en AS program_name
+  pv.value_code AS program_class_code, pv.name_en AS program_name,
+  -- account type derived from the LEADING DIGIT of the (zero-padded) account
+  -- segment: 1=Assets 2=Liability 3=Revenue 4=Expense 5=Owner's Equity.
+  -- KEPT LAST so the DCT_GL_COA_SNAP refresh (INSERT ... SELECT *) stays aligned
+  -- with the table's appended columns.
+  SUBSTR(prod.dct_gl_class_pkg.norm(c.gl_account,6),1,1) AS account_type_code,
+  CASE SUBSTR(prod.dct_gl_class_pkg.norm(c.gl_account,6),1,1)
+    WHEN '1' THEN 'Assets'  WHEN '2' THEN 'Liability' WHEN '3' THEN 'Revenue'
+    WHEN '4' THEN 'Expense' WHEN '5' THEN 'Owner''s Equity' END AS account_type
 FROM prod.gl_src_combinations c
 -- description joins are de-duplicated (GROUP BY) so duplicate codes in the
 -- Fusion-loaded list tables (e.g. program 0 = "Unspecified"/"Un specified")
@@ -124,5 +132,23 @@ SELECT
 FROM prod.gl_balances_cc b
 LEFT JOIN prod.dct_gl_coa_v coa
        ON coa.cc_string = b.cc_string;
+
+-- Keep the DCT_GL_COA_SNAP materialization aligned with DCT_GL_COA_V: the snapshot
+-- refresh (prod.dct_actuals_refresh) does INSERT ... SELECT *, so the two account-type
+-- columns must exist on the table, appended in the SAME order they end the view.
+-- Idempotent: only runs when the snapshot exists and the columns are missing.
+DECLARE
+  l_tab NUMBER; l_col NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO l_tab FROM all_tables WHERE owner='PROD' AND table_name='DCT_GL_COA_SNAP';
+  IF l_tab > 0 THEN
+    SELECT COUNT(*) INTO l_col FROM all_tab_columns
+     WHERE owner='PROD' AND table_name='DCT_GL_COA_SNAP' AND column_name='ACCOUNT_TYPE_CODE';
+    IF l_col = 0 THEN
+      EXECUTE IMMEDIATE 'ALTER TABLE prod.dct_gl_coa_snap ADD (account_type_code VARCHAR2(1), account_type VARCHAR2(20))';
+    END IF;
+  END IF;
+END;
+/
 
 PROMPT DCT_GL_COA_V (+ GL_COA_V) and DCT_GL_BALANCES_V created.

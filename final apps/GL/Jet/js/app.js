@@ -60,6 +60,11 @@
     asOf:{en:'As of',ar:'حتى تاريخ'}, exportCsv:{en:'Export CSV',ar:'تصدير CSV'},
     searchCombos:{en:'Search combinations…',ar:'بحث في التركيبات…'},
     allSectors:{en:'All sectors',ar:'كل القطاعات'}, allChapters:{en:'All chapters',ar:'كل الأبواب'},
+    fAccTypeL:{en:'Account Type',ar:'نوع الحساب'}, thAccType:{en:'Account Type',ar:'نوع الحساب'},
+    allAccTypes:{en:'All account types',ar:'كل أنواع الحسابات'},
+    atAssets:{en:'Assets',ar:'الأصول'}, atLiability:{en:'Liabilities',ar:'الالتزامات'},
+    atRevenue:{en:'Revenue',ar:'الإيرادات'}, atExpense:{en:'Expense',ar:'المصروفات'},
+    atEquity:{en:"Owner's Equity",ar:'حقوق الملكية'},
     today:{en:'Today',ar:'اليوم'}, combination:{en:'Combination',ar:'التركيبة'},
     costCenter:{en:'Cost center',ar:'مركز التكلفة'}, account:{en:'Account',ar:'الحساب'},
     program:{en:'Program',ar:'البرنامج'}, prev:{en:'‹ Prev',ar:'السابق ›'}, next:{en:'Next ›',ar:'‹ التالي'},
@@ -829,9 +834,36 @@
     self.acSectors = ko.observableArray([]); self.acChapters = ko.observableArray([]);
     self.acPrograms = ko.observableArray([]); self.acAppropriations = ko.observableArray([]);
     self.acAccounts = ko.observableArray([]); self.acCostCenters = ko.observableArray([]);
-    self.acPeriod = ko.observable(''); self.acSector = ko.observable(''); self.acChapter = ko.observable('');
-    self.acProgram = ko.observable(''); self.acAppr = ko.observable(''); self.acSearch = ko.observable('');
-    self.acAccount = ko.observable(''); self.acCostCenter = ko.observable(''); self.acSource = ko.observable('');
+    self.acPeriod = ko.observable(''); self.acSearch = ko.observable(''); self.acSource = ko.observable('');
+    // multi-select filters — pipe-delimited any-of, mirrors Budget Utilization.
+    // each has a <select> pick observable that appends to its Sel chip array.
+    self.acSectorSel = ko.observableArray([]);     self.acSectorPick = ko.observable('');
+    self.acChapterSel = ko.observableArray([]);    self.acChapterPick = ko.observable('');
+    self.acProgramSel = ko.observableArray([]);    self.acProgramPick = ko.observable('');
+    self.acApprSel = ko.observableArray([]);       self.acApprPick = ko.observable('');
+    self.acAccountSel = ko.observableArray([]);    self.acAccountPick = ko.observable('');
+    self.acCostCenterSel = ko.observableArray([]); self.acCostCenterPick = ko.observable('');
+    self.acAccTypeSel = ko.observableArray([]);    self.acAccTypePick = ko.observable('');
+    // account type LOV (leading account digit: 1=Assets…5=Owner's Equity), bilingual
+    self.acAccTypes = ko.computed(function () {
+      return [
+        { code: '1', name: self.t('atAssets') },  { code: '2', name: self.t('atLiability') },
+        { code: '3', name: self.t('atRevenue') }, { code: '4', name: self.t('atExpense') },
+        { code: '5', name: self.t('atEquity') }
+      ];
+    });
+    self.acAccTypeName = function (code) {
+      var h = self.acAccTypes().filter(function (x) { return x.code === code; })[0];
+      return h ? h.name : (code || '');
+    };
+    // resolve a code to its friendly LOV name for the chip tray (public wrapper)
+    self.acLovName = function (arr, code) {
+      var h = (arr() || []).filter(function (x) { return x.code === code; })[0];
+      return h ? (h.name || h.code) : code;
+    };
+    // append the current pick to its chip array (ignores blank / duplicate)
+    self.acAddSel = function (sel, pick) { var v = pick(); if (v && sel.indexOf(v) < 0) sel.push(v); pick(''); return true; };
+    self.acChipRemove = function (arr, v) { arr.remove(v); };
     // transaction-source filter — keeps a row only when that measure is non-zero
     self.acSources = ko.computed(function () {
       return [
@@ -860,9 +892,11 @@
       }).catch(fail);
     };
     self.acParams = function (offset, limit) {
-      return { period: self.acPeriod(), sector: self.acSector(), chapter: self.acChapter(),
-        program: self.acProgram(), appropriation: self.acAppr(),
-        account: self.acAccount(), costcenter: self.acCostCenter(), source: self.acSource(),
+      return { period: self.acPeriod(),
+        sector: self.acSectorSel().join('|'), chapter: self.acChapterSel().join('|'),
+        program: self.acProgramSel().join('|'), appropriation: self.acApprSel().join('|'),
+        account: self.acAccountSel().join('|'), costcenter: self.acCostCenterSel().join('|'),
+        accounttype: self.acAccTypeSel().join('|'), source: self.acSource(),
         search: self.acSearch(),
         limit: limit || self.acLimit, offset: offset || 0 };
     };
@@ -875,8 +909,11 @@
       }).catch(function (e) { self.acLoading(false); fail(e); });
     };
     self.acReset = function () {
-      self.acSector(''); self.acChapter(''); self.acProgram(''); self.acAppr(''); self.acSearch('');
-      self.acAccount(''); self.acCostCenter(''); self.acSource('');
+      self.acSectorSel.removeAll(); self.acChapterSel.removeAll(); self.acProgramSel.removeAll();
+      self.acApprSel.removeAll(); self.acAccountSel.removeAll(); self.acCostCenterSel.removeAll();
+      self.acAccTypeSel.removeAll(); self.acSearch(''); self.acSource('');
+      self.acSectorPick(''); self.acChapterPick(''); self.acProgramPick(''); self.acApprPick('');
+      self.acAccountPick(''); self.acCostCenterPick(''); self.acAccTypePick('');
       var cur = self.periods().filter(function (p) { return p.isCurrent === 'Y'; })[0];
       if (cur) self.acPeriod(cur.period);
       self.runActuals(0);
@@ -920,8 +957,9 @@
       if (e.key === 'Escape' && self.acFilterDrawer()) self.acFilterDrawer(false);
     });
     self.acActiveCount = ko.computed(function () {
-      return [self.acSector(), self.acChapter(), self.acProgram(), self.acAppr(),
-        self.acAccount(), self.acCostCenter(), self.acSource(), self.acSearch()].filter(Boolean).length;
+      return self.acSectorSel().length + self.acChapterSel().length + self.acProgramSel().length +
+        self.acApprSel().length + self.acAccountSel().length + self.acCostCenterSel().length +
+        self.acAccTypeSel().length + (self.acSource() ? 1 : 0) + (self.acSearch() ? 1 : 0);
     });
     // applied-criteria chips on the page (label + resolved display value)
     function lovName(arr, code, both) {
@@ -931,12 +969,13 @@
     }
     self.acFilterChips = ko.computed(function () {
       var c = [];
-      if (self.acSector())     c.push({ label: self.t('fSectorL'),     value: lovName(self.acSectors, self.acSector()) });
-      if (self.acChapter())    c.push({ label: self.t('fChapterL'),    value: lovName(self.acChapters, self.acChapter()) });
-      if (self.acProgram())    c.push({ label: self.t('fProgramL'),    value: lovName(self.acPrograms, self.acProgram()) });
-      if (self.acAppr())       c.push({ label: self.t('fApprL'),       value: self.acAppr() });
-      if (self.acAccount())    c.push({ label: self.t('fAccountL'),    value: self.acAccount() });
-      if (self.acCostCenter()) c.push({ label: self.t('fCostCenterL'), value: self.acCostCenter() });
+      self.acSectorSel().forEach(function (v) { c.push({ label: self.t('fSectorL'), value: lovName(self.acSectors, v) }); });
+      self.acChapterSel().forEach(function (v) { c.push({ label: self.t('fChapterL'), value: lovName(self.acChapters, v) }); });
+      self.acProgramSel().forEach(function (v) { c.push({ label: self.t('fProgramL'), value: lovName(self.acPrograms, v) }); });
+      self.acApprSel().forEach(function (v) { c.push({ label: self.t('fApprL'), value: lovName(self.acAppropriations, v, true) }); });
+      self.acAccountSel().forEach(function (v) { c.push({ label: self.t('fAccountL'), value: lovName(self.acAccounts, v, true) }); });
+      self.acCostCenterSel().forEach(function (v) { c.push({ label: self.t('fCostCenterL'), value: lovName(self.acCostCenters, v, true) }); });
+      self.acAccTypeSel().forEach(function (v) { c.push({ label: self.t('fAccTypeL'), value: self.acAccTypeName(v) }); });
       if (self.acSource()) {
         var s = self.acSources().filter(function (x) { return x.code === self.acSource(); })[0];
         c.push({ label: self.t('fSourceL'), value: s ? s.name : self.acSource() });
@@ -987,9 +1026,9 @@
 
     self.acExportCsv = function () {
       api('GET', '/actuals' + qs(self.acParams(0, 5000))).then(function (d) {
-        var rows = d.items || [];
+        var rows = (d.items || []).map(function (r) { r.accountTypeName = self.acAccTypeName(r.accountTypeCode); return r; });
         var cols = [['ccString', 'Combination'], ['costCenterCode', 'Cost Center'], ['costCenterDesc', 'Cost Center Desc'],
-          ['accountCode', 'Account'], ['accountDesc', 'Account Desc'], ['sectorName', 'Sector'], ['chapterName', 'Chapter'],
+          ['accountCode', 'Account'], ['accountDesc', 'Account Desc'], ['accountTypeName', 'Account Type'], ['sectorName', 'Sector'], ['chapterName', 'Chapter'],
           ['programName', 'DCT Program'], ['appropriationCode', 'Appropriation'], ['appropriationDesc', 'Appropriation Desc'],
           ['budget', 'Budget'],
           ['prTotal', 'Total PR'], ['openCommitment', 'Open Commitment'], ['commitmentPipeline', 'Commitment Pipeline'], ['prCount', 'PR Count'],

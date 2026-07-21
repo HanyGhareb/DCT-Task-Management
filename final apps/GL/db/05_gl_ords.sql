@@ -635,12 +635,13 @@ END;
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_period VARCHAR2(7)   := [COLON]period;
-  l_sector VARCHAR2(60)  := [COLON]sector;
-  l_chap   VARCHAR2(60)  := [COLON]chapter;
-  l_prog   VARCHAR2(60)  := [COLON]program;
-  l_appr   VARCHAR2(60)  := [COLON]appropriation;
-  l_acct   VARCHAR2(60)  := [COLON]account;
-  l_cc     VARCHAR2(60)  := [COLON]costcenter;
+  l_sector VARCHAR2(400) := [COLON]sector;
+  l_chap   VARCHAR2(400) := [COLON]chapter;
+  l_prog   VARCHAR2(400) := [COLON]program;
+  l_appr   VARCHAR2(400) := [COLON]appropriation;
+  l_acct   VARCHAR2(400) := [COLON]account;
+  l_cc     VARCHAR2(400) := [COLON]costcenter;
+  l_atype  VARCHAR2(60)  := [COLON]accounttype;
   l_source VARCHAR2(30)  := [COLON]source;
   l_search VARCHAR2(200) := [COLON]search;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 1000);
@@ -659,12 +660,13 @@ BEGIN
     INTO l_total, t_bud, t_enc, t_prt, t_ocmt, t_cpipe, t_tpo, t_oobl, t_ppipe, t_oenc, t_act, t_fun, t_fcalc, t_grn, t_apd
     FROM prod.dct_budget_actual_period_v p
    WHERE p.period_name = l_period
-     AND (l_sector IS NULL OR p.sector_code = l_sector)
-     AND (l_chap   IS NULL OR p.chapter_code = l_chap)
-     AND (l_prog   IS NULL OR p.program_class_code = l_prog)
-     AND (l_appr   IS NULL OR p.appropriation_code = l_appr)
-     AND (l_acct   IS NULL OR p.account_code = l_acct)
-     AND (l_cc     IS NULL OR p.cost_center_code = l_cc)
+     AND (l_sector IS NULL OR INSTR('|'||l_sector||'|', '|'||p.sector_code||'|') > 0)
+     AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|',   '|'||p.chapter_code||'|') > 0)
+     AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|',   '|'||p.program_class_code||'|') > 0)
+     AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|',   '|'||p.appropriation_code||'|') > 0)
+     AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|',   '|'||p.account_code||'|') > 0)
+     AND (l_cc     IS NULL OR INSTR('|'||l_cc||'|',     '|'||p.cost_center_code||'|') > 0)
+     AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|',  '|'||SUBSTR(p.account_code,1,1)||'|') > 0)
      AND (l_source IS NULL
           OR (l_source='budget'      AND p.budget_ytd            <> 0)
           OR (l_source='commitment'  AND p.pr_total_ytd          <> 0)
@@ -707,12 +709,13 @@ BEGIN
     FROM prod.dct_budget_actual_period_v p
     LEFT JOIN prod.dct_gl_coa_snap s ON s.cc_string = p.cc_string
     WHERE p.period_name = l_period
-      AND (l_sector IS NULL OR p.sector_code = l_sector)
-      AND (l_chap   IS NULL OR p.chapter_code = l_chap)
-      AND (l_prog   IS NULL OR p.program_class_code = l_prog)
-      AND (l_appr   IS NULL OR p.appropriation_code = l_appr)
-      AND (l_acct   IS NULL OR p.account_code = l_acct)
-      AND (l_cc     IS NULL OR p.cost_center_code = l_cc)
+      AND (l_sector IS NULL OR INSTR('|'||l_sector||'|', '|'||p.sector_code||'|') > 0)
+      AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|',   '|'||p.chapter_code||'|') > 0)
+      AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|',   '|'||p.program_class_code||'|') > 0)
+      AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|',   '|'||p.appropriation_code||'|') > 0)
+      AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|',   '|'||p.account_code||'|') > 0)
+      AND (l_cc     IS NULL OR INSTR('|'||l_cc||'|',     '|'||p.cost_center_code||'|') > 0)
+      AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|',  '|'||SUBSTR(p.account_code,1,1)||'|') > 0)
       AND (l_source IS NULL
            OR (l_source='budget'      AND p.budget_ytd            <> 0)
            OR (l_source='commitment'  AND p.pr_total_ytd          <> 0)
@@ -730,6 +733,7 @@ BEGIN
     APEX_JSON.write('ccString', r.cc_string); APEX_JSON.write('ccId', r.cc_id);
     APEX_JSON.write('costCenterCode', r.cost_center_code); APEX_JSON.write('costCenterDesc', NVL(r.cost_center_desc,''));
     APEX_JSON.write('accountCode', r.account_code); APEX_JSON.write('accountDesc', NVL(r.account_desc,''));
+    APEX_JSON.write('accountTypeCode', SUBSTR(r.account_code,1,1));
     APEX_JSON.write('appropriationCode', NVL(r.appropriation_code,'')); APEX_JSON.write('appropriationDesc', NVL(r.appropriation_desc,''));
     APEX_JSON.write('sectorCode', NVL(r.sector_code,'')); APEX_JSON.write('sectorName', NVL(r.sector_name,''));
     APEX_JSON.write('chapterCode', NVL(r.chapter_code,'')); APEX_JSON.write('chapterName', NVL(r.chapter_name,''));

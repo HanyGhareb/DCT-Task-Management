@@ -6,7 +6,7 @@
 <title>General Ledger · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.38.0';</script>
+<script>window.APP_VERSION='1.39.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -333,6 +333,7 @@
             <th class="combo" data-bind="text:t('thCombo'), attr:{title:t('hCombo')}"></th>
             <th data-bind="text:t('costCenter')"></th>
             <th data-bind="text:t('account')"></th>
+            <th data-bind="text:t('thAccType')"></th>
             <th data-bind="text:t('fSectorL')"></th>
             <th data-bind="text:t('program')"></th>
             <th data-bind="text:t('thAppr')"></th>
@@ -352,6 +353,7 @@
               <td class="mono combo" data-bind="text:ccString, event:{mouseover:$root.comboHover, mousemove:$root.comboMove, mouseout:$root.comboOut}"></td>
               <td><b class="mono" data-bind="text:costCenterCode"></b><div class="sub-d" data-bind="text:$data.costCenterDesc||''"></div></td>
               <td><span class="mono" data-bind="text:accountCode"></span><div class="sub-d" data-bind="text:$data.accountDesc||''"></div></td>
+              <td><span class="chip" data-bind="visible:$data.accountTypeCode, text:$root.acAccTypeName($data.accountTypeCode)"></span><span data-bind="visible:!$data.accountTypeCode" class="dash">—</span></td>
               <td><span class="chip" data-bind="visible:$data.sectorName, text:$data.sectorName||''"></span><span data-bind="visible:!$data.sectorName" class="dash">—</span></td>
               <td data-bind="text:$data.programName||'—'"></td>
               <td><span class="mono" data-bind="text:$data.appropriationCode||'—'"></span></td>
@@ -1395,21 +1397,48 @@
       <div class="field fd-full"><label class="lbl" data-bind="text:t('fPeriod')+' *'"></label>
         <select class="inp inp-lg" data-bind="options:periods, optionsText:'period', optionsValue:'period', value:acPeriod"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
-        <select class="inp inp-lg" data-bind="options:acSectors, optionsText:'name', optionsValue:'code', value:acSector, optionsCaption:t('allSectors')"></select></div>
+        <select class="inp inp-lg" data-bind="options:acSectors, optionsText:'name', optionsValue:'code', value:acSectorPick, optionsCaption:t('allSectors'), event:{change:function(){return acAddSel(acSectorSel,acSectorPick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
-        <select class="inp inp-lg" data-bind="options:acChapters, optionsText:'name', optionsValue:'code', value:acChapter, optionsCaption:t('allChapters')"></select></div>
+        <select class="inp inp-lg" data-bind="options:acChapters, optionsText:'name', optionsValue:'code', value:acChapterPick, optionsCaption:t('allChapters'), event:{change:function(){return acAddSel(acChapterSel,acChapterPick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fProgramL')"></label>
-        <select class="inp inp-lg" data-bind="options:acPrograms, optionsText:'name', optionsValue:'code', value:acProgram, optionsCaption:t('allPrograms')"></select></div>
+        <select class="inp inp-lg" data-bind="options:acPrograms, optionsText:'name', optionsValue:'code', value:acProgramPick, optionsCaption:t('allPrograms'), event:{change:function(){return acAddSel(acProgramSel,acProgramPick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fApprL')"></label>
-        <select class="inp inp-lg" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAppr, optionsCaption:t('allApprops')"></select></div>
+        <select class="inp inp-lg" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acApprPick, optionsCaption:t('allApprops'), event:{change:function(){return acAddSel(acApprSel,acApprPick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fAccountL')"></label>
-        <select class="inp inp-lg" data-bind="options:acAccounts, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAccount, optionsCaption:t('allAccounts')"></select></div>
+        <select class="inp inp-lg" data-bind="options:acAccounts, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAccountPick, optionsCaption:t('allAccounts'), event:{change:function(){return acAddSel(acAccountSel,acAccountPick);}}"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('fAccTypeL')"></label>
+        <select class="inp inp-lg" data-bind="options:acAccTypes, optionsText:'name', optionsValue:'code', value:acAccTypePick, optionsCaption:t('allAccTypes'), event:{change:function(){return acAddSel(acAccTypeSel,acAccTypePick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fCostCenterL')"></label>
-        <select class="inp inp-lg" data-bind="options:acCostCenters, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acCostCenter, optionsCaption:t('allCostCenters')"></select></div>
+        <select class="inp inp-lg" data-bind="options:acCostCenters, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acCostCenterPick, optionsCaption:t('allCostCenters'), event:{change:function(){return acAddSel(acCostCenterSel,acCostCenterPick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fSourceL')"></label>
         <select class="inp inp-lg" data-bind="options:acSources, optionsText:'name', optionsValue:'code', value:acSource, optionsCaption:t('allSources')"></select></div>
       <div class="field fd-full"><label class="lbl" data-bind="text:t('fSearchL')"></label>
         <input class="inp inp-lg" type="text" data-bind="textInput:acSearch, attr:{placeholder:t('searchActuals')}, event:{keydown:function(d,e){if(e.keyCode===13){applyAcFilters();}return true;}}"></div>
+    </div>
+    <!-- selected multi-select values as removable chips -->
+    <div class="mchips mchips-bar" data-bind="visible:acSectorSel().length+acChapterSel().length+acProgramSel().length+acApprSel().length+acAccountSel().length+acCostCenterSel().length+acAccTypeSel().length>0" style="margin-top:14px">
+      <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+      <!-- ko foreach: acSectorSel -->
+      <span class="mchip"><b data-bind="text:$root.t('fSectorL')"></b><span data-bind="text:$root.acLovName($root.acSectors,$data)"></span><i data-bind="click:function(){$root.acChipRemove($root.acSectorSel,$data)}, clickBubble:false">×</i></span>
+      <!-- /ko -->
+      <!-- ko foreach: acChapterSel -->
+      <span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$root.acLovName($root.acChapters,$data)"></span><i data-bind="click:function(){$root.acChipRemove($root.acChapterSel,$data)}, clickBubble:false">×</i></span>
+      <!-- /ko -->
+      <!-- ko foreach: acProgramSel -->
+      <span class="mchip"><b data-bind="text:$root.t('fProgramL')"></b><span data-bind="text:$root.acLovName($root.acPrograms,$data)"></span><i data-bind="click:function(){$root.acChipRemove($root.acProgramSel,$data)}, clickBubble:false">×</i></span>
+      <!-- /ko -->
+      <!-- ko foreach: acApprSel -->
+      <span class="mchip"><b data-bind="text:$root.t('fApprL')"></b><span class="mono" data-bind="text:$data"></span><i data-bind="click:function(){$root.acChipRemove($root.acApprSel,$data)}, clickBubble:false">×</i></span>
+      <!-- /ko -->
+      <!-- ko foreach: acAccountSel -->
+      <span class="mchip"><b data-bind="text:$root.t('fAccountL')"></b><span class="mono" data-bind="text:$data"></span><i data-bind="click:function(){$root.acChipRemove($root.acAccountSel,$data)}, clickBubble:false">×</i></span>
+      <!-- /ko -->
+      <!-- ko foreach: acAccTypeSel -->
+      <span class="mchip"><b data-bind="text:$root.t('fAccTypeL')"></b><span data-bind="text:$root.acAccTypeName($data)"></span><i data-bind="click:function(){$root.acChipRemove($root.acAccTypeSel,$data)}, clickBubble:false">×</i></span>
+      <!-- /ko -->
+      <!-- ko foreach: acCostCenterSel -->
+      <span class="mchip"><b data-bind="text:$root.t('fCostCenterL')"></b><span class="mono" data-bind="text:$data"></span><i data-bind="click:function(){$root.acChipRemove($root.acCostCenterSel,$data)}, clickBubble:false">×</i></span>
+      <!-- /ko -->
     </div>
     <div class="fd-foot">
       <button class="btn btn-primary" data-bind="click:applyAcFilters, text:t('btnApply')"></button>

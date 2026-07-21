@@ -994,3 +994,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   for the ACTIVE tab. Tests: GL/tests/sec_scope_smoke.py 10/10 (grandfather equivalence,
   sector scoping [scoped user sees ONLY their sector, totals reconcile], enforce flip 403,
   GL_ANALYST job role restores access, scope holds under enforcement) + drawer browser 7/7.
+
+- **2026-07-21 — Actuals: Account Type column + filter, multi-select filters — APP_VERSION 1.39.0:**
+  (1) `DCT_GL_COA_V` (GL/db/04) gains derived `account_type_code` (leading digit of the
+  zero-padded account segment) + `account_type` name (1=Assets 2=Liability 3=Revenue
+  4=Expense 5=Owner's Equity) — additive columns, no dependent breaks. (2) `/actuals` +
+  `/actuals/filters` (GL/db/05): the six existing filters (Sector/Chapter/DCT-Program/
+  Appropriation/Account/Cost-Centre) converted from single `=` to pipe-delimited **any-of**
+  (`INSTR('|'||l_x||'|','|'||col||'|')>0`, the Budget-Utilization multi-select pattern) in
+  BOTH the totals and items WHERE clauses (kept byte-identical so KPI⋈table reconciliation
+  holds), plus a NEW `accounttype` multi param filtering on `SUBSTR(account_code,1,1)`;
+  each item now emits `accountTypeCode`. Multi-value locals widened to VARCHAR2(400).
+  (3) Frontend (GL/Jet): the six filter drop-downs became pick→chip multi-selects + a new
+  **Account Type** multi-select, a removable-chip tray in the filter drawer, an **Account
+  Type** table column, and Account Type in the CSV export; bilingual keys atAssets..atEquity/
+  fAccTypeL/thAccType/allAccTypes. **DEPLOY: run GL/db/04 then GL/db/05 as ADMIN in a fresh
+  session, then re-run the post-05 chain 07→13** (05 DELETE_MODULEs gl.rest); then webtier
+  frontend deploy. Verified against PROD data (01-2026): all 5 account types present; totals
+  reconcile; accounttype=4 ⇒ all GL Actual (93.83M) & PR/PO (20.23M) as expected.
