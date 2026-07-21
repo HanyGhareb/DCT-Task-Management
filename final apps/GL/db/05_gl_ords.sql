@@ -772,24 +772,269 @@ END;
     --   Returns {metric, ccString, period, total, columns[{key,label,type}], rows[]}.
     -- =========================================================================
     def_template('actuals/lines');
-    def_handler('actuals/lines', 'GET', q'!
+    -- source split into two TO_CLOB-concatenated q-literals: the whole body now
+    -- exceeds the 32767-char PL/SQL VARCHAR2 literal limit (aggregate KPI drill added).
+    def_handler('actuals/lines', 'GET', TO_CLOB(q'!
 DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_period VARCHAR2(7)   := [COLON]period;
   l_cc     VARCHAR2(120) := [COLON]cc;
   l_metric VARCHAR2(30)  := LOWER([COLON]metric);
+  -- aggregate-mode filters (used when l_cc IS NULL — KPI-card drill across the set,
+  -- same predicates as GET /actuals). l_ccf = cost-centre filter (l_cc is the single
+  -- combination string for the per-cell drill).
+  l_sector VARCHAR2(400) := [COLON]sector;
+  l_chap   VARCHAR2(400) := [COLON]chapter;
+  l_prog   VARCHAR2(400) := [COLON]program;
+  l_appr   VARCHAR2(400) := [COLON]appropriation;
+  l_acct   VARCHAR2(400) := [COLON]account;
+  l_ccf    VARCHAR2(400) := [COLON]costcenter;
+  l_atype  VARCHAR2(60)  := [COLON]accounttype;
+  l_source VARCHAR2(30)  := [COLON]source;
+  l_search VARCHAR2(200) := [COLON]search;
+  l_agg    BOOLEAN;
   l_pstart DATE; l_pnext DATE; l_ystart DATE;
   l_total  NUMBER := 0;
+  l_count  NUMBER := 0;
   PROCEDURE col(p_key VARCHAR2, p_label VARCHAR2, p_type VARCHAR2) IS
   BEGIN
     APEX_JSON.open_object; APEX_JSON.write('key',p_key); APEX_JSON.write('label',p_label); APEX_JSON.write('type',p_type); APEX_JSON.close_object;
   END;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
-  IF l_period IS NULL OR l_cc IS NULL OR l_metric IS NULL THEN dct_rest.err(400,'period, cc and metric are required'); RETURN; END IF;
+  IF l_period IS NULL OR l_metric IS NULL THEN dct_rest.err(400,'period and metric are required'); RETURN; END IF;
+  l_agg := (l_cc IS NULL);   -- no combination => aggregate the whole filtered set
   l_pstart := TO_DATE(l_period,'MM-YYYY'); l_pnext := ADD_MONTHS(l_pstart,1); l_ystart := TRUNC(l_pstart,'YEAR');
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('metric', l_metric); APEX_JSON.write('ccString', l_cc); APEX_JSON.write('period', l_period);
+  APEX_JSON.write('aggregate', CASE WHEN l_agg THEN 'Y' ELSE 'N' END);
+
+  IF l_agg THEN
+    -- ===================== AGGREGATE (KPI-card) DRILL =====================
+    -- Supporting lines across the WHOLE filtered set. kys = the combinations that
+    -- pass the same predicates as GET /actuals. Capped 500; 'count' carries the
+    -- true line count so the UI shows a "top N of M" note; window SUM = full total.
+    IF l_metric IN ('budget','glactual','funds','fundscalc') THEN
+      APEX_JSON.open_array('columns');
+      col('costCenter','Cost centre','text'); col('account','Account','text'); col('combination','Combination','text');
+      IF l_metric = 'budget' THEN col('amount','Total budget','money');
+      ELSIF l_metric = 'glactual' THEN col('amount','Actual expenditure','money');
+      ELSE col('budget','Budget','money'); col('encumbrance','Open encumbrance','money'); col('actual','GL actual','money'); col('amount','Funds available','money'); END IF;
+      APEX_JSON.close_array;
+      APEX_JSON.open_array('rows');
+      FOR r IN (
+        SELECT p.cost_center_code, p.account_code, p.cc_string, p.budget_ytd, p.open_encumbrance_ytd, p.gl_actual_ytd,
+               CASE l_metric WHEN 'budget' THEN p.budget_ytd WHEN 'glactual' THEN p.gl_actual_ytd
+                    WHEN 'fundscalc' THEN p.funds_available_calc_ytd ELSE p.funds_available_ytd END amt,
+               SUM(CASE l_metric WHEN 'budget' THEN p.budget_ytd WHEN 'glactual' THEN p.gl_actual_ytd
+                    WHEN 'fundscalc' THEN p.funds_available_calc_ytd ELSE p.funds_available_ytd END) OVER () tot,
+               COUNT(*) OVER () cnt
+        FROM prod.dct_budget_actual_period_v p
+        WHERE p.period_name = l_period
+          AND (l_sector IS NULL OR INSTR('|'||l_sector||'|','|'||p.sector_code||'|')>0)
+          AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|','|'||p.chapter_code||'|')>0)
+          AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|','|'||p.program_class_code||'|')>0)
+          AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|','|'||p.appropriation_code||'|')>0)
+          AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|','|'||p.account_code||'|')>0)
+          AND (l_ccf    IS NULL OR INSTR('|'||l_ccf||'|','|'||p.cost_center_code||'|')>0)
+          AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|','|'||SUBSTR(p.account_code,1,1)||'|')>0)
+          AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%')
+          AND (p.budget_ytd<>0 OR p.gl_actual_ytd<>0 OR p.open_encumbrance_ytd<>0)
+        ORDER BY amt DESC NULLS LAST, p.cc_string FETCH FIRST 500 ROWS ONLY
+      ) LOOP
+        l_total := r.tot; l_count := r.cnt;
+        APEX_JSON.open_object;
+        APEX_JSON.write('costCenter',r.cost_center_code); APEX_JSON.write('account',r.account_code); APEX_JSON.write('combination',r.cc_string);
+        IF l_metric IN ('funds','fundscalc') THEN
+          APEX_JSON.write('budget',r.budget_ytd); APEX_JSON.write('encumbrance',r.open_encumbrance_ytd); APEX_JSON.write('actual',r.gl_actual_ytd);
+        END IF;
+        APEX_JSON.write('amount',r.amt); APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+
+    ELSIF l_metric = 'grn' THEN
+      APEX_JSON.open_array('columns'); col('costCenter','Cost centre','text'); col('account','Account','text'); col('receipt','GRN #','text'); col('line','Line','text'); col('date','Date','date'); col('supplier','Supplier','text'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
+      APEX_JSON.open_array('rows');
+      FOR r IN (
+        WITH kys AS (SELECT p.cc_string, p.cost_center_code, p.account_code FROM prod.dct_budget_actual_period_v p
+                     WHERE p.period_name=l_period
+                       AND (l_sector IS NULL OR INSTR('|'||l_sector||'|','|'||p.sector_code||'|')>0)
+                       AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|','|'||p.chapter_code||'|')>0)
+                       AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|','|'||p.program_class_code||'|')>0)
+                       AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|','|'||p.appropriation_code||'|')>0)
+                       AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|','|'||p.account_code||'|')>0)
+                       AND (l_ccf    IS NULL OR INSTR('|'||l_ccf||'|','|'||p.cost_center_code||'|')>0)
+                       AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|','|'||SUBSTR(p.account_code,1,1)||'|')>0)
+                       AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%'))
+        SELECT k.cost_center_code, k.account_code, g.receipt_number, g.receipt_line_number line_no,
+               TO_CHAR(g.transaction_date,'YYYY-MM-DD') td, h.supplier_name, g.ledger_amount aed,
+               SUM(g.ledger_amount) OVER () tot, COUNT(*) OVER () cnt
+        FROM prod.grn_all_v2 g
+        JOIN prod.po_distributions pod ON pod.po_distribution_id = g.po_distribution_id
+        JOIN kys k ON k.cc_string = prod.dct_cc_canon(pod.charge_account)
+        LEFT JOIN prod.po_headers h ON h.po_header_id = g.po_header_id
+        WHERE g.transaction_date >= l_ystart AND g.transaction_date < l_pnext
+        ORDER BY g.ledger_amount DESC NULLS LAST FETCH FIRST 500 ROWS ONLY
+      ) LOOP
+        l_total := r.tot; l_count := r.cnt;
+        APEX_JSON.open_object; APEX_JSON.write('costCenter',r.cost_center_code); APEX_JSON.write('account',r.account_code);
+        APEX_JSON.write('receipt',r.receipt_number); APEX_JSON.write('line',NVL(TO_CHAR(r.line_no),'')); APEX_JSON.write('date',NVL(r.td,''));
+        APEX_JSON.write('supplier',NVL(r.supplier_name,'')); APEX_JSON.write('amount',r.aed); APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+
+    ELSIF l_metric = 'apdirect' THEN
+      APEX_JSON.open_array('columns'); col('costCenter','Cost centre','text'); col('account','Account','text'); col('invoice','Invoice #','text'); col('line','Line','text'); col('date','Acct date','date'); col('description','Description','text'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
+      APEX_JSON.open_array('rows');
+      FOR r IN (
+        WITH kys AS (SELECT p.cc_id, p.cost_center_code, p.account_code FROM prod.dct_budget_actual_period_v p
+                     WHERE p.period_name=l_period
+                       AND (l_sector IS NULL OR INSTR('|'||l_sector||'|','|'||p.sector_code||'|')>0)
+                       AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|','|'||p.chapter_code||'|')>0)
+                       AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|','|'||p.program_class_code||'|')>0)
+                       AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|','|'||p.appropriation_code||'|')>0)
+                       AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|','|'||p.account_code||'|')>0)
+                       AND (l_ccf    IS NULL OR INSTR('|'||l_ccf||'|','|'||p.cost_center_code||'|')>0)
+                       AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|','|'||SUBSTR(p.account_code,1,1)||'|')>0)
+                       AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%'))
+        SELECT k.cost_center_code, k.account_code, NVL(i.invoice_number,'#'||TO_CHAR(d.invoice_id)) inv_no, d.line_number line_no,
+               TO_CHAR(d.accounting_date,'YYYY-MM-DD') ad, d.distribution_description descr,
+               NVL(d.distribution_amount_functi,d.distribution_amount) aed,
+               SUM(NVL(d.distribution_amount_functi,d.distribution_amount)) OVER () tot, COUNT(*) OVER () cnt
+        FROM prod.ap_invoice_distributions d
+        JOIN kys k ON k.cc_id = d.cc_id
+        LEFT JOIN (SELECT invoice_id, MAX(invoice_number) invoice_number FROM prod.ap_invoices GROUP BY invoice_id) i ON i.invoice_id = d.invoice_id
+        WHERE d.po_number IS NULL AND NVL(d.reversal_indicator,'N') <> 'Y'
+          AND NVL(NVL(d.distribution_amount_functi,d.distribution_amount),0) <> 0
+          AND d.accounting_date >= l_ystart AND d.accounting_date < l_pnext
+        ORDER BY NVL(d.distribution_amount_functi,d.distribution_amount) DESC NULLS LAST FETCH FIRST 500 ROWS ONLY
+      ) LOOP
+        l_total := r.tot; l_count := r.cnt;
+        APEX_JSON.open_object; APEX_JSON.write('costCenter',r.cost_center_code); APEX_JSON.write('account',r.account_code);
+        APEX_JSON.write('invoice',NVL(r.inv_no,'')); APEX_JSON.write('line',NVL(TO_CHAR(r.line_no),'')); APEX_JSON.write('date',NVL(r.ad,''));
+        APEX_JSON.write('description',NVL(r.descr,'')); APEX_JSON.write('amount',r.aed); APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+
+    ELSIF l_metric IN ('obligation','popipeline') THEN
+      APEX_JSON.open_array('columns'); col('costCenter','Cost centre','text'); col('account','Account','text'); col('po','PO #','text'); col('line','Line','text'); col('description','Item / description','text'); col('supplier','Supplier','text'); col('status','Funds status','text'); col('amount','Ordered (AED)','money'); APEX_JSON.close_array;
+      APEX_JSON.open_array('rows');
+      FOR r IN (
+        WITH kys AS (SELECT p.cc_string, p.cost_center_code, p.account_code FROM prod.dct_budget_actual_period_v p
+                     WHERE p.period_name=l_period
+                       AND (l_sector IS NULL OR INSTR('|'||l_sector||'|','|'||p.sector_code||'|')>0)
+                       AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|','|'||p.chapter_code||'|')>0)
+                       AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|','|'||p.program_class_code||'|')>0)
+                       AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|','|'||p.appropriation_code||'|')>0)
+                       AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|','|'||p.account_code||'|')>0)
+                       AND (l_ccf    IS NULL OR INSTR('|'||l_ccf||'|','|'||p.cost_center_code||'|')>0)
+                       AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|','|'||SUBSTR(p.account_code,1,1)||'|')>0)
+                       AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%'))
+        SELECT cost_center_code, account_code, order_number, po_line, item_description, supplier_name, po_status, amt,
+               SUM(amt) OVER () tot, COUNT(*) OVER () cnt FROM (
+          SELECT k.cost_center_code, k.account_code, h.order_number, pl.line po_line, pl.item_description, h.supplier_name, pd.funds_status po_status,
+                 MAX(pd.distribution_amount*NVL(pd.rate,1)) amt
+          FROM prod.po_distributions pd
+          JOIN kys k ON k.cc_string = prod.dct_cc_canon(pd.charge_account)
+          JOIN prod.po_headers h ON h.po_header_id = pd.po_header_id
+          LEFT JOIN prod.po_lines pl ON pl.po_header_id = pd.po_header_id AND pl.po_line_id = pd.po_line_id
+          WHERE (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+            AND ( (l_metric='obligation' AND NVL(pd.funds_status,'x') NOT IN ('Failed','Passed'))
+               OR (l_metric='popipeline' AND pd.funds_status IN ('Failed','Passed')) )
+          GROUP BY k.cost_center_code, k.account_code, h.order_number, pl.line, pl.item_description, h.supplier_name, pd.funds_status, pd.po_distribution_id)
+        ORDER BY amt DESC NULLS LAST FETCH FIRST 500 ROWS ONLY
+      ) LOOP
+        l_total := r.tot; l_count := r.cnt;
+        APEX_JSON.open_object; APEX_JSON.write('costCenter',r.cost_center_code); APEX_JSON.write('account',r.account_code);
+        APEX_JSON.write('po',NVL(TO_CHAR(r.order_number),'')); APEX_JSON.write('line',NVL(TO_CHAR(r.po_line),''));
+        APEX_JSON.write('description',NVL(r.item_description,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
+        APEX_JSON.write('status',NVL(r.po_status,'')); APEX_JSON.write('amount',r.amt); APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+
+    ELSIF l_metric = 'openobligation' THEN
+      APEX_JSON.open_array('columns'); col('costCenter','Cost centre','text'); col('account','Account','text'); col('po','PO #','text'); col('line','Line','text'); col('description','Item / description','text'); col('status','Funds status','text'); col('ordered','Ordered (AED)','money'); col('grn','Received (AED)','money'); col('amount','Open (AED)','money'); APEX_JSON.close_array;
+      APEX_JSON.open_array('rows');
+      FOR r IN (
+        WITH kys AS (SELECT p.cc_string, p.cost_center_code, p.account_code FROM prod.dct_budget_actual_period_v p
+                     WHERE p.period_name=l_period
+                       AND (l_sector IS NULL OR INSTR('|'||l_sector||'|','|'||p.sector_code||'|')>0)
+                       AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|','|'||p.chapter_code||'|')>0)
+                       AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|','|'||p.program_class_code||'|')>0)
+                       AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|','|'||p.appropriation_code||'|')>0)
+                       AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|','|'||p.account_code||'|')>0)
+                       AND (l_ccf    IS NULL OR INSTR('|'||l_ccf||'|','|'||p.cost_center_code||'|')>0)
+                       AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|','|'||SUBSTR(p.account_code,1,1)||'|')>0)
+                       AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%'))
+        SELECT cost_center_code, account_code, order_number, po_line, item_description, po_status, ordered, grn, GREATEST(ordered-grn,0) open_amt,
+               SUM(GREATEST(ordered-grn,0)) OVER () tot, COUNT(*) OVER () cnt FROM (
+          SELECT k.cost_center_code, k.account_code, h.order_number, pl.line po_line, pl.item_description, pd.funds_status po_status,
+                 MAX(pd.distribution_amount*NVL(pd.rate,1)) ordered, NVL(MAX(g.grn),0) grn
+          FROM prod.po_distributions pd
+          JOIN kys k ON k.cc_string = prod.dct_cc_canon(pd.charge_account)
+          JOIN prod.po_headers h ON h.po_header_id = pd.po_header_id
+          LEFT JOIN prod.po_lines pl ON pl.po_header_id = pd.po_header_id AND pl.po_line_id = pd.po_line_id
+          LEFT JOIN (SELECT po_distribution_id, SUM(ledger_amount) grn FROM prod.grn_all_v2 GROUP BY po_distribution_id) g ON g.po_distribution_id = pd.po_distribution_id
+          WHERE (pd.budget_date IS NULL OR pd.budget_date < l_pnext)
+            AND pd.funds_status IN ('Reserved','Partially Liquidated')
+            AND NOT EXISTS (SELECT 1 FROM prod.po_headers hx WHERE hx.po_header_id = pd.po_header_id AND hx.status = 'Finally Closed')
+          GROUP BY k.cost_center_code, k.account_code, h.order_number, pl.line, pl.item_description, pd.funds_status, pd.po_distribution_id)
+        ORDER BY open_amt DESC NULLS LAST FETCH FIRST 500 ROWS ONLY
+      ) LOOP
+        l_total := r.tot; l_count := r.cnt;
+        APEX_JSON.open_object; APEX_JSON.write('costCenter',r.cost_center_code); APEX_JSON.write('account',r.account_code);
+        APEX_JSON.write('po',NVL(TO_CHAR(r.order_number),'')); APEX_JSON.write('line',NVL(TO_CHAR(r.po_line),''));
+        APEX_JSON.write('description',NVL(r.item_description,'')); APEX_JSON.write('status',NVL(r.po_status,''));
+        APEX_JSON.write('ordered',r.ordered); APEX_JSON.write('grn',r.grn); APEX_JSON.write('amount',r.open_amt); APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+
+    ELSIF l_metric IN ('commitment','opencommitment','commitmentpipeline') THEN
+      APEX_JSON.open_array('columns'); col('costCenter','Cost centre','text'); col('account','Account','text'); col('pr','PR #','text'); col('description','Description','text'); col('requester','Requester','text'); col('status','Funds status','text'); col('amount','Amount (AED)','money'); APEX_JSON.close_array;
+      APEX_JSON.open_array('rows');
+      FOR r IN (
+        WITH kys AS (SELECT p.cc_string, p.cost_center_code, p.account_code FROM prod.dct_budget_actual_period_v p
+                     WHERE p.period_name=l_period
+                       AND (l_sector IS NULL OR INSTR('|'||l_sector||'|','|'||p.sector_code||'|')>0)
+                       AND (l_chap   IS NULL OR INSTR('|'||l_chap||'|','|'||p.chapter_code||'|')>0)
+                       AND (l_prog   IS NULL OR INSTR('|'||l_prog||'|','|'||p.program_class_code||'|')>0)
+                       AND (l_appr   IS NULL OR INSTR('|'||l_appr||'|','|'||p.appropriation_code||'|')>0)
+                       AND (l_acct   IS NULL OR INSTR('|'||l_acct||'|','|'||p.account_code||'|')>0)
+                       AND (l_ccf    IS NULL OR INSTR('|'||l_ccf||'|','|'||p.cost_center_code||'|')>0)
+                       AND (l_atype  IS NULL OR INSTR('|'||l_atype||'|','|'||SUBSTR(p.account_code,1,1)||'|')>0)
+                       AND (l_search IS NULL OR UPPER(p.cc_string||' '||p.cost_center_desc||' '||p.account_desc||' '||p.appropriation_desc) LIKE '%'||UPPER(l_search)||'%'))
+        SELECT cost_center_code, account_code, pr_number, description, requester, funds_status, amt,
+               SUM(amt) OVER () tot, COUNT(*) OVER () cnt FROM (
+          SELECT k.cost_center_code, k.account_code, h.pr_number, h.description, d.requester, d.funds_status,
+                 SUM(d.distribution_amount*NVL(c.exchange_rate_to_aed,1)) amt
+          FROM prod.pr_distributions d
+          JOIN kys k ON k.cc_string = prod.dct_cc_canon(d.charge_account)
+          JOIN prod.pr_headers h ON h.pr_header_id = d.pr_header_id
+          LEFT JOIN prod.dct_currency_codes c ON c.currency_code = d.currency_code
+          WHERE (d.budget_date IS NULL OR d.budget_date < l_pnext)
+            AND ( (l_metric='commitment'         AND d.funds_status IN ('Reserved','Liquidated'))
+               OR (l_metric='opencommitment'     AND d.funds_status = 'Reserved')
+               OR (l_metric='commitmentpipeline' AND d.funds_status = 'Not reserved') )
+          GROUP BY k.cost_center_code, k.account_code, h.pr_number, h.description, d.requester, d.funds_status)
+        ORDER BY amt DESC NULLS LAST FETCH FIRST 500 ROWS ONLY
+      ) LOOP
+        l_total := r.tot; l_count := r.cnt;
+        APEX_JSON.open_object; APEX_JSON.write('costCenter',r.cost_center_code); APEX_JSON.write('account',r.account_code);
+        APEX_JSON.write('pr',NVL(TO_CHAR(r.pr_number),'')); APEX_JSON.write('description',NVL(r.description,'')); APEX_JSON.write('requester',NVL(r.requester,''));
+        APEX_JSON.write('status',NVL(r.funds_status,'')); APEX_JSON.write('amount',r.amt); APEX_JSON.close_object;
+      END LOOP;
+      APEX_JSON.close_array;
+
+    ELSE
+      dct_rest.err(400,'Unknown metric'); RETURN;
+    END IF;
+    APEX_JSON.write('count', l_count);
+    APEX_JSON.write('total', l_total);
+    APEX_JSON.close_object;
+    RETURN;
+  END IF;
+!')
+    || q'!
 
   IF l_metric = 'budget' THEN
     APEX_JSON.open_array('columns'); col('period','Period','text'); col('initial','Initial budget','money'); col('adjustments','Adjustments','money'); col('amount','Total budget','money'); APEX_JSON.close_array;

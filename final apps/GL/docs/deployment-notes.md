@@ -1018,3 +1018,20 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   empty selection (`accTypeRequired` toast); the drawer chip tray won't remove the last
   account-type chip; drawer label marked ` *`. Frontend-only (no DB/ORDS change). Browser
   smoke 9/9 (default Expense loads, rows all Expense, chip bar + required marker, guard rails).
+
+- **2026-07-22 — Actuals KPI-card drill-down (aggregate across the filtered set) — APP_VERSION 1.40.0:**
+  Every KPI-band figure now drills to its supporting lines across the WHOLE filtered set,
+  mirroring Budget Utilization's `openBuAgg`. DB: `GET /gl/actuals/lines` gained an AGGREGATE
+  mode — when `cc` is omitted it accepts the full /actuals filter set (period + sector/chapter/
+  program/appropriation/account/costcenter/accounttype/source/search, pipe-delimited any-of)
+  and builds a `kys` CTE of the matching combinations, joining the raw line sources (grn/ap/po/pr)
+  or the period view (budget/glactual/funds/fundscalc) to it; each drill leads with Cost-centre/
+  Account/Combination context columns, is capped 500 with a true `count` (UI "top N of M"), and
+  the window-SUM total reconciles EXACTLY to the KPI (verified: commitment/obligation/glactual/
+  apdirect/budget/funds all to the dinar). The per-cell drill is unchanged (branch below `IF l_agg`).
+  **Handler source now exceeds the 32767-char PL/SQL literal limit → split into two TO_CLOB-
+  concatenated q'!…!' pieces (in BOTH 05 and 10; 10 is the authoritative definer in the re-run
+  chain and keeps its own doc-number single-cc branches).** Frontend: `openAcAgg(metric)` opens the
+  shared `.dw-*` drill drawer via the same `fillDrill`; 14 drillable figures wired (`.kg-drill`
+  hover affordance); composite figures (Open Encumbrance main, SLA) drill via their components.
+  Deploy = 04(unchanged) → 05 → 07..13 (10 carries the aggregate) → webtier. Browser smoke 8/8.

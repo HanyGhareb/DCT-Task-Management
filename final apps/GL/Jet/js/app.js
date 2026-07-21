@@ -170,6 +170,9 @@
     mOpencommitment:{en:'Open commitment — PRs',ar:'الالتزام المفتوح — طلبات الشراء'}, mOpenobligation:{en:'Open obligation — POs',ar:'التعهد المفتوح — أوامر الشراء'},
     mCommitmentpipeline:{en:'Commitment pipeline — PRs',ar:'التزامات قيد الإعداد — طلبات الشراء'}, mPopipeline:{en:'PO pipeline',ar:'أوامر قيد الإعداد'},
     mGlactual:{en:'GL Actual',ar:'الفعلي'}, mGrn:{en:'GRN actual',ar:'الاستلام الفعلي'}, mApdirect:{en:'AP direct',ar:'مباشر دائنون'},
+    mFunds:{en:'Funds available (GL)',ar:'الأموال المتاحة (الأستاذ)'}, mFundscalc:{en:'Funds available (calc)',ar:'الأموال المتاحة (محتسب)'},
+    acKpiDrillHint:{en:'Click to see the supporting lines across the whole filtered set',ar:'انقر لعرض البنود الداعمة عبر كامل المجموعة المُصفّاة'},
+    acAllLines:{en:'All lines',ar:'كل البنود'},
     refreshActuals:{en:'Refresh actuals',ar:'تحديث الفعلي'}, refreshing:{en:'Refreshing…',ar:'جارٍ التحديث…'},
     refreshed:{en:'Actuals snapshot refreshed',ar:'تم تحديث لقطة الفعلي'},
     refreshHint:{en:'Rebuild the classification snapshot so the report reflects the latest GL/ATD data and mapping edits.',ar:'إعادة بناء لقطة التصنيف لتعكس أحدث بيانات دفتر الأستاذ والربط.'},
@@ -1007,6 +1010,29 @@
         }).catch(function (e) { self.drillLoading(false); self.drillModal(false); toast(e.message, true); });
     };
     self.closeDrill = function () { self.drillModal(false); };
+    // KPI-card drill → supporting lines across the WHOLE filtered set (aggregate),
+    // in the shared slide-in drawer (same as Budget Utilization's openBuAgg).
+    self.openAcAgg = function (metric) {
+      if (!self.acPeriod()) { toast(self.t('periodRequired'), true); return; }
+      self.drillTitle(self.t('m' + metric.charAt(0).toUpperCase() + metric.slice(1)) + ' · ' + self.t('acAllLines'));
+      self.drillSub(self.t('fPeriod') + ' ' + self.acPeriod());
+      self.drillCtx([
+        self.acSectorSel().map(function (v) { return self.acLovName(self.acSectors, v); }).join(', '),
+        self.acChapterSel().map(function (v) { return self.acLovName(self.acChapters, v); }).join(', '),
+        self.acProgramSel().map(function (v) { return self.acLovName(self.acPrograms, v); }).join(', '),
+        self.acApprSel().join(', '), self.acAccountSel().join(', '), self.acCostCenterSel().join(', '),
+        self.acAccTypeSel().map(function (v) { return self.acAccTypeName(v); }).join(', '),
+        self.acSearch() ? '“' + self.acSearch() + '”' : ''
+      ].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      api('GET', '/actuals/lines' + qs({ period: self.acPeriod(), metric: metric,
+        sector: self.acSectorSel().join('|'), chapter: self.acChapterSel().join('|'),
+        program: self.acProgramSel().join('|'), appropriation: self.acApprSel().join('|'),
+        account: self.acAccountSel().join('|'), costcenter: self.acCostCenterSel().join('|'),
+        accounttype: self.acAccTypeSel().join('|'), source: self.acSource(), search: self.acSearch() }))
+        .then(fillDrill).catch(drillFail);
+    };
     self.cell = function (row, col) {
       var v = row[col.key];
       if (col.type === 'money') return self.money(v);

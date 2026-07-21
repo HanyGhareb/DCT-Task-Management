@@ -533,6 +533,12 @@ html[dir=rtl] .kg{padding:13px 17px 12px 15px}
 .kg-row{display:flex;align-items:baseline;justify-content:space-between;gap:10px;min-width:0}
 .kg-rl{font-size:11px;color:var(--muted);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .kg-rv{font-size:12.5px;font-weight:600;color:var(--ink);white-space:nowrap}
+/* drillable KPI figures (aggregate drill across the filtered set) */
+.kg-v.kg-drill{cursor:pointer;border-radius:6px;transition:color .12s}
+.kg-row.kg-drill{cursor:pointer;border-radius:6px;margin:0 -6px;padding:0 6px;transition:background .12s}
+.kg-v.kg-drill:hover{color:var(--brand);text-decoration:underline;text-underline-offset:3px}
+.kg-row.kg-drill:hover{background:var(--brand-soft)}
+.kg-row.kg-drill:hover .kg-rl,.kg-row.kg-drill:hover .kg-rv{color:var(--brand)}
 .kg-rv.neg{color:var(--bad)}
 .kg-budget{--kg-c:#3A6EA5;--kg-soft:#E9F0F8}
 .kg-pr{--kg-c:#2E8C9E;--kg-soft:#E3F1F4}
