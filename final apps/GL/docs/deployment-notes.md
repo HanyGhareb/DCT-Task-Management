@@ -26,6 +26,17 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-07-21 — Calculation Logic region on Budget Utilization (GL v1.36.0)** — new fourth
+  collapsible `.bu-sec` at the BOTTOM of the butil page (collapsed by default; state persisted in
+  `localStorage('gl_bu_ui').calc`) documenting, in the UI itself, how every figure is computed from
+  the Budget Year + Accounting Period criteria: colour-coded formula pills (Fund Available = Budget
+  − (Actual AP + Actual GRN + Commitment PR + Obligation PO), palette = the KPI band's), a
+  per-figure 3-column table (what it counts / Accounting-Period YTD effect — the annual budget is
+  NEVER period-filtered; AP capped by invoice accounting date, GRN by accounted-else-transaction
+  date, PR/PO by budget date, PO GRN-netted) and Budget-Year / YTD / Utilization-% notes. Frontend
+  only (index.html + app.js i18n/state + app.css `.calc-*`/`.cf-*`); EN/AR + RTL; Playwright E2E
+  PASS (present/collapsed default, expand = formula + 5-row table + notes, localStorage
+  persistence, AR/RTL, zero JS errors).
 - **2026-07-18 — Business Unit filter on Budget Utilization + Projects Encumbrances (GL v1.34.0)** —
   follow-through of the BU rollout after the user's extract fixes: `ATD_PROJECTS.BUSINESS_UNIT_NAME`
   now carries the REAL BU name (was junk 'BU'), so **every budget line takes its PROJECT's Business

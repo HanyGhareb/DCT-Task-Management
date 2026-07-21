@@ -666,3 +666,22 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .gen-tx b{font-size:13px;font-weight:600}
 .gen-tx small{font-size:11px;color:var(--muted)}
 html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
+
+/* ── butil Calculation Logic region (collapsible, bottom of the page) ── */
+.bu-calc{margin-top:14px}
+.calc-intro{font-size:12.5px;color:var(--muted);margin-bottom:11px}
+.calc-formula{display:flex;flex-wrap:wrap;align-items:center;gap:7px;margin-bottom:13px}
+.cf{display:inline-block;padding:3px 11px;border-radius:999px;font-size:12px;font-weight:700;
+    color:var(--cf-c,#1B2A27);background:var(--cf-soft,#EEF1F0);border:1px solid var(--cf-c,#C9D2CE)}
+.cf-fund{--cf-c:#2E7D5B;--cf-soft:#E4F1EA}
+.cf-bud{--cf-c:#3A6EA5;--cf-soft:#E9F0F8}
+.cf-ap{--cf-c:#6C4AB6;--cf-soft:#EEEAF7}
+.cf-grn{--cf-c:#B8862B;--cf-soft:#F6EFDC}
+.cf-pr{--cf-c:#2E8C9E;--cf-soft:#E2F1F4}
+.cf-po{--cf-c:#5163B9;--cf-soft:#E8EBF8}
+.cf-op{font-weight:700;color:var(--muted);font-size:13.5px}
+.calc-tbl td{font-size:12.5px;vertical-align:top}
+.calc-tbl td:first-child{white-space:nowrap}
+.calc-tbl .calc-em{font-weight:600}
+.calc-notes{margin:12px 0 0;padding-inline-start:18px;display:flex;flex-direction:column;gap:4px;
+    font-size:12px;color:var(--muted)}

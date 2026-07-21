@@ -284,6 +284,26 @@
     fullYear:{en:'Full year',ar:'السنة كاملة'}, ytd:{en:'YTD',ar:'منذ بداية السنة حتى'},
     buPeriodHint:{en:'Year-to-date: figures include 1 January through the end of the selected period. Budget stays annual.',ar:'منذ بداية السنة: تشمل الأرقام الفترة من 1 يناير حتى نهاية الفترة المحددة. تبقى الموازنة سنوية.'},
 
+    /* ── butil calculation-logic region ── */
+    buSecCalc:{en:'Calculation Logic',ar:'منهجية الاحتساب'},
+    calcIntro:{en:'How every figure on this page is computed from the search criteria (Budget Year + Accounting Period):',ar:'كيف يُحتسب كل رقم في هذه الصفحة وفق معايير البحث (سنة الميزانية + الفترة المحاسبية):'},
+    calcThFig:{en:'Figure',ar:'الرقم'},
+    calcThWhat:{en:'What it counts',ar:'ما يشمله'},
+    calcThPeriod:{en:'Accounting Period (YTD) effect',ar:'أثر الفترة المحاسبية (منذ بداية السنة)'},
+    calcBudgetWhat:{en:'Approved annual budget of the line (budget year × project × task × expenditure type).',ar:'الموازنة السنوية المعتمدة للبند (سنة الميزانية × المشروع × المهمة × نوع الإنفاق).'},
+    calcBudgetPeriod:{en:'Not filtered — always the FULL annual budget (the budget has no monthly spread).',ar:'لا تتأثر — دائماً الموازنة السنوية كاملة (لا يوجد توزيع شهري للموازنة).'},
+    calcApWhat:{en:'Validated supplier-invoice distributions with no PO match, in AED.',ar:'توزيعات فواتير الموردين المدققة غير المرتبطة بأمر شراء، بالدرهم.'},
+    calcApPeriod:{en:'Invoice accounting date up to the selected period end.',ar:'تاريخ القيد المحاسبي للفاتورة حتى نهاية الفترة المحددة.'},
+    calcGrnWhat:{en:'Goods/services receipts at ledger amount (already AED).',ar:'استلامات السلع/الخدمات بقيمة الأستاذ (بالدرهم أصلاً).'},
+    calcGrnPeriod:{en:'Receipt date (accounted date, else transaction date) up to the period end.',ar:'تاريخ الاستلام (تاريخ القيد وإلا تاريخ الحركة) حتى نهاية الفترة.'},
+    calcPrWhat:{en:'Open purchase-requisition distributions with funds status Reserved.',ar:'توزيعات طلبات الشراء المفتوحة بحالة أموال محجوزة.'},
+    calcPrPeriod:{en:'PR budget date up to the period end.',ar:'تاريخ موازنة طلب الشراء حتى نهاية الفترة.'},
+    calcPoWhat:{en:'Open purchase-order distributions (Reserved / Partially Liquidated), net of received GRN: the greater of (amount − receipts) and zero.',ar:'توزيعات أوامر الشراء المفتوحة (محجوزة / مسيّلة جزئياً) بعد خصم الاستلامات: الأكبر من (المبلغ − الاستلامات) وصفر.'},
+    calcPoPeriod:{en:'PO budget date up to the period end.',ar:'تاريخ موازنة أمر الشراء حتى نهاية الفترة.'},
+    calcNoteYear:{en:'Budget Year picks the annual budget and scopes every transaction to that year\'s budget lines.',ar:'تحدد سنة الميزانية الموازنة السنوية وتحصر كل الحركات في بنود موازنة تلك السنة.'},
+    calcNotePeriod:{en:'With an Accounting Period selected, Fund Available reads: full-year budget minus everything consumed up to that month-end (year-to-date) — not a prorated monthly budget.',ar:'عند اختيار فترة محاسبية يكون المتاح: الموازنة السنوية كاملة ناقص كل ما استُهلك حتى نهاية ذلك الشهر (منذ بداية السنة) — وليس موازنة شهرية نسبية.'},
+    calcUtilNote:{en:'Utilization % = (Actual AP + Actual GRN + Commitment PR + Obligation PO) ÷ Budget.',ar:'نسبة الاستخدام % = (فعلي الدائنين + فعلي الاستلام + الالتزام + التعهد) ÷ الموازنة.'},
+
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
     dashSub:{en:'Where the budget is going — spend, commitments and momentum at a glance.',ar:'إلى أين تتجه الموازنة — الإنفاق والارتباطات والاتجاه في لمحة.'},
@@ -1793,10 +1813,11 @@
     try { buUi = JSON.parse(localStorage.getItem('gl_bu_ui') || '{}'); } catch (e) { buUi = {}; }
     self.buSecSearchOpen = ko.observable(buUi.search !== false);
     self.buSecKpisOpen = ko.observable(buUi.kpis !== false);
+    self.buSecCalcOpen = ko.observable(buUi.calc === true);   // informational — collapsed by default
     // display unit for every butil figure (search-criteria field; display-only, no re-query)
     self.buUnit = ko.observable(['auto', 'B', 'M', 'K', 'X'].indexOf(buUi.unit) >= 0 ? buUi.unit : 'auto');
     function saveBuUi() {
-      localStorage.setItem('gl_bu_ui', JSON.stringify({ search: self.buSecSearchOpen(), kpis: self.buSecKpisOpen(), unit: self.buUnit() }));
+      localStorage.setItem('gl_bu_ui', JSON.stringify({ search: self.buSecSearchOpen(), kpis: self.buSecKpisOpen(), calc: self.buSecCalcOpen(), unit: self.buUnit() }));
     }
     self.buUnit.subscribe(saveBuUi);
     self.buUnitOpts = ko.computed(function () {
@@ -1820,7 +1841,8 @@
       return s + Math.round(a / 1e3).toLocaleString('en-US') + 'K';
     };
     self.toggleBuSec = function (k) {
-      var o = (k === 'search') ? self.buSecSearchOpen : self.buSecKpisOpen;
+      var o = (k === 'search') ? self.buSecSearchOpen
+            : (k === 'calc') ? self.buSecCalcOpen : self.buSecKpisOpen;
       o(!o()); saveBuUi();
     };
     self.buActiveFilters = ko.computed(function () {

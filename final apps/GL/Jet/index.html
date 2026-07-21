@@ -6,7 +6,7 @@
 <title>General Ledger · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.35.1';</script>
+<script>window.APP_VERSION='1.36.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -641,6 +641,61 @@
       </div>
       </div>
       </div><!-- /bu-body -->
+
+      <!-- ── calculation logic (how the figures are computed) ── -->
+      <div class="bu-sec bu-calc">
+        <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('calc');return true}, css:{closed:!buSecCalcOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecCalc')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:buSecCalcOpen">
+          <div class="calc-intro" data-bind="text:t('calcIntro')"></div>
+          <div class="calc-formula">
+            <span class="cf cf-fund" data-bind="text:t('cFundAvail')"></span>
+            <span class="cf-op">=</span>
+            <span class="cf cf-bud" data-bind="text:t('cBudget')"></span>
+            <span class="cf-op">−</span>
+            <span class="cf-op">(</span>
+            <span class="cf cf-ap" data-bind="text:t('cActualAp')"></span>
+            <span class="cf-op">+</span>
+            <span class="cf cf-grn" data-bind="text:t('cActualGrn')"></span>
+            <span class="cf-op">+</span>
+            <span class="cf cf-pr" data-bind="text:t('cCommitPr')"></span>
+            <span class="cf-op">+</span>
+            <span class="cf cf-po" data-bind="text:t('cObligPo')"></span>
+            <span class="cf-op">)</span>
+          </div>
+          <div class="tbl-wrap"><table class="tbl calc-tbl">
+            <thead><tr>
+              <th data-bind="text:t('calcThFig')"></th>
+              <th data-bind="text:t('calcThWhat')"></th>
+              <th data-bind="text:t('calcThPeriod')"></th>
+            </tr></thead>
+            <tbody>
+              <tr><td><span class="cf cf-bud" data-bind="text:t('cBudget')"></span></td>
+                  <td data-bind="text:t('calcBudgetWhat')"></td>
+                  <td class="calc-em" data-bind="text:t('calcBudgetPeriod')"></td></tr>
+              <tr><td><span class="cf cf-ap" data-bind="text:t('cActualAp')"></span></td>
+                  <td data-bind="text:t('calcApWhat')"></td>
+                  <td data-bind="text:t('calcApPeriod')"></td></tr>
+              <tr><td><span class="cf cf-grn" data-bind="text:t('cActualGrn')"></span></td>
+                  <td data-bind="text:t('calcGrnWhat')"></td>
+                  <td data-bind="text:t('calcGrnPeriod')"></td></tr>
+              <tr><td><span class="cf cf-pr" data-bind="text:t('cCommitPr')"></span></td>
+                  <td data-bind="text:t('calcPrWhat')"></td>
+                  <td data-bind="text:t('calcPrPeriod')"></td></tr>
+              <tr><td><span class="cf cf-po" data-bind="text:t('cObligPo')"></span></td>
+                  <td data-bind="text:t('calcPoWhat')"></td>
+                  <td data-bind="text:t('calcPoPeriod')"></td></tr>
+            </tbody>
+          </table></div>
+          <ul class="calc-notes">
+            <li data-bind="text:t('calcNoteYear')"></li>
+            <li data-bind="text:t('calcNotePeriod')"></li>
+            <li data-bind="text:t('calcUtilNote')"></li>
+          </ul>
+        </div>
+      </div>
     </div>
 
     <!-- ── PROJECTS ENCUMBRANCES (open PO/PR encumbrance lines, full GL combination) ── -->
