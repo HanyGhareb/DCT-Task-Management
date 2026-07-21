@@ -4,10 +4,13 @@
       <div class="page-title" data-bind="text: $root.t('sys.title')"></div>
       <div class="page-subtitle" data-bind="text: $root.t('sys.subtitle')"></div>
     </div>
-    <button class="btn btn-primary" data-bind="click: saveAll, enable: hasDirty() && !saving()">
-      <!-- ko if: saving() --><span data-bind="text: $root.t('sys.saving')"></span><!-- /ko -->
-      <!-- ko ifnot: saving() --><span data-bind="text: '✓ ' + $root.t('sys.save')"></span><!-- /ko -->
-    </button>
+    <span class="ss-act">
+      <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.save.hintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.save.hintTitle')"></b><span data-bind="text:$root.t('sys.save.hintBody')"></span></span></span>
+      <button class="btn btn-primary" data-bind="click: saveAll, enable: hasDirty() && !saving()">
+        <!-- ko if: saving() --><span data-bind="text: $root.t('sys.saving')"></span><!-- /ko -->
+        <!-- ko ifnot: saving() --><span data-bind="text: '✓ ' + $root.t('sys.save')"></span><!-- /ko -->
+      </button>
+    </span>
   </div>
 
   <!-- ko if: savedMsg() -->
@@ -141,10 +144,13 @@
         <!-- /ko -->
       </div>
       <!-- ko if: $vm.isSysAdmin -->
-      <button class="btn btn-secondary" data-bind="click: $vm.runLogCleanup, enable: $vm.canRunCleanup">
-        <!-- ko if: $vm.cleanupRunning() --><span data-bind="text: $root.t('sys.cleanup.running')"></span><!-- /ko -->
-        <!-- ko ifnot: $vm.cleanupRunning() --><span data-bind="text: $root.t('sys.cleanup.run')"></span><!-- /ko -->
-      </button>
+      <span class="ss-act">
+        <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.cleanup.hintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.cleanup.hintTitle')"></b><span data-bind="text:$root.t('sys.cleanup.hintBody')"></span></span></span>
+        <button class="btn btn-secondary" data-bind="click: $vm.runLogCleanup, enable: $vm.canRunCleanup">
+          <!-- ko if: $vm.cleanupRunning() --><span data-bind="text: $root.t('sys.cleanup.running')"></span><!-- /ko -->
+          <!-- ko ifnot: $vm.cleanupRunning() --><span data-bind="text: $root.t('sys.cleanup.run')"></span><!-- /ko -->
+        </button>
+      </span>
       <!-- /ko -->
     </div>
     <!-- ko if: $vm.cleanupMsg() -->
@@ -241,15 +247,21 @@
             </div>
           </div>
         </div>
-        <div style="display:flex;gap:8px;flex-shrink:0">
-          <button class="btn btn-primary" title="Rebuilds base views then recompiles all invalid objects" data-bind="click:$vm.recompileDatabase,disable:invalidObjects === 0 || $vm.recompiling() || $vm.healthRunning()">
-            <!-- ko if: $vm.recompiling() --><span data-bind="text:$root.t('sys.dbHealth.recompiling')"></span><!-- /ko -->
-            <!-- ko ifnot: $vm.recompiling() --><span data-bind="text:$root.t('sys.dbHealth.recompile')"></span><!-- /ko -->
-          </button>
-          <button class="btn btn-secondary" data-bind="click:$vm.runDatabaseHealth,disable:$vm.healthRunning() || $vm.recompiling()">
-            <!-- ko if: $vm.healthRunning() --><span data-bind="text:$root.t('sys.dbHealth.running')"></span><!-- /ko -->
-            <!-- ko ifnot: $vm.healthRunning() --><span data-bind="text:$root.t('sys.dbHealth.run')"></span><!-- /ko -->
-          </button>
+        <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
+          <span class="ss-act">
+            <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.dbHealth.recompileHintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.dbHealth.recompileHintTitle')"></b><span data-bind="text:$root.t('sys.dbHealth.recompileHintBody')"></span></span></span>
+            <button class="btn btn-primary" data-bind="click:$vm.recompileDatabase,disable:invalidObjects === 0 || $vm.recompiling() || $vm.healthRunning()">
+              <!-- ko if: $vm.recompiling() --><span data-bind="text:$root.t('sys.dbHealth.recompiling')"></span><!-- /ko -->
+              <!-- ko ifnot: $vm.recompiling() --><span data-bind="text:$root.t('sys.dbHealth.recompile')"></span><!-- /ko -->
+            </button>
+          </span>
+          <span class="ss-act">
+            <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.dbHealth.hintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.dbHealth.hintTitle')"></b><span data-bind="text:$root.t('sys.dbHealth.hintBody')"></span></span></span>
+            <button class="btn btn-secondary" data-bind="click:$vm.runDatabaseHealth,disable:$vm.healthRunning() || $vm.recompiling()">
+              <!-- ko if: $vm.healthRunning() --><span data-bind="text:$root.t('sys.dbHealth.running')"></span><!-- /ko -->
+              <!-- ko ifnot: $vm.healthRunning() --><span data-bind="text:$root.t('sys.dbHealth.run')"></span><!-- /ko -->
+            </button>
+          </span>
         </div>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:13px">
@@ -286,10 +298,13 @@
             · <span data-bind="text:$root.t('sys.integrity.checked')"></span> <span data-bind="text:checkedAt"></span>
           </div>
         </div>
-        <button class="btn btn-secondary" data-bind="click:$vm.runDataIntegrity,disable:$vm.integrityRunning">
-          <!-- ko if: $vm.integrityRunning() --><span data-bind="text:$root.t('sys.integrity.running')"></span><!-- /ko -->
-          <!-- ko ifnot: $vm.integrityRunning() --><span data-bind="text:$root.t('sys.integrity.run')"></span><!-- /ko -->
-        </button>
+        <span class="ss-act">
+          <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.integrity.hintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.integrity.hintTitle')"></b><span data-bind="text:$root.t('sys.integrity.hintBody')"></span></span></span>
+          <button class="btn btn-secondary" data-bind="click:$vm.runDataIntegrity,disable:$vm.integrityRunning">
+            <!-- ko if: $vm.integrityRunning() --><span data-bind="text:$root.t('sys.integrity.running')"></span><!-- /ko -->
+            <!-- ko ifnot: $vm.integrityRunning() --><span data-bind="text:$root.t('sys.integrity.run')"></span><!-- /ko -->
+          </button>
+        </span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:13px">
         <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:constraintWarnings"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.integrity.constraints')"></span></div>
@@ -329,10 +344,13 @@
           </div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
-          <button class="btn btn-secondary" data-bind="click:$vm.refreshSqlPerformance,disable:$vm.perfRunning">
-            <!-- ko if: $vm.perfRunning() --><span data-bind="text:$root.t('sys.perf.running')"></span><!-- /ko -->
-            <!-- ko ifnot: $vm.perfRunning() --><span data-bind="text:$root.t('sys.perf.run')"></span><!-- /ko -->
-          </button>
+          <span class="ss-act">
+            <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.perf.hintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.perf.hintTitle')"></b><span data-bind="text:$root.t('sys.perf.hintBody')"></span></span></span>
+            <button class="btn btn-secondary" data-bind="click:$vm.refreshSqlPerformance,disable:$vm.perfRunning">
+              <!-- ko if: $vm.perfRunning() --><span data-bind="text:$root.t('sys.perf.running')"></span><!-- /ko -->
+              <!-- ko ifnot: $vm.perfRunning() --><span data-bind="text:$root.t('sys.perf.run')"></span><!-- /ko -->
+            </button>
+          </span>
           <button class="btn btn-secondary" style="min-width:42px;padding-inline:12px"
                   data-bind="click:$vm.toggleSqlPerformance,
                              attr:{'aria-expanded':$vm.perfExpanded(),'aria-label':$vm.perfExpanded()?$root.t('sys.perf.collapse'):$root.t('sys.perf.expand'),
@@ -384,10 +402,13 @@
             · <span data-bind="text:$root.t('sys.locks.checked')"></span> <span data-bind="text:checkedAt"></span>
           </div>
         </div>
-        <button class="btn btn-secondary" data-bind="click:$vm.refreshDatabaseLocks,disable:$vm.locksRunning">
-          <!-- ko if: $vm.locksRunning() --><span data-bind="text:$root.t('sys.locks.running')"></span><!-- /ko -->
-          <!-- ko ifnot: $vm.locksRunning() --><span data-bind="text:$root.t('sys.locks.run')"></span><!-- /ko -->
-        </button>
+        <span class="ss-act">
+          <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.locks.hintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.locks.hintTitle')"></b><span data-bind="text:$root.t('sys.locks.hintBody')"></span></span></span>
+          <button class="btn btn-secondary" data-bind="click:$vm.refreshDatabaseLocks,disable:$vm.locksRunning">
+            <!-- ko if: $vm.locksRunning() --><span data-bind="text:$root.t('sys.locks.running')"></span><!-- /ko -->
+            <!-- ko ifnot: $vm.locksRunning() --><span data-bind="text:$root.t('sys.locks.run')"></span><!-- /ko -->
+          </button>
+        </span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(3,minmax(120px,1fr));gap:8px;margin-top:13px">
         <div style="padding:9px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-1,#fff)"><b data-bind="text:blockedCount,style:{color:Number(blockedCount)>0?'#b3261e':''}"></b> <span style="font-size:11px;color:var(--text-2)" data-bind="text:$root.t('sys.locks.blocked')"></span></div>
