@@ -144,6 +144,8 @@ def _band(slide, part_no, title, brand=TEAL):
 
 
 def _foot(slide, meta):
+    if not meta:                        # footer suppressed (see build_deck)
+        return
     _txt(slide.shapes, Inches(0.5), Inches(7.05), Inches(12.3), Inches(0.35),
          meta, size=9, color=MUTE, anchor=MSO_ANCHOR.MIDDLE)
 
@@ -266,6 +268,72 @@ def _scope_line(params):
     if p.get("search"):
         bits.append(f"Search: {p['search']}")
     return " · ".join(bits) if bits else "Whole organisation · Full year"
+
+
+# ── Scope slide (Part 1) — the full report filter set the deck was run with ────
+_SCOPE_LABELS = [
+    ("year", "Budget year"),
+    ("period", "Period (YTD)"),
+    ("source", "Source"),
+    ("sector", "Sector"),
+    ("chapter", "Chapter"),
+    ("projecttype", "Project type"),
+    ("bu", "Business unit(s)"),
+    ("costcenter", "Cost centre"),
+    ("project", "Project"),
+    ("task", "Task"),
+    ("etype", "Expenditure type"),
+    ("search", "Search text"),
+]
+
+
+def _scope_value(key, raw):
+    """Human display of a selected parameter, or its 'all'/default when unset."""
+    if raw is None or str(raw) == "":
+        return {"year": "—", "period": "Full year",
+                "source": "PR & PO", "search": "—"}.get(key, "All")
+    v = str(raw)
+    if "|" in v:                                   # pipe-delimited any-of list
+        v = ", ".join(part for part in v.split("|") if part)
+    if key == "period":
+        v = "YTD through " + v
+    return v if len(v) <= 46 else v[:44] + "…"
+
+
+def _scope_pairs(ctx):
+    p = ctx.get("params") or {}
+    code = (ctx.get("report_code") or "").upper()
+    pairs = []
+    for key, label in _SCOPE_LABELS:
+        if key == "source" and code != "ENC_PENDING_BOOK":
+            continue                               # 'source' is pending-only
+        pairs.append((label, _scope_value(key, p.get(key))))
+    return pairs
+
+
+def _scope_slide(prs, ctx, meta):
+    slide = prs.slides.add_slide(prs.slide_layouts[6])
+    _band(slide, "01", "Scope")
+    _txt(slide.shapes, Inches(0.5), Inches(1.12), Inches(12.3), Inches(0.45),
+         "The parameters this report was generated with — every figure in this deck reflects this exact selection.",
+         size=12, color=MUTE)
+    pairs = _scope_pairs(ctx)
+    half = (len(pairs) + 1) // 2
+    cols = [pairs[:half], pairs[half:]]
+    col_x = [Inches(0.5), Inches(6.78)]
+    col_w = Inches(6.05)
+    row_h = 0.86
+    for ci, col in enumerate(cols):
+        y = 1.75
+        for label, value in col:
+            _rect(slide.shapes, col_x[ci], Inches(y), col_w, Inches(row_h - 0.14), WHITE, line=LINE)
+            _rect(slide.shapes, col_x[ci], Inches(y), Emu(int(0.06 * EMU_IN)), Inches(row_h - 0.14), GOLD)
+            _txt(slide.shapes, col_x[ci] + Inches(0.22), Inches(y + 0.07), col_w - Inches(0.4), Inches(0.3),
+                 label.upper(), size=10, bold=True, color=MUTE)
+            _txt(slide.shapes, col_x[ci] + Inches(0.22), Inches(y + 0.33), col_w - Inches(0.4), Inches(0.36),
+                 value, size=15, bold=True, color=TEAL_D, anchor=MSO_ANCHOR.MIDDLE)
+            y += row_h
+    _foot(slide, meta)
 
 
 # ── slides ───────────────────────────────────────────────────────────────────
@@ -985,7 +1053,7 @@ def _enc_pending_deck(prs, sections, ctx, meta):
     OLD = _data(S.get("oldest"))
     UM = _data(S.get("unmatched"))
     _pn_cover(prs, ctx, O, B)
-    _pn_overview_slide(prs, ctx, O, B, meta)
+    _scope_slide(prs, ctx, meta)                 # Part 1 = Scope (selected parameters)
     _pn_aging_slide(prs, ctx, O, AG, meta)
     _pn_sector_slide(prs, ctx, SECR, meta)
     _pn_approvers_slide(prs, ctx, APV, meta)
@@ -1005,7 +1073,7 @@ def _budget_util_deck(prs, sections, ctx, meta):
     PO = _data(S.get("open_po"))
     PR = _data(S.get("open_pr"))
     _cover(prs, ctx, O)
-    _kpi_slide(prs, ctx, O, meta)
+    _scope_slide(prs, ctx, meta)                 # Part 1 = Scope (selected parameters)
     _sector_slide(prs, ctx, SEC, meta)
     _pressure_slide(prs, ctx, PRS, meta)
     _actuals_slide(prs, ctx, AP, GRN, O, meta)
@@ -1022,7 +1090,9 @@ def build_deck(sections, ctx):
     everything else falls back to the Budget Utilization deck (the two share the
     same design language and slide helpers).
     """
-    meta = (ctx.get("meta") or "") + "   ·   times in GST (UTC+04:00, Asia/Dubai)"
+    # content-slide footer suppressed per review (no bottom meta / GST line);
+    # the cover keeps its generation stamp. Empty meta => _foot draws nothing.
+    meta = ""
     prs = Presentation()
     prs.slide_width = SW
     prs.slide_height = SH
