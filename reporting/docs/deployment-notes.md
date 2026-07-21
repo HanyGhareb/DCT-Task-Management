@@ -87,6 +87,19 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-21 — Annual + YTD Budget in the butil reports.** Follow-through of the GL v1.37.0
+  period-aware budget: **BUDGET_UTIL_BOOK** overview + utilization-by-sector sections now also
+  select `SUM(budget_annual)` (the view's `budget` stays the period-aware YTD figure the book's
+  `pre_sql` already produces), and the DB template `budget_util_book.html.j2` shows it — KPI card
+  label flips to "YTD Budget" when a period is passed (sub-line carries the Annual figure when it
+  differs) and the 1.1 sector table gains an **Annual Budget** column next to the (YTD) Budget one.
+  **BUDGET_UTIL_REGISTER** sheet 1 emits `annual_budget` + `ytd_budget` (ordered by annual).
+  Deployed the two definition blocks via python-oracledb from the dev VM (Linux SQLcl still
+  swallows these MERGE-bearing seeds) + template upsert; includes the user's TO_CHAR wraps on
+  PO/PR doc-number columns (Jinja `truncate`-on-NUMBER guard). Verified E2E via the GL bridges
+  with period=03-2026: register sheet shows both columns (annual ≠ ytd), book renders the new
+  KPI + table column.
+
 - **2026-07-18 — `bu` (Business Unit) param on BUDGET_UTIL_BOOK + BUDGET_UTIL_REGISTER (`reporting/db/21`
   + `25` re-seeded).** Same exact any-of semantics as the pending pair, but bound in `l_bscope`/`l_scope`
   (project-attribution BU via the butil/scope views, which gained `business_unit` in db/v2/37+39) so ALL

@@ -260,7 +260,7 @@
     <span class="pt-s">Budget year {{ params.year }} &middot; {{ scopeline|truncate(80) }}</span></div>
 
   <div class="kpis">
-    <div class="kpi"><div class="k-lbl">Approved Budget</div><div class="k-val">{{ money(O.budget) }}</div><div class="k-sub">AED &middot; {{ O.budget_lines|fmt }} lines</div></div>
+    <div class="kpi"><div class="k-lbl">{{ 'YTD Budget' if params.period else 'Approved Budget' }}</div><div class="k-val">{{ money(O.budget) }}</div><div class="k-sub">AED &middot; {% if O.budget_annual is not none and O.budget_annual != O.budget %}Annual {{ money(O.budget_annual) }} &middot; {% endif %}{{ O.budget_lines|fmt }} lines</div></div>
     <div class="kpi k-act"><div class="k-lbl">Actual — AP</div><div class="k-val">{{ money(O.actual_ap) }}</div><div class="k-sub">{{ AP|length|fmt }} invoices</div></div>
     <div class="kpi k-act"><div class="k-lbl">Actual — GRN</div><div class="k-val">{{ money(O.actual_grn) }}</div><div class="k-sub">{{ GRN|length|fmt }} receipt lines</div></div>
     <div class="kpi k-enc"><div class="k-lbl">Open Obligation (PO)</div><div class="k-val">{{ money(O.obligation_po) }}</div><div class="k-sub">{{ PO|length|fmt }} PO lines</div></div>
@@ -326,12 +326,12 @@
   <div class="sub-h">1.1 &nbsp; Utilization by sector <small>&mdash; all figures AED</small></div>
   {% if SEC %}
   <table class="data">
-    <thead><tr><th>Sector</th><th>Projects</th><th>Budget</th><th>Actual AP</th><th>Actual GRN</th>
+    <thead><tr><th>Sector</th><th>Projects</th><th>Annual Budget</th><th>{{ 'YTD Budget' if params.period else 'Budget' }}</th><th>Actual AP</th><th>Actual GRN</th>
       <th>Open PO</th><th>Open PR</th><th>Fund Available</th><th>Utilization %</th></tr></thead>
     <tbody>
       {% for r in SEC %}
       <tr><td>{{ r.sector }}</td><td class="num">{{ r.projects|fmt }}</td>
-        <td class="num">{{ r.budget|fmt }}</td><td class="num">{{ r.actual_ap|fmt }}</td>
+        <td class="num">{{ r.budget_annual|fmt }}</td><td class="num">{{ r.budget|fmt }}</td><td class="num">{{ r.actual_ap|fmt }}</td>
         <td class="num">{{ r.actual_grn|fmt }}</td><td class="num">{{ r.obligation_po|fmt }}</td>
         <td class="num">{{ r.commitment_pr|fmt }}</td>
         <td class="num {{ 'neg' if r.fund_available is not none and r.fund_available < 0 }}">{{ r.fund_available|fmt }}</td>
@@ -339,7 +339,7 @@
       {% endfor %}
     </tbody>
     <tfoot><tr><td>Total</td><td class="num">{{ O.projects|fmt }}</td>
-      <td class="num">{{ O.budget|fmt }}</td><td class="num">{{ O.actual_ap|fmt }}</td>
+      <td class="num">{{ O.budget_annual|fmt }}</td><td class="num">{{ O.budget|fmt }}</td><td class="num">{{ O.actual_ap|fmt }}</td>
       <td class="num">{{ O.actual_grn|fmt }}</td><td class="num">{{ O.obligation_po|fmt }}</td>
       <td class="num">{{ O.commitment_pr|fmt }}</td>
       <td class="num {{ 'neg' if O.fund_available is not none and O.fund_available < 0 }}">{{ O.fund_available|fmt }}</td>
