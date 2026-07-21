@@ -93,7 +93,7 @@ BEGIN
               WHERE prod.dct_cc_canon(pod.charge_account) = l_cc AND g.transaction_date >= l_ystart AND g.transaction_date < l_pnext
               ORDER BY g.transaction_date DESC FETCH FIRST 500 ROWS ONLY
               ) ORDER BY receipt_number, line_no) LOOP
-      APEX_JSON.open_object; APEX_JSON.write('receipt',r.receipt_number); APEX_JSON.write('line',NVL(TO_CHAR(r.line_no),'')); APEX_JSON.write('date',NVL(r.td,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
+      APEX_JSON.open_object; APEX_JSON.write('receipt',NVL(TO_CHAR(r.receipt_number),'')); APEX_JSON.write('line',NVL(TO_CHAR(r.line_no),'')); APEX_JSON.write('date',NVL(r.td,'')); APEX_JSON.write('supplier',NVL(r.supplier_name,''));
       APEX_JSON.write('currency',NVL(r.currency_code,'AED')); APEX_JSON.write('rate',NVL(r.conversion_rate,1)); APEX_JSON.write('amount',r.aed); APEX_JSON.write('type',NVL(r.transaction_type,'')); APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
