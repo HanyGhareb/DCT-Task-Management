@@ -1212,3 +1212,54 @@ flow replicated 1:1: My Projects → search Project Number → open project → 
   VMs ran `--actions`, so UI-enqueued actions sat READY forever); `ATD_ACTION_LIVE=1` set in each
   VM's `env.sh`; fleet synced + restarted. The actions queue (`ATD_ACTION_REQUEST`) is SEPARATE
   from the extract queue (`ATD_OTBI_JOBS`) — same fleet + SSO session, different tables/claim pkgs.
+- **Projects Budget incremental delta-load (2026-07-21):** split the slow (4+ min) hourly
+  full extract into a **daily full baseline + hourly 24h delta**. Two jobs share the target
+  `PROD.ATD_PROJECTS_BUDGET`:
+  * `Projects Budget Full` — analysis `…/Projects/PROJECTS_BUDGET_PERIODS`, `TRUNCATE_INSERT`,
+    now `frequency_minutes=1440` (was 60). The authoritative baseline; the ONLY path that
+    reflects deletes / closed lines (a delta MERGE cannot).
+  * `Projects Budget Incremental` — analysis `…/PROJECTS_BUDGET_PERIODS_UH24` (a Save-As copy of
+    the base with a baked SQL-expression filter `"Update Date" >= TIMESTAMPADD(SQL_TSI_HOUR,-24,
+    CURRENT_TIMESTAMP)`, evaluated pod-side so NO runner-clock/TZ coupling), `MERGE`, stage
+    `PROD.ATD_PROJECT_BUDGET_STG`, `final PROD.ATD_PROJECTS_BUDGET`, `key_columns=
+    PROJECT_ID,TASK_ID,EXPENDITURE_TYPE,ACCOUNTING_PERIOD` (verified UNIQUE — 0 dup groups over
+    1,836 rows; the natural grain the view `db/v2/37` SUMs over), `frequency_minutes=60`.
+  Scripts: **`otbi-atd/db/50_atd_projects_budget_incremental.sql`** (stage table + job register,
+  re-runnable/inert) + **`50b_enable_projects_budget_incremental.sql`** (point at variant +
+  enable + the daily flip). E2E verified: variant returns 25 rows (last-24h) vs 1,836 full;
+  fleet-driven run 6118 SUCCESS 25 rows; post-MERGE count stable at 1,836, 0 dup key groups, all
+  25 delta keys upserted.
+  * **Considered but rejected: a single-analysis "optional filter" via a Go-URL P0..PN filter
+    override (Option A).** The extract framework NEVER passes filters to an analysis at request
+    time — every filter is baked into the analysis (`copy_analysis.add_relative_filter` /
+    `schedgen` `_F`/`_UH`/`_U10M`). Runtime override is unproven on the ADGOV pod for
+    `Action=Download` and would couple the filter value to the runner clock. Went with the proven
+    baked-variant approach.
+  * **To regenerate the variant** (e.g. after the base analysis columns change): reuse
+    `copy_analysis.do_copy(page, BASE, SRC, "PROJECTS_BUDGET_PERIODS_UH24", hour=24,
+    on_column="Update Date")` on a worker VM with a live session, or `schedgen` for the standard
+    `_UH`/`_U10M` windows. Keep the base and `_UH24` column sets in lockstep (the incremental job
+    reuses the full job's `column_map_json`, matched by header name not position).
+  * **Window is baked in the analysis (24h), cadence is per-job (`frequency_minutes`).** To change
+    the look-back, regenerate the variant with a different `hour=`; to change how often it runs,
+    edit `frequency_minutes` on the job row.
+- **AP/PR/PO incremental delta-load — LIVE 2026-07-21 (rolled out the Projects Budget pattern):**
+  applied the daily-full + hourly-24h-delta-MERGE pattern to six more slow full-refresh extracts.
+  Scripts `otbi-atd/db/51_atd_ap_pr_po_incremental.sql` (6 stage tables + 6 disabled MERGE jobs)
+  + `51b_enable_ap_pr_po_incremental.sql` (point at variants + enable). Each full job is unchanged
+  and still daily; a new `<Name> Incremental` MERGE job (frequency 60) reads a baked `_UH24` variant
+  (`<update col> >= TIMESTAMPADD(SQL_TSI_HOUR,-24,CURRENT_TIMESTAMP)`):
+  | Incremental job | Variant | Update col | Target | Key (verified UNIQUE) |
+  |---|---|---|---|---|
+  | AP Invoices Incremental | AP_INVOICES_UH24 | Last Updated Date | ATD_AP_INVOICES | INVOICE_ID |
+  | AP Invoice Lines Incremental | AP_INVOICE_LINES_UH24 | Last Updated Date | ATD_AP_INVOICE_LINES | INVOICE_ID, INVOICE_LINE_NUMBER |
+  | AP Distributions Incremental | AP_INVOICE_DISTRIBUTIONS_UH24 | Last Updated Date | ATD_AP_INVOICE_DISTRIBUTIONS | INVOICE_ID, LINE_NUMBER, DISTRIBUTION_LINE_NUMBER |
+  | PR Headers Incremental | 01_PR_HEADERS_UH24 | Last Updated Date | ATD_PR_HEADERS | PR_HEADER_ID |
+  | PR Lines Incremental | 01_PR_LINES_UH24 | Last Updated Date | ATD_PR_LINES | PR_LINE_ID |
+  | PO Headers Incremental | PO_HEADERS_UH24 | Updated Date | ATD_PO_HEADERS | PO_HEADER_ID |
+  E2E verified: all 6 variants built in one MFA session; each incremental ran (443/460/757/125/201/87
+  delta rows), MERGE integrity clean (0 dup groups on every target; counts rose only by genuinely new
+  keys). **Not converted: GL_ACCOUNTS_COMBINATIONS + GL Balances** — their analyses have NO last-update
+  column, so a date-delta isn't possible without adding one (GL combos is slow ~217s max — worth adding
+  a column later). Batch variant creation = `mk_uh24_batch.py` style (copy_analysis.do_copy per spec on
+  a worker; one MFA covers all).
