@@ -114,8 +114,8 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 
 ## 6. System Configuration
 
-**System Settings** (`systemSettings`) — platform-wide settings (branding, feature flags, secrets).
-- `saveAll`.
+**System Settings** (`systemSettings`) — platform-wide settings (branding, feature flags, secrets) + Data Maintenance (log cleanup, LOB storage, database object health, data integrity).
+- `saveAll` · `runDatabaseHealth` / `recompileDatabase` (SYS_ADMIN: rebuild base pass-through views + `COMPILE_SCHEMA` to clear invalid objects) · `runDataIntegrity` / `runLogCleanup`.
 
 **Region Appearance** (`appearance`) — region header/border theming palette.
 - `selectTheme` · `saveTheme`.

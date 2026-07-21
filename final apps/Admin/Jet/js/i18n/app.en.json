@@ -222,6 +222,8 @@
   "sys.dbHealth.invalid": "invalid objects",
   "sys.dbHealth.loading": "Loading database object health…",
   "sys.dbHealth.partitions": "unusable index partitions",
+  "sys.dbHealth.recompile": "Recompile invalid objects",
+  "sys.dbHealth.recompiling": "Recompiling…",
   "sys.dbHealth.run": "Run health check now",
   "sys.dbHealth.running": "Checking…",
   "sys.dbHealth.title": "Database object health",

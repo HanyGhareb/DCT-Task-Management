@@ -97,6 +97,31 @@ function (ko, settingService, authService) {
       });
     };
 
+    self.recompiling = ko.observable(false);
+    self.recompileDatabase = function () {
+      self.recompiling(true);
+      self.healthMsg('');
+      settingService.recompileDatabase().then(function (r) {
+        var ar = document.documentElement.lang === 'ar';
+        var cleared = r.cleared || 0, after = r.after || 0;
+        if (after === 0) {
+          self.healthMsg(ar
+            ? ('تمت إعادة الترجمة بنجاح — تم إصلاح ' + cleared + ' كائن. لا توجد كائنات غير صالحة.')
+            : ('Recompiled successfully — cleared ' + cleared + ' object(s). No invalid objects remain.'));
+        } else {
+          self.healthMsg(ar
+            ? ('تمت إعادة الترجمة — تم إصلاح ' + cleared + '، وتبقّى ' + after + ' غير صالح: ' + (r.stillInvalid || ''))
+            : ('Recompiled — cleared ' + cleared + ', ' + after + ' still invalid: ' + (r.stillInvalid || '')));
+        }
+        return self.loadDatabaseHealth();
+      }).catch(function (err) {
+        self.healthMsg((document.documentElement.lang === 'ar' ? 'فشلت إعادة الترجمة: ' : 'Recompile failed: ') +
+          ((err && err.message) || 'Unknown error'));
+      }).then(function () {
+        self.recompiling(false);
+      });
+    };
+
     self.loadDataIntegrity = function () {
       if (!self.isSysAdmin) return;
       self.integrityLoading(true);

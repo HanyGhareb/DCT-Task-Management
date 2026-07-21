@@ -93,6 +93,10 @@ define(['services/api', 'shared/refCache'], function (api, refCache) {
       return api.post('/maintenance/db-health', {}, { silent: true });
     },
 
+    recompileDatabase: function () {
+      return api.post('/maintenance/db-health/recompile', {}, { silent: true });
+    },
+
     getDataIntegrity: function () {
       return api.get('/maintenance/data-integrity', { silent: true });
     },

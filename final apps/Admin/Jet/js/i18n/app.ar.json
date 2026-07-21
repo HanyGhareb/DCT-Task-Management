@@ -222,6 +222,8 @@
   "sys.dbHealth.invalid": "كائنات غير صالحة",
   "sys.dbHealth.loading": "جارٍ تحميل حالة كائنات قاعدة البيانات…",
   "sys.dbHealth.partitions": "أقسام فهارس غير قابلة للاستخدام",
+  "sys.dbHealth.recompile": "إعادة ترجمة الكائنات غير الصالحة",
+  "sys.dbHealth.recompiling": "جارٍ إعادة الترجمة…",
   "sys.dbHealth.run": "تشغيل فحص الصحة الآن",
   "sys.dbHealth.running": "جارٍ الفحص…",
   "sys.dbHealth.title": "صحة كائنات قاعدة البيانات",
