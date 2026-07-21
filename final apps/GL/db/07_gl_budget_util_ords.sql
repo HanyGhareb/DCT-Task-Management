@@ -150,14 +150,14 @@ BEGIN
   APEX_JSON.close_array;
   APEX_JSON.open_array('projects');
   FOR r IN (SELECT project_number p, MAX(project_name) n FROM prod.dct_budget_utilization_v
-            WHERE project_number IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+            WHERE project_number IS NOT NULL AND project_number NOT LIKE '#%' AND (l_year IS NULL OR budget_year = l_year)
             GROUP BY project_number ORDER BY project_number) LOOP
     APEX_JSON.open_object; APEX_JSON.write('p', r.p); APEX_JSON.write('n', NVL(r.n,'')); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('tasks');
   FOR r IN (SELECT DISTINCT task_number t FROM prod.dct_budget_utilization_v
-            WHERE task_number IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
+            WHERE task_number IS NOT NULL AND task_number NOT LIKE '#%' AND (l_year IS NULL OR budget_year = l_year)
             ORDER BY task_number) LOOP
     APEX_JSON.write(r.t);
   END LOOP;
