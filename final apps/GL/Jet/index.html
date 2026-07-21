@@ -6,7 +6,7 @@
 <title>General Ledger · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.35.0';</script>
+<script>window.APP_VERSION='1.35.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -479,10 +479,10 @@
         </div>
         <!-- autocomplete option lists (per selected budget year) -->
         <datalist id="bu-cc-dl">
-          <!-- ko foreach: buCcs --><option data-bind="attr:{value:cc}, text:dept"></option><!-- /ko -->
+          <!-- ko foreach: buCcs --><option data-bind="attr:{value:$data.cc}, text:$data.dept"></option><!-- /ko -->
         </datalist>
         <datalist id="bu-proj-dl">
-          <!-- ko foreach: buProjects --><option data-bind="attr:{value:p}, text:n"></option><!-- /ko -->
+          <!-- ko foreach: buProjects --><option data-bind="attr:{value:$data.p}, text:$data.n"></option><!-- /ko -->
         </datalist>
         <datalist id="bu-task-dl">
           <!-- ko foreach: buTasks --><option data-bind="attr:{value:$data}"></option><!-- /ko -->

@@ -1083,8 +1083,10 @@
       if (!y || y === buLovYear) return;
       buLovYear = y;
       api('GET', '/butil/lov' + qs({ year: y })).then(function (d) {
-        self.buCcs(d.costCenters || []); self.buProjects(d.projects || []);
+        // set the simple ($data) lists first so a render error in the object
+        // datalists can never block them (defensive; the $data.* bindings fix the cause)
         self.buTasks(d.tasks || []); self.buEtypes(d.etypes || []);
+        self.buCcs(d.costCenters || []); self.buProjects(d.projects || []);
       }).catch(function () { buLovYear = null; });
     };
     self.buYear.subscribe(function (y) {
