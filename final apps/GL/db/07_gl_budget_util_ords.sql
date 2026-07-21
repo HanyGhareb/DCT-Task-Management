@@ -227,7 +227,7 @@ BEGIN
          NVL(SUM(commitment_pr),0), NVL(SUM(obligation_po),0), NVL(SUM(fund_available),0)
     INTO l_total, t_bud, t_ap, t_grn, t_pr, t_po, t_fund
     FROM prod.dct_budget_utilization_v v
-   WHERE v.budget_year = l_year AND v.project_number NOT LIKE '#%' AND v.task_number NOT LIKE '#%'
+   WHERE v.budget_year = l_year
      AND (l_ptype  IS NULL OR v.project_type = l_ptype)
      AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -254,7 +254,7 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT v.* FROM prod.dct_budget_utilization_v v
-    WHERE v.budget_year = l_year AND v.project_number NOT LIKE '#%' AND v.task_number NOT LIKE '#%'
+    WHERE v.budget_year = l_year
       AND (l_ptype  IS NULL OR v.project_type = l_ptype)
       AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -402,7 +402,7 @@ BEGIN
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
              SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
-             WHERE l_project IS NULL AND v.budget_year = l_year AND v.project_number NOT LIKE '#%' AND v.task_number NOT LIKE '#%'
+             WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -473,7 +473,7 @@ BEGIN
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
              SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
-             WHERE l_project IS NULL AND v.budget_year = l_year AND v.project_number NOT LIKE '#%' AND v.task_number NOT LIKE '#%'
+             WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -543,7 +543,7 @@ BEGIN
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
              SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
-             WHERE l_project IS NULL AND v.budget_year = l_year AND v.project_number NOT LIKE '#%' AND v.task_number NOT LIKE '#%'
+             WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -607,7 +607,7 @@ BEGIN
              SELECT CAST(l_project AS VARCHAR2(120)) pk, NVL(l_task,'~') tk, NVL(l_etype,'~') et FROM dual WHERE l_project IS NOT NULL
              UNION ALL
              SELECT v.project_number, NVL(v.task_number,'~'), NVL(v.expenditure_type,'~') FROM prod.dct_budget_utilization_v v
-             WHERE l_project IS NULL AND v.budget_year = l_year AND v.project_number NOT LIKE '#%' AND v.task_number NOT LIKE '#%'
+             WHERE l_project IS NULL AND v.budget_year = l_year
                AND (l_ptype  IS NULL OR v.project_type = l_ptype)
                AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
