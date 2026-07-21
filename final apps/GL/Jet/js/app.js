@@ -980,6 +980,7 @@
 
     /* ════ BUDGET UTILIZATION — project budget vs actual (year mandatory) ════ */
     var BU_DEFAULT_TYPE = 'DCT OPEX Project Type';
+    var BU_DEFAULT_UNIT = 'Department of Culture and Tourism';   // default Business Unit selection
     self.buFiltersLoaded = ko.observable(false);
     self.buYears = ko.observableArray([]);
     self.buTypes = ko.observableArray([]);
@@ -989,6 +990,9 @@
     self.buCc = ko.observable(''); self.buProject = ko.observable('');
     self.buTask = ko.observable(''); self.buEtype = ko.observable('');
     self.buSearch = ko.observable('');
+    /* Appropriation + DCT Program — exact-match classification LOVs (2026-07-21) */
+    self.buApprop = ko.observable(''); self.buProgram = ko.observable('');
+    self.buAppropList = ko.observableArray([]); self.buProgramList = ko.observableArray([]);
 
     /* ── multi-select filters (Chapter / Cost centre / Project, 2026-07-14) ──
        Every pick becomes a chip; the server matches ANY chip (pipe-delimited
@@ -1098,9 +1102,13 @@
         self.buSectors(d.sectors || []);
         self.buChapters(d.chapters || []);
         self.buBus(d.businessUnits || []);
+        self.buAppropList(d.appropriations || []);
+        self.buProgramList(d.programs || []);
         // KO nulls a <select> value when options were empty at bind time; re-assert.
         if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
         if (!self.buType() && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buType(BU_DEFAULT_TYPE);
+        // default Business Unit to DCT on first load (only if the user hasn't picked one)
+        if (!self.buBuSel().length && (d.businessUnits || []).indexOf(BU_DEFAULT_UNIT) >= 0) self.buBuSel([BU_DEFAULT_UNIT]);
         self.buPeriod(buDefaultPeriod(self.buYear()));
         self.buFiltersLoaded(true);
         self.buFiltersLoading(false);
@@ -1110,7 +1118,7 @@
     self.buParams = function (offset, limit) {
       return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(),
         costcenter: self.buCcParam(), project: self.buProjParam(), task: self.buTask(), etype: self.buEtype(),
-        bu: self.buBuParam(),
+        bu: self.buBuParam(), appropriation: self.buApprop() || null, program: self.buProgram() || null,
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -1123,9 +1131,10 @@
     };
     self.buReset = function () {
       self.buType(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? BU_DEFAULT_TYPE : '');
-      self.buSector(''); self.buSearch('');
+      self.buSector(''); self.buSearch(''); self.buApprop(''); self.buProgram('');
       self.buChapterSel.removeAll(); self.buCcSel.removeAll(); self.buProjSel.removeAll();
-      self.buChapterPick(''); self.buBuSel.removeAll(); self.buBuPick('');
+      self.buChapterPick('');
+      self.buBuSel(self.buBus().indexOf(BU_DEFAULT_UNIT) >= 0 ? [BU_DEFAULT_UNIT] : []); self.buBuPick('');
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));

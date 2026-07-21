@@ -106,6 +106,17 @@ BEGIN
     APEX_JSON.write(r.b);
   END LOOP;
   APEX_JSON.close_array;
+  -- Appropriation + DCT Program classification dimensions (exact-match LOVs)
+  APEX_JSON.open_array('appropriations');
+  FOR r IN (SELECT DISTINCT appropriation a FROM prod.dct_budget_utilization_v WHERE appropriation IS NOT NULL ORDER BY appropriation) LOOP
+    APEX_JSON.write(r.a);
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.open_array('programs');
+  FOR r IN (SELECT DISTINCT program pg FROM prod.dct_budget_utilization_v WHERE program IS NOT NULL ORDER BY program) LOOP
+    APEX_JSON.write(r.pg);
+  END LOOP;
+  APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -182,6 +193,8 @@ DECLARE
   l_sector VARCHAR2(200) := [COLON]sector;
   l_chapter VARCHAR2(2000) := [COLON]chapter;
   l_bu      VARCHAR2(2000) := [COLON]bu;
+  l_approp  VARCHAR2(2000) := [COLON]appropriation;
+  l_program VARCHAR2(2000) := [COLON]program;
   l_cc     VARCHAR2(2000) := [COLON]costcenter;
   l_proj   VARCHAR2(2000) := [COLON]project;
   l_task   VARCHAR2(200) := [COLON]task;
@@ -220,6 +233,8 @@ BEGIN
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
      AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
      AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                            OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
      AND (l_proj   IS NULL OR (INSTR(l_proj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
@@ -245,6 +260,8 @@ BEGIN
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
       AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
       AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                             OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
       AND (l_proj   IS NULL OR (INSTR(l_proj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
@@ -319,6 +336,8 @@ DECLARE
   l_sector  VARCHAR2(200) := [COLON]sector;
   l_chapter VARCHAR2(2000) := [COLON]chapter;
   l_bu      VARCHAR2(2000) := [COLON]bu;
+  l_approp  VARCHAR2(2000) := [COLON]appropriation;
+  l_program VARCHAR2(2000) := [COLON]program;
   l_cc      VARCHAR2(2000) := [COLON]costcenter;
   l_fproj   VARCHAR2(2000) := [COLON]fproject;
   l_ftask   VARCHAR2(200) := [COLON]ftask;
@@ -389,6 +408,8 @@ BEGIN
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
@@ -458,6 +479,8 @@ BEGIN
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
@@ -526,6 +549,8 @@ BEGIN
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')
@@ -588,6 +613,8 @@ BEGIN
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
                AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
                AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+               AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+               AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
                AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
                                      OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
                AND (l_fproj  IS NULL OR (INSTR(l_fproj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_fproj)||'%')

@@ -246,10 +246,16 @@ table.tbl td.combo{cursor:help;text-decoration:underline dotted var(--line);text
 
 /* ── search-criteria card ─────────────────────────────────────────── */
 .filter-card{padding:16px 18px;margin-bottom:16px}
-.filter-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:13px;align-items:end}
+/* 7 columns => the search criteria lay out in 2 tidy rows on wide screens;
+   reflow to fewer columns as the viewport narrows */
+.filter-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:13px;align-items:end}
+@media (max-width:1500px){.filter-grid{grid-template-columns:repeat(5,minmax(0,1fr))}}
+@media (max-width:1100px){.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media (max-width:720px){.filter-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .filter-grid .field{gap:5px}
-.filter-actions{flex-direction:row;gap:9px;align-items:end}
-.filter-actions .btn{flex:1;justify-content:center}
+.filter-grid .filter-actions{grid-column:1 / -1}      /* action buttons on their own row */
+.filter-actions{flex-direction:row;gap:9px;align-items:end;justify-content:flex-end}
+.filter-actions .btn{flex:0 0 auto;min-width:130px;justify-content:center}
 
 /* ── KPI / business-question strip ────────────────────────────────── */
 .kpi-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:13px;margin-bottom:18px}
