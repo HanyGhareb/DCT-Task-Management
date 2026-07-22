@@ -94,9 +94,20 @@ update on any view/method/endpoint change.
 - `t()` / `toggleLang()` (EN/AR + RTL), `go(view)`, `signOut()` (→ Admin), `refreshFilters()`.
 - formatters: `money(n)` (full AED with separators), `compact(n)` (1.71B / 868.0M / 12K), `fmt(n)`.
 
+## Reconciliation (`view()==='recon'`) — Actuals ↔ Budget Utilization data-integrity (v1.41.0)
+- **Purpose** — verifies data integrity between the Actuals and Budget Utilization dashboards. Consumption (AP/GRN/PR/PO) is the SAME source both sides, so it reconciles to residual 0 via named leakage buckets; budget = two different Fusion ledgers (GL `GL_BALANCES` Expense scoped vs PPM `PROJECTS_BUDGET`) shown side by side. Data = `DCT_GL_RECON_FACT_V` + `DCT_GL_RECON_GLBUDGET_V` (db/v2/105).
+- **Filters** — Budget Year (req) + Accounting Period (YTD, sets `BUTIL_END` so both sides align) + multi-select Sector / Chapter / GL Account / Cost Centre / Appropriation / DCT Program (`rcSector/rcChap/rcAcct/rcCc/rcAppr/rcProg`, each a `rcMulti()` picklist→chips) + **GL budget chapters** (`rcBChap`, Expense scope, default CH2–CH5). `runRecon()` fetches summary + rows; `rcReset()`.
+- **Status band** — 5 KPI tiles: Coverage % (butil/actuals) + total consumption both sides · **Non-project (Actuals only)** = spend on combinations with no project/task/etype (can't enter Budget Utilization) · **Orphan consumption** = spend on a project line with no budget (the actionable flag) · GL vs Project budget · Fund available each side. Charts (hand-built SVG/CSS): `rcDonut` composition donut (Matched / No-project / Not-validated / Orphan via conic-gradient) + `rcMeasures` per-measure Actuals-vs-Butil bars with status dots.
+- **Register** — measure tabs (`rcSetMeasure` AP/GRN/PR/PO) + grain segmented control (`rcSetGrain`, 8 grains); table shows per-row Actuals/Butil/Diff + Non-project/Validation(AP)/No-budget-line, every leakage cell a drill link. `rcExportCsv()`.
+- **Difference drill** — `rcCellDrill(row,bucket)` → `rcDrill(measure,bucket,row)` calls `/recon/drill` and opens the SHARED drill drawer (`drillCols/drillRows/drillTotalV/drillCount`) with the source documents (doc #/line, project/task/etype, amount, hasProject/validation/onBudgetLine). Verified: every drill total reconciles to its summary bucket.
+
 ## API Endpoints (ORDS) — `db/05_gl_ords.sql`, base `/ords/admin/gl/`
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/recon/filters` | Reconciliation LOVs — years, periods, budgetChapters default (CH2..CH5) + code+label dimension lists (db/14) |
+| GET | `/recon/summary` | per-measure AP/GRN/PR/PO {actuals, butil, diff, noProject, apValidation, noBudgetLine} + derived totals + GL vs PPM budget + fund available each side (db/14) |
+| GET | `/recon/rows` | reconciliation register at `?grain=` (account/sector/chapter/costcenter/appropriation/program/combination/budgetline) + optional `?measure=`; one row per dimension value with both sides + leakage buckets (db/14) |
+| GET | `/recon/drill` | source records behind a difference cell — `?measure=&bucket=&grain=&key=` (bucket ∈ all/no_project/ap_validation/no_budget_line/matched); generic doc rows + hasProject/validation/onBudgetLine flags (db/14) |
 | GET | `/boot` | dimensions catalog + combination/classified counts |
 | GET | `/class-types` | dimensions |
 | GET/POST | `/class-values` | list (by `?type=`) / create classification value |

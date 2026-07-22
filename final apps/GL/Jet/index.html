@@ -6,7 +6,7 @@
 <title>General Ledger · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.40.0';</script>
+<script>window.APP_VERSION='1.41.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -56,6 +56,7 @@
     <a data-bind="css:{on:view()==='butil'}, click:go.bind($data,'butil'), text:t('navButil')"></a>
     <a data-bind="css:{on:view()==='encumbrances'}, click:go.bind($data,'encumbrances'), text:t('navEncumbrances')"></a>
     <a data-bind="css:{on:view()==='pending'}, click:go.bind($data,'pending'), text:t('navPending')"></a>
+    <a data-bind="css:{on:view()==='recon'}, click:go.bind($data,'recon'), text:t('navRecon')"></a>
     <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
     <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
     <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
@@ -65,7 +66,7 @@
     <!-- /ko -->
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'}">
 
     <!-- ── OVERVIEW ── -->
     <div data-bind="visible:view()==='overview'">
@@ -1012,6 +1013,172 @@
       </div>
       <!-- /ko -->
       </div><!-- /bu-body -->
+    </div>
+
+    <!-- ── RECONCILIATION (Actuals ↔ Budget Utilization) ── -->
+    <div data-bind="visible:view()==='recon'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('rcTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('rcSub')"></div></div>
+        <div class="page-actions">
+          <button class="btn btn-sm" data-bind="click:rcExportCsv, enable:rcRows().length>0, text:t('exportCsv')"></button>
+        </div>
+      </div>
+
+      <!-- search criteria -->
+      <div class="bu-sec">
+        <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecFilters')"></span></div>
+        <div class="bu-sec-b">
+          <div class="filter-grid">
+            <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+              <select class="inp" data-bind="options:rcYears, value:rcYear"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fPeriod')"></label>
+              <select class="inp" data-bind="options:rcPeriodOpts, value:rcPeriod, optionsCaption:t('fullYear')"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('rcBudgetChapters')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:rcChapters, optionsText:'l', optionsValue:'v', value:rcBChap.pick, optionsCaption:'—', event:{change:rcBChap.add}"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('fSectorL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:rcSectors, optionsText:'l', optionsValue:'v', value:rcSector.pick, optionsCaption:t('allSectors'), event:{change:rcSector.add}"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:rcChapters, optionsText:'l', optionsValue:'v', value:rcChap.pick, optionsCaption:t('allChapters'), event:{change:rcChap.add}"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('rcGlAccountL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:rcAccounts, optionsText:'l', optionsValue:'v', value:rcAcct.pick, optionsCaption:'—', event:{change:rcAcct.add}"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:rcCostCenters, optionsText:'l', optionsValue:'v', value:rcCc.pick, optionsCaption:'—', event:{change:rcCc.add}"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('segAppropriation')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:rcApprops, optionsText:'l', optionsValue:'v', value:rcAppr.pick, optionsCaption:'—', event:{change:rcAppr.add}"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('segProgram')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:rcPrograms, optionsText:'l', optionsValue:'v', value:rcProg.pick, optionsCaption:'—', event:{change:rcProg.add}"></select></div>
+            <div class="field filter-actions">
+              <button class="btn btn-primary" data-bind="click:runRecon, css:{busy:rcBusy}, text:t('btnSearch')"></button>
+              <button class="btn" data-bind="click:rcReset, enable:!rcBusy(), text:t('btnReset')"></button>
+            </div>
+          </div>
+          <div class="mchips mchips-bar" data-bind="visible:rcSector.sel().length+rcChap.sel().length+rcAcct.sel().length+rcCc.sel().length+rcAppr.sel().length+rcProg.sel().length+rcBChap.sel().length>0">
+            <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+            <!-- ko foreach: rcBChap.sel --><span class="mchip"><b data-bind="text:$root.t('rcBudgetChapters')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.rcChipRemove($root.rcBChap.sel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: rcSector.sel --><span class="mchip"><b data-bind="text:$root.t('fSectorL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.rcChipRemove($root.rcSector.sel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: rcChap.sel --><span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.rcChipRemove($root.rcChap.sel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: rcAcct.sel --><span class="mchip"><b data-bind="text:$root.t('rcGlAccountL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.rcChipRemove($root.rcAcct.sel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: rcCc.sel --><span class="mchip"><b data-bind="text:$root.t('costCenter')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.rcChipRemove($root.rcCc.sel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: rcAppr.sel --><span class="mchip"><b data-bind="text:$root.t('segAppropriation')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.rcChipRemove($root.rcAppr.sel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: rcProg.sel --><span class="mchip"><b data-bind="text:$root.t('segProgram')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.rcChipRemove($root.rcProg.sel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+          </div>
+        </div>
+      </div>
+
+      <div class="bu-body">
+        <div class="bu-load-ov" data-bind="visible:rcBusy" aria-live="polite">
+          <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+        </div>
+
+        <!-- reconciliation status -->
+        <div class="bu-sec" data-bind="visible:rcSummary">
+          <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecStatus')"></span></div>
+          <div class="bu-sec-b">
+            <div class="rc-tiles">
+              <div class="rc-tile rc-tile--ok">
+                <div class="rc-tile-k" data-bind="text:t('rcCoverage')"></div>
+                <div class="rc-tile-v"><span data-bind="text:rcCoverage()+'%'"></span></div>
+                <div class="rc-cov-bar"><i data-bind="style:{width:rcCoverage()+'%'}"></i></div>
+                <div class="rc-tile-sub"><span data-bind="text:t('rcConsButil')"></span>: <b class="mono" data-bind="text:money(rcConsBut())"></b></div>
+                <div class="rc-tile-sub"><span data-bind="text:t('rcConsActuals')"></span>: <b class="mono" data-bind="text:money(rcConsAct())"></b></div>
+              </div>
+              <div class="rc-tile rc-tile--np">
+                <div class="rc-tile-k" data-bind="text:t('rcNonProject')"></div>
+                <div class="rc-tile-v mono" data-bind="text:money(rcNonProject())"></div>
+                <div class="rc-tile-sub" data-bind="text:t('rcNonProjectSub')"></div>
+              </div>
+              <div class="rc-tile rc-tile--orphan">
+                <div class="rc-tile-k" data-bind="text:t('rcOrphan')"></div>
+                <div class="rc-tile-v mono" data-bind="text:money(rcOrphan())"></div>
+                <div class="rc-tile-sub" data-bind="text:t('rcOrphanSub')"></div>
+              </div>
+              <div class="rc-tile rc-tile--budget">
+                <div class="rc-tile-k" data-bind="text:t('rcGlBudget')+'  ·  '+t('rcPpmBudget')"></div>
+                <div class="rc-budget-duo">
+                  <div><small data-bind="text:t('rcGlBudget')"></small><b class="mono" data-bind="text:money(rcBudget()?rcBudget().gl:0)"></b></div>
+                  <div><small data-bind="text:t('rcPpmBudget')"></small><b class="mono" data-bind="text:money(rcBudget()?rcBudget().ppm:0)"></b></div>
+                </div>
+                <div class="rc-tile-sub" data-bind="text:t('rcBudgetNote')"></div>
+              </div>
+              <div class="rc-tile rc-tile--fund">
+                <div class="rc-tile-k" data-bind="text:t('rcFundActuals')+'  ·  '+t('rcFundButil')"></div>
+                <div class="rc-budget-duo">
+                  <div><small data-bind="text:t('rcGlBudget')"></small><b class="mono" data-bind="text:money(rcFund()?rcFund().actualsSide:0)"></b></div>
+                  <div><small data-bind="text:t('rcPpmBudget')"></small><b class="mono" data-bind="text:money(rcFund()?rcFund().butilSide:0)"></b></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="rc-charts">
+              <div class="rc-chart">
+                <h4 class="rc-chart-t" data-bind="text:t('rcCompTitle')"></h4>
+                <div class="rc-donut-wrap" data-bind="if:rcDonut">
+                  <div class="rc-donut" data-bind="style:{background:rcDonut().css}"><div class="rc-donut-hole"><b data-bind="text:rcCoverage()+'%'"></b><small data-bind="text:t('rcSeg_matched')"></small></div></div>
+                  <div class="rc-legend" data-bind="foreach:rcDonut().seg">
+                    <div class="rc-leg"><i class="rc-dot" data-bind="style:{background:$data.c}"></i><span class="rc-leg-l" data-bind="text:label"></span><span class="rc-leg-p" data-bind="text:pct+'%'"></span><span class="rc-leg-v mono" data-bind="text:$root.money(v)"></span></div>
+                  </div>
+                </div>
+              </div>
+              <div class="rc-chart">
+                <h4 class="rc-chart-t" data-bind="text:t('rcMeasTitle')"></h4>
+                <div class="rc-bars" data-bind="foreach:rcMeasures">
+                  <div class="rc-bar-row">
+                    <div class="rc-bar-head"><i class="rc-stat" data-bind="css:'rc-stat--'+status"></i><span class="rc-bar-lab" data-bind="text:label"></span><span class="rc-bar-cov" data-bind="text:cov+'%'"></span></div>
+                    <div class="rc-bar-track"><i class="rc-bar-act" data-bind="style:{width:wAct+'%'}"></i><i class="rc-bar-but" data-bind="style:{width:wBut+'%'}"></i></div>
+                    <div class="rc-bar-vals"><span data-bind="text:$root.t('rcActualsSide')+': '"></span><b class="mono" data-bind="text:$root.money(act)"></b> · <span data-bind="text:$root.t('rcButilSide')+': '"></span><b class="mono" data-bind="text:$root.money(but)"></b> · <span data-bind="text:$root.t('rcDifference')+': '"></span><b class="mono" data-bind="text:$root.money(diff)"></b></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- reconciliation register -->
+        <div class="bu-sec" data-bind="visible:rcLoaded">
+          <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecRegister')"></span><span class="bu-sec-sum" data-bind="text:t('rcClickDrill')"></span></div>
+          <div class="bu-sec-b">
+            <div class="rc-controls">
+              <div class="rc-ctl"><span class="rc-ctl-l" data-bind="text:t('rcMeasureLabel')"></span>
+                <div class="rc-seg-group" data-bind="foreach:rcMeasureTabs">
+                  <button class="rc-seg" data-bind="css:{on:$root.rcMeasureSel()===$data}, click:function(){$root.rcSetMeasure($data)}, text:$data.toUpperCase()"></button>
+                </div>
+              </div>
+              <div class="rc-ctl"><span class="rc-ctl-l" data-bind="text:t('rcGrainLabel')"></span>
+                <div class="rc-seg-group rc-seg-wrap" data-bind="foreach:rcGrains">
+                  <button class="rc-seg" data-bind="css:{on:$root.rcGrain()===$data}, click:function(){$root.rcSetGrain($data)}, text:$root.t('rcGr_'+$data)"></button>
+                </div>
+              </div>
+            </div>
+            <div class="tbl-wrap">
+              <table class="data-table rc-table">
+                <thead><tr>
+                  <th data-bind="text:t('rcColDim')"></th>
+                  <th class="num" data-bind="text:t('rcActualsSide')"></th>
+                  <th class="num" data-bind="text:t('rcButilSide')"></th>
+                  <th class="num" data-bind="text:t('rcDifference')"></th>
+                  <th class="num" data-bind="text:t('rcSeg_noProject')"></th>
+                  <th class="num" data-bind="visible:rcMeasureSel()==='ap', text:t('rcSeg_apValidation')"></th>
+                  <th class="num" data-bind="text:t('rcSeg_noBudgetLine')"></th>
+                </tr></thead>
+                <tbody data-bind="foreach:rcRows">
+                  <tr>
+                    <td><div class="rc-dim-k mono" data-bind="text:key"></div><div class="rc-dim-l" data-bind="visible:label, text:label"></div></td>
+                    <td class="num mono" data-bind="text:$root.money(actualsSide)"></td>
+                    <td class="num mono" data-bind="text:$root.money(butilSide)"></td>
+                    <td class="num mono rc-diff" data-bind="css:{'rc-hot':Math.abs(diff)>0.5}"><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'all')}, text:$root.money(diff)"></a></td>
+                    <td class="num mono" data-bind="css:{'rc-warn':noProject>0.5}"><!-- ko if:noProject>0.5 --><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'no_project')}, text:$root.money(noProject)"></a><!-- /ko --><!-- ko ifnot:noProject>0.5 --><span data-bind="text:$root.money(noProject)"></span><!-- /ko --></td>
+                    <td class="num mono" data-bind="visible:$root.rcMeasureSel()==='ap'"><!-- ko if:apValidation>0.5 --><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'ap_validation')}, text:$root.money(apValidation)"></a><!-- /ko --><!-- ko ifnot:apValidation>0.5 --><span data-bind="text:$root.money(apValidation)"></span><!-- /ko --></td>
+                    <td class="num mono" data-bind="css:{'rc-warn':noBudgetLine>0.5}"><!-- ko if:noBudgetLine>0.5 --><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'no_budget_line')}, text:$root.money(noBudgetLine)"></a><!-- /ko --><!-- ko ifnot:noBudgetLine>0.5 --><span data-bind="text:$root.money(noBudgetLine)"></span><!-- /ko --></td>
+                  </tr>
+                </tbody>
+              </table>
+              <div class="empty pad" data-bind="visible:rcLoaded() && rcRows().length===0, text:t('noLines')"></div>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── DASHBOARD (executive analytics) ── -->

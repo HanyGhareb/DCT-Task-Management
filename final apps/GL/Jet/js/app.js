@@ -196,6 +196,40 @@
 
     /* ── Encumbrances – Pending Approval (PR/PO documents awaiting approval) ── */
     navPending:{en:'Encumbrances – Pending Approval',ar:'الارتباطات – قيد الاعتماد'},
+    navRecon:{en:'Reconciliation',ar:'المطابقة'},
+    /* ── Reconciliation (Actuals ↔ Budget Utilization) ── */
+    rcTitle:{en:'Actuals ↔ Budget Utilization reconciliation',ar:'مطابقة الفعلي مع استخدام الموازنة'},
+    rcSub:{en:'Data-integrity check between the two dashboards. Consumption (AP / GRN / PR / PO) is the SAME source both sides, so it reconciles exactly — any difference is one of the named buckets below. Budget lives in two different ledgers (GL vs Project), shown side by side.',ar:'فحص سلامة البيانات بين اللوحتين. الاستهلاك (فواتير / استلام / طلب / أمر شراء) مصدره واحد على الجانبين فيتطابق تمامًا — وأي فرق يعود لأحد البنود المسمّاة أدناه. الموازنة في سجلّين مختلفين (العام مقابل المشاريع) وتُعرض جنبًا إلى جنب.'},
+    rcM_ap:{en:'AP Direct (actual)',ar:'الصرف المباشر (فعلي)'}, rcM_grn:{en:'GRN (actual)',ar:'الاستلام (فعلي)'},
+    rcM_pr:{en:'Open Commitment (PR)',ar:'الالتزام المفتوح (طلب شراء)'}, rcM_po:{en:'Open Obligation (PO)',ar:'الارتباط المفتوح (أمر شراء)'},
+    rcSeg_matched:{en:'Matched (in both)',ar:'مطابق (في كليهما)'},
+    rcSeg_noProject:{en:'No project/task/etype (Actuals only)',ar:'بلا مشروع/مهمة/نوع (الفعلي فقط)'},
+    rcSeg_apValidation:{en:'Not validated (AP)',ar:'غير مُعتمدة (فواتير)'},
+    rcSeg_noBudgetLine:{en:'On un-budgeted line (orphan)',ar:'على بند بلا موازنة (يتيم)'},
+    rcSeg_all:{en:'All records',ar:'كل السجلات'},
+    rcGr_account:{en:'GL Account',ar:'الحساب'}, rcGr_sector:{en:'Sector',ar:'القطاع'}, rcGr_chapter:{en:'Chapter',ar:'الباب'},
+    rcGr_costcenter:{en:'Cost Centre',ar:'مركز التكلفة'}, rcGr_appropriation:{en:'Appropriation',ar:'الاعتماد'},
+    rcGr_program:{en:'DCT Program',ar:'برنامج الدائرة'}, rcGr_combination:{en:'GL Combination',ar:'التركيبة المحاسبية'},
+    rcGr_budgetline:{en:'Project budget line',ar:'بند موازنة المشروع'},
+    rcAllScope:{en:'All records in scope',ar:'كل السجلات في النطاق'},
+    rcSecFilters:{en:'Search criteria',ar:'معايير البحث'}, rcSecStatus:{en:'Reconciliation status',ar:'حالة المطابقة'},
+    rcSecRegister:{en:'Reconciliation register',ar:'سجل المطابقة'},
+    rcBudgetChapters:{en:'GL budget chapters (Expense)',ar:'أبواب الموازنة العامة (المصروفات)'},
+    rcGlBudget:{en:'GL budget',ar:'الموازنة العامة'}, rcPpmBudget:{en:'Project budget',ar:'موازنة المشاريع'},
+    rcBudgetNote:{en:'Two different Fusion ledgers — compared by dimension, never line to line.',ar:'سجلّان مختلفان في فيوجن — تُقارَن بالبُعد وليس بندًا ببند.'},
+    rcNonProject:{en:'Non-project (Actuals only)',ar:'بلا مشروع (الفعلي فقط)'},
+    rcNonProjectSub:{en:'Combinations with spend but no project/task/etype — cannot appear in Budget Utilization',ar:'تركيبات بها صرف بلا مشروع/مهمة/نوع — لا يمكن أن تظهر في استخدام الموازنة'},
+    rcOrphan:{en:'Orphan consumption',ar:'استهلاك يتيم'},
+    rcOrphanSub:{en:'Spend on a project line that carries no budget — the actionable integrity flag',ar:'صرف على بند مشروع بلا موازنة — مؤشر السلامة القابل للمعالجة'},
+    rcCoverage:{en:'Coverage',ar:'التغطية'}, rcActualsSide:{en:'Actuals side',ar:'جانب الفعلي'}, rcButilSide:{en:'Budget Util. side',ar:'جانب استخدام الموازنة'},
+    rcDifference:{en:'Difference',ar:'الفرق'}, rcConsActuals:{en:'Total consumption (Actuals)',ar:'إجمالي الاستهلاك (الفعلي)'},
+    rcConsButil:{en:'Total consumption (Budget Util.)',ar:'إجمالي الاستهلاك (استخدام الموازنة)'},
+    rcFundActuals:{en:'Fund available (GL budget)',ar:'المتاح (الموازنة العامة)'}, rcFundButil:{en:'Fund available (Project budget)',ar:'المتاح (موازنة المشاريع)'},
+    rcCompTitle:{en:'Where the difference goes',ar:'أين يذهب الفرق'}, rcMeasTitle:{en:'Actuals vs Budget Utilization by measure',ar:'الفعلي مقابل استخدام الموازنة حسب المقياس'},
+    rcGrainLabel:{en:'Group by',ar:'التجميع حسب'}, rcMeasureLabel:{en:'Measure',ar:'المقياس'},
+    rcColDim:{en:'Dimension',ar:'البُعد'}, rcClickDrill:{en:'Click a difference to see the source records',ar:'انقر على أي فرق لعرض السجلات المصدر'},
+    rcGlAccountL:{en:'GL Account',ar:'الحساب'}, rcMatched:{en:'Reconciles exactly',ar:'يتطابق تمامًا'},
+    rcExplained:{en:'Explained by leakage buckets',ar:'مُفسَّر ببنود التسرب'},
     pnTitle:{en:'Encumbrances – Pending Approval Follow-up',ar:'متابعة الارتباطات قيد الاعتماد'},
     pnSub:{en:'Every PR / PO document awaiting approval in Fusion, with its budget lines, full GL combination and approval trail (preparer, submitted date, pending approver, days pending) — for the selected Budget Utilization scope. Zero-value lines are excluded: only lines that will reserve funds are followed.',ar:'كل مستند طلب شراء / أمر شراء بانتظار الاعتماد في فيوجن، مع بنود موازنته والتركيبة المحاسبية الكاملة ومسار الاعتماد (المُعدّ، تاريخ التقديم، المعتمد الحالي، أيام الانتظار) — ضمن نطاق استخدام الموازنة المحدد. تُستبعد البنود ذات القيمة الصفرية: تتم متابعة البنود التي ستحجز أموالاً فقط.'},
     pnAsOf:{en:'Snapshot',ar:'اللقطة'},
@@ -526,6 +560,10 @@
         // reuses the Budget Utilization filter set; run once on first open
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runPending(); });
         else if (!self.pnLoaded()) self.runPending();
+      }
+      else if (v === 'recon') {
+        if (!self.rcFiltersLoaded()) self.loadRcFilters().then(function () { self.runRecon(); });
+        else if (!self.rcLoaded()) self.runRecon();
       }
     };
     self.signOut = function () { location.href = ADMIN_LOGIN; };
@@ -2100,6 +2138,151 @@
       }
       return out;
     });
+
+    /* ══════════ RECONCILIATION (Actuals ↔ Budget Utilization) ══════════
+       Verifies data integrity between the two GL dashboards. Consumption
+       (AP/GRN/PR/PO) reconciles to residual 0 via named leakage buckets;
+       budget = two ledgers shown side by side (GL Expense CHx vs PPM). */
+    function rcMulti() {
+      var sel = ko.observableArray([]), pick = ko.observable('');
+      return { sel: sel, pick: pick, add: function () { var v = pick(); if (v && sel.indexOf(v) < 0) sel.push(v); pick(''); return true; } };
+    }
+    self.rcFiltersLoaded = ko.observable(false); self.rcLoaded = ko.observable(false); self.rcBusy = ko.observable(false);
+    self.rcYears = ko.observableArray([]); self.rcYear = ko.observable('');
+    self.rcPeriodsAll = ko.observableArray([]);
+    self.rcPeriodOpts = ko.computed(function () { var y = String(self.rcYear() || ''); return self.rcPeriodsAll().filter(function (p) { return p.slice(3) === y; }); });
+    self.rcPeriod = ko.observable('');
+    self.rcSectors = ko.observableArray([]); self.rcChapters = ko.observableArray([]);
+    self.rcAccounts = ko.observableArray([]); self.rcCostCenters = ko.observableArray([]);
+    self.rcApprops = ko.observableArray([]); self.rcPrograms = ko.observableArray([]);
+    self.rcSector = rcMulti(); self.rcChap = rcMulti(); self.rcAcct = rcMulti();
+    self.rcCc = rcMulti(); self.rcAppr = rcMulti(); self.rcProg = rcMulti();
+    self.rcBChap = rcMulti();  // GL budget chapters (Expense scope, default CH2..CH5)
+    self.rcChipRemove = function (arr, v) { arr.remove(v); };
+    self.rcGrain = ko.observable('account');
+    self.rcGrains = ['account', 'sector', 'chapter', 'costcenter', 'appropriation', 'program', 'combination', 'budgetline'];
+    self.rcMeasureSel = ko.observable('ap');
+    self.rcMeasureTabs = ['ap', 'grn', 'pr', 'po'];
+    self.rcSummary = ko.observable(null); self.rcRows = ko.observableArray([]);
+
+    self.loadRcFilters = function () {
+      return api('GET', '/recon/filters').then(function (d) {
+        self.rcYears(d.years || []); self.rcPeriodsAll(d.periods || []);
+        self.rcSectors((d.sectors || []).map(function (s) { return { v: s, l: s }; }));
+        self.rcChapters((d.chapters || []).map(function (c) { return { v: c.code, l: c.code + ' · ' + c.name }; }));
+        self.rcAccounts((d.glAccounts || []).map(function (c) { return { v: c.code, l: c.code + (c.desc ? ' — ' + c.desc : '') }; }));
+        self.rcCostCenters((d.costCenters || []).map(function (c) { return { v: c.code, l: c.code + (c.desc ? ' — ' + c.desc : '') }; }));
+        self.rcApprops((d.appropriations || []).map(function (c) { return { v: c.code, l: c.code + (c.desc ? ' — ' + c.desc : '') }; }));
+        self.rcPrograms((d.programs || []).map(function (c) { return { v: c.code, l: c.code + (c.desc ? ' — ' + c.desc : '') }; }));
+        if (!self.rcYear()) self.rcYear(d.defaultYear || (d.years || [])[0] || '');
+        self.rcBChap.sel((d.budgetChapters || ['CH2', 'CH3', 'CH4', 'CH5']).slice());
+        self.rcFiltersLoaded(true);
+      });
+    };
+    function rcPipe(m) { return m.sel().length ? m.sel().join('|') : null; }
+    self.rcParams = function () {
+      return {
+        year: self.rcYear(), period: self.rcPeriod() || null,
+        sector: rcPipe(self.rcSector), chapter: rcPipe(self.rcChap), glaccount: rcPipe(self.rcAcct),
+        costcenter: rcPipe(self.rcCc), appropriation: rcPipe(self.rcAppr), program: rcPipe(self.rcProg),
+        budgetchapters: self.rcBChap.sel().length ? self.rcBChap.sel().join('|') : null
+      };
+    };
+    self.runRecon = function () {
+      if (!self.rcYear()) return;
+      self.rcBusy(true);
+      var p = self.rcParams();
+      var rp = Object.assign({}, p, { grain: self.rcGrain(), measure: self.rcMeasureSel(), limit: 1000 });
+      Promise.all([api('GET', '/recon/summary' + qs(p)), api('GET', '/recon/rows' + qs(rp))]).then(function (res) {
+        self.rcSummary(res[0]); self.rcRows(res[1].rows || []); self.rcLoaded(true); self.rcBusy(false);
+      }).catch(function (e) { self.rcBusy(false); toast(e.message, true); });
+    };
+    self.runRcRows = function () {
+      var rp = Object.assign({}, self.rcParams(), { grain: self.rcGrain(), measure: self.rcMeasureSel(), limit: 1000 });
+      self.rcBusy(true);
+      api('GET', '/recon/rows' + qs(rp)).then(function (d) { self.rcRows(d.rows || []); self.rcBusy(false); })
+        .catch(function (e) { self.rcBusy(false); toast(e.message, true); });
+    };
+    self.rcSetGrain = function (g) { if (self.rcGrain() === g) return true; self.rcGrain(g); if (self.rcLoaded()) self.runRcRows(); return true; };
+    self.rcSetMeasure = function (m) { if (self.rcMeasureSel() === m) return true; self.rcMeasureSel(m); if (self.rcLoaded()) self.runRcRows(); return true; };
+    self.rcReset = function () {
+      [self.rcSector, self.rcChap, self.rcAcct, self.rcCc, self.rcAppr, self.rcProg].forEach(function (m) { m.sel([]); m.pick(''); });
+      self.rcPeriod(''); self.rcBChap.sel(['CH2', 'CH3', 'CH4', 'CH5']); self.runRecon();
+    };
+
+    /* KPI / chart computeds (all measures, from /recon/summary) */
+    self.rcMeasures = ko.computed(function () {
+      var s = self.rcSummary(); if (!s) return [];
+      var keys = ['ap', 'grn', 'pr', 'po'], mx = 1;
+      keys.forEach(function (k) { mx = Math.max(mx, s.measures[k].actuals, s.measures[k].butil); });
+      return keys.map(function (k) {
+        var x = s.measures[k];
+        return {
+          key: k, label: self.t('rcM_' + k), act: x.actuals, but: x.butil, diff: x.diff,
+          noProject: x.noProject, noBudgetLine: x.noBudgetLine, apValidation: x.apValidation,
+          cov: x.actuals ? Math.round(x.butil / x.actuals * 100) : 100,
+          status: (Math.abs(x.diff) < 1 ? 'ok' : (x.noBudgetLine > 0.5 ? 'warn' : 'info')),
+          wAct: Math.max(1, Math.round(x.actuals / mx * 100)), wBut: Math.max(0, Math.round(x.butil / mx * 100))
+        };
+      });
+    });
+    self.rcDonut = ko.computed(function () {
+      var s = self.rcSummary(); if (!s) return null;
+      var d = s.derived, tot = d.consumptionActuals || 0; if (!tot) return null;
+      var seg = [
+        { k: 'matched', v: d.consumptionButil, c: '#3F6F5F' },
+        { k: 'noProject', v: d.noProjectTotal, c: '#C9992B' },
+        { k: 'apValidation', v: d.apValidationTotal, c: '#7C4DBE' },
+        { k: 'noBudgetLine', v: d.noBudgetLineTotal, c: '#C0504D' }
+      ];
+      var acc = 0, stops = [];
+      seg.forEach(function (g) { var a = acc / tot * 100, b = (acc + Math.max(0, g.v)) / tot * 100; stops.push(g.c + ' ' + a.toFixed(2) + '% ' + b.toFixed(2) + '%'); acc += Math.max(0, g.v); });
+      return {
+        css: 'conic-gradient(' + stops.join(',') + ')',
+        seg: seg.map(function (g) { return { k: g.k, label: self.t('rcSeg_' + g.k), v: g.v, c: g.c, pct: Math.round(g.v / tot * 100) }; })
+      };
+    });
+    self.rcBudget = ko.computed(function () { var s = self.rcSummary(); return s ? s.budget : null; });
+    self.rcFund = ko.computed(function () { var s = self.rcSummary(); return s ? s.fund : null; });
+    self.rcNonProject = ko.computed(function () { var s = self.rcSummary(); return s ? s.derived.noProjectTotal : 0; });
+    self.rcOrphan = ko.computed(function () { var s = self.rcSummary(); return s ? s.derived.noBudgetLineTotal : 0; });
+    self.rcConsAct = ko.computed(function () { var s = self.rcSummary(); return s ? s.derived.consumptionActuals : 0; });
+    self.rcConsBut = ko.computed(function () { var s = self.rcSummary(); return s ? s.derived.consumptionButil : 0; });
+    self.rcCoverage = ko.computed(function () { var a = self.rcConsAct(); return a ? Math.round(self.rcConsBut() / a * 100) : 100; });
+    self.rcRowMax = ko.computed(function () { var mx = 1; self.rcRows().forEach(function (r) { mx = Math.max(mx, Math.abs(r.actualsSide), Math.abs(r.butilSide)); }); return mx; });
+    self.rcMeasName = function (m) { return self.t('rcM_' + m); };
+
+    /* difference → source drill (reuses the shared drill drawer) */
+    self.rcDrill = function (measure, bucket, row) {
+      self.drillTitle(self.t('rcM_' + measure) + '  ·  ' + self.t('rcSeg_' + bucket));
+      self.drillSub(row ? (self.t('rcGr_' + self.rcGrain()) + ': ' + row.key) : self.t('rcAllScope'));
+      self.drillCtx(self.rcPeriod() ? self.t('ytd') + ' ' + self.rcPeriod() : String(self.rcYear()));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true); self.drillMax(false);
+      var p = Object.assign({}, self.rcParams(), { measure: measure, bucket: bucket });
+      if (row) {
+        if (self.rcGrain() === 'budgetline') { var pt = String(row.key).split(' / '); p.grain = 'budgetline'; p.project = pt[0]; p.task = pt[1] === '-' ? null : pt[1]; p.etype = pt[2] === '-' ? null : pt[2]; }
+        else { p.grain = self.rcGrain(); p.key = row.key; }
+      }
+      api('GET', '/recon/drill' + qs(p)).then(function (d) {
+        self.drillCols(d.columns || []); self.drillRows(d.rows || []); self.drillTotalV(d.total || 0); self.drillCount(d.count || 0); self.drillLoading(false);
+      }).catch(function (e) { self.drillLoading(false); self.drillDrawer(false); toast(e.message, true); });
+    };
+    /* register cell → drill the selected measure + bucket for that row */
+    self.rcCellDrill = function (row, bucket) { self.rcDrill(self.rcMeasureSel(), bucket, row); return true; };
+
+    self.rcExportCsv = function () {
+      var rows = self.rcRows(); if (!rows.length) return;
+      var head = ['Key', 'Label', 'Actuals', 'Butil', 'Difference', 'NonProject', 'APValidation', 'NoBudgetLine'];
+      var lines = [head.join(',')];
+      rows.forEach(function (r) {
+        lines.push([r.key, '"' + String(r.label || '').replace(/"/g, '""') + '"', Math.round(r.actualsSide), Math.round(r.butilSide), Math.round(r.diff), Math.round(r.noProject), Math.round(r.apValidation), Math.round(r.noBudgetLine)].join(','));
+      });
+      var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+      a.download = 'reconciliation_' + self.rcMeasureSel() + '_' + self.rcGrain() + '_' + self.rcYear() + '.csv';
+      a.click();
+    };
 
     /* ── init ── */
     api('GET', '/boot').then(function (d) {
