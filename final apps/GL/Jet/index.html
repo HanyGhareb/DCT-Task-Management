@@ -6,7 +6,7 @@
 <title>General Ledger · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.41.0';</script>
+<script>window.APP_VERSION='1.41.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -1164,7 +1164,7 @@
                 </tr></thead>
                 <tbody data-bind="foreach:rcRows">
                   <tr>
-                    <td><div class="rc-dim-k mono" data-bind="text:key"></div><div class="rc-dim-l" data-bind="visible:label, text:label"></div></td>
+                    <td><div class="rc-dim-k mono" data-bind="text:$data.key||''"></div><div class="rc-dim-l" data-bind="visible:$data.label, text:$data.label||''"></div></td>
                     <td class="num mono" data-bind="text:$root.money(actualsSide)"></td>
                     <td class="num mono" data-bind="text:$root.money(butilSide)"></td>
                     <td class="num mono rc-diff" data-bind="css:{'rc-hot':Math.abs(diff)>0.5}"><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'all')}, text:$root.money(diff)"></a></td>
