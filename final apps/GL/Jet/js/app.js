@@ -593,7 +593,13 @@
         else if (!self.pnLoaded()) self.runPending();
       }
       else if (v === 'recon') {
-        if (!self.rcFiltersLoaded()) self.loadRcFilters().then(function () { self.runRecon(); });
+        // show the spinner for the WHOLE initial load (filters fetch happens
+        // BEFORE runRecon, which is what previously left first-load blank)
+        if (!self.rcFiltersLoaded()) {
+          self.rcBusy(true);
+          self.loadRcFilters().then(function () { self.runRecon(); })
+            .catch(function (e) { self.rcBusy(false); toast(e.message, true); });
+        }
         else if (!self.rcLoaded()) self.runRecon();
       }
     };

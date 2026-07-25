@@ -39,6 +39,15 @@ def main():
                 pg.goto(BASE + "/index.html")
                 pg.wait_for_function("window.ko && ko.dataFor(document.body)", timeout=30000)
                 pg.evaluate("ko.dataFor(document.body).go('recon')")
+                P = "[%s] " % lang
+                # spinner MUST be visible during the initial load (filters + summary)
+                pg.wait_for_function("ko.dataFor(document.body).rcBusy()===true", timeout=10000)
+                ov = pg.locator(".bu-body.rc-loading .bu-load-ov")
+                bb = ov.bounding_box()
+                ck(P + "spinner overlay visible on initial load",
+                   ov.is_visible() and bb is not None and bb["height"] > 50,
+                   "(h=%s)" % (round(bb["height"]) if bb else None))
+                ck(P + "spinner has progress circle", pg.locator(".bu-body.rc-loading .ojpc").count() == 1)
                 # wait for summary to load (rcSummary set)
                 pg.wait_for_function("ko.dataFor(document.body).rcSummary()!=null", timeout=45000)
                 pg.wait_for_timeout(700)
