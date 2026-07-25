@@ -296,5 +296,11 @@
   "ar.rebill.bulk.date": "تاريخ المعاملة / المحاسبة",
   "ar.rebill.bulk.skipped": "{0} منجزة (تم تجاوزها)",
   "ar.rebill.bulk.doneBadge": "منجزة — تم تجاوزها",
-  "ar.rebill.bulk.needCols": "الورقة الأولى تحتاج عمودي رقم الفاتورة وبند المذكرة"
+  "ar.rebill.bulk.needCols": "الورقة الأولى تحتاج عمودي رقم الفاتورة وبند المذكرة",
+  "ar.rebill.col.id": "رقم الطلب",
+  "ar.rebill.col.startedAt": "البدء",
+  "ar.rebill.col.finishedAt": "الانتهاء",
+  "ar.rebill.col.durationSecs": "المدة (ثوانٍ)",
+  "ar.rebill.col.attempts": "المحاولات",
+  "ar.rebill.col.error": "آخر خطأ"
 }

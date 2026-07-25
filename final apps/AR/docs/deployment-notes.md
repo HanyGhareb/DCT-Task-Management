@@ -54,6 +54,24 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+### 2026-07-26 (3) — Requests register = SHARED interactive report (APP_VERSION 4.10.0, webtier 20260726005920)
+
+The arRebill **Requests register** is now the SHARED `<interactive-report>` component (user
+request): one-shot capped fetch (`limit` cap raised 200 → **10000** in db/11's `GET
+rebill/requests`, redeployed), report code `AR_REBILL_REQUESTS`, `layoutsApi: null` (server
+layouts are BI-gated — localStorage layouts still work). Filtering, multi-sort, column
+show/hide/reorder/rename, control breaks, highlights, aggregates, CSV/XLSX export and
+**maximize-to-full-screen** (⤢, Esc restores) all come from the component. 15 declared columns
+incl. Request #, progress (`stagesDone/9 stage`), both document numbers, started/ended, duration
+(text + numeric secs for aggregates), attempts, worker, last error. **Row click still opens the
+stage timeline** — a delegated click on the wrapper resolves the row from the clicked cell's KO
+context (`ko.contextFor(td).$parent.row`, the GL pending pattern) — no side-maps needed when the
+id is a declared column. The old paged table + server-side status/search filter bar are gone (the
+IR filters client-side). Go-live note: `ATD_AR_REBILL_ALLOW` on the fleet now carries all 110
+campaign invoices (guard kept rather than removed). Browser smoke **20/20** (IR rows, search →
+doc numbers, row-click timeline on a DONE row — a fresh 0/9 request's timeline is legitimately
+empty — maximize/Esc, EN + AR/RTL).
+
 ### 2026-07-26 (2) — memo applies to ALL matching lines + header columns restored (APP_VERSION 4.9.1)
 
 **Defect (user-found): 45110096161 (INV00584992) line 2 completed with no VAT classification and

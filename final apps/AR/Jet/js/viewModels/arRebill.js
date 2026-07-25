@@ -8,7 +8,7 @@
    complete the duplicate, then set Project/Task on each line. The register
    shows both generated document numbers and the per-stage timeline. */
 define(['knockout', 'services/rebillService', 'shared/i18n', 'shared/toast',
-        'shared/docUpload'],
+        'shared/docUpload', 'shared/components/interactiveReport'],
 function (ko, rebill, i18n, toast, docUpload) {
   'use strict';
 
@@ -421,36 +421,72 @@ function (ko, rebill, i18n, toast, docUpload) {
       });
     };
 
-    // ---------------- register ----------------
-    self.rows = ko.observableArray([]);
+    // ---------------- register (shared interactive report) ----------------
+    // ONE-SHOT capped fetch into the shared <interactive-report> component —
+    // filtering / sorting / column control / breaks / highlights / CSV+XLSX /
+    // maximize all come from the component (same pattern as the AP dashboard's
+    // register IR view; layoutsApi null — server layouts are BI-gated).
+    var IR_MAX = 10000;
+    self.irData = ko.observable(null);
     self.loading = ko.observable(true);
-    self.total = ko.observable(0);
-    self.limit = ko.observable(25);
-    self.offset = ko.observable(0);
-    self.fStatus = ko.observable('');
-    self.fSearch = ko.observable('');
+
+    var IR_COLS = [
+      { key: 'actionId', labelKey: 'ar.rebill.col.id', type: 'num' },
+      { key: 'invoiceNumber', labelKey: 'ar.rebill.f.invoice', type: 'text' },
+      { key: 'runStatus', labelKey: 'ar.rebill.col.status', type: 'text' },
+      { key: 'progress', labelKey: 'ar.rebill.col.stage', type: 'text' },
+      { key: 'cmDocumentNumber', labelKey: 'ar.rebill.col.cmDoc', type: 'text' },
+      { key: 'newInvoiceNumber', labelKey: 'ar.rebill.col.newInvoice', type: 'text' },
+      { key: 'submittedBy', labelKey: 'ar.rebill.col.submittedBy', type: 'text' },
+      { key: 'submittedAt', labelKey: 'ar.rebill.col.submittedAt', type: 'text' },
+      { key: 'startedAt', labelKey: 'ar.rebill.col.startedAt', type: 'text' },
+      { key: 'finishedAt', labelKey: 'ar.rebill.col.finishedAt', type: 'text' },
+      { key: 'duration', labelKey: 'ar.rebill.col.duration', type: 'text' },
+      { key: 'durationSecs', labelKey: 'ar.rebill.col.durationSecs', type: 'num' },
+      { key: 'attempts', labelKey: 'ar.rebill.col.attempts', type: 'num' },
+      { key: 'workerVm', labelKey: 'ar.rebill.col.worker', type: 'text' },
+      { key: 'lastError', labelKey: 'ar.rebill.col.error', type: 'text' }
+    ];
+
+    function irEnvelope(r) {
+      var items = (r.items || []).map(function (row) {
+        return Object.assign({}, row, {
+          progress: (row.stagesDone || 0) + '/9' +
+                    (row.currentStage ? ' ' + row.currentStage : ''),
+          duration: (row.durationSecs === undefined || row.durationSecs === null)
+                    ? '' : self.fmtDur(row.durationSecs)
+        });
+      });
+      return {
+        columns: IR_COLS.map(function (c) {
+          return { key: c.key, label: self.t(c.labelKey), type: c.type };
+        }),
+        items: items,
+        total: r.total || items.length,
+        truncated: (r.total || 0) > items.length,
+        maxRows: IR_MAX
+      };
+    }
 
     self.loadRegister = function () {
       self.loading(true);
-      rebill.list({
-        status: self.fStatus(), search: self.fSearch(),
-        limit: self.limit(), offset: self.offset()
-      }).then(function (r) {
-        self.rows(r.items || []);
-        self.total(r.total || 0);
+      rebill.list({ limit: IR_MAX, offset: 0 }).then(function (r) {
+        self.irData(irEnvelope(r));
         self.loading(false);
       }).catch(function () { self.loading(false); });
     };
-    self.applyFilters = function () { self.offset(0); self.loadRegister(); };
-    self.nextPage = function () {
-      if (self.offset() + self.limit() < self.total()) {
-        self.offset(self.offset() + self.limit()); self.loadRegister();
-      }
-    };
-    self.prevPage = function () {
-      if (self.offset() > 0) {
-        self.offset(Math.max(0, self.offset() - self.limit())); self.loadRegister();
-      }
+
+    // Delegated row click -> stage timeline. The IR renders plain cells with a
+    // KO context whose $parent carries the row (the GL pending pattern) — read
+    // it instead of side-maps, and let clicks on links/controls through.
+    self.irRowClick = function (d, e) {
+      var td = (e.target && e.target.closest) ? e.target.closest('td') : null;
+      if (!td || e.target.closest('a, button, input, select')) { return true; }
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (err) { return true; }
+      var row = ctx && ctx.$parent && ctx.$parent.row;
+      if (row && row.actionId) { self.openDetail({ actionId: row.actionId }); return false; }
+      return true;
     };
 
     // ---------------- stage timeline (drawer) ----------------

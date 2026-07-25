@@ -273,7 +273,9 @@ DECLARE
   l_user   VARCHAR2(100) := dct_rest.validate_session;
   l_status VARCHAR2(20)  := UPPER(:status);
   l_search VARCHAR2(200) := :search;
-  l_limit  NUMBER := LEAST(NVL(TO_NUMBER(:limit  DEFAULT NULL ON CONVERSION ERROR), 25), 200);
+  -- 10000 cap: the page's interactive-report view fetches the register in ONE
+  -- shot and filters client-side (same pattern as the AP dashboard registers)
+  l_limit  NUMBER := LEAST(NVL(TO_NUMBER(:limit  DEFAULT NULL ON CONVERSION ERROR), 25), 10000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER(:offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
 BEGIN

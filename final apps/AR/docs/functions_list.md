@@ -92,7 +92,7 @@ register. Enqueue only — the page never talks to Fusion directly.
   workbook re-uploads whole. `downloadTemplate` (flat sheet) · `chooseFile` (parse + group +
   per-row validation) · `submitBulk` (chunked enqueue, per-row `READY #id`) · `clearBulk` ·
   `bulkValidCount` / `bulkErrorCount` / `bulkDoneCount`.
-- Register: `loadRegister` · `applyFilters` · `nextPage` / `prevPage` · `statusClass` · `fmtDur`.
+- Register (2026-07-26): the SHARED `<interactive-report>` component over a one-shot capped fetch (10,000; `AR_REBILL_REQUESTS`, `layoutsApi: null`) — filtering, multi-sort, column show/hide/rename, control breaks, highlights, aggregates, CSV/XLSX export and **maximize-to-full-screen** all come from the component; `loadRegister` (refresh) · `irRowClick` (delegated row click via the cell's KO context → stage timeline) · `statusClass` · `fmtDur`.
 - Stage timeline drawer: `openDetail` / `closeDetail` · `stageLabel` (EN/AR from the
   `AR_REBILL_STAGE` lookup).
 

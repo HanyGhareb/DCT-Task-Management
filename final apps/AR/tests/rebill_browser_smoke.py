@@ -126,28 +126,44 @@ try:
         page.screenshot(path=EV + '01_bulk_parse_en.png', full_page=True)
         # NOTE: Submit deliberately NOT clicked — enqueues are real.
 
-        # ---- register + timeline -----------------------------------------
-        reg = page.locator('.card', has_text='Requests')
-        reg_rows = page.locator('.card').last.locator('tbody tr')
+        # ---- register: shared interactive report -------------------------
+        reg_rows = page.locator('.ir-table tbody tr')
         try:
-            reg_rows.first.wait_for(state='visible', timeout=20000)
+            reg_rows.first.wait_for(state='visible', timeout=25000)
         except Exception:
             pass
         n = reg_rows.count()
-        check('register shows requests', n > 0, str(n))
-        body = page.locator('.card').last.inner_text()
-        check('register carries a CM document number', '4511009' in body or '4510025' in body)
-        if n:
-            reg_rows.first.click()
-            page.wait_for_timeout(2500)
-            check('stage timeline opens on row click',
-                  page.locator('text=LOCATE').count() >= 1)
-            page.screenshot(path=EV + '02_timeline_en.png', full_page=True)
-            # the platform modal backdrop traps Playwright's hit-test — fire
-            # the bound close handler directly, then PROVE the overlay is gone
-            page.evaluate("() => { const o = document.querySelector('.modal-overlay');"
-                          " if (o) o.click(); }")
-            page.wait_for_selector('.modal-overlay', state='detached', timeout=10000)
+        check('IR register renders request rows', n > 0, str(n))
+        # the DONE rows sit beyond page 1 (register is newest-first), so use
+        # the component's own global search to reach one — proving the search
+        # AND the document-number data in one move
+        srch = page.locator('.ir-wrap input').first
+        srch.fill('45110096')
+        page.wait_for_timeout(1200)
+        body = page.locator('.ir-table').inner_text()
+        check('IR search finds the CM document numbers',
+              '45110096' in body and page.locator('.ir-table tbody tr').count() > 0)
+        # row click while the search shows DONE rows — a fresh 0/9 request has
+        # an EMPTY timeline, so the assertion needs a completed one
+        page.locator('.ir-table tbody tr').first.locator('td').nth(1).click()
+        page.wait_for_timeout(2500)
+        check('stage timeline opens on IR row click',
+              page.locator('text=LOCATE').count() >= 1)
+        page.screenshot(path=EV + '02_timeline_en.png', full_page=True)
+        page.evaluate("() => { const o = document.querySelector('.modal-overlay');"
+                      " if (o) o.click(); }")
+        page.wait_for_selector('.modal-overlay', state='detached', timeout=10000)
+        srch.fill('')
+        page.wait_for_timeout(1200)
+        mx = page.locator('.ir-wrap button[title*="Maximize"]')
+        check('IR maximize button present', mx.count() == 1, str(mx.count()))
+        mx.click()
+        page.wait_for_timeout(800)
+        check('maximize applies .ir-max', page.locator('.ir-wrap.ir-max').count() == 1)
+        page.screenshot(path=EV + '04_ir_maximized.png')
+        page.keyboard.press('Escape')
+        page.wait_for_timeout(800)
+        check('Esc restores from maximize', page.locator('.ir-wrap.ir-max').count() == 0)
 
         # ---- AR / RTL pass -----------------------------------------------
         page.locator('button:text-is("ع")').last.click()

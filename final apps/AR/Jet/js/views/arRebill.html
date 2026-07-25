@@ -212,23 +212,13 @@
     <!-- /ko -->
   </div>
 
-  <!-- ============ register ============ -->
+  <!-- ============ register (shared interactive report) ============ -->
   <div class="card">
     <div class="section-heading-row">
       <h2 class="section-heading" data-bind="text: t('ar.rebill.register.title')"></h2>
       <div class="region-actions">
-        <input class="form-control" style="width:200px" data-bind="textInput: fSearch,
-               attr: { placeholder: t('ar.rebill.register.search') }">
-        <select class="form-control" style="width:150px" data-bind="value: fStatus">
-          <option value="" data-bind="text: t('ar.rebill.register.allStatuses')"></option>
-          <option value="READY">READY</option>
-          <option value="CLAIMED">CLAIMED</option>
-          <option value="DONE">DONE</option>
-          <option value="FAILED">FAILED</option>
-          <option value="CANCELLED">CANCELLED</option>
-        </select>
         <button class="btn btn-sm btn-secondary"
-                data-bind="click: applyFilters, text: t('ar.rebill.register.apply')"></button>
+                data-bind="click: loadRegister, text: t('ar.rebill.refresh')"></button>
       </div>
     </div>
 
@@ -236,56 +226,16 @@
     <div class="empty-state" data-bind="text: t('ar.rebill.loading')"></div>
     <!-- /ko -->
 
-    <!-- ko ifnot: loading -->
-    <!-- ko if: rows().length === 0 -->
-    <div class="empty-state" data-bind="text: t('ar.rebill.register.empty')"></div>
-    <!-- /ko -->
-
-    <!-- ko if: rows().length -->
-    <div class="data-table-wrap">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th data-bind="text: t('ar.rebill.f.invoice')"></th>
-            <th data-bind="text: t('ar.rebill.col.status')"></th>
-            <th data-bind="text: t('ar.rebill.col.stage')"></th>
-            <th data-bind="text: t('ar.rebill.col.cmDoc')"></th>
-            <th data-bind="text: t('ar.rebill.col.newInvoice')"></th>
-            <th data-bind="text: t('ar.rebill.col.submittedBy')"></th>
-            <th data-bind="text: t('ar.rebill.col.submittedAt')"></th>
-            <th data-bind="text: t('ar.rebill.col.duration')"></th>
-            <th data-bind="text: t('ar.rebill.col.worker')"></th>
-          </tr>
-        </thead>
-        <tbody data-bind="foreach: rows">
-          <tr style="cursor:pointer"
-              data-bind="click: function () { $vm.openDetail($data); }">
-            <td data-bind="text: $data.actionId"></td>
-            <td class="mono" data-bind="text: $data.invoiceNumber"></td>
-            <td><span data-bind="text: $data.runStatus,
-                                 attr: { 'class': $vm.statusClass($data.runStatus) }"></span></td>
-            <td data-bind="text: ($data.stagesDone || 0) + '/9 ' + ($data.currentStage || '')"></td>
-            <td class="mono" data-bind="text: $data.cmDocumentNumber || '—'"></td>
-            <td class="mono" data-bind="text: $data.newInvoiceNumber || '—'"></td>
-            <td data-bind="text: $data.submittedBy || '—'"></td>
-            <td data-bind="text: $data.submittedAt || '—'"></td>
-            <td data-bind="text: $vm.fmtDur($data.durationSecs)"></td>
-            <td data-bind="text: $data.workerVm || '—'"></td>
-          </tr>
-        </tbody>
-      </table>
+    <!-- Filtering, sorting, column control, breaks, highlights, CSV/XLSX and
+         MAXIMIZE all live in the shared component. The wrapper's delegated
+         click resolves the row from the cell's KO context (GL pending
+         pattern) and opens the stage timeline. -->
+    <div data-bind="visible: !loading(), click: irRowClick, clickBubble: true"
+         style="cursor:pointer">
+      <interactive-report params="reportCode: 'AR_REBILL_REQUESTS', section: '',
+                                  data: irData, isAdmin: false,
+                                  layoutsApi: null"></interactive-report>
     </div>
-    <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
-      <button class="btn btn-sm btn-secondary" data-bind="click: prevPage,
-              enable: offset() > 0, text: t('ar.rebill.register.prev')"></button>
-      <button class="btn btn-sm btn-secondary" data-bind="click: nextPage,
-              enable: offset() + limit() < total(), text: t('ar.rebill.register.next')"></button>
-      <span class="muted" data-bind="text: t('ar.rebill.register.showing',
-            [offset() + 1, Math.min(offset() + limit(), total()), total()])"></span>
-    </div>
-    <!-- /ko -->
-    <!-- /ko -->
   </div>
 
   <!-- ============ stage timeline ============ -->

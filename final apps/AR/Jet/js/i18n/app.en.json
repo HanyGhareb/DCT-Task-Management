@@ -296,5 +296,11 @@
   "ar.rebill.bulk.date": "Transaction / accounting date",
   "ar.rebill.bulk.skipped": "{0} already done (skipped)",
   "ar.rebill.bulk.doneBadge": "Done — skipped",
-  "ar.rebill.bulk.needCols": "The first sheet needs Invoice Number and Memo Line columns"
+  "ar.rebill.bulk.needCols": "The first sheet needs Invoice Number and Memo Line columns",
+  "ar.rebill.col.id": "Request #",
+  "ar.rebill.col.startedAt": "Started",
+  "ar.rebill.col.finishedAt": "Ended",
+  "ar.rebill.col.durationSecs": "Duration (secs)",
+  "ar.rebill.col.attempts": "Attempts",
+  "ar.rebill.col.error": "Last error"
 }
