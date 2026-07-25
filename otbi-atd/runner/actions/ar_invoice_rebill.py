@@ -1353,13 +1353,17 @@ def _close_line_drawer(page, what, timeout=45):
         "every remaining line." % what)
 
 
-def _dup_row_for_line(page, line):
-    """Grid row index for a requested line.
+def _dup_rows_for_line(page, line):
+    """ALL grid row indices whose memo line matches the requested line.
 
-    The request gives a Line NUMBER; the grid is addressed by row INDEX. They
-    usually differ by one, but never assume it -- match on the memo line, which
-    is exactly what the memoLine field is there to verify. Raises rather than
-    guessing, because the consequence of guessing is taxing the wrong line.
+    The memo line is the matching key (user rule 2026-07-26) and it applies to
+    EVERY row that carries it: an invoice can hold more lines than the request
+    names, including several lines sharing one memo. On 45110096161 the
+    duplicate had TWO 'Entertainer Permit' lines while the request named one --
+    the robot taxed one and left the other with no tax classification and no
+    Project/Task, and the user had to correct it by hand. Same memo, same
+    treatment, every row (user rule 2026-07-26). Raises when NO row matches,
+    because that means the request names a line the duplicate does not have.
     """
     rows = _ensure_line_grid(page)
     if not rows:
@@ -1369,22 +1373,15 @@ def _dup_row_for_line(page, line):
             "Transaction page opens on Distribution) rather than an id change "
             "-- check the stage screenshot, then re-run probe_details.py")
     want = line["memoLine"].strip().lower()
-    guess = str(line["lineNumber"] - 1)
-    if (rows.get(guess) or "").strip().lower() == want:
-        return guess
-    matches = [r for r, v in rows.items() if (v or "").strip().lower() == want]
-    if len(matches) == 1:
-        return matches[0]
+    matches = [r for r, v in sorted(rows.items(), key=lambda kv: int(kv[0]))
+               if (v or "").strip().lower() == want]
     if not matches:
         raise RuntimeError(
             "line %d: no row on the duplicate carries memo line %r (grid shows "
             "%s) -- refusing to change a line that was not requested"
             % (line["lineNumber"], line["memoLine"],
                ", ".join(sorted(set(rows.values())))))
-    raise RuntimeError(
-        "line %d: memo line %r matches %d rows and row %s is not one of them, "
-        "so the correct row is ambiguous -- refusing to guess"
-        % (line["lineNumber"], line["memoLine"], len(matches), guess))
+    return matches
 
 
 JS_LINE_CELL = """(args)=>{
@@ -1503,16 +1500,18 @@ def _stage_dup_edit(run):
     for line in run.p["lines"]:
         if not line["taxClassification"]:
             continue
-        # match the grid row by memo line -- never assume row == lineNumber-1
-        row = _dup_row_for_line(page, line)
-        if not _fill_by_id_suffix(page, "%s%s:%s::content"
-                                  % (DUP_GRID, row, DUP_COMP_TAX),
-                                  line["taxClassification"]):
-            raise RuntimeError("could not set Tax Classification on line %d "
-                               "(grid row %s)" % (line["lineNumber"], row))
-        time.sleep(2)
-        taxed_rows.add(str(row))
-        changed.append(line["lineNumber"])
+        # memo line is the matching key, and it selects EVERY row carrying that
+        # memo -- a duplicate memo on the invoice means every one of those
+        # lines gets the same treatment (user rule 2026-07-26)
+        for row in _dup_rows_for_line(page, line):
+            if not _fill_by_id_suffix(page, "%s%s:%s::content"
+                                      % (DUP_GRID, row, DUP_COMP_TAX),
+                                      line["taxClassification"]):
+                raise RuntimeError("could not set Tax Classification on line %d "
+                                   "(grid row %s)" % (line["lineNumber"], row))
+            time.sleep(2)
+            taxed_rows.add(str(row))
+            changed.append("%d:r%s" % (line["lineNumber"], row))
 
     # Lines the payload does not nominate. The invoice's line count varies from
     # invoice to invoice, so anything not listed is not ours to touch (user
@@ -1721,6 +1720,164 @@ def _stage_dup_capture(run):
     return "DONE", doc, "new invoice document number %s" % doc
 
 
+def _dff_one_row(run, line, row):
+    """Open ONE grid row's Details drawer and set Project/Task on it.
+
+    Returns "skipped" (row already coded) or "done". Everything here is scoped
+    to the resolved row (law 22): no generic fallback, the drawer must prove
+    its Memo Line before anything is written, and both values are read back
+    before the save.
+    """
+    page = run.page
+    # NO BLIND FALLBACK. This used to fall back to SEL["line_details"], a
+    # bare [title="Details"] that matches EVERY row's icon and therefore
+    # opens the FIRST one. On 45110096152 (2026-07-25) that is exactly what
+    # happened for line 3: the row-specific id missed, the fallback opened
+    # line 1, and line 3's Project/Task were written over line 1's -- so
+    # line 1 ended up with the wrong task and line 3 with none, while the
+    # stage reported "project/task set on lines 1,2,3". Resolving the row
+    # correctly and then clicking something else is worse than not clicking.
+    # THE STAGE SPANS TWO DIFFERENT PAGES. The duplicate opens as a Create
+    # Transaction form, but saving the FIRST line's drawer commits the whole
+    # transaction (measured on 45100251002, 2026-07-25) -- so every later
+    # line runs on the Edit Transaction page, which uses a DIFFERENT
+    # component id for the same icon: `cil2` instead of `commandImageLink110`
+    # under the same `…:AT1:_ATp:table1:<row>:` prefix.
+    row_prefix = "%s%s:" % (DUP_GRID, row)
+    details_sels = ['[id$="%scommandImageLink110"]' % row_prefix,
+                    '[id$="%scil2"]' % row_prefix,
+                    '[id*="%s"][title="Details"]' % row_prefix]
+
+    # THE DETAILS LINK OPENS THE GRID'S *ACTIVE* ROW, NOT THE ROW YOU CLICK.
+    # A synthetic in-DOM el.click() does not raise ADF's row-activation
+    # event, so the drawer shows whichever row was last touched. Measured on
+    # 45100251002 (2026-07-25): stage 6 set tax last on row 2, then stage 7
+    # clicked row 1's icon and got row 2's drawer. A REAL pointer click
+    # carries the activation with it, so try that first and keep the JS
+    # click only as a last resort -- the drawer identity check below is what
+    # makes either safe.
+    open_memo = None
+    for attempt in (1, 2):
+        if attempt == 2:
+            # Recovery: leave the wrong drawer, then activate the row
+            # EXPLICITLY by clicking its own memo-line cell before asking
+            # for Details again. Closing first matters -- reopening from
+            # inside a drawer just re-shows the same row.
+            _real_click(page, SEL["line_cancel"], "Cancel drawer",
+                        required=False)
+            time.sleep(5)
+            _real_click(page, ['[id$="%s%s::content"]'
+                               % (row_prefix, DUP_COMP_MEMO)],
+                        "activate grid row %s" % row, required=False)
+            time.sleep(2)
+
+        opened = _real_click(page, details_sels,
+                             "Details icon line %d" % line["lineNumber"],
+                             required=False)
+        if not opened:
+            opened = _jsclick(page, details_sels,
+                              "Details icon line %d" % line["lineNumber"],
+                              required=False)
+        if not opened:
+            raise RuntimeError(
+                "line %d (%r) resolved to grid row %s but no Details icon "
+                "was found under %s. Refusing to click a selector that is "
+                "not scoped to that row, because it would open whichever "
+                "row is first -- re-run probe_details.py, the grid's id "
+                "scheme has changed again."
+                % (line["lineNumber"], line["memoLine"], row, row_prefix))
+        time.sleep(8)
+
+        # The drawer must PROVE it is the line we asked for before anything
+        # is written into it.
+        open_memo = _read_label_value(page, LBL_MEMO_LINE)
+        if open_memo is None:
+            raise RuntimeError(
+                "line %d: could not read the Memo Line on the open drawer, "
+                "so there is no way to tell which line is about to be "
+                "written. Refusing to write blind." % line["lineNumber"])
+        if open_memo.strip().lower() == line["memoLine"].strip().lower():
+            break
+        if attempt == 2:
+            raise RuntimeError(
+                "line %d: the Details drawer carries memo line %r, not the "
+                "requested %r, even after activating grid row %s first -- "
+                "ADF keeps opening a different line. Refusing to write "
+                "Project/Task onto the wrong line."
+                % (line["lineNumber"], open_memo, line["memoLine"], row))
+        print("  [line %d] drawer opened %r instead of %r -- closing and "
+              "retrying with the row activated first"
+              % (line["lineNumber"], open_memo, line["memoLine"]), flush=True)
+
+    cur_proj = _read_label_value(page, LBL_PROJECT)
+    cur_task = _read_label_value(page, LBL_TASK)
+    # ADF law 8: after an LOV commit Fusion shows the DESCRIPTION, not the
+    # code -- so accept either when deciding "already set"
+    if (line["projectNumber"] in (cur_proj or "")
+            and line["taskNumber"] in (cur_task or "")):
+        # ALREADY CODED -- close the drawer (proving the grid comes back;
+        # a best-effort close left the drawer open on 45100251002) and skip.
+        _close_line_drawer(page, "line %d row %s (already coded)"
+                           % (line["lineNumber"], row))
+        return "skipped"
+
+    # raises if the labels are not on the drawer -- better a loud failure on
+    # the first dry run than lines silently left uncoded
+    _fill_verified(page, "line %d project" % line["lineNumber"],
+                   line["projectNumber"], label=LBL_PROJECT, verify=False)
+    time.sleep(2)
+    _fill_verified(page, "line %d task" % line["lineNumber"],
+                   line["taskNumber"], label=LBL_TASK, verify=False)
+    time.sleep(2)
+    _shot(page, "ar_7_line_%d_r%s_dff.png" % (line["lineNumber"], row))
+
+    # Read both values back BEFORE saving. These fills run with verify=False
+    # because ADF law 8 means an LOV commit displays the DESCRIPTION rather
+    # than the code -- but "cannot match exactly" is not a reason to skip
+    # checking altogether. Substring either way covers code-or-description.
+    got_proj = _read_label_value(page, LBL_PROJECT) or ""
+    got_task = _read_label_value(page, LBL_TASK) or ""
+    for what, wanted, got in (("project", line["projectNumber"], got_proj),
+                              ("task", line["taskNumber"], got_task)):
+        if not got.strip():
+            raise RuntimeError(
+                "line %d: %s is still EMPTY after filling it with %r -- "
+                "refusing to save a line whose DFF did not take."
+                % (line["lineNumber"], what, wanted))
+        if wanted.lower() not in got.lower() and got.lower() not in wanted.lower():
+            raise RuntimeError(
+                "line %d: %s reads %r after filling it with %r -- the value "
+                "landed somewhere else or the LOV picked a different row."
+                % (line["lineNumber"], what, got, wanted))
+
+    # Save and Close commits the LINE into the in-progress transaction; the
+    # transaction itself is still uncommitted until Complete and Review.
+    run.gate("Save and Close (line %d row %s)" % (line["lineNumber"], row))
+    clicked = None
+    for sel in SEL["line_save_close"]:
+        if _jsclick(page, [sel], "Save and Close", required=False):
+            clicked = sel
+            break
+    if not clicked:
+        clicked = _click_by_text(page, "Save and Close", "Save and Close")
+    if not clicked:
+        raise RuntimeError(
+            "Save and Close: line %d could not be saved -- neither the "
+            "selectors nor an exact-text DOM scan found a clickable "
+            "control. The line drawer is still open and the transaction "
+            "is NOT committed." % line["lineNumber"])
+    # Clicking Save and Close is not proof it closed. Wait for the line grid
+    # to come back, so a failed close is reported HERE, against the line
+    # that caused it, instead of one line later as an unreadable grid.
+    if not _ensure_line_grid(page, timeout=90):
+        raise RuntimeError(
+            "line %d: Save and Close was clicked but the line grid never "
+            "came back, so the drawer is still open. Whatever this line "
+            "saved, the remaining lines cannot be resolved."
+            % line["lineNumber"])
+    return "done"
+
+
 def _stage_dup_line_dff(run):
     """Per line: Details > Project + Task > Save and Close.
 
@@ -1751,174 +1908,17 @@ def _stage_dup_line_dff(run):
                         'div[role="tab"]:text-is("Invoice Lines")'],
                  "Invoice Lines tab", required=False)
         time.sleep(3)
-        row = _dup_row_for_line(page, line)   # memo-line verified, never guessed
-        # NO BLIND FALLBACK. This used to fall back to SEL["line_details"], a
-        # bare [title="Details"] that matches EVERY row's icon and therefore
-        # opens the FIRST one. On 45110096152 (2026-07-25) that is exactly what
-        # happened for line 3: the row-specific id missed, the fallback opened
-        # line 1, and line 3's Project/Task were written over line 1's -- so
-        # line 1 ended up with the wrong task and line 3 with none, while the
-        # stage reported "project/task set on lines 1,2,3". Resolving the row
-        # correctly and then clicking something else is worse than not clicking.
-        # THE STAGE SPANS TWO DIFFERENT PAGES. The duplicate opens as a Create
-        # Transaction form, but saving the FIRST line's drawer commits the whole
-        # transaction (measured on 45100251002, 2026-07-25) -- so every later
-        # line runs on the Edit Transaction page, which uses a DIFFERENT
-        # component id for the same icon: `cil2` instead of `commandImageLink110`
-        # under the same `…:AT1:_ATp:table1:<row>:` prefix. Line 1 therefore
-        # worked and line 2 failed. Try both, then any Details affordance --
-        # but every selector stays SCOPED TO THE RESOLVED ROW, so none of them
-        # can open a different line (law 22). That scoping is the whole
-        # difference between this and the fallback that corrupted 45110096152.
-        row_prefix = "%s%s:" % (DUP_GRID, row)
-        details_sels = ['[id$="%scommandImageLink110"]' % row_prefix,
-                        '[id$="%scil2"]' % row_prefix,
-                        '[id*="%s"][title="Details"]' % row_prefix]
-
-        # THE DETAILS LINK OPENS THE GRID'S *ACTIVE* ROW, NOT THE ROW YOU CLICK.
-        # A synthetic in-DOM el.click() does not raise ADF's row-activation
-        # event, so the drawer shows whichever row was last touched. Measured on
-        # 45100251002 (2026-07-25): stage 6 set tax last on row 2, then stage 7
-        # clicked row 1's icon and got row 2's drawer ('Revenue fees from Urgent
-        # request' instead of 'Event Permit'). A REAL pointer click carries the
-        # activation with it (same reason ADF law 2 needs one for the af:query
-        # disclosure), so try that first and keep the JS click only as a
-        # last resort -- the drawer identity check below is what makes either
-        # safe.
-        open_memo = None
-        for attempt in (1, 2):
-            if attempt == 2:
-                # Recovery: leave the wrong drawer, then activate the row
-                # EXPLICITLY by clicking its own memo-line cell before asking
-                # for Details again. Closing first matters -- reopening from
-                # inside a drawer just re-shows the same row.
-                _real_click(page, SEL["line_cancel"], "Cancel drawer",
-                            required=False)
-                time.sleep(5)
-                _real_click(page, ['[id$="%s%s::content"]'
-                                   % (row_prefix, DUP_COMP_MEMO)],
-                            "activate grid row %s" % row, required=False)
-                time.sleep(2)
-
-            opened = _real_click(page, details_sels,
-                                 "Details icon line %d" % line["lineNumber"],
-                                 required=False)
-            if not opened:
-                opened = _jsclick(page, details_sels,
-                                  "Details icon line %d" % line["lineNumber"],
-                                  required=False)
-            if not opened:
-                raise RuntimeError(
-                    "line %d (%r) resolved to grid row %s but no Details icon "
-                    "was found under %s. Refusing to click a selector that is "
-                    "not scoped to that row, because it would open whichever "
-                    "row is first -- re-run probe_details.py, the grid's id "
-                    "scheme has changed again."
-                    % (line["lineNumber"], line["memoLine"], row, row_prefix))
-            time.sleep(8)
-
-            # The drawer must PROVE it is the line we asked for before anything
-            # is written into it. Same invariant as the grid lookup (match on
-            # the memo line), applied at the point of writing -- resolving the
-            # right row is worthless if the drawer that opens belongs to
-            # another line.
-            open_memo = _read_label_value(page, LBL_MEMO_LINE)
-            if open_memo is None:
-                raise RuntimeError(
-                    "line %d: could not read the Memo Line on the open drawer, "
-                    "so there is no way to tell which line is about to be "
-                    "written. Refusing to write blind." % line["lineNumber"])
-            if open_memo.strip().lower() == line["memoLine"].strip().lower():
-                break
-            if attempt == 2:
-                raise RuntimeError(
-                    "line %d: the Details drawer carries memo line %r, not the "
-                    "requested %r, even after activating grid row %s first -- "
-                    "ADF keeps opening a different line. Refusing to write "
-                    "Project/Task onto the wrong line."
-                    % (line["lineNumber"], open_memo, line["memoLine"], row))
-            print("  [line %d] drawer opened %r instead of %r -- closing and "
-                  "retrying with the row activated first"
-                  % (line["lineNumber"], open_memo, line["memoLine"]), flush=True)
-
-        cur_proj = _read_label_value(page, LBL_PROJECT)
-        cur_task = _read_label_value(page, LBL_TASK)
-        # ADF law 8: after an LOV commit Fusion shows the DESCRIPTION, not the
-        # code -- so accept either when deciding "already set"
-        if (line["projectNumber"] in (cur_proj or "")
-                and line["taskNumber"] in (cur_task or "")):
-            # ALREADY CODED -- close the drawer and move on. This close used to
-            # be a best-effort _jsclick(required=False), and on the Edit
-            # Transaction page a synthetic click does not work that button (the
-            # write path already knew this and falls back to a DOM text scan).
-            # So the drawer stayed OPEN, the next line's grid read found nothing
-            # but the drawer, and the stage died with "the line grid was still
-            # unreadable" 60s later -- pointing at the grid when the real cause
-            # was a door left open behind us (45100251002, 2026-07-25).
-            skipped.append(line["lineNumber"])
-            _close_line_drawer(page, "line %d (already coded)"
-                               % line["lineNumber"])
-            continue
-
-        # raises if the labels are not on the drawer -- better a loud failure on
-        # the first dry run than lines silently left uncoded
-        _fill_verified(page, "line %d project" % line["lineNumber"],
-                       line["projectNumber"], label=LBL_PROJECT, verify=False)
-        time.sleep(2)
-        _fill_verified(page, "line %d task" % line["lineNumber"],
-                       line["taskNumber"], label=LBL_TASK, verify=False)
-        time.sleep(2)
-        _shot(page, "ar_7_line_%d_dff.png" % line["lineNumber"])
-
-        # Read both values back BEFORE saving. These fills run with verify=False
-        # because ADF law 8 means an LOV commit displays the DESCRIPTION rather
-        # than the code, so an exact-match verify inside _fill_verified would
-        # false-alarm -- but "cannot match exactly" is not a reason to skip
-        # checking altogether, which is how a line could be saved with nothing
-        # in it. Substring either way covers code-or-description.
-        got_proj = _read_label_value(page, LBL_PROJECT) or ""
-        got_task = _read_label_value(page, LBL_TASK) or ""
-        for what, wanted, got in (("project", line["projectNumber"], got_proj),
-                                  ("task", line["taskNumber"], got_task)):
-            if not got.strip():
-                raise RuntimeError(
-                    "line %d: %s is still EMPTY after filling it with %r -- "
-                    "refusing to save a line whose DFF did not take."
-                    % (line["lineNumber"], what, wanted))
-            if wanted.lower() not in got.lower() and got.lower() not in wanted.lower():
-                raise RuntimeError(
-                    "line %d: %s reads %r after filling it with %r -- the value "
-                    "landed somewhere else or the LOV picked a different row."
-                    % (line["lineNumber"], what, got, wanted))
-
-        # Save and Close commits the LINE into the in-progress transaction; the
-        # transaction itself is still uncommitted until Complete and Review.
-        run.gate("Save and Close (line %d)" % line["lineNumber"])
-        # Selector engine first (deterministic ids when they exist), then the
-        # DOM-scan click -- which is what actually works on this drawer.
-        clicked = None
-        for sel in SEL["line_save_close"]:
-            if _jsclick(page, [sel], "Save and Close", required=False):
-                clicked = sel
-                break
-        if not clicked:
-            clicked = _click_by_text(page, "Save and Close", "Save and Close")
-        if not clicked:
-            raise RuntimeError(
-                "Save and Close: line %d could not be saved -- neither the "
-                "selectors nor an exact-text DOM scan found a clickable "
-                "control. The line drawer is still open and the transaction "
-                "is NOT committed." % line["lineNumber"])
-        # Clicking Save and Close is not proof it closed. Wait for the line grid
-        # to come back, so a failed close is reported HERE, against the line
-        # that caused it, instead of one line later as an unreadable grid.
-        if not _ensure_line_grid(page, timeout=90):
-            raise RuntimeError(
-                "line %d: Save and Close was clicked but the line grid never "
-                "came back, so the drawer is still open. Whatever this line "
-                "saved, the remaining lines cannot be resolved."
-                % line["lineNumber"])
-        done.append(line["lineNumber"])
+        # The memo line selects EVERY matching grid row (user rule 2026-07-26,
+        # learned on 45110096161 -- see _dup_rows_for_line). The page context
+        # is re-asserted between rows because saving one row's drawer can
+        # reload the page (the FIRST save commits the transaction, law 23).
+        for row in _dup_rows_for_line(page, line):
+            outcome = _dff_one_row(run, line, row)
+            label = "%d:r%s" % (line["lineNumber"], row)
+            (skipped if outcome == "skipped" else done).append(label)
+            _jsclick(page, SEL["dialog_ok"], "dismiss info dialog",
+                     required=False)
+            time.sleep(1)
 
     note = "project/task set on lines %s" % (
         ",".join(str(x) for x in done) or "(none)")

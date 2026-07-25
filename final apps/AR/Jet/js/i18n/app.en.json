@@ -256,7 +256,7 @@
   "ar.rebill.err.lineIncomplete": "Line {0}: memo line, project and task are all required",
   "ar.rebill.err.failed": "Could not queue the request",
   "ar.rebill.bulk.title": "Bulk upload",
-  "ar.rebill.bulk.hint": "Upload ONE flat sheet grouped by invoice number — one row per memo line (Invoice Number, Memo Line, Project Number, Task, VAT Rate Code). The memo line is the matching key; no line numbers needed. Rows whose CM Number / New Invoice Number columns are already filled are skipped, so the running workbook can be re-uploaded whole. Dates, credit reason and finish come from the batch defaults below.",
+  "ar.rebill.bulk.hint": "Upload ONE flat sheet grouped by invoice number — one row per memo line (Invoice Number, Memo Line, Project Number, Task, VAT Rate Code). The memo line is the matching key and applies to EVERY invoice line carrying it; no line numbers needed. Rows whose CM Number / New Invoice Number columns are already filled are skipped, so the running workbook can be re-uploaded whole. The header-detail columns (CM txn no/dates, credit reason, comments, finish, duplicate source/dates) are optional per-invoice overrides read from the invoice's first row — blank cells take the batch defaults below.",
   "ar.rebill.bulk.template": "Download template",
   "ar.rebill.bulk.choose": "Choose file",
   "ar.rebill.bulk.clear": "Clear",

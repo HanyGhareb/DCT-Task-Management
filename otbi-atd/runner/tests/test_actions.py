@@ -358,40 +358,36 @@ def _test_ar_invoice_rebill(env):
     # The request names a LINE NUMBER; the ADF grid is addressed by ROW INDEX.
     # They usually differ by one, but the sample invoice has two lines sharing
     # the memo line "Entertainer Permit", so a wrong match taxes the wrong line.
+    # The memo line is the matching key and selects EVERY row carrying it
+    # (user rule 2026-07-26): 45110096161's duplicate had TWO 'Entertainer
+    # Permit' lines while the request named one, so the second was left with
+    # no tax and no DFF. Same memo, same treatment.
     grid = {"0": "Entertainer Permit",
             "1": "Entertainer Permit",
             "2": "Revenue fees from Urgent request"}
-    real_grid = r._dup_line_rows
+    real_ensure = r._ensure_line_grid
     try:
-        r._dup_line_rows = lambda p: grid
-        assert r._dup_row_for_line(None, {"lineNumber": 3,
-                                          "memoLine": "Revenue fees from Urgent request"}) == "2"
-        assert r._dup_row_for_line(None, {"lineNumber": 1,
-                                          "memoLine": "Entertainer Permit"}) == "0"
-        assert r._dup_row_for_line(None, {"lineNumber": 2,
-                                          "memoLine": "Entertainer Permit"}) == "1"
-        for line, want in (
-            ({"lineNumber": 1, "memoLine": "Something Else"}, "refusing to change"),
-            ({"lineNumber": 9, "memoLine": "Entertainer Permit"}, "refusing to guess"),
-        ):
-            try:
-                r._dup_row_for_line(None, line)
-                assert False, "must abort rather than guess: %r" % line
-            except RuntimeError as e:
-                assert want in str(e), "expected %r in %r" % (want, str(e))
-        # patch the WAIT, not the read -- _dup_row_for_line polls for 60s
-        real_wait2 = r._wait_for_line_grid
+        r._ensure_line_grid = lambda p, timeout=75: grid
+        assert r._dup_rows_for_line(None, {"lineNumber": 3,
+                                           "memoLine": "Revenue fees from Urgent request"}) == ["2"]
+        assert r._dup_rows_for_line(None, {"lineNumber": 1,
+                                           "memoLine": "Entertainer Permit"}) == ["0", "1"], \
+            "a duplicated memo must select BOTH rows"
         try:
-            r._wait_for_line_grid = lambda page, timeout=60: {}
-            try:
-                r._dup_row_for_line(None, {"lineNumber": 1, "memoLine": "x"})
-                assert False, "an unreadable grid must abort"
-            except RuntimeError as e:
-                assert "still unreadable" in str(e)
-        finally:
-            r._wait_for_line_grid = real_wait2
+            r._dup_rows_for_line(None, {"lineNumber": 1,
+                                        "memoLine": "Something Else"})
+            assert False, "a memo absent from the grid must abort"
+        except RuntimeError as e:
+            assert "refusing to change" in str(e)
+        # an unreadable grid must abort loudly, never return no rows
+        r._ensure_line_grid = lambda p, timeout=75: {}
+        try:
+            r._dup_rows_for_line(None, {"lineNumber": 1, "memoLine": "x"})
+            assert False, "an unreadable grid must abort"
+        except RuntimeError as e:
+            assert "still unreadable" in str(e)
     finally:
-        r._dup_line_rows = real_grid
+        r._ensure_line_grid = real_ensure
 
     # ---- stage table: resume_from() assumes contiguous 1..N -------------
     nums = [n for n, _, _ in r.STAGES]
@@ -427,35 +423,29 @@ def _test_ar_invoice_rebill(env):
     grid = {"0": "Public speaker permit", "1": "Event Permit",
             "2": "Revenue fees from Urgent request"}
     real_rows = r._dup_line_rows
+    real_ensure2 = r._ensure_line_grid
     try:
-        r._dup_line_rows = lambda page: grid
+        r._ensure_line_grid = lambda page, timeout=75: grid
         # payload line numbers do NOT match Fusion's row order here (Fusion
         # line 1 is Public speaker permit) -- the memo line is what decides
-        assert r._dup_row_for_line(None, {"lineNumber": 1,
-                                          "memoLine": "Event Permit"}) == "1"
-        assert r._dup_row_for_line(None, {"lineNumber": 3,
-                                          "memoLine": "Revenue fees from Urgent request"}) == "2"
+        assert r._dup_rows_for_line(None, {"lineNumber": 1,
+                                           "memoLine": "Event Permit"}) == ["1"]
+        assert r._dup_rows_for_line(None, {"lineNumber": 3,
+                                           "memoLine": "Revenue fees from Urgent request"}) == ["2"]
         # a memo line that is not on the duplicate must RAISE, never resolve
         try:
-            r._dup_row_for_line(None, {"lineNumber": 2, "memoLine": "Parking Fee"})
+            r._dup_rows_for_line(None, {"lineNumber": 2, "memoLine": "Parking Fee"})
             assert False, "an absent memo line must raise, not pick a row"
         except RuntimeError as e:
             assert "refusing to change a line that was not requested" in str(e)
-        # and an unreadable grid must raise rather than default to row 0.
-        # Patch the WAIT, not the read: _dup_row_for_line polls for 60s before
-        # giving up (the grid renders asynchronously), and a unit test must not
-        # sit through that.
-        real_wait = r._wait_for_line_grid
+        # and an unreadable grid must raise rather than default to row 0
+        r._ensure_line_grid = lambda page, timeout=75: {}
         try:
-            r._wait_for_line_grid = lambda page, timeout=60: {}
-            try:
-                r._dup_row_for_line(None, {"lineNumber": 1,
-                                           "memoLine": "Event Permit"})
-                assert False, "an unreadable grid must raise"
-            except RuntimeError as e:
-                assert "still unreadable" in str(e)
-        finally:
-            r._wait_for_line_grid = real_wait
+            r._dup_rows_for_line(None, {"lineNumber": 1,
+                                        "memoLine": "Event Permit"})
+            assert False, "an unreadable grid must raise"
+        except RuntimeError as e:
+            assert "still unreadable" in str(e)
 
         # the wait itself: returns as soon as the grid appears, and gives up
         # rather than looping forever
@@ -472,6 +462,7 @@ def _test_ar_invoice_rebill(env):
         assert r._wait_for_line_grid(None, timeout=1) == {}
     finally:
         r._dup_line_rows = real_rows
+        r._ensure_line_grid = real_ensure2
 
     # ---- pre-commit header-date guard -----------------------------------
     # Stage 7's line saves make Fusion re-run the invoicing rule, which resets

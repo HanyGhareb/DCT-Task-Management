@@ -1350,11 +1350,17 @@ end; `ATD_ACTION_STOP_AFTER=<stage>` steps through the saga.
     dance `_stage_dup_edit` already did for the resume path, now applied to every grid wait because
     the morph happens mid-stage-7 on every fresh invoice.
 
-24. **The payload's matching key is the MEMO LINE, not the line number** (user rule 2026-07-26).
-    `lineNumber` is optional everywhere (runner `validate_payload`, AR ORDS bridge, JET form/bulk)
-    and defaults to payload position; a payload repeating a memo line is rejected as ambiguous at
-    validation. The grid row is always resolved by memo line (`_dup_row_for_line`) — Fusion's line
-    order need not match the sheet's.
+24. **The payload's matching key is the MEMO LINE, and it selects EVERY row carrying it** (user
+    rules 2026-07-26). `lineNumber` is optional everywhere (runner `validate_payload`, AR ORDS
+    bridge, JET form/bulk) and defaults to payload position; a payload repeating a memo line is
+    rejected as ambiguous at validation. The grid rows are resolved by memo line
+    (`_dup_rows_for_line`) — Fusion's line order need not match the sheet's (proven live on
+    45110096166, whose lines were reversed vs the sheet). **ALL matching rows get the treatment:**
+    45110096161's duplicate carried TWO 'Entertainer Permit' lines while the request named one —
+    the first pass taxed one and left the other with no tax classification and no Project/Task
+    (correctly logged as `left untouched`, but wrong by the user's intent; they fixed it by hand).
+    Same memo, same treatment, every row — stage 6 taxes and stage 7 DFFs each matching row
+    (`_dff_one_row` per row, context re-asserted between rows because the first save commits).
 
 **Harvested ids (ADGOV pod, 2026-07-25).** Credit Transaction (`…:ap1:`): `it1` transaction
 number · `id1` transaction date · `id2` accounting date · `selectOneChoice2` credit reason

@@ -28,10 +28,29 @@ function (ko, rebill, i18n, toast, docUpload) {
     VAT_RATE_CODE: 'taxClassification',
     TAX_CLASSIFICATION: 'taxClassification', TAX_CLASS: 'taxClassification',
     LINE: 'lineNumber', LINE_NO: 'lineNumber', LINE_NUMBER: 'lineNumber',
-    CM_NUMBER: 'cmResult', NEW_INVOICE_NUMBER: 'invResult'
+    CM_NUMBER: 'cmResult', NEW_INVOICE_NUMBER: 'invResult',
+    // per-invoice header details (optional; read from the invoice's FIRST
+    // non-empty cell, falling back to the on-page batch defaults)
+    CM_TXN_NO: 'cmTransactionNumber', CM_TRANSACTION_NUMBER: 'cmTransactionNumber',
+    CM_TXN_DATE: 'cmTransactionDate', CM_TRANSACTION_DATE: 'cmTransactionDate',
+    CM_ACCT_DATE: 'cmAccountingDate', CM_ACCOUNTING_DATE: 'cmAccountingDate',
+    CREDIT_REASON: 'creditReason',
+    COMMENTS: 'comments',
+    CM_FINISH: 'cmFinish', FINISH: 'cmFinish',
+    DUP_SOURCE: 'dupSource', DUPLICATE_SOURCE: 'dupSource',
+    TRANSACTION_SOURCE: 'dupSource',
+    DUP_TXN_DATE: 'dupTransactionDate', DUPLICATE_TRANSACTION_DATE: 'dupTransactionDate',
+    DUP_ACCT_DATE: 'dupAccountingDate', DUPLICATE_ACCOUNTING_DATE: 'dupAccountingDate'
   };
   var FLAT_TEMPLATE = ['Invoice Number', 'Memo Line', 'Project Number', 'Task',
-                       'VAT Rate Code', 'CM Number', 'New Invoice Number'];
+                       'VAT Rate Code', 'CM Number', 'New Invoice Number',
+                       'CM_TXN_NO', 'CM_TXN_DATE', 'CM_ACCT_DATE',
+                       'CREDIT_REASON', 'COMMENTS', 'CM_FINISH',
+                       'DUP_SOURCE', 'DUP_TXN_DATE', 'DUP_ACCT_DATE'];
+  // keys the per-invoice header can override from the sheet
+  var HDR_KEYS = ['cmTransactionNumber', 'cmTransactionDate', 'cmAccountingDate',
+                  'creditReason', 'comments', 'cmFinish',
+                  'dupSource', 'dupTransactionDate', 'dupAccountingDate'];
 
   function normHeader(h) {
     return String(h || '').toUpperCase().trim()
@@ -281,20 +300,28 @@ function (ko, rebill, i18n, toast, docUpload) {
             }
           }
         }
+        // per-invoice header details: first non-empty cell in the group wins,
+        // the batch defaults below fill whatever the sheet leaves blank
+        var h = { invoiceNumber: inv };
+        HDR_KEYS.forEach(function (k) {
+          for (var j = 0; j < lines.length; j++) {
+            if (lines[j][k]) { h[k] = lines[j][k]; return; }
+          }
+        });
+        h.cmTransactionDate = toIso(h.cmTransactionDate) || iso;
+        h.cmAccountingDate = toIso(h.cmAccountingDate) || iso;
+        h.dupTransactionDate = toIso(h.dupTransactionDate) || iso;
+        h.dupAccountingDate = toIso(h.dupAccountingDate) || iso;
+        h.creditReason = h.creditReason || self.bulkReason() || '';
+        h.comments = h.comments || ('Credit Inv# ' + inv + ' to correct TAX code');
+        h.cmFinish = (h.cmFinish || self.bulkFinish() || 'COMPLETE_AND_CLOSE').toUpperCase();
+        h.dupSource = h.dupSource || 'DCT Manual';
         return {
           row: idx + 1,
           invoiceNumber: inv,
           lineCount: lines.length,
-          cmFinish: (self.bulkFinish() || 'COMPLETE_AND_CLOSE').toUpperCase(),
-          _h: {
-            invoiceNumber: inv,
-            cmTransactionDate: iso, cmAccountingDate: iso,
-            creditReason: self.bulkReason() || '',
-            comments: 'Credit Inv# ' + inv + ' to correct TAX code',
-            cmFinish: self.bulkFinish(),
-            dupSource: 'DCT Manual',
-            dupTransactionDate: iso, dupAccountingDate: iso
-          },
+          cmFinish: h.cmFinish,
+          _h: h,
           _lines: lines,
           error: err, done: done, status: ''
         };
@@ -321,13 +348,19 @@ function (ko, rebill, i18n, toast, docUpload) {
     self.downloadTemplate = function () {
       require(['xlsx'], function (XLSX) {
         var wb = XLSX.utils.book_new();
-        // one flat sheet, rows grouped by invoice; the last two columns are
-        // filled by the register once the request completes
+        // one flat sheet, rows grouped by invoice. Columns 6-7 are RESULT
+        // columns (filled once the request completes); the header-detail
+        // columns after them are optional per-invoice overrides read from the
+        // invoice's first row — blank cells fall back to the batch defaults.
         var ws = XLSX.utils.aoa_to_sheet([FLAT_TEMPLATE,
           ['INV00583863', 'Entertainer Permit', '4511000037',
-           'Entertainer Permit', 'VAT OUTPUT - OSC', '', ''],
+           'Entertainer Permit', 'VAT OUTPUT - OSC', '', '',
+           'INV00583863CM', '2026-02-28', '2026-02-28', 'Tax rate error',
+           'Credit Inv# INV00583863 to correct TAX code', 'COMPLETE_AND_CLOSE',
+           'DCT Manual', '2026-02-28', '2026-02-28'],
           ['INV00583863', 'Revenue fees from Urgent request', '4511000037',
-           'Urgent requests', 'VAT OUTPUT - STD', '', '']]);
+           'Urgent requests', 'VAT OUTPUT - STD', '', '',
+           '', '', '', '', '', '', '', '', '']]);
         ws['!cols'] = FLAT_TEMPLATE.map(function (h) {
           return { wch: Math.max(h.length + 2, 18) };
         });

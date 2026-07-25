@@ -67,9 +67,11 @@ try:
         errors = []
         page.on('pageerror', lambda e: errors.append(str(e)))
 
-        page.goto(BASE + '/index.html')
-        page.evaluate("s => localStorage.setItem('ifinance_jet_session',"
-                      " JSON.stringify(s))", sess)
+        # seed the session BEFORE any app script runs — the app redirects to
+        # Admin when it finds no session, which can destroy the evaluate's
+        # execution context mid-call
+        ctx.add_init_script("localStorage.setItem('ifinance_jet_session', "
+                            + json.dumps(json.dumps(sess)) + ")")
         page.goto(BASE + '/index.html')
         page.wait_for_load_state('networkidle')
         page.wait_for_function('() => !!window._arApp', timeout=30000)
@@ -104,7 +106,10 @@ try:
               str(twb.sheetnames))
         check('template headers match the agreed format',
               hdr == ['Invoice Number', 'Memo Line', 'Project Number', 'Task',
-                      'VAT Rate Code', 'CM Number', 'New Invoice Number'], str(hdr))
+                      'VAT Rate Code', 'CM Number', 'New Invoice Number',
+                      'CM_TXN_NO', 'CM_TXN_DATE', 'CM_ACCT_DATE',
+                      'CREDIT_REASON', 'COMMENTS', 'CM_FINISH',
+                      'DUP_SOURCE', 'DUP_TXN_DATE', 'DUP_ACCT_DATE'], str(hdr))
 
         # ---- bulk parse: ready / done-skipped / error --------------------
         with page.expect_file_chooser() as fc:

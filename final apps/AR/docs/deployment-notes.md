@@ -54,6 +54,27 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+### 2026-07-26 (2) — memo applies to ALL matching lines + header columns restored (APP_VERSION 4.9.1)
+
+**Defect (user-found): 45110096161 (INV00584992) line 2 completed with no VAT classification and
+no Project/Task.** Its duplicate carried TWO 'Entertainer Permit' lines (7,000.00 + 200.00) while
+the CSV named one — the robot matched the first, taxed it, and left the second untouched under the
+old "unlisted lines are not ours to touch" rule (logged: `left untouched: 'Entertainer Permit'`).
+The user corrected the line by hand. **New rule: a payload memo line applies to EVERY invoice line
+carrying that memo** — stage 6 taxes and stage 7 sets Project/Task on ALL matching rows
+(`_dup_rows_for_line` + per-row `_dff_one_row`; runner synced fleet-wide, tests updated).
+**Audit of the other five batch invoices** (pre-commit grid screenshots): line counts match the
+CSV and every line carries its tax classification — 45110096161 was the only invoice with an
+extra line. 45110096166's Fusion line order was reversed vs the sheet and memo matching resolved
+it correctly.
+
+Also (user request): the flat template regained the header-detail columns the two-sheet template
+had — `CM_TXN_NO · CM_TXN_DATE · CM_ACCT_DATE · CREDIT_REASON · COMMENTS · CM_FINISH ·
+DUP_SOURCE · DUP_TXN_DATE · DUP_ACCT_DATE`, appended after the result columns as **optional
+per-invoice overrides** read from the invoice's first non-empty cell; blank cells fall back to the
+on-page batch defaults. Browser smoke re-run 17/17 (template header assertion updated; session now
+seeded via `add_init_script` — the goto/evaluate race redirected to Admin mid-call).
+
 ### 2026-07-26 — Rebill batch campaign + flat bulk template (APP_VERSION 4.9.0, webtier 20260726001613)
 
 **Six-invoice parallel batch across all three worker VMs — all 9/9.** Two invoices per VM,

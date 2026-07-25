@@ -80,16 +80,18 @@ each line → complete the duplicate. Both generated document numbers come back 
 register. Enqueue only — the page never talks to Fusion directly.
 - Single request: `submitSingle` · `resetForm` · `addLine` / `removeLine` · `cmNumberPlaceholder`
   (defaults the credit memo number to `<invoice>CM`) · `lovLabel`. The **memo line is the matching
-  key** (2026-07-26): the line number is optional everywhere and the fleet resolves the Fusion grid
-  row by memo line.
+  key** (2026-07-26): the line number is optional everywhere, and the fleet applies each payload
+  memo line to **every** Fusion invoice line carrying that memo (same memo, same treatment).
 - Bulk upload (**ONE flat sheet grouped by invoice number** via SheetJS, 2026-07-26): columns
   `Invoice Number · Memo Line · Project Number · Task · VAT Rate Code · CM Number · New Invoice
-  Number` — the last two are RESULT columns, and an invoice whose results are already filled is
-  skipped, so the running workbook re-uploads whole. Header fields (dates / credit reason / finish)
-  come from the batch defaults (`bulkDate` / `bulkReason` / `bulkFinish`); comments auto-generate as
-  `Credit Inv# <n> to correct TAX code`, source is DCT Manual. `downloadTemplate` (flat sheet) ·
-  `chooseFile` (parse + group + per-row validation) · `submitBulk` (chunked enqueue, per-row
-  `READY #id`) · `clearBulk` · `bulkValidCount` / `bulkErrorCount` / `bulkDoneCount`.
+  Number` + the optional per-invoice header-detail columns `CM_TXN_NO · CM_TXN_DATE · CM_ACCT_DATE
+  · CREDIT_REASON · COMMENTS · CM_FINISH · DUP_SOURCE · DUP_TXN_DATE · DUP_ACCT_DATE` (read from
+  the invoice's first non-empty cell; blanks fall back to the batch defaults `bulkDate` /
+  `bulkReason` / `bulkFinish`, auto comments, source DCT Manual). CM Number / New Invoice Number
+  are RESULT columns — an invoice whose results are already filled is skipped, so the running
+  workbook re-uploads whole. `downloadTemplate` (flat sheet) · `chooseFile` (parse + group +
+  per-row validation) · `submitBulk` (chunked enqueue, per-row `READY #id`) · `clearBulk` ·
+  `bulkValidCount` / `bulkErrorCount` / `bulkDoneCount`.
 - Register: `loadRegister` · `applyFilters` · `nextPage` / `prevPage` · `statusClass` · `fmtDur`.
 - Stage timeline drawer: `openDetail` / `closeDetail` · `stageLabel` (EN/AR from the
   `AR_REBILL_STAGE` lookup).
