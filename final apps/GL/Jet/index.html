@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.42.1';</script>
+<script>window.APP_VERSION='1.42.2';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -1082,7 +1082,7 @@
         </div>
       </div>
 
-      <div class="bu-body">
+      <div class="bu-body" data-bind="css:{'rc-loading':rcBusy}">
         <div class="bu-load-ov" data-bind="visible:rcBusy" aria-live="polite">
           <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
           <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>

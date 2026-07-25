@@ -641,6 +641,7 @@ html[dir=rtl] .mchip{padding:3px 10px 3px 6px}
 .pn-kpis .pn-row-bad .l,.pn-kpis .pn-row-bad .v{color:var(--bad)}
 /* first-load overlay needs somewhere to sit before anything has rendered */
 .bu-body.pn-loading{min-height:320px}
+.bu-body.rc-loading{min-height:340px}
 /* register: Document # cells deep-link to Oracle Fusion (hover affordance) */
 .pn-doclink{cursor:pointer;color:var(--brand-dark);text-decoration:underline dotted;text-underline-offset:3px}
 
