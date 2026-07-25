@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.42.5';</script>
+<script>window.APP_VERSION='1.42.6';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -1100,7 +1100,7 @@
                 <div class="rc-tile-sub"><span data-bind="text:t('rcConsButil')"></span>: <b class="mono" data-bind="text:money(rcConsBut())"></b></div>
                 <div class="rc-tile-sub"><span data-bind="text:t('rcConsActuals')"></span>: <b class="mono" data-bind="text:money(rcConsAct())"></b></div>
               </div>
-              <div class="rc-tile rc-tile--np">
+              <div class="rc-tile rc-tile--np" data-bind="visible:rcNonProject()>0.5">
                 <div class="rc-tile-k"><span data-bind="text:t('rcNonProject')"></span><i class="hint-i" data-bind="attr:{title:t('hRcNonProject')}">ⓘ</i></div>
                 <div class="rc-tile-v mono"><a class="rc-dl" data-bind="click:function(){return rcKpiDrill('no_project','rcNonProject')}, attr:{title:t('rcDrillHint')}, text:money(rcNonProject())"></a></div>
                 <div class="rc-tile-sub" data-bind="text:t('rcNonProjectSub')"></div>
@@ -1174,7 +1174,7 @@
                   <th class="num"><span data-bind="text:t('rcActualsSide')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColActuals')}">ⓘ</i></th>
                   <th class="num"><span data-bind="text:t('rcButilSide')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColButil')}">ⓘ</i></th>
                   <th class="num"><span data-bind="text:t('rcDifference')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColDiff')}">ⓘ</i></th>
-                  <th class="num"><span data-bind="text:t('rcSeg_noProject')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColNoProject')}">ⓘ</i></th>
+                  <th class="num" data-bind="visible:rcNonProject()>0.5"><span data-bind="text:t('rcSeg_noProject')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColNoProject')}">ⓘ</i></th>
                   <th class="num" data-bind="visible:rcMeasureSel()==='ap'"><span data-bind="text:t('rcSeg_apValidation')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColApVal')}">ⓘ</i></th>
                   <th class="num"><span data-bind="text:t('rcSeg_noBudgetLine')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColNoBudget')}">ⓘ</i></th>
                 </tr></thead>
@@ -1184,7 +1184,7 @@
                     <td class="num mono" data-bind="text:$root.money(actualsSide)"></td>
                     <td class="num mono" data-bind="text:$root.money(butilSide)"></td>
                     <td class="num mono rc-diff" data-bind="css:{'rc-hot':Math.abs(diff)>0.5}"><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'all')}, text:$root.money(diff)"></a></td>
-                    <td class="num mono" data-bind="css:{'rc-warn':noProject>0.5}"><!-- ko if:noProject>0.5 --><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'no_project')}, text:$root.money(noProject)"></a><!-- /ko --><!-- ko ifnot:noProject>0.5 --><span data-bind="text:$root.money(noProject)"></span><!-- /ko --></td>
+                    <td class="num mono" data-bind="visible:$root.rcNonProject()>0.5, css:{'rc-warn':noProject>0.5}"><!-- ko if:noProject>0.5 --><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'no_project')}, text:$root.money(noProject)"></a><!-- /ko --><!-- ko ifnot:noProject>0.5 --><span data-bind="text:$root.money(noProject)"></span><!-- /ko --></td>
                     <td class="num mono" data-bind="visible:$root.rcMeasureSel()==='ap'"><!-- ko if:apValidation>0.5 --><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'ap_validation')}, text:$root.money(apValidation)"></a><!-- /ko --><!-- ko ifnot:apValidation>0.5 --><span data-bind="text:$root.money(apValidation)"></span><!-- /ko --></td>
                     <td class="num mono" data-bind="css:{'rc-warn':noBudgetLine>0.5}"><!-- ko if:noBudgetLine>0.5 --><a class="rc-dl" data-bind="click:function(){$root.rcCellDrill($data,'no_budget_line')}, text:$root.money(noBudgetLine)"></a><!-- /ko --><!-- ko ifnot:noBudgetLine>0.5 --><span data-bind="text:$root.money(noBudgetLine)"></span><!-- /ko --></td>
                   </tr>

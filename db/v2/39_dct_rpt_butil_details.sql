@@ -105,6 +105,8 @@ LEFT JOIN proj pj ON pj.project_id = d.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
 WHERE NVL(d.reversal_indicator,'N') <> 'Y'
   AND d.project_id IS NOT NULL
+  AND pj.project_number IS NOT NULL                              -- exclude cancelled project
+  AND (tk.task_number IS NOT NULL OR d.task_id IS NULL)          -- exclude cancelled task
   AND i.validation_status IN ('Validated','Unpaid','Available')
   -- YTD window (2026-07-14): honours GL_CTX.BUTIL_END exactly like the
   -- db/v2/37 f_ap fact CTE; unset context = full year (consumers unaffected)
@@ -196,6 +198,8 @@ LEFT JOIN (SELECT po_header_id, po_line_id, MAX(line) AS line
 LEFT JOIN proj pj ON pj.project_id = b.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
 WHERE b.project_id IS NOT NULL
+  AND pj.project_number IS NOT NULL                              -- exclude cancelled project
+  AND (tk.task_number IS NOT NULL OR b.task_id IS NULL)          -- exclude cancelled task
   AND b.charge_account IS NOT NULL
   AND g.received_aed - NVL(a.invoiced_aed,0) > 0.005;
 
@@ -262,6 +266,8 @@ LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
 WHERE b.funds_status IN ('Reserved','Partially Liquidated')
   AND NVL(h.status,'x') <> 'Finally Closed'   -- final close releases the un-received remainder (2026-07-11)
   AND b.project_id IS NOT NULL
+  AND pj.project_number IS NOT NULL                              -- exclude cancelled project
+  AND (tk.task_number IS NOT NULL OR b.task_id IS NULL)          -- exclude cancelled task
   AND b.charge_account IS NOT NULL
   AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
        OR b.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
@@ -299,6 +305,8 @@ LEFT JOIN proj pj ON pj.project_id = d.project_id
 LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
 WHERE d.funds_status = 'Reserved'
   AND d.project_id IS NOT NULL
+  AND pj.project_number IS NOT NULL                              -- exclude cancelled project
+  AND (tk.task_number IS NOT NULL OR d.task_id IS NULL)          -- exclude cancelled task
   AND d.charge_account IS NOT NULL
   AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
        OR d.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1);

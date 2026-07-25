@@ -150,6 +150,9 @@ LEFT JOIN tsk  tk ON tk.task_id    = d.task_id
 WHERE p.source = 'PR'
   AND d.project_id IS NOT NULL
   AND d.charge_account IS NOT NULL
+  -- exclude CANCELLED / soft-deleted project or task (master row gone => '#'<id>)
+  AND pj.project_number IS NOT NULL
+  AND (tk.task_number IS NOT NULL OR d.task_id IS NULL)
   AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
        OR d.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
 UNION ALL
@@ -190,6 +193,9 @@ LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
 WHERE p.source = 'PO'
   AND b.project_id IS NOT NULL
   AND b.charge_account IS NOT NULL
+  -- exclude CANCELLED / soft-deleted project or task (master row gone => '#'<id>)
+  AND pj.project_number IS NOT NULL
+  AND (tk.task_number IS NOT NULL OR b.task_id IS NULL)
   AND (SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
        OR b.budget_date < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1)
 UNION ALL

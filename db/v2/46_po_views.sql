@@ -490,9 +490,9 @@ dist_agg AS (
          COUNT(DISTINCT d.project_id)                    AS project_count,
          LISTAGG(DISTINCT TO_CHAR(pj.project_number), ', ' ON OVERFLOW TRUNCATE)
            WITHIN GROUP (ORDER BY TO_CHAR(pj.project_number)) AS project_numbers,
-         COUNT(DISTINCT COALESCE(TO_CHAR(tk.task_number), '#'||TO_CHAR(d.task_id))) AS task_count,
-         LISTAGG(DISTINCT COALESCE(TO_CHAR(tk.task_number), '#'||TO_CHAR(d.task_id)), ', ' ON OVERFLOW TRUNCATE)
-           WITHIN GROUP (ORDER BY COALESCE(TO_CHAR(tk.task_number), '#'||TO_CHAR(d.task_id))) AS task_numbers,
+         COUNT(DISTINCT TO_CHAR(tk.task_number))         AS task_count,
+         LISTAGG(DISTINCT TO_CHAR(tk.task_number), ', ' ON OVERFLOW TRUNCATE)
+           WITHIN GROUP (ORDER BY TO_CHAR(tk.task_number)) AS task_numbers,
          COUNT(DISTINCT d.pr_number)                     AS pr_count,
          LISTAGG(DISTINCT TO_CHAR(d.pr_number), ', ' ON OVERFLOW TRUNCATE)
            WITHIN GROUP (ORDER BY TO_CHAR(d.pr_number))  AS pr_numbers,

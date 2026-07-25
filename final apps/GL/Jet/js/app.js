@@ -2296,7 +2296,8 @@
         { k: 'noProject', v: d.noProjectTotal, c: '#C9992B' },
         { k: 'apValidation', v: d.apValidationTotal, c: '#7C4DBE' },
         { k: 'noBudgetLine', v: d.noBudgetLineTotal, c: '#C0504D' }
-      ];
+      // drop empty buckets from the chart (e.g. Non-project once '#' rows are excluded)
+      ].filter(function (g) { return g.k === 'matched' || Math.abs(g.v) > 0.5; });
       var acc = 0, stops = [];
       seg.forEach(function (g) { var a = acc / tot * 100, b = (acc + Math.max(0, g.v)) / tot * 100; stops.push(g.c + ' ' + a.toFixed(2) + '% ' + b.toFixed(2) + '%'); acc += Math.max(0, g.v); });
       return {

@@ -76,16 +76,19 @@ def main():
                     pg.evaluate("ko.dataFor(document.body).closeDrawer && ko.dataFor(document.body).closeDrawer()")
                 else:
                     ck(P + "drill link present", False)
-                # KPI-tile drill: click the Non-project tile value -> drawer with source rows
-                kpi = pg.locator(".rc-tile--np .rc-dl").first
+                # KPI-tile drill: click the Coverage (matched) tile value -> drawer with source rows
+                kpi = pg.locator(".rc-tile--ok .rc-dl").first
                 if kpi.count():
                     kpi.click()
                     pg.wait_for_function("ko.dataFor(document.body).drillDrawer()===true", timeout=20000)
                     pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=30000)
                     krows = pg.evaluate("ko.dataFor(document.body).drillRows().length")
                     kcols = pg.evaluate("ko.dataFor(document.body).drillCols().map(c=>c.key).join(',')")
-                    ck(P + "KPI non-project drill shows rows", krows > 0, "(%d)" % krows)
+                    ck(P + "KPI coverage(matched) drill shows rows", krows > 0, "(%d)" % krows)
                     ck(P + "KPI drill has Source column (measure=all)", "measure" in kcols, kcols)
+                    # no '#' project keys must appear (cancelled/soft-deleted excluded)
+                    hashed = pg.evaluate("ko.dataFor(document.body).drillRows().filter(r=>String(r.project||'').charAt(0)==='#').length")
+                    ck(P + "no '#' project rows in drill", hashed == 0, "(%d)" % hashed)
                     pg.evaluate("ko.dataFor(document.body).closeDrawer && ko.dataFor(document.body).closeDrawer()")
                 else:
                     ck(P + "KPI drill link present", False)

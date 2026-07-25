@@ -561,6 +561,8 @@ BEGIN
     LEFT JOIN bl ON bl.project_key=s.pkey AND NVL(bl.task_key,'~')=NVL(s.tkey,'~')
                 AND NVL(bl.expenditure_type,'~')=NVL(s.etype,'~')
     WHERE NVL(s.amt,0) <> 0
+      AND s.pkey NOT LIKE '#%'          -- exclude no-project + cancelled/soft-deleted project
+      AND s.tkey NOT LIKE '#_%'         -- exclude cancelled/soft-deleted task (bare '#' = no-task, kept)
       AND (l_sector IS NULL OR INSTR('|'||l_sector||'|','|'||s.sector_name||'|')>0)
       AND (l_secok = 1 OR s.sector_name IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
       AND (l_chap IS NULL OR INSTR('|'||l_chap||'|','|'||s.chapter_code||'|')>0)

@@ -360,6 +360,11 @@ LEFT JOIN f_po po ON po.budget_year = k.budget_year
                  AND po.project_key = k.project_key
                  AND NVL(po.task_key,'~')         = NVL(k.task_key,'~')
                  AND NVL(po.expenditure_type,'~') = NVL(k.expenditure_type,'~')
+-- exclude CANCELLED / soft-deleted lines: project '#%' (no-project + cancelled),
+-- task '#_%' (cancelled task id; a bare '#' task = legit no-task line, kept).
+-- (platform rule 2026-07-25; currently a no-op here as budget masters resolve.)
+WHERE k.project_key NOT LIKE '#%'
+  AND k.task_key NOT LIKE '#_%'
 GROUP BY k.budget_year, k.project_key, k.task_key, k.expenditure_type
 HAVING MAX(NVL(b.budget_annual,0)) > 0;
 

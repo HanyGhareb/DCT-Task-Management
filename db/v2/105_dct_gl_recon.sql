@@ -215,7 +215,13 @@ LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = a.cc_string
 LEFT JOIN bl ON bl.budget_year = a.budget_year
             AND bl.project_key = a.project_key
             AND NVL(bl.task_key,'~')         = NVL(a.task_key,'~')
-            AND NVL(bl.expenditure_type,'~') = NVL(a.expenditure_type,'~');
+            AND NVL(bl.expenditure_type,'~') = NVL(a.expenditure_type,'~')
+-- CANCELLED / SOFT-DELETED exclusion (platform rule 2026-07-25): any project or
+-- task that resolves to a '#'-surrogate is dropped. project_key '#%' = both the
+-- no-project spend AND a cancelled project id; task_key '#_%' = a cancelled task
+-- id ONLY (a bare '#' task = legitimate project-level / no-task spend, KEPT).
+WHERE a.project_key NOT LIKE '#%'
+  AND a.task_key NOT LIKE '#_%';
 
 PROMPT DCT_GL_RECON_FACT_V created (AP/GRN/PR/PO bridge fact with side/bucket flags).
 
