@@ -865,6 +865,46 @@ sourced from approved Petty Cash reimbursements.
   enqueue all 3 PC documents. All Fusion-action DB deploys complete; only the live headed smoke
   test + populating `DCT_EMP_SUPPLIER_MAP` remain before flipping a `FUSION_POST_*` gate to Y.
 
+## ⚠️ The worker VMs KERNEL-PANIC under browser load (diagnosed 2026-07-25, OPEN)
+
+**Symptom that sends you the wrong way:** an unattended run vanishes — process gone, no traceback,
+no exit code, systemd unit garbage-collected. It looks like the script died. It did not: **the VM
+rebooted underneath it.** Check `uptime` before debugging anything else.
+
+**Root cause — a bug in the VMware paravirtual NIC driver, nothing to do with the runner:**
+
+```
+kernel BUG at drivers/net/vmxnet3/vmxnet3_drv.c:1807!
+RIP: vmxnet3_rq_rx_complete+0xbe3/0x1340 [vmxnet3]
+     vmxnet3_poll_rx_only -> __napi_poll -> net_rx_action -> handle_softirqs
+```
+
+Identical RIP in **every** dump on all three VMs — one bug, in the RX completion path, which is why
+a Playwright/Chromium session pulling Fusion pages is the reliable trigger.
+
+| VM | vmcores | disk | worst day |
+|---|---|---|---|
+| vm180 | 39 | 3.7G | 4 crashes on 2026-07-25 |
+| vm181 | 27 | 2.6G | 4 in six hours (18:17, 21:46, 23:15, 23:31) |
+| vm182 | 9 | 892M | least affected — prefer it for long runs |
+
+All three: kernel `6.12.0-105.51.5.el9uek`, `open-vm-tools-13.0.0`, `vmxnet3 1.9.0.0-k-NAPI`,
+**`large-receive-offload: on`**.
+
+**Finding the evidence.** `last -x` shows every boot as "still running" with NO shutdown record =
+hard reset. The systemd journal is **volatile** here (no `/var/log/journal`), so `journalctl -b -1`
+is empty — but `/var/log/messages` persists and **kdump is enabled**, so the panic is always in
+`/var/crash/<timestamp>/vmcore-dmesg.txt`.
+
+**Mitigation (NOT yet applied — bounces the NIC, needs a window):**
+`ethtool -K ens192 lro off gro off` per worker, made persistent. LRO on vmxnet3 is the usual trigger
+for this BUG_ON. Real fix = newer UEK kernel / VMware Tools, or an E1000E vNIC. Housekeeping: 7.2G
+of vmcores across the fleet.
+
+**Until it is fixed:** launch long jobs **detached** (`systemd-run --unit=… --setenv=HOME=/root` —
+`env.sh` sets `TNS_ADMIN="$HOME/wallet"` and systemd-run has no `$HOME`, else `DPY-4026`) so a
+checkpointed saga survives the reboot, and resume rather than restart.
+
 ## 3-VM parallel worker fleet — DEPLOYED 2026-06-21 (Track B scale-out)
 
 The Track B runner now runs on **3 on-prem Oracle Linux 9.7 VMs** (replaced the single Windows
