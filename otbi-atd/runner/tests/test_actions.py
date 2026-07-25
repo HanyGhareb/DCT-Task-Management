@@ -362,12 +362,17 @@ def _test_ar_invoice_rebill(env):
                 assert False, "must abort rather than guess: %r" % line
             except RuntimeError as e:
                 assert want in str(e), "expected %r in %r" % (want, str(e))
-        r._dup_line_rows = lambda p: {}
+        # patch the WAIT, not the read -- _dup_row_for_line polls for 60s
+        real_wait2 = r._wait_for_line_grid
         try:
-            r._dup_row_for_line(None, {"lineNumber": 1, "memoLine": "x"})
-            assert False, "an unreadable grid must abort"
-        except RuntimeError as e:
-            assert "could not read" in str(e)
+            r._wait_for_line_grid = lambda page, timeout=60: {}
+            try:
+                r._dup_row_for_line(None, {"lineNumber": 1, "memoLine": "x"})
+                assert False, "an unreadable grid must abort"
+            except RuntimeError as e:
+                assert "still unreadable" in str(e)
+        finally:
+            r._wait_for_line_grid = real_wait2
     finally:
         r._dup_line_rows = real_grid
 
@@ -419,13 +424,35 @@ def _test_ar_invoice_rebill(env):
             assert False, "an absent memo line must raise, not pick a row"
         except RuntimeError as e:
             assert "refusing to change a line that was not requested" in str(e)
-        # and an unreadable grid must raise rather than default to row 0
-        r._dup_line_rows = lambda page: {}
+        # and an unreadable grid must raise rather than default to row 0.
+        # Patch the WAIT, not the read: _dup_row_for_line polls for 60s before
+        # giving up (the grid renders asynchronously), and a unit test must not
+        # sit through that.
+        real_wait = r._wait_for_line_grid
         try:
-            r._dup_row_for_line(None, {"lineNumber": 1, "memoLine": "Event Permit"})
-            assert False, "an unreadable grid must raise"
-        except RuntimeError as e:
-            assert "could not read the duplicate's line grid" in str(e)
+            r._wait_for_line_grid = lambda page, timeout=60: {}
+            try:
+                r._dup_row_for_line(None, {"lineNumber": 1,
+                                           "memoLine": "Event Permit"})
+                assert False, "an unreadable grid must raise"
+            except RuntimeError as e:
+                assert "still unreadable" in str(e)
+        finally:
+            r._wait_for_line_grid = real_wait
+
+        # the wait itself: returns as soon as the grid appears, and gives up
+        # rather than looping forever
+        calls = {"n": 0}
+
+        def _late(page):
+            calls["n"] += 1
+            return grid if calls["n"] >= 2 else {}
+
+        r._dup_line_rows = _late
+        assert r._wait_for_line_grid(None, timeout=10) == grid
+        assert calls["n"] >= 2, "the wait must re-read, not answer from one look"
+        r._dup_line_rows = lambda page: {}
+        assert r._wait_for_line_grid(None, timeout=1) == {}
     finally:
         r._dup_line_rows = real_rows
 
