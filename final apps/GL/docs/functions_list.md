@@ -1,11 +1,15 @@
-# General Ledger (App 210) — Functions List
+# Financial Planning and Budgeting — FP (App 210) — Functions List
+
+> **2026-07-22 (v1.42.0) renames:** the app is now **Financial Planning and Budgeting** (`appName`, sub "FP"); the **Actuals** tab is now **General Ledger** (`navActuals`, `view()==='actuals'` unchanged); **Budget Utilization** is now **Project Budget Utilization** (`navButil`/`buTitle`); **Overview** and **Explorer** are merged into one **Chart of Accounts** page — see below.
+
 
 User-facing functions by area. Each area = a `view()` section in `Jet/index.html`; each bullet is a
 public method on the single KO viewModel in `Jet/js/app.js`. Mandatory maintenance artifact —
 update on any view/method/endpoint change.
 
-## Overview (`view()==='overview'`)
-- coverage stats: `combinationCount`, `pctClassified`, per-dimension `valueCount` / `mappedSegments` (from `/boot`).
+## Chart of Accounts (`view()==='overview'`) — merged classification overview + combinations explorer (v1.42.0)
+- **Region 1 — Classification overview** (`.bu-sec`, collapsible via `toggleCoa('ov')`/`coaOvOpen`): coverage stats `combinationCount`, `pctClassified`, per-dimension `valueCount` / `mappedSegments` (from `/boot`) + the "How it works" card.
+- **Region 2 — Combinations explorer** (`.bu-sec.bu-results`, collapsible via `toggleCoa('exp')`/`coaExpOpen`, **maximizable** via `toggleCoaMax()`/`coaMax` — full-screen table surface, Esc restores): filters `expSearch`/`fSector`/`fChapter`/`asOf` → `loadCombos(offset)` (server-paginated; auto-loads on landing + `go('overview')`), `comboRange`, `exportCsv()` (≤500 rows). The old standalone `view()==='explorer'` is removed (nav dropped); `loadCombos`/combo observables unchanged.
 
 ## Classifications (`view()==='classifications'`) — manage Sector/Chapter/Program master values
 - `clsType` — dimension selector (drives `loadValues`).
@@ -20,11 +24,10 @@ update on any view/method/endpoint change.
 - `addMapping()` / `editMapping(r)` / `saveMapping()` — create/update (value, start/end date, notes); overlap rejected server-side (toast).
 - `deleteMapping(r)` — remove an assignment.
 
-## Explorer (`view()==='explorer'`) — the unified COA view
-- filters: `expSearch`, `fSector`, `fChapter`, `asOf` (date) → `loadCombos(offset)` (server-paginated).
-- `comboRange` — “a–b / total”; `exportCsv()` — CSV of the current filtered set (≤500 rows).
+## Explorer — MERGED into Chart of Accounts (v1.42.0)
+- The combinations explorer is now Region 2 of the Chart of Accounts page (see above); `view()==='explorer'` and its nav entry are removed. `loadCombos`/`exportCsv`/`comboRange` and the combo observables are unchanged.
 
-## Actuals (`view()==='actuals'`) — Budget vs Actual report (YTD per GL combination)
+## General Ledger (`view()==='actuals'`) — Budget vs Actual report (YTD per GL combination)
 - full-viewport width (the `.wrap.wide` modifier is applied on Actuals + Dashboard).
 - search criteria: `acPeriod` (**mandatory**, defaults to current period), `acSector`, `acChapter`, `acProgram`, `acAppr`, `acAccount`, `acCostCenter`, `acSource` (transaction-source — keep rows whose measure is non-zero; reactive list `acSources` = budget/commitment/obligation/**openCommitment**/**openObligation**/glActual/grn/apDirect), `acSearch` — populated by `loadAcFilters()` (`/actuals/filters`, now also returns `accounts` + `costCenters` LOVs).
 - `runActuals(offset)` — run the report (`/actuals`), server-paginated; `acReset()` — clear filters, keep current period; `btnSearch`/`btnReset` buttons + Enter-to-search.

@@ -31,11 +31,15 @@
 
   /* ── i18n ─────────────────────────────────────────────────────── */
   var STR = {
-    appName:{en:'General Ledger',ar:'دفتر الأستاذ العام'}, appSub:{en:'CHART OF ACCOUNTS',ar:'دليل الحسابات'},
+    appName:{en:'Financial Planning and Budgeting',ar:'التخطيط المالي والموازنة'}, appSub:{en:'FP',ar:'التخطيط المالي'},
     signOut:{en:'Sign out',ar:'خروج'}, apps:{en:'Apps',ar:'التطبيقات'},
     home:{en:'Fusion i-Finance Home',ar:'الرئيسية'}, switchApp:{en:'Switch application',ar:'الانتقال إلى تطبيق'},
-    navOverview:{en:'Overview',ar:'نظرة عامة'}, navClass:{en:'Classifications',ar:'التصنيفات'},
+    navOverview:{en:'Chart of Accounts',ar:'دليل الحسابات'}, navClass:{en:'Classifications',ar:'التصنيفات'},
     navMapping:{en:'Segment Mapping',ar:'ربط البنود'}, navExplorer:{en:'Explorer',ar:'المستكشف'},
+    coaTitle:{en:'Chart of Accounts',ar:'دليل الحسابات'},
+    coaSub:{en:'Classification overview and the full GL combinations explorer — date-tracked Sector, Chapter and DCT Program on every combination.',ar:'نظرة عامة على التصنيفات ومستكشف التركيبات المحاسبية الكامل — القطاع والباب وبرنامج الدائرة المؤرخة على كل تركيبة.'},
+    coaOverview:{en:'Classification overview',ar:'نظرة عامة على التصنيفات'},
+    coaExplorer:{en:'Combinations explorer',ar:'مستكشف التركيبات'},
     ovTitle:{en:'Chart of Accounts classifications',ar:'تصنيفات دليل الحسابات'},
     ovSub:{en:'Date-tracked Sector, Chapter and DCT Program overlays on every GL combination.',ar:'تصنيفات القطاع والباب وبرنامج الدائرة المؤرخة على كل تركيبة محاسبية.'},
     combos:{en:'GL combinations',ar:'التركيبات المحاسبية'}, haveSector:{en:'have a sector',ar:'لها قطاع'},
@@ -98,7 +102,7 @@
     segIntercompany:{en:'Intercompany',ar:'بين الشركات'}, segProgram:{en:'Program',ar:'البرنامج'},
 
     /* ── Actuals (Budget vs Actual) report ── */
-    navActuals:{en:'Actuals',ar:'الفعلي'}, navDashboard:{en:'Dashboard',ar:'لوحة المعلومات'},
+    navActuals:{en:'General Ledger',ar:'دفتر الأستاذ العام'}, navDashboard:{en:'Dashboard',ar:'لوحة المعلومات'},
     acTitle:{en:'Budget vs Actual',ar:'الموازنة مقابل الفعلي'},
     acSub:{en:'Year-to-date budget, encumbrance and actual spend per GL combination.',ar:'الموازنة والارتباطات والإنفاق الفعلي حتى تاريخه لكل تركيبة محاسبية.'},
     fPeriod:{en:'Accounting period',ar:'الفترة المحاسبية'}, fSectorL:{en:'Sector',ar:'القطاع'},
@@ -184,7 +188,7 @@
     rebuiltLeft:{en:'Still invalid (needs a script fix):',ar:'ما زال غير صالح (يتطلب تعديل السكربت):'},
 
     /* ── Budget Utilization (project budget vs actual) ── */
-    navButil:{en:'Budget Utilization',ar:'استخدام الموازنة'},
+    navButil:{en:'Project Budget Utilization',ar:'استخدام موازنة المشاريع'},
     navEncumbrances:{en:'Projects Encumbrances',ar:'ارتباطات المشاريع'},
     enTitle:{en:'Open Projects Encumbrance Follow-up',ar:'متابعة ارتباطات المشاريع المفتوحة'},
     enSub:{en:'Every open encumbrance line (Open Commitment PR + Open Obligation PO) with the full GL combination — all ten segments, code and name — for the selected Budget Utilization scope.',ar:'كل بند ارتباط مفتوح (التزام طلب شراء مفتوح + تعهد أمر شراء مفتوح) مع التركيبة المحاسبية الكاملة — جميع البنود العشرة رمزًا واسمًا — ضمن نطاق استخدام الموازنة المحدد.'},
@@ -271,7 +275,7 @@
     pnXlsxReady:{en:'Excel register downloaded.',ar:'تم تنزيل سجل الإكسل.'},
     buXlsxHint:{en:'Generate the Budget Utilization Register (Excel, for internal analysis) using ALL the current page filters: the utilization lines plus every supporting detail list in its own worksheet — direct AP invoices, GRN receipts, open purchase orders, open requisitions and the pending-approval PR/PO queue. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء سجل استخدام الموازنة (إكسل للتحليل الداخلي) وفق جميع عوامل تصفية الصفحة الحالية: بنود الاستخدام مع كل قائمة تفاصيل داعمة في ورقة مستقلة — فواتير الدائنين المباشرة وإيصالات الاستلام وأوامر الشراء المفتوحة وطلبات الشراء المفتوحة وقائمة الانتظار قيد الاعتماد. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     pnDrillHint:{en:'Click to see the matching pending lines.',ar:'انقر لعرض البنود المعلقة المطابقة.'},
-    buTitle:{en:'Budget Utilization',ar:'استخدام الموازنة'},
+    buTitle:{en:'Project Budget Utilization',ar:'استخدام موازنة المشاريع'},
     buSub:{en:'Project budget vs AP, GRN, open commitments and obligations — per task and expenditure type.',ar:'موازنة المشاريع مقابل الدائنين والاستلام والالتزامات والتعهدات المفتوحة — لكل مهمة ونوع إنفاق.'},
     fYearL:{en:'Budget year',ar:'سنة الموازنة'}, fTypeL:{en:'Project type',ar:'نوع المشروع'},
     allTypes:{en:'All types',ar:'كل الأنواع'},
@@ -543,6 +547,7 @@
       if (v === 'classifications') self.loadValues();
       else if (v === 'mapping') self.loadSegOptions();
       else if (v === 'explorer') self.loadCombos(0);
+      else if (v === 'overview') { if (!self.combos().length) self.loadCombos(0); }
       else if (v === 'actuals') {
         if (!self.acFiltersLoaded()) self.loadAcFilters().then(function () { self.runActuals(0); });
         else self.runActuals(0);
@@ -820,6 +825,21 @@
           a.click(); URL.revokeObjectURL(u);
         }).catch(fail);
     };
+
+    /* ── Chart of Accounts page (merged Overview + Explorer) ── */
+    self.coaOvOpen = ko.observable(true);
+    self.coaExpOpen = ko.observable(true);
+    self.toggleCoa = function (s) { if (s === 'ov') self.coaOvOpen(!self.coaOvOpen()); else self.coaExpOpen(!self.coaExpOpen()); return true; };
+    self.coaMax = ko.observable(false);
+    self.toggleCoaMax = function () {
+      self.coaMax(!self.coaMax());
+      document.body.style.overflow = self.coaMax() ? 'hidden' : '';
+      if (self.coaMax()) self.coaExpOpen(true);
+      return false;
+    };
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' && self.coaMax() && !self.drillDrawer() && !self.drillModal()) self.toggleCoaMax();
+    });
 
     /* ── shared filter refresh (sector/chapter dropdowns) ── */
     self.refreshFilters = function () {
@@ -2295,6 +2315,7 @@
         self.pctClassified(Math.round(d.classifiedCount * 100 / d.combinationCount));
       }
       self.refreshFilters();
+      if (self.view() === 'overview' && !self.combos().length) self.loadCombos(0);
       self.ready(true);
     }).catch(function (e) { fail(e); self.ready(true); });
   }

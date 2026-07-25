@@ -3,10 +3,10 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>General Ledger · Fusion i-Finance</title>
+<title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.41.1';</script>
+<script>window.APP_VERSION='1.42.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -59,7 +59,6 @@
     <a data-bind="css:{on:view()==='recon'}, click:go.bind($data,'recon'), text:t('navRecon')"></a>
     <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
     <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
-    <a data-bind="css:{on:view()==='explorer'}, click:go.bind($data,'explorer'), text:t('navExplorer')"></a>
     <!-- ko if: isSysAdmin -->
     <button type="button" class="sec-link" data-bind="click: openSecurityInfo"
             style="margin-inline-start:auto; opacity:.75; background:none; border:none; cursor:pointer; font:inherit; color:inherit">&#128737; <span data-bind="text: lang()==='ar' ? 'معلومات الأمان' : 'Security Info'"></span></button>
@@ -69,10 +68,11 @@
   <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'}">
 
     <!-- ── OVERVIEW ── -->
+    <!-- ── CHART OF ACCOUNTS (merged Overview + Explorer) ── -->
     <div data-bind="visible:view()==='overview'">
       <div class="page-head">
-        <div><h1 class="greet" data-bind="text:t('ovTitle')"></h1>
-          <div class="greet-sub" style="margin:0" data-bind="text:t('ovSub')"></div></div>
+        <div><h1 class="greet" data-bind="text:t('coaTitle')"></h1>
+          <div class="greet-sub" style="margin:0" data-bind="text:t('coaSub')"></div></div>
         <div class="page-actions">
           <span class="chip muted" data-bind="visible:lastRefreshed(), text:t('asOfRefresh')+' '+lastRefreshed()"></span>
           <button class="btn btn-sm" data-bind="click:rebuildViews, enable:!rebuilding() && !refreshing(), attr:{title:t('rebuildHint')}">
@@ -85,22 +85,85 @@
           </button>
         </div>
       </div>
-      <div class="hero">
-        <div class="card stat"><div class="k" data-bind="text:t('combos')"></div>
-          <div class="v mono" data-bind="text:fmt(combinationCount())"></div>
-          <div class="d" data-bind="text:pctClassified()+'% '+t('haveSector')"></div>
-          <div class="bar"><i data-bind="style:{width:pctClassified()+'%'}"></i></div></div>
-        <!-- ko foreach: dimensions -->
-        <div class="card stat">
-          <div class="k" data-bind="text:$root.dimName($data)"></div>
-          <div class="v mono" data-bind="text:valueCount"></div>
-          <div class="d"><span data-bind="text:mappedSegments"></span> <span data-bind="text:$root.t('segmentsMapped')"></span></div>
-          <div class="bar"><i data-bind="style:{width:'100%',opacity:.5}"></i></div>
+
+      <!-- Region 1: classification overview (collapsible) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleCoa('ov');return true}, css:{closed:!coaOvOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('coaOverview')"></span>
         </div>
-        <!-- /ko -->
+        <div class="bu-sec-b" data-bind="visible:coaOvOpen">
+          <div class="hero">
+            <div class="card stat"><div class="k" data-bind="text:t('combos')"></div>
+              <div class="v mono" data-bind="text:fmt(combinationCount())"></div>
+              <div class="d" data-bind="text:pctClassified()+'% '+t('haveSector')"></div>
+              <div class="bar"><i data-bind="style:{width:pctClassified()+'%'}"></i></div></div>
+            <!-- ko foreach: dimensions -->
+            <div class="card stat">
+              <div class="k" data-bind="text:$root.dimName($data)"></div>
+              <div class="v mono" data-bind="text:valueCount"></div>
+              <div class="d"><span data-bind="text:mappedSegments"></span> <span data-bind="text:$root.t('segmentsMapped')"></span></div>
+              <div class="bar"><i data-bind="style:{width:'100%',opacity:.5}"></i></div>
+            </div>
+            <!-- /ko -->
+          </div>
+          <h2 class="sec"><span data-bind="text:t('howItWorks')"></span><span class="rule"></span></h2>
+          <div class="card"><div class="greet-sub" style="margin:0" data-bind="html:t('ovExplain')"></div></div>
+        </div>
       </div>
-      <h2 class="sec"><span data-bind="text:t('howItWorks')"></span><span class="rule"></span></h2>
-      <div class="card"><div class="greet-sub" style="margin:0" data-bind="html:t('ovExplain')"></div></div>
+
+      <!-- Region 2: combinations explorer (collapsible + maximizable table, Esc restores) -->
+      <div class="bu-sec bu-results" data-bind="css:{maxed:coaMax}">
+        <div class="bu-sec-h" data-bind="click:function(){if(!coaMax())toggleCoa('exp');return true}, css:{closed:!coaExpOpen() && !coaMax()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('coaExplorer')"></span>
+          <span class="bu-sec-sum" data-bind="text:comboRange()"></span>
+          <span class="grow" style="flex:1"></span>
+          <button class="btn btn-sm" style="margin-inline-end:8px" data-bind="click:function(){exportCsv();return false}, clickBubble:false, text:t('exportCsv')"></button>
+          <button class="bu-maxbtn" data-bind="click:toggleCoaMax, clickBubble:false, attr:{title:coaMax()?t('buRestoreT'):t('buMaxT')}, text:coaMax()?'⤡':'⤢'"></button>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:coaExpOpen() || coaMax()">
+          <div class="toolbar">
+            <input class="inp search" type="text" data-bind="textInput:expSearch, attr:{placeholder:t('searchCombos')}">
+            <select class="inp" data-bind="options:sectorOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fSector, optionsCaption:t('allSectors')"></select>
+            <select class="inp" data-bind="options:chapterOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fChapter, optionsCaption:t('allChapters')"></select>
+            <label class="lbl" style="align-self:center" data-bind="text:t('asOf')"></label>
+            <input class="inp" type="date" style="min-width:150px" data-bind="value:asOf">
+            <button class="btn btn-sm" data-bind="click:function(){asOf('');loadCombos(0)}, text:t('today')"></button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr>
+                <th class="combo" data-bind="text:t('combination')"></th><th data-bind="text:t('costCenter')"></th>
+                <th data-bind="text:t('account')"></th><th>Sector</th><th>Chapter</th>
+                <th data-bind="text:t('program')"></th>
+              </tr></thead>
+              <tbody>
+                <!-- ko foreach: combos -->
+                <tr>
+                  <td class="mono combo" data-bind="text:ccString, event:{mouseover:$root.comboHover, mousemove:$root.comboMove, mouseout:$root.comboOut}"></td>
+                  <td><b class="mono" data-bind="text:costCenterCode"></b><div style="color:var(--muted);font-size:11.5px" data-bind="text:$data.costCenterDesc||''"></div></td>
+                  <td><span class="mono" data-bind="text:accountCode"></span><div style="color:var(--muted);font-size:11.5px" data-bind="text:$data.accountDesc||''"></div></td>
+                  <td><span class="chip" data-bind="visible:$data.sectorName, text:$data.sectorName||''"></span><span data-bind="visible:!$data.sectorName" style="color:var(--muted)">—</span></td>
+                  <td><span class="chip gold" data-bind="visible:$data.chapterName, text:$data.chapterName||''"></span><span data-bind="visible:!$data.chapterName" style="color:var(--muted)">—</span></td>
+                  <td data-bind="text:$data.programName||'—'"></td>
+                </tr>
+                <!-- /ko -->
+              </tbody>
+            </table>
+            <div class="ldr" data-bind="visible:loading()">
+              <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+              <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+            </div>
+            <div class="empty pad" data-bind="visible:!loading() && combos().length===0, text:t('noCombos')"></div>
+          </div>
+          <div class="toolbar bu-pager" style="justify-content:flex-end;margin-top:14px">
+            <span class="t-dates" data-bind="text:comboRange()"></span>
+            <button class="btn btn-sm" data-bind="click:function(){loadCombos(comboOffset()-comboLimit)}, enable:comboOffset()>0, text:t('prev')"></button>
+            <button class="btn btn-sm" data-bind="click:function(){loadCombos(comboOffset()+comboLimit)}, enable:(comboOffset()+comboLimit)<comboTotal(), text:t('next')"></button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- ── CLASSIFICATIONS ── -->
@@ -180,57 +243,6 @@
       </div>
       <!-- /ko -->
       <div class="empty pad" data-bind="visible:!mapSegment(), text:t('pickSegmentHint')"></div>
-    </div>
-
-    <!-- ── EXPLORER ── -->
-    <div data-bind="visible:view()==='explorer'">
-      <div class="page-head">
-        <div><h1 class="greet" data-bind="text:t('expTitle')"></h1>
-          <div class="greet-sub" data-bind="text:t('expSub')"></div></div>
-        <div class="page-actions">
-          <span class="chip muted" data-bind="visible:asOf(), text:t('asOf')+' '+asOf()"></span>
-          <button class="btn btn-sm" data-bind="click:exportCsv, text:t('exportCsv')"></button>
-        </div>
-      </div>
-      <div class="toolbar">
-        <input class="inp search" type="text" data-bind="textInput:expSearch, attr:{placeholder:t('searchCombos')}">
-        <select class="inp" data-bind="options:sectorOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fSector, optionsCaption:t('allSectors')"></select>
-        <select class="inp" data-bind="options:chapterOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fChapter, optionsCaption:t('allChapters')"></select>
-        <label class="lbl" style="align-self:center" data-bind="text:t('asOf')"></label>
-        <input class="inp" type="date" style="min-width:150px" data-bind="value:asOf">
-        <button class="btn btn-sm" data-bind="click:function(){asOf('');loadCombos(0)}, text:t('today')"></button>
-      </div>
-      <div class="tbl-wrap">
-        <table class="tbl">
-          <thead><tr>
-            <th class="combo" data-bind="text:t('combination')"></th><th data-bind="text:t('costCenter')"></th>
-            <th data-bind="text:t('account')"></th><th>Sector</th><th>Chapter</th>
-            <th data-bind="text:t('program')"></th>
-          </tr></thead>
-          <tbody>
-            <!-- ko foreach: combos -->
-            <tr>
-              <td class="mono combo" data-bind="text:ccString, event:{mouseover:$root.comboHover, mousemove:$root.comboMove, mouseout:$root.comboOut}"></td>
-              <td><b class="mono" data-bind="text:costCenterCode"></b><div style="color:var(--muted);font-size:11.5px" data-bind="text:$data.costCenterDesc||''"></div></td>
-              <td><span class="mono" data-bind="text:accountCode"></span><div style="color:var(--muted);font-size:11.5px" data-bind="text:$data.accountDesc||''"></div></td>
-              <td><span class="chip" data-bind="visible:$data.sectorName, text:$data.sectorName||''"></span><span data-bind="visible:!$data.sectorName" style="color:var(--muted)">—</span></td>
-              <td><span class="chip gold" data-bind="visible:$data.chapterName, text:$data.chapterName||''"></span><span data-bind="visible:!$data.chapterName" style="color:var(--muted)">—</span></td>
-              <td data-bind="text:$data.programName||'—'"></td>
-            </tr>
-            <!-- /ko -->
-          </tbody>
-        </table>
-        <div class="ldr" data-bind="visible:loading()">
-          <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
-          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
-        </div>
-        <div class="empty pad" data-bind="visible:!loading() && combos().length===0, text:t('noCombos')"></div>
-      </div>
-      <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
-        <span class="t-dates" data-bind="text:comboRange()"></span>
-        <button class="btn btn-sm" data-bind="click:function(){loadCombos(comboOffset()-comboLimit)}, enable:comboOffset()>0, text:t('prev')"></button>
-        <button class="btn btn-sm" data-bind="click:function(){loadCombos(comboOffset()+comboLimit)}, enable:(comboOffset()+comboLimit)<comboTotal(), text:t('next')"></button>
-      </div>
     </div>
 
     <!-- ── ACTUALS (Budget vs Actual) ── -->

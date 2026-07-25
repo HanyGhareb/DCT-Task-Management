@@ -773,3 +773,8 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 .rc-warn{background:rgba(201,152,43,.09)}
 .rc-dl{cursor:pointer;border-bottom:1px dashed rgba(var(--brand-rgb),.5)}
 .rc-dl:hover{color:var(--brand-dark);border-bottom-style:solid}
+
+/* Chart of Accounts — combinations Explorer region maximize (content wrapped in .bu-sec-b) */
+.bu-results.maxed .bu-sec-b{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.bu-results.maxed .bu-sec-b .tbl-wrap{flex:1;overflow:auto;min-height:0}
+.bu-results.maxed .bu-sec-b .toolbar{flex:none}
