@@ -9,7 +9,7 @@
 
 ## 1. Frontend (JET SPA) deployment
 
-- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.4.0`) — cache key for requirejs + i18n; mandatory per deploy.
+- Bump `window.APP_VERSION` in `Jet/index.html` (currently `4.8.0`) — cache key for requirejs + i18n; mandatory per deploy.
 - **Update `docs/functions_list.md`** if this deploy added/removed/renamed any view, viewModel method, service, or ORDS endpoint (functional inventory — see root `CLAUDE.md` → "Functions List").
 - Deploy `final apps/shared/` alongside (`../shared/`). If shared/ changed, bump APP_VERSION in **all 7 apps**.
 - `js/services/config.js` → live `apiBase`, never `null`.
@@ -24,6 +24,7 @@
 | `03_ar_ai_pkg.sql` | ✅ | `DCT_AR_AI_PKG` — AI classification/extraction via DBMS_CLOUD, provider dispatch, `json_escape_clob`, repair_json |
 | `04_ar_views.sql`, `05_ar_ords.sql` | ✅ | Views + `ar.rest` module at `/ar/` |
 | `06_ar_patch_gemini.sql` | ⛔ **SUPERSEDED — do not re-run** | Replaced by the provider registry (07); its setting rows were deleted |
+| `11_ar_rebill_ords.sql` | ✅ 2026-07-25 | **ADDITIVE** AR Invoice Rebill bridge onto the ATD Fusion write-back queue — `POST rebill/requests` (bulk enqueue ≤500, per-row result) · `GET rebill/requests` · `GET rebill/requests/:id` (+9-stage timeline) · `GET rebill/lovs`. All AR_ADMIN/SYS_ADMIN. Depends on `otbi-atd/db/19`, `52`, `53`. |
 | `07_ar_ai_providers.sql` | ✅ 2026-06-13 | `DCT_AR_AI_PROVIDERS` registry (api_format, base_url, write-only api_key, `AR_API_FORMAT` lookup); `AI_PROVIDER` setting = selected provider_code |
 
 Platform SQLcl rules apply (see `final apps/Admin/docs/deployment-notes.md` §2).
@@ -52,6 +53,43 @@ AR-specific DB/AI notes:
 4. Reference numbers: test events EVT-TEST-0001 (Power Slap 16 — expected 303,888 gross / 4 findings / 47,500 loss), EVT-2026-0001, EVT-2026-0002.
 
 ## 5. Deployment history
+
+### 2026-07-25 — AR Invoice Rebill (Fusion write-back action #3), APP_VERSION 4.8.0
+
+Automates the manual VAT-correction flow in Fusion Receivables: credit an invoice off in full,
+duplicate it, correct the Tax Classification on the nominated memo lines, set the Project/Task DFF
+on each line, then complete the duplicate — capturing both generated **Document Numbers**.
+
+**Deployed**
+- `otbi-atd/db/52_atd_action_saga.sql` — `ATD_ACTION_STEP` + `ATD_ACTION_SAGA_PKG` +
+  `V_ATD_AR_REBILL_REQUEST`. All VALID; package self-test 17/17.
+- `otbi-atd/db/53_atd_action_ar_rebill.sql` — `AR_INVOICE_REBILL` action type + the
+  `AR_CREDIT_REASON` / `AR_TAX_CLASSIFICATION` / `AR_REBILL_CM_FINISH` / `AR_REBILL_STAGE`
+  vocabularies (EN + AR).
+- `final apps/AR/db/11_ar_rebill_ords.sql` — 4 routes. **Re-run after any 05 re-run
+  (post-05 list is now 10, 11).**
+- `Jet/` — `arRebill` view + viewModel + `rebillService`, two-sheet Excel template,
+  77 i18n keys EN+AR, `.rstat` pills in `css/app.css`, nav group `rebill` (AR_ADMIN).
+
+**Why a saga.** Unlike AP_INVOICE / PPM_TASK_ADDL_INFO (single idempotent writes), this
+CREATES two objects and COMPLETES them, and a completed credit memo cannot be un-completed in
+Fusion — only reversed. Every stage is checkpointed in `ATD_ACTION_STEP` so a retry RESUMES;
+`resume_from()` stops at the first gap so a later stage can never be mistaken for done.
+
+**Gotchas found (all cost real debugging — see the runner module docstring)**
+1. `POST` handler returned an **uncatchable 555**: `dct_rest.validate_session(:body)` does not
+   compile — `validate_session` takes NO argument and `:body` must be dereferenced exactly once
+   as a **BLOB**. Same idiom as `POST customers/` in db/10.
+2. `user_ords_templates` has no `module_name`; join `user_ords_modules` on `t.module_id`.
+3. SQLcl's `@` cannot open a path containing a space — copy scripts out of
+   `final apps/...` before running, or the run silently targets `/root/DCT-Task-Management/final.sql`.
+4. Platform CSS has **no** `.section-subheading` / `.badge-success` / `.badge-danger` —
+   use `.section-heading` and `.badge--approved` / `.badge--rejected`.
+
+**Not yet done:** the committing stages have not been run live; `ATD_AR_REBILL_ALLOW` must be set
+on the worker VMs and a disposable scratch invoice nominated before the first live run.
+
+### Earlier
 
 - **2026-07-08 — SoapUI Generator in the UI (APP_VERSION 4.7.0):** AR Customers page gains a
   **SoapUI Generator** modal — upload the filled Excel template (SheetJS client-side parse,

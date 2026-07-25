@@ -15,8 +15,8 @@ The manual flow this replaces (Navigator -> Receivables -> Billing):
     -> back to the original: Actions > Duplicate
     -> Transaction Source = DCT Manual, dates, and on the nominated memo lines
        set Tax Classification (VAT OUTPUT - STD)
-    -> Complete and Review, capture the new invoice's Document Number
     -> per line: Details > Project + Task, Save and Close
+    -> Complete and Review, capture the new invoice's Document Number
 
 WHY THIS ONE IS DIFFERENT
 AP_INVOICE and PPM_TASK_ADDL_INFO are single, naturally idempotent writes. This
@@ -51,11 +51,21 @@ SAFETY (this is developed and run against PROD -- there is no test pod)
                            through the saga during the tune.
   ATD_ACTION_SHOT_DIR      per-stage full-page screenshots.
 
-NOTE -- pod-specific selectors: the SELECTORS block below is a first cut taken
-from the walkthrough screenshots. It MUST be confirmed screen by screen with
-diag_ar.py before the first live run. The framework around it (stage
-checkpointing, probes, dry-run gating, allowlist, result callback) is
-release-independent.
+SELECTOR PROVENANCE (ADGOV pod, harvested with diag_ar.py 2026-07-25)
+  CONFIRMED LIVE   navigation to Billing, the "Search: Transactions" rail
+                   magnifier, the results-grid id scheme (cl1/cl3), opening the
+                   invoice (exact-text link -- a substring match also hits
+                   <invoice>CM), and both Actions menu entries.
+  HARVESTED        Credit Transaction form (it1/id1/id2/selectOneChoice2/
+                   HdrComments/creditEntireBal) and the Create Transaction form
+                   (batchSourceId/tdt/inputDate9/showMore and the line grid
+                   table1:<row>:memoLineNameId / :taxClassificationCodeId /
+                   :commandImageLink110). Wired but not yet exercised live.
+  UNVERIFIED       the Project/Task fields inside the per-line Details drawer
+                   are filled BY LABEL and will raise loudly on the first dry
+                   run if those labels differ.
+The framework around the selectors (stage checkpointing, probes, per-stage
+dry-run gating, the invoice allowlist, result callback) is release-independent.
 """
 import os
 import re
@@ -96,14 +106,20 @@ SEL = {
     "act_credit":     ['td:text-is("Credit Transaction")',
                        'a:text-is("Credit Transaction")'],
     "act_duplicate":  ['td:text-is("Duplicate")', 'a:text-is("Duplicate")'],
-    "credit_all":     ['button:text-is("Credit Entire Balance")',
+    # Credit Entire Balance is a real <button> with a stable id leaf -- prefer it.
+    "credit_all":     ['[id$=":creditEntireBal"]',
+                       'button:text-is("Credit Entire Balance")',
                        'a:text-is("Credit Entire Balance")'],
-    "cm_complete":    ['button:text-is("Complete and Close")',
-                       'a:text-is("Complete and Close")'],
+    # Save / Complete and Close / Complete and Review are ADF SPLIT buttons: the
+    # element whose id ends "::popEl" is the DROPDOWN ARROW, not the action.
+    # Clicking it just opens a menu, so exclude it explicitly.
+    "cm_complete":    ['a:text-is("Complete and Close"):not([id$="::popEl"])',
+                       'button:text-is("Complete and Close"):not([id$="::popEl"])'],
     # "Save" must be exact too, or it matches "Save and Close"
-    "cm_save":        ['button:text-is("Save")', 'a:text-is("Save")'],
-    "dup_complete":   ['button:text-is("Complete and Review")',
-                       'a:text-is("Complete and Review")'],
+    "cm_save":        ['a:text-is("Save"):not([id$="::popEl"])',
+                       'button:text-is("Save"):not([id$="::popEl"])'],
+    "dup_complete":   ['a:text-is("Complete and Review"):not([id$="::popEl"])',
+                       'button:text-is("Complete and Review"):not([id$="::popEl"])'],
     "dialog_ok":      ['button:text-is("OK")', 'a:text-is("OK")'],
     "line_details":   ['[title="Details"]', 'a[id*="dffIL"]',
                        'img[title*="Detail" i]'],
@@ -179,6 +195,78 @@ def _fusion_date(value):
     if m:
         return "%s/%s/%s" % (m.group(3), m.group(2), m.group(1))
     return v
+
+
+def _fill_by_id_suffix(page, suffix, value):
+    """Type into the first VISIBLE input whose id ENDS WITH suffix.
+
+    ADF ids carry a variable region/tab prefix (…:MTF1:<n>:pt1:r1:0:ap1:…) but a
+    stable component leaf, so the suffix is the deterministic part. Needed for
+    controls that cannot be found by label -- see _fill_verified.
+    """
+    js = """(suffix)=>{
+      const vis=e=>e&&e.offsetParent!==null&&e.getBoundingClientRect().width>0;
+      for(const el of document.querySelectorAll('input,textarea')){
+        if(el.id&&el.id.endsWith(suffix)&&vis(el))return el.id;
+      }
+      return null;}"""
+    try:
+        iid = page.evaluate(js, suffix)
+    except Exception:  # noqa: BLE001
+        iid = None
+    if not iid:
+        return False
+    loc = page.locator('[id="%s"]' % iid)
+    try:
+        loc.click(timeout=5000)
+        loc.fill("")
+        try:
+            loc.press_sequentially(value, delay=30)
+        except AttributeError:  # older Playwright
+            loc.type(value, delay=30)
+        page.keyboard.press("Tab")
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def _fill_verified(page, what, value, label=None, id_suffixes=(), verify=True):
+    """Fill a field by label, falling back to id suffixes, then READ IT BACK.
+
+    Two lessons are baked in here.
+
+    (1) Not every field is reachable by label. The Credit Transaction date
+        inputs sit next to the hint text "Press down arrow to access Calendar",
+        NOT next to "Transaction Date" -- so a label-based fill silently
+        no-ops (measured on the ADGOV pod 2026-07-25).
+    (2) A silent no-op on a date is the worst outcome available: the form keeps
+        its default date and the credit memo posts to the wrong accounting
+        period, with nothing in the log to say so.
+
+    So this raises rather than returning False, and verifies the value landed.
+    """
+    ok = False
+    if label:
+        ok = _fill_label_real(page, label, value)
+    if not ok:
+        for suffix in id_suffixes:
+            if _fill_by_id_suffix(page, suffix, value):
+                ok = True
+                break
+    if not ok:
+        raise RuntimeError(
+            "could not fill %s -- tried label %r and id suffixes %s. Re-run "
+            "diag_ar.py: the form's ids or labels have changed."
+            % (what, label, list(id_suffixes)))
+    if verify:
+        got = _read_label_value(page, label) if label else None
+        if got is not None and got != "" and got.strip() != value.strip():
+            # ADF reformats some values (LOVs show the description, dates may
+            # be re-rendered) -- only flag when nothing resembling it landed
+            if value.strip() not in got and got not in value.strip():
+                raise RuntimeError("%s did not take: field shows %r, wanted %r"
+                                   % (what, got, value))
+    return True
 
 
 def _real_click(page, selectors, label, required=True):
@@ -605,13 +693,25 @@ def _stage_cm_create(run):
     time.sleep(12)
     _shot(page, "ar_2_credit_form.png")
 
-    _fill_label_real(page, LBL_TXN_NUMBER, cm["transactionNumber"])
-    _fill_label_real(page, LBL_TXN_DATE, _fusion_date(cm["transactionDate"]))
-    _fill_label_real(page, LBL_ACCT_DATE, _fusion_date(cm["accountingDate"]))
+    # Field ids harvested by diag_ar.py on the ADGOV pod 2026-07-25. The dates
+    # MUST go by id: their nearest label is the calendar hint text, so a
+    # label-based fill silently does nothing and the memo posts to the default
+    # period.
+    _fill_verified(page, "credit memo number", cm["transactionNumber"],
+                   label=LBL_TXN_NUMBER, id_suffixes=[":ap1:it1::content"])
+    _fill_verified(page, "CM transaction date", _fusion_date(cm["transactionDate"]),
+                   label=None, id_suffixes=[":ap1:id1::content"])
+    _fill_verified(page, "CM accounting date", _fusion_date(cm["accountingDate"]),
+                   label=None, id_suffixes=[":ap1:id2::content"])
     if cm["creditReason"]:
-        _fill_label_real(page, LBL_CREDIT_REASON, cm["creditReason"])
+        _fill_verified(page, "credit reason", cm["creditReason"],
+                       label=LBL_CREDIT_REASON,
+                       id_suffixes=[":ap1:selectOneChoice2::content"],
+                       verify=False)   # LOV redisplays the description
     if cm["comments"]:
-        _fill_label_real(page, LBL_COMMENTS, cm["comments"])
+        _fill_verified(page, "comments", cm["comments"],
+                       label=LBL_COMMENTS,
+                       id_suffixes=[":ap1:HdrComments::content"])
 
     _jsclick(page, SEL["credit_all"], "Credit Entire Balance")
     time.sleep(4)
@@ -719,6 +819,68 @@ def _stage_duplicate(run):
     return "DONE", None, "duplicate form opened (nothing committed yet)"
 
 
+# The Create Transaction (duplicate) line grid, harvested by diag_ar.py on the
+# ADGOV pod 2026-07-25. Rows are addressed by GRID INDEX (0-based), which is not
+# necessarily the invoice Line number -- so we read the memo line at each index
+# and match, rather than assuming row N-1 is line N.
+DUP_GRID = ":AT1:_ATp:table1:"
+DUP_COMP_MEMO = "memoLineNameId"
+DUP_COMP_TAX = "taxClassificationCodeId"
+
+JS_DUP_LINE_ROWS = """(args)=>{
+  const [grid, comp] = args;
+  const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
+  const out={};
+  document.querySelectorAll('[id]').forEach(el=>{
+    const i=el.id.indexOf(grid);
+    if(i<0)return;
+    const m=el.id.slice(i).match(new RegExp('^'+grid.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&')+'(\\\\d+):'+comp));
+    if(!m)return;
+    const v=(el.tagName==='INPUT'||el.tagName==='TEXTAREA')?el.value:norm(el.innerText);
+    if(v && !out[m[1]]) out[m[1]]=v;
+  });
+  return out;}"""
+
+
+def _dup_line_rows(page):
+    """{gridRowIndex: memoLineText} for the duplicate's line grid."""
+    try:
+        return page.evaluate(JS_DUP_LINE_ROWS, [DUP_GRID, DUP_COMP_MEMO]) or {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+def _dup_row_for_line(page, line):
+    """Grid row index for a requested line.
+
+    The request gives a Line NUMBER; the grid is addressed by row INDEX. They
+    usually differ by one, but never assume it -- match on the memo line, which
+    is exactly what the memoLine field is there to verify. Raises rather than
+    guessing, because the consequence of guessing is taxing the wrong line.
+    """
+    rows = _dup_line_rows(page)
+    if not rows:
+        raise RuntimeError("could not read the duplicate's line grid -- re-run "
+                           "diag_ar.py, the id scheme has changed")
+    want = line["memoLine"].strip().lower()
+    guess = str(line["lineNumber"] - 1)
+    if (rows.get(guess) or "").strip().lower() == want:
+        return guess
+    matches = [r for r, v in rows.items() if (v or "").strip().lower() == want]
+    if len(matches) == 1:
+        return matches[0]
+    if not matches:
+        raise RuntimeError(
+            "line %d: no row on the duplicate carries memo line %r (grid shows "
+            "%s) -- refusing to change a line that was not requested"
+            % (line["lineNumber"], line["memoLine"],
+               ", ".join(sorted(set(rows.values())))))
+    raise RuntimeError(
+        "line %d: memo line %r matches %d rows and row %s is not one of them, "
+        "so the correct row is ambiguous -- refusing to guess"
+        % (line["lineNumber"], line["memoLine"], len(matches), guess))
+
+
 JS_LINE_CELL = """(args)=>{
   const [lineNo, header] = args;
   const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
@@ -775,36 +937,44 @@ def _stage_dup_edit(run):
     page = run.page
     dup = run.p["duplicate"]
 
-    _fill_label_real(page, LBL_TXN_SOURCE, dup["transactionSource"])
+    # Field ids harvested by diag_ar.py 2026-07-25 (this form's components live
+    # under :TCF:0:ap1: and differ from the Credit Transaction form's).
+    _fill_verified(page, "duplicate transaction source", dup["transactionSource"],
+                   label=LBL_TXN_SOURCE,
+                   id_suffixes=[":ap1:batchSourceId::content"], verify=False)
     time.sleep(2)
-    _fill_label_real(page, LBL_TXN_DATE, _fusion_date(dup["transactionDate"]))
-    _fill_label_real(page, LBL_ACCT_DATE, _fusion_date(dup["accountingDate"]))
-    # the retry stamp: without it stage 5 cannot recognise its own duplicate
-    _fill_label_real(page, STAMP_FIELD,
-                     STAMP_TEMPLATE.format(invoice=run.invoice))
+    _fill_verified(page, "duplicate transaction date",
+                   _fusion_date(dup["transactionDate"]),
+                   label=None, id_suffixes=[":ap1:tdt::content"])
+    _fill_verified(page, "duplicate accounting date",
+                   _fusion_date(dup["accountingDate"]),
+                   label=None, id_suffixes=[":ap1:inputDate9::content"])
+
+    # The retry stamp lives in Comments, which is COLLAPSED behind "Show More"
+    # on this form -- without expanding it the field is not in the DOM and the
+    # stamp silently never lands, leaving a retry unable to recognise its own
+    # duplicate. Measured 2026-07-25.
+    _real_click(page, ['[id$=":ap1:showMore"]', 'a:text-is("Show More")'],
+                "Show More", required=False)
+    time.sleep(3)
+    _fill_verified(page, "retry stamp (%s)" % STAMP_FIELD,
+                   STAMP_TEMPLATE.format(invoice=run.invoice),
+                   label=STAMP_FIELD,
+                   id_suffixes=[":ap1:HdrComments::content",
+                                ":ap1:inputText1::content"])
 
     changed = []
     for line in run.p["lines"]:
-        _verify_memo_line(page, line)
         if not line["taxClassification"]:
             continue
-        cell = _line_cell(page, line["lineNumber"], "Tax Classification")
-        if not cell or not cell.get("id"):
-            raise RuntimeError("no Tax Classification control on line %d"
-                               % line["lineNumber"])
-        loc = page.locator('[id="%s"]' % cell["id"])
-        try:
-            loc.click(timeout=5000)
-            loc.fill("")
-            try:
-                loc.press_sequentially(line["taxClassification"], delay=30)
-            except AttributeError:  # older Playwright
-                loc.type(line["taxClassification"], delay=30)
-            page.keyboard.press("Tab")
-            time.sleep(2)
-        except Exception as e:  # noqa: BLE001
-            raise RuntimeError("could not set Tax Classification on line %d: %s"
-                               % (line["lineNumber"], str(e)[:120]))
+        # match the grid row by memo line -- never assume row == lineNumber-1
+        row = _dup_row_for_line(page, line)
+        if not _fill_by_id_suffix(page, "%s%s:%s::content"
+                                  % (DUP_GRID, row, DUP_COMP_TAX),
+                                  line["taxClassification"]):
+            raise RuntimeError("could not set Tax Classification on line %d "
+                               "(grid row %s)" % (line["lineNumber"], row))
+        time.sleep(2)
         changed.append(line["lineNumber"])
 
     _shot(page, "ar_6_duplicate_edited.png")
@@ -858,20 +1028,25 @@ def _stage_dup_capture(run):
 def _stage_dup_line_dff(run):
     """Per line: Details > Project + Task > Save and Close.
 
-    Runs on the COMPLETED invoice. Naturally idempotent -- a line already
-    carrying the target Project/Task is left alone, so a retry mid-way through
-    the lines does not redo the ones that are already coded.
+    Runs on the Create Transaction form, BEFORE Complete and Review (user
+    decision 2026-07-25). Two reasons this ordering is better: the whole saga
+    then has a single commit (Complete and Review) instead of edits applied to
+    an already-completed transaction, and the per-line Details icon on this
+    form has a confirmed id (`…:table1:<row>:commandImageLink110`, harvested
+    2026-07-25) whereas the completed-invoice grid did not yield one.
+
+    Idempotent: a line already carrying the target Project/Task is left alone,
+    so a retry part-way through the lines does not redo the coded ones.
     """
     page = run.page
     done, skipped = [], []
 
     for line in run.p["lines"]:
-        cell = _line_cell(page, line["lineNumber"], "Details")
-        if cell and cell.get("id"):
-            _jsclick(page, ['[id="%s"]' % cell["id"]],
-                     "Details icon line %d" % line["lineNumber"])
-        else:
-            # fall back to the generic Details icon selectors
+        row = _dup_row_for_line(page, line)   # memo-line verified, never guessed
+        if not _jsclick(page, ['[id$="%s%s:commandImageLink110"]' % (DUP_GRID, row),
+                               '[id*="%s%s:commandImageLink"]' % (DUP_GRID, row)],
+                        "Details icon line %d" % line["lineNumber"],
+                        required=False):
             _jsclick(page, SEL["line_details"],
                      "Details icon line %d" % line["lineNumber"])
         time.sleep(8)
@@ -888,12 +1063,18 @@ def _stage_dup_line_dff(run):
             time.sleep(5)
             continue
 
-        _fill_label_real(page, LBL_PROJECT, line["projectNumber"])
+        # raises if the labels are not on the drawer -- better a loud failure on
+        # the first dry run than lines silently left uncoded
+        _fill_verified(page, "line %d project" % line["lineNumber"],
+                       line["projectNumber"], label=LBL_PROJECT, verify=False)
         time.sleep(2)
-        _fill_label_real(page, LBL_TASK, line["taskNumber"])
+        _fill_verified(page, "line %d task" % line["lineNumber"],
+                       line["taskNumber"], label=LBL_TASK, verify=False)
         time.sleep(2)
-        _shot(page, "ar_9_line_%d_dff.png" % line["lineNumber"])
+        _shot(page, "ar_7_line_%d_dff.png" % line["lineNumber"])
 
+        # Save and Close commits the LINE into the in-progress transaction; the
+        # transaction itself is still uncommitted until Complete and Review.
         run.gate("Save and Close (line %d)" % line["lineNumber"])
         _jsclick(page, SEL["line_save_close"], "Save and Close")
         time.sleep(8)
@@ -906,6 +1087,9 @@ def _stage_dup_line_dff(run):
     return "DONE", None, note
 
 
+# Order matters twice over: resume_from() walks these numbers expecting 1..N
+# contiguous, and the DFF stage sits BEFORE the commit so the saga has exactly
+# one irreversible step (DUP_COMPLETE) rather than edits to a completed invoice.
 STAGES = [
     (1, "LOCATE",       _stage_locate),
     (2, "CM_CREATE",    _stage_cm_create),
@@ -913,9 +1097,9 @@ STAGES = [
     (4, "CM_CAPTURE",   _stage_cm_capture),
     (5, "DUPLICATE",    _stage_duplicate),
     (6, "DUP_EDIT",     _stage_dup_edit),
-    (7, "DUP_COMPLETE", _stage_dup_complete),
-    (8, "DUP_CAPTURE",  _stage_dup_capture),
-    (9, "DUP_LINE_DFF", _stage_dup_line_dff),
+    (7, "DUP_LINE_DFF", _stage_dup_line_dff),
+    (8, "DUP_COMPLETE", _stage_dup_complete),
+    (9, "DUP_CAPTURE",  _stage_dup_capture),
 ]
 
 

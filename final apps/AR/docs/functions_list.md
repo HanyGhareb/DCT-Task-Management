@@ -70,6 +70,25 @@ Auth + shell are shared (`shared/` layer). The app boots into the dashboard.
 
 ---
 
+## 9. AR Invoice Rebill — Fusion write-back (2026-07-25)
+
+**Invoice Rebill** (`arRebill`, AR_ADMIN) — submit and track VAT-correction rebill requests.
+Each request runs a nine-stage saga inside Oracle Fusion Receivables, performed by the ATD
+worker fleet (`otbi-atd/runner/actions/ar_invoice_rebill.py`): credit the invoice off in full →
+duplicate it → correct the Tax Classification on the nominated memo lines → set Project/Task on
+each line → complete the duplicate. Both generated document numbers come back to the
+register. Enqueue only — the page never talks to Fusion directly.
+- Single request: `submitSingle` · `resetForm` · `addLine` / `removeLine` · `cmNumberPlaceholder`
+  (defaults the credit memo number to `<invoice>CM`) · `lovLabel`.
+- Bulk upload (two-sheet Excel via SheetJS): `downloadTemplate` (Invoices + Lines sheets) ·
+  `chooseFile` (parse, group Lines onto their invoice, per-row validation) · `submitBulk`
+  (chunked enqueue, per-row `READY #id`) · `clearBulk` · `bulkValidCount` / `bulkErrorCount`.
+- Register: `loadRegister` · `applyFilters` · `nextPage` / `prevPage` · `statusClass` · `fmtDur`.
+- Stage timeline drawer: `openDetail` / `closeDetail` · `stageLabel` (EN/AR from the
+  `AR_REBILL_STAGE` lookup).
+
+---
+
 ## API Endpoints (ORDS)
 
 Module `ar.rest` · base path **`/ords/admin/ar/`** · defined in `final apps/AR/db/05_ar_ords.sql`.
@@ -92,6 +111,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | Settings & Providers | `GET settings/` · `PUT settings/` · `GET providers/` · `POST providers/` · `PUT providers/:id` · `DELETE providers/:id` |
 | Meta | `GET meta/lookups` |
 | AR Customers (db/10, ADDITIVE — re-run after any 05 re-run) | `GET customers/` · `POST customers/` · `GET customers/:id` · `PUT customers/:id` · `DELETE customers/:id` · `POST customers/:id/submit` · `POST customers/:id/sync` · `GET customers/wssearch` · `GET customers/lovs` · `GET customers/soapui-config` (AR_ADMIN) |
+| AR Invoice Rebill (db/11, ADDITIVE — re-run after any 05 re-run; all AR_ADMIN) | `POST rebill/requests` (bulk enqueue, ≤500 rows, per-row result) · `GET rebill/requests` (register) · `GET rebill/requests/:id` (request + 9-stage timeline) · `GET rebill/lovs` |
 
 ---
 
@@ -105,6 +125,7 @@ service in the SPA). All other calls hit `/ords/admin/ar/`.
 | `arService` | events, P&L lines, files, AI jobs, what-if, categories. |
 | `settingService` | module/system settings + AI providers. |
 | `arCustomerService` | AR Customer submissions CRUD + submit/sync + Fusion lookup + form LOVs. |
+| `rebillService` | AR Invoice Rebill: bulk enqueue, register, request detail + stage timeline, form value sets. |
 | `soapuiGen` | client-side Excel→SoapUI-project generator (wire catalog, parse/validate, envelope + project XML, template) — keep in sync with `AR/tools/soapui-customers/generate_soapui_customers.py`. |
 
 ---

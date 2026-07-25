@@ -87,9 +87,9 @@ BEGIN
   ensure_value(v_cat, 'CM_CAPTURE',    'Capture CM document no.',   N'التقاط رقم مستند الإشعار', 40);
   ensure_value(v_cat, 'DUPLICATE',     'Duplicate invoice',         N'نسخ الفاتورة',             50);
   ensure_value(v_cat, 'DUP_EDIT',      'Apply tax classification',  N'تطبيق التصنيف الضريبي',    60);
-  ensure_value(v_cat, 'DUP_COMPLETE',  'Complete duplicate',        N'إكمال الفاتورة الجديدة',   70);
-  ensure_value(v_cat, 'DUP_CAPTURE',   'Capture invoice document no.', N'التقاط رقم المستند',    80);
-  ensure_value(v_cat, 'DUP_LINE_DFF',  'Set project and task',      N'تحديد المشروع والمهمة',    90);
+  ensure_value(v_cat, 'DUP_COMPLETE',  'Complete duplicate',        N'إكمال الفاتورة الجديدة',   80);
+  ensure_value(v_cat, 'DUP_CAPTURE',   'Capture invoice document no.', N'التقاط رقم المستند',    90);
+  ensure_value(v_cat, 'DUP_LINE_DFF',  'Set project and task',      N'تحديد المشروع والمهمة',    70);
 
   COMMIT;
   DBMS_OUTPUT.put_line('AR_INVOICE_REBILL vocabularies seeded');

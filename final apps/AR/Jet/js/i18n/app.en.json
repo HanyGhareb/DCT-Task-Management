@@ -219,7 +219,7 @@
   "cust.genLibFail": "Could not load the spreadsheet library (SheetJS CDN).",
   "nav.arRebill": "Invoice Rebill",
   "ar.rebill.title": "AR Invoice Rebill",
-  "ar.rebill.hint": "Credits an invoice off in full, duplicates it, corrects the tax classification on the memo lines you nominate, completes the duplicate and sets Project/Task on each line — performed in Oracle Fusion by the worker fleet.",
+  "ar.rebill.hint": "Credits an invoice off in full, duplicates it, corrects the tax classification on the memo lines you nominate, sets Project/Task on each line and completes the duplicate — performed in Oracle Fusion by the worker fleet.",
   "ar.rebill.single.title": "New request",
   "ar.rebill.cm.title": "Credit memo",
   "ar.rebill.dup.title": "Duplicate invoice",

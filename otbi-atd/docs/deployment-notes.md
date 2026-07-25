@@ -1196,6 +1196,70 @@ flow replicated 1:1: My Projects → search Project Number → open project → 
   8. **After an LOV commit Fusion displays the DESCRIPTION, not the code** — read-back must
      accept the resolved display text captured at fill time (and the idempotency fast-path
      only triggers when the code is visible in the field).
+## Fusion Action #3 — `AR_INVOICE_REBILL` (AR invoice VAT rebill), 2026-07-25
+
+Third UI write-back action, and the first **multi-stage saga**. Replaces the manual Receivables
+flow: credit an invoice off in full → duplicate it → correct the Tax Classification on the
+nominated memo lines → set the Project/Task DFF on each line → complete the duplicate,
+capturing both generated **Document Numbers**. The DFF stage sits BEFORE the commit so the saga
+has exactly one irreversible step.
+
+- Handler `runner/actions/ar_invoice_rebill.py`; diagnostic `runner/diag_ar.py`.
+- DB: `db/52_atd_action_saga.sql` (`ATD_ACTION_STEP` + `ATD_ACTION_SAGA_PKG` +
+  `V_ATD_AR_REBILL_REQUEST`), `db/53_atd_action_ar_rebill.sql` (action type + vocabularies).
+- Submitted from the **AR app** (App 206) via `final apps/AR/db/11_ar_rebill_ords.sql`;
+  `/atd/` stays SYS_ADMIN-only.
+
+**Why a saga, not a single write.** AP_INVOICE and PPM_TASK_ADDL_INFO are single, naturally
+idempotent writes. This one CREATES two objects and COMPLETES them, and a completed credit memo
+cannot be un-completed in Fusion — only reversed. Every stage is checkpointed in
+`ATD_ACTION_STEP`; `resume_from()` returns one past the highest **contiguous** completed stage,
+so a later stage is never mistaken for done. Probes: the credit memo is found exactly via the
+grid's **Original Transaction Number** column (populated only on credit memos — nothing to
+stamp); the duplicate has no such link, so it is stamped `Rebill of <invoice>` in **Comments**.
+
+**PROD-only safety.** `ATD_AR_REBILL_ALLOW` (csv of invoice numbers) refuses any invoice not on
+the list; every committing click is gated on `ATD_ACTION_LIVE=1` **per stage**, not once at the
+end; `ATD_ACTION_STOP_AFTER=<stage>` steps through the saga.
+
+**ADF selector laws — additions from this build (laws 1-8 from Action #2 all still apply):**
+9. **`:has-text()` is a SUBSTRING match — use `:text-is()`.** `a:has-text("Actions")` matched the
+   topbar *"Settings and Actions"* first, and `a:has-text("INV00583863")` also matched
+   *INV00583863CM*, so the robot opened the credit memo believing it opened the invoice.
+10. **Never map grid headers onto `<td>`s by position.** The Manage Transactions grid splits
+    headers (`…table2::ch::t`) from data, and the page nests toolbars and saved-search menus in
+    tables too: a positional scraper returned **13 confident rows of menu text and zero
+    transactions**. Use the id scheme — data cells are `…:table2:<rowIndex>:<component>`
+    (`cl1` = Transaction Number, `cl3` = Original Transaction Number).
+11. **Prove a probe can read the page before trusting a negative.** "No credit memo found" and
+    "I could not read the grid" are indistinguishable and have opposite consequences. Every
+    probe first asserts it can see a row it KNOWS is there, and raises otherwise.
+12. **Not every field is reachable by label.** The Credit Transaction date inputs sit beside the
+    hint *"Press down arrow to access Calendar"*, not beside "Transaction Date" — a label-based
+    fill silently no-ops and the memo posts to the default accounting period. Fill by id suffix
+    and **read the value back**; a failed fill must raise, never return False.
+13. **ADF split buttons expose a `::popEl` dropdown arrow.** Save / Complete and Close /
+    Complete and Review each match twice; the `::popEl` one only opens a menu. Exclude it
+    (`:not([id$="::popEl"])`).
+14. **Menu entries can be `<td>` with empty ids**, and the menu itself needs a REAL pointer
+    click — a JS `el.click()` leaves the popup closed so the entries never enter the DOM.
+15. **Fields can be collapsed out of the DOM.** Comments on the Create Transaction form sits
+    behind *Show More*; expand it first or the write silently never lands.
+16. **Keep the diagnostic delegating to the handler's own navigation.** `diag_ar.py` briefly had
+    its own copies and "passed" while dumping the wrong page entirely.
+
+**Harvested ids (ADGOV pod, 2026-07-25).** Credit Transaction (`…:ap1:`): `it1` transaction
+number · `id1` transaction date · `id2` accounting date · `selectOneChoice2` credit reason ·
+`HdrComments` comments · `creditEntireBal` button. Duplicate / Create Transaction (`…:TCF:0:ap1:`):
+`batchSourceId` source · `tdt` transaction date · `inputDate9` accounting date · `showMore` ·
+line grid `AT1:_ATp:table1:<row>:memoLineNameId` / `:taxClassificationCodeId`. Search rail
+magnifier = `title="Search: Transactions"` (**never** bare `title="Search"` — that is the topbar).
+
+**Status: NOT yet run live.** Stages 1-2 entry verified read-only (navigate → search → opens the
+invoice not the CM → reads Document Number → both Actions entries reachable, 5/5); credit-memo
+probe verified against the real grid (3/3). The committing stages need a nominated scratch
+invoice and `ATD_AR_REBILL_ALLOW` set on the fleet.
+
 - **UI (2026-07-09, ATD APP_VERSION 1.20.0):** App 208 **"Manage Projects Org"** page (route
   `projectsOrg`) — single-row form + **Excel bulk upload** (SheetJS client-side parse + template
   download) + recent-actions list. Backed by additive **`otbi-atd/db/44_atd_ppm_org_ords.sql`**

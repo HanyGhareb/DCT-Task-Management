@@ -314,6 +314,40 @@ def _test_ar_invoice_rebill(env):
     finally:
         r._line_cell = real_cell
 
+    # ---- duplicate line-grid row matching -------------------------------
+    # The request names a LINE NUMBER; the ADF grid is addressed by ROW INDEX.
+    # They usually differ by one, but the sample invoice has two lines sharing
+    # the memo line "Entertainer Permit", so a wrong match taxes the wrong line.
+    grid = {"0": "Entertainer Permit",
+            "1": "Entertainer Permit",
+            "2": "Revenue fees from Urgent request"}
+    real_grid = r._dup_line_rows
+    try:
+        r._dup_line_rows = lambda p: grid
+        assert r._dup_row_for_line(None, {"lineNumber": 3,
+                                          "memoLine": "Revenue fees from Urgent request"}) == "2"
+        assert r._dup_row_for_line(None, {"lineNumber": 1,
+                                          "memoLine": "Entertainer Permit"}) == "0"
+        assert r._dup_row_for_line(None, {"lineNumber": 2,
+                                          "memoLine": "Entertainer Permit"}) == "1"
+        for line, want in (
+            ({"lineNumber": 1, "memoLine": "Something Else"}, "refusing to change"),
+            ({"lineNumber": 9, "memoLine": "Entertainer Permit"}, "refusing to guess"),
+        ):
+            try:
+                r._dup_row_for_line(None, line)
+                assert False, "must abort rather than guess: %r" % line
+            except RuntimeError as e:
+                assert want in str(e), "expected %r in %r" % (want, str(e))
+        r._dup_line_rows = lambda p: {}
+        try:
+            r._dup_row_for_line(None, {"lineNumber": 1, "memoLine": "x"})
+            assert False, "an unreadable grid must abort"
+        except RuntimeError as e:
+            assert "could not read" in str(e)
+    finally:
+        r._dup_line_rows = real_grid
+
     # ---- stage table: resume_from() assumes contiguous 1..N -------------
     nums = [n for n, _, _ in r.STAGES]
     assert nums == list(range(1, len(r.STAGES) + 1)), \

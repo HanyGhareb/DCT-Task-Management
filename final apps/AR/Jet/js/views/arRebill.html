@@ -31,7 +31,7 @@
       </div>
     </div>
 
-    <h3 class="section-subheading" data-bind="text: t('ar.rebill.cm.title')"></h3>
+    <h3 class="section-heading" data-bind="text: t('ar.rebill.cm.title')"></h3>
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label" data-bind="text: t('ar.rebill.f.cmNumber')"></label>
@@ -65,7 +65,7 @@
       </div>
     </div>
 
-    <h3 class="section-subheading" data-bind="text: t('ar.rebill.dup.title')"></h3>
+    <h3 class="section-heading" data-bind="text: t('ar.rebill.dup.title')"></h3>
     <div class="form-grid">
       <div class="form-group">
         <label class="form-label"><span data-bind="text: t('ar.rebill.f.dupSource')"></span> *</label>
@@ -82,7 +82,7 @@
     </div>
 
     <div class="section-heading-row" style="margin-top:14px;">
-      <h3 class="section-subheading" data-bind="text: t('ar.rebill.lines.title')"></h3>
+      <h3 class="section-heading" data-bind="text: t('ar.rebill.lines.title')"></h3>
       <div class="region-actions">
         <button class="btn btn-sm btn-secondary"
                 data-bind="click: addLine, text: t('ar.rebill.lines.add')"></button>
@@ -149,9 +149,9 @@
     <!-- ko if: bulkRows().length -->
     <div style="margin:10px 0;">
       <span class="badge" data-bind="text: bulkFileName"></span>
-      <span class="badge badge-success" data-bind="text: t('ar.rebill.bulk.valid', [bulkValidCount()])"></span>
+      <span class="badge badge--approved" data-bind="text: t('ar.rebill.bulk.valid', [bulkValidCount()])"></span>
       <!-- ko if: bulkErrorCount() -->
-      <span class="badge badge-danger" data-bind="text: t('ar.rebill.bulk.invalid', [bulkErrorCount()])"></span>
+      <span class="badge badge--rejected" data-bind="text: t('ar.rebill.bulk.invalid', [bulkErrorCount()])"></span>
       <!-- /ko -->
     </div>
     <div class="data-table-wrap">
@@ -173,7 +173,7 @@
             <td data-bind="text: $data.cmFinish"></td>
             <td>
               <!-- ko if: $data.error -->
-              <span class="badge badge-danger" data-bind="text: $data.error"></span>
+              <span class="badge badge--rejected" data-bind="text: $data.error"></span>
               <!-- /ko -->
               <!-- ko ifnot: $data.error -->
               <span data-bind="text: $data.status || ''"></span>
@@ -293,7 +293,7 @@
           </div>
         </div>
         <!-- ko if: $data.lastError -->
-        <div class="badge badge-danger" style="margin-bottom:10px; white-space:normal;"
+        <div class="badge badge--rejected" style="margin-bottom:10px; white-space:normal;"
              data-bind="text: $data.lastError"></div>
         <!-- /ko -->
         <div class="data-table-wrap">
