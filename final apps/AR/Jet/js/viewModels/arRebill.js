@@ -14,35 +14,24 @@ function (ko, rebill, i18n, toast, docUpload) {
 
   var CHUNK = 100;   // requests per POST (server caps at 500)
 
-  // Sheet 1 (Invoices) — header -> key
-  var INV_HEADERS = {
+  // ONE flat sheet, grouped by invoice number (user format 2026-07-26): each
+  // row is a LINE; the MEMO LINE is the matching key (no line numbers). The
+  // last two columns are RESULT columns — a row whose invoice already carries
+  // a CM/new-invoice number is done and is skipped, so the same running
+  // workbook can be re-uploaded as it fills up.
+  var FLAT_HEADERS = {
     INVOICE_NO: 'invoiceNumber', INVOICE_NUMBER: 'invoiceNumber',
-    CM_TXN_NO: 'cmTransactionNumber', CM_TRANSACTION_NUMBER: 'cmTransactionNumber',
-    CM_TXN_DATE: 'cmTransactionDate', CM_TRANSACTION_DATE: 'cmTransactionDate',
-    CM_ACCT_DATE: 'cmAccountingDate', CM_ACCOUNTING_DATE: 'cmAccountingDate',
-    CREDIT_REASON: 'creditReason',
-    COMMENTS: 'comments',
-    CM_FINISH: 'cmFinish', FINISH: 'cmFinish',
-    DUP_SOURCE: 'dupSource', DUPLICATE_SOURCE: 'dupSource',
-    TRANSACTION_SOURCE: 'dupSource',
-    DUP_TXN_DATE: 'dupTransactionDate', DUPLICATE_TRANSACTION_DATE: 'dupTransactionDate',
-    DUP_ACCT_DATE: 'dupAccountingDate', DUPLICATE_ACCOUNTING_DATE: 'dupAccountingDate'
-  };
-  // Sheet 2 (Lines) — header -> key
-  var LINE_HEADERS = {
-    INVOICE_NO: 'invoiceNumber', INVOICE_NUMBER: 'invoiceNumber',
-    LINE: 'lineNumber', LINE_NO: 'lineNumber', LINE_NUMBER: 'lineNumber',
     MEMO_LINE: 'memoLine',
-    TAX_CLASSIFICATION: 'taxClassification', TAX_CLASS: 'taxClassification',
     PROJECT: 'projectNumber', PROJECT_NO: 'projectNumber',
     PROJECT_NUMBER: 'projectNumber',
-    TASK: 'taskNumber', TASK_NO: 'taskNumber', TASK_NUMBER: 'taskNumber'
+    TASK: 'taskNumber', TASK_NO: 'taskNumber', TASK_NUMBER: 'taskNumber',
+    VAT_RATE_CODE: 'taxClassification',
+    TAX_CLASSIFICATION: 'taxClassification', TAX_CLASS: 'taxClassification',
+    LINE: 'lineNumber', LINE_NO: 'lineNumber', LINE_NUMBER: 'lineNumber',
+    CM_NUMBER: 'cmResult', NEW_INVOICE_NUMBER: 'invResult'
   };
-  var INV_TEMPLATE = ['INVOICE_NO', 'CM_TXN_NO', 'CM_TXN_DATE', 'CM_ACCT_DATE',
-                      'CREDIT_REASON', 'COMMENTS', 'CM_FINISH',
-                      'DUP_SOURCE', 'DUP_TXN_DATE', 'DUP_ACCT_DATE'];
-  var LINE_TEMPLATE = ['INVOICE_NO', 'LINE', 'MEMO_LINE', 'TAX_CLASSIFICATION',
-                       'PROJECT', 'TASK'];
+  var FLAT_TEMPLATE = ['Invoice Number', 'Memo Line', 'Project Number', 'Task',
+                       'VAT Rate Code', 'CM Number', 'New Invoice Number'];
 
   function normHeader(h) {
     return String(h || '').toUpperCase().trim()
@@ -152,8 +141,9 @@ function (ko, rebill, i18n, toast, docUpload) {
       if (!inv) { toast.error(self.t('ar.rebill.err.invoiceRequired')); return; }
       if (!lines.length) { toast.error(self.t('ar.rebill.err.linesRequired')); return; }
       for (var i = 0; i < lines.length; i++) {
-        if (!lines[i].lineNumber || !lines[i].memoLine ||
-            !lines[i].projectNumber || !lines[i].taskNumber) {
+        // memo line is the matching key; line number is optional
+        if (!lines[i].memoLine || !lines[i].projectNumber ||
+            !lines[i].taskNumber) {
           toast.error(self.t('ar.rebill.err.lineIncomplete', [i + 1]));
           return;
         }
@@ -203,39 +193,49 @@ function (ko, rebill, i18n, toast, docUpload) {
           accountingDate: toIso(h.dupAccountingDate)
         },
         lines: lines.map(function (l) {
-          return {
-            lineNumber: Number(l.lineNumber),
+          // the memo line is the matching key; lineNumber is an optional hint
+          var out = {
             memoLine: l.memoLine,
             taxClassification: l.taxClassification || '',
             projectNumber: l.projectNumber,
             taskNumber: l.taskNumber
           };
+          if (l.lineNumber) { out.lineNumber = Number(l.lineNumber); }
+          return out;
         })
       };
     }
 
-    // ---------------- bulk upload (two-sheet Excel) ----------------
+    // ---------------- bulk upload (ONE flat sheet, grouped by invoice) -----
     self.bulkRows = ko.observableArray([]);      // one entry per INVOICE
     self.bulkFileName = ko.observable('');
     self.bulkBusy = ko.observable(false);
+    // Batch defaults applied to every uploaded invoice: the sheet carries only
+    // the per-line data, so the CM/duplicate header comes from here (same date
+    // on all four date fields, auto-generated comments, source DCT Manual).
+    self.bulkDate   = ko.observable(isoToday);
+    self.bulkReason = ko.observable('Tax rate error');
+    self.bulkFinish = ko.observable('COMPLETE_AND_CLOSE');
     self.bulkValidCount = ko.computed(function () {
-      return self.bulkRows().filter(function (r) { return !r.error; }).length;
+      return self.bulkRows().filter(function (r) { return !r.error && !r.done; }).length;
     });
     self.bulkErrorCount = ko.computed(function () {
       return self.bulkRows().filter(function (r) { return !!r.error; }).length;
     });
+    self.bulkDoneCount = ko.computed(function () {
+      return self.bulkRows().filter(function (r) { return !!r.done; }).length;
+    });
 
-    function sheetRows(XLSX, wb, wanted, map) {
-      // find the sheet by name (case-insensitive), else fall back by position
-      var name = wb.SheetNames.filter(function (n) {
-        return n.toUpperCase().indexOf(wanted) >= 0;
-      })[0];
-      if (!name) { name = wb.SheetNames[wanted === 'INVOICE' ? 0 : 1]; }
+    function sheetRows(XLSX, wb, map) {
+      var name = wb.SheetNames[0];
       if (!name) { return null; }
       var aoa = XLSX.utils.sheet_to_json(wb.Sheets[name],
                   { header: 1, raw: false, defval: '' });
       if (!aoa.length) { return []; }
       var keys = aoa[0].map(function (h) { return map[normHeader(h)] || null; });
+      if (keys.indexOf('invoiceNumber') < 0 || keys.indexOf('memoLine') < 0) {
+        return null;                       // not the rebill sheet
+      }
       var out = [];
       for (var i = 1; i < aoa.length; i++) {
         var src = aoa[i];
@@ -251,46 +251,52 @@ function (ko, rebill, i18n, toast, docUpload) {
 
     function parseWorkbook(XLSX, buf) {
       var wb = XLSX.read(buf, { type: 'array', cellDates: true });
-      var invs = sheetRows(XLSX, wb, 'INVOICE', INV_HEADERS);
-      var lns  = sheetRows(XLSX, wb, 'LINE', LINE_HEADERS);
-      if (invs === null || lns === null) {
-        throw new Error(self.t('ar.rebill.bulk.needTwoSheets'));
-      }
-      if (!invs.length) { return []; }
+      var lns = sheetRows(XLSX, wb, FLAT_HEADERS);
+      if (lns === null) { throw new Error(self.t('ar.rebill.bulk.needCols')); }
+      if (!lns.length) { return []; }
 
-      // group the Lines sheet onto its invoice
-      var byInv = {};
+      // group rows by invoice, preserving first-seen order
+      var byInv = {}, order = [];
       lns.forEach(function (l) {
         var k = (l.invoiceNumber || '').toUpperCase();
         if (!k) { return; }
-        (byInv[k] = byInv[k] || []).push(l);
+        if (!byInv[k]) { byInv[k] = []; order.push(k); }
+        byInv[k].push(l);
       });
 
-      return invs.map(function (h, idx) {
-        var key = (h.invoiceNumber || '').toUpperCase();
-        var lines = byInv[key] || [];
+      var iso = toIso(self.bulkDate());
+      return order.map(function (key, idx) {
+        var lines = byInv[key];
+        var inv = lines[0].invoiceNumber;
+        // result columns filled = this invoice is already done — skip it so
+        // the running workbook can be re-uploaded whole
+        var done = lines.some(function (l) { return l.cmResult || l.invResult; });
         var err = '';
-        if (!h.invoiceNumber) {
-          err = self.t('ar.rebill.err.invoiceRequired');
-        } else if (!lines.length) {
-          err = self.t('ar.rebill.bulk.noLinesFor', [h.invoiceNumber]);
-        } else {
+        if (!done) {
           for (var i = 0; i < lines.length; i++) {
-            if (!lines[i].lineNumber || !lines[i].memoLine ||
-                !lines[i].projectNumber || !lines[i].taskNumber) {
-              err = self.t('ar.rebill.bulk.lineIncomplete',
-                           [lines[i].lineNumber || (i + 1)]);
+            if (!lines[i].memoLine || !lines[i].projectNumber ||
+                !lines[i].taskNumber) {
+              err = self.t('ar.rebill.bulk.lineIncomplete', [i + 1]);
               break;
             }
           }
         }
         return {
           row: idx + 1,
-          invoiceNumber: h.invoiceNumber || '',
+          invoiceNumber: inv,
           lineCount: lines.length,
-          cmFinish: (h.cmFinish || 'COMPLETE_AND_CLOSE').toUpperCase(),
-          _h: h, _lines: lines,
-          error: err, status: ''
+          cmFinish: (self.bulkFinish() || 'COMPLETE_AND_CLOSE').toUpperCase(),
+          _h: {
+            invoiceNumber: inv,
+            cmTransactionDate: iso, cmAccountingDate: iso,
+            creditReason: self.bulkReason() || '',
+            comments: 'Credit Inv# ' + inv + ' to correct TAX code',
+            cmFinish: self.bulkFinish(),
+            dupSource: 'DCT Manual',
+            dupTransactionDate: iso, dupAccountingDate: iso
+          },
+          _lines: lines,
+          error: err, done: done, status: ''
         };
       });
     }
@@ -315,24 +321,17 @@ function (ko, rebill, i18n, toast, docUpload) {
     self.downloadTemplate = function () {
       require(['xlsx'], function (XLSX) {
         var wb = XLSX.utils.book_new();
-        var inv = XLSX.utils.aoa_to_sheet([INV_TEMPLATE,
-          ['INV00583863', '', '2026-02-28', '2026-02-28', 'Tax rate error',
-           'Credit to correct the VAT code', 'COMPLETE_AND_CLOSE',
-           'DCT Manual', '2026-02-28', '2026-02-28']]);
-        inv['!cols'] = INV_TEMPLATE.map(function (h) {
-          return { wch: Math.max(h.length + 2, 16) };
-        });
-        XLSX.utils.book_append_sheet(wb, inv, 'Invoices');
-
-        var lines = XLSX.utils.aoa_to_sheet([LINE_TEMPLATE,
-          ['INV00583863', 1, 'Entertainer Permit', '', '4511000037', 'Entertainer Permit'],
-          ['INV00583863', 3, 'Revenue fees from Urgent request', 'VAT OUTPUT - STD',
-           '4511000037', 'Entertainer Permit']]);
-        lines['!cols'] = LINE_TEMPLATE.map(function (h) {
+        // one flat sheet, rows grouped by invoice; the last two columns are
+        // filled by the register once the request completes
+        var ws = XLSX.utils.aoa_to_sheet([FLAT_TEMPLATE,
+          ['INV00583863', 'Entertainer Permit', '4511000037',
+           'Entertainer Permit', 'VAT OUTPUT - OSC', '', ''],
+          ['INV00583863', 'Revenue fees from Urgent request', '4511000037',
+           'Urgent requests', 'VAT OUTPUT - STD', '', '']]);
+        ws['!cols'] = FLAT_TEMPLATE.map(function (h) {
           return { wch: Math.max(h.length + 2, 18) };
         });
-        XLSX.utils.book_append_sheet(wb, lines, 'Lines');
-
+        XLSX.utils.book_append_sheet(wb, ws, 'Rebill');
         XLSX.writeFile(wb, 'ar_invoice_rebill_template.xlsx');
       }, function () { toast.error(self.t('ar.rebill.bulk.libFail')); });
     };
@@ -341,7 +340,7 @@ function (ko, rebill, i18n, toast, docUpload) {
 
     self.submitBulk = function () {
       var all = self.bulkRows();
-      var valid = all.filter(function (r) { return !r.error; });
+      var valid = all.filter(function (r) { return !r.error && !r.done; });
       if (!valid.length || self.bulkBusy()) { return; }
       self.bulkBusy(true);
 

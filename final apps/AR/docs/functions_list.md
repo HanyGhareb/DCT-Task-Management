@@ -79,10 +79,17 @@ duplicate it → correct the Tax Classification on the nominated memo lines → 
 each line → complete the duplicate. Both generated document numbers come back to the
 register. Enqueue only — the page never talks to Fusion directly.
 - Single request: `submitSingle` · `resetForm` · `addLine` / `removeLine` · `cmNumberPlaceholder`
-  (defaults the credit memo number to `<invoice>CM`) · `lovLabel`.
-- Bulk upload (two-sheet Excel via SheetJS): `downloadTemplate` (Invoices + Lines sheets) ·
-  `chooseFile` (parse, group Lines onto their invoice, per-row validation) · `submitBulk`
-  (chunked enqueue, per-row `READY #id`) · `clearBulk` · `bulkValidCount` / `bulkErrorCount`.
+  (defaults the credit memo number to `<invoice>CM`) · `lovLabel`. The **memo line is the matching
+  key** (2026-07-26): the line number is optional everywhere and the fleet resolves the Fusion grid
+  row by memo line.
+- Bulk upload (**ONE flat sheet grouped by invoice number** via SheetJS, 2026-07-26): columns
+  `Invoice Number · Memo Line · Project Number · Task · VAT Rate Code · CM Number · New Invoice
+  Number` — the last two are RESULT columns, and an invoice whose results are already filled is
+  skipped, so the running workbook re-uploads whole. Header fields (dates / credit reason / finish)
+  come from the batch defaults (`bulkDate` / `bulkReason` / `bulkFinish`); comments auto-generate as
+  `Credit Inv# <n> to correct TAX code`, source is DCT Manual. `downloadTemplate` (flat sheet) ·
+  `chooseFile` (parse + group + per-row validation) · `submitBulk` (chunked enqueue, per-row
+  `READY #id`) · `clearBulk` · `bulkValidCount` / `bulkErrorCount` / `bulkDoneCount`.
 - Register: `loadRegister` · `applyFilters` · `nextPage` / `prevPage` · `statusClass` · `fmtDur`.
 - Stage timeline drawer: `openDetail` / `closeDetail` · `stageLabel` (EN/AR from the
   `AR_REBILL_STAGE` lookup).

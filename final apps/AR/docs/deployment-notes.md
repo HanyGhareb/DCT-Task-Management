@@ -54,6 +54,44 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+### 2026-07-26 — Rebill batch campaign + flat bulk template (APP_VERSION 4.9.0, webtier 20260726001613)
+
+**Six-invoice parallel batch across all three worker VMs — all 9/9.** Two invoices per VM,
+sequential per VM, detached (`run_rebill_batch.sh`, one ctl/screenshot dir per invoice). The user's
+running CSV workbook is the source of truth; payloads generated from it (`gen_payloads.py`).
+
+| Invoice | Credit memo doc | New invoice doc | VM |
+|---|---|---|---|
+| INV00583821 | 45110096155 | 45110096160 | vm180 |
+| INV00583637 | 45110096157 | 45110096163 | vm180 |
+| INV00584156 | 45110096156 | 45110096165 | vm181 |
+| INV00584327 | 45110096159 | 45110096162 | vm181 |
+| INV00584992 | 45110096158 | 45110096161 | vm182 |
+| INV00584064 | 45110096164 | 45110096166 | vm182 |
+
+- **Matching key is now the MEMO LINE (user rule):** `lineNumber` optional everywhere — runner
+  `validate_payload` (defaults to payload position, duplicate memo rejected as ambiguous), the ORDS
+  bridge (db/11 re-deployed), the JET form and bulk parser. The fleet resolves the Fusion grid row
+  by memo line only.
+- **ADF law 23 found + fixed mid-batch** (`_ensure_line_grid`): saving the FIRST line's drawer
+  commits the transaction and the page morphs to Edit Transaction (Distribution tab, sometimes
+  behind an info dialog) — a grid wait must dismiss the dialog and click the Invoice Lines tab, not
+  just wait. The three pre-fix starts failed loudly at stage 7 line 1 (guards worked — no wrong-line
+  writes) and resumed clean; every post-fix start ran 9/9 unattended. Law 22's fixes proven live on
+  both fresh (INV00584327) and resumed paths.
+- **Bulk template revised to the user's flat format:** ONE sheet grouped by invoice number —
+  `Invoice Number · Memo Line · Project Number · Task · VAT Rate Code · CM Number · New Invoice
+  Number`. The last two are RESULT columns: an invoice whose results are filled is **skipped**, so
+  the running workbook re-uploads whole. Header fields come from on-page batch defaults
+  (date/reason/finish); comments auto-generate; source DCT Manual. Old two-sheet format removed.
+- **vmxnet3 LRO/GRO mitigation applied + persisted on vm180-182** before the batch — zero panics
+  during it (vm181 had panicked twice in the preceding 3 hours).
+- AR dev-proxy now takes a port argument (`python dev-proxy.py 8127`), like Admin's.
+- Browser smoke `tests/rebill_browser_smoke.py` **17/17** (flat template headers, ready/skipped/
+  error badges, register + timeline, EN + AR/RTL, restore-EN). READ-ONLY: it never clicks Submit.
+- MFA note: worker session-refresh logins are per-VM pushes — read the number from the CURRENT
+  attempt's journal/`otbi_mfa_number.txt` (they expire and re-fire with a NEW number).
+
 ### 2026-07-25 — AR Invoice Rebill (Fusion write-back action #3), APP_VERSION 4.8.0
 
 Automates the manual VAT-correction flow in Fusion Receivables: credit an invoice off in full,

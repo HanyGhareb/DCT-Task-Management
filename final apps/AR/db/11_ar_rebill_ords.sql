@@ -186,13 +186,17 @@ BEGIN
                     p_path=>'rows[%d].lines[%d].projectNumber', p0=>i, p1=>j));
         l_task := TRIM(APEX_JSON.get_varchar2(
                     p_path=>'rows[%d].lines[%d].taskNumber', p0=>i, p1=>j));
-        IF l_lineno IS NULL OR l_lineno < 1 THEN
+        -- the MEMO LINE is the matching key (user rule 2026-07-26): the runner
+        -- resolves the grid row by memo line, never by position. lineNumber is
+        -- an optional hint and defaults to the payload position.
+        IF l_lineno IS NULL THEN l_lineno := j; END IF;
+        IF l_lineno < 1 THEN
           APEX_JSON.free_output;
           l_err := 'line ' || j || ': lineNumber must be a whole number >= 1'; RAISE e_row;
         END IF;
         IF l_memo IS NULL THEN
           APEX_JSON.free_output;
-          l_err := 'line ' || l_lineno || ': memoLine is required (it verifies the line number)';
+          l_err := 'line ' || l_lineno || ': memoLine is required (it is the matching key)';
           RAISE e_row;
         END IF;
         IF l_proj IS NULL OR l_task IS NULL THEN
