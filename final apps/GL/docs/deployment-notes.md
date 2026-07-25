@@ -12,9 +12,10 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    - `05_gl_ords.sql` — **own fresh session**. It DELETE_MODULEs gl.rest — **always re-run the
      ADDITIVE scripts `07` (butil), `08` (rebuild endpoint), `09` (mappings drill), `10`
      (actuals/lines doc numbers), `11` (butil Briefing-Book bridge), `12` (Projects
-     Encumbrances) and `13` (Encumbrances Pending Approval + its book bridge) right after any
-     05 re-run.** (09 and 10 are also source-synced into 05, so a full 05 re-run carries
-     their changes — re-running them is still harmless.)
+     Encumbrances), `13` (Encumbrances Pending Approval + its book bridge) and `14`
+     (Reconciliation endpoints) right after any 05 re-run.** (09 and 10 are also source-synced
+     into 05, so a full 05 re-run carries their changes — re-running them is still harmless.)
+     **Post-05 re-run list = 07..14.**
    - After a **structural** ATD reload (new/renamed columns): UI **Rebuild views** button
      (= `POST /gl/actuals/rebuild` → `prod.dct_views_rebuild`, db/v2/38) re-creates the base
      pass-throughs + recompiles + refreshes. If it reports views still invalid → edit/re-run the
@@ -1050,3 +1051,12 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
 - **Module-switcher label (SHARED)**: `shared/i18n/common.{en,ar}.json` `mod.gl` "General Ledger" → **Financial Planning and Budgeting** (+ desc rewritten). The shell fetches `common.<lang>.json?v=APP_VERSION`, so **every app's APP_VERSION was bumped +1 patch** (Admin 4.7.9, AP 1.13.6, AR 4.7.16, ATD 1.23.14, BI 1.10.21, CC 4.5.33, DT 4.5.32, FL 4.18.16, GL 1.42.1, HR 4.6.28, PC 4.5.32, TM 4.9.13) to force the switcher to refetch — this is why the whole fleet is redeployed.
 - **Classifications + Segment Mapping merged** into the Chart of Accounts page as Regions 2 & 3 (`coaClsOpen`/`coaMapOpen`, `loadCoa` loads all three sets once); their `view` ids + nav entries removed (`go()` redirects legacy ids → `overview`). Split the shared `loading` flag → `clsLoading` for the values table so it no longer cross-flickers with the Explorer table. Subscribe guards for `clsType`/`mapType` now fire on `view()==='overview'`.
 - Frontend + shared-i18n only, no DB/ORDS change. Browser-verified (4 CoA regions, values + mapping load, nav trimmed); recon regression 16/16.
+
+### 2026-07-25 — Reconciliation: loading spinner + KPI hints + KPI drill-downs (FP v1.42.2 → v1.42.4)
+- **v1.42.2 — loading spinner fix**: the `.bu-load-ov` (rotating oj-progress-circle, bound `visible:rcBusy`) is `position:absolute;inset:0` over `.bu-body`, but on first load both content sections (`rcSummary`/`rcLoaded`) are hidden so `.bu-body` collapsed to 0px and the overlay had nothing to fill → added `.bu-body.rc-loading{min-height:340px}` toggled by `rcBusy` (same pattern as the pending page's `.pn-loading`). Frontend only.
+- **v1.42.3 — info hints (ⓘ)**: 16 `hRc*` bilingual hint keys on the 3 region headers, all 5 KPI tiles, both chart titles, and the 6 register columns (native-title `hint-i` pattern). Added a generic `.hint-i` base rule + a light variant for the brand-gradient region header. Frontend only.
+- **v1.42.4 — KPI drill-downs (DB + frontend)**: every KPI tile figure now drills into the SHARED drill drawer.
+  - **DB `GL/db/14` (re-run in place; post-05 list = 07..14)**: (1) extended `/recon/drill` to accept `measure=all` (unions AP+GRN+PR+PO — branch WHEREs `l_meas IN ('all','xx')`, adds a **Source** column; the drill output columns were already unified so this was a small change); (2) NEW `/recon/budget?side=gl|ppm` handler returning Budget·Consumed·Fund per project-line (ppm, `DCT_BUDGET_UTILIZATION_V` — cols are `PROJECT_NUMBER`/`TASK_NUMBER`, NOT project/task) or per GL combination (gl). **GL-side Fund FULL-OUTER-JOINs consumption to budget on `cc_string`** — a LEFT JOIN drops consumption on un-budgeted combinations and GL Fund won't reconcile (tile GL fund = GL budget − TOTAL consumption 4.19B); the FULL JOIN also surfaces un-budgeted spend as negative-fund rows. Deployed via SQLcl (`sql -name prod_mcp`, space-free path per the `@`-with-space gotcha) — no MERGE, compiled clean.
+  - **Frontend**: `rcKpiDrill(bucket,titleKey)` (Coverage→matched, Non-project→no_project, Orphan→no_budget_line via `measure=all`) + `rcBudgetDrill(side,focus,titleKey)` (Budget/Fund GL & PPM sub-values; `focus` picks whether the reconciling drawer total is budget or fund). Tile figures rendered as `.rc-dl` drill links styled to match the original values. 10 new bilingual keys.
+  - **Verified live (year 2026)**: all 6 drills reconcile to their tiles to the riyal — Coverage 3,822,322,605 · Non-project 350,546,765 · Orphan 8,781,748 · GL budget 7,577,576,961 (consumed 4,192,192,832 / fund 3,385,384,129) · Project budget 7,553,471,219 (consumed 3,822,322,605 / fund 3,731,148,613). Browser smoke 22/24 (2 = pre-existing shared-i18n 404 under dev-proxy).
+- Webtier releases 20260725142721 (v1.42.2) → 20260725145450 (v1.42.3) → 20260725165107 (v1.42.4).

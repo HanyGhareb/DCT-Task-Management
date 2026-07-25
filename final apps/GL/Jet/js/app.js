@@ -216,6 +216,15 @@
     rcGr_program:{en:'DCT Program',ar:'برنامج الدائرة'}, rcGr_combination:{en:'GL Combination',ar:'التركيبة المحاسبية'},
     rcGr_budgetline:{en:'Project budget line',ar:'بند موازنة المشروع'},
     rcAllScope:{en:'All records in scope',ar:'كل السجلات في النطاق'},
+    rcAllMeasures:{en:'All measures · AP + GRN + PR + PO',ar:'كل المقاييس · موردون + استلام + طلبات + أوامر'},
+    rcGlLedger:{en:'GL ledger · GL_BALANCES (Expense, scoped chapters)',ar:'دفتر الأستاذ العام · الأرصدة (المصروفات، الأبواب المحددة)'},
+    rcPpmLedger:{en:'Project ledger · PROJECTS_BUDGET (PPM)',ar:'دفتر المشاريع · موازنة المشاريع'},
+    rcDrillMatched:{en:'Matched consumption (in both dashboards)',ar:'الاستهلاك المتطابق (في اللوحتين)'},
+    rcDrillGlBudget:{en:'GL budget lines',ar:'بنود الموازنة العامة'},
+    rcDrillPpmBudget:{en:'Project budget lines',ar:'بنود موازنة المشاريع'},
+    rcDrillGlFund:{en:'Fund available — GL budget',ar:'المتاح — الموازنة العامة'},
+    rcDrillPpmFund:{en:'Fund available — Project budget',ar:'المتاح — موازنة المشاريع'},
+    rcDrillHint:{en:'Click to see the source detail',ar:'انقر لعرض التفاصيل المصدر'},
     rcSecFilters:{en:'Search criteria',ar:'معايير البحث'}, rcSecStatus:{en:'Reconciliation status',ar:'حالة المطابقة'},
     rcSecRegister:{en:'Reconciliation register',ar:'سجل المطابقة'},
     rcBudgetChapters:{en:'GL budget chapters (Expense)',ar:'أبواب الموازنة العامة (المصروفات)'},
@@ -2317,6 +2326,35 @@
     };
     /* register cell → drill the selected measure + bucket for that row */
     self.rcCellDrill = function (row, bucket) { self.rcDrill(self.rcMeasureSel(), bucket, row); return true; };
+
+    /* KPI tile → cross-measure (all AP+GRN+PR+PO) source-doc drill for a bucket */
+    self.rcKpiDrill = function (bucket, titleKey) {
+      self.drillTitle(self.t(titleKey));
+      self.drillSub(self.t('rcAllMeasures'));
+      self.drillCtx(self.rcPeriod() ? self.t('ytd') + ' ' + self.rcPeriod() : String(self.rcYear()));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true); self.drillMax(false);
+      var p = Object.assign({}, self.rcParams(), { measure: 'all', bucket: bucket });
+      api('GET', '/recon/drill' + qs(p)).then(function (d) {
+        self.drillCols(d.columns || []); self.drillRows(d.rows || []); self.drillTotalV(d.total || 0); self.drillCount(d.count || 0); self.drillLoading(false);
+      }).catch(function (e) { self.drillLoading(false); self.drillDrawer(false); toast(e.message, true); });
+      return true;
+    };
+    /* Budget / Fund tile → per-ledger budget-line detail (side gl|ppm; focus budget|fund picks the reconciling total) */
+    self.rcBudgetDrill = function (side, focus, titleKey) {
+      self.drillTitle(self.t(titleKey));
+      self.drillSub(self.t(side === 'gl' ? 'rcGlLedger' : 'rcPpmLedger'));
+      self.drillCtx(self.rcPeriod() ? self.t('ytd') + ' ' + self.rcPeriod() : String(self.rcYear()));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true); self.drillMax(false);
+      var p = Object.assign({}, self.rcParams(), { side: side });
+      api('GET', '/recon/budget' + qs(p)).then(function (d) {
+        self.drillCols(d.columns || []); self.drillRows(d.rows || []);
+        self.drillTotalV(focus === 'fund' ? (d.fundTotal || 0) : (d.total || 0));
+        self.drillCount(d.count || 0); self.drillLoading(false);
+      }).catch(function (e) { self.drillLoading(false); self.drillDrawer(false); toast(e.message, true); });
+      return true;
+    };
 
     self.rcExportCsv = function () {
       var rows = self.rcRows(); if (!rows.length) return;

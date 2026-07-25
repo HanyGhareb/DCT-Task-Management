@@ -67,6 +67,28 @@ def main():
                     pg.evaluate("ko.dataFor(document.body).closeDrawer && ko.dataFor(document.body).closeDrawer()")
                 else:
                     ck(P + "drill link present", False)
+                # KPI-tile drill: click the Non-project tile value -> drawer with source rows
+                kpi = pg.locator(".rc-tile--np .rc-dl").first
+                if kpi.count():
+                    kpi.click()
+                    pg.wait_for_function("ko.dataFor(document.body).drillDrawer()===true", timeout=20000)
+                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=30000)
+                    krows = pg.evaluate("ko.dataFor(document.body).drillRows().length")
+                    kcols = pg.evaluate("ko.dataFor(document.body).drillCols().map(c=>c.key).join(',')")
+                    ck(P + "KPI non-project drill shows rows", krows > 0, "(%d)" % krows)
+                    ck(P + "KPI drill has Source column (measure=all)", "measure" in kcols, kcols)
+                    pg.evaluate("ko.dataFor(document.body).closeDrawer && ko.dataFor(document.body).closeDrawer()")
+                else:
+                    ck(P + "KPI drill link present", False)
+                # Budget tile drill (GL ledger)
+                bd = pg.locator(".rc-tile--budget .rc-dl").first
+                if bd.count():
+                    bd.click()
+                    pg.wait_for_function("ko.dataFor(document.body).drillLoading()===false", timeout=30000)
+                    ck(P + "Budget tile drill shows lines", pg.evaluate("ko.dataFor(document.body).drillRows().length") > 0)
+                    pg.evaluate("ko.dataFor(document.body).closeDrawer && ko.dataFor(document.body).closeDrawer()")
+                else:
+                    ck(P + "Budget drill link present", False)
                 # switch measure to PR + grain to combination, re-load rows
                 pg.evaluate("ko.dataFor(document.body).rcSetMeasure('pr')")
                 pg.evaluate("ko.dataFor(document.body).rcSetGrain('combination')")

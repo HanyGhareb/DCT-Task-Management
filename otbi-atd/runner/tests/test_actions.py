@@ -101,7 +101,254 @@ def main():
     # NOTE: like AP_INVOICE, the navigate/fill/save path needs Playwright and is
     # exercised by the HEADED smoke harness (smoke_ppm_task.py).
 
+    _test_ar_invoice_rebill(env)
+
     print("ALL ACTION UNIT TESTS PASSED")
+
+
+def _ar_payload(**over):
+    """A valid AR_INVOICE_REBILL payload, overridable per test."""
+    p = {
+        "invoiceNumber": "INV00583863",
+        "cm": {"transactionDate": "2026-02-28", "accountingDate": "2026-02-28",
+               "creditReason": "Tax rate error", "comments": "correcting VAT"},
+        "duplicate": {"transactionDate": "2026-02-28",
+                      "accountingDate": "2026-02-28"},
+        "lines": [{"lineNumber": 3, "memoLine": "Revenue fees",
+                   "taxClassification": "VAT OUTPUT - STD",
+                   "projectNumber": "4511000037", "taskNumber": "Entertainer Permit"},
+                  {"lineNumber": 1, "memoLine": "Entertainer Permit",
+                   "projectNumber": "4511000037", "taskNumber": "Entertainer Permit"}],
+    }
+    p.update(over)
+    return p
+
+
+def _test_ar_invoice_rebill(env):
+    from actions import ar_invoice_rebill as r  # noqa: E402
+
+    # ---- payload normalisation ------------------------------------------
+    p = r.validate_payload(_ar_payload())
+    assert p["cm"]["finish"] == "COMPLETE_AND_CLOSE", "finish defaults to complete"
+    assert p["cm"]["transactionNumber"] == "INV00583863CM", "CM number defaults"
+    assert p["duplicate"]["transactionSource"] == "DCT Manual", "source defaults"
+    assert [l["lineNumber"] for l in p["lines"]] == [1, 3], "lines sorted by number"
+    assert p["lines"][0]["taxClassification"] == "", "tax class optional per line"
+
+    # an explicit CM number and finish survive normalisation
+    p2 = r.validate_payload(_ar_payload(
+        cm={"transactionNumber": "MYCM-1", "finish": "save",
+            "transactionDate": "2026-02-28", "accountingDate": "2026-02-28"}))
+    assert p2["cm"]["transactionNumber"] == "MYCM-1"
+    assert p2["cm"]["finish"] == "SAVE", "finish is case-insensitive"
+
+    # ---- payload rejections ---------------------------------------------
+    bad = [
+        ({"invoiceNumber": ""}, "invoiceNumber"),
+        (_ar_payload(cm={"finish": "MAYBE", "transactionDate": "d",
+                         "accountingDate": "d"}), "cm.finish"),
+        (_ar_payload(cm={"transactionDate": "", "accountingDate": "d"}),
+         "cm.transactionDate"),
+        (_ar_payload(duplicate={"accountingDate": "d"}),
+         "duplicate.transactionDate"),
+        (_ar_payload(lines=[]), "at least one line"),
+        (_ar_payload(lines=[{"lineNumber": "x", "memoLine": "m",
+                             "projectNumber": "p", "taskNumber": "t"}]),
+         "whole number"),
+        (_ar_payload(lines=[{"lineNumber": 0, "memoLine": "m",
+                             "projectNumber": "p", "taskNumber": "t"}]), ">= 1"),
+        (_ar_payload(lines=[{"lineNumber": 1, "memoLine": "m",
+                             "projectNumber": "p", "taskNumber": "t"},
+                            {"lineNumber": 1, "memoLine": "m",
+                             "projectNumber": "p", "taskNumber": "t"}]),
+         "listed twice"),
+        (_ar_payload(lines=[{"lineNumber": 1, "projectNumber": "p",
+                             "taskNumber": "t"}]), "memoLine is required"),
+        (_ar_payload(lines=[{"lineNumber": 1, "memoLine": "m",
+                             "taskNumber": "t"}]), "projectNumber and taskNumber"),
+    ]
+    for payload, want in bad:
+        try:
+            r.validate_payload(payload)
+            assert False, "payload must be rejected (%s): %r" % (want, payload)
+        except RuntimeError as e:
+            assert want in str(e), "expected %r in %r" % (want, str(e))
+
+    # ---- the PROD allowlist guard ---------------------------------------
+    prev = os.environ.get("ATD_AR_REBILL_ALLOW")
+    try:
+        os.environ["ATD_AR_REBILL_ALLOW"] = "inv00583863 , OTHER-1"
+        r._check_allowlist("INV00583863")          # case-insensitive match
+        r._check_allowlist("other-1")
+        try:
+            r._check_allowlist("INV99999999")
+            assert False, "an off-list invoice must be refused"
+        except RuntimeError as e:
+            assert "not in ATD_AR_REBILL_ALLOW" in str(e)
+        os.environ.pop("ATD_AR_REBILL_ALLOW")
+        r._check_allowlist("ANYTHING")             # unset = go-live, no limit
+    finally:
+        if prev is None:
+            os.environ.pop("ATD_AR_REBILL_ALLOW", None)
+        else:
+            os.environ["ATD_AR_REBILL_ALLOW"] = prev
+
+    # ---- Fusion date handling -------------------------------------------
+    # Fusion's date fields are dd/mm/yyyy; the API speaks ISO. Getting this
+    # wrong is silent and expensive: 2026-03-04 typed raw has a valid but WRONG
+    # dd/mm reading, so it would post to the wrong accounting period.
+    assert r._fusion_date("2026-02-28") == "28/02/2026"
+    assert r._fusion_date("28/02/2026") == "28/02/2026", "already-Fusion passes through"
+    assert r._fusion_date("") == ""
+    p3 = r.validate_payload(_ar_payload())
+    assert p3["cm"]["transactionDate"] == "2026-02-28", "stored as given (ISO)"
+    for badpay, want in (
+        (_ar_payload(cm={"transactionDate": "28-02-2026", "accountingDate": "2026-02-28"}),
+         "cm.transactionDate must be"),
+        (_ar_payload(cm={"transactionDate": "2026-02-28", "accountingDate": "Feb 2026"}),
+         "cm.accountingDate must be"),
+        (_ar_payload(duplicate={"transactionDate": "2026/02/28",
+                                "accountingDate": "2026-02-28"}),
+         "duplicate.transactionDate must be"),
+    ):
+        try:
+            r.validate_payload(badpay)
+            assert False, "a malformed date must be rejected: %s" % want
+        except RuntimeError as e:
+            assert want in str(e), "expected %r in %r" % (want, str(e))
+
+    # ---- the results grid, keyed by the ADF id scheme -------------------
+    # Shape as diag_ar.py measured it on the ADGOV pod: {rowIndex: {comp: text}},
+    # cl1 = Transaction Number, cl3 = Original Transaction Number (credit memos
+    # only). A positional header->td scraper returned 13 rows of menu text here,
+    # which is why this is id-keyed.
+    grid = {"0": {r.GRID_TXN_NUMBER: "INV1"},
+            "1": {r.GRID_TXN_NUMBER: "INV1CM", r.GRID_ORIG_TXN: "INV1"}}
+
+    real_rows = r._grid_rows
+    try:
+        # readability assertion: the probe must SEE the invoice before it is
+        # allowed to answer "no credit memo"
+        r._grid_rows = lambda page: grid
+        assert r._grid_assert_readable(None, "inv1", "t") == grid
+        r._grid_rows = lambda page: {}
+        try:
+            r._grid_assert_readable(None, "INV1", "credit-memo probe")
+            assert False, "an unreadable grid must raise, never answer 'absent'"
+        except RuntimeError as e:
+            assert "cannot be trusted" in str(e)
+
+        # the probe that stops a duplicate credit memo
+        r._grid_rows = lambda page: grid
+        assert r._existing_credit_memo(None, "INV1") == "INV1CM"
+        # an invoice with no credit memo: readable grid, honest None
+        r._grid_rows = lambda page: {"0": {r.GRID_TXN_NUMBER: "INV2"}}
+        assert r._existing_credit_memo(None, "INV2") is None
+        # ...but if the grid cannot be read, it must RAISE rather than return
+        # None -- returning None here is what would create a second credit memo
+        r._grid_rows = lambda page: {"0": {r.GRID_TXN_NUMBER: "SOMETHINGELSE"}}
+        try:
+            r._existing_credit_memo(None, "INV2")
+            assert False, "a grid without the invoice must raise"
+        except RuntimeError as e:
+            assert "cannot be trusted" in str(e)
+    finally:
+        r._grid_rows = real_rows
+
+    # ---- the duplicate stamp probe --------------------------------------
+    real_rows = r._grid_rows
+    try:
+        stamp = r.STAMP_TEMPLATE.format(invoice="INV1")
+        r._grid_rows = lambda page: {"0": {r.GRID_TXN_NUMBER: "45110096148",
+                                           "cl9": "x " + stamp + " y"}}
+        assert r._existing_duplicate(None, "INV1") == "45110096148"
+        assert r._existing_duplicate(None, "INV2") is None
+    finally:
+        r._grid_rows = real_rows
+
+    # ---- retry guard on the invoice-creating commit ---------------------
+    # attempt > 1 with no confirmed duplicate must refuse rather than risk a
+    # second completed invoice
+    class _Saga:
+        def __init__(self, a):
+            self.attempt = a
+
+    run = r._Run(None, "b", r.validate_payload(_ar_payload()), _Saga(2))
+    try:
+        r._stage_dup_complete(run)
+        assert False, "a retry with no confirmed duplicate must refuse"
+    except RuntimeError as e:
+        assert "Refusing to complete a second invoice" in str(e)
+    run.new_txn_number = "45110096148"   # confirmed -> allowed past the guard
+    prev_live = os.environ.get("ATD_ACTION_LIVE")
+    try:
+        os.environ.pop("ATD_ACTION_LIVE", None)
+        try:
+            r._stage_dup_complete(run)
+            assert False, "should reach the dry-run gate, not the retry guard"
+        except DryRun:
+            pass
+    finally:
+        if prev_live is None:
+            os.environ.pop("ATD_ACTION_LIVE", None)
+        else:
+            os.environ["ATD_ACTION_LIVE"] = prev_live
+
+    # ---- memo-line verification stops the robot coding the wrong row ----
+    real_cell = r._line_cell
+    try:
+        r._line_cell = lambda page, no, hdr: {"text": "Entertainer Permit", "id": "x"}
+        assert r._verify_memo_line(None, {"lineNumber": 1,
+                                          "memoLine": "entertainer permit"})
+        try:
+            r._verify_memo_line(None, {"lineNumber": 1, "memoLine": "Something Else"})
+            assert False, "a memo-line mismatch must abort"
+        except RuntimeError as e:
+            assert "memo line mismatch" in str(e)
+        r._line_cell = lambda page, no, hdr: None
+        try:
+            r._verify_memo_line(None, {"lineNumber": 7, "memoLine": "m"})
+            assert False, "a missing line must abort"
+        except RuntimeError as e:
+            assert "not found on the duplicate" in str(e)
+    finally:
+        r._line_cell = real_cell
+
+    # ---- stage table: resume_from() assumes contiguous 1..N -------------
+    nums = [n for n, _, _ in r.STAGES]
+    assert nums == list(range(1, len(r.STAGES) + 1)), \
+        "stage numbers must be contiguous from 1 -- resume_from() walks them"
+    assert len({c for _, c, _ in r.STAGES}) == len(r.STAGES), \
+        "stage codes must be unique (they key ATD_ACTION_STEP)"
+
+    # ---- dry-run gate ---------------------------------------------------
+    prev_live = os.environ.get("ATD_ACTION_LIVE")
+    try:
+        os.environ.pop("ATD_ACTION_LIVE", None)
+        run = r._Run(None, "https://erp.example.com", r.validate_payload(_ar_payload()), None)
+        try:
+            run.gate("Complete and Close")
+            assert False, "the gate must raise DryRun when ATD_ACTION_LIVE is unset"
+        except DryRun as e:
+            assert "nothing committed" in str(e)
+        os.environ["ATD_ACTION_LIVE"] = "1"
+        run.gate("Complete and Close")   # live: no raise
+    finally:
+        if prev_live is None:
+            os.environ.pop("ATD_ACTION_LIVE", None)
+        else:
+            os.environ["ATD_ACTION_LIVE"] = prev_live
+
+    # ---- dispatch routes AR_INVOICE_REBILL (validation fires before any
+    #      browser work, so a bad payload never reaches Fusion) -----------
+    try:
+        actions.dispatch(None, env, {"action_type": "AR_INVOICE_REBILL",
+                                     "payload_json": "{}"})
+        assert False
+    except RuntimeError as e:
+        assert "AR_INVOICE_REBILL payload needs invoiceNumber" in str(e)
+
+    print("  AR_INVOICE_REBILL unit tests passed")
 
 
 if __name__ == "__main__":

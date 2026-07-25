@@ -1,0 +1,329 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('ar.rebill.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-secondary"
+              data-bind="click: downloadTemplate, text: t('ar.rebill.bulk.template')"></button>
+      <button class="btn btn-secondary"
+              data-bind="click: loadRegister, text: t('ar.rebill.refresh')"></button>
+    </div>
+  </div>
+
+  <div class="muted" style="margin-bottom:14px" data-bind="text: t('ar.rebill.hint')"></div>
+
+  <!-- ============ single request ============ -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('ar.rebill.single.title')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: resetForm, text: t('ar.rebill.reset')"></button>
+        <button class="btn btn-sm btn-primary"
+                data-bind="click: submitSingle, enable: !singleBusy(),
+                           text: singleBusy() ? t('ar.rebill.submitting') : t('ar.rebill.submit')"></button>
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('ar.rebill.f.invoice')"></span> *</label>
+        <input class="form-control mono" data-bind="textInput: fInvoice" placeholder="INV00583863">
+      </div>
+    </div>
+
+    <h3 class="section-subheading" data-bind="text: t('ar.rebill.cm.title')"></h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('ar.rebill.f.cmNumber')"></label>
+        <input class="form-control mono"
+               data-bind="textInput: fCmNumber, attr: { placeholder: cmNumberPlaceholder }">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('ar.rebill.f.cmTxnDate')"></span> *</label>
+        <input class="form-control" type="date" data-bind="textInput: fCmTxnDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('ar.rebill.f.cmAcctDate')"></span> *</label>
+        <input class="form-control" type="date" data-bind="textInput: fCmAcctDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('ar.rebill.f.creditReason')"></label>
+        <select class="form-control"
+                data-bind="value: fCreditReason, options: creditReasons,
+                           optionsValue: 'code', optionsText: $vm.lovLabel,
+                           optionsCaption: t('ar.rebill.selectOne')"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('ar.rebill.f.cmFinish')"></span> *</label>
+        <select class="form-control"
+                data-bind="value: fCmFinish, options: finishModes,
+                           optionsValue: 'code', optionsText: $vm.lovLabel"></select>
+      </div>
+      <div class="form-group" style="grid-column:1/-1;">
+        <label class="form-label" data-bind="text: t('ar.rebill.f.comments')"></label>
+        <textarea class="form-control" rows="2" data-bind="textInput: fComments"></textarea>
+      </div>
+    </div>
+
+    <h3 class="section-subheading" data-bind="text: t('ar.rebill.dup.title')"></h3>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('ar.rebill.f.dupSource')"></span> *</label>
+        <input class="form-control" data-bind="textInput: fDupSource" placeholder="DCT Manual">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('ar.rebill.f.dupTxnDate')"></span> *</label>
+        <input class="form-control" type="date" data-bind="textInput: fDupTxnDate">
+      </div>
+      <div class="form-group">
+        <label class="form-label"><span data-bind="text: t('ar.rebill.f.dupAcctDate')"></span> *</label>
+        <input class="form-control" type="date" data-bind="textInput: fDupAcctDate">
+      </div>
+    </div>
+
+    <div class="section-heading-row" style="margin-top:14px;">
+      <h3 class="section-subheading" data-bind="text: t('ar.rebill.lines.title')"></h3>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: addLine, text: t('ar.rebill.lines.add')"></button>
+      </div>
+    </div>
+    <div class="muted" style="margin-bottom:8px" data-bind="text: t('ar.rebill.lines.hint')"></div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th data-bind="text: t('ar.rebill.f.lineNo')"></th>
+            <th data-bind="text: t('ar.rebill.f.memoLine')"></th>
+            <th data-bind="text: t('ar.rebill.f.taxClass')"></th>
+            <th data-bind="text: t('ar.rebill.f.project')"></th>
+            <th data-bind="text: t('ar.rebill.f.task')"></th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: lines">
+          <tr>
+            <td><input class="form-control mono" style="width:80px"
+                       data-bind="textInput: $data.lineNumber"></td>
+            <td><input class="form-control" data-bind="textInput: $data.memoLine"></td>
+            <td>
+              <select class="form-control"
+                      data-bind="value: $data.taxClassification, options: $vm.taxClasses,
+                                 optionsValue: 'code', optionsText: $vm.lovLabel,
+                                 optionsCaption: $root.t('ar.rebill.taxNone')"></select>
+            </td>
+            <td><input class="form-control mono" data-bind="textInput: $data.projectNumber"></td>
+            <td><input class="form-control" data-bind="textInput: $data.taskNumber"></td>
+            <td>
+              <button class="btn btn-sm btn-secondary"
+                      data-bind="click: function () { $vm.removeLine($data); },
+                                 text: $root.t('ar.rebill.lines.remove')"></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- ============ bulk upload ============ -->
+  <div class="card" style="margin-bottom:18px;">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('ar.rebill.bulk.title')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: downloadTemplate, text: t('ar.rebill.bulk.template')"></button>
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: chooseFile, text: t('ar.rebill.bulk.choose')"></button>
+        <!-- ko if: bulkRows().length -->
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: clearBulk, text: t('ar.rebill.bulk.clear')"></button>
+        <button class="btn btn-sm btn-primary"
+                data-bind="click: submitBulk, enable: !bulkBusy() && bulkValidCount() > 0,
+                           text: bulkBusy() ? t('ar.rebill.submitting')
+                                            : t('ar.rebill.bulk.submit', [bulkValidCount()])"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="muted" data-bind="text: t('ar.rebill.bulk.hint')"></div>
+
+    <!-- ko if: bulkRows().length -->
+    <div style="margin:10px 0;">
+      <span class="badge" data-bind="text: bulkFileName"></span>
+      <span class="badge badge-success" data-bind="text: t('ar.rebill.bulk.valid', [bulkValidCount()])"></span>
+      <!-- ko if: bulkErrorCount() -->
+      <span class="badge badge-danger" data-bind="text: t('ar.rebill.bulk.invalid', [bulkErrorCount()])"></span>
+      <!-- /ko -->
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th data-bind="text: t('ar.rebill.f.invoice')"></th>
+            <th data-bind="text: t('ar.rebill.bulk.lineCount')"></th>
+            <th data-bind="text: t('ar.rebill.f.cmFinish')"></th>
+            <th data-bind="text: t('ar.rebill.col.result')"></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: bulkRows">
+          <tr>
+            <td data-bind="text: $data.row"></td>
+            <td class="mono" data-bind="text: $data.invoiceNumber"></td>
+            <td data-bind="text: $data.lineCount"></td>
+            <td data-bind="text: $data.cmFinish"></td>
+            <td>
+              <!-- ko if: $data.error -->
+              <span class="badge badge-danger" data-bind="text: $data.error"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.error -->
+              <span data-bind="text: $data.status || ''"></span>
+              <!-- /ko -->
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ============ register ============ -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: t('ar.rebill.register.title')"></h2>
+      <div class="region-actions">
+        <input class="form-control" style="width:200px" data-bind="textInput: fSearch,
+               attr: { placeholder: t('ar.rebill.register.search') }">
+        <select class="form-control" style="width:150px" data-bind="value: fStatus">
+          <option value="" data-bind="text: t('ar.rebill.register.allStatuses')"></option>
+          <option value="READY">READY</option>
+          <option value="CLAIMED">CLAIMED</option>
+          <option value="DONE">DONE</option>
+          <option value="FAILED">FAILED</option>
+          <option value="CANCELLED">CANCELLED</option>
+        </select>
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: applyFilters, text: t('ar.rebill.register.apply')"></button>
+      </div>
+    </div>
+
+    <!-- ko if: loading -->
+    <div class="empty-state" data-bind="text: t('ar.rebill.loading')"></div>
+    <!-- /ko -->
+
+    <!-- ko ifnot: loading -->
+    <!-- ko if: rows().length === 0 -->
+    <div class="empty-state" data-bind="text: t('ar.rebill.register.empty')"></div>
+    <!-- /ko -->
+
+    <!-- ko if: rows().length -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th data-bind="text: t('ar.rebill.f.invoice')"></th>
+            <th data-bind="text: t('ar.rebill.col.status')"></th>
+            <th data-bind="text: t('ar.rebill.col.stage')"></th>
+            <th data-bind="text: t('ar.rebill.col.cmDoc')"></th>
+            <th data-bind="text: t('ar.rebill.col.newInvoice')"></th>
+            <th data-bind="text: t('ar.rebill.col.submittedBy')"></th>
+            <th data-bind="text: t('ar.rebill.col.submittedAt')"></th>
+            <th data-bind="text: t('ar.rebill.col.duration')"></th>
+            <th data-bind="text: t('ar.rebill.col.worker')"></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: rows">
+          <tr style="cursor:pointer"
+              data-bind="click: function () { $vm.openDetail($data); }">
+            <td data-bind="text: $data.actionId"></td>
+            <td class="mono" data-bind="text: $data.invoiceNumber"></td>
+            <td><span data-bind="text: $data.runStatus,
+                                 attr: { 'class': $vm.statusClass($data.runStatus) }"></span></td>
+            <td data-bind="text: ($data.stagesDone || 0) + '/9 ' + ($data.currentStage || '')"></td>
+            <td class="mono" data-bind="text: $data.cmDocumentNumber || '—'"></td>
+            <td class="mono" data-bind="text: $data.newInvoiceNumber || '—'"></td>
+            <td data-bind="text: $data.submittedBy || '—'"></td>
+            <td data-bind="text: $data.submittedAt || '—'"></td>
+            <td data-bind="text: $vm.fmtDur($data.durationSecs)"></td>
+            <td data-bind="text: $data.workerVm || '—'"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="margin-top:10px; display:flex; gap:8px; align-items:center;">
+      <button class="btn btn-sm btn-secondary" data-bind="click: prevPage,
+              enable: offset() > 0, text: t('ar.rebill.register.prev')"></button>
+      <button class="btn btn-sm btn-secondary" data-bind="click: nextPage,
+              enable: offset() + limit() < total(), text: t('ar.rebill.register.next')"></button>
+      <span class="muted" data-bind="text: t('ar.rebill.register.showing',
+            [offset() + 1, Math.min(offset() + limit(), total()), total()])"></span>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
+  <!-- ============ stage timeline ============ -->
+  <!-- ko if: detailOpen -->
+  <div class="modal-overlay" data-bind="click: closeDetail">
+    <div class="modal-box" style="max-width:900px" data-bind="click: function () { return true; }">
+      <div class="modal-header">
+        <h2 data-bind="text: t('ar.rebill.detail.title')"></h2>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-secondary"
+                  data-bind="click: closeDetail, text: t('ar.rebill.close')"></button>
+        </div>
+      </div>
+      <div class="modal-body">
+        <!-- ko if: detailLoading -->
+        <div class="empty-state" data-bind="text: t('ar.rebill.loading')"></div>
+        <!-- /ko -->
+        <!-- ko with: detail -->
+        <div class="form-grid" style="margin-bottom:12px;">
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('ar.rebill.f.invoice')"></label>
+            <div class="mono" data-bind="text: $data.invoiceNumber"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('ar.rebill.col.cmDoc')"></label>
+            <div class="mono" data-bind="text: $data.cmDocumentNumber || '—'"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" data-bind="text: $root.t('ar.rebill.col.newInvoice')"></label>
+            <div class="mono" data-bind="text: $data.newInvoiceNumber || '—'"></div>
+          </div>
+        </div>
+        <!-- ko if: $data.lastError -->
+        <div class="badge badge-danger" style="margin-bottom:10px; white-space:normal;"
+             data-bind="text: $data.lastError"></div>
+        <!-- /ko -->
+        <div class="data-table-wrap">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th data-bind="text: $root.t('ar.rebill.detail.stage')"></th>
+                <th data-bind="text: $root.t('ar.rebill.col.status')"></th>
+                <th data-bind="text: $root.t('ar.rebill.detail.captured')"></th>
+                <th data-bind="text: $root.t('ar.rebill.detail.note')"></th>
+                <th data-bind="text: $root.t('ar.rebill.detail.finished')"></th>
+              </tr>
+            </thead>
+            <tbody data-bind="foreach: $data.stages">
+              <tr>
+                <td data-bind="text: $data.stageNo"></td>
+                <td data-bind="text: $vm.stageLabel($data)"></td>
+                <td><span data-bind="text: $data.status,
+                                     attr: { 'class': $vm.statusClass($data.status) }"></span></td>
+                <td class="mono" data-bind="text: $data.fusionRef || '—'"></td>
+                <td data-bind="text: $data.note || $data.lastError || '—'"></td>
+                <td data-bind="text: $data.finishedAt || '—'"></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+  <!-- /ko -->
+</div>
