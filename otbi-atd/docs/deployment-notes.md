@@ -1247,18 +1247,72 @@ end; `ATD_ACTION_STOP_AFTER=<stage>` steps through the saga.
     behind *Show More*; expand it first or the write silently never lands.
 16. **Keep the diagnostic delegating to the handler's own navigation.** `diag_ar.py` briefly had
     its own copies and "passed" while dumping the wrong page entirely.
+17. **An ADF control that LOOKS like a combo box may be a plain `<select>` — check the tag, not
+    the picture.** Credit Reason renders exactly like the LOV beside it but is a `<select>`.
+    Typing into it does not fail cleanly: on the first dry run (ADGOV pod, 2026-07-25) the
+    keystrokes landed in **Transaction Source**, opened its *Search and Select* dialog, and that
+    dialog then stole focus from the **Comments** textarea mid-typing, truncating it to
+    `Credit I`. **One mis-typed field corrupted three.** Select by option text
+    (`_select_option`), and raise listing the real options when nothing matches. `diag_ar.py`
+    now dumps a **SELECT DROPDOWNS** section for exactly this reason.
+18. **`locator.fill("")` does not reliably clear an ADF date field.** It re-asserts its previous
+    value on the focus/blur cycle `fill()` triggers, and the typed text merges with the
+    survivor: Accounting Date defaulting to `25/07/2026`, filled with `28/02/2026`, came out as
+    **`28/02/20262`** — a malformed date that posts the memo to the wrong period. Clear with a
+    real `Control+a` + `Delete`, then type.
+19. **Verify against the CONTROL, never the label's neighbour — and treat a prefix match as a
+    FAILURE.** The first `_fill_verified` only read the value next to a *label*, so every field
+    filled purely by id suffix was never checked at all. Both dates on this form are exactly
+    that case: their only nearby text is "Press down arrow to access Calendar". Read the element
+    by id, and reject a value that merely *starts with* what was typed — that is the signature
+    of a failed clear (law 18), and it is indistinguishable from success on a screenshot.
+20. **Only stage 1 navigates; every later stage must be able to navigate too.** Stages inherited
+    the page from the stage before, which holds for one clean pass and breaks on ANY resume — a
+    fleet retry after a worker restart, or a supervised run picking up mid-saga — because the
+    browser then opens cold on FuseWelcome with no search panel. `_search_transaction` takes the
+    apps base and re-navigates on demand.
+21. **A verified fill is not a permanent fill — Fusion can overwrite a header field AFTER you
+    verify it.** Saving an invoice LINE makes Fusion re-run the invoicing rule ("In Advance" on
+    these transactions), which re-derives the header **Accounting Date** from the line's Revenue
+    Scheduling *Start Date*. Measured end-to-end on 45110096152 (2026-07-25): stage 6 set and
+    verified 28/02/2026; stage 7 saved three line drawers; the invoice completed with 18/02/2026 —
+    the revenue-schedule start — and every stage reported DONE, because each one was individually
+    correct. Laws 18/19 harden the *typing*; they cannot see a later recalculation.
+    **Assert any header value that matters again at the LAST point before the commit**, after every
+    edit that could recalculate it (`_reassert_header_dates`). The accounting date picks the GL
+    period, so the guard raises rather than completing with a date nobody requested — the form is
+    uncommitted there, so a resume just rebuilds it at stage 5.
 
 **Harvested ids (ADGOV pod, 2026-07-25).** Credit Transaction (`…:ap1:`): `it1` transaction
-number · `id1` transaction date · `id2` accounting date · `selectOneChoice2` credit reason ·
-`HdrComments` comments · `creditEntireBal` button. Duplicate / Create Transaction (`…:TCF:0:ap1:`):
+number · `id1` transaction date · `id2` accounting date · `selectOneChoice2` credit reason
+(**a `<select>`, see law 17 — choose an option, never type**) · `HdrComments` comments ·
+`creditEntireBal` button · `batchsourceseq` Transaction Source (**prefilled `DCT_SYSTEM`; NOT
+ours to set — the handler asserts it was not overwritten before completing the memo**). Duplicate / Create Transaction (`…:TCF:0:ap1:`):
 `batchSourceId` source · `tdt` transaction date · `inputDate9` accounting date · `showMore` ·
 line grid `AT1:_ATp:table1:<row>:memoLineNameId` / `:taxClassificationCodeId`. Search rail
 magnifier = `title="Search: Transactions"` (**never** bare `title="Search"` — that is the topbar).
 
-**Status: NOT yet run live.** Stages 1-2 entry verified read-only (navigate → search → opens the
-invoice not the CM → reads Document Number → both Actions entries reachable, 5/5); credit-memo
-probe verified against the real grid (3/3). The committing stages need a nominated scratch
-invoice and `ATD_AR_REBILL_ALLOW` set on the fleet.
+**Status: RUN LIVE TWICE (2026-07-25).**
+
+| Run | Invoice | Credit memo doc | New invoice doc | Result |
+|---|---|---|---|---|
+| 1 (supervised, stage-by-stage) | INV00584150 | 45110096149 | 45110096150 | 9/9 after ~12 in-flight repairs; laws 9-20 came out of it |
+| 2 (**unattended `--auto`**) | INV00585046 | 45110096151 | **45110096152** | **9/9 clean, end-to-end 7:34**, zero interventions |
+
+Run 2 verified in Fusion: Status **Complete**, source *DCT Manual*, Tax **25.00** = 5% of the one
+`VAT OUTPUT - STD` line (the other two `VAT OUTPUT - EXEMPT`), Total 925.00, Project/Task set on
+all three lines. **One defect found: the Accounting Date completed as 18/02/2026, not the requested
+28/02/2026** — see law 21; guard added (`_reassert_header_dates`), **not yet exercised live**.
+
+Per-stage cost of run 2 (this is the number that decides whether bulk upload is viable):
+`LOCATE 58s · CM_CREATE 107s · CM_CONFIRM 6s · CM_CAPTURE 69s · DUPLICATE 80s · DUP_EDIT 21s ·
+DUP_LINE_DFF 89s · DUP_COMPLETE 21s · DUP_CAPTURE 7s` = 457s of stage time. ~212s of that is
+hard-coded `time.sleep`, so condition-based waits are the obvious next optimisation.
+
+**Unattended runs must be detached** (`systemd-run --unit=ar-rebill --setenv=HOME=/root`): an ssh
+disconnect SIGHUPs the run mid-saga, and stages 5-8 share ONE in-memory Create Transaction form.
+Note `env.sh` sets `TNS_ADMIN="$HOME/wallet"` — systemd-run has no `$HOME`, so without `--setenv`
+every DB call dies with `DPY-4026: /wallet/tnsnames.ora is missing`.
 
 - **UI (2026-07-09, ATD APP_VERSION 1.20.0):** App 208 **"Manage Projects Org"** page (route
   `projectsOrg`) — single-row form + **Excel bulk upload** (SheetJS client-side parse + template

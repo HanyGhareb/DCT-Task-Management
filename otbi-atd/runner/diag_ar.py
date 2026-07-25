@@ -121,6 +121,19 @@ JS_TABLES = """()=>{%s%s
   return out;}""" % (_VIS, _NORM)
 
 
+JS_SELECT_OPTIONS = """()=>{%s%s
+  const out=[];
+  document.querySelectorAll('select').forEach(sel=>{
+    if(!vis(sel))return;
+    let lab='';
+    if(sel.id){const l=document.querySelector('label[for="'+CSS.escape(sel.id)+'"]');
+               if(l)lab=norm(l.innerText);}
+    out.push({label:lab,id:sel.id||'',value:sel.value,
+              options:Array.from(sel.options).map(o=>o.text).slice(0,40)});
+  });
+  return out;}""" % (_VIS, _NORM)
+
+
 def dump(page, screen, extra=None):
     """Report everything a handler author needs for this screen."""
     print("\n" + "=" * 74)
@@ -134,6 +147,8 @@ def dump(page, screen, extra=None):
     for title, js in (("LABELLED INPUTS (label -> id)", JS_LABELED_INPUTS),
                       ("CLICKABLES (text | id | title)", JS_CLICKABLES),
                       ("TITLED / ICONS", JS_TITLED),
+                      ("SELECT DROPDOWNS (label | id | options)",
+                       JS_SELECT_OPTIONS),
                       ("TABLES (headers + id scheme)", JS_TABLES)):
         print("\n--- %s ---" % title)
         try:
@@ -278,7 +293,11 @@ def main():
     env = _env_from_db()
     base = _apps_base(env)
     with sync_playwright() as p:
-        browser, ctx = auth.authenticate(p, env, headless=True)
+        # Standing rule: ride the worker's existing session, never log in
+        # (a fresh login fires an MFA push and re-issues the cookies the
+        # fleet is using). See step_ar_rebill.attach_existing_session.
+        from step_ar_rebill import attach_existing_session
+        browser, ctx = attach_existing_session(p, env, headless=True)
         try:
             page = ctx.new_page()
             page.set_default_timeout(45000)

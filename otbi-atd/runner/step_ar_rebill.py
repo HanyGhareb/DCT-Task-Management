@@ -25,6 +25,13 @@ SAFETY
 
 USAGE
     python step_ar_rebill.py payload.json [--ctl /root/otbi-atd/runner/.ar_step]
+                                          [--auto]
+
+--auto runs every stage back-to-back with NO operator pause. Use it once the
+selectors are trusted for a shape of invoice; it is the same code path the
+fleet takes, minus the queue claim race. It still honours the allowlist and
+ATD_ACTION_LIVE, still checkpoints every stage, and still resumes from the
+checkpoint on a re-run -- the ONLY thing it removes is the wait.
 
 payload.json is one request in the API shape:
   {"invoiceNumber": "...",
@@ -66,6 +73,52 @@ def _env_from_db():
 
 
 OWNER = "supervised"
+
+
+def attach_existing_session(p, env, headless=True):
+    """Ride the session the worker VM ALREADY holds. Never start a new one.
+
+    Standing rule (user, 2026-07-25): always use the existing active session on
+    a worker; never initiate a login. Two reasons, both real here:
+
+      * a fresh login fires an MFA push that a human has to approve, which
+        stalls a supervised run mid-saga -- exactly when the browser must stay
+        alive, because stages 5-8 share ONE in-memory Create Transaction form;
+      * the fleet keeps one warm session per VM and the worker is using it.
+        Logging in again re-issues the cookies and can invalidate the session
+        the running extract jobs depend on.
+
+    auth.authenticate() would silently fall back to _login() when the saved
+    state fails to validate. Here that fallback is a DEFECT, so this attaches
+    to the saved state or stops with an instruction -- it never authenticates.
+    """
+    state = auth._state_path(env["env_name"])
+    if not state.exists():
+        raise SystemExit(
+            "no saved session at %s -- this VM has never authenticated. Run "
+            "the supervised rebill on a VM whose atd-worker holds a live "
+            "session; do NOT log in from here." % state)
+    browser = p.chromium.launch(headless=headless)
+    ctx = browser.new_context(storage_state=str(state),
+                              ignore_https_errors=True, accept_downloads=True)
+    if not auth._validate(ctx, env):
+        ctx.close()
+        browser.close()
+        # Clarified by the user 2026-07-25: reuse is mandatory only while a
+        # session is ALIVE -- once it has expired, logging in is the correct
+        # thing to do. So an expired session is not a hard stop; it just needs
+        # a human ready to approve the MFA push, which is why it is opt-in
+        # rather than automatic.
+        if os.environ.get("ATD_AR_ALLOW_LOGIN") == "1":
+            print("[session] saved session expired -- logging in fresh "
+                  "(ATD_AR_ALLOW_LOGIN=1). APPROVE THE MFA PUSH.", flush=True)
+            return auth.authenticate(p, env, headless=headless, force=True)
+        raise SystemExit(
+            "the saved session at %s has expired. Re-run with "
+            "ATD_AR_ALLOW_LOGIN=1 to log in fresh (fires an MFA push that "
+            "someone must approve), or refresh it on the worker. Either way "
+            "the saga resumes from its checkpoint." % state)
+    return browser, ctx
 
 
 def _enqueue(conn, payload, who="step.supervised"):
@@ -144,6 +197,7 @@ def main():
     if "--ctl" in sys.argv:
         ctl = sys.argv[sys.argv.index("--ctl") + 1]
     os.makedirs(ctl, exist_ok=True)
+    auto = "--auto" in sys.argv
 
     payload = ar.validate_payload(json.load(open(args[0])))
     ar._check_allowlist(payload["invoiceNumber"])       # hard refusal if off-list
@@ -166,14 +220,19 @@ def main():
                  l["taxClassification"] or "(unchanged)",
                  l["projectNumber"], l["taskNumber"]), flush=True)
     print("  control dir : %s" % ctl, flush=True)
+    print("  mode        : %s" % ("UNATTENDED (--auto, no stage pauses)" if auto
+                                  else "supervised (pause before each stage)"),
+          flush=True)
     print("=" * 70, flush=True)
+    t_wall = time.time()
+    timings = []
 
     conn = config.connect()
     try:
         action_id = _enqueue(conn, payload)
         print("ACTION_ID=%d" % action_id, flush=True)
         saga = ar._Saga(conn, action_id, "supervised", 1)
-        start = saga.resume_from()
+        start = ar.effective_start(saga, saga.resume_from())
         if start > 1:
             print("RESUMING at stage %d (earlier stages already checkpointed)"
                   % start, flush=True)
@@ -181,7 +240,7 @@ def main():
         env = _env_from_db()
         base = _apps_base(env)
         with sync_playwright() as p:
-            browser, ctx = auth.authenticate(p, env, headless=True)
+            browser, ctx = attach_existing_session(p, env, headless=True)
             try:
                 page = ctx.new_page()
                 page.set_default_timeout(45000)
@@ -196,11 +255,13 @@ def main():
                 for no, code, fn in ar.STAGES:
                     if no < start:
                         continue
-                    if no > 1 or start > 1:
+                    if (no > 1 or start > 1) and not auto:
                         _wait_for_go(ctl, no, code, conn, action_id)
 
                     print("-" * 70, flush=True)
-                    print("RUNNING stage %d %s" % (no, code), flush=True)
+                    print("RUNNING stage %d %s   [t+%s]"
+                          % (no, code, _hms(time.time() - t_wall)), flush=True)
+                    t_stage = time.time()
                     saga.begin(no, code)
                     shot = None
                     try:
@@ -215,13 +276,19 @@ def main():
                         return
                     except Exception as e:  # noqa: BLE001
                         saga.fail(code, e)
-                        print("STAGE-FAILED %d %s :: %s" % (no, code, e), flush=True)
+                        timings.append((no, code, "FAILED", time.time() - t_stage))
+                        print("STAGE-FAILED %d %s after %s :: %s"
+                              % (no, code, _hms(time.time() - t_stage), e),
+                              flush=True)
                         _write(ctl, no, code, "FAILED", str(e), None, page)
+                        _timing_table(timings, t_wall)
                         raise
                     saga.end(code, status, ref, note)
+                    timings.append((no, code, status, time.time() - t_stage))
                     shot = _write(ctl, no, code, status, note, ref, page)
-                    print("STAGE-DONE %d %s status=%s ref=%s :: %s"
-                          % (no, code, status, ref or "-", note), flush=True)
+                    print("STAGE-DONE %d %s status=%s ref=%s in %s :: %s"
+                          % (no, code, status, ref or "-",
+                             _hms(time.time() - t_stage), note), flush=True)
                     if shot:
                         print("  screenshot: %s" % shot, flush=True)
 
@@ -231,7 +298,7 @@ def main():
                                        [action_id, doc,
                                         "rebilled %s (credit memo %s)"
                                         % (payload["invoiceNumber"], cm or "n/a")])
-                print("=" * 70, flush=True)
+                _timing_table(timings, t_wall)
                 print("COMPLETE  new invoice document no = %s | credit memo "
                       "document no = %s" % (doc, cm), flush=True)
             finally:
@@ -241,6 +308,25 @@ def main():
             conn.close()
         except Exception:  # noqa: BLE001
             pass
+
+
+def _hms(secs):
+    secs = int(round(secs))
+    return "%d:%02d" % (secs // 60, secs % 60) if secs >= 60 else "%ds" % secs
+
+
+def _timing_table(timings, t_wall):
+    """End-to-end duration, per stage. This is the number that decides whether
+    the action is fast enough to run a bulk upload through, so print it even
+    when the run fails -- a stage that costs 90s is the finding either way."""
+    total = time.time() - t_wall
+    print("=" * 70, flush=True)
+    print("TIMING  (end-to-end %s)" % _hms(total), flush=True)
+    for no, code, status, secs in timings:
+        pct = (secs / total * 100.0) if total > 0 else 0.0
+        print("  %d %-14s %-8s %7s  %4.1f%%"
+              % (no, code, status, _hms(secs), pct), flush=True)
+    print("=" * 70, flush=True)
 
 
 def _write(ctl, no, code, status, note, ref, page):

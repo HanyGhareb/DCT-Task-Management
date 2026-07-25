@@ -86,8 +86,30 @@ Fusion — only reversed. Every stage is checkpointed in `ATD_ACTION_STEP` so a 
 4. Platform CSS has **no** `.section-subheading` / `.badge-success` / `.badge-danger` —
    use `.section-heading` and `.badge--approved` / `.badge--rejected`.
 
-**Not yet done:** the committing stages have not been run live; `ATD_AR_REBILL_ALLOW` must be set
-on the worker VMs and a disposable scratch invoice nominated before the first live run.
+**LIVE — two end-to-end runs (2026-07-25).**
+
+| Invoice | Credit memo doc | New invoice doc | Notes |
+|---|---|---|---|
+| INV00584150 | 45110096149 | 45110096150 | supervised stage-by-stage; ~12 defects found and fixed in flight |
+| INV00585046 | 45110096151 | **45110096152** | **unattended `--auto`, 9/9 clean, 7:34 end-to-end** |
+
+INV00585046 reconciles: original 900.00 with **Tax 0.00** (the coding error) → credit memo −900.00
+(entire balance) → new invoice 925.00 with **Tax 25.00** = 5% of the single `VAT OUTPUT - STD`
+line, other two `VAT OUTPUT - EXEMPT`, Project/Task on all three lines, Status Complete.
+
+**One open defect from that run:** the new invoice's **Accounting Date completed as 18/02/2026,
+not the requested 28/02/2026**. Stage 6 sets and verifies it correctly; stage 7's line-drawer
+saves make Fusion re-derive it from the line's Revenue Scheduling start date. A pre-commit
+re-assertion (`_reassert_header_dates`, ADF law 21) is deployed to the fleet with unit coverage
+but **has not yet been exercised live** — the next run proves it. Both dates land in the same GL
+period here, so this run's posting period is unaffected; the value is still wrong.
+
+**Before go-live:** remove `ATD_AR_REBILL_ALLOW` from `/root/otbi-atd/env.sh` on vm180-182, or
+every invoice except those two stays blocked.
+
+**Unattended runs must be detached** — `systemd-run --unit=ar-rebill --setenv=HOME=/root`. An ssh
+drop SIGHUPs the run, and stages 5-8 share one in-memory form. `--setenv=HOME` is required because
+`env.sh` sets `TNS_ADMIN="$HOME/wallet"`; without it every DB call fails `DPY-4026`.
 
 ### Earlier
 

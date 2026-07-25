@@ -113,18 +113,61 @@ SEL = {
     # Save / Complete and Close / Complete and Review are ADF SPLIT buttons: the
     # element whose id ends "::popEl" is the DROPDOWN ARROW, not the action.
     # Clicking it just opens a menu, so exclude it explicitly.
-    "cm_complete":    ['a:text-is("Complete and Close"):not([id$="::popEl"])',
+    # ID FIRST (ADF law 5). The text-only form matched NOTHING on the live
+    # ADGOV form 2026-07-25 even though the button was plainly visible: the
+    # anchor carrying the text has an EMPTY id and sits inside the split-button
+    # container `…:ap1:CompleteandClose`, and the only id-bearing anchor with
+    # that text is the `::popEl` dropdown arrow we must exclude. Targeting the
+    # container id is deterministic; the text forms stay as fallbacks.
+    "cm_complete":    ['[id$=":CompleteandClose"]:not([id$="::popEl"])',
+                       'a:text-is("Complete and Close"):not([id$="::popEl"])',
                        'button:text-is("Complete and Close"):not([id$="::popEl"])'],
     # "Save" must be exact too, or it matches "Save and Close"
-    "cm_save":        ['a:text-is("Save"):not([id$="::popEl"])',
+    "cm_save":        ['[id$=":saveMenu2"]:not([id$="::popEl"])',
+                       'a:text-is("Save"):not([id$="::popEl"])',
                        'button:text-is("Save"):not([id$="::popEl"])'],
-    "dup_complete":   ['a:text-is("Complete and Review"):not([id$="::popEl"])',
+    "dup_complete":   ['[id$=":dupTrx1"]:not([id$="::popEl"])',
+                       'a:text-is("Complete and Review"):not([id$="::popEl"])',
                        'button:text-is("Complete and Review"):not([id$="::popEl"])'],
+    # A RESUMED invoice is on the Edit Transaction page, whose completing split
+    # button is `newTrx` = "Complete and Create Another" -- there is no
+    # "Complete and Review" there at all (measured on 45100250002, 2026-07-25).
+    # It completes THIS transaction and then offers a fresh blank form, which we
+    # simply never fill, so no second invoice results.
+    "dup_complete_alt": ['[id$=":newTrx"]:not([id$="::popEl"])',
+                         'a:text-is("Complete and Create Another"):not([id$="::popEl"])'],
+    # The Edit Transaction page's completing action lives in the SPLIT MENU,
+    # not on the button face. Clicking the `::popEl` arrow opens
+    # "Complete and Review" / "Complete and Close" (user-supplied screenshot,
+    # 2026-07-25). Complete and Close is the one we want: it completes the
+    # invoice and returns, whereas the button face "Complete and Create
+    # Another" completes and then opens a blank new-transaction form.
+    "dup_menu_arrow":  ['[id$=":newTrx::popEl"]', '[id$=":dupTrx1::popEl"]'],
+    "dup_menu_close":  ['td:text-is("Complete and Close")',
+                        'a:text-is("Complete and Close")'],
+    # Preferred over Complete and Close: it leaves you ON the completed record,
+    # so the new Document Number can be READ rather than searched for. Fusion
+    # RENUMBERS the transaction on completion (45100250002 -> 45110096150), so
+    # a stage that searches for the pre-completion number finds nothing at all.
+    "dup_menu_review": ['td:text-is("Complete and Review")',
+                        'a:text-is("Complete and Review")'],
     "dialog_ok":      ['button:text-is("OK")', 'a:text-is("OK")'],
     "line_details":   ['[title="Details"]', 'a[id*="dffIL"]',
                        'img[title*="Detail" i]'],
-    "line_save_close": ['button:text-is("Save and Close")',
-                        'a:text-is("Save and Close")'],
+    # Same shape as cm_complete (law 5): the visible "Save and Close" in the
+    # Edit Invoice Line drawer is NOT a plain <button>/<a> carrying that text --
+    # both text selectors matched nothing on 2026-07-25 while the button sat
+    # plainly on screen. Try the ADF id leaves first, then widen the tag set
+    # beyond button/a, and let _resolve_click_target dump the real candidates
+    # if none hit.
+    "line_save_close": ['[id$=":SaveandClose"]:not([id$="::popEl"])',
+                        '[id$=":saveAndClose"]:not([id$="::popEl"])',
+                        '[id$=":sacButton"]:not([id$="::popEl"])',
+                        'button:text-is("Save and Close")',
+                        'a:text-is("Save and Close")',
+                        '[role="button"]:text-is("Save and Close")',
+                        'span:text-is("Save and Close")',
+                        'div:text-is("Save and Close")'],
 }
 
 
@@ -157,6 +200,29 @@ LBL_TASK         = "Task"
 # for the credit memo's explanatory note).
 STAMP_FIELD = "Comments"
 STAMP_TEMPLATE = "Rebill of {invoice}"
+
+# DISABLED by user decision 2026-07-25: do not write anything into a
+# customer-visible field on the new invoice. The Create Transaction header has
+# no Comments field at all (only Cross Reference; Comments lives on the
+# Miscellaneous tab), and finance does not want either one carrying a robot
+# marker.
+#
+# WHAT THIS COSTS: Fusion records NO link from a duplicate back to its source,
+# so without the stamp `_existing_duplicate` cannot prove whether a previous
+# attempt already completed one. The compensating control is in
+# _stage_dup_complete: on any attempt after the first it REFUSES to click
+# Complete and Review without a confirmed duplicate, and asks for a human to
+# check. That trades an automatic retry for a safe stop -- the right way round,
+# since the failure it prevents is a second live invoice for a customer.
+# Set ATD_AR_REBILL_STAMP=1 to re-enable.
+STAMP_ENABLED = os.environ.get("ATD_AR_REBILL_STAMP") == "1"
+
+# Applied to every line the request does NOT nominate for a tax classification.
+# Not cosmetic: a blank Tax Classification makes Fusion fall back to a default
+# that CHARGES VAT on the line (transaction 45100250002 came out at Tax 60.00
+# instead of 25.00 because two lines were left blank). User rule 2026-07-25.
+OTHER_TAX_CLASSIFICATION = os.environ.get("ATD_AR_REBILL_OTHER_TAX",
+                                          "VAT OUTPUT - EXEMPT")
 
 FINISH_SAVE = "SAVE"
 FINISH_COMPLETE = "COMPLETE_AND_CLOSE"
@@ -197,37 +263,232 @@ def _fusion_date(value):
     return v
 
 
-def _fill_by_id_suffix(page, suffix, value):
-    """Type into the first VISIBLE input whose id ENDS WITH suffix.
+_JS_VISIBLE_ID = """([suffix,tags])=>{
+  const vis=e=>e&&e.offsetParent!==null&&e.getBoundingClientRect().width>0;
+  for(const el of document.querySelectorAll(tags)){
+    if(el.id&&el.id.endsWith(suffix)&&vis(el))return el.id;
+  }
+  return null;}"""
+
+
+def _visible_id_by_suffix(page, suffix, tags="input,textarea"):
+    """Id of the first VISIBLE element of `tags` whose id ENDS WITH suffix.
 
     ADF ids carry a variable region/tab prefix (…:MTF1:<n>:pt1:r1:0:ap1:…) but a
-    stable component leaf, so the suffix is the deterministic part. Needed for
-    controls that cannot be found by label -- see _fill_verified.
+    stable component leaf, so the suffix is the deterministic part.
     """
-    js = """(suffix)=>{
-      const vis=e=>e&&e.offsetParent!==null&&e.getBoundingClientRect().width>0;
-      for(const el of document.querySelectorAll('input,textarea')){
-        if(el.id&&el.id.endsWith(suffix)&&vis(el))return el.id;
-      }
-      return null;}"""
     try:
-        iid = page.evaluate(js, suffix)
+        return page.evaluate(_JS_VISIBLE_ID, [suffix, tags])
     except Exception:  # noqa: BLE001
-        iid = None
+        return None
+
+
+def _read_by_id_suffix(page, suffix, tags="input,textarea,select"):
+    """Current .value of the visible control with this id suffix, or None.
+
+    Reading the CONTROL is the only honest verification. Reading the label's
+    neighbour (what _fill_verified used to do) tells you nothing when the fill
+    landed on a different field entirely -- which is exactly how "Tax rate
+    error" ended up in Transaction Source on 2026-07-25.
+    """
+    iid = _visible_id_by_suffix(page, suffix, tags)
     if not iid:
-        return False
-    loc = page.locator('[id="%s"]' % iid)
+        return None
     try:
-        loc.click(timeout=5000)
-        loc.fill("")
-        try:
-            loc.press_sequentially(value, delay=30)
-        except AttributeError:  # older Playwright
-            loc.type(value, delay=30)
-        page.keyboard.press("Tab")
-        return True
+        return page.evaluate("(id)=>{const e=document.getElementById(id);"
+                             "return e?(e.value||''):null;}", iid)
     except Exception:  # noqa: BLE001
-        return False
+        return None
+
+
+def _fill_by_id_suffix(page, suffix, value, attempts=3):
+    """Type into the first VISIBLE input whose id ENDS WITH suffix.
+
+    PROVE THE FIELD IS EMPTY BEFORE TYPING. Two separate ADF behaviours make a
+    naive clear-then-type merge the old value with the new one, and both were
+    measured on the ADGOV pod 2026-07-25 against the Accounting Date field
+    (default 25/07/2026, wanted 28/02/2026):
+
+      locator.fill("")            -> "28/02/20262"       (fill's focus/blur
+                                                          cycle re-asserts the
+                                                          old value)
+      Control+a, Delete, type     -> "28/02/20262/2026"  (ADF re-renders the
+                                                          input between the
+                                                          clear and the typing,
+                                                          so the keystrokes go
+                                                          to a fresh element
+                                                          still holding its
+                                                          default)
+
+    Neither is detectable from a screenshot, and both produce a date Fusion
+    will happily accept into the wrong period. So: re-locate the element every
+    attempt, clear it, READ IT BACK to confirm it is actually empty (falling
+    back to per-character Backspace when select-all did not take), only then
+    type, and verify. Retry the whole cycle -- an ADF re-render is transient,
+    and the second attempt almost always lands on a settled DOM.
+    """
+    for attempt in range(attempts):
+        iid = _visible_id_by_suffix(page, suffix)
+        if not iid:
+            return False
+        loc = page.locator('[id="%s"]' % iid)
+        try:
+            loc.click(timeout=5000)
+            page.keyboard.press("Control+a")
+            page.keyboard.press("Delete")
+            time.sleep(0.4)                      # let ADF settle/re-render
+            current = _read_by_id_suffix(page, suffix) or ""
+            if current:
+                # select-all did not take (or the element was swapped) --
+                # delete what is actually there, one character at a time
+                loc.click(timeout=5000)
+                page.keyboard.press("End")
+                for _ in range(len(current) + 4):
+                    page.keyboard.press("Backspace")
+                time.sleep(0.3)
+                current = _read_by_id_suffix(page, suffix) or ""
+            if current:
+                continue                          # still dirty -- try again
+            try:
+                loc.press_sequentially(value, delay=30)
+            except AttributeError:                # older Playwright
+                loc.type(value, delay=30)
+            page.keyboard.press("Tab")
+            time.sleep(0.5)
+            got = (_read_by_id_suffix(page, suffix) or "").strip()
+            if got == value.strip() or not got:
+                return True
+            # ADF may reformat (LOVs redisplay a description); accept only an
+            # exact-length-ish match, never a value that grew
+            if value.strip() in got and len(got) <= len(value.strip()):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(1)
+    return False
+
+
+JS_CLICK_BY_TEXT = """(args)=>{
+  const [want, prefer] = args;
+  const vis=e=>e&&e.offsetParent!==null&&e.getBoundingClientRect().width>0
+              &&e.getBoundingClientRect().height>0;
+  const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
+  const hits=[];
+  document.querySelectorAll('a,button,div,span,td').forEach(e=>{
+    if(!vis(e))return;
+    if(norm(e.innerText)!==want)return;
+    hits.push(e);
+  });
+  if(!hits.length)return null;
+  // prefer a real command element over the span that merely carries the label
+  let el=hits.find(e=>prefer.includes(e.tagName.toLowerCase()))||hits[0];
+  el.click();
+  return el.tagName.toLowerCase()+'#'+(el.id||'(none)');}"""
+
+
+def _click_by_text(page, text, what, prefer=("a", "button")):
+    """Click the visible element whose text EXACTLY equals `text`, via in-DOM
+    el.click(), bypassing the selector engine entirely.
+
+    Why this exists: on the Edit Invoice Line drawer 2026-07-25 the diagnostic
+    dump proved a VISIBLE `<a>` with text exactly "Save and Close" was present,
+    yet `a:text-is("Save and Close")` -- and the span form, and every id
+    variant -- matched nothing. ADF wraps the label in a nested span, and the
+    combination of that nesting with the drawer's markup defeats the CSS/text
+    engine. The DOM scan that FOUND the element is therefore also the thing
+    that should click it: no second guess about how to address it.
+
+    Returns "tag#id" of what it clicked, or None.
+    """
+    try:
+        return page.evaluate(JS_CLICK_BY_TEXT, [text, list(prefer)])
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _valid_doc_number(value):
+    """A document number is digits, 6-20 of them.
+
+    Guard against capturing a LABEL. On 2026-07-25 stage 9 read the column
+    header "Transaction Number", called it the document number and reported
+    DONE -- that string would have been written into the AR register as the
+    invoice's identifier. A capture that is not a number is a failure, exactly
+    as a malformed date is.
+    """
+    v = (value or "").strip()
+    return v.isdigit() and 6 <= len(v) <= 20
+
+
+def _resolve_click_target(page, selectors, what, keyword):
+    """Return the first selector that actually matches something VISIBLE.
+
+    Raises with a dump of the real candidates when none do. A committing click
+    is the worst place to discover a stale selector -- on 2026-07-25 the
+    text-only 'Complete and Close' selector matched nothing while the button
+    sat plainly visible on screen, and the failure said only "no matching
+    element", which cost a full re-open of the form to diagnose. Listing what
+    IS on the page turns the next such failure into an immediate answer.
+    """
+    for sel in selectors:
+        try:
+            loc = page.locator(sel)
+            for i in range(min(loc.count(), 12)):
+                if loc.nth(i).is_visible():
+                    return sel
+        except Exception:  # noqa: BLE001
+            continue
+    try:
+        found = page.evaluate(
+            """(kw)=>{
+              const vis=e=>e&&e.offsetParent!==null&&
+                          e.getBoundingClientRect().width>0;
+              const out=[];
+              document.querySelectorAll('a,button,div[role=button],span').forEach(e=>{
+                if(!vis(e))return;
+                const t=(e.innerText||'').replace(/\\s+/g,' ').trim();
+                if(t&&t.length<70&&t.toLowerCase().includes(kw.toLowerCase()))
+                  out.push(e.tagName.toLowerCase()+' id='+(e.id||'(none)')+
+                           ' text='+JSON.stringify(t));
+              });
+              return out.slice(0,12);}""", keyword)
+    except Exception:  # noqa: BLE001
+        found = []
+    raise RuntimeError(
+        "%s: none of %s matched a visible element. Visible controls containing "
+        "%r right now: %s" % (what, selectors, keyword,
+                              "; ".join(found) if found else "(none)"))
+
+
+def _select_option(page, suffix, what, wanted):
+    """Choose an option in an ADF <select> by its VISIBLE TEXT.
+
+    Credit Reason looks like a combo box but is a plain <select> (confirmed by
+    diag_ar.py on the ADGOV pod 2026-07-25). Typing into one is not merely
+    ineffective -- the keystrokes go somewhere. On the first dry run they
+    landed in Transaction Source, opened its "Search and Select" LOV dialog,
+    and that dialog then stole focus from the Comments textarea, truncating it
+    to "Credit I". One mis-typed field corrupted three.
+
+    Raises with the ACTUAL option list when nothing matches, so a wrong value
+    in the request is self-diagnosing instead of silently left blank.
+    """
+    iid = _visible_id_by_suffix(page, suffix, "select")
+    if not iid:
+        raise RuntimeError("could not find the %s dropdown (id suffix %s) -- "
+                           "re-run diag_ar.py creditform" % (what, suffix))
+    opts = page.evaluate(
+        "(id)=>Array.from(document.getElementById(id).options)"
+        ".map(o=>o.text)", iid) or []
+    target = (wanted or "").strip().lower()
+    for text in opts:
+        if (text or "").strip().lower() == target:
+            page.locator('[id="%s"]' % iid).select_option(label=text)
+            page.keyboard.press("Tab")
+            time.sleep(1)
+            return text
+    raise RuntimeError(
+        "%s %r is not one of the values Fusion offers: %s"
+        % (what, wanted, ", ".join(repr(o) for o in opts if o)))
 
 
 def _fill_verified(page, what, value, label=None, id_suffixes=(), verify=True):
@@ -246,26 +507,50 @@ def _fill_verified(page, what, value, label=None, id_suffixes=(), verify=True):
     So this raises rather than returning False, and verifies the value landed.
     """
     ok = False
+    used_suffix = None
     if label:
         ok = _fill_label_real(page, label, value)
     if not ok:
         for suffix in id_suffixes:
             if _fill_by_id_suffix(page, suffix, value):
                 ok = True
+                used_suffix = suffix
                 break
     if not ok:
         raise RuntimeError(
             "could not fill %s -- tried label %r and id suffixes %s. Re-run "
             "diag_ar.py: the form's ids or labels have changed."
             % (what, label, list(id_suffixes)))
-    if verify:
-        got = _read_label_value(page, label) if label else None
-        if got is not None and got != "" and got.strip() != value.strip():
-            # ADF reformats some values (LOVs show the description, dates may
-            # be re-rendered) -- only flag when nothing resembling it landed
-            if value.strip() not in got and got not in value.strip():
-                raise RuntimeError("%s did not take: field shows %r, wanted %r"
-                                   % (what, got, value))
+    if not verify:
+        return True
+
+    # Verify against the CONTROL ITSELF wherever we know its id. The previous
+    # version only ever read the LABEL's neighbour, so a field filled purely by
+    # id suffix -- every date on this form, because their only label is "Press
+    # down arrow to access Calendar" -- was never checked at all. That is how
+    # the malformed "28/02/20262" passed as filled (ADGOV pod, 2026-07-25).
+    got = None
+    for suffix in ([used_suffix] if used_suffix else list(id_suffixes)):
+        if suffix:
+            got = _read_by_id_suffix(page, suffix)
+            if got is not None:
+                break
+    if got is None and label:
+        got = _read_label_value(page, label)
+    if got is None or got == "":
+        return True
+    if got.strip() == value.strip():
+        return True
+    # ADF reformats some values (LOVs redisplay the description); accept a
+    # containment match, but never a value that merely STARTS with what we
+    # typed -- that is the signature of a failed clear.
+    if value.strip() in got.strip() and len(got.strip()) > len(value.strip()):
+        raise RuntimeError(
+            "%s did not clear before typing: field shows %r, wanted %r"
+            % (what, got, value))
+    if value.strip() not in got and got not in value.strip():
+        raise RuntimeError("%s did not take: field shows %r, wanted %r"
+                           % (what, got, value))
     return True
 
 
@@ -447,6 +732,10 @@ class _Saga:
         self._call("prod.atd_action_saga_pkg.fail_stage",
                    [self.action_id, code, str(err)[:4000]])
 
+    def done(self, code):
+        return (self._func("prod.atd_action_saga_pkg.stage_done", str,
+                           [self.action_id, code]) or "N") == "Y"
+
     def ref(self, code):
         return self._func("prod.atd_action_saga_pkg.stage_ref", str,
                           [self.action_id, code])
@@ -515,10 +804,23 @@ def _open_search_panel(page):
     return bool(_label_input_id(page, LBL_TXN_NUMBER))
 
 
-def _search_transaction(page, number):
+def _search_transaction(page, number, base=None):
     """Run the Billing transaction search. ADF law 3: REAL keystrokes -- a JS
     value-set leaves the ADF component state empty and the query runs unfiltered.
-    ADF law 4: clear any saved-search defaults that would over-constrain it."""
+    ADF law 4: clear any saved-search defaults that would over-constrain it.
+
+    `base` makes the search SELF-HEALING, and it is not optional in practice.
+    Only stage 1 navigates to Billing; every later stage inherited that page
+    from the stage before it. That holds for a clean single-process run and
+    breaks the moment the saga RESUMES -- a fleet retry after a worker restart,
+    or the supervised runner picking up at stage 2 -- because the browser then
+    opens cold on FuseWelcome with no search panel anywhere. Measured on the
+    ADGOV pod 2026-07-25: resuming at CM_CREATE died with "could not open the
+    Billing search panel". Navigating on demand costs one page load and makes
+    every searching stage independently resumable.
+    """
+    if not _open_search_panel(page) and base:
+        _goto_billing(page, base)
     if not _open_search_panel(page):
         raise RuntimeError("could not open the Billing search panel "
                            "(no %s input)" % LBL_TXN_NUMBER)
@@ -627,6 +929,29 @@ def _read_label_value(page, label):
 # ---------------------------------------------------------------------------
 # Stages
 # ---------------------------------------------------------------------------
+def effective_start(saga, start):
+    """Pull a resume back to DUPLICATE when the new invoice is not yet committed.
+
+    Stages 5-8 share ONE in-memory Create Transaction form: `Actions >
+    Duplicate` builds it in the browser and nothing exists in Fusion until
+    DUP_COMPLETE clicks Complete and Review. So a checkpoint of "DUPLICATE
+    DONE" does NOT mean the form still exists -- it only means it was opened
+    once, in a browser that has since exited.
+
+    resume_from() returns the first gap, which after a stage-6 failure is 6.
+    Starting there would edit a form that is not on screen and fail on every
+    field. Measured 2026-07-25: stage 6 died on the retry stamp, the process
+    exited, and the form went with it.
+
+    Once DUP_COMPLETE is done the invoice is REAL, so we must NOT rebuild the
+    form -- that is how a second invoice gets created. Hence the condition is
+    "not committed yet", never merely "start > 5".
+    """
+    if 5 < start <= 8 and not saga.done("DUP_COMPLETE"):
+        return 5
+    return start
+
+
 def _stage_locate(run):
     """Find the original invoice and open it. Not found is a clean business
     failure, not a crash."""
@@ -676,7 +1001,7 @@ def _stage_cm_create(run):
     cm = run.p["cm"]
 
     # probe: did an earlier attempt already raise the credit memo?
-    _search_transaction(page, run.invoice)
+    _search_transaction(page, run.invoice, run.base)
     existing = _existing_credit_memo(page, run.invoice)
     if existing:
         run.cm_txn_number = existing
@@ -703,15 +1028,39 @@ def _stage_cm_create(run):
                    label=None, id_suffixes=[":ap1:id1::content"])
     _fill_verified(page, "CM accounting date", _fusion_date(cm["accountingDate"]),
                    label=None, id_suffixes=[":ap1:id2::content"])
+    # Credit Reason is a <select>, NOT a text field or an LOV. Never type here:
+    # on the 2026-07-25 dry run a typed value went into Transaction Source,
+    # opened its Search-and-Select dialog, and the dialog stole focus from the
+    # Comments textarea mid-typing. Transaction Source itself is left strictly
+    # alone -- it arrives correct (DCT_SYSTEM) and is not ours to set.
     if cm["creditReason"]:
-        _fill_verified(page, "credit reason", cm["creditReason"],
-                       label=LBL_CREDIT_REASON,
-                       id_suffixes=[":ap1:selectOneChoice2::content"],
-                       verify=False)   # LOV redisplays the description
+        chosen = _select_option(page, ":ap1:selectOneChoice2::content",
+                                "credit reason", cm["creditReason"])
+        if chosen.strip().lower() != cm["creditReason"].strip().lower():
+            raise RuntimeError("credit reason resolved to %r, wanted %r"
+                               % (chosen, cm["creditReason"]))
+
+    # Comments last: it is the longest field, so it is the one that loses text
+    # if any earlier control opens a popup. Verified in full below.
     if cm["comments"]:
         _fill_verified(page, "comments", cm["comments"],
                        label=LBL_COMMENTS,
                        id_suffixes=[":ap1:HdrComments::content"])
+        got = _read_by_id_suffix(page, ":ap1:HdrComments::content")
+        if got is not None and got.strip() != cm["comments"].strip():
+            raise RuntimeError(
+                "comments were truncated: field holds %r (%d chars), wanted "
+                "%r (%d chars)" % (got, len(got or ""), cm["comments"],
+                                   len(cm["comments"])))
+
+    # The source must still be what Fusion prefilled -- proof that nothing
+    # leaked into it while the memo fields were being filled.
+    src = _read_by_id_suffix(page, ":ap1:batchsourceseq::content")
+    if src is not None and cm["creditReason"] \
+            and src.strip().lower() == cm["creditReason"].strip().lower():
+        raise RuntimeError(
+            "Transaction Source was overwritten with the credit reason (%r) -- "
+            "refusing to complete this credit memo" % src)
 
     _jsclick(page, SEL["credit_all"], "Credit Entire Balance")
     time.sleep(4)
@@ -719,10 +1068,16 @@ def _stage_cm_create(run):
 
     finishing = ("Complete and Close" if cm["finish"] == FINISH_COMPLETE
                  else "Save")
+    sels = (SEL["cm_complete"] if cm["finish"] == FINISH_COMPLETE
+            else SEL["cm_save"])
+    # Resolve the target BEFORE the gate, so a dry run proves the committing
+    # button is findable instead of discovering it is not on the live attempt.
+    sel = _resolve_click_target(page, sels, finishing,
+                                "Complete" if cm["finish"] == FINISH_COMPLETE
+                                else "Save")
     run.gate(finishing)
 
-    _jsclick(page, SEL["cm_complete"] if cm["finish"] == FINISH_COMPLETE
-             else SEL["cm_save"], finishing)
+    _jsclick(page, [sel], finishing)
     time.sleep(10)
 
     run.cm_txn_number = cm["transactionNumber"]
@@ -754,7 +1109,7 @@ def _stage_cm_capture(run):
     if not number:
         raise RuntimeError("no credit-memo transaction number to open")
 
-    _search_transaction(page, number)
+    _search_transaction(page, number, run.base)
     if not _jsclick(page, _txn_link(number), "open credit memo",
                     required=False):
         raise RuntimeError("could not open credit memo %s" % number)
@@ -782,6 +1137,12 @@ def _existing_duplicate(page, invoice):
     is why _stage_dup_complete refuses to re-complete on a later attempt rather
     than trusting a bare None.
     """
+    if not STAMP_ENABLED:
+        # No stamp is written, so this probe is INERT -- it cannot distinguish
+        # "no duplicate" from "duplicate exists, unmarked". Returning None is
+        # honest; the real guard is _stage_dup_complete refusing to complete on
+        # any attempt after the first without a confirmed duplicate.
+        return None
     stamp = STAMP_TEMPLATE.format(invoice=invoice).lower()
     for cells in _grid_rows(page).values():
         for text in cells.values():
@@ -800,7 +1161,31 @@ def _stage_duplicate(run):
     """
     page = run.page
 
-    _search_transaction(page, run.invoice)
+    # RESUME ONTO AN EXISTING DUPLICATE instead of building a second one.
+    # Saving a line (Save and Close) also SAVES THE TRANSACTION -- it becomes a
+    # real, Incomplete invoice with its own number even though Complete and
+    # Review has never run. Discovered the hard way on 2026-07-25: transaction
+    # 45100250002 existed while the saga still believed nothing was committed.
+    # Re-running stage 5 blindly would duplicate the original AGAIN and leave
+    # two invoices for one rebill, so an explicitly known number always wins.
+    # This is the idempotency the Comments stamp used to provide, done by exact
+    # identity instead of a marker in a customer-visible field.
+    resume_txn = (os.environ.get("ATD_AR_REBILL_RESUME_TXN") or "").strip() \
+        or (run.saga.ref("DUPLICATE") if run.saga else None)
+    if resume_txn:
+        _search_transaction(page, resume_txn, run.base)
+        if not _jsclick(page, _txn_link(resume_txn), "open existing duplicate",
+                        required=False):
+            raise RuntimeError(
+                "cannot reopen the existing duplicate %s -- refusing to build "
+                "another one. Check the transaction in Fusion." % resume_txn)
+        time.sleep(10)
+        run.new_txn_number = resume_txn
+        _shot(page, "ar_5_resumed_duplicate.png")
+        return "SKIPPED", resume_txn, ("resumed existing invoice %s (no second "
+                                       "duplicate created)" % resume_txn)
+
+    _search_transaction(page, run.invoice, run.base)
     # if a previous attempt already completed a duplicate, do not build another
     already = _existing_duplicate(page, run.invoice)
     if already:
@@ -827,6 +1212,13 @@ DUP_GRID = ":AT1:_ATp:table1:"
 DUP_COMP_MEMO = "memoLineNameId"
 DUP_COMP_TAX = "taxClassificationCodeId"
 
+# The id prefix `…table1:<row>:memoLineNameId` is shared by the row's INPUT and
+# by ADF's decorations for the same component -- the accessibility hint, the
+# label, the LOV icon. First-one-wins therefore picked up whichever came first
+# in document order, and on 2026-07-25 that was the hint: every row read back as
+# "Memo Line Autocompletes on TAB", no row matched the requested memo line, and
+# the stage refused to tax anything. The refusal was correct; the read was not.
+# A real field ALWAYS wins here, and decoration ids are skipped outright.
 JS_DUP_LINE_ROWS = """(args)=>{
   const [grid, comp] = args;
   const norm=s=>(s||'').replace(/\\s+/g,' ').trim();
@@ -834,10 +1226,15 @@ JS_DUP_LINE_ROWS = """(args)=>{
   document.querySelectorAll('[id]').forEach(el=>{
     const i=el.id.indexOf(grid);
     if(i<0)return;
-    const m=el.id.slice(i).match(new RegExp('^'+grid.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&')+'(\\\\d+):'+comp));
+    const tail=el.id.slice(i);
+    const m=tail.match(new RegExp('^'+grid.replace(/[.*+?^${}()|[\\]\\\\]/g,'\\\\$&')+'(\\\\d+):'+comp));
     if(!m)return;
-    const v=(el.tagName==='INPUT'||el.tagName==='TEXTAREA')?el.value:norm(el.innerText);
-    if(v && !out[m[1]]) out[m[1]]=v;
+    if(/::(hint|lbl|label|desc|lovIconId|popup|glyph)/.test(tail))return;
+    const isField=(el.tagName==='INPUT'||el.tagName==='TEXTAREA');
+    const v=isField?el.value:norm(el.innerText);
+    if(!v)return;
+    if(isField) out[m[1]]=v;                    // the control itself wins
+    else if(!(m[1] in out)) out[m[1]]=v;        // text only as a placeholder
   });
   return out;}"""
 
@@ -937,33 +1334,63 @@ def _stage_dup_edit(run):
     page = run.page
     dup = run.p["duplicate"]
 
-    # Field ids harvested by diag_ar.py 2026-07-25 (this form's components live
-    # under :TCF:0:ap1: and differ from the Credit Transaction form's).
-    _fill_verified(page, "duplicate transaction source", dup["transactionSource"],
-                   label=LBL_TXN_SOURCE,
-                   id_suffixes=[":ap1:batchSourceId::content"], verify=False)
-    time.sleep(2)
-    _fill_verified(page, "duplicate transaction date",
-                   _fusion_date(dup["transactionDate"]),
-                   label=None, id_suffixes=[":ap1:tdt::content"])
-    _fill_verified(page, "duplicate accounting date",
-                   _fusion_date(dup["accountingDate"]),
-                   label=None, id_suffixes=[":ap1:inputDate9::content"])
+    # On a RESUMED invoice the header is already correct and must be left
+    # alone. Two reasons, both learned on 45100250002 (2026-07-25): the Edit
+    # Transaction page uses DIFFERENT header ids from the Create Transaction
+    # form (`:ap1:tdt` does not exist there), and re-writing the dates would
+    # re-trigger the invoicing-rule recalculation that reset the accounting
+    # date in the first place. Only the line tax classifications still need
+    # applying.
+    if run.new_txn_number:
+        print("  [resume] header already set on %s -- editing lines only"
+              % run.new_txn_number, flush=True)
+    else:
+        # Field ids harvested by diag_ar.py 2026-07-25 (the Create Transaction
+        # form's components live under :TCF:0:ap1:).
+        _fill_verified(page, "duplicate transaction source",
+                       dup["transactionSource"], label=LBL_TXN_SOURCE,
+                       id_suffixes=[":ap1:batchSourceId::content"],
+                       verify=False)
+        time.sleep(2)
+        _fill_verified(page, "duplicate transaction date",
+                       _fusion_date(dup["transactionDate"]),
+                       label=None, id_suffixes=[":ap1:tdt::content"])
+        _fill_verified(page, "duplicate accounting date",
+                       _fusion_date(dup["accountingDate"]),
+                       label=None, id_suffixes=[":ap1:inputDate9::content"])
 
-    # The retry stamp lives in Comments, which is COLLAPSED behind "Show More"
-    # on this form -- without expanding it the field is not in the DOM and the
-    # stamp silently never lands, leaving a retry unable to recognise its own
-    # duplicate. Measured 2026-07-25.
-    _real_click(page, ['[id$=":ap1:showMore"]', 'a:text-is("Show More")'],
-                "Show More", required=False)
-    time.sleep(3)
-    _fill_verified(page, "retry stamp (%s)" % STAMP_FIELD,
-                   STAMP_TEMPLATE.format(invoice=run.invoice),
-                   label=STAMP_FIELD,
-                   id_suffixes=[":ap1:HdrComments::content",
-                                ":ap1:inputText1::content"])
+    # Retry stamp -- OFF by default (see STAMP_ENABLED): nothing is written to a
+    # customer-visible field. The Create Transaction HEADER has no Comments at
+    # all (Cross Reference only; Comments sits on the Miscellaneous tab), which
+    # is what this stage discovered on 2026-07-25.
+    if STAMP_ENABLED:
+        _real_click(page, ['[id$=":ap1:showMore"]', 'a:text-is("Show More")'],
+                    "Show More", required=False)
+        time.sleep(3)
+        _real_click(page, ['a:text-is("Miscellaneous")',
+                           'div[role="tab"]:text-is("Miscellaneous")'],
+                    "Miscellaneous tab", required=False)
+        time.sleep(3)
+        _fill_verified(page, "retry stamp (%s)" % STAMP_FIELD,
+                       STAMP_TEMPLATE.format(invoice=run.invoice),
+                       label=STAMP_FIELD,
+                       id_suffixes=[":ap1:HdrComments::content",
+                                    ":ap1:inputText1::content"])
+
+    # Make the line grid visible before touching it. A RESUMED invoice opens on
+    # the Edit Transaction page, which lands on the DISTRIBUTION tab (and may
+    # carry an Information dialog), so the grid is simply not on screen and
+    # every row lookup reads nothing. The freshly-duplicated Create form shows
+    # its lines already, where these clicks are harmless no-ops.
+    _jsclick(page, SEL["dialog_ok"], "dismiss info dialog", required=False)
+    time.sleep(2)
+    _jsclick(page, ['a[id$=":sdi3::disAcr"]', 'a:text-is("Invoice Lines")',
+                    'div[role="tab"]:text-is("Invoice Lines")'],
+             "Invoice Lines tab", required=False)
+    time.sleep(4)
 
     changed = []
+    taxed_rows = set()
     for line in run.p["lines"]:
         if not line["taxClassification"]:
             continue
@@ -975,11 +1402,86 @@ def _stage_dup_edit(run):
             raise RuntimeError("could not set Tax Classification on line %d "
                                "(grid row %s)" % (line["lineNumber"], row))
         time.sleep(2)
+        taxed_rows.add(str(row))
         changed.append(line["lineNumber"])
 
+    # EVERY OTHER LINE MUST BE EXPLICITLY EXEMPT (user rule 2026-07-25).
+    # A BLANK Tax Classification is not "no tax": Fusion falls back to a
+    # default and charges VAT on that line too. Measured on transaction
+    # 45100250002 -- only line 3 was set to VAT OUTPUT - STD, yet the invoice
+    # came out with Tax 60.00 = 5% of the FULL 1,200.00 instead of 25.00 = 5%
+    # of line 3's 500.00. Leaving a line blank silently over-taxes the customer.
+    exempted = []
+    for row in sorted(_dup_line_rows(page).keys(), key=lambda r: int(r)):
+        if str(row) in taxed_rows:
+            continue
+        if not _fill_by_id_suffix(page, "%s%s:%s::content"
+                                  % (DUP_GRID, row, DUP_COMP_TAX),
+                                  OTHER_TAX_CLASSIFICATION):
+            raise RuntimeError(
+                "could not set %r on grid row %s -- refusing to continue with "
+                "a blank Tax Classification, which would over-tax the invoice"
+                % (OTHER_TAX_CLASSIFICATION, row))
+        time.sleep(2)
+        exempted.append(row)
+
     _shot(page, "ar_6_duplicate_edited.png")
-    return "DONE", None, "tax classification set on lines %s" % (
-        ",".join(str(x) for x in changed) or "(none requested)")
+    return "DONE", None, "tax set on lines %s; %d other line(s) set %s" % (
+        ",".join(str(x) for x in changed) or "(none requested)",
+        len(exempted), OTHER_TAX_CLASSIFICATION)
+
+
+def _reassert_header_dates(run):
+    """Re-apply the header dates IMMEDIATELY before the commit, and verify.
+
+    WHY THIS EXISTS. Stage 6 sets Transaction Date and Accounting Date and
+    verifies both landed -- and they do. Then stage 7 opens each line's detail
+    drawer and saves it, and saving a line makes Fusion re-run the invoicing
+    rule ("In Advance" on these transactions), which RESETS the header
+    Accounting Date to the rule-derived value. Measured on 45110096152
+    (2026-07-25): 28/02/2026 at the end of stage 6, 18/02/2026 by the end of
+    stage 7, and that is the date the invoice completed with.
+
+    A verified fill is therefore not enough on its own -- the field can be
+    overwritten AFTER the verification by something we did not type. The only
+    safe point to assert a header value is after every edit that could
+    recalculate it, i.e. here.
+
+    The accounting date picks the GL period, so a wrong one is a real posting
+    error. This raises rather than completing an invoice with a date nobody
+    asked for; the form is uncommitted at this point, so a resume simply
+    rebuilds it at stage 5.
+    """
+    dup = run.p["duplicate"]
+    for what, wanted, suffix in (
+            ("transaction date", _fusion_date(dup["transactionDate"]),
+             ":ap1:tdt::content"),
+            ("accounting date", _fusion_date(dup["accountingDate"]),
+             ":ap1:inputDate9::content")):
+        got = _read_by_id_suffix(run.page, suffix)
+        if got is None:
+            # The Edit Transaction page (resume path) uses different header ids,
+            # so an unreadable field is expected there and must not block a
+            # resume -- but say so, loudly, rather than assuming it is fine.
+            print("  [dates] could not read %s (id %s) -- skipping the "
+                  "pre-commit check on this page" % (what, suffix), flush=True)
+            continue
+        if (got or "").strip() == wanted:
+            continue
+        print("  [dates] %s drifted to %r after the line edits (invoicing-rule "
+              "recalculation); re-setting to %r" % (what, got, wanted),
+              flush=True)
+        _fill_verified(run.page, "duplicate %s (re-assert)" % what, wanted,
+                       label=None, id_suffixes=[suffix])
+        time.sleep(2)
+        final = _read_by_id_suffix(run.page, suffix)
+        if (final or "").strip() != wanted:
+            raise RuntimeError(
+                "the duplicate's %s reads %r immediately before Complete, and "
+                "re-setting it to %r did not hold. Refusing to complete an "
+                "invoice with an accounting date nobody requested -- nothing "
+                "is committed yet, so re-running resumes from stage 5."
+                % (what, final, wanted))
 
 
 def _stage_dup_complete(run):
@@ -1004,11 +1506,68 @@ def _stage_dup_complete(run):
             "with atd_action_saga_pkg.reset_stages."
             % (attempt, STAMP_TEMPLATE.format(invoice=run.invoice)))
 
+    # LAST possible moment to catch a header value that Fusion recalculated
+    # behind us. Must run BEFORE run.gate(), so a dry run exercises it too.
+    _reassert_header_dates(run)
+
     run.gate("Complete and Review")
-    _jsclick(run.page, SEL["dup_complete"], "Complete and Review")
+    # Same two-step as the line drawer's Save and Close: selector engine first,
+    # then the exact-text DOM scan. This is THE irreversible click, so it must
+    # not fail merely because ADF nests the label in a span (2026-07-25).
+    clicked = None
+
+    # PREFERRED PATH on a resumed (Edit Transaction) invoice: open the split
+    # menu and choose "Complete and Close". Tried FIRST because the button face
+    # next to it is "Complete and Create Another", which also completes but
+    # then leaves a blank Create Transaction form open.
+    _real_click(run.page, SEL["dup_menu_arrow"], "complete split-menu arrow",
+                required=False)
+    time.sleep(3)
+    for label, key in (("Complete and Review", "dup_menu_review"),
+                       ("Complete and Close", "dup_menu_close")):
+        for sel in SEL[key]:
+            if _jsclick(run.page, [sel], label, required=False):
+                clicked = "%s via %s" % (label, sel)
+                break
+        if not clicked and _click_by_text(run.page, label, label,
+                                          prefer=("td", "a", "button")):
+            clicked = "%s via text scan" % label
+        if clicked:
+            break
+
+    for label, key in (() if clicked else
+                       (("Complete and Review", "dup_complete"),
+                        ("Complete and Create Another", "dup_complete_alt"))):
+        for sel in SEL[key]:
+            if _jsclick(run.page, [sel], label, required=False):
+                clicked = "%s via %s" % (label, sel)
+                break
+        if not clicked:
+            if _click_by_text(run.page, label, label):
+                clicked = "%s via text scan" % label
+        if clicked:
+            print("  [commit] %s" % clicked, flush=True)
+            break
+    if not clicked:
+        raise RuntimeError(
+            "neither 'Complete and Review' nor 'Complete and Create Another' "
+            "was clickable -- the invoice is NOT completed.")
     time.sleep(15)
     _shot(run.page, "ar_7_duplicate_completed.png")
-    return "DONE", None, "duplicate completed"
+
+    # Read the new number NOW, while we are still on the record. Fusion
+    # renumbers on completion, so the number this run has been carrying is
+    # already dead -- searching for it afterwards returns nothing (measured
+    # 2026-07-25: 45100250002 -> 45110096150). Stage 9 falls back to a search
+    # only if this read misses.
+    doc = _read_label_value(run.page, LBL_DOC_NUMBER)
+    txn = _read_label_value(run.page, LBL_TXN_NUMBER)
+    if _valid_doc_number(doc):
+        run.new_doc_number = doc
+    if _valid_doc_number(txn):
+        run.new_txn_number = txn
+    return "DONE", run.new_txn_number, ("duplicate completed%s"
+        % (" as %s" % run.new_txn_number if run.new_txn_number else ""))
 
 
 def _stage_dup_capture(run):
@@ -1016,11 +1575,28 @@ def _stage_dup_capture(run):
     page = run.page
     _jsclick(page, SEL["dialog_ok"], "confirmation OK", required=False)
     time.sleep(6)
-    doc = _read_label_value(page, LBL_DOC_NUMBER)
+
+    # 1) whatever stage 8 read off the completed record (the reliable source)
+    doc = run.new_doc_number
+    # 2) else read the page we are on
+    if not _valid_doc_number(doc):
+        doc = _read_label_value(page, LBL_DOC_NUMBER)
+    # 3) else re-find the record by its POST-completion number
+    if not _valid_doc_number(doc) and run.new_txn_number:
+        _search_transaction(page, run.new_txn_number, run.base)
+        if _jsclick(page, _txn_link(run.new_txn_number), "open new invoice",
+                    required=False):
+            time.sleep(10)
+            doc = _read_label_value(page, LBL_DOC_NUMBER)
     _shot(page, "ar_8_new_invoice.png")
-    if not doc:
-        raise RuntimeError("the completed duplicate carries no %s"
-                           % LBL_DOC_NUMBER)
+
+    if not _valid_doc_number(doc):
+        raise RuntimeError(
+            "could not capture a valid document number for the new invoice "
+            "(read %r). REFUSING to record it: the invoice IS completed in "
+            "Fusion, so find it under transaction %s and record the number by "
+            "hand rather than trusting this value."
+            % (doc, run.new_txn_number or "(unknown)"))
     run.new_doc_number = doc
     return "DONE", doc, "new invoice document number %s" % doc
 
@@ -1042,6 +1618,19 @@ def _stage_dup_line_dff(run):
     done, skipped = [], []
 
     for line in run.p["lines"]:
+        # Saving a line RETURNS to Edit Transaction, and Fusion may raise an
+        # Information dialog ("...the accounting date has been reset...") and
+        # leave the Distribution tab selected. Both hide the line grid, so the
+        # next line's row lookup reads nothing and the stage stops. Measured
+        # 2026-07-25 after line 1 saved successfully. Re-assert the context
+        # before every line rather than assuming the page came back as we left
+        # it -- ADF rarely does.
+        _jsclick(page, SEL["dialog_ok"], "dismiss info dialog", required=False)
+        time.sleep(2)
+        _jsclick(page, ['a[id$=":sdi3::disAcr"]', 'a:text-is("Invoice Lines")',
+                        'div[role="tab"]:text-is("Invoice Lines")'],
+                 "Invoice Lines tab", required=False)
+        time.sleep(3)
         row = _dup_row_for_line(page, line)   # memo-line verified, never guessed
         if not _jsclick(page, ['[id$="%s%s:commandImageLink110"]' % (DUP_GRID, row),
                                '[id*="%s%s:commandImageLink"]' % (DUP_GRID, row)],
@@ -1076,7 +1665,21 @@ def _stage_dup_line_dff(run):
         # Save and Close commits the LINE into the in-progress transaction; the
         # transaction itself is still uncommitted until Complete and Review.
         run.gate("Save and Close (line %d)" % line["lineNumber"])
-        _jsclick(page, SEL["line_save_close"], "Save and Close")
+        # Selector engine first (deterministic ids when they exist), then the
+        # DOM-scan click -- which is what actually works on this drawer.
+        clicked = None
+        for sel in SEL["line_save_close"]:
+            if _jsclick(page, [sel], "Save and Close", required=False):
+                clicked = sel
+                break
+        if not clicked:
+            clicked = _click_by_text(page, "Save and Close", "Save and Close")
+        if not clicked:
+            raise RuntimeError(
+                "Save and Close: line %d could not be saved -- neither the "
+                "selectors nor an exact-text DOM scan found a clickable "
+                "control. The line drawer is still open and the transaction "
+                "is NOT committed." % line["lineNumber"])
         time.sleep(8)
         done.append(line["lineNumber"])
 
@@ -1123,7 +1726,7 @@ def rebill(ctx, env, data, action):
         saga = _Saga(conn, action_id,
                      action.get("claimed_by") or action.get("worker_host"),
                      action.get("attempts"))
-        start = saga.resume_from()
+        start = effective_start(saga, saga.resume_from())
 
         base = _apps_base(env)
         page = ctx.new_page()

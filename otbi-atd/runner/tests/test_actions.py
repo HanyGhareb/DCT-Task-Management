@@ -256,15 +256,38 @@ def _test_ar_invoice_rebill(env):
         r._grid_rows = real_rows
 
     # ---- the duplicate stamp probe --------------------------------------
+    # The stamp is DISABLED by default (user decision 2026-07-25: write nothing
+    # into a customer-visible field), so the probe must be INERT -- and must say
+    # so by returning None rather than pretending to have checked.
     real_rows = r._grid_rows
+    real_stamp_on = r.STAMP_ENABLED
     try:
         stamp = r.STAMP_TEMPLATE.format(invoice="INV1")
         r._grid_rows = lambda page: {"0": {r.GRID_TXN_NUMBER: "45110096148",
                                            "cl9": "x " + stamp + " y"}}
+        r.STAMP_ENABLED = False
+        assert r._existing_duplicate(None, "INV1") is None, \
+            "with the stamp off the probe must not claim to have found one"
+        # ...and still works when the stamp is switched back on
+        r.STAMP_ENABLED = True
         assert r._existing_duplicate(None, "INV1") == "45110096148"
         assert r._existing_duplicate(None, "INV2") is None
     finally:
         r._grid_rows = real_rows
+        r.STAMP_ENABLED = real_stamp_on
+
+    # ---- document-number validation -------------------------------------
+    # Stage 9 once captured the COLUMN HEADER "Transaction Number" and reported
+    # DONE, which would have written that string into the AR register as the
+    # invoice identifier. A capture that is not a number must fail.
+    assert r._valid_doc_number("45110096150")
+    assert r._valid_doc_number(" 45110096149 ")
+    assert not r._valid_doc_number("Transaction Number")
+    assert not r._valid_doc_number("Document Number")
+    assert not r._valid_doc_number("")
+    assert not r._valid_doc_number(None)
+    assert not r._valid_doc_number("12345")          # too short
+    assert not r._valid_doc_number("INV00584150CM")  # a transaction number
 
     # ---- retry guard on the invoice-creating commit ---------------------
     # attempt > 1 with no confirmed duplicate must refuse rather than risk a
@@ -372,6 +395,58 @@ def _test_ar_invoice_rebill(env):
             os.environ.pop("ATD_ACTION_LIVE", None)
         else:
             os.environ["ATD_ACTION_LIVE"] = prev_live
+
+    # ---- pre-commit header-date guard -----------------------------------
+    # Stage 7's line saves make Fusion re-run the invoicing rule, which resets
+    # the header Accounting Date to the revenue-schedule start (measured on
+    # 45110096152: 28/02 -> 18/02). Stage 6's verified fill cannot catch that,
+    # so stage 8 re-reads the field before completing.
+    run = r._Run(None, "https://erp.example.com", r.validate_payload(_ar_payload()), None)
+    real_read, real_fill = r._read_by_id_suffix, r._fill_verified
+    try:
+        seen = {"reads": [], "fills": []}
+
+        # (a) both dates already correct -> nothing is re-typed
+        r._read_by_id_suffix = lambda p, s, **k: "28/02/2026"
+        r._fill_verified = lambda *a, **k: seen["fills"].append(a) or True
+        r._reassert_header_dates(run)
+        assert not seen["fills"], "a correct date must not be re-typed"
+
+        # (b) accounting date drifted and the re-fill HOLDS -> repaired quietly
+        state = {"v": "18/02/2026"}
+
+        def _read_drift(p, s, **k):
+            seen["reads"].append(s)
+            return state["v"] if "inputDate9" in s else "28/02/2026"
+
+        def _fill_ok(page, what, value, **k):
+            state["v"] = value
+            seen["fills"].append(what)
+            return True
+
+        r._read_by_id_suffix, r._fill_verified = _read_drift, _fill_ok
+        r._reassert_header_dates(run)
+        assert state["v"] == "28/02/2026", "the drifted date must be re-set"
+        assert any("accounting date" in f for f in seen["fills"])
+
+        # (c) drifted and the re-fill does NOT hold -> refuse to complete.
+        #     Completing here would post the invoice to a period nobody asked
+        #     for, which is the whole reason this guard exists.
+        r._read_by_id_suffix = lambda p, s, **k: ("18/02/2026" if "inputDate9" in s
+                                                  else "28/02/2026")
+        r._fill_verified = lambda *a, **k: True
+        try:
+            r._reassert_header_dates(run)
+            assert False, "a date that will not hold must raise, not complete"
+        except RuntimeError as e:
+            assert "accounting date nobody requested" in str(e)
+
+        # (d) unreadable field (the Edit Transaction resume page uses other
+        #     ids) -> warn and continue, so a resume is never blocked
+        r._read_by_id_suffix = lambda p, s, **k: None
+        r._reassert_header_dates(run)
+    finally:
+        r._read_by_id_suffix, r._fill_verified = real_read, real_fill
 
     # ---- dispatch routes AR_INVOICE_REBILL (validation fires before any
     #      browser work, so a bad payload never reaches Fusion) -----------
