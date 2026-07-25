@@ -896,12 +896,13 @@ hard reset. The systemd journal is **volatile** here (no `/var/log/journal`), so
 is empty — but `/var/log/messages` persists and **kdump is enabled**, so the panic is always in
 `/var/crash/<timestamp>/vmcore-dmesg.txt`.
 
-**Mitigation (NOT yet applied — bounces the NIC, needs a window):**
-`ethtool -K ens192 lro off gro off` per worker, made persistent. LRO on vmxnet3 is the usual trigger
-for this BUG_ON. Real fix = newer UEK kernel / VMware Tools, or an E1000E vNIC. Housekeeping: 7.2G
-of vmcores across the fleet.
+**Mitigation APPLIED 2026-07-26 on all three workers:** `ethtool -K ens192 lro off gro off`, made
+persistent via `nmcli con modify ens192 ethtool.feature-lro off ethtool.feature-gro off`. LRO on
+vmxnet3 is the usual trigger for this BUG_ON. Real fix = newer UEK kernel / VMware Tools, or an
+E1000E vNIC. Housekeeping still owed: 7.2G of vmcores across the fleet. (The 6-invoice rebill batch
+ran right after with ZERO panics — vm181 had panicked twice in the preceding 3 hours.)
 
-**Until it is fixed:** launch long jobs **detached** (`systemd-run --unit=… --setenv=HOME=/root` —
+**Belt and braces:** launch long jobs **detached** (`systemd-run --unit=… --setenv=HOME=/root` —
 `env.sh` sets `TNS_ADMIN="$HOME/wallet"` and systemd-run has no `$HOME`, else `DPY-4026`) so a
 checkpointed saga survives the reboot, and resume rather than restart.
 
@@ -1339,6 +1340,22 @@ end; `ATD_ACTION_STOP_AFTER=<stage>` steps through the saga.
     rather than the code) must still be followed by a read-back — substring either way — or a line
     saves with an empty DFF and nothing says so.
 
+23. **Waiting for the line grid after the FIRST line's Save and Close can never succeed by waiting
+    alone — saving that line COMMITS the transaction and the page morphs underneath you.** The
+    Create Transaction form reloads as the Edit Transaction page, which opens on the
+    **Distribution tab**, sometimes behind an Information dialog, so the grid is genuinely not on
+    screen (all four fresh-path failures of the 2026-07-26 batch, e.g. INV00583821: "Save and Close
+    was clicked but the line grid never came back"). A grid wait must be able to SURFACE the grid:
+    dismiss the dialog, click the Invoice Lines tab, then re-read (`_ensure_line_grid`) — the same
+    dance `_stage_dup_edit` already did for the resume path, now applied to every grid wait because
+    the morph happens mid-stage-7 on every fresh invoice.
+
+24. **The payload's matching key is the MEMO LINE, not the line number** (user rule 2026-07-26).
+    `lineNumber` is optional everywhere (runner `validate_payload`, AR ORDS bridge, JET form/bulk)
+    and defaults to payload position; a payload repeating a memo line is rejected as ambiguous at
+    validation. The grid row is always resolved by memo line (`_dup_row_for_line`) — Fusion's line
+    order need not match the sheet's.
+
 **Harvested ids (ADGOV pod, 2026-07-25).** Credit Transaction (`…:ap1:`): `it1` transaction
 number · `id1` transaction date · `id2` accounting date · `selectOneChoice2` credit reason
 (**a `<select>`, see law 17 — choose an option, never type**) · `HdrComments` comments ·
@@ -1348,25 +1365,30 @@ ours to set — the handler asserts it was not overwritten before completing the
 line grid `AT1:_ATp:table1:<row>:memoLineNameId` / `:taxClassificationCodeId`. Search rail
 magnifier = `title="Search: Transactions"` (**never** bare `title="Search"` — that is the topbar).
 
-**Status: RUN LIVE TWICE (2026-07-25).**
+**Status: LIVE — 9 invoices rebilled (2026-07-25/26), including a 6-invoice PARALLEL batch across
+all three worker VMs.**
 
 | Run | Invoice | Credit memo doc | New invoice doc | Result |
 |---|---|---|---|---|
 | 1 (supervised, stage-by-stage) | INV00584150 | 45110096149 | 45110096150 | 9/9 after ~12 in-flight repairs; laws 9-20 came out of it |
-| 2 (**unattended `--auto`**) | INV00585046 | 45110096151 | **45110096152** | **9/9 clean, end-to-end 7:34**, zero interventions |
-
-Run 2 verified in Fusion: Status **Complete**, source *DCT Manual*, Tax **25.00** = 5% of the one
-`VAT OUTPUT - STD` line (the other two `VAT OUTPUT - EXEMPT`), Total 925.00.
+| 2 (**unattended `--auto`**) | INV00585046 | 45110096151 | 45110096152 | 9/9 clean, end-to-end 7:34, zero interventions |
+| 3 (resumed across a VM panic) | INV00583744 | 45110096153 | 45110096154 | law 22 fixes proven on the resume path |
+| batch (2026-07-26, 2 invoices/VM) | INV00583821 · INV00583637 (vm180); INV00584156 · INV00584327 (vm181); INV00584992 · INV00584064 (vm182) | see AR deployment-notes | 45110096160-… | law 23 found + fixed mid-batch; the 3 pre-fix starts failed loudly at stage 7 line 1 and resumed clean; every post-fix start ran 9/9 unattended |
 
 **Two defects found in run 2, both "stage reported DONE while the write did not land":**
 - **Wrong-line DFF (law 22, the serious one).** Line 3's Details icon missed and a generic fallback
   opened line 1, so line 3's Project/Task overwrote line 1's: line 1 got task *Urgent requests*,
   line 3 got nothing, and the stage logged `set on lines 1,2,3`. Fixed — no generic fallback, the
   drawer must prove its Memo Line, and both values are read back before the line is saved.
+  **Proven live in the 2026-07-26 batch** (fresh path INV00584327 + all resumes).
 - Accounting Date completed as 18/02/2026 rather than the requested 28/02/2026 (law 21). Guard
   added; **user has deprioritised this** — both dates fall in the same GL period.
 
-Neither fix has been exercised live yet.
+**Batch mechanics (2026-07-26):** `run_rebill_batch.sh` on each VM = sequential
+`step_ar_rebill.py <payload> --ctl .ar_batch/<INV> --auto` per invoice, launched detached
+(`setsid`), one ctl/screenshot dir per invoice so any failure resumes individually. Payloads are
+generated from the flat CSV by `gen_payloads.py` — memo-line keyed, no line numbers (law 24).
+A failed invoice never blocks the next; rc summary in `.ar_batch/batch.log`.
 
 Per-stage cost of run 2 (this is the number that decides whether bulk upload is viable):
 `LOCATE 58s · CM_CREATE 107s · CM_CONFIRM 6s · CM_CAPTURE 69s · DUPLICATE 80s · DUP_EDIT 21s ·

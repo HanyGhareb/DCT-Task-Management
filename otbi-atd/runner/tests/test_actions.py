@@ -166,6 +166,13 @@ def _test_ar_invoice_rebill(env):
                              "taskNumber": "t"}]), "memoLine is required"),
         (_ar_payload(lines=[{"lineNumber": 1, "memoLine": "m",
                              "taskNumber": "t"}]), "projectNumber and taskNumber"),
+        # memo line is the MATCHING KEY (user rule 2026-07-26): a payload that
+        # repeats one is ambiguous by construction and must be rejected
+        (_ar_payload(lines=[{"memoLine": "Same Memo", "projectNumber": "p",
+                             "taskNumber": "t"},
+                            {"memoLine": "same memo", "projectNumber": "p",
+                             "taskNumber": "t"}]),
+         "appears twice"),
     ]
     for payload, want in bad:
         try:
@@ -202,6 +209,16 @@ def _test_ar_invoice_rebill(env):
     assert r._fusion_date("") == ""
     p3 = r.validate_payload(_ar_payload())
     assert p3["cm"]["transactionDate"] == "2026-02-28", "stored as given (ISO)"
+
+    # ---- lineNumber is OPTIONAL: memo line matches, position numbers ----
+    pauto = r.validate_payload(_ar_payload(lines=[
+        {"memoLine": "First Memo", "projectNumber": "p", "taskNumber": "t"},
+        {"memoLine": "Second Memo", "projectNumber": "p", "taskNumber": "t",
+         "taxClassification": "VAT OUTPUT - STD"},
+    ]))
+    assert [ln["lineNumber"] for ln in pauto["lines"]] == [1, 2], \
+        "absent lineNumbers default to payload position"
+    assert pauto["lines"][1]["taxClassification"] == "VAT OUTPUT - STD"
     for badpay, want in (
         (_ar_payload(cm={"transactionDate": "28-02-2026", "accountingDate": "2026-02-28"}),
          "cm.transactionDate must be"),

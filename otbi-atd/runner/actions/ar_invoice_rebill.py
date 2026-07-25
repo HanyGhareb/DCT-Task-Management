@@ -671,11 +671,20 @@ def validate_payload(data):
         raise RuntimeError("AR_INVOICE_REBILL payload needs at least one line")
     lines = []
     seen = set()
+    seen_memos = set()
     for i, ln in enumerate(raw_lines):
-        try:
-            no = int(str(ln.get("lineNumber")).strip())
-        except (TypeError, ValueError):
-            raise RuntimeError("lines[%d].lineNumber must be a whole number" % i)
+        # The MEMO LINE is the matching key (user rule 2026-07-26): the grid
+        # row is resolved by memo line, never by position, because the payload
+        # order need not match Fusion's line order. lineNumber is optional and
+        # serves only as a hint/label -- absent, it defaults to the position.
+        raw_no = ln.get("lineNumber")
+        if raw_no in (None, ""):
+            no = i + 1
+        else:
+            try:
+                no = int(str(raw_no).strip())
+            except (TypeError, ValueError):
+                raise RuntimeError("lines[%d].lineNumber must be a whole number" % i)
         if no < 1:
             raise RuntimeError("lines[%d].lineNumber must be >= 1" % i)
         if no in seen:
@@ -683,11 +692,15 @@ def validate_payload(data):
         seen.add(no)
         memo = str(ln.get("memoLine") or "").strip()
         if not memo:
-            # the memo line is the cross-check that stops the robot coding the
-            # wrong row -- two lines can share a memo line name, so the line
-            # number selects and the memo line verifies
-            raise RuntimeError("lines[%d].memoLine is required (it verifies the "
-                               "line number)" % i)
+            raise RuntimeError("lines[%d].memoLine is required (it is the "
+                               "matching key that selects the grid row)" % i)
+        if memo.lower() in seen_memos:
+            # memo-based matching cannot tell two identical memo lines apart;
+            # such an invoice must be handled manually rather than guessed at
+            raise RuntimeError("lines[%d]: memo line %r appears twice in the "
+                               "payload -- memo-based matching would be "
+                               "ambiguous" % (i, memo))
+        seen_memos.add(memo.lower())
         proj = str(ln.get("projectNumber") or "").strip()
         task = str(ln.get("taskNumber") or "").strip()
         if not proj or not task:
@@ -1288,6 +1301,33 @@ def _wait_for_line_grid(page, timeout=60):
         time.sleep(1)
 
 
+def _ensure_line_grid(page, timeout=75):
+    """Wait for the line grid, SURFACING it if the page morphed underneath us.
+
+    Saving the FIRST line's drawer COMMITS the transaction: the Create
+    Transaction form reloads as the Edit Transaction page, which opens on the
+    Distribution tab, sometimes behind an Information dialog -- so the grid is
+    genuinely not on screen, not merely slow (INV00583821, 2026-07-26).
+    Waiting alone can never succeed there. _stage_dup_edit already knew this
+    for the RESUME path; this applies the same dismiss-dialog + Invoice-Lines
+    -tab dance to every grid wait, because the morph happens mid-stage-7 on
+    every fresh invoice.
+    """
+    deadline = time.time() + timeout
+    while True:
+        rows = _wait_for_line_grid(page, timeout=15)
+        if rows:
+            return rows
+        if time.time() >= deadline:
+            return {}
+        _jsclick(page, SEL["dialog_ok"], "dismiss info dialog", required=False)
+        time.sleep(1)
+        _jsclick(page, ['a[id$=":sdi3::disAcr"]', 'a:text-is("Invoice Lines")',
+                        'div[role="tab"]:text-is("Invoice Lines")'],
+                 "Invoice Lines tab", required=False)
+        time.sleep(2)
+
+
 def _close_line_drawer(page, what, timeout=45):
     """Close an open line drawer and PROVE the grid is back.
 
@@ -1304,7 +1344,7 @@ def _close_line_drawer(page, what, timeout=45):
                 _real_click(page, SEL[attempt], what, required=False) or \
                 _click_by_text(page, "Save and Close" if attempt == "line_save_close"
                                else "Cancel", what):
-            rows = _wait_for_line_grid(page, timeout=timeout)
+            rows = _ensure_line_grid(page, timeout=timeout)
             if rows:
                 return rows
     raise RuntimeError(
@@ -1321,7 +1361,7 @@ def _dup_row_for_line(page, line):
     is exactly what the memoLine field is there to verify. Raises rather than
     guessing, because the consequence of guessing is taxing the wrong line.
     """
-    rows = _wait_for_line_grid(page)
+    rows = _ensure_line_grid(page)
     if not rows:
         raise RuntimeError(
             "the duplicate's line grid was still unreadable after 60s. That is "
@@ -1478,7 +1518,7 @@ def _stage_dup_edit(run):
     # invoice to invoice, so anything not listed is not ours to touch (user
     # decision 2026-07-25) -- see OTHER_TAX_CLASSIFICATION for the accepted
     # risk and the env var that restores the old force-EXEMPT behaviour.
-    all_rows = _wait_for_line_grid(page)
+    all_rows = _ensure_line_grid(page)
     other_rows = [r for r in sorted(all_rows.keys(), key=lambda r: int(r))
                   if str(r) not in taxed_rows]
     exempted = []
@@ -1872,7 +1912,7 @@ def _stage_dup_line_dff(run):
         # Clicking Save and Close is not proof it closed. Wait for the line grid
         # to come back, so a failed close is reported HERE, against the line
         # that caused it, instead of one line later as an unreadable grid.
-        if not _wait_for_line_grid(page, timeout=60):
+        if not _ensure_line_grid(page, timeout=90):
             raise RuntimeError(
                 "line %d: Save and Close was clicked but the line grid never "
                 "came back, so the drawer is still open. Whatever this line "
