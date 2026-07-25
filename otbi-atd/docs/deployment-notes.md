@@ -1283,6 +1283,22 @@ end; `ATD_ACTION_STOP_AFTER=<stage>` steps through the saga.
     period, so the guard raises rather than completing with a date nobody requested — the form is
     uncommitted there, so a resume just rebuilds it at stage 5.
 
+22. **A fallback selector that matches every row will open the FIRST row — never fall back to one.**
+    Stage 7 resolved line 3 to grid row 2 correctly, its row-specific Details icon
+    (`…:table1:2:commandImageLink110`) missed, and the code fell back to `[title="Details"]`, which
+    matches every row's icon. ADF opened **line 1**, and line 3's Project/Task were written over
+    line 1's: line 1 finished with task *Urgent requests* instead of *Public Speaker Permit*, line 3
+    with **no** DFF at all — and the stage still reported `project/task set on lines 1,2,3`
+    (45110096152, 2026-07-25). Resolving the right row and then clicking something else is worse
+    than not clicking: the run looks clean and the data is wrong on two lines.
+    **Two rules.** (a) A row-targeted click has no generic fallback — if the id misses, raise.
+    (b) **The drawer must prove its identity before anything is written into it**: read its
+    *Memo Line* and refuse if it is not the requested one. Resolving the correct row is worthless
+    if the drawer that opens belongs to a different line, and only the drawer can answer that.
+    Corollary: `verify=False` on a fill (needed here because ADF law 8 shows the LOV *description*
+    rather than the code) must still be followed by a read-back — substring either way — or a line
+    saves with an empty DFF and nothing says so.
+
 **Harvested ids (ADGOV pod, 2026-07-25).** Credit Transaction (`…:ap1:`): `it1` transaction
 number · `id1` transaction date · `id2` accounting date · `selectOneChoice2` credit reason
 (**a `<select>`, see law 17 — choose an option, never type**) · `HdrComments` comments ·
@@ -1300,9 +1316,17 @@ magnifier = `title="Search: Transactions"` (**never** bare `title="Search"` — 
 | 2 (**unattended `--auto`**) | INV00585046 | 45110096151 | **45110096152** | **9/9 clean, end-to-end 7:34**, zero interventions |
 
 Run 2 verified in Fusion: Status **Complete**, source *DCT Manual*, Tax **25.00** = 5% of the one
-`VAT OUTPUT - STD` line (the other two `VAT OUTPUT - EXEMPT`), Total 925.00, Project/Task set on
-all three lines. **One defect found: the Accounting Date completed as 18/02/2026, not the requested
-28/02/2026** — see law 21; guard added (`_reassert_header_dates`), **not yet exercised live**.
+`VAT OUTPUT - STD` line (the other two `VAT OUTPUT - EXEMPT`), Total 925.00.
+
+**Two defects found in run 2, both "stage reported DONE while the write did not land":**
+- **Wrong-line DFF (law 22, the serious one).** Line 3's Details icon missed and a generic fallback
+  opened line 1, so line 3's Project/Task overwrote line 1's: line 1 got task *Urgent requests*,
+  line 3 got nothing, and the stage logged `set on lines 1,2,3`. Fixed — no generic fallback, the
+  drawer must prove its Memo Line, and both values are read back before the line is saved.
+- Accounting Date completed as 18/02/2026 rather than the requested 28/02/2026 (law 21). Guard
+  added; **user has deprioritised this** — both dates fall in the same GL period.
+
+Neither fix has been exercised live yet.
 
 Per-stage cost of run 2 (this is the number that decides whether bulk upload is viable):
 `LOCATE 58s · CM_CREATE 107s · CM_CONFIRM 6s · CM_CAPTURE 69s · DUPLICATE 80s · DUP_EDIT 21s ·

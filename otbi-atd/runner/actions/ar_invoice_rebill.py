@@ -191,6 +191,7 @@ LBL_TXN_SOURCE   = "Transaction Source"
 LBL_DOC_NUMBER   = "Document Number"
 LBL_PROJECT      = "Project"
 LBL_TASK         = "Task"
+LBL_MEMO_LINE    = "Memo Line"   # the drawer's identity check -- see stage 7
 
 # Where the duplicate is stamped so a retry can recognise it.
 # Fusion links a credit memo back to its source automatically (Original
@@ -1632,13 +1633,42 @@ def _stage_dup_line_dff(run):
                  "Invoice Lines tab", required=False)
         time.sleep(3)
         row = _dup_row_for_line(page, line)   # memo-line verified, never guessed
+        # NO BLIND FALLBACK. This used to fall back to SEL["line_details"], a
+        # bare [title="Details"] that matches EVERY row's icon and therefore
+        # opens the FIRST one. On 45110096152 (2026-07-25) that is exactly what
+        # happened for line 3: the row-specific id missed, the fallback opened
+        # line 1, and line 3's Project/Task were written over line 1's -- so
+        # line 1 ended up with the wrong task and line 3 with none, while the
+        # stage reported "project/task set on lines 1,2,3". Resolving the row
+        # correctly and then clicking something else is worse than not clicking.
         if not _jsclick(page, ['[id$="%s%s:commandImageLink110"]' % (DUP_GRID, row),
                                '[id*="%s%s:commandImageLink"]' % (DUP_GRID, row)],
                         "Details icon line %d" % line["lineNumber"],
                         required=False):
-            _jsclick(page, SEL["line_details"],
-                     "Details icon line %d" % line["lineNumber"])
+            raise RuntimeError(
+                "line %d (%r) resolved to grid row %s but its Details icon was "
+                "not found. Refusing to click the generic Details selector, "
+                "which opens whichever row is first -- re-run diag_ar.py, the "
+                "grid's id scheme has changed."
+                % (line["lineNumber"], line["memoLine"], row))
         time.sleep(8)
+
+        # The drawer must PROVE it is the line we asked for before anything is
+        # written into it. Same invariant as the grid lookup (match on the memo
+        # line), applied at the point of writing -- resolving the right row is
+        # worthless if the drawer that opens belongs to another line.
+        open_memo = _read_label_value(page, LBL_MEMO_LINE)
+        if open_memo is None:
+            raise RuntimeError(
+                "line %d: could not read the Memo Line on the open drawer, so "
+                "there is no way to tell which line is about to be written. "
+                "Refusing to write blind." % line["lineNumber"])
+        if open_memo.strip().lower() != line["memoLine"].strip().lower():
+            raise RuntimeError(
+                "line %d: the Details drawer that opened carries memo line %r, "
+                "not the requested %r -- ADF opened a different line. Refusing "
+                "to write Project/Task onto the wrong line."
+                % (line["lineNumber"], open_memo, line["memoLine"]))
 
         cur_proj = _read_label_value(page, LBL_PROJECT)
         cur_task = _read_label_value(page, LBL_TASK)
@@ -1661,6 +1691,27 @@ def _stage_dup_line_dff(run):
                        line["taskNumber"], label=LBL_TASK, verify=False)
         time.sleep(2)
         _shot(page, "ar_7_line_%d_dff.png" % line["lineNumber"])
+
+        # Read both values back BEFORE saving. These fills run with verify=False
+        # because ADF law 8 means an LOV commit displays the DESCRIPTION rather
+        # than the code, so an exact-match verify inside _fill_verified would
+        # false-alarm -- but "cannot match exactly" is not a reason to skip
+        # checking altogether, which is how a line could be saved with nothing
+        # in it. Substring either way covers code-or-description.
+        got_proj = _read_label_value(page, LBL_PROJECT) or ""
+        got_task = _read_label_value(page, LBL_TASK) or ""
+        for what, wanted, got in (("project", line["projectNumber"], got_proj),
+                                  ("task", line["taskNumber"], got_task)):
+            if not got.strip():
+                raise RuntimeError(
+                    "line %d: %s is still EMPTY after filling it with %r -- "
+                    "refusing to save a line whose DFF did not take."
+                    % (line["lineNumber"], what, wanted))
+            if wanted.lower() not in got.lower() and got.lower() not in wanted.lower():
+                raise RuntimeError(
+                    "line %d: %s reads %r after filling it with %r -- the value "
+                    "landed somewhere else or the LOV picked a different row."
+                    % (line["lineNumber"], what, got, wanted))
 
         # Save and Close commits the LINE into the in-progress transaction; the
         # transaction itself is still uncommitted until Complete and Review.

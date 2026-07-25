@@ -97,12 +97,21 @@ INV00585046 reconciles: original 900.00 with **Tax 0.00** (the coding error) →
 (entire balance) → new invoice 925.00 with **Tax 25.00** = 5% of the single `VAT OUTPUT - STD`
 line, other two `VAT OUTPUT - EXEMPT`, Project/Task on all three lines, Status Complete.
 
-**One open defect from that run:** the new invoice's **Accounting Date completed as 18/02/2026,
-not the requested 28/02/2026**. Stage 6 sets and verifies it correctly; stage 7's line-drawer
-saves make Fusion re-derive it from the line's Revenue Scheduling start date. A pre-commit
-re-assertion (`_reassert_header_dates`, ADF law 21) is deployed to the fleet with unit coverage
-but **has not yet been exercised live** — the next run proves it. Both dates land in the same GL
-period here, so this run's posting period is unaffected; the value is still wrong.
+**Two defects from that run — both of the same shape: the stage reported DONE while the write did
+not land.** Neither fix is exercised live yet.
+
+1. **Wrong-line DFF (ADF law 22 — the serious one).** Stage 7 resolved line 3 to the right grid row,
+   its row-specific Details icon missed, and the code fell back to a generic `[title="Details"]`
+   that matches every row — so ADF opened **line 1** and line 3's Project/Task were written over
+   line 1's. Net on 45110096152: line 1 carried task *Urgent requests* instead of *Public Speaker
+   Permit*, line 3 carried **no** Project/Task, and the stage logged `set on lines 1,2,3`. The user
+   found it and corrected line 3 by hand. Fixed: the row-targeted click has **no fallback**, the
+   open drawer must prove its **Memo Line** before anything is written into it, and Project/Task are
+   **read back** before the line is saved (they were filled `verify=False` and never checked).
+2. Accounting Date completed as 18/02/2026 rather than the requested 28/02/2026 (law 21) — stage 7's
+   line saves make Fusion re-derive it from the line's Revenue Scheduling start. Guard
+   `_reassert_header_dates` added; **deprioritised by the user**, both dates are in the same GL
+   period.
 
 **Before go-live:** remove `ATD_AR_REBILL_ALLOW` from `/root/otbi-atd/env.sh` on vm180-182, or
 every invoice except those two stays blocked.

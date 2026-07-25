@@ -396,6 +396,39 @@ def _test_ar_invoice_rebill(env):
         else:
             os.environ["ATD_ACTION_LIVE"] = prev_live
 
+    # ---- grid row resolution must never fall through to "whichever row" ---
+    # On 45110096152 line 3's row-specific Details icon missed, the old code
+    # fell back to a bare [title="Details"] that opens the FIRST row, and
+    # line 3's Project/Task were written over line 1's -- while the stage
+    # reported "project/task set on lines 1,2,3". The grid lookup itself is
+    # the first line of defence: it matches on memo line and refuses to guess.
+    grid = {"0": "Public speaker permit", "1": "Event Permit",
+            "2": "Revenue fees from Urgent request"}
+    real_rows = r._dup_line_rows
+    try:
+        r._dup_line_rows = lambda page: grid
+        # payload line numbers do NOT match Fusion's row order here (Fusion
+        # line 1 is Public speaker permit) -- the memo line is what decides
+        assert r._dup_row_for_line(None, {"lineNumber": 1,
+                                          "memoLine": "Event Permit"}) == "1"
+        assert r._dup_row_for_line(None, {"lineNumber": 3,
+                                          "memoLine": "Revenue fees from Urgent request"}) == "2"
+        # a memo line that is not on the duplicate must RAISE, never resolve
+        try:
+            r._dup_row_for_line(None, {"lineNumber": 2, "memoLine": "Parking Fee"})
+            assert False, "an absent memo line must raise, not pick a row"
+        except RuntimeError as e:
+            assert "refusing to change a line that was not requested" in str(e)
+        # and an unreadable grid must raise rather than default to row 0
+        r._dup_line_rows = lambda page: {}
+        try:
+            r._dup_row_for_line(None, {"lineNumber": 1, "memoLine": "Event Permit"})
+            assert False, "an unreadable grid must raise"
+        except RuntimeError as e:
+            assert "could not read the duplicate's line grid" in str(e)
+    finally:
+        r._dup_line_rows = real_rows
+
     # ---- pre-commit header-date guard -----------------------------------
     # Stage 7's line saves make Fusion re-run the invoicing rule, which resets
     # the header Accounting Date to the revenue-schedule start (measured on
