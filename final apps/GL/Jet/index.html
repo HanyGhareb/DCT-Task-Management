@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.42.0';</script>
+<script>window.APP_VERSION='1.42.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -57,8 +57,6 @@
     <a data-bind="css:{on:view()==='encumbrances'}, click:go.bind($data,'encumbrances'), text:t('navEncumbrances')"></a>
     <a data-bind="css:{on:view()==='pending'}, click:go.bind($data,'pending'), text:t('navPending')"></a>
     <a data-bind="css:{on:view()==='recon'}, click:go.bind($data,'recon'), text:t('navRecon')"></a>
-    <a data-bind="css:{on:view()==='classifications'}, click:go.bind($data,'classifications'), text:t('navClass')"></a>
-    <a data-bind="css:{on:view()==='mapping'}, click:go.bind($data,'mapping'), text:t('navMapping')"></a>
     <!-- ko if: isSysAdmin -->
     <button type="button" class="sec-link" data-bind="click: openSecurityInfo"
             style="margin-inline-start:auto; opacity:.75; background:none; border:none; cursor:pointer; font:inherit; color:inherit">&#128737; <span data-bind="text: lang()==='ar' ? 'معلومات الأمان' : 'Security Info'"></span></button>
@@ -109,6 +107,91 @@
           </div>
           <h2 class="sec"><span data-bind="text:t('howItWorks')"></span><span class="rule"></span></h2>
           <div class="card"><div class="greet-sub" style="margin:0" data-bind="html:t('ovExplain')"></div></div>
+        </div>
+      </div>
+
+      <!-- Region: classification values (collapsible) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleCoa('cls');return true}, css:{closed:!coaClsOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('clsTitle')"></span>
+          <span class="bu-sec-sum" data-bind="text:t('clsSub')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:coaClsOpen">
+          <div class="toolbar">
+            <select class="inp" data-bind="options:dimensions, optionsText:function(d){return $root.dimName(d)}, optionsValue:'code', value:clsType"></select>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary btn-sm" data-bind="click:addValue"><span>+</span> <span data-bind="text:t('addValue')"></span></button>
+          </div>
+          <div class="tbl-wrap">
+            <table class="tbl">
+              <thead><tr>
+                <th data-bind="text:t('code')"></th><th data-bind="text:t('name')"></th>
+                <th data-bind="text:t('altNames')"></th><th data-bind="text:t('tag')"></th>
+                <th style="text-align:center" data-bind="text:t('assignments')"></th>
+                <th data-bind="text:t('active')"></th><th></th>
+              </tr></thead>
+              <tbody>
+                <!-- ko foreach: values -->
+                <tr data-bind="css:{child: !!$data.parentValueId}, click:function(){$root.openClsDrill($data)}, attr:{title:$root.t('clsRowHint')}" style="cursor:pointer">
+                  <td class="mono" data-bind="text:valueCode"></td>
+                  <td><b data-bind="text:nameEn"></b><span data-bind="visible:$data.nameAr, text:' · '+($data.nameAr||'')" style="color:var(--muted)"></span></td>
+                  <td style="color:var(--muted);font-size:12px" data-bind="text:[$data.altName1,$data.altName2,$data.altName3].filter(Boolean).join(' · ')||'—'"></td>
+                  <td><span class="chip gold" data-bind="visible:$data.tag, text:$data.tag||''"></span></td>
+                  <td style="text-align:center" class="mono" data-bind="text:mapCount"></td>
+                  <td><span class="chip" data-bind="css:isActive==='Y'?'ok':'muted', text:isActive==='Y'?$root.t('yes'):$root.t('no')"></span></td>
+                  <td><div class="row-act">
+                    <button class="btn btn-sm btn-ghost" data-bind="click:function(){$root.editValue($data)}, clickBubble:false, text:$root.t('edit')"></button>
+                    <button class="btn btn-sm btn-ghost btn-danger" data-bind="click:function(){$root.deleteValue($data)}, clickBubble:false, text:$root.t('del')"></button>
+                  </div></td>
+                </tr>
+                <!-- /ko -->
+              </tbody>
+            </table>
+            <div class="empty pad" data-bind="visible:!clsLoading() && values().length===0, text:t('noValues')"></div>
+            <div class="ldr" data-bind="visible:clsLoading()">
+              <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+              <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Region: segment mapping (collapsible) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleCoa('map');return true}, css:{closed:!coaMapOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('mapTitle')"></span>
+          <span class="bu-sec-sum" data-bind="text:t('mapSub')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:coaMapOpen">
+          <div class="toolbar">
+            <select class="inp" data-bind="options:dimensions, optionsText:function(d){return $root.dimName(d)}, optionsValue:'code', value:mapType"></select>
+            <input class="inp search" type="text" data-bind="textInput:segSearch, attr:{placeholder:t('searchSegment')}">
+            <select class="inp" style="min-width:280px" data-bind="options:segOptions, optionsText:'label', optionsValue:'segmentValue', value:mapSegment, optionsCaption:t('pickSegment')"></select>
+            <span style="flex:1"></span>
+            <button class="btn btn-primary btn-sm" data-bind="click:addMapping, enable:mapSegment()"><span>+</span> <span data-bind="text:t('addAssign')"></span></button>
+          </div>
+          <!-- ko if: mapSegment -->
+          <h2 class="sec"><span data-bind="text:t('effectiveHistory')"></span><span class="rule"></span></h2>
+          <div class="card timeline">
+            <!-- ko foreach: mappings -->
+            <div class="t-row" data-bind="css:{current:isCurrent==='Y'}">
+              <span class="t-node"></span>
+              <span class="t-what"><b data-bind="text:valueName"></b>
+                <span class="mono" data-bind="text:valueCode + ($data.notes? ' · '+$data.notes : '')"></span></span>
+              <span class="chip" data-bind="css:isCurrent==='Y'?'tag-current':'tag-past', text:isCurrent==='Y'?$root.t('current'):$root.t('past')"></span>
+              <span class="t-dates" data-bind="text:startDate+' → '+($data.endDate||$root.t('open'))"></span>
+              <div class="row-act">
+                <button class="btn btn-sm btn-ghost" data-bind="click:function(){$root.editMapping($data)}, text:$root.t('edit')"></button>
+                <button class="btn btn-sm btn-ghost btn-danger" data-bind="click:function(){$root.deleteMapping($data)}, text:$root.t('del')"></button>
+              </div>
+            </div>
+            <!-- /ko -->
+            <div class="empty pad" data-bind="visible:mappings().length===0, text:t('noAssign')"></div>
+          </div>
+          <!-- /ko -->
+          <div class="empty pad" data-bind="visible:!mapSegment(), text:t('pickSegmentHint')"></div>
         </div>
       </div>
 
@@ -164,85 +247,6 @@
           </div>
         </div>
       </div>
-    </div>
-
-    <!-- ── CLASSIFICATIONS ── -->
-    <div data-bind="visible:view()==='classifications'">
-      <div class="page-head">
-        <div><h1 class="greet" data-bind="text:t('clsTitle')"></h1>
-          <div class="greet-sub" data-bind="text:t('clsSub')"></div></div>
-        <div class="page-actions">
-          <select class="inp" data-bind="options:dimensions, optionsText:function(d){return $root.dimName(d)}, optionsValue:'code', value:clsType"></select>
-          <button class="btn btn-primary btn-sm" data-bind="click:addValue"><span>+</span> <span data-bind="text:t('addValue')"></span></button>
-        </div>
-      </div>
-      <div class="tbl-wrap">
-        <table class="tbl">
-          <thead><tr>
-            <th data-bind="text:t('code')"></th><th data-bind="text:t('name')"></th>
-            <th data-bind="text:t('altNames')"></th><th data-bind="text:t('tag')"></th>
-            <th style="text-align:center" data-bind="text:t('assignments')"></th>
-            <th data-bind="text:t('active')"></th><th></th>
-          </tr></thead>
-          <tbody>
-            <!-- ko foreach: values -->
-            <tr data-bind="css:{child: !!$data.parentValueId}, click:function(){$root.openClsDrill($data)}, attr:{title:$root.t('clsRowHint')}" style="cursor:pointer">
-              <td class="mono" data-bind="text:valueCode"></td>
-              <td><b data-bind="text:nameEn"></b><span data-bind="visible:$data.nameAr, text:' · '+($data.nameAr||'')" style="color:var(--muted)"></span></td>
-              <td style="color:var(--muted);font-size:12px" data-bind="text:[$data.altName1,$data.altName2,$data.altName3].filter(Boolean).join(' · ')||'—'"></td>
-              <td><span class="chip gold" data-bind="visible:$data.tag, text:$data.tag||''"></span></td>
-              <td style="text-align:center" class="mono" data-bind="text:mapCount"></td>
-              <td><span class="chip" data-bind="css:isActive==='Y'?'ok':'muted', text:isActive==='Y'?$root.t('yes'):$root.t('no')"></span></td>
-              <td><div class="row-act">
-                <button class="btn btn-sm btn-ghost" data-bind="click:function(){$root.editValue($data)}, clickBubble:false, text:$root.t('edit')"></button>
-                <button class="btn btn-sm btn-ghost btn-danger" data-bind="click:function(){$root.deleteValue($data)}, clickBubble:false, text:$root.t('del')"></button>
-              </div></td>
-            </tr>
-            <!-- /ko -->
-          </tbody>
-        </table>
-        <div class="empty pad" data-bind="visible:!loading() && values().length===0, text:t('noValues')"></div>
-        <div class="ldr" data-bind="visible:loading()">
-          <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
-          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- ── MAPPING ── -->
-    <div data-bind="visible:view()==='mapping'">
-      <div class="page-head">
-        <div><h1 class="greet" data-bind="text:t('mapTitle')"></h1>
-          <div class="greet-sub sub-underline" data-bind="text:t('mapSub')"></div></div>
-        <div class="page-actions">
-          <button class="btn btn-primary btn-sm" data-bind="click:addMapping, enable:mapSegment()"><span>+</span> <span data-bind="text:t('addAssign')"></span></button>
-        </div>
-      </div>
-      <div class="toolbar">
-        <select class="inp" data-bind="options:dimensions, optionsText:function(d){return $root.dimName(d)}, optionsValue:'code', value:mapType"></select>
-        <input class="inp search" type="text" data-bind="textInput:segSearch, attr:{placeholder:t('searchSegment')}">
-        <select class="inp" style="min-width:280px" data-bind="options:segOptions, optionsText:'label', optionsValue:'segmentValue', value:mapSegment, optionsCaption:t('pickSegment')"></select>
-      </div>
-      <!-- ko if: mapSegment -->
-      <h2 class="sec"><span data-bind="text:t('effectiveHistory')"></span><span class="rule"></span></h2>
-      <div class="card timeline">
-        <!-- ko foreach: mappings -->
-        <div class="t-row" data-bind="css:{current:isCurrent==='Y'}">
-          <span class="t-node"></span>
-          <span class="t-what"><b data-bind="text:valueName"></b>
-            <span class="mono" data-bind="text:valueCode + ($data.notes? ' · '+$data.notes : '')"></span></span>
-          <span class="chip" data-bind="css:isCurrent==='Y'?'tag-current':'tag-past', text:isCurrent==='Y'?$root.t('current'):$root.t('past')"></span>
-          <span class="t-dates" data-bind="text:startDate+' → '+($data.endDate||$root.t('open'))"></span>
-          <div class="row-act">
-            <button class="btn btn-sm btn-ghost" data-bind="click:function(){$root.editMapping($data)}, text:$root.t('edit')"></button>
-            <button class="btn btn-sm btn-ghost btn-danger" data-bind="click:function(){$root.deleteMapping($data)}, text:$root.t('del')"></button>
-          </div>
-        </div>
-        <!-- /ko -->
-        <div class="empty pad" data-bind="visible:mappings().length===0, text:t('noAssign')"></div>
-      </div>
-      <!-- /ko -->
-      <div class="empty pad" data-bind="visible:!mapSegment(), text:t('pickSegmentHint')"></div>
     </div>
 
     <!-- ── ACTUALS (Budget vs Actual) ── -->

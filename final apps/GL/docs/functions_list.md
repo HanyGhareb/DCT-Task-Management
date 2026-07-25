@@ -7,22 +7,18 @@ User-facing functions by area. Each area = a `view()` section in `Jet/index.html
 public method on the single KO viewModel in `Jet/js/app.js`. Mandatory maintenance artifact —
 update on any view/method/endpoint change.
 
-## Chart of Accounts (`view()==='overview'`) — merged classification overview + combinations explorer (v1.42.0)
-- **Region 1 — Classification overview** (`.bu-sec`, collapsible via `toggleCoa('ov')`/`coaOvOpen`): coverage stats `combinationCount`, `pctClassified`, per-dimension `valueCount` / `mappedSegments` (from `/boot`) + the "How it works" card.
-- **Region 2 — Combinations explorer** (`.bu-sec.bu-results`, collapsible via `toggleCoa('exp')`/`coaExpOpen`, **maximizable** via `toggleCoaMax()`/`coaMax` — full-screen table surface, Esc restores): filters `expSearch`/`fSector`/`fChapter`/`asOf` → `loadCombos(offset)` (server-paginated; auto-loads on landing + `go('overview')`), `comboRange`, `exportCsv()` (≤500 rows). The old standalone `view()==='explorer'` is removed (nav dropped); `loadCombos`/combo observables unchanged.
+## Chart of Accounts (`view()==='overview'`) — the ONE CoA hub: overview + values + mapping + explorer (v1.42.1)
+Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once on landing / `go('overview')` (`coaLoaded` guard). `toggleCoa('ov'|'cls'|'map'|'exp')` toggles each (`coaOvOpen`/`coaClsOpen`/`coaMapOpen`/`coaExpOpen`; overview + explorer open by default, values + mapping collapsed). **`classifications`, `mapping` and `explorer` view ids + nav entries are removed — `go()` redirects them to `overview`.**
+- **Region 1 — Classification overview**: coverage stats `combinationCount`, `pctClassified`, per-dimension `valueCount`/`mappedSegments` (from `/boot`) + "How it works".
+- **Region 2 — Classification values** (was the Classifications page): `clsType` dimension selector + `addValue`/`editValue`/`saveValue`/`deleteValue` + row-click `openClsDrill` assignments drawer. Own loader flag `clsLoading` (was the shared `loading`, which now only drives the Explorer table). `clsType.subscribe` reloads while on `overview`.
+- **Region 3 — Segment mapping** (was the Segment Mapping page): `mapType`/`segSearch`/`segOptions`/`mapSegment` picker + effective-history timeline + `addMapping`/`editMapping`/`deleteMapping`. `mapType.subscribe` reloads while on `overview`.
+- **Region 4 — Combinations explorer** (`.bu-results`, **maximizable** via `toggleCoaMax()`/`coaMax`, Esc restores): filters `expSearch`/`fSector`/`fChapter`/`asOf` → `loadCombos(offset)`, `comboRange`, `exportCsv()` (≤500 rows).
 
-## Classifications (`view()==='classifications'`) — manage Sector/Chapter/Program master values
-- `clsType` — dimension selector (drives `loadValues`).
-- `loadValues()` — list values for the selected dimension.
-- `addValue()` / `editValue(r)` / `saveValue()` — create/update (code, EN/AR name, **3 alt names**, tag, parent, order, active).
-- `deleteValue(r)` — delete (blocked with a message if assignments reference it).
-- **Assignments drawer (row click)** — `openClsDrill(v)`: clicking a value row opens an extra-wide (1120px) right-edge drawer (`.dw-drawer.dw-xw`) listing **every segment mapped to that value** (`GET /mappings?type=&valueid=` — segment code, description, editable start/end dates + notes, CURRENT/PAST chip). Top-right buttons: **+ Add** (`clsAddRow` — new row with a datalist segment picker from `/segments/:key/values`, description auto-fills), **Close** (`closeClsDrill`), **Save** (`clsSaveAll` — POSTs new rows / PUTs dirty rows sequentially; overlap 400s surface in the drawer error bar; refreshes the values list + counts). Per-row ✕ = `clsRemoveRow` (DELETE for saved rows, confirm-guarded). Edit/Delete row buttons use `clickBubble:false` so they don't trigger the drill.
+## Classifications — MERGED into Chart of Accounts Region 2 (v1.42.1)
+- See the Chart of Accounts section; `view()==='classifications'` removed, `go()` redirects to `overview`. All value-management methods unchanged.
 
-## Segment Mapping (`view()==='mapping'`) — date-tracked assignments
-- `mapType` — dimension; `segSearch` + `segOptions` + `mapSegment` — real-data segment-value picker.
-- `loadSegOptions()` / `loadMappings()` — picker + effective-history timeline (current + past).
-- `addMapping()` / `editMapping(r)` / `saveMapping()` — create/update (value, start/end date, notes); overlap rejected server-side (toast).
-- `deleteMapping(r)` — remove an assignment.
+## Segment Mapping — MERGED into Chart of Accounts Region 3 (v1.42.1)
+- See the Chart of Accounts section; `view()==='mapping'` removed, `go()` redirects to `overview`. All mapping methods unchanged.
 
 ## Explorer — MERGED into Chart of Accounts (v1.42.0)
 - The combinations explorer is now Region 2 of the Chart of Accounts page (see above); `view()==='explorer'` and its nav entry are removed. `loadCombos`/`exportCsv`/`comboRange` and the combo observables are unchanged.

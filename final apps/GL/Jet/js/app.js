@@ -543,11 +543,11 @@
     };
 
     self.go = function (v) {
+      // Classifications, Segment Mapping and Explorer are now regions of the
+      // Chart of Accounts (overview) page — redirect any legacy nav/deep-link.
+      if (v === 'classifications' || v === 'mapping' || v === 'explorer') v = 'overview';
       self.view(v);
-      if (v === 'classifications') self.loadValues();
-      else if (v === 'mapping') self.loadSegOptions();
-      else if (v === 'explorer') self.loadCombos(0);
-      else if (v === 'overview') { if (!self.combos().length) self.loadCombos(0); }
+      if (v === 'overview') { if (!self.coaLoaded()) self.loadCoa(); }
       else if (v === 'actuals') {
         if (!self.acFiltersLoaded()) self.loadAcFilters().then(function () { self.runActuals(0); });
         else self.runActuals(0);
@@ -584,13 +584,14 @@
     /* ════ CLASSIFICATIONS ════ */
     self.clsType = ko.observable('SECTOR');
     self.values = ko.observableArray([]);
+    self.clsLoading = ko.observable(false);
     self.loadValues = function () {
-      self.loading(true);
+      self.clsLoading(true);
       return api('GET', '/class-values' + qs({ type: self.clsType() })).then(function (d) {
-        self.values(d.items || []); self.loading(false);
-      }).catch(function (e) { self.loading(false); fail(e); });
+        self.values(d.items || []); self.clsLoading(false);
+      }).catch(function (e) { self.clsLoading(false); fail(e); });
     };
-    self.clsType.subscribe(function () { if (self.view() === 'classifications') self.loadValues(); });
+    self.clsType.subscribe(function () { if (self.view() === 'overview') self.loadValues(); });
 
     // value modal
     self.valueModal = ko.observable(false); self.editingValueId = ko.observable(null);
@@ -748,7 +749,7 @@
           self.segOptions((r.items || []).map(function (x) { x.label = x.segmentValue + ' · ' + (x.description || ''); return x; }));
         }).catch(fail);
     };
-    self.mapType.subscribe(function () { self.mapSegment(''); self.mappings([]); if (self.view() === 'mapping') self.loadSegOptions(); });
+    self.mapType.subscribe(function () { self.mapSegment(''); self.mappings([]); if (self.view() === 'overview') self.loadSegOptions(); });
     var segT; self.segSearch.subscribe(function () { clearTimeout(segT); segT = setTimeout(self.loadSegOptions, 300); });
     self.loadMappings = function () {
       if (!self.mapSegment()) { self.mappings([]); return; }
@@ -826,10 +827,19 @@
         }).catch(fail);
     };
 
-    /* ── Chart of Accounts page (merged Overview + Explorer) ── */
+    /* ── Chart of Accounts page (merged Overview + Classifications + Segment Mapping + Explorer) ── */
     self.coaOvOpen = ko.observable(true);
+    self.coaClsOpen = ko.observable(false);
+    self.coaMapOpen = ko.observable(false);
     self.coaExpOpen = ko.observable(true);
-    self.toggleCoa = function (s) { if (s === 'ov') self.coaOvOpen(!self.coaOvOpen()); else self.coaExpOpen(!self.coaExpOpen()); return true; };
+    self.coaLoaded = ko.observable(false);
+    self.loadCoa = function () {
+      self.loadCombos(0); self.loadValues(); self.loadSegOptions(); self.coaLoaded(true);
+    };
+    self.toggleCoa = function (s) {
+      var m = { ov: self.coaOvOpen, cls: self.coaClsOpen, map: self.coaMapOpen, exp: self.coaExpOpen };
+      if (m[s]) m[s](!m[s]()); return true;
+    };
     self.coaMax = ko.observable(false);
     self.toggleCoaMax = function () {
       self.coaMax(!self.coaMax());
@@ -2315,7 +2325,7 @@
         self.pctClassified(Math.round(d.classifiedCount * 100 / d.combinationCount));
       }
       self.refreshFilters();
-      if (self.view() === 'overview' && !self.combos().length) self.loadCombos(0);
+      if (self.view() === 'overview' && !self.coaLoaded()) self.loadCoa();
       self.ready(true);
     }).catch(function (e) { fail(e); self.ready(true); });
   }
