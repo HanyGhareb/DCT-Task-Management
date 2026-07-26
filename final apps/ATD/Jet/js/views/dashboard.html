@@ -139,6 +139,46 @@
   </div>
 
   <div class="card" style="margin-top:16px;">
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: t('atd.dash.actionsRecent')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary"
+                data-bind="click: function(){ go('actions'); }, text: t('atd.dash.actionsAll')"></button>
+      </div>
+    </div>
+    <!-- ko if: recentActions().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.actions.empty')"></div>
+    <!-- /ko -->
+    <!-- ko if: recentActions().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.actions.col.type')"></th>
+          <th data-bind="text: t('atd.actions.col.source')"></th>
+          <th data-bind="text: t('atd.col.status')"></th>
+          <th data-bind="text: t('atd.workers.vm')"></th>
+          <th data-bind="text: t('atd.actions.col.started')"></th>
+          <th data-bind="text: t('atd.actions.col.finished')"></th>
+          <th data-bind="text: t('atd.actions.col.duration')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: recentActions">
+          <tr>
+            <td class="mono" data-bind="text: $data.actionType"></td>
+            <td class="mono" data-bind="text: $data.sourceRef || ('#' + $data.actionId)"></td>
+            <td><span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span></td>
+            <td class="mono" data-bind="text: $data.workerVm || $data.claimedBy || '—'"></td>
+            <td data-bind="text: $data.startedAt || '—'"></td>
+            <td data-bind="text: $data.finishedAt || '—'"></td>
+            <td data-bind="text: ($data.durationSecs === undefined || $data.durationSecs === null)
+                                 ? '—' : $data.durationSecs + 's'"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <div class="card" style="margin-top:16px;">
     <div class="section-heading" data-bind="text: t('atd.dash.jobHealth')"></div>
     <!-- ko if: jobHealth().length === 0 -->
     <div class="empty-state" data-bind="text: t('atd.dash.noEnabledJobs')"></div>

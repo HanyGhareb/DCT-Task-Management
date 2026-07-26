@@ -28,7 +28,7 @@
   "atd.actions.col.invoice": "فاتورة فيوجن",
   "atd.actions.col.updated": "آخر تحديث",
   "atd.actions.col.worker": "جهاز العامل",
-  "atd.actions.col.started": "وقت البدء",
+  "atd.actions.col.started": "البدء",
   "atd.actions.col.ended": "وقت الانتهاء",
   "atd.actions.col.duration": "المدة",
   "atd.actions.col.submittedBy": "قدّمه",
@@ -487,5 +487,8 @@
   "atd.porg.bulk.badHeaders": "أعمدة إلزامية مفقودة — يلزم PROJECT_NUMBER و TASK_NUMBER و ORG_REFERENCE",
   "atd.porg.bulk.libFail": "تعذر تحميل مكتبة الإكسل (SheetJS)",
   "atd.porg.bulk.doneAll": "تمت إضافة {0} صف بنجاح",
-  "atd.porg.bulk.doneSome": "تمت إضافة {0}، وفشل {1} — راجع عمود الحالة"
+  "atd.porg.bulk.doneSome": "تمت إضافة {0}، وفشل {1} — راجع عمود الحالة",
+  "atd.dash.actionsRecent": "إجراءات Fusion — الأحدث",
+  "atd.dash.actionsAll": "كل الإجراءات",
+  "atd.actions.col.finished": "الانتهاء"
 }

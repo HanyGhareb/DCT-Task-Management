@@ -802,8 +802,18 @@ def _drain_actions_idle(conn, host, ctx_by_env, get_env_ctx):
     while True:
         aid = conn.cursor().callfunc("prod.atd_action_pkg.claim_next_action", int, [host])
         if not aid:
+            _heartbeat(conn, "IDLE")
             return
         action = config.get_action(conn, aid)
+        # The drain can hold this worker for HOURS (101-invoice AR-rebill
+        # campaign, 2026-07-26: the fleet showed IDLE / "last seen 239m ago"
+        # all night while it was flat out). Beat per action, with the action
+        # as the current job, so the ATD dashboard's Worker Fleet panel is a
+        # single truthful view of extracts AND Fusion actions.
+        if action:
+            _heartbeat(conn, "BUSY",
+                       "ACTION %s %s" % (action.get("action_type") or "?",
+                                         action.get("source_ref") or ("#%s" % aid)))
         if not action:
             conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
                                    [aid, "no action row after claim"])

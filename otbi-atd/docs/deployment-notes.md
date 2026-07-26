@@ -1390,6 +1390,20 @@ all three worker VMs.**
 - Accounting Date completed as 18/02/2026 rather than the requested 28/02/2026 (law 21). Guard
   added; **user has deprioritised this** — both dates fall in the same GL period.
 
+**GO-LIVE CAMPAIGN (2026-07-26, later the same night): 110/110 invoices DONE.** The user uploaded
+the remaining 101 invoices through the AR page; the fleet drained them in parallel in ~3.5h
+(~2 min/invoice fleet throughput), zero data defects. Operational lessons now encoded:
+- **Requeueing MUST reset `attempts=0`** — the allowlist failures had left every row at 3/4
+  attempts, one hiccup from permanent failure.
+- Session-failure rows (`env/session unavailable: MFA not approved…`, always 0/9 stages) are safe
+  to auto-requeue blindly; anything else stays FAILED for review.
+- **The worker heartbeat now beats DURING the actions drain** (`_drain_actions_idle` calls
+  `_heartbeat(BUSY, "ACTION <type> <ref>")` per claim and IDLE when the queue empties) — before
+  this, the ATD dashboard showed the whole fleet IDLE / "last seen 239m ago" all night while it
+  was flat out, because only the extract loop ever beat. The dashboard also gained a
+  **"Fusion Actions — Recent"** region (ATD v1.24.0) so extracts AND actions monitor from the
+  single view.
+
 **Batch mechanics (2026-07-26):** `run_rebill_batch.sh` on each VM = sequential
 `step_ar_rebill.py <payload> --ctl .ar_batch/<INV> --auto` per invoice, launched detached
 (`setsid`), one ctl/screenshot dir per invoice so any failure resumes individually. Payloads are

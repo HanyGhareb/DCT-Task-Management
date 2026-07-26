@@ -487,5 +487,8 @@
   "atd.porg.bulk.badHeaders": "Missing required columns — need PROJECT_NUMBER, TASK_NUMBER and ORG_REFERENCE",
   "atd.porg.bulk.libFail": "Could not load the Excel library (SheetJS CDN)",
   "atd.porg.bulk.doneAll": "All {0} row(s) enqueued",
-  "atd.porg.bulk.doneSome": "{0} enqueued, {1} failed — see the Status column"
+  "atd.porg.bulk.doneSome": "{0} enqueued, {1} failed — see the Status column",
+  "atd.dash.actionsRecent": "Fusion Actions — Recent",
+  "atd.dash.actionsAll": "All actions",
+  "atd.actions.col.finished": "Ended"
 }

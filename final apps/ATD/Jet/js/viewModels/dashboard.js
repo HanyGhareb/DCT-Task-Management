@@ -30,6 +30,12 @@ function (ko, atd, i18n, charts, toast) {
 
     atd.getActionStats().then(function (a) { self.actions(a); }).catch(function () {});
     atd.listWorkers().then(function (r) { self.workers((r && r.items) || []); }).catch(function () {});
+    // Fusion write-back actions in the SAME view as the extracts (user request
+    // 2026-07-26: a 101-invoice AR-rebill drain ran all night invisible here)
+    self.recentActions = ko.observableArray([]);
+    atd.listActions({ limit: 8 })
+      .then(function (r) { self.recentActions((r && r.items) || []); })
+      .catch(function () {});
     // observability: break window + per-VM session age + per-job freshness
     atd.getJobHealth().then(function (h) {
       self.breakInfo(h.break || null);

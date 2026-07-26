@@ -54,6 +54,21 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+### 2026-07-26 (4) — GO-LIVE CAMPAIGN COMPLETE: 110/110 invoices rebilled
+
+The user uploaded the full remaining workbook through the arRebill page (101 invoices). All hit
+the `ATD_AR_REBILL_ALLOW` guard (0/9, nothing touched Fusion) — resolved by EXTENDING the
+allowlist to all 110 campaign invoices (guard kept, not removed), restarting the workers (also
+loaded the memo-all-rows handler into the worker processes), and requeuing. The fleet drained all
+101 in parallel overnight (~3.5h, ~2 min/invoice fleet throughput). Mid-drain: worker Fusion
+sessions evicted each other (3 workers + the user's own browser on one account) — MFA numbers
+relayed live, and session-failure rows (`MFA not approved`, always 0/9) auto-requeued with reset
+attempts. **Important: the original requeue left attempts at 3/4 — always reset `attempts=0` when
+requeuing, or one hiccup fails the row permanently.** Final: **110/110 DONE, zero data defects.**
+Full results: `AR Invoices Rebill - Results - FINAL 2026-07-26.csv` (all 111 invoices incl. the
+manual INV00583863; every row carries CM + new-invoice document numbers). Document numbers span
+45110096140–45110096367 (per-invoice pairs in the CSV / the page register).
+
 ### 2026-07-26 (3) — Requests register = SHARED interactive report (APP_VERSION 4.10.0, webtier 20260726005920)
 
 The arRebill **Requests register** is now the SHARED `<interactive-report>` component (user
