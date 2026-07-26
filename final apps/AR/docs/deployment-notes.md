@@ -54,6 +54,17 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+### 2026-07-26 (5) — timeline modal → shared right-edge DRAWER (AR 4.10.1, all apps bumped, webtier 20260726050153)
+
+The register's stage-timeline popup (modal that closed on any outside click — user complaint)
+is now the platform's standard `<edit-drawer>` right-edge slide-in (920px, Esc/scrim/Close).
+Shared `editDrawer.js` gained an optional **`hideSave: true`** param for READ-ONLY drawers
+(drills, timelines) — drops the Save button so Close stands alone; documented in the component
+header. Shared change ⇒ APP_VERSION bumped in ALL apps. Drawer-body binding gotcha honoured:
+inside the body $data is the HOST VM, so bindings go through `t()`/`detail()` directly and
+`$parent` from the foreach — never `$root`. Browser smoke 23/23 (drawer slides in, timeline
+renders, Close-only footer, closes clean).
+
 ### 2026-07-26 (4) — GO-LIVE CAMPAIGN COMPLETE: 110/110 invoices rebilled
 
 The user uploaded the full remaining workbook through the arRebill page (101 invoices). All hit

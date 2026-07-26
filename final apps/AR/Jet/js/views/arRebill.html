@@ -238,68 +238,60 @@
     </div>
   </div>
 
-  <!-- ============ stage timeline ============ -->
-  <!-- ko if: detailOpen -->
-  <div class="modal-overlay" data-bind="click: closeDetail">
-    <div class="modal-box" style="max-width:900px" data-bind="click: function () { return true; }">
-      <div class="modal-header">
-        <h2 data-bind="text: t('ar.rebill.detail.title')"></h2>
-        <div class="region-actions">
-          <button class="btn btn-sm btn-secondary"
-                  data-bind="click: closeDetail, text: t('ar.rebill.close')"></button>
-        </div>
+  <!-- ============ stage timeline (shared right-edge drawer) ============ -->
+  <!-- Inside the drawer body the binding data is the HOST VM ($data = this
+       view's VM, NOT the shell) — bind via t()/detail() directly and reach
+       helpers through $parent from the foreach. -->
+  <edit-drawer params="open: detailOpen, vm: $vm, hideSave: true,
+                       title: t('ar.rebill.detail.title'),
+                       cancelLabel: t('ar.rebill.close'), width: '920px'">
+    <!-- ko if: detailLoading -->
+    <div class="empty-state" data-bind="text: t('ar.rebill.loading')"></div>
+    <!-- /ko -->
+    <!-- ko if: detail -->
+    <div class="form-grid" style="margin-bottom:12px;">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('ar.rebill.f.invoice')"></label>
+        <div class="mono" data-bind="text: detail().invoiceNumber"></div>
       </div>
-      <div class="modal-body">
-        <!-- ko if: detailLoading -->
-        <div class="empty-state" data-bind="text: t('ar.rebill.loading')"></div>
-        <!-- /ko -->
-        <!-- ko with: detail -->
-        <div class="form-grid" style="margin-bottom:12px;">
-          <div class="form-group">
-            <label class="form-label" data-bind="text: $root.t('ar.rebill.f.invoice')"></label>
-            <div class="mono" data-bind="text: $data.invoiceNumber"></div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" data-bind="text: $root.t('ar.rebill.col.cmDoc')"></label>
-            <div class="mono" data-bind="text: $data.cmDocumentNumber || '—'"></div>
-          </div>
-          <div class="form-group">
-            <label class="form-label" data-bind="text: $root.t('ar.rebill.col.newInvoice')"></label>
-            <div class="mono" data-bind="text: $data.newInvoiceNumber || '—'"></div>
-          </div>
-        </div>
-        <!-- ko if: $data.lastError -->
-        <div class="badge badge--rejected" style="margin-bottom:10px; white-space:normal;"
-             data-bind="text: $data.lastError"></div>
-        <!-- /ko -->
-        <div class="data-table-wrap">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th data-bind="text: $root.t('ar.rebill.detail.stage')"></th>
-                <th data-bind="text: $root.t('ar.rebill.col.status')"></th>
-                <th data-bind="text: $root.t('ar.rebill.detail.captured')"></th>
-                <th data-bind="text: $root.t('ar.rebill.detail.note')"></th>
-                <th data-bind="text: $root.t('ar.rebill.detail.finished')"></th>
-              </tr>
-            </thead>
-            <tbody data-bind="foreach: $data.stages">
-              <tr>
-                <td data-bind="text: $data.stageNo"></td>
-                <td data-bind="text: $vm.stageLabel($data)"></td>
-                <td><span data-bind="text: $data.status,
-                                     attr: { 'class': $vm.statusClass($data.status) }"></span></td>
-                <td class="mono" data-bind="text: $data.fusionRef || '—'"></td>
-                <td data-bind="text: $data.note || $data.lastError || '—'"></td>
-                <td data-bind="text: $data.finishedAt || '—'"></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <!-- /ko -->
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('ar.rebill.col.cmDoc')"></label>
+        <div class="mono" data-bind="text: detail().cmDocumentNumber || '—'"></div>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: t('ar.rebill.col.newInvoice')"></label>
+        <div class="mono" data-bind="text: detail().newInvoiceNumber || '—'"></div>
       </div>
     </div>
-  </div>
-  <!-- /ko -->
+    <!-- ko if: detail().lastError -->
+    <div class="badge badge--rejected" style="margin-bottom:10px; white-space:normal;"
+         data-bind="text: detail().lastError"></div>
+    <!-- /ko -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th data-bind="text: t('ar.rebill.detail.stage')"></th>
+            <th data-bind="text: t('ar.rebill.col.status')"></th>
+            <th data-bind="text: t('ar.rebill.detail.captured')"></th>
+            <th data-bind="text: t('ar.rebill.detail.note')"></th>
+            <th data-bind="text: t('ar.rebill.detail.finished')"></th>
+          </tr>
+        </thead>
+        <tbody data-bind="foreach: detail().stages">
+          <tr>
+            <td data-bind="text: $data.stageNo"></td>
+            <td data-bind="text: $parent.stageLabel($data)"></td>
+            <td><span data-bind="text: $data.status,
+                                 attr: { 'class': $parent.statusClass($data.status) }"></span></td>
+            <td class="mono" data-bind="text: $data.fusionRef || '—'"></td>
+            <td data-bind="text: $data.note || $data.lastError || '—'"></td>
+            <td data-bind="text: $data.finishedAt || '—'"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+  </edit-drawer>
 </div>

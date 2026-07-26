@@ -147,12 +147,20 @@ try:
         # an EMPTY timeline, so the assertion needs a completed one
         page.locator('.ir-table tbody tr').first.locator('td').nth(1).click()
         page.wait_for_timeout(2500)
-        check('stage timeline opens on IR row click',
-              page.locator('text=LOCATE').count() >= 1)
+        check('timeline DRAWER slides in on IR row click',
+              page.locator('.ed-drawer.ed-show').count() == 1)
+        try:
+            page.locator('.ed-drawer.ed-show').get_by_text('LOCATE').first.wait_for(timeout=12000)
+            tl_ok = True
+        except Exception:
+            tl_ok = False
+        check('drawer shows the stage timeline', tl_ok)
+        check('read-only drawer: Close only, no Save',
+              page.locator('.ed-drawer.ed-show .region-actions .btn').count() == 1)
         page.screenshot(path=EV + '02_timeline_en.png', full_page=True)
-        page.evaluate("() => { const o = document.querySelector('.modal-overlay');"
-                      " if (o) o.click(); }")
-        page.wait_for_selector('.modal-overlay', state='detached', timeout=10000)
+        page.locator('.ed-drawer.ed-show .region-actions .btn').click()
+        page.wait_for_timeout(900)
+        check('drawer closes', page.locator('.ed-drawer.ed-show').count() == 0)
         srch.fill('')
         page.wait_for_timeout(1200)
         mx = page.locator('.ir-wrap button[title*="Maximize"]')

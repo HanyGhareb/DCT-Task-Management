@@ -29,6 +29,9 @@
      onClose     function             optional — return false to veto close
      saveLabel   string|observable    optional — default 'Save'
      cancelLabel string|observable    optional — default 'Cancel'
+     hideSave    bool                 optional — true drops the Save button for
+                                       read-only drawers (drills, timelines);
+                                       onSave may then be omitted
      width       string               optional — default '560px'; any CSS width
                                        (e.g. '720px', '60vw') or 'auto' to size to
                                        content. Bounded by min/max in platform.css. */
@@ -45,6 +48,9 @@ define(['knockout'], function (ko) {
       self.subtitle    = params.subtitle || null;     // optional (html)
       self.dirtyFlag   = params.dirty || null;        // optional ko.observable(bool)
       self.saveLabel   = params.saveLabel   || 'Save';
+      // read-only drawers (drill/timeline viewers) have nothing to save --
+      // hideSave: true drops the primary button so Close stands alone
+      self.hideSave    = params.hideSave === true;
       self.cancelLabel = params.cancelLabel || 'Cancel';
       self.width       = params.width || '560px';
 
@@ -81,7 +87,9 @@ define(['knockout'], function (ko) {
             '</div>' +
             '<div class="region-actions">' +
               '<button class="btn btn-sm" data-bind="click: close, text: cancelLabel"></button>' +
+              '<!-- ko ifnot: hideSave -->' +
               '<button class="btn btn-sm btn-primary" data-bind="click: save, text: saveLabel"></button>' +
+              '<!-- /ko -->' +
             '</div>' +
           '</header>' +
           '<div class="ed-drawer__body" ' +
