@@ -3,6 +3,24 @@
 Runbook + history for the i-Finance Reporting Platform (`reporting/`). See the canonical platform-wide
 SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
 
+## History (most recent first)
+- **2026-07-26 — Budget Utilization reports: drop Project Type column + user-requested detail sort orders
+  (BUDGET_UTIL_BOOK / BUDGET_UTIL_REGISTER / BUDGET_UTIL_SECTOR).** Register sheet 1 "Budget Utilization
+  Lines" lost the redundant **Project Type** column (already in the report scope/filter). Detail-section
+  sort orders standardised across all three BU report layouts: BU Lines → `Sector, Chapter, Cost Centre,
+  Project, Task, Expenditure`; AP Invoices-Direct → `Project, Task, Expenditure, Invoice Date`; GRN
+  Receipts → `Project, Task, Expenditure, PO Number, PO Line`; Open POs → same as GRN; Open PRs →
+  `Project, Task, Expenditure, PR Number`; Pending PR/PO (register) → `Doc Type, Document Number, Line`.
+  BUDGET_UTIL_SECTOR aligned too (its invoice section already matched; utilization gains Chapter/Cost-Centre
+  lead keys since it is single-sector). The book's summary/ranking sections (by_sector, pressure, pending
+  aging/approvers) keep their analytical ordering. Source files edited (`reporting/db/08a,21,25`) AND the
+  **live `source_ref` deployed via targeted CLOB REPLACE** (per the db/28 pattern — the MERGE-bearing seeds
+  are swallowed by Linux SQLcl; every search string verified as exactly 1 occurrence before replacing).
+  Verified: all 3 defs still `IS JSON`, 0 old sort strings remain, `project_type` gone from the register,
+  every new ORDER BY executes + sorts correctly against the live views. **No template change** (register
+  is generic XLSX; the book/sector J2 templates render section columns in SELECT order). Deploy script
+  archived in the session scratchpad; re-running the edited seeds reproduces the change.
+
 ## Deploy checklist (DB — Phase 0 control plane)
 1. Files ship **CRLF + UTF-8 (no BOM)** (SQLcl silently skips LF-only files). Normalize if edited.
 2. Launch SQLcl with `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8` so the Arabic lookup seeds store cleanly.
