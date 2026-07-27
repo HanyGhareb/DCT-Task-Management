@@ -118,6 +118,25 @@ on the set's interval.
 ## Targets (`targets`)
 - `load` · `newTarget` / `editTarget` (drawer) · `save` (create/update) · `del`.
 
+## VB Templates (`xlTemplates`)
+Visual Builder Excel template repository — per process (template) a set of **versions**, each carrying a
+**MASTER** (unpublished, admin-only) and a **PUBLISHED** (end-user) workbook; exactly **one version is
+ACTIVE per template** and end users elsewhere download the active published file
+(`GET /ords/admin/xl/templates/download?code=`). Backed by the platform **`xl` ORDS module**
+(`/ords/admin/xl/`, NOT `/atd/`) — SYS_ADMIN-gated except the download route.
+- `load` — template list (`.data-table`: code, EN/AR name, module badge, description, versions count,
+  ACTIVE version badge); row click expands the per-template **versions table** (`toggle`/`isOpen`,
+  expansion survives reloads).
+- `newTpl` / `editTpl` / `saveTpl` — create/edit template drawer (code fixed after create; name/nameAr/
+  module/description partial update via `POST /templates/` with `templateId`).
+- `newVersion` / `saveVersion` — New Version drawer (notes) → `POST /templates/version`.
+- `upload(t, v, kind)` — `.xlsx` picker (`shared/docUpload.choose`) → raw-binary
+  `PUT /templates/file?templateid=&ver=&kind=master|published&filename=`; toast + refresh.
+- `download(t, v, kind)` — authed blob fetch → object-URL `a.click` (master or published workbook).
+- `activate(t, v)` — confirm + `POST /templates/activate` (button disabled until a published file exists;
+  server 400s otherwise).
+- `delVersion(t, v)` — confirm + `POST /templates/delete-version` (blocked on the ACTIVE version).
+
 ## Run Logs (`runs`)
 - Run Detail shows non-blocking **data warnings** for invalid dates: source row,
   target column, original value, and reason. The job remains SUCCESS and loads NULL
@@ -263,10 +282,27 @@ One page, three tables, for the `create_analysis` async pipeline:
 
 All handlers: `dct_rest.validate_session` → 401, `dct_auth.has_role(user,'SYS_ADMIN')` → 403.
 
+## API Endpoints (ORDS) — `/ords/admin/xl/` (platform `xl` module — VB Template repository)
+Bearer-auth like every other module; **SYS_ADMIN-gated except `/templates/download`** (any valid
+session). Errors arrive as `{"error":"…"}` with a proper HTTP status. Consumed by the VB Templates
+page via `js/services/xlService.js` (base derived by swapping the module segment — the shared
+api.js `wf` pattern; `config.xlBase` wins if set).
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/templates/` | full repository — `{items:[{templateId, code, name, nameAr, description, module, versions:[{versionNo, isActive, notes, masterFile/SizeKb/By/At, pubFile/SizeKb/By/At}]}]}`. SYS_ADMIN |
+| POST | `/templates/` | create (`{code,name,nameAr,description,module}` → `{templateId}`) or partial update (same body + `templateId`). SYS_ADMIN |
+| POST | `/templates/version` | `{templateId, notes}` → `{versionNo}` — next version for a template. SYS_ADMIN |
+| PUT | `/templates/file?templateid=&ver=&kind=master\|published&filename=` | raw-binary workbook upload (`application/octet-stream` body) → `{ok:1}`. SYS_ADMIN |
+| GET | `/templates/file?templateid=&ver=&kind=master\|published` | binary workbook download (authed blob). SYS_ADMIN |
+| POST | `/templates/activate` | `{templateId, versionNo}` → `{ok:1}`; 400 if that version has no published file. SYS_ADMIN |
+| POST | `/templates/delete-version` | `{templateId, versionNo}` → `{ok:1}`; 400 if the version is ACTIVE. SYS_ADMIN |
+| GET | `/templates/download?code=` | the template's **active published** file — any authenticated user (end-user download route) |
+
 ## Services / Data layer
 | File | Role |
 |---|---|
 | `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction`; job sets `listJobSets` / `getJobSet` / `createJobSet` / `updateJobSet` / `deleteJobSet` / `addSetMembers` / `updateSetMember` / `removeSetMember` / `runJobSet` / `pauseJobSet` / `listSetCandidates` |
+| `js/services/xlService.js` | VB Template repository client for the platform `xl` ORDS module (`/ords/admin/xl/`): `list` / `save` / `newVersion` / `activate` / `deleteVersion` / raw-binary `uploadFile` / authed `fileBlobUrl` |
 | `js/services/api.js` | re-export of `shared/js/api.js` (Bearer + 401 handling) |
 | `js/services/authService.js` | session reader (shared `ifinance_jet_session`) |
 | `js/services/config.js` | `apiBase=/ords/admin/atd`, `authBase=/ords/admin/dct` |

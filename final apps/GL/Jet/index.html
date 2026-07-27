@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.42.6';</script>
+<script>window.APP_VERSION='1.44.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -439,6 +439,18 @@
         </div>
       </div>
 
+      <!-- CRITICAL data-quality alert: budget lines with an annual budget but NO
+           cost centre in the current result set. Hidden when the count is zero;
+           click drills to the shared drawer listing the lines (/butil?nocc=Y). -->
+      <div class="bu-alert" role="alert" data-bind="visible:buMissCc()>0, click:openBuMissCc, attr:{title:t('buMissCcHint')}">
+        <span class="bu-alert-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+        <div class="bu-alert-tx">
+          <b data-bind="text:t('buMissCcTitle')"></b>
+          <span data-bind="text:buMissCcMsg()"></span>
+        </div>
+        <span class="bu-alert-cta" data-bind="text:t('buMissCcCta')"></span>
+      </div>
+
       <!-- search criteria (budget year is mandatory) — collapsible region -->
       <div class="bu-sec">
         <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('search');return true}, css:{closed:!buSecSearchOpen()}">
@@ -476,6 +488,12 @@
             <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
             <select class="inp" data-bind="options:buUnitOpts(), optionsText:'l', optionsValue:'v', value:buUnit"></select></div>
+          <!-- Consider Override Budget — div-click toggle (never wrap a KO checkbox in <label>) -->
+          <div class="field"><label class="lbl"><span data-bind="text:t('buOvrConsider')"></span><i class="hint-i" data-bind="attr:{title:t('buOvrHint')}">ⓘ</i></label>
+            <div class="inp ovr-chk" data-bind="click:toggleBuOvr, css:{on:buOvr}, attr:{title:t('buOvrHint')}">
+              <input type="checkbox" tabindex="-1" data-bind="checked:buOvr">
+              <span data-bind="text:buOvr()?t('buOvrOn'):t('buOvrOff')"></span>
+            </div></div>
           <div class="field filter-actions">
             <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, css:{busy:buLoading}, text:t('btnSearch')"></button>
             <button class="btn" data-bind="click:buReset, enable:!buLoading(), text:t('btnReset')"></button>
@@ -530,7 +548,7 @@
           <span class="bu-sec-sum" data-bind="text:buKpiSummary()"></span>
         </div>
         <div class="bu-sec-b" data-bind="visible:buSecKpisOpen">
-        <div class="bu-kpis">
+        <div class="bu-kpis bu-kpis5">
         <div class="bk bk-budget bk-duo">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
           <div class="bk-body">
@@ -595,6 +613,19 @@
             <div class="bk-v mono" data-bind="text:buNum(buTot('fundAvailable')), attr:{title:money(buTot('fundAvailable'))}"></div>
             <div class="bk-sub" data-bind="text:buFundSub()"></div>
             <div class="bk-bar"><i data-bind="style:{width:buBarW('fundAvailable')}"></i></div>
+          </div>
+        </div>
+        <!-- Override Budget (budget_user) — tile click opens the editable lines drawer -->
+        <div class="bk bk-ovr bk-click" data-bind="click:openOvDrawer, attr:{title:t('ovTileHint')}">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cOverrideBudget')"></div>
+            <div class="bk-v mono" data-bind="text:buNum(buTot('overrideBudget')), attr:{title:money(buTot('overrideBudget'))}"></div>
+            <div class="bk-sub">
+              <span data-bind="text:t('ovLinesN').replace('{n}', fmt(buTot('overrideLines')||0))"></span>
+              <span class="ov-applied" data-bind="visible:buConsiderOvr">· <span data-bind="text:t('ovApplied')"></span></span>
+            </div>
+            <div class="bk-bar"><i data-bind="style:{width:buSegW(buTot('overrideBudget'), buTot('budgetAnnual'))}"></i></div>
           </div>
         </div>
       </div>
@@ -729,6 +760,25 @@
             <li data-bind="text:t('calcNotePeriod')"></li>
             <li data-bind="text:t('calcUtilNote')"></li>
           </ul>
+        </div>
+      </div>
+
+      <!-- ── Budget Override from Excel (Oracle Visual Builder Add-in workflow) ── -->
+      <div class="bu-sec bu-xltpl">
+        <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('xltpl');return true}, css:{closed:!buSecXltplOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('xltplTitle')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:buSecXltplOpen">
+          <div class="calc-intro" data-bind="text:t('xltplIntro')"></div>
+          <ol class="xltpl-steps">
+            <li data-bind="text:t('xltplS1')"></li>
+            <li data-bind="text:t('xltplS2')"></li>
+            <li data-bind="text:t('xltplS3')"></li>
+            <li data-bind="text:t('xltplS4')"></li>
+            <li data-bind="text:t('xltplS5')"></li>
+          </ol>
+          <button class="btn btn-primary" data-bind="click:downloadXlTemplate, css:{busy:xltplBusyF}, enable:!xltplBusyF(), text:xltplBusyF()?t('xltplBusy'):t('xltplBtn')"></button>
         </div>
       </div>
     </div>
@@ -1447,6 +1497,69 @@
       </table>
     </div>
     <div class="empty pad" data-bind="visible:drillRows().length===0, text:t('noLines')"></div>
+    <!-- /ko -->
+  </div>
+</aside>
+
+<!-- ═══════════ OVERRIDE BUDGET DRAWER (KPI tile → view + inline-edit budget_user lines) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:ovDrawer}, click:closeOvDrawer" style="display:none"></div>
+<aside class="dw-drawer dw-wide" data-bind="css:{show:ovDrawer, 'dw-full':ovMax}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:(buYear()||'') + (buPeriod() ? ' · ' + t('ytd') + ' ' + buPeriod() : '')"></div>
+      <div class="dw-title" data-bind="text:t('ovDrillTitle')"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:toggleOvMax, attr:{title:ovMax()?t('buRestoreT'):t('buMaxT')}, text:ovMax()?'⤡ ':'⤢ '"></button>
+      <button class="btn btn-sm" data-bind="click:ovExportCsv, text:t('exportCsv'), visible:!ovLoading() && ovRows().length>0"></button>
+      <button class="btn btn-sm" data-bind="click:closeOvDrawer, text:t('cancel')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="text:t('ovEditHint')"></div>
+    <div class="ldr sm" data-bind="visible:ovLoading()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+    </div>
+    <!-- ko if: !ovLoading() -->
+    <div class="tbl-wrap" data-bind="visible:ovRows().length>0">
+      <table class="tbl drill-tbl ov-tbl">
+        <thead><tr>
+          <th data-bind="text:t('cProject')"></th>
+          <th data-bind="text:t('buMissCcPName')"></th>
+          <th data-bind="text:t('cTask')"></th>
+          <th data-bind="text:t('cEtype')"></th>
+          <th data-bind="text:t('fPeriod')"></th>
+          <th class="num" data-bind="text:t('ovColFusion')"></th>
+          <th class="num" data-bind="text:t('cOverrideBudget')"></th>
+          <th data-bind="text:t('ovColUpdBy')"></th>
+          <th data-bind="text:t('ovColUpdAt')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody>
+          <!-- ko foreach: ovRows -->
+          <tr>
+            <td><b class="mono" data-bind="text:$data.projectNumber"></b></td>
+            <td data-bind="text:$data.projectName||'—'"></td>
+            <td data-bind="text:$data.taskNumber||'—'"></td>
+            <td data-bind="text:$data.expenditureType||'—'"></td>
+            <td class="mono" data-bind="text:$data.accountingPeriod||'—'"></td>
+            <td class="num mono" data-bind="text:$root.money($data.fusionBudget)"></td>
+            <td class="num"><input class="inp ov-inp" type="number" step="any" data-bind="textInput:$data.override, event:{keydown:function(d,e){if(e.keyCode===13){$root.saveOvRow(d);return false;}return true;}}"></td>
+            <td data-bind="text:$data.updBy()||'—'"></td>
+            <td class="mono" data-bind="text:$data.updAt()||'—'"></td>
+            <td><button class="btn btn-sm btn-primary" data-bind="click:function(d){$root.saveOvRow(d)}, css:{busy:$data.saving}, enable:!$data.saving(), text:$root.t('ovSaveBtn')"></button></td>
+          </tr>
+          <!-- /ko -->
+        </tbody>
+        <tfoot><tr><td class="drill-total" colspan="10">
+          <span data-bind="text:t('ovTotOverride')"></span> <b class="mono" data-bind="text:money(ovTotOverride())"></b>
+          <span class="ov-vs">·</span>
+          <span data-bind="text:t('ovTotFusion')"></span> <b class="mono" data-bind="text:money(ovTotFusion())"></b>
+        </td></tr></tfoot>
+      </table>
+    </div>
+    <div class="empty pad" data-bind="visible:ovRows().length===0, text:t('ovEmpty')"></div>
     <!-- /ko -->
   </div>
 </aside>

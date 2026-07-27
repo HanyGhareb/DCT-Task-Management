@@ -172,6 +172,47 @@ db/v2/               ← All DCT_* DDL, packages, ORDS setup (source of truth)
                        err(401) from garbling the body). NEW module app MUST add its segment
                        to the CASE map. Shell also redirects out of a denied app at boot.
                        DEPLOYED 2026-07-13
+  106_xl_budget.sql  ← Excel (VBAFE) budget override: DCT_PROJECT_BUDGET_USER (end-user
+                       BUDGET_USER figure, keyed on the ATD_PROJECTS_BUDGET extract natural
+                       key project/task/etype/period — NEVER a column on the ATD table, the
+                       daily full load is TRUNCATE_INSERT and would wipe it) + view
+                       DCT_PROJECT_BUDGET_XL_V + DCT_XL_PKG (HTTP Basic validated against
+                       DCT_USERS in-handler: DB-auth active users only, silent success,
+                       failures logged via dct_auth.authenticate; opaque base64url row_id
+                       over the natural key). DEPLOYED 2026-07-27
+  107_xl_budget_ords.sql ← xl.rest module /ords/admin/xl/ for the Oracle Visual Builder
+                       Add-in for Excel: GET budget/ + GET/PUT budget/:id (budget_user is
+                       the ONLY writable field; deliberately NO POST/DELETE → 405). Module
+                       is ORDS-public; handlers self-authenticate (no validate_session, so
+                       the db/v2/50 gate does not apply to /xl/). OpenAPI for the add-in =
+                       **GET /xl/openapi** (hand-authored full schema in DCT_XL_PKG; the
+                       auto open-api-catalog of a CUSTOM module has NO field schemas → the
+                       add-in "finds 1 business object" but lists nothing to select; row
+                       identity field is `id`, matching the {id} path param). Own module —
+                       11 re-runs don't touch it. Guide:
+                       docs/excel-integration/VBAFE_BUDGET_USER_GUIDE.md.
+  108_xl_templates.sql ← VB TEMPLATE REPOSITORY (all VBAFE processes, not just budget):
+                       DCT_XL_TEMPLATE + DCT_XL_TEMPLATE_VERSION (per version BOTH files —
+                       master/unpublished = admin-only + published = end-user; ONE active
+                       version per template via function-based unique index) + DCT_XL_TPL
+                       pkg. Served by xl.rest BEARER routes (in 107): /xl/templates* mgmt =
+                       SYS_ADMIN; GET /xl/templates/download?code= = any valid session
+                       (streams the ACTIVE version's PUBLISHED file — the GL butil page
+                       download button). Managed from ATD → VB Templates. BUDGET_OVERRIDE
+                       v1 seeded ACTIVE. DEPLOYED + API-tested 11/11 2026-07-27. SAME DAY:
+                       override wired into GL — db/v2/37 pb CTE joins
+                       DCT_PROJECT_BUDGET_USER (GL_CTX.BUTIL_OVR='Y' →
+                       NVL(budget_user,budget) per period row + always-on
+                       override_budget[_annual]/override_lines cols LAST), GL/db/03
+                       set/clear_butil_ovr, GL/db/07 ovr= param (+ /butil/lines Override
+                       col; handler literal ~31.4K of the 32,767 cap), NEW ADDITIVE
+                       GL/db/15 /butil/override[/lines] (Override KPI drawer + in-place
+                       edit via dct_xl_pkg.save_item), GL/db/11 bridges forward ovr +
+                       BUDGET_UTIL_BOOK/REGISTER pre_sql set_butil_ovr (live CLOB surgery
+                       + reporting/db/21+25 seeds synced). GL post-05 re-run list = 07..15.
+                       NEW SQLcl GOTCHA: two @scripts chained in ONE runner file = second
+                       silently skipped; deploy one script per invocation.
+                       DEPLOYED + curl-verified 11/11 2026-07-27
 
 ifinance-mobile/     ← App 209 — React Native + Expo (TypeScript) cross-platform mobile client
                        (iOS+Android). Thin native client over the shared /dct/ ORDS APIs; MVP =

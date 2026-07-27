@@ -130,7 +130,9 @@
       "Bash(2>/dev/null)",
       "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\test_individual_inserts.sql\" 2>&1)",
       "PowerShell(Stop-Process *)",
-      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\verify_counts.sql\" 2>&1)"
+      "PowerShell(& \"C:\\\\claude\\\\tools\\\\sqlcl\\\\sqlcl\\\\bin\\\\sql.exe\" -name prod_mcp \"@C:\\\\tmp\\\\verify_counts.sql\" 2>&1)",
+      "Bash(ssh root@192.168.1.182 'ls /root/otbi-atd/runner/.ar_step/')",
+      "Bash(ssh root@192.168.1.182 'mkdir -p /root/otbi-atd/runner/.ar_step3 && cd /root/otbi-atd/runner && source /root/otbi-atd/env.sh && export ATD_ACTION_LIVE=1 && export ATD_ACTION_SHOT_DIR=/root/otbi-atd/shots/ar584150 && /root/otbi-atd/venv/bin/python step_ar_rebill.py payload_584150.json --ctl /root/otbi-atd/runner/.ar_step3')"
     ],
     "additionalDirectories": [
       "\\tmp"

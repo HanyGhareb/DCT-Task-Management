@@ -127,17 +127,39 @@ pb AS (
   -- ACCOUNTING_PERIOD (MM-YYYY) falls on or before BUTIL_END. A NULL/unparseable
   -- period falls back to 1900-01-01 = ALWAYS included (un-spread budget counts
   -- as annual). BUTIL_END unset -> budget_ytd = budget_annual (full year).
+  -- Override flag (2026-07-27): when SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+  -- every period row takes NVL(budget_user, budget) - the end-user Excel
+  -- override from PROD.DCT_PROJECT_BUDGET_USER (db/v2/106, joined on the
+  -- extract natural key) - so annual/YTD budget, fund available, utilization
+  -- and every consuming report reflect the override. The override_* columns
+  -- (entered amounts + overridden-row count) are ALWAYS emitted regardless of
+  -- the flag - they feed the separate Override Budget KPI.
   SELECT b.budget_year,
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(b.project_id)) AS project_key,
          COALESCE(tk.task_number, '#'||TO_CHAR(b.task_id))                AS task_key,
          b.expenditure_type,
-         SUM(b.budget) AS budget_annual,
-         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL THEN b.budget
-                  WHEN NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+                  THEN NVL(u.budget_user, b.budget) ELSE b.budget END) AS budget_annual,
+         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+                    OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
                            DATE '1900-01-01')
                        < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
-                  THEN b.budget END) AS budget_ytd
+                  THEN CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+                            THEN NVL(u.budget_user, b.budget) ELSE b.budget END
+             END) AS budget_ytd,
+         SUM(u.budget_user) AS override_annual,
+         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
+                    OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                           DATE '1900-01-01')
+                       < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
+                  THEN u.budget_user END) AS override_ytd,
+         COUNT(u.budget_user) AS override_cnt
   FROM prod.projects_budget b
+  LEFT JOIN prod.dct_project_budget_user u
+         ON  u.project_id        = b.project_id
+         AND u.task_id           = b.task_id
+         AND u.expenditure_type  = b.expenditure_type
+         AND u.accounting_period = b.accounting_period
   LEFT JOIN proj pj ON pj.project_id = b.project_id
   LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
   GROUP BY b.budget_year,
@@ -323,7 +345,10 @@ SELECT
     MAX(NVL(b.budget_ytd,0))
       - SUM( NVL(ap.actual_ap,0) + NVL(grn.actual_grn,0)
            + NVL(pr.open_commitment_pr,0) + NVL(po.open_obligation_po,0) )
-  END AS fund_available
+  END AS fund_available,
+  MAX(NVL(b.override_annual,0)) AS override_budget_annual,
+  MAX(NVL(b.override_ytd,0))    AS override_budget,
+  MAX(NVL(b.override_cnt,0))    AS override_lines
 FROM keys k
 LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = k.cc_string
 LEFT JOIN pb b  ON b.budget_year = k.budget_year

@@ -61,8 +61,8 @@ BEGIN
   -- ENC_PENDING_BOOK scope rule; db/v2/52 + COA snapshot)
   l_pend := q'!SELECT x.source AS doc_type, x.doc_number AS document_number, x.doc_line AS line, x.descr AS description_supplier, x.preparer_buyer, x.submitted_date, x.pending_days, x.pending_with, x.project_number, x.project_name, x.task_number, x.expenditure_type, coa.sector_name AS sector, coa.cost_center_code, coa.cost_center_desc AS cost_center_name, coa.appropriation_code, coa.appropriation_desc AS appropriation_name, x.budget_date, x.line_aed AS amount_aed, x.cc_string AS gl_combination FROM prod.dct_pr_po_pending_v x LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = x.cc_string WHERE x.in_extract = 'Y' AND x.budget_year = [COLON]year AND x.funds_status IN ('Reserved','Partially Liquidated') AND ABS(x.line_aed) > 0.005!' || l_scope || q'! ORDER BY x.source, x.doc_number, x.doc_line!';
   l_src := '{"required":["year"],'
-        || '"pre_sql":"BEGIN IF [COLON]period IS NULL THEN prod.dct_gl_class_pkg.clear_butil_end; ELSE prod.dct_gl_class_pkg.set_butil_end(LAST_DAY(TO_DATE(''01-''||[COLON]period,''DD-MM-YYYY''))); END IF; END;",'
-        || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_end; END;",'
+        || '"pre_sql":"BEGIN IF [COLON]period IS NULL THEN prod.dct_gl_class_pkg.clear_butil_end; ELSE prod.dct_gl_class_pkg.set_butil_end(LAST_DAY(TO_DATE(''01-''||[COLON]period,''DD-MM-YYYY''))); END IF; prod.dct_gl_class_pkg.set_butil_ovr([COLON]ovr); END;",'
+        || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_end; prod.dct_gl_class_pkg.clear_butil_ovr; END;",'
         || '"sections":['
         || '{"key":"bu_lines","title":"Budget Utilization Lines","layout":"table","sql":"' || l_bu || '"}' || ','
         || '{"key":"ap_lines","title":"AP Invoices - Direct","layout":"table","sql":"' || l_ap || '"}' || ','

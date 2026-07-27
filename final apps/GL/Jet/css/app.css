@@ -428,6 +428,23 @@ html[dir=rtl] .bar-fill{background:linear-gradient(270deg,var(--brand),var(--bra
    region. Brand-colored header bar (echoes the platform region theming),
    chevron collapse with a collapsed-state summary, and a full-screen
    table mode (⤢ toggles, Esc restores; drawers/toasts layer above). */
+/* CRITICAL data-quality alert band — budget lines with NO cost centre.
+   Rendered only when the current /butil result set carries missingCc > 0;
+   the whole band is a click target that drills to the lines drawer. */
+.bu-alert{display:flex;align-items:center;gap:13px;margin-bottom:16px;padding:12px 16px;cursor:pointer;
+  background:linear-gradient(120deg,#FDECEA,#FBE0DD);border:1px solid #E5A29A;
+  border-inline-start:5px solid var(--bad);border-radius:var(--r);box-shadow:var(--shadow);
+  transition:box-shadow .15s ease,transform .15s ease}
+.bu-alert:hover{box-shadow:0 10px 26px -12px rgba(192,57,43,.45);transform:translateY(-1px)}
+.bu-alert-ic{display:grid;place-items:center;width:34px;height:34px;flex:none;border-radius:9px;
+  background:var(--bad);color:#fff}
+.bu-alert-ic svg{width:19px;height:19px}
+.bu-alert-tx{flex:1;min-width:0;font-size:13px;line-height:1.45;color:#7C1D12}
+.bu-alert-tx b{display:block;font-size:13.5px;font-weight:800;color:var(--bad);letter-spacing:.01em}
+.bu-alert-cta{flex:none;font-size:12.5px;font-weight:700;color:#fff;background:var(--bad);
+  padding:7px 14px;border-radius:999px;white-space:nowrap}
+.bu-alert:hover .bu-alert-cta{background:#A93226}
+
 .bu-sec{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);
   margin-bottom:16px;overflow:hidden}
 .bu-sec-h{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;-webkit-user-select:none;user-select:none;
@@ -793,3 +810,31 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 .bu-results.maxed .bu-sec-b{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
 .bu-results.maxed .bu-sec-b .tbl-wrap{flex:1;overflow:auto;min-height:0}
 .bu-results.maxed .bu-sec-b .toolbar{flex:none}
+
+/* ══════════ Override Budget (budget_user) — butil page only ══════════ */
+/* Search-region toggle: div is the click target, the checkbox itself is
+   pointer-inert (KO label/double-toggle gotcha) */
+.ovr-chk{display:flex;align-items:center;gap:8px;cursor:pointer;-webkit-user-select:none;user-select:none}
+.ovr-chk input{pointer-events:none;width:16px;height:16px;accent-color:var(--brand);flex:none;margin:0}
+.ovr-chk span{font-size:13px;color:var(--muted);font-weight:600}
+.ovr-chk.on span{color:var(--brand-dark)}
+/* KPI band with the 5th (Override Budget) tile — the shared .bu-kpis grid keeps
+   4 columns for the pending page; this modifier applies on butil only.
+   Both rules of each media query repeat the two-class selector so the
+   breakpoint always wins over the base 5-column declaration. */
+.bu-kpis.bu-kpis5{grid-template-columns:1fr 1.3fr 1.3fr 1fr 1fr}
+@media (max-width:1700px){.bu-kpis.bu-kpis5{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:1100px){.bu-kpis.bu-kpis5{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.bu-kpis.bu-kpis5{grid-template-columns:1fr}}
+.bk-ovr{--bk-c:#B8862B;--bk-soft:#F6EFDC}   /* gold — the platform GRN/gold accent family */
+.bk-sub .ov-applied{color:#B8862B;font-weight:700}
+/* Override drawer: inline-editable Override Budget column */
+.ov-tbl td{vertical-align:middle}
+.ov-tbl .ov-inp{width:130px;min-width:110px;padding:6px 8px;font-size:13px;text-align:end;
+    font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.ov-vs{margin-inline:10px;color:var(--muted)}
+/* Budget Override from Excel region (collapsible, bottom of the page) */
+.bu-xltpl{margin-top:14px}
+.xltpl-steps{margin:0 0 14px;padding-inline-start:22px;display:flex;flex-direction:column;gap:6px;
+    font-size:13px;color:var(--ink)}
+.xltpl-steps li::marker{color:var(--brand-dark);font-weight:700}

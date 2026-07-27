@@ -23,6 +23,11 @@
 --       sets SYS_CONTEXT('GL_CTX','BUTIL_END') via dct_gl_class_pkg.set_butil_end
 --       so the view's fact CTEs stop at the period end (budget stays annual);
 --       always cleared after the queries (and on error) -- pooled sessions.
+--       DATA QUALITY (2026-07-27): response always carries missingCc +
+--       missingCcBudget = count / annual-budget sum of the filtered rows that
+--       have an annual budget (<> 0) but NO cost centre (task attribute missing
+--       in Fusion AND no charge-account fallback). nocc=Y filters the register
+--       to exactly those rows -- the red alert band's drill drawer uses it.
 --   GET /gl/butil/lines?year=&project=&task=&etype=&metric=  -> a single figure
 --       (metric ap|grn|pr|po|budget|budgetannual) drilled to its supporting lines
 --       {metric, total, columns[], rows[]}; totals reconcile to the row figure.
@@ -201,11 +206,19 @@ DECLARE
   l_etype  VARCHAR2(255) := [COLON]etype;
   l_search VARCHAR2(200) := [COLON]search;
   l_period VARCHAR2(10)  := [COLON]period;
+  -- nocc=Y -> ONLY the data-quality rows: budget lines (annual budget <> 0)
+  -- with NO cost centre. Feeds the red alert band's drill drawer.
+  l_nocc   VARCHAR2(4)   := [COLON]nocc;
+  -- ovr=Y -> "Consider Override Budget": GL_CTX.BUTIL_OVR makes the view take
+  -- NVL(budget_user, budget) per period row (db/v2/106 Excel override).
+  l_ovr    VARCHAR2(4)   := UPPER(NVL([COLON]ovr,'N'));
   l_end    DATE;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 5000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
+  l_misscc NUMBER; t_misscc NUMBER;
   t_bud NUMBER; t_buda NUMBER; t_ap NUMBER; t_grn NUMBER; t_pr NUMBER; t_po NUMBER; t_fund NUMBER;
+  t_ovr NUMBER; t_ovra NUMBER; t_ovrn NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
@@ -223,11 +236,17 @@ BEGIN
   -- YTD window: view fact CTEs read GL_CTX.BUTIL_END; always cleared below
   IF l_end IS NOT NULL THEN dct_gl_class_pkg.set_butil_end(l_end);
   ELSE dct_gl_class_pkg.clear_butil_end; END IF;
+  dct_gl_class_pkg.set_butil_ovr(l_ovr);
   SELECT COUNT(*), NVL(SUM(budget),0), NVL(SUM(budget_annual),0), NVL(SUM(actual_ap),0), NVL(SUM(actual_grn),0),
-         NVL(SUM(commitment_pr),0), NVL(SUM(obligation_po),0), NVL(SUM(fund_available),0)
-    INTO l_total, t_bud, t_buda, t_ap, t_grn, t_pr, t_po, t_fund
+         NVL(SUM(commitment_pr),0), NVL(SUM(obligation_po),0), NVL(SUM(fund_available),0),
+         COUNT(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN 1 END),
+         NVL(SUM(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN v.budget_annual END),0),
+         NVL(SUM(override_budget),0), NVL(SUM(override_budget_annual),0), NVL(SUM(override_lines),0)
+    INTO l_total, t_bud, t_buda, t_ap, t_grn, t_pr, t_po, t_fund, l_misscc, t_misscc,
+         t_ovr, t_ovra, t_ovrn
     FROM prod.dct_budget_utilization_v v
    WHERE v.budget_year = l_year
+     AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
      AND (l_ptype  IS NULL OR v.project_type = l_ptype)
      AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -246,16 +265,24 @@ BEGIN
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('total', l_total); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
   APEX_JSON.write('year', l_year);
+  -- data-quality flag: budget lines (annual budget <> 0) with NO cost centre in
+  -- the filtered set -> drives the red alert band on the Budget Utilization page
+  APEX_JSON.write('missingCc', l_misscc);
+  APEX_JSON.write('missingCcBudget', t_misscc);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
+  APEX_JSON.write('considerOverride', l_ovr);
   APEX_JSON.open_object('totals');
   APEX_JSON.write('budget', t_bud); APEX_JSON.write('budgetAnnual', t_buda);
   APEX_JSON.write('actualAp', t_ap); APEX_JSON.write('actualGrn', t_grn);
   APEX_JSON.write('commitmentPr', t_pr); APEX_JSON.write('obligationPo', t_po); APEX_JSON.write('fundAvailable', t_fund);
+  APEX_JSON.write('overrideBudget', t_ovr); APEX_JSON.write('overrideBudgetAnnual', t_ovra);
+  APEX_JSON.write('overrideLines', t_ovrn);
   APEX_JSON.close_object;
   APEX_JSON.open_array('items');
   FOR r IN (
     SELECT v.* FROM prod.dct_budget_utilization_v v
     WHERE v.budget_year = l_year
+      AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
       AND (l_ptype  IS NULL OR v.project_type = l_ptype)
       AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -294,11 +321,17 @@ BEGIN
     APEX_JSON.write('commitmentPr', r.commitment_pr);
     APEX_JSON.write('obligationPo', r.obligation_po);
     APEX_JSON.write('fundAvailable', r.fund_available);
+    APEX_JSON.write('overrideBudget', r.override_budget);
+    APEX_JSON.write('overrideBudgetAnnual', r.override_budget_annual);
+    APEX_JSON.write('overrideLines', r.override_lines);
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;
   dct_gl_class_pkg.clear_butil_end;
-EXCEPTION WHEN OTHERS THEN dct_gl_class_pkg.clear_butil_end; dct_rest.err(500, SQLERRM);
+  dct_gl_class_pkg.clear_butil_ovr;
+EXCEPTION WHEN OTHERS THEN
+  dct_gl_class_pkg.clear_butil_end; dct_gl_class_pkg.clear_butil_ovr;
+  dct_rest.err(500, SQLERRM);
 END;
 !');
 
@@ -346,6 +379,9 @@ DECLARE
   l_ftask   VARCHAR2(200) := [COLON]ftask;
   l_fetype  VARCHAR2(255) := [COLON]fetype;
   l_search  VARCHAR2(200) := [COLON]search;
+  -- ovr=Y: budget drills show NVL(budget_user, budget) so they reconcile to
+  -- the page figures when Consider Override Budget is on
+  l_ovr     VARCHAR2(4)   := UPPER(NVL([COLON]ovr,'N'));
   l_period  VARCHAR2(10)  := [COLON]period;
   l_end     DATE;
   l_agg     BOOLEAN;
@@ -680,6 +716,7 @@ BEGIN
     APEX_JSON.open_array('columns');
     IF l_agg THEN col('project','Project','text'); col('task','Task','text'); col('etype','Expenditure type','text'); END IF;
     col('period','Accounting period','text'); col('amount','Budget (AED)','money');
+    col('override','Override (AED)','money');
     col('updatedBy','Updated by','text'); col('updated','Updated on','date');
     APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
@@ -707,14 +744,21 @@ BEGIN
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id)
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(b.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN b.task_id IS NOT NULL THEN '#'||TO_CHAR(b.task_id) END) tkey,
-             b.expenditure_type et, b.accounting_period, b.budget amt,
+             b.expenditure_type et, b.accounting_period,
+             CASE WHEN l_ovr = 'Y' THEN NVL(u.budget_user, b.budget) ELSE b.budget END amt,
+             u.budget_user ovr_amt,
              b.updated_by, TO_CHAR(b.update_date,'YYYY-MM-DD') upd,
-             COUNT(*) OVER () full_n, SUM(b.budget) OVER () full_tot
+             COUNT(*) OVER () full_n,
+             SUM(CASE WHEN l_ovr = 'Y' THEN NVL(u.budget_user, b.budget) ELSE b.budget END) OVER () full_tot
       FROM prod.projects_budget b
+      LEFT JOIN prod.dct_project_budget_user u
+             ON  u.project_id = b.project_id AND u.task_id = b.task_id
+             AND u.expenditure_type = b.expenditure_type
+             AND u.accounting_period = b.accounting_period
       LEFT JOIN proj pj ON pj.project_id = b.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
       WHERE b.budget_year = l_year
-        AND NVL(b.budget,0) <> 0
+        AND NVL(CASE WHEN l_ovr = 'Y' THEN NVL(u.budget_user, b.budget) ELSE b.budget END,0) <> 0
         AND (l_metric = 'budgetannual' OR l_end IS NULL
              OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
                     DATE '1900-01-01') < l_end + 1)
@@ -729,6 +773,7 @@ BEGIN
       IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); APEX_JSON.write('etype', NVL(r.et,'')); END IF;
       APEX_JSON.write('period', NVL(r.accounting_period,'(annual)'));
       APEX_JSON.write('amount', r.amt);
+      APEX_JSON.write('override', r.ovr_amt, p_write_null => TRUE);
       APEX_JSON.write('updatedBy', NVL(r.updated_by,''));
       APEX_JSON.write('updated', NVL(r.upd,''));
       APEX_JSON.close_object;

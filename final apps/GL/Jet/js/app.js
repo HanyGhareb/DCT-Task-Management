@@ -350,6 +350,12 @@
     buOfBudget:{en:'of budget',ar:'من الموازنة'},
     buRemaining:{en:'of budget remaining',ar:'من الموازنة متبقٍّ'},
     buOverBudget:{en:'over budget',ar:'تجاوز الموازنة'},
+    buMissCcTitle:{en:'Missing Cost Centre — action required.',ar:'مركز تكلفة مفقود — يلزم اتخاذ إجراء.'},
+    buMissCcMsg:{en:'{n} budget line(s) totalling {amt} annual budget have NO cost centre, so Sector and Cost-centre reporting for them is incomplete. Maintain the Cost Center task attribute in Fusion (financial project plan).',ar:'يوجد {n} بند موازنة بإجمالي موازنة سنوية {amt} بدون مركز تكلفة، لذا فإن تقارير القطاع ومركز التكلفة لهذه البنود غير مكتملة. يرجى استكمال خاصية مركز التكلفة للمهمة في نظام فيوجن (الخطة المالية للمشروع).'},
+    buMissCcCta:{en:'View lines',ar:'عرض البنود'},
+    buMissCcHint:{en:'Click to list the budget lines that have an annual budget but no cost centre (current filters).',ar:'انقر لعرض بنود الموازنة التي لها موازنة سنوية وبدون مركز تكلفة (حسب عوامل التصفية الحالية).'},
+    buMissCcDrill:{en:'Budget lines with missing Cost Centre',ar:'بنود الموازنة بدون مركز تكلفة'},
+    buMissCcPName:{en:'Project name',ar:'اسم المشروع'},
     buSecSearch:{en:'Search',ar:'البحث'},
     buSecOverview:{en:'Overview',ar:'نظرة عامة'},
     buSecResults:{en:'Results',ar:'النتائج'},
@@ -383,6 +389,39 @@
     calcNoteYear:{en:'Budget Year picks the annual budget and scopes every transaction to that year\'s budget lines.',ar:'تحدد سنة الميزانية الموازنة السنوية وتحصر كل الحركات في بنود موازنة تلك السنة.'},
     calcNotePeriod:{en:'With an Accounting Period selected, Fund Available reads: YTD Budget minus everything consumed up to that month-end (year-to-date). Full year = the two budget figures are equal.',ar:'عند اختيار فترة محاسبية يكون المتاح: الموازنة منذ بداية السنة ناقص كل ما استُهلك حتى نهاية ذلك الشهر. عند اختيار السنة كاملة يتساوى الرقمان.'},
     calcUtilNote:{en:'Utilization % = (Actual AP + Actual GRN + Commitment PR + Obligation PO) ÷ YTD Budget.',ar:'نسبة الاستخدام % = (فعلي الدائنين + فعلي الاستلام + الالتزام + التعهد) ÷ الموازنة منذ بداية السنة.'},
+
+    /* ── Override Budget (budget_user) ── */
+    buOvrConsider:{en:'Consider Override Budget',ar:'اعتماد الموازنة المعدّلة'},
+    buOvrHint:{en:'When on, every budget figure on this page (Annual / YTD Budget, Fund Available, Utilization) uses the user Override Budget where one exists, otherwise the Fusion budget.',ar:'عند التفعيل تُحتسب كل أرقام الموازنة في هذه الصفحة (الموازنة السنوية / منذ بداية السنة والمتاح ونسبة الاستخدام) بالموازنة المعدّلة من المستخدم إن وُجدت، وإلا فبموازنة فيوجن.'},
+    buOvrOn:{en:'Applied',ar:'مفعّل'},
+    buOvrOff:{en:'Off',ar:'غير مفعّل'},
+    cOverrideBudget:{en:'Override Budget',ar:'الموازنة المعدّلة'},
+    ovLinesN:{en:'{n} overridden lines',ar:'{n} بند معدّل'},
+    ovApplied:{en:'applied to figures',ar:'مطبّقة على الأرقام'},
+    ovTileHint:{en:'Click to view and edit the Override Budget lines (current filters).',ar:'انقر لعرض وتعديل بنود الموازنة المعدّلة (حسب عوامل التصفية الحالية).'},
+    ovDrillTitle:{en:'Override Budget lines',ar:'بنود الموازنة المعدّلة'},
+    ovEditHint:{en:'Type a new amount in the Override Budget column and Save. Clear the field and Save to remove the override (the line disappears on the next refresh).',ar:'أدخل مبلغاً جديداً في عمود الموازنة المعدّلة ثم احفظ. امسح الحقل ثم احفظ لإزالة التعديل (يختفي البند عند التحديث التالي).'},
+    ovColFusion:{en:'Fusion Budget',ar:'موازنة فيوجن'},
+    ovColUpdBy:{en:'Updated By',ar:'عدّل بواسطة'},
+    ovColUpdAt:{en:'Updated At',ar:'تاريخ التعديل'},
+    ovSaveBtn:{en:'Save',ar:'حفظ'},
+    ovSaved:{en:'Override budget saved.',ar:'تم حفظ الموازنة المعدّلة.'},
+    ovBadNumber:{en:'Override budget must be a number (or empty to clear).',ar:'يجب أن تكون الموازنة المعدّلة رقماً (أو فارغة للإزالة).'},
+    ovTotOverride:{en:'Override total',ar:'إجمالي الموازنة المعدّلة'},
+    ovTotFusion:{en:'Fusion total',ar:'إجمالي موازنة فيوجن'},
+    ovEmpty:{en:'No override budget lines for these criteria.',ar:'لا توجد بنود موازنة معدّلة لهذه المعايير.'},
+
+    /* ── Budget Override from Excel (Visual Builder Add-in workflow) ── */
+    xltplTitle:{en:'Budget Override from Excel',ar:'تعديل الموازنة عبر إكسل'},
+    xltplIntro:{en:'Maintain Override Budget amounts in bulk with the Oracle Visual Builder Add-in for Excel:',ar:'حدّث مبالغ الموازنة المعدّلة دفعة واحدة عبر إضافة Oracle Visual Builder لبرنامج إكسل:'},
+    xltplS1:{en:'Download the Excel template below.',ar:'نزّل قالب إكسل أدناه.'},
+    xltplS2:{en:'Open it in Microsoft Excel on Windows with the Oracle Visual Builder Add-in for Excel installed.',ar:'افتحه في مايكروسوفت إكسل على ويندوز مع تثبيت إضافة Oracle Visual Builder لإكسل.'},
+    xltplS3:{en:'Sign in and click Download Data, entering the Budget Year (and optionally the Accounting Period).',ar:'سجّل الدخول ثم انقر «تنزيل البيانات» مع إدخال سنة الميزانية (والفترة المحاسبية اختيارياً).'},
+    xltplS4:{en:'Edit ONLY the light-green Override Budget column, then click Upload Changes.',ar:'عدّل عمود الموازنة المعدّلة (الأخضر الفاتح) فقط، ثم انقر «رفع التغييرات».'},
+    xltplS5:{en:'Uploaded overrides appear here in the Override Budget tile — tick "Consider Override Budget" to apply them to the figures.',ar:'تظهر التعديلات المرفوعة هنا في بطاقة الموازنة المعدّلة — فعّل «اعتماد الموازنة المعدّلة» لتطبيقها على الأرقام.'},
+    xltplBtn:{en:'Download Excel Template',ar:'تنزيل قالب إكسل'},
+    xltplBusy:{en:'Downloading…',ar:'جارٍ التنزيل…'},
+    xltplDlFail:{en:'Template download failed',ar:'فشل تنزيل القالب'},
 
     /* ── Executive dashboard ── */
     dashTitle:{en:'Executive dashboard',ar:'لوحة المعلومات التنفيذية'},
@@ -1316,10 +1355,24 @@
         self.loadBuLovs();
       }).catch(function (e) { self.buFiltersLoading(false); fail(e); });
     };
+    /* ── Consider Override Budget (budget_user, 2026-07-27) — when on, /butil,
+       both drill kinds and the report bridges send ovr=Y and every budget
+       figure is NVL(override, fusion) server-side. The "applied" hint on the
+       Override tile binds to the RESPONSE flag (buConsiderOvr), so it can
+       never claim an override the loaded figures don't actually reflect. */
+    self.buOvr = ko.observable(false);
+    self.buConsiderOvr = ko.observable(false);   // echoed by the last /butil response
+    self.toggleBuOvr = function () {
+      self.buOvr(!self.buOvr());
+      // re-run in place (AP include-cancelled precedent) once results exist
+      if (self.buYear() && (self.buTotal() || self.buItems().length)) self.runButil(0);
+      return true;
+    };
     self.buParams = function (offset, limit) {
       return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(),
         costcenter: self.buCcParam(), project: self.buProjParam(), task: self.buTask(), etype: self.buEtype(),
         bu: self.buBuParam(), appropriation: self.buApprop() || null, program: self.buProgram() || null,
+        ovr: self.buOvr() ? 'Y' : null,
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -1327,8 +1380,45 @@
       offset = Math.max(0, offset || 0); self.buLoading(true);
       return api('GET', '/butil' + qs(self.buParams(offset))).then(function (d) {
         self.buItems(d.items || []); self.buTotals(d.totals || {});
-        self.buTotal(d.total || 0); self.buOffset(offset); self.buLoading(false);
+        self.buTotal(d.total || 0); self.buOffset(offset);
+        self.buMissCc(d.missingCc || 0); self.buMissCcBudget(d.missingCcBudget || 0);
+        self.buConsiderOvr(d.considerOverride === 'Y');
+        self.buLoading(false);
       }).catch(function (e) { self.buLoading(false); fail(e); });
+    };
+    /* ── data-quality alert: budget lines (annual budget) with NO cost centre.
+       Server counts them across the WHOLE filtered set on every /butil run;
+       the red band shows only when the count is non-zero and drills to the
+       shared drawer via /butil?nocc=Y (same filters). */
+    self.buMissCc = ko.observable(0); self.buMissCcBudget = ko.observable(0);
+    self.buMissCcMsg = ko.computed(function () {
+      return self.t('buMissCcMsg')
+        .replace('{n}', self.fmt(self.buMissCc()))
+        .replace('{amt}', self.money(self.buMissCcBudget()));
+    });
+    self.openBuMissCc = function () {
+      self.drillTitle(self.t('buMissCcDrill'));
+      self.drillSub(self.t('buAllLines') + ' · ' + self.buYear());
+      self.drillCtx([self.buType(), self.buSector(), self.buChapterParam().split('|').join(', '),
+        self.buProjParam().split('|').join(', '), self.buTask(), self.buEtype(),
+        self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      var p = self.buParams(0, 5000); p.nocc = 'Y';
+      api('GET', '/butil' + qs(p)).then(function (d) {
+        self.drillCols([
+          { key: 'projectNumber',   label: self.t('cProject'),     type: 'text' },
+          { key: 'projectName',     label: self.t('buMissCcPName'), type: 'text' },
+          { key: 'taskNumber',      label: self.t('cTask'),        type: 'text' },
+          { key: 'expenditureType', label: self.t('cEtype'),       type: 'text' },
+          { key: 'department',      label: self.t('cDept'),        type: 'text' },
+          { key: 'appropriation',   label: self.t('segAppropriation'), type: 'text' },
+          { key: 'budgetAnnual',    label: self.t('cBudgetAnnual'), type: 'money' }
+        ]);
+        self.drillRows(d.items || []);
+        self.drillTotalV(d.missingCcBudget || 0); self.drillCount(d.total || 0);
+        self.drillLoading(false);
+      }).catch(drillFail);
     };
     self.buReset = function () {
       self.buType(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? BU_DEFAULT_TYPE : '');
@@ -1337,6 +1427,7 @@
       self.buChapterPick('');
       self.buBuSel(self.buBus().indexOf(BU_DEFAULT_UNIT) >= 0 ? [BU_DEFAULT_UNIT] : []); self.buBuPick('');
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
+      self.buOvr(false);
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));
       self.runButil(0);
@@ -1454,7 +1545,8 @@
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
-        etype: self.buEtype() || null, search: self.buSearch() || null
+        etype: self.buEtype() || null, search: self.buSearch() || null,
+        ovr: self.buOvr() ? 'Y' : null
       }).then(function (d) {
         var runId = d.runId;
         toast(self.t('buBookQueued') + runId);
@@ -1509,7 +1601,8 @@
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
-        etype: self.buEtype() || null, search: self.buSearch() || null
+        etype: self.buEtype() || null, search: self.buSearch() || null,
+        ovr: self.buOvr() ? 'Y' : null
       }).then(function (d) {
         var runId = d.runId;
         toast(self.t('buBookQueued') + runId);
@@ -1563,7 +1656,8 @@
         sector: self.buSector() || null, chapter: self.buChapterParam() || null,
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
-        etype: self.buEtype() || null, search: self.buSearch() || null
+        etype: self.buEtype() || null, search: self.buSearch() || null,
+        ovr: self.buOvr() ? 'Y' : null
       }).then(function (d) {
         var runId = d.runId;
         toast(self.t('buBookQueued') + runId);
@@ -2000,10 +2094,11 @@
     self.buSecSearchOpen = ko.observable(buUi.search !== false);
     self.buSecKpisOpen = ko.observable(buUi.kpis !== false);
     self.buSecCalcOpen = ko.observable(buUi.calc === true);   // informational — collapsed by default
+    self.buSecXltplOpen = ko.observable(buUi.xltpl === true); // Excel-override guide — collapsed by default
     // display unit for every butil figure (search-criteria field; display-only, no re-query)
     self.buUnit = ko.observable(['auto', 'B', 'M', 'K', 'X'].indexOf(buUi.unit) >= 0 ? buUi.unit : 'auto');
     function saveBuUi() {
-      localStorage.setItem('gl_bu_ui', JSON.stringify({ search: self.buSecSearchOpen(), kpis: self.buSecKpisOpen(), calc: self.buSecCalcOpen(), unit: self.buUnit() }));
+      localStorage.setItem('gl_bu_ui', JSON.stringify({ search: self.buSecSearchOpen(), kpis: self.buSecKpisOpen(), calc: self.buSecCalcOpen(), xltpl: self.buSecXltplOpen(), unit: self.buUnit() }));
     }
     self.buUnit.subscribe(saveBuUi);
     self.buUnitOpts = ko.computed(function () {
@@ -2028,7 +2123,8 @@
     };
     self.toggleBuSec = function (k) {
       var o = (k === 'search') ? self.buSecSearchOpen
-            : (k === 'calc') ? self.buSecCalcOpen : self.buSecKpisOpen;
+            : (k === 'calc') ? self.buSecCalcOpen
+            : (k === 'xltpl') ? self.buSecXltplOpen : self.buSecKpisOpen;
       o(!o()); saveBuUi();
     };
     self.buActiveFilters = ko.computed(function () {
@@ -2057,7 +2153,7 @@
     };
     document.addEventListener('keydown', function (e) {
       // Esc restores the table — unless a drawer/modal is open above it (it owns Esc-like close)
-      if (e.key === 'Escape' && self.buMax() && !self.drillDrawer() && !self.drillModal()) self.toggleBuMax();
+      if (e.key === 'Escape' && self.buMax() && !self.drillDrawer() && !self.drillModal() && !self.ovDrawer()) self.toggleBuMax();
     });
 
     /* ── drill-down: a figure → its supporting lines (slide-in drawer) ── */
@@ -2089,7 +2185,8 @@
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
       api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), project: row.projectNumber,
-        task: row.taskNumber, etype: row.expenditureType, metric: metric })).then(fillDrill).catch(drillFail);
+        task: row.taskNumber, etype: row.expenditureType, metric: metric,
+        ovr: self.buOvr() ? 'Y' : null })).then(fillDrill).catch(drillFail);
     };
     // KPI card → all supporting lines across the filtered set (aggregate)
     self.openBuAgg = function (metric) {
@@ -2106,7 +2203,8 @@
       self.drillDrawer(true); self.drillLoading(true);
       api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), metric: metric,
         projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(), search: self.buSearch(),
-        costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype() })).then(fillDrill).catch(drillFail);
+        costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype(),
+        ovr: self.buOvr() ? 'Y' : null })).then(fillDrill).catch(drillFail);
     };
     self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); };
     // export the loaded drill lines — modal + drawer share drillCols/drillRows
@@ -2128,6 +2226,107 @@
       var u = URL.createObjectURL(blob);
       var a = document.createElement('a'); a.href = u; a.download = 'gl_drill_' + name + '.csv';
       a.click(); URL.revokeObjectURL(u);
+    };
+
+    /* ── Override Budget drawer — view + inline-edit the budget_user lines ──
+       Opened from the Override Budget KPI tile; loads /butil/override/lines
+       with the CURRENT page filters. The Override Budget cell is an inline
+       number input (Enter or the row Save button POSTs /butil/override; empty
+       = null clears the override) and a successful save updates the row in
+       place, toasts and re-runs /butil so the KPIs/table pick the change up. */
+    self.ovDrawer = ko.observable(false);
+    self.ovMax = ko.observable(false);
+    self.toggleOvMax = function () { self.ovMax(!self.ovMax()); };
+    document.addEventListener('keydown', function (e) {
+      // Esc inside the maximized override drawer restores it first (like the drill drawer)
+      if (e.key === 'Escape' && self.ovDrawer() && self.ovMax()) self.ovMax(false);
+    });
+    self.ovLoading = ko.observable(false);
+    self.ovRows = ko.observableArray([]);
+    self.ovCount = ko.observable(0);
+    self.ovTotFusion = ko.observable(0);
+    // reconciling totals footer: override total recomputes live as rows are edited
+    self.ovTotOverride = ko.computed(function () {
+      return self.ovRows().reduce(function (s, r) {
+        var v = r.override();
+        return s + (v == null || ('' + v).trim() === '' ? 0 : Number(v) || 0);
+      }, 0);
+    });
+    self.openOvDrawer = function () {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.ovDrawer(true); self.ovLoading(true); self.ovRows([]); self.ovCount(0); self.ovTotFusion(0);
+      var p = self.buParams(0); delete p.limit; delete p.offset; delete p.ovr;
+      api('GET', '/butil/override/lines' + qs(p)).then(function (d) {
+        self.ovRows((d.items || []).map(function (r) {
+          r.override = ko.observable(r.overrideBudget == null ? '' : '' + r.overrideBudget);
+          r.updBy = ko.observable(r.updatedBy || '');
+          r.updAt = ko.observable(r.updatedAt || '');
+          r.saving = ko.observable(false);
+          return r;
+        }));
+        self.ovCount(d.total || 0);
+        self.ovTotFusion((d.totals && d.totals.fusion) || 0);
+        self.ovLoading(false);
+      }).catch(function (e) { self.ovLoading(false); self.ovDrawer(false); toast(e.message, true); });
+    };
+    self.closeOvDrawer = function () { self.ovDrawer(false); self.ovMax(false); };
+    self.saveOvRow = function (row) {
+      if (row.saving()) return;
+      var raw = ('' + (row.override() == null ? '' : row.override())).trim();
+      var val = raw === '' ? null : Number(raw);
+      if (raw !== '' && isNaN(val)) { toast(self.t('ovBadNumber'), true); return; }
+      row.saving(true);
+      api('POST', '/butil/override', { id: row.id, budget_user: val }).then(function (d) {
+        row.override(d.budget_user == null ? '' : '' + d.budget_user);
+        row.updBy(d.budget_user_updated_by || '');
+        row.updAt(d.budget_user_updated_at || '');
+        row.saving(false);
+        toast(self.t('ovSaved'));
+        self.runButil(self.buOffset());          // KPIs + results reflect the new override
+      }).catch(function (e) { row.saving(false); toast(e.message, true); });
+    };
+    // export the loaded override lines — same shape as drillExportCsv (BOM + total footer)
+    self.ovExportCsv = function () {
+      var rows = self.ovRows();
+      if (!rows.length) return;
+      var esc = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
+      var heads = [self.t('cProject'), self.t('buMissCcPName'), self.t('cTask'), self.t('cEtype'),
+        self.t('fPeriod'), self.t('ovColFusion'), self.t('cOverrideBudget'),
+        self.t('ovColUpdBy'), self.t('ovColUpdAt')];
+      var lines = [heads.map(esc).join(',')];
+      rows.forEach(function (r) {
+        lines.push([r.projectNumber, r.projectName, r.taskNumber, r.expenditureType,
+          r.accountingPeriod, r.fusionBudget, r.override(), r.updBy(), r.updAt()].map(esc).join(','));
+      });
+      // reconciliation footer: fusion + override totals under their own columns
+      lines.push([self.t('drillTotal'), '', '', '', '', self.ovTotFusion(), self.ovTotOverride(), '', ''].map(esc).join(','));
+      var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+      var u = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = u; a.download = 'gl_override_budget_' + self.buYear() + '.csv';
+      a.click(); URL.revokeObjectURL(u);
+    };
+
+    /* ── Budget Override from Excel — template download (Visual Builder Add-in).
+       The /xl/ template endpoint lives OUTSIDE the /gl/ module, so this uses
+       the raw authed-blob fetch (same pattern as the briefing-book download). */
+    self.xltplBusyF = ko.observable(false);
+    self.downloadXlTemplate = function () {
+      if (self.xltplBusyF()) return;
+      self.xltplBusyF(true);
+      fetch('/ords/admin/xl/templates/download?code=BUDGET_OVERRIDE',
+            { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error(self.t('xltplDlFail') + ' (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'Budget_Override_Template.xlsx';
+          a.click(); URL.revokeObjectURL(u);
+          self.xltplBusyF(false);
+        })
+        .catch(function (e) { self.xltplBusyF(false); toast(e.message, true); });
     };
 
     /* ════ DASHBOARD — executive analytics ════ */

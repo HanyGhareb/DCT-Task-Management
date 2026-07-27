@@ -1,0 +1,182 @@
+<div class="page">
+  <div class="page-header-row">
+    <h1 class="page-title" data-bind="text: t('atd.xl.title')"></h1>
+    <div class="page-actions">
+      <button class="btn btn-primary" data-bind="click: newTpl, text: '+ ' + t('atd.xl.new')"></button>
+    </div>
+  </div>
+
+  <p class="muted" style="margin:0 0 12px; max-width:900px" data-bind="text: t('atd.xl.intro')"></p>
+
+  <!-- ko if: loading -->
+  <div class="muted" data-bind="text: t('atd.common.loading')"></div>
+  <!-- /ko -->
+
+  <!-- ko ifnot: loading -->
+  <!-- ko if: tpls().length === 0 -->
+  <div class="empty-state" data-bind="text: t('atd.xl.empty')"></div>
+  <!-- /ko -->
+
+  <!-- ko if: tpls().length > 0 -->
+  <div class="data-table-wrap">
+    <table class="data-table">
+      <thead><tr>
+        <th data-bind="text: t('atd.xl.col.code')"></th>
+        <th data-bind="text: t('atd.xl.col.name')"></th>
+        <th data-bind="text: t('atd.xl.col.module')"></th>
+        <th data-bind="text: t('atd.xl.col.description')"></th>
+        <th data-bind="text: t('atd.xl.col.versions')"></th>
+        <th data-bind="text: t('atd.xl.col.active')"></th>
+        <th style="width:200px;"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: tpls">
+        <tr style="cursor:pointer" data-bind="click: function(){ $vm.toggle($data); }">
+          <td>
+            <span class="nav-chevron" style="display:inline-block; margin-inline-end:6px;"
+                  data-bind="css: { 'nav-chevron--expanded': $vm.isOpen($data) }">&#9654;</span>
+            <span class="mono" data-bind="text: $data.code"></span>
+          </td>
+          <td>
+            <span data-bind="text: $data.name"></span>
+            <!-- ko if: $data.nameAr -->
+            <div class="muted" dir="rtl" style="font-size:.86em" data-bind="text: $data.nameAr"></div>
+            <!-- /ko -->
+          </td>
+          <td>
+            <!-- ko if: $data.module --><span class="badge badge--info" data-bind="text: $data.module"></span><!-- /ko -->
+            <!-- ko ifnot: $data.module --><span class="muted">—</span><!-- /ko -->
+          </td>
+          <td class="truncate-cell" data-bind="text: $data.description, attr:{ title: $data.description }"></td>
+          <td data-bind="text: $vm.verCount($data)"></td>
+          <td>
+            <!-- ko if: $vm.activeVer($data) -->
+            <span class="badge badge--active" data-bind="text: 'v' + $vm.activeVer($data).versionNo"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $vm.activeVer($data) -->
+            <span class="badge badge--idle" data-bind="text: $vm.t('atd.xl.noActive')"></span>
+            <!-- /ko -->
+          </td>
+          <td class="cell-actions" style="text-align:end;" data-bind="click: function(){ return true; }, clickBubble: false">
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.editTpl($data); }, text: $vm.t('atd.action.edit')"></button>
+            <button class="btn btn-xs" data-bind="click: function(){ $vm.newVersion($data); }, text: '+ ' + $vm.t('atd.xl.newVersion')"></button>
+          </td>
+        </tr>
+        <!-- ko if: $vm.isOpen($data) -->
+        <tr>
+          <td colspan="7" style="padding:10px 16px 16px;">
+            <!-- ko if: ($data.versions || []).length === 0 -->
+            <div class="empty-state" data-bind="text: $vm.t('atd.xl.noVersions')"></div>
+            <!-- /ko -->
+            <!-- ko if: ($data.versions || []).length > 0 -->
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr>
+                  <th style="width:90px;" data-bind="text: $vm.t('atd.xl.col.version')"></th>
+                  <th data-bind="text: $vm.t('atd.xl.col.notes')"></th>
+                  <th data-bind="text: $vm.t('atd.xl.col.master')"></th>
+                  <th data-bind="text: $vm.t('atd.xl.col.published')"></th>
+                  <th style="width:190px;"></th>
+                </tr></thead>
+                <tbody data-bind="foreach: $data.versions">
+                  <tr>
+                    <td>
+                      <span class="mono" data-bind="text: 'v' + $data.versionNo"></span>
+                      <!-- ko if: $data.isActive === 'Y' -->
+                      <div><span class="badge badge--active" data-bind="text: $vm.t('atd.xl.active')"></span></div>
+                      <!-- /ko -->
+                    </td>
+                    <td class="truncate-cell" data-bind="text: $data.notes, attr:{ title: $data.notes }"></td>
+                    <td>
+                      <!-- ko if: $data.masterFile -->
+                      <div class="mono" style="font-size:.9em" data-bind="text: $data.masterFile"></div>
+                      <div class="muted" style="font-size:.8em"
+                           data-bind="text: $vm.fileMeta($data.masterSizeKb, $data.masterBy, $data.masterAt)"></div>
+                      <!-- /ko -->
+                      <!-- ko ifnot: $data.masterFile -->
+                      <span class="muted" data-bind="text: $vm.t('atd.xl.noFile')"></span>
+                      <!-- /ko -->
+                      <div style="margin-top:4px;">
+                        <button class="btn btn-xs" data-bind="click: function(){ $vm.upload($parent, $data, 'master'); },
+                                text: $vm.t('atd.xl.upload'), disable: $vm.busy"></button>
+                        <button class="btn btn-xs" data-bind="click: function(){ $vm.download($parent, $data, 'master'); },
+                                text: $vm.t('atd.xl.download'), enable: !!$data.masterFile"></button>
+                      </div>
+                    </td>
+                    <td>
+                      <!-- ko if: $data.pubFile -->
+                      <div class="mono" style="font-size:.9em" data-bind="text: $data.pubFile"></div>
+                      <div class="muted" style="font-size:.8em"
+                           data-bind="text: $vm.fileMeta($data.pubSizeKb, $data.pubBy, $data.pubAt)"></div>
+                      <!-- /ko -->
+                      <!-- ko ifnot: $data.pubFile -->
+                      <span class="muted" data-bind="text: $vm.t('atd.xl.noFile')"></span>
+                      <!-- /ko -->
+                      <div style="margin-top:4px;">
+                        <button class="btn btn-xs" data-bind="click: function(){ $vm.upload($parent, $data, 'published'); },
+                                text: $vm.t('atd.xl.upload'), disable: $vm.busy"></button>
+                        <button class="btn btn-xs" data-bind="click: function(){ $vm.download($parent, $data, 'published'); },
+                                text: $vm.t('atd.xl.download'), enable: !!$data.pubFile"></button>
+                      </div>
+                    </td>
+                    <td class="cell-actions" style="text-align:end; vertical-align:top;">
+                      <!-- ko if: $data.isActive !== 'Y' -->
+                      <button class="btn btn-xs btn-primary"
+                              data-bind="click: function(){ $vm.activate($parent, $data); },
+                                         text: $vm.t('atd.xl.activate'), enable: !!$data.pubFile,
+                                         attr:{ title: $data.pubFile ? '' : $vm.t('atd.xl.needsPublished') }"></button>
+                      <button class="btn btn-xs btn-danger"
+                              data-bind="click: function(){ $vm.delVersion($parent, $data); },
+                                         text: $vm.t('atd.action.delete')"></button>
+                      <!-- /ko -->
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- /ko -->
+          </td>
+        </tr>
+        <!-- /ko -->
+      </tbody>
+    </table>
+  </div>
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- create / edit template — shared <edit-drawer> slide-in -->
+  <edit-drawer params="open: showForm, vm: $vm,
+                       title: formTitle, saveLabel: formSaveLabel,
+                       cancelLabel: t('atd.action.cancel'), onSave: saveTpl, width: '560px'">
+    <div class="form-grid">
+      <!-- ko if: !editId() -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.xl.col.code')"></label>
+        <input class="form-control mono" data-bind="textInput: fmCode, attr:{ placeholder: 'PPM_TASK_UPLOAD' }"></div>
+      <!-- /ko -->
+      <!-- ko if: editId() -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.xl.col.code')"></label>
+        <div class="mono" style="padding:8px 0;" data-bind="text: fmCode"></div></div>
+      <!-- /ko -->
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.xl.col.module')"></label>
+        <input class="form-control mono" data-bind="textInput: fmModule, attr:{ placeholder: 'ATD' }"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.xl.fld.name')"></label>
+        <input class="form-control" data-bind="textInput: fmName"></div>
+      <div class="form-group"><label class="form-label" data-bind="text: t('atd.xl.fld.nameAr')"></label>
+        <input class="form-control" dir="rtl" data-bind="textInput: fmNameAr"></div>
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.xl.col.description')"></label>
+        <textarea class="form-control" rows="3" data-bind="textInput: fmDesc"></textarea></div>
+    </div>
+  </edit-drawer>
+
+  <!-- new version — shared <edit-drawer> slide-in -->
+  <edit-drawer params="open: showVerForm, vm: $vm,
+                       title: verFormTitle, saveLabel: t('atd.action.create'),
+                       cancelLabel: t('atd.action.cancel'), onSave: saveVersion, width: '480px'">
+    <div class="form-grid">
+      <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.xl.col.notes')"></label>
+        <textarea class="form-control" rows="3" data-bind="textInput: fmNotes"></textarea></div>
+      <div class="form-group form-group--full">
+        <p class="muted" style="margin:0; font-size:.8em" data-bind="text: t('atd.xl.newVersion.hint')"></p>
+      </div>
+    </div>
+  </edit-drawer>
+</div>

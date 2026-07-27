@@ -92,8 +92,8 @@ BEGIN
   -- YTD period: pre_sql sets GL_CTX.BUTIL_END exactly like the /gl/butil page
   -- handler; post_sql ALWAYS clears it (worker keeps one session across runs)
   l_src := '{"orientation":"landscape","required":["year"],'
-        || '"pre_sql":"BEGIN IF [COLON]period IS NULL THEN prod.dct_gl_class_pkg.clear_butil_end; ELSE prod.dct_gl_class_pkg.set_butil_end(LAST_DAY(TO_DATE(''01-''||[COLON]period,''DD-MM-YYYY''))); END IF; END;",'
-        || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_end; END;",'
+        || '"pre_sql":"BEGIN IF [COLON]period IS NULL THEN prod.dct_gl_class_pkg.clear_butil_end; ELSE prod.dct_gl_class_pkg.set_butil_end(LAST_DAY(TO_DATE(''01-''||[COLON]period,''DD-MM-YYYY''))); END IF; prod.dct_gl_class_pkg.set_butil_ovr([COLON]ovr); END;",'
+        || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_end; prod.dct_gl_class_pkg.clear_butil_ovr; END;",'
         || '"sections":['
         || '{"key":"overview","title":"Overview","layout":"kv","sql":"' || l_ov || '"}' || ','
         || '{"key":"by_sector","title":"Utilization by Sector","layout":"table","sql":"' || l_sec || '"}' || ','

@@ -29,6 +29,15 @@ CREATE OR REPLACE PACKAGE prod.dct_gl_class_pkg AS
   PROCEDURE set_butil_end   (p_date IN DATE);
   PROCEDURE clear_butil_end;
 
+  -- Budget Utilization "Consider Override Budget" flag
+  -- (SYS_CONTEXT('GL_CTX','BUTIL_OVR')). When 'Y', the pb CTE of
+  -- DCT_BUDGET_UTILIZATION_V takes NVL(budget_user, budget) per period row
+  -- (the end-user Excel override, db/v2/106), so every budget-derived figure
+  -- (annual, YTD, fund available, utilization) and every consuming report
+  -- reflects the override. Unset/other = Fusion budget as before.
+  PROCEDURE set_butil_ovr   (p_flag IN VARCHAR2);
+  PROCEDURE clear_butil_ovr;
+
   -- value effective on p_date for a (dimension, segment value)
   FUNCTION resolve_value_id (p_type IN VARCHAR2, p_segment_value IN VARCHAR2,
                              p_date IN DATE DEFAULT SYSDATE) RETURN NUMBER;
@@ -81,6 +90,20 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_gl_class_pkg AS
   BEGIN
     DBMS_SESSION.clear_context('GL_CTX', NULL, 'BUTIL_END');
   END clear_butil_end;
+
+  PROCEDURE set_butil_ovr (p_flag IN VARCHAR2) IS
+  BEGIN
+    IF UPPER(NVL(p_flag,'N')) = 'Y' THEN
+      DBMS_SESSION.set_context('GL_CTX', 'BUTIL_OVR', 'Y');
+    ELSE
+      DBMS_SESSION.clear_context('GL_CTX', NULL, 'BUTIL_OVR');
+    END IF;
+  END set_butil_ovr;
+
+  PROCEDURE clear_butil_ovr IS
+  BEGIN
+    DBMS_SESSION.clear_context('GL_CTX', NULL, 'BUTIL_OVR');
+  END clear_butil_ovr;
 
   FUNCTION resolve_value_id (p_type IN VARCHAR2, p_segment_value IN VARCHAR2,
                              p_date IN DATE DEFAULT SYSDATE) RETURN NUMBER IS

@@ -51,6 +51,7 @@ function (ko, config, authService, atd, i18n, shell) {
       { id: 'config', labelKey: 'atd.nav.configGroup', collapsed: ko.observable(false), items: [
           { id: 'environments',   labelKey: 'atd.nav.environments' },
           { id: 'targets',        labelKey: 'atd.nav.targets' },
+          { id: 'xlTemplates',    labelKey: 'atd.nav.xlTemplates' },
           { id: 'runnerSettings', labelKey: 'atd.nav.runnerSettings' } ] }
     ];
 
