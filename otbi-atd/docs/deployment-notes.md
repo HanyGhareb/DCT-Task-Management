@@ -1,5 +1,47 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-07-27 — AR rebill pacing layer: ATD_AR_FAST condition waits (code shipped, knob OFF)
+
+Latency work on `actions/ar_invoice_rebill.py` (~6-7 min/invoice, of which ~370s of ~445s was
+literal `time.sleep()` and the FuseWelcome→Navigator→Billing renav (32s) was paid 4×/invoice).
+**UiPath was evaluated and rejected**: the bottleneck is the same ADF UI and the same server
+round-trips whatever tool drives the browser; switching would restart the 25 ADF selector laws,
+add licensing/orchestrator infra, rebuild SSO/MFA session sharing, and discard the saga/
+idempotency/queue integration. The fix is in our pacing:
+
+- **`_pace(page, predicate, what, legacy, timeout=None)` + `ATD_AR_FAST` env knob.** Unset
+  (default) → `time.sleep(legacy)` byte-identical to every live campaign (the predicate is never
+  called); `=1` → `_wait_until` poll whose **timeout is NEVER below the legacy sleep**. Rollback =
+  unset + restart. Conversion rule: each predicate is the exact condition the next line already
+  depends on, expressed through an ALREADY-PROVEN reader (`_label_input_id`, `_read_label_value`,
+  `_visible_id_by_suffix`, `_grid_rows`, `_dup_line_rows`) — no new selectors; every downstream
+  guard (grid assert, drawer identity proof, `_valid_doc_number`, read-back verify) unchanged.
+- 23 `_pace` sites: `_goto_billing` (9/4/2/15 → nav-link/nav-open/billing-entry/workarea-ready),
+  `_open_search_panel`, post-Search grid wait, all six record-open 10s waits (predicate
+  `_review_page_open(number)` = read-only Transaction Number matches AND the search INPUT is
+  absent, so a mid-transition read of the still-mounted search form can't pass), Actions-menu
+  (+ one re-click retry in fast mode), both 12s form waits, stage-3/9 dialog waits, split-menu
+  wait, stage-7 Details-drawer wait (identity check stays the authority), Invoice-Lines tab waits.
+- **NOT converted** (stale-read-back failure class): `_fill_by_id_suffix`/`_select_option`
+  internals, post-fill 2s settles, `_reassert_header_dates` settle, `_dff_one_row` recovery
+  sleeps, `_ensure_line_grid` internals — and the two **post-commit** sleeps (after the CM commit
+  and after Complete and Review), deferred to a later PR to keep this diff commit-free.
+- Stage 1 no longer renavs unconditionally: blank page → `_goto_billing`, else the panel-first
+  self-healing ladder (`_search_transaction(page, invoice, base)`), same as stages 2/4/5.
+- `diag_ar.py` gained the **`reviewnav`** screen (evidence for phase 2 nav-elimination: is there
+  a Done button / Tasks magnifier on the record page that reaches the Billing search without the
+  32s renav? `DIAG_AR_CLICK_DONE=1` second pass proves the search panel after Done). NOT RUN yet —
+  user constraint 2026-07-27: no Fusion contact until go-ahead.
+- Unit harness: `_test_ar_pacing` (early exit, timeout-returns-falsy, exception=not-yet, legacy
+  path never calls the predicate and sleeps exactly N, timeout floor `max(1.5N, N+5)`); all pass.
+- Fleet: handler + diag synced to vm180-182 (checksums match), **workers NOT restarted** (a
+  restart nudges the Fusion session — off-limits under the same constraint) and `ATD_AR_FAST`
+  unset everywhere, so live behavior is unchanged until the canary. Rollout plan (phase 2, each
+  step needs user go-ahead): reviewnav evidence → dry-run A/B on an already-rebilled invoice
+  (`ATD_ACTION_LIVE=0` walks everything but the commits with zero writes; saga stage timestamps
+  give the A/B) → `ATD_AR_FAST=1` canary on ONE VM with a real batch → fleet-wide.
+  Predicted: ~180s/invoice (~2.5×), fleet ~28-30 invoices/30 min.
+
 ## 2026-07-18 — Non-blocking invalid-date warnings (db/49, ATD 1.23.0)
 
 - Invalid values in DATE/TIMESTAMP target columns now load as NULL without stopping

@@ -265,6 +265,14 @@ def _allowlist():
     return {x.strip().upper() for x in raw.split(",") if x.strip()}
 
 
+def _fast():
+    """ATD_AR_FAST=1 switches the big fixed pacing sleeps to condition-based
+    waits (see _pace). OFF by default: unset means byte-identical timing to
+    the fixed-sleep behaviour every live campaign ran on, so rollback is
+    unset-the-var-and-restart, no deploy."""
+    return os.environ.get("ATD_AR_FAST", "0") == "1"
+
+
 def _fusion_date(value):
     """ISO 'YYYY-MM-DD' -> Fusion's 'dd/mm/yyyy' display format.
 
@@ -603,7 +611,15 @@ def _real_click(page, selectors, label, required=True):
 def _open_actions_menu(page):
     """Open the Review Transaction Actions menu and wait for its entries."""
     _real_click(page, SEL["actions_menu"], "Actions menu")
-    time.sleep(3)
+    got = _pace(page, lambda: _actions_popup_open(page),
+                "Actions menu entries", 3, timeout=4)
+    if _fast() and not got:
+        # the first pointer click occasionally only focuses the menu button
+        # (ppm _open_addl_popup pattern): one re-click, then wait again
+        _real_click(page, SEL["actions_menu"], "Actions menu (retry)",
+                    required=False)
+        _wait_until(page, lambda: _actions_popup_open(page),
+                    "Actions menu entries (retry)", timeout=4)
 
 
 def _shot(page, name):
@@ -615,6 +631,147 @@ def _shot(page, name):
         page.screenshot(path=os.path.join(d, name), full_page=True)
     except Exception:  # noqa: BLE001
         pass
+
+
+# ---------------------------------------------------------------------------
+# Pacing -- fixed sleeps vs condition waits (ATD_AR_FAST, 2026-07-27)
+#
+# The 9-stage run spent ~370s of its ~445s in literal time.sleep() sized for
+# the slowest ADF day. The conversion rule that keeps this safe:
+#
+#   every _pace() replaces a time.sleep(N) with a poll whose TIMEOUT IS >= N
+#   and whose predicate is the exact condition the next line of code already
+#   depends on, expressed through an ALREADY-PROVEN reader (_label_input_id,
+#   _read_label_value, _visible_id_by_suffix, _grid_rows, _dup_line_rows).
+#
+# Predicates buy an early exit on a normal day; on a slow day the worst case
+# is unchanged and the caller's existing downstream guard (grid assert,
+# drawer identity proof, _valid_doc_number, read-back verify) stays the
+# failure authority. The fill/settle sleeps inside _fill_by_id_suffix /
+# _select_option and the post-fill 2s settles are deliberately NOT paced:
+# an early read-back there can pass on a stale value, which is the documented
+# failure class of this pod ("28/02/20262").
+# ---------------------------------------------------------------------------
+def _wait_until(page, predicate, what, timeout, tick=0.5, settle=0.5):
+    """Poll predicate() until truthy, settle briefly, return its value.
+
+    Returns the (falsy) last value on timeout instead of raising -- the
+    caller's existing guard is the failure authority, exactly as with the
+    fixed sleep this replaces. A predicate exception counts as "not yet":
+    ADF pages routinely throw from page.evaluate mid-render.
+    """
+    deadline = time.time() + timeout
+    value = None
+    while True:
+        try:
+            value = predicate()
+        except Exception:  # noqa: BLE001
+            value = None
+        if value:
+            if settle:
+                time.sleep(settle)
+            return value
+        if time.time() >= deadline:
+            return value
+        time.sleep(tick)
+
+
+def _pace(page, predicate, what, legacy, timeout=None):
+    """The seam between the tuned fixed-sleep pacing and condition waits.
+
+    ATD_AR_FAST unset/0 -> time.sleep(legacy), byte-identical to the
+    behaviour every live campaign ran on (the predicate is never called).
+    ATD_AR_FAST=1 -> _wait_until with a timeout NEVER below the legacy
+    sleep: predicates buy early exit only, never a shorter worst case.
+    """
+    if not _fast():
+        time.sleep(legacy)
+        return None
+    t = timeout if timeout is not None else max(legacy * 1.5, legacy + 5)
+    got = _wait_until(page, predicate, what, timeout=t)
+    if not got:
+        print("  [pace] %s: not ready after %.0fs (legacy sleep was %ss) -- "
+              "continuing to the caller's guard" % (what, t, legacy),
+              flush=True)
+    return got
+
+
+def _any_visible(page, selectors):
+    """True when any of the (already-proven) selectors matches something
+    visible. The read-only twin of _resolve_click_target."""
+    for sel in selectors:
+        try:
+            loc = page.locator(sel)
+            for i in range(min(loc.count(), 8)):
+                if loc.nth(i).is_visible():
+                    return True
+        except Exception:  # noqa: BLE001
+            continue
+    return False
+
+
+# -- readiness predicates: each is the condition its caller's NEXT line needs.
+def _navigator_link_visible(page):
+    return _any_visible(page, ['a[title="Navigator"]'])
+
+
+def _navigator_open(page):
+    return _any_visible(page, SEL["nav_group"] + SEL["nav_billing"])
+
+
+def _billing_search_ready(page):
+    return bool(_label_input_id(page, LBL_TXN_NUMBER))
+
+
+def _billing_workarea_ready(page):
+    return _any_visible(page, SEL["search_toggle"]) \
+        or _billing_search_ready(page)
+
+
+def _grid_present(page):
+    return _grid_rows(page)
+
+
+def _review_page_open(page, number=None):
+    """A record (Review/Edit Transaction) page is up: the Transaction Number
+    shows as read-only TEXT. The search panel's INPUT carrying the same label
+    must be absent, or a mid-transition read of the still-mounted search form
+    would pass prematurely."""
+    if _label_input_id(page, LBL_TXN_NUMBER):
+        return False
+    v = (_read_label_value(page, LBL_TXN_NUMBER) or "").strip()
+    if not v:
+        return False
+    return True if number is None else v.upper() == number.strip().upper()
+
+
+def _actions_popup_open(page):
+    return _any_visible(page, SEL["act_credit"] + SEL["act_duplicate"])
+
+
+def _credit_form_ready(page):
+    return bool(_visible_id_by_suffix(page, ":ap1:it1::content"))
+
+
+def _create_txn_form_ready(page):
+    return bool(_visible_id_by_suffix(page, ":ap1:batchSourceId::content")) \
+        or bool(_dup_line_rows(page))
+
+
+def _dialog_gone(page):
+    return not _any_visible(page, SEL["dialog_ok"])
+
+
+def _complete_menu_open(page):
+    return _any_visible(page, SEL["dup_menu_review"] + SEL["dup_menu_close"])
+
+
+def _doc_number_readable(page):
+    return _valid_doc_number(_read_label_value(page, LBL_DOC_NUMBER))
+
+
+def _drawer_memo_readable(page):
+    return bool((_read_label_value(page, LBL_MEMO_LINE) or "").strip())
 
 
 # ---------------------------------------------------------------------------
@@ -815,17 +972,19 @@ class _Run:
 def _goto_billing(page, base):
     """FuseWelcome -> Navigator -> Receivables -> Billing."""
     page.goto(base + "/fscmUI/faces/FuseWelcome", wait_until="domcontentloaded")
-    time.sleep(9)
+    _pace(page, lambda: _navigator_link_visible(page), "FuseWelcome rendered", 9)
     try:
         page.locator('a[title="Navigator"]').first.click()
     except Exception:  # noqa: BLE001
         pass
-    time.sleep(4)
+    _pace(page, lambda: _navigator_open(page), "Navigator panel open", 4)
     # ADF: Navigator sub-items are lazy -- expand the group before the item
     _jsclick(page, SEL["nav_group"], "expand Receivables group", required=False)
-    time.sleep(2)
+    _pace(page, lambda: _any_visible(page, SEL["nav_billing"]),
+          "Billing entry visible", 2)
     _jsclick(page, SEL["nav_billing"], "Receivables>Billing")
-    time.sleep(15)
+    _pace(page, lambda: _billing_workarea_ready(page), "Billing work area", 15,
+          timeout=25)
     _dismiss_overlays(page)
 
 
@@ -842,12 +1001,14 @@ def _open_search_panel(page):
                 try:
                     if el.is_visible():
                         el.click(timeout=4000)
-                        time.sleep(3)
+                        _pace(page, lambda: _billing_search_ready(page),
+                              "search panel expanded", 3)
                         if _label_input_id(page, LBL_TXN_NUMBER):
                             return True
                 except Exception:  # noqa: BLE001
                     pass
-        time.sleep(2)
+        _pace(page, lambda: _billing_search_ready(page),
+              "search panel (between tries)", 2)
     return bool(_label_input_id(page, LBL_TXN_NUMBER))
 
 
@@ -877,7 +1038,9 @@ def _search_transaction(page, number, base=None):
         raise RuntimeError("could not type into %s" % LBL_TXN_NUMBER)
     time.sleep(1)
     _jsclick(page, SEL["search_run"], "Search", required=False)
-    time.sleep(8)
+    # a not-found invoice pays the full timeout once; the readability guard
+    # (_grid_assert_readable / the LOCATE hit check) stays the authority
+    _pace(page, lambda: _grid_present(page), "results grid", 8, timeout=10)
 
 
 # ---------------------------------------------------------------------------
@@ -1003,8 +1166,13 @@ def _stage_locate(run):
     """Find the original invoice and open it. Not found is a clean business
     failure, not a crash."""
     page = run.page
-    _goto_billing(page, run.base)
-    _search_transaction(page, run.invoice)
+    # A fresh action page is blank -- navigate straight to Billing rather than
+    # paying _search_transaction's failed-panel probe on an empty DOM. Any
+    # other page (a retry mid-run) goes panel-first like stages 2/4/5: same
+    # self-healing ladder, no unconditional renav.
+    if page.url.startswith("about:") or not page.url.startswith("http"):
+        _goto_billing(page, run.base)
+    _search_transaction(page, run.invoice, run.base)
     _shot(page, "ar_1_locate_results.png")
 
     rows = _grid_rows(page)
@@ -1019,7 +1187,8 @@ def _stage_locate(run):
                     required=False):
         raise RuntimeError("Invoice %s found in the grid but its link would not "
                            "open" % run.invoice)
-    time.sleep(10)
+    _pace(page, lambda: _review_page_open(page, run.invoice), "invoice open",
+          10, timeout=15)
     _shot(page, "ar_1_locate_invoice.png")
     return "DONE", None, "opened %s" % run.invoice
 
@@ -1058,11 +1227,13 @@ def _stage_cm_create(run):
     if not _jsclick(page, _txn_link(run.invoice), "reopen invoice",
                     required=False):
         raise RuntimeError("could not reopen invoice %s" % run.invoice)
-    time.sleep(10)
+    _pace(page, lambda: _review_page_open(page, run.invoice), "invoice reopen",
+          10, timeout=15)
 
     _open_actions_menu(page)
     _jsclick(page, SEL["act_credit"], "Actions > Credit Transaction")
-    time.sleep(12)
+    _pace(page, lambda: _credit_form_ready(page), "Credit Transaction form",
+          12, timeout=20)
     _shot(page, "ar_2_credit_form.png")
 
     # Field ids harvested by diag_ar.py on the ADGOV pod 2026-07-25. The dates
@@ -1137,7 +1308,8 @@ def _stage_cm_confirm(run):
     if run.p["cm"]["finish"] != FINISH_COMPLETE:
         return "SKIPPED", None, "cm.finish=SAVE, no completion dialog"
     _jsclick(run.page, SEL["dialog_ok"], "confirmation OK", required=False)
-    time.sleep(5)
+    _pace(run.page, lambda: _dialog_gone(run.page), "confirmation dismissed",
+          5, timeout=8)
     _shot(run.page, "ar_3_cm_confirmed.png")
     return "DONE", None, "confirmation acknowledged"
 
@@ -1160,7 +1332,8 @@ def _stage_cm_capture(run):
     if not _jsclick(page, _txn_link(number), "open credit memo",
                     required=False):
         raise RuntimeError("could not open credit memo %s" % number)
-    time.sleep(10)
+    _pace(page, lambda: _review_page_open(page, number), "credit memo open",
+          10, timeout=15)
 
     doc = _read_label_value(page, LBL_DOC_NUMBER)
     _shot(page, "ar_4_cm_document.png")
@@ -1226,7 +1399,8 @@ def _stage_duplicate(run):
             raise RuntimeError(
                 "cannot reopen the existing duplicate %s -- refusing to build "
                 "another one. Check the transaction in Fusion." % resume_txn)
-        time.sleep(10)
+        _pace(page, lambda: _review_page_open(page, resume_txn),
+              "existing duplicate open", 10, timeout=15)
         run.new_txn_number = resume_txn
         _shot(page, "ar_5_resumed_duplicate.png")
         return "SKIPPED", resume_txn, ("resumed existing invoice %s (no second "
@@ -1242,11 +1416,13 @@ def _stage_duplicate(run):
     if not _jsclick(page, _txn_link(run.invoice), "reopen invoice",
                     required=False):
         raise RuntimeError("could not reopen invoice %s" % run.invoice)
-    time.sleep(10)
+    _pace(page, lambda: _review_page_open(page, run.invoice), "invoice reopen",
+          10, timeout=15)
 
     _open_actions_menu(page)
     _jsclick(page, SEL["act_duplicate"], "Actions > Duplicate")
-    time.sleep(12)
+    _pace(page, lambda: _create_txn_form_ready(page),
+          "Create Transaction (duplicate) form", 12, timeout=20)
     _shot(page, "ar_5_duplicate_opened.png")
     return "DONE", None, "duplicate form opened (nothing committed yet)"
 
@@ -1508,7 +1684,8 @@ def _stage_dup_edit(run):
     _jsclick(page, ['a[id$=":sdi3::disAcr"]', 'a:text-is("Invoice Lines")',
                     'div[role="tab"]:text-is("Invoice Lines")'],
              "Invoice Lines tab", required=False)
-    time.sleep(4)
+    _pace(page, lambda: _dup_line_rows(page), "line grid (dup edit)", 4,
+          timeout=6)
 
     changed = []
     taxed_rows = set()
@@ -1656,7 +1833,8 @@ def _stage_dup_complete(run):
     # then leaves a blank Create Transaction form open.
     _real_click(run.page, SEL["dup_menu_arrow"], "complete split-menu arrow",
                 required=False)
-    time.sleep(3)
+    _pace(run.page, lambda: _complete_menu_open(run.page),
+          "complete split-menu entries", 3, timeout=6)
     for label, key in (("Complete and Review", "dup_menu_review"),
                        ("Complete and Close", "dup_menu_close")):
         for sel in SEL[key]:
@@ -1708,7 +1886,11 @@ def _stage_dup_capture(run):
     """OK the confirmation, then read the new invoice's Document Number."""
     page = run.page
     _jsclick(page, SEL["dialog_ok"], "confirmation OK", required=False)
-    time.sleep(6)
+    # sits AFTER the stage-8 commit -- an early exit cannot cause a wrong
+    # write, and a premature negative read falls into the existing search
+    # fallback below and ultimately the _valid_doc_number refusal
+    _pace(page, lambda: _doc_number_readable(page),
+          "new invoice document number", 6, timeout=10)
 
     # 1) whatever stage 8 read off the completed record (the reliable source)
     doc = run.new_doc_number
@@ -1720,7 +1902,8 @@ def _stage_dup_capture(run):
         _search_transaction(page, run.new_txn_number, run.base)
         if _jsclick(page, _txn_link(run.new_txn_number), "open new invoice",
                     required=False):
-            time.sleep(10)
+            _pace(page, lambda: _review_page_open(page, run.new_txn_number),
+                  "new invoice open", 10, timeout=15)
             doc = _read_label_value(page, LBL_DOC_NUMBER)
     _shot(page, "ar_8_new_invoice.png")
 
@@ -1801,7 +1984,10 @@ def _dff_one_row(run, line, row):
                 "row is first -- re-run probe_details.py, the grid's id "
                 "scheme has changed again."
                 % (line["lineNumber"], line["memoLine"], row, row_prefix))
-        time.sleep(8)
+        # any readable Memo Line ends the wait -- WHICH line's drawer opened
+        # is judged by the identity check below, exactly as before
+        _pace(page, lambda: _drawer_memo_readable(page), "line Details drawer",
+              8, timeout=12)
 
         # The drawer must PROVE it is the line we asked for before anything
         # is written into it.
@@ -1922,7 +2108,8 @@ def _stage_dup_line_dff(run):
         _jsclick(page, ['a[id$=":sdi3::disAcr"]', 'a:text-is("Invoice Lines")',
                         'div[role="tab"]:text-is("Invoice Lines")'],
                  "Invoice Lines tab", required=False)
-        time.sleep(3)
+        _pace(page, lambda: _dup_line_rows(page), "line grid (per line)", 3,
+              timeout=6)
         # The memo line selects EVERY matching grid row (user rule 2026-07-26,
         # learned on 45110096161 -- see _dup_rows_for_line). The page context
         # is re-asserted between rows because saving one row's drawer can

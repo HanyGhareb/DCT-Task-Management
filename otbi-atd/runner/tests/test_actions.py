@@ -102,8 +102,93 @@ def main():
     # exercised by the HEADED smoke harness (smoke_ppm_task.py).
 
     _test_ar_invoice_rebill(env)
+    _test_ar_pacing()
 
     print("ALL ACTION UNIT TESTS PASSED")
+
+
+def _test_ar_pacing():
+    """The ATD_AR_FAST pacing seam (2026-07-27).
+
+    The safety contract under test: with the knob unset, _pace IS the legacy
+    time.sleep -- the predicate is never even called -- and with it set, the
+    wait's timeout is never below the legacy sleep it replaces.
+    """
+    from actions import ar_invoice_rebill as r  # noqa: E402
+    import time as _time
+
+    # ---- _wait_until: early exit returns the predicate's value ----------
+    calls = {"n": 0}
+
+    def third_poll():  # truthy on the third poll
+        calls["n"] += 1
+        return {"rows": 1} if calls["n"] >= 3 else None
+
+    got = r._wait_until(None, third_poll, "t", timeout=5, tick=0.01, settle=0)
+    assert got == {"rows": 1}, "early exit must return the predicate's value"
+    assert calls["n"] == 3
+
+    # ---- _wait_until: timeout returns falsy, never raises ---------------
+    t0 = _time.time()
+    got = r._wait_until(None, lambda: None, "t", timeout=0.2, tick=0.05,
+                        settle=0)
+    assert not got and _time.time() - t0 < 2, "timeout must return falsy fast"
+
+    # ---- _wait_until: a predicate exception counts as 'not yet' ---------
+    calls["n"] = 0
+
+    def flaky():
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise RuntimeError("mid-render evaluate")
+        return "ready"
+
+    assert r._wait_until(None, flaky, "t", timeout=5, tick=0.01,
+                         settle=0) == "ready"
+
+    # ---- _pace with ATD_AR_FAST unset == the legacy sleep, exactly ------
+    prev = os.environ.pop("ATD_AR_FAST", None)
+    try:
+        slept = []
+        real_sleep = r.time.sleep
+        r.time.sleep = lambda s: slept.append(s)
+        try:
+            def must_not_run():
+                raise AssertionError(
+                    "legacy path must never call the predicate")
+            out = r._pace(None, must_not_run, "t", 7)
+        finally:
+            r.time.sleep = real_sleep
+        assert slept == [7], "legacy path must sleep exactly the legacy value"
+        assert out is None
+
+        # ---- fast path: predicate polled, early exit, timeout floor -----
+        os.environ["ATD_AR_FAST"] = "1"
+        seen = {}
+        real_wait = r._wait_until
+
+        def spy_wait(page, predicate, what, timeout, **kw):
+            seen["timeout"] = timeout
+            return real_wait(page, predicate, what, timeout, **kw)
+        r._wait_until = spy_wait
+        try:
+            out = r._pace(None, lambda: "ok", "t", 8)
+            assert out == "ok"
+            assert seen["timeout"] >= 8, "timeout must never undercut legacy"
+            assert seen["timeout"] == max(8 * 1.5, 8 + 5)
+            r._pace(None, lambda: "ok", "t", 2)
+            assert seen["timeout"] == 7, "small legacies floor at legacy+5"
+            r._pace(None, lambda: "ok", "t", 10, timeout=15)
+            assert seen["timeout"] == 15, "an explicit timeout is honoured"
+        finally:
+            r._wait_until = real_wait
+    finally:
+        if prev is None:
+            os.environ.pop("ATD_AR_FAST", None)
+        else:
+            os.environ["ATD_AR_FAST"] = prev
+
+    print("  AR pacing unit tests passed")
 
 
 def _ar_payload(**over):

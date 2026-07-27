@@ -22,6 +22,7 @@ Every screen also writes diag_ar_<screen>.png. READ-ONLY: it navigates and
 opens forms but never clicks Save / Complete / OK, so nothing is committed.
 """
 import json
+import os
 import sys
 import time
 
@@ -390,6 +391,37 @@ def main():
                       "Capture 'Save and Close'. Confirm whether a "
                       "transaction-level Save is needed afterwards.",
                       "NOTHING is saved here."])
+
+            elif screen == "reviewnav":
+                # Evidence run for the nav-elimination optimisation (phase 2 of
+                # the ATD_AR_FAST plan, 2026-07-27): stages 2/4/5 start on a
+                # Review Transaction page and currently pay a full FuseWelcome
+                # renav (~32s) to get back to the Billing search. Candidates
+                # for a cheaper way back, to be PROVEN here before any handler
+                # code: a "Done" button returning to Manage Transactions,
+                # and/or the right-rail Tasks magnifier still being present on
+                # the record page. READ-ONLY: nothing is clicked beyond opening
+                # the invoice (and optionally Done in a second pass).
+                _need(invoice)
+                goto_billing(page, base)
+                open_invoice(page, invoice)
+                dump(page, "reviewnav",
+                     ["Looking for, on the RECORD page: an exact-text 'Done' "
+                      "button/anchor (capture its id); anything matching "
+                      "[title*='Search'] or *TransactionsQuickSearch* (the "
+                      "work-area magnifier); breadcrumb anchors back to "
+                      "Manage Transactions.",
+                      "If 'Done' exists: re-run with DIAG_AR_CLICK_DONE=1 to "
+                      "click it and prove the search panel is reachable "
+                      "afterwards. That second pass is still read-only."])
+                if os.environ.get("DIAG_AR_CLICK_DONE") == "1":
+                    ar._click_by_text(page, "Done", "Done button")
+                    time.sleep(6)
+                    opened = open_search_panel(page)
+                    dump(page, "reviewnav_after_done",
+                         ["search panel opened after Done: %s" % opened,
+                          "Transaction Number input id: %s"
+                          % _label_input_id(page, "Transaction Number")])
 
             else:
                 print("unknown screen: %s" % screen)
