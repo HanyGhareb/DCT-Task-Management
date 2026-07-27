@@ -36,7 +36,7 @@ Base: `https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/a
 | `GET openapi` | Public, metadata-only: the hand-authored OpenAPI 3.0 description the Excel add-in consumes (full BudgetRow schema, `readOnly` on every field except `budget_user`, PUT body schema). **This is the URL to give the add-in** — the built-in `/ords/admin/open-api-catalog/xl/` is useless for it: ORDS cannot derive field schemas for a custom PL/SQL module, so the add-in "finds 1 business object" but lists nothing to select. |
 | `GET budget/` | Budget rows (single page, default limit 10000). **`?year=` and `?period=` (MM-YYYY) are MANDATORY — 400 without both** (business rule 2026-07-27: users must pick a Budget Year and Accounting Period before downloading). Optional `?search=` `?limit=` `?offset=`. Row identity field is `id` (opaque; matches the `{id}` path parameter so the add-in can pair collection and item paths). |
 | `GET budget/:id` | One row. |
-| `PUT budget/:id` | Body `{"budget_user": <number\|null>}`. Number = set/replace the override (row stamped with the signed-in user + Dubai time). **null / blank = clear** (override row deleted). Every other field in the body is ignored — `budget_user` is the ONLY writable field, enforced server-side. |
+| `PUT budget/:id` | Body `{"budget_user": <number\|null>, "reason_category"?: <code\|null>, "comments"?: <text\|null>}`. Number = set/replace the override (row stamped with the signed-in user + Dubai time). **null / blank budget = clear** (override row deleted). Since 2026-07-28 the override also carries a classification: `reason_category` (validated against lookup **`XL_OVERRIDE_REASON`** — System issues / Request not received / Budget reallocation / Data correction / Other; manage values in Admin → Lookups; invalid code → 400, the OpenAPI ships the codes as an enum so the add-in can offer a choice list) and free-text `comments` (≤1000). Both are PARTIAL — only keys present in the body are applied. All other fields remain read-only. |
 | POST / DELETE | **Do not exist** → HTTP 405. Users cannot create or delete budget rows from Excel. |
 
 **Auth = HTTP Basic with normal i-Finance credentials** (the only scheme VBAFE
@@ -118,6 +118,18 @@ each version stores BOTH the unpublished **master** (admin-only) and the
   separate **Override Budget KPI** (always shows entered overrides + line
   count) with a drawer listing each overridden period row (fusion vs override,
   who/when) and **in-place editing** (`POST /gl/butil/override`).
+
+### Pending workbook update (2026-07-28) — Reason Category + Comments
+
+The API and OpenAPI already expose the two new editable fields, but the
+CURRENT active workbook (v1) predates them. To surface them in Excel:
+1. Open the MASTER workbook (ATD → VB Templates → download master) in Excel.
+2. Oracle Visual Builder → Manage Catalogs → refresh the catalog metadata.
+3. Layout Designer → Columns → add **Reason Category** and **Comments**
+   (both editable; Reason Category carries the lookup codes as an OpenAPI
+   enum, so the add-in can present the valid choices).
+4. Re-run `style_template.py` if re-styling is wanted, Publish, then upload
+   both files as **version 2** in ATD → VB Templates and **Activate** it.
 
 ## 4. The distributable template
 

@@ -828,10 +828,26 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 @media (max-width:760px){.bu-kpis.bu-kpis5{grid-template-columns:1fr}}
 .bk-ovr{--bk-c:#B8862B;--bk-soft:#F6EFDC}   /* gold — the platform GRN/gold accent family */
 .bk-sub .ov-applied{color:#B8862B;font-weight:700}
-/* Override drawer: inline-editable Override Budget column */
+/* Override drawer: extra-wide by default (full-screen toggle unchanged) */
+.dw-drawer.dw-ov{width:min(1500px,96vw)}
+/* how-to panel at the top of the drawer body — soft brand tint + gold accent */
+.ov-guide{position:relative;margin-bottom:12px;padding:12px 16px;border:1px solid var(--line);
+    border-inline-start:4px solid var(--gold);border-radius:var(--r-sm);
+    background:linear-gradient(120deg,var(--brand-soft),var(--surface) 72%)}
+.ov-guide-t{display:flex;align-items:center;gap:8px;font-weight:800;font-size:13px;color:var(--brand-dark);margin-bottom:6px}
+.ov-guide-t i{width:8px;height:8px;background:linear-gradient(135deg,var(--gold),#a9842f);transform:rotate(45deg);border-radius:1px;flex:none}
+.ov-guide-ls{margin:0;padding-inline-start:18px;display:flex;flex-direction:column;gap:3px;
+    font-size:12.5px;color:var(--ink)}
+.ov-guide-ls li::marker{color:var(--gold)}
+.ov-guide-link{display:inline-block;margin-top:8px;font-size:13px;font-weight:700;color:var(--brand-dark);
+    text-decoration:underline dotted;text-underline-offset:3px}
+.ov-guide-link:hover{color:var(--gold);text-decoration-style:solid}
+/* Override drawer: inline-editable Override Budget / Reason / Comments columns */
 .ov-tbl td{vertical-align:middle}
 .ov-tbl .ov-inp{width:130px;min-width:110px;padding:6px 8px;font-size:13px;text-align:end;
     font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+.ov-tbl .ov-sel{min-width:150px;max-width:210px;padding:6px 8px;font-size:12.5px}
+.ov-tbl .ov-comm{width:100%;min-width:160px;padding:6px 8px;font-size:12.5px}
 .ov-vs{margin-inline:10px;color:var(--muted)}
 /* Budget Override from Excel region (collapsible, bottom of the page) */
 .bu-xltpl{margin-top:14px}

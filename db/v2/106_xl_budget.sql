@@ -573,6 +573,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_pkg AS
         l_cnt    NUMBER;
         l_val    NUMBER;
         l_uname  VARCHAR2(100);
+        l_reason VARCHAR2(100);
+        l_comm   VARCHAR2(1000);
+        l_has_r  VARCHAR2(1) := 'N';
+        l_has_c  VARCHAR2(1) := 'N';
     BEGIN
         BEGIN
             decode_id(p_id, l_pid, l_tid, l_period, l_etype);
@@ -606,6 +610,22 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_pkg AS
             END;
         END;
 
+        -- optional classification fields (2026-07-28) - partial semantics:
+        -- only keys present in the body are applied
+        IF APEX_JSON.does_exist('reason_category') THEN
+            l_has_r  := 'Y';
+            l_reason := SUBSTR(TRIM(APEX_JSON.get_varchar2('reason_category')), 1, 100);
+            IF l_reason IS NOT NULL
+               AND dct_lookup_pkg.is_valid('XL_OVERRIDE_REASON', l_reason) = 'N' THEN
+                dct_rest.err(400, 'reason_category is not a valid active XL_OVERRIDE_REASON lookup value');
+                RETURN;
+            END IF;
+        END IF;
+        IF APEX_JSON.does_exist('comments') THEN
+            l_has_c := 'Y';
+            l_comm  := SUBSTR(APEX_JSON.get_varchar2('comments'), 1, 1000);
+        END IF;
+
         IF l_val IS NULL THEN
             DELETE FROM dct_project_budget_user
             WHERE  project_id = l_pid AND task_id = l_tid
@@ -614,6 +634,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_pkg AS
             SELECT MAX(username) INTO l_uname FROM dct_users WHERE user_id = p_uid;
             UPDATE dct_project_budget_user
             SET    budget_user  = l_val,
+                   reason_category = CASE WHEN l_has_r = 'Y' THEN l_reason ELSE reason_category END,
+                   comments     = CASE WHEN l_has_c = 'Y' THEN l_comm ELSE comments END,
                    updated_by_id = p_uid,
                    updated_by   = l_uname,
                    updated_at   = SYSTIMESTAMP
@@ -622,9 +644,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_pkg AS
             IF SQL%ROWCOUNT = 0 THEN
                 INSERT INTO dct_project_budget_user
                        (project_id, task_id, expenditure_type, accounting_period,
-                        budget_user, updated_by_id, updated_by, updated_at)
+                        budget_user, reason_category, comments,
+                        updated_by_id, updated_by, updated_at)
                 VALUES (l_pid, l_tid, l_etype, l_period,
-                        l_val, p_uid, l_uname, SYSTIMESTAMP);
+                        l_val, l_reason, l_comm, p_uid, l_uname, SYSTIMESTAMP);
             END IF;
         END IF;
         COMMIT;
@@ -641,9 +664,20 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_pkg AS
     PROCEDURE emit_openapi IS
         l_doc  VARCHAR2(32767);
         l_pos  PLS_INTEGER := 1;
+        l_enum VARCHAR2(2000);
         c_base CONSTANT VARCHAR2(200) :=
             'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin/xl';
     BEGIN
+        -- reason enum from the lookup so the add-in offers the valid choices
+        FOR r IN (SELECT lv.value_code
+                  FROM   dct_lookup_values lv
+                  JOIN   dct_lookup_categories lc ON lc.category_id = lv.category_id
+                  WHERE  lc.category_code = 'XL_OVERRIDE_REASON'
+                    AND  lv.is_active = 'Y'
+                  ORDER  BY lv.display_order) LOOP
+            l_enum := l_enum || CASE WHEN l_enum IS NOT NULL THEN ', ' END
+                      || '"' || r.value_code || '"';
+        END LOOP;
         l_doc := q'!{
 "openapi": "3.0.0",
 "info": {
@@ -715,7 +749,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_pkg AS
           "application/json": {
             "schema": {
               "type": "object",
-              "properties": { "budget_user": { "type": "number", "nullable": true } }
+              "properties": {
+                "budget_user":     { "type": "number", "nullable": true },
+                "reason_category": { "type": "string", "nullable": true },
+                "comments":        { "type": "string", "nullable": true, "maxLength": 1000 }
+              }
             }
           }
         }
@@ -748,6 +786,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_pkg AS
         "accounting_period":      { "type": "string",  "readOnly": true,  "title": "Accounting Period" },
         "budget":                 { "type": "number",  "readOnly": true,  "title": "Budget (Fusion)" },
         "budget_user":            { "type": "number",  "nullable": true,  "title": "User Budget" },
+!' || '        "reason_category":        { "type": "string",  "nullable": true,  "title": "Reason Category", "enum": [ '
+   || l_enum || ' ] },' || q'!
+        "comments":               { "type": "string",  "nullable": true,  "maxLength": 1000, "title": "Comments" },
         "budget_user_updated_by": { "type": "string",  "readOnly": true,  "title": "Override Updated By" },
         "budget_user_updated_at": { "type": "string",  "readOnly": true,  "title": "Override Updated At" }
       }

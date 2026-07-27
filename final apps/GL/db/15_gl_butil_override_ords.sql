@@ -77,6 +77,19 @@ BEGIN
   IF l_period = '' THEN l_period := NULL; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
+  APEX_JSON.open_array('reasons');
+  FOR r IN (SELECT lv.value_code, lv.value_name_en, lv.value_name_ar
+            FROM prod.dct_lookup_values lv
+            JOIN prod.dct_lookup_categories lc ON lc.category_id = lv.category_id
+            WHERE lc.category_code = 'XL_OVERRIDE_REASON' AND lv.is_active = 'Y'
+            ORDER BY lv.display_order) LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('code',   r.value_code);
+    APEX_JSON.write('name',   r.value_name_en);
+    APEX_JSON.write('nameAr', r.value_name_ar, p_write_null => TRUE);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
   APEX_JSON.open_array('items');
   FOR r IN (
     WITH kys AS (
@@ -108,6 +121,7 @@ BEGIN
            tk.task_number tnum, tk.task_name tname,
            u.expenditure_type et, u.accounting_period per,
            b.budget fus, u.budget_user ovr,
+           u.reason_category rsn, u.comments cmts,
            u.updated_by uby,
            TO_CHAR(prod.dct_to_local(u.updated_at),'YYYY-MM-DD HH:MI AM') uat,
            COUNT(*) OVER () full_n, SUM(u.budget_user) OVER () full_ovr, SUM(b.budget) OVER () full_fus
@@ -135,6 +149,8 @@ BEGIN
     APEX_JSON.write('accountingPeriod', NVL(r.per,''));
     APEX_JSON.write('fusionBudget',     r.fus);
     APEX_JSON.write('overrideBudget',   r.ovr);
+    APEX_JSON.write('reasonCategory',   r.rsn,  p_write_null => TRUE);
+    APEX_JSON.write('comments',         r.cmts, p_write_null => TRUE);
     APEX_JSON.write('updatedBy',        NVL(r.uby,''));
     APEX_JSON.write('updatedAt',        NVL(r.uat,''));
     APEX_JSON.close_object;

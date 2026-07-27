@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.44.0';</script>
+<script>window.APP_VERSION='1.45.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -1503,7 +1503,7 @@
 
 <!-- ═══════════ OVERRIDE BUDGET DRAWER (KPI tile → view + inline-edit budget_user lines) ═══════════ -->
 <div class="dw-scrim" data-bind="css:{show:ovDrawer}, click:closeOvDrawer" style="display:none"></div>
-<aside class="dw-drawer dw-wide" data-bind="css:{show:ovDrawer, 'dw-full':ovMax}" role="dialog" aria-modal="true">
+<aside class="dw-drawer dw-wide dw-ov" data-bind="css:{show:ovDrawer, 'dw-full':ovMax}" role="dialog" aria-modal="true">
   <header class="dw-h">
     <div class="dw-h-txt">
       <div class="dw-eyebrow" data-bind="text:(buYear()||'') + (buPeriod() ? ' · ' + t('ytd') + ' ' + buPeriod() : '')"></div>
@@ -1516,6 +1516,16 @@
     </div>
   </header>
   <div class="dw-b">
+    <!-- how-to panel: override via the Excel template (link runs the authed template download) -->
+    <div class="ov-guide">
+      <div class="ov-guide-t"><i></i><span data-bind="text:t('ovGuideTitle')"></span></div>
+      <ul class="ov-guide-ls">
+        <li data-bind="text:t('ovGuideL1')"></li>
+        <li data-bind="text:t('ovGuideL2')"></li>
+        <li data-bind="text:t('ovGuideL3')"></li>
+      </ul>
+      <a class="ov-guide-link" href="#" data-bind="click:function(){downloadXlTemplate();return false;}, text:xltplBusyF()?t('xltplBusy'):t('ovGuideLink')"></a>
+    </div>
     <div class="dw-ctx" data-bind="text:t('ovEditHint')"></div>
     <div class="ldr sm" data-bind="visible:ovLoading()">
       <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
@@ -1532,6 +1542,8 @@
           <th data-bind="text:t('fPeriod')"></th>
           <th class="num" data-bind="text:t('ovColFusion')"></th>
           <th class="num" data-bind="text:t('cOverrideBudget')"></th>
+          <th data-bind="text:t('ovColReason')"></th>
+          <th data-bind="text:t('ovColComments')"></th>
           <th data-bind="text:t('ovColUpdBy')"></th>
           <th data-bind="text:t('ovColUpdAt')"></th>
           <th></th>
@@ -1546,13 +1558,15 @@
             <td class="mono" data-bind="text:$data.accountingPeriod||'—'"></td>
             <td class="num mono" data-bind="text:$root.money($data.fusionBudget)"></td>
             <td class="num"><input class="inp ov-inp" type="number" step="any" data-bind="textInput:$data.override, event:{keydown:function(d,e){if(e.keyCode===13){$root.saveOvRow(d);return false;}return true;}}"></td>
+            <td><select class="inp ov-sel" data-bind="options:$root.ovReasonOpts(), optionsText:'label', optionsValue:'code', optionsCaption:' ', value:$data.reason"></select></td>
+            <td><input class="inp ov-comm" type="text" maxlength="1000" data-bind="textInput:$data.comm, attr:{placeholder:$root.t('ovColComments')}, event:{keydown:function(d,e){if(e.keyCode===13){$root.saveOvRow(d);return false;}return true;}}"></td>
             <td data-bind="text:$data.updBy()||'—'"></td>
             <td class="mono" data-bind="text:$data.updAt()||'—'"></td>
             <td><button class="btn btn-sm btn-primary" data-bind="click:function(d){$root.saveOvRow(d)}, css:{busy:$data.saving}, enable:!$data.saving(), text:$root.t('ovSaveBtn')"></button></td>
           </tr>
           <!-- /ko -->
         </tbody>
-        <tfoot><tr><td class="drill-total" colspan="10">
+        <tfoot><tr><td class="drill-total" colspan="12">
           <span data-bind="text:t('ovTotOverride')"></span> <b class="mono" data-bind="text:money(ovTotOverride())"></b>
           <span class="ov-vs">·</span>
           <span data-bind="text:t('ovTotFusion')"></span> <b class="mono" data-bind="text:money(ovTotFusion())"></b>

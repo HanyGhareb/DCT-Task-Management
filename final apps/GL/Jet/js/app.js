@@ -410,6 +410,13 @@
     ovTotOverride:{en:'Override total',ar:'إجمالي الموازنة المعدّلة'},
     ovTotFusion:{en:'Fusion total',ar:'إجمالي موازنة فيوجن'},
     ovEmpty:{en:'No override budget lines for these criteria.',ar:'لا توجد بنود موازنة معدّلة لهذه المعايير.'},
+    ovColReason:{en:'Reason Category',ar:'فئة السبب'},
+    ovColComments:{en:'Comments',ar:'ملاحظات'},
+    ovGuideTitle:{en:'Override the budget in bulk from Excel',ar:'تعديل الموازنة دفعة واحدة عبر إكسل'},
+    ovGuideL1:{en:'Download the Excel template and open it in Microsoft Excel on Windows with the Oracle Visual Builder Add-in installed.',ar:'نزّل قالب إكسل وافتحه في مايكروسوفت إكسل على ويندوز مع تثبيت إضافة Oracle Visual Builder.'},
+    ovGuideL2:{en:'Click Download Data with your Budget Year, edit ONLY the light-green Override Budget column, then click Upload Changes.',ar:'انقر «تنزيل البيانات» مع سنة الميزانية، وعدّل عمود الموازنة المعدّلة (الأخضر الفاتح) فقط، ثم انقر «رفع التغييرات».'},
+    ovGuideL3:{en:'Uploaded overrides appear in this list and in the Override Budget tile — or edit any line directly below.',ar:'تظهر التعديلات المرفوعة في هذه القائمة وفي بطاقة الموازنة المعدّلة — أو عدّل أي بند مباشرة أدناه.'},
+    ovGuideLink:{en:'Download the Excel template',ar:'تنزيل قالب إكسل'},
 
     /* ── Budget Override from Excel (Visual Builder Add-in workflow) ── */
     xltplTitle:{en:'Budget Override from Excel',ar:'تعديل الموازنة عبر إكسل'},
@@ -2245,6 +2252,20 @@
     self.ovRows = ko.observableArray([]);
     self.ovCount = ko.observable(0);
     self.ovTotFusion = ko.observable(0);
+    // reason-category lookup shipped by GET /butil/override/lines (top-level reasons[])
+    self.ovReasons = ko.observableArray([]);
+    // language-aware option list (recomputes when the UI language toggles)
+    self.ovReasonOpts = ko.computed(function () {
+      var ar = self.lang() === 'ar';
+      return self.ovReasons().map(function (r) {
+        return { code: r.code, label: (ar ? r.nameAr : '') || r.name || r.code };
+      });
+    });
+    self.ovReasonName = function (code) {
+      if (!code) return '';
+      var m = self.ovReasons().filter(function (r) { return r.code === code; })[0];
+      return m ? ((self.lang() === 'ar' ? m.nameAr : '') || m.name || code) : code;
+    };
     // reconciling totals footer: override total recomputes live as rows are edited
     self.ovTotOverride = ko.computed(function () {
       return self.ovRows().reduce(function (s, r) {
@@ -2257,8 +2278,18 @@
       self.ovDrawer(true); self.ovLoading(true); self.ovRows([]); self.ovCount(0); self.ovTotFusion(0);
       var p = self.buParams(0); delete p.limit; delete p.offset; delete p.ovr;
       api('GET', '/butil/override/lines' + qs(p)).then(function (d) {
+        var reasons = (d.reasons || []).slice();
+        // KO options: gotcha — a stored code absent from its list is blanked;
+        // re-inject any row's retired/unknown reason code as its own option
+        (d.items || []).forEach(function (r) {
+          if (r.reasonCategory && !reasons.some(function (x) { return x.code === r.reasonCategory; }))
+            reasons.push({ code: r.reasonCategory, name: r.reasonCategory, nameAr: r.reasonCategory });
+        });
+        self.ovReasons(reasons);
         self.ovRows((d.items || []).map(function (r) {
           r.override = ko.observable(r.overrideBudget == null ? '' : '' + r.overrideBudget);
+          r.reason = ko.observable(r.reasonCategory || '');
+          r.comm = ko.observable(r.comments || '');
           r.updBy = ko.observable(r.updatedBy || '');
           r.updAt = ko.observable(r.updatedAt || '');
           r.saving = ko.observable(false);
@@ -2276,8 +2307,14 @@
       var val = raw === '' ? null : Number(raw);
       if (raw !== '' && isNaN(val)) { toast(self.t('ovBadNumber'), true); return; }
       row.saving(true);
-      api('POST', '/butil/override', { id: row.id, budget_user: val }).then(function (d) {
+      api('POST', '/butil/override', {
+        id: row.id, budget_user: val,
+        reason_category: row.reason() || null,
+        comments: ('' + (row.comm() || '')).trim() || null
+      }).then(function (d) {
         row.override(d.budget_user == null ? '' : '' + d.budget_user);
+        row.reason(d.reason_category || '');
+        row.comm(d.comments || '');
         row.updBy(d.budget_user_updated_by || '');
         row.updAt(d.budget_user_updated_at || '');
         row.saving(false);
@@ -2292,14 +2329,17 @@
       var esc = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
       var heads = [self.t('cProject'), self.t('buMissCcPName'), self.t('cTask'), self.t('cEtype'),
         self.t('fPeriod'), self.t('ovColFusion'), self.t('cOverrideBudget'),
+        self.t('ovColReason'), self.t('ovColComments'),
         self.t('ovColUpdBy'), self.t('ovColUpdAt')];
       var lines = [heads.map(esc).join(',')];
       rows.forEach(function (r) {
         lines.push([r.projectNumber, r.projectName, r.taskNumber, r.expenditureType,
-          r.accountingPeriod, r.fusionBudget, r.override(), r.updBy(), r.updAt()].map(esc).join(','));
+          r.accountingPeriod, r.fusionBudget, r.override(),
+          self.ovReasonName(r.reason()), r.comm(),
+          r.updBy(), r.updAt()].map(esc).join(','));
       });
       // reconciliation footer: fusion + override totals under their own columns
-      lines.push([self.t('drillTotal'), '', '', '', '', self.ovTotFusion(), self.ovTotOverride(), '', ''].map(esc).join(','));
+      lines.push([self.t('drillTotal'), '', '', '', '', self.ovTotFusion(), self.ovTotOverride(), '', '', '', ''].map(esc).join(','));
       var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
       var u = URL.createObjectURL(blob);
       var a = document.createElement('a'); a.href = u; a.download = 'gl_override_budget_' + self.buYear() + '.csv';
