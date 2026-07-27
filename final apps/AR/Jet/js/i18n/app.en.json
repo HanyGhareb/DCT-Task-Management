@@ -263,6 +263,7 @@
   "ar.rebill.bulk.submit": "Submit {0} request(s)",
   "ar.rebill.bulk.parsed": "{0} invoice(s) read from the workbook",
   "ar.rebill.bulk.noRows": "No invoice rows found in the workbook",
+  "ar.rebill.bulk.badDate": "Unrecognised or ambiguous date '{0}' — use dd/mm/yyyy, YYYY-MM-DD, or a real Excel date cell",
   "ar.rebill.bulk.lineIncomplete": "Row {0}: memo line, project and task are all required",
   "ar.rebill.bulk.libFail": "Could not load the spreadsheet library (SheetJS CDN).",
   "ar.rebill.bulk.lineCount": "Lines",

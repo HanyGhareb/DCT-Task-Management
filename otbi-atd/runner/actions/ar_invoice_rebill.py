@@ -621,19 +621,34 @@ def _shot(page, name):
 # Payload
 # ---------------------------------------------------------------------------
 def _check_date(label, value):
-    """Accept ISO YYYY-MM-DD (what the API and Excel template use) or Fusion's
-    own dd/mm/yyyy, and reject anything else.
+    """Normalise to ISO YYYY-MM-DD. Accepts ISO or day-first d/m/yyyy (any of
+    / - . separators, single digits fine); a day-slot that cannot be a day of
+    a real month with month>12 flips the reading (2/13/2026 -> Feb 13).
 
-    A malformed date must fail HERE. Typed into an ADF date field it would
-    either be silently rejected -- leaving the previous value in place and
-    committing the wrong accounting period -- or reinterpreted.
+    Two-digit years are REFUSED: '2/11/26' could be 2 Nov or 11 Feb and a
+    wrong-but-valid date silently commits the wrong accounting period. The AR
+    page reads real Excel date cells as Date objects, so a legitimate upload
+    never produces one -- only hand-built payloads can, and those must be
+    explicit.
     """
     v = str(value or "").strip()
-    if not re.match(r"^\d{4}-\d{2}-\d{2}$", v) and \
-            not re.match(r"^\d{2}/\d{2}/\d{4}$", v):
-        raise RuntimeError("%s must be YYYY-MM-DD or dd/mm/yyyy (got %r)"
+    m = re.match(r"^(\d{4})-(\d{1,2})-(\d{1,2})$", v)
+    if m:
+        y, mo, d = int(m.group(1)), int(m.group(2)), int(m.group(3))
+    else:
+        m = re.match(r"^(\d{1,2})[/\-.](\d{1,2})[/\-.](\d{4})$", v)
+        if not m:
+            raise RuntimeError(
+                "%s must be YYYY-MM-DD or dd/mm/yyyy with a 4-digit year "
+                "(got %r); two-digit years are ambiguous and refused"
+                % (label, v))
+        d, mo, y = int(m.group(1)), int(m.group(2)), int(m.group(3))
+        if mo > 12 and d <= 12:
+            d, mo = mo, d
+    if not (1 <= mo <= 12 and 1 <= d <= 31):
+        raise RuntimeError("%s is not a valid calendar date (got %r)"
                            % (label, v))
-    return v
+    return "%04d-%02d-%02d" % (y, mo, d)
 
 
 def validate_payload(data):

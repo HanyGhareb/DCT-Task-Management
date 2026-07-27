@@ -210,6 +210,18 @@ def _test_ar_invoice_rebill(env):
     p3 = r.validate_payload(_ar_payload())
     assert p3["cm"]["transactionDate"] == "2026-02-28", "stored as given (ISO)"
 
+    # ---- _check_date normalisation: everything unambiguous -> ISO -------
+    for given, want_iso in (
+        ("2026-02-28", "2026-02-28"),     # ISO passes through
+        ("2026-2-3",   "2026-02-03"),     # ISO, single digits
+        ("28/02/2026", "2026-02-28"),     # Fusion dd/mm/yyyy
+        ("28-02-2026", "2026-02-28"),     # day-first, dash separator
+        ("2/3/2026",   "2026-03-02"),     # single digits read DAY-first
+        ("2/13/2026",  "2026-02-13"),     # 13 cannot be a month -> was m/d
+    ):
+        assert r._check_date("t", given) == want_iso, \
+            "%r should normalise to %s" % (given, want_iso)
+
     # ---- lineNumber is OPTIONAL: memo line matches, position numbers ----
     pauto = r.validate_payload(_ar_payload(lines=[
         {"memoLine": "First Memo", "projectNumber": "p", "taskNumber": "t"},
@@ -220,13 +232,17 @@ def _test_ar_invoice_rebill(env):
         "absent lineNumbers default to payload position"
     assert pauto["lines"][1]["taxClassification"] == "VAT OUTPUT - STD"
     for badpay, want in (
-        (_ar_payload(cm={"transactionDate": "28-02-2026", "accountingDate": "2026-02-28"}),
+        # two-digit year = ambiguous (2 Nov or 11 Feb?) -> refused, never guessed
+        (_ar_payload(cm={"transactionDate": "2/11/26", "accountingDate": "2026-02-28"}),
          "cm.transactionDate must be"),
         (_ar_payload(cm={"transactionDate": "2026-02-28", "accountingDate": "Feb 2026"}),
          "cm.accountingDate must be"),
         (_ar_payload(duplicate={"transactionDate": "2026/02/28",
                                 "accountingDate": "2026-02-28"}),
          "duplicate.transactionDate must be"),
+        # both slots >12 is not a date in any reading
+        (_ar_payload(cm={"transactionDate": "13/13/2026", "accountingDate": "2026-02-28"}),
+         "not a valid calendar date"),
     ):
         try:
             r.validate_payload(badpay)

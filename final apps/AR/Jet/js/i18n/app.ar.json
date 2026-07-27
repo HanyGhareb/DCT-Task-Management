@@ -263,6 +263,7 @@
   "ar.rebill.bulk.submit": "إرسال {0} طلب",
   "ar.rebill.bulk.parsed": "تمت قراءة {0} فاتورة من الملف",
   "ar.rebill.bulk.noRows": "لم يتم العثور على فواتير في الملف",
+  "ar.rebill.bulk.badDate": "تاريخ غير معروف أو غامض '{0}' — استخدم dd/mm/yyyy أو YYYY-MM-DD أو خلية تاريخ فعلية في إكسل",
   "ar.rebill.bulk.lineIncomplete": "الصف {0}: بند المذكرة والمشروع والمهمة مطلوبة جميعاً",
   "ar.rebill.bulk.libFail": "تعذر تحميل مكتبة الجداول (SheetJS).",
   "ar.rebill.bulk.lineCount": "البنود",

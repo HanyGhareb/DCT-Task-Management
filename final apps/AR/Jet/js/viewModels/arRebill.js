@@ -58,7 +58,18 @@ function (ko, rebill, i18n, toast, docUpload) {
   }
 
   // Dates travel as ISO YYYY-MM-DD; the runner converts to Fusion's dd/mm/yyyy
-  // at fill time. Excel may hand back a Date or a dd/mm/yyyy string.
+  // at fill time. Real Excel date cells arrive as Date objects (sheetRows reads
+  // raw values), so the cell's display format never matters. Typed TEXT is
+  // normalised day-first (the platform standard); a slot that cannot be a
+  // month flips the reading (2/13/2026 -> Feb 13). Two-digit years are
+  // resolved only when one slot is >12 -- an ambiguous one (2/11/26) is left
+  // as-is and rejected by the upload validation, never guessed.
+  var MONTHS = { JAN: 1, FEB: 2, MAR: 3, APR: 4, MAY: 5, JUN: 6,
+                 JUL: 7, AUG: 8, SEP: 9, OCT: 10, NOV: 11, DEC: 12 };
+  function isoStr(y, mo, d) {
+    if (mo < 1 || mo > 12 || d < 1 || d > 31) { return null; }
+    return y + '-' + String(mo).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+  }
   function toIso(v) {
     if (v === null || v === undefined || v === '') { return ''; }
     if (v instanceof Date && !isNaN(v)) {
@@ -66,12 +77,30 @@ function (ko, rebill, i18n, toast, docUpload) {
              String(v.getMonth() + 1).padStart(2, '0') + '-' +
              String(v.getDate()).padStart(2, '0');
     }
-    var s = String(v).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) { return s; }
-    var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
-    if (m) { return m[3] + '-' + m[2] + '-' + m[1]; }
-    return s;                                   // let the server reject it
+    var s = String(v).trim(), m, r;
+    m = s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})$/);          // ISO-ish
+    if (m) { return isoStr(+m[1], +m[2], +m[3]) || s; }
+    m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})$/);          // d/m/yyyy
+    if (m) {
+      var d = +m[1], mo = +m[2];
+      if (mo > 12 && d <= 12) { r = d; d = mo; mo = r; }             // was m/d
+      return isoStr(+m[3], mo, d) || s;
+    }
+    m = s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{2})$/);          // ??/??/yy
+    if (m) {
+      var a = +m[1], b = +m[2], y = 2000 + (+m[3]);
+      if (a > 12 && b <= 12) { return isoStr(y, b, a) || s; }        // dd/mm/yy
+      if (b > 12 && a <= 12) { return isoStr(y, a, b) || s; }        // mm/dd/yy
+      return s;                                    // ambiguous — rejected below
+    }
+    m = s.match(/^(\d{1,2})[-\s]([A-Za-z]{3})[A-Za-z]*[-\s](\d{2,4})$/);  // 13-Feb-2026
+    if (m && MONTHS[m[2].toUpperCase()]) {
+      var yy = +m[3]; if (yy < 100) { yy += 2000; }
+      return isoStr(yy, MONTHS[m[2].toUpperCase()], +m[1]) || s;
+    }
+    return s;                                   // let the validation reject it
   }
+  var ISO_RE = /^\d{4}-\d{2}-\d{2}$/;
 
   return function ArRebill() {
     var self = this;
@@ -245,11 +274,20 @@ function (ko, rebill, i18n, toast, docUpload) {
       return self.bulkRows().filter(function (r) { return !!r.done; }).length;
     });
 
+    // raw values, NOT formatted text: with raw:false SheetJS renders each date
+    // cell through the format stored in the FILE (the US default m/d/yy) even
+    // when Excel displays it dd/mm/yyyy — that is how '13/02/2026' once
+    // arrived as '2/13/26'. Raw + cellDates gives real Date objects instead,
+    // which toIso converts losslessly whatever the cell's display format.
+    function cellVal(c) {
+      if (c instanceof Date) { return toIso(c); }
+      return String(c === null || c === undefined ? '' : c).trim();
+    }
     function sheetRows(XLSX, wb, map) {
       var name = wb.SheetNames[0];
       if (!name) { return null; }
       var aoa = XLSX.utils.sheet_to_json(wb.Sheets[name],
-                  { header: 1, raw: false, defval: '' });
+                  { header: 1, raw: true, defval: '' });
       if (!aoa.length) { return []; }
       var keys = aoa[0].map(function (h) { return map[normHeader(h)] || null; });
       if (keys.indexOf('invoiceNumber') < 0 || keys.indexOf('memoLine') < 0) {
@@ -258,10 +296,11 @@ function (ko, rebill, i18n, toast, docUpload) {
       var out = [];
       for (var i = 1; i < aoa.length; i++) {
         var src = aoa[i];
-        if (!src.some(function (c) { return String(c || '').trim() !== ''; })) { continue; }
+        if (!src.some(function (c) { return cellVal(c) !== ''; })) { continue; }
         var r = {};
         keys.forEach(function (k, j) {
-          if (k && String(src[j] || '').trim() !== '') { r[k] = String(src[j]).trim(); }
+          var v = cellVal(src[j]);
+          if (k && v !== '') { r[k] = v; }
         });
         if (Object.keys(r).length) { out.push(r); }
       }
@@ -312,6 +351,18 @@ function (ko, rebill, i18n, toast, docUpload) {
         h.cmAccountingDate = toIso(h.cmAccountingDate) || iso;
         h.dupTransactionDate = toIso(h.dupTransactionDate) || iso;
         h.dupAccountingDate = toIso(h.dupAccountingDate) || iso;
+        // a date that survived toIso un-normalised is unusable — flag the row
+        // HERE so it never enqueues and fails 3 attempts later at the worker
+        if (!err) {
+          ['cmTransactionDate', 'cmAccountingDate',
+           'dupTransactionDate', 'dupAccountingDate'].some(function (k) {
+            if (!ISO_RE.test(h[k])) {
+              err = self.t('ar.rebill.bulk.badDate', [h[k]]);
+              return true;
+            }
+            return false;
+          });
+        }
         h.creditReason = h.creditReason || self.bulkReason() || '';
         h.comments = h.comments || ('Credit Inv# ' + inv + ' to correct TAX code');
         h.cmFinish = (h.cmFinish || self.bulkFinish() || 'COMPLETE_AND_CLOSE').toUpperCase();

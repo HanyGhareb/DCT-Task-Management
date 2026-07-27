@@ -54,6 +54,34 @@ AR-specific DB/AI notes:
 
 ## 5. Deployment history
 
+### 2026-07-27 — bulk upload reads REAL Excel dates; tolerant date normaliser (AR 4.10.2, webtier 20260727163519)
+
+A user batch (13 invoices) enqueued with dates like `'2/13/26'` and every request FAILED at the
+worker's date validation. Root cause: `sheetRows` parsed the workbook with `raw:false`, so SheetJS
+rendered each date cell through the number format stored in the FILE — the US default `m/d/yy` —
+even though Excel *displayed* `dd/mm/yyyy`. The `cellDates:true` Date objects never survived to
+`toIso`. Fixes (system-side, per user requirement "capable to deal with different date formats"):
+
+- **`sheetRows` now reads `raw:true`** — real date cells arrive as Date objects and convert
+  losslessly whatever their display format. THE core fix: cell format/locale no longer matters.
+- **`toIso` tolerant normaliser** for typed TEXT: ISO (any separator), day-first `d/m/yyyy`
+  (`/ - .`, single digits), impossible-month flip (`2/13/2026` → Feb 13), `13-Feb-2026`, and
+  2-digit years resolved ONLY when one slot is >12 — an ambiguous `2/11/26` is never guessed.
+- **Upload-time validation**: a date that fails to normalise marks the ROW as an error in the
+  preview (`ar.rebill.bulk.badDate` EN+AR) and never enqueues — no more 3-attempt worker failures.
+- **Runner `_check_date` hardened in lock-step** (`ar_invoice_rebill.py`, fleet-synced): now
+  normalises to ISO, accepts single-digit day-first + the >12 flip, REFUSES 2-digit years with an
+  explicit message (a wrong-but-valid date silently posts to the wrong accounting period). Unit
+  harness extended (`tests/test_actions.py` — normalisation table + ambiguity rejections), all pass.
+- The 13 failed payloads were repaired in place (provenance known = `m/d/yy`, proven by `2/26/26`
+  rows; JSON_TRANSFORM values cross-checked against the sheet) and requeued with **attempts=0**.
+  Note: `JSON_TRANSFORM SET` values must be plain vars in PL/SQL — a local function call in the
+  SET expression is ORA-03066.
+- Allowlist: `ATD_AR_REBILL_ALLOW` on the fleet extended with the 13 new invoices (now 123).
+  INV00583863 (done MANUALLY by the user on 26-07) was deliberately NOT added — its manual
+  duplicate carries no "Rebill of" stamp, so a robot retry would create a SECOND completed
+  duplicate. The guard refusing it was correct behaviour; the failed row stays as a record.
+
 ### 2026-07-26 (5) — timeline modal → shared right-edge DRAWER (AR 4.10.1, all apps bumped, webtier 20260726050153)
 
 The register's stage-timeline popup (modal that closed on any outside click — user complaint)
