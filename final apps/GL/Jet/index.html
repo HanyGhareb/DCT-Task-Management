@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.45.0';</script>
+<script>window.APP_VERSION='1.45.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -779,6 +779,10 @@
             <li data-bind="text:t('xltplS5')"></li>
           </ol>
           <button class="btn btn-primary" data-bind="click:downloadXlTemplate, css:{busy:xltplBusyF}, enable:!xltplBusyF(), text:xltplBusyF()?t('xltplBusy'):t('xltplBtn')"></button>
+          <div class="vb-addin">
+            <a href="#" data-bind="click:downloadVbAddin, text:t('vbAddinLink')"></a>
+            <span data-bind="text:t('vbAddinHint')"></span>
+          </div>
         </div>
       </div>
     </div>
@@ -1525,6 +1529,7 @@
         <li data-bind="text:t('ovGuideL3')"></li>
       </ul>
       <a class="ov-guide-link" href="#" data-bind="click:function(){downloadXlTemplate();return false;}, text:xltplBusyF()?t('xltplBusy'):t('ovGuideLink')"></a>
+      <a class="ov-guide-link ov-guide-addin" href="#" data-bind="click:downloadVbAddin, text:t('vbAddinLink')"></a>
     </div>
     <div class="dw-ctx" data-bind="text:t('ovEditHint')"></div>
     <div class="ldr sm" data-bind="visible:ovLoading()">

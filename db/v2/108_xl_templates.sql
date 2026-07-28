@@ -310,6 +310,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_tpl AS
     ) IS
         l_blob BLOB := p_body;
         l_kind VARCHAR2(20) := LOWER(TRIM(p_kind));
+        -- mime by extension: the repository also hosts the add-in MSI
+        -- installer (template VBAFE_ADDIN), not only workbooks
+        l_mime VARCHAR2(100) :=
+            CASE WHEN LOWER(p_filename) LIKE '%.msi' THEN 'application/x-msi'
+                 WHEN LOWER(p_filename) LIKE '%.xls%' THEN
+                     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+                 ELSE 'application/octet-stream' END;
     BEGIN
         IF l_kind NOT IN ('master', 'published') THEN
             dct_rest.err(400, 'kind must be master or published');
@@ -326,14 +333,14 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_xl_tpl AS
         IF l_kind = 'master' THEN
             UPDATE dct_xl_template_version
             SET    master_blob = l_blob, master_filename = p_filename,
-                   master_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                   master_mime = l_mime,
                    master_uploaded_by = p_user, master_uploaded_at = SYSTIMESTAMP
             WHERE  template_id = TO_NUMBER(p_template_id)
               AND  version_no  = TO_NUMBER(p_ver);
         ELSE
             UPDATE dct_xl_template_version
             SET    pub_blob = l_blob, pub_filename = p_filename,
-                   pub_mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                   pub_mime = l_mime,
                    pub_uploaded_by = p_user, pub_uploaded_at = SYSTIMESTAMP
             WHERE  template_id = TO_NUMBER(p_template_id)
               AND  version_no  = TO_NUMBER(p_ver);

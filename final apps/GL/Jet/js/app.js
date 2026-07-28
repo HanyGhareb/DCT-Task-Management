@@ -417,6 +417,8 @@
     ovGuideL2:{en:'Click Download Data with your Budget Year, edit ONLY the light-green Override Budget column, then click Upload Changes.',ar:'انقر «تنزيل البيانات» مع سنة الميزانية، وعدّل عمود الموازنة المعدّلة (الأخضر الفاتح) فقط، ثم انقر «رفع التغييرات».'},
     ovGuideL3:{en:'Uploaded overrides appear in this list and in the Override Budget tile — or edit any line directly below.',ar:'تظهر التعديلات المرفوعة في هذه القائمة وفي بطاقة الموازنة المعدّلة — أو عدّل أي بند مباشرة أدناه.'},
     ovGuideLink:{en:'Download the Excel template',ar:'تنزيل قالب إكسل'},
+    vbAddinLink:{en:'Add-in not installed? Download the Oracle Visual Builder Add-in for Excel (installer)',ar:'الأداة غير مثبّتة؟ تنزيل مثبّت أداة أوراكل فيجوال بيلدر لبرنامج إكسل'},
+    vbAddinHint:{en:'Run the installer once (no admin rights needed), then restart Excel.',ar:'شغّل المثبّت مرة واحدة (لا يتطلب صلاحيات مسؤول) ثم أعد تشغيل برنامج إكسل.'},
 
     /* ── Budget Override from Excel (Visual Builder Add-in workflow) ── */
     xltplTitle:{en:'Budget Override from Excel',ar:'تعديل الموازنة عبر إكسل'},
@@ -2367,6 +2369,25 @@
           self.xltplBusyF(false);
         })
         .catch(function (e) { self.xltplBusyF(false); toast(e.message, true); });
+    };
+
+    // The VB add-in itself (current-user MSI) is also hosted in the template
+    // repository (code VBAFE_ADDIN) for PCs where it is not installed yet.
+    self.downloadVbAddin = function () {
+      fetch('/ords/admin/xl/templates/download?code=VBAFE_ADDIN',
+            { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error(self.t('xltplDlFail') + ' (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'vbafe-installer-current-user.msi';
+          a.click(); URL.revokeObjectURL(u);
+        })
+        .catch(function (e) { toast(e.message, true); });
+      return false;
     };
 
     /* ════ DASHBOARD — executive analytics ════ */

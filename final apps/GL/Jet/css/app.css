@@ -854,3 +854,9 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 .xltpl-steps{margin:0 0 14px;padding-inline-start:22px;display:flex;flex-direction:column;gap:6px;
     font-size:13px;color:var(--ink)}
 .xltpl-steps li::marker{color:var(--brand-dark);font-weight:700}
+
+/* VB add-in installer download link (region + drawer guide) */
+.vb-addin{margin-block-start:10px;font-size:.85rem}
+.vb-addin a{color:var(--brand,#3F6F5F);font-weight:600;text-decoration:underline;margin-inline-end:8px}
+.vb-addin span{color:#777}
+.ov-guide-addin{display:block;margin-block-start:4px;font-size:.83rem;opacity:.9}

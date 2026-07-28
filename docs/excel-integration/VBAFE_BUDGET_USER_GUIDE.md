@@ -56,8 +56,14 @@ add a role/privilege check in `DCT_XL_PKG.require_user` (or `save_item`) — e.g
 
 Prerequisites: **Windows desktop Excel** (Microsoft 365 or 2016+; the add-in
 does not run on Mac or Excel on the web) + the
-**Oracle Visual Builder Add-in for Excel** (free download from oracle.com —
-search "Visual Builder Add-in for Excel"; current 4.x MSI, needs .NET).
+**Oracle Visual Builder Add-in for Excel**. Since 2026-07-28 the v5.0
+current-user MSI (no admin rights needed) is hosted IN the template repository
+as template code **`VBAFE_ADDIN`** — end users download it from the GL butil
+page ("Budget Override from Excel" region and the Override drawer's how-to
+panel both carry an "Add-in not installed?" hyperlink), or directly:
+`GET /ords/admin/xl/templates/download?code=VBAFE_ADDIN` (bearer session).
+Run once, restart Excel. (Repository `upload_file` derives the MIME from the
+file extension, so it serves `.msi` as `application/x-msi`.)
 
 1. New blank workbook → **Oracle Visual Builder** ribbon tab → **Designer**.
 2. Choose **REST Service** and paste the **service description URL**:
