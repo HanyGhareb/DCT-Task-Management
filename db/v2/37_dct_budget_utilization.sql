@@ -153,7 +153,8 @@ pb AS (
                            DATE '1900-01-01')
                        < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
                   THEN u.budget_user END) AS override_ytd,
-         COUNT(u.budget_user) AS override_cnt
+         COUNT(u.budget_user) AS override_cnt,
+         SUM(b.budget) AS fusion_annual
   FROM prod.projects_budget b
   LEFT JOIN prod.dct_project_budget_user u
          ON  u.project_id        = b.project_id
@@ -391,6 +392,10 @@ LEFT JOIN f_po po ON po.budget_year = k.budget_year
 WHERE k.project_key NOT LIKE '#%'
   AND k.task_key NOT LIKE '#_%'
 GROUP BY k.budget_year, k.project_key, k.task_key, k.expenditure_type
-HAVING MAX(NVL(b.budget_annual,0)) > 0;
+-- line set pinned to the FUSION annual (2026-07-28): with BUTIL_OVR the
+-- effective annual can be zero or NEGATIVE (budget fully transferred out) and
+-- such lines must stay VISIBLE, not vanish; overridden zero-fusion lines are
+-- kept too. Set is stable across flag toggles.
+HAVING MAX(NVL(b.fusion_annual,0)) > 0 OR MAX(NVL(b.override_cnt,0)) > 0;
 
 PROMPT DCT_BUDGET_UTILIZATION_V created (budget-year x project x task x expenditure type).

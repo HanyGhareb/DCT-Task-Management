@@ -1203,6 +1203,24 @@
       }
       return null;
     };
+    // Related Invoices cell (GRN drill): each comma-separated invoice number
+    // becomes its OWN Fusion deep-link. The row ships a hidden pipe-separated
+    // "number~invoiceId" pair list (relatedInvPairs) alongside the display
+    // string — numbers without a resolvable id render as plain text.
+    self.relatedInvLinks = function (row) {
+      var s = row && row.relatedInvoices;
+      if (!s) return [];
+      var map = {};
+      ('' + (row.relatedInvPairs || '')).split('|').forEach(function (p) {
+        var i = p.lastIndexOf('~');
+        if (i > 0) map[p.slice(0, i)] = p.slice(i + 1);
+      });
+      var F = window.FusionLinks;
+      return s.split(', ').map(function (n) {
+        var id = map[n];
+        return { n: n, url: (F && id) ? F.invoice(id) : null };
+      });
+    };
     self.drillFooterSpan = ko.computed(function () { return Math.max(1, self.drillCols().length - 1); });
 
     self.acExportCsv = function () {

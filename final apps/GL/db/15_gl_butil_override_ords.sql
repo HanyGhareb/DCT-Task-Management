@@ -132,7 +132,12 @@ BEGIN
     LEFT JOIN proj pj ON pj.project_id = u.project_id
     LEFT JOIN tsk  tk ON tk.task_id    = u.task_id
     WHERE b.budget_year = l_year
-      AND (l_period IS NULL OR u.accounting_period = l_period)
+      -- YTD semantics matching the page (2026-07-28): the page period is a
+      -- through-period filter, so show every override on/before it
+      AND (l_period IS NULL
+           OR NVL(TO_DATE(u.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                  DATE '1900-01-01')
+              < LAST_DAY(TO_DATE('01-'||l_period,'DD-MM-YYYY')) + 1)
       AND (TO_CHAR(pj.project_number), NVL(tk.task_number,'~'), NVL(u.expenditure_type,'~'))
           IN (SELECT pk, tk, et FROM kys)
     ORDER BY pj.project_number, tk.task_number, u.expenditure_type, u.accounting_period

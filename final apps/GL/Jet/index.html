@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.45.1';</script>
+<script>window.APP_VERSION='1.47.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -1485,12 +1485,24 @@
           <tr>
             <!-- ko foreach: $root.drillCols -->
             <td data-bind="css:{'num mono':$data.type==='money'||$data.type==='num'}">
+              <!-- ko if: $data.key==='relatedInvoices' && $root.relatedInvLinks($parent).length -->
+              <!-- ko foreach: $root.relatedInvLinks($parent) -->
+              <!-- ko if: $index() > 0 --><span>, </span><!-- /ko -->
+              <!-- ko if: $data.url -->
+              <a class="fus-link" target="_blank" rel="noopener noreferrer"
+                 data-bind="attr:{href:$data.url, title:$root.t('fusionOpen')}, text:$data.n"></a>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.url --><span data-bind="text:$data.n"></span><!-- /ko -->
+              <!-- /ko -->
+              <!-- /ko -->
+              <!-- ko ifnot: $data.key==='relatedInvoices' && $root.relatedInvLinks($parent).length -->
               <!-- ko if: $root.drillLink($parent,$data) -->
               <a class="fus-link" target="_blank" rel="noopener noreferrer"
                  data-bind="attr:{href:$root.drillLink($parent,$data), title:$root.t('fusionOpen')}, text:$root.cell($parent,$data)"></a>
               <!-- /ko -->
               <!-- ko ifnot: $root.drillLink($parent,$data) -->
               <span data-bind="text:$root.cell($parent,$data)"></span>
+              <!-- /ko -->
               <!-- /ko -->
             </td>
             <!-- /ko -->

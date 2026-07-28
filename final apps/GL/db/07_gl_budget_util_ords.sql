@@ -358,7 +358,7 @@ END;
     --   Returns {metric, aggregate, total, count, columns[{key,label,type}], rows[]}.
     -- =========================================================================
     def_template('butil/lines');
-    def_handler('butil/lines', 'GET', q'!
+    def_handler('butil/lines', 'GET', TO_CLOB(q'!
 DECLARE
   l_user    VARCHAR2(100) := dct_rest.validate_session;
   l_uid NUMBER := dct_auth.get_user_id(l_user);
@@ -500,11 +500,22 @@ BEGIN
     APEX_JSON.close_array;
 
   ELSIF l_metric = 'grn' THEN
+    -- full register parity (2026-07-27): the aggregate drill carries every
+    -- column of the BUDGET_UTIL_REGISTER "GRN Receipts" sheet -- project name,
+    -- expenditure type, PO-distribution Invoiced/Uninvoiced AED and the
+    -- comma-separated Related Invoices list. Amount (AED) stays LAST so the
+    -- drawer's reconciling total footer lands under it.
     APEX_JSON.open_array('columns');
-    IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
+    IF l_agg THEN
+      col('project','Project','text'); col('projectName','Project name','text');
+      col('task','Task','text'); col('etype','Expenditure type','text');
+    END IF;
     col('receipt','GRN #','text'); col('line','Line','text'); col('date','Date','date');
     col('po','PO #','text'); col('poLine','PO Line','text'); col('supplier','Supplier','text'); col('currency','Cur','text');
-    col('rate','Rate','num'); col('amount','Amount (AED)','money');
+    col('rate','Rate','num');
+    col('invoicedAed','Invoiced (AED)','money'); col('uninvoicedAed','Uninvoiced (AED)','money');
+    col('relatedInvoices','Related Invoices','text');
+    col('amount','Amount (AED)','money');
     APEX_JSON.close_array;
     APEX_JSON.open_array('rows');
     FOR r IN (
@@ -527,18 +538,41 @@ BEGIN
                AND (l_ftask  IS NULL OR UPPER(v.task_number) LIKE '%'||UPPER(l_ftask)||'%')
                AND (l_fetype IS NULL OR UPPER(v.expenditure_type) LIKE '%'||UPPER(l_fetype)||'%')
                AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '||v.task_number||' '||v.department||' '||v.cost_centre||' '||v.expenditure_type) LIKE '%'||UPPER(l_search)||'%')),
-           proj AS (SELECT project_id, MAX(project_number) project_number FROM prod.projects GROUP BY project_id),
+           proj AS (SELECT project_id, MAX(project_number) project_number, MAX(project_name) project_name FROM prod.projects GROUP BY project_id),
            tsk  AS (SELECT task_id, MAX(task_number) task_number FROM prod.tasks GROUP BY task_id),
            po_dist AS (SELECT po_distribution_id, MAX(charge_account) charge_account FROM prod.po_distributions GROUP BY po_distribution_id),
            poh AS (SELECT po_header_id, MAX(order_number) order_number, MAX(supplier_name) supplier_name FROM prod.po_headers GROUP BY po_header_id),
-           pol AS (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id)
+           pol AS (SELECT po_header_id, po_line_id, MAX(line) line FROM prod.po_lines GROUP BY po_header_id, po_line_id),
+           inv AS (SELECT pk.po_distribution_id,
+                          SUM(NVL(d.distribution_amount_functi, d.distribution_amount)) inv_aed,
+                          LISTAGG(DISTINCT ih.invoice_number, ', ' ON OVERFLOW TRUNCATE) WITHIN GROUP (ORDER BY ih.invoice_number) related_inv,
+                          LISTAGG(DISTINCT ih.invoice_number || '~' || TO_CHAR(ih.invoice_id), '|' ON OVERFLOW TRUNCATE)
+                            WITHIN GROUP (ORDER BY ih.invoice_number || '~' || TO_CHAR(ih.invoice_id)) related_pairs
+                   FROM prod.ap_invoice_distributions d
+                   LEFT JOIN (SELECT invoice_id, MAX(invoice_number) invoice_number FROM prod.ap_invoices GROUP BY invoice_id) ih ON ih.invoice_id = d.invoice_id
+                   JOIN (SELECT ph2.order_number po_number, pl2.line po_line, pod.distribution_number po_dist_line, MAX(pod.po_distribution_id) po_distribution_id
+                         FROM prod.po_distributions pod
+                         JOIN prod.po_lines pl2 ON pl2.po_header_id = pod.po_header_id AND pl2.po_line_id = pod.po_line_id
+                         JOIN prod.po_headers ph2 ON ph2.po_header_id = pod.po_header_id
+                         GROUP BY ph2.order_number, pl2.line, pod.distribution_number) pk
+                     ON pk.po_number = d.po_number AND pk.po_line = d.po_line AND pk.po_dist_line = d.po_distribution_line
+                   WHERE NVL(d.reversal_indicator,'N') <> 'Y'
+                     AND EXTRACT(YEAR FROM d.accounting_date) = l_year
+                     AND (l_end IS NULL OR d.accounting_date < l_end + 1)
+                   GROUP BY pk.po_distribution_id),
+           grn_dist AS (SELECT po_distribution_id, SUM(ledger_amount) recv_aed FROM prod.grn_all_v2
+                        WHERE EXTRACT(YEAR FROM NVL(accounted_date, transaction_date)) = l_year
+                          AND (l_end IS NULL OR NVL(accounted_date, transaction_date) < l_end + 1)
+                        GROUP BY po_distribution_id)
       SELECT * FROM (
       SELECT COALESCE(TO_CHAR(pj.project_number),'#'||TO_CHAR(g.project_id)) pkey,
              COALESCE(tk.task_number, CASE WHEN g.task_id IS NOT NULL THEN '#'||TO_CHAR(g.task_id) END) tkey,
+             pj.project_name pname, g.expenditure_type et_name,
              g.receipt_number, g.receipt_line_number line_no,
              TO_CHAR(NVL(g.accounted_date, g.transaction_date),'YYYY-MM-DD') td, g.currency_code,
              ph.order_number po_number, pl.line po_line, ph.supplier_name, g.po_header_id,
              g.conversion_rate, g.ledger_amount amt_aed,
+             NVL(i.inv_aed,0) inv_aed, NVL(gd.recv_aed,0) - NVL(i.inv_aed,0) uninv_aed, i.related_inv, i.related_pairs,
              COUNT(*) OVER () full_n, SUM(g.ledger_amount) OVER () full_tot
       FROM prod.grn_all_v2 g
       JOIN po_dist pod ON pod.po_distribution_id = g.po_distribution_id
@@ -546,6 +580,8 @@ BEGIN
       LEFT JOIN pol pl ON pl.po_header_id = g.po_header_id AND pl.po_line_id = g.po_line_id
       LEFT JOIN proj pj ON pj.project_id = g.project_id
       LEFT JOIN tsk  tk ON tk.task_id    = g.task_id
+      LEFT JOIN inv i ON i.po_distribution_id = g.po_distribution_id
+      LEFT JOIN grn_dist gd ON gd.po_distribution_id = g.po_distribution_id
       WHERE g.project_id IS NOT NULL AND pod.charge_account IS NOT NULL
         AND NVL(g.ledger_amount,0) <> 0
         AND EXTRACT(YEAR FROM NVL(g.accounted_date, g.transaction_date)) = l_year
@@ -558,18 +594,26 @@ BEGIN
     ) LOOP
       l_count := r.full_n; l_total := r.full_tot;
       APEX_JSON.open_object;
-      IF l_agg THEN APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('task', NVL(r.tkey,'')); END IF;
+      IF l_agg THEN
+        APEX_JSON.write('project', NVL(r.pkey,'')); APEX_JSON.write('projectName', NVL(r.pname,''));
+        APEX_JSON.write('task', NVL(r.tkey,'')); APEX_JSON.write('etype', NVL(r.et_name,''));
+      END IF;
       APEX_JSON.write('receipt', NVL(TO_CHAR(r.receipt_number),'')); APEX_JSON.write('line', NVL(TO_CHAR(r.line_no),''));
       APEX_JSON.write('date', NVL(r.td,''));
       APEX_JSON.write('po', NVL(TO_CHAR(r.po_number),'')); APEX_JSON.write('poHeaderId', r.po_header_id);
       APEX_JSON.write('poLine', NVL(TO_CHAR(r.po_line),''));
       APEX_JSON.write('supplier', NVL(r.supplier_name,''));
       APEX_JSON.write('currency', NVL(r.currency_code,'AED')); APEX_JSON.write('rate', NVL(r.conversion_rate,1));
+      APEX_JSON.write('invoicedAed', r.inv_aed); APEX_JSON.write('uninvoicedAed', r.uninv_aed);
+      APEX_JSON.write('relatedInvoices', NVL(r.related_inv,''));
+      -- hidden number~id pairs (pipe-separated) -> per-invoice Fusion deep-links
+      APEX_JSON.write('relatedInvPairs', NVL(r.related_pairs,''));
       APEX_JSON.write('amount', r.amt_aed);
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
 
+!') || TO_CLOB(q'!
   ELSIF l_metric = 'pr' THEN
     APEX_JSON.open_array('columns');
     IF l_agg THEN col('project','Project','text'); col('task','Task','text'); END IF;
@@ -789,7 +833,7 @@ BEGIN
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
-!');
+!'));
 
     COMMIT;
 END setup_gl_butil_ords_tmp;

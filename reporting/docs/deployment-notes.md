@@ -486,3 +486,6 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   27 RPT_* lookups, 12 config keys, pilot `GL_BUDGET_ACTUAL` seeded (definition + disabled sample
   schedule + SELF email recipient). enqueue→claim→mark smoke test passed; smoke run row cleaned.
   `EMAIL_ENABLED=N` (generate-only until SMTP configured).
+
+### 2026-07-27 — BUDGET_UTIL_REGISTER: Related Invoices column (db/25 re-seed)
+- Sheet "3. GRN Receipts" gains a trailing **Related Invoices** column: `LISTAGG(DISTINCT inv.invoice_number, ', ' ON OVERFLOW TRUNCATE)` in the invoiced-AED subquery via a deduped LEFT JOIN to `prod.ap_invoices` (GROUP BY invoice_id) — invoiced/received totals regression-verified unchanged. Deployed via python-oracledb on vm180 (Linux SQLcl swallows this MERGE-bearing seed); E2E run 166 SUCCESS. Details in `final apps/GL/docs/deployment-notes.md` (2026-07-27 (2)).
