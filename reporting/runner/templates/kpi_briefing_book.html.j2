@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_name }}</title>
+<style>
+  :root { --brand: #8C6D1F; --soft: #F5EFDF; --ok: #1B7F4B; --mid: #B58A1B; --bad: #C7351F; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: #1f2933;
+         margin: 0; font-size: 10px; }
+
+  /* cover */
+  .cover { height: 96vh; display: flex; flex-direction: column; justify-content: space-between;
+           border: 1px solid #e0d9c3; border-top: 10px solid var(--brand); padding: 40px 46px;
+           background: linear-gradient(160deg, #fffdf7, #fff 60%); }
+  .cover .org { font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: #7b8794; }
+  .cover .t1 { font-size: 30px; font-weight: 800; color: var(--brand); margin: 10px 0 4px; }
+  .cover .t2 { font-size: 14px; color: #52606d; }
+  .cover .chips { margin-top: 22px; }
+  .cover .chips span { display: inline-block; background: var(--soft); border: 1px solid #dcd0ac;
+        border-radius: 4px; padding: 5px 12px; margin-right: 8px; font-size: 11px; color: #6E5518; }
+  .prepared { border: 1px solid #e0d9c3; border-radius: 6px; padding: 14px 18px; background: #fff;
+              max-width: 420px; }
+  .prepared .pl { font-size: 8.5px; letter-spacing: .1em; text-transform: uppercase; color: #7b8794; }
+  .prepared .pv { font-size: 11.5px; font-weight: 600; color: #23323b; margin-top: 2px; }
+
+  /* contents */
+  .toc { page-break-before: always; padding-top: 8px; }
+  .toc h2 { color: var(--brand); font-size: 16px; }
+  .toc ol { font-size: 11px; line-height: 2; color: #33525e; }
+
+  .section { page-break-before: always; margin-top: 6px; }
+  .sec-h { display: flex; align-items: baseline; justify-content: space-between;
+           border-left: 4px solid var(--brand); padding: 4px 9px; background: var(--soft);
+           margin-bottom: 8px; }
+  .sec-title { font-size: 13px; font-weight: 700; color: #4a3a10; margin: 0; }
+  .sec-no { font-size: 9px; color: #7b8794; letter-spacing: .08em; text-transform: uppercase; }
+
+  table { border-collapse: collapse; width: 100%; }
+  thead th { background: var(--brand); color: #fff; font-weight: 600; text-align: left;
+             padding: 4px 5px; font-size: 8.5px; border: 1px solid #6E5518; }
+  tbody td { padding: 4px 5px; border: 1px solid #e4e7eb; vertical-align: top; font-size: 8.5px; word-break: break-word; }
+  tbody tr:nth-child(even) td { background: #faf8f2; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  .empty { padding: 18px; text-align: center; color: #7b8794; font-style: italic;
+           border: 1px dashed #d3dce2; }
+  .foot { margin-top: 12px; font-size: 8.5px; color: #9aa5b1; text-align: center; }
+
+  /* scorecard cards */
+  .sc-cards { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 12px; }
+  .sc-card { flex: 1 1 200px; border: 1px solid #e0d9c3; border-top: 4px solid var(--brand);
+             border-radius: 5px; padding: 9px 11px; background: #fffdf7; }
+  .sc-card .c-code { font-size: 8.5px; letter-spacing: .08em; color: #7b8794; text-transform: uppercase; }
+  .sc-card .c-name { font-size: 10.5px; font-weight: 700; color: #23323b; margin: 3px 0; min-height: 24px; }
+  .sc-card .c-score { font-size: 20px; font-weight: 800; }
+  .sc-card .c-sub { font-size: 8.5px; color: #7b8794; }
+  .s5 { color: var(--ok); } .s4 { color: #4C9A2A; } .s3 { color: var(--mid); }
+  .s2 { color: #D96C1E; } .s1 { color: var(--bad); } .s0 { color: #98A2B3; }
+  .pill { display: inline-block; min-width: 18px; text-align: center; border-radius: 9px;
+          padding: 1px 6px; font-weight: 700; font-size: 9px; }
+  .p5 { background: #E4F5EC; color: var(--ok); } .p4 { background: #ECF6E4; color: #4C9A2A; }
+  .p3 { background: #FBF3DC; color: #8A6A14; } .p2 { background: #FDEBDD; color: #B4581A; }
+  .p1 { background: #FCE4E0; color: #A72A17; } .p0 { background: #F2F4F7; color: #667085; }
+</style>
+</head>
+<body>
+
+{# ---- cover -------------------------------------------------------------- #}
+<div class="cover">
+  <div>
+    <div class="org">Oracle Fusion i-Finance &middot; Reporting Platform</div>
+    <div class="t1">{{ report_name }}</div>
+    <div class="t2">ADGEs Unified Financials KPIs &mdash; Department of Culture and Tourism</div>
+    <div class="chips">
+      <span>Measurement year <b>{{ params.year }}</b></span>
+      <span>{{ row_count }} lines</span>
+      <span>{{ generated_at_pretty }}</span>
+    </div>
+  </div>
+  <div class="prepared">
+    <div class="pl">Prepared by</div>
+    <div class="pv">Financial Planning and Budgeting &mdash; Finance Department</div>
+    <div class="pl" style="margin-top:8px">Requested by</div>
+    <div class="pv">{{ requested_by }}</div>
+  </div>
+</div>
+
+{# ---- contents ----------------------------------------------------------- #}
+<div class="toc">
+  <h2>Contents</h2>
+  <ol>
+    {% for s in sections %}<li>{{ s.title }}</li>{% endfor %}
+  </ol>
+</div>
+
+{# ---- sections ----------------------------------------------------------- #}
+{% for s in sections %}
+<div class="section">
+  <div class="sec-h">
+    <h3 class="sec-title">{{ loop.index }}. {{ s.title }}</h3>
+    <span class="sec-no">{{ s.rows|length }} lines &middot; year {{ params.year }}</span>
+  </div>
+
+  {% if s.key == 'overview' and s.rows %}
+    {# scorecard cards before the table #}
+    {% set ci_code = s.columns.index('kpi_code') %}
+    {% set ci_name = s.columns.index('kpi') %}
+    {% set ci_avg  = s.columns.index('avg_score') %}
+    {% set ci_tgt  = s.columns.index('target') %}
+    <div class="sc-cards">
+      {% for row in s.rows %}
+      {% set sc = row[ci_avg] %}
+      <div class="sc-card">
+        <div class="c-code">{{ row[ci_code] }}</div>
+        <div class="c-name">{{ row[ci_name] }}</div>
+        <div class="c-score s{{ sc|round|int if sc is not none else 0 }}">{{ sc if sc is not none else '—' }}</div>
+        <div class="c-sub">avg score of 5{% if row[ci_tgt] %} &middot; target {{ row[ci_tgt] }}{% endif %}</div>
+      </div>
+      {% endfor %}
+    </div>
+  {% endif %}
+
+  {% if s.rows and s.rows|length > 0 %}
+  <table>
+    <thead><tr>{% for h in s.headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+    <tbody>
+      {% set score_i = s.columns.index('score') if 'score' in s.columns else -1 %}
+      {% for row in s.rows %}
+      <tr>
+        {% for cell in row %}
+          {% if loop.index0 == score_i and cell is not none %}
+          <td class="num"><span class="pill p{{ cell }}">{{ cell }}</span></td>
+          {% else %}
+          <td class="{{ 'num' if cell is num else '' }}">{{ cell|fmt }}</td>
+          {% endif %}
+        {% endfor %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div class="empty">No rows for this section in {{ params.year }}.</div>
+  {% endif %}
+</div>
+{% endfor %}
+
+<div class="foot">{{ meta }} &middot; Generated by the i-Finance Reporting Platform &middot; {{ report_code }}</div>
+
+</body>
+</html>

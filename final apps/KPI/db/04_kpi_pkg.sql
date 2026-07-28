@@ -21,6 +21,7 @@ CREATE OR REPLACE PACKAGE prod.dct_kpi_pkg AS
     c_srctyp CONSTANT VARCHAR2(30) := 'KPI_RESULT';
 
     FUNCTION  is_admin (p_user_id NUMBER) RETURN BOOLEAN;
+    FUNCTION  uname (p_user_id NUMBER) RETURN VARCHAR2;
 
     -- measurement calendar
     PROCEDURE ensure_periods (p_year NUMBER);
@@ -40,6 +41,11 @@ CREATE OR REPLACE PACKAGE prod.dct_kpi_pkg AS
                                      p_level_no NUMBER, p_achieved_pct NUMBER, p_justification VARCHAR2);
     PROCEDURE refresh_suggestions (p_result_id NUMBER, p_user_id NUMBER);
     PROCEDURE submit_result (p_result_id NUMBER, p_user_id NUMBER);
+
+    -- evidence documents (shared DCT_DOCUMENTS, doc type KPI_EVIDENCE)
+    FUNCTION  add_evidence (p_result_id NUMBER, p_user_id NUMBER,
+                            p_file_name VARCHAR2, p_mime VARCHAR2, p_blob BLOB) RETURN NUMBER;
+    PROCEDURE delete_evidence (p_doc_id NUMBER, p_user_id NUMBER);
 
     -- workflow platform hooks (registry signature: instance, module, record, user)
     PROCEDURE wf_on_complete (p_instance_id NUMBER, p_source_module VARCHAR2,
@@ -526,6 +532,46 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_kpi_pkg AS
          WHERE result_id = p_result_id;
     END;
 
+    -- ------------------------------------------------------------- evidence
+    FUNCTION add_evidence (p_result_id NUMBER, p_user_id NUMBER,
+                           p_file_name VARCHAR2, p_mime VARCHAR2, p_blob BLOB) RETURN NUMBER IS
+        v_res  prod.dct_kpi_results%ROWTYPE := get_result(p_result_id);
+        v_type NUMBER;
+        v_id   NUMBER;
+    BEGIN
+        require_editable(v_res, p_user_id);
+        IF p_file_name IS NULL OR p_blob IS NULL OR DBMS_LOB.GETLENGTH(p_blob) = 0 THEN
+            RAISE_APPLICATION_ERROR(-20001, 'File name and file bytes are required');
+        END IF;
+        SELECT doc_type_id INTO v_type FROM prod.dct_document_types
+         WHERE doc_type_code = 'KPI_EVIDENCE';
+        INSERT INTO prod.dct_documents
+               (source_module, source_type, source_id, doc_type_id,
+                file_name, mime_type, file_size_bytes, file_blob, created_by, created_at)
+        VALUES (c_module, c_srctyp, p_result_id, v_type,
+                p_file_name, p_mime, DBMS_LOB.GETLENGTH(p_blob), p_blob, p_user_id, SYSTIMESTAMP)
+        RETURNING doc_id INTO v_id;
+        RETURN v_id;
+    END;
+
+    PROCEDURE delete_evidence (p_doc_id NUMBER, p_user_id NUMBER) IS
+        v_rid NUMBER;
+        v_res prod.dct_kpi_results%ROWTYPE;
+    BEGIN
+        BEGIN
+            SELECT source_id INTO v_rid FROM prod.dct_documents
+             WHERE doc_id = p_doc_id AND source_module = c_module
+               AND source_type = c_srctyp AND is_active = 'Y';
+        EXCEPTION WHEN NO_DATA_FOUND THEN
+            RAISE_APPLICATION_ERROR(-20404, 'Evidence document not found');
+        END;
+        v_res := get_result(v_rid);
+        require_editable(v_res, p_user_id);
+        UPDATE prod.dct_documents
+           SET is_active = 'N', updated_by = p_user_id, updated_at = SYSTIMESTAMP
+         WHERE doc_id = p_doc_id;
+    END;
+
     -- --------------------------------------------------------- workflow hooks
     PROCEDURE wf_on_complete (p_instance_id NUMBER, p_source_module VARCHAR2,
                               p_source_record_id NUMBER, p_user_id NUMBER) IS
@@ -599,23 +645,27 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_kpi_pkg AS
         END IF;
 
         IF p_kpi_id IS NULL THEN
-            INSERT INTO prod.dct_kpi_definitions
-                   (kpi_code, name_en, name_ar, description_en, description_ar,
-                    kpi_type, polarity, unit_en, unit_ar, frequency, calc_method,
-                    calc_desc_en, calc_desc_ar, source_of_data_en, source_of_data_ar,
-                    kpi_owner_en, kpi_owner_ar, note_en, note_ar,
-                    source_code_a, source_code_b,
-                    figure_a_label_en, figure_a_label_ar, figure_b_label_en, figure_b_label_ar,
-                    scorecard_weight_pct, requires_evidence, display_order, is_active, created_by)
-            VALUES (UPPER(p_kpi_code), p_name_en, p_name_ar, p_description_en, p_description_ar,
-                    p_kpi_type, p_polarity, p_unit_en, p_unit_ar, p_frequency, p_calc_method,
-                    p_calc_desc_en, p_calc_desc_ar, p_source_of_data_en, p_source_of_data_ar,
-                    p_kpi_owner_en, p_kpi_owner_ar, p_note_en, p_note_ar,
-                    p_source_code_a, p_source_code_b,
-                    p_figure_a_label_en, p_figure_a_label_ar, p_figure_b_label_en, p_figure_b_label_ar,
-                    NVL(p_scorecard_weight_pct, 25), p_requires_evidence,
-                    NVL(p_display_order, 100), NVL(p_is_active, 'Y'), v_un)
-            RETURNING kpi_id INTO p_kpi_id;
+            BEGIN
+                INSERT INTO prod.dct_kpi_definitions
+                       (kpi_code, name_en, name_ar, description_en, description_ar,
+                        kpi_type, polarity, unit_en, unit_ar, frequency, calc_method,
+                        calc_desc_en, calc_desc_ar, source_of_data_en, source_of_data_ar,
+                        kpi_owner_en, kpi_owner_ar, note_en, note_ar,
+                        source_code_a, source_code_b,
+                        figure_a_label_en, figure_a_label_ar, figure_b_label_en, figure_b_label_ar,
+                        scorecard_weight_pct, requires_evidence, display_order, is_active, created_by)
+                VALUES (UPPER(p_kpi_code), p_name_en, p_name_ar, p_description_en, p_description_ar,
+                        p_kpi_type, p_polarity, p_unit_en, p_unit_ar, p_frequency, p_calc_method,
+                        p_calc_desc_en, p_calc_desc_ar, p_source_of_data_en, p_source_of_data_ar,
+                        p_kpi_owner_en, p_kpi_owner_ar, p_note_en, p_note_ar,
+                        p_source_code_a, p_source_code_b,
+                        p_figure_a_label_en, p_figure_a_label_ar, p_figure_b_label_en, p_figure_b_label_ar,
+                        NVL(p_scorecard_weight_pct, 25), p_requires_evidence,
+                        NVL(p_display_order, 100), NVL(p_is_active, 'Y'), v_un)
+                RETURNING kpi_id INTO p_kpi_id;
+            EXCEPTION WHEN DUP_VAL_ON_INDEX THEN
+                RAISE_APPLICATION_ERROR(-20001, 'KPI code already exists: ' || UPPER(p_kpi_code));
+            END;
         ELSE
             UPDATE prod.dct_kpi_definitions
                SET name_en = p_name_en, name_ar = p_name_ar,

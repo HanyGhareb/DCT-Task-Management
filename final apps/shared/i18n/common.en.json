@@ -177,6 +177,8 @@
   "mod.gl.desc": "Budgeting, GL actuals, project utilization & reconciliation",
   "mod.hr": "HR",
   "mod.hr.desc": "Employees, positions & documents",
+  "mod.kpi": "Finance KPIs",
+  "mod.kpi.desc": "DOF financial KPIs: results, approvals & scorecard",
   "mod.pc": "Petty Cash",
   "mod.pc.desc": "Floats, reimbursements & clearing",
   "mod.tm": "Team Management",

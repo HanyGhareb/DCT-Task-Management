@@ -1,0 +1,159 @@
+<div class="page-wrap">
+
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: $root.t('dash.title')"></h1>
+      <p class="page-sub" data-bind="text: $root.t('dash.sub')"></p>
+    </div>
+    <div class="page-actions">
+      <select class="form-control" style="width:auto"
+              data-bind="options: years, value: year"></select>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <!-- ── how to start ── -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('guide'); return true; }, css: { closed: !sec.guide() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('dash.secGuide')"></span>
+      <span class="kp-sec-sum" data-bind="text: $root.t('guide.sum')"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.guide') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.guide">
+      <div class="kp-guide-intro" data-bind="text: $root.t('guide.intro')"></div>
+      <div class="kp-steps">
+        <div class="kp-step" data-bind="click: $vm.goResults">
+          <span class="n">1</span>
+          <div class="st" data-bind="text: $root.t('guide.s1t')"></div>
+          <div class="sd" data-bind="text: $root.t('guide.s1d')"></div>
+          <span class="sa" data-bind="text: $root.t('guide.adminStep')"></span>
+        </div>
+        <div class="kp-step" data-bind="click: $vm.goResults">
+          <span class="n">2</span>
+          <div class="st" data-bind="text: $root.t('guide.s2t')"></div>
+          <div class="sd" data-bind="text: $root.t('guide.s2d')"></div>
+        </div>
+        <div class="kp-step" data-bind="click: $vm.goResults">
+          <span class="n">3</span>
+          <div class="st" data-bind="text: $root.t('guide.s3t')"></div>
+          <div class="sd" data-bind="text: $root.t('guide.s3d')"></div>
+        </div>
+        <div class="kp-step" data-bind="click: $vm.goWorklist">
+          <span class="n">4</span>
+          <div class="st" data-bind="text: $root.t('guide.s4t')"></div>
+          <div class="sd" data-bind="text: $root.t('guide.s4d')"></div>
+        </div>
+        <div class="kp-step" data-bind="click: $vm.goReports">
+          <span class="n">5</span>
+          <div class="st" data-bind="text: $root.t('guide.s5t')"></div>
+          <div class="sd" data-bind="text: $root.t('guide.s5d')"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── overview answer band ── -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('ov'); return true; }, css: { closed: !sec.ov() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('dash.secOverview')"></span>
+      <span class="kp-sec-sum" data-bind="text: ovSummary()"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.overview') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.ov">
+      <div class="kp-tiles">
+        <div class="kt kt-score">
+          <span class="kt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg></span>
+          <div class="kt-body">
+            <div class="kt-k"><span data-bind="text: $root.t('dash.overall')"></span><i class="hint-i" data-bind="attr: { title: $root.t('hint.overall') }">&#9432;</i></div>
+            <div class="kt-v" data-bind="css: overallClass"><span data-bind="text: overallDisplay"></span> <span class="of">/ 5</span></div>
+            <div class="kt-sub" data-bind="text: $root.t('dash.approvedBasis')"></div>
+            <div class="kt-bar"><i data-bind="style: { width: overallBar() }"></i></div>
+          </div>
+        </div>
+        <div class="kt kt-cov">
+          <span class="kt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></span>
+          <div class="kt-body">
+            <div class="kt-k" data-bind="text: $root.t('dash.tileScored')"></div>
+            <div class="kt-v"><span data-bind="text: scoredCount()"></span> <span class="of" data-bind="text: '/ ' + kpiCount()"></span></div>
+            <div class="kt-sub" data-bind="text: $root.t('dash.tileScoredSub')"></div>
+            <div class="kt-bar"><i data-bind="style: { width: coverageBar() }"></i></div>
+          </div>
+        </div>
+        <div class="kt kt-appr kt-click" data-bind="click: $vm.goResults">
+          <span class="kt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg></span>
+          <div class="kt-body">
+            <div class="kt-k" data-bind="text: $root.t('dash.tileApproved')"></div>
+            <div class="kt-v" data-bind="text: approvedCount()"></div>
+            <div class="kt-sub" data-bind="text: $root.t('dash.tileApprovedSub')"></div>
+          </div>
+        </div>
+        <div class="kt kt-flow kt-click" data-bind="click: $vm.goWorklist">
+          <span class="kt-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></span>
+          <div class="kt-body">
+            <div class="kt-k"><span data-bind="text: $root.t('dash.tileInflight')"></span><i class="hint-i" data-bind="attr: { title: $root.t('hint.inflight') }">&#9432;</i></div>
+            <div class="kt-v" data-bind="text: inFlightCount()"></div>
+            <div class="kt-sub" data-bind="text: $root.t('dash.tileInflightSub')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── per-KPI scorecards ── -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('cards'); return true; }, css: { closed: !sec.cards() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('dash.secCards')"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.cards') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.cards">
+      <div class="kp-cards">
+        <!-- ko foreach: kpis -->
+        <div class="kp-card" data-bind="click: function(){ $vm.openKpi($data); }">
+          <div class="hd">
+            <span class="code" data-bind="text: $data.code"></span>
+            <span class="badge badge--idle" data-bind="text: $vm.freqLabel($data.frequency)"></span>
+            <span class="tgt" data-bind="text: $data.targetLabel ? $root.t('dash.target') + ': ' + $data.targetLabel : ''"></span>
+          </div>
+          <div class="nm" data-bind="text: $vm.lang() === 'ar' && $data.nameAr ? $data.nameAr : $data.nameEn"></div>
+          <div class="row">
+            <span class="score" data-bind="text: $data.avgScore != null ? $data.avgScore : '—',
+                                           css: 'sc-' + ($data.avgScore != null ? Math.round($data.avgScore) : 0)"></span>
+            <span class="pct" data-bind="text: $data.latestPct != null ? ($data.latestPct + ' %') : $root.t('dash.noApproved')"></span>
+            <span class="tgt" data-bind="text: $data.prevYearScore != null ? ($root.t('dash.prevYear') + ': ' + $data.prevYearScore) : ''"></span>
+          </div>
+          <div class="kp-strip">
+            <!-- ko foreach: $data.cells -->
+            <div class="kp-cell" data-bind="css: 'scb-' + ($data.status === 'APPROVED' && $data.score != null ? $data.score : 0)">
+              <span class="p" data-bind="text: $data.period"></span>
+              <span data-bind="text: $data.score != null ? $data.score : $vm.statusShort($data.status)"></span>
+            </div>
+            <!-- /ko -->
+            <!-- ko if: !$data.cells || $data.cells.length === 0 -->
+            <div class="kp-cell scb-0"><span class="p">&nbsp;</span><span data-bind="text: $root.t('dash.noResults')"></span></div>
+            <!-- /ko -->
+          </div>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── score chart ── -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('chart'); return true; }, css: { closed: !sec.chart() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('dash.chartTitle')"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.chart') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.chart">
+      <div style="height:260px"><canvas id="kpiScoreChart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- /ko -->
+</div>

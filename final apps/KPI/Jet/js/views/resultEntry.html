@@ -1,0 +1,330 @@
+<div class="page-wrap">
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <div class="page-header-row">
+    <div>
+      <h1>
+        <span data-bind="text: kpiName"></span>
+        <span class="badge" style="vertical-align:middle"
+              data-bind="text: statusLabel(), css: statusBadge()"></span>
+      </h1>
+      <p class="page-sub">
+        <span data-bind="text: r().kpiCode + ' · ' + r().periodLabel"></span>
+        <!-- ko if: r().targetValue != null -->
+        <span data-bind="text: ' · ' + $root.t('re.target') + ': ' + r().targetValue"></span>
+        <!-- /ko -->
+      </p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm"
+              data-bind="click: $vm.goBack, text: $root.t('common.back')"></button>
+      <!-- ko if: editable() -->
+      <!-- ko if: hasSources() -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: $vm.refreshSuggestion,
+              disable: busy(), text: $root.t('re.refreshSuggest')"></button>
+      <!-- /ko -->
+      <!-- ko if: isAB() -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: $vm.save,
+              disable: busy(), text: $root.t('common.save')"></button>
+      <!-- /ko -->
+      <button class="btn btn-primary btn-sm" data-bind="click: $vm.submit,
+              disable: busy(), text: $root.t('re.submit')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- live result preview -->
+  <div class="kp-preview">
+    <div>
+      <span class="v" data-bind="text: r().resultPct != null ? r().resultPct + ' %' : '—'"></span>
+      <div class="band" data-bind="text: $root.t('re.computedResult')"></div>
+    </div>
+    <div>
+      <span class="score-pill" style="min-width:34px;height:34px;font-size:16px"
+            data-bind="text: r().score != null ? r().score : '·',
+                       css: 'scb-' + (r().score != null ? r().score : 0)"></span>
+      <div class="band" data-bind="text: $root.t('re.scoreOf5')"></div>
+    </div>
+    <div class="band" style="max-width:420px" data-bind="text: $root.t('re.previewHint')"></div>
+  </div>
+
+  <!-- how this KPI is scored -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('calc'); return true; }, css: { closed: !sec.calc() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('re.secCalc')"></span>
+      <span class="kp-sec-sum" data-bind="text: $root.t('re.secCalcSum')"></span>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.calc">
+
+      <!-- ko if: r().calcMethod === 'RATIO_A_OVER_B' -->
+      <div class="kp-formula">
+        <span class="kf kf-res" data-bind="text: $root.t('re.resultPct')"></span>
+        <span class="kf-op">=</span>
+        <span class="kf kf-a" data-bind="text: figALabel"></span>
+        <span class="kf-op">&divide;</span>
+        <span class="kf kf-b" data-bind="text: figBLabel"></span>
+        <span class="kf-op">&times; 100</span>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: r().calcMethod === 'ABS_VARIANCE' -->
+      <div class="kp-formula">
+        <span class="kf kf-res" data-bind="text: $root.t('re.resultPct')"></span>
+        <span class="kf-op">=</span>
+        <span class="kf-op">| 1 &minus;</span>
+        <span class="kf kf-a" data-bind="text: figALabel"></span>
+        <span class="kf-op">&divide;</span>
+        <span class="kf kf-b" data-bind="text: figBLabel"></span>
+        <span class="kf-op">| &times; 100</span>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: isWeighted() -->
+      <div class="kp-formula">
+        <span class="kf kf-res" data-bind="text: $root.t('re.resultPct')"></span>
+        <span class="kf-op">=</span>
+        <span class="kf-op">&Sigma;</span>
+        <span class="kf kf-w" data-bind="text: $root.t('re.calcWeight')"></span>
+        <span class="kf-op">&times;</span>
+        <span class="kf kf-a" data-bind="text: $root.t('re.calcAchievement')"></span>
+      </div>
+      <!-- /ko -->
+
+      <!-- score bands of this KPI -->
+      <!-- ko if: bands().length > 0 -->
+      <div class="data-table-wrap">
+        <table class="data-table">
+          <thead><tr>
+            <th data-bind="text: $root.t('re.bandScore')"></th>
+            <th data-bind="text: $root.t('re.bandCond')"></th>
+            <th data-bind="text: $root.t('re.bandMeaning')"></th>
+          </tr></thead>
+          <tbody data-bind="foreach: bands">
+            <tr>
+              <td><span class="score-pill" data-bind="text: $data.score, css: 'scb-' + $data.score"></span></td>
+              <td data-bind="text: $vm.bandCond($data)"></td>
+              <td data-bind="text: $vm.bandLabel($data)"></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <!-- /ko -->
+
+      <ul class="kp-calc-note">
+        <li data-bind="text: $root.t('re.calcNoteBands')"></li>
+        <!-- ko if: isWeighted() --><li data-bind="text: $root.t('re.calcNoteWeighted')"></li><!-- /ko -->
+        <!-- ko if: isAB() --><li data-bind="text: $root.t('hint.auto')"></li><!-- /ko -->
+        <li data-bind="text: $root.t('re.calcNoteFlow')"></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- A/B figures -->
+  <!-- ko if: isAB() -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('figures'); return true; }, css: { closed: !sec.figures() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('re.figures')"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.auto') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.figures">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label">
+          <span data-bind="text: figALabel"></span>
+          <span class="kp-src-badge" data-bind="text: r().figureASource,
+                css: r().figureASource === 'AUTO' ? 'auto' : 'manual'"></span>
+        </label>
+        <input class="form-control" type="number" step="any"
+               data-bind="value: figureA, enable: editable()">
+        <!-- ko if: r().suggestedA != null -->
+        <small class="kp-bands-note">
+          <span data-bind="text: $root.t('re.suggested') + ': ' + fmt(r().suggestedA)"></span>
+          <!-- ko if: editable() -->
+          <a href="#" data-bind="click: function(){ $vm.useSuggested('a'); return false; },
+             text: ' ' + $root.t('re.useSuggested')"></a>
+          <!-- /ko -->
+        </small>
+        <!-- /ko -->
+      </div>
+      <div class="form-group">
+        <label class="form-label">
+          <span data-bind="text: figBLabel"></span>
+          <span class="kp-src-badge" data-bind="text: r().figureBSource,
+                css: r().figureBSource === 'AUTO' ? 'auto' : 'manual'"></span>
+        </label>
+        <input class="form-control" type="number" step="any"
+               data-bind="value: figureB, enable: editable()">
+        <!-- ko if: r().suggestedB != null -->
+        <small class="kp-bands-note">
+          <span data-bind="text: $root.t('re.suggested') + ': ' + fmt(r().suggestedB)"></span>
+          <!-- ko if: editable() -->
+          <a href="#" data-bind="click: function(){ $vm.useSuggested('b'); return false; },
+             text: ' ' + $root.t('re.useSuggested')"></a>
+          <!-- /ko -->
+        </small>
+        <!-- /ko -->
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label class="form-label" data-bind="text: $root.t('re.notes')"></label>
+        <textarea class="form-control" rows="2"
+                  data-bind="value: notes, enable: editable(),
+                             attr: { placeholder: $root.t('re.notesHint') }"></textarea>
+      </div>
+    </div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- weighted criteria -->
+  <!-- ko if: isWeighted() -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('criteria'); return true; }, css: { closed: !sec.criteria() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('re.criteria')"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.criteria') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.criteria">
+    <!-- ko foreach: criteria -->
+    <div class="kp-rubric">
+      <div class="rh">
+        <b data-bind="text: $vm.lang() === 'ar' && $data.nameAr ? $data.nameAr : $data.nameEn"></b>
+        <span class="wt" data-bind="text: $root.t('re.weight') + ' ' + $data.weight + '%'"></span>
+        <!-- ko if: $data.frequencyNoteEn -->
+        <span class="wt" data-bind="text: '· ' + ($vm.lang() === 'ar' && $data.frequencyNoteAr ? $data.frequencyNoteAr : $data.frequencyNoteEn)"></span>
+        <!-- /ko -->
+        <span class="wt" style="margin-inline-start:auto"
+              data-bind="text: $data.critScore() != null ? ($root.t('re.contribution') + ': ' + $data.critScore()) : ''"></span>
+      </div>
+
+      <!-- ko if: $data.entryType === 'MATURITY_1_5' -->
+      <div class="kp-lvls">
+        <!-- ko foreach: $data.levels -->
+        <div class="kp-lvl" data-bind="css: { on: $parent.levelNo() === $data.levelNo },
+             click: function(){ if ($vm.editable()) $vm.pickLevel($parent, $data.levelNo); }">
+          <div class="ln" data-bind="text: $data.levelNo + ' · ' +
+               ($vm.lang() === 'ar' && $data.titleAr ? $data.titleAr : $data.titleEn)"></div>
+          <div class="ld" data-bind="text: $vm.lang() === 'ar' && $data.descriptionAr ? $data.descriptionAr : $data.descriptionEn"></div>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+
+      <!-- ko if: $data.entryType === 'PERCENT_0_100' -->
+      <div class="form-grid" style="margin-top:8px">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('re.achievedPct')"></label>
+          <input class="form-control" type="number" min="0" max="100" step="any"
+                 data-bind="value: $data.achievedPct, enable: $vm.editable(),
+                            event: { change: function(){ $vm.saveCriterion($data); } }">
+        </div>
+      </div>
+      <!-- /ko -->
+
+      <div class="form-group" style="margin-top:8px">
+        <label class="form-label" data-bind="text: $root.t('re.justification')"></label>
+        <input class="form-control" type="text"
+               data-bind="value: $data.justification, enable: $vm.editable(),
+                          event: { change: function(){ $vm.saveCriterion($data); } },
+                          attr: { placeholder: $root.t('re.justificationHint') }">
+      </div>
+    </div>
+    <!-- /ko -->
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- evidence -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('evidence'); return true; }, css: { closed: !sec.evidence() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('re.evidence')"></span>
+      <!-- ko if: r().requiresEvidence === 'Y' -->
+      <span class="badge badge--warning" data-bind="text: $root.t('re.required')"></span>
+      <!-- /ko -->
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.evidence') }">&#9432;</i>
+      <div class="region-actions">
+        <!-- ko if: editable() -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: $vm.uploadDoc, clickBubble: false,
+                disable: busy(), text: '+ ' + $root.t('re.upload')"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.evidence">
+    <!-- ko if: docs().length === 0 -->
+    <div class="empty-state"><p data-bind="text: $root.t('re.noDocs')"></p></div>
+    <!-- /ko -->
+    <!-- ko if: docs().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('re.fileName')"></th>
+          <th data-bind="text: $root.t('re.size')"></th>
+          <th data-bind="text: $root.t('re.uploadedBy')"></th>
+          <th data-bind="text: $root.t('re.uploadedAt')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: docs">
+          <tr>
+            <td data-bind="text: $data.fileName"></td>
+            <td data-bind="text: $vm.fmtSize($data.fileSize)"></td>
+            <td data-bind="text: $data.uploadedBy"></td>
+            <td data-bind="text: $data.uploadedAt"></td>
+            <td style="text-align:end">
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.downloadDoc($data); }, text: $root.t('re.download')"></button>
+              <!-- ko if: $vm.editable() -->
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.removeDoc($data); }, text: $root.t('common.delete')"></button>
+              <!-- /ko -->
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- approval trail -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('trail'); return true; }, css: { closed: !sec.trail() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('re.approvalTrail')"></span>
+      <span class="kp-sec-sum" data-bind="text: $root.t('re.trailSub')"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.trail') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.trail">
+    <!-- ko if: r().wfInstanceId -->
+    <wf-timeline params="module: 'KPI_MGMT', record: resultId, showHistory: true"></wf-timeline>
+    <!-- /ko -->
+    <!-- ko ifnot: r().wfInstanceId -->
+    <div class="empty-state"><p data-bind="text: $root.t('re.notSubmitted')"></p></div>
+    <!-- /ko -->
+    <!-- ko if: history().length > 0 -->
+    <div class="data-table-wrap" style="margin-top:10px">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('re.histWhen')"></th>
+          <th data-bind="text: $root.t('re.histWho')"></th>
+          <th data-bind="text: $root.t('re.histStatus')"></th>
+          <th data-bind="text: $root.t('re.histComments')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: history">
+          <tr>
+            <td data-bind="text: $data.changedAt"></td>
+            <td data-bind="text: $data.changedBy"></td>
+            <td><span class="badge" data-bind="text: $vm.statusWord($data.newStatus),
+                 css: $vm.statusBadgeOf($data.newStatus)"></span></td>
+            <td data-bind="text: $data.comments"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- /ko -->
+</div>

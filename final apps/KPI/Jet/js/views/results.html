@@ -1,0 +1,116 @@
+<div class="page-wrap">
+
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: $root.t('res.title')"></h1>
+      <p class="page-sub" data-bind="text: $root.t('res.sub')"></p>
+    </div>
+  </div>
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <!-- ── search ── -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('search'); return true; }, css: { closed: !sec.search() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('res.secSearch')"></span>
+      <span class="kp-sec-sum" data-bind="text: searchSummary()"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.search') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.search">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('res.year')"></label>
+          <select class="form-control" data-bind="options: years, value: year"></select>
+        </div>
+        <!-- ko if: isAdmin() -->
+        <div class="form-group" style="align-self:end">
+          <button class="btn btn-secondary" data-bind="click: $vm.generatePeriods,
+                  disable: busy(), text: $root.t('res.genPeriods')"></button>
+          <small class="kp-bands-note" data-bind="text: $root.t('res.genPeriodsHint')"></small>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+  </div>
+
+  <!-- ── measurements matrix ── -->
+  <div class="kp-sec">
+    <div class="kp-sec-h" data-bind="click: function(){ $vm.toggleSec('matrix'); return true; }, css: { closed: !sec.matrix() }">
+      <span class="kp-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <span class="kp-sec-t" data-bind="text: $root.t('res.matrix')"></span>
+      <span class="kp-sec-sum" data-bind="text: year()"></span>
+      <i class="hint-i" data-bind="attr: { title: $root.t('hint.matrix') }">&#9432;</i>
+    </div>
+    <div class="kp-sec-b" data-bind="visible: sec.matrix">
+
+      <!-- no calendar yet: the very first step -->
+      <!-- ko if: !hasPeriods() -->
+      <div class="empty-state">
+        <div class="empty-state-icon">&#128197;</div>
+        <!-- ko if: isAdmin() -->
+        <p data-bind="text: $root.t('res.noPeriodsAdmin').replace('{0}', year())"></p>
+        <p><button class="btn btn-primary" data-bind="click: $vm.generatePeriods,
+                   disable: busy(), text: $root.t('res.genPeriods') + ' — ' + year()"></button></p>
+        <!-- /ko -->
+        <!-- ko ifnot: isAdmin() -->
+        <p data-bind="text: $root.t('res.noPeriodsUser').replace('{0}', year())"></p>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+
+      <!-- ko if: hasPeriods() -->
+      <div class="data-table-wrap">
+        <table class="data-table kp-matrix">
+          <thead>
+            <tr>
+              <th data-bind="text: $root.t('res.kpi')"></th>
+              <!-- ko foreach: columns -->
+              <th style="text-align:center" data-bind="text: $data.label"></th>
+              <!-- /ko -->
+            </tr>
+          </thead>
+          <tbody data-bind="foreach: rows">
+            <tr>
+              <td>
+                <b data-bind="text: $vm.lang() === 'ar' && $data.kpi.nameAr ? $data.kpi.nameAr : $data.kpi.nameEn"></b>
+                <div><small class="kp-bands-note" data-bind="text: $data.kpi.code + ' · ' + $vm.freqLabel($data.kpi.frequency)"></small></div>
+              </td>
+              <!-- ko foreach: $data.cells -->
+              <td class="mx" data-bind="click: function(){ $vm.openCell($data); }">
+                <!-- ko if: $data.na --><span class="mx-na">—</span><!-- /ko -->
+                <!-- ko ifnot: $data.na -->
+                  <!-- ko if: $data.result -->
+                  <div>
+                    <span class="score-pill" data-bind="text: $data.result.score != null ? $data.result.score : '·',
+                          css: 'scb-' + ($data.result.score != null ? $data.result.score : 0)"></span>
+                  </div>
+                  <span class="badge" data-bind="text: $vm.statusLabel($data.result.status),
+                        css: $vm.statusBadge($data.result.status)"></span>
+                  <!-- /ko -->
+                  <!-- ko ifnot: $data.result -->
+                  <span class="mx-empty" data-bind="text: '+ ' + $root.t('res.start')"></span>
+                  <!-- /ko -->
+                <!-- /ko -->
+              </td>
+              <!-- /ko -->
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- legend -->
+      <div class="kp-legend">
+        <span class="lg"><span class="score-pill scb-5">5</span><span data-bind="text: $root.t('res.legendScore')"></span></span>
+        <span class="lg"><span class="mx-empty" data-bind="text: '+ ' + $root.t('res.start')"></span><span data-bind="text: $root.t('res.legendStart')"></span></span>
+        <span class="lg"><span class="mx-na">—</span><span data-bind="text: $root.t('res.legendNa')"></span></span>
+        <span class="lg"><span class="badge badge--warning" data-bind="text: $root.t('kpi.stSubmitted')"></span><span data-bind="text: $root.t('res.legendSubmitted')"></span></span>
+      </div>
+      <!-- /ko -->
+
+    </div>
+  </div>
+
+  <!-- /ko -->
+</div>

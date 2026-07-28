@@ -1,0 +1,25 @@
+-- =============================================================================
+-- Finance KPI Management Module (App 213) -- master install
+-- Run each script in its OWN SQLcl invocation (a runner file with two chained
+-- at-scripts silently skips the second on this SQLcl).  Order:
+--
+--   1. 01_kpi_ddl.sql        tables (9 DCT_KPI_*)
+--   2. 02_kpi_views.sql      read views (5 DCT_KPI_*_V incl. the WF fact view)
+--   3. 03_kpi_seed.sql       lookups, module row 213, roles, settings, doc type,
+--                            sources, the 4 DOF circular KPIs (UTF-8 session!)
+--   4. 04_kpi_pkg.sql        DCT_KPI_PKG
+--   5. 05_kpi_wf_seed.sql    DWP process KPI_RESULT_APPROVAL + route WF
+--   6. 06_kpi_ords.sql       kpi.rest at /ords/admin/kpi/  (FRESH session --
+--                            never after ALTER SESSION SET CURRENT_SCHEMA)
+--   7. 07_kpi_jobs.sql       scheduler jobs + live measurement calendar
+--
+-- Plus (outside this folder):
+--   - db/v2/50_module_access_enforce.sql  (CASE map has WHEN 'kpi'; re-run when
+--     the DCT_REST body changes; source synced into db/v2/11)
+--   - reporting/db/29_rpt_kpi_book.sql    (KPI_BRIEFING_BOOK definition)
+--   - reporting/runner/templates/kpi_briefing_book.html.j2 uploaded to
+--     DCT_RPT_TEMPLATE (PUT /rpt/templates/kpi_briefing_book.html.j2)
+--
+-- Unit test: test/kpi_smoke_test.sql (rolls back; 36 asserts)
+-- =============================================================================
+PROMPT Run the numbered scripts individually -- see the header of this file.

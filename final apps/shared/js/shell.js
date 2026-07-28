@@ -36,7 +36,9 @@ define([], function () {
     { key: 'bi',    code: 'BI', app: '211', color: '#1F6F8B', url: '/BI/Jet/index.html',
       mc: 'REPORTING',    nameKey: 'mod.bi',    descKey: 'mod.bi.desc' },
     { key: 'ap',    code: 'AP', app: '212', color: '#14682F', url: '/AP/Jet/index.html',
-      mc: 'AP',           nameKey: 'mod.ap',    descKey: 'mod.ap.desc' }
+      mc: 'AP',           nameKey: 'mod.ap',    descKey: 'mod.ap.desc' },
+    { key: 'kpi',   code: 'KP', app: '213', color: '#8C6D1F', url: '/KPI/Jet/index.html',
+      mc: 'KPI_MGMT',     nameKey: 'mod.kpi',   descKey: 'mod.kpi.desc' }
   ];
 
   function byKey(key) {

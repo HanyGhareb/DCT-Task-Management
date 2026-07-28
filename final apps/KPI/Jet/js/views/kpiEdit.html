@@ -1,0 +1,262 @@
+<div class="page-wrap">
+
+  <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko ifnot: loading() -->
+
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: isNew() ? $root.t('ke.newTitle') : (code() + ' — ' + nameEn())"></h1>
+      <p class="page-sub" data-bind="text: $root.t('ke.sub')"></p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm" data-bind="click: $vm.goBack, text: $root.t('common.back')"></button>
+      <!-- ko ifnot: isNew() -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: $vm.deactivate,
+              visible: isActive() === 'Y', text: $root.t('ke.deactivate')"></button>
+      <!-- /ko -->
+      <button class="btn btn-primary btn-sm" data-bind="click: $vm.saveDefinition,
+              disable: busy(), text: $root.t('common.save')"></button>
+    </div>
+  </div>
+
+  <!-- definition -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: $root.t('ke.definition')"></h2>
+    </div>
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.code')"></label>
+        <input class="form-control" data-bind="value: code, enable: isNew()">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.frequency')"></label>
+        <select class="form-control" data-bind="options: lookupOpts('KPI_FREQUENCY'),
+                optionsText: 'label', optionsValue: 'code', value: frequency"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.method')"></label>
+        <select class="form-control" data-bind="options: lookupOpts('KPI_CALC_METHOD'),
+                optionsText: 'label', optionsValue: 'code', value: calcMethod"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.polarity')"></label>
+        <select class="form-control" data-bind="options: lookupOpts('KPI_POLARITY'),
+                optionsText: 'label', optionsValue: 'code', value: polarity"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.nameEn')"></label>
+        <input class="form-control" data-bind="value: nameEn">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.nameAr')"></label>
+        <input class="form-control" dir="rtl" data-bind="value: nameAr">
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label class="form-label" data-bind="text: $root.t('ke.descEn')"></label>
+        <textarea class="form-control" rows="2" data-bind="value: descriptionEn"></textarea>
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label class="form-label" data-bind="text: $root.t('ke.descAr')"></label>
+        <textarea class="form-control" rows="2" dir="rtl" data-bind="value: descriptionAr"></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.unitEn')"></label>
+        <input class="form-control" data-bind="value: unitEn">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.weight')"></label>
+        <input class="form-control" type="number" min="0" max="100" data-bind="value: weight">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.requiresEvidence')"></label>
+        <select class="form-control" data-bind="value: requiresEvidence">
+          <option value="Y" data-bind="text: $root.t('common.yes')"></option>
+          <option value="N" data-bind="text: $root.t('common.no')"></option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.displayOrder')"></label>
+        <input class="form-control" type="number" data-bind="value: displayOrder">
+      </div>
+      <!-- ko if: isAB() -->
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.sourceA')"></label>
+        <select class="form-control" data-bind="options: sourceOpts, optionsText: 'label',
+                optionsValue: 'code', optionsCaption: $root.t('ke.manualEntry'), value: sourceCodeA"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.sourceB')"></label>
+        <select class="form-control" data-bind="options: sourceOpts, optionsText: 'label',
+                optionsValue: 'code', optionsCaption: $root.t('ke.manualEntry'), value: sourceCodeB"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.figALabel')"></label>
+        <input class="form-control" data-bind="value: figureALabelEn">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('ke.figBLabel')"></label>
+        <input class="form-control" data-bind="value: figureBLabelEn">
+      </div>
+      <!-- /ko -->
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label class="form-label" data-bind="text: $root.t('ke.calcDesc')"></label>
+        <input class="form-control" data-bind="value: calcDescEn">
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label class="form-label" data-bind="text: $root.t('ke.sourceOfData')"></label>
+        <input class="form-control" data-bind="value: sourceOfDataEn">
+      </div>
+    </div>
+  </div>
+
+  <!-- ko ifnot: isNew() -->
+
+  <!-- score bands -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: $root.t('ke.bands')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-primary btn-sm" data-bind="click: $vm.saveBands,
+                disable: busy(), text: $root.t('ke.saveBands')"></button>
+      </div>
+    </div>
+    <p class="kp-bands-note" data-bind="text: $root.t('ke.bandsHint')"></p>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('ke.score')"></th>
+          <th data-bind="text: $root.t('ke.operator')"></th>
+          <th data-bind="text: $root.t('ke.threshold1')"></th>
+          <th data-bind="text: $root.t('ke.threshold2')"></th>
+          <th data-bind="text: $root.t('ke.labelEn')"></th>
+          <th data-bind="text: $root.t('ke.labelAr')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: bands">
+          <tr>
+            <td><span class="score-pill" data-bind="text: $data.score, css: 'scb-' + $data.score"></span></td>
+            <td><select class="form-control" data-bind="options: $vm.lookupOpts('KPI_BAND_OP'),
+                 optionsText: 'label', optionsValue: 'code', value: $data.operator"></select></td>
+            <td><input class="form-control" type="number" step="any" data-bind="value: $data.threshold1"></td>
+            <td><input class="form-control" type="number" step="any" data-bind="value: $data.threshold2,
+                 enable: $data.operator() === 'BETWEEN'"></td>
+            <td><input class="form-control" data-bind="value: $data.labelEn"></td>
+            <td><input class="form-control" dir="rtl" data-bind="value: $data.labelAr"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- yearly targets -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading" data-bind="text: $root.t('ke.targets')"></h2>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: $vm.addTarget,
+                text: '+ ' + $root.t('ke.addTarget')"></button>
+        <button class="btn btn-primary btn-sm" data-bind="click: $vm.saveTargets,
+                disable: busy(), text: $root.t('ke.saveTargets')"></button>
+      </div>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $root.t('ke.year')"></th>
+          <th data-bind="text: $root.t('ke.targetValue')"></th>
+          <th data-bind="text: $root.t('ke.labelEn')"></th>
+          <th data-bind="text: $root.t('ke.labelAr')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: targets">
+          <tr>
+            <td><input class="form-control" type="number" data-bind="value: $data.year"></td>
+            <td><input class="form-control" type="number" step="any" data-bind="value: $data.value"></td>
+            <td><input class="form-control" data-bind="value: $data.labelEn"></td>
+            <td><input class="form-control" dir="rtl" data-bind="value: $data.labelAr"></td>
+            <td style="text-align:end">
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.removeTarget($data); }, text: $root.t('common.delete')"></button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- weighted criteria -->
+  <!-- ko if: isWeighted() -->
+  <div class="card">
+    <div class="section-heading-row">
+      <h2 class="section-heading">
+        <span data-bind="text: $root.t('ke.criteria')"></span>
+        <span class="badge" data-bind="text: 'Σ ' + weightSum() + '%',
+              css: weightSum() === 100 ? 'badge--approved' : 'badge--rejected'"></span>
+      </h2>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: $vm.addCriterion,
+                text: '+ ' + $root.t('ke.addCriterion')"></button>
+        <button class="btn btn-primary btn-sm" data-bind="click: $vm.saveCriteria,
+                disable: busy(), text: $root.t('ke.saveCriteria')"></button>
+      </div>
+    </div>
+    <!-- ko foreach: criteria -->
+    <div class="kp-rubric">
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('ke.critCode')"></label>
+          <input class="form-control" data-bind="value: $data.code, enable: !$data.criterionId"></div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('ke.nameEn')"></label>
+          <input class="form-control" data-bind="value: $data.nameEn"></div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('ke.nameAr')"></label>
+          <input class="form-control" dir="rtl" data-bind="value: $data.nameAr"></div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('ke.weight')"></label>
+          <input class="form-control" type="number" min="0" max="100" data-bind="value: $data.weight"></div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('ke.entryType')"></label>
+          <select class="form-control" data-bind="options: $vm.lookupOpts('KPI_CRIT_ENTRY'),
+                  optionsText: 'label', optionsValue: 'code', value: $data.entryType"></select></div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $root.t('ke.active')"></label>
+          <select class="form-control" data-bind="value: $data.isActive">
+            <option value="Y" data-bind="text: $root.t('common.yes')"></option>
+            <option value="N" data-bind="text: $root.t('common.no')"></option>
+          </select></div>
+      </div>
+      <!-- ko if: $data.entryType() === 'MATURITY_1_5' -->
+      <div style="margin-top:8px">
+        <a href="#" data-bind="click: function(){ $data.showLevels(!$data.showLevels()); return false; },
+           text: ($data.showLevels() ? '▾ ' : '▸ ') + $root.t('ke.levels')"></a>
+        <!-- ko if: $data.showLevels() -->
+        <div class="data-table-wrap" style="margin-top:6px">
+          <table class="data-table">
+            <thead><tr>
+              <th style="width:60px" data-bind="text: $root.t('ke.level')"></th>
+              <th data-bind="text: $root.t('ke.titleEn')"></th>
+              <th data-bind="text: $root.t('ke.descEn')"></th>
+              <th data-bind="text: $root.t('ke.descAr')"></th>
+            </tr></thead>
+            <tbody data-bind="foreach: $data.levels">
+              <tr>
+                <td data-bind="text: $data.levelNo"></td>
+                <td><input class="form-control" data-bind="value: $data.titleEn"></td>
+                <td><textarea class="form-control" rows="2" data-bind="value: $data.descriptionEn"></textarea></td>
+                <td><textarea class="form-control" rows="2" dir="rtl" data-bind="value: $data.descriptionAr"></textarea></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <!-- /ko -->
+      </div>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

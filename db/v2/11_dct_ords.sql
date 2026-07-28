@@ -88,6 +88,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
                    WHEN 'gl'  THEN 'GL'
                    WHEN 'rpt' THEN 'REPORTING'
                    WHEN 'ap'  THEN 'AP'
+                   WHEN 'kpi' THEN 'KPI_MGMT'
                    ELSE NULL   -- 'dct' shared platform + unknown segments: exempt
                  END;
         IF l_mod IS NULL THEN RETURN 0; END IF;
