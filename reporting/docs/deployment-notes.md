@@ -114,9 +114,18 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   the view's `GL_ACCOUNT` — COA row txns first, else the etype numeric prefix). The butil view
   ships `gl_account`/`appropriation`/`program` as combined `'CODE - Description'` strings, so the
   section SQL splits on the FIRST `' - '` (INSTR/SUBSTR; description absent → code only, name
-  NULL) — no view change. Deployed via python-oracledb from the dev VM; E2E runs 174/175
-  (year=2026, period=03-2026, DCT OPEX): 24-col sheet, 1,373 lines all with a unique combination,
-  e.g. `4511000666.Freelancers-N1.424521 - Manpower supply …` / account `424521`.
+  NULL). Deployed via python-oracledb from the dev VM; E2E runs 174/175 (year=2026,
+  period=03-2026, DCT OPEX): 24-col sheet, account e.g. `424521`.
+  **Same day (user clarification): Budget Combination = the FULL 10-segment GL combination**, not
+  the project.task.etype key — NEW view column `DCT_BUDGET_UTILIZATION_V.BUDGET_COMBINATION`
+  (db/v2/37 re-run, additive LAST column): canonical Fusion order
+  `entity.program.cc.bg.account.es.appr.ic.f1.f2` constructed the way Fusion derives project
+  charge accounts — entity `451` + task PROGRAM/COST_CENTER/ENTITY_SPECIFIC/APPROPRIATION (tsk_seg
+  CTE gained `entity_specific_code` LPAD 7) + budget group `1` + account (COA row txns → etype
+  prefix) + constant tail `000.000000.000000`; falls back to an actual posted combination
+  (`MAX(k.cc_string)`) when task segments are missing. Validated: 97.7% of constructible lines
+  exist verbatim in `dct_gl_coa_snap`; register col A now reads the view column. E2E run 176:
+  1,370/1,373 lines filled, e.g. `451.070101.4510195.1.422401.4510600.200104.000.000000.000000`.
 - **2026-07-21 — Annual + YTD Budget in the butil reports.** Follow-through of the GL v1.37.0
   period-aware budget: **BUDGET_UTIL_BOOK** overview + utilization-by-sector sections now also
   select `SUM(budget_annual)` (the view's `budget` stays the period-aware YTD figure the book's

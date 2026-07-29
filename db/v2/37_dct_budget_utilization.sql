@@ -81,7 +81,8 @@ tsk_seg AS (
   SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number AS task_key,
          MAX(CASE WHEN t.cost_center   IS NOT NULL THEN LPAD(TO_CHAR(t.cost_center),7,'0')   END) AS cost_center_code,
          MAX(CASE WHEN t.appropriation IS NOT NULL THEN LPAD(TO_CHAR(t.appropriation),6,'0') END) AS appropriation_code,
-         MAX(CASE WHEN t.program IS NOT NULL THEN LPAD(TO_CHAR(t.program),6,'0') END) AS program_code
+         MAX(CASE WHEN t.program IS NOT NULL THEN LPAD(TO_CHAR(t.program),6,'0') END) AS program_code,
+         MAX(CASE WHEN t.entity_specific IS NOT NULL THEN LPAD(TO_CHAR(t.entity_specific),7,'0') END) AS entity_specific_code
   FROM prod.tasks t
   JOIN proj pj ON pj.project_id = t.project_id
   GROUP BY TO_CHAR(pj.project_number), t.task_number
@@ -349,7 +350,27 @@ SELECT
   END AS fund_available,
   MAX(NVL(b.override_annual,0)) AS override_budget_annual,
   MAX(NVL(b.override_ytd,0))    AS override_budget,
-  MAX(NVL(b.override_cnt,0))    AS override_lines
+  MAX(NVL(b.override_cnt,0))    AS override_lines,
+  -- BUDGET_COMBINATION: the line's full 10-segment canonical GL combination
+  -- (Fusion order entity.program.cc.bg.account.es.appr.ic.f1.f2). Built the
+  -- way Fusion derives project charge accounts -- entity 451 + task PROGRAM/
+  -- COST_CENTER/ENTITY_SPECIFIC/APPROPRIATION + budget group 1 + account
+  -- (COA row txns first, else the etype numeric prefix) + constant tail
+  -- 000.000000.000000 (validated 97.7% of constructible lines exist verbatim
+  -- in dct_gl_coa_snap). Falls back to an actual posted combination
+  -- (MAX cc_string) when the task segments are missing.
+  COALESCE(
+    CASE WHEN MAX(tcc.cost_center_code) IS NOT NULL
+          AND COALESCE(MAX(coa.account_code), MAX(ac.account_code),
+                       REGEXP_SUBSTR(k.expenditure_type,'^\d{6}')) IS NOT NULL
+         THEN '451.' || NVL(MAX(tcc.program_code),'000000') || '.' ||
+              MAX(tcc.cost_center_code) || '.1.' ||
+              COALESCE(MAX(coa.account_code), MAX(ac.account_code),
+                       REGEXP_SUBSTR(k.expenditure_type,'^\d{6}')) || '.' ||
+              NVL(MAX(tcc.entity_specific_code),'0000000') || '.' ||
+              NVL(MAX(tcc.appropriation_code),'000000') || '.000.000000.000000'
+    END,
+    MAX(k.cc_string)) AS budget_combination
 FROM keys k
 LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = k.cc_string
 LEFT JOIN pb b  ON b.budget_year = k.budget_year
