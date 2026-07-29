@@ -860,3 +860,8 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 .vb-addin a{color:var(--brand,#3F6F5F);font-weight:600;text-decoration:underline;margin-inline-end:8px}
 .vb-addin span{color:#777}
 .ov-guide-addin{display:block;margin-block-start:4px;font-size:.83rem;opacity:.9}
+
+/* Legacy (EBS) page — mapping drawer form + balance coverage lists */
+.xm-form{display:flex;flex-direction:column;gap:12px;max-width:520px}
+.eb-unmapped{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-block-start:14px}
+.eb-un-h{font-weight:700;font-size:.85rem;margin-block-end:6px;color:var(--brand,#3F6F5F)}

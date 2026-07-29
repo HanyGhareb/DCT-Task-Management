@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.47.1';</script>
+<script>window.APP_VERSION='1.48.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -57,13 +57,14 @@
     <a data-bind="css:{on:view()==='encumbrances'}, click:go.bind($data,'encumbrances'), text:t('navEncumbrances')"></a>
     <a data-bind="css:{on:view()==='pending'}, click:go.bind($data,'pending'), text:t('navPending')"></a>
     <a data-bind="css:{on:view()==='recon'}, click:go.bind($data,'recon'), text:t('navRecon')"></a>
+    <a data-bind="css:{on:view()==='legacy'}, click:go.bind($data,'legacy'), text:t('navLegacy')"></a>
     <!-- ko if: isSysAdmin -->
     <button type="button" class="sec-link" data-bind="click: openSecurityInfo"
             style="margin-inline-start:auto; opacity:.75; background:none; border:none; cursor:pointer; font:inherit; color:inherit">&#128737; <span data-bind="text: lang()==='ar' ? 'معلومات الأمان' : 'Security Info'"></span></button>
     <!-- /ko -->
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'||view()==='legacy'}">
 
     <!-- ── OVERVIEW ── -->
     <!-- ── CHART OF ACCOUNTS (merged Overview + Explorer) ── -->
@@ -1364,6 +1365,133 @@
 
   </div>
 
+    <!-- ── LEGACY (EBS) — Fusion/EBS COA mapping + historical balances ── -->
+    <div id="pg-legacy" data-bind="visible:view()==='legacy'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('xmTitle')"></h1>
+          <p class="sub" data-bind="text:t('xmSub')"></p>
+        </div>
+      </div>
+
+      <!-- Region 1: COA Account Mapping (shared interactive report + admin drawer) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){xmOpen(!xmOpen());return true}, css:{closed:!xmOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('xmRegion')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:xmOpen">
+          <div class="card">
+            <div class="filter-grid">
+              <div class="field"><label class="lbl" data-bind="text:t('segment')"></label>
+                <select class="inp" data-bind="options:xmSegments, optionsText:function(s){return $root.lang()==='ar'&&s.nameAr?s.nameAr:s.name}, optionsValue:'code', optionsCaption:t('xmAllSegments'), value:xmSeg"></select></div>
+              <div class="field"><label class="lbl" data-bind="text:t('xmStatus')"></label>
+                <select class="inp" data-bind="options:xmActiveOpts, optionsText:'l', optionsValue:'v', value:xmActive"></select></div>
+              <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+                <input class="inp" type="text" data-bind="textInput:xmSearch, event:{keydown:function(d,e){if(e.keyCode===13){runEbsMap();}return true;}}"></div>
+              <div class="field filter-actions">
+                <button class="btn btn-primary" data-bind="click:function(){runEbsMap()}, css:{busy:xmLoading}, text:t('btnSearch')"></button>
+                <button class="btn" data-bind="visible:canManageEbs, click:openXmNew, text:t('xmAdd')"></button>
+              </div>
+            </div>
+            <div class="en-sum">
+              <span><b data-bind="text:fmt(xmCount())"></b> <span class="en-sub" data-bind="text:t('xmRows')"></span></span>
+              <span class="en-sub" data-bind="visible:canManageEbs, text:t('xmRowHint')"></span>
+            </div>
+            <!-- ko if: xmData -->
+            <div data-bind="event:{click:xmGridClick}">
+              <interactive-report params="reportCode:'GL_EBS_MAP', section:'ebsmap', data:xmData, isAdmin:false, layoutsApi:null"></interactive-report>
+            </div>
+            <!-- /ko -->
+            <div class="en-note" data-bind="visible:xmLoading() && !xmData(), text:t('loadingData')"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Region 2: Legacy balances — upload, coverage, prior-year register -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){ebOpen(!ebOpen());return true}, css:{closed:!ebOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('ebRegion')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:ebOpen">
+          <div class="card">
+            <div class="filter-grid">
+              <div class="field filter-actions">
+                <button class="btn btn-primary" data-bind="visible:canManageEbs, click:uploadEbs, css:{busy:ebUploadBusy}, enable:!ebUploadBusy(), text:t('xmUpload')"></button>
+                <button class="btn" data-bind="click:ebTemplate, text:t('xmTemplate')"></button>
+              </div>
+              <div class="field"><label class="lbl" data-bind="text:t('ebYearL')"></label>
+                <select class="inp" data-bind="options:ebYearOpts, optionsCaption:t('xmPickYear'), value:ebRegYear"></select></div>
+              <div class="field filter-actions">
+                <button class="btn btn-primary" data-bind="click:runEbsRegister, css:{busy:ebRegBusy}, enable:!ebRegBusy() && ebRegYear(), text:t('xmRegister')"></button>
+              </div>
+            </div>
+            <div class="en-note" data-bind="visible:ebUploadNote, text:ebUploadNote"></div>
+            <!-- ko if: ebYears().length -->
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr>
+                  <th data-bind="text:t('ebYearL')"></th>
+                  <th class="num" data-bind="text:t('ebRowsL')"></th>
+                  <th class="num" data-bind="text:t('ebPeriodsL')"></th>
+                  <th class="num" data-bind="text:t('ebCombosL')"></th>
+                  <th class="num" data-bind="text:t('ebPtdL')"></th>
+                  <th class="num" data-bind="text:t('ebAccMapL')"></th>
+                  <th class="num" data-bind="text:t('ebAprMapL')"></th>
+                </tr></thead>
+                <tbody>
+                  <!-- ko foreach: ebYears -->
+                  <tr>
+                    <td><b class="mono" data-bind="text:$data.year||'—'"></b></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.rows)"></td>
+                    <td class="num mono" data-bind="text:$data.periods"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.combinations)"></td>
+                    <td class="num mono" data-bind="text:$root.money($data.ptdTotal)"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.accountMapped)+' ('+$root.ebPct($data.accountMapped,$data.rows)+')'"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.apprMapped)+' ('+$root.ebPct($data.apprMapped,$data.rows)+')'"></td>
+                  </tr>
+                  <!-- /ko -->
+                </tbody>
+              </table>
+            </div>
+            <div class="eb-unmapped" data-bind="visible:ebUnmappedAcc().length + ebUnmappedF1().length > 0">
+              <div class="eb-un-col" data-bind="visible:ebUnmappedAcc().length">
+                <div class="eb-un-h" data-bind="text:t('ebUnmappedAcc')"></div>
+                <table class="data-table"><thead><tr>
+                  <th data-bind="text:t('xmEbsValue')"></th>
+                  <th class="num" data-bind="text:t('ebRowsL')"></th>
+                  <th class="num" data-bind="text:t('ebAbsAmt')"></th>
+                </tr></thead><tbody>
+                  <!-- ko foreach: ebUnmappedAcc -->
+                  <tr><td class="mono" data-bind="text:$data.ebsAccount"></td>
+                      <td class="num mono" data-bind="text:$data.rows"></td>
+                      <td class="num mono" data-bind="text:$root.money($data.absAmount)"></td></tr>
+                  <!-- /ko -->
+                </tbody></table>
+              </div>
+              <div class="eb-un-col" data-bind="visible:ebUnmappedF1().length">
+                <div class="eb-un-h" data-bind="text:t('ebUnmappedF1')"></div>
+                <table class="data-table"><thead><tr>
+                  <th data-bind="text:t('xmEbsValue')"></th>
+                  <th class="num" data-bind="text:t('ebRowsL')"></th>
+                  <th class="num" data-bind="text:t('ebAbsAmt')"></th>
+                </tr></thead><tbody>
+                  <!-- ko foreach: ebUnmappedF1 -->
+                  <tr><td class="mono" data-bind="text:$data.ebsFuture1"></td>
+                      <td class="num mono" data-bind="text:$data.rows"></td>
+                      <td class="num mono" data-bind="text:$root.money($data.absAmount)"></td></tr>
+                  <!-- /ko -->
+                </tbody></table>
+              </div>
+            </div>
+            <!-- /ko -->
+            <div class="empty pad" data-bind="visible:ebLoaded() && ebYears().length===0, text:t('ebEmpty')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   <div class="pfoot"><span class="diamond"></span><span data-bind="text:t('footOrg')"></span><span class="grow"></span>
     <span data-bind="text:t('footNote')"></span></div>
 </div>
@@ -1452,6 +1580,44 @@
     </div>
   </div>
 </div>
+
+<input type="file" id="ebFile" accept=".xlsx,.xls,.csv" style="display:none"
+       data-bind="event:{change:ebFileChosen}">
+
+<!-- ═══════════ LEGACY EBS MAPPING DRAWER (add / edit a mapping row) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:xmDrawer}, click:closeXmDrawer" style="display:none"></div>
+<aside class="dw-drawer" data-bind="css:{show:xmDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:t('xmRegion')"></div>
+      <div class="dw-title" data-bind="text:xmId() ? t('xmEditTitle') : t('xmNewTitle')"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:closeXmDrawer, text:t('close')"></button>
+      <button class="btn btn-sm btn-primary" data-bind="click:saveXm, css:{busy:xmSaving}, enable:!xmSaving(), text:t('save')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="text:t('xmDrawerCtx')"></div>
+    <div class="xm-form">
+      <div class="field"><label class="lbl" data-bind="text:t('segment')"></label>
+        <select class="inp" data-bind="options:xmSegments, optionsText:function(s){return $root.lang()==='ar'&&s.nameAr?s.nameAr:s.name}, optionsValue:'code', value:xmFSeg, enable:!xmId()"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('xmEbsValue')"></label>
+        <input class="inp mono" type="text" maxlength="30" data-bind="textInput:xmFEbs, enable:!xmId()"></div>
+      <div class="field"><label class="lbl" data-bind="text:t('xmFusionValue')"></label>
+        <input class="inp mono" type="text" maxlength="30" data-bind="textInput:xmFFusion"></div>
+      <div class="field"><label class="lbl" data-bind="text:t('descriptionL')"></label>
+        <input class="inp" type="text" maxlength="400" data-bind="textInput:xmFDesc"></div>
+      <div class="field"><label class="lbl" data-bind="text:t('xmParentChild')"></label>
+        <select class="inp" data-bind="value:xmFPc">
+          <option value="CHILD">Child</option>
+          <option value="PARENT">Parent</option>
+        </select></div>
+      <div class="field" data-bind="visible:xmId"><label class="lbl" data-bind="text:t('xmStatus')"></label>
+        <select class="inp" data-bind="options:xmActiveOpts().slice(0,2), optionsText:'l', optionsValue:'v', value:xmFActive"></select></div>
+    </div>
+  </div>
+</aside>
 
 <!-- ═══════════ DRILL-DOWN DRAWER (Budget Utilization figure → supporting lines) ═══════════ -->
 <div class="dw-scrim" data-bind="css:{show:drillDrawer}, click:closeDrawer" style="display:none"></div>

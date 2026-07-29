@@ -104,6 +104,15 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 - **Register** — measure tabs (`rcSetMeasure` AP/GRN/PR/PO) + grain segmented control (`rcSetGrain`, 8 grains); table shows per-row Actuals/Butil/Diff + Non-project/Validation(AP)/No-budget-line, every leakage cell a drill link. Column headers carry ⓘ hints. `rcExportCsv()`.
 - **Difference drill** — `rcCellDrill(row,bucket)` → `rcDrill(measure,bucket,row)` calls `/recon/drill` and opens the SHARED drill drawer (`drillCols/drillRows/drillTotalV/drillCount`) with the source documents (doc #/line, project/task/etype, amount, hasProject/validation/onBudgetLine). Verified: every drill total reconciles to its summary bucket.
 
+## Legacy (EBS) (`view()==='legacy'`) — Fusion/EBS COA mapping + historical balances (v1.48.0)
+- `runEbsMap()` — loads the COA mapping register (GET /coamap; segment/status/search filters) into the SHARED `<interactive-report>` (client-built columns)
+- `xmGridClick(d,e)` — delegated row click → edit drawer (admins; `ko.contextFor(td)` + segment|ebsValue side-map)
+- `openXmNew()` / `openXmEdit(row)` / `closeXmDrawer()` / `saveXm()` — add/edit drawer (POST /coamap, partial PUT /coamap/:id; deactivate instead of delete)
+- `uploadEbs()` / `ebFileChosen(d,e)` — EBS balance Excel upload: SheetJS client parse (fuzzy header map), chunks of 500 → POST /ebs-balances with per-chunk progress
+- `ebTemplate()` — downloads the EBS balances upload template workbook (SheetJS)
+- `loadEbsSummary()` — per-year coverage tiles + top-unmapped lists (GET /ebs-balances/summary)
+- `runEbsRegister()` — enqueues EBS_GL_BALANCE_REGISTER via the bridge, polls, auto-downloads the XLSX
+
 ## API Endpoints (ORDS) — `db/05_gl_ords.sql`, base `/ords/admin/gl/`
 | Method | Path | Purpose |
 |---|---|---|
@@ -112,6 +121,14 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 | GET | `/recon/rows` | reconciliation register at `?grain=` (account/sector/chapter/costcenter/appropriation/program/combination/budgetline) + optional `?measure=`; one row per dimension value with both sides + leakage buckets (db/14) |
 | GET | `/recon/drill` | source records behind a difference cell — `?measure=ap\|grn\|pr\|po\|all&bucket=&grain=&key=` (bucket ∈ all/no_project/ap_validation/no_budget_line/matched; `measure=all` = cross-measure KPI drill, adds a Source column); generic doc rows + hasProject/validation/onBudgetLine flags (db/14) |
 | GET | `/recon/budget` | budget-line detail behind the Budget & Fund KPI tiles — `?side=gl\|ppm`; ppm = PROJECTS_BUDGET project-lines, gl = GL_BALANCES per-combination (FULL-OUTER-JOINed to consumption); returns Budget/Consumed/Fund + `{total,consumedTotal,fundTotal,count}` (db/14) |
+| GET | `/coamap` | EBS mapping register (`?segment=&search=&active=`, cap 5000) + segments LOV (GL/db/16) |
+| POST | `/coamap` | create mapping row (GL_MANAGE_EBS_MAPPING / SYS_ADMIN; dup → 400) (GL/db/16) |
+| PUT | `/coamap/:id` | partial update / deactivate mapping row (GL/db/16) |
+| POST | `/ebs-balances` | bulk upsert EBS balance rows (≤500/req, per-row results, MERGE on 7 segments + period) (GL/db/16) |
+| GET | `/ebs-balances/summary` | per-year coverage (rows/periods/combos/PTD/mapped) + top unmapped EBS values (GL/db/16) |
+| POST | `/ebs-balances/register` | enqueue EBS_GL_BALANCE_REGISTER (year req) (GL/db/16) |
+| GET | `/ebs-balances/register/:id` | poll register run status (GL/db/16) |
+| GET | `/ebs-balances/register/:id/file` | download the register XLSX (GL/db/16) |
 | GET | `/boot` | dimensions catalog + combination/classified counts |
 | GET | `/class-types` | dimensions |
 | GET/POST | `/class-values` | list (by `?type=`) / create classification value |

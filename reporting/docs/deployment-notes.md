@@ -105,6 +105,18 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-29 (2) — EBS Account column in the butil register + NEW EBS_GL_BALANCE_REGISTER
+  (`reporting/db/25` re-seed + NEW `reporting/db/30`).** BUDGET_UTIL_REGISTER sheet 1 gains
+  **Ebs Account** right after Account Number — slash-joined `LISTAGG` over the active ACCOUNT rows
+  of `DCT_GL_EBS_MAP` (db/v2/110; 11 Fusion accounts consolidate 2 EBS accounts). NEW
+  **EBS_GL_BALANCE_REGISTER** (MULTI/PYTHON, XLSX-only): sheet 1 = every legacy EBS balance line
+  translated to Fusion dims via `DCT_EBS_BALANCE_MAPPED_V` (PTD + running YTD per combination;
+  params year req / period / account EBS-or-Fusion / chapter / search), sheet 2 = Unmapped
+  Coverage annex (EBS accounts + Future1 values with no active mapping). Own authored
+  param_spec_json (year LOV over the loaded balance years). Run from the GL Legacy (EBS) page via
+  the GL/db/16 bridge. Deployed via python-oracledb; E2E runs 179 (butil register — 1,373/1,373
+  lines carry the EBS account, 424521→421100) + 180 (EBS register on synthetic 2025 rows —
+  203276→213276 translated, unmapped values in the annex).
 - **2026-07-29 — Appropriation, DCT Program, Budget Combination + Account Number columns in the
   butil register (`reporting/db/25` re-seeded twice).** BUDGET_UTIL_REGISTER sheet 1 "Budget
   Utilization Lines" gains: **Budget Combination** in column A (the line's natural key

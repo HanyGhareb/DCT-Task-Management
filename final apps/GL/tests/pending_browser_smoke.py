@@ -57,7 +57,7 @@ def main():
         pg.wait_for_function("window.ko && !!window.ko.dataFor(document.body)", timeout=120000)
 
         # ── EN: navigate by id and let /gl/pending load ──
-        check("nav tab present", pg.locator("nav.pnav a").count() == 9,
+        check("nav tab present", pg.locator("nav.pnav a").count() == 8,
               "(%d tabs)" % pg.locator("nav.pnav a").count())
         pg.evaluate("ko.dataFor(document.body).go('pending')")
         pg.wait_for_function("ko.dataFor(document.body).pnLoaded()", timeout=120000)

@@ -101,6 +101,42 @@
     segFuture1:{en:'Future 1',ar:'مستقبلي ١'}, segFuture2:{en:'Future 2',ar:'مستقبلي ٢'},
     segIntercompany:{en:'Intercompany',ar:'بين الشركات'}, segProgram:{en:'Program',ar:'البرنامج'},
 
+    /* ── Legacy (EBS) — Fusion/EBS COA mapping + historical balances ── */
+    navLegacy:{en:'Legacy (EBS)',ar:'النظام السابق (EBS)'},
+    xmTitle:{en:'Legacy System (EBS) Mapping & Balances',ar:'ربط وأرصدة النظام السابق (EBS)'},
+    xmSub:{en:'Cross-map between the Fusion chart and the legacy EBS GL (used until 31-Dec-2025), and the EBS historical balances for prior-year reporting.',ar:'الربط بين دليل حسابات Fusion ودفتر الأستاذ في النظام السابق EBS (المستخدم حتى 31-12-2025)، وأرصدة EBS التاريخية لتقارير السنوات السابقة.'},
+    xmRegion:{en:'COA Account Mapping',ar:'ربط حسابات دليل الحسابات'},
+    ebRegion:{en:'Legacy Balances (EBS)',ar:'أرصدة النظام السابق (EBS)'},
+    xmAllSegments:{en:'All segments',ar:'كل البنود'},
+    xmStatus:{en:'Status',ar:'الحالة'}, xmInactive:{en:'Inactive',ar:'غير نشط'}, xmAll:{en:'All',ar:'الكل'},
+    xmAdd:{en:'+ Add mapping',ar:'+ إضافة ربط'},
+    xmRows:{en:'mapping rows',ar:'سطر ربط'},
+    xmRowHint:{en:'Click a row to edit it.',ar:'انقر على أي سطر لتعديله.'},
+    xmEbsValue:{en:'EBS value',ar:'قيمة EBS'}, xmFusionValue:{en:'Fusion value',ar:'قيمة Fusion'},
+    xmFusionDesc:{en:'Fusion description',ar:'وصف Fusion'},
+    xmParentChild:{en:'Parent / Child',ar:'أصل / فرع'}, xmInChart:{en:'In chart',ar:'في الدليل'},
+    xmUpdBy:{en:'Updated by',ar:'عدله'}, xmUpdAt:{en:'Updated at',ar:'تاريخ التعديل'},
+    xmEditTitle:{en:'Edit mapping',ar:'تعديل ربط'}, xmNewTitle:{en:'New mapping',ar:'ربط جديد'},
+    xmDrawerCtx:{en:'Each EBS value maps to exactly ONE Fusion value per segment. Deactivate a row instead of deleting it — history keeps translating.',ar:'كل قيمة EBS ترتبط بقيمة Fusion واحدة فقط لكل بند. عطّل السطر بدلاً من حذفه — يستمر السجل التاريخي في الترجمة.'},
+    xmReqFields:{en:'Segment, EBS value and Fusion value are required',ar:'البند وقيمة EBS وقيمة Fusion مطلوبة'},
+    xmUpload:{en:'Upload balances (Excel)',ar:'تحميل الأرصدة (إكسل)'},
+    xmTemplate:{en:'Download template',ar:'تنزيل النموذج'},
+    xmRegister:{en:'Generate Register (XLSX)',ar:'إنشاء السجل (XLSX)'},
+    xmPickYear:{en:'Year…',ar:'السنة…'},
+    ebYearL:{en:'Year',ar:'السنة'}, ebRowsL:{en:'Rows',ar:'الأسطر'},
+    ebPeriodsL:{en:'Periods',ar:'الفترات'}, ebCombosL:{en:'Combinations',ar:'التركيبات'},
+    ebPtdL:{en:'PTD total',ar:'إجمالي الفترة'},
+    ebAccMapL:{en:'Account mapped',ar:'حسابات مرتبطة'}, ebAprMapL:{en:'Future1 mapped',ar:'مستقبلي١ مرتبط'},
+    ebEmpty:{en:'No legacy balances loaded yet — upload the EBS balance file to begin.',ar:'لم يتم تحميل أرصدة النظام السابق بعد — حمّل ملف أرصدة EBS للبدء.'},
+    ebUnmappedAcc:{en:'Top unmapped EBS accounts',ar:'أهم حسابات EBS غير المرتبطة'},
+    ebUnmappedF1:{en:'Top unmapped Future1 values',ar:'أهم قيم مستقبلي١ غير المرتبطة'},
+    ebAbsAmt:{en:'|PTD| amount',ar:'قيمة |الفترة|'},
+    ebUpBad:{en:'Could not read the file — required columns: Entity, Cost Center, Account, Period, PTD (plus Budget, Activity, Future1, Future2).',ar:'تعذّرت قراءة الملف — الأعمدة المطلوبة: Entity, Cost Center, Account, Period, PTD (بالإضافة إلى Budget, Activity, Future1, Future2).'},
+    ebUpBusy:{en:'Uploading chunk {i}/{n}…',ar:'جارٍ تحميل الدفعة {i}/{n}…'},
+    ebUpDone:{en:'Upload complete: {ok} rows saved, {err} errors.',ar:'اكتمل التحميل: {ok} سطراً محفوظاً، {err} أخطاء.'},
+    ebRegQueued:{en:'Register queued — run #',ar:'تم إرسال السجل — تشغيل رقم '},
+    ebRegFailed:{en:'Register failed: ',ar:'فشل السجل: '},
+
     /* ── Actuals (Budget vs Actual) report ── */
     navActuals:{en:'General Ledger',ar:'دفتر الأستاذ العام'}, navDashboard:{en:'Dashboard',ar:'لوحة المعلومات'},
     acTitle:{en:'Budget vs Actual',ar:'الموازنة مقابل الفعلي'},
@@ -546,7 +582,8 @@
       { code: 'AR', name: 'Event P&L',        color: '#6C4AB6', url: '/AR/Jet/index.html' },
       { code: 'TM', name: 'Task Management',  color: '#0E8A8A', url: '/TM/Jet/index.html' },
       { code: 'AT', name: 'Analytics Loader', color: '#3A4FB0', url: '/ATD/Jet/index.html' },
-      { code: 'GL', name: 'General Ledger',   color: '#3F6F5F', url: '/GL/Jet/index.html' }
+      { code: 'GL', name: 'General Ledger',   color: '#3F6F5F', url: '/GL/Jet/index.html' },
+      { code: 'K2', name: 'Finance KPIs V2',  color: '#3F6F5F', url: '/KPI-V2/Jet/index.html' }
     ];
     self.switcherOpen = ko.observable(false);
     self.toggleSwitcher = function () { self.switcherOpen(!self.switcherOpen()); };
@@ -639,6 +676,10 @@
         // reuses the Budget Utilization filter set; run once on first open
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runPending(); });
         else if (!self.pnLoaded()) self.runPending();
+      }
+      else if (v === 'legacy') {
+        if (!self.xmLoaded()) self.runEbsMap();
+        if (!self.ebLoaded()) self.loadEbsSummary();
       }
       else if (v === 'recon') {
         // show the spinner for the WHOLE initial load (filters fetch happens
@@ -2652,6 +2693,276 @@
       var a = document.createElement('a'); a.href = URL.createObjectURL(blob);
       a.download = 'reconciliation_' + self.rcMeasureSel() + '_' + self.rcGrain() + '_' + self.rcYear() + '.csv';
       a.click();
+    };
+
+    /* ════ LEGACY (EBS) — Fusion/EBS COA mapping + historical balances ════
+       Mapping register on the SHARED <interactive-report>; admin edits via a
+       drawer; EBS balance Excel upload (SheetJS client parse + chunked POST,
+       the AR-rebill pattern) + per-year coverage from /ebs-balances/summary.
+       Writes are SYS_ADMIN while security enforcement is off (server-gated
+       GL_MANAGE_EBS_MAPPING). */
+    self.canManageEbs = self.isSysAdmin;
+    self.xmOpen = ko.observable(true);
+    self.ebOpen = ko.observable(true);
+    self.xmData = ko.observable(null);
+    self.xmLoading = ko.observable(false);
+    self.xmLoaded = ko.observable(false);
+    self.xmCount = ko.observable(0);
+    self.xmSeg = ko.observable('');
+    self.xmActive = ko.observable('Y');
+    self.xmSearch = ko.observable('');
+    self.xmSegments = ko.observableArray([]);
+    self.xmActiveOpts = ko.computed(function () {
+      return [{ v: 'Y', l: self.t('active') }, { v: 'N', l: self.t('xmInactive') },
+              { v: 'ALL', l: self.t('xmAll') }];
+    });
+    var xmRowMap = {};                        // segment|ebsValue -> full API row
+    function xmColumns() {
+      return [
+        { key: 'segment',     label: self.t('segment'),       type: 'text' },
+        { key: 'ebsValue',    label: self.t('xmEbsValue'),    type: 'text' },
+        { key: 'fusionValue', label: self.t('xmFusionValue'), type: 'text' },
+        { key: 'fusionDesc',  label: self.t('xmFusionDesc'),  type: 'text' },
+        { key: 'parentChild', label: self.t('xmParentChild'), type: 'text' },
+        { key: 'inChart',     label: self.t('xmInChart'),     type: 'text' },
+        { key: 'active',      label: self.t('active'),        type: 'text' },
+        { key: 'updatedBy',   label: self.t('xmUpdBy'),       type: 'text' },
+        { key: 'updatedAt',   label: self.t('xmUpdAt'),       type: 'text' }
+      ];
+    }
+    self.runEbsMap = function () {
+      self.xmLoading(true);
+      var p = { segment: self.xmSeg() || null, active: self.xmActive() || null,
+                search: self.xmSearch() || null };
+      return api('GET', '/coamap' + qs(p)).then(function (d) {
+        self.xmSegments(d.segments || []);
+        xmRowMap = {};
+        (d.items || []).forEach(function (r) { xmRowMap[r.segment + '|' + r.ebsValue] = r; });
+        self.xmCount(d.total || 0);
+        self.xmData({ columns: xmColumns(), items: d.items || [], total: d.total || 0,
+                      truncated: (d.total || 0) >= 5000, maxRows: 5000, section: 'ebsmap' });
+        self.xmLoaded(true); self.xmLoading(false);
+      }).catch(function (e) { self.xmLoading(false); fail(e); });
+    };
+    /* row click -> edit drawer (admins only); resolve the IR cell like the
+       pending page does — the shared grid keeps only declared columns */
+    self.xmGridClick = function (d, e) {
+      if (!self.canManageEbs) return true;
+      var td = (e.target && e.target.closest) ? e.target.closest('td') : null;
+      if (!td) return true;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (err) { return true; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row) return true;
+      var row = xmRowMap[ctx.$parent.row.segment + '|' + ctx.$parent.row.ebsValue];
+      if (row) { self.openXmEdit(row); return false; }
+      return true;
+    };
+    /* drawer state */
+    self.xmDrawer = ko.observable(false);
+    self.xmSaving = ko.observable(false);
+    self.xmId = ko.observable(null);
+    self.xmFSeg = ko.observable('ACCOUNT');
+    self.xmFEbs = ko.observable('');
+    self.xmFFusion = ko.observable('');
+    self.xmFDesc = ko.observable('');
+    self.xmFPc = ko.observable('CHILD');
+    self.xmFActive = ko.observable('Y');
+    self.openXmNew = function () {
+      self.xmId(null); self.xmFSeg(self.xmSeg() || 'ACCOUNT'); self.xmFEbs('');
+      self.xmFFusion(''); self.xmFDesc(''); self.xmFPc('CHILD'); self.xmFActive('Y');
+      self.xmDrawer(true);
+    };
+    self.openXmEdit = function (row) {
+      self.xmId(row.id); self.xmFSeg(row.segment); self.xmFEbs(row.ebsValue);
+      self.xmFFusion(row.fusionValue); self.xmFDesc(row.description || '');
+      self.xmFPc(row.parentChild || 'CHILD'); self.xmFActive(row.active || 'Y');
+      self.xmDrawer(true);
+    };
+    self.closeXmDrawer = function () { self.xmDrawer(false); };
+    self.saveXm = function () {
+      if (!self.xmFSeg() || !self.xmFEbs().trim() || !self.xmFFusion().trim()) {
+        toast(self.t('xmReqFields'), true); return;
+      }
+      self.xmSaving(true);
+      var done = function () { self.xmSaving(false); self.xmDrawer(false);
+                               toast(self.t('saved')); self.runEbsMap(); };
+      var oops = function (e) { self.xmSaving(false); toast(e.message, true); };
+      if (self.xmId()) {
+        api('PUT', '/coamap/' + self.xmId(), {
+          fusionValue: self.xmFFusion().trim(), description: self.xmFDesc() || '',
+          parentChild: self.xmFPc(), active: self.xmFActive()
+        }).then(done).catch(oops);
+      } else {
+        api('POST', '/coamap', {
+          segment: self.xmFSeg(), ebsValue: self.xmFEbs().trim(),
+          fusionValue: self.xmFFusion().trim(), description: self.xmFDesc() || '',
+          parentChild: self.xmFPc()
+        }).then(done).catch(oops);
+      }
+    };
+
+    /* ── legacy balances: coverage summary + Excel upload + register ── */
+    self.ebLoaded = ko.observable(false);
+    self.ebYears = ko.observableArray([]);
+    self.ebUnmappedAcc = ko.observableArray([]);
+    self.ebUnmappedF1 = ko.observableArray([]);
+    self.ebUploadBusy = ko.observable(false);
+    self.ebUploadNote = ko.observable('');
+    self.ebRegYear = ko.observable('');
+    self.ebRegBusy = ko.observable(false);
+    self.ebYearOpts = ko.computed(function () {
+      return self.ebYears().map(function (y) { return y.year; }).filter(Boolean);
+    });
+    self.loadEbsSummary = function () {
+      return api('GET', '/ebs-balances/summary').then(function (d) {
+        self.ebYears(d.years || []);
+        self.ebUnmappedAcc(d.unmappedAccounts || []);
+        self.ebUnmappedF1(d.unmappedFuture1 || []);
+        if (!self.ebRegYear() && (d.years || []).length) self.ebRegYear(d.years[0].year);
+        self.ebLoaded(true);
+      }).catch(fail);
+    };
+    self.ebPct = function (part, total) {
+      return total ? Math.round(100 * (part || 0) / total) + '%' : '—';
+    };
+    /* Excel upload: SheetJS client parse (requirejs 'xlsx' path is configured
+       in index.html) -> chunks of 500 -> POST /gl/ebs-balances */
+    var EB_HEADS = {
+      entity:     ['ENTITY', 'ENTITYCODE'],
+      costCenter: ['COSTCENTER', 'COSTCENTERCODE', 'CC'],
+      budgetCode: ['BUDGET', 'BUDGETCODE'],
+      account:    ['ACCOUNT', 'GLACCOUNT', 'ACCOUNTCODE'],
+      activity:   ['ACTIVITY', 'ACTIVITYCODE'],
+      future1:    ['FUTURE1'],
+      future2:    ['FUTURE2'],
+      period:     ['PERIOD', 'ACCOUNTINGPERIOD', 'PERIODNAME'],
+      ptd:        ['PTD', 'PTDAMOUNT', 'AMOUNT']
+    };
+    function ebMapHeaders(headerRow) {
+      var norm = headerRow.map(function (h) {
+        return String(h == null ? '' : h).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      });
+      var idx = {};
+      Object.keys(EB_HEADS).forEach(function (k) {
+        for (var i = 0; i < norm.length; i++) {
+          if (EB_HEADS[k].indexOf(norm[i]) >= 0) { idx[k] = i; return; }
+        }
+      });
+      var req = ['entity', 'costCenter', 'account', 'period', 'ptd'];
+      for (var j = 0; j < req.length; j++) { if (idx[req[j]] == null) return null; }
+      return idx;
+    }
+    self.uploadEbs = function () { document.getElementById('ebFile').click(); };
+    self.ebFileChosen = function (d, e) {
+      var f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return true;
+      self.ebUploadBusy(true); self.ebUploadNote('');
+      window.require(['xlsx'], function (X) {
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            var wb = X.read(new Uint8Array(rd.result), { type: 'array' });
+            var ws = wb.Sheets[wb.SheetNames[0]];
+            var aoa = X.utils.sheet_to_json(ws, { header: 1, raw: true, defval: null });
+            var idx = aoa.length ? ebMapHeaders(aoa[0]) : null;
+            if (!idx) { self.ebUploadBusy(false); toast(self.t('ebUpBad'), true); return; }
+            var rows = [];
+            for (var i = 1; i < aoa.length; i++) {
+              var r = aoa[i];
+              if (!r || r[idx.account] == null || r[idx.period] == null) continue;
+              rows.push({
+                entity:     String(r[idx.entity] == null ? '' : r[idx.entity]).trim(),
+                costCenter: String(r[idx.costCenter] == null ? '' : r[idx.costCenter]).trim(),
+                budgetCode: idx.budgetCode != null && r[idx.budgetCode] != null ? String(r[idx.budgetCode]).trim() : '0',
+                account:    String(r[idx.account]).trim(),
+                activity:   idx.activity != null && r[idx.activity] != null ? String(r[idx.activity]).trim() : '0',
+                future1:    idx.future1 != null && r[idx.future1] != null ? String(r[idx.future1]).trim() : '0',
+                future2:    idx.future2 != null && r[idx.future2] != null ? String(r[idx.future2]).trim() : '0',
+                period:     String(r[idx.period]).trim(),
+                ptd:        Number(r[idx.ptd]) || 0
+              });
+            }
+            if (!rows.length) { self.ebUploadBusy(false); toast(self.t('ebUpBad'), true); return; }
+            var chunks = [];
+            for (var c = 0; c < rows.length; c += 500) chunks.push(rows.slice(c, c + 500));
+            var ok = 0, err = 0, firstErr = '';
+            (function send(i) {
+              if (i >= chunks.length) {
+                self.ebUploadBusy(false);
+                var msg = self.t('ebUpDone').replace('{ok}', ok).replace('{err}', err);
+                self.ebUploadNote(msg + (firstErr ? ' — ' + firstErr : ''));
+                toast(msg, err > 0);
+                self.loadEbsSummary();
+                return;
+              }
+              self.ebUploadNote(self.t('ebUpBusy').replace('{i}', i + 1).replace('{n}', chunks.length));
+              api('POST', '/ebs-balances', { sourceFile: f.name, rows: chunks[i] })
+                .then(function (res) {
+                  ok += res.ok || 0; err += res.errors || 0;
+                  if (!firstErr && res.results) {
+                    var bad = res.results.filter(function (x) { return x.status === 'ERROR'; })[0];
+                    if (bad) firstErr = 'row ' + bad.row + ': ' + (bad.error || '');
+                  }
+                  send(i + 1);
+                })
+                .catch(function (e2) { self.ebUploadBusy(false); toast(e2.message, true); });
+            })(0);
+          } catch (ex) { self.ebUploadBusy(false); toast(self.t('ebUpBad'), true); }
+        };
+        rd.readAsArrayBuffer(f);
+      });
+      return true;
+    };
+    self.ebTemplate = function () {
+      window.require(['xlsx'], function (X) {
+        var wb = X.utils.book_new();
+        var ws = X.utils.aoa_to_sheet([
+          ['ENTITY', 'COST_CENTER', 'BUDGET_CODE', 'ACCOUNT', 'ACTIVITY', 'FUTURE1', 'FUTURE2', 'PERIOD', 'PTD_AMOUNT'],
+          ['01', '9110000', '0', '520105', '0', '110000', '0', 'JAN-25', 12345.67]
+        ]);
+        X.utils.book_append_sheet(wb, ws, 'EBS Balances');
+        X.writeFile(wb, 'EBS_Balances_Template.xlsx');
+      });
+    };
+    /* prior-year register (EBS_GL_BALANCE_REGISTER via /gl/ebs-balances/register) */
+    function ebRegDownload(runId) {
+      return fetch(API + '/ebs-balances/register/' + runId + '/file',
+                   { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) {
+          if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+          return r.blob();
+        })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a');
+          a.href = u; a.download = 'EBS_GL_Balance_Register_' + self.ebRegYear() + '.xlsx';
+          a.click(); URL.revokeObjectURL(u);
+        });
+    }
+    self.runEbsRegister = function () {
+      if (self.ebRegBusy() || !self.ebRegYear()) return;
+      self.ebRegBusy(true);
+      api('POST', '/ebs-balances/register', { year: Number(self.ebRegYear()) })
+        .then(function (d) {
+          var runId = d.runId;
+          toast(self.t('ebRegQueued') + runId);
+          var tries = 0;
+          (function poll() {
+            if (++tries > 60) { self.ebRegBusy(false); toast(self.t('ebRegFailed') + 'timeout', true); return; }
+            setTimeout(function () {
+              api('GET', '/ebs-balances/register/' + runId).then(function (s) {
+                if (s.status === 'SUCCESS' && s.hasFile) {
+                  ebRegDownload(runId)
+                    .then(function () { self.ebRegBusy(false); toast(self.t('pnXlsxReady')); })
+                    .catch(function (e) { self.ebRegBusy(false); toast(e.message, true); });
+                } else if (s.status === 'FAILED') {
+                  self.ebRegBusy(false); toast(self.t('ebRegFailed') + (s.error || ''), true);
+                } else { poll(); }
+              }).catch(function () { poll(); });
+            }, 4000);
+          })();
+        }).catch(function (e) { self.ebRegBusy(false); fail(e); });
     };
 
     /* ── init ── */
