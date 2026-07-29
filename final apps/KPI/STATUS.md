@@ -14,6 +14,7 @@ Identity: App **213**, key `kpi`, code `KP`, module_code `KPI_MGMT`, ORDS `/ords
 | ORDS (db/06) | ✅ Deployed 2026-07-28 | kpi.rest, 26 handlers; API tests 56/56; db/v2/50 gate has `kpi` |
 | Jobs (db/07) | ✅ Deployed 2026-07-28 | period + reminder jobs SCHEDULED; 2026/2027 calendars live |
 | JET SPA | ⚠️ v1.2.0 FAILED end-user review 2026-07-28 | 9 views live but IA is framework-shaped; **UX redesign planned — see KPI_REDESIGN_PLAN.md** (task-first Home, guided wizard, plain-language scorecard; server side unchanged) |
+| UX redesign Phase 0 | 🔄 In progress 2026-07-28 | Discovery baseline, decision register, assignment/due-date/evidence matrices, and draft bilingual glossary created in `docs/KPI_PHASE0_DISCOVERY.md` and `docs/KPI_GLOSSARY.md`; business workshops/sign-off pending |
 | Report | ✅ Deployed 2026-07-28 | KPI_BRIEFING_BOOK (reporting/db/29) + template; run SUCCESS, 8-page PDF |
 | Docs / UAT | ✅ 2026-07-28 | deployment-notes, functions_list; UAT round 1 = 18/18 PASS |
 | APEX pages | ⬜ N/A for now | JET-first module |
@@ -23,6 +24,12 @@ line-manager resolver vs fixed role; KPI_FIN_DIRECTOR holder (ADMIN is the place
 revenue account scope for the KPI 1 auto-suggestion; inter-KPI scorecard weights
 (defaulted 25% each); KPI 4 cadence; **submission due dates per period**; expected-evidence
 checklist per KPI; named preparers/approvers per KPI.
+
+Phase 0 technical note: existing UAT round 1 is a functional automated baseline, not end-user
+usability acceptance. Its KPI-18 result records `ltr` while marking the Arabic RTL case PASS;
+the bilingual browser baseline must be rerun and corrected before Phase 0 sign-off. Live reruns
+also require KPI admin/user/final-approver session tokens, which are not present in the current
+workspace session.
 
 ## Deployment log
 

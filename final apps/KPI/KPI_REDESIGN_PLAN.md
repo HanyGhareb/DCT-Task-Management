@@ -1,6 +1,7 @@
 # Finance KPIs (App 213) — UX Redesign Plan
 
-**Status: DRAFT — awaiting approval. No build starts before Phase 1 sign-off.**
+**Status: SUPERSEDED 2026-07-28 by `KPI_IMPLEMENTATION_PLAN.md` — kept for the
+root-cause analysis (§1) and design principles (§2) only. Do not execute from this file.**
 Date: 2026-07-28 · Trigger: end-user review of v1.2.0 **failed** ("not clear, not simple").
 
 ---

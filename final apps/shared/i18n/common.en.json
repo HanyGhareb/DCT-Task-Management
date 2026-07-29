@@ -179,6 +179,8 @@
   "mod.hr.desc": "Employees, positions & documents",
   "mod.kpi": "Finance KPIs",
   "mod.kpi.desc": "DOF financial KPIs: results, approvals & scorecard",
+  "mod.kpiv2": "Finance KPIs V2",
+  "mod.kpiv2.desc": "Finance KPIs — new experience (redesign preview)",
   "mod.pc": "Petty Cash",
   "mod.pc.desc": "Floats, reimbursements & clearing",
   "mod.tm": "Team Management",
