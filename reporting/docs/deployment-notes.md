@@ -105,6 +105,13 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-29 — Appropriation + DCT Program columns in the butil register (`reporting/db/25` re-seeded).**
+  BUDGET_UTIL_REGISTER sheet 1 "Budget Utilization Lines" gains 4 columns after Chapter:
+  **Appropriation Code / Appropriation Name / Dct Program Code / Dct Program Name**. The butil view
+  ships `appropriation`/`program` as combined `'CODE - Description'` strings, so the section SQL
+  splits on the FIRST `' - '` (INSTR/SUBSTR; description absent → code only, name NULL) — no view
+  change. Deployed via python-oracledb from the dev VM; E2E run 174 (year=2026, period=03-2026,
+  DCT OPEX): 22-col sheet, e.g. `200104 / FA104-Opex Expense / 070101 / Corporate Office`.
 - **2026-07-21 — Annual + YTD Budget in the butil reports.** Follow-through of the GL v1.37.0
   period-aware budget: **BUDGET_UTIL_BOOK** overview + utilization-by-sector sections now also
   select `SUM(budget_annual)` (the view's `budget` stays the period-aware YTD figure the book's
