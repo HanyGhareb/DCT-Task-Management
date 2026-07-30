@@ -87,6 +87,14 @@ tsk_seg AS (
   JOIN proj pj ON pj.project_id = t.project_id
   GROUP BY TO_CHAR(pj.project_number), t.task_number
 ),
+proj_seg AS (
+  SELECT project_key,
+         MAX(cost_center_code)     AS cost_center_code,
+         MAX(appropriation_code)   AS appropriation_code,
+         MAX(program_code)         AS program_code,
+         MAX(entity_specific_code) AS entity_specific_code
+  FROM tsk_seg GROUP BY project_key
+),
 cc_dim AS (
   SELECT cost_center_code, MAX(cost_center_desc) AS cost_center_desc,
          MAX(sector_name) AS sector_name
@@ -321,8 +329,11 @@ SELECT
   MAX(pj.project_name)      AS project_name,
   MAX(pj.business_unit)     AS business_unit,
   k.task_key                AS task_number,
-  COALESCE(MAX(CASE WHEN coa.account_code IS NOT NULL THEN coa.account_code || ' - ' || coa.account_desc END),
-           MAX(CASE WHEN ac.account_code  IS NOT NULL THEN ac.account_code  || ' - ' || ac.account_desc  END)) AS gl_account,
+  -- GL account = the expenditure type's 6-digit prefix (user rule 2026-07-30;
+  -- the posted-transaction account is display fallback only)
+  COALESCE(MAX(CASE WHEN ac.account_code  IS NOT NULL THEN ac.account_code  || ' - ' || ac.account_desc  END),
+           REGEXP_SUBSTR(k.expenditure_type,'^\d{6}'),
+           MAX(CASE WHEN coa.account_code IS NOT NULL THEN coa.account_code || ' - ' || coa.account_desc END)) AS gl_account,
   COALESCE(MAX(CASE WHEN tcc.appropriation_code IS NOT NULL
                     THEN tcc.appropriation_code ||
                          CASE WHEN ad.appropriation_desc IS NOT NULL THEN ' - ' || ad.appropriation_desc END END),
@@ -352,23 +363,23 @@ SELECT
   MAX(NVL(b.override_ytd,0))    AS override_budget,
   MAX(NVL(b.override_cnt,0))    AS override_lines,
   -- BUDGET_COMBINATION: the line's full 10-segment canonical GL combination
-  -- (Fusion order entity.program.cc.bg.account.es.appr.ic.f1.f2). Built the
-  -- way Fusion derives project charge accounts -- entity 451 + task PROGRAM/
-  -- COST_CENTER/ENTITY_SPECIFIC/APPROPRIATION + budget group 1 + account
-  -- (COA row txns first, else the etype numeric prefix) + constant tail
-  -- 000.000000.000000 (validated 97.7% of constructible lines exist verbatim
-  -- in dct_gl_coa_snap). Falls back to an actual posted combination
-  -- (MAX cc_string) when the task segments are missing.
+  -- (Fusion order entity.program.cc.bg.account.es.appr.ic.f1.f2). User rules
+  -- 2026-07-30: ACCOUNT = the expenditure type's 6-digit prefix ALWAYS (never
+  -- the posted-transaction account); PROGRAM/CC/ES/APPROPRIATION come from
+  -- the task, and a task missing one takes it from PROJECT level (the rollup
+  -- of the project's tasks, appropriation also from the project attribute).
+  -- Entity 451 + budget group 1 + constant tail 000.000000.000000. Falls back
+  -- to an actual posted combination (MAX cc_string) only when neither the
+  -- task nor the project yields a cost centre.
   COALESCE(
-    CASE WHEN MAX(tcc.cost_center_code) IS NOT NULL
-          AND COALESCE(MAX(coa.account_code), MAX(ac.account_code),
-                       REGEXP_SUBSTR(k.expenditure_type,'^\d{6}')) IS NOT NULL
-         THEN '451.' || NVL(MAX(tcc.program_code),'000000') || '.' ||
-              MAX(tcc.cost_center_code) || '.1.' ||
-              COALESCE(MAX(coa.account_code), MAX(ac.account_code),
-                       REGEXP_SUBSTR(k.expenditure_type,'^\d{6}')) || '.' ||
-              NVL(MAX(tcc.entity_specific_code),'0000000') || '.' ||
-              NVL(MAX(tcc.appropriation_code),'000000') || '.000.000000.000000'
+    CASE WHEN COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code)) IS NOT NULL
+          AND REGEXP_SUBSTR(k.expenditure_type,'^\d{6}') IS NOT NULL
+         THEN '451.' || COALESCE(MAX(tcc.program_code), MAX(pseg.program_code), '000000') || '.' ||
+              COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code)) || '.1.' ||
+              REGEXP_SUBSTR(k.expenditure_type,'^\d{6}') || '.' ||
+              COALESCE(MAX(tcc.entity_specific_code), MAX(pseg.entity_specific_code), '0000000') || '.' ||
+              COALESCE(MAX(tcc.appropriation_code), MAX(pseg.appropriation_code),
+                       LPAD(MAX(pj.appropriation),6,'0'), '000000') || '.000.000000.000000'
     END,
     MAX(k.cc_string)) AS budget_combination
 FROM keys k
@@ -380,6 +391,7 @@ LEFT JOIN pb b  ON b.budget_year = k.budget_year
 LEFT JOIN proj pj ON TO_CHAR(pj.project_number) = k.project_key
 LEFT JOIN tsk_org torg ON torg.task_number = k.task_key
 LEFT JOIN tsk_seg tcc ON tcc.project_key = k.project_key AND tcc.task_key = k.task_key
+LEFT JOIN proj_seg pseg ON pseg.project_key = k.project_key
 LEFT JOIN cc_dim tcd ON tcd.cost_center_code = tcc.cost_center_code
 LEFT JOIN sector_map sm ON sm.cost_center_code = tcc.cost_center_code
 LEFT JOIN approp_dim ad ON ad.appropriation_code = tcc.appropriation_code
