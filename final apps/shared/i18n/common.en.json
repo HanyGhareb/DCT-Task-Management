@@ -411,5 +411,10 @@
   "si.col.privName": "Privilege Name",
   "si.col.grantedTo": "Granted To",
   "si.col.notes": "Notes",
-  "wf.dz.cascadeHint": "Levels + their order come from Role Assignments → Level Priority; the first level with an assignee wins."
+  "wf.dz.cascadeHint": "Levels + their order come from Role Assignments → Level Priority; the first level with an assignee wins.",
+  "wf.dz.testBadge": "TEST MODE",
+  "wf.dz.testEnable": "Enable test mode",
+  "wf.dz.testDisable": "Disable test mode",
+  "wf.dz.testOn": "Test mode ON — all notifications of this process now go to the test account (WF_TEST_EMAIL). Task routing is unchanged.",
+  "wf.dz.testOff": "Test mode OFF — notifications go to the real approvers again."
 }

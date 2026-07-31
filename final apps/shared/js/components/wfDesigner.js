@@ -152,8 +152,25 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
 
     self.selectProcess = function (p) {
       self.selected(p); self.err(null);
+      self.testMode(p.testMode === 'Y');
       // load the PUBLISHED version read-only; "Edit chain" reveals/creates the draft
       return self.loadDesign(p.versionId);
+    };
+
+    /* ── testing mode (db/v2/114) ──────────────────────────────────────────
+       While ON, every notification of this process goes to the WF_TEST_EMAIL
+       account instead of the real approvers. Routing is untouched. */
+    self.testMode = ko.observable(false);
+    self.toggleTestMode = function () {
+      var p = self.selected(); if (!p) return;
+      var on = !self.testMode();
+      self.busy(true); self.err(null);
+      wf.setTestMode(p.processCode, on).then(function () {
+        p.testMode = on ? 'Y' : 'N';
+        self.testMode(on);
+        self.busy(false);
+        self._flash(i18n.t(on ? 'wf.dz.testOn' : 'wf.dz.testOff'));
+      }).catch(function (e) { self.busy(false); self.err(self._msg(e)); });
     };
 
     self.isSelected = function (p) {

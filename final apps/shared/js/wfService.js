@@ -281,6 +281,17 @@ define(['shared/api'], function (api) {
      */
     importMatrix: function (body) { return api.post('/assign/import', body, WF); },
 
+    /**
+     * Testing mode for ONE process: while on, every notification of that
+     * process is redirected to the WF_TEST_EMAIL account (subject tagged
+     * [TEST]); task routing is untouched. The platform-wide switch is the
+     * WF_TEST_MODE system setting.
+     */
+    setTestMode: function (processCode, on) {
+      return api.put('/processes/' + encodeURIComponent(processCode) + '/test-mode',
+                     { testMode: on ? 'Y' : 'N' }, WF);
+    },
+
     /** Authed CSV download of the audit trail (object URL). */
     assignAuditCsv: function (f) {
       f = f || {};

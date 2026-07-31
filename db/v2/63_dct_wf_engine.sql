@@ -577,6 +577,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
         v_w3    VARCHAR2(400);
         v_w4    VARCHAR2(400);
         v_warn  VARCHAR2(400);
+        v_recip NUMBER := p_user_id;   -- may be redirected by test mode
+        v_tmode VARCHAR2(1) := 'N';
+        v_temail VARCHAR2(200);
+        v_tuid  NUMBER;
+        v_orig  VARCHAR2(200);
     BEGIN
         IF p_user_id IS NULL THEN RETURN; END IF;
 
@@ -584,6 +589,44 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
           INTO v_facts, v_mod, v_ref
           FROM prod.dct_wf_instance i
          WHERE i.instance_id = p_instance_id;
+
+        -- TEST MODE (db/v2/114): platform switch WF_TEST_MODE, or the
+        -- process's own test_mode flag. Every notification is redirected to
+        -- the account whose email = WF_TEST_EMAIL, tagged [TEST] and naming
+        -- the original recipient, so real approvers are never disturbed
+        -- while a chain is under test. Task ROUTING is deliberately
+        -- untouched -- the resolution being tested must stay real.
+        BEGIN
+            SELECT NVL(MAX(setting_value), 'N') INTO v_tmode
+              FROM prod.dct_system_settings WHERE setting_key = 'WF_TEST_MODE';
+            IF v_tmode <> 'Y' AND p_version_id IS NOT NULL THEN
+                SELECT NVL(MAX(p.test_mode), 'N') INTO v_tmode
+                  FROM prod.dct_wf_process_version v
+                  JOIN prod.dct_wf_process p ON p.process_id = v.process_id
+                 WHERE v.version_id = p_version_id;
+            END IF;
+            IF v_tmode = 'Y' THEN
+                SELECT NVL(MAX(setting_value), 'haghareb@dctabudhabi.ae')
+                  INTO v_temail
+                  FROM prod.dct_system_settings WHERE setting_key = 'WF_TEST_EMAIL';
+                SELECT MIN(user_id) INTO v_tuid FROM prod.dct_users
+                 WHERE LOWER(email) = LOWER(TRIM(v_temail)) AND is_active = 'Y';
+                IF v_tuid IS NOT NULL AND v_tuid <> p_user_id THEN
+                    BEGIN
+                        SELECT display_name INTO v_orig
+                          FROM prod.dct_users WHERE user_id = p_user_id;
+                    EXCEPTION WHEN OTHERS THEN
+                        v_orig := 'user ' || p_user_id;
+                    END;
+                    v_recip := v_tuid;
+                END IF;
+                -- test email matches NO active user: send normally and say
+                -- so in the log -- silently dropping notifications is the
+                -- worst possible failure mode
+            END IF;
+        EXCEPTION WHEN OTHERS THEN
+            v_tmode := 'N';
+        END;
 
         -- most specific template wins: STEP, then PROCESS, then GLOBAL
         BEGIN
@@ -621,8 +664,21 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
             v_warn := COALESCE(v_w1, v_w2, v_w3, v_w4);
         END IF;
 
+        IF v_recip <> p_user_id THEN
+            -- redirected: tag the subject and name who SHOULD have gotten it
+            v_s_en := '[TEST] ' || v_s_en || ' (for: ' || v_orig || ')';
+            v_s_ar := '[TEST] ' || v_s_ar || ' (for: ' || v_orig || ')';
+            v_warn := SUBSTR('test-mode: redirected from user ' || p_user_id
+                             || CASE WHEN v_warn IS NOT NULL
+                                     THEN '; ' || v_warn END, 1, 400);
+        ELSIF v_tmode = 'Y' AND v_tuid IS NULL THEN
+            v_warn := SUBSTR('test-mode ON but WF_TEST_EMAIL matches no active user'
+                             || CASE WHEN v_warn IS NOT NULL
+                                     THEN '; ' || v_warn END, 1, 400);
+        END IF;
+
         prod.dct_notify.send(
-            p_recipient_user_id => p_user_id,
+            p_recipient_user_id => v_recip,
             p_notification_type => p_event_code,
             p_title_en          => SUBSTR(v_s_en, 1, 400),
             p_body_en           => SUBSTR(v_b_en, 1, 2000),
@@ -634,7 +690,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
         INSERT INTO prod.dct_wf_notify_log
             (instance_id, task_id, template_id, event_code, channel, user_id,
              status, warn_msg)
-        VALUES (p_instance_id, p_task_id, v_tid, p_event_code, 'INAPP', p_user_id,
+        VALUES (p_instance_id, p_task_id, v_tid, p_event_code, 'INAPP', v_recip,
                 CASE WHEN v_warn IS NULL THEN 'SENT' ELSE 'WARN' END, v_warn);
     EXCEPTION WHEN OTHERS THEN
         -- a notification failure must never roll back an approval.

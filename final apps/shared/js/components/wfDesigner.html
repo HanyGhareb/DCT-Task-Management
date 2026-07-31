@@ -44,7 +44,10 @@
             <td data-bind="text: nameEn"></td>
             <td><span class="badge" data-bind="text: $data.publishedVersion ? ('v' + $data.publishedVersion) : $root.t('wf.dz.noVersion')"></span></td>
             <td><span class="badge" data-bind="text: routedTo,
-                      css: routedTo === 'WF' ? 'wf-badge-sys' : ''"></span></td>
+                      css: routedTo === 'WF' ? 'wf-badge-sys' : ''"></span>
+                <!-- ko if: $data.testMode === 'Y' -->
+                <span class="badge badge--warning" data-bind="text: $root.t('wf.dz.testBadge')"></span>
+                <!-- /ko --></td>
             <td data-bind="text: steps"></td>
           </tr>
         </tbody>
@@ -67,6 +70,14 @@
         <!-- /ko -->
       </div>
       <div class="region-actions">
+        <!-- ko if: $component.testMode() -->
+        <span class="badge badge--warning" data-bind="text: $root.t('wf.dz.testBadge')"
+              style="align-self:center"></span>
+        <!-- /ko -->
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $component.toggleTestMode, disable: busy(),
+                           text: $component.testMode() ? $root.t('wf.dz.testDisable')
+                                                       : $root.t('wf.dz.testEnable')"></button>
         <button type="button" class="btn btn-secondary btn-sm"
                 data-bind="click: $component.openSim, text: $root.t('wf.dz.simulate')"></button>
         <!-- ko ifnot: editable() -->
