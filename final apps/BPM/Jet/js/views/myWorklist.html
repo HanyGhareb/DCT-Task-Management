@@ -1,0 +1,30 @@
+<!-- Admin — My Worklist. The ENTIRE page is two shared components: the platform
+     already unified the data server-side, so there is nothing here to assemble. -->
+<div class="page-wrap">
+
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: $root.t('wf.worklist')"></h1>
+      <p class="page-sub" data-bind="text: $root.t('wf.worklistSub')"></p>
+    </div>
+  </div>
+
+  <div class="card">
+    <wf-worklist params="onOpen: $vm.openRequest"></wf-worklist>
+  </div>
+
+  <!-- ko if: selected() -->
+  <div class="card wf-detail">
+    <div class="section-heading-row">
+      <h2 class="section-heading"
+          data-bind="text: selected().requestRef + ' — ' + selected().processName"></h2>
+      <div class="region-actions">
+        <button type="button" class="btn btn-secondary btn-sm"
+                data-bind="click: $vm.closeRequest, text: $root.t('common.close')"></button>
+      </div>
+    </div>
+    <wf-timeline params="module: selectedModule, record: selectedRecord,
+                         instanceId: selectedInstance, showHistory: true"></wf-timeline>
+  </div>
+  <!-- /ko -->
+</div>

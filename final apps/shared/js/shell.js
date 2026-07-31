@@ -40,7 +40,9 @@ define([], function () {
     { key: 'kpi',   code: 'KP', app: '213', color: '#8C6D1F', url: '/KPI/Jet/index.html',
       mc: 'KPI_MGMT',     nameKey: 'mod.kpi',   descKey: 'mod.kpi.desc' },
     { key: 'kpiv2', code: 'K2', app: '213', color: '#3F6F5F', url: '/KPI-V2/Jet/index.html',
-      mc: 'KPI_MGMT',     nameKey: 'mod.kpiv2', descKey: 'mod.kpiv2.desc' }
+      mc: 'KPI_MGMT',     nameKey: 'mod.kpiv2', descKey: 'mod.kpiv2.desc' },
+    { key: 'bpm',   code: 'BP', app: '214', color: '#7D3243', url: '/BPM/Jet/index.html',
+      mc: 'BPM',          nameKey: 'mod.bpm',   descKey: 'mod.bpm.desc' }
   ];
 
   function byKey(key) {

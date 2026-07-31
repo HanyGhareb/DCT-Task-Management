@@ -19,6 +19,7 @@ from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 JET = os.path.join(HERE, '..', 'Jet')
+ADMIN_JET = os.path.join(HERE, '..', '..', 'Admin', 'Jet')  # creds + shared login page
 PORT = 8094
 TAG = 'browser-smoke-ra'
 PASS = FAIL = 0
@@ -33,7 +34,7 @@ def bad(m):
 
 
 def creds():
-    src = open(os.path.join(JET, 'js', 'services', 'authService.js'), encoding='utf-8').read()
+    src = open(os.path.join(ADMIN_JET, 'js', 'services', 'authService.js'), encoding='utf-8').read()
     return re.findall(r"username:\s*'([^']+)',\s*password:\s*'([^']+)'", src)[0]
 
 
@@ -72,9 +73,15 @@ try:
         pg.on('dialog', lambda d: d.accept())
 
         pg.goto(f'http://localhost:{PORT}/index.html', wait_until='networkidle')
+        pg.wait_for_selector('input[type=\"text\"]', timeout=30000)  # redirect to Admin login
         pg.fill('input[type="text"]', user)
         pg.fill('input[type="password"]', pwd)
         pg.click('.btn-primary')
+        # wait for the REAL login signal: _jetApp exists on the Admin login
+        # page pre-login, so only the stored session proves the POST landed
+        pg.wait_for_function("() => !!localStorage.getItem('ifinance_jet_session')", timeout=30000)
+        # module app: session established on Admin -- return to the BPM root
+        pg.goto(f'http://localhost:{PORT}/index.html', wait_until='networkidle')
         pg.wait_for_function('() => !!window._jetApp', timeout=30000)
         ok(f'logged in as {user}')
 
@@ -112,9 +119,20 @@ try:
         # ---- listed ACTIVE ----
         pg.fill('.view-toolbar input.search-box', first_val)
         click_js(pg, pg.locator('.view-toolbar button', has_text='Search'))
-        pg.wait_for_timeout(1500)
-        row = pg.locator('tbody tr', has_text=first_val).first
-        ok('row listed with status ACTIVE') if 'ACTIVE' in row.inner_text() else bad('row missing/not active')
+        # prior runs leave ENDED history rows on the same object -- find the OPEN
+        # row, not merely the first row that mentions the object key. A start of
+        # "today" computes FUTURE between 00:00-04:00 Dubai (storage is UTC and
+        # SYSDATE is still yesterday), so both open statuses are correct here.
+        row = pg.locator('tbody tr', has_text=first_val) \
+                .filter(has_text=re.compile('ACTIVE|FUTURE')).first
+        status = ''
+        for _ in range(10):
+            if row.count():
+                status = 'FUTURE' if 'FUTURE' in row.inner_text() else 'ACTIVE'
+                break
+            pg.wait_for_timeout(700)
+        ok(f'row listed with open status ({status})') if status else \
+            bad('no open (ACTIVE/FUTURE) row for ' + str(first_val))
 
         # ---- timeline ----
         click_js(pg, row.locator('button', has_text='Timeline'))

@@ -1,0 +1,35 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: $root.t('notif.title')"></h1>
+      <p class="page-sub" data-bind="text: $root.t('notif.sub')"></p>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm" data-bind="click: $vm.markAll, enable: unread() > 0,
+              text: $root.t('notif.markAll')"></button>
+    </div>
+  </div>
+
+  <div class="card">
+    <!-- ko if: loading() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: notifs().length === 0 -->
+    <div class="empty-state">
+      <div class="empty-state-icon">&#128276;</div>
+      <p data-bind="text: $root.t('notif.empty')"></p>
+    </div>
+    <!-- /ko -->
+    <!-- ko foreach: notifs -->
+    <div class="notif-row" data-bind="css: { 'notif-row--unread': $data.isRead === 'N' },
+                                     click: function(){ if ($data.isRead === 'N') $vm.markRead($data); }">
+      <span data-bind="attr: { class: $vm.typeClass($data.type) }, text: $data.type"></span>
+      <div class="notif-body">
+        <b data-bind="text: $vm.lang() === 'ar' && $data.titleAr ? $data.titleAr : $data.titleEn"></b>
+        <div data-bind="text: $vm.lang() === 'ar' && $data.bodyAr ? $data.bodyAr : ($data.bodyEn || '')"></div>
+        <small data-bind="text: $data.createdAt"></small>
+      </div>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+</div>

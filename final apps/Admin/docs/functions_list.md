@@ -32,10 +32,6 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
 - `saveProfile` · `changePassword` · `pickPhoto` / `photoSelected` (profile photo upload).
 - `createDelegation` / `cancelDelegation` / `openDelModal` · `isMyOutgoing` · `delBadge`.
 
-**My Delegations** (`myDelegations`) — the self-service **vacation rule**, visible to EVERY user (Workspace nav). Always scoped to the caller (`GET /dct/delegations/?mine=Y`; the server 403s creating for anyone else without SYS_ADMIN).
-- `openNew` / `saveEdit` — create a delegation in a shared `<edit-drawer>` (delegate + scope All-roles/One-module + date window + reason).
-- `cancel` (own ACTIVE outgoing only) · `outgoing` / `incoming` split (I delegated vs delegated to me) · `scopeLabel` / `statusBadge`.
-
 ## 2. User Management
 
 **Users** (`users`) — paginated, searchable user directory (server pagination).
@@ -88,31 +84,18 @@ Module: **Admin / Identity Provider** · Brand: platform default · ORDS base: `
   per-module role grant set controlling App-Launcher (module switcher) visibility;
   empty set = visible to everyone, SYS_ADMIN always sees every app.
 
-## 5. Approvals & Delegation
+## 5. Approvals & Delegation — MOVED to Fusion BPM (App 214), 2026-08-01
 
-**Approval Templates** (`approvalTemplates`) — multi-step approval workflow designer with draft lifecycle.
-- `viewTemplate` · `saveSteps` / `moveStep` · `activate` / `toggleActive` · `cloneDraft`.
-- Versioning: `openHistory` / `closeHistory` / `hasHistory` / `familyArchives` / `restoreVersion` / `diffText` · `statusOf` / `statusBadge` / `closeDetail`.
-
-**Approval Monitor** (`approvalMonitor`) — live view of in-flight approval instances.
-- `reload` · `getStepArray` / `stepState` / `getProgressPct`.
-
-**Pending Approvals** (`pendingApprovals`) — unified approvals inbox (all modules).
-- `startApprove` / `startReject` / `startAction` · `confirmAction` / `cancelAction` · `getStepArray` / `stepState`.
-
-**Delegations** (`delegations`) — admin oversight view of everyone's approval delegations (self-service lives at Workspace → My Delegations).
-- `reload` · `cancel` · `scopeLabel` / `statusBadge`.
-
-**Approval Processes** (`processes`) — the DWP process designer (shared `<wf-designer>`): clone a published chain to a draft, edit steps/conditions/participants (incl. the `ASSIGNED_ROLE` + `ASSIGNED_ROLE_CASCADE` resolvers and the per-step **Timers** section: reminders/escalation/auto-action), simulate (which steps fire/skip and who resolves — cascade steps show the resolved level), publish. List / **Diagram** (flowchart) toggle via shared `<wf-diagram>`. **Test mode** toggle per process (`toggleTestMode` → `PUT /wf/processes/:code/test-mode`, db/v2/114): notifications redirect to the `WF_TEST_EMAIL` account while ON (amber TEST MODE badge; platform-wide switch = System Settings → Workflow → `WF_TEST_MODE`).
-
-**Role Assignments** (`roleAssignments`) — date-tracked assignment of users to workflow DATA roles (FBP, PBP, Approver, Planner, FYI Group) per business object (Sector, Department, HR Org, Cost Center, Project, Task, Appropriation, PO, GL Account, Entity). WF_ADMIN/SYS_ADMIN.
-- Tab Assignments: `search` / `resetFilters` / `nextPage` / `prevPage` · `openNew` / `saveEdit` / `closeEdit` (type-driven object picker: `searchObjects` / `searchParents`; live holder preview `refreshPreview`) · `openAct` / `saveAct` / `closeAct` (End / Replace / Void) · `openTimeline`.
-- Tab Audit: `auditSearch` / `aNext` / `aPrev` · `exportCsv` (Arabic-safe CSV) · `openBiReport` (deep-links the BI Interactive Report `WF_ROLE_ASSIGN_AUDIT` — `#irViewer/<CODE>` auto-runs a parameter-less report).
-- **Role Policies** drawer: `openPolicies` / `togglePolicy` — flip a role between single-assignee and group (`PUT /wf/assign/policy/:role`, db/v2/97; warns with the overlap count when flipping to single leaves grandfathered overlaps). Shared `<edit-drawer>`.
-- **Manage Roles** drawer (WF_ADMIN): `openManageRoles` / `mrNew` / `mrEdit` / `mrSave` — create/rename/deactivate DATA assignment roles + cardinality from the UI (`GET/POST /wf/assign/manage/roles`, db/v2/98); deactivation warns with the active-assignment count; pickers refresh immediately (`refreshMeta`).
-- **Manage Objects** drawer (SYS_ADMIN): `openManageObjects` / `moNew` / `moEdit` / `moSave` / `moSearchViews` / `moLoadCols` — create/edit object-type registry rows with the LOV view and every column chosen from data-dictionary dropdowns (`GET/POST /wf/assign/manage/object-types` + `GET /wf/assign/dict`, db/v2/98); nothing free-typed reaches the registry.
-- **Level Priority** drawer: `openPriority` / `lpSelectScope` / `lpUp` / `lpDown` / `lpAdd` / `lpRemove` / `lpStartFromDefault` / `lpSave` — the cascade order (default + per-role override) read by `ASSIGNED_ROLE_CASCADE` at approval time (`GET/PUT /wf/assign/priority`, db/v2/113); audited `ASSIGN_PRIORITY`.
-- **Import Matrix** drawer: `openImport` / `imPickFile` / `imParse` / `imDryRun` / `imApply` / `imExportExceptions` — SheetJS parse of the approval-matrix workbook (role-name → email-column mapping, Key Users split), server dry-run/apply (`POST /wf/assign/import`, db/v2/113; unmatched emails reported `NO_USER`, never auto-created; apply = date-tracked create/replace/skip).
+All workflow pages now live in the dedicated **Fusion BPM — Workflow Management** app
+(`final apps/BPM/`, App 214): My Worklist, Pending Approvals (legacy inbox),
+My Delegations (self-service vacation rule), Approval Processes (DWP designer),
+Role Assignments (+ Policies / Manage Roles / Manage Objects / Level Priority /
+Import Matrix drawers), Approval Templates (legacy), Approval Monitor (legacy) and
+the admin Delegations oversight. See `final apps/BPM/docs/functions_list.md`.
+Admin keeps: the profile page's own delegation section, and the dashboard approval
+KPIs/charts (the approval-cycle drill now deep-links to `/BPM/Jet/index.html#approvalMonitor`).
+The `/dct/approvals*`, `/dct/approval-templates*` and `/dct/delegations*` ORDS
+endpoints are unchanged — they are shared platform APIs, not Admin-private.
 
 ## 6. System Configuration
 

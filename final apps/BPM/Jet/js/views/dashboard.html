@@ -1,0 +1,48 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: t('dash.title')"></h1>
+      <p class="page-sub" data-bind="text: t('dash.sub')"></p>
+    </div>
+  </div>
+
+  <div class="bpm-stats">
+    <div class="bpm-stat" data-bind="click: function(){ $vm.go('myWorklist'); }">
+      <span class="bs-ico">&#128203;</span>
+      <div class="bs-num" data-bind="text: worklistCount"></div>
+      <div class="bs-lbl" data-bind="text: t('dash.stWorklist')"></div>
+    </div>
+    <div class="bpm-stat bpm-stat--gold" data-bind="click: function(){ $vm.go('pendingApprovals'); }">
+      <span class="bs-ico">&#9989;</span>
+      <div class="bs-num" data-bind="text: pendingCount"></div>
+      <div class="bs-lbl" data-bind="text: t('dash.stPending')"></div>
+    </div>
+    <div class="bpm-stat bpm-stat--teal" data-bind="click: function(){ $vm.go('myDelegations'); }">
+      <span class="bs-ico">&#127958;</span>
+      <div class="bs-num" data-bind="text: delegationCount"></div>
+      <div class="bs-lbl" data-bind="text: t('dash.stDelegations')"></div>
+    </div>
+    <!-- ko if: isWfAdmin -->
+    <div class="bpm-stat bpm-stat--blue" data-bind="click: function(){ $vm.go('processes'); }">
+      <span class="bs-ico">&#128736;</span>
+      <div class="bs-num" data-bind="text: processCount"></div>
+      <div class="bs-lbl" data-bind="text: t('dash.stProcesses')"></div>
+    </div>
+    <!-- /ko -->
+  </div>
+
+  <div class="section-heading-row">
+    <h2 class="section-heading" data-bind="text: t('dash.quickLinks')"></h2>
+  </div>
+  <div class="bpm-quick">
+    <!-- ko foreach: quickLinks -->
+    <div class="qk" data-bind="click: function(){ $vm.go($data.route); }">
+      <span class="qi" data-bind="text: $data.icon"></span>
+      <div class="qt">
+        <b data-bind="text: $vm.t($data.key)"></b>
+        <span data-bind="text: $vm.t($data.key + 'Sub')"></span>
+      </div>
+    </div>
+    <!-- /ko -->
+  </div>
+</div>

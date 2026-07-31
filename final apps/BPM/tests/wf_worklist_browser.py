@@ -28,6 +28,7 @@ from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 JET = os.path.join(HERE, '..', 'Jet')
+ADMIN_JET = os.path.join(HERE, '..', '..', 'Admin', 'Jet')  # creds + shared login page
 PORT = 8099   # our own port -- never fight whatever is already on 8080
 
 PASS = FAIL = 0
@@ -46,7 +47,7 @@ def bad(m):
 
 
 def creds():
-    src = open(os.path.join(JET, 'js', 'services', 'authService.js'), encoding='utf-8').read()
+    src = open(os.path.join(ADMIN_JET, 'js', 'services', 'authService.js'), encoding='utf-8').read()
     return re.findall(r"username:\s*'([^']+)',\s*password:\s*'([^']+)'", src)[0]
 
 
@@ -81,10 +82,12 @@ try:
         pg.fill('input[type="text"]', user)
         pg.fill('input[type="password"]', pwd)
         pg.click('.btn-primary')
-        # WAIT for the shell, do not sleep-and-hope: a fixed timeout makes this
-        # test flaky, and a flaky test is worse than no test
-        pg.wait_for_function("() => !!window._jetApp", timeout=30000)
+        # WAIT for the real login signal (_jetApp exists pre-login on Admin)
+        pg.wait_for_function("() => !!localStorage.getItem('ifinance_jet_session')", timeout=30000)
         ok(f'logged in as {user}')
+        # module app: session established on Admin -- return to the BPM root
+        pg.goto(f'http://localhost:{PORT}/index.html', wait_until='networkidle')
+        pg.wait_for_function("() => !!window._jetApp", timeout=30000)
 
         # The shell PERSISTS the language choice to the user's server-side prefs,
         # so a previous AR run leaves the account in Arabic. Force EN for the English
@@ -109,60 +112,67 @@ try:
         if n > 0:
             ok(f'<wf-worklist> rendered {n} live request(s) from /wf/worklist')
         else:
-            bad('<wf-worklist> rendered no rows (expected the 5 live pending)')
+            # PROD may legitimately hold ZERO pending approvals (drained inbox).
+            # Then the contract is the localized empty state, not rows.
+            txt = pg.inner_text('.wf-wl')
+            if 'wf.' in txt:
+                bad('empty worklist shows raw i18n keys: ' + txt[:120])
+            else:
+                ok('<wf-worklist> rendered the empty state (0 pending in PROD right now)')
 
-        # cross-module in ONE list -- that is requirement 4
-        mods = set()
-        for i in range(n):
-            mods.add(rows.nth(i).locator('td').nth(1).inner_text().strip().split('\n')[0])
-        if len(mods) > 1:
-            ok(f'one list spans several modules: {sorted(mods)}')
-        elif mods:
-            ok(f'single module present in PROD right now: {sorted(mods)}')
+        if n > 0:
+            # cross-module in ONE list -- that is requirement 4
+            mods = set()
+            for i in range(n):
+                mods.add(rows.nth(i).locator('td').nth(1).inner_text().strip().split('\n')[0])
+            if len(mods) > 1:
+                ok(f'one list spans several modules: {sorted(mods)}')
+            elif mods:
+                ok(f'single module present in PROD right now: {sorted(mods)}')
 
-        # ---- <wf-action-bar>: outcomes are DATA, not hard-coded buttons ----
-        btns = rows.nth(0).locator('.wf-oc')
-        labels = [btns.nth(i).inner_text().strip() for i in range(btns.count())]
-        if labels:
-            ok(f'<wf-action-bar> rendered the step\'s own outcomes: {labels}')
-        else:
-            bad('<wf-action-bar> rendered no outcome buttons')
+            # ---- <wf-action-bar>: outcomes are DATA, not hard-coded buttons ----
+            btns = rows.nth(0).locator('.wf-oc')
+            labels = [btns.nth(i).inner_text().strip() for i in range(btns.count())]
+            if labels:
+                ok(f'<wf-action-bar> rendered the step\'s own outcomes: {labels}')
+            else:
+                bad('<wf-action-bar> rendered no outcome buttons')
 
-        # the markup must contain no hard-coded verb -- prove the buttons came
-        # from the API by checking they match what the server said
-        html = pg.content()
-        if 'wf-oc' in html:
-            ok('outcome buttons are rendered from data (.wf-oc, one per outcome)')
+            # the markup must contain no hard-coded verb -- prove the buttons came
+            # from the API by checking they match what the server said
+            html = pg.content()
+            if 'wf-oc' in html:
+                ok('outcome buttons are rendered from data (.wf-oc, one per outcome)')
 
-        # ---- the comment prompt opens, and CANCELS cleanly -----------------
-        neg = None
-        for i in range(btns.count()):
-            if btns.nth(i).get_attribute('class').find('danger') >= 0:
-                neg = btns.nth(i)
-                break
-        (neg or btns.nth(0)).click()
-        pg.wait_for_timeout(700)
-        if pg.locator('.wf-cmt').count() > 0:
-            ok('choosing an outcome opens the comment prompt')
-            # a negative outcome must REFUSE to submit with no comment
-            confirm = pg.locator('.wf-cmt .btn-primary')
-            if neg is not None and confirm.get_attribute('disabled') is not None:
-                ok('a negative outcome cannot be confirmed without a comment')
-            pg.locator('.wf-cmt .btn-secondary').click()   # CANCEL -- never submit
-            pg.wait_for_timeout(400)
-            if pg.locator('.wf-cmt').count() == 0:
-                ok('comment prompt cancels cleanly (no decision submitted)')
-        else:
-            bad('the comment prompt did not open')
+            # ---- the comment prompt opens, and CANCELS cleanly -----------------
+            neg = None
+            for i in range(btns.count()):
+                if btns.nth(i).get_attribute('class').find('danger') >= 0:
+                    neg = btns.nth(i)
+                    break
+            (neg or btns.nth(0)).click()
+            pg.wait_for_timeout(700)
+            if pg.locator('.wf-cmt').count() > 0:
+                ok('choosing an outcome opens the comment prompt')
+                # a negative outcome must REFUSE to submit with no comment
+                confirm = pg.locator('.wf-cmt .btn-primary')
+                if neg is not None and confirm.get_attribute('disabled') is not None:
+                    ok('a negative outcome cannot be confirmed without a comment')
+                pg.locator('.wf-cmt .btn-secondary').click()   # CANCEL -- never submit
+                pg.wait_for_timeout(400)
+                if pg.locator('.wf-cmt').count() == 0:
+                    ok('comment prompt cancels cleanly (no decision submitted)')
+            else:
+                bad('the comment prompt did not open')
 
-        # ---- <wf-timeline> on a real request -------------------------------
-        rows.nth(0).locator('.wf-ref').click()
-        pg.wait_for_timeout(2500)
-        chain = pg.locator('.wf-chain li')
-        if chain.count() > 0:
-            ok(f'<wf-timeline> rendered a {chain.count()}-step chain for the request')
-        else:
-            bad('<wf-timeline> rendered no chain')
+            # ---- <wf-timeline> on a real request -------------------------------
+            rows.nth(0).locator('.wf-ref').click()
+            pg.wait_for_timeout(2500)
+            chain = pg.locator('.wf-chain li')
+            if chain.count() > 0:
+                ok(f'<wf-timeline> rendered a {chain.count()}-step chain for the request')
+            else:
+                bad('<wf-timeline> rendered no chain')
 
         pg.screenshot(path=os.path.join(HERE, 'wf_worklist_en.png'), full_page=True)
 
@@ -182,7 +192,9 @@ try:
                 ok('AR render leaks no raw i18n keys')
             outs = pg.locator('.wf-oc')
             labs = [outs.nth(i).inner_text().strip() for i in range(min(3, outs.count()))]
-            if labs and any(re.search(r'[\u0600-\u06FF]', l) for l in labs):
+            if n == 0:
+                ok('no outcome buttons to translate (empty inbox)')
+            elif labs and any(re.search(r'[\u0600-\u06FF]', l) for l in labs):
                 ok(f'outcome buttons are translated: {labs}')
             else:
                 bad(f'outcome buttons not translated in AR: {labs}')

@@ -90,9 +90,6 @@ define(
         items: [
           { id: 'profile',          labelKey: 'nav.profile',          icon: '&#128100;' },
           { id: 'notifications',    labelKey: 'nav.notifications',    icon: '&#128276;' },
-          { id: 'pendingApprovals', labelKey: 'nav.pendingApprovals', icon: '&#9989;'   },
-          { id: 'myWorklist',       labelKey: 'nav.myWorklist',       icon: '&#128203;' },
-          { id: 'myDelegations',    labelKey: 'nav.myDelegations',    icon: '&#127958;' },
         ]
       },
       {
@@ -128,7 +125,9 @@ define(
         id: 'ifinanceModules', labelKey: 'nav.ifinanceModules', auth: 'all',
         collapsed: ko.observable(false),
         items: [
-          { id: 'hr-module', labelKey: 'mod.hr', icon: '&#128101;', url: '/HR/Jet/index.html' },
+          { id: 'hr-module',  labelKey: 'mod.hr',  icon: '&#128101;', url: '/HR/Jet/index.html' },
+          // Workflow management moved to its own app 2026-08-01 (Fusion BPM, App 214)
+          { id: 'bpm-module', labelKey: 'mod.bpm', icon: '&#128736;', url: '/BPM/Jet/index.html' },
         ]
       },
       {
@@ -136,11 +135,8 @@ define(
         collapsed: ko.observable(false),
         items: [
           { id: 'modules',           labelKey: 'nav.modules',           icon: '&#9707;'   },
-          { id: 'processes',         labelKey: 'nav.processes',         icon: '&#128736;' },
-          { id: 'roleAssignments',   labelKey: 'nav.roleAssignments',   icon: '&#129333;' },
-          { id: 'approvalTemplates', labelKey: 'nav.approvalTemplates', icon: '&#128196;' },
-          { id: 'approvalMonitor',   labelKey: 'nav.approvalMonitor',   icon: '&#128065;' },
-          { id: 'delegations',       labelKey: 'nav.delegations',       icon: '&#129309;' },
+          // workflow pages (processes / role assignments / templates / monitor /
+          // delegations oversight) moved to Fusion BPM (App 214) 2026-08-01
           { id: 'announcements',     labelKey: 'nav.announcements',     icon: '&#128226;' },
           { id: 'lookups',           labelKey: 'nav.lookups',           icon: '&#128203;' },
           { id: 'appearance',        labelKey: 'nav.appearance',        icon: '&#127912;' },
@@ -376,9 +372,9 @@ define(
     /* Wave 3 (4.3): per-role landing page — a LANDING_<ROLE> system setting
        (e.g. LANDING_MANAGER = pendingApprovals) decides the post-login route.
        First of the user's roles with a configured, valid route wins. */
-    var KNOWN_ROUTES = ['dashboard', 'profile', 'notifications', 'pendingApprovals', 'myDelegations',
-      'users', 'roles', 'permissions', 'orgHierarchy', 'modules', 'approvalTemplates',
-      'approvalMonitor', 'delegations', 'announcements', 'lookups', 'appearance',
+    var KNOWN_ROUTES = ['dashboard', 'profile', 'notifications',
+      'users', 'roles', 'permissions', 'orgHierarchy', 'modules',
+      'announcements', 'lookups', 'appearance',
       'systemSettings', 'sessions', 'auditLog',
       'privileges', 'privilegeGroups', 'abstractRoles', 'dutyRoles', 'jobRoles',
       'secProfiles', 'userManagement'];

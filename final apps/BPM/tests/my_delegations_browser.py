@@ -18,6 +18,7 @@ from playwright.sync_api import sync_playwright
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 JET = os.path.join(HERE, '..', 'Jet')
+ADMIN_JET = os.path.join(HERE, '..', '..', 'Admin', 'Jet')  # creds + shared login page
 PORT = 8098
 TAG = 'browser-smoke-mydel'
 PASS = FAIL = 0
@@ -32,7 +33,7 @@ def bad(m):
 
 
 def quick_logins():
-    src = open(os.path.join(JET, 'js', 'services', 'authService.js'), encoding='utf-8').read()
+    src = open(os.path.join(ADMIN_JET, 'js', 'services', 'authService.js'), encoding='utf-8').read()
     return re.findall(r"username:\s*'([^']+)',\s*password:\s*'([^']+)'", src)
 
 
@@ -57,9 +58,13 @@ EXIT
 
 def login(pg, user, pwd):
     pg.goto(f'http://localhost:{PORT}/index.html', wait_until='networkidle')
+    pg.wait_for_selector('input[type=\"text\"]', timeout=30000)  # redirect to Admin login
     pg.fill('input[type="text"]', user)
     pg.fill('input[type="password"]', pwd)
     pg.click('.btn-primary')
+    pg.wait_for_function("() => !!localStorage.getItem('ifinance_jet_session')", timeout=30000)
+    # module app: session established on Admin -- return to the BPM root
+    pg.goto(f'http://localhost:{PORT}/index.html', wait_until='networkidle')
     pg.wait_for_function('() => !!window._jetApp', timeout=30000)
     pg.wait_for_timeout(1500)
 

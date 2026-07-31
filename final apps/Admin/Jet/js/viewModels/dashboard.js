@@ -123,8 +123,10 @@ function (ko, authService, moduleService, auditService, i18n, charts) {
             onHover: function (e, els) { e.native.target.style.cursor = els.length ? 'pointer' : ''; },
             onClick: function (e, els) {
               if (!els.length) return;
+              // Approval Monitor lives in Fusion BPM (App 214) since 2026-08-01.
+              // sessionStorage is per-tab + origin, so the preset survives the hop.
               sessionStorage.setItem('amPresetSearch', cyc[els[0].index].module || '');
-              if (window._jetApp) window._jetApp.navigate('approvalMonitor');
+              window.location.href = '/BPM/Jet/index.html#approvalMonitor';
             }
           }
         });
