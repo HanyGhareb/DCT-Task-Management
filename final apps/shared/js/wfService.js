@@ -260,6 +260,27 @@ define(['shared/api'], function (api) {
                       { toUserId: toUserId, reason: reason || null }, WF);
     },
 
+    /* ── cascade level priority + approval-matrix import (WF_ADMIN) ────────── */
+
+    /** { defaultLevels: [..], overrides: [{roleCode, levels}], types: [..] } */
+    getPriority: function () { return api.get('/assign/priority', WF); },
+
+    /**
+     * Replace one scope's ordered level list. roleCode null = the platform
+     * default; an EMPTY list on a role removes its override.
+     */
+    setPriority: function (roleCode, levels) {
+      return api.put('/assign/priority',
+                     { roleCode: roleCode || null, levels: levels || [] }, WF);
+    },
+
+    /**
+     * Matrix rows, dry-run or apply. body = { mode: 'dryrun'|'apply',
+     * effectiveDate: 'YYYY-MM-DD'|null, entries: [{row, cc, role, email}] }.
+     * Chunk entries <= 150 per call; resolves to per-entry results + counts.
+     */
+    importMatrix: function (body) { return api.post('/assign/import', body, WF); },
+
     /** Authed CSV download of the audit trail (object URL). */
     assignAuditCsv: function (f) {
       f = f || {};

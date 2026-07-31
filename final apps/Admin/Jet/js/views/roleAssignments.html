@@ -19,6 +19,8 @@
       <button class="btn btn-secondary" data-bind="click: openManageObjects, text: $root.t('vw.ra.manageObjects')"></button>
       <!-- /ko -->
       <button class="btn btn-secondary" data-bind="click: openPolicies, text: $root.t('vw.ra.policies')"></button>
+      <button class="btn btn-secondary" data-bind="click: openPriority, text: $root.t('vw.ra.priority')"></button>
+      <button class="btn btn-secondary" data-bind="click: openImport, text: $root.t('vw.ra.import')"></button>
       <button class="btn btn-primary" data-bind="click: openNew, text: '+ ' + $root.t('vw.ra.add')"></button>
       <!-- /ko -->
       <!-- ko if: tab() === 'audit' -->
@@ -585,6 +587,159 @@
         </div>
       </div>
     </div>
+    <!-- /ko -->
+  </edit-drawer>
+
+  <!-- ═══ Level Priority drawer (WF_ADMIN) ═══ -->
+  <edit-drawer params="open: lpOpen, vm: $vm,
+                       title: $root.t('vw.ra.priorityTitle'),
+                       saveLabel: $root.t('vw.ra.save'), cancelLabel: $root.t('vw.ra.close'),
+                       onSave: lpSave, width: '600px'">
+    <p class="wf-muted" data-bind="text: $root.t('vw.ra.lpHint')"></p>
+    <!-- ko if: lpMsg() -->
+    <div data-bind="css: lpMsg().warn ? 'alert-banner alert-banner--danger' : 'alert-banner'">
+      <span data-bind="text: lpMsg().text"></span>
+    </div>
+    <!-- /ko -->
+
+    <div class="form-grid">
+      <div class="form-group" style="grid-column:1 / -1">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.lpScope')"></label>
+        <select class="form-control" data-bind="value: lpScope">
+          <option value="" data-bind="text: $root.t('vw.ra.lpDefaultScope')"></option>
+          <!-- ko foreach: roles -->
+          <option data-bind="value: roleCode, text: $parent.roleName(roleCode)"></option>
+          <!-- /ko -->
+        </select>
+        <!-- ko if: lpScope() && !lpHasOverride() && !lpLevels().length -->
+        <div class="wf-muted" style="font-size:.78rem;margin-top:4px">
+          <span data-bind="text: $root.t('vw.ra.lpUsesDefault')"></span>
+          <button class="btn btn-secondary btn-sm" style="margin-inline-start:8px"
+                  data-bind="click: lpStartFromDefault, text: $root.t('vw.ra.lpCopyDefault')"></button>
+        </div>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th style="width:60px">#</th>
+          <th data-bind="text: $root.t('vw.ra.lpLevel')"></th>
+          <th style="width:150px"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: lpLevels">
+          <tr>
+            <td data-bind="text: ($index() + 1)"></td>
+            <td>
+              <span class="mono" data-bind="text: $data"></span>
+              <span class="wf-muted" style="margin-inline-start:8px"
+                    data-bind="text: $parent.lpTypeName($data)"></span>
+            </td>
+            <td style="text-align:end;white-space:nowrap">
+              <button class="btn btn-secondary btn-sm" data-bind="click: function () { $parent.lpUp($index()); }">&#9650;</button>
+              <button class="btn btn-secondary btn-sm" data-bind="click: function () { $parent.lpDown($index()); }">&#9660;</button>
+              <button class="btn btn-secondary btn-sm" data-bind="click: function () { $parent.lpRemove($index()); }">&#10005;</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div style="display:flex;gap:6px;margin-top:8px">
+      <select class="form-control" style="max-width:260px" data-bind="value: lpAddType,
+              options: lpTypes, optionsText: 'nameEn', optionsValue: 'code',
+              optionsCaption: $root.t('vw.ra.lpAddLevel')"></select>
+      <button class="btn btn-secondary btn-sm" data-bind="click: lpAdd, text: '+ ' + $root.t('vw.ra.lpAddLevel')"></button>
+    </div>
+    <!-- ko if: lpScope() -->
+    <p class="wf-muted" style="margin-top:8px;font-size:.78rem"
+       data-bind="text: $root.t('vw.ra.lpEmptyRemoves')"></p>
+    <!-- /ko -->
+  </edit-drawer>
+
+  <!-- ═══ Import Matrix drawer (WF_ADMIN) ═══ -->
+  <edit-drawer params="open: imOpen, vm: $vm,
+                       title: $root.t('vw.ra.importTitle'),
+                       saveLabel: $root.t('vw.ra.close'), cancelLabel: $root.t('vw.ra.cancel'),
+                       onSave: function () { imOpen(false); }, width: '860px'">
+    <p class="wf-muted" data-bind="text: $root.t('vw.ra.imHint')"></p>
+    <!-- ko if: imMsg() -->
+    <div data-bind="css: imMsg().warn ? 'alert-banner alert-banner--danger' : 'alert-banner'">
+      <span data-bind="text: imMsg().text"></span>
+    </div>
+    <!-- /ko -->
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.imFile')"></label>
+        <button class="btn btn-secondary" data-bind="click: imPickFile, text: $root.t('vw.ra.imChoose')"></button>
+      </div>
+      <!-- ko if: imSheets().length -->
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.imSheet')"></label>
+        <select class="form-control" data-bind="value: imSheet, options: imSheets"></select>
+      </div>
+      <!-- /ko -->
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $root.t('vw.ra.imEff')"></label>
+        <input class="form-control" type="date" data-bind="value: imEff">
+      </div>
+    </div>
+
+    <!-- ko if: imEntries().length -->
+    <div class="view-toolbar" style="gap:8px">
+      <button class="btn btn-primary btn-sm" data-bind="click: imDryRun, enable: !imBusy(),
+              text: $root.t('vw.ra.imDryRun')"></button>
+      <!-- ko if: imSummary() && !imApplied() -->
+      <button class="btn btn-primary btn-sm" data-bind="click: imApply, enable: !imBusy(),
+              text: $root.t('vw.ra.imApply')"></button>
+      <!-- /ko -->
+      <!-- ko if: imExceptions().length -->
+      <button class="btn btn-secondary btn-sm" data-bind="click: imExportExceptions,
+              text: $root.t('vw.ra.imExportExc') + ' (' + imExceptions().length + ')'"></button>
+      <!-- /ko -->
+      <span class="wf-muted" data-bind="text: imEntries().length + ' ' + $root.t('vw.ra.imEntries')"></span>
+    </div>
+
+    <!-- ko if: imSummary() -->
+    <div class="alert-banner" style="margin-top:6px">
+      <b data-bind="text: imApplied() ? $root.t('vw.ra.imApplied') : $root.t('vw.ra.imPreview')"></b>
+      <span data-bind="text: ' · ' + $root.t('vw.ra.imCreated') + ': ' + imSummary().created
+                             + ' · ' + $root.t('vw.ra.imReplaced') + ': ' + imSummary().replaced
+                             + ' · ' + $root.t('vw.ra.imSkipped') + ': ' + imSummary().skipped
+                             + ' · ' + $root.t('vw.ra.imErrors') + ': ' + imSummary().errors"></span>
+    </div>
+    <!-- /ko -->
+
+    <!-- ko if: imResults().length -->
+    <div class="data-table-wrap" style="max-height:420px;overflow:auto">
+      <table class="data-table">
+        <thead><tr>
+          <th>#</th>
+          <th data-bind="text: $root.t('vw.ra.imCc')"></th>
+          <th data-bind="text: $root.t('vw.ra.role')"></th>
+          <th>Email</th>
+          <th data-bind="text: $root.t('vw.ra.assignee')"></th>
+          <th data-bind="text: $root.t('vw.ra.status')"></th>
+          <th data-bind="text: $root.t('vw.ra.imDetail')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: imResults">
+          <tr>
+            <td data-bind="text: row"></td>
+            <td>
+              <div class="mono" data-bind="text: cc"></div>
+              <div class="wf-muted" style="font-size:.72rem" data-bind="text: $data.ccLabel || ''"></div>
+            </td>
+            <td data-bind="text: $parent.roleName(role)"></td>
+            <td style="font-size:.78rem" data-bind="text: email"></td>
+            <td data-bind="text: $data.userName || '—'"></td>
+            <td><span class="badge" data-bind="text: status, css: $parent.imStatusClass(status)"></span></td>
+            <td style="font-size:.75rem" data-bind="text: $data.detail || ''"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
     <!-- /ko -->
   </edit-drawer>
 

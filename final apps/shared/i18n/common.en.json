@@ -410,5 +410,6 @@
   "si.col.privilege": "Privilege",
   "si.col.privName": "Privilege Name",
   "si.col.grantedTo": "Granted To",
-  "si.col.notes": "Notes"
+  "si.col.notes": "Notes",
+  "wf.dz.cascadeHint": "Levels + their order come from Role Assignments → Level Priority; the first level with an assignee wins."
 }

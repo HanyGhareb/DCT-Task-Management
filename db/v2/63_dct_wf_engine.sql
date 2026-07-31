@@ -957,6 +957,62 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
                                      r.object_type_code, v_txt, v_txt2, v_asof,
                                      CASE WHEN r.exclude_initiator = 'Y' THEN p_initiator END);
 
+                WHEN 'ASSIGNED_ROLE_CASCADE' THEN
+                    -- CONFIGURABLE level priority (db/v2/112): walk the role's
+                    -- configured levels -- a per-role set replaces the platform
+                    -- default WHOLESALE -- reading each level's object key from
+                    -- the registry's default fact paths. FIRST level with an
+                    -- assignee wins. A missing fact key skips the level, never
+                    -- errors. o_reason records where the approver came from and
+                    -- which levels were empty, so simulate and the step trace
+                    -- answer "why THIS FBP?".
+                    DECLARE
+                        v_before PLS_INTEGER := o_prins.COUNT;
+                        v_ov     NUMBER;
+                        v_tried  VARCHAR2(400);
+                    BEGIN
+                        SELECT COUNT(*) INTO v_ov FROM prod.dct_wf_cascade_level
+                         WHERE role_code = r.role_code AND is_active = 'Y';
+
+                        FOR lv IN (SELECT cl.object_type_code,
+                                          ot.default_fact_path,
+                                          ot.default_key2_fact_path
+                                     FROM prod.dct_wf_cascade_level cl
+                                     JOIN prod.dct_wf_object_type ot
+                                       ON ot.object_type_code = cl.object_type_code
+                                      AND ot.is_active = 'Y'
+                                    WHERE cl.is_active = 'Y'
+                                      AND ((v_ov > 0 AND cl.role_code = r.role_code)
+                                           OR (v_ov = 0 AND cl.role_code IS NULL))
+                                    ORDER BY cl.seq, cl.cascade_id)
+                        LOOP
+                            EXIT WHEN o_prins.COUNT > v_before;
+                            v_txt := NVL(fact_str(p_facts, lv.default_fact_path),
+                                         TO_CHAR(fact_num(p_facts, lv.default_fact_path)));
+                            v_txt2 := CASE WHEN lv.default_key2_fact_path IS NOT NULL
+                                           THEN NVL(fact_str(p_facts, lv.default_key2_fact_path),
+                                                    TO_CHAR(fact_num(p_facts, lv.default_key2_fact_path)))
+                                      END;
+                            IF v_txt IS NOT NULL THEN
+                                assigned_holders(o_prins, v_seen, r.role_code,
+                                                 lv.object_type_code, v_txt, v_txt2, v_asof,
+                                                 CASE WHEN r.exclude_initiator = 'Y' THEN p_initiator END);
+                            END IF;
+                            IF o_prins.COUNT > v_before THEN
+                                o_reason := 'cascade: ' || r.role_code || ' resolved at '
+                                            || lv.object_type_code
+                                            || CASE WHEN v_tried IS NOT NULL
+                                                    THEN ' (empty: ' || v_tried || ')' END;
+                            ELSE
+                                v_tried := SUBSTR(v_tried
+                                           || CASE WHEN v_tried IS NOT NULL THEN ', ' END
+                                           || lv.object_type_code
+                                           || CASE WHEN v_txt IS NULL THEN ' [no key]' END,
+                                           1, 400);
+                            END IF;
+                        END LOOP;
+                    END;
+
                 WHEN 'STATIC_USER' THEN
                     add_prin(o_prins, v_seen, r.static_user_id, 'STATIC');
 
@@ -2241,6 +2297,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_engine AS
                 END LOOP;
                 IF v_prins.COUNT = 0 THEN
                     v_row.put('warning', NVL(v_reason, 'no participant would be resolved'));
+                ELSIF v_reason IS NOT NULL THEN
+                    -- e.g. 'cascade: WF_FBP resolved at COST_CENTER (empty: TASK, PROJECT)'
+                    v_row.put('resolution', v_reason);
                 END IF;
                 v_due := due_from(v_due, s.sla_hours, s.sla_calendar);
                 v_row.put('dueAt', TO_CHAR(v_due, 'YYYY-MM-DD HH24:MI'));

@@ -411,6 +411,14 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_designer AS
         l_mr  := jn(o,'minResolved',1);  l_id  := jyn(o,'includeDelegates','Y'); l_ei := jyn(o,'excludeInitiator','Y');
         l_otc := js(o,'objectTypeCode'); l_k2  := js(o,'key2FactPath');
 
+        IF l_rt = 'ASSIGNED_ROLE_CASCADE' THEN
+            -- the cascade needs ONLY the role: levels + their fact paths come
+            -- from DCT_WF_CASCADE_LEVEL + the registry (db/v2/112)
+            IF l_rc IS NULL THEN
+                RAISE_APPLICATION_ERROR(-20001, 'ASSIGNED_ROLE_CASCADE needs a role code.');
+            END IF;
+        END IF;
+
         IF l_rt = 'ASSIGNED_ROLE' THEN
             IF l_rc IS NULL THEN
                 RAISE_APPLICATION_ERROR(-20001, 'ASSIGNED_ROLE needs a role code.');
@@ -528,6 +536,24 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_designer AS
             IF r.fallback_rule = 'ANY_ROLE_HOLDER' THEN
                 add('step "' || r.step_key || '": ASSIGNED_ROLE with fallback ANY_ROLE_HOLDER'
                     || ' will resolve nobody when unassigned; use BUSINESS_ADMIN or FAIL');
+            END IF;
+        END LOOP;
+
+        -- ASSIGNED_ROLE_CASCADE rules: same fallback trap, and the process's
+        -- fact schema should carry the configured levels' key fields
+        FOR r IN (SELECT s.step_key, pr.role_code, pr.fallback_rule
+                  FROM prod.dct_wf_participant_rule pr
+                  JOIN prod.dct_wf_step s ON s.step_id = pr.step_id
+                  WHERE s.version_id = p_version_id
+                    AND pr.resolver_type = 'ASSIGNED_ROLE_CASCADE'
+                  ORDER BY s.step_seq, pr.rule_seq) LOOP
+            IF r.role_code IS NULL THEN
+                add('step "' || r.step_key || '" has a cascade rule without a role code');
+            END IF;
+            IF r.fallback_rule = 'ANY_ROLE_HOLDER' THEN
+                add('step "' || r.step_key || '": ASSIGNED_ROLE_CASCADE with fallback'
+                    || ' ANY_ROLE_HOLDER will resolve nobody when no level is assigned;'
+                    || ' use BUSINESS_ADMIN or FAIL');
             END IF;
         END LOOP;
 

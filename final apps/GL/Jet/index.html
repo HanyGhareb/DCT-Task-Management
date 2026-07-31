@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.48.0';</script>
+<script>window.APP_VERSION='1.50.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -58,13 +58,15 @@
     <a data-bind="css:{on:view()==='pending'}, click:go.bind($data,'pending'), text:t('navPending')"></a>
     <a data-bind="css:{on:view()==='recon'}, click:go.bind($data,'recon'), text:t('navRecon')"></a>
     <a data-bind="css:{on:view()==='legacy'}, click:go.bind($data,'legacy'), text:t('navLegacy')"></a>
+    <a data-bind="css:{on:view()==='cashflow'}, click:go.bind($data,'cashflow'), text:t('navCashflow')"></a>
+    <a data-bind="css:{on:view()==='dof'}, click:go.bind($data,'dof'), text:t('navDof')"></a>
     <!-- ko if: isSysAdmin -->
     <button type="button" class="sec-link" data-bind="click: openSecurityInfo"
             style="margin-inline-start:auto; opacity:.75; background:none; border:none; cursor:pointer; font:inherit; color:inherit">&#128737; <span data-bind="text: lang()==='ar' ? 'معلومات الأمان' : 'Security Info'"></span></button>
     <!-- /ko -->
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'||view()==='legacy'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'||view()==='legacy'||view()==='cashflow'||view()==='dof'}">
 
     <!-- ── OVERVIEW ── -->
     <!-- ── CHART OF ACCOUNTS (merged Overview + Explorer) ── -->
@@ -1437,6 +1439,8 @@
                   <th class="num" data-bind="text:t('ebPeriodsL')"></th>
                   <th class="num" data-bind="text:t('ebCombosL')"></th>
                   <th class="num" data-bind="text:t('ebPtdL')"></th>
+                  <th class="num" data-bind="text:t('ebBgtL')"></th>
+                  <th class="num" data-bind="text:t('ebEncL')"></th>
                   <th class="num" data-bind="text:t('ebAccMapL')"></th>
                   <th class="num" data-bind="text:t('ebAprMapL')"></th>
                 </tr></thead>
@@ -1448,6 +1452,8 @@
                     <td class="num mono" data-bind="text:$data.periods"></td>
                     <td class="num mono" data-bind="text:$root.fmt($data.combinations)"></td>
                     <td class="num mono" data-bind="text:$root.money($data.ptdTotal)"></td>
+                    <td class="num mono" data-bind="text:$root.money($data.budgetTotal)"></td>
+                    <td class="num mono" data-bind="text:$root.money($data.encTotal)"></td>
                     <td class="num mono" data-bind="text:$root.fmt($data.accountMapped)+' ('+$root.ebPct($data.accountMapped,$data.rows)+')'"></td>
                     <td class="num mono" data-bind="text:$root.fmt($data.apprMapped)+' ('+$root.ebPct($data.apprMapped,$data.rows)+')'"></td>
                   </tr>
@@ -1455,7 +1461,7 @@
                 </tbody>
               </table>
             </div>
-            <div class="eb-unmapped" data-bind="visible:ebUnmappedAcc().length + ebUnmappedF1().length > 0">
+            <div class="eb-unmapped" data-bind="visible:ebUnmappedAcc().length + ebUnmappedF2().length > 0">
               <div class="eb-un-col" data-bind="visible:ebUnmappedAcc().length">
                 <div class="eb-un-h" data-bind="text:t('ebUnmappedAcc')"></div>
                 <table class="data-table"><thead><tr>
@@ -1470,15 +1476,15 @@
                   <!-- /ko -->
                 </tbody></table>
               </div>
-              <div class="eb-un-col" data-bind="visible:ebUnmappedF1().length">
-                <div class="eb-un-h" data-bind="text:t('ebUnmappedF1')"></div>
+              <div class="eb-un-col" data-bind="visible:ebUnmappedF2().length">
+                <div class="eb-un-h" data-bind="text:t('ebUnmappedF2')"></div>
                 <table class="data-table"><thead><tr>
                   <th data-bind="text:t('xmEbsValue')"></th>
                   <th class="num" data-bind="text:t('ebRowsL')"></th>
                   <th class="num" data-bind="text:t('ebAbsAmt')"></th>
                 </tr></thead><tbody>
-                  <!-- ko foreach: ebUnmappedF1 -->
-                  <tr><td class="mono" data-bind="text:$data.ebsFuture1"></td>
+                  <!-- ko foreach: ebUnmappedF2 -->
+                  <tr><td class="mono" data-bind="text:$data.ebsFuture2"></td>
                       <td class="num mono" data-bind="text:$data.rows"></td>
                       <td class="num mono" data-bind="text:$root.money($data.absAmount)"></td></tr>
                   <!-- /ko -->
@@ -1488,6 +1494,163 @@
             <!-- /ko -->
             <div class="empty pad" data-bind="visible:ebLoaded() && ebYears().length===0, text:t('ebEmpty')"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── CASHFLOW — budget cashflow plan uploads (GL + Projects) ── -->
+    <div id="pg-cashflow" data-bind="visible:view()==='cashflow'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('cfTitle')"></h1>
+          <p class="sub" data-bind="text:t('cfSub')"></p>
+        </div>
+      </div>
+
+      <div class="bu-sec">
+        <div class="bu-sec-h">
+          <span class="bu-sec-t" data-bind="text:t('cfGlRegion')"></span>
+        </div>
+        <div class="bu-sec-b">
+          <div class="card">
+            <div class="filter-grid">
+              <div class="field filter-actions">
+                <button class="btn btn-primary" data-bind="visible:canManageCf, click:uploadCfGl, css:{busy:cfGlBusy}, enable:!cfGlBusy(), text:t('cfUploadGl')"></button>
+                <button class="btn" data-bind="click:cfGlTemplate, text:t('xmTemplate')"></button>
+              </div>
+            </div>
+            <div class="en-note" data-bind="visible:cfNote, text:cfNote"></div>
+            <!-- ko if: cfGlYears().length -->
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr>
+                  <th data-bind="text:t('ebYearL')"></th>
+                  <th data-bind="text:t('cfTypeL')"></th>
+                  <th class="num" data-bind="text:t('ebRowsL')"></th>
+                  <th class="num" data-bind="text:t('ebCombosL')"></th>
+                  <th class="num" data-bind="text:t('ebPeriodsL')"></th>
+                  <th class="num" data-bind="text:t('cfAmtL')"></th>
+                  <th class="num" data-bind="text:t('cfChMapL')"></th>
+                </tr></thead>
+                <tbody>
+                  <!-- ko foreach: cfGlYears -->
+                  <tr>
+                    <td><b class="mono" data-bind="text:$data.year||'—'"></b></td>
+                    <td class="mono" data-bind="text:$data.cfType"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.rows)"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.combinations)"></td>
+                    <td class="num mono" data-bind="text:$data.periods"></td>
+                    <td class="num mono" data-bind="text:$root.money($data.totalAmount)"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.chapterMapped)+' ('+$root.ebPct($data.chapterMapped,$data.rows)+')'"></td>
+                  </tr>
+                  <!-- /ko -->
+                </tbody>
+              </table>
+            </div>
+            <div class="eb-unmapped" data-bind="visible:cfUnmappedAppr().length">
+              <div class="eb-un-col">
+                <div class="eb-un-h" data-bind="text:t('cfUnmappedAppr')"></div>
+                <table class="data-table"><thead><tr>
+                  <th data-bind="text:t('fApprL')"></th>
+                  <th class="num" data-bind="text:t('ebRowsL')"></th>
+                  <th class="num" data-bind="text:t('ebAbsAmt')"></th>
+                </tr></thead><tbody>
+                  <!-- ko foreach: cfUnmappedAppr -->
+                  <tr><td class="mono" data-bind="text:$data.appropriation"></td>
+                      <td class="num mono" data-bind="text:$data.rows"></td>
+                      <td class="num mono" data-bind="text:$root.money($data.absAmount)"></td></tr>
+                  <!-- /ko -->
+                </tbody></table>
+              </div>
+            </div>
+            <!-- /ko -->
+            <div class="empty pad" data-bind="visible:cfLoaded() && cfGlYears().length===0, text:t('cfEmptyGl')"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="bu-sec">
+        <div class="bu-sec-h">
+          <span class="bu-sec-t" data-bind="text:t('cfPjRegion')"></span>
+        </div>
+        <div class="bu-sec-b">
+          <div class="card">
+            <div class="filter-grid">
+              <div class="field filter-actions">
+                <button class="btn btn-primary" data-bind="visible:canManageCf, click:uploadCfPj, css:{busy:cfPjBusy}, enable:!cfPjBusy(), text:t('cfUploadPj')"></button>
+                <button class="btn" data-bind="click:cfPjTemplate, text:t('xmTemplate')"></button>
+              </div>
+            </div>
+            <!-- ko if: cfPjYears().length -->
+            <div class="data-table-wrap">
+              <table class="data-table">
+                <thead><tr>
+                  <th data-bind="text:t('ebYearL')"></th>
+                  <th data-bind="text:t('cfTypeL')"></th>
+                  <th class="num" data-bind="text:t('ebRowsL')"></th>
+                  <th class="num" data-bind="text:t('cfProjectsL')"></th>
+                  <th class="num" data-bind="text:t('ebPeriodsL')"></th>
+                  <th class="num" data-bind="text:t('cfAmtL')"></th>
+                </tr></thead>
+                <tbody>
+                  <!-- ko foreach: cfPjYears -->
+                  <tr>
+                    <td><b class="mono" data-bind="text:$data.year||'—'"></b></td>
+                    <td class="mono" data-bind="text:$data.cfType"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.rows)"></td>
+                    <td class="num mono" data-bind="text:$root.fmt($data.projects)"></td>
+                    <td class="num mono" data-bind="text:$data.periods"></td>
+                    <td class="num mono" data-bind="text:$root.money($data.totalAmount)"></td>
+                  </tr>
+                  <!-- /ko -->
+                </tbody>
+              </table>
+            </div>
+            <!-- /ko -->
+            <div class="empty pad" data-bind="visible:cfLoaded() && cfPjYears().length===0, text:t('cfEmptyPj')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── DOF REPORTS — YoY / Budget Utilization / Quarterly ── -->
+    <div id="pg-dof" data-bind="visible:view()==='dof'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('dofTitle')"></h1>
+          <p class="sub" data-bind="text:t('dofSub')"></p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-primary" data-bind="click:runDofRegister, css:{busy:dofGenBusy}, enable:!dofGenBusy(), text:dofGenBusy()?t('dofGenBusy'):t('dofGenerate')"></button>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="filter-grid">
+          <div class="field"><label class="lbl" data-bind="text:t('dofReportL')"></label>
+            <select class="inp" data-bind="options:dofReports, optionsText:'l', optionsValue:'v', value:dofReport"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('ebYearL')"></label>
+            <select class="inp" data-bind="options:dofYears, value:dofYear"></select></div>
+          <div class="field" data-bind="visible:dofReport()!=='quarterly'">
+            <label class="lbl" data-bind="text:t('dofPeriodL')"></label>
+            <select class="inp" data-bind="options:dofPeriods, optionsCaption:t('dofLatest'), value:dofPeriod"></select></div>
+          <div class="field filter-actions">
+            <button class="btn btn-primary" data-bind="click:runDof, css:{busy:dofBusy}, enable:!dofBusy(), text:t('dofRun')"></button>
+          </div>
+        </div>
+        <div class="en-sum">
+          <span><b data-bind="text:fmt(dofCount())"></b> <span class="en-sub" data-bind="text:t('xmRows')"></span></span>
+          <span class="en-sub" data-bind="visible:canEditDofNotes, text:t('dofRowHint')"></span>
+        </div>
+        <div class="en-note" data-bind="visible:dofCfWarn, text:t('dofCfMissing')"></div>
+        <!-- ko if: dofData -->
+        <div data-bind="event:{click:dofGridClick}">
+          <interactive-report params="reportCode:'GL_DOF_'+dofReport().toUpperCase(), section:'dof'+dofReport(), data:dofData, isAdmin:false, layoutsApi:null"></interactive-report>
+        </div>
+        <!-- /ko -->
+        <div class="ldr sm" data-bind="visible:dofBusy() && !dofData()">
+          <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
         </div>
       </div>
     </div>
@@ -1583,6 +1746,10 @@
 
 <input type="file" id="ebFile" accept=".xlsx,.xls,.csv" style="display:none"
        data-bind="event:{change:ebFileChosen}">
+<input type="file" id="cfGlFile" accept=".xlsx,.xls,.csv" style="display:none"
+       data-bind="event:{change:cfGlChosen}">
+<input type="file" id="cfPjFile" accept=".xlsx,.xls,.csv" style="display:none"
+       data-bind="event:{change:cfPjChosen}">
 
 <!-- ═══════════ LEGACY EBS MAPPING DRAWER (add / edit a mapping row) ═══════════ -->
 <div class="dw-scrim" data-bind="css:{show:xmDrawer}, click:closeXmDrawer" style="display:none"></div>
@@ -1615,6 +1782,42 @@
         </select></div>
       <div class="field" data-bind="visible:xmId"><label class="lbl" data-bind="text:t('xmStatus')"></label>
         <select class="inp" data-bind="options:xmActiveOpts().slice(0,2), optionsText:'l', optionsValue:'v', value:xmFActive"></select></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ DOF NOTES DRAWER (Reasons for Variance / Remarks) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:dofDrawer}, click:closeDofDrawer" style="display:none"></div>
+<aside class="dw-drawer" data-bind="css:{show:dofDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:t('dofNoteTitle')"></div>
+      <div class="dw-title" data-bind="text:dofNRow() ? (dofNRow().apprCode + ' — ' + (dofReport()==='yoy' ? (dofNRow().accountCode + ' ' + (dofNRow().accountName||'')) : (dofNRow().apprDesc||''))) : ''"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:closeDofDrawer, text:t('close')"></button>
+      <button class="btn btn-sm btn-primary" data-bind="click:saveDofNote, css:{busy:dofSaving}, enable:!dofSaving(), text:t('save')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="text:t('dofNoteCtx')"></div>
+    <div class="xm-form">
+      <!-- ko if: dofReport()!=='quarterly' -->
+      <div class="field"><label class="lbl" data-bind="text:t('dofReason')"></label>
+        <textarea class="inp" rows="5" maxlength="2000" data-bind="textInput:dofNReason"></textarea></div>
+      <!-- /ko -->
+      <!-- ko if: dofReport()==='quarterly' -->
+      <div class="field"><label class="lbl" data-bind="text:t('dofReasonQ')+'1'"></label>
+        <textarea class="inp" rows="2" maxlength="2000" data-bind="textInput:dofNQ[0]"></textarea></div>
+      <div class="field"><label class="lbl" data-bind="text:t('dofReasonQ')+'2'"></label>
+        <textarea class="inp" rows="2" maxlength="2000" data-bind="textInput:dofNQ[1]"></textarea></div>
+      <div class="field"><label class="lbl" data-bind="text:t('dofReasonQ')+'3'"></label>
+        <textarea class="inp" rows="2" maxlength="2000" data-bind="textInput:dofNQ[2]"></textarea></div>
+      <div class="field"><label class="lbl" data-bind="text:t('dofReasonQ')+'4'"></label>
+        <textarea class="inp" rows="2" maxlength="2000" data-bind="textInput:dofNQ[3]"></textarea></div>
+      <div class="field"><label class="lbl" data-bind="text:t('dofRemark')"></label>
+        <textarea class="inp" rows="3" maxlength="2000" data-bind="textInput:dofNRemark"></textarea></div>
+      <!-- /ko -->
     </div>
   </div>
 </aside>

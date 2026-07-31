@@ -447,6 +447,246 @@ function (ko, api, wf, i18n, auth) {
       }).then(function () { self.moBusy(false); });
     };
 
+    /* ── Level Priority drawer (WF_ADMIN) ──────────────────────────────── */
+    self.lpOpen   = ko.observable(false);
+    self.lpMsg    = ko.observable(null);
+    self.lpBusy   = ko.observable(false);
+    self.lpTypes  = ko.observableArray([]);   // available levels {code, nameEn, nameAr, factPath}
+    self.lpDefault   = ko.observableArray([]);
+    self.lpOverrides = ko.observableArray([]); // [{roleCode, levels}]
+    self.lpScope  = ko.observable('');         // '' = the platform default
+    self.lpLevels = ko.observableArray([]);    // the ordered list being edited
+    self.lpAddType = ko.observable('');
+
+    self.lpTypeName = function (code) {
+      var t = self.lpTypes().filter(function (x) { return x.code === code; })[0];
+      if (!t) return code;
+      return (i18n.lang() === 'ar' && t.nameAr) ? t.nameAr : t.nameEn;
+    };
+    self.lpLoad = function () {
+      return wf.getPriority().then(function (r) {
+        self.lpDefault((r && r.defaultLevels) || []);
+        self.lpOverrides((r && r.overrides) || []);
+        self.lpTypes((r && r.types) || []);
+        self.lpSelectScope(self.lpScope());
+      });
+    };
+    self.lpSelectScope = function (scope) {
+      if (!scope) { self.lpLevels(self.lpDefault().slice()); return; }
+      var ov = self.lpOverrides().filter(function (o) { return o.roleCode === scope; })[0];
+      self.lpLevels(ov ? ov.levels.slice() : []);
+    };
+    self.lpScope.subscribe(self.lpSelectScope);
+    self.lpHasOverride = ko.pureComputed(function () {
+      var s = self.lpScope();
+      return !!self.lpOverrides().filter(function (o) { return o.roleCode === s; }).length;
+    });
+    self.openPriority = function () {
+      self.lpMsg(null); self.lpScope('');
+      self.lpLoad().then(function () { self.lpOpen(true); })
+        .catch(function (e) { self.error((e && e.message) || 'Error'); });
+    };
+    self.lpUp = function (i) {
+      if (i <= 0) return;
+      var a = self.lpLevels();
+      self.lpLevels(a.slice(0, i - 1).concat([a[i], a[i - 1]]).concat(a.slice(i + 1)));
+    };
+    self.lpDown = function (i) {
+      var a = self.lpLevels();
+      if (i >= a.length - 1) return;
+      self.lpLevels(a.slice(0, i).concat([a[i + 1], a[i]]).concat(a.slice(i + 2)));
+    };
+    self.lpRemove = function (i) {
+      var a = self.lpLevels().slice(); a.splice(i, 1); self.lpLevels(a);
+    };
+    self.lpAdd = function () {
+      var c = self.lpAddType();
+      if (!c || self.lpLevels().indexOf(c) >= 0) return;
+      self.lpLevels.push(c); self.lpAddType('');
+    };
+    self.lpStartFromDefault = function () { self.lpLevels(self.lpDefault().slice()); };
+    self.lpSave = function () {
+      self.lpBusy(true); self.lpMsg(null);
+      wf.setPriority(self.lpScope() || null, self.lpLevels()).then(function () {
+        self.lpMsg({ warn: false, text: i18n.t('vw.ra.saved') });
+        return self.lpLoad();
+      }).catch(function (e) {
+        self.lpMsg({ warn: true, text: (e && e.message) || 'Error' });
+      }).then(function () { self.lpBusy(false); });
+    };
+
+    /* ── Import Matrix drawer (WF_ADMIN) ───────────────────────────────── */
+    // the manual approval-matrix workbook: one row per cost centre carrying
+    // the people per role. Parse client-side (SheetJS), dry-run on the
+    // server (exception report; unmatched emails NEVER auto-create users —
+    // W0 decision), then apply date-tracked (create / replace / skip).
+    self.imOpen    = ko.observable(false);
+    self.imBusy    = ko.observable(false);
+    self.imMsg     = ko.observable(null);
+    self.imEff     = ko.observable(today());
+    self.imSheets  = ko.observableArray([]);
+    self.imSheet   = ko.observable('');
+    self.imEntries = ko.observableArray([]);   // parsed {row, cc, role, email}
+    self.imResults = ko.observableArray([]);
+    self.imSummary = ko.observable(null);
+    self.imApplied = ko.observable(false);
+    self._imWb = null;
+
+    // header-synonym map: a role column's PEOPLE come from the email column
+    // that FOLLOWS the matching name column ('FBP -UH' has no email column
+    // in the workbook, so FBP Unit Head stays a manual assignment)
+    var IM_ROLES = [
+      { role: 'WF_PBP',      name: /pbp/i },
+      { role: 'WF_FBP',      name: /fbp\s*emp/i },
+      { role: 'WF_AP_CONTACT', name: /^ap\s*name/i },
+      { role: 'WF_DIRECTOR', name: /director/i },
+      { role: 'WF_KEY_USER', name: /key\s*users?\s*name/i }
+    ];
+
+    self.openImport = function () {
+      self.imMsg(null); self.imEntries([]); self.imResults([]);
+      self.imSummary(null); self.imSheets([]); self.imSheet('');
+      self.imApplied(false); self._imWb = null; self.imEff(today());
+      self.imOpen(true);
+    };
+    self.imPickFile = function () {
+      require(['shared/docUpload', 'xlsx'], function (docUpload, XLSX) {
+        docUpload.choose({ accept: '.xlsx,.xls', maxMb: 20 }).then(function (file) {
+          if (!file) return;
+          file.arrayBuffer().then(function (buf) {
+            self._imWb = XLSX.read(buf, { type: 'array' });
+            self.imSheets(self._imWb.SheetNames.slice());
+            // default to the newest 'Director & ED' style sheet when present
+            var guess = self._imWb.SheetNames.filter(function (n) { return /director/i.test(n); });
+            self.imSheet(guess.length ? guess[guess.length - 1] : self._imWb.SheetNames[0]);
+            self.imParse();
+          });
+        });
+      });
+    };
+    self.imParse = function () {
+      if (!self._imWb || !self.imSheet()) return;
+      require(['xlsx'], function (XLSX) {
+        var rows = XLSX.utils.sheet_to_json(self._imWb.Sheets[self.imSheet()],
+                                            { header: 1, defval: '' });
+        // find the header row: the one naming a cost-center column
+        var hIdx = -1, headers = [];
+        for (var i = 0; i < Math.min(rows.length, 5); i++) {
+          if ((rows[i] || []).some(function (c) { return /cost\s*cent/i.test(String(c)); })) {
+            hIdx = i; headers = rows[i].map(function (c) { return String(c || '').trim(); });
+            break;
+          }
+        }
+        if (hIdx < 0) {
+          self.imMsg({ warn: true, text: i18n.t('vw.ra.imNoHeader') });
+          self.imEntries([]); return;
+        }
+        var ccCol = -1;
+        headers.forEach(function (h, ci) {
+          if (/new\s*cost\s*cent/i.test(h)) ccCol = ci;
+        });
+        if (ccCol < 0) headers.forEach(function (h, ci) {
+          if (ccCol < 0 && /cost\s*cent/i.test(h)) ccCol = ci;
+        });
+        // per role: name column, then the FIRST 'email' header to its right
+        var roleCols = [];
+        IM_ROLES.forEach(function (rc) {
+          for (var ci = 0; ci < headers.length; ci++) {
+            if (rc.name.test(headers[ci])) {
+              for (var cj = ci; cj < Math.min(ci + 3, headers.length); cj++) {
+                if (/email/i.test(headers[cj])) {
+                  roleCols.push({ role: rc.role, col: cj }); return;
+                }
+              }
+              return;
+            }
+          }
+        });
+        var entries = [];
+        for (var r = hIdx + 1; r < rows.length; r++) {
+          var cc = String((rows[r] || [])[ccCol] || '').trim();
+          if (!/^\d{5,}$/.test(cc)) continue;   // not a data row
+          roleCols.forEach(function (rc) {
+            var cell = String((rows[r] || [])[rc.col] || '');
+            // a cell may carry SEVERAL people (key users) — split on
+            // commas/spaces, keep the @-bearing tokens
+            cell.split(/[,;\s]+/).forEach(function (tok) {
+              tok = tok.trim().toLowerCase();
+              if (tok.indexOf('@') > 0) {
+                entries.push({ row: r + 1, cc: cc, role: rc.role, email: tok });
+              }
+            });
+          });
+        }
+        self.imEntries(entries);
+        self.imResults([]); self.imSummary(null); self.imApplied(false);
+        self.imMsg(entries.length
+          ? { warn: false, text: i18n.t('vw.ra.imParsed') + ' ' + entries.length }
+          : { warn: true, text: i18n.t('vw.ra.imNoRows') });
+      });
+    };
+    self.imSheet.subscribe(function () { if (self._imWb) self.imParse(); });
+
+    function imRun(mode) {
+      var entries = self.imEntries();
+      if (!entries.length) return;
+      self.imBusy(true); self.imMsg(null);
+      var chunks = [];
+      for (var i = 0; i < entries.length; i += 150) chunks.push(entries.slice(i, i + 150));
+      var all = [], sum = { created: 0, replaced: 0, skipped: 0, errors: 0 };
+      var p = Promise.resolve();
+      chunks.forEach(function (chunk) {
+        p = p.then(function () {
+          return wf.importMatrix({ mode: mode, effectiveDate: self.imEff() || null,
+                                   entries: chunk })
+            .then(function (r) {
+              all = all.concat((r && r.results) || []);
+              sum.created  += (r && r.created)  || 0;
+              sum.replaced += (r && r.replaced) || 0;
+              sum.skipped  += (r && r.skipped)  || 0;
+              sum.errors   += (r && r.errors)   || 0;
+            });
+        });
+      });
+      p.then(function () {
+        self.imResults(all); self.imSummary(sum);
+        self.imApplied(mode === 'apply');
+        self.imBusy(false);
+        if (mode === 'apply') { self.loadList(); }
+      }).catch(function (e) {
+        self.imBusy(false);
+        self.imMsg({ warn: true, text: (e && e.message) || 'Error' });
+      });
+    }
+    self.imDryRun = function () { imRun('dryrun'); };
+    self.imApply  = function () { imRun('apply'); };
+    self.imExceptions = ko.pureComputed(function () {
+      return self.imResults().filter(function (r) {
+        return r.status !== 'CREATED' && r.status !== 'REPLACED' && r.status !== 'SKIPPED';
+      });
+    });
+    self.imStatusClass = function (s) {
+      return { CREATED: 'badge-success', REPLACED: 'badge-info',
+               SKIPPED: 'badge-muted' }[s] || 'badge-danger';
+    };
+    // the exception list doubles as the W0 provisioning worklist
+    self.imExportExceptions = function () {
+      var rows = [['row', 'cc', 'role', 'email', 'status', 'detail']];
+      self.imExceptions().forEach(function (r) {
+        rows.push([r.row, r.cc, r.role, r.email, r.status, r.detail || '']);
+      });
+      var csv = '﻿' + rows.map(function (r) {
+        return r.map(function (c) {
+          c = String(c == null ? '' : c);
+          return /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c;
+        }).join(',');
+      }).join('\n');
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      a.download = 'matrix-import-exceptions.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    };
+
     /* ── timeline modal ────────────────────────────────────────────────── */
     self.tlItems = ko.observableArray([]);
     self.tlOpen  = ko.observable(false);

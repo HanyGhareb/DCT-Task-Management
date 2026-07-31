@@ -279,6 +279,10 @@
             <input class="form-control mono" data-bind="textInput: key2FactPath, attr:{ placeholder: '$.taskNumber' }">
             <!-- /ko -->
             <!-- /ko -->
+            <!-- ko if: resolverType() === 'ASSIGNED_ROLE_CASCADE' -->
+            <input class="form-control mono" data-bind="textInput: roleCode, attr:{ placeholder: 'WF_FBP' }">
+            <span class="wf-dz-hint" data-bind="text: $root.t('wf.dz.cascadeHint')"></span>
+            <!-- /ko -->
             <!-- ko if: resolverType() === 'FACT_USER' -->
             <input class="form-control mono" data-bind="textInput: factPath, attr:{ placeholder: '$.lineManagerUserId' }">
             <!-- /ko -->

@@ -25,7 +25,8 @@ define(['knockout', 'shared/i18n', 'shared/wfService', 'shared/skeleton',
 function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
   'use strict';
 
-  var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'ASSIGNED_ROLE', 'FACT_USER', 'STATIC_USER',
+  var RESOLVERS = ['ROLE', 'ROLE_SCOPED_ORG', 'ASSIGNED_ROLE', 'ASSIGNED_ROLE_CASCADE',
+                   'FACT_USER', 'STATIC_USER',
                    'LINE_MANAGER', 'FACT_LINE_MANAGER', 'ORG_HEAD',
                    'PREVIOUS_ACTOR', 'INITIATOR'];
   var FALLBACKS  = ['ANY_ROLE_HOLDER', 'BUSINESS_ADMIN', 'ORG_HEAD', 'FAIL', 'NONE'];
@@ -104,6 +105,7 @@ function (ko, i18n, wf, skeletonReg, wfDiagramReg, templateHtml) {
     self.partSummary = function (p) {
       if (p.resolverType === 'ROLE' || p.resolverType === 'ROLE_SCOPED_ORG') return p.roleCode || p.resolverType;
       if (p.resolverType === 'ASSIGNED_ROLE') return (p.roleCode || '?') + '@' + (p.objectTypeCode || '?');
+      if (p.resolverType === 'ASSIGNED_ROLE_CASCADE') return (p.roleCode || '?') + '@cascade';
       if (p.resolverType === 'FACT_USER' || p.resolverType === 'FACT_LINE_MANAGER') return p.factPath || 'fact';
       if (p.resolverType === 'STATIC_USER') return '#' + (p.staticUserId || '?');
       return p.resolverType;

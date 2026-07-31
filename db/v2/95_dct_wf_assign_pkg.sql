@@ -114,6 +114,28 @@ CREATE OR REPLACE PACKAGE prod.dct_wf_assign AS
                                p_active     IN VARCHAR2,
                                p_order      IN NUMBER) RETURN NUMBER;
 
+    -- ── cascade level priority (db/v2/112) ─────────────────────────────────
+
+    -- replace ONE scope's ordered level list. p_role NULL = the platform
+    -- default (must keep >= 1 level); a role's EMPTY list removes its
+    -- override (falls back to default). p_levels = comma-separated
+    -- object_type_codes in priority order. Audited ASSIGN_PRIORITY.
+    PROCEDURE set_priority (p_actor  IN VARCHAR2,
+                            p_role   IN VARCHAR2,
+                            p_levels IN VARCHAR2);
+
+    -- ── approval-matrix Excel import ───────────────────────────────────────
+
+    -- apply ONE matrix cell: "p_user should hold p_role on cost centre p_cc
+    -- from p_eff". Returns CREATED / REPLACED / SKIPPED (already active).
+    -- REPLACE ends the most recent other active holder date-tracked and
+    -- links replaced_by; extra manually-added assignees are left untouched.
+    FUNCTION matrix_apply (p_actor IN VARCHAR2,
+                           p_cc    IN VARCHAR2,
+                           p_role  IN VARCHAR2,
+                           p_user  IN NUMBER,
+                           p_eff   IN DATE) RETURN VARCHAR2;
+
 END dct_wf_assign;
 /
 
@@ -861,6 +883,122 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_wf_assign AS
                              || '","isActive":"' || NVL(p_active, 'Y') || '"}');
         RETURN v_inuse;
     END save_object_type;
+
+    -- ------------------------------------------------------------------
+    -- Level Priority drawer: replace one scope's ordered level list
+    -- ------------------------------------------------------------------
+    PROCEDURE set_priority (p_actor  IN VARCHAR2,
+                            p_role   IN VARCHAR2,
+                            p_levels IN VARCHAR2) IS
+        v_role  VARCHAR2(100) := UPPER(TRIM(p_role));
+        v_n     PLS_INTEGER;
+        v_cnt   NUMBER;
+        v_type  VARCHAR2(30);
+        v_old   VARCHAR2(1000);
+        v_seq   NUMBER := 0;
+        TYPE t_codes IS TABLE OF VARCHAR2(30) INDEX BY PLS_INTEGER;
+        v_codes t_codes;
+    BEGIN
+        IF v_role IS NOT NULL THEN
+            SELECT COUNT(*) INTO v_cnt FROM prod.dct_roles
+             WHERE role_code = v_role AND role_type = 'DATA' AND is_active = 'Y';
+            IF v_cnt = 0 THEN
+                RAISE_APPLICATION_ERROR(-20404, 'Unknown or inactive DATA role ' || v_role);
+            END IF;
+        END IF;
+
+        -- parse + validate the ordered list BEFORE touching anything
+        -- (empty string IS NULL in Oracle: REGEXP_COUNT(NULL) = NULL, not 0)
+        v_n := NVL(REGEXP_COUNT(p_levels, '[^,]+'), 0);
+        IF v_role IS NULL AND v_n = 0 THEN
+            RAISE_APPLICATION_ERROR(-20001,
+                'The default priority needs at least one level');
+        END IF;
+        FOR i IN 1 .. v_n LOOP
+            v_type := UPPER(TRIM(REGEXP_SUBSTR(p_levels, '[^,]+', 1, i)));
+            SELECT COUNT(*) INTO v_cnt FROM prod.dct_wf_object_type
+             WHERE object_type_code = v_type AND is_active = 'Y';
+            IF v_cnt = 0 THEN
+                RAISE_APPLICATION_ERROR(-20001,
+                    'Unknown or inactive object type ' || v_type);
+            END IF;
+            FOR j IN 1 .. i - 1 LOOP
+                IF v_codes(j) = v_type THEN
+                    RAISE_APPLICATION_ERROR(-20001,
+                        'Level ' || v_type || ' appears twice');
+                END IF;
+            END LOOP;
+            v_codes(i) := v_type;
+        END LOOP;
+
+        SELECT LISTAGG(object_type_code, ',') WITHIN GROUP (ORDER BY seq)
+          INTO v_old
+          FROM prod.dct_wf_cascade_level
+         WHERE NVL(role_code, '#') = NVL(v_role, '#') AND is_active = 'Y';
+
+        -- config, not history: hard-replace the scope's set (audit keeps
+        -- the old and new lists)
+        DELETE FROM prod.dct_wf_cascade_level
+         WHERE NVL(role_code, '#') = NVL(v_role, '#');
+        FOR i IN 1 .. v_n LOOP
+            v_seq := v_seq + 10;
+            INSERT INTO prod.dct_wf_cascade_level
+                (role_code, seq, object_type_code, created_by)
+            VALUES (v_role, v_seq, v_codes(i), p_actor);
+        END LOOP;
+
+        prod.dct_audit_pkg.log(
+            p_username    => p_actor,
+            p_action      => 'ASSIGN_PRIORITY',
+            p_object_type => 'WF_CASCADE_LEVEL',
+            p_object_id   => NVL(v_role, 'DEFAULT'),
+            p_module_code => 'ADMIN',
+            p_old         => '{"levels":"' || v_old || '"}',
+            p_new         => '{"levels":"' || NVL(p_levels, '') || '"}');
+    END set_priority;
+
+    -- ------------------------------------------------------------------
+    -- Import Matrix drawer: apply one (cost centre x role x person) cell
+    -- ------------------------------------------------------------------
+    FUNCTION matrix_apply (p_actor IN VARCHAR2,
+                           p_cc    IN VARCHAR2,
+                           p_role  IN VARCHAR2,
+                           p_user  IN NUMBER,
+                           p_eff   IN DATE) RETURN VARCHAR2 IS
+        v_key  VARCHAR2(100);
+        v_eff  DATE := NVL(TRUNC(p_eff), TRUNC(SYSDATE));
+        v_cnt  NUMBER;
+        v_cur  NUMBER;
+        v_id   NUMBER;
+    BEGIN
+        v_key := canon('COST_CENTER', p_cc);
+
+        -- already an active holder from this date? nothing to do
+        SELECT COUNT(*) INTO v_cnt FROM prod.dct_wf_role_assignment
+         WHERE object_type_code = 'COST_CENTER' AND object_key = v_key
+           AND role_code = p_role AND user_id = p_user AND is_active = 'Y'
+           AND start_date <= v_eff
+           AND (end_date IS NULL OR end_date >= v_eff);
+        IF v_cnt > 0 THEN RETURN 'SKIPPED'; END IF;
+
+        -- someone ELSE currently holds it: the matrix is authoritative for
+        -- its person -- replace the most recent other holder, keep the rest
+        SELECT MAX(assignment_id) INTO v_cur FROM prod.dct_wf_role_assignment
+         WHERE object_type_code = 'COST_CENTER' AND object_key = v_key
+           AND role_code = p_role AND user_id <> p_user AND is_active = 'Y'
+           AND start_date <= v_eff
+           AND (end_date IS NULL OR end_date >= v_eff);
+
+        IF v_cur IS NOT NULL THEN
+            v_id := replace_assignment(p_actor, v_cur, p_user, v_eff);
+            RETURN 'REPLACED';
+        END IF;
+
+        v_id := create_assignment(p_actor, 'COST_CENTER', p_cc, NULL, p_role,
+                                  p_user, v_eff, NULL,
+                                  'Matrix import ' || TO_CHAR(SYSDATE, 'YYYY-MM-DD'));
+        RETURN 'CREATED';
+    END matrix_apply;
 
 END dct_wf_assign;
 /
