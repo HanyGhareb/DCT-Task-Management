@@ -1,5 +1,27 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-08-01 — PR Distributions Incremental (mirrors PR Lines Incremental; data-only, no script)
+
+Hourly incremental for PR distributions, completing the PR family (Headers/Lines already had one).
+Same recipe as every `* Incremental` job — record of the convention:
+
+- **OTBI analysis:** created with `runner/copy_analysis.py` on a worker VM (one MFA):
+  `--copy '/users/haghareb@dctabudhabi.ae/Data/PR/prod/03_PR_DISTRIBUTIONS/01_PR_DISTRIBUTIONS_F'
+  --to '01_PR_DISTRIBUTIONS_UH24' --hour 24 --verify` → Save-As copy of the Full analysis +
+  `Last Updated Date >= TIMESTAMPADD(SQL_TSI_HOUR,-24,CURRENT_TIMESTAMP)` filter, same folder,
+  columns IDENTICAL to Full (so the Full job's column_map_json is copied VERBATIM onto the job row).
+- **Job row (data-only, like all the other incrementals — no db/ script):** job
+  `PR Distributions Incremental`, source_ref = the `_UH24` path, stage
+  `PROD.ATD_PR_DISTRIBUTIONS_STG` (created as an empty structural copy of the final table:
+  `CREATE TABLE … AS SELECT * … WHERE 1=0`), final `PROD.ATD_PR_DISTRIBUTIONS`,
+  `load_mode='MERGE'`, `key_columns='DISTRIBUTION_ID'`, freq 60, priority 1, member of job set
+  `TXN_INCREMENTAL` (Hourly Transaction Incrementals). Deployed via python-oracledb on vm180
+  (MERGE-bearing).
+- **Verified live:** run 8959 SUCCESS — 104 last-24h rows → stage, merged into final (9,538 rows,
+  DISTRIBUTION_ID still unique, all 104 keys present). Direct one-shot run
+  (`python runner.py 'PR Distributions Incremental'`) used for the break-window verification;
+  scheduled runs ride the normal TXN_INCREMENTAL hourly cadence.
+
 ## 2026-07-27 — AR rebill pacing layer: ATD_AR_FAST condition waits (code shipped, knob OFF)
 
 Latency work on `actions/ar_invoice_rebill.py` (~6-7 min/invoice, of which ~370s of ~445s was
