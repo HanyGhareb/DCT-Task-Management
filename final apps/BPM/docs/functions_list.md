@@ -60,6 +60,20 @@ All pages below were consolidated here from the Admin app on **2026-08-01**.
 **Notifications** (`notifications`) — platform notifications (`/dct/notifications/`),
 mark-read / mark-all-read.
 
+## 4. Oversight — Appearance (2026-08-02)
+
+**Appearance** (`appearance`) — app skin picker over the BPM module setting
+`THEME_SKIN`. Three complete skins (`Jet/css/skins.css`, selected by
+`data-bpm-skin` on `<body>`): **night** = Night Console dark (DEFAULT) ·
+**redwood** = Oracle Fusion Redwood · **diwan** = executive burgundy + gold.
+Approved mockups live in `docs/design-mockups/mockup-{a-redwood,b-diwan,c-nightconsole}.html`.
+- `pick(theme)` — instant live preview (applies the skin app-wide, unsaved)
+- `save()` — persists `THEME_SKIN` (WF_ADMIN/SYS_ADMIN on the server) so the skin
+  applies to EVERY BPM user at next boot; `revert()` restores the saved skin
+- Boot: `themeService.init()` applies `localStorage('bpm_skin')` (default night)
+  flash-free via an inline `index.html` script, then corrects from the DB
+  (`sync()`, also re-run on login)
+
 ---
 
 ## Nav & gating
@@ -69,7 +83,7 @@ mark-read / mark-all-read.
 | Home | dashboard | all |
 | Workspace | myWorklist · pendingApprovals · myDelegations | all |
 | Process Design | processes · roleAssignments | `WF_ADMIN` or `SYS_ADMIN` |
-| Oversight | approvalMonitor · approvalTemplates · delegations | `SYS_ADMIN` / `USER_ADMIN` / `WF_ADMIN` |
+| Oversight | approvalMonitor · approvalTemplates · delegations · appearance | `SYS_ADMIN` / `USER_ADMIN` / `WF_ADMIN` |
 | Alerts | notifications | all |
 
 Nav gating mirrors the server: every `/wf/` designer/assign route self-gates
@@ -77,9 +91,17 @@ WF_ADMIN-or-SYS_ADMIN; the worklist is gated per-TASK.
 
 ## API Endpoints
 
-BPM defines none. It consumes `/wf/*` (db/v2/67 + 96/97/98/113/114 — see the
-platform workflow docs) and `/dct/approvals*`, `/dct/approval-templates*`,
+BPM owns no ORDS module. It consumes `/wf/*` (db/v2/67 + 96/97/98/113/114 — see
+the platform workflow docs) and `/dct/approvals*`, `/dct/approval-templates*`,
 `/dct/delegations*`, `/dct/users/`, `/dct/notifications*`, `/dct/stats/`.
+
+Two ADDITIVE templates on the `dct.admin` module (`db/03_bpm_settings_ords.sql` —
+**re-run 03 after any db/v2/11 re-run**):
+
+| Method | Path | Purpose |
+|---|---|---|
+| GET | `/dct/bpm/settings` | BPM `DCT_MODULE_SETTINGS` rows (any valid session — every user reads the theme at boot) |
+| PUT | `/dct/bpm/settings/:id` | update a setting value (`WF_ADMIN`/`SYS_ADMIN`) |
 
 ## Services / Data Layer (`js/services/`)
 
@@ -92,6 +114,8 @@ platform workflow docs) and `/dct/approvals*`, `/dct/approval-templates*`,
 | `userService.js` | user directory (pickers) |
 | `moduleService.js` | module list (delegation module scope) |
 | `notificationService.js` | platform notifications |
+| `settingService.js` | BPM module settings (`/dct/bpm/settings` GET/PUT) |
+| `themeService.js` | app skin apply/persist (`data-bpm-skin`, `localStorage('bpm_skin')`, `THEME_SKIN`) |
 | shared `wfService.js` | the ONE client for `/wf/` (worklist/designer/assignments) |
 
 ## Gotcha log
@@ -107,3 +131,6 @@ platform workflow docs) and `/dct/approvals*`, `/dct/approval-templates*`,
 - **UTC "today" window:** a role assignment starting today computes status
   `FUTURE` between 00:00–04:00 Dubai (storage is UTC; `SYSDATE` is still
   yesterday). Both open statuses are correct in tests.
+- **JET CDN heading color:** `oj-redwood-min.css` hard-codes a near-black color
+  on bare `h1–h4` — invisible on a dark skin. `skins.css` lifts headings to
+  `var(--text)` under the night skin; any future dark skin must do the same.

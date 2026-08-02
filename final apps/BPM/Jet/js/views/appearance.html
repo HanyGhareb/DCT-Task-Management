@@ -1,0 +1,62 @@
+<div class="page-wrap">
+  <div class="page-header-row">
+    <div>
+      <h1 data-bind="text: t('ap.title')"></h1>
+      <p class="page-sub" data-bind="text: t('ap.sub')"></p>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: dirty() -->
+      <button class="btn btn-secondary" data-bind="click: revert, text: t('ap.revert')"></button>
+      <!-- /ko -->
+      <button class="btn btn-primary" data-bind="click: save, disable: saving() || !dirty()">
+        <!-- ko if: saving() --><span data-bind="text: t('ap.saving')"></span><!-- /ko -->
+        <!-- ko ifnot: saving() --><span data-bind="text: t('ap.save')"></span><!-- /ko -->
+      </button>
+    </div>
+  </div>
+
+  <!-- ko if: message() -->
+  <div class="alert-banner alert-banner--info" data-bind="text: message"></div>
+  <!-- /ko -->
+  <!-- ko if: error() -->
+  <div class="alert-banner alert-banner--danger" data-bind="text: error"></div>
+  <!-- /ko -->
+
+  <div class="card">
+    <div class="section-heading-row">
+      <h3 data-bind="text: t('ap.themesRegion')"></h3>
+    </div>
+    <p class="form-hint" style="margin-bottom:16px" data-bind="text: t('ap.hintGlobal')"></p>
+
+    <div class="ap-grid" data-bind="foreach: themes">
+      <div class="ap-card" data-bind="css: { 'ap-card--on': $parent.selected() === id },
+                                      click: function () { $parent.pick($data); }">
+        <!-- miniature shell preview -->
+        <div class="ap-pv" data-bind="style: { background: pv.bg }">
+          <div class="ap-pv-top" data-bind="style: { background: pv.chrome }"></div>
+          <div class="ap-pv-body">
+            <div class="ap-pv-side" data-bind="style: { background: pv.side, borderColor: pv.line }">
+              <i data-bind="style: { background: pv.accent }"></i><i></i><i></i>
+            </div>
+            <div class="ap-pv-main">
+              <div class="ap-pv-card" data-bind="style: { background: pv.card, borderColor: pv.line }">
+                <b data-bind="style: { background: pv.accent }"></b>
+                <span data-bind="style: { background: pv.line }"></span>
+                <span data-bind="style: { background: pv.line }"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="ap-meta">
+          <div class="ap-name">
+            <span data-bind="text: $parent.t(nameKey)"></span>
+            <!-- ko if: $parent.savedValue() === id -->
+            <span class="badge badge--active" data-bind="text: $parent.t('ap.current')"></span>
+            <!-- /ko -->
+          </div>
+          <p data-bind="text: $parent.t(descKey)"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

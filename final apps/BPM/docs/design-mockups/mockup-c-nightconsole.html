@@ -1,0 +1,399 @@
+<title>Fusion BPM — Mockup C · Night Console</title>
+<style>
+  /* ============ MOCKUP C — "NIGHT CONSOLE" ============
+     A dark operations console. The brand burgundy is lifted into a
+     rose accent that works on dark ground; codes are monospace and
+     first-class; steps render as an illuminated process rail.
+     Ground  #17131A (plum-charcoal)   Panel #1F1A24   Raised #2A2231
+     Ink     #F2EDEF   Muted #9E93A3   Line  #362C3E
+     Rose    #E0637E   Amber #D9A441   Teal  #45B396              */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family:"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    background:#17131A; color:#F2EDEF; font-size:13.5px; line-height:1.5;
+  }
+  .mono { font-family:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace; }
+  button { font:inherit; cursor:pointer; }
+  input,select,textarea { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid #E0637E; outline-offset:2px; }
+  ::selection { background:#5A2230; }
+
+  .app { display:grid; grid-template-columns:232px minmax(0,1fr) 412px; min-height:100vh; }
+  @media (max-width:1360px){ .app { grid-template-columns:232px minmax(0,1fr); } .drawer { grid-column:1/-1; border-inline-start:none; border-top:1px solid #362C3E; } }
+  @media (max-width:900px){ .app { grid-template-columns:1fr; } .nav { display:none; } }
+
+  /* ---------- nav ---------- */
+  .nav { background:#120E15; border-inline-end:1px solid #2A2231; padding:20px 0 28px; }
+  .nav-brand { display:flex; gap:10px; align-items:center; padding:0 18px 18px; border-bottom:1px solid #241D2B; }
+  .nav-cube { width:36px; height:36px; flex:none; border-radius:8px; display:grid; place-items:center; font-weight:700; font-size:12px;
+    background:linear-gradient(135deg,#E0637E,#8A3550); color:#fff; box-shadow:0 0 14px rgba(224,99,126,.35); }
+  .nav-brand b { font-size:15px; display:block; letter-spacing:.2px; }
+  .nav-brand span { font-size:9.5px; letter-spacing:1.8px; color:#9E93A3; }
+  .nav-group { margin:16px 18px 5px; font-size:9.5px; letter-spacing:2px; color:#6E6076; font-weight:700; text-transform:uppercase; }
+  .nav a { display:flex; align-items:center; gap:10px; margin:1px 8px; padding:7px 10px; border-radius:7px; color:#C9BFCE; text-decoration:none; font-size:13px; }
+  .nav a:hover { background:#1F1A24; color:#F2EDEF; }
+  .nav a.on { background:linear-gradient(90deg,rgba(224,99,126,.16),rgba(224,99,126,.04)); color:#FFDFE6; font-weight:600; }
+  .nav a.on::before { content:""; width:3px; height:16px; border-radius:2px; background:#E0637E; margin-inline-start:-6px; box-shadow:0 0 8px #E0637E; }
+  .nav .cnt { margin-inline-start:auto; font-size:10.5px; background:#2A2231; border-radius:9px; padding:1px 7px; color:#C9BFCE; font-variant-numeric:tabular-nums; }
+  .nav a.on .cnt { background:#5A2230; color:#FFDFE6; }
+
+  /* ---------- main ---------- */
+  .main { min-width:0; display:flex; flex-direction:column; }
+  .topbar { background:#120E15; border-bottom:1px solid #2A2231; height:48px; display:flex; align-items:center; gap:14px; padding:0 20px; }
+  .topbar .crumb { font-size:12px; color:#9E93A3; }
+  .topbar .crumb b { color:#F2EDEF; }
+  .topbar .sp { flex:1; }
+  .tb-btn { background:#1F1A24; border:1px solid #362C3E; color:#E8E0EA; border-radius:8px; padding:4px 12px; font-size:12px; }
+  .tb-btn:hover { border-color:#E0637E; }
+  .tb-bell { position:relative; border:none; background:transparent; color:#E8E0EA; font-size:15px; width:32px; height:32px; }
+  .tb-bell i { position:absolute; top:-1px; right:-3px; background:#E0637E; color:#17131A; font-style:normal; font-size:9.5px; font-weight:700; border-radius:8px; padding:0 4px; }
+  .tb-user { display:flex; align-items:center; gap:8px; font-size:12px; color:#C9BFCE; }
+  .tb-av { width:28px; height:28px; border-radius:50%; background:#2A2231; border:1px solid #E0637E; color:#FFDFE6; display:grid; place-items:center; font-size:10.5px; font-weight:700; }
+
+  .pagehead { padding:26px 28px 20px; border-bottom:1px solid #241D2B;
+    background:radial-gradient(600px 180px at 20% 0%, rgba(224,99,126,.08), transparent 70%); }
+  .ph-eyebrow { font-size:9.5px; letter-spacing:2.4px; text-transform:uppercase; color:#E0637E; font-weight:700; }
+  .ph-row { display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; margin-top:6px; }
+  .pagehead h1 { font-size:24px; font-weight:650; letter-spacing:-.2px; }
+  .pagehead p { color:#9E93A3; margin-top:5px; max-width:60ch; font-size:13px; }
+  .ph-actions { margin-inline-start:auto; display:flex; gap:8px; }
+
+  .content { padding:20px 28px 40px; display:flex; flex-direction:column; gap:16px; }
+
+  /* ---------- buttons : full pills ---------- */
+  .btn { border-radius:999px; padding:8px 18px; font-size:13px; font-weight:600; border:1px solid transparent; display:inline-flex; align-items:center; gap:7px; }
+  .btn-pri { background:#E0637E; color:#1C0E13; }
+  .btn-pri:hover { background:#EE7D95; box-shadow:0 0 16px rgba(224,99,126,.35); }
+  .btn-sec { background:transparent; color:#F2EDEF; border-color:#4A3D52; }
+  .btn-sec:hover { border-color:#E0637E; color:#FFDFE6; }
+  .btn-ghost { background:transparent; color:#C9BFCE; }
+  .btn-ghost:hover { background:#241D2B; color:#F2EDEF; }
+  .btn-danger { background:transparent; color:#F08A8A; border-color:#6E3440; }
+  .btn-danger:hover { background:rgba(240,138,138,.08); border-color:#F08A8A; }
+  .btn-sm { padding:5px 14px; font-size:12px; }
+  .btn[disabled] { opacity:.4; cursor:not-allowed; }
+
+  /* ---------- KPI tiles ---------- */
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(175px,1fr)); gap:12px; }
+  .kpi { background:#1F1A24; border:1px solid #2A2231; border-radius:12px; padding:14px 16px; position:relative; overflow:hidden; }
+  .kpi::before { content:""; position:absolute; inset-inline-start:0; top:12px; bottom:12px; width:3px; border-radius:2px; background:#4A3D52; }
+  .kpi.hot::before { background:#E0637E; box-shadow:0 0 8px #E0637E; }
+  .kpi.warn::before { background:#D9A441; box-shadow:0 0 8px rgba(217,164,65,.6); }
+  .kpi label { font-size:9.5px; letter-spacing:1.8px; text-transform:uppercase; color:#9E93A3; font-weight:700; }
+  .kpi b { display:block; font-size:26px; font-weight:650; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .kpi span { font-size:11.5px; color:#9E93A3; }
+  .kpi.warn b { color:#EFC077; }
+
+  /* ---------- panels + table ---------- */
+  .panel { background:#1F1A24; border:1px solid #2A2231; border-radius:12px; overflow:hidden; }
+  .panel-hd { display:flex; align-items:center; gap:10px; padding:12px 18px; border-bottom:1px solid #2A2231; }
+  .panel-hd h2 { font-size:13.5px; font-weight:650; letter-spacing:.3px; }
+  .panel-hd .chip { background:#2A2231; border-radius:9px; padding:1px 8px; font-size:10.5px; color:#C9BFCE; font-weight:600; }
+  .panel-hd .acts { margin-inline-start:auto; display:flex; gap:8px; }
+  .tbl-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13px; min-width:760px; }
+  thead th { text-align:start; font-size:9.5px; font-weight:700; letter-spacing:1.8px; text-transform:uppercase; color:#6E6076; padding:9px 18px; border-bottom:1px solid #2A2231; white-space:nowrap; background:#1B1620; }
+  tbody td { padding:11px 18px; border-bottom:1px solid #241D2B; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:#241D2B; }
+  tbody tr.sel { background:linear-gradient(90deg,rgba(224,99,126,.12),rgba(224,99,126,.03)); }
+  tbody tr.sel td:first-child { box-shadow:inset 3px 0 0 #E0637E; }
+  .code { font-family:ui-monospace,"Cascadia Code","SF Mono",Menlo,Consolas,monospace; font-size:12px; color:#8FD4C8; letter-spacing:.2px; }
+  td .sub { display:block; font-size:11.5px; color:#8A7D90; margin-top:1px; direction:rtl; text-align:start; }
+  .num { font-variant-numeric:tabular-nums; text-align:end; }
+
+  /* ---------- pills : glow chips ---------- */
+  .pill { display:inline-flex; align-items:center; gap:6px; border-radius:999px; padding:2px 10px; font-size:10.5px; font-weight:700; letter-spacing:.6px; text-transform:uppercase; border:1px solid; }
+  .pill::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; box-shadow:0 0 6px currentColor; }
+  .pill-ok  { color:#7FD6BC; border-color:#2C5548; background:rgba(69,179,150,.08); }
+  .pill-wf  { color:#F79BB1; border-color:#6E3440; background:rgba(224,99,126,.10); }
+  .pill-neu { color:#AFA3B5; border-color:#4A3D52; background:rgba(154,143,160,.08); }
+  .pill-warn{ color:#EFC077; border-color:#6E5528; background:rgba(217,164,65,.10); }
+
+  /* ---------- steps : illuminated rail ---------- */
+  .steps { padding:10px 18px 18px; position:relative; }
+  .rail { position:absolute; inset-inline-start:35px; top:26px; bottom:30px; width:2px;
+    background:linear-gradient(#E0637E, #4A3D52); box-shadow:0 0 8px rgba(224,99,126,.4); }
+  .step { display:flex; gap:16px; padding:13px 0; position:relative; }
+  .step-no { width:36px; height:36px; flex:none; border-radius:50%; display:grid; place-items:center; z-index:1;
+    background:#17131A; border:2px solid #E0637E; color:#F79BB1; font-weight:700; font-size:12px;
+    font-family:ui-monospace,Menlo,monospace; box-shadow:0 0 10px rgba(224,99,126,.35); }
+  .step:last-child .step-no { border-color:#4A3D52; color:#AFA3B5; box-shadow:none; }
+  .step h3 { font-size:14px; font-weight:650; display:inline; }
+  .step .ar { color:#8A7D90; font-size:12.5px; margin-inline-start:9px; }
+  .step-meta { margin-top:5px; display:flex; gap:16px; flex-wrap:wrap; font-size:12px; color:#C9BFCE; }
+  .step-meta b { font-size:9px; letter-spacing:1.6px; color:#6E6076; font-weight:700; margin-inline-end:5px; }
+  .who { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; background:#241D2B; border:1px solid #362C3E; border-radius:5px; padding:1px 7px; color:#8FD4C8; }
+  .sla { font-family:ui-monospace,Menlo,monospace; font-size:11.5px; color:#EFC077; }
+  .step .edit { margin-inline-start:auto; align-self:center; }
+
+  /* ---------- drawer ---------- */
+  .drawer { background:#1B1620; border-inline-start:1px solid #2A2231; display:flex; flex-direction:column; min-width:0; }
+  .dr-hd { display:flex; align-items:center; gap:10px; padding:15px 20px; border-bottom:1px solid #2A2231;
+    background:radial-gradient(320px 90px at 10% 0%, rgba(224,99,126,.10), transparent 70%); }
+  .dr-hd .eyebrow { font-size:9px; letter-spacing:2.2px; text-transform:uppercase; color:#E0637E; font-weight:700; display:block; }
+  .dr-hd h2 { font-size:15.5px; font-weight:650; }
+  .dr-hd .acts { margin-inline-start:auto; display:flex; gap:8px; }
+  .dr-bd { padding:18px 20px 30px; overflow-y:auto; display:flex; flex-direction:column; gap:15px; }
+  .fld label { display:block; font-size:10px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#9E93A3; margin-bottom:5px; }
+  .fld label i { color:#F08A8A; font-style:normal; }
+  .in { width:100%; background:#17131A; border:1px solid #362C3E; border-radius:8px; padding:8px 11px; font-size:13px; color:#F2EDEF; }
+  .in:focus { border-color:#E0637E; box-shadow:0 0 0 1px #E0637E, 0 0 12px rgba(224,99,126,.15); outline:none; }
+  .in[dir=rtl] { text-align:right; }
+  select.in option { background:#1F1A24; }
+  textarea.in { resize:vertical; min-height:62px; }
+  .fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .hint { font-size:11px; color:#8A7D90; margin-top:4px; letter-spacing:0; text-transform:none; }
+  .sw { display:flex; align-items:center; gap:10px; }
+  .sw-track { width:38px; height:20px; border-radius:10px; background:#45B396; position:relative; flex:none; box-shadow:0 0 8px rgba(69,179,150,.4); }
+  .sw-track::after { content:""; position:absolute; top:2px; inset-inline-end:2px; width:16px; height:16px; border-radius:50%; background:#F2EDEF; }
+  .sw-track.off { background:#4A3D52; box-shadow:none; } .sw-track.off::after { inset-inline-end:auto; inset-inline-start:2px; }
+  .dr-sec { font-size:9.5px; font-weight:700; letter-spacing:2px; text-transform:uppercase; color:#6E6076; border-bottom:1px solid #2A2231; padding-bottom:6px; margin-top:4px; }
+
+  /* attachments */
+  .drop { border:1.5px dashed #4A3D52; border-radius:10px; background:#17131A; padding:18px; text-align:center; color:#9E93A3; font-size:12.5px; }
+  .drop b { color:#F79BB1; font-weight:600; }
+  .file { display:flex; align-items:center; gap:11px; background:#241D2B; border:1px solid #2A2231; border-radius:9px; padding:9px 12px; }
+  .f-ico { width:32px; height:36px; flex:none; border-radius:5px; display:grid; place-items:center; font-size:8.5px; font-weight:700; letter-spacing:.6px; color:#17131A; font-family:ui-monospace,Menlo,monospace; }
+  .f-pdf { background:#E0637E; } .f-xls { background:#45B396; }
+  .file b { font-size:12.5px; font-weight:600; display:block; }
+  .file span { font-size:11px; color:#8A7D90; }
+  .file .fa { margin-inline-start:auto; display:flex; gap:2px; }
+  .icobtn { border:none; background:transparent; border-radius:6px; width:28px; height:28px; color:#C9BFCE; font-size:13.5px; }
+  .icobtn:hover { background:#2A2231; color:#F79BB1; }
+
+  /* ---------- design language ---------- */
+  .dl { border-top:1px dashed #4A3D52; padding-top:16px; }
+  .dl > h2 { font-size:10px; font-weight:700; letter-spacing:2.4px; text-transform:uppercase; color:#E0637E; margin-bottom:12px; }
+  .dl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
+  .dl-card { background:#1F1A24; border:1px solid #2A2231; border-radius:12px; padding:14px 16px; }
+  .dl-card h3 { font-size:11.5px; font-weight:650; color:#C9BFCE; margin-bottom:10px; }
+  .sw-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .swatch { width:64px; }
+  .swatch i { display:block; height:34px; border-radius:8px; border:1px solid rgba(255,255,255,.08); }
+  .swatch span { font-size:9.5px; color:#8A7D90; display:block; margin-top:3px; font-family:ui-monospace,Menlo,monospace; }
+  .row-wrap { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+</style>
+
+<div class="app">
+  <!-- =============== NAV =============== -->
+  <aside class="nav">
+    <div class="nav-brand">
+      <div class="nav-cube">BP</div>
+      <div><b>Fusion BPM</b><span>NIGHT CONSOLE · 214</span></div>
+    </div>
+    <a href="#">Home</a>
+    <div class="nav-group">My workspace</div>
+    <a href="#">My Worklist<span class="cnt">3</span></a>
+    <a href="#">Pending Approvals<span class="cnt">12</span></a>
+    <a href="#">My Delegations</a>
+    <div class="nav-group">Process design</div>
+    <a href="#" class="on">Approval Processes</a>
+    <a href="#">Role Assignments</a>
+    <div class="nav-group">Oversight</div>
+    <a href="#">Approval Monitor</a>
+    <a href="#">Approval Templates</a>
+    <a href="#">Delegations</a>
+    <a href="#">Notifications</a>
+  </aside>
+
+  <!-- =============== MAIN =============== -->
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb">Fusion i-Finance&nbsp;/&nbsp;<b>Fusion BPM</b></span>
+      <span class="sp"></span>
+      <button class="tb-btn">APEX</button>
+      <button class="tb-btn">EN · ع</button>
+      <button class="tb-bell">🔔<i>36</i></button>
+      <span class="tb-user"><span class="tb-av">SA</span>System Administrator</span>
+    </div>
+
+    <div class="pagehead">
+      <div class="ph-eyebrow">Process design</div>
+      <div class="ph-row">
+        <div>
+          <h1>Approval Processes</h1>
+          <p>Edit approval chains — no code, no deploy. Changes publish as a new version; work already in progress is unaffected.</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-sec">Enable test mode</button>
+          <button class="btn btn-sec">Simulate</button>
+          <button class="btn btn-pri">Edit chain</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- KPI band -->
+      <div class="kpis">
+        <div class="kpi hot"><label>Open tasks</label><b>12</b><span>across 2 processes</span></div>
+        <div class="kpi"><label>Avg cycle</label><b>2.4 d</b><span>last 30 days</span></div>
+        <div class="kpi"><label>Processes</label><b>2</b><span>1 routed to engine</span></div>
+        <div class="kpi warn"><label>SLA breaches</label><b>1</b><span>needs escalation</span></div>
+      </div>
+
+      <!-- processes table -->
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>Processes</h2><span class="chip">2</span>
+          <div class="acts">
+            <button class="btn btn-ghost btn-sm">Export</button>
+            <button class="btn btn-pri btn-sm">＋ New process</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Code</th><th>Module</th><th>Name</th><th>Published</th><th>Routed to</th><th class="num">Steps</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td class="code">DEMO_APPROVAL</td>
+              <td>DEMO</td>
+              <td>Demo Approval Process<span class="sub">عملية الاعتماد التجريبية</span></td>
+              <td><span class="pill pill-ok">v1 Published</span></td>
+              <td><span class="pill pill-neu">Legacy</span></td>
+              <td class="num">4</td>
+            </tr>
+            <tr class="sel">
+              <td class="code">KPI_RESULT_APPROVAL</td>
+              <td>KPI_MGMT</td>
+              <td>KPI Result Approval<span class="sub">اعتماد نتائج مؤشرات الأداء</span></td>
+              <td><span class="pill pill-ok">v1 Published</span></td>
+              <td><span class="pill pill-wf">Workflow</span></td>
+              <td class="num">2</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- steps : illuminated rail -->
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>KPI_RESULT_APPROVAL — steps</h2><span class="pill pill-ok">v1 Published</span>
+          <div class="acts"><button class="btn btn-ghost btn-sm">Diagram</button><button class="btn btn-sec btn-sm">Edit chain</button></div>
+        </div>
+        <div class="steps">
+          <div class="rail" aria-hidden="true"></div>
+          <div class="step">
+            <div class="step-no">10</div>
+            <div style="min-width:0;flex:1">
+              <h3>Section Head review</h3><span class="ar">مراجعة رئيس القسم</span>
+              <div class="step-meta">
+                <span><b>WHO</b><span class="who">LINE_MANAGER</span></span>
+                <span><b>CHOICES</b>Approve · Reject · Return</span>
+                <span><b>SLA</b><span class="sla">72h</span></span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm edit">Edit</button>
+          </div>
+          <div class="step">
+            <div class="step-no">20</div>
+            <div style="min-width:0;flex:1">
+              <h3>Finance Director approval</h3><span class="ar">اعتماد مدير المالية</span>
+              <div class="step-meta">
+                <span><b>WHO</b><span class="who">KPI_FIN_DIRECTOR</span></span>
+                <span><b>CHOICES</b>Approve · Reject · Return</span>
+                <span><b>SLA</b><span class="sla">72h</span></span>
+                <span class="pill pill-warn">Final approval</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm edit">Edit</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============== DESIGN LANGUAGE =============== -->
+      <section class="dl">
+        <h2>Design language — Night Console</h2>
+        <div class="dl-grid">
+          <div class="dl-card">
+            <h3>Palette</h3>
+            <div class="sw-row">
+              <div class="swatch"><i style="background:#E0637E"></i><span>#E0637E<br>rose</span></div>
+              <div class="swatch"><i style="background:#17131A"></i><span>#17131A<br>ground</span></div>
+              <div class="swatch"><i style="background:#1F1A24"></i><span>#1F1A24<br>panel</span></div>
+              <div class="swatch"><i style="background:#45B396"></i><span>#45B396<br>success</span></div>
+              <div class="swatch"><i style="background:#D9A441"></i><span>#D9A441<br>warning</span></div>
+              <div class="swatch"><i style="background:#8FD4C8"></i><span>#8FD4C8<br>code</span></div>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Buttons — full pills; primary glows on hover</h3>
+            <div class="row-wrap">
+              <button class="btn btn-pri">Save changes</button>
+              <button class="btn btn-sec">Simulate</button>
+              <button class="btn btn-ghost">Cancel</button>
+              <button class="btn btn-danger">Reject</button>
+              <button class="btn btn-pri btn-sm">＋ New</button>
+              <button class="btn btn-pri" disabled>Publishing…</button>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Status — bordered glow chips; codes are teal monospace</h3>
+            <div class="row-wrap">
+              <span class="pill pill-ok">Published</span>
+              <span class="pill pill-wf">Workflow</span>
+              <span class="pill pill-neu">Legacy</span>
+              <span class="pill pill-warn">SLA at risk</span>
+              <span class="code">KPI_RESULT_APPROVAL</span>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Form control — focus rings in rose with a soft glow</h3>
+            <div class="fld"><label>Process name <i>*</i></label>
+              <input class="in" value="KPI Result Approval" style="border-color:#E0637E;box-shadow:0 0 0 1px #E0637E,0 0 12px rgba(224,99,126,.15)"></div>
+            <p class="hint">Focused state shown. Inputs sit one shade darker than their panel.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- =============== DRAWER =============== -->
+  <aside class="drawer">
+    <div class="dr-hd">
+      <div><span class="eyebrow">Edit step</span><h2>Section Head review</h2></div>
+      <div class="acts">
+        <button class="btn btn-ghost btn-sm">Cancel</button>
+        <button class="btn btn-pri btn-sm">Save</button>
+      </div>
+    </div>
+    <div class="dr-bd">
+      <div class="fld-row">
+        <div class="fld"><label>Step name (English) <i>*</i></label><input class="in" value="Section Head review"></div>
+        <div class="fld"><label>Step name (Arabic) <i>*</i></label><input class="in" dir="rtl" value="مراجعة رئيس القسم"></div>
+      </div>
+      <div class="fld"><label>Assigned to <i>*</i></label>
+        <select class="in"><option>Line manager of the requester</option><option>Role — KPI_FIN_DIRECTOR</option><option>Named user…</option></select>
+        <p class="hint">Resolved when the request is submitted, from the requester's reporting line.</p>
+      </div>
+      <div class="fld"><label>Decisions offered <i>*</i></label>
+        <select class="in"><option>Approve · Reject · Return</option><option>Endorse · Return for info · Reject</option><option>Acknowledge (FYI)</option></select>
+      </div>
+      <div class="fld-row">
+        <div class="fld"><label>SLA (hours)</label><input class="in mono" value="72"></div>
+        <div class="fld"><label>Reminders before due</label><input class="in mono" value="48, 24, 4"></div>
+      </div>
+      <div class="fld sw">
+        <span class="sw-track off" aria-hidden="true"></span>
+        <div><label style="margin:0">Final approval</label><p class="hint" style="margin:0">Completing this step completes the request.</p></div>
+      </div>
+      <div class="fld"><label>Notes</label><textarea class="in">Escalates to the Finance Director after 72 hours with no decision.</textarea></div>
+
+      <div class="dr-sec">Attachments</div>
+      <div class="drop">Drag files here, or <b>browse</b> — up to 10 MB each</div>
+      <div class="file">
+        <div class="f-ico f-pdf">PDF</div>
+        <div><b>KPI-policy-2026.pdf</b><span>412 KB · S. Administrator · 01-08-2026</span></div>
+        <div class="fa"><button class="icobtn" title="Download">⤓</button><button class="icobtn" title="Remove">✕</button></div>
+      </div>
+      <div class="file">
+        <div class="f-ico f-xls">XLS</div>
+        <div><b>Approval-matrix-2026.xlsx</b><span>88 KB · H. Ghareb · 28-07-2026</span></div>
+        <div class="fa"><button class="icobtn" title="Download">⤓</button><button class="icobtn" title="Remove">✕</button></div>
+      </div>
+    </div>
+  </aside>
+</div>

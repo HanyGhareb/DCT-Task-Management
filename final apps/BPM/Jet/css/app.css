@@ -42,3 +42,26 @@
   display: flex; align-items: center; justify-content: center; font-size: 18px; flex: none; }
 .bpm-quick .qk .qt b { display: block; font-size: 14px; color: #1D2939; }
 .bpm-quick .qk .qt span { font-size: 12px; color: #667085; }
+
+/* ── Appearance page — skin picker cards ─────────────────────────────────── */
+.ap-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; }
+.ap-card { border: 2px solid var(--border, #E4E7EC); border-radius: var(--radius-lg, 12px);
+  overflow: hidden; cursor: pointer; background: var(--surface, #fff);
+  transition: border-color .15s ease, box-shadow .15s ease; }
+.ap-card:hover { border-color: var(--border-strong, #CBD2DA); }
+.ap-card--on { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(var(--brand-rgb), .18); }
+.ap-pv { height: 130px; padding: 0; }
+.ap-pv-top { height: 18px; }
+.ap-pv-body { display: flex; height: 112px; }
+.ap-pv-side { width: 52px; border-inline-end: 1px solid; padding: 8px 8px 0; flex: none; }
+.ap-pv-side i { display: block; height: 6px; border-radius: 3px; background: rgba(128,128,128,.28);
+  margin-block-end: 6px; }
+.ap-pv-main { flex: 1; padding: 10px; }
+.ap-pv-card { border: 1px solid; border-radius: 6px; height: 100%; padding: 8px; }
+.ap-pv-card b { display: block; width: 42%; height: 7px; border-radius: 3px; margin-block-end: 7px; }
+.ap-pv-card span { display: block; width: 88%; height: 5px; border-radius: 2px;
+  background: rgba(128,128,128,.25); margin-block-end: 5px; }
+.ap-meta { padding: 12px 14px 14px; border-block-start: 1px solid var(--border, #E4E7EC); }
+.ap-name { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px;
+  color: var(--text, #1D2939); margin-block-end: 3px; }
+.ap-meta p { font-size: 12.5px; color: var(--text-2, #667085); margin: 0; }

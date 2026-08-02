@@ -10,6 +10,8 @@
   <link rel="stylesheet" href="/shared/css/themes.css">
   <!-- App layer: brand tokens + module-specific rules only -->
   <link rel="stylesheet" href="css/app.css">
+  <!-- Switchable app skins (data-bpm-skin on body; Appearance page) — must load after app.css -->
+  <link rel="stylesheet" href="css/skins.css">
   <style>
     .login-mode .topbar,
     .login-mode .side { display: none !important; }
@@ -149,7 +151,16 @@
 
 </div><!-- /#globalBody -->
 
-<script>window.APP_VERSION = '1.0.0'; /* bump per deploy — drives requirejs urlArgs cache key */</script>
+<script>window.APP_VERSION = '1.1.0'; /* bump per deploy — drives requirejs urlArgs cache key */</script>
+<script>
+  /* Flash-free skin: apply the saved (or default night) skin before the app boots.
+     themeService.init() re-applies + corrects from the DB once modules load. */
+  (function () {
+    var s = localStorage.getItem('bpm_skin');
+    document.body.setAttribute('data-bpm-skin',
+      ['night', 'redwood', 'diwan'].indexOf(s) >= 0 ? s : 'night');
+  })();
+</script>
 <script src="https://static.oracle.com/cdn/jet/17.0.0/3rdparty/require/require.js"
         data-main="js/main"></script>
 </body>

@@ -45,6 +45,24 @@
 
 ## Deployment history
 
+- **2026-08-02** — v1.1.0 **switchable app skins** (Appearance page). Three
+  complete looks in `Jet/css/skins.css` on `body[data-bpm-skin]` — **night**
+  (Night Console dark, DEFAULT) · **redwood** (Oracle Fusion Redwood) · **diwan**
+  (executive burgundy + gold) — chosen from the mockups in
+  `docs/design-mockups/`. New Oversight → Appearance page (live preview cards +
+  Save; saved value applies to every BPM user), `themeService`/`settingService`,
+  flash-free inline boot script in `index.html`. DB: `db/02_bpm_theme_seed.sql`
+  (THEME_SKIN SELECT row, setting_id 561, default NIGHT) +
+  `db/03_bpm_settings_ords.sql` — **ADDITIVE `bpm/settings` GET/PUT templates on
+  the `dct.admin` ORDS module; RE-RUN 03 AFTER ANY db/v2/11 RE-RUN** (11 does
+  DELETE_MODULE). API curl-verified (200/ok/404/401); browser
+  `tests/bpm_theme_browser.py` 15/15 (default night, live preview, DB-sync on a
+  clean browser, AR/RTL, self-restoring). Web release `20260802153536`.
+  Gotchas learned: the JET CDN css hard-codes near-black `h1–h4` (dark skins
+  must lift headings to `var(--text)`); skin vars are defined at BODY level so
+  they shadow the inline `:root` values shell.js sets (`--region-hd-*`,
+  `--brand*`) without touching shell code.
+
 - **2026-08-01** — v1.0.0 initial release (consolidation of all Admin workflow
   pages + new dashboard). DB row deployed (module_id 181). Web release shipped
   with Admin 4.7.15 + platform-wide APP_VERSION bumps. All tests PASS

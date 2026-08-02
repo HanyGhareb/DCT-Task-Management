@@ -1,5 +1,5 @@
-define(['knockout', 'services/config', 'services/authService', 'services/notificationService', 'shared/i18n', 'shared/shell'],
-function (ko, config, authService, notifService, i18n, shell) {
+define(['knockout', 'services/config', 'services/authService', 'services/notificationService', 'services/themeService', 'shared/i18n', 'shared/shell'],
+function (ko, config, authService, notifService, themeService, i18n, shell) {
   'use strict';
 
   function AppController() {
@@ -13,6 +13,7 @@ function (ko, config, authService, notifService, i18n, shell) {
     shell.initBrand('bpm');
     shell.initAnnouncements('bpm', config.authBase);
     shell.initRegionTheme(config.authBase);
+    themeService.init();   // app skin (data-bpm-skin) — localStorage first, DB corrects
     self.t       = i18n.t;
     self.lang    = i18n.lang;
     self.setLang = i18n.setLang;
@@ -74,7 +75,8 @@ function (ko, config, authService, notifService, i18n, shell) {
       { id: 'oversight', labelKey: 'nav.oversightGroup', auth: 'admin', collapsed: ko.observable(false), items: [
           { id: 'approvalMonitor',   labelKey: 'nav.approvalMonitor',   icon: '&#128065;' },
           { id: 'approvalTemplates', labelKey: 'nav.approvalTemplates', icon: '&#128196;' },
-          { id: 'delegations',       labelKey: 'nav.delegations',       icon: '&#129309;' } ] },
+          { id: 'delegations',       labelKey: 'nav.delegations',       icon: '&#129309;' },
+          { id: 'appearance',        labelKey: 'nav.appearance',        icon: '&#127912;' } ] },
       { id: 'alerts', standalone: true, auth: 'all', items: [
           { id: 'notifications', labelKey: 'nav.notifications', icon: '&#128276;' } ] }
     ];
@@ -136,7 +138,7 @@ function (ko, config, authService, notifService, i18n, shell) {
 
     self.logout = function () { authService.logout(); self.userMenuOpen(false); self._state = {}; _requireAuth(); };
 
-    self.onLogin = function (user) { self.currentUser(user); _refreshCounts(); self._loadRoute('dashboard'); };
+    self.onLogin = function (user) { self.currentUser(user); themeService.sync(); _refreshCounts(); self._loadRoute('dashboard'); };
 
     var bootRoute = (window.location.hash || '').replace(/^#/, '');
 

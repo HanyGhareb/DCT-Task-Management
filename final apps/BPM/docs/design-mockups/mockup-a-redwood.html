@@ -1,0 +1,391 @@
+<title>Fusion BPM — Mockup A · Oracle Redwood</title>
+<style>
+  /* ============ MOCKUP A — ORACLE FUSION REDWOOD ============
+     Ground   #FBF9F8   warm Redwood neutral
+     Surface  #FFFFFF
+     Ink      #161513   Redwood text
+     Muted    #6B6461
+     Border   #E4E1DC
+     Brand    #C74634   Oracle red (branding + selection, NOT buttons)
+     Action   #312D2A   Redwood CTA charcoal-brown (primary buttons)
+     Type: "Oracle Sans" stack (Helvetica Neue fallback)          */
+  * { margin:0; padding:0; box-sizing:border-box; }
+  html { -webkit-text-size-adjust:100%; }
+  body {
+    font-family:"Oracle Sans","Helvetica Neue",Helvetica,Arial,sans-serif;
+    background:#FBF9F8; color:#161513; font-size:14px; line-height:1.45;
+  }
+  button { font:inherit; cursor:pointer; }
+  input,select,textarea { font:inherit; color:inherit; }
+  :focus-visible { outline:2px solid #C74634; outline-offset:2px; }
+
+  .app { display:grid; grid-template-columns:236px minmax(0,1fr) 416px; min-height:100vh; }
+  @media (max-width:1360px){ .app { grid-template-columns:236px minmax(0,1fr); } .drawer { grid-column:1/-1; border-inline-start:none; border-top:1px solid #E4E1DC; } }
+  @media (max-width:900px){ .app { grid-template-columns:1fr; } .nav { display:none; } }
+
+  /* ---------- side nav ---------- */
+  .nav { background:#FFFFFF; border-inline-end:1px solid #E4E1DC; padding:20px 0 28px; }
+  .nav-brand { display:flex; align-items:center; gap:10px; padding:0 18px 18px; border-bottom:1px solid #EFECE8; }
+  .nav-cube { width:36px; height:36px; border-radius:6px; background:#C74634; color:#fff; font-weight:700; font-size:13px; display:grid; place-items:center; letter-spacing:.5px; }
+  .nav-brand b { font-size:15px; display:block; }
+  .nav-brand span { font-size:10.5px; color:#6B6461; letter-spacing:.8px; }
+  .nav-group { padding:16px 10px 2px; font-size:10.5px; font-weight:700; letter-spacing:1.1px; color:#8B837E; text-transform:uppercase; margin:4px 8px 4px; }
+  .nav a { display:flex; align-items:center; gap:10px; margin:1px 8px; padding:8px 10px; border-radius:6px; color:#403B38; text-decoration:none; font-size:13.5px; }
+  .nav a:hover { background:#F6F1EE; }
+  .nav a.on { background:#FBEFE9; color:#161513; font-weight:600; box-shadow:inset 3px 0 0 #C74634; }
+  .nav .dot { width:6px; height:6px; border-radius:50%; background:#C9C2BC; flex:none; }
+  .nav a.on .dot { background:#C74634; }
+  .nav .cnt { margin-inline-start:auto; background:#F1EDEA; color:#6B6461; border-radius:10px; font-size:11px; padding:1px 7px; font-weight:600; }
+
+  /* ---------- main ---------- */
+  .main { min-width:0; display:flex; flex-direction:column; }
+  .topbar { background:#312D2A; color:#F4F1EF; height:48px; display:flex; align-items:center; gap:14px; padding:0 18px; }
+  .topbar .crumb { font-size:12.5px; color:#B8B1AB; }
+  .topbar .crumb b { color:#F4F1EF; font-weight:600; }
+  .topbar .sp { flex:1; }
+  .tb-btn { background:transparent; border:1px solid #57514C; color:#E8E4E1; border-radius:6px; padding:4px 12px; font-size:12.5px; }
+  .tb-btn:hover { background:#403B37; }
+  .tb-bell { position:relative; width:32px; height:32px; border-radius:6px; border:none; background:transparent; color:#E8E4E1; font-size:15px; }
+  .tb-bell i { position:absolute; top:1px; right:0; background:#C74634; color:#fff; font-style:normal; font-size:9.5px; font-weight:700; border-radius:8px; padding:0 4px; }
+  .tb-user { display:flex; align-items:center; gap:8px; font-size:12.5px; }
+  .tb-av { width:28px; height:28px; border-radius:50%; background:#C74634; color:#fff; display:grid; place-items:center; font-size:11px; font-weight:700; }
+
+  /* warm Redwood gradient band */
+  .pagehead {
+    background:linear-gradient(100deg,#FDF7F2 0%,#FAEDE2 55%,#F6E0D2 100%);
+    border-bottom:1px solid #EFE4DA; padding:26px 28px 22px; position:relative; overflow:hidden;
+  }
+  .pagehead::after { content:""; position:absolute; inset-inline-end:-120px; top:-190px; width:420px; height:420px; border-radius:50%;
+    border:56px solid rgba(199,70,52,.07); pointer-events:none; }
+  .ph-eyebrow { font-size:11px; font-weight:700; letter-spacing:1.2px; color:#9A3A2A; text-transform:uppercase; margin-bottom:6px; }
+  .ph-row { display:flex; align-items:flex-end; gap:16px; flex-wrap:wrap; }
+  .pagehead h1 { font-size:26px; font-weight:650; letter-spacing:-.2px; }
+  .pagehead p { color:#6B6461; margin-top:5px; max-width:60ch; }
+  .ph-actions { margin-inline-start:auto; display:flex; gap:8px; }
+
+  .content { padding:22px 28px 40px; display:flex; flex-direction:column; gap:18px; }
+
+  /* ---------- buttons (Redwood: charcoal CTA, 6px radius) ---------- */
+  .btn { border-radius:6px; padding:8px 16px; font-size:13.5px; font-weight:600; border:1px solid transparent; display:inline-flex; align-items:center; gap:7px; }
+  .btn-pri { background:#312D2A; color:#fff; }
+  .btn-pri:hover { background:#4A443F; }
+  .btn-sec { background:#fff; color:#161513; border-color:#A9A29C; }
+  .btn-sec:hover { background:#F6F3F0; border-color:#6B6461; }
+  .btn-ghost { background:transparent; color:#161513; border-color:transparent; }
+  .btn-ghost:hover { background:rgba(49,45,42,.07); }
+  .btn-danger { background:#fff; color:#A03024; border-color:#D8A79E; }
+  .btn-danger:hover { background:#FBEFE9; border-color:#A03024; }
+  .btn-sm { padding:5px 12px; font-size:12.5px; }
+  .btn[disabled] { opacity:.45; cursor:not-allowed; }
+
+  /* ---------- KPI tiles ---------- */
+  .kpis { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:12px; }
+  .kpi { background:#fff; border:1px solid #E4E1DC; border-radius:8px; padding:14px 16px; }
+  .kpi label { font-size:10.5px; font-weight:700; letter-spacing:1px; color:#8B837E; text-transform:uppercase; }
+  .kpi b { display:block; font-size:26px; font-weight:650; margin-top:2px; font-variant-numeric:tabular-nums; }
+  .kpi span { font-size:12px; color:#6B6461; }
+  .kpi.alert b { color:#A03024; }
+
+  /* ---------- panels + table ---------- */
+  .panel { background:#fff; border:1px solid #E4E1DC; border-radius:8px; overflow:hidden; }
+  .panel-hd { display:flex; align-items:center; gap:10px; padding:13px 18px; border-bottom:1px solid #EFECE8; }
+  .panel-hd h2 { font-size:14.5px; font-weight:650; }
+  .panel-hd .chip { background:#F1EDEA; border-radius:10px; padding:1px 8px; font-size:11.5px; color:#6B6461; font-weight:600; }
+  .panel-hd .acts { margin-inline-start:auto; display:flex; gap:8px; }
+  .tbl-wrap { overflow-x:auto; }
+  table { width:100%; border-collapse:collapse; font-size:13.5px; min-width:760px; }
+  thead th { text-align:start; font-size:10.5px; font-weight:700; letter-spacing:1px; text-transform:uppercase; color:#8B837E; padding:10px 18px; border-bottom:1px solid #E4E1DC; white-space:nowrap; }
+  tbody td { padding:12px 18px; border-bottom:1px solid #EFECE8; vertical-align:middle; }
+  tbody tr:last-child td { border-bottom:none; }
+  tbody tr:hover { background:#F8F3EF; }
+  tbody tr.sel { background:#FBEFE9; box-shadow:inset 3px 0 0 #C74634; }
+  .code { font-family:"Oracle Sans Mono",ui-monospace,"SF Mono",Menlo,Consolas,monospace; font-size:12.5px; letter-spacing:.2px; }
+  td .sub { display:block; font-size:12px; color:#8B837E; margin-top:1px; }
+  .num { font-variant-numeric:tabular-nums; text-align:end; }
+
+  /* ---------- pills ---------- */
+  .pill { display:inline-flex; align-items:center; gap:6px; border-radius:4px; padding:2px 9px; font-size:11.5px; font-weight:650; letter-spacing:.3px; }
+  .pill::before { content:""; width:6px; height:6px; border-radius:50%; background:currentColor; }
+  .pill-ok  { background:#EAF2E6; color:#41682F; }
+  .pill-wf  { background:#F9E7E1; color:#9A3A2A; }
+  .pill-neu { background:#F1EDEA; color:#57514C; }
+  .pill-warn{ background:#FBF0DC; color:#8A6416; }
+
+  /* ---------- steps ---------- */
+  .steps { padding:6px 18px 16px; }
+  .step { display:flex; gap:14px; padding:14px 0; border-bottom:1px solid #EFECE8; }
+  .step:last-child { border-bottom:none; }
+  .step-no { width:34px; height:34px; flex:none; border-radius:50%; background:#312D2A; color:#fff; display:grid; place-items:center; font-weight:700; font-size:12.5px; }
+  .step h3 { font-size:14px; font-weight:650; display:inline; }
+  .step .ar { color:#6B6461; font-size:13px; margin-inline-start:8px; }
+  .step-meta { margin-top:6px; display:flex; gap:18px; flex-wrap:wrap; font-size:12.5px; color:#57514C; }
+  .step-meta b { font-size:10.5px; letter-spacing:1px; color:#8B837E; font-weight:700; margin-inline-end:5px; }
+  .who { background:#F1EDEA; border-radius:4px; padding:1px 8px; font-weight:600; font-size:12px; }
+  .step .edit { margin-inline-start:auto; align-self:center; }
+
+  /* ---------- drawer ---------- */
+  .drawer { background:#fff; border-inline-start:1px solid #E4E1DC; display:flex; flex-direction:column; min-width:0; }
+  .dr-hd { display:flex; align-items:center; gap:10px; padding:15px 20px; border-bottom:1px solid #E4E1DC; background:#FBF9F8; }
+  .dr-hd .eyebrow { font-size:10.5px; font-weight:700; letter-spacing:1.1px; color:#9A3A2A; text-transform:uppercase; display:block; }
+  .dr-hd h2 { font-size:16px; font-weight:650; }
+  .dr-hd .acts { margin-inline-start:auto; display:flex; gap:8px; }
+  .dr-bd { padding:18px 20px 30px; overflow-y:auto; display:flex; flex-direction:column; gap:16px; }
+  .fld label { display:block; font-size:12px; font-weight:650; color:#403B38; margin-bottom:5px; }
+  .fld label i { color:#A03024; font-style:normal; }
+  .in { width:100%; border:1px solid #A9A29C; border-radius:6px; padding:8px 11px; font-size:13.5px; background:#fff; }
+  .in:focus { border-color:#312D2A; box-shadow:0 0 0 1px #312D2A; outline:none; }
+  .in[dir=rtl] { text-align:right; }
+  textarea.in { resize:vertical; min-height:64px; }
+  .fld-row { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+  .hint { font-size:11.5px; color:#8B837E; margin-top:4px; }
+  .sw { display:flex; align-items:center; gap:10px; }
+  .sw-track { width:38px; height:20px; border-radius:10px; background:#41682F; position:relative; flex:none; }
+  .sw-track::after { content:""; position:absolute; top:2px; inset-inline-end:2px; width:16px; height:16px; border-radius:50%; background:#fff; }
+  .sw-track.off { background:#C9C2BC; } .sw-track.off::after { inset-inline-end:auto; inset-inline-start:2px; }
+  .dr-sec { font-size:11px; font-weight:700; letter-spacing:1.1px; text-transform:uppercase; color:#8B837E; border-bottom:1px solid #EFECE8; padding-bottom:6px; margin-top:6px; }
+
+  /* attachments */
+  .drop { border:1.5px dashed #B8B1AB; border-radius:8px; background:#FBF9F8; padding:20px; text-align:center; color:#6B6461; font-size:13px; }
+  .drop b { color:#9A3A2A; font-weight:650; }
+  .file { display:flex; align-items:center; gap:11px; border:1px solid #E4E1DC; border-radius:6px; padding:9px 12px; }
+  .f-ico { width:34px; height:38px; flex:none; border-radius:4px; display:grid; place-items:center; font-size:9.5px; font-weight:700; color:#fff; letter-spacing:.5px; }
+  .f-pdf { background:#A03024; } .f-xls { background:#41682F; }
+  .file b { font-size:13px; font-weight:600; display:block; }
+  .file span { font-size:11.5px; color:#8B837E; }
+  .file .fa { margin-inline-start:auto; display:flex; gap:2px; }
+  .icobtn { border:none; background:transparent; border-radius:5px; width:28px; height:28px; color:#57514C; font-size:14px; }
+  .icobtn:hover { background:#F1EDEA; }
+
+  /* ---------- design language strip ---------- */
+  .dl { border-top:1px dashed #C9C2BC; padding-top:18px; }
+  .dl > h2 { font-size:11px; font-weight:700; letter-spacing:1.4px; text-transform:uppercase; color:#9A3A2A; margin-bottom:12px; }
+  .dl-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(250px,1fr)); gap:12px; }
+  .dl-card { background:#fff; border:1px solid #E4E1DC; border-radius:8px; padding:14px 16px; }
+  .dl-card h3 { font-size:12px; font-weight:650; color:#57514C; margin-bottom:10px; }
+  .sw-row { display:flex; gap:8px; flex-wrap:wrap; }
+  .swatch { width:64px; }
+  .swatch i { display:block; height:34px; border-radius:6px; border:1px solid rgba(0,0,0,.06); }
+  .swatch span { font-size:10px; color:#8B837E; display:block; margin-top:3px; font-family:ui-monospace,Menlo,monospace; }
+  .row-wrap { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+</style>
+
+<div class="app">
+  <!-- =============== NAV =============== -->
+  <aside class="nav">
+    <div class="nav-brand">
+      <div class="nav-cube">BP</div>
+      <div><b>Fusion BPM</b><span>FUSION i-FINANCE · APP 214</span></div>
+    </div>
+    <a href="#"><span class="dot"></span>Home</a>
+    <div class="nav-group">My workspace</div>
+    <a href="#"><span class="dot"></span>My Worklist<span class="cnt">3</span></a>
+    <a href="#"><span class="dot"></span>Pending Approvals<span class="cnt">12</span></a>
+    <a href="#"><span class="dot"></span>My Delegations</a>
+    <div class="nav-group">Process design</div>
+    <a href="#" class="on"><span class="dot"></span>Approval Processes</a>
+    <a href="#"><span class="dot"></span>Role Assignments</a>
+    <div class="nav-group">Oversight</div>
+    <a href="#"><span class="dot"></span>Approval Monitor</a>
+    <a href="#"><span class="dot"></span>Approval Templates</a>
+    <a href="#"><span class="dot"></span>Delegations</a>
+    <a href="#"><span class="dot"></span>Notifications</a>
+  </aside>
+
+  <!-- =============== MAIN =============== -->
+  <div class="main">
+    <div class="topbar">
+      <span class="crumb">Fusion i-Finance&nbsp;&nbsp;/&nbsp;&nbsp;<b>Fusion BPM</b></span>
+      <span class="sp"></span>
+      <button class="tb-btn">APEX</button>
+      <button class="tb-btn">EN&nbsp;·&nbsp;ع</button>
+      <button class="tb-bell">🔔<i>36</i></button>
+      <span class="tb-user"><span class="tb-av">SA</span>System Administrator</span>
+    </div>
+
+    <div class="pagehead">
+      <div class="ph-eyebrow">Process design</div>
+      <div class="ph-row">
+        <div>
+          <h1>Approval Processes</h1>
+          <p>Edit approval chains — no code, no deploy. Changes publish as a new version; work already in progress is unaffected.</p>
+        </div>
+        <div class="ph-actions">
+          <button class="btn btn-sec">Enable test mode</button>
+          <button class="btn btn-sec">Simulate</button>
+          <button class="btn btn-pri">Edit chain</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="content">
+      <!-- KPI band -->
+      <div class="kpis">
+        <div class="kpi"><label>Open tasks</label><b>12</b><span>across 2 processes</span></div>
+        <div class="kpi"><label>Avg cycle time</label><b>2.4 d</b><span>last 30 days</span></div>
+        <div class="kpi"><label>Published processes</label><b>2</b><span>1 routed to engine</span></div>
+        <div class="kpi alert"><label>SLA breaches</label><b>1</b><span>needs escalation</span></div>
+      </div>
+
+      <!-- processes table -->
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>Processes</h2><span class="chip">2</span>
+          <div class="acts">
+            <button class="btn btn-ghost btn-sm">Export</button>
+            <button class="btn btn-pri btn-sm">＋ New process</button>
+          </div>
+        </div>
+        <div class="tbl-wrap">
+        <table>
+          <thead><tr>
+            <th>Code</th><th>Module</th><th>Name</th><th>Published</th><th>Routed to</th><th class="num">Steps</th>
+          </tr></thead>
+          <tbody>
+            <tr>
+              <td class="code">DEMO_APPROVAL</td>
+              <td>DEMO</td>
+              <td>Demo Approval Process<span class="sub">عملية الاعتماد التجريبية</span></td>
+              <td><span class="pill pill-ok">v1 · Published</span></td>
+              <td><span class="pill pill-neu">Legacy</span></td>
+              <td class="num">4</td>
+            </tr>
+            <tr class="sel">
+              <td class="code">KPI_RESULT_APPROVAL</td>
+              <td>KPI_MGMT</td>
+              <td>KPI Result Approval<span class="sub">اعتماد نتائج مؤشرات الأداء</span></td>
+              <td><span class="pill pill-ok">v1 · Published</span></td>
+              <td><span class="pill pill-wf">Workflow engine</span></td>
+              <td class="num">2</td>
+            </tr>
+          </tbody>
+        </table>
+        </div>
+      </section>
+
+      <!-- steps -->
+      <section class="panel">
+        <div class="panel-hd">
+          <h2>KPI Result Approval — Steps</h2><span class="pill pill-ok">v1 · Published</span>
+          <div class="acts"><button class="btn btn-ghost btn-sm">Diagram</button><button class="btn btn-sec btn-sm">Edit chain</button></div>
+        </div>
+        <div class="steps">
+          <div class="step">
+            <div class="step-no">10</div>
+            <div style="min-width:0;flex:1">
+              <h3>Section Head review</h3><span class="ar">مراجعة رئيس القسم</span>
+              <div class="step-meta">
+                <span><b>WHO</b><span class="who">LINE_MANAGER</span></span>
+                <span><b>CHOICES</b>Approve · Reject · Return</span>
+                <span><b>SLA</b>72 h</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm edit">Edit</button>
+          </div>
+          <div class="step">
+            <div class="step-no">20</div>
+            <div style="min-width:0;flex:1">
+              <h3>Finance Director approval</h3><span class="ar">اعتماد مدير المالية</span>
+              <div class="step-meta">
+                <span><b>WHO</b><span class="who">KPI_FIN_DIRECTOR</span></span>
+                <span><b>CHOICES</b>Approve · Reject · Return</span>
+                <span><b>SLA</b>72 h</span>
+                <span class="pill pill-warn">Final approval</span>
+              </div>
+            </div>
+            <button class="btn btn-ghost btn-sm edit">Edit</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- =============== DESIGN LANGUAGE =============== -->
+      <section class="dl">
+        <h2>Design language — Oracle Redwood</h2>
+        <div class="dl-grid">
+          <div class="dl-card">
+            <h3>Palette</h3>
+            <div class="sw-row">
+              <div class="swatch"><i style="background:#C74634"></i><span>#C74634<br>brand red</span></div>
+              <div class="swatch"><i style="background:#312D2A"></i><span>#312D2A<br>action</span></div>
+              <div class="swatch"><i style="background:#FBF9F8"></i><span>#FBF9F8<br>ground</span></div>
+              <div class="swatch"><i style="background:#F6E0D2"></i><span>#F6E0D2<br>warm band</span></div>
+              <div class="swatch"><i style="background:#41682F"></i><span>#41682F<br>success</span></div>
+              <div class="swatch"><i style="background:#8A6416"></i><span>#8A6416<br>warning</span></div>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Buttons — 6px radius, charcoal primary (red is reserved for brand &amp; selection)</h3>
+            <div class="row-wrap">
+              <button class="btn btn-pri">Save changes</button>
+              <button class="btn btn-sec">Simulate</button>
+              <button class="btn btn-ghost">Cancel</button>
+              <button class="btn btn-danger">Reject</button>
+              <button class="btn btn-pri btn-sm">＋ New</button>
+              <button class="btn btn-pri" disabled>Publishing…</button>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Status pills — tinted, 4px radius, leading dot</h3>
+            <div class="row-wrap">
+              <span class="pill pill-ok">Published</span>
+              <span class="pill pill-wf">Workflow engine</span>
+              <span class="pill pill-neu">Legacy</span>
+              <span class="pill pill-warn">SLA at risk</span>
+            </div>
+          </div>
+          <div class="dl-card">
+            <h3>Form control — focus turns the border charcoal</h3>
+            <div class="fld"><label>Process name <i>*</i></label>
+              <input class="in" value="KPI Result Approval" style="border-color:#312D2A;box-shadow:0 0 0 1px #312D2A"></div>
+            <p class="hint">Focused state shown. Required fields carry a red asterisk.</p>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+
+  <!-- =============== DRAWER : edit record + attachments =============== -->
+  <aside class="drawer">
+    <div class="dr-hd">
+      <div><span class="eyebrow">Edit step</span><h2>Section Head review</h2></div>
+      <div class="acts">
+        <button class="btn btn-ghost btn-sm">Cancel</button>
+        <button class="btn btn-pri btn-sm">Save</button>
+      </div>
+    </div>
+    <div class="dr-bd">
+      <div class="fld-row">
+        <div class="fld"><label>Step name (English) <i>*</i></label><input class="in" value="Section Head review"></div>
+        <div class="fld"><label>Step name (Arabic) <i>*</i></label><input class="in" dir="rtl" value="مراجعة رئيس القسم"></div>
+      </div>
+      <div class="fld"><label>Assigned to <i>*</i></label>
+        <select class="in"><option>Line manager of the requester</option><option>Role — KPI_FIN_DIRECTOR</option><option>Named user…</option></select>
+        <p class="hint">Resolved when the request is submitted, from the requester's reporting line.</p>
+      </div>
+      <div class="fld"><label>Decisions offered <i>*</i></label>
+        <select class="in"><option>Approve · Reject · Return</option><option>Endorse · Return for info · Reject</option><option>Acknowledge (FYI)</option></select>
+      </div>
+      <div class="fld-row">
+        <div class="fld"><label>SLA (hours)</label><input class="in" value="72"></div>
+        <div class="fld"><label>Reminders (hours before due)</label><input class="in" value="48, 24, 4"></div>
+      </div>
+      <div class="fld sw">
+        <span class="sw-track off" aria-hidden="true"></span>
+        <div><label style="margin:0">Final approval</label><p class="hint" style="margin:0">Completing this step completes the request.</p></div>
+      </div>
+      <div class="fld"><label>Notes</label><textarea class="in">Escalates to the Finance Director after 72 hours with no decision.</textarea></div>
+
+      <div class="dr-sec">Attachments</div>
+      <div class="drop">Drag files here, or <b>browse</b> — up to 10 MB each</div>
+      <div class="file">
+        <div class="f-ico f-pdf">PDF</div>
+        <div><b>KPI-policy-2026.pdf</b><span>412 KB · uploaded by S. Administrator · 01-08-2026</span></div>
+        <div class="fa"><button class="icobtn" title="Download">⤓</button><button class="icobtn" title="Remove">✕</button></div>
+      </div>
+      <div class="file">
+        <div class="f-ico f-xls">XLSX</div>
+        <div><b>Approval-matrix-2026.xlsx</b><span>88 KB · uploaded by H. Ghareb · 28-07-2026</span></div>
+        <div class="fa"><button class="icobtn" title="Download">⤓</button><button class="icobtn" title="Remove">✕</button></div>
+      </div>
+    </div>
+  </aside>
+</div>
