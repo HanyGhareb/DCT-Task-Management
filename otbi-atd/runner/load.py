@@ -14,6 +14,8 @@ import csv
 import io
 import json
 import os
+import re
+import time
 from datetime import datetime
 
 from prepare import clean_cell, coerce_number, resolve_pairs   # shared w/ profiler
@@ -26,6 +28,12 @@ DATE_FORMATS = ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S.%f",
                 # '14-07-2026'; a US month-first value would fail %d-%m and fall
                 # through to None exactly as before this format existed)
                 "%d-%m-%Y %H:%M:%S", "%d-%m-%Y")
+
+# what a coerced NUMBER-column value must look like to be bound; anything else is
+# loaded as NULL with an INVALID_NUMBER row warning (mirrors the INVALID_DATE
+# handling above — an OTBI row misaligned by a free-text field must not fail the
+# whole load; found 2026-08-02: 4 shifted PO Distributions rows -> ORA-01722)
+_NUM_RE = re.compile(r"-?(\d+(\.\d*)?|\.\d+)")
 
 
 def _to_dt(s):
@@ -72,7 +80,7 @@ def _parse_csv(csv_text, column_map):
 
 
 def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, column_map_json,
-         run_id=None, job_name=None, warning_state=None):
+         run_id=None, job_name=None, warning_state=None, phase_timings=None):
     column_map = json.loads(column_map_json)
     target_cols, rows = _parse_csv(csv_text, column_map)
     types = _col_types(conn, stage_table)
@@ -105,7 +113,21 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
                 out.append(parsed)
             elif is_num[i]:
                 cv = coerce_number(v)
-                out.append(None if (cv is None or cv == "") else cv)
+                if cv is None or cv == "":
+                    out.append(None)
+                elif _NUM_RE.fullmatch(cv):
+                    out.append(cv)
+                else:
+                    warnings["total"] += 1
+                    if len(warnings["items"]) < warning_limit:
+                        warnings["items"].append({
+                            "row_number": row_idx,
+                            "column_name": target_cols[i],
+                            "raw_value": str(v)[:1000],
+                            "warning_code": "INVALID_NUMBER",
+                            "message": "Value is not numeric; NULL loaded",
+                        })
+                    out.append(None)
             else:
                 out.append(None if (v is None or v == "") else v)
         conv.append(out)
@@ -119,6 +141,7 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     # the end. A failed reload thus rolls back and the table keeps its prior load
     # (caller must rollback on error before logging; TRUNCATE is DDL and would
     # auto-commit the empty state). Volumes here are the OTBI export cap, so cheap.
+    db_started = time.perf_counter()
     cur.execute(f"delete from {stage_table}")
 
     # chunked array-bind insert: fast (one round-trip per chunk) and memory-bounded
@@ -127,6 +150,8 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     chunk = int(os.environ.get("ATD_DB_CHUNK", "5000"))
     for i in range(0, len(conv), chunk):
         cur.executemany(insert_sql, conv[i:i + chunk])
+    if phase_timings is not None:
+        phase_timings["DB_LOAD"] = round((time.perf_counter() - db_started) * 1000)
 
     # Store samples in the same transaction as the data load. If the load rolls
     # back, its warnings roll back too. The total can exceed the sample limit and
@@ -141,6 +166,7 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
              for w in warnings["items"]])
 
     if load_mode == "MERGE" and final_table:
+        merge_started = time.perf_counter()
         # stage and final MUST differ: the staging clear-out above empties stage, so a
         # same-table MERGE would wipe the data then self-merge an empty source.
         if stage_table.strip().upper() == final_table.strip().upper():
@@ -149,7 +175,12 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
                 f"({final_table}). Point Final Table at a separate base table.")
         keys = [k.strip().upper() for k in (key_columns or "").split(",") if k.strip()]
         cols = target_cols
-        on = " and ".join(f"t.{k}=s.{k}" for k in keys)
+        # NULL-safe key match: composite natural keys can have NULL members (e.g.
+        # ATD_PO_LINES rows without a project/task allocation). Plain t.k=s.k never
+        # matches NULL, so a re-extracted NULL-key row would INSERT a duplicate on
+        # every incremental run. DECODE treats NULL==NULL as a match; behaviour is
+        # identical to '=' whenever both sides are non-NULL.
+        on = " and ".join(f"decode(t.{k}, s.{k}, 1, 0) = 1" for k in keys)
         setc = ", ".join(f"t.{c}=s.{c}" for c in cols if c not in keys)
         ins = ", ".join(cols)
         vals = ", ".join(f"s.{c}" for c in cols)
@@ -157,6 +188,8 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
                  + (f"when matched then update set {setc} " if setc else "")
                  + f"when not matched then insert ({ins}) values ({vals})")
         cur.execute(merge)
+        if phase_timings is not None:
+            phase_timings["MERGE"] = round((time.perf_counter() - merge_started) * 1000)
 
     conn.commit()
     return len(conv)

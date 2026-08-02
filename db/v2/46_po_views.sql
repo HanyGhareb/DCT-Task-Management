@@ -15,7 +15,13 @@
 --                      GRN-netted open obligation, %-received / %-invoiced /
 --                      %-paid.
 --   PO_LINES_V         one row per PO line (grain po_line_id) + per-line
---                      schedule/distribution counts and AED rollups.
+--                      schedule/distribution counts and AED rollups. Project /
+--                      task / expenditure type are derived from the line's
+--                      DISTRIBUTIONS (single value -> shown, mixed ->
+--                      '(Multiple)', no dists -> NULL): since 2026-08-02 the
+--                      PO Lines extract carries NO allocation columns - they
+--                      fanned each line out per allocation and broke the
+--                      po_line_id grain.
 --   PO_SCHEDULES_V     one row per PO schedule (grain line_location_id) +
 --                      per-schedule distribution and AP rollups.
 --   PO_DISTRIBUTIONS_V one row per PO distribution (grain po_distribution_id)
@@ -329,6 +335,16 @@ dist_line AS (
          COUNT(DISTINCT d.pr_number)                      AS pr_count,
          LISTAGG(DISTINCT TO_CHAR(d.pr_number), ', ' ON OVERFLOW TRUNCATE)
            WITHIN GROUP (ORDER BY TO_CHAR(d.pr_number))   AS pr_numbers,
+         -- allocation lives at DISTRIBUTION level only (2026-08-02: the PO Lines
+         -- extract no longer carries project/task/etype - it fanned lines out
+         -- per allocation and broke the po_line_id grain). Single-valued -> the
+         -- value; mixed -> '(Multiple)' in the select list; no dists -> NULL.
+         COUNT(DISTINCT d.project_id)                     AS project_cnt,
+         MIN(d.project_id)                                AS alloc_project_id,
+         COUNT(DISTINCT d.task_id)                        AS task_cnt,
+         MIN(d.task_id)                                   AS alloc_task_id,
+         COUNT(DISTINCT d.expenditure_type_name)          AS etype_cnt,
+         MIN(d.expenditure_type_name)                     AS alloc_etype,
          SUM(CASE WHEN d.funds_status IN ('Reserved','Partially Liquidated')
                   THEN GREATEST(d.distribution_amount * NVL(d.rate,1) - NVL(g.grn_aed,0), 0)
                   END)                                    AS open_oblig_raw
@@ -390,11 +406,11 @@ SELECT
   l.supplier_item,
   l.line_amount,
   TO_NUMBER(l.advance_amount DEFAULT NULL ON CONVERSION ERROR) AS advance_amount,
-  pj.project_number,
-  pj.project_name,
-  tk.task_number,
-  tk.task_name,
-  l.expenditure_type,
+  CASE WHEN d.project_cnt > 1 THEN '(Multiple)' ELSE TO_CHAR(pj.project_number) END AS project_number,
+  CASE WHEN d.project_cnt > 1 THEN '(Multiple)' ELSE pj.project_name END            AS project_name,
+  CASE WHEN d.task_cnt    > 1 THEN '(Multiple)' ELSE TO_CHAR(tk.task_number) END    AS task_number,
+  CASE WHEN d.task_cnt    > 1 THEN '(Multiple)' ELSE tk.task_name END               AS task_name,
+  CASE WHEN d.etype_cnt   > 1 THEN '(Multiple)' ELSE d.alloc_etype END              AS expenditure_type,
   NVL(s.schedule_count,0)                    AS schedule_count,
   NVL(d.distribution_count,0)                AS distribution_count,
   d.distributed_amount,
@@ -429,8 +445,8 @@ LEFT JOIN dist_line d ON d.po_line_id = l.po_line_id
 LEFT JOIN sch_line  s ON s.po_line_id = l.po_line_id
 LEFT JOIN grn_line  g ON g.po_line_id = l.po_line_id
 LEFT JOIN apl a ON a.po_number = l.order_number AND a.po_line = l.line
-LEFT JOIN proj pj ON pj.project_id = l.project_id
-LEFT JOIN tsk  tk ON tk.task_id    = l.task_id;
+LEFT JOIN proj pj ON pj.project_id = d.alloc_project_id
+LEFT JOIN tsk  tk ON tk.task_id    = d.alloc_task_id;
 
 PROMPT PO_LINES_V created.
 

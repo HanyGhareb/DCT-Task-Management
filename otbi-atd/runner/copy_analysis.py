@@ -14,6 +14,9 @@ Modes:
   --copy "<src>" --to "<NAME>"                 plain Save-As copy (same folder)
         [--hour N | --minute N] [--on-column "<heading>"]   + relative-time filter
                                                (default column heading: "Last Updated Date")
+  --edit "<src>" --remove-columns "A,B,C"      edit IN PLACE: delete the named columns
+                                               from Criteria, then Save As the SAME name
+                                               (Confirm Overwrite). Existing filters kept.
 
 Verify: pass --verify to download the new analysis as CSV after saving (row sanity).
 Env: same as the runner (OTBI_USER/PWD, ATD_STATE_DIR, OTBI_ANALYTICS_BASE, OTBI_ENV_NAME).
@@ -135,6 +138,30 @@ def add_relative_filter(page, heading, unit, n):
     _step("filter applied")
 
 
+def remove_column(page, heading):
+    """Delete the Selected-Columns column whose header starts with `heading` via its
+    gear menu. Gear ids re-render after each removal, so resolve live every time."""
+    gear = _gear_for(page, heading)
+    if not gear:
+        raise RuntimeError(f"column not found in Selected Columns: {heading!r}")
+    page.locator(f'#{gear}').first.click(timeout=10000); time.sleep(1.2)
+    for sel in ('#menuOptionItem_Delete', 'td:text-is("Delete")', 'a:text-is("Delete")',
+                'span:text-is("Delete")'):
+        loc = page.locator(sel)
+        for i in range(min(loc.count(), 6)):
+            try:
+                el = loc.nth(i)
+                if el.is_visible():
+                    el.click(); time.sleep(2.0)
+                    _step(f"column removed: {heading}")
+                    return
+            except Exception:
+                continue
+    items = page.evaluate("""() => [...document.querySelectorAll('[id^=menuOptionItem]')]
+        .filter(e => e.offsetParent).map(e => e.id + ':' + (e.innerText||'').trim())""")
+    raise RuntimeError(f"Delete option not found for {heading!r}; visible menu: {items}")
+
+
 def save_as(page, name):
     """Save As into the dialog's DEFAULT folder (= the source analysis's folder), under
     `name`. We never navigate away, so the copy lands beside the source."""
@@ -178,6 +205,17 @@ def do_copy(page, base, src, to_name, hour=None, minute=None, on_column="Last Up
     save_as(page, to_name)
 
 
+def do_edit(page, base, src, remove_cols):
+    """In-place edit: remove columns, then Save As under the SAME name (overwrite)."""
+    open_existing(page, base, src)
+    click_tab(page, "Criteria")
+    if not _wait_columns(page):
+        _shot(page, "nocols"); raise RuntimeError("Criteria columns did not render")
+    for heading in remove_cols:
+        remove_column(page, heading)
+    save_as(page, src.rsplit("/", 1)[1])
+
+
 # --------------------------------------------------------------------------- #
 def _probe(page, base, src):
     page.set_viewport_size({"width": 1920, "height": 1080})
@@ -194,6 +232,8 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe")
     ap.add_argument("--copy")
+    ap.add_argument("--edit")
+    ap.add_argument("--remove-columns")
     ap.add_argument("--to")
     ap.add_argument("--hour", type=int)
     ap.add_argument("--minute", type=int)
@@ -212,6 +252,15 @@ def main():
         try:
             if a.probe:
                 _probe(page, DEFAULT_BASE, a.probe)
+            elif a.edit and a.remove_columns:
+                cols = [c.strip() for c in a.remove_columns.split(",") if c.strip()]
+                do_edit(page, DEFAULT_BASE, a.edit, cols)
+                _step(f"DONE (edited in place) -> {a.edit}")
+                if a.verify:
+                    _step("verifying CSV download of the edited analysis...")
+                    csv = extract.download_csv(ctx, env, a.edit)
+                    lines = csv.splitlines()
+                    _step(f"VERIFY OK — {len(lines)} CSV lines; header: {lines[0] if lines else '(empty)'}")
             elif a.copy and a.to:
                 folder = a.copy.rsplit("/", 1)[0]
                 new_path = folder + "/" + a.to
@@ -224,7 +273,8 @@ def main():
                     lines = csv.splitlines()
                     _step(f"VERIFY OK — {len(lines)} CSV lines; header: {lines[0] if lines else '(empty)'}")
             else:
-                sys.exit("use --probe <path>  OR  --copy <path> --to <NAME> [--hour N|--minute N]")
+                sys.exit("use --probe <path>  OR  --copy <path> --to <NAME> [--hour N|--minute N]"
+                         "  OR  --edit <path> --remove-columns 'A,B,C'")
         except Exception:
             _shot(page, "error"); raise
         finally:

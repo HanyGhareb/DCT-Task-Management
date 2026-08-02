@@ -1,5 +1,95 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-08-02 (3) — PR/PO BU-filter alignment reload + lenient NUMBER loading (INVALID_NUMBER)
+
+The line↔distribution coverage gap below was NOT a status filter — the PR/PO analyses had
+**different Business-Unit filters** (PO Lines was the wide one; Headers/Schedules/Distributions
+narrow). The user aligned the BU filters on ALL PR and PO analyses; all 7 Full jobs re-run:
+PR 5,959/9,025/9,544 (unchanged — already aligned), PO Headers 2,539→**4,027**, PO Lines 5,925
+(was already wide), PO Schedules 3,534→**5,926**, PO Distributions 3,631→**6,180**.
+
+- **Coverage now correct:** every PO line has ≥1 distribution (0 missing) and every
+  distribution/schedule has its line; all 7 natural keys fully unique. PO_LINES_V
+  NULL-allocation dropped 2,396→191 (lines whose distributions carry no project — GL-coded,
+  legitimate) + 64 `(Multiple)`. Residual: 2 PO lines (NULL line_status, Feb/May 2026) whose
+  headers the PO Headers analysis still excludes, and 2 PR lines without distributions —
+  cosmetic, 2/5,925.
+- **load.py NUMBER columns are now lenient like DATE columns:** the first PO Distributions
+  reload FAILED with ORA-01722 — 4 misaligned CSV rows (a free-text description from a
+  newly-included BU shifts the row: a person name landed in PROJECT_ID, a GL combination in
+  TASK_ID). A coerced NUMBER value that doesn't match `-?\d+(\.\d*)?` now loads as **NULL +
+  `INVALID_NUMBER` row warning** (same framework as INVALID_DATE; `coerce_number`'s
+  fail-loudly pass-through remains, the guard is at bind time in load()). Fleet-synced +
+  workers restarted.
+- **Drift widenings invalidated 20 objects mid-reload** (longer new-BU values → ALTER MODIFY
+  on REQUESTOR_EMAIL/LOCATION_NAME/ORGANIZATION_NAME/ORDER_TYPE/PO_TYPE): fixed with
+  `dct_views_rebuild` + recompile sweep → 0 INVALID; butil figures healthy after.
+- **UH24 incrementals verified aligned:** all 7 one-shot runs clean, and each staged count
+  EXACTLY matches its table's own last-24h count (PR Lines 30/30, PR Dists 7/7, PO Headers
+  8/8, PO Lines 22/22, PO Schedules 22/22, PO Dists 22/22).
+
+## 2026-08-02 (2) — PO Lines grain fix: allocation columns REMOVED from the extract (user decision)
+
+Same-day follow-up superseding the composite-key design below: allocation detail belongs at
+PO **Distributions** level, so **Project ID / Task ID / Expenditure Type were removed from the
+`PO_LINES_F` and `PO_LINES_UH24` analyses themselves** (new `copy_analysis.py --edit <path>
+--remove-columns "A,B,C"` mode — opens Criteria, deletes each column via its gear menu, Save As
+the same name w/ Confirm Overwrite; filters kept). The BI server then collapses the grain to
+one row per line (6,131 fanned rows → 5,918 true lines).
+
+- **DB migration (python-oracledb on vm180, jobs paused during):** both PO Lines job
+  column maps 38→35 entries; incremental `key_columns='PO_LINE_ID'` (plain, no composite);
+  `ALTER TABLE prod.atd_po_lines DROP (project_id, task_id, expenditure_type)`; stage re-CTAS;
+  `dct_views_rebuild` (15 pass-throughs); **PO_LINES_V redeployed** (db/v2/46 updated) — its
+  project/task/etype now derive from the line's DISTRIBUTIONS: single value → shown, mixed →
+  `(Multiple)`, no dists → NULL. 0 INVALID after.
+- **Dependency audit result (why only one view changed):** every butil/actuals/pending view,
+  briefing book and register takes allocation from po_distributions/GRN and joins po_lines
+  ONLY for the line number (deduped) — `PO_LINES_V` was the sole reader of the line-level
+  allocation columns. `dct_open_po_lines_v` in the reports is distributions-based (name grep
+  trap: it merely CONTAINS "po_lines_v").
+- **Coverage caveat (flagged, accepted):** ATD_PO_DISTRIBUTIONS covers only a subset of lines
+  — 2,396 of 5,918 lines (mostly Closed/Liquidated/Canceled) have NO distribution row, so
+  their PO_LINES_V allocation shows NULL. Platform reports never used line-level allocation,
+  so nothing else changes; widen the PO Distributions analysis if closed-line allocation is
+  ever needed.
+- **Verified:** Full reload 5,918 rows (PO_LINE_ID fully unique), Incremental 25-row MERGE
+  clean, PO_LINES_V 5,918 rows (15 `(Multiple)`), butil 2026 figures unchanged/healthy.
+  The NULL-safe DECODE merge join in load.py (below) STAYS — correct platform-wide hardening.
+
+## 2026-08-02 — PO Distributions / Schedules / Lines Incrementals (UH24 convention ×3) + NULL-safe MERGE join
+
+Hourly incrementals completing the PO family (Headers already had one). Same UH24 recipe as
+PR Distributions Incremental below, with two findings worth recording:
+
+- **The UH24 filter column heading differs per analysis** — pass `--on-column` explicitly:
+  PO Distributions = `Last Updated Date` (the default), PO Schedules = `Schedule Last Updated
+  Date`, PO Lines = `Updated on`. Analyses created with `copy_analysis.py` on vm180 (one MFA;
+  the first attempt died with "MFA number not found within 30s" — the Entra number challenge
+  can render slowly, so the retry ran with `ATD_MFA_CAPTURE_WAIT_MS=120000` and succeeded):
+  `PO_DISTRIBUTIONS_UH24` / `PO_SCHEDULES_UH24` / `PO_LINES_UH24`, each a Save-As copy of its
+  Full analysis + `>= TIMESTAMPADD(SQL_TSI_HOUR,-24,CURRENT_TIMESTAMP)`, same folder,
+  columns identical to Full (column_map_json copied VERBATIM onto the job rows).
+- **`PO_LINE_ID` is NOT unique in ATD_PO_LINES** — the extract fans a PO line out per
+  project/task/expenditure-type allocation (6,131 rows / 5,899 distinct line ids; 3 combos
+  even share line+project+task and differ only by expenditure type). Key =
+  `PO_LINE_ID,PROJECT_ID,TASK_ID,EXPENDITURE_TYPE` (unique 6,131/6,131). 18 rows carry NULL
+  project/task, which a plain `t.k=s.k` merge join never matches → those rows would INSERT a
+  duplicate on every hourly run. **`load.py` MERGE ON is now NULL-safe platform-wide:**
+  `decode(t.k, s.k, 1, 0) = 1` per key column (NULL==NULL matches; identical to `=` when both
+  sides are non-NULL — byte-identical behaviour for every existing MERGE job). Synced to
+  vm180-182 + `systemctl restart atd-worker`.
+- **Job rows (data-only, no db/ script):** `PO Distributions Incremental` (key
+  `PO_DISTRIBUTION_ID`), `PO Schedules Incremental` (key `LINE_LOCATION_ID`), `PO Lines
+  Incremental` (composite key above); stages `PROD.ATD_PO_<X>_STG` (CTAS WHERE 1=0), finals
+  the Full tables, MERGE, freq 60, priority 1, members of `TXN_INCREMENTAL` (order 110/120/130).
+  Seeded via python-oracledb on vm180 (MERGE-bearing).
+- **Verified live:** one-shot runs SUCCESS — 14 / 19 / 28 last-24h rows staged and merged;
+  every staged key present in final (NULL-safe join proven on the LINES composite); key
+  uniqueness intact after merge (3,623 / 3,526 / 6,145 rows, all fully distinct on their keys);
+  the hourly TXN_INCREMENTAL cadence picked all three up on its own in the same hour (a
+  one-shot racing a worker claim shows a benign REQUEUED→SUCCESS pair in the run log).
+
 ## 2026-08-01 — PR Distributions Incremental (mirrors PR Lines Incremental; data-only, no script)
 
 Hourly incremental for PR distributions, completing the PR family (Headers/Lines already had one).
