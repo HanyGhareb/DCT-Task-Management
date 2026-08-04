@@ -42,7 +42,11 @@ def main():
     assert warning["row_number"] == 3
     assert warning["column_name"] == "DOC_DATE"
     assert warning["raw_value"] == "31/15/2026"
+    assert json.loads(warning["key_values_json"]) == {"DOC_ID": "B"}
+    assert json.loads(warning["source_row_json"]) == {
+        "DOC_ID": "B", "DOC_DATE": "31/15/2026"}
     assert len(conn.cur.warning_rows) == 1
+    assert len(conn.cur.warning_rows[0]) == 9
     assert conn.commits == 1
     print("LOAD WARNING TEST PASSED")
 

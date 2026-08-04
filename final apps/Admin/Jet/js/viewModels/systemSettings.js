@@ -35,6 +35,9 @@ function (ko, settingService, authService) {
     self.perfRunning      = ko.observable(false);
     self.perfMsg          = ko.observable('');
     self.perfExpanded     = ko.observable(true);
+    self.operations       = ko.observable(null);
+    self.opsLoading       = ko.observable(false);
+    self.opsRunning       = ko.observable(false);
     self.databaseLocks    = ko.observable(null);
     self.locksLoading     = ko.observable(false);
     self.locksRunning     = ko.observable(false);
@@ -162,6 +165,19 @@ function (ko, settingService, authService) {
       });
     };
     self.loadSqlPerformance();
+
+    self.loadOperations = function () {
+      if (!self.isSysAdmin) return;
+      self.opsLoading(true);
+      settingService.getOperations().then(function (r) { self.operations(r); })
+        .catch(function () { self.operations(null); }).then(function () { self.opsLoading(false); });
+    };
+    self.refreshOperations = function () {
+      self.opsRunning(true);
+      settingService.refreshOperations().then(self.loadOperations)
+        .catch(function () {}).then(function () { self.opsRunning(false); });
+    };
+    self.loadOperations();
 
     self.refreshSqlPerformance = function () {
       self.perfRunning(true);

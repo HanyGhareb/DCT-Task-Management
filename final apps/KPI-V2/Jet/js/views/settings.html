@@ -339,7 +339,9 @@
                      saveLabel: $root.t('set.save'), cancelLabel: $root.t('set.cancel'),
                      onSave: saveKpi, width: 'min(1080px, 96vw)'">
 
-  <div class="dw-h4" data-bind="text: t('set.k.regBasic')"></div>
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regBasic')"></span></div>
+  <div class="dw-reg-b">
   <div class="grid2">
     <div class="field">
       <span class="lbl" data-bind="text: t('set.fld.code') + ' *'"></span>
@@ -368,8 +370,12 @@
       <textarea class="inp" dir="rtl" rows="2" data-bind="value: kForm.descriptionAr" maxlength="2000"></textarea>
     </div>
   </div>
+  </div>
+  </div>
 
-  <div class="dw-h4" data-bind="text: t('set.k.regClass')"></div>
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regClass')"></span></div>
+  <div class="dw-reg-b">
   <div class="grid2">
     <div class="field">
       <span class="lbl" data-bind="text: t('set.k.type') + ' *'"></span>
@@ -413,23 +419,34 @@
       </div>
     </div>
   </div>
+  </div>
+  </div>
 
-  <div class="dw-h4" data-bind="text: t('set.k.regSources')"></div>
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regSources')"></span></div>
+  <div class="dw-reg-b">
   <div class="pick-grid" data-bind="foreach: lovOpts('KPI2_DATA_SOURCE')">
     <span class="pick" data-bind="css: { on: $parent.isSourcePicked(code) },
           click: function () { $parent.toggleSource(code); }, text: $parent.lovLabel($data)"></span>
   </div>
+  </div>
+  </div>
 
-  <div class="dw-h4" data-bind="text: t('set.k.regFigures')"></div>
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regFigures')"></span></div>
+  <div class="dw-reg-b">
   <div class="pick-grid" data-bind="foreach: lovOpts('KPI2_SOURCE_FIGURE')">
     <span class="pick" data-bind="css: { on: $parent.isFigurePicked(code) },
           click: function () { $parent.toggleFigure(code); }, text: $parent.lovLabel($data)"></span>
   </div>
-
-  <div class="dw-h4">
-    <span data-bind="text: t('set.k.regBands')"></span>
-    <span class="sc-d" style="font-weight:400" data-bind="text: ' — ' + t('set.k.bandsHint')"></span>
   </div>
+  </div>
+
+  <div class="dw-reg">
+  <div class="dw-reg-h"><span class="d"></span><span data-bind="text: t('set.k.regBands')"></span>
+    <span class="hint" data-bind="text: t('set.k.bandsHint')"></span>
+  </div>
+  <div class="dw-reg-b">
   <div class="band-head">
     <span data-bind="text: t('set.k.bScore')"></span>
     <span data-bind="text: t('set.k.bOperator')"></span>
@@ -449,6 +466,8 @@
     <input class="inp" dir="rtl" data-bind="value: labelAr, enable: operator" maxlength="60">
   </div>
   <!-- /ko -->
+  </div>
+  </div>
 
   <div class="err" data-bind="visible: kpiErr, text: kpiErr"></div>
 </edit-drawer>

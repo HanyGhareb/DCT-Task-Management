@@ -69,7 +69,8 @@ BEGIN
      AND (l_job IS NULL OR l.job_name = l_job)
      AND (l_set IS NULL OR m.set_code = l_set)
      AND (l_status IS NULL
-          OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
+          OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL
+              AND LOWER(DBMS_LOB.SUBSTR(l.message,100,1)) NOT LIKE 'analysis returned no data this run%')
           OR (l_status != 'WARNING' AND l.status = l_status))
      AND (l_from IS NULL OR l.started >= TO_TIMESTAMP(l_from,'YYYY-MM-DD'))
      AND (l_to   IS NULL OR l.started <  TO_TIMESTAMP(l_to,'YYYY-MM-DD') + 1);
@@ -80,7 +81,9 @@ BEGIN
   FOR r IN (
     SELECT l.run_id, l.job_name, l.track, l.status, l.row_count, NVL(l.host_id,'') AS host_id,
            NVL(DBMS_LOB.SUBSTR(l.message,400,1),'') AS msg,
-           CASE WHEN l.status='SUCCESS' AND l.message IS NOT NULL THEN 'Y' ELSE 'N' END AS warn,
+           CASE WHEN l.status='SUCCESS' AND l.message IS NOT NULL
+                  AND LOWER(DBMS_LOB.SUBSTR(l.message,100,1)) NOT LIKE 'analysis returned no data this run%'
+                THEN 'Y' ELSE 'N' END AS warn,
            m.set_code AS set_code, s.name_en AS set_name,
            TO_CHAR( dct_to_local(l.started),'YYYY-MM-DD HH:MI AM')  AS started_s,
            TO_CHAR( dct_to_local(l.finished),'YYYY-MM-DD HH:MI AM') AS finished_s,
@@ -94,7 +97,8 @@ BEGIN
       AND (l_job IS NULL OR l.job_name = l_job)
       AND (l_set IS NULL OR m.set_code = l_set)
       AND (l_status IS NULL
-           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
+           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL
+               AND LOWER(DBMS_LOB.SUBSTR(l.message,100,1)) NOT LIKE 'analysis returned no data this run%')
            OR (l_status != 'WARNING' AND l.status = l_status))
       AND (l_from IS NULL OR l.started >= TO_TIMESTAMP(l_from,'YYYY-MM-DD'))
       AND (l_to   IS NULL OR l.started <  TO_TIMESTAMP(l_to,'YYYY-MM-DD') + 1)
@@ -146,7 +150,8 @@ BEGIN
     WHERE (l_job IS NULL OR l.job_name = l_job)
       AND (l_set IS NULL OR m.set_code = l_set)
       AND (l_status IS NULL
-           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL)
+           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL
+               AND LOWER(DBMS_LOB.SUBSTR(l.message,100,1)) NOT LIKE 'analysis returned no data this run%')
            OR (l_status != 'WARNING' AND l.status = l_status))
     ORDER BY l.run_id DESC FETCH FIRST 20000 ROWS ONLY
   ) LOOP

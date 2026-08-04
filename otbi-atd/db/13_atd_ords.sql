@@ -1443,7 +1443,12 @@ BEGIN
            ROUND((CAST(SYSTIMESTAMP AS DATE) - CAST(h.last_seen AS DATE)) * 86400) AS age_sec,
            (SELECT COUNT(*) FROM atd_load_run_log l
              WHERE l.host_id = h.worker_id
-               AND l.started > SYSTIMESTAMP - INTERVAL '1' DAY) AS runs24h
+               AND l.started > SYSTIMESTAMP - INTERVAL '1' DAY) AS runs24h,
+           h.mfa_status,
+           CASE WHEN h.mfa_status IN ('DETECTED','DELIVERED','FAILED') THEN h.mfa_number END AS mfa_number,
+           h.mfa_env,
+           TO_CHAR(dct_to_local(h.mfa_updated),'YYYY-MM-DD HH:MI:SS AM') AS mfa_updated_s,
+           h.mfa_message_id, h.mfa_error
     FROM atd_worker_heartbeat h ORDER BY h.worker_id
   ) LOOP
     APEX_JSON.open_object;
@@ -1454,6 +1459,12 @@ BEGIN
     APEX_JSON.write('ageSec',     r.age_sec);
     APEX_JSON.write('online',     CASE WHEN r.age_sec <= 120 THEN 'Y' ELSE 'N' END);
     APEX_JSON.write('runs24h',    r.runs24h);
+    APEX_JSON.write('mfaStatus',  NVL(r.mfa_status,''));
+    APEX_JSON.write('mfaNumber',  NVL(r.mfa_number,''));
+    APEX_JSON.write('mfaEnv',     NVL(r.mfa_env,''));
+    APEX_JSON.write('mfaUpdated', NVL(r.mfa_updated_s,''));
+    APEX_JSON.write('mfaMessageId', r.mfa_message_id);
+    APEX_JSON.write('mfaError',   NVL(r.mfa_error,''));
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array; APEX_JSON.close_object;

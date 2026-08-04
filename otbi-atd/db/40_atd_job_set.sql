@@ -190,8 +190,7 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_set_pkg AS
     n NUMBER;
   BEGIN
     UPDATE prod.atd_otbi_jobs
-       SET priority = 1, run_order = 0,
-           run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
+       SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
            updated_at = SYSTIMESTAMP
      WHERE enabled = 'Y'
        AND job_name IN (SELECT job_name FROM prod.atd_job_set_member

@@ -1184,6 +1184,82 @@ table.data-table.ir-table thead th:hover { filter: brightness(1.12); }
 table.data-table.ir-table thead th .ir-sort { margin-inline-start: 4px; font-size: 10px;
                      color: var(--region-hd-fg); opacity: .95; }
 
+/* per-column header hint — declared as column.hint in the envelope; hover popover */
+table.data-table.ir-table thead th .ir-hint { position: relative; display: inline-block;
+                     margin-inline-start: 5px; font-size: 11px; line-height: 1;
+                     color: var(--region-hd-fg); opacity: .8; cursor: help; }
+table.data-table.ir-table thead th .ir-hint:hover { opacity: 1; }
+table.data-table.ir-table thead th .ir-hint .ir-hint-pop { display: none; position: absolute;
+                     top: calc(100% + 8px); inset-inline-start: -8px; z-index: 80;
+                     width: max-content; min-width: 220px; max-width: 320px;
+                     background: #FFFFFF; color: #2A2A2A;
+                     border: 1px solid #D8D8D8; border-radius: 8px;
+                     border-block-start: 3px solid var(--region-hd-accent, #3F6F5F);
+                     padding: 10px 12px; box-shadow: 0 10px 28px rgba(0,0,0,.20);
+                     font-size: 12px; font-weight: 400; line-height: 1.55;
+                     letter-spacing: 0; text-transform: none; white-space: pre-line;
+                     text-align: start; }
+table.data-table.ir-table thead th .ir-hint:hover .ir-hint-pop { display: block; }
+
+/* spark columns (column.type='spark') — inline mini sparkline, hover chart */
+table.data-table.ir-table td .ir-spark { position: relative; display: inline-block;
+                     color: var(--brand, #1F6F8B); cursor: pointer; line-height: 0; }
+table.data-table.ir-table td .ir-spark .sp-mini { display: block; }
+table.data-table.ir-table td .ir-spark-empty { color: #999; }
+table.data-table.ir-table td .ir-spark .ir-spark-pop { display: none; position: absolute;
+                     bottom: calc(100% + 8px); inset-inline-end: -4px; z-index: 80;
+                     background: #FFFFFF; border: 1px solid #D8D8D8; border-radius: 8px;
+                     border-block-start: 3px solid var(--region-hd-accent, #3F6F5F);
+                     padding: 10px 12px 6px; box-shadow: 0 10px 28px rgba(0,0,0,.20);
+                     line-height: 1; }
+table.data-table.ir-table td .ir-spark:hover .ir-spark-pop { display: block; }
+table.data-table.ir-table td .ir-spark .sp-val { font-size: 10px; font-weight: 700;
+                     fill: #2A2A2A; font-family: inherit; }
+table.data-table.ir-table td .ir-spark .sp-lab { font-size: 10px; fill: #7A7A7A;
+                     font-family: inherit; }
+
+/* server-declared subtotal / grand-total rows (row._rowClass in the envelope) */
+table.data-table.ir-table tr.ir-row-subtotal td { background: var(--region-hd-soft);
+                     font-weight: 700; font-size: 12px;
+                     border-block-start: 1px solid var(--region-hd-accent); }
+table.data-table.ir-table tr.ir-row-grand td { background: var(--region-hd-bg);
+                     color: var(--region-hd-fg); font-weight: 700; font-size: 12.5px;
+                     border-block-start: 2px solid var(--region-hd-accent); }
+
+/* ── IR layout enhancements (2026-08-04): grouped header band (column.group),
+   sticky/frozen columns (column.sticky+width), delta arrows (column.delta),
+   near-zero dimming (column.nearZero), one-line ellipsis cells
+   (column.ellipsis) and zebra striping (envelope zebra:true). Column TINTS
+   come from the consuming app via column.colClass — apps define those. ── */
+table.data-table.ir-table thead tr.ir-band th { padding: 4px 10px; font-size: 10.5px;
+                     font-weight: 800; letter-spacing: .07em; text-transform: uppercase;
+                     text-align: center; background: var(--region-hd-soft, #EEF3F1);
+                     color: var(--region-hd-accent, #3F6F5F);
+                     border-block-end: 1px solid var(--border, #D9DEDC); }
+table.data-table.ir-table thead tr.ir-band th.ir-band-th--empty { background: transparent; }
+.ir-table th.ir-col-sticky, .ir-table td.ir-col-sticky { position: sticky; z-index: 2;
+                     overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ir-table thead th.ir-col-sticky { z-index: 3; background: var(--region-hd-bg, #F1F4F3); }
+.ir-table td.ir-col-sticky { background: var(--surface, #fff); }
+/* zebra parity is stamped by the component (ir-even on the tr), so total /
+   break rows never shift the stripe; sticky cells follow the stripe */
+.ir-table.ir-zebra tbody td { padding-block: 9px; }
+tr.ir-even td { background: #F5F8F7; }
+tr.ir-even td.ir-col-sticky { background: #F5F8F7; }
+/* subtotal / grand bands must also win on their STICKY cells */
+table.data-table.ir-table tr.ir-row-subtotal td.ir-col-sticky { background: var(--region-hd-soft); }
+table.data-table.ir-table tr.ir-row-grand td.ir-col-sticky { background: var(--region-hd-bg); }
+/* delta columns: ▲ increase green / ▼ decrease red + value tinted to match */
+.ir-delta { font-size: 9.5px; margin-inline-end: 3px; vertical-align: 1px; }
+.ir-delta--up { color: #1E7E34; }
+.ir-delta--dn { color: #C62828; }
+.ir-table td.ir-pos { color: #1E5E2C; }
+.ir-table td.ir-neg { color: #B3261E; }
+/* near-zero 'muted' mode + one-line ellipsis cells (full text on hover) */
+.ir-table td.ir-dim { color: #A9B2B8; }
+.ir-table td.ir-ellipsis { max-width: 240px; white-space: nowrap; overflow: hidden;
+                           text-overflow: ellipsis; }
+
 /* control-break band + per-group subtotal rows */
 table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
                      font-weight: 700; font-size: 12px; padding: 7px 14px;

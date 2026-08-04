@@ -15,6 +15,12 @@ Helpers:
 """
 import os
 import sys
+import time
+
+
+_HTTP_CLIENT = None
+_RETRY_DELAYS = (0.5, 1.5)
+_LAST_DELIVERY = {}
 
 
 class _SafeDict(dict):
@@ -44,8 +50,9 @@ def send(text, attempts=3):
     """Send a notification, retrying transient failures (e.g. the flaky Telegram SSL
     handshake timeout / connection reset) up to `attempts` times with a short backoff.
     Never raises — a notify failure must not break the login."""
-    import time
+    global _LAST_DELIVERY
     ch = (os.environ.get("ATD_NOTIFY") or "").lower()
+    _LAST_DELIVERY = {"channel": ch, "status": "FAILED", "attempts": 0}
     if not ch:
         return False
     fn = {"telegram": _telegram, "email": _email,
@@ -55,24 +62,58 @@ def send(text, attempts=3):
         return False
     last = None
     for i in range(max(1, attempts)):
+        started = time.monotonic()
         try:
-            fn(text)
+            result = fn(text)
+            if ch == "telegram":
+                elapsed_ms = round((time.monotonic() - started) * 1000)
+                message_id = ((result or {}).get("result") or {}).get("message_id", "unknown")
+                _LAST_DELIVERY = {"channel": ch, "status": "DELIVERED",
+                                  "attempts": i + 1, "delivery_ms": elapsed_ms,
+                                  "message_id": message_id}
+                print(f"[notify] telegram delivered attempt={i + 1} "
+                      f"delivery_ms={elapsed_ms} message_id={message_id}", flush=True)
             return True
         except Exception as e:  # noqa: BLE001 - never break the run on a notify error
             last = e
+            _LAST_DELIVERY.update(attempts=i + 1, error=str(e)[:1000])
             if i + 1 < attempts:
-                time.sleep(2 * (i + 1))      # 2s, then 4s, before retrying
+                delay = _RETRY_DELAYS[min(i, len(_RETRY_DELAYS) - 1)]
+                print(f"[notify] {ch} attempt={i + 1} failed: {e}; "
+                      f"retrying in {delay:g}s", flush=True)
+                time.sleep(delay)
     print(f"[notify] {ch} send failed after {attempts} attempts: {last}")
     return False
+
+
+def last_delivery():
+    """Return metadata for the latest send attempt in this process."""
+    return dict(_LAST_DELIVERY)
+
+
+def _http_client():
+    """Return one connection-pooled HTTP client for the lifetime of this process."""
+    global _HTTP_CLIENT
+    if _HTTP_CLIENT is None:
+        import httpx
+        timeout = httpx.Timeout(connect=3.0, read=4.0, write=4.0, pool=2.0)
+        _HTTP_CLIENT = httpx.Client(timeout=timeout)
+    return _HTTP_CLIENT
 
 
 def _telegram(text):
     import httpx
     token = os.environ["ATD_TG_TOKEN"]
     chat = os.environ["ATD_TG_CHAT"]
-    r = httpx.post(f"https://api.telegram.org/bot{token}/sendMessage",
-                   json={"chat_id": chat, "text": text}, timeout=30)
+    r = _http_client().post(f"https://api.telegram.org/bot{token}/sendMessage",
+                            json={"chat_id": chat, "text": text})
     r.raise_for_status()
+    payload = r.json()
+    if not payload.get("ok"):
+        raise httpx.HTTPStatusError(
+            f"Telegram API rejected sendMessage: {payload}", request=r.request, response=r
+        )
+    return payload
 
 
 def _webhook(text):

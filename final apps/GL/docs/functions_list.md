@@ -87,7 +87,7 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 - `gauge()` — utilisation radial gauge (SVG); `trend()` — period-over-period actual SVG area+line; `sectorBars`/`programBars`/`apprBars` — horizontal bar charts (actual / PO commitments); `insights()` — auto-generated executive sentences. All charts are hand-built SVG/CSS (no chart library).
 
 ## Refresh (Overview + Actuals + Dashboard) & Rebuild (Overview + Budget Utilization)
-- `refreshActuals()` — `POST /actuals/refresh` rebuilds `DCT_GL_COA_SNAP` so the report reflects the latest GL/ATD data + mapping edits; `refreshing` / `lastRefreshed`. Also runs hourly (`DCT_ACTUALS_REFRESH_JOB`, db/v2/35) and is mirrored as a button in the ATD app (`POST /atd/actuals/refresh`).
+- `refreshActuals()` — `POST /actuals/refresh` safely rebuilds `DCT_GL_COA_SNAP` through validated staging so the report reflects the latest GL/ATD data + mapping edits; concurrent runs are refused, the prior committed snapshot survives any load/validation failure, and each run records counts/duration/error in `DCT_ACTUALS_REFRESH_LOG` (90-day retention). Also runs hourly (`DCT_ACTUALS_REFRESH_JOB`, db/v2/35 + resilient procedure db/v2/118) and is mirrored as a button in the ATD app (`POST /atd/actuals/refresh`).
 - `rebuildViews()` — **Rebuild views** button (Overview + Budget Utilization page heads, tooltip hint + confirm): `POST /actuals/rebuild` → `prod.dct_views_rebuild` (db/v2/38). For **structural** reloads (new/renamed columns): re-creates the 16 `SELECT *` base pass-through views over the `ATD_*` tables, recompiles INVALIDs, refreshes the snapshot; toast reports any views still invalid (those need a script edit). For a plain data reload, Refresh actuals is enough.
 
 ## Shell
@@ -108,10 +108,36 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 - `runEbsMap()` — loads the COA mapping register (GET /coamap; segment/status/search filters) into the SHARED `<interactive-report>` (client-built columns)
 - `xmGridClick(d,e)` — delegated row click → edit drawer (admins; `ko.contextFor(td)` + segment|ebsValue side-map)
 - `openXmNew()` / `openXmEdit(row)` / `closeXmDrawer()` / `saveXm()` — add/edit drawer (POST /coamap, partial PUT /coamap/:id; deactivate instead of delete)
-- `uploadEbs()` / `ebFileChosen(d,e)` — EBS balance Excel upload: SheetJS client parse (fuzzy header map), chunks of 500 → POST /ebs-balances with per-chunk progress
+- `uploadEbs()` / `ebFileChosen(d,e)` — EBS balance Excel upload: SheetJS client parse (synonym-priority header map w/ column claiming — accepts the full EBS "GL Period Balances" export layout incl. CC_ID/descriptions/Account Type; bare `Budget` = amount when `Budget Group Code` present), chunks of 500 → POST /ebs-balances with per-chunk progress
 - `ebTemplate()` — downloads the EBS balances upload template workbook (SheetJS)
 - `loadEbsSummary()` — per-year coverage tiles + top-unmapped lists (GET /ebs-balances/summary)
+
+### Balances YoY (`#pg-yoy`, 2026-08-02; interactive report since v1.55.0)
+- `runYoy()` — loads the year-over-year comparison (GET /ebs-balances/yoy) for the selected year chips (max 6) + Balance-as-of month
+- `yoToggleYear(y)` / `yoMonthLabel(o)` — criteria helpers (year chips, Full year / month YTD labels)
+- `yoView` / `yoPivot` — client-side pivot (one row per Fusion account, values per year) + live search/type filtering
+- `yoIr` — SHARED `<interactive-report>` envelope (`GL_BAL_YOY`): year columns ASCENDING, dynamic "Change YY-YY" / "Change % YY-YY" headers for the two latest selected years, per-column ⓘ hints, trailing **Chart** column (shared IR `spark` type — inline sparkline, hover = cross-year trend chart popover); rebuilds on run/measure/search/type; **v1.56.0 layout round**: alternating per-year column tints (`yoc-a`/`yoc-b`), Change/Change % on a gold tint (`yoc-chg`) with ▲ green / ▼ red delta arrows (shared IR `column.delta`), zebra rows (envelope `zebra:true`)
+- `yoMeasure` + `yoVal/yoValTxt/yoChange/yoChangeTxt/yoChangePct/yoTotal` — measure toggle (Actual/Budget/Encumbrance) + delta vs previous year + totals
+- `yoCsv()` — CSV export of the visible pivot (ascending years, selected measure, totals row)
+- `runYoyXlsx()` — Export Excel Register: enqueue EBS_GL_YOY_REGISTER via POST /ebs-balances/yoy/xlsx, poll, auto-download
 - `runEbsRegister()` — enqueues EBS_GL_BALANCE_REGISTER via the bridge, polls, auto-downloads the XLSX
+
+## Cashflow (`view()==='cashflow'`) — budget cashflow plan uploads (v1.49.0)
+- `loadCfSummary()` — GL + Projects per-year/type coverage tables + top unmapped appropriations (GET /cashflow/summary)
+- `uploadCfGl()` / `cfGlChosen(d,e)` — GL cashflow Excel upload (10 segments + period + CF type + amount): SheetJS client parse (fuzzy header map), chunks of 500 → POST /cashflow with per-chunk progress
+- `uploadCfPj()` / `cfPjChosen(d,e)` — Projects cashflow Excel upload (project/task/etype grain) → POST /cashflow/projects
+- `cfGlTemplate()` / `cfPjTemplate()` — download the upload template workbooks (SheetJS)
+
+## DOF Submissions (`view()==='dof'`) — YoY / Budget Utilization / Quarterly (v1.49.0, reworked v1.52.0)
+- `runDof()` — loads the selected dataset (GET /dof/yoy | /dof/butil | /dof/quarterly; Year **2016..current+1** + optional Period YTD-end) into the SHARED `<interactive-report>`; YoY includes chapter + grand total rows; cashflow-missing hint when the plan is not loaded (suppressed for EBS-era years < 2026, which show the era note instead); **column headers carry the run year** ("Revised Budget 2026", "Actual FY 2025"…) via `dofColsYoy/Butil/Quarterly(yr)` + `{y}`-substituted i18n keys, and the figure columns declare **`hint`** (ⓘ hover popover, v1.53.0 — generic `column.hint` support added to the shared IR component) explaining FY-vs-YTD prior actuals, the variance formula and cashflow/utilization semantics EN+AR
+- **v1.56.0 layout round** — columns ordered in YEAR BLOCKS (frozen Chapter/Appr/Account code columns via shared-IR `column.sticky` → current-year block → prior-year block → Variance → Reasons) under **grouped FY header bands** (`column.group`; butil = Budget/Performance bands, quarterly = Budget + Quarter 1–4 bands); current-year columns brand-tinted / prior-year grey / quarters alternating (`dofc-*` colClass in app.css); Variance columns carry ▲ green / ▼ red delta arrows; long texts one-line ellipsis w/ hover full text; zebra rows
+- `dofEmit()` + `dofUnit` / `dofZero` — display-only Search parameters re-projecting the CACHED run (no re-query): **"Showing figures in"** (AED exact / Thousands / Millions / Billions — money values scaled in the envelope) and **"Near-zero display"** (Dimmed 0.00 / Dash / Blank — shared-IR `column.nearZero`, threshold = rounds-to-zero at the current unit); both persisted in `gl_dof_ui`
+- **v1.56.1** — identity columns MERGED (Appropriation / Account / Entity = "code — name"; `apprFull`/`accountFull`/`entityFull` computed on ingest, side-map + drawer keyed on them); envelopes carry `stateRev: 2` (shared-IR hook — stale saved column order yields to the year-block default)
+- `dofChSel` / `dofApSel` + `dofChAdd` / `dofApAdd` / `dofApprOpts` / `dofApLabel` — **multi-select Chapter + Appropriation criteria** (butil chips pattern, any-of; Appropriation LOV scoped to picked chapters; applied client-side in `dofEmit` — whole-chapter picks keep server CHTOTAL rows, appropriation picks get `dofGrandOf()` recomputed grand w/ ratios recomputed)
+- `toggleDofSec(k)` / `dofSearchSummary()` / `dofResSummary()` / `dofReset()` — butil-pattern collapsible Search + Results regions (state in `localStorage('gl_dof_ui')`), collapsed-state summaries, criteria reset
+- `dofGridClick(d,e)` — delegated row click → Reasons/Remarks drawer (admins; `ko.contextFor(td)` + apprCode[|accountCode] side-map; YoY totals not clickable)
+- `openDofNote(row)` / `closeDofDrawer()` / `saveDofNote()` — notes drawer (yoy/butil = one Reason; quarterly = 4 quarter Reasons + Remark; PUT /dof/notes per field, empty text deletes; saved notes pre-fill every future run); since v1.56.0 the drawer opens with a **Record details grid** (`dofNInfo` — every dataset column of the clicked row) above the note fields; v1.56.2 (2026-08-04 (3)): the grid mirrors the TABLE format — unit scaling, 2-decimal money, near-zero mode, ▲/▼ colored variance
+- `runDofRegister()` — Generate Workbook (XLSX): enqueues DOF_YOY_PERF (yoy + butil — one workbook, two sheets) or DOF_QUARTERLY_PERF via POST /dof/register, polls, auto-downloads
 
 ## API Endpoints (ORDS) — `db/05_gl_ords.sql`, base `/ords/admin/gl/`
 | Method | Path | Purpose |
@@ -124,11 +150,26 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 | GET | `/coamap` | EBS mapping register (`?segment=&search=&active=`, cap 5000) + segments LOV (GL/db/16) |
 | POST | `/coamap` | create mapping row (GL_MANAGE_EBS_MAPPING / SYS_ADMIN; dup → 400) (GL/db/16) |
 | PUT | `/coamap/:id` | partial update / deactivate mapping row (GL/db/16) |
-| POST | `/ebs-balances` | bulk upsert EBS balance rows (≤500/req, per-row results, MERGE on 7 segments + period) (GL/db/16) |
-| GET | `/ebs-balances/summary` | per-year coverage (rows/periods/combos/PTD/mapped) + top unmapped EBS values (GL/db/16) |
+| POST | `/ebs-balances` | bulk upsert EBS balance rows (≤500/req, per-row results, upsert on 7 segments + period; measures ptd/budget/encumbrance all optional →0; optional ccId/accountType/per-segment *Desc; adjustment period `13-YYYY` accepted, dated 31-Dec) (GL/db/16) |
+| GET | `/ebs-balances/summary` | per-year coverage (rows/periods/combos/actual+budget+encumbrance totals/mapped) + top unmapped EBS accounts + Future2 values (GL/db/16) |
 | POST | `/ebs-balances/register` | enqueue EBS_GL_BALANCE_REGISTER (year req) (GL/db/16) |
 | GET | `/ebs-balances/register/:id` | poll register run status (GL/db/16) |
 | GET | `/ebs-balances/register/:id/file` | download the register XLSX (GL/db/16) |
+| GET | `/ebs-balances/yoy` | year-over-year YTD comparison on the Fusion account basis (years= pipe list max 6, month=0 FY or 1-12 YTD cutoff, search/atype/chapter; EBS years = stored YTD slices via the account map, 2026+ = Fusion fact view) (GL/db/18) |
+| POST | `/ebs-balances/yoy/xlsx` | enqueue EBS_GL_YOY_REGISTER with the same params (GL/db/18) |
+| GET | `/ebs-balances/yoy/xlsx/:id` | poll YoY register run status (GL/db/18) |
+| GET | `/ebs-balances/yoy/xlsx/:id/file` | download the YoY register XLSX (GL/db/18) |
+| POST | `/cashflow` | bulk upsert GL budget-cashflow rows (≤500/req, per-row results; segments zero-padded to canonical widths; GL_MANAGE_CASHFLOW / SYS_ADMIN) (GL/db/17) |
+| POST | `/cashflow/projects` | bulk upsert Projects cashflow rows (project/task/etype grain) (GL/db/17) |
+| GET | `/cashflow/summary` | GL + Projects per-year/type coverage + top cashflow appropriations without a chapter (GL/db/17) |
+| GET | `/dof/yoy` | DOF YoY dataset — `?year=(req)&period=` (MM-YYYY YTD end, default latest); account grain (4xxxxx only) + EBS codes; **any loaded fiscal year 2016+** — current AND prior legs = Fusion ∪ legacy-EBS (bg-1, STORED YTD slices) + chapter/grand totals + reasons (GL/db/17) |
+| GET | `/dof/butil` | DOF Budget Utilization dataset — appropriation grain: initial/revised budget FY, APPROVED/REVISED cashflow YTD, actual YTD, variance, utilization %, reasons; EBS-era years: Initial = Revised (one EBS budget measure); chapter/grand total rows via GROUPING SETS (`rowType` DETAIL/CHTOTAL/GRAND) (GL/db/17) |
+| GET | `/dof/quarterly` | DOF Quarterly dataset — appropriation grain: approved budget, revised budget Q1/Q2, per-quarter approved/revised CF vs actuals + variance/% + quarterly reasons + remarks; EBS-era years via stored-YTD quarter slices; chapter/grand total rows (`rowType`) (GL/db/17) |
+| GET | `/dof/notes` | saved Reasons/Remarks notes for a year (GL/db/17) |
+| PUT | `/dof/notes` | upsert one note by natural key (year/entity/appropriation[/account][/quarter]/noteType; empty text = delete; GL_MANAGE_DOF_NOTES / SYS_ADMIN) (GL/db/17) |
+| POST | `/dof/register` | enqueue DOF_YOY_PERF / DOF_QUARTERLY_PERF (`{report:YOY\|QUARTERLY, year, period?}`) (GL/db/17) |
+| GET | `/dof/register/:id` | poll DOF report run status (GL/db/17) |
+| GET | `/dof/register/:id/file` | download the DOF workbook XLSX (GL/db/17) |
 | GET | `/boot` | dimensions catalog + combination/classified counts |
 | GET | `/class-types` | dimensions |
 | GET/POST | `/class-values` | list (by `?type=`) / create classification value |

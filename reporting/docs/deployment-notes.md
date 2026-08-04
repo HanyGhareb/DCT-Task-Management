@@ -105,6 +105,13 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   line merges the next statement — keep `PROMPT` lines dash-free.
 
 ## History
+- **2026-07-30 (3) — Sector / Cost Centre / Department on the butil register line sheets
+  (`reporting/db/25` re-seed).** Sheets 2 AP Invoices - Direct / 3 GRN Receipts / 4 Open Purchase
+  Orders / 5 Open Requisitions now open with **Sector, Cost Centre, Department** — a shared
+  `l_dim` LEFT JOIN to a deduped `dct_butil_scope_v` lookup on the butil key (budget_year +
+  project + task + etype; the scope view is exactly one row per key, so the join cannot fan out —
+  same dimension source as sheet 1). E2E run 190 (year 2026, DCT OPEX): all four sheets carry the
+  columns 100% filled (3,219 / 2,503 / 1,040 / 1,247 rows), row counts unchanged.
 - **2026-07-29 (2) — EBS Account column in the butil register + NEW EBS_GL_BALANCE_REGISTER
   (`reporting/db/25` re-seed + NEW `reporting/db/30`).** BUDGET_UTIL_REGISTER sheet 1 gains
   **Ebs Account** right after Account Number — slash-joined `LISTAGG` over the active ACCOUNT rows

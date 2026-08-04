@@ -50,7 +50,7 @@ def main():
         pg.goto(BASE + "/index.html")
         pg.wait_for_function("window.ko && !!window.ko.dataFor(document.body)", timeout=120000)
 
-        check("Legacy nav tab present", pg.locator("nav.pnav a").count() == 8,
+        check("Legacy nav tab present", pg.locator("nav.pnav a").count() == 10,
               str(pg.locator("nav.pnav a").count()))
 
         # ── EN: open the Legacy tab by id and wait for the mapping fetch ──

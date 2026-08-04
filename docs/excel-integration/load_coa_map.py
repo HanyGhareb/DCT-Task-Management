@@ -9,7 +9,12 @@ Expected sheet layout (header row 1, like "COA Account_Mapping.xlsx"):
 
 Usage (dev VM, wallet at /opt/oracle-wallet/Wallet_prod):
     python3 load_coa_map.py --segment ACCOUNT --file "COA Account_Mapping.xlsx"
-    python3 load_coa_map.py --segment APPROPRIATION --file "Future1_Mapping.xlsx"
+    python3 load_coa_map.py --segment APPROPRIATION --file "Future2_Mapping.xlsx"
+
+Note 2026-07-30: the APPROPRIATION map turned out to be IDENTITY (user rule:
+Future2 IS the appropriation code, just unpadded in EBS) — it is seeded by
+db/v2/110 section 110.5b and no mapping file is needed. This loader remains
+for corrections/overrides only (ebs_value in the 6-digit padded form).
 """
 import argparse
 import getpass

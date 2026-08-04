@@ -99,8 +99,9 @@ endpoints are unchanged — they are shared platform APIs, not Admin-private.
 
 ## 6. System Configuration
 
-**System Settings** (`systemSettings`) — platform-wide settings (branding, feature flags, secrets) + Data Maintenance (log cleanup, LOB storage, database object health, data integrity).
-- `saveAll` · `runDatabaseHealth` / `recompileDatabase` (SYS_ADMIN: rebuild base pass-through views + `COMPILE_SCHEMA` to clear invalid objects) · `runDataIntegrity` / `runLogCleanup`.
+**System Settings** (`systemSettings`) — platform-wide settings + Data Maintenance, headed by the SYS_ADMIN Operations Center (consolidated health, scheduler failures/missed runs, schema/LOB capacity forecast, 15-minute ORDS latency/error telemetry, actuals-refresh status) followed by storage, object health, integrity, SQL performance and locks.
+- `saveAll` · `loadOperations` / `refreshOperations` · `runDatabaseHealth` / `recompileDatabase` · `runDataIntegrity` / `runLogCleanup` · `refreshSqlPerformance`.
+- Operations API: `GET/POST /dct/maintenance/operations` (db/v2/119; SYS_ADMIN).
 
 **Region Appearance** (`appearance`) — region header/border theming palette.
 - `selectTheme` · `saveTheme`.

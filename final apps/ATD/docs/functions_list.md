@@ -7,7 +7,7 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
 - KPIs (total/enabled jobs, 24h success rate, 24h runs, last finished), queue-state donut,
   recent runs, alerts (FAILED / truncation). `go(id)` — jump to a section.
 - **Refresh Actuals** header button (`refreshActuals` → `POST /atd/actuals/refresh`): rebuilds the
-  GL classification snapshot (`DCT_GL_COA_SNAP`) the actuals reporting views read — handy straight
+  GL classification snapshot (`DCT_GL_COA_SNAP`) the actuals reporting views read through the validated, overlap-protected db/v2/118 refresh — handy straight
   after a load. Same proc as the GL app's button + the hourly `DCT_ACTUALS_REFRESH_JOB`.
 - **Worker Fleet** panel (`listWorkers` → `GET /atd/workers`): one row per parallel-worker VM
   (`worker_id`, status IDLE/BUSY/DOWN, current job, last-seen age, runs-24h) with a green/red

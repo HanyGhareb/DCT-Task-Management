@@ -45,15 +45,15 @@
           <td><span data-bind="text: $data.enabledMembers + ' / ' + $data.members"></span></td>
           <td>
             <!-- ko if: $data.paused === 'Y' -->
-            <span class="badge badge--idle" data-bind="text: t('atd.set.state.paused')"></span>
+            <span class="badge badge--idle" data-bind="text: $vm.t('atd.set.state.paused')"></span>
             <!-- /ko -->
             <!-- ko ifnot: $data.paused === 'Y' -->
-            <span class="badge" data-bind="text: ($data.active==='Y' ? t('atd.set.state.active') : t('atd.set.state.off')),
+            <span class="badge" data-bind="text: ($data.active==='Y' ? $vm.t('atd.set.state.active') : $vm.t('atd.set.state.off')),
                    css: { 'badge--active': $data.active==='Y', 'badge--idle': $data.active!=='Y' }"></span>
             <!-- /ko -->
           </td>
           <td>
-            <span class="badge" data-bind="text: ($data.notifyOnFailure==='Y' ? t('atd.common.yes') : t('atd.common.no')),
+            <span class="badge" data-bind="text: ($data.notifyOnFailure==='Y' ? $vm.t('atd.common.yes') : $vm.t('atd.common.no')),
                   css: { 'badge--active': $data.notifyOnFailure==='Y', 'badge--idle': $data.notifyOnFailure!=='Y' }"></span>
           </td>
           <td class="cell-actions" style="text-align:end;" data-bind="click: function(){ return true; }, clickBubble: false">

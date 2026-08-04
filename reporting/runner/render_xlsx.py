@@ -13,6 +13,17 @@ _META_FONT = Font(size=9, color="666666", italic=True)
 _THIN = Side(style="thin", color="D9D9D9")
 _BORDER = Border(left=_THIN, right=_THIN, top=_THIN, bottom=_THIN)
 
+# row-kind styling: a section whose FIRST columns include one literally named
+# ROW_KIND is treated as carrying per-row style hints (DETAIL / CHTOTAL /
+# GRAND). The column itself is consumed (never written to the sheet);
+# sub-total rows render as a tinted bold band, the grand total as a brand
+# band with white text. Emitting the column is opt-in per section SQL, so
+# every existing report is unaffected.
+_SUBTOTAL_FILL = PatternFill("solid", fgColor="DCE9EF")
+_SUBTOTAL_FONT = Font(bold=True, color="1F4E5F", name="Calibri", size=11)
+_GRAND_FILL = PatternFill("solid", fgColor=_BRAND)
+_GRAND_FONT = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
+
 
 def _is_number(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
@@ -51,6 +62,11 @@ _BAD_SHEET = str.maketrans({c: " " for c in "[]:*?/\\"})
 def _fill_sheet(ws, columns, rows, title, meta, sheet_name):
     ws.title = (str(sheet_name or "Report").translate(_BAD_SHEET))[:31]
 
+    kind_idx = next((i for i, c in enumerate(columns)
+                     if str(c).strip().lower() == "row_kind"), None)
+    if kind_idx is not None:
+        columns = [c for i, c in enumerate(columns) if i != kind_idx]
+
     ncols = max(1, len(columns))
     # title + meta band
     ws.cell(row=1, column=1, value=title).font = _TITLE_FONT
@@ -70,6 +86,11 @@ def _fill_sheet(ws, columns, rows, title, meta, sheet_name):
 
     widths = [len(str(col)) + 2 for col in columns]
     for i, row in enumerate(rows, start=head_row + 1):
+        kind = None
+        if kind_idx is not None:
+            row = list(row)
+            kind = row.pop(kind_idx)
+            kind = str(kind).strip().upper() if kind is not None else None
         for j, val in enumerate(row, start=1):
             if isinstance(val, _dt.datetime):
                 val = val.strftime("%Y-%m-%d %H:%M")
@@ -80,6 +101,12 @@ def _fill_sheet(ws, columns, rows, title, meta, sheet_name):
             if _is_number(val):
                 c.number_format = "#,##0.00"
                 c.alignment = Alignment(horizontal="right")
+            if kind == "CHTOTAL":
+                c.fill = _SUBTOTAL_FILL
+                c.font = _SUBTOTAL_FONT
+            elif kind == "GRAND":
+                c.fill = _GRAND_FILL
+                c.font = _GRAND_FONT
             widths[j - 1] = max(widths[j - 1], len(str(val)) + 2)
 
     for j, w in enumerate(widths, start=1):

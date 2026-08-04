@@ -54,3 +54,4 @@ KPI-V2 rides App 213's live backend (`/ords/admin/kpi` + `/dct` auth).
 | 2026-07-29 | Phase 2 DB: 01 re-run (KPI2_KPI_TYPE) → 03 DDL+synonyms (fresh session) → 04 ORDS (fresh session) | PROD; API smoke 16/16 |
 | 2026-07-29 | Phase 3 DB: 05 security seed (UTF-8) — privileges/groups/duties/pages, FEATURE_SEC_ENFORCE_KPI=N, refresh_flat | PROD; access unchanged by design |
 | 2026-07-29 | Phase 2+3 frontend: settings sub-tabs + Manage KPIs + Manage Security, APP_VERSION 2.2.0 (KPI-V2 only) | webtier 20260729000502; browser smoke 30/30 EN+AR |
+| 2026-07-30 | KPI drawer review round: regions → bordered cards w/ brand-filled headers (.dw-reg), APP_VERSION 2.2.1 | webtier 20260730044055; visual smoke 10/10 EN+AR |

@@ -57,7 +57,9 @@ def main():
         pg.wait_for_function("window.ko && !!window.ko.dataFor(document.body)", timeout=120000)
 
         # ── EN: navigate by id and let /gl/pending load ──
-        check("nav tab present", pg.locator("nav.pnav a").count() == 8,
+        # nav keeps growing (yoy/dof/cashflow tabs since this was written) —
+        # assert a floor, not an exact count (2026-08-04)
+        check("nav tab present", pg.locator("nav.pnav a").count() >= 10,
               "(%d tabs)" % pg.locator("nav.pnav a").count())
         pg.evaluate("ko.dataFor(document.body).go('pending')")
         pg.wait_for_function("ko.dataFor(document.body).pnLoaded()", timeout=120000)

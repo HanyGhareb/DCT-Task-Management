@@ -26,6 +26,10 @@ function (ko, atd, i18n, toast) {
     self.presetLabel = function (c) { return self.t('atd.set.preset.' + c); };
     self.dayLabel    = function (c) { return self.t('atd.day.' + c); };
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
+    self.statusText = function (r) {
+      return r && r.status === 'SUCCESS' && Number(r.rowCount) === 0
+        ? self.t('atd.status.successNoData') : ((r && r.status) || '');
+    };
 
     self.dowList = ko.pureComputed(function () {
       var m = self.set().dowMask;

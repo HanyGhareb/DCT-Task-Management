@@ -8,7 +8,8 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.loading = ko.observable(true);
     self.job = ko.observable({});
     self.history = ko.observableArray([]);
-    var name = (window._jetApp.getState() || {}).jobName;
+    var routeState = window._jetApp.getState() || {};
+    var name = routeState.jobName;
 
     // client-side pagination (20 rows/page) over the run history
     self.offset = ko.observable(0);
@@ -30,6 +31,11 @@ function (ko, atd, i18n, toast, fmtDuration) {
     });
 
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
+    self.statusText = function (r) {
+      return r && r.status === 'SUCCESS' && Number(r.rowCount) === 0
+        ? self.t('atd.status.successNoData') : ((r && r.status) || '');
+    };
+    self.isNoData = function (r) { return !!(r && r.status === 'SUCCESS' && Number(r.rowCount) === 0); };
     self.chipStyle = function (color) { return { background: color || '#6B7280', color: '#fff' }; };
     self.catLabel = function (c) {
       var ar = (i18n.lang && i18n.lang() === 'ar');
@@ -105,6 +111,11 @@ function (ko, atd, i18n, toast, fmtDuration) {
         self.schemaLoading(false);
       }).catch(function () { self.schemaLoading(false); });
     };
+
+    if (routeState.openSchema) {
+      self.schemaOpen(true);
+      self.loadSchema();
+    }
 
     self.toggleSchema = function () {
       var open = !self.schemaOpen();

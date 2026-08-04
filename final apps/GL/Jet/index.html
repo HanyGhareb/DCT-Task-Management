@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION='1.50.1';</script>
+<script>window.APP_VERSION='1.56.2';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -60,6 +60,7 @@
     <a data-bind="css:{on:view()==='legacy'}, click:go.bind($data,'legacy'), text:t('navLegacy')"></a>
     <a data-bind="css:{on:view()==='cashflow'}, click:go.bind($data,'cashflow'), text:t('navCashflow')"></a>
     <a data-bind="css:{on:view()==='dof'}, click:go.bind($data,'dof'), text:t('navDof')"></a>
+    <a data-bind="css:{on:view()==='yoy'}, click:go.bind($data,'yoy'), text:t('navYoy')"></a>
     <!-- ko if: isSysAdmin -->
     <button type="button" class="sec-link" data-bind="click: openSecurityInfo"
             style="margin-inline-start:auto; opacity:.75; background:none; border:none; cursor:pointer; font:inherit; color:inherit">&#128737; <span data-bind="text: lang()==='ar' ? 'معلومات الأمان' : 'Security Info'"></span></button>
@@ -1613,7 +1614,7 @@
       </div>
     </div>
 
-    <!-- ── DOF REPORTS — YoY / Budget Utilization / Quarterly ── -->
+    <!-- ── DOF SUBMISSIONS — YoY / Budget Utilization / Quarterly ── -->
     <div id="pg-dof" data-bind="visible:view()==='dof'">
       <div class="page-head">
         <div>
@@ -1625,30 +1626,143 @@
         </div>
       </div>
 
+      <!-- Search criteria region (butil pattern: collapsible, brand-headed) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){toggleDofSec('search');return true}, css:{closed:!dofSecSearchOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('buSecSearch')"></span>
+          <span class="bu-sec-sum" data-bind="text:dofSearchSummary()"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:dofSecSearchOpen">
+          <div class="filter-grid">
+            <div class="field"><label class="lbl" data-bind="text:t('dofReportL')"></label>
+              <select class="inp" data-bind="options:dofReports, optionsText:'l', optionsValue:'v', value:dofReport"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('ebYearL')+' *'"></label>
+              <select class="inp" data-bind="options:dofYears, value:dofYear"></select></div>
+            <div class="field" data-bind="visible:dofReport()!=='quarterly'">
+              <label class="lbl"><span data-bind="text:t('dofPeriodL')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:dofPeriods, optionsCaption:t('dofLatest'), value:dofPeriod"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('dofColChapter')"></label>
+              <select class="inp" data-bind="options:dofChapters, value:dofChPick, optionsCaption:t('allChapters'), event:{change:dofChAdd}"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('dofColAppr')"></label>
+              <select class="inp" data-bind="options:dofApprOpts(), optionsText:'l', optionsValue:'c', value:dofApPick, optionsCaption:t('dofAllApprs'), event:{change:dofApAdd}"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
+              <select class="inp" data-bind="options:dofUnitOpts(), optionsText:'l', optionsValue:'v', value:dofUnit"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('dofZeroL')"></span><i class="hint-i" data-bind="attr:{title:t('dofZeroHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:dofZeroOpts(), optionsText:'l', optionsValue:'v', value:dofZero"></select></div>
+            <div class="field filter-actions">
+              <button class="btn btn-primary" data-bind="click:runDof, css:{busy:dofBusy}, enable:!dofBusy(), text:t('btnSearch')"></button>
+              <button class="btn" data-bind="click:dofReset, enable:!dofBusy(), text:t('btnReset')"></button>
+            </div>
+          </div>
+          <!-- multi-select chips (Chapter / Appropriation) — butil pattern -->
+          <div class="mchips mchips-bar" data-bind="visible:dofChSel().length + dofApSel().length > 0">
+            <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+            <!-- ko foreach: dofChSel -->
+            <span class="mchip"><b data-bind="text:$root.t('dofColChapter')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.dofChSel,$data)}, clickBubble:false">×</i></span>
+            <!-- /ko -->
+            <!-- ko foreach: dofApSel -->
+            <span class="mchip"><b data-bind="text:$root.t('dofColAppr')"></b><span data-bind="text:$root.dofApLabel($data)"></span><i data-bind="click:function(){$root.buChipRemove($root.dofApSel,$data)}, clickBubble:false">×</i></span>
+            <!-- /ko -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Results region + busy overlay (oj-progress-circle, butil pattern) -->
+      <div class="bu-body">
+        <div class="bu-load-ov" data-bind="visible:dofBusy" aria-live="polite">
+          <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+        </div>
+        <div class="bu-sec bu-results">
+          <div class="bu-sec-h" data-bind="click:function(){toggleDofSec('res');return true}, css:{closed:!dofSecResOpen()}">
+            <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            <span class="bu-sec-t" data-bind="text:t('buSecResults')"></span>
+            <span class="bu-sec-sum" data-bind="text:dofResSummary()"></span>
+          </div>
+          <div class="bu-sec-b" data-bind="visible:dofSecResOpen">
+            <div class="en-sum">
+              <span><b data-bind="text:fmt(dofCount())"></b> <span class="en-sub" data-bind="text:t('dofRows')"></span></span>
+              <span class="en-sub" data-bind="visible:canEditDofNotes, text:t('dofRowHint')"></span>
+            </div>
+            <div class="en-note" data-bind="visible:dofCfWarn, text:t('dofCfMissing')"></div>
+            <div class="en-note" data-bind="visible:dofEraNote, text:t('dofEbsEra')"></div>
+            <!-- ko if: dofData -->
+            <div data-bind="event:{click:dofGridClick}">
+              <interactive-report params="reportCode:'GL_DOF_'+dofReport().toUpperCase(), section:'dof'+dofReport(), data:dofData, isAdmin:false, layoutsApi:null"></interactive-report>
+            </div>
+            <!-- /ko -->
+            <div class="ldr sm" data-bind="visible:dofBusy() && !dofData()">
+              <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+              <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ GL BALANCES YoY (2026-08-02) ═══════════ -->
+    <div id="pg-yoy" data-bind="visible:view()==='yoy'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('yoTitle')"></h1>
+          <p class="sub" data-bind="text:t('yoSub')"></p>
+        </div>
+        <div class="page-actions">
+          <button class="btn" data-bind="click:yoCsv, visible:yoLoaded, text:t('yoCsvBtn')"></button>
+          <button class="btn btn-primary" data-bind="click:runYoyXlsx, css:{busy:yoRegBusy}, enable:!yoRegBusy(), text:yoRegBusy()?t('yoXlsBusy'):t('yoXlsx')"></button>
+        </div>
+      </div>
+
       <div class="card">
+        <div class="field">
+          <label class="lbl" data-bind="text:t('yoYearsL')"></label>
+          <div class="yo-years" data-bind="foreach:yoYearOpts">
+            <button type="button" class="yo-chip"
+                    data-bind="css:{on:$root.yoSel.indexOf($data)>=0}, click:function(){$root.yoToggleYear($data); return false;}, text:$data"></button>
+          </div>
+        </div>
+        <div class="field">
+          <label class="lbl" data-bind="text:t('yoBgL')"></label>
+          <div class="yo-years" data-bind="foreach:yoBgOpts">
+            <button type="button" class="yo-chip"
+                    data-bind="css:{on:$root.yoBg.indexOf($data)>=0}, click:function(){$root.yoToggleBg($data); return false;}, text:$root.yoBgLabel($data)"></button>
+          </div>
+          <span class="en-sub" data-bind="text:t('yoBgHint')"></span>
+        </div>
         <div class="filter-grid">
-          <div class="field"><label class="lbl" data-bind="text:t('dofReportL')"></label>
-            <select class="inp" data-bind="options:dofReports, optionsText:'l', optionsValue:'v', value:dofReport"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('ebYearL')"></label>
-            <select class="inp" data-bind="options:dofYears, value:dofYear"></select></div>
-          <div class="field" data-bind="visible:dofReport()!=='quarterly'">
-            <label class="lbl" data-bind="text:t('dofPeriodL')"></label>
-            <select class="inp" data-bind="options:dofPeriods, optionsCaption:t('dofLatest'), value:dofPeriod"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('yoMonthL')"></label>
+            <select class="inp" data-bind="options:yoMonthOpts, optionsText:function(o){return $root.yoMonthLabel(o)}, optionsValue:'v', value:yoMonth"></select></div>
+          <div class="field"><label class="lbl" data-bind="text:t('yoSearchL')"></label>
+            <input class="inp" data-bind="textInput:yoSearch" placeholder="e.g. 411121 / salary"></div>
+          <div class="field"><label class="lbl" data-bind="text:t('yoTypeL')"></label>
+            <select class="inp" data-bind="options:yoTypes, optionsCaption:t('yoAllTypes'), value:yoType"></select></div>
           <div class="field filter-actions">
-            <button class="btn btn-primary" data-bind="click:runDof, css:{busy:dofBusy}, enable:!dofBusy(), text:t('dofRun')"></button>
+            <button class="btn btn-primary" data-bind="click:runYoy, css:{busy:yoBusy}, enable:!yoBusy(), text:t('yoRun')"></button>
           </div>
         </div>
         <div class="en-sum">
-          <span><b data-bind="text:fmt(dofCount())"></b> <span class="en-sub" data-bind="text:t('xmRows')"></span></span>
-          <span class="en-sub" data-bind="visible:canEditDofNotes, text:t('dofRowHint')"></span>
+          <span><b data-bind="text:fmt(yoView().length)"></b> <span class="en-sub" data-bind="text:t('yoAccounts')"></span></span>
+          <span class="en-sub" data-bind="text:t('yoMeasureL')+':'"></span>
+          <span class="yo-meas">
+            <button type="button" class="yo-chip" data-bind="css:{on:yoMeasure()==='actual'}, click:function(){yoMeasure('actual')}, text:t('yoActual')"></button>
+            <button type="button" class="yo-chip" data-bind="css:{on:yoMeasure()==='budget'}, click:function(){yoMeasure('budget')}, text:t('yoBudget')"></button>
+            <button type="button" class="yo-chip" data-bind="css:{on:yoMeasure()==='encumbrance'}, click:function(){yoMeasure('encumbrance')}, text:t('yoEnc')"></button>
+          </span>
+          <span class="en-sub" data-bind="text:t('yoChangeHint')"></span>
         </div>
-        <div class="en-note" data-bind="visible:dofCfWarn, text:t('dofCfMissing')"></div>
-        <!-- ko if: dofData -->
-        <div data-bind="event:{click:dofGridClick}">
-          <interactive-report params="reportCode:'GL_DOF_'+dofReport().toUpperCase(), section:'dof'+dofReport(), data:dofData, isAdmin:false, layoutsApi:null"></interactive-report>
-        </div>
+        <div class="en-note" data-bind="text:t('yoEbsNote')"></div>
+
+        <!-- ko if: yoLoaded -->
+        <!-- SHARED interactive report (2026-08-03): ascending year columns,
+             dynamic Change YY-YY headers, column hints, trailing Chart
+             (sparkline w/ hover trend popover) -->
+        <!-- ko if: yoIr -->
+        <interactive-report params="reportCode:'GL_BAL_YOY', section:'yoy', data:yoIr, isAdmin:false, layoutsApi:null"></interactive-report>
         <!-- /ko -->
-        <div class="ldr sm" data-bind="visible:dofBusy() && !dofData()">
+        <div class="empty" data-bind="visible:yoLoaded() && yoView().length===0, text:t('yoNoRows')"></div>
+        <!-- /ko -->
+        <div class="ldr sm" data-bind="visible:yoBusy() && !yoLoaded()">
           <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
           <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
         </div>
@@ -1801,6 +1915,15 @@
   </header>
   <div class="dw-b">
     <div class="dw-ctx" data-bind="text:t('dofNoteCtx')"></div>
+    <!-- full record info (2026-08-04): every dataset column of the clicked row -->
+    <div class="dof-rec-t" data-bind="text:t('dofRecInfo')"></div>
+    <div class="dof-rec" data-bind="foreach:dofNInfo">
+      <div class="dof-rec-l" data-bind="text:l"></div>
+      <div class="dof-rec-v" data-bind="css:(num?'mono ':'')+cls">
+        <!-- ko if: $data.arrow --><span class="dr-arrow" data-bind="text:arrow"></span><!-- /ko -->
+        <span data-bind="text:v"></span>
+      </div>
+    </div>
     <div class="xm-form">
       <!-- ko if: dofReport()!=='quarterly' -->
       <div class="field"><label class="lbl" data-bind="text:t('dofReason')"></label>

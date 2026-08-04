@@ -3,6 +3,8 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-04 — Resilient actuals snapshot refresh (db/v2/118; DB only):** `prod.dct_actuals_refresh` now serializes runs through a control-row lock, loads `DCT_GL_COA_STAGE`, verifies non-empty/exact row counts plus non-null/unique `CC_ID` and `CC_STRING`, and only then atomically replaces `DCT_GL_COA_SNAP` in one transaction. Any load/validation/publish failure rolls back and leaves the prior committed snapshot available. `DCT_ACTUALS_REFRESH_LOG` records requester, source/staged/published counts, duration and error with 90-day retention; stats errors are warnings after a successful publish. Removed the unrelated two-pass invalid-view compilation from every run; the dedicated DB-health workflow owns recompilation. PROD verification: four successful 9,409-row runs (4.62–5.52 s), real hourly scheduler run SUCCEEDED, procedure/job healthy, 0 invalid objects.
+
 ## Deploy checklist
 1. **DB scripts** via SQLcl `sql -name prod_mcp` (CRLF, UTF-8 no BOM, `SET DEFINE OFF`, `SET SQLBLANKLINES ON`):
    - `01_gl_synonyms.sql` — **own fresh session** (ORA-01471 rule).
@@ -27,6 +29,133 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-08-04 (3) — Drawer figures mirror the table format (GL v1.56.2; GL-only)** — the
+  notes drawer's Record-details grid now formats exactly like the grid: same unit scaling
+  ("Showing figures in"), 2-decimal money, near-zero mode, and the Variance rows carry the
+  ▲ green / ▼ red arrow + color (`openDofNote` builds {v, cls, arrow} from the cached column
+  meta). Webtier release **20260804221545**; smoke `dof_browser_smoke.py` **59/59**.
+- **2026-08-04 (2) — Layout round feedback fixes (GL v1.56.1; SHARED IR change)** — user
+  screenshot feedback on v1.56.0: ① truncated frozen headers ("APPROPRIATI…"/"FUSION ACC…")
+  → identity code+description pairs **MERGED into single columns** (Appropriation =
+  "100103 — FA103-Manpower Expense" frozen 230px, Account = fusion code — name frozen 240px
+  [EBS Account keeps its own column], Entity = code — name; the notes-drawer side-map now
+  keys on the MERGED fields because normalizeRows drops non-column keys); ② year blocks not
+  in the agreed order on the user's machine → the IR's saved column state from the pre-rework
+  runs was overriding the new default — NEW generic envelope **`stateRev`** in the SHARED IR
+  (folds into the persistence key; bump it when a DESIGNED order change must beat autosave;
+  DOF + YoY envelopes now `stateRev: 2`); ③ tint contrast too subtle → current-year green
+  raised to .15 and prior-year switched to a distinct **slate-blue** hue (.15), quarter/YoY
+  tints strengthened in step; ④ NEW **Chapter + Appropriation Search criteria — MULTI-select**
+  (butil chips pattern: pick → chip, any-of semantics; LOVs from the loaded run, Appropriation
+  LOV scoped to picked chapters; applied client-side by `dofEmit` with **totals following the
+  filter** — whole-chapter picks keep the server CHTOTAL rows [grand recomputed when >1
+  chapter], appropriation picks get a recomputed grand row w/ ratios recomputed not summed;
+  reset clears, collapsed-search summary lists picks). All fronts bumped, webtier release
+  **20260804220157**; smoke `dof_browser_smoke.py` **57/57**, `yoy_browser_smoke.py` 24/24.
+- **2026-08-04 — Readability layout round: year blocks/bands/tints, frozen columns, delta
+  arrows, unit + near-zero parameters, full-record drawer (GL v1.56.0; frontend-only, SHARED
+  IR change)** — user-picked enhancements 1–12 on DOF Submissions + Balances YoY. **SHARED
+  `<interactive-report>` gained five generic opt-in hooks**: `column.group`/`groupClass`
+  (grouped header band row — contiguous same-group columns render ONE spanning cell),
+  `column.colClass` (per-column td class → app-defined tints), `column.sticky` + `width`
+  (frozen columns; offsets accumulate over preceding visible sticky columns via
+  `inset-inline-start` so the pin mirrors in RTL; hidden columns re-flow the offsets),
+  `column.delta` (▲ green increase / ▼ red decrease arrow + value tinted `ir-pos`/`ir-neg`),
+  `column.nearZero` `{mode:'muted'|'dash'|'blank', threshold}` (values that round to zero at
+  the current unit), `column.ellipsis` (one-line cell + full text on hover title), and
+  envelope **`zebra:true`** (stripe parity stamped by the component on the row STREAM —
+  `tr.ir-even` — so break/subtotal rows never shift the stripe). `.ir-band*`/`.ir-col-sticky`/
+  `.ir-delta*`/`.ir-pos`/`.ir-neg`/`.ir-dim`/`.ir-ellipsis` in platform.css; tint classes are
+  the CONSUMER's (`dofc-*`/`dofg-*`/`yoc-*` in GL app.css, loaded after platform.css so tints
+  beat the zebra stripe). **DOF Submissions**: columns re-ordered into YEAR BLOCKS (frozen
+  Chapter/Appropriation/Account code columns → current-year block → prior-year block →
+  Variance → Reasons) under **FY 20xx header bands** (butil = Budget/Performance bands,
+  quarterly = Budget + Quarter 1–4 bands w/ alternating quarter tints); current year =
+  brand-green tint, prior year = neutral grey; Variance columns carry the delta arrows; NEW
+  Search params **"Showing figures in"** (AED/K/M/B — re-emits the cached run, no re-query)
+  and **"Near-zero display"** (Dimmed 0.00 / Dash / Blank — the ≈0 pre-2025 EBS actuals read
+  as "no data", not real zeros); Reasons/Remarks + description columns truncate to one line
+  (hover = full text) and the notes drawer now opens with a **Record details grid = every
+  dataset column of the clicked row (raw AED)** above the note fields. **Balances YoY**:
+  alternating year-column tints, Change/Change % on a gold tint with the red/green arrows,
+  zebra rows. Unit+zero prefs persist in `gl_dof_ui`. Shared change ⇒ all 16 fronts bumped
+  (GL 1.56.0), webtier release **20260804214154**; smokes extended: `dof_browser_smoke.py`
+  **51/51**, `yoy_browser_smoke.py` **24/24** EN+AR (`pending_browser_smoke.py`'s stale
+  nav-count expectation relaxed to ≥10 — the nav grew past it).
+- **2026-08-03 (4) — Balances YoY on the SHARED interactive report + Chart sparkline column
+  (GL v1.55.0; frontend-only, SHARED IR change)** — the Balances YoY tab's hand-built pivot
+  table was replaced by the SHARED `<interactive-report>` (`GL_BAL_YOY`/section `yoy`; envelope
+  from the NEW `yoIr` computed — rebuilds on run/measure/search/type): **year columns ASCENDING
+  left→right** (2020, 2021 … 2026), **dynamic "Change YY-YY" / "Change % YY-YY" headers** naming
+  the two latest selected years (drop 2026 → headers become 24-25; single year → change columns
+  omitted), per-column ⓘ hints (year semantics incl. the EBS/Fusion era note, change formulas),
+  and a trailing **Chart column** — NEW generic **`spark` column type in the SHARED IR**
+  (`column.type='spark'` + `spark:{cols,labels}` → inline SVG mini-sparkline in the cell, hover
+  = larger trend chart popover with per-year labels + compact values; injection-safe numeric
+  SVG; no sort, exports empty). Also NEW shared-IR behavior: `reconcileColState` now inserts
+  NEW envelope columns at their **envelope position** (anchored after the nearest surviving
+  envelope sibling) instead of appending — adding 2020 to an existing 2024-2026 run lands the
+  column first, not last. `.ir-spark*` styles in platform.css; page CSV export switched to
+  ascending years. Shared change ⇒ all 15 apps bumped, webtier release 20260803221349; smoke
+  `yoy_browser_smoke.py` rewritten for the IR UI — 20/20 EN+AR.
+- **2026-08-03 (3) — Chapter sub-totals everywhere (GL v1.54.0; GL/db/17 + reporting/db/31 +
+  runner + SHARED IR change)** — styled **Chapter sub-total + Grand-total bands** in all three
+  DOF datasets, on-screen AND in the generated workbooks. DB: the Budget Utilization and
+  Quarterly handlers/report sections got the same `GROUP BY GROUPING SETS ((chapter, ap),
+  (chapter), ())` treatment the YoY already had — every dataset now ships `rowType`
+  DETAIL/CHTOTAL/GRAND, utilization/variance-% recomputed at each total level, notes on detail
+  rows only; verified GRAND = Σ(DETAIL) = Σ(CHTOTAL) live. On-screen: NEW generic
+  **`row._rowClass`** support in the SHARED `<interactive-report>` (preserved through
+  normalizeRows → bound as the `<tr>` class) + `.ir-row-subtotal` (region-soft tinted, bold) /
+  `.ir-row-grand` (region-header band, bold) in platform.css — GL stamps the classes from
+  `rowType` (shared change ⇒ all 15 apps bumped, webtier 20260803220020). Workbooks: the report
+  section SQLs emit a leading **`row_kind`** column and `runner/render_xlsx.py` gained generic
+  magic-column support — `row_kind` is consumed (never written to the sheet) and styles CHTOTAL
+  rows as a tinted bold band, GRAND as the brand band with white text (opt-in per section, all
+  other reports unaffected; synced to vm180-182 + rpt-worker restart). Verified: DOF_YOY_PERF
+  run 210 (both sheets styled) + DOF_QUARTERLY_PERF run 211; smoke `dof_browser_smoke.py`
+  38/38 (bands + reconciliation checks added).
+- **2026-08-03 (2) — DOF column-header ⓘ hints (GL v1.53.0; SHARED IR component change)** — the
+  DOF Submissions figure columns now carry hover hint popovers explaining each figure
+  (Actual FY {p} = full-year reference, never used by the Variance; Actual YTD {p} = prior year
+  cut at the SAME month as the current YTD = the like-for-like comparator; Variance formula;
+  budget/cashflow/utilization semantics; Q1/Q2 cumulative revised budgets) — YoY 5 / BU 7 /
+  Quarterly 3 hints, EN+AR, year-substituted per run. Implemented as **generic per-column
+  `hint` support in the SHARED `<interactive-report>`** (`column.hint` in the envelope →
+  ⓘ + `.ir-hint-pop` CSS popover in platform.css; hint survives header renames; ⓘ click does
+  NOT trigger the sort) — **shared change ⇒ APP_VERSION bumped in ALL 15 apps** and the whole
+  fleet redeployed (webtier release 20260803213633). Verified headless EN+AR incl. hover
+  display.
+- **2026-08-03 — DOF Submissions rework: all fiscal years + dynamic headers + butil-style search
+  (GL v1.52.0; GL/db/17 + reporting/db/31 re-run)** — four user requirements on the DOF tab:
+  ① renamed **DOF Submissions** (nav + page title, EN; AR title = التقارير المقدمة لدائرة المالية);
+  ② the criteria card became the **butil-pattern collapsible Search region** (`.bu-sec` header +
+  chevron + collapsed-state summary, Search/Reset buttons) and the grid moved into a matching
+  **Results region** with the `oj-progress-circle` busy overlay (state in
+  `localStorage('gl_dof_ui')`); ③ **dynamic year-based column headers** — the run year is baked
+  into the IR envelope labels ("Revised Budget 2026", "Actual FY 2025", "Actual YTD 2026/2025",
+  "Variance (2026 vs 2025)"; butil/quarterly follow suit) via `{y}`-substituted i18n keys
+  (`dofColActualFyY` etc.); ④ **the report now runs for EVERY loaded fiscal year (2016+)** — the
+  CURRENT-year leg of `/gl/dof/yoy|butil|quarterly` is a Fusion ∪ legacy-EBS union (bg-1), and the
+  prior-year EBS leg was reworked in the same pass to **STORED YTD slices** (platform rule: YTD is
+  stored data with opening balances, never PTD-derived) — per combination
+  `MAX(measure) KEEP (DENSE_RANK LAST ORDER BY period_date)` at the cutoff (the `13-YYYY`
+  adjustment period sorts after `12`), so a 2026 run's prior figures now MATCH a 2025 run's
+  current figures byte-for-byte (7,153.6M) and the 2024 budget reads the true stored 3,665.9M
+  (PTD-sum gave 3,341.4M). EBS carries ONE budget measure → **Initial = Revised for prior years**
+  (era note on the page; the no-cashflow warning is suppressed for years < 2026).
+  `reporting/db/31` section SQLs + year LOVs kept in LOCK-STEP (inner slices need `p.me` in
+  GROUP BY there — the cutoff comes from the `prm` CTE, not a PL/SQL bind). Verified live: yoy
+  2016/2020/2024/2025/2026 + YTD-Jun cutoff on 2025 (2,160.7M), butil 2024, quarterly 2023
+  (approved 5,299.5M, revised-CF Q1 4,344.0M); DOF_YOY_PERF 2024 (250 rows) + DOF_QUARTERLY_PERF
+  2023 (55 rows) workbooks SUCCESS; browser smoke `tests/dof_browser_smoke.py` extended → 35/35
+  EN+AR. **⚠ Data flag (standing):** 2016–2024 EBS **actuals net ≈ 0 on budget group 1** — those
+  years' actuals sit on **budget group 8 with credit signs** (2016 −245.6M … 2023 −4,204.3M FY),
+  only the 2025 export carries actuals on bg 1 (+7,153.6M). Budgets are real on bg 1 every year.
+  Until Finance confirms the sign/group convention, prior-era DOF actual columns show ~0 by
+  design — do NOT invent a bg-8 sign flip in the reports. Handler literal sizes now 10.3–10.7KB —
+  after a Linux-SQLcl deploy of 17, verify `LENGTH(source)` in `user_ords_handlers` (join
+  `user_ords_templates` on `t.id = h.template_id`) against the script.
 - **2026-07-21 — Applied-filters tray (GL v1.38.0)** — the multi-select chip bar (`.mchips-bar`,
   shared by the butil / encumbrances / pending Search regions) is now a highlighted
   **applied-criteria tray**: brand-green tinted band w/ 3px inline-start accent spine (logical
@@ -1115,3 +1244,65 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
 - **Frontend (v1.48.0):** new nav tab **Legacy (EBS)** (`#pg-legacy`) — Region 1 = COA Account Mapping on the SHARED `<interactive-report>` (segment/status/search toolbar, client-built columns; row click resolves via `ko.contextFor(td)` + a `segment|ebsValue` side-map → edit drawer; + Add mapping) with the `.dw-drawer` add/edit form (segment+EBS value frozen on edit, deactivate instead of delete); Region 2 = Legacy Balances — SheetJS client-parse Excel upload (fuzzy header map, chunks of 500, per-chunk progress + first-error surface), template download, per-year coverage table (rows/periods/combos/PTD/mapped %), top-unmapped lists, and **Generate Register (XLSX)** poll/download. Browser smoke `tests/legacy_browser_smoke.py` 17/17 EN + AR/RTL. **Layout gotcha: the `</div></div>` before the "DRILL-DOWN DRAWER" comment belongs to the drill-down MODAL, not `.wrap` — a section appended there renders inside the hidden modal; the Legacy section sits before `.pfoot`.**
 - **Reports:** BUDGET_UTIL_REGISTER sheet 1 gains **Ebs Account** after Account Number (slash-joined LISTAGG over the active ACCOUNT map; run 179 = 1,373/1,373 filled, 424521→421100); NEW **EBS_GL_BALANCE_REGISTER** (`reporting/db/30`, MULTI/PYTHON XLSX): sheet 1 = mapped balance lines (PTD + running YTD per combination) w/ params year(req)/period/account(EBS or Fusion)/chapter/search, sheet 2 = Unmapped Coverage annex. E2E run 180 on synthetic 2025 rows: 203276→Fusion 213276 translated, unmapped 999999 + Future1 in the annex (no APPROPRIATION map yet — expected).
 - Deploys via python-oracledb from the dev VM; 0 INVALID after every step. Webtier release: see git log.
+
+### 2026-07-30 — DOF submission reports + budget cashflow plan (FP v1.49.0, db/v2/111 + GL/db/17 + reporting/db/31)
+- **User ask:** the three DOF (Department of Finance) performance submissions — templates in `docs/Reports/GL/` — produced by the platform: **YoY Performance** (entity × chapter × appropriation × account, EBS + Fusion account codes, prior-year FY/YTD actuals), **Budget Utilization** (appropriation grain, Initial/Revised Budget FY + Initial/Revised Budget **YTD Cashflow**), **Quarterly Performance** (per-quarter Approved/Revised Budget Cashflow vs Actuals). Gap analysis found the budget **cashflow phasing exists nowhere** (Fusion budget = annual + dated adjustments; verified live — the whole initial budget sits in period 01-2026), so per user decision the plan is **uploaded from Excel** into two custom tables pending a dedicated Cashflow module; "Reasons for Variance"/"Remarks" are captured + persisted in-platform.
+- **DB (`db/v2/111`):** `DCT_GL_BUDGET_CASHFLOW` (full 10-segment combination [virtual canonical `cc_string`, **VARCHAR2(320)** — 10×30+9 dots overflows 300] × budget_year × MM-YYYY period × `cf_type` APPROVED/REVISED, lookup `GL_CF_TYPE`), `DCT_PROJECT_CASHFLOW` (project/task/etype grain, no hard FKs — mirrors DCT_PROJECT_BUDGET_USER), `DCT_GL_DOF_NOTE` (year × entity × appropriation × account? × quarter? × REASON/REMARK, FBI-unique with NVL on the nullable keys), views **`DCT_GL_DOF_FACT_V`** (Fusion-era balances at DOF grain built from `gl_balances_cc.cc_string` TOKENS — entity=t1/account=t5/appr=t7 LPAD-normed — so unmapped combinations never drop; initial/adjustments/total budget + expenditures PTD per period) + **`DCT_GL_CASHFLOW_V`** (plan + chapter/appr attrs + mapped flags), privileges GL_VIEW_DOF_REPORTS / GL_MANAGE_CASHFLOW / GL_MANAGE_DOF_NOTES. Prior-year actuals come from the existing `DCT_EBS_BALANCE_MAPPED_V` (db/v2/110). **Deployed via Linux SQLcl saved conn `prod` — script deliberately has NO MERGE (count-then-insert/update) + keyword-free banners, so SQLcl-safe.**
+- **ORDS (`GL/db/17`, additive — post-05 re-run list now 07..17; run as ADMIN `prod_mcp`, running it under the `prod` conn = ORA-01403 from ORDS.DEFINE_TEMPLATE because gl.rest lives under ADMIN):** `POST /cashflow` + `POST /cashflow/projects` (≤500 rows/req, per-row results, FX-exact period parse, numeric segments zero-padded to canonical widths — Excel drops leading zeros), `GET /cashflow/summary`, the three datasets `GET /dof/yoy|butil|quarterly` (year req; yoy/butil take `period=` MM-YYYY YTD-end defaulting to the latest loaded month; YoY = FULL OUTER JOIN current-year vs prior-year (Fusion ∪ EBS legs) + GROUPING SETS chapter/grand totals + slash-joined EBS account codes; **scoped to `SUBSTR(account_code,1,1)='4'`** — the 3xxxxx budgetary-control offset rows carry 8.76B mirror budget with zero spend and would double every chapter, and revenue-side budget is excluded; total-row attribute columns blanked via `CASE WHEN GROUPING(..)=0`), `GET/PUT /dof/notes` (upsert by natural key; empty text = delete), and the register bridges `POST /dof/register` {report:YOY|QUARTERLY, year, period?} + `GET /dof/register/:id[/file]`. API smoke `tests/dof_api_smoke.py` **31/31** (401/400s, dataset shapes, grand-total reconciliation, idempotent re-upload, per-row error, CF surfacing in butil, note round-trip; test rows use year 2030 and are cleaned).
+- **Reports (`reporting/db/31`):** `DOF_YOY_PERF` (2 sheets — YoY + DOF Budget Utilization) + `DOF_QUARTERLY_PERF` (1 sheet, flat `_Q1.._Q4` headers; the template's merged quarter band is cosmetic-only loss). MULTI/PYTHON XLSX-only, section SQLs mirror the /dof/* handlers in lock-step; **seeds use count-then-insert/update (no MERGE) so Linux SQLcl deploys them** (needs `JAVA_TOOL_OPTIONS=-Dfile.encoding=UTF-8` for the Arabic param labels). E2E on the live fleet: YoY run SUCCESS 203 rows / Quarterly 20 rows; workbook grand total (9,737,673,363 revised / 3,020,977,523.34 actual YTD 07-2026) reconciles exactly to the detail sum; CH1 = 1.162B expense-only (offsets excluded).
+- **Frontend (v1.49.0):** nav tabs **Cashflow** (`#pg-cashflow` — GL + Projects plan uploads, SheetJS 500-row chunks + per-chunk progress, template downloads, per-year/type coverage + top-unmapped-appropriation lists) and **DOF Reports** (`#pg-dof` — report picker YoY/Butil/Quarterly + Year + Period(YTD), datasets on the SHARED `<interactive-report>`, row click → Reasons/Remarks drawer [yoy/butil = one reason; quarterly = 4 quarter reasons + remark; saved notes pre-fill every run], cashflow-missing hint, **Generate Workbook (XLSX)** button — butil enqueues the YOY workbook since it carries both sheets — poll 5s + auto-download). Browser smoke `tests/dof_browser_smoke.py` **24/24** EN + AR/RTL; `legacy_browser_smoke.py` updated (nav count 8→10) and re-run 17/17.
+- **Formula conventions implemented (flag to Finance for sign-off — the templates hold only zero-value formulas):** YoY Variance = Actual YTD − Prior-year Actual YTD; BU Variance = Revised Budget YTD Cashflow − Actual YTD, Utilization % = Actual YTD ÷ Revised CF YTD; Quarterly Variance_Qn = Revised CF_Qn − Actual_Qn (% against Revised CF). "2026 Revised Budget Q1/Q2" = cumulative `total_budget` through Mar/Jun.
+- **Pending user-side data:** 2025 EBS balance files + the Appropriation↔Future1 mapping file (prior-year columns render 0 until loaded — plumbing verified against the mapped view), and the actual cashflow plan workbooks (CF columns 0 until uploaded; on-screen hint points to the Cashflow tab).
+- Webtier release 20260730051424.
+
+### 2026-07-30 (2) — EBS corrections: Appropriation maps to FUTURE2 + Budget/Encumbrance balance measures (FP v1.49.1, db/v2/110 + GL/db/16 + reporting/db/30 re-runs)
+- **User corrections:** (1) the Fusion **Appropriation** segment cross-maps to EBS **Future2** — NOT Future1 as originally modelled; (2) `DCT_EBS_GL_BALANCE` must carry the THREE balance measures — **Actual** (existing `ptd_amount`), **Budget** (`budget_amount`), **Encumbrance** (`encumbrance_amount`) — with the upload template updated.
+- **Why this was cheap:** translation lives ONLY in `DCT_EBS_BALANCE_MAPPED_V` (the db/v2/110 design rule) — the Future2 flip is a one-line join change (`pm.ebs_value = b.future2_code`), no data reload, and retro-applies to everything downstream (DOF YoY prior-year leg included, which reads `fusion_appropriation` from the view).
+- **DB (`db/v2/110` re-run, SQLcl `prod` — script has no MERGE):** guarded `ALTER TABLE ADD (budget_amount, encumbrance_amount NUMBER DEFAULT 0 NOT NULL)` + mapped view re-created (join flip + the 2 new measure columns). 3,191 ACCOUNT map rows untouched, 0 INVALID.
+- **ORDS (`GL/db/16` re-run as `prod_mcp`):** `POST /ebs-balances` accepts optional `budget`/`encumbrance` per row (default 0) — **the row upsert MERGE was converted to UPDATE-then-INSERT** (SQLcl-safe, matches GL/db/17 style); `GET /ebs-balances/summary` years[] gains `budgetTotal`/`encTotal`, and the unmapped-appropriation list is now **`unmappedFuture2[]`** (key `ebsFuture2`, grouped on `future2_code`).
+- **Report (`reporting/db/30` re-seeded — REWRITTEN count-then-insert/update, no MERGE, so Linux SQLcl deploys it):** sheet 1 columns now `… Future1 Code, Ebs Future2, Fusion Appropriation …, Actual Ptd, Budget Amount, Encumbrance Amount, Actual Ytd (running)`; coverage annex segment `FUTURE1`→**`FUTURE2`** + per-measure totals.
+- **Frontend (v1.49.1):** upload template = `ACTUAL_AMOUNT / BUDGET_AMOUNT / ENCUMBRANCE_AMOUNT` columns (header map also accepts PTD/AMOUNT synonyms; bare `BUDGET` still means the budget-code SEGMENT — the amount needs `BUDGET_AMOUNT`), coverage table gains Budget + Encumbrance totals, labels "Future2 mapped" / "Top unmapped Future2 values" (`ebUnmappedF2`/`ebsFuture2`).
+- **Verified E2E on live PROD (synthetic rows, cleaned after):** balance row with `future2=999888` + test APPROPRIATION map row → mapped view resolves Fusion appr 100103 + desc + Chapter 1 (`appr_mapped=Y`); unmapped `777666` correctly listed under Future2; summary budget/enc totals exact (14,000/650); register run SUCCESS with all new columns. Legacy browser smoke 17/17. Webtier release 20260730093714.
+- **Test gotcha:** `JAN-99` under `FXMON-YY` parses to year **2099** (current-century YY) — fine for the real '25-era files, but synthetic test periods should use 4-digit years.
+
+### 2026-07-30 (3) — EBS history 2015–2025 bulk-loaded + full export layout (FP v1.50.0, db/v2/110 + GL/db/16 + reporting/db/30 re-runs)
+- **Data:** the real EBS "GL Period Balances" exports arrived in `docs/Reports/GL/Data/` — 11 CSVs (2015–2025, 145 MB). **All 603,698 rows loaded into `DCT_EBS_GL_BALANCE` with 0 errors**; per-year row counts and Actual/Budget/Encumbrance totals verified byte-exact against the CSVs. Account-map coverage 99.3–99.9 % per year (all unmapped accounts carry zero amounts); appropriation coverage 0 % until the Future2 map file arrives.
+- **Load path (the fast one — NOT the browser):** preprocess with python (normalize periods to `MM-YYYY`, keep `13-YYYY`, blanks→0, headers renamed to the table's column names, `PERIOD_DATE` as `YYYY-MM-DD`), then **SQLcl `LOAD`** via `sql -name prod` (`set load batch_rows 500`) — ~6.5k rows/sec over the wallet (603k rows ≈ 95 s), converts `YYYY-MM-DD` strings into the DATE column natively. Load-ready files + `expected_totals.json` generator kept in the session scratchpad pattern; the browser upload (500-row chunks) stays for incremental corrections only.
+- **Schema (`db/v2/110` re-run via `prod`):** `DCT_EBS_GL_BALANCE` extended to the FULL export layout — guarded ALTER adds `cc_id` + `entity_desc/cost_center_desc/budget_desc/account_desc/activity_desc/future1_desc/future2_desc` (VARCHAR2(240)) + `account_type` (VARCHAR2(60)). `DCT_EBS_BALANCE_MAPPED_V` exposes them LAST as `cc_id` / `ebs_*_desc` / `ebs_account_type` — the un-prefixed `account_type`/`cost_center_desc` view columns remain the FUSION-side attributes.
+- **ORDS (`GL/db/16` re-run as `prod_mcp`):** `POST /ebs-balances` rows accept optional `ccId`/`accountType`/`entityDesc`…`future2Desc`; `ptd` now optional (blank = 0, matching the export's empty measure cells); **adjustment period `13-YYYY` accepted** — `parse_period` dates it 31-Dec of its year so it lands inside December/full-year YTD windows (every year 2015–2025 has one).
+- **Report (`reporting/db/30` re-seeded):** sheet 1 gains `Ebs Account Desc` + `Ebs Account Type` after the EBS account code. 2015 register run verified (11,898 lines + coverage annex).
+- **Frontend (v1.50.0):** `EB_HEADS` rewritten to synonym-priority matching **with column claiming** — segment keys resolve before measure keys, so with a `Budget Group Code` column present a bare `Budget` column is the AMOUNT, while a lone bare `Budget` (legacy template) still means the budget-code segment. New header synonyms for the full export layout (`CC_ID`, `Account Number`, `Period Name`, descriptions, `Account Type`, `Actual`); upload template regenerated as the EXACT export layout; `ptd` no longer required to upload.
+- **DOF YoY impact:** `/gl/dof/yoy?year=2026` prior-year columns now populate live from the 2025 balances (Grand priorFy 184.77M / priorYtd 283.65M through the account map). ⚠ **Flag for Finance validation:** the export's Actual sign convention is unusual — EBS *Expense* rows net NEGATIVE in 2016–2024 (e.g. 2024 −3.31B) and the per-year totals do not balance to zero, so the file is not a full trial balance. Prior-year figures currently group under a NULL appropriation until the Future2 map loads.
+- Legacy browser smoke 17/17. Webtier release 20260730104121.
+
+### 2026-07-30 (4) — Appropriation↔Future2 = IDENTITY (user rule: "same code, no difference") — db/v2/110 re-run, NO mapping file needed
+- **Rule:** the EBS Future2 value IS the Fusion Appropriation code; EBS just stores it without leading zeros (`438` = `000438`, `0` = `000000` Un Specified). Implemented as **identity seed** (110.5b): one `APPROPRIATION` map row per chart appropriation code (`ebs_value = fusion_value`, 72 rows, idempotent INSERT..SELECT) + the mapped-view join zero-pads the EBS side: `pm.ebs_value = LPAD(b.future2_code, 6, '0')` — self-healing for any future value. `load_coa_map.py --segment APPROPRIATION` is no longer needed.
+- **Coverage after seed:** appr_mapped 99.9–100 % per year; only `301005`/`201129` (FA1005/FA1129 oddballs, zero amounts) stay unmapped. Correcting a specific code later = edit its row on the Legacy tab (ebs_value in 6-digit padded form).
+- ⚠ **Data-reality finding (for Finance):** the EBS **actuals carry no appropriation attribution** — in 2025, ALL 184.77M expense actual sits on Future2 `0` (Un Specified); the rows with a real Future2 (program codes) sum to zero. EBS Budget Groups are `1 Current / 2 Capital / 8 Accrual` — not the 7 DOF chapters. Consequently the DOF YoY prior-year columns currently roll up under appropriation `000000` → "Unclassified" chapter rows; chapters 1–5 show prior = 0. If DOF needs prior figures BESIDE the current-year account rows, the YoY prior leg must join by ACCOUNT only (ignore appropriation for the prior year) — a report-semantics change awaiting the user's call.
+
+### 2026-07-30 — Budget Combination derivation corrected (db/v2/37 re-run, user rules)
+- **User rules:** ① the ACCOUNT segment of `BUDGET_COMBINATION` (and the register's Account Number) = the **expenditure type's 6-digit prefix ALWAYS** — never the posted-transaction account (first pass had COA-row-txns winning, so e.g. project 4511000892's 421115/422401 lines all showed 424521); ② every task must have Program/Cost Centre/Entity-Specific/Appropriation — a task missing one takes it from **PROJECT level** (= the rollup of the project's own tasks via the new `proj_seg` CTE; appropriation also from the project's APPROPRIATION attribute — the extract has no project CC/program/ES columns).
+- View changes: `GL_ACCOUNT` display flipped to etype-prefix-first (posted account = display fallback only); `budget_combination` account leg = `REGEXP_SUBSTR(etype,'^\d{6}')` only; task→project COALESCE on the 4 segments; `MAX(k.cc_string)` stays as LAST resort (only when no cost centre at task OR project level — 8 lines today). Verified: 1,620/1,628 constructed lines embed exactly the etype prefix (the other 8 are the posted-combination fallback), totals unchanged (1,728 lines / 7.56B annual), 0 INVALID. Registers pick it up automatically (they read the view).
+
+### 2026-07-30 (5) — Canonical segment widths enforced as column lengths (user rule) — db/v2/110 + 111 + GL/db/16 re-runs
+- **Rule:** segment lengths are FIXED: Entity 3 · Cost centre 7 · Budget group 1 · Program 6 · GL Account 6 · Entity Specific 7 · Appropriation 6 · Intercompany 3 · Future1/Future2 6. All segment columns on both sides are **VARCHAR2 at exactly these widths** now: `DCT_EBS_GL_BALANCE` (7 EBS segments), `DCT_GL_BUDGET_CASHFLOW` (10 Fusion segments), `DCT_GL_DOF_NOTE` (entity/appr/account).
+- **EBS data normalized:** 569,048 of the 603,698 loaded rows zero-padded to exact width (`0`→`000000` etc. on activity/future1/future2 — entity/cc/budget/account were already exact); totals byte-identical after, coverage account 99.8 % / appropriation ~100 %, DOF YoY figures unchanged, 0 INVALID. The `/gl/ebs-balances` upload handler now pads numeric incoming values (`eseg()` — matches the stored canonical form so re-uploads upsert correctly).
+- **ORA-30556 gotcha:** a column referenced by a **virtual column that sits in a UNIQUE constraint** (cashflow `cc_string`) or by a **function-based unique index** (note key) cannot be MODIFYed directly — 111.4b drops the constraint + virtual column (or the FBI), MODIFYes, then re-adds. Both tables were empty.
+- DOF API smoke 31/31 re-run PASS.
+
+### 2026-08-02 — EBS YTD+PTD reload (2016–2025) + GL Balances YoY comparison (FP v1.51.0, db/v2/110+111 + GL/db/16 + NEW GL/db/18 + reporting/db/30+32)
+- **Data (FULL REPLACE, user decisions):** the refreshed EBS exports (`docs/Reports/GL/Data/`, now 20 XLSX — `GL Period Balances - PTD-<yr>.xlsx` + `- YTD-<yr>.xlsx` per year 2016–2025) merged into **ONE row per combination × period with 6 measures** (Budget/Encumbrance/Actual × PTD/YTD) and loaded: **637,777 rows, 0 errors**, every year's PTD-file/YTD-file keys align 1:1 (0 mismatches/dups). **2015 dropped** (old CSV era, no YTD); previous 603,698 rows deleted. The refreshed extract also **fixed Future2 attribution** (2025 expense actuals now mostly on real appropriations → chapter split works: Ch2 4.52B / Ch3 1.57B / Ch1 1.07B FY-2025) and 2025 expense signs look right (+6.66B FY) — **older years (2017–2023) still show net-negative expense YTD; flagged for Finance**.
+- **YTD is genuine data** — carries opening balances (Retained Earnings opens 2016 at 1.05B with PTD 0). NEVER derive YTD from PTD. `db/v2/110` adds `budget_ytd/encumbrance_ytd/actual_ytd` (DEFAULT 0 NOT NULL, exposed LAST in the mapped view); GL/db/16 upload accepts `budgetYtd/encumbranceYtd/actualYtd`; summary years[] gains `actualYtdFy` (13-slice else 12-slice).
+- **YoY comparison (the point of the exercise):** NEW **`GL/db/18`** ADDITIVE — `GET /gl/ebs-balances/yoy?years=2026|2025|2024&month=0..12` (Fusion-account basis: EBS years read STORED YTD slices through the account map, Fusion years sum `DCT_GL_DOF_FACT_V` periods ≤ cutoff — the fact view gained `encumbrance` = commitments+obligations+other_encumbrances in 111.6; long-format rows, all-zero year-slices suppressed; **EBS YTD-at-cutoff = the `MM-YYYY` period SLICE; Full Year = `13-YYYY` slice else `12-YYYY`**) + register bridge `POST /ebs-balances/yoy/xlsx` → **EBS_GL_YOY_REGISTER** (reporting/db/32, XLSX: long-format sheet w/ prior-year actual + change via LAG, + per-year coverage sheet; SQLs LOCK-STEP with the handler). reporting/db/30 sheet 1 now reads the STORED YTD columns (its old running-PTD window sum missed opening balances) + budget/encumbrance YTD columns. **Post-05 re-run list = 07..18.**
+- **⚠ PERF gotchas (cost 90s live, now <2s):** a JOIN to `TABLE(apex_t_number(...))` for the year list wrecks the plan against the 637k-row mapped view (41s) → **scalar `IN (NVL(l_y1,-1)…)` binds**; a correlated per-row `EXISTS` for the 13-slice check → **pre-grouped `fy` CTE**; referencing the union CTE twice re-executes both slices → **single pass + analytic (`MAX(..) OVER/KEEP`) account attributes**.
+- **Frontend v1.51.0:** NEW nav tab **Balances YoY** (`#pg-yoy`) — year chips (max 6, default 2026/2025/2024), Balance-as-of select (Full year / month YTD), measure toggle Actual/Budget/Encumbrance, client-side account search + type filter, pivot table (year columns desc + Change + Change% vs previous year + totals row), CSV export, **Export Excel Register** poll/download. `yo*` i18n EN+AR; `.yo-chip` styles in app.css.
+- Verified live: Basic salary 411121 YTD-Jun = 2026 194.7M vs 2025 159.2M; register run SUCCESS 731 rows; endpoint 0.6–1.9s; browser smoke `tests/yoy_browser_smoke.py` **14/14** EN+AR. Webtier release 20260802162317.
+
+### 2026-08-02 (2) — TWO PLATFORM RULES: account 452201 excluded + Budget Group defaults to 1 (FP v1.51.1)
+- **RULE 1 — account 452201 "Revenue Transfer to Treasury" is EXCLUDED from ALL calc/reporting** (user): it is the government revenue remittance mis-classed as Expense (2.1–5.1B actual/yr in EBS; 976.8M budget in Fusion 2026) and distorted every expense figure. Filtered at the BASE read layer so every consumer inherits: `GL_BALANCES_CC` (db/v2/32 — outer WHERE on cc_string account token; NOT in dct_views_rebuild, so a views rebuild won't resurrect it) + `DCT_EBS_BALANCE_MAPPED_V` (db/v2/110) + `DCT_GL_CASHFLOW_V` (db/v2/111). **Raw rows stay in the tables — read-layer rule, reversible.** Verified exact: 2026 budget 19,477→18,500M (−976.8M), DOF revBudget −976.8M, 2025 FY expense −318.2M (its year total), read layer = 0 rows everywhere, 0 INVALID after recompile sweep.
+- **RULE 2 — Budget Group segment defaults to '1' (Current operations) in all calc/reports/UI; 2 (Capital) / 8 (Accrual) optionally addable as a parameter** (user):
+  - **Fusion side = HARD bg '1'** inside `DCT_GL_DOF_FACT_V` (Fusion carries stray groups 3/5 — 738M budget, zero spend — never selectable); the view now exposes `budget_group_code`.
+  - **EBS side = `bg=` parameter, default '1'**, pipe list may add 2/8: `/gl/ebs-balances/yoy` (+ echoed `budgetGroups`, 400 on malformed), `/gl/ebs-balances/summary`, `EBS_GL_YOY_REGISTER` (db/32) and `EBS_GL_BALANCE_REGISTER` (db/30) params + both bridges forward it. DOF submissions are bg-1 FIXED (prior EBS leg in GL/db/17 + reporting/db/31 in lock-step — no param by design).
+  - **Frontend v1.51.1:** YoY tab gains a **Budget group chip row** (1 on by default; 2/8 toggleable, EBS years only) + hint; note text updated to state the 452201 exclusion.
+- Verified live: bg default vs 1|2|8 (2025 FY expense 7,153.6M vs 6,339.2M — group 8 accrual reversals net −814M), summary rows 102,921 (bg 1) vs 125,761 (all); DOF YoY GRAND now revBudget 8,392.2M / priorFy 7,157.7M. Smoke 14/14. Webtier release 20260802182916.
+- Deploy chain: db/v2/32 GL_BALANCES_CC (extract) + 110 + 111 via `prod` (+ recompile sweep to 0 INVALID); GL/db/16+17+18 via `prod_mcp`; reporting/db/30+31+32 via `prod`.

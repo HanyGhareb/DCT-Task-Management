@@ -5,6 +5,10 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
     var self = this;
     self.t = i18n.t;
     self.fmtDuration = fmtDuration;
+    self.fmtPhase = function (ms) {
+      ms = Number(ms || 0);
+      return ms < 1000 ? (ms + ' ms') : fmtDuration(Math.max(1, Math.round(ms / 1000)));
+    };
     self.loading = ko.observable(true);
     self.runs = ko.observableArray([]);
     self.total = ko.observable(0);
@@ -22,8 +26,32 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
     self.limit = ko.observable(20);
 
     self.detail = ko.observable(null);
+    self.rerunning = ko.observable(false);
+    self.warningGroups = ko.observableArray([]);
+    self.warningGroupsLoading = ko.observable(true);
+    self.warningGroupsOpen = ko.observable(true);
 
     self.statusClass = function (s) { return 'rstat rstat--' + String(s || '').toUpperCase(); };
+    self.statusText = function (r) {
+      return r && r.status === 'SUCCESS' && Number(r.rowCount) === 0
+        ? self.t('atd.status.successNoData') : ((r && r.status) || '');
+    };
+    self.isNoData = function (r) { return !!(r && r.status === 'SUCCESS' && Number(r.rowCount) === 0); };
+    self.prettyJson = function (value) {
+      if (!value) return '—';
+      try { return JSON.stringify(JSON.parse(value), null, 2); }
+      catch (e) { return String(value); }
+    };
+    self.toggleWarningGroups = function () { self.warningGroupsOpen(!self.warningGroupsOpen()); };
+    self.openWarningGroup = function (row) { self.open({ runId: row.latestRunId }); };
+    self.loadWarningGroups = function () {
+      self.warningGroupsLoading(true);
+      atd.warningSummary({ days: 30, limit: 25 }).then(function (r) {
+        self.warningGroups((r && r.items) || []);
+      }).catch(function () { self.warningGroups([]); })
+        .then(function () { self.warningGroupsLoading(false); });
+    };
+    self.loadWarningGroups();
 
     self.load = function () {
       self.loading(true);
@@ -66,6 +94,35 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
       atd.getRun(row.runId).then(function (d) { self.detail(d); }).catch(function () {});
     };
     self.closeDetail = function () { self.detail(null); };
+    self.openJob = function (reviewSchema) {
+      var d = self.detail(); if (!d || !d.jobName) return;
+      self.detail(null);
+      window._jetApp.navigate('jobDetail', { jobName: d.jobName, openSchema: !!reviewSchema });
+    };
+    self.runAgain = function () {
+      var d = self.detail(); if (!d || !d.jobName || self.rerunning()) return;
+      if (!window.confirm(i18n.t('atd.runAction.confirm').replace('{job}', d.jobName))) return;
+      self.rerunning(true);
+      atd.runJob(d.jobName).then(function () {
+        toast.success(i18n.t('atd.runAction.queued').replace('{job}', d.jobName));
+      }).catch(function () { toast.error(i18n.t('atd.runAction.failed')); })
+        .then(function () { self.rerunning(false); });
+    };
+    self.copyError = function () {
+      var text = String((self.detail() && self.detail().message) || '');
+      if (!text) { toast.error(i18n.t('atd.runAction.noMessage')); return; }
+      function ok() { toast.success(i18n.t('atd.runAction.copied')); }
+      function fallback() {
+        var el = document.createElement('textarea'); el.value = text;
+        el.style.position = 'fixed'; el.style.opacity = '0'; document.body.appendChild(el);
+        el.select(); try { document.execCommand('copy'); ok(); }
+        catch (e) { toast.error(i18n.t('atd.runAction.copyFailed')); }
+        document.body.removeChild(el);
+      }
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(ok).catch(fallback);
+      } else fallback();
+    };
 
     self.exportCsv = function () {
       api.fetchBlobUrl(atd.runsExportUrl({ job: self.fJob(), status: self.fStatus(), setcode: self.fSet() }))

@@ -44,13 +44,14 @@ function (ko, config, authService, atd, i18n, shell) {
           { id: 'jobs',      labelKey: 'atd.nav.jobs' },
           { id: 'jobSets',   labelKey: 'atd.nav.jobSets' },
           { id: 'queue',     labelKey: 'atd.nav.queue' },
-          { id: 'actions',   labelKey: 'atd.nav.actions' },
-          { id: 'projectsOrg', labelKey: 'atd.nav.projectsOrg' },
-          { id: 'discovery', labelKey: 'atd.nav.discovery' },
           { id: 'runs',      labelKey: 'atd.nav.runs' } ] },
+      { id: 'fusionActions', labelKey: 'atd.nav.actionsGroup', collapsed: ko.observable(false), items: [
+          { id: 'actions',     labelKey: 'atd.nav.allActions' },
+          { id: 'projectsOrg', labelKey: 'atd.nav.projectsOrg' } ] },
       { id: 'config', labelKey: 'atd.nav.configGroup', collapsed: ko.observable(false), items: [
           { id: 'environments',   labelKey: 'atd.nav.environments' },
           { id: 'targets',        labelKey: 'atd.nav.targets' },
+          { id: 'discovery',      labelKey: 'atd.nav.discovery' },
           { id: 'xlTemplates',    labelKey: 'atd.nav.xlTemplates' },
           { id: 'runnerSettings', labelKey: 'atd.nav.runnerSettings' } ] }
     ];

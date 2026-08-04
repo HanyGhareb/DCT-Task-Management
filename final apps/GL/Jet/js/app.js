@@ -125,17 +125,163 @@
     xmPickYear:{en:'Year…',ar:'السنة…'},
     ebYearL:{en:'Year',ar:'السنة'}, ebRowsL:{en:'Rows',ar:'الأسطر'},
     ebPeriodsL:{en:'Periods',ar:'الفترات'}, ebCombosL:{en:'Combinations',ar:'التركيبات'},
-    ebPtdL:{en:'PTD total',ar:'إجمالي الفترة'},
-    ebAccMapL:{en:'Account mapped',ar:'حسابات مرتبطة'}, ebAprMapL:{en:'Future1 mapped',ar:'مستقبلي١ مرتبط'},
+    ebPtdL:{en:'Actual (PTD)',ar:'الفعلي (للفترة)'},
+    ebBgtL:{en:'Budget',ar:'الميزانية'}, ebEncL:{en:'Encumbrance',ar:'الارتباطات'},
+    ebAccMapL:{en:'Account mapped',ar:'حسابات مرتبطة'}, ebAprMapL:{en:'Future2 mapped',ar:'مستقبلي٢ مرتبط'},
     ebEmpty:{en:'No legacy balances loaded yet — upload the EBS balance file to begin.',ar:'لم يتم تحميل أرصدة النظام السابق بعد — حمّل ملف أرصدة EBS للبدء.'},
     ebUnmappedAcc:{en:'Top unmapped EBS accounts',ar:'أهم حسابات EBS غير المرتبطة'},
-    ebUnmappedF1:{en:'Top unmapped Future1 values',ar:'أهم قيم مستقبلي١ غير المرتبطة'},
+    ebUnmappedF2:{en:'Top unmapped Future2 values',ar:'أهم قيم مستقبلي٢ غير المرتبطة'},
     ebAbsAmt:{en:'|PTD| amount',ar:'قيمة |الفترة|'},
-    ebUpBad:{en:'Could not read the file — required columns: Entity, Cost Center, Account, Period, PTD (plus Budget, Activity, Future1, Future2).',ar:'تعذّرت قراءة الملف — الأعمدة المطلوبة: Entity, Cost Center, Account, Period, PTD (بالإضافة إلى Budget, Activity, Future1, Future2).'},
+    ebUpBad:{en:'Could not read the file — required columns: Entity, Cost Center, Account, Period, Actual Amount (plus Budget Code, Activity, Future1, Future2, Budget Amount, Encumbrance Amount).',ar:'تعذّرت قراءة الملف — الأعمدة المطلوبة: Entity, Cost Center, Account, Period, Actual Amount (بالإضافة إلى Budget Code, Activity, Future1, Future2, Budget Amount, Encumbrance Amount).'},
     ebUpBusy:{en:'Uploading chunk {i}/{n}…',ar:'جارٍ تحميل الدفعة {i}/{n}…'},
     ebUpDone:{en:'Upload complete: {ok} rows saved, {err} errors.',ar:'اكتمل التحميل: {ok} سطراً محفوظاً، {err} أخطاء.'},
     ebRegQueued:{en:'Register queued — run #',ar:'تم إرسال السجل — تشغيل رقم '},
     ebRegFailed:{en:'Register failed: ',ar:'فشل السجل: '},
+
+    /* ── Cashflow (budget cashflow plan uploads) ── */
+    navCashflow:{en:'Cashflow',ar:'التدفق النقدي'},
+    cfTitle:{en:'Budget Cashflow Plan',ar:'خطة التدفق النقدي للميزانية'},
+    cfSub:{en:'The approved / revised budget cashflow phasing maintained by Finance — uploaded from Excel and consumed by the DOF reports. A dedicated Cashflow module will take these over later.',ar:'التوزيع الزمني للتدفق النقدي للميزانية (المعتمد / المعدّل) الذي تديره المالية — يُحمّل من إكسل وتستخدمه تقارير دائرة المالية. ستتولى وحدة التدفق النقدي المخصصة هذه البيانات لاحقاً.'},
+    cfGlRegion:{en:'GL Budget Cashflow (10-segment combinations)',ar:'التدفق النقدي لميزانية الأستاذ العام (تركيبات ١٠ بنود)'},
+    cfPjRegion:{en:'Projects Cashflow (project / task / expenditure type)',ar:'التدفق النقدي للمشاريع (مشروع / مهمة / نوع مصروف)'},
+    cfUploadGl:{en:'Upload GL cashflow (Excel)',ar:'تحميل التدفق النقدي للأستاذ (إكسل)'},
+    cfUploadPj:{en:'Upload projects cashflow (Excel)',ar:'تحميل التدفق النقدي للمشاريع (إكسل)'},
+    cfTypeL:{en:'Type',ar:'النوع'}, cfAmtL:{en:'Total amount',ar:'إجمالي المبلغ'},
+    cfChMapL:{en:'Chapter mapped',ar:'مرتبط بالباب'}, cfProjectsL:{en:'Projects',ar:'المشاريع'},
+    cfEmptyGl:{en:'No GL cashflow loaded yet — upload the plan to feed the DOF Budget Utilization and Quarterly reports.',ar:'لم يتم تحميل تدفق نقدي للأستاذ بعد — حمّل الخطة لتغذية تقارير دائرة المالية.'},
+    cfEmptyPj:{en:'No projects cashflow loaded yet.',ar:'لم يتم تحميل تدفق نقدي للمشاريع بعد.'},
+    cfUnmappedAppr:{en:'Top cashflow appropriations without a chapter',ar:'أهم اعتمادات التدفق النقدي بدون باب'},
+    cfGlUpBad:{en:'Could not read the file — required columns: Appropriation, Period, CF Type, Amount (plus the other GL segments).',ar:'تعذّرت قراءة الملف — الأعمدة المطلوبة: Appropriation, Period, CF Type, Amount (بالإضافة إلى بقية البنود).'},
+    cfPjUpBad:{en:'Could not read the file — required columns: Project, Task, Expenditure Type, Period, CF Type, Amount.',ar:'تعذّرت قراءة الملف — الأعمدة المطلوبة: Project, Task, Expenditure Type, Period, CF Type, Amount.'},
+
+    /* ── DOF Reports (YoY / Budget Utilization / Quarterly) ── */
+    navDof:{en:'DOF Submissions',ar:'تقارير دائرة المالية'},
+    dofTitle:{en:'DOF Submissions',ar:'التقارير المقدمة لدائرة المالية'},
+    dofSub:{en:'The Department of Finance performance submissions — YoY Performance, Budget Utilization and Quarterly Performance — generated from GL balances, the legacy EBS history and the uploaded cashflow plan.',ar:'تقارير الأداء المقدمة لدائرة المالية — الأداء السنوي واستخدام الميزانية والأداء الربع سنوي — مُعدة من أرصدة الأستاذ العام وسجل النظام السابق وخطة التدفق النقدي.'},
+    dofReportL:{en:'Report',ar:'التقرير'},
+    dofYoY:{en:'YoY Performance',ar:'الأداء السنوي المقارن'},
+    dofButil:{en:'Budget Utilization (DOF)',ar:'استخدام الميزانية (دائرة المالية)'},
+    dofQuarterly:{en:'Quarterly Performance',ar:'الأداء الربع سنوي'},
+    dofPeriodL:{en:'Period (YTD end)',ar:'الفترة (حتى تاريخه)'},
+    dofLatest:{en:'Latest loaded',ar:'أحدث فترة'},
+    dofRun:{en:'Run',ar:'تشغيل'},
+    dofGenerate:{en:'Generate Workbook (XLSX)',ar:'إنشاء المصنف (XLSX)'},
+    dofGenBusy:{en:'Generating…',ar:'جارٍ الإنشاء…'},
+    dofRowHint:{en:'Click a row to edit its Reasons for Variance / Remarks.',ar:'انقر على أي سطر لتحرير أسباب الانحراف / الملاحظات.'},
+    dofNoteTitle:{en:'Reasons & Remarks',ar:'الأسباب والملاحظات'},
+    dofNoteCtx:{en:'Saved notes persist and pre-fill every future run of this report.',ar:'تُحفظ الملاحظات وتظهر تلقائياً في كل تشغيل قادم لهذا التقرير.'},
+    dofReason:{en:'Reason for variance',ar:'سبب الانحراف'},
+    dofRemark:{en:'Remarks',ar:'الملاحظات'},
+    dofReasonQ:{en:'Reason — Q',ar:'سبب الانحراف — الربع '},
+    dofCfMissing:{en:'No cashflow plan loaded for this year — the cashflow columns are zero. Upload it on the Cashflow tab.',ar:'لا توجد خطة تدفق نقدي محملة لهذه السنة — أعمدة التدفق النقدي صفرية. حمّلها من تبويب التدفق النقدي.'},
+    dofColEntity:{en:'Entity',ar:'الجهة'}, dofColEntityName:{en:'Entity Name',ar:'اسم الجهة'},
+    dofColChapter:{en:'Chapter',ar:'الباب'},
+    dofColAppr:{en:'Appropriation',ar:'الاعتماد'}, dofColApprDesc:{en:'Appropriation Description',ar:'وصف الاعتماد'},
+    dofColEbsAcc:{en:'EBS Account',ar:'حساب EBS'}, dofColFusionAcc:{en:'Fusion Account',ar:'حساب Fusion'},
+    dofColAccName:{en:'Account Name',ar:'اسم الحساب'},
+    dofColPriorFy:{en:'Prior Year Actual FY',ar:'فعلي السنة السابقة (كاملة)'},
+    dofColRevBudget:{en:'Revised Budget',ar:'الميزانية المعدلة'},
+    dofColActualYtd:{en:'Actual YTD',ar:'الفعلي حتى تاريخه'},
+    dofColPriorYtd:{en:'Prior Year Actual YTD',ar:'فعلي السنة السابقة حتى تاريخه'},
+    dofColVariance:{en:'Variance',ar:'الانحراف'},
+    dofColReason:{en:'Reasons for Variance',ar:'أسباب الانحراف'},
+    dofColInitBudget:{en:'Initial Budget FY',ar:'الميزانية الأولية'},
+    dofColRevBudgetFy:{en:'Revised Budget FY',ar:'الميزانية المعدلة'},
+    dofColInitCf:{en:'Initial Budget YTD CF',ar:'التدفق النقدي الأولي حتى تاريخه'},
+    dofColRevCf:{en:'Revised Budget YTD Cashflow',ar:'التدفق النقدي المعدل حتى تاريخه'},
+    dofColUtilPct:{en:'Budget Utilization %',ar:'نسبة استخدام الميزانية %'},
+    dofColApproved:{en:'Approved Budget',ar:'الميزانية المعتمدة'},
+    dofColRevQ1:{en:'Revised Budget Q1',ar:'الميزانية المعدلة ر١'},
+    dofColRevQ2:{en:'Revised Budget Q2',ar:'الميزانية المعدلة ر٢'},
+    dofColAcf:{en:'Approved CF Q',ar:'التدفق المعتمد ر'},
+    dofColRcf:{en:'Revised CF Q',ar:'التدفق المعدل ر'},
+    dofColAct:{en:'Actual Q',ar:'الفعلي ر'},
+    dofColVar:{en:'Variance Q',ar:'الانحراف ر'},
+    dofColPct:{en:'Variance % Q',ar:'الانحراف % ر'},
+    dofColRsn:{en:'Reasons Q',ar:'الأسباب ر'},
+    dofColRemark:{en:'Remarks',ar:'الملاحظات'},
+    /* year-dynamic column headers ({y} = the run year) + region labels */
+    dofRows:{en:'rows',ar:'سطر'},
+    dofColActualFyY:{en:'Actual FY {y}',ar:'الفعلي للسنة الكاملة {y}'},
+    dofColRevBudgetY:{en:'Revised Budget {y}',ar:'الميزانية المعدلة {y}'},
+    dofColActualYtdY:{en:'Actual YTD {y}',ar:'الفعلي حتى تاريخه {y}'},
+    dofColVarianceY:{en:'Variance ({y} vs {p})',ar:'الانحراف ({y} مقابل {p})'},
+    dofColInitBudgetY:{en:'Initial Budget FY {y}',ar:'الميزانية الأولية {y}'},
+    dofColRevBudgetFyY:{en:'Revised Budget FY {y}',ar:'الميزانية المعدلة {y}'},
+    dofColInitCfY:{en:'Initial Budget YTD CF {y}',ar:'التدفق النقدي الأولي حتى تاريخه {y}'},
+    dofColRevCfY:{en:'Revised Budget YTD Cashflow {y}',ar:'التدفق النقدي المعدل حتى تاريخه {y}'},
+    dofColApprovedY:{en:'Approved Budget {y}',ar:'الميزانية المعتمدة {y}'},
+    dofColRevQ1Y:{en:'Revised Budget {y} Q1',ar:'الميزانية المعدلة {y} ر١'},
+    dofColRevQ2Y:{en:'Revised Budget {y} Q2',ar:'الميزانية المعدلة {y} ر٢'},
+    dofEbsEra:{en:'Years up to 2025 read the legacy EBS history (budget group 1) translated through the account mapping — Initial budget equals Revised for those years.',ar:'السنوات حتى 2025 تُقرأ من سجل النظام السابق (مجموعة الميزانية 1) عبر ربط الحسابات — الميزانية الأولية تساوي المعدلة لتلك السنوات.'},
+    /* column-header ⓘ hints ({y} = run year, {p} = prior year) */
+    dofHintActualFy:{en:'Full-year actual of {y}: every accounting period through December, including the year-end adjustment period.\nReference column — the Variance never uses it.',ar:'الفعلي الكامل لسنة {y}: جميع الفترات المحاسبية حتى ديسمبر بما فيها فترة التسوية الختامية.\nعمود مرجعي — لا يدخل في حساب الانحراف.'},
+    dofHintActualYtd:{en:'Actual of {y} from 1 January to the selected "Period (YTD end)".',ar:'فعلي سنة {y} من 1 يناير حتى الفترة المحددة في «الفترة (حتى تاريخه)».'},
+    dofHintPriorYtd:{en:'Actual of {p} cut off at the SAME month as Actual YTD {y} — the like-for-like comparator.\nVariance = Actual YTD {y} − Actual YTD {p}.',ar:'فعلي سنة {p} حتى نفس شهر القطع المستخدم في فعلي {y} — للمقارنة المتكافئة فترةً بفترة.\nالانحراف = فعلي {y} حتى تاريخه − فعلي {p} حتى تاريخه.'},
+    dofHintRevBudget:{en:'Full-year revised budget of {y}: initial budget plus all approved adjustments.',ar:'الميزانية المعدلة الكاملة لسنة {y}: الميزانية الأولية مضافاً إليها جميع التعديلات المعتمدة.'},
+    dofHintVariance:{en:'Actual YTD {y} − Actual YTD {p}: a same-period comparison — never measured against the full-year column.',ar:'فعلي {y} حتى تاريخه − فعلي {p} حتى تاريخه: مقارنة عن نفس الفترة — لا تُقاس أبداً مقابل عمود السنة الكاملة.'},
+    dofHintInitBudget:{en:'Full-year initial (approved) budget of {y}.\nEBS-era years (before 2026) carry one budget measure, so Initial = Revised.',ar:'الميزانية الأولية (المعتمدة) الكاملة لسنة {y}.\nسنوات النظام السابق (قبل 2026) تحمل مقياس ميزانية واحداً، لذا الأولية = المعدلة.'},
+    dofHintInitCf:{en:'APPROVED budget cashflow of {y} (user-uploaded plan) summed from 1 January to the selected YTD end.',ar:'التدفق النقدي المعتمد لسنة {y} (الخطة المحملة) مجموعاً من 1 يناير حتى نهاية الفترة المحددة.'},
+    dofHintRevCf:{en:'REVISED budget cashflow of {y} (user-uploaded plan) summed from 1 January to the selected YTD end.',ar:'التدفق النقدي المعدل لسنة {y} (الخطة المحملة) مجموعاً من 1 يناير حتى نهاية الفترة المحددة.'},
+    dofHintUtilPct:{en:'Actual YTD {y} ÷ Revised Budget YTD Cashflow × 100.',ar:'فعلي {y} حتى تاريخه ÷ التدفق النقدي المعدل حتى تاريخه × 100.'},
+    dofHintVarianceBu:{en:'Revised Budget YTD Cashflow − Actual YTD {y}.',ar:'التدفق النقدي المعدل حتى تاريخه − فعلي {y} حتى تاريخه.'},
+    dofHintApproved:{en:'Annual approved budget of {y}.\nEBS-era years (before 2026): the single stored budget measure.',ar:'الميزانية السنوية المعتمدة لسنة {y}.\nسنوات النظام السابق (قبل 2026): مقياس الميزانية الوحيد المخزن.'},
+    dofHintRevQn:{en:'Revised budget of {y} as of the end of that quarter (cumulative through Q{q}).',ar:'الميزانية المعدلة لسنة {y} كما في نهاية ذلك الربع (تراكمياً حتى الربع {q}).'},
+    /* layout enhancements (2026-08-04): year bands / unit / zero display / record drawer */
+    dofBandFy:{en:'FY {y}',ar:'السنة المالية {y}'},
+    dofBandBudget:{en:'Budget {y}',ar:'موازنة {y}'},
+    dofBandPerf:{en:'Performance {y}',ar:'الأداء {y}'},
+    dofBandQ:{en:'Quarter {q}',ar:'الربع {q}'},
+    dofZeroL:{en:'Near-zero display',ar:'عرض القيم شبه الصفرية'},
+    dofZeroMuted:{en:'Dimmed 0.00',ar:'0.00 باهت'},
+    dofZeroDash:{en:'Dash (—)',ar:'شرطة (—)'},
+    dofZeroBlank:{en:'Blank',ar:'فارغ'},
+    dofZeroHint:{en:'How figures that round to zero at the selected unit are displayed — they usually mean "no data" (e.g. pre-2025 EBS actuals pending Finance confirmation), not a real zero.',ar:'كيفية عرض الأرقام التي تقارب الصفر عند الوحدة المحددة — غالباً تعني «لا بيانات» وليس صفراً حقيقياً.'},
+    dofRecInfo:{en:'Record details',ar:'تفاصيل السجل'},
+    dofColAccount:{en:'Account',ar:'الحساب'},
+    dofAllApprs:{en:'All appropriations',ar:'كل الاعتمادات'},
+
+    /* ── GL Balances YoY comparison ── */
+    navYoy:{en:'Balances YoY',ar:'مقارنة الأرصدة سنوياً'},
+    yoTitle:{en:'GL Balances — Year over Year',ar:'أرصدة الأستاذ العام — مقارنة سنوية'},
+    yoSub:{en:'Compare YTD balances per GL account across years on the Fusion account basis — legacy EBS years (2016–2025) are translated through the account mapping; 2026 onward reads Fusion GL.',ar:'قارن الأرصدة التراكمية لكل حساب عبر السنوات على أساس حساب Fusion — سنوات النظام السابق (2016–2025) مترجمة عبر ربط الحسابات؛ ومن 2026 تُقرأ من Fusion مباشرة.'},
+    yoYearsL:{en:'Years (max 6)',ar:'السنوات (بحد أقصى 6)'},
+    yoMonthL:{en:'Balance as of',ar:'الرصيد كما في'},
+    yoFullYear:{en:'Full year',ar:'السنة الكاملة'},
+    yoSearchL:{en:'Account search',ar:'بحث الحساب'},
+    yoTypeL:{en:'Account type',ar:'نوع الحساب'},
+    yoAllTypes:{en:'All types',ar:'كل الأنواع'},
+    yoRun:{en:'Run',ar:'تشغيل'},
+    yoMeasureL:{en:'Measure',ar:'المقياس'},
+    yoActual:{en:'Actual',ar:'الفعلي'},
+    yoBudget:{en:'Budget',ar:'الميزانية'},
+    yoEnc:{en:'Encumbrance',ar:'الارتباطات'},
+    yoColAccount:{en:'Account',ar:'الحساب'},
+    yoColName:{en:'Account Name',ar:'اسم الحساب'},
+    yoColType:{en:'Type',ar:'النوع'},
+    yoColChange:{en:'Change',ar:'التغير'},
+    yoColChangePct:{en:'Change %',ar:'التغير %'},
+    yoChangeHint:{en:'Change = latest selected year vs the previous one, for the chosen measure.',ar:'التغير = أحدث سنة مختارة مقابل السنة السابقة لها، حسب المقياس المختار.'},
+    yoAccounts:{en:'accounts',ar:'حساب'},
+    yoNoRows:{en:'No balances for the selected criteria — run with different years or clear the filters.',ar:'لا توجد أرصدة للمعايير المختارة — جرّب سنوات أخرى أو امسح المرشحات.'},
+    yoXlsx:{en:'Export Excel Register',ar:'تصدير سجل Excel'},
+    yoXlsBusy:{en:'Generating…',ar:'جارٍ الإنشاء…'},
+    yoCsvBtn:{en:'Export CSV',ar:'تصدير CSV'},
+    /* interactive-report round (2026-08-03) */
+    yoColChart:{en:'Chart',ar:'الرسم البياني'},
+    yoHintChart:{en:'Hover over the sparkline to see this account\'s values across the selected years.',ar:'مرر المؤشر فوق الرسم لعرض قيم الحساب عبر السنوات المحددة.'},
+    yoHintYear:{en:'{m} balance of {y} — {a}.\nYears 2016–2025 read the legacy EBS stored YTD balances (incl. opening balances) through the account mapping; 2026 onward reads Fusion GL.',ar:'رصيد {m} لسنة {y} — {a}.\nتُقرأ السنوات 2016–2025 من أرصدة النظام السابق المخزنة (شاملة الأرصدة الافتتاحية) عبر ربط الحسابات؛ ومن 2026 تُقرأ من Fusion.'},
+    yoHintChange:{en:'{m} {a} − {m} {b}: the change between the two latest selected years.',ar:'{m} {a} − {m} {b}: التغير بين آخر سنتين محددتين.'},
+    yoHintChangePct:{en:'Change {b}-{a} ÷ |{b} value| × 100 — the change as a percentage of {b}.',ar:'التغير {b}-{a} ÷ |قيمة {b}| × 100 — نسبة التغير إلى سنة {b}.'},
+    yoPickYear:{en:'Select at least one year.',ar:'اختر سنة واحدة على الأقل.'},
+    yoMax6:{en:'Maximum 6 years.',ar:'بحد أقصى 6 سنوات.'},
+    yoEbsNote:{en:'2016–2025 = legacy EBS (stored YTD balances incl. opening balances); 2026+ = Fusion GL. Account 452201 (Revenue Transfer to Treasury) and unmapped EBS accounts are excluded platform-wide.',ar:'2016–2025 = النظام السابق (أرصدة تراكمية مخزنة تشمل الأرصدة الافتتاحية)؛ 2026+ = Fusion. الحساب 452201 (تحويل الإيرادات للخزينة) والحسابات غير المربوطة مستبعدة على مستوى المنصة.'},
+    yoBgL:{en:'Budget group',ar:'مجموعة الميزانية'},
+    yoBg1:{en:'1 — Current operations',ar:'1 — العمليات الجارية'},
+    yoBg2:{en:'2 — Capital projects',ar:'2 — المشاريع الرأسمالية'},
+    yoBg8:{en:'8 — Accrual adjustments',ar:'8 — تسويات الاستحقاق'},
+    yoBgHint:{en:'Default = 1 (Current operations). Groups 2 / 8 are optional add-ons (legacy EBS years only).',ar:'الافتراضي = 1 (العمليات الجارية). المجموعتان 2 / 8 اختياريتان (سنوات النظام السابق فقط).'},
+    yoPickBg:{en:'Select at least one budget group.',ar:'اختر مجموعة ميزانية واحدة على الأقل.'},
 
     /* ── Actuals (Budget vs Actual) report ── */
     navActuals:{en:'General Ledger',ar:'دفتر الأستاذ العام'}, navDashboard:{en:'Dashboard',ar:'لوحة المعلومات'},
@@ -680,6 +826,15 @@
       else if (v === 'legacy') {
         if (!self.xmLoaded()) self.runEbsMap();
         if (!self.ebLoaded()) self.loadEbsSummary();
+      }
+      else if (v === 'cashflow') {
+        if (!self.cfLoaded()) self.loadCfSummary();
+      }
+      else if (v === 'dof') {
+        if (!self.dofLoaded()) self.runDof();
+      }
+      else if (v === 'yoy') {
+        if (!self.yoLoaded()) self.runYoy();
       }
       else if (v === 'recon') {
         // show the spinner for the WHOLE initial load (filters fetch happens
@@ -2805,7 +2960,7 @@
     self.ebLoaded = ko.observable(false);
     self.ebYears = ko.observableArray([]);
     self.ebUnmappedAcc = ko.observableArray([]);
-    self.ebUnmappedF1 = ko.observableArray([]);
+    self.ebUnmappedF2 = ko.observableArray([]);
     self.ebUploadBusy = ko.observable(false);
     self.ebUploadNote = ko.observable('');
     self.ebRegYear = ko.observable('');
@@ -2817,7 +2972,7 @@
       return api('GET', '/ebs-balances/summary').then(function (d) {
         self.ebYears(d.years || []);
         self.ebUnmappedAcc(d.unmappedAccounts || []);
-        self.ebUnmappedF1(d.unmappedFuture1 || []);
+        self.ebUnmappedF2(d.unmappedFuture2 || []);
         if (!self.ebRegYear() && (d.years || []).length) self.ebRegYear(d.years[0].year);
         self.ebLoaded(true);
       }).catch(fail);
@@ -2827,28 +2982,50 @@
     };
     /* Excel upload: SheetJS client parse (requirejs 'xlsx' path is configured
        in index.html) -> chunks of 500 -> POST /gl/ebs-balances */
+    /* 2026-07-30 (2): matches the full EBS "GL Period Balances" export layout
+       (CC_ID + per-segment descriptions + Account Type + Budget/Encumbrance/
+       Actual measures). Matching is synonym-priority with column CLAIMING:
+       segment keys resolve first, so with a "Budget Group Code" column
+       present, a bare "Budget" column is the AMOUNT; a lone bare "Budget"
+       (legacy template) still means the budget-code segment. */
     var EB_HEADS = {
-      entity:     ['ENTITY', 'ENTITYCODE'],
-      costCenter: ['COSTCENTER', 'COSTCENTERCODE', 'CC'],
-      budgetCode: ['BUDGET', 'BUDGETCODE'],
-      account:    ['ACCOUNT', 'GLACCOUNT', 'ACCOUNTCODE'],
-      activity:   ['ACTIVITY', 'ACTIVITYCODE'],
-      future1:    ['FUTURE1'],
-      future2:    ['FUTURE2'],
-      period:     ['PERIOD', 'ACCOUNTINGPERIOD', 'PERIODNAME'],
-      ptd:        ['PTD', 'PTDAMOUNT', 'AMOUNT']
+      ccId:          ['CCID'],
+      entity:        ['ENTITYCODE', 'ENTITY'],
+      costCenter:    ['COSTCENTERCODE', 'COSTCENTER', 'CC'],
+      budgetCode:    ['BUDGETGROUPCODE', 'BUDGETCODE', 'BUDGET'],
+      account:       ['ACCOUNTNUMBER', 'ACCOUNTCODE', 'GLACCOUNT', 'ACCOUNT'],
+      activity:      ['ACTIVITYCODE', 'ACTIVITY'],
+      future1:       ['FUTURE1'],
+      future2:       ['FUTURE2'],
+      entityDesc:    ['ENTITYDESCRIPTION', 'ENTITYDESC'],
+      costCenterDesc:['COSTCENTERDESCRIPTION', 'COSTCENTERDESC'],
+      budgetDesc:    ['BUDGETGROUPDESCRIPTION', 'BUDGETDESCRIPTION', 'BUDGETDESC'],
+      accountDesc:   ['ACCOUNTDESCRIPTION', 'ACCOUNTDESC'],
+      activityDesc:  ['ACTIVITYDESCRIPTION', 'ACTIVITYDESC'],
+      future1Desc:   ['FUTURE1DESCRIPTION', 'FUTURE1DESC'],
+      future2Desc:   ['FUTURE2DESCRIPTION', 'FUTURE2DESC'],
+      accountType:   ['ACCOUNTTYPE'],
+      period:        ['PERIODNAME', 'ACCOUNTINGPERIOD', 'PERIOD'],
+      ptd:           ['PTD', 'PTDAMOUNT', 'ACTUALAMOUNT', 'ACTUALPTD', 'ACTUAL', 'AMOUNT'],
+      budget:        ['BUDGETAMOUNT', 'BUDGETAMT', 'BUDGETPTD', 'BUDGET'],
+      encumbrance:   ['ENCUMBRANCEAMOUNT', 'ENCUMBRANCE', 'ENCAMOUNT']
     };
     function ebMapHeaders(headerRow) {
       var norm = headerRow.map(function (h) {
         return String(h == null ? '' : h).toUpperCase().replace(/[^A-Z0-9]/g, '');
       });
-      var idx = {};
+      var idx = {}, claimed = {};
       Object.keys(EB_HEADS).forEach(function (k) {
-        for (var i = 0; i < norm.length; i++) {
-          if (EB_HEADS[k].indexOf(norm[i]) >= 0) { idx[k] = i; return; }
+        var syns = EB_HEADS[k];
+        for (var s = 0; s < syns.length; s++) {
+          for (var i = 0; i < norm.length; i++) {
+            if (norm[i] === syns[s] && !claimed[i]) {
+              idx[k] = i; claimed[i] = true; return;
+            }
+          }
         }
       });
-      var req = ['entity', 'costCenter', 'account', 'period', 'ptd'];
+      var req = ['entity', 'costCenter', 'account', 'period'];
       for (var j = 0; j < req.length; j++) { if (idx[req[j]] == null) return null; }
       return idx;
     }
@@ -2868,10 +3045,15 @@
             var idx = aoa.length ? ebMapHeaders(aoa[0]) : null;
             if (!idx) { self.ebUploadBusy(false); toast(self.t('ebUpBad'), true); return; }
             var rows = [];
+            var optStr = function (r, k) {
+              if (idx[k] == null || r[idx[k]] == null) return undefined;
+              var v = String(r[idx[k]]).trim();
+              return v || undefined;
+            };
             for (var i = 1; i < aoa.length; i++) {
               var r = aoa[i];
               if (!r || r[idx.account] == null || r[idx.period] == null) continue;
-              rows.push({
+              var row = {
                 entity:     String(r[idx.entity] == null ? '' : r[idx.entity]).trim(),
                 costCenter: String(r[idx.costCenter] == null ? '' : r[idx.costCenter]).trim(),
                 budgetCode: idx.budgetCode != null && r[idx.budgetCode] != null ? String(r[idx.budgetCode]).trim() : '0',
@@ -2880,8 +3062,19 @@
                 future1:    idx.future1 != null && r[idx.future1] != null ? String(r[idx.future1]).trim() : '0',
                 future2:    idx.future2 != null && r[idx.future2] != null ? String(r[idx.future2]).trim() : '0',
                 period:     String(r[idx.period]).trim(),
-                ptd:        Number(r[idx.ptd]) || 0
+                ptd:        idx.ptd != null ? (Number(r[idx.ptd]) || 0) : 0,
+                budget:     idx.budget != null ? (Number(r[idx.budget]) || 0) : 0,
+                encumbrance: idx.encumbrance != null ? (Number(r[idx.encumbrance]) || 0) : 0
+              };
+              if (idx.ccId != null && r[idx.ccId] != null && String(r[idx.ccId]).trim() !== '') {
+                row.ccId = Number(r[idx.ccId]);
+              }
+              ['entityDesc', 'costCenterDesc', 'budgetDesc', 'accountDesc',
+               'activityDesc', 'future1Desc', 'future2Desc', 'accountType'].forEach(function (k) {
+                var v = optStr(r, k);
+                if (v !== undefined) row[k] = v;
               });
+              rows.push(row);
             }
             if (!rows.length) { self.ebUploadBusy(false); toast(self.t('ebUpBad'), true); return; }
             var chunks = [];
@@ -2915,11 +3108,20 @@
       return true;
     };
     self.ebTemplate = function () {
+      /* exact "GL Period Balances" EBS export layout (docs/Reports/GL/Data) */
       window.require(['xlsx'], function (X) {
         var wb = X.utils.book_new();
         var ws = X.utils.aoa_to_sheet([
-          ['ENTITY', 'COST_CENTER', 'BUDGET_CODE', 'ACCOUNT', 'ACTIVITY', 'FUTURE1', 'FUTURE2', 'PERIOD', 'PTD_AMOUNT'],
-          ['01', '9110000', '0', '520105', '0', '110000', '0', 'JAN-25', 12345.67]
+          ['CC_ID', 'Entity Code', 'Entity Description', 'Cost Center', 'Cost Center Description',
+           'Budget Group Code', 'Budget Group Description', 'Account Number', 'Account Description',
+           'Activity Code', 'Activity Description', 'Future1', 'Future1 Description',
+           'Future2', 'Future2 Description', 'Account Type', 'Period Name',
+           'Budget', 'Encumbrance', 'Actual'],
+          [376499, '451', 'Department of Culture and Tourism - Abu Dhabi', '4510001', 'DCT - System set up accounts',
+           '1', 'Current operations', '520105', 'Salaries',
+           '0', '', '451000', 'TCA General Account',
+           '0', 'Un Specified', 'Expense', 'Jan-25',
+           20000, 1500, 12345.67]
         ]);
         X.utils.book_append_sheet(wb, ws, 'EBS Balances');
         X.writeFile(wb, 'EBS_Balances_Template.xlsx');
@@ -2964,6 +3166,927 @@
           })();
         }).catch(function (e) { self.ebRegBusy(false); fail(e); });
     };
+
+    /* ════ CASHFLOW — budget cashflow plan uploads (GL + Projects) ════
+       Two user-loaded tables (db/v2/111) feeding the DOF reports until the
+       dedicated Cashflow module exists. Same SheetJS chunked-upload pattern
+       as the EBS balances. Writes are SYS_ADMIN while security enforcement
+       is off (server-gated GL_MANAGE_CASHFLOW). */
+    self.canManageCf = self.isSysAdmin;
+    self.cfLoaded = ko.observable(false);
+    self.cfGlYears = ko.observableArray([]);
+    self.cfPjYears = ko.observableArray([]);
+    self.cfUnmappedAppr = ko.observableArray([]);
+    self.cfGlBusy = ko.observable(false);
+    self.cfPjBusy = ko.observable(false);
+    self.cfNote = ko.observable('');
+    self.loadCfSummary = function () {
+      return api('GET', '/cashflow/summary').then(function (d) {
+        self.cfGlYears(d.glYears || []);
+        self.cfPjYears(d.projectYears || []);
+        self.cfUnmappedAppr(d.unmappedAppr || []);
+        self.cfLoaded(true);
+      }).catch(fail);
+    };
+    var CF_GL_HEADS = {
+      entity:         ['ENTITY', 'ENTITYCODE'],
+      program:        ['PROGRAM', 'PROGRAMCODE'],
+      costCenter:     ['COSTCENTER', 'COSTCENTERCODE', 'CC'],
+      budgetGroup:    ['BUDGETGROUP', 'BG'],
+      account:        ['ACCOUNT', 'ACCOUNTCODE', 'GLACCOUNT'],
+      entitySpecific: ['ENTITYSPECIFIC', 'ES'],
+      appropriation:  ['APPROPRIATION', 'APPROPRIATIONCODE', 'APPR', 'F2APPROPRIATION'],
+      intercompany:   ['INTERCOMPANY', 'IC'],
+      future1:        ['FUTURE1'],
+      future2:        ['FUTURE2'],
+      period:         ['PERIOD', 'ACCOUNTINGPERIOD', 'PERIODNAME'],
+      cfType:         ['CFTYPE', 'TYPE', 'CASHFLOWTYPE'],
+      amount:         ['AMOUNT', 'CFAMOUNT', 'CASHFLOWAMOUNT'],
+      year:           ['YEAR', 'BUDGETYEAR']
+    };
+    var CF_PJ_HEADS = {
+      project: ['PROJECT', 'PROJECTNUMBER', 'PROJECTNO'],
+      task:    ['TASK', 'TASKNUMBER', 'TASKNO'],
+      etype:   ['ETYPE', 'EXPENDITURETYPE', 'EXPTYPE'],
+      period:  ['PERIOD', 'ACCOUNTINGPERIOD', 'PERIODNAME'],
+      cfType:  ['CFTYPE', 'TYPE', 'CASHFLOWTYPE'],
+      amount:  ['AMOUNT', 'CFAMOUNT', 'CASHFLOWAMOUNT'],
+      year:    ['YEAR', 'BUDGETYEAR']
+    };
+    function cfMapHeaders(headerRow, heads, req) {
+      var norm = headerRow.map(function (h) {
+        return String(h == null ? '' : h).toUpperCase().replace(/[^A-Z0-9]/g, '');
+      });
+      var idx = {};
+      Object.keys(heads).forEach(function (k) {
+        for (var i = 0; i < norm.length; i++) {
+          if (heads[k].indexOf(norm[i]) >= 0) { idx[k] = i; return; }
+        }
+      });
+      for (var j = 0; j < req.length; j++) { if (idx[req[j]] == null) return null; }
+      return idx;
+    }
+    function cfCell(r, i) { return i != null && r[i] != null ? String(r[i]).trim() : ''; }
+    function cfUploadRows(path, file, rows, busyObs) {
+      var chunks = [];
+      for (var c = 0; c < rows.length; c += 500) chunks.push(rows.slice(c, c + 500));
+      var ok = 0, err = 0, firstErr = '';
+      (function send(i) {
+        if (i >= chunks.length) {
+          busyObs(false);
+          var msg = self.t('ebUpDone').replace('{ok}', ok).replace('{err}', err);
+          self.cfNote(msg + (firstErr ? ' — ' + firstErr : ''));
+          toast(msg, err > 0);
+          self.loadCfSummary();
+          return;
+        }
+        self.cfNote(self.t('ebUpBusy').replace('{i}', i + 1).replace('{n}', chunks.length));
+        api('POST', path, { sourceFile: file.name, rows: chunks[i] })
+          .then(function (res) {
+            ok += res.ok || 0; err += res.errors || 0;
+            if (!firstErr && res.results) {
+              var bad = res.results.filter(function (x) { return x.status === 'ERROR'; })[0];
+              if (bad) firstErr = 'row ' + bad.row + ': ' + (bad.error || '');
+            }
+            send(i + 1);
+          })
+          .catch(function (e2) { busyObs(false); toast(e2.message, true); });
+      })(0);
+    }
+    self.uploadCfGl = function () { document.getElementById('cfGlFile').click(); };
+    self.uploadCfPj = function () { document.getElementById('cfPjFile').click(); };
+    self.cfGlChosen = function (d, e) {
+      var f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return true;
+      self.cfGlBusy(true); self.cfNote('');
+      window.require(['xlsx'], function (X) {
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            var wb = X.read(new Uint8Array(rd.result), { type: 'array' });
+            var aoa = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
+            var idx = aoa.length ? cfMapHeaders(aoa[0], CF_GL_HEADS, ['appropriation', 'period', 'cfType', 'amount']) : null;
+            if (!idx) { self.cfGlBusy(false); toast(self.t('cfGlUpBad'), true); return; }
+            var rows = [];
+            for (var i = 1; i < aoa.length; i++) {
+              var r = aoa[i];
+              if (!r || r[idx.appropriation] == null || r[idx.period] == null) continue;
+              rows.push({
+                entity: cfCell(r, idx.entity), program: cfCell(r, idx.program),
+                costCenter: cfCell(r, idx.costCenter), budgetGroup: cfCell(r, idx.budgetGroup),
+                account: cfCell(r, idx.account), entitySpecific: cfCell(r, idx.entitySpecific),
+                appropriation: cfCell(r, idx.appropriation), intercompany: cfCell(r, idx.intercompany),
+                future1: cfCell(r, idx.future1), future2: cfCell(r, idx.future2),
+                period: cfCell(r, idx.period),
+                cfType: cfCell(r, idx.cfType).toUpperCase(),
+                amount: Number(r[idx.amount]) || 0,
+                year: idx.year != null && r[idx.year] != null ? Number(r[idx.year]) : null
+              });
+            }
+            if (!rows.length) { self.cfGlBusy(false); toast(self.t('cfGlUpBad'), true); return; }
+            cfUploadRows('/cashflow', f, rows, self.cfGlBusy);
+          } catch (ex) { self.cfGlBusy(false); toast(self.t('cfGlUpBad'), true); }
+        };
+        rd.readAsArrayBuffer(f);
+      });
+      return true;
+    };
+    self.cfPjChosen = function (d, e) {
+      var f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return true;
+      self.cfPjBusy(true); self.cfNote('');
+      window.require(['xlsx'], function (X) {
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            var wb = X.read(new Uint8Array(rd.result), { type: 'array' });
+            var aoa = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
+            var idx = aoa.length ? cfMapHeaders(aoa[0], CF_PJ_HEADS, ['project', 'task', 'etype', 'period', 'cfType', 'amount']) : null;
+            if (!idx) { self.cfPjBusy(false); toast(self.t('cfPjUpBad'), true); return; }
+            var rows = [];
+            for (var i = 1; i < aoa.length; i++) {
+              var r = aoa[i];
+              if (!r || r[idx.project] == null || r[idx.period] == null) continue;
+              rows.push({
+                project: cfCell(r, idx.project), task: cfCell(r, idx.task),
+                etype: cfCell(r, idx.etype), period: cfCell(r, idx.period),
+                cfType: cfCell(r, idx.cfType).toUpperCase(),
+                amount: Number(r[idx.amount]) || 0,
+                year: idx.year != null && r[idx.year] != null ? Number(r[idx.year]) : null
+              });
+            }
+            if (!rows.length) { self.cfPjBusy(false); toast(self.t('cfPjUpBad'), true); return; }
+            cfUploadRows('/cashflow/projects', f, rows, self.cfPjBusy);
+          } catch (ex) { self.cfPjBusy(false); toast(self.t('cfPjUpBad'), true); }
+        };
+        rd.readAsArrayBuffer(f);
+      });
+      return true;
+    };
+    self.cfGlTemplate = function () {
+      window.require(['xlsx'], function (X) {
+        var wb = X.utils.book_new();
+        var ws = X.utils.aoa_to_sheet([
+          ['ENTITY', 'PROGRAM', 'COST_CENTER', 'BUDGET_GROUP', 'ACCOUNT', 'ENTITY_SPECIFIC', 'APPROPRIATION', 'INTERCOMPANY', 'FUTURE1', 'FUTURE2', 'PERIOD', 'CF_TYPE', 'AMOUNT'],
+          ['451', '000000', '9110000', '1', '411121', '0000000', '100103', '000', '000000', '000000', '01-2026', 'APPROVED', 1000000],
+          ['451', '000000', '9110000', '1', '411121', '0000000', '100103', '000', '000000', '000000', '01-2026', 'REVISED', 1200000]
+        ]);
+        X.utils.book_append_sheet(wb, ws, 'GL Cashflow');
+        X.writeFile(wb, 'GL_Cashflow_Template.xlsx');
+      });
+    };
+    self.cfPjTemplate = function () {
+      window.require(['xlsx'], function (X) {
+        var wb = X.utils.book_new();
+        var ws = X.utils.aoa_to_sheet([
+          ['PROJECT', 'TASK', 'EXPENDITURE_TYPE', 'PERIOD', 'CF_TYPE', 'AMOUNT'],
+          ['100026', '1.1', 'Professional Services', '01-2026', 'APPROVED', 500000]
+        ]);
+        X.utils.book_append_sheet(wb, ws, 'Projects Cashflow');
+        X.writeFile(wb, 'Projects_Cashflow_Template.xlsx');
+      });
+    };
+
+    /* ════ DOF REPORTS — YoY / Budget Utilization / Quarterly ════
+       On-screen datasets over /gl/dof/* (SHARED interactive-report), row click
+       opens the Reasons/Remarks drawer (persisted notes), Generate Workbook
+       enqueues DOF_YOY_PERF / DOF_QUARTERLY_PERF via the register bridge. */
+    self.canEditDofNotes = self.isSysAdmin;
+    self.dofLoaded = ko.observable(false);
+    self.dofBusy = ko.observable(false);
+    self.dofReport = ko.observable('yoy');
+    self.dofYear = ko.observable(String(new Date().getFullYear()));
+    self.dofPeriod = ko.observable('');
+    self.dofData = ko.observable(null);
+    self.dofCount = ko.observable(0);
+    self.dofCfWarn = ko.observable(false);
+    self.dofEraNote = ko.observable(false);
+    self.dofGenBusy = ko.observable(false);
+    /* 2026-08-03: the report runs against ALL loaded fiscal years — 2016-2025
+       come from the legacy EBS history (mapped view), 2026+ from Fusion GL */
+    self.dofYears = ko.computed(function () {
+      var y = new Date().getFullYear(), out = [];
+      for (var i = y + 1; i >= 2016; i--) out.push(String(i));
+      return out;
+    });
+    /* butil-style collapsible Search / Results regions (state persisted) */
+    var dofUi = {};
+    try { dofUi = JSON.parse(localStorage.getItem('gl_dof_ui') || '{}'); } catch (e) { dofUi = {}; }
+    self.dofSecSearchOpen = ko.observable(dofUi.search !== false);
+    self.dofSecResOpen = ko.observable(dofUi.res !== false);
+    /* display unit ("Showing figures in") + near-zero display mode — both are
+       display-only search-criteria parameters; no re-query, the cached run is
+       re-emitted (2026-08-04 layout round) */
+    self.dofUnit = ko.observable(['X', 'K', 'M', 'B'].indexOf(dofUi.unit) >= 0 ? dofUi.unit : 'X');
+    self.dofZero = ko.observable(['muted', 'dash', 'blank'].indexOf(dofUi.zero) >= 0 ? dofUi.zero : 'muted');
+    function saveDofUi() {
+      try {
+        localStorage.setItem('gl_dof_ui', JSON.stringify(
+          { search: self.dofSecSearchOpen(), res: self.dofSecResOpen(),
+            unit: self.dofUnit(), zero: self.dofZero() }));
+      } catch (e) {}
+    }
+    self.toggleDofSec = function (k) {
+      var o = k === 'search' ? self.dofSecSearchOpen : self.dofSecResOpen;
+      o(!o());
+      saveDofUi();
+    };
+    self.dofUnitOpts = ko.computed(function () {
+      return [
+        { v: 'X', l: self.t('unitExact') },
+        { v: 'K', l: self.t('unitK') },
+        { v: 'M', l: self.t('unitM') },
+        { v: 'B', l: self.t('unitB') }
+      ];
+    });
+    self.dofZeroOpts = ko.computed(function () {
+      return [
+        { v: 'muted', l: self.t('dofZeroMuted') },
+        { v: 'dash', l: self.t('dofZeroDash') },
+        { v: 'blank', l: self.t('dofZeroBlank') }
+      ];
+    });
+    /* Chapter + Appropriation criteria — MULTI-select (any-of), butil chips
+       pattern; LOVs derived from the loaded run (2026-08-04 (2)). Declared
+       before the search-summary computed, which reads the selections. */
+    self.dofChapters = ko.observableArray([]);
+    self.dofApprs = ko.observableArray([]);        /* [{c, l, ch}] */
+    self.dofChSel = ko.observableArray([]);
+    self.dofApSel = ko.observableArray([]);
+    self.dofChPick = ko.observable('');
+    self.dofApPick = ko.observable('');
+    self.dofChAdd = function () {
+      var v = self.dofChPick();
+      if (v && self.dofChSel.indexOf(v) < 0) self.dofChSel.push(v);
+      self.dofChPick('');
+      return true;
+    };
+    self.dofApAdd = function () {
+      var v = self.dofApPick();
+      if (v && self.dofApSel.indexOf(v) < 0) self.dofApSel.push(v);
+      self.dofApPick('');
+      return true;
+    };
+    self.dofApprOpts = ko.computed(function () {
+      var ch = self.dofChSel();
+      return self.dofApprs().filter(function (a) {
+        return !ch.length || ch.indexOf(a.ch) >= 0;
+      });
+    });
+    self.dofApLabel = function (code) {
+      var l = code;
+      self.dofApprs().forEach(function (a) { if (a.c === code) l = a.l; });
+      return l;
+    };
+    self.dofSearchSummary = ko.computed(function () {
+      if (self.dofSecSearchOpen()) return '';
+      var rep = self.dofReport(), lbl = '';
+      self.dofReports().forEach(function (o) { if (o.v === rep) lbl = o.l; });
+      var s = lbl + ' · ' + self.dofYear();
+      if (rep !== 'quarterly' && self.dofPeriod()) s += ' · ' + self.dofPeriod();
+      if (self.dofChSel().length) s += ' · ' + self.dofChSel().join(', ');
+      if (self.dofApSel().length) s += ' · ' + self.dofApSel().join(', ');
+      return s;
+    });
+    self.dofResSummary = ko.computed(function () {
+      return self.dofLoaded() ? self.fmt(self.dofCount()) + ' ' + self.t('dofRows') : '';
+    });
+    self.dofReset = function () {
+      self.dofReport('yoy');
+      self.dofYear(String(new Date().getFullYear()));
+      self.dofPeriod('');
+      self.dofChSel.removeAll();
+      self.dofApSel.removeAll();
+      self.dofChPick('');
+      self.dofApPick('');
+    };
+    function dofY(key, y, p) {
+      var s = self.t(key).replace('{y}', y);
+      if (p !== undefined) s = s.replace('{p}', p);
+      return s;
+    }
+    self.dofPeriods = ko.computed(function () {
+      var y = self.dofYear(), out = [];
+      for (var m = 1; m <= 12; m++) out.push(('0' + m).slice(-2) + '-' + y);
+      return out;
+    });
+    self.dofReports = ko.computed(function () {
+      return [{ v: 'yoy', l: self.t('dofYoY') },
+              { v: 'butil', l: self.t('dofButil') },
+              { v: 'quarterly', l: self.t('dofQuarterly') }];
+    });
+    var dofRowMap = {};
+    /* column headers carry the RUN year (2026-08-03 user request): e.g. for
+       2026 the prior-FY column reads "Actual FY 2025", the budget column
+       "Revised Budget 2026" — dofY() substitutes {y}/{p} in the i18n key.
+       2026-08-04 layout round: columns are ordered in YEAR BLOCKS (identity →
+       current year → prior year → comparison), each block under a grouped
+       header band (col.group) with a per-year tint (col.colClass — app.css),
+       the code identity columns FROZEN (col.sticky), variance columns carry
+       ▲/▼ delta arrows, and long texts truncate to one line (col.ellipsis). */
+    /* 2026-08-04 (2): code + description MERGED into one column per identity
+       dimension (user feedback — narrow frozen columns truncated the headers):
+       Appropriation = "100103 — FA103-Manpower Expense", Account = fusion
+       code — name (EBS code keeps its own column), Entity = code — name */
+    function dofIdCols(withAccount) {
+      var t = self.t;
+      var cols = [
+        { key: 'chapter', label: t('dofColChapter'), type: 'text', sticky: true, width: 130 },
+        { key: 'apprFull', label: t('dofColAppr'), type: 'text', sticky: true, width: 230, ellipsis: true }
+      ];
+      if (withAccount) {
+        cols.push({ key: 'accountFull', label: t('dofColAccount'), type: 'text', sticky: true, width: 240, ellipsis: true });
+        cols.push({ key: 'ebsAccount', label: t('dofColEbsAcc'), type: 'text' });
+      }
+      cols.push({ key: 'entityFull', label: t('dofColEntity'), type: 'text', ellipsis: true });
+      return cols;
+    }
+    function dofColsYoy(yr) {
+      var t = self.t, py = yr - 1;
+      var gCur = dofY('dofBandFy', yr), gPri = dofY('dofBandFy', py);
+      return dofIdCols(true).concat([
+        /* current-year block first, then prior year, then the comparison */
+        { key: 'revBudget', label: dofY('dofColRevBudgetY', yr), hint: dofY('dofHintRevBudget', yr), type: 'money',
+          group: gCur, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'actualYtd', label: dofY('dofColActualYtdY', yr), hint: dofY('dofHintActualYtd', yr), type: 'money',
+          group: gCur, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'priorYtd', label: dofY('dofColActualYtdY', py), hint: dofY('dofHintPriorYtd', yr, py), type: 'money',
+          group: gPri, groupClass: 'dofg-pri', colClass: 'dofc-pri' },
+        { key: 'priorFy', label: dofY('dofColActualFyY', py), hint: dofY('dofHintActualFy', py), type: 'money',
+          group: gPri, groupClass: 'dofg-pri', colClass: 'dofc-pri' },
+        { key: 'variance', label: dofY('dofColVarianceY', yr, py), hint: dofY('dofHintVariance', yr, py), type: 'money',
+          delta: true },
+        { key: 'reason', label: t('dofColReason'), type: 'text', ellipsis: true }
+      ]);
+    }
+    function dofColsButil(yr) {
+      var t = self.t;
+      var gBud = dofY('dofBandBudget', yr), gPerf = dofY('dofBandPerf', yr);
+      return dofIdCols(false).concat([
+        { key: 'initBudget', label: dofY('dofColInitBudgetY', yr), hint: dofY('dofHintInitBudget', yr), type: 'money',
+          group: gBud, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'revBudget', label: dofY('dofColRevBudgetFyY', yr), hint: dofY('dofHintRevBudget', yr), type: 'money',
+          group: gBud, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'initCfYtd', label: dofY('dofColInitCfY', yr), hint: dofY('dofHintInitCf', yr), type: 'money',
+          group: gBud, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'revCfYtd', label: dofY('dofColRevCfY', yr), hint: dofY('dofHintRevCf', yr), type: 'money',
+          group: gBud, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'actualYtd', label: dofY('dofColActualYtdY', yr), hint: dofY('dofHintActualYtd', yr), type: 'money',
+          group: gPerf, groupClass: 'dofg-perf' },
+        { key: 'variance', label: t('dofColVariance'), hint: dofY('dofHintVarianceBu', yr), type: 'money',
+          group: gPerf, groupClass: 'dofg-perf', delta: true },
+        { key: 'utilPct', label: t('dofColUtilPct'), hint: dofY('dofHintUtilPct', yr), type: 'num',
+          group: gPerf, groupClass: 'dofg-perf' },
+        { key: 'reason', label: t('dofColReason'), type: 'text', ellipsis: true }
+      ]);
+    }
+    function dofColsQuarterly(yr) {
+      var t = self.t;
+      var gBud = dofY('dofBandBudget', yr);
+      var cols = dofIdCols(false).concat([
+        { key: 'approvedBudget', label: dofY('dofColApprovedY', yr), hint: dofY('dofHintApproved', yr), type: 'money',
+          group: gBud, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'revBudgetQ1', label: dofY('dofColRevQ1Y', yr), hint: dofY('dofHintRevQn', yr).replace('{q}', 1), type: 'money',
+          group: gBud, groupClass: 'dofg-cur', colClass: 'dofc-cur' },
+        { key: 'revBudgetQ2', label: dofY('dofColRevQ2Y', yr), hint: dofY('dofHintRevQn', yr).replace('{q}', 2), type: 'money',
+          group: gBud, groupClass: 'dofg-cur', colClass: 'dofc-cur' }
+      ]);
+      for (var q = 1; q <= 4; q++) {
+        var gq = t('dofBandQ').replace('{q}', q), qc = (q % 2 ? 'dofc-qa' : 'dofc-qb');
+        cols.push({ key: 'acf' + q, label: t('dofColAcf') + q, type: 'money', group: gq, colClass: qc });
+        cols.push({ key: 'rcf' + q, label: t('dofColRcf') + q, type: 'money', group: gq, colClass: qc });
+        cols.push({ key: 'act' + q, label: t('dofColAct') + q, type: 'money', group: gq, colClass: qc });
+        cols.push({ key: 'var' + q, label: t('dofColVar') + q, type: 'money', group: gq, colClass: qc, delta: true });
+        cols.push({ key: 'pct' + q, label: t('dofColPct') + q, type: 'num', group: gq, colClass: qc });
+        cols.push({ key: 'rsn' + q, label: t('dofColRsn') + q, type: 'text', group: gq, colClass: qc, ellipsis: true });
+      }
+      cols.push({ key: 'remark', label: t('dofColRemark'), type: 'text', ellipsis: true });
+      return cols;
+    }
+    /* the loaded run is cached RAW; dofEmit() re-projects it into the IR
+       envelope whenever the display unit, near-zero mode or the Chapter /
+       Appropriation multi-select criteria change (no re-query).
+       dofColsCache feeds the drawer's full-record section. */
+    var dofRaw = null;
+    var dofColsCache = [];
+    /* recomputed grand row for a FILTERED detail set (server totals cover the
+       full run; ratios recomputed, not summed) */
+    function dofGrandOf(det, rep, items) {
+      var src = null;
+      items.forEach(function (r) { if (r.rowType === 'GRAND') src = r; });
+      var g = { rowType: 'GRAND', _rowClass: 'ir-row-grand',
+                chapter: src ? src.chapter : 'Grand Total' };
+      det.forEach(function (r) {
+        for (var k in r) {
+          if (typeof r[k] === 'number') g[k] = (g[k] || 0) + r[k];
+        }
+      });
+      if (rep === 'butil') {
+        g.utilPct = g.revCfYtd ? Math.round(10000 * (g.actualYtd || 0) / g.revCfYtd) / 100 : null;
+      }
+      if (rep === 'quarterly') {
+        for (var q = 1; q <= 4; q++) {
+          g['pct' + q] = g['rcf' + q] ? Math.round(10000 * (g['var' + q] || 0) / g['rcf' + q]) / 100 : null;
+        }
+      }
+      return g;
+    }
+    function dofEmit() {
+      if (!dofRaw) return;
+      var rep = dofRaw.rep, yr = dofRaw.yr, items = dofRaw.items;
+      var cols = rep === 'yoy' ? dofColsYoy(yr) : rep === 'butil' ? dofColsButil(yr) : dofColsQuarterly(yr);
+      var f = { X: 1, K: 1e3, M: 1e6, B: 1e9 }[self.dofUnit()] || 1;
+      var zmode = self.dofZero();
+      var moneyKeys = [];
+      cols.forEach(function (c) {
+        if (c.type !== 'money') return;
+        moneyKeys.push(c.key);
+        /* "rounds to zero at the current unit" = near-zero */
+        c.nearZero = { mode: zmode, threshold: 0.005 };
+      });
+      dofColsCache = cols;
+      /* chapter / appropriation any-of filters; totals follow the filter —
+         whole-chapter picks keep the server CHTOTAL rows, appropriation picks
+         (or multi-chapter) get a recomputed grand row */
+      var fc = self.dofChSel(), fa = self.dofApSel();
+      var rows = items;
+      if (fc.length || fa.length) {
+        var det = items.filter(function (r) {
+          return r.rowType === 'DETAIL'
+            && (!fc.length || fc.indexOf(r.chapter) >= 0)
+            && (!fa.length || fa.indexOf(r.apprCode) >= 0);
+        });
+        if (!fa.length) {
+          rows = items.filter(function (r) {
+            if (r.rowType === 'DETAIL') return det.indexOf(r) >= 0;
+            if (r.rowType === 'CHTOTAL') {
+              return fc.indexOf(String(r.chapter || '').replace(/ Total$/, '')) >= 0;
+            }
+            return false;
+          });
+          if (fc.length > 1) rows = rows.concat([dofGrandOf(det, rep, items)]);
+        } else {
+          rows = det.concat(det.length ? [dofGrandOf(det, rep, items)] : []);
+        }
+      }
+      var emitted = f === 1 ? rows : rows.map(function (r) {
+        var o = {}, k;
+        for (k in r) { if (Object.prototype.hasOwnProperty.call(r, k)) o[k] = r[k]; }
+        moneyKeys.forEach(function (mk) {
+          if (o[mk] !== null && o[mk] !== undefined && o[mk] !== '') o[mk] = Number(o[mk]) / f;
+        });
+        return o;
+      });
+      self.dofCount(emitted.length);
+      self.dofData({ columns: cols, items: emitted, total: emitted.length,
+                     truncated: false, maxRows: 10000, zebra: true, stateRev: 2,
+                     section: 'dof' + rep });
+    }
+    self.dofUnit.subscribe(function () { saveDofUi(); dofEmit(); });
+    self.dofZero.subscribe(function () { saveDofUi(); dofEmit(); });
+    self.dofChSel.subscribe(dofEmit);
+    self.dofApSel.subscribe(dofEmit);
+    self.runDof = function () {
+      var rep = self.dofReport(), yr = self.dofYear();
+      self.dofBusy(true);
+      var p = { year: yr };
+      if (rep !== 'quarterly' && self.dofPeriod()) p.period = self.dofPeriod();
+      var path = rep === 'yoy' ? '/dof/yoy' : rep === 'butil' ? '/dof/butil' : '/dof/quarterly';
+      return api('GET', path + qs(p)).then(function (d) {
+        var items = d.rows || [];
+        dofRowMap = {};
+        var chs = {}, aps = {};
+        function join2(a, b) { return a ? (b ? a + ' — ' + b : String(a)) : ''; }
+        items.forEach(function (r) {
+          /* merged identity fields (code — description, 2026-08-04 (2)) */
+          r.apprFull = join2(r.apprCode, r.apprDesc);
+          r.accountFull = join2(r.accountCode, r.accountName);
+          r.entityFull = join2(r.entity, r.entityName);
+          /* chapter sub-total / grand-total bands (shared IR row._rowClass) */
+          if (r.rowType === 'CHTOTAL') r._rowClass = 'ir-row-subtotal';
+          else if (r.rowType === 'GRAND') r._rowClass = 'ir-row-grand';
+          if (r.rowType !== 'DETAIL') return;
+          if (r.chapter) chs[r.chapter] = 1;
+          if (r.apprCode && !aps[r.apprCode]) {
+            aps[r.apprCode] = { c: r.apprCode, l: r.apprFull, ch: r.chapter };
+          }
+          /* side-map keys use the MERGED fields — those are the columns the
+             IR rows actually carry (normalizeRows drops non-column keys) */
+          if (rep === 'yoy') dofRowMap[r.apprFull + '|' + r.accountFull] = r;
+          else if (r.apprCode) dofRowMap[r.apprFull] = r;
+        });
+        self.dofChapters(Object.keys(chs).sort());
+        self.dofApprs(Object.keys(aps).sort().map(function (k) { return aps[k]; }));
+        var warn;
+        if (rep === 'butil') {
+          warn = items.length > 0 && !items.some(function (r) { return r.hasCf === 'Y'; });
+        } else if (rep === 'quarterly') {
+          warn = items.length > 0 && !items.some(function (r) {
+            return (r.acf1 + r.acf2 + r.acf3 + r.acf4 + r.rcf1 + r.rcf2 + r.rcf3 + r.rcf4) !== 0;
+          });
+        } else warn = false;
+        /* legacy EBS years have no cashflow plan by design — no warning */
+        if (Number(yr) < 2026) warn = false;
+        self.dofEraNote(Number(yr) < 2026);
+        self.dofCfWarn(warn);
+        self.dofCount(items.length);
+        dofRaw = { rep: rep, yr: Number(yr), items: items };
+        dofEmit();
+        self.dofLoaded(true); self.dofBusy(false);
+      }).catch(function (e) { self.dofBusy(false); fail(e); });
+    };
+    /* row click -> reasons/remarks drawer (resolve the IR cell like the
+       legacy mapping grid does) */
+    self.dofDrawer = ko.observable(false);
+    self.dofSaving = ko.observable(false);
+    self.dofNRow = ko.observable(null);
+    self.dofNReason = ko.observable('');
+    self.dofNQ = [ko.observable(''), ko.observable(''), ko.observable(''), ko.observable('')];
+    self.dofNRemark = ko.observable('');
+    /* full record info shown in the drawer (2026-08-04 user request):
+       every dataset column of the clicked row, raw AED values */
+    self.dofNInfo = ko.observableArray([]);
+    self.dofGridClick = function (d, e) {
+      if (!self.canEditDofNotes) return true;
+      var td = (e.target && e.target.closest) ? e.target.closest('td') : null;
+      if (!td) return true;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (err) { return true; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row) return true;
+      var rr = ctx.$parent.row, rep = self.dofReport();
+      var row = rep === 'yoy' ? dofRowMap[rr.apprFull + '|' + rr.accountFull] : dofRowMap[rr.apprFull];
+      if (row) { self.openDofNote(row); return false; }
+      return true;
+    };
+    self.openDofNote = function (row) {
+      self.dofNRow(row);
+      var rep = self.dofReport();
+      if (rep === 'quarterly') {
+        for (var q = 0; q < 4; q++) self.dofNQ[q](row['rsn' + (q + 1)] || '');
+        self.dofNRemark(row.remark || '');
+      } else self.dofNReason(row.reason || '');
+      /* record grid mirrors the TABLE formatting exactly (user feedback
+         2026-08-04 (3)): same unit scaling, 2-decimal money format, near-zero
+         mode and the ▲/▼ colored variance */
+      var f = { X: 1, K: 1e3, M: 1e6, B: 1e9 }[self.dofUnit()] || 1;
+      var zmode = self.dofZero();
+      function fmt2(n) {
+        return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      }
+      var info = [];
+      dofColsCache.forEach(function (c) {
+        if (c.key === 'reason' || c.key === 'remark' || /^rsn\d$/.test(c.key)) return;
+        var v = row[c.key];
+        var e = { l: c.label, num: c.type === 'money' || c.type === 'num',
+                  cls: '', arrow: '' };
+        if (v === null || v === undefined || v === '') {
+          e.v = '—';
+        } else if (c.type === 'money') {
+          var n = Number(v) / f;
+          var nz = Math.abs(n) <= 0.005;
+          if (nz && zmode === 'dash') e.v = '—';
+          else if (nz && zmode === 'blank') e.v = '';
+          else e.v = fmt2(n);
+          if (nz && zmode === 'muted') e.cls = 'dim';
+          if (c.delta && !nz) {
+            e.arrow = n > 0 ? '▲' : '▼';
+            e.cls = n > 0 ? 'pos' : 'neg';
+          }
+        } else if (c.type === 'num') {
+          var n2 = Number(v);
+          e.v = isNaN(n2) ? String(v)
+            : (n2 % 1 === 0 ? n2.toLocaleString('en-US') : fmt2(n2));
+        } else {
+          e.v = String(v);
+        }
+        info.push(e);
+      });
+      self.dofNInfo(info);
+      self.dofDrawer(true);
+    };
+    self.closeDofDrawer = function () { self.dofDrawer(false); };
+    self.saveDofNote = function () {
+      var row = self.dofNRow();
+      if (!row) return;
+      var rep = self.dofReport(), yr = Number(self.dofYear());
+      var puts = [];
+      function put(body) { puts.push(function () { return api('PUT', '/dof/notes', body); }); }
+      if (rep === 'yoy') {
+        put({ year: yr, entity: row.entity, appropriation: row.apprCode,
+              account: row.accountCode, noteType: 'REASON', text: self.dofNReason() || '' });
+      } else if (rep === 'butil') {
+        put({ year: yr, entity: row.entity, appropriation: row.apprCode,
+              noteType: 'REASON', text: self.dofNReason() || '' });
+      } else {
+        for (var q = 1; q <= 4; q++) {
+          put({ year: yr, entity: row.entity, appropriation: row.apprCode,
+                quarter: q, noteType: 'REASON', text: self.dofNQ[q - 1]() || '' });
+        }
+        put({ year: yr, entity: row.entity, appropriation: row.apprCode,
+              noteType: 'REMARK', text: self.dofNRemark() || '' });
+      }
+      self.dofSaving(true);
+      (function next(i) {
+        if (i >= puts.length) {
+          self.dofSaving(false); self.dofDrawer(false);
+          toast(self.t('saved')); self.runDof();
+          return;
+        }
+        puts[i]().then(function () { next(i + 1); })
+          .catch(function (e) { self.dofSaving(false); toast(e.message, true); });
+      })(0);
+    };
+    /* Generate Workbook — the YoY workbook carries both the YoY and the DOF
+       Budget Utilization sheets, so 'butil' also enqueues DOF_YOY_PERF */
+    self.runDofRegister = function () {
+      if (self.dofGenBusy()) return;
+      var rep = self.dofReport() === 'quarterly' ? 'QUARTERLY' : 'YOY';
+      var body = { report: rep, year: Number(self.dofYear()) };
+      if (rep === 'YOY' && self.dofPeriod()) body.period = self.dofPeriod();
+      self.dofGenBusy(true);
+      api('POST', '/dof/register', body).then(function (d) {
+        var runId = d.runId;
+        toast(self.t('ebRegQueued') + runId);
+        var tries = 0;
+        (function poll() {
+          if (++tries > 60) { self.dofGenBusy(false); toast(self.t('ebRegFailed') + 'timeout', true); return; }
+          setTimeout(function () {
+            api('GET', '/dof/register/' + runId).then(function (s) {
+              if (s.status === 'SUCCESS' && s.hasFile) {
+                fetch(API + '/dof/register/' + runId + '/file',
+                      { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+                  .then(function (r) {
+                    if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+                    return r.blob();
+                  })
+                  .then(function (b) {
+                    var u = URL.createObjectURL(b);
+                    var a = document.createElement('a');
+                    a.href = u;
+                    a.download = 'DOF_' + rep + '_' + self.dofYear() + '.xlsx';
+                    a.click(); URL.revokeObjectURL(u);
+                    self.dofGenBusy(false); toast(self.t('pnXlsxReady'));
+                  })
+                  .catch(function (e) { self.dofGenBusy(false); toast(e.message, true); });
+              } else if (s.status === 'FAILED') {
+                self.dofGenBusy(false); toast(self.t('ebRegFailed') + (s.error || ''), true);
+              } else { poll(); }
+            }).catch(function () { poll(); });
+          }, 5000);
+        })();
+      }).catch(function (e) { self.dofGenBusy(false); fail(e); });
+    };
+
+    /* ═══════════ GL BALANCES YoY COMPARISON (2026-08-02) ═══════════
+       Fusion-account basis: EBS years read stored YTD measures through the
+       account map; 2026+ reads Fusion GL. Server = GET /gl/ebs-balances/yoy
+       (long format), pivoted client-side; search/type filter locally. */
+    (function () {
+      var CUR_YEAR = new Date().getFullYear();
+      var opts = [];
+      for (var y = CUR_YEAR; y >= 2016; y--) opts.push(y);
+      self.yoYearOpts = opts;
+      self.yoSel = ko.observableArray([CUR_YEAR, CUR_YEAR - 1, CUR_YEAR - 2].filter(function (y) { return y >= 2016; }));
+      self.yoMonthOpts = (function () {
+        var m = [{ v: 0, l: null }];
+        for (var i = 1; i <= 12; i++) m.push({ v: i, l: null });
+        return m;
+      })();
+      self.yoMonth = ko.observable(0);
+      /* PLATFORM RULE 2026-08-02: Budget Group defaults to '1' (Current
+         operations); 2 (Capital) / 8 (Accrual) optional (EBS years only). */
+      self.yoBgOpts = ['1', '2', '8'];
+      self.yoBg = ko.observableArray(['1']);
+      self.yoBgLabel = function (b) {
+        return self.t(b === '1' ? 'yoBg1' : b === '2' ? 'yoBg2' : 'yoBg8');
+      };
+      self.yoToggleBg = function (b) {
+        var i = self.yoBg.indexOf(b);
+        if (i >= 0) self.yoBg.splice(i, 1); else self.yoBg.push(b);
+      };
+      self.yoSearch = ko.observable('');
+      self.yoType = ko.observable('');
+      self.yoMeasure = ko.observable('actual');
+      self.yoBusy = ko.observable(false);
+      self.yoLoaded = ko.observable(false);
+      self.yoRegBusy = ko.observable(false);
+      self.yoRows = ko.observableArray([]);   /* raw long-format rows */
+      self.yoYears = ko.observableArray([]);  /* years of the loaded result, desc */
+      self.yoMonthLabel = function (o) {
+        if (o.v === 0) return self.t('yoFullYear');
+        return ['January','February','March','April','May','June','July','August',
+                'September','October','November','December'][o.v - 1] + ' (YTD)';
+      };
+      self.yoToggleYear = function (y) {
+        var i = self.yoSel.indexOf(y);
+        if (i >= 0) self.yoSel.splice(i, 1);
+        else if (self.yoSel().length >= 6) { toast(self.t('yoMax6'), true); return; }
+        else self.yoSel.push(y);
+      };
+      self.yoTypes = ko.pureComputed(function () {
+        var seen = {};
+        self.yoRows().forEach(function (r) { if (r.accountType) seen[r.accountType] = 1; });
+        return Object.keys(seen).sort();
+      });
+      /* pivot: one row per account, vals keyed by year */
+      self.yoPivot = ko.pureComputed(function () {
+        var by = {}, order = [];
+        self.yoRows().forEach(function (r) {
+          var k = r.account;
+          if (!by[k]) { by[k] = { account: k, name: r.accountName || '', type: r.accountType || '', vals: {} }; order.push(k); }
+          if (!by[k].name && r.accountName) by[k].name = r.accountName;
+          by[k].vals[r.year] = r;
+        });
+        return order.map(function (k) { return by[k]; });
+      });
+      self.yoView = ko.pureComputed(function () {
+        var q = (self.yoSearch() || '').trim().toUpperCase();
+        var ty = self.yoType();
+        return self.yoPivot().filter(function (r) {
+          if (ty && r.type !== ty) return false;
+          if (q && (r.account + ' ' + r.name).toUpperCase().indexOf(q) < 0) return false;
+          return true;
+        });
+      });
+      self.yoVal = function (row, year) {
+        var v = row.vals[year];
+        return v ? (v[self.yoMeasure()] || 0) : null;
+      };
+      self.yoValTxt = function (row, year) {
+        var v = self.yoVal(row, year);
+        return v === null ? '—' : self.fmt(Math.round(v));
+      };
+      /* change = latest selected year vs the previous one */
+      self.yoChange = function (row) {
+        var ys = self.yoYears();
+        if (ys.length < 2) return null;
+        var a = self.yoVal(row, ys[0]), b = self.yoVal(row, ys[1]);
+        if (a === null && b === null) return null;
+        return (a || 0) - (b || 0);
+      };
+      self.yoChangeTxt = function (row) {
+        var c = self.yoChange(row);
+        return c === null ? '—' : self.fmt(Math.round(c));
+      };
+      self.yoChangePct = function (row) {
+        var ys = self.yoYears();
+        if (ys.length < 2) return '—';
+        var b = self.yoVal(row, ys[1]);
+        var c = self.yoChange(row);
+        if (c === null || !b) return '—';
+        return (Math.round(1000 * c / Math.abs(b)) / 10) + '%';
+      };
+      self.yoTotal = function (year) {
+        var t = 0;
+        self.yoView().forEach(function (r) { t += self.yoVal(r, year) || 0; });
+        return self.fmt(Math.round(t));
+      };
+      /* ── SHARED interactive-report envelope (2026-08-03 rework): year
+         columns ASCENDING left-to-right, dynamic "Change YY-YY" headers for
+         the two latest selected years, per-column ⓘ hints, and a trailing
+         Chart column (shared IR 'spark' type — hover shows the cross-year
+         trend chart). Recomputes on run / measure / search / type change. */
+      self.yoIr = ko.pureComputed(function () {
+        if (!self.yoLoaded()) return null;
+        var t = self.t;
+        var ys = self.yoYears().slice().sort(function (a, b) { return a - b; });
+        var meas = self.yoMeasure();
+        var measL = t(meas === 'budget' ? 'yoBudget' : meas === 'encumbrance' ? 'yoEnc' : 'yoActual');
+        var asof = Number(self.yoMonth()) === 0 ? t('yoFullYear')
+                                                : self.yoMonthLabel({ v: Number(self.yoMonth()) });
+        var n = ys.length;
+        var yA = n ? ys[n - 1] : null, yB = n > 1 ? ys[n - 2] : null;  /* latest / previous */
+        var sfx = yB ? ' ' + String(yB).slice(-2) + '-' + String(yA).slice(-2) : '';
+        function sub(k, m) {
+          var s = t(k);
+          Object.keys(m || {}).forEach(function (p) { s = s.split('{' + p + '}').join(m[p]); });
+          return s;
+        }
+        var cols = [
+          { key: 'account', label: t('yoColAccount'), type: 'text' },
+          { key: 'name', label: t('yoColName'), type: 'text' },
+          { key: 'type', label: t('yoColType'), type: 'text' }
+        ];
+        ys.forEach(function (y, yi) {
+          /* alternating per-year column tint so adjacent years don't blur
+             (2026-08-04 layout round — yoc-a / yoc-b in app.css) */
+          cols.push({ key: 'y' + y, label: String(y), type: 'money',
+                      colClass: 'yoc-' + (yi % 2 ? 'b' : 'a'),
+                      hint: sub('yoHintYear', { y: y, m: measL, a: asof }) });
+        });
+        if (yB) {
+          /* gold-tinted comparison block w/ ▲ increase green / ▼ decrease red */
+          cols.push({ key: 'change', label: t('yoColChange') + sfx, type: 'money',
+                      colClass: 'yoc-chg', delta: true,
+                      hint: sub('yoHintChange', { a: yA, b: yB, m: measL }) });
+          cols.push({ key: 'changePct', label: t('yoColChangePct') + sfx, type: 'num',
+                      colClass: 'yoc-chg', delta: true,
+                      hint: sub('yoHintChangePct', { a: String(yA).slice(-2), b: String(yB).slice(-2) }) });
+        }
+        cols.push({ key: 'chart', label: t('yoColChart'), type: 'spark', hint: t('yoHintChart'),
+                    spark: { cols: ys.map(function (y) { return 'y' + y; }),
+                             labels: ys.map(String) } });
+        var items = self.yoView().map(function (r) {
+          var o = { account: r.account, name: r.name, type: r.type, chart: null };
+          ys.forEach(function (y) { o['y' + y] = self.yoVal(r, y); });
+          if (yB) {
+            var c = self.yoChange(r);
+            o.change = c;
+            var p = self.yoChangePct(r);
+            o.changePct = (p === '—') ? null : Number(p.replace('%', ''));
+          }
+          return o;
+        });
+        return { columns: cols, items: items, total: items.length, truncated: false,
+                 maxRows: 10000, zebra: true, stateRev: 2, section: 'yoy' };
+      });
+      self.runYoy = function () {
+        if (self.yoBusy()) return;
+        var yrs = self.yoSel().slice().sort(function (a, b) { return b - a; });
+        if (!yrs.length) { toast(self.t('yoPickYear'), true); return; }
+        var bgs = self.yoBg().slice().sort();
+        if (!bgs.length) { toast(self.t('yoPickBg'), true); return; }
+        self.yoBusy(true);
+        api('GET', '/ebs-balances/yoy?years=' + yrs.join('|') + '&month=' + self.yoMonth()
+                 + '&bg=' + encodeURIComponent(bgs.join('|')))
+          .then(function (d) {
+            self.yoRows(d.rows || []);
+            self.yoYears(d.years || yrs);
+            self.yoLoaded(true);
+            self.yoBusy(false);
+          })
+          .catch(function (e) { self.yoBusy(false); toast(e.message, true); });
+      };
+      self.yoCsv = function () {
+        var ys = self.yoYears().slice().sort(function (a, b) { return a - b; });
+        var head = ['Account', 'Account Name', 'Type'];
+        ys.forEach(function (y) { head.push(self.yoMeasure() + ' ' + y); });
+        head.push('Change', 'Change %');
+        var lines = [head.join(',')];
+        var tot = {};
+        self.yoView().forEach(function (r) {
+          var cells = ['"' + r.account + '"', '"' + (r.name || '').replace(/"/g, '""') + '"', '"' + r.type + '"'];
+          ys.forEach(function (y) {
+            var v = self.yoVal(r, y);
+            cells.push(v === null ? '' : v);
+            tot[y] = (tot[y] || 0) + (v || 0);
+          });
+          var c = self.yoChange(r);
+          cells.push(c === null ? '' : c, self.yoChangePct(r).replace('%', ''));
+          lines.push(cells.join(','));
+        });
+        var trow = ['"Total"', '', ''];
+        ys.forEach(function (y) { trow.push(tot[y] || 0); });
+        lines.push(trow.join(','));
+        var blob = new Blob(['﻿' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
+        var u = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = u; a.download = 'gl_balances_yoy_' + self.yoMeasure() + '.csv';
+        a.click(); URL.revokeObjectURL(u);
+      };
+      self.runYoyXlsx = function () {
+        if (self.yoRegBusy()) return;
+        var yrs = self.yoSel().slice().sort(function (a, b) { return b - a; });
+        if (!yrs.length) { toast(self.t('yoPickYear'), true); return; }
+        var body = { years: yrs.join('|'), month: Number(self.yoMonth()),
+                     bg: (self.yoBg().slice().sort().join('|') || '1') };
+        if ((self.yoSearch() || '').trim()) body.search = self.yoSearch().trim();
+        if (self.yoType()) body.atype = self.yoType();
+        self.yoRegBusy(true);
+        api('POST', '/ebs-balances/yoy/xlsx', body).then(function (d) {
+          var runId = d.runId;
+          toast(self.t('ebRegQueued') + runId);
+          var tries = 0;
+          (function poll() {
+            if (++tries > 60) { self.yoRegBusy(false); toast(self.t('ebRegFailed') + 'timeout', true); return; }
+            setTimeout(function () {
+              api('GET', '/ebs-balances/yoy/xlsx/' + runId).then(function (s) {
+                if (s.status === 'SUCCESS' && s.hasFile) {
+                  fetch(API + '/ebs-balances/yoy/xlsx/' + runId + '/file',
+                        { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+                    .then(function (r) {
+                      if (!r.ok) { throw new Error('Excel download failed (HTTP ' + r.status + ')'); }
+                      return r.blob();
+                    })
+                    .then(function (b) {
+                      var u = URL.createObjectURL(b);
+                      var a = document.createElement('a');
+                      a.href = u; a.download = 'GL_Balances_YoY_' + yrs.join('_') + '.xlsx';
+                      a.click(); URL.revokeObjectURL(u);
+                      self.yoRegBusy(false); toast(self.t('pnXlsxReady'));
+                    })
+                    .catch(function (e) { self.yoRegBusy(false); toast(e.message, true); });
+                } else if (s.status === 'FAILED') {
+                  self.yoRegBusy(false); toast(self.t('ebRegFailed') + (s.error || ''), true);
+                } else { poll(); }
+              }).catch(function () { poll(); });
+            }, 4000);
+          })();
+        }).catch(function (e) { self.yoRegBusy(false); toast(e.message, true); });
+      };
+    })();
 
     /* ── init ── */
     api('GET', '/boot').then(function (d) {

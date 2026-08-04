@@ -94,6 +94,28 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     warnings.setdefault("total", 0)
     warnings.setdefault("items", [])
     warning_limit = max(0, int(os.environ.get("ATD_WARNING_SAMPLE_LIMIT", "200")))
+    configured_keys = [k.strip().upper() for k in (key_columns or "").split(",") if k.strip()]
+    key_names = [c for c in target_cols if c.upper() in configured_keys]
+    if not key_names:
+        # Full-refresh jobs normally have no MERGE key configured. Capture mapped
+        # identifiers/document numbers automatically so a warning remains traceable
+        # after its staging data is replaced (for example PO_DISTRIBUTION_ID).
+        key_names = [c for c in target_cols
+                     if c.upper().endswith("_ID") or c.upper().endswith("_NUMBER")]
+
+    def warning_item(row_idx, row, column_name, raw_value, code, message):
+        mapped = dict(zip(target_cols, row))
+        keys = {k: mapped.get(k) for k in key_names if mapped.get(k) not in (None, "")}
+        return {
+            "row_number": row_idx,
+            "column_name": column_name,
+            "raw_value": str(raw_value)[:1000],
+            "warning_code": code,
+            "message": message,
+            "key_values_json": json.dumps(keys, ensure_ascii=False)[:4000],
+            "source_row_json": json.dumps(mapped, ensure_ascii=False),
+        }
+
     conv = []
     for row_idx, r in enumerate(rows, start=2):  # CSV row 1 is the header
         out = []
@@ -103,13 +125,9 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
                 if parsed is None and v is not None and str(v).strip() != "":
                     warnings["total"] += 1
                     if len(warnings["items"]) < warning_limit:
-                        warnings["items"].append({
-                            "row_number": row_idx,
-                            "column_name": target_cols[i],
-                            "raw_value": str(v)[:1000],
-                            "warning_code": "INVALID_DATE",
-                            "message": "Value is not a supported date; NULL loaded",
-                        })
+                        warnings["items"].append(warning_item(
+                            row_idx, r, target_cols[i], v, "INVALID_DATE",
+                            "Value is not a supported date; NULL loaded"))
                 out.append(parsed)
             elif is_num[i]:
                 cv = coerce_number(v)
@@ -120,13 +138,9 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
                 else:
                     warnings["total"] += 1
                     if len(warnings["items"]) < warning_limit:
-                        warnings["items"].append({
-                            "row_number": row_idx,
-                            "column_name": target_cols[i],
-                            "raw_value": str(v)[:1000],
-                            "warning_code": "INVALID_NUMBER",
-                            "message": "Value is not numeric; NULL loaded",
-                        })
+                        warnings["items"].append(warning_item(
+                            row_idx, r, target_cols[i], v, "INVALID_NUMBER",
+                            "Value is not numeric; NULL loaded"))
                     out.append(None)
             else:
                 out.append(None if (v is None or v == "") else v)
@@ -159,10 +173,12 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
     if run_id is not None and warnings["items"]:
         cur.executemany(
             "insert into prod.atd_load_row_warning "
-            "(run_id, job_name, row_number, column_name, raw_value, warning_code, message) "
-            "values (:1,:2,:3,:4,:5,:6,:7)",
+            "(run_id, job_name, row_number, column_name, raw_value, warning_code, message, "
+            " key_values_json, source_row_json) "
+            "values (:1,:2,:3,:4,:5,:6,:7,:8,:9)",
             [(run_id, (job_name or "")[:80], w["row_number"], w["column_name"],
-              w["raw_value"], w["warning_code"], w["message"])
+              w["raw_value"], w["warning_code"], w["message"],
+              w["key_values_json"], w["source_row_json"])
              for w in warnings["items"]])
 
     if load_mode == "MERGE" and final_table:

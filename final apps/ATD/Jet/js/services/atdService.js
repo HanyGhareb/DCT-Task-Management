@@ -19,6 +19,7 @@ function (api) {
   return {
     // dashboard + pickers
     getDashboard: function ()          { return api.get('/dashboard'); },
+    getAttention: function ()          { return api.get('/attention'); },
     getLookups:   function ()          { return api.get('/lookups'); },
 
     // rebuild the GL classification snapshot the actuals reporting views read
@@ -76,11 +77,13 @@ function (api) {
 
     // parallel-worker fleet health (one row per VM, from ATD_WORKER_HEARTBEAT)
     listWorkers:  function ()          { return api.get('/workers'); },
+    pollWorkers:  function ()          { return api.get('/workers?_mfa=' + Date.now()); },
     // observability: break window + per-VM session age + per-job freshness
     getJobHealth: function ()          { return api.get('/jobs/health'); },
 
     // job sets (grouped scheduling)
-    listJobSets:    function ()             { return api.get('/job-sets'); },
+    // Job-set CRUD changes must be visible immediately; avoid a stale browser/proxy GET.
+    listJobSets:    function ()             { return api.get('/job-sets?_sets=' + Date.now()); },
     getJobSet:      function (code)         { return api.get('/job-sets/' + encodeURIComponent(code)); },
     createJobSet:   function (body)         { return api.post('/job-sets', body); },
     updateJobSet:   function (code, body)   { return api.put('/job-sets/' + encodeURIComponent(code), body); },
@@ -99,9 +102,11 @@ function (api) {
     deleteCategory:  function (code)       { return api.delete('/categories/' + encodeURIComponent(code)); },
     // ask a worker (or 'all') to re-login to Fusion (operator triggers MFA)
     refreshWorker: function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/refresh', {}); },
+    checkWorkerSession: function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/check-session', {}); },
 
     // run logs
     listRuns:     function (params)    { return api.get('/runs' + qs(params)); },
+    warningSummary:function (params)   { return api.get('/warnings/summary' + qs(params)); },
     getRun:       function (id)        { return api.get('/runs/' + id); },
     runsExportUrl:function (params)    { return '/runs/export' + qs(params); },
 

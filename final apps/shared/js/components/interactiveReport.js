@@ -97,6 +97,7 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
     self.colByKey   = {};                      // key -> {key,label,type,isCalc}
 
     self.hasData       = ko.observable(false);
+    self.zebraOn       = ko.observable(false);   // envelope zebra:true — striped detail rows
     self.truncated     = ko.observable(false);
     self.maxRows       = ko.observable(0);
     self.filteredCount = ko.observable(0);
@@ -118,7 +119,11 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
       var c = self.colByKey[e.key];
       if (!c) return null;
       var lbl = e.label();
-      return lbl ? { key: c.key, type: c.type, isCalc: c.isCalc, label: lbl } : c;
+      if (!lbl) return c;
+      var o = {}, k;
+      for (k in c) { if (Object.prototype.hasOwnProperty.call(c, k)) o[k] = c[k]; }
+      o.label = lbl;
+      return o;
     }
     self.visibleColumns = ko.computed(function () {
       return self.colState().filter(function (e) { return e.visible(); })
@@ -136,14 +141,23 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
         for (i = 0; i < keys.length; i++) {
           o[keys[i]] = (r[keys[i]] === undefined ? null : r[keys[i]]);
         }
+        // reserved: a row may declare its own css class (e.g. server-computed
+        // subtotal / grand-total bands) — preserved through normalization
+        if (r._rowClass) { o._rowClass = r._rowClass; }
         return o;
       });
     }
 
     function rebuildColIndex() {
       self.colByKey = {};
+      // clone EVERY envelope prop so opt-in extensions (hint, spark, group,
+      // groupClass, colClass, sticky, width, delta, nearZero, ellipsis)
+      // survive the index rebuild without being enumerated here
       self.baseCols.forEach(function (c) {
-        self.colByKey[c.key] = { key: c.key, label: c.label, type: c.type, isCalc: false };
+        var o = {}, k;
+        for (k in c) { if (Object.prototype.hasOwnProperty.call(c, k)) o[k] = c[k]; }
+        o.isCalc = false;
+        self.colByKey[c.key] = o;
       });
       self.calcCols().forEach(function (c) {
         self.colByKey[c.key] = { key: c.key, label: c.label, type: c.type, isCalc: true };
@@ -166,7 +180,12 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
       suspend = true;
       self.baseCols = env.columns || [];
       self.linkFn = (typeof env.cellLink === 'function') ? env.cellLink : null;
-      var key = ko.unwrap(self.reportCode) + '::' + (env.section || '');
+      self.zebraOn(env.zebra === true);
+      // env.stateRev (optional int): folds into the persistence key so a
+      // DESIGNED column-order change can invalidate stale saved states —
+      // bump it when the envelope's default layout must win over autosave
+      var key = ko.unwrap(self.reportCode) + '::' + (env.section || '')
+              + (env.stateRev ? '::r' + env.stateRev : '');
       var newContext = (key !== stateKey);
       stateKey = key;
       if (newContext) {
@@ -194,15 +213,31 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
       recompute();
     }
 
-    // keep known entries (order/visibility/agg), append new columns, drop gone ones
+    // keep known entries (order/visibility/agg), drop gone ones; NEW columns
+    // are inserted at their ENVELOPE position (anchored after the nearest
+    // preceding envelope sibling that survived) — not blindly appended, so a
+    // dataset whose column set changes between runs (e.g. a year added in the
+    // middle) keeps the intended order (2026-08-03).
     function reconcileColState() {
       var known = {};
       var entries = self.colState().filter(function (e) {
         known[e.key] = true;
         return !!self.colByKey[e.key];
       });
-      Object.keys(self.colByKey).forEach(function (k) {
-        if (!known[k]) entries.push(entryFor(k, true));
+      var envOrder = self.baseCols.map(function (c) { return c.key; });
+      self.calcCols().forEach(function (c) { envOrder.push(c.key); });
+      envOrder.forEach(function (k, envIdx) {
+        if (known[k] || !self.colByKey[k]) return;
+        var at = entries.length;
+        for (var p = envIdx - 1; p >= 0; p--) {
+          var idx = -1;
+          for (var q = 0; q < entries.length; q++) {
+            if (entries[q].key === envOrder[p]) { idx = q; break; }
+          }
+          if (idx >= 0) { at = idx + 1; break; }
+        }
+        entries.splice(at, 0, entryFor(k, true));
+        known[k] = true;
       });
       self.colState(entries);
     }
@@ -366,18 +401,24 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
       var off = self.pageIndex() * size;
       var slice = self._filtered.slice(off, off + size);
       var brks = activeBreaks();
+      // zebra parity travels with the entry (CSS nth-child can't skip the
+      // interleaved break/subtotal stream rows)
+      var zeb = self.zebraOn();
       if (!brks.length) {
-        self.pageRows(slice.map(function (r) { return { kind: 'row', row: r }; }));
+        self.pageRows(slice.map(function (r, zi) {
+          return { kind: 'row', row: r, zebra: zeb && zi % 2 === 1 };
+        }));
         return;
       }
       var out = [];
       var withSubs = self.hasAggs();
+      var zi2 = 0;
       var prevKey = (off > 0) ? breakKeyOf(self._filtered[off - 1], brks) : null;
       for (var i = 0; i < slice.length; i++) {
         var r = slice[i];
         var k = breakKeyOf(r, brks);
         if (k !== prevKey) out.push({ kind: 'break', label: breakLabelOf(r, brks) });
-        out.push({ kind: 'row', row: r });
+        out.push({ kind: 'row', row: r, zebra: zeb && (zi2++ % 2 === 1) });
         var next = self._filtered[off + i + 1];
         if (withSubs && (!next || breakKeyOf(next, brks) !== k)) {
           out.push({ kind: 'sub', rows: self._groups[k] || [] });
@@ -417,6 +458,7 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
 
     // ── sorting ───────────────────────────────────────────────────────────
     self.onHeaderClick = function (col, event) {
+      if (col.type === 'spark') return true;   // chart columns don't sort
       var list = self.sorts().slice();
       var idx = -1, i;
       for (i = 0; i < list.length; i++) { if (list[i].col === col.key) { idx = i; break; } }
@@ -1216,10 +1258,91 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
       }, function () { toast.error(self.t('ir.export.xlsxFail')); });
     };
 
+    // ── grouped header band (opt-in: column.group [+ groupClass]) ─────────
+    // contiguous visible columns sharing the same group render ONE spanning
+    // cell in an extra header row above the column headers
+    self.hasGroups = ko.computed(function () {
+      return self.visibleColumns().some(function (c) { return !!c.group; });
+    });
+    self.headerGroups = ko.computed(function () {
+      var out = [], cur = null;
+      self.visibleColumns().forEach(function (c) {
+        var g = c.group || '', cls = c.groupClass || '';
+        var id = g + '|' + cls;
+        if (cur && cur.id === id) { cur.span++; }
+        else { cur = { id: id, label: g, cls: cls, span: 1 }; out.push(cur); }
+      });
+      return out;
+    });
+
+    // ── sticky (frozen) columns (opt-in: column.sticky + column.width px) ──
+    // offsets accumulate over the PRECEDING visible sticky columns; logical
+    // inline-start so the pin mirrors under RTL
+    self.stickyStyle = function (col) {
+      if (!col.sticky) return {};
+      var off = 0, cols = self.visibleColumns();
+      for (var i = 0; i < cols.length; i++) {
+        if (cols[i].key === col.key) break;
+        if (cols[i].sticky) off += (Number(cols[i].width) || 110);
+      }
+      var w = (Number(col.width) || 110) + 'px';
+      return { insetInlineStart: off + 'px', minWidth: w, maxWidth: w };
+    };
+
+    // ── per-column css: envelope colClass + num alignment + sticky ────────
+    self.colCss = function (col) {
+      var s = famOf(col.type) === 'num' ? 'ir-num' : '';
+      if (col.colClass) s += ' ' + col.colClass;
+      if (col.sticky) s += ' ir-col-sticky';
+      return s;
+    };
+    function nearZeroHit(row, col) {
+      if (!col.nearZero) return false;
+      var v = row[col.key];
+      if (isNil(v)) return false;
+      var n = Number(v);
+      if (isNaN(n)) return false;
+      return Math.abs(n) <= (Number(col.nearZero.threshold) || 0.005);
+    }
+    // delta columns (col.delta:true): sign drives the ▲/▼ arrow + value color
+    self.deltaDir = function (row, col) {
+      var v = row[col.key];
+      if (isNil(v)) return 0;
+      var n = Number(v);
+      if (isNaN(n) || n === 0 || nearZeroHit(row, col)) return 0;
+      return n > 0 ? 1 : -1;
+    };
+    self.tdClass = function (row, col) {
+      var s = self.colCss(col);
+      if (col.ellipsis) s += ' ir-ellipsis';
+      if (col.delta) {
+        var d = self.deltaDir(row, col);
+        if (d > 0) s += ' ir-pos'; else if (d < 0) s += ' ir-neg';
+      }
+      if (col.nearZero && (col.nearZero.mode || 'muted') === 'muted' && nearZeroHit(row, col)) s += ' ir-dim';
+      return s;
+    };
+    self.tdStyle = function (row, col) {
+      var s = self.cellStyle(row, col);
+      if (col.sticky) {
+        var st = self.stickyStyle(col), k;
+        for (k in st) { if (Object.prototype.hasOwnProperty.call(st, k)) s[k] = st[k]; }
+      }
+      return s;
+    };
+
     // ── cell rendering ────────────────────────────────────────────────────
     self.cellText = function (row, col) {
+      if (col.type === 'spark') return '';   // rendered as SVG, exports empty
       var v = row[col.key];
       if (isNil(v)) return '';
+      // near-zero display (opt-in col.nearZero {mode:'muted'|'dash'|'blank',
+      // threshold}) — values that round to zero read as "no data", per mode
+      if (col.nearZero && nearZeroHit(row, col)) {
+        var m = col.nearZero.mode || 'muted';
+        if (m === 'dash') return '—';
+        if (m === 'blank') return '';
+      }
       if (col.type === 'money') return i18n.fmtNum(v, 2);
       if (col.type === 'num') {
         var n = Number(v);
@@ -1234,6 +1357,72 @@ function (ko, i18n, toast, irExpr, editDrawerReg, templateHtml) {
     };
     self.cellClass = function (col) {
       return famOf(col.type) === 'num' ? 'ir-num' : '';
+    };
+    // ── spark columns (type:'spark' + spark:{cols:[keys], labels:[..]}) ────
+    // cell = inline mini sparkline; hover = larger chart popover with the
+    // per-point labels + compact values. Pure SVG built from the row's own
+    // values — numeric only, so the html binding is injection-safe.
+    function sparkAbbr(v) {
+      var a = Math.abs(v);
+      if (a >= 1e9) return (Math.round(v / 1e8) / 10) + 'B';
+      if (a >= 1e6) return (Math.round(v / 1e5) / 10) + 'M';
+      if (a >= 1e3) return (Math.round(v / 1e2) / 10) + 'K';
+      return String(Math.round(v));
+    }
+    function sparkPts(vals, x0, x1, y0, y1) {
+      var nums = vals.filter(function (v) { return v !== null; });
+      var mn = Math.min.apply(null, nums), mx = Math.max.apply(null, nums);
+      if (mx === mn) { mx = mx + 1; mn = mn - 1; }
+      var n = vals.length, pts = [];
+      for (var i = 0; i < n; i++) {
+        if (vals[i] === null) { pts.push(null); continue; }
+        var x = n === 1 ? (x0 + x1) / 2 : x0 + (x1 - x0) * i / (n - 1);
+        var y = y1 - (y1 - y0) * (vals[i] - mn) / (mx - mn);
+        pts.push([Math.round(x * 10) / 10, Math.round(y * 10) / 10]);
+      }
+      return pts;
+    }
+    self.sparkHtml = function (row, col) {
+      var sp = col.spark;
+      if (!sp || !sp.cols || !sp.cols.length) return '';
+      var vals = sp.cols.map(function (k) {
+        var v = row[k];
+        return (v === null || v === undefined || isNaN(Number(v))) ? null : Number(v);
+      });
+      if (!vals.some(function (v) { return v !== null; })) {
+        return '<span class="ir-spark-empty">—</span>';
+      }
+      var labels = sp.labels || sp.cols;
+      // mini sparkline (cell)
+      var mp = sparkPts(vals, 4, 86, 5, 21);
+      var mini = '<svg class="sp-mini" width="90" height="26" viewBox="0 0 90 26" aria-hidden="true">'
+        + '<polyline fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" points="'
+        + mp.filter(Boolean).map(function (p) { return p[0] + ',' + p[1]; }).join(' ') + '"/>';
+      var last = null;
+      for (var i = mp.length - 1; i >= 0; i--) { if (mp[i]) { last = mp[i]; break; } }
+      if (last) { mini += '<circle cx="' + last[0] + '" cy="' + last[1] + '" r="2.4" fill="currentColor"/>'; }
+      mini += '</svg>';
+      // popover chart (hover)
+      var W = 30 + labels.length * 52, H = 150;
+      var pp = sparkPts(vals, 26, W - 16, 26, 108);
+      var pop = '<svg width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">'
+        + '<line x1="14" y1="108" x2="' + (W - 8) + '" y2="108" stroke="#D8D8D8" stroke-width="1"/>'
+        + '<polyline fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="'
+        + pp.filter(Boolean).map(function (p) { return p[0] + ',' + p[1]; }).join(' ') + '"/>';
+      for (var j = 0; j < pp.length; j++) {
+        if (!pp[j]) continue;
+        pop += '<circle cx="' + pp[j][0] + '" cy="' + pp[j][1] + '" r="3" fill="currentColor"/>'
+          + '<text x="' + pp[j][0] + '" y="' + (pp[j][1] - 8) + '" text-anchor="middle" class="sp-val">' + sparkAbbr(vals[j]) + '</text>';
+      }
+      for (var k2 = 0; k2 < labels.length; k2++) {
+        var lx = labels.length === 1 ? (26 + W - 16) / 2 : 26 + (W - 42) * k2 / (labels.length - 1);
+        pop += '<text x="' + Math.round(lx) + '" y="124" text-anchor="middle" class="sp-lab">' + String(labels[k2]) + '</text>';
+        if (pp[k2] === null) {
+          pop += '<text x="' + Math.round(lx) + '" y="104" text-anchor="middle" class="sp-lab">—</text>';
+        }
+      }
+      pop += '</svg>';
+      return '<span class="ir-spark">' + mini + '<span class="ir-spark-pop">' + pop + '</span></span>';
     };
     // optional envelope hook: env.cellLink(row, colKey) -> href|null renders the
     // cell as a new-tab anchor (base columns only — calc columns stay text)

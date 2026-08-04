@@ -6,6 +6,47 @@
     </div>
   </div>
 
+  <div class="card wsum">
+    <div class="section-heading-row wsum__head">
+      <button type="button" class="wsum__toggle" data-bind="click: toggleWarningGroups,
+              attr:{ 'aria-expanded': warningGroupsOpen() ? 'true' : 'false' }">
+        <span class="wsum__chev" data-bind="css:{ 'is-open': warningGroupsOpen() }">›</span>
+        <span><span class="section-heading" data-bind="text: t('atd.wsum.title')"></span>
+          <span class="muted wsum__sub" data-bind="text: t('atd.wsum.subtitle')"></span></span>
+      </button>
+      <span class="attn__count" data-bind="text: warningGroups().length"></span>
+    </div>
+    <!-- ko if: warningGroupsOpen -->
+    <!-- ko if: warningGroupsLoading --><div class="muted" data-bind="text: t('atd.common.loading')"></div><!-- /ko -->
+    <!-- ko if: !warningGroupsLoading() && warningGroups().length === 0 -->
+    <div class="empty-state" data-bind="text: t('atd.wsum.empty')"></div>
+    <!-- /ko -->
+    <!-- ko if: !warningGroupsLoading() && warningGroups().length > 0 -->
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text: t('atd.col.job')"></th><th data-bind="text: t('atd.wsum.issue')"></th>
+          <th data-bind="text: t('atd.wsum.first')"></th><th data-bind="text: t('atd.wsum.last')"></th>
+          <th data-bind="text: t('atd.wsum.runs')"></th><th data-bind="text: t('atd.col.status')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: warningGroups">
+          <tr class="wsum__row" tabindex="0" data-bind="click: function(){ $vm.openWarningGroup($data); },
+              event:{ keydown:function(d,e){ if(e.key==='Enter'||e.key===' '){ $vm.openWarningGroup(d); return false; } return true; } }">
+            <td class="mono" data-bind="text: jobName"></td>
+            <td><div class="wsum__issue" data-bind="text: issue"></div>
+              <!-- ko if: columnName --><div class="muted mono" data-bind="text: columnName"></div><!-- /ko --></td>
+            <td data-bind="text: firstSeen"></td><td data-bind="text: lastSeen"></td>
+            <td><span class="wsum__runs" data-bind="text: affectedRuns"></span></td>
+            <td><span data-bind="css: $vm.statusClass(active==='Y' ? 'WARNING' : 'DONE'),
+                text: $root.t(active==='Y' ? 'atd.wsum.active' : 'atd.wsum.resolved')"></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
   <div class="view-toolbar">
     <select class="form-control form-control--sm" style="max-width:200px" data-bind="value: fJob">
       <option value="" data-bind="text: t('atd.runs.allJobs')"></option>
@@ -59,8 +100,8 @@
           <td class="mono" data-bind="text: $data.host || '—'"></td>
           <td data-bind="text: $data.track || '—'"></td>
           <td>
-            <span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span>
-            <!-- ko if: $data.warn === 'Y' -->
+            <span data-bind="css: $vm.statusClass($data.status), text: $vm.statusText($data)"></span>
+            <!-- ko if: $data.warn === 'Y' && !$vm.isNoData($data) -->
             <span class="rstat rstat--WARNING" style="margin-inline-start:6px"
                   data-bind="text: $vm.t('atd.runs.warn'), attr:{ title: $data.message }"></span>
             <!-- /ko -->
@@ -82,17 +123,22 @@
   <!-- run detail modal -->
   <!-- ko if: detail -->
   <div class="modal-overlay" data-bind="click: closeDetail">
-    <div class="modal-box" data-bind="click: function(){ return true; }, clickBubble: false" style="max-width:640px">
+    <div class="modal-box" data-bind="click: function(){ return true; }, clickBubble: false" style="max-width:1000px">
       <div class="modal-header">
         <h3 data-bind="text: t('atd.runs.detail.title') + ' #' + detail().runId"></h3>
-        <div class="region-actions">
+        <div class="region-actions run-actions">
+          <button class="btn btn-sm btn-primary" data-bind="click: runAgain, disable: rerunning,
+            text: rerunning() ? t('atd.runAction.queueing') : t('atd.runAction.runAgain')"></button>
+          <button class="btn btn-sm btn-secondary" data-bind="click: function(){ openJob(false); }, text: t('atd.runAction.openJob')"></button>
+          <button class="btn btn-sm btn-secondary" data-bind="click: function(){ openJob(true); }, text: t('atd.runAction.reviewSchema')"></button>
+          <button class="btn btn-sm btn-secondary" data-bind="click: copyError, text: t('atd.runAction.copyError')"></button>
           <button class="btn btn-sm btn-secondary" data-bind="click: closeDetail, text: t('atd.action.back')"></button>
         </div>
       </div>
       <div class="modal-body">
         <div class="form-grid">
           <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.job')"></label><div class="mono" data-bind="text: detail().jobName"></div></div>
-          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.status')"></label><div><span data-bind="css: statusClass(detail().status), text: detail().status"></span></div></div>
+          <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.status')"></label><div><span data-bind="css: statusClass(detail().status), text: statusText(detail())"></span></div></div>
           <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.rows')"></label><div data-bind="text: detail().rowCount"></div></div>
           <div class="form-group"><label class="form-label" data-bind="text: t('atd.detail.checksum')"></label><div class="mono" data-bind="text: detail().csvChecksum || '—'"></div></div>
           <div class="form-group"><label class="form-label" data-bind="text: t('atd.col.started')"></label><div data-bind="text: detail().started || '—'"></div></div>
@@ -101,6 +147,20 @@
           <div class="form-group form-group--full"><label class="form-label" data-bind="text: t('atd.runs.detail.message')"></label>
             <pre class="mono" style="white-space:pre-wrap;margin:0;max-height:240px;overflow:auto" data-bind="text: detail().message || '—'"></pre></div>
         </div>
+        <!-- ko if: detail().phases && detail().phases.length -->
+        <div class="phase" style="margin-top:20px">
+          <h4 class="phase__title" data-bind="text: t('atd.phase.title')"></h4>
+          <div class="phase__track" data-bind="foreach: detail().phases">
+            <div class="phase__seg" data-bind="style:{ flexGrow: Math.max(Number(durationMs)||0, 100) },
+                 attr:{ title: $root.t('atd.phase.'+phaseCode) + ' · ' + $vm.fmtPhase(durationMs) }"></div>
+          </div>
+          <div class="phase__grid" data-bind="foreach: detail().phases">
+            <div class="phase__item"><span class="phase__dot"></span>
+              <span class="phase__label" data-bind="text: $root.t('atd.phase.'+phaseCode)"></span>
+              <span class="mono phase__time" data-bind="text: $vm.fmtPhase(durationMs)"></span></div>
+          </div>
+        </div>
+        <!-- /ko -->
         <!-- ko if: detail().warnings && detail().warnings.length -->
         <div style="margin-top:20px">
           <h4 style="margin:0 0 6px" data-bind="text: t('atd.runs.detail.dataWarnings')"></h4>
@@ -110,12 +170,18 @@
               <thead><tr>
                 <th data-bind="text: t('atd.runs.detail.row')"></th>
                 <th data-bind="text: t('atd.runs.detail.column')"></th>
+                <th data-bind="text: t('atd.runs.detail.keys')"></th>
                 <th data-bind="text: t('atd.runs.detail.badValue')"></th>
                 <th data-bind="text: t('atd.runs.detail.reason')"></th>
+                <th data-bind="text: t('atd.runs.detail.sourceRow')"></th>
               </tr></thead>
               <tbody data-bind="foreach: detail().warnings">
                 <tr><td data-bind="text: rowNumber"></td><td class="mono" data-bind="text: columnName"></td>
-                  <td class="mono" data-bind="text: rawValue || '—'"></td><td data-bind="text: reason"></td></tr>
+                  <td><pre class="mono" style="white-space:pre-wrap;margin:0;max-width:260px" data-bind="text: $vm.prettyJson(keyValues)"></pre></td>
+                  <td class="mono" data-bind="text: rawValue || '—'"></td><td data-bind="text: reason"></td>
+                  <td><details><summary class="link-like" data-bind="text: $root.t('atd.runs.detail.viewRow')"></summary>
+                    <pre class="mono" style="white-space:pre-wrap;max-width:420px;max-height:220px;overflow:auto" data-bind="text: $vm.prettyJson(sourceRow)"></pre>
+                  </details></td></tr>
               </tbody>
             </table>
           </div>

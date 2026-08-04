@@ -19,6 +19,8 @@ BEGIN
       raw_value    VARCHAR2(1000),
       warning_code VARCHAR2(40) NOT NULL,
       message      VARCHAR2(1000),
+      key_values_json VARCHAR2(4000),
+      source_row_json CLOB,
       created_at   TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
       CONSTRAINT fk_atd_row_warn_run FOREIGN KEY (run_id)
         REFERENCES prod.atd_load_run_log(run_id) ON DELETE CASCADE
@@ -67,12 +69,15 @@ BEGIN
     APEX_JSON.write('message',NVL(DBMS_LOB.SUBSTR(r.message,32000,1),''));
     APEX_JSON.write('warningCount',l_warn_count);
     APEX_JSON.open_array('warnings');
-    FOR w IN (SELECT row_number,column_name,raw_value,warning_code,message
+    FOR w IN (SELECT row_number,column_name,raw_value,warning_code,message,
+                     key_values_json,source_row_json
                 FROM atd_load_row_warning WHERE run_id=l_id ORDER BY warning_id) LOOP
       APEX_JSON.open_object;
       APEX_JSON.write('rowNumber',w.row_number); APEX_JSON.write('columnName',w.column_name);
       APEX_JSON.write('rawValue',NVL(w.raw_value,'')); APEX_JSON.write('code',w.warning_code);
       APEX_JSON.write('reason',NVL(w.message,''));
+      APEX_JSON.write('keyValues',NVL(w.key_values_json,''));
+      APEX_JSON.write('sourceRow',NVL(DBMS_LOB.SUBSTR(w.source_row_json,32000,1),''));
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array; APEX_JSON.close_object;

@@ -113,6 +113,9 @@ define(['services/api', 'shared/refCache'], function (api, refCache) {
       return api.post('/maintenance/sql-performance', {}, { silent: true });
     },
 
+    getOperations: function () { return api.get('/maintenance/operations', { silent: true }); },
+    refreshOperations: function () { return api.post('/maintenance/operations', {}, { silent: true }); },
+
     getDatabaseLocks: function () {
       return api.get('/maintenance/database-locks', { silent: true });
     },

@@ -83,8 +83,16 @@ PROMPT Base pass-through views created (AP_*/PO_*/GRN_ALL_V2/GL_BALANCES/PROJECT
 --     joins go through this view (dct_actual_v / dct_budget_actual_v here,
 --     db/v2/34); keep in lock-step with prod.dct_cc_canon (db/v2/40) and
 --     DCT_GL_COA_V.cc_string (GL/db/04).
+--     PLATFORM RULE 2026-08-02 (user): account 452201 "Revenue Transfer to
+--     Treasury" is EXCLUDED from ALL calculations and reporting -- it is the
+--     government revenue remittance mis-classed as Expense (billions/year;
+--     976.8M budget in 2026) and distorts every expense figure. Filtered
+--     HERE at the base so every Fusion-GL consumer inherits; the EBS twin
+--     lives in DCT_EBS_BALANCE_MAPPED_V (db/v2/110). Raw rows stay in
+--     prod.gl_balances -- the rule is read-layer only, reversible.
 -- ---------------------------------------------------------------------------
 CREATE OR REPLACE VIEW prod.gl_balances_cc AS
+SELECT * FROM (
 SELECT
   b.ledger_name, b.concatenated_segments, b.status, b.enabled,
   b.initial_budget, b.budget_adjustments, b.total_budget, b.unreleased_budget,
@@ -112,7 +120,10 @@ FROM (
          REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,9)  AS s9,
          REGEXP_SUBSTR(g.concatenated_segments,'[^.-]+',1,10) AS s10
   FROM prod.gl_balances g
-) b;
+) b
+)
+WHERE cc_string IS NULL
+   OR NVL(REGEXP_SUBSTR(cc_string, '[^.]+', 1, 5), 'x') <> '452201';
 
 PROMPT GL_BALANCES_CC created (canonical combination string).
 

@@ -21,6 +21,12 @@ EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1430 THEN RAISE; END IF;
 END;
 /
 
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER TABLE prod.atd_worker_heartbeat ADD (session_check_req TIMESTAMP)';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1430 THEN RAISE; END IF;
+END;
+/
+
 -- ADMIN synonym for the object the handler touches
 CREATE OR REPLACE SYNONYM atd_worker_heartbeat FOR prod.atd_worker_heartbeat;
 
@@ -59,9 +65,12 @@ BEGIN
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
   IF l_id IS NULL THEN dct_rest.err(400,'Worker id required'); RETURN; END IF;
   IF LOWER(l_id) = 'all' THEN
-    UPDATE atd_worker_heartbeat SET refresh_req = SYSTIMESTAMP;
+    UPDATE atd_worker_heartbeat SET refresh_req=SYSTIMESTAMP,
+      mfa_status='REQUESTED',mfa_number=NULL,mfa_error=NULL,mfa_updated=SYSTIMESTAMP;
   ELSE
-    UPDATE atd_worker_heartbeat SET refresh_req = SYSTIMESTAMP WHERE worker_id = l_id;
+    UPDATE atd_worker_heartbeat SET refresh_req=SYSTIMESTAMP,
+      mfa_status='REQUESTED',mfa_number=NULL,mfa_error=NULL,mfa_updated=SYSTIMESTAMP
+      WHERE worker_id=l_id;
   END IF;
   l_n := SQL%ROWCOUNT;
   COMMIT;

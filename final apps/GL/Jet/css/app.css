@@ -865,3 +865,50 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 .xm-form{display:flex;flex-direction:column;gap:12px;max-width:520px}
 .eb-unmapped{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-block-start:14px}
 .eb-un-h{font-weight:700;font-size:.85rem;margin-block-end:6px;color:var(--brand,#3F6F5F)}
+
+/* ── GL Balances YoY tab (2026-08-02) ─────────────────────────────── */
+.yo-years{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0 10px}
+.yo-chip{padding:5px 14px;border:1px solid var(--line);border-radius:20px;background:var(--card,#fff);
+  color:var(--text);font:inherit;font-size:13px;cursor:pointer;transition:all .15s}
+.yo-chip:hover{border-color:var(--brand)}
+.yo-chip.on{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:600}
+.yo-meas{display:inline-flex;gap:6px}
+.yo-meas .yo-chip{padding:3px 12px;font-size:12px}
+#pg-yoy .data-table th.num,#pg-yoy .data-table td.num{text-align:right}
+[dir=rtl] #pg-yoy .data-table th.num,[dir=rtl] #pg-yoy .data-table td.num{text-align:left}
+#pg-yoy tfoot td{font-weight:700;border-top:2px solid var(--line)}
+
+/* ── IR column tints — DOF Submissions + Balances YoY (2026-08-04 layout
+   round; consumed via the shared IR column.colClass / groupClass hooks).
+   Loaded AFTER platform.css so tints win over the zebra stripe. ── */
+/* DOF year blocks: current-year brand GREEN tint · prior-year SLATE-BLUE
+   tint (clearly distinct hues — user feedback 2026-08-04 (2)) */
+.ir-table td.dofc-cur{background:rgba(63,111,95,.15)}
+.ir-table td.dofc-pri{background:rgba(84,110,140,.15)}
+/* quarterly Q1..Q4 alternation */
+.ir-table td.dofc-qa{background:rgba(63,111,95,.09)}
+.ir-table td.dofc-qb{background:rgba(63,111,95,.19)}
+/* grouped header band tints */
+table.data-table.ir-table thead tr.ir-band th.dofg-cur{background:rgba(63,111,95,.30);color:#1D3B31}
+table.data-table.ir-table thead tr.ir-band th.dofg-pri{background:rgba(84,110,140,.28);color:#2C3E52}
+table.data-table.ir-table thead tr.ir-band th.dofg-perf{background:rgba(198,146,20,.24);color:#5C430A}
+/* Balances YoY: alternating year tints + gold comparison block */
+.ir-table td.yoc-a{background:rgba(63,111,95,.07)}
+.ir-table td.yoc-b{background:rgba(63,111,95,.16)}
+.ir-table td.yoc-chg{background:rgba(198,146,20,.15)}
+
+/* DOF notes drawer — full record info grid */
+.dof-rec-t{font-weight:800;font-size:.8rem;letter-spacing:.05em;text-transform:uppercase;
+  color:var(--brand,#3F6F5F);margin:2px 0 8px}
+.dof-rec{display:grid;grid-template-columns:minmax(150px,42%) 1fr;gap:0;border:1px solid var(--line);
+  border-radius:8px;overflow:hidden;margin-block-end:16px;font-size:12.5px}
+.dof-rec>div{padding:6px 10px;border-block-end:1px solid var(--line)}
+.dof-rec>div:nth-last-child(-n+2){border-block-end:none}
+.dof-rec-l{background:rgba(63,111,95,.06);color:var(--muted);font-weight:600}
+.dof-rec-v{text-align:start;overflow-wrap:anywhere}
+.dof-rec-v.mono{text-align:end;font-variant-numeric:tabular-nums}
+/* mirror the table's variance / near-zero styling */
+.dof-rec-v.pos{color:#1E5E2C}
+.dof-rec-v.neg{color:#B3261E}
+.dof-rec-v.dim{color:#A9B2B8}
+.dof-rec-v .dr-arrow{font-size:9.5px;margin-inline-end:3px;vertical-align:1px}

@@ -13,6 +13,10 @@
 --   POST /gl/coamap                              create mapping row
 --   PUT  /gl/coamap/:id                          partial update / deactivate
 --   POST /gl/ebs-balances                        bulk upsert <=500 rows/req
+--        (2026-07-30 (2): rows accept the FULL EBS "GL Period Balances"
+--         export layout -- optional ccId / accountType / *Desc per segment;
+--         ptd optional (blank = 0); adjustment period '13-YYYY' accepted,
+--         dated 31-Dec of its year)
 --   GET  /gl/ebs-balances/summary                per-year coverage + unmapped
 --   POST /gl/ebs-balances/register               enqueue EBS_GL_BALANCE_REGISTER
 --   GET  /gl/ebs-balances/register/:id[/file]    poll status / download XLSX
@@ -206,15 +210,34 @@ DECLARE
   l_src   VARCHAR2(200);
   l_ent   VARCHAR2(30); l_cc VARCHAR2(30); l_bud VARCHAR2(30); l_acc VARCHAR2(30);
   l_act   VARCHAR2(30); l_f1 VARCHAR2(30); l_f2 VARCHAR2(30);
-  l_per   VARCHAR2(20); l_ptd NUMBER; l_pd DATE;
+  l_per   VARCHAR2(20); l_ptd NUMBER; l_bgt NUMBER; l_enc NUMBER; l_pd DATE;
+  l_bgty  NUMBER; l_ency NUMBER; l_acty NUMBER;
+  l_ccid  NUMBER;       l_atype VARCHAR2(60);
+  l_entd  VARCHAR2(240); l_ccd VARCHAR2(240); l_budd VARCHAR2(240);
+  l_accd  VARCHAR2(240); l_actd VARCHAR2(240);
+  l_f1d   VARCHAR2(240); l_f2d VARCHAR2(240);
   l_ok    NUMBER := 0; l_err NUMBER := 0;
+  -- Canonical segment widths (user rule 2026-07-30): Entity 3, Cost centre 7,
+  -- Budget group 1, Account 6, Activity 6, Future1 6, Future2 6. EBS exports
+  -- drop leading zeros -- numeric values are zero-padded to exact width.
+  FUNCTION eseg(p VARCHAR2, w NUMBER) RETURN VARCHAR2 IS
+  BEGIN
+    IF p IS NULL THEN RETURN NULL; END IF;
+    IF REGEXP_LIKE(TRIM(p), '^[0-9]+$') THEN RETURN LPAD(TRIM(p), w, '0'); END IF;
+    RETURN TRIM(p);
+  END;
   -- FX = exact-format parse. WITHOUT it Oracle leniently reads 'JAN-25'
   -- under 'MM-YYYY' as year 0025 (found in smoke) -- never drop the FX.
+  -- EBS adjustment period '13-YYYY' is valid: dated 31-Dec of its year so
+  -- it always lands inside December / full-year YTD windows.
   FUNCTION parse_period(p VARCHAR2) RETURN DATE IS
     d DATE;
     FUNCTION ok(x DATE) RETURN BOOLEAN IS
     BEGIN RETURN x IS NOT NULL AND EXTRACT(YEAR FROM x) BETWEEN 1990 AND 2100; END;
   BEGIN
+    IF REGEXP_LIKE(p, '^13-[0-9]{4}$') THEN
+      RETURN TO_DATE('31-12-' || SUBSTR(p, 4) DEFAULT NULL ON CONVERSION ERROR, 'FXDD-MM-YYYY');
+    END IF;
     d := TO_DATE(p DEFAULT NULL ON CONVERSION ERROR, 'FXMM-YYYY');
     IF NOT ok(d) THEN d := TO_DATE(p DEFAULT NULL ON CONVERSION ERROR, 'FXMON-YYYY', q'#NLS_DATE_LANGUAGE=ENGLISH#'); END IF;
     IF NOT ok(d) THEN d := TO_DATE(p DEFAULT NULL ON CONVERSION ERROR, 'FXMON-YY',   q'#NLS_DATE_LANGUAGE=ENGLISH#'); END IF;
@@ -244,31 +267,70 @@ BEGIN
       l_f1  := TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].future1',    p0=>i));
       l_f2  := TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].future2',    p0=>i));
       l_per := TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].period',     p0=>i));
-      l_ptd := APEX_JSON.get_number(p_path=>'rows[%d].ptd', p0=>i);
-      IF l_ent IS NULL OR l_cc IS NULL OR l_acc IS NULL OR l_per IS NULL OR l_ptd IS NULL THEN
-        RAISE_APPLICATION_ERROR(-20001,'entity, costCenter, account, period and ptd are required');
+      l_ptd := NVL(APEX_JSON.get_number(p_path=>'rows[%d].ptd',         p0=>i), 0);
+      l_bgt := NVL(APEX_JSON.get_number(p_path=>'rows[%d].budget',      p0=>i), 0);
+      l_enc := NVL(APEX_JSON.get_number(p_path=>'rows[%d].encumbrance', p0=>i), 0);
+      l_bgty := NVL(APEX_JSON.get_number(p_path=>'rows[%d].budgetYtd',      p0=>i), 0);
+      l_ency := NVL(APEX_JSON.get_number(p_path=>'rows[%d].encumbranceYtd', p0=>i), 0);
+      l_acty := NVL(APEX_JSON.get_number(p_path=>'rows[%d].actualYtd',      p0=>i), 0);
+      l_ccid  := APEX_JSON.get_number(p_path=>'rows[%d].ccId', p0=>i);
+      l_atype := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].accountType',    p0=>i)),1,60);
+      l_entd  := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].entityDesc',     p0=>i)),1,240);
+      l_ccd   := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].costCenterDesc', p0=>i)),1,240);
+      l_budd  := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].budgetDesc',     p0=>i)),1,240);
+      l_accd  := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].accountDesc',    p0=>i)),1,240);
+      l_actd  := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].activityDesc',   p0=>i)),1,240);
+      l_f1d   := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].future1Desc',    p0=>i)),1,240);
+      l_f2d   := SUBSTR(TRIM(APEX_JSON.get_varchar2(p_path=>'rows[%d].future2Desc',    p0=>i)),1,240);
+      IF l_ent IS NULL OR l_cc IS NULL OR l_acc IS NULL OR l_per IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001,'entity, costCenter, account and period are required');
       END IF;
+      l_ent := eseg(l_ent, 3);
+      l_cc  := eseg(l_cc,  7);
+      l_bud := eseg(NVL(l_bud, '0'), 1);
+      l_acc := eseg(l_acc, 6);
+      l_act := eseg(NVL(l_act, '0'), 6);
+      l_f1  := eseg(NVL(l_f1,  '0'), 6);
+      l_f2  := eseg(NVL(l_f2,  '0'), 6);
       l_pd := parse_period(l_per);
-      MERGE INTO prod.dct_ebs_gl_balance t
-      USING (SELECT l_ent AS e, l_cc AS c, NVL(l_bud,'0') AS b, l_acc AS a,
-                    NVL(l_act,'0') AS av, NVL(l_f1,'0') AS f1, NVL(l_f2,'0') AS f2,
-                    l_per AS p FROM dual) s
-         ON (t.entity_code = s.e AND t.cost_center_code = s.c AND t.budget_code = s.b
-             AND t.account_code = s.a AND t.activity_code = s.av
-             AND t.future1_code = s.f1 AND t.future2_code = s.f2
-             AND t.accounting_period = s.p)
-      WHEN NOT MATCHED THEN INSERT
-           (entity_code, cost_center_code, budget_code, account_code, activity_code,
-            future1_code, future2_code, accounting_period, period_date, period_year,
-            ptd_amount, source_file, loaded_by)
-      VALUES (s.e, s.c, s.b, s.a, s.av, s.f1, s.f2, s.p, l_pd,
-              NVL(EXTRACT(YEAR FROM l_pd), TO_NUMBER(REGEXP_SUBSTR(l_per,'[0-9]{4}'))),
-              l_ptd, l_src, l_user)
-      WHEN MATCHED THEN UPDATE SET
-           t.ptd_amount = l_ptd, t.period_date = l_pd,
-           t.period_year = NVL(EXTRACT(YEAR FROM l_pd), TO_NUMBER(REGEXP_SUBSTR(l_per,'[0-9]{4}'))),
-           t.source_file = NVL(l_src, t.source_file),
-           t.loaded_by = l_user, t.loaded_at = SYSTIMESTAMP;
+      UPDATE prod.dct_ebs_gl_balance t
+         SET t.ptd_amount = l_ptd, t.budget_amount = l_bgt, t.encumbrance_amount = l_enc,
+             t.budget_ytd = l_bgty, t.encumbrance_ytd = l_ency, t.actual_ytd = l_acty,
+             t.period_date = l_pd,
+             t.period_year = NVL(EXTRACT(YEAR FROM l_pd), TO_NUMBER(REGEXP_SUBSTR(l_per,'[0-9]{4}'))),
+             t.cc_id = NVL(l_ccid, t.cc_id),
+             t.entity_desc      = NVL(l_entd, t.entity_desc),
+             t.cost_center_desc = NVL(l_ccd,  t.cost_center_desc),
+             t.budget_desc      = NVL(l_budd, t.budget_desc),
+             t.account_desc     = NVL(l_accd, t.account_desc),
+             t.activity_desc    = NVL(l_actd, t.activity_desc),
+             t.future1_desc     = NVL(l_f1d,  t.future1_desc),
+             t.future2_desc     = NVL(l_f2d,  t.future2_desc),
+             t.account_type     = NVL(l_atype, t.account_type),
+             t.source_file = NVL(l_src, t.source_file),
+             t.loaded_by = l_user, t.loaded_at = SYSTIMESTAMP
+       WHERE t.entity_code = l_ent AND t.cost_center_code = l_cc
+         AND t.budget_code = l_bud AND t.account_code = l_acc
+         AND t.activity_code = l_act
+         AND t.future1_code = l_f1 AND t.future2_code = l_f2
+         AND t.accounting_period = l_per;
+      IF SQL%ROWCOUNT = 0 THEN
+        INSERT INTO prod.dct_ebs_gl_balance
+             (entity_code, cost_center_code, budget_code, account_code, activity_code,
+              future1_code, future2_code, accounting_period, period_date, period_year,
+              ptd_amount, budget_amount, encumbrance_amount,
+              budget_ytd, encumbrance_ytd, actual_ytd,
+              cc_id, entity_desc, cost_center_desc, budget_desc, account_desc,
+              activity_desc, future1_desc, future2_desc, account_type,
+              source_file, loaded_by)
+        VALUES (l_ent, l_cc, l_bud, l_acc, l_act,
+                l_f1, l_f2, l_per, l_pd,
+                NVL(EXTRACT(YEAR FROM l_pd), TO_NUMBER(REGEXP_SUBSTR(l_per,'[0-9]{4}'))),
+                l_ptd, l_bgt, l_enc,
+                l_bgty, l_ency, l_acty,
+                l_ccid, l_entd, l_ccd, l_budd, l_accd, l_actd, l_f1d, l_f2d, l_atype,
+                l_src, l_user);
+      END IF;
       l_ok := l_ok + 1;
       APEX_JSON.open_object;
       APEX_JSON.write('row', i);
@@ -296,6 +358,9 @@ END;
     def_handler('ebs-balances/summary', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  -- PLATFORM RULE 2026-08-02: Budget Group defaults to '1' (Current
+  -- operations); bg= pipe list may add 2/8.
+  l_bg   VARCHAR2(30)  := NVL(SUBSTR(TRIM([COLON]bg),1,30), '1');
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_EBS_MAPPING', NULL, 'GL') = FALSE THEN
@@ -309,9 +374,14 @@ BEGIN
            COUNT(DISTINCT ebs_combination) AS n_combos,
            COUNT(DISTINCT accounting_period) AS n_periods,
            SUM(ptd_amount) AS ptd_total,
+           SUM(budget_amount) AS bgt_total,
+           SUM(encumbrance_amount) AS enc_total,
+           SUM(CASE WHEN SUBSTR(accounting_period,1,2) = '13' THEN actual_ytd END) AS ytd_at_13,
+           SUM(CASE WHEN SUBSTR(accounting_period,1,2) = '12' THEN actual_ytd END) AS ytd_at_12,
            SUM(CASE WHEN account_mapped = 'Y' THEN 1 ELSE 0 END) AS acc_mapped,
            SUM(CASE WHEN appr_mapped = 'Y' THEN 1 ELSE 0 END) AS apr_mapped
       FROM prod.dct_ebs_balance_mapped_v
+     WHERE INSTR('|' || l_bg || '|', '|' || budget_code || '|') > 0
      GROUP BY period_year ORDER BY period_year DESC) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('year',          r.period_year);
@@ -319,6 +389,9 @@ BEGIN
     APEX_JSON.write('combinations',  r.n_combos);
     APEX_JSON.write('periods',       r.n_periods);
     APEX_JSON.write('ptdTotal',      NVL(r.ptd_total,0));
+    APEX_JSON.write('budgetTotal',   NVL(r.bgt_total,0));
+    APEX_JSON.write('encTotal',      NVL(r.enc_total,0));
+    APEX_JSON.write('actualYtdFy',   NVL(NVL(r.ytd_at_13, r.ytd_at_12),0));
     APEX_JSON.write('accountMapped', r.acc_mapped);
     APEX_JSON.write('apprMapped',    r.apr_mapped);
     APEX_JSON.close_object;
@@ -329,6 +402,7 @@ BEGIN
     SELECT account_code, COUNT(*) AS n, SUM(ABS(ptd_amount)) AS amt
       FROM prod.dct_ebs_balance_mapped_v
      WHERE account_mapped = 'N'
+       AND INSTR('|' || l_bg || '|', '|' || budget_code || '|') > 0
      GROUP BY account_code ORDER BY SUM(ABS(ptd_amount)) DESC
      FETCH FIRST 10 ROWS ONLY) LOOP
     APEX_JSON.open_object;
@@ -338,15 +412,16 @@ BEGIN
     APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
-  APEX_JSON.open_array('unmappedFuture1');
+  APEX_JSON.open_array('unmappedFuture2');
   FOR r IN (
-    SELECT future1_code, COUNT(*) AS n, SUM(ABS(ptd_amount)) AS amt
+    SELECT future2_code, COUNT(*) AS n, SUM(ABS(ptd_amount)) AS amt
       FROM prod.dct_ebs_balance_mapped_v
      WHERE appr_mapped = 'N'
-     GROUP BY future1_code ORDER BY SUM(ABS(ptd_amount)) DESC
+       AND INSTR('|' || l_bg || '|', '|' || budget_code || '|') > 0
+     GROUP BY future2_code ORDER BY SUM(ABS(ptd_amount)) DESC
      FETCH FIRST 10 ROWS ONLY) LOOP
     APEX_JSON.open_object;
-    APEX_JSON.write('ebsFuture1', r.future1_code);
+    APEX_JSON.write('ebsFuture2', r.future2_code);
     APEX_JSON.write('rows',       r.n);
     APEX_JSON.write('absAmount',  NVL(r.amt,0));
     APEX_JSON.close_object;
@@ -380,6 +455,7 @@ BEGIN
   APEX_JSON.initialize_clob_output;
   APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
+  APEX_JSON.write('bg', NVL(APEX_JSON.get_varchar2(p_path=>'bg'), '1'));
   put('period'); put('account'); put('chapter'); put('search');
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;

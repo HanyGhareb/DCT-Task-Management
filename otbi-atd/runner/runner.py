@@ -117,6 +117,13 @@ def _run_one_sqlcl(ctx, env, job):
                              if drift else "prepared - awaiting schema review (not loaded)")
             print(f"[held] {name}: prepared, awaiting schema review (not loaded)")
             return True
+        if prepare.is_no_data_drift(drift):
+            # OTBI returned a valid no-results export. Its placeholder header cannot
+            # match the configured map, and there is intentionally nothing to load.
+            # Preserve the existing target snapshot and record a successful no-op.
+            loadsql.log_no_data(name, prepare.NO_DATA_MSG)
+            print(f"[ok-no-data] {name}: 0 rows; existing target preserved")
+            return True
         n = loadsql.load(job, csv_text, extra_msg="; ".join(drift) if drift else None)
         _warn_truncation(name, n)
         print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
@@ -139,24 +146,34 @@ def _log_start(conn, name, track="BROWSER"):
     return rid.getvalue()[0]
 
 
-def _log_end(conn, run_id, status, n=None, ck=None, msg=None):
+def _log_end(conn, run_id, status, n=None, ck=None, msg=None, phases=None):
     conn.cursor().execute(
         "update prod.atd_load_run_log set finished=systimestamp, status=:s, "
         "row_count=:rc, csv_checksum=:ck, message=:m where run_id=:id",
         s=status, rc=n, ck=ck, m=checks.scrub(msg), id=run_id)
+    if phases:
+        conn.cursor().executemany(
+            "insert into prod.atd_load_run_phase(run_id,phase_code,duration_ms,phase_status) "
+            "values (:1,:2,:3,:4)",
+            [(run_id, code, max(0, int(ms)), "SUCCESS") for code, ms in phases.items()])
     conn.commit()
 
 
 def _make_run_one_oracledb(conn, load):
-    def run_one(ctx, env, job):
+    def run_one(ctx, env, job, auth_ms=None):
         name = job["job_name"]
         run_id = _log_start(conn, name)
         drift = []
+        phases = {"AUTHENTICATION": auth_ms} if auth_ms is not None else {}
         try:
             params = json.loads(job["params_json"]) if job.get("params_json") else None
+            phase_started = time.perf_counter()
             csv_text = extract.download_job(ctx, env, job, params)
+            phases["DOWNLOAD"] = round((time.perf_counter() - phase_started) * 1000)
             # first run: derive table + map; later runs: auto-adapt to schema drift
+            phase_started = time.perf_counter()
             drift = prepare.ensure_prepared_oracledb(conn, job, csv_text)
+            phases["PROFILE"] = round((time.perf_counter() - phase_started) * 1000)
             if drift and not prepare.is_no_data_drift(drift):   # never Telegram a no-data run
                 notify.send(notify.render("ATD_DRIFT_MSG", "otbi-atd {job} schema drift: {drift}",
                                           job=name, drift="; ".join(drift)))
@@ -165,14 +182,25 @@ def _make_run_one_oracledb(conn, load):
             # loading any data until they approve it. Re-armed each run while held.
             if str(job.get("schema_reviewed") or "Y").upper() == "N":
                 _log_end(conn, run_id, "HELD", n=0,
-                         msg="; ".join(drift + ["prepared - awaiting schema review (not loaded)"]))
+                         msg="; ".join(drift + ["prepared - awaiting schema review (not loaded)"]),
+                         phases=phases)
                 print(f"[held] {name}: prepared, awaiting schema review (not loaded)")
                 return True
             ck = hashlib.sha256(csv_text.encode("utf-8", "replace")).hexdigest()
+            if prepare.is_no_data_drift(drift):
+                # A genuine zero-row extract is a successful no-op. Do not invoke
+                # the loader (the no-results placeholder header cannot match the
+                # column map) and do not clear/merge the existing target data.
+                _log_end(conn, run_id, "SUCCESS", n=0, ck=ck,
+                         msg=prepare.NO_DATA_MSG, phases=phases)
+                print(f"[ok-no-data] {name}: 0 rows; existing target preserved")
+                return True
             date_warnings = {"total": 0, "items": []}
             n = load.load(conn, csv_text, job["stage_table"], job["final_table"],
                           job["load_mode"], job["key_columns"], job["column_map_json"],
-                          run_id=run_id, job_name=name, warning_state=date_warnings)
+                          run_id=run_id, job_name=name, warning_state=date_warnings,
+                          phase_timings=phases)
+            phase_started = time.perf_counter()
             note = _warn_truncation(name, n)
             if date_warnings["total"]:
                 shown = len(date_warnings["items"])
@@ -180,8 +208,9 @@ def _make_run_one_oracledb(conn, load):
                              f"as NULL; {shown} detail sample(s) recorded")
                 drift.append(date_note)
                 print(f"[WARN] {name}: {date_note}")
+            phases["POST_LOAD"] = round((time.perf_counter() - phase_started) * 1000)
             _log_end(conn, run_id, "SUCCESS", n=n, ck=ck,
-                     msg="; ".join(drift + ([note] if note else [])) or None)
+                     msg="; ".join(drift + ([note] if note else [])) or None, phases=phases)
             print(f"[ok] {name}: {n} rows -> {job['stage_table']}")
             return True
         except extract.SessionExpired:
@@ -194,7 +223,8 @@ def _make_run_one_oracledb(conn, load):
             except Exception:  # noqa: BLE001
                 pass
             _log_end(conn, run_id, "REQUEUED",
-                     msg="; ".join(drift + ["session expired mid-run; requeued for retry"])[:3900])
+                     msg="; ".join(drift + ["session expired mid-run; requeued for retry"])[:3900],
+                     phases=phases)
             print(f"[requeue] {name}: session expired mid-run; requeued for retry")
             raise
         except Exception as e:  # noqa: BLE001
@@ -206,7 +236,7 @@ def _make_run_one_oracledb(conn, load):
             except Exception:  # noqa: BLE001
                 pass
             # prepend drift so the job log explains *why* a drifted load failed
-            _log_end(conn, run_id, "FAILED", msg="; ".join(drift + [str(e)])[:3900])
+            _log_end(conn, run_id, "FAILED", msg="; ".join(drift + [str(e)])[:3900], phases=phases)
             print(f"[FAIL] {name}: {e}")
             return False
     return run_one
@@ -331,27 +361,46 @@ def _heartbeat(conn, status, job=None):
 
 
 def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
-    """Operator-triggered re-login: if atd_worker_heartbeat.refresh_req is set for THIS
-    worker (by the UI 'Refresh' button or the Telegram 'refresh <vm>' command), clear it
-    and FORCE a fresh Fusion login (one MFA push) — dropping any cached session first.
-    Best-effort: never break the idle loop."""
+    """Handle an operator session check or an explicit forced re-login.
+
+    A check preserves a healthy live context (or validates/reuses saved state); only an
+    invalid session proceeds to MFA. A refresh always replaces the session and fires MFA.
+    """
     try:
         cur = conn.cursor()
-        cur.execute("select refresh_req from prod.atd_worker_heartbeat where worker_id=:w", w=host)
+        cur.execute("select refresh_req,session_check_req from prod.atd_worker_heartbeat "
+                    "where worker_id=:w", w=host)
         row = cur.fetchone()
-        if not row or row[0] is None:
+        if not row or (row[0] is None and row[1] is None):
             return
-        cur.execute("update prod.atd_worker_heartbeat set refresh_req=NULL where worker_id=:w", w=host)
+        force = row[0] is not None
+        cur.execute("update prod.atd_worker_heartbeat set refresh_req=NULL,session_check_req=NULL "
+                    "where worker_id=:w", w=host)
         conn.commit()
     except Exception as e:  # noqa: BLE001
         print(f"[worker {host}] refresh check error: {e}", flush=True)
         return
-    print(f"[worker {host}] operator refresh requested -> forcing a fresh login", flush=True)
+    action = "force re-login" if force else "session check"
+    print(f"[worker {host}] operator {action} requested", flush=True)
     denv = config.get_default_browser_env(conn)
     if not denv:
         print(f"[worker {host}] refresh: no enabled BROWSER env to log into", flush=True)
         return
     en = denv["env_name"]
+    envd = {"env_name": en, "analytics_base_url": denv["analytics_base_url"],
+            "credential_ref": denv.get("credential_ref") or en}
+
+    if not force and en in ctx_by_env:
+        try:
+            if auth._validate(ctx_by_env[en][1], envd):
+                auth._record_mfa("SESSION_OK", en)
+                print(f"[worker {host}] session check: active session OK (reused)", flush=True)
+                return
+        except Exception as e:  # noqa: BLE001
+            print(f"[worker {host}] session check validation failed: {e}", flush=True)
+        print(f"[worker {host}] session check: active session invalid -> fresh login", flush=True)
+        force = True
+
     dead = browser_by_env.pop(en, None)
     ctx_by_env.pop(en, None)
     if dead:
@@ -359,16 +408,17 @@ def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
             dead.close()
         except Exception:  # noqa: BLE001
             pass
-    envd = {"env_name": en, "analytics_base_url": denv["analytics_base_url"],
-            "credential_ref": denv.get("credential_ref") or en}
     try:
-        browser, ctx = auth.authenticate(p, envd, force=True)   # force a clean login (MFA)
+        # With no live context, a check first validates saved state; a force never does.
+        browser, ctx = auth.authenticate(p, envd, force=force)
         browsers.append(browser)
         browser_by_env[en] = browser
         ctx_by_env[en] = (envd, ctx)
-        print(f"[worker {host}] refresh: fresh login OK", flush=True)
+        if not force:
+            auth._record_mfa("SESSION_OK", en)
+        print(f"[worker {host}] {action}: session OK", flush=True)
     except Exception as e:  # noqa: BLE001 (e.g. MFA not approved)
-        print(f"[worker {host}] refresh: login failed: {e}", flush=True)
+        print(f"[worker {host}] {action}: login failed: {e}", flush=True)
 
 
 def _alert_stale_workers(conn, stale_minutes=5):
@@ -505,15 +555,23 @@ def _relogin(p, host, en, envd, ctx_by_env, browser_by_env, browsers):
         return False
 
 
-def _log_orphan(conn, name, status, msg):
+def _log_orphan(conn, name, status, msg, auth_ms=None):
     """Write a run-log row for a job handed back / failed WITHOUT a run actually
     starting (e.g. the Fusion login failed before run_one). Keeps the failover budget
     (_recent_requeues counts REQUEUED) honest and makes the event visible in Run Logs."""
     try:
-        conn.cursor().execute(
+        cur = conn.cursor()
+        rid = cur.var(int)
+        cur.execute(
             "insert into prod.atd_load_run_log(job_name, track, status, finished, row_count, host_id, message) "
-            "values (:n,'BROWSER',:s,systimestamp,0,:h,:m)",
-            n=name[:80], s=status, h=_worker_id()[:120], m=checks.scrub(msg or "")[:3900])
+            "values (:n,'BROWSER',:s,systimestamp,0,:h,:m) returning run_id into :r",
+            n=name[:80], s=status, h=_worker_id()[:120], m=checks.scrub(msg or "")[:3900], r=rid)
+        if auth_ms is not None:
+            cur.execute("insert into prod.atd_load_run_phase"
+                        "(run_id,phase_code,duration_ms,phase_status) values"
+                        "(:r,'AUTHENTICATION',:ms,:ps)",
+                        r=rid.getvalue()[0], ms=max(0, int(auth_ms)),
+                        ps="SUCCESS" if status not in ("FAILED", "REQUEUED") else "FAILED")
         conn.commit()
     except Exception:  # noqa: BLE001
         pass
@@ -675,6 +733,7 @@ def _run_worker(conn, load, forever):
                 job = jobs[0]
                 lease_keeper = _LeaseKeeper(name, host, claim_token, lease).start()
                 env_name = job["env_name"]
+                auth_ms = None
                 if env_name not in ctx_by_env:
                     # Opening the session for a claimed job can need a fresh login (one MFA).
                     # If that FAILS (MFA not approved, or the session is dead at its absolute
@@ -683,16 +742,19 @@ def _run_worker(conn, load, forever):
                     # apply the same Tier 2 failover: pause claiming here and hand the job
                     # back to the queue for a peer with a live session (or FAIL past the cap).
                     try:
+                        auth_started = time.perf_counter()
                         browser, ctx = auth.authenticate(p, _env_of(job, env_name))
+                        auth_ms = round((time.perf_counter() - auth_started) * 1000)
                         browsers.append(browser)
                         browser_by_env[env_name] = browser
                         ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
                     except Exception as e:  # noqa: BLE001 (MFA timeout / still expired)
+                        auth_ms = round((time.perf_counter() - auth_started) * 1000)
                         session_dead[env_name] = True
                         reauth_at[env_name] = time.monotonic()
                         if requeue_max > 0 and _recent_requeues(conn, name) < requeue_max:
                             _log_orphan(conn, name, "REQUEUED",
-                                        f"login failed before run; requeued for a healthy worker: {e}")
+                                        f"login failed before run; requeued for a healthy worker: {e}", auth_ms)
                             lease_keeper.stop()
                             conn.cursor().callproc("prod.atd_queue_pkg.release_job",
                                                    [name, host, claim_token])
@@ -700,7 +762,7 @@ def _run_worker(conn, load, forever):
                                   f"queue ({e})", flush=True)
                         else:
                             _log_orphan(conn, name, "FAILED",
-                                        f"login failed before run; requeue budget exhausted: {e}")
+                                        f"login failed before run; requeue budget exhausted: {e}", auth_ms)
                             lease_keeper.stop()
                             conn.cursor().callproc("prod.atd_queue_pkg.mark_failed",
                                                    [name, host, claim_token, None])
@@ -713,7 +775,7 @@ def _run_worker(conn, load, forever):
                 _heartbeat(conn, "BUSY", name)
                 session_bounce = False
                 try:
-                    ok = run_one(ctx, env, job)
+                    ok = run_one(ctx, env, job, auth_ms=auth_ms)
                 except extract.SessionExpired as se:
                     # The cached warm session died mid-run. Try a rate-limited forced
                     # re-login (one MFA) + a single retry on THIS host; if that doesn't
