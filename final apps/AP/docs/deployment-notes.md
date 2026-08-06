@@ -429,3 +429,8 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   `applyColPrefs`/`persistCols` lists in dashboard.js or `visibleCols` throws and the
   level never loads. API smoke 6/6 (facet consistency: bank filter narrows installments/
   invoices/KPIs identically) + browser smoke 5/5.
+  The **Beneficiaries dashboard inherits the whole round automatically** (same
+  DashboardViewModel, locked suppnum): Installment level shows Beneficiary +
+  Supplier No columns (the benef column swap applies to the new level), the
+  bank-account facet LOV is beneficiary-scoped (suppnum honored in /filters —
+  1,268 accounts), due-date range + drill tab work; browser-verified 4/4.
