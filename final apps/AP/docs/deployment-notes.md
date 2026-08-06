@@ -48,6 +48,37 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 ## Deployment history
 
+- **2026-08-06 — AI dup-check: vendor bank-account evidence + shared-account
+  red-flag section (AP v1.15.0, db/06 re-run).** User request: "enhance the AI
+  checking process to check if same vendor bank account are used for different
+  vendors." Two enhancements to `DCT_AP_AI_PKG.benef_dup_check`, both fed by
+  the new `ap_invoice_installments` extract data: ① the AI prompt lines are now
+  `id|name|bank accounts` (LISTAGG DISTINCT per effective name, benef-scoped) —
+  a shared account is decisive same-identity evidence for name variants, and
+  group members ship `bankAccounts` (drawer column + CSV). Groups rose 135→~172
+  and ~170 reasons cite the shared account. ② deterministic **`sharedAccounts`**
+  envelope section: every bank account used by ≥2 DIFFERENT effective vendor
+  names, checked **PLATFORM-WIDE across all suppliers** (not just 26553) —
+  account key alphanumeric-normalised (`UPPER(REGEXP_REPLACE(...,'[^A-Za-z0-9]',''))`,
+  len ≥ 6) so spacing/dash IBAN variants still match; amounts de-duped at
+  invoice grain; top 100 accounts by vendor count then value +
+  `sharedAccountCount`/`sharedShown`. Live data: **148 shared accounts** — e.g.
+  one FAB corporate debit card paid under 92 names (3.78M AED), an Asteco
+  account spanning TWO supplier numbers (26553 + 12369), Private-Department
+  name variants. Frontend: red `.ai-group--warn` shared-accounts section in the
+  AI drawer (account mono + vendor-count danger badge + per-vendor table w/
+  Supplier No), members Bank-accounts column, CSV = both sections, meta line
+  shows the shared count, `ai.*` i18n +12 keys EN/AR, hint updated.
+  **PROMPT-QUALITY LESSON (2 iterations):** naive "shared account = decisive"
+  made the model merge all 92 corporate-card employees into ONE conf-1.0
+  "duplicate" group. Fix = prompt carve-out (a many-person card/prepaid funding
+  account must NOT group on the account alone) **+ server-side guard skipping
+  groups with `confidence < 0.4`** (models still emit the catch-all group at
+  conf 0.1 despite instructions — filter, don't trust). Browser smoke
+  `ap_ai_shared_browser.py` 7/7 EN+AR (gotcha: on `#beneficiaries` get the VM
+  via `ko.dataFor(<element inside the drawer>)` — the module host's first child
+  belongs to the wrapper VM, not DashboardViewModel).
+
 - **2026-07-19 — AI-button hint + PLATFORM rebrand "Fusion i-Finance" + DCT logo.**
   ① The Beneficiaries "Check duplicate using AI…" button gained a rich `title`
   hint (`ai.btn.hint` EN/AR) explaining what the analysis does, how long it

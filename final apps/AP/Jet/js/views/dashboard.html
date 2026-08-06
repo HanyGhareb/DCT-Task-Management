@@ -731,7 +731,7 @@
       </div>
       <div class="dw-acts">
         <button class="btn btn-sm" data-bind="click: aiExportCsv, text: $root.t('rg.exportCsv'),
-                visible: !aiLoading() && aiGroups().length > 0"></button>
+                visible: !aiLoading() && (aiGroups().length > 0 || aiShared().length > 0)"></button>
         <button class="btn btn-sm" data-bind="click: closeAiDup, text: $root.t('dr.close')"></button>
       </div>
     </header>
@@ -768,6 +768,7 @@
           <thead><tr>
             <th data-bind="text: $vm.t('ben.name')"></th>
             <th data-bind="text: $vm.t('dr.site')"></th>
+            <th data-bind="text: $vm.t('ai.colAccounts')"></th>
             <th class="ap-amount" data-bind="text: $vm.t('ai.colInvs')"></th>
             <th class="ap-amount" data-bind="text: $vm.t('tbl.amountAed')"></th>
             <th data-bind="text: $vm.t('ai.colFirst')"></th>
@@ -777,6 +778,7 @@
             <tr>
               <td data-bind="text: $data.name"></td>
               <td data-bind="text: $data.site || ''"></td>
+              <td class="ai-acct" data-bind="text: $data.bankAccounts || ''"></td>
               <td class="ap-amount" data-bind="text: $vm.fmtInt($data.invoices)"></td>
               <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.totalAed)"></td>
               <td data-bind="text: $data.firstInvoice || ''"></td>
@@ -788,6 +790,59 @@
       <!-- /ko -->
       <!-- ko if: aiMeta() && aiGroups().length > 0 -->
       <div class="ai-note" data-bind="text: $vm.t('ai.note')"></div>
+      <!-- /ko -->
+
+      <!-- ── Shared bank accounts — same account, different vendors ────── -->
+      <!-- ko if: aiMeta() -->
+      <div class="ai-shared-hd">
+        <div class="ai-shared-title" data-bind="text: $vm.t('ai.sharedTitle')"></div>
+        <div class="ai-shared-sub" data-bind="text: $vm.t('ai.sharedSub')"></div>
+      </div>
+      <!-- ko if: aiShared().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('ai.sharedNone')"></div>
+      <!-- /ko -->
+      <!-- ko foreach: aiShared -->
+      <div class="ai-group ai-group--warn">
+        <div class="ai-group-h">
+          <span class="ai-group-no" data-bind="text: '#' + ($index() + 1)"></span>
+          <b class="ai-group-name ai-acct" data-bind="text: $data.bankAccount"></b>
+          <span class="badge badge--danger"
+                data-bind="text: $vm.fmtInt($data.vendorCount) + ' ' + $vm.t('ai.colVendors')"></span>
+          <span class="ai-group-tot">
+            <span data-bind="text: $vm.fmtInt($data.invoices) + ' ' + $vm.t('ai.colInvs')"></span>
+            · <b data-bind="text: $vm.fmtAmt($data.totalAed)"></b>
+          </span>
+        </div>
+        <div class="data-table-wrap"><table class="data-table">
+          <thead><tr>
+            <th data-bind="text: $vm.t('ai.colVendor')"></th>
+            <th data-bind="text: $vm.t('ben.suppNo')"></th>
+            <th data-bind="text: $vm.t('dr.site')"></th>
+            <th class="ap-amount" data-bind="text: $vm.t('ai.colInvs')"></th>
+            <th class="ap-amount" data-bind="text: $vm.t('tbl.amountAed')"></th>
+            <th data-bind="text: $vm.t('ai.colFirst')"></th>
+            <th data-bind="text: $vm.t('ai.colLast')"></th>
+          </tr></thead>
+          <tbody data-bind="foreach: $data.vendors">
+            <tr>
+              <td data-bind="text: $data.name"></td>
+              <td data-bind="text: $data.supplierNumber || ''"></td>
+              <td data-bind="text: $data.site || ''"></td>
+              <td class="ap-amount" data-bind="text: $vm.fmtInt($data.invoices)"></td>
+              <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.totalAed)"></td>
+              <td data-bind="text: $data.firstInvoice || ''"></td>
+              <td data-bind="text: $data.lastInvoice || ''"></td>
+            </tr>
+          </tbody>
+        </table></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko if: aiSharedTrunc() -->
+      <div class="ai-note" data-bind="text: aiSharedTrunc"></div>
+      <!-- /ko -->
+      <!-- ko if: aiShared().length > 0 -->
+      <div class="ai-note" data-bind="text: $vm.t('ai.sharedNote')"></div>
+      <!-- /ko -->
       <!-- /ko -->
       <!-- /ko -->
       <!-- /ko -->

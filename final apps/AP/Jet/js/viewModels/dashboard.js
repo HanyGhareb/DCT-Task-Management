@@ -1193,18 +1193,21 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self.aiError   = ko.observable('');
     self.aiMeta    = ko.observable(null);
     self.aiGroups  = ko.observableArray([]);
+    self.aiShared  = ko.observableArray([]);   // same bank account, different vendors
     self.runAiDup = function () {
       self.aiOpen(true);
       if (self.aiLoading()) return;
-      self.aiLoading(true); self.aiError(''); self.aiGroups([]); self.aiMeta(null);
+      self.aiLoading(true); self.aiError(''); self.aiGroups([]); self.aiShared([]); self.aiMeta(null);
       api.post('/benef/dupcheck?suppnum=' + encodeURIComponent(SUPPNUM), {}).then(function (d) {
         var groups = (d.groups || []).slice()
           .sort(function (a, b) { return (b.totalAed || 0) - (a.totalAed || 0); });
         self.aiGroups(groups);
+        self.aiShared(d.sharedAccounts || []);
         self.aiMeta({
           analyzed: d.analyzed, groupCount: d.groupCount,
           provider: d.provider, model: d.model,
-          fellback: d.fellback === 'Y', elapsedSecs: d.elapsedSecs
+          fellback: d.fellback === 'Y', elapsedSecs: d.elapsedSecs,
+          sharedCount: d.sharedAccountCount || 0, sharedShown: d.sharedShown || 0
         });
         self.aiLoading(false);
       }).catch(function (e) {
@@ -1221,23 +1224,43 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       var m = self.aiMeta();
       if (!m) return '';
       return lt('ai.meta', [self.fmtInt(m.analyzed), self.fmtInt(m.groupCount)])
+        + ' \u00B7 ' + lt('ai.metaShared', [self.fmtInt(m.sharedCount)])
         + ' \u00B7 ' + m.model + (m.fellback ? ' (' + lt('ai.fellback') + ')' : '')
         + ' \u00B7 ' + m.elapsedSecs + 's';
     });
+    self.aiSharedTrunc = ko.pureComputed(function () {
+      var m = self.aiMeta();
+      return (m && m.sharedCount > m.sharedShown)
+        ? lt('ai.sharedTrunc', [self.fmtInt(m.sharedShown), self.fmtInt(m.sharedCount)]) : '';
+    });
     self.aiExportCsv = function () {
-      var groups = self.aiGroups();
-      if (!groups.length) return;
+      var groups = self.aiGroups(), shared = self.aiShared();
+      if (!groups.length && !shared.length) return;
       var esc2 = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
       var L = [[lt('ai.colGroup'), lt('ai.colCanonical'), lt('ai.colConf'), lt('ai.colReason'),
-                lt('ben.name'), lt('dr.site'), lt('ai.colInvs'), lt('tbl.amountAed'),
-                lt('ai.colFirst'), lt('ai.colLast')].map(esc2).join(',')];
+                lt('ben.name'), lt('dr.site'), lt('ai.colAccounts'), lt('ai.colInvs'),
+                lt('tbl.amountAed'), lt('ai.colFirst'), lt('ai.colLast')].map(esc2).join(',')];
       groups.forEach(function (g, gi) {
         (g.members || []).forEach(function (m) {
           L.push([gi + 1, g.canonical, self.aiConfTxt(g.confidence), g.reason,
-                  m.name, m.site, m.invoices, m.totalAed, m.firstInvoice, m.lastInvoice]
-                 .map(esc2).join(','));
+                  m.name, m.site, m.bankAccounts, m.invoices, m.totalAed,
+                  m.firstInvoice, m.lastInvoice].map(esc2).join(','));
         });
       });
+      if (shared.length) {
+        L.push('');
+        L.push(esc2(lt('ai.sharedTitle')));
+        L.push([lt('ai.colAccount'), lt('ai.colVendor'), lt('ben.suppNo'), lt('dr.site'),
+                lt('ai.colInvs'), lt('tbl.amountAed'), lt('ai.colFirst'), lt('ai.colLast')]
+               .map(esc2).join(','));
+        shared.forEach(function (a) {
+          (a.vendors || []).forEach(function (v) {
+            L.push([a.bankAccount, v.name, v.supplierNumber, v.site,
+                    v.invoices, v.totalAed, v.firstInvoice, v.lastInvoice]
+                   .map(esc2).join(','));
+          });
+        });
+      }
       var blob = new Blob(['\uFEFF' + L.join('\r\n')], { type: 'text/csv;charset=utf-8' });
       downloadBlobUrl(URL.createObjectURL(blob), FP + 'ai-duplicates-' + today() + '.csv');
     };

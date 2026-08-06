@@ -10,11 +10,20 @@
 --           (extra spaces, different capitalisation, Mohamed/Mohammed
 --           transliterations, swapped name order, titles, typos). One AI call
 --           clusters the distinct beneficiary names into likely-duplicate
---           groups.
+--           groups. Since 2026-08-06 the check also uses the AP installments
+--           extract's vendor bank accounts two ways: each name's known
+--           account(s) ride the AI prompt as decisive same-identity evidence,
+--           and a deterministic red-flag section lists every bank account used
+--           by two or more DIFFERENT vendors (platform-wide, all suppliers --
+--           the classic AP fraud indicator; account key alphanumeric-
+--           normalised so spacing/dash formatting still matches).
 --   POST /ap/benef/dupcheck?suppnum=   -> {analyzed, groupCount, provider,
 --        model, fellback, elapsedSecs, groups:[{canonical, confidence, reason,
 --        invoices, totalAed, members:[{name, invoices, totalAed, firstInvoice,
---        lastInvoice, site}]}]}
+--        lastInvoice, site, bankAccounts}]}],
+--        sharedAccounts:[{bankAccount, vendorCount, invoices, totalAed,
+--        vendors:[{name, supplierNumber, site, invoices, totalAed,
+--        firstInvoice, lastInvoice}]}], sharedAccountCount, sharedShown}
 -- AI      : SAME configuration as the FL module (user requirement) --
 --           provider registry prod.dct_ar_ai_providers + the FREELANCERS
 --           module settings AI_PROVIDER / AI_MODEL / AI_FALLBACK_CLAUDE,
@@ -281,9 +290,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         TYPE t_vc   IS TABLE OF VARCHAR2(400) INDEX BY PLS_INTEGER;
         TYPE t_num  IS TABLE OF NUMBER        INDEX BY PLS_INTEGER;
         TYPE t_dt   IS TABLE OF VARCHAR2(10)  INDEX BY PLS_INTEGER;
-        v_name  t_vc;  v_site t_vc;
+        TYPE t_map  IS TABLE OF VARCHAR2(200) INDEX BY VARCHAR2(1000);
+        v_name  t_vc;  v_site t_vc;  v_accts t_vc;
         v_invs  t_num; v_amt  t_num;
         v_first t_dt;  v_last t_dt;
+        v_accmap   t_map;
         v_n        PLS_INTEGER := 0;
         v_list     CLOB;
         v_prompt   CLOB;
@@ -299,6 +310,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         v_g_amt    NUMBER;
         TYPE t_ids IS TABLE OF NUMBER;
         v_ids      t_ids;
+        v_shared_total   PLS_INTEGER := 0;
+        v_shared_emitted PLS_INTEGER := 0;
+        v_cur_key        VARCHAR2(200);
     BEGIN
         -- 1) distinct effective beneficiary names + stats
         FOR r IN (
@@ -329,10 +343,36 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
             RAISE_APPLICATION_ERROR(-20404, 'No beneficiaries found for supplier ' || p_suppnum);
         END IF;
 
+        -- 1b) known vendor bank account(s) per beneficiary name, from the AP
+        --     installments extract. Fed to the AI as decisive same-identity
+        --     evidence: two differently-spelled names on one account are
+        --     almost certainly the same beneficiary.
+        FOR r IN (
+            SELECT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                        THEN h.beneficiary_name ELSE h.supplier_name END nm,
+                   SUBSTR(LISTAGG(DISTINCT n.bank_account_number, ';' ON OVERFLOW TRUNCATE)
+                          WITHIN GROUP (ORDER BY n.bank_account_number), 1, 200) accts
+            FROM prod.ap_invoice_installments n
+            JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
+            WHERE h.supplier_number = p_suppnum
+              AND n.bank_account_number IS NOT NULL
+            GROUP BY CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                          THEN h.beneficiary_name ELSE h.supplier_name END)
+        LOOP
+            v_accmap(SUBSTR(r.nm, 1, 400)) := r.accts;
+        END LOOP;
+        FOR i IN 1 .. v_n LOOP
+            IF v_accmap.EXISTS(v_name(i)) THEN
+                v_accts(i) := v_accmap(v_name(i));
+            ELSE
+                v_accts(i) := NULL;
+            END IF;
+        END LOOP;
+
         -- 2) prompt: numbered list, answer references the numbers only
         DBMS_LOB.CREATETEMPORARY(v_list, TRUE);
         FOR i IN 1 .. v_n LOOP
-            clob_append(v_list, i || '|' || v_name(i) || CHR(10));
+            clob_append(v_list, i || '|' || v_name(i) || '|' || v_accts(i) || CHR(10));
         END LOOP;
 
         DBMS_LOB.CREATETEMPORARY(v_prompt, TRUE);
@@ -344,6 +384,16 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
          || '(e.g. Mohamed/Mohammed/Muhammad, Abdulla/Abdullah), swapped name order, '
          || 'titles (Mr/Dr/Eng), missing middle names, abbreviations, company-suffix '
          || 'variants (LLC/L.L.C/LLC.), or small typos. '
+         || 'Each entry also carries the vendor bank account number(s) on record for it '
+         || '(third field, semicolon-separated, may be empty). Entries that SHARE a bank '
+         || 'account number AND have names compatible with the same person or company are '
+         || 'almost certainly the same beneficiary - treat that as decisive evidence and '
+         || 'cite the shared account in the reason. BUT one account paid to MANY clearly '
+         || 'different individuals (e.g. a corporate or prepaid card funding account) must '
+         || 'NOT be grouped on the account alone: never place names that clearly denote '
+         || 'different people in one group just because the account matches - the system '
+         || 'reports shared accounts across different vendors separately. Omit entirely '
+         || 'any group you would rate below 0.5 confidence. '
          || 'Group the entries that are LIKELY the same beneficiary. Rules: only groups of '
          || '2 or more entries; an entry belongs to at most one group; do NOT group names '
          || 'that merely share a first name or a common surname - the FULL identity must '
@@ -353,7 +403,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
          || 'Return MINIFIED JSON on one line - no indentation, no extra whitespace. '
          || 'Keep each reason under 12 words. '
          || 'If there are no likely duplicates return {"groups":[]}. '
-         || 'The list (' || v_n || ' names, format id|name):' || CHR(10));
+         || 'The list (' || v_n || ' entries, format id|name|bank accounts):' || CHR(10));
         DBMS_LOB.APPEND(v_prompt, v_list);
         DBMS_LOB.FREETEMPORARY(v_list);
 
@@ -399,7 +449,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
             WHERE g_idx = g.g_idx AND id_val BETWEEN 1 AND v_n;
 
             v_valid := NVL(v_ids.COUNT, 0);
-            IF v_valid >= 2 THEN
+            -- guard: models sometimes still emit a low-confidence catch-all
+            -- group for a many-person corporate card account - drop it
+            IF v_valid >= 2 AND NVL(g.confidence, 0) >= 0.4 THEN
                 v_groups := v_groups + 1;
                 v_g_invs := 0; v_g_amt := 0;
                 FOR i IN 1 .. v_ids.COUNT LOOP
@@ -421,6 +473,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
                     APEX_JSON.write('firstInvoice', v_first(v_ids(i)));
                     APEX_JSON.write('lastInvoice',  v_last(v_ids(i)));
                     APEX_JSON.write('site',         v_site(v_ids(i)));
+                    APEX_JSON.write('bankAccounts', v_accts(v_ids(i)));
                     APEX_JSON.close_object;
                 END LOOP;
                 APEX_JSON.close_array;
@@ -430,6 +483,98 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
 
         APEX_JSON.close_array;
         APEX_JSON.write('groupCount', v_groups);
+
+        -- 5) deterministic red-flag section: the same vendor bank account used
+        --    by two or more DIFFERENT vendors, checked PLATFORM-WIDE across
+        --    all suppliers (not just this generic-supplier population).
+        --    Account key = alphanumeric-normalised, so spacing/dash formatting
+        --    variants of one IBAN still match. Top 100 accounts by vendor
+        --    count then value; vendors within an account ranked by value.
+        SELECT COUNT(*) INTO v_shared_total
+        FROM (
+            SELECT 1
+            FROM prod.ap_invoice_installments n
+            JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
+            WHERE n.bank_account_number IS NOT NULL
+              AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
+            GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', ''))
+            HAVING COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                       THEN h.beneficiary_name ELSE h.supplier_name END) >= 2);
+
+        APEX_JSON.open_array('sharedAccounts');
+        FOR r IN (
+            SELECT * FROM (
+                SELECT s.*,
+                       DENSE_RANK() OVER (ORDER BY s.vcnt DESC, s.tot_amt DESC, s.bank_key) acc_rank
+                FROM (
+                    SELECT va.*,
+                           COUNT(*)          OVER (PARTITION BY va.bank_key) vcnt,
+                           ROUND(SUM(va.amt) OVER (PARTITION BY va.bank_key), 2) tot_amt,
+                           SUM(va.invs)      OVER (PARTITION BY va.bank_key) tot_invs
+                    FROM (
+                        SELECT inv.bank_key, MIN(inv.bank_raw) bank, inv.nm,
+                               MAX(inv.suppno) suppno, MAX(inv.site) site,
+                               COUNT(*) invs, ROUND(SUM(inv.amt), 2) amt,
+                               TO_CHAR(MIN(inv.inv_dt), 'YYYY-MM-DD') dt_first,
+                               TO_CHAR(MAX(inv.inv_dt), 'YYYY-MM-DD') dt_last
+                        FROM (
+                            SELECT UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) bank_key,
+                                   MIN(n.bank_account_number) bank_raw,
+                                   CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                        THEN h.beneficiary_name ELSE h.supplier_name END nm,
+                                   MAX(h.supplier_number) suppno, MAX(h.supplier_site) site,
+                                   h.invoice_id,
+                                   MAX(NVL(h.invoice_amount_aed, 0)) amt,
+                                   MAX(h.invoice_date) inv_dt
+                            FROM prod.ap_invoice_installments n
+                            JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
+                            WHERE n.bank_account_number IS NOT NULL
+                              AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
+                            GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')),
+                                     CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                          THEN h.beneficiary_name ELSE h.supplier_name END,
+                                     h.invoice_id
+                        ) inv
+                        GROUP BY inv.bank_key, inv.nm
+                    ) va
+                ) s
+                WHERE s.vcnt >= 2
+            )
+            WHERE acc_rank <= 100
+            ORDER BY acc_rank, amt DESC, nm)
+        LOOP
+            IF v_cur_key IS NULL OR r.bank_key != v_cur_key THEN
+                IF v_cur_key IS NOT NULL THEN
+                    APEX_JSON.close_array;
+                    APEX_JSON.close_object;
+                END IF;
+                v_cur_key := r.bank_key;
+                v_shared_emitted := v_shared_emitted + 1;
+                APEX_JSON.open_object;
+                APEX_JSON.write('bankAccount', r.bank);
+                APEX_JSON.write('vendorCount', r.vcnt);
+                APEX_JSON.write('invoices',    r.tot_invs);
+                APEX_JSON.write('totalAed',    r.tot_amt);
+                APEX_JSON.open_array('vendors');
+            END IF;
+            APEX_JSON.open_object;
+            APEX_JSON.write('name',           r.nm);
+            APEX_JSON.write('supplierNumber', r.suppno);
+            APEX_JSON.write('site',           r.site);
+            APEX_JSON.write('invoices',       r.invs);
+            APEX_JSON.write('totalAed',       r.amt);
+            APEX_JSON.write('firstInvoice',   r.dt_first);
+            APEX_JSON.write('lastInvoice',    r.dt_last);
+            APEX_JSON.close_object;
+        END LOOP;
+        IF v_cur_key IS NOT NULL THEN
+            APEX_JSON.close_array;
+            APEX_JSON.close_object;
+        END IF;
+        APEX_JSON.close_array;
+        APEX_JSON.write('sharedAccountCount', v_shared_total);
+        APEX_JSON.write('sharedShown', v_shared_emitted);
+
         APEX_JSON.write('elapsedSecs', ROUND((DBMS_UTILITY.GET_TIME - v_t0) / 100, 1));
         APEX_JSON.close_object;
         RETURN APEX_JSON.get_clob_output;
