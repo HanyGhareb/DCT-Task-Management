@@ -48,6 +48,43 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
 
 ## Deployment history
 
+- **2026-08-06 — AI Duplicate Check PAGE + invoice drills + PDF/Excel reports
+  (AP v1.16.0, db/06 re-run + NEW db/07 + reporting/db/33).** Same-day round 2
+  on the AI check (user request): ① drawer → **full page** `aiDuplicates`
+  (nav item "AI Duplicate Check"): every AI run is now PERSISTED
+  (`DCT_AP_AI_DUP_RUN/_GROUP/_MEMBER`, created in db/06 idempotently;
+  `benef_dup_check(p_suppnum, p_user)` inserts + COMMITs and the envelope
+  gains `runId/ranAt/ranBy/groupNo`), so the page loads the LAST run
+  instantly via NEW `GET /ap/benef/dupcheck/last` (`benef_dup_last` rebuilds
+  the envelope from the tables; shared accounts recomputed live via the
+  refactored `emit_shared`) and "Re-run analysis" is an explicit action.
+  The Beneficiaries-dashboard button now just navigates (AI VM block +
+  drawer markup removed from dashboard). ② **Invoice counts are links**:
+  NEW `GET /ap/benef/dupinvoices?bank=|name=|runid=&grp=` returns the
+  invoices behind any count (3 modes: normalised-bank platform-wide
+  [optional name], AI group via the persisted member names, effective
+  vendor name; cap 500 + count/totalAed) — right-edge drill drawer with a
+  reconciling total, CSV, and **invoice numbers deep-linking to Fusion**
+  (`fusionLinks.invoice(invoiceId)`). ③ **Generate Report** buttons
+  (GL-butil pattern): NEW Reporting-Platform definition
+  **AP_BENEF_DUP_REGISTER** (reporting/db/33 — MULTI, 5 lock-step sections:
+  overview / groups / group_invoices / shared_accounts / shared_invoices;
+  XLSX = sheet per section w/ FULL invoice detail; PDF = executive book via
+  DB-stored template `ap_dup_book.html.j2`, uploaded via PUT
+  /rpt/templates) + NEW bridge **AP/db/07** (`POST /ap/benef/dupreport`
+  {format:PDF|XLSX} → enqueue as the calling user · `GET :id` status ·
+  `GET :id/file` download). **AP post-03 re-run list is now 04, 06, 07.**
+  reporting/db/33 is a data seed (no re-run coupling). E2E: XLSX 267KB
+  5 sheets / PDF 505KB render on the fleet; API 7/7; browser smoke
+  `ap_aidup_page_browser.py` 9/9 EN+AR incl. BOTH report downloads.
+  **OPS incident on the way:** all rpt-workers showed systemd active but
+  heartbeats were ~18h stale (hung after a network blip) — QUEUED runs
+  never claimed; fix = `ssh root@192.168.1.18X systemctl restart
+  rpt-worker` ×3. A stuck reporting run ⇒ check `/rpt/workers` health
+  FIRST. Gotchas: the default `report.html.j2` has NO sections loop — a
+  MULTI PDF needs its own template; the AP router reads the hash only at
+  boot (in-page `#hash` goto does not remount — navigate via the shell VM).
+
 - **2026-08-06 — AI dup-check: vendor bank-account evidence + shared-account
   red-flag section (AP v1.15.0, db/06 re-run).** User request: "enhance the AI
   checking process to check if same vendor bank account are used for different

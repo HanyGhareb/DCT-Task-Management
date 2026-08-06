@@ -17,13 +17,29 @@
 --           by two or more DIFFERENT vendors (platform-wide, all suppliers --
 --           the classic AP fraud indicator; account key alphanumeric-
 --           normalised so spacing/dash formatting still matches).
+--           Since 2026-08-07 every run is PERSISTED (DCT_AP_AI_DUP_RUN /
+--           _GROUP / _MEMBER) so the AI Duplicate Check PAGE loads the last
+--           saved result instantly (GET .../last) and the Reporting-Platform
+--           definition AP_BENEF_DUP_REGISTER (reporting/db/33) reads the
+--           latest run; invoice counts drill to real invoices (GET
+--           benef/dupinvoices) with Fusion deep-link ids.
 --   POST /ap/benef/dupcheck?suppnum=   -> {analyzed, groupCount, provider,
---        model, fellback, elapsedSecs, groups:[{canonical, confidence, reason,
+--        model, fellback, elapsedSecs, runId, ranAt, ranBy,
+--        groups:[{groupNo, canonical, confidence, reason,
 --        invoices, totalAed, members:[{name, invoices, totalAed, firstInvoice,
 --        lastInvoice, site, bankAccounts}]}],
 --        sharedAccounts:[{bankAccount, vendorCount, invoices, totalAed,
 --        vendors:[{name, supplierNumber, site, invoices, totalAed,
 --        firstInvoice, lastInvoice}]}], sharedAccountCount, sharedShown}
+--   GET  /ap/benef/dupcheck/last?suppnum= -> the SAME envelope rebuilt from
+--        the latest persisted run (sharedAccounts recomputed live; no AI
+--        call); {"runId":null} when no run was ever saved.
+--   GET  /ap/benef/dupinvoices?bank=|name=|runid=&grp= [&suppnum=] -> the
+--        invoices behind any count: by normalised bank account (platform-wide,
+--        optional name), by AI group (runid+grp), or by effective vendor name
+--        -> {items:[{invoiceId, invoiceNumber, invoiceDate, name,
+--        supplierNumber, site, businessUnit, amountAed, paymentStatus,
+--        invoiceStatus, bankAccounts}], count, totalAed} (cap 500)
 -- AI      : SAME configuration as the FL module (user requirement) --
 --           provider registry prod.dct_ar_ai_providers + the FREELANCERS
 --           module settings AI_PROVIDER / AI_MODEL / AI_FALLBACK_CLAUDE,
@@ -35,11 +51,78 @@ SET DEFINE OFF
 SET SERVEROUTPUT ON SIZE UNLIMITED
 SET SQLBLANKLINES ON
 
+PROMPT === AI dup-run persistence tables (idempotent) ===
+DECLARE
+    n NUMBER;
+BEGIN
+    SELECT COUNT(*) INTO n FROM all_tables
+     WHERE owner = 'PROD' AND table_name = 'DCT_AP_AI_DUP_RUN';
+    IF n = 0 THEN
+        EXECUTE IMMEDIATE q'[
+CREATE TABLE prod.dct_ap_ai_dup_run (
+    run_id       NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    suppnum      VARCHAR2(40)  NOT NULL,
+    analyzed     NUMBER,
+    group_count  NUMBER,
+    shared_count NUMBER,
+    provider     VARCHAR2(40),
+    model        VARCHAR2(200),
+    fellback     VARCHAR2(1),
+    elapsed_secs NUMBER,
+    created_by   VARCHAR2(100),
+    created_at   TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL
+)]';
+        EXECUTE IMMEDIATE 'CREATE INDEX prod.ix_ap_ai_dup_run ON prod.dct_ap_ai_dup_run(suppnum, run_id)';
+    END IF;
+    SELECT COUNT(*) INTO n FROM all_tables
+     WHERE owner = 'PROD' AND table_name = 'DCT_AP_AI_DUP_GROUP';
+    IF n = 0 THEN
+        EXECUTE IMMEDIATE q'[
+CREATE TABLE prod.dct_ap_ai_dup_group (
+    run_id     NUMBER NOT NULL,
+    group_no   NUMBER NOT NULL,
+    canonical  VARCHAR2(400),
+    confidence NUMBER,
+    reason     VARCHAR2(600),
+    invoices   NUMBER,
+    total_aed  NUMBER,
+    CONSTRAINT pk_ap_ai_dup_group PRIMARY KEY (run_id, group_no),
+    CONSTRAINT fk_ap_ai_dup_group FOREIGN KEY (run_id)
+        REFERENCES prod.dct_ap_ai_dup_run(run_id) ON DELETE CASCADE
+)]';
+    END IF;
+    SELECT COUNT(*) INTO n FROM all_tables
+     WHERE owner = 'PROD' AND table_name = 'DCT_AP_AI_DUP_MEMBER';
+    IF n = 0 THEN
+        EXECUTE IMMEDIATE q'[
+CREATE TABLE prod.dct_ap_ai_dup_member (
+    run_id        NUMBER NOT NULL,
+    group_no      NUMBER NOT NULL,
+    member_no     NUMBER NOT NULL,
+    name          VARCHAR2(400),
+    site          VARCHAR2(400),
+    bank_accounts VARCHAR2(200),
+    invoices      NUMBER,
+    total_aed     NUMBER,
+    first_invoice VARCHAR2(10),
+    last_invoice  VARCHAR2(10),
+    CONSTRAINT pk_ap_ai_dup_member PRIMARY KEY (run_id, group_no, member_no),
+    CONSTRAINT fk_ap_ai_dup_member FOREIGN KEY (run_id)
+        REFERENCES prod.dct_ap_ai_dup_run(run_id) ON DELETE CASCADE
+)]';
+    END IF;
+END;
+/
+
 CREATE OR REPLACE PACKAGE prod.dct_ap_ai_pkg AS
     -- Cluster the distinct beneficiary names of one generic supplier into
-    -- likely-duplicate groups via the configured AI provider. Returns the
-    -- drawer-ready JSON envelope as a CLOB.
-    FUNCTION benef_dup_check (p_suppnum IN VARCHAR2 DEFAULT '26553') RETURN CLOB;
+    -- likely-duplicate groups via the configured AI provider. Persists the
+    -- run (DCT_AP_AI_DUP_*) and returns the page-ready JSON envelope.
+    FUNCTION benef_dup_check (p_suppnum IN VARCHAR2 DEFAULT '26553',
+                              p_user    IN VARCHAR2 DEFAULT NULL) RETURN CLOB;
+    -- The same envelope rebuilt from the LATEST persisted run (groups from
+    -- the tables, shared accounts recomputed live). NULL when no run exists.
+    FUNCTION benef_dup_last (p_suppnum IN VARCHAR2 DEFAULT '26553') RETURN CLOB;
 END dct_ap_ai_pkg;
 /
 
@@ -285,8 +368,108 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         RETURN DBMS_LOB.SUBSTR(p_in, v_end - v_start + 1, v_start);
     END json_only;
 
+    -- ------------------------------------------- shared-bank-account red flag
+    -- Writes the sharedAccounts array + counts into the CURRENT APEX_JSON
+    -- output: the same vendor bank account used by two or more DIFFERENT
+    -- vendors, checked PLATFORM-WIDE across all suppliers. Account key =
+    -- alphanumeric-normalised so spacing/dash formatting variants of one IBAN
+    -- still match; amounts de-duped at invoice grain. Top 100 accounts by
+    -- vendor count then value; vendors within an account ranked by value.
+    -- Deterministic - used by benef_dup_check AND benef_dup_last, and kept in
+    -- LOCK-STEP with the AP_BENEF_DUP_REGISTER section SQLs (reporting/db/33).
+    PROCEDURE emit_shared (o_total OUT PLS_INTEGER, o_shown OUT PLS_INTEGER) IS
+        v_cur_key VARCHAR2(200);
+    BEGIN
+        SELECT COUNT(*) INTO o_total
+        FROM (
+            SELECT 1
+            FROM prod.ap_invoice_installments n
+            JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
+            WHERE n.bank_account_number IS NOT NULL
+              AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
+            GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', ''))
+            HAVING COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                       THEN h.beneficiary_name ELSE h.supplier_name END) >= 2);
+
+        o_shown := 0;
+        APEX_JSON.open_array('sharedAccounts');
+        FOR r IN (
+            SELECT * FROM (
+                SELECT s.*,
+                       DENSE_RANK() OVER (ORDER BY s.vcnt DESC, s.tot_amt DESC, s.bank_key) acc_rank
+                FROM (
+                    SELECT va.*,
+                           COUNT(*)          OVER (PARTITION BY va.bank_key) vcnt,
+                           ROUND(SUM(va.amt) OVER (PARTITION BY va.bank_key), 2) tot_amt,
+                           SUM(va.invs)      OVER (PARTITION BY va.bank_key) tot_invs
+                    FROM (
+                        SELECT inv.bank_key, MIN(inv.bank_raw) bank, inv.nm,
+                               MAX(inv.suppno) suppno, MAX(inv.site) site,
+                               COUNT(*) invs, ROUND(SUM(inv.amt), 2) amt,
+                               TO_CHAR(MIN(inv.inv_dt), 'YYYY-MM-DD') dt_first,
+                               TO_CHAR(MAX(inv.inv_dt), 'YYYY-MM-DD') dt_last
+                        FROM (
+                            SELECT UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) bank_key,
+                                   MIN(n.bank_account_number) bank_raw,
+                                   CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                        THEN h.beneficiary_name ELSE h.supplier_name END nm,
+                                   MAX(h.supplier_number) suppno, MAX(h.supplier_site) site,
+                                   h.invoice_id,
+                                   MAX(NVL(h.invoice_amount_aed, 0)) amt,
+                                   MAX(h.invoice_date) inv_dt
+                            FROM prod.ap_invoice_installments n
+                            JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
+                            WHERE n.bank_account_number IS NOT NULL
+                              AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
+                            GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')),
+                                     CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                          THEN h.beneficiary_name ELSE h.supplier_name END,
+                                     h.invoice_id
+                        ) inv
+                        GROUP BY inv.bank_key, inv.nm
+                    ) va
+                ) s
+                WHERE s.vcnt >= 2
+            )
+            WHERE acc_rank <= 100
+            ORDER BY acc_rank, amt DESC, nm)
+        LOOP
+            IF v_cur_key IS NULL OR r.bank_key != v_cur_key THEN
+                IF v_cur_key IS NOT NULL THEN
+                    APEX_JSON.close_array;
+                    APEX_JSON.close_object;
+                END IF;
+                v_cur_key := r.bank_key;
+                o_shown := o_shown + 1;
+                APEX_JSON.open_object;
+                APEX_JSON.write('bankAccount', r.bank);
+                APEX_JSON.write('vendorCount', r.vcnt);
+                APEX_JSON.write('invoices',    r.tot_invs);
+                APEX_JSON.write('totalAed',    r.tot_amt);
+                APEX_JSON.open_array('vendors');
+            END IF;
+            APEX_JSON.open_object;
+            APEX_JSON.write('name',           r.nm);
+            APEX_JSON.write('supplierNumber', r.suppno);
+            APEX_JSON.write('site',           r.site);
+            APEX_JSON.write('invoices',       r.invs);
+            APEX_JSON.write('totalAed',       r.amt);
+            APEX_JSON.write('firstInvoice',   r.dt_first);
+            APEX_JSON.write('lastInvoice',    r.dt_last);
+            APEX_JSON.close_object;
+        END LOOP;
+        IF v_cur_key IS NOT NULL THEN
+            APEX_JSON.close_array;
+            APEX_JSON.close_object;
+        END IF;
+        APEX_JSON.close_array;
+        APEX_JSON.write('sharedAccountCount', o_total);
+        APEX_JSON.write('sharedShown', o_shown);
+    END emit_shared;
+
     -- ------------------------------------------------------------- main entry
-    FUNCTION benef_dup_check (p_suppnum IN VARCHAR2 DEFAULT '26553') RETURN CLOB IS
+    FUNCTION benef_dup_check (p_suppnum IN VARCHAR2 DEFAULT '26553',
+                              p_user    IN VARCHAR2 DEFAULT NULL) RETURN CLOB IS
         TYPE t_vc   IS TABLE OF VARCHAR2(400) INDEX BY PLS_INTEGER;
         TYPE t_num  IS TABLE OF NUMBER        INDEX BY PLS_INTEGER;
         TYPE t_dt   IS TABLE OF VARCHAR2(10)  INDEX BY PLS_INTEGER;
@@ -296,6 +479,18 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         v_first t_dt;  v_last t_dt;
         v_accmap   t_map;
         v_n        PLS_INTEGER := 0;
+        -- persisted-run collections (group_no = position in pg_*)
+        TYPE t_grec IS RECORD (canonical VARCHAR2(400), confidence NUMBER,
+                               reason VARCHAR2(600), invs NUMBER, amt NUMBER);
+        TYPE t_gt   IS TABLE OF t_grec INDEX BY PLS_INTEGER;
+        TYPE t_mrec IS RECORD (grp PLS_INTEGER, mno PLS_INTEGER, nm VARCHAR2(400),
+                               site VARCHAR2(400), accts VARCHAR2(200), invs NUMBER,
+                               amt NUMBER, dfirst VARCHAR2(10), dlast VARCHAR2(10));
+        TYPE t_mt   IS TABLE OF t_mrec INDEX BY PLS_INTEGER;
+        pg_groups  t_gt;
+        pg_members t_mt;
+        v_mn       PLS_INTEGER := 0;
+        v_run_id   NUMBER;
         v_list     CLOB;
         v_prompt   CLOB;
         v_answer   CLOB;
@@ -312,7 +507,6 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         v_ids      t_ids;
         v_shared_total   PLS_INTEGER := 0;
         v_shared_emitted PLS_INTEGER := 0;
-        v_cur_key        VARCHAR2(200);
     BEGIN
         -- 1) distinct effective beneficiary names + stats
         FOR r IN (
@@ -458,7 +652,13 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
                     v_g_invs := v_g_invs + v_invs(v_ids(i));
                     v_g_amt  := v_g_amt  + v_amt(v_ids(i));
                 END LOOP;
+                pg_groups(v_groups).canonical  := NVL(g.canonical, v_name(v_ids(1)));
+                pg_groups(v_groups).confidence := NVL(g.confidence, 0);
+                pg_groups(v_groups).reason     := g.reason;
+                pg_groups(v_groups).invs       := v_g_invs;
+                pg_groups(v_groups).amt        := ROUND(v_g_amt, 2);
                 APEX_JSON.open_object;
+                APEX_JSON.write('groupNo',    v_groups);
                 APEX_JSON.write('canonical',  NVL(g.canonical, v_name(v_ids(1))));
                 APEX_JSON.write('confidence', NVL(g.confidence, 0));
                 APEX_JSON.write('reason',     g.reason);
@@ -466,6 +666,16 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
                 APEX_JSON.write('totalAed',   ROUND(v_g_amt, 2));
                 APEX_JSON.open_array('members');
                 FOR i IN 1 .. v_ids.COUNT LOOP
+                    v_mn := v_mn + 1;
+                    pg_members(v_mn).grp    := v_groups;
+                    pg_members(v_mn).mno    := i;
+                    pg_members(v_mn).nm     := v_name(v_ids(i));
+                    pg_members(v_mn).site   := v_site(v_ids(i));
+                    pg_members(v_mn).accts  := v_accts(v_ids(i));
+                    pg_members(v_mn).invs   := v_invs(v_ids(i));
+                    pg_members(v_mn).amt    := v_amt(v_ids(i));
+                    pg_members(v_mn).dfirst := v_first(v_ids(i));
+                    pg_members(v_mn).dlast  := v_last(v_ids(i));
                     APEX_JSON.open_object;
                     APEX_JSON.write('name',         v_name(v_ids(i)));
                     APEX_JSON.write('invoices',     v_invs(v_ids(i)));
@@ -484,101 +694,106 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         APEX_JSON.close_array;
         APEX_JSON.write('groupCount', v_groups);
 
-        -- 5) deterministic red-flag section: the same vendor bank account used
-        --    by two or more DIFFERENT vendors, checked PLATFORM-WIDE across
-        --    all suppliers (not just this generic-supplier population).
-        --    Account key = alphanumeric-normalised, so spacing/dash formatting
-        --    variants of one IBAN still match. Top 100 accounts by vendor
-        --    count then value; vendors within an account ranked by value.
-        SELECT COUNT(*) INTO v_shared_total
-        FROM (
-            SELECT 1
-            FROM prod.ap_invoice_installments n
-            JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
-            WHERE n.bank_account_number IS NOT NULL
-              AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
-            GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', ''))
-            HAVING COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
-                                       THEN h.beneficiary_name ELSE h.supplier_name END) >= 2);
+        -- 5) deterministic red-flag section (shared vendor bank accounts)
+        emit_shared(v_shared_total, v_shared_emitted);
 
-        APEX_JSON.open_array('sharedAccounts');
-        FOR r IN (
-            SELECT * FROM (
-                SELECT s.*,
-                       DENSE_RANK() OVER (ORDER BY s.vcnt DESC, s.tot_amt DESC, s.bank_key) acc_rank
-                FROM (
-                    SELECT va.*,
-                           COUNT(*)          OVER (PARTITION BY va.bank_key) vcnt,
-                           ROUND(SUM(va.amt) OVER (PARTITION BY va.bank_key), 2) tot_amt,
-                           SUM(va.invs)      OVER (PARTITION BY va.bank_key) tot_invs
-                    FROM (
-                        SELECT inv.bank_key, MIN(inv.bank_raw) bank, inv.nm,
-                               MAX(inv.suppno) suppno, MAX(inv.site) site,
-                               COUNT(*) invs, ROUND(SUM(inv.amt), 2) amt,
-                               TO_CHAR(MIN(inv.inv_dt), 'YYYY-MM-DD') dt_first,
-                               TO_CHAR(MAX(inv.inv_dt), 'YYYY-MM-DD') dt_last
-                        FROM (
-                            SELECT UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) bank_key,
-                                   MIN(n.bank_account_number) bank_raw,
-                                   CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
-                                        THEN h.beneficiary_name ELSE h.supplier_name END nm,
-                                   MAX(h.supplier_number) suppno, MAX(h.supplier_site) site,
-                                   h.invoice_id,
-                                   MAX(NVL(h.invoice_amount_aed, 0)) amt,
-                                   MAX(h.invoice_date) inv_dt
-                            FROM prod.ap_invoice_installments n
-                            JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
-                            WHERE n.bank_account_number IS NOT NULL
-                              AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
-                            GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')),
-                                     CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
-                                          THEN h.beneficiary_name ELSE h.supplier_name END,
-                                     h.invoice_id
-                        ) inv
-                        GROUP BY inv.bank_key, inv.nm
-                    ) va
-                ) s
-                WHERE s.vcnt >= 2
-            )
-            WHERE acc_rank <= 100
-            ORDER BY acc_rank, amt DESC, nm)
-        LOOP
-            IF v_cur_key IS NULL OR r.bank_key != v_cur_key THEN
-                IF v_cur_key IS NOT NULL THEN
-                    APEX_JSON.close_array;
-                    APEX_JSON.close_object;
-                END IF;
-                v_cur_key := r.bank_key;
-                v_shared_emitted := v_shared_emitted + 1;
-                APEX_JSON.open_object;
-                APEX_JSON.write('bankAccount', r.bank);
-                APEX_JSON.write('vendorCount', r.vcnt);
-                APEX_JSON.write('invoices',    r.tot_invs);
-                APEX_JSON.write('totalAed',    r.tot_amt);
-                APEX_JSON.open_array('vendors');
-            END IF;
-            APEX_JSON.open_object;
-            APEX_JSON.write('name',           r.nm);
-            APEX_JSON.write('supplierNumber', r.suppno);
-            APEX_JSON.write('site',           r.site);
-            APEX_JSON.write('invoices',       r.invs);
-            APEX_JSON.write('totalAed',       r.amt);
-            APEX_JSON.write('firstInvoice',   r.dt_first);
-            APEX_JSON.write('lastInvoice',    r.dt_last);
-            APEX_JSON.close_object;
+        -- 6) persist the run so the page reloads it instantly and the
+        --    AP_BENEF_DUP_REGISTER report reads the latest result
+        INSERT INTO dct_ap_ai_dup_run
+            (suppnum, analyzed, group_count, shared_count, provider, model,
+             fellback, elapsed_secs, created_by)
+        VALUES
+            (p_suppnum, v_n, v_groups, v_shared_total, v_provider, v_model,
+             v_fellback, ROUND((DBMS_UTILITY.GET_TIME - v_t0) / 100, 1), p_user)
+        RETURNING run_id INTO v_run_id;
+        FOR i IN 1 .. v_groups LOOP
+            INSERT INTO dct_ap_ai_dup_group
+                (run_id, group_no, canonical, confidence, reason, invoices, total_aed)
+            VALUES
+                (v_run_id, i, pg_groups(i).canonical, pg_groups(i).confidence,
+                 pg_groups(i).reason, pg_groups(i).invs, pg_groups(i).amt);
         END LOOP;
-        IF v_cur_key IS NOT NULL THEN
-            APEX_JSON.close_array;
-            APEX_JSON.close_object;
-        END IF;
-        APEX_JSON.close_array;
-        APEX_JSON.write('sharedAccountCount', v_shared_total);
-        APEX_JSON.write('sharedShown', v_shared_emitted);
+        FOR i IN 1 .. v_mn LOOP
+            INSERT INTO dct_ap_ai_dup_member
+                (run_id, group_no, member_no, name, site, bank_accounts,
+                 invoices, total_aed, first_invoice, last_invoice)
+            VALUES
+                (v_run_id, pg_members(i).grp, pg_members(i).mno, pg_members(i).nm,
+                 pg_members(i).site, pg_members(i).accts, pg_members(i).invs,
+                 pg_members(i).amt, pg_members(i).dfirst, pg_members(i).dlast);
+        END LOOP;
+        COMMIT;
+        APEX_JSON.write('runId', v_run_id);
+        APEX_JSON.write('ranAt', TO_CHAR(dct_to_local(SYSTIMESTAMP), 'YYYY-MM-DD HH' || CHR(58) || 'MI AM'));
+        IF p_user IS NOT NULL THEN APEX_JSON.write('ranBy', p_user); END IF;
 
         APEX_JSON.write('elapsedSecs', ROUND((DBMS_UTILITY.GET_TIME - v_t0) / 100, 1));
         APEX_JSON.close_object;
         RETURN APEX_JSON.get_clob_output;
     END benef_dup_check;
+
+    -- ------------------------------------------------- latest persisted run
+    FUNCTION benef_dup_last (p_suppnum IN VARCHAR2 DEFAULT '26553') RETURN CLOB IS
+        v_run            dct_ap_ai_dup_run%ROWTYPE;
+        v_shared_total   PLS_INTEGER;
+        v_shared_emitted PLS_INTEGER;
+    BEGIN
+        BEGIN
+            SELECT * INTO v_run FROM (
+                SELECT * FROM dct_ap_ai_dup_run
+                 WHERE suppnum = p_suppnum
+                 ORDER BY run_id DESC)
+            WHERE ROWNUM = 1;
+        EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL; END;
+
+        APEX_JSON.initialize_clob_output;
+        APEX_JSON.open_object;
+        APEX_JSON.write('suppnum',  v_run.suppnum);
+        APEX_JSON.write('analyzed', v_run.analyzed);
+        APEX_JSON.write('provider', v_run.provider);
+        APEX_JSON.write('model',    v_run.model);
+        APEX_JSON.write('fellback', v_run.fellback);
+        APEX_JSON.open_array('groups');
+        FOR g IN (SELECT * FROM dct_ap_ai_dup_group
+                   WHERE run_id = v_run.run_id ORDER BY group_no) LOOP
+            APEX_JSON.open_object;
+            APEX_JSON.write('groupNo',    g.group_no);
+            APEX_JSON.write('canonical',  g.canonical);
+            APEX_JSON.write('confidence', g.confidence);
+            APEX_JSON.write('reason',     g.reason);
+            APEX_JSON.write('invoices',   g.invoices);
+            APEX_JSON.write('totalAed',   g.total_aed);
+            APEX_JSON.open_array('members');
+            FOR m IN (SELECT * FROM dct_ap_ai_dup_member
+                       WHERE run_id = v_run.run_id AND group_no = g.group_no
+                       ORDER BY member_no) LOOP
+                APEX_JSON.open_object;
+                APEX_JSON.write('name',         m.name);
+                APEX_JSON.write('invoices',     m.invoices);
+                APEX_JSON.write('totalAed',     m.total_aed);
+                APEX_JSON.write('firstInvoice', m.first_invoice);
+                APEX_JSON.write('lastInvoice',  m.last_invoice);
+                APEX_JSON.write('site',         m.site);
+                APEX_JSON.write('bankAccounts', m.bank_accounts);
+                APEX_JSON.close_object;
+            END LOOP;
+            APEX_JSON.close_array;
+            APEX_JSON.close_object;
+        END LOOP;
+        APEX_JSON.close_array;
+        APEX_JSON.write('groupCount', v_run.group_count);
+
+        -- shared accounts are deterministic - recompute live so the section
+        -- always reflects the current data
+        emit_shared(v_shared_total, v_shared_emitted);
+
+        APEX_JSON.write('runId', v_run.run_id);
+        APEX_JSON.write('ranAt', TO_CHAR(dct_to_local(v_run.created_at), 'YYYY-MM-DD HH' || CHR(58) || 'MI AM'));
+        IF v_run.created_by IS NOT NULL THEN APEX_JSON.write('ranBy', v_run.created_by); END IF;
+        APEX_JSON.write('elapsedSecs', v_run.elapsed_secs);
+        APEX_JSON.close_object;
+        RETURN APEX_JSON.get_clob_output;
+    END benef_dup_last;
 
 END dct_ap_ai_pkg;
 /
@@ -609,7 +824,7 @@ DECLARE
   l_out     CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401, 'Unauthorized'); RETURN; END IF;
-  l_out := dct_ap_ai_pkg.benef_dup_check(l_suppnum);
+  l_out := dct_ap_ai_pkg.benef_dup_check(l_suppnum, l_user);
   dct_rest.json_header;
   DECLARE
     l_len PLS_INTEGER := NVL(DBMS_LOB.GETLENGTH(l_out), 0);
@@ -628,6 +843,150 @@ EXCEPTION
     END IF;
 END;
 !');
+
+    def_template('benef/dupcheck/last');
+    def_handler('benef/dupcheck/last', 'GET', q'!
+DECLARE
+  l_user    VARCHAR2(100) := dct_rest.validate_session;
+  l_suppnum VARCHAR2(40)  := NVL([COLON]suppnum, '26553');
+  l_out     CLOB;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401, 'Unauthorized'); RETURN; END IF;
+  l_out := dct_ap_ai_pkg.benef_dup_last(l_suppnum);
+  dct_rest.json_header;
+  IF l_out IS NULL THEN
+    HTP.prn('{"runId"[COLON]null}');
+    RETURN;
+  END IF;
+  DECLARE
+    l_len PLS_INTEGER := NVL(DBMS_LOB.GETLENGTH(l_out), 0);
+    l_pos PLS_INTEGER := 1;
+  BEGIN
+    WHILE l_pos <= l_len LOOP
+      HTP.prn(DBMS_LOB.SUBSTR(l_out, 8000, l_pos));
+      l_pos := l_pos + 8000;
+    END LOOP;
+  END;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('benef/dupinvoices');
+    def_handler('benef/dupinvoices', 'GET', q'!
+DECLARE
+  l_user  VARCHAR2(100) := dct_rest.validate_session;
+  l_bank  VARCHAR2(120) := [COLON]bank;
+  l_name  VARCHAR2(400) := [COLON]name;
+  l_runid NUMBER        := [COLON]runid;
+  l_grp   NUMBER        := [COLON]grp;
+  l_supp  VARCHAR2(40)  := NVL([COLON]suppnum, '26553');
+  l_cnt   PLS_INTEGER := 0;
+  l_tot   NUMBER := 0;
+  PROCEDURE emit (p_id NUMBER, p_no VARCHAR2, p_dt DATE, p_nm VARCHAR2,
+                  p_suppno VARCHAR2, p_site VARCHAR2, p_bu VARCHAR2,
+                  p_amt NUMBER, p_pay VARCHAR2, p_stat VARCHAR2, p_accts VARCHAR2) IS
+  BEGIN
+    l_cnt := l_cnt + 1;
+    l_tot := l_tot + NVL(p_amt, 0);
+    APEX_JSON.open_object;
+    APEX_JSON.write('invoiceId',      p_id);
+    APEX_JSON.write('invoiceNumber',  p_no);
+    APEX_JSON.write('invoiceDate',    TO_CHAR(p_dt, 'YYYY-MM-DD'));
+    APEX_JSON.write('name',           p_nm);
+    APEX_JSON.write('supplierNumber', p_suppno);
+    APEX_JSON.write('site',           p_site);
+    APEX_JSON.write('businessUnit',   p_bu);
+    APEX_JSON.write('amountAed',      ROUND(NVL(p_amt, 0), 2));
+    APEX_JSON.write('paymentStatus',  p_pay);
+    APEX_JSON.write('invoiceStatus',  p_stat);
+    APEX_JSON.write('bankAccounts',   p_accts);
+    APEX_JSON.close_object;
+  END emit;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401, 'Unauthorized'); RETURN; END IF;
+  IF l_bank IS NULL AND l_name IS NULL AND (l_runid IS NULL OR l_grp IS NULL) THEN
+    dct_rest.err(400, 'Pass bank=, name=, or runid= and grp='); RETURN;
+  END IF;
+  dct_rest.json_header;
+  APEX_JSON.initialize_output;
+  APEX_JSON.open_object;
+  APEX_JSON.open_array('items');
+  IF l_bank IS NOT NULL THEN
+    FOR r IN (
+      SELECT h.invoice_id, MAX(h.invoice_number) inv_no, MAX(h.invoice_date) inv_dt,
+             CASE WHEN MAX(h.supplier_name) = 'BENEFICIARY' AND MAX(h.beneficiary_name) IS NOT NULL
+                  THEN MAX(h.beneficiary_name) ELSE MAX(h.supplier_name) END nm,
+             MAX(h.supplier_number) suppno, MAX(h.supplier_site) site,
+             MAX(h.business_unit) bu, MAX(NVL(h.invoice_amount_aed, 0)) amt,
+             MAX(h.payment_status) pay, MAX(h.invoice_status) stat,
+             SUBSTR(LISTAGG(DISTINCT n.bank_account_number, ';' ON OVERFLOW TRUNCATE)
+                    WITHIN GROUP (ORDER BY n.bank_account_number), 1, 200) accts
+      FROM prod.ap_invoice_installments n
+      JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
+      WHERE UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', ''))
+            = UPPER(REGEXP_REPLACE(l_bank, '[^A-Za-z0-9]', ''))
+        AND (l_name IS NULL OR
+             CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                  THEN h.beneficiary_name ELSE h.supplier_name END = l_name)
+      GROUP BY h.invoice_id
+      ORDER BY MAX(h.invoice_date) DESC, h.invoice_id DESC
+      FETCH FIRST 500 ROWS ONLY)
+    LOOP
+      emit(r.invoice_id, r.inv_no, r.inv_dt, r.nm, r.suppno, r.site, r.bu,
+           r.amt, r.pay, r.stat, r.accts);
+    END LOOP;
+  ELSIF l_runid IS NOT NULL AND l_grp IS NOT NULL THEN
+    FOR r IN (
+      SELECT h.invoice_id, h.invoice_number inv_no, h.invoice_date inv_dt,
+             m.name nm, h.supplier_number suppno, h.supplier_site site,
+             h.business_unit bu, NVL(h.invoice_amount_aed, 0) amt,
+             h.payment_status pay, h.invoice_status stat,
+             (SELECT SUBSTR(LISTAGG(DISTINCT i2.bank_account_number, ';' ON OVERFLOW TRUNCATE)
+                            WITHIN GROUP (ORDER BY i2.bank_account_number), 1, 200)
+                FROM prod.ap_invoice_installments i2
+               WHERE i2.invoice_id = h.invoice_id) accts
+      FROM prod.dct_ap_ai_dup_member m
+      JOIN prod.ap_invoices_header_v h
+        ON h.supplier_number = l_supp
+       AND CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                THEN h.beneficiary_name ELSE h.supplier_name END = m.name
+      WHERE m.run_id = l_runid AND m.group_no = l_grp
+      ORDER BY h.invoice_date DESC, h.invoice_id DESC
+      FETCH FIRST 500 ROWS ONLY)
+    LOOP
+      emit(r.invoice_id, r.inv_no, r.inv_dt, r.nm, r.suppno, r.site, r.bu,
+           r.amt, r.pay, r.stat, r.accts);
+    END LOOP;
+  ELSE
+    FOR r IN (
+      SELECT h.invoice_id, h.invoice_number inv_no, h.invoice_date inv_dt,
+             CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                  THEN h.beneficiary_name ELSE h.supplier_name END nm,
+             h.supplier_number suppno, h.supplier_site site,
+             h.business_unit bu, NVL(h.invoice_amount_aed, 0) amt,
+             h.payment_status pay, h.invoice_status stat,
+             (SELECT SUBSTR(LISTAGG(DISTINCT i2.bank_account_number, ';' ON OVERFLOW TRUNCATE)
+                            WITHIN GROUP (ORDER BY i2.bank_account_number), 1, 200)
+                FROM prod.ap_invoice_installments i2
+               WHERE i2.invoice_id = h.invoice_id) accts
+      FROM prod.ap_invoices_header_v h
+      WHERE h.supplier_number = l_supp
+        AND CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                 THEN h.beneficiary_name ELSE h.supplier_name END = l_name
+      ORDER BY h.invoice_date DESC, h.invoice_id DESC
+      FETCH FIRST 500 ROWS ONLY)
+    LOOP
+      emit(r.invoice_id, r.inv_no, r.inv_dt, r.nm, r.suppno, r.site, r.bu,
+           r.amt, r.pay, r.stat, r.accts);
+    END LOOP;
+  END IF;
+  APEX_JSON.close_array;
+  APEX_JSON.write('count', l_cnt);
+  APEX_JSON.write('totalAed', ROUND(l_tot, 2));
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
     COMMIT;
 END setup_ap_ai_ords;
 /
@@ -641,6 +1000,11 @@ CREATE OR REPLACE SYNONYM dct_ap_ai_pkg FOR prod.dct_ap_ai_pkg;
 PROMPT === verification ===
 SELECT object_name, status FROM all_objects
  WHERE owner = 'PROD' AND object_name = 'DCT_AP_AI_PKG';
-SELECT COUNT(*) dup_handler FROM user_ords_handlers WHERE source LIKE '%benef_dup_check%';
+SELECT COUNT(*) dup_tables FROM all_tables
+ WHERE owner = 'PROD' AND table_name LIKE 'DCT_AP_AI_DUP%';
+SELECT COUNT(*) dup_handlers FROM user_ords_handlers
+ WHERE source LIKE '%benef_dup_check%' OR source LIKE '%benef_dup_last%'
+    OR source LIKE '%dupinvoices%' OR source LIKE '%dct_ap_ai_dup_member%';
 
-PROMPT ap.rest AI duplicate-check endpoint published (POST /ap/benef/dupcheck)
+PROMPT ap.rest AI duplicate-check endpoints published:
+PROMPT   POST /ap/benef/dupcheck  GET /ap/benef/dupcheck/last  GET /ap/benef/dupinvoices

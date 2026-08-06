@@ -1,0 +1,235 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header: title + actions (top-right) ──────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $vm.t('ai.pageTitle')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('ai.pageSub')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: aiExportCsv, text: $root.t('rg.exportCsv'),
+              visible: aiGroups().length > 0 || aiShared().length > 0"></button>
+      <button class="btn btn-secondary" data-bind="click: runXlsx,
+              css: { 'btn-busy': rptBusy() === 'XLSX' },
+              attr: { disabled: rptBusy() ? true : undefined }">
+        &#128202; <span data-bind="text: rptBusy() === 'XLSX' ? rptLabel() : $vm.t('ai.genXlsx')"></span>
+      </button>
+      <button class="btn btn-secondary" data-bind="click: runPdf,
+              css: { 'btn-busy': rptBusy() === 'PDF' },
+              attr: { disabled: rptBusy() ? true : undefined }">
+        &#128196; <span data-bind="text: rptBusy() === 'PDF' ? rptLabel() : $vm.t('ai.genPdf')"></span>
+      </button>
+      <button class="btn btn-primary ai-btn-run" data-bind="click: runAiDup,
+              attr: { disabled: aiLoading() ? true : undefined, title: $vm.t('ai.btn.hint') }">
+        &#10024; <span data-bind="text: aiMeta() ? $vm.t('ai.rerun') : $vm.t('ai.run')"></span>
+      </button>
+    </div>
+  </div>
+
+  <!-- ── run context line ─────────────────────────────────────────────── -->
+  <div class="ai-runline" data-bind="visible: aiMeta() && !aiLoading()">
+    <span class="ai-runline-when" data-bind="text: aiRunTxt"></span>
+    <span data-bind="text: aiMetaTxt"></span>
+  </div>
+
+  <!-- ── states ───────────────────────────────────────────────────────── -->
+  <!-- ko if: loadingLast() -->
+  <list-skeleton params="rows: 6"></list-skeleton>
+  <!-- /ko -->
+  <!-- ko ifnot: loadingLast() -->
+
+  <!-- ko if: aiLoading() -->
+  <div class="ai-running">
+    <list-skeleton params="rows: 6"></list-skeleton>
+    <div class="ai-running-note" data-bind="text: $vm.t('ai.running')"></div>
+  </div>
+  <!-- /ko -->
+  <!-- ko ifnot: aiLoading() -->
+
+  <!-- ko if: aiError() -->
+  <div class="ai-err" data-bind="text: aiError"></div>
+  <!-- /ko -->
+
+  <!-- ko if: neverRan() && !aiError() -->
+  <div class="empty-state">
+    <div data-bind="text: $vm.t('ai.never')"></div>
+    <button class="btn btn-primary" style="margin-top:12px" data-bind="click: runAiDup">
+      &#10024; <span data-bind="text: $vm.t('ai.run')"></span>
+    </button>
+  </div>
+  <!-- /ko -->
+
+  <!-- ko if: aiMeta() && !aiError() -->
+
+  <!-- ── Region 1: AI duplicate groups ────────────────────────────────── -->
+  <div class="section-heading-row">
+    <div class="section-heading" data-bind="text: $vm.t('ai.title')"></div>
+  </div>
+  <!-- ko if: aiGroups().length === 0 -->
+  <div class="empty-state" data-bind="text: $vm.t('ai.none')"></div>
+  <!-- /ko -->
+  <!-- ko foreach: aiGroups -->
+  <div class="ai-group">
+    <div class="ai-group-h">
+      <span class="ai-group-no" data-bind="text: '#' + ($index() + 1)"></span>
+      <b class="ai-group-name" data-bind="text: $data.canonical"></b>
+      <span data-bind="text: $vm.aiConfTxt($data.confidence),
+                       attr: { class: $vm.aiConfCls($data.confidence) }"></span>
+      <span class="ai-group-tot">
+        <a href="#" class="ai-lnk" data-bind="click: function () { $vm.drillGroup($data); return false; },
+           attr: { title: $vm.t('ai.viewInvs') }">
+          <span data-bind="text: $vm.fmtInt($data.invoices) + ' ' + $vm.t('ai.colInvs')"></span></a>
+        · <b data-bind="text: $vm.fmtAmt($data.totalAed)"></b>
+      </span>
+    </div>
+    <div class="ai-group-reason" data-bind="text: $data.reason || ''"></div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('ben.name')"></th>
+        <th data-bind="text: $vm.t('dr.site')"></th>
+        <th data-bind="text: $vm.t('ai.colAccounts')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('ai.colInvs')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('tbl.amountAed')"></th>
+        <th data-bind="text: $vm.t('ai.colFirst')"></th>
+        <th data-bind="text: $vm.t('ai.colLast')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: $data.members">
+        <tr>
+          <td data-bind="text: $data.name"></td>
+          <td data-bind="text: $data.site || ''"></td>
+          <td class="ai-acct" data-bind="text: $data.bankAccounts || ''"></td>
+          <td class="ap-amount">
+            <a href="#" class="ai-lnk" data-bind="click: function () { $vm.drillMember($data); return false; },
+               text: $vm.fmtInt($data.invoices), attr: { title: $vm.t('ai.viewInvs') }"></a></td>
+          <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.totalAed)"></td>
+          <td data-bind="text: $data.firstInvoice || ''"></td>
+          <td data-bind="text: $data.lastInvoice || ''"></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+  <!-- /ko -->
+  <!-- ko if: aiGroups().length > 0 -->
+  <div class="ai-note" data-bind="text: $vm.t('ai.note')"></div>
+  <!-- /ko -->
+
+  <!-- ── Region 2: shared bank accounts (red flag) ─────────────────────── -->
+  <div class="ai-shared-hd">
+    <div class="ai-shared-title" data-bind="text: $vm.t('ai.sharedTitle')"></div>
+    <div class="ai-shared-sub" data-bind="text: $vm.t('ai.sharedSub')"></div>
+  </div>
+  <!-- ko if: aiShared().length === 0 -->
+  <div class="empty-state" data-bind="text: $vm.t('ai.sharedNone')"></div>
+  <!-- /ko -->
+  <!-- ko foreach: aiShared -->
+  <div class="ai-group ai-group--warn">
+    <div class="ai-group-h">
+      <span class="ai-group-no" data-bind="text: '#' + ($index() + 1)"></span>
+      <b class="ai-group-name ai-acct" data-bind="text: $data.bankAccount"></b>
+      <span class="badge badge--danger"
+            data-bind="text: $vm.fmtInt($data.vendorCount) + ' ' + $vm.t('ai.colVendors')"></span>
+      <span class="ai-group-tot">
+        <a href="#" class="ai-lnk" data-bind="click: function () { $vm.drillAccount($data); return false; },
+           attr: { title: $vm.t('ai.viewInvs') }">
+          <span data-bind="text: $vm.fmtInt($data.invoices) + ' ' + $vm.t('ai.colInvs')"></span></a>
+        · <b data-bind="text: $vm.fmtAmt($data.totalAed)"></b>
+      </span>
+    </div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('ai.colVendor')"></th>
+        <th data-bind="text: $vm.t('ben.suppNo')"></th>
+        <th data-bind="text: $vm.t('dr.site')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('ai.colInvs')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('tbl.amountAed')"></th>
+        <th data-bind="text: $vm.t('ai.colFirst')"></th>
+        <th data-bind="text: $vm.t('ai.colLast')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: $data.vendors">
+        <tr>
+          <td data-bind="text: $data.name"></td>
+          <td data-bind="text: $data.supplierNumber || ''"></td>
+          <td data-bind="text: $data.site || ''"></td>
+          <td class="ap-amount">
+            <a href="#" class="ai-lnk" data-bind="click: function () { $vm.drillVendorAccount($parent, $data); return false; },
+               text: $vm.fmtInt($data.invoices), attr: { title: $vm.t('ai.viewInvs') }"></a></td>
+          <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.totalAed)"></td>
+          <td data-bind="text: $data.firstInvoice || ''"></td>
+          <td data-bind="text: $data.lastInvoice || ''"></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+  <!-- /ko -->
+  <!-- ko if: aiSharedTrunc() -->
+  <div class="ai-note" data-bind="text: aiSharedTrunc"></div>
+  <!-- /ko -->
+  <!-- ko if: aiShared().length > 0 -->
+  <div class="ai-note" data-bind="text: $vm.t('ai.sharedNote')"></div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+  <!-- /ko -->
+  <!-- /ko -->
+
+  <!-- ── invoice drill drawer ─────────────────────────────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: dwOpen }, click: closeDw"></div>
+  <aside class="dw-drawer" data-bind="css: { show: dwOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: dwTitle"></div>
+        <div class="dw-title" data-bind="text: dwSub"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-sm" data-bind="click: dwExportCsv, text: $root.t('rg.exportCsv'),
+                visible: !dwLoading() && dwRows().length > 0"></button>
+        <button class="btn btn-sm" data-bind="click: closeDw, text: $root.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: dwLoading() -->
+      <list-skeleton params="rows: 8"></list-skeleton>
+      <!-- /ko -->
+      <!-- ko ifnot: dwLoading() -->
+      <div class="dw-ctx" data-bind="text: $vm.fmtInt(dwCount()) + ' ' + $vm.t('ai.colInvs')"></div>
+      <!-- ko if: dwRows().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('ai.dwEmpty')"></div>
+      <!-- /ko -->
+      <!-- ko if: dwRows().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('tbl.invoiceNo')"></th>
+          <th data-bind="text: $vm.t('tbl.date')"></th>
+          <th data-bind="text: $vm.t('ai.colVendor')"></th>
+          <th data-bind="text: $vm.t('ben.suppNo')"></th>
+          <th data-bind="text: $vm.t('dr.site')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('tbl.amountAed')"></th>
+          <th data-bind="text: $vm.t('tbl.paidAmt')"></th>
+          <th data-bind="text: $vm.t('ai.colAccounts')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: dwRows">
+          <tr>
+            <td><a class="ap-inv-link" target="_blank" rel="noopener"
+                   data-bind="attr: { href: $vm.invUrl($data.invoiceId), title: $vm.t('ai.openFusion') },
+                              text: $data.invoiceNumber,
+                              click: function () { return true; }, clickBubble: false"></a></td>
+            <td data-bind="text: $data.invoiceDate || ''"></td>
+            <td data-bind="text: $data.name || ''"></td>
+            <td data-bind="text: $data.supplierNumber || ''"></td>
+            <td data-bind="text: $data.site || ''"></td>
+            <td class="ap-amount" data-bind="text: $vm.fmtAmt($data.amountAed)"></td>
+            <td data-bind="text: $data.paymentStatus || ''"></td>
+            <td class="ai-acct" data-bind="text: $data.bankAccounts || ''"></td>
+          </tr>
+        </tbody>
+        <tfoot><tr><td class="dw-total" colspan="8">
+          <span data-bind="text: $root.t('dw.total')"></span>
+          <b data-bind="text: fmtAmt(dwTotal())"></b>
+        </td></tr></tfoot>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+    </div>
+  </aside>
+
+</div>

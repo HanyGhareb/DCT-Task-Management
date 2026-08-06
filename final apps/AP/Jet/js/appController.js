@@ -47,6 +47,7 @@ function (ko, config, authService, i18n, shell) {
         { id: 'home',          labelKey: 'nav.home' },
         { id: 'dashboard',     labelKey: 'nav.dashboard' },
         { id: 'beneficiaries', labelKey: 'nav.beneficiaries' },
+        { id: 'aiDuplicates',  labelKey: 'nav.aiDup' },
       ] }
     ];
     self.navGroups = ko.computed(function () { return NAV_GROUPS; });
