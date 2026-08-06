@@ -171,6 +171,16 @@ BEGIN
   FOR r IN (SELECT DISTINCT project_number cd, project_name nm FROM prod.ap_invoice_distributions_v WHERE distribution_type NOT IN ('Recoverable tax','Nonrecoverable tax') AND ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR invoice_status <> 'Cancelled') AND ([COLON]suppnum IS NULL OR invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2 WHERE prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1)) AND project_number IS NOT NULL ORDER BY 1) LOOP
     APEX_JSON.open_object; APEX_JSON.write('code', r.cd); APEX_JSON.write('name', r.nm); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
+  APEX_JSON.open_array('bankAccounts');
+  -- installments round: vendor bank accounts (searchable facet list)
+  FOR r IN (SELECT DISTINCT n.bank_account_number v FROM prod.ap_invoice_installments n
+             WHERE n.bank_account_number IS NOT NULL
+               AND n.invoice_id IN (SELECT h2.invoice_id FROM prod.ap_invoices_header_v h2
+                                     WHERE ([COLON]inclcxl IS NULL OR [COLON]inclcxl = 'Y' OR h2.invoice_status <> 'Cancelled')
+                                       AND ([COLON]suppnum IS NULL OR prod.dct_ap_pkg.in_list([COLON]suppnum, TO_CHAR(h2.supplier_number)) = 1))
+             ORDER BY 1) LOOP
+    APEX_JSON.write(r.v);
+  END LOOP; APEX_JSON.close_array;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -233,7 +243,8 @@ BEGIN
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
-    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
   SELECT COUNT(*),
          COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                              THEN h.beneficiary_name ELSE h.supplier_name END),
@@ -398,7 +409,8 @@ BEGIN
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
-    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
   SELECT NVL(SUM(h.invoice_amount_aed),0),
          NVL(SUM(CASE WHEN h.payment_status = 'Unpaid' THEN NVL(h.balance_due,0) * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0),1) ELSE 0 END),0)
     INTO l_amt, l_bal
@@ -533,7 +545,8 @@ BEGIN
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
-    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-register-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
@@ -747,6 +760,34 @@ BEGIN
       APEX_JSON.write('future2Code', r.f2_code); APEX_JSON.write('future2Desc', r.f2_desc);
       APEX_JSON.write('intercompanyCode', r.ic_code); APEX_JSON.write('intercompanyDesc', r.ic_desc);
       APEX_JSON.write('programCode', r.prog_code); APEX_JSON.write('programDesc', r.prog_desc);
+      APEX_JSON.close_object;
+    END LOOP;
+    APEX_JSON.close_array;
+    APEX_JSON.open_array('installments');
+    -- payment schedule (ATD_AP_INVOICE_INSTALLMENTS via AP_INVOICE_INSTALLMENTS_V)
+    FOR r IN (SELECT n.installment_number, TO_CHAR(n.due_date,'YYYY-MM-DD') due_dt,
+                     n.payment_priority, n.payment_method, n.bank_account_number, n.pay_group,
+                     n.installment_paid, n.installment_on_hold,
+                     n.gross_amount, n.gross_amount_aed, n.unpaid_amount, n.unpaid_amount_aed,
+                     n.invoice_currency, n.payment_currency
+                FROM prod.ap_invoice_installments_v n
+               WHERE n.invoice_id = l_id
+               ORDER BY n.installment_number) LOOP
+      APEX_JSON.open_object;
+      APEX_JSON.write('installmentNumber', r.installment_number);
+      APEX_JSON.write('dueDate', r.due_dt);
+      APEX_JSON.write('priority', r.payment_priority);
+      APEX_JSON.write('paymentMethod', r.payment_method);
+      APEX_JSON.write('bankAccount', r.bank_account_number);
+      APEX_JSON.write('payGroup', r.pay_group);
+      APEX_JSON.write('installmentPaid', r.installment_paid);
+      APEX_JSON.write('onHold', r.installment_on_hold);
+      APEX_JSON.write('grossAmount', r.gross_amount);
+      APEX_JSON.write('grossAmountAed', r.gross_amount_aed);
+      APEX_JSON.write('unpaidAmount', r.unpaid_amount);
+      APEX_JSON.write('unpaidAmountAed', r.unpaid_amount_aed);
+      APEX_JSON.write('currency', r.invoice_currency);
+      APEX_JSON.write('paymentCurrency', r.payment_currency);
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;

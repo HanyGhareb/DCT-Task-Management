@@ -38,6 +38,7 @@ CREATE OR REPLACE PROCEDURE prod.dct_views_rebuild (
   -- every view here is prod.<name> = SELECT * FROM prod.ATD_<name>
   l_v t_names := t_names(
     'AP_INVOICES', 'AP_INVOICE_LINES', 'AP_INVOICE_DISTRIBUTIONS',
+    'AP_INVOICE_INSTALLMENTS',
     'PO_HEADERS', 'PO_LINES', 'PO_DISTRIBUTIONS', 'PO_SCHEDULES',
     'GRN_ALL_V2', 'GL_BALANCES',
     'PROJECTS', 'TASKS', 'PROJECTS_BUDGET',

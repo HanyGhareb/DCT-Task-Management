@@ -12,7 +12,7 @@
 define(['services/api', 'services/config'], function (api, config) {
   'use strict';
 
-  var LEVEL_PATH = { header: '/invoices', line: '/lines', dist: '/dists' };
+  var LEVEL_PATH = { header: '/invoices', line: '/lines', dist: '/dists', inst: '/installments' };
 
   function qs(params) {
     var parts = [];

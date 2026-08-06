@@ -385,6 +385,47 @@ LEFT JOIN pr_hdr prh           ON prh.pr_number = d.requisition
 LEFT JOIN proj_by_id pj        ON pj.project_id = d.project_id
 LEFT JOIN task_by_id tk        ON tk.task_id    = d.task_id;
 
+-- ---------------------------------------------------------------------------
+-- AP_INVOICE_INSTALLMENTS_V : one row per invoice x installment (source
+-- ATD_AP_INVOICE_INSTALLMENTS via the ap_invoice_installments pass-through,
+-- key INVOICE_ID + INSTALLMENT_NUMBER). Payment-schedule detail: due date,
+-- priority, per-installment payment method / vendor bank account / pay group,
+-- paid + on-hold flags, gross/unpaid amounts (AED via the header ratio;
+-- UNPAID_AMOUNT_IN_BASE_CURR arrives already AED). Invoice context joined
+-- from the header view (effective-supplier fields, statuses, BU).
+-- ---------------------------------------------------------------------------
+CREATE OR REPLACE FORCE EDITIONABLE VIEW "PROD"."AP_INVOICE_INSTALLMENTS_V" ("INVOICE_ID", "INSTALLMENT_NUMBER", "INVOICE_NUMBER", "SUPPLIER_NAME", "BENEFICIARY_NAME", "BUSINESS_UNIT", "INVOICE_DATE", "INVOICE_TYPE", "INVOICE_STATUS", "VALIDATION_STATUS", "ACCOUNTING_STATUS", "PAYMENT_STATUS", "DUE_DATE", "PAYMENT_PRIORITY", "PAYMENT_METHOD", "BANK_ACCOUNT_NUMBER", "PAY_GROUP", "INSTALLMENT_PAID", "INSTALLMENT_ON_HOLD", "GROSS_AMOUNT", "GROSS_AMOUNT_AED", "UNPAID_AMOUNT", "UNPAID_AMOUNT_AED", "INVOICE_CURRENCY", "PAYMENT_CURRENCY", "LAST_UPDATED_BY", "LAST_UPDATED_DATE") DEFAULT COLLATION "USING_NLS_COMP" AS
+SELECT
+  n.invoice_id,
+  n.installment_number,
+  h.invoice_number,
+  h.supplier_name,
+  h.beneficiary_name,
+  h.business_unit,
+  h.invoice_date,
+  h.invoice_type,
+  h.invoice_status,
+  h.validation_status,
+  h.accounting_status,
+  h.payment_status,
+  n.due_date,
+  n.payment_priority,
+  n.payment_method,
+  n.bank_account_number,
+  n.pay_group,
+  CASE WHEN n.payment_status = 'Y' THEN 'Paid' ELSE 'Unpaid' END AS installment_paid,
+  n.installment_on_hold,
+  n.gross_amount,
+  ROUND(n.gross_amount * NVL(h.invoice_amount_aed / NULLIF(h.invoice_amount,0), 1), 2) AS gross_amount_aed,
+  n.unpaid_amount,
+  n.unpaid_amount_in_base_curr AS unpaid_amount_aed,
+  n.invoice_currency,
+  n.payment_currency,
+  n.last_updated             AS last_updated_by,
+  n.last_updated_date
+FROM prod.ap_invoice_installments n
+LEFT JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id;
+
 ALTER PACKAGE prod.dct_ap_pkg COMPILE BODY;
 
 PROMPT === verification -- expect zero INVALID rows ===

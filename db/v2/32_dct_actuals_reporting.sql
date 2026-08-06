@@ -58,6 +58,7 @@ SET SQLBLANKLINES ON
 CREATE OR REPLACE VIEW prod.ap_invoices              AS SELECT * FROM prod.atd_ap_invoices;
 CREATE OR REPLACE VIEW prod.ap_invoice_lines         AS SELECT * FROM prod.atd_ap_invoice_lines;
 CREATE OR REPLACE VIEW prod.ap_invoice_distributions AS SELECT * FROM prod.atd_ap_invoice_distributions;
+CREATE OR REPLACE VIEW prod.ap_invoice_installments  AS SELECT * FROM prod.atd_ap_invoice_installments;
 CREATE OR REPLACE VIEW prod.po_headers               AS SELECT * FROM prod.atd_po_headers;
 CREATE OR REPLACE VIEW prod.po_lines                 AS SELECT * FROM prod.atd_po_lines;
 CREATE OR REPLACE VIEW prod.po_distributions         AS SELECT * FROM prod.atd_po_distributions;

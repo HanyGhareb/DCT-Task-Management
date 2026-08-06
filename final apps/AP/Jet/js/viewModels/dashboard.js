@@ -113,6 +113,34 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       { key: 'validationStatus',  labelKey: 'tbl.validation', badge: 'val', hide: true },
       { key: 'accountingStatus',  labelKey: 'tbl.accounting', badge: 'acc', hide: true },
       { key: 'paymentStatus',     labelKey: 'tbl.payStatus', badge: 'pay', hide: true },
+    ],
+    // installment level — ATD_AP_INVOICE_INSTALLMENTS (invoice x installment):
+    // payment schedule w/ per-installment method, vendor bank account, pay group
+    inst: [
+      { key: 'invoiceNumber',    labelKey: 'tbl.invoiceNo' },
+      { key: 'invoiceDate',      labelKey: 'tbl.date', sort: 'date' },
+      { key: 'supplier',         labelKey: 'tbl.supplier', clip: true },
+      { key: 'isBeneficiary',    labelKey: 'tbl.isBenef', hide: true },
+      { key: 'businessUnit',     labelKey: 'f.bu', hide: true, clip: true },
+      { key: 'installmentNumber', labelKey: 'tbl.installment' },
+      { key: 'dueDate',          labelKey: 'tbl.dueDate', sort: 'due' },
+      { key: 'priority',         labelKey: 'tbl.priority', hide: true },
+      { key: 'paymentMethod',    labelKey: 'tbl.method' },
+      { key: 'bankAccount',      labelKey: 'tbl.bankAccount', clip: true },
+      { key: 'payGroup',         labelKey: 'tbl.payGroup' },
+      { key: 'installmentPaid',  labelKey: 'tbl.instPaid', badge: 'pay' },
+      { key: 'onHold',           labelKey: 'tbl.onHold', hide: true },
+      { key: 'amount',           labelKey: 'tbl.amount', amt: true, hide: true },
+      { key: 'amountAed',        labelKey: 'tbl.amountAed', amt: true, sort: 'amount' },
+      { key: 'unpaidAmount',     labelKey: 'tbl.unpaid', amt: true, hide: true },
+      { key: 'unpaidAmountAed',  labelKey: 'tbl.unpaidAed', amt: true },
+      { key: 'currency',         labelKey: 'tbl.currency', hide: true },
+      { key: 'paymentCurrency',  labelKey: 'tbl.payCurrency', hide: true },
+      { key: 'validationStatus', labelKey: 'tbl.validation', badge: 'val', hide: true },
+      { key: 'accountingStatus', labelKey: 'tbl.accounting', badge: 'acc', hide: true },
+      { key: 'paymentStatus',    labelKey: 'tbl.payStatus', badge: 'pay', hide: true },
+      { key: 'lastUpdatedBy',    labelKey: 'tbl.updBy', hide: true },
+      { key: 'lastUpdatedDate',  labelKey: 'tbl.updOn', hide: true },
     ]
   };
 
@@ -129,6 +157,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     { key: 'curr',      labelKey: 'f.curr',      src: 'currency',         counted: true },
     { key: 'paygroup',  labelKey: 'f.paygroup',  src: 'payGroup',         counted: true, searchable: true },
     { key: 'paymethod', labelKey: 'f.paymethod', src: 'paymentMethod',    counted: true },
+    { key: 'bank',      labelKey: 'f.bank',      src: 'bankAccounts',     searchable: true },
     { key: 'sector',    labelKey: 'f.sector',    src: 'sectors',          counted: true },
     { key: 'supplier',  labelKey: 'f.supplier',  src: 'suppliers',        searchable: true },
     { key: 'dept',      labelKey: 'f.dept',      src: 'departments',      searchable: true },
@@ -169,7 +198,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     // with the site number (= the beneficiary's supplier number); the standard
     // dashboard gains the site as a hidden-by-default column
     var cols = {};
-    ['header', 'line', 'dist'].forEach(function (lvl) {
+    ['header', 'line', 'dist', 'inst'].forEach(function (lvl) {
       var arr = COLS[lvl].map(function (c) { return Object.assign({}, c); });
       var at = arr.map(function (c) { return c.key; }).indexOf('isBeneficiary');
       if (benef) {
@@ -194,6 +223,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self.dateto   = ko.observable('');
     self.gldatefrom = ko.observable('');
     self.gldateto   = ko.observable('');
+    self.duefrom = ko.observable('');                  // installment due-date range
+    self.dueto   = ko.observable('');
     self.inclCancelled = ko.observable(false);         // include cancelled invoices? (default OFF)
     self.po   = ko.observable('');
     self.pr   = ko.observable('');
@@ -235,6 +266,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       header: ko.observableArray(hiddenDefaults('header')),
       line:   ko.observableArray(hiddenDefaults('line')),
       dist:   ko.observableArray(hiddenDefaults('dist')),
+      inst:   ko.observableArray(hiddenDefaults('inst')),
     };
     self.colsOpen = ko.observable(false);
     self.toggleColsPanel = function () { self.colsOpen(!self.colsOpen()); };
@@ -247,13 +279,14 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       return self._hidden[self.level()]().indexOf(col.key) === -1;
     };
     function applyColPrefs(obj) {
-      ['header', 'line', 'dist'].forEach(function (lvl) {
+      ['header', 'line', 'dist', 'inst'].forEach(function (lvl) {
         if (obj && Array.isArray(obj[lvl])) self._hidden[lvl](obj[lvl]);
       });
     }
     var colsSaveTimer = null;
     function persistCols() {
-      var obj = { header: self._hidden.header(), line: self._hidden.line(), dist: self._hidden.dist() };
+      var obj = { header: self._hidden.header(), line: self._hidden.line(),
+                  dist: self._hidden.dist(), inst: self._hidden.inst() };
       try { localStorage.setItem(COLS_LS, JSON.stringify(obj)); } catch (e) {}
       clearTimeout(colsSaveTimer);
       colsSaveTimer = setTimeout(function () {
@@ -378,6 +411,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       if (self.dateto())          p.dateto   = self.dateto();
       if (self.gldatefrom())      p.glfrom   = self.gldatefrom();
       if (self.gldateto())        p.glto     = self.gldateto();
+      if (self.duefrom())         p.duefrom  = self.duefrom();
+      if (self.dueto())           p.dueto    = self.dueto();
       if (!self.inclCancelled())  p.inclcxl  = 'N';
       if ((self.po() || '').trim())     p.po     = self.po().trim();
       if ((self.pr() || '').trim())     p.pr     = self.pr().trim();
@@ -407,6 +442,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       }
       add(self.datefrom, 'f.datefrom'); add(self.dateto, 'f.dateto');
       add(self.gldatefrom, 'f.glfrom'); add(self.gldateto, 'f.glto');
+      add(self.duefrom, 'f.duefrom'); add(self.dueto, 'f.dueto');
       // cancelled invoices are EXCLUDED by default — chip marks the deviation
       if (self.inclCancelled()) {
         out.push({ label: lt('f.inclCxl'), value: lt('f.yes'),
@@ -424,6 +460,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       });
       self.datefrom(''); self.dateto('');
       self.gldatefrom(''); self.gldateto(''); self.inclCancelled(false);
+      self.duefrom(''); self.dueto('');
       self.po(''); self.pr(''); self.task(''); self.search('');
       scheduleReload();
     };
@@ -1035,7 +1072,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
         add(lt('ht.filters'), self.fmtInt(self.chips().length));
       } else if (key === 'register') {
         var lvlKey = self.level() === 'header' ? 'dash.levelHeader'
-                   : self.level() === 'line' ? 'dash.levelLine' : 'dash.levelDist';
+                   : self.level() === 'line' ? 'dash.levelLine'
+                   : self.level() === 'dist' ? 'dash.levelDist' : 'dash.levelInst';
         add(lt('ht.level'), lt(lvlKey));
         add(lt('ht.rows'), self.fmtInt(self.total()));
         if (self.rowTotals()) add(lt('tbl.totalAmount'), self.fmtAmt(self.rowTotals().amountAed));
@@ -1242,7 +1280,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       h.push('<div class="hd"><div><h1>' + esc(t('pr.title')) + '</h1><div style="font-size:11px;color:#5b6573">i-Finance · ' + esc(t('mod.ap')) + ' · APP 212</div></div>');
       h.push('<div class="meta">' + esc(t('pr.generated')) + ': ' + esc(new Date().toLocaleString('en-AE')) +
              '<br>' + esc(t('pr.by')) + ': ' + esc(user.displayName || user.username || '') +
-             '<br>' + esc(t('pr.level')) + ': ' + esc(t(lvl === 'header' ? 'dash.levelHeader' : lvl === 'line' ? 'dash.levelLine' : 'dash.levelDist')) + '</div></div>');
+             '<br>' + esc(t('pr.level')) + ': ' + esc(t(lvl === 'header' ? 'dash.levelHeader' : lvl === 'line' ? 'dash.levelLine' : lvl === 'dist' ? 'dash.levelDist' : 'dash.levelInst')) + '</div></div>');
 
       h.push('<div class="crit"><b>' + esc(t('pr.criteria')) + ':</b> ');
       if (!chipList.length) h.push('<span>' + esc(t('pr.all')) + '</span>');

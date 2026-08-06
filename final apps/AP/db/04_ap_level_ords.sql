@@ -76,7 +76,8 @@ BEGIN
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
-    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
   SELECT COUNT(*), NVL(SUM(ln.line_amount_aed),0) INTO l_cnt, l_amt
     FROM prod.ap_invoice_lines_v ln
    WHERE ln.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
@@ -196,7 +197,8 @@ BEGIN
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
-    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-lines-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
@@ -288,7 +290,8 @@ BEGIN
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
-    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
   SELECT COUNT(*), NVL(SUM(d.distribution_amount_aed),0) INTO l_cnt, l_amt
     FROM prod.ap_invoice_distributions_v d
    WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
@@ -443,7 +446,8 @@ BEGIN
     p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
-    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl);
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-distributions-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
@@ -584,11 +588,202 @@ DROP PROCEDURE setup_ap_lvl_t5;
 
 PROMPT level part 5 done (cc combination lookup)
 
-PROMPT === verification -- expect 10 templates, 10 handlers on ap.rest ===
+-- ==================== part 6: installments register + export ================
+-- ATD_AP_INVOICE_INSTALLMENTS via AP_INVOICE_INSTALLMENTS_V (key invoice_id +
+-- installment_number): the 4th register level. Header-grain facets narrow via
+-- filtered_ids (incl. the new bank / duefrom / dueto); the installment-grain
+-- facets (bank + due-date range) are ALSO re-applied to the rows so a bank
+-- filter shows only that bank's installments.
+CREATE OR REPLACE PROCEDURE setup_ap_lvl_t6 AS
+    c_mod CONSTANT VARCHAR2(30) := 'ap.rest';
+    PROCEDURE def_template(p_pattern VARCHAR2) IS
+    BEGIN
+        ORDS.DEFINE_TEMPLATE(p_module_name => c_mod, p_pattern => REPLACE(p_pattern, '[COLON]', CHR(58)));
+    END;
+    PROCEDURE def_handler(p_pattern VARCHAR2, p_method VARCHAR2, p_source CLOB) IS
+    BEGIN
+        ORDS.DEFINE_HANDLER(
+            p_module_name => c_mod,
+            p_pattern     => REPLACE(p_pattern, '[COLON]', CHR(58)),
+            p_method      => p_method,
+            p_source_type => ORDS.source_type_plsql,
+            p_source      => REPLACE(p_source, '[COLON]', CHR(58)));
+    END;
+BEGIN
+    def_template('installments');
+    def_handler('installments', 'GET', q'!
+DECLARE
+  l_user   VARCHAR2(100) := dct_rest.validate_session;
+  l_ids    apex_t_number;
+  l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 50), 10000);
+  l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
+  l_sort   VARCHAR2(30) := LOWER([COLON]sort);
+  l_duef   DATE := TO_DATE([COLON]duefrom DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+  l_duet   DATE := TO_DATE([COLON]dueto   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+  l_cnt NUMBER; l_gross NUMBER; l_unpaid NUMBER;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_ids := prod.dct_ap_pkg.filtered_ids(
+    p_datefrom => [COLON]datefrom, p_dateto => [COLON]dateto, p_supplier => [COLON]supplier,
+    p_paid => [COLON]paid, p_val => [COLON]val, p_acc => [COLON]acc, p_inv => [COLON]inv,
+    p_itype => [COLON]itype, p_curr => [COLON]curr, p_paygroup => [COLON]paygroup,
+    p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
+    p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
+    p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+  SELECT COUNT(*), NVL(SUM(n.gross_amount_aed),0), NVL(SUM(n.unpaid_amount_aed),0)
+    INTO l_cnt, l_gross, l_unpaid
+    FROM prod.ap_invoice_installments_v n
+   WHERE n.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
+     AND ([COLON]bank IS NULL OR prod.dct_ap_pkg.in_list([COLON]bank, n.bank_account_number) = 1)
+     AND (l_duef IS NULL OR n.due_date >= l_duef)
+     AND (l_duet IS NULL OR n.due_date <  l_duet + 1);
+  dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
+  APEX_JSON.write('total', l_cnt); APEX_JSON.write('limit', l_limit); APEX_JSON.write('offset', l_offset);
+  APEX_JSON.open_object('totals');
+  APEX_JSON.write('amountAed', ROUND(l_gross,2)); APEX_JSON.write('unpaidAed', ROUND(l_unpaid,2));
+  APEX_JSON.close_object;
+  APEX_JSON.open_array('items');
+  FOR r IN (
+    SELECT n.invoice_id, n.installment_number, n.invoice_number, TO_CHAR(n.invoice_date,'YYYY-MM-DD') inv_dt,
+           CASE WHEN n.supplier_name = 'BENEFICIARY' AND n.beneficiary_name IS NOT NULL
+                THEN n.beneficiary_name ELSE n.supplier_name END supplier_name,
+           CASE WHEN n.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
+           hh.supplier_site, n.business_unit,
+           n.invoice_type, n.invoice_status, n.validation_status, n.accounting_status, n.payment_status,
+           TO_CHAR(n.due_date,'YYYY-MM-DD') due_dt, n.payment_priority, n.payment_method,
+           n.bank_account_number, n.pay_group, n.installment_paid, n.installment_on_hold,
+           n.gross_amount, n.gross_amount_aed, n.unpaid_amount, n.unpaid_amount_aed,
+           n.invoice_currency, n.payment_currency,
+           n.last_updated_by, TO_CHAR(prod.dct_to_local(n.last_updated_date),'YYYY-MM-DD HH:MI AM') upd_dt
+      FROM prod.ap_invoice_installments_v n
+      LEFT JOIN prod.ap_invoices_header_v hh ON hh.invoice_id = n.invoice_id
+     WHERE n.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
+       AND ([COLON]bank IS NULL OR prod.dct_ap_pkg.in_list([COLON]bank, n.bank_account_number) = 1)
+       AND (l_duef IS NULL OR n.due_date >= l_duef)
+       AND (l_duet IS NULL OR n.due_date <  l_duet + 1)
+     ORDER BY CASE WHEN l_sort = 'date_asc'    THEN n.invoice_date END ASC,
+              CASE WHEN l_sort = 'due_asc'     THEN n.due_date END ASC,
+              CASE WHEN l_sort = 'due_desc'    THEN n.due_date END DESC,
+              CASE WHEN l_sort = 'amount_desc' THEN n.gross_amount_aed END DESC,
+              CASE WHEN l_sort = 'amount_asc'  THEN n.gross_amount_aed END ASC,
+              n.invoice_date DESC, n.invoice_id DESC, n.installment_number
+     OFFSET l_offset ROWS FETCH NEXT l_limit ROWS ONLY)
+  LOOP
+    APEX_JSON.open_object;
+    APEX_JSON.write('id', r.invoice_id);
+    APEX_JSON.write('installmentNumber', r.installment_number);
+    APEX_JSON.write('invoiceNumber', r.invoice_number); APEX_JSON.write('invoiceDate', r.inv_dt);
+    APEX_JSON.write('supplier', r.supplier_name);
+    APEX_JSON.write('isBeneficiary', r.is_beneficiary);
+    APEX_JSON.write('supplierSite', r.supplier_site);
+    APEX_JSON.write('businessUnit', NVL(r.business_unit,''));
+    APEX_JSON.write('invoiceType', r.invoice_type);
+    APEX_JSON.write('invoiceStatus', r.invoice_status); APEX_JSON.write('validationStatus', r.validation_status);
+    APEX_JSON.write('accountingStatus', r.accounting_status); APEX_JSON.write('paymentStatus', r.payment_status);
+    APEX_JSON.write('dueDate', r.due_dt);
+    APEX_JSON.write('priority', r.payment_priority);
+    APEX_JSON.write('paymentMethod', r.payment_method);
+    APEX_JSON.write('bankAccount', r.bank_account_number);
+    APEX_JSON.write('payGroup', r.pay_group);
+    APEX_JSON.write('installmentPaid', r.installment_paid);
+    APEX_JSON.write('onHold', r.installment_on_hold);
+    APEX_JSON.write('amount', r.gross_amount); APEX_JSON.write('amountAed', r.gross_amount_aed);
+    APEX_JSON.write('unpaidAmount', r.unpaid_amount); APEX_JSON.write('unpaidAmountAed', r.unpaid_amount_aed);
+    APEX_JSON.write('currency', r.invoice_currency); APEX_JSON.write('paymentCurrency', r.payment_currency);
+    APEX_JSON.write('lastUpdatedBy', r.last_updated_by); APEX_JSON.write('lastUpdatedDate', r.upd_dt);
+    APEX_JSON.close_object;
+  END LOOP;
+  APEX_JSON.close_array;
+  APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('installments/export');
+    def_handler('installments/export', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_ids  apex_t_number;
+  l_duef DATE := TO_DATE([COLON]duefrom DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+  l_duet DATE := TO_DATE([COLON]dueto   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+  FUNCTION esc(p VARCHAR2) RETURN VARCHAR2 IS
+  BEGIN
+    RETURN CASE WHEN p IS NULL THEN ''
+                WHEN INSTR(p, ',') > 0 OR INSTR(p, '"') > 0 OR INSTR(p, CHR(10)) > 0
+                THEN '"' || REPLACE(p, '"', '""') || '"' ELSE p END;
+  END;
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_ids := prod.dct_ap_pkg.filtered_ids(
+    p_datefrom => [COLON]datefrom, p_dateto => [COLON]dateto, p_supplier => [COLON]supplier,
+    p_paid => [COLON]paid, p_val => [COLON]val, p_acc => [COLON]acc, p_inv => [COLON]inv,
+    p_itype => [COLON]itype, p_curr => [COLON]curr, p_paygroup => [COLON]paygroup,
+    p_paymethod => [COLON]paymethod, p_sector => [COLON]sector, p_dept => [COLON]dept,
+    p_cc => [COLON]cc, p_project => [COLON]project, p_task => [COLON]task,
+    p_etype => [COLON]etype, p_account => [COLON]account, p_approp => [COLON]approp,
+    p_po => [COLON]po, p_pr => [COLON]pr, p_req => [COLON]req, p_search => [COLON]search,
+    p_appr => [COLON]appr, p_gldatefrom => [COLON]glfrom, p_gldateto => [COLON]glto,
+    p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
+    p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
+    p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+  OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
+  HTP.p('Content-Disposition: attachment; filename="ap-installments-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
+  OWA_UTIL.http_header_close;
+  HTP.prn(UNISTR('\FEFF'));
+  HTP.print('Invoice Number,Invoice Date,Supplier,Is Beneficiary,Business Unit,Installment,Due Date,Priority,Payment Method,Bank Account,Pay Group,Installment Paid,On Hold,Gross Amount,Gross Amount AED,Unpaid Amount,Unpaid Amount AED,Currency,Payment Currency,Validation,Accounting,Paid Status');
+  FOR r IN (
+    SELECT n.invoice_number, TO_CHAR(n.invoice_date,'YYYY-MM-DD') inv_dt,
+           CASE WHEN n.supplier_name = 'BENEFICIARY' AND n.beneficiary_name IS NOT NULL
+                THEN n.beneficiary_name ELSE n.supplier_name END supplier_name,
+           CASE WHEN n.supplier_name = 'BENEFICIARY' THEN 'Y' ELSE 'N' END is_beneficiary,
+           n.business_unit, n.installment_number, TO_CHAR(n.due_date,'YYYY-MM-DD') due_dt,
+           n.payment_priority, n.payment_method, n.bank_account_number, n.pay_group,
+           n.installment_paid, n.installment_on_hold,
+           n.gross_amount, n.gross_amount_aed, n.unpaid_amount, n.unpaid_amount_aed,
+           n.invoice_currency, n.payment_currency,
+           n.validation_status, n.accounting_status, n.payment_status
+      FROM prod.ap_invoice_installments_v n
+     WHERE n.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
+       AND ([COLON]bank IS NULL OR prod.dct_ap_pkg.in_list([COLON]bank, n.bank_account_number) = 1)
+       AND (l_duef IS NULL OR n.due_date >= l_duef)
+       AND (l_duet IS NULL OR n.due_date <  l_duet + 1)
+     ORDER BY n.invoice_date DESC, n.invoice_id DESC, n.installment_number
+     FETCH FIRST 25000 ROWS ONLY)
+  LOOP
+    HTP.print(
+      esc(r.invoice_number) || ',' || r.inv_dt || ',' || esc(r.supplier_name) || ',' || r.is_beneficiary || ',' ||
+      esc(r.business_unit) || ',' || r.installment_number || ',' || r.due_dt || ',' ||
+      r.payment_priority || ',' || esc(r.payment_method) || ',' || esc(r.bank_account_number) || ',' ||
+      esc(r.pay_group) || ',' || r.installment_paid || ',' || esc(r.installment_on_hold) || ',' ||
+      r.gross_amount || ',' || r.gross_amount_aed || ',' || r.unpaid_amount || ',' || r.unpaid_amount_aed || ',' ||
+      r.invoice_currency || ',' || r.payment_currency || ',' ||
+      esc(r.validation_status) || ',' || esc(r.accounting_status) || ',' || esc(r.payment_status));
+  END LOOP;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    COMMIT;
+END setup_ap_lvl_t6;
+/
+
+BEGIN setup_ap_lvl_t6; END;
+/
+DROP PROCEDURE setup_ap_lvl_t6;
+
+PROMPT level part 6 done (installments register + export)
+
+PROMPT === verification -- expect 12 templates, 12 handlers on ap.rest ===
 SELECT COUNT(*) templates FROM user_ords_templates t
   JOIN user_ords_modules m ON m.id = t.module_id WHERE m.name = 'ap.rest';
 SELECT COUNT(*) handlers FROM user_ords_handlers h
   JOIN user_ords_templates t ON t.id = h.template_id
   JOIN user_ords_modules m ON m.id = t.module_id WHERE m.name = 'ap.rest';
 
-PROMPT ap.rest level endpoints published (lines + dists + exports + cc lookup)
+PROMPT ap.rest level endpoints published (lines + dists + installments + exports + cc lookup)

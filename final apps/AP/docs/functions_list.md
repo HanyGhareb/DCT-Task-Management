@@ -11,7 +11,7 @@ Blank by design — content will be designed later.
 ## AP Dashboard (`views/dashboard.html` + `viewModels/dashboard.js`)
 
 **Detail level selector** (radio, top of dashboard)
-- `setLevel(level)` — switch the register grain: `header` | `line` | `dist` (drives table columns, exports, print).
+- `setLevel(level)` — switch the register grain: `header` | `line` | `dist` | `inst` (installments payment schedule; drives table columns, exports, print).
 
 **Faceted search rail (APEX-style)**
 - 17 facet groups (`toggleGroup`, `toggleItem`, per-group mini-filter): Paid/Validation/Accounting/Invoice status, Invoice type, Currency, Pay group, Payment method, Sector (counted checkboxes); Supplier, Department, Cost center, Project, Expenditure type, GL account, Appropriation, Requestor (searchable lists).
@@ -66,6 +66,8 @@ The full AP Dashboard locked to the generic **BENEFICIARY supplier (supplier num
 | GET | `/ap/lines/export` | CSV (25k cap) |
 | GET | `/ap/dists` | Paged distribution-level register (own-grain facets re-applied) |
 | GET | `/ap/dists/export` | CSV (25k cap) |
+| GET | `/ap/installments` | Paged installment-level register (payment schedule: due date, method, vendor bank account, pay group, paid/on-hold, gross/unpaid AED; own-grain bank/due facets re-applied) |
+| GET | `/ap/installments/export` | CSV (25k cap) |
 | GET | `/ap/cc` | GL combination lookup `?cc=<canonical cc_string>` → the 10 segment code+desc pairs from `dct_gl_coa_snap` (`found:'N'` when absent) — feeds the register combination popover (v1.12.0) |
 | POST | `/ap/benef/dupcheck` | AI duplicate-beneficiary detection `?suppnum=` (default 26553) — `DCT_AP_AI_PKG.benef_dup_check` clusters the distinct beneficiary names with the FL-configured AI provider/model (FL AI_PROVIDER/AI_MODEL + `dct_ar_ai_providers`, Gemini→Claude fallback) → `{analyzed, groupCount, provider, model, fellback, elapsedSecs, groups:[{canonical,confidence,reason,invoices,totalAed,members[]}]}` (v1.13.0) |
 

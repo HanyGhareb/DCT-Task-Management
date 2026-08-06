@@ -262,5 +262,22 @@
   "ht.rows": "عدد الصفوف (بعد الترشيح)",
   "ht.dueDate": "تاريخ الاستحقاق",
   "ht.clickList": "انقر لعرض الفواتير",
-  "f.bu": "وحدة الأعمال"
+  "f.bu": "وحدة الأعمال",
+  "dash.levelInst": "الأقساط",
+  "f.bank": "الحساب البنكي للمورد",
+  "f.duedates": "تاريخ استحقاق القسط",
+  "f.duefrom": "الاستحقاق من",
+  "f.dueto": "الاستحقاق إلى",
+  "tbl.installment": "القسط",
+  "tbl.dueDate": "تاريخ الاستحقاق",
+  "tbl.priority": "الأولوية",
+  "tbl.bankAccount": "الحساب البنكي",
+  "tbl.instPaid": "سداد القسط",
+  "tbl.onHold": "معلق",
+  "tbl.unpaid": "غير مسدد",
+  "tbl.unpaidAed": "غير مسدد (درهم)",
+  "tbl.payCurrency": "عملة الدفع",
+  "tbl.updBy": "حدث بواسطة",
+  "tbl.updOn": "تاريخ التحديث",
+  "dr.installments": "الأقساط"
 }

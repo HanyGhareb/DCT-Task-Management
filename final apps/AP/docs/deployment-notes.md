@@ -409,3 +409,23 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   longer join count·amount with an interpunct (user-reported unreadable) —
   counts sit in the label ("Paid (2,514 Invoices)"), amounts stay plain
   99,999,999.99. APP_VERSION 1.10.0; smokes 18/18 + 14/14 + browser 5/5.
+- **Installments round (v1.14.0)** — new extract `ATD_AP_INVOICE_INSTALLMENTS` (key
+  invoice_id + installment_number; due date, priority, per-installment payment method,
+  vendor bank account, pay group, paid Y/N, on-hold, gross/unpaid amounts; ~9.7k rows,
+  1 installment/invoice today but modelled 1..N). Added END-TO-END:
+  `prod.ap_invoice_installments` pass-through (db/v2/32 + the dct_views_rebuild list in
+  db/v2/38) → `AP_INVOICE_INSTALLMENTS_V` (05 — installment cols + header context;
+  UNPAID_AMOUNT_IN_BASE_CURR arrives already AED, gross AED via the header ratio) →
+  facet engine params `p_bank`/`p_duefrom`/`p_dueto` (02, one scan of the installments
+  view intersected into the id-set) → ORDS: `bankAccounts[]` in /filters, the three new
+  binds on EVERY filtered_ids call site (03+04 — so bank/due filters narrow KPIs, charts
+  and all registers), NEW `GET /ap/installments` + `/ap/installments/export` (04 part 6 —
+  own-grain bank/due re-applied to rows; totals = gross AED + unpaid AED; ap.rest now
+  12 templates/12 handlers), drill `/invoices/:id` ships `installments[]` (03 part 5) →
+  frontend: 4th **Installment** detail-level radio (COLS.inst catalog, IR/print/exports/
+  column-chooser all metadata-driven), **Vendor bank account** searchable facet (2,238
+  accounts), **Installment due date** from/to range, drill modal **Installments** tab.
+  GOTCHA: a new register level must be added to the per-level `_hidden` column map +
+  `applyColPrefs`/`persistCols` lists in dashboard.js or `visibleCols` throws and the
+  level never loads. API smoke 6/6 (facet consistency: bank filter narrows installments/
+  invoices/KPIs identically) + browser smoke 5/5.

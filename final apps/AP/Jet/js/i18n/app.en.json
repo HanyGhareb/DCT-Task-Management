@@ -262,5 +262,22 @@
   "ht.rows": "Rows (filtered)",
   "ht.dueDate": "Due date",
   "ht.clickList": "Click to list the invoices",
-  "f.bu": "Business unit"
+  "f.bu": "Business unit",
+  "dash.levelInst": "Installment",
+  "f.bank": "Vendor bank account",
+  "f.duedates": "Installment due date",
+  "f.duefrom": "Due date from",
+  "f.dueto": "Due date to",
+  "tbl.installment": "Installment",
+  "tbl.dueDate": "Due Date",
+  "tbl.priority": "Priority",
+  "tbl.bankAccount": "Bank Account",
+  "tbl.instPaid": "Installment Paid",
+  "tbl.onHold": "On Hold",
+  "tbl.unpaid": "Unpaid",
+  "tbl.unpaidAed": "Unpaid (AED)",
+  "tbl.payCurrency": "Payment Currency",
+  "tbl.updBy": "Updated By",
+  "tbl.updOn": "Updated On",
+  "dr.installments": "Installments"
 }

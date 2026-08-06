@@ -71,7 +71,12 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_pkg AS
         p_aging      VARCHAR2 DEFAULT NULL,  -- single aging bucket CURRENT|D1_30|D31_60|D61_90|D91_180|D180P
         p_suppnum    VARCHAR2 DEFAULT NULL,  -- multi, supplier_number (Beneficiaries dashboard locks it to 26553)
         p_bu         VARCHAR2 DEFAULT NULL,  -- multi, header business_unit (Fusion BU name)
-        p_inclcxl    VARCHAR2 DEFAULT 'Y'    -- 'N' = exclude cancelled invoices
+        p_inclcxl    VARCHAR2 DEFAULT 'Y',   -- 'N' = exclude cancelled invoices
+        -- installments round (ATD_AP_INVOICE_INSTALLMENTS, key invoice_id +
+        -- installment_number): vendor bank account + installment due-date range
+        p_bank       VARCHAR2 DEFAULT NULL,  -- multi, installments bank_account_number
+        p_duefrom    VARCHAR2 DEFAULT NULL,  -- YYYY-MM-DD, on installment due_date
+        p_dueto      VARCHAR2 DEFAULT NULL
     ) RETURN apex_t_number;
 
 END dct_ap_pkg;
@@ -124,7 +129,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
         p_aging      VARCHAR2 DEFAULT NULL,
         p_suppnum    VARCHAR2 DEFAULT NULL,
         p_bu         VARCHAR2 DEFAULT NULL,
-        p_inclcxl    VARCHAR2 DEFAULT 'Y'
+        p_inclcxl    VARCHAR2 DEFAULT 'Y',
+        p_bank       VARCHAR2 DEFAULT NULL,
+        p_duefrom    VARCHAR2 DEFAULT NULL,
+        p_dueto      VARCHAR2 DEFAULT NULL
     ) RETURN apex_t_number IS
         -- performance note: the dist/line facets each run ONE scan of their
         -- view into an id-set which is intersected in memory; correlated
@@ -137,6 +145,8 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
         l_glto    DATE := TO_DATE(p_gldateto   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
         l_rcvfrom DATE := TO_DATE(p_rcvfrom    DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
         l_rcvto   DATE := TO_DATE(p_rcvto      DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+        l_duefrom DATE := TO_DATE(p_duefrom    DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+        l_dueto   DATE := TO_DATE(p_dueto      DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
     BEGIN
         SELECT h.invoice_id BULK COLLECT INTO l_ids
           FROM prod.ap_invoices_header_v h
@@ -261,6 +271,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_pkg AS
             SELECT DISTINCT ln.invoice_id BULK COLLECT INTO l_tmp
               FROM prod.ap_invoice_lines_v ln
              WHERE dct_ap_pkg.in_list(p_dept, ln.expenditure_organization) = 1;
+            l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
+        END IF;
+        -- installment-grain facets: one scan of the installments pass-through
+        IF p_bank IS NOT NULL OR l_duefrom IS NOT NULL OR l_dueto IS NOT NULL THEN
+            SELECT DISTINCT n.invoice_id BULK COLLECT INTO l_tmp
+              FROM prod.ap_invoice_installments n
+             WHERE (p_bank IS NULL OR dct_ap_pkg.in_list(p_bank, n.bank_account_number) = 1)
+               AND (l_duefrom IS NULL OR n.due_date >= l_duefrom)
+               AND (l_dueto   IS NULL OR n.due_date <  l_dueto + 1);
             l_ids := l_ids MULTISET INTERSECT DISTINCT l_tmp;
         END IF;
 
