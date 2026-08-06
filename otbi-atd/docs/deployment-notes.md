@@ -1,5 +1,43 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-08-06 (2) — INCIDENT: all daily job sets silently stopped 01→06 Aug (window ∩ break = ∅)
+
+`AP Invoices Full` (and EVERY daily-set job) had not run since 31-Jul. Root cause — two gates
+whose open intervals never intersect:
+- `atd_queue_pkg.enqueue` **no-ops during the fleet break** (`atd_in_break='Y'`, 21:00–08:00
+  Dubai) — no rows are queued overnight;
+- `atd_set_gate_ok` passes only **inside the set's daily window, on the Dubai wall clock** —
+  and the six daily windows configured 2026-07-31 20:52 (00:30…07:30 Dubai staggered) all fell
+  ENTIRELY inside the break. Day: enqueue awake, window closed. Night: window open, enqueue
+  asleep. Result: zero daily enqueues from 01-Aug (daily-type runs/day: 255 → 2/10/0/0/0)
+  while windowless TXN_INCREMENTAL ran normally and PRPO_PENDING survived only because its
+  07:30–16:30 window overlaps worker hours.
+- **Fix (user-approved):** windows shifted after break-end, same stagger order —
+  GL_COA 08:00–09:00 · HR 08:30–09:30 · PROJECTS 09:00–10:00 · PROCUREMENT 09:30–10:30 ·
+  PAYABLES 10:00–11:00 · GL_GRN 10:30–11:30 (Dubai). One UPDATE on `atd_job_set`, no code.
+- Catch-up note: jobs manually re-run on 06-Aug evening (PR/PO family, AP Invoices Full) are
+  within their 1440-min frequency at the 07-Aug window, so they resume on 08-Aug; everything
+  else resumes 07-Aug morning.
+- **RULE: a daily set window MUST overlap worker active hours (08:00–21:00 Dubai) — the
+  break gate and the window gate are ANDed through the enqueue.**
+
+## 2026-08-06 — AP Installments Incremental (UH24 convention; data-only, no script)
+
+Hourly incremental for AP invoice installments (payment schedules), completing the AP family
+(Invoices/Lines/Distributions already had one). Standard recipe: `AP_INVOICE_INSTALLMENTS_UH24`
+(Save-As of `AP Installments Full`'s analysis + `Last Updated Date` 24h filter, same folder,
+identical 16 columns), job `AP Installments Incremental` — stage
+`PROD.ATD_AP_INVOICE_INSTALLMENTS_STG` (CTAS WHERE 1=0), MERGE key
+`INVOICE_ID,INSTALLMENT_NUMBER` (verified unique 9,689/9,689, no NULLs), freq 60,
+`TXN_INCREMENTAL` member (order 140). Verified: 248 last-24h rows staged = table's own
+last-24h count exactly; all keys present in final after merge; run log SUCCESS.
+**Session gotcha replayed:** the saved auth_state had idled out (~1h since the previous
+extract), so the first copy attempt initiated a login (MFA push) — per the standing rule,
+PROBE the saved session first and ask before any step that can trigger MFA; after the user
+approved, the state file was re-saved and the rerun attached MFA-free. A copy process that
+loses its ssh stdout can wedge silently — kill and rerun; Save-As is idempotent (Confirm
+Overwrite path).
+
 ## 2026-08-02 (3) — PR/PO BU-filter alignment reload + lenient NUMBER loading (INVALID_NUMBER)
 
 The line↔distribution coverage gap below was NOT a status filter — the PR/PO analyses had

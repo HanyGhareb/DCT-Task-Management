@@ -1,0 +1,138 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header: title + actions (top-right) ──────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $vm.t('bk.title')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('bk.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: isAdmin -->
+      <button class="btn btn-primary" data-bind="click: openNew, text: $vm.t('bk.new')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ── Region — DCT bank accounts ────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('bk.title')"></span>
+        <span style="font-weight:400;font-size:12px;color:var(--text-2)"
+              data-bind="text: ' · ' + rows().length + ' ' + $vm.t('tbl.rows')"></span>
+      </div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleTable,
+                attr: { title: tableCollapsed() ? $vm.t('rg.expand') : $vm.t('rg.collapse') },
+                text: tableCollapsed() ? '▸' : '▾'"></button>
+      </div>
+    </div>
+
+    <!-- ko ifnot: tableCollapsed() -->
+    <!-- ko if: loading() --><list-skeleton params="rows: 5"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: rows().length === 0 -->
+    <div class="empty-state" data-bind="text: $vm.t('tbl.none')"></div>
+    <!-- /ko -->
+    <!-- ko if: rows().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('bk.code')"></th>
+        <th data-bind="text: $vm.t('bk.name')"></th>
+        <th data-bind="text: $vm.t('bk.accountName')"></th>
+        <th data-bind="text: $vm.t('bk.accountNumber')"></th>
+        <th data-bind="text: $vm.t('bk.iban')"></th>
+        <th data-bind="text: $vm.t('bk.currency')"></th>
+        <th data-bind="text: $vm.t('bk.branch')"></th>
+        <th data-bind="text: $vm.t('co.active')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: rows -->
+        <tr class="ap-row-click" data-bind="click: function(){ $vm.openEdit($data); }">
+          <td data-bind="text: code"></td>
+          <td class="ap-clip" data-bind="text: nameEn, attr: { title: nameEn }"></td>
+          <td class="ap-clip" data-bind="text: $data.accountName || ''"></td>
+          <td data-bind="text: $data.accountNumber || ''"></td>
+          <td data-bind="text: $data.iban || ''"></td>
+          <td data-bind="text: currency"></td>
+          <td data-bind="text: $data.branch || ''"></td>
+          <td><span data-bind="text: isActive === 'Y' ? $vm.t('f.yes') : $vm.t('f.no'),
+                     attr: { class: isActive === 'Y' ? 'badge badge--success' : 'badge badge--danger' }"></span></td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
+  <!-- ── Bank drawer ───────────────────────────────────────────────────── -->
+  <div class="dw-scrim" data-bind="css: { show: dwOpen }, click: closeDw"></div>
+  <aside class="dw-drawer" style="width:min(760px,94vw)" data-bind="css: { show: dwOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('bk.title')"></div>
+        <div class="dw-title" data-bind="text: dwTitle"></div>
+      </div>
+      <div class="dw-acts">
+        <!-- ko if: isAdmin -->
+        <button class="btn btn-sm" data-bind="click: save, disable: saving(), text: $vm.t('dr.save')"></button>
+        <!-- /ko -->
+        <button class="btn btn-sm" data-bind="click: closeDw, text: $vm.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: dwError() --><div class="dw-err" data-bind="text: dwError"></div><!-- /ko -->
+      <!-- ko if: dwOk() --><div class="dw-okmsg" data-bind="text: dwOk"></div><!-- /ko -->
+
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('bk.code')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: form.code, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('bk.name')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: form.nameEn, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('bk.nameAr')"></label>
+          <input class="form-control" dir="rtl" data-bind="value: form.nameAr, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('bk.accountName')"></label>
+          <input class="form-control" data-bind="value: form.accountName, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('bk.accountNumber')"></label>
+          <input class="form-control" data-bind="value: form.accountNumber, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('bk.iban')"></label>
+          <input class="form-control" data-bind="value: form.iban, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('bk.currency')"></label>
+          <input class="form-control" data-bind="value: form.currency, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('bk.branch')"></label>
+          <input class="form-control" data-bind="value: form.branch, disable: !isAdmin">
+        </div>
+        <div class="form-group">
+          <div class="form-label" data-bind="text: $vm.t('f.isActive')"></div>
+          <div class="fct-item" style="max-width:120px"
+               data-bind="click: toggleActive, css: { on: form.isActive() === 'Y' }">
+            <input type="checkbox" tabindex="-1" style="pointer-events:none"
+                   data-bind="checked: form.isActive() === 'Y'">
+            <span class="fct-lbl" data-bind="text: $vm.t('f.yes')"></span>
+          </div>
+        </div>
+        <div class="form-group fg-span2">
+          <label class="form-label" data-bind="text: $vm.t('bk.notes')"></label>
+          <textarea class="form-control" rows="2" data-bind="value: form.notes, disable: !isAdmin"></textarea>
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('dr.requiredHint')"></div>
+    </div>
+  </aside>
+
+</div>

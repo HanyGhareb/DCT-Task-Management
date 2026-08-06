@@ -169,6 +169,8 @@
   "mod.bi.desc": "Scheduled PDF/Excel reports, emailed to recipients",
   "mod.bpm": "Fusion BPM",
   "mod.bpm.desc": "Workflow management: worklists, process design & approvals",
+  "mod.pay": "Outsource Payroll",
+  "mod.pay.desc": "Outsource companies, contracts, payroll & company payments",
   "mod.cc": "Credit Cards",
   "mod.cc.desc": "Cards & monthly replenishments",
   "mod.dt": "Duty Travel",

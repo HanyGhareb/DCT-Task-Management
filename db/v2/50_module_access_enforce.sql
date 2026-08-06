@@ -57,6 +57,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_rest AS
                    WHEN 'rpt' THEN 'REPORTING'
                    WHEN 'ap'  THEN 'AP'
                    WHEN 'kpi' THEN 'KPI_MGMT'
+                   WHEN 'pay' THEN 'PAY'
                    -- ---------------------------------------------------------
                    -- /wf/ IS DELIBERATELY EXEMPT. DO NOT MAP IT TO A MODULE.
                    -- The workflow platform's worklist is CROSS-MODULE by
