@@ -381,6 +381,7 @@
     acTruncNote:{en:'Showing the first 10,000 rows — narrow the criteria for the full set.',ar:'يتم عرض أول 10٬000 صف — ضيّق المعايير لعرض المجموعة كاملة.'},
     acPrCount:{en:'PR count',ar:'عدد طلبات الشراء'},
     acPoCount:{en:'PO count',ar:'عدد أوامر الشراء'},
+    drillSorted:{en:'↓ Sorted by {c} — highest first',ar:'↓ مرتب حسب {c} — الأعلى أولاً'},
     enLoadingNote:{en:'Loading encumbrance lines…',ar:'جارٍ تحميل بنود الارتباط…'},
     enIrErr:{en:'The interactive report component could not be loaded. Please refresh the page; if the problem persists, contact the administrator.',ar:'تعذّر تحميل مكوّن التقرير التفاعلي. يرجى تحديث الصفحة؛ وإذا استمرت المشكلة، تواصل مع المسؤول.'},
 
@@ -1512,7 +1513,7 @@
         program: self.acProgramSel().join('|'), appropriation: self.acApprSel().join('|'),
         account: self.acAccountSel().join('|'), costcenter: self.acCostCenterSel().join('|'),
         accounttype: self.acAccTypeSel().join('|'), source: self.acSource(), search: self.acSearch() }))
-        .then(fillDrill).catch(drillFail);
+        .then(fillAcAgg).catch(drillFail);
     };
     self.cell = function (row, col) {
       var v = row[col.key];
@@ -2530,11 +2531,60 @@
       var c = self.drillCount(), n = self.drillRows().length;
       return c > n ? self.t('buShowing').replace('{n}', self.fmt(n)).replace('{c}', self.fmt(c)) : '';
     });
+    // sort-criteria note shown on top of the drawer table (set per drill kind)
+    self.drillSortNote = ko.observable('');
     function fillDrill(d) {
+      self.drillSortNote('');
       self.drillCols(d.columns || []); self.drillRows(d.rows || []);
       self.drillTotalV(d.total || 0); self.drillCount(d.count || (d.rows || []).length);
       self.drillLoading(false);
     }
+    /* aggregate-drawer post-processing (2026-08-08 review round):
+       ① Cost-centre column shows 'code - name' (resolved from the /actuals/filters
+         LOV — no handler change), ② rows guaranteed amount-descending (the server
+         already orders by amt DESC; this makes the contract explicit client-side),
+       ③ the sort-criteria note above the table states what the order is. */
+    function fillAcAgg(d) {
+      var rows = d.rows || [], cols = d.columns || [];
+      var ccMap = {};
+      self.acCostCenters().forEach(function (c) { if (c.name) ccMap[c.code] = c.name; });
+      rows.forEach(function (r) {
+        if (r.costCenter && ccMap[r.costCenter]) r.costCenter = r.costCenter + ' - ' + ccMap[r.costCenter];
+      });
+      var amt = cols.filter(function (c) { return c.key === 'amount'; })[0] ||
+                cols.slice().reverse().filter(function (c) { return c.type === 'money'; })[0];
+      if (amt) rows.sort(function (a, b) { return (Number(b[amt.key]) || 0) - (Number(a[amt.key]) || 0); });
+      fillDrill({ columns: cols, rows: rows, total: d.total, count: d.count });
+      if (amt) self.drillSortNote(self.t('drillSorted').split('{c}').join(amt.label));
+    }
+    /* combination popover inside the drill drawer — delegated on the table
+       wrapper; here the cell context is $data = column / $parent = row (plain
+       KO foreach, unlike the IR grid's $parent.row). The full segment row is
+       recovered from acRowMap (the one-shot register covers the same set). */
+    function drillResolveCell(target) {
+      var td = (target && target.closest) ? target.closest('td') : null;
+      if (!td) return null;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (e) { return null; }
+      if (!ctx || !ctx.$data || !ctx.$parent) return null;
+      return { td: td, col: ctx.$data, row: ctx.$parent };
+    }
+    function drillIsCombo(info) {
+      return !!(info && info.col && info.col.key === 'combination' &&
+                info.row && acRowMap[info.row.combination]);
+    }
+    self.drillGridOver = function (d, e) {
+      var info = drillResolveCell(e.target);
+      if (drillIsCombo(info)) { info.td.style.cursor = 'help'; self.comboHover(acRowMap[info.row.combination], e); }
+      else self.comboOut();
+      return true;
+    };
+    self.drillGridMove = function (d, e) {
+      if (!self.tipShow()) return true;
+      var info = drillResolveCell(e.target);
+      if (drillIsCombo(info)) self.comboMove(info.row, e); else self.comboOut();
+      return true;
+    };
     function drillFail(e) { self.drillLoading(false); self.drillDrawer(false); toast(e.message, true); }
     // row cell → that single budget line's supporting transactions
     self.openBuDrill = function (row, metric) {
@@ -2566,7 +2616,7 @@
         costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype(),
         ovr: self.buOvr() ? 'Y' : null })).then(fillDrill).catch(drillFail);
     };
-    self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); };
+    self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); self.drillSortNote(''); self.comboOut(); };
     // export the loaded drill lines — modal + drawer share drillCols/drillRows
     self.drillExportCsv = function () {
       var cols = self.drillCols(), rows = self.drillRows();

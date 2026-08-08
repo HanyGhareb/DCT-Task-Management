@@ -122,6 +122,31 @@ def main():
         pg.evaluate("() => ko.dataFor(document.body).closeDrill()")
         pg.wait_for_timeout(300)
 
+        # ── KPI aggregate drawer round (v1.58.0) ─────────────────────────
+        pg.evaluate("() => { ko.dataFor(document.body).openAcAgg('budget'); }")
+        pg.wait_for_function(
+            "() => { const v = ko.dataFor(document.body); "
+            "return v.drillDrawer() && v.drillLoading() === false && v.drillRows().length > 0; }",
+            timeout=120000)
+        first_cc = pg.evaluate("() => ko.dataFor(document.body).drillRows()[0].costCenter")
+        check("drawer cost centre shows 'code - name'", " - " in str(first_cc), str(first_cc))
+        note = pg.evaluate("() => ko.dataFor(document.body).drillSortNote()")
+        check("sort-criteria hint shown on top of the table", "Sorted by" in str(note), str(note))
+        amts = pg.evaluate(
+            "() => ko.dataFor(document.body).drillRows().map(r => Number(r.amount) || 0)")
+        check("drawer rows sorted by amount descending",
+              all(amts[i] >= amts[i + 1] for i in range(len(amts) - 1)), f"n={len(amts)}")
+        dcell = pg.locator(".dw-drawer.dw-wide .drill-tbl tbody tr td").nth(2)
+        dcell.hover()
+        pg.wait_for_timeout(400)
+        check("drawer combination cell shows segment popover",
+              bool(pg.evaluate("() => ko.dataFor(document.body).tipShow()")))
+        pg.screenshot(path="final apps/GL/tests/ac_drawer_round.png")
+        pg.evaluate("() => ko.dataFor(document.body).closeDrawer()")
+        pg.wait_for_timeout(300)
+        check("closing the drawer clears the sort note",
+              pg.evaluate("() => ko.dataFor(document.body).drillSortNote()") == "")
+
         # ── combination popover (delegated ko.contextFor) ────────────────
         combo = pg.locator(".ac-results .ir-table tbody tr td.acc-mono").first
         combo.hover()

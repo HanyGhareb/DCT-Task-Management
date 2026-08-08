@@ -29,6 +29,21 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-08-08 (2b) — Web-tier release `20260808142802` pushed**: GL v1.58.0 live; verified
+  `APP_VERSION` 1.58.0 + `fillAcAgg`/`drillSortNote`/`drillGridOver` JS and `.dw-sort` CSS
+  served from https://129.151.159.189/.
+- **2026-08-08 (2) — KPI aggregate-drill drawer round (GL v1.58.0; frontend-only).** User
+  round on the "Budget · All lines" drawer (openAcAgg): ① **Cost-centre column shows
+  `code - name`** — resolved client-side from the `/actuals/filters` LOV in the new
+  `fillAcAgg` post-processor (no GL/db/10 change); ② **Combination cells show the same
+  10-segment popover as the register** — delegated `drillGridOver/Move` on the drawer's
+  `.tbl-wrap` (plain-KO context: `$data` = column / `$parent` = row — NOT the IR's
+  `$parent.row`), full segment row recovered from `acRowMap` (popover z 90 > drawer z 71);
+  ③ rows **guaranteed amount-descending** (server already orders by amt DESC; client
+  re-sort makes the contract explicit) + ④ a **sort-criteria pill on top of the table**
+  ("↓ Sorted by Total budget — highest first", `drillSortNote`/`.dw-sort`; cleared by
+  `fillDrill` and `closeDrawer` so butil/pending drills never inherit it). Smoke
+  `ac_ir_browser_smoke.py` extended → **23/23** EN+AR.
 - **2026-08-08 — Web-tier release `20260808135924` pushed** (`SSH_USER=opc bash
   webtier/deploy_frontend.sh 129.151.159.189`): GL v1.57.0 live; verified `APP_VERSION`
   1.57.0 + `acIr`/`acLovCommit`/`AC_METRIC` JS and `.ac-body`/`.acg-pr`/`.ac-drillcell`

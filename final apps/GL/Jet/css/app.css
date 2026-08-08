@@ -932,3 +932,8 @@ table.data-table.ir-table thead tr.ir-band th.acg-act{background:rgba(63,111,95,
 table.data-table.ir-table thead tr.ir-band th.acg-funds{background:rgba(46,125,91,.26);color:#123826}
 /* drill affordance on hover (delegated — class added by acGridOver) */
 .ir-table td.ac-drillcell{cursor:pointer;color:var(--brand-dark);text-decoration:underline dotted;text-underline-offset:3px}
+
+/* drill-drawer sort-criteria note (sits right on top of the table) */
+.dw-sort{display:inline-flex;align-items:center;gap:6px;margin:2px 0 8px;padding:4px 12px;border-radius:999px;
+  background:rgba(var(--brand-rgb),.08);border:1px solid rgba(var(--brand-rgb),.18);
+  color:var(--brand-dark);font-size:11.5px;font-weight:600}
