@@ -912,3 +912,23 @@ table.data-table.ir-table thead tr.ir-band th.dofg-perf{background:rgba(198,146,
 .dof-rec-v.neg{color:#B3261E}
 .dof-rec-v.dim{color:#A9B2B8}
 .dof-rec-v .dr-arrow{font-size:9.5px;margin-inline-end:3px;vertical-align:1px}
+
+/* ── Budget vs Actual on the SHARED interactive report (v1.57.0) ──
+   ac-body anchors the oj-progress-circle busy overlay over KPI band +
+   register; per-measure group tints follow the KPI card palette
+   (PR teal / PO indigo / Actuals brand green / Funds emerald). */
+.ac-body{position:relative}
+.ac-results{margin-top:6px}
+.ir-table td.acc-mono{font-family:'SF Mono','Cascadia Mono',Consolas,monospace;font-size:10.5px;letter-spacing:-.2px}
+.ir-table td.acc-bud{background:rgba(58,110,165,.08)}
+.ir-table td.acc-pr{background:rgba(46,140,158,.08)}
+.ir-table td.acc-po{background:rgba(81,99,185,.08)}
+.ir-table td.acc-enc{background:rgba(184,134,43,.10)}
+.ir-table td.acc-act{background:rgba(63,111,95,.08)}
+.ir-table td.acc-funds{background:rgba(46,125,91,.10)}
+table.data-table.ir-table thead tr.ir-band th.acg-pr{background:rgba(46,140,158,.26);color:#123E47}
+table.data-table.ir-table thead tr.ir-band th.acg-po{background:rgba(81,99,185,.24);color:#232C56}
+table.data-table.ir-table thead tr.ir-band th.acg-act{background:rgba(63,111,95,.28);color:#1D3B31}
+table.data-table.ir-table thead tr.ir-band th.acg-funds{background:rgba(46,125,91,.26);color:#123826}
+/* drill affordance on hover (delegated — class added by acGridOver) */
+.ir-table td.ac-drillcell{cursor:pointer;color:var(--brand-dark);text-decoration:underline dotted;text-underline-offset:3px}

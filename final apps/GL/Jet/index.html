@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.56.3';</script>
+<script>window.APP_VERSION = '1.57.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -278,6 +278,7 @@
         <span class="ac-chip-hint" data-bind="text:acActiveCount()?t('acEditFilters'):t('acNoFilters')"></span>
       </div>
 
+      <div class="ac-body">
       <!-- business-question answer band — 6 grouped measure cards -->
       <div class="kgrid">
         <div class="kg kg-budget">
@@ -347,72 +348,26 @@
         </div>
       </div>
 
-      <!-- results table -->
-      <div class="tbl-wrap">
-        <table class="tbl actuals-tbl">
-          <thead><tr>
-            <th class="combo" data-bind="text:t('thCombo'), attr:{title:t('hCombo')}"></th>
-            <th data-bind="text:t('costCenter')"></th>
-            <th data-bind="text:t('account')"></th>
-            <th data-bind="text:t('thAccType')"></th>
-            <th data-bind="text:t('fSectorL')"></th>
-            <th data-bind="text:t('program')"></th>
-            <th data-bind="text:t('thAppr')"></th>
-            <th class="num" data-bind="text:t('cBudget'), attr:{title:t('hBudget')}"></th>
-            <th class="num grp-h"><span data-bind="text:t('cCommitment')"></span><i class="hint-i" data-bind="attr:{title:t('hCommitmentGrp')}">ⓘ</i></th>
-            <th class="num grp-h"><span data-bind="text:t('cObligation')"></span><i class="hint-i" data-bind="attr:{title:t('hObligationGrp')}">ⓘ</i></th>
-            <th class="num"><span data-bind="text:t('cOpenEncumbrance')"></span><i class="hint-i" data-bind="attr:{title:t('hOpenEncumbrance')}">ⓘ</i></th>
-            <th class="num" data-bind="text:t('cActual'), attr:{title:t('hActual')}"></th>
-            <th class="num" data-bind="text:t('cGrn'), attr:{title:t('hGrn')}"></th>
-            <th class="num" data-bind="text:t('cApDirect'), attr:{title:t('hApDirect')}"></th>
-            <th class="num"><span data-bind="text:t('cSla')"></span><i class="hint-i" data-bind="attr:{title:t('hSla')}">ⓘ</i></th>
-            <th class="num grp-h"><span data-bind="text:t('cFunds')"></span><i class="hint-i" data-bind="attr:{title:t('hFundsGrp')}">ⓘ</i></th>
-          </tr></thead>
-          <tbody>
-            <!-- ko foreach: acItems -->
-            <tr>
-              <td class="mono combo" data-bind="text:ccString, event:{mouseover:$root.comboHover, mousemove:$root.comboMove, mouseout:$root.comboOut}"></td>
-              <td><b class="mono" data-bind="text:costCenterCode"></b><div class="sub-d" data-bind="text:$data.costCenterDesc||''"></div></td>
-              <td><span class="mono" data-bind="text:accountCode"></span><div class="sub-d" data-bind="text:$data.accountDesc||''"></div></td>
-              <td><span class="chip" data-bind="visible:$data.accountTypeCode, text:$root.acAccTypeName($data.accountTypeCode)"></span><span data-bind="visible:!$data.accountTypeCode" class="dash">—</span></td>
-              <td><span class="chip" data-bind="visible:$data.sectorName, text:$data.sectorName||''"></span><span data-bind="visible:!$data.sectorName" class="dash">—</span></td>
-              <td data-bind="text:$data.programName||'—'"></td>
-              <td><span class="mono" data-bind="text:$data.appropriationCode||'—'"></span></td>
-              <td class="num mono money-cell" data-bind="text:$root.compact($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openDrill(d,'budget')}"></td>
-              <td class="num mono grp-cell">
-                <div class="grp-row" data-bind="click:function(d){$root.openDrill(d,'commitment')}"><span class="grp-l" data-bind="text:$root.t('lblTotal')"></span><span data-bind="text:$root.compact($data.prTotal), attr:{title:$root.money($data.prTotal)}"></span><span class="grp-cnt" data-bind="text:'· '+($data.prCount||0)"></span></div>
-                <div class="grp-row" data-bind="click:function(d){$root.openDrill(d,'opencommitment')}"><span class="grp-l" data-bind="text:$root.t('lblOpen')"></span><span data-bind="text:$root.compact($data.openCommitment), attr:{title:$root.money($data.openCommitment)}"></span></div>
-                <div class="grp-row" data-bind="click:function(d){$root.openDrill(d,'commitmentpipeline')}"><span class="grp-l" data-bind="text:$root.t('lblPipe')"></span><span data-bind="text:$root.compact($data.commitmentPipeline), attr:{title:$root.money($data.commitmentPipeline)}"></span></div>
-              </td>
-              <td class="num mono grp-cell">
-                <div class="grp-row" data-bind="click:function(d){$root.openDrill(d,'obligation')}"><span class="grp-l" data-bind="text:$root.t('lblTotal')"></span><span data-bind="text:$root.compact($data.totalPo), attr:{title:$root.money($data.totalPo)}"></span><span class="grp-cnt" data-bind="text:'· '+($data.poCount||0)"></span></div>
-                <div class="grp-row" data-bind="click:function(d){$root.openDrill(d,'openobligation')}"><span class="grp-l" data-bind="text:$root.t('lblOpen')"></span><span data-bind="text:$root.compact($data.openObligation), attr:{title:$root.money($data.openObligation)}"></span></div>
-                <div class="grp-row" data-bind="click:function(d){$root.openDrill(d,'popipeline')}"><span class="grp-l" data-bind="text:$root.t('lblPipe')"></span><span data-bind="text:$root.compact($data.poPipeline), attr:{title:$root.money($data.poPipeline)}"></span></div>
-              </td>
-              <td class="num mono strong" data-bind="text:$root.compact($data.openEncumbrance), attr:{title:$root.money($data.openEncumbrance)}"></td>
-              <td class="num mono money-cell strong" data-bind="text:$root.compact($data.glActual), attr:{title:$root.money($data.glActual)}, click:function(d){$root.openDrill(d,'glactual')}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.compact($data.grnActual), attr:{title:$root.money($data.grnActual)}, click:function(d){$root.openDrill(d,'grn')}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.compact($data.apDirect), attr:{title:$root.money($data.apDirect)}, click:function(d){$root.openDrill(d,'apdirect')}"></td>
-              <td class="num mono strong" data-bind="text:$root.compact($data.slaActual), attr:{title:$root.money($data.slaActual)}"></td>
-              <td class="num mono grp-cell">
-                <div class="grp-row"><span class="grp-l" data-bind="text:$root.t('lblGL')"></span><span data-bind="text:$root.compact($data.fundsAvailable), attr:{title:$root.money($data.fundsAvailable)}, css:{neg:$data.fundsAvailable<0}"></span></div>
-                <div class="grp-row"><span class="grp-l" data-bind="text:$root.t('lblCalc')"></span><span data-bind="text:$root.compact($data.fundsAvailableCalc), attr:{title:$root.money($data.fundsAvailableCalc)}, css:{neg:$data.fundsAvailableCalc<0}"></span></div>
-              </td>
-            </tr>
-            <!-- /ko -->
-          </tbody>
-        </table>
-        <div class="ldr" data-bind="visible:acLoading()">
-          <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
-          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+      <!-- results: SHARED interactive report over the one-shot register (v1.57.0) -->
+      <div class="ac-results">
+        <div class="en-sum" data-bind="visible:acTotal()>0">
+          <span><b data-bind="text:fmt(acItems().length)"></b> <span class="en-sub" data-bind="text:t('acLinesLabel')"></span></span>
+          <!-- ko if: acTruncated --><span class="en-sub" data-bind="text:t('acTruncNote')"></span><!-- /ko -->
+        </div>
+        <!-- delegate on the wrapper: the Combination cell shows the shared -->
+        <!-- 10-segment popover, every figure cell drills to its supporting -->
+        <!-- lines (ko.contextFor — no shared-component change) -->
+        <div data-bind="event:{mouseover:acGridOver, mousemove:acGridMove, mouseout:enGridOut, click:acGridClick}">
+        <interactive-report params="reportCode:'GL_BUDGET_ACTUAL_IR', section:'ac', data:acIr, isAdmin:false, layoutsApi:null"></interactive-report>
         </div>
         <div class="empty pad" data-bind="visible:!acLoading() && acItems().length===0, text:t('noActuals')"></div>
       </div>
-      <div class="toolbar" style="justify-content:flex-end;margin-top:14px">
-        <span class="t-dates" data-bind="text:acRange()"></span>
-        <button class="btn btn-sm" data-bind="click:function(){runActuals(acOffset()-acLimit)}, enable:acOffset()>0, text:t('prev')"></button>
-        <button class="btn btn-sm" data-bind="click:function(){runActuals(acOffset()+acLimit)}, enable:(acOffset()+acLimit)<acTotal(), text:t('next')"></button>
+      <!-- oj-progress-circle busy overlay (initial load + every search run) -->
+      <div class="bu-load-ov" data-bind="visible:acLoading" aria-live="polite">
+        <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
+        <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
       </div>
+      </div><!-- /ac-body -->
     </div>
 
     <!-- ── BUDGET UTILIZATION (project budget vs actual, per task & expenditure type) ── -->
@@ -2216,19 +2171,19 @@
       <div class="field fd-full"><label class="lbl" data-bind="text:t('fPeriod')+' *'"></label>
         <select class="inp inp-lg" data-bind="options:periods, optionsText:'period', optionsValue:'period', value:acPeriod"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
-        <select class="inp inp-lg" data-bind="options:acSectors, optionsText:'name', optionsValue:'code', value:acSectorPick, optionsCaption:t('allSectors'), event:{change:function(){return acAddSel(acSectorSel,acSectorPick);}}"></select></div>
+        <input class="inp inp-lg" type="text" list="ac-sector-dl" data-bind="textInput:acSectorPick, attr:{placeholder:t('lovHint')}, event:{change:function(){return acLovCommit(acSectors,acSectorSel,acSectorPick);}, keydown:function(d,e){if(e.keyCode===13){acLovCommit(acSectors,acSectorSel,acSectorPick);}return true;}}"></div>
       <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
-        <select class="inp inp-lg" data-bind="options:acChapters, optionsText:'name', optionsValue:'code', value:acChapterPick, optionsCaption:t('allChapters'), event:{change:function(){return acAddSel(acChapterSel,acChapterPick);}}"></select></div>
+        <input class="inp inp-lg" type="text" list="ac-chapter-dl" data-bind="textInput:acChapterPick, attr:{placeholder:t('lovHint')}, event:{change:function(){return acLovCommit(acChapters,acChapterSel,acChapterPick);}, keydown:function(d,e){if(e.keyCode===13){acLovCommit(acChapters,acChapterSel,acChapterPick);}return true;}}"></div>
       <div class="field"><label class="lbl" data-bind="text:t('fProgramL')"></label>
-        <select class="inp inp-lg" data-bind="options:acPrograms, optionsText:'name', optionsValue:'code', value:acProgramPick, optionsCaption:t('allPrograms'), event:{change:function(){return acAddSel(acProgramSel,acProgramPick);}}"></select></div>
+        <input class="inp inp-lg" type="text" list="ac-program-dl" data-bind="textInput:acProgramPick, attr:{placeholder:t('lovHint')}, event:{change:function(){return acLovCommit(acPrograms,acProgramSel,acProgramPick);}, keydown:function(d,e){if(e.keyCode===13){acLovCommit(acPrograms,acProgramSel,acProgramPick);}return true;}}"></div>
       <div class="field"><label class="lbl" data-bind="text:t('fApprL')"></label>
-        <select class="inp inp-lg" data-bind="options:acAppropriations, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acApprPick, optionsCaption:t('allApprops'), event:{change:function(){return acAddSel(acApprSel,acApprPick);}}"></select></div>
+        <input class="inp inp-lg" type="text" list="ac-appr-dl" data-bind="textInput:acApprPick, attr:{placeholder:t('lovHint')}, event:{change:function(){return acLovCommit(acAppropriations,acApprSel,acApprPick);}, keydown:function(d,e){if(e.keyCode===13){acLovCommit(acAppropriations,acApprSel,acApprPick);}return true;}}"></div>
       <div class="field"><label class="lbl" data-bind="text:t('fAccountL')"></label>
-        <select class="inp inp-lg" data-bind="options:acAccounts, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acAccountPick, optionsCaption:t('allAccounts'), event:{change:function(){return acAddSel(acAccountSel,acAccountPick);}}"></select></div>
+        <input class="inp inp-lg" type="text" list="ac-account-dl" data-bind="textInput:acAccountPick, attr:{placeholder:t('lovHint')}, event:{change:function(){return acLovCommit(acAccounts,acAccountSel,acAccountPick);}, keydown:function(d,e){if(e.keyCode===13){acLovCommit(acAccounts,acAccountSel,acAccountPick);}return true;}}"></div>
       <div class="field"><label class="lbl" data-bind="text:t('fAccTypeL')+' *'"></label>
         <select class="inp inp-lg" data-bind="options:acAccTypes, optionsText:'name', optionsValue:'code', value:acAccTypePick, optionsCaption:t('allAccTypes'), event:{change:function(){return acAddSel(acAccTypeSel,acAccTypePick);}}"></select></div>
       <div class="field"><label class="lbl" data-bind="text:t('fCostCenterL')"></label>
-        <select class="inp inp-lg" data-bind="options:acCostCenters, optionsText:function(a){return a.code+' · '+a.name}, optionsValue:'code', value:acCostCenterPick, optionsCaption:t('allCostCenters'), event:{change:function(){return acAddSel(acCostCenterSel,acCostCenterPick);}}"></select></div>
+        <input class="inp inp-lg" type="text" list="ac-cc-dl" data-bind="textInput:acCostCenterPick, attr:{placeholder:t('lovHint')}, event:{change:function(){return acLovCommit(acCostCenters,acCostCenterSel,acCostCenterPick);}, keydown:function(d,e){if(e.keyCode===13){acLovCommit(acCostCenters,acCostCenterSel,acCostCenterPick);}return true;}}"></div>
       <div class="field"><label class="lbl" data-bind="text:t('fSourceL')"></label>
         <select class="inp inp-lg" data-bind="options:acSources, optionsText:'name', optionsValue:'code', value:acSource, optionsCaption:t('allSources')"></select></div>
       <div class="field fd-full"><label class="lbl" data-bind="text:t('fSearchL')"></label>
@@ -2263,6 +2218,13 @@
       <button class="btn btn-primary" data-bind="click:applyAcFilters, text:t('btnApply')"></button>
       <button class="btn" data-bind="click:acDrawerReset, text:t('btnReset')"></button>
     </div>
+    <!-- type-ahead option lists for the big LOV filters (value = code, label = name) -->
+    <datalist id="ac-sector-dl"><!-- ko foreach: acSectors --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
+    <datalist id="ac-chapter-dl"><!-- ko foreach: acChapters --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
+    <datalist id="ac-program-dl"><!-- ko foreach: acPrograms --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
+    <datalist id="ac-appr-dl"><!-- ko foreach: acAppropriations --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
+    <datalist id="ac-account-dl"><!-- ko foreach: acAccounts --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
+    <datalist id="ac-cc-dl"><!-- ko foreach: acCostCenters --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
   </div>
 </aside>
 

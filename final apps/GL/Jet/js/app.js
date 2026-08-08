@@ -377,6 +377,10 @@
     enOpenLabel:{en:'Open / Reserved (AED)',ar:'المفتوح / المحجوز (درهم)'},
     enLinesLabel:{en:'encumbrance lines',ar:'بنود الارتباط'},
     enTruncNote:{en:'Showing the top 10,000 lines by open amount.',ar:'يتم عرض أعلى 10٬000 بند حسب المبلغ المفتوح.'},
+    acLinesLabel:{en:'GL combinations',ar:'تركيبة محاسبية'},
+    acTruncNote:{en:'Showing the first 10,000 rows — narrow the criteria for the full set.',ar:'يتم عرض أول 10٬000 صف — ضيّق المعايير لعرض المجموعة كاملة.'},
+    acPrCount:{en:'PR count',ar:'عدد طلبات الشراء'},
+    acPoCount:{en:'PO count',ar:'عدد أوامر الشراء'},
     enLoadingNote:{en:'Loading encumbrance lines…',ar:'جارٍ تحميل بنود الارتباط…'},
     enIrErr:{en:'The interactive report component could not be loaded. Please refresh the page; if the problem persists, contact the administrator.',ar:'تعذّر تحميل مكوّن التقرير التفاعلي. يرجى تحديث الصفحة؛ وإذا استمرت المشكلة، تواصل مع المسؤول.'},
 
@@ -1212,6 +1216,26 @@
     };
     // append the current pick to its chip array (ignores blank / duplicate)
     self.acAddSel = function (sel, pick) { var v = pick(); if (v && sel.indexOf(v) < 0) sel.push(v); pick(''); return true; };
+    // type-ahead LOV commit (v1.57.0): the drawer's big LOVs are datalist text
+    // inputs — match the typed/picked text against the LOV (exact code, then
+    // 'code · name', then exact name, then a UNIQUE contains match) and turn it
+    // into a chip; blank or ambiguous text is left in place untouched.
+    self.acLovCommit = function (lov, sel, txt) {
+      var v = (txt() || '').trim();
+      if (!v) return true;
+      var list = lov() || [], lo = v.toLowerCase();
+      var hit = list.filter(function (x) { return x.code === v; })[0] ||
+                list.filter(function (x) { return (x.code + ' · ' + (x.name || '')).toLowerCase() === lo; })[0] ||
+                list.filter(function (x) { return (x.name || '').toLowerCase() === lo; })[0];
+      if (!hit) {
+        var cand = list.filter(function (x) {
+          return (x.code + ' ' + (x.name || '')).toLowerCase().indexOf(lo) >= 0;
+        });
+        if (cand.length === 1) hit = cand[0];
+      }
+      if (hit) { if (sel.indexOf(hit.code) < 0) sel.push(hit.code); txt(''); }
+      return true;
+    };
     self.acChipRemove = function (arr, v) {
       // Account Type is mandatory — never let the tray empty it
       if (arr === self.acAccTypeSel && self.acAccTypeSel().length <= 1) { toast(self.t('accTypeRequired'), true); return; }
@@ -1253,13 +1277,30 @@
         search: self.acSearch(),
         limit: limit || self.acLimit, offset: offset || 0 };
     };
-    self.runActuals = function (offset) {
+    /* one-shot loader (v1.57.0 IR rework): the shared <interactive-report>
+       needs the FULL filtered set client-side, so page-merge /actuals
+       (server clamp = 1,000 rows/request, GL/db/05) up to AC_MAX rows —
+       no handler change, so no 05 re-run cascade. The 100-row pager is
+       gone; the IR grid owns sorting / filtering / paging. */
+    var AC_MAX = 10000, AC_PAGE = 1000;
+    self.acTruncated = ko.observable(false);
+    self.runActuals = function () {
       if (!self.acPeriod()) { toast(self.t('periodRequired'), true); return; }
       if (!self.acAccTypeSel().length) { toast(self.t('accTypeRequired'), true); return; }
-      offset = Math.max(0, offset || 0); self.acLoading(true);
-      return api('GET', '/actuals' + qs(self.acParams(offset))).then(function (d) {
-        self.acItems(d.items || []); self.acTotals(d.totals || {});
-        self.acTotal(d.total || 0); self.acOffset(offset); self.acLoading(false);
+      self.acLoading(true);
+      var rows = [];
+      function pageIn(off) {
+        return api('GET', '/actuals' + qs(self.acParams(off, AC_PAGE))).then(function (d) {
+          if (off === 0) { self.acTotals(d.totals || {}); self.acTotal(d.total || 0); }
+          var it = d.items || [];
+          rows = rows.concat(it);
+          if (it.length === AC_PAGE && rows.length < Math.min(self.acTotal(), AC_MAX)) return pageIn(off + AC_PAGE);
+        });
+      }
+      return pageIn(0).then(function () {
+        self.acTruncated(rows.length < self.acTotal());
+        self.acItems(rows);
+        self.acLoading(false);
       }).catch(function (e) { self.acLoading(false); fail(e); });
     };
     self.acReset = function () {
@@ -1274,8 +1315,7 @@
     };
     self.acRange = ko.computed(function () {
       if (!self.acTotal()) return '';
-      var a = self.acOffset() + 1, b = Math.min(self.acOffset() + self.acLimit, self.acTotal());
-      return a + '–' + b + ' ' + self.t('rowsOf') + ' ' + self.fmt(self.acTotal());
+      return self.fmt(self.acItems().length) + ' ' + self.t('rowsOf') + ' ' + self.fmt(self.acTotal());
     });
     // pull the business-question total for a summary card
     self.tot = function (k) { var t = self.acTotals() || {}; return t[k]; };
@@ -1299,6 +1339,103 @@
       if (p == null) return '';
       return (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '% ' + self.t('acRemainingLbl');
     });
+
+    /* ── SHARED interactive-report envelope (v1.57.0): the Budget-vs-Actual
+       register on the shared IR grid — grouped header bands (Commitment /
+       Obligation / Actuals / Funds), frozen Combination + Cost-centre columns,
+       per-group tints, per-column ⓘ hints. Figure cells stay drillable via
+       the delegated wrapper handlers below; the IR normalizes rows down to
+       declared columns, so a side map keyed on the combination string
+       recovers the full source row (segment popover needs it). ── */
+    var acRowMap = {};
+    var AC_METRIC = { budget: 'budget', prTotal: 'commitment', openCommitment: 'opencommitment',
+      commitmentPipeline: 'commitmentpipeline', totalPo: 'obligation', openObligation: 'openobligation',
+      poPipeline: 'popipeline', glActual: 'glactual', grnActual: 'grn', apDirect: 'apdirect' };
+    function acPair(code, name) { return code ? (name ? code + ' · ' + name : code) : (name || ''); }
+    self.acIr = ko.pureComputed(function () {
+      var items = self.acItems();
+      if (!items.length && !self.acTotal()) return null;
+      var t = self.t;
+      var gPr = t('cCommitment'), gPo = t('cObligation'), gAct = t('cActual'), gF = t('cFunds');
+      var cols = [
+        { key: 'combination', label: t('thCombo'), type: 'text', sticky: true, width: 205, colClass: 'acc-mono', hint: t('hCombo') },
+        { key: 'costCenter', label: t('costCenter'), type: 'text', sticky: true, width: 185, ellipsis: true },
+        { key: 'account', label: t('account'), type: 'text', width: 200, ellipsis: true },
+        { key: 'accountType', label: t('thAccType'), type: 'text' },
+        { key: 'sector', label: t('fSectorL'), type: 'text', ellipsis: true },
+        { key: 'program', label: t('program'), type: 'text', ellipsis: true },
+        { key: 'appropriation', label: t('thAppr'), type: 'text' },
+        { key: 'budget', label: t('cBudget'), type: 'money', colClass: 'acc-bud', hint: t('hBudget') },
+        { key: 'prTotal', label: t('lblTotal'), type: 'money', group: gPr, groupClass: 'acg-pr', colClass: 'acc-pr', hint: t('hCommitmentGrp') },
+        { key: 'openCommitment', label: t('lblOpen'), type: 'money', group: gPr, groupClass: 'acg-pr', colClass: 'acc-pr', hint: t('hCommitmentGrp') },
+        { key: 'commitmentPipeline', label: t('lblPipe'), type: 'money', group: gPr, groupClass: 'acg-pr', colClass: 'acc-pr', hint: t('hCommitmentGrp') },
+        { key: 'prCount', label: t('acPrCount'), type: 'num', group: gPr, groupClass: 'acg-pr', colClass: 'acc-pr' },
+        { key: 'totalPo', label: t('lblTotal'), type: 'money', group: gPo, groupClass: 'acg-po', colClass: 'acc-po', hint: t('hObligationGrp') },
+        { key: 'openObligation', label: t('lblOpen'), type: 'money', group: gPo, groupClass: 'acg-po', colClass: 'acc-po', hint: t('hObligationGrp') },
+        { key: 'poPipeline', label: t('lblPipe'), type: 'money', group: gPo, groupClass: 'acg-po', colClass: 'acc-po', hint: t('hObligationGrp') },
+        { key: 'poCount', label: t('acPoCount'), type: 'num', group: gPo, groupClass: 'acg-po', colClass: 'acc-po' },
+        { key: 'openEncumbrance', label: t('cOpenEncumbrance'), type: 'money', colClass: 'acc-enc', hint: t('hOpenEncumbrance') },
+        { key: 'glActual', label: t('cActual'), type: 'money', group: gAct, groupClass: 'acg-act', colClass: 'acc-act', hint: t('hActual') },
+        { key: 'grnActual', label: t('cGrn'), type: 'money', group: gAct, groupClass: 'acg-act', colClass: 'acc-act', hint: t('hGrn') },
+        { key: 'apDirect', label: t('cApDirect'), type: 'money', group: gAct, groupClass: 'acg-act', colClass: 'acc-act', hint: t('hApDirect') },
+        { key: 'slaActual', label: t('cSla'), type: 'money', group: gAct, groupClass: 'acg-act', colClass: 'acc-act', hint: t('hSla') },
+        { key: 'fundsAvailable', label: t('lblGL'), type: 'money', group: gF, groupClass: 'acg-funds', colClass: 'acc-funds', hint: t('hFundsGrp') },
+        { key: 'fundsAvailableCalc', label: t('lblCalc'), type: 'money', group: gF, groupClass: 'acg-funds', colClass: 'acc-funds', hint: t('hFundsGrp') }
+      ];
+      acRowMap = {};
+      var rows = items.map(function (r) {
+        acRowMap[r.ccString] = r;
+        return {
+          combination: r.ccString,
+          costCenter: acPair(r.costCenterCode, r.costCenterDesc),
+          account: acPair(r.accountCode, r.accountDesc),
+          accountType: self.acAccTypeName(r.accountTypeCode),
+          sector: r.sectorName || '',
+          program: r.programName || '',
+          appropriation: r.appropriationCode || '',
+          budget: r.budget, prTotal: r.prTotal, openCommitment: r.openCommitment,
+          commitmentPipeline: r.commitmentPipeline, prCount: r.prCount || 0,
+          totalPo: r.totalPo, openObligation: r.openObligation, poPipeline: r.poPipeline,
+          poCount: r.poCount || 0, openEncumbrance: r.openEncumbrance,
+          glActual: r.glActual, grnActual: r.grnActual, apDirect: r.apDirect,
+          slaActual: r.slaActual, fundsAvailable: r.fundsAvailable,
+          fundsAvailableCalc: r.fundsAvailableCalc
+        };
+      });
+      return { columns: cols, items: rows, total: rows.length, truncated: self.acTruncated(),
+               maxRows: AC_MAX, zebra: true, stateRev: 1, section: 'ac' };
+    });
+    /* delegated wrapper handlers over the IR grid (ko.contextFor — same
+       pattern as the encumbrance / pending registers): the Combination cell
+       shows the 10-segment popover, every figure cell drills to its
+       supporting lines exactly like the old hand-built table did. */
+    self.acGridOver = function (d, e) {
+      var info = enResolveCell(e.target);
+      if (!info) { self.comboOut(); return true; }
+      if (info.col.key === 'combination' && acRowMap[info.row.combination]) {
+        info.td.style.cursor = 'help';
+        self.comboHover(acRowMap[info.row.combination], e);
+      } else {
+        self.comboOut();
+        if (AC_METRIC[info.col.key]) { info.td.classList.add('ac-drillcell'); info.td.title = self.t('buDrillHint'); }
+      }
+      return true;
+    };
+    self.acGridMove = function (d, e) {
+      if (!self.tipShow()) return true;
+      var info = enResolveCell(e.target);
+      if (info && info.col.key === 'combination' && acRowMap[info.row.combination]) self.comboMove(info.row, e);
+      else self.comboOut();
+      return true;
+    };
+    self.acGridClick = function (d, e) {
+      var info = enResolveCell(e.target);
+      if (info && AC_METRIC[info.col.key] && info.row.combination) {
+        self.openDrill({ ccString: info.row.combination }, AC_METRIC[info.col.key]);
+        return false;
+      }
+      return true;
+    };
 
     /* ── report parameters drawer (filters moved off the page, 2026-07-14) ── */
     self.acFilterDrawer = ko.observable(false);

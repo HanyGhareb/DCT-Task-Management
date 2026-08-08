@@ -29,6 +29,37 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-08-08 — Web-tier release `20260808135924` pushed** (`SSH_USER=opc bash
+  webtier/deploy_frontend.sh 129.151.159.189`): GL v1.57.0 live; verified `APP_VERSION`
+  1.57.0 + `acIr`/`acLovCommit`/`AC_METRIC` JS and `.ac-body`/`.acg-pr`/`.ac-drillcell`
+  CSS served from https://129.151.159.189/.
+- **2026-08-08 — Budget-vs-Actual register on the SHARED interactive report + busy overlay +
+  type-ahead report parameters (GL v1.57.0; frontend-only, no DB change).** User round on the
+  General Ledger tab:
+  1) **Results table → shared `<interactive-report>`** (`reportCode GL_BUDGET_ACTUAL_IR`,
+     section `ac`): the hand-built 16-column table with stacked `.grp-cell`s is gone; the
+     register is a flat IR grid — frozen Combination + Cost-centre columns, grouped header
+     bands (Commitment PR / Obligation PO / GL Actual / Funds available) with per-group tints
+     (`.acg-*` bands + `.acc-*` cells in app.css), per-column ⓘ hints, PR/PO count columns,
+     zebra, and the IR's own search / column mgmt / filters / sort / CSV+XLSX / layouts.
+     Figure cells stay **drillable** and the Combination cell keeps the 10-segment popover via
+     the delegated-wrapper pattern (`acGridOver/acGridMove/acGridClick` + `ko.contextFor`;
+     IR rows carry only declared columns, so `acRowMap` keyed on the combination string
+     recovers the full source row for the popover; `AC_METRIC` maps column key → drill metric).
+  2) **One-shot loader**: `runActuals()` now page-merges `/actuals` (server clamp is 1,000
+     rows/request in GL/db/05 — deliberately NOT raised, avoiding the 05 → 07..18 re-run
+     cascade) up to 10,000 rows; the 100-row pager is deleted; `acTruncated` drives a
+     truncation note. `acRange` = "loaded of total".
+  3) **Spinner**: the oj-progress-circle `.bu-load-ov` overlay (butil/pending pattern) sits
+     over the new `.ac-body` wrapper (KPI band + register) on initial load and every search.
+  4) **Type-ahead report parameters**: the drawer's six big LOV selects (Sector / Chapter /
+     DCT Program / Appropriation / Account / Cost Center) are now `<input list>` datalist
+     type-aheads (value = code, label = name) — `acLovCommit` matches exact code, `code · name`,
+     exact name, then a UNIQUE contains match, and turns the pick into a chip (Enter or change
+     commits). Account Type / Transaction Source / Period stay selects.
+  Browser smoke `tests/ac_ir_browser_smoke.py` **18/18** EN + AR/RTL (gotcha: Playwright
+  `evaluate` AWAITS a returned promise — call `runActuals()` inside a statement body, not as
+  the return value, when asserting the busy overlay mid-run).
 - **2026-08-04 (3) — Drawer figures mirror the table format (GL v1.56.2; GL-only)** — the
   notes drawer's Record-details grid now formats exactly like the grid: same unit scaling
   ("Showing figures in"), 2-decimal money, near-zero mode, and the Variance rows carry the
