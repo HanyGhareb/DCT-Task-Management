@@ -1,0 +1,149 @@
+#!/usr/bin/env python3
+"""PAY Module (App 215) — Phase 3 Payroll browser smoke test (EN + AR/RTL).
+
+Covers: Payroll Runs + Payroll Setup nav entries; the run console over the
+REAL replay runs (ALN 12-2025: status pill, KPI band, invoice-group split,
+company-charge preview incl. VAT, results register + search, calculation-line
+drawer; Dayton 11-2025: exception register + DRAFT-contract note), and the
+setup page (3 payrolls, 7 elements, PENSION_GCC rows w/ pending-Finance
+employer rates, 6 invoice groups, payroll + element drawers), then an AR/RTL
+round trip (restores EN — the shell PERSISTS language).
+
+Auth env (mint with dct_auth.open_session): PAY_TOK required.
+Run: python dev-proxy.py 8216 (from PAY/Jet) then python pay_phase3_browser.py
+"""
+import json, os, sys, time
+from playwright.sync_api import sync_playwright
+
+BASE = os.environ.get('PAY_BASE', 'http://localhost:8216')
+EV = os.environ.get('PAY_EVIDENCE',
+     '/tmp/claude-0/-root-DCT-Task-Management/1bc7cf4b-9264-4bcf-b60b-55f789458ab0/scratchpad/pay_p3_evidence/')
+os.makedirs(EV, exist_ok=True)
+
+TOK = os.environ.get('PAY_TOK')
+if not TOK:
+    sys.exit('Set PAY_TOK (live session token)')
+sess = {
+    'sessionId': TOK,
+    'userId': int(os.environ.get('PAY_UID', '1')),
+    'username': os.environ.get('PAY_USERNAME', 'ADMIN'),
+    'displayName': os.environ.get('PAY_DN', 'System Administrator'),
+    'rolesCsv': os.environ.get('PAY_ROLES', 'SYS_ADMIN'),
+}
+sess['roles'] = sess['rolesCsv'].split(',')
+
+results = []
+def check(name, cond, extra=''):
+    results.append((name, bool(cond)))
+    print(('PASS' if cond else 'FAIL'), name, extra)
+
+with sync_playwright() as p:
+    b = p.chromium.launch(headless=True)
+    ctx = b.new_context(viewport={'width': 1680, 'height': 1000})
+    page = ctx.new_page()
+    errors = []
+    page.on('pageerror', lambda e: errors.append(str(e)))
+
+    ctx.add_init_script(
+        "localStorage.setItem('ifinance_jet_session', " + json.dumps(json.dumps(sess)) + ")")
+    page.goto(BASE + '/index.html')
+    page.wait_for_load_state('networkidle')
+
+    # 1 — nav entries exist
+    check('nav Payroll Runs', page.locator('.nav-item', has_text='Payroll Runs').count() == 1)
+    check('nav Payroll Setup', page.locator('.nav-item', has_text='Payroll Setup').count() == 1)
+
+    # 2 — run console: ALN 12-2025 (replay run) auto-loads
+    page.evaluate("window.location.hash = '#payRuns'")
+    page.locator('.nav-item', has_text='Payroll Runs').click()
+    page.wait_for_timeout(3500)
+    check('runs page title', 'Payroll Runs' in page.locator('.page-title').inner_text())
+    sel = page.locator('.ap-chips select').first
+    check('3 payrolls in select', sel.locator('option').count() == 3)
+    # ALN is first alphabetically; its 12-2025 period preselects (first with a run)
+    page.wait_for_timeout(2500)
+    check('status pill CALCULATED', page.locator('.pr-pill--calculated').count() >= 1)
+    kpis = page.locator('.pr-k .pr-k-v').all_inner_texts()
+    check('KPI employees 313', '313' in kpis, str(kpis[:3]))
+    check('KPI gross 13.8M', any('13,817,398' in k for k in kpis), str(kpis))
+    check('groups table 3 rows', page.locator('.pr-2col .card').first.locator('tbody tr').count() == 3)
+    charges_txt = page.locator('.pr-2col .card').nth(1).inner_text()
+    check('charge PER_EMPLOYEE 795', 'PER_EMPLOYEE 795' in charges_txt)
+    check('charge VAT preview', 'VAT' in charges_txt)
+    check('register total 313', '313' in page.locator('.ap-region .section-heading').last.inner_text()
+          or page.locator('tbody tr').count() > 10)
+    page.screenshot(path=EV + '01_run_console_aln.png', full_page=True)
+
+    # 3 — register row click -> calculation lines drawer
+    page.locator('.ap-region').last.locator('tbody tr').first.click()
+    page.wait_for_timeout(1500)
+    check('lines drawer open', page.locator('.dw-drawer.show').count() == 1)
+    dw = page.locator('.dw-drawer.show').inner_text()
+    check('BASIC line present', 'BASIC' in dw, dw[:120])
+    page.screenshot(path=EV + '02_lines_drawer.png')
+    page.locator('.dw-drawer.show .dw-acts button').first.click()
+    page.wait_for_timeout(600)
+
+    # 4 — register search narrows
+    page.locator('.ap-region').last.locator('input[type=search]').fill('Gacayan')
+    page.wait_for_timeout(1800)
+    rows = page.locator('.ap-region').last.locator('tbody tr').count()
+    check('search narrows register', 0 < rows <= 3, str(rows))
+    page.locator('.ap-region').last.locator('input[type=search]').fill('')
+    page.wait_for_timeout(1500)
+
+    # 5 — Dayton run: exceptions + DRAFT note
+    sel.select_option(label=[o for o in sel.locator('option').all_inner_texts() if 'DAYTON' in o][0])
+    page.wait_for_timeout(3000)
+    body_txt = page.inner_text('body')
+    check('dayton run loaded', 'DAYTON_MONTHLY' in body_txt)
+    check('dayton DRAFT note', 'DRAFT' in body_txt)
+    check('dayton exceptions region', 'NO_SALARY_ENTRY' in body_txt)
+    page.screenshot(path=EV + '03_run_console_dayton.png', full_page=True)
+
+    # 6 — setup page
+    page.locator('.nav-item', has_text='Payroll Setup').click()
+    page.wait_for_timeout(3000)
+    check('setup title', 'Payroll Setup' in page.locator('.page-title').inner_text())
+    regions = page.locator('.card.ap-region')
+    check('payrolls table 3', regions.nth(0).locator('tbody tr').count() == 3)
+    check('elements table 7', regions.nth(1).locator('tbody tr').count() == 7)
+    rt_txt = regions.nth(2).inner_text()
+    check('pension rows AE/SA/OM', all(k in rt_txt for k in ('AE', 'SA', 'OM')))
+    check('employer rate pending', 'pending Finance' in rt_txt)
+    check('invoice groups 6', regions.nth(3).locator('tbody tr').count() == 6)
+    page.screenshot(path=EV + '04_setup.png', full_page=True)
+
+    # 7 — payroll drawer opens
+    regions.nth(0).locator('tbody tr').first.click()
+    page.wait_for_timeout(1000)
+    check('payroll drawer', 'ALN_MONTHLY' in page.locator('.dw-drawer.show').inner_text())
+    page.locator('.dw-drawer.show .dw-acts button').first.click()
+    page.wait_for_timeout(600)
+
+    # 8 — element drawer opens (BASIC row)
+    regions.nth(1).locator('tbody tr').first.click()
+    page.wait_for_timeout(1000)
+    dw = page.locator('.dw-drawer.show').inner_text()
+    check('element drawer BASIC', 'BASIC' in dw)
+    page.screenshot(path=EV + '05_element_drawer.png')
+    page.locator('.dw-drawer.show .dw-acts button').first.click()
+    page.wait_for_timeout(600)
+
+    # 9 — AR / RTL round trip (shell persists language: MUST restore EN)
+    page.locator('.lang-pill button', has_text='ع').click()
+    page.wait_for_timeout(2500)
+    check('RTL applied', page.evaluate("document.documentElement.dir || document.dir") == 'rtl'
+          or page.locator('html[dir=rtl]').count() == 1)
+    ar_title = page.locator('.page-title').inner_text()
+    check('AR title rendered', any('؀' <= ch <= 'ۿ' for ch in ar_title), ar_title)
+    page.screenshot(path=EV + '06_ar_rtl.png', full_page=True)
+    page.locator('.lang-pill button', has_text='EN').click()
+    page.wait_for_timeout(2000)
+    check('EN restored', page.locator('.page-title').inner_text() != ar_title)
+
+    check('no page JS errors', len(errors) == 0, '; '.join(errors[:3]))
+    b.close()
+
+print('\n%d/%d PASS' % (sum(1 for _, ok in results if ok), len(results)))
+sys.exit(0 if all(ok for _, ok in results) else 1)

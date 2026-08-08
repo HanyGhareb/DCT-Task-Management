@@ -47,6 +47,10 @@ function (ko, config, authService, i18n, shell) {
         { id: 'contracts', labelKey: 'nav.contracts' },
         { id: 'employees', labelKey: 'nav.employees' },
         { id: 'banks',     labelKey: 'nav.banks' },
+      ] },
+      { id: 'payroll', labelKey: 'nav.grpPayroll', items: [
+        { id: 'payRuns',  labelKey: 'nav.payRuns' },
+        { id: 'paySetup', labelKey: 'nav.paySetup' },
       ] }
     ];
     self.navGroups = ko.computed(function () { return NAV_GROUPS; });

@@ -352,3 +352,26 @@ td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: 
 .lov-item:hover { background: var(--brand-soft); }
 .lov-item b { display: block; }
 .lov-item span { color: var(--text-3); font-size: 11.5px; }
+
+/* ── Phase 3 · Payroll run console (.pr-*) ─────────────────────────────── */
+.pr-kpis { display:grid; grid-template-columns:repeat(7,minmax(0,1fr)); gap:10px; padding:12px 16px 4px; }
+.pr-k { border:1px solid var(--border); border-radius:10px; padding:10px 12px; background:#fff; }
+.pr-k-l { font-size:11px; letter-spacing:.4px; text-transform:uppercase; color:var(--text-2); margin-bottom:4px; }
+.pr-k-v { font-size:17px; font-weight:700; font-variant-numeric:tabular-nums; }
+.pr-k--warn { border-color:#E5A400; background:#FFF9E8; }
+.pr-k--warn .pr-k-v { color:#8a6100; }
+.pr-k--charge { border-color:rgba(var(--brand-rgb),.4); background:rgba(var(--brand-rgb),.06); }
+.pr-trail { display:flex; flex-wrap:wrap; gap:14px; padding:8px 16px 14px; font-size:12px; color:var(--text-2); }
+.pr-2col { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1.4fr); gap:14px; align-items:start; }
+.pr-note { padding:8px 16px 12px; font-size:12px; color:var(--text-2); }
+.pr-pill { display:inline-block; padding:2px 10px; border-radius:999px; font-size:11px; font-weight:700;
+           letter-spacing:.3px; margin-inline-start:8px; vertical-align:2px; }
+.pr-pill--open       { background:#EEF1F4; color:#4A5560; }
+.pr-pill--loaded     { background:#E7F0FA; color:#1D5B94; }
+.pr-pill--validated  { background:#FFF4DE; color:#8a6100; }
+.pr-pill--calculated { background:rgba(var(--brand-rgb),.12); color:var(--brand-dark); }
+.pr-pill--reviewed   { background:#E7F6EC; color:#1F7A3D; }
+.pr-pill--error, .pr-pill--exception { background:#FBE9E7; color:#B3261E; }
+.pr-pill--ok { background:#E7F6EC; color:#1F7A3D; }
+@media (max-width:1400px) { .pr-kpis { grid-template-columns:repeat(4,minmax(0,1fr)); } }
+@media (max-width:1100px) { .pr-2col { grid-template-columns:1fr; } .pr-kpis { grid-template-columns:repeat(2,minmax(0,1fr)); } }

@@ -127,6 +127,9 @@ END;!');
 DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;l_found BOOLEAN:=FALSE;l_canpay BOOLEAN;
 BEGIN
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR) IS NULL
+    OR TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR)<=0
+ THEN dct_rest.err(400,'A valid employee ID is required');RETURN;END IF;
  l_canpay:=dct_pay_emp_pkg.can_payroll(l_user);
  FOR e IN(SELECT * FROM dct_employees WHERE person_id=TO_NUMBER([COLON]id) AND employee_type='OUTSOURCE') LOOP
   l_found:=TRUE;
@@ -222,6 +225,9 @@ DECLARE l_user VARCHAR2(100);l_pid NUMBER;l_no VARCHAR2(50);
 BEGIN
  dct_rest.parse_body([COLON]body);l_user:=dct_rest.validate_session;
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR) IS NULL
+    OR TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR)<=0
+ THEN dct_rest.err(400,'A valid employee ID is required');RETURN;END IF;
  dct_pay_emp_pkg.save_employee(l_user,TO_NUMBER([COLON]id),
    APEX_JSON.get_varchar2('firstNameEn'),APEX_JSON.get_varchar2('lastNameEn'),
    APEX_JSON.get_varchar2('firstNameAr'),APEX_JSON.get_varchar2('lastNameAr'),
@@ -248,6 +254,9 @@ DECLARE l_user VARCHAR2(100);l_aid NUMBER;
 BEGIN
  dct_rest.parse_body([COLON]body);l_user:=dct_rest.validate_session;
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR) IS NULL
+    OR TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR)<=0
+ THEN dct_rest.err(400,'A valid employee ID is required');RETURN;END IF;
  dct_pay_emp_pkg.save_assignment(l_user,NULL,TO_NUMBER([COLON]id),
    APEX_JSON.get_number('companyId'),APEX_JSON.get_number('contractId'),
    APEX_JSON.get_varchar2('buCode'),APEX_JSON.get_number('orgId'),
@@ -309,6 +318,9 @@ DECLARE l_user VARCHAR2(100);l_evt NUMBER;
 BEGIN
  dct_rest.parse_body([COLON]body);l_user:=dct_rest.validate_session;
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR) IS NULL
+    OR TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR)<=0
+ THEN dct_rest.err(400,'A valid employee ID is required');RETURN;END IF;
  dct_pay_emp_pkg.lifecycle(l_user,TO_NUMBER([COLON]id),
    UPPER(APEX_JSON.get_varchar2('action')),
    TO_DATE(APEX_JSON.get_varchar2('effectiveDate'),'YYYY-MM-DD'),
@@ -335,6 +347,9 @@ DECLARE l_user VARCHAR2(100);l_bid NUMBER;
 BEGIN
  dct_rest.parse_body([COLON]body);l_user:=dct_rest.validate_session;
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR) IS NULL
+    OR TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR)<=0
+ THEN dct_rest.err(400,'A valid employee ID is required');RETURN;END IF;
  dct_pay_emp_pkg.save_bank(l_user,NULL,TO_NUMBER([COLON]id),
    APEX_JSON.get_varchar2('bankName'),APEX_JSON.get_varchar2('iban'),
    APEX_JSON.get_varchar2('accountNumber'),APEX_JSON.get_varchar2('branch'),
@@ -381,6 +396,9 @@ END;!');
 DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;
 BEGIN
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR) IS NULL
+    OR TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR)<=0
+ THEN dct_rest.err(400,'A valid employee ID is required');RETURN;END IF;
  dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
  APEX_JSON.open_array('items');
  FOR d IN(SELECT d.doc_id,d.file_name,d.mime_type,d.file_size_bytes,d.expiry_date,
@@ -434,6 +452,9 @@ BEGIN
  v_blob:=[COLON]body;
  l_user:=dct_rest.validate_session;
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR) IS NULL
+    OR TO_NUMBER([COLON]id DEFAULT NULL ON CONVERSION ERROR)<=0
+ THEN dct_rest.err(400,'A valid employee ID is required');RETURN;END IF;
  IF v_blob IS NULL OR DBMS_LOB.GETLENGTH(v_blob)=0 THEN dct_rest.err(400,'Request body (file bytes) is required');RETURN;END IF;
  IF [COLON]file_name IS NULL THEN dct_rest.err(400,'file_name query parameter is required');RETURN;END IF;
  v_len:=DBMS_LOB.GETLENGTH(v_blob);

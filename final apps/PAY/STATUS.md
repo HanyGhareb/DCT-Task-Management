@@ -1,6 +1,16 @@
 # PAY — Outsource Payroll (App 215) — Status
 
-Phase plan: `PAY_PLAN_V2.md` (7 end-to-end phases). **Current: Phase 2 — Workforce — LIVE 2026-08-07 + Phase 2.1 real-data enrichment & load LIVE same day** (plan `PAY_PHASE2_PLAN.md`; real payroll rounds in `docs/PAYROLL/`).
+Phase plan: `PAY_PLAN_V2.md` (7 end-to-end phases). **Current: Phase 3 — Payroll Setup & First Calculated Payroll — LIVE 2026-08-08** (plan `PAY_PHASE3_PLAN.md`; Phases 2/2.1 LIVE 2026-08-07, plan `PAY_PHASE2_PLAN.md`; real payroll rounds in `docs/PAYROLL/`).
+
+### Phase 3 — Payroll setup + first calculated payroll (db/14–17, JET v1.4.0)
+- **13 new `DCT_PAY_*` tables** (db/14): payrolls, period calendars, elements (+eligibility links, entries), rate tables (+rows), invoice groups (+sector map), runs (+per-employee results, calculation lines, company-charge preview) + `is_wps` on employee banks. **PLATFORM RULE (user 2026-08-08): DCT never pays an employee directly — every payment goes to the outsource company's validated supplier account; employee IBAN/WPS data is reference only.**
+- Seed (db/15): 11 `PAY_*` vocabularies, **one monthly AED payroll per company** (`ALN_MONTHLY`/`DAYTON_MONTHLY`/`REACH_MONTHLY`, 2025+2026 calendars), 7 elements (BASIC/GROSS_SALARY/ALLOWANCE/ARREARS_ADJ/PENSION_EE/DEDUCTION_ADJ/PENSION_ER; pension linked to REACH only), `PENSION_GCC` rate table (AE 5 / SA 9 / OM 7.5 employee; **employer rates NULL until Finance confirms**), invoice groups from the REAL ALN invoices 61302–61305 (4 sector groups; Dayton/Reach 1), `payroll_code` backfilled on all 478 assignments + 927 salary entries from the Phase 2.1 snapshots.
+- Engine `DCT_PAY_CALC_PKG` (db/16): run lifecycle `OPEN→LOADED→VALIDATED→CALCULATED→REVIEWED` (+REOPEN); proration FIXED_30 default / CALENDAR_DAYS / WORKING_DAYS (configurable per payroll); eligibility links any-of; calc rules FLAT/PERCENT/QTY_RATE/RATE_TABLE (**FORMULA seeded but disabled**); charge preview from the Phase-1 contract margin rules per invoice group (PER_EMPLOYEE × prorated headcount, VAT 5% preview, DRAFT-contract note, "no margin rule" flag).
+- ORDS db/17 additive (17 handlers): `paysetup/boot` + payroll/period/element/link/rate-row/invoice-group writes, `entries`, `runs` register/detail (KPIs+groups+charges+exceptions+**variance vs prior period**)/action/emps (paged+search)/lines drill/CSV export. **Re-run 08, 12 AND 17 after any 04 re-run.**
+- JET v1.4.0: **Payroll Runs** console (payroll+period pickers, stage buttons, KPI band, invoice-group + charge tables, exceptions, variance, results register w/ line-drill drawer, CSV) + **Payroll Setup** page (payrolls/elements/rate tables/invoice groups w/ edit drawers, period generation).
+- **Replay acceptance PASSED**: ALN Dec-2025 (313, gross 13,817,398.68) · Dayton Nov-2025 (25, 743,552.50, 4 genuine no-salary exceptions) · Reach Oct-2025 (140, 586,859) — per-employee 0 difference, company totals exact vs the approval sheets; ALN margin 795×313 splits per invoice group like the real invoices; Dayton DRAFT contract (TCA/C&P/AB/13-0222, 1,250/employee) created; **Reach margin still TBD** (engine flags it).
+- Verification: API smoke **37/37**, browser smoke `tests/pay_phase3_browser.py` **29/29 EN+AR/RTL**, 0 INVALID.
+- **The parallel-run period starts now**: next live month is calculated here AND by the manual process; the manual process stays authoritative until the user switches.
 
 ### Phase 2.1 — real-data enrichment + production load (db/13, JET v1.3.0)
 - Sources: the actual Oct–Dec 2025 payroll rounds (docs/PAYROLL) of **Al Nahiya (313), Dayton (25), Reach/TCA (140)** → **478 outsourced employees LOADED** with one ACTIVE PRIMARY assignment each, 478 HIRE events, 140 Reach bank accounts (name+IBAN from the sheet). Grosses reconcile (ALN 13.82M vs 13.75M prior-month total on the sheet).
@@ -38,11 +48,13 @@ Phase plan: `PAY_PLAN_V2.md` (7 end-to-end phases). **Current: Phase 2 — Workf
 - Verification: transactional DB suite 12/12 PASS; read-only browser smoke 8/8 PASS. UAT and DWP approval excluded by user decision.
 
 ## Deployment log
+- **2026-08-08** — Phase 3: db/14→17 deployed (14 DDL 13 tables + IS_WPS, 15 seed UTF-8, 16 DCT_PAY_CALC_PKG, 17 ORDS fresh session); ALN contract/rule backdated to 2025-01-01 (invoices prove the 795 terms applied through 2025); Dayton DRAFT contract 41 + 1,250/employee rule created; 3 replay runs CALCULATED and reconciled to the source sheets; JET v1.4.0 (webtier `20260808144424`). API 37/37 + browser 29/29 EN/AR, 0 INVALID.
+- **2026-08-08** — Employee-ID guard hardening: seven `employees/:id` ORDS handlers now return 400 for missing/non-numeric/non-positive IDs; JET v1.3.1 blocks invalid dependent calls client-side.
 - **2026-08-07 (2)** — Phase 2.1: db/13 + 11/12 re-run + JET v1.3.0 (webtier `20260807233240`); 478 real employees loaded (bulk API, idempotent re-run verified UPDATED); browser smoke 24/24.
 - **2026-08-07** — Phase 2 Workforce: db/09→12 deployed (09 DDL + recompile sweep to 0 INVALID, 10 seed, 11 pkg + job, 12 ORDS fresh session); JET v1.2.0 shipped (webtier `20260807224553`). API 35/35 + browser 24/24 EN/AR.
 - **2026-08-06 (2)** — v1.1.1: supplier-reference Payment Method / Pay Group / Payment Terms became LOV dropdowns (NEW `GET /pay/lov/payment` over the AP installments extract + AP header terms; 08 re-run, webtier `20260806215019`); Playwright check PASS (3/22/2 values, no KO errors).
 - **2026-08-06** — Phase 1.1 backend `05`–`08` deployed and verified; JET v1.1.0 deployed. DWP approval and human UAT intentionally excluded.
 - **2026-08-05** — Phase 1 initial deploy: db/01→04 via SQLcl (`sql -name prod_mcp`, one script per invocation, CRLF), db/v2/50 re-run for the `pay` segment; 0 INVALID objects; frontend shipped; browser smoke 24/24.
 
-## Next (Phase 3 — Payroll setup + first calculated payroll)
-Payrolls/calendars/elements/eligibility/formulas + calculation engine + run console through Review; payroll register; parallel run vs the current manual sheet begins. `DCT_PAY_ASSIGNMENT.payroll_code` is the waiting FK placeholder.
+## Next (Phase 4 — Full monthly cycle)
+DWP approval chain for payroll runs, period locking + frozen calculation snapshots, payslip generation (PDF EN/AR) with per-payroll AUTO/MANUAL publishing + tracked email delivery, company payment summary/detail reports. Open business inputs carried from Phase 3: **Reach margin terms**, employer pension % per country (rate table `er_rate`), real employee emails (payslip delivery), the ~23 Gaming & Digital Development ALN employees not present in the loaded approval sheet, and Dayton contract approval (DRAFT → ACTIVE).
