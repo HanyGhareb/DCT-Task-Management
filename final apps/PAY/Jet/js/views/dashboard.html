@@ -29,6 +29,8 @@
       <div class="kpi-l" data-bind="text: $vm.t('kpi.expiring')"></div></div>
     <div class="kpi"><div class="kpi-n" data-bind="text: stats().banks"></div>
       <div class="kpi-l" data-bind="text: $vm.t('kpi.banks')"></div></div>
+    <div class="kpi"><div class="kpi-n kpi-ok" data-bind="text: headcount"></div>
+      <div class="kpi-l" data-bind="text: $vm.t('emp.dash.headcount')"></div></div>
   </div>
 
   <!-- ── Region — Contracts expiring soon ─────────────────────────────── -->
@@ -68,6 +70,43 @@
     </table></div>
     <!-- /ko -->
     <!-- /ko -->
+  </div>
+
+  <!-- ── Region — Expiring employee documents (Phase 2) ─────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row"><div class="section-heading ap-rh" data-bind="text:$vm.t('emp.dash.expiringDocs')"></div></div>
+    <!-- ko if: expiringDocs().length===0 --><div class="empty-state" data-bind="text:$vm.t('exp.none')"></div><!-- /ko -->
+    <!-- ko if: expiringDocs().length>0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text:$vm.t('emp.number')"></th><th data-bind="text:$vm.t('emp.name')"></th>
+        <th data-bind="text:$vm.t('emp.docType')"></th><th data-bind="text:$vm.t('emp.expiry')"></th>
+        <th class="ap-amount" data-bind="text:$vm.t('exp.daysLeft')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: expiringDocs -->
+        <tr class="ap-row-click" data-bind="click: function(){ $vm.openEmployee($data); }">
+          <td data-bind="text: employeeNumber"></td>
+          <td class="ap-clip" data-bind="text: name"></td>
+          <td data-bind="text: docTypeEn"></td>
+          <td data-bind="text: expiryDate"></td>
+          <td class="ap-amount"><span data-bind="text: daysLeft,
+              attr: { class: daysLeft <= 7 ? 'badge badge--danger' : 'badge badge--warn' }"></span></td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+
+  <div class="card ap-region">
+    <div class="section-heading-row"><div class="section-heading ap-rh" data-bind="text:$vm.t('gov.renewalMonitor')"></div><button class="btn btn-sm btn-secondary" data-bind="click:exportRenewals,text:$vm.t('rg.exportCsv')"></button></div>
+    <!-- ko if:renewals().length===0 --><div class="empty-state" data-bind="text:$vm.t('exp.none')"></div><!-- /ko -->
+    <div class="data-table-wrap"><table class="data-table"><thead><tr><th data-bind="text:$vm.t('exp.contract')"></th><th data-bind="text:$vm.t('exp.company')"></th><th data-bind="text:$vm.t('exp.dateTo')"></th><th data-bind="text:$vm.t('exp.daysLeft')"></th><th data-bind="text:$vm.t('gov.renewalStatus')"></th></tr></thead><tbody data-bind="foreach:renewals"><tr class="ap-row-click" data-bind="click:function(){$vm.openContract($data)}"><td data-bind="text:contractNo"></td><td data-bind="text:company"></td><td data-bind="text:dateTo"></td><td data-bind="text:daysLeft"></td><td data-bind="text:renewalStatus"></td></tr></tbody></table></div>
+  </div>
+
+  <div class="card ap-region">
+    <div class="section-heading-row"><div class="section-heading ap-rh" data-bind="text:$vm.t('gov.dataQuality')"></div><button class="btn btn-sm btn-secondary" data-bind="click:exportQuality,text:$vm.t('rg.exportCsv')"></button></div>
+    <!-- ko if:quality().length===0 --><div class="empty-state" data-bind="text:$vm.t('gov.noQualityIssues')"></div><!-- /ko -->
+    <div class="data-table-wrap"><table class="data-table"><thead><tr><th data-bind="text:$vm.t('exp.company')"></th><th data-bind="text:$vm.t('gov.missingContact')"></th><th data-bind="text:$vm.t('gov.missingSupplier')"></th><th data-bind="text:$vm.t('gov.expiredCompliance')"></th><th data-bind="text:$vm.t('gov.noMargin')"></th><th data-bind="text:$vm.t('gov.missingOwner')"></th></tr></thead><tbody data-bind="foreach:quality"><tr><td data-bind="text:companyCode+' · '+name"></td><td data-bind="text:missingContact"></td><td data-bind="text:missingSupplier"></td><td data-bind="text:expiredCompliance"></td><td data-bind="text:contractsWithoutMargin"></td><td data-bind="text:missingOwner"></td></tr></tbody></table></div>
   </div>
 
   <!-- /ko -->

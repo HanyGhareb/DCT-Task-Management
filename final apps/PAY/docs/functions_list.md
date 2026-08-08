@@ -26,6 +26,17 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 - Margin rules: `mrNew()` / `mrEdit(m)` / `mrSave()` (overlap per scope rejected server-side) / `mrCancel()` / `mrToggleVat()`.
 - `toggleExpiryBlocking()`, documents as on Companies (source type PAY_CONTRACT).
 
+## Employees (Workforce — Phase 2)
+- `load()` / `onPage()` — server-paged register (search debounce; company / BU / active filters).
+- `exportCsv()`, `toggleTable()` / `toggleTableMax()`.
+- `openNew()` / `openEdit(row)` — drawer (Profile / Assignments / Bank / Documents / Lifecycle tabs; tabs enabled after first save).
+- `save()` — hire (auto OS- number) or update via POST/PUT employees (email mandatory; dedup 400s surfaced in-drawer).
+- Assignments: `asgNew()` / `asgEdit(a)` / `asgSave()` / `asgCancel()` — master LOV dropdowns (company/contract/BU/department/job/grade/position/location/people group), manager type-ahead `mgrPick()` / `mgrClear()`; PRIMARY-overlap 400 server-side. Phase 2.1 fields: company ref, free-text designation/sector/department, cost center, basic/allowance/gross salary snapshot.
+- Bank (PAY_PAYROLL_ENTRY / PAY_ADMIN): `bankNew()` / `bankEdit(b)` / `bankSave()` / `bankTogglePrimary()`; masked read-only otherwise.
+- Documents: `loadEmpDocs()` (docs + 6-type checklist), `docUpload()` (type + expiry pickers), `docView(d)`, `docDelete(d)`.
+- Lifecycle: `lcStart(action)` / `lcSubmit()` / `lcCancel()` — Transfer / Suspend / Resume / Terminate / Rehire sub-form (effective date + reason + notes, target company for transfer/rehire); `lcAvailable` derives valid actions from record state; event trail table.
+- Bulk upload: `bulkTemplate()` (SheetJS .xlsx template), `bulkChoose()` → parse → chunked `employees/bulk` full upsert → per-row CREATED/UPDATED/ERROR results + summary.
+
 ## DCT Bank Accounts
 - `load()`, `openNew()` / `openEdit(row)`, `save()`, `toggleActive()`.
 
@@ -51,6 +62,33 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | POST | banks | Create bank (PAY_ADMIN) |
 | PUT | banks/:id | Update bank (PAY_ADMIN) |
 | GET | lov/suppliers?search= | Type-ahead over ATD_SUPPLIERS (top 30, primary bank row) |
+| GET | lov/supplier-sites?registryid= | Sites of a Fusion supplier (ATD_SUPPLIER_SITES) — Phase 1.1 |
+| GET | lov/supplier-banks?registryid= | Bank accounts of a Fusion supplier (ATD_SUPPLIER_BANK_ACCOUNTS) — Phase 1.1 |
+| GET | lov/payment | Payment LOVs from the AP installments extract: paymentMethods[] + payGroups[] (ATD_AP_INVOICE_INSTALLMENTS) + paymentTerms[] (ATD_AP_INVOICES) |
+| GET/PUT | companies/:id/governance | Owners, contacts, compliance, scores (Phase 1.1) |
+| POST | companies/:id/contacts · PUT contacts/:id | Company contacts CRUD (Phase 1.1) |
+| POST | companies/:id/compliance · PUT compliance/:id | Compliance items CRUD (Phase 1.1) |
+| POST | companies/:id/scores | Performance scorecard entry (Phase 1.1) |
+| GET/PUT | contracts/:id/governance | Contract governance (Phase 1.1) |
+| POST | contracts/:id/fee-rules · PUT fee-rules/:id | Configurable fee rules (Phase 1.1) |
+| POST | contracts/:id/amend-governed | Governed amendment w/ change log (Phase 1.1) |
+| POST | contracts/:id/renewal-actions | Renewal workflow actions (Phase 1.1) |
+| POST | suppliers/:id/refresh | Re-validate a supplier ref vs the ATD extract (Phase 1.1) |
+| GET | governance/data-quality | Company data-quality exceptions (Phase 1.1) |
+| GET | governance/renewals | Contracts expiring ≤180 days (Phase 1.1) |
+| GET | employees | Paged outsourced-employee register (search/companyid/bu/active) — Phase 2 |
+| POST | employees | Hire (auto OS- number, HIRE event; PAY_HR_ENTRY/PAY_ADMIN) — Phase 2 |
+| GET | employees/:id | Full profile: assignments + banks (masked w/o payroll role) + events — Phase 2 |
+| PUT | employees/:id | Update employee (OUTSOURCE only; dedup 400s) — Phase 2 |
+| POST | employees/:id/assignments · PUT assignments/:aid | Effective-dated assignments (one ACTIVE PRIMARY per window) — Phase 2 |
+| POST | employees/:id/lifecycle | TRANSFER/SUSPEND/RESUME/TERMINATE/REHIRE + event row — Phase 2 |
+| POST | employees/:id/banks · PUT emp-banks/:bid | Employee bank accounts (PAY_PAYROLL_ENTRY/PAY_ADMIN) — Phase 2 |
+| GET | employees/:id/docs | Employee documents + PAY_EMPLOYEE checklist status — Phase 2 |
+| PUT | employees/:id/docs?doctype=&file_name=&mime_type=&expiry= | Raw-binary employee doc upload w/ real type + expiry — Phase 2 |
+| POST | employees/bulk | Excel full upsert ≤500 rows, per-row {row,status,error}; matches empNo→fusionNo→EID→email; enrichment + bank columns (Phase 2.1) |
+| GET | lov/masters | One-call LOVs: companies/contracts/departments/jobs/grades/positions/locations/nationalities/docTypes + canHr/canPayroll — Phase 2 |
+| GET | lov/employees?search= | Manager type-ahead over DCT_EMPLOYEES (top 20) — Phase 2 |
+| GET | employees/expiring-docs?days= | Employee documents expiring inside the window — Phase 2 |
 | GET | docs?type=&id= | Documents of a company/contract (DCT_DOCUMENTS, module PAY) |
 | PUT | docs?type=&id=&file_name=&mime_type= | Raw-binary upload (PAY_ADMIN, MAX_UPLOAD_MB → 413) |
 | DELETE | docs/:docId | Soft-delete a document (PAY_ADMIN) |
@@ -63,4 +101,4 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | `services/api.js` | Re-export of shared fetch wrapper (Bearer + 401 redirect) |
 | `services/authService.js` | Session reader (Admin JET writes the session) |
 | `services/config.js` | apiBase /pay · authBase /dct |
-| Server | `DCT_PAY_PKG` (validated writes + renewal sweep) · `DCT_PAY_RENEWAL_JOB` daily 07:20 UTC |
+| Server | `DCT_PAY_PKG` (validated writes + renewal sweep) · `DCT_PAY_RENEWAL_JOB` daily 07:20 UTC · `DCT_PAY_EMP_PKG` (Phase 2 workforce: numbering/dedup/assignments/lifecycle/banks/docs/bulk) · `DCT_PAY_EMPDOC_JOB` daily 07:25 UTC |

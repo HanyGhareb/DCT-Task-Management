@@ -14,6 +14,11 @@ function (ko, payService, authService, i18n, docUpload) {
     self.methodLov  = ko.observableArray([]);
     self.basisLov   = ko.observableArray([]);
     self.scopeLov   = ko.observableArray([]);
+    self.feeTypeLov = ko.observableArray([]);
+    self.feeMethodLov = ko.observableArray([]);
+    self.renewalStatusLov = ko.observableArray([]);
+    self.renewalActionLov = ko.observableArray([]);
+    self.amendmentTypeLov = ko.observableArray([]);
     self.companyLov = ko.observableArray([]);
     self.supplierRefLov = ko.observableArray([]);
     self.maxUploadMb = 10;
@@ -115,6 +120,30 @@ function (ko, payService, authService, i18n, docUpload) {
     self.marginRules = ko.observableArray([]);
     self.versions    = ko.observableArray([]);
     self.docs        = ko.observableArray([]);
+    self.feeRules = ko.observableArray([]);
+    self.changes = ko.observableArray([]);
+    self.renewalActions = ko.observableArray([]);
+    self.govForm = {
+      rowVersion: ko.observable(null), contractValue: ko.observable(''), annualValue: ko.observable(''),
+      approvedHeadcount: ko.observable(''), minHeadcount: ko.observable(''), maxHeadcount: ko.observable(''),
+      poNumber: ko.observable(''), ownerId: ko.observable(''), renewalStatus: ko.observable('NOT_STARTED'),
+      renewalDueDate: ko.observable('')
+    };
+
+    self.loadGovernance = function () {
+      if (!self.form.contractId()) return;
+      payService.getContractGovernance(self.form.contractId()).then(function (g) {
+        Object.keys(self.govForm).forEach(function (k) { self.govForm[k](g[k] === null || g[k] === undefined ? '' : g[k]); });
+        self.feeRules(g.feeRules || []); self.changes(g.changes || []); self.renewalActions(g.renewalActions || []);
+      }).catch(function (e) { self.dwError((e && e.message) || i18n.t('err.load')); });
+    };
+    self.saveGovernance = function () {
+      var body = {}; Object.keys(self.govForm).forEach(function (k) { body[k] = self.govForm[k]() === '' ? null : self.govForm[k](); });
+      self.saving(true); self.dwError('');
+      payService.updateContractGovernance(self.form.contractId(), body).then(function (d) {
+        self.saving(false); self.govForm.rowVersion(d.rowVersion); self.dwOk(i18n.t('dr.saved'));
+      }).catch(function (e) { self.saving(false); self.dwError((e && e.message) || i18n.t('err.save')); });
+    };
 
     self.toggleExpiryBlocking = function () {
       self.form.expiryBlocking(self.form.expiryBlocking() === 'Y' ? 'N' : 'Y');
@@ -161,6 +190,7 @@ function (ko, payService, authService, i18n, docUpload) {
         fillForm(d);
         self.dwOpen(true);
         self.loadDocs();
+        self.loadGovernance();
       }).catch(function () { self.dwError(i18n.t('err.load')); self.dwOpen(true); });
     };
     self.openVersion = function (v) { self.openEdit({ contractId: v.contractId }); };
@@ -199,12 +229,22 @@ function (ko, payService, authService, i18n, docUpload) {
       });
     };
 
+    self.amendForm = { newContractNo: ko.observable(''), type: ko.observable('RENEWAL'), reason: ko.observable(''), effectiveDate: ko.observable(''), documentId: ko.observable('') };
+    self.amendEditing = ko.observable(false);
     self.amend = function () {
-      var newNo = window.prompt(i18n.t('ct.amendPrompt'), self.form.contractNo() + '-A' + ((self._versionNo || 1)));
-      if (!newNo) return;
+      self.amendForm.newContractNo(self.form.contractNo() + '-A' + ((self._versionNo || 1)));
+      self.amendForm.type('RENEWAL'); self.amendForm.reason(''); self.amendForm.effectiveDate(''); self.amendForm.documentId('');
+      self.amendEditing(true); self.tab('changes');
+    };
+    self.submitAmendment = function () {
+      if (!self.amendForm.newContractNo() || !self.amendForm.reason() || !self.amendForm.effectiveDate()) { self.dwError(i18n.t('gov.amendRequired')); return; }
       self.dwError(''); self.dwOk(''); self.saving(true);
-      payService.amendContract(self.form.contractId(), { newContractNo: newNo }).then(function (d) {
+      payService.amendContractGoverned(self.form.contractId(), {
+        newContractNo:self.amendForm.newContractNo(), type:self.amendForm.type(), reason:self.amendForm.reason(),
+        effectiveDate:self.amendForm.effectiveDate(), documentId:self.amendForm.documentId() || null
+      }).then(function (d) {
         self.saving(false);
+        self.amendEditing(false);
         self.dwOk(i18n.t('ct.amendDone'));
         self.load();
         return payService.getContract(d.contractId).then(function (full) {
@@ -216,6 +256,16 @@ function (ko, payService, authService, i18n, docUpload) {
         self.dwError((e && e.message) || i18n.t('err.save'));
       });
     };
+
+    self.feeEditing = ko.observable(false);
+    self.feeForm = { feeRuleId:ko.observable(null), rowVersion:ko.observable(null), type:ko.observable('MANAGEMENT'), method:ko.observable('FLAT'), rateValue:ko.observable(''), scope:ko.observable('ALL'), effectiveFrom:ko.observable(''), effectiveTo:ko.observable(''), minAmount:ko.observable(''), maxAmount:ko.observable(''), vatApplicable:ko.observable('Y'), notes:ko.observable(''), isActive:ko.observable('Y') };
+    function fillFee(f) { Object.keys(self.feeForm).forEach(function(k){ self.feeForm[k](f[k] === null || f[k] === undefined ? '' : f[k]); }); self.feeForm.type(f.type||'MANAGEMENT'); self.feeForm.method(f.method||'FLAT'); self.feeForm.scope(f.scope||'ALL'); self.feeForm.vatApplicable(f.vatApplicable||'Y'); self.feeForm.isActive(f.isActive||'Y'); self.feeForm.effectiveFrom(f.effectiveFrom||self.form.dateFrom()); }
+    self.feeNew=function(){fillFee({});self.feeEditing(true);};
+    self.feeEdit=function(f){if(!self.isAdmin)return;fillFee(f);self.feeEditing(true);};
+    self.feeSave=function(){var body={contractId:self.form.contractId()};Object.keys(self.feeForm).forEach(function(k){body[k]=self.feeForm[k]()===''?null:self.feeForm[k]();});var p=self.feeForm.feeRuleId()?payService.updateFeeRule(self.feeForm.feeRuleId(),body):payService.addFeeRule(self.form.contractId(),body);self.saving(true);p.then(function(){self.saving(false);self.feeEditing(false);self.loadGovernance();}).catch(function(e){self.saving(false);self.dwError((e&&e.message)||i18n.t('err.save'));});};
+
+    self.renewalForm={action:ko.observable('REVIEW'),status:ko.observable('NOT_STARTED'),ownerId:ko.observable(''),targetDate:ko.observable(''),notes:ko.observable('')};
+    self.addRenewalAction=function(){self.saving(true);payService.addRenewalAction(self.form.contractId(),{action:self.renewalForm.action(),status:self.renewalForm.status(),ownerId:self.renewalForm.ownerId()||null,targetDate:self.renewalForm.targetDate()||null,notes:self.renewalForm.notes()}).then(function(){self.saving(false);self.loadGovernance();}).catch(function(e){self.saving(false);self.dwError((e&&e.message)||i18n.t('err.save'));});};
 
     // ── Margin rules sub-editor ─────────────────────────────────────────
     self.mrEditing = ko.observable(false);
@@ -312,6 +362,11 @@ function (ko, payService, authService, i18n, docUpload) {
       self.methodLov(lov(b, 'PAY_MARGIN_METHOD'));
       self.basisLov(lov(b, 'PAY_MARGIN_BASIS'));
       self.scopeLov(lov(b, 'PAY_PAYMENT_SCOPE'));
+      self.feeTypeLov(lov(b, 'PAY_FEE_TYPE'));
+      self.feeMethodLov(lov(b, 'PAY_FEE_METHOD'));
+      self.renewalStatusLov(lov(b, 'PAY_RENEWAL_STATUS'));
+      self.renewalActionLov(lov(b, 'PAY_RENEWAL_ACTION'));
+      self.amendmentTypeLov(lov(b, 'PAY_AMENDMENT_TYPE'));
       self.maxUploadMb = b.maxUploadMb || 10;
       if (b.isPayAdmin) self.isAdmin = true;
     });

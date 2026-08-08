@@ -1,0 +1,707 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header: title + actions (top-right) ──────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: $vm.t('emp.title')"></div>
+      <div class="page-subtitle" data-bind="text: $vm.t('emp.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <!-- ko if: canHr -->
+      <button class="btn btn-primary" data-bind="click: openNew, text: $vm.t('emp.new')"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- ── Filter chips row (AP style) ───────────────────────────────────── -->
+  <div class="ap-chips">
+    <input class="form-control" style="max-width:320px" type="search"
+           data-bind="value: search, valueUpdate: 'input', attr: { placeholder: $vm.t('emp.search') }">
+    <select class="form-control" style="max-width:230px" data-bind="value: fCompany">
+      <option value="" data-bind="text: $vm.t('emp.allCompanies')"></option>
+      <!-- ko foreach: companies --><option data-bind="value: id, text: code + ' — ' + name"></option><!-- /ko -->
+    </select>
+    <select class="form-control" style="max-width:170px" data-bind="value: fBu">
+      <option value="" data-bind="text: $vm.t('emp.allBu')"></option>
+      <!-- ko foreach: buLov --><option data-bind="value: code, text: code"></option><!-- /ko -->
+    </select>
+    <select class="form-control" style="max-width:170px" data-bind="value: fActive">
+      <option value="" data-bind="text: $vm.t('emp.allStates')"></option>
+      <option value="Y" data-bind="text: $vm.t('emp.activeOnly')"></option>
+      <option value="N" data-bind="text: $vm.t('emp.inactiveOnly')"></option>
+    </select>
+  </div>
+
+  <!-- ── Region — Employees register ───────────────────────────────────── -->
+  <div class="card ap-region" data-bind="css: { 'ap-region--max': tableMax() }">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('emp.register')"></span>
+        <span style="font-weight:400;font-size:12px;color:var(--text-2)"
+              data-bind="text: ' · ' + total() + ' ' + $vm.t('tbl.rows')"></span>
+      </div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: exportCsv, text: $vm.t('rg.exportCsv')"></button>
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleTableMax,
+                attr: { title: tableMax() ? $vm.t('rg.restore') : $vm.t('rg.maximize') }">&#10530;</button>
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleTable,
+                attr: { title: tableCollapsed() ? $vm.t('rg.expand') : $vm.t('rg.collapse') },
+                text: tableCollapsed() ? '▸' : '▾'"></button>
+      </div>
+    </div>
+
+    <!-- ko ifnot: tableCollapsed() -->
+    <!-- ko if: loading() --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+    <!-- ko ifnot: loading() -->
+    <!-- ko if: rows().length === 0 -->
+    <div class="empty-state" data-bind="text: $vm.t('tbl.none')"></div>
+    <!-- /ko -->
+    <!-- ko if: rows().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('emp.number')"></th>
+        <th data-bind="text: $vm.t('emp.name')"></th>
+        <th data-bind="text: $vm.t('emp.company')"></th>
+        <th data-bind="text: $vm.t('emp.bu')"></th>
+        <th data-bind="text: $vm.t('emp.department')"></th>
+        <th data-bind="text: $vm.t('emp.job')"></th>
+        <th data-bind="text: $vm.t('emp.grade')"></th>
+        <th data-bind="text: $vm.t('emp.costCenter')"></th>
+        <th data-bind="text: $vm.t('emp.fusionNo')"></th>
+        <th data-bind="text: $vm.t('emp.asgStatus')"></th>
+        <th data-bind="text: $vm.t('f.isActive')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: rows -->
+        <tr class="ap-row-click" data-bind="click: function(){ $vm.openEdit($data); }">
+          <td data-bind="text: employeeNumber"></td>
+          <td class="ap-clip" data-bind="text: nameEn, attr: { title: email }"></td>
+          <td class="ap-clip" data-bind="text: $data.company || ''"></td>
+          <td data-bind="text: $data.buCode || ''"></td>
+          <td class="ap-clip" data-bind="text: $data.department || ''"></td>
+          <td class="ap-clip" data-bind="text: $data.job || ''"></td>
+          <td data-bind="text: $data.gradeCode || ''"></td>
+          <td data-bind="text: $data.costCenter || ''"></td>
+          <td data-bind="text: $data.fusionPersonNumber || ''"></td>
+          <td><span data-bind="text: $vm.t('ast.' + assignmentStatus), attr: { class: $vm.asgBadge(assignmentStatus) }"></span></td>
+          <td><span data-bind="text: isActive === 'Y' ? $vm.t('f.yes') : $vm.t('f.no'),
+                     attr: { class: isActive === 'Y' ? 'badge badge--success' : 'badge badge--danger' }"></span></td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <list-pager params="total: total, limit: limit, offset: offset, onChange: onPage"></list-pager>
+    <!-- /ko -->
+    <!-- /ko -->
+    <!-- /ko -->
+  </div>
+
+  <!-- ── Region — Excel bulk upload (full upsert) ─────────────────────── -->
+  <!-- ko if: canHr -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('emp.bulk.title')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" data-bind="click: bulkTemplate, text: $vm.t('emp.bulk.template')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: bulkChoose, disable: bulkBusy(), text: $vm.t('emp.bulk.upload')"></button>
+        <button class="btn btn-sm btn-secondary" data-bind="click: toggleBulk,
+                attr: { title: bulkCollapsed() ? $vm.t('rg.expand') : $vm.t('rg.collapse') },
+                text: bulkCollapsed() ? '▸' : '▾'"></button>
+      </div>
+    </div>
+    <!-- ko ifnot: bulkCollapsed() -->
+    <div style="padding:4px 2px 0">
+      <div class="page-subtitle" data-bind="text: $vm.t('emp.bulk.hint')"></div>
+      <!-- ko if: bulkBusy() --><list-skeleton params="rows: 2"></list-skeleton><!-- /ko -->
+      <!-- ko if: bulkError() --><div class="dw-err" data-bind="text: bulkError"></div><!-- /ko -->
+      <!-- ko if: bulkSummary() --><div class="dw-okmsg" data-bind="text: bulkSummary"></div><!-- /ko -->
+      <!-- ko if: bulkResults().length > 0 -->
+      <div class="data-table-wrap" style="max-height:320px;overflow:auto"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('emp.bulk.row')"></th>
+          <th data-bind="text: $vm.t('emp.bulk.status')"></th>
+          <th data-bind="text: $vm.t('emp.number')"></th>
+          <th data-bind="text: $vm.t('emp.bulk.message')"></th>
+        </tr></thead>
+        <tbody><!-- ko foreach: bulkResults -->
+          <tr>
+            <td data-bind="text: row"></td>
+            <td><span data-bind="text: status,
+                       attr: { class: status === 'ERROR' ? 'badge badge--danger' : 'badge badge--success' }"></span></td>
+            <td data-bind="text: $data.employeeNumber || ''"></td>
+            <td class="ap-clip" data-bind="text: $data.error || '', attr: { title: $data.error || '' }"></td>
+          </tr>
+        <!-- /ko --></tbody>
+      </table></div>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- ── Employee drawer (right-edge slide-in — AP .dw-* pattern) ──────── -->
+  <div class="dw-scrim" data-bind="css: { show: dwOpen }, click: closeDw"></div>
+  <aside class="dw-drawer" data-bind="css: { show: dwOpen, 'dw-full': dwMax }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('emp.title')"></div>
+        <div class="dw-title" data-bind="text: dwTitle"></div>
+      </div>
+      <div class="dw-acts">
+        <!-- ko if: canHr() && tab() === 'profile' -->
+        <button class="btn btn-sm" data-bind="click: save, disable: saving(), text: $vm.t('dr.save')"></button>
+        <!-- /ko -->
+        <button class="btn btn-sm" data-bind="click: toggleDwMax,
+                attr: { title: dwMax() ? $vm.t('rg.restore') : $vm.t('rg.maximize') }">&#10530;</button>
+        <button class="btn btn-sm" data-bind="click: closeDw, text: $vm.t('dr.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <!-- ko if: dwError() --><div class="dw-err" data-bind="text: dwError"></div><!-- /ko -->
+      <!-- ko if: dwOk() --><div class="dw-okmsg" data-bind="text: dwOk"></div><!-- /ko -->
+
+      <div class="ap-tabs">
+        <button class="ap-tab" data-bind="click: function(){ tab('profile'); },
+                css: { on: tab() === 'profile' }, text: $vm.t('emp.tabProfile')"></button>
+        <button class="ap-tab" data-bind="click: function(){ if (form.personId()) tab('assignments'); },
+                css: { on: tab() === 'assignments' }, disable: !form.personId(),
+                text: $vm.t('emp.tabAssignments')"></button>
+        <button class="ap-tab" data-bind="click: function(){ if (form.personId()) tab('bank'); },
+                css: { on: tab() === 'bank' }, disable: !form.personId(),
+                text: $vm.t('emp.tabBank')"></button>
+        <button class="ap-tab" data-bind="click: function(){ if (form.personId()) tab('docs'); },
+                css: { on: tab() === 'docs' }, disable: !form.personId(),
+                text: $vm.t('emp.tabDocs')"></button>
+        <button class="ap-tab" data-bind="click: function(){ if (form.personId()) tab('lifecycle'); },
+                css: { on: tab() === 'lifecycle' }, disable: !form.personId(),
+                text: $vm.t('emp.tabLifecycle')"></button>
+      </div>
+
+      <!-- ══ Tab: Profile ══════════════════════════════════════════════ -->
+      <!-- ko if: tab() === 'profile' -->
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <!-- ko if: form.personId() -->
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.number')"></label>
+          <input class="form-control" readonly data-bind="value: form.employeeNumber">
+        </div>
+        <div class="form-group">
+          <div class="form-label" data-bind="text: $vm.t('f.isActive')"></div>
+          <span data-bind="text: form.isActive() === 'Y' ? $vm.t('f.yes') : $vm.t('f.no'),
+                attr: { class: form.isActive() === 'Y' ? 'badge badge--success' : 'badge badge--danger' }"></span>
+        </div>
+        <!-- /ko -->
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.firstNameEn')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: form.firstNameEn, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.lastNameEn')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: form.lastNameEn, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.firstNameAr')"></label>
+          <input class="form-control" dir="rtl" data-bind="value: form.firstNameAr, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.lastNameAr')"></label>
+          <input class="form-control" dir="rtl" data-bind="value: form.lastNameAr, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.email')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" type="email" data-bind="value: form.email, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.mobile')"></label>
+          <input class="form-control" data-bind="value: form.mobile, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.gender')"></label>
+          <select class="form-control" data-bind="value: form.gender, disable: !canHr()">
+            <option value=""></option>
+            <option value="M" data-bind="text: $vm.t('emp.male')"></option>
+            <option value="F" data-bind="text: $vm.t('emp.female')"></option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.dob')"></label>
+          <input class="form-control" type="date" data-bind="value: form.dateOfBirth, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.nationality')"></label>
+          <select class="form-control" data-bind="value: form.nationalityCode, disable: !canHr()">
+            <option value=""></option>
+            <!-- ko foreach: nationalities --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.emiratesId')"></label>
+          <input class="form-control" data-bind="value: form.emiratesId, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.passport')"></label>
+          <input class="form-control" data-bind="value: form.passportNumber, disable: !canHr()">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.fusionNo')"></label>
+          <input class="form-control" data-bind="value: form.fusionPersonNumber, disable: !canHr(),
+                 attr: { placeholder: $vm.t('emp.fusionNoHint') }">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.hireDate')"></label>
+          <input class="form-control" type="date" data-bind="value: form.hireDate, disable: !canHr()">
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('dr.requiredHint')"></div>
+      <!-- /ko -->
+
+      <!-- ══ Tab: Assignments ══════════════════════════════════════════ -->
+      <!-- ko if: tab() === 'assignments' -->
+      <!-- ko ifnot: asgEditing() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('emp.assignments')"></div>
+        <div class="region-actions">
+          <!-- ko if: canHr -->
+          <button class="btn btn-sm btn-primary" data-bind="click: asgNew, text: $vm.t('emp.asgNew')"></button>
+          <!-- /ko -->
+        </div>
+      </div>
+      <!-- ko if: assignments().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('emp.asgNone')"></div>
+      <!-- /ko -->
+      <!-- ko if: assignments().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('emp.company')"></th>
+          <th data-bind="text: $vm.t('emp.bu')"></th>
+          <th data-bind="text: $vm.t('emp.department')"></th>
+          <th data-bind="text: $vm.t('emp.job')"></th>
+          <th data-bind="text: $vm.t('emp.asgType')"></th>
+          <th data-bind="text: $vm.t('emp.asgStatus')"></th>
+          <th data-bind="text: $vm.t('emp.from')"></th>
+          <th data-bind="text: $vm.t('emp.to')"></th>
+        </tr></thead>
+        <tbody><!-- ko foreach: assignments -->
+          <tr class="ap-row-click" data-bind="click: function(){ $vm.asgEdit($data); }">
+            <td class="ap-clip" data-bind="text: company"></td>
+            <td data-bind="text: $data.buCode || ''"></td>
+            <td class="ap-clip" data-bind="text: $data.departmentName || $data.department || ''"></td>
+            <td class="ap-clip" data-bind="text: $data.jobTitle || $data.job || ''"></td>
+            <td><span data-bind="text: $vm.t('at.' + assignmentType),
+                       attr: { class: assignmentType === 'PRIMARY' ? 'badge badge--info' : 'badge' }"></span></td>
+            <td><span data-bind="text: $vm.t('ast.' + status), attr: { class: $vm.asgBadge(status) }"></span></td>
+            <td data-bind="text: effectiveFrom"></td>
+            <td data-bind="text: $data.effectiveTo || ''"></td>
+          </tr>
+        <!-- /ko --></tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- assignment sub-editor -->
+      <!-- ko if: asgEditing() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh"
+             data-bind="text: asgForm.assignmentId() ? $vm.t('emp.asgEdit') : $vm.t('emp.asgNew')"></div>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-primary" data-bind="click: asgSave, disable: saving(), text: $vm.t('dr.save')"></button>
+          <button class="btn btn-sm btn-secondary" data-bind="click: asgCancel, text: $vm.t('dr.cancel')"></button>
+        </div>
+      </div>
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.company')"></span><span class="dw-req">*</span></label>
+          <select class="form-control" data-bind="value: asgForm.companyId">
+            <option value=""></option>
+            <!-- ko foreach: companies --><option data-bind="value: id, text: code + ' — ' + name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.contract')"></label>
+          <select class="form-control" data-bind="value: asgForm.contractId">
+            <option value=""></option>
+            <!-- ko foreach: companyContracts --><option data-bind="value: id, text: no"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.bu')"></label>
+          <select class="form-control" data-bind="value: asgForm.buCode">
+            <option value=""></option>
+            <!-- ko foreach: buLov --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.department')"></label>
+          <select class="form-control" data-bind="value: asgForm.orgId">
+            <option value=""></option>
+            <!-- ko foreach: departments --><option data-bind="value: id, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.job')"></label>
+          <select class="form-control" data-bind="value: asgForm.jobId">
+            <option value=""></option>
+            <!-- ko foreach: jobs --><option data-bind="value: id, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.grade')"></label>
+          <select class="form-control" data-bind="value: asgForm.gradeCode">
+            <option value=""></option>
+            <!-- ko foreach: grades --><option data-bind="value: code, text: code + ' — ' + name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.position')"></label>
+          <select class="form-control" data-bind="value: asgForm.positionId">
+            <option value=""></option>
+            <!-- ko foreach: positions --><option data-bind="value: id, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.location')"></label>
+          <select class="form-control" data-bind="value: asgForm.locationId">
+            <option value=""></option>
+            <!-- ko foreach: locations --><option data-bind="value: id, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.manager')"></label>
+          <!-- ko if: asgForm.managerName() -->
+          <div style="display:flex;gap:6px;align-items:center">
+            <input class="form-control" readonly data-bind="value: asgForm.managerName">
+            <button class="btn btn-sm btn-secondary" data-bind="click: mgrClear">×</button>
+          </div>
+          <!-- /ko -->
+          <!-- ko ifnot: asgForm.managerName() -->
+          <input class="form-control" data-bind="value: mgrSearch, valueUpdate: 'input',
+                 attr: { placeholder: $vm.t('emp.managerSearch') }">
+          <!-- ko if: mgrLov().length > 0 -->
+          <div class="lov-pop">
+            <!-- ko foreach: mgrLov -->
+            <div class="lov-item" data-bind="click: function(){ $vm.mgrPick($data); }">
+              <span data-bind="text: name"></span>
+              <span style="color:var(--text-2);font-size:12px" data-bind="text: ' · ' + employeeNumber"></span>
+            </div>
+            <!-- /ko -->
+          </div>
+          <!-- /ko -->
+          <!-- /ko -->
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.peopleGroup')"></label>
+          <select class="form-control" data-bind="value: asgForm.peopleGroup">
+            <option value=""></option>
+            <!-- ko foreach: pgLov --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.asgType')"></label>
+          <select class="form-control" data-bind="value: asgForm.assignmentType">
+            <!-- ko foreach: asgTypeLov --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.jobTitle')"></label>
+          <input class="form-control" data-bind="value: asgForm.jobTitle,
+                 attr: { placeholder: $vm.t('emp.jobTitleHint') }">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.companyRef')"></label>
+          <input class="form-control" data-bind="value: asgForm.companyRef">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.sectorName')"></label>
+          <input class="form-control" data-bind="value: asgForm.sector">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.departmentName')"></label>
+          <input class="form-control" data-bind="value: asgForm.departmentName">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.costCenter')"></label>
+          <input class="form-control" data-bind="value: asgForm.costCenter">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.basic')"></label>
+          <input class="form-control" type="number" data-bind="value: asgForm.basicSalary">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.allowance')"></label>
+          <input class="form-control" type="number" data-bind="value: asgForm.allowance">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.gross')"></label>
+          <input class="form-control" type="number" data-bind="value: asgForm.grossSalary">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.from')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" type="date" data-bind="value: asgForm.effectiveFrom">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.to')"></label>
+          <input class="form-control" type="date" data-bind="value: asgForm.effectiveTo">
+        </div>
+        <div class="form-group fg-span2">
+          <label class="form-label" data-bind="text: $vm.t('emp.notes')"></label>
+          <textarea class="form-control" rows="2" data-bind="value: asgForm.notes"></textarea>
+        </div>
+      </div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- ══ Tab: Bank ═════════════════════════════════════════════════ -->
+      <!-- ko if: tab() === 'bank' -->
+      <!-- ko ifnot: bankEditing() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('emp.bankAccounts')"></div>
+        <div class="region-actions">
+          <!-- ko if: canPayroll -->
+          <button class="btn btn-sm btn-primary" data-bind="click: bankNew, text: $vm.t('emp.bankNew')"></button>
+          <!-- /ko -->
+        </div>
+      </div>
+      <!-- ko ifnot: canPayroll() -->
+      <div class="page-subtitle" data-bind="text: $vm.t('emp.bankMasked')"></div>
+      <!-- /ko -->
+      <!-- ko if: banks().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('emp.bankNone')"></div>
+      <!-- /ko -->
+      <!-- ko if: banks().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('emp.bankName')"></th>
+          <th data-bind="text: $vm.t('emp.iban')"></th>
+          <th data-bind="text: $vm.t('emp.accountNo')"></th>
+          <th data-bind="text: $vm.t('emp.currency')"></th>
+          <th data-bind="text: $vm.t('emp.primary')"></th>
+          <th data-bind="text: $vm.t('f.isActive')"></th>
+        </tr></thead>
+        <tbody><!-- ko foreach: banks -->
+          <tr class="ap-row-click" data-bind="click: function(){ $vm.bankEdit($data); }">
+            <td class="ap-clip" data-bind="text: bankName"></td>
+            <td data-bind="text: $data.iban || ''"></td>
+            <td data-bind="text: $data.accountNumber || ''"></td>
+            <td data-bind="text: currency"></td>
+            <td><span data-bind="text: isPrimary === 'Y' ? $vm.t('f.yes') : $vm.t('f.no'),
+                       attr: { class: isPrimary === 'Y' ? 'badge badge--info' : 'badge' }"></span></td>
+            <td><span data-bind="text: isActive === 'Y' ? $vm.t('f.yes') : $vm.t('f.no'),
+                       attr: { class: isActive === 'Y' ? 'badge badge--success' : 'badge badge--danger' }"></span></td>
+          </tr>
+        <!-- /ko --></tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- bank sub-editor -->
+      <!-- ko if: bankEditing() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh"
+             data-bind="text: bankForm.empBankId() ? $vm.t('emp.bankEdit') : $vm.t('emp.bankNew')"></div>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-primary" data-bind="click: bankSave, disable: saving(), text: $vm.t('dr.save')"></button>
+          <button class="btn btn-sm btn-secondary" data-bind="click: bankCancel, text: $vm.t('dr.cancel')"></button>
+        </div>
+      </div>
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.bankName')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: bankForm.bankName">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.iban')"></label>
+          <input class="form-control" data-bind="value: bankForm.iban">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.accountNo')"></label>
+          <input class="form-control" data-bind="value: bankForm.accountNumber">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.branch')"></label>
+          <input class="form-control" data-bind="value: bankForm.branch">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.currency')"></label>
+          <input class="form-control" data-bind="value: bankForm.currency">
+        </div>
+        <div class="form-group">
+          <div class="form-label" data-bind="text: $vm.t('emp.primary')"></div>
+          <div class="fct-item" style="max-width:120px"
+               data-bind="click: bankTogglePrimary, css: { on: bankForm.isPrimary() === 'Y' }">
+            <input type="checkbox" tabindex="-1" style="pointer-events:none"
+                   data-bind="checked: bankForm.isPrimary() === 'Y'">
+            <span class="fct-lbl" data-bind="text: $vm.t('f.yes')"></span>
+          </div>
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('emp.bankHint')"></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- ══ Tab: Documents ════════════════════════════════════════════ -->
+      <!-- ko if: tab() === 'docs' -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('emp.checklist')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('emp.docType')"></th>
+          <th data-bind="text: $vm.t('emp.required')"></th>
+          <th data-bind="text: $vm.t('emp.uploaded')"></th>
+          <th data-bind="text: $vm.t('emp.expiry')"></th>
+        </tr></thead>
+        <tbody><!-- ko foreach: checklist -->
+          <tr>
+            <td data-bind="text: $root.lang && $root.lang() === 'ar' && nameAr ? nameAr : nameEn"></td>
+            <td><span data-bind="text: mandatory === 'Y' ? $vm.t('emp.reqYes') : $vm.t('emp.reqNo'),
+                       attr: { class: mandatory === 'Y' ? 'badge badge--warn' : 'badge' }"></span></td>
+            <td><span data-bind="text: uploaded === 'Y' ? $vm.t('f.yes') : $vm.t('f.no'),
+                       attr: { class: uploaded === 'Y' ? 'badge badge--success' : 'badge badge--danger' }"></span></td>
+            <td data-bind="text: $data.expiryDate || ''"></td>
+          </tr>
+        <!-- /ko --></tbody>
+      </table></div>
+
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('emp.documents')"></div>
+        <div class="region-actions">
+          <select class="form-control" style="max-width:220px;display:inline-block"
+                  data-bind="value: docTypeSel">
+            <option value="" data-bind="text: $vm.t('emp.docTypePick')"></option>
+            <!-- ko foreach: docTypes --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+          <!-- ko if: docTypeHasExpiry() -->
+          <input class="form-control" type="date" style="max-width:160px;display:inline-block"
+                 data-bind="value: docExpiry, attr: { title: $vm.t('emp.expiry') }">
+          <!-- /ko -->
+          <button class="btn btn-sm btn-primary" data-bind="click: docUpload, text: $vm.t('doc.upload')"></button>
+        </div>
+      </div>
+      <!-- ko if: empDocs().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('doc.none')"></div>
+      <!-- /ko -->
+      <!-- ko if: empDocs().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('doc.file')"></th>
+          <th data-bind="text: $vm.t('emp.docType')"></th>
+          <th data-bind="text: $vm.t('emp.expiry')"></th>
+          <th data-bind="text: $vm.t('doc.size')"></th>
+          <th data-bind="text: $vm.t('doc.at')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody><!-- ko foreach: empDocs -->
+          <tr>
+            <td class="ap-clip" data-bind="text: fileName, attr: { title: fileName }"></td>
+            <td data-bind="text: $root.lang && $root.lang() === 'ar' && docTypeAr ? docTypeAr : docTypeEn"></td>
+            <td>
+              <span data-bind="text: $data.expiryDate || ''"></span>
+              <!-- ko if: $data.daysLeft !== undefined && $data.daysLeft !== null && $data.daysLeft <= 30 -->
+              <span class="badge badge--warn" data-bind="text: $data.daysLeft + ' ' + $vm.t('emp.days')"></span>
+              <!-- /ko -->
+            </td>
+            <td data-bind="text: $vm.fmtSize(fileSize)"></td>
+            <td data-bind="text: uploadedAt"></td>
+            <td style="white-space:nowrap">
+              <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.docView($data); }, text: $vm.t('doc.view')"></button>
+              <button class="btn btn-sm btn-secondary" data-bind="click: function(){ $vm.docDelete($data); }, text: $vm.t('doc.delete')"></button>
+            </td>
+          </tr>
+        <!-- /ko --></tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- ══ Tab: Lifecycle ════════════════════════════════════════════ -->
+      <!-- ko if: tab() === 'lifecycle' -->
+      <!-- ko ifnot: lcOpen() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('emp.lifecycle')"></div>
+        <div class="region-actions">
+          <!-- ko if: canHr -->
+          <!-- ko foreach: lcAvailable -->
+          <button class="btn btn-sm"
+                  data-bind="click: function(){ $vm.lcStart($data); },
+                             css: { 'btn-secondary': $data !== 'TERMINATE', 'btn-primary': $data === 'TERMINATE' },
+                             text: $vm.t('emp.lc.' + $data.toLowerCase())"></button>
+          <!-- /ko -->
+          <!-- /ko -->
+        </div>
+      </div>
+      <!-- ko if: events().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('emp.eventsNone')"></div>
+      <!-- /ko -->
+      <!-- ko if: events().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('emp.event')"></th>
+          <th data-bind="text: $vm.t('emp.effectiveDate')"></th>
+          <th data-bind="text: $vm.t('emp.reason')"></th>
+          <th data-bind="text: $vm.t('emp.notes')"></th>
+          <th data-bind="text: $vm.t('emp.by')"></th>
+          <th data-bind="text: $vm.t('emp.at')"></th>
+        </tr></thead>
+        <tbody><!-- ko foreach: events -->
+          <tr>
+            <td><span data-bind="text: $vm.t('evt.' + type),
+                       attr: { class: type === 'TERMINATE' ? 'badge badge--danger'
+                                    : type === 'SUSPEND' ? 'badge badge--warn' : 'badge badge--success' }"></span></td>
+            <td data-bind="text: effectiveDate"></td>
+            <td data-bind="text: $data.reasonName || $data.reason || ''"></td>
+            <td class="ap-clip" data-bind="text: $data.notes || '', attr: { title: $data.notes || '' }"></td>
+            <td data-bind="text: $data.by || ''"></td>
+            <td data-bind="text: at"></td>
+          </tr>
+        <!-- /ko --></tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- lifecycle sub-form -->
+      <!-- ko if: lcOpen() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: lcTitle"></div>
+        <div class="region-actions">
+          <button class="btn btn-sm btn-primary" data-bind="click: lcSubmit, disable: saving(), text: $vm.t('emp.lcConfirm')"></button>
+          <button class="btn btn-sm btn-secondary" data-bind="click: lcCancel, text: $vm.t('dr.cancel')"></button>
+        </div>
+      </div>
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.effectiveDate')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" type="date" data-bind="value: lcForm.effectiveDate">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.reason')"></label>
+          <select class="form-control" data-bind="value: lcForm.reason">
+            <option value=""></option>
+            <!-- ko foreach: reasonLov --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <!-- ko if: lcNeedsCompany() -->
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.lcTargetCompany')"></span><span class="dw-req">*</span></label>
+          <select class="form-control" data-bind="value: lcForm.companyId">
+            <option value=""></option>
+            <!-- ko foreach: companies --><option data-bind="value: id, text: code + ' — ' + name"></option><!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.bu')"></label>
+          <select class="form-control" data-bind="value: lcForm.buCode">
+            <option value=""></option>
+            <!-- ko foreach: buLov --><option data-bind="value: code, text: name"></option><!-- /ko -->
+          </select>
+        </div>
+        <!-- /ko -->
+        <div class="form-group fg-span2">
+          <label class="form-label" data-bind="text: $vm.t('emp.notes')"></label>
+          <textarea class="form-control" rows="2" data-bind="value: lcForm.notes"></textarea>
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('emp.lcHint')"></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+    </div>
+  </aside>
+
+</div>

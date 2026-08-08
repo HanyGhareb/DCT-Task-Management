@@ -45,6 +45,7 @@ function (ko, config, authService, i18n, shell) {
         { id: 'dashboard', labelKey: 'nav.dashboard' },
         { id: 'companies', labelKey: 'nav.companies' },
         { id: 'contracts', labelKey: 'nav.contracts' },
+        { id: 'employees', labelKey: 'nav.employees' },
         { id: 'banks',     labelKey: 'nav.banks' },
       ] }
     ];

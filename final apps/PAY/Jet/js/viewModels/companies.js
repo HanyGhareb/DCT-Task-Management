@@ -12,6 +12,9 @@ function (ko, payService, authService, i18n, docUpload) {
     self.statusLov   = ko.observableArray([]);
     self.categoryLov = ko.observableArray([]);
     self.purposeLov  = ko.observableArray([]);
+    self.contactTypeLov = ko.observableArray([]);
+    self.complianceTypeLov = ko.observableArray([]);
+    self.riskLov = ko.observableArray([]);
     self.maxUploadMb = 10;
 
     function lov(boot, cat) {
@@ -101,6 +104,36 @@ function (ko, payService, authService, i18n, docUpload) {
 
     self.suppliers = ko.observableArray([]);
     self.docs      = ko.observableArray([]);
+    self.contacts = ko.observableArray([]);
+    self.compliance = ko.observableArray([]);
+    self.scores = ko.observableArray([]);
+    self.govForm = {
+      rowVersion: ko.observable(1), country: ko.observable('AE'),
+      contractOwnerId: ko.observable(''), businessOwnerId: ko.observable(''),
+      payrollOwnerId: ko.observable(''), financeOwnerId: ko.observable(''), backupOwnerId: ko.observable(''),
+      riskRating: ko.observable('')
+    };
+
+    self.loadGovernance = function () {
+      if (!self.form.companyId()) return;
+      return payService.getCompanyGovernance(self.form.companyId()).then(function (g) {
+        self.govForm.rowVersion(g.rowVersion || 1); self.govForm.country(g.country || 'AE');
+        self.govForm.contractOwnerId(g.contractOwnerId || ''); self.govForm.businessOwnerId(g.businessOwnerId || '');
+        self.govForm.payrollOwnerId(g.payrollOwnerId || ''); self.govForm.financeOwnerId(g.financeOwnerId || '');
+        self.govForm.backupOwnerId(g.backupOwnerId || ''); self.govForm.riskRating(g.riskRating || '');
+        self.contacts(g.contacts || []); self.compliance(g.compliance || []); self.scores(g.scores || []);
+      });
+    };
+    self.saveGovernance = function () {
+      self.saving(true); self.dwError('');
+      payService.updateCompanyGovernance(self.form.companyId(), {
+        rowVersion: self.govForm.rowVersion(), country: self.govForm.country(),
+        contractOwnerId: self.govForm.contractOwnerId() || null, businessOwnerId: self.govForm.businessOwnerId() || null,
+        payrollOwnerId: self.govForm.payrollOwnerId() || null, financeOwnerId: self.govForm.financeOwnerId() || null,
+        backupOwnerId: self.govForm.backupOwnerId() || null
+      }).then(function (d) { self.govForm.rowVersion(d.rowVersion); self.dwOk(i18n.t('dr.saved')); })
+        .catch(function (e) { self.dwError(e.message || i18n.t('err.save')); }).finally(function () { self.saving(false); });
+    };
 
     function fillForm(d) {
       self.form.companyId(d.companyId || null);
@@ -128,6 +161,7 @@ function (ko, payService, authService, i18n, docUpload) {
         fillForm(d);
         self.dwOpen(true);
         self.loadDocs();
+        self.loadGovernance();
       }).catch(function () { self.dwError(i18n.t('err.load')); self.dwOpen(true); });
     };
 
@@ -168,6 +202,7 @@ function (ko, payService, authService, i18n, docUpload) {
     self.supLov     = ko.observableArray([]);
     self.supForm = {
       supplierRefId: ko.observable(null),
+      registryId: ko.observable(null),
       supplierNumber: ko.observable(''), supplierName: ko.observable(''),
       supplierSite: ko.observable(''), purpose: ko.observable('ALL'),
       bankName: ko.observable(''), iban: ko.observable(''), bankAccountNo: ko.observable(''),
@@ -175,6 +210,37 @@ function (ko, payService, authService, i18n, docUpload) {
       payGroup: ko.observable(''), paymentTerms: ko.observable(''),
       isDefault: ko.observable('N'), isActive: ko.observable('Y')
     };
+    self.supSites = ko.observableArray([]); self.supBanks = ko.observableArray([]);
+    self.selectedBank = ko.observable(null);
+    self.selectedBank.subscribe(function (b) { if (b) self.supPickBank(b); });
+
+    // Payment LOVs from the AP installments extract (terms from the AP header).
+    // A stored value absent from the list is re-injected as its own option
+    // (KO options: blanks a value it cannot find).
+    self.payMethodLov = ko.observableArray([]);
+    self.payGroupLov  = ko.observableArray([]);
+    self.payTermsLov  = ko.observableArray([]);
+    self._payLovRaw = null;
+    function withOpt(list, v) {
+      var a = (list || []).slice();
+      if (v && a.indexOf(v) < 0) a.unshift(v);
+      return a;
+    }
+    function applyPayLovs() {
+      var raw = self._payLovRaw || {};
+      self.payMethodLov(withOpt(raw.paymentMethods, self.supForm.paymentMethod()));
+      self.payGroupLov(withOpt(raw.payGroups, self.supForm.payGroup()));
+      self.payTermsLov(withOpt(raw.paymentTerms, self.supForm.paymentTerms()));
+    }
+    self._applyPayLovs = applyPayLovs;
+    function loadPayLovs() {
+      applyPayLovs();
+      if (self._payLovRaw) return;
+      payService.lovPayment().then(function (d) {
+        self._payLovRaw = d || {};
+        applyPayLovs();
+      }).catch(function () { self._payLovRaw = {}; });
+    }
 
     self.supSearch.subscribe(function (v) {
       clearTimeout(self._lt);
@@ -186,6 +252,7 @@ function (ko, payService, authService, i18n, docUpload) {
 
     function fillSupForm(s) {
       self.supForm.supplierRefId(s.supplierRefId || null);
+      self.supForm.registryId(s.registryId || null);
       self.supForm.supplierNumber(s.supplierNumber || '');
       self.supForm.supplierName(s.supplierName || '');
       self.supForm.supplierSite(s.supplierSite || '');
@@ -196,10 +263,11 @@ function (ko, payService, authService, i18n, docUpload) {
       self.supForm.paymentMethod(s.paymentMethod || '');
       self.supForm.payGroup(s.payGroup || ''); self.supForm.paymentTerms(s.paymentTerms || '');
       self.supForm.isDefault(s.isDefault || 'N'); self.supForm.isActive(s.isActive || 'Y');
+      self.supSites([]); self.supBanks([]);
     }
 
-    self.supNew  = function () { fillSupForm({}); self.supSearch(''); self.supLov([]); self.supEditing(true); };
-    self.supEdit = function (s) { if (!self.isAdmin) return; fillSupForm(s); self.supSearch(''); self.supLov([]); self.supEditing(true); };
+    self.supNew  = function () { fillSupForm({}); self.supSearch(''); self.supLov([]); loadPayLovs(); self.supEditing(true); };
+    self.supEdit = function (s) { if (!self.isAdmin) return; fillSupForm(s); self.supSearch(''); self.supLov([]); loadPayLovs(); self.supEditing(true); };
     self.supCancel = function () { self.supEditing(false); };
     self.supToggleDefault = function () {
       self.supForm.isDefault(self.supForm.isDefault() === 'Y' ? 'N' : 'Y');
@@ -207,13 +275,38 @@ function (ko, payService, authService, i18n, docUpload) {
     self.supPick = function (item) {
       self.supForm.supplierNumber(item.supplierNumber);
       self.supForm.supplierName(item.supplierName);
-      if (item.bankName) self.supForm.bankName(item.bankName);
-      if (item.iban) self.supForm.iban(item.iban);
-      if (item.bankAccountNo) self.supForm.bankAccountNo(item.bankAccountNo);
+      self.supForm.registryId(item.registryId || null);
       if (item.currency) self.supForm.currency(item.currency);
-      if (item.payGroup) self.supForm.payGroup(item.payGroup);
+      if (item.payGroup) { self.supForm.payGroup(item.payGroup); applyPayLovs(); }
       self.supLov([]); self.supSearch('');
+      if (item.registryId) {
+        payService.lovSupplierSites(item.registryId).then(function (d) { self.supSites(d.items || []); });
+        payService.lovSupplierBanks(item.registryId).then(function (d) { self.supBanks(d.items || []); });
+      }
     };
+    self.supPickSite = function (s) { self.supForm.supplierSite(s.site); if (s.payGroup) { self.supForm.payGroup(s.payGroup); applyPayLovs(); } };
+    self.supSiteChanged = function () {
+      var site = self.supForm.supplierSite();
+      var match = self.supSites().filter(function (s) { return s.site === site; })[0];
+      if (match) self.supPickSite(match);
+    };
+    self.supPickBank = function (b) { self.supForm.bankName(b.bankName); self.supForm.iban(b.iban); self.supForm.bankAccountNo(b.bankAccountNo); };
+    self.supRefresh = function (s) { payService.refreshSupplierRef(s.supplierRefId).then(function () { return payService.getCompany(self.form.companyId()); }).then(function (d) { self.suppliers(d.suppliers || []); }); };
+
+    self.contactEditing = ko.observable(false);
+    self.contactForm = { contactId: ko.observable(null), type: ko.observable('CONTRACT_MANAGER'), name: ko.observable(''), title: ko.observable(''), email: ko.observable(''), phone: ko.observable(''), effectiveFrom: ko.observable(''), effectiveTo: ko.observable(''), isPrimary: ko.observable('N'), isActive: ko.observable('Y'), rowVersion: ko.observable(null) };
+    self.contactNew = function () { Object.keys(self.contactForm).forEach(function(k){ self.contactForm[k](k==='type'?'CONTRACT_MANAGER':k==='isActive'?'Y':k==='isPrimary'?'N':''); }); self.contactEditing(true); };
+    self.contactEdit = function (x) { Object.keys(self.contactForm).forEach(function(k){ self.contactForm[k](x[k] === undefined ? '' : x[k]); }); self.contactEditing(true); };
+    self.contactSave = function () { var b={companyId:self.form.companyId(),type:self.contactForm.type(),name:self.contactForm.name(),title:self.contactForm.title(),email:self.contactForm.email(),phone:self.contactForm.phone(),effectiveFrom:self.contactForm.effectiveFrom(),effectiveTo:self.contactForm.effectiveTo(),isPrimary:self.contactForm.isPrimary(),isActive:self.contactForm.isActive(),rowVersion:self.contactForm.rowVersion()}; var p=self.contactForm.contactId()?payService.updateContact(self.contactForm.contactId(),b):payService.addContact(self.form.companyId(),b); self.saving(true);p.then(function(){self.contactEditing(false);return self.loadGovernance();}).catch(function(e){self.dwError(e.message);}).finally(function(){self.saving(false);}); };
+
+    self.complianceEditing = ko.observable(false);
+    self.complianceForm = { complianceId: ko.observable(null), type: ko.observable('TRADE_LICENSE'), referenceNo: ko.observable(''), issueDate: ko.observable(''), expiryDate: ko.observable(''), alertDays: ko.observable(60), blocking: ko.observable('N'), docId: ko.observable(null), notes: ko.observable(''), isActive: ko.observable('Y'), rowVersion: ko.observable(null) };
+    self.complianceNew = function () { Object.keys(self.complianceForm).forEach(function(k){self.complianceForm[k](k==='type'?'TRADE_LICENSE':k==='alertDays'?60:k==='isActive'?'Y':k==='blocking'?'N':'');});self.complianceEditing(true); };
+    self.complianceEdit = function(x){Object.keys(self.complianceForm).forEach(function(k){self.complianceForm[k](x[k]===undefined?'':x[k]);});self.complianceEditing(true);};
+    self.complianceSave=function(){var b={companyId:self.form.companyId(),type:self.complianceForm.type(),referenceNo:self.complianceForm.referenceNo(),issueDate:self.complianceForm.issueDate(),expiryDate:self.complianceForm.expiryDate(),alertDays:self.complianceForm.alertDays(),blocking:self.complianceForm.blocking(),docId:self.complianceForm.docId()||null,notes:self.complianceForm.notes(),isActive:self.complianceForm.isActive(),rowVersion:self.complianceForm.rowVersion()};var p=self.complianceForm.complianceId()?payService.updateCompliance(self.complianceForm.complianceId(),b):payService.addCompliance(self.form.companyId(),b);self.saving(true);p.then(function(){self.complianceEditing(false);return self.loadGovernance();}).catch(function(e){self.dwError(e.message);}).finally(function(){self.saving(false);});};
+
+    self.scoreForm={periodFrom:ko.observable(''),periodTo:ko.observable(''),timeliness:ko.observable(100),accuracy:ko.observable(100),compliance:ko.observable(100),complaints:ko.observable(100),sla:ko.observable(100),notes:ko.observable('')};
+    self.scoreSave=function(){self.saving(true);payService.addScore(self.form.companyId(),Object.keys(self.scoreForm).reduce(function(o,k){o[k]=self.scoreForm[k]();return o;},{})).then(self.loadGovernance).catch(function(e){self.dwError(e.message);}).finally(function(){self.saving(false);});};
 
     self.supSave = function () {
       self.dwError(''); self.dwOk(''); self.saving(true);
@@ -279,6 +372,9 @@ function (ko, payService, authService, i18n, docUpload) {
       self.statusLov(lov(b, 'PAY_COMPANY_STATUS'));
       self.categoryLov(lov(b, 'PAY_COMPANY_CATEGORY'));
       self.purposeLov(lov(b, 'PAY_SUPPLIER_PURPOSE'));
+      self.contactTypeLov(lov(b, 'PAY_CONTACT_TYPE'));
+      self.complianceTypeLov(lov(b, 'PAY_COMPLIANCE_TYPE'));
+      self.riskLov(lov(b, 'PAY_RISK_RATING'));
       self.maxUploadMb = b.maxUploadMb || 10;
       if (b.isPayAdmin) self.isAdmin = true;
     });

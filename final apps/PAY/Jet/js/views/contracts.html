@@ -127,6 +127,10 @@
         <button class="ap-tab" data-bind="click: function(){ if (form.contractId()) tab('margins'); },
                 css: { on: tab() === 'margins' }, disable: !form.contractId(),
                 text: $vm.t('ct.tabMargins')"></button>
+        <button class="ap-tab" data-bind="click:function(){if(form.contractId())tab('governance')},css:{on:tab()==='governance'},disable:!form.contractId(),text:$vm.t('gov.controls')"></button>
+        <button class="ap-tab" data-bind="click:function(){if(form.contractId())tab('fees')},css:{on:tab()==='fees'},disable:!form.contractId(),text:$vm.t('gov.fees')"></button>
+        <button class="ap-tab" data-bind="click:function(){if(form.contractId())tab('renewal')},css:{on:tab()==='renewal'},disable:!form.contractId(),text:$vm.t('gov.renewal')"></button>
+        <button class="ap-tab" data-bind="click:function(){if(form.contractId())tab('changes')},css:{on:tab()==='changes'},disable:!form.contractId(),text:$vm.t('gov.changes')"></button>
         <button class="ap-tab" data-bind="click: function(){ if (form.contractId()) tab('docs'); },
                 css: { on: tab() === 'docs' }, disable: !form.contractId(),
                 text: $vm.t('ct.tabDocs')"></button>
@@ -327,6 +331,56 @@
         <!-- /ko --></tbody>
       </table></div>
       <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- ko if: tab() === 'governance' -->
+      <div class="dw-form">
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.contractValue')"></label><input type="number" class="form-control" data-bind="value:govForm.contractValue,disable:!isAdmin"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.annualValue')"></label><input type="number" class="form-control" data-bind="value:govForm.annualValue,disable:!isAdmin"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.approvedHeadcount')"></label><input type="number" class="form-control" data-bind="value:govForm.approvedHeadcount,disable:!isAdmin"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.minHeadcount')"></label><input type="number" class="form-control" data-bind="value:govForm.minHeadcount,disable:!isAdmin"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.maxHeadcount')"></label><input type="number" class="form-control" data-bind="value:govForm.maxHeadcount,disable:!isAdmin"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.poNumber')"></label><input class="form-control" data-bind="value:govForm.poNumber,disable:!isAdmin"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.owner')"></label><input type="number" class="form-control" data-bind="value:govForm.ownerId,disable:!isAdmin"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.renewalStatus')"></label><select class="form-control" data-bind="value:govForm.renewalStatus,options:renewalStatusLov,optionsValue:'code',optionsText:'name',disable:!isAdmin"></select></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.renewalDue')"></label><input type="date" class="form-control" data-bind="value:govForm.renewalDueDate,disable:!isAdmin"></div>
+      </div><!-- ko if:isAdmin --><button class="btn btn-primary" data-bind="click:saveGovernance,disable:saving,text:$vm.t('dr.save')"></button><!-- /ko -->
+      <!-- /ko -->
+
+      <!-- ko if: tab() === 'fees' -->
+      <!-- ko if:isAdmin --><button class="btn btn-sm btn-secondary" data-bind="click:feeNew,text:$vm.t('gov.addFee')"></button><!-- /ko -->
+      <!-- ko if:feeEditing --><div class="sub-editor"><div class="dw-form">
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.type')"></label><select class="form-control" data-bind="value:feeForm.type,options:feeTypeLov,optionsValue:'code',optionsText:'name'"></select></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('mr.method')"></label><select class="form-control" data-bind="value:feeForm.method,options:feeMethodLov,optionsValue:'code',optionsText:'name'"></select></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('mr.rate')"></label><input type="number" class="form-control" data-bind="value:feeForm.rateValue"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('mr.scope')"></label><select class="form-control" data-bind="value:feeForm.scope,options:scopeLov,optionsValue:'code',optionsText:'name'"></select></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.from')"></label><input type="date" class="form-control" data-bind="value:feeForm.effectiveFrom"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.to')"></label><input type="date" class="form-control" data-bind="value:feeForm.effectiveTo"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.minAmount')"></label><input type="number" class="form-control" data-bind="value:feeForm.minAmount"></div>
+        <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.maxAmount')"></label><input type="number" class="form-control" data-bind="value:feeForm.maxAmount"></div>
+      </div><div class="sub-actions"><button class="btn btn-sm" data-bind="click:function(){feeEditing(false)},text:$vm.t('dr.cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:feeSave,disable:saving,text:$vm.t('dr.save')"></button></div></div><!-- /ko -->
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th data-bind="text:$vm.t('gov.type')"></th><th data-bind="text:$vm.t('mr.method')"></th><th data-bind="text:$vm.t('mr.rate')"></th><th data-bind="text:$vm.t('gov.from')"></th><th data-bind="text:$vm.t('gov.to')"></th></tr></thead><tbody data-bind="foreach:feeRules"><tr class="ap-row-click" data-bind="click:function(){$vm.feeEdit($data)}"><td data-bind="text:type"></td><td data-bind="text:method"></td><td data-bind="text:rateValue"></td><td data-bind="text:effectiveFrom"></td><td data-bind="text:effectiveTo"></td></tr></tbody></table></div>
+      <!-- /ko -->
+
+      <!-- ko if: tab() === 'renewal' -->
+      <!-- ko if:isAdmin --><div class="sub-editor"><div class="dw-form">
+       <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.action')"></label><select class="form-control" data-bind="value:renewalForm.action,options:renewalActionLov,optionsValue:'code',optionsText:'name'"></select></div>
+       <div class="form-group"><label class="form-label" data-bind="text:$vm.t('co.status')"></label><select class="form-control" data-bind="value:renewalForm.status,options:renewalStatusLov,optionsValue:'code',optionsText:'name'"></select></div>
+       <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.owner')"></label><input type="number" class="form-control" data-bind="value:renewalForm.ownerId"></div>
+       <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.targetDate')"></label><input type="date" class="form-control" data-bind="value:renewalForm.targetDate"></div>
+       <div class="form-group fg-span2"><label class="form-label" data-bind="text:$vm.t('ct.notes')"></label><input class="form-control" data-bind="value:renewalForm.notes"></div>
+      </div><button class="btn btn-primary" data-bind="click:addRenewalAction,disable:saving,text:$vm.t('gov.addAction')"></button></div><!-- /ko -->
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th data-bind="text:$vm.t('gov.action')"></th><th data-bind="text:$vm.t('co.status')"></th><th data-bind="text:$vm.t('gov.owner')"></th><th data-bind="text:$vm.t('gov.targetDate')"></th></tr></thead><tbody data-bind="foreach:renewalActions"><tr><td data-bind="text:action"></td><td data-bind="text:status"></td><td data-bind="text:ownerId"></td><td data-bind="text:targetDate"></td></tr></tbody></table></div>
+      <!-- /ko -->
+
+      <!-- ko if: tab() === 'changes' -->
+      <!-- ko if:amendEditing --><div class="sub-editor"><div class="dw-form">
+       <div class="form-group"><label class="form-label" data-bind="text:$vm.t('ct.no')"></label><input class="form-control" data-bind="value:amendForm.newContractNo"></div>
+       <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.type')"></label><select class="form-control" data-bind="value:amendForm.type,options:amendmentTypeLov,optionsValue:'code',optionsText:'name'"></select></div>
+       <div class="form-group"><label class="form-label" data-bind="text:$vm.t('gov.effectiveDate')"></label><input type="date" class="form-control" data-bind="value:amendForm.effectiveDate"></div>
+       <div class="form-group fg-span2"><label class="form-label" data-bind="text:$vm.t('gov.reason')"></label><input class="form-control" data-bind="value:amendForm.reason"></div>
+      </div><div class="sub-actions"><button class="btn btn-sm" data-bind="click:function(){amendEditing(false)},text:$vm.t('dr.cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:submitAmendment,disable:saving,text:$vm.t('gov.createAmendment')"></button></div></div><!-- /ko -->
+      <div class="data-table-wrap"><table class="data-table"><thead><tr><th data-bind="text:$vm.t('gov.type')"></th><th data-bind="text:$vm.t('gov.reason')"></th><th data-bind="text:$vm.t('gov.effectiveDate')"></th><th data-bind="text:$vm.t('doc.by')"></th></tr></thead><tbody data-bind="foreach:changes"><tr><td data-bind="text:type"></td><td data-bind="text:reason"></td><td data-bind="text:effectiveDate"></td><td data-bind="text:createdBy"></td></tr></tbody></table></div>
       <!-- /ko -->
 
       <!-- ── Tab: Documents ───────────────────────────────────────────── -->

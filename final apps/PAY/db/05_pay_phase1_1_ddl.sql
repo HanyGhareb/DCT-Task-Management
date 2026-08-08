@@ -24,6 +24,7 @@ BEGIN
 
   add_col('DCT_PAY_COMPANY_SUPPLIER','FUSION_SITE_ID','fusion_site_id NUMBER');
   add_col('DCT_PAY_COMPANY_SUPPLIER','FUSION_BANK_ACCOUNT_ID','fusion_bank_account_id NUMBER');
+  add_col('DCT_PAY_COMPANY_SUPPLIER','FUSION_REGISTRY_ID','fusion_registry_id NUMBER');
   add_col('DCT_PAY_COMPANY_SUPPLIER','EFFECTIVE_FROM','effective_from DATE DEFAULT TRUNC(SYSDATE) NOT NULL');
   add_col('DCT_PAY_COMPANY_SUPPLIER','EFFECTIVE_TO','effective_to DATE');
   add_col('DCT_PAY_COMPANY_SUPPLIER','SYNC_STATUS','sync_status VARCHAR2(20) DEFAULT ''VALID'' NOT NULL');
@@ -110,6 +111,17 @@ BEGIN
       risk_rating VARCHAR2(20), notes VARCHAR2(1000), created_by VARCHAR2(100),
       created_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
       CHECK(period_to>=period_from))]');
+  mk('DCT_PAY_DOC_RULE', q'[
+    CREATE TABLE dct_pay_doc_rule(
+      doc_rule_id NUMBER GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+      context_code VARCHAR2(30) NOT NULL, doc_type_id NUMBER NOT NULL REFERENCES dct_document_types(doc_type_id),
+      is_mandatory VARCHAR2(1) DEFAULT 'Y' NOT NULL CHECK(is_mandatory IN('Y','N')),
+      blocking_flag VARCHAR2(1) DEFAULT 'N' NOT NULL CHECK(blocking_flag IN('Y','N')),
+      expiry_alert_days NUMBER DEFAULT 60, display_seq NUMBER DEFAULT 10,
+      is_active VARCHAR2(1) DEFAULT 'Y' NOT NULL CHECK(is_active IN('Y','N')),
+      created_by VARCHAR2(100), created_at TIMESTAMP DEFAULT SYSTIMESTAMP NOT NULL,
+      updated_by VARCHAR2(100), updated_at TIMESTAMP,
+      UNIQUE(context_code,doc_type_id))]');
 END;
 /
 
@@ -124,6 +136,10 @@ BEGIN
   mk_idx('IX_PAY_COMPLIANCE_COMPANY','CREATE INDEX ix_pay_compliance_company ON dct_pay_compliance_item(company_id,expiry_date)');
   mk_idx('IX_PAY_FEE_CONTRACT','CREATE INDEX ix_pay_fee_contract ON dct_pay_fee_rule(contract_id,effective_from)');
   mk_idx('IX_PAY_RENEW_CONTRACT','CREATE INDEX ix_pay_renew_contract ON dct_pay_renewal_action(contract_id,action_status)');
+  mk_idx('UQ_PAY_CO_TRN','CREATE UNIQUE INDEX uq_pay_co_trn ON dct_pay_company(CASE WHEN trn IS NOT NULL THEN UPPER(TRIM(trn)) END)');
+  mk_idx('UQ_PAY_CO_LICENSE','CREATE UNIQUE INDEX uq_pay_co_license ON dct_pay_company(CASE WHEN license_no IS NOT NULL THEN UPPER(TRIM(license_no)) END)');
+  mk_idx('UQ_PAY_SUP_ACTIVE_SITE','CREATE UNIQUE INDEX uq_pay_sup_active_site ON dct_pay_company_supplier(CASE WHEN is_active=''Y'' THEN supplier_number END,CASE WHEN is_active=''Y'' THEN NVL(supplier_site,''~'') END)');
+  mk_idx('UQ_PAY_SUP_DEFAULT','CREATE UNIQUE INDEX uq_pay_sup_default ON dct_pay_company_supplier(CASE WHEN is_active=''Y'' AND is_default=''Y'' THEN company_id END,CASE WHEN is_active=''Y'' AND is_default=''Y'' THEN purpose END)');
 END;
 /
 

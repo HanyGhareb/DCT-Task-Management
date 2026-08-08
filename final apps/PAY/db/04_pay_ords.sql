@@ -25,7 +25,9 @@ CREATE OR REPLACE SYNONYM dct_pay_company_supplier FOR prod.dct_pay_company_supp
 CREATE OR REPLACE SYNONYM dct_pay_contract         FOR prod.dct_pay_contract;
 CREATE OR REPLACE SYNONYM dct_pay_margin_rule      FOR prod.dct_pay_margin_rule;
 CREATE OR REPLACE SYNONYM dct_pay_dct_bank         FOR prod.dct_pay_dct_bank;
+CREATE OR REPLACE SYNONYM dct_pay_gov_pkg          FOR prod.dct_pay_gov_pkg;
 CREATE OR REPLACE SYNONYM atd_suppliers            FOR prod.atd_suppliers;
+CREATE OR REPLACE SYNONYM atd_supplier_bank_accounts FOR prod.atd_supplier_bank_accounts;
 -- shared objects (dct_rest, dct_auth, dct_users, dct_documents,
 -- dct_document_types, dct_lookup_categories/values, dct_modules,
 -- dct_module_settings, dct_to_local) already have ADMIN synonyms.
@@ -84,8 +86,10 @@ DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_uid  NUMBER;
   l_max  NUMBER;
+  l_admin BOOLEAN;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_admin := dct_auth.has_role(l_user,'PAY_ADMIN') OR dct_auth.has_role(l_user,'SYS_ADMIN');
   l_uid := dct_auth.get_user_id(l_user);
   BEGIN
     SELECT TO_NUMBER(ms.setting_value DEFAULT NULL ON CONVERSION ERROR) INTO l_max
@@ -119,7 +123,7 @@ BEGIN
     APEX_JSON.write('code', r.bank_code);
     APEX_JSON.write('nameEn', r.bank_name_en);
     APEX_JSON.write('nameAr', NVL(r.bank_name_ar,''));
-    APEX_JSON.write('iban', NVL(r.iban,''));
+    APEX_JSON.write('iban', CASE WHEN l_admin THEN NVL(r.iban,'') ELSE NVL(dct_pay_gov_pkg.mask_bank(r.iban),'') END);
     APEX_JSON.write('currency', r.currency_code);
     APEX_JSON.write('isActive', r.is_active);
     APEX_JSON.close_object;
@@ -295,8 +299,10 @@ END;
 DECLARE
   l_user  VARCHAR2(100) := dct_rest.validate_session;
   l_found BOOLEAN := FALSE;
+  l_admin BOOLEAN;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_admin := dct_auth.has_role(l_user,'PAY_ADMIN') OR dct_auth.has_role(l_user,'SYS_ADMIN');
   FOR c IN (SELECT * FROM dct_pay_company WHERE company_id = TO_NUMBER([COLON]id)) LOOP
     l_found := TRUE;
     dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
@@ -318,6 +324,7 @@ BEGIN
     APEX_JSON.write('contactPhone', NVL(c.contact_phone,''));
     APEX_JSON.write('notes', NVL(c.notes,''));
     APEX_JSON.write('isActive', c.is_active);
+    APEX_JSON.write('rowVersion', c.row_version);
     APEX_JSON.write('createdBy', NVL(c.created_by,''));
     APEX_JSON.write('createdAt', TO_CHAR(dct_to_local(CAST(c.created_at AS TIMESTAMP)),'YYYY-MM-DD HH[COLON]MI AM'));
     APEX_JSON.write('updatedBy', NVL(c.updated_by,''));
@@ -332,14 +339,18 @@ BEGIN
       APEX_JSON.write('supplierSite', NVL(s.supplier_site,''));
       APEX_JSON.write('purpose', s.purpose);
       APEX_JSON.write('bankName', NVL(s.bank_name,''));
-      APEX_JSON.write('iban', NVL(s.iban,''));
-      APEX_JSON.write('bankAccountNo', NVL(s.bank_account_no,''));
+      APEX_JSON.write('iban', CASE WHEN l_admin THEN NVL(s.iban,'') ELSE NVL(dct_pay_gov_pkg.mask_bank(s.iban),'') END);
+      APEX_JSON.write('bankAccountNo', CASE WHEN l_admin THEN NVL(s.bank_account_no,'') ELSE NVL(dct_pay_gov_pkg.mask_bank(s.bank_account_no),'') END);
       APEX_JSON.write('currency', s.currency_code);
       APEX_JSON.write('paymentMethod', NVL(s.payment_method,''));
       APEX_JSON.write('payGroup', NVL(s.pay_group,''));
       APEX_JSON.write('paymentTerms', NVL(s.payment_terms,''));
       APEX_JSON.write('isDefault', s.is_default);
       APEX_JSON.write('isActive', s.is_active);
+      APEX_JSON.write('effectiveFrom', TO_CHAR(s.effective_from,'YYYY-MM-DD'));
+      APEX_JSON.write('effectiveTo', NVL(TO_CHAR(s.effective_to,'YYYY-MM-DD'),''));
+      APEX_JSON.write('syncStatus', s.sync_status);
+      APEX_JSON.write('registryId', s.fusion_registry_id);
       APEX_JSON.close_object;
     END LOOP;
     APEX_JSON.close_array;
@@ -838,8 +849,10 @@ END;
     def_handler('banks', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_admin BOOLEAN;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  l_admin := dct_auth.has_role(l_user,'PAY_ADMIN') OR dct_auth.has_role(l_user,'SYS_ADMIN');
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (SELECT * FROM dct_pay_dct_bank ORDER BY bank_code) LOOP
     APEX_JSON.open_object;
@@ -848,11 +861,11 @@ BEGIN
     APEX_JSON.write('nameEn', r.bank_name_en);
     APEX_JSON.write('nameAr', NVL(r.bank_name_ar,''));
     APEX_JSON.write('accountName', NVL(r.account_name,''));
-    APEX_JSON.write('accountNumber', NVL(r.account_number,''));
-    APEX_JSON.write('iban', NVL(r.iban,''));
+    APEX_JSON.write('accountNumber', CASE WHEN l_admin THEN NVL(r.account_number,'') ELSE NVL(dct_pay_gov_pkg.mask_bank(r.account_number),'') END);
+    APEX_JSON.write('iban', CASE WHEN l_admin THEN NVL(r.iban,'') ELSE NVL(dct_pay_gov_pkg.mask_bank(r.iban),'') END);
     APEX_JSON.write('currency', r.currency_code);
     APEX_JSON.write('branch', NVL(r.branch_name,''));
-    APEX_JSON.write('notes', NVL(r.notes,''));
+    APEX_JSON.write('notes', CASE WHEN l_admin THEN NVL(r.notes,'') ELSE '' END);
     APEX_JSON.write('isActive', r.is_active);
     APEX_JSON.close_object;
   END LOOP;
@@ -937,23 +950,33 @@ BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT * FROM (
-      SELECT TO_CHAR(s.supplier_number) AS supplier_number, s.supplier_name,
-             s.bank_name, s.iban, s.bank_account_number, s.currency, s.site_pay_group,
-             ROW_NUMBER() OVER (PARTITION BY s.supplier_number
-                 ORDER BY CASE WHEN s.primary_flag = 'Y' THEN 0 ELSE 1 END,
-                          s.from_assignment_date DESC NULLS LAST) AS rn
-      FROM atd_suppliers s
-      WHERE ([COLON]search IS NULL
-             OR UPPER(s.supplier_name) LIKE '%'||UPPER([COLON]search)||'%'
-             OR TO_CHAR(s.supplier_number) LIKE [COLON]search||'%')
-    ) WHERE rn = 1
-    ORDER BY supplier_name
+    -- 2026-08-06: ATD_SUPPLIERS is the clean supplier master (one row per
+    -- registry_id, NO bank columns since the Suppliers-family extract rework) -
+    -- bank hints come from the normalized ATD_SUPPLIER_BANK_ACCOUNTS extract:
+    -- best account per supplier = primary first, then active, then newest.
+    -- currency/site_pay_group are legacy ATD_SUPPLIERS columns kept for the
+    -- response contract; they are NULL until re-sourced.
+    SELECT TO_CHAR(s.supplier_number) AS supplier_number, s.supplier_name, s.registry_id,
+           b.bank_name, b.iban, b.bank_account_number, s.currency, s.site_pay_group
+    FROM atd_suppliers s
+    LEFT JOIN (
+      SELECT registry_id, bank_name, iban, bank_account_number,
+             ROW_NUMBER() OVER (PARTITION BY registry_id
+                 ORDER BY CASE WHEN primary_flag = 'Y' THEN 0 ELSE 1 END,
+                          CASE WHEN assignment_inactive_on IS NULL THEN 0 ELSE 1 END,
+                          created DESC NULLS LAST) AS brn
+      FROM atd_supplier_bank_accounts
+    ) b ON b.registry_id = s.registry_id AND b.brn = 1
+    WHERE ([COLON]search IS NULL
+           OR UPPER(s.supplier_name) LIKE '%'||UPPER([COLON]search)||'%'
+           OR TO_CHAR(s.supplier_number) LIKE [COLON]search||'%')
+    ORDER BY s.supplier_name
     FETCH FIRST 30 ROWS ONLY
   ) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('supplierNumber', r.supplier_number);
     APEX_JSON.write('supplierName', NVL(r.supplier_name,''));
+    APEX_JSON.write('registryId', r.registry_id);
     APEX_JSON.write('bankName', NVL(r.bank_name,''));
     APEX_JSON.write('iban', NVL(r.iban,''));
     APEX_JSON.write('bankAccountNo', NVL(r.bank_account_number,''));
@@ -1064,9 +1087,26 @@ END;
 !');
 
     def_template('docs/[COLON]docId/file');
-    def_media('docs/[COLON]docId/file',
-      q'!SELECT mime_type, file_blob FROM dct_documents
-         WHERE doc_id = [COLON]docId AND source_module='PAY' AND is_active='Y'!');
+    def_handler('docs/[COLON]docId/file', 'GET', q'!
+DECLARE
+  l_user VARCHAR2(100) := dct_rest.validate_session;
+  l_blob BLOB; l_mime VARCHAR2(100); l_name VARCHAR2(255);
+BEGIN
+  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
+  BEGIN
+    SELECT file_blob, NVL(mime_type,'application/octet-stream'),
+           REPLACE(REPLACE(file_name,CHR(13),''),CHR(10),'')
+      INTO l_blob,l_mime,l_name
+      FROM dct_documents
+     WHERE doc_id=TO_NUMBER([COLON]docId) AND source_module='PAY' AND is_active='Y';
+  EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Document not found'); RETURN; END;
+  OWA_UTIL.mime_header(l_mime,FALSE);
+  HTP.p('Content-Disposition[COLON] attachment; filename="'||REPLACE(l_name,'"','')||'"');
+  OWA_UTIL.http_header_close;
+  WPG_DOCLOAD.download_file(l_blob);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM);
+END;
+!');
 
     COMMIT;
 END setup_pay_ords_tmp;
