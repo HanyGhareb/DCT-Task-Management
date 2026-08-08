@@ -1358,6 +1358,13 @@
       if (!items.length && !self.acTotal()) return null;
       var t = self.t;
       var gPr = t('cCommitment'), gPo = t('cObligation'), gAct = t('cActual'), gF = t('cFunds');
+      // display unit — the SAME buUnit attribute the Budget Utilization page
+      // uses (drawer "Figures in" field): B/M/K scale every money column
+      // (label gains the unit suffix); Auto/Exact = full numbers.
+      var u = self.buUnit();
+      var div = u === 'B' ? 1e9 : u === 'M' ? 1e6 : u === 'K' ? 1e3 : 1;
+      var sfx = div > 1 ? ' (' + u + ')' : '';
+      function mv(v) { return (v == null || v === '') ? null : Number(v) / div; }
       var cols = [
         { key: 'combination', label: t('thCombo'), type: 'text', sticky: true, width: 205, colClass: 'acc-mono', hint: t('hCombo') },
         { key: 'costCenter', label: t('costCenter'), type: 'text', sticky: true, width: 185, ellipsis: true },
@@ -1383,6 +1390,7 @@
         { key: 'fundsAvailable', label: t('lblGL'), type: 'money', group: gF, groupClass: 'acg-funds', colClass: 'acc-funds', hint: t('hFundsGrp') },
         { key: 'fundsAvailableCalc', label: t('lblCalc'), type: 'money', group: gF, groupClass: 'acg-funds', colClass: 'acc-funds', hint: t('hFundsGrp') }
       ];
+      if (sfx) cols.forEach(function (c) { if (c.type === 'money') c.label += sfx; });
       acRowMap = {};
       var rows = items.map(function (r) {
         acRowMap[r.ccString] = r;
@@ -1394,13 +1402,13 @@
           sector: r.sectorName || '',
           program: r.programName || '',
           appropriation: r.appropriationCode || '',
-          budget: r.budget, prTotal: r.prTotal, openCommitment: r.openCommitment,
-          commitmentPipeline: r.commitmentPipeline, prCount: r.prCount || 0,
-          totalPo: r.totalPo, openObligation: r.openObligation, poPipeline: r.poPipeline,
-          poCount: r.poCount || 0, openEncumbrance: r.openEncumbrance,
-          glActual: r.glActual, grnActual: r.grnActual, apDirect: r.apDirect,
-          slaActual: r.slaActual, fundsAvailable: r.fundsAvailable,
-          fundsAvailableCalc: r.fundsAvailableCalc
+          budget: mv(r.budget), prTotal: mv(r.prTotal), openCommitment: mv(r.openCommitment),
+          commitmentPipeline: mv(r.commitmentPipeline), prCount: r.prCount || 0,
+          totalPo: mv(r.totalPo), openObligation: mv(r.openObligation), poPipeline: mv(r.poPipeline),
+          poCount: r.poCount || 0, openEncumbrance: mv(r.openEncumbrance),
+          glActual: mv(r.glActual), grnActual: mv(r.grnActual), apDirect: mv(r.apDirect),
+          slaActual: mv(r.slaActual), fundsAvailable: mv(r.fundsAvailable),
+          fundsAvailableCalc: mv(r.fundsAvailableCalc)
         };
       });
       return { columns: cols, items: rows, total: rows.length, truncated: self.acTruncated(),

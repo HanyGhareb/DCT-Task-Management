@@ -29,6 +29,18 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-08-08 (3b) — Web-tier release `20260808143934` pushed**: GL v1.59.0 live; verified
+  `APP_VERSION` 1.59.0 + the 16 `buNum(tot(` band bindings and the `mv()` envelope scaler
+  served from https://129.151.159.189/.
+- **2026-08-08 (3) — "Figures in" display unit on the Budget-vs-Actual drawer (GL v1.59.0;
+  frontend-only).** The report-parameters drawer gains the SAME **`buUnit`** attribute the
+  Budget Utilization page uses ("Figures in" — Auto B/M/K · Billions · Millions · Thousands ·
+  Exact; one shared setting persisted in `gl_bu_ui.unit`, so butil / pending / General Ledger
+  stay in sync): the 6 KPI-band cards + sub-rows format through `buNum` (16 bindings,
+  compact→buNum), and the IR register scales every money column by the unit divisor with the
+  unit suffix appended to the column labels (`(M)` etc.) inside the `acIr` envelope
+  (Auto/Exact = full numbers; counts unscaled; `acRowMap`/drills keep the ORIGINAL unscaled
+  rows). Display-only — changing the unit re-renders instantly, no re-query. Smoke → **26/26**.
 - **2026-08-08 (2b) — Web-tier release `20260808142802` pushed**: GL v1.58.0 live; verified
   `APP_VERSION` 1.58.0 + `fillAcAgg`/`drillSortNote`/`drillGridOver` JS and `.dw-sort` CSS
   served from https://129.151.159.189/.

@@ -122,6 +122,24 @@ def main():
         pg.evaluate("() => ko.dataFor(document.body).closeDrill()")
         pg.wait_for_timeout(300)
 
+        # ── "Figures in" display unit — shared with Budget Utilization (v1.59.0) ──
+        pg.evaluate("() => ko.dataFor(document.body).openAcFilters()")
+        pg.wait_for_selector(".dw-filter.show", timeout=5000)
+        nsel = pg.locator(".dw-filter .fd-grid select").count()
+        check("drawer has the Figures-in unit select", nsel == 4, f"selects={nsel}")
+        pg.evaluate("() => ko.dataFor(document.body).buUnit('M')")
+        pg.wait_for_timeout(600)
+        band_v = pg.locator(".kgrid .kg-v").first.inner_text()
+        check("KPI band follows the unit (M)", band_v.strip().endswith("M"), band_v)
+        mlabels = pg.eval_on_selector_all(
+            ".ac-results .ir-table thead th",
+            "els => els.map(e => e.textContent).filter(x => x.includes('(M)')).length")
+        check("IR money column labels carry the (M) suffix", mlabels >= 5, f"n={mlabels}")
+        pg.evaluate("() => ko.dataFor(document.body).buUnit('auto')")
+        pg.wait_for_timeout(600)
+        pg.evaluate("() => ko.dataFor(document.body).closeAcFilters()")
+        pg.wait_for_timeout(300)
+
         # ── KPI aggregate drawer round (v1.58.0) ─────────────────────────
         pg.evaluate("() => { ko.dataFor(document.body).openAcAgg('budget'); }")
         pg.wait_for_function(
