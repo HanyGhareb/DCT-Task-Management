@@ -672,17 +672,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
       IF NVL(ce.days_factor, 0) = 0 THEN
         l_flags := SUBSTR(l_flags || CASE WHEN l_flags IS NOT NULL THEN ',' END || 'NO_DAYS', 1, 1000);
       END IF;
-      SELECT COUNT(*) INTO l_n FROM prod.dct_pay_emp_bank
-      WHERE person_id = ce.person_id AND is_active = 'Y';
-      IF l_n = 0 THEN
-        l_flags := SUBSTR(l_flags || CASE WHEN l_flags IS NOT NULL THEN ',' END || 'NO_BANK', 1, 1000);
-      END IF;
-      IF l_flags IS NOT NULL AND l_flags <> 'NO_BANK' THEN
+      -- a missing employee IBAN is deliberately NOT flagged (user 2026-08-09):
+      -- DCT pays only the company's supplier account, so the employee bank
+      -- row is reference data and never a payroll validation concern
+      IF l_flags IS NOT NULL THEN
         l_exc := l_exc + 1;
         UPDATE prod.dct_pay_run_emp SET status = 'EXCEPTION', exceptions = l_flags
         WHERE run_emp_id = ce.run_emp_id;
       ELSE
-        UPDATE prod.dct_pay_run_emp SET status = 'OK', exceptions = l_flags
+        UPDATE prod.dct_pay_run_emp SET status = 'OK', exceptions = NULL
         WHERE run_emp_id = ce.run_emp_id;
       END IF;
     END LOOP;
