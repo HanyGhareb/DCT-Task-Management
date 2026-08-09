@@ -205,10 +205,41 @@ with sync_playwright() as p:
     check('companyDash headcount 313', '313' in cd_kpis, str(cd_kpis))
     check('companyDash paid total', any('189,' in k for k in cd_kpis), str(cd_kpis))
     check('companyDash charts rendered', page.locator('canvas').count() == 3)
+    check('exec summary removed', 'Executive Summary' not in cd_body)
     check('companyDash invoices region', 'Fusion AP Invoices' in cd_body)
     check('companyDash cost-by-cc region', 'Payroll Cost by Cost Center' in cd_body)
-    check('companyDash employees table rows', page.locator('.ap-region').last.locator('tbody tr').count() >= 100)
+    check('5 interactive reports', page.locator('table.ir-table').count() == 5,
+          str(page.locator('table.ir-table').count()))
+    # the shared IR paginates (50/page) - assert the total in its pager instead
+    check('employees IR total 313', 'of 313' in page.locator('.ap-region').last.inner_text())
     page.screenshot(path=EV + '09_company_dash.png', full_page=True)
+
+    # KPI drill: headcount tile -> drawer with all employees + total footer + CSV
+    page.locator('.pr-k--click').first.click()
+    page.wait_for_timeout(3000)
+    ddw = page.locator('.dw-drawer.show')
+    check('drill drawer open', ddw.count() == 1)
+    check('drill drawer 313 rows', ddw.locator('tbody tr').count() == 313)
+    check('drill total footer', 'Total (313)' in ddw.inner_text())
+    page.screenshot(path=EV + '10_kpi_drill.png')
+    ddw.locator('button', has_text='Close').first.evaluate('el => el.click()')
+    page.wait_for_timeout(600)
+
+    # charges KPI drill -> 6 charge rows
+    page.locator('.pr-k--click').nth(3).click()
+    page.wait_for_timeout(2500)
+    check('charges drill 6 rows', page.locator('.dw-drawer.show tbody tr').count() == 6)
+    page.locator('.dw-drawer.show button', has_text='Close').first.evaluate('el => el.click()')
+    page.wait_for_timeout(600)
+
+    # region maximize round trip (Analytics)
+    page.locator('.ap-region').first.locator('.region-actions button').last.evaluate('el => el.click()')
+    page.wait_for_timeout(500)
+    check('region maximized', page.locator('.ap-region--max').count() == 1)
+    page.locator('.ap-region--max .region-actions button').last.evaluate('el => el.click()')
+    page.wait_for_timeout(500)
+    check('region restored', page.locator('.ap-region--max').count() == 0)
+
     page.locator('.page-actions button', has_text='Back to Companies').click()
     page.wait_for_timeout(2000)
     check('back to companies', 'Outsource Companies' in page.locator('.page-title').inner_text())

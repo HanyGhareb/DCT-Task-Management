@@ -381,3 +381,7 @@ td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: 
 .cd-charts canvas { max-height: 260px; }
 .cd-ch-t { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 2px 0 8px; }
 @media (max-width: 1100px) { .cd-charts { grid-template-columns: 1fr; } }
+
+/* company dashboard: clickable KPI tiles + wide drill drawer */
+.pr-k--click { cursor: pointer; transition: box-shadow .15s, transform .15s; }
+.pr-k--click:hover { box-shadow: 0 3px 10px rgba(0,0,0,.14); transform: translateY(-1px); }

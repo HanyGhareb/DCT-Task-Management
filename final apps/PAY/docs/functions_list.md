@@ -39,8 +39,8 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 - Lifecycle: `lcStart(action)` / `lcSubmit()` / `lcCancel()` — Transfer / Suspend / Resume / Terminate / Rehire sub-form (effective date + reason + notes, target company for transfer/rehire); `lcAvailable` derives valid actions from record state; event trail table.
 - Bulk upload: `bulkTemplate()` (SheetJS .xlsx template), `bulkChoose()` → parse → chunked `employees/bulk` full upsert → per-row CREATED/UPDATED/ERROR results + summary.
 
-## Company Dashboard (`companyDash`, 2026-08-09)
-- Per-company executive view over `GET /pay/companies/:id/dashboard` (one envelope): KPI band (headcount / active contracts / latest-run gross + company charges / AP invoice count / total paid / outstanding), executive summary (owners, risk, latest score, compliance alerts, contacts), latest-run card + 12-run history, 3 Chart.js charts (AP paid by cost center · invoiced-vs-paid 12-month trend · headcount by sector), contracts table (days-left, margin-rule count; row → Contracts drawer deep-link), latest-15 Fusion AP invoices w/ full-set totals, payroll-cost-by-CC table, employees list (cap 200) + Open Employees/Runs shortcuts. AP data matched on the company's ACTIVE supplier references; no-reference companies get an add-a-reference hint.
+## Company Dashboard (`companyDash`, 2026-08-09; round 2 same day)
+- Per-company executive view over `GET /pay/companies/:id/dashboard`: KPI band (headcount / active contracts / latest-run gross + company charges / AP invoice count / total paid / outstanding) — **every tile drills** into the right-edge drawer (`drill(metric,key)` over `GET companies/:id/dashboard/drill`); latest-run card; 3 Chart.js charts (AP paid by cost center · invoiced-vs-paid trend · headcount by sector) — **charts drill on click**; ALL result tables (run history / contracts / latest-100 invoices / payroll-cost-by-CC / employees ≤1000) on the SHARED `<interactive-report>` (code PAY_COMPANY_DASH, sections runs/contracts/invoices/costcc/emps, localStorage layouts); ⤢ maximize on every region; drill drawer = full-width toggle + CSV export + money-column totals footer + first-1000 truncation note. AP data matched on the company's ACTIVE supplier references; no-reference companies get an add-a-reference hint.
 
 ## Payroll Runs (Phase 3 — run console)
 - Payroll + period pickers (period options show the existing run status); `openRun()` — open or create the period's REGULAR run.
@@ -86,7 +86,8 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | GET | lov/supplier-banks?registryid= | Bank accounts of a Fusion supplier (ATD_SUPPLIER_BANK_ACCOUNTS) — Phase 1.1 |
 | GET | lov/payment | Payment LOVs from the AP installments extract: paymentMethods[] + payGroups[] (ATD_AP_INVOICE_INSTALLMENTS) + paymentTerms[] (ATD_AP_INVOICES) |
 | GET/PUT | companies/:id/governance | Owners, contacts, compliance, scores (Phase 1.1) |
-| GET | companies/:id/dashboard | Company executive dashboard: KPIs, employees, contracts, Fusion AP invoices + paid-by-cost-center (via supplier refs), run history — 2026-08-09 |
+| GET | companies/:id/dashboard | Company executive dashboard: KPIs, employees (≤1000), contracts, latest-100 Fusion AP invoices + paid-by-cost-center (via supplier refs), run history — 2026-08-09 |
+| GET | companies/:id/dashboard/drill?metric=&key= | Drill rows: emps[sector] / contracts / run / charges / inv[paid·out·YYYY-MM] / paidcc[cc] — cap 1000, shown/total/truncated — 2026-08-09 |
 | POST | companies/:id/contacts · PUT contacts/:id | Company contacts CRUD (Phase 1.1) |
 | POST | companies/:id/compliance · PUT compliance/:id | Compliance items CRUD (Phase 1.1) |
 | POST | companies/:id/scores | Performance scorecard entry (Phase 1.1) |
