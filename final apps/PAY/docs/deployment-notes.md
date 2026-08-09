@@ -14,6 +14,7 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
    - `db/11_pay_phase2_pkg.sql` — DCT_PAY_EMP_PKG + DCT_PAY_EMPDOC_JOB (drops/recreates the job).
    - `db/12_pay_phase2_ords.sql` — **FRESH session**; additive Workforce routes (15 handlers) + Phase 2 synonyms.
    - `db/13_pay_phase2_1_enrich.sql` — additive Phase 2.1 (assignment enrichment columns, grade ladder 1A..7C, DAYTON/REACH companies, ALN markup 795); deploy BEFORE re-running 11+12 (both reference the new columns).
+   - Since 2026-08-09 `db/11`'s `save_assignment` also references `DCT_PAY_ELEMENT`/`DCT_PAY_ELEMENT_ENTRY` (salary-entry seeding) — on a FRESH install deploy `db/14` (Phase 3 DDL) before re-running 11.
    - `db/14_pay_phase3_ddl.sql` — additive Phase 3 DDL (13 payroll tables + `DCT_PAY_EMP_BANK.IS_WPS`; guarded, safe re-run; ends at 0 INVALID).
    - `db/15_pay_phase3_seed.sql` — re-runnable Phase 3 seed (11 PAY_* vocabularies, 3 payrolls + 2025/2026 calendars, 7 elements + pension links, PENSION_GCC rates, invoice groups, payroll_code + salary-entry backfills). UTF-8 invocation.
    - `db/16_pay_phase3_pkg.sql` — DCT_PAY_CALC_PKG (run engine). `factor` is published in the spec because the LOAD snapshot SQL calls it (PLS-00231 otherwise).

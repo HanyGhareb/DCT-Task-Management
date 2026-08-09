@@ -164,6 +164,9 @@
         <button class="ap-tab" data-bind="click: function(){ if (form.personId()) tab('assignments'); },
                 css: { on: tab() === 'assignments' }, disable: !form.personId(),
                 text: $vm.t('emp.tabAssignments')"></button>
+        <button class="ap-tab" data-bind="click: function(){ if (form.personId()) { tab('salary'); loadEntries(); } },
+                css: { on: tab() === 'salary' }, disable: !form.personId(),
+                text: $vm.t('emp.tabSalary')"></button>
         <button class="ap-tab" data-bind="click: function(){ if (form.personId()) tab('bank'); },
                 css: { on: tab() === 'bank' }, disable: !form.personId(),
                 text: $vm.t('emp.tabBank')"></button>
@@ -533,6 +536,123 @@
         </div>
       </div>
       <div class="dw-hint" data-bind="text: $vm.t('emp.bankHint')"></div>
+      <!-- /ko -->
+      <!-- /ko -->
+
+      <!-- ══ Tab: Salary (element entries) ═════════════════════════════ -->
+      <!-- ko if: tab() === 'salary' -->
+      <!-- ko ifnot: enEditing() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('emp.entries')"></div>
+        <div class="region-actions">
+          <!-- ko if: canPayroll -->
+          <button class="btn btn-sm btn-primary" data-bind="click: enNew, text: $vm.t('emp.entryNew')"></button>
+          <!-- /ko -->
+        </div>
+      </div>
+      <!-- ko if: enError() --><div class="dw-err" data-bind="text: enError"></div><!-- /ko -->
+      <!-- ko if: entriesLoading --><list-skeleton params="rows: 3"></list-skeleton><!-- /ko -->
+      <!-- ko ifnot: entriesLoading -->
+      <!-- ko if: entries().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('emp.entryNone')"></div>
+      <!-- /ko -->
+      <!-- ko if: entries().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('emp.element')"></th>
+          <th data-bind="text: $vm.t('emp.entryType')"></th>
+          <th data-bind="text: $vm.t('emp.amount')"></th>
+          <th data-bind="text: $vm.t('emp.qtyRate')"></th>
+          <th data-bind="text: $vm.t('emp.from')"></th>
+          <th data-bind="text: $vm.t('emp.to')"></th>
+          <th data-bind="text: $vm.t('emp.status')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: entries">
+          <tr>
+            <td>
+              <div style="font-weight:600" data-bind="text: element"></div>
+              <div style="font-size:11px;color:var(--text-2)" data-bind="text: elementName + ' · ' + elementClass"></div>
+            </td>
+            <td data-bind="text: entryType"></td>
+            <td data-bind="text: $data.amount == null ? '—' : Number($data.amount).toLocaleString('en-US', {minimumFractionDigits: 2})"></td>
+            <td data-bind="text: $data.qty == null ? '—' : $data.qty + ' × ' + ($data.rate == null ? '—' : $data.rate)"></td>
+            <td data-bind="text: effectiveFrom"></td>
+            <td data-bind="text: $data.effectiveTo || '—'"></td>
+            <td><span class="badge" data-bind="text: isActive"></span></td>
+            <td style="white-space:nowrap">
+              <!-- ko if: $vm.canPayroll() -->
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.enEdit($data); }, enable: !$vm.enBusy(), text: $vm.t('dr.edit')"></button>
+              <!-- ko if: isActive === 'Y' && !$data.effectiveTo -->
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.enEnd($data); }, enable: !$vm.enBusy(), text: $vm.t('emp.entryEnd')"></button>
+              <!-- /ko -->
+              <!-- /ko -->
+            </td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
+      <div class="dw-hint" data-bind="text: $vm.t('emp.entryHint')"></div>
+      <!-- /ko -->
+
+      <!-- ko if: enEditing() -->
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh"
+             data-bind="text: enIsNew() ? $vm.t('emp.entryNew') : ($vm.t('emp.entryEdit') + ' · ' + enForm.element())"></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: enCancel, text: $vm.t('dr.cancel')"></button>
+          <button class="btn btn-primary btn-sm" data-bind="click: enSave, enable: !enBusy(), text: $vm.t('dr.save')"></button>
+        </div>
+      </div>
+      <!-- ko if: enError() --><div class="dw-err" data-bind="text: enError"></div><!-- /ko -->
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <!-- ko if: enIsNew -->
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.element')"></span><span class="dw-req">*</span></label>
+          <select class="form-control" data-bind="value: enForm.elementId">
+            <option value=""></option>
+            <!-- ko foreach: salaryElements -->
+            <option data-bind="value: elementId, text: code + ' — ' + nameEn + ' (' + elementClass + ')'"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.entryType')"></label>
+          <select class="form-control" data-bind="value: enForm.entryType">
+            <option value="RECURRING">RECURRING</option>
+            <option value="ONETIME">ONETIME</option>
+          </select>
+        </div>
+        <!-- /ko -->
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.amount')"></label>
+          <input class="form-control" type="number" step="0.01" data-bind="value: enForm.amount">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.qty')"></label>
+          <input class="form-control" type="number" step="0.01" data-bind="value: enForm.qty">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.rate')"></label>
+          <input class="form-control" type="number" step="0.01" data-bind="value: enForm.rate">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('emp.from')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" type="date" data-bind="value: enForm.effectiveFrom">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.to')"></label>
+          <input class="form-control" type="date" data-bind="value: enForm.effectiveTo">
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('emp.notes')"></label>
+          <input class="form-control" data-bind="value: enForm.notes">
+        </div>
+      </div>
+      <div class="dw-hint" data-bind="text: $vm.t('emp.entryFormHint')"></div>
       <!-- /ko -->
       <!-- /ko -->
 

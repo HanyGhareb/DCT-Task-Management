@@ -328,6 +328,48 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_emp_pkg AS
             RAISE_APPLICATION_ERROR(-20404, 'Employee not found: ' || p_person_id);
     END save_employee;
 
+    -- ------------------------------------------------- salary entry seeding
+    -- Seeds the missing BASIC + ALLOWANCE (or lump GROSS_SALARY) element
+    -- entries when a PRIMARY ACTIVE assignment carries salary figures, so a
+    -- new hire calculates without manual setup. An employee who already has
+    -- an active entry for the element is left untouched - salary changes are
+    -- effective-dated on the employee Salary tab (Phase 3 /pay/entries).
+    PROCEDURE ensure_salary_entries (
+        p_user      IN VARCHAR2,
+        p_person_id IN NUMBER,
+        p_asg_id    IN NUMBER,
+        p_basic     IN NUMBER,
+        p_allow     IN NUMBER,
+        p_gross     IN NUMBER,
+        p_from      IN DATE) IS
+        PROCEDURE ensure_one (p_code VARCHAR2, p_amount NUMBER) IS
+            l_el NUMBER;
+            l_n  NUMBER;
+        BEGIN
+            IF NVL(p_amount, 0) <= 0 THEN RETURN; END IF;
+            BEGIN
+                SELECT element_id INTO l_el FROM prod.dct_pay_element
+                 WHERE element_code = p_code AND is_active = 'Y';
+            EXCEPTION WHEN NO_DATA_FOUND THEN RETURN;
+            END;
+            SELECT COUNT(*) INTO l_n FROM prod.dct_pay_element_entry
+             WHERE element_id = l_el AND person_id = p_person_id AND is_active = 'Y';
+            IF l_n > 0 THEN RETURN; END IF;
+            INSERT INTO prod.dct_pay_element_entry
+                   (element_id, person_id, assignment_id, entry_type, amount,
+                    effective_from, notes, created_by, updated_by)
+            VALUES (l_el, p_person_id, p_asg_id, 'RECURRING', p_amount,
+                    p_from, 'Auto-created from assignment salary figures', p_user, p_user);
+        END;
+    BEGIN
+        IF NVL(p_basic, 0) > 0 THEN
+            ensure_one('BASIC', p_basic);
+            ensure_one('ALLOWANCE', p_allow);
+        ELSIF NVL(p_gross, 0) > 0 THEN
+            ensure_one('GROSS_SALARY', p_gross);
+        END IF;
+    END ensure_salary_entries;
+
     -- ------------------------------------------------------------ assignment
     PROCEDURE save_assignment (
         p_user              IN VARCHAR2,
@@ -477,6 +519,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_emp_pkg AS
              WHERE assignment_id = p_assignment_id;
             require(SQL%ROWCOUNT = 1, 'Assignment not found: ' || p_assignment_id);
             o_assignment_id := p_assignment_id;
+        END IF;
+
+        IF l_type = 'PRIMARY' AND l_status = 'ACTIVE' THEN
+            ensure_salary_entries(p_user, p_person_id, o_assignment_id,
+                                  p_basic_salary, p_allowance_amount, p_gross_salary, l_from);
         END IF;
     END save_assignment;
 

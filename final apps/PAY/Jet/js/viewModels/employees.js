@@ -143,12 +143,14 @@ function (ko, payService, authService, i18n, docUpload) {
       fillForm({}); self.empDocs([]); self.checklist([]);
       self.tab('profile'); self.dwError(''); self.dwOk('');
       self.asgEditing(false); self.bankEditing(false); self.lcOpen(false);
+      self.entries([]); self.enEditing(false);
       self.dwOpen(true);
     };
 
     self.openEdit = function (row) {
       self.dwError(''); self.dwOk(''); self.tab('profile');
       self.asgEditing(false); self.bankEditing(false); self.lcOpen(false);
+      self.entries([]); self.enEditing(false);
       self.reloadEmp(row.personId, true);
     };
 
@@ -373,6 +375,99 @@ function (ko, payService, authService, i18n, docUpload) {
       acts.push('TERMINATE');
       return acts;
     });
+
+    // ── Salary tab (element entries — Phase 3 /pay/entries) ────────────
+    self.entries        = ko.observableArray([]);
+    self.entriesLoading = ko.observable(false);
+    self.salaryElements = ko.observableArray([]);  // FLAT / QTY_RATE active elements
+    self.enEditing = ko.observable(false);
+    self.enIsNew   = ko.observable(true);
+    self.enError   = ko.observable('');
+    self.enBusy    = ko.observable(false);
+    self.enForm = {
+      entryId: ko.observable(null), elementId: ko.observable(''),
+      element: ko.observable(''), entryType: ko.observable('RECURRING'),
+      amount: ko.observable(''), qty: ko.observable(''), rate: ko.observable(''),
+      effectiveFrom: ko.observable(''), effectiveTo: ko.observable(''),
+      notes: ko.observable('')
+    };
+
+    self.loadEntries = function () {
+      if (!self.form.personId()) return;
+      self.entriesLoading(true);
+      payService.getEntries(self.form.personId()).then(function (d) {
+        self.entries(d.items || []);
+      }).finally(function () { self.entriesLoading(false); });
+      if (!self.salaryElements().length) {
+        payService.paysetupBoot().then(function (d) {
+          self.salaryElements((d.elements || []).filter(function (e) {
+            return e.isActive === 'Y' && (e.calcRule === 'FLAT' || e.calcRule === 'QTY_RATE');
+          }));
+        });
+      }
+    };
+
+    self.enNew = function () {
+      if (!self.canPayroll()) return;
+      self.enError(''); self.enIsNew(true);
+      self.enForm.entryId(null); self.enForm.elementId(''); self.enForm.element('');
+      self.enForm.entryType('RECURRING');
+      self.enForm.amount(''); self.enForm.qty(''); self.enForm.rate('');
+      self.enForm.effectiveFrom(new Date().toISOString().slice(0, 10));
+      self.enForm.effectiveTo(''); self.enForm.notes('');
+      self.enEditing(true);
+    };
+
+    self.enEdit = function (r) {
+      if (!self.canPayroll()) return;
+      self.enError(''); self.enIsNew(false);
+      self.enForm.entryId(r.entryId); self.enForm.elementId(r.elementId);
+      self.enForm.element(r.element + ' — ' + r.elementName);
+      self.enForm.entryType(r.entryType);
+      self.enForm.amount(r.amount == null ? '' : r.amount);
+      self.enForm.qty(r.qty == null ? '' : r.qty);
+      self.enForm.rate(r.rate == null ? '' : r.rate);
+      self.enForm.effectiveFrom(r.effectiveFrom || '');
+      self.enForm.effectiveTo(r.effectiveTo || '');
+      self.enForm.notes(r.notes || '');
+      self.enEditing(true);
+    };
+    self.enCancel = function () { self.enEditing(false); };
+
+    self.enSave = function () {
+      self.enBusy(true); self.enError('');
+      var body = {
+        amount: self.enForm.amount() === '' ? null : Number(self.enForm.amount()),
+        qty: self.enForm.qty() === '' ? null : Number(self.enForm.qty()),
+        rate: self.enForm.rate() === '' ? null : Number(self.enForm.rate()),
+        effectiveFrom: self.enForm.effectiveFrom() || null,
+        effectiveTo: self.enForm.effectiveTo() || null,
+        notes: self.enForm.notes() || null
+      };
+      var p;
+      if (self.enIsNew()) {
+        body.elementId = Number(self.enForm.elementId());
+        body.personId = self.form.personId();
+        body.entryType = self.enForm.entryType();
+        p = payService.addEntry(body);
+      } else {
+        p = payService.updateEntry(self.enForm.entryId(), body);
+      }
+      p.then(function () { self.enEditing(false); self.loadEntries(); })
+        .catch(function (e) { self.enError(e.message || String(e)); })
+        .finally(function () { self.enBusy(false); });
+    };
+
+    // end an entry as of today (stops it from the next payroll load)
+    self.enEnd = function (r) {
+      if (!self.canPayroll()) return;
+      if (!window.confirm(i18n.t('emp.entryEndConfirm'))) return;
+      self.enBusy(true);
+      payService.updateEntry(r.entryId, { effectiveTo: new Date().toISOString().slice(0, 10) })
+        .then(function () { self.loadEntries(); })
+        .catch(function (e) { self.enError(e.message || String(e)); })
+        .finally(function () { self.enBusy(false); });
+    };
 
     // ── Documents tab ───────────────────────────────────────────────────
     self.docTypeSel  = ko.observable('');

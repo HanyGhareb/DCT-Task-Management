@@ -494,5 +494,21 @@
   "pr.applyGroup": "Move",
   "pr.moveHint": "Moving an employee re-prices the company charges immediately and is kept for future loads of this payroll.",
   "ps.onlySelected": "Show selected only",
-  "ps.noneSelected": "No cost centers selected yet - untick the filter to see the full list."
+  "ps.noneSelected": "No cost centers selected yet - untick the filter to see the full list.",
+  "emp.tabSalary": "Salary",
+  "emp.entries": "Salary Entries",
+  "emp.entryNew": "New Entry",
+  "emp.entryEdit": "Edit Entry",
+  "emp.entryEnd": "End",
+  "emp.entryEndConfirm": "End this entry as of today? It will stop counting from the next payroll load.",
+  "emp.element": "Element",
+  "emp.entryType": "Type",
+  "emp.amount": "Amount",
+  "emp.qty": "Quantity",
+  "emp.rate": "Rate",
+  "emp.qtyRate": "Qty × Rate",
+  "emp.status": "Status",
+  "emp.entryNone": "No salary entries yet - the next payroll load will flag this employee NO_SALARY_ENTRY.",
+  "emp.entryHint": "These per-employee amounts feed the payroll calculation (flat and quantity-x-rate elements). Pension and other rate-table or percentage elements compute automatically and need no entry. Salary changes: end the current entry and add a new one from its effective date.",
+  "emp.entryFormHint": "Flat elements need an Amount; quantity-x-rate elements need Quantity and Rate. RECURRING applies every period in the date window; ONETIME applies only in the period containing the from-date."
 }
