@@ -208,6 +208,7 @@ with sync_playwright() as p:
     check('exec summary removed', 'Executive Summary' not in cd_body)
     check('companyDash invoices region', 'Fusion AP Invoices' in cd_body)
     check('companyDash cost-by-cc region', 'Payroll Cost by Cost Center' in cd_body)
+    check('invoices IR has fusion links', page.locator('table.ir-table a[href*="AP_VIEWINVOICE"]').count() > 0)
     check('5 interactive reports', page.locator('table.ir-table').count() == 5,
           str(page.locator('table.ir-table').count()))
     # the shared IR paginates (50/page) - assert the total in its pager instead
@@ -223,6 +224,14 @@ with sync_playwright() as p:
     check('drill total footer', 'Total (313)' in ddw.inner_text())
     page.screenshot(path=EV + '10_kpi_drill.png')
     ddw.locator('button', has_text='Close').first.evaluate('el => el.click()')
+    page.wait_for_timeout(600)
+
+    # invoices KPI drill -> fusion deep links on invoice numbers
+    page.locator('.pr-k--click').nth(4).click()
+    page.wait_for_timeout(3500)
+    inv_links = page.locator('.dw-drawer.show tbody a[href*="AP_VIEWINVOICE"]').count()
+    check('invoice drill fusion links', inv_links > 0, str(inv_links))
+    page.locator('.dw-drawer.show button', has_text='Close').first.evaluate('el => el.click()')
     page.wait_for_timeout(600)
 
     # charges KPI drill -> 6 charge rows

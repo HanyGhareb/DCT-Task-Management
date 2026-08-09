@@ -1,5 +1,6 @@
-define(['knockout', 'services/payService', 'shared/i18n', 'shared/components/interactiveReport'],
-function (ko, payService, i18n) {
+define(['knockout', 'services/payService', 'shared/i18n', 'shared/fusionLinks',
+        'shared/components/interactiveReport'],
+function (ko, payService, i18n, fusionLinks) {
   'use strict';
 
   function CompanyDashViewModel() {
@@ -69,12 +70,25 @@ function (ko, payService, i18n) {
         { k: 'approvedHeadcount', l: 'cd.approvedHc', t: 'num' },
         { k: 'marginRules', l: 'cd.marginRules', t: 'num' }, { k: 'vatRate', l: 'cd.vat', t: 'num' }
       ], d.contracts));
-      self.irInvoices(irEnv('invoices', [
+      var invEnv = irEnv('invoices', [
         { k: 'invoiceNumber', l: 'cd.invoiceNo' }, { k: 'invoiceDate', l: 'cd.date', t: 'date' },
         { k: 'type', l: 'cd.type' }, { k: 'validation', l: 'cd.validation' },
         { k: 'paymentStatus', l: 'cd.paymentStatus' },
         { k: 'amount', l: 'cd.amountAed', t: 'money' }, { k: 'paid', l: 'cd.paidAed', t: 'money' }
-      ], d.invoices));
+      ], d.invoices);
+      // Fusion deep link on the invoice number. The shared IR strips fields
+      // that are not declared columns, so invoiceId rides a side map keyed
+      // on the visible cells (number + date) - the platform IR pattern.
+      var invMap = {};
+      (d.invoices || []).forEach(function (x) {
+        invMap[x.invoiceNumber + '|' + x.invoiceDate] = x.invoiceId;
+      });
+      invEnv.cellLink = function (row, colKey) {
+        if (colKey !== 'invoiceNumber') return null;
+        var id = invMap[row.invoiceNumber + '|' + row.invoiceDate];
+        return id ? fusionLinks.invoice(id) : null;
+      };
+      self.irInvoices(invEnv);
       self.irCostCc(irEnv('costcc', [
         { k: 'costCenter', l: 'cd.costCenter' }, { k: 'label', l: 'cd.sector' },
         { k: 'headcount', l: 'cd.kHeadcount', t: 'num' }, { k: 'gross', l: 'cd.gross', t: 'money' }
@@ -139,6 +153,10 @@ function (ko, payService, i18n) {
       var v = row[col.k];
       if (col.t === 'money') return self.money(v);
       return (v === null || v === undefined || v === '') ? '—' : v;
+    };
+    // Fusion deep link for invoice-number cells in the drill drawer
+    self.cellHref = function (row, col) {
+      return (col.k === 'invoiceNumber' && row.invoiceId) ? fusionLinks.invoice(row.invoiceId) : null;
     };
 
     self.drill = function (metric, key, subtitle) {

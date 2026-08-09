@@ -87,7 +87,7 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | GET | lov/payment | Payment LOVs from the AP installments extract: paymentMethods[] + payGroups[] (ATD_AP_INVOICE_INSTALLMENTS) + paymentTerms[] (ATD_AP_INVOICES) |
 | GET/PUT | companies/:id/governance | Owners, contacts, compliance, scores (Phase 1.1) |
 | GET | companies/:id/dashboard | Company executive dashboard: KPIs, employees (≤1000), contracts, latest-100 Fusion AP invoices + paid-by-cost-center (via supplier refs), run history — 2026-08-09 |
-| GET | companies/:id/dashboard/drill?metric=&key= | Drill rows: emps[sector] / contracts / run / charges / inv[paid·out·YYYY-MM] / paidcc[cc] — cap 1000, shown/total/truncated — 2026-08-09 |
+| GET | companies/:id/dashboard/drill?metric=&key= | Drill rows: emps[sector] / contracts / run / charges / inv[paid·out·YYYY-MM] / paidcc[cc] — cap 1000, shown/total/truncated; inv+paidcc ship invoiceId for Fusion deep links — 2026-08-09 |
 | POST | companies/:id/contacts · PUT contacts/:id | Company contacts CRUD (Phase 1.1) |
 | POST | companies/:id/compliance · PUT compliance/:id | Compliance items CRUD (Phase 1.1) |
 | POST | companies/:id/scores | Performance scorecard entry (Phase 1.1) |

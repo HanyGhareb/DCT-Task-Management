@@ -581,7 +581,7 @@ BEGIN
          OR (l_key='out' AND t.aed-t.paid_aed>0.005)
          OR (LENGTH(l_key)=7 AND TO_CHAR(TRUNC(t.invoice_date,'MM'),'YYYY-MM')=l_key));
   FOR r IN(SELECT * FROM
-            (SELECT h.invoice_number,h.invoice_type,h.invoice_date,h.invoice_status,
+            (SELECT h.invoice_id,h.invoice_number,h.invoice_type,h.invoice_date,h.invoice_status,
                     h.validation_status,h.payment_status,NVL(h.invoice_amount_aed,0) aed,
                     NVL(h.amount_paid,0)*CASE WHEN NVL(h.invoice_amount,0)=0 THEN 0
                          ELSE NVL(h.invoice_amount_aed,0)/h.invoice_amount END paid_aed
@@ -596,6 +596,7 @@ BEGIN
                   OR (LENGTH(l_key)=7 AND TO_CHAR(TRUNC(t.invoice_date,'MM'),'YYYY-MM')=l_key))
            ORDER BY t.invoice_date DESC FETCH FIRST 1000 ROWS ONLY) LOOP
    APEX_JSON.open_object;
+   APEX_JSON.write('invoiceId',r.invoice_id);
    APEX_JSON.write('invoiceNumber',NVL(r.invoice_number,''));
    APEX_JSON.write('invoiceDate',NVL(TO_CHAR(r.invoice_date,'YYYY-MM-DD'),''));
    APEX_JSON.write('type',NVL(r.invoice_type,''));
@@ -615,7 +616,7 @@ BEGIN
         (SELECT TO_CHAR(supplier_number) FROM dct_pay_company_supplier
          WHERE company_id=l_id AND is_active='Y')
     AND NVL(REGEXP_SUBSTR(prod.dct_cc_canon(d.charge_account),'[^.]+',1,3),'(none)')=l_key;
-  FOR r IN(SELECT h.invoice_number,h.invoice_date,d.invoice_line_number,
+  FOR r IN(SELECT h.invoice_id,h.invoice_number,h.invoice_date,d.invoice_line_number,
                   d.distribution_type,d.expenditure_type,
                   NVL(d.distribution_amount_aed,0) amt,
                   NVL(d.distribution_amount_aed,0)*
@@ -632,6 +633,7 @@ BEGIN
            ORDER BY h.invoice_date DESC,h.invoice_number,d.invoice_line_number
            FETCH FIRST 1000 ROWS ONLY) LOOP
    APEX_JSON.open_object;
+   APEX_JSON.write('invoiceId',r.invoice_id);
    APEX_JSON.write('invoiceNumber',NVL(r.invoice_number,''));
    APEX_JSON.write('invoiceDate',NVL(TO_CHAR(r.invoice_date,'YYYY-MM-DD'),''));
    APEX_JSON.write('line',r.invoice_line_number);

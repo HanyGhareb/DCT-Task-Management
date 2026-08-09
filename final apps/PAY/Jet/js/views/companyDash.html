@@ -229,8 +229,16 @@
         </tr></thead>
         <tbody data-bind="foreach: drRows">
           <tr data-bind="foreach: $vm.drCols">
-            <td data-bind="text: $vm.cellTxt($parentContext.$data, $data),
-                           css: { 'ap-amount': t === 'money' }"></td>
+            <td data-bind="css: { 'ap-amount': t === 'money' }">
+              <!-- ko if: $vm.cellHref($parentContext.$data, $data) -->
+              <a target="_blank" rel="noopener"
+                 data-bind="attr: { href: $vm.cellHref($parentContext.$data, $data) },
+                            text: $vm.cellTxt($parentContext.$data, $data)"></a>
+              <!-- /ko -->
+              <!-- ko ifnot: $vm.cellHref($parentContext.$data, $data) -->
+              <span data-bind="text: $vm.cellTxt($parentContext.$data, $data)"></span>
+              <!-- /ko -->
+            </td>
           </tr>
         </tbody>
         <tfoot><tr data-bind="foreach: drCols">
