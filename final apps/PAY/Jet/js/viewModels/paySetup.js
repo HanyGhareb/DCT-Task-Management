@@ -244,6 +244,15 @@ function (ko, payService, authService, i18n) {
       isDefault: ko.observable('N'), isActive: ko.observable('Y')
     };
     self.gdCcs      = ko.observableArray([]);   // {cc, employees, sector, group, groupShort, selected, foreign}
+    self.gdOnlySelected = ko.observable(false); // picker filter: show ticked centers only
+    self.gdCcsView = ko.computed(function () {
+      var all = self.gdCcs();
+      if (!self.gdOnlySelected()) return all;
+      return all.filter(function (x) { return x.selected(); });
+    });
+    self.gdSelCount = ko.computed(function () {
+      return self.gdCcs().filter(function (x) { return x.selected(); }).length;
+    });
     self.gdMembers  = ko.observableArray([]);
     self.gdExcluded = ko.observableArray([]);
     self.gdCands    = ko.observableArray([]);
@@ -286,7 +295,7 @@ function (ko, payService, authService, i18n) {
     };
 
     self.gdNew = function () {
-      self.gdError(''); self.gdIsNew(true);
+      self.gdError(''); self.gdIsNew(true); self.gdOnlySelected(false);
       var c = self.companies()[0] || {};
       self.gd.groupId(null); self.gd.code(''); self.gd.shortCode('');
       self.gd.companyId(c.companyId || null); self.gd.company(c.company || '');
@@ -303,7 +312,7 @@ function (ko, payService, authService, i18n) {
     };
 
     self.gdEdit = function (row) {
-      self.gdError(''); self.gdIsNew(false);
+      self.gdError(''); self.gdIsNew(false); self.gdOnlySelected(false);
       self.gd.groupId(row.groupId); self.gd.code(row.code); self.gd.shortCode(row.shortCode || '');
       self.gd.company(row.company); self.gd.companyId(row.companyId);
       self.gd.nameEn(row.nameEn); self.gd.nameAr(row.nameAr || '');

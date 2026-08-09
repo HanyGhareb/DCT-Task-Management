@@ -492,5 +492,7 @@
   "pr.shortCode": "Short Code",
   "pr.moveGroup": "Invoice group",
   "pr.applyGroup": "Move",
-  "pr.moveHint": "Moving an employee re-prices the company charges immediately and is kept for future loads of this payroll."
+  "pr.moveHint": "Moving an employee re-prices the company charges immediately and is kept for future loads of this payroll.",
+  "ps.onlySelected": "Show selected only",
+  "ps.noneSelected": "No cost centers selected yet - untick the filter to see the full list."
 }

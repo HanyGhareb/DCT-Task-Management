@@ -83,7 +83,8 @@ with sync_playwright() as p:
     # invoice-group move control (Pay Admin, calculated run): 4 ALN groups
     mv = page.locator('.dw-drawer.show select').first
     check('move-group select 4 options', mv.locator('option').count() == 4)
-    check('move-group shows short codes', 'ADALC' in mv.inner_text())
+    # short codes are user-editable data - assert the "SHORT (code) - name" shape
+    check('move-group shows short codes', all('(' in o and ')' in o for o in mv.locator('option').all_inner_texts()))
     page.screenshot(path=EV + '02_lines_drawer.png')
     page.locator('.dw-drawer.show .dw-acts button').first.click()
     page.wait_for_timeout(600)
@@ -119,7 +120,10 @@ with sync_playwright() as p:
     # Chrome innerText applies the th text-transform -> compare lower-case
     ig_head = regions.nth(3).locator('thead').inner_text().lower()
     check('groups have Short Code column', 'short code' in ig_head, ig_head)
-    check('groups show cost-center counts', 'ADALC' in regions.nth(3).inner_text())
+    # first ALN group: capture its (user-editable) short code + CC count
+    first_g = regions.nth(3).locator('tbody tr').first.locator('td').all_inner_texts()
+    g_short = first_g[2]
+    check('groups show cost-center counts', first_g[4].strip().isdigit() and int(first_g[4]) > 0, str(first_g[:5]))
     page.screenshot(path=EV + '04_setup.png', full_page=True)
 
     # 6b — invoice group drawer: CC picker + resolved members + overrides
@@ -127,12 +131,23 @@ with sync_playwright() as p:
     page.wait_for_timeout(3000)
     gdw = page.locator('.dw-drawer.show')
     gdt = gdw.inner_text()
-    check('group drawer open ADALC', 'ADALC' in gdt)
-    checked = gdw.locator('input[type=checkbox]:checked').count()
-    check('7 cost centers ticked for ADALC', checked == 7, str(checked))
+    check('group drawer opens first ALN group', g_short in gdt, g_short)
+    checked = gdw.locator('.data-table-wrap').first.locator('input[type=checkbox]:checked').count()
+    check('its cost centers are ticked', checked == int(first_g[4]), '%s vs %s' % (checked, first_g[4]))
     check('members region shows 35', '(35)' in gdt, gdt[:200])
     check('member remove buttons', gdw.locator('button', has_text='Remove').count() > 0)
     check('add-employee search present', gdw.locator('input[type=search]').count() == 1)
+    # selected-only filter narrows the CC picker to the ticked centers
+    cc_rows_all = gdw.locator('.data-table-wrap').first.locator('tbody tr').count()
+    gdw.locator('span', has_text='Show selected only').first.click()
+    page.wait_for_timeout(500)
+    cc_rows_sel = gdw.locator('.data-table-wrap').first.locator('tbody tr').count()
+    check('selected-only filter narrows to ticked rows', cc_rows_sel == int(first_g[4]) and cc_rows_all > cc_rows_sel,
+          '%d -> %d' % (cc_rows_all, cc_rows_sel))
+    gdw.locator('span', has_text='Show selected only').first.click()
+    page.wait_for_timeout(500)
+    check('filter off restores full list',
+          gdw.locator('.data-table-wrap').first.locator('tbody tr').count() == cc_rows_all)
     page.screenshot(path=EV + '07_invoice_group_drawer.png', full_page=True)
     page.locator('.dw-drawer.show .dw-acts button').first.click()
     page.wait_for_timeout(600)
