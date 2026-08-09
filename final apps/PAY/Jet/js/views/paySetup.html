@@ -132,13 +132,20 @@
   <div class="card ap-region">
     <div class="section-heading-row">
       <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.invoiceGroups')"></div>
+      <div class="region-actions">
+        <!-- ko if: canSetup -->
+        <button class="btn btn-secondary btn-sm" data-bind="click: gdNew, text: $vm.t('ps.newGroup')"></button>
+        <!-- /ko -->
+      </div>
     </div>
     <div class="data-table-wrap"><table class="data-table">
       <thead><tr>
         <th data-bind="text: $vm.t('ps.company')"></th>
         <th data-bind="text: $vm.t('ps.code')"></th>
+        <th data-bind="text: $vm.t('ps.shortCode')"></th>
         <th data-bind="text: $vm.t('ps.name')"></th>
-        <th data-bind="text: $vm.t('ps.sectors')"></th>
+        <th data-bind="text: $vm.t('ps.costCenters')"></th>
+        <th data-bind="text: $vm.t('ps.overrides')"></th>
         <th data-bind="text: $vm.t('ps.default')"></th>
         <th data-bind="text: $vm.t('ps.active')"></th>
       </tr></thead>
@@ -146,8 +153,10 @@
         <tr style="cursor:pointer" data-bind="click: function(){ if ($vm.canSetup()) $vm.gdEdit($data); }">
           <td data-bind="text: company"></td>
           <td data-bind="text: code"></td>
+          <td data-bind="text: $data.shortCode || '—'"></td>
           <td data-bind="text: nameEn"></td>
-          <td data-bind="text: (sectors || []).join(' · ') || '—'"></td>
+          <td data-bind="text: (ccs || []).length"></td>
+          <td data-bind="text: (($data.includeCount || 0) + ($data.excludeCount || 0)) || '—'"></td>
           <td data-bind="text: isDefault"></td>
           <td><span class="badge" data-bind="text: isActive"></span></td>
         </tr>
@@ -397,7 +406,7 @@
     <header class="dw-h">
       <div>
         <div class="dw-eyebrow" data-bind="text: $vm.t('ps.invoiceGroup')"></div>
-        <div class="dw-title" data-bind="text: gd.code() + ' · ' + gd.company()"></div>
+        <div class="dw-title" data-bind="text: (gdIsNew() ? $vm.t('ps.newGroup') : (gd.shortCode() || gd.code())) + ' · ' + gd.company()"></div>
       </div>
       <div class="dw-acts">
         <button class="btn btn-secondary btn-sm" data-bind="click: gdClose, text: $vm.t('dr.cancel')"></button>
@@ -407,8 +416,23 @@
     <div class="dw-b">
       <!-- ko if: gdError() --><div class="dw-err" data-bind="text: gdError"></div><!-- /ko -->
       <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <!-- ko if: gdIsNew -->
         <div class="form-group">
-          <label class="form-label" data-bind="text: $vm.t('ps.nameEn')"></label>
+          <label class="form-label" data-bind="text: $vm.t('ps.company')"></label>
+          <select class="form-control" data-bind="value: gd.companyId, event: { change: gdCompanyChanged },
+                  options: companies, optionsValue: 'companyId', optionsText: 'company'"></select>
+        </div>
+        <!-- /ko -->
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.code')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" type="number" data-bind="value: gd.code">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.shortCode')"></span><span class="dw-req">*</span></label>
+          <input class="form-control" data-bind="value: gd.shortCode">
+        </div>
+        <div class="form-group">
+          <label class="form-label"><span data-bind="text: $vm.t('ps.nameEn')"></span><span class="dw-req">*</span></label>
           <input class="form-control" data-bind="value: gd.nameEn">
         </div>
         <div class="form-group">
@@ -428,10 +452,109 @@
           </select>
         </div>
       </div>
-      <div class="form-group" style="margin-top:10px">
-        <label class="form-label" data-bind="text: $vm.t('ps.sectorsOnePerLine')"></label>
-        <textarea class="form-control" rows="7" data-bind="value: gd.sectors"></textarea>
+
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.costCenters')"></div>
       </div>
+      <div class="dw-hint" data-bind="text: $vm.t('ps.ccPickHint')"></div>
+      <div class="data-table-wrap" style="max-height:260px;overflow:auto"><table class="data-table">
+        <thead><tr>
+          <th></th>
+          <th data-bind="text: $vm.t('ps.costCenter')"></th>
+          <th data-bind="text: $vm.t('ps.sector')"></th>
+          <th data-bind="text: $vm.t('pr.kEmps')"></th>
+          <th data-bind="text: $vm.t('ps.mappedTo')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: gdCcs">
+          <tr>
+            <td><div style="pointer-events:none">
+              <input type="checkbox" data-bind="checked: selected, attr: { disabled: foreign }">
+            </div></td>
+            <td data-bind="text: cc, click: function(){ if (!foreign) selected(!selected()); }, style: { cursor: foreign ? 'default' : 'pointer' }"></td>
+            <td data-bind="text: sector || '—'"></td>
+            <td data-bind="text: employees"></td>
+            <td data-bind="text: groupShort || '—'"></td>
+          </tr>
+        </tbody>
+      </table></div>
+
+      <!-- ko ifnot: gdIsNew -->
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh">
+          <span data-bind="text: $vm.t('ps.members')"></span>
+          <span style="font-weight:400;font-size:12px" data-bind="text: '(' + gdMembers().length + ')'"></span>
+        </div>
+      </div>
+      <!-- ko if: gdMembersLoading --><list-skeleton params="rows: 3"></list-skeleton><!-- /ko -->
+      <!-- ko ifnot: gdMembersLoading -->
+      <div class="data-table-wrap" style="max-height:280px;overflow:auto"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('pr.empNo')"></th>
+          <th data-bind="text: $vm.t('pr.name')"></th>
+          <th data-bind="text: $vm.t('ps.costCenter')"></th>
+          <th data-bind="text: $vm.t('ps.source')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach: gdMembers">
+          <tr>
+            <td data-bind="text: employeeNumber"></td>
+            <td data-bind="text: name"></td>
+            <td data-bind="text: cc || '—'"></td>
+            <td><span class="badge" data-bind="text: source"></span></td>
+            <td>
+              <!-- ko if: source !== 'DEFAULT' -->
+              <button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.gdRemoveMember($data); }, enable: !$vm.gdBusy(),
+                                 text: $vm.t('ps.remove')"></button>
+              <!-- /ko -->
+              <!-- ko if: source === 'DEFAULT' -->
+              <span class="dw-hint" style="margin:0" data-bind="text: $vm.t('ps.defaultMember')"></span>
+              <!-- /ko -->
+            </td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+
+      <!-- ko if: gdExcluded().length -->
+      <div class="section-heading-row" style="margin-top:10px">
+        <div class="section-heading ap-rh" style="font-size:13px" data-bind="text: $vm.t('ps.excludedEmps')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <tbody data-bind="foreach: gdExcluded">
+          <tr>
+            <td data-bind="text: employeeNumber"></td>
+            <td data-bind="text: name"></td>
+            <td><button class="btn btn-secondary btn-sm"
+                        data-bind="click: function(){ $vm.gdRestore($data); }, enable: !$vm.gdBusy(),
+                                   text: $vm.t('ps.restore')"></button></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+
+      <div class="section-heading-row" style="margin-top:14px">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('ps.addEmployee')"></div>
+      </div>
+      <div class="form-group">
+        <input class="form-control" type="search"
+               data-bind="value: gdSearch, valueUpdate: 'input', attr: { placeholder: $vm.t('ps.searchEmployee') }">
+      </div>
+      <!-- ko if: gdCands().length -->
+      <div class="data-table-wrap" style="max-height:220px;overflow:auto"><table class="data-table">
+        <tbody data-bind="foreach: gdCands">
+          <tr>
+            <td data-bind="text: employeeNumber"></td>
+            <td data-bind="text: name"></td>
+            <td data-bind="text: cc || '—'"></td>
+            <td><button class="btn btn-secondary btn-sm"
+                        data-bind="click: function(){ $vm.gdAddEmp($data); }, enable: !$vm.gdBusy(),
+                                   text: $vm.t('ps.add')"></button></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- /ko -->
       <div class="dw-hint" data-bind="text: $vm.t('ps.groupNote')"></div>
     </div>
   </aside>

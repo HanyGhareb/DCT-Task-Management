@@ -43,13 +43,14 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 - KPI band (employees / exceptions / gross / deductions / net / employer cost / company charges) + stage trail (who/when per stage).
 - Invoice-group summary table + company-charge preview table (margin per group, VAT preview, DRAFT-contract and no-margin-rule flags).
 - Exceptions register + variance-vs-prior-period region (new/left/changed + top deltas).
-- Results register: server-paged + search + status/group filters; row click → calculation-lines drawer; `exportCsv()` — payroll register CSV.
+- Results register: server-paged + search + status/group filters (groups shown as Short Code); row click → calculation-lines drawer; `exportCsv()` — payroll register CSV (+ Group Short Code column).
+- Lines drawer invoice-group move (`applyGroup`, PAY_ADMIN, run LOADED/VALIDATED/CALCULATED): select from `run().groupLov`, persists as an INCLUDE override and re-prices company charges immediately.
 
 ## Payroll Setup (Phase 3 — PAY_ADMIN)
 - Payrolls table + edit drawer (`pdEdit`/`pdSave`): names, proration basis/divisor, pension base, cut-off/pay day, active; `pdGenPeriods()` — generate a year's monthly calendar.
 - Elements table + drawer (`edNew`/`edEdit`/`edSave`): class/rule/base/percent/rate table/priority/prorate; eligibility links (`edAddLink`/`edToggleLink`). FORMULA rule disabled in Phase 3.
 - Rate tables (`rdEdit`/`rdAdd`/`rdUpdate`): PENSION_GCC employee/employer % per nationality (employer NULL until Finance confirms).
-- Invoice groups (`gdEdit`/`gdSave`): per-company sector groups (mirrors the companies' real invoice splitting), default group, sectors one-per-line.
+- Invoice groups (`gdNew`/`gdEdit`/`gdSave`) — **cost-center based since 2026-08-09**: numeric Code + Short Code, cost-center checkbox picker (`ccLov`; centers owned by another group are locked and labeled), resolved member list with source badges CC/INCLUDE/DEFAULT (`gdRemoveMember` = EXCLUDE for CC members, CLEAR for forced includes; `gdRestore` un-excludes), add-employee search (`gdAddEmp` = INCLUDE override). Default group catches unmapped cost centers.
 
 ## DCT Bank Accounts
 - `load()`, `openNew()` / `openEdit(row)`, `save()`, `toggleActive()`.
@@ -103,18 +104,22 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | GET | lov/masters | One-call LOVs: companies/contracts/departments/jobs/grades/positions/locations/nationalities/docTypes + canHr/canPayroll — Phase 2 |
 | GET | lov/employees?search= | Manager type-ahead over DCT_EMPLOYEES (top 20) — Phase 2 |
 | GET | employees/expiring-docs?days= | Employee documents expiring inside the window — Phase 2 |
-| GET | paysetup/boot | Setup snapshot: payrolls/elements(+links)/rate tables(+rows)/invoice groups(+sectors) + PAY_* lookups + canSetup/canRun — Phase 3 |
+| GET | paysetup/boot | Setup snapshot: payrolls/elements(+links)/rate tables(+rows)/invoice groups (numeric code + shortCode + cost centers + override counts) + PAY_* lookups + canSetup/canRun — Phase 3 |
 | POST | paysetup/payrolls · PUT paysetup/payrolls/:id | Payroll definition writes (PAY_ADMIN) — Phase 3 |
 | GET/POST | paysetup/payrolls/:id/periods | Period calendar list / generate a year — Phase 3 |
 | POST | paysetup/elements · PUT paysetup/elements/:id | Element writes (FORMULA rejected) — Phase 3 |
 | POST | paysetup/elements/:id/links · PUT paysetup/links/:id | Eligibility links — Phase 3 |
 | POST | paysetup/rate-rows · PUT paysetup/rate-rows/:id | Rate-table rows (pension %) — Phase 3 |
-| POST | paysetup/invoice-groups · PUT paysetup/invoice-groups/:id | Invoice groups + pipe-list sectors — Phase 3 |
+| POST | paysetup/invoice-groups · PUT paysetup/invoice-groups/:id | Invoice groups: numeric code + shortCode + pipe-list cost centers (a dash clears; cross-group CC = 400) — CC-based since 2026-08-09 |
+| GET | paysetup/cc-lov?companyid= | Company cost-center catalog (employees, sector, owning group) for the group drawer picker |
+| GET/POST | paysetup/invoice-groups/:id/emps | Resolved group membership (source CC/INCLUDE/DEFAULT) + excluded list / set INCLUDE·EXCLUDE·CLEAR override (PAY_ADMIN) |
+| GET | paysetup/invoice-groups/:id/candidates?search= | Add-employee picker: company employees not force-included (cap 20) |
 | GET/POST | entries · PUT entries/:id | Element entries per employee (recurring/one-time; PAY_PAYROLL_ENTRY/PAY_ADMIN) — Phase 3 |
 | GET/POST | runs | Run register / create-or-return the period's REGULAR run — Phase 3 |
 | GET | runs/:id | Run detail: KPIs + groups + charges + exceptions + variance vs prior period — Phase 3 |
 | POST | runs/:id/action | LOAD / VALIDATE / CALCULATE / REVIEW / REOPEN — Phase 3 |
-| GET | runs/:id/emps · runs/:id/emps/:reid | Paged per-employee results (+search/status/group) / calculation lines — Phase 3 |
+| GET | runs/:id/emps · runs/:id/emps/:reid | Paged per-employee results (+search/status/group; rows carry group + groupShort) / calculation lines — Phase 3 |
+| PUT | runs/:id/emps/:reid | Pay-Admin invoice-group move on a LOADED/VALIDATED/CALCULATED run: persists as INCLUDE override + re-prices charges when calculated — 2026-08-09 |
 | GET | runs/:id/export | Payroll register CSV (UTF-8 BOM) — Phase 3 |
 | GET | docs?type=&id= | Documents of a company/contract (DCT_DOCUMENTS, module PAY) |
 | PUT | docs?type=&id=&file_name=&mime_type= | Raw-binary upload (PAY_ADMIN, MAX_UPLOAD_MB → 413) |

@@ -78,13 +78,15 @@
       <div class="data-table-wrap"><table class="data-table">
         <thead><tr>
           <th data-bind="text: $vm.t('pr.group')"></th>
+          <th data-bind="text: $vm.t('pr.shortCode')"></th>
           <th data-bind="text: $vm.t('pr.kEmps')"></th>
           <th data-bind="text: $vm.t('pr.kGross')"></th>
           <th data-bind="text: $vm.t('pr.kNet')"></th>
         </tr></thead>
         <tbody data-bind="foreach: run().groups">
           <tr>
-            <td data-bind="text: $data.group || '—'"></td>
+            <td data-bind="text: $data.group == null ? '—' : $data.group"></td>
+            <td data-bind="text: $data.shortCode || '—'"></td>
             <td data-bind="text: $vm.num($data.empCount)"></td>
             <td data-bind="text: $vm.money($data.gross)"></td>
             <td data-bind="text: $vm.money($data.net)"></td>
@@ -106,7 +108,7 @@
         </tr></thead>
         <tbody data-bind="foreach: run().charges">
           <tr>
-            <td data-bind="text: $data.group || '—'"></td>
+            <td data-bind="text: $data.shortCode || ($data.group == null ? '—' : $data.group)"></td>
             <td data-bind="text: $data.chargeType"></td>
             <td data-bind="text: $data.description"></td>
             <td data-bind="text: $vm.money($data.amount)"></td>
@@ -197,7 +199,8 @@
         <select class="form-control" style="max-width:190px" data-bind="value: fGrp">
           <option value="" data-bind="text: $vm.t('pr.allGroups')"></option>
           <!-- ko foreach: run().groups -->
-          <option data-bind="value: $data.group, text: $data.group || '—'"></option>
+          <option data-bind="value: $data.group,
+                             text: ($data.shortCode || '—') + ' (' + ($data.group == null ? '—' : $data.group) + ')'"></option>
           <!-- /ko -->
         </select>
       </div>
@@ -227,7 +230,7 @@
           <td data-bind="text: $data.department || '—'"></td>
           <td data-bind="text: $data.gradeCode || '—'"></td>
           <td data-bind="text: $data.costCenter || '—'"></td>
-          <td data-bind="text: $data.group || '—'"></td>
+          <td data-bind="text: $data.groupShort || ($data.group == null ? '—' : $data.group)"></td>
           <td data-bind="text: $data.factor == null ? '—' : Number($data.factor).toFixed(2)"></td>
           <td data-bind="text: $vm.money($data.gross)"></td>
           <td data-bind="text: $vm.money($data.deductions)"></td>
@@ -257,7 +260,24 @@
       <!-- ko if: dwEmp -->
       <div class="pr-trail" style="margin-bottom:10px"
            data-bind="text: $vm.t('pr.factor') + ': ' + (dwEmp().factor == null ? '—' : Number(dwEmp().factor).toFixed(4))
-                    + ' · ' + $vm.t('pr.kNet') + ': ' + money(dwEmp().net)"></div>
+                    + ' · ' + $vm.t('pr.kNet') + ': ' + money(dwEmp().net)
+                    + ' · ' + $vm.t('pr.group') + ': ' + (dwEmp().groupShort || dwEmp().group || '—')"></div>
+      <!-- ko if: canMoveGroup -->
+      <div class="dw-form" style="grid-template-columns:1fr auto;align-items:end;margin-bottom:12px">
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('pr.moveGroup')"></label>
+          <select class="form-control" data-bind="value: dwGrpSel">
+            <!-- ko foreach: run().groupLov -->
+            <option data-bind="value: $data.code, text: $data.shortCode + ' (' + $data.code + ') — ' + $data.name"></option>
+            <!-- /ko -->
+          </select>
+        </div>
+        <div class="form-group">
+          <button class="btn btn-secondary" data-bind="click: applyGroup, enable: !dwGrpBusy(), text: $vm.t('pr.applyGroup')"></button>
+        </div>
+      </div>
+      <div class="dw-hint" style="margin-bottom:10px" data-bind="text: $vm.t('pr.moveHint')"></div>
+      <!-- /ko -->
       <!-- /ko -->
       <div class="data-table-wrap"><table class="data-table">
         <thead><tr>

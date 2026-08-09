@@ -80,6 +80,10 @@ with sync_playwright() as p:
     check('lines drawer open', page.locator('.dw-drawer.show').count() == 1)
     dw = page.locator('.dw-drawer.show').inner_text()
     check('BASIC line present', 'BASIC' in dw, dw[:120])
+    # invoice-group move control (Pay Admin, calculated run): 4 ALN groups
+    mv = page.locator('.dw-drawer.show select').first
+    check('move-group select 4 options', mv.locator('option').count() == 4)
+    check('move-group shows short codes', 'ADALC' in mv.inner_text())
     page.screenshot(path=EV + '02_lines_drawer.png')
     page.locator('.dw-drawer.show .dw-acts button').first.click()
     page.wait_for_timeout(600)
@@ -112,7 +116,26 @@ with sync_playwright() as p:
     check('pension rows AE/SA/OM', all(k in rt_txt for k in ('AE', 'SA', 'OM')))
     check('employer rate pending', 'pending Finance' in rt_txt)
     check('invoice groups 6', regions.nth(3).locator('tbody tr').count() == 6)
+    # Chrome innerText applies the th text-transform -> compare lower-case
+    ig_head = regions.nth(3).locator('thead').inner_text().lower()
+    check('groups have Short Code column', 'short code' in ig_head, ig_head)
+    check('groups show cost-center counts', 'ADALC' in regions.nth(3).inner_text())
     page.screenshot(path=EV + '04_setup.png', full_page=True)
+
+    # 6b — invoice group drawer: CC picker + resolved members + overrides
+    regions.nth(3).locator('tbody tr').first.click()   # ADALC
+    page.wait_for_timeout(3000)
+    gdw = page.locator('.dw-drawer.show')
+    gdt = gdw.inner_text()
+    check('group drawer open ADALC', 'ADALC' in gdt)
+    checked = gdw.locator('input[type=checkbox]:checked').count()
+    check('7 cost centers ticked for ADALC', checked == 7, str(checked))
+    check('members region shows 35', '(35)' in gdt, gdt[:200])
+    check('member remove buttons', gdw.locator('button', has_text='Remove').count() > 0)
+    check('add-employee search present', gdw.locator('input[type=search]').count() == 1)
+    page.screenshot(path=EV + '07_invoice_group_drawer.png', full_page=True)
+    page.locator('.dw-drawer.show .dw-acts button').first.click()
+    page.wait_for_timeout(600)
 
     # 7 — payroll drawer opens
     regions.nth(0).locator('tbody tr').first.click()

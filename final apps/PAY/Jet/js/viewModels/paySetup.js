@@ -232,42 +232,150 @@ function (ko, payService, authService, i18n) {
       });
     };
 
-    // ── Invoice group drawer ────────────────────────────────────────────
+    // ── Invoice group drawer (cost-center based + employee overrides) ──
     self.gdOpen  = ko.observable(false);
     self.gdError = ko.observable('');
     self.gdBusy  = ko.observable(false);
+    self.gdIsNew = ko.observable(false);
     self.gd = {
-      groupId: ko.observable(null), code: ko.observable(''), company: ko.observable(''),
+      groupId: ko.observable(null), code: ko.observable(''), shortCode: ko.observable(''),
+      company: ko.observable(''), companyId: ko.observable(null),
       nameEn: ko.observable(''), nameAr: ko.observable(''), displayOrder: ko.observable(10),
-      isDefault: ko.observable('N'), isActive: ko.observable('Y'), sectors: ko.observable('')
+      isDefault: ko.observable('N'), isActive: ko.observable('Y')
+    };
+    self.gdCcs      = ko.observableArray([]);   // {cc, employees, sector, group, groupShort, selected, foreign}
+    self.gdMembers  = ko.observableArray([]);
+    self.gdExcluded = ko.observableArray([]);
+    self.gdCands    = ko.observableArray([]);
+    self.gdSearch   = ko.observable('');
+    self.gdMembersLoading = ko.observable(false);
+
+    self.companies = ko.computed(function () {
+      var seen = {}, out = [];
+      self.payrolls().forEach(function (p) {
+        if (!seen[p.companyId]) { seen[p.companyId] = 1; out.push({ companyId: p.companyId, company: p.company }); }
+      });
+      return out;
+    });
+
+    self._gdLoadCcs = function () {
+      var gid = self.gd.groupId();
+      return payService.ccLov(self.gd.companyId()).then(function (d) {
+        self.gdCcs((d.items || []).map(function (x) {
+          var mine = self.gd.groupId() !== null &&
+                     self.invoiceGroups().some(function (g) {
+                       return g.groupId === gid && (g.ccs || []).indexOf(x.cc) >= 0;
+                     });
+          return {
+            cc: x.cc, employees: x.employees, sector: x.sector || '',
+            group: x.group, groupShort: x.groupShort || '',
+            selected: ko.observable(mine),
+            foreign: !!(x.groupShort && !mine)
+          };
+        }));
+      });
+    };
+
+    self._gdLoadMembers = function () {
+      if (!self.gd.groupId()) { self.gdMembers([]); self.gdExcluded([]); return Promise.resolve(); }
+      self.gdMembersLoading(true);
+      return payService.getGroupEmps(self.gd.groupId()).then(function (d) {
+        self.gdMembers(d.members || []);
+        self.gdExcluded(d.excluded || []);
+      }).finally(function () { self.gdMembersLoading(false); });
+    };
+
+    self.gdNew = function () {
+      self.gdError(''); self.gdIsNew(true);
+      var c = self.companies()[0] || {};
+      self.gd.groupId(null); self.gd.code(''); self.gd.shortCode('');
+      self.gd.companyId(c.companyId || null); self.gd.company(c.company || '');
+      self.gd.nameEn(''); self.gd.nameAr(''); self.gd.displayOrder(10);
+      self.gd.isDefault('N'); self.gd.isActive('Y');
+      self.gdMembers([]); self.gdExcluded([]); self.gdCands([]); self.gdSearch('');
+      self._gdLoadCcs();
+      self.gdOpen(true);
+    };
+
+    self.gdCompanyChanged = function () {
+      if (self.gdIsNew()) { self._gdLoadCcs(); }
+      return true;
     };
 
     self.gdEdit = function (row) {
-      self.gdError('');
-      self.gd.groupId(row.groupId); self.gd.code(row.code); self.gd.company(row.company);
+      self.gdError(''); self.gdIsNew(false);
+      self.gd.groupId(row.groupId); self.gd.code(row.code); self.gd.shortCode(row.shortCode || '');
+      self.gd.company(row.company); self.gd.companyId(row.companyId);
       self.gd.nameEn(row.nameEn); self.gd.nameAr(row.nameAr || '');
       self.gd.displayOrder(row.displayOrder); self.gd.isDefault(row.isDefault);
       self.gd.isActive(row.isActive);
-      self.gd.sectors((row.sectors || []).join('\n'));
+      self.gdCands([]); self.gdSearch('');
+      self._gdLoadCcs();
+      self._gdLoadMembers();
       self.gdOpen(true);
     };
     self.gdClose = function () { self.gdOpen(false); };
 
     self.gdSave = function () {
       self.gdBusy(true); self.gdError('');
-      var sectors = self.gd.sectors().split('\n')
-        .map(function (s) { return s.trim(); })
-        .filter(function (s) { return s; })
-        .join('|');
-      payService.updateInvGroup(self.gd.groupId(), {
+      var sel = self.gdCcs().filter(function (x) { return x.selected(); })
+                            .map(function (x) { return x.cc; });
+      var body = {
+        code: self.gd.code() === '' ? null : Number(self.gd.code()),
+        shortCode: self.gd.shortCode() || null,
         nameEn: self.gd.nameEn(), nameAr: self.gd.nameAr() || null,
         displayOrder: Number(self.gd.displayOrder()) || 10,
         isDefault: self.gd.isDefault(), isActive: self.gd.isActive(),
-        sectors: sectors || null
-      }).then(function () { self.gdOpen(false); return self.refresh(); })
+        ccs: sel.length ? sel.join('|') : '-'
+      };
+      var p;
+      if (self.gdIsNew()) {
+        body.companyId = self.gd.companyId();
+        p = payService.createInvGroup(body).then(function (d) {
+          self.gd.groupId(d.groupId); self.gdIsNew(false);
+        });
+      } else {
+        p = payService.updateInvGroup(self.gd.groupId(), body);
+      }
+      p.then(function () {
+        return self.refresh().then(function () {
+          self._gdLoadCcs();
+          return self._gdLoadMembers();
+        });
+      }).catch(function (e) { self.gdError(e.message || String(e)); })
+        .finally(function () { self.gdBusy(false); });
+    };
+
+    self._gdOvr = function (personId, mode) {
+      self.gdBusy(true); self.gdError('');
+      payService.setGroupEmp(self.gd.groupId(), { personId: personId, mode: mode })
+        .then(function () {
+          return self.refresh().then(function () { return self._gdLoadMembers(); });
+        })
         .catch(function (e) { self.gdError(e.message || String(e)); })
         .finally(function () { self.gdBusy(false); });
     };
+
+    // CC-sourced members get EXCLUDE; INCLUDE-sourced go back to the map
+    self.gdRemoveMember = function (m) {
+      self._gdOvr(m.personId, m.source === 'INCLUDE' ? 'CLEAR' : 'EXCLUDE');
+    };
+    self.gdRestore = function (x) { self._gdOvr(x.personId, 'CLEAR'); };
+    self.gdAddEmp  = function (c) {
+      self.gdCands.remove(c);
+      self._gdOvr(c.personId, 'INCLUDE');
+    };
+
+    var gdSearchTimer = null;
+    self.gdSearch.subscribe(function (v) {
+      if (gdSearchTimer) clearTimeout(gdSearchTimer);
+      if (!v || !self.gd.groupId()) { self.gdCands([]); return; }
+      gdSearchTimer = setTimeout(function () {
+        payService.getGroupCands(self.gd.groupId(), v).then(function (d) {
+          self.gdCands(d.items || []);
+        });
+      }, 350);
+    });
   }
 
   return PaySetupViewModel;

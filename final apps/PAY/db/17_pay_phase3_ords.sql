@@ -18,6 +18,10 @@ CREATE OR REPLACE SYNONYM dct_pay_run FOR prod.dct_pay_run;
 CREATE OR REPLACE SYNONYM dct_pay_run_emp FOR prod.dct_pay_run_emp;
 CREATE OR REPLACE SYNONYM dct_pay_run_line FOR prod.dct_pay_run_line;
 CREATE OR REPLACE SYNONYM dct_pay_run_charge FOR prod.dct_pay_run_charge;
+CREATE OR REPLACE SYNONYM dct_pay_invoice_group_cc FOR prod.dct_pay_invoice_group_cc;
+CREATE OR REPLACE SYNONYM dct_pay_invoice_group_emp FOR prod.dct_pay_invoice_group_emp;
+CREATE OR REPLACE SYNONYM dct_pay_assignment FOR prod.dct_pay_assignment;
+CREATE OR REPLACE SYNONYM dct_employees FOR prod.dct_employees;
 
 CREATE OR REPLACE PROCEDURE setup_pay_p3_ords_tmp AS
   c_mod CONSTANT VARCHAR2(30):='pay.rest';
@@ -98,18 +102,25 @@ BEGIN
   APEX_JSON.close_object;
  END LOOP;APEX_JSON.close_array;
  APEX_JSON.open_array('invoiceGroups');
- FOR r IN(SELECT g.*,c.company_code,c.name_en company_name
+ FOR r IN(SELECT g.*,c.company_code,c.name_en company_name,
+                 (SELECT COUNT(*) FROM dct_pay_invoice_group_emp o
+                  WHERE o.group_id=g.group_id AND o.ovr_mode='INCLUDE') inc_count,
+                 (SELECT COUNT(*) FROM dct_pay_invoice_group_emp o
+                  WHERE o.group_id=g.group_id AND o.ovr_mode='EXCLUDE') exc_count
           FROM dct_pay_invoice_group g JOIN dct_pay_company c ON c.company_id=g.company_id
           ORDER BY c.company_code,g.display_order) LOOP
   APEX_JSON.open_object;
   APEX_JSON.write('groupId',r.group_id);APEX_JSON.write('companyId',r.company_id);
   APEX_JSON.write('company',r.company_name);APEX_JSON.write('companyCode',r.company_code);
-  APEX_JSON.write('code',r.group_code);APEX_JSON.write('nameEn',r.name_en);
+  APEX_JSON.write('code',r.group_code);APEX_JSON.write('shortCode',r.short_code);
+  APEX_JSON.write('nameEn',r.name_en);
   APEX_JSON.write('nameAr',NVL(r.name_ar,''));APEX_JSON.write('displayOrder',r.display_order);
   APEX_JSON.write('isDefault',r.is_default);APEX_JSON.write('isActive',r.is_active);
-  APEX_JSON.open_array('sectors');
-  FOR s IN(SELECT sector_name FROM dct_pay_invoice_group_sector WHERE group_id=r.group_id ORDER BY sector_name) LOOP
-   APEX_JSON.write(s.sector_name);
+  APEX_JSON.write('includeCount',r.inc_count);
+  APEX_JSON.write('excludeCount',r.exc_count);
+  APEX_JSON.open_array('ccs');
+  FOR s IN(SELECT cost_center_code FROM dct_pay_invoice_group_cc WHERE group_id=r.group_id ORDER BY cost_center_code) LOOP
+   APEX_JSON.write(s.cost_center_code);
   END LOOP;APEX_JSON.close_array;
   APEX_JSON.close_object;
  END LOOP;APEX_JSON.close_array;
@@ -325,9 +336,10 @@ BEGIN
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
  l_id:=NULL;
  dct_pay_calc_pkg.save_invoice_group(l_id,APEX_JSON.get_number('companyId'),
-   APEX_JSON.get_varchar2('code'),APEX_JSON.get_varchar2('nameEn'),
-   APEX_JSON.get_varchar2('nameAr'),APEX_JSON.get_number('displayOrder'),
-   APEX_JSON.get_varchar2('isDefault'),NULL,APEX_JSON.get_varchar2('sectors'),l_user);
+   APEX_JSON.get_number('code'),APEX_JSON.get_varchar2('shortCode'),
+   APEX_JSON.get_varchar2('nameEn'),APEX_JSON.get_varchar2('nameAr'),
+   APEX_JSON.get_number('displayOrder'),APEX_JSON.get_varchar2('isDefault'),
+   NULL,APEX_JSON.get_varchar2('ccs'),l_user);
  COMMIT;
  dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
  APEX_JSON.write('groupId',l_id);APEX_JSON.close_object;
@@ -341,16 +353,163 @@ DECLARE l_user VARCHAR2(100);l_id NUMBER:=TO_NUMBER([COLON]id);
 BEGIN
  dct_rest.parse_body([COLON]body);l_user:=dct_rest.validate_session;
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
- dct_pay_calc_pkg.save_invoice_group(l_id,NULL,NULL,
+ dct_pay_calc_pkg.save_invoice_group(l_id,NULL,
+   APEX_JSON.get_number('code'),APEX_JSON.get_varchar2('shortCode'),
    APEX_JSON.get_varchar2('nameEn'),APEX_JSON.get_varchar2('nameAr'),
    APEX_JSON.get_number('displayOrder'),APEX_JSON.get_varchar2('isDefault'),
-   APEX_JSON.get_varchar2('isActive'),APEX_JSON.get_varchar2('sectors'),l_user);
+   APEX_JSON.get_varchar2('isActive'),APEX_JSON.get_varchar2('ccs'),l_user);
  COMMIT;
  dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
  APEX_JSON.write('ok',TRUE);APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN ROLLBACK;
  IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM);ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM);
  ELSIF SQLCODE IN(-20001,-20090) THEN dct_rest.err(400,SQLERRM);ELSE dct_rest.err(500,SQLERRM);END IF;END;!');
+
+  -- company cost-center catalog for the group drawer picker
+  tpl('paysetup/cc-lov');
+  h('paysetup/cc-lov','GET',q'!
+DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;
+BEGIN
+ IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ IF [COLON]companyid IS NULL THEN dct_rest.err(400,'companyid is required');RETURN;END IF;
+ dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
+ APEX_JSON.open_array('items');
+ FOR r IN(SELECT a.cost_center_code cc,COUNT(*) cnt,
+                 MIN(a.sector_name) sector,MIN(a.department_name) dept,
+                 MIN(g.group_code) grp,MIN(g.short_code) grp_short
+          FROM dct_pay_assignment a
+          JOIN dct_pay_payroll p ON p.payroll_code=a.payroll_code
+          LEFT JOIN dct_pay_invoice_group_cc c ON c.cost_center_code=a.cost_center_code
+          LEFT JOIN dct_pay_invoice_group g ON g.group_id=c.group_id
+               AND g.company_id=p.company_id AND g.is_active='Y'
+          WHERE p.company_id=TO_NUMBER([COLON]companyid)
+            AND a.status='ACTIVE' AND a.assignment_type='PRIMARY'
+            AND a.cost_center_code IS NOT NULL
+          GROUP BY a.cost_center_code ORDER BY a.cost_center_code) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('cc',r.cc);APEX_JSON.write('employees',r.cnt);
+  APEX_JSON.write('sector',NVL(r.sector,''));APEX_JSON.write('department',NVL(r.dept,''));
+  APEX_JSON.write('group',r.grp);APEX_JSON.write('groupShort',NVL(r.grp_short,''));
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM);END;!');
+
+  -- resolved group membership (source CC / INCLUDE / DEFAULT) + exclusions
+  tpl('paysetup/invoice-groups/:id/emps');
+  h('paysetup/invoice-groups/:id/emps','GET',q'!
+DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;
+ l_gid NUMBER:=TO_NUMBER([COLON]id);
+ l_comp NUMBER;l_code NUMBER;
+BEGIN
+ IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ BEGIN
+  SELECT company_id,group_code INTO l_comp,l_code FROM dct_pay_invoice_group WHERE group_id=l_gid;
+ EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Invoice group not found');RETURN;END;
+ dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
+ APEX_JSON.open_array('members');
+ FOR r IN(SELECT * FROM(
+           SELECT a.person_id,e.employee_number,e.full_name_en,a.cost_center_code,
+                  a.sector_name,a.department_name,
+                  COALESCE(
+                   (SELECT g.group_code FROM dct_pay_invoice_group g
+                    JOIN dct_pay_invoice_group_emp o ON o.group_id=g.group_id
+                    WHERE g.company_id=l_comp AND g.is_active='Y'
+                      AND o.person_id=a.person_id AND o.ovr_mode='INCLUDE'
+                    FETCH FIRST 1 ROWS ONLY),
+                   (SELECT g.group_code FROM dct_pay_invoice_group g
+                    JOIN dct_pay_invoice_group_cc c ON c.group_id=g.group_id
+                    WHERE g.company_id=l_comp AND g.is_active='Y'
+                      AND c.cost_center_code=a.cost_center_code
+                      AND NOT EXISTS(SELECT 1 FROM dct_pay_invoice_group_emp x
+                                     WHERE x.group_id=g.group_id AND x.person_id=a.person_id
+                                       AND x.ovr_mode='EXCLUDE')
+                    FETCH FIRST 1 ROWS ONLY),
+                   (SELECT MIN(g.group_code) FROM dct_pay_invoice_group g
+                    WHERE g.company_id=l_comp AND g.is_default='Y' AND g.is_active='Y')) resolved,
+                  CASE WHEN EXISTS(SELECT 1 FROM dct_pay_invoice_group_emp o
+                                   WHERE o.group_id=l_gid AND o.person_id=a.person_id
+                                     AND o.ovr_mode='INCLUDE') THEN 'INCLUDE'
+                       WHEN EXISTS(SELECT 1 FROM dct_pay_invoice_group_cc c
+                                   WHERE c.group_id=l_gid
+                                     AND c.cost_center_code=a.cost_center_code) THEN 'CC'
+                       ELSE 'DEFAULT' END src
+           FROM dct_pay_assignment a
+           JOIN dct_employees e ON e.person_id=a.person_id
+           JOIN dct_pay_payroll p ON p.payroll_code=a.payroll_code
+           WHERE p.company_id=l_comp AND a.status='ACTIVE' AND a.assignment_type='PRIMARY')
+          WHERE resolved=l_code ORDER BY employee_number) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('personId',r.person_id);
+  APEX_JSON.write('employeeNumber',NVL(r.employee_number,''));
+  APEX_JSON.write('name',NVL(r.full_name_en,''));
+  APEX_JSON.write('cc',NVL(r.cost_center_code,''));
+  APEX_JSON.write('sector',NVL(r.sector_name,''));
+  APEX_JSON.write('department',NVL(r.department_name,''));
+  APEX_JSON.write('source',r.src);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('excluded');
+ FOR r IN(SELECT o.person_id,e.employee_number,e.full_name_en
+          FROM dct_pay_invoice_group_emp o
+          JOIN dct_employees e ON e.person_id=o.person_id
+          WHERE o.group_id=l_gid AND o.ovr_mode='EXCLUDE'
+          ORDER BY e.employee_number) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('personId',r.person_id);
+  APEX_JSON.write('employeeNumber',NVL(r.employee_number,''));
+  APEX_JSON.write('name',NVL(r.full_name_en,''));
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM);END;!');
+
+  h('paysetup/invoice-groups/:id/emps','POST',q'!
+DECLARE l_user VARCHAR2(100);
+BEGIN
+ dct_rest.parse_body([COLON]body);l_user:=dct_rest.validate_session;
+ IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ dct_pay_calc_pkg.set_group_emp(TO_NUMBER([COLON]id),APEX_JSON.get_number('personId'),
+   UPPER(APEX_JSON.get_varchar2('mode')),l_user);
+ COMMIT;
+ dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
+ APEX_JSON.write('ok',TRUE);APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK;
+ IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM);ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM);
+ ELSIF SQLCODE IN(-20001,-20090) THEN dct_rest.err(400,SQLERRM);ELSE dct_rest.err(500,SQLERRM);END IF;END;!');
+
+  -- candidate picker for adding an employee to a group
+  tpl('paysetup/invoice-groups/:id/candidates');
+  h('paysetup/invoice-groups/:id/candidates','GET',q'!
+DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;
+ l_gid NUMBER:=TO_NUMBER([COLON]id);
+ l_comp NUMBER;l_code NUMBER;
+BEGIN
+ IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ BEGIN
+  SELECT company_id,group_code INTO l_comp,l_code FROM dct_pay_invoice_group WHERE group_id=l_gid;
+ EXCEPTION WHEN NO_DATA_FOUND THEN dct_rest.err(404,'Invoice group not found');RETURN;END;
+ dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
+ APEX_JSON.open_array('items');
+ FOR r IN(SELECT a.person_id,e.employee_number,e.full_name_en,a.cost_center_code
+          FROM dct_pay_assignment a
+          JOIN dct_employees e ON e.person_id=a.person_id
+          JOIN dct_pay_payroll p ON p.payroll_code=a.payroll_code
+          WHERE p.company_id=l_comp AND a.status='ACTIVE' AND a.assignment_type='PRIMARY'
+            AND ([COLON]search IS NULL
+                 OR UPPER(e.full_name_en) LIKE '%'||UPPER([COLON]search)||'%'
+                 OR UPPER(NVL(e.employee_number,'~')) LIKE '%'||UPPER([COLON]search)||'%')
+            AND NOT EXISTS(SELECT 1 FROM dct_pay_invoice_group_emp o
+                           WHERE o.group_id=l_gid AND o.person_id=a.person_id
+                             AND o.ovr_mode='INCLUDE')
+          ORDER BY e.employee_number FETCH FIRST 20 ROWS ONLY) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('personId',r.person_id);
+  APEX_JSON.write('employeeNumber',NVL(r.employee_number,''));
+  APEX_JSON.write('name',NVL(r.full_name_en,''));
+  APEX_JSON.write('cc',NVL(r.cost_center_code,''));
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM);END;!');
 
   -- ---------------------------------------------------------------- entries
   tpl('entries');
@@ -507,22 +666,47 @@ BEGIN
   APEX_JSON.write('reviewedBy',NVL(r.reviewed_by,''));
  END LOOP;
  APEX_JSON.open_array('groups');
- FOR g IN(SELECT re.invoice_group_code grp,COUNT(*) cnt,ROUND(SUM(re.gross),2) gross,
+ FOR g IN(SELECT re.invoice_group_code grp,MIN(ig.short_code) grp_short,MIN(ig.name_en) grp_name,
+                 COUNT(*) cnt,ROUND(SUM(re.gross),2) gross,
                  ROUND(SUM(re.deductions),2) ded,ROUND(SUM(re.net),2) net,
                  ROUND(SUM(re.employer_cost),2) er
-          FROM dct_pay_run_emp re WHERE re.run_id=l_run.run_id
+          FROM dct_pay_run_emp re
+          JOIN dct_pay_run r2 ON r2.run_id=re.run_id
+          JOIN dct_pay_payroll p2 ON p2.payroll_id=r2.payroll_id
+          LEFT JOIN dct_pay_invoice_group ig
+               ON ig.company_id=p2.company_id AND ig.group_code=re.invoice_group_code
+          WHERE re.run_id=l_run.run_id
           GROUP BY re.invoice_group_code ORDER BY 1) LOOP
   APEX_JSON.open_object;
-  APEX_JSON.write('group',NVL(g.grp,''));APEX_JSON.write('empCount',g.cnt);
+  APEX_JSON.write('group',g.grp);APEX_JSON.write('shortCode',NVL(g.grp_short,''));
+  APEX_JSON.write('groupName',NVL(g.grp_name,''));APEX_JSON.write('empCount',g.cnt);
   APEX_JSON.write('gross',g.gross);APEX_JSON.write('deductions',g.ded);
   APEX_JSON.write('net',g.net);APEX_JSON.write('employerCost',g.er);
   APEX_JSON.close_object;
  END LOOP;APEX_JSON.close_array;
- APEX_JSON.open_array('charges');
- FOR c IN(SELECT * FROM dct_pay_run_charge WHERE run_id=l_run.run_id
-          ORDER BY invoice_group_code NULLS LAST,charge_type) LOOP
+ APEX_JSON.open_array('groupLov');
+ FOR g IN(SELECT ig.group_code,ig.short_code,ig.name_en
+          FROM dct_pay_invoice_group ig
+          JOIN dct_pay_payroll p2 ON p2.company_id=ig.company_id
+          WHERE p2.payroll_id=l_run.payroll_id AND ig.is_active='Y'
+          ORDER BY ig.group_code) LOOP
   APEX_JSON.open_object;
-  APEX_JSON.write('group',NVL(c.invoice_group_code,''));APEX_JSON.write('chargeType',c.charge_type);
+  APEX_JSON.write('code',g.group_code);APEX_JSON.write('shortCode',g.short_code);
+  APEX_JSON.write('name',g.name_en);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('charges');
+ FOR c IN(SELECT rc.*,ig.short_code grp_short
+          FROM dct_pay_run_charge rc
+          JOIN dct_pay_run r2 ON r2.run_id=rc.run_id
+          JOIN dct_pay_payroll p2 ON p2.payroll_id=r2.payroll_id
+          LEFT JOIN dct_pay_invoice_group ig
+               ON ig.company_id=p2.company_id AND ig.group_code=rc.invoice_group_code
+          WHERE rc.run_id=l_run.run_id
+          ORDER BY rc.invoice_group_code NULLS LAST,rc.charge_type) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('group',c.invoice_group_code);APEX_JSON.write('shortCode',NVL(c.grp_short,''));
+  APEX_JSON.write('chargeType',c.charge_type);
   APEX_JSON.write('description',NVL(c.description,''));APEX_JSON.write('empCount',c.emp_count);
   APEX_JSON.write('amount',c.amount);
   APEX_JSON.close_object;
@@ -608,17 +792,22 @@ BEGIN
    AND ([COLON]search IS NULL OR UPPER(re.full_name) LIKE '%'||UPPER([COLON]search)||'%'
         OR UPPER(NVL(re.employee_number,'~')) LIKE '%'||UPPER([COLON]search)||'%'
         OR UPPER(NVL(re.company_ref,'~')) LIKE '%'||UPPER([COLON]search)||'%')
-   AND ([COLON]grp IS NULL OR re.invoice_group_code=[COLON]grp)
+   AND ([COLON]grp IS NULL OR re.invoice_group_code=TO_NUMBER([COLON]grp))
    AND ([COLON]status IS NULL OR re.status=[COLON]status);
  dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
  APEX_JSON.write('total',l_tot);
  APEX_JSON.open_array('items');
- FOR r IN(SELECT re.* FROM dct_pay_run_emp re
+ FOR r IN(SELECT re.*,ig.short_code grp_short
+          FROM dct_pay_run_emp re
+          JOIN dct_pay_run r2 ON r2.run_id=re.run_id
+          JOIN dct_pay_payroll p2 ON p2.payroll_id=r2.payroll_id
+          LEFT JOIN dct_pay_invoice_group ig
+               ON ig.company_id=p2.company_id AND ig.group_code=re.invoice_group_code
           WHERE re.run_id=TO_NUMBER([COLON]id)
             AND ([COLON]search IS NULL OR UPPER(re.full_name) LIKE '%'||UPPER([COLON]search)||'%'
                  OR UPPER(NVL(re.employee_number,'~')) LIKE '%'||UPPER([COLON]search)||'%'
                  OR UPPER(NVL(re.company_ref,'~')) LIKE '%'||UPPER([COLON]search)||'%')
-            AND ([COLON]grp IS NULL OR re.invoice_group_code=[COLON]grp)
+            AND ([COLON]grp IS NULL OR re.invoice_group_code=TO_NUMBER([COLON]grp))
             AND ([COLON]status IS NULL OR re.status=[COLON]status)
           ORDER BY re.employee_number
           OFFSET l_off ROWS FETCH NEXT l_lim ROWS ONLY) LOOP
@@ -631,7 +820,8 @@ BEGIN
   APEX_JSON.write('department',NVL(r.department_name,''));
   APEX_JSON.write('gradeCode',NVL(r.grade_code,''));
   APEX_JSON.write('costCenter',NVL(r.cost_center_code,''));
-  APEX_JSON.write('group',NVL(r.invoice_group_code,''));
+  APEX_JSON.write('group',r.invoice_group_code);
+  APEX_JSON.write('groupShort',NVL(r.grp_short,''));
   APEX_JSON.write('factor',r.days_factor);
   APEX_JSON.write('gross',r.gross);APEX_JSON.write('deductions',r.deductions);
   APEX_JSON.write('net',r.net);APEX_JSON.write('employerCost',r.employer_cost);
@@ -659,6 +849,20 @@ BEGIN
  END LOOP;APEX_JSON.close_array;APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM);END;!');
 
+  h('runs/:id/emps/:reid','PUT',q'!
+DECLARE l_user VARCHAR2(100);
+BEGIN
+ dct_rest.parse_body([COLON]body);l_user:=dct_rest.validate_session;
+ IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ dct_pay_calc_pkg.set_run_emp_group(TO_NUMBER([COLON]reid),
+   APEX_JSON.get_number('groupCode'),l_user);
+ COMMIT;
+ dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
+ APEX_JSON.write('ok',TRUE);APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN ROLLBACK;
+ IF SQLCODE=-20403 THEN dct_rest.err(403,SQLERRM);ELSIF SQLCODE=-20404 THEN dct_rest.err(404,SQLERRM);
+ ELSIF SQLCODE IN(-20001,-20090) THEN dct_rest.err(400,SQLERRM);ELSE dct_rest.err(500,SQLERRM);END IF;END;!');
+
   tpl('runs/:id/export');
   h('runs/:id/export','GET',q'!
 DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;
@@ -675,12 +879,19 @@ BEGIN
  HTP.p('Content-Disposition[COLON] attachment; filename="payroll-register-'||l_code||'-'||l_period||'.csv"');
  OWA_UTIL.http_header_close;
  HTP.prn(CHR(65279));
- HTP.prn('Employee No,Name,Company Ref,Sector,Department,Grade,Cost Center,Invoice Group,Factor,Gross,Deductions,Net,Employer Cost,Status,Flags'||CHR(13)||CHR(10));
- FOR r IN(SELECT * FROM dct_pay_run_emp WHERE run_id=TO_NUMBER([COLON]id) ORDER BY employee_number) LOOP
+ HTP.prn('Employee No,Name,Company Ref,Sector,Department,Grade,Cost Center,Invoice Group,Group Short Code,Factor,Gross,Deductions,Net,Employer Cost,Status,Flags'||CHR(13)||CHR(10));
+ FOR r IN(SELECT re.*,ig.short_code grp_short
+          FROM dct_pay_run_emp re
+          JOIN dct_pay_run r2 ON r2.run_id=re.run_id
+          JOIN dct_pay_payroll p2 ON p2.payroll_id=r2.payroll_id
+          LEFT JOIN dct_pay_invoice_group ig
+               ON ig.company_id=p2.company_id AND ig.group_code=re.invoice_group_code
+          WHERE re.run_id=TO_NUMBER([COLON]id) ORDER BY re.employee_number) LOOP
   HTP.prn('"'||NVL(r.employee_number,'')||'","'||REPLACE(NVL(r.full_name,''),'"','''')||'","'||
           NVL(r.company_ref,'')||'","'||REPLACE(NVL(r.sector_name,''),'"','''')||'","'||
           REPLACE(NVL(r.department_name,''),'"','''')||'","'||NVL(r.grade_code,'')||'","'||
-          NVL(r.cost_center_code,'')||'","'||NVL(r.invoice_group_code,'')||'",'||
+          NVL(r.cost_center_code,'')||'","'||NVL(TO_CHAR(r.invoice_group_code),'')||'","'||
+          NVL(r.grp_short,'')||'",'||
           NVL(TO_CHAR(r.days_factor),'')||','||NVL(TO_CHAR(r.gross),'0')||','||
           NVL(TO_CHAR(r.deductions),'0')||','||NVL(TO_CHAR(r.net),'0')||','||
           NVL(TO_CHAR(r.employer_cost),'0')||',"'||r.status||'","'||NVL(r.exceptions,'')||'"'||

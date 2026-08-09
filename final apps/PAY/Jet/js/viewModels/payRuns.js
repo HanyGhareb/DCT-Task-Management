@@ -6,7 +6,8 @@ function (ko, payService, authService, i18n) {
     var self = this;
     self.t = i18n.t;
 
-    self.canRun = ko.observable(authService.hasRole('PAY_ADMIN') || authService.hasRole('SYS_ADMIN'));
+    self.canRun   = ko.observable(authService.hasRole('PAY_ADMIN') || authService.hasRole('SYS_ADMIN'));
+    self.canSetup = ko.observable(authService.hasRole('PAY_ADMIN') || authService.hasRole('SYS_ADMIN'));
 
     self.money = function (v) {
       if (v === null || v === undefined || v === '') return '—';
@@ -41,10 +42,30 @@ function (ko, payService, authService, i18n) {
     self.empsLoading = ko.observable(false);
 
     // lines drawer
-    self.dwOpen  = ko.observable(false);
-    self.dwEmp   = ko.observable(null);
-    self.dwLines = ko.observableArray([]);
-    self.closeDw = function () { self.dwOpen(false); };
+    self.dwOpen   = ko.observable(false);
+    self.dwEmp    = ko.observable(null);
+    self.dwLines  = ko.observableArray([]);
+    self.dwGrpSel = ko.observable('');
+    self.dwGrpBusy = ko.observable(false);
+    self.closeDw  = function () { self.dwOpen(false); };
+
+    // Pay Admin may move the employee to another invoice group while the
+    // run is loaded / validated / calculated; the move re-prices charges
+    self.canMoveGroup = ko.computed(function () {
+      var r = self.run();
+      return !!r && self.canSetup()
+        && ['LOADED', 'VALIDATED', 'CALCULATED'].indexOf(r.status) >= 0;
+    });
+
+    self.applyGroup = function () {
+      var r = self.run(), e = self.dwEmp();
+      if (!r || !e || self.dwGrpSel() === '' || Number(self.dwGrpSel()) === e.group) return;
+      self.dwGrpBusy(true); self.error('');
+      payService.setRunEmpGroup(r.runId, e.runEmpId, Number(self.dwGrpSel()))
+        .then(function () { self.dwOpen(false); return self.loadRun(r.runId); })
+        .catch(function (err) { self.error(err.message || String(err)); })
+        .finally(function () { self.dwGrpBusy(false); });
+    };
 
     self.statusClass = function (s) {
       return 'pr-pill pr-pill--' + String(s || '').toLowerCase();
@@ -52,6 +73,7 @@ function (ko, payService, authService, i18n) {
 
     payService.paysetupBoot().then(function (d) {
       self.canRun(d.canRun === 'Y');
+      self.canSetup(d.canSetup === 'Y');
       self.payrolls((d.payrolls || []).filter(function (p) { return p.isActive === 'Y'; }));
       self.booting(false);
       if (self.payrolls().length) { self.selPayroll(self.payrolls()[0].payrollId); }
@@ -165,7 +187,7 @@ function (ko, payService, authService, i18n) {
     self.openLines = function (row) {
       var r = self.run();
       if (!r) return;
-      self.dwEmp(row); self.dwLines([]); self.dwOpen(true);
+      self.dwEmp(row); self.dwLines([]); self.dwGrpSel(row.group); self.dwOpen(true);
       payService.getRunEmpLines(r.runId, row.runEmpId).then(function (d) {
         self.dwLines(d.lines || []);
       });

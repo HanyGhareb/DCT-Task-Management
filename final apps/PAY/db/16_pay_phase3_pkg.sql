@@ -94,17 +94,35 @@ CREATE OR REPLACE PACKAGE prod.dct_pay_calc_pkg AS
     p_is_active     IN VARCHAR2,
     p_user          IN VARCHAR2);
 
+  -- group_code is a NUMBER; short_code is the mnemonic; membership basis is
+  -- the cost-center map plus per-employee INCLUDE / EXCLUDE overrides
   PROCEDURE save_invoice_group (
     p_id            IN OUT NUMBER,
     p_company_id    IN NUMBER,
-    p_group_code    IN VARCHAR2,
+    p_group_code    IN NUMBER,
+    p_short_code    IN VARCHAR2,
     p_name_en       IN VARCHAR2,
     p_name_ar       IN VARCHAR2,
     p_display_order IN NUMBER,
     p_is_default    IN VARCHAR2,
     p_is_active     IN VARCHAR2,
-    p_sectors       IN VARCHAR2,
+    p_ccs           IN VARCHAR2,
     p_user          IN VARCHAR2);
+
+  -- p_mode: INCLUDE forces the employee into the group, EXCLUDE keeps them
+  -- out of it, CLEAR removes the override (back to the cost-center map)
+  PROCEDURE set_group_emp (
+    p_group_id  IN NUMBER,
+    p_person_id IN NUMBER,
+    p_mode      IN VARCHAR2,
+    p_user      IN VARCHAR2);
+
+  -- Pay Admin moves one employee of an open run to another invoice group;
+  -- persists as an INCLUDE override and re-prices charges when calculated
+  PROCEDURE set_run_emp_group (
+    p_run_emp_id IN NUMBER,
+    p_group_code IN NUMBER,
+    p_user       IN VARCHAR2);
 
   PROCEDURE create_run (
     p_payroll_id  IN NUMBER,
@@ -399,47 +417,131 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
   END;
 
   PROCEDURE save_invoice_group (
-    p_id IN OUT NUMBER, p_company_id IN NUMBER, p_group_code IN VARCHAR2,
-    p_name_en IN VARCHAR2, p_name_ar IN VARCHAR2, p_display_order IN NUMBER,
-    p_is_default IN VARCHAR2, p_is_active IN VARCHAR2, p_sectors IN VARCHAR2,
-    p_user IN VARCHAR2) IS
+    p_id IN OUT NUMBER, p_company_id IN NUMBER, p_group_code IN NUMBER,
+    p_short_code IN VARCHAR2, p_name_en IN VARCHAR2, p_name_ar IN VARCHAR2,
+    p_display_order IN NUMBER, p_is_default IN VARCHAR2, p_is_active IN VARCHAR2,
+    p_ccs IN VARCHAR2, p_user IN VARCHAR2) IS
     n NUMBER;
+    l_company NUMBER;
+    l_other VARCHAR2(30);
   BEGIN
     need_setup(p_user);
     IF p_id IS NULL THEN
-      IF p_company_id IS NULL OR p_group_code IS NULL OR p_name_en IS NULL THEN
-        RAISE_APPLICATION_ERROR(-20001, 'Company, group code and name are required');
+      IF p_company_id IS NULL OR p_group_code IS NULL OR p_short_code IS NULL OR p_name_en IS NULL THEN
+        RAISE_APPLICATION_ERROR(-20001, 'Company, group code, short code and name are required');
       END IF;
+      SELECT COUNT(*) INTO n FROM prod.dct_pay_invoice_group
+      WHERE company_id = p_company_id AND group_code = p_group_code;
+      IF n > 0 THEN RAISE_APPLICATION_ERROR(-20001, 'Group code already used for this company'); END IF;
+      SELECT COUNT(*) INTO n FROM prod.dct_pay_invoice_group
+      WHERE company_id = p_company_id AND short_code = UPPER(p_short_code);
+      IF n > 0 THEN RAISE_APPLICATION_ERROR(-20001, 'Short code already used for this company'); END IF;
       INSERT INTO prod.dct_pay_invoice_group
-             (company_id, group_code, name_en, name_ar, display_order, is_default, created_by, updated_by)
-      VALUES (p_company_id, UPPER(p_group_code), p_name_en, p_name_ar,
+             (company_id, group_code, short_code, name_en, name_ar, display_order, is_default, created_by, updated_by)
+      VALUES (p_company_id, p_group_code, UPPER(p_short_code), p_name_en, p_name_ar,
               NVL(p_display_order, 10), NVL(p_is_default, 'N'), p_user, p_user)
       RETURNING group_id INTO p_id;
+      l_company := p_company_id;
     ELSE
+      BEGIN
+        SELECT company_id INTO l_company FROM prod.dct_pay_invoice_group WHERE group_id = p_id;
+      EXCEPTION WHEN NO_DATA_FOUND THEN
+        RAISE_APPLICATION_ERROR(-20404, 'Invoice group not found');
+      END;
+      IF p_group_code IS NOT NULL THEN
+        SELECT COUNT(*) INTO n FROM prod.dct_pay_invoice_group
+        WHERE company_id = l_company AND group_code = p_group_code AND group_id <> p_id;
+        IF n > 0 THEN RAISE_APPLICATION_ERROR(-20001, 'Group code already used for this company'); END IF;
+      END IF;
+      IF p_short_code IS NOT NULL THEN
+        SELECT COUNT(*) INTO n FROM prod.dct_pay_invoice_group
+        WHERE company_id = l_company AND short_code = UPPER(p_short_code) AND group_id <> p_id;
+        IF n > 0 THEN RAISE_APPLICATION_ERROR(-20001, 'Short code already used for this company'); END IF;
+      END IF;
       UPDATE prod.dct_pay_invoice_group
-         SET name_en = NVL(p_name_en, name_en),
+         SET group_code = NVL(p_group_code, group_code),
+             short_code = NVL(UPPER(p_short_code), short_code),
+             name_en = NVL(p_name_en, name_en),
              name_ar = NVL(p_name_ar, name_ar),
              display_order = NVL(p_display_order, display_order),
              is_default = NVL(p_is_default, is_default),
              is_active = NVL(p_is_active, is_active),
              updated_by = p_user, updated_at = SYSDATE
        WHERE group_id = p_id;
-      IF SQL%ROWCOUNT = 0 THEN RAISE_APPLICATION_ERROR(-20404, 'Invoice group not found'); END IF;
     END IF;
-    IF p_sectors IS NOT NULL THEN
-      DELETE FROM prod.dct_pay_invoice_group_sector WHERE group_id = p_id;
-      FOR s IN (SELECT TRIM(REGEXP_SUBSTR(p_sectors, '[^|]+', 1, LEVEL)) sec
-                FROM dual CONNECT BY LEVEL <= REGEXP_COUNT(p_sectors, '[^|]+')) LOOP
-        IF s.sec IS NOT NULL THEN
-          SELECT COUNT(*) INTO n FROM prod.dct_pay_invoice_group_sector
-          WHERE group_id = p_id AND sector_name = s.sec;
-          IF n = 0 THEN
-            INSERT INTO prod.dct_pay_invoice_group_sector (group_id, sector_name, created_by)
-            VALUES (p_id, s.sec, p_user);
+    IF NVL(p_is_default, 'N') = 'Y' THEN
+      UPDATE prod.dct_pay_invoice_group
+         SET is_default = 'N', updated_by = p_user, updated_at = SYSDATE
+       WHERE company_id = l_company AND group_id <> p_id AND is_default = 'Y';
+    END IF;
+    -- cost-center map: pipe-delimited replace set; a single dash clears it
+    IF p_ccs IS NOT NULL THEN
+      DELETE FROM prod.dct_pay_invoice_group_cc WHERE group_id = p_id;
+      IF TRIM(p_ccs) <> '-' THEN
+        FOR s IN (SELECT TRIM(REGEXP_SUBSTR(p_ccs, '[^|]+', 1, LEVEL)) cc
+                  FROM dual CONNECT BY LEVEL <= REGEXP_COUNT(p_ccs, '[^|]+')) LOOP
+          IF s.cc IS NOT NULL THEN
+            BEGIN
+              SELECT g.short_code INTO l_other
+              FROM prod.dct_pay_invoice_group_cc c
+              JOIN prod.dct_pay_invoice_group g ON g.group_id = c.group_id
+              WHERE g.company_id = l_company AND g.group_id <> p_id AND g.is_active = 'Y'
+                AND c.cost_center_code = s.cc
+              FETCH FIRST 1 ROWS ONLY;
+              RAISE_APPLICATION_ERROR(-20001,
+                'Cost center ' || s.cc || ' is already mapped to group ' || l_other);
+            EXCEPTION WHEN NO_DATA_FOUND THEN NULL;
+            END;
+            SELECT COUNT(*) INTO n FROM prod.dct_pay_invoice_group_cc
+            WHERE group_id = p_id AND cost_center_code = s.cc;
+            IF n = 0 THEN
+              INSERT INTO prod.dct_pay_invoice_group_cc (group_id, cost_center_code, created_by)
+              VALUES (p_id, s.cc, p_user);
+            END IF;
           END IF;
-        END IF;
-      END LOOP;
+        END LOOP;
+      END IF;
     END IF;
+  END;
+
+  PROCEDURE set_group_emp (
+    p_group_id IN NUMBER, p_person_id IN NUMBER, p_mode IN VARCHAR2, p_user IN VARCHAR2) IS
+    l_company NUMBER;
+    n NUMBER;
+  BEGIN
+    need_setup(p_user);
+    IF p_mode NOT IN ('INCLUDE', 'EXCLUDE', 'CLEAR') THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Mode must be INCLUDE, EXCLUDE or CLEAR');
+    END IF;
+    BEGIN
+      SELECT company_id INTO l_company FROM prod.dct_pay_invoice_group WHERE group_id = p_group_id;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20404, 'Invoice group not found');
+    END;
+    IF p_mode = 'CLEAR' THEN
+      DELETE FROM prod.dct_pay_invoice_group_emp
+      WHERE group_id = p_group_id AND person_id = p_person_id;
+      RETURN;
+    END IF;
+    SELECT COUNT(*) INTO n
+    FROM prod.dct_pay_assignment a
+    JOIN prod.dct_pay_payroll p ON p.payroll_code = a.payroll_code
+    WHERE a.person_id = p_person_id AND p.company_id = l_company
+      AND a.assignment_type = 'PRIMARY' AND a.status = 'ACTIVE';
+    IF n = 0 THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Employee has no active assignment with this company');
+    END IF;
+    IF p_mode = 'INCLUDE' THEN
+      DELETE FROM prod.dct_pay_invoice_group_emp o
+      WHERE o.person_id = p_person_id
+        AND o.group_id IN (SELECT group_id FROM prod.dct_pay_invoice_group
+                           WHERE company_id = l_company);
+    ELSE
+      DELETE FROM prod.dct_pay_invoice_group_emp
+      WHERE group_id = p_group_id AND person_id = p_person_id;
+    END IF;
+    INSERT INTO prod.dct_pay_invoice_group_emp (group_id, person_id, ovr_mode, created_by)
+    VALUES (p_group_id, p_person_id, p_mode, p_user);
   END;
 
   PROCEDURE create_run (
@@ -478,7 +580,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
   PROCEDURE load_run (p_run_id NUMBER, p_user VARCHAR2) IS
     l_pay  prod.dct_pay_payroll%ROWTYPE;
     l_per  prod.dct_pay_period%ROWTYPE;
-    l_grp_default VARCHAR2(30);
+    l_grp_default NUMBER;
     l_n NUMBER;
   BEGIN
     SELECT p.* INTO l_pay FROM prod.dct_pay_payroll p
@@ -490,7 +592,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
       SELECT group_code INTO l_grp_default FROM prod.dct_pay_invoice_group
       WHERE company_id = l_pay.company_id AND is_default = 'Y' AND is_active = 'Y'
       FETCH FIRST 1 ROWS ONLY;
-    EXCEPTION WHEN NO_DATA_FOUND THEN l_grp_default := 'MAIN';
+    EXCEPTION WHEN NO_DATA_FOUND THEN l_grp_default := NULL;
     END;
 
     DELETE FROM prod.dct_pay_run_charge WHERE run_id = p_run_id;
@@ -503,12 +605,24 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
     SELECT p_run_id, a.person_id, a.assignment_id, e.employee_number, e.full_name_en,
            a.company_ref, a.sector_name, a.department_name, a.grade_code, a.cost_center_code,
            e.nationality_code,
-           NVL((SELECT g.group_code
-                FROM prod.dct_pay_invoice_group g
-                JOIN prod.dct_pay_invoice_group_sector s ON s.group_id = g.group_id
-                WHERE g.company_id = a.company_id AND g.is_active = 'Y'
-                  AND s.sector_name = a.sector_name
-                FETCH FIRST 1 ROWS ONLY), l_grp_default),
+           COALESCE(
+             (SELECT g.group_code
+              FROM prod.dct_pay_invoice_group g
+              JOIN prod.dct_pay_invoice_group_emp o ON o.group_id = g.group_id
+              WHERE g.company_id = a.company_id AND g.is_active = 'Y'
+                AND o.person_id = a.person_id AND o.ovr_mode = 'INCLUDE'
+              FETCH FIRST 1 ROWS ONLY),
+             (SELECT g.group_code
+              FROM prod.dct_pay_invoice_group g
+              JOIN prod.dct_pay_invoice_group_cc c ON c.group_id = g.group_id
+              WHERE g.company_id = a.company_id AND g.is_active = 'Y'
+                AND c.cost_center_code = a.cost_center_code
+                AND NOT EXISTS (SELECT 1 FROM prod.dct_pay_invoice_group_emp x
+                                WHERE x.group_id = g.group_id
+                                  AND x.person_id = a.person_id
+                                  AND x.ovr_mode = 'EXCLUDE')
+              FETCH FIRST 1 ROWS ONLY),
+             l_grp_default),
            factor(a.effective_from, a.effective_to, l_per.date_from, l_per.date_to,
                   l_pay.proration_basis, l_pay.proration_divisor)
     FROM prod.dct_pay_assignment a
@@ -580,20 +694,125 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
      WHERE run_id = p_run_id;
   END;
 
-  PROCEDURE calculate_run (p_run_id NUMBER, p_user VARCHAR2) IS
-    l_pay  prod.dct_pay_payroll%ROWTYPE;
-    l_per  prod.dct_pay_period%ROWTYPE;
-    l_comp prod.dct_pay_company%ROWTYPE;
+  -- charge preview per invoice group; runs after calculation and again when
+  -- an admin moves an employee between groups on an already-calculated run
+  PROCEDURE compute_charges (p_run_id NUMBER, p_user VARCHAR2) IS
+    l_pay prod.dct_pay_payroll%ROWTYPE;
+    l_per prod.dct_pay_period%ROWTYPE;
     l_contract_id NUMBER;
     l_contract_status VARCHAR2(20);
     l_vat_rate NUMBER;
     l_service_fee NUMBER;
-    l_basic NUMBER; l_gross NUMBER; l_ded NUMBER; l_er NUMBER;
-    l_amt NUMBER; l_base NUMBER; l_rate NUMBER; l_ee NUMBER; l_err NUMBER;
+    l_amt NUMBER;
     l_tot_charges NUMBER := 0;
     l_has_rule BOOLEAN := FALSE;
     l_note VARCHAR2(400);
-    l_default_grp VARCHAR2(30);
+    l_default_grp NUMBER;
+  BEGIN
+    SELECT p.* INTO l_pay FROM prod.dct_pay_payroll p
+    JOIN prod.dct_pay_run r ON r.payroll_id = p.payroll_id WHERE r.run_id = p_run_id;
+    SELECT pe.* INTO l_per FROM prod.dct_pay_period pe
+    JOIN prod.dct_pay_run r ON r.period_id = pe.period_id WHERE r.run_id = p_run_id;
+
+    DELETE FROM prod.dct_pay_run_charge WHERE run_id = p_run_id;
+
+    BEGIN
+      SELECT contract_id, status, NVL(vat_rate, 5), service_fee_amount
+      INTO l_contract_id, l_contract_status, l_vat_rate, l_service_fee
+      FROM (SELECT c.* FROM prod.dct_pay_contract c
+            WHERE c.company_id = l_pay.company_id AND c.is_active = 'Y'
+            ORDER BY CASE c.status WHEN 'ACTIVE' THEN 0 WHEN 'DRAFT' THEN 1 ELSE 2 END,
+                     c.version_no DESC, c.contract_id DESC)
+      WHERE ROWNUM = 1;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      l_contract_id := NULL; l_vat_rate := 5; l_service_fee := NULL;
+    END;
+
+    l_note := CASE WHEN l_contract_status = 'DRAFT'
+                   THEN ' (contract DRAFT - terms pending approval)' END;
+
+    BEGIN
+      SELECT MIN(group_code) INTO l_default_grp FROM prod.dct_pay_invoice_group
+      WHERE company_id = l_pay.company_id AND is_default = 'Y' AND is_active = 'Y';
+    EXCEPTION WHEN NO_DATA_FOUND THEN l_default_grp := NULL;
+    END;
+
+    FOR g IN (SELECT re.invoice_group_code grp, COUNT(*) cnt,
+                     NVL(SUM(re.days_factor), 0) fct,
+                     NVL(SUM(re.gross), 0) gross, NVL(SUM(re.net), 0) net,
+                     NVL(SUM((SELECT SUM(l.amount) FROM prod.dct_pay_run_line l
+                              WHERE l.run_emp_id = re.run_emp_id
+                                AND l.element_code IN ('BASIC', 'GROSS_SALARY'))), 0) basic
+              FROM prod.dct_pay_run_emp re
+              WHERE re.run_id = p_run_id
+              GROUP BY re.invoice_group_code) LOOP
+      DECLARE
+        l_grp_margin NUMBER := 0;
+        l_vat_on CHAR(1) := 'N';
+      BEGIN
+        IF l_contract_id IS NOT NULL THEN
+          FOR mr IN (SELECT * FROM prod.dct_pay_margin_rule
+                     WHERE contract_id = l_contract_id AND is_active = 'Y'
+                       AND effective_from <= l_per.date_to
+                       AND NVL(effective_to, l_per.date_to) >= l_per.date_from
+                       AND payment_scope IN ('ALL', 'MONTHLY')) LOOP
+            l_has_rule := TRUE;
+            IF mr.vat_applicable = 'Y' THEN l_vat_on := 'Y'; END IF;
+            l_amt := 0;
+            IF mr.method = 'PER_EMPLOYEE' THEN
+              l_amt := ROUND(mr.rate_value * g.fct, 2);
+            ELSIF mr.method = 'PERCENT' THEN
+              l_amt := ROUND(CASE mr.basis WHEN 'BASIC' THEN g.basic
+                                           WHEN 'NET' THEN g.net
+                                           ELSE g.gross END * mr.rate_value / 100, 2);
+            ELSIF mr.method = 'FLAT' THEN
+              l_amt := CASE WHEN g.grp = NVL(l_default_grp, g.grp)
+                            THEN mr.rate_value ELSE 0 END;
+            END IF;
+            IF l_amt <> 0 THEN
+              INSERT INTO prod.dct_pay_run_charge
+                     (run_id, invoice_group_code, charge_type, description, emp_count, amount)
+              VALUES (p_run_id, g.grp, 'MARGIN',
+                      mr.method || ' ' || mr.rate_value ||
+                      CASE WHEN mr.method = 'PER_EMPLOYEE' THEN ' x ' || ROUND(g.fct, 2) || ' prorated headcount' END
+                      || l_note,
+                      g.cnt, l_amt);
+              l_grp_margin := l_grp_margin + l_amt;
+              l_tot_charges := l_tot_charges + l_amt;
+            END IF;
+          END LOOP;
+        END IF;
+        IF l_vat_on = 'Y' THEN
+          l_amt := ROUND((g.gross + l_grp_margin) * l_vat_rate / 100, 2);
+          IF l_amt <> 0 THEN
+            INSERT INTO prod.dct_pay_run_charge
+                   (run_id, invoice_group_code, charge_type, description, emp_count, amount)
+            VALUES (p_run_id, g.grp, 'VAT',
+                    l_vat_rate || ' pct on salaries + margin (preview)', g.cnt, l_amt);
+            l_tot_charges := l_tot_charges + l_amt;
+          END IF;
+        END IF;
+      END;
+    END LOOP;
+
+    IF NOT l_has_rule THEN
+      INSERT INTO prod.dct_pay_run_charge
+             (run_id, invoice_group_code, charge_type, description, emp_count, amount)
+      VALUES (p_run_id, NULL, 'MARGIN',
+              'No margin rule configured for this company - contract terms pending', NULL, 0);
+    END IF;
+
+    UPDATE prod.dct_pay_run
+       SET total_charges = l_tot_charges, updated_by = p_user, updated_at = SYSDATE
+     WHERE run_id = p_run_id;
+  END;
+
+  PROCEDURE calculate_run (p_run_id NUMBER, p_user VARCHAR2) IS
+    l_pay  prod.dct_pay_payroll%ROWTYPE;
+    l_per  prod.dct_pay_period%ROWTYPE;
+    l_comp prod.dct_pay_company%ROWTYPE;
+    l_basic NUMBER; l_gross NUMBER; l_ded NUMBER; l_er NUMBER;
+    l_amt NUMBER; l_base NUMBER; l_rate NUMBER; l_ee NUMBER; l_err NUMBER;
   BEGIN
     SELECT p.* INTO l_pay FROM prod.dct_pay_payroll p
     JOIN prod.dct_pay_run r ON r.payroll_id = p.payroll_id WHERE r.run_id = p_run_id;
@@ -601,7 +820,6 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
     JOIN prod.dct_pay_run r ON r.period_id = pe.period_id WHERE r.run_id = p_run_id;
     SELECT c.* INTO l_comp FROM prod.dct_pay_company c WHERE c.company_id = l_pay.company_id;
 
-    DELETE FROM prod.dct_pay_run_charge WHERE run_id = p_run_id;
     DELETE FROM prod.dct_pay_run_line
     WHERE run_emp_id IN (SELECT run_emp_id FROM prod.dct_pay_run_emp WHERE run_id = p_run_id);
 
@@ -700,104 +918,59 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
        WHERE run_emp_id = ce.run_emp_id;
     END LOOP;
 
-    -- company charge preview from the contract margin rules
-    BEGIN
-      SELECT contract_id, status, NVL(vat_rate, 5), service_fee_amount
-      INTO l_contract_id, l_contract_status, l_vat_rate, l_service_fee
-      FROM (SELECT c.* FROM prod.dct_pay_contract c
-            WHERE c.company_id = l_pay.company_id AND c.is_active = 'Y'
-            ORDER BY CASE c.status WHEN 'ACTIVE' THEN 0 WHEN 'DRAFT' THEN 1 ELSE 2 END,
-                     c.version_no DESC, c.contract_id DESC)
-      WHERE ROWNUM = 1;
-    EXCEPTION WHEN NO_DATA_FOUND THEN
-      l_contract_id := NULL; l_vat_rate := 5; l_service_fee := NULL;
-    END;
-
-    l_note := CASE WHEN l_contract_status = 'DRAFT'
-                   THEN ' (contract DRAFT - terms pending approval)' END;
-
-    BEGIN
-      SELECT MIN(group_code) INTO l_default_grp FROM prod.dct_pay_invoice_group
-      WHERE company_id = l_pay.company_id AND is_default = 'Y' AND is_active = 'Y';
-    EXCEPTION WHEN NO_DATA_FOUND THEN l_default_grp := NULL;
-    END;
-
-    FOR g IN (SELECT re.invoice_group_code grp, COUNT(*) cnt,
-                     NVL(SUM(re.days_factor), 0) fct,
-                     NVL(SUM(re.gross), 0) gross, NVL(SUM(re.net), 0) net,
-                     NVL(SUM((SELECT SUM(l.amount) FROM prod.dct_pay_run_line l
-                              WHERE l.run_emp_id = re.run_emp_id
-                                AND l.element_code IN ('BASIC', 'GROSS_SALARY'))), 0) basic
-              FROM prod.dct_pay_run_emp re
-              WHERE re.run_id = p_run_id
-              GROUP BY re.invoice_group_code) LOOP
-      DECLARE
-        l_grp_margin NUMBER := 0;
-        l_vat_on CHAR(1) := 'N';
-      BEGIN
-        IF l_contract_id IS NOT NULL THEN
-          FOR mr IN (SELECT * FROM prod.dct_pay_margin_rule
-                     WHERE contract_id = l_contract_id AND is_active = 'Y'
-                       AND effective_from <= l_per.date_to
-                       AND NVL(effective_to, l_per.date_to) >= l_per.date_from
-                       AND payment_scope IN ('ALL', 'MONTHLY')) LOOP
-            l_has_rule := TRUE;
-            IF mr.vat_applicable = 'Y' THEN l_vat_on := 'Y'; END IF;
-            l_amt := 0;
-            IF mr.method = 'PER_EMPLOYEE' THEN
-              l_amt := ROUND(mr.rate_value * g.fct, 2);
-            ELSIF mr.method = 'PERCENT' THEN
-              l_amt := ROUND(CASE mr.basis WHEN 'BASIC' THEN g.basic
-                                           WHEN 'NET' THEN g.net
-                                           ELSE g.gross END * mr.rate_value / 100, 2);
-            ELSIF mr.method = 'FLAT' THEN
-              l_amt := CASE WHEN g.grp = NVL(l_default_grp, g.grp)
-                            THEN mr.rate_value ELSE 0 END;
-            END IF;
-            IF l_amt <> 0 THEN
-              INSERT INTO prod.dct_pay_run_charge
-                     (run_id, invoice_group_code, charge_type, description, emp_count, amount)
-              VALUES (p_run_id, g.grp, 'MARGIN',
-                      mr.method || ' ' || mr.rate_value ||
-                      CASE WHEN mr.method = 'PER_EMPLOYEE' THEN ' x ' || ROUND(g.fct, 2) || ' prorated headcount' END
-                      || l_note,
-                      g.cnt, l_amt);
-              l_grp_margin := l_grp_margin + l_amt;
-              l_tot_charges := l_tot_charges + l_amt;
-            END IF;
-          END LOOP;
-        END IF;
-        IF l_vat_on = 'Y' THEN
-          l_amt := ROUND((g.gross + l_grp_margin) * l_vat_rate / 100, 2);
-          IF l_amt <> 0 THEN
-            INSERT INTO prod.dct_pay_run_charge
-                   (run_id, invoice_group_code, charge_type, description, emp_count, amount)
-            VALUES (p_run_id, g.grp, 'VAT',
-                    l_vat_rate || ' pct on salaries + margin (preview)', g.cnt, l_amt);
-            l_tot_charges := l_tot_charges + l_amt;
-          END IF;
-        END IF;
-      END;
-    END LOOP;
-
-    IF NOT l_has_rule THEN
-      INSERT INTO prod.dct_pay_run_charge
-             (run_id, invoice_group_code, charge_type, description, emp_count, amount)
-      VALUES (p_run_id, NULL, 'MARGIN',
-              'No margin rule configured for this company - contract terms pending', NULL, 0);
-    END IF;
-
     UPDATE prod.dct_pay_run r
        SET (total_gross, total_deductions, total_net, total_employer_cost) =
            (SELECT NVL(SUM(gross), 0), NVL(SUM(deductions), 0), NVL(SUM(net), 0),
                    NVL(SUM(employer_cost), 0)
             FROM prod.dct_pay_run_emp WHERE run_id = p_run_id),
-           total_charges = l_tot_charges,
            status = 'CALCULATED',
            calculated_at = SYSDATE, calculated_by = p_user,
            reviewed_at = NULL, reviewed_by = NULL,
            updated_by = p_user, updated_at = SYSDATE
      WHERE r.run_id = p_run_id;
+
+    compute_charges(p_run_id, p_user);
+  END;
+
+  PROCEDURE set_run_emp_group (
+    p_run_emp_id IN NUMBER, p_group_code IN NUMBER, p_user IN VARCHAR2) IS
+    l_run_id NUMBER;
+    l_person NUMBER;
+    l_status VARCHAR2(20);
+    l_company NUMBER;
+    l_group_id NUMBER;
+  BEGIN
+    need_setup(p_user);
+    IF p_group_code IS NULL THEN
+      RAISE_APPLICATION_ERROR(-20001, 'Group code is required');
+    END IF;
+    BEGIN
+      SELECT re.run_id, re.person_id, r.status, p.company_id
+      INTO l_run_id, l_person, l_status, l_company
+      FROM prod.dct_pay_run_emp re
+      JOIN prod.dct_pay_run r ON r.run_id = re.run_id
+      JOIN prod.dct_pay_payroll p ON p.payroll_id = r.payroll_id
+      WHERE re.run_emp_id = p_run_emp_id;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20404, 'Run employee not found');
+    END;
+    IF l_status NOT IN ('LOADED', 'VALIDATED', 'CALCULATED') THEN
+      RAISE_APPLICATION_ERROR(-20001, 'The invoice group can only change on a loaded, validated or calculated run');
+    END IF;
+    BEGIN
+      SELECT group_id INTO l_group_id FROM prod.dct_pay_invoice_group
+      WHERE company_id = l_company AND group_code = p_group_code AND is_active = 'Y';
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      RAISE_APPLICATION_ERROR(-20404, 'Invoice group not found for this company');
+    END;
+    UPDATE prod.dct_pay_run_emp
+       SET invoice_group_code = p_group_code
+     WHERE run_emp_id = p_run_emp_id;
+    -- persist as an INCLUDE override so the next Load keeps the placement
+    set_group_emp(l_group_id, l_person, 'INCLUDE', p_user);
+    IF l_status = 'CALCULATED' THEN
+      compute_charges(l_run_id, p_user);
+    END IF;
   END;
 
   PROCEDURE act (p_run_id IN NUMBER, p_action IN VARCHAR2, p_user IN VARCHAR2) IS
