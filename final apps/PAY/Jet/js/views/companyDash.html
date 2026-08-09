@@ -1,0 +1,292 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- ── Header ────────────────────────────────────────────────────────── -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title">
+        <span data-bind="text: d() ? (d().nameEn + ' (' + d().code + ')') : $vm.t('cd.title')"></span>
+        <!-- ko if: d -->
+        <span class="badge" data-bind="text: d().status"></span>
+        <!-- /ko -->
+      </div>
+      <div class="page-subtitle" data-bind="text: $vm.t('cd.subtitle')"></div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary btn-sm" data-bind="click: back, text: $vm.t('cd.back')"></button>
+    </div>
+  </div>
+
+  <!-- ko if: error() --><div class="dw-err" data-bind="text: error"></div><!-- /ko -->
+  <!-- ko if: loading --><list-skeleton params="rows: 8"></list-skeleton><!-- /ko -->
+  <!-- ko if: !loading() && d() -->
+  <!-- ko with: d -->
+
+  <!-- ── KPI band ─────────────────────────────────────────────────────── -->
+  <div class="pr-kpis">
+    <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('cd.kHeadcount')"></div>
+      <div class="pr-k-v" data-bind="text: $vm.num(kpis.headcount)"></div></div>
+    <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('cd.kContracts')"></div>
+      <div class="pr-k-v" data-bind="text: $vm.num(kpis.activeContracts)"></div></div>
+    <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('cd.kMonthlyGross')"></div>
+      <div class="pr-k-v" data-bind="text: $vm.money($data.latestRun && $data.latestRun.gross)"></div></div>
+    <div class="pr-k pr-k--charge"><div class="pr-k-l" data-bind="text: $vm.t('cd.kCharges')"></div>
+      <div class="pr-k-v" data-bind="text: $vm.money($data.latestRun && $data.latestRun.charges)"></div></div>
+    <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('cd.kInvoices')"></div>
+      <div class="pr-k-v" data-bind="text: $vm.num(kpis.invoiceCount)"></div></div>
+    <div class="pr-k"><div class="pr-k-l" data-bind="text: $vm.t('cd.kTotalPaid')"></div>
+      <div class="pr-k-v" data-bind="text: $vm.money(kpis.totalPaid)"></div></div>
+    <div class="pr-k" data-bind="css: { 'pr-k--warn': (kpis.outstanding || 0) > 0.005 }">
+      <div class="pr-k-l" data-bind="text: $vm.t('cd.kOutstanding')"></div>
+      <div class="pr-k-v" data-bind="text: $vm.money(kpis.outstanding)"></div></div>
+  </div>
+
+  <!-- ── Executive summary ────────────────────────────────────────────── -->
+  <div class="pr-2col">
+    <div class="card ap-region">
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('cd.executive')"></div>
+      </div>
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.trn')"></label>
+          <div data-bind="text: $data.trn || '—'"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.risk')"></label>
+          <div data-bind="text: $data.riskRating || '—'"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.ownerContract')"></label>
+          <div data-bind="text: $data.ownerContract || '—'"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.ownerBusiness')"></label>
+          <div data-bind="text: $data.ownerBusiness || '—'"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.ownerPayroll')"></label>
+          <div data-bind="text: $data.ownerPayroll || '—'"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.ownerFinance')"></label>
+          <div data-bind="text: $data.ownerFinance || '—'"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.score')"></label>
+          <div data-bind="text: ($data.score && $data.score.overall != null) ? $data.score.overall : '—'"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.complianceAlerts')"></label>
+          <div data-bind="text: $vm.num(kpis.complianceAlerts)"></div></div>
+      </div>
+      <!-- ko if: (contacts || []).length -->
+      <div class="section-heading-row" style="margin-top:8px">
+        <div class="section-heading ap-rh" style="font-size:13px" data-bind="text: $vm.t('cd.contacts')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <tbody data-bind="foreach: contacts">
+          <tr>
+            <td data-bind="text: name"></td>
+            <td data-bind="text: $data.jobTitle || $data.type || ''"></td>
+            <td data-bind="text: $data.email || ''"></td>
+            <td data-bind="text: $data.phone || ''"></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- /ko -->
+      <!-- ko ifnot: (contacts || []).length -->
+      <div class="pr-note" data-bind="text: $vm.t('cd.noContacts')"></div>
+      <!-- /ko -->
+    </div>
+
+    <div class="card ap-region">
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('cd.latestRun')"></div>
+        <div class="region-actions">
+          <button class="btn btn-secondary btn-sm" data-bind="click: $vm.goRuns, text: $vm.t('cd.openRuns')"></button>
+        </div>
+      </div>
+      <!-- ko if: $data.latestRun && $data.latestRun.period -->
+      <div class="dw-form" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.period')"></label>
+          <div data-bind="text: latestRun.period + ' · ' + latestRun.payroll + ' · ' + latestRun.status"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.kHeadcount')"></label>
+          <div data-bind="text: $vm.num(latestRun.empCount)"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.gross')"></label>
+          <div data-bind="text: $vm.money(latestRun.gross)"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.net')"></label>
+          <div data-bind="text: $vm.money(latestRun.net)"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.kCharges')"></label>
+          <div data-bind="text: $vm.money(latestRun.charges)"></div></div>
+        <div class="form-group"><label class="form-label" data-bind="text: $vm.t('cd.paidYtd')"></label>
+          <div data-bind="text: $vm.money(kpis.paidYtd)"></div></div>
+      </div>
+      <!-- /ko -->
+      <!-- ko ifnot: $data.latestRun && $data.latestRun.period -->
+      <div class="empty-state" data-bind="text: $vm.t('cd.noRun')"></div>
+      <!-- /ko -->
+      <div class="data-table-wrap" style="max-height:190px;overflow:auto"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('cd.period')"></th>
+          <th data-bind="text: $vm.t('cd.status')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('cd.kHeadcount')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('cd.gross')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('cd.kCharges')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: runs">
+          <tr>
+            <td data-bind="text: period"></td>
+            <td data-bind="text: status"></td>
+            <td class="ap-amount" data-bind="text: $vm.num($data.empCount)"></td>
+            <td class="ap-amount" data-bind="text: $vm.money($data.gross)"></td>
+            <td class="ap-amount" data-bind="text: $vm.money($data.charges)"></td>
+          </tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+
+  <!-- ── Charts ───────────────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('cd.analytics')"></div>
+    </div>
+    <div class="cd-charts">
+      <div>
+        <div class="cd-ch-t" data-bind="text: $vm.t('cd.paidByCc')"></div>
+        <!-- ko if: (paidByCc || []).length --><canvas id="cdPaidCc" height="230"></canvas><!-- /ko -->
+        <!-- ko ifnot: (paidByCc || []).length --><div class="empty-state" data-bind="text: $vm.t('cd.noAp')"></div><!-- /ko -->
+      </div>
+      <div>
+        <div class="cd-ch-t" data-bind="text: $vm.t('cd.apTrend')"></div>
+        <!-- ko if: (apTrend || []).length --><canvas id="cdTrend" height="230"></canvas><!-- /ko -->
+        <!-- ko ifnot: (apTrend || []).length --><div class="empty-state" data-bind="text: $vm.t('cd.noAp')"></div><!-- /ko -->
+      </div>
+      <div>
+        <div class="cd-ch-t" data-bind="text: $vm.t('cd.bySector')"></div>
+        <canvas id="cdSector" height="230"></canvas>
+      </div>
+    </div>
+    <!-- ko ifnot: kpis.supplierRefs > 0 -->
+    <div class="pr-note" data-bind="text: $vm.t('cd.noSupplierRef')"></div>
+    <!-- /ko -->
+  </div>
+
+  <!-- ── Contracts + payroll cost by cost center ──────────────────────── -->
+  <div class="pr-2col">
+    <div class="card ap-region">
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('cd.contracts')"></div>
+      </div>
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('cd.contractNo')"></th>
+          <th data-bind="text: $vm.t('cd.status')"></th>
+          <th data-bind="text: $vm.t('cd.dates')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('cd.daysLeft')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('cd.marginRules')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: contracts">
+          <tr class="ap-row-click" data-bind="click: function(){ $vm.openContract($data); }">
+            <td data-bind="text: contractNo + ' v' + versionNo"></td>
+            <td data-bind="text: status"></td>
+            <td data-bind="text: ($data.dateFrom || '—') + ' → ' + ($data.dateTo || '—')"></td>
+            <td class="ap-amount" data-bind="text: $data.daysLeft == null ? '—' : $data.daysLeft"></td>
+            <td class="ap-amount" data-bind="text: $data.marginRules"></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <!-- ko ifnot: (contracts || []).length -->
+      <div class="empty-state" data-bind="text: $vm.t('cd.noContracts')"></div>
+      <!-- /ko -->
+    </div>
+
+    <div class="card ap-region">
+      <div class="section-heading-row">
+        <div class="section-heading ap-rh" data-bind="text: $vm.t('cd.costByCc')"></div>
+      </div>
+      <div class="data-table-wrap" style="max-height:300px;overflow:auto"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('cd.costCenter')"></th>
+          <th data-bind="text: $vm.t('cd.sector')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('cd.kHeadcount')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('cd.gross')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach: costByCc">
+          <tr>
+            <td data-bind="text: costCenter"></td>
+            <td data-bind="text: $data.label || ''"></td>
+            <td class="ap-amount" data-bind="text: $vm.num($data.headcount)"></td>
+            <td class="ap-amount" data-bind="text: $vm.money($data.gross)"></td>
+          </tr>
+        </tbody>
+      </table></div>
+      <div class="pr-note" data-bind="text: $vm.t('cd.costByCcNote')"></div>
+    </div>
+  </div>
+
+  <!-- ── AP invoices ──────────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('cd.invoices')"></span>
+        <span style="font-weight:400;font-size:12px;color:var(--text-2)"
+              data-bind="text: $vm.num(kpis.invoiceCount) + ' ' + $vm.t('cd.rows') + ' · ' +
+                         $vm.t('cd.invoicedTot') + ' ' + $vm.money(kpis.totalInvoiced) + ' · ' +
+                         $vm.t('cd.paid') + ' ' + $vm.money(kpis.totalPaid)"></span>
+      </div>
+    </div>
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('cd.invoiceNo')"></th>
+        <th data-bind="text: $vm.t('cd.date')"></th>
+        <th data-bind="text: $vm.t('cd.type')"></th>
+        <th data-bind="text: $vm.t('cd.validation')"></th>
+        <th data-bind="text: $vm.t('cd.paymentStatus')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('cd.amountAed')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('cd.paidAed')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: invoices">
+        <tr>
+          <td data-bind="text: $data.invoiceNumber"></td>
+          <td data-bind="text: $data.invoiceDate"></td>
+          <td data-bind="text: $data.type"></td>
+          <td data-bind="text: $data.validation"></td>
+          <td data-bind="text: $data.paymentStatus"></td>
+          <td class="ap-amount" data-bind="text: $vm.money($data.amount)"></td>
+          <td class="ap-amount" data-bind="text: $vm.money($data.paid)"></td>
+        </tr>
+      </tbody>
+    </table></div>
+    <!-- ko ifnot: (invoices || []).length -->
+    <div class="empty-state" data-bind="text: $vm.t('cd.noAp')"></div>
+    <!-- /ko -->
+    <div class="pr-note" data-bind="text: $vm.t('cd.invoiceNote')"></div>
+  </div>
+
+  <!-- ── Employees ────────────────────────────────────────────────────── -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('cd.employees')"></span>
+        <span style="font-weight:400;font-size:12px;color:var(--text-2)"
+              data-bind="text: $vm.num(employeesTotal) + ' ' + $vm.t('cd.rows')
+                       + ((employees || []).length < employeesTotal
+                          ? ' · ' + $vm.t('cd.topN').replace('{n}', (employees || []).length) : '')"></span>
+      </div>
+      <div class="region-actions">
+        <button class="btn btn-secondary btn-sm" data-bind="click: $vm.goEmployees, text: $vm.t('cd.openEmployees')"></button>
+      </div>
+    </div>
+    <div class="data-table-wrap" style="max-height:420px;overflow:auto"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('cd.empNo')"></th>
+        <th data-bind="text: $vm.t('cd.name')"></th>
+        <th data-bind="text: $vm.t('cd.jobTitle')"></th>
+        <th data-bind="text: $vm.t('cd.sector')"></th>
+        <th data-bind="text: $vm.t('cd.costCenter')"></th>
+        <th data-bind="text: $vm.t('cd.grade')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('cd.gross')"></th>
+      </tr></thead>
+      <tbody data-bind="foreach: employees">
+        <tr>
+          <td data-bind="text: $data.employeeNumber"></td>
+          <td data-bind="text: $data.name"></td>
+          <td data-bind="text: $data.jobTitle || '—'"></td>
+          <td data-bind="text: $data.sector || '—'"></td>
+          <td data-bind="text: $data.costCenter || '—'"></td>
+          <td data-bind="text: $data.gradeCode || '—'"></td>
+          <td class="ap-amount" data-bind="text: $vm.money($data.gross)"></td>
+        </tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <!-- /ko -->
+  <!-- /ko -->
+</div>

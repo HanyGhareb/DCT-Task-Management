@@ -13,6 +13,7 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 - `exportCsv()` — CSV of the visible register (UTF-8 BOM).
 - `toggleTable()` / `toggleTableMax()` — region collapse / maximize.
 - `openNew()` / `openEdit(row)` — company drawer (Profile / Supplier References / Documents tabs; suppliers+docs enabled after first save).
+- `openDash(row)` — **Dashboard column (2026-08-09, v1.7.0)**: opens the `companyDash` executive page for the row's company.
 - `save()` — create/update via POST/PUT companies (validation errors surfaced in-drawer).
 - Supplier references: `supNew()` / `supEdit(s)` / `supPick(lovItem)` (type-ahead over the Fusion supplier extract, auto-fills bank details) / `supSave()` / `supCancel()` / `supToggleDefault()` (one default per purpose).
 - Documents: `docUpload()` (raw-binary, MAX_UPLOAD_MB), `docView(d)`, `docDelete(d)`, `loadDocs()`.
@@ -37,6 +38,9 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 - Documents: `loadEmpDocs()` (docs + 6-type checklist), `docUpload()` (type + expiry pickers), `docView(d)`, `docDelete(d)`.
 - Lifecycle: `lcStart(action)` / `lcSubmit()` / `lcCancel()` — Transfer / Suspend / Resume / Terminate / Rehire sub-form (effective date + reason + notes, target company for transfer/rehire); `lcAvailable` derives valid actions from record state; event trail table.
 - Bulk upload: `bulkTemplate()` (SheetJS .xlsx template), `bulkChoose()` → parse → chunked `employees/bulk` full upsert → per-row CREATED/UPDATED/ERROR results + summary.
+
+## Company Dashboard (`companyDash`, 2026-08-09)
+- Per-company executive view over `GET /pay/companies/:id/dashboard` (one envelope): KPI band (headcount / active contracts / latest-run gross + company charges / AP invoice count / total paid / outstanding), executive summary (owners, risk, latest score, compliance alerts, contacts), latest-run card + 12-run history, 3 Chart.js charts (AP paid by cost center · invoiced-vs-paid 12-month trend · headcount by sector), contracts table (days-left, margin-rule count; row → Contracts drawer deep-link), latest-15 Fusion AP invoices w/ full-set totals, payroll-cost-by-CC table, employees list (cap 200) + Open Employees/Runs shortcuts. AP data matched on the company's ACTIVE supplier references; no-reference companies get an add-a-reference hint.
 
 ## Payroll Runs (Phase 3 — run console)
 - Payroll + period pickers (period options show the existing run status); `openRun()` — open or create the period's REGULAR run.
@@ -82,6 +86,7 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | GET | lov/supplier-banks?registryid= | Bank accounts of a Fusion supplier (ATD_SUPPLIER_BANK_ACCOUNTS) — Phase 1.1 |
 | GET | lov/payment | Payment LOVs from the AP installments extract: paymentMethods[] + payGroups[] (ATD_AP_INVOICE_INSTALLMENTS) + paymentTerms[] (ATD_AP_INVOICES) |
 | GET/PUT | companies/:id/governance | Owners, contacts, compliance, scores (Phase 1.1) |
+| GET | companies/:id/dashboard | Company executive dashboard: KPIs, employees, contracts, Fusion AP invoices + paid-by-cost-center (via supplier refs), run history — 2026-08-09 |
 | POST | companies/:id/contacts · PUT contacts/:id | Company contacts CRUD (Phase 1.1) |
 | POST | companies/:id/compliance · PUT compliance/:id | Compliance items CRUD (Phase 1.1) |
 | POST | companies/:id/scores | Performance scorecard entry (Phase 1.1) |

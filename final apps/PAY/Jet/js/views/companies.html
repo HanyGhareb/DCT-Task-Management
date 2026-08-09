@@ -60,6 +60,7 @@
         <th data-bind="text: $vm.t('co.contact')"></th>
         <th class="ap-amount" data-bind="text: $vm.t('co.suppliers')"></th>
         <th class="ap-amount" data-bind="text: $vm.t('co.contracts')"></th>
+        <th data-bind="text: $vm.t('co.dashboard')"></th>
       </tr></thead>
       <tbody><!-- ko foreach: rows -->
         <tr class="ap-row-click" data-bind="click: function(){ $vm.openEdit($data); }">
@@ -71,6 +72,9 @@
           <td class="ap-clip" data-bind="text: $data.contactName || ''"></td>
           <td class="ap-amount" data-bind="text: supplierRefs"></td>
           <td class="ap-amount" data-bind="text: activeContracts"></td>
+          <td><button class="btn btn-secondary btn-sm"
+                      data-bind="click: function(){ $vm.openDash($data); }, clickBubble: false,
+                                 text: $vm.t('co.dashboard')"></button></td>
         </tr>
       <!-- /ko --></tbody>
     </table></div>

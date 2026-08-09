@@ -14,6 +14,15 @@ CREATE OR REPLACE SYNONYM dct_pay_doc_rule FOR prod.dct_pay_doc_rule;
 CREATE OR REPLACE SYNONYM dct_pay_data_quality_v FOR prod.dct_pay_data_quality_v;
 CREATE OR REPLACE SYNONYM atd_supplier_sites FOR prod.atd_supplier_sites;
 CREATE OR REPLACE SYNONYM atd_supplier_bank_accounts FOR prod.atd_supplier_bank_accounts;
+-- company dashboard (2026-08-09) reads Phase 2/3 objects - keep 08 self-contained
+CREATE OR REPLACE SYNONYM dct_pay_assignment FOR prod.dct_pay_assignment;
+CREATE OR REPLACE SYNONYM dct_employees FOR prod.dct_employees;
+CREATE OR REPLACE SYNONYM dct_pay_payroll FOR prod.dct_pay_payroll;
+CREATE OR REPLACE SYNONYM dct_pay_period FOR prod.dct_pay_period;
+CREATE OR REPLACE SYNONYM dct_pay_run FOR prod.dct_pay_run;
+CREATE OR REPLACE SYNONYM dct_pay_run_emp FOR prod.dct_pay_run_emp;
+CREATE OR REPLACE SYNONYM dct_pay_margin_rule FOR prod.dct_pay_margin_rule;
+CREATE OR REPLACE SYNONYM dct_users FOR prod.dct_users;
 
 CREATE OR REPLACE PROCEDURE setup_pay_p11_ords_tmp AS
   c_mod CONSTANT VARCHAR2(30):='pay.rest';
@@ -220,6 +229,235 @@ DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;
 BEGIN IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;APEX_JSON.open_array('items');
  FOR r IN(SELECT ct.contract_id,ct.contract_no,co.company_code,co.name_en,ct.date_to,ct.renewal_status,ct.contract_owner_user_id,TRUNC(ct.date_to)-TRUNC(SYSDATE) days_left FROM dct_pay_contract ct JOIN dct_pay_company co ON co.company_id=ct.company_id WHERE ct.status='ACTIVE' AND ct.date_to IS NOT NULL AND ct.date_to<=TRUNC(SYSDATE)+180 ORDER BY ct.date_to) LOOP APEX_JSON.open_object;APEX_JSON.write('contractId',r.contract_id);APEX_JSON.write('contractNo',r.contract_no);APEX_JSON.write('companyCode',r.company_code);APEX_JSON.write('company',r.name_en);APEX_JSON.write('dateTo',TO_CHAR(r.date_to,'YYYY-MM-DD'));APEX_JSON.write('daysLeft',r.days_left);APEX_JSON.write('renewalStatus',NVL(r.renewal_status,'NOT_STARTED'));APEX_JSON.write('ownerId',r.contract_owner_user_id);APEX_JSON.close_object;END LOOP;
  APEX_JSON.close_array;APEX_JSON.close_object;EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM);END;!');
+
+  -- company executive dashboard (2026-08-09): KPIs + employees + contracts +
+  -- Fusion AP invoices (via the company supplier references) + paid-by-cost-
+  -- center allocation + payroll run history. Every derived value is computed
+  -- in a cursor or SELECT INTO (never as an APEX_JSON.write argument).
+  tpl('companies/[COLON]id/dashboard');
+  h('companies/[COLON]id/dashboard','GET',q'!
+DECLARE l_user VARCHAR2(100):=dct_rest.validate_session;
+ l_id NUMBER:=TO_NUMBER([COLON]id);
+ l_n NUMBER;l_emp NUMBER;l_ctr NUMBER;l_sup NUMBER;
+ l_icnt NUMBER;l_itot NUMBER;l_ipaid NUMBER;l_iytd NUMBER;
+ l_comp_open NUMBER;l_last_run NUMBER;
+BEGIN
+ IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
+ SELECT COUNT(*) INTO l_n FROM dct_pay_company WHERE company_id=l_id;
+ IF l_n=0 THEN dct_rest.err(404,'Company not found');RETURN;END IF;
+ SELECT COUNT(*) INTO l_emp FROM dct_pay_assignment
+ WHERE company_id=l_id AND assignment_type='PRIMARY' AND status='ACTIVE';
+ SELECT COUNT(*) INTO l_ctr FROM dct_pay_contract
+ WHERE company_id=l_id AND status='ACTIVE' AND is_active='Y';
+ SELECT COUNT(*) INTO l_sup FROM dct_pay_company_supplier
+ WHERE company_id=l_id AND is_active='Y';
+ SELECT COUNT(*) INTO l_comp_open FROM dct_pay_compliance_item
+ WHERE company_id=l_id AND is_active='Y'
+   AND (status NOT IN('VALID','COMPLIANT') OR NVL(expiry_date,DATE '9999-12-31')<TRUNC(SYSDATE)+NVL(alert_days,30));
+ SELECT COUNT(*),NVL(SUM(t.aed),0),NVL(SUM(t.paid_aed),0),
+        NVL(SUM(CASE WHEN t.invoice_date>=TRUNC(SYSDATE,'YYYY') THEN t.paid_aed END),0)
+ INTO l_icnt,l_itot,l_ipaid,l_iytd
+ FROM (SELECT h.invoice_date,NVL(h.invoice_amount_aed,0) aed,
+              NVL(h.amount_paid,0)*CASE WHEN NVL(h.invoice_amount,0)=0 THEN 0
+                   ELSE NVL(h.invoice_amount_aed,0)/h.invoice_amount END paid_aed
+       FROM prod.ap_invoices_header_v h
+       WHERE h.cancelled_date IS NULL
+         AND TO_CHAR(h.supplier_number) IN
+             (SELECT TO_CHAR(supplier_number) FROM dct_pay_company_supplier
+              WHERE company_id=l_id AND is_active='Y')) t;
+ dct_rest.json_header;APEX_JSON.initialize_output;APEX_JSON.open_object;
+ FOR c IN(SELECT c.*,
+            (SELECT u.display_name FROM dct_users u WHERE u.user_id=c.contract_owner_user_id) ow_contract,
+            (SELECT u.display_name FROM dct_users u WHERE u.user_id=c.business_owner_user_id) ow_business,
+            (SELECT u.display_name FROM dct_users u WHERE u.user_id=c.payroll_owner_user_id) ow_payroll,
+            (SELECT u.display_name FROM dct_users u WHERE u.user_id=c.finance_owner_user_id) ow_finance
+          FROM dct_pay_company c WHERE c.company_id=l_id) LOOP
+  APEX_JSON.write('companyId',c.company_id);APEX_JSON.write('code',c.company_code);
+  APEX_JSON.write('nameEn',c.name_en);APEX_JSON.write('nameAr',NVL(c.name_ar,''));
+  APEX_JSON.write('category',NVL(c.category,''));APEX_JSON.write('status',c.status);
+  APEX_JSON.write('trn',NVL(c.trn,''));APEX_JSON.write('riskRating',NVL(c.risk_rating,''));
+  APEX_JSON.write('ownerContract',NVL(c.ow_contract,''));
+  APEX_JSON.write('ownerBusiness',NVL(c.ow_business,''));
+  APEX_JSON.write('ownerPayroll',NVL(c.ow_payroll,''));
+  APEX_JSON.write('ownerFinance',NVL(c.ow_finance,''));
+ END LOOP;
+ APEX_JSON.open_object('kpis');
+ APEX_JSON.write('headcount',l_emp);APEX_JSON.write('activeContracts',l_ctr);
+ APEX_JSON.write('supplierRefs',l_sup);APEX_JSON.write('complianceAlerts',l_comp_open);
+ APEX_JSON.write('invoiceCount',l_icnt);APEX_JSON.write('totalInvoiced',ROUND(l_itot,2));
+ APEX_JSON.write('totalPaid',ROUND(l_ipaid,2));
+ APEX_JSON.write('outstanding',ROUND(l_itot-l_ipaid,2));
+ APEX_JSON.write('paidYtd',ROUND(l_iytd,2));
+ APEX_JSON.close_object;
+ APEX_JSON.open_object('latestRun');
+ FOR r IN(SELECT r.run_id,r.status,pe.period_code,r.emp_count,r.total_gross,r.total_net,
+                 r.total_employer_cost,r.total_charges,p.payroll_code
+          FROM dct_pay_run r
+          JOIN dct_pay_payroll p ON p.payroll_id=r.payroll_id
+          JOIN dct_pay_period pe ON pe.period_id=r.period_id
+          WHERE p.company_id=l_id AND r.status IN('CALCULATED','REVIEWED')
+          ORDER BY pe.date_from DESC FETCH FIRST 1 ROWS ONLY) LOOP
+  l_last_run:=r.run_id;
+  APEX_JSON.write('period',r.period_code);APEX_JSON.write('payroll',r.payroll_code);
+  APEX_JSON.write('status',r.status);APEX_JSON.write('empCount',r.emp_count);
+  APEX_JSON.write('gross',r.total_gross);APEX_JSON.write('net',r.total_net);
+  APEX_JSON.write('employerCost',r.total_employer_cost);APEX_JSON.write('charges',r.total_charges);
+ END LOOP;
+ APEX_JSON.close_object;
+ APEX_JSON.open_array('contacts');
+ FOR r IN(SELECT * FROM dct_pay_company_contact
+          WHERE company_id=l_id AND is_active='Y' ORDER BY is_primary DESC,contact_name) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('name',r.contact_name);APEX_JSON.write('type',NVL(r.contact_type,''));
+  APEX_JSON.write('jobTitle',NVL(r.job_title,''));APEX_JSON.write('email',NVL(r.email,''));
+  APEX_JSON.write('phone',NVL(r.phone,''));APEX_JSON.write('isPrimary',r.is_primary);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_object('score');
+ FOR r IN(SELECT * FROM dct_pay_company_score WHERE company_id=l_id
+          ORDER BY period_to DESC NULLS LAST,score_id DESC FETCH FIRST 1 ROWS ONLY) LOOP
+  APEX_JSON.write('overall',r.overall_score);APEX_JSON.write('timeliness',r.payroll_timeliness);
+  APEX_JSON.write('invoiceAccuracy',r.invoice_accuracy);APEX_JSON.write('compliance',r.compliance_score);
+  APEX_JSON.write('sla',r.sla_score);APEX_JSON.write('risk',NVL(r.risk_rating,''));
+  APEX_JSON.write('periodTo',NVL(TO_CHAR(r.period_to,'YYYY-MM-DD'),''));
+ END LOOP;
+ APEX_JSON.close_object;
+ APEX_JSON.open_array('contracts');
+ FOR r IN(SELECT ct.*,TRUNC(ct.date_to)-TRUNC(SYSDATE) days_left,
+                 (SELECT COUNT(*) FROM dct_pay_margin_rule m
+                  WHERE m.contract_id=ct.contract_id AND m.is_active='Y') rule_cnt
+          FROM dct_pay_contract ct WHERE ct.company_id=l_id
+          ORDER BY CASE ct.status WHEN 'ACTIVE' THEN 0 WHEN 'DRAFT' THEN 1 ELSE 2 END,
+                   ct.version_no DESC) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('contractId',r.contract_id);APEX_JSON.write('contractNo',r.contract_no);
+  APEX_JSON.write('title',NVL(r.title_en,''));APEX_JSON.write('status',r.status);
+  APEX_JSON.write('versionNo',r.version_no);
+  APEX_JSON.write('dateFrom',NVL(TO_CHAR(r.date_from,'YYYY-MM-DD'),''));
+  APEX_JSON.write('dateTo',NVL(TO_CHAR(r.date_to,'YYYY-MM-DD'),''));
+  APEX_JSON.write('daysLeft',r.days_left);
+  APEX_JSON.write('contractValue',r.contract_value);APEX_JSON.write('annualValue',r.annual_value);
+  APEX_JSON.write('approvedHeadcount',r.approved_headcount);
+  APEX_JSON.write('marginRules',r.rule_cnt);APEX_JSON.write('vatRate',r.vat_rate);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.write('employeesTotal',l_emp);
+ APEX_JSON.open_array('employees');
+ FOR r IN(SELECT em.employee_number,em.full_name_en,a.job_title,a.sector_name,
+                 a.department_name,a.cost_center_code,a.grade_code,
+                 NVL(a.gross_salary,NVL(a.basic_salary,0)+NVL(a.allowance_amount,0)) gross
+          FROM dct_pay_assignment a
+          JOIN dct_employees em ON em.person_id=a.person_id
+          WHERE a.company_id=l_id AND a.assignment_type='PRIMARY' AND a.status='ACTIVE'
+          ORDER BY em.employee_number FETCH FIRST 200 ROWS ONLY) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('employeeNumber',NVL(r.employee_number,''));
+  APEX_JSON.write('name',NVL(r.full_name_en,''));
+  APEX_JSON.write('jobTitle',NVL(r.job_title,''));APEX_JSON.write('sector',NVL(r.sector_name,''));
+  APEX_JSON.write('costCenter',NVL(r.cost_center_code,''));
+  APEX_JSON.write('gradeCode',NVL(r.grade_code,''));APEX_JSON.write('gross',r.gross);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('bySector');
+ FOR r IN(SELECT NVL(a.sector_name,'(none)') sec,COUNT(*) cnt,
+                 ROUND(SUM(NVL(a.gross_salary,NVL(a.basic_salary,0)+NVL(a.allowance_amount,0))),2) gross
+          FROM dct_pay_assignment a
+          WHERE a.company_id=l_id AND a.assignment_type='PRIMARY' AND a.status='ACTIVE'
+          GROUP BY a.sector_name ORDER BY 2 DESC) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('sector',r.sec);APEX_JSON.write('headcount',r.cnt);APEX_JSON.write('gross',r.gross);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('invoices');
+ FOR r IN(SELECT h.invoice_id,h.invoice_number,h.invoice_type,h.invoice_date,h.invoice_status,
+                 h.validation_status,h.payment_status,NVL(h.invoice_amount_aed,0) aed,
+                 NVL(h.amount_paid,0)*CASE WHEN NVL(h.invoice_amount,0)=0 THEN 0
+                      ELSE NVL(h.invoice_amount_aed,0)/h.invoice_amount END paid_aed
+          FROM prod.ap_invoices_header_v h
+          WHERE h.cancelled_date IS NULL
+            AND TO_CHAR(h.supplier_number) IN
+                (SELECT TO_CHAR(supplier_number) FROM dct_pay_company_supplier
+                 WHERE company_id=l_id AND is_active='Y')
+          ORDER BY h.invoice_date DESC,h.invoice_id DESC FETCH FIRST 15 ROWS ONLY) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('invoiceId',r.invoice_id);APEX_JSON.write('invoiceNumber',NVL(r.invoice_number,''));
+  APEX_JSON.write('type',NVL(r.invoice_type,''));
+  APEX_JSON.write('invoiceDate',NVL(TO_CHAR(r.invoice_date,'YYYY-MM-DD'),''));
+  APEX_JSON.write('status',NVL(r.invoice_status,''));
+  APEX_JSON.write('validation',NVL(r.validation_status,''));
+  APEX_JSON.write('paymentStatus',NVL(r.payment_status,''));
+  APEX_JSON.write('amount',ROUND(r.aed,2));APEX_JSON.write('paid',ROUND(r.paid_aed,2));
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('paidByCc');
+ FOR r IN(SELECT cc,ROUND(SUM(alloc),2) paid,
+                 (SELECT MIN(a.sector_name) FROM dct_pay_assignment a
+                  WHERE a.cost_center_code=t.cc) lbl
+          FROM (SELECT NVL(REGEXP_SUBSTR(prod.dct_cc_canon(d.charge_account),'[^.]+',1,3),'(none)') cc,
+                       NVL(d.distribution_amount_aed,0)*
+                       CASE WHEN NVL(h.invoice_amount,0)=0 THEN 0
+                            ELSE NVL(h.amount_paid,0)/h.invoice_amount END alloc
+                FROM prod.ap_invoice_distributions_v d
+                JOIN prod.ap_invoices_header_v h ON h.invoice_id=d.invoice_id
+                WHERE h.cancelled_date IS NULL
+                  AND d.distribution_type NOT IN('Recoverable tax','Nonrecoverable tax')
+                  AND TO_CHAR(h.supplier_number) IN
+                      (SELECT TO_CHAR(supplier_number) FROM dct_pay_company_supplier
+                       WHERE company_id=l_id AND is_active='Y')) t
+          GROUP BY cc HAVING ABS(SUM(alloc))>0.005
+          ORDER BY 2 DESC FETCH FIRST 15 ROWS ONLY) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('costCenter',r.cc);APEX_JSON.write('label',NVL(r.lbl,''));
+  APEX_JSON.write('paid',r.paid);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('apTrend');
+ FOR r IN(SELECT TO_CHAR(TRUNC(h.invoice_date,'MM'),'YYYY-MM') mth,
+                 ROUND(SUM(NVL(h.invoice_amount_aed,0)),2) invoiced,
+                 ROUND(SUM(NVL(h.amount_paid,0)*CASE WHEN NVL(h.invoice_amount,0)=0 THEN 0
+                       ELSE NVL(h.invoice_amount_aed,0)/h.invoice_amount END),2) paid
+          FROM prod.ap_invoices_header_v h
+          WHERE h.cancelled_date IS NULL
+            AND h.invoice_date>=ADD_MONTHS(TRUNC(SYSDATE,'MM'),-11)
+            AND TO_CHAR(h.supplier_number) IN
+                (SELECT TO_CHAR(supplier_number) FROM dct_pay_company_supplier
+                 WHERE company_id=l_id AND is_active='Y')
+          GROUP BY TRUNC(h.invoice_date,'MM') ORDER BY 1) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('month',r.mth);APEX_JSON.write('invoiced',r.invoiced);APEX_JSON.write('paid',r.paid);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('runs');
+ FOR r IN(SELECT pe.period_code,p.payroll_code,r.status,r.emp_count,r.exception_count,
+                 r.total_gross,r.total_charges
+          FROM dct_pay_run r
+          JOIN dct_pay_payroll p ON p.payroll_id=r.payroll_id
+          JOIN dct_pay_period pe ON pe.period_id=r.period_id
+          WHERE p.company_id=l_id
+          ORDER BY pe.date_from DESC FETCH FIRST 12 ROWS ONLY) LOOP
+  APEX_JSON.open_object;
+  APEX_JSON.write('period',r.period_code);APEX_JSON.write('payroll',r.payroll_code);
+  APEX_JSON.write('status',r.status);APEX_JSON.write('empCount',r.emp_count);
+  APEX_JSON.write('exceptions',r.exception_count);
+  APEX_JSON.write('gross',r.total_gross);APEX_JSON.write('charges',r.total_charges);
+  APEX_JSON.close_object;
+ END LOOP;APEX_JSON.close_array;
+ APEX_JSON.open_array('costByCc');
+ IF l_last_run IS NOT NULL THEN
+  FOR r IN(SELECT NVL(re.cost_center_code,'(none)') cc,MIN(re.sector_name) lbl,
+                  COUNT(*) cnt,ROUND(SUM(NVL(re.gross,0)),2) gross
+           FROM dct_pay_run_emp re WHERE re.run_id=l_last_run
+           GROUP BY re.cost_center_code
+           ORDER BY 4 DESC FETCH FIRST 15 ROWS ONLY) LOOP
+   APEX_JSON.open_object;
+   APEX_JSON.write('costCenter',r.cc);APEX_JSON.write('label',NVL(r.lbl,''));
+   APEX_JSON.write('headcount',r.cnt);APEX_JSON.write('gross',r.gross);
+   APEX_JSON.close_object;
+  END LOOP;
+ END IF;
+ APEX_JSON.close_array;
+ APEX_JSON.close_object;
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500,SQLERRM);END;!');
   COMMIT;
 END setup_pay_p11_ords_tmp;
 /

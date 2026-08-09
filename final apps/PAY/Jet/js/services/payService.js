@@ -154,6 +154,7 @@ define(['services/api', 'services/config'], function (api, config) {
     },
     deleteDoc: function (docId)    { return api.delete('/docs/' + docId); },
     docFileUrl: function (docId)   { return api.fetchBlobUrl('/docs/' + docId + '/file'); },
+    getCompanyDash: function (id) { return api.get('/companies/' + id + '/dashboard'); },
     getDataQuality: function () { return api.get('/governance/data-quality'); },
     getRenewals: function () { return api.get('/governance/renewals'); },
   };

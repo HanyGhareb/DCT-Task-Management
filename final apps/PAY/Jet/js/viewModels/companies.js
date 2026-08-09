@@ -155,6 +155,10 @@ function (ko, payService, authService, i18n, docUpload) {
       self.dwOpen(true);
     };
 
+    self.openDash = function (row) {
+      if (window._jetApp) window._jetApp.navigate('companyDash', { dashCompanyId: row.companyId });
+    };
+
     self.openEdit = function (row) {
       self.dwError(''); self.dwOk(''); self.tab('profile'); self.supEditing(false);
       payService.getCompany(row.companyId).then(function (d) {
