@@ -580,8 +580,8 @@
     /* ── Override Budget (budget_user) ── */
     buOvrConsider:{en:'Consider Override Budget',ar:'اعتماد الموازنة المعدّلة'},
     buOvrHint:{en:'When on, every budget figure on this page (Annual / YTD Budget, Fund Available, Utilization) uses the user Override Budget where one exists, otherwise the Fusion budget.',ar:'عند التفعيل تُحتسب كل أرقام الموازنة في هذه الصفحة (الموازنة السنوية / منذ بداية السنة والمتاح ونسبة الاستخدام) بالموازنة المعدّلة من المستخدم إن وُجدت، وإلا فبموازنة فيوجن.'},
-    buOvrOn:{en:'Applied',ar:'مفعّل'},
-    buOvrOff:{en:'Off',ar:'غير مفعّل'},
+    buOvrOn:{en:'Budget Override included',ar:'الموازنة المعدّلة مضمّنة'},
+    buOvrOff:{en:'Select to include Budget Override',ar:'حدد لتضمين الموازنة المعدّلة'},
     cOverrideBudget:{en:'Override Budget',ar:'الموازنة المعدّلة'},
     ovLinesN:{en:'{n} overridden lines',ar:'{n} بند معدّل'},
     ovApplied:{en:'applied to figures',ar:'مطبّقة على الأرقام'},
@@ -1593,7 +1593,20 @@
     self.buTypes = ko.observableArray([]);
     self.buSectors = ko.observableArray([]);
     self.buChapters = ko.observableArray([]);
-    self.buYear = ko.observable(''); self.buType = ko.observable(''); self.buSector = ko.observable('');
+    self.buYear = ko.observable(''); self.buSector = ko.observable('');
+    /* Project Type is MULTI-SELECT (2026-08-09): picks become chips; buType
+       stays as a computed returning the pipe-joined any-of list so every
+       existing sender (butil / encumbrances / pending / report bridges)
+       keeps working unchanged. */
+    self.buTypeSel = ko.observableArray([]);
+    self.buTypePick = ko.observable('');
+    self.buType = ko.computed(function () { return self.buTypeSel().join('|'); });
+    self.buTypeAdd = function () {
+      var v = self.buTypePick();
+      if (v && self.buTypeSel.indexOf(v) < 0) self.buTypeSel.push(v);
+      self.buTypePick('');
+      return true;
+    };
     self.buCc = ko.observable(''); self.buProject = ko.observable('');
     self.buTask = ko.observable(''); self.buEtype = ko.observable('');
     self.buSearch = ko.observable('');
@@ -1715,7 +1728,7 @@
         self.buProgramList(d.programs || []);
         // KO nulls a <select> value when options were empty at bind time; re-assert.
         if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
-        if (!self.buType() && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buType(BU_DEFAULT_TYPE);
+        if (!self.buTypeSel().length && (d.projectTypes || []).indexOf(BU_DEFAULT_TYPE) >= 0) self.buTypeSel([BU_DEFAULT_TYPE]);
         // default Business Unit to DCT on first load (only if the user hasn't picked one)
         if (!self.buBuSel().length && (d.businessUnits || []).indexOf(BU_DEFAULT_UNIT) >= 0) self.buBuSel([BU_DEFAULT_UNIT]);
         self.buPeriod(buDefaultPeriod(self.buYear()));
@@ -1768,7 +1781,7 @@
     self.openBuMissCc = function () {
       self.drillTitle(self.t('buMissCcDrill'));
       self.drillSub(self.t('buAllLines') + ' · ' + self.buYear());
-      self.drillCtx([self.buType(), self.buSector(), self.buChapterParam().split('|').join(', '),
+      self.drillCtx([self.buType().split('|').join(', '), self.buSector(), self.buChapterParam().split('|').join(', '),
         self.buProjParam().split('|').join(', '), self.buTask(), self.buEtype(),
         self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
@@ -1790,7 +1803,8 @@
       }).catch(drillFail);
     };
     self.buReset = function () {
-      self.buType(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? BU_DEFAULT_TYPE : '');
+      self.buTypeSel(self.buTypes().indexOf(BU_DEFAULT_TYPE) >= 0 ? [BU_DEFAULT_TYPE] : []);
+      self.buTypePick('');
       self.buSector(''); self.buSearch(''); self.buApprop(''); self.buProgram('');
       self.buChapterSel.removeAll(); self.buCcSel.removeAll(); self.buProjSel.removeAll();
       self.buChapterPick('');
@@ -2614,7 +2628,7 @@
       // the annual-budget drill ignores the period window — label it by year
       self.drillSub(self.t('buAllLines') + ' · ' + (metric !== 'budgetannual' && self.buPeriod()
         ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
-      self.drillCtx([self.buType(), self.buSector(), self.buChapterParam().split('|').join(', '),
+      self.drillCtx([self.buType().split('|').join(', '), self.buSector(), self.buChapterParam().split('|').join(', '),
         self.buCcParam().split('|').join(', '), self.buProjParam().split('|').join(', '), self.buTask(), self.buEtype(),
         self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);

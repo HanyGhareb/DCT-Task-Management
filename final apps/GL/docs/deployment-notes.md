@@ -29,6 +29,46 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-08-10 (b) — Web-tier release `20260811004936` pushed**: GL v1.60.0 live (verified
+  `buTypeSel`/`buTypeAdd` + the new override checkbox label served). SAME SESSION: **manual
+  ATD_PROJECTS_BUDGET reload** (user-extracted `temp-data/PROJECTS_BUDGET_PERIODS.csv` —
+  OTBI slow-performance workaround): backup `atd_projects_budget_bak0811` kept, staging-table
+  load (SQLcl LOAD, 1,896/1,896 rows) + transactional DELETE/INSERT swap verified before
+  COMMIT (1,896 rows / 7,642,950,825 / 12 accounting periods; 15 Excel `'`-prefixed numerics
+  cleaned in preprocess), then `dct_budget_masters_sync` (**needs `ALTER SESSION DISABLE
+  PARALLEL DML` when it actually inserts** — auto-parallel DML + the step-2 re-read of
+  dct_projects throws ORA-12839; the nightly job normally inserts 0 rows so it never hit it).
+  Butil API acceptance: 1,734 lines / 7.585B annual (view exclusions account for the gap),
+  MSS 344 / 1.85B intact.
+- **2026-08-10 — Project Type MULTI-SELECT + report-generation 5× speed-up + override
+  checkbox label (GL v1.60.0).** Three user asks:
+  1) **Project Type is multi-select** on Budget Utilization / Projects Encumbrances /
+     Pending Approval (shared `buTypeSel` chips + `buTypePick`; **`buType` stayed as a
+     computed returning the pipe-joined list so every existing sender — buParams, both
+     report bridges, pending bridges — kept working untouched**; default + Reset = the
+     single DCT-OPEX chip). Server: `l_ptype` widened to VARCHAR2(1000) + the exact
+     `v.project_type = l_ptype` predicate → pipe any-of INSTR in **GL/db/07 (×7) / 12 /
+     13 / 15** (deployed via prod_mcp, all 5 handlers verified MULTI) and in the four
+     report definitions **BUDGET_UTIL_BOOK / BUDGET_UTIL_REGISTER / ENC_PENDING_BOOK /
+     ENC_PENDING_REGISTER** (seed files + CLOB surgery, counts verified, JSON valid).
+     Root complaint solved: **MSS Business Unit showed all zeros** because the page's
+     DCT-OPEX default type filter excluded every MSS line (their type =
+     'MSS OPEX Project Type') — MSS BU + both types now returns 344 lines / 1.85B.
+     Smokes: API 6/6 (single 1,380 = unchanged; DCT|MSS = 1,724 union) + browser
+     `butil_type_multi_smoke.py` **9/9**.
+  2) **Report generation 5× faster**: BUDGET_UTIL_REGISTER renders regressed 0.7 → ~3.5
+     min after the Jul-29 sheet-1 enrichment. Per-section timing showed the line sections
+     dominated (grn 81 s / open-po 28 s / ap 18 s): the `l_scope`
+     `IN (SELECT … FROM dct_butil_scope_v s …)` subquery was FILTER-evaluated per row.
+     **Fix = `/*+ UNNEST */` inside the scope IN-subquery** (one textual change to the
+     shared fragment): grn 81→5 s, po 28→4 s, ap 18→4 s, pr 5.6→4 s. Applied to seed
+     files 21/23/24/25 + CLOB surgery on all four stored definitions (BOOK 7 /
+     REGISTER 5 / PENDING_BOOK 7 / PENDING_REGISTER 1 subqueries hinted). Acceptance:
+     live run #281 year-2026 register = **SUCCESS in 40 s wall** (15,653 rows). The
+     Aug-10 morning 17–28-min QUEUE waits were burst-queueing behind 3.5-min renders —
+     they shrink proportionally.
+  3) Butil override checkbox label → **"Select to include Budget Override"** (off) /
+     "Budget Override included" (on), EN+AR (`buOvrOff`/`buOvrOn`).
 - **2026-08-08 (3b) — Web-tier release `20260808143934` pushed**: GL v1.59.0 live; verified
   `APP_VERSION` 1.59.0 + the 16 `buNum(tot(` band bindings and the `mv()` envelope scaler
   served from https://129.151.159.189/.

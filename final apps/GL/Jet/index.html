@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.59.0';</script>
+<script>window.APP_VERSION = '1.60.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -425,8 +425,8 @@
             <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
           <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
             <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
-            <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buTypes, value:buTypePick, optionsCaption:t('allTypes'), event:{change:buTypeAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
           <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
@@ -459,8 +459,11 @@
           </div>
         </div>
         <!-- multi-select chips (Chapter / Cost centre / Project) — one labelled bar -->
-        <div class="mchips mchips-bar" data-bind="visible:buChapterSel().length + buCcSel().length + buProjSel().length + buBuSel().length > 0">
+        <div class="mchips mchips-bar" data-bind="visible:buTypeSel().length + buChapterSel().length + buCcSel().length + buProjSel().length + buBuSel().length > 0">
           <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+          <!-- ko foreach: buTypeSel -->
+          <span class="mchip"><b data-bind="text:$root.t('fTypeL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buTypeSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
           <!-- ko foreach: buChapterSel -->
           <span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buChapterSel,$data)}, clickBubble:false">×</i></span>
           <!-- /ko -->
@@ -770,8 +773,8 @@
             <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
           <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
             <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
-            <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buTypes, value:buTypePick, optionsCaption:t('allTypes'), event:{change:buTypeAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
           <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
@@ -794,8 +797,11 @@
           </div>
         </div>
         <!-- multi-select chips (Chapter / Cost centre / Project) — shared with Budget Utilization -->
-        <div class="mchips mchips-bar" data-bind="visible:buChapterSel().length + buCcSel().length + buProjSel().length + buBuSel().length > 0">
+        <div class="mchips mchips-bar" data-bind="visible:buTypeSel().length + buChapterSel().length + buCcSel().length + buProjSel().length + buBuSel().length > 0">
           <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+          <!-- ko foreach: buTypeSel -->
+          <span class="mchip"><b data-bind="text:$root.t('fTypeL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buTypeSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
           <!-- ko foreach: buChapterSel -->
           <span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buChapterSel,$data)}, clickBubble:false">×</i></span>
           <!-- /ko -->
@@ -875,8 +881,8 @@
             <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
           <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
             <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
-          <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
-            <select class="inp" data-bind="options:buTypes, value:buType, optionsCaption:t('allTypes')"></select></div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <select class="inp" data-bind="options:buTypes, value:buTypePick, optionsCaption:t('allTypes'), event:{change:buTypeAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
           <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
@@ -903,8 +909,11 @@
           </div>
         </div>
         <!-- multi-select chips (Chapter / Cost centre / Project / Business unit) — shared with Budget Utilization -->
-        <div class="mchips mchips-bar" data-bind="visible:buChapterSel().length + buCcSel().length + buProjSel().length + pnBuSel().length > 0">
+        <div class="mchips mchips-bar" data-bind="visible:buTypeSel().length + buChapterSel().length + buCcSel().length + buProjSel().length + pnBuSel().length > 0">
           <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+          <!-- ko foreach: buTypeSel -->
+          <span class="mchip"><b data-bind="text:$root.t('fTypeL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buTypeSel,$data)}, clickBubble:false">×</i></span>
+          <!-- /ko -->
           <!-- ko foreach: buChapterSel -->
           <span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buChapterSel,$data)}, clickBubble:false">×</i></span>
           <!-- /ko -->

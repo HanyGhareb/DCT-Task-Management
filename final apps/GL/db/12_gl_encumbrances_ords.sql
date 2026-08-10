@@ -57,7 +57,7 @@ DECLARE
   l_uid NUMBER := dct_auth.get_user_id(l_user);
   l_secok NUMBER := prod.dct_sec_data.is_unrestricted(l_uid, 'SECTOR');
   l_year    NUMBER        := TO_NUMBER([COLON]year DEFAULT NULL ON CONVERSION ERROR);
-  l_ptype   VARCHAR2(100) := [COLON]projecttype;
+  l_ptype   VARCHAR2(1000) := [COLON]projecttype;
   l_sector  VARCHAR2(200) := [COLON]sector;
   l_chapter VARCHAR2(2000) := [COLON]chapter;
   l_bu      VARCHAR2(2000) := [COLON]bu;
@@ -146,7 +146,7 @@ BEGIN
       SELECT v.project_number pk, NVL(v.task_number,'~') tk, NVL(v.expenditure_type,'~') et
       FROM prod.dct_budget_utilization_v v
       WHERE v.budget_year = l_year
-        AND (l_ptype   IS NULL OR v.project_type = l_ptype)
+        AND (l_ptype   IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
         AND (l_sector  IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
         AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
