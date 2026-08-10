@@ -51,6 +51,15 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 - Results register: server-paged + search + status/group filters (groups shown as Short Code); row click → calculation-lines drawer; `exportCsv()` — payroll register CSV (+ Group Short Code column).
 - Lines drawer invoice-group move (`applyGroup`, PAY_ADMIN, run LOADED/VALIDATED/CALCULATED): select from `run().groupLov`, persists as an INCLUDE override and re-prices company charges immediately.
 
+## Employee Changes (`payChanges`, Phase 3.1 — Change Control register)
+- Payroll + period pickers; `capture()` — snapshot the period's payroll population and diff it against the latest earlier register (first capture of a payroll = BASELINE); recapture confirms and preserves confirmations of identical findings.
+- KPI band: employees in scope / changes / new hires / exits / **gross impact (± AED/month)**.
+- Dual confirmation tracker: HR and Payroll cards with per-side progress bars, `signOff(side)` SIGN/UNSIGN (Payroll requires HR first; register statuses BASELINE → OPEN → HR_CONFIRMED → CONFIRMED).
+- Changes tab: grid grouped by employee (NEW_HIRE/EXIT badges), old→new diff per attribute with numeric delta chips; `confirmOne(item, side)` per item + `confirmAll(side)` bulk (Payroll only after HR); kind/group/pending filters + search.
+- All values tab: full snapshot matrix (previous vs current per attribute, changed flag) on the shared `<interactive-report>` (code `PAY_CHG_ALL`), changed-only checkbox.
+- Register history (per payroll, last 24 periods) + `exportCsv()`.
+- Payroll Runs console shows a **readiness chip** per period (Not captured / n pending / Confirmed ✓) deep-linking here (`goChanges()` on payRuns).
+
 ## Payroll Setup (Phase 3 — PAY_ADMIN)
 - Payrolls table + edit drawer (`pdEdit`/`pdSave`): names, proration basis/divisor, pension base, cut-off/pay day, active; `pdGenPeriods()` — generate a year's monthly calendar.
 - Elements table + drawer (`edNew`/`edEdit`/`edSave`): class/rule/base/percent/rate table/priority/prorate; eligibility links (`edAddLink`/`edToggleLink`). FORMULA rule disabled in Phase 3.
@@ -128,6 +137,14 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | GET | runs/:id/emps · runs/:id/emps/:reid | Paged per-employee results (+search/status/group; rows carry group + groupShort) / calculation lines — Phase 3 |
 | PUT | runs/:id/emps/:reid | Pay-Admin invoice-group move on a LOADED/VALIDATED/CALCULATED run: persists as INCLUDE override + re-prices charges when calculated — 2026-08-09 |
 | GET | runs/:id/export | Payroll register CSV (UTF-8 BOM) — Phase 3 |
+| GET | changes/register?payrollid=&periodid= | Change register head: status + KPIs (new hires/exits/changes/pending per side/gross impact) + sign-offs + canHr/canPay — Phase 3.1 |
+| POST | changes/capture | Capture/recapture the period snapshot + diff (HR or Payroll roles; CONFIRMED registers = Pay Admin only) — Phase 3.1 |
+| GET | changes/:id/items | Confirmable findings (kind/grp/pending/search filters; BANK values masked for non-payroll viewers) — Phase 3.1 |
+| GET | changes/:id/all | Full value matrix current-vs-prior w/ changed flag (grp/search/changed=Y; cap 10k) — Phase 3.1 |
+| POST | changes/:id/confirm | {side HR\|PAY, action CONFIRM\|UNCONFIRM, items ALL\|id-list}; PAY only after HR per item — Phase 3.1 |
+| POST | changes/:id/signoff | {side, action SIGN\|UNSIGN} register attestation; PAY sign requires HR signed — Phase 3.1 |
+| GET | changes/status?payrollid=&periodid= | Readiness chip for the run console (status + pending counts) — Phase 3.1 |
+| GET | changes/registers?payrollid= | Register history (last 24 periods) — Phase 3.1 |
 | GET | docs?type=&id= | Documents of a company/contract (DCT_DOCUMENTS, module PAY) |
 | PUT | docs?type=&id=&file_name=&mime_type= | Raw-binary upload (PAY_ADMIN, MAX_UPLOAD_MB → 413) |
 | DELETE | docs/:docId | Soft-delete a document (PAY_ADMIN) |
@@ -140,4 +157,4 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | `services/api.js` | Re-export of shared fetch wrapper (Bearer + 401 redirect) |
 | `services/authService.js` | Session reader (Admin JET writes the session) |
 | `services/config.js` | apiBase /pay · authBase /dct |
-| Server | `DCT_PAY_PKG` (validated writes + renewal sweep) · `DCT_PAY_RENEWAL_JOB` daily 07:20 UTC · `DCT_PAY_EMP_PKG` (Phase 2 workforce: numbering/dedup/assignments/lifecycle/banks/docs/bulk) · `DCT_PAY_EMPDOC_JOB` daily 07:25 UTC · `DCT_PAY_CALC_PKG` (Phase 3 payroll setup writes + the run engine: load/validate/calculate/review/reopen, proration, eligibility, rate tables, charge preview) |
+| Server | `DCT_PAY_PKG` (validated writes + renewal sweep) · `DCT_PAY_RENEWAL_JOB` daily 07:20 UTC · `DCT_PAY_EMP_PKG` (Phase 2 workforce: numbering/dedup/assignments/lifecycle/banks/docs/bulk) · `DCT_PAY_EMPDOC_JOB` daily 07:25 UTC · `DCT_PAY_CALC_PKG` (Phase 3 payroll setup writes + the run engine: load/validate/calculate/review/reopen, proration, eligibility, rate tables, charge preview) · `DCT_PAY_CHG_PKG` (Phase 3.1 change control: capture/diff snapshot engine, dual confirmations, sign-offs) |

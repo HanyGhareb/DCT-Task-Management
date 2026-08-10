@@ -28,6 +28,11 @@
     </select>
     <button class="btn btn-primary" data-bind="click: openRun, enable: canRun() && !busy(),
             text: (periodRow() && periodRow().runId) ? $vm.t('pr.openRun') : $vm.t('pr.createRun')"></button>
+    <!-- ko if: selPeriod -->
+    <a href="#" data-bind="css: chgChipClass(), click: function(){ goChanges(); return false; },
+       text: $vm.t('chg.chipLabel') + ': ' + chgChipText(),
+       attr: { title: $vm.t('chg.chipHint') }"></a>
+    <!-- /ko -->
     <!-- ko if: error() --><span class="dw-err" style="margin:0" data-bind="text: error"></span><!-- /ko -->
   </div>
 

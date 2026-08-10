@@ -385,3 +385,68 @@ td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: 
 /* company dashboard: clickable KPI tiles + wide drill drawer */
 .pr-k--click { cursor: pointer; transition: box-shadow .15s, transform .15s; }
 .pr-k--click:hover { box-shadow: 0 3px 10px rgba(0,0,0,.14); transform: translateY(-1px); }
+
+/* ── Employee Change Control (payChanges) ─────────────────────────────── */
+.chg-meta { font-size:12px; color:var(--text-2); }
+.chg-pill { display:inline-block; padding:3px 12px; border-radius:20px; font-size:12px; font-weight:700; }
+.chg-pill--baseline     { background:#EEF1F4; color:#4A5560; }
+.chg-pill--open         { background:#FFF4DE; color:#8a6100; }
+.chg-pill--hr_confirmed { background:#E7F0FA; color:#1D5B94; }
+.chg-pill--confirmed    { background:#E7F6EC; color:#1F7A3D; }
+
+/* dual attestation tracker */
+.chg-track { display:grid; grid-template-columns:1fr 1fr; gap:14px; margin-top:12px; }
+.chg-side { border:1px solid var(--border); border-radius:10px; padding:12px 14px; background:#fff; }
+.chg-side--done { border-color:rgba(31,122,61,.45); background:#F4FBF6; }
+.chg-side-h { display:flex; justify-content:space-between; align-items:center; margin-bottom:8px; }
+.chg-side-t { font-weight:700; font-size:13px; }
+.chg-side-n { font-size:12px; color:var(--text-2); font-variant-numeric:tabular-nums; }
+.chg-bar { height:8px; border-radius:6px; background:#EEF1F4; overflow:hidden; }
+.chg-bar-f { height:100%; border-radius:6px; background:var(--brand); transition:width .3s; }
+.chg-bar-f--pay { background:#1D5B94; }
+.chg-side-f { display:flex; justify-content:space-between; align-items:center; margin-top:10px; gap:8px; }
+.chg-signed { font-size:12px; color:#1F7A3D; font-weight:600; }
+.chg-baseline { margin-top:12px; padding:10px 14px; border-radius:8px; background:#EEF1F4;
+                color:#4A5560; font-size:13px; }
+
+/* register tabs */
+.chg-tab { cursor:pointer; padding:4px 14px; border-radius:16px; font-size:13px; font-weight:600;
+           color:var(--text-2); }
+.chg-tab--on { background:rgba(var(--brand-rgb),.12); color:var(--brand-dark); }
+
+/* diff grid */
+.chg-table .chg-emp td { background:rgba(var(--brand-rgb),.07); border-top:2px solid rgba(var(--brand-rgb),.25);
+                         padding-top:8px; padding-bottom:8px; }
+.chg-emp-n { font-weight:700; }
+.chg-emp-no { color:var(--text-2); font-size:12px; margin-inline-start:8px; }
+.chg-emp-c { color:var(--text-2); font-size:12px; float:inline-end; }
+.chg-grp { display:inline-block; font-size:10px; letter-spacing:.4px; text-transform:uppercase;
+           color:var(--text-2); border:1px solid var(--border); border-radius:10px;
+           padding:1px 7px; margin-inline-end:8px; }
+.chg-old { color:#B3261E; text-decoration:line-through; text-decoration-thickness:1px; }
+.chg-new { color:#1F7A3D; font-weight:600; }
+.chg-arrow { color:var(--text-2); text-align:center; }
+.chg-delta { font-size:12px; font-weight:700; font-variant-numeric:tabular-nums; padding:2px 8px;
+             border-radius:10px; }
+.chg-pos { color:#1F7A3D; } .chg-delta.chg-pos { background:#E7F6EC; }
+.chg-neg { color:#B3261E; } .chg-delta.chg-neg { background:#FBE9E7; }
+.chg-badge { display:inline-block; font-size:11px; font-weight:700; padding:2px 10px;
+             border-radius:12px; margin-inline-start:8px; }
+.chg-badge--new_hire { background:#E7F6EC; color:#1F7A3D; }
+.chg-badge--exit     { background:#FBE9E7; color:#B3261E; }
+.chg-ok { color:#1F7A3D; font-size:12px; font-weight:600; }
+.chg-undo { font-size:11px; margin-inline-start:6px; color:var(--text-2); }
+.chg-pend { color:var(--text-2); font-size:12px; }
+.chg-cbtn { padding:2px 10px; }
+
+/* run-console readiness chip */
+.chg-chip { display:inline-block; padding:5px 14px; border-radius:18px; font-size:12px;
+            font-weight:700; text-decoration:none; border:1px solid transparent; }
+.chg-chip:hover { filter:brightness(.97); }
+.chg-chip--none         { background:#EEF1F4; color:#4A5560; border-color:#D7DDE3; }
+.chg-chip--baseline     { background:#EEF1F4; color:#4A5560; border-color:#D7DDE3; }
+.chg-chip--open         { background:#FFF4DE; color:#8a6100; border-color:#EBD9A8; }
+.chg-chip--hr_confirmed { background:#E7F0FA; color:#1D5B94; border-color:#C4DAF0; }
+.chg-chip--confirmed    { background:#E7F6EC; color:#1F7A3D; border-color:#BFE4CC; }
+
+@media (max-width: 900px) { .chg-track { grid-template-columns:1fr; } }

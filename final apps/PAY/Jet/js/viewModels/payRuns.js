@@ -90,12 +90,39 @@ function (ko, payService, authService, i18n) {
       });
     });
 
+    // change-register readiness chip (Phase 3.1): capture + dual sign-off
+    // is the pre-run gate, so the console shows where the period stands
+    self.chgInfo = ko.observable(null);
+
     self.selPeriod.subscribe(function (per) {
-      self.run(null); self.emps([]);
+      self.run(null); self.emps([]); self.chgInfo(null);
       if (!per) return;
       var row = self.periods().filter(function (x) { return x.period === per; })[0];
       if (row && row.runId) { self.loadRun(row.runId); }
+      if (row && row.periodId) {
+        payService.chgStatus(self.selPayroll(), row.periodId)
+          .then(self.chgInfo).catch(function () { self.chgInfo(null); });
+      }
     });
+
+    self.chgChipClass = function () {
+      var c = self.chgInfo();
+      if (!c || c.exists !== 'Y') return 'chg-chip chg-chip--none';
+      return 'chg-chip chg-chip--' + String(c.status || '').toLowerCase();
+    };
+    self.chgChipText = function () {
+      var c = self.chgInfo();
+      if (!c || c.exists !== 'Y') return i18n.t('chg.chipNone');
+      if (c.status === 'CONFIRMED') return i18n.t('chg.chipConfirmed');
+      if (c.status === 'BASELINE') return i18n.t('chg.chipBaseline');
+      var pend = (c.pendHr || 0) + (c.pendPay || 0);
+      return i18n.t('chg.chipPending').replace('{n}', pend);
+    };
+    self.goChanges = function () {
+      window._jetApp.navigate('payChanges', {
+        chgPayroll: self.selPayroll(), chgPeriod: self.selPeriod()
+      });
+    };
 
     self.periodRow = function () {
       return self.periods().filter(function (x) { return x.period === self.selPeriod(); })[0] || null;
