@@ -323,5 +323,19 @@
   "ai.excluded": "excluded",
   "ai.why": "Why flagged:",
   "ai.whyFallback": "Name variants judged to be the same beneficiary by the AI ({0} confidence).",
-  "ai.sharedWhy": "the same bank account received payments under {0} different vendor names across {1} invoices — verify one payee identity or a legitimate shared (corporate-card) account."
+  "ai.sharedWhy": "the same bank account received payments under {0} different vendor names across {1} invoices — verify one payee identity or a legitimate shared (corporate-card) account.",
+  "ai.groupsWord": "groups",
+  "ai.colType": "Finding type",
+  "ai.rt.SPELLING": "Spelling variants",
+  "ai.rt.TRANSLITERATION": "Transliteration variants",
+  "ai.rt.SPACING": "Spacing differences",
+  "ai.rt.CAPITALISATION": "Capitalisation differences",
+  "ai.rt.WORD_ORDER": "Word-order differences",
+  "ai.rt.TYPO": "Possible typos",
+  "ai.rt.ABBREVIATION": "Abbreviations & initials",
+  "ai.rt.PARTIAL_NAME": "Partial / missing name parts",
+  "ai.rt.COMPANY_SUFFIX": "Company-suffix variants",
+  "ai.rt.NAME_VARIATION": "Name variants",
+  "ai.rt.SHARED_ACCOUNT": "Shared bank account",
+  "ai.rt.OTHER": "Other findings"
 }

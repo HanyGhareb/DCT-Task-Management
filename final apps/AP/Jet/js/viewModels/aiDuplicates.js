@@ -87,6 +87,50 @@ function (ko, api, i18n, toast, fusion) {
       return lt('ai.criteria') + ': ' + parts.join(' · ');
     });
 
+    // ── reason-category sections (user 2026-08-12: related cases with the
+    //    same kind of reason are grouped together under their own section).
+    //    reasonType comes from the server (dct_ap_ai_pkg.reason_type — the
+    //    single source of truth); the client mirror below only covers a
+    //    stale pre-deploy envelope that lacks the field.
+    var RT_ORDER = ['SPELLING', 'TRANSLITERATION', 'SPACING', 'CAPITALISATION',
+                    'WORD_ORDER', 'TYPO', 'ABBREVIATION', 'PARTIAL_NAME',
+                    'COMPANY_SUFFIX', 'NAME_VARIATION', 'SHARED_ACCOUNT', 'OTHER'];
+    function classifyReason(t) {
+      var r = (t || '').toLowerCase();
+      if (!r) return 'OTHER';
+      if (r.indexOf('translit') >= 0) return 'TRANSLITERATION';
+      if (r.indexOf('spell') >= 0) return 'SPELLING';
+      if (r.indexOf('space') >= 0 || r.indexOf('spacing') >= 0) return 'SPACING';
+      if (r.indexOf('capitalis') >= 0 || r.indexOf('capitaliz') >= 0 || r.indexOf('case') >= 0) return 'CAPITALISATION';
+      if (r.indexOf('order') >= 0 || r.indexOf('swap') >= 0 || r.indexOf('reversed') >= 0) return 'WORD_ORDER';
+      if (r.indexOf('typo') >= 0) return 'TYPO';
+      if (r.indexOf('abbrev') >= 0 || r.indexOf('initial') >= 0 || r.indexOf('acronym') >= 0) return 'ABBREVIATION';
+      if (r.indexOf('missing') >= 0 || r.indexOf('partial') >= 0 || r.indexOf('middle name') >= 0 ||
+          r.indexOf('truncat') >= 0 || r.indexOf('subset') >= 0 || r.indexOf('shortened') >= 0) return 'PARTIAL_NAME';
+      if (r.indexOf('suffix') >= 0 || r.indexOf('llc') >= 0 || r.indexOf('l.l.c') >= 0) return 'COMPANY_SUFFIX';
+      if (r.indexOf('variation') >= 0 || r.indexOf('variant') >= 0 ||
+          r.indexOf('duplicate') >= 0 || r.indexOf('identical') >= 0 ||
+          r.indexOf('same name') >= 0) return 'NAME_VARIATION';
+      if (r.indexOf('account') >= 0 || r.indexOf('iban') >= 0 || r.indexOf('bank') >= 0) return 'SHARED_ACCOUNT';
+      return 'OTHER';
+    }
+    self.rtLabel = function (code) { return lt('ai.rt.' + code); };
+    self.dupSections = ko.pureComputed(function () {
+      var by = {};
+      self.aiGroups().forEach(function (g) {
+        var code = g.reasonType || classifyReason(g.reason);
+        if (RT_ORDER.indexOf(code) < 0) code = 'OTHER';
+        if (!by[code]) by[code] = { code: code, groups: [], invoices: 0, totalAed: 0 };
+        by[code].groups.push(g);
+        by[code].invoices += g.invoices || 0;
+        by[code].totalAed += g.totalAed || 0;
+      });
+      // sections in the fixed vocabulary order; groups inside keep the
+      // amount-desc sort applied in applyResult
+      return RT_ORDER.filter(function (c) { return by[c]; })
+                     .map(function (c) { return by[c]; });
+    });
+
     // ── short explanation per finding ───────────────────────────────────
     self.groupWhy = function (g) {
       return lt('ai.why') + ' ' + (g.reason || lt('ai.whyFallback', [self.aiConfTxt(g.confidence)]));
@@ -247,12 +291,14 @@ function (ko, api, i18n, toast, fusion) {
       var groups = self.aiGroups(), shared = self.aiShared();
       if (!groups.length && !shared.length) return;
       var esc = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
-      var L = [[lt('ai.colGroup'), lt('ai.colCanonical'), lt('ai.colConf'), lt('ai.colReason'),
-                lt('ben.name'), lt('dr.site'), lt('ai.colAccounts'), lt('ai.colInvs'),
-                lt('tbl.amountAed'), lt('ai.colFirst'), lt('ai.colLast')].map(esc).join(',')];
+      var L = [[lt('ai.colGroup'), lt('ai.colType'), lt('ai.colCanonical'), lt('ai.colConf'),
+                lt('ai.colReason'), lt('ben.name'), lt('dr.site'), lt('ai.colAccounts'),
+                lt('ai.colInvs'), lt('tbl.amountAed'), lt('ai.colFirst'), lt('ai.colLast')]
+               .map(esc).join(',')];
       groups.forEach(function (g, gi) {
+        var rt = self.rtLabel(g.reasonType || classifyReason(g.reason));
         (g.members || []).forEach(function (m) {
-          L.push([gi + 1, g.canonical, self.aiConfTxt(g.confidence), g.reason,
+          L.push([gi + 1, rt, g.canonical, self.aiConfTxt(g.confidence), g.reason,
                   m.name, m.site, m.bankAccounts, m.invoices, m.totalAed,
                   m.firstInvoice, m.lastInvoice].map(esc).join(','));
         });

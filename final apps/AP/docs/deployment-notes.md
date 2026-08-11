@@ -519,3 +519,20 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   Deploy: 06 re-run (fresh session). Fresh run 41: 1,360 analysed, 122 groups,
   0 self-pairs, 0 FAB vendors, all reasons cite evidence; API 7/7 + browser
   13/13. APP_VERSION 1.17.0.
+- **2026-08-12 (reason-category sections, v1.18.0)** — user requirement "group all
+  related cases with same reasons in separate group": every AI group now ships
+  `reasonType`, derived server-side by `dct_ap_ai_pkg.reason_type` (published in
+  the spec) — deterministic keyword classification of the ENFORCED reason format,
+  so it categorises STORED runs retroactively with no new AI call. Vocabulary
+  SPELLING/TRANSLITERATION/SPACING/CAPITALISATION/WORD_ORDER/TYPO/ABBREVIATION/
+  PARTIAL_NAME/COMPANY_SUFFIX/NAME_VARIATION/SHARED_ACCOUNT/OTHER; variation
+  types are checked BEFORE the account keyword ("spelling, shared account 1234"
+  = SPELLING — first deploy without that precedence put 120/122 groups in
+  SHARED_ACCOUNT). Prompt now forbids the generic phrase "name variation" and
+  demands the specific type. Page renders the group cards clustered under one
+  `.ai-sec` band per category (label + "N groups" pill + combined invoices/AED);
+  CSV gains a Finding-type column; 12 `ai.rt.*` keys EN+AR. Deploy: 06 re-run
+  (fresh session, twice — classifier precedence fix), frontend + APP_VERSION
+  1.18.0. Fresh run 43: 115 groups over 9 categories (58 partial-name /
+  34 capitalisation / 5+5+5 spelling·typo·spacing / 4 account-only / 2 word-order
+  / 1+1), 0 self-pairs; sections smoke 12/12 EN+AR.

@@ -314,6 +314,21 @@ td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: 
 .ai-group .data-table-wrap { margin: 8px 12px 12px; }
 .ai-note { margin: 14px 0 4px; padding: 9px 12px; border-radius: 8px; font-size: 12px;
            color: var(--text-2); background: var(--brand-soft); }
+/* reason-category sections: related findings with the same kind of reason
+   cluster under one brand-accented band (spelling / transliteration / ...) */
+.ai-sec { margin: 18px 0 6px; }
+.ai-sec-hd { display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+             padding: 8px 12px; margin-bottom: 2px; border-radius: 8px;
+             background: linear-gradient(90deg, var(--brand-soft), transparent 80%);
+             border-inline-start: 4px solid var(--brand); }
+.ai-sec-title { font-size: 13px; font-weight: 700; color: var(--brand-dark);
+                text-transform: uppercase; letter-spacing: .4px; }
+.ai-sec-pill { font-size: 11px; font-weight: 700; color: #fff; background: var(--brand);
+               border-radius: 999px; padding: 2px 9px; white-space: nowrap; }
+.ai-sec-stats { margin-inline-start: auto; font-size: 12px; color: var(--text-2);
+                white-space: nowrap; }
+.ai-sec-stats b { color: var(--brand-dark); }
+.ai-sec .ai-group { margin-inline-start: 10px; }
 /* shared-bank-account red-flag section (same account, different vendors) */
 .ai-acct { font-family: 'Fira Code', 'Courier New', monospace; font-size: 12px;
            letter-spacing: .3px; direction: ltr; unicode-bidi: embed; }

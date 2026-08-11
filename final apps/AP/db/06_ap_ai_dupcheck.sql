@@ -33,10 +33,21 @@
 --           SELF-PAIR GUARD: DISTINCT ids per AI group (models emitted
 --           ids:[57,57] making 29 one-entry groups w/ doubled totals) and the
 --           reason must now cite the concrete matching evidence (<=18 words).
+--           2026-08-12: every group also ships reasonType -- a deterministic
+--           CATEGORY code classified from the reason text (the reason format
+--           is enforced by the prompt, so keyword classification is reliable
+--           and works retroactively on stored runs with no new AI call).
+--           The page clusters same-reason findings under one section per
+--           category. Codes: SPELLING / TRANSLITERATION / SPACING /
+--           CAPITALISATION / WORD_ORDER / TYPO / ABBREVIATION / PARTIAL_NAME
+--           / COMPANY_SUFFIX / NAME_VARIATION (generic wording) /
+--           SHARED_ACCOUNT / OTHER (variation types win over the
+--           supplementary shared-account mention -- only an account-only
+--           reason is SHARED_ACCOUNT).
 --   POST /ap/benef/dupcheck?suppnum=&inclfab=&inclcxl=&createdfrom=&createdto=
 --        -> {analyzed, groupCount, provider,
 --        model, fellback, elapsedSecs, runId, ranAt, ranBy,
---        groups:[{groupNo, canonical, confidence, reason,
+--        groups:[{groupNo, canonical, confidence, reason, reasonType,
 --        invoices, totalAed, members:[{name, invoices, totalAed, firstInvoice,
 --        lastInvoice, site, bankAccounts}]}],
 --        sharedAccounts:[{bankAccount, vendorCount, invoices, totalAed,
@@ -154,6 +165,11 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_ai_pkg AS
     -- The same envelope rebuilt from the LATEST persisted run (groups from
     -- the tables, shared accounts recomputed live). NULL when no run exists.
     FUNCTION benef_dup_last (p_suppnum IN VARCHAR2 DEFAULT '26553') RETURN CLOB;
+    -- Deterministic reason CATEGORY from the AI reason text (published in the
+    -- spec so report SQL can call it too): SPELLING / TRANSLITERATION /
+    -- SPACING / CAPITALISATION / WORD_ORDER / TYPO / ABBREVIATION /
+    -- PARTIAL_NAME / COMPANY_SUFFIX / NAME_VARIATION / SHARED_ACCOUNT / OTHER.
+    FUNCTION reason_type (p_reason IN VARCHAR2) RETURN VARCHAR2;
 END dct_ap_ai_pkg;
 /
 
@@ -222,6 +238,46 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         END IF;
         RETURN NVL(p_row_model, 'claude-sonnet-4-6');
     END pick_model;
+
+    -- --------------------------------------------------- reason category
+    -- The prompt FORCES the reason format ("the variation type (spelling /
+    -- spacing / word order / transliteration / typo / abbreviation) and the
+    -- shared bank account last 4 digits when one applies"), so keyword
+    -- classification of the reason text is reliable -- and, being
+    -- deterministic, it categorises STORED runs retroactively with no new AI
+    -- call. Variation types are checked FIRST: "Spelling variant, shared
+    -- account 1234" is a SPELLING finding (the account is supplementary);
+    -- only an account-only reason classifies as SHARED_ACCOUNT.
+    FUNCTION reason_type (p_reason IN VARCHAR2) RETURN VARCHAR2 IS
+        r VARCHAR2(700) := LOWER(NVL(p_reason, ''));
+    BEGIN
+        IF p_reason IS NULL THEN RETURN 'OTHER'; END IF;
+        IF r LIKE '%translit%'                             THEN RETURN 'TRANSLITERATION'; END IF;
+        IF r LIKE '%spell%'                                THEN RETURN 'SPELLING'; END IF;
+        IF r LIKE '%spacing%' OR r LIKE '%space%'          THEN RETURN 'SPACING'; END IF;
+        IF r LIKE '%capitalis%' OR r LIKE '%capitaliz%'
+        OR r LIKE '%case%'                                 THEN RETURN 'CAPITALISATION'; END IF;
+        IF r LIKE '%order%' OR r LIKE '%swap%'
+        OR r LIKE '%reorder%' OR r LIKE '%reversed%'       THEN RETURN 'WORD_ORDER'; END IF;
+        IF r LIKE '%typo%'                                 THEN RETURN 'TYPO'; END IF;
+        IF r LIKE '%abbrev%' OR r LIKE '%initial%'
+        OR r LIKE '%acronym%'                              THEN RETURN 'ABBREVIATION'; END IF;
+        IF r LIKE '%missing%' OR r LIKE '%partial%'
+        OR r LIKE '%middle name%' OR r LIKE '%truncat%'
+        OR r LIKE '%subset%' OR r LIKE '%extra name%'
+        OR r LIKE '%shortened%'                            THEN RETURN 'PARTIAL_NAME'; END IF;
+        IF r LIKE '%suffix%' OR r LIKE '%llc%'
+        OR r LIKE '%l.l.c%'                                THEN RETURN 'COMPANY_SUFFIX'; END IF;
+        -- generic "name variation/variant" wording BEFORE the account check:
+        -- "Name variation, shared account 7681" is a name-variant finding
+        -- (the account is supplementary evidence, not the variation type)
+        IF r LIKE '%variation%' OR r LIKE '%variant%'
+        OR r LIKE '%duplicate%' OR r LIKE '%identical%'
+        OR r LIKE '%same name%'                            THEN RETURN 'NAME_VARIATION'; END IF;
+        IF r LIKE '%account%' OR r LIKE '%iban%'
+        OR r LIKE '%bank%'                                 THEN RETURN 'SHARED_ACCOUNT'; END IF;
+        RETURN 'OTHER';
+    END reason_type;
 
     PROCEDURE clob_append (p_clob IN OUT NOCOPY CLOB, p_text IN VARCHAR2) IS
     BEGIN
@@ -662,8 +718,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
          || 'Return MINIFIED JSON on one line - no indentation, no extra whitespace. '
          || 'Each ids array must list DIFFERENT entry numbers - never repeat a number. '
          || 'Each reason must state the concrete evidence in under 12 words: the '
-         || 'variation type (spelling / spacing / word order / transliteration / typo / '
-         || 'abbreviation) and the shared bank account last 4 digits when one applies. '
+         || 'SPECIFIC variation type - exactly one of spelling / spacing / word order / '
+         || 'transliteration / typo / abbreviation / partial name (never the generic '
+         || 'phrase "name variation") - and the shared bank account last 4 digits when '
+         || 'one applies. '
          || 'If there are no likely duplicates return {"groups":[]}. '
          || 'The list (' || v_n || ' entries, format id|name|bank accounts):' || CHR(10));
         DBMS_LOB.APPEND(v_prompt, v_list);
@@ -764,6 +822,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
                 APEX_JSON.write('canonical',  NVL(g.canonical, v_name(v_ids(1))));
                 APEX_JSON.write('confidence', NVL(g.confidence, 0));
                 APEX_JSON.write('reason',     g.reason);
+                APEX_JSON.write('reasonType', reason_type(g.reason));
                 APEX_JSON.write('invoices',   v_g_invs);
                 APEX_JSON.write('totalAed',   ROUND(v_g_amt, 2));
                 APEX_JSON.open_array('members');
@@ -871,6 +930,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
             APEX_JSON.write('canonical',  g.canonical);
             APEX_JSON.write('confidence', g.confidence);
             APEX_JSON.write('reason',     g.reason);
+            APEX_JSON.write('reasonType', reason_type(g.reason));
             APEX_JSON.write('invoices',   g.invoices);
             APEX_JSON.write('totalAed',   g.total_aed);
             APEX_JSON.open_array('members');

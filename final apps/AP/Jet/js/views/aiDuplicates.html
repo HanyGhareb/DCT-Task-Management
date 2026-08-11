@@ -96,7 +96,18 @@
   <!-- ko if: aiGroups().length === 0 -->
   <div class="empty-state" data-bind="text: $vm.t('ai.none')"></div>
   <!-- /ko -->
-  <!-- ko foreach: aiGroups -->
+  <!-- related cases with the SAME KIND of reason cluster under one section -->
+  <!-- ko foreach: dupSections -->
+  <div class="ai-sec">
+    <div class="ai-sec-hd">
+      <span class="ai-sec-title" data-bind="text: $vm.rtLabel($data.code)"></span>
+      <span class="ai-sec-pill" data-bind="text: $vm.fmtInt($data.groups.length) + ' ' + $vm.t('ai.groupsWord')"></span>
+      <span class="ai-sec-stats">
+        <span data-bind="text: $vm.fmtInt($data.invoices) + ' ' + $vm.t('ai.colInvs')"></span>
+        · <b data-bind="text: $vm.fmtAmt($data.totalAed)"></b>
+      </span>
+    </div>
+  <!-- ko foreach: $data.groups -->
   <div class="ai-group">
     <div class="ai-group-h">
       <span class="ai-group-no" data-bind="text: '#' + ($index() + 1)"></span>
@@ -136,6 +147,8 @@
       </tbody>
     </table></div>
   </div>
+  <!-- /ko -->
+  </div><!-- /.ai-sec -->
   <!-- /ko -->
   <!-- ko if: aiGroups().length > 0 -->
   <div class="ai-note" data-bind="text: $vm.t('ai.note')"></div>
