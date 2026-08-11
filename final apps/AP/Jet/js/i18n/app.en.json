@@ -307,5 +307,21 @@
   "tbl.payCurrency": "Payment Currency",
   "tbl.updBy": "Updated By",
   "tbl.updOn": "Updated On",
-  "dr.installments": "Installments"
+  "dr.installments": "Installments",
+  "ai.criteria": "Run criteria",
+  "ai.inclFab": "Include FAB DEBIT CARD vendors",
+  "ai.inclFabHint": "Corporate-card payees — every vendor whose name starts with FAB DEBIT CARD. Excluded from the analysis by default.",
+  "ai.inclCxl": "Include cancelled invoices",
+  "ai.inclCxlHint": "Cancelled invoices are excluded from the analysis, counts and amounts by default.",
+  "ai.createdFrom": "Invoice created from",
+  "ai.createdTo": "Invoice created to",
+  "ai.critHint": "These criteria apply to the next run. Results below always show the criteria their run was made with.",
+  "ai.critFab": "FAB card vendors",
+  "ai.critCxl": "cancelled invoices",
+  "ai.critCreated": "created",
+  "ai.included": "included",
+  "ai.excluded": "excluded",
+  "ai.why": "Why flagged:",
+  "ai.whyFallback": "Name variants judged to be the same beneficiary by the AI ({0} confidence).",
+  "ai.sharedWhy": "the same bank account received payments under {0} different vendor names across {1} invoices — verify one payee identity or a legitimate shared (corporate-card) account."
 }

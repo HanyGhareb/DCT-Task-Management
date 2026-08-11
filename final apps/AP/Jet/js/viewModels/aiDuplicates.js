@@ -43,6 +43,14 @@ function (ko, api, i18n, toast, fusion) {
     self.aiShared  = ko.observableArray([]);
     self.neverRan  = ko.observable(false);
 
+    // ── run criteria (applied to the NEXT run; defaults = the strict run) ─
+    self.critFab  = ko.observable(false);       // include FAB DEBIT CARD vendors
+    self.critCxl  = ko.observable(false);       // include cancelled invoices
+    self.critFrom = ko.observable('');          // invoice created from (YYYY-MM-DD)
+    self.critTo   = ko.observable('');          // invoice created to
+    self.toggleCritFab = function () { self.critFab(!self.critFab()); return true; };
+    self.toggleCritCxl = function () { self.critCxl(!self.critCxl()); return true; };
+
     function applyResult(d) {
       var groups = (d.groups || []).slice()
         .sort(function (a, b) { return (b.totalAed || 0) - (a.totalAed || 0); });
@@ -53,10 +61,40 @@ function (ko, api, i18n, toast, fusion) {
         provider: d.provider, model: d.model,
         fellback: d.fellback === 'Y', elapsedSecs: d.elapsedSecs,
         sharedCount: d.sharedAccountCount || 0, sharedShown: d.sharedShown || 0,
-        runId: d.runId, ranAt: d.ranAt, ranBy: d.ranBy
+        runId: d.runId, ranAt: d.ranAt, ranBy: d.ranBy,
+        inclFab: d.inclFab === 'Y', inclCxl: d.inclCxl === 'Y',
+        createdFrom: d.createdFrom || '', createdTo: d.createdTo || ''
       });
+      // reflect the loaded run's criteria in the criteria controls
+      self.critFab(d.inclFab === 'Y');
+      self.critCxl(d.inclCxl === 'Y');
+      self.critFrom(d.createdFrom || '');
+      self.critTo(d.createdTo || '');
       self.neverRan(false);
     }
+
+    // "FAB card vendors excluded · Cancelled excluded · Created 2026-01-01 → …"
+    self.critLine = ko.pureComputed(function () {
+      var m = self.aiMeta();
+      if (!m) return '';
+      var parts = [
+        lt('ai.critFab')  + ' ' + lt(m.inclFab ? 'ai.included' : 'ai.excluded'),
+        lt('ai.critCxl')  + ' ' + lt(m.inclCxl ? 'ai.included' : 'ai.excluded')
+      ];
+      if (m.createdFrom || m.createdTo) {
+        parts.push(lt('ai.critCreated') + ' ' + (m.createdFrom || '…') + ' → ' + (m.createdTo || '…'));
+      }
+      return lt('ai.criteria') + ': ' + parts.join(' · ');
+    });
+
+    // ── short explanation per finding ───────────────────────────────────
+    self.groupWhy = function (g) {
+      return lt('ai.why') + ' ' + (g.reason || lt('ai.whyFallback', [self.aiConfTxt(g.confidence)]));
+    };
+    self.sharedWhy = function (a) {
+      return lt('ai.why') + ' ' + lt('ai.sharedWhy',
+        [self.fmtInt(a.vendorCount), self.fmtInt(a.invoices)]);
+    };
 
     // last saved run loads instantly — the AI re-run is an explicit action
     api.get('/benef/dupcheck/last?suppnum=' + SUPPNUM).then(function (d) {
@@ -71,7 +109,12 @@ function (ko, api, i18n, toast, fusion) {
     self.runAiDup = function () {
       if (self.aiLoading()) return;
       self.aiLoading(true); self.aiError('');
-      api.post('/benef/dupcheck?suppnum=' + SUPPNUM, {}).then(function (d) {
+      var qs = '/benef/dupcheck?suppnum=' + SUPPNUM
+             + '&inclfab=' + (self.critFab() ? 'Y' : 'N')
+             + '&inclcxl=' + (self.critCxl() ? 'Y' : 'N')
+             + (self.critFrom() ? '&createdfrom=' + encodeURIComponent(self.critFrom()) : '')
+             + (self.critTo()   ? '&createdto='   + encodeURIComponent(self.critTo())   : '');
+      api.post(qs, {}).then(function (d) {
         applyResult(d);
         self.aiLoading(false);
       }).catch(function (e) {

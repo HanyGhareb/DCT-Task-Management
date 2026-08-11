@@ -26,10 +26,38 @@
     </div>
   </div>
 
+  <!-- ── Run criteria (applies to the NEXT run; loaded runs show theirs) ── -->
+  <div class="card ai-crit">
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: $vm.t('ai.criteria')"></div>
+    </div>
+    <div class="ai-crit-grid">
+      <!-- checkbox pattern: div + pointer-events:none input — never <label> -->
+      <div class="fct-item" data-bind="click: toggleCritFab, css: { on: critFab() }">
+        <input type="checkbox" tabindex="-1" data-bind="checked: critFab">
+        <span class="fct-lbl" data-bind="text: $vm.t('ai.inclFab'), attr: { title: $vm.t('ai.inclFabHint') }"></span>
+      </div>
+      <div class="fct-item" data-bind="click: toggleCritCxl, css: { on: critCxl() }">
+        <input type="checkbox" tabindex="-1" data-bind="checked: critCxl">
+        <span class="fct-lbl" data-bind="text: $vm.t('ai.inclCxl'), attr: { title: $vm.t('ai.inclCxlHint') }"></span>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('ai.createdFrom')"></label>
+        <input class="form-control" type="date" data-bind="value: critFrom">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('ai.createdTo')"></label>
+        <input class="form-control" type="date" data-bind="value: critTo">
+      </div>
+    </div>
+    <div class="ai-crit-hint" data-bind="text: $vm.t('ai.critHint')"></div>
+  </div>
+
   <!-- ── run context line ─────────────────────────────────────────────── -->
   <div class="ai-runline" data-bind="visible: aiMeta() && !aiLoading()">
     <span class="ai-runline-when" data-bind="text: aiRunTxt"></span>
     <span data-bind="text: aiMetaTxt"></span>
+    <span class="ai-runline-crit" data-bind="text: critLine"></span>
   </div>
 
   <!-- ── states ───────────────────────────────────────────────────────── -->
@@ -82,7 +110,7 @@
         · <b data-bind="text: $vm.fmtAmt($data.totalAed)"></b>
       </span>
     </div>
-    <div class="ai-group-reason" data-bind="text: $data.reason || ''"></div>
+    <div class="ai-group-reason" data-bind="text: $vm.groupWhy($data)"></div>
     <div class="data-table-wrap"><table class="data-table">
       <thead><tr>
         <th data-bind="text: $vm.t('ben.name')"></th>
@@ -135,6 +163,7 @@
         · <b data-bind="text: $vm.fmtAmt($data.totalAed)"></b>
       </span>
     </div>
+    <div class="ai-group-reason" data-bind="text: $vm.sharedWhy($data)"></div>
     <div class="data-table-wrap"><table class="data-table">
       <thead><tr>
         <th data-bind="text: $vm.t('ai.colVendor')"></th>

@@ -23,7 +23,18 @@
 --           definition AP_BENEF_DUP_REGISTER (reporting/db/33) reads the
 --           latest run; invoice counts drill to real invoices (GET
 --           benef/dupinvoices) with Fusion deep-link ids.
---   POST /ap/benef/dupcheck?suppnum=   -> {analyzed, groupCount, provider,
+--           2026-08-11 round: RUN CRITERIA (user requirement) -- inclfab=
+--           (include vendors whose effective name starts with FAB DEBIT CARD,
+--           default N), inclcxl= (include cancelled invoices, default N),
+--           createdfrom/createdto= (invoice CREATED-date window) -- applied to
+--           the entry list, the bank-account map, the sharedAccounts section
+--           and the runid+grp drill; persisted on the run row and echoed in
+--           both envelopes (inclFab/inclCxl/createdFrom/createdTo). Plus the
+--           SELF-PAIR GUARD: DISTINCT ids per AI group (models emitted
+--           ids:[57,57] making 29 one-entry groups w/ doubled totals) and the
+--           reason must now cite the concrete matching evidence (<=18 words).
+--   POST /ap/benef/dupcheck?suppnum=&inclfab=&inclcxl=&createdfrom=&createdto=
+--        -> {analyzed, groupCount, provider,
 --        model, fellback, elapsedSecs, runId, ranAt, ranBy,
 --        groups:[{groupNo, canonical, confidence, reason,
 --        invoices, totalAed, members:[{name, invoices, totalAed, firstInvoice,
@@ -91,6 +102,16 @@ CREATE TABLE prod.dct_ap_ai_dup_group (
         REFERENCES prod.dct_ap_ai_dup_run(run_id) ON DELETE CASCADE
 )]';
     END IF;
+    -- criteria columns (2026-08-11 round): what the run was made with --
+    -- FAB-card vendors / cancelled invoices / created-date window
+    SELECT COUNT(*) INTO n FROM all_tab_columns
+     WHERE owner = 'PROD' AND table_name = 'DCT_AP_AI_DUP_RUN'
+       AND column_name = 'INCL_FAB';
+    IF n = 0 THEN
+        EXECUTE IMMEDIATE 'ALTER TABLE prod.dct_ap_ai_dup_run ADD ('
+            || 'incl_fab VARCHAR2(1), incl_cxl VARCHAR2(1), '
+            || 'created_from VARCHAR2(10), created_to VARCHAR2(10))';
+    END IF;
     SELECT COUNT(*) INTO n FROM all_tables
      WHERE owner = 'PROD' AND table_name = 'DCT_AP_AI_DUP_MEMBER';
     IF n = 0 THEN
@@ -118,8 +139,18 @@ CREATE OR REPLACE PACKAGE prod.dct_ap_ai_pkg AS
     -- Cluster the distinct beneficiary names of one generic supplier into
     -- likely-duplicate groups via the configured AI provider. Persists the
     -- run (DCT_AP_AI_DUP_*) and returns the page-ready JSON envelope.
-    FUNCTION benef_dup_check (p_suppnum IN VARCHAR2 DEFAULT '26553',
-                              p_user    IN VARCHAR2 DEFAULT NULL) RETURN CLOB;
+    -- Criteria (2026-08-11, user requirement; all default to the strict run):
+    --   p_inclfab     'Y' includes vendors whose EFFECTIVE name starts with
+    --                 'FAB DEBIT CARD' (corporate-card payees) -- default 'N'
+    --   p_inclcxl     'Y' includes cancelled invoices -- default 'N'
+    --   p_createdfrom / p_createdto  YYYY-MM-DD window on the invoice
+    --                 CREATED date (inclusive)
+    FUNCTION benef_dup_check (p_suppnum     IN VARCHAR2 DEFAULT '26553',
+                              p_user        IN VARCHAR2 DEFAULT NULL,
+                              p_inclfab     IN VARCHAR2 DEFAULT 'N',
+                              p_inclcxl     IN VARCHAR2 DEFAULT 'N',
+                              p_createdfrom IN VARCHAR2 DEFAULT NULL,
+                              p_createdto   IN VARCHAR2 DEFAULT NULL) RETURN CLOB;
     -- The same envelope rebuilt from the LATEST persisted run (groups from
     -- the tables, shared accounts recomputed live). NULL when no run exists.
     FUNCTION benef_dup_last (p_suppnum IN VARCHAR2 DEFAULT '26553') RETURN CLOB;
@@ -377,8 +408,15 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
     -- vendor count then value; vendors within an account ranked by value.
     -- Deterministic - used by benef_dup_check AND benef_dup_last, and kept in
     -- LOCK-STEP with the AP_BENEF_DUP_REGISTER section SQLs (reporting/db/33).
-    PROCEDURE emit_shared (o_total OUT PLS_INTEGER, o_shown OUT PLS_INTEGER) IS
+    PROCEDURE emit_shared (o_total       OUT PLS_INTEGER,
+                           o_shown       OUT PLS_INTEGER,
+                           p_inclfab     IN  VARCHAR2 DEFAULT 'N',
+                           p_inclcxl     IN  VARCHAR2 DEFAULT 'N',
+                           p_createdfrom IN  VARCHAR2 DEFAULT NULL,
+                           p_createdto   IN  VARCHAR2 DEFAULT NULL) IS
         v_cur_key VARCHAR2(200);
+        v_cf DATE := TO_DATE(p_createdfrom DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+        v_ct DATE := TO_DATE(p_createdto   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
     BEGIN
         SELECT COUNT(*) INTO o_total
         FROM (
@@ -387,6 +425,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
             JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
             WHERE n.bank_account_number IS NOT NULL
               AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
+              AND (NVL(p_inclcxl, 'N') = 'Y' OR h.invoice_status <> 'Cancelled')
+              AND (NVL(p_inclfab, 'N') = 'Y' OR
+                   UPPER(CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                              THEN h.beneficiary_name ELSE h.supplier_name END) NOT LIKE 'FAB DEBIT CARD%')
+              AND (v_cf IS NULL OR h.created_date >= v_cf)
+              AND (v_ct IS NULL OR h.created_date <  v_ct + 1)
             GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', ''))
             HAVING COUNT(DISTINCT CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                                        THEN h.beneficiary_name ELSE h.supplier_name END) >= 2);
@@ -421,6 +465,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
                             JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
                             WHERE n.bank_account_number IS NOT NULL
                               AND LENGTH(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')) >= 6
+                              AND (NVL(p_inclcxl, 'N') = 'Y' OR h.invoice_status <> 'Cancelled')
+                              AND (NVL(p_inclfab, 'N') = 'Y' OR
+                                   UPPER(CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
+                                              THEN h.beneficiary_name ELSE h.supplier_name END) NOT LIKE 'FAB DEBIT CARD%')
+                              AND (v_cf IS NULL OR h.created_date >= v_cf)
+                              AND (v_ct IS NULL OR h.created_date <  v_ct + 1)
                             GROUP BY UPPER(REGEXP_REPLACE(n.bank_account_number, '[^A-Za-z0-9]', '')),
                                      CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                                           THEN h.beneficiary_name ELSE h.supplier_name END,
@@ -468,8 +518,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
     END emit_shared;
 
     -- ------------------------------------------------------------- main entry
-    FUNCTION benef_dup_check (p_suppnum IN VARCHAR2 DEFAULT '26553',
-                              p_user    IN VARCHAR2 DEFAULT NULL) RETURN CLOB IS
+    FUNCTION benef_dup_check (p_suppnum     IN VARCHAR2 DEFAULT '26553',
+                              p_user        IN VARCHAR2 DEFAULT NULL,
+                              p_inclfab     IN VARCHAR2 DEFAULT 'N',
+                              p_inclcxl     IN VARCHAR2 DEFAULT 'N',
+                              p_createdfrom IN VARCHAR2 DEFAULT NULL,
+                              p_createdto   IN VARCHAR2 DEFAULT NULL) RETURN CLOB IS
         TYPE t_vc   IS TABLE OF VARCHAR2(400) INDEX BY PLS_INTEGER;
         TYPE t_num  IS TABLE OF NUMBER        INDEX BY PLS_INTEGER;
         TYPE t_dt   IS TABLE OF VARCHAR2(10)  INDEX BY PLS_INTEGER;
@@ -507,8 +561,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         v_ids      t_ids;
         v_shared_total   PLS_INTEGER := 0;
         v_shared_emitted PLS_INTEGER := 0;
+        v_cf DATE := TO_DATE(p_createdfrom DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
+        v_ct DATE := TO_DATE(p_createdto   DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD');
     BEGIN
-        -- 1) distinct effective beneficiary names + stats
+        -- 1) distinct effective beneficiary names + stats (run criteria applied)
         FOR r IN (
             SELECT CASE WHEN supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
                         THEN beneficiary_name ELSE supplier_name END nm,
@@ -519,6 +575,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
                    MAX(supplier_site) site
             FROM prod.ap_invoices_header_v
             WHERE supplier_number = p_suppnum
+              AND (NVL(p_inclcxl, 'N') = 'Y' OR invoice_status <> 'Cancelled')
+              AND (NVL(p_inclfab, 'N') = 'Y' OR
+                   UPPER(CASE WHEN supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
+                              THEN beneficiary_name ELSE supplier_name END) NOT LIKE 'FAB DEBIT CARD%')
+              AND (v_cf IS NULL OR created_date >= v_cf)
+              AND (v_ct IS NULL OR created_date <  v_ct + 1)
             GROUP BY CASE WHEN supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
                           THEN beneficiary_name ELSE supplier_name END
             ORDER BY UPPER(CASE WHEN supplier_name = 'BENEFICIARY' AND beneficiary_name IS NOT NULL
@@ -550,6 +612,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
             JOIN prod.ap_invoices_header_v h ON h.invoice_id = n.invoice_id
             WHERE h.supplier_number = p_suppnum
               AND n.bank_account_number IS NOT NULL
+              AND (NVL(p_inclcxl, 'N') = 'Y' OR h.invoice_status <> 'Cancelled')
+              AND (v_cf IS NULL OR h.created_date >= v_cf)
+              AND (v_ct IS NULL OR h.created_date <  v_ct + 1)
             GROUP BY CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                           THEN h.beneficiary_name ELSE h.supplier_name END)
         LOOP
@@ -595,7 +660,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
          || '{"groups":[{"ids":[<list numbers>],"canonical":"<best full name>",'
          || '"confidence":<0.0-1.0>,"reason":"<short explanation>"}]}. '
          || 'Return MINIFIED JSON on one line - no indentation, no extra whitespace. '
-         || 'Keep each reason under 12 words. '
+         || 'Each ids array must list DIFFERENT entry numbers - never repeat a number. '
+         || 'Each reason must state the concrete evidence in under 12 words: the '
+         || 'variation type (spelling / spacing / word order / transliteration / typo / '
+         || 'abbreviation) and the shared bank account last 4 digits when one applies. '
          || 'If there are no likely duplicates return {"groups":[]}. '
          || 'The list (' || v_n || ' entries, format id|name|bank accounts):' || CHR(10));
         DBMS_LOB.APPEND(v_prompt, v_list);
@@ -605,9 +673,37 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         v_answer := call_ai_text(v_prompt, v_provider, v_model, v_fellback);
         DBMS_LOB.FREETEMPORARY(v_prompt);
         v_json := json_only(v_answer);
-        DECLARE v_ok NUMBER;
+        -- raw control characters INSIDE string values are illegal JSON and
+        -- made complete responses fail IS JSON - normalise them to spaces
+        -- (between tokens a space is equally valid whitespace)
+        IF v_json IS NOT NULL THEN
+            v_json := REPLACE(REPLACE(REPLACE(v_json, CHR(13), ' '), CHR(10), ' '), CHR(9), ' ');
+        END IF;
+        DECLARE
+            v_ok   NUMBER;
+            v_pos  PLS_INTEGER;
+            v_last PLS_INTEGER := 0;
+            v_occ  PLS_INTEGER := 1;
+            v_cut  CLOB;
         BEGIN
             SELECT COUNT(*) INTO v_ok FROM dual WHERE v_json IS JSON;
+            IF v_ok = 0 AND v_json IS NOT NULL THEN
+                -- SALVAGE a response truncated at the provider's output-token
+                -- ceiling: keep everything up to the LAST complete group
+                -- object ('},{' boundary) and close the array cleanly
+                LOOP
+                    v_pos := DBMS_LOB.INSTR(v_json, '},{', 1, v_occ);
+                    EXIT WHEN NVL(v_pos, 0) = 0;
+                    v_last := v_pos; v_occ := v_occ + 1;
+                END LOOP;
+                IF v_last > 0 THEN
+                    DBMS_LOB.CREATETEMPORARY(v_cut, TRUE);
+                    DBMS_LOB.COPY(v_cut, v_json, v_last, 1, 1);
+                    DBMS_LOB.WRITEAPPEND(v_cut, 2, ']}');
+                    SELECT COUNT(*) INTO v_ok FROM dual WHERE v_cut IS JSON;
+                    IF v_ok = 1 THEN v_json := v_cut; END IF;
+                END IF;
+            END IF;
             IF v_json IS NULL OR v_ok = 0 THEN
                 RAISE_APPLICATION_ERROR(-20005,
                     'The AI response could not be parsed as JSON (likely truncated) - please retry. '
@@ -625,6 +721,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         APEX_JSON.write('provider', v_provider);
         APEX_JSON.write('model', v_model);
         APEX_JSON.write('fellback', v_fellback);
+        APEX_JSON.write('inclFab', NVL(p_inclfab, 'N'));
+        APEX_JSON.write('inclCxl', NVL(p_inclcxl, 'N'));
+        IF v_cf IS NOT NULL THEN APEX_JSON.write('createdFrom', TO_CHAR(v_cf, 'YYYY-MM-DD')); END IF;
+        IF v_ct IS NOT NULL THEN APEX_JSON.write('createdTo',   TO_CHAR(v_ct, 'YYYY-MM-DD')); END IF;
         APEX_JSON.open_array('groups');
 
         FOR g IN (
@@ -636,7 +736,9 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
                             reason     VARCHAR2(600) PATH '$.reason')) jt
             ORDER BY jt.g_idx)
         LOOP
-            SELECT id_val BULK COLLECT INTO v_ids
+            -- DISTINCT kills model-emitted self-pairs (ids like [57,57] made a
+            -- group of one entry twice, double-counting its invoices/amounts)
+            SELECT DISTINCT id_val BULK COLLECT INTO v_ids
             FROM JSON_TABLE(v_json, '$.groups[*]'
                    COLUMNS (g_idx FOR ORDINALITY,
                             NESTED PATH '$.ids[*]' COLUMNS (id_val NUMBER PATH '$')))
@@ -695,16 +797,20 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         APEX_JSON.write('groupCount', v_groups);
 
         -- 5) deterministic red-flag section (shared vendor bank accounts)
-        emit_shared(v_shared_total, v_shared_emitted);
+        emit_shared(v_shared_total, v_shared_emitted,
+                    p_inclfab, p_inclcxl, p_createdfrom, p_createdto);
 
-        -- 6) persist the run so the page reloads it instantly and the
-        --    AP_BENEF_DUP_REGISTER report reads the latest result
+        -- 6) persist the run (incl. its criteria) so the page reloads it
+        --    instantly and the AP_BENEF_DUP_REGISTER report reads the latest
         INSERT INTO dct_ap_ai_dup_run
             (suppnum, analyzed, group_count, shared_count, provider, model,
-             fellback, elapsed_secs, created_by)
+             fellback, elapsed_secs, created_by,
+             incl_fab, incl_cxl, created_from, created_to)
         VALUES
             (p_suppnum, v_n, v_groups, v_shared_total, v_provider, v_model,
-             v_fellback, ROUND((DBMS_UTILITY.GET_TIME - v_t0) / 100, 1), p_user)
+             v_fellback, ROUND((DBMS_UTILITY.GET_TIME - v_t0) / 100, 1), p_user,
+             NVL(p_inclfab, 'N'), NVL(p_inclcxl, 'N'),
+             TO_CHAR(v_cf, 'YYYY-MM-DD'), TO_CHAR(v_ct, 'YYYY-MM-DD'))
         RETURNING run_id INTO v_run_id;
         FOR i IN 1 .. v_groups LOOP
             INSERT INTO dct_ap_ai_dup_group
@@ -753,6 +859,10 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         APEX_JSON.write('provider', v_run.provider);
         APEX_JSON.write('model',    v_run.model);
         APEX_JSON.write('fellback', v_run.fellback);
+        APEX_JSON.write('inclFab', NVL(v_run.incl_fab, 'N'));
+        APEX_JSON.write('inclCxl', NVL(v_run.incl_cxl, 'N'));
+        IF v_run.created_from IS NOT NULL THEN APEX_JSON.write('createdFrom', v_run.created_from); END IF;
+        IF v_run.created_to   IS NOT NULL THEN APEX_JSON.write('createdTo',   v_run.created_to);   END IF;
         APEX_JSON.open_array('groups');
         FOR g IN (SELECT * FROM dct_ap_ai_dup_group
                    WHERE run_id = v_run.run_id ORDER BY group_no) LOOP
@@ -783,9 +893,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ap_ai_pkg AS
         APEX_JSON.close_array;
         APEX_JSON.write('groupCount', v_run.group_count);
 
-        -- shared accounts are deterministic - recompute live so the section
-        -- always reflects the current data
-        emit_shared(v_shared_total, v_shared_emitted);
+        -- shared accounts are deterministic - recompute live (under the run's
+        -- stored criteria) so the section always reflects the current data
+        emit_shared(v_shared_total, v_shared_emitted,
+                    NVL(v_run.incl_fab, 'Y'), NVL(v_run.incl_cxl, 'Y'),
+                    v_run.created_from, v_run.created_to);
 
         APEX_JSON.write('runId', v_run.run_id);
         APEX_JSON.write('ranAt', TO_CHAR(dct_to_local(v_run.created_at), 'YYYY-MM-DD HH' || CHR(58) || 'MI AM'));
@@ -824,7 +936,9 @@ DECLARE
   l_out     CLOB;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401, 'Unauthorized'); RETURN; END IF;
-  l_out := dct_ap_ai_pkg.benef_dup_check(l_suppnum, l_user);
+  l_out := dct_ap_ai_pkg.benef_dup_check(l_suppnum, l_user,
+             NVL([COLON]inclfab, 'N'), NVL([COLON]inclcxl, 'N'),
+             [COLON]createdfrom, [COLON]createdto);
   dct_rest.json_header;
   DECLARE
     l_len PLS_INTEGER := NVL(DBMS_LOB.GETLENGTH(l_out), 0);
@@ -936,6 +1050,8 @@ BEGIN
            r.amt, r.pay, r.stat, r.accts);
     END LOOP;
   ELSIF l_runid IS NOT NULL AND l_grp IS NOT NULL THEN
+    -- apply the run's stored criteria so the drill reconciles with the
+    -- group's member counts (old runs have NULL criteria = include all)
     FOR r IN (
       SELECT h.invoice_id, h.invoice_number inv_no, h.invoice_date inv_dt,
              m.name nm, h.supplier_number suppno, h.supplier_site site,
@@ -946,11 +1062,17 @@ BEGIN
                 FROM prod.ap_invoice_installments i2
                WHERE i2.invoice_id = h.invoice_id) accts
       FROM prod.dct_ap_ai_dup_member m
+      JOIN prod.dct_ap_ai_dup_run ru ON ru.run_id = m.run_id
       JOIN prod.ap_invoices_header_v h
         ON h.supplier_number = l_supp
        AND CASE WHEN h.supplier_name = 'BENEFICIARY' AND h.beneficiary_name IS NOT NULL
                 THEN h.beneficiary_name ELSE h.supplier_name END = m.name
       WHERE m.run_id = l_runid AND m.group_no = l_grp
+        AND (NVL(ru.incl_cxl, 'Y') = 'Y' OR h.invoice_status <> 'Cancelled')
+        AND (ru.created_from IS NULL OR h.created_date >=
+             TO_DATE(ru.created_from DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD'))
+        AND (ru.created_to IS NULL OR h.created_date <
+             TO_DATE(ru.created_to DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD') + 1)
       ORDER BY h.invoice_date DESC, h.invoice_id DESC
       FETCH FIRST 500 ROWS ONLY)
     LOOP

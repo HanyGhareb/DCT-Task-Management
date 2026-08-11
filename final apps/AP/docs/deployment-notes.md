@@ -502,3 +502,20 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   Supplier No columns (the benef column swap applies to the new level), the
   bank-account facet LOV is beneficiary-scoped (suppnum honored in /filters —
   1,268 accounts), due-date range + drill tab work; browser-verified 4/4.
+- **2026-08-11 (AI dup-check criteria + guard, v1.17.0)** — user requirements on the
+  AI Duplicate Check page: ① Run-criteria region — Include FAB DEBIT CARD vendors
+  (effective-name prefix match, default EXCLUDED), Include cancelled invoices
+  (default EXCLUDED), Invoice created from/to (CREATED-date window). Applied in 06
+  to the entry list, bank-account map, sharedAccounts and the runid+grp drill;
+  persisted on DCT_AP_AI_DUP_RUN (incl_fab/incl_cxl/created_from/created_to) and
+  echoed by both envelopes + the page run line. ② Short explanation per finding:
+  "Why flagged:" on every AI group (prompt demands concrete evidence + shared-
+  account last-4; VM fallback) and on every shared-account block (deterministic).
+  ③ SELF-PAIR GUARD: DISTINCT ids per AI group — run 21 had 29 groups of ONE
+  entry repeated (ids like [57,57]) with doubled invoice/amount totals (the
+  user-reported HANA ABDULWAHAB M ZAKRI case). ④ SALVAGE parser: responses
+  truncated at the provider output-token ceiling (~1,360 entries now) are trimmed
+  to the last complete group + control-chars normalised instead of erroring.
+  Deploy: 06 re-run (fresh session). Fresh run 41: 1,360 analysed, 122 groups,
+  0 self-pairs, 0 FAB vendors, all reasons cite evidence; API 7/7 + browser
+  13/13. APP_VERSION 1.17.0.
