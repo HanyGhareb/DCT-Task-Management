@@ -67,6 +67,9 @@ BEGIN
   put_setting('CHG_VARIANCE_PCT', '20', 'Variance Flag Threshold (%)',
     'Flag a salary or entry change as GROSS_JUMP when the change is at least this percentage of the previous value.',
     'NUMBER', NULL, '20');
+  put_setting('CHG_CAPTURE_MAX_AGE_DAYS', '45', 'Capture Max Age (days)',
+    'Block the FIRST capture of a period that ended more than this many days ago - a capture always snapshots today''s data, so old periods cannot be reconstructed. 0 = no limit. Backdated captures (a period earlier than the latest register) are always blocked regardless of this setting.',
+    'NUMBER', NULL, '45');
   put_setting('CHG_BANK_NOTE_REQ', 'Y', 'Bank Change Needs Note',
     'Require a justification note before HR can confirm a bank-detail change.',
     'BOOLEAN', NULL, 'Y');
@@ -108,6 +111,11 @@ CREATE OR REPLACE PACKAGE prod.dct_pay_chg_pkg AS
   FUNCTION can_pay  (p_user VARCHAR2) RETURN BOOLEAN;
   FUNCTION can_view (p_user VARCHAR2) RETURN BOOLEAN;
   FUNCTION get_setting (p_key VARCHAR2, p_default VARCHAR2 DEFAULT NULL) RETURN VARCHAR2;
+
+  -- NULL = capture allowed; else 'LATER_REGISTER:<period>' (backdated - a
+  -- register exists for a later period) or 'TOO_OLD:<days>' (first capture of
+  -- a period past CHG_CAPTURE_MAX_AGE_DAYS). Shared by capture + the ORDS GET.
+  FUNCTION capture_block (p_payroll_id NUMBER, p_period_id NUMBER) RETURN VARCHAR2;
 
   PROCEDURE capture (p_payroll_id  NUMBER,
                      p_period_id   NUMBER,
@@ -347,6 +355,41 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_chg_pkg AS
     END IF;
   END;
 
+  FUNCTION capture_block (p_payroll_id NUMBER, p_period_id NUMBER) RETURN VARCHAR2 IS
+    l_from        DATE;
+    l_to          DATE;
+    l_latest      DATE;
+    l_latest_code VARCHAR2(10);
+    l_has         NUMBER;
+    l_age         NUMBER := num_setting('CHG_CAPTURE_MAX_AGE_DAYS', 45);
+  BEGIN
+    BEGIN
+      SELECT date_from, date_to INTO l_from, l_to
+      FROM prod.dct_pay_period
+      WHERE period_id = p_period_id AND payroll_id = p_payroll_id;
+    EXCEPTION WHEN NO_DATA_FOUND THEN RETURN NULL;
+    END;
+
+    SELECT MAX(pe.date_from),
+           MAX(pe.period_code) KEEP (DENSE_RANK LAST ORDER BY pe.date_from)
+      INTO l_latest, l_latest_code
+    FROM prod.dct_pay_chg_register r
+    JOIN prod.dct_pay_period pe ON pe.period_id = r.period_id
+    WHERE r.payroll_id = p_payroll_id;
+
+    IF l_latest IS NOT NULL AND l_from < l_latest THEN
+      RETURN 'LATER_REGISTER:' || l_latest_code;
+    END IF;
+
+    SELECT COUNT(*) INTO l_has FROM prod.dct_pay_chg_register
+    WHERE payroll_id = p_payroll_id AND period_id = p_period_id;
+
+    IF l_has = 0 AND l_age > 0 AND l_to < TRUNC(SYSDATE) - l_age THEN
+      RETURN 'TOO_OLD:' || TO_CHAR(l_age);
+    END IF;
+    RETURN NULL;
+  END;
+
   PROCEDURE capture (p_payroll_id  NUMBER,
                      p_period_id   NUMBER,
                      p_user        VARCHAR2,
@@ -355,6 +398,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_chg_pkg AS
     l_per    prod.dct_pay_period%ROWTYPE;
     l_reg_id NUMBER;
     l_status VARCHAR2(20);
+    l_block  VARCHAR2(40);
     l_prior  NUMBER;
     l_emp    NUMBER := 0;
     l_chg    NUMBER;
@@ -390,6 +434,17 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_chg_pkg AS
     EXCEPTION WHEN NO_DATA_FOUND THEN
       RAISE_APPLICATION_ERROR(-20404, 'Payroll or period not found');
     END;
+
+    l_block := capture_block(p_payroll_id, p_period_id);
+    IF l_block LIKE 'LATER_REGISTER%' THEN
+      RAISE_APPLICATION_ERROR(-20001,
+        'A register already exists for a later period (' || SUBSTR(l_block, 16) ||
+        ') - the change register must move forward; capture the latest period instead');
+    ELSIF l_block LIKE 'TOO_OLD%' THEN
+      RAISE_APPLICATION_ERROR(-20001,
+        'Period ' || l_per.period_code || ' ended more than ' || SUBSTR(l_block, 9) ||
+        ' days ago - a capture today would snapshot today''s data, not that period''s (setting CHG_CAPTURE_MAX_AGE_DAYS, 0 = no limit)');
+    END IF;
 
     BEGIN
       SELECT register_id, status INTO l_reg_id, l_status

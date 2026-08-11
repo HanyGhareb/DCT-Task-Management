@@ -138,8 +138,8 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | GET | runs/:id/emps · runs/:id/emps/:reid | Paged per-employee results (+search/status/group; rows carry group + groupShort) / calculation lines — Phase 3 |
 | PUT | runs/:id/emps/:reid | Pay-Admin invoice-group move on a LOADED/VALIDATED/CALCULATED run: persists as INCLUDE override + re-prices charges when calculated — 2026-08-09 |
 | GET | runs/:id/export | Payroll register CSV (UTF-8 BOM) — Phase 3 |
-| GET | changes/register?payrollid=&periodid= | Change register head: status + KPIs (new hires/exits/changes/pending per side/gross impact) + sign-offs + canHr/canPay — Phase 3.1 |
-| POST | changes/capture | Capture/recapture the period snapshot + diff (HR or Payroll roles; CONFIRMED registers = Pay Admin only) — Phase 3.1 |
+| GET | changes/register?payrollid=&periodid= | Change register head: status + KPIs (new hires/exits/changes/pending per side/gross impact) + sign-offs + canHr/canPay + `canCapture`/`captureBlock` (capture-guard verdict) — Phase 3.1 |
+| POST | changes/capture | Capture/recapture the period snapshot + diff (HR or Payroll roles; CONFIRMED registers = Pay Admin only). Guards: refuses periods earlier than the latest register (chain moves forward) and first captures of periods ended > `CHG_CAPTURE_MAX_AGE_DAYS` days ago — Phase 3.1 |
 | GET | changes/:id/items | Confirmable findings (kind/grp/pending/search filters; BANK values masked for non-payroll viewers) — Phase 3.1 |
 | GET | changes/:id/all | Full value matrix current-vs-prior w/ changed flag (grp/search/changed=Y; cap 10k) — Phase 3.1 |
 | POST | changes/:id/confirm | {side HR\|PAY, action CONFIRM\|UNCONFIRM, items ALL\|id-list}; PAY only after HR per item — Phase 3.1 |

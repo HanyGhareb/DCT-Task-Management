@@ -34,7 +34,7 @@ DECLARE
  l_emp NUMBER; l_chg NUMBER; l_prior VARCHAR2(7); l_wf NUMBER;
  l_hrby VARCHAR2(100); l_hrat DATE; l_payby VARCHAR2(100); l_payat DATE;
  l_nh NUMBER:=0; l_ex NUMBER:=0; l_ch NUMBER:=0; l_fl NUMBER:=0;
- l_phr NUMBER:=0; l_ppay NUMBER:=0; l_imp NUMBER:=0;
+ l_phr NUMBER:=0; l_ppay NUMBER:=0; l_imp NUMBER:=0; l_cb VARCHAR2(40);
 BEGIN
  IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized');RETURN;END IF;
  IF NOT dct_pay_chg_pkg.can_view(l_user) THEN dct_rest.err(403,'Not allowed');RETURN;END IF;
@@ -67,6 +67,9 @@ BEGIN
  APEX_JSON.write('canHr',l_hr);APEX_JSON.write('canPay',l_pay);
  APEX_JSON.write('signoffMode',NVL(dct_pay_chg_pkg.get_setting('CHG_SIGNOFF_MODE','INLINE'),'INLINE'));
  APEX_JSON.write('gateMode',NVL(dct_pay_chg_pkg.get_setting('CHG_GATE_MODE','OFF'),'OFF'));
+ l_cb:=dct_pay_chg_pkg.capture_block(TO_NUMBER([COLON]payrollid),TO_NUMBER([COLON]periodid));
+ APEX_JSON.write('canCapture',CASE WHEN l_cb IS NULL THEN 'Y' ELSE 'N' END);
+ APEX_JSON.write('captureBlock',NVL(l_cb,''));
  APEX_JSON.write('exists',CASE WHEN l_id IS NULL THEN 'N' ELSE 'Y' END);
  IF l_id IS NOT NULL THEN
   APEX_JSON.write('registerId',l_id);APEX_JSON.write('status',l_status);

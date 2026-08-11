@@ -612,6 +612,8 @@
   "chg.tracker": "Confirmation tracker",
   "chg.noRegister": "No change register has been captured for this period yet.",
   "chg.noRegisterHint": "Capture changes after HR has entered all employee updates for the month. The first capture of a payroll becomes its baseline.",
+  "chg.capBlockLater": "Capture blocked — a register already exists for a later period ({p}); the change register must move forward. Capture the latest period instead.",
+  "chg.capBlockOld": "Capture blocked — this period ended more than {d} days ago; a capture today would snapshot today's data, not that period's.",
   "chg.baselineNote": "Baseline capture — there is no earlier snapshot to compare against. Differences will appear from the next period onward.",
   "chg.st.BASELINE": "Baseline",
   "chg.st.OPEN": "Open",

@@ -14,6 +14,12 @@ CLEAN data, then the ENH mutations applied (gross 397 45738->60000, job
 title 398, bank row 397), then 12-2025 captured => register OPEN with 4
 changes (3 flagged, 2 bank items needing a note). CHG_SIGNOFF_MODE=WORKFLOW.
 
+NOTE (capture guards, v1.10.1): capture now refuses backdated periods (any
+period earlier than the payroll's latest register) and first captures of
+periods ended > CHG_CAPTURE_MAX_AGE_DAYS (45) days ago. The 11/12-2025 setup
+captures above therefore need the runner to first DELETE the payroll's later
+registers AND set CHG_CAPTURE_MAX_AGE_DAYS=0 (restore 45 afterwards).
+
 Auth env: PAY_TOK (live session token, SYS_ADMIN + PAY_* roles for /wf/).
 Run: python dev-proxy.py 8217 (from PAY/Jet) then python pay_changes_browser.py
 """

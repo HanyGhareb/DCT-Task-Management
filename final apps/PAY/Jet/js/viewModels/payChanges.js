@@ -33,6 +33,8 @@ function (ko, payService, api, i18n, docUpload) {
 
     // ── Register head ───────────────────────────────────────────────────
     self.reg     = ko.observable(null);   // null = not captured yet
+    self.canCapture   = ko.observable(true);   // server capture-guard verdict
+    self.captureBlock = ko.observable('');     // LATER_REGISTER:<p> | TOO_OLD:<d>
     self.canHr   = ko.observable(false);
     self.canPay  = ko.observable(false);
     self.loading = ko.observable(false);
@@ -174,6 +176,8 @@ function (ko, payService, api, i18n, docUpload) {
       return payService.chgRegister(self.selPayroll(), row.periodId).then(function (d) {
         self.canHr(d.canHr === 'Y');
         self.canPay(d.canPay === 'Y');
+        self.canCapture(d.canCapture !== 'N');
+        self.captureBlock(d.captureBlock || '');
         self.reg(d.exists === 'Y' ? d : null);
         if (d.exists === 'Y') {
           return self.mode() === 'all' ? self.loadAll() : self.loadItems();
@@ -182,9 +186,20 @@ function (ko, payService, api, i18n, docUpload) {
         .finally(function () { self.loading(false); });
     };
 
+    self.captureBlockMsg = ko.computed(function () {
+      var b = self.captureBlock();
+      if (!b) return '';
+      var i = b.indexOf(':');
+      var code = i > 0 ? b.substring(0, i) : b;
+      var val = i > 0 ? b.substring(i + 1) : '';
+      if (code === 'LATER_REGISTER') return i18n.t('chg.capBlockLater').replace('{p}', val);
+      if (code === 'TOO_OLD') return i18n.t('chg.capBlockOld').replace('{d}', val);
+      return '';
+    });
+
     self.capture = function () {
       var row = self.periodRow();
-      if (!row) return;
+      if (!row || !self.canCapture()) return;
       if (self.reg() && !window.confirm(i18n.t('chg.confirmRecapture'))) return;
       self.busy(true); self.error('');
       payService.chgCapture(self.selPayroll(), row.periodId)

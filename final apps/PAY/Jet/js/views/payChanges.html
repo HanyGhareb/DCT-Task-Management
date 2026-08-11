@@ -32,8 +32,11 @@
       <!-- /ko -->
     </select>
     <button class="btn btn-primary" data-bind="click: capture,
-            enable: (canHr() || canPay()) && !busy() && periodRow(),
+            enable: (canHr() || canPay()) && !busy() && periodRow() && canCapture(),
             text: reg() ? $vm.t('chg.recapture') : $vm.t('chg.capture')"></button>
+    <!-- ko if: captureBlockMsg() -->
+    <span class="chg-meta chg-capblock" data-bind="text: captureBlockMsg"></span>
+    <!-- /ko -->
     <!-- ko if: reg -->
     <span data-bind="css: statusClass(reg().status), text: $vm.t('chg.st.' + reg().status)"></span>
     <span class="chg-meta" data-bind="text: $vm.t('chg.capturedAt') + ' ' + reg().capturedAt + ' · ' + reg().capturedBy"></span>
@@ -46,7 +49,12 @@
   <div class="card ap-region">
     <div class="empty-state">
       <div data-bind="text: $vm.t('chg.noRegister')"></div>
+      <!-- ko ifnot: captureBlockMsg() -->
       <div class="chg-meta" data-bind="text: $vm.t('chg.noRegisterHint')"></div>
+      <!-- /ko -->
+      <!-- ko if: captureBlockMsg() -->
+      <div class="chg-meta chg-capblock" data-bind="text: captureBlockMsg"></div>
+      <!-- /ko -->
     </div>
   </div>
   <!-- /ko -->
