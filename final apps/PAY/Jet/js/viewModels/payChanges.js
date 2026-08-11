@@ -4,9 +4,9 @@
  * dual confirmation trail: HR confirms each change first, then Payroll, and
  * each side signs the register off before the payroll run.
  */
-define(['knockout', 'services/payService', 'shared/i18n',
-        'shared/components/interactiveReport'],
-function (ko, payService, i18n) {
+define(['knockout', 'services/payService', 'services/api', 'shared/i18n',
+        'shared/docUpload', 'shared/components/interactiveReport'],
+function (ko, payService, api, i18n, docUpload) {
   'use strict';
 
   function PayChangesViewModel() {
@@ -44,7 +44,9 @@ function (ko, payService, i18n) {
     self.fKind    = ko.observable('');
     self.fGrp     = ko.observable('');
     self.fPending = ko.observable('');
+    self.fFlagged = ko.observable(false);
     self.search   = ko.observable('');
+    self.reportBusy = ko.observable('');
 
     // ── All-values tab (shared interactive report) ──────────────────────
     self.allEnv     = ko.observable(null);
@@ -69,6 +71,23 @@ function (ko, payService, i18n) {
 
     self.statusClass = function (s) {
       return 'chg-pill chg-pill--' + String(s || '').toLowerCase();
+    };
+
+    self.isWorkflow = ko.computed(function () {
+      var r = self.reg();
+      return !!r && r.signoffMode === 'WORKFLOW';
+    });
+    self.isLocked = ko.computed(function () {
+      var r = self.reg();
+      return !!r && (r.status === 'CONFIRMED' || r.status === 'IN_APPROVAL');
+    });
+    self.flagList = function (flags) {
+      return String(flags || '').split(',').filter(Boolean);
+    };
+    self.flagLabel = function (f) {
+      var k = 'chg.flag.' + f;
+      var v = i18n.t(k);
+      return v === k ? f : v;
     };
 
     self.attrLabel = function (code) {
@@ -184,7 +203,8 @@ function (ko, payService, i18n) {
       self.itemsLoading(true);
       return payService.chgItems(r.registerId, {
         kind: self.fKind(), grp: self.fGrp(),
-        pending: self.fPending(), search: self.search()
+        pending: self.fPending(), search: self.search(),
+        flagged: self.fFlagged() ? 'Y' : ''
       }).then(function (d) {
         // APEX_JSON omits NULL keys — normalise so foreach bindings never
         // hit an undefined identifier (platform KO gotcha)
@@ -195,6 +215,8 @@ function (ko, payService, i18n) {
             kind: x.kind, grp: x.grp, attr: x.attr,
             oldValue: x.oldValue || '', newValue: x.newValue || '',
             delta: (x.delta === undefined ? null : x.delta),
+            flags: x.flags || '', note: x.note || '',
+            noteReq: x.noteReq || 'N', docCount: x.docCount || 0,
             hrStatus: x.hrStatus, hrBy: x.hrBy || '', hrAt: x.hrAt || '',
             payStatus: x.payStatus, payBy: x.payBy || '', payAt: x.payAt || ''
           };
@@ -215,6 +237,7 @@ function (ko, payService, i18n) {
       if (self.mode() === 'changes') { self.loadItems(); } else { self.loadAll(); }
     });
     self.fPending.subscribe(function () { self.loadItems(); });
+    self.fFlagged.subscribe(function () { self.loadItems(); });
     self.allChangedOnly.subscribe(function () { self.loadAll(); });
 
     self.setMode = function (m) {
@@ -301,6 +324,99 @@ function (ko, payService, i18n) {
         .then(refreshAfterConfirm)
         .catch(function (e) { self.error(e.message || String(e)); })
         .finally(function () { self.busy(false); });
+    };
+
+    // justification note (enhancement 5): prompt-based inline editor
+    self.editNote = function (item) {
+      var r = self.reg();
+      if (!r || self.isLocked()) return;
+      var note = window.prompt(i18n.t('chg.notePrompt'), item.note || '');
+      if (note === null) return;
+      self.busy(true); self.error('');
+      payService.chgSetNote(r.registerId, item.itemId, note)
+        .then(self.loadItems)
+        .catch(function (e) { self.error(e.message || String(e)); })
+        .finally(function () { self.busy(false); });
+    };
+
+    // evidence documents on the shared DCT_DOCUMENTS store
+    self.attachEvidence = function (item) {
+      var r = self.reg();
+      if (!r || self.isLocked()) return;
+      docUpload.choose({ maxMb: 10 }).then(function (file) {
+        if (!file) return;
+        self.busy(true); self.error('');
+        payService.chgEvidence(r.registerId, item.itemId, file)
+          .then(self.loadItems)
+          .catch(function (e) { self.error(e.message || String(e)); })
+          .finally(function () { self.busy(false); });
+      });
+    };
+    self.openEvidence = function (item) {
+      var r = self.reg();
+      if (!r || !item.docCount) return;
+      payService.chgEvidenceList(r.registerId, item.itemId).then(function (d) {
+        var doc = (d.items || [])[0];
+        if (!doc) return;
+        return api.fetchBlobUrl('/docs/' + doc.docId + '/file').then(function (url) {
+          var a = document.createElement('a');
+          a.href = url; a.download = doc.fileName || 'evidence';
+          a.click();
+          setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        });
+      }).catch(function (e) { self.error(e.message || String(e)); });
+    };
+
+    // workflow sign-off (enhancement 3)
+    self.canSubmit = ko.computed(function () {
+      var r = self.reg();
+      return !!r && self.isWorkflow()
+        && (r.status === 'OPEN' || r.status === 'HR_CONFIRMED')
+        && (r.pendHr || 0) === 0 && (r.pendPay || 0) === 0
+        && (self.canHr() || self.canPay());
+    });
+    self.submitSignoff = function () {
+      var r = self.reg();
+      if (!r || !self.canSubmit()) return;
+      if (!window.confirm(i18n.t('chg.confirmSubmit'))) return;
+      self.busy(true); self.error('');
+      payService.chgSubmit(r.registerId)
+        .then(function () { return self.loadRegister(); })
+        .catch(function (e) { self.error(e.message || String(e)); })
+        .finally(function () { self.busy(false); });
+    };
+
+    // briefing report (enhancement 4): enqueue, poll, download
+    self.runReport = function (format) {
+      var r = self.reg();
+      if (!r || self.reportBusy()) return;
+      self.reportBusy(format); self.error('');
+      payService.chgReport(r.registerId, format).then(function (d) {
+        var tries = 0;
+        function poll() {
+          tries += 1;
+          return payService.chgReportStatus(d.runId).then(function (st) {
+            if (st.status === 'SUCCESS') {
+              return payService.chgReportFileUrl(d.runId).then(function (url) {
+                var a = document.createElement('a');
+                a.href = url;
+                a.download = 'pay-changes-' + (self.selPeriod() || 'register') + '.' + format.toLowerCase();
+                a.click();
+                setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+                self.reportBusy('');
+              });
+            }
+            if (st.status === 'FAILED') {
+              self.error(i18n.t('chg.reportFailed') + (st.error ? ': ' + st.error : ''));
+              self.reportBusy('');
+              return;
+            }
+            if (tries < 45) { setTimeout(poll, 4000); }
+            else { self.error(i18n.t('chg.reportFailed')); self.reportBusy(''); }
+          });
+        }
+        setTimeout(poll, 4000);
+      }).catch(function (e) { self.error(e.message || String(e)); self.reportBusy(''); });
     };
 
     // per-side progress for the tracker cards

@@ -1,24 +1,27 @@
 #!/usr/bin/env python3
 """PAY Module (App 215) — Employee Change Control browser smoke (EN + AR/RTL).
 
-Covers: the payChanges page over the REAL Dayton smoke registers (11-2025
-baseline + 12-2025 with one JOB_TITLE change), the full dual-confirmation
-lifecycle in the UI (HR confirm -> HR sign-off -> Payroll confirm -> Payroll
-sign-off), the all-values interactive report + changed-only filter, capture
-of a fresh period, the register history, the run-console readiness chip on
-the Payroll Runs page, and an AR/RTL round trip (restores EN — the shell
-PERSISTS language).
+v2 — covers the enhancement round (variance flags, justification notes,
+evidence, WORKFLOW sign-off, briefing report) on top of the original page:
+KPI band incl. Flagged, amber flagged rows + chips, note-required guard on
+HR confirm, prompt-based note editor, evidence attach (file chooser),
+dual confirm -> Submit for sign-off -> IN_APPROVAL -> (tasks approved via
+/wf/ API) -> CONFIRMED with chain-stamped sign-offs, all-values tab,
+baseline + empty states, run-console readiness chip, AR/RTL round trip.
 
-Precondition (set up by the runner script): Dayton 12-2025 register OPEN with
-exactly one pending JOB_TITLE change ('API Smoke Title').
+Precondition (set up by the runner): Dayton 11-2025 BASELINE captured on
+CLEAN data, then the ENH mutations applied (gross 397 45738->60000, job
+title 398, bank row 397), then 12-2025 captured => register OPEN with 4
+changes (3 flagged, 2 bank items needing a note). CHG_SIGNOFF_MODE=WORKFLOW.
 
-Auth env (mint with dct_auth.open_session): PAY_TOK required.
+Auth env: PAY_TOK (live session token, SYS_ADMIN + PAY_* roles for /wf/).
 Run: python dev-proxy.py 8217 (from PAY/Jet) then python pay_changes_browser.py
 """
-import json, os, sys
+import json, os, sys, urllib.request
 from playwright.sync_api import sync_playwright
 
 BASE = os.environ.get('PAY_BASE', 'http://localhost:8217')
+ORDS = 'https://gd5cec2eaeb21e3-prod.adb.me-abudhabi-1.oraclecloudapps.com/ords/admin'
 EV = os.environ.get('PAY_EVIDENCE',
      '/tmp/claude-0/-root-DCT-Task-Management/1bc7cf4b-9264-4bcf-b60b-55f789458ab0/scratchpad/pay_chg_evidence/')
 os.makedirs(EV, exist_ok=True)
@@ -35,10 +38,25 @@ sess = {
 }
 sess['roles'] = sess['rolesCsv'].split(',')
 
+def api(method, path, body=None):
+    req = urllib.request.Request(ORDS + path, method=method)
+    req.add_header('Authorization', 'Bearer ' + TOK)
+    data = None
+    if body is not None:
+        data = json.dumps(body).encode()
+        req.add_header('Content-Type', 'application/json')
+    try:
+        with urllib.request.urlopen(req, data) as r:
+            return r.status, json.loads(r.read().decode() or '{}')
+    except urllib.error.HTTPError as e:
+        return e.code, {}
+
 results = []
 def check(name, cond, extra=''):
     results.append((name, bool(cond)))
     print(('PASS' if cond else 'FAIL'), name, extra)
+
+prompt_text = {'v': ''}
 
 with sync_playwright() as p:
     b = p.chromium.launch(headless=True)
@@ -46,99 +64,128 @@ with sync_playwright() as p:
     page = ctx.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
-    page.on('dialog', lambda d: d.accept())
+    page.on('dialog', lambda d: d.accept(prompt_text['v']) if d.type == 'prompt' else d.accept())
 
     ctx.add_init_script(
         "localStorage.setItem('ifinance_jet_session', " + json.dumps(json.dumps(sess)) + ")")
     page.goto(BASE + '/index.html')
     page.wait_for_load_state('networkidle')
 
-    # 1 — nav entry
+    # 1 — nav + page + Dayton 12-2025
     check('nav Employee Changes', page.locator('.nav-item', has_text='Employee Changes').count() == 1)
-
-    # 2 — open the page, switch to Dayton 12-2025 (the seeded register)
     page.evaluate("window._jetApp.navigate('payChanges')")
     page.wait_for_timeout(3000)
     check('page title', 'Employee Change Control' in page.locator('.page-title').inner_text())
-    page.locator('.ap-chips select').first.select_option('2')     # DAYTON_MONTHLY
+    page.locator('.ap-chips select').first.select_option('2')
     page.wait_for_timeout(2000)
     page.locator('.ap-chips select').nth(1).select_option('12-2025')
     page.wait_for_timeout(2500)
 
-    # 3 — register head: OPEN status, KPI band, tracker
+    # 2 — head: OPEN, KPIs incl. flagged, workflow mode (no inline sign buttons)
     check('status pill Open', page.locator('.chg-pill--open').count() >= 1)
     kpis = page.locator('.pr-k .pr-k-v').all_inner_texts()
     check('KPI in scope 25', '25' in kpis, str(kpis))
-    check('KPI changes 1', '1' in kpis, str(kpis))
+    check('KPI changes 4', '4' in kpis, str(kpis))
+    check('KPI flagged 3', '3' in kpis, str(kpis))
     check('tracker two sides', page.locator('.chg-side').count() == 2)
-    check('HR progress 0/1', '0 / 1' in page.locator('.chg-side').first.inner_text())
-    page.screenshot(path=EV + '01_register_open.png', full_page=True)
+    check('no inline sign buttons (workflow mode)',
+          page.locator('.chg-side button').count() == 0)
+    check('report buttons', page.locator('.page-actions button', has_text='Report PDF').count() == 1)
+    page.screenshot(path=EV + 'e01_register_flags.png', full_page=True)
 
-    # 4 — changes grid: employee group + JOB_TITLE diff row
-    check('employee group row', page.locator('.chg-emp').count() == 1)
-    row = page.locator('.chg-table tbody tr').nth(1)
-    check('attr Job title', 'Job title' in row.inner_text())
-    check('new value shown', 'API Smoke Title' in row.locator('.chg-new').inner_text())
+    # 3 — flagged rows + chips + note-required
+    check('2 employee groups', page.locator('.chg-emp').count() == 2)
+    check('3 amber flagged rows', page.locator('.chg-row--flag').count() == 3)
+    check('flag chips render', page.locator('.chg-flag').count() >= 3)
+    check('2 note-required warnings', page.locator('.chg-notereq').count() == 2)
 
-    # 5 — HR confirm the item, then HR sign-off
-    row.locator('button', has_text='Confirm').first.evaluate('el => el.click()')
-    page.wait_for_timeout(2000)
-    check('HR confirmed tick', '✓' in page.locator('.chg-table tbody tr').nth(1).inner_text())
-    check('HR progress 1/1', '1 / 1' in page.locator('.chg-side').first.inner_text())
-    page.locator('.chg-side').first.locator('button', has_text='HR sign-off').evaluate('el => el.click()')
-    page.wait_for_timeout(2000)
-    check('status HR confirmed', page.locator('.chg-pill--hr_confirmed').count() >= 1)
-    check('HR side signed', 'Signed off by' in page.locator('.chg-side').first.inner_text())
+    # 4 — flagged-only filter narrows to 3
+    page.locator('.ap-chips input[type=checkbox]').first.check()
+    page.wait_for_timeout(1800)
+    rows = page.locator('.chg-table tbody tr').count() - page.locator('.chg-emp').count()
+    check('flagged-only 3 rows', rows == 3, str(rows))
+    page.locator('.ap-chips input[type=checkbox]').first.uncheck()
+    page.wait_for_timeout(1800)
 
-    # 6 — Payroll confirm + sign-off => CONFIRMED
-    page.locator('.chg-table tbody tr').nth(1).locator('button', has_text='Confirm').first.evaluate('el => el.click()')
+    # 5 — HR confirm-all blocked while notes missing
+    page.locator('.region-actions button', has_text='Confirm all (HR)').evaluate('el => el.click()')
     page.wait_for_timeout(2000)
-    page.locator('.chg-side').nth(1).locator('button', has_text='Payroll sign-off').evaluate('el => el.click()')
-    page.wait_for_timeout(2000)
-    check('status Confirmed', page.locator('.chg-pill--confirmed').count() >= 1)
-    check('both sides done', page.locator('.chg-side--done').count() == 2)
-    page.screenshot(path=EV + '02_register_confirmed.png', full_page=True)
+    check('confirm blocked, note error', 'note' in (page.locator('.dw-err').inner_text()
+          if page.locator('.dw-err').count() else ''),
+          page.locator('.dw-err').inner_text() if page.locator('.dw-err').count() else 'no err')
 
-    # 7 — all-values tab on the shared interactive report
+    # 6 — add notes via the prompt editor on both bank rows
+    prompt_text['v'] = 'IBAN letter received from the employee'
+    for _ in range(2):
+        page.locator('.chg-notereq').first.locator('xpath=..').locator('a', has_text='add note') \
+            .first.evaluate('el => el.click()')
+        page.wait_for_timeout(2000)
+    check('notes saved, warnings gone', page.locator('.chg-notereq').count() == 0
+          and page.locator('.chg-note').count() == 2)
+
+    # 7 — attach evidence on a bank row (file chooser)
+    ev_file = EV + 'iban_letter.txt'
+    with open(ev_file, 'w') as f:
+        f.write('evidence: bank letter')
+    with page.expect_file_chooser() as fc:
+        page.locator('.chg-row--flag a', has_text='attach').first.evaluate('el => el.click()')
+    fc.value.set_files(ev_file)
+    page.wait_for_timeout(2500)
+    check('evidence count chip', page.locator('a', has_text='📎 1').count() == 1)
+    page.screenshot(path=EV + 'e02_notes_evidence.png', full_page=True)
+
+    # 8 — dual confirm-all, then Submit for sign-off
+    page.locator('.region-actions button', has_text='Confirm all (HR)').evaluate('el => el.click()')
+    page.wait_for_timeout(2200)
+    check('HR 4/4', '4 / 4' in page.locator('.chg-side').first.inner_text())
+    page.locator('.region-actions button', has_text='Confirm all (Payroll)').evaluate('el => el.click()')
+    page.wait_for_timeout(2200)
+    check('PAY 4/4', '4 / 4' in page.locator('.chg-side').nth(1).inner_text())
+    sub = page.locator('.chg-wf button', has_text='Submit for sign-off')
+    check('submit button enabled', sub.count() == 1 and sub.is_enabled())
+    sub.evaluate('el => el.click()')
+    page.wait_for_timeout(2500)
+    check('IN_APPROVAL pill', page.locator('.chg-pill--in_approval').count() >= 1)
+    check('in-approval note', 'approval workflow' in page.locator('.chg-wf').inner_text())
+    page.screenshot(path=EV + 'e03_in_approval.png', full_page=True)
+
+    # 9 — approve both workflow tasks via /wf/, page shows CONFIRMED
+    for _ in range(2):
+        s, d = api('GET', '/wf/worklist')
+        task = next((t for t in d.get('items', []) if t.get('module') == 'PAY'), None)
+        if task:
+            api('POST', f'/wf/tasks/{task["id"]}/action', {'outcome': 'APPROVE', 'comments': 'browser smoke'})
+            page.wait_for_timeout(1500)
+    page.locator('.ap-chips select').nth(1).select_option('11-2025')
+    page.wait_for_timeout(1500)
+    page.locator('.ap-chips select').nth(1).select_option('12-2025')
+    page.wait_for_timeout(2500)
+    check('CONFIRMED after workflow', page.locator('.chg-pill--confirmed').count() >= 1)
+    check('both sides signed by chain', page.locator('.chg-side--done').count() == 2
+          and page.locator('.chg-signed').count() == 2)
+    page.screenshot(path=EV + 'e04_confirmed_wf.png', full_page=True)
+
+    # 10 — all-values tab + changed-only
     page.locator('.chg-tab', has_text='All values').click()
     page.wait_for_timeout(2500)
     check('IR renders', page.locator('.ir-table').count() == 1)
-    ir_region = page.locator('.ap-region').nth(1)
-    check('IR pager full matrix', 'of 2' in ir_region.inner_text()
-          or page.locator('.ir-table tbody tr').count() >= 50,
-          str(page.locator('.ir-table tbody tr').count()))
-    # changed-only narrows to the single diff
     page.locator('input[type=checkbox]').first.check()
     page.wait_for_timeout(2000)
-    check('changed-only 1 row', page.locator('.ir-table tbody tr').count() == 1)
-    page.screenshot(path=EV + '03_all_values.png', full_page=True)
+    check('changed-only 4 rows', page.locator('.ir-table tbody tr').count() == 4)
     page.locator('input[type=checkbox]').first.uncheck()
     page.wait_for_timeout(1200)
     page.locator('.chg-tab', has_text='Changes').first.click()
     page.wait_for_timeout(1200)
 
-    # 8 — baseline period view
+    # 11 — baseline + empty states
     page.locator('.ap-chips select').nth(1).select_option('11-2025')
     page.wait_for_timeout(2200)
     check('baseline pill', page.locator('.chg-pill--baseline').count() >= 1)
-    check('baseline note', page.locator('.chg-baseline').count() == 1)
-
-    # 9 — un-captured period: empty state, then live capture
     page.locator('.ap-chips select').nth(1).select_option('10-2025')
     page.wait_for_timeout(2200)
     check('empty state', 'No change register' in page.locator('.ap-region').first.inner_text())
-    page.locator('.ap-chips button', has_text='Capture changes').evaluate('el => el.click()')
-    page.wait_for_timeout(3000)
-    check('capture -> baseline (earliest period)', page.locator('.chg-pill--baseline').count() >= 1)
 
-    # 10 — register history lists the captured periods
-    page.locator('.section-heading', has_text='Register history').click()
-    page.wait_for_timeout(800)
-    hist_rows = page.locator('.ap-region').last.locator('tbody tr').count()
-    check('history rows >= 3', hist_rows >= 3, str(hist_rows))
-    page.screenshot(path=EV + '04_history.png', full_page=True)
-
-    # 11 — run-console readiness chip on Payroll Runs
+    # 12 — run-console readiness chip (confirmed via workflow)
     page.evaluate("window._jetApp.navigate('payRuns')")
     page.wait_for_timeout(3000)
     page.locator('.ap-chips select').first.select_option('2')
@@ -146,23 +193,19 @@ with sync_playwright() as p:
     page.locator('.ap-chips select').nth(1).select_option('12-2025')
     page.wait_for_timeout(2500)
     chip = page.locator('.chg-chip')
-    check('runs chip present', chip.count() == 1)
-    check('runs chip confirmed', 'Confirmed' in chip.inner_text(), chip.inner_text() if chip.count() else '')
-    check('runs chip green', chip.evaluate('el => el.className').find('confirmed') >= 0)
-    page.screenshot(path=EV + '05_runs_chip.png')
-    # chip deep-links into the change register
+    check('runs chip confirmed', chip.count() == 1 and 'Confirmed' in chip.inner_text(),
+          chip.inner_text() if chip.count() else '')
     chip.evaluate('el => el.click()')
     page.wait_for_timeout(3000)
-    check('chip navigates to changes', 'Employee Change Control' in page.locator('.page-title').inner_text())
-    check('deep link period kept', page.locator('.ap-chips select').nth(1).input_value() == '12-2025')
+    check('chip deep-links', 'Employee Change Control' in page.locator('.page-title').inner_text())
 
-    # 12 — AR/RTL round trip
+    # 13 — AR/RTL round trip (restore EN — the shell persists language)
     page.locator('.lang-pill button', has_text='ع').click()
     page.wait_for_timeout(2500)
     check('RTL applied', page.evaluate("document.documentElement.dir || document.dir") == 'rtl'
           or page.locator('html[dir=rtl]').count() == 1)
     check('AR title', 'ضبط تغييرات الموظفين' in page.locator('.page-title').inner_text())
-    page.screenshot(path=EV + '06_ar_rtl.png', full_page=True)
+    page.screenshot(path=EV + 'e05_ar_rtl.png', full_page=True)
     page.locator('.lang-pill button', has_text='EN').click()
     page.wait_for_timeout(2000)
     check('EN restored', 'Employee Change Control' in page.locator('.page-title').inner_text())

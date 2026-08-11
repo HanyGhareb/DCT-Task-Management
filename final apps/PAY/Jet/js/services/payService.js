@@ -140,6 +140,18 @@ define(['services/api', 'services/config'], function (api, config) {
     chgSignoff:   function (regId, side, action) { return api.post('/changes/' + regId + '/signoff', { side: side, action: action }); },
     chgStatus:    function (payrollId, periodId) { return api.get('/changes/status' + qs({ payrollid: payrollId, periodid: periodId })); },
     chgRegisters: function (payrollId)           { return api.get('/changes/registers' + qs({ payrollid: payrollId })); },
+    chgSetNote:   function (regId, itemId, note) { return api.put('/changes/' + regId + '/items/' + itemId, { note: note }); },
+    chgEvidenceList: function (regId, itemId)    { return api.get('/changes/' + regId + '/items/' + itemId + '/evidence'); },
+    chgEvidence:  function (regId, itemId, file) {
+      return api.putBinary('/changes/' + regId + '/items/' + itemId + '/evidence', file, {
+        mime: file.type || 'application/octet-stream',
+        query: { file_name: file.name, mime_type: file.type || 'application/octet-stream' }
+      });
+    },
+    chgSubmit:    function (regId)               { return api.post('/changes/' + regId + '/submit', {}); },
+    chgReport:    function (regId, format)       { return api.post('/changes/' + regId + '/report', { format: format }); },
+    chgReportStatus: function (runId)            { return api.get('/changes/report/' + runId); },
+    chgReportFileUrl: function (runId)           { return api.fetchBlobUrl('/changes/report/' + runId + '/file'); },
     getRuns:        function (params)     { return api.get('/runs' + qs(params)); },
     createRun:      function (body)       { return api.post('/runs', body); },
     getRun:         function (id)         { return api.get('/runs/' + id); },

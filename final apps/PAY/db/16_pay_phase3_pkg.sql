@@ -811,12 +811,36 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_pay_calc_pkg AS
     l_comp prod.dct_pay_company%ROWTYPE;
     l_basic NUMBER; l_gross NUMBER; l_ded NUMBER; l_er NUMBER;
     l_amt NUMBER; l_base NUMBER; l_rate NUMBER; l_ee NUMBER; l_err NUMBER;
+    l_gate VARCHAR2(10);
+    l_ok   NUMBER;
   BEGIN
     SELECT p.* INTO l_pay FROM prod.dct_pay_payroll p
     JOIN prod.dct_pay_run r ON r.payroll_id = p.payroll_id WHERE r.run_id = p_run_id;
     SELECT pe.* INTO l_per FROM prod.dct_pay_period pe
     JOIN prod.dct_pay_run r ON r.period_id = pe.period_id WHERE r.run_id = p_run_id;
     SELECT c.* INTO l_comp FROM prod.dct_pay_company c WHERE c.company_id = l_pay.company_id;
+
+    -- change-register gate: with CHG_GATE_MODE=BLOCK the period's employee
+    -- change register must be CONFIRMED (or BASELINE) before calculation
+    BEGIN
+      SELECT ms.setting_value INTO l_gate
+      FROM prod.dct_module_settings ms
+      JOIN prod.dct_modules m ON m.module_id = ms.module_id
+      WHERE m.module_code = 'PAY' AND ms.setting_key = 'CHG_GATE_MODE';
+    EXCEPTION WHEN NO_DATA_FOUND THEN l_gate := 'OFF';
+    END;
+    IF NVL(l_gate, 'OFF') = 'BLOCK' THEN
+      SELECT COUNT(*) INTO l_ok
+      FROM prod.dct_pay_chg_register cr
+      WHERE cr.payroll_id = l_pay.payroll_id
+        AND cr.period_id = l_per.period_id
+        AND cr.status IN ('CONFIRMED', 'BASELINE');
+      IF l_ok = 0 THEN
+        RAISE_APPLICATION_ERROR(-20001,
+          'The employee change register for ' || l_per.period_code ||
+          ' is not confirmed - calculation is blocked (Change Register Gate = BLOCK)');
+      END IF;
+    END IF;
 
     DELETE FROM prod.dct_pay_run_line
     WHERE run_emp_id IN (SELECT run_emp_id FROM prod.dct_pay_run_emp WHERE run_id = p_run_id);

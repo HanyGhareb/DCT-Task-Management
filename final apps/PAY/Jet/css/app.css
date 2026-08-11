@@ -450,3 +450,16 @@ td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: 
 .chg-chip--confirmed    { background:#E7F6EC; color:#1F7A3D; border-color:#BFE4CC; }
 
 @media (max-width: 900px) { .chg-track { grid-template-columns:1fr; } }
+
+/* change control enhancements: flags, notes, workflow submit band */
+.chg-row--flag td { background: #FCF7E3 !important; }
+.chg-flag { display:inline-block; background:#FCF7E3; color:#8a6100; border:1px solid #EBD9A8;
+            border-radius:10px; padding:1px 8px; font-size:10px; font-weight:700;
+            margin-inline-start:6px; cursor:help; }
+.chg-noteline { margin-top:3px; font-size:11px; display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
+.chg-note { color:var(--text-2); font-style:italic; }
+.chg-notereq { color:#B3261E; font-weight:700; font-size:11px; }
+.chg-wf { margin-top:12px; padding:10px 14px; border-radius:8px; background:rgba(var(--brand-rgb),.06);
+          border:1px solid rgba(var(--brand-rgb),.25); display:flex; align-items:center;
+          justify-content:space-between; gap:12px; flex-wrap:wrap; }
+.chg-wf-t { color:#8a6100; font-weight:700; font-size:13px; }

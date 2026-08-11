@@ -193,6 +193,16 @@ function (ko, payService, authService, i18n) {
       var r = self.run();
       if (!r) return;
       if (action === 'REOPEN' && !window.confirm(self.t('pr.confirmReopen'))) return;
+      // change-register gate WARN: an unconfirmed register asks before Calculate
+      // (BLOCK mode is enforced server-side and surfaces as a clean 400)
+      if (action === 'CALCULATE') {
+        var c = self.chgInfo();
+        if (c && c.gateMode === 'WARN'
+            && !(c.exists === 'Y' && (c.status === 'CONFIRMED' || c.status === 'BASELINE'))
+            && !window.confirm(self.t('chg.warnCalc'))) {
+          return;
+        }
+      }
       self.busy(true); self.error('');
       payService.runAction(r.runId, action)
         .then(function () { return self.loadRun(r.runId); })

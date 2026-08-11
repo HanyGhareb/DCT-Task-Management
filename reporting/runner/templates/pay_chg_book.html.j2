@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>{{ report_name }}</title>
+{#- section lookup -#}
+{%- set S = {} -%}
+{%- for s in sections %}{% set _ = S.update({s.key: s}) %}{% endfor -%}
+{%- set O   = (S.overview.data[0] if S.overview and S.overview.data else {}) -%}
+{%- set CHG = S.changes.data if S.changes else [] -%}
+{%- set NH  = S.new_hires.data if S.new_hires else [] -%}
+{%- set EX  = S.exits.data if S.exits else [] -%}
+{%- macro money(v) -%}
+  {%- if v is none %}&mdash;{%- else %}{{ v|round(2)|fmt }}{%- endif -%}
+{%- endmacro -%}
+<style>
+  :root { --brand: #14682F; --brand-d: #0E4A21; --red: #B3352B; --red-soft: #FBEBE9;
+          --amber: #B58900; --amber-soft: #FCF7E3; --ink: #1F2933; --mut: #7B8794; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif; color: var(--ink);
+         margin: 0; font-size: 10px; }
+  @page { size: A4 landscape; }
+  .hd { border-bottom: 4px solid var(--brand); padding: 0 0 10px; margin-bottom: 12px; }
+  .hd .org { font-size: 9px; letter-spacing: .14em; text-transform: uppercase; color: var(--mut); }
+  .hd h1 { font-size: 21px; font-weight: 700; color: var(--brand); margin: 3px 0 2px; }
+  .hd .sub { font-size: 10.5px; color: #52606d; }
+  .kpis { display: flex; gap: 10px; margin: 12px 0 14px; }
+  .kpi { flex: 1; border: 1px solid #DCE3DC; border-left: 4px solid var(--brand);
+         border-radius: 7px; padding: 8px 12px; }
+  .kpi.warn { border-left-color: var(--red); }
+  .kpi.amb { border-left-color: var(--amber); }
+  .kpi .v { font-size: 17px; font-weight: 700; color: var(--brand-d); }
+  .kpi.warn .v { color: var(--red); }
+  .kpi.amb .v { color: var(--amber); }
+  .kpi .l { font-size: 8.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--mut); margin-top: 2px; }
+  .sign { display: flex; gap: 10px; margin: 0 0 14px; }
+  .sg { flex: 1; border: 1px solid #BFE4CC; background: #F4FBF6; border-radius: 7px; padding: 8px 12px; }
+  .sg .t { font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--mut); }
+  .sg .w { font-size: 12px; font-weight: 700; color: var(--brand-d); margin-top: 2px; }
+  h2 { font-size: 13.5px; color: var(--brand-d); border-bottom: 2px solid var(--brand);
+       padding-bottom: 4px; margin: 18px 0 4px; page-break-after: avoid; }
+  .note { font-size: 9px; color: var(--mut); margin: 2px 0 8px; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 6px; }
+  thead th { background: var(--brand); color: #fff; font-weight: 600; text-align: left;
+             padding: 5px 7px; font-size: 8.7px; border: 1px solid var(--brand); }
+  tbody td { padding: 4px 7px; border: 1px solid #e4e7eb; vertical-align: top; }
+  tbody tr:nth-child(even) td { background: #F5F8F5; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .old { color: var(--red); text-decoration: line-through; }
+  .new { color: var(--brand-d); font-weight: 600; }
+  .flag { display: inline-block; background: var(--amber-soft); color: var(--amber);
+          border: 1px solid #E7D9A8; border-radius: 8px; padding: 0 5px; font-size: 8px;
+          font-weight: 700; }
+  tr.flagged td { background: var(--amber-soft) !important; }
+  .ok { color: var(--brand-d); font-weight: 700; }
+  .pend { color: var(--red); font-weight: 700; }
+  .disc { margin-top: 14px; padding: 8px 12px; border: 1px solid #E7D9A8; background: var(--amber-soft);
+          border-radius: 7px; font-size: 9px; color: #6b5d1f; }
+  .foot { margin-top: 10px; font-size: 8.5px; color: var(--mut); text-align: center; }
+</style>
+</head>
+<body>
+
+  <div class="hd">
+    <div class="org">Oracle Fusion i-Finance &middot; Reporting Platform</div>
+    <h1>Employee Change Register &mdash; {{ O.payroll_code or '' }} {{ O.period_code or '' }}</h1>
+    <div class="sub">{{ O.company_name or '' }} &middot; pre-payroll change control
+      {% if O.prior_period %}&middot; compared to {{ O.prior_period }}{% endif %}
+      &middot; captured {{ O.captured_at or '' }}{% if O.captured_by %} by {{ O.captured_by }}{% endif %}
+      &middot; status <strong>{{ O.status or '' }}</strong></div>
+  </div>
+
+  <div class="kpis">
+    <div class="kpi"><div class="v">{{ O.emp_count|fmt }}</div><div class="l">Employees in scope</div></div>
+    <div class="kpi"><div class="v">{{ O.change_count|fmt }}</div><div class="l">Changes</div></div>
+    <div class="kpi"><div class="v">{{ O.new_hires|fmt }}</div><div class="l">New hires</div></div>
+    <div class="kpi"><div class="v">{{ O.exits|fmt }}</div><div class="l">Exits</div></div>
+    <div class="kpi amb"><div class="v">{{ O.flagged|fmt }}</div><div class="l">Variance-flagged</div></div>
+    <div class="kpi {% if (O.gross_impact or 0) < 0 %}warn{% endif %}">
+      <div class="v">{{ money(O.gross_impact) }}</div><div class="l">Gross impact (AED / month)</div></div>
+  </div>
+
+  <div class="sign">
+    <div class="sg"><div class="t">HR sign-off</div>
+      <div class="w">{% if O.hr_done_at %}{{ O.hr_done_by }} &middot; {{ O.hr_done_at }}{% else %}&mdash; pending{% endif %}</div></div>
+    <div class="sg"><div class="t">Payroll sign-off</div>
+      <div class="w">{% if O.pay_done_at %}{{ O.pay_done_by }} &middot; {{ O.pay_done_at }}{% else %}&mdash; pending{% endif %}</div></div>
+  </div>
+
+  <h2>1. Change register</h2>
+  <div class="note">Every payroll-relevant difference against the prior period, with the dual
+    confirmation trail. Amber rows carry variance flags (GROSS_JUMP / BANK_W_RAISE / REPEAT_3M).</div>
+  <table>
+    <thead><tr>
+      <th>Employee</th><th>No</th><th>Kind</th><th>Group</th><th>Attribute</th>
+      <th>Previous</th><th>New</th><th>Impact</th><th>Flags</th><th>Note</th>
+      <th>HR</th><th>Payroll</th>
+    </tr></thead>
+    <tbody>
+    {% for r in CHG %}
+      <tr {% if r.flags %}class="flagged"{% endif %}>
+        <td>{{ r.full_name }}</td>
+        <td>{{ r.employee_number }}</td>
+        <td>{{ r.change_kind }}</td>
+        <td>{{ r.attr_group }}</td>
+        <td>{{ r.attr_code }}</td>
+        <td><span class="old">{{ r.old_value if r.old_value is not none else '' }}</span></td>
+        <td><span class="new">{{ r.new_value if r.new_value is not none else '' }}</span></td>
+        <td class="num">{% if r.delta is not none and r.delta != 0 %}{{ money(r.delta) }}{% endif %}</td>
+        <td>{% if r.flags %}<span class="flag">{{ r.flags }}</span>{% endif %}</td>
+        <td>{{ (r.note or '')|string|truncate(70) }}{% if r.evidence_docs %} ({{ r.evidence_docs }} doc){% endif %}</td>
+        <td>{% if r.hr_status == 'Y' %}<span class="ok">&#10003; {{ r.hr_by }}</span>{% else %}<span class="pend">pending</span>{% endif %}</td>
+        <td>{% if r.pay_status == 'Y' %}<span class="ok">&#10003; {{ r.pay_by }}</span>{% else %}<span class="pend">pending</span>{% endif %}</td>
+      </tr>
+    {% else %}
+      <tr><td colspan="12">No changes in this period.</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+
+  {% if NH %}
+  <h2>2. New hires</h2>
+  <table>
+    <thead><tr><th>Employee</th><th>No</th><th>Gross salary</th><th>Note</th><th>HR</th><th>Payroll</th></tr></thead>
+    <tbody>
+    {% for r in NH %}
+      <tr>
+        <td>{{ r.full_name }}</td><td>{{ r.employee_number }}</td>
+        <td class="num">{{ r.gross_salary or '' }}</td>
+        <td>{{ (r.note or '')|string|truncate(80) }}</td>
+        <td>{% if r.hr_status == 'Y' %}<span class="ok">&#10003;</span>{% else %}<span class="pend">pending</span>{% endif %}</td>
+        <td>{% if r.pay_status == 'Y' %}<span class="ok">&#10003;</span>{% else %}<span class="pend">pending</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  {% if EX %}
+  <h2>{{ '3' if NH else '2' }}. Exits</h2>
+  <table>
+    <thead><tr><th>Employee</th><th>No</th><th>Last gross</th><th>Note</th><th>HR</th><th>Payroll</th></tr></thead>
+    <tbody>
+    {% for r in EX %}
+      <tr>
+        <td>{{ r.full_name }}</td><td>{{ r.employee_number }}</td>
+        <td class="num">{{ r.gross_salary or '' }}</td>
+        <td>{{ (r.note or '')|string|truncate(80) }}</td>
+        <td>{% if r.hr_status == 'Y' %}<span class="ok">&#10003;</span>{% else %}<span class="pend">pending</span>{% endif %}</td>
+        <td>{% if r.pay_status == 'Y' %}<span class="ok">&#10003;</span>{% else %}<span class="pend">pending</span>{% endif %}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% endif %}
+
+  <div class="disc">
+    Method: the register snapshots every employee in the payroll's scope (profile, assignment,
+    contractual salary, element entries at period-end value, reference bank details) and compares
+    it to the previous period's snapshot. HR confirms each change first, then Payroll; the payroll
+    calculation gate reads this register's status. The complete point-in-time snapshot is included
+    as a separate sheet in the Excel edition of this pack.
+  </div>
+
+  <div class="foot">Prepared by Financial Planning and Budgeting &mdash; Finance Department &middot;
+    Generated {{ generated_at_pretty or generated_at }} by i-Finance Reporting &middot; {{ report_name }}</div>
+
+</body>
+</html>

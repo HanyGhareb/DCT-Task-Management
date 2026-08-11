@@ -58,7 +58,8 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 - Changes tab: grid grouped by employee (NEW_HIRE/EXIT badges), old→new diff per attribute with numeric delta chips; `confirmOne(item, side)` per item + `confirmAll(side)` bulk (Payroll only after HR); kind/group/pending filters + search.
 - All values tab: full snapshot matrix (previous vs current per attribute, changed flag) on the shared `<interactive-report>` (code `PAY_CHG_ALL`), changed-only checkbox.
 - Register history (per payroll, last 24 periods) + `exportCsv()`.
-- Payroll Runs console shows a **readiness chip** per period (Not captured / n pending / Confirmed ✓) deep-linking here (`goChanges()` on payRuns).
+- **Enhancement round (2026-08-11)**: variance flags (amber rows + GROSS_JUMP/BANK_W_RAISE/REPEAT_3M chips, Flagged KPI tile, flagged-only filter), justification notes (`editNote` prompt editor; HR confirm refuses while a required note is missing — BANK changes and configurable thresholds), evidence files (`attachEvidence`/`openEvidence`, shared DCT_DOCUMENTS PAY_CHANGE), **workflow sign-off** (`submitSignoff` → DWP process PAY_CHG_APPROVAL when CHG_SIGNOFF_MODE=WORKFLOW; register locks IN_APPROVAL; inline buttons only in INLINE mode), and `runReport(format)` — PDF/XLSX briefing pack (PAY_CHG_REGISTER) with poll + auto-download.
+- Payroll Runs console shows a **readiness chip** per period (Not captured / n pending / Confirmed ✓) deep-linking here (`goChanges()` on payRuns); with CHG_GATE_MODE=WARN, Calculate asks for confirmation while the register is unconfirmed (BLOCK is enforced server-side).
 
 ## Payroll Setup (Phase 3 — PAY_ADMIN)
 - Payrolls table + edit drawer (`pdEdit`/`pdSave`): names, proration basis/divisor, pension base, cut-off/pay day, active; `pdGenPeriods()` — generate a year's monthly calendar.
@@ -145,6 +146,11 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | POST | changes/:id/signoff | {side, action SIGN\|UNSIGN} register attestation; PAY sign requires HR signed — Phase 3.1 |
 | GET | changes/status?payrollid=&periodid= | Readiness chip for the run console (status + pending counts) — Phase 3.1 |
 | GET | changes/registers?payrollid= | Register history (last 24 periods) — Phase 3.1 |
+| PUT | changes/:id/items/:iid | Set/replace the justification note — Phase 3.1b |
+| GET/PUT | changes/:id/items/:iid/evidence | List / raw-binary upload of evidence files (DCT_DOCUMENTS PAY_CHANGE; download via docs/:docId/file) — Phase 3.1b |
+| POST | changes/:id/submit | Start the PAY_CHG_APPROVAL workflow (all items confirmed both sides; register → IN_APPROVAL) — Phase 3.1b |
+| POST | changes/:id/report | Enqueue the PAY_CHG_REGISTER pack {format PDF\|XLSX} — Phase 3.1b |
+| GET | changes/report/:rid · /:rid/file | Report run status / authed download — Phase 3.1b |
 | GET | docs?type=&id= | Documents of a company/contract (DCT_DOCUMENTS, module PAY) |
 | PUT | docs?type=&id=&file_name=&mime_type= | Raw-binary upload (PAY_ADMIN, MAX_UPLOAD_MB → 413) |
 | DELETE | docs/:docId | Soft-delete a document (PAY_ADMIN) |
@@ -157,4 +163,4 @@ Functional inventory of the JET SPA (`Jet/js/views/<x>.html` + `viewModels/<x>.j
 | `services/api.js` | Re-export of shared fetch wrapper (Bearer + 401 redirect) |
 | `services/authService.js` | Session reader (Admin JET writes the session) |
 | `services/config.js` | apiBase /pay · authBase /dct |
-| Server | `DCT_PAY_PKG` (validated writes + renewal sweep) · `DCT_PAY_RENEWAL_JOB` daily 07:20 UTC · `DCT_PAY_EMP_PKG` (Phase 2 workforce: numbering/dedup/assignments/lifecycle/banks/docs/bulk) · `DCT_PAY_EMPDOC_JOB` daily 07:25 UTC · `DCT_PAY_CALC_PKG` (Phase 3 payroll setup writes + the run engine: load/validate/calculate/review/reopen, proration, eligibility, rate tables, charge preview) · `DCT_PAY_CHG_PKG` (Phase 3.1 change control: capture/diff snapshot engine, dual confirmations, sign-offs) |
+| Server | `DCT_PAY_PKG` (validated writes + renewal sweep) · `DCT_PAY_RENEWAL_JOB` daily 07:20 UTC · `DCT_PAY_EMP_PKG` (Phase 2 workforce: numbering/dedup/assignments/lifecycle/banks/docs/bulk) · `DCT_PAY_EMPDOC_JOB` daily 07:25 UTC · `DCT_PAY_CALC_PKG` (Phase 3 payroll setup writes + the run engine: load/validate/calculate/review/reopen, proration, eligibility, rate tables, charge preview) · `DCT_PAY_CHG_PKG` (Phase 3.1 change control: capture/diff snapshot engine, variance flags, dual confirmations, note requirement, DWP submit + hooks, sign-offs) · `DCT_PAY_CHG_JOB` daily 07:30 UTC (cutoff auto-capture + reminders) |
