@@ -29,6 +29,18 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
    (overlap → toast), Explorer as-of + CSV.
 
 ## History
+- **2026-08-11 — BUDGET_COMBINATION blank on MSS/ZNM register lines (db/v2/37 re-run;
+  DB-only).** 35 of 344 MSS-BU lines (incl. every ZNM line) printed an empty Budget
+  Combination in BUDGET_UTIL_REGISTER sheet 1: their tasks/projects carry NO segment
+  attributes in Fusion, and the combination builder only read task attrs + the project
+  attr rollup — while the DISPLAY cost_centre column also falls back to the line's
+  posted-combination segments and the project-window posted segments (which is why the
+  row still showed CC 4510183 next to a blank combination). Fix: every ingredient of
+  `BUDGET_COMBINATION` (program / cost centre / entity-specific / appropriation) now
+  mirrors its display column's chain — task attr → project attr rollup → posted COA
+  segment → project-window posted COA segment → default. Verified: NULL combinations
+  2026 = **0 for both BUs** (was 35/344 MSS); ZNM sample rows render the full canonical
+  string. Re-generate any register produced before the fix to pick the values up.
 - **2026-08-10 (b) — Web-tier release `20260811004936` pushed**: GL v1.60.0 live (verified
   `buTypeSel`/`buTypeAdd` + the new override checkbox label served). SAME SESSION: **manual
   ATD_PROJECTS_BUDGET reload** (user-extracted `temp-data/PROJECTS_BUDGET_PERIODS.csv` —

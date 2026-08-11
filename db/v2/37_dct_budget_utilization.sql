@@ -368,17 +368,34 @@ SELECT
   -- the posted-transaction account); PROGRAM/CC/ES/APPROPRIATION come from
   -- the task, and a task missing one takes it from PROJECT level (the rollup
   -- of the project's tasks, appropriation also from the project attribute).
-  -- Entity 451 + budget group 1 + constant tail 000.000000.000000. Falls back
-  -- to an actual posted combination (MAX cc_string) only when neither the
-  -- task nor the project yields a cost centre.
+  -- Entity 451 + budget group 1 + constant tail 000.000000.000000. Each
+  -- segment mirrors its DISPLAY column's fallback chain (2026-08-11 fix:
+  -- MSS/ZNM budget-only lines have no task/project segment attrs, but their
+  -- project DOES have posted combinations — the display cost_centre found a
+  -- CC while the builder yielded NULL): task attr -> project attr rollup ->
+  -- the line's posted-combination segment -> the project-window posted
+  -- segment. Falls back to an actual posted combination (MAX cc_string)
+  -- only when no source anywhere yields a cost centre.
   COALESCE(
-    CASE WHEN COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code)) IS NOT NULL
+    CASE WHEN COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code),
+                       MAX(coa.cost_center_code),
+                       MAX(MAX(coa.cost_center_code)) OVER (PARTITION BY k.budget_year, k.project_key)) IS NOT NULL
           AND REGEXP_SUBSTR(k.expenditure_type,'^\d{6}') IS NOT NULL
-         THEN '451.' || COALESCE(MAX(tcc.program_code), MAX(pseg.program_code), '000000') || '.' ||
-              COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code)) || '.1.' ||
+         THEN '451.' || COALESCE(MAX(tcc.program_code), MAX(pseg.program_code),
+                                 MAX(coa.program_code),
+                                 MAX(MAX(coa.program_code)) OVER (PARTITION BY k.budget_year, k.project_key),
+                                 '000000') || '.' ||
+              COALESCE(MAX(tcc.cost_center_code), MAX(pseg.cost_center_code),
+                       MAX(coa.cost_center_code),
+                       MAX(MAX(coa.cost_center_code)) OVER (PARTITION BY k.budget_year, k.project_key)) || '.1.' ||
               REGEXP_SUBSTR(k.expenditure_type,'^\d{6}') || '.' ||
-              COALESCE(MAX(tcc.entity_specific_code), MAX(pseg.entity_specific_code), '0000000') || '.' ||
+              COALESCE(MAX(tcc.entity_specific_code), MAX(pseg.entity_specific_code),
+                       MAX(coa.entity_specific_code),
+                       MAX(MAX(coa.entity_specific_code)) OVER (PARTITION BY k.budget_year, k.project_key),
+                       '0000000') || '.' ||
               COALESCE(MAX(tcc.appropriation_code), MAX(pseg.appropriation_code),
+                       MAX(coa.appropriation_code),
+                       MAX(MAX(coa.appropriation_code)) OVER (PARTITION BY k.budget_year, k.project_key),
                        LPAD(MAX(pj.appropriation),6,'0'), '000000') || '.000.000000.000000'
     END,
     MAX(k.cc_string)) AS budget_combination
