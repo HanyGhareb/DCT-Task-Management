@@ -171,6 +171,7 @@
   "atd.workers.lastSeen": "آخر ظهور",
   "atd.workers.sessionAge": "عمر الجلسة",
   "atd.workers.loginTime": "مدة آخر تسجيل دخول",
+  "atd.workers.loginTime.hint": "المدة التي استغرقها آخر تسجيل دخول لهذا العامل إلى Fusion حتى اكتماله (وليست طابعاً زمنياً). المعدل الطبيعي ١٥-٢٠ ثانية؛ إذا ارتفعت نحو الدقائق فهذا مؤشر على تدهور تسجيل الدخول على ذلك الجهاز.",
   "atd.workers.lastSuccess": "آخر استخراج ناجح",
   "atd.workers.mfa": "المصادقة",
   "atd.workers.mfa.detected": "بانتظار الموافقة",

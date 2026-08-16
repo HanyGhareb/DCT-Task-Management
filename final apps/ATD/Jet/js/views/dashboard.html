@@ -150,7 +150,10 @@
           <th data-bind="text: t('atd.workers.currentJob')"></th>
           <th data-bind="text: t('atd.workers.lastSeen')"></th>
           <th data-bind="text: t('atd.workers.sessionAge')"></th>
-          <th data-bind="text: t('atd.workers.loginTime')"></th>
+          <th data-bind="attr: { title: t('atd.workers.loginTime.hint') }">
+            <span data-bind="text: t('atd.workers.loginTime')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
           <th data-bind="text: t('atd.workers.mfa')"></th>
           <th data-bind="text: t('atd.workers.lastSuccess')"></th>
           <th data-bind="text: t('atd.workers.runs24')"></th>

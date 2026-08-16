@@ -171,6 +171,7 @@
   "atd.workers.lastSeen": "Last Seen",
   "atd.workers.sessionAge": "Session Age",
   "atd.workers.loginTime": "Login Duration",
+  "atd.workers.loginTime.hint": "How long this worker's LAST Fusion sign-in took to complete (not a timestamp). ~15-20s is normal; if it grows toward minutes, Fusion sign-in is degrading on that VM.",
   "atd.workers.lastSuccess": "Last Successful Extract",
   "atd.workers.mfa": "MFA",
   "atd.workers.mfa.detected": "Pending",
