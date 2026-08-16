@@ -2163,3 +2163,21 @@ personal account via the path-owner rule — same conversion available if wanted
 ATD_AR_* orphan/_2 duplicate columns (UOM_CODE, ACCOUNTED, ...) still pending cleanup.
 Rollover: extend both defs' 2026 monthly ranges when 2027 volume grows (the >= 2027
 tails catch everything until then).
+
+## 2026-08-16 (5) — AR chunked extracts split to separate V2 jobs (db/71+72 reworked)
+
+User request after the in-place conversion above: same layout as Projects Budget
+(db/65+66). NEW jobs **'AR Invoice Distribution Details - V2'** and
+**'AR INVOICE LINES - V2'** now carry the chunked-sql config (hourly, enabled,
+service account, TRUNCATE_INSERT the same targets, colmap copied); the ORIGINAL
+'- ALL' jobs were restored to their saljaaidi catalog source_refs, params cleared,
+and **DISABLED** (frequency 30 kept for reference) — they remain as the manual
+fallback exactly like 'Projects Budget Full'. db/71+72 rewritten as the rerunnable
+record (seed-V2-if-missing INSERT..SELECT + params UPDATE on the V2 row + restore/
+disable UPDATE on the original); ard_def/arl_def docstrings note the V2 placement.
+Verified live same evening (enqueued via `atd_queue_pkg.enqueue` — a FUNCTION,
+not proc: callfunc, p_only/p_requested_by NULL): **lines V2 SUCCESS 122,615 rows
+in 27s (vm182) · dist V2 SUCCESS 571,099 rows / 102,364 distinct transactions in
+185s (vm180), both as hg2248** — byte-parity with the in-place acceptance run.
+Note the AR jobs are in NO job set (AR_MORNING sits empty; the db/70 member
+'AR_INVOICE_LINES' pointed at the retired db/69 job name and is gone).

@@ -20,6 +20,10 @@ Jan 53,895 (migration lump, split half-month) / Feb 311 / Mar 726 / Apr 28,127 /
 May 10,813 / Jun 9,928 / Jul 13,510 / Aug 5,305. NULL + past + >=2027 guards
 keep the partition total by construction. Service account (non-catalog
 source_ref so the db/62 path-owner rule stays out of the way).
+
+Lives on the SEPARATE job 'AR INVOICE LINES - V2' (db/72) -- Projects Budget
+Full - V2 pattern: the original '- ALL' job keeps its catalog source_ref and
+stays DISABLED as the fallback.
 """
 SA = '"Receivables - Transactions Real Time"'
 CR = f'{SA}."- Reference Information"."Creation Date"'

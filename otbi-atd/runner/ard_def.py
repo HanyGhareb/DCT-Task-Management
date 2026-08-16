@@ -14,6 +14,10 @@ Revenue 56,049 / Tax 50,375 / Unearned 13,493) + null-safe catch-alls + 12
 monthly 2026 ranges + an open >= 2027 tail. min_rows 520,000 proves every run
 beats the old 500k cap. Service account (source_ref is a non-catalog token, so
 the db/62 path-owner rule no longer selects the personal credential).
+
+Lives on the SEPARATE job 'AR Invoice Distribution Details - V2' (db/71) --
+Projects Budget Full - V2 pattern: the original '- ALL' job keeps its catalog
+source_ref and stays DISABLED as the fallback.
 """
 SA = '"Receivables - Transactions Real Time"'
 D = f'{SA}."- Distribution Accounting Date"."Accounting Date"'
