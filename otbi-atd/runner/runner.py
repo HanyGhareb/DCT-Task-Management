@@ -44,7 +44,9 @@ import glob
 import hashlib
 import json
 import os
+import re
 import socket
+import subprocess
 import sys
 import threading
 import time
@@ -448,14 +450,50 @@ def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
         print(f"[worker {host}] {action}: login failed: {e}", flush=True)
 
 
-def _alert_stale_workers(conn, stale_minutes=5):
-    """Telegram-notify once when a peer's heartbeat goes stale, then flag it DOWN so
-    we don't spam (it re-arms when that worker next heartbeats). Best-effort.
-    The notification is gated by ATD_WORKER_SILENT_ALERT (Runner Settings, default Y);
-    the DOWN flag is ALWAYS set either way so the Workers dashboard stays truthful
-    and the alert re-arms correctly if the setting is turned back on."""
+def _recover_stale_worker(w):
+    """Proactively revive a silent peer: ssh in (fleet key mesh, 2026-08-16) and
+    restart its atd-worker service. Returns (ok, detail). Worker ids follow
+    atd-vm<NNN> -> 192.168.1.<NNN>; other/extra hosts via ATD_WORKER_HOSTS
+    ('id=ip,id=ip'). Never raises."""
+    hosts = {}
+    for part in (os.environ.get("ATD_WORKER_HOSTS") or "").split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            hosts[k.strip()] = v.strip()
+    ip = hosts.get(w)
+    if not ip:
+        m = re.match(r"^atd-vm(\d+)$", (w or "").strip())
+        if m:
+            ip = "192.168.1." + m.group(1)
+    if not ip:
+        return False, "no host mapping (set ATD_WORKER_HOSTS)"
+    try:
+        r = subprocess.run(
+            ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new",
+             "-o", "ConnectTimeout=10", f"root@{ip}",
+             "systemctl restart atd-worker && systemctl is-active atd-worker"],
+            capture_output=True, text=True, timeout=90)
+        out = (r.stdout or "").strip()
+        if r.returncode == 0 and "active" in out:
+            return True, f"atd-worker restarted on {ip}"
+        return False, ((r.stderr or out or f"rc={r.returncode}").strip() or "restart failed")[:200]
+    except Exception as e:  # noqa: BLE001 (frozen VM -> ssh timeout lands here)
+        return False, str(e)[:200]
+
+
+def _alert_stale_workers(conn, stale_minutes=5, self_id=None):
+    """Handle a peer whose heartbeat went stale. One-shot per DOWN transition (the
+    atomic status flip claims ownership, so exactly one peer acts; it re-arms when
+    that worker next heartbeats). PROACTIVE since 2026-08-16: the owning peer ssh's
+    in and restarts the silent worker's service. A successful auto-restart notifies
+    only when ATD_WORKER_SILENT_ALERT=Y (informational); a FAILED auto-restart
+    always notifies — the VM is unreachable/frozen and needs a human (ESXi reset).
+    Auto-recovery itself is gated by ATD_WORKER_RECOVER (default Y). The DOWN flag
+    is always set so the Workers dashboard stays truthful. Best-effort."""
     alert_on = (os.environ.get("ATD_WORKER_SILENT_ALERT", "Y").strip().upper()
                 not in ("N", "0", "FALSE"))
+    recover_on = (os.environ.get("ATD_WORKER_RECOVER", "Y").strip().upper()
+                  not in ("N", "0", "FALSE"))
     try:
         cur = conn.cursor()
         # compare both sides as plain TIMESTAMP (session TZ) - mixing a TIMESTAMP column
@@ -468,10 +506,26 @@ def _alert_stale_workers(conn, stale_minutes=5):
                     m=stale_minutes)
         stale = [r[0] for r in cur.fetchall()]
         for w in stale:
-            if alert_on:
-                notify.send(f"otbi-atd: worker {w} is silent (no heartbeat > {stale_minutes}m)")
-            cur.execute("update prod.atd_worker_heartbeat set status='DOWN' where worker_id=:w", w=w)
+            # atomic claim: only the peer whose UPDATE flips the row acts on it
+            cur.execute("update prod.atd_worker_heartbeat set status='DOWN' "
+                        "where worker_id=:w and status <> 'DOWN'", w=w)
+            owner = cur.rowcount > 0
             conn.commit()
+            if not owner:
+                continue
+            if recover_on and w != self_id:
+                ok, detail = _recover_stale_worker(w)
+                if ok:
+                    print(f"[fleet] silent worker {w}: {detail}", flush=True)
+                    if alert_on:
+                        notify.send(f"otbi-atd: worker {w} was silent - auto-restarted OK")
+                    continue
+                print(f"[fleet] silent worker {w}: auto-restart FAILED: {detail}", flush=True)
+                # escalation bypasses ATD_WORKER_SILENT_ALERT: this is actionable
+                notify.send(f"otbi-atd ALERT: worker {w} is silent and auto-restart "
+                            f"FAILED ({detail}) - VM likely frozen, needs manual attention")
+            elif alert_on:
+                notify.send(f"otbi-atd: worker {w} is silent (no heartbeat > {stale_minutes}m)")
     except Exception:  # noqa: BLE001
         pass
 
@@ -735,7 +789,7 @@ def _run_worker(conn, load, forever):
                         _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers)
                         conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
                         _reap_stale_runs(conn, int(os.environ.get("ATD_RUN_REAP_MINUTES", "60")))
-                        _alert_stale_workers(conn)
+                        _alert_stale_workers(conn, self_id=host)
                         _alert_aging_session(conn, host, vm, in_break)
                         # Tier 1: keep warm sessions alive so they don't idle-expire
                         # between sparse jobs (a cheap authenticated GET resets OBIEE's

@@ -2232,3 +2232,26 @@ the alert re-arms if the setting is flipped back to Y in ATD → Runner Settings
 Chronic job-failure alerts (ATD_FAIL_ALERT_*), drift alerts and MFA pushes are
 unaffected. runner.py fleet-synced (vm180-182 restarted; startup log confirms
 "applied 32 runner settings").
+
+## 2026-08-16 (9) — fleet worker AUTO-RECOVERY (proactive plan; db/75 + runner.py)
+
+User request: don't just mark a worker DOWN — act. `_alert_stale_workers` is now
+`detect -> claim -> RECOVER -> escalate-only-on-failure`:
+
+- **Atomic claim**: the peer whose UPDATE flips the heartbeat row to DOWN owns the
+  incident (no double-restarts when two peers detect simultaneously).
+- **Recovery**: the owning peer SSHes into the silent VM (`atd-vm<N>` ->
+  `192.168.1.<N>`, overridable via new ATD_WORKER_HOSTS) and restarts atd-worker.
+  Root **ssh key mesh installed across vm180-182** (ed25519, cross-authorized,
+  accept-new) — new fleet capability.
+- **Notifications**: successful auto-restart is quiet unless
+  ATD_WORKER_SILENT_ALERT=Y; a FAILED restart (VM frozen/unreachable — the
+  vmxnet3-panic class) ALWAYS Telegrams "needs manual attention" regardless of
+  that setting, because only a human/ESXi reset can fix it.
+- **Settings** (db/75, Runner Settings page): ATD_WORKER_RECOVER Y/N master
+  switch (Y), ATD_WORKER_HOSTS optional id=ip map.
+
+**Live fire drill PASSED**: stopped atd-worker on vm182 + backdated its heartbeat;
+within one idle cycle vm180 logged `[fleet] silent worker atd-vm182: atd-worker
+restarted on 192.168.1.182`, vm182's service came back active and heartbeated,
+the DOWN flag re-armed, and (setting=N) no Telegram was sent.
