@@ -2126,3 +2126,40 @@ subject area; supplier Legal Name is empty in Fusion itself):
   opc+sudo + restorecon — a full deploy_frontend.sh run was AVOIDED because the working
   tree carried other sessions' in-progress frontend work; webtier ssh login is `opc`,
   not root).
+
+## 2026-08-16 (4) — the two salmen AR jobs converted to chunked + service account (db/71+72)
+
+Projects-Budget-V2 treatment applied to 'AR Invoice Distribution Details - ALL' and
+'AR INVOICE LINES - ALL' (user request). Root causes found by dumping the analyses'
+OWN logical SQL from the Answers Advanced tab (get_ar_sql.py pattern — read-only, via
+the job-owner credential path `config.resolve_job_cred`, warm c-saljaaidi profile):
+
+- **The "500k export cap" was `FETCH FIRST 500001 ROWS ONLY` INSIDE the analysis** —
+  every 30-min load truncated a ~575k-row space to 500,000 (~71k distribution rows +
+  7,255 whole transactions never reached the table).
+- The lines analysis is pure LINE grain (122,615, filter IDOF(Line Type) <> 'TAX') —
+  the never-deployed db/69 aril_def was MIXED grain (distribution columns fanned it to
+  320,750); superseded by arl_def.py. Lines chunk on the LINE-grain Creation Date —
+  never a distribution-dim date (straddling lines would duplicate).
+- Why the jobs ran personal at all: `requested_by` was NULL, but the v1.37.0
+  **path-owner rule matches `/users/saljaaidi/` in source_ref** — so conversion also
+  swaps source_ref to a `chunked-sql: ...` token (sqlchunks never touches the catalog).
+
+Deployed (python-oracledb, vm180; defs = single source of truth, db/71+72 = rerunnable
+record): `runner/ard_def.py` 23 chunks (NULL-month x class 34k/34k/33k + past guard +
+Dec-2025 x 4 classes 56k/50k/50k/13k + catch-alls + 12x2026 monthly + >=2027 tail;
+min_rows 520,000 proves each run beats the old cap) and `runner/arl_def.py` 16 chunks
+(guards + Jan-2026 half-month split [53,895 lump] + Feb..Dec monthly + tail; min_rows
+110,000); positional #N headers emit each job's EXACT colmap headings (parity asserted
+at deploy — tables/views untouched); parallel 4; frequency 60 (was NULL -> 15-min
+default). **Acceptance 2026-08-16 evening: dist SUCCESS 571,099 rows (102,364 distinct
+transactions vs 95,109 truncated), lines SUCCESS 122,615 byte-parity, both on the
+SERVICE account (hg2248), all 23+16 chunks in 0-2s each** — the equality-pushdown fast
+plan; the old single-shot took ~13 min and still lost rows. No more personal-MFA
+dependency or session churn on AR.
+
+Follow-ups: 'AR Invoice Header - all' (102,277 rows, works) still runs under the
+personal account via the path-owner rule — same conversion available if wanted;
+ATD_AR_* orphan/_2 duplicate columns (UOM_CODE, ACCOUNTED, ...) still pending cleanup.
+Rollover: extend both defs' 2026 monthly ranges when 2027 volume grows (the >= 2027
+tails catch everything until then).
