@@ -94,6 +94,7 @@
   "atd.rs.saved": "Settings saved — applied on the next run",
   "atd.rs.secretSet": "set",
   "atd.rs.notSet": "not set",
+  "atd.rs.secretNew": "type a new value to replace (blank = keep)",
   "atd.rs.updated": "Updated",
   "atd.rs.myacct.title": "My OTBI Account",
   "atd.rs.myacct.hint": "Jobs and Fusion actions YOU enqueue sign in to Fusion as this account, and its MFA approval push goes to your Telegram. Scheduled/automatic runs keep using the global service account. The first run on each worker VM needs one Authenticator approval from your phone.",

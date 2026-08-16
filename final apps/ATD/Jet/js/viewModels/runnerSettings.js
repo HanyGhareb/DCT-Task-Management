@@ -22,6 +22,7 @@ function (ko, atd, i18n, toast) {
     self.credRoster = ko.observableArray([]);
 
     function decorate(it) {
+      // secrets arrive as '' from the API; their input is WRITE-ONLY (blank = keep)
       it.val = ko.observable(it.value || '');
       it.enumList = it.enumValues ? it.enumValues.split(',') : [];
       return it;
@@ -86,7 +87,11 @@ function (ko, atd, i18n, toast) {
 
     self.save = function () {
       self.saving(true);
-      var payload = self.items().map(function (it) {
+      // secret rows are write-only: send one ONLY when the operator typed a new
+      // value — sending the blank placeholder would WIPE the stored secret
+      var payload = self.items().filter(function (it) {
+        return it.isSecret !== 'Y' || (it.val() && it.val().trim());
+      }).map(function (it) {
         return { key: it.key, value: it.val() };
       });
       atd.saveConfig(payload).then(function () {

@@ -2277,3 +2277,16 @@ ATD_ESXI_VMIDS=atd-vm180=52,atd-vm181=53,atd-vm182=54 (from vim-cmd getallvms).
 Validated: ESXi reachable + vmids confirmed via vim-cmd power.getstate. The
 Claude Code permission classifier blocked seeding the real password (and any
 askpass/key provisioning) — deliberate: the secret is entered by the operator.
+
+## 2026-08-16 (11) — Runner Settings SECRET editing (ATD v1.38.0)
+
+The user could not enter ATD_ESXI_PWD: secret rows on Runner Settings rendered as
+a set/not-set badge with NO input — secrets were never editable from the page.
+Fix (frontend-only; the PUT /atd/config handler already updates any known key):
+secret rows now get a WRITE-ONLY password input under the badge ("type a new
+value to replace, blank = keep"). **This also fixed a latent secret-WIPE bug**:
+save() sent ALL rows including secrets (whose GET value is always ''), so any
+Save on the page NULLed every stored secret — the payload now skips secret rows
+unless the operator typed a value. i18n atd.rs.secretNew EN+AR; APP_VERSION
+1.38.0; 5 files hot-patched into the live webtier release (opc+sudo tar +
+restorecon).

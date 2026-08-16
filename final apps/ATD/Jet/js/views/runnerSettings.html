@@ -127,6 +127,9 @@
               <!-- ko if: $data.isSecret === 'Y' -->
               <span class="badge" data-bind="text: $data.secretSet === 'Y' ? $vm.t('atd.rs.secretSet') : $vm.t('atd.rs.notSet'),
                                               css: { 'badge--active': $data.secretSet === 'Y', 'badge--idle': $data.secretSet !== 'Y' }"></span>
+              <input class="form-control form-control--sm mono" type="password" autocomplete="new-password"
+                     style="margin-block-start:4px"
+                     data-bind="value: $data.val, attr: { placeholder: $vm.t('atd.rs.secretNew') }">
               <!-- /ko -->
               <!-- ko if: $data.isSecret !== 'Y' && $data.valueType === 'ENUM' -->
               <select class="form-control form-control--sm" data-bind="value: $data.val, options: $data.enumList"></select>
