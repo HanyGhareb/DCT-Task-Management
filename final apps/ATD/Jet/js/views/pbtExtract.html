@@ -315,8 +315,14 @@
 
   <!-- ============ drill drawer ============ -->
   <!-- ko if: drawerOpen -->
-  <div class="modal-overlay" data-bind="click: closeDrawer"></div>
-  <div class="modal-box modal-box--wide" style="max-width:min(1200px,96vw)">
+  <!-- .modal-box MUST be a CHILD of .modal-overlay: the overlay is the fixed,
+       flex-centering container and the box itself has no positioning of its
+       own. As siblings the overlay dims the screen while the box renders inline
+       at the foot of the page, invisible behind it. clickBubble:false stops a
+       click inside the box from reaching the overlay's close handler. -->
+  <div class="modal-overlay" data-bind="click: closeDrawer">
+  <div class="modal-box" style="max-width:min(1200px,96vw)"
+       data-bind="click: function(){ return true; }, clickBubble: false">
     <div class="modal-header">
       <h2 data-bind="text: t('atd.pbt.detail.title')
                        + (detail() ? ' — ' + detail().header.transactionNum : '')"></h2>
@@ -401,7 +407,8 @@
       <div class="empty-state" data-bind="text: t('atd.pbt.noApprovals')"></div>
       <!-- /ko -->
       <!-- /ko -->
-    </div>
-  </div>
+    </div><!-- /.modal-body -->
+  </div><!-- /.modal-box -->
+  </div><!-- /.modal-overlay -->
   <!-- /ko -->
 </div>

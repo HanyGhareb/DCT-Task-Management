@@ -127,8 +127,18 @@ with sync_playwright() as p:
     # 8 — drill drawer: header + lines + approvals
     page.locator('.card').last.locator('tbody tr').first.click()
     page.wait_for_timeout(2500)
-    check('drawer opened', page.locator('.modal-box').count() == 1)
-    dtxt = page.locator('.modal-box').inner_text()
+    # assert VISIBILITY, not existence: a .modal-box rendered as a SIBLING of
+    # .modal-overlay (rather than its child) exists in the DOM but sits inline
+    # at the foot of the page, invisible behind the dimmer -- which is exactly
+    # the bug an existence-only assertion shipped.
+    box = page.locator('.modal-box')
+    check('drawer opened', box.count() == 1)
+    check('drawer is VISIBLE', box.is_visible())
+    check('drawer is inside the overlay',
+          page.locator('.modal-overlay .modal-box').count() == 1)
+    bb = box.bounding_box() or {}
+    check('drawer is in the viewport', 0 <= bb.get('y', -1) < 1000, str(bb.get('y')))
+    dtxt = box.inner_text()
     check('drawer shows Details section', 'Details' in dtxt)
     check('drawer shows Approval history', 'Approval' in dtxt)
     page.screenshot(path=EV + '03_drill.png', full_page=True)
@@ -137,6 +147,7 @@ with sync_playwright() as p:
     page.locator('.modal-box .btn-secondary').last.evaluate('el => el.click()')
     page.wait_for_timeout(600)
     check('drawer closed', page.locator('.modal-box').count() == 0)
+    check('overlay removed with it', page.locator('.modal-overlay').count() == 0)
 
     # 9 — AR / RTL.  The shell PERSISTS the language to the user's server-side
     # prefs, so this MUST restore EN before exiting or it silently flips the
