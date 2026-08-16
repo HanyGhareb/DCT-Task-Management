@@ -168,6 +168,7 @@
       </div>
       <!-- ko if: schedulerIssues && schedulerIssues.length --><div style="margin-top:12px"><b style="font-size:11px" data-bind="text:$root.t('sys.ops.scheduler')"></b><div data-bind="foreach:schedulerIssues"><div style="padding:6px 0;border-bottom:1px solid var(--border);font-size:11px"><b data-bind="text:jobName"></b> — <span data-bind="text:lastStatus+' / '+state"></span><small style="display:block;color:#b3261e" data-bind="text:error"></small></div></div></div><!-- /ko -->
       <!-- ko if: apiItems && apiItems.length --><div style="margin-top:12px"><b style="font-size:11px" data-bind="text:$root.t('sys.ops.api')"></b><div data-bind="foreach:apiItems.slice(0,10)"><div style="display:grid;grid-template-columns:65px minmax(220px,1fr) 85px 85px;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);font-size:11px"><b data-bind="text:method"></b><span style="font-family:monospace;overflow:hidden;text-overflow:ellipsis" data-bind="text:endpoint,attr:{title:endpoint}"></span><span data-bind="text:avgMs+' ms'"></span><span data-bind="text:errorRatePct+'% err',style:{color:warning==='Y'?'#b3261e':''}"></span></div></div></div><!-- /ko -->
+      <!-- ko ifnot: apiItems && apiItems.length --><div class="muted" style="margin-top:12px;font-size:11px" data-bind="text:$root.t('sys.ops.apiEmpty')"></div><!-- /ko -->
       <!-- /ko -->
     </div>
     <div style="margin:16px 10px 4px;padding:14px 16px;border:1px solid var(--border);border-radius:8px;background:var(--surface-2,#f7f7f6)">
@@ -263,7 +264,7 @@
         <div style="display:flex;gap:8px;flex-shrink:0;align-items:center">
           <span class="ss-act">
             <span class="ss-hint" tabindex="0" role="note" data-bind="attr:{'aria-label':$root.t('sys.dbHealth.recompileHintBody')}">i<span class="ss-hint-pop" role="tooltip"><b data-bind="text:$root.t('sys.dbHealth.recompileHintTitle')"></b><span data-bind="text:$root.t('sys.dbHealth.recompileHintBody')"></span></span></span>
-            <button class="btn btn-primary" data-bind="click:$vm.recompileDatabase,disable:invalidObjects === 0 || $vm.recompiling() || $vm.healthRunning()">
+            <button class="btn btn-primary" data-bind="click:$vm.recompileDatabase,disable:!$vm.hasInvalidObjects() || $vm.recompiling() || $vm.healthRunning()">
               <!-- ko if: $vm.recompiling() --><span data-bind="text:$root.t('sys.dbHealth.recompiling')"></span><!-- /ko -->
               <!-- ko ifnot: $vm.recompiling() --><span data-bind="text:$root.t('sys.dbHealth.recompile')"></span><!-- /ko -->
             </button>

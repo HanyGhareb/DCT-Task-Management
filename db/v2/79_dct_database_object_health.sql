@@ -192,6 +192,9 @@ BEGIN
 DECLARE
   l_user VARCHAR2(100):=dct_rest.validate_session;
   l_state prod.dct_db_health_state%ROWTYPE;
+  l_invalid NUMBER;
+  l_unusable NUMBER;
+  l_parts NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN
@@ -199,15 +202,25 @@ BEGIN
   END IF;
   SELECT * INTO l_state FROM prod.dct_db_health_state WHERE state_id=1;
 
+  -- The issue list below is live, so its summary must also be live.  Using the
+  -- scheduled snapshot here left the action disabled while live invalid
+  -- objects were already visible in the same response.
+  SELECT COUNT(*) INTO l_invalid FROM dba_objects
+   WHERE owner='PROD' AND status<>'VALID' AND object_name NOT LIKE 'BIN$%';
+  SELECT COUNT(*) INTO l_unusable FROM dba_indexes
+   WHERE owner='PROD' AND status='UNUSABLE';
+  SELECT COUNT(*) INTO l_parts FROM dba_ind_partitions
+   WHERE index_owner='PROD' AND status='UNUSABLE';
+
   dct_rest.json_header;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
-  APEX_JSON.write('status',l_state.health_status);
-  APEX_JSON.write('invalidObjects',l_state.invalid_object_count);
-  APEX_JSON.write('unusableIndexes',l_state.unusable_index_count);
-  APEX_JSON.write('unusablePartitions',l_state.unusable_part_count);
-  APEX_JSON.write('checkedAt',TO_CHAR(l_state.checked_at AT TIME ZONE 'Asia/Dubai','YYYY-MM-DD HH24:MI'));
-  APEX_JSON.write('checkedBy',l_state.checked_by);
+  APEX_JSON.write('status',CASE WHEN l_invalid+l_unusable+l_parts=0 THEN 'HEALTHY' ELSE 'WARNING' END);
+  APEX_JSON.write('invalidObjects',l_invalid);
+  APEX_JSON.write('unusableIndexes',l_unusable);
+  APEX_JSON.write('unusablePartitions',l_parts);
+  APEX_JSON.write('checkedAt',TO_CHAR(SYSTIMESTAMP AT TIME ZONE 'Asia/Dubai','YYYY-MM-DD HH24:MI'));
+  APEX_JSON.write('checkedBy','LIVE');
   APEX_JSON.open_array('issues');
   FOR r IN (
     SELECT issue_type,object_name,object_type,status

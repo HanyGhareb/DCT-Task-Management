@@ -200,6 +200,21 @@ function (ko, svc, i18n, toast) {
       if (s === 'FAILED' || s === 'BROKEN') return 'badge badge--inactive';
       return 'badge';
     };
+
+    self.jobFailureLabel = function (job) {
+      var count = Number((job && job.failureCount) || 0);
+      if (!count) return '0';
+      var latest = String((job && job.lastStatus) || '').toUpperCase();
+      return latest === 'SUCCEEDED'
+        ? count + ' ' + self.t('runner.jobs.historical')
+        : count + ' ' + self.t('runner.jobs.active');
+    };
+
+    self.jobFailureClass = function (job) {
+      var count = Number((job && job.failureCount) || 0);
+      var latest = String((job && job.lastStatus) || '').toUpperCase();
+      return count > 0 && latest !== 'SUCCEEDED' ? 'badge badge--inactive' : 'muted';
+    };
   }
 
   return RunnersViewModel;

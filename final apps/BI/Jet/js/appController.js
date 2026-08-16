@@ -45,6 +45,7 @@ function (ko, config, authService, rptService, i18n, shell) {
     var NAV_GROUPS = [
       { id: 'main', items: [
         { id: 'dashboard', labelKey: 'nav.dashboard' },
+        { id: 'executiveDashboard', labelKey: 'nav.executiveDashboard' },
         { id: 'irViewer',  labelKey: 'nav.irviewer' },
         { id: 'reports',   labelKey: 'nav.reports',  admin: true },
         { id: 'templates', labelKey: 'nav.templates', admin: true },

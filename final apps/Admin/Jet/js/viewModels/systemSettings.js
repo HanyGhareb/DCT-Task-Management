@@ -23,6 +23,14 @@ function (ko, settingService, authService) {
     self.storageHistory = ko.observable(null);
     self.storageLoading = ko.observable(false);
     self.databaseHealth = ko.observable(null);
+    self.hasInvalidObjects = ko.pureComputed(function () {
+      var health = self.databaseHealth();
+      if (!health) return false;
+      if (Number(health.invalidObjects || 0) > 0) return true;
+      return (health.issues || []).some(function (issue) {
+        return issue.issueType === 'INVALID_OBJECT';
+      });
+    });
     self.healthLoading  = ko.observable(false);
     self.healthRunning  = ko.observable(false);
     self.healthMsg      = ko.observable('');
@@ -74,6 +82,14 @@ function (ko, settingService, authService) {
       if (!self.isSysAdmin) return;
       self.healthLoading(true);
       settingService.getDatabaseHealth().then(function (result) {
+        // Defensive normalization for older/cached API responses: the live
+        // issue list is authoritative when its snapshot count is stale.
+        var liveInvalid = (result.issues || []).filter(function (issue) {
+          return issue.issueType === 'INVALID_OBJECT';
+        }).length;
+        result.invalidObjects = Math.max(Number(result.invalidObjects || 0), liveInvalid);
+        result.status = result.invalidObjects > 0 || Number(result.unusableIndexes || 0) > 0 ||
+          Number(result.unusablePartitions || 0) > 0 ? 'WARNING' : 'HEALTHY';
         self.databaseHealth(result);
       }).catch(function () {
         self.databaseHealth(null);

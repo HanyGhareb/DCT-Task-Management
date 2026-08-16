@@ -9,7 +9,8 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.job = ko.observable({});
     self.history = ko.observableArray([]);
     var routeState = window._jetApp.getState() || {};
-    var name = routeState.jobName;
+    var name = String(routeState.jobName == null ? '' : routeState.jobName).trim();
+    var validName = !!name && name.toLowerCase() !== 'undefined' && name.toLowerCase() !== 'null';
 
     // client-side pagination (20 rows/page) over the run history
     self.offset = ko.observable(0);
@@ -44,6 +45,11 @@ function (ko, atd, i18n, toast, fmtDuration) {
     self.back = function () { window._jetApp.navigate('jobs'); };
 
     self.refresh = function () {
+      if (!validName) {
+        self.loading(false);
+        window._jetApp.navigate('jobs');
+        return Promise.resolve();
+      }
       atd.getJob(name).then(function (j) {
         self.job(j); self.history(j.history || []); self.offset(0); self.loading(false);
       }).catch(function () { self.loading(false); });

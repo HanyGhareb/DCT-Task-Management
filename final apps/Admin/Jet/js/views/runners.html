@@ -24,7 +24,10 @@
           <th data-bind="text: t('runner.jobs.name')"></th>
           <th data-bind="text: t('runner.jobs.status')"></th>
           <th data-bind="text: t('runner.jobs.state')"></th>
-          <th data-bind="text: t('runner.jobs.failures')"></th>
+          <th><span data-bind="text: t('runner.jobs.failures')"></span>
+            <span tabindex="0" role="note" style="cursor:help;margin-inline-start:4px"
+                  data-bind="text:'ⓘ',attr:{title:t('runner.jobs.failureHint'),'aria-label':t('runner.jobs.failureHint')}"></span>
+          </th>
           <th data-bind="text: t('runner.jobs.last')"></th>
           <th data-bind="text: t('runner.jobs.next')"></th>
         </tr></thead>
@@ -33,7 +36,7 @@
             <td class="mono" data-bind="text: jobName"></td>
             <td><span data-bind="css: $parent.jobStatusClass(lastStatus), text: lastStatus"></span></td>
             <td data-bind="text: state"></td>
-            <td class="mono" data-bind="text: failureCount"></td>
+            <td class="mono" data-bind="text: $parent.jobFailureLabel($data),css:$parent.jobFailureClass($data),attr:{title:$parent.t('runner.jobs.failureHint')}"></td>
             <td class="mono" style="white-space:nowrap" data-bind="text: lastRun || '—'"></td>
             <td class="mono" style="white-space:nowrap" data-bind="text: nextRun || '—'"></td>
           </tr>

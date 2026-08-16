@@ -49,6 +49,7 @@ The app **enqueues** (marks jobs READY); execution is the `otbi-atd/runner` work
 `claimedBy`/`claimedAt` so an all-READY-but-idle state is visible.
 
 ## Deployment history
+- **2026-08-16 — Canonical job-route guard (APP_VERSION 1.37.1):** all job-specific service calls now pass through one validator/encoder and reject missing, `undefined`, or `null` names before issuing HTTP; Job Detail redirects safely to Jobs when route state has no canonical job name. Stops the observed `/atd/jobs/undefined` polling noise.
 - **2026-07-13 (b)** — **Recent Actions telemetry** (APP_VERSION **1.22.0**, webtier release
   20260713185640). `otbi-atd/db/46_atd_action_telemetry.sql`: persistent `worker_host` /
   `started_at` / `finished_at` on `ATD_ACTION_REQUEST` (the queue NULLs `claimed_*` on finish, so

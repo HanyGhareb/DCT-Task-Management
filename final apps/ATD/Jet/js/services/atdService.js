@@ -16,6 +16,27 @@ function (api) {
     return p.length ? '?' + p.join('&') : '';
   }
 
+  function jobName(name) {
+    var value = String(name == null ? '' : name).trim();
+    if (!value || value.toLowerCase() === 'undefined' || value.toLowerCase() === 'null') {
+      throw new Error('A valid canonical job name is required');
+    }
+    return encodeURIComponent(value);
+  }
+
+  function jobCall(name, suffix, method, body) {
+    var path;
+    try {
+      path = '/jobs/' + jobName(name) + (suffix || '');
+    } catch (e) {
+      return Promise.reject(e);
+    }
+    if (method === 'GET') return api.get(path);
+    if (method === 'PUT') return api.put(path, body || {});
+    if (method === 'DELETE') return api.delete(path);
+    return api.post(path, body || {});
+  }
+
   return {
     // dashboard + pickers
     getDashboard: function ()          { return api.get('/dashboard'); },
@@ -27,11 +48,11 @@ function (api) {
 
     // jobs
     listJobs:     function (params)    { return api.get('/jobs' + qs(params)); },
-    getJob:       function (name)      { return api.get('/jobs/' + encodeURIComponent(name)); },
+    getJob:       function (name)      { return jobCall(name, '', 'GET'); },
     createJob:    function (body)      { return api.post('/jobs', body); },
-    updateJob:    function (name, body){ return api.put('/jobs/' + encodeURIComponent(name), body); },
-    deleteJob:    function (name)      { return api.delete('/jobs/' + encodeURIComponent(name)); },
-    enqueueJob:   function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/enqueue', {}); },
+    updateJob:    function (name, body){ return jobCall(name, '', 'PUT', body); },
+    deleteJob:    function (name)      { return jobCall(name, '', 'DELETE'); },
+    enqueueJob:   function (name)      { return jobCall(name, '/enqueue', 'POST'); },
 
     // build a NEW OTBI analysis from a spec (runner --build picks it up)
     listAnalyses:   function ()        { return api.get('/analyses'); },
@@ -51,13 +72,13 @@ function (api) {
     listDiscoveryRuns:     function (params) { return api.get('/subject-areas/runs' + qs(params)); },
     // AI column suggester: free-text request -> {items:[{path,column}]} from the catalog
     suggestColumns:        function (sa, request) { return api.post('/subject-areas/suggest', { sa: sa, request: request }); },
-    resetJob:     function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/reset', {}); },
-    runJob:       function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/run', {}); },
-    reprepareJob: function (name, rebuild) { return api.post('/jobs/' + encodeURIComponent(name) + '/reprepare', { rebuild: rebuild ? 'Y' : 'N' }); },
-    getSchema:    function (name)      { return api.get('/jobs/' + encodeURIComponent(name) + '/schema'); },
-    applySchema:  function (name, body){ return api.post('/jobs/' + encodeURIComponent(name) + '/schema', body); },
+    resetJob:     function (name)      { return jobCall(name, '/reset', 'POST'); },
+    runJob:       function (name)      { return jobCall(name, '/run', 'POST'); },
+    reprepareJob: function (name, rebuild) { return jobCall(name, '/reprepare', 'POST', { rebuild: rebuild ? 'Y' : 'N' }); },
+    getSchema:    function (name)      { return jobCall(name, '/schema', 'GET'); },
+    applySchema:  function (name, body){ return jobCall(name, '/schema', 'POST', body); },
     // schema-review gate: release a job held for review (schema_reviewed -> 'Y')
-    approveSchema:function (name)      { return api.post('/jobs/' + encodeURIComponent(name) + '/approve-schema', {}); },
+    approveSchema:function (name)      { return jobCall(name, '/approve-schema', 'POST'); },
 
     // queue ops
     enqueueAll:   function ()          { return api.post('/enqueue', {}); },
