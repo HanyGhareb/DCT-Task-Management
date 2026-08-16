@@ -183,6 +183,199 @@ Common to all three: `identifier` (**PK**), `transaction_num`, `project_num`,
 
 ---
 
+## 4b. The FULL fin010 surface — what else the service exposes
+
+Discovered 2026-08-17 from the ORDS **OpenAPI catalog**
+(`/ords/dge_custom/open-api-catalog/extn/`, 194 KB, OpenAPI 3.0.0, 175 paths of
+which **29 are fin010**). The plain `metadata-catalog` does NOT publish methods —
+only the OpenAPI document does. Read-only discovery; **no write was ever issued**.
+
+### Write-capable endpoints (9)
+
+| Path | Methods | What it plainly is |
+|---|---|---|
+| `/fin010/Budgets/Transactions` | GET, **POST** | create a transaction header |
+| `/fin010/Budgets/Transactions/{p_trx_type}/lines` | **POST** | create detail lines |
+| `/fin010/Budgets/Transactions/attachments` | GET, **POST** | attachments |
+| `/fin010/Budgets/Transactions/{p_trx_type}/attachments` | GET, **POST** | attachments per type |
+| `/fin010/Budgets/Transactions/attachments/{identifier}/delete` | **DELETE** | remove an attachment |
+| `/fin010/Budgets/Transactions/attachments/lines/{identifier}/delete` | **DELETE** | remove a line attachment |
+| `/fin010/budget/transactions/{trx_num}/submit` | **POST** | submit for approval |
+| `/fin010/budget/transactions/{trx_num}/withdraw` | **POST** | withdraw a submission |
+| `/fin010/Budgets/getCostCenter` | GET, **POST** | almost certainly a query-by-POST, not a create |
+
+### The three answers
+
+* **CREATE — yes.** Header, lines, attachments, plus submit/withdraw workflow actions.
+* **UPDATE — NO.** There is **no PUT and no PATCH anywhere in fin010**. Editing an
+  existing transaction is not exposed as REST at all.
+* **DELETE — attachments ONLY.** No delete endpoint exists for a transaction or a
+  detail line.
+
+### Two caveats before anyone builds on this
+
+1. **"Create a new record on dge.extn.finance" is ORDS boilerplate**, auto-generated
+   for *any* POST handler — it is not evidence of semantics. `POST getCostCenter` is
+   obviously a search, not a create. Treat the verb list as authoritative and the
+   summaries as noise.
+2. **The payload shapes are undocumented.** These are custom PL/SQL handlers whose
+   body binds as a raw string, so the OpenAPI schema is literally
+   `{body: string}` — no field list (the same limitation our own `/xl/` module has).
+   Building a write would need a HAR of the UI performing that exact action.
+
+### So how do the UI's ✕ Delete and "Validate and Save" work?
+
+They do **not** use DELETE or PUT — there are none. Both are encoded **inside the
+body of a POST**, which is exactly why the OpenAPI body is an opaque
+`{body: string}`. Read verbatim out of the app's own `vb-app-bundle.js` action
+chains (no write was executed to learn this):
+
+**Delete a transaction (✕ on the Transactions grid)** — chain `deleteSelectedRowData`:
+1. guard `GET /fin010/checkBaselinedRecords` — refuses with *"Transaction Number
+   … cannot be deleted because Journals for this transaction …"*;
+2. then `POST /fin010/Budgets/Transactions` with
+   ```json
+   { "username": "<user>", "delete": "<transaction_num>" }
+   ```
+
+**Edit / delete detail lines ("Validate and Save", ✕ on the Details grid)** —
+the ✕ (`deleteSelectedRow`) touches **no server at all**: it drops the row from
+the client array and appends its `identifier` to `$application.variables.deletedRows`.
+Saving then does the whole thing in ONE call — chain `saveLinesChain`:
+```json
+POST /fin010/Budgets/Transactions/{p_trx_type}/lines
+{ "username": "<user>",
+  "lines":  [ …every current line, edited and unedited… ],
+  "delete": [ …identifiers removed in the UI… ] }
+```
+
+So the semantics are: **UPDATE = re-post the entire line set** (the handler
+reconciles), and **DELETE = name the identifiers in the `delete` field of that
+same POST**. Rows whose `identifier` starts `G_` are client-generated and never
+saved, so they are excluded from `deletedRows`.
+
+Guards the UI enforces (a server-side write would have to respect them):
+`deleteableModes = Entered / Rejected / Baselining Failed`,
+`attachUploadModes = Entered / Rejected / Draft`, `allowDeleteHdrRecords()` for
+the header button, and `checkLineDeleteStatus()` which blocks deleting a line
+once journals exist.
+
+## 4c. The write contract — CAPTURED LIVE 2026-08-17
+
+Confirmed end-to-end from a HAR of a real add-line → save → delete-line →
+delete-header sequence performed by the user on a throwaway record. This is the
+observed wire format, not inference.
+
+**Add / edit lines** — `POST /fin010/Budgets/Transactions/{p_trx_type}/lines`
+```json
+{ "username": "user@dctabudhabi.ae",
+  "lines": [ { …one object per line CURRENTLY in the grid… } ],
+  "delete": null }
+```
+Response: **HTTP 200 with an EMPTY body** (no id echoed back).
+
+A new line carries a **client-generated `identifier` prefixed `G_`**
+(`"G_0811675640"`); the server assigns the real numeric id. `transaction_num`
+on the line names its header. The object mixes real columns with UI-only
+scratch fields that are sent verbatim — `dirtyFlag`, `disableEdits`, `rowIndex`,
+`rowKey`, `taskValError`, `validationError`, `orig_revised_project_cost`.
+
+Business fields observed on a line: `project_num`, `project_name`, `task_num`,
+`task_name`, `expenditure_type`, `cost_center`, `code_combination`,
+`period_from`/`period_to`, `project_start_date`/`project_end_date`,
+`project_phase`, `line_status` (`"Draft"`), `notes`, and the money set
+`additional_amount`, `budget_transfer`, `commitments`, `acc_annual_budget`,
+`approved_annual_budget`, `current_annual_budget`, `total_annual_budget`,
+`previous_year_budget`, `current_year_budget`, `approved_budget`,
+`previous_year_actual`, `current_year_actual`, `total_actual`, `fund_available`,
+`gl_funds_available`, `revised_project_cost`, `available_project_cost`,
+`estimated_task_cost`, `approved_task_cost`, `revised_task_cost`,
+`variation_task_cost`.
+
+**Delete a line** — the SAME endpoint, with the line simply absent from `lines`
+and its REAL identifier in `delete`:
+```json
+{ "username": "…", "lines": [], "delete": "101703" }
+```
+So `lines` is the full post-edit set (`tableDataADP.data`) and `delete` is a
+**string**, not an array — multiple removals are concatenated into it.
+
+**Delete a header** — `POST /fin010/Budgets/Transactions` (no DELETE verb):
+```json
+{ "username": "…", "delete": "006686" }     ->  {"trx_num":"006686"}
+```
+Preceded by the guard `GET /fin010/checkBaselinedRecords?p_transaction_num=…`,
+which must answer `{"count": 0}`.
+
+**Create a header** — the SAME endpoint, discriminated by the top-level key:
+`header` = create, `delete` = delete. Captured 2026-08-17:
+```json
+POST /fin010/Budgets/Transactions
+{ "username": "haghareb@dctabudhabi.ae",
+  "header": {
+    "business_unit": "Department of Culture and Tourism",
+    "project_type": "DCT OPEX Project Type",
+    "transaction_type": "Additional",
+    "status": "Entered",
+    "transaction_date": "2026-08-17",
+    "trx_year": "2026-08-17",
+    "creation_date": "2026-08-16T23:55:59.280Z",
+    "decree_no": "000",
+    "dept_1st_level_approver": "hany.abdelaal@adpic.gov.ae",
+    "transaction_num": null,
+    "person_id": 300000142264020,
+    "user_id":   300000142708375 } }
+->  {"trx_num":"012531"}
+```
+* `transaction_num: null` — the server assigns it and returns it as `trx_num`.
+* ⚠ **`trx_year` is sent as a full DATE**, not a year (`"2026-08-17"`), even
+  though the read API returns `trx_year: "2026"`. Send the date.
+* `creation_date` is client-supplied, ISO-8601 with milliseconds and `Z`.
+* `person_id` / `user_id` identify the chosen **approver** and come from the
+  approvers LOV — they are NOT the submitting user's ids.
+
+**Header LOVs:**
+```
+GET Budgets/approvers?p_business_unit_name=…[&limit=&offset=][&q=…]
+    -> person_number, full_name, user_name, user_email, person_id, user_id  (1,697 rows for DCT)
+GET Budgets/getCostCenter?p_organization_id=…
+    -> org_name, cost_center, organization_id, organization
+```
+The approvers resource accepts **native ORDS filtering** — the UI's type-ahead
+sends `q={"$or":[{"full_name":{"$instr":"Hany"}},{"person_number":{"$instr":"Hany"}}]}`.
+That is a different query dialect from the custom handlers elsewhere in fin010.
+
+**The LOV/validation chain a line insert depends on** (all GET):
+```
+annual/projects?p_business_unit=&p_cost_center=&p_project_type=   -> project_number, project_name
+annual/{proj}/tasks?p_cost_center=                                -> task_number, task_name, cost_center
+annual/{proj}/exp?p_cost_center=&p_task_number=                   -> expenditure_type
+Budgets/{proj}/details?p_exp_name={expTypeId}&p_task_num=&p_year=  -> the budget figures that pre-fill the line
+Budgets/Transactions/lines/statusValidate?exp_type=&p_transaction_num=&prj_num=  -> {"Count":"0"} = ok to add
+```
+Note `p_exp_name` takes the expenditure type's **numeric id** (300000004294397),
+not the display string.
+
+⚠ **Nothing here has been exercised by us.** Every figure above came from the
+user's own browser session. A write action must gate on `ATD_ACTION_LIVE` like
+every other Fusion write, and must respect the UI's guards (deletable only in
+Entered / Rejected / Baselining Failed; `checkLineDeleteStatus` blocks a line
+once journals exist).
+
+### Read endpoints we do NOT currently use
+
+`/additionalFunds/export` (the page's own Export) · `/Budgets/{p_proj_num}/details`,
+`/{p_proj_num}/expTypedetails`, `/{p_proj_num}/{p_task_num}/details` ·
+`/annual/projects`, `/annual/{proj}/tasks`, `/annual/{proj}/exp`,
+`/annual/{proj}/{task}/exp` · `/project/templates`, `/project/{num}/totalCost` ·
+`/checkBaselinedRecords` · `/Budgets/approvers` ·
+`/Budgets/Transactions/lines/statusValidate`,
+`/Budgets/Transactions/{p_trx_type}/lines/validate` ·
+`/ProjectBudgetTransaction/getProjBudgGLReport`, `…/getProjBudgGLDrillDownReport` ·
+`/bu/projType`, `/url/Apex`.
+
+---
+
 ## 5. Gotchas (each cost a probe to find)
 
 1. **Type values are hyphenated.** `Estimated-Cost`, not `Estimated Cost` or
