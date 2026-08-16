@@ -47,7 +47,8 @@ function (ko, config, authService, atd, i18n, shell) {
           { id: 'runs',      labelKey: 'atd.nav.runs' } ] },
       { id: 'fusionActions', labelKey: 'atd.nav.actionsGroup', collapsed: ko.observable(false), items: [
           { id: 'actions',     labelKey: 'atd.nav.allActions' },
-          { id: 'projectsOrg', labelKey: 'atd.nav.projectsOrg' } ] },
+          { id: 'projectsOrg', labelKey: 'atd.nav.projectsOrg' },
+          { id: 'pbtExtract',  labelKey: 'atd.nav.pbtExtract' } ] },
       { id: 'config', labelKey: 'atd.nav.configGroup', collapsed: ko.observable(false), items: [
           { id: 'environments',   labelKey: 'atd.nav.environments' },
           { id: 'targets',        labelKey: 'atd.nav.targets' },

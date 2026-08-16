@@ -153,5 +153,15 @@ function (api) {
     // type-ahead suggestion lists for the Manage Projects Org form
     // (type=project|task|cc; NOTE the param is `search`, not `q` — ORDS reserves q)
     ppmLov: function (type, opts)       { return api.get('/actions/ppmlov' + qs(Object.assign({ type: type }, opts || {}))); },
+
+    // ---- Project Budget Transactions (PBT) extract -------------------------
+    // Reads the ADG_FIN VBCS app through the worker's Fusion session and loads
+    // prod.pa_budget_trx_* (db/77). Enqueue returns an actionId the page polls.
+    pbtSummary:  function ()           { return api.get('/pbt/summary'); },
+    pbtRun:      function (body)       { return api.post('/pbt/runs', body); },
+    pbtRuns:     function (params)     { return api.get('/pbt/runs' + qs(params)); },
+    pbtRunById:  function (id)         { return api.get('/pbt/runs/' + id); },
+    pbtData:     function (params)     { return api.get('/pbt/data' + qs(params)); },
+    pbtDetail:   function (num, type)  { return api.get('/pbt/data/' + encodeURIComponent(num) + qs({ type: type })); },
   };
 });

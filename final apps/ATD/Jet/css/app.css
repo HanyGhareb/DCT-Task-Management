@@ -137,3 +137,17 @@
 /* Run-phase telemetry: compact operational timeline inside Run Detail. */
 .phase{padding-top:16px;border-top:1px solid var(--border-color,#E0E2EA)}.phase__title{margin:0 0 10px}.phase__track{display:flex;gap:2px;height:7px;overflow:hidden;border-radius:4px;background:#ECEEF5}.phase__seg{min-width:3px;background:#3A4FB0}.phase__seg:nth-child(2){background:#7380CA}.phase__seg:nth-child(3){background:#B5651A}.phase__seg:nth-child(4){background:#2A7D3A}.phase__seg:nth-child(5){background:#789884}.phase__grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px 14px;margin-top:12px}.phase__item{display:grid;grid-template-columns:8px minmax(0,1fr) auto;gap:7px;align-items:center;font-size:12px}.phase__dot{width:7px;height:7px;border-radius:50%;background:#3A4FB0}.phase__item:nth-child(2) .phase__dot{background:#7380CA}.phase__item:nth-child(3) .phase__dot{background:#B5651A}.phase__item:nth-child(4) .phase__dot{background:#2A7D3A}.phase__item:nth-child(5) .phase__dot{background:#789884}.phase__label{color:var(--text-muted,#626779)}.phase__time{font-weight:650}
 .run-actions{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:6px}.run-actions .btn{white-space:nowrap}@media(max-width:760px){.run-actions{justify-content:flex-start}.modal-header:has(.run-actions){align-items:flex-start;flex-direction:column}}
+
+/* ---- Project Budget Transactions: multi-select filter chips -------------
+   Toggle chips for business unit / status on the extract parameters card.
+   ATD-local (the shared layer has no chip component); logical properties only
+   so they mirror correctly in RTL. */
+.chip-row{display:flex;flex-wrap:wrap;gap:7px;margin-top:5px}
+.chip{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--border-color,#D9DCE8);
+      border-radius:14px;background:var(--surface,#fff);color:var(--text-muted,#626779);
+      font-size:12.5px;line-height:1.5;cursor:pointer;user-select:none;
+      transition:border-color .15s,background .15s,color .15s}
+.chip:hover{border-color:#8D97CE}
+.chip--on{border-color:var(--brand,#3A4FB0);background:rgba(var(--brand-rgb,58,79,176),.09);
+          color:var(--brand-dark,#2C3D8C);font-weight:650}
+.chip--on::before{content:"✓";font-size:11px;font-weight:700}

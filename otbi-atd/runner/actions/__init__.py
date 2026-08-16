@@ -35,7 +35,7 @@ class DryRun(RuntimeError):
 
 def dispatch(ctx, env, action):
     """Route an action row to its handler. Returns (fusion_id, ref)."""
-    from . import ap_invoice, ar_invoice_rebill, ppm_task_addl
+    from . import ap_invoice, ar_invoice_rebill, pa_budget_trx, ppm_task_addl
 
     atype = (action.get("action_type") or "").upper()
     raw = action.get("payload_json")
@@ -47,5 +47,10 @@ def dispatch(ctx, env, action):
         return ppm_task_addl.update(ctx, env, data, action)
     if atype == "AR_INVOICE_REBILL":
         return ar_invoice_rebill.rebill(ctx, env, data, action)
+    # READ action: pulls data OUT of Fusion instead of writing into it, so it
+    # has no idempotency probe and no ATD_ACTION_LIVE gate - re-running it is
+    # safe by construction (every load is a MERGE on the source's own key).
+    if atype == "PA_BUDGET_TRX":
+        return pa_budget_trx.extract(ctx, env, data, action)
 
     raise RuntimeError(f"unknown action_type: {atype!r}")

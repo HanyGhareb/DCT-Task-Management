@@ -204,6 +204,27 @@ Program / BG Override / Revenue Account Override) via *Manage Financial Project 
   `retry(row)`/`cancel(row)` as on Fusion Actions.
 - Header link `viewActions` → the Fusion Actions page (`$root.navigate('actions')`).
 
+## Project Budget Transactions (`pbtExtract`)
+Extracts master–detail budget transactions from the ADG_FIN **Project Budget Transactions**
+VBCS app into `PA_BUDGET_TRX_HEADERS` + the per-type line tables + `PA_BUDGET_TRX_APPROVALS`
+(`otbi-atd/db/77`). Enqueues action type **`PA_BUDGET_TRX`** — the first *read* action — and
+monitors it with the queue's own telemetry.
+- **Currently loaded** (`loadSummary` from `/pbt/summary`): rows per budget type with date span
+  and last-refresh time, line totals per type, approval count, and a scheduled-sync on/off badge.
+- **Extract parameters**: `fType` (budget type), `fMode` (`RANGE` / `SYNC_SHALLOW` / `SYNC_DEEP`,
+  with `modeHint` explaining each), `fFrom`/`fTo` dates, `fBus` + `fStatuses` multi-select chips
+  (`toggleBu`/`hasBu`/`toggleStatus`/`hasStatus`), `fApprovals`, `fPurge`.
+- **Run + monitor**: `submit` (client-side validation → `POST /pbt/runs`), `poll` (4 s until
+  DONE/FAILED/CANCELLED) showing status chip, worker VM, started/finished/duration, rows loaded,
+  per-type detail line and last error; `watchRun(row)` re-attaches the monitor to any past run.
+- **Recent runs** (`loadRuns` from `/pbt/runs`): request, status, scope, worker, timings, rows,
+  submitted-by; row click = watch it.
+- **Extracted transactions** (`loadData` from `/pbt/data`): server-paged register with type /
+  status / BU / date-range / free-text filters (`searchData`, `prevPage`, `nextPage`); row click
+  → `openDetail` drill drawer with the transaction header, its detail lines and its approval
+  trail (`/pbt/data/:num`).
+- Helpers: `statusClass`, `num`, `closeDrawer`.
+
 ## OTBI Discovery (`discovery`)
 One page, three tables, for the `create_analysis` async pipeline:
 - **Discovery requests** (`loadRequests` from `/subject-areas`): current status per subject area
@@ -296,6 +317,11 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET | `/job-set-jobs` | candidate picker — every job + its current set (if any); the detail add-member list filters to unassigned jobs |
 | GET / PUT | `/config` | Runner Settings — list / update `ATD_RUNNER_CONFIG` rows (update-only, secrets masked). SYS_ADMIN |
 | GET / PUT / DELETE | `/my-credential` | per-user OTBI credential profile (db/62+63): read own profile (`passwordSet` flag, never the password) / upsert (`password` applied only when present + non-empty — write-only; `catalogLogin` = OTBI catalog folder when it differs from the sign-in — drives permanent job ownership) / remove. SYS_ADMIN, always the caller's own row — `otbi-atd/db/63_atd_user_cred_ords.sql` (additive) |
+| POST / GET | `/pbt/runs` | enqueue one PBT extract (`{mode,transactionTypes[],dateFrom,dateTo,businessUnits[],statuses[],includeApprovals,purgeMissing}`; mode `RANGE`\|`SYNC_SHALLOW`\|`SYNC_DEEP`) / request register with worker + timings + row counts — `otbi-atd/db/78_pa_budget_trx_ords.sql` (additive). **db/44's `/actions/enqueue` is hard-coded to `PPM_TASK_ADDL_INFO`, so PBT needs its own.** |
+| GET | `/pbt/runs/:id` | one request + its run-log detail (the page polls this while a run is live) |
+| GET | `/pbt/summary` | KPIs — headers by type (with date span + last refresh), by status, by BU; line + approval totals; budget-type LOV; `syncEnabled` |
+| GET | `/pbt/data` | paged extracted-header register (`?type=&status=&bu=&from=&to=&search=&page=&size=`) |
+| GET | `/pbt/data/:num` | one transaction — header + its detail lines (from the table matching `?type=`) + its approval trail |
 | GET | `/credentials` | roster of personal OTBI accounts (username, fusionLogin, active/password/chat flags — no secrets) — db/63 (additive) |
 
 All handlers: `dct_rest.validate_session` → 401, `dct_auth.has_role(user,'SYS_ADMIN')` → 403.
@@ -319,7 +345,7 @@ api.js `wf` pattern; `config.xlBase` wins if set).
 ## Services / Data layer
 | File | Role |
 |---|---|
-| `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction`; job sets `listJobSets` / `getJobSet` / `createJobSet` / `updateJobSet` / `deleteJobSet` / `addSetMembers` / `updateSetMember` / `removeSetMember` / `runJobSet` / `pauseJobSet` / `listSetCandidates` |
+| `js/services/atdService.js` | one method per ORDS endpoint (Promises); incl. `getActionStats` / `listActions` / `getAction` / `retryAction` / `cancelAction`; job sets `listJobSets` / `getJobSet` / `createJobSet` / `updateJobSet` / `deleteJobSet` / `addSetMembers` / `updateSetMember` / `removeSetMember` / `runJobSet` / `pauseJobSet` / `listSetCandidates`; Project Budget Transactions `pbtSummary` / `pbtRun` / `pbtRuns` / `pbtRunById` / `pbtData` / `pbtDetail` |
 | `js/services/xlService.js` | VB Template repository client for the platform `xl` ORDS module (`/ords/admin/xl/`): `list` / `save` / `newVersion` / `activate` / `deleteVersion` / raw-binary `uploadFile` / authed `fileBlobUrl` |
 | `js/services/api.js` | re-export of `shared/js/api.js` (Bearer + 401 handling) |
 | `js/services/authService.js` | session reader (shared `ifinance_jet_session`) |

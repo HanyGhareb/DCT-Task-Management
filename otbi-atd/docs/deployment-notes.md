@@ -2316,3 +2316,29 @@ detected the VM state and issued **power.on** (not reset — the off-branch work
 Telegram sent (success path, ATD_WORKER_SILENT_ALERT=N). The complete escalation
 chain (service restart -> ESXi power on/reset -> runbook Telegram) is proven
 end-to-end in production.
+
+---
+
+## Project Budget Transactions (PBT) extract — 2026-08-17
+
+A THIRD source kind joins Track A (OTBI analyses) and Track B (BIP `.xdo`): the **ADG_FIN
+"Project Budget Transactions" VBCS app**, which is a thin client over a plain ORDS service.
+It is implemented as an **action**, not a job — see `final apps/ATD/docs/deployment-notes.md`
+§ "Project Budget Transactions (PBT) extract" for the full runbook, the deploy order, the
+verified numbers and the API gotchas, plus:
+
+- **Plan:** `docs/PBT_EXTRACT_PLAN.md`
+- **API contract (sanitised, no session material):** `docs/fusion-actions/pbt-api-spec.md`
+- **DB:** `db/77_pa_budget_trx.sql` (tables + vocabulary + settings + request view),
+  `db/78_pa_budget_trx_ords.sql` (synonyms + `/atd/pbt/*`),
+  `db/79_pa_budget_trx_sync.sql` (`PA_PBT_SYNC_PKG` + `PA_PBT_SYNC_JOB`)
+- **Runner:** `runner/actions/pa_budget_trx.py` (+ `runner/smoke_pbt.py` to run a scope by hand,
+  and `runner/tests/test_pa_budget_trx.py` for the parsing rules)
+
+**Post-13 re-run list is now `20, 38, 41, 42, 44, 45, 63, 78`.**
+
+**Session rule (unchanged, and load-bearing here):** the handler attaches to the worker's saved
+session and NEVER initiates a login — a sign-in redirect fails the action as `SESSION_EXPIRED`
+so the normal MFA/Telegram recovery path handles it. `smoke_pbt.py` builds a fresh context from
+the saved `storage_state` rather than opening the worker's persistent Chromium profile, so it
+can be run safely while `atd-worker` is live.
