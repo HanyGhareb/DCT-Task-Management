@@ -28,6 +28,8 @@ export const config = {
   sessionKey: 'ifinance_jet_session',
   /** Notification-count badge poll interval (ms) — fallback when push is idle. */
   notifPollMs: 60_000,
+  /** Require unlock after the app has remained backgrounded this long. */
+  backgroundLockMs: 30_000,
 } as const;
 
 /** Base URL for another module's ORDS path, e.g. `moduleBase('atd')` →

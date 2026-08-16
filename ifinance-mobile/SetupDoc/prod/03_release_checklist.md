@@ -7,6 +7,10 @@
 - [ ] `app.json` `extra.apiBase` points at the **production** ORDS base.
 - [ ] `extra.eas.projectId` is the real value (not the `00000000-…` placeholder).
 - [ ] Version bumped; release notes written.
+- [ ] `GOOGLE_SERVICES_JSON` secret file exists in the production EAS environment.
+- [ ] `EXPO_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN`, `SENTRY_ORG`, and
+      `SENTRY_PROJECT` exist in the production EAS environment.
+- [ ] `npm run release:check` passes inside the EAS production job.
 
 ## Security / compliance
 - [ ] Session token stored only in Keychain/Keystore (expo-secure-store) — verified.
@@ -34,7 +38,8 @@
       uninstalled apps — a future enhancement can auto-call
       `dct_push_pkg.unregister` from the Expo receipt; for now they simply stop
       receiving and can be cleaned manually.
-- [ ] Track EAS build health + crash reports (add Sentry/`expo-error-reporter` later).
+- [ ] Track EAS build health + Sentry crash reports; verify source maps resolve
+      minified production frames and that no financial request payload is attached.
 
 ## Rollback
 - App: re-submit the previous build, or `eas update` a JS fix for non-native bugs.

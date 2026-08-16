@@ -113,7 +113,6 @@ export function AtdJobsScreen() {
         <FlashList<AtdJob>
           data={data ?? []}
           keyExtractor={(j: AtdJob) => j.jobName}
-          estimatedItemSize={104}
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
           contentContainerStyle={{ padding: spacing.lg }}
@@ -181,14 +180,14 @@ function JobActionsSheet({
 }: {
   job: AtdJob | null;
   palette: ThemePalette;
-  t: (k: any, a?: Array<string | number>) => string;
+  t: (k: any, a?: (string | number)[]) => string;
   onClose: () => void;
   onAction: (kind: Kind, job: AtdJob) => void;
 }) {
   const insets = useSafeAreaInsets();
   if (!job) return null;
   const on = job.enabled === 'Y';
-  const rows: Array<{ kind: Kind; label: string; icon: keyof typeof Ionicons.glyphMap; danger?: boolean }> = [
+  const rows: { kind: Kind; label: string; icon: keyof typeof Ionicons.glyphMap; danger?: boolean }[] = [
     { kind: 'enqueue', label: t('atd.enqueue'), icon: 'play' },
     { kind: 'reset', label: t('atd.reset'), icon: 'refresh' },
     on

@@ -76,7 +76,6 @@ export function NotificationsScreen() {
           data={data ?? []}
           keyExtractor={(it) => String(it.notifId)}
           renderItem={renderItem}
-          estimatedItemSize={96}
           contentContainerStyle={{ padding: spacing.lg }}
           ListEmptyComponent={<EmptyState icon="notifications-off" title={t('notif.empty')} subtitle={t('notif.emptySub')} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={palette.brand} />}

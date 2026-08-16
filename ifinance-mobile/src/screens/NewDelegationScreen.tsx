@@ -184,7 +184,6 @@ export function NewDelegationScreen() {
           <FlashList<UserLite>
             data={users ?? []}
             keyExtractor={(u: UserLite) => String(u.userId)}
-            estimatedItemSize={64}
             keyboardShouldPersistTaps="handled"
             contentContainerStyle={{ padding: spacing.lg }}
             ListEmptyComponent={

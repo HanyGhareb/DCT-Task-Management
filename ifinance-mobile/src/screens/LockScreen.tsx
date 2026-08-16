@@ -27,7 +27,8 @@ export function LockScreen() {
   }, [t, unlock]);
 
   useEffect(() => {
-    void prompt();
+    const timer = setTimeout(() => void prompt(), 0);
+    return () => clearTimeout(timer);
   }, [prompt]);
 
   return (

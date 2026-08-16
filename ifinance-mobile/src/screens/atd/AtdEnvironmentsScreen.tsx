@@ -96,7 +96,6 @@ export function AtdEnvironmentsScreen() {
         <FlashList<AtdEnv>
           data={data ?? []}
           keyExtractor={(e: AtdEnv) => e.envName}
-          estimatedItemSize={88}
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
           contentContainerStyle={{ padding: spacing.lg }}

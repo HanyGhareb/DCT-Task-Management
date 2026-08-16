@@ -33,10 +33,13 @@ SQLcl/ORDS rules.
    Expect `{"ok":true}` and a row in `DCT_DEVICE_TOKENS`.
 
 ### Mobile app
-1. `cd ifinance-mobile && npm install`.
+1. `cd ifinance-mobile && npm install` (Expo SDK 57 / React Native 0.86).
 2. `eas init` → put the real `projectId` in `app.json` → `extra.eas.projectId`.
-3. For FCM (Android) + APNs (iOS) credentials, configure them in EAS
-   (`eas credentials`); Expo Push routes through them.
+3. Configure the production EAS environment with a secret file variable named
+   `GOOGLE_SERVICES_JSON`; `app.config.js` passes its generated path to Android.
+   Also configure `EXPO_PUBLIC_SENTRY_DSN`, `SENTRY_AUTH_TOKEN` (sensitive),
+   `SENTRY_ORG`, and `SENTRY_PROJECT`. Run `npm run release:check` in an EAS build
+   step before compiling. No credential file or source-map token is committed.
 4. Build: `npm run build:dev` (internal) or `npm run build:prod`.
 5. Bump `expo.version` in `app.json` on every store release.
 
@@ -59,6 +62,11 @@ modules via the shared session.
   **Environments** (CRUD), **Targets** (CRUD), **Runner Settings** (`/config`
   editor). Job/env/target writes use the partial-safe PUT (`does_exist` per column);
   Runner Settings PUTs only changed keys so write-only secrets are preserved.
+  **Product decision (2026-08-11): keep ATD in App 209.** It is an operational
+  companion for the same internal finance administrators, avoids maintaining a
+  second native binary, is absent from navigation unless the authenticated user
+  has `SYS_ADMIN`, and every ATD handler independently enforces `SYS_ADMIN`.
+  Navigation gating is convenience only; ORDS remains the security boundary.
 - New native deps → **require a rebuild**: `expo-image`, `@react-native-community/netinfo`.
 - **ATD UX notes:** Android `Alert` shows max 3 buttons → multi-action menus use a
   custom bottom-sheet / full-screen modal, not `Alert`. Enqueue ≠ run: it sets the
@@ -78,6 +86,12 @@ modules via the shared session.
   `babel-plugin-module-resolver` (it isn't installed and will fail the bundle).
 
 ## Deployment history
+- 2026-08-11 — Mobile hardening + release foundation: user-isolated query/write
+  caches, validated restore/logout cleanup, DWP dynamic outcomes, exact push deep
+  links, background biometric lock, accessibility/i18n fixes, Expo SDK 52→57
+  incremental migration, Sentry integration (PII off, zero tracing), EAS secret-
+  file Firebase config, immediate RTL reload, lint/Jest setup. ATD retained by
+  explicit product decision with dual client/server role gates.
 - 2026-06-19 — Initial MVP scaffolded. tsc clean; Metro iOS bundle clean
   (3.08 MB). `db/v2/28_push_tokens.sql` authored (CRLF/UTF-8).
 - 2026-06-20 — **`db/v2/28_push_tokens.sql` DEPLOYED to PROD.** All objects VALID

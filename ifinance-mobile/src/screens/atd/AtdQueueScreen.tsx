@@ -60,7 +60,6 @@ export function AtdQueueScreen() {
         <FlashList<AtdJob>
           data={queued}
           keyExtractor={(j: AtdJob) => j.jobName}
-          estimatedItemSize={72}
           refreshing={jobsQ.isRefetching}
           onRefresh={() => { void dash.refetch(); void jobsQ.refetch(); }}
           contentContainerStyle={{ padding: spacing.lg }}

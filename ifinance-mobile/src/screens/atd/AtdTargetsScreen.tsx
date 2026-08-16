@@ -90,7 +90,6 @@ export function AtdTargetsScreen() {
         <FlashList<AtdTarget>
           data={data ?? []}
           keyExtractor={(x: AtdTarget) => x.targetName}
-          estimatedItemSize={84}
           refreshing={isRefetching}
           onRefresh={() => void refetch()}
           contentContainerStyle={{ padding: spacing.lg }}

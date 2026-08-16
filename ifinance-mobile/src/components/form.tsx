@@ -39,6 +39,7 @@ export function TextField({
         {label}
       </T>
       <TextInput
+        accessibilityLabel={label}
         value={value}
         onChangeText={onChangeText}
         placeholder={placeholder}
@@ -92,6 +93,9 @@ export function EnumField({
             <Pressable
               key={opt}
               onPress={() => onChange(opt)}
+              accessibilityRole="radio"
+              accessibilityLabel={opt}
+              accessibilityState={{ selected: on }}
               style={[
                 styles.pill,
                 {
@@ -122,7 +126,13 @@ export function ToggleField({
 }) {
   const { palette } = useTheme();
   return (
-    <Pressable onPress={() => onChange(!value)} style={styles.toggleRow}>
+    <Pressable
+      onPress={() => onChange(!value)}
+      style={styles.toggleRow}
+      accessibilityRole="switch"
+      accessibilityLabel={label}
+      accessibilityState={{ checked: value }}
+    >
       <T variant="body" style={{ flex: 1 }}>
         {label}
       </T>
