@@ -2304,3 +2304,15 @@ recovery ladder is now armed end-to-end (reset verb uses the identical channel;
 the Claude Code classifier blocks the assistant from issuing the destructive
 reset itself — a full frozen-VM drill = operator powers OFF atd-vm182 in the
 ESXi UI and watches the fleet power it back on and resume).
+
+## 2026-08-16 (13) — FULL frozen-VM drill PASSED (operator-driven)
+
+Operator powered OFF atd-vm182 in the ESXi UI (~22:57). Timeline, fully
+autonomous from there: 23:02:56 vm181 claimed the incident + level 1 ssh restart
+correctly failed (`connect ... port 22: Connection timed out`) -> ESXi channel
+detected the VM state and issued **power.on** (not reset — the off-branch works)
+-> 23:03:28 `VM back online` (boot + atd-worker auto-start + ssh verify inside
+32s) -> vm182 heartbeating and BUSY claiming jobs on a fresh 0-min uptime. No
+Telegram sent (success path, ATD_WORKER_SILENT_ALERT=N). The complete escalation
+chain (service restart -> ESXi power on/reset -> runbook Telegram) is proven
+end-to-end in production.
