@@ -74,8 +74,13 @@ tsk AS (
   FROM prod.tasks GROUP BY task_id
 ),
 tsk_org AS (
-  SELECT task_number, MAX(task_organization) AS task_organization
-  FROM prod.tasks GROUP BY task_number
+  -- project-scoped (2026-08-12): task numbers REPEAT across projects, so a
+  -- bare GROUP BY task_number picked an arbitrary project's organization.
+  SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number,
+         MAX(t.task_organization) AS task_organization
+  FROM prod.tasks t
+  JOIN proj pj ON pj.project_id = t.project_id
+  GROUP BY TO_CHAR(pj.project_number), t.task_number
 ),
 tsk_seg AS (
   SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number AS task_key,
@@ -398,7 +403,12 @@ SELECT
                        MAX(MAX(coa.appropriation_code)) OVER (PARTITION BY k.budget_year, k.project_key),
                        LPAD(MAX(pj.appropriation),6,'0'), '000000') || '.000.000000.000000'
     END,
-    MAX(k.cc_string)) AS budget_combination
+    MAX(k.cc_string)) AS budget_combination,
+  -- TASK_ORGANIZATION: the raw PPM owning organization of the task (OTBI
+  -- "Task Organization", e.g. "MSS Guggenheim Abu Dhabi"). Shown alongside
+  -- DEPARTMENT (the GL cost-centre segment description) since 2026-08-12 —
+  -- the two are DIFFERENT Fusion attributes and users need both.
+  MAX(torg.task_organization) AS task_organization
 FROM keys k
 LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = k.cc_string
 LEFT JOIN pb b  ON b.budget_year = k.budget_year
@@ -406,7 +416,7 @@ LEFT JOIN pb b  ON b.budget_year = k.budget_year
                AND NVL(b.task_key,'~')         = NVL(k.task_key,'~')
                AND NVL(b.expenditure_type,'~') = NVL(k.expenditure_type,'~')
 LEFT JOIN proj pj ON TO_CHAR(pj.project_number) = k.project_key
-LEFT JOIN tsk_org torg ON torg.task_number = k.task_key
+LEFT JOIN tsk_org torg ON torg.project_key = k.project_key AND torg.task_number = k.task_key
 LEFT JOIN tsk_seg tcc ON tcc.project_key = k.project_key AND tcc.task_key = k.task_key
 LEFT JOIN proj_seg pseg ON pseg.project_key = k.project_key
 LEFT JOIN cc_dim tcd ON tcd.cost_center_code = tcc.cost_center_code

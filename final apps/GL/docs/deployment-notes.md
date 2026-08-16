@@ -3,6 +3,27 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-12 — Butil Organization column (v1.61.0; db/v2/37+39 + GL/db/07 + reporting/db/25).**
+  User request after the Department-vs-OTBI question: the page's DEPARTMENT is the GL
+  cost-centre segment description (COA snap), NOT the PPM Task Organization — both are now
+  shown. `DCT_BUDGET_UTILIZATION_V` gains **TASK_ORGANIZATION** (last column; the raw PPM
+  owning org of the task, e.g. "MSS Guggenheim Abu Dhabi"), `dct_butil_scope_v` re-exposes
+  it, `GET /gl/butil` ships `organization` per row, and the butil page shows an
+  **Organization** column (after Department; skeleton 18→19 cols, CSV export included,
+  `cOrg` EN/AR). BUDGET_UTIL_REGISTER (reporting/db/25) carries **Organization** on sheets
+  1–5 (`l_bu` + the `l_dim` scope join); sheet 6 (Pending Approval PR-PO) is a Fusion-doc
+  register with no butil task dimension — unchanged. The Briefing-Book PDF (db/21) is a
+  fixed-layout template and was deliberately NOT widened. **BUG FIXED during the round:**
+  the view's `tsk_org` CTE grouped by `task_number` ALONE — task numbers repeat across
+  projects, so MAX() could pick another project's organization (4510714 showed "MSS
+  Technical Operations Section" instead of "MSS Guggenheim Abu Dhabi"); now project-scoped
+  `(project_key, task_number)`, which also tightens the DEPARTMENT last-resort fallback.
+  Deploy: 37+39+25 via python-oracledb on vm180 (25 is MERGE-bearing; 37 is a >10KB block —
+  Linux SQLcl swallow risk), then GL/db/07 via SQLcl `prod_mcp` (verified
+  `INSTR(source,'organization')` in user_ords_handlers), recompile sweep to 0 INVALID,
+  webtier release 20260812161233. Verified: live API row parity with OTBI, register run 403
+  (org col on 5 sheets), browser check EN+AR PASS.
+
 - **2026-08-04 — Resilient actuals snapshot refresh (db/v2/118; DB only):** `prod.dct_actuals_refresh` now serializes runs through a control-row lock, loads `DCT_GL_COA_STAGE`, verifies non-empty/exact row counts plus non-null/unique `CC_ID` and `CC_STRING`, and only then atomically replaces `DCT_GL_COA_SNAP` in one transaction. Any load/validation/publish failure rolls back and leaves the prior committed snapshot available. `DCT_ACTUALS_REFRESH_LOG` records requester, source/staged/published counts, duration and error with 90-day retention; stats errors are warnings after a successful publish. Removed the unrelated two-pass invalid-view compilation from every run; the dedicated DB-health workflow owns recompilation. PROD verification: four successful 9,409-row runs (4.62–5.52 s), real hourly scheduler run SUCCEEDED, procedure/job healthy, 0 invalid objects.
 
 ## Deploy checklist
@@ -1416,3 +1437,19 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   - **Frontend v1.51.1:** YoY tab gains a **Budget group chip row** (1 on by default; 2/8 toggleable, EBS years only) + hint; note text updated to state the 452201 exclusion.
 - Verified live: bg default vs 1|2|8 (2025 FY expense 7,153.6M vs 6,339.2M — group 8 accrual reversals net −814M), summary rows 102,921 (bg 1) vs 125,761 (all); DOF YoY GRAND now revBudget 8,392.2M / priorFy 7,157.7M. Smoke 14/14. Webtier release 20260802182916.
 - Deploy chain: db/v2/32 GL_BALANCES_CC (extract) + 110 + 111 via `prod` (+ recompile sweep to 0 INVALID); GL/db/16+17+18 via `prod_mcp`; reporting/db/30+31+32 via `prod`.
+
+### 2026-08-13 — Butil "Refresh source data" button + PROJECTS_DATA job set (FP v1.62.0, GL/db/19)
+- **New ATD job set `PROJECTS_DATA`** (otbi-atd/db/67): Projects Full + Tasks Full + Projects
+  Budget Full - V2, **hourly, no daily window** — replaces PROJECTS_DAILY membership for the
+  masters (a job belongs to ONE set) and aligns them with the hourly chunked budget extract, so
+  a task created in Fusion mid-day no longer leaves its budget line hidden behind the butil
+  view's missing-master exclusion (seen live: project 4511000339). PROJECTS_DAILY now holds
+  only the disabled legacy Projects Budget Full.
+- **GL/db/19 (ADDITIVE)**: `POST /gl/butil/refreshdata` → `prod.atd_set_pkg.run_now('PROJECTS_DATA')`
+  = {queued:n}; `GET /gl/butil/refreshdata` = {busy Y/N, jobs[{job,queueStatus,lastStatus,
+  lastRows,lastFinished}]}. Gated like the butil endpoints (GL_VIEW_BUDGET_UTILIZATION via
+  has_priv_or_role). **GL post-05 re-run list = 07..19.**
+- **Frontend v1.62.0**: butil page-head button **Refresh source data** (`refreshProjectsData`/
+  `pdataBusy`) — enqueues the set, polls every 5s (7.5-min ceiling), toasts per-job failures,
+  re-runs the current search on success; EN+AR (`pdata*` keys). Smoke:
+  `tests/butil_pdata_smoke.py`. Webtier release 20260813222044.

@@ -305,6 +305,7 @@ BEGIN
     APEX_JSON.write('projectType', NVL(r.project_type,''));
     APEX_JSON.write('sector', NVL(r.sector,''));
     APEX_JSON.write('department', NVL(r.department,''));
+    APEX_JSON.write('organization', NVL(r.task_organization,''));
     APEX_JSON.write('costCentre', NVL(r.cost_centre,''));
     APEX_JSON.write('projectNumber', NVL(r.project_number,''));
     APEX_JSON.write('projectName', NVL(r.project_name,''));

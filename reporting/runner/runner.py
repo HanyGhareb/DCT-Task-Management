@@ -81,6 +81,44 @@ def beat(conn, status, current_run=None, done=0, failed=0, stopped=False):
         print(f"[worker] heartbeat failed: {e}", file=sys.stderr)
 
 
+def conn_alive(conn):
+    """True when the DB connection still answers a ping."""
+    try:
+        conn.ping()
+        return True
+    except Exception:  # noqa: BLE001
+        return False
+
+
+def reconnect(conn):
+    """Replace a dead DB connection (DPY-4011 etc.) with a fresh one.
+
+    The 2026-08-07 outage: ADB dropped all three workers' connections and the
+    forever-loop kept retrying on the SAME dead connection every 20s for three
+    days (systemd saw a healthy process; runs sat QUEUED). A worker is useless
+    without the DB, so retry with backoff; after ~10 min give up and exit —
+    systemd (Restart=always) then brings up a completely fresh process."""
+    try:
+        conn.close()
+    except Exception:  # noqa: BLE001
+        pass
+    delay, waited = 5, 0
+    while True:
+        try:
+            c = config.connect()
+            print(f"[worker {WORKER_ID}] DB connection re-established", flush=True)
+            return c
+        except Exception as e:  # noqa: BLE001
+            waited += delay
+            print(f"[worker] reconnect failed ({waited}s): {e}", file=sys.stderr)
+            if waited >= 600:
+                print("[worker] reconnect budget exhausted - exiting for systemd restart",
+                      file=sys.stderr)
+                sys.exit(1)
+            time.sleep(delay)
+            delay = min(delay * 2, 60)
+
+
 def read_command(conn):
     """The BI Workers page's desired action for this worker (PAUSE/RESUME/STOP)."""
     if not _registered:
@@ -387,6 +425,11 @@ def main(argv=None):
                     conf = config.load_config(conn)   # pick up UI config changes
                 except Exception as e:  # noqa: BLE001
                     print(f"[worker] loop error: {e}", file=sys.stderr)
+                    if not conn_alive(conn):
+                        print("[worker] DB connection lost - reconnecting", file=sys.stderr)
+                        conn = reconnect(conn)
+                        conf = config.load_config(conn)
+                        beat(conn, "IDLE")
                     time.sleep(idle)
         finally:
             beat(conn, "STOPPED", stopped=True)

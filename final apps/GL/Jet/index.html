@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.60.0';</script>
+<script>window.APP_VERSION = '1.62.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -393,6 +393,7 @@
             <!-- /ko -->
           </div>
           <button class="btn btn-sm" data-bind="click:buExportCsv, enable:buTotal()>0, text:t('exportCsv')"></button>
+          <button class="btn btn-sm" data-bind="click:refreshProjectsData, enable:!pdataBusy(), attr:{title:t('pdataHint')}, text:pdataBusy()?t('pdataRunning'):t('pdataBtn')"></button>
           <button class="btn btn-sm" data-bind="click:rebuildViews, enable:!rebuilding() && !refreshing(), attr:{title:t('rebuildHint')}, text:rebuilding()?t('rebuilding'):t('rebuildViews')"></button>
           <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing() && !rebuilding(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
         </div>
@@ -609,6 +610,7 @@
             <th data-bind="text:t('cProjType')"></th>
             <th data-bind="text:t('fSectorL')"></th>
             <th data-bind="text:t('cDept')"></th>
+            <th data-bind="text:t('cOrg')"></th>
             <th data-bind="text:t('costCenter')"></th>
             <th data-bind="text:t('cProject')"></th>
             <th data-bind="text:t('cTask')"></th>
@@ -637,6 +639,7 @@
               <td data-bind="text:$data.projectType||'—'"></td>
               <td><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
               <td data-bind="text:$data.department||'—'"></td>
+              <td data-bind="text:$data.organization||'—'"></td>
               <td class="mono" data-bind="text:$data.costCentre||'—'"></td>
               <td><b class="mono" data-bind="text:$data.projectNumber"></b><div class="sub-d" data-bind="text:$data.projectName||''"></div></td>
               <td data-bind="text:$data.taskNumber||'—'"></td>

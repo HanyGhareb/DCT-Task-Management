@@ -113,6 +113,7 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 - `loadEbsSummary()` — per-year coverage tiles + top-unmapped lists (GET /ebs-balances/summary)
 
 ### Balances YoY (`#pg-yoy`, 2026-08-02; interactive report since v1.55.0)
+- `refreshProjectsData()` — butil page: runs the PROJECTS_DATA ATD job set via POST /butil/refreshdata, polls to completion, re-runs the search (v1.62.0)
 - `runYoy()` — loads the year-over-year comparison (GET /ebs-balances/yoy) for the selected year chips (max 6) + Balance-as-of month
 - `yoToggleYear(y)` / `yoMonthLabel(o)` — criteria helpers (year chips, Full year / month YTD labels)
 - `yoView` / `yoPivot` — client-side pivot (one row per Fusion account, values per year) + live search/type filtering
@@ -157,6 +158,8 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 | GET | `/ebs-balances/register/:id/file` | download the register XLSX (GL/db/16) |
 | GET | `/ebs-balances/yoy` | year-over-year YTD comparison on the Fusion account basis (years= pipe list max 6, month=0 FY or 1-12 YTD cutoff, search/atype/chapter; EBS years = stored YTD slices via the account map, 2026+ = Fusion fact view) (GL/db/18) |
 | POST | `/ebs-balances/yoy/xlsx` | enqueue EBS_GL_YOY_REGISTER with the same params (GL/db/18) |
+| POST | `/butil/refreshdata` | run ATD job set PROJECTS_DATA (Projects Full + Tasks Full + Projects Budget Full - V2) → {queued} (GL/db/19) |
+| GET | `/butil/refreshdata` | refresh status: {busy, jobs[{job,queueStatus,lastStatus,lastRows,lastFinished}]} (GL/db/19) |
 | GET | `/ebs-balances/yoy/xlsx/:id` | poll YoY register run status (GL/db/18) |
 | GET | `/ebs-balances/yoy/xlsx/:id/file` | download the YoY register XLSX (GL/db/18) |
 | POST | `/cashflow` | bulk upsert GL budget-cashflow rows (≤500/req, per-row results; segments zero-padded to canonical widths; GL_MANAGE_CASHFLOW / SYS_ADMIN) (GL/db/17) |
@@ -221,3 +224,5 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 - `isSysAdmin` (from session rolesCsv) shows the pnav-end **Security Info** `<button>` (never an `<a>` — the pending smoke asserts 9 pnav anchors).
 - `openSecurityInfo` — fetches `GET /dct/sec/pageinfo?module=GL&page=<active tab>` and renders the `.dw-*` drawer: page view privilege, registered artifacts (buttons/endpoints/actions) and the duty/job roles granting each privilege. `closeSecurityInfo`.
 - Server side: every 07/09/11/12/13 handler now checks `dct_sec.has_priv_or_role(user,'<GL_PRIV>',NULL,'GL')` (grandfathered while `FEATURE_SEC_ENFORCE_GL`=N) and /gl/butil + /gl/encumbrances + /gl/pending apply the SECTOR security-profile scope (`DCT_SEC_DATA` + `V_DCT_SEC_USER_SCOPE`).
+
+<!-- 2026-08-13 additions -->

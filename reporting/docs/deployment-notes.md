@@ -4,6 +4,28 @@ Runbook + history for the i-Finance Reporting Platform (`reporting/`). See the c
 SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
 
 ## History (most recent first)
+
+- **2026-08-12 — BUDGET_UTIL_REGISTER: Organization column (reporting/db/25 re-seed).** Sheets 1–5
+  gain **Organization** (the task's raw PPM owning org, new `DCT_BUDGET_UTILIZATION_V.TASK_ORGANIZATION` /
+  `dct_butil_scope_v` column) next to Department — Department stays the GL cost-centre segment
+  description; the two are different Fusion attributes. `l_bu` adds `task_organization AS organization`;
+  `l_dim` adds `MAX(task_organization) AS organization` and the four line sheets select `sc.organization`.
+  Sheet 6 (Pending Approval PR-PO) has no butil task dimension — unchanged. BUDGET_UTIL_BOOK (db/21)
+  untouched (fixed-layout PDF template). Deployed via python-oracledb on vm180 (MERGE-bearing);
+  verified by GL bridge run 403 (org populated on all 5 sheets). Companion change: GL v1.61.0
+  page column + `/gl/butil` field (see GL deployment-notes 2026-08-12).
+- **2026-08-10 — Worker self-heal on dead DB connection (runner.py fleet-synced vm180-182).**
+  ROOT CAUSE of the 2026-08-07→08-10 outage: ADB dropped all three workers' connections on
+  2026-08-07 ~16:05 UTC (`DPY-4011`), and the `--forever` loop's `except` handler slept and
+  retried **on the same dead connection** every 20s for three days — systemd showed `active`,
+  heartbeats went stale, and every new run sat QUEUED (runs 241/242 recovered by manual
+  `systemctl restart rpt-worker` ×3). FIX: the loop-error handler now `conn.ping()`s; on a dead
+  connection it closes + retries `config.connect()` with backoff (5s→60s), reloads config and
+  heartbeats IDLE; after ~10 min of failed reconnects it exits(1) so `Restart=always` brings up
+  a fresh process. NOTE: the BI Workers page CANNOT fix this class of hang — its
+  PAUSE/RESUME/STOP commands travel through the DB, which a dead-connection worker can't read;
+  stale heartbeats on that page ARE the alert. (The ATD worker never needed this: DB errors
+  there escape the loop, crash the process, and systemd restarts it.)
 - **2026-07-26 — Budget Utilization reports: drop Project Type column + user-requested detail sort orders
   (BUDGET_UTIL_BOOK / BUDGET_UTIL_REGISTER / BUDGET_UTIL_SECTOR).** Register sheet 1 "Budget Utilization
   Lines" lost the redundant **Project Type** column (already in the report scope/filter). Detail-section

@@ -360,6 +360,12 @@
     acKpiDrillHint:{en:'Click to see the supporting lines across the whole filtered set',ar:'انقر لعرض البنود الداعمة عبر كامل المجموعة المُصفّاة'},
     acAllLines:{en:'All lines',ar:'كل البنود'},
     refreshActuals:{en:'Refresh actuals',ar:'تحديث الفعلي'}, refreshing:{en:'Refreshing…',ar:'جارٍ التحديث…'},
+    pdataBtn:{en:'Refresh source data',ar:'تحديث بيانات المصدر'}, pdataRunning:{en:'Refreshing data…',ar:'جارٍ تحديث البيانات…'},
+    pdataHint:{en:'Re-extract projects, tasks and budget from Fusion now (runs the Projects Data job set; ~1–3 minutes)',ar:'إعادة استخراج المشاريع والمهام والميزانية من فيوجن الآن (تشغيل مجموعة مهام بيانات المشاريع؛ ١–٣ دقائق تقريباً)'},
+    pdataQueued:{en:'Source-data refresh started ({n} jobs queued)…',ar:'بدأ تحديث بيانات المصدر ({n} مهام في قائمة الانتظار)…'},
+    pdataDone:{en:'Source data refreshed — projects, tasks and budget are up to date',ar:'تم تحديث بيانات المصدر — المشاريع والمهام والميزانية محدّثة'},
+    pdataFailed:{en:'Source-data refresh: some jobs failed —',ar:'تحديث بيانات المصدر: فشلت بعض المهام —'},
+    pdataTimeout:{en:'Source-data refresh is taking longer than expected — check the ATD Run Logs page',ar:'يستغرق تحديث بيانات المصدر وقتاً أطول من المتوقع — راجع سجلات التشغيل في ATD'},
     refreshed:{en:'Actuals snapshot refreshed',ar:'تم تحديث لقطة الفعلي'},
     refreshHint:{en:'Rebuild the classification snapshot so the report reflects the latest GL/ATD data and mapping edits.',ar:'إعادة بناء لقطة التصنيف لتعكس أحدث بيانات دفتر الأستاذ والربط.'},
     asOfRefresh:{en:'Updated',ar:'حُدّث'},
@@ -515,6 +521,7 @@
     pnPptHint:{en:'Generate an executive PowerPoint deck of the pending approvals using ALL the current page filters — cover, pending-approval overview, aging analysis, pending value by sector, approver follow-up, longest-waiting documents and management insights (funds-reserved, non-zero lines only). Native, editable slides. Prepared by the reporting workers — takes about a minute.',ar:'إنشاء عرض شرائح تنفيذي (باوربوينت) للاعتمادات المعلقة وفق جميع عوامل تصفية الصفحة الحالية — غلاف ونظرة عامة على الاعتمادات المعلقة وتحليل التقادم والقيمة المعلقة حسب القطاع ومتابعة المعتمدين وأقدم المستندات ورؤى الإدارة (البنود المحجوزة غير الصفرية فقط). شرائح أصلية قابلة للتحرير. يُجهَّز عبر خوادم التقارير — يستغرق نحو دقيقة.'},
     noButil:{en:'No budget lines match these criteria.',ar:'لا توجد بنود موازنة مطابقة.'},
     cProjType:{en:'Type',ar:'النوع'}, cDept:{en:'Department',ar:'الإدارة'},
+    cOrg:{en:'Organization',ar:'المنظمة'},
     cProject:{en:'Project',ar:'المشروع'}, cTask:{en:'Task',ar:'المهمة'},
     cGlAccount:{en:'GL Account',ar:'حساب الأستاذ'}, cChapter:{en:'Chapter',ar:'الباب'},
     cEtype:{en:'Expenditure type',ar:'نوع الإنفاق'},
@@ -1179,6 +1186,42 @@
         else if (self.view() === 'butil') self.runButil(self.buOffset());
         else if (self.view() === 'dashboard') self.loadDashboard();
       }).catch(function (e) { self.rebuilding(false); toast(e.message, true); });
+    };
+
+    /* ── Projects Data refresh (butil page): POST /butil/refreshdata runs the
+       ATD job set PROJECTS_DATA (Projects Full + Tasks Full + Projects Budget
+       Full - V2 — GL/db/19 bridge over atd_set_pkg.run_now), then polls the
+       GET until the fleet finishes and re-runs the current search. Keeps the
+       task/project masters and the budget in lock-step so a budget line never
+       hides behind a stale task master. */
+    self.pdataBusy = ko.observable(false);
+    self.refreshProjectsData = function () {
+      if (self.pdataBusy()) return;
+      self.pdataBusy(true);
+      api('POST', '/butil/refreshdata', {}).then(function (d) {
+        toast(self.t('pdataQueued').replace('{n}', d.queued));
+        var tries = 0;
+        (function poll() {
+          if (++tries > 90) {                     // ~7.5 min ceiling
+            self.pdataBusy(false); toast(self.t('pdataTimeout'), true); return;
+          }
+          setTimeout(function () {
+            api('GET', '/butil/refreshdata').then(function (s) {
+              if (s.busy === 'Y') { poll(); return; }
+              var bad = (s.jobs || []).filter(function (j) {
+                return j.queueStatus === 'FAILED' || j.lastStatus === 'FAILED';
+              });
+              self.pdataBusy(false);
+              if (bad.length) {
+                toast(self.t('pdataFailed') + ' ' + bad.map(function (j) { return j.job; }).join(', '), true);
+              } else {
+                toast(self.t('pdataDone'));
+                if (self.view() === 'butil') self.runButil(self.buOffset());
+              }
+            }).catch(function () { poll(); });    // transient poll error: keep waiting
+          }, 5000);
+        })();
+      }).catch(function (e) { self.pdataBusy(false); toast(e.message, true); });
     };
 
     /* ════ ACTUALS — Budget vs Actual report ════ */
@@ -1885,6 +1928,7 @@
       api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
         var rows = d.items || [];
         var cols = [['projectType', 'Project Type'], ['sector', 'Sector'], ['department', 'Department'],
+          ['organization', 'Organization'],
           ['costCentre', 'Cost Centre'], ['projectNumber', 'Project Number'], ['projectName', 'Project Name'],
           ['taskNumber', 'Task'], ['glAccount', 'GL Account'], ['appropriation', 'Appropriation'],
           ['chapter', 'Chapter'], ['program', 'Program'], ['expenditureType', 'Expenditure Type'],
@@ -2469,7 +2513,7 @@
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
     self.skRows = skArr(8);   // shimmer rows shown while /butil runs
-    self.skCols = skArr(18);  // one cell per results-table column
+    self.skCols = skArr(19);  // one cell per results-table column
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};

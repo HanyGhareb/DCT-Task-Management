@@ -59,6 +59,7 @@ SELECT DISTINCT
        project_type,
        cost_centre,
        department,
+       task_organization,
        project_number,
        project_name,
        business_unit,
