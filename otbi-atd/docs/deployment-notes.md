@@ -2181,3 +2181,22 @@ in 27s (vm182) · dist V2 SUCCESS 571,099 rows / 102,364 distinct transactions i
 185s (vm180), both as hg2248** — byte-parity with the in-place acceptance run.
 Note the AR jobs are in NO job set (AR_MORNING sits empty; the db/70 member
 'AR_INVOICE_LINES' pointed at the retired db/69 job name and is gone).
+
+## 2026-08-16 (6) — third AR job: 'AR Invoice Header - V2' (db/73 + runner/arh_def.py)
+
+Same conversion for the last personal-account AR job, 'AR Invoice Header - all'
+(102,277 header rows, ~30-min c-saljaaidi cycles with requeue churn; its analysis
+ALSO carries `FETCH FIRST 500001 ROWS ONLY` — harmless today, a silent cap once
+the space grows). Advanced-tab dump showed 35 select items of which 30 are
+visible = the colmap headings; the 5 ORDER-BY-only helpers are dropped (4 sort
+IDOFs + the Customer-Notes 'Creation Date', whose retired duplicate is the
+table's all-NULL CREATION_DATE orphan — the live colmap 'Creation Date' is
+CREATION_DATE_2 = Reference Information). 'Transaction Complete Indicator' =
+DESCRIPTOR_IDOF(Transaction Complete). Filter (Entered Amount <> 0) kept in
+every chunk. 16 chunks on the header-grain Reference Creation Date (Jan-2026
+lump 50,495 split half-month like the lines def), min_rows 95,000, parallel 4,
+colmap parity asserted at deploy (30/30). V2 job hourly on the service account;
+original DISABLED with its catalog source_ref intact (fallback).
+Verified live: **SUCCESS 102,277 rows in 76s (vm180) as hg2248** — exact row
+parity with the original job's last personal run. All THREE AR extracts now run
+chunked + hourly on the service account; zero personal-MFA dependency left in AR.
