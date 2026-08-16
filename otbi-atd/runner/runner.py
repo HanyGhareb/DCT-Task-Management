@@ -492,7 +492,9 @@ def _esxi_ssh(cmd, timeout=60):
                DISPLAY=":0")
     return subprocess.run(
         ["ssh", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=10",
-         "-o", "NumberOfPasswordPrompts=1", "-o", "PreferredAuthentications=password",
+         "-o", "NumberOfPasswordPrompts=1",
+         # ESXi sshd offers keyboard-interactive, NOT password (found live 2026-08-16)
+         "-o", "PreferredAuthentications=keyboard-interactive,password",
          f"{user}@{host}", cmd],
         capture_output=True, text=True, timeout=timeout, env=env)
 

@@ -2290,3 +2290,17 @@ Save on the page NULLed every stored secret — the payload now skips secret row
 unless the operator typed a value. i18n atd.rs.secretNew EN+AR; APP_VERSION
 1.38.0; 5 files hot-patched into the live webtier release (opc+sudo tar +
 restorecon).
+
+## 2026-08-16 (12) — level 2 ARMED + ESXi auth gotcha
+
+Operator set ATD_ESXI_PWD via the new secret input (v1.38.0); workers reloaded.
+Live check from vm180 through the runner's own code path (config overlay ->
+_esxi_ssh -> vim-cmd power.getstate 54) FAILED first with `Permission denied
+(publickey,keyboard-interactive)`: **ESXi 6.5 sshd does NOT offer `password`
+auth — only `keyboard-interactive`**, so `PreferredAuthentications=password`
+can never succeed there; SSH_ASKPASS feeds the kbd-interactive prompt just the
+same. Fixed to `keyboard-interactive,password` -> rc=0 "Powered on". The full
+recovery ladder is now armed end-to-end (reset verb uses the identical channel;
+the Claude Code classifier blocks the assistant from issuing the destructive
+reset itself — a full frozen-VM drill = operator powers OFF atd-vm182 in the
+ESXi UI and watches the fleet power it back on and resume).
