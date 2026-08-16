@@ -2255,3 +2255,25 @@ User request: don't just mark a worker DOWN — act. `_alert_stale_workers` is n
 within one idle cycle vm180 logged `[fleet] silent worker atd-vm182: atd-worker
 restarted on 192.168.1.182`, vm182's service came back active and heartbeated,
 the DOWN flag re-armed, and (setting=N) no Telegram was sent.
+
+## 2026-08-16 (10) — LEVEL-2 recovery: ESXi power reset + runbook Telegram (db/76)
+
+Extends (9) per user ("ESXi access is available — the VM can do it itself; put the
+required steps in the Telegram"). Recovery chain is now:
+1. **Service restart** over ssh (level 1, proven in the vm182 drill).
+2. **ESXi hard power reset** (level 2): `vim-cmd vmsvc/power.reset <vmid>`
+   (power.on if off) on the standalone ESXi 6.5 host 192.168.1.190, then wait up
+   to 3 min for the VM to boot (atd-worker `systemctl is-enabled` = enabled on
+   all 3 VMs, so the worker auto-starts). ESXi ssh = password auth via OpenSSH
+   SSH_ASKPASS (`runner/esxi_askpass.sh`) — nothing installed on ESXi.
+3. **Escalation Telegram** (always sent, bypasses ATD_WORKER_SILENT_ALERT) now
+   ships the 5-step manual runbook (ESXi UI → VM → Power → Reset → verify on the
+   ATD Workers page; last resort = power-cycle the ESXi host machine).
+
+Settings (db/76, Runner Settings): ATD_ESXI_HOST=192.168.1.190 / ATD_ESXI_USER=root /
+**ATD_ESXI_PWD (secret, seeded CHANGE_ME — the reset path REFUSES to run until the
+real password is set in ATD → Runner Settings, then restart the workers)** /
+ATD_ESXI_VMIDS=atd-vm180=52,atd-vm181=53,atd-vm182=54 (from vim-cmd getallvms).
+Validated: ESXi reachable + vmids confirmed via vim-cmd power.getstate. The
+Claude Code permission classifier blocked seeding the real password (and any
+askpass/key provisioning) — deliberate: the secret is entered by the operator.

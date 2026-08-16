@@ -481,6 +481,92 @@ def _recover_stale_worker(w):
         return False, str(e)[:200]
 
 
+def _esxi_ssh(cmd, timeout=60):
+    """Run a command on the ESXi host as root, password-auth via OpenSSH's own
+    SSH_ASKPASS (no sshpass/keys required). Credentials come from Runner Settings:
+    ATD_ESXI_HOST / ATD_ESXI_USER / ATD_ESXI_PWD (secret)."""
+    host = (os.environ.get("ATD_ESXI_HOST") or "").strip()
+    user = (os.environ.get("ATD_ESXI_USER") or "root").strip()
+    askpass = os.path.join(os.path.dirname(os.path.abspath(__file__)), "esxi_askpass.sh")
+    env = dict(os.environ, SSH_ASKPASS=askpass, SSH_ASKPASS_REQUIRE="force",
+               DISPLAY=":0")
+    return subprocess.run(
+        ["ssh", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=10",
+         "-o", "NumberOfPasswordPrompts=1", "-o", "PreferredAuthentications=password",
+         f"{user}@{host}", cmd],
+        capture_output=True, text=True, timeout=timeout, env=env)
+
+
+def _esxi_reset(w):
+    """LEVEL-2 recovery: hard power-reset a frozen worker VM through the ESXi host
+    (vim-cmd; a powered-off VM is powered on instead). Returns (ok, detail).
+    Needs ATD_ESXI_HOST/PWD + the worker's vmid in ATD_ESXI_VMIDS ('id=vmid,...').
+    Never raises."""
+    pwd = os.environ.get("ATD_ESXI_PWD") or ""
+    vmids = {}
+    for part in (os.environ.get("ATD_ESXI_VMIDS") or "").split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            vmids[k.strip()] = v.strip()
+    vmid = vmids.get(w)
+    if not ((os.environ.get("ATD_ESXI_HOST") or "").strip() and pwd
+            and pwd != "CHANGE_ME" and vmid):
+        return False, "ESXi reset not configured (ATD_ESXI_HOST/PWD/VMIDS)"
+    try:
+        r = _esxi_ssh(f"vim-cmd vmsvc/power.getstate {vmid} | tail -1")
+        if r.returncode != 0:
+            return False, f"ESXi unreachable: {(r.stderr or '').strip()[:150]}"
+        verb = "power.on" if "off" in (r.stdout or "").lower() else "power.reset"
+        r = _esxi_ssh(f"vim-cmd vmsvc/{verb} {vmid}", timeout=90)
+        if r.returncode == 0:
+            return True, f"ESXi {verb} vmid {vmid} ({w})"
+        return False, f"ESXi {verb} failed: {(r.stderr or r.stdout or '').strip()[:150]}"
+    except Exception as e:  # noqa: BLE001
+        return False, str(e)[:200]
+
+
+def _wait_worker_ssh(w, wait_secs=180):
+    """After an ESXi reset, wait for the VM to boot far enough that ssh answers
+    (the worker service auto-starts at boot). Returns True when reachable."""
+    hosts = {}
+    for part in (os.environ.get("ATD_WORKER_HOSTS") or "").split(","):
+        if "=" in part:
+            k, v = part.split("=", 1)
+            hosts[k.strip()] = v.strip()
+    ip = hosts.get(w)
+    if not ip:
+        m = re.match(r"^atd-vm(\d+)$", (w or "").strip())
+        ip = ("192.168.1." + m.group(1)) if m else None
+    if not ip:
+        return False
+    deadline = time.monotonic() + wait_secs
+    while time.monotonic() < deadline:
+        try:
+            r = subprocess.run(
+                ["ssh", "-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new",
+                 "-o", "ConnectTimeout=5", f"root@{ip}",
+                 "systemctl is-active atd-worker"],
+                capture_output=True, text=True, timeout=20)
+            if "active" in (r.stdout or ""):
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        time.sleep(10)
+    return False
+
+
+def _worker_down_steps(w):
+    """The manual runbook shipped inside the final escalation Telegram."""
+    host = (os.environ.get("ATD_ESXI_HOST") or "192.168.1.190").strip()
+    return ("Required steps:\n"
+            f"1) Open https://{host}/ui (ESXi, user root)\n"
+            f"2) Virtual Machines -> {w} -> Power -> Reset\n"
+            "3) Wait ~2 min - the worker service auto-starts at boot\n"
+            "4) Verify: ATD app -> Workers page shows the VM IDLE/BUSY again\n"
+            "5) If the ESXi page itself does not open: power-cycle the ESXi host "
+            "machine, wait for it to boot, then repeat from step 1")
+
+
 def _alert_stale_workers(conn, stale_minutes=5, self_id=None):
     """Handle a peer whose heartbeat went stale. One-shot per DOWN transition (the
     atomic status flip claims ownership, so exactly one peer acts; it re-arms when
@@ -514,16 +600,30 @@ def _alert_stale_workers(conn, stale_minutes=5, self_id=None):
             if not owner:
                 continue
             if recover_on and w != self_id:
+                # LEVEL 1: restart the worker service over ssh
                 ok, detail = _recover_stale_worker(w)
                 if ok:
                     print(f"[fleet] silent worker {w}: {detail}", flush=True)
                     if alert_on:
                         notify.send(f"otbi-atd: worker {w} was silent - auto-restarted OK")
                     continue
-                print(f"[fleet] silent worker {w}: auto-restart FAILED: {detail}", flush=True)
-                # escalation bypasses ATD_WORKER_SILENT_ALERT: this is actionable
-                notify.send(f"otbi-atd ALERT: worker {w} is silent and auto-restart "
-                            f"FAILED ({detail}) - VM likely frozen, needs manual attention")
+                print(f"[fleet] silent worker {w}: service restart failed ({detail}); "
+                      f"trying ESXi power reset", flush=True)
+                # LEVEL 2: VM frozen/unreachable -> hard reset through the ESXi host
+                ok2, d2 = _esxi_reset(w)
+                if ok2 and _wait_worker_ssh(w):
+                    print(f"[fleet] silent worker {w}: {d2}; VM back online", flush=True)
+                    if alert_on:
+                        notify.send(f"otbi-atd: worker {w} was FROZEN - power-reset via "
+                                    f"ESXi, back online")
+                    continue
+                tail = (f"ESXi reset issued but the VM did not come back ({d2})"
+                        if ok2 else f"service restart failed ({detail}); {d2}")
+                print(f"[fleet] silent worker {w}: NOT recovered: {tail}", flush=True)
+                # final escalation ALWAYS notifies (bypasses ATD_WORKER_SILENT_ALERT)
+                # and ships the manual runbook - automation is out of options here
+                notify.send(f"otbi-atd ALERT: worker {w} is DOWN and auto-recovery "
+                            f"FAILED - {tail}.\n{_worker_down_steps(w)}")
             elif alert_on:
                 notify.send(f"otbi-atd: worker {w} is silent (no heartbeat > {stale_minutes}m)")
     except Exception:  # noqa: BLE001
