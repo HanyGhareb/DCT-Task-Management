@@ -170,7 +170,7 @@
   "atd.workers.currentJob": "Current Job",
   "atd.workers.lastSeen": "Last Seen",
   "atd.workers.sessionAge": "Session Age",
-  "atd.workers.loginTime": "Last Login Time",
+  "atd.workers.loginTime": "Login Duration",
   "atd.workers.lastSuccess": "Last Successful Extract",
   "atd.workers.mfa": "MFA",
   "atd.workers.mfa.detected": "Pending",
