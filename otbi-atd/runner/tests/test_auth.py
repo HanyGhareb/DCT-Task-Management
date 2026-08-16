@@ -54,6 +54,23 @@ def test_grab_number_rejects_non_exact_mfa_element_text():
     assert auth._grab_number(page, timeout_ms=0) == ''
 
 
+def test_apps_url_prefers_explicit_fusion_root():
+    env = {"analytics_base_url": "https://example.test/analytics",
+           "fusion_apps_url": "https://example.test/fscmUI/faces/FuseWelcome"}
+    assert auth._apps_url(env) == "https://example.test/fscmUI/faces/FuseWelcome/"
+
+
+def test_apps_url_falls_back_to_analytics_origin():
+    env = {"analytics_base_url": "https://example.test/analytics"}
+    assert auth._apps_url(env) == "https://example.test/"
+
+
+def test_profile_is_unique_per_worker(monkeypatch, tmp_path):
+    monkeypatch.setattr(auth, "STATE_DIR", tmp_path)
+    monkeypatch.setenv("ATD_WORKER_ID", "atd-vm181")
+    assert auth._profile_path("FUSION/ADGOV") == tmp_path / "chrome_atd-vm181_FUSION_ADGOV"
+
+
 class _LockCursor:
     rowcount = 0
 

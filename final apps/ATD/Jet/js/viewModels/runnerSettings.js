@@ -8,6 +8,19 @@ function (ko, atd, i18n, toast) {
     self.items = ko.observableArray([]);
     self.saving = ko.observable(false);
 
+    // --- My OTBI Account (per-user credential profile, db/62+63) ---
+    self.credLoading = ko.observable(true);
+    self.credSaving = ko.observable(false);
+    self.credExists = ko.observable(false);
+    self.credLogin = ko.observable('');
+    self.credCatalog = ko.observable('');   // OTBI catalog folder name when it differs from the sign-in
+    self.credChat = ko.observable('');
+    self.credActive = ko.observable(true);
+    self.credPwd = ko.observable('');          // write-only: sent only when non-empty
+    self.credPwdSet = ko.observable(false);
+    self.credUpdatedAt = ko.observable('');
+    self.credRoster = ko.observableArray([]);
+
     function decorate(it) {
       it.val = ko.observable(it.value || '');
       it.enumList = it.enumValues ? it.enumValues.split(',') : [];
@@ -22,6 +35,54 @@ function (ko, atd, i18n, toast) {
       }).catch(function () { self.loading(false); });
     };
     self.load();
+
+    self.loadCred = function () {
+      self.credLoading(true);
+      atd.getMyCred().then(function (r) {
+        self.credExists(!!r.exists);
+        self.credLogin(r.fusionLogin || '');
+        self.credCatalog(r.catalogLogin || '');
+        self.credChat(r.tgChatId || '');
+        self.credActive(r.isActive !== 'N');
+        self.credPwdSet(r.passwordSet === 'Y');
+        self.credUpdatedAt(r.updatedAt || '');
+        self.credPwd('');
+        self.credLoading(false);
+      }).catch(function () { self.credLoading(false); });
+      atd.listCreds().then(function (r) {
+        self.credRoster(r.items || []);
+      }).catch(function () { self.credRoster([]); });
+    };
+    self.loadCred();
+
+    self.saveCred = function () {
+      var login = (self.credLogin() || '').trim();
+      if (!login) { toast.error(self.t('atd.rs.myacct.loginRequired')); return; }
+      var body = {
+        fusionLogin: login,
+        catalogLogin: (self.credCatalog() || '').trim(),
+        tgChatId: (self.credChat() || '').trim(),
+        isActive: self.credActive() ? 'Y' : 'N'
+      };
+      // write-only secret: only send the password when the operator typed one
+      var pwd = self.credPwd();
+      if (pwd && pwd.trim()) { body.password = pwd; }
+      self.credSaving(true);
+      atd.saveMyCred(body).then(function () {
+        toast.success(self.t('atd.rs.myacct.saved'));
+        self.credSaving(false); self.loadCred();
+      }).catch(function () { self.credSaving(false); });
+    };
+
+    self.removeCred = function () {
+      if (!self.credExists()) { return; }
+      if (!window.confirm(self.t('atd.rs.myacct.removeConfirm'))) { return; }
+      self.credSaving(true);
+      atd.deleteMyCred().then(function () {
+        toast.success(self.t('atd.rs.myacct.removed'));
+        self.credSaving(false); self.loadCred();
+      }).catch(function () { self.credSaving(false); });
+    };
 
     self.save = function () {
       self.saving(true);

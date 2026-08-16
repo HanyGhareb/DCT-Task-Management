@@ -48,6 +48,7 @@
         <th data-bind="text: t('atd.cat.label')"></th>
         <th data-bind="text: t('atd.jobs.col.order')"></th>
         <th data-bind="text: t('atd.col.status')"></th>
+        <th data-bind="text: t('atd.jobs.col.owner'), attr:{ title: t('atd.jobs.col.owner.hint') }"></th>
         <th data-bind="text: t('atd.jobs.col.lastRun')"></th>
         <th data-bind="text: t('atd.col.duration')"></th>
         <th data-bind="text: t('atd.jobs.col.enabled')"></th>
@@ -74,6 +75,16 @@
             <span data-bind="css: $vm.statusClass($data.runStatus), text: $data.runStatus"></span>
             <!-- ko if: $data.schemaReviewed === 'N' -->
             <span class="badge review-badge" style="margin-inline-start:6px" data-bind="text: $vm.t('atd.review.badge'), attr:{ title: $vm.t('atd.review.badge.hint') }"></span>
+            <!-- /ko -->
+          </td>
+          <td>
+            <!-- ko if: $data.owner -->
+            <span class="badge badge--active mono"
+                  data-bind="text: $data.owner,
+                             attr:{ title: $data.ownerType === 'catalog' ? $vm.t('atd.jobs.owner.catalog.hint') : $vm.t('atd.jobs.owner.user.hint') }"></span>
+            <!-- /ko -->
+            <!-- ko ifnot: $data.owner -->
+            <span class="muted" data-bind="text: $vm.t('atd.jobs.owner.scheduler'), attr:{ title: $vm.t('atd.jobs.owner.scheduler.hint') }"></span>
             <!-- /ko -->
           </td>
           <td>

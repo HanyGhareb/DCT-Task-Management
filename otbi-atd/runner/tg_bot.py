@@ -36,6 +36,9 @@ import pathlib
 
 import httpx
 import config
+import checks
+
+checks.install_log_scrubber()
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +82,9 @@ def _tg(method, **kwargs):
     )
     r.raise_for_status()
     return r.json()
+
+
+_ID_REPLY_AT = {}   # chat_id -> monotonic time of the last chat-id onboarding reply
 
 
 def _send(chat_id, text):
@@ -295,8 +301,26 @@ def _handle(update, conn, allow):
         return
 
     if chat_id not in allow:
+        # Per-user OTBI credential onboarding (db/62): a PRIVATE chat gets a
+        # one-line reply telling the sender their chat id, so an admin can
+        # self-serve the "Telegram chat id" field on Runner Settings without
+        # any third-party id bot. Query commands stay allow-list-only, and
+        # groups/channels are still ignored silently. Rate-limited per chat so
+        # a message flood can't turn the bot into a reply loop.
+        if msg.get("chat", {}).get("type") == "private":
+            now = time.monotonic()
+            last = _ID_REPLY_AT.get(chat_id, 0.0)
+            if now - last >= 300:
+                _ID_REPLY_AT[chat_id] = now
+                _send(chat_id,
+                      f"Your i-Finance runner chat id is: <b>{chat_id}</b>\n"
+                      f"Paste this number into ATD (Analytics Loader) → Runner "
+                      f"Settings → My OTBI Account → <i>Telegram chat id</i>, "
+                      f"then Save Account.")
+                print(f"[bot] sent chat-id reply to unregistered private chat {chat_id}")
+                return
         print(f"[bot] ignored update from chat_id={chat_id} (not in allow-list)")
-        return  # silent ignore — do not reveal the bot exists to strangers
+        return  # queries from strangers are never answered
 
     # Strip the @botname suffix Telegram appends in groups; accept with or without /
     cmd_part, _, arg = text.partition(" ")

@@ -132,6 +132,11 @@ function (ko, atd, i18n, charts, toast) {
       var s = self._sessAge[w && w.workerId];
       return !!(s && s.sessionAgeMin !== '' && s.sessionAgeMin != null && Number(s.sessionAgeMin) >= 420);
     };
+    self.loginTime = function (w) {
+      if (!w || w.lastLoginSeconds === '' || w.lastLoginSeconds == null) return '—';
+      var seconds = Number(w.lastLoginSeconds);
+      return seconds < 60 ? (seconds + 's') : (Math.floor(seconds / 60) + 'm ' + Math.round(seconds % 60) + 's');
+    };
     self.sinceText = function (j) { return ageText(j && j.sinceMin); };
     self.jobStale = function (j) {
       return !!(j && (Number(j.consecutiveFails) > 0 || j.stuckRunning === 'Y'));

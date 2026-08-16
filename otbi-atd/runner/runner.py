@@ -60,6 +60,10 @@ import checks
 import notify
 import prepare
 
+# Playwright exceptions can contain complete request headers.  Scrub stdout and
+# stderr before any worker message or traceback can reach journald.
+checks.install_log_scrubber()
+
 
 def _warn_truncation(name, n):
     note = checks.truncation_note(n)
@@ -136,12 +140,13 @@ def _run_one_sqlcl(ctx, env, job):
 
 
 # ---- oracledb mode (fast, chunked array-bind) ---------------------------
-def _log_start(conn, name, track="BROWSER"):
+def _log_start(conn, name, track="BROWSER", account=None):
     cur = conn.cursor()
     rid = cur.var(int)
-    cur.execute("insert into prod.atd_load_run_log(job_name, track, status, host_id) "
-                "values (:n,:t,'RUNNING',:h) returning run_id into :r",
-                n=name[:80], t=track, h=_worker_id()[:120], r=rid)
+    cur.execute("insert into prod.atd_load_run_log(job_name, track, status, host_id, fusion_account) "
+                "values (:n,:t,'RUNNING',:h,:fa) returning run_id into :r",
+                n=name[:80], t=track, h=_worker_id()[:120],
+                fa=(account or None) and str(account)[:200], r=rid)
     conn.commit()
     return rid.getvalue()[0]
 
@@ -162,7 +167,10 @@ def _log_end(conn, run_id, status, n=None, ck=None, msg=None, phases=None):
 def _make_run_one_oracledb(conn, load):
     def run_one(ctx, env, job, auth_ms=None):
         name = job["job_name"]
-        run_id = _log_start(conn, name)
+        # audit: which Fusion account this run signs in as (personal via db/62,
+        # else the global service account)
+        account = env.get("cred_user") or os.environ.get("OTBI_USER")
+        run_id = _log_start(conn, name, account=account)
         drift = []
         phases = {"AUTHENTICATION": auth_ms} if auth_ms is not None else {}
         try:
@@ -297,17 +305,35 @@ class _LeaseKeeper:
         return not self.lost
 
 
-def _env_of(job, env_name):
-    """The env dict auth.authenticate expects, built from a claimed job row."""
-    return {"env_name": env_name,
-            "analytics_base_url": job["analytics_base_url"],
-            "xmlpserver_base_url": job.get("xmlpserver_base_url"),
-            "credential_ref": job.get("credential_ref") or env_name}
+def _env_of(job, env_name, cred=None):
+    """The env dict auth.authenticate expects, built from a claimed job row.
+    cred (db/62 per-user identity) adds the personal credential override —
+    auth.py then uses a separate Chromium profile/state/MFA-lock for it."""
+    env = {"env_name": env_name,
+           "analytics_base_url": job["analytics_base_url"],
+           "fusion_apps_url": job.get("fusion_apps_url"),
+           "xmlpserver_base_url": job.get("xmlpserver_base_url"),
+           "credential_ref": job.get("credential_ref") or env_name}
+    if cred:
+        env["cred_user"] = cred["fusion_login"]
+        env["cred_pwd"] = cred["fusion_pwd"]
+        env["cred_tg_chat"] = cred.get("tg_chat")
+    return env
+
+
+def _ctx_key(env_name, cred=None):
+    """Session-map key: default identity keeps the bare env name (so ALL existing
+    default-session logic — keep-alive, session_dead, _handle_refresh — is
+    untouched); a personal identity gets its own 'env|login' slot."""
+    return f"{env_name}|{cred['fusion_login'].lower()}" if cred else env_name
 
 
 def _session_files():
+    # DEFAULT (service-account) sessions only: personal identities (db/62) save
+    # to auth_state_<env>__<user>.json and must not reset the session-age nudge.
     d = os.environ.get("ATD_STATE_DIR", ".")
-    return glob.glob(os.path.join(d, "auth_state_*.json"))
+    return [f for f in glob.glob(os.path.join(d, "auth_state_*.json"))
+            if "__" not in os.path.basename(f)]
 
 
 def _session_mtime():
@@ -388,6 +414,7 @@ def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
         return
     en = denv["env_name"]
     envd = {"env_name": en, "analytics_base_url": denv["analytics_base_url"],
+            "fusion_apps_url": denv.get("fusion_apps_url"),
             "credential_ref": denv.get("credential_ref") or en}
 
     if not force and en in ctx_by_env:
@@ -555,7 +582,7 @@ def _relogin(p, host, en, envd, ctx_by_env, browser_by_env, browsers):
         return False
 
 
-def _log_orphan(conn, name, status, msg, auth_ms=None):
+def _log_orphan(conn, name, status, msg, auth_ms=None, account=None):
     """Write a run-log row for a job handed back / failed WITHOUT a run actually
     starting (e.g. the Fusion login failed before run_one). Keeps the failover budget
     (_recent_requeues counts REQUEUED) honest and makes the event visible in Run Logs."""
@@ -563,9 +590,10 @@ def _log_orphan(conn, name, status, msg, auth_ms=None):
         cur = conn.cursor()
         rid = cur.var(int)
         cur.execute(
-            "insert into prod.atd_load_run_log(job_name, track, status, finished, row_count, host_id, message) "
-            "values (:n,'BROWSER',:s,systimestamp,0,:h,:m) returning run_id into :r",
-            n=name[:80], s=status, h=_worker_id()[:120], m=checks.scrub(msg or "")[:3900], r=rid)
+            "insert into prod.atd_load_run_log(job_name, track, status, finished, row_count, host_id, message, fusion_account) "
+            "values (:n,'BROWSER',:s,systimestamp,0,:h,:m,:fa) returning run_id into :r",
+            n=name[:80], s=status, h=_worker_id()[:120], m=checks.scrub(msg or "")[:3900],
+            fa=(account or None) and str(account)[:200], r=rid)
         if auth_ms is not None:
             cur.execute("insert into prod.atd_load_run_phase"
                         "(run_id,phase_code,duration_ms,phase_status) values"
@@ -616,6 +644,34 @@ def _run_worker(conn, load, forever):
     last_keepalive = 0.0
     session_dead = {}       # env_name -> True while its session is known dead (pause claiming)
     ping_fails = {}         # env_name -> consecutive failed keep-alive pings (2-strike guard)
+    # per-user OTBI identities (db/62): personal sessions live in ctx_by_env under
+    # 'env|login' keys, are LRU-capped (never keep-alive-pinged; they expire
+    # naturally) and NEVER trigger session_dead / cross-worker failover.
+    personal_used = {}      # 'env|login' key -> monotonic last-use time (LRU)
+    max_user_sessions = max(1, int(os.environ.get("ATD_MAX_USER_SESSIONS", "2") or 2))
+
+    def _close_key(key):
+        dead = browser_by_env.pop(key, None)
+        ctx_by_env.pop(key, None)
+        personal_used.pop(key, None)
+        if dead:
+            try:
+                dead.close()
+            except Exception:  # noqa: BLE001
+                pass
+
+    def _enforce_personal_cap(keep_key):
+        """Close the oldest-idle personal session(s) beyond ATD_MAX_USER_SESSIONS.
+        Default (service-account) sessions are never touched."""
+        personal = [k for k in ctx_by_env if "|" in k and k != keep_key]
+        excess = len(personal) + 1 - max_user_sessions   # +1 = the session being kept
+        if excess <= 0:
+            return
+        personal.sort(key=lambda k: personal_used.get(k, 0.0))
+        for k in personal[:excess]:
+            print(f"[worker {host}] closing idle personal session {k} "
+                  f"(cap {max_user_sessions})", flush=True)
+            _close_key(k)
     # crash recovery: return any jobs left CLAIMED by a dead worker past the lease
     reaped = conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
     print(f"[worker {host}] starting (lease={lease}m, forever={forever}"
@@ -624,16 +680,29 @@ def _run_worker(conn, load, forever):
     def _action_env_ctx(en, action):
         """(env, ctx) for an idle-path Fusion action — reuses the worker's warm
         session for that env (or logs in once), and overlays fusion_apps_url
-        (the extract env dicts don't carry it)."""
-        if en not in ctx_by_env:
+        (the extract env dicts don't carry it). Per-user identity (db/62): the
+        action's created_by resolves to a personal credential the same way a
+        claimed job's requested_by does."""
+        cred = config.resolve_user_cred(conn, action.get("created_by"))
+        key = _ctx_key(en, cred)
+        if key not in ctx_by_env:
             envd = {"env_name": en,
                     "analytics_base_url": action["analytics_base_url"],
+                    "fusion_apps_url": action.get("fusion_apps_url"),
                     "credential_ref": action.get("credential_ref") or en}
+            if cred:
+                envd["cred_user"] = cred["fusion_login"]
+                envd["cred_pwd"] = cred["fusion_pwd"]
+                envd["cred_tg_chat"] = cred.get("tg_chat")
             browser, c = auth.authenticate(p, envd)
             browsers.append(browser)
-            browser_by_env[en] = browser
-            ctx_by_env[en] = (envd, c)
-        envd, c = ctx_by_env[en]
+            browser_by_env[key] = browser
+            ctx_by_env[key] = (envd, c)
+            if cred:
+                _enforce_personal_cap(key)
+        if cred:
+            personal_used[key] = time.monotonic()
+        envd, c = ctx_by_env[key]
         env = dict(envd)
         env["fusion_apps_url"] = action.get("fusion_apps_url") or env.get("fusion_apps_url")
         return env, c
@@ -672,6 +741,11 @@ def _run_worker(conn, load, forever):
                             if (now - last_keepalive) >= keepalive_min * 60:
                                 last_keepalive = now
                                 for en, (envd, c) in list(ctx_by_env.items()):
+                                    if "|" in en:
+                                        # personal sessions are not keep-alive-pinged:
+                                        # they expire naturally (bounds MFA prompts +
+                                        # memory on the small worker VMs)
+                                        continue
                                     alive = False
                                     try:
                                         alive = auth._validate(c, envd)
@@ -703,6 +777,7 @@ def _run_worker(conn, load, forever):
                             if not envd:
                                 d = config.get_default_browser_env(conn)
                                 envd = ({"env_name": en, "analytics_base_url": d["analytics_base_url"],
+                                         "fusion_apps_url": d.get("fusion_apps_url"),
                                          "credential_ref": d.get("credential_ref") or en} if d else None)
                             if envd and _relogin(p, host, en, envd, ctx_by_env, browser_by_env, browsers):
                                 session_dead.pop(en, None)
@@ -733,23 +808,53 @@ def _run_worker(conn, load, forever):
                 job = jobs[0]
                 lease_keeper = _LeaseKeeper(name, host, claim_token, lease).start()
                 env_name = job["env_name"]
+                # per-user OTBI identity (db/62): the analysis catalog path defines
+                # the PERMANENT job owner (runs every cycle, scheduled included);
+                # else the manually-enqueuing user; else the service account
+                cred = config.resolve_job_cred(conn, job.get("source_ref"),
+                                               job.get("requested_by"))
+                if job.get("requested_by") and not cred:
+                    print(f"[worker {host}] {name}: no active credential for "
+                          f"{job['requested_by']!r} -> running as the service account", flush=True)
+                ctx_key = _ctx_key(env_name, cred)
                 auth_ms = None
-                if env_name not in ctx_by_env:
+                if ctx_key not in ctx_by_env:
                     # Opening the session for a claimed job can need a fresh login (one MFA).
                     # If that FAILS (MFA not approved, or the session is dead at its absolute
                     # lifetime) DON'T let the exception escape — that would crash the worker
-                    # and leave the job orphaned in CLAIMED until the 30-min reap. Instead
-                    # apply the same Tier 2 failover: pause claiming here and hand the job
-                    # back to the queue for a peer with a live session (or FAIL past the cap).
+                    # and leave the job orphaned in CLAIMED until the 30-min reap.
+                    # Default identity: Tier 2 failover (pause claiming, hand the job back).
+                    # PERSONAL identity: fail FAST — releasing would only re-prompt the same
+                    # human from another VM, so mark the run FAILED with a clear message and
+                    # leave the service-account session/queue untouched.
                     try:
                         auth_started = time.perf_counter()
-                        browser, ctx = auth.authenticate(p, _env_of(job, env_name))
+                        browser, ctx = auth.authenticate(p, _env_of(job, env_name, cred))
                         auth_ms = round((time.perf_counter() - auth_started) * 1000)
                         browsers.append(browser)
-                        browser_by_env[env_name] = browser
-                        ctx_by_env[env_name] = (_env_of(job, env_name), ctx)
+                        browser_by_env[ctx_key] = browser
+                        ctx_by_env[ctx_key] = (_env_of(job, env_name, cred), ctx)
+                        if cred:
+                            _enforce_personal_cap(ctx_key)
                     except Exception as e:  # noqa: BLE001 (MFA timeout / still expired)
                         auth_ms = round((time.perf_counter() - auth_started) * 1000)
+                        if cred:
+                            msg = (f"personal OTBI login for {cred['fusion_login']} not approved/failed "
+                                   f"({e}) — approve the Authenticator push and press Run again, or "
+                                   f"deactivate your OTBI account in Runner Settings to use the "
+                                   f"service account")
+                            _log_orphan(conn, name, "FAILED", msg, auth_ms,
+                                        account=cred["fusion_login"])
+                            lease_keeper.stop()
+                            conn.cursor().callproc("prod.atd_queue_pkg.mark_failed",
+                                                   [name, host, claim_token, None])
+                            notify.send(f"{name}: your run was cancelled — the Fusion sign-in as "
+                                        f"{cred['fusion_login']} was not approved in time.",
+                                        chat_id=cred.get("tg_chat"))
+                            print(f"[worker {host}] {name}: personal login failed -> FAILED "
+                                  f"({e})", flush=True)
+                            failures += 1
+                            continue
                         session_dead[env_name] = True
                         reauth_at[env_name] = time.monotonic()
                         if requeue_max > 0 and _recent_requeues(conn, name) < requeue_max:
@@ -771,21 +876,46 @@ def _run_worker(conn, load, forever):
                                   f"exhausted -> FAILED ({e})", flush=True)
                         failures += 1
                         continue
-                env, ctx = ctx_by_env[env_name]
+                env, ctx = ctx_by_env[ctx_key]
+                if cred:
+                    personal_used[ctx_key] = time.monotonic()
+                    print(f"[worker {host}] {name}: running as {cred['fusion_login']} "
+                          f"(requested by {job.get('requested_by')})", flush=True)
                 _heartbeat(conn, "BUSY", name)
                 session_bounce = False
                 try:
                     ok = run_one(ctx, env, job, auth_ms=auth_ms)
                 except extract.SessionExpired as se:
-                    # The cached warm session died mid-run. Try a rate-limited forced
-                    # re-login (one MFA) + a single retry on THIS host; if that doesn't
-                    # land, fall through to hand the job back to the queue (Tier 2) so a
-                    # peer with a healthy session retries it (cooldown stops an un-approved
-                    # expiry from re-prompting MFA every cycle).
+                    # The cached warm session died mid-run.
+                    # Default identity: rate-limited forced re-login (one MFA) + a single
+                    # retry on THIS host; else hand the job back (Tier 2 failover).
+                    # PERSONAL identity: one forced re-login (one more push to that user)
+                    # + a single retry; on failure the run FAILS with a clear message —
+                    # never released (a peer would just re-prompt the same human) and
+                    # never marks the env's service session dead.
                     ok = False
                     session_bounce = True
                     now = time.monotonic()
-                    if now - reauth_at.get(env_name, 0.0) < reauth_cooldown:
+                    if cred:
+                        print(f"[worker {host}] {name}: {se} -> re-authenticating "
+                              f"{cred['fusion_login']} (personal, one retry)", flush=True)
+                        if _relogin(p, host, ctx_key, _env_of(job, env_name, cred),
+                                    ctx_by_env, browser_by_env, browsers):
+                            env, ctx = ctx_by_env[ctx_key]
+                            try:
+                                ok = run_one(ctx, env, job)        # retry once, fresh session
+                            except extract.SessionExpired:
+                                ok = False
+                            except Exception as e:  # noqa: BLE001
+                                print(f"[worker {host}] {name}: retry failed: {e}")
+                                ok = False
+                        session_bounce = False    # personal never enters the requeue dance
+                        if not ok:
+                            notify.send(f"{name}: your run failed — the Fusion session for "
+                                        f"{cred['fusion_login']} expired and the re-login was "
+                                        f"not approved. Press Run again to retry.",
+                                        chat_id=cred.get("tg_chat"))
+                    elif now - reauth_at.get(env_name, 0.0) < reauth_cooldown:
                         wait = int(reauth_cooldown - (now - reauth_at.get(env_name, 0.0)))
                         print(f"[worker {host}] {name}: {se} -> re-auth on cooldown "
                               f"({wait}s left); handing back to the queue")
@@ -804,14 +934,16 @@ def _run_worker(conn, load, forever):
                                 print(f"[worker {host}] {name}: retry failed: {e}")
                                 ok = False
                 if ok:
-                    session_dead.pop(env_name, None)
-                    ping_fails[env_name] = 0
+                    if not cred:
+                        session_dead.pop(env_name, None)
+                        ping_fails[env_name] = 0
                     lease_keeper.stop()
                     conn.cursor().callproc("prod.atd_queue_pkg.mark_done",
                                            [name, host, claim_token, None])
                     _post_mark_health(conn, host, vm, name, True)   # clears the job's fail flag
                 elif session_bounce and requeue_max > 0 and _recent_requeues(conn, name) < requeue_max:
                     # cross-worker failover: pause claiming here, release the job READY.
+                    # (default identity only — personal runs never set session_bounce)
                     session_dead[env_name] = True
                     lease_keeper.stop()
                     conn.cursor().callproc("prod.atd_queue_pkg.release_job",
@@ -970,15 +1102,28 @@ def _run_action_worker(conn, forever):
                     action["analytics_base_url"] = dflt["analytics_base_url"]
                     action["fusion_apps_url"] = dflt.get("fusion_apps_url")
                     action["credential_ref"] = dflt.get("credential_ref")
-                if env_name not in ctx_by_env:
+                # per-user identity (db/62): run the action as its creator's account
+                cred = config.resolve_user_cred(conn, action.get("created_by"))
+                ctx_key = _ctx_key(env_name, cred)
+                if ctx_key not in ctx_by_env:
                     env = {"env_name": env_name,
                            "analytics_base_url": action["analytics_base_url"],
                            "fusion_apps_url": action.get("fusion_apps_url"),
                            "credential_ref": action.get("credential_ref") or env_name}
-                    browser, ctx = auth.authenticate(p, env)
+                    if cred:
+                        env["cred_user"] = cred["fusion_login"]
+                        env["cred_pwd"] = cred["fusion_pwd"]
+                        env["cred_tg_chat"] = cred.get("tg_chat")
+                    try:
+                        browser, ctx = auth.authenticate(p, env)
+                    except Exception as e:  # noqa: BLE001 (personal MFA not approved etc.)
+                        conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
+                                               [aid, f"Fusion login failed: {e}"[:3900]])
+                        failures += 1
+                        continue
                     browsers.append(browser)
-                    ctx_by_env[env_name] = (env, ctx)
-                env, ctx = ctx_by_env[env_name]
+                    ctx_by_env[ctx_key] = (env, ctx)
+                env, ctx = ctx_by_env[ctx_key]
                 try:
                     fusion_id, ref = actions.dispatch(ctx, env, action)
                     conn.cursor().callproc("prod.atd_action_pkg.mark_action_done",

@@ -238,19 +238,34 @@ One page, three tables, for the `create_analysis` async pipeline:
   and maps them back to `{path, column}` (server-validated against the catalog — no hallucinations).
   The matches are ticked in the nested picker for review before Build.
 
+## Runner Settings (`runnerSettings`)
+- **Operational settings table** (`load` from `/config`; `save` → PUT `/config`): the UI-managed
+  `ATD_RUNNER_CONFIG` keys (MFA wait, lease, chunk, notify channel, global `OTBI_USER`…) — the
+  runner overlays them onto its environment at startup (DB wins over env.ps1). Secret rows render
+  a set/not-set badge only.
+- **My OTBI Account** (`loadCred` / `saveCred` / `removeCred` over `/my-credential`, db/62+63):
+  per-user Fusion credential profile — Fusion username, **write-only** password (sent only when
+  typed; AES-256-encrypted server-side), personal Telegram chat id (MFA number-match pushes for
+  this account go there) and an Active toggle. Jobs and Fusion actions the signed-in user enqueues
+  run under THIS account on the worker fleet; scheduled/automatic runs keep the global service
+  account. First personal run per worker VM needs one Authenticator approval from the owner's
+  phone; an unapproved push fails only that run.
+- **Who has a personal account** roster (`credRoster` from `/credentials`): username, Fusion
+  login, active/password/chat flags — no secret values.
+
 ## API Endpoints (ORDS) — `/ords/admin/atd/` (`otbi-atd/db/13_atd_ords.sql`, module `atd.rest`)
 | Method | Path | Purpose |
 |---|---|---|
 | POST | `/actuals/refresh` | rebuild `DCT_GL_COA_SNAP` (`prod.dct_actuals_refresh`) — `otbi-atd/db/39_atd_actuals_refresh_ords.sql` (additive to `atd.rest`); mirrors the GL app button + hourly job |
 | GET | `/dashboard` | KPIs + queue counts + recent + alerts (failures **and** runs with a warning message; each alert has `kind` WARNING/FAILED) |
 | GET | `/lookups` | envs + targets for pickers |
-| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec`, +`categories[]`; **`?category=CODE`** filter) / create job — POST needs only `sourceRef`; optional `frequencyMinutes`, `categories[]` |
-| GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes` + `categories[]`) / update (incl. `frequencyMinutes`, `categories[]` replace-set) / delete job |
+| GET / POST | `/jobs` | list (+`prepared` flag, +`lastDurationSec`, +`categories[]`, +**`owner`/`ownerType`** = the job's PERMANENT owner: `catalog` = the credential profile whose OTBI catalog folder holds the analysis (every run, scheduled included, signs in as that account), `manual` = the user who queued this cycle, '' = service account; +`requestedBy` (this cycle's manual requester); **`?category=CODE`** filter) / create job — POST needs only `sourceRef`; optional `frequencyMinutes`, `categories[]` |
+| GET / PUT / DELETE | `/jobs/:name` | read (returns `frequencyMinutes` + `categories[]` + `owner`/`ownerType`/`requestedBy`) / update (incl. `frequencyMinutes`, `categories[]` replace-set) / delete job |
 | GET / POST | `/categories` | list categories (+`usage` count, +`parentCode`/`parentName`) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`,`parentCode`). SYS_ADMIN |
 | PUT / DELETE | `/categories/:code` | update (partial, incl. `parentCode`) / delete — 400 if in use by jobs OR has sub-categories (deactivate/reparent instead). SYS_ADMIN |
 | POST | `/jobs/:name/approve-schema` | release a job held for schema review (`schema_reviewed`→'Y'); it loads on next run. SYS_ADMIN |
 | GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec` + **`setCode`/`setName`** (the run's Job Set, via `atd_job_set_member`). `status=WARNING` → SUCCESS rows with a message; **`?setcode=`** filters to one set (db/42) |
-| GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — `workerId`, `status`, `currentJob`, `lastSeen`, `ageSec`, `online` (Y when ≤120s), `runs24h` |
+| GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — status, heartbeat, session/MFA state, last login duration/status, last successful extract and 24-hour run count |
 | GET | `/jobs/health` | dashboard observability (additive, db/31) — `break` {enabled,active,start,end}, `workers[]` {workerId,sessionStarted,sessionAgeMin}, `jobs[]` (enabled) {jobName,lastSuccess,sinceMin,consecutiveFails,stuckRunning,alertSent,frequencyMin}. SYS_ADMIN |
 | POST | `/workers/:id/refresh` | request a worker re-login (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a fresh Fusion login (MFA). SYS_ADMIN |
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
@@ -279,6 +294,9 @@ One page, three tables, for the `create_analysis` async pipeline:
 | POST | `/job-sets/:code/run` | Run Set Now — top-priority enqueue every enabled member (`atd_set_pkg.run_now`) |
 | PUT | `/job-sets/:code/pause` | pause / resume the whole set (`{paused:'Y'/'N'}`) |
 | GET | `/job-set-jobs` | candidate picker — every job + its current set (if any); the detail add-member list filters to unassigned jobs |
+| GET / PUT | `/config` | Runner Settings — list / update `ATD_RUNNER_CONFIG` rows (update-only, secrets masked). SYS_ADMIN |
+| GET / PUT / DELETE | `/my-credential` | per-user OTBI credential profile (db/62+63): read own profile (`passwordSet` flag, never the password) / upsert (`password` applied only when present + non-empty — write-only; `catalogLogin` = OTBI catalog folder when it differs from the sign-in — drives permanent job ownership) / remove. SYS_ADMIN, always the caller's own row — `otbi-atd/db/63_atd_user_cred_ords.sql` (additive) |
+| GET | `/credentials` | roster of personal OTBI accounts (username, fusionLogin, active/password/chat flags — no secrets) — db/63 (additive) |
 
 All handlers: `dct_rest.validate_session` → 401, `dct_auth.has_role(user,'SYS_ADMIN')` → 403.
 

@@ -114,6 +114,13 @@ function (api) {
     getConfig:    function ()          { return api.get('/config'); },
     saveConfig:   function (items)     { return api.put('/config', { items: items }); },
 
+    // per-user OTBI credential profile (db/62+63) — jobs/actions the caller
+    // enqueues sign in to Fusion as this account; password is write-only
+    getMyCred:    function ()          { return api.get('/my-credential'); },
+    saveMyCred:   function (body)      { return api.put('/my-credential', body); },
+    deleteMyCred: function ()          { return api.delete('/my-credential'); },
+    listCreds:    function ()          { return api.get('/credentials'); },
+
     // Fusion write-back actions (AP invoices...) — runner --actions performs these
     getActionStats: function ()        { return api.get('/actions/stats'); },
     listActions:    function (params)  { return api.get('/actions' + qs(params)); },

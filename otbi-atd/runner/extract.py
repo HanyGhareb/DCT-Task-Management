@@ -51,11 +51,17 @@ def build_url(analytics_base, analysis_path, fmt="csv", extra=None):
 def download_job(ctx, env, job, params=None):
     """Dispatch on the source kind: a source_ref ending '.xdo' is a BI Publisher
     report (fetched via the xmlpserver direct-export URL + converted to CSV -
-    see bip.py); anything else is an OTBI analysis via the Go-URL below."""
+    see bip.py); a job with an '_atd_sql_chunks' directive is extracted as N raw
+    logical-SQL requests concatenated into one CSV (see sqlchunks.py - the
+    workaround for analyses whose full-scope plan the BI Server now kills);
+    anything else is an OTBI analysis via the Go-URL below."""
     src = (job.get("source_ref") or "")
     if src.strip().lower().endswith(".xdo"):
         import bip
         return bip.download_csv(ctx, env, job, params)
+    if params and params.get("_atd_sql_chunks"):
+        import sqlchunks
+        return sqlchunks.download_csv(ctx, env, job, params)
     return download_csv(ctx, env, src, params)
 
 

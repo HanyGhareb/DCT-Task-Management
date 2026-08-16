@@ -8,7 +8,7 @@ def test_telegram_send_logs_delivery_metadata(monkeypatch, capsys):
     monkeypatch.setattr(
         notify,
         "_telegram",
-        lambda text: {"ok": True, "result": {"message_id": 18452}},
+        lambda text, chat_id=None: {"ok": True, "result": {"message_id": 18452}},
     )
 
     assert notify.send("MFA 36") is True
@@ -22,7 +22,7 @@ def test_telegram_retries_quickly_then_succeeds(monkeypatch, capsys):
     calls = []
     sleeps = []
 
-    def flaky(text):
+    def flaky(text, chat_id=None):
         calls.append(text)
         if len(calls) < 3:
             raise TimeoutError("temporary timeout")
@@ -40,7 +40,8 @@ def test_telegram_retries_quickly_then_succeeds(monkeypatch, capsys):
 def test_telegram_failure_remains_best_effort(monkeypatch):
     monkeypatch.setenv("ATD_NOTIFY", "telegram")
     monkeypatch.setattr(
-        notify, "_telegram", lambda text: (_ for _ in ()).throw(TimeoutError("offline"))
+        notify, "_telegram",
+        lambda text, chat_id=None: (_ for _ in ()).throw(TimeoutError("offline"))
     )
     monkeypatch.setattr(notify.time, "sleep", lambda seconds: None)
 

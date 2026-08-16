@@ -1,30 +1,11 @@
--- MFA delivery fallback on the existing Worker Fleet dashboard.
--- Rerunnable: adds status columns, then replaces only GET /atd/workers.
+-- Worker Fleet observability: last authentication duration/status and last
+-- successful extraction. Additive replacement of GET /atd/workers only.
 SET DEFINE OFF
 SET SERVEROUTPUT ON
 
+CREATE OR REPLACE SYNONYM atd_worker_heartbeat FOR prod.atd_worker_heartbeat;
 CREATE OR REPLACE SYNONYM atd_load_run_log FOR prod.atd_load_run_log;
 CREATE OR REPLACE SYNONYM atd_load_run_phase FOR prod.atd_load_run_phase;
-
-BEGIN
-  FOR c IN (
-    SELECT 'MFA_STATUS' n, 'VARCHAR2(20)' d FROM dual UNION ALL
-    SELECT 'MFA_NUMBER', 'VARCHAR2(10)' FROM dual UNION ALL
-    SELECT 'MFA_ENV', 'VARCHAR2(100)' FROM dual UNION ALL
-    SELECT 'MFA_DETECTED', 'TIMESTAMP' FROM dual UNION ALL
-    SELECT 'MFA_DELIVERED', 'TIMESTAMP' FROM dual UNION ALL
-    SELECT 'MFA_MESSAGE_ID', 'NUMBER' FROM dual UNION ALL
-    SELECT 'MFA_ERROR', 'VARCHAR2(1000)' FROM dual UNION ALL
-    SELECT 'MFA_UPDATED', 'TIMESTAMP' FROM dual
-  ) LOOP
-    BEGIN
-      EXECUTE IMMEDIATE 'ALTER TABLE prod.atd_worker_heartbeat ADD ('||c.n||' '||c.d||')';
-    EXCEPTION WHEN OTHERS THEN
-      IF SQLCODE != -1430 THEN RAISE; END IF;
-    END;
-  END LOOP;
-END;
-/
 
 BEGIN
   ORDS.DEFINE_TEMPLATE(p_module_name=>'atd.rest', p_pattern=>'workers');
@@ -41,9 +22,10 @@ BEGIN
   APEX_JSON.open_object; APEX_JSON.open_array('items');
   FOR r IN (
     WITH last_auth AS (
-      SELECT l.host_id, p.duration_ms, p.phase_status,
-             ROW_NUMBER() OVER (PARTITION BY l.host_id ORDER BY l.started DESC, p.run_id DESC) rn
-        FROM atd_load_run_phase p JOIN atd_load_run_log l ON l.run_id=p.run_id
+      SELECT host_id, duration_ms, phase_status,
+             ROW_NUMBER() OVER (PARTITION BY host_id ORDER BY started DESC, p.run_id DESC) rn
+        FROM atd_load_run_phase p
+        JOIN atd_load_run_log l ON l.run_id=p.run_id
        WHERE p.phase_code='AUTHENTICATION'
     ), last_ok AS (
       SELECT host_id, MAX(finished) last_success

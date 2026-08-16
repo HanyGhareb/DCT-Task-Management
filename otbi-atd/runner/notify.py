@@ -46,10 +46,14 @@ def render(env_key, default, **values):
     return default
 
 
-def send(text, attempts=3):
+def send(text, attempts=3, chat_id=None):
     """Send a notification, retrying transient failures (e.g. the flaky Telegram SSL
     handshake timeout / connection reset) up to `attempts` times with a short backoff.
-    Never raises — a notify failure must not break the login."""
+    Never raises — a notify failure must not break the login.
+
+    chat_id: optional Telegram chat override (per-user OTBI credential profiles,
+    db/62 — MFA pushes for a personal account go to its owner's own chat).
+    Only the telegram channel honours it; other channels ignore the override."""
     global _LAST_DELIVERY
     ch = (os.environ.get("ATD_NOTIFY") or "").lower()
     _LAST_DELIVERY = {"channel": ch, "status": "FAILED", "attempts": 0}
@@ -64,7 +68,7 @@ def send(text, attempts=3):
     for i in range(max(1, attempts)):
         started = time.monotonic()
         try:
-            result = fn(text)
+            result = fn(text, chat_id) if ch == "telegram" else fn(text)
             if ch == "telegram":
                 elapsed_ms = round((time.monotonic() - started) * 1000)
                 message_id = ((result or {}).get("result") or {}).get("message_id", "unknown")
@@ -101,10 +105,10 @@ def _http_client():
     return _HTTP_CLIENT
 
 
-def _telegram(text):
+def _telegram(text, chat_id=None):
     import httpx
     token = os.environ["ATD_TG_TOKEN"]
-    chat = os.environ["ATD_TG_CHAT"]
+    chat = chat_id or os.environ["ATD_TG_CHAT"]
     r = _http_client().post(f"https://api.telegram.org/bot{token}/sendMessage",
                             json={"chat_id": chat, "text": text})
     r.raise_for_status()

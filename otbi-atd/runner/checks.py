@@ -12,6 +12,7 @@ Config:
 """
 import os
 import re
+import sys
 
 _DEFAULT_CAPS = "25000,50000,65000,75000,100000,250000,500000"
 
@@ -40,6 +41,29 @@ def scrub(text):
     for rx, rep in _SCRUB:
         s = rx.sub(rep, s)
     return s
+
+
+class _RedactingStream:
+    """Drop-in stdout/stderr proxy that scrubs secrets before journald sees them."""
+    def __init__(self, stream):
+        self._stream = stream
+
+    def write(self, text):
+        return self._stream.write(scrub(text))
+
+    def flush(self):
+        return self._stream.flush()
+
+    def __getattr__(self, name):
+        return getattr(self._stream, name)
+
+
+def install_log_scrubber():
+    """Protect console logs as well as database error messages."""
+    if not isinstance(sys.stdout, _RedactingStream):
+        sys.stdout = _RedactingStream(sys.stdout)
+    if not isinstance(sys.stderr, _RedactingStream):
+        sys.stderr = _RedactingStream(sys.stderr)
 
 
 def truncation_note(n):

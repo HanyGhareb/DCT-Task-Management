@@ -92,7 +92,11 @@
             <span data-bind="css: $vm.statusClass(severity), text: $root.t('atd.attn.' + severity)"></span></span>
           <span class="attn-row__detail" data-bind="text: $vm.attentionText($data)"></span>
         </span>
-        <span class="attn-row__when" data-bind="text: occurred || '—'"></span>
+        <!-- $data.occurred, NEVER bare: APEX_JSON omits NULL keys and a missing
+             binding identifier THROWS, killing every binding after this row
+             (the whole lower dashboard went blank on 2026-08-11 when a
+             Review attention item arrived with no timestamp) -->
+        <span class="attn-row__when" data-bind="text: $data.occurred || '—'"></span>
         <span class="attn-row__arrow" aria-hidden="true">›</span>
       </button>
     </div>
@@ -146,7 +150,9 @@
           <th data-bind="text: t('atd.workers.currentJob')"></th>
           <th data-bind="text: t('atd.workers.lastSeen')"></th>
           <th data-bind="text: t('atd.workers.sessionAge')"></th>
+          <th data-bind="text: t('atd.workers.loginTime')"></th>
           <th data-bind="text: t('atd.workers.mfa')"></th>
+          <th data-bind="text: t('atd.workers.lastSuccess')"></th>
           <th data-bind="text: t('atd.workers.runs24')"></th>
           <th data-bind="text: t('atd.workers.refresh')"></th>
         </tr></thead>
@@ -160,12 +166,14 @@
             <td class="mono" data-bind="text: $data.currentJob || '—'"></td>
             <td data-bind="text: $vm.workerAge($data) + ' ' + $root.t('atd.workers.ago')"></td>
             <td data-bind="text: $vm.sessionAge($data), style:{ color: ($vm.sessionAged($data) ? '#B5651A' : ''), fontWeight: ($vm.sessionAged($data) ? '600' : '') }"></td>
+            <td data-bind="text: $vm.loginTime($data), attr:{ title: $data.lastLoginStatus || '' }"></td>
             <td data-bind="attr:{ title: $vm.mfaState($data).error() || $vm.mfaState($data).updated() || '' }">
               <span data-bind="css: $vm.statusClass($vm.mfaState($data).status()), text: $vm.mfaLabel($data)"></span>
               <!-- ko if: $vm.mfaPending($data) && $vm.mfaState($data).number() -->
               <strong class="mfa-number" data-bind="text: $vm.mfaState($data).number"></strong>
               <!-- /ko -->
             </td>
+            <td data-bind="text: $data.lastSuccess || '—'"></td>
             <td data-bind="text: $data.runs24h"></td>
             <td>
               <button class="btn btn-xs btn-secondary"

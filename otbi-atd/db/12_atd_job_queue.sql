@@ -10,6 +10,9 @@
 --   db/40) so a set can gate/re-interval its members. Apply db/40 as well; until it is,
 --   those wrappers are missing and this package body is INVALID (auto-revalidates once
 --   db/40 runs). A job in no set behaves exactly as before.
+-- NOTE: enqueue() also references atd_otbi_jobs.requested_by (per-user OTBI
+--   credentials, db/62) -- on a fresh install run db/62 BEFORE re-running 12 or
+--   the body is INVALID until the column exists.
 -- Rerunnable (ADD guarded against ORA-01430). Schema-qualified PROD. CRLF/UTF-8 no BOM.
 -- ===========================================================================
 SET DEFINE OFF
@@ -91,7 +94,12 @@ CREATE OR REPLACE PACKAGE prod.atd_queue_pkg AS
   PROCEDURE release_job(p_job VARCHAR2);
   PROCEDURE release_job(p_job VARCHAR2, p_host VARCHAR2, p_token VARCHAR2);
   -- Queue (mark READY) all enabled jobs, or one named job. Returns count.
-  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER;
+  -- p_requested_by: the i-Finance user behind a MANUAL single-job enqueue (db/62
+  -- per-user OTBI credentials -- the worker signs in as that user's Fusion
+  -- account). The scheduled/bulk path (p_only NULL) always runs as the global
+  -- service account and CLEARS any stale personal tag.
+  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL,
+                   p_requested_by VARCHAR2 DEFAULT NULL) RETURN NUMBER;
   -- Atomically claim the next QUEUED subject-area discovery (-> SCRAPING); SKIP LOCKED.
   -- Returns subject_area or NULL. Lets N hosts drain the discover queue with no overlap.
   FUNCTION claim_sa RETURN VARCHAR2;
@@ -244,7 +252,8 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     COMMIT;
   END release_job;
 
-  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
+  FUNCTION enqueue(p_only VARCHAR2 DEFAULT NULL,
+                   p_requested_by VARCHAR2 DEFAULT NULL) RETURN NUMBER IS
     n        NUMBER;
     v_defreq NUMBER := 15;
   BEGIN
@@ -265,7 +274,11 @@ CREATE OR REPLACE PACKAGE BODY prod.atd_queue_pkg AS
     -- A manual single-job enqueue (p_only) always runs as an explicit override.
     UPDATE prod.atd_otbi_jobs j
        SET j.run_status = 'READY', j.claimed_by = NULL, j.claimed_at = NULL,
-           j.claim_token = NULL, j.lease_expires_at = NULL
+           j.claim_token = NULL, j.lease_expires_at = NULL,
+           -- per-user identity (db/62): the scheduled/bulk path clears any stale
+           -- personal tag so an old manual enqueue never leaks into automatic
+           -- cycles; a manual single-job enqueue stamps its caller.
+           j.requested_by = CASE WHEN p_only IS NULL THEN NULL ELSE p_requested_by END
      WHERE j.enabled = 'Y'
        AND j.run_status <> 'CLAIMED'
        AND (p_only IS NULL OR j.job_name = p_only)

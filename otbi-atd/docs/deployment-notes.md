@@ -1,5 +1,174 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-08-13 — Per-user OTBI credential profiles (db/62+63, App 208 v1.35.0) — **DEPLOYED**
+**Deployed 2026-08-13** (Linux SQLcl `sql -name prod_mcp` from dev-vm .191): 62 (selftest
+PASS live) → 12 re-run (recompile invalidated ATD_SET_NEXT_RUN/ATD_SET_PKG/
+DCT_LOG_CLEANUP_PKG + synonym — recompiled, INVALID back to the pre-existing 4) → 63 →
+**the 3 edited 13-handlers were patched IN PLACE via a DEFINE_HANDLER-only one-off**
+(GL/db/09 pattern — no DEFINE_TEMPLATE, so the module was NOT rebuilt and the additive
+chain did NOT need re-running; the next full 13 re-run reproduces them and THEN needs the
+chain + 63). API smoke green: 401 no-session · PUT/GET (write-only password, `passwordSet`
+flips, no password in any response) · 400 bad chat id / missing login · roster · DELETE ·
+manual enqueue stamps `requested_by` + bulk clears. Frontend release `20260813154204`
+(v1.35.0 + the Telegram-chat-id how-to steps on the card). Runner: canary vm180 synced +
+restarted clean (session reused, no MFA); vm181/182 pre-synced and restarted as each went
+idle. **62 gotcha found at deploy: package-PRIVATE function in SQL DML = PLS-00231**
+(`SET fusion_pwd_enc = encrypt_pwd(...)` → compute into a local var first; script fixed).
+Each admin can now store a PERSONAL Fusion/OTBI account (Runner Settings → **My OTBI
+Account**): username + AES-256-encrypted password (DBMS_CRYPTO, random-IV, master key in
+`PROD.ATD_CRED_KEY` — no synonym, never touched by ORDS; write-only over the API, only a
+`passwordSet` flag comes back) + personal Telegram chat id + Active toggle. **Jobs and
+Fusion actions the user enqueues run under THEIR Fusion account** on the fleet; the MFA
+number-match push goes to THEIR chat. Scheduled/automatic runs (the 15-min bulk enqueue
+and the UI bulk `/enqueue`) stay on the global service account (`OTBI_USER`/`OTBI_PWD`) —
+`atd_queue_pkg.enqueue`'s bulk path actively CLEARS `requested_by` so a stale personal tag
+can never leak into automatic cycles.
+
+- **DB `62_atd_user_cred.sql`**: `ATD_USER_CREDENTIAL` + `ATD_CRED_KEY` + `ATD_CRED_PKG`
+  (`set_password`/`password_set` for ORDS; `resolve_runner_cred` for the fleet's ADMIN
+  connection only) + guarded ALTERs — `atd_otbi_jobs.requested_by`,
+  `atd_load_run_log.fusion_account` (audit: which account actually ran),
+  **`atd_mfa_lock.lock_name` widened 30→200** (per-account locks `FUSION_MFA:<login>`) +
+  runner-config seed `ATD_MAX_USER_SESSIONS` (default 2). Ends with an encryption
+  round-trip selftest. NO MERGE — Linux-SQLcl-safe.
+- **DB `12` re-run**: `enqueue(p_only, p_requested_by DEFAULT NULL)` — manual single-job
+  enqueue stamps the caller, bulk clears. **62 must run BEFORE 12** (body references the
+  new column). `release_job` keeps `requested_by` (same human intent on a requeue).
+- **DB `13` re-run**: `jobs/:name/enqueue|reset` pass `l_user`; `jobs/:name/run` stamps
+  `requested_by=l_user`; bulk `/enqueue` deliberately unchanged. As always, **a 13 re-run
+  ⇒ re-run the whole additive chain** (20, 26, 31, 32, 33, 38, 39, 41, 42, 44, 45, 46,
+  49, 54, 55) **+ NEW `63`**.
+- **DB `63_atd_user_cred_ords.sql`** (additive): `GET/PUT/DELETE /atd/my-credential`
+  (always the CALLER's own row; `password` applied only when the JSON key is present and
+  non-empty) + `GET /atd/credentials` roster (flags only). SYS_ADMIN.
+- **Runner** (`config.py` / `notify.py` / `auth.py` / `runner.py`, fleet-sync + restart
+  atd-worker on vm180-182 — canary one VM first): claimed jobs/actions resolve
+  `requested_by`/`created_by` → `atd_cred_pkg.resolve_runner_cred` (5-min cache; fallback
+  → service account, noted in the run log). Personal identities get their OWN Chromium
+  profile/state (`chrome_<worker>_<env>__<slug>` / `auth_state_<env>__<slug>.json`), their
+  own MFA lock row, and Telegram routing to their chat; **the default identity keeps
+  byte-identical paths + lock name, so the deploy costs no MFA**. Personal sessions are
+  never keep-alive-pinged and are LRU-capped at `ATD_MAX_USER_SESSIONS`; a personal login
+  failure **fails fast** (clear run-log message + Telegram to the owner — NO requeue
+  dance, NO session_dead, the service session/queue untouched); mid-run expiry on a
+  personal session = one forced re-login retry then FAILED (never released).
+- **Frontend v1.35.0**: Runner Settings gains the My OTBI Account card + roster
+  (`atd.rs.myacct.*` i18n EN+AR); service methods `getMyCred/saveMyCred/deleteMyCred/listCreds`.
+- **Deploy order**: 62 → 12 → 13 + additive chain + 63 (fresh ADMIN session, `sql -name
+  prod_mcp`) → frontend (APP_VERSION bump) → THEN runner fleet-sync (Phase 1 is inert for
+  old workers: the column is simply ignored). Unit tests `runner/tests/test_user_cred.py`
+  15/15 (suite 37/37).
+- **Operational flow**: first personal run on each worker VM = one Authenticator approval
+  from that user's phone; not approving fails only their run. A personal account can only
+  run jobs whose analyses are readable/shared in the Fusion catalog (seeded source_refs
+  live under `/users/haghareb@dctabudhabi.ae/...`).
+- **Admin steps — personal Telegram chat id** (also shown inline on the Runner Settings
+  card; simplified 2026-08-14): ① open Telegram, search **@ifinanceDctBot**, press
+  **Start** / send it any message; ② **the bot replies with your chat id** ("Your
+  i-Finance runner chat id is: <n>") — tg_bot.py now answers unregistered PRIVATE chats
+  with their id (5-min per-chat rate limit; query commands stay allow-list-only; groups
+  still ignored silently); ③ paste the number into Runner Settings → My OTBI Account →
+  *Telegram chat id* and Save. Fallback: @userinfobot returns the same number.
+  **OPS GOTCHA (found 2026-08-14):** the `atd-tgbot` PoC service on vm180 long-polls
+  `getUpdates` on the SAME bot token, so it consumes every incoming message —
+  `python notify.py chatid` will ALWAYS print "no chats yet" while atd-tgbot is running;
+  read incoming chat ids from `journalctl -u atd-tgbot` instead (unregistered senders are
+  logged, and now also replied to).
+
+## 2026-08-15 (2) — PERMANENT job owner from the catalog path (App 208 v1.37.0) — DEPLOYED
+User rule: a job whose analysis lives under `/users/<name>/…` is owned by that person
+ALWAYS — scheduled cycles included — not just when they click Run. Identity priority is
+now **catalog-path owner → manual requester (requested_by) → service account**, in BOTH
+the Owner column and the actual runner sign-in.
+- **db/62 re-run**: `atd_user_credential.catalog_login` (nullable) — the OTBI catalog
+  personal-folder name when it DIFFERS from the Entra sign-in (the folder is the Fusion
+  APPLICATION username: live case = sign-in `c-saljaaidi@…` vs folder `saljaaidi@…`;
+  same split as hg2248 vs haghareb). `atd_cred_pkg` gains SQL-callable
+  `job_owner_login(source_ref)` (matches `/users/<x>/` against
+  NVL(catalog_login,fusion_login), active+pwd only) + `resolve_job_cred(source_ref,
+  requested_by, OUTs)` (owner first, then requester). Selftest extended (path-owner,
+  case-insensitive, fallback) — PASS live.
+- **db/63 re-run**: `catalogLogin` on GET/PUT my-credential + roster.
+- **13 handlers patched in place again** (DEFINE_HANDLER-only): `GET /jobs` +
+  `/jobs/:name` ship `owner` + `ownerType` (catalog|manual|''); `requestedBy` kept.
+- **Runner** (config.py `resolve_job_cred` + runner.py claim path; fleet-synced, all 3
+  restarted): claimed jobs resolve identity via the new proc — **scheduled cycles of an
+  owned job now sign in as the OWNER** (their session stays warm between cycles; if it
+  ever dies the owner gets ONE push, an unapproved push fails only that cycle and the
+  next cycle retries). Actions still key on created_by.
+- **UI v1.37.0** (release `20260815213126`): Owner column = permanent owner (hover
+  explains catalog vs manual vs "Service account"); My OTBI Account gains the optional
+  **"OTBI catalog folder"** field with the c-saljaaidi example in the hint.
+- Verified live: AR INVOICE LINES - ALL + AR Invoice Distribution Details - ALL show
+  owner `c-saljaaidi@dctabudhabi.ae` (catalog). Tests 39/39.
+
+## 2026-08-15 — Jobs page "Owner" column (App 208 v1.36.0) — DEPLOYED
+`GET /jobs` + `GET /jobs/:name` now ship `requestedBy` (the job owner — who queued the
+current/last manual cycle; blank = scheduler/service account, per-user OTBI db/62). Both
+handlers were **patched in place DEFINE_HANDLER-only** (same pattern as the 2026-08-13
+deploy — no atd.rest rebuild, no additive-chain re-run; sources synced into 13 for the
+next full rebuild). Jobs page gains an **Owner** column between Status and Last Run —
+green mono badge = the queuing user (their OTBI account runs it), muted "Scheduler" =
+automatic cycle. i18n `atd.jobs.col.owner*`/`atd.jobs.owner.*` EN+AR; web release
+`20260815211438`, APP_VERSION 1.36.0.
+
+## 2026-08-11 — INCIDENT: App 208 dashboard blank below Needs Attention (bare `occurred` bind)
+The whole lower dashboard (Queue State / Recent Runs / Worker Fleet / Fusion Actions /
+Job Freshness / Alerts) rendered as EMPTY region shells with blank headings, with ZERO
+console/page errors. Root cause: `dashboard.html` bound the attention row timestamp as
+bare `text: occurred || '—'` — APEX_JSON omits NULL keys, and on 2026-08-11 a *Review*
+attention item arrived WITHOUT `occurred` ("Supplier Bank Accounts Full — disabled job
+still has active queue state FAILED"), so the binding threw `ReferenceError: occurred is
+not defined` **during the `ko ifnot: loading` re-render**, aborting every remaining
+binding in the view. The error was invisible because the re-render is triggered by
+`self.loading(false)` inside `getDashboard().then(...)`, whose
+`.catch(function () { self.loading(false); })` swallows it. Diagnosed by setting
+`ko.onError` in-page and toggling `loading`. Fix: `text: $data.occurred || '—'`
+(the platform KO rule: bind EVERY nullable field as `$data.field`, never bare) +
+APP_VERSION 1.34.8; web-tier release `20260811141540` verified (all 7 regions render).
+Lesson: an APEX_JSON-omitted key in a row template doesn't just blank its cell — it
+kills every binding after it in the view, silently when the trigger runs inside a
+promise with an empty catch.
+
+## 2026-08-06 (3) — Supplier extract family (/Data/Suppliers/prod, 4 analyses; data-only)
+
+Four jobs seeded via the NATIVE PREPARE FLOW (job row w/ no colmap + `schema_reviewed='N'` →
+one-shot run profiles the CSV, creates the table + column map, HOLDs; review → approve → load):
+- **Suppliers Full** → `ATD_SUPPLIERS` — 28,607 rows (the old 2026-06-21 one-off held only a
+  1,417-row filtered subset), REGISTRY_ID = SUPPLIER_NUMBER grain, both fully unique.
+  **+ Suppliers Incremental** (`SUPPLIERS_UH24`, filter col **`Last Updated`** — not "Last
+  Updated Date" — key `REGISTRY_ID`, TXN_INCREMENTAL order 150; verified 193 staged ≈ table
+  last-24h). ⚠ the new analysis carries NO bank columns, so the legacy denormalized
+  bank cols on ATD_SUPPLIERS (bank_name/iban/bank_account_number/currency/site_pay_group/
+  primary_flag/from_assignment_date) are now NULL — **PAY's supplier type-ahead
+  (PAY/db/04 `/pay/lov/suppliers`) shows blank bank hints until it is re-pointed at the new
+  normalized bank tables**; validation (supplier_number exists) unaffected and now FRESH.
+- **Supplier Bank Accounts Full** → `ATD_SUPPLIER_BANK_ACCOUNTS` — 36,232 rows. **Daily full
+  ONLY — NO incremental possible:** the extract has no unique natural key (72 near-dup groups
+  on (registry,iban,acct#,inactive_on) + 1 exact full-row duplicate). To enable one, add a
+  bank-account/assignment ID column to the analysis.
+- **Supplier Sites Full** → `ATD_SUPPLIER_SITES` and **Supplier Sites Bank Accounts Full** →
+  `ATD_SUPPLIER_SITES_BANK_ACCOUNTS` — jobs work but each analysis has a LEFTOVER TEST FILTER
+  returning ONE supplier (ORACLE SYSTEMS LIMTIED, registry 19257; 2 rows each). Remove the
+  supplier filter in OTBI, re-run, then pick keys + add incrementals. (Sites-bank dates
+  profiled VARCHAR2 — format unparsed; revisit after the filter fix.)
+All four fulls = PAYABLES_DAILY members (orders 40–70, window 10:00–11:00 Dubai).
+Catalog navigation gotcha: the Catalog UI needs real mouse **dblclicks** on folder names
+(click only selects; "Expand" only drives the tree; `saw.dll?getFolderItems` = 404 here).
+
+**Same-evening follow-up:** user removed the Sites test filters → **Supplier Sites Full =
+59,651 rows** + **Supplier Sites Incremental** live (`SUPPLIER_SITES_UH24`, filter col
+`Last Updated`, key `REGISTRY_ID,SITE,BUSINESS_UNIT,CREATED` — one Fusion-side dup site
+trio differs only by CREATED). **Both BANK analyses broke after the user's 5:07–5:09 PM
+edits: `nQSError 60009` query-governor timeout** (diagnosed by rendering Results in the
+Answers editor — the Go CSV export just returns the JS shell; the supplier-level one worked
+pre-edit at 36,232 rows). Bank incrementals also blocked on grain: even pre-edit,
+(registry, bank_name, iban, account#) has 68 dup groups → the analysis needs an
+account/assignment ID column for a MERGE key. `ATD_DOWNLOAD_TIMEOUT_SEC` raised 300→900 in
+ATD_RUNNER_CONFIG (DB config OVERRIDES the env var — exporting it on a one-shot does
+nothing). **PAY supplier LOV re-pointed** at ATD_SUPPLIER_BANK_ACCOUNTS same evening (see
+PAY/docs/deployment-notes.md).
+
 ## 2026-08-06 (2) — INCIDENT: all daily job sets silently stopped 01→06 Aug (window ∩ break = ∅)
 
 `AP Invoices Full` (and EVERY daily-set job) had not run since 31-Jul. Root cause — two gates
@@ -1679,3 +1848,179 @@ every DB call dies with `DPY-4026: /wallet/tnsnames.ora is missing`.
   column, so a date-delta isn't possible without adding one (GL combos is slow ~217s max — worth adding
   a column later). Batch variant creation = `mk_uh24_batch.py` style (copy_analysis.do_copy per spec on
   a worker; one MFA covers all).
+
+## 2026-08-11 — PROJECTS_BUDGET_PERIODS OTBI breakage: investigation (probe_budget.py)
+Both Projects Budget jobs (Full + Incremental) started FAILING 100% around 2026-08-09/10:
+HTTP **500 after ~570 s** on the Go-URL (raw WebLogic error page — the request thread is
+killed before OTBI even renders an error). The last clean Full run (Aug 9 05:44) already
+took 247 s vs the 57 s historical average — the underlying query cost was growing fast,
+then crossed the web-tier kill threshold. **All 45 other jobs are 100% healthy** (incl.
+Projects Full / Tasks Full), so it is specific to the `Project Control - Budgets Real
+Time` subject area query, NOT the pod/session/runner.
+
+Isolated with `runner/probe_budget.py` (attaches via `auth.authenticate` on a worker VM —
+stop atd-worker first; modes: dump / run / ladder / ladder2 / each / final / sql / base).
+Timed logical-SQL probes (same columns + BU/FY filters as the analysis):
+
+| Scope | Result |
+|---|---|
+| 1 project (`=`), any of 5 tested | **1.9–9.1 s** |
+| `IN (p1, p1)` (collapses to 1 value) | 1.8 s |
+| 2 distinct projects (`IN` or `OR`) | **341–350 s** |
+| `BETWEEN` covering ~6 projects | killed @577 s |
+| 5 distinct projects | killed @566 s |
+| full scope (624 projects) — even WITHOUT currency var / ORDER BY | killed @571 s |
+| **one Fiscal Period `= '01-2026'`, ALL projects** | **165 s, 1,528 rows** (reconciles ~97% to the Aug-11 manual load; delta = live churn) |
+
+Conclusions: (1) the BI Server only pushes a **single-value equality** on
+`"Project"."Project Key"` into the fact/budget-version join; ANY multi-project predicate
+(IN/OR/BETWEEN/none) takes a catastrophic plan whose fixed cost now exceeds ~9.5 min.
+(2) Go-URL `P0..P3` runtime filters are silently IGNORED for `Action=Download` on this pod
+(1-project P-filter run died at 568 s while the same semantics via `&SQL=` took 1.9 s) —
+confirms the "baked variants only" rule. (3) `FETCH FIRST … ROWS ONLY` is rejected by the
+`&SQL=` parser (nQSError 27002) though the Answers editor shows it. (4) OTBI CSV export
+itself emits Excel-style `'`-prefixed numerics occasionally (2 rows in the period slice) —
+the same artifact seen in the user's manual export.
+Viable workaround (not yet implemented): **chunk the Full extract by Fiscal Period** —
+12 Go-URL `&SQL=` requests (~165 s worst, most periods tiny), concatenate, then
+TRUNCATE_INSERT. Root cause is Fusion-side (budget-version data growth / plan regression
+since ~Aug 8) — raise an SR / ask the Fusion admin to investigate; historical norm was
+57 s for the whole extract. Both jobs left DISABLED; `ATD_PROJECTS_BUDGET` holds the
+2026-08-11 manual load (1,896 rows / 7.643B).
+
+## 2026-08-11 — Projects Budget Full: period-chunked extraction LIVE (sqlchunks.py + db/61)
+
+The workaround above is implemented and deployed. New runner module
+`runner/sqlchunks.py`: a job whose `params_json` carries the `_atd_sql_chunks`
+directive is extracted as N raw logical-SQL Go-URL requests (`&SQL=`, one per
+chunk value substituted into a `{chunk}` placeholder) concatenated into ONE CSV
+for the unchanged prepare/load pipeline. Routed from `extract.download_job`
+(third dispatch leg, after the `.xdo` BIP leg). The directive's `headers` map is
+whitelist + rename in one: a `&SQL=` export emits presentation-layer headers
+plus a junk literal `0` column (the Answers `SELECT 0 s_0` convention), which do
+NOT match the saved analysis' custom headings the job's `column_map_json` keys
+on — only mapped headers are emitted, under the map's value text (the bip.py
+trick), so `load.resolve_pairs` matches and prepare's drift engine stays quiet.
+Values also get the Excel-marker apostrophe stripped (`'-42339` → `-42339` — an
+OTBI export artifact). Guards: an OTBI "No Results" page = an empty chunk (not
+an error); sign-in bounce → SessionExpired (worker re-auths); any other chunk
+failure retries once then FAILS the job **before** the load runs, and a
+`min_rows` floor (1000) refuses to TRUNCATE_INSERT a suspiciously small result.
+`db/61_projects_budget_chunked.sql` seeds the directive (12 chunks
+`01-2026`..`12-2026`) + re-enables **Projects Budget Full**; **Projects Budget
+Incremental stays DISABLED** (the daily chunked Full covers it; its analysis
+would hit the same bad plan). Year rollover: the fiscal year is baked into BOTH
+the `sql` text and the `chunks` list in params_json — edit both together.
+
+First live run (vm180 one-shot, run_id 10647): **SUCCESS, 35.7 min, 1,852
+rows / 7.603B / 615 projects**. Every chunk costs the ~3-min plan price
+regardless of row count (161–226 s each; 01-2026 = 1,528 of the 1,852 rows) —
+the total is pure per-query plan cost × 12, so the job is slow-but-reliable
+until Fusion fixes the subject area (SR still warranted; historical norm 57 s
+total). Delta vs the same-day manual Excel load (1,896/7.643B/624) = 9 projects
+/ 45 rows / 40.2M that the live analysis no longer returns AT ALL (verified —
+the old full extract would drop them identically): live budget-version churn,
+not a chunking gap. Old load backed up in `PROD.ATD_PROJECTS_BUDGET_BAK_20260811`.
+Deploy = `sqlchunks.py` + `extract.py` to all 3 workers + **systemctl restart
+atd-worker** (long-running workers hold the OLD extract.py, which would urlencode
+the directive onto the Go-URL) + db/61 via SQLcl.
+
+**Chunk-count optimization probed 2026-08-13 — DEAD END:** `Fiscal Period IN (2 values)` =
+362s (exactly 2× the single-equality cost) and `IN (11 values)` = killed at 576s — the BI
+Server pays the full plan cost PER IN MEMBER for period predicates too, same as projects.
+So the 12-chunk shape cannot be collapsed; the only remaining speed lever is running chunks
+CONCURRENTLY (3–4 parallel `&SQL=` requests ≈ 9–12 min wall), untested. ALSO learned: the 9
+projects in the manual Excel load but absent from every live extract are ALL `6171xxxxxx`
+AFH (Abrahamic Family House) projects — the saved analysis' BU filter
+(DESCRIPTOR_IDOF IN (300000002427529, 300000324906601)) covers only 2 of the 3 BUs; the
+manual export evidently included AFH. Adding AFH = one more id in that IN (params_json sql
++ the saved analysis). AND a master-lag gotcha: a budget line on a task created TODAY loads
+fine, but the butil view hides it until Tasks Full refreshes ATD_TASKS (missing-master
+'#'-id exclusion) — seen live with project 4511000339; remedy = run Tasks Full.
+
+**2026-08-13 — AFH scope + parallel chunks LIVE (db/64 + sqlchunks.py v2):** three
+user-approved changes. ① PROJECTS_DAILY set frequency 1440→720 (a manual afternoon run can
+no longer make the next 09:00–10:00 Dubai window skip a day — the 1-h window still caps it
+at once daily). ② The chunk SQL's BU filter gains **Abrahamic Family House
+(DESCRIPTOR_IDOF 300000034874765)** alongside DCT + MSS — restores the 9 AFH `6171xxxxxx`
+projects (45 rows / ~40M). ③ `"parallel": 4` in the directive — sqlchunks.py now fetches
+chunks 4-at-a-time over plain urllib threads with the context's cookies (sync Playwright is
+NOT thread-safe — never call it from the pool); missed chunks fall back to the sequential
+Playwright path with full session triage. Verified run 11238: **SUCCESS in 19 SECONDS**,
+1,898 rows / 7.660B / 625 projects incl. all 45 AFH rows. The 19s (vs the projected ~10
+min) means the 3-BU chunk queries ran at good-plan speed — either the 3-value IN dodges the
+catastrophic plan the 2-value one triggered, or the day's probing left the fact slices hot;
+expect anywhere from seconds (warm) to ~10-12 min (cold, 3 waves × ~195s) — both ≪ the 35
+min sequential shape. Deploy = sqlchunks.py to all 3 workers + restart, then db/64.
+
+**db/65 (2026-08-13): `Projects Budget Full - V2`** — user-requested on-demand twin of the
+daily job for the Jobs-page Enqueue button: same chunked directive but `"parallel": 6`
+(2 waves), frequency 525600 + no set membership so the sweep never auto-fires it. First
+run: SUCCESS in **20s** (1,898 rows). Same TRUNCATE_INSERT target as the daily job — avoid
+firing it during the 09:00–10:00 Dubai window. Rerunnable count-then-insert; re-running 65
+also re-syncs V2's params/source/column-map from the original job.
+
+**db/66 (2026-08-13): V2 is now THE budget extract — HOURLY.** Original Projects Budget
+Full DISABLED (rollback = re-enable + disable V2), Incremental stays disabled, V2
+frequency 60. User asked for 10 min; recommended+applied 60 because the enqueue sweep is
+15-min (10 unachievable) and each run = 12 heavy OTBI queries — hourly is near-real-time
+for budget-version churn at a quarter of the load. On-demand refresh = Jobs-page Enqueue
+(~20s warm). Frequency editable in the Jobs UI (15 = practical floor).
+
+**db/67 (2026-08-13): job set PROJECTS_DATA** — Projects Full + Tasks Full + Projects Budget
+Full - V2 in ONE set, **hourly, no window** (masters moved OUT of PROJECTS_DAILY — one set per
+job; PROJECTS_DAILY keeps only the disabled legacy budget job). Closes the master-lag gap (a
+same-day new task+budget line now lands within the hour together). Runnable on demand from the
+GL Project Budget Utilization page ("Refresh source data" button → GL/db/19 bridge →
+atd_set_pkg.run_now). Hourly masters = ~2 extra light queries/hour — deliberate.
+
+## 2026-08-14 — Transaction Distribution - All: chunked + service account (db/68)
+
+The user-created AR job was triple-broken: the saved analysis lives in a PRIVATE catalog
+folder (`/users/saljaaidi@…` — the service account gets Path-not-found, so every run needed
+c-saljaaidi personal MFA approvals via the db/62 credential profiles), it selects the WHOLE
+`Receivables - Transactions Real Time` SA with NO filter (461,678 rows), and its DOWNLOAD
+phase hit **889s of the 900s timeout** — one growth week from permanent failure. Converted
+to the chunked logical-SQL extract (db/68, generator `runner/txd_def.py`): **19 chunks
+partitioning the space by construction** (dim accounting-date IS NULL [58,938 rows — 12.8%
+of the table has no accounting date!] + past guard + Dec-2025 split 4 ways by Accounting
+Class w/ null-safe catch-all [ALL of 2025 sits in month 2025/12 = migration entries] + 12
+monthly 2026 ranges + open ≥2027 tail), **positional `#N` headers** (new sqlchunks feature —
+two logical columns both export as 'Accounting Date', so text keys can't disambiguate; the
+authored SELECT fixes positions), parallel 6, min_rows 300k, `requested_by` cleared.
+Verified run 11500: **SUCCESS 5.8 min, 461,678 rows — byte-identical to the personal-session
+single-shot** (parallel pass = 19/19 chunks in 134s; the balance is CSV parse + load). Now
+runs on the SERVICE account — no personal MFA, no catalog dependency. TWO new sqlchunks
+lessons: ① an EMPTY `&SQL=` result exports a one-cell body "The query resulted in no rows"
+(plain text, NOT the HTML No-Results view) — handled as a valid 0-row chunk; ② a `&SQL=`
+export's headers are the SA presentation names, which CAN match the saved analysis' headings
+(here all 30 matched exactly) — but positional keys are still safer for authored selects.
+The probes also confirmed the service account CAN query the Receivables SA via `&SQL=` even
+though it cannot read the private catalog path. Rollover: extend the 2026 month list in
+db/68/txd_def.py when 2027 volume grows — the ≥2027 tail catches everything until then.
+
+## 2026-08-14 — AR_INVOICE_LINES: chunked conversion (db/69) + morning window (db/70)
+
+Same triple-break as Transaction Distribution (private saljaaidi catalog path, personal-MFA
+runs, no-filter full-SA select) but WORSE: the single shot is killed at ~570s every time —
+the job NEVER completed once (no map/table). Converted (generator `runner/aril_def.py`):
+**27 chunks** (dim-date NULL × class + past guard + the 2025-12-31 Revenue migration lump
+[48,297] alone + Dec remainder × class + Jan–Aug 2026 month × class + merged Sep–Dec + ≥2027
+tail + class catch-alls), positional `#N` headers (38 clean columns; classes at line grain =
+Revenue/Unearned Revenue only), the analysis' `Transaction Line Type <> 'TAX'` filter in
+every chunk, min_rows 250k (probed total **320,750** via fast aggregate `&SQL=` — aggregates
+stay cheap even when detail queries die). First run auto-prepares the table+map.
+**NOT yet completed — the pod's cost for this query class swings ~8× within hours**: the
+same 18k chunk ran 76.8s at midday and was killed at ~570s by afternoon, WITH or WITHOUT the
+Project dim join (A/B-proven — server state, not SQL shape); afternoon retries also triggered
+transient **502 cascades** from the saw tier. db/70 parks the job in the new **AR_MORNING**
+set (daily 05:00–07:00 Dubai window) so it completes in the pod's quiet hour instead of
+hammering PROD. THREE sqlchunks hardenings shipped from this saga (fleet-deployed):
+① `parallel` death-spiral lesson — concurrent heavy chunks slow each other past the 570s
+kill (probe-fast ≠ pool-fast; this job runs parallel:1); ② the OBIEE **JS landing page**
+("please enable javascript"/doFrameBust) now maps to SessionExpired → worker re-auths, not
+ReportError; ③ ALL first-pass fetches go through the urllib pool even at parallel=1 — rapid
+back-to-back Playwright ctx.request downloads pick up rotated cookies and start drawing the
+landing page mid-sequence, while the fixed-cookie urllib path survives long sequences.
+Accumulated evidence for the Fusion SR: budget-SA plan regression (Aug 9) + AR full-scope
+kills + intraday 8× cost swings + 502 cascades = one platform-side degradation story.
