@@ -2182,6 +2182,26 @@ in 27s (vm182) · dist V2 SUCCESS 571,099 rows / 102,364 distinct transactions i
 Note the AR jobs are in NO job set (AR_MORNING sits empty; the db/70 member
 'AR_INVOICE_LINES' pointed at the retired db/69 job name and is gone).
 
+## 2026-08-16 (7) — Fusion zero-date sentinel '0-00-00' (recurring drift Telegram fixed)
+
+After the type-fix round flipped ATD_PR_LINES.ACCOUNTING_DATE from VARCHAR2 to DATE
+(correct — 99%+ of values are real dates), every **PR Lines Incremental** run fired a
+drift Telegram: `ACCOUNTING_DATE: now has non-date values (needs VARCHAR2(20)) but
+column is DATE` + `N invalid date value(s) loaded as NULL`. Root cause: Fusion/OTBI
+emits the **zero-date sentinel `0-00-00`** for a date attribute with no value (here:
+Accounting Date on REJECTED/unaccounted PR lines — 200 rows in the full extract,
+~9 in each 24h window). While the column was VARCHAR2 the garbage loaded verbatim
+and nobody was told; as DATE, the loader (correctly) NULLs it but warned, and the
+profiler's 2% dirty-tolerance flipped the incremental's SMALL sample to "text",
+firing the drift alert every cycle. Fix in runner/prepare.py + load.py (fleet-synced,
+workers restarted): `ZERO_DATE_RE` treats `0-00-00` (and 0000-00-00 etc.) as an
+EMPTY cell in the profiler, in `infer()`, and in the load date path (quiet NULL, no
+warning). Verified: post-fix PR Lines Incremental = SUCCESS, **no message**. NULL is
+the right value — a zero-date IS "no date". Also inventoried atd_load_row_warning:
+the PO Headers Full entries (~24 rows: 'AED' in CREATION_DATE, supplier names in
+date cols) are the KNOWN free-text-comma row-misalignment class, pre-existing and
+unrelated (those rows were equally garbled before the type fixes — just invisible).
+
 ## 2026-08-16 (6) — third AR job: 'AR Invoice Header - V2' (db/73 + runner/arh_def.py)
 
 Same conversion for the last personal-account AR job, 'AR Invoice Header - all'

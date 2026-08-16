@@ -18,7 +18,7 @@ import re
 import time
 from datetime import datetime
 
-from prepare import clean_cell, coerce_number, resolve_pairs   # shared w/ profiler
+from prepare import clean_cell, coerce_number, resolve_pairs, ZERO_DATE_RE  # shared w/ profiler
 
 DATE_FORMATS = ("%Y-%m-%d %H:%M:%S.%f", "%Y-%m-%dT%H:%M:%S.%f",
                 "%Y-%m-%d %H:%M:%S", "%Y-%m-%dT%H:%M:%S", "%Y-%m-%d",
@@ -122,7 +122,9 @@ def load(conn, csv_text, stage_table, final_table, load_mode, key_columns, colum
         for i, v in enumerate(r):
             if is_date[i]:
                 parsed = _to_dt(v)
-                if parsed is None and v is not None and str(v).strip() != "":
+                if (parsed is None and v is not None and str(v).strip() != ""
+                        and not ZERO_DATE_RE.match(str(v).strip())):
+                    # '0-00-00' = the Fusion zero-date sentinel -> quiet NULL
                     warnings["total"] += 1
                     if len(warnings["items"]) < warning_limit:
                         warnings["items"].append(warning_item(
