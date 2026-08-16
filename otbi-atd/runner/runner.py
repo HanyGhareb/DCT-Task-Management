@@ -450,7 +450,12 @@ def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
 
 def _alert_stale_workers(conn, stale_minutes=5):
     """Telegram-notify once when a peer's heartbeat goes stale, then flag it DOWN so
-    we don't spam (it re-arms when that worker next heartbeats). Best-effort."""
+    we don't spam (it re-arms when that worker next heartbeats). Best-effort.
+    The notification is gated by ATD_WORKER_SILENT_ALERT (Runner Settings, default Y);
+    the DOWN flag is ALWAYS set either way so the Workers dashboard stays truthful
+    and the alert re-arms correctly if the setting is turned back on."""
+    alert_on = (os.environ.get("ATD_WORKER_SILENT_ALERT", "Y").strip().upper()
+                not in ("N", "0", "FALSE"))
     try:
         cur = conn.cursor()
         # compare both sides as plain TIMESTAMP (session TZ) - mixing a TIMESTAMP column
@@ -463,7 +468,8 @@ def _alert_stale_workers(conn, stale_minutes=5):
                     m=stale_minutes)
         stale = [r[0] for r in cur.fetchall()]
         for w in stale:
-            notify.send(f"otbi-atd: worker {w} is silent (no heartbeat > {stale_minutes}m)")
+            if alert_on:
+                notify.send(f"otbi-atd: worker {w} is silent (no heartbeat > {stale_minutes}m)")
             cur.execute("update prod.atd_worker_heartbeat set status='DOWN' where worker_id=:w", w=w)
             conn.commit()
     except Exception:  # noqa: BLE001

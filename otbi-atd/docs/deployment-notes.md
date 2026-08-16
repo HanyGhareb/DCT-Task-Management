@@ -2220,3 +2220,15 @@ original DISABLED with its catalog source_ref intact (fallback).
 Verified live: **SUCCESS 102,277 rows in 76s (vm180) as hg2248** — exact row
 parity with the original job's last personal run. All THREE AR extracts now run
 chunked + hourly on the service account; zero personal-MFA dependency left in AR.
+
+## 2026-08-16 (8) — "worker silent" Telegram toggle (db/74 + runner.py)
+
+User request: stop the `otbi-atd: worker <vm> is silent (no heartbeat > 5m)`
+Telegram messages. NEW Runner-Settings toggle **ATD_WORKER_SILENT_ALERT** (ENUM
+Y/N, seeded **N** = off per the request; db/74) gates ONLY the notify in
+`_alert_stale_workers` — the stale worker is still flagged DOWN in
+atd_worker_heartbeat either way, so the ATD Workers dashboard stays truthful and
+the alert re-arms if the setting is flipped back to Y in ATD → Runner Settings.
+Chronic job-failure alerts (ATD_FAIL_ALERT_*), drift alerts and MFA pushes are
+unaffected. runner.py fleet-synced (vm180-182 restarted; startup log confirms
+"applied 32 runner settings").
