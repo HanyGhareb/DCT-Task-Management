@@ -251,7 +251,7 @@ SELECT
   s.schedule_type,
   s.shipment_type,
   s.schedule_description,
-  s.business_unit,
+  s.business_unit_2                          AS business_unit,
   s.organization_name,
   s.location_name,
   s.destination_lookup_code                  AS destination_type,
@@ -616,7 +616,7 @@ SELECT
   -- order amounts
   h.currency,
   TO_NUMBER(h.rate DEFAULT NULL ON CONVERSION ERROR)           AS fx_rate_to_aed,
-  TO_NUMBER(h.ordered_amount DEFAULT NULL ON CONVERSION ERROR) AS ordered_amount,
+  h.ordered_amount,
   ROUND(NVL(da.po_amount_aed,0), 2)          AS po_amount_aed,
   la.line_amount_total,
   -- document statistics
@@ -672,7 +672,7 @@ SELECT
   h.close_release_amount,
   -- lifecycle dates
   h.creation_date,
-  TO_DATE(h.submit_date DEFAULT NULL ON CONVERSION ERROR, 'YYYY-MM-DD') AS submitted_date,
+  h.submit_date                              AS submitted_date,
   h.approved_date,
   h.closed_date,
   h.cancelled_date,

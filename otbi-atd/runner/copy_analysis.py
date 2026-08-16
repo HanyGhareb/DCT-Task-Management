@@ -162,6 +162,102 @@ def remove_column(page, heading):
     raise RuntimeError(f"Delete option not found for {heading!r}; visible menu: {items}")
 
 
+def _headings(page):
+    """Current Selected-Columns headings (first line of each columnHeader), in order.
+    Sorted columns render a sort-order badge prefix ('2<TAB><NBSP>Entity Code') — strip it."""
+    return page.evaluate(r"""() => [...document.querySelectorAll('div.columnHeader')]
+        .map(e => (e.innerText||'').trim().split('\n')[0]
+             .replace(/^\d+[\t ]* [\t ]*/, '').trim())""")
+
+
+def _gear_exact(page, heading):
+    """Gear id of the column whose displayed heading EXACTLY equals `heading`
+    (sort-order badge prefix stripped before comparing)."""
+    return page.evaluate(r"""(h) => {
+      for (const e of document.querySelectorAll('div.columnHeader')) {
+        const t = (e.innerText||'').trim().split('\n')[0]
+                    .replace(/^\d+[\t ]* [\t ]*/, '').trim();
+        if (t === h) { const g = e.querySelector('img[id$="_columnMenuImg"]'); if (g) return g.id; }
+      }
+      return '';
+    }""", heading)
+
+
+def _open_formula_dialog(page, heading):
+    gear = _gear_exact(page, heading)
+    if not gear:
+        raise RuntimeError(f"column not found (exact): {heading!r}")
+    page.locator(f'#{gear}').first.click(timeout=10000); time.sleep(1.2)
+    for sel in ('#menuOptionItem_EditFormula', 'td:has-text("Edit formula")',
+                'a:has-text("Edit formula")', 'span:has-text("Edit formula")'):
+        loc = page.locator(sel)
+        for i in range(min(loc.count(), 6)):
+            try:
+                el = loc.nth(i)
+                if el.is_visible():
+                    el.click(); time.sleep(3.0)
+                    return
+            except Exception:
+                continue
+    items = page.evaluate("""() => [...document.querySelectorAll('[id^=menuOptionItem]')]
+        .filter(e => e.offsetParent).map(e => e.id + ':' + (e.innerText||'').trim())""")
+    raise RuntimeError(f"Edit-formula option not found for {heading!r}; visible menu: {items}")
+
+
+def _dump_formula_dialog(page):
+    """Discovery: list every visible input/checkbox in the open dialog with row context."""
+    return page.evaluate(r"""() => {
+      const vis = e => e.offsetParent !== null;
+      const row = e => { const tr = e.closest('tr');
+                         return tr ? (tr.innerText||'').trim().split('\n')[0].slice(0,60) : ''; };
+      return [...document.querySelectorAll('input,textarea')].filter(vis).map(e => ({
+        tag: e.tagName, id: e.id, name: e.name || '', type: e.type || '',
+        value: (e.value||'').slice(0,60), checked: !!e.checked, row: row(e), dis: e.disabled
+      }));
+    }""")
+
+
+def pin_heading(page, current, required):
+    """Open Edit Column Formula for the column now headed `current`; tick Custom
+    Headings; set Column Heading = `required`; OK. Idempotent."""
+    _open_formula_dialog(page, current)
+    cb = page.locator('input[name="customHdg"]:visible').first
+    cb.wait_for(state="visible", timeout=10000)
+    if not cb.is_checked():
+        cb.evaluate("el => el.click()"); time.sleep(0.6)
+    box = page.locator('input[name="columnHdg"]:visible').first
+    for _ in range(10):                       # enables once customHdg is ticked
+        if box.is_enabled():
+            break
+        time.sleep(0.5)
+    box.fill(required); time.sleep(0.4)
+    _click_ok_topmost(page); time.sleep(2.0)
+    _step(f"pinned: {current!r} -> {required!r}")
+
+
+def do_pin(page, base, src, expected, renames):
+    """Pin EVERY column's Custom Heading. `expected` = required headings; `renames` maps
+    a currently-displayed heading -> its required heading. Saves over the SAME name.
+    Returns (before, after) heading lists."""
+    open_existing(page, base, src)
+    click_tab(page, "Criteria")
+    if not _wait_columns(page):
+        _shot(page, "nocols"); raise RuntimeError("Criteria columns did not render")
+    before = _headings(page)
+    _step(f"current headings ({len(before)}): {before}")
+    exp = set(expected)
+    for cur in before:
+        req = renames.get(cur) or (cur if cur in exp else None)
+        if req is None:
+            _step(f"SKIP unexpected column (not in colmap, no rename): {cur!r}")
+            continue
+        pin_heading(page, cur, req)
+    after = _headings(page)
+    _step(f"headings after edits ({len(after)}): {after}")
+    save_as(page, src.rsplit("/", 1)[1])
+    return before, after
+
+
 def save_as(page, name):
     """Save As into the dialog's DEFAULT folder (= the source analysis's folder), under
     `name`. We never navigate away, so the copy lands beside the source."""
@@ -231,6 +327,8 @@ def _probe(page, base, src):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe")
+    ap.add_argument("--probe-formula", help="open Edit Column Formula for --column and dump dialog fields")
+    ap.add_argument("--column", help="column heading for --probe-formula")
     ap.add_argument("--copy")
     ap.add_argument("--edit")
     ap.add_argument("--remove-columns")
@@ -252,6 +350,16 @@ def main():
         try:
             if a.probe:
                 _probe(page, DEFAULT_BASE, a.probe)
+            elif a.probe_formula and a.column:
+                open_existing(page, DEFAULT_BASE, a.probe_formula)
+                click_tab(page, "Criteria")
+                if not _wait_columns(page):
+                    _shot(page, "nocols"); raise RuntimeError("Criteria columns did not render")
+                _step(f"headings: {_headings(page)}")
+                _open_formula_dialog(page, a.column)
+                import json as _json
+                _step("dialog fields:\n" + _json.dumps(_dump_formula_dialog(page), indent=1))
+                _shot(page, "formula_dlg")
             elif a.edit and a.remove_columns:
                 cols = [c.strip() for c in a.remove_columns.split(",") if c.strip()]
                 do_edit(page, DEFAULT_BASE, a.edit, cols)

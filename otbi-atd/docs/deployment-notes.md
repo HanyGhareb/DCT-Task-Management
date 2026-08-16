@@ -2024,3 +2024,83 @@ back-to-back Playwright ctx.request downloads pick up rotated cookies and start 
 landing page mid-sequence, while the fixed-cookie urllib path survives long sequences.
 Accumulated evidence for the Fusion SR: budget-SA plan regression (Aug 9) + AR full-scope
 kills + intraday 8× cost swings + 502 cascades = one platform-side degradation story.
+
+## 2026-08-16 — Custom-heading pinning platform-wide (pin_batch.py) + heading-drift heal
+
+**Root cause of the supplier-name regression class:** the runner's CSV header = the
+analysis' displayed **Column Heading** (never the formula). A Fusion patch changed several
+subject-area *default* headings ('Supplier Name'→'Supplier' on PO Headers + PR Lines,
+'Legal Name'→'DataFox Legal Name' on Suppliers; the AP Invoices renames hit only the UH24
+copy: 'GL Date'→'Invoice Accounting Date', 'Cancelled Date'→'Invoice Canceled Date',
+'Inter Company Flag'→'Intercompany Invoice Indicator', 'Pay Alone Flag'→'Pay alone',
+'Party Site Name'→'Supplier or Party Site'). Drift then auto-added new columns and
+NULL-loaded the old ones — ATD_PO_HEADERS.SUPPLIER_NAME went 0/4,412, ATD_PR_LINES 0/9,784,
+and every AP UH24 merge punched intraday NULL holes in GL_DATE etc. that the nightly Full
+repaired.
+
+**Fix (user decision):** pin **every column of every extract analysis** with *Custom
+Headings* = the exact colmap heading, so patches can never rename a CSV header again.
+
+- `runner/copy_analysis.py` gained `--probe-formula` (dialog discovery), `_headings()` /
+  `_gear_exact()` (exact-match, **sort-order badge prefix stripped** — sorted columns
+  render '2<TAB><NBSP>Heading'), `pin_heading()` (gear → Edit formula → tick `customHdg`
+  checkbox → fill `columnHdg` input → OK; the dialog fields have NO ids, only stable
+  `name=` attrs), and `do_pin()` (pin all + Save over same name + verify heading set).
+- `runner/gen_pin_plans.py` builds `pin_plans.json` from PROD.ATD_OTBI_JOBS colmaps
+  (strays dropped from `expected`, drifted names mapped back via `renames`).
+- `runner/pin_batch.py` runs the whole set in ONE authenticated session.
+- **Result: 35/35 analyses PASS** (~620 columns pinned; renames applied on PO Headers,
+  PR Lines, Suppliers). AP Invoices Full was verified to still carry the OLD headings —
+  only its UH24 copy had drifted. 'Header Batch Name' is GONE from the AP analysis
+  (removed by Fusion, cannot be pinned back; column stays NULL until the field is re-added
+  from the subject area).
+- `runner/regen_uh24.py` — regenerates ALL 13 _UH24 incremental copies from the pinned
+  Fulls (Save-As over the same catalog name + fresh 24h TIMESTAMPADD filter + CSV verify),
+  so Full and UH24 headings can never diverge again. **RULE: after ANY heading/column
+  change to a Full analysis, re-run regen_uh24.py for that family.**
+- Audit deliverable: `docs/otbi-heading-review.md` — every job's heading→column→type map,
+  orphan columns, and 14-day drift/row warnings, with the priority findings table.
+
+Follow-up (same day): trigger PO Headers Full / PR Lines All / Suppliers Full / AP
+Invoices Full reloads (heals SUPPLIER_NAME platform-wide), then cleanup round — drop
+stray/dup columns (SUPPLIER ×2, DATAFOX_LEGAL_NAME, the 5 AP new-name columns,
+THE_QUERY_RESULTED_IN_NO_R ×2, orphan _2 halves), remove stray colmap keys, and fix
+wrong types (PR SECTOR DATE→VARCHAR2, text dates→DATE, PO ORDERED_AMOUNT/RATE→NUMBER,
+AP INVOICE_GROUP NUMBER→VARCHAR2(60) — free-text seen in Fusion).
+
+## 2026-08-16 (2) — Heading-drift heal EXECUTED + cleanup round (same day)
+
+- **Heal verified:** PO Headers / PR Lines / Suppliers / AP Invoices Fulls reloaded —
+  `ATD_PO_HEADERS.SUPPLIER_NAME` 4,412/4,412 (was 0), `ATD_PR_LINES.SUPPLIER_NAME` 6,499
+  (rest genuinely supplier-less), AP `GL_DATE` intact. Supplier names back on every GL
+  butil register / PO view surface with zero view changes.
+- **`AP Invoices Full` had `requested_by='ADMIN'` stamped on the JOB row** — every run
+  (incl. scheduled) took the personal-credential path (saljaaidi MFA) and had been failing
+  since ~13-Aug. Tag CLEARED → service account. RULE: a persistent `requested_by` on
+  `atd_otbi_jobs` re-routes every future run to that user's credential profile; clear it
+  after one-off personal runs.
+- **Cleanup executed** (`cleanup_phase6.py`, python-oracledb on vm180): stray colmap keys
+  removed (Supplier ×2 jobs, DataFox Legal Name ×2, the 5 AP new-name keys + 'Header Batch
+  Name' [field REMOVED from the subject area — key removed to stop the every-run warning;
+  column kept for AP_INVOICES_HEADER_V.BATCH_NAME] ×2); stray/orphan columns dropped from
+  finals AND `_STG` twins (SUPPLIER ×2, DATAFOX_LEGAL_NAME, 5 AP new-name cols,
+  THE_QUERY_RESULTED_IN_NO_R ×2 [an error-page export had become a "column"], orphan `_2`
+  halves: ATD_PO_SCHEDULES.BUSINESS_UNIT / ATD_PAYMENTS.PAYMENT_DATE /
+  ATD_SUPPLIER_SITES.LEGAL_ADDRESS).
+- **Type fixes** (values sampled clean first; stage twins truncated+mirrored):
+  ATD_PR_HEADERS SECTOR/SECTOR_DESCRIPTION DATE→VARCHAR2(100/300), LAST_UPDATED_DATE +
+  CANCEL_DATE →DATE; ATD_PR_LINES APPROVED_DATE + ACCOUNTING_DATE →DATE ('0-00-00' rows
+  warn+NULL by design); ATD_PO_HEADERS ORDERED_AMOUNT + RATE →NUMBER, SUBMIT_DATE →DATE;
+  ATD_AP_INVOICES INVOICE_GROUP NUMBER→VARCHAR2(60) (free text seen in Fusion). Wiped
+  columns repopulated by same-day forced Full reloads (queue gate bypassed via
+  `atd_queue_pkg.enqueue(p_only)`).
+- **db/v2/46 patched + redeployed** (po_header_v + po_schedules_v via python-oracledb):
+  `submitted_date`/`ordered_amount` now read the typed columns directly (the old
+  `TO_DATE(date_col,'YYYY-MM-DD') DEFAULT NULL ON CONVERSION ERROR` would silently NULL
+  after the type flip), and **PO_SCHEDULES_V.business_unit re-pointed
+  BUSINESS_UNIT→BUSINESS_UNIT_2** — the view had been exposing the empty orphan column
+  (pre-existing silent bug; it now returns real BU names). 0 INVALID after
+  dct_views_rebuild + recompile.
+- GOTCHA (bit twice today): grepping `table|column` on ONE line misses view references —
+  `s.business_unit` sat lines away from the table name; PO_SCHEDULES_V went INVALID on the
+  orphan drop. Verify column drops with a live `ALL_ERRORS`/INVALID sweep, not repo grep.
