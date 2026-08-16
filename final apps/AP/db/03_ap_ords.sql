@@ -630,7 +630,7 @@ BEGIN
            payment_status, validation_status, accounting_status, funds_status, approval_status,
            payment_terms, TO_CHAR(terms_date,'YYYY-MM-DD') terms_dt,
            TO_CHAR(due_date,'YYYY-MM-DD') due_dt, payment_method, pay_group,
-           payment_currency, voucher_num, invoice_source, batch_name,
+           payment_currency, voucher_num, invoice_source,
            TO_CHAR(gl_date,'YYYY-MM-DD') gl_dt, TO_CHAR(invoice_received_date,'YYYY-MM-DD') rcv_dt,
            created_by, TO_CHAR(created_date,'YYYY-MM-DD') created_dt,
            last_updated_by, TO_CHAR(last_updated_date,'YYYY-MM-DD') updated_dt,
@@ -661,7 +661,7 @@ BEGIN
     APEX_JSON.write('dueDate', h.due_dt);
     APEX_JSON.write('paymentMethod', h.payment_method); APEX_JSON.write('payGroup', h.pay_group);
     APEX_JSON.write('paymentCurrency', h.payment_currency); APEX_JSON.write('voucherNum', h.voucher_num);
-    APEX_JSON.write('source', h.invoice_source); APEX_JSON.write('batchName', h.batch_name);
+    APEX_JSON.write('source', h.invoice_source);
     APEX_JSON.write('glDate', h.gl_dt); APEX_JSON.write('receivedDate', h.rcv_dt);
     APEX_JSON.write('createdBy', h.created_by); APEX_JSON.write('createdDate', h.created_dt);
     APEX_JSON.write('lastUpdatedBy', h.last_updated_by); APEX_JSON.write('lastUpdatedDate', h.updated_dt);

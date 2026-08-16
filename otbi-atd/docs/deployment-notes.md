@@ -2104,3 +2104,25 @@ AP INVOICE_GROUP NUMBER→VARCHAR2(60) — free-text seen in Fusion).
 - GOTCHA (bit twice today): grepping `table|column` on ONE line misses view references —
   `s.business_unit` sat lines away from the table name; PO_SCHEDULES_V went INVALID on the
   orphan drop. Verify column drops with a live `ALL_ERRORS`/INVALID sweep, not repo grep.
+
+## 2026-08-16 (3) — 'Header Batch Name' + 'Legal Name' REMOVED end-to-end (user request)
+
+Both fields removed everywhere (both were 0-populated: the AP field left the Fusion
+subject area; supplier Legal Name is empty in Fusion itself):
+
+- **OTBI:** 'Legal Name' column deleted from `01-Suppliers` (copy_analysis --edit) +
+  `SUPPLIERS_UH24` regenerated (header verified without it). 'Header Batch Name' was
+  already absent from both AP analyses.
+- **Jobs:** 'Legal Name' key removed from Suppliers Full/Incremental colmaps (now 14 keys);
+  AP 'Header Batch Name' keys were removed earlier the same day.
+- **DB:** dropped ATD_SUPPLIERS.LEGAL_NAME and ATD_AP_INVOICES.HEADER_BATCH_NAME (+ both
+  `_STG` twins); `dct_views_rebuild` (16) + recompile sweep → 0 INVALID.
+- **AP module (v1.18.1):** AP_INVOICES_HEADER_V recreated WITHOUT `BATCH_NAME`
+  (`AP/db/05` edited); invoice-drill handler redefined without `batchName`
+  (`AP/db/03` part 5 re-run standalone via python-oracledb — safe: the invoices/:id
+  template's only handler is defined in that same part); drill modal Batch row +
+  `dr.batch` i18n keys (EN+AR) removed; **frontend hot-patched into the LIVE webtier
+  release** (only the 4 changed AP files tar'd into `/var/www/ifinance/current/` as
+  opc+sudo + restorecon — a full deploy_frontend.sh run was AVOIDED because the working
+  tree carried other sessions' in-progress frontend work; webtier ssh login is `opc`,
+  not root).
