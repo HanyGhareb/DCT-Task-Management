@@ -91,6 +91,8 @@
     btLovHint:{en:'All — type to search…',ar:'الكل — اكتب للبحث…'},
     btLineHint:{en:'Line-level criterion: a transaction matches when one of its detail lines does.',ar:'معيار على مستوى السطر: تُطابق المعاملة عندما يُطابق أحد سطور تفاصيلها.'},
     btLineFilters:{en:'line criteria',ar:'معايير السطور'},
+    btScopeRequired:{en:'Budget Type and Transaction Year are required.',ar:'نوع الموازنة وسنة المعاملة مطلوبان.'},
+    btScopeHint:{en:'Required — Budget Type and Transaction Year scope the whole page.',ar:'مطلوب — نوع الموازنة وسنة المعاملة يحددان نطاق الصفحة بالكامل.'},
     btSubmitter:{en:'Submitted by',ar:'أرسلها'},
     btAssignee:{en:'Assignee',ar:'المسؤول'},
     btState:{en:'State',ar:'الحالة'},
@@ -825,30 +827,57 @@
     });
 
     self.loadBtFilters = function () {
-      // the type-ahead lists are ~2,900 entries; kicked off in PARALLEL and
-      // deliberately NOT awaited, so the grid is never held behind them
-      self.loadBtLov();
-      return api('GET', '/budgettrx/filters').then(function (d) {
-        self.btFilters(d);
-      }).catch(function (e) { self.btError(e.message || String(e)); });
+      var hadScope = !!(self.btcType() && self.btcYear());
+      return api('GET', '/budgettrx/filters' + qs({ type: self.btcType(), year: self.btcYear() }))
+        .then(function (d) {
+          self.btFilters(d);
+          // Budget Type and Year are MANDATORY (the server 400s without them),
+          // so the page picks a scope rather than opening on an error: the
+          // first budget type, and the current year when it has data.
+          if (!self.btcType() && (d.types || []).length) self.btcType(d.types[0].code);
+          if (!self.btcYear() && (d.years || []).length) {
+            var now = String(new Date().getFullYear());
+            self.btcYear(d.years.indexOf(now) >= 0 ? now : d.years[0]);
+          }
+          // That first call had no scope, so its line-derived lists (sectors,
+          // chapters, …) span every type and year. Setting the defaults above
+          // fires btRescope, which re-fetches them for the scope — so DON'T
+          // re-fetch here too, or page open costs two identical calls.
+          if (!hadScope) return;
+          self.loadBtLov();
+        }).catch(function (e) { self.btError(e.message || String(e)); });
+    };
+    // changing the scope invalidates every in-scope list
+    var btScopeKey = '';
+    self.btRescope = function () {
+      var k = self.btcType() + '|' + self.btcYear();
+      if (!self.btcType() || !self.btcYear() || k === btScopeKey) return;
+      btScopeKey = k;
+      self.loadBtFilters();
     };
     // 886 projects + 1,825 tasks + 184 expenditure types + 115 cost centres:
     // too big for the criteria payload, so they load once beside it and feed
     // the <datalist> autocompletes — the same split the Budget Utilization
     // page makes between /butil/filters and /butil/lov.
-    var btLovLoading = false;
+    var btLovKey = '';
     self.loadBtLov = function () {
-      if (btLovLoading || self.btProjects().length) return Promise.resolve();
-      btLovLoading = true;
-      return api('GET', '/budgettrx/lov').then(function (d) {
-        self.btProjects(d.projects || []); self.btTasks(d.tasks || []);
-        self.btEtypes(d.etypes || []);     self.btCcs(d.costCenters || []);
-      }).catch(function () {
-        // a failed autocomplete list must never break the page: the criteria
-        // are free-text inputs, they just lose their suggestions
-        btLovLoading = false;
-      });
+      var key = self.btcType() + '|' + self.btcYear();
+      if (!self.btcType() || !self.btcYear() || key === btLovKey) return Promise.resolve();
+      btLovKey = key;
+      return api('GET', '/budgettrx/lov' + qs({ type: self.btcType(), year: self.btcYear() }))
+        .then(function (d) {
+          self.btProjects(d.projects || []); self.btTasks(d.tasks || []);
+          self.btEtypes(d.etypes || []);     self.btCcs(d.costCenters || []);
+        }).catch(function () {
+          // a failed autocomplete list must never break the page: the criteria
+          // are free-text inputs, they just lose their suggestions
+          btLovKey = '';
+        });
     };
+    // every list on this page belongs to the chosen type+year, so both the
+    // criteria LOVs and the type-aheads refresh when either moves
+    self.btcType.subscribe(function () { self.btRescope(); });
+    self.btcYear.subscribe(function () { self.btRescope(); });
     // how many line-level criteria are active — drives the "N filters" chip
     self.btLineFilterCount = ko.computed(function () {
       return [self.btcSector(), self.btcChapter(), self.btcProgram(), self.btcApprop(),
@@ -857,6 +886,12 @@
     });
 
     self.runBudgetTrx = function (page) {
+      // mandatory scope — say so here rather than letting the server 400
+      if (!self.btcType() || !self.btcYear()) {
+        self.btError(self.t('btScopeRequired'));
+        self.btRows([]); self.btTotal(0); self.btLoaded(true);
+        return Promise.resolve();
+      }
       self.btBusy(true);
       self.btError('');
       if (page) self.btPage(page);
@@ -884,8 +919,13 @@
 
     self.btSearch = function () { self.runBudgetTrx(1); };
     self.btClearCriteria = function () {
-      self.btcType(''); self.btcBu(''); self.btcProjType(''); self.btcStatus('');
-      self.btcYear(''); self.btcApprover(''); self.btcTrxNum(''); self.btcDecree('');
+      // Clear resets to the DEFAULT SCOPE, not to empty: type and year are
+      // mandatory, so clearing them would just produce an error instead of rows
+      var f = self.btFilters() || {}, now = String(new Date().getFullYear());
+      self.btcType((f.types || []).length ? f.types[0].code : '');
+      self.btcYear((f.years || []).indexOf(now) >= 0 ? now : ((f.years || [])[0] || ''));
+      self.btcBu(''); self.btcProjType(''); self.btcStatus('');
+      self.btcApprover(''); self.btcTrxNum(''); self.btcDecree('');
       self.btcFrom(''); self.btcTo('');
       self.btcSector(''); self.btcChapter(''); self.btcProgram(''); self.btcApprop('');
       self.btcCc(''); self.btcProject(''); self.btcTask(''); self.btcEtype('');

@@ -22,6 +22,14 @@
 --   GET /gl/budgettrx                    -> header grid (paged, all criteria)
 --   GET /gl/budgettrx/:num               -> one header + its lines + approvals
 --
+-- **Budget Type and Transaction Year are MANDATORY on GET budgettrx** (user
+-- decision 2026-08-17, for performance -- the same call the Budget Utilization
+-- page makes with its required Budget Year). Missing either = clean 400, so a
+-- direct curl cannot ask for the whole table either. Because type is always
+-- present, both line CTEs also scope to `trx_type = l_type`, which cuts the
+-- 18,544-row union to just that type's table. `budgettrx/lov` takes the same
+-- two so the type-ahead lists only offer values inside the page's scope.
+--
 -- Criteria parity with the Budget Utilization page (2026-08-17): the page now
 -- carries the same filter set. The header-level ones (budget type, BU, project
 -- type, status, year, approver, transaction/decree no., date range) filter
@@ -94,6 +102,11 @@ BEGIN
     def_handler('budgettrx/filters', 'GET', q'!
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
+  -- optional here (they are what you PICK the scope with), but when supplied
+  -- the line-derived lists below only offer values that exist inside that
+  -- scope -- otherwise the page offers a Chapter that returns nothing
+  l_type VARCHAR2(40)  := TRIM([COLON]type);
+  l_year VARCHAR2(8)   := TRIM([COLON]year);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
@@ -154,7 +167,12 @@ BEGIN
   -- transactions (so the list only ever offers values that can return rows)
   APEX_JSON.open_array('sectors');
   FOR r IN (SELECT sector_code c, MAX(sector_name) n FROM v_pa_budget_trx_line
-             WHERE sector_code IS NOT NULL GROUP BY sector_code ORDER BY 2) LOOP
+             WHERE sector_code IS NOT NULL
+               AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
+             GROUP BY sector_code ORDER BY 2) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
     APEX_JSON.close_object;
@@ -163,7 +181,12 @@ BEGIN
 
   APEX_JSON.open_array('chapters');
   FOR r IN (SELECT chapter_code c, MAX(chapter_name) n FROM v_pa_budget_trx_line
-             WHERE chapter_code IS NOT NULL GROUP BY chapter_code ORDER BY 1) LOOP
+             WHERE chapter_code IS NOT NULL
+               AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
+             GROUP BY chapter_code ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
     APEX_JSON.close_object;
@@ -173,7 +196,12 @@ BEGIN
   APEX_JSON.open_array('programs');
   FOR r IN (SELECT program_code c, MAX(NVL(program_name, program_desc)) n
               FROM v_pa_budget_trx_line
-             WHERE program_code IS NOT NULL GROUP BY program_code ORDER BY 1) LOOP
+             WHERE program_code IS NOT NULL
+               AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
+             GROUP BY program_code ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
     APEX_JSON.close_object;
@@ -183,7 +211,12 @@ BEGIN
   APEX_JSON.open_array('appropriations');
   FOR r IN (SELECT appropriation_code c, MAX(appropriation_name) n
               FROM v_pa_budget_trx_line
-             WHERE appropriation_code IS NOT NULL GROUP BY appropriation_code ORDER BY 1) LOOP
+             WHERE appropriation_code IS NOT NULL
+               AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
+             GROUP BY appropriation_code ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
     APEX_JSON.close_object;
@@ -194,7 +227,12 @@ BEGIN
   -- numeric YYYYMM and emit the label
   APEX_JSON.open_array('periods');
   FOR r IN (SELECT period_from p, MAX(period_from_num) k FROM v_pa_budget_trx_line
-             WHERE period_from IS NOT NULL GROUP BY period_from ORDER BY 2 DESC) LOOP
+             WHERE period_from IS NOT NULL
+               AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
+             GROUP BY period_from ORDER BY 2 DESC) LOOP
     APEX_JSON.write(r.p);
   END LOOP;
   APEX_JSON.close_array;
@@ -215,6 +253,7 @@ END;
 DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_type VARCHAR2(40)  := TRIM([COLON]type);
+  l_year VARCHAR2(8)   := TRIM([COLON]year);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
@@ -227,6 +266,9 @@ BEGIN
   FOR r IN (SELECT project_num p, MAX(project_name) n FROM v_pa_budget_trx_line
              WHERE project_num IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
              GROUP BY project_num ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('p', r.p); APEX_JSON.write('n', NVL(r.n,''));
@@ -238,6 +280,9 @@ BEGIN
   FOR r IN (SELECT task_num t, MAX(task_name) n FROM v_pa_budget_trx_line
              WHERE task_num IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
              GROUP BY task_num ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('t', r.t); APEX_JSON.write('n', NVL(r.n,''));
@@ -249,6 +294,9 @@ BEGIN
   FOR r IN (SELECT DISTINCT expenditure_type e FROM v_pa_budget_trx_line
              WHERE expenditure_type IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
              ORDER BY 1) LOOP
     APEX_JSON.write(r.e);
   END LOOP;
@@ -258,6 +306,9 @@ BEGIN
   FOR r IN (SELECT DISTINCT cost_center c FROM v_pa_budget_trx_line
              WHERE cost_center IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
+               AND (l_year IS NULL OR transaction_num IN (
+                     SELECT h.transaction_num FROM pa_budget_trx_headers h
+                      WHERE h.trx_year = l_year))
              ORDER BY 1) LOOP
     APEX_JSON.write(r.c);
   END LOOP;
@@ -318,6 +369,13 @@ BEGIN
   IF l_from IS NOT NULL AND l_to IS NOT NULL AND l_to < l_from THEN
     dct_rest.err(400,'to date cannot precede from date'); RETURN;
   END IF;
+  -- Budget Type and Transaction Year are MANDATORY (user decision 2026-08-17,
+  -- for performance): they scope every scan on this page, exactly like the
+  -- Budget Utilization page's required Budget Year. Decided BEFORE json_header
+  -- -- once the header is written the status line cannot be changed.
+  IF l_type IS NULL OR l_year IS NULL THEN
+    dct_rest.err(400,'type and year are required'); RETURN;
+  END IF;
   IF l_per IS NOT NULL THEN
     IF NOT REGEXP_LIKE(l_per,'^[0-9]{2}-[0-9]{4}$') THEN
       dct_rest.err(400,'period must be MM-YYYY'); RETURN;
@@ -335,6 +393,7 @@ BEGIN
     SELECT /*+ MATERIALIZE */ DISTINCT l.transaction_num tn, l.trx_type tt
       FROM v_pa_budget_trx_line l
      WHERE l_lineflt = 'Y'
+       AND l.trx_type = l_type          -- type is mandatory: scope the scan
        AND (l_sect  IS NULL OR l.sector_code        = l_sect)
        AND (l_chap  IS NULL OR l.chapter_code       = l_chap)
        AND (l_prog  IS NULL OR l.program_code       = l_prog)
@@ -351,6 +410,7 @@ BEGIN
     SELECT /*+ MATERIALIZE */ DISTINCT s.transaction_num tn, s.trx_type tt
       FROM v_pa_budget_trx_line s
      WHERE l_srch IS NOT NULL
+       AND s.trx_type = l_type
        AND (LOWER(NVL(s.project_num,''))      LIKE '%'||l_srch||'%'
          OR LOWER(NVL(s.project_name,''))     LIKE '%'||l_srch||'%'
          OR LOWER(NVL(s.task_num,''))         LIKE '%'||l_srch||'%'
@@ -386,6 +446,7 @@ BEGIN
       SELECT /*+ MATERIALIZE */ DISTINCT l.transaction_num tn, l.trx_type tt
         FROM v_pa_budget_trx_line l
        WHERE l_lineflt = 'Y'
+         AND l.trx_type = l_type          -- type is mandatory: scope the scan
          AND (l_sect  IS NULL OR l.sector_code        = l_sect)
          AND (l_chap  IS NULL OR l.chapter_code       = l_chap)
          AND (l_prog  IS NULL OR l.program_code       = l_prog)
@@ -402,6 +463,7 @@ BEGIN
       SELECT /*+ MATERIALIZE */ DISTINCT s.transaction_num tn, s.trx_type tt
         FROM v_pa_budget_trx_line s
        WHERE l_srch IS NOT NULL
+         AND s.trx_type = l_type
          AND (LOWER(NVL(s.project_num,''))      LIKE '%'||l_srch||'%'
            OR LOWER(NVL(s.project_name,''))     LIKE '%'||l_srch||'%'
            OR LOWER(NVL(s.task_num,''))         LIKE '%'||l_srch||'%'

@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.66.0';</script>
+<script>window.APP_VERSION = '1.67.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -1494,17 +1494,19 @@
         <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('btCriteria')"></span></div>
         <div class="bu-sec-b">
           <div class="filter-grid">
-            <div class="field"><label class="lbl" data-bind="text:t('btType')"></label>
+            <!-- Budget Type + Transaction Year are MANDATORY: no "All" option,
+                 so the page cannot be asked to scan every type and year -->
+            <div class="field"><label class="lbl"><span data-bind="text:t('btType')+' *'"></span><i class="hint-i" data-bind="attr:{title:t('btScopeHint')}">ⓘ</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).types||[], optionsText:'name', optionsValue:'code',
-                                             value:btcType, optionsCaption:t('btAll')"></select></div>
+                                             value:btcType"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btBu')"></label>
               <select class="inp" data-bind="options:(btFilters()||{}).businessUnits||[], value:btcBu, optionsCaption:t('btAll')"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btProjType')"></label>
               <select class="inp" data-bind="options:(btFilters()||{}).projectTypes||[], value:btcProjType, optionsCaption:t('btAll')"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btStatus')"></label>
               <select class="inp" data-bind="options:(btFilters()||{}).statuses||[], value:btcStatus, optionsCaption:t('btAll')"></select></div>
-            <div class="field"><label class="lbl" data-bind="text:t('btYear')"></label>
-              <select class="inp" data-bind="options:(btFilters()||{}).years||[], value:btcYear, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btYear')+' *'"></span><i class="hint-i" data-bind="attr:{title:t('btScopeHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).years||[], value:btcYear"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btApprover')"></label>
               <select class="inp" data-bind="options:(btFilters()||{}).approvers||[], value:btcApprover, optionsCaption:t('btAll')"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btTrxNo')"></label>

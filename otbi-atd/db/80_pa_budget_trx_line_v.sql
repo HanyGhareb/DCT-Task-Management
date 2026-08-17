@@ -26,10 +26,19 @@
 --           appropriations with >1 chapter, zero programs with >1 name), so
 --           the MAX() aggregates below pick a value, never one of several.
 --
--- Cost centre code: the combination's 3rd segment when present, else the
---           trailing digits of the COST_CENTER label ("AFHC Education and
---           Dialogue-6170200" -> 6170200), which is the only source on the
---           Estimated-Cost lines that have no combination.
+-- No combination is NORMAL: an Estimated-Cost line is not required to carry a
+--           code combination (user-confirmed 2026-08-17) and 5,546 of them do
+--           not. So the segment codes fall back to the line's own TASK
+--           attributes -- the platform's task-first attribution, same source
+--           and same LPAD widths as DCT_BUDGET_UTILIZATION_V -- which supplies
+--           appropriation and program for 5,071 of those 5,546. Without that,
+--           a Chapter / Program / Appropriation filter would silently drop
+--           every Estimated-Cost transaction: not because it sits in another
+--           chapter, but because the row could not say which one.
+--           Cost centre needs no such help -- it comes from the combination's
+--           3rd segment, else the trailing digits of the COST_CENTER label
+--           ("AFHC Education and Dialogue-6170200" -> 6170200) -- 100% covered.
+--           DIM_SOURCE says which path a row took: COMBINATION or TASK.
 --
 -- Period: MM-YYYY strings cannot be compared lexically ('02-2025' > '01-2026'),
 --           so the view also emits sortable YYYYMM numbers -- guarded by a
@@ -57,14 +66,41 @@ WITH ln AS (
            task_num, task_name, expenditure_type, cost_center, code_combination,
            period_from, period_to
       FROM prod.pa_annual_budget_lines
+), tsk AS (
+    -- task-level segment attributes, the platform's task-first attribution
+    -- (same source and the same LPAD widths as DCT_BUDGET_UTILIZATION_V).
+    -- Grouped by project AND task: task numbers repeat across projects, so a
+    -- bare GROUP BY task_number picks an arbitrary project's attributes.
+    SELECT TO_CHAR(pj.project_number) AS project_key, t.task_number AS task_key,
+           MAX(CASE WHEN t.appropriation IS NOT NULL THEN LPAD(TO_CHAR(t.appropriation),6,'0') END) AS appropriation_code,
+           MAX(CASE WHEN t.program       IS NOT NULL THEN LPAD(TO_CHAR(t.program),6,'0')       END) AS program_code,
+           MAX(CASE WHEN t.cost_center   IS NOT NULL THEN LPAD(TO_CHAR(t.cost_center),7,'0')   END) AS cost_center_code
+      FROM prod.tasks t
+      JOIN prod.projects pj ON pj.project_id = t.project_id
+     GROUP BY TO_CHAR(pj.project_number), t.task_number
 ), seg AS (
+    -- Segment codes come from the combination when there IS one, and fall back
+    -- to the line's own task otherwise. **An Estimated-Cost line legitimately
+    -- has no code combination -- it is not mandatory for that budget type**
+    -- (user-confirmed 2026-08-17), and 5,546 of them carry none. Without the
+    -- fallback, filtering by Chapter, Program or Appropriation would silently
+    -- exclude every Estimated-Cost transaction: not because it belongs to
+    -- another chapter, but because the row could not say which. The task
+    -- attributes answer that for 5,071 of the 5,546.
     SELECT l.*,
-           REGEXP_SUBSTR(l.code_combination, '[^.]+', 1, 2) AS program_code,
+           COALESCE(REGEXP_SUBSTR(l.code_combination, '[^.]+', 1, 2),
+                    k.program_code)                              AS program_code,
            COALESCE(REGEXP_SUBSTR(l.code_combination, '[^.]+', 1, 3),
-                    REGEXP_SUBSTR(l.cost_center, '[0-9]+$'))  AS cost_center_code,
-           REGEXP_SUBSTR(l.code_combination, '[^.]+', 1, 5) AS account_code,
-           REGEXP_SUBSTR(l.code_combination, '[^.]+', 1, 7) AS appropriation_code
+                    REGEXP_SUBSTR(l.cost_center, '[0-9]+$'),
+                    k.cost_center_code)                          AS cost_center_code,
+           REGEXP_SUBSTR(l.code_combination, '[^.]+', 1, 5)      AS account_code,
+           COALESCE(REGEXP_SUBSTR(l.code_combination, '[^.]+', 1, 7),
+                    k.appropriation_code)                        AS appropriation_code,
+           -- so a consumer can tell a derived dimension from a posted one
+           CASE WHEN l.code_combination IS NULL THEN 'TASK' ELSE 'COMBINATION' END AS dim_source
       FROM ln l
+      LEFT JOIN tsk k ON k.project_key = l.project_num
+                     AND k.task_key    = l.task_num
 ), cc AS (
     SELECT cost_center_code, MAX(cost_center_desc) nm, MAX(sector_code) sc, MAX(sector_name) sn
       FROM prod.dct_gl_coa_snap WHERE cost_center_code IS NOT NULL GROUP BY cost_center_code
@@ -105,7 +141,8 @@ SELECT s.transaction_num,
        pg.nm  AS program_desc,
        pg.cls AS program_name,
        s.account_code,
-       acc.nm AS account_name
+       acc.nm AS account_name,
+       s.dim_source
   FROM seg s
   LEFT JOIN cc  ON cc.cost_center_code   = s.cost_center_code
   LEFT JOIN ap  ON ap.appropriation_code = s.appropriation_code

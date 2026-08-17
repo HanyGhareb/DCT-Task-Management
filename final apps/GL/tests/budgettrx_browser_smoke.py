@@ -124,14 +124,16 @@ with sync_playwright() as p:
           str(pg.locator('.filter-grid .field').count()))
     # .lbl is text-transform:uppercase and Chrome's innerText applies it -- and
     # the line-level ones carry a trailing (upper-cased) info glyph
-    labels = [pg.locator('.filter-grid .lbl').nth(i).inner_text().strip().rstrip('Ⓘⓘ').strip().upper()
-              for i in range(pg.locator('.filter-grid .lbl').count())]
+    labels_raw = [pg.locator('.filter-grid .lbl').nth(i).inner_text().strip()
+                  for i in range(pg.locator('.filter-grid .lbl').count())]
+    labels = [x.rstrip('Ⓘⓘ').strip().rstrip('*').strip().upper() for x in labels_raw]
     for want in ('Sector', 'Chapter', 'DCT Program', 'Appropriation', 'Cost Center',
                  'Project', 'Task', 'Expenditure Type', 'Accounting Period', 'Search'):
         check('criteria include "%s"' % want, want.upper() in labels, str(labels))
     # every line-level criterion says so, so nobody reads them as header filters
+    # 9 line-level hints + the 2 mandatory-scope hints on Budget Type and Year
     check('line criteria carry the ⓘ line-level hint',
-          pg.locator('.filter-grid .hint-i').count() == 9,
+          pg.locator('.filter-grid .hint-i').count() == 11,
           str(pg.locator('.filter-grid .hint-i').count()))
     # the four big lists load in PARALLEL with the grid (own endpoint, not the
     # criteria payload) -- so wait for them rather than assuming they arrived
@@ -140,19 +142,34 @@ with sync_playwright() as p:
     check('project datalist populated',
           pg.locator('#bt-proj-dl option').count() > 500,
           str(pg.locator('#bt-proj-dl option').count()))
-    check('task datalist populated', pg.locator('#bt-task-dl option').count() > 500,
+    # scoped to the default budget type + year, so smaller than the full 1,825
+    check('task datalist populated', pg.locator('#bt-task-dl option').count() > 100,
           str(pg.locator('#bt-task-dl option').count()))
     check('expenditure-type datalist populated', pg.locator('#bt-et-dl option').count() > 50,
           str(pg.locator('#bt-et-dl option').count()))
     check('cost-centre datalist populated', pg.locator('#bt-cc-dl option').count() > 50,
           str(pg.locator('#bt-cc-dl option').count()))
+    # Budget Type + Transaction Year are mandatory: marked *, no "All" option,
+    # and defaulted so the page opens on a real scope instead of an error
+    check('Budget Type marked required', '*' in labels_raw[0], labels_raw[0])
+    check('Transaction Year marked required', '*' in labels_raw[4], labels_raw[4])
+    scope = page.evaluate("() => { const v = ko.dataFor(document.body);"
+                          " return [v.btcType(), v.btcYear()]; }")
+    check('page opens on a default scope', all(scope), str(scope))
+    tsel0 = pg.locator('.filter-grid select').nth(0)
+    ysel0 = pg.locator('.filter-grid select').nth(4)
+    check('Budget Type has no All option',
+          'All' not in tsel0.inner_text(), tsel0.inner_text().replace(chr(10), '|'))
+    check('Transaction Year has no All option', 'All' not in ysel0.inner_text())
+
     # selects in order: type, bu, projType, status, year, approver, THEN sector
     sec_sel = pg.locator('.filter-grid select').nth(6)
     check('sector LOV populated', sec_sel.locator('option').count() > 5,
           str(sec_sel.locator('option').count()))
     # LOVs populated from /budgettrx/filters
     tsel = pg.locator('.filter-grid select').first
-    check('budget type LOV populated', tsel.locator('option').count() >= 4,
+    # no "All" caption any more -- the three real budget types only
+    check('budget type LOV populated', tsel.locator('option').count() >= 3,
           str(tsel.locator('option').count()))
 
     rows = pg.locator('.bt-row')
@@ -222,10 +239,15 @@ with sync_playwright() as p:
     # ---- 4. criteria actually filter --------------------------------------
     tsel.select_option(label='Annual Budget')
     pg.locator('.filter-actions .btn-primary').first.click()
-    page.wait_for_timeout(4000)
+    page.wait_for_timeout(6000)
+    check('budget type is now Annual-Budget',
+          page.evaluate("() => ko.dataFor(document.body).btcType()") == 'Annual-Budget')
     types = {pg.locator('.bt-row').nth(i).locator('td').nth(1).inner_text().strip()
              for i in range(min(pg.locator('.bt-row').count(), 8))}
-    check('type filter applied', types == {'Annual-Budget'}, str(types))
+    # subset, not equality: the default year may hold no rows of that type, and
+    # an empty grid is a correct answer -- what must never happen is a row of
+    # another type slipping through
+    check('type filter applied', types <= {'Annual-Budget'}, str(types))
     check('selection cleared by a new search',
           pg.locator('.bt-row--on').count() == 0)
 

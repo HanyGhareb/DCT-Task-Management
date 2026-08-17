@@ -3,6 +3,62 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-17 — Excel Budget Override becomes a signed BUDGET CHANGE (v1.66.0; db/v2/106+107,
+  db/v2/37, GL/db/07+15).** User request: the Excel figure must be a **+/- change added to the
+  budget line for a chosen accounting period**, the download must be scoped and line-grained,
+  and ticking *Select to include Budget Override* must move **both** the Annual and the YTD
+  budget on the page and in the reports.
+  - **Model flip:** `DCT_PROJECT_BUDGET_USER.budget_user` (absolute replacement) →
+    **`budget_change`** (signed, ADDED to the budget). `106.1a` performs the one-time
+    migration — guarded on the old column name, so it runs exactly once: **DELETE all rows
+    (179 legacy ADMIN rows, user-approved) then RENAME COLUMN**. A PUT still sending
+    `budget_user` is rejected with a **400** naming the new workbook (a silent reinterpretation
+    of an absolute figure as a delta would be a data-integrity event).
+    **The rename makes flashback recovery impossible (ORA-01466 across the DDL) — take a
+    snapshot BEFORE re-running a migration like this.**
+  - **Excel API v2** (`db/v2/106`): `GET /xl/budget/` is now **one row per budget LINE**
+    (project × task × expenditure type) carrying `budget_annual`, `budget_ytd` (periods ≤ the
+    selected one), `budget_change`, `line_change_total`, `adjusted_annual`, `adjusted_ytd`,
+    `business_unit`, `project_type`; scoped by `business_unit` / `project_type` matched on the
+    **exact** stored name and defaulting to `Department of Culture and Tourism` /
+    `DCT OPEX Project Type`; new `GET /xl/lov/:kind` (business-units · project-types · periods ·
+    budget-years · reasons) and an OpenAPI v2 whose four download parameters carry live `enum`
+    lists so the add-in renders drop-downs.
+  - **THE load-bearing data fact:** the Fusion budget is **un-phased** — 1,736 of 1,779 FY2026
+    lines carry ONE period row, 1,570 of them in `01-2026`. A change booked at 08-2026 therefore
+    usually has **no matching budget row**, so: `save_item` validates the LINE within the budget
+    year (not the exact period row); `db/v2/37`'s `pb` CTE now feeds from a **`pb_src` UNION ALL**
+    (budget rows contribute `budget`, change rows contribute `chg`) instead of an outer join;
+    `GL/db/15` joins the budget per LINE with a LEFT join; and `GL/db/07`'s budget drill folds
+    both sources into one row per period. Any of these left as a join would silently drop
+    changes and stop the drill reconciling to the KPI.
+  - **Deploy order (as executed):** `106` → `107` (fresh session) → `db/v2/37` → `GL/db/07` +
+    `GL/db/15` (fresh session) → `compile_schema` to **0 INVALID**. The rename invalidates
+    `DCT_BUDGET_UTILIZATION_V` and `DCT_BUTIL_SCOPE_V` in between — expected, recompile clears it.
+    **GL post-05 re-run list is unchanged (07..20).**
+  - **Frontend (v1.66.0):** the KPI tile is now **Budget Change (+/-)** with a signed, colour-coded
+    value; the drawer is line-grain (Annual/YTD Fusion · Change ± · Adjusted Annual/YTD) with the
+    signed input, updated CSV and totals footer. **The checkbox keeps its business wording,
+    "Select to include Budget Override"** — only its hint changed (it now says the change is
+    ADDED). NOTE: a parallel session had already bumped APP_VERSION to 1.65.0 for the Budget
+    Transactions work, so this shipped as **1.66.0**.
+  - **Verified:** xl API battery 40/41 (the one miss was the test's own AFH expectation — see
+    below) · GL end-to-end 18/18 · SQL reconciliation (ovr flag is a no-op with zero changes;
+    annual and YTD each move by exactly the change; an orphan-period change still counts; YTD
+    excludes it before its period) · browser smoke NEW `tests/butil_change_browser_smoke.py`
+    **31/31** EN + AR/RTL.
+  - **Found, not fixed (data):** `business_unit=Abrahamic Family House` downloads **0 lines** —
+    all 45 AFH budget lines reference task ids missing from the `ATD_TASKS` extract, so they are
+    excluded here exactly as they already are on the butil page (platform '#'-surrogate rule).
+    Widening the tasks extract to AFH lights both up together.
+  - **Excel workbook:** the distributed v1 workbook still has the v1 columns and its uploads now
+    fail with the `budget_user` 400. Rebuilding the layout REQUIRES the add-in in **Windows
+    Excel** (cannot be done from Linux) — the click-path is in
+    `docs/excel-integration/VBAFE_BUDGET_USER_GUIDE.md §3`. `style_template.py` was rewritten to
+    resolve columns by **header text** (not fixed letters) so it follows whatever layout is
+    published, and `load_overrides.py` now posts the sheet's adjustment column VERBATIM as
+    `budget_change` (dry-run: 247/254 rows, −87.6M net).
+
 - **2026-08-12 — Butil Organization column (v1.61.0; db/v2/37+39 + GL/db/07 + reporting/db/25).**
   User request after the Department-vs-OTBI question: the page's DEPARTMENT is the GL
   cost-centre segment description (COA snap), NOT the PPM Task Organization — both are now
@@ -1593,7 +1649,19 @@ the data (verified: zero cost centres with >1 sector, zero appropriations with
 >1 chapter), so the `MAX()` aggregates pick a value rather than one of several.
 Cost-centre code falls back to the trailing digits of the `COST_CENTER` label
 ("AFHC Education and Dialogue-6170200" → 6170200) for the combination-less lines.
-Coverage: cost centre 100% · sector 95.8% · program 70% · chapter 66%.
+**An Estimated-Cost line legitimately has no code combination** — it is not
+mandatory for that budget type (user-confirmed 2026-08-17) and 5,546 of them
+carry none. So the segment codes fall back to the line's own **task** attributes
+(the platform's task-first attribution, same source and LPAD widths as
+`DCT_BUDGET_UTILIZATION_V`), which answers for 5,071 of those 5,546. Without the
+fallback, a Chapter / Program / Appropriation filter would silently exclude every
+Estimated-Cost transaction — not because it belongs to another chapter, but
+because the row could not say which. `DIM_SOURCE` records which path each row
+took (`COMBINATION` / `TASK`).
+
+Coverage: cost centre 100% · sector 95.8% · **program 97.4%** (was 70) ·
+**appropriation 97.4%** · **chapter 89.5%** (was 66). Estimated-Cost lines with a
+chapter went from ~1.1k to 6,658 of 7,876.
 
 The view also emits `period_from_num` / `period_to_num` (YYYYMM), because
 **MM-YYYY cannot be compared or sorted lexically** ('02-2025' > '01-2026'), each
@@ -1652,10 +1720,42 @@ filters.
 `DCT_PROJECT_BUDGET_USER` override to butil's computed figures and has no
 counterpart in PBT data, which is the source system's own transaction register.
 
-### Verified
-API `tests/budgettrx_api_smoke.py` **37/37** in 9s (every criterion narrows,
-criteria AND on one line, period ordering is numeric, line-less headers survive,
-400/404/401). Browser `tests/budgettrx_browser_smoke.py` **74/74** EN + AR/RTL.
+### Budget Type + Transaction Year are MANDATORY (same round, user decision)
+Both are marked `*`, have **no "All" option**, and the server **400s** without
+them — so a direct curl cannot ask for the whole table either. The page defaults
+to the first budget type and the current year (falling back to the newest year
+with data), so it opens on a real scope rather than an error, and **Clear resets
+to that default scope instead of emptying it** — clearing a mandatory field would
+only produce an error message.
 
-Test gotcha: `.lbl` is `text-transform:uppercase` **and** Chrome's `innerText`
-upper-cases the trailing ⓘ to Ⓘ — strip it and compare upper-case.
+Because the type is always known, both line CTEs add `trx_type = l_type`, which
+cuts the 18,544-row union to one type's table.
+
+Everything else on the page is **scoped to that type+year too**: `/budgettrx/lov`
+takes both, and `/budgettrx/filters` takes them optionally and narrows its
+line-derived lists (sectors, chapters, programs, appropriations, periods) to
+values that exist in scope. Before this, the criteria offered an Appropriation
+that returned zero rows under the selected type — the API smoke caught exactly
+that (`appropriation 000000 -> 0`). Page open therefore makes one unscoped
+filters call (to learn the types and years), then one scoped call once the
+defaults are set; changing either re-fetches through `btRescope()`.
+
+Timings on the live tier: grid 0.10s unfiltered, 0.43s worst filtered,
+filters 0.82s, lov 0.65s.
+
+### Verified
+API `tests/budgettrx_api_smoke.py` **42/42** (every criterion narrows, criteria
+AND on one line, period ordering is numeric, line-less headers survive, LOVs
+narrow to the scope, missing type/year → 400, 400/404/401).
+Browser `tests/budgettrx_browser_smoke.py` **80/80** EN + AR/RTL.
+
+Test gotchas:
+- `.lbl` is `text-transform:uppercase` **and** Chrome's `innerText` upper-cases
+  the trailing ⓘ to Ⓘ — strip it (and the `*`) before comparing.
+- Assert the type filter as a **subset** of `{'Annual-Budget'}`, not equality:
+  the default year may hold no rows of a type, and an empty grid is a correct
+  answer. What must never happen is another type slipping through.
+- Pick test values from the **scoped** `/budgettrx/filters`, not the unscoped
+  one, or the test filters by a value that cannot exist in its own scope.
+- Estimated-Cost touches every 2026 project, so its LOV legitimately **equals**
+  the all-types list — assert subset, not "smaller".
