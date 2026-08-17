@@ -8,6 +8,7 @@ Details and Approval History regions, paging, CSV export and the AR pass.
 
 Auth: GL_TOK = a live session token (SYS_ADMIN or a GL privilege holder).
 Run:  python dev-proxy.py 8210 (from GL/Jet) then python budgettrx_browser_smoke.py
+      or against the deployed build: GL_BASE=https://<webtier>/GL/Jet python ...
 """
 import json
 import os
@@ -41,7 +42,9 @@ def check(name, cond, extra=''):
 
 with sync_playwright() as p:
     b = p.chromium.launch(headless=True)
-    ctx = b.new_context(viewport={'width': 1680, 'height': 1050})
+    # ignore_https_errors so the SAME suite can run against the webtier
+    # (self-signed cert) and not just the local dev-proxy
+    ctx = b.new_context(viewport={'width': 1680, 'height': 1050}, ignore_https_errors=True)
     page = ctx.new_page()
     errors = []
     page.on('pageerror', lambda e: errors.append(str(e)))
