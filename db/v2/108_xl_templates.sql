@@ -418,9 +418,9 @@ BEGIN
                (template_code, template_name, template_name_ar, description,
                 module_code, created_by)
         VALUES ('BUDGET_OVERRIDE',
-                'Project Budget Override',
+                'Project Budget Change',
                 UNISTR('\062A\0639\062F\064A\0644 \0645\064A\0632\0627\0646\064A\0629 \0627\0644\0645\0634\0627\0631\064A\0639'),
-                'Excel workbook (Visual Builder Add-in) for entering the end-user BUDGET_USER override per project budget line.',
+                'Excel workbook (Visual Builder Add-in) for entering the end-user BUDGET CHANGE (+/-) per project budget line: a positive amount is added to the line, a negative amount subtracted, for the accounting period downloaded.',
                 'GL', 'SYSTEM');
     END IF;
     COMMIT;
