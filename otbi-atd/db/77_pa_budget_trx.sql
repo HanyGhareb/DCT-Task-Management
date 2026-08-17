@@ -340,6 +340,8 @@ DECLARE
 BEGIN
   cfg('PBT_SYNC_ENABLED', 'N', 'BOOL',
       'Project Budget Transactions: run the scheduled sync (hourly shallow + nightly deep)', 810);
+  cfg('ATD_PBT_CONC', '6', 'NUMBER',
+      'Project Budget Transactions: how many detail/approval calls run at once (1 = serial; higher = faster full refresh, heavier on the source)', 809);
   cfg('PBT_SYNC_TYPES', 'Additional,Estimated-Cost,Annual-Budget', 'STRING',
       'Project Budget Transactions: budget types the scheduled sync covers (CSV of API codes)', 811);
   cfg('PBT_SYNC_BUS', 'Department of Culture and Tourism,Abrahamic Family House,Museum Shared Services', 'STRING',

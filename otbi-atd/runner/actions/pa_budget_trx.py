@@ -64,8 +64,19 @@ SIGNIN_MARKERS = ("login.microsoftonline.com", "/ui/v1/signin", "oamsso", "/sso/
 
 # Child fetches run CONCURRENTLY inside the page -- see _get_json_many. 6 keeps
 # a full refresh to a couple of minutes without leaning on a government API
-# gateway; ATD_PBT_CONC overrides it, and 1 restores the old serial behaviour.
-DEFAULT_CONC = int(os.environ.get("ATD_PBT_CONC") or 6)
+# gateway; 1 restores the old serial behaviour.
+# Set in ATD -> Runner Settings as ATD_PBT_CONC: config.apply_runner_config()
+# overlays every atd_runner_config row onto os.environ at worker startup, so it
+# MUST be read per run, not at import time (this module is imported first).
+FALLBACK_CONC = 6
+
+
+def _conc(data):
+    raw = (data or {}).get("concurrency") or os.environ.get("ATD_PBT_CONC")
+    try:
+        return max(1, min(int(raw), 12))
+    except (TypeError, ValueError):
+        return FALLBACK_CONC
 CHILD_CHUNK = 60          # transactions per concurrent batch
 
 
@@ -397,7 +408,7 @@ def extract(ctx, env, data, action):
     purge = bool(data.get("purgeMissing"))
     d_from = _date(data.get("dateFrom"))
     d_to = _date(data.get("dateTo"))
-    conc = max(1, min(int(data.get("concurrency") or DEFAULT_CONC), 12))
+    conc = _conc(data)
     if not types:
         raise RuntimeError("no valid transactionTypes in payload")
 
@@ -555,7 +566,7 @@ def _merge_headers(conn, masters, run_id, run_ts, widths=None):
 
 
 def _load_children(conn, ctx, page, ttype, todo, run_id, run_ts, want_appr,
-                   widths=None, conc=DEFAULT_CONC):
+                   widths=None, conc=FALLBACK_CONC):
     """Lines are MERGEd on their own `identifier`; a line that vanished from a
     refetched transaction is then removed by the last_seen_at sweep. Approvals
     carry no key of their own, so they are delete-then-insert per transaction."""

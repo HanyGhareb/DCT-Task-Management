@@ -108,6 +108,25 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
       }).catch(function () { toast.error(i18n.t('atd.runAction.failed')); })
         .then(function () { self.rerunning(false); });
     };
+    /* Cancel a run whose worker is gone. This closes the CONTROL-PLANE rows --
+       the run log and any action still holding its idempotency key -- it does
+       NOT kill a process: the ATD fleet has no command channel. If the worker
+       is somehow alive it finishes and overwrites this status, which is right. */
+    self.cancelling = ko.observable(false);
+    self.cancelRun = function (row) {
+      if (!row || row.status !== 'RUNNING' || self.cancelling()) return;
+      if (!window.confirm(i18n.t('atd.runs.cancelConfirm')
+                          .replace('{run}', row.runId).replace('{job}', row.jobName || ''))) return;
+      self.cancelling(true);
+      atd.cancelRun(row.runId).then(function (r) {
+        var extra = (r && r.actionsCancelled) ? ' (+' + r.actionsCancelled + ' action)' : '';
+        toast.success(i18n.t('atd.runs.cancelDone').replace('{run}', row.runId) + extra);
+        self.load();
+      }).catch(function (e) {
+        toast.error((e && e.message) || i18n.t('atd.runs.cancelFailed'));
+        self.load();          // 409 = someone else finished it; show the truth
+      }).then(function () { self.cancelling(false); });
+    };
     self.copyError = function () {
       var text = String((self.detail() && self.detail().message) || '');
       if (!text) { toast.error(i18n.t('atd.runAction.noMessage')); return; }

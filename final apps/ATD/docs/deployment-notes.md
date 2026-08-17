@@ -272,6 +272,41 @@ them; see `otbi-atd/docs/deployment-notes.md` § Fusion Action #2 for the handle
 
 ---
 
+## Cancel a stuck run from Run Logs — 2026-08-18 (v1.40.0, `otbi-atd/db/81`)
+
+A worker that dies mid-run (VM reboot, `systemctl restart` during a handler
+upgrade, kernel panic) leaves `ATD_LOAD_RUN_LOG.status = 'RUNNING'` for ever and
+any action it claimed stuck on `CLAIMED` — which then reads as "still running"
+on every page. Until now the only fix was an UPDATE by hand.
+
+**Run Logs now shows a Cancel button on RUNNING rows only.** It calls the new
+`POST /atd/runs/:id/cancel` (SYS_ADMIN), which closes the run-log row **and**
+releases any `ATD_ACTION_REQUEST` still holding that run — important, because a
+CLAIMED action keeps its idempotency-key bucket locked and blocks the next run
+of the same bucket.
+
+> **It closes control-plane rows; it cannot kill a process.** The ATD fleet has
+> no command channel (the reporting workers do, these don't). If the worker is
+> somehow still alive it finishes and overwrites the status, which is correct.
+> The button is for runs whose worker is gone.
+
+`409` if the run already finished, `404` unknown, `400` non-numeric id — all
+decided **before** `json_header`, or the header wins and the status is lost.
+
+**`13_atd_ords.sql` rebuilds `atd.rest`, so the post-13 re-run list is now
+`20, 38, 41, 42, 44, 45, 63, 78, 81`.**
+
+Verified: cancelled the real orphan (run 13147, left by the PBT handler upgrade)
+plus 409/404/400/401; browser test 6/6 — button present on RUNNING, absent on
+finished, status flips, button disappears, no JS errors.
+
+Same round: fixed a **pre-existing** binding bug on this page — the warning rows
+bound `columnName` / `rawValue` bare, and APEX_JSON omits a NULL key, so any
+warning without a column threw `ReferenceError` and blanked the row. Bound as
+`$data.x` (the standing platform rule).
+
+---
+
 ## Project Budget Transactions (PBT) extract — 2026-08-17 (v1.39.0)
 
 Extracts master–detail budget transactions out of the **ADG_FIN "Project Budget

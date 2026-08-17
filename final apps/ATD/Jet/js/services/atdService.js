@@ -129,6 +129,7 @@ function (api) {
     listRuns:     function (params)    { return api.get('/runs' + qs(params)); },
     warningSummary:function (params)   { return api.get('/warnings/summary' + qs(params)); },
     getRun:       function (id)        { return api.get('/runs/' + id); },
+    cancelRun:    function (id)        { return api.post('/runs/' + id + '/cancel', {}); },
     runsExportUrl:function (params)    { return '/runs/export' + qs(params); },
 
     // runner config (UI-managed operational settings)

@@ -138,6 +138,7 @@ ACTIVE per template** and end users elsewhere download the active published file
 - `delVersion(t, v)` — confirm + `POST /templates/delete-version` (blocked on the ACTIVE version).
 
 ## Run Logs (`runs`)
+- `cancelRun(row)` (v1.40.0) — Cancel button, rendered on **RUNNING rows only**; confirms, calls `POST /runs/:id/cancel`, reloads. `clickBubble:false` or the row's own click opens the detail drawer underneath it
 - Run Detail shows non-blocking **data warnings** for invalid dates: source row,
   target column, original value, and reason. The job remains SUCCESS and loads NULL
   for the invalid cell; diagnostic samples are stored by run (`db/49`).
@@ -302,6 +303,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |
 | GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` filter (db/42); detail adds `warningCount` + `warnings[]` with row/column/value/reason for non-blocking invalid-date warnings (db/49). Re-run both additive scripts after `13`. |
+| POST | `/runs/:id/cancel` | cancel a run stuck on RUNNING (worker gone): closes the run-log row + releases any `ATD_ACTION_REQUEST` still holding it — a CLAIMED action keeps its idempotency bucket locked. 409 if already finished. **Cannot kill a process** (no command channel to the ATD fleet). db/81 — re-run after any 13 |
 | GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`; incl. db/46 telemetry `workerVm`/`startedAt`/`finishedAt`/`durationSecs`/`submittedBy`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
 | GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |
 | GET | `/actions/:id` | action detail: payload, last error, source status history |

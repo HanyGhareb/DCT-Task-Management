@@ -703,5 +703,10 @@
   "atd.pbt.c.createdAt": "التاريخ",
   "atd.common.prev": "السابق",
   "atd.common.next": "التالي",
-  "atd.common.search": "بحث"
+  "atd.common.search": "بحث",
+  "atd.runs.cancel": "إلغاء",
+  "atd.runs.cancelHint": "وضع علامة إلغاء على هذا التشغيل. استخدمها عندما يكون العامل قد توقف (إعادة تشغيل الخادم) وبقي التشغيل في حالة «قيد التشغيل».",
+  "atd.runs.cancelConfirm": "إلغاء التشغيل رقم {run} ({job})؟\n\nسيتم إغلاق سجل التشغيل وتحرير أي إجراء مرتبط به. لا يمكن إيقاف عامل ما زال يعمل.",
+  "atd.runs.cancelDone": "تم إلغاء التشغيل رقم {run}",
+  "atd.runs.cancelFailed": "تعذّر إلغاء التشغيل"
 }

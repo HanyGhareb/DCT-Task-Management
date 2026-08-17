@@ -703,5 +703,10 @@
   "atd.pbt.c.createdAt": "Date",
   "atd.common.prev": "Previous",
   "atd.common.next": "Next",
-  "atd.common.search": "Search"
+  "atd.common.search": "Search",
+  "atd.runs.cancel": "Cancel",
+  "atd.runs.cancelHint": "Mark this run as cancelled. Use it when the worker is gone (VM restarted or rebooted) and the run is stuck on RUNNING.",
+  "atd.runs.cancelConfirm": "Cancel run #{run} ({job})?\n\nThis closes the run log and releases any action it is holding. It cannot stop a worker that is still alive.",
+  "atd.runs.cancelDone": "Run #{run} cancelled",
+  "atd.runs.cancelFailed": "Could not cancel the run"
 }

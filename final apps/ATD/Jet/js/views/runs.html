@@ -34,7 +34,7 @@
               event:{ keydown:function(d,e){ if(e.key==='Enter'||e.key===' '){ $vm.openWarningGroup(d); return false; } return true; } }">
             <td class="mono" data-bind="text: jobName"></td>
             <td><div class="wsum__issue" data-bind="text: issue"></div>
-              <!-- ko if: columnName --><div class="muted mono" data-bind="text: columnName"></div><!-- /ko --></td>
+              <!-- ko if: $data.columnName --><div class="muted mono" data-bind="text: $data.columnName"></div><!-- /ko --></td>
             <td data-bind="text: firstSeen"></td><td data-bind="text: lastSeen"></td>
             <td><span class="wsum__runs" data-bind="text: affectedRuns"></span></td>
             <td><span data-bind="css: $vm.statusClass(active==='Y' ? 'WARNING' : 'DONE'),
@@ -86,6 +86,7 @@
         <th data-bind="text: t('atd.col.started')"></th>
         <th data-bind="text: t('atd.col.finished')"></th>
         <th data-bind="text: t('atd.col.duration')"></th>
+        <th></th>
       </tr></thead>
       <tbody data-bind="foreach: runs">
         <tr style="cursor:pointer" data-bind="click: function(){ $vm.open($data); }">
@@ -110,6 +111,16 @@
           <td data-bind="text: $data.started || '—'"></td>
           <td data-bind="text: $data.finished || '—'"></td>
           <td class="mono" data-bind="text: ($data.durationSec != null ? $vm.fmtDuration($data.durationSec) : '—')"></td>
+          <!-- Cancel: only a RUNNING row can be cancelled. clickBubble:false or
+               the row's own click opens the detail drawer underneath it. -->
+          <td>
+            <!-- ko if: $data.status === 'RUNNING' -->
+            <button class="btn btn-sm btn-danger"
+                    data-bind="click: function(){ $vm.cancelRun($data); }, clickBubble: false,
+                               attr:{ title: $vm.t('atd.runs.cancelHint') },
+                               text: $vm.t('atd.runs.cancel')"></button>
+            <!-- /ko -->
+          </td>
         </tr>
       </tbody>
     </table>
@@ -176,9 +187,9 @@
                 <th data-bind="text: t('atd.runs.detail.sourceRow')"></th>
               </tr></thead>
               <tbody data-bind="foreach: detail().warnings">
-                <tr><td data-bind="text: rowNumber"></td><td class="mono" data-bind="text: columnName"></td>
+                <tr><td data-bind="text: $data.rowNumber"></td><td class="mono" data-bind="text: $data.columnName || '—'"></td>
                   <td><pre class="mono" style="white-space:pre-wrap;margin:0;max-width:260px" data-bind="text: $vm.prettyJson(keyValues)"></pre></td>
-                  <td class="mono" data-bind="text: rawValue || '—'"></td><td data-bind="text: reason"></td>
+                  <td class="mono" data-bind="text: $data.rawValue || '—'"></td><td data-bind="text: $data.reason"></td>
                   <td><details><summary class="link-like" data-bind="text: $root.t('atd.runs.detail.viewRow')"></summary>
                     <pre class="mono" style="white-space:pre-wrap;max-width:420px;max-height:220px;overflow:auto" data-bind="text: $vm.prettyJson(sourceRow)"></pre>
                   </details></td></tr>

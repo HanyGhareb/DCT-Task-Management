@@ -28,6 +28,7 @@
 .rstat--DELIVERED { background:#EAF2FB; color:#2C6CB0; }
 .rstat--APPROVED { background:#E8F6EC; color:#2A7D3A; }
 .rstat--EXPIRED  { background:#EEF1F4; color:#5A6570; }
+.rstat--CANCELLED { background:#EEF1F4; color:#5A6570; }
 .rstat--REQUESTED, .rstat--CHECKING { background:#FDF1DD; color:#B5651A; }
 .rstat--WAITING_MFA { background:#FDF1DD; color:#B5651A; }
 .rstat--SESSION_OK { background:#E8F6EC; color:#2A7D3A; }
