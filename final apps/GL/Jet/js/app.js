@@ -34,6 +34,56 @@
     appName:{en:'Financial Planning and Budgeting',ar:'التخطيط المالي والموازنة'}, appSub:{en:'FP',ar:'التخطيط المالي'},
     signOut:{en:'Sign out',ar:'خروج'}, apps:{en:'Apps',ar:'التطبيقات'},
     home:{en:'Fusion i-Finance Home',ar:'الرئيسية'}, switchApp:{en:'Switch application',ar:'الانتقال إلى تطبيق'},
+    grpProjects:{en:'Projects',ar:'المشاريع'},
+    grpGl:{en:'General Ledger',ar:'دفتر الأستاذ العام'},
+    grpSettings:{en:'Settings',ar:'الإعدادات'},
+    navBudgetTrx:{en:'Budget Transactions',ar:'معاملات الموازنة'},
+    btTitle:{en:'Budget Transactions',ar:'معاملات الموازنة'},
+    btSub:{en:'Project budget transactions extracted from the Project Budget Transactions application — header, details and approval trail.',ar:'معاملات موازنة المشاريع المستخرجة من تطبيق معاملات موازنة المشاريع — الرأس والتفاصيل وسجل الاعتماد.'},
+    btCriteria:{en:'Search criteria',ar:'معايير البحث'},
+    btTransactions:{en:'Transactions',ar:'المعاملات'},
+    btDetails:{en:'Details',ar:'التفاصيل'},
+    btApprovals:{en:'Approval history',ar:'سجل الاعتماد'},
+    btType:{en:'Budget Type',ar:'نوع الموازنة'},
+    btBu:{en:'Business Unit',ar:'وحدة الأعمال'},
+    btProjType:{en:'Project Type',ar:'نوع المشروع'},
+    btStatus:{en:'Status',ar:'الحالة'},
+    btYear:{en:'Transaction Year',ar:'سنة المعاملة'},
+    btApprover:{en:'Dept 1st Level Approver',ar:'المعتمد الأول للإدارة'},
+    btTrxNo:{en:'Transaction No.',ar:'رقم المعاملة'},
+    btDecree:{en:'Decree No.',ar:'رقم القرار'},
+    btDateFrom:{en:'Transaction Date From',ar:'تاريخ المعاملة من'},
+    btDateTo:{en:'Transaction Date To',ar:'تاريخ المعاملة إلى'},
+    btSearchBtn:{en:'Search',ar:'بحث'},
+    btClear:{en:'Clear',ar:'مسح'},
+    btExport:{en:'Export CSV',ar:'تصدير CSV'},
+    btAll:{en:'All',ar:'الكل'},
+    btSelectRow:{en:'Select a transaction above to see its details and approval history.',ar:'اختر معاملة من الأعلى لعرض تفاصيلها وسجل اعتمادها.'},
+    btNoRows:{en:'No transactions match the criteria.',ar:'لا توجد معاملات مطابقة للمعايير.'},
+    btNoLines:{en:'This transaction has no detail lines.',ar:'لا توجد تفاصيل لهذه المعاملة.'},
+    btNoAppr:{en:'No approval history recorded.',ar:'لا يوجد سجل اعتماد.'},
+    btShowing:{en:'Showing',ar:'عرض'},
+    btOf:{en:'of',ar:'من'},
+    btPrev:{en:'Previous',ar:'السابق'},
+    btNext:{en:'Next',ar:'التالي'},
+    btLines:{en:'Lines',ar:'التفاصيل'},
+    btApprCount:{en:'Approvals',ar:'الاعتمادات'},
+    btOrganization:{en:'Organization',ar:'الجهة'},
+    btCreationDate:{en:'Creation Date',ar:'تاريخ الإنشاء'},
+    btProject:{en:'Project',ar:'المشروع'},
+    btTask:{en:'Task',ar:'المهمة'},
+    btExpType:{en:'Expenditure Type',ar:'نوع الإنفاق'},
+    btCodeComb:{en:'Code Combination',ar:'تركيبة الحساب'},
+    btAmount:{en:'Amount',ar:'المبلغ'},
+    btLineStatus:{en:'Line Status',ar:'حالة السطر'},
+    btBaseline:{en:'Baseline Status',ar:'حالة الاعتماد'},
+    btJournal:{en:'Journal Status',ar:'حالة القيد'},
+    btPeriod:{en:'Period',ar:'الفترة'},
+    btNotes:{en:'Notes',ar:'ملاحظات'},
+    btSubmitter:{en:'Submitted by',ar:'أرسلها'},
+    btAssignee:{en:'Assignee',ar:'المسؤول'},
+    btState:{en:'State',ar:'الحالة'},
+    btWhen:{en:'Date',ar:'التاريخ'},
     navOverview:{en:'Chart of Accounts',ar:'دليل الحسابات'}, navClass:{en:'Classifications',ar:'التصنيفات'},
     navMapping:{en:'Segment Mapping',ar:'ربط البنود'}, navExplorer:{en:'Explorer',ar:'المستكشف'},
     coaTitle:{en:'Chart of Accounts',ar:'دليل الحسابات'},
@@ -284,7 +334,7 @@
     yoPickBg:{en:'Select at least one budget group.',ar:'اختر مجموعة ميزانية واحدة على الأقل.'},
 
     /* ── Actuals (Budget vs Actual) report ── */
-    navActuals:{en:'General Ledger',ar:'دفتر الأستاذ العام'}, navDashboard:{en:'Dashboard',ar:'لوحة المعلومات'},
+    navActuals:{en:'Budget vs Actual',ar:'الموازنة مقابل الفعلي'}, navDashboard:{en:'Dashboard',ar:'لوحة المعلومات'},
     acTitle:{en:'Budget vs Actual',ar:'الموازنة مقابل الفعلي'},
     acSub:{en:'Year-to-date budget, encumbrance and actual spend per GL combination.',ar:'الموازنة والارتباطات والإنفاق الفعلي حتى تاريخه لكل تركيبة محاسبية.'},
     fPeriod:{en:'Accounting period',ar:'الفترة المحاسبية'}, fSectorL:{en:'Sector',ar:'القطاع'},
@@ -665,9 +715,209 @@
     applyDir();
     self.ready = ko.observable(false);
     self.view = ko.observable('overview');
+
+    /* ── navigation: three groups, each with its own sub-tabs ───────────
+       Adding a page = one entry here; the group row, the sub row and the
+       deep-link-to-group resolution all follow from this list. */
+    var NAV_GROUPS = [
+      { id: 'projects', labelKey: 'grpProjects', items: [
+          { id: 'butil',        labelKey: 'navButil' },
+          { id: 'encumbrances', labelKey: 'navEncumbrances' },
+          { id: 'pending',      labelKey: 'navPending' },
+          { id: 'budgettrx',    labelKey: 'navBudgetTrx' },
+          { id: 'cashflow',     labelKey: 'navCashflow' } ] },
+      { id: 'gl', labelKey: 'grpGl', items: [
+          { id: 'dashboard', labelKey: 'navDashboard' },
+          { id: 'actuals',   labelKey: 'navActuals' },
+          { id: 'recon',     labelKey: 'navRecon' },
+          { id: 'legacy',    labelKey: 'navLegacy' },
+          { id: 'dof',       labelKey: 'navDof' },
+          { id: 'yoy',       labelKey: 'navYoy' } ] },
+      { id: 'settings', labelKey: 'grpSettings', items: [
+          { id: 'overview', labelKey: 'navOverview' } ] }
+    ];
+    self.navGroups = NAV_GROUPS;
+    // derived from the view, so a deep link lands on the right group
+    self.activeGroup = ko.computed(function () {
+      var v = self.view();
+      for (var i = 0; i < NAV_GROUPS.length; i++)
+        for (var j = 0; j < NAV_GROUPS[i].items.length; j++)
+          if (NAV_GROUPS[i].items[j].id === v) return NAV_GROUPS[i].id;
+      return 'projects';
+    });
+    self.activeGroupItems = ko.computed(function () {
+      var g = self.activeGroup();
+      for (var i = 0; i < NAV_GROUPS.length; i++)
+        if (NAV_GROUPS[i].id === g) return NAV_GROUPS[i].items;
+      return [];
+    });
+    // clicking a group header opens its first page
+    self.goGroup = function (gid) {
+      for (var i = 0; i < NAV_GROUPS.length; i++)
+        if (NAV_GROUPS[i].id === gid) { self.go(NAV_GROUPS[i].items[0].id); return; }
+    };
     self.userName = session.displayName || session.username || '';
     self.initials = (function () { var n = (self.userName || '').split(' ').filter(Boolean); return ((n[0] || ' ')[0] + ((n[1] || '')[0] || '')).toUpperCase(); })();
     self.dimName = function (d) { return self.lang() === 'ar' ? (d.nameAr || d.nameEn) : d.nameEn; };
+
+    /* ── Budget Transactions (PA_BUDGET_TRX_*, loaded by the ATD PBT extract)
+       Mirrors the source screen: criteria → header grid → details of the
+       selected header → its approval trail. Selecting a header row is what
+       loads the two child regions, exactly as the source page behaves. */
+    self.btFilters   = ko.observable(null);
+    self.btLoaded    = ko.observable(false);
+    self.btBusy      = ko.observable(false);
+    self.btRows      = ko.observableArray([]);
+    self.btTotal     = ko.observable(0);
+    self.btPage      = ko.observable(1);
+    self.btSize      = ko.observable(100);
+    self.btSelected  = ko.observable(null);   // the chosen header row
+    self.btDetail    = ko.observable(null);   // {header, lines[], approvals[]}
+    self.btDetailBusy = ko.observable(false);
+    self.btError     = ko.observable('');
+    // criteria — same field set as the source screen
+    self.btcType     = ko.observable('');
+    self.btcBu       = ko.observable('');
+    self.btcProjType = ko.observable('');
+    self.btcStatus   = ko.observable('');
+    self.btcYear     = ko.observable('');
+    self.btcApprover = ko.observable('');
+    self.btcTrxNum   = ko.observable('');
+    self.btcDecree   = ko.observable('');
+    self.btcFrom     = ko.observable('');
+    self.btcTo       = ko.observable('');
+
+    self.btPages = ko.computed(function () {
+      return Math.max(1, Math.ceil(self.btTotal() / self.btSize()));
+    });
+
+    self.loadBtFilters = function () {
+      return api('GET', '/budgettrx/filters').then(function (d) {
+        self.btFilters(d);
+      }).catch(function (e) { self.btError(e.message || String(e)); });
+    };
+
+    self.runBudgetTrx = function (page) {
+      self.btBusy(true);
+      self.btError('');
+      if (page) self.btPage(page);
+      // a new search invalidates the child regions
+      self.btSelected(null); self.btDetail(null);
+      return api('GET', '/budgettrx' + qs({
+        type: self.btcType(), bu: self.btcBu(), projecttype: self.btcProjType(),
+        status: self.btcStatus(), year: self.btcYear(), approver: self.btcApprover(),
+        trxnum: self.btcTrxNum(), decree: self.btcDecree(),
+        from: self.btcFrom(), to: self.btcTo(),
+        page: self.btPage(), size: self.btSize()
+      })).then(function (d) {
+        self.btRows(d.items || []);
+        self.btTotal(d.total || 0);
+        self.btLoaded(true);
+      }).catch(function (e) {
+        self.btError(e.message || String(e)); self.btRows([]); self.btTotal(0);
+      }).then(function () { self.btBusy(false); });
+    };
+
+    self.btSearch = function () { self.runBudgetTrx(1); };
+    self.btClearCriteria = function () {
+      self.btcType(''); self.btcBu(''); self.btcProjType(''); self.btcStatus('');
+      self.btcYear(''); self.btcApprover(''); self.btcTrxNum(''); self.btcDecree('');
+      self.btcFrom(''); self.btcTo('');
+      self.runBudgetTrx(1);
+    };
+    self.btPrevPage = function () {
+      if (self.btPage() > 1) self.runBudgetTrx(self.btPage() - 1);
+    };
+    self.btNextPage = function () {
+      if (self.btPage() < self.btPages()) self.runBudgetTrx(self.btPage() + 1);
+    };
+
+    // row click → load the details + approval trail for that header
+    self.btSelectRow = function (row) {
+      self.btSelected(row);
+      self.btDetail(null);
+      self.btDetailBusy(true);
+      api('GET', '/budgettrx/' + encodeURIComponent(row.transactionNum)
+                 + qs({ type: row.transactionType }))
+        .then(function (d) { self.btDetail(d); })
+        .catch(function (e) { self.btError(e.message || String(e)); })
+        .then(function () { self.btDetailBusy(false); });
+    };
+    self.btIsSelected = function (row) {
+      var s = self.btSelected();
+      return !!s && s.transactionNum === row.transactionNum
+                 && s.transactionType === row.transactionType;
+    };
+
+    // the line columns differ per budget type, so the table is metadata-driven
+    var BT_LINE_COLS = {
+      'Additional': [
+        ['projectNum', 'btProject'], ['projectName', ''], ['taskNum', 'btTask'],
+        ['taskName', ''], ['organization', 'btOrganization'],
+        ['expenditureType', 'btExpType'], ['codeCombination', 'btCodeComb'],
+        ['additionalAmount', 'btAmount', 1], ['commitment', '', 1],
+        ['totalAnnualBudget', '', 1], ['projectFundAvailable', '', 1],
+        ['totalActual', '', 1], ['periodFrom', 'btPeriod'], ['periodTo', ''],
+        ['lineStatus', 'btLineStatus'], ['baselineStatus', 'btBaseline'],
+        ['journalStatus', 'btJournal'], ['notes', 'btNotes']
+      ],
+      'Estimated-Cost': [
+        ['projectNum', 'btProject'], ['projectName', ''], ['taskNum', 'btTask'],
+        ['taskName', ''], ['organization', 'btOrganization'],
+        ['expenditureType', 'btExpType'], ['codeCombination', 'btCodeComb'],
+        ['estimatedCost', 'btAmount', 1], ['currentYearBudget', '', 1],
+        ['glFundAvailable', '', 1], ['lineStatus', 'btLineStatus'],
+        ['baselineStatus', 'btBaseline'], ['notes', 'btNotes']
+      ],
+      'Annual-Budget': [
+        ['projectNum', 'btProject'], ['projectName', ''], ['taskNum', 'btTask'],
+        ['taskName', ''], ['organization', 'btOrganization'],
+        ['expenditureType', 'btExpType'], ['codeCombination', 'btCodeComb'],
+        ['approvedBudget', 'btAmount', 1], ['proposedBudget', '', 1],
+        ['revisedProjectCost', '', 1], ['availableProjectCost', '', 1],
+        ['totalActual', '', 1], ['baselineStatus', 'btBaseline'],
+        ['journalStatus', 'btJournal'], ['notes', 'btNotes']
+      ]
+    };
+    function btLabel(key, fallback) {
+      if (key) return self.t(key);
+      // no i18n key: derive a readable header from the field name
+      return fallback.replace(/([A-Z])/g, ' $1').replace(/^./, function (c) { return c.toUpperCase(); });
+    }
+    self.btLineCols = ko.computed(function () {
+      var d = self.btDetail();
+      if (!d || !d.header) return [];
+      var spec = BT_LINE_COLS[d.header.transactionType] || BT_LINE_COLS['Additional'];
+      return spec.map(function (c) {
+        return { field: c[0], label: btLabel(c[1], c[0]), num: !!c[2] };
+      });
+    });
+    self.btCell = function (row, col) {
+      var v = row[col.field];
+      if (v === null || v === undefined || v === '') return '';
+      return col.num ? Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) : v;
+    };
+
+    self.btExportCsv = function () {
+      var rows = self.btRows();
+      if (!rows.length) return;
+      var cols = ['transactionNum', 'transactionType', 'businessUnit', 'projectType',
+                  'decreeNo', 'transactionDate', 'trxYear', 'approver', 'status',
+                  'organization', 'lines', 'approvals'];
+      var out = [cols.join(',')];
+      rows.forEach(function (r) {
+        out.push(cols.map(function (c) {
+          var v = r[c] == null ? '' : String(r[c]);
+          return /[",\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v;
+        }).join(','));
+      });
+      var blob = new Blob(['﻿' + out.join('\n')], { type: 'text/csv;charset=utf-8;' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'budget-transactions.csv';
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    };
 
     // Security Info drawer (SYS_ADMIN only) — reads the Security Console page
     // registry for the ACTIVE tab. Portal-style twin of <security-info>.
@@ -834,6 +1084,11 @@
         // reuses the Budget Utilization filter set; run once on first open
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runPending(); });
         else if (!self.pnLoaded()) self.runPending();
+      }
+      else if (v === 'budgettrx') {
+        // own criteria set (not the butil one) — load LOVs, then first page
+        if (!self.btFilters()) self.loadBtFilters().then(function () { self.runBudgetTrx(1); });
+        else if (!self.btLoaded()) self.runBudgetTrx(1);
       }
       else if (v === 'legacy') {
         if (!self.xmLoaded()) self.runEbsMap();

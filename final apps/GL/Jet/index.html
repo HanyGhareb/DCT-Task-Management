@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.62.0';</script>
+<script>window.APP_VERSION = '1.63.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -49,21 +49,26 @@
     <button class="lang-flip" data-bind="click:signOut, text:t('signOut')"></button>
   </div>
 
-  <nav class="pnav">
-    <a data-bind="css:{on:view()==='overview'}, click:go.bind($data,'overview'), text:t('navOverview')"></a>
-    <a data-bind="css:{on:view()==='actuals'}, click:go.bind($data,'actuals'), text:t('navActuals')"></a>
-    <a data-bind="css:{on:view()==='dashboard'}, click:go.bind($data,'dashboard'), text:t('navDashboard')"></a>
-    <a data-bind="css:{on:view()==='butil'}, click:go.bind($data,'butil'), text:t('navButil')"></a>
-    <a data-bind="css:{on:view()==='encumbrances'}, click:go.bind($data,'encumbrances'), text:t('navEncumbrances')"></a>
-    <a data-bind="css:{on:view()==='pending'}, click:go.bind($data,'pending'), text:t('navPending')"></a>
-    <a data-bind="css:{on:view()==='recon'}, click:go.bind($data,'recon'), text:t('navRecon')"></a>
-    <a data-bind="css:{on:view()==='legacy'}, click:go.bind($data,'legacy'), text:t('navLegacy')"></a>
-    <a data-bind="css:{on:view()==='cashflow'}, click:go.bind($data,'cashflow'), text:t('navCashflow')"></a>
-    <a data-bind="css:{on:view()==='dof'}, click:go.bind($data,'dof'), text:t('navDof')"></a>
-    <a data-bind="css:{on:view()==='yoy'}, click:go.bind($data,'yoy'), text:t('navYoy')"></a>
+  <!-- Two-level navigation: three main groups, each with its own sub-tab row.
+       The group row shows WHERE you are; the sub row shows what is in it. The
+       active group is derived from the current view (NAV_GROUPS in app.js), so
+       a deep link still lights the right group. -->
+  <nav class="pnav pnav--grp">
+    <!-- ko foreach: navGroups -->
+    <a data-bind="css:{on: $parent.activeGroup() === $data.id},
+                  click: function(){ $parent.goGroup($data.id); },
+                  text: $parent.t($data.labelKey)"></a>
+    <!-- /ko -->
     <!-- ko if: isSysAdmin -->
     <button type="button" class="sec-link" data-bind="click: openSecurityInfo"
             style="margin-inline-start:auto; opacity:.75; background:none; border:none; cursor:pointer; font:inherit; color:inherit">&#128737; <span data-bind="text: lang()==='ar' ? 'معلومات الأمان' : 'Security Info'"></span></button>
+    <!-- /ko -->
+  </nav>
+  <nav class="pnav pnav--sub">
+    <!-- ko foreach: activeGroupItems -->
+    <a data-bind="css:{on: $parent.view() === $data.id},
+                  click: function(){ $parent.go($data.id); },
+                  text: $parent.t($data.labelKey)"></a>
     <!-- /ko -->
   </nav>
 
@@ -1462,6 +1467,177 @@
             <!-- /ko -->
             <div class="empty pad" data-bind="visible:ebLoaded() && ebYears().length===0, text:t('ebEmpty')"></div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BUDGET TRANSACTIONS — mirrors the source Project Budget           -->
+    <!--    Transactions screen: criteria → header grid → details of the       -->
+    <!--    selected header → its approval trail. Data comes from the ATD PBT  -->
+    <!--    extract (PA_BUDGET_TRX_*) via GL/db/20.                            -->
+    <div id="pg-budgettrx" data-bind="visible:view()==='budgettrx'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('btTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('btSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:btLoaded(), text:btTotal().toLocaleString('en-US')+' '+t('btTransactions')"></span>
+          <button class="btn btn-sm" data-bind="click:btExportCsv, enable:btRows().length, text:t('btExport')"></button>
+        </div>
+      </div>
+
+      <!-- ko if: btError -->
+      <div class="err" data-bind="text:btError"></div>
+      <!-- /ko -->
+
+      <!-- 1. search criteria — the same field set as the source screen -->
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('btCriteria')"></span></div>
+        <div class="bu-sec-b">
+          <div class="filter-grid">
+            <div class="field"><label class="lbl" data-bind="text:t('btType')"></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).types||[], optionsText:'name', optionsValue:'code',
+                                             value:btcType, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btBu')"></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).businessUnits||[], value:btcBu, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btProjType')"></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).projectTypes||[], value:btcProjType, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btStatus')"></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).statuses||[], value:btcStatus, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btYear')"></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).years||[], value:btcYear, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btApprover')"></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).approvers||[], value:btcApprover, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btTrxNo')"></label>
+              <input class="inp" type="text" data-bind="textInput:btcTrxNum, event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btDecree')"></label>
+              <input class="inp" type="text" data-bind="textInput:btcDecree, event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btDateFrom')"></label>
+              <input class="inp" type="date" data-bind="value:btcFrom"></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btDateTo')"></label>
+              <input class="inp" type="date" data-bind="value:btcTo"></div>
+          </div>
+          <div class="filter-actions">
+            <button class="btn btn-sm btn-primary" data-bind="click:btSearch, css:{busy:btBusy}, text:btBusy()?'…':t('btSearchBtn')"></button>
+            <button class="btn btn-sm" data-bind="click:btClearCriteria, text:t('btClear')"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2. transactions (the master grid) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('btTransactions')"></span>
+          <span class="bu-sec-sum" data-bind="text:t('btShowing')+' '+btRows().length+' '+t('btOf')+' '+btTotal().toLocaleString('en-US')"></span></div>
+        <div class="bu-sec-b">
+          <div class="data-table-wrap bt-scroll">
+            <table class="data-table bt-table">
+              <thead><tr>
+                <th data-bind="text:t('btTrxNo')"></th>
+                <th data-bind="text:t('btType')"></th>
+                <th data-bind="text:t('btBu')"></th>
+                <th data-bind="text:t('btProjType')"></th>
+                <th data-bind="text:t('btDecree')"></th>
+                <th data-bind="text:t('btDateFrom')"></th>
+                <th data-bind="text:t('btYear')"></th>
+                <th data-bind="text:t('btApprover')"></th>
+                <th data-bind="text:t('btStatus')"></th>
+                <th class="num" data-bind="text:t('btLines')"></th>
+                <th class="num" data-bind="text:t('btApprCount')"></th>
+              </tr></thead>
+              <tbody data-bind="foreach:btRows">
+                <tr class="bt-row" data-bind="click:function(){$parent.btSelectRow($data);},
+                                              css:{'bt-row--on':$parent.btIsSelected($data)}">
+                  <td class="mono" data-bind="text:$data.transactionNum"></td>
+                  <td data-bind="text:$data.transactionType"></td>
+                  <td data-bind="text:$data.businessUnit"></td>
+                  <td data-bind="text:$data.projectType"></td>
+                  <td data-bind="text:$data.decreeNo"></td>
+                  <td data-bind="text:$data.transactionDate"></td>
+                  <td data-bind="text:$data.trxYear"></td>
+                  <td data-bind="text:$data.approver"></td>
+                  <td><span class="chip" data-bind="text:$data.status"></span></td>
+                  <td class="num" data-bind="text:$data.lines"></td>
+                  <td class="num" data-bind="text:$data.approvals"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- ko if: btLoaded() && !btRows().length && !btBusy() -->
+          <div class="empty" data-bind="text:t('btNoRows')"></div>
+          <!-- /ko -->
+          <div class="filter-actions">
+            <span class="chip muted" data-bind="text:btPage()+' / '+btPages()"></span>
+            <button class="btn btn-sm" data-bind="click:btPrevPage, enable:btPage()>1, text:t('btPrev')"></button>
+            <button class="btn btn-sm" data-bind="click:btNextPage, enable:btPage()<btPages(), text:t('btNext')"></button>
+          </div>
+        </div>
+      </div>
+
+      <!-- 3. details of the selected transaction (columns vary by budget type) -->
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('btDetails')"></span>
+          <span class="bu-sec-sum" data-bind="visible:btSelected(), text:btSelected()?btSelected().transactionNum:''"></span></div>
+        <div class="bu-sec-b">
+          <!-- ko ifnot: btSelected -->
+          <div class="empty" data-bind="text:t('btSelectRow')"></div>
+          <!-- /ko -->
+          <!-- ko if: btDetailBusy -->
+          <div class="empty">…</div>
+          <!-- /ko -->
+          <!-- ko if: btDetail() && !btDetailBusy() -->
+          <div class="data-table-wrap">
+            <table class="data-table bt-table">
+              <thead><tr data-bind="foreach:btLineCols">
+                <th data-bind="text:$data.label, css:{num:$data.num}"></th>
+              </tr></thead>
+              <!-- nested foreach: outer $data = the line, inner $data = the
+                   column spec, so the cell value is btCell(line, col) with the
+                   line reached as $parent and the VM as $parents[1] -->
+              <tbody data-bind="foreach:btDetail().lines">
+                <tr data-bind="foreach:$parent.btLineCols">
+                  <td data-bind="text:$parents[1].btCell($parent, $data), css:{num:$data.num}"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- ko if: !btDetail().lines.length -->
+          <div class="empty" data-bind="text:t('btNoLines')"></div>
+          <!-- /ko -->
+          <!-- /ko -->
+        </div>
+      </div>
+
+      <!-- 4. approval history -->
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('btApprovals')"></span></div>
+        <div class="bu-sec-b">
+          <!-- ko ifnot: btSelected -->
+          <div class="empty" data-bind="text:t('btSelectRow')"></div>
+          <!-- /ko -->
+          <!-- ko if: btDetail() && !btDetailBusy() -->
+          <div class="data-table-wrap">
+            <table class="data-table bt-table">
+              <thead><tr>
+                <th>#</th>
+                <th data-bind="text:t('btSubmitter')"></th>
+                <th data-bind="text:t('btAssignee')"></th>
+                <th data-bind="text:t('btState')"></th>
+                <th data-bind="text:t('btWhen')"></th>
+              </tr></thead>
+              <tbody data-bind="foreach:btDetail().approvals">
+                <tr>
+                  <td data-bind="text:$data.seq"></td>
+                  <td data-bind="text:$data.submitter"></td>
+                  <td data-bind="text:$data.assignee"></td>
+                  <td><span class="chip" data-bind="text:$data.state"></span></td>
+                  <td data-bind="text:$data.createdAt"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <!-- ko if: !btDetail().approvals.length -->
+          <div class="empty" data-bind="text:t('btNoAppr')"></div>
+          <!-- /ko -->
+          <!-- /ko -->
         </div>
       </div>
     </div>

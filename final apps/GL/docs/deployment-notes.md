@@ -1453,3 +1453,76 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
   `pdataBusy`) — enqueues the set, polls every 5s (7.5-min ceiling), toasts per-job failures,
   re-runs the current search on success; EN+AR (`pdata*` keys). Smoke:
   `tests/butil_pdata_smoke.py`. Webtier release 20260813222044.
+
+---
+
+## Budget Transactions page + navigation restructure — 2026-08-17 (v1.63.0)
+
+### Navigation: 11 flat tabs → 3 groups with sub-tabs
+The tab bar is now two rows — a group row and a sub-tab row — driven by a single
+`NAV_GROUPS` list in `app.js`. The active group is **derived from the current
+view**, so a deep link still lights the right group; adding a page means one
+entry in that list, nothing else.
+
+| Group | Sub-tabs |
+|---|---|
+| **Projects** | Project Budget Utilization · Projects Encumbrances · Encumbrances – Pending Approval · **Budget Transactions (new)** · Cashflow |
+| **General Ledger** | Dashboard · Budget vs Actual · Reconciliation · Legacy (EBS) · DOF Submissions · Balances YoY |
+| **Settings** | Chart of Accounts |
+
+Nothing was removed. Two label changes only: the group header is *General
+Ledger*, so the `actuals` page (which is the Budget-vs-Actual report) is now
+labelled **Budget vs Actual** — a sub-tab named "General Ledger" inside a
+"General Ledger" group read as a duplicate. `navOverview` was already
+"Chart of Accounts", which is why it sits under Settings.
+
+### The Budget Transactions page (`view()==='budgettrx'`)
+Mirrors the source **Project Budget Transactions** VBCS screen: four regions —
+Search criteria (10 fields) → Transactions master grid → Details of the selected
+row → its Approval history. Selecting a header row is what loads the two child
+regions, exactly as the source behaves; a new search clears the selection.
+
+Data is the ATD PBT extract (`PA_BUDGET_TRX_*`, `otbi-atd/db/77`), so the page is
+**read-only** — it shows what the last sync pulled, not live Fusion.
+
+* The master grid **scrolls inside a fixed 340px box with a sticky header**
+  (`.bt-scroll`). Without that, 100 rows made the page ~7,600px tall and pushed
+  Details and Approvals off-screen — the source screen keeps all four visible.
+* The **line columns differ per budget type** (34 / 21 / 38 source fields), so
+  the details table is metadata-driven from `BT_LINE_COLS`; adding a budget type
+  is one entry there plus one in the lookup.
+
+### DB — `GL/db/20_gl_budget_trx_ords.sql` (additive)
+```
+GET /gl/budgettrx/filters   -> criteria LOVs (types, BUs, project types, statuses, years, approvers)
+GET /gl/budgettrx           -> master grid, paged; every criterion on the screen
+GET /gl/budgettrx/:num?type= -> header + lines (per-type shape) + approval trail
+```
+Gated on `GL_VIEW_BUDGET_UTILIZATION` via `has_priv_or_role`. **`/atd/pbt/*`
+already serves the same tables but is SYS_ADMIN-gated and behind the ATD
+module-access gate, so a Finance user of this app would get a 403** — hence the
+GL-side routes.
+
+No synonyms are created here: `otbi-atd/db/78` already made the ADMIN synonyms
+for `PA_BUDGET_TRX_*`, and ORDS handlers run as ADMIN.
+
+> **`05_gl_ords.sql` DELETE_MODULEs `gl.rest` — the post-05 re-run list is now
+> `07..20`.**
+
+### Verified
+API 7/7 (filters, grid, type filter, date range, 400 on a bad date, 404 on an
+unknown transaction, drill). Browser `tests/budgettrx_browser_smoke.py`
+**32/32** EN + AR/RTL — nav groups, sub-tabs, all four regions, row selection
+driving the child regions, criteria filtering, Clear, and the AR pass.
+
+### Gotchas hit
+- `networkidle` **never settles** on this app — wait on `window.ko` plus a nav
+  selector instead (same trap as `pending_browser_smoke.py`).
+- `.bu-sec-t` is `text-transform:uppercase` and Chrome's `innerText` applies it,
+  so region-heading assertions must compare case-insensitively.
+- **`.lang-flip` is shared by three buttons** — the app switcher, the language
+  toggle *and* Sign out. `page.locator('.lang-flip').last` would click **Sign
+  out**; target `button[data-bind*="toggleLang"]`.
+- GL persists the language to `localStorage('gl_lang')` only, **not** to the
+  user's server-side prefs like the shared shell — so an AR toggle in a test
+  cannot leak into the real account.

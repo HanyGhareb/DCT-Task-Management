@@ -129,6 +129,24 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 - `uploadCfPj()` / `cfPjChosen(d,e)` — Projects cashflow Excel upload (project/task/etype grain) → POST /cashflow/projects
 - `cfGlTemplate()` / `cfPjTemplate()` — download the upload template workbooks (SheetJS)
 
+## Budget Transactions (`view()==='budgettrx'`) — project budget transactions, master-detail (v1.63.0)
+Mirrors the source Project Budget Transactions VBCS screen. Read-only over the ATD PBT extract
+(`PA_BUDGET_TRX_*`, `otbi-atd/db/77`) — it shows what the last sync pulled, not live Fusion.
+- `loadBtFilters()` — criteria LOVs: budget types, business units, project types, statuses, years, approvers (GET /budgettrx/filters)
+- `runBudgetTrx(page)` — master grid for all 10 criteria (GET /budgettrx); clears the selection because the child regions belong to the previous row
+- `btSearch()` / `btClearCriteria()` / `btPrevPage()` / `btNextPage()` — criteria actions and paging (`btPage`/`btPages`/`btTotal`)
+- `btSelectRow(row)` / `btIsSelected(row)` — row click loads the header + its lines + its approval trail (GET /budgettrx/:num?type=) and highlights the row
+- `btLineCols` / `btCell(row,col)` — the details table is metadata-driven (`BT_LINE_COLS`): the line shape differs per budget type (34 / 21 / 38 source fields)
+- `btExportCsv()` — the master grid as CSV (UTF-8 BOM)
+- Criteria observables: `btcType`, `btcBu`, `btcProjType`, `btcStatus`, `btcYear`, `btcApprover`, `btcTrxNum`, `btcDecree`, `btcFrom`, `btcTo`
+
+## Navigation (v1.63.0) — three groups, sub-tabs per group
+`NAV_GROUPS` in `app.js` is the single source: Projects (Budget Utilization · Projects Encumbrances ·
+Encumbrances – Pending Approval · Budget Transactions · Cashflow) / General Ledger (Dashboard ·
+Budget vs Actual · Reconciliation · Legacy (EBS) · DOF Submissions · Balances YoY) / Settings
+(Chart of Accounts).
+- `navGroups` / `activeGroup` (**derived from `view()`**, so a deep link lights the right group) / `activeGroupItems` / `goGroup(id)` (opens the group's first page)
+
 ## DOF Submissions (`view()==='dof'`) — YoY / Budget Utilization / Quarterly (v1.49.0, reworked v1.52.0)
 - `runDof()` — loads the selected dataset (GET /dof/yoy | /dof/butil | /dof/quarterly; Year **2016..current+1** + optional Period YTD-end) into the SHARED `<interactive-report>`; YoY includes chapter + grand total rows; cashflow-missing hint when the plan is not loaded (suppressed for EBS-era years < 2026, which show the era note instead); **column headers carry the run year** ("Revised Budget 2026", "Actual FY 2025"…) via `dofColsYoy/Butil/Quarterly(yr)` + `{y}`-substituted i18n keys, and the figure columns declare **`hint`** (ⓘ hover popover, v1.53.0 — generic `column.hint` support added to the shared IR component) explaining FY-vs-YTD prior actuals, the variance formula and cashflow/utilization semantics EN+AR
 - **v1.56.0 layout round** — columns ordered in YEAR BLOCKS (frozen Chapter/Appr/Account code columns via shared-IR `column.sticky` → current-year block → prior-year block → Variance → Reasons) under **grouped FY header bands** (`column.group`; butil = Budget/Performance bands, quarterly = Budget + Quarter 1–4 bands); current-year columns brand-tinted / prior-year grey / quarters alternating (`dofc-*` colClass in app.css); Variance columns carry ▲ green / ▼ red delta arrows; long texts one-line ellipsis w/ hover full text; zebra rows
@@ -143,6 +161,9 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 ## API Endpoints (ORDS) — `db/05_gl_ords.sql`, base `/ords/admin/gl/`
 | Method | Path | Purpose |
 |---|---|---|
+| GET | `/budgettrx/filters` | Budget Transactions criteria LOVs — budget types (lookup `PA_BUDGET_TRX_TYPE`), business units, project types, statuses, years, approvers (db/20) |
+| GET | `/budgettrx` | master grid over `PA_BUDGET_TRX_HEADERS`, paged; `?type=&bu=&projecttype=&status=&year=&approver=&trxnum=&decree=&from=&to=&page=&size=` + per-row line/approval counts (db/20) |
+| GET | `/budgettrx/:num` | one transaction — header + its detail lines (from the per-type table matching `?type=`) + its approval trail (db/20) |
 | GET | `/recon/filters` | Reconciliation LOVs — years, periods, budgetChapters default (CH2..CH5) + code+label dimension lists (db/14) |
 | GET | `/recon/summary` | per-measure AP/GRN/PR/PO {actuals, butil, diff, noProject, apValidation, noBudgetLine} + derived totals + GL vs PPM budget + fund available each side (db/14) |
 | GET | `/recon/rows` | reconciliation register at `?grain=` (account/sector/chapter/costcenter/appropriation/program/combination/budgetline) + optional `?measure=`; one row per dimension value with both sides + leakage buckets (db/14) |
