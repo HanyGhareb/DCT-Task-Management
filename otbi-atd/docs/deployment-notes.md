@@ -2347,6 +2347,16 @@ verified numbers and the API gotchas, plus:
 - **Runner:** `runner/actions/pa_budget_trx.py` (+ `runner/smoke_pbt.py` to run a scope by hand,
   and `runner/tests/test_pa_budget_trx.py` for the parsing rules)
 
+**DEEP is parallel since 2026-08-17 (607s -> 197s, 3x).** Every transaction needs a
+lines call and an approvals call (~0.11s each) and the source has NO bulk endpoint --
+`transaction_num` is in the lines PATH -- so a full refresh was ~4,400 SEQUENTIAL round
+trips. `_get_json_many()` now fans them out INSIDE the page (one `evaluate()` hop for a
+whole batch, browser keep-alive and session cookies reused), 60 transactions per batch,
+`ATD_PBT_CONC` concurrent (default 6, payload `concurrency` overrides, 1 = old serial
+behaviour). A non-200 item is retried once sequentially, so a blip cannot lose a
+transaction. Verified byte-identical after the change: 2,200 headers / 4,444 + 7,876 +
+6,234 lines / 1,778 approvals / 0 orphans.
+
 **Post-13 re-run list is now `20, 38, 41, 42, 44, 45, 63, 78`.**
 
 **Session rule (unchanged, and load-bearing here):** the handler attaches to the worker's saved

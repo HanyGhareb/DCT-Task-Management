@@ -62,6 +62,12 @@ DEFAULT_TYPES = ["Additional", "Estimated-Cost", "Annual-Budget"]
 
 SIGNIN_MARKERS = ("login.microsoftonline.com", "/ui/v1/signin", "oamsso", "/sso/")
 
+# Child fetches run CONCURRENTLY inside the page -- see _get_json_many. 6 keeps
+# a full refresh to a couple of minutes without leaning on a government API
+# gateway; ATD_PBT_CONC overrides it, and 1 restores the old serial behaviour.
+DEFAULT_CONC = int(os.environ.get("ATD_PBT_CONC") or 6)
+CHILD_CHUNK = 60          # transactions per concurrent batch
+
 
 class SessionExpired(RuntimeError):
     """The saved SSO session no longer reaches the VBCS app."""
@@ -296,6 +302,55 @@ def _get_json(ctx, page, path):
     return json.loads(r["body"])
 
 
+def _get_json_many(page, paths, conc):
+    """GET many proxy paths CONCURRENTLY and return their parsed bodies in the
+    same order.
+
+    This is what makes SYNC_DEEP usable. Every transaction needs a lines call
+    and an approvals call, each ~0.11s; done one at a time that is ~4,400
+    sequential round trips for a full refresh (measured: 607s). The source has
+    no bulk endpoint -- transaction_num is in the lines PATH -- so the only
+    lever is overlap.
+
+    The fan-out runs INSIDE the page: one evaluate() hop instead of one per
+    URL, and the browser reuses the session cookies and its keep-alive pool.
+    A failed item comes back with status 0/!=200 and is retried once by the
+    caller, sequentially, so a transient blip never loses a transaction.
+    """
+    if not paths:
+        return []
+    out = page.evaluate("""async ([urls, conc]) => {
+        const out = new Array(urls.length);
+        let next = 0;
+        async function worker() {
+            for (;;) {
+                const k = next++;
+                if (k >= urls.length) return;
+                try {
+                    const res = await fetch(urls[k], {credentials: 'include',
+                                                      headers: {'Accept': '*/*'}});
+                    out[k] = {status: res.status, body: await res.text()};
+                } catch (e) {
+                    out[k] = {status: 0, body: String(e)};
+                }
+            }
+        }
+        await Promise.all(Array.from({length: Math.min(conc, urls.length)}, worker));
+        return out;
+    }""", [paths, conc])
+    return out
+
+
+def _items_or_none(r):
+    """items[] from a batch entry, or None when that entry needs a retry."""
+    if not r or r.get("status") != 200:
+        return None
+    try:
+        return json.loads(r["body"]).get("items", []) or []
+    except Exception:
+        return None
+
+
 def _q(params):
     return urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
 
@@ -311,17 +366,24 @@ def fetch_masters(ctx, page, ttype, bus):
     return _get_json(ctx, page, url).get("items", []) or []
 
 
-def fetch_lines(ctx, page, ttype, txn):
-    url = f"{PROXY}/Transactions/{urllib.parse.quote(ttype)}/{urllib.parse.quote(str(txn))}/lines"
-    return _get_json(ctx, page, url).get("items", []) or []
+def lines_url(ttype, txn):
+    return (f"{PROXY}/Transactions/{urllib.parse.quote(ttype)}"
+            f"/{urllib.parse.quote(str(txn))}/lines")
 
 
-def fetch_approvals(ctx, page, ttype, txn):
-    url = f"{PROXY}/Transactions/ApprovalHistory?" + _q({
+def approvals_url(ttype, txn):
+    return f"{PROXY}/Transactions/ApprovalHistory?" + _q({
         "transaction_id": txn,          # NB: means transaction_num, not identifier
         "trx_type": ttype,
     })
-    return _get_json(ctx, page, url).get("items", []) or []
+
+
+def fetch_lines(ctx, page, ttype, txn):
+    return _get_json(ctx, page, lines_url(ttype, txn)).get("items", []) or []
+
+
+def fetch_approvals(ctx, page, ttype, txn):
+    return _get_json(ctx, page, approvals_url(ttype, txn)).get("items", []) or []
 
 
 # --- the action -------------------------------------------------------------
@@ -335,6 +397,7 @@ def extract(ctx, env, data, action):
     purge = bool(data.get("purgeMissing"))
     d_from = _date(data.get("dateFrom"))
     d_to = _date(data.get("dateTo"))
+    conc = max(1, min(int(data.get("concurrency") or DEFAULT_CONC), 12))
     if not types:
         raise RuntimeError("no valid transactionTypes in payload")
 
@@ -380,7 +443,7 @@ def extract(ctx, env, data, action):
             totals["headers"] += len(scoped)
 
             nl, na = _load_children(conn, ctx, page, ttype, todo, run_id,
-                                    run_ts, want_appr, widths)
+                                    run_ts, want_appr, widths, conc)
             totals["lines"] += nl
             totals["approvals"] += na
             totals["childCalls"] += len(todo) * (2 if want_appr else 1)
@@ -492,7 +555,7 @@ def _merge_headers(conn, masters, run_id, run_ts, widths=None):
 
 
 def _load_children(conn, ctx, page, ttype, todo, run_id, run_ts, want_appr,
-                   widths=None):
+                   widths=None, conc=DEFAULT_CONC):
     """Lines are MERGEd on their own `identifier`; a line that vanished from a
     refetched transaction is then removed by the last_seen_at sweep. Approvals
     carry no key of their own, so they are delete-then-insert per transaction."""
@@ -507,47 +570,66 @@ def _load_children(conn, ctx, page, ttype, todo, run_id, run_ts, want_appr,
     lw = (widths or {}).get(table)
     aw = (widths or {}).get("prod.pa_budget_trx_approvals")
 
-    for i, m in enumerate(todo, 1):
-        txn = m["transaction_num"]
-        rows = []
-        for ln in fetch_lines(ctx, page, ttype, txn):
-            r = _coerce(ln, fields, lw)
-            r["load_run_id"] = run_id
-            r["last_seen_at"] = run_ts
-            rows.append(r)
-        if rows:
-            cur.executemany(sql, rows)
-            n_lines += len(rows)
-        # lines of THIS transaction not refreshed by this run no longer exist
-        cur.execute(f"DELETE FROM {table} WHERE transaction_num = :t "
-                    f"AND (last_seen_at IS NULL OR last_seen_at < :ts)",
-                    t=str(txn), ts=run_ts)
+    # Fetch a slice of transactions' children CONCURRENTLY, then do that
+    # slice's DB work. Chunked rather than all-at-once so memory and the
+    # commit cadence stay bounded on a full refresh.
+    done = 0
+    for start in range(0, len(todo), CHILD_CHUNK):
+        chunk = todo[start:start + CHILD_CHUNK]
+        urls = []
+        for m in chunk:
+            urls.append(lines_url(ttype, m["transaction_num"]))
+            if want_appr:
+                urls.append(approvals_url(ttype, m["transaction_num"]))
+        batch = _get_json_many(page, urls, conc)
+        per = 2 if want_appr else 1
 
-        if want_appr:
-            appr = fetch_approvals(ctx, page, ttype, txn)
-            cur.execute("DELETE FROM prod.pa_budget_trx_approvals "
-                        "WHERE transaction_num = :t AND trx_type = :y",
-                        t=str(txn), y=ttype)
-            if appr:
-                arows = []
-                for seq, a in enumerate(appr, 1):
-                    r = _coerce(a, APPROVAL_FIELDS, aw)
-                    r["transaction_num"] = str(txn)
-                    r["trx_type"] = ttype
-                    r["seq_no"] = seq
-                    r["load_run_id"] = run_id
-                    arows.append(r)
-                cols = ["transaction_num", "trx_type", "seq_no"] + \
-                       [c for _j, c, _k in APPROVAL_FIELDS] + ["load_run_id"]
-                cur.executemany(
-                    "INSERT INTO prod.pa_budget_trx_approvals (" + ", ".join(cols) + ") "
-                    "VALUES (" + ", ".join(f":{c}" for c in cols) + ")", arows)
-                n_appr += len(arows)
+        for j, m in enumerate(chunk):
+            txn = m["transaction_num"]
+            got = _items_or_none(batch[j * per])
+            if got is None:                      # transient blip: one retry
+                got = fetch_lines(ctx, page, ttype, txn)
+            rows = []
+            for ln in got:
+                r = _coerce(ln, fields, lw)
+                r["load_run_id"] = run_id
+                r["last_seen_at"] = run_ts
+                rows.append(r)
+            if rows:
+                cur.executemany(sql, rows)
+                n_lines += len(rows)
+            # lines of THIS transaction not refreshed by this run no longer exist
+            cur.execute(f"DELETE FROM {table} WHERE transaction_num = :t "
+                        f"AND (last_seen_at IS NULL OR last_seen_at < :ts)",
+                        t=str(txn), ts=run_ts)
 
-        if i % 100 == 0:
-            conn.commit()
-            print(f"[pbt] {ttype}: {i}/{len(todo)} transactions", flush=True)
-    conn.commit()
+            if want_appr:
+                appr = _items_or_none(batch[j * per + 1])
+                if appr is None:
+                    appr = fetch_approvals(ctx, page, ttype, txn)
+                cur.execute("DELETE FROM prod.pa_budget_trx_approvals "
+                            "WHERE transaction_num = :t AND trx_type = :y",
+                            t=str(txn), y=ttype)
+                if appr:
+                    arows = []
+                    for seq, a in enumerate(appr, 1):
+                        r = _coerce(a, APPROVAL_FIELDS, aw)
+                        r["transaction_num"] = str(txn)
+                        r["trx_type"] = ttype
+                        r["seq_no"] = seq
+                        r["load_run_id"] = run_id
+                        arows.append(r)
+                    cols = ["transaction_num", "trx_type", "seq_no"] + \
+                           [c for _j, c, _k in APPROVAL_FIELDS] + ["load_run_id"]
+                    cur.executemany(
+                        "INSERT INTO prod.pa_budget_trx_approvals (" + ", ".join(cols) + ") "
+                        "VALUES (" + ", ".join(f":{c}" for c in cols) + ")", arows)
+                    n_appr += len(arows)
+
+        done += len(chunk)
+        conn.commit()
+        print(f"[pbt] {ttype}: {done}/{len(todo)} transactions "
+              f"(x{conc} concurrent)", flush=True)
     return n_lines, n_appr
 
 
