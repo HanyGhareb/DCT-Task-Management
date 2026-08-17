@@ -107,11 +107,18 @@ DECLARE
   -- scope -- otherwise the page offers a Chapter that returns nothing
   l_type VARCHAR2(40)  := TRIM([COLON]type);
   l_year VARCHAR2(8)   := TRIM([COLON]year);
+  -- Business Unit and Project Type narrow the lists too: they are part of the
+  -- page's DEFAULT scope, so without them the criteria offer a Sector that
+  -- returns nothing under the scope the page actually opened with
+  l_bu   VARCHAR2(240) := TRIM([COLON]bu);
+  l_pt   VARCHAR2(120) := TRIM([COLON]projecttype);
+  l_hs   VARCHAR2(1);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
     dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
   END IF;
+  l_hs := CASE WHEN l_year IS NULL AND l_bu IS NULL AND l_pt IS NULL THEN 'N' ELSE 'Y' END;
   dct_rest.json_header;
   APEX_JSON.open_object;
 
@@ -169,9 +176,11 @@ BEGIN
   FOR r IN (SELECT sector_code c, MAX(sector_name) n FROM v_pa_budget_trx_line
              WHERE sector_code IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              GROUP BY sector_code ORDER BY 2) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
@@ -183,9 +192,11 @@ BEGIN
   FOR r IN (SELECT chapter_code c, MAX(chapter_name) n FROM v_pa_budget_trx_line
              WHERE chapter_code IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              GROUP BY chapter_code ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
@@ -198,9 +209,11 @@ BEGIN
               FROM v_pa_budget_trx_line
              WHERE program_code IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              GROUP BY program_code ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
@@ -213,9 +226,11 @@ BEGIN
               FROM v_pa_budget_trx_line
              WHERE appropriation_code IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              GROUP BY appropriation_code ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('code', r.c); APEX_JSON.write('name', NVL(r.n, r.c));
@@ -229,9 +244,11 @@ BEGIN
   FOR r IN (SELECT period_from p, MAX(period_from_num) k FROM v_pa_budget_trx_line
              WHERE period_from IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              GROUP BY period_from ORDER BY 2 DESC) LOOP
     APEX_JSON.write(r.p);
   END LOOP;
@@ -254,11 +271,18 @@ DECLARE
   l_user VARCHAR2(100) := dct_rest.validate_session;
   l_type VARCHAR2(40)  := TRIM([COLON]type);
   l_year VARCHAR2(8)   := TRIM([COLON]year);
+  -- Business Unit and Project Type narrow the lists too: they are part of the
+  -- page's DEFAULT scope, so without them the criteria offer a Sector that
+  -- returns nothing under the scope the page actually opened with
+  l_bu   VARCHAR2(240) := TRIM([COLON]bu);
+  l_pt   VARCHAR2(120) := TRIM([COLON]projecttype);
+  l_hs   VARCHAR2(1);
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
     dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
   END IF;
+  l_hs := CASE WHEN l_year IS NULL AND l_bu IS NULL AND l_pt IS NULL THEN 'N' ELSE 'Y' END;
   dct_rest.json_header;
   APEX_JSON.open_object;
 
@@ -266,9 +290,11 @@ BEGIN
   FOR r IN (SELECT project_num p, MAX(project_name) n FROM v_pa_budget_trx_line
              WHERE project_num IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              GROUP BY project_num ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('p', r.p); APEX_JSON.write('n', NVL(r.n,''));
@@ -280,9 +306,11 @@ BEGIN
   FOR r IN (SELECT task_num t, MAX(task_name) n FROM v_pa_budget_trx_line
              WHERE task_num IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              GROUP BY task_num ORDER BY 1) LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('t', r.t); APEX_JSON.write('n', NVL(r.n,''));
@@ -294,9 +322,11 @@ BEGIN
   FOR r IN (SELECT DISTINCT expenditure_type e FROM v_pa_budget_trx_line
              WHERE expenditure_type IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              ORDER BY 1) LOOP
     APEX_JSON.write(r.e);
   END LOOP;
@@ -306,9 +336,11 @@ BEGIN
   FOR r IN (SELECT DISTINCT cost_center c FROM v_pa_budget_trx_line
              WHERE cost_center IS NOT NULL
                AND (l_type IS NULL OR trx_type = l_type)
-               AND (l_year IS NULL OR transaction_num IN (
+               AND (l_hs = 'N' OR transaction_num IN (
                      SELECT h.transaction_num FROM pa_budget_trx_headers h
-                      WHERE h.trx_year = l_year))
+                      WHERE (l_year IS NULL OR h.trx_year      = l_year)
+                        AND (l_bu   IS NULL OR h.business_unit = l_bu)
+                        AND (l_pt   IS NULL OR h.project_type  = l_pt)))
              ORDER BY 1) LOOP
     APEX_JSON.write(r.c);
   END LOOP;

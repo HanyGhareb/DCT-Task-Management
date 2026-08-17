@@ -826,19 +826,50 @@
       return Math.max(1, Math.ceil(self.btTotal() / self.btSize()));
     });
 
+    /* the page's opening scope (user-chosen 2026-08-17). Each is applied only
+       when the live LOV actually offers it — a hard-coded value that no longer
+       exists would be blanked by KO's options binding anyway, leaving the
+       observable and the <select> disagreeing. Year is not listed: it is
+       always "the current year, else the newest with data". */
+    var BT_DEFAULTS = {
+      type:     'Additional',                        // Additional Fund
+      bu:       'Department of Culture and Tourism',
+      projType: 'DCT OPEX Project Type'              // same default as Budget Utilization
+    };
+    // setting four observables fires four subscriptions; without this the page
+    // would re-fetch its lists three times before it had even searched once
+    var btApplying = false;
+    self.btApplyDefaults = function (d, force) {
+      d = d || self.btFilters() || {};
+      btApplying = true;
+      var has = function (list, v) { return (list || []).indexOf(v) >= 0; };
+      if (force || !self.btcType()) {
+        var codes = (d.types || []).map(function (t) { return t.code; });
+        self.btcType(has(codes, BT_DEFAULTS.type) ? BT_DEFAULTS.type : (codes[0] || ''));
+      }
+      if (force || !self.btcYear()) {
+        var now = String(new Date().getFullYear());
+        self.btcYear(has(d.years, now) ? now : ((d.years || [])[0] || ''));
+      }
+      if (force || !self.btcBu()) {
+        self.btcBu(has(d.businessUnits, BT_DEFAULTS.bu) ? BT_DEFAULTS.bu : '');
+      }
+      if (force || !self.btcProjType()) {
+        self.btcProjType(has(d.projectTypes, BT_DEFAULTS.projType) ? BT_DEFAULTS.projType : '');
+      }
+      btApplying = false;
+      self.btRescope();
+    };
+
     self.loadBtFilters = function () {
       var hadScope = !!(self.btcType() && self.btcYear());
-      return api('GET', '/budgettrx/filters' + qs({ type: self.btcType(), year: self.btcYear() }))
+      return api('GET', '/budgettrx/filters' + qs({ type: self.btcType(), year: self.btcYear(),
+                                                    bu: self.btcBu(), projecttype: self.btcProjType() }))
         .then(function (d) {
           self.btFilters(d);
           // Budget Type and Year are MANDATORY (the server 400s without them),
-          // so the page picks a scope rather than opening on an error: the
-          // first budget type, and the current year when it has data.
-          if (!self.btcType() && (d.types || []).length) self.btcType(d.types[0].code);
-          if (!self.btcYear() && (d.years || []).length) {
-            var now = String(new Date().getFullYear());
-            self.btcYear(d.years.indexOf(now) >= 0 ? now : d.years[0]);
-          }
+          // so the page opens on a real scope rather than an error
+          self.btApplyDefaults(d);
           // That first call had no scope, so its line-derived lists (sectors,
           // chapters, …) span every type and year. Setting the defaults above
           // fires btRescope, which re-fetches them for the scope — so DON'T
@@ -847,13 +878,22 @@
           self.loadBtLov();
         }).catch(function (e) { self.btError(e.message || String(e)); });
     };
-    // changing the scope invalidates every in-scope list
-    var btScopeKey = '';
+    /* changing the scope invalidates every in-scope list.
+       DEBOUNCED, and that is load-bearing: applying the four defaults fires
+       four subscriptions, and KO's <select> write-back means some of them land
+       a tick later, so a plain "am I still applying?" flag let a half-built
+       scope (type+year, no BU) through and fetched the lists twice. Coalescing
+       into one tick makes the number of calls independent of firing order. */
+    var btScopeKey = '', btScopeTimer = null;
     self.btRescope = function () {
-      var k = self.btcType() + '|' + self.btcYear();
-      if (!self.btcType() || !self.btcYear() || k === btScopeKey) return;
-      btScopeKey = k;
-      self.loadBtFilters();
+      if (btApplying) return;
+      clearTimeout(btScopeTimer);
+      btScopeTimer = setTimeout(function () {
+        var k = [self.btcType(), self.btcYear(), self.btcBu(), self.btcProjType()].join('|');
+        if (!self.btcType() || !self.btcYear() || k === btScopeKey) return;
+        btScopeKey = k;
+        self.loadBtFilters();
+      }, 60);
     };
     // 886 projects + 1,825 tasks + 184 expenditure types + 115 cost centres:
     // too big for the criteria payload, so they load once beside it and feed
@@ -861,10 +901,11 @@
     // page makes between /butil/filters and /butil/lov.
     var btLovKey = '';
     self.loadBtLov = function () {
-      var key = self.btcType() + '|' + self.btcYear();
+      var key = [self.btcType(), self.btcYear(), self.btcBu(), self.btcProjType()].join('|');
       if (!self.btcType() || !self.btcYear() || key === btLovKey) return Promise.resolve();
       btLovKey = key;
-      return api('GET', '/budgettrx/lov' + qs({ type: self.btcType(), year: self.btcYear() }))
+      return api('GET', '/budgettrx/lov' + qs({ type: self.btcType(), year: self.btcYear(),
+                                                bu: self.btcBu(), projecttype: self.btcProjType() }))
         .then(function (d) {
           self.btProjects(d.projects || []); self.btTasks(d.tasks || []);
           self.btEtypes(d.etypes || []);     self.btCcs(d.costCenters || []);
@@ -878,6 +919,8 @@
     // criteria LOVs and the type-aheads refresh when either moves
     self.btcType.subscribe(function () { self.btRescope(); });
     self.btcYear.subscribe(function () { self.btRescope(); });
+    self.btcBu.subscribe(function () { self.btRescope(); });
+    self.btcProjType.subscribe(function () { self.btRescope(); });
     // how many line-level criteria are active — drives the "N filters" chip
     self.btLineFilterCount = ko.computed(function () {
       return [self.btcSector(), self.btcChapter(), self.btcProgram(), self.btcApprop(),
@@ -919,12 +962,11 @@
 
     self.btSearch = function () { self.runBudgetTrx(1); };
     self.btClearCriteria = function () {
-      // Clear resets to the DEFAULT SCOPE, not to empty: type and year are
-      // mandatory, so clearing them would just produce an error instead of rows
-      var f = self.btFilters() || {}, now = String(new Date().getFullYear());
-      self.btcType((f.types || []).length ? f.types[0].code : '');
-      self.btcYear((f.years || []).indexOf(now) >= 0 ? now : ((f.years || [])[0] || ''));
-      self.btcBu(''); self.btcProjType(''); self.btcStatus('');
+      // Clear resets to the DEFAULT SCOPE, not to empty: Budget Type and Year
+      // are mandatory, so clearing them would produce an error instead of rows,
+      // and Business Unit / Project Type go back to the chosen defaults too
+      self.btApplyDefaults(null, true);
+      self.btcStatus('');
       self.btcApprover(''); self.btcTrxNum(''); self.btcDecree('');
       self.btcFrom(''); self.btcTo('');
       self.btcSector(''); self.btcChapter(''); self.btcProgram(''); self.btcApprop('');

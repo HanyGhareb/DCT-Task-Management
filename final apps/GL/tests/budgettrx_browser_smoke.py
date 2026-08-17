@@ -154,8 +154,13 @@ with sync_playwright() as p:
     check('Budget Type marked required', '*' in labels_raw[0], labels_raw[0])
     check('Transaction Year marked required', '*' in labels_raw[4], labels_raw[4])
     scope = page.evaluate("() => { const v = ko.dataFor(document.body);"
-                          " return [v.btcType(), v.btcYear()]; }")
-    check('page opens on a default scope', all(scope), str(scope))
+                          " return [v.btcType(), v.btcYear(), v.btcBu(), v.btcProjType()]; }")
+    check('page opens on a default scope', all(scope[:2]), str(scope[:2]))
+    # the four opening criteria the user chose (2026-08-17)
+    check('default Budget Type = Additional Fund', scope[0] == 'Additional', scope[0])
+    check('default Year = current year', scope[1] == str(__import__('datetime').date.today().year), scope[1])
+    check('default Business Unit = DCT', scope[2] == 'Department of Culture and Tourism', scope[2])
+    check('default Project Type = DCT OPEX', scope[3] == 'DCT OPEX Project Type', scope[3])
     tsel0 = pg.locator('.filter-grid select').nth(0)
     ysel0 = pg.locator('.filter-grid select').nth(4)
     check('Budget Type has no All option',
@@ -252,8 +257,13 @@ with sync_playwright() as p:
           pg.locator('.bt-row--on').count() == 0)
 
     pg.locator('.filter-actions .btn').nth(1).click()   # Clear
-    page.wait_for_timeout(3500)
+    page.wait_for_timeout(4000)
     check('clear restores the full set', pg.locator('.bt-row').count() > 0)
+    cleared = page.evaluate("() => { const v = ko.dataFor(document.body);"
+                            " return [v.btcType(), v.btcYear(), v.btcBu(), v.btcProjType()]; }")
+    check('Clear resets to the DEFAULT scope, not to empty',
+          cleared == ['Additional', str(__import__('datetime').date.today().year),
+                      'Department of Culture and Tourism', 'DCT OPEX Project Type'], str(cleared))
     full_total = page.evaluate("() => ko.dataFor(document.body).btTotal()")
 
     # ---- 4b. a line-level criterion actually filters ----------------------

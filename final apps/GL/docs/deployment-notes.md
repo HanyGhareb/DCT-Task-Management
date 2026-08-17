@@ -1743,11 +1743,42 @@ defaults are set; changing either re-fetches through `btRescope()`.
 Timings on the live tier: grid 0.10s unfiltered, 0.43s worst filtered,
 filters 0.82s, lov 0.65s.
 
+### Default opening scope — 2026-08-17 (v1.68.0, user-chosen)
+The page opens on **Additional Fund · current year · Department of Culture and
+Tourism · DCT OPEX Project Type** (`BT_DEFAULTS` in `app.js`; the year is always
+"current, else newest with data", and Project Type matches the Budget
+Utilization default). Each default is applied **only when the live LOV offers
+it** — a hard-coded value that no longer exists would be blanked by KO's
+`options` binding anyway, leaving the observable and the `<select>` disagreeing.
+**Clear** resets to the same four.
+
+Defaulting Business Unit and Project Type re-opened the dead-option problem one
+level down — the criteria LOVs were scoped to type+year only, so the Sector list
+still offered sectors with no rows under the default BU. `/budgettrx/filters`
+and `/budgettrx/lov` therefore take **`bu` and `projecttype`** as well
+(`l_hs` flag = "any header scope set"), and the frontend re-fetches on all four.
+Sector list went 17 → 12 entries, all of which return rows.
+
+> **`btRescope()` is DEBOUNCED (60ms) and that is load-bearing.** Applying four
+> defaults fires four subscriptions, and KO's `<select>` write-back means some
+> land a tick later — a plain "am I still applying?" flag let a half-built scope
+> (type+year, no BU) through and fetched every list twice. Coalescing into one
+> tick makes the call count independent of firing order: page open is now
+> exactly 4 requests (unscoped filters → grid → scoped filters → lov).
+
+> **⚠ DEPLOY ORDER — the client goes FIRST when a parameter becomes mandatory.**
+> The v1.67.0 server change (400 without type+year) went out minutes before the
+> matching frontend. In that window a still-loaded older page sent no type/year
+> and got the server's raw `type and year are required` with `0 of 0` — which is
+> exactly what it should do, but it looks like a broken page to whoever is
+> holding it. Deploy the frontend first, or make the server tolerant until the
+> clients have rolled.
+
 ### Verified
 API `tests/budgettrx_api_smoke.py` **42/42** (every criterion narrows, criteria
 AND on one line, period ordering is numeric, line-less headers survive, LOVs
 narrow to the scope, missing type/year → 400, 400/404/401).
-Browser `tests/budgettrx_browser_smoke.py` **80/80** EN + AR/RTL.
+Browser `tests/budgettrx_browser_smoke.py` **85/85** EN + AR/RTL (incl. the four defaults and Clear restoring them).
 
 Test gotchas:
 - `.lbl` is `text-transform:uppercase` **and** Chrome's `innerText` upper-cases
