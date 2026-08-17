@@ -136,45 +136,57 @@ acct AS (
   SELECT account_code, MAX(account_desc) AS account_desc
   FROM prod.dct_gl_coa_snap GROUP BY account_code
 ),
+pb_src AS (
+  -- ONE row stream feeding pb: the Fusion budget rows contribute BUDGET, the
+  -- end-user rows contribute CHG (the signed budget change entered from the
+  -- Excel VB workbook or the GL Budget Change drawer, PROD.DCT_PROJECT_BUDGET_USER,
+  -- db/v2/106). A UNION ALL - NOT a join - because the Fusion budget is NOT
+  -- cashflow-phased: 1,736 of 1,779 FY2026 lines carry a single period row
+  -- (mostly 01-2026), so a change booked at any other period has no budget row
+  -- to hang off and an outer join from the budget table would silently drop it.
+  SELECT b.budget_year, b.project_id, b.task_id, b.expenditure_type,
+         b.accounting_period, b.budget, 0 AS chg, 0 AS chg_cnt
+  FROM prod.projects_budget b
+  UNION ALL
+  SELECT TO_NUMBER(SUBSTR(u.accounting_period, 4, 4) DEFAULT NULL ON CONVERSION ERROR),
+         u.project_id, u.task_id, u.expenditure_type,
+         u.accounting_period, 0 AS budget, u.budget_change AS chg, 1 AS chg_cnt
+  FROM prod.dct_project_budget_user u
+),
 pb AS (
   -- budget_annual = ALL period rows of the line; budget_ytd = period rows whose
   -- ACCOUNTING_PERIOD (MM-YYYY) falls on or before BUTIL_END. A NULL/unparseable
   -- period falls back to 1900-01-01 = ALWAYS included (un-spread budget counts
   -- as annual). BUTIL_END unset -> budget_ytd = budget_annual (full year).
-  -- Override flag (2026-07-27): when SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
-  -- every period row takes NVL(budget_user, budget) - the end-user Excel
-  -- override from PROD.DCT_PROJECT_BUDGET_USER (db/v2/106, joined on the
-  -- extract natural key) - so annual/YTD budget, fund available, utilization
-  -- and every consuming report reflect the override. The override_* columns
-  -- (entered amounts + overridden-row count) are ALWAYS emitted regardless of
-  -- the flag - they feed the separate Override Budget KPI.
+  -- Budget change (2026-08-17, v2): when SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+  -- the signed change is ADDED to the budget (a negative change subtracts), so
+  -- annual AND YTD budget, fund available, utilization and every consuming
+  -- report reflect it. Before v2 the figure REPLACED the budget - the model is
+  -- now additive. The override_* columns (change amounts + changed-line count)
+  -- are ALWAYS emitted regardless of the flag - they feed the separate Budget
+  -- Change KPI.
   SELECT b.budget_year,
          COALESCE(TO_CHAR(pj.project_number), '#'||TO_CHAR(b.project_id)) AS project_key,
          COALESCE(tk.task_number, '#'||TO_CHAR(b.task_id))                AS task_key,
          b.expenditure_type,
-         SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
-                  THEN NVL(u.budget_user, b.budget) ELSE b.budget END) AS budget_annual,
+         SUM(b.budget + CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+                             THEN b.chg ELSE 0 END) AS budget_annual,
          SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
                     OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
                            DATE '1900-01-01')
                        < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
-                  THEN CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
-                            THEN NVL(u.budget_user, b.budget) ELSE b.budget END
+                  THEN b.budget + CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_OVR') = 'Y'
+                                       THEN b.chg ELSE 0 END
              END) AS budget_ytd,
-         SUM(u.budget_user) AS override_annual,
+         SUM(b.chg) AS override_annual,
          SUM(CASE WHEN SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL
                     OR NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
                            DATE '1900-01-01')
                        < TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD') + 1
-                  THEN u.budget_user END) AS override_ytd,
-         COUNT(u.budget_user) AS override_cnt,
+                  THEN b.chg END) AS override_ytd,
+         SUM(b.chg_cnt) AS override_cnt,
          SUM(b.budget) AS fusion_annual
-  FROM prod.projects_budget b
-  LEFT JOIN prod.dct_project_budget_user u
-         ON  u.project_id        = b.project_id
-         AND u.task_id           = b.task_id
-         AND u.expenditure_type  = b.expenditure_type
-         AND u.accounting_period = b.accounting_period
+  FROM pb_src b
   LEFT JOIN proj pj ON pj.project_id = b.project_id
   LEFT JOIN tsk  tk ON tk.task_id    = b.task_id
   GROUP BY b.budget_year,

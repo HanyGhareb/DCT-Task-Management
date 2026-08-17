@@ -1,26 +1,37 @@
 -- =============================================================================
--- General Ledger (App 210) -- Budget Override drawer endpoints (ADDITIVE)
+-- General Ledger (App 210) -- Budget Change drawer endpoints (ADDITIVE)
 -- File    : 15_gl_butil_override_ords.sql
 -- Adds to : gl.rest (does NOT delete/redefine the module)
 -- Run     : sql -name prod_mcp @15_gl_butil_override_ords.sql  (fresh session)
 -- IMPORTANT: 05_gl_ords.sql DELETE_MODULEs gl.rest -- whenever 05 is re-run,
---            re-run 07 + 08 + 09 + 10 + 11 + 12 + 13 + 14 + THIS script.
--- Purpose : feeds the Budget Utilization page's "Override Budget" KPI drawer:
---           every project-budget period row carrying an end-user BUDGET_USER
---           override (PROD.DCT_PROJECT_BUDGET_USER, db/v2/106 - entered from
---           the Excel VB template), scoped to the page's butil filters, and
---           lets the user EDIT the override in place (same core save logic as
---           the Excel PUT - prod.dct_xl_pkg.save_item).
+--            re-run 07 .. 20 including THIS script.
+-- Purpose : feeds the Budget Utilization page's "Budget Change" KPI drawer:
+--           every SIGNED budget change (PROD.DCT_PROJECT_BUDGET_USER, db/v2/106
+--           - entered from the Excel VB workbook or here), scoped to the page's
+--           butil filters, with the line's annual + YTD Fusion budget and the
+--           adjusted figures, and in-place editing (same core save logic as the
+--           Excel PUT - prod.dct_xl_pkg.save_item).
+--
+-- v2 (2026-08-17): the stored figure is a CHANGE that is ADDED to the budget
+--           (negative subtracts), not a replacement. Two consequences here:
+--             * the join to prod.projects_budget is a LEFT JOIN on the LINE
+--               (not an inner join on the exact period row): the Fusion budget
+--               is un-phased, so a change booked at 08-2026 usually has no
+--               budget row of its own and an inner join would hide it;
+--             * the budget year of a change comes from its own MM-YYYY period.
+--
 -- Endpoints:
 --   GET  /gl/butil/override/lines?year(req)=&period=&projecttype=&sector=
 --        &chapter=&bu=&appropriation=&program=&costcenter=&project=&task=
 --        &etype=&search=
---        -> { total, totals{override,fusion}, items[{id, budgetYear,
---             projectNumber, projectName, taskNumber, taskName,
---             expenditureType, accountingPeriod, fusionBudget, overrideBudget,
---             updatedBy, updatedAt}] }   (id = the opaque xl row key)
---   POST /gl/butil/override   body {id, budget_user}  (null = clear override)
---        -> the updated row JSON (dct_xl_pkg item shape)
+--        -> { total, totals{change,fusionAnnual,fusionYtd}, reasons[],
+--             items[{id, projectNumber, projectName, taskNumber, taskName,
+--             expenditureType, accountingPeriod, fusionAnnual, fusionYtd,
+--             changeAmount, lineChangeTotal, adjustedAnnual, adjustedYtd,
+--             reasonCategory, comments, updatedBy, updatedAt}] }
+--        (id = the opaque xl row key, so Excel and the drawer share identity)
+--   POST /gl/butil/override   body {id, budget_change}  (null or 0 = clear)
+--        -> the updated line JSON (dct_xl_pkg item shape)
 -- =============================================================================
 
 SET DEFINE OFF
@@ -67,7 +78,8 @@ DECLARE
   l_etype  VARCHAR2(255) := [COLON]etype;
   l_search VARCHAR2(200) := [COLON]search;
   l_period VARCHAR2(10)  := [COLON]period;
-  l_total  NUMBER := 0; l_ovr NUMBER := 0; l_fus NUMBER := 0;
+  l_end    DATE;
+  l_total  NUMBER := 0; l_chg NUMBER := 0; l_fann NUMBER := 0; l_fytd NUMBER := 0;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
@@ -75,6 +87,8 @@ BEGIN
   END IF;
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
   IF l_period = '' THEN l_period := NULL; END IF;
+  l_end := CASE WHEN l_period IS NULL THEN DATE '9999-12-31'
+                ELSE LAST_DAY(TO_DATE('01-'||l_period,'DD-MM-YYYY')) END;
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
   APEX_JSON.open_array('reasons');
@@ -115,35 +129,62 @@ BEGIN
     proj AS (SELECT project_id, MAX(project_number) project_number, MAX(project_name) project_name
              FROM prod.projects GROUP BY project_id),
     tsk  AS (SELECT task_id, MAX(task_number) task_number, MAX(task_name) task_name
-             FROM prod.tasks GROUP BY task_id)
-    SELECT prod.dct_xl_pkg.encode_id(u.project_id, u.task_id, u.accounting_period, u.expenditure_type) rid,
-           TO_CHAR(pj.project_number) pnum, pj.project_name pname,
-           tk.task_number tnum, tk.task_name tname,
-           u.expenditure_type et, u.accounting_period per,
-           b.budget fus, u.budget_user ovr,
-           u.reason_category rsn, u.comments cmts,
-           u.updated_by uby,
-           TO_CHAR(prod.dct_to_local(u.updated_at),'YYYY-MM-DD HH:MI AM') uat,
-           COUNT(*) OVER () full_n, SUM(u.budget_user) OVER () full_ovr, SUM(b.budget) OVER () full_fus
-    FROM prod.dct_project_budget_user u
-    JOIN prod.projects_budget b
-      ON  b.project_id = u.project_id AND b.task_id = u.task_id
-      AND b.expenditure_type = u.expenditure_type AND b.accounting_period = u.accounting_period
-    LEFT JOIN proj pj ON pj.project_id = u.project_id
-    LEFT JOIN tsk  tk ON tk.task_id    = u.task_id
-    WHERE b.budget_year = l_year
-      -- YTD semantics matching the page (2026-07-28): the page period is a
-      -- through-period filter, so show every override on/before it
-      AND (l_period IS NULL
-           OR NVL(TO_DATE(u.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
-                  DATE '1900-01-01')
-              < LAST_DAY(TO_DATE('01-'||l_period,'DD-MM-YYYY')) + 1)
-      AND (TO_CHAR(pj.project_number), NVL(tk.task_number,'~'), NVL(u.expenditure_type,'~'))
-          IN (SELECT pk, tk, et FROM kys)
-    ORDER BY pj.project_number, tk.task_number, u.expenditure_type, u.accounting_period
+             FROM prod.tasks GROUP BY task_id),
+    -- the LINE's Fusion budget: annual (all periods) and YTD (periods on or
+    -- before the page period). Joined per LINE, never per period row.
+    bl AS (SELECT b.project_id, b.task_id, b.expenditure_type,
+                  SUM(b.budget) annual,
+                  SUM(CASE WHEN NVL(TO_DATE(b.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                                    DATE '1900-01-01') <= l_end THEN b.budget END) ytd
+           FROM prod.projects_budget b
+           WHERE b.budget_year = l_year
+           GROUP BY b.project_id, b.task_id, b.expenditure_type),
+    lch AS (SELECT u.project_id, u.task_id, u.expenditure_type,
+                   SUM(u.budget_change) line_total,
+                   SUM(CASE WHEN NVL(TO_DATE(u.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                                     DATE '1900-01-01') <= l_end THEN u.budget_change END) ytd_total
+            FROM prod.dct_project_budget_user u
+            WHERE TO_NUMBER(SUBSTR(u.accounting_period,4,4) DEFAULT NULL ON CONVERSION ERROR) = l_year
+            GROUP BY u.project_id, u.task_id, u.expenditure_type)
+    SELECT x.*,
+           COUNT(*) OVER ()                                        full_n,
+           SUM(x.chg) OVER ()                                      full_chg,
+           SUM(CASE WHEN x.rn_line = 1 THEN x.f_ann END) OVER ()   full_fann,
+           SUM(CASE WHEN x.rn_line = 1 THEN x.f_ytd END) OVER ()   full_fytd
+    FROM (
+      SELECT prod.dct_xl_pkg.encode_id(u.project_id, u.task_id, u.accounting_period, u.expenditure_type) rid,
+             TO_CHAR(pj.project_number) pnum, pj.project_name pname,
+             tk.task_number tnum, tk.task_name tname,
+             u.expenditure_type et, u.accounting_period per,
+             NVL(bl.annual,0) f_ann, NVL(bl.ytd,0) f_ytd,
+             u.budget_change chg,
+             NVL(lch.line_total,0) line_chg,
+             NVL(bl.annual,0) + NVL(lch.line_total,0) adj_ann,
+             NVL(bl.ytd,0)    + NVL(lch.ytd_total,0) adj_ytd,
+             u.reason_category rsn, u.comments cmts,
+             u.updated_by uby,
+             TO_CHAR(prod.dct_to_local(u.updated_at),'YYYY-MM-DD HH[COLON]MI AM') uat,
+             ROW_NUMBER() OVER (PARTITION BY u.project_id, u.task_id, u.expenditure_type
+                                ORDER BY u.accounting_period) rn_line
+      FROM prod.dct_project_budget_user u
+      LEFT JOIN bl ON  bl.project_id = u.project_id AND bl.task_id = u.task_id
+                   AND bl.expenditure_type = u.expenditure_type
+      LEFT JOIN lch ON lch.project_id = u.project_id AND lch.task_id = u.task_id
+                   AND lch.expenditure_type = u.expenditure_type
+      LEFT JOIN proj pj ON pj.project_id = u.project_id
+      LEFT JOIN tsk  tk ON tk.task_id    = u.task_id
+      WHERE TO_NUMBER(SUBSTR(u.accounting_period,4,4) DEFAULT NULL ON CONVERSION ERROR) = l_year
+        -- YTD semantics matching the page: the page period is a through-period
+        -- filter, so show every change on or before it
+        AND NVL(TO_DATE(u.accounting_period DEFAULT NULL ON CONVERSION ERROR,'MM-YYYY'),
+                DATE '1900-01-01') <= l_end
+        AND (TO_CHAR(pj.project_number), NVL(tk.task_number,'~'), NVL(u.expenditure_type,'~'))
+            IN (SELECT pk, tk, et FROM kys)
+    ) x
+    ORDER BY x.pnum, x.tnum, x.et, x.per
     FETCH FIRST 5000 ROWS ONLY
   ) LOOP
-    l_total := r.full_n; l_ovr := r.full_ovr; l_fus := r.full_fus;
+    l_total := r.full_n; l_chg := r.full_chg; l_fann := r.full_fann; l_fytd := r.full_fytd;
     APEX_JSON.open_object;
     APEX_JSON.write('id',               r.rid);
     APEX_JSON.write('projectNumber',    NVL(r.pnum,''));
@@ -152,8 +193,12 @@ BEGIN
     APEX_JSON.write('taskName',         NVL(r.tname,''));
     APEX_JSON.write('expenditureType',  NVL(r.et,''));
     APEX_JSON.write('accountingPeriod', NVL(r.per,''));
-    APEX_JSON.write('fusionBudget',     r.fus);
-    APEX_JSON.write('overrideBudget',   r.ovr);
+    APEX_JSON.write('fusionAnnual',     r.f_ann);
+    APEX_JSON.write('fusionYtd',        r.f_ytd);
+    APEX_JSON.write('changeAmount',     r.chg);
+    APEX_JSON.write('lineChangeTotal',  r.line_chg);
+    APEX_JSON.write('adjustedAnnual',   r.adj_ann);
+    APEX_JSON.write('adjustedYtd',      r.adj_ytd);
     APEX_JSON.write('reasonCategory',   r.rsn,  p_write_null => TRUE);
     APEX_JSON.write('comments',         r.cmts, p_write_null => TRUE);
     APEX_JSON.write('updatedBy',        NVL(r.uby,''));
@@ -163,8 +208,9 @@ BEGIN
   APEX_JSON.close_array;
   APEX_JSON.write('total', l_total);
   APEX_JSON.open_object('totals');
-  APEX_JSON.write('override', NVL(l_ovr,0));
-  APEX_JSON.write('fusion',   NVL(l_fus,0));
+  APEX_JSON.write('change',       NVL(l_chg,0));
+  APEX_JSON.write('fusionAnnual', NVL(l_fann,0));
+  APEX_JSON.write('fusionYtd',    NVL(l_fytd,0));
   APEX_JSON.close_object;
   APEX_JSON.close_object;
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
@@ -186,6 +232,8 @@ BEGIN
   dct_rest.parse_body(l_blob);
   l_id := APEX_JSON.get_varchar2('id');
   IF l_id IS NULL THEN dct_rest.err(400,'id is required'); RETURN; END IF;
+  -- body carries budget_change (signed; null or 0 clears) + optional
+  -- reason_category / comments - validated inside the shared save
   prod.dct_xl_pkg.save_item(l_uid, l_id, l_blob);
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
@@ -200,4 +248,4 @@ SHOW ERRORS
 EXECUTE setup_gl_ovr_ords_tmp
 DROP PROCEDURE setup_gl_ovr_ords_tmp;
 
-PROMPT gl.rest Budget Override endpoints published (/gl/butil/override + /lines).
+PROMPT gl.rest Budget Change endpoints published (/gl/butil/override + /lines).

@@ -29,12 +29,13 @@ CREATE OR REPLACE PACKAGE prod.dct_gl_class_pkg AS
   PROCEDURE set_butil_end   (p_date IN DATE);
   PROCEDURE clear_butil_end;
 
-  -- Budget Utilization "Consider Override Budget" flag
+  -- Budget Utilization "Select to include Budget Override" flag
   -- (SYS_CONTEXT('GL_CTX','BUTIL_OVR')). When 'Y', the pb CTE of
-  -- DCT_BUDGET_UTILIZATION_V takes NVL(budget_user, budget) per period row
-  -- (the end-user Excel override, db/v2/106), so every budget-derived figure
-  -- (annual, YTD, fund available, utilization) and every consuming report
-  -- reflects the override. Unset/other = Fusion budget as before.
+  -- DCT_BUDGET_UTILIZATION_V ADDS the signed budget change to the budget
+  -- (db/v2/106 v2: budget + NVL(budget_change,0); a negative change subtracts),
+  -- so every budget-derived figure (annual, YTD, fund available, utilization)
+  -- and every consuming report reflects it. A change counts in YTD from its own
+  -- accounting period onward. Unset/other = Fusion budget as before.
   PROCEDURE set_butil_ovr   (p_flag IN VARCHAR2);
   PROCEDURE clear_butil_ovr;
 

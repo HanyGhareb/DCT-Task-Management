@@ -14,9 +14,13 @@
 --           dct_rest.validate_session - the db/v2/50 module gate therefore
 --           does not apply to the xl segment by design).
 --
--- Routes  : GET budget/        all budget rows + user override (one page)
---           GET budget/[COLON]id     one row
---           PUT budget/[COLON]id     set/clear budget_user (the ONLY writable field)
+-- Routes  : GET budget/        budget LINES (project x task x expenditure type)
+--                              for a year + period, scoped by business unit and
+--                              project type, with annual/YTD budget and the
+--                              signed change (one page)
+--           GET budget/[COLON]id     one line
+--           PUT budget/[COLON]id     set/clear budget_change (+ reason/comments)
+--           GET lov/[COLON]kind      pick lists for the download parameters
 --           There is intentionally NO POST and NO DELETE handler - the Excel
 --           add-in cannot create or delete budget rows.
 --
@@ -35,6 +39,7 @@ PROMPT === 107.1 ADMIN synonyms ===
 
 CREATE OR REPLACE SYNONYM dct_xl_pkg FOR prod.dct_xl_pkg;
 CREATE OR REPLACE SYNONYM dct_xl_tpl FOR prod.dct_xl_tpl;
+CREATE OR REPLACE SYNONYM dct_xl_procash_pkg FOR prod.dct_xl_procash_pkg;
 CREATE OR REPLACE SYNONYM dct_project_budget_xl_v FOR prod.dct_project_budget_xl_v;
 
 PROMPT === 107.2 module xl.rest ===
@@ -94,13 +99,30 @@ DECLARE
 BEGIN
   dct_xl_pkg.require_user(l_uid);
   IF l_uid IS NULL THEN RETURN; END IF;
-  -- Accept both namings: budget_year/accounting_period (the field-matching
-  -- names the Excel add-in's Search form uses, and what the OpenAPI declares)
-  -- and the short year/period fallbacks.
+  -- Accept both namings: budget_year/accounting_period/business_unit/
+  -- project_type (the field-matching names the Excel add-in's Search form
+  -- uses, and what the OpenAPI declares) and the short fallbacks
+  -- year/period/bu/ptype.
   dct_xl_pkg.emit_list(l_uid, [COLON]limit, [COLON]offset,
                        NVL([COLON]budget_year, [COLON]year),
                        NVL([COLON]accounting_period, [COLON]period),
+                       NVL([COLON]business_unit, [COLON]bu),
+                       NVL([COLON]project_type, [COLON]ptype),
                        [COLON]search);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- Pick lists for the download parameters (business-units / project-types /
+    -- periods / budget-years / reasons). Same Basic auth as the data routes.
+    def_template('lov/[COLON]kind');
+    def_handler('lov/[COLON]kind', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_pkg.emit_lov([COLON]kind, NVL([COLON]budget_year, [COLON]year));
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
@@ -222,6 +244,222 @@ DECLARE
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   dct_xl_tpl.stream_active([COLON]code);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    -- ---------------------------------------------------------------------
+    -- PROCASH TRANSACTIONS (manual bank-portal payments) -- four business
+    -- objects, one per sheet of the procash workbook. Same Basic auth; every
+    -- write is executed by DCT_AP_PROCASH_PKG, so the Excel path obeys exactly
+    -- the rules the web app does. The add-in reads its own description from
+    -- GET procash/openapi (a custom module's auto catalog has no field
+    -- schemas, so it would otherwise list no fields at all).
+    -- ---------------------------------------------------------------------
+
+    def_template('procash/openapi');
+    def_handler('procash/openapi', 'GET', q'!
+BEGIN
+  dct_xl_procash_pkg.emit_openapi;
+END;
+!');
+
+    def_template('procash/lov/[COLON]kind');
+    def_handler('procash/lov/[COLON]kind', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_lov([COLON]kind, [COLON]search);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/single/');
+    def_handler('procash/single/', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_list(l_uid, 'single', [COLON]limit, [COLON]offset,
+                               [COLON]status, [COLON]bu, [COLON]from, [COLON]to, [COLON]search);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/single/', 'POST', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.create_item(l_uid, 'single', l_body);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/single/[COLON]id');
+    def_handler('procash/single/[COLON]id', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_item(l_uid, 'single', [COLON]id);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/single/[COLON]id', 'PUT', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.save_item(l_uid, 'single', [COLON]id, l_body);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/headers/');
+    def_handler('procash/headers/', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_list(l_uid, 'headers', [COLON]limit, [COLON]offset,
+                               [COLON]status, [COLON]bu, [COLON]from, [COLON]to, [COLON]search);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/headers/', 'POST', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.create_item(l_uid, 'headers', l_body);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/headers/[COLON]id');
+    def_handler('procash/headers/[COLON]id', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_item(l_uid, 'headers', [COLON]id);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/headers/[COLON]id', 'PUT', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.save_item(l_uid, 'headers', [COLON]id, l_body);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/lines/');
+    def_handler('procash/lines/', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_list(l_uid, 'lines', [COLON]limit, [COLON]offset,
+                               [COLON]status, [COLON]bu, [COLON]from, [COLON]to, [COLON]search);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/lines/', 'POST', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.create_item(l_uid, 'lines', l_body);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/lines/[COLON]id');
+    def_handler('procash/lines/[COLON]id', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_item(l_uid, 'lines', [COLON]id);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/lines/[COLON]id', 'PUT', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.save_item(l_uid, 'lines', [COLON]id, l_body);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/invoices/');
+    def_handler('procash/invoices/', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_list(l_uid, 'invoices', [COLON]limit, [COLON]offset,
+                               [COLON]status, [COLON]bu, [COLON]from, [COLON]to, [COLON]search);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/invoices/', 'POST', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.create_item(l_uid, 'invoices', l_body);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+
+    def_template('procash/invoices/[COLON]id');
+    def_handler('procash/invoices/[COLON]id', 'GET', q'!
+DECLARE
+  l_uid NUMBER;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.emit_item(l_uid, 'invoices', [COLON]id);
+EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
+END;
+!');
+    def_handler('procash/invoices/[COLON]id', 'PUT', q'!
+DECLARE
+  l_uid NUMBER;
+  l_body BLOB := [COLON]body;
+BEGIN
+  dct_xl_pkg.require_user(l_uid);
+  IF l_uid IS NULL THEN RETURN; END IF;
+  dct_xl_procash_pkg.save_item(l_uid, 'invoices', [COLON]id, l_body);
 EXCEPTION WHEN OTHERS THEN dct_rest.err(500, SQLERRM);
 END;
 !');
