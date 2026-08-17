@@ -3,6 +3,19 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-18 — BUDGET_UTIL_SECTOR joins the override contract (reporting/db/08a).** The
+  third butil report predated the feature and had NO `pre_sql` hook, so it always showed the
+  raw Fusion budget while the Book and Register honoured `ovr=Y`. Added the same
+  `set_butil_ovr` / `clear_butil_ovr` pair to its MULTI spec + `ovr` to `params_json` (so the
+  BI Reports run-parameters drawer offers it). **08a is MERGE-bearing and Linux SQLcl cannot
+  run it at all** — applied to PROD by targeted CLOB surgery on `source_ref` (guarded on
+  `INSTR(source_ref,'pre_sql')=0`, so it is idempotent) with the seed file patched in
+  lock-step; the `:` in the bound `pre_sql` is built as `CHR(58)`. Verified: spec still parses
+  as JSON with all 6 sections, and a temporary -1,000,000 change moved the sector's budget by
+  exactly that under `ovr=Y` (PASS), figures identical under `ovr=N`. NOTE: BUDGET_UTIL_BOOK
+  and BUDGET_UTIL_REGISTER bind the flag but do NOT declare `ovr` in `params_json` — the GL
+  page bridge passes it explicitly, so a run from the BI Reports page cannot tick it.
+
 - **2026-08-17 — Excel Budget Override becomes a signed BUDGET CHANGE (v1.66.0; db/v2/106+107,
   db/v2/37, GL/db/07+15).** User request: the Excel figure must be a **+/- change added to the
   budget line for a chosen accounting period**, the download must be scoped and line-grained,
@@ -1790,3 +1803,31 @@ Test gotchas:
   one, or the test filters by a value that cannot exist in its own scope.
 - Estimated-Cost touches every 2026 project, so its LOV legitimately **equals**
   the all-types list — assert subset, not "smaller".
+
+## Procash on Budget Utilization (2026-08-17, GL v1.69.0 + AP/db/13 + GL/db/21)
+
+`GET /gl/butil` gained **`procash=Y`** — the page's "Include Procash" checkbox, built on the
+same pattern as the Budget Override flag.
+
+- **Why:** procash records money already pushed through the bank portal that has NOT reached
+  Fusion as a payable invoice, so no AP / GRN / PR / PO figure sees it. Between the payment and
+  the invoice that spend is invisible here — the window a budget owner can overspend in.
+- **What counts** (user decision): every LIVE procash transaction with no Fusion invoice linked
+  — draft, submitted, in approval, approved and processed alike. The row leaves the figure the
+  moment its invoice is linked, because the AP actual then carries the same spend. Cancelled and
+  rejected never count.
+- **Off (default)** the figure is reported and changes nothing, so Fund Available keeps the
+  definition the books, registers and the Actuals↔Butil reconciliation already quote.
+  **On**, Actual includes it and Fund Available is reduced by it.
+- Always returned: `procash`, `procashCount`, `fundAvailableExProcash`, `procashUnmapped`.
+- **`procashUnmapped`** is live procash coded to a GL combination instead of project/task/
+  expenditure type. It has no budget key, so it is reported separately rather than dropped.
+- Sources: `PROD.DCT_AP_PROCASH_BUTIL_V` and `DCT_AP_PROCASH_UNMAPPED_V` (`AP/db/13`), both
+  honouring `GL_CTX.BUTIL_END` exactly as the view's own fact CTEs do.
+- **`DCT_BUDGET_UTILIZATION_V` was deliberately NOT changed** — it feeds the books, registers,
+  encumbrances and pending pages, so the join lives in the handler and the blast radius is one
+  endpoint. The reports still quote the published Fund Available; extending them is a separate,
+  explicit change.
+- **GL post-05 re-run list is now 07..21.** `21` is DEFINE_HANDLER-only and needs `AP/db/13`.
+- Tests: `GL/tests/butil_procash_api.py` (13/13) and `butil_procash_browser.py` (11/11).
+

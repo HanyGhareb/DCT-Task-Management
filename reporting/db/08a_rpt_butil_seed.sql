@@ -51,7 +51,15 @@ BEGIN
   -- part 6: reserved purchase requisitions
   l_pr := q'!SELECT x.project_number, x.project_name, x.task_number, x.expenditure_type, x.pr_number, x.description, x.budget_date, x.currency_code AS currency, x.distribution_amount, x.amount_aed FROM prod.dct_reserved_pr_lines_v x WHERE x.budget_year = [COLON]year!' || l_scope ||
           q'! ORDER BY x.project_number, x.task_number, x.expenditure_type, x.pr_number!';
-  l_src := '{"orientation":"landscape","required":["year","sector"],"sections":['
+  -- Budget change (2026-08-18): pre_sql sets GL_CTX.BUTIL_OVR exactly like the
+  -- /gl/butil page handler and the Book/Register reports, so ovr=Y makes every
+  -- budget figure in this pack include the end-user signed change; post_sql
+  -- ALWAYS clears it (a worker keeps ONE session across runs, so a leaked
+  -- context would silently contaminate the next report).
+  l_src := '{"orientation":"landscape","required":["year","sector"],'
+        || '"pre_sql":"BEGIN prod.dct_gl_class_pkg.set_butil_ovr([COLON]ovr); END;",'
+        || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_ovr; END;",'
+        || '"sections":['
         || '{"key":"intro","title":"Sector Overview","layout":"kv","sql":"' || l_intro || '"}' || ','
         || '{"key":"utilization","title":"Budget Utilization","layout":"table","sql":"' || l_util || '"}'  || ','
         || '{"key":"unpaid_invoices","title":"Unpaid and Partially Paid Invoices","layout":"table","sql":"' || l_inv || '"}'   || ','
@@ -77,12 +85,12 @@ BEGIN
     ('BUDGET_UTIL_SECTOR',
      'Budget Utilization by Sector (Executive)',
      UNISTR('\0627\0633\062A\062E\062F\0627\0645 \0627\0644\0645\0648\0627\0632\0646\0629 \062D\0633\0628 \0627\0644\0642\0637\0627\0639'),
-     '6-part executive pack per sector: overview, budget utilization (budget / AP / GRN / PR / PO / fund available), unpaid and partially paid invoices, uninvoiced GRN, open POs and reserved PRs. Parameters: year + sector (required), projecttype + costcenter (optional).',
+     '6-part executive pack per sector: overview, budget utilization (budget / AP / GRN / PR / PO / fund available), unpaid and partially paid invoices, uninvoiced GRN, open POs and reserved PRs. Parameters: year + sector (required), projecttype + costcenter + ovr (optional; ovr=Y adds the end-user signed Budget Change to every budget figure).',
      'General Ledger', 'MULTI', l_src, 'PYTHON', 'PDF,XLSX',
      'budget_util_sector.html.j2',
      'Budget Utilization - {{ params.sector }} - {{ params.year }}',
      l_body,
-     '{"year":null,"sector":null,"projecttype":null,"costcenter":null}',
+     '{"year":null,"sector":null,"projecttype":null,"costcenter":null,"ovr":null}',
      'Y', 'SETUP', 'SETUP')
   WHEN MATCHED THEN UPDATE SET
      t.source_type       = 'MULTI',
@@ -91,7 +99,7 @@ BEGIN
      t.pdf_template      = 'budget_util_sector.html.j2',
      t.email_subject_tpl = 'Budget Utilization - {{ params.sector }} - {{ params.year }}',
      t.email_body_tpl    = l_body,
-     t.params_json       = '{"year":null,"sector":null,"projecttype":null,"costcenter":null}',
+     t.params_json       = '{"year":null,"sector":null,"projecttype":null,"costcenter":null,"ovr":null}',
      t.updated_by        = 'SETUP',
      t.updated_at        = SYSTIMESTAMP;
   MERGE INTO prod.dct_rpt_recipient t
