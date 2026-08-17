@@ -136,16 +136,18 @@ Mirrors the source Project Budget Transactions VBCS screen. Read-only over the A
 - `runBudgetTrx(page)` — master grid for all 10 criteria (GET /budgettrx); clears the selection because the child regions belong to the previous row
 - `btSearch()` / `btClearCriteria()` / `btPrevPage()` / `btNextPage()` — criteria actions and paging (`btPage`/`btPages`/`btTotal`)
 - `btSelectRow(row)` / `btIsSelected(row)` — row click loads the header + its lines + its approval trail (GET /budgettrx/:num?type=) and highlights the row
-- `btLineCols` / `btCell(row,col)` — the details table is metadata-driven (`BT_LINE_COLS`): the line shape differs per budget type (34 / 21 / 38 source fields)
+- `btLineCols` / `btCell(row,col)` — the details table is metadata-driven (`BT_LINE_COLS`): the line shape differs per budget type (34 / 21 / 38 source fields); a column's 4th flag marks it a **status** column
+- `btTone(value)` / `btStClass(value)` / `btCellClass(row,col)` / `btCountClass(n)` (v1.64.0) — status-pill tone system: header status, line/baseline/journal status and approval state render as tinted pills with an icon disc (ok ✓ / err ✕ / warn ! / info • / mute –). **Tones are matched case-insensitively on keywords, and the failure patterns are tested FIRST** — the source vocabulary is inconsistent (`SUCCESS`/`Success`, `PASS`/`Pass`, `Draft`/`DRAFT`) and "Baselining Failed" also contains "baselin", so equality- or prefix-matching would paint a failed transaction green. `btCellClass` also reddens negative figures; `btCountClass` dims a zero line/approval count
 - `btExportCsv()` — the master grid as CSV (UTF-8 BOM)
 - Criteria observables: `btcType`, `btcBu`, `btcProjType`, `btcStatus`, `btcYear`, `btcApprover`, `btcTrxNum`, `btcDecree`, `btcFrom`, `btcTo`
 
-## Navigation (v1.63.0) — three groups, sub-tabs per group
+## Navigation (v1.63.0) — three groups, sub-tabs per group; **landing page = Projects › Budget Utilization** (v1.64.0)
 `NAV_GROUPS` in `app.js` is the single source: Projects (Budget Utilization · Projects Encumbrances ·
 Encumbrances – Pending Approval · Budget Transactions · Cashflow) / General Ledger (Dashboard ·
 Budget vs Actual · Reconciliation · Legacy (EBS) · DOF Submissions · Balances YoY) / Settings
 (Chart of Accounts).
 - `navGroups` / `activeGroup` (**derived from `view()`**, so a deep link lights the right group) / `activeGroupItems` / `goGroup(id)` (opens the group's first page)
+- the app boots on `butil` and init routes through `go(view())` — the same path a nav click takes — so changing the landing page is a one-word edit to the `view` observable, never a second load branch in init
 
 ## DOF Submissions (`view()==='dof'`) — YoY / Budget Utilization / Quarterly (v1.49.0, reworked v1.52.0)
 - `runDof()` — loads the selected dataset (GET /dof/yoy | /dof/butil | /dof/quarterly; Year **2016..current+1** + optional Period YTD-end) into the SHARED `<interactive-report>`; YoY includes chapter + grand total rows; cashflow-missing hint when the plan is not loaded (suppressed for EBS-era years < 2026, which show the era note instead); **column headers carry the run year** ("Revised Budget 2026", "Actual FY 2025"…) via `dofColsYoy/Butil/Quarterly(yr)` + `{y}`-substituted i18n keys, and the figure columns declare **`hint`** (ⓘ hover popover, v1.53.0 — generic `column.hint` support added to the shared IR component) explaining FY-vs-YTD prior actuals, the variance formula and cashflow/utilization semantics EN+AR

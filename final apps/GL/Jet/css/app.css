@@ -963,3 +963,30 @@ table.data-table.ir-table thead tr.ir-band th.acg-funds{background:rgba(46,125,9
    Sticky header keeps the columns readable while scrolling the rows. */
 #pg-budgettrx .bt-scroll{max-height:340px;overflow:auto}
 #pg-budgettrx .bt-scroll thead th{position:sticky;top:0;z-index:2}
+
+/* ---- status pills (header status, line/baseline/journal/validation, approval
+   state) ------------------------------------------------------------------
+   ONE pill, five tones. The tone is decided in the VM (btTone) because the
+   source vocabulary is inconsistent -- SUCCESS/Success, PASS/Pass, Draft/DRAFT
+   -- so the colour must never be driven off the literal string in markup.
+   Logical properties throughout: these mirror in RTL for free. */
+#pg-budgettrx .st{display:inline-flex;align-items:center;gap:6px;
+  padding-block:2px;padding-inline:6px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.2px;line-height:1.65;white-space:nowrap;
+  background:var(--st-bg);border:1px solid var(--st-bd);color:var(--st-fg)}
+/* the glyph sits in a filled disc so the tone reads even at a glance */
+#pg-budgettrx .st::before{content:var(--st-ic,'\2022');flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  inline-size:14px;block-size:14px;border-radius:50%;
+  background:var(--st-fg);color:#fff;font-size:9px;font-weight:700;line-height:1}
+#pg-budgettrx .st--ok  {--st-fg:var(--ok);  --st-bg:#E6F3EC;--st-bd:#BFDECD;--st-ic:'\2713'}
+#pg-budgettrx .st--err {--st-fg:var(--bad); --st-bg:#FCEBE9;--st-bd:#F0C6C1;--st-ic:'\2715'}
+#pg-budgettrx .st--warn{--st-fg:var(--warn);--st-bg:#FBEFDD;--st-bd:#EBD3AE;--st-ic:'!'}
+#pg-budgettrx .st--info{--st-fg:var(--info);--st-bg:#E8F0F8;--st-bd:#C6D8EA;--st-ic:'\2022'}
+#pg-budgettrx .st--mute{--st-fg:#6B7671;   --st-bg:#EFF1F0;--st-bd:#D9DEDB;--st-ic:'\2013'}
+/* negative figures in the details grid read as a reduction, not an error */
+#pg-budgettrx td .neg{color:var(--bad);font-weight:600}
+/* count columns: a quiet numeral chip, dimmed when there is nothing to see */
+#pg-budgettrx .ct{display:inline-block;min-inline-size:22px;padding:1px 7px;border-radius:999px;
+  background:rgba(var(--brand-rgb),.09);color:var(--brand-dark);font-size:11.5px;font-weight:600;text-align:center}
+#pg-budgettrx .ct.zero{background:#F1F2F2;color:#9AA3A0;font-weight:500}

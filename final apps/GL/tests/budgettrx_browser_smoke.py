@@ -63,10 +63,18 @@ with sync_playwright() as p:
           labels == ['Projects', 'General Ledger', 'Settings'], str(labels))
     check('no JS errors on load', not errors, '; '.join(errors[:2]))
 
-    # default view is overview (Chart of Accounts) -> Settings group active
-    check('deep-linked view lights its own group',
-          'on' in (page.locator('.pnav--grp a').nth(2).get_attribute('class') or ''),
-          'settings active for overview')
+    # landing page = Projects > Budget Utilization, and the active group is
+    # DERIVED from the view, so both rows must light up without a click
+    check('lands on Projects group',
+          'on' in (page.locator('.pnav--grp a').nth(0).get_attribute('class') or ''),
+          str(labels[0]))
+    check('lands on the Budget Utilization sub-tab',
+          'on' in (page.locator('.pnav--sub a').nth(0).get_attribute('class') or ''),
+          page.locator('.pnav--sub a.on').first.inner_text().strip())
+    check('butil page is the one shown', page.locator('#pg-butil').is_visible())
+    check('Chart of Accounts is NOT shown on load',
+          not page.locator('#pg-overview').is_visible())
+    page.screenshot(path=EV + '00_landing.png', full_page=False)
 
     page.locator('.pnav--grp a', has_text='Projects').click()
     page.wait_for_timeout(2500)
@@ -140,6 +148,43 @@ with sync_playwright() as p:
     appr = pg.locator('.bu-sec').nth(3)
     check('approval region rendered', appr.locator('tbody tr').count() >= 0)
     page.screenshot(path=EV + '03_selected.png', full_page=True)
+
+    # ---- 3b. status pills: tone comes from the VM, not the literal string ---
+    # the source vocabulary is mixed-case (SUCCESS/Success, PASS/Pass), so the
+    # same tone must come out of either spelling
+    tones = page.evaluate(
+        "() => { const vm = ko.dataFor(document.body);"
+        " return ['Baselined','Baselining Failed','SUCCESS','Success','PASS','Pass',"
+        "'ERROR','Rejected','Pending Approval','Approved','DRAFT','NOT CREATED','']"
+        "  .map(s => s + '=' + vm.btTone(s)); }")
+    want = {'Baselined': 'ok', 'Baselining Failed': 'err', 'SUCCESS': 'ok', 'Success': 'ok',
+            'PASS': 'ok', 'Pass': 'ok', 'ERROR': 'err', 'Rejected': 'err',
+            'Pending Approval': 'warn', 'Approved': 'ok', 'DRAFT': 'mute',
+            'NOT CREATED': 'mute', '': 'mute'}
+    got = dict(t.rsplit('=', 1) for t in tones)
+    for k, v in want.items():
+        check('tone %-18s -> %s' % ("'" + k + "'", v), got.get(k) == v, got.get(k))
+
+    st = pg.locator('.bt-scroll tbody .st')
+    check('master status cells are pills', st.count() > 0, str(st.count()))
+    check('every master status pill carries a tone',
+          st.count() == pg.locator('.bt-scroll tbody .st[class*="st--"]').count())
+    # the pill must actually be painted (a tone class with no CSS behind it
+    # would still pass a class-name assertion)
+    paint = st.first.evaluate(
+        "el => { const c = getComputedStyle(el);"
+        " return [c.backgroundColor, c.color, getComputedStyle(el,'::before').content]; }")
+    check('pill is painted + has an icon glyph',
+          paint[0] not in ('rgba(0, 0, 0, 0)', 'transparent')
+          and paint[2] not in ('none', 'normal', ''), str(paint))
+    check('details status cells are pills', det.locator('tbody .st').count() > 0,
+          str(det.locator('tbody .st').count()))
+    check('approval state is a pill', appr.locator('tbody .st').count() > 0,
+          str(appr.locator('tbody .st').count()))
+    check('line/approval counts are chips',
+          pg.locator('.bt-scroll tbody .ct').count() > 0,
+          str(pg.locator('.bt-scroll tbody .ct').count()))
+    page.screenshot(path=EV + '03b_pills.png', full_page=True)
 
     # ---- 4. criteria actually filter --------------------------------------
     tsel.select_option(label='Annual Budget')

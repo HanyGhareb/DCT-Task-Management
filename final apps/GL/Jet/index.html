@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.63.0';</script>
+<script>window.APP_VERSION = '1.64.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -76,7 +76,7 @@
 
     <!-- ── OVERVIEW ── -->
     <!-- ── CHART OF ACCOUNTS (merged Overview + Explorer) ── -->
-    <div data-bind="visible:view()==='overview'">
+    <div id="pg-overview" data-bind="visible:view()==='overview'">
       <div class="page-head">
         <div><h1 class="greet" data-bind="text:t('coaTitle')"></h1>
           <div class="greet-sub" style="margin:0" data-bind="text:t('coaSub')"></div></div>
@@ -376,7 +376,7 @@
     </div>
 
     <!-- ── BUDGET UTILIZATION (project budget vs actual, per task & expenditure type) ── -->
-    <div data-bind="visible:view()==='butil'">
+    <div id="pg-butil" data-bind="visible:view()==='butil'">
       <div class="page-head">
         <div><h1 class="greet" data-bind="text:t('buTitle')"></h1>
           <div class="greet-sub" data-bind="text:t('buSub')"></div></div>
@@ -1554,9 +1554,12 @@
                   <td data-bind="text:$data.transactionDate"></td>
                   <td data-bind="text:$data.trxYear"></td>
                   <td data-bind="text:$data.approver"></td>
-                  <td><span class="chip" data-bind="text:$data.status"></span></td>
-                  <td class="num" data-bind="text:$data.lines"></td>
-                  <td class="num" data-bind="text:$data.approvals"></td>
+                  <td><span data-bind="attr:{'class':$parent.btStClass($data.status)},
+                                       text:$data.status"></span></td>
+                  <td class="num"><span data-bind="attr:{'class':$parent.btCountClass($data.lines)},
+                                                   text:$data.lines"></span></td>
+                  <td class="num"><span data-bind="attr:{'class':$parent.btCountClass($data.approvals)},
+                                                   text:$data.approvals"></span></td>
                 </tr>
               </tbody>
             </table>
@@ -1594,7 +1597,12 @@
                    line reached as $parent and the VM as $parents[1] -->
               <tbody data-bind="foreach:btDetail().lines">
                 <tr data-bind="foreach:$parent.btLineCols">
-                  <td data-bind="text:$parents[1].btCell($parent, $data), css:{num:$data.num}"></td>
+                  <td data-bind="css:{num:$data.num}">
+                    <!-- one span either way: btCellClass returns the status-pill
+                         classes, 'neg' for a negative figure, or '' -->
+                    <span data-bind="attr:{'class':$parents[1].btCellClass($parent, $data)},
+                                     text:$parents[1].btCell($parent, $data)"></span>
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -1628,7 +1636,8 @@
                   <td data-bind="text:$data.seq"></td>
                   <td data-bind="text:$data.submitter"></td>
                   <td data-bind="text:$data.assignee"></td>
-                  <td><span class="chip" data-bind="text:$data.state"></span></td>
+                  <td><span data-bind="attr:{'class':$parent.btStClass($data.state)},
+                                       text:$data.state"></span></td>
                   <td data-bind="text:$data.createdAt"></td>
                 </tr>
               </tbody>

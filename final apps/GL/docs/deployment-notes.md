@@ -1526,3 +1526,48 @@ driving the child regions, criteria filtering, Clear, and the AR pass.
 - GL persists the language to `localStorage('gl_lang')` only, **not** to the
   user's server-side prefs like the shared shell — so an AR toggle in a test
   cannot leak into the real account.
+
+---
+
+## Landing page + status pills — 2026-08-17 (v1.64.0, frontend only)
+
+### Landing page = Projects › Budget Utilization
+`self.view` now boots on `butil` instead of `overview` (Chart of Accounts), and
+init calls **`self.go(self.view())`** rather than its own `if (view==='overview')
+loadCoa()` branch — the landing page now loads through exactly the same path a
+nav click takes, so changing it again is a one-word edit with no second load
+branch to keep in sync. The group row follows for free (`activeGroup` is derived
+from the view). `#pg-butil` / `#pg-overview` ids were added to those two page
+containers, which had none, so tests can assert which page is actually shown.
+
+### Status pills (Budget Transactions)
+Header **Status**, the line **Line / Baseline / Journal status** columns and the
+approval **State** were plain text or a flat grey chip. They now render as
+tinted pills with an icon disc — ok `✓` green · err `✕` red · warn `!` amber ·
+info `•` blue · mute `–` grey (`.st`/`.st--*` in `app.css`, scoped to
+`#pg-budgettrx`, logical properties so they mirror in RTL). Negative figures in
+the details grid turn red; line/approval **counts** became chips, dimmed at zero.
+
+**The tone is decided in the VM (`btTone`), never in markup, and the failure
+patterns are tested FIRST.** The live source vocabulary is inconsistent in both
+case and wording — a `SELECT ... GROUP BY` over the loaded data returns:
+
+| tone | values actually present |
+|---|---|
+| ok | `Baselined` (2,063) · `SUCCESS` **and** `Success` · `PASS` **and** `Pass` · `Approved` (1,761) |
+| err | `Baselining Failed` (15) · `FAILED` · `ERROR` · `Rejected` |
+| warn | `Pending Approval` · `Pending For Approval` · `IN PROCESS` |
+| mute | `Draft` **and** `DRAFT` · `NOT CREATED` · `Withdraw` · null |
+| info | `Entered` (105) |
+
+So matching is case-insensitive on keywords — and because **"Baselining Failed"
+also contains "baselin"**, an equality or prefix match would have painted a
+failed transaction green. That ordering is asserted in the smoke test.
+
+### Verified
+`tests/budgettrx_browser_smoke.py` **54/54** EN + AR/RTL — adds the landing-page
+assertions (Projects group + Budget Utilization sub-tab lit, `#pg-butil` shown,
+`#pg-overview` not), the full tone table above driven through `btTone`, and a
+**computed-style** check that the pill is actually painted and its `::before`
+glyph resolves (a tone class with no CSS behind it would still pass a class-name
+assertion). Live page shows the real spread: 86 ok · 10 info · 2 warn · 2 err.

@@ -714,7 +714,8 @@
     };
     applyDir();
     self.ready = ko.observable(false);
-    self.view = ko.observable('overview');
+    // landing page = Projects › Budget Utilization (the day-to-day page)
+    self.view = ko.observable('butil');
 
     /* ── navigation: three groups, each with its own sub-tabs ───────────
        Adding a page = one entry here; the group row, the sub row and the
@@ -858,16 +859,16 @@
         ['additionalAmount', 'btAmount', 1], ['commitment', '', 1],
         ['totalAnnualBudget', '', 1], ['projectFundAvailable', '', 1],
         ['totalActual', '', 1], ['periodFrom', 'btPeriod'], ['periodTo', ''],
-        ['lineStatus', 'btLineStatus'], ['baselineStatus', 'btBaseline'],
-        ['journalStatus', 'btJournal'], ['notes', 'btNotes']
+        ['lineStatus', 'btLineStatus', 0, 1], ['baselineStatus', 'btBaseline', 0, 1],
+        ['journalStatus', 'btJournal', 0, 1], ['notes', 'btNotes']
       ],
       'Estimated-Cost': [
         ['projectNum', 'btProject'], ['projectName', ''], ['taskNum', 'btTask'],
         ['taskName', ''], ['organization', 'btOrganization'],
         ['expenditureType', 'btExpType'], ['codeCombination', 'btCodeComb'],
         ['estimatedCost', 'btAmount', 1], ['currentYearBudget', '', 1],
-        ['glFundAvailable', '', 1], ['lineStatus', 'btLineStatus'],
-        ['baselineStatus', 'btBaseline'], ['notes', 'btNotes']
+        ['glFundAvailable', '', 1], ['lineStatus', 'btLineStatus', 0, 1],
+        ['baselineStatus', 'btBaseline', 0, 1], ['notes', 'btNotes']
       ],
       'Annual-Budget': [
         ['projectNum', 'btProject'], ['projectName', ''], ['taskNum', 'btTask'],
@@ -875,8 +876,8 @@
         ['expenditureType', 'btExpType'], ['codeCombination', 'btCodeComb'],
         ['approvedBudget', 'btAmount', 1], ['proposedBudget', '', 1],
         ['revisedProjectCost', '', 1], ['availableProjectCost', '', 1],
-        ['totalActual', '', 1], ['baselineStatus', 'btBaseline'],
-        ['journalStatus', 'btJournal'], ['notes', 'btNotes']
+        ['totalActual', '', 1], ['baselineStatus', 'btBaseline', 0, 1],
+        ['journalStatus', 'btJournal', 0, 1], ['notes', 'btNotes']
       ]
     };
     function btLabel(key, fallback) {
@@ -889,7 +890,7 @@
       if (!d || !d.header) return [];
       var spec = BT_LINE_COLS[d.header.transactionType] || BT_LINE_COLS['Additional'];
       return spec.map(function (c) {
-        return { field: c[0], label: btLabel(c[1], c[0]), num: !!c[2] };
+        return { field: c[0], label: btLabel(c[1], c[0]), num: !!c[2], st: !!c[3] };
       });
     });
     self.btCell = function (row, col) {
@@ -897,6 +898,40 @@
       if (v === null || v === undefined || v === '') return '';
       return col.num ? Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) : v;
     };
+
+    /* ── status tone ────────────────────────────────────────────────────
+       The source vocabulary is inconsistent in BOTH case and wording -- the
+       live data holds SUCCESS and Success, PASS and Pass, Draft and DRAFT --
+       so tones are matched case-insensitively on keywords, never on equality.
+       ORDER IS LOAD-BEARING: "Baselining Failed" also contains "baselin", so
+       the failure patterns must be tested before the success ones or a failed
+       transaction would render green. */
+    var BT_TONES = [
+      [/fail|error|reject/i,                     'err'],
+      [/pend|in\s*process|in\s*progress/i,       'warn'],
+      [/success|pass|approve|baselined|complet/i, 'ok'],
+      [/draft|not\s*created|withdraw|cancel/i,   'mute'],
+      [/entered|new|open/i,                      'info']
+    ];
+    self.btTone = function (v) {
+      var s = (v == null ? '' : String(v)).trim();
+      if (!s) return 'mute';
+      for (var i = 0; i < BT_TONES.length; i++) if (BT_TONES[i][0].test(s)) return BT_TONES[i][1];
+      return 'info';
+    };
+    // class for a status cell -- '' when there is no value, so an empty cell
+    // stays empty instead of rendering a pill around nothing
+    self.btStClass = function (v) {
+      return (v == null || String(v).trim() === '') ? '' : 'st st--' + self.btTone(v);
+    };
+    // details grid: status columns become pills, negative amounts turn red
+    self.btCellClass = function (row, col) {
+      var v = row[col.field];
+      if (col.st) return self.btStClass(v);
+      if (col.num && Number(v) < 0) return 'neg';
+      return '';
+    };
+    self.btCountClass = function (n) { return Number(n) > 0 ? 'ct' : 'ct zero'; };
 
     self.btExportCsv = function () {
       var rows = self.btRows();
@@ -4607,7 +4642,9 @@
         self.pctClassified(Math.round(d.classifiedCount * 100 / d.combinationCount));
       }
       self.refreshFilters();
-      if (self.view() === 'overview' && !self.coaLoaded()) self.loadCoa();
+      // load whatever the landing page is through the SAME path a nav click
+      // takes, so the default page can change without touching init again
+      self.go(self.view());
       self.ready(true);
     }).catch(function (e) { fail(e); self.ready(true); });
   }

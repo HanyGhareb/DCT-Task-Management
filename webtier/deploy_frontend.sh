@@ -11,7 +11,9 @@
 # (db/, docs/, UAT/, tests/, guides/, dev-proxy.py, *.md never leave the repo)
 #
 # Releases go to /var/www/ifinance-releases/<timestamp>; the live root is the
-# symlink /var/www/ifinance/current (what nginx serves). Keeps last 5 releases.
+# symlink /var/www/ifinance/current (what nginx serves). Keeps last 5 releases,
+# pruned by release NAME (the timestamp) - never by mtime: 'ls -dt' once deleted
+# the live release because a hand-named dir's mtime made it look oldest.
 # Rollback = point the symlink at the previous release dir.
 #
 # Remember: bump window.APP_VERSION in each changed app's Jet/index.html
@@ -51,7 +53,9 @@ tar czf - \
                ${SUDO}tar xzf - -C '$REL' &&
                command -v restorecon >/dev/null 2>&1 && ${SUDO}restorecon -R /var/www/ifinance-releases || true;
                ${SUDO}ln -sfn '$REL' /var/www/ifinance/current &&
-               ls -dt /var/www/ifinance-releases/* | tail -n +6 | xargs -r ${SUDO}rm -rf"
+               LIVE=\$(readlink -f /var/www/ifinance/current);
+               ls -d /var/www/ifinance-releases/* | sort -r | tail -n +6 \
+                 | grep -vx \"\$LIVE\" | xargs -r ${SUDO}rm -rf"
 
 echo "== deployed release $STAMP -> https://$HOST/"
 echo "   rollback: ssh $SSH_USER@$HOST 'ls /var/www/ifinance-releases; ${SUDO}ln -sfn /var/www/ifinance-releases/<prev> /var/www/ifinance/current'"
