@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.68.0';</script>
+<script>window.APP_VERSION = '1.69.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -535,6 +535,12 @@
               </div>
             </div>
           </div>
+          <div class="field"><label class="lbl"><span data-bind="text:t('buProcashInc')"></span><i class="hint-i" data-bind="attr:{title:t('buProcashHint')}">ⓘ</i></label>
+            <div class="inp ovr-chk" data-bind="click:toggleBuProcash, css:{on:buProcash}, attr:{title:t('buProcashHint')}">
+              <input type="checkbox" tabindex="-1" data-bind="checked:buProcash">
+              <span data-bind="text:buProcash()?t('buProcashOnL'):t('buProcashOff')"></span>
+            </div>
+          </div>
         </div>
         <div class="bk bk-ap bk-duo">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div>
@@ -628,6 +634,7 @@
             <th class="num" data-bind="text:t('cBudgetYtd'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cActualAp'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cActualGrn'), attr:{title:t('buDrillHint')}"></th>
+            <th class="num" data-bind="text:t('cProcash'), attr:{title:t('buProcashHint')}"></th>
             <th class="num" data-bind="text:t('cCommitPr'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cObligPo'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cFundAvail')"></th>
@@ -657,6 +664,7 @@
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openBuDrill(d,'budget')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualAp), attr:{title:$root.money($data.actualAp)}, click:function(d){$root.openBuDrill(d,'ap')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualGrn), attr:{title:$root.money($data.actualGrn)}, click:function(d){$root.openBuDrill(d,'grn')}"></td>
+              <td class="num mono" data-bind="text:$root.buNum($data.procash), attr:{title:$root.money($data.procash)}, css:{dash:!$data.procash}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}, click:function(d){$root.openBuDrill(d,'pr')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.obligationPo), attr:{title:$root.money($data.obligationPo)}, click:function(d){$root.openBuDrill(d,'po')}"></td>
               <td class="num mono strong" data-bind="text:$root.buNum($data.fundAvailable), attr:{title:$root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}"></td>

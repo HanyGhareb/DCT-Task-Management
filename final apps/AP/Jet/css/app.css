@@ -359,3 +359,27 @@ td.inv-cc { font-size: 11.5px; white-space: nowrap; max-width: 300px; overflow: 
 .ai-lnk:hover { color: var(--brand); }
 .ai-group--warn .ai-lnk { color: var(--red, #B3261E); }
 .btn-busy { opacity: .65; pointer-events: none; }
+
+/* ── Procash transactions ───────────────────────────────────────────────
+   Manual bank-portal payments recorded outside Fusion Payables. Status pills
+   carry a tone (never colour alone — the label always states the status), and
+   the line drawer is deliberately narrower than the wide .dw-drawer default. */
+.dw-drawer.dw-narrow { width: min(620px, 96vw); }
+.kv-v { font-weight: 600; color: var(--text-1, #1f2733); }
+.pc-pill { display: inline-flex; align-items: center; gap: 5px; padding: 2px 9px;
+           border-radius: 999px; font-size: 11px; font-weight: 700;
+           letter-spacing: .02em; white-space: nowrap; }
+.pc-pill::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.pc-pill--ok   { background: #E6F4EA; color: #1E7A3C; }
+.pc-pill--warn { background: #FDF3E3; color: #9A6212; }
+.pc-pill--err  { background: #FCE9E7; color: #B3261E; }
+.pc-pill--info { background: #E8EFFB; color: #1B4A9C; }
+.pc-pill--mute { background: #EEF0F3; color: #5C6673; }
+.pc-finding { display: flex; align-items: flex-start; gap: 8px; font-size: 12.5px; padding: 4px 0; }
+.pc-finding-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 5px; flex: none; }
+.pc-finding--block { color: #B3261E; }
+.pc-finding--block .pc-finding-dot { background: #B3261E; }
+.pc-finding--warn { color: #9A6212; }
+.pc-finding--warn .pc-finding-dot { background: #9A6212; }
+.pc-neg { color: #B3261E; font-weight: 700; }
+.pc-pos { color: #1E7A3C; font-weight: 700; }

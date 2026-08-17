@@ -69,6 +69,39 @@ The full AP Dashboard locked to the generic **BENEFICIARY supplier (supplier num
 - **Invoice drills** — every invoice count is a link: `drillGroup(g)` (runid+grp), `drillMember(m)` (name), `drillAccount(a)` (bank, platform-wide), `drillVendorAccount(a,v)` (bank+name) → right-edge drawer (`dwOpen/dwRows/dwCount/dwTotal`, Esc closes) over `GET /ap/benef/dupinvoices`; **invoice numbers deep-link to Fusion** (`fusionLinks.invoice`); `dwExportCsv()` with reconciling total.
 - **Generate reports** — `runPdf()` / `runXlsx()` enqueue Reporting-Platform definition `AP_BENEF_DUP_REGISTER` via `POST /ap/benef/dupreport` and poll `GET /ap/benef/dupreport/:id` every 5 s until the file auto-downloads (`GET :id/file`); `aiExportCsv()` = on-page CSV of both sections.
 
+
+## Procash Transactions — register (`views/procash.html` + `viewModels/procash.js`) — v1.19.0
+
+Manual payments pushed through the bank portal directly, outside Fusion Payables.
+
+- `load` / `reload` — paged register over `GET /ap/procash/` with the current filters
+- `onPage` — pager hook (shared `<list-pager>`)
+- `onSearchKey` — debounced free-text search (350 ms)
+- `resetFilters` — clears status / business unit / invoice-link / date range / mine / search
+- `openRow` — opens one transaction on the entry page (id handed over through the shell state bag)
+- `openNew` — starts a new transaction (hidden unless the server reports `canCreate`)
+- `exportCsv` — authed CSV of the filtered register
+- `toggleTableMax` — maximise the results region
+- `num` / `statusLabel` / `pillCls` — formatting; status labels come from the lookup, never hard-coded
+- KPI band: `kTotal`, `kAmount`, `kOpen`, `kAwaiting` (computed from the response envelope's `totals`)
+
+## Procash Transactions — entry (`views/procashEntry.html` + `viewModels/procashEntry.js`) — v1.19.0
+
+- `reload` — header + lines + documents + history + findings for one transaction
+- `save` — create or update the header (partial update: an absent key keeps the stored value)
+- `submitTrx` / `processTrx` / `cancelTrx` — lifecycle transitions
+- `openInvoicePicker` / `onInvSearch` / `pickInvoice` / `unlinkInvoice` — Fusion payable invoice reconciliation
+- `addLine` / `editLine` / `saveLine` / `removeLine` / `closeLineDw` — detail lines in the `.dw-*` drawer
+- `onProjectPick` — project dropdown change; reloads the dependent task list and clears the task
+- `onGlSearch` / `onSupSearch` — debounced searches that feed the GL and supplier dropdowns (both masters are too large to list in full: 9.4k combinations, 28.7k suppliers)
+- `onSupplierPick` — fills supplier name and payee from the chosen Fusion supplier
+- `projectOpts` / `taskOpts` / `etypeOpts` / `glOpts` / `supplierLov` — the dropdown option lists, each **re-injecting the stored value as its own option** when the master no longer carries it (a KO `options:` binding blanks a value absent from its list)
+- `uploadDoc` / `viewDoc` / `removeDoc` — attachments on the shared `DCT_DOCUMENTS`
+- `onCurrency` — defaults the exchange rate from the currency (AED forced to 1)
+- `goBack` — returns to the register
+- Computed gates mirror the SERVER's answer, they never re-decide it: `canEdit`, `canSubmit`,
+  `canProcess`, `canLink`, `canUnlink`, `canCancel`, `canAttach`, plus `balanced` and `amountAedDisplay`
+
 ## API Endpoints (ORDS — `ap.rest`, base `/ords/admin/ap/`)
 
 | Method | Path | Purpose |
@@ -91,6 +124,33 @@ The full AP Dashboard locked to the generic **BENEFICIARY supplier (supplier num
 | POST | `/ap/benef/dupreport` | Enqueue the Reporting-Platform definition `AP_BENEF_DUP_REGISTER` (reporting/db/33) as the calling user — body `{format:'PDF'\|'XLSX', suppnum?}` → `{runId, format}` (v1.16.0, AP/db/07) |
 | GET | `/ap/benef/dupreport/:id` | Report run status → `{runId, status, rowCount, error, startedAt, finishedAt, hasFile, format}` (v1.16.0) |
 | GET | `/ap/benef/dupreport/:id/file` | Authed download of the finished run's output (PDF book or 5-sheet Excel register) (v1.16.0) |
+| GET | `/ap/procash/` | Paged procash register `{items,total,totals}` — filters `status` (pipe any-of) `bu` `from` `to` `supplier` `linked` `mismatch` `mine` `search` (+ `limit offset sort`) (v1.19.0) |
+| POST | `/ap/procash` | Create a header (+ optional `lines[]`) — **no trailing slash on the collection POST** |
+| GET | `/ap/procash/:id` | Header + lines + documents + status history + validation `findings[]` + the caller's `canEdit`/`canProcess`/`canUnlink` |
+| PUT | `/ap/procash/:id` | Partial update — the handler reads the stored row and overrides only the keys the body carries |
+| DELETE | `/ap/procash/:id` | Remove a draft |
+| POST | `/ap/procash/:id/submit` | Draft → Submitted, or → In Approval when `PROCASH_APPROVAL_MODE=WORKFLOW` |
+| POST | `/ap/procash/:id/process` | Stamp processed by / on (needs `PROCASH_PROCESSOR`) |
+| POST | `/ap/procash/:id/cancel` | Cancel |
+| POST | `/ap/procash/:id/invoice` | Link the Fusion payable invoice (validated against the AP extract; sets the mismatch flag) |
+| DELETE | `/ap/procash/:id/invoice` | Unlink it again (`PROCASH_ADMIN` only) |
+| POST | `/ap/procash/:id/lines` | Add a detail line |
+| PUT | `/ap/procash/:id/lines/:lineid` | Edit one |
+| DELETE | `/ap/procash/:id/lines/:lineid` | Remove one (the rest renumber) |
+| GET | `/ap/procash/:id/documents` | Attachments |
+| POST | `/ap/procash/:id/documents` | Raw-binary upload (`:body`, name/type in the query, `MAX_UPLOAD_MB` → 413) |
+| DELETE | `/ap/procash/:id/documents/:docid` | Deactivate an attachment |
+| GET | `/ap/procash/:id/documents/:docid/file` | Authed download |
+| GET | `/ap/procash/meta/lovs` | Statuses, coding bases, currencies, business units, attachment checklist + `approvalMode`/`canCreate`/`canProcess`/`isAdmin` |
+| GET | `/ap/procash/meta/projects` · `/tasks` · `/etypes` | Coding dropdown sources (`?search=`; tasks need `?project=`) |
+| GET | `/ap/procash/meta/gl` | GL combination dropdown — reads **`DCT_GL_COA_SNAP`** (9.4k real combinations). `DCT_GL_CODE_COMBINATIONS` is a 12-row demo master and must not be used |
+| GET | `/ap/procash/meta/suppliers` | Fusion supplier pick list from `ATD_SUPPLIERS` (`?search=`, distinct supplier number, cap 200) — feeds the Payee dropdown |
+| GET | `/ap/procash/meta/invoices` | Validated invoice pick from `AP_INVOICES_HEADER_V` (+ `alreadyLinked` flag) |
+| GET | `/ap/procash/meta/export` | CSV of the filtered register (25k cap) |
+| POST | `/ap/procash/meta/report` | Enqueue `PROCASH_REGISTER` (reporting/db/37) with the page filters — `{format:'PDF'\|'XLSX', status, bu, datefrom, dateto, search}` → `{runId, format}` (AP/db/12) |
+| GET | `/ap/procash/meta/report/:runid` | Report run status |
+| GET | `/ap/procash/meta/report/:runid/file` | Authed download of the finished book / register |
+
 
 All protected by `dct_rest.validate_session`; facet params: `datefrom dateto supplier paid val acc inv itype curr paygroup paymethod sector dept cc project task etype account approp po pr req search glfrom glto rcvfrom rcvto esupplier aging suppnum bu inclcxl` (+ `limit offset sort`), multi-values pipe-delimited. `suppnum=` (multi, `supplier_number`; 2026-07-13 Beneficiaries round) scopes `filtered_ids` AND the `/filters` LOVs/counts — with it, the `suppliers` LOV lists the beneficiary-aware **effective** supplier names; register/drill rows at every level carry `supplierSite` (lines/dists via a header join) and the header CSV exports gained a `Site` column. **Platform rule (2026-07-14): EVERY surface that displays an AP-invoice vendor is beneficiary-aware** — the AP views embed the rule (AP/db/05 `benef_site` enrichment) and cross-module consumers join `DCT_AP_SUPPLIER_EFF_V` (`db/v2/51`): GL butil AP drill (GL/db/07), `DCT_UNPAID_INVOICES_V` (db/v2/39), `DCT_ACTUAL_V` AP branch (db/v2/32). `aging` = one bucket code (`CURRENT|D1_30|D31_60|D61_90|D91_180|D180P`); `esupplier` matches the beneficiary-aware effective supplier; `inclcxl=N` excludes cancelled invoices (frontend DEFAULT since v1.5.0; `/filters` also honours it for counts + LOVs). `appr=` filters by approval status (multi, display labels; v1.6.4). **`bu=` (v1.11.0, multi) filters by the invoice header's Business Unit** — the extract is CROSS-BU since 2026-07-18 (DCT / Museum Shared Services / Abrahamic Family House), the counted `businessUnits[]` LOV ships in `/filters`, and register/CSV rows at all 3 levels carry `businessUnit`. Received-date facets/trend use `COALESCE(invoice_received_date, created_date, invoice_date)`. **Item-only rule (2026-07-13):** all distribution-grain facets, dist-based LOVs and the bySector dataset consider `distribution_type='Item'` rows only, so facet counts reconcile with the KPIs/charts.
 
@@ -102,4 +162,7 @@ All protected by `dct_rest.validate_session`; facet params: `datefrom dateto sup
 | `services/api.js` | re-export of `shared/api` (Bearer + 401 handling) |
 | `services/authService.js` | shared-session reader (login/logout for dev standalone) |
 | `services/apService.js` | `getFilters` / `getSummary` / `getRows(level)` / `getInvoice` / `getExportBlobUrl` / `getExportCsvText` |
+| `services/procashService.js` | Procash CRUD + lifecycle + lines + documents + coding pick lists + invoice search + CSV/report (v1.19.0) |
 | DB | `PROD.DCT_AP_PKG` (`in_list`, `filtered_ids`) — shared facet engine used by every handler |
+| DB | `PROD.DCT_AP_PROCASH_PKG` — every validated procash write (status gates, role checks, coding rules, line-sum rule, invoice linking, bulk upsert, workflow hooks) |
+| DB | `PROD.DCT_XL_PROCASH_PKG` — the Excel add-in layer over the same package (`db/v2/121`, routes in `db/v2/107`) |

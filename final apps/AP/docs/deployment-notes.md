@@ -10,6 +10,20 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
    - `db/03_ap_ords.sql` — **fresh session**. Rebuilds `ap.rest` from scratch (DELETE_MODULE):
      **always re-run `04` right after any `03` re-run.** Verify 5 templates / 5 handlers.
    - `db/04_ap_level_ords.sql` — **fresh session**, additive lines/dists (+exports + cc lookup). Verify 10/10.
+   - `db/06_ap_ai_dupcheck.sql` — AI duplicate check package + persistence.
+   - `db/07_ap_dup_report_ords.sql` — **fresh session**, additive dup-report bridge.
+   - **Procash Transactions (2026-08-17):**
+     - `db/08_procash_ddl.sql` — tables, sequence, lookups, AP module settings, roles, doc checklist,
+       bootstrap role holders. Rerunnable.
+     - `db/09_procash_pkg.sql` — `PROD.DCT_AP_PROCASH_PKG`. Verify spec+body VALID.
+     - `db/10_procash_ords.sql` — **fresh session**, additive. Verify 19 procash templates.
+     - `db/11_procash_wf.sql` — DWP process `PROCASH_APPROVAL` + fact view + route `AP_PROCASH` → WF.
+       Rebuilds the definition ONLY while it has zero instances.
+     - `db/12_procash_report_ords.sql` — **fresh session**, additive report bridge (needs
+       `reporting/db/37_rpt_procash_register.sql` + the `procash_book.html.j2` template uploaded).
+     - Excel add-in: `db/v2/121_xl_procash.sql`, then **re-run `db/v2/107_xl_budget_ords.sql`**
+       (107 `DELETE_MODULE`s `xl.rest`, so the procash routes live inside 107 itself).
+   - **Post-`03` re-run list is now: 04, 06, 07, 10, 12.**
 2. **Frontend**: bump `window.APP_VERSION` in `Jet/index.html`; if anything under
    `final apps/shared/` changed, bump ALL apps. Ship via `webtier/deploy_frontend.sh`.
 3. **Smoke**: run `scratch` API suite (or curl `/ap/filters` + `/ap/summary?sector=Culture&paid=Unpaid`
@@ -46,7 +60,72 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
   views — now the source of truth in the repo — and recompiles `dct_ap_pkg`),
   then `@03` + `@04`. Verify `all_objects WHERE status='INVALID'` is empty.
 
+## Procash Transactions — gotchas paid for on 2026-08-17
+
+- **`uid` and `validate` are unusable as package routine names.** Both collide with SQL
+  built-ins the moment the routine is called inside a SQL statement: `uid(p_user)` in an
+  `INSERT ... VALUES` raised `ORA-01747: invalid column specification: "UID"`, and
+  `JSON_TABLE(validate(id), ...)` raised the same for `VALIDATE`. Renamed to `user_id_of`
+  and `findings`. Calling them from PL/SQL alone would have hidden the problem.
+- **`SQLERRM` cannot be referenced inside a SQL statement** — assign it to a local first,
+  then use the local (`JSON_OBJECT('error' VALUE v_err)`).
+- **An inline `(SELECT …)` is not a PL/SQL expression** — `ok('x', (SELECT COUNT(*) …) = 3)`
+  does not compile; `SELECT … INTO` first.
+- **A KO `<select>` whose option list is still empty at bind time BLANKS its bound value.**
+  The entry page's currency came back as NULL on save (`ORA-20001: Currency is required`)
+  until the VM re-applied currency and business unit after the pick lists resolved
+  (`restoreSelects()`), whichever order the two requests finish in.
+- **The procash meta routes deliberately sit under a third path segment** (`procash/meta/lovs`,
+  `…/projects`, `…/report`). A two-segment literal like `procash/export` would compete with
+  `procash/:id`; a third segment that no `:id` route uses (never `lines`, `documents`,
+  `submit`, `process`, `cancel`, `invoice`) cannot collide with a numeric id.
+- **A refused write in an ORDS handler rolls the request back** — correct per request, but a
+  SQL*Plus test harness that builds fixtures in the same transaction loses them. `procash_xl_test.sql`
+  commits its fixtures and deletes them explicitly instead of relying on a closing ROLLBACK.
+- **Calling an ORDS-facing package from SQLcl needs `OWA.init_cgi_env` first**, or
+  `OWA_UTIL.mime_header` raises ORA-06502.
+- **This box's SQLcl swallows a PL/SQL block that contains blank lines**, so `db/08` and
+  friends carry zero interior blank lines and every deploy is verified with row counts,
+  not the console log.
+
+## Procash coding fields — strict dropdowns, no master validation (2026-08-17, user decision)
+
+Project / Task / Expenditure type / GL combination / Payee are **strict dropdowns** on the form,
+and the server **no longer validates the codes against the masters**. Consequences to keep in mind:
+
+- The FKs from `DCT_AP_PROCASH_LINE` to `DCT_PROJECTS` / `DCT_TASKS` / `DCT_EXPENDITURE_TYPES`
+  are **dropped** (`db/08` drops them if present and no longer creates them). What is still
+  enforced is completeness: a project line needs all three parts, a GL line needs a combination.
+- The API and the Excel add-in bypass the dropdown, so **that is where unvalidated codes will
+  actually enter**. A line coded to something the masters do not carry will not join to GL or
+  Budget Utilization.
+- **`DCT_GL_CODE_COMBINATIONS` holds 12 demo rows — never use it as a GL source.** The first cut
+  validated against it, which would have rejected every real combination. The chart of accounts is
+  **`DCT_GL_COA_SNAP` / `DCT_GL_COA_V`** (9,447 rows, `cc_string` already in canonical order).
+- GL combinations are still normalised through `prod.dct_cc_canon` on the way in, so a value typed
+  by an API or Excel caller matches what the form produces.
+- Every dropdown re-injects its stored value as an option when the master no longer lists it —
+  otherwise KO's `options:` binding silently blanks the field on an old record.
+
 ## Deployment history
+
+- **2026-08-17 — Procash Transactions (AP v1.19.0; db/08–12 + db/v2/121 + 107 re-run +
+  reporting/db/37).** Manual payments pushed through the bank portal directly, outside Fusion
+  Payables, recorded master–detail with budget coding, attachments and an audit trail, then
+  reconciled to the Fusion payable invoice once it exists. `DCT_AP_PROCASH` +
+  `DCT_AP_PROCASH_LINE` are the first WRITE tables in AP; everything else reuses the shared
+  platform (`DCT_DOCUMENTS`, `DCT_REQUEST_STATUS_HISTORY`, `DCT_LOOKUP_VALUES`).
+  Lifecycle DRAFT → SUBMITTED → PROCESSED → INVOICED, with the AP module setting
+  **`PROCASH_APPROVAL_MODE`** (ships `NONE`) inserting a DWP chain (line manager → Finance
+  Director) before PROCESSED when set to `WORKFLOW`. The workflow route uses its **own module
+  code `AP_PROCASH`**, not `AP`, so nothing else in the module is bound to the engine and a
+  rollback is a one-row UPDATE. Excel: four business objects (Single / Headers / Lines /
+  Invoice Update) for the Visual Builder Add-in, all writing through the same package as the
+  UI. Reporting: `PROCASH_REGISTER` (5 sections, XLSX sheets + PDF book).
+  Verified: unit 45/45 · API 84/84 · browser 38/38 EN+AR/RTL · workflow 22/22 · Excel 17/17 ·
+  report render both formats (XLSX 5 sheets, PDF 3 pages) · UAT round 1 22/22.
+  **Same-day follow-up (AP v1.20.0):** the coding fields became strict dropdowns and master
+  validation was switched off by user decision — see the section above.
 
 - **2026-08-06 — AI Duplicate Check PAGE + invoice drills + PDF/Excel reports
   (AP v1.16.0, db/06 re-run + NEW db/07 + reporting/db/33).** Same-day round 2

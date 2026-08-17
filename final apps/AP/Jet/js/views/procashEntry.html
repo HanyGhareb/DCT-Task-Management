@@ -1,0 +1,449 @@
+<div class="page-wrap page-wrap--full">
+
+  <!-- Header: identity + actions (top-right) -->
+  <div class="page-header-row">
+    <div class="page-header">
+      <div class="page-title" data-bind="text: pageTitle"></div>
+      <div class="page-subtitle">
+        <span data-bind="text: $vm.t('pc.entrySubtitle')"></span>
+        <!-- ko if: procashId() -->
+        <span data-bind="text: $vm.statusLabel(status()), attr: { class: $vm.pillCls(status()) }"
+              style="margin-inline-start:8px"></span>
+        <!-- /ko -->
+      </div>
+    </div>
+    <div class="page-actions">
+      <button class="btn btn-secondary" data-bind="click: goBack, text: $vm.t('pc.back')"></button>
+      <!-- ko if: canCancel -->
+      <button class="btn btn-secondary" data-bind="click: cancelTrx, text: $vm.t('pc.cancelTrx')"></button>
+      <!-- /ko -->
+      <!-- ko if: canUnlink -->
+      <button class="btn btn-secondary" data-bind="click: unlinkInvoice, text: $vm.t('pc.unlinkInvoice')"></button>
+      <!-- /ko -->
+      <!-- ko if: canLink -->
+      <button class="btn btn-secondary" data-bind="click: openInvoicePicker, text: $vm.t('pc.linkInvoice')"></button>
+      <!-- /ko -->
+      <!-- ko if: canProcess -->
+      <button class="btn btn-secondary" data-bind="click: processTrx, text: $vm.t('pc.process')"></button>
+      <!-- /ko -->
+      <!-- ko if: canSubmit -->
+      <button class="btn btn-secondary" data-bind="click: submitTrx, text: $vm.t('pc.submit')"></button>
+      <!-- /ko -->
+      <!-- ko if: canEdit -->
+      <button class="btn btn-primary" data-bind="click: save, text: $vm.t('pc.save'),
+                                                 disable: saving"></button>
+      <!-- /ko -->
+    </div>
+  </div>
+
+  <!-- Findings -->
+  <!-- ko if: findings().length > 0 -->
+  <div class="card ap-region" style="padding:10px 14px">
+    <!-- ko foreach: findings -->
+    <div class="pc-finding" data-bind="css: severity === 'BLOCK' ? 'pc-finding--block' : 'pc-finding--warn'">
+      <span class="pc-finding-dot"></span>
+      <span data-bind="text: message"></span>
+    </div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- Payment details -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('pc.paymentDetails')"></div>
+      <div class="region-actions">
+        <!-- ko if: procashId() -->
+        <span style="font-size:12px;color:var(--text-2)"
+              data-bind="text: $vm.t('pc.createdByOn')
+                               .replace('{by}', createdBy() || '')
+                               .replace('{on}', createdOn() || '')"></span>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.bankReference') + ' *'"></label>
+        <input class="form-control" data-bind="value: bankReference, enable: canEdit">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.bankAccount')"></label>
+        <input class="form-control" data-bind="value: bankAccount, enable: canEdit,
+                                               attr: { placeholder: $vm.t('pc.bankAccountPh') }">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.businessUnit') + ' *'"></label>
+        <select class="form-control" data-bind="value: businessUnit, enable: canEdit">
+          <option value=""></option>
+          <!-- ko foreach: buLov --><option data-bind="value: $data, text: $data"></option><!-- /ko -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.paymentDate') + ' *'"></label>
+        <input class="form-control" type="date" data-bind="value: paymentDate, enable: canEdit">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.supplierSearch')"></label>
+        <input class="form-control" type="search"
+               data-bind="value: supSearch, valueUpdate: 'input', event: { input: onSupSearch },
+                          enable: canEdit, attr: { placeholder: $vm.t('pc.supplierSearchPh') }">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.payee') + ' *'"></label>
+        <select class="form-control" data-bind="options: supplierLov, optionsText: 'label',
+                                                optionsValue: 'code', value: supplierNumber,
+                                                optionsCaption: $vm.t('pc.pickSupplier'),
+                                                event: { change: onSupplierPick }, enable: canEdit"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.currency') + ' *'"></label>
+        <select class="form-control" data-bind="value: currencyCode, enable: canEdit, event: { change: onCurrency }">
+          <!-- ko foreach: currencyLov -->
+          <option data-bind="value: code, text: code + ' — ' + name"></option>
+          <!-- /ko -->
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.amount') + ' *'"></label>
+        <input class="form-control" type="number" step="0.01" data-bind="value: amount, enable: canEdit">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.exchangeRate')"></label>
+        <input class="form-control" type="number" step="0.00000001"
+               data-bind="value: exchangeRate, enable: canEdit() && currencyCode() !== 'AED'">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text: $vm.t('pc.amountAed')"></label>
+        <input class="form-control" readonly data-bind="value: amountAedDisplay">
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label class="form-label" data-bind="text: $vm.t('pc.description')"></label>
+        <input class="form-control" data-bind="value: description, enable: canEdit">
+      </div>
+      <div class="form-group" style="grid-column: 1 / -1">
+        <label class="form-label" data-bind="text: $vm.t('pc.comments')"></label>
+        <textarea class="form-control" rows="2" data-bind="value: comments, enable: canEdit"></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- ko if: procashId() -->
+
+  <!-- Invoice reconciliation summary -->
+  <!-- ko if: invoiceNumber() -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('pc.invoiceSection')"></div>
+    </div>
+    <div class="kv-grid">
+      <div><span class="kv-l" data-bind="text: $vm.t('pc.invoiceNumber')"></span>
+           <span class="kv-v" data-bind="text: invoiceNumber"></span></div>
+      <div><span class="kv-l" data-bind="text: $vm.t('pc.invoiceSupplier')"></span>
+           <span class="kv-v" data-bind="text: invoiceSupplier"></span></div>
+      <div><span class="kv-l" data-bind="text: $vm.t('pc.invoiceDate')"></span>
+           <span class="kv-v" data-bind="text: invoiceDate"></span></div>
+      <div><span class="kv-l" data-bind="text: $vm.t('pc.invoiceAmount')"></span>
+           <span class="kv-v" data-bind="text: $vm.num(invoiceAmount()) + ' ' + invoiceCurrency()"></span></div>
+      <div><span class="kv-l" data-bind="text: $vm.t('pc.linkedBy')"></span>
+           <span class="kv-v" data-bind="text: invoiceLinkedBy() + ' · ' + invoiceLinkedOn()"></span></div>
+      <div><span class="kv-l" data-bind="text: $vm.t('pc.mismatch')"></span>
+           <span class="kv-v" data-bind="text: amountMismatch() === 'Y' ? $vm.t('pc.mismatchYes') : $vm.t('pc.mismatchNo'),
+                                         css: { 'pc-neg': amountMismatch() === 'Y' }"></span></div>
+    </div>
+  </div>
+  <!-- /ko -->
+
+  <!-- Tabs -->
+  <div class="ap-tabs">
+    <button class="ap-tab" data-bind="click: function () { tab('lines'); },
+            css: { on: tab() === 'lines' },
+            text: $vm.t('pc.tabLines') + ' (' + lines().length + ')'"></button>
+    <button class="ap-tab" data-bind="click: function () { tab('docs'); },
+            css: { on: tab() === 'docs' },
+            text: $vm.t('pc.tabDocs') + ' (' + documents().length + ')'"></button>
+    <button class="ap-tab" data-bind="click: function () { tab('history'); },
+            css: { on: tab() === 'history' },
+            text: $vm.t('pc.tabHistory')"></button>
+  </div>
+
+  <!-- Lines -->
+  <!-- ko if: tab() === 'lines' -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh">
+        <span data-bind="text: $vm.t('pc.tabLines')"></span>
+        <span style="font-weight:400;font-size:12px;margin-inline-start:10px"
+              data-bind="text: $vm.t('pc.lineBalance')
+                               .replace('{lines}', $vm.num(lineTotal()))
+                               .replace('{header}', $vm.num(amount())),
+                         css: { 'pc-neg': !balanced(), 'pc-pos': balanced() }"></span>
+      </div>
+      <div class="region-actions">
+        <!-- ko if: canEdit -->
+        <button class="btn btn-sm btn-primary" data-bind="click: addLine, text: $vm.t('pc.addLine')"></button>
+        <!-- /ko -->
+      </div>
+    </div>
+
+    <!-- ko if: lines().length === 0 -->
+    <div class="empty-state" data-bind="text: $vm.t('pc.noLines')"></div>
+    <!-- /ko -->
+    <!-- ko if: lines().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('pc.lineNum')"></th>
+        <th data-bind="text: $vm.t('pc.codingBasis')"></th>
+        <th data-bind="text: $vm.t('pc.project')"></th>
+        <th data-bind="text: $vm.t('pc.task')"></th>
+        <th data-bind="text: $vm.t('pc.etype')"></th>
+        <th data-bind="text: $vm.t('pc.glCombination')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('pc.amount')"></th>
+        <th data-bind="text: $vm.t('pc.comments')"></th>
+        <th></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: lines -->
+        <tr>
+          <td data-bind="text: lineNum"></td>
+          <td data-bind="text: $vm.basisLabel(codingBasis)"></td>
+          <td class="ap-clip" data-bind="text: $data.projectNumber || '—',
+                                         attr: { title: $data.projectName || '' }"></td>
+          <td class="ap-clip" data-bind="text: $data.taskNumber || '—',
+                                         attr: { title: $data.taskName || '' }"></td>
+          <td class="ap-clip" data-bind="text: $data.expenditureType || '—',
+                                         attr: { title: $data.expenditureType || '' }"></td>
+          <td class="ap-clip" data-bind="text: $data.glCombination || '—',
+                                         attr: { title: $data.glCombination || '' }"></td>
+          <td class="ap-amount" data-bind="text: $vm.num(amount)"></td>
+          <td class="ap-clip" data-bind="text: $data.comments || ''"></td>
+          <td>
+            <!-- ko if: $vm.canEdit() -->
+            <button class="btn btn-sm btn-secondary" data-bind="click: function () { $vm.editLine($data); },
+                    text: $vm.t('pc.edit')"></button>
+            <button class="btn btn-sm btn-secondary" data-bind="click: function () { $vm.removeLine($data); },
+                    text: $vm.t('pc.remove')"></button>
+            <!-- /ko -->
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- Documents -->
+  <!-- ko if: tab() === 'docs' -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('pc.tabDocs')"></div>
+      <div class="region-actions">
+        <select class="form-control" style="max-width:230px" data-bind="value: uploadType">
+          <!-- ko foreach: docTypeLov -->
+          <option data-bind="value: code, text: label"></option>
+          <!-- /ko -->
+        </select>
+        <button class="btn btn-sm btn-primary" data-bind="click: uploadDoc, text: $vm.t('pc.upload'),
+                                                          disable: uploading"></button>
+      </div>
+    </div>
+    <!-- ko if: documents().length === 0 -->
+    <div class="empty-state" data-bind="text: $vm.t('pc.noDocs')"></div>
+    <!-- /ko -->
+    <!-- ko if: documents().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('pc.docName')"></th>
+        <th data-bind="text: $vm.t('pc.docType')"></th>
+        <th class="ap-amount" data-bind="text: $vm.t('pc.docSize')"></th>
+        <th data-bind="text: $vm.t('pc.uploadedBy')"></th>
+        <th data-bind="text: $vm.t('pc.uploadedOn')"></th>
+        <th></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: documents -->
+        <tr>
+          <td class="ap-clip" data-bind="text: fileName, attr: { title: fileName }"></td>
+          <td data-bind="text: docTypeName"></td>
+          <td class="ap-amount" data-bind="text: $vm.kb(fileSize)"></td>
+          <td data-bind="text: $data.uploadedBy || ''"></td>
+          <td data-bind="text: $data.uploadedOn || ''"></td>
+          <td>
+            <button class="btn btn-sm btn-secondary" data-bind="click: function () { $vm.viewDoc($data); },
+                    text: $vm.t('pc.view')"></button>
+            <!-- ko if: $vm.canAttach() -->
+            <button class="btn btn-sm btn-secondary" data-bind="click: function () { $vm.removeDoc($data); },
+                    text: $vm.t('pc.remove')"></button>
+            <!-- /ko -->
+          </td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- History -->
+  <!-- ko if: tab() === 'history' -->
+  <div class="card ap-region">
+    <div class="section-heading-row">
+      <div class="section-heading ap-rh" data-bind="text: $vm.t('pc.tabHistory')"></div>
+    </div>
+    <!-- ko if: history().length === 0 -->
+    <div class="empty-state" data-bind="text: $vm.t('pc.noHistory')"></div>
+    <!-- /ko -->
+    <!-- ko if: history().length > 0 -->
+    <div class="data-table-wrap"><table class="data-table">
+      <thead><tr>
+        <th data-bind="text: $vm.t('pc.histWhen')"></th>
+        <th data-bind="text: $vm.t('pc.histWho')"></th>
+        <th data-bind="text: $vm.t('pc.histFrom')"></th>
+        <th data-bind="text: $vm.t('pc.histTo')"></th>
+        <th data-bind="text: $vm.t('pc.comments')"></th>
+      </tr></thead>
+      <tbody><!-- ko foreach: history -->
+        <tr>
+          <td data-bind="text: changedOn"></td>
+          <td data-bind="text: $data.changedBy || ''"></td>
+          <td data-bind="text: $vm.statusLabel($data.oldStatus || '')"></td>
+          <td><span data-bind="text: $vm.statusLabel(newStatus), attr: { class: $vm.pillCls(newStatus) }"></span></td>
+          <td class="ap-clip" data-bind="text: $data.comments || ''"></td>
+        </tr>
+      <!-- /ko --></tbody>
+    </table></div>
+    <!-- /ko -->
+  </div>
+  <!-- /ko -->
+
+  <!-- /ko -->
+
+  <!-- Line drawer -->
+  <div class="dw-scrim" data-bind="css: { show: lineDwOpen }, click: closeLineDw"></div>
+  <aside class="dw-drawer dw-narrow" data-bind="css: { show: lineDwOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('pc.tabLines')"></div>
+        <div class="dw-title" data-bind="text: lineDwTitle"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-sm btn-secondary" data-bind="click: closeLineDw, text: $vm.t('pc.close')"></button>
+        <button class="btn btn-sm btn-primary" data-bind="click: saveLine, text: $vm.t('pc.save')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <div class="form-grid">
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label class="form-label" data-bind="text: $vm.t('pc.codingBasis')"></label>
+          <div style="display:flex;gap:16px;align-items:center">
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="radio" value="PROJECT" data-bind="checked: lBasis" style="pointer-events:auto">
+              <span data-bind="text: $vm.t('pc.basisProject')"></span>
+            </div>
+            <div style="display:flex;align-items:center;gap:6px">
+              <input type="radio" value="GL" data-bind="checked: lBasis">
+              <span data-bind="text: $vm.t('pc.basisGl')"></span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ko if: lBasis() === 'PROJECT' -->
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('pc.project') + ' *'"></label>
+          <select class="form-control" data-bind="options: projectOpts, optionsText: 'label',
+                                                  optionsValue: 'code', value: lProject,
+                                                  optionsCaption: $vm.t('pc.pickProject'),
+                                                  event: { change: onProjectPick }"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('pc.task') + ' *'"></label>
+          <select class="form-control" data-bind="options: taskOpts, optionsText: 'label',
+                                                  optionsValue: 'code', value: lTask,
+                                                  optionsCaption: $vm.t('pc.pickTask')"></select>
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label class="form-label" data-bind="text: $vm.t('pc.etype') + ' *'"></label>
+          <select class="form-control" data-bind="options: etypeOpts, optionsText: 'label',
+                                                  optionsValue: 'code', value: lEtype,
+                                                  optionsCaption: $vm.t('pc.pickEtype')"></select>
+        </div>
+        <!-- /ko -->
+
+        <!-- ko if: lBasis() === 'GL' -->
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label class="form-label" data-bind="text: $vm.t('pc.glSearch')"></label>
+          <input class="form-control" type="search"
+                 data-bind="value: glSearch, valueUpdate: 'input', event: { input: onGlSearch },
+                            attr: { placeholder: $vm.t('pc.glSearchPh') }">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label class="form-label" data-bind="text: $vm.t('pc.glCombination') + ' *'"></label>
+          <select class="form-control" data-bind="options: glOpts, optionsText: 'label',
+                                                  optionsValue: 'code', value: lGl,
+                                                  optionsCaption: $vm.t('pc.pickGl')"></select>
+        </div>
+        <!-- /ko -->
+
+        <div class="form-group">
+          <label class="form-label" data-bind="text: $vm.t('pc.amount') + ' *'"></label>
+          <input class="form-control" type="number" step="0.01" data-bind="value: lAmount">
+        </div>
+        <div class="form-group" style="grid-column: 1 / -1">
+          <label class="form-label" data-bind="text: $vm.t('pc.comments')"></label>
+          <input class="form-control" data-bind="value: lComments">
+        </div>
+      </div>
+    </div>
+  </aside>
+
+  <!-- Invoice picker drawer -->
+  <div class="dw-scrim" data-bind="css: { show: invDwOpen }, click: closeInvDw"></div>
+  <aside class="dw-drawer" data-bind="css: { show: invDwOpen }" role="dialog" aria-modal="true">
+    <header class="dw-h">
+      <div>
+        <div class="dw-eyebrow" data-bind="text: $vm.t('pc.invoiceSection')"></div>
+        <div class="dw-title" data-bind="text: $vm.t('pc.pickInvoice')"></div>
+      </div>
+      <div class="dw-acts">
+        <button class="btn btn-sm btn-secondary" data-bind="click: closeInvDw, text: $vm.t('pc.close')"></button>
+      </div>
+    </header>
+    <div class="dw-b">
+      <p class="ap-table-note" data-bind="text: $vm.t('pc.invoiceHint')"></p>
+      <input class="form-control" style="max-width:360px;margin-bottom:10px" type="search"
+             data-bind="value: invSearch, valueUpdate: 'input', event: { keyup: onInvSearch },
+                        attr: { placeholder: $vm.t('pc.invoiceSearchPh') }">
+      <!-- ko if: invRows().length === 0 -->
+      <div class="empty-state" data-bind="text: $vm.t('pc.noInvoices')"></div>
+      <!-- /ko -->
+      <!-- ko if: invRows().length > 0 -->
+      <div class="data-table-wrap"><table class="data-table">
+        <thead><tr>
+          <th data-bind="text: $vm.t('pc.invoiceNumber')"></th>
+          <th data-bind="text: $vm.t('pc.invoiceDate')"></th>
+          <th data-bind="text: $vm.t('pc.invoiceSupplier')"></th>
+          <th data-bind="text: $vm.t('pc.businessUnit')"></th>
+          <th class="ap-amount" data-bind="text: $vm.t('pc.invoiceAmount')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody><!-- ko foreach: invRows -->
+          <tr>
+            <td data-bind="text: invoiceNumber"></td>
+            <td data-bind="text: invoiceDate"></td>
+            <td class="ap-clip" data-bind="text: supplier, attr: { title: supplier }"></td>
+            <td class="ap-clip" data-bind="text: businessUnit"></td>
+            <td class="ap-amount" data-bind="text: $vm.num(amount) + ' ' + currency"></td>
+            <td>
+              <!-- ko if: alreadyLinked === 'Y' -->
+              <span class="pc-pill pc-pill--mute" data-bind="text: $vm.t('pc.alreadyLinked')"></span>
+              <!-- /ko -->
+              <!-- ko if: alreadyLinked !== 'Y' -->
+              <button class="btn btn-sm btn-primary" data-bind="click: function () { $vm.pickInvoice($data); },
+                      text: $vm.t('pc.pick')"></button>
+              <!-- /ko -->
+            </td>
+          </tr>
+        <!-- /ko --></tbody>
+      </table></div>
+      <!-- /ko -->
+    </div>
+  </aside>
+
+</div>

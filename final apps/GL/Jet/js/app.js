@@ -651,6 +651,12 @@
     buOvrConsider:{en:'Consider Override Budget',ar:'اعتماد الموازنة المعدّلة'},
     buOvrHint:{en:'When on, the signed Budget Change entered by users is ADDED to the Fusion budget on this page — Annual Budget, YTD Budget, Fund Available and Utilization all move by it (a negative change subtracts). A change counts in YTD from its own accounting period onward.',ar:'عند التفعيل يُضاف تغيير الموازنة المُدخل من المستخدمين إلى موازنة فيوجن في هذه الصفحة — فتتغيّر الموازنة السنوية والموازنة منذ بداية السنة والمتاح ونسبة الاستخدام بمقداره (والقيمة السالبة تُخصم). ويُحتسب التغيير ضمن «منذ بداية السنة» ابتداءً من فترته المحاسبية.'},
     buOvrOn:{en:'Budget Override included',ar:'الموازنة المعدّلة مضمّنة'},
+    buProcashInc:{en:'Include Procash',ar:'تضمين الدفع المباشر'},
+    buProcashHint:{en:'Procash records money already paid through the bank portal that has NOT reached Fusion as a payable invoice yet, so no AP, GRN, PR or PO figure includes it. When on, it is ADDED to Actual and SUBTRACTED from Fund Available. A procash transaction drops out the moment its Fusion invoice is linked, so nothing is counted twice.',ar:'يسجّل الدفع المباشر مبالغ دُفعت عبر بوابة البنك ولم تصل بعد إلى فيوجن كفاتورة دائنة، لذا لا يظهر ضمن أي من أرقام الحسابات الدائنة أو الاستلام أو طلبات وأوامر الشراء. عند التفعيل يُضاف إلى المصروف الفعلي ويُخصم من المتاح. وتخرج المعاملة فور ربط فاتورتها في فيوجن فلا يُحتسب المبلغ مرتين.'},
+    buProcashOnL:{en:'Procash included',ar:'الدفع المباشر مضمّن'},
+    buProcashOff:{en:'Select to include Procash',ar:'حدد لتضمين الدفع المباشر'},
+    cProcash:{en:'Procash',ar:'الدفع المباشر'},
+    buProcashUnmapped:{en:'procash not on a budget line',ar:'دفع مباشر خارج بنود الموازنة'},
     buOvrOff:{en:'Select to include Budget Override',ar:'حدد لتضمين الموازنة المعدّلة'},
     cOverrideBudget:{en:'Budget Change (+/-)',ar:'تغيير الموازنة (+/-)'},
     ovLinesN:{en:'{n} changed lines',ar:'{n} بند مُعدّل'},
@@ -2227,6 +2233,19 @@
        can never claim a change the loaded figures don't actually reflect. */
     self.buOvr = ko.observable(false);
     self.buConsiderOvr = ko.observable(false);   // echoed by the last /butil response
+    /* "Include Procash" (2026-08-17): money already pushed through the bank
+       portal that has NOT reached Fusion as a payable invoice yet, so no AP,
+       GRN, PR or PO figure sees it. It is ALWAYS reported by the server; with
+       this on, it is added to Actual and subtracted from Fund Available. Like
+       the override flag, the "included" state binds to the RESPONSE echo, so
+       the page can never claim an adjustment the figures do not carry. */
+    self.buProcash = ko.observable(false);
+    self.buProcashOn = ko.observable(false);     // echoed by the last /butil response
+    self.toggleBuProcash = function () {
+      self.buProcash(!self.buProcash());
+      if (self.buYear() && (self.buTotal() || self.buItems().length)) self.runButil(0);
+      return true;
+    };
     self.toggleBuOvr = function () {
       self.buOvr(!self.buOvr());
       // re-run in place (AP include-cancelled precedent) once results exist
@@ -2238,6 +2257,7 @@
         costcenter: self.buCcParam(), project: self.buProjParam(), task: self.buTask(), etype: self.buEtype(),
         bu: self.buBuParam(), appropriation: self.buApprop() || null, program: self.buProgram() || null,
         ovr: self.buOvr() ? 'Y' : null,
+        procash: self.buProcash() ? 'Y' : null,
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -2248,6 +2268,7 @@
         self.buTotal(d.total || 0); self.buOffset(offset);
         self.buMissCc(d.missingCc || 0); self.buMissCcBudget(d.missingCcBudget || 0);
         self.buConsiderOvr(d.considerOverride === 'Y');
+        self.buProcashOn(d.includeProcash === 'Y');
         self.buLoading(false);
       }).catch(function (e) { self.buLoading(false); fail(e); });
     };
@@ -2331,7 +2352,10 @@
     self.buActualTot = ko.computed(function () {
       var t = self.buTotals() || {};
       if (t.actualAp == null && t.actualGrn == null) return null;
-      return (Number(t.actualAp) || 0) + (Number(t.actualGrn) || 0);
+      // procash joins Actual only when the server says it was included, so the
+      // tile always matches the Fund figure beside it
+      return (Number(t.actualAp) || 0) + (Number(t.actualGrn) || 0)
+             + (self.buProcashOn() ? (Number(t.procash) || 0) : 0);
     });
     self.buEncumbTot = ko.computed(function () {
       var t = self.buTotals() || {};
@@ -2583,6 +2607,7 @@
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.enLoading(true);
       var p = self.buParams(0, EN_MAX);       // same filters as Budget Utilization
+      delete p.procash;                       // /encumbrances has no procash figure
       delete p.offset;
       return api('GET', '/encumbrances' + qs(p)).then(function (d) {
         self.enCount(d.count || 0);
@@ -2655,6 +2680,7 @@
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.pnLoading(true);
       var p = self.buParams(0, PN_MAX);       // same filters as Budget Utilization
+      delete p.procash;                       // /pending has no procash figure
       delete p.offset;
       p.source = self.pnSource() || null;     // page-local PR / PO scope
       p.bu = self.pnBuParam();                // page-local Business Unit any-of list
@@ -2953,7 +2979,7 @@
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
     self.skRows = skArr(8);   // shimmer rows shown while /butil runs
-    self.skCols = skArr(19);  // one cell per results-table column
+    self.skCols = skArr(20);  // one cell per results-table column (+ Procash)
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};
@@ -3185,7 +3211,7 @@
     self.openOvDrawer = function () {
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.ovDrawer(true); self.ovLoading(true); self.ovRows([]); self.ovCount(0); self.ovTotFusion(0);
-      var p = self.buParams(0); delete p.limit; delete p.offset; delete p.ovr;
+      var p = self.buParams(0); delete p.limit; delete p.offset; delete p.ovr; delete p.procash;
       api('GET', '/butil/override/lines' + qs(p)).then(function (d) {
         var reasons = (d.reasons || []).slice();
         // KO options: gotcha — a stored code absent from its list is blanked;
