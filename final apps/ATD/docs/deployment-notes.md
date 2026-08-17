@@ -297,6 +297,10 @@ held server-side by the VBCS proxy and is not available to us.
 2. `otbi-atd/db/78_pa_budget_trx_ords.sql` — ADMIN synonyms + 6 routes. `sql -name prod_mcp`,
    **fresh session** (synonym rule → ORA-01471).
 3. `otbi-atd/db/79_pa_budget_trx_sync.sql` — `PA_PBT_SYNC_PKG` + hourly `PA_PBT_SYNC_JOB`.
+3b. `otbi-atd/db/80_pa_budget_trx_line_v.sql` (2026-08-17) — `V_PA_BUDGET_TRX_LINE` +
+   synonym, the unified line view the GL app's Budget Transactions criteria filter on.
+   `sql -name prod_mcp`, **fresh session** (it creates a synonym). Deploy it BEFORE
+   re-running `final apps/GL/db/20`, which references it.
 4. `runner/actions/pa_budget_trx.py` → sync to **vm180/181/182**, `systemctl restart atd-worker`
    on each (handlers load at start).
 5. Frontend + `APP_VERSION` bump.

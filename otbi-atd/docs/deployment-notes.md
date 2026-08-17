@@ -2331,7 +2331,19 @@ verified numbers and the API gotchas, plus:
 - **API contract (sanitised, no session material):** `docs/fusion-actions/pbt-api-spec.md`
 - **DB:** `db/77_pa_budget_trx.sql` (tables + vocabulary + settings + request view),
   `db/78_pa_budget_trx_ords.sql` (synonyms + `/atd/pbt/*`),
-  `db/79_pa_budget_trx_sync.sql` (`PA_PBT_SYNC_PKG` + `PA_PBT_SYNC_JOB`)
+  `db/79_pa_budget_trx_sync.sql` (`PA_PBT_SYNC_PKG` + `PA_PBT_SYNC_JOB`),
+  **`db/80_pa_budget_trx_line_v.sql`** (2026-08-17) — `V_PA_BUDGET_TRX_LINE` + synonym:
+  one row per transaction line over all three per-type tables, with Sector / Chapter /
+  DCT Program / Appropriation resolved **by SEGMENT** (cost centre→sector,
+  appropriation→chapter, program→program — each 1:1 in the data) rather than by joining
+  the whole `CODE_COMBINATION` to `DCT_GL_COA_SNAP.CC_STRING`, which matches only 82–99%
+  of lines and misses the **5,546 Estimated-Cost lines that carry no combination at all**.
+  Also emits `period_from_num`/`period_to_num` (YYYYMM) because MM-YYYY cannot be compared
+  or sorted lexically. Consumed by the GL app's Budget Transactions criteria (GL/db/20).
+  **Any consumer must reference it from a `WITH … /*+ MATERIALIZE */` CTE, never a
+  correlated EXISTS** — the view is a 3-table UNION ALL joined to four GROUP BYs over the
+  9,447-row COA snapshot, and a pushed predicate rebuilds all of that per driving row
+  (measured 39s per execution vs 0.2s). See the GL deployment note for the full autopsy.
 - **Runner:** `runner/actions/pa_budget_trx.py` (+ `runner/smoke_pbt.py` to run a scope by hand,
   and `runner/tests/test_pa_budget_trx.py` for the parsing rules)
 

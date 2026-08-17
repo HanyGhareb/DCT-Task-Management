@@ -1564,10 +1564,98 @@ So matching is case-insensitive on keywords — and because **"Baselining Failed
 also contains "baselin"**, an equality or prefix match would have painted a
 failed transaction green. That ordering is asserted in the smoke test.
 
-### Verified
+### Verified (v1.64.0)
 `tests/budgettrx_browser_smoke.py` **54/54** EN + AR/RTL — adds the landing-page
 assertions (Projects group + Budget Utilization sub-tab lit, `#pg-butil` shown,
 `#pg-overview` not), the full tone table above driven through `btTone`, and a
 **computed-style** check that the pill is actually painted and its `::before`
 glyph resolves (a tone class with no CSS behind it would still pass a class-name
 assertion). Live page shows the real spread: 86 ok · 10 info · 2 warn · 2 err.
+
+---
+
+## Budget Transactions — criteria parity with Budget Utilization — 2026-08-17 (v1.65.0)
+
+Deploy: **`otbi-atd/db/80`** (new view + synonym) **then** `GL/db/20` (re-run).
+
+### New DB object — `otbi-atd/db/80_pa_budget_trx_line_v.sql`
+`PROD.V_PA_BUDGET_TRX_LINE` + its ADMIN synonym: one row per transaction line
+over all three per-type line tables, projecting the columns they share, plus the
+GL classification dimensions.
+
+**Classifications resolve BY SEGMENT, not by the whole combination.** Joining
+the line's 10-segment `CODE_COMBINATION` to `DCT_GL_COA_SNAP.CC_STRING` matches
+only 82–99% of lines (entity 617 / Abrahamic Family House combinations are not
+all in the snapshot, and **5,546 Estimated-Cost lines carry no combination at
+all**). Segment maps — cost centre→Sector, appropriation→Chapter,
+program→DCT Program — cover everything the snapshot knows, and each is 1:1 in
+the data (verified: zero cost centres with >1 sector, zero appropriations with
+>1 chapter), so the `MAX()` aggregates pick a value rather than one of several.
+Cost-centre code falls back to the trailing digits of the `COST_CENTER` label
+("AFHC Education and Dialogue-6170200" → 6170200) for the combination-less lines.
+Coverage: cost centre 100% · sector 95.8% · program 70% · chapter 66%.
+
+The view also emits `period_from_num` / `period_to_num` (YYYYMM), because
+**MM-YYYY cannot be compared or sorted lexically** ('02-2025' > '01-2026'), each
+guarded by a format check so one malformed source value cannot ORA-01843 a query.
+
+### `GL/db/20` — 9 line-level criteria + free text + a new LOV route
+Search criteria went 10 → 21 fields: the header-level ones unchanged, plus
+**Sector · Chapter · DCT Program · Appropriation · Cost Centre · Project · Task ·
+Expenditure Type · Accounting Period**, a free-text **Search**, and the shared
+**Figures in** display unit. New `GET /gl/budgettrx/lov` carries the four big
+type-ahead lists (886 projects · 1,825 tasks · 184 expenditure types · 115 cost
+centres) — the same split Budget Utilization makes between `/butil/filters` and
+`/butil/lov`. **post-05 re-run list unchanged at 07..20.**
+
+A transaction matches when **one of its lines satisfies all** the line criteria
+(one subquery, not one per criterion). Free text now reaches line attributes too.
+
+> **The line subquery is behind an `l_lineflt` guard.** Applied unconditionally
+> it would silently drop the **110 headers that legitimately have no lines yet**
+> (Entered / Rejected / Baselining-Failed) from the unfiltered grid. Asserted in
+> the API smoke.
+
+### ⚠ PERF — the line subqueries MUST be `WITH … /*+ MATERIALIZE */`
+This cost two rounds to get right and is worth reading before touching the file.
+
+A plain correlated `EXISTS` made the optimizer choose **VIEW PUSHED PREDICATE**:
+it pushes `h.transaction_num` INTO the view and rebuilds it — a 3-table UNION ALL
+joined to **four GROUP BYs over the 9,447-row COA snapshot** — *once per header
+row*. Measured **3.5M buffer gets, 39s per execution**; a sector-filtered page
+never returned through ORDS (>120s, client timeout).
+
+Rewriting as an uncorrelated `(num,type) IN (SELECT /*+ UNNEST */ …)` was **not
+enough**. The same `sql_id` then had three children — a hash-join plan at 0.22s
+and a pushed-predicate plan at 39s — and ORDS kept landing on the slow one. The
+fast plan was luck, not structure. Identical SQL ran 0.3s in SQLcl and 80s
+through ORDS, which is exactly what a plan-choice problem looks like; don't
+conclude "the SQL is fine" from a SQL*Plus timing.
+
+`MATERIALIZE` removes the choice: the key set is built once into a temp table and
+the EXISTS probes that. Worst case went **88s → 0.84s**. The bind guards inside
+each CTE (`l_lineflt='Y'`, `l_srch IS NOT NULL`) are start-up filters, so an
+unused CTE costs nothing — the unfiltered grid the page opens with is 0.01s.
+
+### Frontend
+The four `<datalist>` lists load in **parallel with, and are not awaited by**,
+the grid — `loadBtFilters` fires `loadBtLov()` without chaining it. Awaiting them
+made the first page-open race: the grid sometimes rendered empty because ~2,900
+option elements were still in flight. A failed LOV load is swallowed: the
+criteria are free-text inputs that simply lose their suggestions.
+
+Every line-level criterion carries a ⓘ saying it matches the transaction's detail
+lines, and a chip counts how many are active, so nobody reads them as header
+filters.
+
+**Not added, deliberately:** butil's *Consider Override Budget* — it applies the
+`DCT_PROJECT_BUDGET_USER` override to butil's computed figures and has no
+counterpart in PBT data, which is the source system's own transaction register.
+
+### Verified
+API `tests/budgettrx_api_smoke.py` **37/37** in 9s (every criterion narrows,
+criteria AND on one line, period ordering is numeric, line-less headers survive,
+400/404/401). Browser `tests/budgettrx_browser_smoke.py` **74/74** EN + AR/RTL.
+
+Test gotcha: `.lbl` is `text-transform:uppercase` **and** Chrome's `innerText`
+upper-cases the trailing ⓘ to Ⓘ — strip it and compare upper-case.

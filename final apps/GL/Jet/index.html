@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.64.0';</script>
+<script>window.APP_VERSION = '1.66.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -583,17 +583,17 @@
             <div class="bk-bar"><i data-bind="style:{width:buBarW('fundAvailable')}"></i></div>
           </div>
         </div>
-        <!-- Override Budget (budget_user) — tile click opens the editable lines drawer -->
+        <!-- Budget Change (signed budget_change) — tile click opens the editable lines drawer -->
         <div class="bk bk-ovr bk-click" data-bind="click:openOvDrawer, attr:{title:t('ovTileHint')}">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
           <div class="bk-body">
             <div class="bk-k" data-bind="text:t('cOverrideBudget')"></div>
-            <div class="bk-v mono" data-bind="text:buNum(buTot('overrideBudget')), attr:{title:money(buTot('overrideBudget'))}"></div>
+            <div class="bk-v mono" data-bind="text:(buTot('overrideBudget')>0?'+':'') + buNum(buTot('overrideBudget')), css:{'ov-neg':buTot('overrideBudget')<0,'ov-pos':buTot('overrideBudget')>0}, attr:{title:money(buTot('overrideBudget'))}"></div>
             <div class="bk-sub">
               <span data-bind="text:t('ovLinesN').replace('{n}', fmt(buTot('overrideLines')||0))"></span>
               <span class="ov-applied" data-bind="visible:buConsiderOvr">· <span data-bind="text:t('ovApplied')"></span></span>
             </div>
-            <div class="bk-bar"><i data-bind="style:{width:buSegW(buTot('overrideBudget'), buTot('budgetAnnual'))}"></i></div>
+            <div class="bk-bar"><i data-bind="style:{width:buSegW(Math.abs(buTot('overrideBudget')), buTot('budgetAnnual'))}"></i></div>
           </div>
         </div>
       </div>
@@ -1515,8 +1515,57 @@
               <input class="inp" type="date" data-bind="value:btcFrom"></div>
             <div class="field"><label class="lbl" data-bind="text:t('btDateTo')"></label>
               <input class="inp" type="date" data-bind="value:btcTo"></div>
+            <!-- LINE-level criteria (Budget Utilization parity). These filter the
+                 transaction's DETAIL LINES, so the ⓘ says so on every one. -->
+            <div class="field"><label class="lbl"><span data-bind="text:t('btSector')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).sectors||[], optionsText:'name', optionsValue:'code',
+                                             value:btcSector, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btChapter')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).chapters||[], optionsText:'name', optionsValue:'code',
+                                             value:btcChapter, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btProgram')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).programs||[], optionsText:'name', optionsValue:'code',
+                                             value:btcProgram, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btApprop')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).appropriations||[], optionsText:'name', optionsValue:'code',
+                                             value:btcApprop, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btCostCenter')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <input class="inp" type="text" list="bt-cc-dl" data-bind="textInput:btcCc, attr:{placeholder:t('btLovHint')},
+                     event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btProject')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <input class="inp" type="text" list="bt-proj-dl" data-bind="textInput:btcProject, attr:{placeholder:t('btLovHint')},
+                     event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btTask')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <input class="inp" type="text" list="bt-task-dl" data-bind="textInput:btcTask, attr:{placeholder:t('btLovHint')},
+                     event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btExpType')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <input class="inp" type="text" list="bt-et-dl" data-bind="textInput:btcEtype, attr:{placeholder:t('btLovHint')},
+                     event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btAcctPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+              <select class="inp" data-bind="options:(btFilters()||{}).periods||[], value:btcPeriod, optionsCaption:t('btAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('btSearchL')"></label>
+              <input class="inp" type="text" data-bind="textInput:btcSearch, attr:{placeholder:t('btSearchPh')},
+                     event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
+            <!-- display-only, and the SHARED buUnit: one setting for every GL page -->
+            <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
+              <select class="inp" data-bind="options:buUnitOpts(), optionsText:'l', optionsValue:'v', value:buUnit"></select></div>
           </div>
+          <!-- autocomplete lists: too big for the criteria payload, own endpoint -->
+          <datalist id="bt-cc-dl">
+            <!-- ko foreach: btCcs --><option data-bind="attr:{value:$data}"></option><!-- /ko -->
+          </datalist>
+          <datalist id="bt-proj-dl">
+            <!-- ko foreach: btProjects --><option data-bind="attr:{value:$data.p}, text:$data.n"></option><!-- /ko -->
+          </datalist>
+          <datalist id="bt-task-dl">
+            <!-- ko foreach: btTasks --><option data-bind="attr:{value:$data.t}, text:$data.n"></option><!-- /ko -->
+          </datalist>
+          <datalist id="bt-et-dl">
+            <!-- ko foreach: btEtypes --><option data-bind="attr:{value:$data}"></option><!-- /ko -->
+          </datalist>
           <div class="filter-actions">
+            <span class="chip muted" data-bind="visible:btLineFilterCount()>0,
+                  text:btLineFilterCount()+' '+t('btLineFilters')"></span>
             <button class="btn btn-sm btn-primary" data-bind="click:btSearch, css:{busy:btBusy}, text:btBusy()?'…':t('btSearchBtn')"></button>
             <button class="btn btn-sm" data-bind="click:btClearCriteria, text:t('btClear')"></button>
           </div>
@@ -2204,7 +2253,10 @@
           <th data-bind="text:t('cEtype')"></th>
           <th data-bind="text:t('fPeriod')"></th>
           <th class="num" data-bind="text:t('ovColFusion')"></th>
+          <th class="num" data-bind="text:t('ovColFusionYtd')"></th>
           <th class="num" data-bind="text:t('cOverrideBudget')"></th>
+          <th class="num" data-bind="text:t('ovColAdjAnnual')"></th>
+          <th class="num" data-bind="text:t('ovColAdjYtd')"></th>
           <th data-bind="text:t('ovColReason')"></th>
           <th data-bind="text:t('ovColComments')"></th>
           <th data-bind="text:t('ovColUpdBy')"></th>
@@ -2219,8 +2271,11 @@
             <td data-bind="text:$data.taskNumber||'—'"></td>
             <td data-bind="text:$data.expenditureType||'—'"></td>
             <td class="mono" data-bind="text:$data.accountingPeriod||'—'"></td>
-            <td class="num mono" data-bind="text:$root.money($data.fusionBudget)"></td>
-            <td class="num"><input class="inp ov-inp" type="number" step="any" data-bind="textInput:$data.override, event:{keydown:function(d,e){if(e.keyCode===13){$root.saveOvRow(d);return false;}return true;}}"></td>
+            <td class="num mono" data-bind="text:$root.money($data.fusionAnnual)"></td>
+            <td class="num mono" data-bind="text:$root.money($data.fusionYtd)"></td>
+            <td class="num"><input class="inp ov-inp" type="number" step="any" data-bind="textInput:$data.override, css:{'ov-neg':Number($data.override())<0,'ov-pos':Number($data.override())>0}, attr:{title:$root.t('ovEditHint')}, event:{keydown:function(d,e){if(e.keyCode===13){$root.saveOvRow(d);return false;}return true;}}"></td>
+            <td class="num mono" data-bind="text:$root.money(Number($data.fusionAnnual) + (Number($data.override())||0))"></td>
+            <td class="num mono" data-bind="text:$root.money(Number($data.fusionYtd) + (Number($data.override())||0))"></td>
             <td><select class="inp ov-sel" data-bind="options:$root.ovReasonOpts(), optionsText:'label', optionsValue:'code', optionsCaption:' ', value:$data.reason"></select></td>
             <td><input class="inp ov-comm" type="text" maxlength="1000" data-bind="textInput:$data.comm, attr:{placeholder:$root.t('ovColComments')}, event:{keydown:function(d,e){if(e.keyCode===13){$root.saveOvRow(d);return false;}return true;}}"></td>
             <td data-bind="text:$data.updBy()||'—'"></td>
@@ -2229,8 +2284,9 @@
           </tr>
           <!-- /ko -->
         </tbody>
-        <tfoot><tr><td class="drill-total" colspan="12">
-          <span data-bind="text:t('ovTotOverride')"></span> <b class="mono" data-bind="text:money(ovTotOverride())"></b>
+        <tfoot><tr><td class="drill-total" colspan="15">
+          <span data-bind="text:t('ovTotOverride')"></span>
+          <b class="mono" data-bind="text:(ovTotOverride()>0?'+':'') + money(ovTotOverride()), css:{'ov-neg':ovTotOverride()<0,'ov-pos':ovTotOverride()>0}"></b>
           <span class="ov-vs">·</span>
           <span data-bind="text:t('ovTotFusion')"></span> <b class="mono" data-bind="text:money(ovTotFusion())"></b>
         </td></tr></tfoot>

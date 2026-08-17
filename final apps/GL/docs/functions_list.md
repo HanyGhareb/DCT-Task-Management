@@ -132,14 +132,16 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 ## Budget Transactions (`view()==='budgettrx'`) — project budget transactions, master-detail (v1.63.0)
 Mirrors the source Project Budget Transactions VBCS screen. Read-only over the ATD PBT extract
 (`PA_BUDGET_TRX_*`, `otbi-atd/db/77`) — it shows what the last sync pulled, not live Fusion.
-- `loadBtFilters()` — criteria LOVs: budget types, business units, project types, statuses, years, approvers (GET /budgettrx/filters)
+- `loadBtFilters()` — criteria LOVs: budget types, business units, project types, statuses, years, approvers + (v1.65.0) sectors, chapters, programs, appropriations, accounting periods (GET /budgettrx/filters); fires `loadBtLov()` **without awaiting it**
+- `loadBtLov()` (v1.65.0) — the four big type-ahead lists for the `<datalist>` autocompletes (886 projects · 1,825 tasks · 184 expenditure types · 115 cost centres; GET /budgettrx/lov). Loads in PARALLEL with the grid — awaiting it raced the first page-open and rendered an empty grid; a failure is swallowed, the criteria are free-text inputs that just lose their suggestions
+- `btLineFilterCount` — how many of the nine LINE-level criteria are active (drives the chip beside Search)
 - `runBudgetTrx(page)` — master grid for all 10 criteria (GET /budgettrx); clears the selection because the child regions belong to the previous row
 - `btSearch()` / `btClearCriteria()` / `btPrevPage()` / `btNextPage()` — criteria actions and paging (`btPage`/`btPages`/`btTotal`)
 - `btSelectRow(row)` / `btIsSelected(row)` — row click loads the header + its lines + its approval trail (GET /budgettrx/:num?type=) and highlights the row
 - `btLineCols` / `btCell(row,col)` — the details table is metadata-driven (`BT_LINE_COLS`): the line shape differs per budget type (34 / 21 / 38 source fields); a column's 4th flag marks it a **status** column
 - `btTone(value)` / `btStClass(value)` / `btCellClass(row,col)` / `btCountClass(n)` (v1.64.0) — status-pill tone system: header status, line/baseline/journal status and approval state render as tinted pills with an icon disc (ok ✓ / err ✕ / warn ! / info • / mute –). **Tones are matched case-insensitively on keywords, and the failure patterns are tested FIRST** — the source vocabulary is inconsistent (`SUCCESS`/`Success`, `PASS`/`Pass`, `Draft`/`DRAFT`) and "Baselining Failed" also contains "baselin", so equality- or prefix-matching would paint a failed transaction green. `btCellClass` also reddens negative figures; `btCountClass` dims a zero line/approval count
 - `btExportCsv()` — the master grid as CSV (UTF-8 BOM)
-- Criteria observables: `btcType`, `btcBu`, `btcProjType`, `btcStatus`, `btcYear`, `btcApprover`, `btcTrxNum`, `btcDecree`, `btcFrom`, `btcTo`
+- Criteria observables — header: `btcType`, `btcBu`, `btcProjType`, `btcStatus`, `btcYear`, `btcApprover`, `btcTrxNum`, `btcDecree`, `btcFrom`, `btcTo`; **line-level (v1.65.0)**: `btcSector`, `btcChapter`, `btcProgram`, `btcApprop`, `btcCc`, `btcProject`, `btcTask`, `btcEtype`, `btcPeriod`, plus free-text `btcSearch` and the SHARED `buUnit` ("Figures in"). A transaction matches when ONE OF ITS LINES satisfies ALL the line criteria
 
 ## Navigation (v1.63.0) — three groups, sub-tabs per group; **landing page = Projects › Budget Utilization** (v1.64.0)
 `NAV_GROUPS` in `app.js` is the single source: Projects (Budget Utilization · Projects Encumbrances ·
@@ -163,8 +165,9 @@ Budget vs Actual · Reconciliation · Legacy (EBS) · DOF Submissions · Balance
 ## API Endpoints (ORDS) — `db/05_gl_ords.sql`, base `/ords/admin/gl/`
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/budgettrx/filters` | Budget Transactions criteria LOVs — budget types (lookup `PA_BUDGET_TRX_TYPE`), business units, project types, statuses, years, approvers (db/20) |
-| GET | `/budgettrx` | master grid over `PA_BUDGET_TRX_HEADERS`, paged; `?type=&bu=&projecttype=&status=&year=&approver=&trxnum=&decree=&from=&to=&page=&size=` + per-row line/approval counts (db/20) |
+| GET | `/budgettrx/filters` | Budget Transactions criteria LOVs — budget types (lookup `PA_BUDGET_TRX_TYPE`), business units, project types, statuses, years, approvers + sectors/chapters/programs/appropriations/accounting periods from `V_PA_BUDGET_TRX_LINE` (db/20) |
+| GET | `/budgettrx/lov` | the four big type-ahead lists — projects, tasks, expenditure types, cost centres; `?type=` scopes them to one budget type (db/20) |
+| GET | `/budgettrx` | master grid over `PA_BUDGET_TRX_HEADERS`, paged; header criteria `?type=&bu=&projecttype=&status=&year=&approver=&trxnum=&decree=&from=&to=` + LINE criteria `&sector=&chapter=&program=&appropriation=&costcenter=&project=&task=&etype=&period=` + `&search=` + `&page=&size=`; line criteria match when ONE line satisfies ALL of them, via `WITH /*+ MATERIALIZE */` CTEs over `V_PA_BUDGET_TRX_LINE` — **never a correlated EXISTS, see deployment-notes** (db/20) |
 | GET | `/budgettrx/:num` | one transaction — header + its detail lines (from the per-type table matching `?type=`) + its approval trail (db/20) |
 | GET | `/recon/filters` | Reconciliation LOVs — years, periods, budgetChapters default (CH2..CH5) + code+label dimension lists (db/14) |
 | GET | `/recon/summary` | per-measure AP/GRN/PR/PO {actuals, butil, diff, noProject, apValidation, noBudgetLine} + derived totals + GL vs PPM budget + fund available each side (db/14) |

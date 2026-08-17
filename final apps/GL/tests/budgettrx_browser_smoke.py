@@ -102,7 +102,11 @@ with sync_playwright() as p:
     page.locator('.pnav--grp a', has_text='Projects').click()
     page.wait_for_timeout(800)
     page.locator('.pnav--sub a', has_text='Budget Transactions').click()
-    page.wait_for_timeout(4000)
+    # wait on the grid, never a fixed sleep: the criteria LOVs and the first
+    # page load in parallel and either can be the slower one
+    page.wait_for_function(
+        "() => document.querySelectorAll('#pg-budgettrx .bt-row').length > 0", timeout=90000)
+    page.wait_for_timeout(800)
 
     pg = page.locator('#pg-budgettrx')
     check('page visible', pg.is_visible())
@@ -115,8 +119,37 @@ with sync_playwright() as p:
           heads == ['search criteria', 'transactions', 'details', 'approval history'],
           str(heads))
 
-    check('criteria has 10 fields', pg.locator('.filter-grid .field').count() == 10,
+    # 10 header criteria + 9 line-level (Budget Utilization parity) + free text
+    check('criteria has 21 fields', pg.locator('.filter-grid .field').count() == 21,
           str(pg.locator('.filter-grid .field').count()))
+    # .lbl is text-transform:uppercase and Chrome's innerText applies it -- and
+    # the line-level ones carry a trailing (upper-cased) info glyph
+    labels = [pg.locator('.filter-grid .lbl').nth(i).inner_text().strip().rstrip('Ⓘⓘ').strip().upper()
+              for i in range(pg.locator('.filter-grid .lbl').count())]
+    for want in ('Sector', 'Chapter', 'DCT Program', 'Appropriation', 'Cost Center',
+                 'Project', 'Task', 'Expenditure Type', 'Accounting Period', 'Search'):
+        check('criteria include "%s"' % want, want.upper() in labels, str(labels))
+    # every line-level criterion says so, so nobody reads them as header filters
+    check('line criteria carry the ⓘ line-level hint',
+          pg.locator('.filter-grid .hint-i').count() == 9,
+          str(pg.locator('.filter-grid .hint-i').count()))
+    # the four big lists load in PARALLEL with the grid (own endpoint, not the
+    # criteria payload) -- so wait for them rather than assuming they arrived
+    page.wait_for_function(
+        "() => document.querySelectorAll('#bt-proj-dl option').length > 500", timeout=60000)
+    check('project datalist populated',
+          pg.locator('#bt-proj-dl option').count() > 500,
+          str(pg.locator('#bt-proj-dl option').count()))
+    check('task datalist populated', pg.locator('#bt-task-dl option').count() > 500,
+          str(pg.locator('#bt-task-dl option').count()))
+    check('expenditure-type datalist populated', pg.locator('#bt-et-dl option').count() > 50,
+          str(pg.locator('#bt-et-dl option').count()))
+    check('cost-centre datalist populated', pg.locator('#bt-cc-dl option').count() > 50,
+          str(pg.locator('#bt-cc-dl option').count()))
+    # selects in order: type, bu, projType, status, year, approver, THEN sector
+    sec_sel = pg.locator('.filter-grid select').nth(6)
+    check('sector LOV populated', sec_sel.locator('option').count() > 5,
+          str(sec_sel.locator('option').count()))
     # LOVs populated from /budgettrx/filters
     tsel = pg.locator('.filter-grid select').first
     check('budget type LOV populated', tsel.locator('option').count() >= 4,
@@ -199,6 +232,33 @@ with sync_playwright() as p:
     pg.locator('.filter-actions .btn').nth(1).click()   # Clear
     page.wait_for_timeout(3500)
     check('clear restores the full set', pg.locator('.bt-row').count() > 0)
+    full_total = page.evaluate("() => ko.dataFor(document.body).btTotal()")
+
+    # ---- 4b. a line-level criterion actually filters ----------------------
+    sec_sel.select_option(index=1)                      # first real sector
+    page.wait_for_timeout(400)
+    check('line-criteria chip counts the active ones',
+          '1' in pg.locator('.filter-actions .chip.muted').first.inner_text(),
+          pg.locator('.filter-actions .chip.muted').first.inner_text())
+    pg.locator('.filter-actions .btn-primary').first.click()
+    page.wait_for_timeout(5000)
+    sec_total = page.evaluate("() => ko.dataFor(document.body).btTotal()")
+    check('sector narrows the result set', 0 < sec_total < full_total,
+          '%d of %d' % (sec_total, full_total))
+    check('rows still render under a line filter', pg.locator('.bt-row').count() > 0)
+    page.screenshot(path=EV + '04b_line_criteria.png', full_page=True)
+
+    # free-text reaches the LINES, not just the header columns
+    pg.locator('.filter-actions .btn').nth(1).click()   # Clear
+    page.wait_for_timeout(3000)
+    page.evaluate("() => { const v = ko.dataFor(document.body);"
+                  " v.btcSearch('manpower'); v.btSearch(); }")
+    page.wait_for_timeout(5000)
+    srch_total = page.evaluate("() => ko.dataFor(document.body).btTotal()")
+    check('free-text search matches line attributes', 0 < srch_total < full_total,
+          '%d of %d' % (srch_total, full_total))
+    pg.locator('.filter-actions .btn').nth(1).click()   # Clear
+    page.wait_for_timeout(3000)
 
     # ---- 5. AR / RTL -----------------------------------------------------
     # GL is the portal-style app: its own .lang-flip button, and the choice is

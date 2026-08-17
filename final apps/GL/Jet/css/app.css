@@ -860,6 +860,13 @@ html[dir=rtl] .gen-menu{inset-inline-end:auto;inset-inline-start:0}
 .ov-tbl .ov-sel{min-width:150px;max-width:210px;padding:6px 8px;font-size:12.5px}
 .ov-tbl .ov-comm{width:100%;min-width:160px;padding:6px 8px;font-size:12.5px}
 .ov-vs{margin-inline:10px;color:var(--muted)}
+/* signed budget change (v2 2026-08-17): a change ADDS to the budget, so the
+   sign carries meaning everywhere it is shown — tile value, drawer input,
+   drawer totals. Colour only; the +/- sign stays the primary cue. */
+.ov-pos{color:#1F7A4D}
+.ov-neg{color:#B3261E}
+.ov-tbl .ov-inp.ov-pos{border-color:#1F7A4D}
+.ov-tbl .ov-inp.ov-neg{border-color:#B3261E}
 /* Budget Override from Excel region (collapsible, bottom of the page) */
 .bu-xltpl{margin-top:14px}
 .xltpl-steps{margin:0 0 14px;padding-inline-start:22px;display:flex;flex-direction:column;gap:6px;

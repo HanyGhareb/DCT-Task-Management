@@ -80,6 +80,17 @@
     btJournal:{en:'Journal Status',ar:'حالة القيد'},
     btPeriod:{en:'Period',ar:'الفترة'},
     btNotes:{en:'Notes',ar:'ملاحظات'},
+    btSector:{en:'Sector',ar:'القطاع'},
+    btChapter:{en:'Chapter',ar:'الباب'},
+    btProgram:{en:'DCT Program',ar:'برنامج الدائرة'},
+    btApprop:{en:'Appropriation',ar:'الاعتماد'},
+    btCostCenter:{en:'Cost Center',ar:'مركز التكلفة'},
+    btAcctPeriod:{en:'Accounting Period',ar:'الفترة المحاسبية'},
+    btSearchL:{en:'Search',ar:'بحث'},
+    btSearchPh:{en:'Transaction, decree, project, task, expenditure type…',ar:'المعاملة، القرار، المشروع، المهمة، نوع الإنفاق…'},
+    btLovHint:{en:'All — type to search…',ar:'الكل — اكتب للبحث…'},
+    btLineHint:{en:'Line-level criterion: a transaction matches when one of its detail lines does.',ar:'معيار على مستوى السطر: تُطابق المعاملة عندما يُطابق أحد سطور تفاصيلها.'},
+    btLineFilters:{en:'line criteria',ar:'معايير السطور'},
     btSubmitter:{en:'Submitted by',ar:'أرسلها'},
     btAssignee:{en:'Assignee',ar:'المسؤول'},
     btState:{en:'State',ar:'الحالة'},
@@ -634,44 +645,47 @@
     calcNotePeriod:{en:'With an Accounting Period selected, Fund Available reads: YTD Budget minus everything consumed up to that month-end (year-to-date). Full year = the two budget figures are equal.',ar:'عند اختيار فترة محاسبية يكون المتاح: الموازنة منذ بداية السنة ناقص كل ما استُهلك حتى نهاية ذلك الشهر. عند اختيار السنة كاملة يتساوى الرقمان.'},
     calcUtilNote:{en:'Utilization % = (Actual AP + Actual GRN + Commitment PR + Obligation PO) ÷ YTD Budget.',ar:'نسبة الاستخدام % = (فعلي الدائنين + فعلي الاستلام + الالتزام + التعهد) ÷ الموازنة منذ بداية السنة.'},
 
-    /* ── Override Budget (budget_user) ── */
+    /* ── Budget Change (signed budget_change, v2 2026-08-17) ── */
     buOvrConsider:{en:'Consider Override Budget',ar:'اعتماد الموازنة المعدّلة'},
-    buOvrHint:{en:'When on, every budget figure on this page (Annual / YTD Budget, Fund Available, Utilization) uses the user Override Budget where one exists, otherwise the Fusion budget.',ar:'عند التفعيل تُحتسب كل أرقام الموازنة في هذه الصفحة (الموازنة السنوية / منذ بداية السنة والمتاح ونسبة الاستخدام) بالموازنة المعدّلة من المستخدم إن وُجدت، وإلا فبموازنة فيوجن.'},
+    buOvrHint:{en:'When on, the signed Budget Change entered by users is ADDED to the Fusion budget on this page — Annual Budget, YTD Budget, Fund Available and Utilization all move by it (a negative change subtracts). A change counts in YTD from its own accounting period onward.',ar:'عند التفعيل يُضاف تغيير الموازنة المُدخل من المستخدمين إلى موازنة فيوجن في هذه الصفحة — فتتغيّر الموازنة السنوية والموازنة منذ بداية السنة والمتاح ونسبة الاستخدام بمقداره (والقيمة السالبة تُخصم). ويُحتسب التغيير ضمن «منذ بداية السنة» ابتداءً من فترته المحاسبية.'},
     buOvrOn:{en:'Budget Override included',ar:'الموازنة المعدّلة مضمّنة'},
     buOvrOff:{en:'Select to include Budget Override',ar:'حدد لتضمين الموازنة المعدّلة'},
-    cOverrideBudget:{en:'Override Budget',ar:'الموازنة المعدّلة'},
-    ovLinesN:{en:'{n} overridden lines',ar:'{n} بند معدّل'},
+    cOverrideBudget:{en:'Budget Change (+/-)',ar:'تغيير الموازنة (+/-)'},
+    ovLinesN:{en:'{n} changed lines',ar:'{n} بند مُعدّل'},
     ovApplied:{en:'applied to figures',ar:'مطبّقة على الأرقام'},
-    ovTileHint:{en:'Click to view and edit the Override Budget lines (current filters).',ar:'انقر لعرض وتعديل بنود الموازنة المعدّلة (حسب عوامل التصفية الحالية).'},
-    ovDrillTitle:{en:'Override Budget lines',ar:'بنود الموازنة المعدّلة'},
-    ovEditHint:{en:'Type a new amount in the Override Budget column and Save. Clear the field and Save to remove the override (the line disappears on the next refresh).',ar:'أدخل مبلغاً جديداً في عمود الموازنة المعدّلة ثم احفظ. امسح الحقل ثم احفظ لإزالة التعديل (يختفي البند عند التحديث التالي).'},
-    ovColFusion:{en:'Fusion Budget',ar:'موازنة فيوجن'},
+    ovTileHint:{en:'Click to view and edit the Budget Change lines (current filters).',ar:'انقر لعرض وتعديل بنود تغيير الموازنة (حسب عوامل التصفية الحالية).'},
+    ovDrillTitle:{en:'Budget Change lines',ar:'بنود تغيير الموازنة'},
+    ovEditHint:{en:'Type the change in the Budget Change column — a positive amount adds to the budget line, a negative amount subtracts — then Save. Zero or an empty field removes the change (the line disappears on the next refresh). The change applies to its accounting period.',ar:'أدخل مقدار التغيير في عمود تغيير الموازنة — القيمة الموجبة تُضاف إلى بند الموازنة والسالبة تُخصم — ثم احفظ. الصفر أو الحقل الفارغ يزيل التغيير (يختفي البند عند التحديث التالي). ويسري التغيير على فترته المحاسبية.'},
+    ovColFusion:{en:'Annual Budget (Fusion)',ar:'الموازنة السنوية (فيوجن)'},
+    ovColFusionYtd:{en:'YTD Budget (Fusion)',ar:'الموازنة منذ بداية السنة (فيوجن)'},
+    ovColAdjAnnual:{en:'Adjusted Annual',ar:'السنوية بعد التعديل'},
+    ovColAdjYtd:{en:'Adjusted YTD',ar:'منذ بداية السنة بعد التعديل'},
     ovColUpdBy:{en:'Updated By',ar:'عدّل بواسطة'},
     ovColUpdAt:{en:'Updated At',ar:'تاريخ التعديل'},
     ovSaveBtn:{en:'Save',ar:'حفظ'},
-    ovSaved:{en:'Override budget saved.',ar:'تم حفظ الموازنة المعدّلة.'},
-    ovBadNumber:{en:'Override budget must be a number (or empty to clear).',ar:'يجب أن تكون الموازنة المعدّلة رقماً (أو فارغة للإزالة).'},
-    ovTotOverride:{en:'Override total',ar:'إجمالي الموازنة المعدّلة'},
-    ovTotFusion:{en:'Fusion total',ar:'إجمالي موازنة فيوجن'},
-    ovEmpty:{en:'No override budget lines for these criteria.',ar:'لا توجد بنود موازنة معدّلة لهذه المعايير.'},
+    ovSaved:{en:'Budget change saved.',ar:'تم حفظ تغيير الموازنة.'},
+    ovBadNumber:{en:'Budget change must be a number, positive or negative (or empty to clear).',ar:'يجب أن يكون تغيير الموازنة رقماً موجباً أو سالباً (أو فارغاً للإزالة).'},
+    ovTotOverride:{en:'Net change',ar:'صافي التغيير'},
+    ovTotFusion:{en:'Fusion annual total',ar:'إجمالي الموازنة السنوية (فيوجن)'},
+    ovEmpty:{en:'No budget changes for these criteria.',ar:'لا توجد تغييرات موازنة لهذه المعايير.'},
     ovColReason:{en:'Reason Category',ar:'فئة السبب'},
     ovColComments:{en:'Comments',ar:'ملاحظات'},
-    ovGuideTitle:{en:'Override the budget in bulk from Excel',ar:'تعديل الموازنة دفعة واحدة عبر إكسل'},
+    ovGuideTitle:{en:'Change the budget in bulk from Excel',ar:'تغيير الموازنة دفعة واحدة عبر إكسل'},
     ovGuideL1:{en:'Download the Excel template and open it in Microsoft Excel on Windows with the Oracle Visual Builder Add-in installed.',ar:'نزّل قالب إكسل وافتحه في مايكروسوفت إكسل على ويندوز مع تثبيت إضافة Oracle Visual Builder.'},
-    ovGuideL2:{en:'Click Download Data with your Budget Year, edit ONLY the light-green Override Budget column, then click Upload Changes.',ar:'انقر «تنزيل البيانات» مع سنة الميزانية، وعدّل عمود الموازنة المعدّلة (الأخضر الفاتح) فقط، ثم انقر «رفع التغييرات».'},
-    ovGuideL3:{en:'Uploaded overrides appear in this list and in the Override Budget tile — or edit any line directly below.',ar:'تظهر التعديلات المرفوعة في هذه القائمة وفي بطاقة الموازنة المعدّلة — أو عدّل أي بند مباشرة أدناه.'},
+    ovGuideL2:{en:'Click Download Data after picking Budget Year, Accounting Period, Business Unit and Project Type, type the +/- amount in the gold Budget Change column only, then click Upload Changes.',ar:'انقر «تنزيل البيانات» بعد اختيار سنة الميزانية والفترة المحاسبية ووحدة الأعمال ونوع المشروع، وأدخل المبلغ (+/-) في عمود تغيير الموازنة الذهبي فقط، ثم انقر «رفع التغييرات».'},
+    ovGuideL3:{en:'Uploaded changes appear in this list and in the Budget Change tile — or edit any line directly below.',ar:'تظهر التغييرات المرفوعة في هذه القائمة وفي بطاقة تغيير الموازنة — أو عدّل أي بند مباشرة أدناه.'},
     ovGuideLink:{en:'Download the Excel template',ar:'تنزيل قالب إكسل'},
     vbAddinLink:{en:'Add-in not installed? Download the Oracle Visual Builder Add-in for Excel (installer)',ar:'الأداة غير مثبّتة؟ تنزيل مثبّت أداة أوراكل فيجوال بيلدر لبرنامج إكسل'},
     vbAddinHint:{en:'Run the installer once (no admin rights needed), then restart Excel.',ar:'شغّل المثبّت مرة واحدة (لا يتطلب صلاحيات مسؤول) ثم أعد تشغيل برنامج إكسل.'},
 
     /* ── Budget Override from Excel (Visual Builder Add-in workflow) ── */
     xltplTitle:{en:'Budget Override from Excel',ar:'تعديل الموازنة عبر إكسل'},
-    xltplIntro:{en:'Maintain Override Budget amounts in bulk with the Oracle Visual Builder Add-in for Excel:',ar:'حدّث مبالغ الموازنة المعدّلة دفعة واحدة عبر إضافة Oracle Visual Builder لبرنامج إكسل:'},
+    xltplIntro:{en:'Post Budget Change amounts (+/-) in bulk with the Oracle Visual Builder Add-in for Excel:',ar:'سجّل مبالغ تغيير الموازنة (+/-) دفعة واحدة عبر إضافة Oracle Visual Builder لبرنامج إكسل:'},
     xltplS1:{en:'Download the Excel template below.',ar:'نزّل قالب إكسل أدناه.'},
     xltplS2:{en:'Open it in Microsoft Excel on Windows with the Oracle Visual Builder Add-in for Excel installed.',ar:'افتحه في مايكروسوفت إكسل على ويندوز مع تثبيت إضافة Oracle Visual Builder لإكسل.'},
     xltplS3:{en:'Sign in and click Download Data, entering the Budget Year (and optionally the Accounting Period).',ar:'سجّل الدخول ثم انقر «تنزيل البيانات» مع إدخال سنة الميزانية (والفترة المحاسبية اختيارياً).'},
-    xltplS4:{en:'Edit ONLY the light-green Override Budget column, then click Upload Changes.',ar:'عدّل عمود الموازنة المعدّلة (الأخضر الفاتح) فقط، ثم انقر «رفع التغييرات».'},
-    xltplS5:{en:'Uploaded overrides appear here in the Override Budget tile — tick "Consider Override Budget" to apply them to the figures.',ar:'تظهر التعديلات المرفوعة هنا في بطاقة الموازنة المعدّلة — فعّل «اعتماد الموازنة المعدّلة» لتطبيقها على الأرقام.'},
+    xltplS4:{en:'Type the +/- amount in the gold Budget Change column ONLY, then click Upload Changes.',ar:'أدخل المبلغ (+/-) في عمود تغيير الموازنة الذهبي فقط، ثم انقر «رفع التغييرات».'},
+    xltplS5:{en:'Uploaded changes appear here in the Budget Change tile — tick "Select to include Budget Override" to add them to the Annual and YTD Budget.',ar:'تظهر التغييرات المرفوعة هنا في بطاقة تغيير الموازنة — فعّل «حدد لتضمين الموازنة المعدّلة» لإضافتها إلى الموازنة السنوية ومنذ بداية السنة.'},
     xltplBtn:{en:'Download Excel Template',ar:'تنزيل قالب إكسل'},
     xltplBusy:{en:'Downloading…',ar:'جارٍ التنزيل…'},
     xltplDlFail:{en:'Template download failed',ar:'فشل تنزيل القالب'},
@@ -787,16 +801,60 @@
     self.btcDecree   = ko.observable('');
     self.btcFrom     = ko.observable('');
     self.btcTo       = ko.observable('');
+    /* the LINE-level criteria — Budget Utilization parity (v1.65.0). These do
+       not filter the header row; the server matches a transaction when ONE OF
+       ITS LINES satisfies all of them (GL/db/20 over V_PA_BUDGET_TRX_LINE). */
+    self.btcSector   = ko.observable('');
+    self.btcChapter  = ko.observable('');
+    self.btcProgram  = ko.observable('');
+    self.btcApprop   = ko.observable('');
+    self.btcCc       = ko.observable('');
+    self.btcProject  = ko.observable('');
+    self.btcTask     = ko.observable('');
+    self.btcEtype    = ko.observable('');
+    self.btcPeriod   = ko.observable('');
+    self.btcSearch   = ko.observable('');
+    // the four big type-ahead lists (own endpoint, like /butil/lov)
+    self.btProjects  = ko.observableArray([]);
+    self.btTasks     = ko.observableArray([]);
+    self.btEtypes    = ko.observableArray([]);
+    self.btCcs       = ko.observableArray([]);
 
     self.btPages = ko.computed(function () {
       return Math.max(1, Math.ceil(self.btTotal() / self.btSize()));
     });
 
     self.loadBtFilters = function () {
+      // the type-ahead lists are ~2,900 entries; kicked off in PARALLEL and
+      // deliberately NOT awaited, so the grid is never held behind them
+      self.loadBtLov();
       return api('GET', '/budgettrx/filters').then(function (d) {
         self.btFilters(d);
       }).catch(function (e) { self.btError(e.message || String(e)); });
     };
+    // 886 projects + 1,825 tasks + 184 expenditure types + 115 cost centres:
+    // too big for the criteria payload, so they load once beside it and feed
+    // the <datalist> autocompletes — the same split the Budget Utilization
+    // page makes between /butil/filters and /butil/lov.
+    var btLovLoading = false;
+    self.loadBtLov = function () {
+      if (btLovLoading || self.btProjects().length) return Promise.resolve();
+      btLovLoading = true;
+      return api('GET', '/budgettrx/lov').then(function (d) {
+        self.btProjects(d.projects || []); self.btTasks(d.tasks || []);
+        self.btEtypes(d.etypes || []);     self.btCcs(d.costCenters || []);
+      }).catch(function () {
+        // a failed autocomplete list must never break the page: the criteria
+        // are free-text inputs, they just lose their suggestions
+        btLovLoading = false;
+      });
+    };
+    // how many line-level criteria are active — drives the "N filters" chip
+    self.btLineFilterCount = ko.computed(function () {
+      return [self.btcSector(), self.btcChapter(), self.btcProgram(), self.btcApprop(),
+              self.btcCc(), self.btcProject(), self.btcTask(), self.btcEtype(),
+              self.btcPeriod()].filter(function (v) { return !!v; }).length;
+    });
 
     self.runBudgetTrx = function (page) {
       self.btBusy(true);
@@ -809,6 +867,11 @@
         status: self.btcStatus(), year: self.btcYear(), approver: self.btcApprover(),
         trxnum: self.btcTrxNum(), decree: self.btcDecree(),
         from: self.btcFrom(), to: self.btcTo(),
+        sector: self.btcSector(), chapter: self.btcChapter(),
+        program: self.btcProgram(), appropriation: self.btcApprop(),
+        costcenter: self.btcCc(), project: self.btcProject(),
+        task: self.btcTask(), etype: self.btcEtype(),
+        period: self.btcPeriod(), search: self.btcSearch(),
         page: self.btPage(), size: self.btSize()
       })).then(function (d) {
         self.btRows(d.items || []);
@@ -824,6 +887,9 @@
       self.btcType(''); self.btcBu(''); self.btcProjType(''); self.btcStatus('');
       self.btcYear(''); self.btcApprover(''); self.btcTrxNum(''); self.btcDecree('');
       self.btcFrom(''); self.btcTo('');
+      self.btcSector(''); self.btcChapter(''); self.btcProgram(''); self.btcApprop('');
+      self.btcCc(''); self.btcProject(''); self.btcTask(''); self.btcEtype('');
+      self.btcPeriod(''); self.btcSearch('');
       self.runBudgetTrx(1);
     };
     self.btPrevPage = function () {
@@ -896,7 +962,9 @@
     self.btCell = function (row, col) {
       var v = row[col.field];
       if (v === null || v === undefined || v === '') return '';
-      return col.num ? Number(v).toLocaleString('en-US', { maximumFractionDigits: 2 }) : v;
+      // money honours the SHARED "Figures in" setting (buUnit) like every other
+      // GL page; 'X' (Exact) is the one that keeps the fils
+      return col.num ? self.buNum(v) : v;
     };
 
     /* ── status tone ────────────────────────────────────────────────────
@@ -2070,11 +2138,11 @@
         self.loadBuLovs();
       }).catch(function (e) { self.buFiltersLoading(false); fail(e); });
     };
-    /* ── Consider Override Budget (budget_user, 2026-07-27) — when on, /butil,
-       both drill kinds and the report bridges send ovr=Y and every budget
-       figure is NVL(override, fusion) server-side. The "applied" hint on the
-       Override tile binds to the RESPONSE flag (buConsiderOvr), so it can
-       never claim an override the loaded figures don't actually reflect. */
+    /* ── Include Budget Change (budget_change, v2 2026-08-17) — when on, /butil,
+       both drill kinds and the report bridges send ovr=Y and the signed change
+       is ADDED to the annual AND YTD budget server-side. The "applied" hint on
+       the Budget Change tile binds to the RESPONSE flag (buConsiderOvr), so it
+       can never claim a change the loaded figures don't actually reflect. */
     self.buOvr = ko.observable(false);
     self.buConsiderOvr = ko.observable(false);   // echoed by the last /butil response
     self.toggleBuOvr = function () {
@@ -2994,11 +3062,11 @@
       a.click(); URL.revokeObjectURL(u);
     };
 
-    /* ── Override Budget drawer — view + inline-edit the budget_user lines ──
-       Opened from the Override Budget KPI tile; loads /butil/override/lines
-       with the CURRENT page filters. The Override Budget cell is an inline
-       number input (Enter or the row Save button POSTs /butil/override; empty
-       = null clears the override) and a successful save updates the row in
+    /* ── Budget Change drawer — view + inline-edit the budget_change lines ──
+       Opened from the Budget Change KPI tile; loads /butil/override/lines
+       with the CURRENT page filters. The Budget Change cell is an inline
+       signed number input (Enter or the row Save button POSTs /butil/override;
+       empty or 0 clears the change) and a successful save updates the row in
        place, toasts and re-runs /butil so the KPIs/table pick the change up. */
     self.ovDrawer = ko.observable(false);
     self.ovMax = ko.observable(false);
@@ -3025,7 +3093,7 @@
       var m = self.ovReasons().filter(function (r) { return r.code === code; })[0];
       return m ? ((self.lang() === 'ar' ? m.nameAr : '') || m.name || code) : code;
     };
-    // reconciling totals footer: override total recomputes live as rows are edited
+    // reconciling totals footer: net change recomputes live as rows are edited
     self.ovTotOverride = ko.computed(function () {
       return self.ovRows().reduce(function (s, r) {
         var v = r.override();
@@ -3046,7 +3114,7 @@
         });
         self.ovReasons(reasons);
         self.ovRows((d.items || []).map(function (r) {
-          r.override = ko.observable(r.overrideBudget == null ? '' : '' + r.overrideBudget);
+          r.override = ko.observable(r.changeAmount == null ? '' : '' + r.changeAmount);
           r.reason = ko.observable(r.reasonCategory || '');
           r.comm = ko.observable(r.comments || '');
           r.updBy = ko.observable(r.updatedBy || '');
@@ -3055,7 +3123,7 @@
           return r;
         }));
         self.ovCount(d.total || 0);
-        self.ovTotFusion((d.totals && d.totals.fusion) || 0);
+        self.ovTotFusion((d.totals && d.totals.fusionAnnual) || 0);
         self.ovLoading(false);
       }).catch(function (e) { self.ovLoading(false); self.ovDrawer(false); toast(e.message, true); });
     };
@@ -3067,15 +3135,18 @@
       if (raw !== '' && isNaN(val)) { toast(self.t('ovBadNumber'), true); return; }
       row.saving(true);
       api('POST', '/butil/override', {
-        id: row.id, budget_user: val,
+        id: row.id, budget_change: val,
         reason_category: row.reason() || null,
         comments: ('' + (row.comm() || '')).trim() || null
       }).then(function (d) {
-        row.override(d.budget_user == null ? '' : '' + d.budget_user);
+        row.override(d.budget_change == null ? '' : '' + d.budget_change);
         row.reason(d.reason_category || '');
         row.comm(d.comments || '');
-        row.updBy(d.budget_user_updated_by || '');
-        row.updAt(d.budget_user_updated_at || '');
+        row.updBy(d.budget_change_updated_by || '');
+        row.updAt(d.budget_change_updated_at || '');
+        // the saved change moves the line's adjusted figures — keep them live
+        if (d.adjusted_annual != null) row.adjustedAnnual = d.adjusted_annual;
+        if (d.adjusted_ytd != null) row.adjustedYtd = d.adjusted_ytd;
         row.saving(false);
         toast(self.t('ovSaved'));
         self.runButil(self.buOffset());          // KPIs + results reflect the new override
@@ -3087,21 +3158,24 @@
       if (!rows.length) return;
       var esc = function (v) { return '"' + ('' + (v == null ? '' : v)).replace(/"/g, '""') + '"'; };
       var heads = [self.t('cProject'), self.t('buMissCcPName'), self.t('cTask'), self.t('cEtype'),
-        self.t('fPeriod'), self.t('ovColFusion'), self.t('cOverrideBudget'),
+        self.t('fPeriod'), self.t('ovColFusion'), self.t('ovColFusionYtd'), self.t('cOverrideBudget'),
+        self.t('ovColAdjAnnual'), self.t('ovColAdjYtd'),
         self.t('ovColReason'), self.t('ovColComments'),
         self.t('ovColUpdBy'), self.t('ovColUpdAt')];
       var lines = [heads.map(esc).join(',')];
       rows.forEach(function (r) {
         lines.push([r.projectNumber, r.projectName, r.taskNumber, r.expenditureType,
-          r.accountingPeriod, r.fusionBudget, r.override(),
+          r.accountingPeriod, r.fusionAnnual, r.fusionYtd, r.override(),
+          r.adjustedAnnual, r.adjustedYtd,
           self.ovReasonName(r.reason()), r.comm(),
           r.updBy(), r.updAt()].map(esc).join(','));
       });
-      // reconciliation footer: fusion + override totals under their own columns
-      lines.push([self.t('drillTotal'), '', '', '', '', self.ovTotFusion(), self.ovTotOverride(), '', '', '', ''].map(esc).join(','));
+      // reconciliation footer: fusion annual + net change under their own columns
+      lines.push([self.t('drillTotal'), '', '', '', '', self.ovTotFusion(), '', self.ovTotOverride(),
+        '', '', '', '', '', ''].map(esc).join(','));
       var blob = new Blob(['\uFEFF' + lines.join('\n')], { type: 'text/csv;charset=utf-8' });
       var u = URL.createObjectURL(blob);
-      var a = document.createElement('a'); a.href = u; a.download = 'gl_override_budget_' + self.buYear() + '.csv';
+      var a = document.createElement('a'); a.href = u; a.download = 'gl_budget_change_' + self.buYear() + '.csv';
       a.click(); URL.revokeObjectURL(u);
     };
 
