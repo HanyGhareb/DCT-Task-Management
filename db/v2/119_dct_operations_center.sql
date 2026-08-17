@@ -11,7 +11,9 @@ BEGIN
     SELECT 'OPS_SCHEMA_WARNING_MB' k,'2048' v,'Forecast schema capacity against this warning level.' d FROM dual UNION ALL
     SELECT 'OPS_API_SLOW_MS','2000','Warn when an ORDS endpoint averages this many database milliseconds.' FROM dual UNION ALL
     SELECT 'OPS_API_ERROR_RATE_PCT','5','Warn when an ORDS endpoint error rate reaches this percentage.' FROM dual UNION ALL
-    SELECT 'OPS_ACTUALS_STALE_HOURS','2','Warn when the actuals snapshot has no success within this many hours.' FROM dual
+    SELECT 'OPS_ACTUALS_STALE_HOURS','2','Warn when the actuals snapshot has no success within this many hours.' FROM dual UNION ALL
+    SELECT 'OPS_ALERT_CONSECUTIVE_INTERVALS','2','Alert only after the same operational issue persists for this many monitor intervals.' FROM dual UNION ALL
+    SELECT 'OPS_ALERT_COOLDOWN_MINUTES','240','Minimum minutes before reminding administrators about the same operational issue.' FROM dual
   ) x ON(s.setting_key=x.k)
   WHEN MATCHED THEN UPDATE SET s.value_type='NUMBER',s.category='DATA_MAINTENANCE',s.is_system='Y',s.description_en=x.d
   WHEN NOT MATCHED THEN INSERT(setting_key,setting_value,value_type,category,description_en,is_system,created_by)
@@ -48,6 +50,7 @@ CREATE TABLE IF NOT EXISTS prod.dct_ops_state (
   alerted_signature VARCHAR2(200),last_alert_at TIMESTAMP WITH TIME ZONE,
   CONSTRAINT ck_dct_ops_status CHECK(status IN('HEALTHY','WARNING'))
 );
+ALTER TABLE prod.dct_ops_state ADD IF NOT EXISTS consecutive_count NUMBER DEFAULT 0 NOT NULL;
 
 CREATE OR REPLACE VIEW admin.dct_ords_sql_stats_v AS
 SELECT sql_id,plan_hash_value,executions,elapsed_time,cpu_time,buffer_gets,
@@ -83,7 +86,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ops_api AS
     l_errpct NUMBER:=setting_num('OPS_API_ERROR_RATE_PCT',5,1);
     l_api NUMBER:=0;l_jobs NUMBER:=0;l_other NUMBER:=0;l_actual NUMBER:=0;
     l_stale_hours NUMBER:=setting_num('OPS_ACTUALS_STALE_HOURS',2,1);
-    l_count NUMBER;l_sig VARCHAR2(200);l_prev VARCHAR2(200);l_status VARCHAR2(10);
+    l_required NUMBER:=setting_num('OPS_ALERT_CONSECUTIVE_INTERVALS',2,1);
+    l_cooldown NUMBER:=setting_num('OPS_ALERT_COOLDOWN_MINUTES',240,15);
+    l_count NUMBER;l_sig VARCHAR2(200);l_prev VARCHAR2(200);l_current VARCHAR2(200);
+    l_status VARCHAR2(10);l_streak NUMBER:=0;l_prev_streak NUMBER:=0;
+    l_last_alert TIMESTAMP WITH TIME ZONE;l_send BOOLEAN:=FALSE;l_detail VARCHAR2(1000);
   BEGIN
     DELETE FROM prod.dct_api_perf_current;
     INSERT INTO prod.dct_api_perf_current(endpoint,http_method,executions,avg_ms,total_ms,cpu_ms,
@@ -136,27 +143,49 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_ops_api AS
            NVL((SELECT slow_count FROM prod.dct_sql_perf_state WHERE state_id=1 AND performance_status='WARNING'),0)
       INTO l_other FROM dual;
     l_count:=l_api+l_jobs+l_actual+l_other;
-    l_sig:=l_count||':'||l_api||':'||l_jobs||':'||l_actual||':'||l_other;
+    -- Identify the actual warning set, not merely its count.  This prevents a
+    -- different endpoint with the same count being mistaken for the old issue.
+    SELECT SUBSTR('A='||NVL(LISTAGG(http_method||' '||endpoint,',') WITHIN GROUP(ORDER BY http_method,endpoint),'NONE')||
+                  '|J='||l_jobs||'|R='||l_actual||'|D='||l_other,1,200)
+      INTO l_sig FROM prod.dct_api_perf_current WHERE is_warning='Y';
     l_status:=CASE WHEN l_count=0 THEN 'HEALTHY' ELSE 'WARNING' END;
-    BEGIN SELECT alerted_signature INTO l_prev FROM prod.dct_ops_state WHERE state_id=1;
-    EXCEPTION WHEN NO_DATA_FOUND THEN l_prev:=NULL; END;
-    IF l_count>0 AND NVL(l_prev,'-')<>l_sig THEN
+    BEGIN
+      SELECT alerted_signature,last_alert_at,issue_signature,consecutive_count
+        INTO l_prev,l_last_alert,l_current,l_prev_streak
+        FROM prod.dct_ops_state WHERE state_id=1;
+    EXCEPTION WHEN NO_DATA_FOUND THEN
+      l_prev:=NULL;l_last_alert:=NULL;l_current:=NULL;l_prev_streak:=0;
+    END;
+    IF l_count>0 THEN
+      l_streak:=CASE WHEN l_current=l_sig THEN l_prev_streak+1 ELSE 1 END;
+      l_send:=l_streak>=l_required AND
+              (NVL(l_prev,'-')<>l_sig OR l_last_alert IS NULL OR
+               l_last_alert<=SYSTIMESTAMP-NUMTODSINTERVAL(l_cooldown,'MINUTE'));
+    END IF;
+    SELECT SUBSTR(LISTAGG(http_method||' '||endpoint||' ('||TO_CHAR(avg_ms,'FM999999990D00')||
+                  ' ms avg; limit '||TO_CHAR(l_slow)||' ms)', '; ') WITHIN GROUP(ORDER BY avg_ms DESC),1,800)
+      INTO l_detail FROM prod.dct_api_perf_current WHERE is_warning='Y';
+    IF l_send THEN
       FOR u IN (SELECT DISTINCT usr.user_id FROM prod.dct_users usr JOIN prod.dct_user_roles ur ON ur.user_id=usr.user_id
         JOIN prod.dct_roles r ON r.role_id=ur.role_id WHERE r.role_code='SYS_ADMIN' AND r.is_active='Y'
         AND usr.is_active='Y' AND ur.is_active='Y' AND TRUNC(SYSDATE)>=TRUNC(ur.start_date)
         AND(ur.end_date IS NULL OR TRUNC(SYSDATE)<=TRUNC(ur.end_date))) LOOP
-        prod.dct_notify.send(u.user_id,'WARNING','Operations status changed',l_count||' operational issue(s): '||
-          l_jobs||' scheduler, '||l_api||' API, '||l_actual||' actuals refresh, '||l_other||' database.',
+        prod.dct_notify.send(u.user_id,'WARNING','Operations attention required',l_count||' persistent operational issue(s): '||
+          l_jobs||' scheduler, '||l_api||' API, '||l_actual||' actuals refresh, '||l_other||' database.'||
+          CASE WHEN l_detail IS NOT NULL THEN ' Slow API: '||l_detail||'.' END,
           NULL,NULL,'ADMIN','/Admin/Jet/index.html#systemSettings');
       END LOOP;
     END IF;
     MERGE INTO prod.dct_ops_state s USING(SELECT 1 state_id FROM dual)x ON(s.state_id=x.state_id)
     WHEN MATCHED THEN UPDATE SET s.checked_at=SYSTIMESTAMP,s.status=l_status,s.issue_count=l_count,
-      s.issue_signature=l_sig,s.alerted_signature=CASE WHEN l_count>0 THEN l_sig END,
-      s.last_alert_at=CASE WHEN l_count>0 AND NVL(l_prev,'-')<>l_sig THEN SYSTIMESTAMP ELSE s.last_alert_at END
+      s.issue_signature=CASE WHEN l_count>0 THEN l_sig END,s.consecutive_count=l_streak,
+      -- Keep the last alert through a short healthy interval.  A transient
+      -- recovery must not re-arm the same notification fifteen minutes later.
+      s.alerted_signature=CASE WHEN l_send THEN l_sig ELSE s.alerted_signature END,
+      s.last_alert_at=CASE WHEN l_send THEN SYSTIMESTAMP ELSE s.last_alert_at END
     WHEN NOT MATCHED THEN INSERT(state_id,checked_at,status,issue_count,issue_signature,alerted_signature,last_alert_at)
-      VALUES(1,SYSTIMESTAMP,l_status,l_count,l_sig,CASE WHEN l_count>0 THEN l_sig END,
-             CASE WHEN l_count>0 THEN SYSTIMESTAMP END);
+      VALUES(1,SYSTIMESTAMP,l_status,l_count,CASE WHEN l_count>0 THEN l_sig END,
+             CASE WHEN l_send THEN l_sig END,CASE WHEN l_send THEN SYSTIMESTAMP END);
     COMMIT;
   EXCEPTION WHEN OTHERS THEN ROLLBACK;RAISE;
   END;

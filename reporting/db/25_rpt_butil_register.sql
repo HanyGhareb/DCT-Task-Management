@@ -112,7 +112,7 @@ BEGIN
      'General Ledger', 'MULTI', l_src, 'PYTHON', 'XLSX',
      'Budget Utilization Register - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      l_body,
-     '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null}',
+     '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null,"ovr":null}',
      'Y', 'SETUP', 'SETUP')
   WHEN MATCHED THEN UPDATE SET
      t.source_type       = 'MULTI',
@@ -122,7 +122,7 @@ BEGIN
      t.default_formats   = 'XLSX',
      t.email_subject_tpl = 'Budget Utilization Register - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      t.email_body_tpl    = l_body,
-     t.params_json       = '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null}',
+     t.params_json       = '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null,"ovr":null}',
      t.updated_by        = 'SETUP',
      t.updated_at        = SYSTIMESTAMP;
   MERGE INTO prod.dct_rpt_recipient t
