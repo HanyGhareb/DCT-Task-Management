@@ -1,59 +1,54 @@
-"""AR Invoice Header - all : chunked-extract definition.
+"""AR Invoice Header - all : chunked-extract definition (v2, 2026-08-17).
 
-Replaces the single-shot personal-account run of the saljaaidi analysis
-(102,277 rows today; the analysis ALSO carries FETCH FIRST 500001 ROWS ONLY --
-harmless at this volume but a silent cap the moment the space grows). Columns
-re-authored 1:1 from the analysis' own Advanced-tab logical SQL: 35 select
-items, of which 30 are visible = the job's colmap headings and 5 are
-ORDER-BY-only helpers dropped here (the 4 sort IDOFs + the Customer-Notes
-Creation Date -- the table's all-NULL CREATION_DATE orphan is that retired
-duplicate; the mapped 'Creation Date' = CREATION_DATE_2 = Reference
-Information). 'Transaction Complete Indicator' = DESCRIPTOR_IDOF of
-Transaction Complete (the lines-def Includes-Tax pattern). The analysis
-filter ("Transaction Entered Amount" <> 0) is kept in every chunk.
+v2 re-authored after the OWNER REDESIGNED the saved analysis (~2026-08-17):
+dropped Customer Transaction Reference / Paying Customer / Bill-to Site /
+Ship-to Customer / Transfer + Accounting Status / Account Contact Status /
+Accounting Date / the Customer-Notes Creation-Date helper and Tax Calculation;
+added "- General Information" Payment Terms Name + Description and
+"- Payment" Receipt Method + Term Due Date (heading 'Due Date'). The rebuilt
+'- all' job re-prepared ATD_AR_INVOICE_HEADER_DETAILS to the new 26-col shape
+(the old orphan columns are gone; 'Creation Date' now maps to CREATION_DATE).
+Verified against a live CSV sample 2026-08-17: 24 CSV columns, 103,030 rows.
+NOTE the '- all' colmap keeps a STALE 'Transaction Type Tax Calculation
+Meaning' entry — harmless (headers match by name) but that heading no longer
+exists in the source.
+
+Analysis facts (Advanced-tab dump): 27 select items — 24 visible = the CSV,
+3 ORDER-BY-only sort IDOFs dropped here (Payment Terms Description / BU Name /
+Status); 'Transaction Complete Indicator' = DESCRIPTOR_IDOF(Transaction
+Complete); filter ("Transaction Entered Amount" <> 0) kept in every chunk;
+the analysis still carries FETCH FIRST 500001 (harmless at this volume, a
+silent cap if the space ever grows past it — the chunked path has no cap).
 
 Chunks partition on the header-grain "- Reference Information"."Creation
-Date". Loaded spread (all 2026, no NULLs): Jan 50,495 (migration lump, split
-half-month like the lines def) / Feb 168 / Mar 208 / Apr 20,701 / May 8,315 /
-Jun 7,494 / Jul 10,513 / Aug 4,383. NULL + past + >= 2027 guards keep the
-partition total by construction. min_rows 95,000. Service account
-(non-catalog source_ref so the db/62 path-owner rule stays out of the way).
+Date" (Jan-2026 migration lump split half-month; NULL + past + >= 2027 guards
+keep the partition total by construction). min_rows 95,000. Service account
+(non-catalog source_ref keeps the db/62 path-owner rule out of the way).
 
 Lives on the SEPARATE job 'AR Invoice Header - V2' (db/73) -- Projects Budget
 Full - V2 pattern: the original 'AR Invoice Header - all' job keeps its
-catalog source_ref and stays DISABLED as the fallback.
+catalog source_ref as the fallback.
 """
 SA = '"Receivables - Transactions Real Time"'
 CR = f'{SA}."- Reference Information"."Creation Date"'
 AMT = f'{SA}."- Transaction Amounts"."Transaction Entered Amount" <> 0'
 
-# (formula-without-SA-prefix, colmap heading) — order = CSV position #2..#31
+# (formula-without-SA-prefix, colmap heading) — order = CSV position #2..#25
 _COLS = [
     ('"- General Information"."Transaction ID"',                    "Transaction ID"),
     ('"- General Information"."Transaction Number"',                "Transaction Number"),
     ('"- General Information"."Transaction Source Name"',           "Transaction Source"),
     ('"- General Information"."Transaction Type"',                  "Transaction Type Name"),
-    ('"- General Information"."Transaction Type Tax Calculation"',  "Transaction Type Tax Calculation Meaning"),
     ('"- General Information"."Transaction Date"',                  "Transaction Date"),
-    ('"- Additional Header Information"."Customer Transaction Reference"',
-     "Customer Transaction Reference"),
-    ('"- Customer Additional Information"."Paying Customer Name"',  "Paying Customer Name"),
+    ('"- General Information"."Payment Terms Name"',                "Payment Terms Name"),
+    ('"- General Information"."Payment Terms Description"',         "Payment Terms Description"),
     ('"- Transaction Amounts"."Transaction Accounted Amount"',      "Transaction Accounted Amount"),
     ('"- Transaction Amounts"."Transaction Entered Amount"',        "Transaction Entered Amount"),
     ('"- Bill-to Customer Details"."Bill-to Customer Number"',      "Bill-to Customer Number"),
     ('"- Bill-to Customer Details"."Bill-to Customer Name"',        "Bill-to Customer Name"),
     ('"- Bill-to Customer Details"."Bill-to Customer Type"',        "Bill-to Customer Type"),
-    ('"Bill-to Customer Site"."Bill-to Site Name"',                 "Bill-to Site Name"),
     ('"Business Unit"."Business Unit Name"',                        "Business Unit Name"),
     ('"Business Unit"."Status"',                                    "Status"),
-    ('"- Freight Details"."Ship-to Customer Name"',                 "Ship-to Customer Name"),
-    ('"- Subledger Accounting Journals Details"."Transfer Status"', "Transfer Status"),
-    ('"- Subledger Accounting Journals Details"."Accounting Status Code"',
-     "Accounting Status Code"),
-    ('"- Subledger Accounting Journals Details"."Accounting Status"',
-     "Accounting Status"),
-    ('"- Bill-to Customer Contacts"."Account Contact Status Meaning"',
-     "Account Contact Status Meaning"),
     ('IDOF:"- Reference Information"."Transaction Complete"',       "Transaction Complete Indicator"),
     ('"- Reference Information"."Transaction Complete"',            "Transaction Complete"),
     ('"- Reference Information"."Last Update Date"',                "Invoice Last Update Date"),
@@ -62,7 +57,8 @@ _COLS = [
     ('"- Reference Information"."Creation Date"',                   "Creation Date"),
     ('"- Reference Information"."Created By"',                      "Created By"),
     ('"- Reference Information"."Created By User Name"',            "Created By User Name"),
-    ('"- GL Accounting Date"."Accounting Date"',                    "Accounting Date"),
+    ('"- Payment"."Term Due Date"',                                 "Due Date"),
+    ('"- Payment"."Receipt Method"',                                "Receipt Method"),
 ]
 
 

@@ -2364,3 +2364,33 @@ session and NEVER initiates a login — a sign-in redirect fails the action as `
 so the normal MFA/Telegram recovery path handles it. `smoke_pbt.py` builds a fresh context from
 the saved `storage_state` rather than opening the worker's persistent Chromium profile, so it
 can be run safely while `atd-worker` is live.
+
+## 2026-08-17 — AR jobs performance review + Header V2 REBUILT (analysis redesigned)
+
+Morning review found all AR jobs disabled and two failure patterns:
+
+1. **'AR Invoice Header - V2' FAILED ORA-00904 ACCOUNTING_DATE**: the OWNER
+   REDESIGNED the saved analysis (dropped Customer Reference / Paying Customer /
+   Bill-to Site / Ship-to / Transfer+Accounting Status / Account Contact Status /
+   Accounting Date / Tax Calculation; ADDED Payment Terms Name+Description,
+   Receipt Method, Term Due Date ['Due Date']) and the rebuilt '- all' job
+   re-prepared the table to a new 26-col shape — the V2 job's copied colmap went
+   stale. FIX: arh_def.py re-authored to the 24-column shape (verified against a
+   live CSV sample: 24 headers / 103,030 rows; the 3 exclusions are ORDER-BY-only
+   sort IDOFs), V2 colmap now COPIED from the drift-maintained '- all' row, db/73
+   rewritten. Verified: **SUCCESS 103,030 rows in 149s (hg2248)**. The stale
+   'Transaction Type Tax Calculation Meaning' key was cleaned from BOTH header
+   colmaps (its TRANSACTION_TYPE_TAX_CALCU table column is now an all-NULL
+   orphan). LESSON: a V2 twin's colmap freezes at seed time — after ANY source
+   redesign + '- all' rebuild, re-copy the colmap and re-author the def.
+
+2. **Distribution jobs (BOTH -ALL single-shot AND V2 chunked) reaped stale at
+   ~60 min**: the OTBI pod is serving the distribution query class ~60x slower
+   today (probe: the Nov-2026 chunk = 842 rows in 61.8s vs 0-2s on 2026-08-16) —
+   the db/70-documented server-state swing, not a defect in either job shape.
+   Lines V2 + Header V2 are unaffected (78s / 149s today).
+
+Healthy-day performance (30h window): Lines V2 75-80s vs -ALL 140-177s;
+Header V2 149s (redesigned shape) vs -all 32-236s; Dist V2 185-317s (571k rows)
+vs -ALL ~14 min (truncated 500k). All three V2 jobs re-enabled hourly; originals
+left disabled as fallbacks.
