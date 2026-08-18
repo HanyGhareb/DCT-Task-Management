@@ -587,10 +587,22 @@ def _alert_stale_workers(conn, stale_minutes=5, self_id=None):
         # compare both sides as plain TIMESTAMP (session TZ) - mixing a TIMESTAMP column
         # with SYSTIMESTAMP-WITH-TZ skews by the TZ offset and falsely flags live
         # workers (same fix as ATD_QUEUE_PKG.reap_stale).
-        cur.execute("select worker_id from prod.atd_worker_heartbeat "
+        # BUSY EXEMPTION (2026-08-18): the worker does NOT heartbeat while a
+        # chunked extract/load is in flight, so any run longer than
+        # stale_minutes made the peer sweep ssh-restart a HEALTHY worker
+        # mid-run (4 kills on 2026-08-18, every one zombie-ing its run row).
+        # A worker that owns a live RUNNING run younger than the queue-reap
+        # window is working, not silent. A genuinely frozen busy VM still
+        # recovers: the 60-min queue reap FAILs its run, the exemption drops
+        # away, and the next sweep flags it (idle frozen VMs: 5 min as before).
+        cur.execute("select worker_id from prod.atd_worker_heartbeat h "
                     "where status <> 'DOWN' "
                     "  and last_seen < CAST(SYSTIMESTAMP AS TIMESTAMP) "
-                    "                  - numtodsinterval(:m,'MINUTE')",
+                    "                  - numtodsinterval(:m,'MINUTE') "
+                    "  and not exists (select 1 from prod.atd_load_run_log r "
+                    "                  where r.host_id = h.worker_id "
+                    "                    and r.status = 'RUNNING' "
+                    "                    and r.started > sysdate - numtodsinterval(75,'MINUTE'))",
                     m=stale_minutes)
         stale = [r[0] for r in cur.fetchall()]
         for w in stale:

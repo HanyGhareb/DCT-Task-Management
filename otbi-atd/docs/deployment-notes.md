@@ -2400,3 +2400,54 @@ in 295s (vm182)** despite the slow pod — the chunked shape absorbed the latenc
 (the morning's stale-reaped runs predated the retry; no config change needed).
 All three AR V2 extracts green + hourly on the service account: Lines 123,340 /
 Header 103,030 / Distributions 575,801 rows.
+
+## 2026-08-18 (4) — fleet clock skew + stale-worker sweep killing BUSY workers
+
+Root-caused today's noisy/duplicated Telegram traffic and the dist-V2 run
+failures. TWO independent infrastructure faults were interacting:
+
+1. **All 3 worker VM clocks were ~28 minutes SLOW** (chrony: "1665s slow of
+   NTP"). Cause: VMware Tools periodic time-sync was ENABLED on the guests and
+   kept dragging them to the ESXi host's wrong hardware clock — chrony can only
+   slew ~1s/day against that. Effect: journal timestamps were 28 min behind
+   DB/real time (made run forensics maddening — a DB row "claimed 15:27" looked
+   like it was claimed in the future from the journal's viewpoint). FIX (all 3
+   VMs): `vmware-toolbox-cmd timesync disable` + `chronyc makestep` — all
+   guests now within 1s of true UTC and the DB. RULE: after ANY ESXi power
+   operation on a worker VM, verify `chronyc tracking` — the guest boots from
+   the (wrong) ESXi hardware clock, and periodic sync must STAY disabled.
+   The heartbeat/stale logic itself was never affected (both sides DB-stamped).
+
+2. **The stale-worker sweep ssh-restarted HEALTHY BUSY workers mid-run** (4
+   kills today: vm182 twice, vm181 twice). The worker does not heartbeat while
+   a chunked extract/load is in flight, so any run longer than stale_minutes
+   (5) made a peer declare it silent and restart the service — zombie-ing the
+   run row (stuck RUNNING; the dist V2 job needs ~5-6 min, so EVERY run was
+   getting killed). FIX in `_alert_stale_workers` (runner.py, fleet-synced):
+   the stale query now EXEMPTS a worker that owns a live RUNNING
+   atd_load_run_log row younger than 75 min. A genuinely frozen busy VM still
+   recovers — the 60-min queue reap FAILs its run, the exemption drops away,
+   and the next sweep flags it (idle frozen VMs: 5 min as before).
+
+Also identified the recurring hourly PR drift Telegram: ONE Fusion requisition
+literally numbered "TEMP" (PR_HEADER_ID 300003074482275, distribution
+300003074482277) rides in every incremental window — PR_NUMBER/REQUISITION are
+NUMBER columns so the drift check warns each cycle and the row loads with NULL
+number. Data-quality fix belongs in Fusion (renumber/cancel the requisition);
+the loader is behaving correctly.
+
+## 2026-08-18 (5) — AR dist V2 revised for the redesigned analysis: VERIFIED
+
+With the busy-worker exemption deployed, the final 15-chunk params ran clean:
+**run 13479 SUCCESS 180,687 rows in 281s (4m41s, vm180, hg2248)** — Revenue
+147,482 + Tax 33,205; the drift engine auto-added all 7 new columns
+(TRANSACTION_LINE_TYPE, GL_ACCOUNT_COMBINATION_DES, GL_CONCATENATED_SEGMENTS,
+ACCOUNTED/ENTERED_AMOUNT_CR/DR); Accounting Date spans 2025-12-01→2027-01-08
+matching the chunk design exactly. db/71 regenerated from ard_def (15 chunks —
+the interim 20-chunk literal is gone). NOTE: the table's bare ACCOUNTING_DATE
+column is an all-NULL ORPHAN from the pre-redesign shape — the live mapping is
+'Accounting Date' → **ACCOUNTING_DATE_2**; consumers must read _2 (same
+orphan-column situation as the header's TRANSACTION_TYPE_TAX_CALCU).
+Old vs new: '- ALL' single-shot ~14 min truncated at 500k rows → V2 old shape
+575,801/295s → V2 new shape 180,687/281s (the analysis filter shrank the space;
+per-row cost rose with the new joins, net wash on wall-clock).
