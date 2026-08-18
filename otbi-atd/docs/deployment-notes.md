@@ -2451,3 +2451,27 @@ orphan-column situation as the header's TRANSACTION_TYPE_TAX_CALCU).
 Old vs new: '- ALL' single-shot ~14 min truncated at 500k rows → V2 old shape
 575,801/295s → V2 new shape 180,687/281s (the analysis filter shrank the space;
 per-row cost rose with the new joins, net wash on wall-clock).
+
+## 2026-08-18 (6) — PO Headers comma-misalignment FIXED at the analysis (user request)
+
+The ~24 permanently-garbled PO Headers rows (ORDERED_AMOUNT/RATE non-numeric +
+SUBMIT_DATE non-date drift Telegrams on every Full run) were traced to ONE
+pattern: a PO description STARTING with a double-quote (e.g. PO 451102007057
+`"- Amount (Excl. VAT): AED 32,800 ...`) corrupts OTBI's CSV field quoting, so
+the row splits on its embedded commas (682 other comma-bearing descriptions
+load fine while properly quoted). FIX per user: the 'Order Description' column
+formula in BOTH catalog analyses (Full PO_HEADERS_F + incremental
+PO_HEADERS_UH24 — same final table, must stay in lock-step) is now
+`REPLACE(REPLACE("Purchase Order Header Detail"."Description", ',', '-'), '"', '''')`
+applied by the NEW `runner/edit_po_desc.py` (idempotent UI-robot edit: opens
+the analysis in Answers, Edit Column Formula, rewrites the formula textarea —
+the box is a NAMELESS plain textarea found by VALUE match across ALL frames;
+`.CodeMirror` and id-based lookups both miss it — then Save-As same name +
+overwrite; run on a worker VM with that VM's atd-worker STOPPED). VERIFIED:
+Full run SUCCESS 4,507 rows, NO warnings, 0 NULL amounts/dates, 0 commas in
+any description, the previously-broken POs load fully aligned. NOTE: the
+outer quote->apostrophe REPLACE did NOT survive the Answers save (3 rows
+still carry a leading `"` — the '"' literal likely mangled in the analysis
+XML); harmless, because with no commas left a mis-quoted field can no longer
+split — do not chase it. The incremental's hourly MERGE now writes
+dash-descriptions consistently.
