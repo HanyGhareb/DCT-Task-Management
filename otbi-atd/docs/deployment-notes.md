@@ -2475,3 +2475,23 @@ still carry a leading `"` — the '"' literal likely mangled in the analysis
 XML); harmless, because with no commas left a mis-quoted field can no longer
 split — do not chase it. The incremental's hourly MERGE now writes
 dash-descriptions consistently.
+
+## 2026-08-18 (7) — log-review follow-ups closed
+
+1. **'Projects Budget Incremental' DELETED** (job row + its TXN_INCREMENTAL
+   set membership) — disabled since the period-chunked V2 became the scheduled
+   budget job; its UH24 source page was dead (500s).
+2. **ESXi host (192.168.1.190) now NTP-synced**: ESXi 6.5 has no `esxcli
+   system ntp` namespace — configured via /etc/ntp.conf (3 pool.ntp.org
+   servers appended), `esxcli network firewall ruleset set -r ntpClient -e
+   true`, `chkconfig ntpd on`, `/etc/init.d/ntpd start`, then
+   `/sbin/auto-backup.sh` so the config survives reboot. Verified: 3 peers,
+   selected offset ~5ms. All ops ran from vm180 via runner._esxi_ssh (the
+   stored ATD_ESXI_PWD secret; no key install). Closes the clock-skew loop:
+   guests no longer VMware-timesync (disabled earlier today) AND the host
+   they'd boot from now keeps true time.
+3. **Review correction**: 'AP Invoices Full' was NEVER on the personal
+   account — it runs on hg2248 (5-61s, 100% SUCCESS; catalog path is the
+   service account's own). The Aug-14 cold-morning MFA failures were the AR
+   '- ALL' jobs, which are disabled since the V2 split. Nothing left on a
+   personal account except the disabled AR fallbacks.
