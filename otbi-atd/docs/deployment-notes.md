@@ -2394,3 +2394,9 @@ Healthy-day performance (30h window): Lines V2 75-80s vs -ALL 140-177s;
 Header V2 149s (redesigned shape) vs -all 32-236s; Dist V2 185-317s (571k rows)
 vs -ALL ~14 min (truncated 500k). All three V2 jobs re-enabled hourly; originals
 left disabled as fallbacks.
+
+Same-day close-out: the dist V2 verification run then went **SUCCESS 575,801 rows
+in 295s (vm182)** despite the slow pod — the chunked shape absorbed the latency
+(the morning's stale-reaped runs predated the retry; no config change needed).
+All three AR V2 extracts green + hourly on the service account: Lines 123,340 /
+Header 103,030 / Distributions 575,801 rows.
