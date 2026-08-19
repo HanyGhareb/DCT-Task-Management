@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.69.0';</script>
+<script>window.APP_VERSION = '1.70.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -72,7 +72,455 @@
     <!-- /ko -->
   </nav>
 
-  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'||view()==='legacy'||view()==='cashflow'||view()==='dof'}">
+  <div class="wrap" data-bind="css:{wide: view()==='actuals'||view()==='dashboard'||view()==='butil'||view()==='encumbrances'||view()==='pending'||view()==='recon'||view()==='legacy'||view()==='cashflow'||view()==='dof'||view()==='portfolio'||view()==='proj360'}">
+
+        <!-- ══ PROJECT PORTFOLIO ══════════════════════════════════════════ -->
+    <div id="pg-portfolio" data-bind="visible:view()==='portfolio'">
+      <div class="page-head">
+        <div>
+          <h1 class="greet" data-bind="text:t('pfTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('pfSub')"></div>
+        </div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="text:buYear()+(buPeriod()?' · '+buPeriod():'')"></span>
+          <span class="chip muted" data-bind="text:fmt(pfCount())+' '+t('pfKProjects')"></span>
+        </div>
+      </div>
+
+      <!-- search criteria -->
+      <div class="bu-sec">
+        <div class="bu-sec-h" data-bind="click:function(){togglePfSec('search');return true}, css:{closed:!pfSecSearchOpen()}">
+          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+          <span class="bu-sec-t" data-bind="text:t('pfSecSearch')"></span>
+        </div>
+        <div class="bu-sec-b" data-bind="visible:pfSecSearchOpen">
+          <div class="filter-grid">
+            <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+              <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fPeriod')"></label>
+              <select class="inp" data-bind="options:buPeriodOpts, optionsText:'l', optionsValue:'v', value:buPeriod, optionsCaption:t('fullYear')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
+              <select class="inp" data-bind="options:buTypes, value:buTypePick, event:{change:buTypeAdd}, optionsCaption:t('allTypes')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fBuL')"></label>
+              <select class="inp" data-bind="options:buBus, value:buBuPick, event:{change:buBuAdd}, optionsCaption:t('allBus')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
+              <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fChapterL')"></label>
+              <select class="inp" data-bind="options:buChapters, value:buChapterPick, event:{change:buChapterAdd}, optionsCaption:t('allChapters')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fCcL')"></label>
+              <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, event:{change:buCcCommit}"></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fProjectL')"></label>
+              <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, event:{change:buProjCommit}"></div>
+            <div class="field"><label class="lbl" data-bind="text:t('pfStatusL')"></label>
+              <select class="inp" data-bind="options:(pfFilters()||{}).statuses, value:pfStatus, optionsCaption:t('pfAllStatus')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('pfHealthL')"></label>
+              <select class="inp" data-bind="options:pfBandOpts(), optionsText:'l', optionsValue:'v', value:pfHealth, optionsCaption:t('pfAllHealth')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('pfManagerL')"></label>
+              <input class="inp" type="text" data-bind="textInput:pfManager"></div>
+            <div class="field"><label class="lbl" data-bind="text:t('pfSortL')"></label>
+              <select class="inp" data-bind="options:pfSortOpts(), optionsText:'l', optionsValue:'v', value:pfSort"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+              <input class="inp" type="text" data-bind="textInput:buSearch"></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
+              <select class="inp" data-bind="options:buUnitOpts(), optionsText:'l', optionsValue:'v', value:buUnit"></select></div>
+          </div>
+          <div class="mchips mchips-bar" data-bind="visible:buTypeSel().length + buChapterSel().length + buCcSel().length + buProjSel().length + buBuSel().length > 0">
+            <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+            <!-- ko foreach: buTypeSel --><span class="mchip"><b data-bind="text:$root.t('fTypeL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buTypeSel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: buBuSel --><span class="mchip"><b data-bind="text:$root.t('fBuL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buBuSel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: buChapterSel --><span class="mchip"><b data-bind="text:$root.t('fChapterL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buChapterSel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: buCcSel --><span class="mchip"><b data-bind="text:$root.t('fCcL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buCcSel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+            <!-- ko foreach: buProjSel --><span class="mchip"><b data-bind="text:$root.t('fProjectL')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.buChipRemove($root.buProjSel,$data)}, clickBubble:false">×</i></span><!-- /ko -->
+          </div>
+          <div class="filter-actions">
+            <button class="btn btn-primary" data-bind="click:function(){runPortfolio()}, css:{busy:pfLoading}, text:t('btnSearch')"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="bu-body">
+        <div class="bu-load-ov" data-bind="visible:pfBusy" aria-live="polite">
+          <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+        </div>
+
+        <!-- KPI band -->
+        <div class="bu-sec">
+          <div class="bu-sec-h" data-bind="click:function(){togglePfSec('kpis');return true}, css:{closed:!pfSecKpisOpen()}">
+            <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            <span class="bu-sec-t" data-bind="text:t('pfSecOverview')"></span>
+          </div>
+          <div class="bu-sec-b" data-bind="visible:pfSecKpisOpen">
+            <div class="bu-kpis pf-kpis">
+              <div class="bk bk-proj">
+                <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKProjects')"></div>
+                  <div class="bk-v mono" data-bind="text:fmt(pfCount())"></div>
+                  <div class="bk-sub" data-bind="text:fmt((pfGaps()||{}).unbudgetedProjects||0)+' '+t('pfUnbudgeted').toLowerCase()"></div></div>
+              </div>
+              <div class="bk bk-budget">
+                <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKBudget')"></div>
+                  <div class="bk-v mono" data-bind="text:buNum(pfT('budgetAnnual')), attr:{title:money(pfT('budgetAnnual'))}"></div>
+                  <div class="bk-sub" data-bind="text:t('pfColBudgetY')+': '+buNum(pfT('budget'))"></div></div>
+              </div>
+              <div class="bk bk-ap bk-duo">
+                <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKActual')"></div>
+                  <div class="bk-v mono" data-bind="text:buNum(pfActualTot()), attr:{title:money(pfActualTot())}"></div>
+                  <div class="bk-sub" data-bind="text:pfOfBudget(pfActualTot())"></div>
+                  <div class="bk-seg"><i class="s1" data-bind="style:{width:pfSegW(pfT('actualAp'),pfActualTot())}"></i><i class="s2" data-bind="style:{width:pfSegW(pfT('actualGrn'),pfActualTot())}"></i></div>
+                  <div class="bk-duo-rows">
+                    <div class="bk-duo-row"><i class="dot d1"></i><span class="l" data-bind="text:t('pfAp')"></span><span class="v mono" data-bind="text:buNum(pfT('actualAp'))"></span></div>
+                    <div class="bk-duo-row"><i class="dot d2"></i><span class="l" data-bind="text:t('pfGrn')"></span><span class="v mono" data-bind="text:buNum(pfT('actualGrn'))"></span></div>
+                  </div></div>
+              </div>
+              <div class="bk bk-po bk-duo">
+                <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKCommit')"></div>
+                  <div class="bk-v mono" data-bind="text:buNum(pfCommitTot()), attr:{title:money(pfCommitTot())}"></div>
+                  <div class="bk-sub" data-bind="text:pfOfBudget(pfCommitTot())"></div>
+                  <div class="bk-seg"><i class="s1" data-bind="style:{width:pfSegW(pfT('commitmentPr'),pfCommitTot())}"></i><i class="s2" data-bind="style:{width:pfSegW(pfT('obligationPo'),pfCommitTot())}"></i></div>
+                  <div class="bk-duo-rows">
+                    <div class="bk-duo-row"><i class="dot d1"></i><span class="l" data-bind="text:t('pfPr')"></span><span class="v mono" data-bind="text:buNum(pfT('commitmentPr'))"></span></div>
+                    <div class="bk-duo-row"><i class="dot d2"></i><span class="l" data-bind="text:t('pfPo')"></span><span class="v mono" data-bind="text:buNum(pfT('obligationPo'))"></span></div>
+                  </div></div>
+              </div>
+              <div class="bk bk-paid">
+                <div class="bk-body"><div class="bk-k"><span data-bind="text:t('pfKPaid')"></span><i class="pf-tip" data-bind="attr:{title:t('pfHintPaid')}">i</i></div>
+                  <div class="bk-v mono" data-bind="text:buNum(pfT('apPaid')), attr:{title:money(pfT('apPaid'))}"></div>
+                  <div class="bk-sub" data-bind="text:t('pfPaidOf').replace('{p}',pfPaidPct())"></div></div>
+              </div>
+              <div class="bk bk-fund" data-bind="css:{neg: pfT('fundAvailable')<0}">
+                <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKFund')"></div>
+                  <div class="bk-v mono" data-bind="text:buNum(pfT('fundAvailable')), attr:{title:money(pfT('fundAvailable'))}"></div>
+                  <div class="bk-sub" data-bind="text: pfT('fundAvailable')<0 ? t('pfOverBudget') : pfOfBudget(pfT('fundAvailable'))"></div></div>
+              </div>
+              <div class="bk bk-health" data-bind="css:{calm: pfRiskCount()===0}">
+                <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKRisk')"></div>
+                  <div class="bk-v mono" data-bind="text:fmt(pfRiskCount())"></div>
+                  <div class="bk-sub" data-bind="text:fmt((pfFlags()||{}).overBudget||0)+' '+t('pfOverBudget')"></div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- health and momentum -->
+        <div class="bu-sec">
+          <div class="bu-sec-h" data-bind="click:function(){togglePfSec('health');return true}, css:{closed:!pfSecHealthOpen()}">
+            <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+            <span class="bu-sec-t" data-bind="text:t('pfSecHealth')"></span>
+          </div>
+          <div class="bu-sec-b" data-bind="visible:pfSecHealthOpen">
+            <div class="pf-grid">
+              <div class="card pf-gauge-card">
+                <div class="pf-card-t" data-bind="text:t('pfGaugeT')"></div>
+                <!-- ko if: pfGauge() -->
+                <svg class="pf-gauge" viewBox="0 0 160 160" data-bind="css:{over:pfGauge().over}">
+                  <circle class="g-track" cx="80" cy="80" r="62"></circle>
+                  <circle class="g-commit" cx="80" cy="80" r="62" data-bind="attr:{'stroke-dasharray':pfGauge().dashCommit}"></circle>
+                  <circle class="g-util" cx="80" cy="80" r="62" data-bind="attr:{'stroke-dasharray':pfGauge().dashUtil}"></circle>
+                </svg>
+                <div class="pf-gauge-c"><b class="mono" data-bind="text:pfGauge().util+'%'"></b><span data-bind="text:t('pfGaugeSub')"></span></div>
+                <div class="pf-legend">
+                  <span><i class="gd d1"></i><span data-bind="text:t('pfLegUtil')"></span><b class="mono" data-bind="text:pfGauge().util+'%'"></b></span>
+                  <span><i class="gd d2"></i><span data-bind="text:t('pfLegCommit')"></span><b class="mono" data-bind="text:pfGauge().commit+'%'"></b></span>
+                  <span><i class="gd d3"></i><span data-bind="text:t('pfLegElapsed')"></span><b class="mono" data-bind="text:pfGauge().elapsed+'%'"></b></span>
+                </div>
+                <!-- /ko -->
+              </div>
+              <div class="card">
+                <div class="pf-card-t" data-bind="text:t('pfDistT')"></div>
+                <div class="pf-hbar">
+                  <!-- ko foreach: pfHealthBands -->
+                  <i data-bind="attr:{'class':$data.cls, title:$data.label+' — '+$data.n}, style:{width:$data.pct+'%'}"></i>
+                  <!-- /ko -->
+                </div>
+                <div class="pf-hlegend">
+                  <!-- ko foreach: pfHealthBands -->
+                  <span><i data-bind="attr:{'class':'gd '+$data.cls}"></i><span data-bind="text:$data.label"></span><b class="mono" data-bind="text:$data.n"></b></span>
+                  <!-- /ko -->
+                </div>
+                <div class="pf-card-t pf-card-t2" data-bind="text:t('pfPressureT')"></div>
+                <div class="pf-bars">
+                  <!-- ko foreach: pfPressure -->
+                  <div class="pf-bar" data-bind="click:function(){$root.openProj360($data.num)}">
+                    <span class="pb-n" data-bind="text:$data.name || $data.num, attr:{title:$data.num}"></span>
+                    <span class="pb-t"><i data-bind="attr:{'class':'pb-f h-'+String($data.band||'grey').toLowerCase()}, style:{width:$data.w+'%'}"></i></span>
+                    <span class="pb-v mono" data-bind="text:$root.buNum($data.amount)"></span>
+                  </div>
+                  <!-- /ko -->
+                </div>
+              </div>
+              <div class="card pf-ins-card">
+                <div class="pf-card-t" data-bind="text:t('pfInsightsT')"></div>
+                <ul class="ins-list" data-bind="foreach:pfInsights"><li data-bind="text:$data"></li></ul>
+                <!-- ko if: (pfGaps()||{}).unbudgetedProjects > 0 -->
+                <div class="pf-gapnote"><b data-bind="text:t('pfUnbudgeted')+': '+buNum(pfT('unbudgetedSpend'))"></b>
+                  <span data-bind="text:t('pfUnbudgetedHint')"></span></div>
+                <!-- /ko -->
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- register -->
+        <div class="bu-sec bu-results pf-results" data-bind="css:{maxed:pfMax}">
+          <div class="bu-sec-h bu-res-h">
+            <span class="bu-sec-t" data-bind="text:t('pfSecRegister')"></span>
+            <span class="bu-sec-sum" data-bind="text:t('pfRowHint')"></span>
+            <span class="bu-sec-sum" data-bind="visible:pfUnitNote(), text:pfUnitNote()"></span>
+            <span class="grow"></span>
+            <button class="bu-maxbtn" data-bind="click:togglePfMax, text:pfMax()?'⤡':'⤢'"></button>
+          </div>
+          <div class="bu-sec-b">
+            <!-- ko if: pfLoaded() && pfCount()===0 -->
+            <div class="empty-state" data-bind="text:t('pfNoRows')"></div>
+            <!-- /ko -->
+            <!-- ko if: pfIr() -->
+            <div data-bind="event:{click:pfGridClick, mouseover:pfGridOver}">
+              <interactive-report params="reportCode:'GL_PROJ_PORTFOLIO', section:'pf', data:pfIr, isAdmin:false, layoutsApi:null"></interactive-report>
+            </div>
+            <!-- /ko -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ══ PROJECT 360 ════════════════════════════════════════════════ -->
+    <div id="pg-proj360" data-bind="visible:view()==='proj360'">
+      <div class="page-head">
+        <div>
+          <button class="btn btn-sm p3-back" data-bind="click:backToPortfolio"><span>‹ </span><span data-bind="text:t('p3Back')"></span></button>
+          <h1 class="greet" data-bind="text:($data.p3Card()||{}).projectName || p3Num()"></h1>
+          <div class="greet-sub"><span class="mono" data-bind="text:p3Num()"></span>
+            <span data-bind="attr:{'class':p3StClass(($data.p3Card()||{}).status)}, text:($data.p3Card()||{}).status"></span>
+            <span data-bind="attr:{'class':p3BandClass()}, text:p3BandLabel()"></span></div>
+        </div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="text:buYear()+(buPeriod()?' · '+buPeriod():'')"></span>
+        </div>
+      </div>
+
+      <div class="bu-body">
+        <div class="bu-load-ov" data-bind="visible:p3Loading" aria-live="polite">
+          <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
+          <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+        </div>
+
+        <!-- identity -->
+        <div class="p3-card">
+          <div class="p3-meta">
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Manager')"></span><span class="v" data-bind="text:$data.p3Card().manager || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Type')"></span><span class="v" data-bind="text:$data.p3Card().projectType || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Bu')"></span><span class="v" data-bind="text:$data.p3Card().businessUnit || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Appropriation')"></span><span class="v" data-bind="text:$data.p3Card().appropriation || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Chapter')"></span><span class="v" data-bind="text:$data.p3Card().chapter || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Sectors')"></span><span class="v" data-bind="text:$data.p3Card().sectors || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Departments')"></span><span class="v" data-bind="text:$data.p3Card().departments || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3CostCentres')"></span><span class="v" data-bind="text:$data.p3Card().costCentres || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Start')"></span><span class="v mono" data-bind="text:$data.p3Card().startDate || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Finish')"></span><span class="v mono" data-bind="text:$data.p3Card().finishDate || '—'"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3Tasks')"></span><span class="v mono" data-bind="text:$data.p3Card().taskCount || 0"></span></div>
+            <div class="p3-m"><span class="k" data-bind="text:t('p3LastActivity')"></span><span class="v mono" data-bind="text:$data.p3Year().lastActivity || '—'"></span></div>
+          </div>
+          <!-- ko if: p3Year().hasBudget === 'N' -->
+          <div class="bu-alert bu-alert--gap"><div class="bu-alert-tx" data-bind="text:t('p3NoBudget')"></div></div>
+          <!-- /ko -->
+        </div>
+
+        <!-- KPI band + health components -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('p3SecKpis')"></span></div>
+          <div class="bu-sec-b">
+            <div class="bu-kpis pf-kpis">
+              <div class="bk bk-budget"><div class="bk-body"><div class="bk-k" data-bind="text:t('pfKBudget')"></div>
+                <div class="bk-v mono" data-bind="text:buNum(p3Year().budgetAnnual), attr:{title:money(p3Year().budgetAnnual)}"></div>
+                <div class="bk-sub" data-bind="text:t('pfColBudgetY')+': '+buNum(p3Year().budget)"></div></div></div>
+              <div class="bk bk-ap"><div class="bk-body"><div class="bk-k" data-bind="text:t('pfKActual')"></div>
+                <div class="bk-v mono" data-bind="text:buNum((p3Year().actualAp||0)+(p3Year().actualGrn||0))"></div>
+                <div class="bk-sub" data-bind="text:t('pfAp')+' '+buNum(p3Year().actualAp)+' · '+t('pfGrn')+' '+buNum(p3Year().actualGrn)"></div></div></div>
+              <div class="bk bk-po"><div class="bk-body"><div class="bk-k" data-bind="text:t('pfKCommit')"></div>
+                <div class="bk-v mono" data-bind="text:buNum((p3Year().commitmentPr||0)+(p3Year().obligationPo||0))"></div>
+                <div class="bk-sub" data-bind="text:t('pfPr')+' '+buNum(p3Year().commitmentPr)+' · '+t('pfPo')+' '+buNum(p3Year().obligationPo)"></div></div></div>
+              <div class="bk bk-paid"><div class="bk-body"><div class="bk-k"><span data-bind="text:t('pfKPaid')"></span><i class="pf-tip" data-bind="attr:{title:t('pfHintPaid')}">i</i></div>
+                <div class="bk-v mono" data-bind="text:buNum(p3Ap().paid), attr:{title:money(p3Ap().paid)}"></div>
+                <div class="bk-sub" data-bind="text:t('pfAp')+' '+buNum(p3Ap().invoiced)"></div></div></div>
+              <div class="bk bk-fund" data-bind="css:{neg:(p3Year().fundAvailable||0)<0}"><div class="bk-body"><div class="bk-k" data-bind="text:t('pfKFund')"></div>
+                <div class="bk-v mono" data-bind="text:buNum(p3Year().fundAvailable), attr:{title:money(p3Year().fundAvailable)}"></div>
+                <div class="bk-sub" data-bind="text:(p3H().utilizationPct||0)+'% · '+t('pfLegElapsed')+' '+(p3H().elapsedPct||0)+'%'"></div></div></div>
+              <div class="bk bk-health" data-bind="css:{calm:p3H().band==='GREEN'}"><div class="bk-body">
+                <div class="bk-k"><span data-bind="text:t('pfColHealth')"></span><i class="pf-tip" data-bind="attr:{title:($data.p3H()||{}).disclaimer}">i</i></div>
+                <div class="bk-v mono" data-bind="text:(p3H().score||0)"></div>
+                <div class="p3-comps" data-bind="foreach:p3Components">
+                  <div class="p3-comp"><span class="l" data-bind="text:$data.label"></span>
+                    <span class="t"><i data-bind="style:{width:$data.w}, css:{off:!$data.scored}"></i></span>
+                    <span class="v mono" data-bind="text:$data.txt"></span></div>
+                </div></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- funnel -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('p3SecFunnel')"></span>
+            <span class="bu-sec-sum" data-bind="text:t('p3fHint')"></span></div>
+          <div class="bu-sec-b">
+            <!-- ko if: p3Funnel() -->
+            <svg class="p3-funnel" data-bind="attr:{viewBox:'0 0 '+p3Funnel().W+' '+p3Funnel().H}">
+              <!-- ko foreach: p3Funnel().bands -->
+              <path class="fn-band" data-bind="attr:{d:$data.d}"></path>
+              <text class="fn-conv" data-bind="attr:{x:$data.mx,y:$data.my}, text:$data.pct"></text>
+              <!-- /ko -->
+              <!-- ko foreach: p3Funnel().stages -->
+              <rect class="fn-bar" data-bind="attr:{'class':'fn-bar '+$data.cls+($data.metric?'':' fn-nodrill'), x:$data.x, y:$data.y, width:$data.w, height:$data.h, rx:4}, click:function(){$root.p3StageDrill($data)}"><title data-bind="text:$data.label+': '+$data.exact"></title></rect>
+              <text class="fn-v" data-bind="attr:{x:$data.cx, y:$data.y-8}, text:$data.txt"></text>
+              <text class="fn-l" data-bind="attr:{x:$data.cx, y:$root.p3Funnel().baseY+20}, text:$data.label"></text>
+              <!-- /ko -->
+            </svg>
+            <!-- /ko -->
+          </div>
+        </div>
+
+        <!-- tasks -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('p3SecTasks')"></span>
+            <span class="bu-sec-sum" data-bind="text:t('p3SchedNote')"></span></div>
+          <div class="bu-sec-b">
+            <!-- ko if: p3Tasks().length === 0 --><div class="empty-state" data-bind="text:t('p3NoTasks')"></div><!-- /ko -->
+            <!-- ko if: p3Tasks().length -->
+            <div class="data-table-wrap p3-scroll">
+              <table class="tbl p3-table">
+                <thead><tr>
+                  <th data-bind="text:t('p3ColTask')"></th><th data-bind="text:t('p3ColTaskName')"></th>
+                  <th data-bind="text:t('p3ColOrg')"></th>
+                  <th data-bind="text:t('p3ColPlanStart')"></th><th data-bind="text:t('p3ColPlanFinish')"></th>
+                  <th data-bind="text:t('pfColHealth')"></th>
+                  <th class="num" data-bind="text:t('pfColBudgetA')"></th>
+                  <th class="num" data-bind="text:t('pfColAp')"></th><th class="num" data-bind="text:t('pfColGrn')"></th>
+                  <th class="num" data-bind="text:t('pfColPr')"></th><th class="num" data-bind="text:t('pfColPo')"></th>
+                  <th class="num" data-bind="text:t('pfColFund')"></th>
+                </tr></thead>
+                <tbody data-bind="foreach:p3Tasks">
+                  <tr>
+                    <td class="mono" data-bind="text:$data.taskNumber"></td>
+                    <td data-bind="text:$data.taskName"></td>
+                    <td data-bind="text:$data.organization"></td>
+                    <td class="mono" data-bind="text:$data.plannedStart || '—'"></td>
+                    <td class="mono" data-bind="text:$data.plannedFinish || '—'"></td>
+                    <td><span data-bind="attr:{'class':$root.p3SchedClass($data)}, text:$root.p3SchedLabel($data)"></span></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.budgetAnnual)"></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.actualAp)"></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.actualGrn)"></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.commitmentPr)"></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.obligationPo)"></td>
+                    <td class="num mono" data-bind="css:{neg:($data.fundAvailable||0)<0}, text:$root.buNum($data.fundAvailable)"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- /ko -->
+          </div>
+        </div>
+
+        <!-- pipeline -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('p3SecPipeline')"></span></div>
+          <div class="bu-sec-b">
+            <div class="ap-tabs p3-tabs" data-bind="foreach:p3PipeTabs">
+              <button data-bind="css:{on:$root.p3PipeTab()===$data.k}, click:function(){$root.p3PipeTab($data.k)}">
+                <span data-bind="text:$data.l"></span><span class="ct mono" data-bind="text:$data.n"></span></button>
+            </div>
+            <!-- ko if: p3PipeRows().length === 0 --><div class="empty-state" data-bind="text:t('p3NoPipe')"></div><!-- /ko -->
+            <!-- ko if: p3PipeRows().length -->
+            <div class="data-table-wrap p3-scroll">
+              <table class="tbl p3-table">
+                <thead><tr><th>#</th><th data-bind="text:t('p3ColTask')"></th><th>Description</th><th>Detail</th><th class="num">AED</th></tr></thead>
+                <tbody data-bind="foreach:p3PipeRows">
+                  <tr>
+                    <td class="mono" data-bind="text:$data.prNumber || $data.poNumber || $data.docNumber || ''"></td>
+                    <td class="mono" data-bind="text:$data.taskNumber || ''"></td>
+                    <td data-bind="text:$data.description || $data.supplier || ''"></td>
+                    <td data-bind="text:$data.expenditureType || $data.pendingWith || ''"></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.amount != null ? $data.amount : ($data.open != null ? $data.open : $data.uninvoiced))"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- /ko -->
+          </div>
+        </div>
+
+        <!-- revenue -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('p3SecRev')"></span>
+            <span class="dgap" data-bind="text:t('p3GapBadge'), attr:{title:t('p3GapBody')}"></span></div>
+          <div class="bu-sec-b">
+            <!-- ko if: !p3Rev() || (p3Rev().summary||{}).billed === 0 -->
+            <div class="empty-state" data-bind="text:t('p3NoRev')"></div>
+            <!-- /ko -->
+            <!-- ko if: p3Rev() && (p3Rev().summary||{}).billed > 0 -->
+            <div class="data-table-wrap p3-scroll">
+              <table class="tbl p3-table">
+                <thead><tr><th>Invoice</th><th data-bind="text:t('p3ColPlanStart')"></th><th>Customer</th><th>Description</th><th class="num">AED</th></tr></thead>
+                <tbody data-bind="foreach:p3Rev().items">
+                  <tr><td class="mono" data-bind="text:$data.transactionNumber"></td>
+                    <td class="mono" data-bind="text:$data.transactionDate || '—'"></td>
+                    <td data-bind="text:$data.customer"></td>
+                    <td data-bind="text:$data.description"></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.amount)"></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- /ko -->
+            <div class="bu-alert bu-alert--gap"><div class="bu-alert-tx">
+              <b data-bind="text:t('p3GapTitle')"></b> <span data-bind="text:t('p3GapBody')"></span></div></div>
+          </div>
+        </div>
+
+        <!-- budget transactions -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('p3SecTrx')"></span></div>
+          <div class="bu-sec-b">
+            <!-- ko if: p3Trx().length === 0 --><div class="empty-state" data-bind="text:t('p3NoTrx')"></div><!-- /ko -->
+            <!-- ko if: p3Trx().length -->
+            <div class="data-table-wrap p3-scroll">
+              <table class="tbl p3-table">
+                <thead><tr><th>#</th><th>Type</th><th>Date</th><th data-bind="text:t('pfColStatus')"></th><th>Approver</th><th class="num">Lines</th></tr></thead>
+                <tbody data-bind="foreach:p3Trx">
+                  <tr><td class="mono" data-bind="text:$data.transactionNum"></td>
+                    <td data-bind="text:$data.transactionType"></td>
+                    <td class="mono" data-bind="text:$data.transactionDate"></td>
+                    <td><span data-bind="attr:{'class':$root.p3StClass($data.status)}, text:$data.status"></span></td>
+                    <td data-bind="text:$data.approver"></td>
+                    <td class="num mono" data-bind="text:$data.lines"></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- /ko -->
+          </div>
+        </div>
+
+        <!-- cashflow -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('p3SecCash')"></span></div>
+          <div class="bu-sec-b">
+            <!-- ko if: !p3Cash() || p3Cash().count === 0 -->
+            <div class="empty-state" data-bind="text:t('p3NoCash')"></div>
+            <!-- /ko -->
+            <!-- ko if: p3Cash() && p3Cash().count > 0 -->
+            <div class="data-table-wrap p3-scroll">
+              <table class="tbl p3-table">
+                <thead><tr><th>Period</th><th>Type</th><th class="num">Planned AED</th></tr></thead>
+                <tbody data-bind="foreach:p3Cash().periods">
+                  <tr><td class="mono" data-bind="text:$data.period"></td>
+                    <td data-bind="text:$data.cfType"></td>
+                    <td class="num mono" data-bind="text:$root.buNum($data.planned)"></td></tr>
+                </tbody>
+              </table>
+            </div>
+            <!-- /ko -->
+          </div>
+        </div>
+      </div>
+    </div>
+
 
     <!-- ── OVERVIEW ── -->
     <!-- ── CHART OF ACCOUNTS (merged Overview + Explorer) ── -->
@@ -425,21 +873,21 @@
         </div>
         <div class="bu-sec-b" data-bind="visible:buSecSearchOpen">
         <div class="filter-grid">
-          <div class="field"><label class="lbl"><span data-bind="text:t('pnBuL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('pnBuL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buBus, value:buBuPick, optionsCaption:t('pnAllBus'), event:{change:buBuAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
             <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">i</i></label>
             <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buTypes, value:buTypePick, optionsCaption:t('allTypes'), event:{change:buTypeAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buChapters, value:buChapterPick, optionsCaption:t('allChapters'), event:{change:buChapterAdd}"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{change:buCcCommit, keydown:function(d,e){if(e.keyCode===13){buCcCommit();runButil(0);}return true;}}"></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{change:buProjCommit, keydown:function(d,e){if(e.keyCode===13){buProjCommit();runButil(0);}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('cTask')"></label>
             <input class="inp" type="text" list="bu-task-dl" data-bind="textInput:buTask, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runButil(0);}return true;}}"></div>
@@ -454,7 +902,7 @@
           <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
             <select class="inp" data-bind="options:buUnitOpts(), optionsText:'l', optionsValue:'v', value:buUnit"></select></div>
           <!-- Consider Override Budget — div-click toggle (never wrap a KO checkbox in <label>) -->
-          <div class="field"><label class="lbl"><span data-bind="text:t('buOvrConsider')"></span><i class="hint-i" data-bind="attr:{title:t('buOvrHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('buOvrConsider')"></span><i class="hint-i" data-bind="attr:{title:t('buOvrHint')}">i</i></label>
             <div class="inp ovr-chk" data-bind="click:toggleBuOvr, css:{on:buOvr}, attr:{title:t('buOvrHint')}">
               <input type="checkbox" tabindex="-1" data-bind="checked:buOvr">
               <span data-bind="text:buOvr()?t('buOvrOn'):t('buOvrOff')"></span>
@@ -535,7 +983,7 @@
               </div>
             </div>
           </div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('buProcashInc')"></span><i class="hint-i" data-bind="attr:{title:t('buProcashHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('buProcashInc')"></span><i class="hint-i" data-bind="attr:{title:t('buProcashHint')}">i</i></label>
             <div class="inp ovr-chk" data-bind="click:toggleBuProcash, css:{on:buProcash}, attr:{title:t('buProcashHint')}">
               <input type="checkbox" tabindex="-1" data-bind="checked:buProcash">
               <span data-bind="text:buProcash()?t('buProcashOnL'):t('buProcashOff')"></span>
@@ -787,23 +1235,23 @@
         <div class="filter-grid">
           <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
             <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">i</i></label>
             <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buTypes, value:buTypePick, optionsCaption:t('allTypes'), event:{change:buTypeAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buChapters, value:buChapterPick, optionsCaption:t('allChapters'), event:{change:buChapterAdd}"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{change:buCcCommit, keydown:function(d,e){if(e.keyCode===13){buCcCommit();runEncumbrances();}return true;}}"></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{change:buProjCommit, keydown:function(d,e){if(e.keyCode===13){buProjCommit();runEncumbrances();}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('cTask')"></label>
             <input class="inp" type="text" list="bu-task-dl" data-bind="textInput:buTask, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runEncumbrances();}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('cEtype')"></label>
             <input class="inp" type="text" list="bu-et-dl" data-bind="textInput:buEtype, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runEncumbrances();}return true;}}"></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('pnBuL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('pnBuL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buBus, value:buBuPick, optionsCaption:t('pnAllBus'), event:{change:buBuAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
             <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runEncumbrances();}return true;}}"></div>
@@ -895,17 +1343,17 @@
         <div class="filter-grid">
           <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
             <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">i</i></label>
             <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear'), attr:{title:t('buPeriodHint')}"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fTypeL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buTypes, value:buTypePick, optionsCaption:t('allTypes'), event:{change:buTypeAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fSectorL')"></label>
             <select class="inp" data-bind="options:buSectors, value:buSector, optionsCaption:t('allSectors')"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:buChapters, value:buChapterPick, optionsCaption:t('allChapters'), event:{change:buChapterAdd}"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <input class="inp" type="text" list="bu-cc-dl" data-bind="textInput:buCc, attr:{placeholder:t('lovHint')}, event:{change:buCcCommit, keydown:function(d,e){if(e.keyCode===13){buCcCommit();runPending();}return true;}}"></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('cProject')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <input class="inp" type="text" list="bu-proj-dl" data-bind="textInput:buProject, attr:{placeholder:t('lovHint')}, event:{change:buProjCommit, keydown:function(d,e){if(e.keyCode===13){buProjCommit();runPending();}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('cTask')"></label>
             <input class="inp" type="text" list="bu-task-dl" data-bind="textInput:buTask, attr:{placeholder:t('lovHint')}, event:{keydown:function(d,e){if(e.keyCode===13){runPending();}return true;}}"></div>
@@ -915,7 +1363,7 @@
             <input class="inp" type="text" data-bind="textInput:buSearch, attr:{placeholder:t('searchButil')}, event:{keydown:function(d,e){if(e.keyCode===13){runPending();}return true;}}"></div>
           <div class="field"><label class="lbl" data-bind="text:t('pnSourceL')"></label>
             <select class="inp" data-bind="options:['PR','PO'], value:pnSource, optionsCaption:t('pnAllSources')"></select></div>
-          <div class="field"><label class="lbl"><span data-bind="text:t('pnBuL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+          <div class="field"><label class="lbl"><span data-bind="text:t('pnBuL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
             <select class="inp" data-bind="options:pnBus, value:pnBuPick, optionsCaption:t('pnAllBus'), event:{change:pnBuAdd}"></select></div>
           <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
             <select class="inp" data-bind="options:buUnitOpts(), optionsText:'l', optionsValue:'v', value:buUnit"></select></div>
@@ -1081,26 +1529,26 @@
 
       <!-- search criteria -->
       <div class="bu-sec">
-        <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecFilters')"></span><i class="hint-i" data-bind="attr:{title:t('hRcSecFilters')}">ⓘ</i></div>
+        <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecFilters')"></span><i class="hint-i" data-bind="attr:{title:t('hRcSecFilters')}">i</i></div>
         <div class="bu-sec-b">
           <div class="filter-grid">
             <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
               <select class="inp" data-bind="options:rcYears, value:rcYear"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('fPeriod')"></label>
               <select class="inp" data-bind="options:rcPeriodOpts, value:rcPeriod, optionsCaption:t('fullYear')"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('rcBudgetChapters')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('rcBudgetChapters')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
               <select class="inp" data-bind="options:rcChapters, optionsText:'l', optionsValue:'v', value:rcBChap.pick, optionsCaption:'—', event:{change:rcBChap.add}"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('fSectorL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('fSectorL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
               <select class="inp" data-bind="options:rcSectors, optionsText:'l', optionsValue:'v', value:rcSector.pick, optionsCaption:t('allSectors'), event:{change:rcSector.add}"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('fChapterL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
               <select class="inp" data-bind="options:rcChapters, optionsText:'l', optionsValue:'v', value:rcChap.pick, optionsCaption:t('allChapters'), event:{change:rcChap.add}"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('rcGlAccountL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('rcGlAccountL')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
               <select class="inp" data-bind="options:rcAccounts, optionsText:'l', optionsValue:'v', value:rcAcct.pick, optionsCaption:'—', event:{change:rcAcct.add}"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('costCenter')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
               <select class="inp" data-bind="options:rcCostCenters, optionsText:'l', optionsValue:'v', value:rcCc.pick, optionsCaption:'—', event:{change:rcCc.add}"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('segAppropriation')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('segAppropriation')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
               <select class="inp" data-bind="options:rcApprops, optionsText:'l', optionsValue:'v', value:rcAppr.pick, optionsCaption:'—', event:{change:rcAppr.add}"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('segProgram')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('segProgram')"></span><i class="hint-i" data-bind="attr:{title:t('multiHint')}">i</i></label>
               <select class="inp" data-bind="options:rcPrograms, optionsText:'l', optionsValue:'v', value:rcProg.pick, optionsCaption:'—', event:{change:rcProg.add}"></select></div>
             <div class="field filter-actions">
               <button class="btn btn-primary" data-bind="click:runRecon, css:{busy:rcBusy}, text:t('btnSearch')"></button>
@@ -1128,28 +1576,28 @@
 
         <!-- reconciliation status -->
         <div class="bu-sec" data-bind="visible:rcSummary">
-          <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecStatus')"></span><i class="hint-i" data-bind="attr:{title:t('hRcSecStatus')}">ⓘ</i></div>
+          <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecStatus')"></span><i class="hint-i" data-bind="attr:{title:t('hRcSecStatus')}">i</i></div>
           <div class="bu-sec-b">
             <div class="rc-tiles">
               <div class="rc-tile rc-tile--ok">
-                <div class="rc-tile-k"><span data-bind="text:t('rcCoverage')"></span><i class="hint-i" data-bind="attr:{title:t('hRcCoverage')}">ⓘ</i></div>
+                <div class="rc-tile-k"><span data-bind="text:t('rcCoverage')"></span><i class="hint-i" data-bind="attr:{title:t('hRcCoverage')}">i</i></div>
                 <div class="rc-tile-v"><a class="rc-dl" data-bind="click:function(){return rcKpiDrill('matched','rcDrillMatched')}, attr:{title:t('rcDrillHint')}, text:rcCoverage()+'%'"></a></div>
                 <div class="rc-cov-bar"><i data-bind="style:{width:rcCoverage()+'%'}"></i></div>
                 <div class="rc-tile-sub"><span data-bind="text:t('rcConsButil')"></span>: <b class="mono" data-bind="text:money(rcConsBut())"></b></div>
                 <div class="rc-tile-sub"><span data-bind="text:t('rcConsActuals')"></span>: <b class="mono" data-bind="text:money(rcConsAct())"></b></div>
               </div>
               <div class="rc-tile rc-tile--np" data-bind="visible:rcNonProject()>0.5">
-                <div class="rc-tile-k"><span data-bind="text:t('rcNonProject')"></span><i class="hint-i" data-bind="attr:{title:t('hRcNonProject')}">ⓘ</i></div>
+                <div class="rc-tile-k"><span data-bind="text:t('rcNonProject')"></span><i class="hint-i" data-bind="attr:{title:t('hRcNonProject')}">i</i></div>
                 <div class="rc-tile-v mono"><a class="rc-dl" data-bind="click:function(){return rcKpiDrill('no_project','rcNonProject')}, attr:{title:t('rcDrillHint')}, text:money(rcNonProject())"></a></div>
                 <div class="rc-tile-sub" data-bind="text:t('rcNonProjectSub')"></div>
               </div>
               <div class="rc-tile rc-tile--orphan">
-                <div class="rc-tile-k"><span data-bind="text:t('rcOrphan')"></span><i class="hint-i" data-bind="attr:{title:t('hRcOrphan')}">ⓘ</i></div>
+                <div class="rc-tile-k"><span data-bind="text:t('rcOrphan')"></span><i class="hint-i" data-bind="attr:{title:t('hRcOrphan')}">i</i></div>
                 <div class="rc-tile-v mono"><a class="rc-dl" data-bind="click:function(){return rcKpiDrill('no_budget_line','rcOrphan')}, attr:{title:t('rcDrillHint')}, text:money(rcOrphan())"></a></div>
                 <div class="rc-tile-sub" data-bind="text:t('rcOrphanSub')"></div>
               </div>
               <div class="rc-tile rc-tile--budget">
-                <div class="rc-tile-k"><span data-bind="text:t('rcGlBudget')+'  ·  '+t('rcPpmBudget')"></span><i class="hint-i" data-bind="attr:{title:t('hRcBudget')}">ⓘ</i></div>
+                <div class="rc-tile-k"><span data-bind="text:t('rcGlBudget')+'  ·  '+t('rcPpmBudget')"></span><i class="hint-i" data-bind="attr:{title:t('hRcBudget')}">i</i></div>
                 <div class="rc-budget-duo">
                   <div><small data-bind="text:t('rcGlBudget')"></small><a class="rc-dl mono" data-bind="click:function(){return rcBudgetDrill('gl','budget','rcDrillGlBudget')}, attr:{title:t('rcDrillHint')}, text:money(rcBudget()?rcBudget().gl:0)"></a></div>
                   <div><small data-bind="text:t('rcPpmBudget')"></small><a class="rc-dl mono" data-bind="click:function(){return rcBudgetDrill('ppm','budget','rcDrillPpmBudget')}, attr:{title:t('rcDrillHint')}, text:money(rcBudget()?rcBudget().ppm:0)"></a></div>
@@ -1157,7 +1605,7 @@
                 <div class="rc-tile-sub" data-bind="text:t('rcBudgetNote')"></div>
               </div>
               <div class="rc-tile rc-tile--fund">
-                <div class="rc-tile-k"><span data-bind="text:t('rcFundActuals')+'  ·  '+t('rcFundButil')"></span><i class="hint-i" data-bind="attr:{title:t('hRcFund')}">ⓘ</i></div>
+                <div class="rc-tile-k"><span data-bind="text:t('rcFundActuals')+'  ·  '+t('rcFundButil')"></span><i class="hint-i" data-bind="attr:{title:t('hRcFund')}">i</i></div>
                 <div class="rc-budget-duo">
                   <div><small data-bind="text:t('rcGlBudget')"></small><a class="rc-dl mono" data-bind="click:function(){return rcBudgetDrill('gl','fund','rcDrillGlFund')}, attr:{title:t('rcDrillHint')}, text:money(rcFund()?rcFund().actualsSide:0)"></a></div>
                   <div><small data-bind="text:t('rcPpmBudget')"></small><a class="rc-dl mono" data-bind="click:function(){return rcBudgetDrill('ppm','fund','rcDrillPpmFund')}, attr:{title:t('rcDrillHint')}, text:money(rcFund()?rcFund().butilSide:0)"></a></div>
@@ -1167,7 +1615,7 @@
 
             <div class="rc-charts">
               <div class="rc-chart">
-                <h4 class="rc-chart-t"><span data-bind="text:t('rcCompTitle')"></span><i class="hint-i" data-bind="attr:{title:t('hRcComp')}">ⓘ</i></h4>
+                <h4 class="rc-chart-t"><span data-bind="text:t('rcCompTitle')"></span><i class="hint-i" data-bind="attr:{title:t('hRcComp')}">i</i></h4>
                 <div class="rc-donut-wrap" data-bind="if:rcDonut">
                   <div class="rc-donut" data-bind="style:{background:rcDonut().css}"><div class="rc-donut-hole"><b data-bind="text:rcCoverage()+'%'"></b><small data-bind="text:t('rcSeg_matched')"></small></div></div>
                   <div class="rc-legend" data-bind="foreach:rcDonut().seg">
@@ -1176,7 +1624,7 @@
                 </div>
               </div>
               <div class="rc-chart">
-                <h4 class="rc-chart-t"><span data-bind="text:t('rcMeasTitle')"></span><i class="hint-i" data-bind="attr:{title:t('hRcMeas')}">ⓘ</i></h4>
+                <h4 class="rc-chart-t"><span data-bind="text:t('rcMeasTitle')"></span><i class="hint-i" data-bind="attr:{title:t('hRcMeas')}">i</i></h4>
                 <div class="rc-bars" data-bind="foreach:rcMeasures">
                   <div class="rc-bar-row">
                     <div class="rc-bar-head"><i class="rc-stat" data-bind="css:'rc-stat--'+status"></i><span class="rc-bar-lab" data-bind="text:label"></span><span class="rc-bar-cov" data-bind="text:cov+'%'"></span></div>
@@ -1191,7 +1639,7 @@
 
         <!-- reconciliation register -->
         <div class="bu-sec" data-bind="visible:rcLoaded">
-          <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecRegister')"></span><i class="hint-i" data-bind="attr:{title:t('hRcSecRegister')}">ⓘ</i><span class="bu-sec-sum" data-bind="text:t('rcClickDrill')"></span></div>
+          <div class="bu-sec-h bu-sec-static"><span class="bu-sec-t" data-bind="text:t('rcSecRegister')"></span><i class="hint-i" data-bind="attr:{title:t('hRcSecRegister')}">i</i><span class="bu-sec-sum" data-bind="text:t('rcClickDrill')"></span></div>
           <div class="bu-sec-b">
             <div class="rc-controls">
               <div class="rc-ctl"><span class="rc-ctl-l" data-bind="text:t('rcMeasureLabel')"></span>
@@ -1209,12 +1657,12 @@
               <table class="data-table rc-table">
                 <thead><tr>
                   <th data-bind="text:t('rcColDim')"></th>
-                  <th class="num"><span data-bind="text:t('rcActualsSide')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColActuals')}">ⓘ</i></th>
-                  <th class="num"><span data-bind="text:t('rcButilSide')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColButil')}">ⓘ</i></th>
-                  <th class="num"><span data-bind="text:t('rcDifference')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColDiff')}">ⓘ</i></th>
-                  <th class="num" data-bind="visible:rcNonProject()>0.5"><span data-bind="text:t('rcSeg_noProject')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColNoProject')}">ⓘ</i></th>
-                  <th class="num" data-bind="visible:rcMeasureSel()==='ap'"><span data-bind="text:t('rcSeg_apValidation')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColApVal')}">ⓘ</i></th>
-                  <th class="num"><span data-bind="text:t('rcSeg_noBudgetLine')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColNoBudget')}">ⓘ</i></th>
+                  <th class="num"><span data-bind="text:t('rcActualsSide')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColActuals')}">i</i></th>
+                  <th class="num"><span data-bind="text:t('rcButilSide')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColButil')}">i</i></th>
+                  <th class="num"><span data-bind="text:t('rcDifference')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColDiff')}">i</i></th>
+                  <th class="num" data-bind="visible:rcNonProject()>0.5"><span data-bind="text:t('rcSeg_noProject')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColNoProject')}">i</i></th>
+                  <th class="num" data-bind="visible:rcMeasureSel()==='ap'"><span data-bind="text:t('rcSeg_apValidation')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColApVal')}">i</i></th>
+                  <th class="num"><span data-bind="text:t('rcSeg_noBudgetLine')"></span><i class="hint-i" data-bind="attr:{title:t('hRcColNoBudget')}">i</i></th>
                 </tr></thead>
                 <tbody data-bind="foreach:rcRows">
                   <tr>
@@ -1504,7 +1952,7 @@
           <div class="filter-grid">
             <!-- Budget Type + Transaction Year are MANDATORY: no "All" option,
                  so the page cannot be asked to scan every type and year -->
-            <div class="field"><label class="lbl"><span data-bind="text:t('btType')+' *'"></span><i class="hint-i" data-bind="attr:{title:t('btScopeHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btType')+' *'"></span><i class="hint-i" data-bind="attr:{title:t('btScopeHint')}">i</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).types||[], optionsText:'name', optionsValue:'code',
                                              value:btcType"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btBu')"></label>
@@ -1513,7 +1961,7 @@
               <select class="inp" data-bind="options:(btFilters()||{}).projectTypes||[], value:btcProjType, optionsCaption:t('btAll')"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btStatus')"></label>
               <select class="inp" data-bind="options:(btFilters()||{}).statuses||[], value:btcStatus, optionsCaption:t('btAll')"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btYear')+' *'"></span><i class="hint-i" data-bind="attr:{title:t('btScopeHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btYear')+' *'"></span><i class="hint-i" data-bind="attr:{title:t('btScopeHint')}">i</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).years||[], value:btcYear"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btApprover')"></label>
               <select class="inp" data-bind="options:(btFilters()||{}).approvers||[], value:btcApprover, optionsCaption:t('btAll')"></select></div>
@@ -1527,31 +1975,31 @@
               <input class="inp" type="date" data-bind="value:btcTo"></div>
             <!-- LINE-level criteria (Budget Utilization parity). These filter the
                  transaction's DETAIL LINES, so the ⓘ says so on every one. -->
-            <div class="field"><label class="lbl"><span data-bind="text:t('btSector')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btSector')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).sectors||[], optionsText:'name', optionsValue:'code',
                                              value:btcSector, optionsCaption:t('btAll')"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btChapter')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btChapter')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).chapters||[], optionsText:'name', optionsValue:'code',
                                              value:btcChapter, optionsCaption:t('btAll')"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btProgram')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btProgram')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).programs||[], optionsText:'name', optionsValue:'code',
                                              value:btcProgram, optionsCaption:t('btAll')"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btApprop')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btApprop')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).appropriations||[], optionsText:'name', optionsValue:'code',
                                              value:btcApprop, optionsCaption:t('btAll')"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btCostCenter')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btCostCenter')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <input class="inp" type="text" list="bt-cc-dl" data-bind="textInput:btcCc, attr:{placeholder:t('btLovHint')},
                      event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btProject')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btProject')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <input class="inp" type="text" list="bt-proj-dl" data-bind="textInput:btcProject, attr:{placeholder:t('btLovHint')},
                      event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btTask')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btTask')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <input class="inp" type="text" list="bt-task-dl" data-bind="textInput:btcTask, attr:{placeholder:t('btLovHint')},
                      event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btExpType')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btExpType')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <input class="inp" type="text" list="bt-et-dl" data-bind="textInput:btcEtype, attr:{placeholder:t('btLovHint')},
                      event:{keydown:function(d,e){if(e.keyCode===13){btSearch();}return true;}}"></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('btAcctPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('btAcctPeriod')"></span><i class="hint-i" data-bind="attr:{title:t('btLineHint')}">i</i></label>
               <select class="inp" data-bind="options:(btFilters()||{}).periods||[], value:btcPeriod, optionsCaption:t('btAll')"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('btSearchL')"></label>
               <input class="inp" type="text" data-bind="textInput:btcSearch, attr:{placeholder:t('btSearchPh')},
@@ -1851,7 +2299,7 @@
             <div class="field"><label class="lbl" data-bind="text:t('ebYearL')+' *'"></label>
               <select class="inp" data-bind="options:dofYears, value:dofYear"></select></div>
             <div class="field" data-bind="visible:dofReport()!=='quarterly'">
-              <label class="lbl"><span data-bind="text:t('dofPeriodL')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">ⓘ</i></label>
+              <label class="lbl"><span data-bind="text:t('dofPeriodL')"></span><i class="hint-i" data-bind="attr:{title:t('buPeriodHint')}">i</i></label>
               <select class="inp" data-bind="options:dofPeriods, optionsCaption:t('dofLatest'), value:dofPeriod"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('dofColChapter')"></label>
               <select class="inp" data-bind="options:dofChapters, value:dofChPick, optionsCaption:t('allChapters'), event:{change:dofChAdd}"></select></div>
@@ -1859,7 +2307,7 @@
               <select class="inp" data-bind="options:dofApprOpts(), optionsText:'l', optionsValue:'c', value:dofApPick, optionsCaption:t('dofAllApprs'), event:{change:dofApAdd}"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
               <select class="inp" data-bind="options:dofUnitOpts(), optionsText:'l', optionsValue:'v', value:dofUnit"></select></div>
-            <div class="field"><label class="lbl"><span data-bind="text:t('dofZeroL')"></span><i class="hint-i" data-bind="attr:{title:t('dofZeroHint')}">ⓘ</i></label>
+            <div class="field"><label class="lbl"><span data-bind="text:t('dofZeroL')"></span><i class="hint-i" data-bind="attr:{title:t('dofZeroHint')}">i</i></label>
               <select class="inp" data-bind="options:dofZeroOpts(), optionsText:'l', optionsValue:'v', value:dofZero"></select></div>
             <div class="field filter-actions">
               <button class="btn btn-primary" data-bind="click:runDof, css:{busy:dofBusy}, enable:!dofBusy(), text:t('btnSearch')"></button>

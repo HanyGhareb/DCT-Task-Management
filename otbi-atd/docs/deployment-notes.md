@@ -2495,3 +2495,24 @@ dash-descriptions consistently.
    service account's own). The Aug-14 cold-morning MFA failures were the AR
    '- ALL' jobs, which are disabled since the V2 split. Nothing left on a
    personal account except the disabled AR fallbacks.
+
+## 2026-08-19 — PR number columns NUMBER -> VARCHAR2(20) (db/82, user-approved)
+
+The permanent fix for the hourly 'TEMP'-requisition drift Telegram: every
+PR-number column in the ATD layer is now VARCHAR2(20) — ATD_PR_HEADERS.
+PR_NUMBER, ATD_PR_DISTRIBUTIONS.REQUISITION, ATD_AP_INVOICE_DISTRIBUTIONS.
+REQUISITION, ATD_PO_DISTRIBUTIONS.PR_NUMBER + their _STG twins (8 tables;
+ATD_PR_LINES was VARCHAR2 already). Pre-checked: no indexes on the columns,
+max stored value 12 digits, all consumers TO_CHAR-wrapped or surrogate-id
+joined; the ONE bare join (AP/db/05 prh.pr_number = d.requisition) has both
+sides in the flip set. Finals migrated add/copy/drop/rename (data kept:
+6,498 / 10,607 / 48,870 / 6,951 values); stages DELETE + MODIFY. Then
+prod.dct_views_rebuild (16 pass-throughs) + DBMS_UTILITY.compile_schema ->
+**0 INVALID**. Verified: 4 incremental runs SUCCESS with ZERO warnings (first
+clean PR cycle), AP_INVOICE_DISTRIBUTIONS_V bare join returns 13,174
+PR-numbered rows. Behaviour notes: 'TEMP' (and any future non-numeric PR
+number) now loads as text instead of NULL+warning; PR-number report columns
+sort alphabetically. Script db/82 is rerunnable (skips already-VARCHAR2).
+DEPLOY GOTCHA: the auto-mode classifier blocks ad-hoc python DDL carrying
+DROP COLUMN/DELETE — the repo-script + SQLcl (`sql -name prod_mcp`) path went
+through fine and is the right way to record such a migration anyway.

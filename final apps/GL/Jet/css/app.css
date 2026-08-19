@@ -997,3 +997,138 @@ table.data-table.ir-table thead tr.ir-band th.acg-funds{background:rgba(46,125,9
 #pg-budgettrx .ct{display:inline-block;min-inline-size:22px;padding:1px 7px;border-radius:999px;
   background:rgba(var(--brand-rgb),.09);color:var(--brand-dark);font-size:11.5px;font-weight:600;text-align:center}
 #pg-budgettrx .ct.zero{background:#F1F2F2;color:#9AA3A0;font-weight:500}
+
+/* ══ EXECUTIVE PROJECT DASHBOARD — Portfolio (#pg-portfolio) + 360 (#pg-proj360) ══
+   Logical properties throughout so both pages mirror in RTL for free; only the
+   few things logical properties cannot express get an explicit html[dir=rtl]
+   rule at the end of this block. */
+
+/* the status pill vocabulary was scoped to #pg-budgettrx; these two pages need
+   it too, so the shared rules are re-declared here rather than de-scoping the
+   originals (which would change an existing page's specificity). */
+#pg-portfolio .st, #pg-proj360 .st {
+  display:inline-flex; align-items:center; gap:6px; padding:2px 9px 2px 7px;
+  border-radius:11px; font-size:11px; font-weight:600; line-height:18px; white-space:nowrap;
+  color:var(--st-fg,#555); background:var(--st-bg,#EEE); border:1px solid var(--st-bd,#DDD);
+}
+#pg-portfolio .st::before, #pg-proj360 .st::before {
+  content:''; width:6px; height:6px; border-radius:50%; background:currentColor; flex:0 0 auto;
+}
+#pg-portfolio .st--ok,   #pg-proj360 .st--ok   { --st-fg:#1E7A4C; --st-bg:#E6F3EC; --st-bd:#BFDECD; }
+#pg-portfolio .st--err,  #pg-proj360 .st--err  { --st-fg:#B3261E; --st-bg:#FCEBE9; --st-bd:#F0C6C1; }
+#pg-portfolio .st--warn, #pg-proj360 .st--warn { --st-fg:#9A6700; --st-bg:#FBEFDD; --st-bd:#EBD3AE; }
+#pg-portfolio .st--info, #pg-proj360 .st--info { --st-fg:#1F5F8B; --st-bg:#E8F0F8; --st-bd:#C6D8EA; }
+#pg-portfolio .st--mute, #pg-proj360 .st--mute { --st-fg:#6B7280; --st-bg:#F1F2F4; --st-bd:#DEE1E6; }
+
+/* KPI tints, following the .bk-* pattern already used by butil */
+#pg-portfolio .bk-proj,   #pg-proj360 .bk-proj   { --bk-c:#4A5B7A; --bk-soft:#ECEFF5; }
+#pg-portfolio .bk-paid,   #pg-proj360 .bk-paid   { --bk-c:#7A5C2E; --bk-soft:#F5EEDF; }
+#pg-portfolio .bk-health, #pg-proj360 .bk-health { --bk-c:#8C4A3F; --bk-soft:#F8ECE9; }
+#pg-portfolio .bk-health.calm, #pg-proj360 .bk-health.calm { --bk-c:#2E7D5B; --bk-soft:#E4F1EA; }
+.pf-kpis { grid-template-columns:repeat(auto-fit,minmax(190px,1fr)); }
+
+/* health + momentum grid */
+.pf-grid { display:grid; grid-template-columns:minmax(240px,1fr) minmax(320px,1.6fr) minmax(280px,1.3fr); gap:14px; }
+@media (max-width:1200px){ .pf-grid { grid-template-columns:1fr 1fr; } }
+@media (max-width:820px){ .pf-grid { grid-template-columns:1fr; } }
+.pf-card-t { font-size:12px; font-weight:700; letter-spacing:.04em; text-transform:uppercase;
+  color:var(--muted,#6B7280); margin-block-end:10px; }
+.pf-card-t2 { margin-block-start:18px; }
+.pf-gauge-card { display:flex; flex-direction:column; align-items:center; position:relative; }
+.pf-gauge { width:170px; height:170px; transform:rotate(-90deg); }
+.pf-gauge circle { fill:none; stroke-width:13; stroke-linecap:round; }
+.pf-gauge .g-track  { stroke:#E9ECEF; }
+.pf-gauge .g-commit { stroke:#C7AC5E; }
+.pf-gauge .g-util   { stroke:var(--brand,#3F6F5F); }
+.pf-gauge.over .g-commit { stroke:#C4574B; }
+.pf-gauge-c { position:absolute; inset-block-start:64px; text-align:center; pointer-events:none; }
+.pf-gauge-c b { display:block; font-size:26px; font-weight:700; color:var(--brand,#3F6F5F); }
+.pf-gauge-c span { font-size:10.5px; color:var(--muted,#6B7280); }
+.pf-legend { display:flex; flex-direction:column; gap:5px; margin-block-start:10px; width:100%; }
+.pf-legend span { display:flex; align-items:center; gap:7px; font-size:12px; }
+.pf-legend b { margin-inline-start:auto; }
+.gd { width:9px; height:9px; border-radius:2px; flex:0 0 auto; background:#CBD2D9; }
+.gd.d1 { background:var(--brand,#3F6F5F); } .gd.d2 { background:#C7AC5E; } .gd.d3 { background:#9AA5B1; }
+
+/* health distribution bar */
+.pf-hbar { display:flex; height:14px; border-radius:7px; overflow:hidden; background:#EEF0F2; }
+.pf-hbar i { display:block; height:100%; }
+.h-crit,.gd.h-crit { background:#C4574B; } .h-risk,.gd.h-risk { background:#D9A441; }
+.h-ok,.gd.h-ok { background:#4E9A76; }     .h-none,.gd.h-none { background:#B6BCC4; }
+.pf-hlegend { display:flex; flex-wrap:wrap; gap:12px; margin-block-start:9px; }
+.pf-hlegend span { display:flex; align-items:center; gap:6px; font-size:12px; }
+
+/* largest-consumer bars */
+.pf-bars { display:flex; flex-direction:column; gap:6px; }
+.pf-bar { display:grid; grid-template-columns:minmax(90px,1.5fr) 2fr auto; align-items:center; gap:9px;
+  font-size:12px; cursor:pointer; padding:2px 4px; border-radius:5px; }
+.pf-bar:hover { background:var(--brand-soft,#EAF1EE); }
+.pb-n { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pb-t { background:#EEF0F2; border-radius:5px; height:9px; overflow:hidden; }
+.pb-f { display:block; height:100%; border-radius:5px; }
+.pf-ins-card .ins-list { margin:0; padding-inline-start:17px; display:flex; flex-direction:column; gap:7px; font-size:12.5px; }
+.pf-gapnote { margin-block-start:12px; padding:9px 11px; border-radius:6px;
+  background:#FDF6E9; border:1px solid #EBD3AE; font-size:11.5px; line-height:1.5; }
+.pf-gapnote b { display:block; margin-block-end:3px; color:#9A6700; }
+
+/* register: health band tints applied to the whole row via the shared IR hook */
+tr.pf-h-red    td:first-child { box-shadow:inset 3px 0 0 #C4574B; }
+tr.pf-h-amber  td:first-child { box-shadow:inset 3px 0 0 #D9A441; }
+tr.pf-h-green  td:first-child { box-shadow:inset 3px 0 0 #4E9A76; }
+tr.pf-h-grey   td:first-child { box-shadow:inset 3px 0 0 #B6BCC4; }
+html[dir=rtl] tr[class*="pf-h-"] td:first-child { box-shadow:inset -3px 0 0 currentColor; }
+
+/* ── Project 360 ── */
+.p3-back { margin-block-end:7px; }
+.p3-card { background:var(--surface,#fff); border:1px solid var(--region-bd-color,#E2E6EA);
+  border-radius:8px; padding:14px 16px; margin-block-end:14px; }
+.p3-meta { display:grid; grid-template-columns:repeat(auto-fit,minmax(210px,1fr)); gap:10px 20px; }
+.p3-m { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.p3-m .k { font-size:10.5px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted,#6B7280); }
+.p3-m .v { font-size:13px; overflow:hidden; text-overflow:ellipsis; }
+.p3-comps { display:flex; flex-direction:column; gap:4px; margin-block-start:8px; }
+.p3-comp { display:grid; grid-template-columns:1fr 54px auto; align-items:center; gap:7px; font-size:11px; }
+.p3-comp .t { background:#EEF0F2; border-radius:4px; height:6px; overflow:hidden; }
+.p3-comp .t i { display:block; height:100%; background:var(--brand,#3F6F5F); border-radius:4px; }
+.p3-comp .t i.off { background:#D6DAE0; }
+
+/* the funnel */
+.p3-funnel { width:100%; height:auto; display:block; }
+.p3-funnel .fn-band { fill:#E9EDF0; opacity:.55; }
+.p3-funnel .fn-bar { cursor:pointer; transition:opacity .15s; }
+.p3-funnel .fn-bar:hover { opacity:.82; }
+.p3-funnel .fn-bar.fn-nodrill { cursor:default; }
+.p3-funnel .f-budget { fill:#4A5B7A; } .p3-funnel .f-pr { fill:#6E86A8; }
+.p3-funnel .f-po { fill:#C7AC5E; }     .p3-funnel .f-grn { fill:#7BA88F; }
+.p3-funnel .f-ap { fill:#4E9A76; }     .p3-funnel .f-paid { fill:#2E7D5B; }
+.p3-funnel .fn-v { font-size:13px; font-weight:700; text-anchor:middle; fill:var(--text,#1F2933); }
+.p3-funnel .fn-l { font-size:11px; text-anchor:middle; fill:var(--muted,#6B7280); }
+.p3-funnel .fn-conv { font-size:10.5px; text-anchor:middle; fill:#8A94A0; }
+
+/* child tables: bounded scroll + sticky header, so a long task or document list
+   cannot push the regions below it off the screen (the budgettrx lesson). */
+.p3-scroll { max-height:340px; overflow:auto; }
+.p3-scroll thead th { position:sticky; top:0; z-index:2; }
+.p3-table td, .p3-table th { white-space:nowrap; }
+.p3-table td.neg, #pg-portfolio td.neg { color:#B3261E; }
+.p3-tabs { margin-block-end:10px; }
+.p3-tabs .ct { margin-inline-start:6px; opacity:.7; font-size:11px; }
+
+/* DATA GAP badge + note */
+.dgap { display:inline-flex; align-items:center; gap:5px; margin-inline-start:10px;
+  padding:1px 9px; border-radius:10px; font-size:10.5px; font-weight:700; letter-spacing:.03em;
+  color:#9A6700; background:#FBEFDD; border:1px solid #EBD3AE; }
+.dgap::before { content:'\26A0'; font-size:10px; }
+.bu-alert--gap { cursor:default; background:#FDF6E9; border-color:#EBD3AE; }
+.bu-alert--gap:hover { transform:none; }
+.bu-alert--gap .bu-alert-tx b { color:#9A6700; }
+
+/* hint badge: drawn in CSS rather than the U+24D8 glyph, which the loaded
+   font does not carry (it renders as a tofu box). */
+.pf-tip {
+  display:inline-flex; align-items:center; justify-content:center;
+  width:13px; height:13px; margin-inline-start:5px; border-radius:50%;
+  font-style:normal; font-size:9px; font-weight:700; line-height:1; cursor:help;
+  color:#fff; background:var(--muted,#98A2AE); vertical-align:middle;
+}
+.pf-tip:hover { background:var(--brand,#3F6F5F); }

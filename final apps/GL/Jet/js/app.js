@@ -440,6 +440,165 @@
 
     /* ── Budget Utilization (project budget vs actual) ── */
     navButil:{en:'Project Budget Utilization',ar:'استخدام موازنة المشاريع'},
+    /* ---- Executive Project Dashboard: Portfolio (pf*) + Project 360 (p3*) ---- */
+    navPortfolio:{en:'Project Portfolio',ar:'محفظة المشاريع'},
+    fBuL:{en:'Business unit',ar:'وحدة الأعمال'},
+    fCcL:{en:'Cost centre',ar:'مركز التكلفة'},
+    fProjectL:{en:'Project',ar:'المشروع'},
+    allBus:{en:'All business units',ar:'كل وحدات الأعمال'},
+    navProj360:{en:'Project 360',ar:'المشروع 360'},
+    pfTitle:{en:'Project Portfolio',ar:'محفظة المشاريع'},
+    pfSub:{en:'Every project in the budget year — budget, commitments, consumption, payment and health at a glance. Click any row for the full project.',ar:'كل مشروع في السنة المالية — الموازنة والارتباطات والاستهلاك والسداد والحالة في لمحة. اضغط أي صف لعرض المشروع كاملاً.'},
+    pfSecSearch:{en:'Search criteria',ar:'معايير البحث'},
+    pfSecOverview:{en:'Overview',ar:'نظرة عامة'},
+    pfSecHealth:{en:'Health and momentum',ar:'الحالة والاتجاه'},
+    pfSecRegister:{en:'Projects register',ar:'سجل المشاريع'},
+    pfHealthL:{en:'Health',ar:'الحالة'},
+    pfAllHealth:{en:'All health bands',ar:'كل الحالات'},
+    pfStatusL:{en:'Project status',ar:'حالة المشروع'},
+    pfAllStatus:{en:'All statuses',ar:'كل الحالات'},
+    pfManagerL:{en:'Project manager',ar:'مدير المشروع'},
+    pfSortL:{en:'Rank by',ar:'الترتيب حسب'},
+    pfSortHealth:{en:'Health (worst first)',ar:'الحالة (الأسوأ أولاً)'},
+    pfSortBudget:{en:'Budget',ar:'الموازنة'},
+    pfSortActual:{en:'Consumed',ar:'المستهلك'},
+    pfSortCommitted:{en:'Committed',ar:'المرتبط'},
+    pfSortFund:{en:'Funds available',ar:'المتاح'},
+    pfSortUtil:{en:'Utilisation %',ar:'نسبة الاستخدام ٪'},
+    pfRowHint:{en:'Click any row to open Project 360',ar:'اضغط أي صف لفتح المشروع 360'},
+    pfKProjects:{en:'Projects',ar:'المشاريع'},
+    pfKBudget:{en:'Portfolio budget',ar:'موازنة المحفظة'},
+    pfKActual:{en:'Consumed',ar:'المستهلك'},
+    pfKCommit:{en:'Committed',ar:'المرتبط'},
+    pfKPaid:{en:'Paid',ar:'المسدد'},
+    pfKFund:{en:'Funds available',ar:'المتاح'},
+    pfKRisk:{en:'Needs attention',ar:'يحتاج انتباهاً'},
+    pfAp:{en:'AP invoiced',ar:'فواتير الموردين'},
+    pfGrn:{en:'GRN received',ar:'المستلم'},
+    pfPr:{en:'Commitment (PR)',ar:'ارتباط (طلب شراء)'},
+    pfPo:{en:'Obligation (PO)',ar:'تعهد (أمر شراء)'},
+    pfPaidOf:{en:'{p}% of invoiced settled',ar:'تم سداد {p}٪ من المفوتر'},
+    pfOfBudget:{en:'{p}% of budget',ar:'{p}٪ من الموازنة'},
+    pfOverBudget:{en:'over budget',ar:'تجاوز الموازنة'},
+    pfHCrit:{en:'Critical',ar:'حرج'},
+    pfHRisk:{en:'At risk',ar:'معرّض للخطر'},
+    pfHWatch:{en:'Watch',ar:'قيد المتابعة'},
+    pfHOk:{en:'Healthy',ar:'سليم'},
+    pfHNone:{en:'No data',ar:'لا بيانات'},
+    pfBandGreen:{en:'Healthy',ar:'سليم'},
+    pfBandAmber:{en:'Watch',ar:'قيد المتابعة'},
+    pfBandRed:{en:'Critical',ar:'حرج'},
+    pfBandGrey:{en:'No data',ar:'لا بيانات'},
+    pfGaugeT:{en:'Portfolio utilisation',ar:'استخدام موازنة المحفظة'},
+    pfGaugeSub:{en:'of annual budget consumed',ar:'من الموازنة السنوية مستهلك'},
+    pfLegUtil:{en:'Consumed',ar:'المستهلك'},
+    pfLegCommit:{en:'Consumed + committed',ar:'المستهلك + المرتبط'},
+    pfLegElapsed:{en:'Year elapsed',ar:'المنقضي من السنة'},
+    pfDistT:{en:'Health distribution',ar:'توزيع الحالة'},
+    pfPressureT:{en:'Largest consumers',ar:'الأكبر استهلاكاً'},
+    pfInsightsT:{en:'Insights',ar:'رؤى'},
+    pfInsUtil:{en:'{n} projects in {y}: {p}% of annual budget consumed — {a} of {b} AED.',ar:'{n} مشروعاً في {y}: استُهلك {p}٪ من الموازنة السنوية — {a} من {b} درهم.'},
+    pfInsPace:{en:'The year is {e}% elapsed, so the portfolio is running {d}.',ar:'انقضى {e}٪ من السنة، لذا فإن المحفظة {d}.'},
+    pfPaceAhead:{en:'ahead of the calendar',ar:'متقدمة على التقويم'},
+    pfPaceBehind:{en:'behind the calendar',ar:'متأخرة عن التقويم'},
+    pfPaceOn:{en:'broadly on pace',ar:'ضمن الوتيرة تقريباً'},
+    pfInsRisk:{en:'{c} projects are critical and {r} need watching.',ar:'{c} مشروعاً في وضع حرج و{r} تحتاج متابعة.'},
+    pfInsOver:{en:'{n} projects have spent past their budget — funds available is negative.',ar:'{n} مشروعاً تجاوزت موازنتها — المتاح سالب.'},
+    pfInsPaid:{en:'{p}% of invoiced value has been settled — {a} paid of {i} AED invoiced.',ar:'تم سداد {p}٪ من قيمة الفواتير — {a} مسدد من {i} درهم مفوتر.'},
+    pfInsTop:{en:'{s} is the largest consumer at {a} AED, {p}% of its own budget.',ar:'{s} هو الأكبر استهلاكاً بـ {a} درهم، أي {p}٪ من موازنته.'},
+    pfInsNoSpend:{en:'{n} projects hold a year-to-date budget but have spent nothing yet.',ar:'{n} مشروعاً لديها موازنة حتى تاريخه دون أي إنفاق.'},
+    pfInsPending:{en:'{n} documents have waited more than 30 days for approval.',ar:'{n} مستنداً بانتظار الاعتماد لأكثر من 30 يوماً.'},
+    pfInsUnbudgeted:{en:'{n} projects consumed {a} AED with no budget line at all.',ar:'{n} مشروعاً استهلكت {a} درهم دون أي بند موازنة.'},
+    pfColProject:{en:'Project',ar:'المشروع'},
+    pfColManager:{en:'Manager',ar:'المدير'},
+    pfColStatus:{en:'Status',ar:'الحالة'},
+    pfColHealth:{en:'Health',ar:'الحالة'},
+    pfColBudgetA:{en:'Annual budget',ar:'الموازنة السنوية'},
+    pfColBudgetY:{en:'YTD budget',ar:'الموازنة حتى تاريخه'},
+    pfColAp:{en:'AP',ar:'الموردون'},
+    pfColGrn:{en:'GRN',ar:'الاستلام'},
+    pfColPr:{en:'PR',ar:'طلب الشراء'},
+    pfColPo:{en:'PO',ar:'أمر الشراء'},
+    pfColFund:{en:'Funds available',ar:'المتاح'},
+    pfColUtil:{en:'Utilisation %',ar:'نسبة الاستخدام ٪'},
+    pfColPaid:{en:'Paid',ar:'المسدد'},
+    pfColBilled:{en:'Billed revenue',ar:'الإيراد المفوتر'},
+    pfColPending:{en:'Pending docs',ar:'مستندات معلقة'},
+    pfColTasks:{en:'Tasks',ar:'المهام'},
+    pfGrpProject:{en:'Project',ar:'المشروع'},
+    pfGrpBudget:{en:'Budget',ar:'الموازنة'},
+    pfGrpConsumed:{en:'Consumed',ar:'المستهلك'},
+    pfGrpCommitted:{en:'Committed',ar:'المرتبط'},
+    pfGrpPosition:{en:'Position',ar:'الموقف'},
+    pfGrpOther:{en:'Revenue and pipeline',ar:'الإيرادات وخط الأعمال'},
+    pfHintHealth:{en:'Advisory score from burn discipline, fund headroom, approval friction and activity. Schedule is deliberately not scored: task actual dates are empty in the source.',ar:'درجة استرشادية من انضباط الإنفاق ومساحة التمويل واحتكاك الاعتماد والنشاط. الجدول الزمني غير مُقيَّم عمداً: تواريخ المهام الفعلية غير متوفرة في المصدر.'},
+    pfHintPaid:{en:'Derived from each AP invoice header paid ratio, capped at 100%, applied to that invoice project distributions. Fusion payments carry no invoice or project reference, so they cannot be joined directly.',ar:'مشتق من نسبة السداد على رأس كل فاتورة مورد، بحد أقصى 100٪، مطبقة على توزيعات المشروع. مدفوعات فيوجن لا تحمل مرجع فاتورة أو مشروع فلا يمكن ربطها مباشرة.'},
+    pfHintBilled:{en:'Billed (invoiced) revenue only. Collections cannot be shown — no AR receipts extract exists on the platform. Only 51 of 991 projects carry any AR line.',ar:'الإيراد المفوتر فقط. لا يمكن عرض التحصيلات — لا يوجد استخراج لإيصالات المدينين. 51 مشروعاً فقط من 991 لديها بنود مدينين.'},
+    pfHintUtil:{en:'(Consumed + committed) as a share of the annual budget.',ar:'(المستهلك + المرتبط) كنسبة من الموازنة السنوية.'},
+    pfNoRows:{en:'No projects match the selected criteria.',ar:'لا توجد مشاريع مطابقة للمعايير المحددة.'},
+    pfUnitNote:{en:'Register figures are exact AED. The summary above is shown in {u}.',ar:'أرقام السجل بالدرهم بالضبط. الملخص أعلاه معروض بـ {u}.'},
+    pfUnbudgeted:{en:'Unbudgeted spend',ar:'إنفاق بلا موازنة'},
+    pfUnbudgetedHint:{en:'Money consumed against project/task/expenditure-type combinations that carry no budget line. These are excluded from the reconciling totals above so this page still ties to Budget Utilization.',ar:'مبالغ مستهلكة على تركيبات لا تحمل بند موازنة. مستثناة من الإجماليات أعلاه ليظل هذا التقرير مطابقاً لاستخدام الموازنة.'},
+    /* ---- Project 360 ---- */
+    p3Back:{en:'Portfolio',ar:'المحفظة'},
+    p3SecKpis:{en:'Overview',ar:'نظرة عامة'},
+    p3SecFunnel:{en:'Budget to payment',ar:'من الموازنة إلى السداد'},
+    p3SecTasks:{en:'Tasks and schedule',ar:'المهام والجدول الزمني'},
+    p3SecPipeline:{en:'Documents and pipeline',ar:'المستندات وخط الأعمال'},
+    p3SecRev:{en:'Revenue (AR)',ar:'الإيرادات (المدينون)'},
+    p3SecTrx:{en:'Budget transactions',ar:'معاملات الموازنة'},
+    p3SecCash:{en:'Cashflow plan',ar:'خطة التدفق النقدي'},
+    p3Manager:{en:'Project manager',ar:'مدير المشروع'},
+    p3Status:{en:'Status',ar:'الحالة'},
+    p3Type:{en:'Project type',ar:'نوع المشروع'},
+    p3Bu:{en:'Business unit',ar:'وحدة الأعمال'},
+    p3Appropriation:{en:'Appropriation',ar:'الاعتماد'},
+    p3Chapter:{en:'Chapter',ar:'الباب'},
+    p3Sectors:{en:'Sectors',ar:'القطاعات'},
+    p3Departments:{en:'Departments',ar:'الإدارات'},
+    p3CostCentres:{en:'Cost centres',ar:'مراكز التكلفة'},
+    p3Start:{en:'Start date',ar:'تاريخ البدء'},
+    p3Finish:{en:'Finish date',ar:'تاريخ الانتهاء'},
+    p3Tasks:{en:'Tasks',ar:'المهام'},
+    p3LastActivity:{en:'Last activity',ar:'آخر حركة'},
+    p3WhyFlagged:{en:'Why this score',ar:'سبب هذه الدرجة'},
+    p3CompBurn:{en:'Burn discipline',ar:'انضباط الإنفاق'},
+    p3CompFunds:{en:'Fund headroom',ar:'مساحة التمويل'},
+    p3CompApproval:{en:'Approval friction',ar:'احتكاك الاعتماد'},
+    p3CompActivity:{en:'Activity',ar:'النشاط'},
+    p3NotScored:{en:'not scored',ar:'غير مُقيَّم'},
+    p3fBudget:{en:'Budget',ar:'الموازنة'},
+    p3fPr:{en:'Requisitioned',ar:'مطلوب'},
+    p3fPo:{en:'Ordered',ar:'مُطلَب'},
+    p3fGrn:{en:'Received',ar:'مستلم'},
+    p3fAp:{en:'Invoiced',ar:'مفوتر'},
+    p3fPaid:{en:'Paid',ar:'مسدد'},
+    p3fHint:{en:'Each stage is drawn to scale against the largest. Click a stage to list the documents behind it.',ar:'كل مرحلة مرسومة بمقياس مقارنة بالأكبر. اضغط أي مرحلة لعرض مستنداتها.'},
+    p3ColTask:{en:'Task',ar:'المهمة'},
+    p3ColTaskName:{en:'Task name',ar:'اسم المهمة'},
+    p3ColOrg:{en:'Organization',ar:'الجهة'},
+    p3ColPlanStart:{en:'Planned start',ar:'البدء المخطط'},
+    p3ColPlanFinish:{en:'Planned finish',ar:'الانتهاء المخطط'},
+    p3SchedPast:{en:'Past plan',ar:'تجاوز الخطة'},
+    p3SchedOn:{en:'Within plan',ar:'ضمن الخطة'},
+    p3SchedNone:{en:'No dates',ar:'بلا تواريخ'},
+    p3SchedNote:{en:'Planned dates only. Task actual start and finish dates are empty in the source, so schedule progress and slippage cannot be shown and are not scored.',ar:'تواريخ مخططة فقط. تواريخ المهام الفعلية غير متوفرة في المصدر، لذا لا يمكن عرض التقدم أو التأخير ولا يتم تقييمهما.'},
+    p3PipeOpenPr:{en:'Open commitments (PR)',ar:'ارتباطات مفتوحة (طلبات شراء)'},
+    p3PipeOpenPo:{en:'Open obligations (PO)',ar:'تعهدات مفتوحة (أوامر شراء)'},
+    p3PipeGrn:{en:'Received not invoiced',ar:'مستلم غير مفوتر'},
+    p3PipePending:{en:'Pending approval',ar:'بانتظار الاعتماد'},
+    p3GapBadge:{en:'DATA GAP',ar:'فجوة بيانات'},
+    p3GapTitle:{en:'Collections cannot be shown',ar:'لا يمكن عرض التحصيلات'},
+    p3GapBody:{en:'Only billed (invoiced) revenue is available. No AR receipts extract exists on the platform, so cash collected, outstanding receivable and DSO are deliberately not shown rather than estimated.',ar:'المتاح هو الإيراد المفوتر فقط. لا يوجد استخراج لإيصالات المدينين على المنصة، لذا لا تُعرض المبالغ المحصلة ولا الرصيد المستحق ولا متوسط فترة التحصيل — عمداً بدلاً من تقديرها.'},
+    p3NoRev:{en:'No billed revenue recorded against this project in the selected year.',ar:'لا يوجد إيراد مفوتر مسجل على هذا المشروع في السنة المحددة.'},
+    p3NoTrx:{en:'No budget transactions touch this project in the selected year.',ar:'لا توجد معاملات موازنة تخص هذا المشروع في السنة المحددة.'},
+    p3NoCash:{en:'No cashflow plan has been uploaded for this project and year. Upload one on the Cashflow tab — the Fusion budget is not cashflow phased, so it cannot substitute.',ar:'لم تُحمّل خطة تدفق نقدي لهذا المشروع وهذه السنة. حمّلها من تبويب التدفق النقدي — موازنة فيوجن غير موزعة زمنياً فلا تصلح بديلاً.'},
+    p3NoTasks:{en:'This project has no budget lines in the selected year.',ar:'لا توجد بنود موازنة لهذا المشروع في السنة المحددة.'},
+    p3NoPipe:{en:'Nothing open in this stage.',ar:'لا يوجد مفتوح في هذه المرحلة.'},
+    p3Unbudgeted:{en:'This project consumed {a} AED against combinations with no budget line.',ar:'استهلك هذا المشروع {a} درهم على تركيبات بلا بند موازنة.'},
+    p3NoBudget:{en:'This project has NO budget line in the selected year. Its spend is shown but is excluded from the portfolio reconciling totals.',ar:'لا يوجد بند موازنة لهذا المشروع في السنة المحددة. يُعرض إنفاقه لكنه مستثنى من إجماليات المحفظة المطابِقة.'},
+    p3PickFirst:{en:'Select a project from the portfolio first.',ar:'اختر مشروعاً من المحفظة أولاً.'},
+
     navEncumbrances:{en:'Projects Encumbrances',ar:'ارتباطات المشاريع'},
     enTitle:{en:'Open Projects Encumbrance Follow-up',ar:'متابعة ارتباطات المشاريع المفتوحة'},
     enSub:{en:'Every open encumbrance line (Open Commitment PR + Open Obligation PO) with the full GL combination — all ten segments, code and name — for the selected Budget Utilization scope.',ar:'كل بند ارتباط مفتوح (التزام طلب شراء مفتوح + تعهد أمر شراء مفتوح) مع التركيبة المحاسبية الكاملة — جميع البنود العشرة رمزًا واسمًا — ضمن نطاق استخدام الموازنة المحدد.'},
@@ -744,6 +903,12 @@
        deep-link-to-group resolution all follow from this list. */
     var NAV_GROUPS = [
       { id: 'projects', labelKey: 'grpProjects', items: [
+          { id: 'portfolio',    labelKey: 'navPortfolio' },
+          // proj360 must be IN this list -- activeGroup() scans it to decide
+          // which group lights up -- but it is hidden from the sub-tab row
+          // until a project is actually open, because a 360 with no project
+          // selected is a dead tab.
+          { id: 'proj360',      labelKey: 'navProj360', hidden: true },
           { id: 'butil',        labelKey: 'navButil' },
           { id: 'encumbrances', labelKey: 'navEncumbrances' },
           { id: 'pending',      labelKey: 'navPending' },
@@ -769,9 +934,12 @@
       return 'projects';
     });
     self.activeGroupItems = ko.computed(function () {
-      var g = self.activeGroup();
+      var g = self.activeGroup(), v = self.view();
       for (var i = 0; i < NAV_GROUPS.length; i++)
-        if (NAV_GROUPS[i].id === g) return NAV_GROUPS[i].items;
+        if (NAV_GROUPS[i].id === g)
+          return NAV_GROUPS[i].items.filter(function (it) {
+            return !it.hidden || it.id === v;   // hidden tabs appear only while open
+          });
       return [];
     });
     // clicking a group header opens its first page
@@ -1265,6 +1433,17 @@
       else if (v === 'butil') {
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runButil(0); });
         else self.runButil(0);
+      }
+      else if (v === 'portfolio') {
+        // shares the Budget Utilization criteria observables, so drilling
+        // between the two pages keeps one scope with no parameter passing
+        if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runPortfolio(); });
+        else if (!self.pfLoaded()) self.runPortfolio();
+      }
+      else if (v === 'proj360') {
+        if (!self.p3Num()) { self.view('portfolio'); self.go('portfolio'); return; }
+        if (!self.buFiltersLoaded()) { self.loadBuFilters().then(self.loadProj360); return; }
+        self.loadProj360();
       }
       else if (v === 'encumbrances') {
         // reuses the Budget Utilization filter set; run once on first open
@@ -3169,6 +3348,466 @@
       var a = document.createElement('a'); a.href = u; a.download = 'gl_drill_' + name + '.csv';
       a.click(); URL.revokeObjectURL(u);
     };
+
+    /* ══ EXECUTIVE PROJECT DASHBOARD ═══════════════════════════════════
+       Two pages, one scope. Both reuse the Budget Utilization criteria
+       observables (buYear / buPeriod / buType / buSector / ... / buUnit), which
+       is what makes the drill from the portfolio into a project free of
+       parameter passing and keeps every figure reconciling to the butil page.
+       ───────────────────────────────────────────────────────────────── */
+
+    /* ---- Portfolio state ---- */
+    self.pfLoading  = ko.observable(false);
+    self.pfLoaded   = ko.observable(false);
+    self.pfData     = ko.observable(null);
+    self.pfTotals   = ko.observable({});
+    self.pfCount    = ko.observable(0);
+    self.pfMax      = ko.observable(false);
+    self.pfHealth   = ko.observable('');   // band filter
+    self.pfStatus   = ko.observable('');
+    self.pfManager  = ko.observable('');
+    self.pfSort     = ko.observable('health');
+    self.pfFilters  = ko.observable(null);
+    self.pfIr       = ko.observable(null);
+    self.pfBusy     = ko.computed(function () { return self.pfLoading() || self.buFiltersLoading(); });
+
+    // side-map: the shared interactive report strips any field that is not a
+    // declared column, so the raw row (and anything the 360 wants to show
+    // optimistically) is kept here, keyed on the project number.
+    var pfRowMap = {};
+    self.pfItems = [];
+
+    // region open/closed state, persisted like the butil page
+    var PF_UI = {};
+    try { PF_UI = JSON.parse(localStorage.getItem('gl_pf_ui') || '{}') || {}; } catch (e) { PF_UI = {}; }
+    self.pfSecSearchOpen = ko.observable(PF_UI.search !== false);
+    self.pfSecKpisOpen   = ko.observable(PF_UI.kpis   !== false);
+    self.pfSecHealthOpen = ko.observable(PF_UI.health !== false);
+    function savePfUi() {
+      try {
+        localStorage.setItem('gl_pf_ui', JSON.stringify({
+          search: self.pfSecSearchOpen(), kpis: self.pfSecKpisOpen(), health: self.pfSecHealthOpen() }));
+      } catch (e) {}
+    }
+    self.togglePfSec = function (k) {
+      var o = { search: self.pfSecSearchOpen, kpis: self.pfSecKpisOpen, health: self.pfSecHealthOpen }[k];
+      if (o) { o(!o()); savePfUi(); }
+    };
+    self.togglePfMax = function () {
+      self.pfMax(!self.pfMax());
+      document.body.style.overflow = self.pfMax() ? 'hidden' : '';
+    };
+    document.addEventListener('keydown', function (e) {
+      // a row click can open the drawer from inside the maximised region, so
+      // Esc must not restore the region while the drawer is still up
+      if (e.key === 'Escape' && self.pfMax() && !self.drillDrawer()) self.togglePfMax();
+    });
+
+    self.pfSortOpts = ko.computed(function () {
+      return [{ v: 'health', l: self.t('pfSortHealth') }, { v: 'budget', l: self.t('pfSortBudget') },
+              { v: 'actual', l: self.t('pfSortActual') }, { v: 'committed', l: self.t('pfSortCommitted') },
+              { v: 'fundavailable', l: self.t('pfSortFund') }, { v: 'utilization', l: self.t('pfSortUtil') }];
+    });
+    self.pfBandOpts = ko.computed(function () {
+      return [{ v: 'RED', l: self.t('pfBandRed') }, { v: 'AMBER', l: self.t('pfBandAmber') },
+              { v: 'GREEN', l: self.t('pfBandGreen') }, { v: 'GREY', l: self.t('pfBandGrey') }];
+    });
+
+    self.loadPfFilters = function () {
+      return api('GET', '/projects/filters').then(function (d) {
+        self.pfFilters(d);
+        if (!self.buYear() && d.defaultYear != null) self.buYear(d.defaultYear);
+        return d;
+      }).catch(function () { self.pfFilters({}); });
+    };
+
+    /* health band -> tone + label. Bands come from the server (one scoring
+       formula, in one place); the client only maps them to the shared status
+       pill vocabulary. */
+    var PF_TONE = { RED: 'err', AMBER: 'warn', GREEN: 'ok', GREY: 'mute' };
+    self.pfBandTone  = function (b) { return PF_TONE[b] || 'mute'; };
+    self.pfBandClass = function (b) { return b ? 'st st--' + self.pfBandTone(b) : ''; };
+    self.pfBandLabel = function (b) {
+      return self.t({ RED: 'pfBandRed', AMBER: 'pfBandAmber', GREEN: 'pfBandGreen' }[b] || 'pfBandGrey');
+    };
+
+    self.pfParams = function () {
+      return { year: self.buYear(), period: self.buPeriod(), projecttype: self.buType(),
+        sector: self.buSector(), chapter: self.buChapterParam(), costcenter: self.buCcParam(),
+        project: self.buProjParam(), bu: self.buBuParam(),
+        appropriation: self.buApprop() || null, program: self.buProgram() || null,
+        status: self.pfStatus() || null, band: self.pfHealth() || null,
+        manager: self.pfManager() || null, sort: self.pfSort(),
+        ovr: self.buOvr() ? 'Y' : null, search: self.buSearch(), limit: 2000 };
+    };
+
+    self.runPortfolio = function () {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.pfLoading(true);
+      return api('GET', '/projects' + qs(self.pfParams())).then(function (d) {
+        self.pfData(d);
+        self.pfTotals(d.totals || {});
+        self.pfCount(d.total || 0);
+        self.pfItems = d.items || [];
+        pfRowMap = {};
+        self.pfItems.forEach(function (r) { pfRowMap[r.projectNumber] = r; });
+        self.pfBuildIr();
+        self.pfLoaded(true);
+      }).catch(function (e) {
+        toast(e.message || 'error', true); self.pfData(null); self.pfItems = [];
+      }).then(function () { self.pfLoading(false); });
+    };
+
+    /* ---- KPI helpers (all money goes through the SHARED buUnit formatter) ---- */
+    self.pfT = function (k) { var t = self.pfTotals() || {}; return Number(t[k]) || 0; };
+    self.pfActualTot = ko.computed(function () { return self.pfT('actualAp') + self.pfT('actualGrn'); });
+    self.pfCommitTot = ko.computed(function () { return self.pfT('commitmentPr') + self.pfT('obligationPo'); });
+    self.pfUtilPct = ko.computed(function () {
+      var b = self.pfT('budgetAnnual'); if (!b) return 0;
+      return Math.round((self.pfActualTot() + self.pfCommitTot()) * 100 / b);
+    });
+    self.pfPaidPct = ko.computed(function () {
+      var i = self.pfT('apInvoiced'); if (!i) return 0;
+      return Math.round(self.pfT('apPaid') * 100 / i);
+    });
+    self.pfSegW = function (part, total) {
+      var t = Number(total) || 0; if (!t) return '0%';
+      return Math.max(0, Math.min(100, (Number(part) || 0) * 100 / t)).toFixed(1) + '%';
+    };
+    self.pfOfBudget = function (v) {
+      var b = self.pfT('budgetAnnual'); if (!b) return '';
+      return self.t('pfOfBudget').replace('{p}', Math.round((Number(v) || 0) * 100 / b));
+    };
+    self.pfBands = ko.computed(function () { return (self.pfData() || {}).bands || {}; });
+    self.pfFlags = ko.computed(function () { return (self.pfData() || {}).flags || {}; });
+    self.pfGaps  = ko.computed(function () { return (self.pfData() || {}).dataGaps || {}; });
+    self.pfRiskCount = ko.computed(function () {
+      var b = self.pfBands(); return (Number(b.red) || 0) + (Number(b.amber) || 0);
+    });
+    // NOTE: these computeds must read pfData() -- an OBSERVABLE -- not the plain
+    // self.pfItems array. A ko.computed only re-runs when an observable it
+    // touched changes, so depending on the array alone would evaluate once
+    // (while it was still empty) and never again.
+    self.pfElapsed = ko.computed(function () {
+      var it = (self.pfData() || {}).items || [];
+      return it.length ? Number(it[0].elapsedPct) || 0 : 0;
+    });
+
+    /* Health distribution bar: four segments, each drillable. */
+    self.pfHealthBands = ko.computed(function () {
+      var b = self.pfBands(), tot = (Number(b.green)||0)+(Number(b.amber)||0)+(Number(b.red)||0)+(Number(b.grey)||0);
+      if (!tot) return [];
+      return [{ key:'RED', cls:'h-crit', label:self.t('pfBandRed'), n:Number(b.red)||0 },
+              { key:'AMBER', cls:'h-risk', label:self.t('pfBandAmber'), n:Number(b.amber)||0 },
+              { key:'GREEN', cls:'h-ok', label:self.t('pfBandGreen'), n:Number(b.green)||0 },
+              { key:'GREY', cls:'h-none', label:self.t('pfBandGrey'), n:Number(b.grey)||0 }
+             ].map(function (x) { x.pct = (x.n * 100 / tot).toFixed(1); return x; });
+    });
+
+    /* Radial gauge -- same construction as the GL dashboard gauge: a circle of
+       radius r, stroke-dasharray set to the consumed fraction of 2*pi*r. Two
+       arcs share the ring (consumed, then consumed+committed behind it) and a
+       tick marks how much of the year has elapsed. */
+    self.pfGauge = ko.computed(function () {
+      var b = self.pfT('budgetAnnual'), r = 62, C = 2 * Math.PI * r;
+      function clamp(p) { return Math.max(0, Math.min(100, p || 0)); }
+      var util = clamp(b ? self.pfActualTot() * 100 / b : 0);
+      var commit = clamp(b ? (self.pfActualTot() + self.pfCommitTot()) * 100 / b : 0);
+      var elapsed = clamp(self.pfElapsed());
+      return { r: r, C: C.toFixed(1),
+        util: Math.round(util), commit: Math.round(commit), elapsed: Math.round(elapsed),
+        dashUtil:   ((util / 100) * C).toFixed(1) + ' ' + C.toFixed(1),
+        dashCommit: ((commit / 100) * C).toFixed(1) + ' ' + C.toFixed(1),
+        over: commit > 100 };
+    });
+
+    /* Largest consumers -- top 12 by consumed, drawn as proportional bars. */
+    self.pfPressure = ko.computed(function () {
+      var it = ((self.pfData() || {}).items || []).slice();
+      it.forEach(function (r) { r._consumed = (Number(r.actualAp)||0) + (Number(r.actualGrn)||0); });
+      it = it.filter(function (r) { return r._consumed > 0; })
+             .sort(function (a, b) { return b._consumed - a._consumed; }).slice(0, 12);
+      var max = it.length ? it[0]._consumed : 1;
+      return it.map(function (r) {
+        return { num: r.projectNumber, name: r.projectName, band: r.healthBand,
+                 amount: r._consumed, w: Math.max(1, r._consumed * 100 / max).toFixed(1),
+                 util: Number(r.utilizationPct) || 0 };
+      });
+    });
+
+    /* Auto-generated executive sentences (same substitution style as the GL
+       dashboard insights). Every claim here is a figure the page also shows. */
+    self.pfInsights = ko.computed(function () {
+      var d = self.pfData(); if (!d || !d.totals) return [];
+      var C = self.compact, out = [], f = self.pfFlags(), b = self.pfBands(), g = self.pfGaps();
+      function sub(s, o) { for (var k in o) s = s.split('{' + k + '}').join(o[k]); return s; }
+      out.push(sub(self.t('pfInsUtil'), { n: self.fmt(self.pfCount()), y: self.buYear(),
+        p: Math.round(self.pfActualTot() * 100 / (self.pfT('budgetAnnual') || 1)),
+        a: C(self.pfActualTot()), b: C(self.pfT('budgetAnnual')) }));
+      var gap = self.pfUtilPct() - self.pfElapsed();
+      out.push(sub(self.t('pfInsPace'), { e: Math.round(self.pfElapsed()),
+        d: self.t(gap > 10 ? 'pfPaceAhead' : (gap < -10 ? 'pfPaceBehind' : 'pfPaceOn')) }));
+      if ((Number(b.red) || 0) + (Number(b.amber) || 0) > 0)
+        out.push(sub(self.t('pfInsRisk'), { c: self.fmt(b.red || 0), r: self.fmt(b.amber || 0) }));
+      if (Number(f.overBudget) > 0) out.push(sub(self.t('pfInsOver'), { n: self.fmt(f.overBudget) }));
+      if (self.pfT('apInvoiced') > 0)
+        out.push(sub(self.t('pfInsPaid'), { p: self.pfPaidPct(), a: C(self.pfT('apPaid')), i: C(self.pfT('apInvoiced')) }));
+      var top = self.pfPressure()[0];
+      if (top) out.push(sub(self.t('pfInsTop'), { s: top.name || top.num, a: C(top.amount), p: top.util }));
+      if (Number(f.noSpend) > 0) out.push(sub(self.t('pfInsNoSpend'), { n: self.fmt(f.noSpend) }));
+      if (Number(g.unbudgetedProjects) > 0)
+        out.push(sub(self.t('pfInsUnbudgeted'), { n: self.fmt(g.unbudgetedProjects), a: C(self.pfT('unbudgetedSpend')) }));
+      return out;
+    });
+
+    /* ---- the register, on the SHARED interactive report ----
+       Money columns are scaled by the shared buUnit divisor and the label
+       carries the suffix, matching what the Budget vs Actual register does. */
+    self.pfBuildIr = function () {
+      var u = self.buUnit(), div = 1, sfx = '';
+      if (u === 'B') { div = 1e9; sfx = ' (B)'; }
+      else if (u === 'M') { div = 1e6; sfx = ' (M)'; }
+      else if (u === 'K') { div = 1e3; sfx = ' (K)'; }
+      function money(key, label, group, groupClass, hint) {
+        return { key: key, label: self.t(label) + sfx, type: 'money',
+                 group: self.t(group), groupClass: groupClass,
+                 hint: hint ? self.t(hint) : undefined };
+      }
+      var cols = [
+        { key: 'health', label: self.t('pfColHealth'), type: 'text', sticky: true, width: 118,
+          group: self.t('pfGrpProject'), groupClass: 'ir-g-proj', hint: self.t('pfHintHealth') },
+        { key: 'project', label: self.t('pfColProject'), type: 'text', sticky: true, width: 300, ellipsis: true,
+          group: self.t('pfGrpProject'), groupClass: 'ir-g-proj' },
+        { key: 'manager', label: self.t('pfColManager'), type: 'text', ellipsis: true,
+          group: self.t('pfGrpProject'), groupClass: 'ir-g-proj' },
+        { key: 'status', label: self.t('pfColStatus'), type: 'text',
+          group: self.t('pfGrpProject'), groupClass: 'ir-g-proj' },
+        money('budgetAnnual', 'pfColBudgetA', 'pfGrpBudget', 'ir-g-budget'),
+        money('budgetYtd', 'pfColBudgetY', 'pfGrpBudget', 'ir-g-budget'),
+        money('ap', 'pfColAp', 'pfGrpConsumed', 'ir-g-actual'),
+        money('grn', 'pfColGrn', 'pfGrpConsumed', 'ir-g-actual'),
+        money('paid', 'pfColPaid', 'pfGrpConsumed', 'ir-g-actual', 'pfHintPaid'),
+        money('pr', 'pfColPr', 'pfGrpCommitted', 'ir-g-commit'),
+        money('po', 'pfColPo', 'pfGrpCommitted', 'ir-g-commit'),
+        money('fund', 'pfColFund', 'pfGrpPosition', 'ir-g-pos'),
+        { key: 'util', label: self.t('pfColUtil'), type: 'num',
+          group: self.t('pfGrpPosition'), groupClass: 'ir-g-pos', hint: self.t('pfHintUtil') },
+        money('billed', 'pfColBilled', 'pfGrpOther', 'ir-g-rev', 'pfHintBilled'),
+        { key: 'pendingDocs', label: self.t('pfColPending'), type: 'num',
+          group: self.t('pfGrpOther'), groupClass: 'ir-g-rev' },
+        { key: 'tasks', label: self.t('pfColTasks'), type: 'num',
+          group: self.t('pfGrpOther'), groupClass: 'ir-g-rev' }
+      ];
+      var rows = (self.pfItems || []).map(function (r) {
+        return {
+          health: self.pfBandLabel(r.healthBand),
+          project: r.projectNumber + ' — ' + (r.projectName || ''),
+          manager: r.manager || '',
+          status: r.status || '',
+          budgetAnnual: (Number(r.budgetAnnual) || 0) / div,
+          budgetYtd: (Number(r.budget) || 0) / div,
+          ap: (Number(r.actualAp) || 0) / div,
+          grn: (Number(r.actualGrn) || 0) / div,
+          paid: (Number(r.apPaid) || 0) / div,
+          pr: (Number(r.commitmentPr) || 0) / div,
+          po: (Number(r.obligationPo) || 0) / div,
+          fund: (Number(r.fundAvailable) || 0) / div,
+          util: Number(r.utilizationPct) || 0,
+          billed: (Number(r.billed) || 0) / div,
+          pendingDocs: Number(r.pendingDocs) || 0,
+          tasks: Number(r.taskCount) || 0,
+          _rowClass: 'pf-h-' + String(r.healthBand || 'GREY').toLowerCase()
+        };
+      });
+      self.pfIr({ columns: cols, items: rows, total: rows.length, section: 'pf',
+                  zebra: true, stateRev: 1 });
+    };
+    // re-render (without re-fetching) when the unit or the language changes
+    self.buUnit.subscribe(function () { if (self.pfLoaded()) self.pfBuildIr(); });
+    self.lang.subscribe(function () { if (self.pfLoaded()) self.pfBuildIr(); });
+
+    self.pfUnitNote = ko.computed(function () {
+      var u = self.buUnit();
+      if (u !== 'B' && u !== 'M' && u !== 'K') return '';
+      return self.t('pfUnitNote').replace('{u}', u);
+    });
+
+    /* Row click -> Project 360. The interactive report drops undeclared row
+       fields, so the project number is recovered from the merged identity cell
+       through the side map rather than ridden on the row. */
+    function pfResolve(target) {
+      var td = (target && target.closest) ? target.closest('td') : null;
+      if (!td) return null;
+      var ctx; try { ctx = ko.contextFor(td); } catch (e) { return null; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row) return null;
+      var proj = ctx.$parent.row.project;
+      if (!proj) return null;
+      return String(proj).split(' — ')[0];
+    }
+    self.pfGridClick = function (d, e) {
+      var num = pfResolve(e.target);
+      if (num && pfRowMap[num]) self.openProj360(num);
+      return true;
+    };
+    self.pfGridOver = function (d, e) {
+      var td = (e.target && e.target.closest) ? e.target.closest('td') : null;
+      if (td && pfResolve(e.target)) td.style.cursor = 'pointer';
+      return true;
+    };
+
+    /* ══ Project 360 ══════════════════════════════════════════════════ */
+    self.p3Num      = ko.observable('');
+    self.p3Loading  = ko.observable(false);
+    self.p3Data     = ko.observable(null);
+    self.p3Tasks    = ko.observableArray([]);
+    self.p3Pipe     = ko.observable(null);
+    self.p3Rev      = ko.observable(null);
+    self.p3Trx      = ko.observableArray([]);
+    self.p3Cash     = ko.observable(null);
+    self.p3PipeTab  = ko.observable('openPr');
+
+    self.openProj360 = function (num) {
+      if (!num) return;
+      if (self.pfMax()) self.togglePfMax();
+      self.p3Num(num);
+      self.go('proj360');
+    };
+    self.backToPortfolio = function () { self.go('portfolio'); };
+
+    self.p3Card = ko.computed(function () { return (self.p3Data() || {}).project || {}; });
+    self.p3Year = ko.computed(function () { return (self.p3Data() || {}).year || {}; });
+    self.p3H    = ko.computed(function () { return (self.p3Data() || {}).health || {}; });
+    self.p3Ap   = ko.computed(function () { return (self.p3Data() || {}).ap || {}; });
+    self.p3RevS = ko.computed(function () { return (self.p3Data() || {}).revenue || {}; });
+    self.p3Pend = ko.computed(function () { return (self.p3Data() || {}).pending || {}; });
+    self.p3Sched= ko.computed(function () { return (self.p3Data() || {}).schedule || {}; });
+
+    self.p3BandClass = function () { return self.pfBandClass(self.p3H().band); };
+    self.p3BandLabel = function () { return self.pfBandLabel(self.p3H().band); };
+
+    /* Status pill tone for the free-text project status.
+       ORDER IS LOAD-BEARING and matches the budgettrx precedent: failure
+       patterns are tested FIRST, and the mute tier is tested before the ok
+       tier because "Inactive" contains "active". Never match on equality --
+       the live vocabulary mixes cases. */
+    var P3_TONES = [
+      [/fail|error|reject|cancel|terminat|abandon/i, 'err'],
+      [/inactive|draft|not\s*created|withdraw|unapproved|suspend/i, 'mute'],
+      [/pend|in\s*process|in\s*progress|on\s*hold|await|submitted/i, 'warn'],
+      [/success|pass|approve|baselined|complet|closed|(^|[^a-z])active([^a-z]|$)/i, 'ok'],
+      [/entered|new|open|planning/i, 'info']
+    ];
+    self.p3StTone = function (v) {
+      var s = (v == null ? '' : String(v)).trim();
+      if (!s) return 'mute';
+      for (var i = 0; i < P3_TONES.length; i++) if (P3_TONES[i][0].test(s)) return P3_TONES[i][1];
+      return 'info';
+    };
+    self.p3StClass = function (v) {
+      return (v == null || String(v).trim() === '') ? '' : 'st st--' + self.p3StTone(v);
+    };
+
+    /* The funnel: Budget -> PR -> PO -> GRN -> Invoiced -> Paid, drawn to scale
+       against the largest stage. Each bar is clickable and opens the shared
+       drill drawer through the EXISTING /butil/lines endpoint, so a stage total
+       and its document list can never disagree. */
+    var P3_STAGES = [
+      { key: 'budgetAnnual', metric: 'budgetannual', lab: 'p3fBudget', cls: 'f-budget' },
+      { key: 'commitmentPr', metric: 'pr',           lab: 'p3fPr',     cls: 'f-pr' },
+      { key: 'obligationPo', metric: 'po',           lab: 'p3fPo',     cls: 'f-po' },
+      { key: 'actualGrn',    metric: 'grn',          lab: 'p3fGrn',    cls: 'f-grn' },
+      { key: 'apInvoiced',   metric: 'ap',           lab: 'p3fAp',     cls: 'f-ap' },
+      { key: 'apPaid',       metric: null,           lab: 'p3fPaid',   cls: 'f-paid' }
+    ];
+    self.p3Funnel = ko.computed(function () {
+      var f = (self.p3Data() || {}).funnel; if (!f) return null;
+      var W = 1000, H = 210, pl = 10, pt = 30, pb = 46;
+      var innerH = H - pt - pb, gap = 26;
+      var slot = (W - 2 * pl) / P3_STAGES.length, barW = slot - gap;
+      var maxV = 1;
+      P3_STAGES.forEach(function (s) { maxV = Math.max(maxV, Math.abs(Number(f[s.key]) || 0)); });
+      var st = P3_STAGES.map(function (s, i) {
+        var v = Math.abs(Number(f[s.key]) || 0);
+        var h = Math.max(2, v / maxV * innerH);
+        var x = pl + i * slot, y = pt + (innerH - h) / 2;
+        var prev = i ? Math.abs(Number(f[P3_STAGES[i - 1].key]) || 0) : 0;
+        return { key: s.key, metric: s.metric, cls: s.cls, label: self.t(s.lab),
+                 x: +x.toFixed(1), y: +y.toFixed(1), w: +barW.toFixed(1), h: +h.toFixed(1),
+                 cx: +(x + barW / 2).toFixed(1), value: v,
+                 txt: self.buNum(v), exact: self.money(v),
+                 pctPrev: i ? (prev ? Math.round(v * 100 / prev) + '%' : '—') : '' };
+      });
+      var bands = [];
+      for (var i = 0; i < st.length - 1; i++) {
+        var a = st[i], b = st[i + 1];
+        bands.push({ d: 'M' + (a.x + a.w) + ',' + a.y + ' L' + b.x + ',' + b.y +
+                        ' L' + b.x + ',' + (b.y + b.h) + ' L' + (a.x + a.w) + ',' + (a.y + a.h) + ' Z',
+                     mx: +((a.x + a.w + b.x) / 2).toFixed(1), my: pt + innerH / 2, pct: b.pctPrev });
+      }
+      return { W: W, H: H, baseY: pt + innerH, stages: st, bands: bands };
+    });
+
+    self.p3StageDrill = function (stage) {
+      if (!stage || !stage.metric) return;   // Paid has no line endpoint
+      self.drillTitle(stage.label);
+      self.drillSub(self.p3Num() + ' — ' + (self.p3Card().projectName || ''));
+      self.drillCtx([self.buYear(), self.buPeriod()].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(),
+        fproject: self.p3Num(), metric: stage.metric, ovr: self.buOvr() ? 'Y' : null }))
+        .then(fillDrill).catch(drillFail);
+    };
+
+    self.loadProj360 = function () {
+      var num = self.p3Num(); if (!num) return;
+      self.p3Loading(true);
+      self.p3Data(null); self.p3Tasks([]); self.p3Pipe(null);
+      self.p3Rev(null); self.p3Trx([]); self.p3Cash(null);
+      var p = { year: self.buYear(), period: self.buPeriod(), ovr: self.buOvr() ? 'Y' : null };
+      var base = '/projects/' + encodeURIComponent(num);
+      return Promise.all([
+        api('GET', base + qs(p)).then(self.p3Data).catch(function (e) { toast(e.message || 'error', true); }),
+        api('GET', base + '/tasks' + qs(p)).then(function (d) { self.p3Tasks(d.items || []); }).catch(function () {}),
+        api('GET', base + '/pipeline' + qs(p)).then(self.p3Pipe).catch(function () {}),
+        api('GET', base + '/revenue' + qs({ year: p.year })).then(self.p3Rev).catch(function () {}),
+        api('GET', base + '/trx' + qs({ year: p.year })).then(function (d) { self.p3Trx(d.items || []); }).catch(function () {}),
+        api('GET', base + '/cashflow' + qs({ year: p.year })).then(self.p3Cash).catch(function () {})
+      ]).then(function () { self.p3Loading(false); });
+    };
+
+    self.p3PipeRows = ko.computed(function () {
+      var p = self.p3Pipe(); if (!p) return [];
+      return p[self.p3PipeTab()] || [];
+    });
+    self.p3PipeTabs = ko.computed(function () {
+      var p = self.p3Pipe() || {}, c = p.counts || {};
+      return [{ k: 'openPr', l: self.t('p3PipeOpenPr'), n: c.openPr || 0 },
+              { k: 'openPo', l: self.t('p3PipeOpenPo'), n: c.openPo || 0 },
+              { k: 'uninvoicedGrn', l: self.t('p3PipeGrn'), n: c.uninvoicedGrn || 0 },
+              { k: 'pending', l: self.t('p3PipePending'), n: c.pending || 0 }];
+    });
+    self.p3SchedClass = function (t) {
+      if (!t.plannedFinish) return 'st st--mute';
+      return t.plannedFinishPast === 'Y' ? 'st st--warn' : 'st st--ok';
+    };
+    self.p3SchedLabel = function (t) {
+      if (!t.plannedFinish) return self.t('p3SchedNone');
+      return self.t(t.plannedFinishPast === 'Y' ? 'p3SchedPast' : 'p3SchedOn');
+    };
+    self.p3CompRow = function (score, labelKey) {
+      var v = Number(score);
+      return { label: self.t(labelKey),
+               scored: v >= 0,
+               txt: v >= 0 ? String(Math.round(v)) : self.t('p3NotScored'),
+               w: v >= 0 ? Math.max(0, Math.min(100, v)) + '%' : '0%' };
+    };
+    self.p3Components = ko.computed(function () {
+      var c = self.p3H().components || {};
+      return [self.p3CompRow(c.burn, 'p3CompBurn'), self.p3CompRow(c.funds, 'p3CompFunds'),
+              self.p3CompRow(c.approval, 'p3CompApproval'), self.p3CompRow(c.activity, 'p3CompActivity')];
+    });
+
 
     /* ── Budget Change drawer — view + inline-edit the budget_change lines ──
        Opened from the Budget Change KPI tile; loads /butil/override/lines

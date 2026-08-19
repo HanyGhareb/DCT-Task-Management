@@ -82,6 +82,26 @@ Four collapsible `.bu-sec` regions; `loadCoa()` loads all three data sets once o
 - `runPnBook()` — **Briefing Book** button → `POST /pending/book` with the full page filter set, 6-s poll (`GET /pending/book/:id`), auto-download of the PDF (`ENC_PENDING_BOOK`, reporting/db/23 — **funds-reserved non-zero lines only**, registers carry Sector/Cost centre/Appropriation code+name, full untruncated text).
 - `runPnXlsx()` — **Export Excel** button (v1.29.0, internal analysis) → `POST /pending/xlsx` with the full page filter set + source, 4-s poll (`GET /pending/xlsx/:id`), auto-download of `Encumbrances_Pending_Approval_Register_<year>.xlsx` (`ENC_PENDING_REGISTER`, reporting/db/24 — sheet 1 = the 29-column flat pending PR/PO register on the book scope rule; sheet 2 = the extract-coverage annex).
 
+## Project Portfolio (`view()==='portfolio'`) — every project in the budget year, ranked and health-scored (v1.70.0)
+Four `.bu-sec` regions (state in `localStorage('gl_pf_ui')`), one `.bu-load-ov`/`.ojpc` busy overlay over the answer area. **Shares the Budget Utilization criteria observables** (`buYear`/`buPeriod`/`buType`/`buSector`/`buChapterSel`/`buCcSel`/`buProjSel`/`buBuSel`/`buOvr`/`buSearch`/`buUnit`), which is why drilling into a project needs no parameter passing and why every figure reconciles to the butil page.
+- **Search criteria** — the butil filter set plus three page-local ones: `pfStatus` (project status), `pfHealth` (band), `pfManager`, and `pfSort` (health / budget / consumed / committed / funds / utilisation). `togglePfSec('search'|'kpis'|'health')`, `loadPfFilters()`.
+- **Executive KPI band** — 7 `.bk` tiles: projects, budget, consumed (AP+GRN duo), committed (PR+PO duo), paid, funds available (`.neg` when negative), needs-attention. Helpers `pfT(key)`, `pfActualTot`, `pfCommitTot`, `pfUtilPct`, `pfPaidPct`, `pfSegW`, `pfOfBudget`, `pfBands`, `pfFlags`, `pfGaps`, `pfRiskCount`.
+- **Health and momentum** — `pfGauge` (hand-computed radial SVG: consumed arc + consumed-plus-committed arc, `2*pi*r` dasharray, no chart library), `pfHealthBands` (4-segment distribution bar), `pfPressure` (top-12 largest consumers, click-through to 360), `pfInsights` (auto-generated executive sentences via `{}` substitution).
+- **Projects register** — the SHARED `<interactive-report>` (`GL_PROJ_PORTFOLIO` / section `pf`) built by `pfBuildIr()`: frozen Health + Project + Manager + Status, grouped bands (Budget / Consumed / Committed / Position / Revenue and pipeline), ⓘ hints on health, paid, billed and utilisation, `zebra`, `stateRev:1`, and `_rowClass` health tints. Money columns are scaled by the shared `buUnit` divisor with a `(B/M/K)` label suffix; `pfUnitNote()` says so. Rebuilt (not re-fetched) when `buUnit` or `lang` changes.
+- **Row click → Project 360** — `pfGridClick`/`pfGridOver` are delegated handlers using `ko.contextFor(td)`; the project number is recovered from the merged identity cell, because the interactive report drops undeclared row fields.
+- `runPortfolio()`, `pfParams()`, `togglePfMax()` (Esc restores, guarded while the drill drawer is open).
+
+## Project 360 (`view()==='proj360'`) — one project, end to end (v1.70.0)
+Reached from a portfolio row (`openProj360(num)`) or the nav tab, which is **hidden until a project is open** (`hidden:true` in `NAV_GROUPS`, filtered by `activeGroupItems`). `backToPortfolio()`. `loadProj360()` fires the header and all five child requests in parallel.
+- **Identity card** — manager, type, business unit, appropriation, chapter, sectors, departments, cost centres, start/finish, tasks, last activity. Every field binds `$data.…` because APEX_JSON omits null keys. Shows a banner when the project has no budget line in the year.
+- **KPI band + health** — the same measure vocabulary as the portfolio so a project's tiles equal its portfolio row, plus `p3Components` (per-component score bars) and the advisory-score disclaimer.
+- **Budget → payment funnel** — `p3Funnel` computes six proportional SVG bars (Budget → PR → PO → GRN → Invoiced → Paid) with connector bands and stage-to-stage conversion %. Each stage calls `p3StageDrill(stage)`, which opens the SHARED drill drawer through the EXISTING `/butil/lines` endpoint, so a stage total and its document list can never disagree. The Paid stage has no line endpoint and is not clickable.
+- **Tasks and schedule** — planned start/finish and a plan-date pill (`p3SchedClass`/`p3SchedLabel`). **Actual dates are not shown**: they are empty in the source (0 of 6,059 tasks), so slippage is not computable and is not scored; the region says so.
+- **Documents and pipeline** — `p3PipeTabs`/`p3PipeRows` over open PR, open PO, received-not-invoiced and pending approval.
+- **Revenue (AR)** — billed revenue with a visible `DATA GAP` badge and an amber note: no AR receipts extract exists, so collections/DSO are deliberately absent rather than estimated. Only 51 of 991 projects carry any AR line, so the empty state is the common case.
+- **Budget transactions** and **Cashflow plan** — read-only registers; cashflow shows an explicit empty state pointing at the Cashflow tab (the Fusion budget is not cashflow-phased and cannot substitute).
+- Status pill tone: `p3StTone`/`p3StClass` — failure patterns are tested FIRST and the mute tier before the ok tier, because "Inactive" contains "active".
+
 ## Dashboard (`view()==='dashboard'`) — executive analytics
 - `dashPeriod` selector → `loadDashboard()` (`/dashboard`); KPI strip via `kpis()` (budget, actual, funds, encumbrance, PO total & count, utilisation/commitment %).
 - `gauge()` — utilisation radial gauge (SVG); `trend()` — period-over-period actual SVG area+line; `sectorBars`/`programBars`/`apprBars` — horizontal bar charts (actual / PO commitments); `insights()` — auto-generated executive sentences. All charts are hand-built SVG/CSS (no chart library).
@@ -241,6 +261,16 @@ Budget vs Actual · Reconciliation · Legacy (EBS) · DOF Submissions · Balance
 | POST | `/pending/xlsx` | **Excel register bridge** (v1.29.0) — same body contract as `/pending/book` + `source` (PR\|PO) → enqueues Reporting-Platform `ENC_PENDING_REGISTER` (XLSX, reporting/db/24) as the calling GL user → `{runId}` (`13_gl_pending_ords.sql`) |
 | GET | `/pending/xlsx/:id` | run status (ENC_PENDING_REGISTER runs only) → `{runId, status, rowCount, error, startedAt, finishedAt, hasFile}` |
 | GET | `/pending/xlsx/:id/file` | authed XLSX download of a finished register run (Content-Disposition attachment) |
+| GET | `/projects/filters` | Portfolio filter LOVs (years, types, sectors, chapters, BUs, appropriations, programs, statuses, bands) — `db/22` |
+| GET | `/projects/lov?year=` | Portfolio type-ahead lists (projects, cost centres, managers) — `db/22` |
+| GET | `/projects?year=&period=&…&band=&status=&manager=&sort=` | Portfolio register + KPI aggregates + bands/flags/dataGaps; **totals reconcile exactly to `/butil`** — `db/22` |
+| GET | `/projects/:num?year=&period=&ovr=` | Project 360 header, year figures, funnel, health, AP, revenue, pending, schedule — `db/22` |
+| GET | `/projects/:num/tasks?year=&period=` | Task register with planned dates and per-task money — `db/22` |
+| GET | `/projects/:num/pipeline?year=&period=` | Open PR / open PO / uninvoiced GRN / pending, one call — `db/22` |
+| GET | `/projects/:num/invoices?year=&status=` | AP invoices with the derived paid ratio — `db/22` |
+| GET | `/projects/:num/revenue?year=` | AR billed revenue + the receipts DATA_GAP marker — `db/22` |
+| GET | `/projects/:num/trx?year=` | Budget transactions touching the project — `db/22` |
+| GET | `/projects/:num/cashflow?year=` | Uploaded cashflow plan by period (`sparse` flag) — `db/22` |
 
 ## Data layer (PROD)
 - Tables: `DCT_GL_CLASS_TYPE` → `DCT_GL_CLASS_VALUE` → `DCT_GL_SEG_CLASS_MAP`.

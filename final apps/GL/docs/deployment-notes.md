@@ -95,6 +95,83 @@ This file holds GL-specific deploy steps, history, and gotchas. **Update on ever
 
 - **2026-08-04 — Resilient actuals snapshot refresh (db/v2/118; DB only):** `prod.dct_actuals_refresh` now serializes runs through a control-row lock, loads `DCT_GL_COA_STAGE`, verifies non-empty/exact row counts plus non-null/unique `CC_ID` and `CC_STRING`, and only then atomically replaces `DCT_GL_COA_SNAP` in one transaction. Any load/validation/publish failure rolls back and leaves the prior committed snapshot available. `DCT_ACTUALS_REFRESH_LOG` records requester, source/staged/published counts, duration and error with 90-day retention; stats errors are warnings after a successful publish. Removed the unrelated two-pass invalid-view compilation from every run; the dedicated DB-health workflow owns recompilation. PROD verification: four successful 9,409-row runs (4.62–5.52 s), real hourly scheduler run SUCCEEDED, procedure/job healthy, 0 invalid objects.
 
+## 2026-08-19 — Executive Project Dashboard: Portfolio + Project 360 (v1.70.0)
+
+NEW `db/v2/122_dct_project_dashboard_views.sql` (8 views) + ADDITIVE
+`final apps/GL/db/22_gl_projects_ords.sql` (10 routes) + two GL pages.
+**GL post-05 re-run list is now 07..22.**
+
+**Deploy order:** `db/v2/122` (SQLcl, fresh session) → `GL/db/22` as **`prod_mcp`**
+(gl.rest lives under ADMIN; under the `prod` conn `ORDS.DEFINE_TEMPLATE` throws
+ORA-01403) → frontend with the `APP_VERSION` bump → webtier release.
+
+**What it is.** A Portfolio page ranking every project in a budget year with an
+advisory health band, drilling into a Project 360 page (identity, KPI band,
+Budget→PR→PO→GRN→Invoiced→Paid funnel, tasks, pipeline, AR, budget
+transactions, cashflow). Budget-year scoped, so **every money figure reconciles
+to the Budget Utilization page** — asserted, not assumed: `tests/projects_api_smoke.py`
+compares all seven measures against `/gl/butil` for full-year, a period cut and a
+sector filter (21 assertions, all exact to 0).
+
+**Why `DCT_BUDGET_UTILIZATION_V` was NOT modified.** It ends with a `HAVING` on
+the Fusion annual budget, so a project with spend and no budget line is invisible
+in it. Relaxing that is tempting and wrong: the view's select list uses
+`MAX(MAX(x)) OVER (PARTITION BY budget_year, project_key)` for sector, cost
+centre, chapter, program, entity-specific and the combination builder, and a
+window function is evaluated **after** `HAVING` — admitting the hidden rows
+enlarges every one of those partitions and can change attributes on rows that are
+already published, plus every cache and report downstream. `DCT_PROJECT_SPEND_V`
+carries the unbudgeted leg separately and a `FULL OUTER JOIN` surfaces it. Live:
+**9 projects / AED 27.3M**, all Abrahamic Family House, plus partial cases (one
+project has 616K of spend on combinations with no budget line).
+
+**Data limits found by probing before building, and honoured in the product:**
+- `ATD_TASKS.ACTUAL_START_DATE` / `ACTUAL_FINISH_DATE` are **entirely empty**
+  (0 of 6,059). Schedule slippage is not computable, so the health score has
+  **four** components (burn 40 / funds 20 / approvals 20 / activity 20), not five,
+  and the Tasks region shows planned dates only and says why.
+- **No AR receipts extract** — billed revenue only; collections carry a visible
+  `DATA GAP` badge, matching `reporting/db/35`. Only **51 of 991** projects carry
+  any AR line, so the empty state is the normal case, not a fault.
+- `ATD_PAYMENTS` has **no invoice id and no project**, so paid is derived from
+  each invoice header's paid ratio, **capped at 100%** (20 live invoices carry
+  paid > amount), applied to that invoice's project distributions.
+
+**Gotchas paid for during this build:**
+1. `SELECT *` across joins that each expose `project_number`/`budget_annual` gives
+   duplicate cursor columns and an **uncatchable ORDS 555**. Enumerate columns.
+2. `PROJECTS_V` exposes `APPROPRIATION` and `CHAPTER` — not `APPROPRIATION_CODE`
+   / `_DESC` / `CHAPTER_NAME`.
+3. `PA_BUDGET_TRX_HEADERS` has `DECREE_NO`, no `CREATED_BY` (use
+   `DEPT_1ST_LEVEL_APPROVER`); `AP_INVOICES` has no `PAYMENT_STATUS` (reuse the
+   derivation from `AP/db/05`); `PR_DISTRIBUTIONS` keys on `REQUISITION`.
+4. Frontend: a `ko.computed` reading a **plain array** never re-runs. `pfPressure`
+   / `pfElapsed` read `pfData()` (observable), not `self.pfItems`.
+5. Running `db/v2/122` from `prod_mcp` makes the grantor ADMIN itself, so the
+   `GRANT ... TO admin` block tolerates ORA-01749 (on ADB, ADMIN already reads PROD).
+
+**⚠ Pre-existing issue found, NOT caused by this work:**
+`db/v2/120_dct_butil_filter_cache.sql` is **committed but was never deployed** —
+`PROD.DCT_BUTIL_FILTER_CACHE` and `DCT_BUTIL_KEY_CACHE` do not exist, and the live
+`butil/filters` / `butil/lov` handlers are the pre-120 versions that scan the view
+directly (so the Budget Utilization page is fine today). The new handlers were
+initially written against that cache and 555'd; they now read
+`DCT_PROJECT_PORTFOLIO_V` directly, so this feature has **no dependency on the
+undeployed script**. Whoever deploys 120 later must re-run `07` in the same change.
+
+**Performance:** `/gl/projects?year=2026&limit=2000` is ~9s warm (butil is ~4.9s)
+— it joins eight views and runs six aggregate scans. Both pages carry the standard
+`oj-progress-circle` busy overlay. If this needs to come down, the cheapest win is
+folding the spend/unbudgeted scan into the health scan (both already read
+`DCT_PROJECT_HEALTH_V`, which exposes `spend_total` and `has_budget`), removing one
+full rebuild of `DCT_PROJECT_SPEND_V`.
+
+**Tests:** `tests/projects_api_smoke.py` **63/63**; `tests/projects_browser_smoke.py`
+**34/34** EN + AR/RTL (evidence in `/tmp/gl_proj_evidence`). Browser gotchas honoured:
+wait on `ko.dataFor(document.body)` (not just the nav — it can be undefined for a
+tick after the first bound element appears), never `networkidle`, and target
+`button[data-bind*="toggleLang"]` because `.lang-flip.last` is Sign out.
+
 ## Deploy checklist
 1. **DB scripts** via SQLcl `sql -name prod_mcp` (CRLF, UTF-8 no BOM, `SET DEFINE OFF`, `SET SQLBLANKLINES ON`):
    - `01_gl_synonyms.sql` — **own fresh session** (ORA-01471 rule).
