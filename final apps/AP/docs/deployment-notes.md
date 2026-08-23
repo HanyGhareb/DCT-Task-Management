@@ -23,7 +23,9 @@ Platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.m
        `reporting/db/37_rpt_procash_register.sql` + the `procash_book.html.j2` template uploaded).
      - Excel add-in: `db/v2/121_xl_procash.sql`, then **re-run `db/v2/107_xl_budget_ords.sql`**
        (107 `DELETE_MODULE`s `xl.rest`, so the procash routes live inside 107 itself).
-   - **Post-`03` re-run list is now: 04, 06, 07, 10, 12.**
+   - `db/14_ap_direct_report_ords.sql` — **fresh session**, additive Direct-AP Briefing Book bridge
+     (needs `reporting/db/38_rpt_ap_direct_register.sql` seeded; XLSX only — no PDF template).
+   - **Post-`03` re-run list is now: 04, 06, 07, 10, 12, 14.**
 2. **Frontend**: bump `window.APP_VERSION` in `Jet/index.html`; if anything under
    `final apps/shared/` changed, bump ALL apps. Ship via `webtier/deploy_frontend.sh`.
 3. **Smoke**: run `scratch` API suite (or curl `/ap/filters` + `/ap/summary?sector=Culture&paid=Unpaid`
@@ -108,6 +110,50 @@ and the server **no longer validates the codes against the masters**. Consequenc
   otherwise KO's `options:` binding silently blanks the field on an old record.
 
 ## Deployment history
+
+- **2026-08-21 (round 2) — PR guard + Chapter facet (AP v1.22.0; db/02+03+04 re-run + full
+  post-03 chain + reporting/db/38 re-seed).** ① **PR check on Direct AP (user):** verified
+  **0** direct invoices carry any PR reference (all 747 incl. cancelled — a PR cannot exist
+  without a PO); `pr_count = 0` added to the nopo rule anyway (pkg predicate + all four
+  /filters predicate shapes + the report's l_flt) so the invariant holds by construction.
+  Scope unchanged: 588 / AED 369.7M. ② **Chapter search criterion on ALL THREE dashboards**
+  (AP Dashboard, Beneficiaries, Direct AP): `p_chapter` in `filtered_ids` — a per-invoice
+  CLASSIFICATION facet exactly like `p_sector` (single chapter / `(Multiple chapters)` /
+  `Unclassified`; counts sum to the invoices KPI) — bound on every route, counted
+  `chapters[]` LOV in `/filters` (honours inclcxl/suppnum/nopo scoping), own-grain re-apply
+  on the dists register/export (mirrors sector), forwarded by the Direct-AP book bridge +
+  bound in AP_DIRECT_REGISTER's l_flt (uncorrelated IN + Unclassified NOT-IN leg — never a
+  correlated per-row subquery against the un-indexed dist view). One shared `GROUP_DEFS`
+  entry serves all three pages (`f.chapter` EN/AR). Live: Chapter 2 = 8,492 invoices,
+  direct∩Chapter 2 = 32; KPI == facet count verified. Tests: API smoke **19/19** + browser
+  **15/15**. Frontend release 20260821054018.
+
+- **2026-08-21 — Direct AP page + Briefing Book (AP v1.21.0; db/02+03 re-run + 04/06/07/10/12
+  re-run + NEW db/14 + reporting/db/38).** New nav page **Direct AP** = the AP Dashboard mounted
+  in `nopo` mode (the Beneficiaries nested-`module` pattern, zero duplicated markup): only
+  invoices with **NO PO reference and NO project coding anywhere**. The rule is TWO-legged —
+  `header_po_number IS NULL AND po_count = 0 AND project_count = 0` (header cols, distribution-
+  derived) **AND no invoice LINE carrying a `po_number`/`project_number`**: the first pass missed
+  the line leg and 131 of 878 candidate invoices turned out to be project-coded at the LINE grain
+  with clean distributions (the header counts only see distributions). Engine = new `p_nopo`
+  param in `dct_ap_pkg.filtered_ids` (header-scan predicate + one `MULTISET EXCEPT` scan of the
+  raw `prod.ap_invoice_lines` pass-through); `nopo=Y` is bound on every ap.rest facet route and
+  inlined into every `/filters` LOV/count query (all three predicate shapes). Live scope at
+  deploy: **588 direct invoices (non-cancelled), AED 369.7M**. Direct-AP UI drops the
+  project/etype/requestor facets + PO/PR/Task ref inputs and hides the PO/project columns by
+  default; own col-prefs (`ap.direct.cols`) + IR code `AP_DIRECT_REGISTER`. **Briefing Book
+  (Excel)** header button → `POST /ap/direct/report` (bridge db/14, GL-butil poll/download
+  pattern) → Reporting definition **AP_DIRECT_REGISTER** (reporting/db/38, MULTI/PYTHON,
+  **XLSX only** — no PDF template, other formats 400; 5 sheets: overview by payment status /
+  full register / by supplier beneficiary-aware / GL coding of non-tax dists / aging on the
+  due-date basis; params mirror the page criteria bu/supplier/paid/val/datefrom/dateto/search/
+  inclcxl). Tests: `tests/direct_api_smoke.py` **14/14** (incl. book E2E render+download,
+  1,364 rows / 177KB) + `tests/direct_browser_smoke.py` **15/15** EN+AR (incl. UI book
+  download). Deployed via Linux SQLcl `sql -name prod_mcp` (the 16.7KB `setup_ap_ords_t1`
+  statement landed intact — verified `LENGTH(source)` + `:nopo` refs per handler after the run).
+  Frontend release 20260821015055 (`SSH_USER=opc ./deploy_frontend.sh 129.151.159.189`).
+  Note: 2 pre-existing INVALID PROD objects (`AR_TAX_CALC*`, another session's in-progress AR
+  work, last DDL 2026-08-19) were present before this deploy and left untouched.
 
 - **2026-08-17 — Procash Transactions (AP v1.19.0; db/08–12 + db/v2/121 + 107 re-run +
   reporting/db/37).** Manual payments pushed through the bank portal directly, outside Fusion

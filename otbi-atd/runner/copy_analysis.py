@@ -11,6 +11,8 @@ tab; we click Criteria, optionally add the filter, then Save As into the SOURCE'
 
 Modes:
   --probe "<src>"                              open + Criteria, dump controls, exit
+  --dump-sql "<src>"                           open + Advanced tab, print the analysis's
+                                               logical SQL (read-only; never saves)
   --copy "<src>" --to "<NAME>"                 plain Save-As copy (same folder)
         [--hour N | --minute N] [--on-column "<heading>"]   + relative-time filter
                                                (default column heading: "Last Updated Date")
@@ -312,6 +314,30 @@ def do_edit(page, base, src, remove_cols):
     save_as(page, src.rsplit("/", 1)[1])
 
 
+def dump_advanced_sql(page, base, src):
+    """Open the analysis, switch to the Advanced tab, and print its logical SQL.
+    Read-only: nothing is ever saved. The SQL lives in the 'SQL Issued' textarea;
+    dump every SELECT-bearing textarea/pre generically so a DOM rename can't hide it."""
+    open_existing(page, base, src)
+    click_tab(page, "Advanced")
+    time.sleep(LAZY + 4)
+    found = page.evaluate(r"""() => {
+      const out = [];
+      for (const t of document.querySelectorAll('textarea')) {
+        const v = (t.value || t.textContent || '').trim();
+        if (v.length > 20) out.push({kind: 'textarea', id: t.id, name: t.name || '', text: v});
+      }
+      for (const e of document.querySelectorAll('pre,div[id*="sql" i],span[id*="sql" i]')) {
+        const v = (e.innerText || '').trim();
+        if (v.length > 40 && /SELECT/i.test(v)) out.push({kind: e.tagName, id: e.id, text: v.slice(0, 20000)});
+      }
+      return out;
+    }""")
+    import json as _json
+    _step("advanced-tab SQL candidates:\n" + _json.dumps(found, indent=1))
+    _shot(page, "advsql")
+
+
 # --------------------------------------------------------------------------- #
 def _probe(page, base, src):
     page.set_viewport_size({"width": 1920, "height": 1080})
@@ -327,6 +353,7 @@ def _probe(page, base, src):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--probe")
+    ap.add_argument("--dump-sql", help="open the analysis's Advanced tab and print its logical SQL (read-only)")
     ap.add_argument("--probe-formula", help="open Edit Column Formula for --column and dump dialog fields")
     ap.add_argument("--column", help="column heading for --probe-formula")
     ap.add_argument("--copy")
@@ -350,6 +377,8 @@ def main():
         try:
             if a.probe:
                 _probe(page, DEFAULT_BASE, a.probe)
+            elif a.dump_sql:
+                dump_advanced_sql(page, DEFAULT_BASE, a.dump_sql)
             elif a.probe_formula and a.column:
                 open_existing(page, DEFAULT_BASE, a.probe_formula)
                 click_tab(page, "Criteria")

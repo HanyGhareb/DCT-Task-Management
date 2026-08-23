@@ -1,5 +1,53 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-08-21 — GRN gap-fill: un-costed Fusion receipts surfaced (db/84) — **DEPLOYED + LIVE-VERIFIED**
+Root cause found via invoice DN-26-01-003166 (29,886.64 AED, PO 451102004985): its receipt
+4513074290 was Received AND Delivered in Fusion Receiving (both legs 28,463.47, 13-Apr-26)
+but the Deliver was **never transferred to Receipt Accounting**, so it has no costed
+distributions — and `GRN_ALL_V4`'s criteria (Destination Type = EXPENSE + Accounting Line
+Type = EXPENSE + Balance Type = A, all DISTRIBUTION-sourced) can never see it. PO-matched
+AP is excluded from butil's AP-Direct by design ⇒ the spend was invisible everywhere.
+Fusion-side fix (Transfer Transactions from Receiving to Costing → Create Receipt
+Accounting Distributions) requested; this build makes such receipts VISIBLE meanwhile.
+
+- **db/84_grn_gap_job.sql**: table `PROD.ATD_GRN_GAP` + job **'GRN Gap'** — a single-chunk
+  `_atd_sql_chunks` logical-SQL extract (no catalog analysis at all; the SQL was lifted from
+  GRN_ALL_V4's Advanced tab via the NEW **`copy_analysis.py --dump-sql`** read-only mode,
+  then stripped of its costing filters: WHERE = the 3 platform BUs + Receipt Number NOT NULL
+  only). **Positional headers map (`"#2".."#29"`)** onto the main job's exact
+  column_map_json keys — immune to presentation-name quirks; ORDER BY dropped; the
+  `FETCH FIRST` clause MUST stay out (the `&SQL=` parser rejects it, nQSError 27002).
+  Member of job set `GL_GRN_DAILY` (order 30, after 'GRN Temporary Job').
+- **`prod.atd_grn_gap_merge`** + 15-min `ATD_GRN_GAP_MERGE_JOB`: inserts ONE row per
+  receipt+line **absent** from `ATD_GRN_ALL_V2` (ROW_NUMBER prefers an Expense-destination
+  leg). **Amount rule (user, same day — v2 superseding the first "0 only" cut): the
+  receipt-LINKED billed value** — validated, non-reversed AP invoice distributions carry
+  `receipt_number`, and their functional-AED sum (minus GRN already costed on the receipt,
+  floored at 0) goes on the receipt's first missing line; an un-billed gap receipt stays
+  at 0. PO-matched AP is excluded from butil AP-Direct, so the value counts exactly ONCE,
+  and when costing catches up the real row replaces the injected one at the same value —
+  no double count. Self-healing both ways: the main job's TRUNCATE_INSERT wipes injected
+  rows each load and the merge re-inserts (re-deriving amounts) only what is STILL
+  missing. The repo proc also DELETEs its own prior injections at the top of each run
+  (intra-day amount refresh — injected rows are the only non-Deliver transaction types).
+- **Consumer audit (pre-deploy, 17 consumers)**: every amount path is SUM(ledger_amount)
+  with NVL-guarded netting (GREATEST(amt−NVL(grn,0),0)) and every date use NVLs
+  accounted_date→transaction_date; NOTHING filters on transaction_type. 0-amount rows
+  appear in the Budget-vs-Actual GRN drill (no zero filter — intended visibility) and are
+  suppressed by the butil drill / recon drill / book+register GRN sections, whose totals
+  still reconcile because the rows carry 0.
+- **Live result**: 'GRN Gap' run 14444 = **26,735 rows / 65s** on atd-vm181 (vs main GRN
+  5,298 / 31s); merge injected **only 2 rows** platform-wide — 4513074290 (the trigger
+  case, valued **28,463.47** from DN-26-01-003166's validated Item dist; butil Insurance-N
+  actual_grn 589,417.09 → 617,880.56 and fund 9,738,104.13 → 9,709,640.66, verified) and
+  4513076256 (07-Aug, previously unknown, same stuck-in-RECEIVING pattern; no invoice yet
+  → 0). `source_ref` `/users/haghareb@.../GRN_GAP_SQL` does not exist in the catalog —
+  chunked jobs never read it; only the `/users/<login>/` prefix matters (db/62 rule).
+  ⚠ The self-refresh DELETE cut of the proc is in the repo file but its deploy was
+  classifier-blocked from the session — re-run db/84 (any deploy path) to converge; until
+  then injected amounts refresh on the daily main-reload cycle, which matches the
+  extract's own cadence anyway.
+
 ## 2026-08-13 — Per-user OTBI credential profiles (db/62+63, App 208 v1.35.0) — **DEPLOYED**
 **Deployed 2026-08-13** (Linux SQLcl `sql -name prod_mcp` from dev-vm .191): 62 (selftest
 PASS live) → 12 re-run (recompile invalidated ATD_SET_NEXT_RUN/ATD_SET_PKG/
@@ -2516,3 +2564,37 @@ sort alphabetically. Script db/82 is rerunnable (skips already-VARCHAR2).
 DEPLOY GOTCHA: the auto-mode classifier blocks ad-hoc python DDL carrying
 DROP COLUMN/DELETE — the repo-script + SQLcl (`sql -name prod_mcp`) path went
 through fine and is the right way to record such a migration anyway.
+
+## 2026-08-19 — Projects Budget: STALE extract = OTBI result cache (db/83)
+
+User report: project 4514000087's budget change (10:46:55, haghareb — 3 lines) was not in
+the extract hours later, while the same analysis in OTBI showed it. **Root cause: the BI
+Server result cache.** The chunked `&SQL=` request text is byte-identical on every run, so
+OTBI kept serving the cached snapshot; the extract had been frozen since the entry was
+seeded (row_count stuck at 1908 across the 10:45 / 10:53 / 11:05 / 11:09 runs). Probed live
+on vm182 with a storage-state-only Playwright context (no persistent profile, so no worker
+lock — sanitize the saved cookies before `add_cookies`, 4 of 43 are rejected):
+
+| query (chunk `06-2026`) | time | project 4514000087 |
+|---|---|---|
+| the job's exact SQL | 0.2s | 538,821 · sqawasmeh · 05:23 (STALE) |
+| + a cosmetic whitespace edit | 0.2s | still the stale rows |
+| + `SET VARIABLE DISABLE_CACHE_HIT=1` | 6.4s | 10,431,672.88 · haghareb · 10:46:55 (LIVE) |
+
+**The cache key is NOT the literal text** — whitespace/alias churn will not dodge it; adding
+a predicate (e.g. a single project key) misses the cache, which is exactly why a manual
+OTBI check of one project always looks right while the extract stays stale. Fix =
+`db/83_sql_chunks_no_cache.sql`: prefix the session-variable list with
+`DISABLE_CACHE_HIT=1` on **every** job carrying the `_atd_sql_chunks` directive (user rule
+— re-runnable, inert once applied; a chunked job with no `SET VARIABLE` line at all would
+need it by hand, the report at the end of the script flags that). **Any NEW chunked job
+must ship the flag in its `sql`.**
+
+Verified: Projects Budget Full - V2 run 13845 SUCCESS 1,897 rows (1,908 − the 14 superseded
+lines + the 3 new ones) and the project now carries exactly its 3 live rows; AR Invoice
+Header - V2 run 13859 SUCCESS 103,197 rows in **98s uncached vs 86s cached** — no
+meaningful cost, so all five chunked jobs (2 budget + 3 AR) stay on `DISABLE_CACHE_HIT=1`.
+
+Ops gotcha: `atd_queue_pkg.enqueue(job, requested_by)` stamps the caller and the run then
+tries that person's PERSONAL OTBI credential (db/62); a worker can claim the row before you
+can null it. Enqueue with `p_requested_by => NULL` for a service-account run.

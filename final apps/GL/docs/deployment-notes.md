@@ -3,6 +3,208 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-22 — v1.81.0: EVERY Refresh-data menu action shows a popup.** User reported the
+  conveyor "not showing for Refresh data" even after v1.80.1. The nginx access log settled it:
+  their evening clicks fired `POST /actuals/refresh` — they were clicking **"Refresh actuals"**,
+  which by v1.77 design had NO popup (only the button label), while the Data Conveyor belongs
+  only to "Refresh source data" (whose full flow was verified working on live from a clean
+  session). The expectation is fair — actuals runs 10-40s with near-zero feedback — so now
+  **Refresh actuals and Rebuild views get a lite popup** (`.rg-lite`: oj-progress-circle
+  spinner card, "Refreshing actuals snapshot…" / "Rebuilding views…" + explainer, backdrop
+  click hides while the work continues, top-level markup so it shows from ANY page incl.
+  Overview); the conveyor stays exclusive to the fleet extract run. 8/8 checks (real menu
+  click fires the POST, popup/labels, backdrop-hide keeps working state, close-on-completion,
+  hide reset on the next run, Overview visibility). Deployed webtier release 20260822224415
+  (GL-only overlay). DIAGNOSTIC LESSON: when "a popup doesn't show", check the nginx access
+  log FIRST — it distinguishes click-never-fired / wrong-action / server-error in one look
+  (here three dropdown-open GETs with no source-data POST, then the actuals POST told the
+  whole story).
+
+- **2026-08-22 — v1.80.1: report popup must never click-lock the page.** User report: after the
+  Binder shipped, the Refresh-data conveyor "didn't show at all". The conveyor itself was fine —
+  verified end-to-end ON LIVE (real click path, popup + queue OK) and the ATD queue showed the
+  user's refresh click had never even reached the server. Root cause: the Binder's full-viewport
+  backdrop (`.rg`, position:fixed inset:0) swallows every click while a report generates — a
+  minutes-long book run makes the whole page (incl. Refresh data ▾) dead until × or completion.
+  Fix: **clicking the backdrop hides the popup** (run continues; card clicks don't bubble —
+  `clickBubble:false`), and `.rg` gets an explicit **z-index 59** above the conveyor's 58 so
+  simultaneous popups stack deterministically (hiding the Binder reveals the conveyor).
+  7/7 checks (backdrop-hide, card-click keeps open, menu reachable after hide, stacking, reveal).
+  Deployed webtier release 20260822223110 (GL-only overlay). Standing rule: any future
+  full-viewport popup must offer backdrop-click-to-hide or it locks the page.
+
+- **2026-08-22 — "The Binder" report-generation popup (v1.80.0, frontend-only).**
+  Report runs (Briefing Book PDF ~minutes / Excel Register ~40s+ / PPTX) previously showed only
+  the button's busy label. Three animated studies (The Press / The Binder / The Draft) were
+  demoed as an artifact — same process as the Data Conveyor — and the user picked **B, The
+  Binder**: a centred popup over the dimmed page where the briefing book assembles from its 7
+  REAL sections (chips light gold in sequence, a gold sheet flies into the green Fraunces-titled
+  book, the book pulses on receive). Headline names the running format, the **elapsed clock is
+  real** and sits beside the true poll cadence (6s book / 5s xlsx / 6s ppt) — no fake progress;
+  **× hides the popup while the run continues** (`rgHidden` resets on the next run). Wiring is
+  one `rgStart(labelKey, pollSecs)` call per runner + ONE central close: a `buGenBusy`
+  subscription calls `rgStop` on any exit (success / FAILED / timeout / enqueue error), so no
+  per-path teardown. RTL mirrors the fly direction + book spine/page-edge; reduced-motion
+  freezes the loops (clock keeps ticking). GL-only CSS (`.rg-*` in app.css) — no shared change.
+  Smoke `tests/rg_browser_smoke.py` **13/13 incl. a LIVE Excel-register generation** (popup
+  content, ticking clock, hide-and-continue, real download lands, popup self-closes, re-show on
+  a new run, AR strings). Deployed webtier release 20260822222016 (GL-only overlay).
+
+- **2026-08-22 — Costing Adjustments feedback round (v1.79.0, GL/db/25 re-run).**
+  Seven user fixes after hands-on testing: ① **accounting period is MANDATORY** — the
+  "Full year" option is gone (server 400s without `period`; the drawer defaults it to the
+  current month for the current year / December otherwise, and a year change keeps the chosen
+  month via a `setTimeout(0)` re-assert — the KO options-rebuild blanking gotcha); ② + ③
+  **dependent pick lists** — Task suggestions scope to the picked project and Expenditure-Type
+  to project(+task) via NEW routes `costadj/meta/tasks` + `costadj/meta/etypes` over
+  `prod.dct_butil_key_cache` (db/v2/120, hourly — the butil filter LOV source; loaded on the
+  inputs' CHANGE events, never per keystroke; drawer datalists `ca-task-dl`/`ca-et-dl` replace
+  the year-global ones); ④ **register columns re-ordered** to the annotated layout — Status ·
+  Project · Task · Etype · Adjustment · Budget Override · Invoice · Supplier · Ref · Reason ·
+  Year · Period · Classification · audit columns (envelope `stateRev:2` so the designed order
+  beats stale IR autosave); ⑤ **Status renders as a coloured icon pill** with NO shared-IR
+  change — `runCostAdj` stamps `row._rowClass` (`ca-st-draft/approved/rejected`) and app.css
+  styles ONLY `td[data-key=status] span` from the row class (✎ grey / ✓ green / ✕ red;
+  computed-style verified); ⑥ **budget year comma-free** (column type `text`, renders 2026 not
+  2,026); ⑦ **Invoice number = Fusion deep-link** via the IR's EXISTING `env.cellLink` hook —
+  `FusionLinks.invoice(invoiceId)` from the caRowMap side-map (the id never rides the row), so
+  again no shared change; `caGridClick` lets `a.ir-link` clicks navigate instead of opening
+  the drawer. Deploy = GL/db/25 re-run (now 9 routes) + frontend. Tests grew to
+  `costadj_api_smoke.py` **50/50** (+ mandatory-period 400, dependent tasks/etypes, no-project
+  400) and `costadj_browser_smoke.py` **33/33 EN+AR** (+ column order, 12-month period list w/
+  default, scoped task/etype lists, DRAFT/APPROVED pills, comma-free year, AP_VIEWINVOICE
+  href). Deployed webtier release 20260822190726 (GL-only overlay).
+
+- **2026-08-22 — Projects Costing Adjustments (v1.78.0, db/v2/124 + GL/db/25 + GL/db/21 re-run).**
+  User-approved shape (plan `final apps/GL/COSTING_ADJ_PLAN.md`): ONE table `DCT_PA_COST_ADJ` —
+  a row = one **signed** cost adjustment (± AED) on a budget line (project × task × etype),
+  optionally referencing the mis-coded AP invoice distribution (which may itself carry NO
+  project coding) + an optional **signed `BUDGET_OVERRIDE`** for the same line + reason /
+  classification (lookup `PA_COST_ADJ_CLASS`) / comments; status DRAFT → APPROVED/REJECTED
+  (lookup `PA_COST_ADJ_STATUS`, manual approval for now). `db/v2/124` = table + seq (`PCA-#####`)
+  + aggregate view **`DCT_PA_COST_ADJ_BUTIL_V`** (APPROVED only, butil key grain, BUTIL_END-aware
+  like the procash view; NULL accounting_period counts in every YTD window) + lookups + privilege
+  `GL_MANAGE_COST_ADJ` + ADMIN synonyms. `GL/db/25` = 7 additive routes: `GET/POST costadj`,
+  `PUT/DELETE costadj/:id` (PUT = full-document replace, DRAFT only; DELETE any status —
+  manage gate), `POST costadj/:id/action` {APPROVE|REJECT}, `costadj/meta/dists` (AP dist
+  search, ≥2 chars, cap 50) + `costadj/meta/lookups` — reads gated GL_VIEW_BUDGET_UTILIZATION
+  (NULL legacy), writes/approve GL_MANAGE_COST_ADJ w/ legacy SYS_ADMIN; **the meta routes sit
+  under a third segment (AP procash pattern) so they never collide with `costadj/:id`**.
+  `GL/db/21` re-run (still the ONE live GET /butil owner; 07 stays without it): new param
+  **`costadj` DEFAULT Y** ("Include Cost Adjustment", checked by default — user spec) — when on,
+  rows AND totals ship budget/budgetAnnual/actualAp/fundAvailable **already adjusted server-side**
+  (Actual +Σamount, Budget +Σoverride annual AND YTD-from-period, Fund +Σ(override−amount)), so
+  KPI band / CSV / negFund band follow with zero client math; either way each row carries
+  `costAdj`/`costAdjOvr`/`costAdjOvrAnnual`/`hasAdj` + totals `costAdj`/`costAdjCount`/
+  `costAdjOvr(Annual)` + `includeCostAdj` echo (handler now 14,541 chars, PROCASH + COSTADJ both
+  verified in user_ords_handlers). **GL post-05 re-run list = 07..25.** Frontend: new
+  **Projects › Costing Adjustments** tab (register on the shared IR `GL_PA_COST_ADJ`/section
+  `cadj`, row click → `.dw-ca` drawer: AP-dist search → Select fills source ref + original coding
+  + default amount; corrected line via the butil datalists; signed Amount + signed Budget
+  override; Approve/Reject with confirm, Delete; APPROVED/REJECTED rows read-only w/ status
+  ribbon); butil Search region gains the **Include Cost Adjustment** checkbox (default ON, sends
+  `costadj=N` when unticked — server default is Y); adjusted butil rows show **`(*)` prefixed in
+  the FIRST cell** + a `.cadj-note` under the results table explaining it — **both bind to the
+  RESPONSE echo (`buCadjOn`)**, so the page never stars a line whose loaded figures don't carry
+  the adjustment; encumbrances/pending/override-drawer param builders `delete p.costadj` (those
+  endpoints have no such figure); CSV export appends Cost Adjustment / Budget Override (Adj) /
+  Has Adjustment columns. Books/registers/report bridges deliberately unchanged (published
+  definition — same decision as procash). Tests: `tests/costadj_api_smoke.py` **46/46** (CRUD +
+  approve/reject lifecycle, validations incl. bad period/classification, dist search, DRAFT
+  inert, approve moves row+totals exactly, costadj=N reverts while still reporting components,
+  YTD period window, APPROVED locked, cleanup restores baseline) + `tests/costadj_browser_smoke.py`
+  **24/24 EN+AR** (tab, default-on checkbox, drawer create via dist search, confirm-dialog
+  approve, star + note appear/disappear with the toggle, figures revert by (override−amount),
+  RTL). Smoke gotcha: wait on the **response echo** (`buCadjOn()===false`) after toggling — a
+  bare `!buLoading()` wait raced the re-run once. Deployed webtier release 20260822163725
+  (GL-only overlay).
+
+- **2026-08-22 — Conveyor popup + "Refresh data" dropdown (v1.77.0, frontend-only).**
+  User feedback on v1.76.0: the conveyor band sat top-left and looked off — it is now a
+  **CENTRED fixed popup** (`.cvb` = full-viewport overlay z-58 with dimmed backdrop, `.cvb-card`
+  centred; z sits UNDER drawers 70 / platform modals 60). The x hides the popup only — the run
+  keeps going, `cvbHidden` resets on every new run, and the header button keeps its busy label.
+  Second request (from the button-review recommendations): the THREE refresh buttons on the
+  butil header folded into ONE **"Refresh data ▾"** dropdown on the shared `.gen` pattern —
+  Refresh source data / Refresh actuals / **Rebuild views (SYS_ADMIN-only**, `ko if: isSysAdmin`
+  — a plain property, re-evaluated because the whole menu lives inside `ko if: rdOpen`) + a
+  **"Source data last refreshed"** footer fetched from GET /butil/refreshdata on open (max
+  lastFinished parsed from the 12-h display format — lexical max is WRONG across AM/PM).
+  Header is now Generate Report ▾ · Export CSV · Refresh data ▾. Other pages' refresh buttons
+  untouched. Smoke `tests/cvb_browser_smoke.py` now **26/26 EN+AR incl. live fleet run** (72s);
+  flake fixed with an explicit wait_for_selector(visible) after flipping pdataBusy (initial
+  render race, the repo's standing wait-on-condition rule). Deployed webtier release
+  20260822145611 (GL-only overlay).
+
+- **2026-08-22 — Data Conveyor progress band for Refresh source data (v1.76.0, frontend-only).**
+  User asked for an intuitive "construction motion" while the refresh runs; three animated
+  studies (Crane Build / Gearworks / Data Conveyor) were demoed as an artifact and the user
+  picked **Data Conveyor**. While `pdataBusy`, a `.cvb` status band appears under the butil
+  page head: gold parcels ride a moving belt from a **Fusion** chip into an **i-Finance** tray
+  (pure-CSS loop: `cvb-ride`/`cvb-spin`/`cvb-belt` keyframes), and a **15-segment bar + "X of
+  15 extracts finished" + "now extracting: <jobs>"** advance on the REAL 5-second poll
+  (`pdataProgress()`: done = jobs not READY/CLAIMED, running = CLAIMED names) — never a fake
+  spinner. RTL mirrors the belt via `scaleX(-1)` on the SVG only — the Fusion/i-Finance labels
+  are HTML chips outside the mirrored SVG so they stay readable; `prefers-reduced-motion`
+  stops the loops, counters keep updating. KO-in-SVG gotcha avoided: the segment bar is an
+  HTML `foreach` UNDER the svg (KO's template engine creates HTML-namespace nodes, so a
+  `foreach` INSIDE `<svg>` produces dead elements). Smoke `tests/cvb_browser_smoke.py`
+  **16/16 EN+AR incl. a LIVE fleet run** (68s, genuine progress observed, band auto-hides).
+  Deployed webtier release 20260822144134 (GL-only overlay).
+
+- **2026-08-22 — Refresh source data widened to ALL 15 full extracts (v1.75.0, GL/db/19 re-run).**
+  User request: the butil page's "Refresh source data" button must also run the AP header /
+  lines / distributions, PO, PR and GRN full jobs — not just the PROJECTS_DATA set. The
+  `POST /gl/butil/refreshdata` bridge still calls `atd_set_pkg.run_now('PROJECTS_DATA')` and
+  now ALSO queues the 12 transaction FULL jobs with the same mechanics (`run_status='READY'`,
+  drained by the 3-VM fleet's idle cycle): AP Invoices/Invoice Lines/Distributions Full ·
+  PO Headers/Lines/Schedules/Distributions Full · PR Headers Full / PR Lines All /
+  PR Distributions Full · GRN Temporary Job + GRN Gap. **One deliberate difference from
+  run_now: a CLAIMED (in-flight) job is left alone** — re-queueing it would double-run the
+  extract (live-verified: the first POST returned queued=14 because PR Distributions Full was
+  mid-run, and it was correctly skipped). `GET /butil/refreshdata` lists all 15 jobs. Frontend:
+  hint/done texts name the full scope, poll ceiling 90→180 tries (~15 min; extracts total
+  ~316s serial ≈ 2–4 min wall on the fleet). GRN gap injections re-derive within 15 min of the
+  GRN extracts (ATD_GRN_GAP_MERGE_JOB). E2E: POST queued 14 (+1 already running), all 15
+  finished SUCCESS. Deployed webtier release 20260822142319 (GL-only overlay).
+
+- **2026-08-22 — Butil UX round v1.74.0: over-budget flagging + Type column removed (GL/db/21 re-run).**
+  User requests: ① flag negative Fund Available lines, ② warning region above Overview,
+  ③ remove the TYPE column. Server: `GET /gl/butil` now also aggregates **`negFund`** (count)
+  + **`negFundTotal`** (sum) of lines whose *effective* Fund Available < -0.005 across the FULL
+  filtered set (procash=Y uses fund − procash, mirroring the displayed figure). Change lives in
+  **GL/db/21** (owns the live GET /butil) and is mirrored into 07's copy so a future 07→21
+  chain keeps it. Deploy = 21 only (handler 11,888 chars, NEGFUND + PROCASH both verified in
+  `user_ords_handlers`). Frontend: red `.bu-alert--negfund` warning band above the Overview
+  region (count + over-spent amount, EN+AR, info-only — not clickable), Fund Available cells
+  < 0 render **bold red on a soft red tint with a triangle warning flag** (`.nf-flag`; tooltip
+  explains), and the **Type column is REMOVED** from the results table + CSV export
+  (`skCols` 20→19; Project Type stays available as a Search filter + applied-filter chip).
+  Live under the page default scope: 6 lines over budget by 16.75M total. Smoke
+  `tests/negfund_browser_smoke.py` **16/16 EN+AR**; deployed webtier release 20260822135155
+  as a **GL-only overlay release** (copy-of-live + GL/Jet, so parallel sessions' in-progress
+  work in the shared tree was NOT shipped).
+
+- **2026-08-22 — Budget Utilization page-load fix: db/v2/120 filter cache DEPLOYED (120→07→21).**
+  User report: the page (the app's landing page since v1.64.0) took 10-15s+ to open. Measured
+  cause: `GET /gl/butil/filters` ran **eight** distinct-scans of `DCT_BUDGET_UTILIZATION_V`
+  (~1-2s each in SQLcl, worse through ORDS) and `GET /gl/butil/lov` four more — ~13 heavy view
+  scans per page open; the main `/butil` report itself is only ~0.8s. Fix = the parallel
+  session's `db/v2/120` cache (committed 2026-08-18, never deployed) + two changes made now:
+  **refresh interval 6h → HOURLY** (user rule: the cache may never be staler than the data;
+  figures are NEVER cached — only filter pick-lists + drill key-sets; the report always reads
+  the live view) and **`/butil/lov` rewritten onto `DCT_BUTIL_KEY_CACHE` too** (repo 07 had
+  left it on the view). Deploy order **120 → 07 → 21** — 21 is MANDATORY after any 07 re-run:
+  repo 07's `GET /butil` has no procash code and would silently kill the v1.69.0 feature
+  (pre-deploy diff proved live `GET /butil` is byte-identical to GL/db/21, and live
+  `butil/lines` differs from repo 07 by exactly the five kys cache swaps — char count
+  36,128→36,103 = 5 × the 5-char name difference). Verified after deploy: filters/lov carry
+  ZERO view references (cache lookups 0.04-0.13s), procash flag intact, cache↔view parity
+  (17=17 sectors, 617=617 projects for 2026), butil figures byte-identical,
+  `DCT_BUTIL_FILTER_CACHE_JOB` hourly/SCHEDULED. Page-open DB time ≈ the ~1s report now.
+  A brand-new filter value appears in the LOVs within the hour (data itself refreshes on the
+  same cadence); figures are live instantly.
+
 - **2026-08-18 — BUDGET_UTIL_SECTOR joins the override contract (reporting/db/08a).** The
   third butil report predated the feature and had NO `pre_sql` hook, so it always showed the
   raw Fusion budget while the Book and Register honoured `ovr=Y`. Added the same
@@ -150,14 +352,11 @@ project has 616K of spend on combinations with no budget line).
 5. Running `db/v2/122` from `prod_mcp` makes the grantor ADMIN itself, so the
    `GRANT ... TO admin` block tolerates ORA-01749 (on ADB, ADMIN already reads PROD).
 
-**⚠ Pre-existing issue found, NOT caused by this work:**
-`db/v2/120_dct_butil_filter_cache.sql` is **committed but was never deployed** —
-`PROD.DCT_BUTIL_FILTER_CACHE` and `DCT_BUTIL_KEY_CACHE` do not exist, and the live
-`butil/filters` / `butil/lov` handlers are the pre-120 versions that scan the view
-directly (so the Budget Utilization page is fine today). The new handlers were
-initially written against that cache and 555'd; they now read
-`DCT_PROJECT_PORTFOLIO_V` directly, so this feature has **no dependency on the
-undeployed script**. Whoever deploys 120 later must re-run `07` in the same change.
+**⚠ Pre-existing issue found, NOT caused by this work — RESOLVED 2026-08-22:**
+`db/v2/120_dct_butil_filter_cache.sql` was committed but undeployed at the time;
+it has since been **deployed as 120→07→21** (see the 2026-08-22 entry at the top).
+The portfolio routes still read `DCT_PROJECT_PORTFOLIO_V` directly and have no
+dependency on the cache.
 
 **Performance:** `/gl/projects?year=2026&limit=2000` is ~9s warm (butil is ~4.9s)
 — it joins eight views and runs six aggregate scans. Both pages carry the standard
@@ -1908,3 +2107,212 @@ same pattern as the Budget Override flag.
 - **GL post-05 re-run list is now 07..21.** `21` is DEFINE_HANDLER-only and needs `AP/db/13`.
 - Tests: `GL/tests/butil_procash_api.py` (13/13) and `butil_procash_browser.py` (11/11).
 
+
+## Projects-cashflow template pre-filled with every budget line — 2026-08-19 (v1.71.0, GL/db/23)
+
+User request: the Cashflow page's **Download template** for Projects cashflow shipped ONE sample
+row, so an end user had to hand-build every project / task / expenditure-type line. The template
+now carries **all of them, with their full GL code combinations**.
+
+- **`GL/db/23_gl_cashflow_template_ords.sql`** (ADDITIVE, `GET /gl/cashflow/projects/template`):
+  `meta=Y` -> `years[]` only (feeds the picker, ~1s); otherwise every line of the year from
+  `DCT_BUDGET_UTILIZATION_V` (project / task / expenditure type + `BUDGET_COMBINATION`, the full
+  10-segment canonical combination, + sector / department / cost centre / GL account /
+  appropriation / chapter / program / BU / project type / annual budget) with the cashflow amounts
+  ALREADY saved for that year pivoted to `a01..a12` (APPROVED) and `r01..r12` (REVISED). Cashflow
+  keys with no budget line are still emitted (`inBudget='N'`) so an existing plan row can never
+  vanish from the sheet. Gate = `GL_MANAGE_CASHFLOW` (legacy SYS_ADMIN) — the same gate as the
+  upload it serves. Cap 20,000 rows. **Live: 1,739 lines for 2026 in ~2.5s.**
+  **GL post-05 re-run list is now 07..23.**
+- **Frontend (v1.71.0)**: a **Budget Year** picker next to the button (years from the same route)
+  and a WIDE workbook — `PROJECT · PROJECT_NAME · TASK · EXPENDITURE_TYPE · CF_TYPE`, then one
+  column per accounting period (`01-YYYY`..`12-YYYY`), then the reference columns
+  (`GL_COMBINATION`, SECTOR … ANNUAL_BUDGET) plus a **How to use** sheet. One APPROVED row per
+  line, a REVISED row only where revised amounts exist. Filename `Projects_Cashflow_Template_<year>.xlsx`.
+- **The upload reads BOTH shapes** — the classic long sheet (PERIOD + AMOUNT) and the wide
+  template (`cfWideCols()` recognises `01-2026` / `Jan-2026` headers). **Blank month cells are
+  skipped**: uploading an untouched template posts NOTHING, and a typed `0` posts and clears a
+  saved amount. Reference columns are ignored on upload. So the download is a round-trip editor.
+- **KO gotcha (bit us here):** the year `<select>` is bound before the LOV arrives, and a select
+  whose option list was empty at bind time BLANKS its value when the options land — the page
+  showed the wrong year until `loadCfTplYears` re-asserted the value in a `setTimeout(0)`.
+- Test: `GL/tests/cf_template_browser_smoke.py` — **30/30** EN + AR/RTL (picker, workbook layout,
+  1,739 lines all with a canonical combination, round-trip upload of ONE typed cell -> "1 rows
+  saved, 0 errors", server-side verification, re-download pre-fill). Run it with
+  `python3 'final apps/GL/Jet/dev-proxy.py' 8099`; it writes one real cashflow row as its fixture
+  — delete it afterwards (`DELETE FROM prod.dct_project_cashflow WHERE cf_amount = 12345.67`).
+
+## Sector Financial Performance report — data layer + API — 2026-08-19 (db/v2/123 + GL/db/24)
+
+New GL report rebuilding the layout of `docs/Reports/GL/Sector Report_October.pdf`
+(4 pages: Business Overview / Budget Overview / Budget Overview–Project Level /
+Revenue Overview). Plan: `final apps/GL/SECTOR_PERF_REPORT_PLAN.md`.
+
+**The key finding that shaped the build:** the source pack's own arithmetic already
+matches the platform's — its page 3 reads
+`4,989.6M budget − 3,009.0M actual − 1,344.4M encumbrance = 636.3M funds available`,
+which is byte-for-byte `DCT_BUDGET_UTILIZATION_V.FUND_AVAILABLE`. So the report is
+**butil + a Plan column + Revenue**, not a new actuals engine. `DCT_SECTOR_PERF_V`
+is therefore built ON TOP of the butil view and never re-derives a fact, which makes
+the reconciliation hold *by construction* rather than by testing.
+
+### db/v2/123_gl_sector_perf.sql (deployed, 0 errors)
+- `DCT_GL_REVENUE_CATEGORY` — the pack's 28 revenue types (S- sovereign / C-
+  commercial) seeded EN+AR + `UNCATEGORISED`
+- `DCT_GL_REVENUE_CAT_MAP` — natural account → revenue category
+- `DCT_GL_REVENUE_PLAN` — monthly revenue plan (year × period × cost centre ×
+  account × plan type)
+- `DCT_GL_REVENUE_FACT_V` — revenue ACTUAL from `ATD_AR_INVOICE_DISTRIBUTION`
+  (`accounting_class='Revenue'`), sector via cost centre, category via the map
+- `DCT_SECTOR_PLAN_V` — expenditure plan aggregated at the butil grain,
+  BUTIL_END-aware; `DCT_SECTOR_PLAN_ORPHAN_V` surfaces plan rows with no budget line
+- `DCT_SECTOR_PERF_V` — the report fact (butil + plan + expenditure kind)
+- `DCT_SECTOR_ACTUAL_MONTH_V` — AP+GRN actual by month, line grain, no period cut
+- `DCT_GL_PLAN_SAMPLE_PKG` — generates and purges demonstration plan data
+- setting `FEATURE_PLAN_SAMPLE_DATA` (ships **N**), 3 new privileges
+
+### GL/db/24_gl_sector_perf_ords.sql (ADDITIVE — 8 handlers)
+`sectorperf/filters` · `sectorperf` (overview) · `sectorperf/sectors` (`level=project`
+expands) · `sectorperf/departments` · `sectorperf/trend` · `sectorperf/revenue` ·
+`sectorperf/sample` GET+DELETE. **GL post-05 re-run list is now 07..24.**
+
+Parameters: `year` (REQUIRED) · `period` MM-YYYY (YTD, drives `GL_CTX.BUTIL_END`) ·
+`sector` and `costcenter` (Department) as pipe-delimited any-of MULTI-SELECT ·
+`kind` (defaults to `Opex|Capex`, the pack's own footnote) · `projecttype` · `bu` ·
+`plantype` APPROVED|REVISED.
+
+### Sample plan data — three independent removal locks
+Finance has no monthly plan loaded, so the report is demonstrated on generated data:
+```sql
+EXEC prod.dct_gl_plan_sample_pkg.generate_all(2026);   -- 20,868 exp + 288 rev + 54 map rows, ~5s
+EXEC prod.dct_gl_plan_sample_pkg.purge(2026);          -- removes every trace
+```
+1. **Tagging** — every row is `loaded_by='SAMPLE'`, `source_file='SAMPLE:<batch>'`;
+   `purge` deletes strictly on `loaded_by='SAMPLE'`, so a row Finance uploaded (real
+   filename, real username) is *unreachable* by the purge.
+2. **Refusal** — `generate_*` raises −20001 if the year holds any non-SAMPLE row, so
+   the generator locks itself out the moment the real plan is uploaded.
+3. **Visibility** — `is_sample_active()` drives the page banner / report watermark;
+   `DELETE /gl/sectorperf/sample` purges from the UI (GL_MANAGE_PLAN_SAMPLE).
+
+Figures are deterministic (hashed line key, never random) so a re-run reproduces
+identical numbers. The curves are reverse-engineered from the pack: cumulative plan
+at October is **69.2% Opex / 46.4% Capex / 65.3% Revenue**, and the live run
+reproduces 69.2 / 46.4 exactly.
+
+### ⚠ GOTCHAS FOUND THIS ROUND
+- **`SHARE` is a reserved word** in 23ai — a column alias `share` fails with
+  PLS-00103. Renamed `pct_share`.
+- **`TO_DATE`'s `DEFAULT … ON CONVERSION ERROR` belongs to the EXPRESSION, before
+  the format mask** — `TO_DATE(x, 'fmt' DEFAULT NULL ON CONVERSION ERROR)` is
+  ORA-00907; `TO_DATE(x DEFAULT NULL ON CONVERSION ERROR, 'fmt')` is correct.
+- **`ORA_HASH` is SQL-only** (PLS-00201 in PL/SQL). Use
+  `DBMS_UTILITY.get_hash_value` for a PL/SQL-callable deterministic hash.
+- **PL/SQL declaration order** — variables must precede nested subprograms in a
+  `DECLARE` block, or PLS-00103 on the first variable after a procedure.
+- **`OR … IN (SELECT … FROM atd_ar_invoice_distribution)` took >10 minutes** and
+  had to be killed — the same FILTER-per-row shape that bit the AP facet engine.
+  Rebuilt as `WITH … /*+ MATERIALIZE */` + hash join: **10 min → 5 s**.
+- **A late-month trend assertion can pass trivially.** The extract stops in August,
+  so "December cumulative == full-year actual" proved nothing; the smoke test now
+  asserts months 4/6/8 where the cut-off genuinely bites.
+
+### Known limitation (documented, not papered over)
+`sectorperf/trend` returns the FY budget as a **flat** line (`budgetBasis:
+"annual-flat"`). The platform holds no budget-version history, so the source pack's
+gently-rising budget line cannot be reproduced without inventing it. It becomes real
+when the published-month snapshot (plan enhancement 2) lands.
+
+### Verified
+- `db/v2/123t_gl_sector_perf_tests.sql` — **29/29** (reconciliation full-year and
+  period-cut, plan arithmetic, monthly-actual identity, sample locks incl. a planted
+  "real" row the generator must refuse and the purge must not touch)
+- `final apps/GL/tests/sectorperf_api_smoke.py` — **70/70** (incl. RECON against
+  `/gl/butil` unfiltered / period-cut / sector-filtered, all four 400 cases, 401)
+- Deploy finished at the same INVALID count it started with. `PROD.AR_TAX_CALC` and
+  `AR_TAX_CALC_LINE` are INVALID with syntax errors in their own source — pre-existing
+  and unrelated to this change.
+
+### Frontend — Sector Performance page (v1.72.0, same round)
+New tab **Projects › Sector Performance** (`#pg-sectorperf`), five regions mirroring the source
+pack: Search criteria → Business Overview (the 4×5 matrix + revenue-to-opex + cumulative
+Budget-vs-Actual columns) → Budget Overview (6 KPI tiles + Opex/Capex gauges + department bars) →
+Project Level (sector table with RAG dots, expand-to-project, reconciling total row) → Revenue
+Overview (Sovereign/Commercial/Total cards + MTD strip + category bars) → Data quality.
+EN + AR/RTL. Every visual is hand-built SVG/CSS — this app has no chart library.
+
+- **Sector and Department (Cost Centre) are MULTI-SELECT chips** as specified; expenditure kind
+  defaults to `Opex|Capex` (the pack's own footnote) and is shown as chips too, so the default
+  scope is explicit rather than silent.
+- **The page opens on the CURRENT accounting period**, not full year. On "full year" YTD Plan
+  equals FY Plan, so the pack's *Target [YTD Plan / FY Plan]* column reads a useless flat 100%
+  on every row. Same rule the Budget Utilization page already uses.
+
+#### ⚠ FRONTEND GOTCHAS FOUND THIS ROUND
+- **`APEX_JSON` omits a NULL key**, so `text: achievementPct` threw
+  `achievementPct is not defined` and blanked the whole page — the binding error surfaced as
+  `spError`, not a console error. Every nullable numeric is bound as `$data.field`.
+  (Known platform rule; it bit again here because the omitted keys were *percentages*, which are
+  null exactly when a denominator is zero.)
+- **`html[dir=rtl] .bar-fill` (0,1,1) out-specifies a single-class colour rule (0,1,0)**, so the
+  department and revenue bars silently reverted to the brand gradient in Arabic while looking
+  correct in English. Chart colours here use three-class selectors
+  (`.sp-dept .bar-track .sp-f--act`) which win in both directions. The browser smoke now
+  measures the computed colour before and after the RTL flip so this cannot regress.
+- A **full-page Playwright screenshot washes out everything below the fold** when the page
+  contains a `backdrop-filter` element (the busy overlay). The content is fine — verify with
+  per-region `locator.screenshot()`, not `full_page=True`.
+- `.pnav` matches two elements (group row + sub-tab row) — target `.pnav--sub`.
+
+#### Verified
+- `final apps/GL/tests/sectorperf_browser_smoke.py` — **47/47** EN + AR/RTL (all five regions,
+  criteria multi-selects, expand-to-project, sample banner, period cut, RTL colour guard)
+- Live calibration at the default period: Target [YTD Plan / FY Plan] = 53.0% Opex / 30.2% Capex
+  / 45.6% combined at August; a full-year run reproduces the pack's own 69.2% / 46.4% at October.
+- APP_VERSION 1.71.0 → **1.72.0**
+
+#### Webtier deploy — 2026-08-19
+Release **20260819233525** (`SSH_USER=opc ./webtier/deploy_frontend.sh 129.151.159.189`);
+previous release `20260819164147` is the rollback target. GL 1.71.0 → **1.72.0**; all 14 other
+apps verified byte-identical to the repo after the deploy (the tarball ships every `<App>/Jet/`,
+but only `GL/Jet` differed from the live release). Browser smoke re-run **against the deployed
+build**: 47/47.
+Gotchas: the VM does **not** accept `root` — the deploy needs `SSH_USER=opc` (as webtier/README
+says); and `deploy_frontend.sh` was not executable in a fresh clone (`chmod +x` first).
+
+#### v1.72.1 — region headers + department labels (2026-08-19, user feedback)
+Release **20260819234642** (rollback target `20260819233525`).
+- The four in-region chart headers (cumulative Budget vs Actual · Actual vs Budget & Plan by
+  Department · MTD Trend · Actual vs Plan by Type) are now **filled bands with an icon**
+  (`.sp-hd` / `.sp-hd-ic` / `.sp-hd-t`, + `.sp-hd-chip` for the live department count).
+  Colours come from `--region-hd-bg` / `--region-hd-accent` / `--region-hd-fg`, never a
+  hard-coded hex, so they follow Admin → Region Appearance like every other region header.
+- Department labels show the **full name plus the cost-centre code beneath** (`.sp-dname` /
+  `.sp-dcc`); the label column wraps instead of ellipsing.
+- **Layout bug fixed in the same pass:** `.sp-dept` / `.sp-cats` rows have FOUR children
+  (label · bar · value · %) but inherited the base 3-column `.bar-row` grid, so the % was being
+  pushed onto an implicit second row under every bar. Both now declare their own 4-column grid.
+  The browser smoke asserts all four cells share one grid row, that the label is not truncated,
+  that the cost-centre code is present, and that nothing overflows the card.
+- Smoke 47 → **54/54**, re-run against the deployed build.
+
+⚠ Screenshot note: `locator.screenshot()` on this page washes out unless the (display:none but
+`backdrop-filter`-bearing) `.bu-load-ov` is removed first — the content was never actually
+clipped, it just looked it. **Measure geometry with `getBoundingClientRect` / `scrollWidth`
+before believing a screenshot here.**
+
+#### v1.73.0 — Chart of Accounts page = 4 sub-tabs (2026-08-21, user request)
+Release **20260821100238** (rollback target `20260819234642`). Frontend-only — no DB/ORDS change.
+- The Settings › Chart of Accounts page's four collapsible `.bu-sec` regions became **four
+  sub-tabs** in the user-annotated order: **1 Classification values · 2 Manage CoA Mapping ·
+  3 Combinations explorer · 4 Classification overview** (overview moved from first to last;
+  default tab = Classification values).
+- New `.coa-tabs` strip in `css/app.css` (pnav-style underline tabs, RTL-safe via flex);
+  `coaTab('cls'|'map'|'exp'|'ov')` in app.js replaces `coaOvOpen`/`coaClsOpen`/`coaMapOpen`/
+  `coaExpOpen` + `toggleCoa` (all removed). Region header bands kept (static, `bu-res-h`
+  cursor) — the explorer header still carries the range summary, Export CSV and the ⤢ maximize
+  toggle; `toggleCoaMax` now forces `coaTab('exp')` and Esc still restores. `loadCoa()`
+  one-shot data load unchanged.
+- Smoke `tests/coa_tabs_browser_smoke.py` **25/25** EN+AR (tab order, default tab, per-tab
+  region isolation, explorer max/Esc, overview KPIs, AR labels + RTL switch, no page errors) —
+  run against dev-proxy 8098; deployed build verified serving 1.73.0 + the coa-tabs markup.

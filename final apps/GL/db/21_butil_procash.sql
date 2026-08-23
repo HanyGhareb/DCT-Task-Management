@@ -1,11 +1,13 @@
 -- =============================================================================
--- Budget Utilization -- the Procash figure (ADDITIVE, DEFINE_HANDLER only)
--- File    : 21_butil_procash.sql       App 210 / GL        2026-08-17
+-- Budget Utilization -- Procash + Costing Adjustments (ADDITIVE, DEFINE_HANDLER
+-- only)
+-- File    : 21_butil_procash.sql       App 210 / GL        2026-08-17 / 2026-08-22
 -- Adds to : gl.rest -- redefines ONLY the GET butil handler
 -- Run     : sql -name prod_mcp @21_butil_procash.sql   (fresh session, as ADMIN)
--- Needs   : final apps/AP/db/13_procash_butil_view.sql deployed first
+-- Needs   : final apps/AP/db/13_procash_butil_view.sql AND db/v2/124 deployed
+--           first
 -- IMPORTANT: 05_gl_ords.sql rebuilds gl.rest from scratch -- the GL post-05
---           re-run list is now 07..21.
+--           re-run list is now 07..25.
 --
 -- WHY: procash records money that has already left the bank through the bank
 -- portal but has NOT reached Fusion as a payable invoice, so no AP, GRN, PR or
@@ -30,6 +32,20 @@
 -- The reports (BUDGET_UTIL_BOOK / BUDGET_UTIL_REGISTER) are deliberately NOT
 -- changed here: their figures stay on the published definition of Fund
 -- Available until that change is asked for explicitly.
+--
+-- NEW PARAMETER costadj (2026-08-22, default Y -- "Include Cost Adjustment"):
+-- Projects Costing Adjustments (db/v2/124, DCT_PA_COST_ADJ) are manual signed
+-- cost lines (plus/minus AED) on a budget line, optionally re-allocating a
+-- mis-coded AP invoice distribution, plus an optional signed BUDGET_OVERRIDE.
+-- Only APPROVED rows count (via DCT_PA_COST_ADJ_BUTIL_V, BUTIL_END-aware).
+--   on (default) -- rows and totals ship budget / budgetAnnual / actualAp /
+--                   fundAvailable ALREADY adjusted (Actual +adj, Budget +ovr,
+--                   Fund +ovr-adj), so the KPI band, CSV and negFund band all
+--                   follow with no client math.
+--   off          -- published figures; the components are still reported.
+-- Either way each row carries costAdj / costAdjOvr / costAdjOvrAnnual /
+-- hasAdj and totals carry costAdj / costAdjCount / costAdjOvr /
+-- costAdjOvrAnnual, so the page can star adjusted lines and show the figure.
 -- =============================================================================
 
 SET DEFINE OFF
@@ -74,14 +90,20 @@ BEGIN
   -- from Fund Available. A procash transaction leaves the view the moment its
   -- invoice is linked, so it is never counted twice against the AP actual.
   l_pcash  VARCHAR2(4)   := UPPER(NVL([COLON]procash,'N'));
+  -- costadj=Y (DEFAULT Y) -> "Include Cost Adjustment": APPROVED Projects
+  -- Costing Adjustment rows (db/v2/124) fold into the figures -- Actual
+  -- +amount, Budget +override (annual AND YTD), Fund +override-amount.
+  l_cadj   VARCHAR2(4)   := UPPER(NVL([COLON]costadj,'Y'));
   l_end    DATE;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 5000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
   l_misscc NUMBER; t_misscc NUMBER;
+  l_negcnt NUMBER; t_negfund NUMBER;
   t_bud NUMBER; t_buda NUMBER; t_ap NUMBER; t_grn NUMBER; t_pr NUMBER; t_po NUMBER; t_fund NUMBER;
   t_ovr NUMBER; t_ovra NUMBER; t_ovrn NUMBER;
   t_pcash NUMBER := 0; t_pcnt NUMBER := 0; t_punmap NUMBER := 0;
+  t_cadj NUMBER := 0; t_cacnt NUMBER := 0; t_covr NUMBER := 0; t_covra NUMBER := 0;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
@@ -105,15 +127,28 @@ BEGIN
          COUNT(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN 1 END),
          NVL(SUM(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN v.budget_annual END),0),
          NVL(SUM(override_budget),0), NVL(SUM(override_budget_annual),0), NVL(SUM(override_lines),0),
-         NVL(SUM(pc.procash_aed),0), NVL(SUM(pc.procash_count),0)
+         NVL(SUM(pc.procash_aed),0), NVL(SUM(pc.procash_count),0),
+         NVL(SUM(ca.cost_adj_aed),0), NVL(SUM(ca.adj_count),0),
+         NVL(SUM(ca.budget_ovr_aed),0), NVL(SUM(ca.budget_ovr_annual),0),
+         COUNT(CASE WHEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                          + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005 THEN 1 END),
+         NVL(SUM(CASE WHEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005
+                      THEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) END),0)
     INTO l_total, t_bud, t_buda, t_ap, t_grn, t_pr, t_po, t_fund, l_misscc, t_misscc,
-         t_ovr, t_ovra, t_ovrn, t_pcash, t_pcnt
+         t_ovr, t_ovra, t_ovrn, t_pcash, t_pcnt, t_cadj, t_cacnt, t_covr, t_covra, l_negcnt, t_negfund
     FROM prod.dct_budget_utilization_v v
       LEFT JOIN prod.dct_ap_procash_butil_v pc
              ON pc.budget_year      = v.budget_year
             AND pc.project_number   = v.project_number
             AND pc.task_number      = v.task_number
             AND pc.expenditure_type = v.expenditure_type
+      LEFT JOIN prod.dct_pa_cost_adj_butil_v ca
+             ON ca.budget_year      = v.budget_year
+            AND ca.project_number   = v.project_number
+            AND ca.task_number      = v.task_number
+            AND ca.expenditure_type = v.expenditure_type
    WHERE v.budget_year = l_year
      AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
      AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
@@ -142,29 +177,51 @@ BEGIN
   -- the filtered set -> drives the red alert band on the Budget Utilization page
   APEX_JSON.write('missingCc', l_misscc);
   APEX_JSON.write('missingCcBudget', t_misscc);
+  -- over-budget flag: lines whose (effective) Fund Available is NEGATIVE in the
+  -- filtered set -> drives the over-budget warning band above the Overview region
+  APEX_JSON.write('negFund', l_negcnt);
+  APEX_JSON.write('negFundTotal', t_negfund);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   APEX_JSON.write('considerOverride', l_ovr);
   APEX_JSON.write('includeProcash', l_pcash);
+  APEX_JSON.write('includeCostAdj', l_cadj);
   APEX_JSON.open_object('totals');
-  APEX_JSON.write('budget', t_bud); APEX_JSON.write('budgetAnnual', t_buda);
-  APEX_JSON.write('actualAp', t_ap); APEX_JSON.write('actualGrn', t_grn);
+  APEX_JSON.write('budget', CASE WHEN l_cadj = 'Y' THEN t_bud + t_covr ELSE t_bud END);
+  APEX_JSON.write('budgetAnnual', CASE WHEN l_cadj = 'Y' THEN t_buda + t_covra ELSE t_buda END);
+  APEX_JSON.write('actualAp', CASE WHEN l_cadj = 'Y' THEN t_ap + t_cadj ELSE t_ap END);
+  APEX_JSON.write('actualGrn', t_grn);
   APEX_JSON.write('commitmentPr', t_pr); APEX_JSON.write('obligationPo', t_po);
-  APEX_JSON.write('fundAvailable', CASE WHEN l_pcash = 'Y' THEN t_fund - t_pcash ELSE t_fund END);
-  APEX_JSON.write('fundAvailableExProcash', t_fund);
+  APEX_JSON.write('fundAvailable',
+                  t_fund - CASE WHEN l_pcash = 'Y' THEN t_pcash ELSE 0 END
+                         + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END);
+  APEX_JSON.write('fundAvailableExProcash',
+                  t_fund + CASE WHEN l_cadj = 'Y' THEN t_covr - t_cadj ELSE 0 END);
   APEX_JSON.write('procash', t_pcash);
   APEX_JSON.write('procashCount', t_pcnt);
   APEX_JSON.write('procashUnmapped', t_punmap);
+  APEX_JSON.write('costAdj', t_cadj);
+  APEX_JSON.write('costAdjCount', t_cacnt);
+  APEX_JSON.write('costAdjOvr', t_covr);
+  APEX_JSON.write('costAdjOvrAnnual', t_covra);
   APEX_JSON.write('overrideBudget', t_ovr); APEX_JSON.write('overrideBudgetAnnual', t_ovra);
   APEX_JSON.write('overrideLines', t_ovrn);
   APEX_JSON.close_object;
   APEX_JSON.open_array('items');
   FOR r IN (
-    SELECT v.*, NVL(pc.procash_aed,0) AS procash FROM prod.dct_budget_utilization_v v
+    SELECT v.*, NVL(pc.procash_aed,0) AS procash,
+           NVL(ca.cost_adj_aed,0) AS cost_adj, NVL(ca.budget_ovr_aed,0) AS cadj_ovr,
+           NVL(ca.budget_ovr_annual,0) AS cadj_ovr_annual, NVL(ca.adj_count,0) AS cadj_n
+      FROM prod.dct_budget_utilization_v v
       LEFT JOIN prod.dct_ap_procash_butil_v pc
              ON pc.budget_year      = v.budget_year
             AND pc.project_number   = v.project_number
             AND pc.task_number      = v.task_number
             AND pc.expenditure_type = v.expenditure_type
+      LEFT JOIN prod.dct_pa_cost_adj_butil_v ca
+             ON ca.budget_year      = v.budget_year
+            AND ca.project_number   = v.project_number
+            AND ca.task_number      = v.task_number
+            AND ca.expenditure_type = v.expenditure_type
     WHERE v.budget_year = l_year
       AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
       AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
@@ -199,15 +256,21 @@ BEGIN
     APEX_JSON.write('chapter', NVL(r.chapter,''));
     APEX_JSON.write('program', NVL(r.program,''));
     APEX_JSON.write('expenditureType', NVL(r.expenditure_type,''));
-    APEX_JSON.write('budget', r.budget);
-    APEX_JSON.write('budgetAnnual', r.budget_annual);
-    APEX_JSON.write('actualAp', r.actual_ap);
+    APEX_JSON.write('budget', CASE WHEN l_cadj = 'Y' THEN r.budget + r.cadj_ovr ELSE r.budget END);
+    APEX_JSON.write('budgetAnnual', CASE WHEN l_cadj = 'Y' THEN r.budget_annual + r.cadj_ovr_annual ELSE r.budget_annual END);
+    APEX_JSON.write('actualAp', CASE WHEN l_cadj = 'Y' THEN r.actual_ap + r.cost_adj ELSE r.actual_ap END);
     APEX_JSON.write('actualGrn', r.actual_grn);
     APEX_JSON.write('commitmentPr', r.commitment_pr);
     APEX_JSON.write('obligationPo', r.obligation_po);
     APEX_JSON.write('fundAvailable',
-                    CASE WHEN l_pcash = 'Y' THEN r.fund_available - r.procash ELSE r.fund_available END);
+                    r.fund_available
+                    - CASE WHEN l_pcash = 'Y' THEN r.procash ELSE 0 END
+                    + CASE WHEN l_cadj = 'Y' THEN r.cadj_ovr - r.cost_adj ELSE 0 END);
     APEX_JSON.write('procash', r.procash);
+    APEX_JSON.write('costAdj', r.cost_adj);
+    APEX_JSON.write('costAdjOvr', r.cadj_ovr);
+    APEX_JSON.write('costAdjOvrAnnual', r.cadj_ovr_annual);
+    APEX_JSON.write('hasAdj', CASE WHEN r.cadj_n > 0 THEN 'Y' ELSE 'N' END);
     APEX_JSON.write('overrideBudget', r.override_budget);
     APEX_JSON.write('overrideBudgetAnnual', r.override_budget_annual);
     APEX_JSON.write('overrideLines', r.override_lines);
@@ -230,7 +293,8 @@ DROP PROCEDURE setup_gl_butil_procash;
 
 PROMPT === verification ===
 SELECT LENGTH(h.source) AS handler_chars,
-       CASE WHEN INSTR(h.source, 'dct_ap_procash_butil_v') > 0 THEN 'PROCASH WIRED' ELSE 'MISSING' END AS state
+       CASE WHEN INSTR(h.source, 'dct_ap_procash_butil_v') > 0 THEN 'PROCASH WIRED' ELSE 'MISSING' END AS state,
+       CASE WHEN INSTR(h.source, 'dct_pa_cost_adj_butil_v') > 0 THEN 'COSTADJ WIRED' ELSE 'MISSING' END AS state2
   FROM user_ords_handlers h
   JOIN user_ords_templates t ON t.id = h.template_id
   JOIN user_ords_modules m ON m.id = t.module_id

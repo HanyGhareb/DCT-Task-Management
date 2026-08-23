@@ -159,6 +159,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     { key: 'paymethod', labelKey: 'f.paymethod', src: 'paymentMethod',    counted: true },
     { key: 'bank',      labelKey: 'f.bank',      src: 'bankAccounts',     searchable: true },
     { key: 'sector',    labelKey: 'f.sector',    src: 'sectors',          counted: true },
+    { key: 'chapter',   labelKey: 'f.chapter',   src: 'chapters',         counted: true },
     { key: 'supplier',  labelKey: 'f.supplier',  src: 'suppliers',        searchable: true },
     { key: 'dept',      labelKey: 'f.dept',      src: 'departments',      searchable: true },
     { key: 'cc',        labelKey: 'f.cc',        src: 'costCenters',      searchable: true, coded: true },
@@ -173,12 +174,16 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
   // the generic BENEFICIARY supplier (opts.suppnum, default 26553). The
   // beneficiary name acts as the supplier name (effective supplier) and the
   // supplier SITE number as the beneficiary's supplier number.
+  // opts.nopo: Direct AP mode — the same dashboard locked to invoices with NO
+  // PO reference and NO project coding (nopo=Y facet, dct_ap_pkg.filtered_ids);
+  // adds the Briefing Book (Excel) button (AP_DIRECT_REGISTER via AP/db/14).
   function DashboardViewModel(opts) {
     opts = opts || {};
     var self = this;
     var benef = !!opts.benef;
+    var nopo = !!opts.nopo;
     var SUPPNUM = opts.suppnum || '26553';
-    var FP = benef ? 'ap-beneficiaries-' : 'ap-';          // export file prefix
+    var FP = nopo ? 'ap-direct-' : (benef ? 'ap-beneficiaries-' : 'ap-');  // export file prefix
     var LBL = benef ? {
       'dash.title': 'ben.title',        'dash.subtitle': 'ben.subtitle',
       'kpi.suppliers': 'ben.kpiCount',  'ch.topSuppliers': 'ben.chTop',
@@ -187,12 +192,18 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       'rg.register': 'ben.register',    'pr.title': 'ben.prTitle',
       'rg.analytics.hint': 'ben.analytics.hint',
       'rg.register.hint': 'ben.register.hint'
+    } : nopo ? {
+      'dash.title': 'dap.title',        'dash.subtitle': 'dap.subtitle',
+      'rg.register': 'dap.register',    'pr.title': 'dap.prTitle',
+      'rg.analytics.hint': 'dap.analytics.hint',
+      'rg.register.hint': 'dap.register.hint'
     } : {};
     var _t = i18n.t;
     function lt(key, args) { return _t(LBL[key] || key, args); }
     self.t = lt;
-    self.irCode = benef ? 'AP_BENEF_REGISTER' : 'AP_REGISTER';
+    self.irCode = nopo ? 'AP_DIRECT_REGISTER' : (benef ? 'AP_BENEF_REGISTER' : 'AP_REGISTER');
     self.benefMode = benef;                     // view flag (AI dup-check button etc.)
+    self.nopoMode = nopo;                       // view flag (Briefing Book button, refs inputs)
 
     // per-instance column catalog: benef replaces the Is-Beneficiary column
     // with the site number (= the beneficiary's supplier number); the standard
@@ -209,11 +220,29 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       cols[lvl] = arr;
     });
 
+    // Direct AP mode: PO / PR / project-coding columns are empty by definition
+    // — hidden by default (the column chooser can still re-enable them)
+    if (nopo) {
+      var NOPO_HIDE = { poNumbers: 1, prNumbers: 1, poNumber: 1, poLine: 1, prNumber: 1,
+                        projectNumber: 1, taskNumber: 1, expType: 1, receiptNumber: 1,
+                        requestor: 1, poChargeAccount: 1, chargeSource: 1 };
+      ['header', 'line', 'dist', 'inst'].forEach(function (lvl) {
+        cols[lvl].forEach(function (c) { if (NOPO_HIDE[c.key]) c.hide = true; });
+      });
+    }
+
     // facet groups: benef swaps the raw supplier-name facet for the effective
-    // supplier (the /filters suppliers LOV lists beneficiary names then)
+    // supplier (the /filters suppliers LOV lists beneficiary names then);
+    // Direct AP drops the facets that are empty by definition (project /
+    // expenditure type / requestor all come from PO- or project-coded rows)
     var groupDefs = GROUP_DEFS.map(function (d) { return Object.assign({}, d); });
     if (benef) {
       groupDefs.filter(function (d) { return d.key === 'supplier'; })[0].key = 'esupplier';
+    }
+    if (nopo) {
+      groupDefs = groupDefs.filter(function (d) {
+        return ['project', 'etype', 'req'].indexOf(d.key) === -1;
+      });
     }
 
     // ── state ───────────────────────────────────────────────────────────
@@ -257,8 +286,8 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
     self._lastSummary = null;
 
     // ── register columns: show/hide per user (BI-viewer style) ──────────
-    var COLS_PREF = benef ? 'ap.benef.cols' : 'ap.dash.cols';       // server pref (follows the user)
-    var COLS_LS   = benef ? 'ifinance.ap.benef.cols' : 'ifinance.ap.cols';  // instant local autosave
+    var COLS_PREF = nopo ? 'ap.direct.cols' : (benef ? 'ap.benef.cols' : 'ap.dash.cols');  // server pref (follows the user)
+    var COLS_LS   = nopo ? 'ifinance.ap.direct.cols' : (benef ? 'ifinance.ap.benef.cols' : 'ifinance.ap.cols');  // instant local autosave
     function hiddenDefaults(level) {
       return cols[level].filter(function (c) { return c.hide; }).map(function (c) { return c.key; });
     }
@@ -419,6 +448,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       if ((self.task() || '').trim())   p.task   = self.task().trim();
       if ((self.search() || '').trim()) p.search = self.search().trim();
       if (benef) p.suppnum = SUPPNUM;                // locked scope, never a chip
+      if (nopo) p.nopo = 'Y';                        // locked scope, never a chip
       return p;
     }
     self.buildParams = buildParams;
@@ -816,6 +846,46 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
           X.writeFile(wb, FP + self.level() + '-' + today() + '.xlsx');
         });
       }).catch(function () { toast.error(lt('msg.error')); });
+    };
+
+    // ── Briefing Book (Excel) — Direct AP mode only ─────────────────────
+    // Enqueues AP_DIRECT_REGISTER via the AP/db/14 bridge with the page's
+    // current criteria (book scope = page scope), polls until the workbook
+    // downloads — same pattern as the GL butil Briefing Book button.
+    self.bookBusy = ko.observable(false);
+    var bookTimer = null;
+    function pollBook(runId) {
+      bookTimer = setTimeout(function () {
+        api.get('/direct/report/' + runId).then(function (st) {
+          if (st.status === 'SUCCESS' && st.hasFile) {
+            api.fetchBlobUrl('/direct/report/' + runId + '/file').then(function (url) {
+              downloadBlobUrl(url, FP + 'briefing-book-' + today() + '.xlsx');
+              self.bookBusy(false);
+              toast.success(lt('dap.bookDone'));
+            });
+          } else if (st.status === 'FAILED') {
+            self.bookBusy(false);
+            toast.error(lt('dap.bookFailed', [(st.error || '').slice(0, 160)]));
+          } else {
+            pollBook(runId);
+          }
+        }).catch(function () { pollBook(runId); });
+      }, 5000);
+    }
+    self.runBook = function () {
+      if (self.bookBusy()) return;
+      var p = buildParams();
+      var body = { format: 'XLSX' };
+      ['bu', 'supplier', 'paid', 'val', 'chapter', 'datefrom', 'dateto', 'search', 'inclcxl']
+        .forEach(function (k) { if (p[k] != null && p[k] !== '') body[k] = p[k]; });
+      self.bookBusy(true);
+      toast.info(lt('dap.bookRunning'));
+      api.post('/direct/report', body).then(function (r) {
+        pollBook(r.runId);
+      }).catch(function (e) {
+        self.bookBusy(false);
+        toast.error((e && e.message) || lt('msg.error'));
+      });
     };
 
     self.exportSummaryCsv = function () {
@@ -1297,6 +1367,7 @@ function (ko, ap, api, authService, i18n, toast, charts, fusion) {
       self.loadingFilters(true);
       var p = self.inclCancelled() ? { inclcxl: 'Y' } : { inclcxl: 'N' };
       if (benef) p.suppnum = SUPPNUM;
+      if (nopo) p.nopo = 'Y';
       ap.getFilters(p).then(function (f) {
         var sel = {}, openSt = {};
         self.groups().forEach(function (g) {

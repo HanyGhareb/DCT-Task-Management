@@ -348,6 +348,10 @@ def process_one(conn, conf):
     if not job:
         return False
     beat(conn, "RUNNING", current_run=job["run_id"])
+    # Make report SQL identifiable in V$SQLAREA and the Admin performance monitor.
+    # No business data is persisted: this is session metadata only.
+    conn.module = ("DCT_RPT:" + str(job["report_code"]))[:48]
+    conn.action = ("RUN:" + str(job["run_id"]))[:32]
     try:
         process(conn, conf, job)
         beat(conn, "IDLE", done=1)
@@ -360,6 +364,9 @@ def process_one(conn, conf):
             pass
         beat(conn, "IDLE", failed=1)
         notify.send(f"i-Finance report {job['report_code']} (run {job['run_id']}) FAILED: {msg}")
+    finally:
+        conn.action = None
+        conn.module = None
     return True
 
 

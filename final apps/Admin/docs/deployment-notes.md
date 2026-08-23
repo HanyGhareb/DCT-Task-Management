@@ -4,6 +4,8 @@
 >
 > **Keep this file current: every deployment (frontend, DB, ORDS) must be recorded here.**
 
+- **2026-08-22 — SQL monitor single-run coverage + workload classification (db/v2/116+117; Admin 4.7.26):** interval capture now includes one-off executions and warns on either one interactive/application execution at least 5 seconds or repeated executions (2+) averaging at least 3 seconds. Report-worker SQL is classified separately and remains diagnostic rather than contributing to urgent slow-SQL alerts. Current/history rows retain sanitized SQL plus source module/action; report workers set `DCT_RPT:<report_code>` / `RUN:<run_id>` session metadata. The UI shows workload class, average, total and executions. No binds, AWR, result cache, or financial values are stored.
+
 - **Module code:** ADMIN · **ORDS base path:** `/ords/admin/dct/` · **Brand:** `#C74634` (Oracle Red, App 200 only)
 - **DB source of truth:** `db/v2/` at repo root (NOT under `final apps/Admin/` — Admin owns the platform schema)
 

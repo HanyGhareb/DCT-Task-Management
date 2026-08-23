@@ -31,6 +31,10 @@
 --           number(s) via filtered_ids; rows also carry supplierSite (header
 --           join) -- the Beneficiaries dashboard shows it as the beneficiary's
 --           supplier number.
+--           nopo=Y (2026-08-21, Direct AP page) narrows every grain to the
+--           invoices with NO PO reference and NO project coding (invoice-set
+--           restriction via filtered_ids -- rows of a direct invoice carry no
+--           po/project by construction, so no row-grain re-apply is needed).
 -- =============================================================================
 
 SET DEFINE OFF
@@ -77,7 +81,8 @@ BEGIN
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
     p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
-    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   SELECT COUNT(*), NVL(SUM(ln.line_amount_aed),0) INTO l_cnt, l_amt
     FROM prod.ap_invoice_lines_v ln
    WHERE ln.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
@@ -198,7 +203,8 @@ BEGIN
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
     p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
-    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-lines-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
@@ -291,11 +297,13 @@ BEGIN
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
     p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
-    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   SELECT COUNT(*), NVL(SUM(d.distribution_amount_aed),0) INTO l_cnt, l_amt
     FROM prod.ap_invoice_distributions_v d
    WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
      AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
+       AND ([COLON]chapter IS NULL OR prod.dct_ap_pkg.in_list([COLON]chapter, '(Multiple chapters)') = 1 OR prod.dct_ap_pkg.in_list([COLON]chapter, NVL(d.chapter_name,'Unclassified')) = 1)
      AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
      AND ([COLON]project IS NULL OR prod.dct_ap_pkg.in_list([COLON]project, d.project_number) = 1)
      AND ([COLON]task IS NULL OR UPPER(d.task_number) = UPPER(TRIM([COLON]task)))
@@ -340,6 +348,7 @@ BEGIN
             AND pd.distribution_number = d.po_distribution_line
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
        AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
+       AND ([COLON]chapter IS NULL OR prod.dct_ap_pkg.in_list([COLON]chapter, '(Multiple chapters)') = 1 OR prod.dct_ap_pkg.in_list([COLON]chapter, NVL(d.chapter_name,'Unclassified')) = 1)
        AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
        AND ([COLON]project IS NULL OR prod.dct_ap_pkg.in_list([COLON]project, d.project_number) = 1)
        AND ([COLON]task IS NULL OR UPPER(d.task_number) = UPPER(TRIM([COLON]task)))
@@ -447,7 +456,8 @@ BEGIN
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
     p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
-    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-distributions-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;
@@ -481,6 +491,7 @@ BEGIN
             AND pd.distribution_number = d.po_distribution_line
      WHERE d.invoice_id IN (SELECT t.column_value FROM TABLE(l_ids) t)
        AND ([COLON]sector IS NULL OR prod.dct_ap_pkg.in_list([COLON]sector, '(Multiple sectors)') = 1 OR prod.dct_ap_pkg.in_list([COLON]sector, NVL(d.sector_name,'Unclassified')) = 1)
+       AND ([COLON]chapter IS NULL OR prod.dct_ap_pkg.in_list([COLON]chapter, '(Multiple chapters)') = 1 OR prod.dct_ap_pkg.in_list([COLON]chapter, NVL(d.chapter_name,'Unclassified')) = 1)
        AND ([COLON]cc IS NULL OR prod.dct_ap_pkg.in_list([COLON]cc, d.cost_center_code) = 1)
        AND ([COLON]project IS NULL OR prod.dct_ap_pkg.in_list([COLON]project, d.project_number) = 1)
        AND ([COLON]task IS NULL OR UPPER(d.task_number) = UPPER(TRIM([COLON]task)))
@@ -635,7 +646,8 @@ BEGIN
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
     p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
-    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   SELECT COUNT(*), NVL(SUM(n.gross_amount_aed),0), NVL(SUM(n.unpaid_amount_aed),0)
     INTO l_cnt, l_gross, l_unpaid
     FROM prod.ap_invoice_installments_v n
@@ -732,7 +744,8 @@ BEGIN
     p_rcvfrom => [COLON]rcvfrom, p_rcvto => [COLON]rcvto,
     p_esupplier => [COLON]esupplier, p_aging => [COLON]aging, p_suppnum => [COLON]suppnum,
     p_bu => [COLON]bu, p_inclcxl => [COLON]inclcxl,
-    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto);
+    p_bank => [COLON]bank, p_duefrom => [COLON]duefrom, p_dueto => [COLON]dueto,
+    p_nopo => [COLON]nopo, p_chapter => [COLON]chapter);
   OWA_UTIL.mime_header('text/csv', FALSE, 'UTF-8');
   HTP.p('Content-Disposition: attachment; filename="ap-installments-' || TO_CHAR(SYSDATE,'YYYY-MM-DD') || '.csv"');
   OWA_UTIL.http_header_close;

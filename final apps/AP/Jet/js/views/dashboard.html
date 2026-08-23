@@ -13,6 +13,12 @@
         &#10024; <span data-bind="text: $vm.t('ai.btn')"></span>
       </button>
       <!-- /ko -->
+      <!-- ko if: $vm.nopoMode -->
+      <button class="btn btn-secondary" data-bind="click: runBook, disable: bookBusy(),
+              attr: { title: $vm.t('dap.book.hint') }">
+        &#128218; <span data-bind="text: bookBusy() ? $vm.t('dap.bookRunning') : $vm.t('dap.book')"></span>
+      </button>
+      <!-- /ko -->
       <button class="btn btn-secondary" data-bind="click: resetFilters, text: $root.t('dash.reset')"></button>
       <button class="btn btn-secondary" data-bind="click: refresh, text: $root.t('dash.refresh')"></button>
       <button class="btn btn-primary" data-bind="click: printReport">
@@ -96,6 +102,8 @@
         </div>
       </div>
 
+      <!-- PO / PR / Task references are empty by definition on the Direct AP page -->
+      <!-- ko ifnot: $vm.nopoMode -->
       <div class="fct-text">
         <label class="form-label" data-bind="text: $root.t('f.refs')"></label>
         <div style="display:grid;gap:6px">
@@ -104,6 +112,7 @@
           <input class="form-control" data-bind="value: task, valueUpdate: 'change', attr: { placeholder: $root.t('f.task') }">
         </div>
       </div>
+      <!-- /ko -->
 
       <!-- ko if: loadingFilters() --><list-skeleton params="rows: 6"></list-skeleton><!-- /ko -->
       <!-- ko foreach: groups -->

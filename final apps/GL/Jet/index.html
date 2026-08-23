@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.70.0';</script>
+<script>window.APP_VERSION = '1.81.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -522,8 +522,7 @@
     </div>
 
 
-    <!-- ── OVERVIEW ── -->
-    <!-- ── CHART OF ACCOUNTS (merged Overview + Explorer) ── -->
+    <!-- ── CHART OF ACCOUNTS (Settings) — 4 sub-tabs: Values | Mapping | Explorer | Overview ── -->
     <div id="pg-overview" data-bind="visible:view()==='overview'">
       <div class="page-head">
         <div><h1 class="greet" data-bind="text:t('coaTitle')"></h1>
@@ -541,40 +540,21 @@
         </div>
       </div>
 
-      <!-- Region 1: classification overview (collapsible) -->
-      <div class="bu-sec">
-        <div class="bu-sec-h" data-bind="click:function(){toggleCoa('ov');return true}, css:{closed:!coaOvOpen()}">
-          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
-          <span class="bu-sec-t" data-bind="text:t('coaOverview')"></span>
-        </div>
-        <div class="bu-sec-b" data-bind="visible:coaOvOpen">
-          <div class="hero">
-            <div class="card stat"><div class="k" data-bind="text:t('combos')"></div>
-              <div class="v mono" data-bind="text:fmt(combinationCount())"></div>
-              <div class="d" data-bind="text:pctClassified()+'% '+t('haveSector')"></div>
-              <div class="bar"><i data-bind="style:{width:pctClassified()+'%'}"></i></div></div>
-            <!-- ko foreach: dimensions -->
-            <div class="card stat">
-              <div class="k" data-bind="text:$root.dimName($data)"></div>
-              <div class="v mono" data-bind="text:valueCount"></div>
-              <div class="d"><span data-bind="text:mappedSegments"></span> <span data-bind="text:$root.t('segmentsMapped')"></span></div>
-              <div class="bar"><i data-bind="style:{width:'100%',opacity:.5}"></i></div>
-            </div>
-            <!-- /ko -->
-          </div>
-          <h2 class="sec"><span data-bind="text:t('howItWorks')"></span><span class="rule"></span></h2>
-          <div class="card"><div class="greet-sub" style="margin:0" data-bind="html:t('ovExplain')"></div></div>
-        </div>
+      <!-- sub-tab strip — one tab per former region, user-specified order -->
+      <div class="coa-tabs" role="tablist">
+        <a role="tab" data-bind="css:{on:coaTab()==='cls'}, click:function(){coaTab('cls');return true}, text:t('clsTitle')"></a>
+        <a role="tab" data-bind="css:{on:coaTab()==='map'}, click:function(){coaTab('map');return true}, text:t('mapTitle')"></a>
+        <a role="tab" data-bind="css:{on:coaTab()==='exp'}, click:function(){coaTab('exp');return true}, text:t('coaExplorer')"></a>
+        <a role="tab" data-bind="css:{on:coaTab()==='ov'}, click:function(){coaTab('ov');return true}, text:t('coaOverview')"></a>
       </div>
 
-      <!-- Region: classification values (collapsible) -->
-      <div class="bu-sec">
-        <div class="bu-sec-h" data-bind="click:function(){toggleCoa('cls');return true}, css:{closed:!coaClsOpen()}">
-          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <!-- Tab 1: classification values -->
+      <div class="bu-sec" data-bind="visible:coaTab()==='cls'">
+        <div class="bu-sec-h bu-res-h">
           <span class="bu-sec-t" data-bind="text:t('clsTitle')"></span>
           <span class="bu-sec-sum" data-bind="text:t('clsSub')"></span>
         </div>
-        <div class="bu-sec-b" data-bind="visible:coaClsOpen">
+        <div class="bu-sec-b">
           <div class="toolbar">
             <select class="inp" data-bind="options:dimensions, optionsText:function(d){return $root.dimName(d)}, optionsValue:'code', value:clsType"></select>
             <span style="flex:1"></span>
@@ -614,14 +594,13 @@
         </div>
       </div>
 
-      <!-- Region: segment mapping (collapsible) -->
-      <div class="bu-sec">
-        <div class="bu-sec-h" data-bind="click:function(){toggleCoa('map');return true}, css:{closed:!coaMapOpen()}">
-          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <!-- Tab 2: segment mapping -->
+      <div class="bu-sec" data-bind="visible:coaTab()==='map'">
+        <div class="bu-sec-h bu-res-h">
           <span class="bu-sec-t" data-bind="text:t('mapTitle')"></span>
           <span class="bu-sec-sum" data-bind="text:t('mapSub')"></span>
         </div>
-        <div class="bu-sec-b" data-bind="visible:coaMapOpen">
+        <div class="bu-sec-b">
           <div class="toolbar">
             <select class="inp" data-bind="options:dimensions, optionsText:function(d){return $root.dimName(d)}, optionsValue:'code', value:mapType"></select>
             <input class="inp search" type="text" data-bind="textInput:segSearch, attr:{placeholder:t('searchSegment')}">
@@ -652,17 +631,16 @@
         </div>
       </div>
 
-      <!-- Region 2: combinations explorer (collapsible + maximizable table, Esc restores) -->
-      <div class="bu-sec bu-results" data-bind="css:{maxed:coaMax}">
-        <div class="bu-sec-h" data-bind="click:function(){if(!coaMax())toggleCoa('exp');return true}, css:{closed:!coaExpOpen() && !coaMax()}">
-          <span class="bu-sec-ch"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg></span>
+      <!-- Tab 3: combinations explorer (maximizable table, Esc restores) -->
+      <div class="bu-sec bu-results" data-bind="visible:coaTab()==='exp', css:{maxed:coaMax}">
+        <div class="bu-sec-h bu-res-h">
           <span class="bu-sec-t" data-bind="text:t('coaExplorer')"></span>
           <span class="bu-sec-sum" data-bind="text:comboRange()"></span>
           <span class="grow" style="flex:1"></span>
           <button class="btn btn-sm" style="margin-inline-end:8px" data-bind="click:function(){exportCsv();return false}, clickBubble:false, text:t('exportCsv')"></button>
           <button class="bu-maxbtn" data-bind="click:toggleCoaMax, clickBubble:false, attr:{title:coaMax()?t('buRestoreT'):t('buMaxT')}, text:coaMax()?'⤡':'⤢'"></button>
         </div>
-        <div class="bu-sec-b" data-bind="visible:coaExpOpen() || coaMax()">
+        <div class="bu-sec-b">
           <div class="toolbar">
             <input class="inp search" type="text" data-bind="textInput:expSearch, attr:{placeholder:t('searchCombos')}">
             <select class="inp" data-bind="options:sectorOpts, optionsText:'nameEn', optionsValue:'valueCode', value:fSector, optionsCaption:t('allSectors')"></select>
@@ -702,6 +680,31 @@
             <button class="btn btn-sm" data-bind="click:function(){loadCombos(comboOffset()-comboLimit)}, enable:comboOffset()>0, text:t('prev')"></button>
             <button class="btn btn-sm" data-bind="click:function(){loadCombos(comboOffset()+comboLimit)}, enable:(comboOffset()+comboLimit)<comboTotal(), text:t('next')"></button>
           </div>
+        </div>
+      </div>
+
+      <!-- Tab 4: classification overview -->
+      <div class="bu-sec" data-bind="visible:coaTab()==='ov'">
+        <div class="bu-sec-h bu-res-h">
+          <span class="bu-sec-t" data-bind="text:t('coaOverview')"></span>
+        </div>
+        <div class="bu-sec-b">
+          <div class="hero">
+            <div class="card stat"><div class="k" data-bind="text:t('combos')"></div>
+              <div class="v mono" data-bind="text:fmt(combinationCount())"></div>
+              <div class="d" data-bind="text:pctClassified()+'% '+t('haveSector')"></div>
+              <div class="bar"><i data-bind="style:{width:pctClassified()+'%'}"></i></div></div>
+            <!-- ko foreach: dimensions -->
+            <div class="card stat">
+              <div class="k" data-bind="text:$root.dimName($data)"></div>
+              <div class="v mono" data-bind="text:valueCount"></div>
+              <div class="d"><span data-bind="text:mappedSegments"></span> <span data-bind="text:$root.t('segmentsMapped')"></span></div>
+              <div class="bar"><i data-bind="style:{width:'100%',opacity:.5}"></i></div>
+            </div>
+            <!-- /ko -->
+          </div>
+          <h2 class="sec"><span data-bind="text:t('howItWorks')"></span><span class="rule"></span></h2>
+          <div class="card"><div class="greet-sub" style="margin:0" data-bind="html:t('ovExplain')"></div></div>
         </div>
       </div>
     </div>
@@ -846,10 +849,90 @@
             <!-- /ko -->
           </div>
           <button class="btn btn-sm" data-bind="click:buExportCsv, enable:buTotal()>0, text:t('exportCsv')"></button>
-          <button class="btn btn-sm" data-bind="click:refreshProjectsData, enable:!pdataBusy(), attr:{title:t('pdataHint')}, text:pdataBusy()?t('pdataRunning'):t('pdataBtn')"></button>
-          <button class="btn btn-sm" data-bind="click:rebuildViews, enable:!rebuilding() && !refreshing(), attr:{title:t('rebuildHint')}, text:rebuilding()?t('rebuilding'):t('rebuildViews')"></button>
-          <button class="btn btn-sm" data-bind="click:refreshActuals, enable:!refreshing() && !rebuilding(), attr:{title:t('refreshHint')}, text:refreshing()?t('refreshing'):t('refreshActuals')"></button>
+          <!-- ONE "Refresh data" dropdown (2026-08-22, user request): source
+               extract / actuals snapshot / rebuild views (admin-only) + the
+               last source-data refresh time. Replaces three header buttons. -->
+          <div class="gen" data-bind="css:{open:rdOpen}">
+            <button class="btn btn-sm gen-btn" data-bind="click:toggleRd, clickBubble:false, text:rdBtnLabel()"></button>
+            <!-- ko if: rdOpen -->
+            <div class="gen-back" data-bind="click:closeRd"></div>
+            <div class="gen-menu">
+              <button class="gen-item" data-bind="click:function(){closeRd();refreshProjectsData();}, enable:!pdataBusy(), attr:{title:t('pdataHint')}">
+                <span class="gen-ic">🚚</span><span class="gen-tx"><b data-bind="text:t('pdataBtn')"></b><small data-bind="text:t('rdSrcSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){closeRd();refreshActuals();}, enable:!refreshing() && !rebuilding(), attr:{title:t('refreshHint')}">
+                <span class="gen-ic">🔄</span><span class="gen-tx"><b data-bind="text:t('refreshActuals')"></b><small data-bind="text:t('rdActSub')"></small></span></button>
+              <!-- ko if: isSysAdmin -->
+              <button class="gen-item" data-bind="click:function(){closeRd();rebuildViews();}, enable:!rebuilding() && !refreshing(), attr:{title:t('rebuildHint')}">
+                <span class="gen-ic">🛠️</span><span class="gen-tx"><b data-bind="text:t('rebuildViews')"></b><small data-bind="text:t('rdRebSub')"></small></span></button>
+              <!-- /ko -->
+              <div class="rd-last" data-bind="visible:rdLast(), text:rdLastTxt()"></div>
+            </div>
+            <!-- /ko -->
+          </div>
         </div>
+      </div>
+
+      <!-- source-data refresh conveyor POPUP (Data Conveyor motion, user-picked
+           2026-08-22; centered popup per user feedback same day): visible while
+           the 15-extract fleet run is in flight. Count / segments / running-job
+           all come from the REAL 5s poll. The x hides the popup only — the
+           refresh keeps running and the header button keeps its busy label. -->
+      <div class="cvb" role="status" data-bind="visible:pdataBusy() && !cvbHidden()">
+       <div class="cvb-card">
+        <button class="cvb-x" data-bind="click:function(){cvbHidden(true);return false}, attr:{title:t('cvbHide')}">&times;</button>
+        <div class="cvb-anim">
+          <span class="cvb-chip cvb-chip-src" data-bind="text:t('cvbSrc')"></span>
+          <span class="cvb-chip cvb-chip-dst" data-bind="text:t('cvbDst')"></span>
+          <svg class="cvb-svg" viewBox="0 0 300 70" aria-hidden="true">
+            <g class="cvb-parcel"><rect x="24" y="26" width="16" height="13" rx="2" fill="#C8A24B" stroke="#A9863A"/><line x1="32" y1="26" x2="32" y2="39" stroke="#A9863A"/></g>
+            <g class="cvb-parcel cvb-p2"><rect x="24" y="26" width="16" height="13" rx="2" fill="#C8A24B" stroke="#A9863A"/><line x1="32" y1="26" x2="32" y2="39" stroke="#A9863A"/></g>
+            <g class="cvb-parcel cvb-p3"><rect x="24" y="26" width="16" height="13" rx="2" fill="#C8A24B" stroke="#A9863A"/><line x1="32" y1="26" x2="32" y2="39" stroke="#A9863A"/></g>
+            <rect x="14" y="39" width="212" height="13" rx="6.5" fill="#2C5044"/>
+            <line class="cvb-belt-dash" x1="20" y1="45.5" x2="220" y2="45.5"/>
+            <g class="cvb-roller"><circle cx="25" cy="45.5" r="8.5" fill="#F6F5F1" stroke="#2C5044" stroke-width="2.5"/><line x1="25" y1="39.5" x2="25" y2="51.5" stroke="#2C5044" stroke-width="2"/></g>
+            <g class="cvb-roller"><circle cx="215" cy="45.5" r="8.5" fill="#F6F5F1" stroke="#2C5044" stroke-width="2.5"/><line x1="215" y1="39.5" x2="215" y2="51.5" stroke="#2C5044" stroke-width="2"/></g>
+            <path d="M236 48 h36 v17 h-36 z" fill="none" stroke="#2C5044" stroke-width="2.5"/>
+          </svg>
+          <div class="cvb-segs" data-bind="foreach:cvbSegs">
+            <i data-bind="css:{on: $index() < $parent.pdataDone()}"></i>
+          </div>
+        </div>
+        <div class="cvb-tx">
+          <b data-bind="text:t('cvbTitle')"></b>
+          <span class="cvb-cnt" data-bind="text:cvbCount()"></span>
+          <span class="cvb-job" data-bind="text:cvbJob()"></span>
+        </div>
+       </div><!-- /cvb-card -->
+      </div>
+
+      <!-- report-generation popup — "The Binder" (user-picked study B, v1.80.0):
+           the briefing book assembles from its real sections while a PDF book /
+           Excel register / PPTX deck run is polled; × hides it, the run continues -->
+      <!-- backdrop click HIDES the popup (run continues) — a minutes-long book
+           run must never click-lock the page; card clicks don't bubble out -->
+      <div class="rg" role="status" data-bind="visible:rgShow() && !rgHidden(), click:rgHide">
+       <div class="rg-card" data-bind="click:function(){return true}, clickBubble:false">
+        <button class="rg-x" data-bind="click:rgHide, attr:{title:t('rgHide')}">&times;</button>
+        <div class="rg-anim">
+          <div class="rg-secs">
+            <span data-bind="text:t('rgSecCover')"></span>
+            <span data-bind="text:t('rgSecOverview')"></span>
+            <span data-bind="text:t('rgSecAp')"></span>
+            <span data-bind="text:t('rgSecGrn')"></span>
+            <span data-bind="text:t('rgSecOb')"></span>
+            <span data-bind="text:t('rgSecCm')"></span>
+            <span data-bind="text:t('rgSecIns')"></span>
+          </div>
+          <div class="rg-fly"></div>
+          <div class="rg-book">
+            <div class="rg-bt"><b data-bind="text:t('rgBookT')"></b><span data-bind="text:buYear()||''"></span></div>
+          </div>
+        </div>
+        <div class="rg-tx">
+          <b data-bind="text:rgLabel"></b>
+          <span class="rg-sub mono" data-bind="text:rgSub()"></span>
+        </div>
+       </div><!-- /rg-card -->
       </div>
 
       <!-- CRITICAL data-quality alert: budget lines with an annual budget but NO
@@ -907,6 +990,12 @@
               <input type="checkbox" tabindex="-1" data-bind="checked:buOvr">
               <span data-bind="text:buOvr()?t('buOvrOn'):t('buOvrOff')"></span>
             </div></div>
+          <!-- Include Cost Adjustment — approved Projects Costing Adjustments; ON by default -->
+          <div class="field"><label class="lbl"><span data-bind="text:t('buCadjInc')"></span><i class="hint-i" data-bind="attr:{title:t('buCadjHint')}">i</i></label>
+            <div class="inp ovr-chk" data-bind="click:toggleBuCadj, css:{on:buCadj}, attr:{title:t('buCadjHint')}">
+              <input type="checkbox" tabindex="-1" data-bind="checked:buCadj">
+              <span data-bind="text:buCadj()?t('buCadjOnL'):t('buCadjOff')"></span>
+            </div></div>
           <div class="field filter-actions">
             <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, css:{busy:buLoading}, text:t('btnSearch')"></button>
             <button class="btn" data-bind="click:buReset, enable:!buLoading(), text:t('btnReset')"></button>
@@ -954,6 +1043,18 @@
       <div class="bu-load-ov" data-bind="visible:buBusy" aria-live="polite">
         <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
         <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+      </div>
+
+      <!-- over-budget warning: lines whose Fund Available is NEGATIVE in the
+           current filtered set (server-computed across ALL rows, not just this
+           page). Info band only — the offending rows are flagged red in the
+           results table below. -->
+      <div class="bu-alert bu-alert--negfund" role="alert" data-bind="visible:buNegFund()>0, attr:{title:t('buNegHint')}">
+        <span class="bu-alert-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+        <div class="bu-alert-tx">
+          <b data-bind="text:t('buNegTitle')"></b>
+          <span data-bind="text:buNegMsg()"></span>
+        </div>
       </div>
 
       <!-- totals answer band (tinted stat tiles; the 4 measure tiles drill to all supporting lines) — collapsible region -->
@@ -1066,7 +1167,6 @@
       <div class="tbl-wrap">
         <table class="tbl actuals-tbl">
           <thead><tr>
-            <th data-bind="text:t('cProjType')"></th>
             <th data-bind="text:t('fSectorL')"></th>
             <th data-bind="text:t('cDept')"></th>
             <th data-bind="text:t('cOrg')"></th>
@@ -1096,8 +1196,7 @@
             <!-- ko ifnot: buLoading -->
             <!-- ko foreach: buItems -->
             <tr>
-              <td data-bind="text:$data.projectType||'—'"></td>
-              <td><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
+              <td><span class="adj-star" data-bind="visible:$data.hasAdj==='Y' && $root.buCadjOn(), attr:{title:$root.t('buAdjStarHint')}">(*)</span><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
               <td data-bind="text:$data.department||'—'"></td>
               <td data-bind="text:$data.organization||'—'"></td>
               <td class="mono" data-bind="text:$data.costCentre||'—'"></td>
@@ -1115,13 +1214,18 @@
               <td class="num mono" data-bind="text:$root.buNum($data.procash), attr:{title:$root.money($data.procash)}, css:{dash:!$data.procash}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}, click:function(d){$root.openBuDrill(d,'pr')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.obligationPo), attr:{title:$root.money($data.obligationPo)}, click:function(d){$root.openBuDrill(d,'po')}"></td>
-              <td class="num mono strong" data-bind="text:$root.buNum($data.fundAvailable), attr:{title:$root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}"></td>
+              <td class="num mono strong" data-bind="attr:{title:$data.fundAvailable<0 ? $root.t('buNegCellHint')+' — '+$root.money($data.fundAvailable) : $root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}">
+                <span class="nf-flag" data-bind="visible:$data.fundAvailable<0" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+                <span data-bind="text:$root.buNum($data.fundAvailable)"></span>
+              </td>
             </tr>
             <!-- /ko -->
             <!-- /ko -->
           </tbody>
         </table>
         <div class="empty pad" data-bind="visible:!buLoading() && buItems().length===0, text:t('noButil')"></div>
+        <!-- meaning of the (*) marker on adjusted lines -->
+        <div class="cadj-note" data-bind="visible:buAnyAdj(), text:t('buAdjNote')"></div>
       </div>
       <div class="toolbar bu-pager">
         <span class="t-dates" data-bind="text:buRange()"></span>
@@ -2159,6 +2263,390 @@
     </div>
 
     <!-- ── CASHFLOW — budget cashflow plan uploads (GL + Projects) ── -->
+    <!-- ============================ SECTOR PERFORMANCE ============================
+         Rebuild of docs/Reports/GL/Sector Report_October.pdf. Region order mirrors
+         the source pack's four pages. Every amount runs through buNum (the SHARED
+         "Figures in" unit) with the exact value on the title attribute. -->
+    <!-- ═══════════ PROJECTS COSTING ADJUSTMENTS ═══════════ -->
+    <div id="pg-costadj" data-bind="visible:view()==='costadj'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('caTitle')"></h1>
+          <p class="sub" data-bind="text:t('caSub')"></p>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('caRegion')"></span></div>
+        <div class="bu-sec-b">
+          <div class="card">
+            <div class="filter-grid">
+              <div class="field"><label class="lbl" data-bind="text:t('fYearL')"></label>
+                <select class="inp" data-bind="options:buYears, value:caYear, optionsCaption:t('caAllYears')"></select></div>
+              <div class="field"><label class="lbl" data-bind="text:t('caStatusL')"></label>
+                <select class="inp" data-bind="options:caStatusOpts, optionsText:'l', optionsValue:'v', value:caStatus, optionsCaption:t('caAllStatuses')"></select></div>
+              <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+                <input class="inp" type="text" data-bind="textInput:caSearch, event:{keydown:function(d,e){if(e.keyCode===13){runCostAdj();}return true;}}"></div>
+              <div class="field filter-actions">
+                <button class="btn btn-primary" data-bind="click:function(){runCostAdj()}, css:{busy:caLoading}, text:t('btnSearch')"></button>
+                <button class="btn" data-bind="visible:canManageCadj, click:openCaNew, text:t('caNew')"></button>
+              </div>
+            </div>
+            <div class="en-sum">
+              <span><b data-bind="text:fmt(caCount())"></b> <span class="en-sub" data-bind="text:t('caRows')"></span></span>
+              <span class="en-sub" data-bind="text:t('caRowHint')"></span>
+            </div>
+            <!-- ko if: caData -->
+            <div data-bind="event:{click:caGridClick}">
+              <interactive-report params="reportCode:'GL_PA_COST_ADJ', section:'cadj', data:caData, isAdmin:false, layoutsApi:null"></interactive-report>
+            </div>
+            <!-- /ko -->
+            <div class="en-note" data-bind="visible:caLoading() && !caData(), text:t('loadingData')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div id="pg-sectorperf" data-bind="visible:view()==='sectorperf'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('spTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('spSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:spcPeriod(), text:t('spYtdActual')+' · '+spcPeriod()"></span>
+          <button class="btn btn-sm" data-bind="click:spExportCsv, enable:spSectors().length, text:t('spExport')"></button>
+        </div>
+      </div>
+
+      <!-- ko if: spError -->
+      <div class="err" data-bind="text:spError"></div>
+      <!-- /ko -->
+
+      <!-- the plan is generated demonstration data until Finance uploads a real
+           monthly plan; nobody may mistake this page for an issued pack -->
+      <!-- ko if: spSampleActive -->
+      <div class="sp-sample">
+        <div class="sp-sample-ic">!</div>
+        <div class="sp-sample-tx">
+          <b data-bind="text:t('spSampleBanner')"></b>
+          <span data-bind="text:t('spSampleNote')"></span>
+        </div>
+        <button class="btn btn-sm btn-ghost" data-bind="click:spPurgeSample, text:t('spSamplePurge')"></button>
+      </div>
+      <!-- /ko -->
+
+      <!-- ─────────────── 1. criteria ─────────────── -->
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('spCriteria')"></span></div>
+        <div class="bu-sec-b">
+          <div class="filter-grid">
+            <div class="field"><label class="lbl"><span data-bind="text:t('spYear')+' *'"></span></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).years||[], value:spcYear"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('spPeriod')"></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).periods||[], value:spcPeriod, optionsCaption:t('spFullYear')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('spSector')"></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).sectors||[], value:spSectorPick, optionsCaption:t('spPick')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('spDept')"></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).departments||[], optionsText:'department', optionsValue:'costCentre',
+                                             value:spDeptPick, optionsCaption:t('spPick')"></select></div>
+            <div class="field"><label class="lbl"><span data-bind="text:t('spKind')"></span><i class="hint-i" data-bind="attr:{title:t('spCapexOpexOnly')}">i</i></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).kinds||[], value:spKindPick, optionsCaption:t('spPick')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('spProjType')"></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).projectTypes||[], value:spcProjType, optionsCaption:t('spAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('spBu')"></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).businessUnits||[], value:spcBu, optionsCaption:t('spAll')"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('spPlanType')"></label>
+              <select class="inp" data-bind="options:(spFilters()||{}).planTypes||[], value:spcPlanType"></select></div>
+            <div class="field"><label class="lbl" data-bind="text:t('fUnitL')"></label>
+              <select class="inp" data-bind="options:buUnitOpts(), optionsText:'l', optionsValue:'v', value:buUnit"></select></div>
+          </div>
+
+          <div class="mchips mchips-bar" data-bind="visible:spSectorSel().length + spDeptSel().length + spKindSel().length > 0">
+            <span class="mchips-lab"><i class="mlab-diamond"></i><span data-bind="text:t('appliedFilters')"></span></span>
+            <!-- ko foreach: spSectorSel -->
+            <span class="mchip"><b data-bind="text:$root.t('spSector')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.spChipRemove($root.spSectorSel,$data)}, clickBubble:false">×</i></span>
+            <!-- /ko -->
+            <!-- ko foreach: spDeptSel -->
+            <span class="mchip"><b data-bind="text:$root.t('spDept')"></b><span data-bind="text:$root.spDeptLabel($data)"></span><i data-bind="click:function(){$root.spChipRemove($root.spDeptSel,$data)}, clickBubble:false">×</i></span>
+            <!-- /ko -->
+            <!-- ko foreach: spKindSel -->
+            <span class="mchip"><b data-bind="text:$root.t('spKind')"></b><span data-bind="text:$data"></span><i data-bind="click:function(){$root.spChipRemove($root.spKindSel,$data)}, clickBubble:false">×</i></span>
+            <!-- /ko -->
+          </div>
+
+          <div class="filter-actions">
+            <button class="btn btn-sm" data-bind="click:spClear, text:t('spClear')"></button>
+            <button class="btn btn-sm btn-primary" data-bind="click:spSearch, text:t('spSearch')"></button>
+          </div>
+        </div>
+      </div>
+
+      <div class="sp-body">
+        <div class="bu-load-ov" data-bind="visible:spBusy"><div class="ojpc"></div></div>
+
+        <!-- ─────────────── 2. Business Overview (source page 1) ─────────────── -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('spBusinessOverview')"></span></div>
+          <div class="bu-sec-b">
+            <div class="tbl-wrap">
+              <table class="tbl sp-matrix">
+                <thead><tr>
+                  <th></th>
+                  <th class="num" data-bind="text:t('spFyBudget')"></th>
+                  <th class="num" data-bind="text:t('spYtdActual')"></th>
+                  <th class="num" data-bind="text:t('spYtdPlan')"></th>
+                  <th class="num" data-bind="text:t('spActVsBudget')"></th>
+                  <th class="num" data-bind="text:t('spTarget')"></th>
+                </tr></thead>
+                <tbody data-bind="foreach:spMatrix">
+                  <tr data-bind="css:{'sp-mrow-total':key==='total'}">
+                    <td class="sp-mlab" data-bind="text:label"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(fyBudget), attr:{title:$root.money(fyBudget)}"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(ytdActual), attr:{title:$root.money(ytdActual)}"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(ytdPlan), attr:{title:$root.money(ytdPlan)}"></td>
+                    <td class="num mono" data-bind="text:$root.spPct($data.actualVsBudgetPct)"></td>
+                    <td class="num mono" data-bind="text:$root.spPct($data.targetPct)"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div class="sp-two">
+              <div class="sp-r2o">
+                <div class="sp-r2o-t" data-bind="text:t('spRevToOpex')"></div>
+                <div class="sp-r2o-sub" data-bind="text:t('spRevToOpexSub')"></div>
+                <div class="sp-r2o-vals">
+                  <div><span class="sp-r2o-k" data-bind="text:t('spFyTarget')"></span>
+                    <span class="sp-r2o-v" data-bind="text:$root.spPct(((spOverview()||{}).revenueToOpex||{}).fyTargetPct)"></span></div>
+                  <div><span class="sp-r2o-k" data-bind="text:t('spYtdActualPct')"></span>
+                    <span class="sp-r2o-v" data-bind="text:$root.spPct(((spOverview()||{}).revenueToOpex||{}).ytdActualPct)"></span></div>
+                </div>
+              </div>
+
+              <div class="sp-chart">
+                <div class="sp-hd"><svg class="sp-hd-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10h3.6v10H4zm6.2 0V4h3.6v16h-3.6zm6.2 0v-7H20v7h-3.6z"/></svg><span class="sp-hd-t" data-bind="text:t('spBudgetVsActual')"></span></div>
+                <div class="sp-legend">
+                  <span><i class="sp-sw sp-sw--bud"></i><span data-bind="text:t('spBudget')"></span></span>
+                  <span><i class="sp-sw sp-sw--act"></i><span data-bind="text:t('spActual')"></span></span>
+                  <span><i class="sp-sw sp-sw--pln"></i><span data-bind="text:t('spPlan')"></span></span>
+                </div>
+                <div class="sp-cols" data-bind="foreach:spTrend">
+                  <div class="sp-col" data-bind="attr:{title:period}">
+                    <div class="sp-col-bars">
+                      <i class="sp-b sp-b--bud" data-bind="style:{height:$root.spBarH(budgetCumulative)}, attr:{title:$root.t('spBudget')+' '+$root.money(budgetCumulative)}"></i>
+                      <i class="sp-b sp-b--act" data-bind="style:{height:$root.spBarH(actualCumulative)}, attr:{title:$root.t('spActual')+' '+$root.money(actualCumulative)}"></i>
+                      <i class="sp-b sp-b--pln" data-bind="style:{height:$root.spBarH(planCumulative)}, attr:{title:$root.t('spPlan')+' '+$root.money(planCumulative)}"></i>
+                    </div>
+                    <div class="sp-col-x" data-bind="text:period.slice(0,2)"></div>
+                  </div>
+                </div>
+                <div class="sp-note" data-bind="text:t('spBudgetFlatNote')"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────── 3. Budget Overview (source page 2) ─────────────── -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('spBudgetOverview')"></span></div>
+          <div class="bu-sec-b">
+            <div class="bu-kpis sp-kpis">
+              <div class="bk"><div class="bk-body"><div class="bk-k" data-bind="text:t('spBudget')"></div>
+                <div class="bk-v mono" data-bind="text:buNum(((spOverview()||{}).kpi||{}).budget), attr:{title:money(((spOverview()||{}).kpi||{}).budget)}"></div></div></div>
+              <div class="bk"><div class="bk-body"><div class="bk-k" data-bind="text:t('spActual')"></div>
+                <div class="bk-v mono" data-bind="text:buNum(((spOverview()||{}).kpi||{}).actual), attr:{title:money(((spOverview()||{}).kpi||{}).actual)}"></div>
+                <div class="bk-sub" data-bind="text:t('spActVsBudget')+' '+spPct(((spOverview()||{}).kpi||{}).actualVsBudgetPct)"></div></div></div>
+              <div class="bk"><div class="bk-body"><div class="bk-k" data-bind="text:t('spPlan')"></div>
+                <div class="bk-v mono" data-bind="text:buNum(((spOverview()||{}).kpi||{}).plan), attr:{title:money(((spOverview()||{}).kpi||{}).plan)}"></div>
+                <div class="bk-sub" data-bind="text:t('spPlanVsBudget')+' '+spPct(((spOverview()||{}).kpi||{}).planVsBudgetPct)"></div></div></div>
+              <div class="bk"><div class="bk-body"><div class="bk-k" data-bind="text:t('spActVsPlanPct')"></div>
+                <div class="bk-v mono" data-bind="text:spPct(((spOverview()||{}).kpi||{}).actualVsPlanPct)"></div>
+                <div class="bk-sub" data-bind="text:buNum(((spOverview()||{}).kpi||{}).actualVsPlanAmount)"></div></div></div>
+              <div class="bk"><div class="bk-body"><div class="bk-k" data-bind="text:t('spEncumbrance')"></div>
+                <div class="bk-v mono" data-bind="text:buNum(((spOverview()||{}).kpi||{}).encumbrance), attr:{title:money(((spOverview()||{}).kpi||{}).encumbrance)}"></div></div></div>
+              <div class="bk"><div class="bk-body"><div class="bk-k" data-bind="text:t('spFundsAvail')"></div>
+                <div class="bk-v mono" data-bind="text:buNum(((spOverview()||{}).kpi||{}).fundsAvailable), attr:{title:money(((spOverview()||{}).kpi||{}).fundsAvailable)}"></div>
+                <div class="bk-sub" data-bind="text:spPct(((spOverview()||{}).kpi||{}).fundsAvailablePct)"></div></div></div>
+            </div>
+
+            <div class="sp-gauges" data-bind="foreach:(spOverview()||{}).gauges||[]">
+              <div class="sp-gauge">
+                <div class="sp-gauge-t" data-bind="text:kind==='Opex'?$root.t('spOpex'):$root.t('spCapex')"></div>
+                <svg viewBox="0 0 200 110" class="sp-gauge-svg" aria-hidden="true">
+                  <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--sp-gauge-bg)" stroke-width="18" stroke-linecap="round"></path>
+                  <path d="M 20 100 A 80 80 0 0 1 180 100" fill="none" stroke="var(--sp-gauge-fg)" stroke-width="18" stroke-linecap="round"
+                        data-bind="attr:{'stroke-dasharray':$root.spGaugeDash($data.pct)}"></path>
+                </svg>
+                <div class="sp-gauge-v" data-bind="text:'['+$root.spPct($data.pct)+']'"></div>
+                <div class="sp-gauge-k" data-bind="text:$root.t('spActVsBudget')"></div>
+                <div class="sp-gauge-chips">
+                  <span><b data-bind="text:$root.buNum(budget)"></b><i data-bind="text:$root.t('spBudget')"></i></span>
+                  <span><b data-bind="text:$root.buNum(actual)"></b><i data-bind="text:$root.t('spActual')"></i></span>
+                  <span><b data-bind="text:$root.buNum(plan)"></b><i data-bind="text:$root.t('spPlan')"></i></span>
+                </div>
+              </div>
+            </div>
+
+            <div class="sp-dept">
+              <div class="sp-hd"><svg class="sp-hd-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 21V6.6L9.4 3l6.4 3.6V21H3zm2.2-2.2h3V15h3.2v3.8h3V7.9L9.4 5.5 5.2 7.9v10.9zM17.2 21V11.4l4.4 2.3V21h-4.4z"/></svg><span class="sp-hd-t" data-bind="text:t('spByDept')"></span><span class="sp-hd-chip" data-bind="text:spDepts().length+' '+t('spDeptCount')"></span></div>
+              <div class="bars" data-bind="foreach:spDepts">
+                <div class="bar-row">
+                  <div class="bar-label"><span class="sp-dname" data-bind="text:department"></span><span class="sp-dcc" data-bind="text:$data.costCentre||''"></span></div>
+                  <div class="bar-track">
+                    <i class="bar-fill sp-f--bud" data-bind="style:{width:$root.spDeptW(budget)}"></i>
+                    <i class="bar-fill sp-f--act" data-bind="style:{width:$root.spDeptW(actual)}"></i>
+                    <i class="sp-plan-tick" data-bind="style:{insetInlineStart:$root.spDeptW(plan)}, attr:{title:$root.t('spPlan')+' '+$root.money(plan)}"></i>
+                  </div>
+                  <div class="bar-val mono" data-bind="text:$root.buNum(actual), attr:{title:$root.money(actual)}"></div>
+                  <div class="bar-cnt mono" data-bind="text:$root.spPct($data.actualVsPlanPct)"></div>
+                </div>
+              </div>
+              <!-- ko if: spLoaded() && !spDepts().length -->
+              <div class="empty-state" data-bind="text:t('spNoData')"></div>
+              <!-- /ko -->
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────── 4. Project Level (source page 3) ─────────────── -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('spProjectLevel')"></span>
+            <span class="region-actions">
+              <button class="btn btn-sm" data-bind="click:spToggleExpand, attr:{title:t('spExpandHint')},
+                                                    text:spExpand()?t('spSector'):t('spProject')"></button>
+            </span>
+          </div>
+          <div class="bu-sec-b">
+            <div class="sp-rag-legend">
+              <span><i class="sp-rag sp-rag--high"></i>67 – 100 %</span>
+              <span><i class="sp-rag sp-rag--mid"></i>33 – 67 %</span>
+              <span><i class="sp-rag sp-rag--low"></i>0 – 33 %</span>
+            </div>
+            <div class="tbl-wrap">
+              <table class="tbl sp-sectors">
+                <thead><tr>
+                  <th data-bind="text:t('spSector')"></th>
+                  <!-- ko if: spExpand --><th data-bind="text:t('spProject')"></th><!-- /ko -->
+                  <th class="num" data-bind="text:t('spBudget')"></th>
+                  <th class="num" data-bind="text:t('spActual')"></th>
+                  <th class="num" data-bind="text:t('spActVsBudget')"></th>
+                  <th class="num" data-bind="text:t('spPlan')"></th>
+                  <th class="num" data-bind="text:t('spActVsPlanAmt')"></th>
+                  <th class="num" data-bind="text:t('spEncumbrance')"></th>
+                  <th class="num" data-bind="text:t('spFundsAvail')"></th>
+                </tr></thead>
+                <tbody data-bind="foreach:spSectors">
+                  <tr>
+                    <td data-bind="text:sector"></td>
+                    <!-- ko if: $root.spExpand -->
+                    <td data-bind="text:($data.projectName||$data.projectNumber||''), attr:{title:$data.projectNumber||''}"></td>
+                    <!-- /ko -->
+                    <td class="num mono" data-bind="text:$root.buNum(budget), attr:{title:$root.money(budget)}"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(actual), attr:{title:$root.money(actual)}"></td>
+                    <td class="num mono"><i class="sp-rag" data-bind="css:$root.spRag(actualVsBudgetPct)"></i><span data-bind="text:$root.spPct($data.actualVsBudgetPct)"></span></td>
+                    <td class="num mono" data-bind="text:$root.buNum(plan), attr:{title:$root.money(plan)}"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(actualVsPlanAmount), css:{'sp-neg':actualVsPlanAmount<0}, attr:{title:$root.money(actualVsPlanAmount)}"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(encumbrance), attr:{title:$root.money(encumbrance)}"></td>
+                    <td class="num mono" data-bind="text:$root.buNum(fundsAvailable), attr:{title:$root.money(fundsAvailable)}"></td>
+                  </tr>
+                </tbody>
+                <!-- ko if: spTotalRow -->
+                <tfoot data-bind="with:spTotalRow"><tr class="sp-total">
+                  <td data-bind="text:$root.t('spTotal')"></td>
+                  <!-- ko if: $root.spExpand --><td></td><!-- /ko -->
+                  <td class="num mono" data-bind="text:$root.buNum(budget), attr:{title:$root.money(budget)}"></td>
+                  <td class="num mono" data-bind="text:$root.buNum(actual), attr:{title:$root.money(actual)}"></td>
+                  <td class="num mono" data-bind="text:$root.spPct($data.actualVsBudgetPct)"></td>
+                  <td class="num mono" data-bind="text:$root.buNum(plan), attr:{title:$root.money(plan)}"></td>
+                  <td class="num mono" data-bind="text:$root.buNum(actualVsPlanAmount), css:{'sp-neg':actualVsPlanAmount<0}"></td>
+                  <td class="num mono" data-bind="text:$root.buNum(encumbrance), attr:{title:$root.money(encumbrance)}"></td>
+                  <td class="num mono" data-bind="text:$root.buNum(fundsAvailable), attr:{title:$root.money(fundsAvailable)}"></td>
+                </tr></tfoot>
+                <!-- /ko -->
+              </table>
+            </div>
+            <div class="sp-note" data-bind="text:t('spCapexOpexOnly')"></div>
+          </div>
+        </div>
+
+        <!-- ─────────────── 5. Revenue Overview (source page 4) ─────────────── -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('spRevenueOverview')"></span></div>
+          <div class="bu-sec-b">
+            <div class="sp-streams">
+              <!-- ko foreach: [{c:'SOVEREIGN',k:'spSovereign'},{c:'COMMERCIAL',k:'spCommercial'}] -->
+              <div class="sp-stream">
+                <div class="sp-stream-t" data-bind="text:$root.t(k)"></div>
+                <div class="sp-stream-row">
+                  <div><span class="sp-stream-k" data-bind="text:$root.t('spActual')"></span>
+                    <b class="mono" data-bind="text:$root.buNum($root.spStream(c).actual), attr:{title:$root.money($root.spStream(c).actual)}"></b></div>
+                  <div class="sp-stream-pl"><span class="sp-stream-k" data-bind="text:$root.t('spPlan')"></span>
+                    <b class="mono" data-bind="text:$root.buNum($root.spStream(c).plan), attr:{title:$root.money($root.spStream(c).plan)}"></b></div>
+                </div>
+                <div class="sp-stream-ach" data-bind="text:$root.spPct($root.spStream(c).achievementPct)"></div>
+              </div>
+              <!-- /ko -->
+              <div class="sp-stream sp-stream--tot">
+                <div class="sp-stream-t" data-bind="text:t('spTotal')"></div>
+                <div class="sp-stream-row">
+                  <div><span class="sp-stream-k" data-bind="text:t('spActual')"></span>
+                    <b class="mono" data-bind="text:buNum(((spRev()||{}).total||{}).actual), attr:{title:money(((spRev()||{}).total||{}).actual)}"></b></div>
+                  <div class="sp-stream-pl"><span class="sp-stream-k" data-bind="text:t('spPlan')"></span>
+                    <b class="mono" data-bind="text:buNum(((spRev()||{}).total||{}).plan), attr:{title:money(((spRev()||{}).total||{}).plan)}"></b></div>
+                </div>
+                <div class="sp-stream-ach" data-bind="text:spPct(((spRev()||{}).total||{}).achievementPct)"></div>
+              </div>
+            </div>
+            <div class="sp-note" data-bind="text:t('spRevBudgetNote')"></div>
+
+            <div class="sp-two">
+              <div class="sp-chart">
+                <div class="sp-hd"><svg class="sp-hd-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.6 17.2 9 11.8l3.4 3.4L20 7.6l1.6 1.6-9.2 9.2-3.4-3.4-3.8 3.8-1.6-1.6z"/><path d="M14.6 6.4H21v6.4h-2.2V8.6h-4.2V6.4z"/></svg><span class="sp-hd-t" data-bind="text:t('spMtdTrend')"></span></div>
+                <div class="sp-cols" data-bind="foreach:(spRev()||{}).trend||[]">
+                  <div class="sp-col" data-bind="attr:{title:period+'  '+$root.money(actual)}">
+                    <div class="sp-col-bars">
+                      <i class="sp-b sp-b--act" data-bind="style:{height:$root.spTrendMonthH(actual)}"></i>
+                    </div>
+                    <div class="sp-col-x" data-bind="text:period.slice(0,2)"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="sp-chart">
+                <div class="sp-hd"><svg class="sp-hd-ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3.5 5.5h17v2.4h-17V5.5zm0 5.3h12v2.4h-12v-2.4zm0 5.3h7.6v2.4H3.5v-2.4z"/></svg><span class="sp-hd-t" data-bind="text:t('spByType')"></span></div>
+                <div class="bars sp-cats" data-bind="foreach:(spRev()||{}).categories||[]">
+                  <div class="bar-row">
+                    <div class="bar-label" data-bind="text:$root.lang()==='ar'?nameAr:nameEn, attr:{title:(($root.lang()==='ar'?nameAr:nameEn))+' · '+stream}"></div>
+                    <div class="bar-track">
+                      <i class="bar-fill sp-f--act" data-bind="style:{width:$root.spRevW(actual)}"></i>
+                      <i class="sp-plan-tick" data-bind="style:{insetInlineStart:$root.spRevW(plan)}, attr:{title:$root.t('spPlan')+' '+$root.money(plan)}"></i>
+                    </div>
+                    <div class="bar-val mono" data-bind="text:$root.buNum(actual), attr:{title:$root.money(actual)}"></div>
+                    <div class="bar-cnt mono" data-bind="text:$root.spPct($data.achievementPct)"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ─────────────── 6. data quality ─────────────── -->
+        <div class="bu-sec">
+          <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('spQuality')"></span></div>
+          <div class="bu-sec-b">
+            <div class="sp-dq">
+              <div><span class="sp-dq-k" data-bind="text:t('spPlanCoverage')"></span>
+                <b data-bind="text:spPct(((spOverview()||{}).quality||{}).planCoveragePct)"></b></div>
+              <div><span class="sp-dq-k" data-bind="text:t('spUnmappedSector')"></span>
+                <b data-bind="text:(((spOverview()||{}).quality||{}).unmappedSectorLines||0)+' · '+buNum(((spOverview()||{}).quality||{}).unmappedSectorBudget)"></b></div>
+              <div><span class="sp-dq-k" data-bind="text:t('spOrphanPlan')"></span>
+                <b data-bind="text:(((spOverview()||{}).quality||{}).orphanPlanLines||0)+' · '+buNum(((spOverview()||{}).quality||{}).orphanPlanAmount)"></b></div>
+              <div><span class="sp-dq-k" data-bind="text:t('spUncategorised')"></span>
+                <b data-bind="text:buNum(((spOverview()||{}).quality||{}).uncategorisedRevenue)"></b></div>
+            </div>
+            <div class="sp-note" data-bind="text:t('spQualityNote')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="pg-cashflow" data-bind="visible:view()==='cashflow'">
       <div class="page-head">
         <div>
@@ -2238,7 +2726,11 @@
             <div class="filter-grid">
               <div class="field filter-actions">
                 <button class="btn btn-primary" data-bind="visible:canManageCf, click:uploadCfPj, css:{busy:cfPjBusy}, enable:!cfPjBusy(), text:t('cfUploadPj')"></button>
-                <button class="btn" data-bind="click:cfPjTemplate, text:t('xmTemplate')"></button>
+              </div>
+              <div class="field"><label class="lbl"><span data-bind="text:t('ebYearL')"></span><i class="hint-i" data-bind="attr:{title:t('cfTplHint')}">i</i></label>
+                <select class="inp" data-bind="options:cfTplYears, value:cfTplYear"></select></div>
+              <div class="field filter-actions">
+                <button class="btn" data-bind="click:cfPjTemplate, css:{busy:cfTplBusy}, enable:!cfTplBusy(), text:cfTplBusy()?t('cfTplBuilding'):t('cfTplBtn')"></button>
               </div>
             </div>
             <!-- ko if: cfPjYears().length -->
@@ -2525,6 +3017,19 @@
        data-bind="event:{change:cfPjChosen}">
 
 <!-- ═══════════ LEGACY EBS MAPPING DRAWER (add / edit a mapping row) ═══════════ -->
+<!-- lite work popup — Refresh actuals / Rebuild views (every Refresh-data menu
+     action shows visible progress; the Data Conveyor stays exclusive to the
+     source-data fleet run). Top-level so it shows from ANY page. -->
+<div class="rg rg-lite" role="status" data-bind="visible:(refreshing() || rebuilding()) && !rfHidden(), click:rfHide">
+  <div class="rg-card" data-bind="click:function(){return true}, clickBubble:false">
+    <svg class="ojpc" viewBox="25 25 50 50" aria-hidden="true"><circle class="ojpc-tr" cx="50" cy="50" r="20"/><circle class="ojpc-v" cx="50" cy="50" r="20"/></svg>
+    <div class="rg-tx">
+      <b data-bind="text:rebuilding()?t('rfRebPop'):t('rfActPop')"></b>
+      <span class="rg-sub" data-bind="text:t('rfActSub')"></span>
+    </div>
+  </div>
+</div>
+
 <div class="dw-scrim" data-bind="css:{show:xmDrawer}, click:closeXmDrawer" style="display:none"></div>
 <aside class="dw-drawer" data-bind="css:{show:xmDrawer}" role="dialog" aria-modal="true">
   <header class="dw-h">
@@ -2555,6 +3060,122 @@
         </select></div>
       <div class="field" data-bind="visible:xmId"><label class="lbl" data-bind="text:t('xmStatus')"></label>
         <select class="inp" data-bind="options:xmActiveOpts().slice(0,2), optionsText:'l', optionsValue:'v', value:xmFActive"></select></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ COSTING ADJUSTMENT DRAWER (create / edit / approve) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:caDrawer}, click:closeCaDrawer" style="display:none"></div>
+<aside class="dw-drawer dw-ca" data-bind="css:{show:caDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:t('caTitle')"></div>
+      <div class="dw-title" data-bind="text:caId() ? (((caRow()&&caRow().ref)||'') + ' — ' + (caReadOnly() ? t('caViewTitle') : t('caEditTitle'))) : t('caNewTitle')"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:closeCaDrawer, text:t('close')"></button>
+      <!-- ko if: canManageCadj && caId() && caRow() && caRow().status==='DRAFT' -->
+      <button class="btn btn-sm" data-bind="click:deleteCa, enable:!caSaving(), text:t('caDelete')"></button>
+      <button class="btn btn-sm ca-rej" data-bind="click:function(){actionCa('REJECT')}, enable:!caSaving(), text:t('caReject')"></button>
+      <button class="btn btn-sm ca-app" data-bind="click:function(){actionCa('APPROVE')}, enable:!caSaving(), text:t('caApprove')"></button>
+      <!-- /ko -->
+      <button class="btn btn-sm btn-primary" data-bind="visible:!caReadOnly(), click:saveCa, css:{busy:caSaving}, enable:!caSaving(), text:t('save')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="text:t('caDrawerCtx')"></div>
+    <!-- ko if: caRow() && caRow().status!=='DRAFT' -->
+    <div class="ca-status" data-bind="css:{ok:caRow().status==='APPROVED', bad:caRow().status==='REJECTED'}">
+      <b data-bind="text:caRow().status"></b>
+      <span data-bind="text:(caRow().actionedBy||'') + (caRow().actionedAt ? ' · ' + caRow().actionedAt : '')"></span>
+    </div>
+    <!-- /ko -->
+
+    <div class="ca-sec-t" data-bind="text:t('caDistRegion')"></div>
+    <!-- ko ifnot: caFDist -->
+    <!-- ko ifnot: caReadOnly() -->
+    <div class="ca-dist-bar">
+      <input class="inp" type="text" data-bind="textInput:caDistQ, attr:{placeholder:t('caDistSearchPh')}, event:{keydown:function(d,e){if(e.keyCode===13){searchCaDists();}return true;}}">
+      <button class="btn btn-sm" data-bind="click:searchCaDists, css:{busy:caDistBusy}, enable:!caDistBusy(), text:t('btnSearch')"></button>
+    </div>
+    <!-- ko if: caDistRows().length -->
+    <div class="tbl-wrap ca-dist-wrap">
+      <table class="tbl ca-dist-tbl">
+        <thead><tr>
+          <th data-bind="text:t('caInvoice')"></th>
+          <th data-bind="text:t('caSupplier')"></th>
+          <th class="num" data-bind="text:t('caAmountAed')"></th>
+          <th data-bind="text:t('caDistCoding')"></th>
+          <th></th>
+        </tr></thead>
+        <tbody data-bind="foreach:caDistRows">
+          <tr>
+            <td><b class="mono" data-bind="text:invoiceNumber"></b>
+              <div class="sub-d" data-bind="text:($data.distType||'') + ' · L' + line + '/D' + dist + ($data.periodName ? ' · ' + $data.periodName : '')"></div></td>
+            <td data-bind="text:$data.supplier||'—'"></td>
+            <td class="num mono" data-bind="text:$root.money($data.amountAed)"></td>
+            <td>
+              <!-- ko if: $data.projectNumber -->
+              <span class="mono" data-bind="text:$data.projectNumber + ' / ' + ($data.taskNumber||'—')"></span>
+              <div class="sub-d" data-bind="text:$data.expenditureType||''"></div>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.projectNumber -->
+              <span class="ca-nocode" data-bind="text:$root.t('caDistNoCoding')"></span>
+              <!-- /ko -->
+            </td>
+            <td><button class="btn btn-sm" data-bind="click:function(){$root.pickCaDist($data)}, text:$root.t('caDistPick')"></button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <!-- /ko -->
+    <div class="sub-d" data-bind="visible:caReadOnly(), text:t('caDistNone')" style="display:none"></div>
+    <!-- /ko -->
+    <!-- ko if: caFDist -->
+    <div class="ca-dist-sel">
+      <div>
+        <b class="mono" data-bind="text:caFDist().invoiceNumber"></b>
+        <span class="sub-d" data-bind="text:' ' + (caFDist().supplier||'') + ' · L' + (caFDist().line||'—') + '/D' + (caFDist().dist||'—') + (caFDist().amountAed != null ? ' · ' + $root.money(caFDist().amountAed) : '')"></span>
+        <div class="sub-d">
+          <span data-bind="text:$root.t('caOrigLine') + ': '"></span>
+          <!-- ko if: caFDist().projectNumber -->
+          <span class="mono" data-bind="text:caFDist().projectNumber + ' / ' + (caFDist().taskNumber||'—') + ' / ' + (caFDist().expenditureType||'—')"></span>
+          <!-- /ko -->
+          <!-- ko ifnot: caFDist().projectNumber -->
+          <span class="ca-nocode" data-bind="text:$root.t('caDistNoCoding')"></span>
+          <!-- /ko -->
+        </div>
+      </div>
+      <button class="btn btn-sm" data-bind="visible:!caReadOnly(), click:clearCaDist, text:t('caClear')"></button>
+    </div>
+    <!-- /ko -->
+
+    <div class="ca-sec-t" data-bind="text:t('caCorrected')"></div>
+    <div class="ca-form">
+      <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
+        <select class="inp" data-bind="options:buYears, value:caFYear, enable:!caReadOnly()"></select></div>
+      <div class="field"><label class="lbl"><span data-bind="text:t('fPeriod')+' *'"></span><i class="hint-i" data-bind="attr:{title:t('caPeriodHint')}">i</i></label>
+        <select class="inp" data-bind="options:caPeriodOpts, value:caFPeriod, enable:!caReadOnly()"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('cProject')+' *'"></label>
+        <input class="inp mono" type="text" list="bu-proj-dl" data-bind="textInput:caFProj, enable:!caReadOnly(), attr:{placeholder:t('lovHint')}, event:{change:caProjChanged}"></div>
+      <div class="field"><label class="lbl" data-bind="text:t('cTask')+' *'"></label>
+        <input class="inp mono" type="text" list="ca-task-dl" data-bind="textInput:caFTask, enable:!caReadOnly(), attr:{placeholder:t('lovHint')}, event:{change:caTaskChanged}"></div>
+      <div class="field ca-wide"><label class="lbl" data-bind="text:t('cEtype')+' *'"></label>
+        <input class="inp" type="text" list="ca-et-dl" data-bind="textInput:caFEtype, enable:!caReadOnly(), attr:{placeholder:t('lovHint')}"></div>
+      <!-- dependent option lists: tasks of the picked project, etypes of project(+task) -->
+      <datalist id="ca-task-dl"><!-- ko foreach: caTasks --><option data-bind="attr:{value:$data}"></option><!-- /ko --></datalist>
+      <datalist id="ca-et-dl"><!-- ko foreach: caEtypes --><option data-bind="attr:{value:$data}"></option><!-- /ko --></datalist>
+      <div class="field"><label class="lbl" data-bind="text:t('caAmount')"></label>
+        <input class="inp mono" type="number" step="0.01" data-bind="textInput:caFAmount, enable:!caReadOnly()"></div>
+      <div class="field"><label class="lbl"><span data-bind="text:t('caOvr')"></span><i class="hint-i" data-bind="attr:{title:t('caOvrHint')}">i</i></label>
+        <input class="inp mono" type="number" step="0.01" data-bind="textInput:caFOvr, enable:!caReadOnly()"></div>
+      <div class="field"><label class="lbl" data-bind="text:t('caClass')"></label>
+        <select class="inp" data-bind="options:caClassOpts, optionsText:'l', optionsValue:'v', value:caFClass, optionsCaption:t('caPickClass'), enable:!caReadOnly()"></select></div>
+      <div class="field ca-wide"><label class="lbl" data-bind="text:t('caReason')+' *'"></label>
+        <textarea class="inp" rows="2" maxlength="2000" data-bind="textInput:caFReason, enable:!caReadOnly()"></textarea></div>
+      <div class="field ca-wide"><label class="lbl" data-bind="text:t('caComments')"></label>
+        <textarea class="inp" rows="2" maxlength="4000" data-bind="textInput:caFComments, enable:!caReadOnly()"></textarea></div>
     </div>
   </div>
 </aside>

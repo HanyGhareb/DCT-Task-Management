@@ -5,6 +5,8 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
 
 ## History (most recent first)
 
+- **2026-08-22 — Report SQL observability:** each claimed run now sets Oracle session metadata to `DCT_RPT:<report_code>` and `RUN:<run_id>` before executing its live SQL, then clears it in `finally`. This lets Admin SQL Performance attribute background SQL without storing binds or result data, and keeps report workload out of interactive slow-SQL alerts. Fleet rollout: vm180-182.
+
 - **2026-08-12 — BUDGET_UTIL_REGISTER: Organization column (reporting/db/25 re-seed).** Sheets 1–5
   gain **Organization** (the task's raw PPM owning org, new `DCT_BUDGET_UTILIZATION_V.TASK_ORGANIZATION` /
   `dct_butil_scope_v` column) next to Department — Department stays the GL cost-centre segment

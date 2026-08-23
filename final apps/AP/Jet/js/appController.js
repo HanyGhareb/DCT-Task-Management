@@ -46,6 +46,7 @@ function (ko, config, authService, i18n, shell) {
       { id: 'main', items: [
         { id: 'home',          labelKey: 'nav.home' },
         { id: 'dashboard',     labelKey: 'nav.dashboard' },
+        { id: 'directap',      labelKey: 'nav.directap' },
         { id: 'beneficiaries', labelKey: 'nav.beneficiaries' },
         { id: 'aiDuplicates',  labelKey: 'nav.aiDup' },
         { id: 'procash',       labelKey: 'nav.procash' },

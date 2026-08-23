@@ -14,7 +14,7 @@ Blank by design — content will be designed later.
 - `setLevel(level)` — switch the register grain: `header` | `line` | `dist` | `inst` (installments payment schedule; drives table columns, exports, print).
 
 **Faceted search rail (APEX-style)**
-- 17 facet groups (`toggleGroup`, `toggleItem`, per-group mini-filter): Paid/Validation/Accounting/Invoice status, Invoice type, Currency, Pay group, Payment method, Sector (counted checkboxes); Supplier, Department, Cost center, Project, Expenditure type, GL account, Appropriation, Requestor (searchable lists).
+- 18 facet groups (`toggleGroup`, `toggleItem`, per-group mini-filter): Paid/Validation/Accounting/Invoice status, Invoice type, Currency, Pay group, Payment method, Sector, **Chapter (v1.22.0 — per-invoice classification like Sector: single chapter / `(Multiple chapters)` / `Unclassified`, counts sum to the invoices KPI; on ALL THREE dashboards)** (counted checkboxes); Supplier, Department, Cost center, Project, Expenditure type, GL account, Appropriation, Requestor (searchable lists).
 - Free-text search, invoice-date from/to, PO / PR / Task inputs (debounced auto-apply).
 - `chips` — applied-filter chips with per-chip clear; `resetFilters()` — clear everything.
 
@@ -52,6 +52,15 @@ The full AP Dashboard locked to the generic **BENEFICIARY supplier (supplier num
 - Own column-chooser persistence (`ap.benef.cols` server pref + `ifinance.ap.benef.cols` localStorage) and own interactive-report code `AP_BENEF_REGISTER`, so layouts never clash with the AP Dashboard.
 - Exports/print are prefixed `ap-beneficiaries-*` and the print title is the Beneficiaries report title (EN/AR `ben.*` i18n keys).
 - **Check duplicate using AI… (since v1.16.0)** — `runAiDup()` header button navigates to the **AI Duplicate Check page** (`aiDuplicates` view); all analysis UI lives there.
+
+## Direct AP Dashboard (`views/directap.html` + `viewModels/directap.js`) — v1.21.0
+
+The full AP Dashboard locked to **invoices with NO purchase-order reference and NO project coding anywhere** — the direct-expense slice of Payables. `directap.js` mounts the SAME `dashboard.html` view with `new DashboardViewModel({ nopo: true })` via a nested `module` binding (the Beneficiaries pattern — zero duplicated markup). The rule (server-side, `dct_ap_pkg.filtered_ids p_nopo='Y'`): `header_po_number IS NULL AND po_count = 0 AND project_count = 0` **AND no invoice LINE carries a `po_number`/`project_number`** (the header counts derive from distributions only; 131 invoices are project-coded at the line grain with clean distributions and are excluded too). Nopo-mode differences (all inside `dashboard.js`):
+- `buildParams()` + the `/filters` call always send `nopo=Y` (never shown as a chip), so every LOV, count, KPI, chart, register grain and export is scoped.
+- Facet groups that are empty by definition are dropped (Project / Expenditure type / Requestor), and the PO / PR / Task reference inputs are hidden; the GL-coding facets (Cost centre / Account / Appropriation / Sector) remain — for direct invoices the GL combination IS the coding story.
+- PO/PR/project/task columns are hidden by default at every level (the column chooser can re-enable them; they are always empty here).
+- Own column-chooser persistence (`ap.direct.cols` server pref + `ifinance.ap.direct.cols` localStorage) and own interactive-report code `AP_DIRECT_REGISTER`; exports/print prefixed `ap-direct-*` (EN/AR `dap.*` i18n keys).
+- **Briefing Book (Excel)** header button — `runBook()` posts the page's current criteria (bu / supplier / paid / val / datefrom / dateto / search / inclcxl) to `POST /ap/direct/report`, polls `GET /ap/direct/report/:id` every 5 s and auto-downloads the workbook (`:id/file`) — Reporting-Platform definition `AP_DIRECT_REGISTER` (reporting/db/38), 5 sheets: overview by payment status, the full direct-invoice register, by supplier (beneficiary-aware), GL coding of the non-tax distributions, aging of the unpaid balance. XLSX only (no PDF template authored; other formats = 400).
 
 ## AI Duplicate Check (`views/aiDuplicates.html` + `viewModels/aiDuplicates.js`) — v1.16.0
 
@@ -106,7 +115,7 @@ Manual payments pushed through the bank portal directly, outside Fusion Payables
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/ap/filters` | Facet LOVs + global header counts + min/max invoice date; **`businessUnits[]` counted LOV (v1.11.0)** |
+| GET | `/ap/filters` | Facet LOVs + global header counts + min/max invoice date; **`businessUnits[]` counted LOV (v1.11.0)**; **`nopo=Y` scopes every LOV/count to direct invoices (v1.21.0)**; **`chapters[]` counted classification LOV (v1.22.0)** |
 | GET | `/ap/summary` | KPIs + chart datasets for the current facets |
 | GET | `/ap/invoices` | Paged header-level register `{items,total,totals,limit,offset}` |
 | GET | `/ap/invoices/export` | CSV of the filtered header register (10k cap) |
@@ -124,6 +133,9 @@ Manual payments pushed through the bank portal directly, outside Fusion Payables
 | POST | `/ap/benef/dupreport` | Enqueue the Reporting-Platform definition `AP_BENEF_DUP_REGISTER` (reporting/db/33) as the calling user — body `{format:'PDF'\|'XLSX', suppnum?}` → `{runId, format}` (v1.16.0, AP/db/07) |
 | GET | `/ap/benef/dupreport/:id` | Report run status → `{runId, status, rowCount, error, startedAt, finishedAt, hasFile, format}` (v1.16.0) |
 | GET | `/ap/benef/dupreport/:id/file` | Authed download of the finished run's output (PDF book or 5-sheet Excel register) (v1.16.0) |
+| POST | `/ap/direct/report` | Enqueue the Reporting-Platform definition `AP_DIRECT_REGISTER` (reporting/db/38) as the calling user — body `{format:'XLSX', bu?, supplier?, paid?, val?, chapter?, datefrom?, dateto?, search?, inclcxl?}` → `{runId, format}`; XLSX only, any other format = 400 (v1.21.0, AP/db/14; `chapter` v1.22.0) |
+| GET | `/ap/direct/report/:id` | Direct AP Briefing Book run status → `{runId, status, rowCount, error, startedAt, finishedAt, hasFile, format}` (v1.21.0) |
+| GET | `/ap/direct/report/:id/file` | Authed download of the finished run's 5-sheet Excel workbook (v1.21.0) |
 | GET | `/ap/procash/` | Paged procash register `{items,total,totals}` — filters `status` (pipe any-of) `bu` `from` `to` `supplier` `linked` `mismatch` `mine` `search` (+ `limit offset sort`) (v1.19.0) |
 | POST | `/ap/procash` | Create a header (+ optional `lines[]`) — **no trailing slash on the collection POST** |
 | GET | `/ap/procash/:id` | Header + lines + documents + status history + validation `findings[]` + the caller's `canEdit`/`canProcess`/`canUnlink` |

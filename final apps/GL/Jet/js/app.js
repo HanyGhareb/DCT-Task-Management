@@ -38,6 +38,75 @@
     grpGl:{en:'General Ledger',ar:'دفتر الأستاذ العام'},
     grpSettings:{en:'Settings',ar:'الإعدادات'},
     navBudgetTrx:{en:'Budget Transactions',ar:'معاملات الموازنة'},
+    navSectorPerf:{en:'Sector Performance',ar:'أداء القطاع'},
+    spTitle:{en:'Sector Financial Performance',ar:'الأداء المالي للقطاع'},
+    spSub:{en:'Overview and variance explanation of the financial performance of your sector for the selected period.',ar:'نظرة عامة وتفسير الانحرافات للأداء المالي لقطاعك خلال الفترة المحددة.'},
+    spCriteria:{en:'Search criteria',ar:'معايير البحث'},
+    spYear:{en:'Budget Year',ar:'السنة المالية'},
+    spPeriod:{en:'Accounting Period',ar:'الفترة المحاسبية'},
+    spFullYear:{en:'Full year',ar:'السنة الكاملة'},
+    spSector:{en:'Sector',ar:'القطاع'},
+    spDept:{en:'Department (Cost Centre)',ar:'الإدارة (مركز التكلفة)'},
+    spKind:{en:'Expenditure kind',ar:'نوع الإنفاق'},
+    spProjType:{en:'Project Type',ar:'نوع المشروع'},
+    spBu:{en:'Business Unit',ar:'وحدة الأعمال'},
+    spPlanType:{en:'Plan',ar:'الخطة'},
+    spAll:{en:'All',ar:'الكل'},
+    spPick:{en:'Add…',ar:'إضافة…'},
+    spSearch:{en:'Search',ar:'بحث'},
+    spClear:{en:'Clear',ar:'مسح'},
+    spExport:{en:'Export CSV',ar:'تصدير CSV'},
+    spCapexOpexOnly:{en:'Scoped to Opex and Capex, matching the source report.',ar:'النطاق يشمل المصروفات التشغيلية والرأسمالية فقط، مطابقةً للتقرير المصدر.'},
+    spSampleBanner:{en:'PLAN FIGURES ARE SAMPLE DATA',ar:'أرقام الخطة بيانات تجريبية'},
+    spSampleNote:{en:'No monthly plan has been uploaded yet, so every Plan figure on this page is generated demonstration data. Actual, Budget, Encumbrance and Funds Available are real.',ar:'لم يتم رفع خطة شهرية بعد، لذا فإن جميع أرقام الخطة في هذه الصفحة بيانات توضيحية مولّدة. أما الفعلي والموازنة والارتباطات والمتاح فهي حقيقية.'},
+    spSamplePurge:{en:'Remove sample plan',ar:'إزالة الخطة التجريبية'},
+    spSamplePurged:{en:'Sample plan data removed.',ar:'تمت إزالة بيانات الخطة التجريبية.'},
+    spSampleConfirm:{en:'Remove all sample plan data for this year? Real uploaded plans are never touched.',ar:'إزالة جميع بيانات الخطة التجريبية لهذه السنة؟ لن تُمس الخطط الحقيقية المرفوعة.'},
+    spBusinessOverview:{en:'Business Overview',ar:'نظرة عامة على الأعمال'},
+    spBudgetOverview:{en:'Budget Overview',ar:'نظرة عامة على الموازنة'},
+    spProjectLevel:{en:'Project Level',ar:'مستوى المشروع'},
+    spRevenueOverview:{en:'Revenue Overview',ar:'نظرة عامة على الإيرادات'},
+    spQuality:{en:'Data quality',ar:'جودة البيانات'},
+    spRevenue:{en:'Revenue',ar:'الإيرادات'},
+    spOpex:{en:'Opex',ar:'المصروفات التشغيلية'},
+    spCapex:{en:'Capex',ar:'المصروفات الرأسمالية'},
+    spOpexCapex:{en:'Opex & Capex',ar:'التشغيلية والرأسمالية'},
+    spFyBudget:{en:'FY Budget',ar:'موازنة السنة'},
+    spYtdActual:{en:'YTD Actual',ar:'الفعلي حتى تاريخه'},
+    spYtdPlan:{en:'YTD Plan',ar:'الخطة حتى تاريخه'},
+    spActVsBudget:{en:'YTD Actual vs FY Budget',ar:'الفعلي مقابل الموازنة'},
+    spTarget:{en:'Target [YTD Plan / FY Plan]',ar:'المستهدف [الخطة حتى تاريخه / خطة السنة]'},
+    spRevToOpex:{en:'Revenue to Opex %',ar:'نسبة الإيراد إلى المصروف التشغيلي'},
+    spRevToOpexSub:{en:'Measuring financial sustainability using the revenue-to-opex ratio',ar:'قياس الاستدامة المالية باستخدام نسبة الإيراد إلى المصروف التشغيلي'},
+    spFyTarget:{en:'FY Target %',ar:'مستهدف السنة'},
+    spYtdActualPct:{en:'YTD Actual %',ar:'الفعلي حتى تاريخه'},
+    spBudgetVsActual:{en:'Budget vs Actual (cumulative)',ar:'الموازنة مقابل الفعلي (تراكمي)'},
+    spBudget:{en:'Budget',ar:'الموازنة'},
+    spActual:{en:'Actual',ar:'الفعلي'},
+    spPlan:{en:'Plan',ar:'الخطة'},
+    spEncumbrance:{en:'Encumbrance',ar:'الارتباطات'},
+    spFundsAvail:{en:'Funds Available',ar:'المتاح'},
+    spActVsPlanPct:{en:'Actual vs Plan %',ar:'الفعلي مقابل الخطة'},
+    spPlanVsBudget:{en:'Plan vs Budget',ar:'الخطة مقابل الموازنة'},
+    spActVsPlanAmt:{en:'Actual vs Plan in Amount',ar:'الفعلي مقابل الخطة بالمبلغ'},
+    spByDept:{en:'YTD Actual vs Budget & Plan by Department',ar:'الفعلي مقابل الموازنة والخطة حسب الإدارة'},
+    spDeptCount:{en:'departments',ar:'إدارة'},
+    spProject:{en:'Project',ar:'المشروع'},
+    spTotal:{en:'Total',ar:'الإجمالي'},
+    spExpandHint:{en:'Show the project level under every sector',ar:'إظهار مستوى المشروع تحت كل قطاع'},
+    spSovereign:{en:'Sovereign',ar:'سيادي'},
+    spCommercial:{en:'Commercial',ar:'تجاري'},
+    spAchievement:{en:'Achievement',ar:'نسبة الإنجاز'},
+    spMtdTrend:{en:'MTD Trend',ar:'الاتجاه الشهري'},
+    spByType:{en:'Actual vs Plan by Type',ar:'الفعلي مقابل الخطة حسب النوع'},
+    spPlanCoverage:{en:'Plan coverage',ar:'تغطية الخطة'},
+    spUnmappedSector:{en:'Lines with no sector',ar:'بنود بلا قطاع'},
+    spOrphanPlan:{en:'Plan rows with no budget line',ar:'بنود خطة بلا موازنة'},
+    spUncategorised:{en:'Uncategorised revenue',ar:'إيرادات غير مصنفة'},
+    spQualityNote:{en:'A figure that cannot be attributed is shown here rather than dropped.',ar:'أي رقم لا يمكن نسبته يُعرض هنا بدلاً من إسقاطه.'},
+    spNoData:{en:'No data for the selected criteria.',ar:'لا توجد بيانات للمعايير المحددة.'},
+    spBudgetFlatNote:{en:'The budget line is the full-year figure: the platform holds no budget-version history yet.',ar:'خط الموازنة يمثل رقم السنة الكاملة: لا يوجد سجل لإصدارات الموازنة بعد.'},
+    spRevBudgetNote:{en:'The Fusion revenue budget sits on a single cost centre, so a sector or department filter can legitimately zero it while actual and plan stay populated.',ar:'موازنة الإيرادات في فيوجن مسجلة على مركز تكلفة واحد، لذا قد يصفّرها فلتر القطاع أو الإدارة بينما يبقى الفعلي والخطة.'},
     btTitle:{en:'Budget Transactions',ar:'معاملات الموازنة'},
     btSub:{en:'Project budget transactions extracted from the Project Budget Transactions application — header, details and approval trail.',ar:'معاملات موازنة المشاريع المستخرجة من تطبيق معاملات موازنة المشاريع — الرأس والتفاصيل وسجل الاعتماد.'},
     btCriteria:{en:'Search criteria',ar:'معايير البحث'},
@@ -216,6 +285,13 @@
     cfUnmappedAppr:{en:'Top cashflow appropriations without a chapter',ar:'أهم اعتمادات التدفق النقدي بدون باب'},
     cfGlUpBad:{en:'Could not read the file — required columns: Appropriation, Period, CF Type, Amount (plus the other GL segments).',ar:'تعذّرت قراءة الملف — الأعمدة المطلوبة: Appropriation, Period, CF Type, Amount (بالإضافة إلى بقية البنود).'},
     cfPjUpBad:{en:'Could not read the file — required columns: Project, Task, Expenditure Type, Period, CF Type, Amount.',ar:'تعذّرت قراءة الملف — الأعمدة المطلوبة: Project, Task, Expenditure Type, Period, CF Type, Amount.'},
+    cfTplBtn:{en:'Download template (all budget lines)',ar:'تنزيل النموذج (كل بنود الميزانية)'},
+    cfTplBuilding:{en:'Building template…',ar:'جارٍ إعداد النموذج…'},
+    cfTplHint:{en:'The template is pre-filled with every project / task / expenditure type of the selected budget year, its full 10-segment GL combination and any cashflow amounts already saved — type the monthly amounts and upload the same file back.',ar:'يأتي النموذج معبأً بكل مشروع / مهمة / نوع مصروف لسنة الميزانية المختارة مع تركيبة الأستاذ العام الكاملة (١٠ بنود) وأي مبالغ تدفق نقدي محفوظة — أدخل المبالغ الشهرية وأعد تحميل نفس الملف.'},
+    cfTplEmpty:{en:'No budget lines found for that year — the template was created with the column layout only.',ar:'لا توجد بنود ميزانية لتلك السنة — تم إنشاء النموذج بالأعمدة فقط.'},
+    cfTplDone:{en:'Template ready — {n} budget line(s) for {y}.',ar:'النموذج جاهز — {n} بند ميزانية لسنة {y}.'},
+    cfTplFail:{en:'Could not build the template',ar:'تعذّر إعداد النموذج'},
+    cfTplNoteSheet:{en:'How to use',ar:'طريقة الاستخدام'},
 
     /* ── DOF Reports (YoY / Budget Utilization / Quarterly) ── */
     navDof:{en:'DOF Submissions',ar:'تقارير دائرة المالية'},
@@ -424,11 +500,21 @@
     acAllLines:{en:'All lines',ar:'كل البنود'},
     refreshActuals:{en:'Refresh actuals',ar:'تحديث الفعلي'}, refreshing:{en:'Refreshing…',ar:'جارٍ التحديث…'},
     pdataBtn:{en:'Refresh source data',ar:'تحديث بيانات المصدر'}, pdataRunning:{en:'Refreshing data…',ar:'جارٍ تحديث البيانات…'},
-    pdataHint:{en:'Re-extract projects, tasks and budget from Fusion now (runs the Projects Data job set; ~1–3 minutes)',ar:'إعادة استخراج المشاريع والمهام والميزانية من فيوجن الآن (تشغيل مجموعة مهام بيانات المشاريع؛ ١–٣ دقائق تقريباً)'},
+    pdataHint:{en:'Re-extract ALL page source data from Fusion now: projects, tasks, budget + AP invoices (header/lines/distributions), PO, PR and GRN (15 full jobs; ~3–6 minutes)',ar:'إعادة استخراج كل بيانات المصدر من فيوجن الآن: المشاريع والمهام والميزانية + فواتير الموردين (رأس/بنود/توزيعات) وأوامر الشراء وطلبات الشراء والاستلام (١٥ مهمة كاملة؛ ٣–٦ دقائق تقريباً)'},
     pdataQueued:{en:'Source-data refresh started ({n} jobs queued)…',ar:'بدأ تحديث بيانات المصدر ({n} مهام في قائمة الانتظار)…'},
-    pdataDone:{en:'Source data refreshed — projects, tasks and budget are up to date',ar:'تم تحديث بيانات المصدر — المشاريع والمهام والميزانية محدّثة'},
+    pdataDone:{en:'Source data refreshed — projects, tasks, budget, AP, PO, PR and GRN are up to date',ar:'تم تحديث بيانات المصدر — المشاريع والمهام والميزانية وفواتير الموردين وأوامر الشراء وطلبات الشراء والاستلام محدّثة'},
     pdataFailed:{en:'Source-data refresh: some jobs failed —',ar:'تحديث بيانات المصدر: فشلت بعض المهام —'},
     pdataTimeout:{en:'Source-data refresh is taking longer than expected — check the ATD Run Logs page',ar:'يستغرق تحديث بيانات المصدر وقتاً أطول من المتوقع — راجع سجلات التشغيل في ATD'},
+    cvbTitle:{en:'Refreshing source data from Fusion…',ar:'جارٍ تحديث بيانات المصدر من فيوجن…'},
+    cvbCount:{en:'{d} of {n} extracts finished',ar:'اكتمل {d} من {n} استخراجاً'},
+    cvbRunning:{en:'now extracting: {j}',ar:'يجري الآن استخراج: {j}'},
+    cvbSrc:{en:'Fusion',ar:'فيوجن'}, cvbDst:{en:'i-Finance',ar:'i-Finance'},
+    cvbHide:{en:'Hide — the refresh keeps running in the background',ar:'إخفاء — يستمر التحديث في الخلفية'},
+    rdBtn:{en:'Refresh data',ar:'تحديث البيانات'},
+    rdSrcSub:{en:'Re-extract all 15 source datasets from Fusion (~2–4 min)',ar:'إعادة استخراج كل بيانات المصدر (١٥ مهمة) من فيوجن (٢–٤ دقائق تقريباً)'},
+    rdActSub:{en:'Re-snapshot the report figures (also runs hourly)',ar:'إعادة لقطة أرقام التقرير (تعمل كل ساعة تلقائياً)'},
+    rdRebSub:{en:'Admin recovery after a structural data reload',ar:'استرداد إداري بعد إعادة تحميل هيكلية للبيانات'},
+    rdLastL:{en:'Source data last refreshed: {t}',ar:'آخر تحديث لبيانات المصدر: {t}'},
     refreshed:{en:'Actuals snapshot refreshed',ar:'تم تحديث لقطة الفعلي'},
     refreshHint:{en:'Rebuild the classification snapshot so the report reflects the latest GL/ATD data and mapping edits.',ar:'إعادة بناء لقطة التصنيف لتعكس أحدث بيانات دفتر الأستاذ والربط.'},
     asOfRefresh:{en:'Updated',ar:'حُدّث'},
@@ -442,6 +528,7 @@
     navButil:{en:'Project Budget Utilization',ar:'استخدام موازنة المشاريع'},
     /* ---- Executive Project Dashboard: Portfolio (pf*) + Project 360 (p3*) ---- */
     navPortfolio:{en:'Project Portfolio',ar:'محفظة المشاريع'},
+    loadFailed:{en:'Could not load. Please try again.',ar:'تعذر التحميل. حاول مرة أخرى.'},
     fBuL:{en:'Business unit',ar:'وحدة الأعمال'},
     fCcL:{en:'Cost centre',ar:'مركز التكلفة'},
     fProjectL:{en:'Project',ar:'المشروع'},
@@ -766,6 +853,10 @@
     buOfBudget:{en:'of budget',ar:'من الموازنة'},
     buRemaining:{en:'of budget remaining',ar:'من الموازنة متبقٍّ'},
     buOverBudget:{en:'over budget',ar:'تجاوز الموازنة'},
+    buNegTitle:{en:'Over budget — negative Fund Available.',ar:'تجاوز الموازنة — الرصيد المتاح بالسالب.'},
+    buNegMsg:{en:'{n} budget line(s) have consumed MORE than their YTD budget — over-spent by {amt} in total under the current criteria. They are flagged in red in the results table below; review them and arrange a budget change or hold further spend.',ar:'يوجد {n} بند موازنة استُهلك فيه أكثر من موازنته حتى تاريخه — بتجاوز إجمالي قدره {amt} حسب المعايير الحالية. هذه البنود مميزة باللون الأحمر في جدول النتائج أدناه؛ يرجى مراجعتها وترتيب تعديل للموازنة أو إيقاف الصرف الإضافي.'},
+    buNegHint:{en:'Fund Available = YTD Budget − (Actual AP + Actual GRN + Commitments PR + Obligations PO). A negative value means the line is over budget.',ar:'الرصيد المتاح = موازنة حتى تاريخه − (فعلي الفواتير + فعلي الاستلام + الارتباطات + الالتزامات). القيمة السالبة تعني تجاوز موازنة البند.'},
+    buNegCellHint:{en:'Over budget — Fund Available is negative',ar:'تجاوز الموازنة — الرصيد المتاح بالسالب'},
     buMissCcTitle:{en:'Missing Cost Centre — action required.',ar:'مركز تكلفة مفقود — يلزم اتخاذ إجراء.'},
     buMissCcMsg:{en:'{n} budget line(s) totalling {amt} annual budget have NO cost centre, so Sector and Cost-centre reporting for them is incomplete. Maintain the Cost Center task attribute in Fusion (financial project plan).',ar:'يوجد {n} بند موازنة بإجمالي موازنة سنوية {amt} بدون مركز تكلفة، لذا فإن تقارير القطاع ومركز التكلفة لهذه البنود غير مكتملة. يرجى استكمال خاصية مركز التكلفة للمهمة في نظام فيوجن (الخطة المالية للمشروع).'},
     buMissCcCta:{en:'View lines',ar:'عرض البنود'},
@@ -816,6 +907,82 @@
     buProcashOff:{en:'Select to include Procash',ar:'حدد لتضمين الدفع المباشر'},
     cProcash:{en:'Procash',ar:'الدفع المباشر'},
     buProcashUnmapped:{en:'procash not on a budget line',ar:'دفع مباشر خارج بنود الموازنة'},
+
+    /* ── "The Binder" report-generation popup (v1.80.0) ── */
+    rgGenBook:{en:'Generating Briefing Book (PDF)',ar:'جارٍ إنشاء الكتاب التنفيذي (PDF)'},
+    rgGenXlsx:{en:'Generating Excel Register (XLSX)',ar:'جارٍ إنشاء سجل إكسل (XLSX)'},
+    rgGenPpt:{en:'Generating PowerPoint deck (PPTX)',ar:'جارٍ إنشاء عرض باوربوينت (PPTX)'},
+    rgElapsed:{en:'elapsed',ar:'الوقت المنقضي'},
+    rgPolling:{en:'checking the run every {s} seconds',ar:'يتم فحص التشغيل كل {s} ثوانٍ'},
+    rgHide:{en:'Hide — generation continues',ar:'إخفاء — يستمر الإنشاء'},
+    rgBookT:{en:'Budget Utilization',ar:'استخدام الموازنة'},
+    rgSecCover:{en:'Cover',ar:'الغلاف'},
+    rgSecOverview:{en:'Overview',ar:'نظرة عامة'},
+    rgSecAp:{en:'AP register',ar:'سجل الدائنين'},
+    rgSecGrn:{en:'GRN register',ar:'سجل الاستلام'},
+    rgSecOb:{en:'Open obligations',ar:'التعهدات المفتوحة'},
+    rgSecCm:{en:'Open commitments',ar:'الالتزامات المفتوحة'},
+    rgSecIns:{en:'Insights',ar:'الملاحظات التحليلية'},
+    rfActPop:{en:'Refreshing actuals snapshot…',ar:'جارٍ تحديث لقطة الأرقام الفعلية…'},
+    rfRebPop:{en:'Rebuilding views…',ar:'جارٍ إعادة بناء العروض…'},
+    rfActSub:{en:'Re-computing the report figures — usually under a minute. Click outside to hide; the work continues.',ar:'يُعاد احتساب أرقام التقرير — عادةً أقل من دقيقة. انقر خارج النافذة لإخفائها؛ يستمر العمل.'},
+
+    /* ── Projects Costing Adjustments (DCT_PA_COST_ADJ, 2026-08-22) ── */
+    navCostAdj:{en:'Costing Adjustments',ar:'تسويات التكاليف'},
+    buCadjInc:{en:'Include Cost Adjustment',ar:'تضمين تسوية التكاليف'},
+    buCadjHint:{en:'Approved Projects Costing Adjustments re-allocate actual cost onto its correct budget line (a signed amount, plus an optional signed budget override on the same line). When on (the default), Actual moves by the adjustment, Budget by the override, and Fund Available follows. Lines carrying an adjustment are marked (*) in the results table.',ar:'تعيد تسويات التكاليف المعتمدة توزيع التكلفة الفعلية على بند الموازنة الصحيح (مبلغ موجب أو سالب، مع تعديل اختياري لموازنة البند نفسه). عند التفعيل (الوضع الافتراضي) يتغيّر الفعلي بمقدار التسوية والموازنة بمقدار التعديل ويتبعهما المتاح. وتُميَّز البنود التي عليها تسوية بعلامة (*) في جدول النتائج.'},
+    buCadjOnL:{en:'Cost adjustment included',ar:'تسوية التكاليف مضمّنة'},
+    buCadjOff:{en:'Select to include cost adjustment',ar:'حدد لتضمين تسوية التكاليف'},
+    buAdjStarHint:{en:'This line includes approved cost adjustments',ar:'يتضمن هذا البند تسويات تكاليف معتمدة'},
+    buAdjNote:{en:'(*) This line includes approved cost adjustments — Actual moves by the signed adjustment and Budget by its budget override.',ar:'(*) يتضمن هذا البند تسويات تكاليف معتمدة — يتغيّر الفعلي بمقدار التسوية والموازنة بمقدار تعديلها.'},
+    caTitle:{en:'Projects Costing Adjustments',ar:'تسويات تكاليف المشاريع'},
+    caSub:{en:'Signed cost adjustments (± AED) that re-allocate actual cost to its correct project / task / expenditure type — with an optional signed budget override on the same line. Approved adjustments fold into Budget Utilization.',ar:'تسويات تكاليف موجبة أو سالبة تعيد توزيع التكلفة الفعلية على المشروع / المهمة / نوع المصروف الصحيح — مع تعديل اختياري لموازنة البند نفسه. تنعكس التسويات المعتمدة على استخدام الموازنة.'},
+    caRegion:{en:'Adjustments register',ar:'سجل التسويات'},
+    caRows:{en:'adjustments',ar:'تسوية'},
+    caRowHint:{en:'Click a row to open it. DRAFT rows are editable; approval is manual.',ar:'انقر على السطر لفتحه. المسودات قابلة للتعديل والاعتماد يدوي.'},
+    caNew:{en:'+ New Adjustment',ar:'+ تسوية جديدة'},
+    caStatusL:{en:'Status',ar:'الحالة'},
+    caAllStatuses:{en:'All statuses',ar:'كل الحالات'},
+    caAllYears:{en:'All years',ar:'كل السنوات'},
+    caRef:{en:'Ref',ar:'المرجع'},
+    caInvoice:{en:'Invoice',ar:'الفاتورة'},
+    caSupplier:{en:'Supplier',ar:'المورد'},
+    caAmountCol:{en:'Adjustment (AED)',ar:'التسوية (درهم)'},
+    caOvrCol:{en:'Budget Override (AED)',ar:'تعديل الموازنة (درهم)'},
+    caAmountAed:{en:'Amount (AED)',ar:'المبلغ (درهم)'},
+    caCreatedBy:{en:'Created by',ar:'أنشأها'},
+    caCreatedAt:{en:'Created',ar:'تاريخ الإنشاء'},
+    caActionedBy:{en:'Actioned by',ar:'اعتمدها/رفضها'},
+    caActionedAt:{en:'Actioned',ar:'تاريخ الإجراء'},
+    caNewTitle:{en:'New adjustment',ar:'تسوية جديدة'},
+    caEditTitle:{en:'Edit adjustment',ar:'تعديل التسوية'},
+    caViewTitle:{en:'Adjustment details',ar:'تفاصيل التسوية'},
+    caDrawerCtx:{en:'Pick the mis-coded AP invoice distribution (optional — it may carry no project coding at all), then enter the CORRECTED budget line and the signed amounts. Only APPROVED adjustments reach the figures.',ar:'اختر توزيع فاتورة الدائنين الخاطئ الترميز (اختياري — وقد لا يحمل ترميز مشروع أصلاً)، ثم أدخل بند الموازنة الصحيح والمبالغ الموجبة أو السالبة. لا تصل إلى الأرقام إلا التسويات المعتمدة.'},
+    caDistRegion:{en:'Source AP invoice distribution (optional)',ar:'توزيع فاتورة الدائنين المصدر (اختياري)'},
+    caDistSearchPh:{en:'Invoice number / supplier / beneficiary…',ar:'رقم الفاتورة / المورد / المستفيد…'},
+    caDistMin:{en:'Type at least 2 characters to search.',ar:'اكتب حرفين على الأقل للبحث.'},
+    caDistPick:{en:'Select',ar:'اختيار'},
+    caDistCoding:{en:'Current coding',ar:'الترميز الحالي'},
+    caDistNoCoding:{en:'No project coding',ar:'بدون ترميز مشروع'},
+    caDistNone:{en:'No distribution linked',ar:'لا يوجد توزيع مرتبط'},
+    caOrigLine:{en:'Original coding',ar:'الترميز الأصلي'},
+    caClear:{en:'Unlink',ar:'إلغاء الربط'},
+    caCorrected:{en:'Corrected budget line',ar:'بند الموازنة الصحيح'},
+    caAmount:{en:'Adjustment amount (± AED)',ar:'مبلغ التسوية (± درهم)'},
+    caOvr:{en:'Budget override (± AED)',ar:'تعديل الموازنة (± درهم)'},
+    caOvrHint:{en:'Optional signed change to the SAME budget line\'s budget (annual and YTD from its accounting period onward).',ar:'تعديل اختياري موجب أو سالب لموازنة البند نفسه (السنوية ومنذ بداية السنة ابتداءً من فترته المحاسبية).'},
+    caPeriodHint:{en:'Required — the adjustment counts in YTD views from this accounting period onward.',ar:'مطلوب — تُحتسب التسوية في عروض «منذ بداية السنة» ابتداءً من هذه الفترة المحاسبية.'},
+    caClass:{en:'Classification',ar:'التصنيف'},
+    caPickClass:{en:'— pick —',ar:'— اختر —'},
+    caReason:{en:'Reason',ar:'السبب'},
+    caComments:{en:'Comments',ar:'ملاحظات'},
+    caApprove:{en:'Approve',ar:'اعتماد'},
+    caReject:{en:'Reject',ar:'رفض'},
+    caDelete:{en:'Delete',ar:'حذف'},
+    caApproveConfirm:{en:'Approve this adjustment? It will fold into the Budget Utilization figures.',ar:'اعتماد هذه التسوية؟ ستنعكس على أرقام استخدام الموازنة.'},
+    caRejectConfirm:{en:'Reject this adjustment?',ar:'رفض هذه التسوية؟'},
+    caDeleteConfirm:{en:'Delete this adjustment permanently?',ar:'حذف هذه التسوية نهائياً؟'},
+    caReqFields:{en:'Budget year, accounting period, project, task, expenditure type and reason are required — and amount or budget override must be non-zero.',ar:'سنة الموازنة والفترة المحاسبية والمشروع والمهمة ونوع المصروف والسبب مطلوبة — ويجب ألا يكون مبلغ التسوية وتعديل الموازنة كلاهما صفراً.'},
     buOvrOff:{en:'Select to include Budget Override',ar:'حدد لتضمين الموازنة المعدّلة'},
     cOverrideBudget:{en:'Budget Change (+/-)',ar:'تغيير الموازنة (+/-)'},
     ovLinesN:{en:'{n} changed lines',ar:'{n} بند مُعدّل'},
@@ -912,7 +1079,9 @@
           { id: 'butil',        labelKey: 'navButil' },
           { id: 'encumbrances', labelKey: 'navEncumbrances' },
           { id: 'pending',      labelKey: 'navPending' },
+          { id: 'costadj',      labelKey: 'navCostAdj' },
           { id: 'budgettrx',    labelKey: 'navBudgetTrx' },
+          { id: 'sectorperf',   labelKey: 'navSectorPerf' },
           { id: 'cashflow',     labelKey: 'navCashflow' } ] },
       { id: 'gl', labelKey: 'grpGl', items: [
           { id: 'dashboard', labelKey: 'navDashboard' },
@@ -1430,19 +1599,35 @@
         if (!self.acFiltersLoaded()) self.loadAcFilters().then(function () { self.runActuals(0); });
         else self.runActuals(0);
       } else if (v === 'dashboard') self.loadDashboard();
+      else if (v === 'sectorperf') {
+        if (!self.spFilters()) self.loadSpFilters().then(function () { self.runSectorPerf(); });
+        else if (!self.spLoaded()) self.runSectorPerf();
+      }
       else if (v === 'butil') {
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runButil(0); });
         else self.runButil(0);
       }
       else if (v === 'portfolio') {
         // shares the Budget Utilization criteria observables, so drilling
-        // between the two pages keeps one scope with no parameter passing
-        if (!self.buFiltersLoaded()) self.loadBuFilters().then(function () { self.runPortfolio(); });
+        // between the two pages keeps one scope with no parameter passing.
+        // The .catch matters: if the shared filters call fails (a transient
+        // ORDS blip is enough) the page would otherwise sit on the busy
+        // overlay forever with nothing said. Fail loudly and stop spinning.
+        if (!self.buFiltersLoaded()) {
+          self.loadBuFilters()
+            .then(function () { self.runPortfolio(); })
+            .catch(function (e) { self.pfLoading(false); toast(e && e.message || self.t('loadFailed'), true); });
+        }
         else if (!self.pfLoaded()) self.runPortfolio();
       }
       else if (v === 'proj360') {
         if (!self.p3Num()) { self.view('portfolio'); self.go('portfolio'); return; }
-        if (!self.buFiltersLoaded()) { self.loadBuFilters().then(self.loadProj360); return; }
+        if (!self.buFiltersLoaded()) {
+          self.loadBuFilters()
+            .then(self.loadProj360)
+            .catch(function (e) { self.p3Loading(false); toast(e && e.message || self.t('loadFailed'), true); });
+          return;
+        }
         self.loadProj360();
       }
       else if (v === 'encumbrances') {
@@ -1459,6 +1644,12 @@
         // own criteria set (not the butil one) — load LOVs, then first page
         if (!self.btFilters()) self.loadBtFilters().then(function () { self.runBudgetTrx(1); });
         else if (!self.btLoaded()) self.runBudgetTrx(1);
+      }
+      else if (v === 'costadj') {
+        // butil filters feed the year list + the coding datalists in the drawer
+        if (!self.buFiltersLoaded()) self.loadBuFilters();
+        if (!self.caLookups()) self.loadCaLookups();
+        if (!self.caLoaded()) self.runCostAdj();
       }
       else if (v === 'legacy') {
         if (!self.xmLoaded()) self.runEbsMap();
@@ -1740,24 +1931,17 @@
         }).catch(fail);
     };
 
-    /* ── Chart of Accounts page (merged Overview + Classifications + Segment Mapping + Explorer) ── */
-    self.coaOvOpen = ko.observable(true);
-    self.coaClsOpen = ko.observable(false);
-    self.coaMapOpen = ko.observable(false);
-    self.coaExpOpen = ko.observable(true);
+    /* ── Chart of Accounts page —  4 sub-tabs: cls (values) | map (mapping) | exp (explorer) | ov (overview) ── */
+    self.coaTab = ko.observable('cls');
     self.coaLoaded = ko.observable(false);
     self.loadCoa = function () {
       self.loadCombos(0); self.loadValues(); self.loadSegOptions(); self.coaLoaded(true);
-    };
-    self.toggleCoa = function (s) {
-      var m = { ov: self.coaOvOpen, cls: self.coaClsOpen, map: self.coaMapOpen, exp: self.coaExpOpen };
-      if (m[s]) m[s](!m[s]()); return true;
     };
     self.coaMax = ko.observable(false);
     self.toggleCoaMax = function () {
       self.coaMax(!self.coaMax());
       document.body.style.overflow = self.coaMax() ? 'hidden' : '';
-      if (self.coaMax()) self.coaExpOpen(true);
+      if (self.coaMax()) self.coaTab('exp');
       return false;
     };
     document.addEventListener('keydown', function (e) {
@@ -1785,7 +1969,7 @@
     self.lastRefreshed = ko.observable('');
     self.refreshActuals = function () {
       if (self.refreshing()) return;
-      self.refreshing(true);
+      self.refreshing(true); self.rfHidden(false);
       api('POST', '/actuals/refresh', {}).then(function (d) {
         self.lastRefreshed(d.refreshedAt || '');
         self.refreshing(false);
@@ -1795,13 +1979,20 @@
       }).catch(function (e) { self.refreshing(false); toast(e.message, true); });
     };
 
+    /* every Refresh-data menu action shows a visible popup (user feedback
+       2026-08-22 — "Refresh actuals" looked like nothing was happening):
+       actuals + rebuild get a lite spinner card; the Data Conveyor stays
+       exclusive to the source-data fleet run. Backdrop click hides it. */
+    self.rfHidden = ko.observable(false);
+    self.rfHide = function () { self.rfHidden(true); return false; };
+
     // structural-reload recovery: POST /actuals/rebuild -> prod.dct_views_rebuild
     // (re-creates the SELECT * base views, recompiles, refreshes the snapshot)
     self.rebuilding = ko.observable(false);
     self.rebuildViews = function () {
       if (self.rebuilding() || self.refreshing()) return;
       if (!window.confirm(self.t('rebuildConfirm'))) return;
-      self.rebuilding(true);
+      self.rebuilding(true); self.rfHidden(false);
       api('POST', '/actuals/rebuild', {}).then(function (d) {
         self.rebuilding(false);
         self.lastRefreshed(d.refreshedAt || '');
@@ -1813,25 +2004,82 @@
       }).catch(function (e) { self.rebuilding(false); toast(e.message, true); });
     };
 
-    /* ── Projects Data refresh (butil page): POST /butil/refreshdata runs the
-       ATD job set PROJECTS_DATA (Projects Full + Tasks Full + Projects Budget
-       Full - V2 — GL/db/19 bridge over atd_set_pkg.run_now), then polls the
-       GET until the fleet finishes and re-runs the current search. Keeps the
-       task/project masters and the budget in lock-step so a budget line never
-       hides behind a stale task master. */
+    /* ── Source-data refresh (butil page): POST /butil/refreshdata queues ALL
+       15 full extracts behind the page (GL/db/19): the PROJECTS_DATA job set
+       (Projects Full + Tasks Full + Projects Budget Full - V2) PLUS AP
+       Invoices/Lines/Distributions Full, PO Headers/Lines/Schedules/
+       Distributions Full, PR Headers/Lines/Distributions, GRN Temporary Job +
+       GRN Gap (user request 2026-08-22). Polls the GET until the fleet
+       finishes (~3-6 min) and re-runs the current search. */
     self.pdataBusy = ko.observable(false);
+    // Data Conveyor band feed (user-picked motion 2026-08-22): done count /
+    // running job derived from the REAL poll — never a fake spinner
+    self.pdataDone = ko.observable(0);
+    self.pdataTotal = ko.observable(15);
+    self.pdataJob = ko.observable('');
+    self.cvbSegs = Array.apply(null, { length: 15 }).map(function (_, i) { return i; });
+    self.cvbCount = ko.computed(function () {
+      return self.t('cvbCount').replace('{d}', self.pdataDone()).replace('{n}', self.pdataTotal());
+    });
+    self.cvbJob = ko.computed(function () {
+      return self.pdataJob() ? self.t('cvbRunning').replace('{j}', self.pdataJob()) : '';
+    });
+    // x on the popup hides it only — the refresh keeps running (header button
+    // keeps its busy label); reset on every new run
+    self.cvbHidden = ko.observable(false);
+    /* ── "Refresh data" dropdown (2026-08-22): folds the 3 refresh buttons into
+       one .gen-style menu; opening it fetches the latest source-data finish
+       time from the poll endpoint. Rebuild views is admin-only in the menu. */
+    self.rdOpen = ko.observable(false);
+    self.rdLast = ko.observable('');
+    self.toggleRd = function () {
+      self.rdOpen(!self.rdOpen());
+      if (self.rdOpen()) {
+        api('GET', '/butil/refreshdata').then(function (s) {
+          var best = 0, txt = '';
+          (s.jobs || []).forEach(function (j) {
+            var m = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2}) (AM|PM)$/.exec(j.lastFinished || '');
+            if (!m) return;
+            var t = new Date(+m[1], m[2] - 1, +m[3], (+m[4] % 12) + (m[6] === 'PM' ? 12 : 0), +m[5]).getTime();
+            if (t > best) { best = t; txt = j.lastFinished; }
+          });
+          self.rdLast(txt);
+        }).catch(function () { self.rdLast(''); });
+      }
+      return true;
+    };
+    self.closeRd = function () { self.rdOpen(false); return true; };
+    self.rdLastTxt = ko.computed(function () {
+      return self.rdLast() ? self.t('rdLastL').replace('{t}', self.rdLast()) : '';
+    });
+    self.rdBtnLabel = ko.computed(function () {
+      if (self.pdataBusy()) return self.t('pdataRunning');
+      if (self.rebuilding()) return self.t('rebuilding');
+      if (self.refreshing()) return self.t('refreshing');
+      return self.t('rdBtn');
+    });
+    function pdataProgress(s) {
+      var all = s.jobs || [];
+      var pend = all.filter(function (j) { return j.queueStatus === 'READY' || j.queueStatus === 'CLAIMED'; });
+      self.pdataTotal(all.length || 15);
+      self.pdataDone((all.length || 15) - pend.length);
+      self.pdataJob(all.filter(function (j) { return j.queueStatus === 'CLAIMED'; })
+                       .map(function (j) { return j.job; }).join(' · '));
+    }
     self.refreshProjectsData = function () {
       if (self.pdataBusy()) return;
+      self.pdataDone(0); self.pdataJob(''); self.cvbHidden(false);
       self.pdataBusy(true);
       api('POST', '/butil/refreshdata', {}).then(function (d) {
         toast(self.t('pdataQueued').replace('{n}', d.queued));
         var tries = 0;
         (function poll() {
-          if (++tries > 90) {                     // ~7.5 min ceiling
+          if (++tries > 180) {                    // ~15 min ceiling (15 full jobs since 2026-08-22)
             self.pdataBusy(false); toast(self.t('pdataTimeout'), true); return;
           }
           setTimeout(function () {
             api('GET', '/butil/refreshdata').then(function (s) {
+              pdataProgress(s);
               if (s.busy === 'Y') { poll(); return; }
               var bad = (s.jobs || []).filter(function (j) {
                 return j.queueStatus === 'FAILED' || j.lastStatus === 'FAILED';
@@ -2425,6 +2673,17 @@
       if (self.buYear() && (self.buTotal() || self.buItems().length)) self.runButil(0);
       return true;
     };
+    /* "Include Cost Adjustment" (2026-08-22, DEFAULT ON): approved Projects
+       Costing Adjustment rows fold into the figures SERVER-side (Actual +adj,
+       Budget +override, Fund follows), so the table, KPI band, CSV and the
+       negFund band all move together. Lines carrying one are starred (*). */
+    self.buCadj = ko.observable(true);
+    self.buCadjOn = ko.observable(false);        // echoed by the last /butil response
+    self.toggleBuCadj = function () {
+      self.buCadj(!self.buCadj());
+      if (self.buYear() && (self.buTotal() || self.buItems().length)) self.runButil(0);
+      return true;
+    };
     self.toggleBuOvr = function () {
       self.buOvr(!self.buOvr());
       // re-run in place (AP include-cancelled precedent) once results exist
@@ -2437,6 +2696,7 @@
         bu: self.buBuParam(), appropriation: self.buApprop() || null, program: self.buProgram() || null,
         ovr: self.buOvr() ? 'Y' : null,
         procash: self.buProcash() ? 'Y' : null,
+        costadj: self.buCadj() ? 'Y' : 'N',     // server default is Y — send N explicitly
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -2446,8 +2706,10 @@
         self.buItems(d.items || []); self.buTotals(d.totals || {});
         self.buTotal(d.total || 0); self.buOffset(offset);
         self.buMissCc(d.missingCc || 0); self.buMissCcBudget(d.missingCcBudget || 0);
+        self.buNegFund(d.negFund || 0); self.buNegFundTotal(d.negFundTotal || 0);
         self.buConsiderOvr(d.considerOverride === 'Y');
         self.buProcashOn(d.includeProcash === 'Y');
+        self.buCadjOn(d.includeCostAdj === 'Y');
         self.buLoading(false);
       }).catch(function (e) { self.buLoading(false); fail(e); });
     };
@@ -2456,6 +2718,22 @@
        the red band shows only when the count is non-zero and drills to the
        shared drawer via /butil?nocc=Y (same filters). */
     self.buMissCc = ko.observable(0); self.buMissCcBudget = ko.observable(0);
+    // any visible row carrying an approved cost adjustment -> show the (*) note;
+    // both the star and the note appear only while the figures INCLUDE the
+    // adjustments (the response echo), so the page never claims an adjustment
+    // the loaded figures do not carry
+    self.buAnyAdj = ko.computed(function () {
+      return self.buCadjOn()
+        && self.buItems().some(function (r) { return r.hasAdj === 'Y'; });
+    });
+    // over-budget warning band: count + total of lines with NEGATIVE Fund
+    // Available across the FULL filtered set (server aggregate, not page rows)
+    self.buNegFund = ko.observable(0); self.buNegFundTotal = ko.observable(0);
+    self.buNegMsg = ko.computed(function () {
+      return self.t('buNegMsg')
+        .replace('{n}', self.fmt(self.buNegFund()))
+        .replace('{amt}', self.money(Math.abs(self.buNegFundTotal())));
+    });
     self.buMissCcMsg = ko.computed(function () {
       return self.t('buMissCcMsg')
         .replace('{n}', self.fmt(self.buMissCc()))
@@ -2494,6 +2772,7 @@
       self.buBuSel(self.buBus().indexOf(BU_DEFAULT_UNIT) >= 0 ? [BU_DEFAULT_UNIT] : []); self.buBuPick('');
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       self.buOvr(false);
+      self.buCadj(true);                        // cost adjustment is on by default
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));
       self.runButil(0);
@@ -2570,13 +2849,14 @@
     self.buExportCsv = function () {
       api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
         var rows = d.items || [];
-        var cols = [['projectType', 'Project Type'], ['sector', 'Sector'], ['department', 'Department'],
+        var cols = [['sector', 'Sector'], ['department', 'Department'],
           ['organization', 'Organization'],
           ['costCentre', 'Cost Centre'], ['projectNumber', 'Project Number'], ['projectName', 'Project Name'],
           ['taskNumber', 'Task'], ['glAccount', 'GL Account'], ['appropriation', 'Appropriation'],
           ['chapter', 'Chapter'], ['program', 'Program'], ['expenditureType', 'Expenditure Type'],
           ['budgetAnnual', 'Annual Budget'], ['budget', 'YTD Budget'], ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
-          ['commitmentPr', 'Commitment (PR)'], ['obligationPo', 'Obligation (PO)'], ['fundAvailable', 'Fund Available']];
+          ['commitmentPr', 'Commitment (PR)'], ['obligationPo', 'Obligation (PO)'], ['fundAvailable', 'Fund Available'],
+          ['costAdj', 'Cost Adjustment'], ['costAdjOvr', 'Budget Override (Adj)'], ['hasAdj', 'Has Adjustment']];
         var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
           return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
         }).join('\n');
@@ -2608,6 +2888,7 @@
       if (self.buBookBusy()) return;
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.buBookBusy(true);
+      self.rgStart('rgGenBook', 6);
       // full page filter set (mirrors buParams) so the book scope = the page scope
       api('POST', '/butil/book', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
@@ -2665,6 +2946,7 @@
       if (self.buXlsxBusy()) return;
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.buXlsxBusy(true);
+      self.rgStart('rgGenXlsx', 5);
       api('POST', '/butil/xlsx', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
         bu: self.buBuParam(),
@@ -2720,6 +3002,7 @@
       if (self.buPptBusy()) return;
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.buPptBusy(true);
+      self.rgStart('rgGenPpt', 6);
       api('POST', '/butil/ppt', {
         year: Number(self.buYear()), period: self.buPeriod() || null,
         bu: self.buBuParam(),
@@ -2762,6 +3045,40 @@
       return self.buBookBusy() || self.buXlsxBusy() || self.buPptBusy();
     });
 
+    /* ── "The Binder" report-generation popup (v1.80.0, user-picked study B) ──
+       Centred over the dimmed page while a Briefing Book / Excel Register /
+       PowerPoint run is generated (Data Conveyor pattern): the book assembles
+       from its real sections, the elapsed clock is REAL, × hides the popup
+       while the run continues, and it closes itself on ANY exit path via the
+       buGenBusy subscription (success, failure, timeout, enqueue error). */
+    self.rgShow = ko.observable(false);
+    self.rgHidden = ko.observable(false);
+    self.rgLabel = ko.observable('');
+    self.rgPoll = ko.observable(6);
+    self.rgElapsed = ko.observable('0:00');
+    var rgTimer = null, rgT0 = 0;
+    function rgStart(labelKey, pollSecs) {
+      self.rgLabel(self.t(labelKey)); self.rgPoll(pollSecs);
+      self.rgHidden(false); self.rgElapsed('0:00'); rgT0 = Date.now();
+      if (rgTimer) clearInterval(rgTimer);
+      rgTimer = setInterval(function () {
+        var s = Math.floor((Date.now() - rgT0) / 1000);
+        self.rgElapsed(Math.floor(s / 60) + ':' + ('0' + (s % 60)).slice(-2));
+      }, 1000);
+      self.rgShow(true);
+    }
+    self.rgStart = rgStart;
+    function rgStop() {
+      if (rgTimer) { clearInterval(rgTimer); rgTimer = null; }
+      self.rgShow(false);
+    }
+    self.rgHide = function () { self.rgHidden(true); return false; };
+    self.buGenBusy.subscribe(function (busy) { if (!busy) rgStop(); });
+    self.rgSub = ko.computed(function () {
+      return self.t('rgElapsed') + ' ' + self.rgElapsed() + ' · '
+           + self.t('rgPolling').replace('{s}', self.rgPoll());
+    });
+
     /* ════ PROJECTS ENCUMBRANCES — open PO/PR lines with the full GL combination ══
        Reuses the Budget Utilization filter bar (buParams) VERBATIM, so the scope
        is identical to that page. The result set renders in the SHARED
@@ -2787,6 +3104,7 @@
       self.enLoading(true);
       var p = self.buParams(0, EN_MAX);       // same filters as Budget Utilization
       delete p.procash;                       // /encumbrances has no procash figure
+      delete p.costadj;                       // ...and no cost-adjustment figure
       delete p.offset;
       return api('GET', '/encumbrances' + qs(p)).then(function (d) {
         self.enCount(d.count || 0);
@@ -2860,6 +3178,7 @@
       self.pnLoading(true);
       var p = self.buParams(0, PN_MAX);       // same filters as Budget Utilization
       delete p.procash;                       // /pending has no procash figure
+      delete p.costadj;                       // ...and no cost-adjustment figure
       delete p.offset;
       p.source = self.pnSource() || null;     // page-local PR / PO scope
       p.bu = self.pnBuParam();                // page-local Business Unit any-of list
@@ -3158,7 +3477,7 @@
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
     self.skRows = skArr(8);   // shimmer rows shown while /butil runs
-    self.skCols = skArr(20);  // one cell per results-table column (+ Procash)
+    self.skCols = skArr(19);  // one cell per results-table column (Type column removed 2026-08-22)
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};
@@ -3850,7 +4169,7 @@
     self.openOvDrawer = function () {
       if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
       self.ovDrawer(true); self.ovLoading(true); self.ovRows([]); self.ovCount(0); self.ovTotFusion(0);
-      var p = self.buParams(0); delete p.limit; delete p.offset; delete p.ovr; delete p.procash;
+      var p = self.buParams(0); delete p.limit; delete p.offset; delete p.ovr; delete p.procash; delete p.costadj;
       api('GET', '/butil/override/lines' + qs(p)).then(function (d) {
         var reasons = (d.reasons || []).slice();
         // KO options: gotcha — a stored code absent from its list is blanked;
@@ -4221,6 +4540,260 @@
        Writes are SYS_ADMIN while security enforcement is off (server-gated
        GL_MANAGE_EBS_MAPPING). */
     self.canManageEbs = self.isSysAdmin;
+    /* ══════════ Projects Costing Adjustments (DCT_PA_COST_ADJ, 2026-08-22) ══
+       Manual signed cost adjustments on a budget line — optionally sourced
+       from a mis-coded AP invoice distribution — plus an optional signed
+       budget override on the same line. DRAFT rows are editable; APPROVED
+       rows fold into Budget Utilization behind "Include Cost Adjustment". */
+    self.canManageCadj = self.isSysAdmin;
+    self.caLoaded = ko.observable(false);
+    self.caLoading = ko.observable(false);
+    self.caData = ko.observable(null);
+    self.caCount = ko.observable(0);
+    self.caLookups = ko.observable(null);
+    self.caYear = ko.observable('');
+    self.caStatus = ko.observable('');
+    self.caSearch = ko.observable('');
+    var caRowMap = {};                        // ref -> full API row (IR keeps only declared cols)
+    self.caStatusOpts = ko.computed(function () {
+      var lk = self.caLookups();
+      return ((lk && lk.statuses) || []).map(function (s) {
+        return { v: s.code, l: self.lang() === 'ar' && s.nameAr ? s.nameAr : s.name };
+      });
+    });
+    self.caClassOpts = ko.computed(function () {
+      var lk = self.caLookups();
+      return ((lk && lk.classifications) || []).map(function (s) {
+        return { v: s.code, l: self.lang() === 'ar' && s.nameAr ? s.nameAr : s.name };
+      });
+    });
+    self.loadCaLookups = function () {
+      return api('GET', '/costadj/meta/lookups').then(self.caLookups).catch(fail);
+    };
+    /* column order = the user's annotated layout (2026-08-22 feedback):
+       Status first, then Project / Task / Etype / the two signed amounts /
+       Invoice / Supplier / Ref / Reason, with the time + audit columns last.
+       budgetYear is 'text' so it renders 2026, never 2,026. */
+    function caColumns() {
+      return [
+        { key: 'status',          label: self.t('caStatusL'),    type: 'text' },
+        { key: 'projectNumber',   label: self.t('cProject'),     type: 'text' },
+        { key: 'taskNumber',      label: self.t('cTask'),        type: 'text' },
+        { key: 'expenditureType', label: self.t('cEtype'),       type: 'text' },
+        { key: 'amount',          label: self.t('caAmountCol'),  type: 'money' },
+        { key: 'budgetOverride',  label: self.t('caOvrCol'),     type: 'money' },
+        { key: 'invoiceNumber',   label: self.t('caInvoice'),    type: 'text' },
+        { key: 'supplier',        label: self.t('caSupplier'),   type: 'text' },
+        { key: 'ref',             label: self.t('caRef'),        type: 'text' },
+        { key: 'reason',          label: self.t('caReason'),     type: 'text' },
+        { key: 'budgetYear',      label: self.t('fYearL'),       type: 'text' },
+        { key: 'period',          label: self.t('fPeriod'),      type: 'text' },
+        { key: 'className',       label: self.t('caClass'),      type: 'text' },
+        { key: 'createdBy',       label: self.t('caCreatedBy'),  type: 'text' },
+        { key: 'createdAt',       label: self.t('caCreatedAt'),  type: 'text' },
+        { key: 'actionedBy',      label: self.t('caActionedBy'), type: 'text' },
+        { key: 'actionedAt',      label: self.t('caActionedAt'), type: 'text' }
+      ];
+    }
+    self.runCostAdj = function () {
+      self.caLoading(true);
+      var p = { year: self.caYear() || null, status: self.caStatus() || null,
+                search: self.caSearch() || null };
+      return api('GET', '/costadj' + qs(p)).then(function (d) {
+        caRowMap = {};
+        (d.items || []).forEach(function (r) {
+          caRowMap[r.ref] = r;
+          // status pill: the IR renders row._rowClass on the <tr>; app.css
+          // styles ONLY the td[data-key=status] cell from it (colour + icon)
+          r._rowClass = 'ca-st-' + (r.status || '').toLowerCase();
+        });
+        self.caCount(d.total || 0);
+        self.caData({ columns: caColumns(), items: d.items || [], total: d.total || 0,
+                      truncated: (d.total || 0) >= 2000, maxRows: 2000, section: 'cadj',
+                      // designed column-order change beats stale IR autosave
+                      stateRev: 2,
+                      // Invoice cells deep-link to the Fusion AP invoice (the
+                      // internal invoice_id rides the side-map, not the row)
+                      cellLink: function (row, key) {
+                        if (key !== 'invoiceNumber') return null;
+                        var full = caRowMap[row.ref], F = window.FusionLinks;
+                        return (full && full.invoiceId && F) ? F.invoice(full.invoiceId) : null;
+                      } });
+        self.caLoaded(true); self.caLoading(false);
+      }).catch(function (e) { self.caLoading(false); fail(e); });
+    };
+    /* row click -> drawer; resolve the IR cell like the EBS map page does.
+       Invoice cells are Fusion deep-link anchors — let those navigate. */
+    self.caGridClick = function (d, e) {
+      if (e.target && e.target.closest && e.target.closest('a.ir-link')) return true;
+      var td = (e.target && e.target.closest) ? e.target.closest('td') : null;
+      if (!td) return true;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (err) { return true; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row) return true;
+      var row = caRowMap[ctx.$parent.row.ref];
+      if (row) { self.openCaEdit(row); return false; }
+      return true;
+    };
+    /* drawer state */
+    self.caDrawer = ko.observable(false);
+    self.caSaving = ko.observable(false);
+    self.caId = ko.observable(null);
+    self.caRow = ko.observable(null);         // full API row while editing/viewing
+    self.caFYear = ko.observable('');
+    self.caFPeriod = ko.observable('');
+    self.caFProj = ko.observable('');
+    self.caFTask = ko.observable('');
+    self.caFEtype = ko.observable('');
+    self.caFAmount = ko.observable('');
+    self.caFOvr = ko.observable('');
+    self.caFClass = ko.observable('');
+    self.caFReason = ko.observable('');
+    self.caFComments = ko.observable('');
+    self.caFDist = ko.observable(null);       // linked AP distribution (or null)
+    self.caReadOnly = ko.computed(function () {
+      var r = self.caRow();
+      return (!!r && r.status !== 'DRAFT') || !self.canManageCadj;
+    });
+    self.caPeriodOpts = ko.computed(function () {
+      var y = self.caFYear(); if (!y) return [];
+      var out = []; for (var m = 1; m <= 12; m++) out.push((m < 10 ? '0' : '') + m + '-' + y);
+      return out;
+    });
+    // the accounting period is MANDATORY (2026-08-22): current month for the
+    // current year, December for any other year — always a real period
+    function caDefPeriod(y) {
+      if (!y) return '';
+      var now = new Date();
+      if (Number(y) === now.getFullYear()) {
+        var m = now.getMonth() + 1;
+        return (m < 10 ? '0' + m : '' + m) + '-' + y;
+      }
+      return '12-' + y;
+    }
+    /* dependent pick lists (2026-08-22): tasks scope to the picked project,
+       expenditure types to project(+task) — served from the hourly butil key
+       cache. Loaded on the inputs' CHANGE events (blur / datalist pick),
+       never per keystroke. */
+    self.caTasks = ko.observableArray([]);
+    self.caEtypes = ko.observableArray([]);
+    self.loadCaTasks = function () {
+      self.caTasks([]);
+      var y = self.caFYear(), pn = (self.caFProj() || '').trim();
+      if (!y || !pn) return;
+      api('GET', '/costadj/meta/tasks' + qs({ year: y, project: pn }))
+        .then(function (d) { self.caTasks(d.items || []); }).catch(function () {});
+    };
+    self.loadCaEtypes = function () {
+      self.caEtypes([]);
+      var y = self.caFYear(), pn = (self.caFProj() || '').trim();
+      if (!y || !pn) return;
+      api('GET', '/costadj/meta/etypes' + qs({ year: y, project: pn,
+        task: (self.caFTask() || '').trim() || null }))
+        .then(function (d) { self.caEtypes(d.items || []); }).catch(function () {});
+    };
+    self.caProjChanged = function () { self.loadCaTasks(); self.loadCaEtypes(); return true; };
+    self.caTaskChanged = function () { self.loadCaEtypes(); return true; };
+    // year change: keep the chosen month on the new year (the options list is
+    // rebuilt, and KO blanks a value absent from it — re-assert next tick)
+    self.caFYear.subscribe(function (y) {
+      if (!self.caDrawer()) return;
+      var mm = (self.caFPeriod() || '').substring(0, 2);
+      var v = (/^(0[1-9]|1[0-2])$/.test(mm) && y) ? mm + '-' + y : caDefPeriod(y);
+      setTimeout(function () { self.caFPeriod(v); }, 0);
+      self.loadCaTasks(); self.loadCaEtypes();
+    });
+    self.openCaNew = function () {
+      self.caId(null); self.caRow(null);
+      self.caFYear(self.buYear() || (self.buYears()[0] || ''));
+      self.caFPeriod(caDefPeriod(self.caFYear()));
+      self.caFProj(''); self.caFTask(''); self.caFEtype('');
+      self.caFAmount(''); self.caFOvr(''); self.caFClass(''); self.caFReason(''); self.caFComments('');
+      self.caFDist(null); self.caDistRows([]); self.caDistQ('');
+      self.caTasks([]); self.caEtypes([]);
+      self.caDrawer(true);
+    };
+    self.openCaEdit = function (row) {
+      self.caId(row.id); self.caRow(row);
+      self.caFYear(row.budgetYear);
+      self.caFProj(row.projectNumber); self.caFTask(row.taskNumber); self.caFEtype(row.expenditureType);
+      self.caFAmount(row.amount); self.caFOvr(row.budgetOverride || '');
+      self.caFClass(row.classification || ''); self.caFReason(row.reason || '');
+      self.caFComments(row.comments || '');
+      self.caFDist(row.invoiceNumber ? { invoiceId: row.invoiceId, invoiceNumber: row.invoiceNumber,
+        line: row.invoiceLine, dist: row.distLine, supplier: row.supplier, amountAed: null,
+        projectNumber: row.origProject, taskNumber: row.origTask, expenditureType: row.origEtype } : null);
+      self.caDistRows([]); self.caDistQ('');
+      // period AFTER year (the year subscription re-defaults it next tick)
+      setTimeout(function () { self.caFPeriod(row.period || caDefPeriod(row.budgetYear)); }, 0);
+      self.loadCaTasks(); self.loadCaEtypes();
+      self.caDrawer(true);
+    };
+    self.closeCaDrawer = function () { self.caDrawer(false); };
+    /* AP invoice distribution search (server cap 50) */
+    self.caDistQ = ko.observable('');
+    self.caDistRows = ko.observableArray([]);
+    self.caDistBusy = ko.observable(false);
+    self.searchCaDists = function () {
+      var s = (self.caDistQ() || '').trim();
+      if (s.length < 2) { toast(self.t('caDistMin'), true); return; }
+      self.caDistBusy(true);
+      api('GET', '/costadj/meta/dists' + qs({ search: s })).then(function (d) {
+        self.caDistRows(d.items || []); self.caDistBusy(false);
+      }).catch(function (e) { self.caDistBusy(false); fail(e); });
+    };
+    self.pickCaDist = function (r) {
+      self.caFDist(r);
+      // prefill a default amount the user can edit or negate
+      if (!self.caFAmount()) self.caFAmount(r.amountAed);
+      self.caDistRows([]);
+      return true;
+    };
+    self.clearCaDist = function () { self.caFDist(null); };
+    self.saveCa = function () {
+      var amt = Number(self.caFAmount() || 0), ovr = Number(self.caFOvr() || 0);
+      if (!self.caFYear() || !self.caFPeriod() || !(self.caFProj() || '').trim()
+          || !(self.caFTask() || '').trim() || !(self.caFEtype() || '').trim()
+          || !(self.caFReason() || '').trim() || (!amt && !ovr)) {
+        toast(self.t('caReqFields'), true); return;
+      }
+      var d = self.caFDist();
+      var body = { budgetYear: Number(self.caFYear()), period: self.caFPeriod() || null,
+        projectNumber: self.caFProj().trim(), taskNumber: self.caFTask().trim(),
+        expenditureType: self.caFEtype().trim(),
+        amount: amt,
+        budgetOverride: (self.caFOvr() === '' || self.caFOvr() == null) ? null : ovr,
+        classification: self.caFClass() || null, reason: self.caFReason().trim(),
+        comments: self.caFComments() || null,
+        invoiceId: d ? d.invoiceId : null, invoiceNumber: d ? d.invoiceNumber : null,
+        invoiceLine: d ? d.line : null, distLine: d ? d.dist : null,
+        supplier: d ? (d.supplier || null) : null,
+        origProject: d ? (d.projectNumber || null) : null,
+        origTask: d ? (d.taskNumber || null) : null,
+        origEtype: d ? (d.expenditureType || null) : null };
+      self.caSaving(true);
+      var done = function () { self.caSaving(false); self.caDrawer(false);
+                               toast(self.t('saved')); self.runCostAdj(); };
+      var oops = function (e) { self.caSaving(false); toast(e.message, true); };
+      if (self.caId()) api('PUT', '/costadj/' + self.caId(), body).then(done).catch(oops);
+      else api('POST', '/costadj', body).then(done).catch(oops);
+    };
+    self.deleteCa = function () {
+      if (!self.caId() || !window.confirm(self.t('caDeleteConfirm'))) return;
+      self.caSaving(true);
+      api('DELETE', '/costadj/' + self.caId()).then(function () {
+        self.caSaving(false); self.caDrawer(false); toast(self.t('deleted')); self.runCostAdj();
+      }).catch(function (e) { self.caSaving(false); toast(e.message, true); });
+    };
+    self.actionCa = function (act) {
+      if (!self.caId()) return;
+      if (!window.confirm(self.t(act === 'APPROVE' ? 'caApproveConfirm' : 'caRejectConfirm'))) return;
+      self.caSaving(true);
+      api('POST', '/costadj/' + self.caId() + '/action', { action: act }).then(function () {
+        self.caSaving(false); self.caDrawer(false); toast(self.t('saved')); self.runCostAdj();
+      }).catch(function (e) { self.caSaving(false); toast(e.message, true); });
+    };
+
     self.xmOpen = ko.observable(true);
     self.ebOpen = ko.observable(true);
     self.xmData = ko.observable(null);
@@ -4544,7 +5117,30 @@
     self.cfGlBusy = ko.observable(false);
     self.cfPjBusy = ko.observable(false);
     self.cfNote = ko.observable('');
+    /* Projects-cashflow TEMPLATE (2026-08-19, GL/db/23): the sheet is built from
+       the budget lines of the picked year — every project / task / expenditure
+       type with its full 10-segment GL combination and the amounts already
+       saved — in a WIDE layout (one column per accounting period). The picker's
+       years come from the same route (meta=Y); a user without the cashflow
+       privilege gets a 403 there and the template falls back to the sample. */
+    self.cfTplYears = ko.observableArray([]);
+    self.cfTplYear = ko.observable('');
+    self.cfTplBusy = ko.observable(false);
+    self.loadCfTplYears = function () {
+      return api('GET', '/cashflow/projects/template?meta=Y').then(function (d) {
+        var list = (d.years || []).map(String);
+        self.cfTplYears(list);
+        if (!list.length) return;
+        /* a KO <select> that was bound with an EMPTY option list blanks its
+           value the moment the options land — re-assert the year after KO has
+           rendered them (same rule as the AP procash LOVs) */
+        var want = String(d.year || list[0]);
+        self.cfTplYear(want);
+        setTimeout(function () { if (self.cfTplYear() !== want) self.cfTplYear(want); }, 0);
+      }).catch(function () { self.cfTplYears([]); });
+    };
     self.loadCfSummary = function () {
+      self.loadCfTplYears();
       return api('GET', '/cashflow/summary').then(function (d) {
         self.cfGlYears(d.glYears || []);
         self.cfPjYears(d.projectYears || []);
@@ -4591,6 +5187,22 @@
       return idx;
     }
     function cfCell(r, i) { return i != null && r[i] != null ? String(r[i]).trim() : ''; }
+    /* wide-template support: a header cell that IS an accounting period
+       ('01-2026', 'Jan-2026') becomes an amount column for that period */
+    var CF_MONS = ['JAN','FEB','MAR','APR','MAY','JUN','JUL','AUG','SEP','OCT','NOV','DEC'];
+    function cfWideCols(headerRow) {
+      var out = [];
+      (headerRow || []).forEach(function (h, i) {
+        var txt = String(h == null ? '' : h).trim().toUpperCase();
+        var m = /^(0?[1-9]|1[0-2])[-\/](\d{4})$/.exec(txt);
+        if (m) { out.push({ i: i, period: ('0' + m[1]).slice(-2) + '-' + m[2] }); return; }
+        var m2 = /^([A-Z]{3})[A-Z]*[-\/ ](\d{4})$/.exec(txt);
+        if (m2 && CF_MONS.indexOf(m2[1]) >= 0) {
+          out.push({ i: i, period: ('0' + (CF_MONS.indexOf(m2[1]) + 1)).slice(-2) + '-' + m2[2] });
+        }
+      });
+      return out;
+    }
     function cfUploadRows(path, file, rows, busyObs) {
       var chunks = [];
       for (var c = 0; c < rows.length; c += 500) chunks.push(rows.slice(c, c + 500));
@@ -4667,19 +5279,44 @@
           try {
             var wb = X.read(new Uint8Array(rd.result), { type: 'array' });
             var aoa = X.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, raw: true, defval: null });
+            /* two accepted shapes: the classic LONG sheet (PERIOD + AMOUNT
+               columns) and the WIDE template (one column per period). Blank
+               month cells are skipped — an untouched template row must never
+               post a zero; a typed 0 DOES post and clears a saved amount. */
             var idx = aoa.length ? cfMapHeaders(aoa[0], CF_PJ_HEADS, ['project', 'task', 'etype', 'period', 'cfType', 'amount']) : null;
-            if (!idx) { self.cfPjBusy(false); toast(self.t('cfPjUpBad'), true); return; }
-            var rows = [];
-            for (var i = 1; i < aoa.length; i++) {
-              var r = aoa[i];
-              if (!r || r[idx.project] == null || r[idx.period] == null) continue;
-              rows.push({
-                project: cfCell(r, idx.project), task: cfCell(r, idx.task),
-                etype: cfCell(r, idx.etype), period: cfCell(r, idx.period),
-                cfType: cfCell(r, idx.cfType).toUpperCase(),
-                amount: Number(r[idx.amount]) || 0,
-                year: idx.year != null && r[idx.year] != null ? Number(r[idx.year]) : null
-              });
+            var kidx = idx || (aoa.length ? cfMapHeaders(aoa[0], CF_PJ_HEADS, ['project', 'task', 'etype']) : null);
+            var wide = idx ? [] : (aoa.length ? cfWideCols(aoa[0]) : []);
+            if (!idx && !(kidx && wide.length)) { self.cfPjBusy(false); toast(self.t('cfPjUpBad'), true); return; }
+            var rows = [], i, r;
+            if (idx) {
+              for (i = 1; i < aoa.length; i++) {
+                r = aoa[i];
+                if (!r || r[idx.project] == null || r[idx.period] == null) continue;
+                rows.push({
+                  project: cfCell(r, idx.project), task: cfCell(r, idx.task),
+                  etype: cfCell(r, idx.etype), period: cfCell(r, idx.period),
+                  cfType: cfCell(r, idx.cfType).toUpperCase(),
+                  amount: Number(r[idx.amount]) || 0,
+                  year: idx.year != null && r[idx.year] != null ? Number(r[idx.year]) : null
+                });
+              }
+            } else {
+              for (i = 1; i < aoa.length; i++) {
+                r = aoa[i];
+                if (!r || r[kidx.project] == null) continue;
+                var typ = (cfCell(r, kidx.cfType) || 'APPROVED').toUpperCase();
+                for (var w = 0; w < wide.length; w++) {
+                  var raw = r[wide[w].i];
+                  if (raw === null || raw === undefined || String(raw).trim() === '') continue;
+                  var amt = Number(String(raw).replace(/,/g, ''));
+                  if (!isFinite(amt)) continue;
+                  rows.push({
+                    project: cfCell(r, kidx.project), task: cfCell(r, kidx.task),
+                    etype: cfCell(r, kidx.etype), period: wide[w].period,
+                    cfType: typ, amount: amt, year: Number(wide[w].period.slice(3))
+                  });
+                }
+              }
             }
             if (!rows.length) { self.cfPjBusy(false); toast(self.t('cfPjUpBad'), true); return; }
             cfUploadRows('/cashflow/projects', f, rows, self.cfPjBusy);
@@ -4701,16 +5338,81 @@
         X.writeFile(wb, 'GL_Cashflow_Template.xlsx');
       });
     };
-    self.cfPjTemplate = function () {
+    /* reference columns — informational only, the upload ignores them */
+    var CF_TPL_REF = [
+      ['glCombination', 'GL_COMBINATION'], ['sector', 'SECTOR'],
+      ['department', 'DEPARTMENT'], ['costCenter', 'COST_CENTER'],
+      ['glAccount', 'GL_ACCOUNT'], ['appropriation', 'APPROPRIATION'],
+      ['chapter', 'CHAPTER'], ['program', 'PROGRAM'],
+      ['businessUnit', 'BUSINESS_UNIT'], ['projectType', 'PROJECT_TYPE']
+    ];
+    function cfPjBuildTemplate(d, year) {
+      var lines = d.lines || [], periods = (d.periods || []).slice();
+      if (!periods.length) {
+        for (var m = 1; m <= 12; m++) periods.push(('0' + m).slice(-2) + '-' + year);
+      }
       window.require(['xlsx'], function (X) {
+        var head = ['PROJECT', 'PROJECT_NAME', 'TASK', 'EXPENDITURE_TYPE', 'CF_TYPE']
+          .concat(periods)
+          .concat(CF_TPL_REF.map(function (c) { return c[1]; }))
+          .concat(['ANNUAL_BUDGET']);
+        var aoa = [head];
+        function line2row(l, type, pfx) {
+          var r = [l.project, l.projectName || '', l.task, l.etype, type];
+          for (var i = 1; i <= 12; i++) {
+            var v = l[pfx + ('0' + i).slice(-2)];
+            r.push(v ? Number(v) : null);
+          }
+          CF_TPL_REF.forEach(function (c) { r.push(l[c[0]] || ''); });
+          r.push(Number(l.budgetAnnual) || 0);
+          return r;
+        }
+        lines.forEach(function (l) {
+          aoa.push(line2row(l, 'APPROVED', 'a'));
+          var rev = false;
+          for (var i = 1; i <= 12; i++) { if (l['r' + ('0' + i).slice(-2)]) rev = true; }
+          if (rev) aoa.push(line2row(l, 'REVISED', 'r'));
+        });
+        if (!lines.length) {
+          aoa.push(['100026', 'Sample project', '1.1', 'Professional Services', 'APPROVED']
+            .concat(periods.map(function () { return null; }))
+            .concat(CF_TPL_REF.map(function () { return ''; }))
+            .concat([0]));
+        }
+        var ws = X.utils.aoa_to_sheet(aoa);
+        ws['!cols'] = head.map(function (h, i) {
+          return { wch: i === 1 ? 30 : (i === 3 ? 42 : Math.max(12, h.length + 2)) };
+        });
         var wb = X.utils.book_new();
-        var ws = X.utils.aoa_to_sheet([
-          ['PROJECT', 'TASK', 'EXPENDITURE_TYPE', 'PERIOD', 'CF_TYPE', 'AMOUNT'],
-          ['100026', '1.1', 'Professional Services', '01-2026', 'APPROVED', 500000]
-        ]);
         X.utils.book_append_sheet(wb, ws, 'Projects Cashflow');
-        X.writeFile(wb, 'Projects_Cashflow_Template.xlsx');
+        X.utils.book_append_sheet(wb, X.utils.aoa_to_sheet([
+          [self.t('cfTplHint')],
+          [''],
+          ['Budget year: ' + year + '  |  budget lines: ' + lines.length],
+          ['Keys (must not be edited): PROJECT, TASK, EXPENDITURE_TYPE.'],
+          ['CF_TYPE = APPROVED or REVISED — copy a row and switch it to plan both.'],
+          ['One column per accounting period (MM-YYYY): type the amount in the month cell.'],
+          ['Blank month cells are ignored on upload; a typed 0 clears a saved amount.'],
+          ['Columns after the months (GL_COMBINATION, SECTOR, ...) are reference only.']
+        ]), self.t('cfTplNoteSheet'));
+        X.writeFile(wb, 'Projects_Cashflow_Template_' + year + '.xlsx');
+        self.cfTplBusy(false);
+        var msg = self.t('cfTplDone').replace('{n}', lines.length).replace('{y}', year);
+        self.cfNote(lines.length ? msg : self.t('cfTplEmpty'));
+        toast(lines.length ? msg : self.t('cfTplEmpty'));
       });
+    }
+    self.cfPjTemplate = function () {
+      var year = self.cfTplYear() || String(new Date().getFullYear());
+      self.cfTplBusy(true);
+      self.cfNote('');
+      api('GET', '/cashflow/projects/template?year=' + encodeURIComponent(year))
+        .then(function (d) { cfPjBuildTemplate(d, year); })
+        .catch(function (e) {
+          /* no privilege / route missing -> still hand out the empty layout */
+          cfPjBuildTemplate({}, year);
+          self.cfNote(self.t('cfTplFail') + ' — ' + (e && e.message ? e.message : ''));
+        });
     };
 
     /* ════ DOF REPORTS — YoY / Budget Utilization / Quarterly ════
@@ -5449,6 +6151,251 @@
             }, 4000);
           })();
         }).catch(function (e) { self.yoRegBusy(false); toast(e.message, true); });
+      };
+    })();
+
+    /* ── Sector Financial Performance (2026-08-19) ────────────────────
+       Rebuild of docs/Reports/GL/Sector Report_October.pdf. Every figure comes
+       from /gl/sectorperf*, which reads DCT_SECTOR_PERF_V -- itself built on
+       top of the Budget Utilization view, so Budget / Actual / Encumbrance /
+       Funds Available reconcile to the Budget Utilization page by construction.
+       PLAN is the only added measure, and while no real plan is loaded it is
+       generated sample data flagged by the amber banner. */
+    (function () {
+      self.spFilters   = ko.observable(null);
+      self.spLoaded    = ko.observable(false);
+      self.spBusy      = ko.observable(false);
+      self.spError     = ko.observable('');
+      self.spOverview  = ko.observable(null);
+      self.spSectors   = ko.observableArray([]);
+      self.spTotalRow  = ko.observable(null);
+      self.spDepts     = ko.observableArray([]);
+      self.spTrend     = ko.observableArray([]);
+      self.spTrendMeta = ko.observable(null);
+      self.spRev       = ko.observable(null);
+      self.spExpand    = ko.observable(false);
+
+      // criteria
+      self.spcYear     = ko.observable('');
+      self.spcPeriod   = ko.observable('');
+      self.spcPlanType = ko.observable('APPROVED');
+      self.spcProjType = ko.observable('');
+      self.spcBu       = ko.observable('');
+      self.spSectorSel = ko.observableArray([]);
+      self.spDeptSel   = ko.observableArray([]);
+      self.spKindSel   = ko.observableArray([]);
+      self.spSectorPick = ko.observable('');
+      self.spDeptPick   = ko.observable('');
+      self.spKindPick   = ko.observable('');
+
+      function pipe(arr) { return arr().length ? arr().join('|') : ''; }
+      function addChip(arr, v) { if (v && arr().indexOf(v) < 0) arr.push(v); }
+
+      self.spSectorPick.subscribe(function (v) { if (v) { addChip(self.spSectorSel, v); self.spSectorPick(''); } });
+      self.spDeptPick.subscribe(function (v) { if (v) { addChip(self.spDeptSel, v); self.spDeptPick(''); } });
+      self.spKindPick.subscribe(function (v) { if (v) { addChip(self.spKindSel, v); self.spKindPick(''); } });
+
+      self.spChipRemove = function (arr, v) { arr.remove(v); };
+
+      self.spQuery = function () {
+        return qs({
+          year: self.spcYear(),
+          period: self.spcPeriod(),
+          sector: pipe(self.spSectorSel),
+          costcenter: pipe(self.spDeptSel),
+          kind: self.spKindSel().length ? pipe(self.spKindSel) : 'Opex|Capex',
+          projecttype: self.spcProjType(),
+          bu: self.spcBu(),
+          plantype: self.spcPlanType()
+        });
+      };
+
+      /* Default period = the CURRENT month when the selected year is the current
+         year (the Budget Utilization page's rule). Without it the page opens on
+         "full year", where YTD Plan == FY Plan and the source pack's
+         Target [YTD Plan / FY Plan] column reads a useless 100% on every row. */
+      self.spDefaultPeriod = function () {
+        var now = new Date(), y = String(self.spcYear() || '');
+        if (y !== String(now.getFullYear())) return '';
+        return ('0' + (now.getMonth() + 1)).slice(-2) + '-' + y;
+      };
+
+      self.loadSpFilters = function () {
+        return api('GET', '/sectorperf/filters').then(function (d) {
+          self.spFilters(d);
+          if (!self.spcYear()) self.spcYear(String(d.year || (d.years || [])[0] || ''));
+          // KO blanks a <select> whose option list was empty at bind time --
+          // re-assert after the LOV lands (the cashflow-page lesson).
+          setTimeout(function () { self.spcYear(String(self.spcYear())); }, 0);
+          if (!self.spKindSel().length) self.spKindSel(['Opex', 'Capex']);
+          if (!self.spcPeriod()) self.spcPeriod(self.spDefaultPeriod());
+        });
+      };
+
+      self.spDeptLabel = function (cc) {
+        var l = ((self.spFilters() || {}).departments || []).filter(function (d) { return d.costCentre === cc; })[0];
+        return l ? l.department + ' (' + cc + ')' : cc;
+      };
+
+      self.runSectorPerf = function () {
+        if (!self.spcYear()) return Promise.resolve();
+        self.spBusy(true); self.spError('');
+        var q = self.spQuery();
+        var lvl = self.spExpand() ? '&level=project' : '';
+        return Promise.all([
+          api('GET', '/sectorperf' + q),
+          api('GET', '/sectorperf/sectors' + q + lvl),
+          api('GET', '/sectorperf/departments' + q),
+          api('GET', '/sectorperf/trend' + q),
+          api('GET', '/sectorperf/revenue' + q)
+        ]).then(function (r) {
+          self.spOverview(r[0]);
+          self.spSectors(r[1].items || []);
+          self.spTotalRow(r[1].total || null);
+          self.spDepts(r[2].items || []);
+          self.spTrend(r[3].items || []);
+          self.spTrendMeta({ budgetAnnual: r[3].budgetAnnual, basis: r[3].budgetBasis });
+          self.spRev(r[4]);
+          self.spLoaded(true);
+          self.spBusy(false);
+        }).catch(function (e) {
+          self.spBusy(false);
+          self.spError(e && e.message || self.t('loadFailed'));
+        });
+      };
+
+      self.spSearch = function () { self.runSectorPerf(); };
+      self.spClear = function () {
+        self.spcPeriod(self.spDefaultPeriod()); self.spcPlanType('APPROVED');
+        self.spcProjType(''); self.spcBu('');
+        self.spSectorSel([]); self.spDeptSel([]); self.spKindSel(['Opex', 'Capex']); self.spExpand(false);
+        self.runSectorPerf();
+      };
+      self.spToggleExpand = function () { self.spExpand(!self.spExpand()); self.runSectorPerf(); };
+
+      /* the page-1 matrix: the four rows of the source pack, in its order.
+         Opex & Capex is a computed total row, not a server row, so it always
+         agrees with the two rows above it. */
+      self.spMatrix = ko.computed(function () {
+        var o = self.spOverview(); if (!o) return [];
+        var by = {}; (o.matrix || []).forEach(function (m) { by[m.kind] = m; });
+        function row(key, label, m) {
+          m = m || {};
+          return {
+            key: key, label: label,
+            fyBudget: m.fyBudget || 0, ytdActual: m.ytdActual || 0,
+            ytdPlan: m.ytdPlan || 0, fyPlan: m.fyPlan || 0,
+            actualVsBudgetPct: m.actualVsBudgetPct, targetPct: m.targetPct
+          };
+        }
+        var rev = o.revenue || {};
+        var oc = { fyBudget: 0, ytdActual: 0, ytdPlan: 0, fyPlan: 0 };
+        ['Opex', 'Capex'].forEach(function (k) {
+          var m = by[k] || {};
+          oc.fyBudget += m.fyBudget || 0; oc.ytdActual += m.ytdActual || 0;
+          oc.ytdPlan += m.ytdPlan || 0;   oc.fyPlan   += m.fyPlan || 0;
+        });
+        oc.actualVsBudgetPct = oc.fyBudget ? Math.round(oc.ytdActual * 1000 / oc.fyBudget) / 10 : null;
+        oc.targetPct         = oc.fyPlan   ? Math.round(oc.ytdPlan   * 1000 / oc.fyPlan) / 10 : null;
+        return [
+          row('revenue', self.t('spRevenue'), {
+            fyBudget: rev.fyBudget, ytdActual: rev.ytdActual, ytdPlan: rev.ytdPlan,
+            fyPlan: rev.fyPlan, actualVsBudgetPct: rev.actualVsBudgetPct, targetPct: rev.targetPct }),
+          row('opex',  self.t('spOpex'),  by.Opex),
+          row('capex', self.t('spCapex'), by.Capex),
+          row('total', self.t('spOpexCapex'), oc)
+        ];
+      });
+
+      /* RAG dots of the source pack: 0-33 red, 33-67 amber, 67-100 green */
+      self.spRag = function (pct) {
+        if (pct == null) return 'sp-rag--na';
+        if (pct < 33) return 'sp-rag--low';
+        if (pct < 67) return 'sp-rag--mid';
+        return 'sp-rag--high';
+      };
+      self.spPct = function (v) { return v == null ? '—' : self.fmtPct(v); };
+      self.fmtPct = function (v) { return (Math.round(v * 10) / 10).toFixed(1) + '%'; };
+
+      /* gauge: a half-donut drawn with one SVG arc (no chart library in this
+         app -- every visual here is hand-built SVG/CSS, like the dashboard) */
+      self.spGaugeDash = function (pct) {
+        var p = Math.max(0, Math.min(100, pct || 0));
+        var len = Math.PI * 80;                 // r = 80, half circle
+        return (len * p / 100) + ' ' + len;
+      };
+
+      self.spTrendMax = ko.computed(function () {
+        var m = 0;
+        self.spTrend().forEach(function (t) {
+          m = Math.max(m, t.budgetCumulative || 0, t.actualCumulative || 0, t.planCumulative || 0);
+        });
+        return m || 1;
+      });
+      self.spBarH = function (v) { return Math.max(0, (v || 0) * 100 / self.spTrendMax()) + '%'; };
+
+      self.spDeptMax = ko.computed(function () {
+        var m = 0;
+        self.spDepts().forEach(function (d) { m = Math.max(m, d.budget || 0, d.actual || 0, d.plan || 0); });
+        return m || 1;
+      });
+      self.spDeptW = function (v) { return Math.max(0, (v || 0) * 100 / self.spDeptMax()) + '%'; };
+
+      self.spRevMax = ko.computed(function () {
+        var m = 0;
+        ((self.spRev() || {}).categories || []).forEach(function (c) {
+          m = Math.max(m, Math.abs(c.actual || 0), Math.abs(c.plan || 0));
+        });
+        return m || 1;
+      });
+      self.spRevW = function (v) { return Math.max(0, Math.abs(v || 0) * 100 / self.spRevMax()) + '%'; };
+
+      self.spTrendMonthMax = ko.computed(function () {
+        var m = 0;
+        ((self.spRev() || {}).trend || []).forEach(function (t) { m = Math.max(m, t.actual || 0); });
+        return m || 1;
+      });
+      self.spTrendMonthH = function (v) { return Math.max(0, (v || 0) * 100 / self.spTrendMonthMax()) + '%'; };
+
+      self.spStream = function (code) {
+        return (((self.spRev() || {}).streams) || []).filter(function (s) { return s.stream === code; })[0] || {};
+      };
+
+      /* sample-plan banner + one-click removal */
+      self.spSampleActive = ko.computed(function () {
+        var o = self.spOverview(); return !!o && o.sampleActive === 'Y';
+      });
+      self.spPurgeSample = function () {
+        if (!window.confirm(self.t('spSampleConfirm'))) return;
+        api('DELETE', '/sectorperf/sample?year=' + encodeURIComponent(self.spcYear()))
+          .then(function () { toast(self.t('spSamplePurged')); self.runSectorPerf(); })
+          .catch(function (e) { toast(e.message, true); });
+      };
+
+      self.spExportCsv = function () {
+        var rows = [], t = self.t.bind(self);
+        rows.push([t('spSector'), t('spProject'), t('spBudget'), t('spActual'),
+                   t('spActVsBudget'), t('spPlan'), t('spActVsPlanAmt'),
+                   t('spEncumbrance'), t('spFundsAvail')]);
+        self.spSectors().forEach(function (r) {
+          rows.push([r.sector, r.projectName || '', r.budget, r.actual,
+                     r.actualVsBudgetPct == null ? '' : r.actualVsBudgetPct,
+                     r.plan, r.actualVsPlanAmount, r.encumbrance, r.fundsAvailable]);
+        });
+        var tot = self.spTotalRow();
+        if (tot) rows.push([t('spTotal'), '', tot.budget, tot.actual,
+                            tot.actualVsBudgetPct == null ? '' : tot.actualVsBudgetPct,
+                            tot.plan, tot.actualVsPlanAmount, tot.encumbrance, tot.fundsAvailable]);
+        var csv = '﻿' + rows.map(function (r) {
+          return r.map(function (c) {
+            c = c == null ? '' : String(c);
+            return /[",\n]/.test(c) ? '"' + c.replace(/"/g, '""') + '"' : c;
+          }).join(',');
+        }).join('\n');
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8;' }));
+        a.download = 'sector-performance-' + self.spcYear() + '.csv';
+        document.body.appendChild(a); a.click(); document.body.removeChild(a);
       };
     })();
 

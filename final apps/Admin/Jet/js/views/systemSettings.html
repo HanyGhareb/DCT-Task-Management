@@ -396,11 +396,12 @@
       </div>
       <!-- ko if: $data.items && $data.items.length -->
       <div style="margin-top:11px;border-top:1px solid var(--border)" data-bind="foreach:$data.items.slice(0,10)">
-        <div style="display:grid;grid-template-columns:50px 92px minmax(240px,1fr) 85px 85px;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--border);font-size:11px">
-          <b style="color:var(--text-3)" data-bind="text:moduleCode"></b>
+        <div style="display:grid;grid-template-columns:72px 92px minmax(240px,1fr) 85px 85px 85px;gap:10px;align-items:center;padding:8px 2px;border-bottom:1px solid var(--border);font-size:11px">
+          <b data-bind="text:workloadClass || moduleCode,style:{color:isSlow==='Y'?'#b3261e':'var(--text-3)'}"></b>
           <span style="font-family:monospace" data-bind="text:sqlId"></span>
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text:sqlPreview,attr:{title:sqlPreview}"></span>
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap" data-bind="text:sqlPreview,attr:{title:(sourceModule || moduleCode) + (sourceAction ? ' · ' + sourceAction : '') + '\n' + sqlPreview}"></span>
           <span><b data-bind="text:avgSeconds + ' s'"></b> <small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.perf.average')"></small></span>
+          <span><b data-bind="text:totalSeconds + ' s'"></b> <small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.perf.total')"></small></span>
           <span><b data-bind="text:executions"></b> <small style="display:block;color:var(--text-3)" data-bind="text:$root.t('sys.perf.executions')"></small></span>
         </div>
       </div>

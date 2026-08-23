@@ -50,7 +50,17 @@ CREATE TABLE IF NOT EXISTS prod.dct_ops_state (
   alerted_signature VARCHAR2(200),last_alert_at TIMESTAMP WITH TIME ZONE,
   CONSTRAINT ck_dct_ops_status CHECK(status IN('HEALTHY','WARNING'))
 );
-ALTER TABLE prod.dct_ops_state ADD IF NOT EXISTS consecutive_count NUMBER DEFAULT 0 NOT NULL;
+DECLARE l_count NUMBER;
+BEGIN
+  SELECT COUNT(*) INTO l_count FROM dba_tab_columns
+   WHERE owner='PROD' AND table_name='DCT_OPS_STATE'
+     AND column_name='CONSECUTIVE_COUNT';
+  IF l_count=0 THEN
+    EXECUTE IMMEDIATE
+      'ALTER TABLE prod.dct_ops_state ADD consecutive_count NUMBER DEFAULT 0 NOT NULL';
+  END IF;
+END;
+/
 
 CREATE OR REPLACE VIEW admin.dct_ords_sql_stats_v AS
 SELECT sql_id,plan_hash_value,executions,elapsed_time,cpu_time,buffer_gets,

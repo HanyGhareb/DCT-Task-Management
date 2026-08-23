@@ -148,28 +148,28 @@ BEGIN
   dct_rest.json_header; APEX_JSON.initialize_output; APEX_JSON.open_object;
   APEX_JSON.write('year', l_year);
   APEX_JSON.open_array('costCenters');
-  FOR r IN (SELECT cost_centre cc, MAX(department) dept FROM prod.dct_budget_utilization_v
+  FOR r IN (SELECT cost_centre cc, MAX(department) dept FROM prod.dct_butil_key_cache
             WHERE cost_centre IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
             GROUP BY cost_centre ORDER BY cost_centre) LOOP
     APEX_JSON.open_object; APEX_JSON.write('cc', r.cc); APEX_JSON.write('dept', NVL(r.dept,'')); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('projects');
-  FOR r IN (SELECT project_number p, MAX(project_name) n FROM prod.dct_budget_utilization_v
+  FOR r IN (SELECT project_number p, MAX(project_name) n FROM prod.dct_butil_key_cache
             WHERE project_number IS NOT NULL AND project_number NOT LIKE '#%' AND (l_year IS NULL OR budget_year = l_year)
             GROUP BY project_number ORDER BY project_number) LOOP
     APEX_JSON.open_object; APEX_JSON.write('p', r.p); APEX_JSON.write('n', NVL(r.n,'')); APEX_JSON.close_object;
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('tasks');
-  FOR r IN (SELECT DISTINCT task_number t FROM prod.dct_budget_utilization_v
+  FOR r IN (SELECT DISTINCT task_number t FROM prod.dct_butil_key_cache
             WHERE task_number IS NOT NULL AND task_number NOT LIKE '#%' AND (l_year IS NULL OR budget_year = l_year)
             ORDER BY task_number) LOOP
     APEX_JSON.write(r.t);
   END LOOP;
   APEX_JSON.close_array;
   APEX_JSON.open_array('etypes');
-  FOR r IN (SELECT DISTINCT expenditure_type et FROM prod.dct_budget_utilization_v
+  FOR r IN (SELECT DISTINCT expenditure_type et FROM prod.dct_butil_key_cache
             WHERE expenditure_type IS NOT NULL AND (l_year IS NULL OR budget_year = l_year)
             ORDER BY expenditure_type) LOOP
     APEX_JSON.write(r.et);
@@ -219,6 +219,7 @@ DECLARE
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
   l_misscc NUMBER; t_misscc NUMBER;
+  l_negcnt NUMBER; t_negfund NUMBER;
   t_bud NUMBER; t_buda NUMBER; t_ap NUMBER; t_grn NUMBER; t_pr NUMBER; t_po NUMBER; t_fund NUMBER;
   t_ovr NUMBER; t_ovra NUMBER; t_ovrn NUMBER;
 BEGIN
@@ -243,9 +244,11 @@ BEGIN
          NVL(SUM(commitment_pr),0), NVL(SUM(obligation_po),0), NVL(SUM(fund_available),0),
          COUNT(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN 1 END),
          NVL(SUM(CASE WHEN v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0 THEN v.budget_annual END),0),
-         NVL(SUM(override_budget),0), NVL(SUM(override_budget_annual),0), NVL(SUM(override_lines),0)
+         NVL(SUM(override_budget),0), NVL(SUM(override_budget_annual),0), NVL(SUM(override_lines),0),
+         COUNT(CASE WHEN v.fund_available < -0.005 THEN 1 END),
+         NVL(SUM(CASE WHEN v.fund_available < -0.005 THEN v.fund_available END),0)
     INTO l_total, t_bud, t_buda, t_ap, t_grn, t_pr, t_po, t_fund, l_misscc, t_misscc,
-         t_ovr, t_ovra, t_ovrn
+         t_ovr, t_ovra, t_ovrn, l_negcnt, t_negfund
     FROM prod.dct_budget_utilization_v v
    WHERE v.budget_year = l_year
      AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
@@ -271,6 +274,10 @@ BEGIN
   -- the filtered set -> drives the red alert band on the Budget Utilization page
   APEX_JSON.write('missingCc', l_misscc);
   APEX_JSON.write('missingCcBudget', t_misscc);
+  -- over-budget flag: lines whose Fund Available is NEGATIVE in the filtered
+  -- set -> drives the over-budget warning band above the Overview region
+  APEX_JSON.write('negFund', l_negcnt);
+  APEX_JSON.write('negFundTotal', t_negfund);
   IF l_period IS NOT NULL THEN APEX_JSON.write('period', l_period); END IF;
   APEX_JSON.write('considerOverride', l_ovr);
   APEX_JSON.open_object('totals');

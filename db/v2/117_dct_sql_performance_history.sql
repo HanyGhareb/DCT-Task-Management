@@ -82,6 +82,21 @@ BEGIN
 END;
 /
 
+DECLARE
+  PROCEDURE add_column(p_table VARCHAR2,p_column VARCHAR2,p_ddl VARCHAR2) IS l_count NUMBER;
+  BEGIN
+    SELECT COUNT(*) INTO l_count FROM dba_tab_columns
+     WHERE owner='PROD' AND table_name=p_table AND column_name=p_column;
+    IF l_count=0 THEN EXECUTE IMMEDIATE 'ALTER TABLE prod.'||p_table||' ADD ('||p_ddl||')'; END IF;
+  END;
+BEGIN
+  add_column('DCT_SQL_PERF_HISTORY','SOURCE_MODULE','source_module VARCHAR2(128)');
+  add_column('DCT_SQL_PERF_HISTORY','SOURCE_ACTION','source_action VARCHAR2(128)');
+  add_column('DCT_SQL_PERF_HISTORY','WORKLOAD_CLASS','workload_class VARCHAR2(20) DEFAULT ''APPLICATION'' NOT NULL');
+  add_column('DCT_SQL_PERF_HISTORY','IS_SLOW','is_slow CHAR(1) DEFAULT ''N'' NOT NULL');
+END;
+/
+
 BEGIN
   EXECUTE IMMEDIATE 'CREATE INDEX prod.ix_dct_sql_perf_hist_at ON prod.dct_sql_perf_history(captured_at)';
 EXCEPTION WHEN OTHERS THEN IF SQLCODE<>-955 THEN RAISE; END IF;
@@ -133,9 +148,11 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_sql_perf_history_pkg AS
   BEGIN
     INSERT INTO prod.dct_sql_perf_history
       (captured_at,sql_id,plan_hash_value,module_code,statement_type,executions,avg_seconds,
-       total_seconds,cpu_seconds,buffer_gets,disk_reads,rows_processed,sql_preview)
+       total_seconds,cpu_seconds,buffer_gets,disk_reads,rows_processed,sql_preview,
+       source_module,source_action,workload_class,is_slow)
     SELECT SYSTIMESTAMP,sql_id,plan_hash_value,module_code,statement_type,executions,avg_seconds,
-           total_seconds,cpu_seconds,buffer_gets,disk_reads,rows_processed,sql_preview
+           total_seconds,cpu_seconds,buffer_gets,disk_reads,rows_processed,sql_preview,
+           source_module,source_action,workload_class,is_slow
       FROM prod.dct_sql_perf_current;
 
     MERGE INTO prod.dct_sql_perf_daily d
@@ -145,7 +162,7 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_sql_perf_history_pkg AS
              ROUND(SUM(total_seconds)/NULLIF(SUM(executions),0),3) avg_seconds,
              MAX(avg_seconds) max_avg_seconds,SUM(total_seconds) total_seconds,
              SUM(cpu_seconds) cpu_seconds,SUM(buffer_gets) buffer_gets,SUM(disk_reads) disk_reads,
-             SUM(rows_processed) rows_processed,SUM(CASE WHEN avg_seconds>=l_alert THEN 1 ELSE 0 END) slow_intervals,
+             SUM(rows_processed) rows_processed,SUM(CASE WHEN is_slow='Y' THEN 1 ELSE 0 END) slow_intervals,
              MAX(sql_preview) KEEP (DENSE_RANK LAST ORDER BY captured_at) sql_preview
         FROM prod.dct_sql_perf_history
        WHERE captured_at>=TRUNC(SYSTIMESTAMP AT TIME ZONE 'Asia/Dubai')
@@ -276,12 +293,17 @@ BEGIN
   APEX_JSON.write('checkedAt',TO_CHAR(l_state.checked_at AT TIME ZONE 'Asia/Dubai','YYYY-MM-DD HH24:MI'));
   trend('trend7',7); trend('trend30',30);
   APEX_JSON.open_array('items');
-  FOR r IN (SELECT * FROM prod.dct_sql_perf_current ORDER BY avg_seconds DESC) LOOP
+  FOR r IN (SELECT * FROM prod.dct_sql_perf_current
+             ORDER BY CASE is_slow WHEN 'Y' THEN 0 ELSE 1 END,
+                      CASE workload_class WHEN 'INTERACTIVE' THEN 0 WHEN 'APPLICATION' THEN 1 ELSE 2 END,
+                      avg_seconds DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('sqlId',r.sql_id); APEX_JSON.write('moduleCode',r.module_code);
     APEX_JSON.write('statementType',r.statement_type); APEX_JSON.write('executions',r.executions);
     APEX_JSON.write('avgSeconds',r.avg_seconds); APEX_JSON.write('totalSeconds',r.total_seconds);
     APEX_JSON.write('cpuSeconds',r.cpu_seconds); APEX_JSON.write('bufferGets',r.buffer_gets);
     APEX_JSON.write('diskReads',r.disk_reads); APEX_JSON.write('rowsProcessed',r.rows_processed);
+    APEX_JSON.write('sourceModule',r.source_module); APEX_JSON.write('sourceAction',r.source_action);
+    APEX_JSON.write('workloadClass',r.workload_class); APEX_JSON.write('isSlow',r.is_slow);
     APEX_JSON.write('sqlPreview',r.sql_preview); APEX_JSON.close_object;
   END LOOP; APEX_JSON.close_array;
   APEX_JSON.open_array('backgroundJobs');

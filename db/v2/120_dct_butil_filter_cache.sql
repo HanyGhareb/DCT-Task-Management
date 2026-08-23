@@ -1,7 +1,7 @@
 -- =============================================================================
 -- i-Finance — Budget Utilization filter cache
 -- Eliminates eight repeated scans of DCT_BUDGET_UTILIZATION_V on every
--- GET /gl/butil/filters request.  The cache is tiny and refreshed every 6 hours.
+-- GET /gl/butil/filters request.  The cache is tiny and refreshed hourly (user rule: never staler than the data).
 -- Deploy before re-running final apps/GL/db/07_gl_budget_util_ords.sql.
 -- =============================================================================
 SET DEFINE OFF
@@ -73,13 +73,13 @@ BEGIN
     DBMS_SCHEDULER.CREATE_JOB(
       job_name=>'PROD.DCT_BUTIL_FILTER_CACHE_JOB',job_type=>'STORED_PROCEDURE',
       job_action=>'PROD.DCT_BUTIL_FILTER_CACHE_REFRESH',start_date=>SYSTIMESTAMP,
-      repeat_interval=>'FREQ=HOURLY;INTERVAL=6',enabled=>TRUE,auto_drop=>FALSE,
+      repeat_interval=>'FREQ=HOURLY;INTERVAL=1',enabled=>TRUE,auto_drop=>FALSE,
       comments=>'Refresh cached GL Budget Utilization filter values');
   ELSE
     DBMS_SCHEDULER.SET_ATTRIBUTE('PROD.DCT_BUTIL_FILTER_CACHE_JOB','job_action',
                                  'PROD.DCT_BUTIL_FILTER_CACHE_REFRESH');
     DBMS_SCHEDULER.SET_ATTRIBUTE('PROD.DCT_BUTIL_FILTER_CACHE_JOB','repeat_interval',
-                                 'FREQ=HOURLY;INTERVAL=6');
+                                 'FREQ=HOURLY;INTERVAL=1');
     DBMS_SCHEDULER.ENABLE('PROD.DCT_BUTIL_FILTER_CACHE_JOB');
   END IF;
 END;

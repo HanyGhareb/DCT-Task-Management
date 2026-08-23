@@ -5,13 +5,23 @@
 -- Run     : sql -name prod_mcp @19_gl_projects_data_ords.sql  (fresh session)
 -- IMPORTANT: 05_gl_ords.sql DELETE_MODULEs gl.rest -- whenever 05 is re-run,
 --            re-run 07..18 + THIS script right after it.
--- Purpose : lets the Project Budget Utilization page trigger the ATD job set
+-- Purpose : lets the Project Budget Utilization page trigger a FULL source-data
+--           re-extract from Fusion and poll it to completion, without visiting
+--           the ATD app. Scope (user request 2026-08-22) = the ATD job set
 --           PROJECTS_DATA (otbi-atd/db/67: Projects Full + Tasks Full +
---           Projects Budget Full - V2) and poll it to completion, so the page
---           source data (project/task masters + budget) refreshes on demand
---           (~20s-2min) without visiting the ATD app.
+--           Projects Budget Full - V2) PLUS the 12 transaction FULL jobs the
+--           butil figures read: AP Invoices/Lines/Distributions Full,
+--           PO Headers/Lines/Schedules/Distributions Full,
+--           PR Headers Full / PR Lines All / PR Distributions Full,
+--           GRN Temporary Job + GRN Gap. The extra jobs are queued exactly the
+--           way atd_set_pkg.run_now queues set members (run_status='READY';
+--           the worker fleet drains them on its idle cycle) -- EXCEPT that a
+--           CLAIMED (in-flight) job is left alone instead of being re-queued.
+--           ~316s of extracts serial, ~2-4 min wall on the 3-VM fleet.
+--           NOTE: the GRN gap injections re-derive within 15 min of the GRN
+--           extracts landing (ATD_GRN_GAP_MERGE_JOB, otbi-atd/db/84).
 -- Endpoints:
---   POST /gl/butil/refreshdata        -> { queued: n }   (atd_set_pkg.run_now)
+--   POST /gl/butil/refreshdata        -> { queued: n }   (run_now + READY update)
 --   GET  /gl/butil/refreshdata        -> { busy: Y/N, jobs:[{job, queueStatus,
 --                                          lastStatus, lastRows, lastFinished}] }
 -- =============================================================================
@@ -53,6 +63,20 @@ BEGIN
     dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
   END IF;
   l_n := prod.atd_set_pkg.run_now('PROJECTS_DATA');
+  -- the 12 transaction FULL jobs behind the butil figures (user request
+  -- 2026-08-22): queued like run_now does, but an in-flight CLAIMED job is
+  -- left alone (re-queueing it would double-run the extract)
+  UPDATE prod.atd_otbi_jobs
+     SET run_status = 'READY', claimed_by = NULL, claimed_at = NULL,
+         updated_at = SYSTIMESTAMP
+   WHERE enabled = 'Y'
+     AND NVL(run_status,'IDLE') <> 'CLAIMED'
+     AND job_name IN ('AP Invoices Full','AP Invoice Lines Full','AP Distributions Full',
+                      'PO Headers Full','PO Lines Full','PO Schedules Full','PO Distributions Full',
+                      'PR Headers Full','PR Lines All','PR Distributions Full',
+                      'GRN Temporary Job','GRN Gap');
+  l_n := l_n + SQL%ROWCOUNT;
+  COMMIT;
   APEX_JSON.initialize_output;
   APEX_JSON.open_object;
   APEX_JSON.write('queued', l_n);
@@ -82,12 +106,34 @@ BEGIN
       LEFT JOIN (SELECT job_name, status, row_count, finished,
                         ROW_NUMBER() OVER (PARTITION BY job_name ORDER BY run_id DESC) rn
                    FROM prod.atd_load_run_log
-                  WHERE job_name IN ('Projects Full','Tasks Full','Projects Budget Full - V2')
+                  WHERE job_name IN ('Projects Full','Tasks Full','Projects Budget Full - V2',
+                                     'AP Invoices Full','AP Invoice Lines Full','AP Distributions Full',
+                                     'PO Headers Full','PO Lines Full','PO Schedules Full','PO Distributions Full',
+                                     'PR Headers Full','PR Lines All','PR Distributions Full',
+                                     'GRN Temporary Job','GRN Gap')
                     AND NVL(track,'BROWSER') <> 'DISCOVER') l
         ON l.job_name = j.job_name AND l.rn = 1
-     WHERE j.job_name IN ('Projects Full','Tasks Full','Projects Budget Full - V2')
-     ORDER BY CASE j.job_name WHEN 'Projects Full' THEN 1
-                              WHEN 'Tasks Full' THEN 2 ELSE 3 END)
+     WHERE j.job_name IN ('Projects Full','Tasks Full','Projects Budget Full - V2',
+                          'AP Invoices Full','AP Invoice Lines Full','AP Distributions Full',
+                          'PO Headers Full','PO Lines Full','PO Schedules Full','PO Distributions Full',
+                          'PR Headers Full','PR Lines All','PR Distributions Full',
+                          'GRN Temporary Job','GRN Gap')
+     ORDER BY CASE j.job_name
+                WHEN 'Projects Full'             THEN 1
+                WHEN 'Tasks Full'                THEN 2
+                WHEN 'Projects Budget Full - V2' THEN 3
+                WHEN 'AP Invoices Full'          THEN 4
+                WHEN 'AP Invoice Lines Full'     THEN 5
+                WHEN 'AP Distributions Full'     THEN 6
+                WHEN 'PO Headers Full'           THEN 7
+                WHEN 'PO Lines Full'             THEN 8
+                WHEN 'PO Schedules Full'         THEN 9
+                WHEN 'PO Distributions Full'     THEN 10
+                WHEN 'PR Headers Full'           THEN 11
+                WHEN 'PR Lines All'              THEN 12
+                WHEN 'PR Distributions Full'     THEN 13
+                WHEN 'GRN Temporary Job'         THEN 14
+                ELSE 15 END)
   LOOP
     APEX_JSON.open_object;
     APEX_JSON.write('job', r.job_name);
