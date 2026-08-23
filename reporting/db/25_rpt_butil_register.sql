@@ -13,6 +13,9 @@
 --            4. Open Purchase Orders      (GRN-netted open obligation lines)
 --            5. Open Requisitions         (reserved open commitment lines)
 --            6. Pending Approval PR-PO    (funds-reserved queue, db/v2/52)
+--            7. Comments - Other Levels   (butil comments, non-line levels;
+--               2026-08-23 -- only when cmtmode = PERIOD/ALL; line-level
+--               comments ride sheet 1's Comments column instead)
 -- Params : the FULL GL butil page filter set (year REQUIRED; period YTD /
 --          sector / chapter / projecttype / costcenter / project / task /
 --          etype / search optional) with the page's exact predicate
@@ -34,12 +37,13 @@ DECLARE
   l_bscope VARCHAR2(2000);
   l_scope_cte  VARCHAR2(8000);
   l_scope_join VARCHAR2(1000);
-  l_bu     VARCHAR2(4000);
+  l_bu     VARCHAR2(8000);
   l_ap     VARCHAR2(6000);
   l_grn    VARCHAR2(12000);
   l_po     VARCHAR2(6000);
   l_pr     VARCHAR2(6000);
   l_pend   VARCHAR2(8000);
+  l_cmt    VARCHAR2(4000);
   l_src    CLOB;
   l_body   CLOB;
 BEGIN
@@ -63,7 +67,7 @@ BEGIN
   -- EBS_ACCOUNT (2026-07-29) = the legacy EBS account(s) mapped to the row's
   -- Fusion account (DCT_GL_EBS_MAP, db/v2/110) -- slash-joined because 11
   -- Fusion accounts consolidate 2 EBS accounts.
-  l_bu := q'!SELECT budget_combination, sector, chapter, CASE WHEN INSTR(appropriation,' - ') > 0 THEN SUBSTR(appropriation,1,INSTR(appropriation,' - ')-1) ELSE appropriation END AS appropriation_code, CASE WHEN INSTR(appropriation,' - ') > 0 THEN SUBSTR(appropriation,INSTR(appropriation,' - ')+3) END AS appropriation_name, CASE WHEN INSTR(program,' - ') > 0 THEN SUBSTR(program,1,INSTR(program,' - ')-1) ELSE program END AS dct_program_code, CASE WHEN INSTR(program,' - ') > 0 THEN SUBSTR(program,INSTR(program,' - ')+3) END AS dct_program_name, cost_centre, department, task_organization AS organization, project_number, project_name, task_number, CASE WHEN INSTR(gl_account,' - ') > 0 THEN SUBSTR(gl_account,1,INSTR(gl_account,' - ')-1) ELSE gl_account END AS account_number, (SELECT LISTAGG(m.ebs_value,' / ') WITHIN GROUP (ORDER BY m.ebs_value) FROM prod.dct_gl_ebs_map m WHERE m.segment_type = 'ACCOUNT' AND m.is_active = 'Y' AND m.fusion_value = CASE WHEN INSTR(gl_account,' - ') > 0 THEN SUBSTR(gl_account,1,INSTR(gl_account,' - ')-1) ELSE gl_account END) AS ebs_account, expenditure_type, budget_annual AS annual_budget, budget AS ytd_budget, actual_ap, actual_grn, actual_ap + actual_grn AS actual_total, commitment_pr, obligation_po, commitment_pr + obligation_po AS open_encumbrance, fund_available, ROUND(100*(actual_ap+actual_grn+commitment_pr+obligation_po)/NULLIF(budget,0),1) AS utilization_pct FROM prod.dct_budget_utilization_v!' || l_bscope || q'! ORDER BY sector, chapter, cost_centre, project_number, task_number, expenditure_type!';
+  l_bu := q'!SELECT budget_combination, sector, chapter, CASE WHEN INSTR(appropriation,' - ') > 0 THEN SUBSTR(appropriation,1,INSTR(appropriation,' - ')-1) ELSE appropriation END AS appropriation_code, CASE WHEN INSTR(appropriation,' - ') > 0 THEN SUBSTR(appropriation,INSTR(appropriation,' - ')+3) END AS appropriation_name, CASE WHEN INSTR(program,' - ') > 0 THEN SUBSTR(program,1,INSTR(program,' - ')-1) ELSE program END AS dct_program_code, CASE WHEN INSTR(program,' - ') > 0 THEN SUBSTR(program,INSTR(program,' - ')+3) END AS dct_program_name, cost_centre, department, task_organization AS organization, project_number, project_name, task_number, CASE WHEN INSTR(gl_account,' - ') > 0 THEN SUBSTR(gl_account,1,INSTR(gl_account,' - ')-1) ELSE gl_account END AS account_number, (SELECT LISTAGG(m.ebs_value,' / ') WITHIN GROUP (ORDER BY m.ebs_value) FROM prod.dct_gl_ebs_map m WHERE m.segment_type = 'ACCOUNT' AND m.is_active = 'Y' AND m.fusion_value = CASE WHEN INSTR(gl_account,' - ') > 0 THEN SUBSTR(gl_account,1,INSTR(gl_account,' - ')-1) ELSE gl_account END) AS ebs_account, expenditure_type, budget_annual AS annual_budget, budget AS ytd_budget, actual_ap, actual_grn, actual_ap + actual_grn AS actual_total, commitment_pr, obligation_po, commitment_pr + obligation_po AS open_encumbrance, fund_available, ROUND(100*(actual_ap+actual_grn+commitment_pr+obligation_po)/NULLIF(budget,0),1) AS utilization_pct, CASE WHEN [COLON]cmtmode IN ('PERIOD','ALL') THEN (SELECT LISTAGG('['||c.accounting_period||'] '||c.created_by||' - '||c.comment_text, CHR(10) ON OVERFLOW TRUNCATE) WITHIN GROUP (ORDER BY c.created_at DESC) FROM prod.dct_gl_butil_comment c WHERE c.status = 'ACTIVE' AND c.entity_level = 'BUTIL_LINE' AND c.budget_year = bv.budget_year AND c.project_number = bv.project_number AND c.task_number = bv.task_number AND c.expenditure_type = bv.expenditure_type AND ([COLON]cmtmode = 'ALL' OR SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL OR c.accounting_period = TO_CHAR(TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD'),'MM-YYYY'))) END AS comments FROM prod.dct_budget_utilization_v bv!' || l_bscope || q'! ORDER BY sector, chapter, cost_centre, project_number, task_number, expenditure_type!';
   -- sheet 2: direct AP invoices (the utilization Actual AP register; 39 view)
   l_ap := l_scope_cte || q'!SELECT sc.sector, sc.cost_centre, sc.department, sc.organization, x.project_number, x.project_name, x.task_number, x.expenditure_type, x.invoice_number, x.invoice_date, x.supplier_name, x.invoice_currency AS currency, x.matched_aed, x.payment_status FROM prod.dct_unpaid_invoices_v x!' || l_scope_join || q'! WHERE x.budget_year = [COLON]year AND x.has_po = 'N' AND ABS(NVL(x.matched_aed,0)) > 0.005 ORDER BY x.project_number, x.task_number, x.expenditure_type, x.invoice_date!';
   -- sheet 3: GRN receipts per PO distribution -- SAME receipt-date year basis
@@ -79,6 +83,15 @@ BEGIN
   -- sheet 6: the pending-approval queue (funds-reserved, non-zero -- the
   -- ENC_PENDING_BOOK scope rule; db/v2/52 + COA snapshot)
   l_pend := l_scope_cte || q'!SELECT x.source AS doc_type, x.doc_number AS document_number, x.doc_line AS line, x.descr AS description_supplier, x.preparer_buyer, x.submitted_date, x.pending_days, x.pending_with, x.project_number, x.project_name, x.task_number, x.expenditure_type, coa.sector_name AS sector, coa.cost_center_code, coa.cost_center_desc AS cost_center_name, coa.appropriation_code, coa.appropriation_desc AS appropriation_name, x.budget_date, x.line_aed AS amount_aed, x.cc_string AS gl_combination FROM prod.dct_pr_po_pending_v x!' || l_scope_join || q'! LEFT JOIN prod.dct_gl_coa_snap coa ON coa.cc_string = x.cc_string WHERE x.in_extract = 'Y' AND x.budget_year = [COLON]year AND x.funds_status IN ('Reserved','Partially Liquidated') AND ABS(x.line_aed) > 0.005 ORDER BY x.source, x.doc_number, x.doc_line!';
+  -- sheet 7 (2026-08-23): Budget Utilization COMMENTS at every level OTHER
+  -- than the budget line (SECTOR / COST_CENTER / PROJECT / TASK / PO / PR /
+  -- AP_INVOICE -- line-level comments ride sheet 1's Comments column instead).
+  -- Included only when [COLON]cmtmode is PERIOD/ALL; PERIOD scopes to the run's
+  -- accounting period via GL_CTX.BUTIL_END (the section SQLs never bind
+  -- [COLON]period -- the GL bridge omits the key on full-year runs and a bind
+  -- absent from the params is a datasource error). TO_CHAR time masks must
+  -- avoid literal colon-MI (phantom bind) -- CHR(58) concatenation.
+  l_cmt := q'!SELECT c.entity_level AS level_code, c.entity_key, c.entity_name, c.project_number, c.task_number, c.expenditure_type, c.accounting_period, c.comment_ref AS post_reference, CASE WHEN c.parent_comment_id IS NULL THEN 'COMMENT' ELSE 'REPLY' END AS kind, c.created_by AS posted_by, TO_CHAR(prod.dct_to_local(c.created_at),'YYYY-MM-DD HH24'||CHR(58)||'MI') AS posted_at, c.comment_text FROM prod.dct_gl_butil_comment c WHERE [COLON]cmtmode IN ('PERIOD','ALL') AND c.status = 'ACTIVE' AND c.entity_level <> 'BUTIL_LINE' AND c.budget_year = [COLON]year AND ([COLON]cmtmode = 'ALL' OR SYS_CONTEXT('GL_CTX','BUTIL_END') IS NULL OR c.accounting_period = TO_CHAR(TO_DATE(SYS_CONTEXT('GL_CTX','BUTIL_END'),'YYYY-MM-DD'),'MM-YYYY')) ORDER BY c.entity_level, c.entity_key, c.project_number, c.created_at DESC!';
   l_src := '{"required":["year"],'
         || '"pre_sql":"BEGIN IF [COLON]period IS NULL THEN prod.dct_gl_class_pkg.clear_butil_end; ELSE prod.dct_gl_class_pkg.set_butil_end(LAST_DAY(TO_DATE(''01-''||[COLON]period,''DD-MM-YYYY''))); END IF; prod.dct_gl_class_pkg.set_butil_ovr([COLON]ovr); END;",'
         || '"post_sql":"BEGIN prod.dct_gl_class_pkg.clear_butil_end; prod.dct_gl_class_pkg.clear_butil_ovr; END;",'
@@ -88,7 +101,8 @@ BEGIN
         || '{"key":"grn_lines","title":"GRN Receipts","layout":"table","sql":"' || l_grn || '"}' || ','
         || '{"key":"open_po","title":"Open Purchase Orders","layout":"table","sql":"' || l_po || '"}' || ','
         || '{"key":"open_pr","title":"Open Requisitions","layout":"table","sql":"' || l_pr || '"}' || ','
-        || '{"key":"pending","title":"Pending Approval PR-PO","layout":"table","sql":"' || l_pend || '"}'
+        || '{"key":"pending","title":"Pending Approval PR-PO","layout":"table","sql":"' || l_pend || '"}' || ','
+        || '{"key":"comments","title":"Comments - Other Levels","layout":"table","sql":"' || l_cmt || '"}'
         || ']}';
   l_src := REPLACE(l_src, '[COLON]', CHR(58));
   l_body :=
@@ -110,21 +124,21 @@ BEGIN
     ('BUDGET_UTIL_REGISTER',
      'Budget Utilization Register (Excel)',
      UNISTR('\0633\062C\0644 \0627\0633\062A\062E\062F\0627\0645 \0627\0644\0645\0648\0627\0632\0646\0629'),
-     'Excel register for internal analysis: the Budget Utilization detail lists, each in its own worksheet -- utilization lines (budget vs AP / GRN / open PR / open PO / fund available per project, task and expenditure type), direct AP invoices, GRN receipts (receipt-date year basis), open purchase orders (GRN-netted), open requisitions (reserved) and the pending-approval PR/PO queue (funds-reserved). Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional).',
+     'Excel register for internal analysis: the Budget Utilization detail lists, each in its own worksheet -- utilization lines (budget vs AP / GRN / open PR / open PO / fund available per project, task and expenditure type), direct AP invoices, GRN receipts (receipt-date year basis), open purchase orders (GRN-netted), open requisitions (reserved) the pending-approval PR/PO queue (funds-reserved) and, when cmtmode is PERIOD/ALL, the Budget Utilization comments (line comments as a sheet-1 column, all other levels in their own worksheet). Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional).',
      'General Ledger', 'MULTI', l_src, 'PYTHON', 'XLSX',
      'Budget Utilization Register - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      l_body,
-     '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null,"ovr":null}',
+     '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null,"ovr":null,"cmtmode":null}',
      'Y', 'SETUP', 'SETUP')
   WHEN MATCHED THEN UPDATE SET
      t.source_type       = 'MULTI',
-     t.description       = 'Excel register for internal analysis: the Budget Utilization detail lists, each in its own worksheet -- utilization lines (budget vs AP / GRN / open PR / open PO / fund available per project, task and expenditure type), direct AP invoices, GRN receipts (receipt-date year basis), open purchase orders (GRN-netted), open requisitions (reserved) and the pending-approval PR/PO queue (funds-reserved). Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional).',
+     t.description       = 'Excel register for internal analysis: the Budget Utilization detail lists, each in its own worksheet -- utilization lines (budget vs AP / GRN / open PR / open PO / fund available per project, task and expenditure type), direct AP invoices, GRN receipts (receipt-date year basis), open purchase orders (GRN-netted), open requisitions (reserved) the pending-approval PR/PO queue (funds-reserved) and, when cmtmode is PERIOD/ALL, the Budget Utilization comments (line comments as a sheet-1 column, all other levels in their own worksheet). Parameters mirror the GL Budget Utilization page filters: year (required); period (YTD, MM-YYYY), sector, chapter, projecttype, costcenter, project, task, etype, search (all optional).',
      t.source_ref        = l_src,
      t.engine            = 'PYTHON',
      t.default_formats   = 'XLSX',
      t.email_subject_tpl = 'Budget Utilization Register - {{ params.year }}{% if params.sector %} - {{ params.sector }}{% endif %}',
      t.email_body_tpl    = l_body,
-     t.params_json       = '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null,"ovr":null}',
+     t.params_json       = '{"year":null,"period":null,"sector":null,"chapter":null,"projecttype":null,"costcenter":null,"project":null,"task":null,"etype":null,"search":null,"bu":null,"ovr":null,"cmtmode":null}',
      t.updated_by        = 'SETUP',
      t.updated_at        = SYSTIMESTAMP;
   MERGE INTO prod.dct_rpt_recipient t

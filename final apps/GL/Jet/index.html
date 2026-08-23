@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.81.0';</script>
+<script>window.APP_VERSION = '1.83.0';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -98,7 +98,11 @@
             <div class="field"><label class="lbl" data-bind="text:t('fYearL')+' *'"></label>
               <select class="inp" data-bind="options:buYears, value:buYear"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('fPeriod')"></label>
-              <select class="inp" data-bind="options:buPeriodOpts, optionsText:'l', optionsValue:'v', value:buPeriod, optionsCaption:t('fullYear')"></select></div>
+              <!-- buPeriodOpts is a plain STRING list — optionsText/optionsValue ('l'/'v')
+                   here made every option's value undefined, and because this select shares
+                   the buPeriod observable, ANY period picked on the Budget Utilization page
+                   was instantly written back to undefined ("Full year"). Fixed 2026-08-23. -->
+              <select class="inp" data-bind="options:buPeriodOpts, value:buPeriod, optionsCaption:t('fullYear')"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('fTypeL')"></label>
               <select class="inp" data-bind="options:buTypes, value:buTypePick, event:{change:buTypeAdd}, optionsCaption:t('allTypes')"></select></div>
             <div class="field"><label class="lbl" data-bind="text:t('fBuL')"></label>
@@ -996,6 +1000,9 @@
               <input type="checkbox" tabindex="-1" data-bind="checked:buCadj">
               <span data-bind="text:buCadj()?t('buCadjOnL'):t('buCadjOff')"></span>
             </div></div>
+          <!-- Display Comments — include the business comments in the report (v1.83.0) -->
+          <div class="field"><label class="lbl"><span data-bind="text:t('buCmtDispL')"></span><i class="hint-i" data-bind="attr:{title:t('buCmtDispHint')}">i</i></label>
+            <select class="inp" data-bind="options:buCmtDispOpts, optionsText:'l', optionsValue:'v', value:buCmtDisp, attr:{title:t('buCmtDispHint')}"></select></div>
           <div class="field filter-actions">
             <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, css:{busy:buLoading}, text:t('btnSearch')"></button>
             <button class="btn" data-bind="click:buReset, enable:!buLoading(), text:t('btnReset')"></button>
@@ -1186,6 +1193,8 @@
             <th class="num" data-bind="text:t('cCommitPr'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cObligPo'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cFundAvail')"></th>
+            <!-- ko if: buCmtDispMode()!=='NONE' --><th class="cmt-txt-th" data-bind="text:t('cmtTextCol')"></th><!-- /ko -->
+            <!-- ko if: buCmtOn --><th class="cmt-th" data-bind="text:t('cmtCol')"></th><!-- /ko -->
           </tr></thead>
           <tbody>
             <!-- ko if: buLoading -->
@@ -1196,7 +1205,7 @@
             <!-- ko ifnot: buLoading -->
             <!-- ko foreach: buItems -->
             <tr>
-              <td><span class="adj-star" data-bind="visible:$data.hasAdj==='Y' && $root.buCadjOn(), attr:{title:$root.t('buAdjStarHint')}">(*)</span><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
+              <td><span class="adj-star" data-bind="visible:$data.hasAdj==='Y' && $root.buCadjOn(), attr:{title:$root.t('buAdjStarHint')}">(*)</span><span class="cmt-star" data-bind="visible:$data.hasCmt==='Y' && $root.buCmtOn(), attr:{title:$root.t('buCmtStarHint')}">(**)</span><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
               <td data-bind="text:$data.department||'—'"></td>
               <td data-bind="text:$data.organization||'—'"></td>
               <td class="mono" data-bind="text:$data.costCentre||'—'"></td>
@@ -1218,6 +1227,12 @@
                 <span class="nf-flag" data-bind="visible:$data.fundAvailable<0" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
                 <span data-bind="text:$root.buNum($data.fundAvailable)"></span>
               </td>
+              <!-- ko if: $root.buCmtDispMode()!=='NONE' -->
+              <td class="cmt-txt-cell" data-bind="attr:{title:$data.commentsText||''}"><div class="cmt-txt-clamp" data-bind="text:$data.commentsText||''"></div></td>
+              <!-- /ko -->
+              <!-- ko if: $root.buCmtOn -->
+              <td class="cmt-cell"><button class="cmt-btn" data-bind="click:function(d){$root.openCmtLine(d)}, clickBubble:false, attr:{title:$root.t('cmtOpenT')}, css:{has:$data.hasCmt==='Y'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="cmt-n" data-bind="visible:($data.cmtCount||0)>0, text:$data.cmtCount"></span></button></td>
+              <!-- /ko -->
             </tr>
             <!-- /ko -->
             <!-- /ko -->
@@ -1226,6 +1241,8 @@
         <div class="empty pad" data-bind="visible:!buLoading() && buItems().length===0, text:t('noButil')"></div>
         <!-- meaning of the (*) marker on adjusted lines -->
         <div class="cadj-note" data-bind="visible:buAnyAdj(), text:t('buAdjNote')"></div>
+        <!-- meaning of the (**) marker on commented lines -->
+        <div class="cadj-note" data-bind="visible:buAnyCmt(), text:t('buCmtNote')"></div>
       </div>
       <div class="toolbar bu-pager">
         <span class="t-dates" data-bind="text:buRange()"></span>
@@ -2306,6 +2323,145 @@
       </div>
     </div>
 
+    <!-- ═══════════ BUDGET UTILIZATION COMMENTS — register + Sector/CC entry ═══════════ -->
+    <div id="pg-comments" data-bind="visible:view()==='comments'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('cmtRegTitle')"></h1>
+          <p class="sub" data-bind="text:t('cmtRegSub')"></p>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('cmtRegRegion')"></span></div>
+        <div class="bu-sec-b">
+          <div class="card">
+            <div class="filter-grid">
+              <div class="field"><label class="lbl" data-bind="text:t('fYearL')"></label>
+                <select class="inp" data-bind="options:buYears, value:cmtRegYear, optionsCaption:t('caAllYears')"></select></div>
+              <div class="field"><label class="lbl" data-bind="text:t('fPeriod')"></label>
+                <select class="inp" data-bind="options:cmtRegPeriodOpts, value:cmtRegPeriod, optionsCaption:t('cmtAllPeriods')"></select></div>
+              <div class="field"><label class="lbl" data-bind="text:t('cmtPickLevel')"></label>
+                <select class="inp" data-bind="options:cmtLevelOpts, optionsText:'l', optionsValue:'v', value:cmtRegLevel, optionsCaption:t('cmtAllLevels')"></select></div>
+              <div class="field"><label class="lbl" data-bind="text:t('fSearchL')"></label>
+                <input class="inp" type="text" data-bind="textInput:cmtRegSearch, event:{keydown:function(d,e){if(e.keyCode===13){runCmtReg();}return true;}}"></div>
+              <div class="field filter-actions">
+                <button class="btn btn-primary" data-bind="click:function(){runCmtReg()}, css:{busy:cmtRegLoading}, text:t('btnSearch')"></button>
+              </div>
+            </div>
+            <!-- Sector / Cost-Center comments have no grid row of their own — entered here -->
+            <div class="cmt-new" data-bind="visible:cmtCaps().canAdd==='Y'">
+              <span class="cmt-new-l" data-bind="text:t('cmtNewSec')"></span>
+              <select class="inp" data-bind="options:cmtNewLevelOpts, optionsText:'l', optionsValue:'v', value:cmtNewLevel"></select>
+              <input class="inp" type="text" data-bind="textInput:cmtNewKey, attr:{list:cmtNewLevel()==='SECTOR'?'cmt-sector-dl':'cmt-cc-dl', placeholder:t('cmtPickValue')}">
+              <button class="btn btn-sm" data-bind="click:openCmtNew, text:t('cmtOpenThread')"></button>
+              <datalist id="cmt-sector-dl"><!-- ko foreach: buSectors --><option data-bind="attr:{value:$data}"></option><!-- /ko --></datalist>
+              <datalist id="cmt-cc-dl"><!-- ko foreach: buCcs --><option data-bind="attr:{value:cc}, text:$data.dept||''"></option><!-- /ko --></datalist>
+            </div>
+            <div class="en-sum">
+              <span><b data-bind="text:fmt(cmtRegCount())"></b> <span class="en-sub" data-bind="text:t('cmtRegRows')"></span></span>
+              <span class="en-sub" data-bind="text:t('cmtRegHint')"></span>
+            </div>
+            <!-- ko if: cmtRegData -->
+            <div data-bind="event:{click:cmtRegGridClick}">
+              <interactive-report params="reportCode:'GL_BUTIL_CMT', section:'bucmt', data:cmtRegData, isAdmin:false, layoutsApi:null"></interactive-report>
+            </div>
+            <!-- /ko -->
+            <div class="en-note" data-bind="visible:cmtRegLoading() && !cmtRegData(), text:t('loadingData')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ COMMENT ROLES (admin: role → capability grants) ═══════════ -->
+    <div id="pg-cmtroles" data-bind="visible:view()==='cmtroles'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('rolesTitle')"></h1>
+          <p class="sub" data-bind="text:t('rolesSub')"></p>
+        </div>
+        <div class="page-actions">
+          <button class="btn btn-sm" data-bind="click:loadCmtRoles, text:t('cmtRefresh')"></button>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('rolesTitle')"></span></div>
+        <div class="bu-sec-b">
+          <div class="card">
+            <div class="en-note" data-bind="text:t('rolesHint')"></div>
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr>
+                  <th data-bind="text:t('rolesRole')"></th>
+                  <th class="num" data-bind="text:t('rolesMembers')"></th>
+                  <th class="cmt-cap" data-bind="text:t('rolesAdd')"></th>
+                  <th class="cmt-cap" data-bind="text:t('rolesReply')"></th>
+                  <th class="cmt-cap" data-bind="text:t('rolesClose')"></th>
+                </tr></thead>
+                <tbody data-bind="foreach:cmtRoles">
+                  <tr>
+                    <td><b data-bind="text:($root.lang()==='ar' && $data.roleNameAr) ? $data.roleNameAr : $data.roleName"></b><div class="sub-d mono" data-bind="text:$data.roleCode"></div></td>
+                    <td class="num mono" data-bind="text:$data.memberCount"></td>
+                    <td class="cmt-cap"><input type="checkbox" data-bind="checked:$data.canAdd==='Y', click:function(d,e){return $root.cmtRoleToggle(d,'ADD');}"></td>
+                    <td class="cmt-cap"><input type="checkbox" data-bind="checked:$data.canReply==='Y', click:function(d,e){return $root.cmtRoleToggle(d,'REPLY');}"></td>
+                    <td class="cmt-cap"><input type="checkbox" data-bind="checked:$data.canClose==='Y', click:function(d,e){return $root.cmtRoleToggle(d,'CLOSE');}"></td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="en-note" data-bind="visible:cmtRolesLoading, text:t('loadingData')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══════════ REPORTING PERIODS (close / reopen — freezes comments) ═══════════ -->
+    <div id="pg-cmtperiods" data-bind="visible:view()==='cmtperiods'">
+      <div class="page-head">
+        <div>
+          <h1 data-bind="text:t('perTitle')"></h1>
+          <p class="sub" data-bind="text:t('perSub')"></p>
+        </div>
+        <div class="page-actions">
+          <select class="inp" data-bind="options:cmtPerYearOpts, value:cmtPerYear"></select>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('perTitle')"></span></div>
+        <div class="bu-sec-b">
+          <div class="card">
+            <div class="tbl-wrap">
+              <table class="tbl">
+                <thead><tr>
+                  <th data-bind="text:t('fPeriod')"></th>
+                  <th data-bind="text:t('caStatusL')"></th>
+                  <th class="num" data-bind="text:t('perComments')"></th>
+                  <th data-bind="text:t('perClosedBy')"></th>
+                  <th data-bind="text:t('perReopenedBy')"></th>
+                  <th data-bind="text:t('perRemarks')"></th>
+                  <th></th>
+                </tr></thead>
+                <tbody data-bind="foreach:cmtPerRows">
+                  <tr>
+                    <td class="mono" data-bind="text:period"></td>
+                    <td><span class="cmt-pill" data-bind="css:{closed:status==='CLOSED'}, text:status==='CLOSED'?$root.t('perStatusClosed'):$root.t('perStatusOpen')"></span></td>
+                    <td class="num mono" data-bind="text:commentCount"></td>
+                    <td><span data-bind="text:closedBy||'—'"></span><div class="sub-d mono" data-bind="text:closedAt||''"></div></td>
+                    <td><span data-bind="text:reopenedBy||'—'"></span><div class="sub-d mono" data-bind="text:reopenedAt||''"></div></td>
+                    <td><div class="sub-d" data-bind="visible:remarks, text:remarks"></div><input class="inp" type="text" maxlength="2000" data-bind="textInput:rem, attr:{placeholder:$root.t('perRemarksPh')}"></td>
+                    <td class="cmt-peract">
+                      <button class="btn btn-sm" data-bind="visible:status!=='CLOSED', click:function(d){$root.cmtPerAction(d,'CLOSE')}, text:$root.t('perClose')"></button>
+                      <button class="btn btn-sm" data-bind="visible:status==='CLOSED', click:function(d){$root.cmtPerAction(d,'REOPEN')}, text:$root.t('perReopen')"></button>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+            <div class="en-note" data-bind="visible:cmtPerLoading, text:t('loadingData')"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div id="pg-sectorperf" data-bind="visible:view()==='sectorperf'">
       <div class="page-head">
         <div><h1 class="greet" data-bind="text:t('spTitle')"></h1>
@@ -3258,7 +3414,11 @@
           <!-- ko foreach: drillRows -->
           <tr>
             <!-- ko foreach: $root.drillCols -->
-            <td data-bind="css:{'num mono':$data.type==='money'||$data.type==='num'}">
+            <td data-bind="css:{'num mono':$data.type==='money'||$data.type==='num', 'cmt-cell':$data.key==='_cmt'}">
+              <!-- ko if: $data.key==='_cmt' -->
+              <button class="cmt-btn" data-bind="click:function(){$root.openCmtDoc($parent)}, clickBubble:false, attr:{title:$root.t('cmtOpenT')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.key==='_cmt' -->
               <!-- ko if: $data.key==='relatedInvoices' && $root.relatedInvLinks($parent).length -->
               <!-- ko foreach: $root.relatedInvLinks($parent) -->
               <!-- ko if: $index() > 0 --><span>, </span><!-- /ko -->
@@ -3276,6 +3436,7 @@
               <!-- /ko -->
               <!-- ko ifnot: $root.drillLink($parent,$data) -->
               <span data-bind="text:$root.cell($parent,$data)"></span>
+              <!-- /ko -->
               <!-- /ko -->
               <!-- /ko -->
             </td>
@@ -3561,6 +3722,168 @@
     <datalist id="ac-appr-dl"><!-- ko foreach: acAppropriations --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
     <datalist id="ac-account-dl"><!-- ko foreach: acAccounts --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
     <datalist id="ac-cc-dl"><!-- ko foreach: acCostCenters --><option data-bind="attr:{value:code}, text:name"></option><!-- /ko --></datalist>
+  </div>
+</aside>
+
+<!-- ═══════════ BUDGET UTILIZATION COMMENTS DRAWER (thread + add/reply + attachments) ═══════════
+     LAST drawer in the DOM on purpose: all drawers share z-index 71, so DOM
+     order decides stacking and this one must open ABOVE the drill drawer
+     (PO / PR / AP-invoice comments are launched from drill rows). -->
+<div class="dw-scrim" data-bind="css:{show:cmtDrawer}, click:closeCmtDrawer" style="display:none"></div>
+<aside class="dw-drawer dw-cmt" data-bind="css:{show:cmtDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow"><span data-bind="text:t('cmtDrawerTitle')"></span><span class="cmt-lvl" data-bind="text:cmtCtx() ? cmtLevelName(cmtCtx().level) : ''"></span></div>
+      <div class="dw-title" data-bind="text:cmtCtx() ? cmtCtx().title : ''"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:closeCmtDrawer, text:t('close')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="visible:cmtCtx() && cmtCtx().sub, text:cmtCtx() ? cmtCtx().sub : ''"></div>
+    <div class="dw-ctx" data-bind="text:cmtScopeLine()"></div>
+    <!-- search region — collapsed by default; the period filter mirrors the
+         dashboard's accounting-period parameter at open -->
+    <div class="cmt-flt">
+      <div class="cmt-flt-h" data-bind="click:toggleCmtFlt">
+        <span class="cmt-flt-chev" data-bind="text:cmtFltOpen()?'▾':'▸'"></span>
+        <span data-bind="text:t('cmtFltTitle')"></span>
+        <span class="cmt-flt-sum" data-bind="visible:!cmtFltOpen() && (cmtFltBy()||cmtFltPer()), text:[cmtFltBy(), cmtFltPer()].filter(function(x){return x;}).join(' · ')"></span>
+      </div>
+      <div class="cmt-flt-b" data-bind="visible:cmtFltOpen">
+        <div class="field"><label class="lbl" data-bind="text:t('cmtFltBy')"></label>
+          <select class="inp" data-bind="options:cmtAuthors, optionsText:'l', optionsValue:'v', value:cmtFltBy, optionsCaption:t('cmtFltAllBy')"></select></div>
+        <div class="field"><label class="lbl" data-bind="text:t('cmtPeriodL')"></label>
+          <select class="inp" data-bind="options:cmtPeriodOpts, value:cmtFltPer, optionsCaption:t('cmtAllPeriods')"></select></div>
+      </div>
+    </div>
+    <div class="ldr sm" data-bind="visible:cmtLoading()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+    </div>
+    <!-- ko if: !cmtLoading() -->
+    <!-- ko foreach: cmtSectionsView -->
+    <div class="cmt-sec">
+      <div class="cmt-sec-h"><span data-bind="text:$root.cmtSecTitle($data)"></span><span class="cmt-sec-n" data-bind="text:$data.items.length"></span></div>
+      <div class="empty pad" data-bind="visible:$data.items.length===0, text:$root.cmtAnyLoaded() ? $root.t('cmtFltNone') : $root.t('cmtNoThread')"></div>
+      <!-- ko foreach: items -->
+      <div class="cmt-card" data-bind="css:{mine:$data.mine==='Y'}">
+        <div class="cmt-head">
+          <!-- ko if: $root.cmtPhoto($data.authorId) -->
+          <img class="cmt-ava-img" alt="" data-bind="attr:{src:$root.cmtPhoto($data.authorId)}">
+          <!-- /ko -->
+          <!-- ko ifnot: $root.cmtPhoto($data.authorId) -->
+          <span class="cmt-ava" data-bind="text:$root.cmtInitials($data.author)"></span>
+          <!-- /ko -->
+          <span class="cmt-auth" data-bind="text:$data.author"></span>
+          <span class="cmt-when mono" data-bind="text:$data.createdAt"></span>
+          <span class="cmt-per"><span data-bind="text:$root.t('cmtPeriodL')+':'"></span> <b class="mono" data-bind="text:$data.period"></b></span>
+          <span class="cmt-lock" data-bind="visible:$root.cmtPeriodClosed($data.period), attr:{title:$root.t('perStatusClosed')}">&#128274;</span>
+          <span class="cmt-edited" data-bind="visible:$data.updatedAt, text:$root.t('cmtEdited')"></span>
+          <span class="grow"></span>
+          <span class="cmt-ref mono" data-bind="text:$data.ref"></span>
+        </div>
+        <!-- ko ifnot: $root.cmtEditId()===$data.id -->
+        <div class="cmt-text" data-bind="text:$data.text"></div>
+        <!-- /ko -->
+        <!-- ko if: $root.cmtEditId()===$data.id -->
+        <textarea class="inp" rows="3" maxlength="4000" data-bind="textInput:$root.cmtEditText"></textarea>
+        <div class="cmt-acts">
+          <button class="btn btn-sm btn-primary" data-bind="click:$root.saveCmtEdit, css:{busy:$root.cmtBusy}, text:$root.t('save')"></button>
+          <button class="btn btn-sm" data-bind="click:$root.cancelCmtEdit, text:$root.t('cancel')"></button>
+        </div>
+        <!-- /ko -->
+        <div class="cmt-acts" data-bind="visible:$root.cmtEditId()!==$data.id">
+          <button class="cmt-link" data-bind="visible:$root.cmtCaps().canReply==='Y' && !$root.cmtPeriodClosed($data.period), click:function(d){$root.startCmtReply(d)}, text:$root.t('cmtReply')"></button>
+          <button class="cmt-link" data-bind="click:function(d){$root.toggleCmtDocs(d, d.period)}, text:$root.t('cmtAttachments')+' ('+$data.docCount+')'"></button>
+          <button class="cmt-link" data-bind="visible:($data.mine==='Y'||$root.isSysAdmin) && !$root.cmtPeriodClosed($data.period), click:function(d){$root.startCmtEdit(d)}, text:$root.t('cmtEdit')"></button>
+          <button class="cmt-link danger" data-bind="visible:($data.mine==='Y'||$root.isSysAdmin) && !$root.cmtPeriodClosed($data.period), click:function(d){$root.deleteCmt(d)}, text:$root.t('cmtDelete')"></button>
+        </div>
+        <!-- ko if: $root.cmtDocsFor()===$data.id -->
+        <div class="cmt-docs">
+          <div class="cmt-doc" data-bind="foreach:$root.cmtDocs">
+            <span class="cmt-doc-n" data-bind="text:fileName"></span>
+            <span class="cmt-doc-m sub-d" data-bind="text:$root.cmtSize(fileSize)+' · '+uploadedBy+' · '+uploadedAt"></span>
+            <button class="cmt-link" data-bind="click:function(d){$root.cmtDocDownload(d)}, text:$root.t('cmtDownload')"></button>
+            <button class="cmt-link danger" data-bind="visible:$root.cmtDocsCanEdit(), click:function(d){$root.cmtDocDelete(d)}, text:$root.t('cmtDelete')"></button>
+          </div>
+          <div class="empty" data-bind="visible:$root.cmtDocs().length===0, text:$root.t('cmtNoDocs')"></div>
+          <button class="btn btn-sm" data-bind="visible:$root.cmtDocsCanEdit(), click:function(d){$root.cmtUpload(d)}, css:{busy:$root.cmtBusy}, text:$root.t('cmtAttach')"></button>
+        </div>
+        <!-- /ko -->
+        <!-- ko if: $root.cmtReplyFor()===$data.id -->
+        <div class="cmt-replybox">
+          <textarea class="inp" rows="2" maxlength="4000" data-bind="textInput:$root.cmtReplyText, attr:{placeholder:$root.t('cmtReplyPh')}"></textarea>
+          <div class="cmt-acts">
+            <button class="btn btn-sm btn-primary" data-bind="click:$root.postCmtReply, css:{busy:$root.cmtBusy}, text:$root.t('cmtPostReply')"></button>
+            <button class="btn btn-sm" data-bind="click:$root.cancelCmtReply, text:$root.t('cancel')"></button>
+          </div>
+        </div>
+        <!-- /ko -->
+        <div class="cmt-replies" data-bind="foreach:$data.replies">
+          <div class="cmt-card reply" data-bind="css:{mine:$data.mine==='Y'}">
+            <div class="cmt-head">
+              <!-- ko if: $root.cmtPhoto($data.authorId) -->
+              <img class="cmt-ava-img sm" alt="" data-bind="attr:{src:$root.cmtPhoto($data.authorId)}">
+              <!-- /ko -->
+              <!-- ko ifnot: $root.cmtPhoto($data.authorId) -->
+              <span class="cmt-ava sm" data-bind="text:$root.cmtInitials($data.author)"></span>
+              <!-- /ko -->
+              <span class="cmt-auth" data-bind="text:$data.author"></span>
+              <span class="cmt-when mono" data-bind="text:$data.createdAt"></span>
+              <span class="cmt-edited" data-bind="visible:$data.updatedAt, text:$root.t('cmtEdited')"></span>
+              <span class="grow"></span>
+              <span class="cmt-ref mono" data-bind="text:$data.ref"></span>
+            </div>
+            <!-- ko ifnot: $root.cmtEditId()===$data.id -->
+            <div class="cmt-text" data-bind="text:$data.text"></div>
+            <!-- /ko -->
+            <!-- ko if: $root.cmtEditId()===$data.id -->
+            <textarea class="inp" rows="2" maxlength="4000" data-bind="textInput:$root.cmtEditText"></textarea>
+            <div class="cmt-acts">
+              <button class="btn btn-sm btn-primary" data-bind="click:$root.saveCmtEdit, css:{busy:$root.cmtBusy}, text:$root.t('save')"></button>
+              <button class="btn btn-sm" data-bind="click:$root.cancelCmtEdit, text:$root.t('cancel')"></button>
+            </div>
+            <!-- /ko -->
+            <div class="cmt-acts" data-bind="visible:$root.cmtEditId()!==$data.id">
+              <button class="cmt-link" data-bind="click:function(d){$root.toggleCmtDocs(d, $parent.period)}, text:$root.t('cmtAttachments')+' ('+$data.docCount+')'"></button>
+              <button class="cmt-link" data-bind="visible:($data.mine==='Y'||$root.isSysAdmin) && !$root.cmtPeriodClosed($parent.period), click:function(d){$root.startCmtEdit(d)}, text:$root.t('cmtEdit')"></button>
+              <button class="cmt-link danger" data-bind="visible:($data.mine==='Y'||$root.isSysAdmin) && !$root.cmtPeriodClosed($parent.period), click:function(d){$root.deleteCmt(d)}, text:$root.t('cmtDelete')"></button>
+            </div>
+            <!-- ko if: $root.cmtDocsFor()===$data.id -->
+            <div class="cmt-docs">
+              <div class="cmt-doc" data-bind="foreach:$root.cmtDocs">
+                <span class="cmt-doc-n" data-bind="text:fileName"></span>
+                <span class="cmt-doc-m sub-d" data-bind="text:$root.cmtSize(fileSize)+' · '+uploadedBy+' · '+uploadedAt"></span>
+                <button class="cmt-link" data-bind="click:function(d){$root.cmtDocDownload(d)}, text:$root.t('cmtDownload')"></button>
+                <button class="cmt-link danger" data-bind="visible:$root.cmtDocsCanEdit(), click:function(d){$root.cmtDocDelete(d)}, text:$root.t('cmtDelete')"></button>
+              </div>
+              <div class="empty" data-bind="visible:$root.cmtDocs().length===0, text:$root.t('cmtNoDocs')"></div>
+              <button class="btn btn-sm" data-bind="visible:$root.cmtDocsCanEdit(), click:function(d){$root.cmtUpload(d)}, css:{busy:$root.cmtBusy}, text:$root.t('cmtAttach')"></button>
+            </div>
+            <!-- /ko -->
+          </div>
+        </div>
+      </div>
+      <!-- /ko -->
+    </div>
+    <!-- /ko -->
+    <!-- add a root comment -->
+    <div class="cmt-addbox" data-bind="visible:cmtCaps().canAdd==='Y'">
+      <div class="cmt-add-h" data-bind="text:t('cmtAddTitle')"></div>
+      <div class="cmt-closedbn" data-bind="visible:cmtAddClosed(), text:t('cmtClosedBanner').replace('{p}', cmtPeriod())"></div>
+      <div class="cmt-add-row">
+        <label class="lbl" data-bind="text:t('cmtPeriodL')"></label>
+        <select class="inp" data-bind="options:cmtPeriodOpts, value:cmtPeriod"></select>
+      </div>
+      <textarea class="inp" rows="3" maxlength="4000" data-bind="textInput:cmtText, attr:{placeholder:t('cmtAddPh')}, enable:!cmtAddClosed()"></textarea>
+      <div class="cmt-acts">
+        <button class="btn btn-sm btn-primary" data-bind="click:postCmtRoot, css:{busy:cmtBusy}, enable:!cmtAddClosed() && !cmtBusy(), text:t('cmtPost')"></button>
+      </div>
+    </div>
+    <div class="en-note" data-bind="visible:cmtCaps().canAdd!=='Y' && cmtCaps().canReply!=='Y', text:t('cmtNoCap')"></div>
+    <!-- /ko -->
   </div>
 </aside>
 

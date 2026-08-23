@@ -3,6 +3,82 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-23 (2) — Comments feedback round (v1.83.0, GL/db/26 + 21 + 11 re-runs + reporting/db/25).**
+  Five user asks after hands-on testing, plus one pre-existing bug their report exposed:
+  ① **"the accounting-period selection on the dashboard doesn't change" — ROOT CAUSE was the
+  Project Portfolio page's period `<select>` (index.html:101)**: it bound
+  `optionsText:'l', optionsValue:'v'` against `buPeriodOpts`, which is a plain STRING list —
+  every option's value was `undefined`, and because that select shares the `buPeriod`
+  observable, ANY period picked on the Budget Utilization page was synchronously written back
+  to undefined ("Full year") by that hidden select's KO value sync. Present since v1.70.0;
+  one-line fix. **LESSON: a KO select bound to a SHARED observable clobbers every other
+  consumer when its own options can't represent the value — grep the other binds of an
+  observable before blaming the page you're on.** ② Drawer polish: the accounting-period chip
+  is now a labelled amber chip ("Accounting period: MM-YYYY"), avatars show the user's
+  PROFILE PHOTO when one exists (thread items ship `authorId`/`hasPhoto`; the client fetches
+  `/dct/users/:id/photo` once per author as an authed blob, initials fallback), roots sort
+  **newest first** (GL/db/26 re-run; replies stay chronological), and a **collapsed Search
+  region** (Posted by + Accounting Period) filters the loaded thread client-side — the thread
+  now loads YEAR-WIDE and the period filter DEFAULTS to the dashboard's accounting-period
+  parameter, so the drawer visibly follows the page selection. ③ NEW dashboard LOV **"Display
+  Comments"** (None default / Selected period only / All): `/gl/butil` takes `cmtdisp` (21
+  re-run — the cm join now aggregates from the raw table with a `LISTAGG ... ON OVERFLOW
+  TRUNCATE` text column; `l_cmtd VARCHAR2(20)` — the undersized-DECLARE 555 gotcha), rows
+  ship `commentsText` ('[MM-YYYY] user: text', newest first), echo `commentsDisplay`; the
+  results table + CSV gain a Comments column (clamped, full text on hover). ④ **Excel
+  register**: BUDGET_UTIL_REGISTER (reporting/db/25, deployed via python-oracledb from
+  dev-vm) gains a sheet-1 `comments` column + NEW sheet 7 **"Comments - Other Levels"**
+  (sector/CC/project/task/PO/PR/AP-invoice comments), both gated on the new `cmtmode` param;
+  GL/db/11 re-run forwards it and **ALWAYS writes the key** (a bind absent from the run
+  params is a python-datasource error — same family as the `:MI` phantom-bind rule, which is
+  why the sheet-7 SQL scopes PERIOD mode via `GL_CTX.BUTIL_END`, never `:period`, and builds
+  its time mask with CHR(58)). Live run 681 verified: 7 sheets, line comment on sheet 1,
+  sector comment on sheet 7. Tests: API **75/75** + browser **41/41 EN+AR**; webtier release
+  20260823183954 (GL-only overlay). **Cosmetics round (same day):** the sheet meta band now
+  prints "**Comment Mode** ALL" instead of the raw param key (NEW generic `CRUMB_LABELS` map
+  in `reporting/runner/runner.py` — crumbs print `label or raw key`; runner.py synced to
+  /opt/rpt-worker on vm180-182 + rpt-worker restarted) and sheet 7's Comment Ref column is
+  renamed **Post Reference** (alias in the reporting/db/25 section SQL; XLSX headers =
+  title-cased column aliases, so header renames are seed-side aliases, never a runner
+  change). Verified on live run 682.
+
+- **2026-08-23 — Projects Budget Utilization COMMENTS (v1.82.0, db/v2/125 + GL/db/26 + GL/db/21 re-run).**
+  User-approved shape (plan `final apps/GL/BUTIL_COMMENTS_PLAN.md`): threaded, attachable
+  business-justification comments on the Budget Utilization report at 8 levels (SECTOR /
+  COST_CENTER / PROJECT / TASK / BUTIL_LINE / PO / PR / AP_INVOICE) per budget year +
+  accounting period. ONE table `DCT_GL_BUTIL_COMMENT` (`BUC-#####`, single-level threading —
+  a reply's parent must be a root, soft delete, roots with active replies refuse delete) +
+  `DCT_GL_BUTIL_PERIOD` (close/reopen; **no row = OPEN**; a CLOSED period 403s EVERY write
+  in it — add/edit/reply/attach) + aggregate `DCT_GL_BUTIL_CMT_V`. **Capabilities are the
+  COMMON role/permission tables** (user decision — no private mapping table): privileges
+  `GL_ADD_BUTIL_COMMENT` / `GL_REPLY_BUTIL_COMMENT` / `GL_CLOSE_BUTIL_PERIOD` /
+  `GL_MANAGE_CMT_ROLES` granted via `dct_role_permissions`, checked with
+  `prod.dct_sec.has_priv` (+`refresh_flat` after every admin mutation); **7 PLATFORM-WIDE
+  roles seeded** (module_id NULL, like FIN_DIRECTOR): FIN_BP (add+reply), FBP_UNIT_HEAD /
+  PBP_UNIT_HEAD / FBP_SECTION_HEAD / PROJECT_PLANNER / SECTOR_PLANNER / DEPT_PLANNER
+  (reply), FIN_DIRECTOR gains reply+close. Attachments on the shared `dct_documents`
+  (GL / BUTIL_COMMENT / comment_id; NEW doc type `GL_CMT_ATTACH`, DOC_SOURCE_TYPE value,
+  and GL's first `MAX_UPLOAD_MB` module setting). ORDS = `GL/db/26` (13 additive handlers
+  incl. `butilcmt/meta/caps` + `butilcmt/admin/roles|periods`; media download; raw-binary
+  doc PUT with `v_blob := :body` FIRST) — **GL post-05 re-run list = 07..26**; `GL/db/21`
+  re-run wires per-row `hasCmt`/`cmtCount` + totals + the `commentsEnabled` echo via an
+  **INLINE aggregate join** (`l_period IS NULL OR accounting_period = l_period` — a bare
+  view join would fan out rows on a full-year run; self-check now prints CMT WIRED).
+  UI: `(**)` beside the `(*)` + a Comments column (chat button + badge) gated on the echo;
+  comments drawer `.dw-cmt` = the **LAST drawer in the DOM** (z-71 stacking is DOM order —
+  it must open ABOVE the drill drawer); 💬 icons on the AP/PR/PO drill rows via a synthetic
+  `_cmt` column; new tab **Projects › Comments** (register on the shared IR + the Sector /
+  Cost-Center entry bar — those two levels have no grid row); Settings gains **Comment
+  Roles** + **Reporting Periods** pages, tabs hidden unless caps allow (NAV `hidden` now
+  accepts a function). **GOTCHA (cost an hour): `NVL(x,'')` is still NULL in Oracle so
+  APEX_JSON DROPS the key — the periods page's bare-name foreach bindings aborted after
+  row 1 and the error was swallowed by the VM's own `.catch` toast (no pageerror). Fix =
+  normalise rows in the VM; a handler's NVL-to-'' never guarantees the JSON key exists.**
+  Deploy chain 125 → 26 → 21 (each in a fresh SQLcl session; 125 is MERGE-free so Linux
+  SQLcl is safe) + webtier release 20260823163437 (GL-only overlay). Tests: API smoke
+  **68/68** (`tests/butilcmt_api_smoke.py`) + browser **31/31 EN+AR/RTL**
+  (`tests/butilcmt_browser_smoke.py`).
+
 - **2026-08-22 — v1.81.0: EVERY Refresh-data menu action shows a popup.** User reported the
   conveyor "not showing for Refresh data" even after v1.80.1. The nginx access log settled it:
   their evening clicks fired `POST /actuals/refresh` — they were clicking **"Refresh actuals"**,

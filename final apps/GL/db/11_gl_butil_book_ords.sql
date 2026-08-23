@@ -207,6 +207,9 @@ BEGIN
   put('sector'); put('chapter'); put('projecttype'); put('costcenter');
   put('project'); put('task'); put('etype'); put('search'); put('bu');
   put('ovr');
+  -- cmtmode is bound by the register's comments SQLs, so the key must ALWAYS
+  -- ride the run params (a bind absent from the payload = datasource error)
+  APEX_JSON.write('cmtmode', NVL(UPPER(APEX_JSON.get_varchar2(p_path=>'cmtmode')),'NONE'));
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;

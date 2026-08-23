@@ -7,7 +7,7 @@
 -- Needs   : final apps/AP/db/13_procash_butil_view.sql AND db/v2/124 deployed
 --           first
 -- IMPORTANT: 05_gl_ords.sql rebuilds gl.rest from scratch -- the GL post-05
---           re-run list is now 07..25.
+--           re-run list is now 07..26.
 --
 -- WHY: procash records money that has already left the bank through the bank
 -- portal but has NOT reached Fusion as a payable invoice, so no AP, GRN, PR or
@@ -46,6 +46,21 @@
 -- Either way each row carries costAdj / costAdjOvr / costAdjOvrAnnual /
 -- hasAdj and totals carry costAdj / costAdjCount / costAdjOvr /
 -- costAdjOvrAnnual, so the page can star adjusted lines and show the figure.
+--
+-- COMMENTS flag (2026-08-23, db/v2/125 + GL/db/26): every row also carries
+-- hasCmt Y/N + cmtCount (ACTIVE BUTIL_LINE-level comments on that line for the
+-- selected accounting period -- ALL periods of the year when period is empty),
+-- totals carry cmtCount, and the response echoes commentsEnabled='Y' so the
+-- page only renders the (**) marker / Comments column against a server that
+-- ships the flag. The join is an INLINE aggregate (per-period grain) -- a bare
+-- view join would fan out rows on a full-year run.
+--
+-- NEW PARAMETER cmtdisp (2026-08-23 feedback round, default NONE -- the
+-- "Display Comments" page LOV): NONE | PERIOD (selected period only) | ALL.
+-- When not NONE each row also ships commentsText -- the line's ACTIVE comments
+-- (roots + replies) as '[MM-YYYY] user: text' lines, newest first, scoped to
+-- the page period (PERIOD) or the whole year (ALL); the response echoes
+-- commentsDisplay. LISTAGG ... ON OVERFLOW TRUNCATE guards the 32K cap.
 -- =============================================================================
 
 SET DEFINE OFF
@@ -94,6 +109,9 @@ BEGIN
   -- Costing Adjustment rows (db/v2/124) fold into the figures -- Actual
   -- +amount, Budget +override (annual AND YTD), Fund +override-amount.
   l_cadj   VARCHAR2(4)   := UPPER(NVL([COLON]costadj,'Y'));
+  -- cmtdisp: NONE (default) / PERIOD / ALL -- "Display Comments" report LOV.
+  -- VARCHAR2(20), never (10): an undersized DECLARE = uncatchable 555.
+  l_cmtd   VARCHAR2(20)  := UPPER(NVL([COLON]cmtdisp,'NONE'));
   l_end    DATE;
   l_limit  NUMBER := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 100), 5000);
   l_offset NUMBER := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
@@ -104,12 +122,14 @@ BEGIN
   t_ovr NUMBER; t_ovra NUMBER; t_ovrn NUMBER;
   t_pcash NUMBER := 0; t_pcnt NUMBER := 0; t_punmap NUMBER := 0;
   t_cadj NUMBER := 0; t_cacnt NUMBER := 0; t_covr NUMBER := 0; t_covra NUMBER := 0;
+  t_cmt NUMBER := 0;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
     dct_rest.err(403,'GL_VIEW_BUDGET_UTILIZATION required'); RETURN;
   END IF;
   IF l_year IS NULL THEN dct_rest.err(400,'year is required'); RETURN; END IF;
+  IF l_cmtd NOT IN ('PERIOD','ALL') THEN l_cmtd := 'NONE'; END IF;
   IF l_period = '' THEN l_period := NULL; END IF;
   IF l_period IS NOT NULL THEN
     IF NOT REGEXP_LIKE(l_period, '^(0[1-9]|1[0-2])-[0-9]{4}$')
@@ -135,9 +155,11 @@ BEGIN
          NVL(SUM(CASE WHEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
                             + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005
                       THEN (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
-                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) END),0)
+                            + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) END),0),
+         NVL(SUM(cm.cmt_n),0)
     INTO l_total, t_bud, t_buda, t_ap, t_grn, t_pr, t_po, t_fund, l_misscc, t_misscc,
-         t_ovr, t_ovra, t_ovrn, t_pcash, t_pcnt, t_cadj, t_cacnt, t_covr, t_covra, l_negcnt, t_negfund
+         t_ovr, t_ovra, t_ovrn, t_pcash, t_pcnt, t_cadj, t_cacnt, t_covr, t_covra, l_negcnt, t_negfund,
+         t_cmt
     FROM prod.dct_budget_utilization_v v
       LEFT JOIN prod.dct_ap_procash_butil_v pc
              ON pc.budget_year      = v.budget_year
@@ -149,6 +171,15 @@ BEGIN
             AND ca.project_number   = v.project_number
             AND ca.task_number      = v.task_number
             AND ca.expenditure_type = v.expenditure_type
+      LEFT JOIN (SELECT budget_year, project_number, task_number, expenditure_type,
+                        SUM(cmt_count) AS cmt_n
+                   FROM prod.dct_gl_butil_cmt_v
+                  WHERE (l_period IS NULL OR accounting_period = l_period)
+                  GROUP BY budget_year, project_number, task_number, expenditure_type) cm
+             ON cm.budget_year      = v.budget_year
+            AND cm.project_number   = v.project_number
+            AND cm.task_number      = v.task_number
+            AND cm.expenditure_type = v.expenditure_type
    WHERE v.budget_year = l_year
      AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
      AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
@@ -185,6 +216,8 @@ BEGIN
   APEX_JSON.write('considerOverride', l_ovr);
   APEX_JSON.write('includeProcash', l_pcash);
   APEX_JSON.write('includeCostAdj', l_cadj);
+  APEX_JSON.write('commentsEnabled', 'Y');
+  APEX_JSON.write('commentsDisplay', l_cmtd);
   APEX_JSON.open_object('totals');
   APEX_JSON.write('budget', CASE WHEN l_cadj = 'Y' THEN t_bud + t_covr ELSE t_bud END);
   APEX_JSON.write('budgetAnnual', CASE WHEN l_cadj = 'Y' THEN t_buda + t_covra ELSE t_buda END);
@@ -203,6 +236,7 @@ BEGIN
   APEX_JSON.write('costAdjCount', t_cacnt);
   APEX_JSON.write('costAdjOvr', t_covr);
   APEX_JSON.write('costAdjOvrAnnual', t_covra);
+  APEX_JSON.write('cmtCount', t_cmt);
   APEX_JSON.write('overrideBudget', t_ovr); APEX_JSON.write('overrideBudgetAnnual', t_ovra);
   APEX_JSON.write('overrideLines', t_ovrn);
   APEX_JSON.close_object;
@@ -210,7 +244,8 @@ BEGIN
   FOR r IN (
     SELECT v.*, NVL(pc.procash_aed,0) AS procash,
            NVL(ca.cost_adj_aed,0) AS cost_adj, NVL(ca.budget_ovr_aed,0) AS cadj_ovr,
-           NVL(ca.budget_ovr_annual,0) AS cadj_ovr_annual, NVL(ca.adj_count,0) AS cadj_n
+           NVL(ca.budget_ovr_annual,0) AS cadj_ovr_annual, NVL(ca.adj_count,0) AS cadj_n,
+           NVL(cm.cmt_n,0) AS cmt_n, cm.cmt_txt
       FROM prod.dct_budget_utilization_v v
       LEFT JOIN prod.dct_ap_procash_butil_v pc
              ON pc.budget_year      = v.budget_year
@@ -222,6 +257,20 @@ BEGIN
             AND ca.project_number   = v.project_number
             AND ca.task_number      = v.task_number
             AND ca.expenditure_type = v.expenditure_type
+      LEFT JOIN (SELECT budget_year, project_number, task_number, expenditure_type,
+                        COUNT(CASE WHEN (l_period IS NULL OR accounting_period = l_period) THEN 1 END) AS cmt_n,
+                        LISTAGG(CASE WHEN l_cmtd = 'ALL'
+                                       OR (l_cmtd = 'PERIOD' AND (l_period IS NULL OR accounting_period = l_period))
+                                     THEN '[' || accounting_period || '] ' || created_by || ': ' || comment_text END,
+                                CHR(10) ON OVERFLOW TRUNCATE)
+                          WITHIN GROUP (ORDER BY created_at DESC) AS cmt_txt
+                   FROM prod.dct_gl_butil_comment
+                  WHERE status = 'ACTIVE' AND entity_level = 'BUTIL_LINE'
+                  GROUP BY budget_year, project_number, task_number, expenditure_type) cm
+             ON cm.budget_year      = v.budget_year
+            AND cm.project_number   = v.project_number
+            AND cm.task_number      = v.task_number
+            AND cm.expenditure_type = v.expenditure_type
     WHERE v.budget_year = l_year
       AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
       AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
@@ -271,6 +320,9 @@ BEGIN
     APEX_JSON.write('costAdjOvr', r.cadj_ovr);
     APEX_JSON.write('costAdjOvrAnnual', r.cadj_ovr_annual);
     APEX_JSON.write('hasAdj', CASE WHEN r.cadj_n > 0 THEN 'Y' ELSE 'N' END);
+    APEX_JSON.write('cmtCount', r.cmt_n);
+    APEX_JSON.write('hasCmt', CASE WHEN r.cmt_n > 0 THEN 'Y' ELSE 'N' END);
+    IF l_cmtd <> 'NONE' THEN APEX_JSON.write('commentsText', r.cmt_txt); END IF;
     APEX_JSON.write('overrideBudget', r.override_budget);
     APEX_JSON.write('overrideBudgetAnnual', r.override_budget_annual);
     APEX_JSON.write('overrideLines', r.override_lines);
@@ -294,7 +346,8 @@ DROP PROCEDURE setup_gl_butil_procash;
 PROMPT === verification ===
 SELECT LENGTH(h.source) AS handler_chars,
        CASE WHEN INSTR(h.source, 'dct_ap_procash_butil_v') > 0 THEN 'PROCASH WIRED' ELSE 'MISSING' END AS state,
-       CASE WHEN INSTR(h.source, 'dct_pa_cost_adj_butil_v') > 0 THEN 'COSTADJ WIRED' ELSE 'MISSING' END AS state2
+       CASE WHEN INSTR(h.source, 'dct_pa_cost_adj_butil_v') > 0 THEN 'COSTADJ WIRED' ELSE 'MISSING' END AS state2,
+       CASE WHEN INSTR(h.source, 'dct_gl_butil_cmt_v') > 0 THEN 'CMT WIRED' ELSE 'MISSING' END AS state3
   FROM user_ords_handlers h
   JOIN user_ords_templates t ON t.id = h.template_id
   JOIN user_ords_modules m ON m.id = t.module_id

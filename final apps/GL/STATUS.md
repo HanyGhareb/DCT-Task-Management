@@ -17,6 +17,23 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
 | APEX pages | ⬜ N/A (JET only) |
 
 ## Deployment log
+- **2026-08-23 (2)** — **Comments feedback round** (`APP_VERSION` **1.83.0**, GL/db/26+21+11
+  re-runs + reporting/db/25, webtier release 20260823183954 GL-only overlay): dashboard
+  accounting-period select FIXED (the Portfolio page's shared-observable select had
+  undefined option values and clobbered every period pick back to "Full year"); drawer =
+  labelled amber period chip + author profile photos + collapsed Search region (Posted by /
+  Accounting Period, defaulting to the dashboard period) + newest-first roots; NEW "Display
+  Comments" LOV (None/Selected period/All) → Comments column in results + CSV, and the
+  Excel register gains a sheet-1 comments column + sheet 7 "Comments - Other Levels".
+  API 75/75 + browser 41/41 EN+AR; live register run verified.
+- **2026-08-23** — **Projects Budget Utilization COMMENTS** (`APP_VERSION` **1.82.0**,
+  db/v2/125 + GL/db/26 + GL/db/21 re-run, webtier release 20260823163437 GL-only overlay):
+  threaded, attachable justification comments at 8 levels per budget year + accounting
+  period; `(**)` marker + Comments column on butil; drill-row 💬 for PO/PR/AP invoices;
+  Comments register tab (Sector/CC entry); Comment Roles + Reporting Periods admin pages
+  (capabilities on the COMMON dct_role_permissions; CLOSED period freezes every write);
+  7 platform-wide roles seeded (FIN_BP, FBP/PBP heads, planners). Full details in
+  `docs/deployment-notes.md` + `BUTIL_COMMENTS_PLAN.md`. API 68/68 + browser 31/31 EN+AR.
 - **2026-08-04 (3)** — **Drawer figures mirror the table format** (`APP_VERSION` **1.56.2**,
   GL-only; webtier release 20260804221545): Record-details grid = same unit scaling,
   2-decimal money, near-zero mode + ▲green/▼red colored Variance. Smoke dof 59/59.

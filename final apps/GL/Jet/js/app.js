@@ -935,6 +935,97 @@
     buCadjOff:{en:'Select to include cost adjustment',ar:'حدد لتضمين تسوية التكاليف'},
     buAdjStarHint:{en:'This line includes approved cost adjustments',ar:'يتضمن هذا البند تسويات تكاليف معتمدة'},
     buAdjNote:{en:'(*) This line includes approved cost adjustments — Actual moves by the signed adjustment and Budget by its budget override.',ar:'(*) يتضمن هذا البند تسويات تكاليف معتمدة — يتغيّر الفعلي بمقدار التسوية والموازنة بمقدار تعديلها.'},
+
+    /* ── Budget Utilization Comments (db/v2/125 + GL/db/26, 2026-08-23) ── */
+    navComments:{en:'Comments',ar:'التعليقات'},
+    navCmtRoles:{en:'Comment Roles',ar:'أدوار التعليقات'},
+    navCmtPeriods:{en:'Reporting Periods',ar:'فترات التقارير'},
+    cmtCol:{en:'Comments',ar:'التعليقات'},
+    cmtOpenT:{en:'View / add business comments for this line and period',ar:'عرض أو إضافة تعليقات العمل لهذا البند وهذه الفترة'},
+    buCmtStarHint:{en:'This line has business comments for the selected period',ar:'لهذا البند تعليقات عمل للفترة المحددة'},
+    buCmtNote:{en:'(**) This line has business comments — open the Comments column to read and reply.',ar:'(**) لهذا البند تعليقات عمل — افتح عمود التعليقات للقراءة والرد.'},
+    cmtDrawerTitle:{en:'Budget Utilization Comments',ar:'تعليقات استخدام الميزانية'},
+    cmtLvlLine:{en:'Budget Line',ar:'بند الميزانية'},
+    cmtLvlSector:{en:'Sector',ar:'قطاع'},
+    cmtLvlCc:{en:'Cost Center',ar:'مركز التكلفة'},
+    cmtLvlProject:{en:'Project',ar:'مشروع'},
+    cmtLvlTask:{en:'Task',ar:'مهمة'},
+    cmtLvlPo:{en:'Purchase Order',ar:'أمر شراء'},
+    cmtLvlPr:{en:'Purchase Requisition',ar:'طلب شراء'},
+    cmtLvlInv:{en:'AP Invoice',ar:'فاتورة الموردين'},
+    cmtSecLine:{en:'Comments on this budget line',ar:'التعليقات على هذا البند'},
+    cmtSecTask:{en:'Task-level comments',ar:'تعليقات على مستوى المهمة'},
+    cmtSecProject:{en:'Project-level comments',ar:'تعليقات على مستوى المشروع'},
+    cmtNoThread:{en:'No comments yet.',ar:'لا توجد تعليقات بعد.'},
+    cmtAddTitle:{en:'Add a comment',ar:'إضافة تعليق'},
+    cmtAddPh:{en:'Explain the business risk, challenge or requirement…',ar:'اشرح مخاطر العمل أو التحديات أو المتطلبات…'},
+    cmtPeriodL:{en:'Accounting period',ar:'الفترة المحاسبية'},
+    cmtPost:{en:'Post comment',ar:'نشر التعليق'},
+    cmtReply:{en:'Reply',ar:'رد'},
+    cmtReplyPh:{en:'Write a reply…',ar:'اكتب ردًا…'},
+    cmtPostReply:{en:'Post reply',ar:'نشر الرد'},
+    cmtEdit:{en:'Edit',ar:'تعديل'},
+    cmtDelete:{en:'Delete',ar:'حذف'},
+    cmtDeleteConfirm:{en:'Delete this comment?',ar:'هل تريد حذف هذا التعليق؟'},
+    cmtDocDeleteConfirm:{en:'Remove this attachment?',ar:'هل تريد إزالة هذا المرفق؟'},
+    cmtEdited:{en:'· edited',ar:'· معدل'},
+    cmtAttach:{en:'+ Attach file',ar:'+ إرفاق ملف'},
+    cmtAttachments:{en:'Attachments',ar:'المرفقات'},
+    cmtNoDocs:{en:'No attachments.',ar:'لا توجد مرفقات.'},
+    cmtDownload:{en:'Download',ar:'تنزيل'},
+    cmtClosedBanner:{en:'Reporting period {p} is CLOSED — comments in it are read-only.',ar:'فترة التقارير {p} مغلقة — التعليقات فيها للقراءة فقط.'},
+    cmtTextReq:{en:'Comment text is required',ar:'نص التعليق مطلوب'},
+    cmtPeriodReq:{en:'Accounting period is required',ar:'الفترة المحاسبية مطلوبة'},
+    cmtNoCap:{en:'You are not authorized to add or reply to comments. Ask the administrator to grant your role on the Comment Roles page.',ar:'لا تملك صلاحية إضافة التعليقات أو الرد عليها. اطلب من مسؤول النظام منح دورك من صفحة أدوار التعليقات.'},
+    cmtRegTitle:{en:'Budget Utilization Comments',ar:'تعليقات استخدام الميزانية'},
+    cmtRegSub:{en:'Business justification comments on the Budget Utilization report — every level, per accounting period. Budget-line comments are entered from the report grid, PO / PR / AP-invoice comments from the drill-down drawers, and Sector / Cost-Center comments from this page.',ar:'تعليقات مبررات العمل على تقرير استخدام الميزانية — بجميع المستويات ولكل فترة محاسبية. تُدخل تعليقات بنود الميزانية من جدول التقرير، وتعليقات أوامر وطلبات الشراء وفواتير الموردين من نوافذ التفصيل، وتعليقات القطاع ومركز التكلفة من هذه الصفحة.'},
+    cmtRegRegion:{en:'Comments register',ar:'سجل التعليقات'},
+    cmtRegRows:{en:'comments',ar:'تعليق'},
+    cmtRegHint:{en:'Click a row to open its thread.',ar:'انقر على السطر لفتح سلسلته.'},
+    cmtAllLevels:{en:'All levels',ar:'كل المستويات'},
+    cmtAllPeriods:{en:'All periods',ar:'كل الفترات'},
+    cmtNewSec:{en:'Sector / Cost-Center comment:',ar:'تعليق على قطاع أو مركز تكلفة:'},
+    cmtPickLevel:{en:'Level',ar:'المستوى'},
+    cmtPickValue:{en:'Pick a value…',ar:'اختر قيمة…'},
+    cmtOpenThread:{en:'Open thread',ar:'فتح السلسلة'},
+    cmtEntityCol:{en:'Entity',ar:'الكيان'},
+    cmtTextCol:{en:'Comment',ar:'التعليق'},
+    cmtRepliesCol:{en:'Replies',ar:'الردود'},
+    cmtDocsCol:{en:'Files',ar:'الملفات'},
+    cmtAuthorCol:{en:'Created by',ar:'أنشأه'},
+    cmtUpdatedCol:{en:'Updated',ar:'آخر تحديث'},
+    cmtRefresh:{en:'Refresh',ar:'تحديث'},
+    rolesTitle:{en:'Comment Roles',ar:'أدوار التعليقات'},
+    rolesSub:{en:'Which roles may add root comments, reply, and close reporting periods. Grants are stored on the common role-permission tables and apply immediately.',ar:'الأدوار المخوّلة بإضافة التعليقات والرد عليها وإغلاق فترات التقارير. تُحفظ الصلاحيات في جداول أدوار المنصة المشتركة وتسري فورًا.'},
+    rolesRole:{en:'Role',ar:'الدور'},
+    rolesMembers:{en:'Members',ar:'الأعضاء'},
+    rolesAdd:{en:'Add comments',ar:'إضافة تعليقات'},
+    rolesReply:{en:'Reply',ar:'الرد'},
+    rolesClose:{en:'Close periods',ar:'إغلاق الفترات'},
+    rolesHint:{en:'Tick a capability to grant it to the role; untick to revoke. System administrators always hold every capability.',ar:'حدد الصلاحية لمنحها للدور وألغِ التحديد لسحبها. يملك مسؤولو النظام كل الصلاحيات دائمًا.'},
+    perTitle:{en:'Reporting Periods',ar:'فترات التقارير'},
+    perSub:{en:'Close a reporting period to freeze every Budget Utilization comment in it — nothing can be added, edited or attached until the period is reopened.',ar:'أغلق فترة التقارير لتجميد جميع تعليقات استخدام الميزانية فيها — فلا يمكن إضافة أو تعديل أو إرفاق أي شيء حتى يُعاد فتح الفترة.'},
+    perStatusOpen:{en:'Open',ar:'مفتوحة'},
+    perStatusClosed:{en:'Closed',ar:'مغلقة'},
+    perClose:{en:'Close',ar:'إغلاق'},
+    perReopen:{en:'Reopen',ar:'إعادة فتح'},
+    perCloseConfirm:{en:'Close reporting period {p}? No comment in it can be added or changed until it is reopened.',ar:'هل تريد إغلاق فترة التقارير {p}؟ لن يمكن إضافة أو تغيير أي تعليق فيها حتى يُعاد فتحها.'},
+    perReopenConfirm:{en:'Reopen reporting period {p}?',ar:'هل تريد إعادة فتح فترة التقارير {p}؟'},
+    perComments:{en:'Comments',ar:'التعليقات'},
+    perClosedBy:{en:'Closed by',ar:'أغلقها'},
+    perReopenedBy:{en:'Reopened by',ar:'أعاد فتحها'},
+    perRemarks:{en:'Remarks',ar:'ملاحظات'},
+    perRemarksPh:{en:'Optional remarks…',ar:'ملاحظات اختيارية…'},
+    /* feedback round 2026-08-23 (v1.83.0) */
+    buCmtDispL:{en:'Display Comments',ar:'عرض التعليقات'},
+    buCmtDispHint:{en:'Include the business comments in the report: None (default), the selected accounting period only, or all periods of the year. Budget-line comments appear in an extra Comments column of the results table and CSV; the Excel Register adds them to sheet 1 plus a separate sheet for every other level (Sector / Cost Center / Project / Task / PO / PR / AP Invoice).',ar:'تضمين تعليقات العمل في التقرير: بدون (الافتراضي)، الفترة المحاسبية المحددة فقط، أو كل فترات السنة. تظهر تعليقات بنود الميزانية في عمود إضافي في جدول النتائج وملف CSV؛ ويضيفها سجل Excel إلى الورقة الأولى مع ورقة مستقلة لبقية المستويات.'},
+    cmtDispNone:{en:'None',ar:'بدون'},
+    cmtDispPeriod:{en:'Selected period only',ar:'الفترة المحددة فقط'},
+    cmtDispAll:{en:'All periods',ar:'كل الفترات'},
+    cmtFltTitle:{en:'Search comments',ar:'البحث في التعليقات'},
+    cmtFltBy:{en:'Posted by',ar:'كتبها'},
+    cmtFltAllBy:{en:'All users',ar:'كل المستخدمين'},
+    cmtFltNone:{en:'No comments match the search criteria.',ar:'لا توجد تعليقات مطابقة لمعايير البحث.'},
     caTitle:{en:'Projects Costing Adjustments',ar:'تسويات تكاليف المشاريع'},
     caSub:{en:'Signed cost adjustments (± AED) that re-allocate actual cost to its correct project / task / expenditure type — with an optional signed budget override on the same line. Approved adjustments fold into Budget Utilization.',ar:'تسويات تكاليف موجبة أو سالبة تعيد توزيع التكلفة الفعلية على المشروع / المهمة / نوع المصروف الصحيح — مع تعديل اختياري لموازنة البند نفسه. تنعكس التسويات المعتمدة على استخدام الموازنة.'},
     caRegion:{en:'Adjustments register',ar:'سجل التسويات'},
@@ -1065,6 +1156,11 @@
     // landing page = Projects › Budget Utilization (the day-to-day page)
     self.view = ko.observable('butil');
 
+    /* caller capability flags for Budget Utilization Comments — defined BEFORE
+       NAV_GROUPS because the settings sub-tabs' hidden() functions read it
+       (loaded once at boot from /butilcmt/meta/caps, further down) */
+    self.cmtCaps = ko.observable({});
+
     /* ── navigation: three groups, each with its own sub-tabs ───────────
        Adding a page = one entry here; the group row, the sub row and the
        deep-link-to-group resolution all follow from this list. */
@@ -1080,6 +1176,7 @@
           { id: 'encumbrances', labelKey: 'navEncumbrances' },
           { id: 'pending',      labelKey: 'navPending' },
           { id: 'costadj',      labelKey: 'navCostAdj' },
+          { id: 'comments',     labelKey: 'navComments' },
           { id: 'budgettrx',    labelKey: 'navBudgetTrx' },
           { id: 'sectorperf',   labelKey: 'navSectorPerf' },
           { id: 'cashflow',     labelKey: 'navCashflow' } ] },
@@ -1091,7 +1188,14 @@
           { id: 'dof',       labelKey: 'navDof' },
           { id: 'yoy',       labelKey: 'navYoy' } ] },
       { id: 'settings', labelKey: 'grpSettings', items: [
-          { id: 'overview', labelKey: 'navOverview' } ] }
+          { id: 'overview', labelKey: 'navOverview' },
+          // capability-gated admin pages (Budget Utilization Comments):
+          // hidden() is re-evaluated by the activeGroupItems computed, so the
+          // tabs appear as soon as /butilcmt/meta/caps lands
+          { id: 'cmtroles',   labelKey: 'navCmtRoles',
+            hidden: function () { return self.cmtCaps().canManageRoles !== 'Y'; } },
+          { id: 'cmtperiods', labelKey: 'navCmtPeriods',
+            hidden: function () { return self.cmtCaps().canClosePeriod !== 'Y'; } } ] }
     ];
     self.navGroups = NAV_GROUPS;
     // derived from the view, so a deep link lands on the right group
@@ -1107,7 +1211,8 @@
       for (var i = 0; i < NAV_GROUPS.length; i++)
         if (NAV_GROUPS[i].id === g)
           return NAV_GROUPS[i].items.filter(function (it) {
-            return !it.hidden || it.id === v;   // hidden tabs appear only while open
+            var h = (typeof it.hidden === 'function') ? it.hidden() : it.hidden;
+            return !h || it.id === v;          // hidden tabs appear only while open
           });
       return [];
     });
@@ -1650,6 +1755,19 @@
         if (!self.buFiltersLoaded()) self.loadBuFilters();
         if (!self.caLookups()) self.loadCaLookups();
         if (!self.caLoaded()) self.runCostAdj();
+      }
+      else if (v === 'comments') {
+        // butil filters feed the year list + the sector / cost-center datalists
+        var cmtBoot = function () {
+          if (!self.cmtRegYear()) self.cmtRegYear(self.buYear() || (self.buYears()[0] || ''));
+          if (!self.cmtRegLoaded()) self.runCmtReg();
+        };
+        if (!self.buFiltersLoaded()) self.loadBuFilters().then(cmtBoot); else cmtBoot();
+      }
+      else if (v === 'cmtroles') { self.loadCmtRoles(); }
+      else if (v === 'cmtperiods') {
+        if (!self.buFiltersLoaded()) self.loadBuFilters();
+        self.loadCmtPeriods();
       }
       else if (v === 'legacy') {
         if (!self.xmLoaded()) self.runEbsMap();
@@ -2679,6 +2797,21 @@
        negFund band all move together. Lines carrying one are starred (*). */
     self.buCadj = ko.observable(true);
     self.buCadjOn = ko.observable(false);        // echoed by the last /butil response
+    /* "Display Comments" (2026-08-23): NONE (default) / PERIOD / ALL — when on,
+       /butil rows ship commentsText and the results table + CSV gain a
+       Comments column; the Excel register adds sheet-1 comments + the
+       other-levels sheet (cmtmode). */
+    self.buCmtDisp = ko.observable('NONE');
+    self.buCmtDispMode = ko.observable('NONE');  // echoed by the last /butil response
+    self.buCmtDispOpts = ko.computed(function () {
+      self.lang();
+      return [{ v: 'NONE', l: self.t('cmtDispNone') },
+              { v: 'PERIOD', l: self.t('cmtDispPeriod') },
+              { v: 'ALL', l: self.t('cmtDispAll') }];
+    });
+    self.buCmtDisp.subscribe(function () {
+      if (self.buYear() && (self.buTotal() || self.buItems().length)) self.runButil(self.buOffset());
+    });
     self.toggleBuCadj = function () {
       self.buCadj(!self.buCadj());
       if (self.buYear() && (self.buTotal() || self.buItems().length)) self.runButil(0);
@@ -2697,6 +2830,7 @@
         ovr: self.buOvr() ? 'Y' : null,
         procash: self.buProcash() ? 'Y' : null,
         costadj: self.buCadj() ? 'Y' : 'N',     // server default is Y — send N explicitly
+        cmtdisp: self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null,
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -2710,6 +2844,8 @@
         self.buConsiderOvr(d.considerOverride === 'Y');
         self.buProcashOn(d.includeProcash === 'Y');
         self.buCadjOn(d.includeCostAdj === 'Y');
+        self.buCmtOn(d.commentsEnabled === 'Y');
+        self.buCmtDispMode(d.commentsDisplay || 'NONE');
         self.buLoading(false);
       }).catch(function (e) { self.buLoading(false); fail(e); });
     };
@@ -2725,6 +2861,13 @@
     self.buAnyAdj = ko.computed(function () {
       return self.buCadjOn()
         && self.buItems().some(function (r) { return r.hasAdj === 'Y'; });
+    });
+    // (**) marker + Comments column render only against a server that ships
+    // the commentsEnabled echo (GL/db/21 CMT WIRED) — never against a stale one
+    self.buCmtOn = ko.observable(false);
+    self.buAnyCmt = ko.computed(function () {
+      return self.buCmtOn()
+        && self.buItems().some(function (r) { return r.hasCmt === 'Y'; });
     });
     // over-budget warning band: count + total of lines with NEGATIVE Fund
     // Available across the FULL filtered set (server aggregate, not page rows)
@@ -2773,6 +2916,7 @@
       self.buCc(''); self.buProject(''); self.buTask(''); self.buEtype('');
       self.buOvr(false);
       self.buCadj(true);                        // cost adjustment is on by default
+      self.buCmtDisp('NONE');                   // comments display off by default
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));
       self.runButil(0);
@@ -2856,7 +3000,8 @@
           ['chapter', 'Chapter'], ['program', 'Program'], ['expenditureType', 'Expenditure Type'],
           ['budgetAnnual', 'Annual Budget'], ['budget', 'YTD Budget'], ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
           ['commitmentPr', 'Commitment (PR)'], ['obligationPo', 'Obligation (PO)'], ['fundAvailable', 'Fund Available'],
-          ['costAdj', 'Cost Adjustment'], ['costAdjOvr', 'Budget Override (Adj)'], ['hasAdj', 'Has Adjustment']];
+          ['costAdj', 'Cost Adjustment'], ['costAdjOvr', 'Budget Override (Adj)'], ['hasAdj', 'Has Adjustment'],
+          ['cmtCount', 'Comments'], ['hasCmt', 'Has Comments'], ['commentsText', 'Comments Text']];
         var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
           return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
         }).join('\n');
@@ -2954,7 +3099,8 @@
         projecttype: self.buType() || null, costcenter: self.buCcParam() || null,
         project: self.buProjParam() || null, task: self.buTask() || null,
         etype: self.buEtype() || null, search: self.buSearch() || null,
-        ovr: self.buOvr() ? 'Y' : null
+        ovr: self.buOvr() ? 'Y' : null,
+        cmtmode: self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null
       }).then(function (d) {
         var runId = d.runId;
         toast(self.t('buBookQueued') + runId);
@@ -3477,7 +3623,7 @@
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
     self.skRows = skArr(8);   // shimmer rows shown while /butil runs
-    self.skCols = skArr(19);  // one cell per results-table column (Type column removed 2026-08-22)
+    self.skCols = skArr(20);  // one cell per results-table column (+Comments 2026-08-23)
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};
@@ -3565,9 +3711,19 @@
     self.drillSortNote = ko.observable('');
     function fillDrill(d) {
       self.drillSortNote('');
+      self.drillCmtLevel(null);   // only the butil AP/PR/PO drills re-set it
       self.drillCols(d.columns || []); self.drillRows(d.rows || []);
       self.drillTotalV(d.total || 0); self.drillCount(d.count || (d.rows || []).length);
       self.drillLoading(false);
+    }
+    /* PO / PR / AP-invoice document rows take comments too (entity_key = the
+       document number): append a synthetic Comments column to the drill grid */
+    var CMT_METRIC_LVL = { ap: 'AP_INVOICE', pr: 'PR', po: 'PO' };
+    function cmtDecorateDrill(metric) {
+      var lvl = CMT_METRIC_LVL[metric];
+      if (!lvl || !self.buCmtOn()) return;
+      self.drillCmtLevel(lvl);
+      self.drillCols(self.drillCols().concat([{ key: '_cmt', label: self.t('cmtCol'), type: 'cmt' }]));
     }
     /* aggregate-drawer post-processing (2026-08-08 review round):
        ① Cost-centre column shows 'code - name' (resolved from the /actuals/filters
@@ -3626,7 +3782,8 @@
       self.drillDrawer(true); self.drillLoading(true);
       api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), project: row.projectNumber,
         task: row.taskNumber, etype: row.expenditureType, metric: metric,
-        ovr: self.buOvr() ? 'Y' : null })).then(fillDrill).catch(drillFail);
+        ovr: self.buOvr() ? 'Y' : null }))
+        .then(function (d) { fillDrill(d); cmtDecorateDrill(metric); }).catch(drillFail);
     };
     // KPI card → all supporting lines across the filtered set (aggregate)
     self.openBuAgg = function (metric) {
@@ -3644,7 +3801,8 @@
       api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), metric: metric,
         projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(), search: self.buSearch(),
         costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype(),
-        ovr: self.buOvr() ? 'Y' : null })).then(fillDrill).catch(drillFail);
+        ovr: self.buOvr() ? 'Y' : null }))
+        .then(function (d) { fillDrill(d); cmtDecorateDrill(metric); }).catch(drillFail);
     };
     self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); self.drillSortNote(''); self.comboOut(); };
     // export the loaded drill lines — modal + drawer share drillCols/drillRows
@@ -4792,6 +4950,442 @@
       api('POST', '/costadj/' + self.caId() + '/action', { action: act }).then(function () {
         self.caSaving(false); self.caDrawer(false); toast(self.t('saved')); self.runCostAdj();
       }).catch(function (e) { self.caSaving(false); toast(e.message, true); });
+    };
+
+    /* ══════════ Budget Utilization COMMENTS (db/v2/125 + GL/db/26, 2026-08-23) ══
+       Threaded business-justification comments per budget year + accounting
+       period at 8 levels. Entry is split by context: the grid's Comments
+       column (BUTIL_LINE), a chat icon on the AP/PR/PO drill rows, and the
+       Comments register page (SECTOR / COST_CENTER + the full review list).
+       Capabilities come from /butilcmt/meta/caps (common role-permission
+       grants); a CLOSED reporting period freezes every write server-side —
+       the UI mirrors that with locks/banners. */
+    // self.cmtCaps is defined up top (NAV hidden() reads it)
+    self.loadCmtCaps = function () {
+      return api('GET', '/butilcmt/meta/caps').then(self.cmtCaps).catch(function () {});
+    };
+    self.loadCmtCaps();
+
+    var CMT_LVL_KEY = { BUTIL_LINE: 'cmtLvlLine', SECTOR: 'cmtLvlSector', COST_CENTER: 'cmtLvlCc',
+                        PROJECT: 'cmtLvlProject', TASK: 'cmtLvlTask', PO: 'cmtLvlPo',
+                        PR: 'cmtLvlPr', AP_INVOICE: 'cmtLvlInv' };
+    self.cmtLevelName = function (lvl) { return self.t(CMT_LVL_KEY[lvl] || lvl); };
+
+    /* ---- thread drawer ---- */
+    self.cmtDrawer = ko.observable(false);
+    self.cmtLoading = ko.observable(false);
+    self.cmtBusy = ko.observable(false);
+    self.cmtCtx = ko.observable(null);        // {level, year, period, project, task, etype, ekey, name, title, sub}
+    self.cmtSections = ko.observableArray([]);
+    self.cmtClosed = ko.observableArray([]);  // CLOSED periods (MM-YYYY) of the thread's year
+    self.cmtPeriod = ko.observable('');       // accounting period of a NEW root comment
+    self.cmtText = ko.observable('');
+    self.cmtReplyFor = ko.observable(null);
+    self.cmtReplyText = ko.observable('');
+    self.cmtEditId = ko.observable(null);
+    self.cmtEditText = ko.observable('');
+    self.cmtDocsFor = ko.observable(null);    // comment id whose attachments panel is open
+    self.cmtDocsPer = ko.observable('');      // that comment's accounting period
+    self.cmtDocsMine = ko.observable(false);  // caller may upload/remove there
+    self.cmtDocs = ko.observableArray([]);
+    self.drillCmtLevel = ko.observable(null); // AP_INVOICE / PR / PO while a doc drill is decorated
+
+    /* drawer search region (2026-08-23 feedback): collapsed by default;
+       Posted by + Accounting Period filter the LOADED thread client-side.
+       The period filter DEFAULTS to the dashboard's accounting-period
+       selection, so the drawer visibly follows the page parameter while the
+       thread itself is loaded year-wide (clear the filter to see everything). */
+    self.cmtFltOpen = ko.observable(false);
+    self.cmtFltBy = ko.observable('');
+    self.cmtFltPer = ko.observable('');
+    self.toggleCmtFlt = function () { self.cmtFltOpen(!self.cmtFltOpen()); };
+    self.cmtAuthors = ko.computed(function () {
+      var seen = {}, out = [];
+      self.cmtSections().forEach(function (s) {
+        (s.items || []).forEach(function (r) {
+          if (!seen[r.createdBy]) { seen[r.createdBy] = 1; out.push({ v: r.createdBy, l: r.author }); }
+          (r.replies || []).forEach(function (p) {
+            if (!seen[p.createdBy]) { seen[p.createdBy] = 1; out.push({ v: p.createdBy, l: p.author }); }
+          });
+        });
+      });
+      return out.sort(function (a, b) { return a.l < b.l ? -1 : 1; });
+    });
+    self.cmtSectionsView = ko.computed(function () {
+      var by = self.cmtFltBy(), per = self.cmtFltPer();
+      return self.cmtSections().map(function (s) {
+        return { level: s.level, items: (s.items || []).filter(function (r) {
+          if (per && r.period !== per) return false;
+          if (by && r.createdBy !== by
+              && !(r.replies || []).some(function (p) { return p.createdBy === by; })) return false;
+          return true;
+        }) };
+      });
+    });
+    self.cmtAnyLoaded = ko.computed(function () {
+      return self.cmtSections().some(function (s) { return (s.items || []).length > 0; });
+    });
+
+    /* author photos: fetched once per user via the /dct/ media route, cached
+       as object URLs; hasPhoto gates the fetch so missing photos never 404 */
+    var cmtPhotoCache = {};
+    self.cmtPhotoRev = ko.observable(0);
+    self.cmtPhoto = function (id) {
+      self.cmtPhotoRev();
+      return (id != null && cmtPhotoCache[id]) ? cmtPhotoCache[id] : null;
+    };
+    function cmtFetchPhotos(sections) {
+      var want = {};
+      function claim(r) {
+        if (r.hasPhoto === 'Y' && r.authorId != null && !(r.authorId in cmtPhotoCache)) want[r.authorId] = 1;
+      }
+      sections.forEach(function (s) {
+        (s.items || []).forEach(function (r) { claim(r); (r.replies || []).forEach(claim); });
+      });
+      Object.keys(want).forEach(function (id) {
+        cmtPhotoCache[id] = null;   // claimed — never re-fetched
+        fetch('/ords/admin/dct/users/' + id + '/photo',
+              { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+          .then(function (r) { if (!r.ok) { throw new Error(); } return r.blob(); })
+          .then(function (b) {
+            cmtPhotoCache[id] = URL.createObjectURL(b);
+            self.cmtPhotoRev(self.cmtPhotoRev() + 1);
+          }).catch(function () {});
+      });
+    }
+
+    self.cmtPeriodClosed = function (p) { return self.cmtClosed.indexOf(p) >= 0; };
+    self.cmtAddClosed = ko.computed(function () {
+      return !!self.cmtPeriod() && self.cmtClosed.indexOf(self.cmtPeriod()) >= 0;
+    });
+    self.cmtDocsCanEdit = ko.computed(function () {
+      return self.cmtDocsMine() && !self.cmtPeriodClosed(self.cmtDocsPer());
+    });
+    self.cmtPeriodOpts = ko.computed(function () {
+      var c = self.cmtCtx(); if (!c) return [];
+      var out = []; for (var m = 1; m <= 12; m++) out.push((m < 10 ? '0' : '') + m + '-' + c.year);
+      return out;
+    });
+    self.cmtScopeLine = ko.computed(function () {
+      var c = self.cmtCtx(); if (!c) return '';
+      return self.t('fYearL') + ' ' + c.year + ' · '
+        + (self.cmtFltPer() ? self.t('cmtPeriodL') + ' ' + self.cmtFltPer() : self.t('cmtAllPeriods'));
+    });
+    self.cmtSecTitle = function (s) {
+      if (s.level === 'BUTIL_LINE') return self.t('cmtSecLine');
+      if (s.level === 'TASK') return self.t('cmtSecTask');
+      if (s.level === 'PROJECT') return self.t('cmtSecProject');
+      return self.cmtLevelName(s.level);
+    };
+    self.cmtInitials = function (n) {
+      var p = ('' + (n || '')).split(' ').filter(Boolean);
+      return ((p[0] || '?')[0] + ((p[1] || '')[0] || '')).toUpperCase();
+    };
+    self.cmtSize = function (b) {
+      b = Number(b) || 0;
+      if (b >= 1048576) return (b / 1048576).toFixed(1) + ' MB';
+      if (b >= 1024) return Math.round(b / 1024) + ' KB';
+      return b + ' B';
+    };
+
+    self.openCmt = function (ctx) {
+      self.cmtCtx(ctx);
+      self.cmtText(''); self.cmtReplyFor(null); self.cmtReplyText('');
+      self.cmtEditId(null); self.cmtDocsFor(null); self.cmtDocs([]);
+      // the search region mirrors the page's accounting-period parameter
+      self.cmtFltOpen(false); self.cmtFltBy('');
+      self.cmtFltPer(/^(0[1-9]|1[0-2])-[0-9]{4}$/.test(ctx.period || '') ? ctx.period : '');
+      self.cmtPeriod(/^(0[1-9]|1[0-2])-[0-9]{4}$/.test(ctx.period || '') ? ctx.period : caDefPeriod(ctx.year));
+      self.cmtDrawer(true);
+      self.loadCmtThread();
+    };
+    self.closeCmtDrawer = function () { self.cmtDrawer(false); };
+    self.loadCmtThread = function () {
+      var c = self.cmtCtx(); if (!c) return;
+      self.cmtLoading(true);
+      // year-wide load — the drawer's search region scopes the view client-side
+      return api('GET', '/butilcmt' + qs({ level: c.level, year: c.year,
+        project: c.project || null, task: c.task || null, etype: c.etype || null, ekey: c.ekey || null }))
+        .then(function (d) {
+          self.cmtClosed(d.closedPeriods || []);
+          var secs = (d.sections || []).filter(function (s) {
+            return s.items.length || s.level === c.level;   // empty related sections stay hidden
+          });
+          self.cmtSections(secs);
+          cmtFetchPhotos(secs);
+          self.cmtLoading(false);
+        }).catch(function (e) { self.cmtLoading(false); toast(e.message, true); });
+    };
+
+    /* entry points */
+    self.openCmtLine = function (row) {
+      self.openCmt({ level: 'BUTIL_LINE', year: self.buYear(), period: self.buPeriod() || '',
+        project: row.projectNumber, task: row.taskNumber, etype: row.expenditureType,
+        title: row.projectNumber + ' · ' + row.taskNumber + ' · ' + row.expenditureType,
+        sub: row.projectName || '' });
+    };
+    self.openCmtDoc = function (row) {
+      var lvl = self.drillCmtLevel(); if (!lvl) return;
+      var key = lvl === 'AP_INVOICE' ? row.invoice : (lvl === 'PO' ? row.po : row.pr);
+      if (!key) return;
+      self.openCmt({ level: lvl, year: self.buYear(), period: self.buPeriod() || '',
+        ekey: '' + key, name: row.supplier || '',
+        title: self.cmtLevelName(lvl) + ' ' + key, sub: row.supplier || '' });
+    };
+
+    /* writes — the server re-checks capability + period status on every one */
+    function cmtAfterWrite(c) {
+      if (c && c.level === 'BUTIL_LINE' && self.view() === 'butil') self.runButil(self.buOffset());
+      if (self.cmtRegLoaded()) self.runCmtReg();
+    }
+    self.postCmtRoot = function () {
+      var c = self.cmtCtx(); if (!c) return;
+      var txt = (self.cmtText() || '').trim();
+      if (!txt) { toast(self.t('cmtTextReq'), true); return; }
+      if (!self.cmtPeriod()) { toast(self.t('cmtPeriodReq'), true); return; }
+      self.cmtBusy(true);
+      api('POST', '/butilcmt', { level: c.level, budgetYear: Number(c.year), period: self.cmtPeriod(),
+        projectNumber: c.project || null, taskNumber: c.task || null, expenditureType: c.etype || null,
+        entityKey: c.ekey || null, entityName: c.name || null, text: txt })
+        .then(function () { self.cmtBusy(false); self.cmtText(''); toast(self.t('saved'));
+          self.loadCmtThread(); cmtAfterWrite(c); })
+        .catch(function (e) { self.cmtBusy(false); toast(e.message, true); });
+    };
+    self.startCmtReply = function (root) { self.cmtReplyFor(root.id); self.cmtReplyText(''); };
+    self.cancelCmtReply = function () { self.cmtReplyFor(null); };
+    self.postCmtReply = function () {
+      var txt = (self.cmtReplyText() || '').trim();
+      if (!txt) { toast(self.t('cmtTextReq'), true); return; }
+      if (!self.cmtReplyFor()) return;
+      self.cmtBusy(true);
+      api('POST', '/butilcmt', { parentId: self.cmtReplyFor(), text: txt })
+        .then(function () { self.cmtBusy(false); self.cmtReplyFor(null); toast(self.t('saved'));
+          self.loadCmtThread(); cmtAfterWrite(self.cmtCtx()); })
+        .catch(function (e) { self.cmtBusy(false); toast(e.message, true); });
+    };
+    self.startCmtEdit = function (cm) { self.cmtEditId(cm.id); self.cmtEditText(cm.text); };
+    self.cancelCmtEdit = function () { self.cmtEditId(null); };
+    self.saveCmtEdit = function () {
+      var txt = (self.cmtEditText() || '').trim();
+      if (!txt) { toast(self.t('cmtTextReq'), true); return; }
+      self.cmtBusy(true);
+      api('PUT', '/butilcmt/' + self.cmtEditId(), { text: txt })
+        .then(function () { self.cmtBusy(false); self.cmtEditId(null); toast(self.t('saved'));
+          self.loadCmtThread(); cmtAfterWrite(self.cmtCtx()); })
+        .catch(function (e) { self.cmtBusy(false); toast(e.message, true); });
+    };
+    self.deleteCmt = function (cm) {
+      if (!window.confirm(self.t('cmtDeleteConfirm'))) return;
+      self.cmtBusy(true);
+      api('DELETE', '/butilcmt/' + cm.id)
+        .then(function () { self.cmtBusy(false); toast(self.t('deleted'));
+          self.loadCmtThread(); cmtAfterWrite(self.cmtCtx()); })
+        .catch(function (e) { self.cmtBusy(false); toast(e.message, true); });
+    };
+
+    /* attachments (shared dct_documents, raw-binary PUT) */
+    function loadCmtDocs(id) {
+      api('GET', '/butilcmt/' + id + '/docs')
+        .then(function (d) { self.cmtDocs(d.items || []); }).catch(function () {});
+    }
+    self.toggleCmtDocs = function (cm, period) {
+      if (self.cmtDocsFor() === cm.id) { self.cmtDocsFor(null); return; }
+      self.cmtDocsFor(cm.id);
+      self.cmtDocsPer(period || cm.period || '');
+      self.cmtDocsMine(cm.mine === 'Y' || self.isSysAdmin);
+      self.cmtDocs([]);
+      loadCmtDocs(cm.id);
+    };
+    self.cmtUpload = function () {
+      var id = self.cmtDocsFor(); if (!id) return;
+      var inp = document.createElement('input'); inp.type = 'file';
+      inp.onchange = function () {
+        var f = inp.files && inp.files[0]; if (!f) return;
+        self.cmtBusy(true);
+        fetch(API + '/butilcmt/' + id + '/docs?file_name=' + encodeURIComponent(f.name)
+              + '&mime_type=' + encodeURIComponent(f.type || 'application/octet-stream'),
+          { method: 'PUT', body: f,
+            headers: { 'Authorization': 'Bearer ' + TOKEN,
+                       'Content-Type': f.type || 'application/octet-stream' } })
+          .then(function (r) {
+            return r.json().catch(function () { return {}; }).then(function (d) {
+              if (!r.ok) throw new Error(d.error || ('HTTP ' + r.status));
+              return d;
+            });
+          })
+          .then(function () { self.cmtBusy(false); toast(self.t('saved'));
+            loadCmtDocs(id); self.loadCmtThread(); })
+          .catch(function (e) { self.cmtBusy(false); toast(e.message, true); });
+      };
+      inp.click();
+    };
+    self.cmtDocDownload = function (doc) {
+      fetch(API + '/butilcmt/docs/' + doc.docId, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.blob(); })
+        .then(function (b) {
+          var u = URL.createObjectURL(b);
+          var a = document.createElement('a'); a.href = u; a.download = doc.fileName || 'attachment';
+          a.click(); URL.revokeObjectURL(u);
+        }).catch(function (e) { toast(e.message, true); });
+    };
+    self.cmtDocDelete = function (doc) {
+      if (!window.confirm(self.t('cmtDocDeleteConfirm'))) return;
+      var id = self.cmtDocsFor();
+      api('DELETE', '/butilcmt/docs/' + doc.docId)
+        .then(function () { toast(self.t('deleted')); if (id) loadCmtDocs(id); self.loadCmtThread(); })
+        .catch(function (e) { toast(e.message, true); });
+    };
+
+    /* ---- Comments register page (all levels + SECTOR / COST_CENTER entry) ---- */
+    self.cmtRegLoaded = ko.observable(false);
+    self.cmtRegLoading = ko.observable(false);
+    self.cmtRegData = ko.observable(null);
+    self.cmtRegCount = ko.observable(0);
+    self.cmtRegYear = ko.observable('');
+    self.cmtRegPeriod = ko.observable('');
+    self.cmtRegLevel = ko.observable('');
+    self.cmtRegSearch = ko.observable('');
+    self.cmtNewLevel = ko.observable('SECTOR');
+    self.cmtNewKey = ko.observable('');
+    var cmtRegMap = {};                       // ref -> full API row (IR keeps only declared cols)
+    self.cmtRegPeriodOpts = ko.computed(function () {
+      var y = self.cmtRegYear(); if (!y) return [];
+      var out = []; for (var m = 1; m <= 12; m++) out.push((m < 10 ? '0' : '') + m + '-' + y);
+      return out;
+    });
+    self.cmtLevelOpts = ko.computed(function () {
+      self.lang();
+      return ['BUTIL_LINE', 'SECTOR', 'COST_CENTER', 'PROJECT', 'TASK', 'PO', 'PR', 'AP_INVOICE']
+        .map(function (l) { return { v: l, l: self.cmtLevelName(l) }; });
+    });
+    self.cmtNewLevelOpts = ko.computed(function () {
+      self.lang();
+      return ['SECTOR', 'COST_CENTER'].map(function (l) { return { v: l, l: self.cmtLevelName(l) }; });
+    });
+    function cmtRegColumns() {
+      return [
+        { key: 'levelName',  label: self.t('cmtPickLevel'),  type: 'text' },
+        { key: 'period',     label: self.t('fPeriod'),       type: 'text' },
+        { key: 'entity',     label: self.t('cmtEntityCol'),  type: 'text' },
+        { key: 'text',       label: self.t('cmtTextCol'),    type: 'text' },
+        { key: 'replyCount', label: self.t('cmtRepliesCol'), type: 'num' },
+        { key: 'docCount',   label: self.t('cmtDocsCol'),    type: 'num' },
+        { key: 'author',     label: self.t('cmtAuthorCol'),  type: 'text' },
+        { key: 'createdAt',  label: self.t('caCreatedAt'),   type: 'text' },
+        { key: 'updatedAt',  label: self.t('cmtUpdatedCol'), type: 'text' },
+        { key: 'ref',        label: self.t('caRef'),         type: 'text' },
+        { key: 'budgetYear', label: self.t('fYearL'),        type: 'text' }
+      ];
+    }
+    self.runCmtReg = function () {
+      self.cmtRegLoading(true);
+      var lvl = self.cmtRegLevel() || null;
+      var p = { year: self.cmtRegYear() || null, period: self.cmtRegPeriod() || null,
+                search: self.cmtRegSearch() || null };
+      return api('GET', '/butilcmt' + qs(p)).then(function (d) {
+        cmtRegMap = {};
+        // the level filter is client-side (the register call is capped at 2000)
+        var items = (d.items || []).filter(function (r) { return !lvl || r.level === lvl; });
+        items.forEach(function (r) {
+          r.levelName = self.cmtLevelName(r.level);
+          r.entity = r.level === 'BUTIL_LINE'
+              ? (r.projectNumber + ' · ' + r.taskNumber + ' · ' + r.expenditureType)
+            : r.level === 'TASK' ? (r.projectNumber + ' · ' + r.taskNumber)
+            : r.level === 'PROJECT' ? r.projectNumber
+            : (r.entityKey + (r.entityName && r.entityName !== r.entityKey ? ' — ' + r.entityName : ''));
+          cmtRegMap[r.ref] = r;
+        });
+        self.cmtRegCount(items.length);
+        self.cmtRegData({ columns: cmtRegColumns(), items: items, total: items.length,
+                          truncated: (d.total || 0) >= 2000, maxRows: 2000,
+                          section: 'bucmt', stateRev: 1 });
+        self.cmtRegLoaded(true); self.cmtRegLoading(false);
+      }).catch(function (e) { self.cmtRegLoading(false); fail(e); });
+    };
+    self.cmtRegGridClick = function (d, e) {
+      var td = (e.target && e.target.closest) ? e.target.closest('td') : null;
+      if (!td) return true;
+      var ctx;
+      try { ctx = ko.contextFor(td); } catch (err) { return true; }
+      if (!ctx || !ctx.$parent || !ctx.$parent.row) return true;
+      var row = cmtRegMap[ctx.$parent.row.ref];
+      if (row) { self.openCmtReg(row); return false; }
+      return true;
+    };
+    self.openCmtReg = function (r) {
+      self.openCmt({ level: r.level, year: r.budgetYear, period: r.period || '',
+        project: r.projectNumber || null, task: r.taskNumber || null, etype: r.expenditureType || null,
+        ekey: r.entityKey || null, name: r.entityName || '',
+        title: r.entity || '', sub: '' });
+    };
+    self.openCmtNew = function () {
+      var lvl = self.cmtNewLevel(), key = (self.cmtNewKey() || '').trim();
+      if (!key) { toast(self.t('cmtPickValue'), true); return; }
+      var name = '';
+      if (lvl === 'COST_CENTER') {
+        var m = self.buCcs().filter(function (c) { return c.cc === key; })[0];
+        if (m) name = m.dept || '';
+      }
+      var yr = Number(self.cmtRegYear() || self.buYear() || new Date().getFullYear());
+      self.openCmt({ level: lvl, year: yr, period: self.cmtRegPeriod() || '',
+        ekey: key, name: name,
+        title: self.cmtLevelName(lvl) + ' — ' + key + (name ? ' · ' + name : ''), sub: '' });
+    };
+
+    /* ---- Comment Roles admin page (common dct_role_permissions grants) ---- */
+    self.cmtRoles = ko.observableArray([]);
+    self.cmtRolesLoading = ko.observable(false);
+    self.loadCmtRoles = function () {
+      self.cmtRolesLoading(true);
+      api('GET', '/butilcmt/admin/roles').then(function (d) {
+        self.cmtRoles(d.items || []); self.cmtRolesLoading(false);
+      }).catch(function (e) { self.cmtRolesLoading(false); toast(e.message, true); });
+    };
+    self.cmtRoleToggle = function (row, cap) {
+      var cur = cap === 'ADD' ? row.canAdd : cap === 'REPLY' ? row.canReply : row.canClose;
+      api('POST', '/butilcmt/admin/roles',
+          { roleId: row.roleId, capability: cap === 'CLOSE' ? 'CLOSE_PERIOD' : cap,
+            granted: cur === 'Y' ? 'N' : 'Y' })
+        .then(function () { self.loadCmtRoles(); self.loadCmtCaps(); })
+        .catch(function (e) { toast(e.message, true); self.loadCmtRoles(); });
+      return true;   // let the checkbox toggle optimistically; the reload corrects it
+    };
+
+    /* ---- Reporting Periods admin page (close / reopen) ---- */
+    self.cmtPerYear = ko.observable(new Date().getFullYear());
+    self.cmtPerRows = ko.observableArray([]);
+    self.cmtPerLoading = ko.observable(false);
+    self.cmtPerYearOpts = ko.computed(function () {
+      var ys = self.buYears();
+      if (ys && ys.length) return ys;
+      var y = new Date().getFullYear(); return [y + 1, y, y - 1];
+    });
+    self.loadCmtPeriods = function () {
+      if (!self.cmtPerYear()) return;
+      self.cmtPerLoading(true);
+      api('GET', '/butilcmt/admin/periods' + qs({ year: self.cmtPerYear() })).then(function (d) {
+        // APEX_JSON omits NULL/empty keys — normalise the rows or the bare-name
+        // bindings in the foreach abort silently after the first row
+        self.cmtPerRows((d.items || []).map(function (p) {
+          ['remarks', 'closedBy', 'closedAt', 'reopenedBy', 'reopenedAt'].forEach(function (k) {
+            if (p[k] == null) p[k] = '';
+          });
+          p.rem = ko.observable('');
+          return p;
+        }));
+        self.cmtPerLoading(false);
+      }).catch(function (e) { self.cmtPerLoading(false); toast(e.message, true); });
+    };
+    self.cmtPerYear.subscribe(function () {
+      if (self.view() === 'cmtperiods') self.loadCmtPeriods();
+    });
+    self.cmtPerAction = function (p, act) {
+      var msg = self.t(act === 'CLOSE' ? 'perCloseConfirm' : 'perReopenConfirm').replace('{p}', p.period);
+      if (!window.confirm(msg)) return;
+      api('POST', '/butilcmt/admin/periods',
+          { year: Number(self.cmtPerYear()), period: p.period, action: act, remarks: p.rem() || null })
+        .then(function () { toast(self.t('saved')); self.loadCmtPeriods(); })
+        .catch(function (e) { toast(e.message, true); });
     };
 
     self.xmOpen = ko.observable(true);

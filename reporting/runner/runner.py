@@ -37,6 +37,10 @@ WORKER_ID = f"{HOSTNAME}/py{os.getpid()}"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
+# display labels for the run-parameter crumbs in the sheet/PDF meta band —
+# raw param keys otherwise (2026-08-23, GL Budget Utilization comments round)
+CRUMB_LABELS = {"cmtmode": "Comment Mode"}
+
 # worker registry (DCT_RPT_WORKER) is only maintained by long-running --forever
 # workers; one-shot drains stay invisible to the BI Workers page
 _registered = False
@@ -241,7 +245,8 @@ def process(conn, conf, job):
             s["totals"] = _totals(s["columns"], s["rows"]) if s["layout"] == "table" else None
         columns, rows = [], []
         row_count = sum(len(s["rows"]) for s in sections)
-        crumbs = " | ".join(f"{k} {v}" for k, v in params.items() if v not in (None, ""))
+        crumbs = " | ".join(f"{CRUMB_LABELS.get(k, k)} {v}"
+                            for k, v in params.items() if v not in (None, ""))
         meta = f"Generated {_now().strftime('%Y-%m-%d %I:%M %p')} | {row_count} lines" + \
                (f" | {crumbs}" if crumbs else "")
         landscape = (spec.get("orientation") or "").lower() == "landscape"

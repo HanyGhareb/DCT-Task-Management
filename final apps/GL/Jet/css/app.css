@@ -1402,6 +1402,97 @@ html[dir=rtl] .cvb-svg{transform:scaleX(-1)}
   background:#FBEDEA;border-color:#EBC6BE;color:var(--bad)}
 .ir-table tr.ca-st-rejected td[data-key=status] span::before{content:'\2715'}
 
+/* ── Budget Utilization Comments (v1.82.0) ──────────────────────────── */
+/* the (**) marker on butil rows carrying comments for the selected period */
+.cmt-star{color:#7C4DBE;font-weight:800;font-variant-numeric:tabular-nums;
+  margin-inline-end:5px;cursor:help;letter-spacing:-.5px}
+/* the Comments column chat button (+count badge) */
+.cmt-th,.cmt-cell{text-align:center;white-space:nowrap}
+.cmt-btn{position:relative;display:inline-flex;align-items:center;justify-content:center;
+  width:32px;height:27px;border:1px solid var(--line);border-radius:8px;background:#fff;
+  cursor:pointer;color:var(--muted)}
+.cmt-btn svg{width:15px;height:15px}
+.cmt-btn:hover{border-color:var(--brand)}
+.cmt-btn.has{color:#7C4DBE;border-color:#C9B6E8;background:#F6F1FD}
+.cmt-n{position:absolute;top:-7px;inset-inline-end:-8px;background:#7C4DBE;color:#fff;
+  font-size:10px;font-weight:700;border-radius:9px;padding:0 4px;min-width:15px;line-height:14px}
+/* drawer: level badge + scope */
+.cmt-lvl{background:#F6F1FD;color:#7C4DBE;border-radius:6px;padding:0 7px;font-size:11px;
+  font-weight:700;margin-inline-start:8px}
+/* thread sections */
+.cmt-sec{margin:14px 0}
+.cmt-sec-h{display:flex;gap:8px;align-items:center;font-weight:700;font-size:12.5px;
+  letter-spacing:.04em;text-transform:uppercase;color:var(--brand-dark);
+  border-bottom:2px solid var(--brand-soft);padding-bottom:5px;margin-bottom:8px}
+.cmt-sec-n{background:var(--brand-soft);border-radius:9px;font-size:11px;padding:0 7px}
+/* comment cards */
+.cmt-card{border:1px solid var(--line);border-radius:10px;padding:10px 12px;margin:8px 0;background:#fff}
+.cmt-card.mine{background:#F7FBF9;border-color:#CBE0D6}
+.cmt-card.reply{margin-inline-start:28px;background:#FAFBFC}
+.cmt-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12px}
+.cmt-ava{width:24px;height:24px;border-radius:50%;background:var(--brand);color:#fff;
+  display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;flex:none}
+.cmt-ava.sm{width:20px;height:20px;font-size:9px}
+.cmt-auth{font-weight:700}
+.cmt-when{color:var(--muted);font-size:11px}
+/* labelled accounting-period chip (2026-08-23 feedback: distinct colour + label) */
+.cmt-per{background:#FDF3E3;border:1px solid #EAD3A8;border-radius:6px;padding:1px 8px;
+  color:#8A5A00;font-size:11px;font-weight:600}
+.cmt-per b{font-weight:800}
+/* author photo (falls back to the initials disc) */
+.cmt-ava-img{width:24px;height:24px;border-radius:50%;object-fit:cover;flex:none;
+  border:1px solid var(--line)}
+.cmt-ava-img.sm{width:20px;height:20px}
+/* drawer search region — collapsed by default */
+.cmt-flt{border:1px solid var(--line);border-radius:10px;margin:10px 0;background:#FAFBFC}
+.cmt-flt-h{display:flex;align-items:center;gap:8px;padding:8px 12px;cursor:pointer;
+  font-weight:700;font-size:12.5px;color:var(--brand-dark)}
+.cmt-flt-chev{font-size:10px;color:var(--muted)}
+.cmt-flt-sum{color:var(--muted);font-weight:500;font-size:11.5px}
+.cmt-flt-b{display:flex;gap:12px;flex-wrap:wrap;padding:0 12px 10px}
+.cmt-flt-b .field{min-width:200px}
+/* results-table Comments column (Display Comments != None) */
+.cmt-txt-th{min-width:240px}
+.cmt-txt-cell{max-width:340px;cursor:help}
+.cmt-txt-clamp{white-space:pre-line;font-size:11.5px;line-height:1.35;max-height:56px;
+  overflow:hidden;color:#4A5A6E}
+.cmt-lock{font-size:11px;cursor:help}
+.cmt-edited{color:#B08830;font-size:11px}
+.cmt-ref{color:#A8B4C2;font-size:10px}
+.cmt-text{white-space:pre-wrap;margin:6px 0 2px;font-size:13px;line-height:1.5;overflow-wrap:anywhere}
+.cmt-acts{display:flex;gap:12px;margin-top:6px;align-items:center;flex-wrap:wrap}
+.cmt-link{background:none;border:none;padding:0;color:var(--brand);font-size:12px;
+  font-weight:600;cursor:pointer}
+.cmt-link.danger{color:var(--bad)}
+.cmt-link:hover{text-decoration:underline}
+.cmt-replies{margin-top:6px}
+.cmt-replybox{margin:8px 0 0;margin-inline-start:28px}
+/* attachments panel */
+.cmt-docs{border-top:1px dashed var(--line);margin-top:8px;padding-top:8px}
+.cmt-doc{display:flex;align-items:center;gap:10px;padding:3px 0;font-size:12.5px;flex-wrap:wrap}
+.cmt-doc-n{font-weight:600}
+.cmt-doc-m{font-size:11px}
+/* add-a-comment box */
+.cmt-addbox{border-top:2px solid var(--brand-soft);margin-top:16px;padding-top:10px}
+.cmt-add-h{font-weight:700;font-size:13px;margin-bottom:6px}
+.cmt-add-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.cmt-add-row .inp{width:auto}
+/* closed-period banner + status pill */
+.cmt-closedbn{background:#FBEDEA;border:1px solid #EBC6BE;color:var(--bad);border-radius:8px;
+  padding:8px 12px;font-size:12.5px;margin:8px 0;font-weight:600}
+.cmt-pill{display:inline-block;border-radius:14px;padding:2px 12px;font-size:11px;
+  font-weight:700;background:#EAF4EE;color:var(--ok)}
+.cmt-pill.closed{background:#FBEDEA;color:var(--bad)}
+/* register page: sector / cost-center quick entry bar */
+.cmt-new{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0;
+  padding:9px 12px;border:1px dashed var(--brand-soft);border-radius:10px}
+.cmt-new .inp{width:auto;min-width:170px}
+.cmt-new-l{font-weight:700;font-size:12.5px}
+/* admin pages */
+.cmt-cap{text-align:center}
+.cmt-cap input[type=checkbox]{width:16px;height:16px;accent-color:var(--brand);cursor:pointer}
+.cmt-peract{white-space:nowrap;text-align:end}
+
 /* ── "The Binder" report-generation popup (v1.80.0, study B) ──────────
    Centred fixed overlay (Data Conveyor pattern) shown while a Briefing
    Book / Excel Register / PowerPoint run is generated and polled. */
