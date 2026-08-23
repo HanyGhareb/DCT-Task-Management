@@ -22,6 +22,12 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
     ~7h so an aging session is visible before it expires (~8h).
   - **Region-header ↻ Refresh** (`loadFleet`): re-fetches `/workers` + `/jobs/health` together
     and re-renders the table (also the initial load path).
+  - **Inline verdict badge** (`startVerdict`/`verdictOn`/`verdictClass`/`verdictText`, v1.42.0):
+    after Check session or Force re-login the row shows a live badge — amber "Checking…"/
+    "Re-logging in…"/"Approve the number in Authenticator" → green "✓ Session OK — no MFA was
+    needed" / "✓ Signed in — MFA approved" → red on failure; driven by `mfa_status` + the 3s
+    poll, terminal verdicts auto-hide after 90s. (A live Microsoft sign-in completes a forced
+    re-login WITHOUT any MFA number — the green verdict is the success signal.)
   - **Account** column (`sessionAccount`, db/85): which Fusion account the VM's current session
     belongs to — the service account, or the personal profile of the running job/action.
   - **Pause / Resume** buttons (`pauseWorker`/`resumeWorker` → `POST /atd/workers/:id/pause`\|`/resume`,

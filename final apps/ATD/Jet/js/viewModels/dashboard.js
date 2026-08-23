@@ -82,6 +82,52 @@ function (ko, atd, i18n, charts, toast) {
     }
     self.mfaState = mfaStateFor;
 
+    // Inline verdict after Check session / Force re-login: the MFA column ends
+    // up right eventually, but the CLICK should answer where it happened — incl.
+    // the confusing silent case (a live Microsoft sign-in completes with NO MFA
+    // number; the operator otherwise waits for a push that never comes).
+    self._verdicts = {};
+    function verdictFor(worker) {
+      var id = (worker && worker.workerId) || '';
+      if (!self._verdicts[id]) self._verdicts[id] = { active: ko.observable(false), timer: null };
+      return self._verdicts[id];
+    }
+    var VERDICT_TERMINAL = { SESSION_OK: 1, APPROVED: 1, EXPIRED: 1, FAILED: 1 };
+    var VERDICT_MAP = {
+      CHECKING:    { cls: 'warn', key: 'atd.workers.verdict.checking' },
+      REQUESTED:   { cls: 'warn', key: 'atd.workers.verdict.relogin' },
+      WAITING_MFA: { cls: 'warn', key: 'atd.workers.verdict.waitslot' },
+      DETECTED:    { cls: 'warn', key: 'atd.workers.verdict.approve' },
+      DELIVERED:   { cls: 'warn', key: 'atd.workers.verdict.approve' },
+      SESSION_OK:  { cls: 'ok',   key: 'atd.workers.verdict.ok' },
+      APPROVED:    { cls: 'ok',   key: 'atd.workers.verdict.approved' },
+      EXPIRED:     { cls: 'err',  key: 'atd.workers.verdict.expired' },
+      FAILED:      { cls: 'err',  key: 'atd.workers.verdict.failed' }
+    };
+    self.startVerdict = function (w, optimistic) {
+      var v = verdictFor(w);
+      if (v.timer) { clearTimeout(v.timer); v.timer = null; }
+      // pre-set the state the server writes on this action, so the badge never
+      // opens on a stale terminal value while the 3s poll catches up
+      if (optimistic) mfaStateFor(w).status(optimistic);
+      v.active(true);
+    };
+    self.verdictOn = function (w) { return verdictFor(w).active(); };
+    self.verdictClass = function (w) {
+      var s = String(mfaStateFor(w).status() || '').toUpperCase();
+      var m = VERDICT_MAP[s] || VERDICT_MAP.CHECKING;
+      return 'wk-verdict wk-verdict--' + m.cls;
+    };
+    self.verdictText = function (w) {
+      var v = verdictFor(w);
+      var s = String(mfaStateFor(w).status() || '').toUpperCase();
+      var m = VERDICT_MAP[s] || VERDICT_MAP.CHECKING;
+      if (VERDICT_TERMINAL[s] && v.active() && !v.timer) {
+        v.timer = setTimeout(function () { v.timer = null; v.active(false); }, 90000);
+      }
+      return i18n.t(m.key);
+    };
+
     atd.getActionStats().then(function (a) { self.actions(a); }).catch(function () {});
     // fleet table + per-VM session ages, reloadable from the region-header ↻ button
     self.fleetLoading = ko.observable(false);
@@ -179,7 +225,10 @@ function (ko, atd, i18n, charts, toast) {
     self.checkWorkerSession = function (w) {
       if (!w || !w.workerId) return;
       atd.checkWorkerSession(w.workerId)
-        .then(function () { toast.success(i18n.t('atd.workers.check.asked').replace('{vm}', w.workerId)); })
+        .then(function () {
+          self.startVerdict(w, 'CHECKING');
+          toast.success(i18n.t('atd.workers.check.asked').replace('{vm}', w.workerId));
+        })
         .catch(function () { toast.error(i18n.t('atd.workers.check.failed')); });
     };
     // operator-triggered re-login: ask this worker to start a fresh Fusion login;
@@ -188,7 +237,10 @@ function (ko, atd, i18n, charts, toast) {
       if (!w || !w.workerId) return;
       if (!window.confirm(i18n.t('atd.workers.refresh.confirm').replace('{vm}', w.workerId))) return;
       atd.refreshWorker(w.workerId)
-        .then(function () { toast.success(i18n.t('atd.workers.refresh.asked').replace('{vm}', w.workerId)); })
+        .then(function () {
+          self.startVerdict(w, 'REQUESTED');
+          toast.success(i18n.t('atd.workers.refresh.asked').replace('{vm}', w.workerId));
+        })
         .catch(function () { toast.error(i18n.t('atd.workers.refresh.failed')); });
     };
     // operator hold: pause = claim nothing new (the in-flight job finishes first)

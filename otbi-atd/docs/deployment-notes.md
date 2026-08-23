@@ -46,8 +46,29 @@ suggestions + a region-header refresh button):
   PAUSED heartbeat→resume, 404/401, ?vm= scoping, settings seeded) +
   `fleet_browser_smoke.py` **23/23** EN + AR/RTL against the live webtier (release
   20260823135805, ATD-only overlay). Fleet verified clean after (all IDLE, none paused).
-- Enhancement NOT taken (user: unclear): check-session verdict shown inline — today the
-  button only toasts "requested"; the result lands in the MFA column as Session OK.
+- ~~Enhancement NOT taken~~ **#2 SHIPPED same day (v1.42.0)** after the user's "Force
+  re-login sent no MFA code" question surfaced the exact confusion it fixes. **Root cause
+  of the missing code: no MFA challenge ever happened** — Force re-login discards the
+  FUSION session but the persistent Chromium profile keeps the MICROSOFT (Entra) sign-in,
+  so `_silent_recover` completed the login in 13s with no number (vm180 13:34 Dubai:
+  "operator force re-login requested" → "recovered from persistent Microsoft sign-in
+  (no MFA)" → "session OK"). A number only arrives when Entra itself challenges (its own
+  session expired, profile wiped, or a policy re-prompt).
+  * **Inline verdict badge** under the row's action buttons after Check session OR Force
+    re-login: amber pulsing "Checking session…"/"Re-logging in…"/"Approve the number in
+    Authenticator" → green "✓ Session OK — no MFA was needed" / "✓ Signed in — MFA
+    approved" → red "✗ not approved in time / delivery failed". Driven by the EXISTING
+    `mfa_status` + 3s poll (no new endpoint); click pre-sets the state optimistically so
+    the badge never opens on a stale terminal value; terminal verdicts auto-hide after 90s
+    (`.wk-verdict*` in app.css).
+  * **auth.py fix (fleet-synced + restarted)**: `authenticate()` now records
+    `SESSION_OK` when a login completes WITHOUT MFA — previously the deadline-fallthrough
+    path of `_silent_recover` left `mfa_status` stuck on REQUESTED, i.e. an operator
+    watching for a number that would never come.
+  * Force re-login hint/confirm/toast texts now say "approve the number IF one arrives —
+    a live Microsoft sign-in completes silently" (EN+AR).
+  * Test `fleet_verdict_smoke.py` **7/7** live: click → amber "Checking session…" →
+    green "✓ Session OK — no MFA was needed" (~20s). Webtier release 20260823141214.
 
 ## 2026-08-21 — GRN gap-fill: un-costed Fusion receipts surfaced (db/84) — **DEPLOYED + LIVE-VERIFIED**
 Root cause found via invoice DN-26-01-003166 (29,886.64 AED, PO 451102004985): its receipt

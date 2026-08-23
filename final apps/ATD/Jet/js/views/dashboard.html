@@ -238,6 +238,9 @@
                 <span data-bind="text: $root.t('atd.workers.resume')"></span>
               </button>
               <!-- /ko -->
+              <!-- ko if: $vm.verdictOn($data) -->
+              <div data-bind="css: $vm.verdictClass($data), text: $vm.verdictText($data)"></div>
+              <!-- /ko -->
             </td>
           </tr>
         </tbody>

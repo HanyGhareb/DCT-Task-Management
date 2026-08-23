@@ -446,6 +446,10 @@ def authenticate(p, env, headless=True, wait_secs=None, force=False):
         used_mfa = _login(ctx, env, wait_secs)
         ctx.storage_state(path=str(state))
         if not used_mfa:
+            # No Entra challenge (persistent Microsoft sign-in carried the login).
+            # Record the terminal state or the dashboard pill sticks on REQUESTED
+            # and the operator waits for a number that will never arrive.
+            _record_mfa("SESSION_OK", env["env_name"])
             print(f"[auth][{_worker_id()}] Fusion session recovered from persistent Microsoft sign-in (no MFA)",
                   flush=True)
         return browser, ctx

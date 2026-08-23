@@ -48,6 +48,14 @@
 /* Worker Fleet: the VM name drills into that host's Run Logs */
 .wk-link { cursor:pointer; color:var(--brand); text-decoration:underline dotted; }
 .wk-link:hover { text-decoration:underline; }
+/* Worker Fleet: inline verdict badge after Check session / Force re-login */
+.wk-verdict { margin-top:5px; font-size:11px; font-weight:700; padding:2px 9px;
+              border-radius:10px; display:inline-block; }
+.wk-verdict--ok   { background:#E8F6EC; color:#2A7D3A; }
+.wk-verdict--warn { background:#FDF1DD; color:#B5651A; }
+.wk-verdict--err  { background:#FBE6E4; color:#C13A30; }
+@keyframes wkPulse { 0%,100% { opacity:1; } 50% { opacity:.55; } }
+.wk-verdict--warn { animation: wkPulse 1.6s ease-in-out infinite; }
 /* failed-run message text in the Job run-history table */
 .rstat--FAILED-text { color:#C13A30; }
 
