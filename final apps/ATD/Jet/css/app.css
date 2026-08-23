@@ -41,6 +41,13 @@
 /* prepared-but-not-loaded: on hold awaiting schema review/approval */
 .rstat--HELD     { background:#FCEFD6; color:#9A6A12; }
 .rstat--HELD::before { content:"\23F8"; margin-inline-end:4px; }  /* ⏸ */
+/* Worker Fleet: operator-paused worker + peer-flagged dead worker */
+.rstat--PAUSED   { background:#FCEFD6; color:#9A6A12; }
+.rstat--PAUSED::before { content:"\23F8"; margin-inline-end:4px; }  /* ⏸ */
+.rstat--DOWN     { background:#FBE6E4; color:#C13A30; }
+/* Worker Fleet: the VM name drills into that host's Run Logs */
+.wk-link { cursor:pointer; color:var(--brand); text-decoration:underline dotted; }
+.wk-link:hover { text-decoration:underline; }
 /* failed-run message text in the Job run-history table */
 .rstat--FAILED-text { color:#C13A30; }
 

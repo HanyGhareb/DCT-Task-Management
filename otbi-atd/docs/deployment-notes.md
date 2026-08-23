@@ -1,5 +1,54 @@
 # otbi-atd — Deployment & Runbook
 
+## 2026-08-23 — Worker Fleet round: pause/resume, session Account, VM drill-down, age auto re-login, offline banner (db/85 + 42 rework, JET v1.41.0) — **DEPLOYED + TESTED**
+User-requested enhancements to the dashboard Worker Fleet region (5 of the 6 review
+suggestions + a region-header refresh button):
+
+- **db/85_atd_worker_pause_identity.sql** (NEW): `atd_worker_heartbeat` gains `PAUSED`
+  CHAR(1) + `SESSION_ACCOUNT` VARCHAR2(200); routes `POST /atd/workers/:id/pause` +
+  `/resume` ('all' supported, SYS_ADMIN, 404 unknown id); **redefines `GET /atd/workers`**
+  to ship `paused` + `sessionAccount` — **85 SUPERSEDES db/56's handler: after any 13
+  re-run, run 85 (never 56 after 85)**. Seeds runner settings `ATD_AGE_RELOGIN` (Y/N,
+  ships **N**) + `ATD_AGE_RELOGIN_HOURS` (7.5) — count-then-insert, Linux-SQLcl-safe.
+- **db/42 rework (re-deployed)**: `GET /runs` + `/runs/export` accept **`?vm=`** (exact
+  `host_id` match) for the fleet drill-down. Post-13 re-run list unchanged (42 already on it).
+- **runner.py** (fleet-synced vm180-182, atd-worker restarted while fleet idle):
+  * **Pause**: `_operator_paused` gates `claim_next` each loop; a paused worker heartbeats
+    `PAUSED`, still honours check-session/force-re-login, keeps keepalive pings, but skips
+    claiming, self-heal re-login, aging nudge and the idle discovery/build/actions drain.
+    Pause takes effect AFTER the job already in flight (no kill — by design).
+  * **Age-based auto re-login**: when `ATD_AGE_RELOGIN=Y`, an idle worker whose session
+    age ≥ `ATD_AGE_RELOGIN_HOURS` runs the force-re-login flow itself (one MFA push to
+    approve); ONE attempt per session (keyed on the auth-state mtime, like the aging
+    nudge), suppressed during break/pause. The refresh-handler login flow was extracted
+    to `_do_relogin` and is shared. Complements (does not replace) the 06:00
+    `ATD_DAILY_RELOGIN` job and the `ATD_SESSION_WARN_HOURS` Telegram nudge.
+  * **Identity**: `_heartbeat` now stamps `session_account` — the service login
+    (`<credential_ref>_USER`/`OTBI_USER`, cached 10 min) or, on the BUSY beats of a
+    personal-profile job/action, that user's `fusion_login` (resolve_user_cred is
+    cache-hit — the action path resolves it again right after anyway).
+- **ATD JET v1.41.0**: fleet region header → `.section-heading-row` with an **↻ Refresh**
+  button (`loadFleet()` re-fetches workers + job-health together; the old standalone
+  getJobHealth block folded in); new **Account** column (ⓘ hint); **VM name = drill link**
+  (`wk-link`) → navigates to Run Logs with a one-shot `vmFilter` route state; **Pause /
+  Resume** buttons (pill shows PAUSED immediately via the response `paused` flag, heartbeat
+  status catches up); **worker-offline red banner** at the top of the dashboard — fires on
+  `status='DOWN'` OR silent > 5 min while NOT BUSY (a BUSY worker legitimately stops
+  heartbeating for the length of a run). Run Logs page gains a **VM filter dropdown**
+  (fed by /workers; CSV export forwards `vm`) + Clear resets it. `.rstat--PAUSED` (amber ⏸)
+  and `.rstat--DOWN` (red) pills.
+- **KO GOTCHA (bit this round)**: the VM filter is `options: vms, optionsCaption:` — NOT
+  an `<option>`-foreach inside the `<select>`. KO applies an element's own `value` binding
+  before its DESCENDANT foreach renders, so a foreach-in-select blanks a pre-set value at
+  bind time even when the list already contains it; the `options` binding is ordered
+  before `value` and re-syncs on list changes. The browser smoke caught it live.
+- **Tests**: `final apps/ATD/tests/fleet_api_smoke.py` **28/28** (fields, pause→live
+  PAUSED heartbeat→resume, 404/401, ?vm= scoping, settings seeded) +
+  `fleet_browser_smoke.py` **23/23** EN + AR/RTL against the live webtier (release
+  20260823135805, ATD-only overlay). Fleet verified clean after (all IDLE, none paused).
+- Enhancement NOT taken (user: unclear): check-session verdict shown inline — today the
+  button only toasts "requested"; the result lands in the MFA column as Session OK.
+
 ## 2026-08-21 — GRN gap-fill: un-costed Fusion receipts surfaced (db/84) — **DEPLOYED + LIVE-VERIFIED**
 Root cause found via invoice DN-26-01-003166 (29,886.64 AED, PO 451102004985): its receipt
 4513074290 was Received AND Delivered in Fusion Receiving (both legs 28,463.47, 13-Apr-26)

@@ -23,6 +23,18 @@
   </div>
   <!-- /ko -->
 
+  <!-- Worker-offline alert: a red dot in the fleet table is easy to miss -->
+  <!-- ko if: offlineWorkers().length > 0 -->
+  <div class="card" style="margin-bottom:12px; padding:10px 14px; border-inline-start:4px solid #C13A30;">
+    <span style="font-weight:700; color:#C13A30" data-bind="text: '⚠ ' + t('atd.workers.offline.title')"></span>
+    <!-- ko foreach: offlineWorkers -->
+    <span class="mono" style="margin-inline-start:10px; font-weight:600" data-bind="text: $data.workerId"></span>
+    <span class="muted" data-bind="text: '— ' + $root.t('atd.workers.offline.item').replace('{age}', $vm.workerAge($data))"></span>
+    <!-- /ko -->
+    <span class="muted" style="margin-inline-start:10px" data-bind="text: t('atd.workers.offline.hint')"></span>
+  </div>
+  <!-- /ko -->
+
   <!-- ko if: loading -->
   <div class="muted" data-bind="text: t('atd.common.loading')"></div>
   <!-- /ko -->
@@ -137,7 +149,17 @@
   </div>
 
   <div class="card" style="margin-top:16px;">
-    <div class="section-heading" data-bind="text: t('atd.dash.workers')"></div>
+    <div class="section-heading-row">
+      <div class="section-heading" data-bind="text: t('atd.dash.workers')"></div>
+      <div class="region-actions">
+        <button class="btn btn-sm btn-secondary" type="button"
+                data-bind="click: loadFleet, disable: fleetLoading,
+                           attr:{ title: t('atd.workers.reload.hint') }">
+          <span aria-hidden="true">&#8635;</span>
+          <span data-bind="text: t('atd.workers.reload')"></span>
+        </button>
+      </div>
+    </div>
     <!-- ko if: workers().length === 0 -->
     <div class="empty-state" data-bind="text: t('atd.dash.noWorkers')"></div>
     <!-- /ko -->
@@ -148,6 +170,10 @@
           <th data-bind="text: t('atd.workers.vm')"></th>
           <th data-bind="text: t('atd.col.status')"></th>
           <th data-bind="text: t('atd.workers.currentJob')"></th>
+          <th data-bind="attr: { title: t('atd.workers.account.hint') }">
+            <span data-bind="text: t('atd.workers.account')"></span>
+            <span class="muted" style="cursor: help">&#9432;</span>
+          </th>
           <th data-bind="text: t('atd.workers.lastSeen')"></th>
           <th data-bind="text: t('atd.workers.sessionAge')"></th>
           <th data-bind="attr: { title: t('atd.workers.loginTime.hint') }">
@@ -157,16 +183,20 @@
           <th data-bind="text: t('atd.workers.mfa')"></th>
           <th data-bind="text: t('atd.workers.lastSuccess')"></th>
           <th data-bind="text: t('atd.workers.runs24')"></th>
-          <th data-bind="text: t('atd.workers.refresh')"></th>
+          <th data-bind="text: t('atd.workers.actions')"></th>
         </tr></thead>
         <tbody data-bind="foreach: workers">
           <tr>
             <td class="mono">
               <span data-bind="style:{ color: $vm.workerDot($data) }">&#9679;</span>
-              <span data-bind="text: $data.workerId"></span>
+              <span class="wk-link" data-bind="text: $data.workerId,
+                        click: function(){ $vm.openWorkerRuns($data); },
+                        attr:{ title: $root.t('atd.workers.drill.hint') }"></span>
             </td>
-            <td><span data-bind="css: $vm.statusClass($data.status), text: $data.status"></span></td>
+            <td><span data-bind="css: $vm.statusClass($vm.workerStatusText($data)),
+                                 text: $vm.workerStatusText($data)"></span></td>
             <td class="mono" data-bind="text: $data.currentJob || '—'"></td>
+            <td class="mono" data-bind="text: $data.sessionAccount || '—'"></td>
             <td data-bind="text: $vm.workerAge($data) + ' ' + $root.t('atd.workers.ago')"></td>
             <td data-bind="text: $vm.sessionAge($data), style:{ color: ($vm.sessionAged($data) ? '#B5651A' : ''), fontWeight: ($vm.sessionAged($data) ? '600' : '') }"></td>
             <td data-bind="text: $vm.loginTime($data), attr:{ title: $data.lastLoginStatus || '' }"></td>
@@ -190,6 +220,24 @@
                                  attr:{ title: $root.t('atd.workers.refresh.hint') }">
                 <span data-bind="text: $root.t('atd.workers.refresh')"></span>
               </button>
+              <!-- ko if: $data.paused !== 'Y' -->
+              <button class="btn btn-xs btn-secondary"
+                      style="margin-inline-start:5px"
+                      data-bind="click: function(){ $vm.pauseWorker($data); },
+                                 attr:{ title: $root.t('atd.workers.pause.hint') }">
+                <span aria-hidden="true">&#9208;</span>
+                <span data-bind="text: $root.t('atd.workers.pause')"></span>
+              </button>
+              <!-- /ko -->
+              <!-- ko if: $data.paused === 'Y' -->
+              <button class="btn btn-xs btn-primary"
+                      style="margin-inline-start:5px"
+                      data-bind="click: function(){ $vm.resumeWorker($data); },
+                                 attr:{ title: $root.t('atd.workers.resume.hint') }">
+                <span aria-hidden="true">&#9654;</span>
+                <span data-bind="text: $root.t('atd.workers.resume')"></span>
+              </button>
+              <!-- /ko -->
             </td>
           </tr>
         </tbody>

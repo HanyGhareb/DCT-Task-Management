@@ -124,6 +124,9 @@ function (api) {
     // ask a worker (or 'all') to re-login to Fusion (operator triggers MFA)
     refreshWorker: function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/refresh', {}); },
     checkWorkerSession: function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/check-session', {}); },
+    // operator hold: a paused worker claims no new work (in-flight job finishes first)
+    pauseWorker:  function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/pause', {}); },
+    resumeWorker: function (workerId) { return api.post('/workers/' + encodeURIComponent(workerId) + '/resume', {}); },
 
     // run logs
     listRuns:     function (params)    { return api.get('/runs' + qs(params)); },

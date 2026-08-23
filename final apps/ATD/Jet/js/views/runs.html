@@ -60,6 +60,10 @@
       <option value="" data-bind="text: t('atd.runs.allSets')"></option>
       <!-- ko foreach: sets --><option data-bind="value: $data.code, text: $data.name"></option><!-- /ko -->
     </select>
+    <!-- KO `options` (not foreach-in-select): it applies BEFORE `value`, so a
+         drilled/restored VM isn't blanked at bind time while the list loads -->
+    <select class="form-control form-control--sm" style="max-width:150px"
+            data-bind="options: vms, optionsCaption: t('atd.runs.allVms'), value: fVm"></select>
     <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fFrom">
     <input class="form-control form-control--sm" type="date" style="max-width:150px" data-bind="value: fTo">
     <button class="btn btn-sm btn-primary" data-bind="click: search, text: t('atd.filter.search')"></button>

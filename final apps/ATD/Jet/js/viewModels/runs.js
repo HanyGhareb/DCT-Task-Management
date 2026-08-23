@@ -20,6 +20,8 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
     self.fJob = ko.observable(''); self.fStatus = ko.observable('');
     self.fFrom = ko.observable(''); self.fTo = ko.observable('');
     self.fSet = ko.observable('');
+    self.fVm = ko.observable('');
+    self.vms = ko.observableArray([]);    // worker VM ids for the VM filter
 
     // server pagination (envelope {items,total,limit,offset}); 20 rows/page
     self.offset = ko.observable(0);
@@ -56,7 +58,7 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
     self.load = function () {
       self.loading(true);
       atd.listRuns({ job: self.fJob(), status: self.fStatus(), fromdt: self.fFrom(), todt: self.fTo(),
-                     setcode: self.fSet(), limit: self.limit(), offset: self.offset() })
+                     setcode: self.fSet(), vm: self.fVm(), limit: self.limit(), offset: self.offset() })
         .then(function (r) { self.runs(r.items || []); self.total(r.total || 0); self.loading(false); })
         .catch(function () { self.loading(false); });
     };
@@ -64,24 +66,46 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
     // explicit Search / Clear (criteria remembered across refresh via filterStore)
     self.search = function () { self.offset(0); self.load(); };
     self.clearFilters = function () {
-      self.fJob(''); self.fStatus(''); self.fFrom(''); self.fTo(''); self.fSet('');
+      self.fJob(''); self.fStatus(''); self.fFrom(''); self.fTo(''); self.fSet(''); self.fVm('');
       self._filterStore.clear(); self.offset(0); self.load();
     };
 
     // persist filter criteria so a refresh restores them (BEFORE the reload subscriptions
     // + initial load so restored values are applied without an extra reload).
     self._filterStore = filterStore.bind('runs', {
-      job: self.fJob, status: self.fStatus, from: self.fFrom, to: self.fTo, set: self.fSet
+      job: self.fJob, status: self.fStatus, from: self.fFrom, to: self.fTo, set: self.fSet,
+      vm: self.fVm
     });
+
+    // Worker Fleet drill-down: a VM name click on the dashboard lands here with a
+    // one-shot vmFilter (consumed so a later plain visit isn't silently scoped).
+    var routeState = window._jetApp.getState() || {};
+    if (routeState.vmFilter) {
+      self.fJob(''); self.fStatus(''); self.fFrom(''); self.fTo(''); self.fSet('');
+      self.fVm(String(routeState.vmFilter));
+      delete routeState.vmFilter;
+    }
+    // seed the VM options with the restored/drilled value BEFORE binding — a KO
+    // <select> whose option list lacks the bound value at bind time BLANKS it
+    if (self.fVm() && self.vms.indexOf(self.fVm()) < 0) self.vms.push(self.fVm());
 
     // Reload when a filter changes — reset to the first page first. Drive off the
     // observable subscription (fires AFTER the value binding writes), not the DOM
     // change event (fires BEFORE KO updates the observable → one-change lag).
-    [self.fJob, self.fStatus, self.fFrom, self.fTo, self.fSet].forEach(function (o) {
+    [self.fJob, self.fStatus, self.fFrom, self.fTo, self.fSet, self.fVm].forEach(function (o) {
       o.subscribe(function () { self.offset(0); self.load(); });
     });
 
     atd.getLookups().then(function () {}).catch(function () {});
+    // VM filter options (the worker fleet; a drilled-in unknown host still filters)
+    atd.listWorkers().then(function (r) {
+      var ids = ((r && r.items) || []).map(function (w) { return w.workerId; });
+      var cur = self.fVm();
+      if (cur && ids.indexOf(cur) < 0) ids.push(cur);   // keep a stored/drilled value selectable
+      self.vms(ids);
+    }).catch(function () {
+      if (self.fVm()) self.vms([self.fVm()]);
+    });
     // Job Set filter options (from the sets defined on the Job Sets page)
     atd.listJobSets().then(function (r) {
       self.sets((r.items || []).map(function (s) { return { code: s.setCode, name: s.nameEn || s.setCode }; }));
@@ -144,7 +168,8 @@ function (ko, atd, api, i18n, toast, fmtDuration, filterStore) {
     };
 
     self.exportCsv = function () {
-      api.fetchBlobUrl(atd.runsExportUrl({ job: self.fJob(), status: self.fStatus(), setcode: self.fSet() }))
+      api.fetchBlobUrl(atd.runsExportUrl({ job: self.fJob(), status: self.fStatus(), setcode: self.fSet(),
+                                           vm: self.fVm() }))
         .then(function (url) {
           var a = document.createElement('a');
           a.href = url; a.download = 'atd-runs.csv';

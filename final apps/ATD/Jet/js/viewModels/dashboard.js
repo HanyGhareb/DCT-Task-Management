@@ -83,10 +83,26 @@ function (ko, atd, i18n, charts, toast) {
     self.mfaState = mfaStateFor;
 
     atd.getActionStats().then(function (a) { self.actions(a); }).catch(function () {});
-    atd.listWorkers().then(function (r) {
-      var rows = (r && r.items) || [];
-      rows.forEach(syncMfa); self.workers(rows);
-    }).catch(function () {});
+    // fleet table + per-VM session ages, reloadable from the region-header ↻ button
+    self.fleetLoading = ko.observable(false);
+    self.loadFleet = function () {
+      if (self.fleetLoading()) return;
+      self.fleetLoading(true);
+      var workersDone = atd.listWorkers().then(function (r) {
+        var rows = (r && r.items) || [];
+        rows.forEach(syncMfa); self.workers(rows);
+      }).catch(function () {});
+      var agesDone = atd.getJobHealth().then(function (h) {
+        self.breakInfo(h.break || null);
+        self.jobHealth(h.jobs || []);
+        (h.workers || []).forEach(function (w) { self._sessAge[w.workerId] = w; });
+      }).catch(function () {});
+      Promise.all([workersDone, agesDone]).then(function () {
+        self.workers.valueHasMutated();          // re-render with fresh session ages
+        self.fleetLoading(false);
+      });
+    };
+    self.loadFleet();
     self.refreshMfaOnly = function () {
       if (self._mfaPollBusy || document.hidden) return;
       self._mfaPollBusy = true;
@@ -110,13 +126,8 @@ function (ko, atd, i18n, charts, toast) {
     atd.listActions({ limit: 8 })
       .then(function (r) { self.recentActions((r && r.items) || []); })
       .catch(function () {});
-    // observability: break window + per-VM session age + per-job freshness
-    atd.getJobHealth().then(function (h) {
-      self.breakInfo(h.break || null);
-      self.jobHealth(h.jobs || []);
-      (h.workers || []).forEach(function (w) { self._sessAge[w.workerId] = w; });
-      self.workers.valueHasMutated();      // re-render the fleet table with session ages
-    }).catch(function () {});
+    // observability (break window + per-VM session age + per-job freshness) loads
+    // with the fleet table via loadFleet() above.
 
     // minutes -> "Nm" / "Hh Mm"
     function ageText(m) {
@@ -180,6 +191,44 @@ function (ko, atd, i18n, charts, toast) {
         .then(function () { toast.success(i18n.t('atd.workers.refresh.asked').replace('{vm}', w.workerId)); })
         .catch(function () { toast.error(i18n.t('atd.workers.refresh.failed')); });
     };
+    // operator hold: pause = claim nothing new (the in-flight job finishes first)
+    self.pauseWorker = function (w) {
+      if (!w || !w.workerId) return;
+      atd.pauseWorker(w.workerId)
+        .then(function () {
+          toast.success(i18n.t('atd.workers.pause.asked').replace('{vm}', w.workerId));
+          self.loadFleet();
+        })
+        .catch(function () { toast.error(i18n.t('atd.workers.pause.failed')); });
+    };
+    self.resumeWorker = function (w) {
+      if (!w || !w.workerId) return;
+      atd.resumeWorker(w.workerId)
+        .then(function () {
+          toast.success(i18n.t('atd.workers.resume.asked').replace('{vm}', w.workerId));
+          self.loadFleet();
+        })
+        .catch(function () { toast.error(i18n.t('atd.workers.resume.failed')); });
+    };
+    // drill-down: the VM name opens Run Logs pre-filtered to that host
+    self.openWorkerRuns = function (w) {
+      if (!w || !w.workerId) return;
+      window._jetApp.navigate('runs', { vmFilter: w.workerId });
+    };
+    // pill shows PAUSED as soon as the flag is set (the heartbeat status catches
+    // up on the worker's next beat); a BUSY worker keeps BUSY until it finishes
+    self.workerStatusText = function (w) {
+      if (w && w.paused === 'Y' && w.status !== 'BUSY') return 'PAUSED';
+      return (w && w.status) || '';
+    };
+    // offline banner: DOWN (peer-flagged), or silent > 5 min while not mid-job
+    // (a BUSY worker legitimately stops heartbeating for the length of a run)
+    self.offlineWorkers = ko.computed(function () {
+      return self.workers().filter(function (w) {
+        return w.status === 'DOWN' ||
+               (w.online !== 'Y' && w.status !== 'BUSY' && Number(w.ageSec) > 300);
+      });
+    });
 
     atd.getDashboard().then(function (d) {
       self.k(d);

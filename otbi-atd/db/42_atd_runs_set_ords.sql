@@ -6,6 +6,9 @@
 --   the two handlers) -> NO DELETE_MODULE, so the rest of atd.rest (job-sets,
 --   actions, categories ...) is untouched.
 --
+--   2026-08-23: both handlers also accept ?vm= (exact host_id match) -- the
+--   Worker Fleet drill-down on the dashboard opens Run Logs scoped to one VM.
+--
 --   A job belongs to at most one set (atd_job_set_member PK = job_name), so the
 --   LEFT JOIN never fans out run rows. Display times stay dct_to_local (UTC ->
 --   Asia/Dubai). Every handler: validate_session + SYS_ADMIN gate.
@@ -56,6 +59,7 @@ DECLARE
   l_from   VARCHAR2(30)  := [COLON]fromdt;
   l_to     VARCHAR2(30)  := [COLON]todt;
   l_set    VARCHAR2(30)  := [COLON]setcode;
+  l_vm     VARCHAR2(120) := [COLON]vm;
   l_limit  NUMBER        := LEAST(NVL(TO_NUMBER([COLON]limit  DEFAULT NULL ON CONVERSION ERROR), 50), 200);
   l_offset NUMBER        := GREATEST(NVL(TO_NUMBER([COLON]offset DEFAULT NULL ON CONVERSION ERROR), 0), 0);
   l_total  NUMBER;
@@ -68,6 +72,7 @@ BEGIN
    WHERE NVL(l.track,'X') <> 'DISCOVER'             -- discovery runs live on the Discovery page
      AND (l_job IS NULL OR l.job_name = l_job)
      AND (l_set IS NULL OR m.set_code = l_set)
+     AND (l_vm  IS NULL OR l.host_id = l_vm)
      AND (l_status IS NULL
           OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL
               AND LOWER(DBMS_LOB.SUBSTR(l.message,100,1)) NOT LIKE 'analysis returned no data this run%')
@@ -96,6 +101,7 @@ BEGIN
     WHERE NVL(l.track,'X') <> 'DISCOVER'
       AND (l_job IS NULL OR l.job_name = l_job)
       AND (l_set IS NULL OR m.set_code = l_set)
+      AND (l_vm  IS NULL OR l.host_id = l_vm)
       AND (l_status IS NULL
            OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL
                AND LOWER(DBMS_LOB.SUBSTR(l.message,100,1)) NOT LIKE 'analysis returned no data this run%')
@@ -133,6 +139,7 @@ DECLARE
   l_job    VARCHAR2(80)  := [COLON]job;
   l_status VARCHAR2(20)  := UPPER([COLON]status);
   l_set    VARCHAR2(30)  := [COLON]setcode;
+  l_vm     VARCHAR2(120) := [COLON]vm;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF NOT dct_auth.has_role(l_user,'SYS_ADMIN') THEN dct_rest.err(403,'Admin only'); RETURN; END IF;
@@ -149,6 +156,7 @@ BEGIN
     LEFT JOIN atd_job_set_member m ON m.job_name = l.job_name
     WHERE (l_job IS NULL OR l.job_name = l_job)
       AND (l_set IS NULL OR m.set_code = l_set)
+      AND (l_vm  IS NULL OR l.host_id = l_vm)
       AND (l_status IS NULL
            OR (l_status = 'WARNING' AND l.status = 'SUCCESS' AND l.message IS NOT NULL
                AND LOWER(DBMS_LOB.SUBSTR(l.message,100,1)) NOT LIKE 'analysis returned no data this run%')

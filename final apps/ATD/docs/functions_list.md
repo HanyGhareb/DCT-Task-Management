@@ -20,6 +20,22 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
   - **Session Age** column (`sessionAge`/`sessionAged` ← `getJobHealth` → `GET /atd/jobs/health`):
     each VM's Fusion session age (from `ATD_WORKER_HEARTBEAT.session_started`); turns amber past
     ~7h so an aging session is visible before it expires (~8h).
+  - **Region-header ↻ Refresh** (`loadFleet`): re-fetches `/workers` + `/jobs/health` together
+    and re-renders the table (also the initial load path).
+  - **Account** column (`sessionAccount`, db/85): which Fusion account the VM's current session
+    belongs to — the service account, or the personal profile of the running job/action.
+  - **Pause / Resume** buttons (`pauseWorker`/`resumeWorker` → `POST /atd/workers/:id/pause`\|`/resume`,
+    db/85): operator hold — a paused worker claims no new work (in-flight job finishes first),
+    keeps heartbeating (`PAUSED` pill) and still honours session commands.
+  - **VM drill-down** (`openWorkerRuns`): the VM name is a link → Run Logs pre-filtered to that
+    host (one-shot `vmFilter` route state; Run Logs has a matching VM dropdown, `?vm=` on
+    `GET /runs` + `/runs/export`, db/42 rework).
+  - **Worker-offline banner** (`offlineWorkers`): red banner at the top of the dashboard when a
+    worker is `DOWN` or silent > 5 min while not BUSY (a BUSY worker legitimately skips
+    heartbeats for the length of a run).
+  - **Age-based auto re-login** (runner-side, db/85 settings `ATD_AGE_RELOGIN`=N +
+    `ATD_AGE_RELOGIN_HOURS`=7.5, editable in Runner Settings): when on, an idle worker whose
+    session age passes the threshold re-logs itself in (one MFA push); one attempt per session.
 - **Break window banner** (`breakInfo`/`breakText` ← `getJobHealth`): shown when `ATD_BREAK_ENABLED=Y`;
   displays the configured window (`ATD_BREAK_START`–`END`, Asia/Dubai) and whether it is active now,
   so a paused fleet reads as intentional, not broken.
@@ -286,8 +302,10 @@ One page, three tables, for the `create_analysis` async pipeline:
 | GET / POST | `/categories` | list categories (+`usage` count, +`parentCode`/`parentName`) / create (`code`,`nameEn`,`nameAr`,`color`,`displayOrder`,`active`,`parentCode`). SYS_ADMIN |
 | PUT / DELETE | `/categories/:code` | update (partial, incl. `parentCode`) / delete — 400 if in use by jobs OR has sub-categories (deactivate/reparent instead). SYS_ADMIN |
 | POST | `/jobs/:name/approve-schema` | release a job held for schema review (`schema_reviewed`→'Y'); it loads on next run. SYS_ADMIN |
-| GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec` + **`setCode`/`setName`** (the run's Job Set, via `atd_job_set_member`). `status=WARNING` → SUCCESS rows with a message; **`?setcode=`** filters to one set (db/42) |
-| GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — status, heartbeat, session/MFA state, last login duration/status, last successful extract and 24-hour run count |
+| GET | `/runs` | run-log list (paged) — each row carries `host` (which VM ran it), `warn` (Y when a SUCCESS run has a message) + `message` snippet + `durationSec` + **`setCode`/`setName`** (the run's Job Set, via `atd_job_set_member`). `status=WARNING` → SUCCESS rows with a message; **`?setcode=`** filters to one set, **`?vm=`** to one worker VM (db/42) |
+| GET | `/workers` | parallel-worker fleet health from `ATD_WORKER_HEARTBEAT` — status, heartbeat, session/MFA state, last login duration/status, last successful extract, 24-hour run count, `paused` + `sessionAccount` (db/85 — that script now owns this handler; run 85 after any 13 re-run, never 56 after 85) |
+| POST | `/workers/:id/pause` | operator hold (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.paused='Y'`; the worker claims no new work after its in-flight job. SYS_ADMIN (db/85) |
+| POST | `/workers/:id/resume` | clears the pause flag; the worker claims work again. SYS_ADMIN (db/85) |
 | GET | `/jobs/health` | dashboard observability (additive, db/31) — `break` {enabled,active,start,end}, `workers[]` {workerId,sessionStarted,sessionAgeMin}, `jobs[]` (enabled) {jobName,lastSuccess,sinceMin,consecutiveFails,stuckRunning,alertSent,frequencyMin}. SYS_ADMIN |
 | POST | `/workers/:id/refresh` | request a worker re-login (`:id` = worker_id or `all`) — sets `ATD_WORKER_HEARTBEAT.refresh_req`; the worker forces a fresh Fusion login (MFA). SYS_ADMIN |
 | GET / POST | `/analyses` | list recent build requests / queue a "build a new OTBI analysis" request (`{name, saveFolder, specJson}` → `ATD_ANALYSIS_REQUEST`; runner `--build` consumes it) |
@@ -302,7 +320,7 @@ One page, three tables, for the `create_analysis` async pipeline:
 | POST | `/enqueue` · `/reap` | enqueue all · reap stale |
 | GET / POST | `/envs` ; PUT / DELETE `/envs/:name` | environments CRUD |
 | GET / POST | `/targets` ; PUT / DELETE `/targets/:name` | targets CRUD |
-| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` filter (db/42); detail adds `warningCount` + `warnings[]` with row/column/value/reason for non-blocking invalid-date warnings (db/49). Re-run both additive scripts after `13`. |
+| GET | `/runs` · `/runs/:id` · `/runs/export` | run-log list / detail / CSV — list + export add the **Job Set** column + `?setcode=` + `?vm=` filters (db/42); detail adds `warningCount` + `warnings[]` with row/column/value/reason for non-blocking invalid-date warnings (db/49). Re-run both additive scripts after `13`. |
 | POST | `/runs/:id/cancel` | cancel a run stuck on RUNNING (worker gone): closes the run-log row + releases any `ATD_ACTION_REQUEST` still holding it — a CLAIMED action keeps its idempotency bucket locked. 409 if already finished. **Cannot kill a process** (no command channel to the ATD fleet). db/81 — re-run after any 13 |
 | GET | `/actions` | Fusion action queue list (paged; filter `status`/`type`/`search`; incl. db/46 telemetry `workerVm`/`startedAt`/`finishedAt`/`durationSecs`/`submittedBy`) — `otbi-atd/db/20_atd_action_ords.sql` (additive to `atd.rest`) |
 | GET | `/actions/stats` | action-queue counts (ready/claimed/done/failed/cancelled) — dashboard tile |

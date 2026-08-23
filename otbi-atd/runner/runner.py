@@ -370,22 +370,60 @@ def _in_break(conn):
         return False
 
 
-def _heartbeat(conn, status, job=None):
-    """Upsert this worker's liveness row (ATD_WORKER_HEARTBEAT) for the UI Workers
-    panel. Best-effort: a heartbeat failure must never break the worker."""
+# which Fusion account the DEFAULT env's service session signs in as (db/85
+# Worker Fleet "Account" column); cached — one env/config read per 10 min
+_SVC_ACCOUNT = {"v": None, "t": 0.0}
+
+
+def _service_account(conn):
+    now = time.monotonic()
+    if _SVC_ACCOUNT["v"] is not None and now - _SVC_ACCOUNT["t"] < 600:
+        return _SVC_ACCOUNT["v"]
+    acct = None
     try:
+        d = config.get_default_browser_env(conn)
+        ref = ((d or {}).get("credential_ref") or (d or {}).get("env_name") or "").strip()
+        acct = os.environ.get(f"{ref}_USER") or os.environ.get("OTBI_USER")
+    except Exception:  # noqa: BLE001
+        pass
+    _SVC_ACCOUNT.update(v=acct, t=now)
+    return acct
+
+
+def _heartbeat(conn, status, job=None, account=None):
+    """Upsert this worker's liveness row (ATD_WORKER_HEARTBEAT) for the UI Workers
+    panel. `account` = the Fusion login the current work runs as (personal profile);
+    defaults to the service account. Best-effort: a heartbeat failure must never
+    break the worker."""
+    try:
+        sa = (account or _service_account(conn) or None)
         conn.cursor().execute(
             "merge into prod.atd_worker_heartbeat t "
             "using (select :w worker_id from dual) s on (t.worker_id = s.worker_id) "
             "when matched then update set last_seen=systimestamp, status=:st, "
-            "  current_job=:j, session_started=:ss "
-            "when not matched then insert (worker_id, last_seen, status, current_job, session_started) "
-            "values (:w, systimestamp, :st, :j, :ss)",
+            "  current_job=:j, session_started=:ss, session_account=:sa "
+            "when not matched then insert (worker_id, last_seen, status, current_job, "
+            "  session_started, session_account) "
+            "values (:w, systimestamp, :st, :j, :ss, :sa)",
             w=_worker_id()[:120], st=status, j=(job[:256] if job else None),
-            ss=_session_started_dt())
+            ss=_session_started_dt(), sa=(sa[:200] if sa else None))
         conn.commit()
     except Exception:  # noqa: BLE001
         pass
+
+
+def _operator_paused(conn, host):
+    """Whether the operator paused THIS worker (Worker Fleet Pause button, db/85).
+    A paused worker keeps its heartbeat + honours session commands but claims no
+    work — pause takes effect after the job already in flight. Fail-open."""
+    try:
+        cur = conn.cursor()
+        cur.execute("select paused from prod.atd_worker_heartbeat where worker_id=:w",
+                    w=host)
+        row = cur.fetchone()
+        return bool(row and row[0] == 'Y')
+    except Exception:  # noqa: BLE001
+        return False
 
 
 def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
@@ -410,6 +448,13 @@ def _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers):
         return
     action = "force re-login" if force else "session check"
     print(f"[worker {host}] operator {action} requested", flush=True)
+    _do_relogin(conn, p, host, ctx_by_env, browser_by_env, browsers, force, action)
+
+
+def _do_relogin(conn, p, host, ctx_by_env, browser_by_env, browsers, force, action):
+    """The shared re-login flow behind an operator session check / force re-login
+    and the age-based auto re-login. A check preserves a healthy live context;
+    force always replaces the session (MFA push to approve)."""
     denv = config.get_default_browser_env(conn)
     if not denv:
         print(f"[worker {host}] refresh: no enabled BROWSER env to log into", flush=True)
@@ -694,6 +739,38 @@ def _alert_aging_session(conn, host, vm, in_break):
         print(f"[worker {host}] aging-alert error: {e}", flush=True)
 
 
+# age-based auto re-login de-dupe: one attempt per session (re-arms on a new session)
+_AGE_RELOGIN_DONE = {}
+
+
+def _auto_relogin_aging(conn, p, host, ctx_by_env, browser_by_env, browsers):
+    """ATD_AGE_RELOGIN=Y (db/85): when this IDLE worker's Fusion session is older
+    than ATD_AGE_RELOGIN_HOURS, start a fresh login by itself (one MFA push to
+    approve) instead of waiting for the operator. One attempt per session — a
+    declined MFA doesn't re-fire until the session actually changes. The daily
+    06:00 ATD_DAILY_RELOGIN and the ATD_SESSION_WARN_HOURS nudge are unaffected."""
+    try:
+        if (os.environ.get("ATD_AGE_RELOGIN", "N") or "N").upper() not in ("Y", "1", "TRUE", "ON"):
+            return
+        hrs = float(os.environ.get("ATD_AGE_RELOGIN_HOURS", "7.5") or 0)
+        age = _session_age_hours()
+        m = _session_mtime()
+        if hrs <= 0 or age is None or age < hrs:
+            return
+        if _AGE_RELOGIN_DONE.get(host) == m:      # already attempted for THIS session
+            return
+        _AGE_RELOGIN_DONE[host] = m
+    except Exception:  # noqa: BLE001
+        return
+    print(f"[worker {host}] session ~{age:.1f}h >= {hrs}h -> age-based auto re-login",
+          flush=True)
+    try:
+        _do_relogin(conn, p, host, ctx_by_env, browser_by_env, browsers,
+                    force=True, action="age auto re-login")
+    except Exception as e:  # noqa: BLE001
+        print(f"[worker {host}] age auto re-login error: {e}", flush=True)
+
+
 def _post_mark_health(conn, host, vm, job, ok):
     """Chronic-failure alert: on SUCCESS clear the job's alert flag; on FAILURE, if the
     last ATD_FAIL_ALERT_STREAK runs are all FAILED, atomically claim the alert (so only
@@ -887,11 +964,14 @@ def _run_worker(conn, load, forever):
                 # Break window: pause ALL work (claim nothing; in-flight jobs already
                 # claimed will have finished). Resumes automatically at break-end.
                 in_break = _in_break(conn)
+                # Operator pause (Worker Fleet Pause button): claim nothing until
+                # resumed; the job already in flight finished before we got here.
+                paused = _operator_paused(conn, host)
                 # While THIS host's session is dead, stop claiming so a peer with a
                 # healthy session drains the queue (we re-auth on the idle path below).
                 hold_claim = bool(session_dead)
                 claim_token = uuid.uuid4().hex
-                name = None if (in_break or hold_claim) else conn.cursor().callfunc(
+                name = None if (in_break or hold_claim or paused) else conn.cursor().callfunc(
                     "prod.atd_queue_pkg.claim_next", str, [host, claim_token, lease])
                 if not name:
                     if forever:
@@ -899,12 +979,16 @@ def _run_worker(conn, load, forever):
                         # honour operator refresh, recover dead peers' jobs + stale runs,
                         # nudge on an aging session, and — only when NOT in break — reuse
                         # the warm session for discovery + builds.
-                        _heartbeat(conn, "BREAK" if in_break else "IDLE")
+                        _heartbeat(conn, "PAUSED" if paused
+                                   else ("BREAK" if in_break else "IDLE"))
                         _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers)
                         conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
                         _reap_stale_runs(conn, int(os.environ.get("ATD_RUN_REAP_MINUTES", "60")))
                         _alert_stale_workers(conn, self_id=host)
-                        _alert_aging_session(conn, host, vm, in_break)
+                        _alert_aging_session(conn, host, vm, in_break or paused)
+                        if not in_break and not paused:
+                            _auto_relogin_aging(conn, p, host, ctx_by_env,
+                                                browser_by_env, browsers)
                         # Tier 1: keep warm sessions alive so they don't idle-expire
                         # between sparse jobs (a cheap authenticated GET resets OBIEE's
                         # idle timer — no MFA). If a ping finds the session already dead,
@@ -942,7 +1026,7 @@ def _run_worker(conn, load, forever):
                                         else:
                                             print(f"[worker {host}] keepalive: {en} ping miss "
                                                   f"{ping_fails[en]}/{keepalive_strikes} (transient?)", flush=True)
-                        for en in list(session_dead):
+                        for en in (() if paused else list(session_dead)):
                             now = time.monotonic()
                             if now - reauth_at.get(en, 0.0) < reauth_cooldown:
                                 continue
@@ -956,7 +1040,7 @@ def _run_worker(conn, load, forever):
                             if envd and _relogin(p, host, en, envd, ctx_by_env, browser_by_env, browsers):
                                 session_dead.pop(en, None)
                                 ping_fails[en] = 0
-                        if not in_break:
+                        if not in_break and not paused:
                             try:
                                 # reuse the worker's warm Playwright (p) — opening a
                                 # nested sync_playwright here raises "Sync API inside
@@ -1055,7 +1139,8 @@ def _run_worker(conn, load, forever):
                     personal_used[ctx_key] = time.monotonic()
                     print(f"[worker {host}] {name}: running as {cred['fusion_login']} "
                           f"(requested by {job.get('requested_by')})", flush=True)
-                _heartbeat(conn, "BUSY", name)
+                _heartbeat(conn, "BUSY", name,
+                           account=(cred["fusion_login"] if cred else None))
                 session_bounce = False
                 try:
                     ok = run_one(ctx, env, job, auth_ms=auth_ms)
@@ -1179,9 +1264,16 @@ def _drain_actions_idle(conn, host, ctx_by_env, get_env_ctx):
         # as the current job, so the ATD dashboard's Worker Fleet panel is a
         # single truthful view of extracts AND Fusion actions.
         if action:
+            who = None
+            try:
+                c = config.resolve_user_cred(conn, action.get("created_by"))
+                who = c and c.get("fusion_login")
+            except Exception:  # noqa: BLE001
+                pass
             _heartbeat(conn, "BUSY",
                        "ACTION %s %s" % (action.get("action_type") or "?",
-                                         action.get("source_ref") or ("#%s" % aid)))
+                                         action.get("source_ref") or ("#%s" % aid)),
+                       account=who)
         if not action:
             conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
                                    [aid, "no action row after claim"])
