@@ -48,6 +48,10 @@
 /* Worker Fleet: the VM name drills into that host's Run Logs */
 .wk-link { cursor:pointer; color:var(--brand); text-decoration:underline dotted; }
 .wk-link:hover { text-decoration:underline; }
+/* Worker Fleet: additional live Fusion sessions (personal profiles) under the account */
+.wk-sess { margin-top:3px; font-size:11.5px; color:#4a5560; }
+.wk-sess-meta { margin-inline-start:7px; font-size:10.5px; color:#8a94a0;
+                background:#eef1f4; border-radius:8px; padding:1px 7px; }
 /* Worker Fleet: inline verdict badge after Check session / Force re-login */
 .wk-verdict { margin-top:5px; font-size:11px; font-weight:700; padding:2px 9px;
               border-radius:10px; display:inline-block; }

@@ -70,6 +70,28 @@ suggestions + a region-header refresh button):
   * Test `fleet_verdict_smoke.py` **7/7** live: click → amber "Checking session…" →
     green "✓ Session OK — no MFA was needed" (~20s). Webtier release 20260823141214.
 
+- **v1.43.0 same day — column hints + live multi-session display** (user: "what does
+  Session Age 21m mean?" + "what about other users' Fusion sessions?"):
+  * **Every Worker Fleet column now carries a ⓘ hint** (plain-language, EN+AR): VM/dot,
+    Status vocabulary (IDLE·BUSY·BREAK·PAUSED·DOWN), Current Job, Account, Last Seen
+    (~15s idle beat, quiet during a long job), **Session Age = how long ago the worker
+    signed in to Fusion — the SERVICE-account session only; ~8h lifetime, amber past 7h**,
+    Login Duration, MFA (incl. the silent-no-number case), Last Successful Extract,
+    Runs 24h, Actions.
+  * **All live Fusion sessions per worker**: heartbeat gains `SESSIONS_JSON`
+    (`[{account,kind:service|personal,ageMin}]`, built from `ctx_by_env` + the auth-state
+    file mtimes each beat; `COALESCE` keeps the stored value on beats without ctx) —
+    db/85 REWORKED IN PLACE (column + `sessionsJson` in GET /workers; still the sole
+    owner of that handler). The Account cell renders sessions beyond the displayed one
+    as muted sub-lines "login · kind · age" (`.wk-sess`), so per-user personal profiles
+    (db/62) running alongside the service session are finally visible. Right after a
+    worker restart the list is empty until a session opens on demand — expected.
+  * Tests: fleet_browser_smoke **24/24** (new all-columns-hinted check) +
+    fleet_verdict_smoke 7/7 re-run on v1.43.0; vm181 live heartbeat shows
+    `[{"account":"hg2248@…","kind":"service","ageMin":0}]`. Webtier 20260823143120
+    (old releases pruned to keep-5). Fleet synced + restarted (idle) for the
+    sessions-aware heartbeat.
+
 ## 2026-08-21 — GRN gap-fill: un-costed Fusion receipts surfaced (db/84) — **DEPLOYED + LIVE-VERIFIED**
 Root cause found via invoice DN-26-01-003166 (29,886.64 AED, PO 451102004985): its receipt
 4513074290 was Received AND Delivered in Fusion Receiving (both legs 28,463.47, 13-Apr-26)

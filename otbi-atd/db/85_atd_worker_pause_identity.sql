@@ -3,10 +3,12 @@
 --            auto re-login settings, VM filter support columns.
 --
 --   * atd_worker_heartbeat gains PAUSED (operator hold: the worker stops
---     claiming work after its current job; heartbeat keeps beating) and
+--     claiming work after its current job; heartbeat keeps beating),
 --     SESSION_ACCOUNT (which Fusion account the worker's current session
 --     belongs to -- service account, or the personal profile of the running
---     job/action).
+--     job/action) and SESSIONS_JSON (rework 2026-08-23: ALL live Fusion
+--     sessions the worker holds -- service + per-user personal profiles --
+--     as [{account,kind,ageMin}], written by the runner each beat).
 --   * POST /atd/workers/:id/pause  + POST /atd/workers/:id/resume ('all' ok).
 --   * GET  /atd/workers redefined to also ship paused + sessionAccount.
 --     This SUPERSEDES the db/56 version of the handler: after any 13 re-run,
@@ -33,6 +35,12 @@ END;
 
 BEGIN
   EXECUTE IMMEDIATE 'ALTER TABLE prod.atd_worker_heartbeat ADD (session_account VARCHAR2(200))';
+EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1430 THEN RAISE; END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'ALTER TABLE prod.atd_worker_heartbeat ADD (sessions_json VARCHAR2(2000))';
 EXCEPTION WHEN OTHERS THEN IF SQLCODE != -1430 THEN RAISE; END IF;
 END;
 /
@@ -116,7 +124,7 @@ BEGIN
         FROM atd_load_run_log WHERE status='SUCCESS' GROUP BY host_id
     )
     SELECT h.worker_id, h.status, h.current_job, NVL(h.paused,'N') AS paused,
-           h.session_account,
+           h.session_account, h.sessions_json,
            TO_CHAR(dct_to_local(h.last_seen),'YYYY-MM-DD HH:MI:SS AM') last_seen_s,
            ROUND((CAST(SYSTIMESTAMP AS DATE)-CAST(h.last_seen AS DATE))*86400) age_sec,
            (SELECT COUNT(*) FROM atd_load_run_log l WHERE l.host_id=h.worker_id
@@ -137,6 +145,7 @@ BEGIN
     APEX_JSON.write('currentJob',NVL(r.current_job,'')); APEX_JSON.write('lastSeen',NVL(r.last_seen_s,''));
     APEX_JSON.write('paused',r.paused);
     APEX_JSON.write('sessionAccount',NVL(r.session_account,''));
+    APEX_JSON.write('sessionsJson',NVL(r.sessions_json,''));
     APEX_JSON.write('ageSec',r.age_sec); APEX_JSON.write('online',CASE WHEN r.age_sec<=120 THEN 'Y' ELSE 'N' END);
     APEX_JSON.write('runs24h',r.runs24h); APEX_JSON.write('mfaStatus',NVL(r.mfa_status,''));
     APEX_JSON.write('mfaNumber',NVL(r.mfa_number,'')); APEX_JSON.write('mfaEnv',NVL(r.mfa_env,''));

@@ -390,23 +390,55 @@ def _service_account(conn):
     return acct
 
 
-def _heartbeat(conn, status, job=None, account=None):
+def _sessions_json(conn, ctx_by_env):
+    """JSON summary of the LIVE Fusion sessions this worker holds — the service
+    session plus any per-user personal sessions (db/62) — for the fleet Account
+    column: [{account, kind, ageMin}]. None when unknown (caller keeps the
+    previous value)."""
+    if not ctx_by_env:
+        return None
+    out = []
+    try:
+        for key, val in list(ctx_by_env.items()):
+            envd = val[0] if isinstance(val, tuple) and val else {}
+            personal = "|" in key
+            acct = (key.split("|", 1)[1] if personal
+                    else (_service_account(conn) or ""))
+            ident = auth._ident(envd) if personal else ""
+            en = (envd.get("env_name") or key.split("|", 1)[0])
+            age = None
+            try:
+                p = auth._state_path(en, ident)
+                age = int((time.time() - os.path.getmtime(str(p))) / 60)
+            except Exception:  # noqa: BLE001
+                pass
+            out.append({"account": acct, "kind": "personal" if personal else "service",
+                        "ageMin": age})
+        return json.dumps(out)[:2000] if out else None
+    except Exception:  # noqa: BLE001
+        return None
+
+
+def _heartbeat(conn, status, job=None, account=None, ctx_by_env=None):
     """Upsert this worker's liveness row (ATD_WORKER_HEARTBEAT) for the UI Workers
     panel. `account` = the Fusion login the current work runs as (personal profile);
-    defaults to the service account. Best-effort: a heartbeat failure must never
-    break the worker."""
+    defaults to the service account. `ctx_by_env` (when the caller has it) refreshes
+    the live-sessions summary; None keeps the stored one. Best-effort: a heartbeat
+    failure must never break the worker."""
     try:
         sa = (account or _service_account(conn) or None)
+        sj = _sessions_json(conn, ctx_by_env)
         conn.cursor().execute(
             "merge into prod.atd_worker_heartbeat t "
             "using (select :w worker_id from dual) s on (t.worker_id = s.worker_id) "
             "when matched then update set last_seen=systimestamp, status=:st, "
-            "  current_job=:j, session_started=:ss, session_account=:sa "
+            "  current_job=:j, session_started=:ss, session_account=:sa, "
+            "  sessions_json=coalesce(:sj, sessions_json) "
             "when not matched then insert (worker_id, last_seen, status, current_job, "
-            "  session_started, session_account) "
-            "values (:w, systimestamp, :st, :j, :ss, :sa)",
+            "  session_started, session_account, sessions_json) "
+            "values (:w, systimestamp, :st, :j, :ss, :sa, :sj)",
             w=_worker_id()[:120], st=status, j=(job[:256] if job else None),
-            ss=_session_started_dt(), sa=(sa[:200] if sa else None))
+            ss=_session_started_dt(), sa=(sa[:200] if sa else None), sj=sj)
         conn.commit()
     except Exception:  # noqa: BLE001
         pass
@@ -980,7 +1012,8 @@ def _run_worker(conn, load, forever):
                         # nudge on an aging session, and — only when NOT in break — reuse
                         # the warm session for discovery + builds.
                         _heartbeat(conn, "PAUSED" if paused
-                                   else ("BREAK" if in_break else "IDLE"))
+                                   else ("BREAK" if in_break else "IDLE"),
+                                   ctx_by_env=ctx_by_env)
                         _handle_refresh(conn, p, host, ctx_by_env, browser_by_env, browsers)
                         conn.cursor().callfunc("prod.atd_queue_pkg.reap_stale", int, [lease])
                         _reap_stale_runs(conn, int(os.environ.get("ATD_RUN_REAP_MINUTES", "60")))
@@ -1140,7 +1173,8 @@ def _run_worker(conn, load, forever):
                     print(f"[worker {host}] {name}: running as {cred['fusion_login']} "
                           f"(requested by {job.get('requested_by')})", flush=True)
                 _heartbeat(conn, "BUSY", name,
-                           account=(cred["fusion_login"] if cred else None))
+                           account=(cred["fusion_login"] if cred else None),
+                           ctx_by_env=ctx_by_env)
                 session_bounce = False
                 try:
                     ok = run_one(ctx, env, job, auth_ms=auth_ms)
@@ -1255,7 +1289,7 @@ def _drain_actions_idle(conn, host, ctx_by_env, get_env_ctx):
     while True:
         aid = conn.cursor().callfunc("prod.atd_action_pkg.claim_next_action", int, [host])
         if not aid:
-            _heartbeat(conn, "IDLE")
+            _heartbeat(conn, "IDLE", ctx_by_env=ctx_by_env)
             return
         action = config.get_action(conn, aid)
         # The drain can hold this worker for HOURS (101-invoice AR-rebill
@@ -1273,7 +1307,7 @@ def _drain_actions_idle(conn, host, ctx_by_env, get_env_ctx):
             _heartbeat(conn, "BUSY",
                        "ACTION %s %s" % (action.get("action_type") or "?",
                                          action.get("source_ref") or ("#%s" % aid)),
-                       account=who)
+                       account=who, ctx_by_env=ctx_by_env)
         if not action:
             conn.cursor().callproc("prod.atd_action_pkg.mark_action_failed",
                                    [aid, "no action row after claim"])

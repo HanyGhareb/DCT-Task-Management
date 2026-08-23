@@ -267,6 +267,26 @@ function (ko, atd, i18n, charts, toast) {
       if (!w || !w.workerId) return;
       window._jetApp.navigate('runs', { vmFilter: w.workerId });
     };
+    // all live Fusion sessions this worker holds (service + per-user personal
+    // profiles, from heartbeat sessions_json); sessions other than the account
+    // shown on the row render as muted sub-lines with their own age
+    self.workerSessions = function (w) {
+      var raw = w && w.sessionsJson;
+      if (!raw) return [];
+      var list;
+      try { list = JSON.parse(raw) || []; } catch (e) { return []; }
+      var main = String(w.sessionAccount || '').toLowerCase();
+      return list.filter(function (s) {
+        return s && s.account && String(s.account).toLowerCase() !== main;
+      }).map(function (s) {
+        return {
+          account: s.account,
+          kind: i18n.t(s.kind === 'personal' ? 'atd.workers.sess.personal'
+                                             : 'atd.workers.sess.service'),
+          age: (s.ageMin === null || s.ageMin === undefined) ? '' : ageText(Number(s.ageMin))
+        };
+      });
+    };
     // pill shows PAUSED as soon as the flag is set (the heartbeat status catches
     // up on the worker's next beat); a BUSY worker keeps BUSY until it finishes
     self.workerStatusText = function (w) {

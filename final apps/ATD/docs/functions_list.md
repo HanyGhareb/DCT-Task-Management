@@ -30,6 +30,10 @@ User-facing functions by area. Each area = a view (`Jet/js/views/<x>.html` +
     re-login WITHOUT any MFA number — the green verdict is the success signal.)
   - **Account** column (`sessionAccount`, db/85): which Fusion account the VM's current session
     belongs to — the service account, or the personal profile of the running job/action.
+    **v1.43.0**: extra muted sub-lines (`workerSessions` ← heartbeat `sessions_json`) list the
+    OTHER live Fusion sessions the worker holds (per-user personal profiles, db/62) with each
+    session's own age; every column header now carries a plain-language ⓘ hint (EN+AR) —
+    Session Age = the SERVICE-account session's age (~8h lifetime, amber past 7h).
   - **Pause / Resume** buttons (`pauseWorker`/`resumeWorker` → `POST /atd/workers/:id/pause`\|`/resume`,
     db/85): operator hold — a paused worker claims no new work (in-flight job finishes first),
     keeps heartbeating (`PAUSED` pill) and still honours session commands.

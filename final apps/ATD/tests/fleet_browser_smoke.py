@@ -78,6 +78,12 @@ with sync_playwright() as p:
     heads = [h.strip().lower() for h in fleet.locator('thead th').all_inner_texts()]
     check('Account column present', any('account' in h for h in heads), '|'.join(heads))
     check('Actions column present', any('actions' in h for h in heads))
+    # every column carries a ⓘ hint (title attribute) — v1.43.0
+    ths = fleet.locator('thead th')
+    titled = sum(1 for i in range(ths.count())
+                 if (ths.nth(i).get_attribute('title') or '').strip())
+    check('every column has a hint', titled == ths.count(),
+          f'{titled}/{ths.count()}')
     rows = fleet.locator('tbody tr')
     check('fleet rows rendered', rows.count() >= 3, str(rows.count()))
     acct = rows.first.locator('td').nth(3).inner_text()
