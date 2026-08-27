@@ -127,10 +127,18 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_sql_perf_pkg AS
            delta_buffer_gets,delta_disk_reads,delta_rows,last_active_time,
            SUBSTR(REGEXP_REPLACE(sql_text_raw,'''([^'']|'''')*''','''?'''),1,500),
            SUBSTR(module_name,1,128),SUBSTR(action_name,1,128),
-           CASE WHEN module_name LIKE 'DCT_RPT:%' OR module_name='/usr/bin/python3' THEN 'REPORT'
+           CASE WHEN module_name LIKE 'DCT_RPT:%' THEN 'REPORT'
+                WHEN UPPER(module_name) LIKE '%OTBI-ATD%'
+                  OR module_name LIKE '/root/%' OR module_name LIKE '/usr/%' THEN 'BACKGROUND'
+                WHEN UPPER(module_name) LIKE 'APEX_%/APEX:APP 4500:%'
+                  OR UPPER(module_name) LIKE 'APEX:APP 4500:%' THEN 'ADMIN_TOOL'
                 WHEN module_name LIKE '/%' THEN 'INTERACTIVE'
                 ELSE 'APPLICATION' END,
-           CASE WHEN (module_name LIKE 'DCT_RPT:%' OR module_name='/usr/bin/python3') THEN 'N'
+           CASE WHEN module_name LIKE 'DCT_RPT:%'
+                  OR UPPER(module_name) LIKE '%OTBI-ATD%'
+                  OR module_name LIKE '/root/%' OR module_name LIKE '/usr/%'
+                  OR UPPER(module_name) LIKE 'APEX_%/APEX:APP 4500:%'
+                  OR UPPER(module_name) LIKE 'APEX:APP 4500:%' THEN 'N'
                 WHEN delta_elapsed/delta_executions/1000000>=l_single THEN 'Y'
                 WHEN delta_executions>=l_min AND delta_elapsed/delta_executions/1000000>=l_alert THEN 'Y'
                 ELSE 'N' END
@@ -143,8 +151,12 @@ CREATE OR REPLACE PACKAGE BODY prod.dct_sql_perf_pkg AS
                q.disk_reads-b.disk_reads delta_disk_reads,
                q.rows_processed-b.rows_processed delta_rows,
                ROW_NUMBER() OVER (
-                 PARTITION BY CASE WHEN q.module_name LIKE 'DCT_RPT:%' OR q.module_name='/usr/bin/python3'
-                                   THEN 'REPORT' ELSE 'APPLICATION' END
+                 PARTITION BY CASE WHEN q.module_name LIKE 'DCT_RPT:%' THEN 'REPORT'
+                   WHEN UPPER(q.module_name) LIKE '%OTBI-ATD%'
+                     OR q.module_name LIKE '/root/%' OR q.module_name LIKE '/usr/%' THEN 'BACKGROUND'
+                   WHEN UPPER(q.module_name) LIKE 'APEX_%/APEX:APP 4500:%'
+                     OR UPPER(q.module_name) LIKE 'APEX:APP 4500:%' THEN 'ADMIN_TOOL'
+                   WHEN q.module_name LIKE '/%' THEN 'INTERACTIVE' ELSE 'APPLICATION' END
                  ORDER BY (q.elapsed_time-b.elapsed_time)/NULLIF(q.executions-b.executions,0) DESC
                ) rn
           FROM admin.dct_prod_sql_stats_v q
@@ -242,7 +254,8 @@ BEGIN
   APEX_JSON.open_array('items');
   FOR r IN (SELECT * FROM prod.dct_sql_perf_current
              ORDER BY CASE is_slow WHEN 'Y' THEN 0 ELSE 1 END,
-                      CASE workload_class WHEN 'INTERACTIVE' THEN 0 WHEN 'APPLICATION' THEN 1 ELSE 2 END,
+                      CASE workload_class WHEN 'INTERACTIVE' THEN 0 WHEN 'APPLICATION' THEN 1
+                           WHEN 'REPORT' THEN 2 WHEN 'BACKGROUND' THEN 3 ELSE 4 END,
                       avg_seconds DESC) LOOP
     APEX_JSON.open_object; APEX_JSON.write('sqlId',r.sql_id); APEX_JSON.write('moduleCode',r.module_code);
     APEX_JSON.write('statementType',r.statement_type); APEX_JSON.write('executions',r.executions);

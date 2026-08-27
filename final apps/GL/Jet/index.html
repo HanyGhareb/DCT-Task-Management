@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.83.0';</script>
+<script>window.APP_VERSION = '1.87.2';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -165,6 +165,11 @@
                 <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKBudget')"></div>
                   <div class="bk-v mono" data-bind="text:buNum(pfT('budgetAnnual')), attr:{title:money(pfT('budgetAnnual'))}"></div>
                   <div class="bk-sub" data-bind="text:t('pfColBudgetY')+': '+buNum(pfT('budget'))"></div></div>
+              </div>
+              <div class="bk bk-plan">
+                <div class="bk-body"><div class="bk-k"><span data-bind="text:t('cPlanTile')"></span><i class="pf-tip" data-bind="attr:{title:t('buPlanHint')}">i</i></div>
+                  <div class="bk-v mono" data-bind="text:buNum(pfT('planApprovedYtd')), attr:{title:money(pfT('planApprovedYtd'))}"></div>
+                  <div class="bk-sub" data-bind="text:t('pfColPlanA')+': '+buNum(pfT('planApprovedAnnual')) + (pfT('planRevisedAnnual') ? ' · '+t('pfPlanRevY')+': '+buNum(pfT('planRevisedYtd')) : '')"></div></div>
               </div>
               <div class="bk bk-ap bk-duo">
                 <div class="bk-body"><div class="bk-k" data-bind="text:t('pfKActual')"></div>
@@ -337,6 +342,9 @@
               <div class="bk bk-budget"><div class="bk-body"><div class="bk-k" data-bind="text:t('pfKBudget')"></div>
                 <div class="bk-v mono" data-bind="text:buNum(p3Year().budgetAnnual), attr:{title:money(p3Year().budgetAnnual)}"></div>
                 <div class="bk-sub" data-bind="text:t('pfColBudgetY')+': '+buNum(p3Year().budget)"></div></div></div>
+              <div class="bk bk-plan"><div class="bk-body"><div class="bk-k"><span data-bind="text:t('cPlanTile')"></span><i class="pf-tip" data-bind="attr:{title:t('buPlanHint')}">i</i></div>
+                <div class="bk-v mono" data-bind="text:buNum(p3Year().planApprovedYtd), attr:{title:money(p3Year().planApprovedYtd)}"></div>
+                <div class="bk-sub" data-bind="text:t('pfColPlanA')+': '+buNum(p3Year().planApprovedAnnual) + (p3Year().planRevisedAnnual ? ' · '+t('pfPlanRevY')+': '+buNum(p3Year().planRevisedYtd) : '')"></div></div></div>
               <div class="bk bk-ap"><div class="bk-body"><div class="bk-k" data-bind="text:t('pfKActual')"></div>
                 <div class="bk-v mono" data-bind="text:buNum((p3Year().actualAp||0)+(p3Year().actualGrn||0))"></div>
                 <div class="bk-sub" data-bind="text:t('pfAp')+' '+buNum(p3Year().actualAp)+' · '+t('pfGrn')+' '+buNum(p3Year().actualGrn)"></div></div></div>
@@ -852,6 +860,22 @@
             </div>
             <!-- /ko -->
           </div>
+          <!-- Generate and Send — scoped report emails to the predefined To/Cc/Bcc
+               lists (Sector / Department / Project level; tree-select drawer) -->
+          <div class="gen" data-bind="css:{open:gsMenuOpen}">
+            <button class="btn btn-sm btn-primary gen-btn" data-bind="click:toggleGsMenu, clickBubble:false, css:{busy:gsSendBusy}, text:gsSendBusy()?t('gsRunning'):t('gsBtn')"></button>
+            <!-- ko if: gsMenuOpen -->
+            <div class="gen-back" data-bind="click:closeGsMenu"></div>
+            <div class="gen-menu">
+              <button class="gen-item" data-bind="click:function(){openGs('SECTOR');}">
+                <span class="gen-ic">🏛️</span><span class="gen-tx"><b data-bind="text:t('gsLvlSector')"></b><small data-bind="text:t('gsLvlSectorSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){openGs('DEPARTMENT');}">
+                <span class="gen-ic">🏢</span><span class="gen-tx"><b data-bind="text:t('gsLvlDept')"></b><small data-bind="text:t('gsLvlDeptSub')"></small></span></button>
+              <button class="gen-item" data-bind="click:function(){openGs('PROJECT');}">
+                <span class="gen-ic">📋</span><span class="gen-tx"><b data-bind="text:t('gsLvlProject')"></b><small data-bind="text:t('gsLvlProjectSub')"></small></span></button>
+            </div>
+            <!-- /ko -->
+          </div>
           <button class="btn btn-sm" data-bind="click:buExportCsv, enable:buTotal()>0, text:t('exportCsv')"></button>
           <!-- ONE "Refresh data" dropdown (2026-08-22, user request): source
                extract / actuals snapshot / rebuild views (admin-only) + the
@@ -1054,14 +1078,16 @@
 
       <!-- over-budget warning: lines whose Fund Available is NEGATIVE in the
            current filtered set (server-computed across ALL rows, not just this
-           page). Info band only — the offending rows are flagged red in the
-           results table below. -->
-      <div class="bu-alert bu-alert--negfund" role="alert" data-bind="visible:buNegFund()>0, attr:{title:t('buNegHint')}">
+           page). The offending rows are flagged red in the results table
+           below AND the band itself click-drills to the shared drawer
+           listing them (/butil?negfund=Y, GL/db/28). -->
+      <div class="bu-alert bu-alert--negfund" role="alert" data-bind="visible:buNegFund()>0, click:openBuNegFund, attr:{title:t('buNegHint')}">
         <span class="bu-alert-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
         <div class="bu-alert-tx">
           <b data-bind="text:t('buNegTitle')"></b>
           <span data-bind="text:buNegMsg()"></span>
         </div>
+        <span class="bu-alert-cta" data-bind="text:t('buNegCta')"></span>
       </div>
 
       <!-- totals answer band (tinted stat tiles; the 4 measure tiles drill to all supporting lines) — collapsible region -->
@@ -1072,7 +1098,7 @@
           <span class="bu-sec-sum" data-bind="text:buKpiSummary()"></span>
         </div>
         <div class="bu-sec-b" data-bind="visible:buSecKpisOpen">
-        <div class="bu-kpis bu-kpis5">
+        <div class="bu-kpis bu-kpis6">
         <div class="bk bk-budget bk-duo">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
           <div class="bk-body">
@@ -1145,6 +1171,31 @@
             <div class="bk-bar"><i data-bind="style:{width:buBarW('fundAvailable')}"></i></div>
           </div>
         </div>
+        <!-- Expenditure Plan (uploaded cashflow plan, db/v2/126) — YTD hero + drillable Annual/YTD rows -->
+        <div class="bk bk-plan bk-duo">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 15l2.5 2.5L15 13"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cPlanTile')"></div>
+            <div class="bk-v mono" data-bind="text:buNum(buTot('planApprovedYtd')), attr:{title:money(buTot('planApprovedYtd'))}"></div>
+            <div class="bk-sub" data-bind="text:buPlanYtdPct()"></div>
+            <div class="bk-seg" data-bind="attr:{title:t('cPlanApprY')+' / '+t('cPlanApprA')}">
+              <i class="s1" data-bind="style:{width:buSegW(buTot('planApprovedYtd'), buTot('planApprovedAnnual'))}"></i><i class="s2" data-bind="style:{width:buSegW((buTot('planApprovedAnnual')||0)-(buTot('planApprovedYtd')||0), buTot('planApprovedAnnual'))}"></i>
+            </div>
+            <div class="bk-duo-rows">
+              <div class="bk-duo-row" data-bind="click:function(){openBuPlanAgg('APPROVED',true)}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d2"></i><span class="l" data-bind="text:t('cPlanApprA')"></span><span class="v mono" data-bind="text:buNum(buTot('planApprovedAnnual')), attr:{title:money(buTot('planApprovedAnnual'))}"></span><span class="pp mono"></span>
+              </div>
+              <div class="bk-duo-row" data-bind="click:function(){openBuPlanAgg('APPROVED',false)}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d1"></i><span class="l" data-bind="text:t('cPlanApprY')"></span><span class="v mono" data-bind="text:buNum(buTot('planApprovedYtd')), attr:{title:money(buTot('planApprovedYtd'))}"></span><span class="pp mono"></span>
+              </div>
+              <!-- ko if: buPlanRevOn -->
+              <div class="bk-duo-row" data-bind="click:function(){openBuPlanAgg('REVISED',false)}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d1"></i><span class="l" data-bind="text:t('pfPlanRevY')"></span><span class="v mono" data-bind="text:buNum(buTot('planRevisedYtd')), attr:{title:money(buTot('planRevisedYtd'))}"></span><span class="pp mono"></span>
+              </div>
+              <!-- /ko -->
+            </div>
+          </div>
+        </div>
         <!-- Budget Change (signed budget_change) — tile click opens the editable lines drawer -->
         <div class="bk bk-ovr bk-click" data-bind="click:openOvDrawer, attr:{title:t('ovTileHint')}">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
@@ -1187,6 +1238,12 @@
             <th data-bind="text:t('cEtype')"></th>
             <th class="num" data-bind="text:t('cBudgetAnnual'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cBudgetYtd'), attr:{title:t('buDrillHint')}"></th>
+            <th class="num" data-bind="text:t('cPlanApprA'), attr:{title:t('buPlanHint')}"></th>
+            <th class="num" data-bind="text:t('cPlanApprY'), attr:{title:t('buPlanHint')}"></th>
+            <!-- ko if: buPlanRevOn -->
+            <th class="num" data-bind="text:t('cPlanRevA'), attr:{title:t('buPlanHint')}"></th>
+            <th class="num" data-bind="text:t('cPlanRevY'), attr:{title:t('buPlanHint')}"></th>
+            <!-- /ko -->
             <th class="num" data-bind="text:t('cActualAp'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cActualGrn'), attr:{title:t('buDrillHint')}"></th>
             <th class="num" data-bind="text:t('cProcash'), attr:{title:t('buProcashHint')}"></th>
@@ -1218,6 +1275,12 @@
               <td data-bind="text:$data.expenditureType||'—'"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.budgetAnnual), attr:{title:$root.money($data.budgetAnnual)}, click:function(d){$root.openBuDrill(d,'budgetannual')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openBuDrill(d,'budget')}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planApprovedAnnual), attr:{title:$root.money($data.planApprovedAnnual)}, css:{dash:!$data.planApprovedAnnual}, click:function(d){$root.openBuPlanDrill(d,'APPROVED',true)}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planApprovedYtd), attr:{title:$root.money($data.planApprovedYtd)}, css:{dash:!$data.planApprovedYtd}, click:function(d){$root.openBuPlanDrill(d,'APPROVED',false)}"></td>
+              <!-- ko if: $root.buPlanRevOn -->
+              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planRevisedAnnual), attr:{title:$root.money($data.planRevisedAnnual)}, css:{dash:!$data.planRevisedAnnual}, click:function(d){$root.openBuPlanDrill(d,'REVISED',true)}"></td>
+              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planRevisedYtd), attr:{title:$root.money($data.planRevisedYtd)}, css:{dash:!$data.planRevisedYtd}, click:function(d){$root.openBuPlanDrill(d,'REVISED',false)}"></td>
+              <!-- /ko -->
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualAp), attr:{title:$root.money($data.actualAp)}, click:function(d){$root.openBuDrill(d,'ap')}"></td>
               <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualGrn), attr:{title:$root.money($data.actualGrn)}, click:function(d){$root.openBuDrill(d,'grn')}"></td>
               <td class="num mono" data-bind="text:$root.buNum($data.procash), attr:{title:$root.money($data.procash)}, css:{dash:!$data.procash}"></td>
@@ -1243,6 +1306,8 @@
         <div class="cadj-note" data-bind="visible:buAnyAdj(), text:t('buAdjNote')"></div>
         <!-- meaning of the (**) marker on commented lines -->
         <div class="cadj-note" data-bind="visible:buAnyCmt(), text:t('buCmtNote')"></div>
+        <!-- uploaded plan rows keyed to lines outside this budget year (never silently dropped) -->
+        <div class="cadj-note" data-bind="visible:(buTot('planUnmatched')||0)>0.005, text:t('planUnmatchedNote').replace('{amt}', money(buTot('planUnmatched')))"></div>
       </div>
       <div class="toolbar bu-pager">
         <span class="t-dates" data-bind="text:buRange()"></span>
@@ -3076,6 +3141,162 @@
       </div>
     </div>
 
+    <!-- ── EMAIL LOGS (Generate-and-Send history: who was mailed what, when) ── -->
+    <div id="pg-emaillog" data-bind="visible:view()==='emaillog'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('elTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('elSub')"></div></div>
+        <div class="page-actions">
+          <span class="chip muted" data-bind="visible:elLoaded(), text:t('elShowing').replace('{n}', elCount())"></span>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('btCriteria')"></span></div>
+        <div class="bu-sec-b">
+          <div class="el-filters">
+            <label><span data-bind="text:t('elFrom')"></span><input type="date" class="form-control" data-bind="value:elFrom"></label>
+            <label><span data-bind="text:t('elTo')"></span><input type="date" class="form-control" data-bind="value:elTo"></label>
+            <label><span data-bind="text:t('elLevel')"></span>
+              <select class="form-control" data-bind="value:elLevel">
+                <option value="" data-bind="text:t('btAll')"></option>
+                <option value="SECTOR" data-bind="text:t('gsLvlSector')"></option>
+                <option value="DEPARTMENT" data-bind="text:t('gsLvlDept')"></option>
+                <option value="PROJECT" data-bind="text:t('gsLvlProject')"></option>
+              </select></label>
+            <label><span data-bind="text:t('buSector')"></span><input type="text" class="form-control" data-bind="value:elSector"></label>
+            <label><span data-bind="text:t('buCostCenter')"></span><input type="text" class="form-control" data-bind="value:elCc"></label>
+            <label><span data-bind="text:t('buProject')"></span><input type="text" class="form-control" data-bind="value:elProject"></label>
+            <label><span data-bind="text:t('elRecipient')"></span><input type="text" class="form-control" data-bind="value:elRecipient"></label>
+            <label><span data-bind="text:t('elReport')"></span>
+              <select class="form-control" data-bind="value:elReport">
+                <option value="" data-bind="text:t('btAll')"></option>
+                <option value="BUDGET_UTIL_BOOK" data-bind="text:t('repBook')"></option>
+                <option value="BUDGET_UTIL_REGISTER" data-bind="text:t('repXlsx')"></option>
+              </select></label>
+            <label><span data-bind="text:t('elRunStatus')"></span>
+              <select class="form-control" data-bind="value:elStatus">
+                <option value="" data-bind="text:t('btAll')"></option>
+                <option value="QUEUED">Queued</option><option value="RUNNING">Running</option>
+                <option value="SUCCESS">Success</option><option value="FAILED">Failed</option>
+              </select></label>
+            <label><span data-bind="text:t('elEmailStatus')"></span>
+              <select class="form-control" data-bind="value:elEmailStatus">
+                <option value="" data-bind="text:t('btAll')"></option>
+                <option value="SENT">Sent</option><option value="FAILED">Failed</option>
+                <option value="SKIPPED">Skipped</option>
+              </select></label>
+            <label><span data-bind="text:t('elTestFilter')"></span>
+              <select class="form-control" data-bind="value:elTest">
+                <option value="" data-bind="text:t('elTestAll')"></option>
+                <option value="Y" data-bind="text:t('elTestOnly')"></option>
+                <option value="N" data-bind="text:t('elTestExcl')"></option>
+              </select></label>
+            <label><span data-bind="text:t('gsBatch')"></span><input type="text" class="form-control" data-bind="value:elBatch"></label>
+            <span class="el-btns">
+              <button class="btn btn-sm btn-primary" data-bind="click:elRun, text:t('btSearchBtn')"></button>
+              <button class="btn btn-sm" data-bind="click:elClear, text:t('btClear')"></button>
+            </span>
+          </div>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('elTitle')"></span></div>
+        <div class="bu-sec-b" style="position:relative">
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr>
+                <th>#</th>
+                <th data-bind="text:t('elAt')"></th>
+                <th data-bind="text:t('elReport')"></th>
+                <th data-bind="text:t('elLevel')"></th>
+                <th data-bind="text:t('elScope')"></th>
+                <th data-bind="text:t('elPeriod')"></th>
+                <th data-bind="text:t('elSubject')"></th>
+                <th data-bind="text:t('elStatus')"></th>
+                <th data-bind="text:t('elCounts')"></th>
+                <th data-bind="text:t('elBy')"></th>
+                <th data-bind="text:t('gsBatch')"></th>
+              </tr></thead>
+              <tbody data-bind="foreach:elRows">
+                <tr class="el-row" data-bind="click:function(){$root.elDrill($data)}">
+                  <td class="mono" data-bind="text:runId"></td>
+                  <td data-bind="text:createdAt"></td>
+                  <td data-bind="text:report==='BUDGET_UTIL_REGISTER'?$root.t('repXlsx'):$root.t('repBook')"></td>
+                  <td data-bind="text:level"></td>
+                  <td><span data-bind="text:scopeLabel"></span>
+                    <small class="muted" data-bind="visible:$data.project, text:' · '+($data.project||'')"></small></td>
+                  <td data-bind="text:period||$root.t('gsFullYear')"></td>
+                  <td class="el-subj"><span data-bind="text:subject"></span>
+                    <span class="st st--warn" data-bind="visible:isTest==='Y', text:$root.t('elTestBadge')"></span></td>
+                  <td><span class="st" data-bind="css:'st--'+$root.elTone($data), text:status"></span></td>
+                  <td class="mono"><span data-bind="text:sentCount"></span> / <span data-bind="text:failedCount"></span> / <span data-bind="text:skippedCount"></span></td>
+                  <td data-bind="text:requestedBy"></td>
+                  <td class="mono" data-bind="text:batchId||''"></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="empty" data-bind="visible:elLoaded() && elRows().length===0, text:t('elNoRows')"></div>
+          <div class="ldr sm" data-bind="visible:elBusy()">
+            <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+            <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── REPORT RECIPIENTS (To/Cc/Bcc lists behind Generate and Send) ── -->
+    <div id="pg-recipients" data-bind="visible:view()==='recipients'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('rlTitle')"></h1>
+          <div class="greet-sub" data-bind="text:t('rlSub')"></div></div>
+        <div class="page-actions">
+          <button class="btn btn-sm" data-bind="click:rlImpOpen, text:t('rlImport')"></button>
+          <button class="btn btn-sm btn-primary" data-bind="click:rlNew, text:t('rlNew')"></button>
+        </div>
+      </div>
+      <div class="bu-sec">
+        <div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:t('rlTitle')"></span></div>
+        <div class="bu-sec-b" style="position:relative">
+          <div class="data-table-wrap">
+            <table class="data-table">
+              <thead><tr>
+                <th data-bind="text:t('rlScope')"></th>
+                <th data-bind="text:t('rlValue')"></th>
+                <th data-bind="text:t('rlLabel')"></th>
+                <th data-bind="text:t('rlSector')"></th>
+                <th data-bind="text:t('gsTo')"></th>
+                <th data-bind="text:t('gsCc')"></th>
+                <th data-bind="text:t('gsBcc')"></th>
+                <th data-bind="text:t('rlSubject')"></th>
+                <th data-bind="text:t('rlEnabled')"></th>
+                <th data-bind="text:t('rlUpdated')"></th>
+              </tr></thead>
+              <tbody data-bind="foreach:rlRows">
+                <tr class="el-row" data-bind="click:function(){$root.rlOpen($data)}">
+                  <td data-bind="text:scopeType==='SECTOR'?$root.t('rlScopeSector'):$root.t('rlScopeCc')"></td>
+                  <td class="mono" data-bind="text:scopeValue"></td>
+                  <td data-bind="text:scopeLabel"></td>
+                  <td data-bind="text:sectorName"></td>
+                  <td class="mono" data-bind="text:toCount"></td>
+                  <td class="mono" data-bind="text:ccCount"></td>
+                  <td class="mono" data-bind="text:bccCount"></td>
+                  <td class="el-subj" data-bind="text:subjectTpl"></td>
+                  <td><span class="st" data-bind="css:enabled==='Y'?'st--ok':'st--mute', text:enabled==='Y'?$root.t('rlEnabled'):'—'"></span></td>
+                  <td><span data-bind="text:updatedAt"></span> <small class="muted" data-bind="text:updatedBy"></small></td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="empty" data-bind="visible:rlLoaded() && rlRows().length===0, text:t('rlNoRows')"></div>
+          <div class="ldr sm" data-bind="visible:rlBusy()">
+            <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+            <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   <div class="pfoot"><span class="diamond"></span><span data-bind="text:t('footOrg')"></span><span class="grow"></span>
     <span data-bind="text:t('footNote')"></span></div>
 </div>
@@ -3419,6 +3640,9 @@
               <button class="cmt-btn" data-bind="click:function(){$root.openCmtDoc($parent)}, clickBubble:false, attr:{title:$root.t('cmtOpenT')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
               <!-- /ko -->
               <!-- ko ifnot: $data.key==='_cmt' -->
+              <!-- ko if: $data.key==='invoice' && $parent.fromAdj==='Y' -->
+              <span class="cmt-star" data-bind="attr:{title:$root.t('drillAdjSrc').replace('{ref}', $parent.adjRef||'')}">(**)</span>
+              <!-- /ko -->
               <!-- ko if: $data.key==='relatedInvoices' && $root.relatedInvLinks($parent).length -->
               <!-- ko foreach: $root.relatedInvLinks($parent) -->
               <!-- ko if: $index() > 0 --><span>, </span><!-- /ko -->
@@ -3447,6 +3671,8 @@
         <tfoot><tr><td class="drill-total" data-bind="attr:{colspan:drillCols().length}"><span data-bind="text:t('drillTotal')"></span> <b class="mono" data-bind="text:money(drillTotalV())"></b></td></tr></tfoot>
       </table>
     </div>
+    <!-- meaning of the (**) marker on rows sourced from an approved cost adjustment -->
+    <div class="cadj-note" data-bind="visible:drillRows().some(function(r){return r.fromAdj==='Y'}), text:t('drillAdjNote')"></div>
     <div class="empty pad" data-bind="visible:drillRows().length===0, text:t('noLines')"></div>
     <!-- /ko -->
   </div>
@@ -3725,6 +3951,323 @@
   </div>
 </aside>
 
+<!-- ═══════════ GENERATE AND SEND DRAWER (tree-select → confirm recipients → progress) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:gsDrawer}, click:closeGs" style="display:none"></div>
+<aside class="dw-drawer dw-wide dw-gs" data-bind="css:{show:gsDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:gsLevelLabel"></div>
+      <div class="dw-title" data-bind="text:t('gsTitle')"></div>
+      <div class="dw-sub" data-bind="text:gsCriteriaTxt"></div>
+    </div>
+    <div class="dw-acts">
+      <!-- ko if: gsStep()===2 -->
+      <button class="btn btn-sm" data-bind="click:function(){gsStep(1)}, text:t('gsBack')"></button>
+      <button class="btn btn-sm btn-primary" data-bind="click:gsSendGo, enable:gsRunsPlanned()>0 && !gsSendBusy(), text:gsSendBusy()?t('gsRunning'):t('gsSend')"></button>
+      <!-- /ko -->
+      <!-- ko if: gsStep()===1 -->
+      <button class="btn btn-sm btn-primary" data-bind="click:gsNext, enable:gsChosen().length>0 && !gsBusy(), text:t('gsNext')"></button>
+      <!-- /ko -->
+      <button class="btn btn-sm" data-bind="click:closeGs, text:t('close')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <!-- step 1 : pick scope + formats -->
+    <!-- ko if: gsStep()===1 -->
+    <div class="gs-hint" data-bind="text:t('gsPickHint')"></div>
+    <div class="gs-hint muted" data-bind="visible:gsLevel()==='PROJECT', text:t('gsInheritNote')"></div>
+    <div class="gs-cols">
+      <div class="gs-left">
+        <div class="gs-col-t" data-bind="text:t('gsPickTitle')"></div>
+        <tree-select params="nodes:gsNodes, selected:gsPicked, filterPh:t('gsFilter'), emptyText:t('elNoRows')"></tree-select>
+      </div>
+      <div class="gs-mid">
+        <button class="btn btn-sm btn-primary" data-bind="click:gsAdd, enable:gsPicked().length>0">
+          <span data-bind="text:t('gsAdd')"></span> ➔</button>
+      </div>
+      <div class="gs-right">
+        <div class="gs-col-t"><span data-bind="text:t('gsSelected')"></span>
+          <span class="chip muted" data-bind="text:gsChosen().length"></span></div>
+        <div class="gs-chosen" data-bind="foreach:gsChosen">
+          <div class="gs-chip">
+            <span class="gs-chip-t"><b data-bind="text:label"></b>
+              <small data-bind="text:sub"></small></span>
+            <button class="gs-chip-x" data-bind="click:function(){$root.gsRemove($data)}">✕</button>
+          </div>
+        </div>
+        <div class="empty" data-bind="visible:gsChosen().length===0, text:t('gsNone')"></div>
+      </div>
+    </div>
+    <div class="gs-formats">
+      <span class="gs-col-t" data-bind="text:t('gsFormats')"></span>
+      <div class="chk-row" data-bind="click:function(){gsFmtPdf(!gsFmtPdf());return true}">
+        <input type="checkbox" data-bind="checked:gsFmtPdf" style="pointer-events:none">
+        <span data-bind="text:t('gsFmtPdf')"></span></div>
+      <div class="chk-row" data-bind="click:function(){gsFmtXlsx(!gsFmtXlsx());return true}">
+        <input type="checkbox" data-bind="checked:gsFmtXlsx" style="pointer-events:none">
+        <span data-bind="text:t('gsFmtXlsx')"></span></div>
+    </div>
+    <!-- /ko -->
+    <!-- step 2 : recipient confirmation -->
+    <!-- ko if: gsStep()===2 && gsPreview() -->
+    <div class="gs-hint" data-bind="text:t('gsConfirmSub')"></div>
+    <!-- ko if: gsPreview().emailEnabled!=='Y' -->
+    <div class="gs-banner warn" data-bind="text:t('gsEmailOff')"></div>
+    <!-- /ko -->
+    <!-- ko if: gsPreview().testMode==='Y' && gsPreview().testTo -->
+    <div class="gs-banner test" data-bind="text:t('gsTestBanner').replace('{to}', gsPreview().testTo)"></div>
+    <!-- /ko -->
+    <!-- ko if: gsPreview().testMode==='Y' && !gsPreview().testTo -->
+    <div class="gs-banner test" data-bind="text:t('gsTestNoTo')"></div>
+    <!-- /ko -->
+    <div class="gs-hint"><b data-bind="text:t('gsEmailsPlanned').replace('{n}', gsRunsPlanned())"></b></div>
+    <div class="gs-confirm" data-bind="foreach:gsPreview().items">
+      <div class="gs-node" data-bind="css:{miss:!found}">
+        <div class="gs-node-h"><b data-bind="text:label"></b>
+          <small class="muted" data-bind="text:$data.sectorName||''"></small></div>
+        <!-- ko if: found -->
+        <div class="gs-line"><span class="gs-tag to" data-bind="text:$root.t('gsTo')"></span>
+          <span data-bind="text:toList.join(', ')"></span></div>
+        <div class="gs-line" data-bind="visible:ccList.length"><span class="gs-tag cc" data-bind="text:$root.t('gsCc')"></span>
+          <span data-bind="text:ccList.join(', ')"></span></div>
+        <div class="gs-line" data-bind="visible:bccCount>0"><span class="gs-tag bcc" data-bind="text:$root.t('gsBcc')"></span>
+          <span data-bind="text:bccCount + ' ' + $root.t('gsHidden')"></span></div>
+        <!-- /ko -->
+        <!-- ko ifnot: found -->
+        <div class="gs-line miss" data-bind="text:$root.t('gsNoList')"></div>
+        <!-- /ko -->
+      </div>
+    </div>
+    <!-- /ko -->
+    <!-- step 3 : live progress -->
+    <!-- ko if: gsStep()===3 -->
+    <div class="gs-hint"><b data-bind="text:t('gsProgress')"></b>
+      <span class="muted" data-bind="text:' · '+t('gsBatch')+' #'+(gsBatch()?gsBatch().batchId:'')"></span></div>
+    <div class="gs-hint muted" data-bind="visible:!gsAllDone(), text:t('gsPollNote')"></div>
+    <div class="gs-banner ok" data-bind="visible:gsAllDone(), text:t('gsAllDone')"></div>
+    <div class="data-table-wrap" data-bind="if:gsBatch">
+      <table class="data-table">
+        <thead><tr>
+          <th>#</th><th data-bind="text:t('elScope')"></th><th data-bind="text:t('elReport')"></th>
+          <th data-bind="text:t('elSubject')"></th><th data-bind="text:t('elStatus')"></th>
+          <th data-bind="text:t('elCounts')"></th><th data-bind="text:t('btStatus')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach:gsBatch().runs">
+          <tr>
+            <td class="mono" data-bind="text:runId"></td>
+            <td data-bind="text:scopeLabel"></td>
+            <td data-bind="text:report==='BUDGET_UTIL_REGISTER'?$root.t('repXlsx'):$root.t('repBook')"></td>
+            <td class="el-subj"><span data-bind="text:subject"></span>
+              <span class="st st--warn" data-bind="visible:isTest==='Y', text:$root.t('elTestBadge')"></span></td>
+            <td><span class="st" data-bind="css:'st--'+$root.gsRunTone($data), text:status"></span></td>
+            <td class="mono"><span data-bind="text:sentCount"></span> / <span data-bind="text:failedCount"></span> / <span data-bind="text:skippedCount"></span></td>
+            <td class="muted" data-bind="text:error"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <!-- /ko -->
+    <div class="ldr sm" data-bind="visible:gsBusy()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ RECIPIENT LIST EDIT DRAWER (Report Recipients page) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:rlDrawer}, click:function(){rlDrawer(false)}" style="display:none"></div>
+<aside class="dw-drawer dw-rl" data-bind="css:{show:rlDrawer}" role="dialog" aria-modal="true">
+  <!-- ko if: rlEdit -->
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:t('rlEditTitle')"></div>
+      <div class="dw-title" data-bind="text:rlEdit().scopeLabel()||rlEdit().scopeValue()||t('rlNew')"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm btn-danger" data-bind="visible:rlEdit().distId, click:rlDelete, text:t('rlDelete')"></button>
+      <button class="btn btn-sm btn-primary" data-bind="click:rlSave, text:t('rlSave')"></button>
+      <button class="btn btn-sm" data-bind="click:function(){rlDrawer(false)}, text:t('close')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="form-grid">
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('rlScope')"></label>
+        <select class="form-control" data-bind="value:rlEdit().scopeType, enable:!rlEdit().distId">
+          <option value="COSTCENTER" data-bind="text:t('rlScopeCc')"></option>
+          <option value="SECTOR" data-bind="text:t('rlScopeSector')"></option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('rlValue')"></label>
+        <input type="text" class="form-control" data-bind="value:rlEdit().scopeValue, enable:!rlEdit().distId,
+               attr:{placeholder: rlEdit().scopeType()==='SECTOR' ? t('rlValueHintSec') : t('rlValueHintCc')}">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('rlLabel')"></label>
+        <input type="text" class="form-control" data-bind="value:rlEdit().scopeLabel">
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('rlSector')"></label>
+        <input type="text" class="form-control" data-bind="value:rlEdit().sectorName">
+      </div>
+      <div class="form-group" style="grid-column:1/-1">
+        <label class="form-label" data-bind="text:t('rlSubject')"></label>
+        <input type="text" class="form-control" data-bind="value:rlEdit().subjectTpl">
+        <small class="muted" data-bind="text:t('rlSubjectHint')"></small>
+      </div>
+      <div class="form-group">
+        <div class="chk-row" data-bind="click:function(){rlEdit().enabled(!rlEdit().enabled());return true}">
+          <input type="checkbox" data-bind="checked:rlEdit().enabled" style="pointer-events:none">
+          <span data-bind="text:t('rlEnabled')"></span></div>
+      </div>
+    </div>
+    <div class="section-heading-row">
+      <span class="section-heading" data-bind="text:t('rlRecipients')"></span>
+      <span class="region-actions">
+        <button class="btn btn-sm" data-bind="click:rlAddRecip, text:t('rlAddRecip')"></button></span>
+    </div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th style="width:110px" data-bind="text:t('rlDisp')"></th>
+          <th data-bind="text:t('rlEmail')"></th>
+          <th data-bind="text:t('rlName')"></th>
+          <th style="width:40px"></th>
+        </tr></thead>
+        <tbody data-bind="foreach:rlEdit().recips">
+          <tr>
+            <td><select class="form-control" data-bind="value:disposition">
+              <option value="TO" data-bind="text:$root.t('gsTo')"></option>
+              <option value="CC" data-bind="text:$root.t('gsCc')"></option>
+              <option value="BCC" data-bind="text:$root.t('gsBcc')"></option>
+            </select></td>
+            <td><input type="email" class="form-control" data-bind="value:email"></td>
+            <td><input type="text" class="form-control" data-bind="value:name"></td>
+            <td><button class="gs-chip-x" data-bind="click:function(){$root.rlDelRecip($data)}">✕</button></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <!-- /ko -->
+</aside>
+
+<!-- ═══════════ RECIPIENT LISTS EXCEL IMPORT DRAWER ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:rlImpDrawer}, click:function(){rlImpDrawer(false)}" style="display:none"></div>
+<aside class="dw-drawer dw-rl" data-bind="css:{show:rlImpDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt"><div class="dw-title" data-bind="text:t('rlImpTitle')"></div>
+      <div class="dw-sub" data-bind="text:t('rlImpReplaceNote')"></div></div>
+    <div class="dw-acts">
+      <button class="btn btn-sm btn-primary" data-bind="click:rlImpRun, enable:rlImpRows()>0 && !rlImpBusy(), text:t('rlImpRun')"></button>
+      <button class="btn btn-sm" data-bind="click:function(){rlImpDrawer(false)}, text:t('close')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <input type="file" id="rc-imp-file" accept=".xlsx,.xls" style="display:none" data-bind="event:{change:rlImpFile}">
+    <button class="btn btn-primary" data-bind="click:rlImpPick, text:t('rlImpPick')"></button>
+    <div class="gs-banner warn" data-bind="visible:rlImpErr(), text:rlImpErr()"></div>
+    <!-- ko if: rlImpSheets().length -->
+    <div class="form-grid" style="margin-top:14px">
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('rlImpSheet')"></label>
+        <select class="form-control" data-bind="options:rlImpSheets, value:rlImpSheet"></select>
+      </div>
+      <div class="form-group">
+        <label class="form-label" data-bind="text:t('rlImpKind')"></label>
+        <div><span class="st st--info" data-bind="text:rlImpKind()==='COSTCENTER'?t('rlScopeCc'):(rlImpKind()==='SECTOR'?t('rlScopeSector'):'—')"></span></div>
+      </div>
+      <div class="form-group" data-bind="visible:rlImpHasStatus">
+        <div class="chk-row" data-bind="click:function(){rlImpActive(!rlImpActive());return true}">
+          <input type="checkbox" data-bind="checked:rlImpActive" style="pointer-events:none">
+          <span data-bind="text:t('rlImpActive')"></span></div>
+      </div>
+    </div>
+    <!-- ko if: rlImpCols().length -->
+    <div class="section-heading-row"><span class="section-heading" data-bind="text:t('rlImpCols')"></span></div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr><th data-bind="text:t('rlEmail')"></th><th style="width:140px" data-bind="text:t('rlDisp')"></th></tr></thead>
+        <tbody data-bind="foreach:rlImpCols">
+          <tr>
+            <td data-bind="text:label"></td>
+            <td><select class="form-control" data-bind="value:disp, event:{change:$root.rlImpRefresh}">
+              <option value="TO" data-bind="text:$root.t('gsTo')"></option>
+              <option value="CC" data-bind="text:$root.t('gsCc')"></option>
+              <option value="BCC" data-bind="text:$root.t('gsBcc')"></option>
+              <option value="SKIP" data-bind="text:$root.t('rlImpSkip')"></option>
+            </select></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="gs-hint"><b data-bind="text:t('rlImpReady').replace('{n}', rlImpRows())"></b></div>
+    <!-- /ko -->
+    <!-- /ko -->
+    <div class="ldr sm" data-bind="visible:rlImpBusy()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ EMAIL LOG DRILL DRAWER (one run: recipients + attachments) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:elDrawer}, click:function(){elDrawer(false)}" style="display:none"></div>
+<aside class="dw-drawer dw-wide dw-el" data-bind="css:{show:elDrawer}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:t('elDrillTitle')"></div>
+      <div class="dw-title"><span data-bind="text:elDetail() ? elDetail().subject || elDetail().report : ''"></span>
+        <span class="st st--warn" data-bind="visible:elDetail() && elDetail().isTest==='Y', text:t('elTestBadge')"></span></div>
+      <div class="dw-sub" data-bind="text:elDetail() ? (elDetail().scopeLabel + ' · ' + elDetail().createdAt) : ''"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:function(){elDrawer(false)}, text:t('close')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <!-- ko if: elDetail -->
+    <div class="gs-hint">
+      <span class="st" data-bind="css:'st--'+elTone(elDetail()), text:elDetail().status"></span>
+      <span class="muted" data-bind="text:' · '+t('elBy')+' '+elDetail().requestedBy"></span>
+      <span class="muted" data-bind="visible:elDetail().batchId, text:' · '+t('gsBatch')+' #'+elDetail().batchId"></span>
+    </div>
+    <div class="gs-banner warn" data-bind="visible:elDetail().error, text:elDetail().error"></div>
+    <div class="section-heading-row"><span class="section-heading" data-bind="text:t('elRecipients')"></span></div>
+    <div class="data-table-wrap">
+      <table class="data-table">
+        <thead><tr>
+          <th data-bind="text:t('rlDisp')"></th><th data-bind="text:t('rlEmail')"></th>
+          <th data-bind="text:t('elStatus')"></th><th data-bind="text:t('elAt')"></th>
+          <th data-bind="text:t('btStatus')"></th>
+        </tr></thead>
+        <tbody data-bind="foreach:elDetail().recipients">
+          <tr>
+            <td><span class="gs-tag" data-bind="css:(disposition||'').toLowerCase(), text:disposition"></span></td>
+            <td data-bind="text:email"></td>
+            <td><span class="st" data-bind="css:status==='SENT'?'st--ok':(status==='FAILED'?'st--err':'st--mute'), text:status"></span></td>
+            <td data-bind="text:sentAt"></td>
+            <td class="muted" data-bind="text:error"></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="section-heading-row"><span class="section-heading" data-bind="text:t('elFiles')"></span></div>
+    <div class="gs-files" data-bind="foreach:elDetail().files">
+      <button class="btn btn-sm" data-bind="click:function(){$root.elDownload($data)}">
+        <span data-bind="text:format"></span> · <span data-bind="text:fileName"></span> ⬇</button>
+    </div>
+    <div class="section-heading-row"><span class="section-heading" data-bind="text:t('gsCriteria')"></span></div>
+    <pre class="gs-params mono" data-bind="text:elDetail().params"></pre>
+    <!-- /ko -->
+    <div class="ldr sm" data-bind="visible:elDetailBusy()">
+      <div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div>
+      <div class="ldr-t"><span data-bind="text:t('loadingData')"></span><span class="d">.</span><span class="d">.</span><span class="d">.</span></div>
+    </div>
+  </div>
+</aside>
+
 <!-- ═══════════ BUDGET UTILIZATION COMMENTS DRAWER (thread + add/reply + attachments) ═══════════
      LAST drawer in the DOM on purpose: all drawers share z-index 71, so DOM
      order decides stacking and this one must open ABOVE the drill drawer
@@ -3932,7 +4475,7 @@
         urlArgs: (/^(localhost|127\.0\.0\.1)$/.test(location.hostname)) ? ('t=' + (window.performance ? Math.floor(performance.now()) : 1)) : ('v=' + APP)
       });
       define('knockout', [], function () { return window.ko; });   // reuse the global KO
-      require(['shared/i18n', 'shared/components/interactiveReport', 'shared/editDrawer'],
+      require(['shared/i18n', 'shared/components/interactiveReport', 'shared/editDrawer', 'shared/components/treeSelect'],
         function (i18n) {
           window._sharedI18n = i18n;
           i18n.setLang(localStorage.getItem('gl_lang') || 'en', { system: true });

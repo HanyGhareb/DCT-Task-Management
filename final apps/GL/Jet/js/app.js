@@ -845,6 +845,31 @@
     cBudgetYtd:{en:'YTD Budget',ar:'الموازنة منذ بداية السنة'},
     buDrillPr:{en:'Commitment (PR) — lines',ar:'الالتزام (طلب شراء) — البنود'},
     buDrillPo:{en:'Obligation (PO) — lines',ar:'التعهد (أمر شراء) — البنود'},
+    cPlanApprA:{en:'Plan Annual',ar:'الخطة السنوية'},
+    cPlanApprY:{en:'Plan YTD',ar:'الخطة منذ بداية السنة'},
+    cPlanRevA:{en:'Revised Plan Annual',ar:'الخطة المعدلة السنوية'},
+    cPlanRevY:{en:'Revised Plan YTD',ar:'الخطة المعدلة منذ بداية السنة'},
+    cPlanTile:{en:'Expenditure Plan',ar:'خطة الإنفاق'},
+    planApproved:{en:'Approved',ar:'المعتمدة'},
+    planRevised:{en:'Revised',ar:'المعدلة'},
+    planOfAnnual:{en:'of annual plan',ar:'من الخطة السنوية'},
+    buPlanHint:{en:'Uploaded expenditure plan (GL Cashflow tab). YTD = plan months up to the selected accounting period; full year = the whole plan. Click a figure to see its monthly plan rows.',ar:'خطة الإنفاق المرفوعة (تبويب التدفق النقدي). منذ بداية السنة = أشهر الخطة حتى الفترة المحاسبية المحددة؛ السنة الكاملة = كامل الخطة. انقر رقماً لعرض بنود الخطة الشهرية.'},
+    buDrillPlanA:{en:'{t} Plan — Annual, monthly rows',ar:'الخطة {t} — سنوية، بنود شهرية'},
+    buDrillPlanY:{en:'{t} Plan — YTD, monthly rows',ar:'الخطة {t} — منذ بداية السنة، بنود شهرية'},
+    planColPeriod:{en:'Period',ar:'الفترة'},
+    planColAmount:{en:'Planned Amount',ar:'المبلغ المخطط'},
+    planColBy:{en:'Loaded By',ar:'حمّلها'},
+    planColOn:{en:'Loaded On',ar:'تاريخ التحميل'},
+    planColFile:{en:'Source File',ar:'ملف المصدر'},
+    planUnmatchedNote:{en:'{amt} of the uploaded plan sits on lines not in this budget year and is not shown.',ar:'{amt} من الخطة المرفوعة على بنود غير موجودة في سنة الموازنة هذه ولا تُعرض.'},
+    pfPlanY:{en:'Plan (YTD)',ar:'الخطة (منذ بداية السنة)'},
+    pfPlanA:{en:'Plan (Annual)',ar:'الخطة (سنوية)'},
+    pfPlanRevY:{en:'Revised Plan (YTD)',ar:'الخطة المعدلة (منذ بداية السنة)'},
+    pfColPlanA:{en:'Plan Annual',ar:'الخطة السنوية'},
+    pfColPlanY:{en:'Plan YTD',ar:'الخطة منذ بداية السنة'},
+    pfColPlanRevA:{en:'Revised Plan Annual',ar:'الخطة المعدلة السنوية'},
+    pfColPlanRevY:{en:'Revised Plan YTD',ar:'الخطة المعدلة منذ بداية السنة'},
+    pfGrpPlan:{en:'Expenditure Plan',ar:'خطة الإنفاق'},
     buDrillHint:{en:'Click a figure to see its supporting AP / GRN / PR / PO lines.',ar:'انقر رقماً لعرض بنود الدائنين / الاستلام / طلب الشراء / أمر الشراء الداعمة له.'},
     buCardHint:{en:'Click to see all supporting lines (current filters).',ar:'انقر لعرض كل البنود الداعمة (حسب عوامل التصفية الحالية).'},
     buAllLines:{en:'All budget lines',ar:'كل بنود الموازنة'},
@@ -857,6 +882,8 @@
     buNegMsg:{en:'{n} budget line(s) have consumed MORE than their YTD budget — over-spent by {amt} in total under the current criteria. They are flagged in red in the results table below; review them and arrange a budget change or hold further spend.',ar:'يوجد {n} بند موازنة استُهلك فيه أكثر من موازنته حتى تاريخه — بتجاوز إجمالي قدره {amt} حسب المعايير الحالية. هذه البنود مميزة باللون الأحمر في جدول النتائج أدناه؛ يرجى مراجعتها وترتيب تعديل للموازنة أو إيقاف الصرف الإضافي.'},
     buNegHint:{en:'Fund Available = YTD Budget − (Actual AP + Actual GRN + Commitments PR + Obligations PO). A negative value means the line is over budget.',ar:'الرصيد المتاح = موازنة حتى تاريخه − (فعلي الفواتير + فعلي الاستلام + الارتباطات + الالتزامات). القيمة السالبة تعني تجاوز موازنة البند.'},
     buNegCellHint:{en:'Over budget — Fund Available is negative',ar:'تجاوز الموازنة — الرصيد المتاح بالسالب'},
+    buNegCta:{en:'View lines',ar:'عرض البنود'},
+    buNegDrill:{en:'Budget lines over budget (negative Fund Available)',ar:'بنود الموازنة المتجاوزة (الرصيد المتاح بالسالب)'},
     buMissCcTitle:{en:'Missing Cost Centre — action required.',ar:'مركز تكلفة مفقود — يلزم اتخاذ إجراء.'},
     buMissCcMsg:{en:'{n} budget line(s) totalling {amt} annual budget have NO cost centre, so Sector and Cost-centre reporting for them is incomplete. Maintain the Cost Center task attribute in Fusion (financial project plan).',ar:'يوجد {n} بند موازنة بإجمالي موازنة سنوية {amt} بدون مركز تكلفة، لذا فإن تقارير القطاع ومركز التكلفة لهذه البنود غير مكتملة. يرجى استكمال خاصية مركز التكلفة للمهمة في نظام فيوجن (الخطة المالية للمشروع).'},
     buMissCcCta:{en:'View lines',ar:'عرض البنود'},
@@ -934,6 +961,8 @@
     buCadjOnL:{en:'Cost adjustment included',ar:'تسوية التكاليف مضمّنة'},
     buCadjOff:{en:'Select to include cost adjustment',ar:'حدد لتضمين تسوية التكاليف'},
     buAdjStarHint:{en:'This line includes approved cost adjustments',ar:'يتضمن هذا البند تسويات تكاليف معتمدة'},
+    drillAdjSrc:{en:'Sourced from approved cost adjustment {ref}',ar:'مصدره تسوية التكاليف المعتمدة {ref}'},
+    drillAdjNote:{en:'(**) This row is sourced from an approved cost adjustment — the Distribution (AED) column shows the adjustment amount; the other columns show the referenced invoice.',ar:'(**) هذا الصف مصدره تسوية تكاليف معتمدة — عمود التوزيع (درهم) يعرض مبلغ التسوية؛ بقية الأعمدة تعرض الفاتورة المرجعية.'},
     buAdjNote:{en:'(*) This line includes approved cost adjustments — Actual moves by the signed adjustment and Budget by its budget override.',ar:'(*) يتضمن هذا البند تسويات تكاليف معتمدة — يتغيّر الفعلي بمقدار التسوية والموازنة بمقدار تعديلها.'},
 
     /* ── Budget Utilization Comments (db/v2/125 + GL/db/26, 2026-08-23) ── */
@@ -1135,7 +1164,120 @@
     insCommit:{en:'A further {p}% is committed via encumbrances; {f} AED remains available.',ar:'إضافةً إلى {p}% مرتبطة عبر الارتباطات؛ يتبقى {f} درهم متاح.'},
     insTopSector:{en:'{s} leads actual spend at {a} AED ({p}% of total).',ar:'{s} يتصدر الإنفاق الفعلي بـ {a} درهم ({p}% من الإجمالي).'},
     insTopAppr:{en:'{s} carries the largest PO commitment: {a} AED across {n} orders.',ar:'{s} يحمل أكبر التزام شراء: {a} درهم عبر {n} أمر.'},
-    insGrowth:{en:'Actual spend rose from {a} ({p1}) to {b} ({p2}) — {x}× across the year.',ar:'ارتفع الإنفاق الفعلي من {a} ({p1}) إلى {b} ({p2}) — {x}× خلال العام.'}
+    insGrowth:{en:'Actual spend rose from {a} ({p1}) to {b} ({p2}) — {x}× across the year.',ar:'ارتفع الإنفاق الفعلي من {a} ({p1}) إلى {b} ({p2}) — {x}× خلال العام.'},
+
+    /* ── Generate and Send (report distributions) + Email Logs + Recipients ── */
+    navEmailLog:{en:'Email Logs',ar:'سجل الرسائل'},
+    navRecipients:{en:'Report Recipients',ar:'مستلمو التقارير'},
+    gsBtn:{en:'Generate and Send ▾',ar:'إنشاء وإرسال ▾'},
+    gsRunning:{en:'Sending…',ar:'جارٍ الإرسال…'},
+    gsLvlSector:{en:'Sector Level',ar:'مستوى القطاع'},
+    gsLvlSectorSub:{en:'One email per selected sector',ar:'رسالة لكل قطاع محدد'},
+    gsLvlDept:{en:'Department Level',ar:'مستوى الإدارة'},
+    gsLvlDeptSub:{en:'One email per selected cost centre',ar:'رسالة لكل مركز تكلفة محدد'},
+    gsLvlProject:{en:'Project Level',ar:'مستوى المشروع'},
+    gsLvlProjectSub:{en:'One email per selected project (department recipients)',ar:'رسالة لكل مشروع محدد (مستلمو الإدارة)'},
+    gsTitle:{en:'Generate and Send',ar:'إنشاء وإرسال'},
+    gsPickTitle:{en:'Select the scope',ar:'اختر النطاق'},
+    gsPickHint:{en:'Tick items in the tree, then Add them to the selection list.',ar:'حدد العناصر في الشجرة ثم أضفها إلى قائمة الاختيار.'},
+    gsAdd:{en:'Add',ar:'إضافة'},
+    gsSelected:{en:'Selected for sending',ar:'المحدد للإرسال'},
+    gsNone:{en:'Nothing selected yet.',ar:'لم يتم تحديد شيء بعد.'},
+    gsFormats:{en:'Attachments',ar:'المرفقات'},
+    gsFmtPdf:{en:'Briefing Book (PDF)',ar:'الكتاب التنفيذي (PDF)'},
+    gsFmtXlsx:{en:'Excel Register (XLSX)',ar:'سجل إكسل (XLSX)'},
+    gsCriteria:{en:'Report criteria',ar:'معايير التقرير'},
+    gsFullYear:{en:'Full year',ar:'السنة الكاملة'},
+    gsInheritNote:{en:'A project email goes to the recipients of its owning department (cost centre).',ar:'رسالة المشروع تُرسل إلى مستلمي الإدارة (مركز التكلفة) المالكة له.'},
+    gsNext:{en:'Next',ar:'التالي'},
+    gsBack:{en:'Back',ar:'رجوع'},
+    gsConfirmTitle:{en:'Confirm recipients',ar:'تأكيد المستلمين'},
+    gsConfirmSub:{en:'Review exactly who will receive each report before sending.',ar:'راجع من سيستلم كل تقرير قبل الإرسال.'},
+    gsTo:{en:'To',ar:'إلى'},
+    gsCc:{en:'Cc',ar:'نسخة'},
+    gsBcc:{en:'Bcc',ar:'نسخة مخفية'},
+    gsHidden:{en:'hidden',ar:'مخفي'},
+    gsNoList:{en:'No recipient list defined — this selection will be skipped.',ar:'لا توجد قائمة مستلمين — سيتم تخطي هذا الاختيار.'},
+    gsSend:{en:'Confirm & Send',ar:'تأكيد وإرسال'},
+    gsTestBanner:{en:'TEST MODE is ON — every email will be sent ONLY to the test mailbox ({to}), never to the recipients listed below.',ar:'وضع الاختبار مفعّل — سترسل كل الرسائل إلى بريد الاختبار فقط ({to}) وليس إلى المستلمين أدناه.'},
+    gsTestNoTo:{en:'TEST MODE is ON with no test mailbox configured — nothing will be emailed (reports are still generated).',ar:'وضع الاختبار مفعّل بدون بريد اختبار — لن يُرسل شيء (سيتم إنشاء التقارير فقط).'},
+    gsEmailOff:{en:'Email sending is globally DISABLED (EMAIL_ENABLED=N) — reports will be generated but no email will be sent.',ar:'إرسال البريد معطل بشكل عام — سيتم إنشاء التقارير دون إرسال أي بريد.'},
+    gsEmailsPlanned:{en:'{n} email(s) will be prepared.',ar:'سيتم تجهيز {n} رسالة.'},
+    gsProgress:{en:'Sending progress',ar:'تقدم الإرسال'},
+    gsPollNote:{en:'Reports are generated by the worker fleet — this list refreshes every few seconds.',ar:'تُنشأ التقارير عبر خوادم المعالجة — تتحدث القائمة كل بضع ثوانٍ.'},
+    gsAllDone:{en:'All runs completed.',ar:'اكتملت جميع العمليات.'},
+    gsFilter:{en:'Filter…',ar:'تصفية…'},
+    gsBatch:{en:'Batch',ar:'الدفعة'},
+    gsSkipped:{en:'skipped',ar:'متخطى'},
+    gsSent:{en:'sent',ar:'مرسل'},
+    gsFailedN:{en:'failed',ar:'فشل'},
+    elTitle:{en:'Report Email Logs',ar:'سجل رسائل التقارير'},
+    elSub:{en:'Every Generate-and-Send email — who was addressed, what was attached, and what actually happened.',ar:'كل رسالة إنشاء وإرسال — المخاطبون والمرفقات وما حدث فعلاً.'},
+    elFrom:{en:'From date',ar:'من تاريخ'},
+    elTo:{en:'To date',ar:'إلى تاريخ'},
+    elLevel:{en:'Level',ar:'المستوى'},
+    elRecipient:{en:'Recipient contains',ar:'المستلم يحتوي'},
+    elRunStatus:{en:'Run status',ar:'حالة التشغيل'},
+    elEmailStatus:{en:'Email status',ar:'حالة الرسالة'},
+    elTestFilter:{en:'Test emails',ar:'رسائل الاختبار'},
+    elTestAll:{en:'All',ar:'الكل'},
+    elTestOnly:{en:'Only test',ar:'الاختبار فقط'},
+    elTestExcl:{en:'Exclude test',ar:'استبعاد الاختبار'},
+    elReport:{en:'Report',ar:'التقرير'},
+    elScope:{en:'Scope',ar:'النطاق'},
+    elSubject:{en:'Subject',ar:'الموضوع'},
+    elStatus:{en:'Status',ar:'الحالة'},
+    elCounts:{en:'Sent / Failed / Skipped',ar:'مرسل / فشل / متخطى'},
+    elBy:{en:'Requested by',ar:'بواسطة'},
+    elAt:{en:'Requested at',ar:'التاريخ'},
+    elPeriod:{en:'Period',ar:'الفترة'},
+    elNoRows:{en:'No email history for the selected criteria.',ar:'لا يوجد سجل رسائل للمعايير المحددة.'},
+    elDrillTitle:{en:'Email details',ar:'تفاصيل الرسالة'},
+    elRecipients:{en:'Recipients',ar:'المستلمون'},
+    elFiles:{en:'Attachments',ar:'المرفقات'},
+    elDownload:{en:'Download',ar:'تنزيل'},
+    elTestBadge:{en:'TEST',ar:'اختبار'},
+    elShowing:{en:'{n} email run(s)',ar:'{n} عملية إرسال'},
+    rlTitle:{en:'Report Recipients',ar:'مستلمو التقارير'},
+    rlSub:{en:'The To / Cc / Bcc distribution list behind Generate and Send — one row per sector or cost centre.',ar:'قوائم التوزيع (إلى / نسخة / نسخة مخفية) خلف الإنشاء والإرسال — صف لكل قطاع أو مركز تكلفة.'},
+    rlNew:{en:'+ New list',ar:'+ قائمة جديدة'},
+    rlImport:{en:'Import from Excel',ar:'استيراد من إكسل'},
+    rlScope:{en:'Scope',ar:'النطاق'},
+    rlScopeSector:{en:'Sector',ar:'قطاع'},
+    rlScopeCc:{en:'Cost Centre',ar:'مركز تكلفة'},
+    rlSector:{en:'Sector',ar:'القطاع'},
+    rlValue:{en:'Scope value',ar:'قيمة النطاق'},
+    rlValueHintCc:{en:'7-digit cost centre code, e.g. 4510195',ar:'رمز مركز التكلفة (7 أرقام)، مثال 4510195'},
+    rlValueHintSec:{en:'Sector name exactly as on the Budget Utilization page',ar:'اسم القطاع كما يظهر في صفحة استخدام الموازنة'},
+    rlLabel:{en:'Display label',ar:'الاسم المعروض'},
+    rlSubject:{en:'Email subject template',ar:'قالب موضوع الرسالة'},
+    rlSubjectHint:{en:'Optional. Jinja2 template; blank = platform default "DCT i-Finance | report | scope | period". Variables: {{ scope_label }}, {{ period }}, {{ params.year }}, {{ report_name }}.',ar:'اختياري. قالب Jinja2؛ الفراغ = الصيغة الافتراضية. المتغيرات: {{ scope_label }}، {{ period }}، {{ params.year }}، {{ report_name }}.'},
+    rlEnabled:{en:'Active',ar:'مفعل'},
+    rlRecipients:{en:'Recipients',ar:'المستلمون'},
+    rlAddRecip:{en:'+ Add recipient',ar:'+ إضافة مستلم'},
+    rlEmail:{en:'Email',ar:'البريد الإلكتروني'},
+    rlName:{en:'Name',ar:'الاسم'},
+    rlDisp:{en:'Send as',ar:'نوع الإرسال'},
+    rlEditTitle:{en:'Recipient list',ar:'قائمة المستلمين'},
+    rlSave:{en:'Save',ar:'حفظ'},
+    rlDelete:{en:'Delete',ar:'حذف'},
+    rlDeleteConfirm:{en:'Delete this recipient list?',ar:'حذف قائمة المستلمين هذه؟'},
+    rlSaved:{en:'Recipient list saved.',ar:'تم حفظ قائمة المستلمين.'},
+    rlDeleted:{en:'Recipient list deleted.',ar:'تم حذف القائمة.'},
+    rlUpdated:{en:'Updated',ar:'آخر تحديث'},
+    rlNoRows:{en:'No recipient lists yet — import the Excel distribution list or add rows manually.',ar:'لا توجد قوائم بعد — استورد ملف إكسل أو أضف القوائم يدوياً.'},
+    rlImpTitle:{en:'Import recipient lists from Excel',ar:'استيراد قوائم المستلمين من إكسل'},
+    rlImpPick:{en:'Choose Excel file…',ar:'اختر ملف إكسل…'},
+    rlImpSheet:{en:'Worksheet',ar:'ورقة العمل'},
+    rlImpKind:{en:'Detected scope',ar:'النطاق المكتشف'},
+    rlImpActive:{en:'Import rows marked Active only',ar:'استيراد الصفوف المفعلة فقط'},
+    rlImpCols:{en:'Email columns — choose where each goes',ar:'أعمدة البريد — حدد وجهة كل عمود'},
+    rlImpSkip:{en:'Skip',ar:'تجاهل'},
+    rlImpReady:{en:'{n} row(s) ready to import.',ar:'{n} صف جاهز للاستيراد.'},
+    rlImpRun:{en:'Import',ar:'استيراد'},
+    rlImpDone:{en:'Import finished: {c} created, {u} updated, {e} errors.',ar:'انتهى الاستيراد: {c} جديد، {u} محدث، {e} أخطاء.'},
+    rlImpNoEmail:{en:'No email-bearing columns detected in this sheet.',ar:'لا توجد أعمدة بريد في هذه الورقة.'},
+    rlImpReplaceNote:{en:'Importing REPLACES the recipients of every matched scope row; other rows are untouched.',ar:'الاستيراد يستبدل مستلمي الصفوف المطابقة فقط؛ الصفوف الأخرى لا تُمس.'}
   };
 
   function VM() {
@@ -1179,7 +1321,8 @@
           { id: 'comments',     labelKey: 'navComments' },
           { id: 'budgettrx',    labelKey: 'navBudgetTrx' },
           { id: 'sectorperf',   labelKey: 'navSectorPerf' },
-          { id: 'cashflow',     labelKey: 'navCashflow' } ] },
+          { id: 'cashflow',     labelKey: 'navCashflow' },
+          { id: 'emaillog',     labelKey: 'navEmailLog' } ] },
       { id: 'gl', labelKey: 'grpGl', items: [
           { id: 'dashboard', labelKey: 'navDashboard' },
           { id: 'actuals',   labelKey: 'navActuals' },
@@ -1189,6 +1332,7 @@
           { id: 'yoy',       labelKey: 'navYoy' } ] },
       { id: 'settings', labelKey: 'grpSettings', items: [
           { id: 'overview', labelKey: 'navOverview' },
+          { id: 'recipients', labelKey: 'navRecipients' },
           // capability-gated admin pages (Budget Utilization Comments):
           // hidden() is re-evaluated by the activeGroupItems computed, so the
           // tabs appear as soon as /butilcmt/meta/caps lands
@@ -1764,6 +1908,11 @@
         };
         if (!self.buFiltersLoaded()) self.loadBuFilters().then(cmtBoot); else cmtBoot();
       }
+      else if (v === 'emaillog') {
+        // butil filters feed the year list only; the register has its own criteria
+        if (!self.elLoaded()) self.elRun();
+      }
+      else if (v === 'recipients') { if (!self.rlLoaded()) self.rlLoad(); }
       else if (v === 'cmtroles') { self.loadCmtRoles(); }
       else if (v === 'cmtperiods') {
         if (!self.buFiltersLoaded()) self.loadBuFilters();
@@ -2862,6 +3011,21 @@
       return self.buCadjOn()
         && self.buItems().some(function (r) { return r.hasAdj === 'Y'; });
     });
+    /* Expenditure plan (db/v2/126, 2026-08-26): APPROVED columns always show;
+       the REVISED pair appears only once any revised plan exists in the
+       filtered set (today the uploads are APPROVED-only). */
+    self.buPlanRevOn = ko.computed(function () {
+      var t = self.buTotals() || {};
+      return (Number(t.planRevisedAnnual) || 0) !== 0
+        || self.buItems().some(function (r) { return (Number(r.planRevisedAnnual) || 0) !== 0; });
+    });
+    // "(x.x%)" YTD-share-of-annual suffix on the Plan tile's YTD hero
+    self.buPlanYtdPct = function () {
+      var t = self.buTotals() || {}; var a = Number(t.planApprovedAnnual) || 0;
+      if (!a || t.planApprovedYtd == null) return '';
+      var p = (Number(t.planApprovedYtd) || 0) / a * 100;
+      return '(' + (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '% ' + self.t('planOfAnnual') + ')';
+    };
     // (**) marker + Comments column render only against a server that ships
     // the commentsEnabled echo (GL/db/21 CMT WIRED) — never against a stale one
     self.buCmtOn = ko.observable(false);
@@ -2903,6 +3067,39 @@
         ]);
         self.drillRows(d.items || []);
         self.drillTotalV(d.missingCcBudget || 0); self.drillCount(d.total || 0);
+        self.drillLoading(false);
+      }).catch(drillFail);
+    };
+    /* ── over-budget alert: lines whose EFFECTIVE Fund Available is negative
+       across the WHOLE filtered set (server aggregate, GL/db/28). Drills to
+       the shared drawer via /butil?negfund=Y (same filters, incl. the page's
+       own procash=/costadj= toggles so the drawer never disagrees with the
+       band's own count/total). */
+    self.openBuNegFund = function () {
+      self.drillTitle(self.t('buNegDrill'));
+      self.drillSub(self.t('buAllLines') + ' · ' + self.buYear());
+      self.drillCtx([self.buType().split('|').join(', '), self.buSector(), self.buChapterParam().split('|').join(', '),
+        self.buProjParam().split('|').join(', '), self.buTask(), self.buEtype(),
+        self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      var p = self.buParams(0, 5000); p.negfund = 'Y';
+      api('GET', '/butil' + qs(p)).then(function (d) {
+        self.drillCols([
+          { key: 'projectNumber',   label: self.t('cProject'),      type: 'text' },
+          { key: 'projectName',     label: self.t('buMissCcPName'), type: 'text' },
+          { key: 'taskNumber',      label: self.t('cTask'),         type: 'text' },
+          { key: 'expenditureType', label: self.t('cEtype'),        type: 'text' },
+          { key: 'department',      label: self.t('cDept'),         type: 'text' },
+          { key: 'budget',          label: self.t('cBudgetYtd'),    type: 'money' },
+          { key: 'actualAp',        label: self.t('cActualAp'),     type: 'money' },
+          { key: 'actualGrn',       label: self.t('cActualGrn'),    type: 'money' },
+          { key: 'commitmentPr',    label: self.t('cCommitPr'),     type: 'money' },
+          { key: 'obligationPo',    label: self.t('cObligPo'),      type: 'money' },
+          { key: 'fundAvailable',   label: self.t('cFundAvail'),    type: 'money' }
+        ]);
+        self.drillRows(d.items || []);
+        self.drillTotalV(d.negFundTotal || 0); self.drillCount(d.total || 0);
         self.drillLoading(false);
       }).catch(drillFail);
     };
@@ -2998,7 +3195,10 @@
           ['costCentre', 'Cost Centre'], ['projectNumber', 'Project Number'], ['projectName', 'Project Name'],
           ['taskNumber', 'Task'], ['glAccount', 'GL Account'], ['appropriation', 'Appropriation'],
           ['chapter', 'Chapter'], ['program', 'Program'], ['expenditureType', 'Expenditure Type'],
-          ['budgetAnnual', 'Annual Budget'], ['budget', 'YTD Budget'], ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
+          ['budgetAnnual', 'Annual Budget'], ['budget', 'YTD Budget'],
+          ['planApprovedAnnual', 'Plan Annual'], ['planApprovedYtd', 'Plan YTD'],
+          ['planRevisedAnnual', 'Revised Plan Annual'], ['planRevisedYtd', 'Revised Plan YTD'],
+          ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
           ['commitmentPr', 'Commitment (PR)'], ['obligationPo', 'Obligation (PO)'], ['fundAvailable', 'Fund Available'],
           ['costAdj', 'Cost Adjustment'], ['costAdjOvr', 'Budget Override (Adj)'], ['hasAdj', 'Has Adjustment'],
           ['cmtCount', 'Comments'], ['hasCmt', 'Has Comments'], ['commentsText', 'Comments Text']];
@@ -3623,7 +3823,7 @@
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
     self.skRows = skArr(8);   // shimmer rows shown while /butil runs
-    self.skCols = skArr(20);  // one cell per results-table column (+Comments 2026-08-23)
+    self.skCols = skArr(22);  // one cell per results-table column (+Plan pair 2026-08-26)
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};
@@ -3773,6 +3973,27 @@
     };
     function drillFail(e) { self.drillLoading(false); self.drillDrawer(false); toast(e.message, true); }
     // row cell → that single budget line's supporting transactions
+    /* Approved cost adjustments are folded into the /butil FIGURES server-side
+       (costadj=Y default), so the AP / budget drills fetch the adjustment rows
+       from /butil/lines/costadj (GL/db/29) IN PARALLEL and append them — the
+       drawer total reconciles to the starred on-screen figure again (user
+       report 2026-08-26, project 4511000981 / PCA-00018). Gated on the same
+       response echo that stars the rows, so an unchecked "Include Cost
+       Adjustment" keeps the drill raw too. */
+    var CADJ_DRILL_METRICS = { ap: 1, budget: 1, budgetannual: 1 };
+    function drillWithCostAdj(params, metric, wantAdj) {
+      var reqs = [api('GET', '/butil/lines' + qs(params))];
+      if (wantAdj) reqs.push(api('GET', '/butil/lines/costadj' + qs(params)));
+      Promise.all(reqs).then(function (res) {
+        var d = res[0], adj = res[1];
+        if (adj && (adj.rows || []).length) {
+          d = { columns: d.columns, rows: (d.rows || []).concat(adj.rows),
+                total: (Number(d.total) || 0) + (Number(adj.total) || 0),
+                count: (Number(d.count) || (d.rows || []).length) + (Number(adj.count) || 0) };
+        }
+        fillDrill(d); cmtDecorateDrill(metric);
+      }).catch(drillFail);
+    }
     self.openBuDrill = function (row, metric) {
       var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
       self.drillTitle(self.t('buDrill' + cap));
@@ -3780,10 +4001,10 @@
       self.drillCtx([row.taskNumber, row.expenditureType].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
-      api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), project: row.projectNumber,
+      drillWithCostAdj({ year: self.buYear(), period: self.buPeriod(), project: row.projectNumber,
         task: row.taskNumber, etype: row.expenditureType, metric: metric,
-        ovr: self.buOvr() ? 'Y' : null }))
-        .then(function (d) { fillDrill(d); cmtDecorateDrill(metric); }).catch(drillFail);
+        ovr: self.buOvr() ? 'Y' : null }, metric,
+        CADJ_DRILL_METRICS[metric] && self.buCadjOn() && row.hasAdj === 'Y');
     };
     // KPI card → all supporting lines across the filtered set (aggregate)
     self.openBuAgg = function (metric) {
@@ -3798,11 +4019,62 @@
         self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
       self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
       self.drillDrawer(true); self.drillLoading(true);
-      api('GET', '/butil/lines' + qs({ year: self.buYear(), period: self.buPeriod(), metric: metric,
+      drillWithCostAdj({ year: self.buYear(), period: self.buPeriod(), metric: metric,
         projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(), search: self.buSearch(),
         costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype(),
-        ovr: self.buOvr() ? 'Y' : null }))
-        .then(function (d) { fillDrill(d); cmtDecorateDrill(metric); }).catch(drillFail);
+        ovr: self.buOvr() ? 'Y' : null }, metric,
+        CADJ_DRILL_METRICS[metric] && self.buCadjOn());
+    };
+    /* ── expenditure-plan drills (db/v2/126 + GL/db/30, 2026-08-26) ──
+       A plan cell opens the monthly DCT_PROJECT_CASHFLOW rows behind it; a
+       Plan tile row opens them across the filtered set. A YTD figure passes
+       the page period (months on/before it); the Annual figure omits it —
+       either way the drawer total ties to the on-screen balance. */
+    function planDrillCols(agg) {
+      var c = agg ? [
+        { key: 'project', label: self.t('cProject'), type: 'text' },
+        { key: 'task',    label: self.t('cTask'),    type: 'text' },
+        { key: 'etype',   label: self.t('cEtype'),   type: 'text' }] : [];
+      return c.concat([
+        { key: 'period',   label: self.t('planColPeriod'), type: 'text' },
+        { key: 'amount',   label: self.t('planColAmount'), type: 'money' },
+        { key: 'loadedBy', label: self.t('planColBy'),     type: 'text' },
+        { key: 'loaded',   label: self.t('planColOn'),     type: 'text' },
+        { key: 'file',     label: self.t('planColFile'),   type: 'text' }]);
+    }
+    function planDrillTitle(type, annual) {
+      return self.t(annual ? 'buDrillPlanA' : 'buDrillPlanY')
+        .replace('{t}', self.t(type === 'REVISED' ? 'planRevised' : 'planApproved'));
+    }
+    function runPlanDrill(params, agg) {
+      api('GET', '/butil/lines/plan' + qs(params)).then(function (d) {
+        fillDrill({ columns: planDrillCols(agg), rows: d.rows, total: d.total, count: d.count });
+      }).catch(drillFail);
+    }
+    self.openBuPlanDrill = function (row, type, annual) {
+      if (row.hasPlan !== 'Y') return;
+      self.drillTitle(planDrillTitle(type, annual));
+      self.drillSub((row.projectNumber || '') + (row.projectName ? ' · ' + row.projectName : ''));
+      self.drillCtx([row.taskNumber, row.expenditureType].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      runPlanDrill({ year: self.buYear(), period: annual ? null : self.buPeriod(),
+        project: row.projectNumber, task: row.taskNumber, etype: row.expenditureType,
+        type: type }, false);
+    };
+    self.openBuPlanAgg = function (type, annual) {
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.drillTitle(planDrillTitle(type, annual));
+      self.drillSub(self.t('buAllLines') + ' · ' + (!annual && self.buPeriod()
+        ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
+      self.drillCtx([self.buType().split('|').join(', '), self.buSector(), self.buChapterParam().split('|').join(', '),
+        self.buCcParam().split('|').join(', '), self.buProjParam().split('|').join(', '), self.buTask(), self.buEtype(),
+        self.buSearch() ? '“' + self.buSearch() + '”' : ''].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      runPlanDrill({ year: self.buYear(), period: annual ? null : self.buPeriod(), type: type,
+        projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(), search: self.buSearch(),
+        costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype() }, true);
     };
     self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); self.drillSortNote(''); self.comboOut(); };
     // export the loaded drill lines — modal + drawer share drillCols/drillRows
@@ -4061,6 +4333,8 @@
           group: self.t('pfGrpProject'), groupClass: 'ir-g-proj' },
         money('budgetAnnual', 'pfColBudgetA', 'pfGrpBudget', 'ir-g-budget'),
         money('budgetYtd', 'pfColBudgetY', 'pfGrpBudget', 'ir-g-budget'),
+        money('planA', 'pfColPlanA', 'pfGrpPlan', 'ir-g-plan', 'buPlanHint'),
+        money('planY', 'pfColPlanY', 'pfGrpPlan', 'ir-g-plan', 'buPlanHint'),
         money('ap', 'pfColAp', 'pfGrpConsumed', 'ir-g-actual'),
         money('grn', 'pfColGrn', 'pfGrpConsumed', 'ir-g-actual'),
         money('paid', 'pfColPaid', 'pfGrpConsumed', 'ir-g-actual', 'pfHintPaid'),
@@ -4075,6 +4349,13 @@
         { key: 'tasks', label: self.t('pfColTasks'), type: 'num',
           group: self.t('pfGrpOther'), groupClass: 'ir-g-rev' }
       ];
+      // the Revised plan pair joins the grid only once any revised plan exists
+      var anyRev = (self.pfItems || []).some(function (r) { return (Number(r.planRevisedAnnual) || 0) !== 0; });
+      if (anyRev) {
+        cols.splice(6, 0,
+          money('planRevA', 'pfColPlanRevA', 'pfGrpPlan', 'ir-g-plan', 'buPlanHint'),
+          money('planRevY', 'pfColPlanRevY', 'pfGrpPlan', 'ir-g-plan', 'buPlanHint'));
+      }
       var rows = (self.pfItems || []).map(function (r) {
         return {
           health: self.pfBandLabel(r.healthBand),
@@ -4083,6 +4364,10 @@
           status: r.status || '',
           budgetAnnual: (Number(r.budgetAnnual) || 0) / div,
           budgetYtd: (Number(r.budget) || 0) / div,
+          planA: (Number(r.planApprovedAnnual) || 0) / div,
+          planY: (Number(r.planApprovedYtd) || 0) / div,
+          planRevA: (Number(r.planRevisedAnnual) || 0) / div,
+          planRevY: (Number(r.planRevisedYtd) || 0) / div,
           ap: (Number(r.actualAp) || 0) / div,
           grn: (Number(r.actualGrn) || 0) / div,
           paid: (Number(r.apPaid) || 0) / div,
@@ -4097,7 +4382,7 @@
         };
       });
       self.pfIr({ columns: cols, items: rows, total: rows.length, section: 'pf',
-                  zebra: true, stateRev: 1 });
+                  zebra: true, stateRev: 2 });
     };
     // re-render (without re-fetching) when the unit or the language changes
     self.buUnit.subscribe(function () { if (self.pfLoaded()) self.pfBuildIr(); });
@@ -6992,6 +7277,485 @@
         document.body.appendChild(a); a.click(); document.body.removeChild(a);
       };
     })();
+
+    /* ════════════════════════════════════════════════════════════════════
+       GENERATE AND SEND — scoped Budget Utilization reports emailed to the
+       predefined To/Cc/Bcc lists (GL/db/27 + reporting/db/39). Level menu →
+       tree-select drawer → recipient confirmation → batch send + live poll.
+       TEST MODE (EMAIL_TEST_MODE, ships ON): everything goes to the test
+       mailbox only — the confirmation view shouts it in amber.
+       ════════════════════════════════════════════════════════════════════ */
+    self.gsMenuOpen = ko.observable(false);
+    self.toggleGsMenu = function () { self.gsMenuOpen(!self.gsMenuOpen()); return true; };
+    self.closeGsMenu = function () { self.gsMenuOpen(false); return true; };
+
+    self.gsDrawer  = ko.observable(false);
+    self.gsStep    = ko.observable(1);            // 1 pick · 2 confirm · 3 progress
+    self.gsLevel   = ko.observable('SECTOR');
+    self.gsBusy    = ko.observable(false);        // tree / preview loading
+    self.gsNodes   = ko.observableArray([]);      // normalized tree for <tree-select>
+    self.gsPicked  = ko.observableArray([]);      // leaf keys ticked in the tree
+    self.gsChosen  = ko.observableArray([]);      // right-hand list [{key,label,sub}]
+    self.gsFmtPdf  = ko.observable(true);
+    self.gsFmtXlsx = ko.observable(false);
+    self.gsPreview = ko.observable(null);         // {emailEnabled,testMode,testTo,items[]}
+    self.gsSendBusy = ko.observable(false);
+    self.gsBatch   = ko.observable(null);         // last batch poll payload
+    var gsMap = {};                               // leaf key -> node payload
+    var gsPollTimer = null;
+
+    self.gsLevelLabel = ko.computed(function () {
+      var l = self.gsLevel();
+      return self.t(l === 'SECTOR' ? 'gsLvlSector' : l === 'DEPARTMENT' ? 'gsLvlDept' : 'gsLvlProject');
+    });
+
+    function gsNormalize(level, sectors) {
+      gsMap = {};
+      return (sectors || []).map(function (s) {
+        if (level === 'SECTOR') {
+          var sk = 'S|' + s.sector;
+          gsMap[sk] = { sector: s.sector, label: s.sector };
+          return { key: sk, label: s.sector, has: s.hasRecipients !== false };
+        }
+        return {
+          key: 'G|' + s.sector, label: s.sector,
+          children: (s.children || []).map(function (c) {
+            var lbl = c.department || c.costCenter;
+            if (level === 'DEPARTMENT') {
+              var ck = 'C|' + c.costCenter;
+              gsMap[ck] = { costcenter: c.costCenter, label: lbl, sub: c.costCenter };
+              return { key: ck, label: lbl, sub: c.costCenter, has: c.hasRecipients !== false };
+            }
+            return {
+              key: 'GC|' + c.costCenter, label: lbl, sub: c.costCenter,
+              has: c.hasRecipients !== false,
+              children: (c.children || []).map(function (p) {
+                var pk = 'P|' + c.costCenter + '|' + p.project;
+                gsMap[pk] = { costcenter: c.costCenter, project: p.project,
+                              label: p.project + (p.projectName ? ' — ' + p.projectName : ''),
+                              sub: lbl };
+                return { key: pk, label: p.project, sub: p.projectName || '',
+                         has: c.hasRecipients !== false };
+              })
+            };
+          })
+        };
+      });
+    }
+
+    self.openGs = function (level) {
+      self.gsMenuOpen(false);
+      if (!self.buYear()) { toast(self.t('yearRequired'), true); return; }
+      self.gsLevel(level); self.gsStep(1);
+      self.gsPicked([]); self.gsChosen([]); self.gsPreview(null); self.gsBatch(null);
+      self.gsDrawer(true); self.gsBusy(true); self.gsNodes([]);
+      api('GET', '/butil/dist/meta/tree?level=' + level + '&year=' + encodeURIComponent(self.buYear()))
+        .then(function (d) { self.gsNodes(gsNormalize(level, d.sectors)); })
+        .catch(fail)
+        .then(function () { self.gsBusy(false); });
+    };
+    self.closeGs = function () {
+      if (gsPollTimer) { clearTimeout(gsPollTimer); gsPollTimer = null; }
+      self.gsDrawer(false);
+    };
+
+    self.gsAdd = function () {
+      var have = {};
+      self.gsChosen().forEach(function (c) { have[c.key] = 1; });
+      var added = 0;
+      self.gsPicked().forEach(function (k) {
+        var p = gsMap[k];
+        if (p && !have[k]) { self.gsChosen.push({ key: k, label: p.label, sub: p.sub || '' }); added++; }
+      });
+      if (!added) toast(self.t('gsNone'), true);
+    };
+    self.gsRemove = function (item) {
+      self.gsChosen.remove(item);
+      self.gsPicked(self.gsPicked().filter(function (k) { return k !== item.key; }));
+    };
+
+    function gsNodesPayload() {
+      return self.gsChosen().map(function (c) {
+        var p = gsMap[c.key] || {};
+        return { sector: p.sector || null, costcenter: p.costcenter || null,
+                 project: p.project || null, label: p.label || c.label };
+      });
+    }
+    self.gsCriteria = function () {
+      return {
+        year: Number(self.buYear()), period: self.buPeriod() || null,
+        bu: self.buBuParam(), chapter: self.buChapterParam() || null,
+        projecttype: self.buType() || null, task: self.buTask() || null,
+        etype: self.buEtype() || null, search: self.buSearch() || null,
+        ovr: self.buOvr() ? 'Y' : null,
+        cmtmode: self.buCmtDisp && self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null
+      };
+    };
+    self.gsCriteriaTxt = ko.computed(function () {
+      if (!self.gsDrawer()) return '';
+      var bits = [self.buYear()];
+      if (self.buPeriod()) bits.push('YTD ' + self.buPeriod()); else bits.push(self.t('gsFullYear'));
+      if (self.buType && self.buType()) bits.push(self.buType());
+      return bits.join(' · ');
+    });
+
+    self.gsNext = function () {
+      if (!self.gsChosen().length) { toast(self.t('gsNone'), true); return; }
+      if (!self.gsFmtPdf() && !self.gsFmtXlsx()) { toast(self.t('gsFormats'), true); return; }
+      self.gsBusy(true);
+      api('POST', '/butil/dist/meta/preview',
+          { level: self.gsLevel(), nodes: gsNodesPayload() })
+        .then(function (d) { self.gsPreview(d); self.gsStep(2); })
+        .catch(fail)
+        .then(function () { self.gsBusy(false); });
+    };
+
+    self.gsRunsPlanned = ko.computed(function () {
+      var p = self.gsPreview();
+      if (!p) return 0;
+      var found = (p.items || []).filter(function (i) { return i.found; }).length;
+      return found * ((self.gsFmtPdf() ? 1 : 0) + (self.gsFmtXlsx() ? 1 : 0));
+    });
+
+    function gsPoll(batchId, tries) {
+      gsPollTimer = setTimeout(function () {
+        api('GET', '/butil/dist/batch/' + batchId).then(function (d) {
+          self.gsBatch(d);
+          var open = (d.runs || []).some(function (r) {
+            return r.status !== 'SUCCESS' && r.status !== 'FAILED';
+          });
+          if (open && tries < 240) gsPoll(batchId, tries + 1);
+          else self.gsSendBusy(false);
+        }).catch(function () {
+          if (tries < 240) gsPoll(batchId, tries + 1); else self.gsSendBusy(false);
+        });
+      }, 5000);
+    }
+
+    self.gsSendGo = function () {
+      if (self.gsSendBusy()) return;
+      var formats = [];
+      if (self.gsFmtPdf()) formats.push('PDF');
+      if (self.gsFmtXlsx()) formats.push('XLSX');
+      self.gsSendBusy(true);
+      api('POST', '/butil/dist/meta/send',
+          { level: self.gsLevel(), formats: formats,
+            criteria: self.gsCriteria(), nodes: gsNodesPayload() })
+        .then(function (d) {
+          self.gsStep(3);
+          self.gsBatch({ batchId: d.batchId, runs: [] });
+          gsPoll(d.batchId, 0);
+        })
+        .catch(function (e) { self.gsSendBusy(false); fail(e); });
+    };
+    self.gsAllDone = ko.computed(function () {
+      var b = self.gsBatch();
+      if (!b || !(b.runs || []).length) return false;
+      return b.runs.every(function (r) { return r.status === 'SUCCESS' || r.status === 'FAILED'; });
+    });
+    self.gsRunTone = function (r) {
+      return r.status === 'SUCCESS' ? (r.failedCount > 0 ? 'warn' : 'ok')
+           : r.status === 'FAILED' ? 'err' : 'info';
+    };
+
+    /* ── Email Logs page ─────────────────────────────────────────────── */
+    self.elLoaded = ko.observable(false);
+    self.elBusy   = ko.observable(false);
+    self.elRows   = ko.observableArray([]);
+    self.elCount  = ko.observable(0);
+    self.elFrom = ko.observable(''); self.elTo = ko.observable('');
+    self.elLevel = ko.observable(''); self.elSector = ko.observable('');
+    self.elCc = ko.observable(''); self.elProject = ko.observable('');
+    self.elRecipient = ko.observable(''); self.elStatus = ko.observable('');
+    self.elEmailStatus = ko.observable(''); self.elTest = ko.observable('');
+    self.elReport = ko.observable(''); self.elBatch = ko.observable('');
+    self.elRun = function () {
+      self.elBusy(true);
+      api('GET', '/butil/emails' + qs({
+        datefrom: self.elFrom(), dateto: self.elTo(), level: self.elLevel(),
+        sector: self.elSector(), costcenter: self.elCc(), project: self.elProject(),
+        recipient: self.elRecipient(), status: self.elStatus(),
+        emailstatus: self.elEmailStatus(), istest: self.elTest(),
+        report: self.elReport(), batch: self.elBatch()
+      })).then(function (d) {
+        self.elRows(d.items || []); self.elCount(d.count || 0); self.elLoaded(true);
+      }).catch(fail).then(function () { self.elBusy(false); });
+    };
+    self.elClear = function () {
+      ['elFrom','elTo','elLevel','elSector','elCc','elProject','elRecipient',
+       'elStatus','elEmailStatus','elTest','elReport','elBatch']
+        .forEach(function (k) { self[k](''); });
+      self.elRun();
+    };
+    self.elDrawer = ko.observable(false);
+    self.elDetail = ko.observable(null);
+    self.elDetailBusy = ko.observable(false);
+    self.elDrill = function (row) {
+      self.elDrawer(true); self.elDetailBusy(true); self.elDetail(null);
+      api('GET', '/butil/emails/' + row.runId)
+        .then(function (d) { self.elDetail(d); })
+        .catch(fail).then(function () { self.elDetailBusy(false); });
+    };
+    self.elDownload = function (file) {
+      var d = self.elDetail(); if (!d) return;
+      var path = d.report === 'BUDGET_UTIL_REGISTER'
+        ? '/butil/xlsx/' + d.runId + '/file'
+        : (file.format === 'PPTX' ? '/butil/ppt/' + d.runId + '/file'
+                                  : '/butil/book/' + d.runId + '/pdf');
+      fetch(API + path, { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+        .then(function (r) { if (!r.ok) throw new Error('Download failed (HTTP ' + r.status + ')'); return r.blob(); })
+        .then(function (b) {
+          var u = URL.createObjectURL(b), a = document.createElement('a');
+          a.href = u; a.download = file.fileName || ('report.' + (file.format || 'pdf').toLowerCase());
+          a.click(); URL.revokeObjectURL(u);
+        }).catch(function (e) { toast(e.message, true); });
+    };
+    self.elTone = function (r) {
+      return r.status === 'SUCCESS' ? (r.failedCount > 0 ? 'warn' : 'ok')
+           : r.status === 'FAILED' ? 'err' : 'info';
+    };
+
+    /* ── Report Recipients admin page ────────────────────────────────── */
+    self.rlLoaded = ko.observable(false);
+    self.rlBusy   = ko.observable(false);
+    self.rlRows   = ko.observableArray([]);
+    self.rlLoad = function () {
+      self.rlBusy(true);
+      api('GET', '/butil/dist').then(function (d) {
+        self.rlRows(d.items || []); self.rlLoaded(true);
+      }).catch(fail).then(function () { self.rlBusy(false); });
+    };
+    self.rlDrawer = ko.observable(false);
+    self.rlEdit   = ko.observable(null);
+    function rlBlank() {
+      return { distId: null, scopeType: ko.observable('COSTCENTER'),
+               scopeValue: ko.observable(''), scopeLabel: ko.observable(''),
+               sectorName: ko.observable(''), subjectTpl: ko.observable(''),
+               enabled: ko.observable(true), recips: ko.observableArray([]) };
+    }
+    function rlRecipRow(r) {
+      return { disposition: ko.observable((r && r.disposition) || 'TO'),
+               email: ko.observable((r && r.email) || ''),
+               name: ko.observable((r && r.name) || '') };
+    }
+    self.rlNew = function () {
+      var e = rlBlank();
+      e.recips.push(rlRecipRow(null));
+      self.rlEdit(e); self.rlDrawer(true);
+    };
+    self.rlOpen = function (row) {
+      api('GET', '/butil/dist/' + row.distId).then(function (d) {
+        var e = rlBlank();
+        e.distId = d.distId;
+        e.scopeType(d.scopeType); e.scopeValue(d.scopeValue);
+        e.scopeLabel(d.scopeLabel || ''); e.sectorName(d.sectorName || '');
+        e.subjectTpl(d.subjectTpl || ''); e.enabled(d.enabled === 'Y');
+        (d.recipients || []).forEach(function (r) { e.recips.push(rlRecipRow(r)); });
+        if (!e.recips().length) e.recips.push(rlRecipRow(null));
+        self.rlEdit(e); self.rlDrawer(true);
+      }).catch(fail);
+    };
+    self.rlAddRecip = function () { self.rlEdit().recips.push(rlRecipRow(null)); };
+    self.rlDelRecip = function (r) { self.rlEdit().recips.remove(r); };
+    self.rlSave = function () {
+      var e = self.rlEdit(); if (!e) return;
+      if (!e.scopeValue().trim()) { toast(self.t('rlValue'), true); return; }
+      var body = {
+        scopeType: e.scopeType(), scopeValue: e.scopeValue().trim(),
+        scopeLabel: e.scopeLabel().trim() || null,
+        sectorName: e.sectorName().trim() || null,
+        subjectTpl: e.subjectTpl().trim() || null,
+        enabled: e.enabled() ? 'Y' : 'N',
+        recipients: e.recips().filter(function (r) { return r.email().trim(); })
+          .map(function (r) { return { disposition: r.disposition(), email: r.email().trim(),
+                                       name: r.name().trim() || null }; })
+      };
+      var req = e.distId ? api('PUT', '/butil/dist/' + e.distId, body)
+                         : api('POST', '/butil/dist', body);
+      req.then(function () { toast(self.t('rlSaved')); self.rlDrawer(false); self.rlLoad(); })
+         .catch(fail);
+    };
+    self.rlDelete = function () {
+      var e = self.rlEdit(); if (!e || !e.distId) return;
+      if (!window.confirm(self.t('rlDeleteConfirm'))) return;
+      api('DELETE', '/butil/dist/' + e.distId)
+        .then(function () { toast(self.t('rlDeleted')); self.rlDrawer(false); self.rlLoad(); })
+        .catch(fail);
+    };
+
+    /* ── Excel import (SheetJS, client-parsed, chunked upsert) ────────── */
+    self.rlImpDrawer = ko.observable(false);
+    self.rlImpBusy   = ko.observable(false);
+    self.rlImpSheets = ko.observableArray([]);
+    self.rlImpSheet  = ko.observable('');
+    self.rlImpKind   = ko.observable('');
+    self.rlImpCols   = ko.observableArray([]);   // [{idx,label,disp:ko}]
+    self.rlImpActive = ko.observable(true);
+    self.rlImpHasStatus = ko.observable(false);
+    self.rlImpRows   = ko.observable(0);
+    self.rlImpErr    = ko.observable('');
+    var rlWb = null, rlSheetCache = {};
+    self.rlImpOpen = function () {
+      rlWb = null; rlSheetCache = {};
+      self.rlImpSheets([]); self.rlImpSheet(''); self.rlImpKind('');
+      self.rlImpCols([]); self.rlImpRows(0); self.rlImpErr('');
+      self.rlImpDrawer(true);
+    };
+    self.rlImpPick = function () { document.getElementById('rc-imp-file').click(); };
+    self.rlImpFile = function (vm, ev) {
+      var f = ev.target.files && ev.target.files[0];
+      ev.target.value = '';
+      if (!f) return;
+      self.rlImpBusy(true); self.rlImpErr('');
+      window.require(['xlsx'], function (X) {
+        var rd = new FileReader();
+        rd.onload = function () {
+          try {
+            rlWb = X.read(new Uint8Array(rd.result), { type: 'array' });
+            self.rlImpSheets(rlWb.SheetNames.slice());
+            var pref = rlWb.SheetNames.filter(function (n) { return /department/i.test(n); })[0]
+                    || rlWb.SheetNames.filter(function (n) { return /^sectors$/i.test(n); })[0]
+                    || rlWb.SheetNames[0];
+            self.rlImpSheet(pref);
+            rlAnalyze(X, pref);
+          } catch (e) { self.rlImpErr(String(e.message || e)); }
+          self.rlImpBusy(false);
+        };
+        rd.readAsArrayBuffer(f);
+      });
+    };
+    self.rlImpSheet.subscribe(function (name) {
+      if (!rlWb || !name) return;
+      window.require(['xlsx'], function (X) { rlAnalyze(X, name); });
+    });
+    function rlSheetAoa(X, name) {
+      if (!rlSheetCache[name]) {
+        rlSheetCache[name] = X.utils.sheet_to_json(rlWb.Sheets[name], { header: 1, raw: true, defval: null });
+      }
+      return rlSheetCache[name];
+    }
+    var rlParsed = null;   // {hdrIdx, cols:{cc,sector,label,status}, emailCols[], rows}
+    function rlAnalyze(X, name) {
+      self.rlImpErr(''); self.rlImpCols([]); self.rlImpRows(0); self.rlImpKind('');
+      rlParsed = null;
+      var aoa = rlSheetAoa(X, name);
+      // header row = first row with 3+ text cells
+      var hdrIdx = -1;
+      for (var i = 0; i < Math.min(aoa.length, 10); i++) {
+        var texts = (aoa[i] || []).filter(function (c) { return typeof c === 'string' && c.trim(); });
+        if (texts.length >= 3) { hdrIdx = i; break; }
+      }
+      if (hdrIdx < 0) { self.rlImpErr(self.t('rlImpNoEmail')); return; }
+      var hdr = aoa[hdrIdx].map(function (h) { return h == null ? '' : String(h).trim(); });
+      var data = aoa.slice(hdrIdx + 1);
+      function findCol(re) {
+        for (var c = 0; c < hdr.length; c++) if (re.test(hdr[c])) return c;
+        return -1;
+      }
+      var ccCol = findCol(/cost\s*cent/i);
+      var secCol = findCol(/sector/i);
+      var lblCol = findCol(/department.*name|name.*aderp/i);
+      if (lblCol < 0) lblCol = findCol(/department/i);
+      var stCol = findCol(/cc\s*status|status/i);
+      // email columns = >=25% of populated cells contain '@'
+      var emailCols = [];
+      for (var c2 = 0; c2 < hdr.length; c2++) {
+        var tot = 0, hits = 0;
+        for (var r2 = 0; r2 < data.length; r2++) {
+          var v = data[r2] ? data[r2][c2] : null;
+          if (v == null || String(v).trim() === '') continue;
+          tot++;
+          if (String(v).indexOf('@') >= 0) hits++;
+        }
+        if (tot > 0 && hits / tot >= 0.25) {
+          var label = hdr[c2] || ('Col ' + (c2 + 1));
+          if (/^email/i.test(label)) {
+            for (var p = c2 - 1; p >= 0; p--) {
+              if (hdr[p]) { label = hdr[p].replace(/emp\.?\s*name/i, '').trim() + ' ' + label; break; }
+            }
+          }
+          // CC patterns FIRST: "Director /ED Email" must not fall into the
+          // TO bucket via its "ED Email" token (default = leadership on Cc)
+          var def = /director|key\s*user|ap\s/i.test(label) ? 'CC'
+                  : /pbp|fbp|\bbp\b|^ed\b|ed email/i.test(label) ? 'TO' : 'SKIP';
+          emailCols.push({ idx: c2, label: label, disp: ko.observable(def) });
+        }
+      }
+      if (!emailCols.length) { self.rlImpErr(self.t('rlImpNoEmail')); return; }
+      var kind = ccCol >= 0 ? 'COSTCENTER' : (secCol >= 0 ? 'SECTOR' : '');
+      if (!kind) { self.rlImpErr(self.t('rlImpNoEmail')); return; }
+      self.rlImpKind(kind);
+      self.rlImpHasStatus(stCol >= 0);
+      self.rlImpCols(emailCols);
+      rlParsed = { hdr: hdr, data: data,
+                   cc: ccCol, sector: secCol, label: lblCol, status: stCol,
+                   emailCols: emailCols };
+      self.rlImpRows(rlBuildRows().length);
+    }
+    function rlPadCc(v) {
+      var d = String(v == null ? '' : v).replace(/\D/g, '');
+      if (!d) return '';
+      return d.length < 7 ? ('0000000' + d).slice(-7) : d;
+    }
+    function rlBuildRows() {
+      if (!rlParsed) return [];
+      var kind = self.rlImpKind(), out = [], seen = {};
+      rlParsed.data.forEach(function (row) {
+        if (!row) return;
+        var scope = kind === 'COSTCENTER' ? rlPadCc(row[rlParsed.cc])
+                                          : String(row[rlParsed.sector] || '').trim();
+        if (!scope) return;
+        if (self.rlImpActive() && rlParsed.status >= 0) {
+          var st = String(row[rlParsed.status] || '').trim();
+          if (!/^active/i.test(st)) return;                 // 'NOT Active' is excluded
+        }
+        if (seen[scope]) return;
+        seen[scope] = 1;
+        var recips = [], have = {};
+        rlParsed.emailCols.forEach(function (ec) {
+          var disp = ec.disp();
+          if (disp === 'SKIP') return;
+          String(row[ec.idx] || '').split(/[,;\/\s\n\r&]+/).forEach(function (tok) {
+            tok = tok.trim();
+            var k = tok.toLowerCase();
+            if (tok.indexOf('@') > 0 && !have[k]) { have[k] = 1; recips.push({ disposition: disp, email: tok }); }
+          });
+        });
+        if (!recips.length) return;
+        out.push({
+          scopeType: kind, scopeValue: scope,
+          scopeLabel: kind === 'COSTCENTER'
+            ? String((rlParsed.label >= 0 ? row[rlParsed.label] : '') || '').trim() || scope
+            : scope,
+          sectorName: rlParsed.sector >= 0 ? String(row[rlParsed.sector] || '').trim() : null,
+          recipients: recips
+        });
+      });
+      return out;
+    }
+    self.rlImpRefresh = function () { self.rlImpRows(rlBuildRows().length); };
+    self.rlImpActive.subscribe(function () { if (rlParsed) self.rlImpRows(rlBuildRows().length); });
+    self.rlImpRun = function () {
+      var rows = rlBuildRows();
+      if (!rows.length) { toast(self.t('rlImpNoEmail'), true); return; }
+      self.rlImpBusy(true);
+      var created = 0, updated = 0, errors = 0;
+      function chunk(from) {
+        if (from >= rows.length) {
+          self.rlImpBusy(false);
+          toast(self.t('rlImpDone').replace('{c}', created).replace('{u}', updated).replace('{e}', errors), errors > 0);
+          self.rlImpDrawer(false); self.rlLoad();
+          return;
+        }
+        api('POST', '/butil/dist/meta/import', { rows: rows.slice(from, from + 200) })
+          .then(function (d) {
+            created += d.created || 0; updated += d.updated || 0; errors += d.errors || 0;
+            chunk(from + 200);
+          })
+          .catch(function (e) { self.rlImpBusy(false); fail(e); });
+      }
+      chunk(0);
+    };
 
     /* ── init ── */
     api('GET', '/boot').then(function (d) {

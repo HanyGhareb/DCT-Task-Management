@@ -4,6 +4,10 @@
 >
 > **Keep this file current: every deployment (frontend, DB, ORDS) must be recorded here.**
 
+- **2026-08-26 — SQL workload classification correction (db/v2/116+117):** filesystem-based OTBI/Python worker modules (`/root/*`, `/usr/*`, `*OTBI-ATD*`) are now `BACKGROUND`, tagged reporting sessions remain `REPORT`, and APEX Builder App 4500 sessions are `ADMIN_TOOL`. These diagnostic classes remain visible but cannot trigger the interactive/application slow-SQL alert. ORDS routes remain `INTERACTIVE`; other genuine application modules remain `APPLICATION`. No SQL text, business data, thresholds, or caches changed.
+
+- **2026-08-26 — Nightly compile-only invalid-object recovery (db/v2/127):** `DCT_DB_AUTO_RECOMPILE_JOB` runs daily at 00:55 Asia/Dubai, before the existing 01:00 object-health check. It performs two invalid-only `DBMS_UTILITY.COMPILE_SCHEMA` passes, records before/after counts and remaining names in `DCT_DB_RECOMPILE_LOG` for 180 days, and refreshes the health snapshot. It deliberately does not call `DCT_VIEWS_REBUILD`, refresh actuals, cache results, or suppress accepted invalid objects; genuine source errors remain visible.
+
 - **2026-08-22 — SQL monitor single-run coverage + workload classification (db/v2/116+117; Admin 4.7.26):** interval capture now includes one-off executions and warns on either one interactive/application execution at least 5 seconds or repeated executions (2+) averaging at least 3 seconds. Report-worker SQL is classified separately and remains diagnostic rather than contributing to urgent slow-SQL alerts. Current/history rows retain sanitized SQL plus source module/action; report workers set `DCT_RPT:<report_code>` / `RUN:<run_id>` session metadata. The UI shows workload class, average, total and executions. No binds, AWR, result cache, or financial values are stored.
 
 - **Module code:** ADMIN · **ORDS base path:** `/ords/admin/dct/` · **Brand:** `#C74634` (Oracle Red, App 200 only)

@@ -5,6 +5,7 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
 
 ## History (most recent first)
 
+- **2026-08-26 — Expenditure Plan columns in the butil reports (reporting/db/21 + 25 + template).** `BUDGET_UTIL_REGISTER` sheet 1 gains `approved_plan_annual/approved_plan_ytd/revised_plan_annual/revised_plan_ytd` and `BUDGET_UTIL_BOOK` gains the four plan sums in its overview KPIs (+ a "YTD Plan (Approved)" KPI card) and **Annual Plan / YTD Plan** columns in the 1.1 sector table — all from `DCT_PROJECT_CF_BUTIL_V` (db/v2/126, the uploaded `DCT_PROJECT_CASHFLOW` at the butil line grain, BUTIL_END-aware so the existing `pre_sql` period hook gives the YTD cut for free). Join gotcha: the seeds' scope WHERE uses unqualified `budget_year`, so the plan view joins through a RENAMED inline view (py/pp/pt/pe) — a bare join is ORA-00918; and `l_sec`'s plan columns are appended at the END of the select list because its `ORDER BY 3` is positional. Template `budget_util_book.html.j2` re-uploaded (54,776 bytes) + fleet fallback copies synced (no worker restart needed — templates load DB-first per run). Deployed via python-oracledb on vm180; `deploy_seed.py`/`upload_template.py` now live in /opt/rpt-worker (env: `set -a; . /etc/rpt-worker.env` + TNS_ADMIN=/opt/oracle-wallet/Wallet_prod RPT_DB_USER=ADMIN RPT_DB_DSN=prod_low, system python3 — the rpt fleet has NO venv). Verified: run 761 XLSX plan sums reconcile to the hand-summed months (annual 48,349,977.57 / YTD 06-2026 24,104,898); run 762 PDF prints the plan KPI + 1.1 columns.
 - **2026-08-22 — Report SQL observability:** each claimed run now sets Oracle session metadata to `DCT_RPT:<report_code>` and `RUN:<run_id>` before executing its live SQL, then clears it in `finally`. This lets Admin SQL Performance attribute background SQL without storing binds or result data, and keeps report workload out of interactive slow-SQL alerts. Fleet rollout: vm180-182.
 
 - **2026-08-12 — BUDGET_UTIL_REGISTER: Organization column (reporting/db/25 re-seed).** Sheets 1–5
@@ -553,3 +554,21 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
 
 ### 2026-07-27 — BUDGET_UTIL_REGISTER: Related Invoices column (db/25 re-seed)
 - Sheet "3. GRN Receipts" gains a trailing **Related Invoices** column: `LISTAGG(DISTINCT inv.invoice_number, ', ' ON OVERFLOW TRUNCATE)` in the invoiced-AED subquery via a deduped LEFT JOIN to `prod.ap_invoices` (GROUP BY invoice_id) — invoiced/received totals regression-verified unchanged. Deployed via python-oracledb on vm180 (Linux SQLcl swallows this MERGE-bearing seed); E2E run 166 SUCCESS. Details in `final apps/GL/docs/deployment-notes.md` (2026-07-27 (2)).
+
+### 2026-08-24 — Report Distributions (To/Cc/Bcc) + TEST MODE (db/39 + runner)
+- `39_rpt_distribution.sql`: `DCT_RPT_DIST` (dist_group `GL_BUTIL`, scope SECTOR|COSTCENTER,
+  optional per-list `subject_tpl`) + `DCT_RPT_DIST_RECIP` (disposition TO|CC|BCC) +
+  `DCT_RPT_DIST_BATCH`; `DCT_RPT_RUN` gains `dist_id`/`batch_id`/`is_test`/`email_subject`,
+  `DCT_RPT_DELIVERY` gains `disposition`; lookups RPT_DIST_SCOPE/RPT_DISPOSITION/RPT_DIST_LEVEL;
+  config keys **`EMAIL_TEST_MODE` (ships Y)** + `EMAIL_TEST_TO`. Count-then-insert seeds —
+  Linux-SQLcl-safe, deployed via SQLcl 2026-08-24. NO rpt.rest route change (post-04 re-run
+  list unchanged); the consumer routes live GL-side (`final apps/GL/db/27`).
+- Runner: `deliver.py` gains the **distribution path** — a run carrying `dist_id` sends ONE
+  message (To+Cc headers, Bcc envelope-only, per-address delivery rows w/ disposition, subject
+  stamped on the run). **TEST MODE is decided at delivery time**: EMAIL_TEST_MODE=Y →
+  only EMAIL_TEST_TO receives (subject prefixed `[TEST]`, run `is_test='Y'`, intended
+  recipients logged SKIPPED); test mode with no test address = skipped entirely;
+  EMAIL_ENABLED=N on a dist run = `record_dist_skipped` (honest log, nothing sent).
+  Legacy per-recipient path untouched. Fleet-synced vm180-182 + rpt-worker restarted.
+- Standing rule (user, 2026-08-24): **never send report emails to real recipients during
+  testing — test mailbox only.** EMAIL_TEST_MODE must stay Y until Finance signs the lists off.

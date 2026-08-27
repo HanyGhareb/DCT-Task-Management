@@ -2690,3 +2690,40 @@ meaningful cost, so all five chunked jobs (2 budget + 3 AR) stay on `DISABLE_CAC
 Ops gotcha: `atd_queue_pkg.enqueue(job, requested_by)` stamps the caller and the run then
 tries that person's PERSONAL OTBI credential (db/62); a worker can claim the row before you
 can null it. Enqueue with `p_requested_by => NULL` for a service-account run.
+
+## 2026-08-26 — GL_GRN_DAILY / PAYABLES_DAILY / PROCUREMENT_DAILY raised to hourly (db/86)
+
+**User report** (GL Budget Utilization): the "Over budget — negative Fund Available" band kept
+showing lines the user knew were already fixed in Fusion, until they clicked "Refresh data".
+**Root cause**: `TXN_INCREMENTAL` (hourly MERGE deltas, `_UH24` Fusion-side filter) covers AP
+Invoices/Lines/Distributions, PO Headers/Lines/Schedules/Distributions, PR Headers/Lines/
+Distributions, Suppliers — but **GRN has no incremental counterpart**. GRN was only refreshed by
+`GL_GRN_DAILY`, once a day, inside a narrow ~1h window (08:00–11:30 Dubai band, staggered — the
+2026-08-06 incident fix placement). Confirmed live with a real example: receipt `4513075841`
+line 1 carries an original costed entry (+88,095.93, 21-Jul) and its reversal (-88,095.93,
+03-Aug) — a routine correction that stays invisible on Budget Utilization until the next
+morning's window or a manual refresh.
+
+**Why GRN never got an incremental like AP/PO/PR**: its rows have no stable natural key —
+verified `(receipt_number, receipt_line_number)` alone has 177 duplicate combinations on
+`ATD_GRN_ALL_V2` (live, 5,605 rows / 5,428 distinct); even a 5-column combination (+
+`po_distribution_id, shipment_line_number, receipt_routing_code`) still leaves ~2.5% dupes
+(genuine original+reversal pairs on the same line, differing only by `transaction_date` /
+`transaction_amount`). A 5-column key of `(receipt_number, receipt_line_number,
+po_distribution_id, transaction_date, transaction_amount)` **is** fully unique across all 5,605
+live rows — a delta-based incremental (option B, not built yet) is technically possible with
+that key, but is a bigger lift (new Fusion-side `_UH24` saved analysis + new job + testing) than
+raising the daily cadence.
+
+**Fix shipped (option A, user-approved 2026-08-26)**: `otbi-atd/db/86_daily_sets_hourly.sql` —
+data-only, raises `GL_GRN_DAILY` / `PAYABLES_DAILY` / `PROCUREMENT_DAILY` to the SAME shape
+`TXN_INCREMENTAL` and `PROJECTS_DATA` already use: `frequency_minutes=60`, `daily_start`/
+`daily_end` CLEARED (no window — the nightly fleet break, 21:00–08:00 Dubai, is the only
+remaining gate via `atd_queue_pkg.enqueue`/`atd_set_gate_ok`), `interval_preset='HOURLY'`.
+AP/PO/PR full reloads getting the same bump is defense-in-depth (they're already fresh via
+`TXN_INCREMENTAL`; a full reload is the only thing that catches a true source-row deletion,
+which a MERGE-style incremental can't see) — GRN is the piece that actually needed it. Verified
+post-change: `atd_set_gate_ok('GRN Temporary Job')` / `('AP Invoices Full')` / `('PO Headers
+Full')` all return `Y`, effective frequency 60. No re-run needed elsewhere (data-only, no ORDS
+touched). Deployed at 23:47 Dubai (inside the nightly break) — the new hourly cadence takes
+effect once the fleet wakes at 08:00.

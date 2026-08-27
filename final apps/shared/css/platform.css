@@ -1573,3 +1573,65 @@ table.data-table.ir-table .ir-break-row td { background: var(--region-hd-soft);
   background: rgba(var(--brand-rgb, 0,118,206), .08);
   border: 1px solid rgba(var(--brand-rgb, 0,118,206), .25);
 }
+
+/* ═══ <tree-select> — JET-tree-view-style multi-select tree (shared/js/components/treeSelect.js) ═══
+   Logical properties only (RTL mirrors for free). Brand-themed via --brand vars. */
+.tv { display: flex; flex-direction: column; border: 1px solid #d9dde2; border-radius: 10px; background: #fff; min-height: 0; }
+.tv-filter { margin: 8px; width: auto; }
+.tv-body { flex: 1; overflow: auto; min-height: 120px; max-height: 46vh; padding-block-end: 6px; }
+.tv-row {
+  display: flex; align-items: center; gap: 7px; cursor: pointer;
+  padding-block: 5px; padding-inline-end: 10px;
+  border-block-end: 1px solid #f2f4f6; font-size: 13px; user-select: none;
+}
+.tv-row:hover { background: rgba(var(--brand-rgb, 0,118,206), .05); }
+.tv-row.tv-on { background: rgba(var(--brand-rgb, 0,118,206), .08); }
+.tv-tg {
+  width: 16px; flex: 0 0 16px; text-align: center; color: #6a7280;
+  transition: transform .15s ease; font-size: 11px;
+}
+.tv-tg.open { transform: rotate(90deg); }
+html[dir=rtl] .tv-tg { transform: rotate(180deg); }
+html[dir=rtl] .tv-tg.open { transform: rotate(90deg); }
+.tv-tg.blank { visibility: hidden; }
+.tv-cb {
+  width: 16px; height: 16px; flex: 0 0 16px; border: 2px solid #9aa2ad;
+  border-radius: 3px; position: relative; background: #fff;
+}
+.tv-cb.on { background: var(--brand, #0076CE); border-color: var(--brand, #0076CE); }
+.tv-cb.on::after {
+  content: ''; position: absolute; inset-inline-start: 4px; top: 0px;
+  width: 4px; height: 9px; border: solid #fff; border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+.tv-cb.part { border-color: var(--brand, #0076CE); }
+.tv-cb.part::after {
+  content: ''; position: absolute; inset-inline: 2px; top: 5px; height: 2px;
+  background: var(--brand, #0076CE);
+}
+/* CSS-drawn folder / document icons (emoji glyphs render as tofu on some hosts) */
+.tv-ic { flex: 0 0 15px; width: 15px; height: 12px; position: relative; }
+.tv-ic--folder { border: 1.5px solid #C8A24B; border-radius: 2px; background: rgba(200,162,75,.18); }
+.tv-ic--folder::before {
+  content: ''; position: absolute; top: -4px; inset-inline-start: -1.5px;
+  width: 7px; height: 3px; border: 1.5px solid #C8A24B; border-bottom: 0;
+  border-radius: 2px 2px 0 0; background: rgba(200,162,75,.18);
+}
+.tv-ic--doc { width: 11px; height: 13px; border: 1.5px solid #8a93a0; border-radius: 2px; background: #fff; }
+.tv-ic--doc::before {
+  content: ''; position: absolute; top: 2.5px; inset-inline-start: 1.5px;
+  inset-inline-end: 1.5px; height: 1.5px; background: #b6bcc4;
+  box-shadow: 0 3px 0 #b6bcc4, 0 6px 0 #b6bcc4;
+}
+.tv-lb { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tv-sub { color: #8a93a0; margin-inline-start: 6px; font-size: 11px; }
+.tv-nr {
+  display: inline-block; margin-inline-start: 6px; width: 14px; height: 14px;
+  border-radius: 50%; background: #B54708; color: #fff; font-size: 10px;
+  font-weight: 700; text-align: center; line-height: 14px; vertical-align: middle;
+}
+.tv-empty { padding: 18px; text-align: center; color: #8a93a0; font-size: 13px; }
+.tv-foot {
+  border-block-start: 1px solid #eceef1; padding: 5px 10px; font-size: 11px;
+  color: #6a7280; text-align: end;
+}

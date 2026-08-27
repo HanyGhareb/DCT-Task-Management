@@ -3,6 +3,106 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-27 — Cost-adjustment AP drill round 2 (v1.87.2, GL/db/29 re-run + frontend): the row IS the invoice distribution, marked (**).**
+  User feedback on 2026-08-26 (4): the row still read as the adjustment transaction
+  (Validation "Cost Adjustment", Payment "Reallocation", PCA text in the description). Now the
+  metric=ap row is shaped EXACTLY like a plain invoice-distribution drill row — real
+  Validation/Payment statuses and the distribution's OWN description via a ranked LEFT JOIN on
+  `AP_INVOICE_DISTRIBUTIONS_V` (invoice_id + line + dist line; NULL stored dist line takes the
+  line's first dist via ROW_NUMBER so the join can never fan out; header fallbacks from
+  `ap_invoices` when the dist row is gone) — with `fromAdj='Y'` + `adjRef` riding the row. The
+  Distribution (AED) column STILL carries the adjustment amount (drawer total keeps
+  reconciling to the starred cell). Frontend: the drawer's invoice cell renders a **(**)**
+  marker before the number when `fromAdj='Y'` (tooltip = "Sourced from approved cost
+  adjustment PCA-xxxxx") + a `(**)` footnote under the table; sample row now reads
+  2026-0080 · 1 · 2026-04-13 · NATIONAL MEDIA AUTHORITY · AED · 2,368,623 · Validated · Paid ·
+  the invoice's own description. A reference-less adjustment keeps the PCA-shaped row.
+  Note: the drill CSV carries the clean distribution fields only (the marker is on-screen; the
+  adjustment itself is auditable on the Costing Adjustments register). Tests re-run:
+  costadj_drill_api_smoke **19/19** + costadj_drill_browser_smoke **12/12** vs webtier release
+  **20260827000630** (base 20260826235400 was a parallel session's release — overlay preserved
+  it; rollback = that release).
+
+- **2026-08-26 (4) — Cost-adjustment AP drill shows the REFERENCED invoice (GL/db/29 re-run, server-only).**
+  User feedback: drilling Actual AP on an adjusted line showed the cost-adjustment
+  transaction's own metadata (PCA ref in the doc column, accounting period as the date, no
+  line/invoice amount) instead of the invoice it reallocates. GL/db/29's metric=ap branch now
+  LEFT JOINs `prod.ap_invoices` + `prod.dct_ap_supplier_eff_v` on the adjustment's stored
+  `invoice_id` and emits the **referenced invoice's details** — real invoice number (+
+  `invoiceId`, so the drawer renders the Fusion deep-link for free), line, invoice date,
+  effective vendor, currency and header amount (`invAmount`, matching the /butil/lines ap
+  column set) — while the Distribution (AED) column keeps the ADJUSTMENT amount so the drawer
+  total still reconciles to the starred figure; `validation='Cost Adjustment'` + description
+  "Cost Adjustment PCA-xxxxx - reason" mark the row, and an adjustment with NO invoice
+  reference keeps the old PCA-shaped row. Sample verified: 2026-0080 line 1 · 2026-04-13 ·
+  NATIONAL MEDIA AUTHORITY · AED · inv 2,368,623 / adj 2,368,623. No frontend change
+  (APP_VERSION stays 1.87.1). Tests updated + re-run: costadj_drill_api_smoke **18/18** +
+  costadj_drill_browser_smoke **11/11** vs the live build.
+
+- **2026-08-26 (3) — Plan header rename (v1.87.1, user feedback).** The approved-plan column
+  headers drop the word "Approved" everywhere: butil table + CSV + KPI rows, Portfolio IR,
+  book KPI/register now read **Plan Annual / Plan YTD** (AR: الخطة السنوية / الخطة منذ بداية
+  السنة); the REVISED pair keeps its "Revised" prefix so the two stay distinguishable when a
+  revised plan is uploaded. Register aliases `approved_plan_annual/ytd` → `plan_annual/ytd`
+  (seed redeployed via vm180, run 763 verified: sheet-1 headers Plan Annual / Plan Ytd);
+  book template KPI label "YTD Plan (Approved)" → "YTD Plan" (re-uploaded + fleet copies).
+  Webtier release **20260826232512** (GL-only overlay; rollback 20260826230300); browser
+  smoke re-run 23/23 vs the live build (assertions updated to the new labels).
+
+- **2026-08-26 (2) — Expenditure Plan balances on dashboards + reports (v1.87.0, db/v2/126 + GL/db/21+22 re-runs + NEW GL/db/30 + reporting/db/21+25 + template).**
+  User ask: surface the uploaded projects cashflow plan (`DCT_PROJECT_CASHFLOW`, the GL
+  Cashflow tab; 6,701 APPROVED rows / 489 projects / AED 5,085.2M for 2026) as **Planning YTD
+  and Annual Planning balances** on both dashboards and the reports. Decisions (user):
+  Butil + Portfolio/360; **APPROVED and REVISED as separate column pairs**; Register + Book;
+  just the two balances (no variance columns).
+  **DB `db/v2/126`**: `DCT_PROJECT_CF_BUTIL_V` — plan aggregated to the EXACT butil line grain
+  (year × project × task × etype, 1:1 join so it can never fan out) with the APPROVED/REVISED
+  pairs pivoted and `*_YTD` BUTIL_END-aware (full year ⇒ YTD = Annual — same convention as the
+  Sector Performance report). `DCT_BUDGET_UTILIZATION_V` deliberately untouched (procash /
+  cost-adjustment precedent: the join lives in the consumers). Data check before build: 1,268
+  of 1,272 plan lines (5,082.0M of 5,085.2M) match butil lines verbatim.
+  **`/gl/butil` (GL/db/21 re-run, still the sole live owner)**: every row +
+  `planApprovedAnnual/planApprovedYtd/planRevisedAnnual/planRevisedYtd` + `hasPlan` (drill
+  gate); totals add the four sums + **`planUnmatched`** (plan on lines with NO butil line,
+  checked against the db/v2/120 key cache — reported under the results table, never silently
+  dropped; 3.24M today). Purely additive — no parameter, no existing figure changes.
+  **NEW `GL/db/30`** `GET /gl/butil/lines/plan` — the monthly plan rows behind any plan
+  figure: `type=APPROVED|REVISED`, YTD cut via `period` (the Annual cell just omits it), row
+  mode (project/task/etype) + aggregate mode over the SAME kys CTE as butil/lines (key cache +
+  SECTOR data scope, copied from GL/db/29); rows period/amount/loadedBy/loaded/file, cap 1000.
+  **GL post-05 re-run list = 07..30.**
+  **Portfolio + 360 (GL/db/22 re-run)**: `/gl/projects` totals + rows and
+  `/gl/projects/:num`'s `year` block carry the same four keys — totals via a dedicated scan
+  over the SAME filtered project set (project-grain attribution, so the portfolio total can
+  include plan lines whose exact task/etype has no butil line — 5,085.2M unfiltered vs the
+  butil page's 5,082.0M matched; deliberate and documented).
+  **Frontend v1.87.0**: butil results table gains **Approved Plan Annual/YTD** columns after
+  YTD Budget (the **Revised pair auto-appears only when any revised plan exists** —
+  `buPlanRevOn` on the loaded set, columns + CSV + KPI row all gated on it); the KPI band goes
+  5 → 6 tiles with a plum **Expenditure Plan** duo tile (hero = Approved YTD + % of annual
+  plan, drillable Annual/YTD rows); every plan cell/row drills to the monthly rows in the
+  shared drawer (columns client-defined; totals reconcile to the cell); CSV gains the 4 plan
+  columns; Portfolio register (shared IR, `stateRev` 1→2) gains the plan pairs + a plan KPI
+  tile; Project 360 KPI band gains the plan tile. Skeleton cols 20→22.
+  **Reports**: BUDGET_UTIL_REGISTER sheet 1 gains the 4 plan columns (LEFT JOIN via a RENAMED
+  inline view — the seed's WHERE uses unqualified `budget_year`, a bare join = ORA-00918);
+  BUDGET_UTIL_BOOK overview KPIs gain the 4 plan sums + a **YTD Plan (Approved)** KPI card and
+  the 1.1 sector table gains **Annual Plan / YTD Plan** columns (plan sums appended at the END
+  of `l_sec`'s select list — its `ORDER BY 3` is positional); template
+  `budget_util_book.html.j2` re-uploaded (54,776 bytes) + fleet fallback copies synced.
+  Deployed via python-oracledb on vm180 (`deploy_seed.py` + `upload_template.py` now live in
+  /opt/rpt-worker; worker env = `/etc/rpt-worker.env` + TNS_ADMIN/RPT_DB_* from the unit file,
+  system python3 — there is NO venv on the rpt fleet). Verified live: register run 761 sheet 1
+  Approved Plan Annual 48,349,977.57 / **YTD (06-2026) 24,104,898** = the raw months 03..06
+  summed by hand; book run 762 PDF prints the plan KPI (24.10 M · Annual 48.30 M) and the 1.1
+  plan columns.
+  Tests: NEW `tests/plan_butil_api_smoke.py` **23/23** (totals=Σrows, YTD boundary 02/06-2026,
+  per-line + aggregate drill reconciliation, portfolio/360 parity, 400/401) + NEW
+  `tests/plan_browser_smoke.py` **23/23 EN+AR** — also re-run 23/23 against the deployed
+  webtier build. Webtier release **20260826230300** (GL-only overlay; rollback
+  20260826152712). Test gotcha: the page's INITIAL default butil run must finish before a
+  scripted `runButil` or the late response overwrites `buTotals` mid-assert.
+
 - **2026-08-23 (2) — Comments feedback round (v1.83.0, GL/db/26 + 21 + 11 re-runs + reporting/db/25).**
   Five user asks after hands-on testing, plus one pre-existing bug their report exposed:
   ① **"the accounting-period selection on the dashboard doesn't change" — ROOT CAUSE was the
@@ -2392,3 +2492,139 @@ Release **20260821100238** (rollback target `20260819234642`). Frontend-only —
 - Smoke `tests/coa_tabs_browser_smoke.py` **25/25** EN+AR (tab order, default tab, per-tab
   region isolation, explorer max/Esc, overview KPIs, AR labels + RTL switch, no page errors) —
   run against dev-proxy 8098; deployed build verified serving 1.73.0 + the coa-tabs markup.
+
+#### v1.84.0 — Generate and Send: scoped butil report emails to To/Cc/Bcc lists (2026-08-24)
+DB `reporting/db/39_rpt_distribution.sql` (deploy FIRST) + `GL/db/27_gl_report_dist_ords.sql`
+(**GL post-05 re-run list is now 07..27**) + runner change fleet-synced (vm180-182 rpt-worker
+restarted) + shared `<tree-select>` component (`shared/js/components/treeSelect.js` + `.tv-*`
+in platform.css → **APP_VERSION bumped in ALL 16 apps**).
+- **Feature**: butil page-head **Generate and Send ▾** (Sector / Department / Project level) →
+  `.dw-gs` drawer: shared `<tree-select>` (oj-tree-view look — tri-state checkboxes, filter,
+  CSS-drawn folder/doc icons — emoji glyphs are tofu on some hosts) → Add → selected list →
+  formats (PDF book / XLSX register) → **recipient confirmation** (To/Cc lists verbatim, Bcc as
+  a count, amber TEST-MODE + email-off banners, no-list warnings) → batch send → live progress
+  (5s poll of `/butil/dist/batch/:bid`). One scoped run + ONE email per node × format; project
+  nodes inherit their cost centre's recipient list and scope `costcenter+project`.
+- **Recipient lists**: `DCT_RPT_DIST` (+`_RECIP` To/Cc/Bcc, `_BATCH`) dist_group `GL_BUTIL`,
+  UNIQUE (group, scope_type, scope_value); managed in **GL → Settings → Report Recipients**
+  (register + drawer + **Import from Excel**: SheetJS, auto-detects the Departments/Sectors
+  sheets of `docs/Approval/Sectors  Departments Email list for 2026-FPB and PBP.xlsx`, email
+  columns by @-density, defaults PBP/FBP→To + AP/Director/Key-Users→Cc, Active-only filter —
+  51 dept + 7 sector rows parse; ≤500-row chunked upsert that REPLACES matched rows'
+  recipients). Delete is blocked (409) once email history references the list — disable instead.
+- **Email path** (`reporting/runner/deliver.py`): run with `dist_id` = ONE message — To + Cc
+  headers, **Bcc envelope-only**; subject = dist `subject_tpl` else the scope-aware default
+  `DCT i-Finance | report | scope | period`; rendered subject stamped on `dct_rpt_run.email_subject`;
+  per-address `dct_rpt_delivery` rows carry the new `disposition` col. Legacy (non-dist) runs
+  keep the old per-recipient loop untouched.
+- **TEST MODE (user rule: never email real recipients while testing)**: `EMAIL_TEST_MODE`
+  ships **Y** + `EMAIL_TEST_TO` empty (BI Settings edits both) → mail goes ONLY to the test
+  mailbox with a `[TEST]` prefix, run stamped `is_test='Y'`, intended recipients logged
+  SKIPPED; test mode + no test address = delivery skipped entirely. Sending to REAL
+  recipients requires deliberately flipping EMAIL_TEST_MODE=N (EMAIL_ENABLED is already Y).
+- **Email Logs page** (Projects › Email Logs): filters (dates, level, sector/CC/project,
+  recipient-contains, run + email status, test Y/N, report, batch) → run-grain register
+  (subject, TEST badge, sent/failed/skipped counts) → drill drawer (per-address dispositions +
+  outcomes, attachments re-download via the existing book/xlsx file routes, criteria echo).
+- **Gotchas found**: `TO_DATE/TO_NUMBER … DEFAULT NULL ON CONVERSION ERROR` inside a PL/SQL
+  handler = ORA-43907/ORA-03066 → uncatchable 555 (use REGEXP-guarded CASE conversions);
+  never build TWO APEX_JSON outputs interleaved (send handler params now come from SQL
+  JSON_OBJECT); tree LEFT-JOIN + EXISTS must sit in an inline view (ORA-01799); the `rc*` VM
+  prefix belongs to the Reconciliation page — recipients page uses `rl*`.
+- Tests: `tests/gs_dist_api_smoke.py` **44/44** · `tests/gs_browser_smoke.py` **23/23 EN+AR**
+  · `tests/gs_import_parse_smoke.py` **14/14** (real workbook, parse-only).
+- Deployed: reporting/db/39 + GL/db/27 via Linux SQLcl (both verified; emails handler needed the
+  ORA-43907 fix + redeploy), runner fleet-sync + rpt-worker restart ×3, webtier release
+  **20260824160432** (GL-only overlay: GL/Jet + shared/css/platform.css + shared/js/components/
+  treeSelect.js; rollback target 20260823183954) — deployed-build smoke 23/23.
+- Residue: dist row #1 (first tree sector, DISABLED, @example.invalid addresses) survives the
+  smoke because runs 701-703 reference it — the REAL Excel import upserts/heals it. Run 701 was
+  processed by the pre-sync runner and emailed the requesting admin's own mailbox (legacy SELF
+  path, pre-existing behavior); 702+ took the guarded dist path (all SKIPPED, nothing sent).
+
+#### v1.85.0 — negative-Fund-Available drill drawer + Generate-and-Send arrow (2026-08-24, user feedback on a screenshot)
+DB `GL/db/28_butil_negfund_drill.sql` (**GL post-05 re-run list is now 07..28**; ADDITIVE,
+DEFINE_HANDLER-only, starts from `21_butil_procash.sql`'s body — needs 21 deployed first).
+- **Feature 1**: the "Over budget — negative Fund Available" warning band above the Overview
+  region on Project Budget Utilization is now clickable (CTA "View lines") and opens the shared
+  `.dw-*` drill drawer listing exactly the offending lines — same pattern as the existing
+  missing-Cost-Centre band (`nocc=Y`). New GET `/gl/butil?negfund=Y` param restricts BOTH the
+  aggregate totals and the items cursor to lines whose EFFECTIVE Fund Available (same expression
+  already used to compute the band's own `negFund`/`negFundTotal`, honouring the page's own
+  `procash=`/`costadj=` toggles) is negative — the drawer can never disagree with the band's own
+  count/total. Columns: Project/Project Name/Task/Expenditure Type/Department/YTD Budget/Actual
+  AP/Actual GRN/Commitment (PR)/Obligation (PO)/Fund Available; footer total = `negFundTotal`.
+  CSS: dropped the `.bu-alert--negfund{cursor:default}` + hover-transform:none overrides so the
+  band inherits the base `.bu-alert` clickable styling (same as `.bu-alert` used for missing-CC).
+  New i18n: `buNegCta`/`buNegDrill` (reused `cCommitPr`/`cObligPo`/`cBudgetYtd`/`cActualAp`/
+  `cActualGrn`/`cFundAvail`/`buMissCcPName` — no other new keys needed).
+- **Feature 2**: "Generate and Send" button now carries the same dropdown arrow as "Generate
+  Report" (`gsBtn` i18n string gained the trailing ` ▾`, matching `genReport`'s existing pattern
+  — the arrow is baked into the label text, not a CSS pseudo-element).
+- Frontend-only for feature 2; feature 1 is DB (new opt-in query param, zero behavior change for
+  existing callers) + frontend (band click binding, `openBuNegFund()`, CSS cleanup).
+- Verified live against the deployed handler: default scope's Project Type filter (DCT OPEX
+  Project Type) currently has ZERO negative lines; clearing it surfaces 6 (all DCT Trust Project
+  Type, total -51,504,086) — drawer reconciles exactly to the band (row count, total, every row
+  genuinely negative). New smoke `tests/negfund_drill_browser_smoke.py` **15/15 EN+AR** (dev-proxy
+  8097); pre-existing `tests/negfund_browser_smoke.py` has 2 unrelated stale failures (results-
+  table column count drifted from 19→20 since v1.74.0 with later Comments-column additions;
+  default-scope negFund=0 is current live data, not a regression — neither touched by this change).
+- Deployed: `GL/db/28_butil_negfund_drill.sql` via `sql -name prod_mcp` (fresh session, ADMIN),
+  verified `NEGFUND DRILL WIRED`. `APP_VERSION` bumped to **1.85.0** in `GL/Jet/index.html` only
+  (no `final apps/shared/` change this round — no fleet-wide bump needed). Frontend shipped as
+  webtier release **20260825082023** (GL-only overlay: copy of the prior live release
+  20260824160432 + overlay of `GL/Jet/` only, so parallel sessions' in-progress work elsewhere
+  in the tree was NOT shipped; old releases beyond the last 5 pruned). Deployed-build smoke
+  (`negfund_drill_browser_smoke.py` pointed at `https://129.151.159.189/`) **15/15 EN+AR**.
+
+#### v1.86.0 — cost adjustments now appear in the butil drill drawers (2026-08-26)
+User report: a line's Actual figure carried an approved Projects Costing Adjustment (costadj=Y
+default) but the drill drawer showed only the real AP rows — sample project 4511000981 /
+PCA-00018 was the WHOLE Actual (raw AP = 0.00), so the drawer was literally empty against a
+2,368,623 cell. NEW ADDITIVE `GL/db/29_gl_costadj_drill_ords.sql` = `GET /gl/butil/lines/costadj`
+(**GL post-05 re-run list is now 07..29**): the APPROVED adjustment rows for the drill's exact
+scope — row mode + aggregate mode (kys CTE over the butil key cache incl. the SECTOR data scope,
+copied verbatim from butil/lines so both requests always cover the same key set); metric `ap`
+(amount_aed, drill-shaped: PCA ref in the doc column, Validation = 'Cost Adjustment',
+classification + reason + Ref-invoice in Description) and `budget`/`budgetannual`
+(budget_override rows; annual ignores the period window). YTD rule mirrors
+DCT_PA_COST_ADJ_BUTIL_V exactly: NULL accounting period always counts, MM-YYYY counts on/before
+the end month. Frontend: `openBuDrill`/`openBuAgg` fetch base + adjustments IN PARALLEL and
+merge rows + total — gated on the SAME `buCadjOn()` response echo that stars the rows (and
+`row.hasAdj` for row drills), so unchecking "Include Cost Adjustment" keeps the drill raw and
+the drawer NEVER disagrees with the cell. Deliberately untouched: /butil/lines itself (36KB
+handler), books/registers, the Project-360 funnel drills (portfolio figures don't include
+adjustments). Deployed 29 via Linux SQLcl + webtier release **20260826152712** (GL-only
+overlay; rollback 20260825082023). Tests: `tests/costadj_drill_api_smoke.py` **18/18** (incl.
+the 03-2026/04-2026 period-boundary rule + aggregate mode) + `tests/costadj_drill_browser_smoke.py`
+**10/10** re-run against the deployed build. Test gotcha: wait on `buLoading()` +
+`buItems().length` — the `buBusy()` overlay flag races the re-run.
+
+#### v1.85.0 negfund drill REGRESSED then FIXED — GL/db/31 supersedes GL/db/28 (2026-08-26)
+
+**Symptom** (user report): clicking "View lines" on the over-budget band showed EVERY budget
+line, not just the negative-Fund-Available ones. **Root cause — a race between two additive
+layers on the SAME handler**: `GL/db/28` (2026-08-24) added `negfund=Y` on top of `21_butil_
+procash.sql`'s body as it stood THEN. Separately, `21_butil_procash.sql` was edited IN PLACE
+(354→401 lines) to add the 2026-08-26 plan-balance fields (`planApprovedAnnual/Ytd`, etc. —
+db/v2/126) and re-run — which silently dropped 28's `negfund` filter, since 28 was a standalone
+layer 21's edit never incorporated. The client had always sent `negfund=Y` correctly; the server
+just had no `l_negf` variable anymore to bind it to, so the param was ignored and every row
+came back. Confirmed live: `SELECT ... INSTR(h.source,'l_negf')` on the deployed handler = 0.
+
+**Fix**: `GL/db/31_butil_negfund_drill_v2.sql` — rebuilds the SAME `negfund=Y` filter on top of
+21's CURRENT (401-line, plan-balance-including) body, so nothing else regresses. `28` stays in
+the repo as a historical record; **31 is the live owner of `/gl/butil` going forward.** **GL
+post-05 re-run list is now 07..31** (30 unaffected — it owns the sibling `/butil/lines/plan`
+route only). **LESSON for the next edit to this handler**: extend the CURRENT body of 21 (or
+whichever file is the actual live owner per the deployed-handler length/verification query),
+never a copy taken at some earlier point — this handler has been redefined ~9 times now
+(07→11→12→13→15→21→28→31…) precisely because it accreted one param at a time; the failure mode
+is always "additive layer X was built from a body that predates additive layer Y."
+
+Verified live (production, not just dev-proxy): `tests/negfund_drill_browser_smoke.py` pointed
+at `https://129.151.159.189/` **15/15 EN+AR** — drawer row count (8) and total (-51,562,679.85)
+reconcile exactly to the band's own `negFund`/`negFundTotal`, every returned row genuinely
+negative. Deployed via `sql -name prod_mcp` (handler verified `NEGFUND WIRED` + `PLAN WIRED` +
+`COSTADJ WIRED` together) — no frontend change needed (the client-side code was already correct).

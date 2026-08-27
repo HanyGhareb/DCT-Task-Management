@@ -1,83 +1,41 @@
 -- =============================================================================
--- Budget Utilization -- Procash + Costing Adjustments (ADDITIVE, DEFINE_HANDLER
--- only)
--- File    : 21_butil_procash.sql       App 210 / GL        2026-08-17 / 2026-08-22
+-- Budget Utilization -- negative Fund Available drill, REBASED (ADDITIVE,
+-- DEFINE_HANDLER only)
+-- File    : 31_butil_negfund_drill_v2.sql   App 210 / GL        2026-08-26
 -- Adds to : gl.rest -- redefines ONLY the GET butil handler
--- Run     : sql -name prod_mcp @21_butil_procash.sql   (fresh session, as ADMIN)
--- Needs   : final apps/AP/db/13_procash_butil_view.sql AND db/v2/124 deployed
---           first
+-- Run     : sql -name prod_mcp @31_butil_negfund_drill_v2.sql   (fresh session, ADMIN)
+-- Needs   : 21_butil_procash.sql (CURRENT body, incl. its 2026-08-26 plan-balance
+--           addition) deployed first -- this file starts from that exact body.
 -- IMPORTANT: 05_gl_ords.sql rebuilds gl.rest from scratch -- the GL post-05
---           re-run list is now 07..30.
--- Needs   : db/v2/126 (DCT_PROJECT_CF_BUTIL_V) deployed first since 2026-08-26.
+--           re-run list is now 07..31 (30 is unaffected -- it owns the sibling
+--           /butil/lines/plan route only).
 --
--- WHY: procash records money that has already left the bank through the bank
--- portal but has NOT reached Fusion as a payable invoice, so no AP, GRN, PR or
--- PO figure sees it. Between the payment and the invoice that spend is
--- invisible on Budget Utilization -- which is exactly the window a budget owner
--- can overspend in.
+-- WHY THIS FILE EXISTS (supersedes 28_butil_negfund_drill.sql): 28 added the
+-- SAME negfund=Y filter on top of 21's PRE-plan-balance body. A parallel round
+-- of work edited 21_butil_procash.sql IN PLACE to add the plan-balance fields
+-- (planApprovedAnnual/Ytd, planRevisedAnnual/Ytd, planUnmatched, hasPlan) and
+-- re-ran it -- which silently dropped 28's negfund filter, since 28 was a
+-- separate additive layer 21's edit never incorporated. The client already
+-- sends negfund=Y (it never changed), so the symptom was the "View lines"
+-- drawer on the over-budget band showing EVERY line instead of just the
+-- negative ones -- the server was simply ignoring an unbound parameter.
+-- 28 stays in the repo as a historical record; THIS file is the live owner
+-- of the negfund filter going forward. LESSON for future edits to this
+-- handler: extend the CURRENT body of 21, not an older copy, or re-apply
+-- every additive layer (28's negf, this file) after any edit to 21.
 --
--- NEW PARAMETER procash=Y ("Include Procash", user decision 2026-08-17):
---   off (default) -- the procash figure is REPORTED but changes nothing, so
---                    Fund Available keeps the definition every book, register
---                    and reconciliation already quotes.
---   on            -- Actual counts procash too and Fund Available is reduced
---                    by it (fund - procash).
--- Either way the response carries `procash`, `procashCount`,
--- `fundAvailableExProcash` and `procashUnmapped`, so the page can show the
--- figure and the adjustment side by side.
---
--- procashUnmapped = live procash coded to a GL combination rather than to a
--- project, task and expenditure type. It cannot sit on a budget line, so it is
--- reported separately instead of being silently dropped.
---
--- The reports (BUDGET_UTIL_BOOK / BUDGET_UTIL_REGISTER) are deliberately NOT
--- changed here: their figures stay on the published definition of Fund
--- Available until that change is asked for explicitly.
---
--- NEW PARAMETER costadj (2026-08-22, default Y -- "Include Cost Adjustment"):
--- Projects Costing Adjustments (db/v2/124, DCT_PA_COST_ADJ) are manual signed
--- cost lines (plus/minus AED) on a budget line, optionally re-allocating a
--- mis-coded AP invoice distribution, plus an optional signed BUDGET_OVERRIDE.
--- Only APPROVED rows count (via DCT_PA_COST_ADJ_BUTIL_V, BUTIL_END-aware).
---   on (default) -- rows and totals ship budget / budgetAnnual / actualAp /
---                   fundAvailable ALREADY adjusted (Actual +adj, Budget +ovr,
---                   Fund +ovr-adj), so the KPI band, CSV and negFund band all
---                   follow with no client math.
---   off          -- published figures; the components are still reported.
--- Either way each row carries costAdj / costAdjOvr / costAdjOvrAnnual /
--- hasAdj and totals carry costAdj / costAdjCount / costAdjOvr /
--- costAdjOvrAnnual, so the page can star adjusted lines and show the figure.
---
--- COMMENTS flag (2026-08-23, db/v2/125 + GL/db/26): every row also carries
--- hasCmt Y/N + cmtCount (ACTIVE BUTIL_LINE-level comments on that line for the
--- selected accounting period -- ALL periods of the year when period is empty),
--- totals carry cmtCount, and the response echoes commentsEnabled='Y' so the
--- page only renders the (**) marker / Comments column against a server that
--- ships the flag. The join is an INLINE aggregate (per-period grain) -- a bare
--- view join would fan out rows on a full-year run.
---
--- NEW PARAMETER cmtdisp (2026-08-23 feedback round, default NONE -- the
--- "Display Comments" page LOV): NONE | PERIOD (selected period only) | ALL.
--- When not NONE each row also ships commentsText -- the line's ACTIVE comments
--- (roots + replies) as '[MM-YYYY] user: text' lines, newest first, scoped to
--- the page period (PERIOD) or the whole year (ALL); the response echoes
--- commentsDisplay. LISTAGG ... ON OVERFLOW TRUNCATE guards the 32K cap.
---
--- PLAN BALANCES (2026-08-26, db/v2/126): every row and the totals also carry
--- the user-uploaded expenditure plan (DCT_PROJECT_CASHFLOW, GL Cashflow tab)
--- as planApprovedAnnual / planApprovedYtd / planRevisedAnnual / planRevisedYtd
--- via DCT_PROJECT_CF_BUTIL_V -- line-grain 1:1 join, BUTIL_END-aware YTD
--- (full year => YTD = Annual). Rows add hasPlan Y/N (drill gate); totals add
--- planUnmatched = plan lines with NO butil line (checked against the db/v2/120
--- key cache) so an upload keyed off a dead line is reported, never dropped.
--- Purely additive display -- no parameter, no figure changes.
+-- NEW PARAMETER negfund (any non-null value, same convention as nocc):
+-- restricts BOTH the aggregate totals AND the items cursor to ONLY the lines
+-- whose EFFECTIVE Fund Available (same expression already used to compute
+-- negFund/negFundTotal, honouring procash=/costadj=) is negative. Feeds the
+-- over-budget warning band's drill drawer.
 -- =============================================================================
 
 SET DEFINE OFF
 SET SERVEROUTPUT ON SIZE UNLIMITED
 SET SQLBLANKLINES ON
 
-CREATE OR REPLACE PROCEDURE setup_gl_butil_procash AS
+CREATE OR REPLACE PROCEDURE setup_gl_butil_negfund_v2 AS
     c_mod CONSTANT VARCHAR2(30) := 'gl.rest';
 BEGIN
     ORDS.DEFINE_HANDLER(
@@ -105,6 +63,10 @@ BEGIN
   -- nocc=Y -> ONLY the data-quality rows: budget lines (annual budget <> 0)
   -- with NO cost centre. Feeds the red alert band's drill drawer.
   l_nocc   VARCHAR2(4)   := [COLON]nocc;
+  -- negfund=Y -> ONLY the over-budget rows: lines whose EFFECTIVE Fund
+  -- Available (same expression as negFund/negFundTotal below) is negative.
+  -- Feeds the over-budget warning band's drill drawer.
+  l_negf   VARCHAR2(4)   := [COLON]negfund;
   -- ovr=Y -> "Select to include Budget Override": GL_CTX.BUTIL_OVR makes the
   -- view ADD the signed budget change to the annual AND YTD budget per period
   -- row (db/v2/106 Excel workbook / GL drawer).
@@ -200,6 +162,8 @@ BEGIN
             AND pf.expenditure_type = v.expenditure_type
    WHERE v.budget_year = l_year
      AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
+     AND (l_negf IS NULL OR (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                              + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005)
      AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
      AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -314,6 +278,8 @@ BEGIN
             AND pf.expenditure_type = v.expenditure_type
     WHERE v.budget_year = l_year
       AND (l_nocc IS NULL OR (v.cost_centre IS NULL AND NVL(v.budget_annual,0) <> 0))
+      AND (l_negf IS NULL OR (v.fund_available - CASE WHEN l_pcash = 'Y' THEN NVL(pc.procash_aed,0) ELSE 0 END
+                               + CASE WHEN l_cadj = 'Y' THEN NVL(ca.budget_ovr_aed,0) - NVL(ca.cost_adj_aed,0) ELSE 0 END) < -0.005)
       AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
       AND (l_sector IS NULL OR v.sector = l_sector)
      AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
@@ -382,19 +348,18 @@ EXCEPTION WHEN OTHERS THEN
   dct_rest.err(500, SQLERRM);
 END;!', '[COLON]', CHR(58)));
     COMMIT;
-END setup_gl_butil_procash;
+END setup_gl_butil_negfund_v2;
 /
 
-BEGIN setup_gl_butil_procash; END;
+BEGIN setup_gl_butil_negfund_v2; END;
 /
-DROP PROCEDURE setup_gl_butil_procash;
+DROP PROCEDURE setup_gl_butil_negfund_v2;
 
 PROMPT === verification ===
 SELECT LENGTH(h.source) AS handler_chars,
-       CASE WHEN INSTR(h.source, 'dct_ap_procash_butil_v') > 0 THEN 'PROCASH WIRED' ELSE 'MISSING' END AS state,
-       CASE WHEN INSTR(h.source, 'dct_pa_cost_adj_butil_v') > 0 THEN 'COSTADJ WIRED' ELSE 'MISSING' END AS state2,
-       CASE WHEN INSTR(h.source, 'dct_gl_butil_cmt_v') > 0 THEN 'CMT WIRED' ELSE 'MISSING' END AS state3,
-       CASE WHEN INSTR(h.source, 'dct_project_cf_butil_v') > 0 THEN 'PLAN WIRED' ELSE 'MISSING' END AS state4
+       CASE WHEN INSTR(h.source, 'l_negf') > 0 THEN 'NEGFUND WIRED' ELSE 'MISSING' END AS state1,
+       CASE WHEN INSTR(h.source, 'dct_project_cf_butil_v') > 0 THEN 'PLAN WIRED' ELSE 'MISSING' END AS state2,
+       CASE WHEN INSTR(h.source, 'dct_pa_cost_adj_butil_v') > 0 THEN 'COSTADJ WIRED' ELSE 'MISSING' END AS state3
   FROM user_ords_handlers h
   JOIN user_ords_templates t ON t.id = h.template_id
   JOIN user_ords_modules m ON m.id = t.module_id

@@ -6,8 +6,12 @@
 --           Running under the prod connection fails: gl.rest lives under ADMIN
 --           and ORDS.DEFINE_TEMPLATE raises ORA-01403 there.
 -- Needs   : db/v2/122_dct_project_dashboard_views.sql deployed and granted.
+--           Since 2026-08-26 also db/v2/126 (DCT_PROJECT_CF_BUTIL_V): the
+--           portfolio register + totals and the 360 'year' block carry the
+--           uploaded expenditure plan as planApprovedAnnual/Ytd +
+--           planRevisedAnnual/Ytd (BUTIL_END-aware; full year => YTD=Annual).
 -- IMPORTANT: 05_gl_ords.sql DELETE_MODULEs gl.rest -- whenever 05 is re-run,
---            re-run 07..22 right after it.
+--            re-run 07..30 right after it.
 --
 -- Routes (all GL_VIEW_BUDGET_UTILIZATION gated, all SECTOR data scoped):
 --   GET projects/filters          filter LOVs, served from the butil caches
@@ -247,6 +251,7 @@ DECLARE
   b_green NUMBER; b_amber NUMBER; b_red NUMBER; b_grey NUMBER;
   f_over NUMBER; f_nobud NUMBER; f_stall NUMBER; f_back NUMBER; f_nospend NUMBER;
   n_artot NUMBER; n_arproj NUMBER; n_actdt NUMBER;
+  t_pfa NUMBER := 0; t_pfay NUMBER := 0; t_pfr NUMBER := 0; t_pfry NUMBER := 0;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
@@ -291,6 +296,31 @@ BEGIN
      AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '
                                    ||v.department||' '||v.cost_centre) LIKE '%'||UPPER(l_search)||'%');
 !') || TO_CLOB(q'!
+  -- expenditure plan (db/v2/126) over the SAME filtered project set: plan
+  -- lines aggregated per project, so the total equals the sum of the grid's
+  -- plan columns by construction
+  SELECT NVL(SUM(pf.plan_appr_annual),0), NVL(SUM(pf.plan_appr_ytd),0),
+         NVL(SUM(pf.plan_rev_annual),0), NVL(SUM(pf.plan_rev_ytd),0)
+    INTO t_pfa, t_pfay, t_pfr, t_pfry
+    FROM prod.dct_project_cf_butil_v pf
+   WHERE pf.budget_year = l_year
+     AND pf.project_number IN (
+         SELECT v.project_number FROM prod.dct_project_portfolio_v v
+          WHERE v.budget_year = l_year
+            AND (l_ptype  IS NULL OR INSTR('|'||l_ptype||'|', '|'||v.project_type||'|') > 0)
+            AND (l_sector IS NULL OR v.sector = l_sector)
+            AND (l_secok = 1 OR v.sector IN (SELECT cv.name_en FROM prod.dct_gl_class_value cv JOIN prod.v_dct_sec_user_scope sc ON sc.object_key = cv.value_code AND sc.object_type_code = 'SECTOR' AND sc.user_id = l_uid WHERE cv.class_type_code = 'SECTOR'))
+            AND (l_chapter IS NULL OR INSTR('|'||l_chapter||'|', '|'||v.chapter||'|') > 0)
+            AND (l_bu IS NULL OR INSTR('|'||l_bu||'|', '|'||v.business_unit||'|') > 0)
+            AND (l_approp  IS NULL OR INSTR('|'||l_approp||'|', '|'||v.appropriation||'|') > 0)
+            AND (l_program IS NULL OR INSTR('|'||l_program||'|', '|'||v.program||'|') > 0)
+            AND (l_cc     IS NULL OR (INSTR(l_cc,'|') = 0 AND v.cost_centre LIKE '%'||l_cc||'%')
+                                  OR INSTR('|'||l_cc||'|', '|'||v.cost_centre||'|') > 0)
+            AND (l_proj   IS NULL OR (INSTR(l_proj,'|') = 0 AND UPPER(v.project_number||' '||v.project_name) LIKE '%'||UPPER(l_proj)||'%')
+                                  OR INSTR('|'||l_proj||'|', '|'||v.project_number||'|') > 0)
+            AND (l_search IS NULL OR UPPER(v.project_number||' '||v.project_name||' '
+                                          ||v.department||' '||v.cost_centre) LIKE '%'||UPPER(l_search)||'%'));
+
   -- pass 2: the non budget legs. Separate scans on purpose: they must NEVER
   -- change the reconciling totals above.
   SELECT NVL(SUM(s.spend_total),0),
@@ -351,6 +381,8 @@ BEGIN
   APEX_JSON.write('apInvoiced', t_inv);        APEX_JSON.write('apPaid', t_paid);
   APEX_JSON.write('apBalance', t_bal);         APEX_JSON.write('billedRevenue', t_billed);
   APEX_JSON.write('pendingDocs', n_pdocs);     APEX_JSON.write('pendingAed', t_pamt);
+  APEX_JSON.write('planApprovedAnnual', t_pfa); APEX_JSON.write('planApprovedYtd', t_pfay);
+  APEX_JSON.write('planRevisedAnnual', t_pfr);  APEX_JSON.write('planRevisedYtd', t_pfry);
   APEX_JSON.close_object;
   APEX_JSON.open_object('bands');
   APEX_JSON.write('green', b_green); APEX_JSON.write('amber', b_amber);
@@ -399,7 +431,8 @@ BEGIN
            pn.pending_docs, pn.pending_aed, pn.max_pending_days, pn.docs_over_30d,
            sp.spend_total,
            pv.project_manager, pv.project_status,
-           sc.task_count, sc.tasks_planned_finish_past
+           sc.task_count, sc.tasks_planned_finish_past,
+           pf.pf_appr_annual, pf.pf_appr_ytd, pf.pf_rev_annual, pf.pf_rev_ytd
       FROM (
       SELECT v.project_number, MAX(v.project_name) project_name,
              MAX(v.project_type) project_type, MAX(v.business_unit) business_unit,
@@ -439,6 +472,12 @@ BEGIN
       ON sp.project_number = g.project_number
     LEFT JOIN prod.projects_v pv ON pv.project_number = g.project_number
     LEFT JOIN prod.dct_project_schedule_v sc ON sc.project_number = g.project_number
+    LEFT JOIN (SELECT project_number,
+                      SUM(plan_appr_annual) pf_appr_annual, SUM(plan_appr_ytd) pf_appr_ytd,
+                      SUM(plan_rev_annual) pf_rev_annual, SUM(plan_rev_ytd) pf_rev_ytd
+                 FROM prod.dct_project_cf_butil_v WHERE budget_year = l_year
+                GROUP BY project_number) pf
+      ON pf.project_number = g.project_number
    WHERE (l_status IS NULL OR INSTR('|'||l_status||'|', '|'||pv.project_status||'|') > 0)
      AND (l_band   IS NULL OR INSTR('|'||l_band||'|', '|'||h.health_band||'|') > 0)
      AND (l_mgr    IS NULL OR UPPER(pv.project_manager) LIKE '%'||UPPER(l_mgr)||'%')
@@ -473,6 +512,10 @@ BEGIN
     APEX_JSON.write('fundAvailable', NVL(r.fund_available,0));
     APEX_JSON.write('budgetLines',   NVL(r.budget_lines,0));
     APEX_JSON.write('overrideBudget',NVL(r.override_budget,0));
+    APEX_JSON.write('planApprovedAnnual', NVL(r.pf_appr_annual,0));
+    APEX_JSON.write('planApprovedYtd',    NVL(r.pf_appr_ytd,0));
+    APEX_JSON.write('planRevisedAnnual',  NVL(r.pf_rev_annual,0));
+    APEX_JSON.write('planRevisedYtd',     NVL(r.pf_rev_ytd,0));
     APEX_JSON.write('spendAll',      NVL(r.spend_total,0));
     APEX_JSON.write('apInvoiced',    NVL(r.ap_invoiced_aed,0));
     APEX_JSON.write('apPaid',        NVL(r.ap_paid_aed,0));
@@ -569,6 +612,7 @@ DECLARE
   n_pdocs NUMBER; t_pamt NUMBER; n_p30 NUMBER; n_pmax NUMBER;
   k_tasks NUMBER; k_plan NUMBER; k_past NUMBER; k_actf NUMBER; k_ovd NUMBER; k_elapsed NUMBER;
   k_pstart DATE; k_pfin DATE;
+  y_pfa NUMBER; y_pfay NUMBER; y_pfr NUMBER; y_pfry NUMBER;
 BEGIN
   IF l_user IS NULL THEN dct_rest.err(401,'Unauthorized'); RETURN; END IF;
   IF prod.dct_sec.has_priv_or_role(l_user, 'GL_VIEW_BUDGET_UTILIZATION', NULL, 'GL') = FALSE THEN
@@ -607,6 +651,11 @@ BEGIN
          NVL(SUM(budget_lines),0), NVL(SUM(override_budget),0)
     INTO y_bud, y_buda, y_ap, y_grn, y_pr, y_po, y_fund, y_lines, y_ovr
     FROM prod.dct_project_portfolio_v WHERE budget_year = l_year AND project_number = l_num;
+
+  SELECT NVL(SUM(plan_appr_annual),0), NVL(SUM(plan_appr_ytd),0),
+         NVL(SUM(plan_rev_annual),0), NVL(SUM(plan_rev_ytd),0)
+    INTO y_pfa, y_pfay, y_pfr, y_pfry
+    FROM prod.dct_project_cf_butil_v WHERE budget_year = l_year AND project_number = l_num;
 
   SELECT NVL(MAX(spend_total),0), NVL(MAX(ap_invoice_count),0), NVL(MAX(grn_receipt_count),0),
          NVL(MAX(pr_count),0), NVL(MAX(po_count),0),
@@ -675,6 +724,8 @@ BEGIN
   APEX_JSON.write('commitmentPr', y_pr);      APEX_JSON.write('obligationPo', y_po);
   APEX_JSON.write('fundAvailable', y_fund);   APEX_JSON.write('budgetLines', y_lines);
   APEX_JSON.write('overrideBudget', y_ovr);
+  APEX_JSON.write('planApprovedAnnual', y_pfa); APEX_JSON.write('planApprovedYtd', y_pfay);
+  APEX_JSON.write('planRevisedAnnual', y_pfr);  APEX_JSON.write('planRevisedYtd', y_pfry);
   APEX_JSON.write('spendAll', s_spend);
   APEX_JSON.write('unbudgetedSpend', GREATEST(s_spend - (y_ap + y_grn + y_pr + y_po), 0));
   APEX_JSON.write('hasBudget', CASE WHEN y_lines > 0 THEN 'Y' ELSE 'N' END);

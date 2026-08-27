@@ -182,6 +182,14 @@ def _definition_extras(conn, code):
     return row if row else (code, None, None, None)
 
 
+def _run_dist_id(conn, run_id):
+    """dist_id of a distribution run (GL Generate-and-Send), else None."""
+    cur = conn.cursor()
+    cur.execute("select dist_id from prod.dct_rpt_run where run_id = :r", r=run_id)
+    row = cur.fetchone()
+    return int(row[0]) if row and row[0] is not None else None
+
+
 def record_output(conn, run_id, fmt, name, mime, data):
     cur = conn.cursor()
     lob = conn.createlob(oracledb.DB_TYPE_BLOB)
@@ -314,8 +322,19 @@ def process(conn, conf, job):
         attachments.append((fn, PPTX_MIME, pptx_bytes))
 
     sent = failed = 0
+    dist_id = _run_dist_id(conn, run_id)
     if (config.cfg(conf, "EMAIL_ENABLED", "N") or "N").upper() == "Y" and attachments:
-        sent, failed = deliver.send_report(conn, conf, run_id, ctx, subj_tpl, body_tpl, attachments)
+        if dist_id:
+            # distribution run (GL Generate-and-Send): one To/Cc/Bcc message
+            sent, failed = deliver.send_dist_report(
+                conn, conf, run_id, ctx, subj_tpl, body_tpl, attachments, dist_id)
+        else:
+            sent, failed = deliver.send_report(
+                conn, conf, run_id, ctx, subj_tpl, body_tpl, attachments)
+    elif dist_id and attachments:
+        # emails globally off -- log the defined recipients as SKIPPED so the
+        # email log stays honest about what was generated but not sent
+        deliver.record_dist_skipped(conn, run_id, dist_id, "EMAIL_ENABLED=N")
 
     mark(conn, run_id, "SUCCESS", row_count=row_count)
     print(f"[run {run_id}] {code} OK: {row_count} rows, formats={','.join(formats)}, "

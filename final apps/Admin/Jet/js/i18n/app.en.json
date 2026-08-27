@@ -277,7 +277,7 @@
   "sys.perf.duration": "last duration",
   "sys.perf.expand": "Expand SQL performance",
   "sys.perf.failures": "failures",
-  "sys.perf.hint": "Interactive/application SQL warns on one execution at 5 seconds or repeated executions averaging 3 seconds. Background reports are identified by report code/run ID and remain diagnostic only.",
+  "sys.perf.hint": "Only user/API and application SQL can raise slow-SQL alerts. Reports, OTBI/Python workers and APEX Builder administration remain visible as REPORT, BACKGROUND or ADMIN_TOOL diagnostics.",
   "sys.perf.loading": "Loading live SQL performance…",
   "sys.perf.hintTitle": "SQL performance",
   "sys.perf.hintBody": "Re-reads live PROD execution statistics to surface the slowest and most-run statements. No bind values or AWR data are stored; nothing is changed.",
