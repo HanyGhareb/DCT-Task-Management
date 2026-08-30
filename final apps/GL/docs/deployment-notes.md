@@ -3,6 +3,169 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-29 (7) — Butil Excel Register: NEW sheet 8 "Additional Fund Transfers" (reporting/db/25 re-seed only — no GL script, no frontend, no APP_VERSION change).** User request: the budget transfer transactions ride the Budget Utilization register in their own worksheet, **Additional Fund only**, sorted project / task / etype / transaction date. Source = the PBT extract (`pa_budget_trx_headers` ⋈ `pa_additional_fund_lines` ⋈ per-transaction-aggregated `pa_budget_trx_approvals`); 32 columns = header identity (trx num, decree no, trx date/year, BU, project type, status) + full line detail (coding, code combination, signed Amount, budget/actual figures, line/baseline/journal statuses) + approval trail (submitted by, assignees, last state, last action time) + segment-resolved Sector/Cost centre/Department lead columns. Honours ALL the page filters the Generate-Report and Generate-and-Send flows forward (year, period-YTD cut on transaction date via BUTIL_END, sector/chapter/costcenter/projecttype/project/task/etype/search/bu) — applied to the line's own attributes, NOT the butil scope join (987 of 4,561 transfer lines have no exact butil line match). Details + verification in `reporting/docs/deployment-notes.md` (2026-08-29 entry).
+- **2026-08-29 (6) — Missing-classification warning on the agg tabs (v1.93.0, frontend-only).** User
+  rule: **cost centre is MANDATORY on every budget line** — a keyless Department/Sector group is a
+  data-quality violation, not a dead row. The EXISTING missing-CC warning band (the amber `.bu-alert`
+  above the Search region, negfund pattern) now fires from EITHER source — `/butil`'s `missingCc`
+  aggregate (any tab, as before) OR a keyless group on an agg tab (`buAggMissRow` computed; the
+  message takes count + annual budget from whichever tripped it, `buMissBandOn`). The keyless row
+  itself is tinted red (`.tr-noclass`, 3px `#C0392B` spine) and **every cell of it now opens the
+  missing-lines list** (`openBuMissCc` — `/butil?nocc=Y`, same page filters) instead of being a
+  no-op; keyed rows keep their group drills, `money-cell` affordance now unconditional on the agg
+  cells. Live 2026 data is FULLY classified (missingCc 0, zero keyless groups — probed unfiltered
+  AND at the default page scope), so the smoke SIMULATES a keyless group (pushes a fake row into
+  `buAggItems`) and asserts band-fires/message-numbers/red-tint/cell-click-drill/band-click-drill/
+  band-hides. Webtier GL-only overlay release **20260829182357** (rollback 20260829180642).
+  Smoke `butil_tabs_browser_smoke.py` **54/54 EN+AR**.
+- **2026-08-29 (5) — Department/Sector tab FIGURE DRILLS (v1.92.0, GL/db/30 re-run + frontend).** Every
+  money cell of a Department / Sector group row now opens the SAME drill drawer as the Budget Line
+  tab (user request "add the drilldown for each figure … with same way"): Budget Annual/YTD, Plan
+  Approved/Revised Annual/YTD, vs Plan, Actual AP, Actual GRN, Commitment PR, Obligation PO. The
+  drill is the existing **aggregate mode** of `/gl/butil/lines` (+ `/butil/lines/costadj` appended
+  when the group is starred, same `CADJ_DRILL_METRICS` rule as the line tab) scoped to the group:
+  the page filter set with `costcenter=` the group's CC (dept) / `sector=` the group's sector —
+  `openBuAggDrill`/`openBuAggPlan`/`buAggGrpScope` in app.js; drawer subtitle names the group,
+  context = level + YTD period. **GL/db/30 re-run — `/gl/butil/lines/plan` gains `extra=Y`**: a
+  third `kys` UNION ALL leg serves the plan rows whose key has NO budget line (the planUnmatched
+  set), attributed through `dct_butil_key_cache` exactly like GL/db/33's unmatched leg (task attrs
+  first, then project), so a GROUP plan drill ties even where planExtra > 0 (CCs 4510230/4515300/
+  4515500 — 532 monthly rows on 4510230 alone). Default `N` keeps the Plan KPI tile drill
+  matched-only (regression-asserted: no-extra total == /butil planApprovedAnnual). Groups with no
+  key (unclassified sector / missing CC) can't be scoped server-side and stay non-drillable
+  (`buAggCanDrill`). Deploy = db/30 via local SQLcl fresh session (file converted to CRLF), then
+  webtier GL-only overlay release **20260829180642** (rollback 20260829174602).
+  Tests: `butil_agg_api_smoke.py` **67/67** (3 dept groups × 6 metrics + 3 planExtra CCs annual+YTD
+  + sector AP/plan + tile-drill regression) · `butil_tabs_browser_smoke.py` **47/47 EN+AR** + live
+  deployed-build drill diff 0.0. Test gotcha: closing the comments drawer on an agg tab REFETCHES
+  the aggregation (v1.90.0 cache invalidation) — wait `!buAggLoading()` before counting drill cells.
+- **2026-08-29 (4) — Level-strip KPI chips + Encumbrance balance (v1.91.0, frontend-only).** The
+  Results toolbar's plain text summary became **six professional icon KPI chips** (`.bu-lvl-kv`
+  cards: tinted 27px icon disc + stacked uppercase label / bold value, palette mirroring the
+  Overview band — count brand-green list, Budget steel-blue database, Plan YTD plum calendar-check,
+  Actual purple dirham/dollar, **NEW Encumbrance amber lock = Commitment (PR) + Obligation (PO)**,
+  Fund green shield flipping red `.kv-neg` when negative) with formula tooltips (`lv*Hint` keys
+  EN+AR). `buLvlSum` gained `enc` on both levels. Also fixed: the v1.89 strip CSS referenced the
+  non-existent `--mut` var (GL's token is `--muted`). Webtier overlay release **20260829174602**
+  (rollback 20260829173552); smoke `butil_tabs_browser_smoke.py` now **39/39 EN+AR** (6 chips,
+  Encumbrance = PR+PO reconciliation).
+
+- **2026-08-29 (3) — Column hints reworked formula-first + agg Comments column shows the recorded text (v1.90.0, GL/db/33 re-run + frontend).** Feedback round on the level tabs: ① **every column of the butil line table AND the Department/Sector tables now carries a simple, formula-bearing hint** — new `ch*` i18n keys EN+AR (e.g. Fund Available = "YTD Budget − (Actual AP + Actual GRN + Commitment PR + Obligation PO); − Procash when included"), and the three existing keys rewritten formula-first: `piVsPlanHint` = "vs Plan = Total Actual (AP + GRN) ÷ Plan YTD × 100 …" (thresholds still substituted live), `piCovColHint` = "Plan Coverage = Plan Annual ÷ Annual Budget × 100 …", `buProcashHint` shortened. The smoke asserts NO visible line-table header is hint-less. ② **Department/Sector Comments column records the comment text of that department/sector at the selected Accounting Period** — GL/db/33's per-group lookup became COUNT + `LISTAGG('['||period||'] '||author||': '||text …)` newest-first (period-scoped: `l_period IS NULL OR accounting_period = l_period`; full year = the whole year), shipped as `commentsText`; the agg comments cell = 💬 button + `.cmt-txt-clamp` text (`.agg-cmt`, min 220px). Closing the comments drawer while on an agg tab **invalidates the cache and re-fetches** (`buAggInvalidate` + `closeCmtDrawer` hook, guarded on view==='butil') so a just-added comment appears immediately. Verified live with a CC-level comment round-trip (created on 4519202 @ 08-2026 → text + count on the dept row, absent at 07-2026 → deleted). Webtier overlay release **20260829173552** (rollback 20260829155225). Smoke `butil_tabs_browser_smoke.py` now **37/37 EN+AR** (formula hints, headers-all-hinted sweep, comments text in grid, period scoping).
+
+- **2026-08-29 (2) — Budget Utilization Results-region LEVEL TABS (v1.89.0, NEW GL/db/33 + frontend).**
+  User request + layout pick **B (Segmented Deck)** from the three demoed studies (artifact
+  `butil-tab-studies.html`): the Results region gains a **pill segmented switcher with icons** —
+  **1 Budget Line** (the untouched paged line table) · **2 Department** (cost-centre grain) ·
+  **3 Sector** — plus a **live summary strip** (count · Budget · Plan YTD · Actual · Fund) that
+  re-computes per level. Department/Sector come from NEW **`GET /gl/butil/agg?level=dept|sector`**
+  (`GL/db/33_butil_agg_ords.sql`, additive template `butil/agg` — the live `GET butil` owner stays
+  GL/db/32): the SAME butil-view join + full predicate set as `/gl/butil` (incl. sector data
+  scoping, costadj/procash/ovr folding, BUTIL_END period window) GROUPed server-side, **plus a
+  second UNION ALL leg folding the uploaded expenditure plan with NO budget line into the group
+  plan figures** (the `/gl/butil` `planUnmatched` amount — attributed through
+  `dct_butil_key_cache`: task match first, then the project's attributes; a group with plan but
+  no lines ships `planOnly='Y'`, rendered as an amber "Plan only" row). Group vs-Plan/Coverage
+  verdicts use the same thresholds/expressions as the line grain; `planExtra` per row + totals
+  carries the folded-in amount (note under the table + cell title). Group 💬 buttons open the
+  **COST_CENTER / SECTOR** comment levels (db/v2/125) and per-group `cmtCount` ships in the
+  response. Export CSV exports the ACTIVE tab (dept/sector = client-side, full set loaded — 51
+  CCs / 11 sectors, no pager). **GL post-05 re-run list = 07..33.**
+  GOTCHA (hit live): `IF l_level NOT IN (...)` never fires on a NULL bind — 3-valued logic; the
+  guard must be `IF l_level IS NULL OR l_level NOT IN (...)`.
+  Deployed: db/33 via SQLcl (handler 16,466 chars, verified INSTR markers); webtier GL-only
+  overlay release **20260829155225** (rollback 20260827080130). Tests:
+  `tests/butil_agg_api_smoke.py` **38/38** (dept+sector reconcile byte-exact to /gl/butil totals
+  full-year, period-cut and costadj=N; planExtra == planUnmatched 3,244,500; 400s) +
+  `tests/butil_tabs_browser_smoke.py` **31/31 EN+AR/RTL** (pills/strip/reconciliation/plan-only
+  note/comment drawer at COST_CENTER/CSV names/search re-scope), plus a deployed-build spot
+  check (51 groups, fund diff 0, no page errors).
+
+- **2026-08-29 — DATA LOAD: 40 Costing Adjustments from "Missing Projects and tasks from AP
+  2026.xlsx"** (docs/Reports/GL/Data/Cost Adjustment/, Paid Status = Paid only; 2 Unpaid rows
+  excluded). PCA-00019..PCA-00058, total AED 789,254.54 — **39 APPROVED** (AED 750,254.54,
+  user decision) + **PCA-00043 left DRAFT** for review (invoice DCTCS2026FEB052, AED 39,000:
+  the sheet said task "Freelancers-N" but project 4511001180's actual task is
+  **Freelancers-N1** — loaded with the corrected task, pending user confirmation). Rules
+  applied: expenditure type = the (project, task) budget line whose name starts with the GL
+  Combination's ACCOUNT segment (5th token; all 40 resolved 1:1, zero ambiguity); accounting
+  period = each row's own Period (01..07-2026); classification CORRECTION; every row linked
+  to its AP invoice distribution (invoiceId via costadj/meta/dists, matched on invoice
+  number + line + dist; original coding empty — these dists carry none); comments = invoice
+  description. Loaded via the /gl/costadj API (same validation as the UI), idempotent on
+  invoice+line+dist. Verified: butil 2026 totals.costAdj moved by EXACTLY +750,254.54.
+  Loader gotcha: the live costadj/meta/dists response OMITS empty coding keys (handler
+  reworked after v1.79) — read them with .get(), never by subscript.
+
+- **2026-08-27 (4) — Cost adjustments in the Excel Register (reporting/db/25, user report).** The
+  BUDGET_UTIL_REGISTER showed raw view figures, so a line whose Actual is entirely a costing
+  adjustment (4511000981 · MICE-Trade Shows-N = PCA-00018) exported Actual Ap 0.00. Sheet 1 now
+  folds APPROVED adjustments server-side (actual/budget/fund/utilization + the plan indicators all
+  on adjusted figures — page costadj=Y parity) + explicit Cost Adjustment / Budget Override (Adj)
+  columns, and NEW **sheet 8 "Costing Adjustments"** lists the transactions (ref, period, key,
+  classification, amounts, referenced invoice, reason, approver). Book PDF folded the SAME DAY on user request
+  (reporting/db/21: overview/by-sector/pressure + plan sections all on adjusted figures). Verified vs the live /gl/butil figures. See the reporting
+  deployment notes for details.
+
+- **2026-08-27 (3) — "Show Plan" LOV (v1.88.1, frontend-only, user feedback).** The
+  "Show Plan Insights" checkbox became a 3-option Search LOV **"Show Plan"** (`buPlanMode`):
+  **Yes (default)** = plan columns (Plan Annual/YTD + Revised pair when data exists) with the
+  vs Plan + Plan Coverage indicator columns; **No** = NO plan columns in the results table at
+  all; **Plan with insights** = everything incl. the D2 micro-chart + D3 composite columns.
+  `buPlanOn`/`buPlanIns` are computeds off the mode; all plan headers/cells sit inside a
+  `ko if: buPlanOn` wrapper; Reset restores Yes. KPI tiles, K2 strips and the CSV columns are
+  deliberately unaffected (the Overview keeps its plan summary either way). Webtier overlay
+  release **20260827080130** (rollback 20260827073754); smoke now **25/25 EN+AR** incl. the
+  three modes, local + deployed.
+
+- **2026-08-27 (2) — Plan Insights (v1.88.0, NEW GL/db/32 + frontend + reporting/db/21+25 + book template).**
+  User-selected mockup combo **D1 + (D2+D3 behind "Show Plan Insights", default No) + K1 + K2 + R1 + B2**
+  (mockup page `docs/design-mockups/plan-insights-mockups.html`). Two indicators, computed
+  SERVER-side so page/CSV/drills/reports can never disagree:
+  **① Plan vs Actual (execution)** — the row's Total Actual (AP incl. cost-adj when costadj=Y,
+  + GRN, + procash when procash=Y) as % of the **EFFECTIVE** YTD plan (= REVISED when
+  `plan_rev_annual <> 0`, else APPROVED): verdict `WITHIN` 👍 (90–110%) / `BELOW` 👎 (<90%) /
+  `AHEAD` ✋ (>110%) / `NOPLAN`; **② Plan vs Budget (coverage)** — effective annual plan as % of
+  the adjusted annual budget: `FULL` (95–105%) / `UNDER` (gap) / `OVER` / `NONE`. Thresholds =
+  **GL module settings `PLAN_EXEC_TOL_LOW/HIGH` + `PLAN_COV_LOW/HIGH`** (seeded 90/110/95/105 by
+  db/32, Admin-editable) and are **echoed per response** (`planThresholds`) so the client colors
+  rows exactly as the server counted them.
+  - **GL/db/32_butil_plan_insights.sql = the NEW LIVE OWNER of `GET /gl/butil`** (supersedes 31;
+    body = 31's deployed body verified length-identical first, per the negfund-race lesson).
+    Adds per-row `planEffYtd/planEffAnnual/planExecPct/planVariance/planExecState/planCovPct/
+    planCovState`, 13 totals aggregates (`planWithin/Below(+Amt)/Ahead(+Amt)/NoPlan`,
+    `planCovFull/Under/Gap/Over/None`, `planEffYtd/Annual`) and **NEW param
+    `planstate=WITHIN|BELOW|AHEAD|NOPLAN`** restricting totals AND items (negfund convention —
+    feeds the K1 row / K2 strip drills). **GL post-05 re-run list = 07..32.**
+    ⚠ handler literal now ~31.1K of the 32,767 cap — the NEXT edit must switch to concatenated
+    TO_CLOB pieces.
+  - **Frontend (v1.88.0)**: D1 = always-on **vs Plan** (hand + %) + **Plan Coverage** (pill)
+    columns; Search toggle **Show Plan Insights** (default No, frontend-only) reveals the D2
+    micro-chart column (track = plan YTD, fill = actual, tick = YTD budget, plum coverage bar)
+    + D3 composite cell; K1 = plum plan tile split into **Plan Performance** (hero exec % +
+    hand; Within/Below/Ahead rows FILTER the results via planstate; Plan-YTD row keeps the
+    monthly plan drill) + steel-blue **Plan Coverage** tile (`bu-kpis7` grid); K2 = amber
+    execution + green coverage strips above Overview (negfund-band pattern; hidden while a
+    verdict filter is applied — the Results-header **chip** with ✕ takes over; Reset clears
+    both); CSV gains Effective Plan YTD / Plan Utilization % / Plan Variance / Plan Status /
+    Plan Coverage % / Coverage Status; skCols 22→24.
+  - **Reports**: BUDGET_UTIL_REGISTER sheet 1 gains the 4 indicator columns (R1 — glyph
+    statuses ▼/▲/●; thresholds via a CROSS-JOINed settings aggregate); BUDGET_UTIL_BOOK gains
+    **Part 6 — Expenditure Plan Performance** (B2: KPI strip, per-sector execution + coverage
+    bars, 6.1 sector table, 6.2 top-15 deviations, methodology note; Observations renumbered
+    Part 7, TOC updated; sections `plan_sector`/`plan_dev`/`plan_cov` in reporting/db/21).
+  - **GOTCHAS (all hit live):** `CHR(9660)` for ▼ emits an INVALID UTF-8 byte pair (CHR is
+    byte-based) → the python datasource dies decoding; `UNISTR('\25BC')` can't ride the MULTI
+    source_ref (its backslash is an illegal JSON escape → JSONDecodeError at claim time); and
+    bare `NCHR(9660)` inside a VARCHAR2 CASE = **ORA-12704 character set mismatch** — the
+    working form is **`TO_CHAR(NCHR(9660))`**.
+  - Deployed: db/32 via SQLcl (settings seeded, handler 30,919 chars, all markers wired);
+    seeds 21+25 + template via python-oracledb/upload on vm180 (+ fleet fallback copies);
+    webtier GL-only overlay release **20260827073754** (rollback 20260827000630). Tests:
+    `tests/plan_insights_api_smoke.py` **20/20** (recompute parity, planstate reconciliation
+    1178/19/472, thresholds echo, period basis, costadj=N) + `tests/plan_insights_browser_smoke.py`
+    **23/23 EN+AR** local AND against the deployed build; register run verified (4 columns +
+    all 4 glyph statuses), book run verified (124-page PDF, Part 6 + Part 7 renumber).
+
 - **2026-08-27 — Cost-adjustment AP drill round 2 (v1.87.2, GL/db/29 re-run + frontend): the row IS the invoice distribution, marked (**).**
   User feedback on 2026-08-26 (4): the row still read as the adjustment transaction
   (Validation "Cost Adjustment", Payment "Reallocation", PCA text in the description). Now the
