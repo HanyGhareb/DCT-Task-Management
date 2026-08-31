@@ -523,8 +523,15 @@ def _do_relogin(conn, p, host, ctx_by_env, browser_by_env, browsers, force, acti
         if not force:
             auth._record_mfa("SESSION_OK", en)
         print(f"[worker {host}] {action}: session OK", flush=True)
+        # Age renewal is routine fleet housekeeping (three VMs, several times a
+        # day).  The MFA number is already surfaced by auth.py when approval is
+        # required; keep Telegram success confirmation for explicit operator
+        # commands only so unattended renewals do not flood the ops chat.
+        if action != "age auto re-login":
+            notify.send(f"✅ {host.replace('atd-', '')}: {action} completed — Fusion session is ready.")
     except Exception as e:  # noqa: BLE001 (e.g. MFA not approved)
         print(f"[worker {host}] {action}: login failed: {e}", flush=True)
+        notify.send(f"❌ {host.replace('atd-', '')}: {action} failed — {checks.scrub(str(e))[:500]}")
 
 
 def _recover_stale_worker(w):

@@ -4,7 +4,9 @@ After=network-online.target
 Wants=network-online.target
 
 [Service]
-Type=simple
+Type=notify
+NotifyAccess=main
+WatchdogSec=90s
 # systemd does not set HOME; env.sh uses $HOME for TNS_ADMIN/ATD_STATE_DIR
 Environment=HOME=/root
 Environment=PYTHONUNBUFFERED=1

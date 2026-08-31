@@ -21,6 +21,15 @@ html[dir=rtl] body{font-family:var(--ar)}
 a{color:var(--brand);text-decoration:none}
 em{font-style:normal;color:var(--brand)}
 .mono{font-variant-numeric:tabular-nums;font-feature-settings:"tnum";letter-spacing:.01em}
+
+/* Revenue Categories — Settings hierarchy, aligned to the GL navy/gold shell */
+.rc-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin:0 0 18px}
+.rc-kpi{position:relative;overflow:hidden;background:linear-gradient(135deg,#fff 65%,#f3f6fb);border:1px solid var(--line,#dce3ea);border-radius:12px;padding:15px 18px;box-shadow:0 10px 28px -25px #18314f}
+.rc-kpi:before{content:"";position:absolute;inset:0 auto 0 0;width:4px;background:#d1a744}
+[dir=rtl] .rc-kpi:before{inset:0 0 0 auto}.rc-kpi>span{display:block;color:#66778b;font-size:.72rem;text-transform:uppercase;letter-spacing:.07em;font-weight:700}.rc-kpi>b{display:block;color:#263a55;font-family:Fraunces,serif;font-size:1.8rem;line-height:1.25}.rc-kpi small{color:#768699}
+.rc-tabs{margin-bottom:14px}.rc-body{min-height:250px}.rc-search{min-width:320px}.rc-table .rc-main{background:#f6f8fb}.rc-table .rc-main td:first-child{box-shadow:inset 4px 0 #405cc7}.rc-table .rc-child td:nth-child(2){padding-inline-start:34px}.rc-branch{color:#7c8ba0;margin-inline-end:8px}.rc-desc,.rc-path{display:block;color:#7b899a;font-size:.72rem;margin-top:2px}.rc-note{padding:10px 13px;margin:0 0 13px;background:#fff8e8;border-inline-start:4px solid #d1a744;border-radius:7px;color:#6e5622;font-size:.8rem}.rc-check{display:flex!important;flex-direction:row!important;align-items:center;gap:9px;background:#f3f6fb;padding:12px;border-radius:8px}.st--info{background:#e8eeff!important;color:#3653b3!important}.danger{color:#b33c3c!important}
+.req{color:#c62828;font-style:normal;font-weight:800;margin-inline-start:4px}.rc-audit{margin:15px 0;padding:13px 15px;border:1px solid #dce3ea;border-radius:9px;background:#f7f9fb}.rc-audit>b{display:block;color:#263a55;margin-bottom:9px}.rc-audit dl{display:grid;grid-template-columns:1fr 1fr;gap:9px 18px;margin:0}.rc-audit dl div{min-width:0}.rc-audit dt{color:#718095;font-size:.7rem;text-transform:uppercase;letter-spacing:.05em}.rc-audit dd{margin:2px 0 0;color:#263a55;font-weight:600;overflow-wrap:anywhere}
+@media(max-width:800px){.rc-kpis{grid-template-columns:1fr}.rc-search{min-width:0;width:100%}}
 .grow{flex:1}
 
 /* ── top bar ─────────────────────────────────────────────────────── */
@@ -1629,3 +1638,180 @@ html[dir=rtl] .rg-book::after{right:auto;left:-5px;border-radius:2px 0 0 2px}
 .gs-params{background:#f6f7f8;border:1px solid #e3e6ea;border-radius:8px;padding:10px;font-size:11.5px;white-space:pre-wrap;overflow-wrap:anywhere}
 @media (max-width:900px){.gs-cols{grid-template-columns:1fr}.gs-mid{justify-content:center}}
 .dw-sub{font-size:12px;opacity:.85;margin-block-start:3px}
+
+/* ── Plan Insights (v1.88.0, mockups D1+K1+K2, 2026-08-27) ────────────
+   D1 = always-on vs-Plan + Plan-Coverage columns; D2/D3 = the visual
+   columns behind the "Show Plan Insights" search toggle; K1 = the plan
+   tile split into Performance + Coverage tiles (7-tile band); K2 = the
+   amber/green insight strips above the Overview region. */
+.bu-kpis.bu-kpis7{grid-template-columns:1fr 1.05fr 1.05fr .95fr 1.15fr 1.05fr .95fr}
+@media (max-width:1700px){.bu-kpis.bu-kpis7{grid-template-columns:repeat(3,1fr)}}
+@media (max-width:1100px){.bu-kpis.bu-kpis7{grid-template-columns:repeat(2,1fr)}}
+@media (max-width:760px){.bu-kpis.bu-kpis7{grid-template-columns:1fr}}
+.bk-plancov{--bk-c:#3A6EA5;--bk-soft:#E7EEF6}
+.pi-hand{font-size:19px}
+.pi-th{white-space:nowrap}
+.pi-th-wide{min-width:230px}
+.pi-cell{white-space:nowrap}
+td.pi-cell{vertical-align:middle}
+.vp{display:inline-flex;align-items:center;gap:6px;font-weight:700;cursor:pointer}
+.vp em{font-style:normal;font-size:15px}
+.vp.ok{color:var(--ok)} .vp.low{color:var(--warn)} .vp.high{color:var(--bad)} .vp.none{color:var(--muted);font-weight:500;cursor:default}
+.pi-pill{display:inline-flex;align-items:center;font-size:11px;font-weight:700;border-radius:999px;padding:2.5px 10px;white-space:nowrap}
+.pi-pill.full{background:#E3F0E9;color:var(--ok)}
+.pi-pill.under{background:#F7EDDC;color:var(--warn)}
+.pi-pill.over{background:#E7EEF6;color:var(--info)}
+.pi-pill.np{background:#EEF0EE;color:var(--muted)}
+/* D2 micro-chart cell: track = plan YTD, fill = actual, tick = YTD budget */
+.pi-d2{min-width:225px}
+.bl-row{display:flex;align-items:center;gap:8px}
+.bl-hand{font-size:14px;flex:none}
+.bl-track{position:relative;flex:1;height:9px;border-radius:99px;background:#E4E9E4;display:block}
+.bl-fill{position:absolute;inset-block:0;inset-inline-start:0;border-radius:99px;display:block}
+.bl-fill.ok{background:var(--ok)} .bl-fill.low{background:#D89A3E} .bl-fill.high{background:var(--bad)}
+.bl-tick{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--ink);opacity:.55;display:block}
+.bl-cap{font-size:10.5px;color:var(--muted);margin-top:2px}
+.bl-cap b{color:var(--ink)}
+.bl-cov{height:5px;border-radius:99px;background:#EEE7F0;margin-top:4px;overflow:hidden}
+.bl-cov i{display:block;height:100%;background:#8E4585;border-radius:99px}
+/* D3 composite cell */
+.pi-d3{min-width:215px}
+.pi-d3 .sc-row,.sc-row{display:flex;align-items:center;gap:7px;font-size:11.5px;padding:1px 0}
+.sc-row .dot{width:7px;height:7px;border-radius:50%;flex:none}
+.sc-row .l{color:var(--muted);font-weight:600}
+.sc-row .v{margin-inline-start:auto;font-weight:700;color:var(--ink)}
+.sc-row .v.ok{color:var(--ok)} .sc-row .v.low{color:var(--warn)} .sc-row .v.high{color:var(--bad)}
+.sc-div{border-top:1px dashed var(--line);margin:3px 0}
+/* K2 insight strips — amber (execution) + green (coverage) .bu-alert variants */
+.bu-alert--pi{cursor:default;background:linear-gradient(120deg,#FBF3E2,#F8EDD6);border-color:#E8D5A9;border-inline-start-color:var(--warn)}
+.bu-alert--pi:hover{transform:none;box-shadow:var(--shadow)}
+.bu-alert--pi .bu-alert-tx{color:#6E5010}
+.bu-alert--pi .bu-alert-tx b{color:var(--warn)}
+.bu-alert--pi .bu-alert-ic{background:var(--warn)}
+.bu-alert--picov{cursor:default;background:linear-gradient(120deg,#E7F1EB,#DFEDE5);border-color:#C9DFD3;border-inline-start-color:var(--ok)}
+.bu-alert--picov:hover{transform:none;box-shadow:var(--shadow)}
+.bu-alert--picov .bu-alert-tx{color:#26654C}
+.bu-alert--picov .bu-alert-tx b{color:var(--ok)}
+.bu-alert--picov .bu-alert-ic{background:var(--ok)}
+.pi-ic{font-size:16px;color:#fff}
+.pi-cta{cursor:pointer}
+.bu-alert--pi .pi-cta{background:var(--warn)} .bu-alert--pi .pi-cta:hover{background:#9A6114}
+.bu-alert--picov .pi-cta{background:var(--ok)} .bu-alert--picov .pi-cta:hover{background:#26654C}
+/* verdict-filter chip in the (brand-gradient, white-text) Results header */
+.pi-chip{display:inline-flex;align-items:center;gap:7px;font-size:11.5px;font-weight:700;color:#fff;
+  background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.5);border-radius:999px;padding:3px 11px;cursor:pointer;white-space:nowrap;margin-inline-start:10px}
+.pi-chip:hover{background:rgba(255,255,255,.3)}
+.pi-chip b{font-weight:800}
+
+/* ── Results-region level tabs (v1.89.0, layout B): segmented switcher +
+   live per-level summary strip; Department/Sector aggregated register ── */
+.bu-lvl-bar{display:flex;align-items:center;gap:18px;flex-wrap:wrap;
+  padding:10px 14px;border-bottom:1px solid var(--line);background:#FBFCFB}
+.bu-lvl-seg{display:inline-flex;background:var(--brand-soft);border:1px solid #D8E2DD;
+  border-radius:999px;padding:3px;gap:2px}
+.bu-lvl-tab{appearance:none;border:0;border-radius:999px;background:transparent;color:#51635C;
+  font-family:inherit;font-size:12.5px;font-weight:600;display:inline-flex;align-items:center;
+  gap:7px;padding:7px 15px;cursor:pointer;white-space:nowrap}
+.bu-lvl-tab svg{width:14px;height:14px;stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round}
+.bu-lvl-tab:hover{color:var(--brand-dark)}
+.bu-lvl-tab.on{background:var(--brand-dark);color:#fff;
+  box-shadow:0 2px 6px rgba(var(--brand-rgb),.35)}
+.bu-lvl-tab:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.bu-lvl-sum{display:flex;gap:8px;flex-wrap:wrap;margin-inline-start:auto}
+/* v1.91.0: professional icon KPI chips — tinted disc + stacked label/value;
+   palette mirrors the Overview band (budget steel-blue, plan plum, actual
+   purple, encumbrance amber, fund green) */
+.bu-lvl-kv{display:flex;align-items:center;gap:9px;background:var(--surface);
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:5px 12px 5px 6px;
+  min-width:104px}
+html[dir=rtl] .bu-lvl-kv{padding:5px 6px 5px 12px}
+.bu-lvl-kv .kv-ico{width:27px;height:27px;border-radius:8px;flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:var(--kv-soft,#EEF2F0);color:var(--kv-c,var(--brand))}
+.bu-lvl-kv .kv-ico svg{width:15px;height:15px;stroke:currentColor;fill:none;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bu-lvl-kv .kv-tx{display:flex;flex-direction:column;line-height:1.15}
+.bu-lvl-kv .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--muted);font-weight:700;white-space:nowrap}
+.bu-lvl-kv .v{font-size:14px;font-weight:700;color:var(--ink);white-space:nowrap}
+.bu-lvl-kv.kv-count{--kv-c:var(--brand);--kv-soft:var(--brand-soft)}
+.bu-lvl-kv.kv-budget{--kv-c:var(--info);--kv-soft:#E8EFF7}
+.bu-lvl-kv.kv-plan{--kv-c:#8E4585;--kv-soft:#F4E9F2}
+.bu-lvl-kv.kv-actual{--kv-c:#7C4DBE;--kv-soft:#F0EAF9}
+.bu-lvl-kv.kv-enc{--kv-c:var(--warn);--kv-soft:#F8EFDF}
+.bu-lvl-kv.kv-fund{--kv-c:var(--ok);--kv-soft:#E4F1EA}
+.bu-lvl-kv.kv-fund.kv-neg{--kv-c:var(--bad);--kv-soft:#F8E9E5;border-color:#E7C4BD}
+.bu-lvl-kv.kv-fund.kv-neg .v{color:var(--bad)}
+/* plan-only groups: uploaded plan with no budget line at this level */
+.bu-agg-tbl tr.tr-planonly td{background:#FDFAF0}
+.bu-agg-tbl tr.tr-planonly td:first-child{border-inline-start:3px solid #C9A227}
+/* keyless group = lines missing the MANDATORY cost-centre classification —
+   red violation tint; every cell opens the missing-lines list */
+.bu-agg-tbl tr.tr-noclass td{background:#FDF3F2}
+.bu-agg-tbl tr.tr-noclass td:first-child{border-inline-start:3px solid #C0392B}
+.chip-po{display:inline-flex;align-items:center;background:#FBF4E2;color:var(--warn);
+  border:1px dashed #DCC27A;border-radius:6px;padding:1px 7px;font-size:10.5px;
+  font-weight:700;white-space:nowrap;margin-inline-start:6px}
+/* agg comments cell: 💬 button + the level's recorded comment text (period-scoped) */
+.bu-agg-tbl .cmt-th-agg{min-inline-size:220px}
+.bu-agg-tbl .cmt-cell-agg{white-space:normal}
+.agg-cmt{display:flex;align-items:flex-start;gap:8px}
+.agg-cmt .cmt-txt-clamp{flex:1;min-inline-size:180px;text-align:start}
+
+/* ── Fund Movement columns (v1.94.0): green/red net amount, breakdown popover,
+   drill sort switch. .fm-pos/.fm-neg also tint the drill's Amount column via
+   the pn column flag. */
+.fm-pos{color:#1E7B45;font-weight:600}
+.fm-neg{color:#C0392B;font-weight:600}
+.fm-tip{position:fixed;z-index:95;background:var(--surface,#fff);border:1px solid #D5DFDA;border-radius:10px;
+  box-shadow:0 12px 32px rgba(31,63,53,.18);padding:10px 12px;min-inline-size:250px;pointer-events:none}
+.fm-tip-h{font-size:11px;font-weight:700;letter-spacing:.4px;text-transform:uppercase;color:#3F6F5F;margin-block-end:6px}
+.fm-tip-r{display:flex;align-items:center;gap:8px;font-size:12.5px;padding-block:2px}
+.fm-tip-r b{margin-inline-start:auto}
+.fm-tip-r .s{inline-size:14px;text-align:center}
+.fm-tip-r.pos{color:#1E7B45}
+.fm-tip-r.neg{color:#C0392B}
+.fm-tip-d{border-block-start:1px dashed #D5DFDA;margin-block:5px}
+.fm-tip-r.net{color:var(--text,#243A33);font-weight:600}
+.fm-tip-r.net b.pos{color:#1E7B45}
+.fm-tip-r.net b.neg{color:#C0392B}
+.fm-sortbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* ── Fund Movement drill status pills (v1.95.0): the budgettrx .st vocabulary
+   re-declared for the drawer (the originals are scoped to #pg-budgettrx —
+   de-scoping them would change an existing page's specificity). Glyph in a
+   filled disc: ✓ ok / ✕ err / ! warn / • info / – mute. */
+.dw-drawer .st{display:inline-flex;align-items:center;gap:6px;
+  padding-block:2px;padding-inline:6px 11px;border-radius:999px;
+  font-size:11.5px;font-weight:600;letter-spacing:.2px;line-height:1.65;white-space:nowrap;
+  background:var(--st-bg);border:1px solid var(--st-bd);color:var(--st-fg)}
+.dw-drawer .st::before{content:var(--st-ic,'\2022');flex:none;
+  display:inline-flex;align-items:center;justify-content:center;
+  inline-size:14px;block-size:14px;border-radius:50%;
+  background:var(--st-fg);color:#fff;font-size:9px;font-weight:700;line-height:1}
+.dw-drawer .st--ok  {--st-fg:#1E7A4C;--st-bg:#E6F3EC;--st-bd:#BFDECD;--st-ic:'\2713'}
+.dw-drawer .st--err {--st-fg:#B3261E;--st-bg:#FCEBE9;--st-bd:#F0C6C1;--st-ic:'\2715'}
+.dw-drawer .st--warn{--st-fg:#9A6700;--st-bg:#FBEFDD;--st-bd:#EBD3AE;--st-ic:'!'}
+.dw-drawer .st--info{--st-fg:#1F5F8B;--st-bg:#E8F0F8;--st-bd:#C6D8EA;--st-ic:'\2022'}
+.dw-drawer .st--mute{--st-fg:#6B7671;--st-bg:#EFF1F0;--st-bd:#D9DEDB;--st-ic:'\2013'}
+
+/* ── Manage columns drawer + vs Budget column (v1.96.0) ── */
+.dw-cols{width:min(560px,94vw)}
+.bu-colsbtn svg{width:15px;height:15px;display:block}
+.cols-views{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;align-items:end;margin-bottom:12px}
+.cols-views .field{min-width:0}
+.cols-vbtns{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap}
+.cols-def{grid-column:1/-1;font-size:11.5px;color:var(--muted)}
+.cols-selbar{display:flex;gap:8px;margin:4px 0 8px}
+.cols-list{border:1px solid #DDE3DE;border-radius:10px;overflow:hidden;background:#fff}
+.cols-row{display:flex;align-items:center;gap:10px;padding:7px 12px;border-bottom:1px solid #EEF1EE}
+.cols-row:last-child{border-bottom:0}
+.cols-row.off .cols-lbl{color:var(--muted);text-decoration:line-through}
+.cols-chk{width:17px;height:17px;border:2px solid #B8C4BC;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex:0 0 auto;background:#fff}
+.cols-chk.on{background:var(--brand);border-color:var(--brand)}
+.cols-chk.on i{width:9px;height:5px;border-inline-start:2px solid #fff;border-block-end:2px solid #fff;transform:rotate(-45deg) translateY(-1px)}
+.cols-lbl{cursor:pointer;font-size:12.5px}
+.cols-gate{font-size:10.5px;color:var(--warn);background:#F7EDDC;border-radius:999px;padding:1px 8px;white-space:nowrap}
+.cols-mv{border:1px solid #C8D2CB;background:#fff;border-radius:7px;width:26px;height:24px;cursor:pointer;font-size:12px;line-height:1;color:#3a4a40}
+.cols-mv:hover{background:#EEF3EF}

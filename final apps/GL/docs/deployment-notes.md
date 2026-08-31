@@ -3,6 +3,66 @@
 Canonical platform-wide SQLcl/ORDS rules live in `final apps/Admin/docs/deployment-notes.md §2`.
 This file holds GL-specific deploy steps, history, and gotchas. **Update on every deploy.**
 
+- **2026-08-30 (2) — Fund Movement drill: combination popover + status pills (v1.95.0, GL/db/34 re-run + frontend).**
+  User feedback on the new drill: ① the **Code Combination column now shows the SAME styled
+  10-segment popover** as the Actuals drill — the `GET /butil/lines/fundmove` response gained a
+  **`combos` side-object** (each DISTINCT `code_combination` resolved against `DCT_GL_COA_SNAP`
+  by `cc_string` to the 10 segment code+description pairs, `comboRows` shape; dedupe via an
+  associative array + `apex_t_varchar2` → `TABLE()` lookup — handler now 11,110 chars, still
+  one SQLcl statement). Client: `fmComboMap` from `d.combos`; the drawer's delegated hover
+  (`drillGridOver/Move`) was refactored to `drillComboRow(info)` = `acRowMap[..] ||
+  fmComboMap[..]` so BOTH drill kinds share one path (Actuals regression `ac_ir_browser_smoke`
+  **26/26**). ② **Transaction / Line / Baseline / Journal / Approval State render as tinted
+  icon pills** — reuses the Budget Transactions page's `btStClass`/`btTone` keyword classifier
+  (failure patterns FIRST — the "Baselining Failed contains baselin" lesson) via a new drill
+  column `type:'status'` branch in the drawer td template; the `#pg-budgettrx` `.st` disc-icon
+  vocabulary (✓ ok / ✕ err / ! warn / • info / – mute) re-declared scoped `.dw-drawer .st`
+  (portfolio-page precedent — never de-scope the originals). Webtier GL-only overlay
+  **20260830194340** (rollback 20260830141216; name-sorted prune). Tests:
+  `butil_fundmove_api_smoke.py` **53/53** (+combos coverage/shape) · `fm_browser_smoke.py`
+  **40/40 EN+AR** (+popover opens in drawer w/ 10 segments + resolved descriptions, pills
+  render, positive statuses tone ok, no err tone on positive words) · deployed spot check PASS.
+- **2026-08-30 — Fund Movement COLUMNS on all three butil tabs (v1.94.0, NEW `GL/db/34` + frontend).**
+  User request: **Fund Movement Count** + **Fund Movement Amount** columns on Budget Line /
+  Department / Sector, each with a header hint, a green/red additions-vs-deductions hover popover,
+  and a drilldown listing the transfer transactions with the SAME 28 columns as the register's
+  Fund Movement sheet, sorted two ways. Confirmed choices: **all statuses** (sheet parity) ·
+  count = **transfer lines** (a cell count always equals its drill row count; the 22 zero-amount
+  lines excluded — neither addition nor deduction) · Dept/Sector **include unmatched transfers,
+  attributed** by the transfer's OWN cost centre/sector (register rule; a CC/sector with no group
+  row surfaces in a `fmExtraNote` under the table, never dropped) · amount = **net signed**
+  (additions − deductions, green/red by sign). NEW `GL/db/34_butil_fundmove_ords.sql` = TWO
+  additive routes (**GL post-05 re-run list is now 07..34**): `GET /gl/butil/fundmove`
+  (`level=line|dept|sector` keyed aggregates {cnt, amt, posCnt/posAmt, negCnt/negAmt} + totals;
+  line level groups by the EXACT project/task/etype and IGNORES page filters — the row key IS the
+  filter — dept/sector bind the full own-attribute filter set incl. the SECTOR data scope;
+  appropriation/program match the combination segment as a leading token so both bare codes and
+  'CODE - Description' composites work) and `GET /gl/butil/lines/fundmove` (drill rows = the
+  sheet's 28 columns, `sort=default` project/task/etype/trx-date or `sort=date` date-first; row
+  mode exact-key + group mode `costcenter=`/`sector=` like the other drills; cap 1000, full_n/
+  full_tot analytics). Source = `pa_additional_fund_lines` ⋈ `pa_budget_trx_headers`
+  type 'Additional', `trx_year` = budget year, `transaction_date` cut at the period end — lifted
+  from reporting/db/25's sheet-8 SQL, so page and register always tie. Frontend: columns sit
+  right after Fund Available on all three tabs (`fmOfRow`/`fmOfGrp` merge maps fetched by
+  `runBuFm` per level, cached by params — the line map keys only on year+period so filter changes
+  never refetch it); `.fm-tip` popover (▲ n additions +amt green / ▼ n deductions −amt red /
+  Net); drill drawer gains an FM-only sort switch (`.fm-sortbar`, `fmDrillOn` reset in
+  `fillDrill`) and the Amount column tints by sign via the new `pn` column flag; both page CSVs
+  (line + agg) carry the two columns. Deployed: db/34 via `sql -name prod_mcp` (fresh session;
+  TWO temp procedures so each handler is its own statement — Linux SQLcl swallows ~19KB blocks;
+  verified LENGTH 8290 + 9281). Webtier GL-only overlay **20260830141216** (rollback
+  20260829182357). **DEPLOY GOTCHA (caused a ~2-min outage, fixed):** the release prune used
+  `ls -t | tail -n +6` — but `cp -a` PRESERVES mtimes, so the new release sorted LAST and the
+  prune deleted it, leaving `/var/www/ifinance/current` dangling (site-wide 404). Prune releases
+  by NAME (`sort -r | tail -n +6 | grep -v $STAMP`), never by mtime. Tests:
+  `tests/butil_fundmove_api_smoke.py` **50/50** (3-level reconciliation, cell↔drill ties incl.
+  filtered dept + sector + period-cut, both sort orders, validation 400s, 401) ·
+  `tests/fm_browser_smoke.py` **33/33 EN+AR** (headers+hints, popover, tinted cells, 28-col
+  drawer ties, sort switch re-orders, dept/sector group drills, remainder note, dept CSV
+  columns) · regression `butil_tabs_browser_smoke.py` **54/54** · deployed-build spot check
+  PASS (map 2,213 keys, drill ties, 0 page errors). Test gotcha: switching agg level re-fetches
+  the FM map — wait `buAggItems().some(r => !!fmOfGrp(r))`, not just map-non-empty (the previous
+  level's map is non-empty too).
 - **2026-08-29 (7) — Butil Excel Register: NEW sheet 8 "Additional Fund Transfers" (reporting/db/25 re-seed only — no GL script, no frontend, no APP_VERSION change).** User request: the budget transfer transactions ride the Budget Utilization register in their own worksheet, **Additional Fund only**, sorted project / task / etype / transaction date. Source = the PBT extract (`pa_budget_trx_headers` ⋈ `pa_additional_fund_lines` ⋈ per-transaction-aggregated `pa_budget_trx_approvals`); 32 columns = header identity (trx num, decree no, trx date/year, BU, project type, status) + full line detail (coding, code combination, signed Amount, budget/actual figures, line/baseline/journal statuses) + approval trail (submitted by, assignees, last state, last action time) + segment-resolved Sector/Cost centre/Department lead columns. Honours ALL the page filters the Generate-Report and Generate-and-Send flows forward (year, period-YTD cut on transaction date via BUTIL_END, sector/chapter/costcenter/projecttype/project/task/etype/search/bu) — applied to the line's own attributes, NOT the butil scope join (987 of 4,561 transfer lines have no exact butil line match). Details + verification in `reporting/docs/deployment-notes.md` (2026-08-29 entry).
 - **2026-08-29 (6) — Missing-classification warning on the agg tabs (v1.93.0, frontend-only).** User
   rule: **cost centre is MANDATORY on every budget line** — a keyless Department/Sector group is a
@@ -2791,3 +2851,200 @@ at `https://129.151.159.189/` **15/15 EN+AR** — drawer row count (8) and total
 reconcile exactly to the band's own `negFund`/`negFundTotal`, every returned row genuinely
 negative. Deployed via `sql -name prod_mcp` (handler verified `NEGFUND WIRED` + `PLAN WIRED` +
 `COSTADJ WIRED` together) — no frontend change needed (the client-side code was already correct).
+
+## vs Budget verdict columns + Manage Columns drawer — 2026-08-31 (v1.96.0, NEW GL/db/35 + 33/11 re-runs + reporting/db/25 + runner)
+
+User request (both parts, decisions via Q&A): ① mirror the vs-Plan columns with an
+**Actual vs Budget** verdict — basis = the ADJUSTED **ANNUAL** budget ("Annual Budget
+always", never the YTD slice), 3-state configurable bands; ② a **Manage Columns**
+button on the butil Results region — drawer with checkbox show/hide + arrow reorder +
+IR-style **named views** saved per user, and the active view also drives the report.
+
+**DB / server**
+- **`GL/db/35_butil_vs_budget.sql` — THE NEW LIVE OWNER of `GET /gl/butil`**
+  (supersedes 32→31→28→21; body = 32's deployed body verified by INSTR preflight).
+  **The define is now assembled from CLOB pieces** (`l_src := q'!..!'; l_src := l_src
+  || q'!..!';`) — the 32-file size warning came due: the body is 32,455 chars, PAST
+  the 32,767 single-literal cliff edge. Future edits extend a piece / add one.
+  Adds per row: `budUtilPct` (100 × displayed Total Actual ÷ adjusted annual budget),
+  `budVariance` (signed), `budState` OK / NEAR / OVER / NOBUDGET (spend on a
+  zero-budget line = OVER). Thresholds = GL module settings **`BUD_UTIL_NEAR_PCT`
+  (90) / `BUD_UTIL_OVER_PCT` (100)** (seeded, Admin-editable) echoed per response as
+  `budgetThresholds {near, over}`. GL post-05 re-run list = **07..35**.
+- **`GL/db/33` re-run (edited in place)** — the Department/Sector agg groups carry the
+  same `budUtilPct`/`budVariance`/`budState` + thresholds echo (group Actual vs group
+  adjusted annual budget).
+- **`GL/db/11` re-run** — `POST /gl/butil/xlsx` forwards body `sheetcols` (REGEXP
+  `^[a-z0-9_,]+$` guarded) into run params as `sheet_cols_bu_lines`.
+- **`reporting/db/25`** (python-oracledb on vm180) — register sheet 1 gains
+  `budget_utilization_pct` / `budget_variance` / `budget_status` right after
+  `ytd_budget` (glyphs via `TO_CHAR(NCHR())`: ● On track / ▲ Near limit / ▼ Over
+  budget / Not budgeted); the `th` CROSS JOIN reads the two new settings (`WHERE`
+  widened to `LIKE 'PLAN%' OR LIKE 'BUD_UTIL%'`).
+- **`reporting/runner/runner.py`** — NEW generic `_apply_sheet_cols(sections, params)`
+  applied in the XLSX path only: a run param `sheet_cols_<sectionkey>` (CSV of column
+  names) keeps ONLY those columns in that order on the matching sheet — matching is
+  case-insensitive and `__pn`-suffix transparent, `row_kind` always survives, a spec
+  matching nothing leaves the sheet as-is. Fleet-synced vm180-182 + rpt-worker
+  restarts.
+
+**Frontend (v1.96.0)**
+- Both butil results tables are **COLUMN-REGISTRY driven**: `BU_LINE_COLS` (32 cols) /
+  `BU_AGG_COLS` (22) in app.js hold key + label/hint i18n keys + th css + cell
+  template id + optional feature gate (plan LOV, revised-pair, comments, dept level)
+  + CSV expansion + register sheet-1 column mapping. Headers and rows render via
+  `foreach: buColsLine/buColsAgg` + per-cell KO templates (`buc-*`/`bua-*` script
+  templates at the end of index.html — inside a template `$data` = the row and
+  `$root` = the VM, so the cell markup moved over verbatim). `skCols` is now a
+  computed sized to the active registry.
+- **vs Budget column** (always on, independent of the Show Plan LOV) after YTD Budget
+  on all three tabs: hand + % (`.vp` classes reused — OK→ok/green, NEAR→low/amber,
+  OVER→high/red), tooltip = verdict + Δ vs annual budget, cell click = the
+  budgetannual drill. `buBudThr` binds the response echo so page colors always match
+  the server classification.
+- **Manage Columns drawer** (`.dw-cols`, Results-header button beside maximize):
+  checkbox show/hide + ↑↓ reorder + Select/Clear all; **named views** per level
+  (line / dept / sector) with Save / Set-as-default / Delete / Reset-to-standard;
+  gated columns show a "needs its feature on" chip. Persistence =
+  `/dct/prefs` key **`gl.butil.colviews`** (roams with the account; server pref wins)
+  + `localStorage('gl_bu_colviews')` instant-boot mirror. New registry columns added
+  after a view was saved slot in at their registry position (shared-IR reconcile
+  rule). Esc closes the drawer before restoring a maximized table.
+- The active line view drives **CSV** (per-col expansions + fixed audit tail) and the
+  **Excel Register sheet 1** (`buSheetCols()` → `sheetcols`, led by
+  budget_combination; null while the standard layout is untouched so default runs
+  keep the full 41-column sheet).
+
+**Tests** — `tests/vsbudget_cols_api_smoke.py` **13/13** (per-row/agg recompute parity
+under procash/costadj/period toggles, thresholds echo, register sheetcols E2E: the
+produced workbook's sheet 1 = EXACTLY the requested ordered columns via openpyxl, and
+a no-sheetcols run keeps all 41 incl. the three new budget columns after Ytd Budget);
+`tests/cols_vsbudget_browser_smoke.py` **27/27 EN+AR** (position, verdict cells,
+Show-Plan independence, drawer flows, per-level views, reload persistence via server
+prefs, reset, RTL) — ALSO PASSED against the deployed webtier build. Regressions:
+plan_insights_api 20/20 · plan_insights_browser 25/25 (its "NO hides plan columns"
+assertion updated — vs Budget is a `.pi-th` that legitimately stays) ·
+fm_browser 40/40 · butil_tabs_browser 54/54.
+
+**Webtier** release 20260830203454 (GL-only overlay of index.html/app.js/app.css,
+rollback = re-point `current` to 20260830194340).
+
+**Gotchas learned**
+- KO `css:` binding accepts a plain string of class names — the registry's `cls`
+  rides it directly.
+- Inside `<!-- ko template: {name: tpl, data: $parent} -->` under a
+  `foreach: cols` nested in `foreach: rows`, the template context gets `$data` = the
+  ROW and `$root` = the VM — existing cell markup ports verbatim; only `$parent`
+  references would break (none did).
+- A hidden sibling page's table also matches `.bu-results thead` — scope test
+  selectors as `#pg-butil .bu-results table:not(.bu-agg-tbl)`.
+- On the webtier the app lives at `/GL/Jet/` — browser smokes take
+  `GL_BASE=https://129.151.159.189/GL/Jet` (the dev-proxy serves it at `/`).
+
+## Register column trims + Fund Movement Approved-only — 2026-08-31 (v1.96.1, reporting/db/25 re-deploy + frontend)
+
+User feedback round on the Budget Utilization Register + page, three removals:
+
+- **Register sheet 1 (reporting/db/25)**: `cost_adjustment` + `budget_override_adj`
+  columns REMOVED (sheet is now 39 columns; the adjustments still fold into the
+  figures and the (**) rows on sheet 2 keep their `cost_adjustment_ref`). The
+  frontend `fundAvailable` registry row's `xls` mapping dropped the two names.
+- **Register sheet 8 "Fund Movement"**: rows filtered to **Approval State =
+  'Approved'** only (drops Rejected/Withdraw and transactions with no approval
+  trail; live 2026: 4,557 rows, all Approved). Filter = `apr.approval_state`
+  in the l_bt outer WHERE.
+- **Page Fund Movement Count/Amount columns REMOVED from all three tabs**
+  (v1.94.0 feature, user removal): the 4 registry rows (`fmCnt`/`fmAmt` in
+  BU_LINE_COLS + BU_AGG_COLS) and the two `runBuFm` call sites deleted — so
+  the columns leave the tables, CSVs and the Manage Columns chooser, and no
+  `/butil/fundmove` request fires. The fm machinery/templates/popover markup
+  stay as DORMANT dead code (see the app.js comment block) and the GL/db/34
+  routes stay live (`butil_fundmove_api_smoke.py` still valid);
+  `fm_browser_smoke.py` is OBSOLETE by design. Saved Manage-Columns views
+  containing the removed keys are silently reconciled (colReconcile filters
+  to registry keys).
+
+Deploys: db/25 via python-oracledb on vm180 (4 ok / 0 failed, src 28,096);
+webtier GL-only overlay release **20260831070939** (prev 20260830203454).
+NOTE: `tar --unlink-first` into a `cp -al` release prints "Cannot unlink:
+Directory not empty" for directories — harmless; files are replaced correctly
+(verify APP_VERSION in the new release + a marker string, and that the OLD
+release still carries its own bytes).
+
+Verified live (scratchpad verify_removals.py 13/13 + verify_fm_approved.py):
+sheet 1 = 39 cols without the two adj columns, Comments right after
+Utilization Pct; sheet 8 all-Approved; page = no fm columns on any tab, no
+fundmove requests, chooser/CSV clean, vs Budget still after YTD Budget; full
+run register OK.
+
+## Fund Movement restore + register sheet-1 columns, Approved-only everywhere — 2026-08-31 (v1.96.2, GL/db/34 re-run + reporting/db/25 re-deploy + frontend)
+
+**Correction of the v1.96.1 fm removal — it was a MISREAD.** The user's "also,
+fund management count and amount columns" meant: keep them on the dashboard
+AND add them to the register's "1. Budget Utilization Lines" sheet. Restored
+and extended:
+
+- **Frontend (v1.96.2)**: the 4 fm registry rows + both `runBuFm` call sites
+  are back (line rows now carry `xls: ['fund_movement_count']` /
+  `['fund_movement_amount']` so Manage-Columns saved views drive the new
+  register columns too); `fm_browser_smoke.py` header restored (40/40 again);
+  column hints note the Approved-only basis EN+AR.
+- **GL/db/34 re-run**: both fundmove handlers are now **Approved-only** —
+  the line + group aggregates JOIN the latest `pa_budget_trx_approvals`
+  `assignment_state = 'Approved'` per transaction, and the drill adds
+  `apr.approval_state = 'Approved'` as a top-level conjunct — matching the
+  sheet-8 rule so every cell still equals its drill row count.
+- **reporting/db/25**: sheet 1 gains `fund_movement_count` +
+  `fund_movement_amount__pn` (green/red) right after Utilization Pct — a
+  RENAMED `fm` inline view (fp/ft/fe, the pf-join ORA-00918 rule) on the
+  exact butil line key, Approved-only, `trx_year` = budget year, BUTIL_END
+  transaction-date cut, zero-amount lines excluded. Sheet 1 = 41 columns
+  again. **GOTCHA: `DCT_RPT_DEFINITION.description` is VARCHAR2(1000)** —
+  the first deploy died ORA-12899 at 1,024 chars; trim the catalog blurbs.
+- Sheet 8 itself keeps its zero-amount rows (21 live) — the counts exclude
+  them, so a strict sheet-8-rows == count comparison must net those out.
+
+Deploys: db/34 local SQLcl fresh session (8,932 + 11,152 chars published);
+db/25 via vm180 python-oracledb (src 29,061); webtier release
+**20260831083730** (prev 20260831070939). Verified: verify_fm_restore.py —
+sheet-1 fm values == /butil/fundmove per key (1,726 movement rows, 0
+mismatch), per-key sheet-8 parity net of zero rows (2,213 keys, 0 mismatch),
+page columns/drill/chooser/sheetcols on all three tabs, plus
+fm_browser_smoke.py 40/40 EN+AR.
+
+## Task Name column — 2026-08-31 (v1.96.3, GL/db/35 + reporting/db/25 re-deploys + frontend)
+
+- **Source**: the butil view has NO task-name column and DCT_TASKS names are
+  empty (all NULL/=number) — the name comes from **ATD_TASKS.task_name,
+  PROJECT-SCOPED via ATD_PROJECTS.project_id** (task numbers repeat across
+  projects — the tsk_org rule; 1,740/1,740 2026 lines named). Both consumers
+  use the same renamed inline-view aggregate (tp/tt, MAX(task_name)).
+- **GL/db/35 re-run**: items cursor gains the `tnm` LEFT JOIN + per-row
+  `taskName`; verification tail gains a TASKNAME marker. Handler is now
+  **32,785 chars — past the 32,767 single-literal cap**, so the CLOB-pieces
+  define is no longer optional.
+- **reporting/db/25 re-deployed**: sheet 1 `task_name` right after
+  `task_number` (42 columns; SRC_LEN 29,364).
+- **Frontend (v1.96.3)**: BU_LINE_COLS row `taskName` after `task`
+  (chooser/CSV/`xls: ['task_name']` all follow), template `buc-taskname`,
+  i18n cTaskName/chTaskName EN+AR. Agg tabs unchanged (dept/sector grain has
+  no task). Webtier release **20260831092023** (prev 20260831083730).
+- Verified live (verify_taskname.py 14/14): 200/200 API rows named, sheet-1
+  column present+populated right after Task Number, page column/chooser/CSV/
+  sheetcols/AR, fm + verdict columns intact.
+## Revenue Categories settings — 2026-08-31 (v1.97.0, GL/db/36 + frontend)
+
+- Ownership moved from the AR design area to GL/FPB. The mockup now lives at
+  `GL/docs/design-mockups/revenue-categories.html`; AR has no runtime artifact.
+- New PROD tables: `GL_REVENUE_CATEGORY` (two-level Main → Sub hierarchy),
+  `GL_REVENUE_CATEGORY_RULE` (eight FPB-style dimensions, `ALL` wildcard), and
+  `GL_REVENUE_CATEGORY_ACCESS` (role/user grants, optional child inheritance).
+- New additive `/gl/revenue-categories*` ORDS family: one aggregate read and
+  category/rule/access create, update, and delete operations. Writes require
+  `GL_MANAGE_REVENUE_CATEGORIES` with `SYS_ADMIN` legacy compatibility.
+- GL Settings now includes bilingual **Revenue Categories**, with Categories,
+  Define Mapping, and Access Control views using the existing GL theme.
+- Deployed DB script 36: 3/3 tables, VALID hierarchy trigger, 8/8 handlers.
+  Rollback-only model smoke created Main + Sub + Rule + inherited Role grant,
+  then confirmed zero test rows remained. Webtier release `20260831232838`;
+  live version/HTML/JS/CSS markers verified and unauthenticated API returns 401.

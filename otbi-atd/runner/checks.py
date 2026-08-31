@@ -22,6 +22,9 @@ _DEFAULT_CAPS = "25000,50000,65000,75000,100000,250000,500000"
 # ORA_OCIS_CG_SESSION, _WL_AUTHCOOKIE…). Those are replayable while valid, so scrub
 # them out of any message before it is written to ATD_LOAD_RUN_LOG / shown in the UI.
 _SCRUB = [
+    # Telegram Bot API URLs contain the bot token in the path.  httpx includes the
+    # complete URL in raised exceptions, so redact it before journald sees it.
+    (re.compile(r'(api\.telegram\.org/bot)[^/\s]+', re.IGNORECASE), r'\1[redacted]'),
     # a whole "cookie:"/"set-cookie:"/"authorization:" header line value -> [redacted]
     (re.compile(r'((?:^|\n)[ \t-]*(?:cookie|set-cookie|authorization)[ \t]*:[ \t]*)[^\n\r]*',
                 re.IGNORECASE), r'\1[redacted]'),

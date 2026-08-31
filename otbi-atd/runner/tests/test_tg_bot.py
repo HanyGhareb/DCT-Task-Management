@@ -18,6 +18,11 @@ class _Connection:
         self.closed = True
 
 
+def test_sd_notify_is_optional(monkeypatch):
+    monkeypatch.delenv("NOTIFY_SOCKET", raising=False)
+    assert tg_bot._sd_notify("WATCHDOG=1") is False
+
+
 def test_disconnect_reconnects_and_retries_same_update(monkeypatch):
     old = _Connection()
     new = _Connection()

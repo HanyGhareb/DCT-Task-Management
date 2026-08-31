@@ -6,7 +6,7 @@
 <title>Financial Planning and Budgeting · Fusion i-Finance</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Public+Sans:wght@400;500;600;700&family=Noto+Naskh+Arabic:wght@400;600&display=swap" rel="stylesheet">
-<script>window.APP_VERSION = '1.87.2';</script>
+<script>window.APP_VERSION = '1.97.1';</script>
 <!-- Shared platform layer — loaded BEFORE app.css so the portal styles (body,
      .btn, brand tokens) always win; it supplies the base classes the shared
      <interactive-report> component needs (.data-table/.form-control/.badge/
@@ -965,8 +965,10 @@
 
       <!-- CRITICAL data-quality alert: budget lines with an annual budget but NO
            cost centre in the current result set. Hidden when the count is zero;
-           click drills to the shared drawer listing the lines (/butil?nocc=Y). -->
-      <div class="bu-alert" role="alert" data-bind="visible:buMissCc()>0, click:openBuMissCc, attr:{title:t('buMissCcHint')}">
+           click drills to the shared drawer listing the lines (/butil?nocc=Y).
+           Cost centre is MANDATORY (user rule 2026-08-30) — the band also fires
+           from a keyless Department/Sector group (buMissBandOn). -->
+      <div class="bu-alert" role="alert" data-bind="visible:buMissBandOn(), click:openBuMissCc, attr:{title:t('buMissCcHint')}">
         <span class="bu-alert-ic" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
         <div class="bu-alert-tx">
           <b data-bind="text:t('buMissCcTitle')"></b>
@@ -1027,6 +1029,11 @@
           <!-- Display Comments — include the business comments in the report (v1.83.0) -->
           <div class="field"><label class="lbl"><span data-bind="text:t('buCmtDispL')"></span><i class="hint-i" data-bind="attr:{title:t('buCmtDispHint')}">i</i></label>
             <select class="inp" data-bind="options:buCmtDispOpts, optionsText:'l', optionsValue:'v', value:buCmtDisp, attr:{title:t('buCmtDispHint')}"></select></div>
+          <!-- Show Plan LOV (v1.88.1): Yes (default) = plan cols + vs Plan/Coverage
+               indicators · No = no plan columns · Plan with insights = + D2/D3.
+               Frontend-only (rows always carry the data; CSV stays complete). -->
+          <div class="field"><label class="lbl"><span data-bind="text:t('piShowL')"></span><i class="hint-i" data-bind="attr:{title:t('piShowHint')}">i</i></label>
+            <select class="inp" data-bind="options:buPlanModeOpts, optionsText:'l', optionsValue:'v', value:buPlanMode, attr:{title:t('piShowHint')}"></select></div>
           <div class="field filter-actions">
             <button class="btn btn-primary" data-bind="click:function(){runButil(0)}, css:{busy:buLoading}, text:t('btnSearch')"></button>
             <button class="btn" data-bind="click:buReset, enable:!buLoading(), text:t('btnReset')"></button>
@@ -1090,6 +1097,28 @@
         <span class="bu-alert-cta" data-bind="text:t('buNegCta')"></span>
       </div>
 
+      <!-- K2 plan-insight strips (v1.88.0): execution + coverage over the WHOLE
+           filtered set (server aggregates, GL/db/32). Each "View" link re-runs
+           the page with planstate=<verdict>; the strips hide while that filter
+           is applied (the chip beside the Results header takes over). -->
+      <div class="bu-alert bu-alert--pi" role="note" data-bind="visible:piExecBandOn()">
+        <span class="bu-alert-ic pi-ic" aria-hidden="true">👎</span>
+        <div class="bu-alert-tx">
+          <b data-bind="text:t('piExecBandT')"></b>
+          <span data-bind="text:piExecBandMsg()"></span>
+        </div>
+        <span class="bu-alert-cta pi-cta" data-bind="visible:(buTot('planBelow')||0)>0, click:function(){setPlanState('BELOW')}, clickBubble:false, text:t('piViewBelow')"></span>
+        <span class="bu-alert-cta pi-cta" data-bind="visible:(buTot('planAhead')||0)>0, click:function(){setPlanState('AHEAD')}, clickBubble:false, text:t('piViewAhead')"></span>
+      </div>
+      <div class="bu-alert bu-alert--picov" role="note" data-bind="visible:piCovBandOn()">
+        <span class="bu-alert-ic pi-ic" aria-hidden="true">●</span>
+        <div class="bu-alert-tx">
+          <b data-bind="text:t('piCovBandT')"></b>
+          <span data-bind="text:piCovBandMsg()"></span>
+        </div>
+        <span class="bu-alert-cta pi-cta" data-bind="visible:(buTot('planCovNone')||0)>0, click:function(){setPlanState('NOPLAN')}, clickBubble:false, text:t('piViewUnplanned')"></span>
+      </div>
+
       <!-- totals answer band (tinted stat tiles; the 4 measure tiles drill to all supporting lines) — collapsible region -->
       <div class="bu-sec">
         <div class="bu-sec-h" data-bind="click:function(){toggleBuSec('kpis');return true}, css:{closed:!buSecKpisOpen()}">
@@ -1098,7 +1127,7 @@
           <span class="bu-sec-sum" data-bind="text:buKpiSummary()"></span>
         </div>
         <div class="bu-sec-b" data-bind="visible:buSecKpisOpen">
-        <div class="bu-kpis bu-kpis6">
+        <div class="bu-kpis bu-kpis7">
         <div class="bk bk-budget bk-duo">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg></div>
           <div class="bk-body">
@@ -1171,28 +1200,54 @@
             <div class="bk-bar"><i data-bind="style:{width:buBarW('fundAvailable')}"></i></div>
           </div>
         </div>
-        <!-- Expenditure Plan (uploaded cashflow plan, db/v2/126) — YTD hero + drillable Annual/YTD rows -->
+        <!-- K1a Plan Performance (v1.88.0): overall execution % vs the YTD plan
+             + verdict rows over the WHOLE filtered set; each row FILTERS the
+             results (planstate=). Plan YTD row keeps the monthly plan drill. -->
         <div class="bk bk-plan bk-duo">
           <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M8 15l2.5 2.5L15 13"/></svg></div>
           <div class="bk-body">
-            <div class="bk-k" data-bind="text:t('cPlanTile')"></div>
-            <div class="bk-v mono" data-bind="text:buNum(buTot('planApprovedYtd')), attr:{title:money(buTot('planApprovedYtd'))}"></div>
-            <div class="bk-sub" data-bind="text:buPlanYtdPct()"></div>
-            <div class="bk-seg" data-bind="attr:{title:t('cPlanApprY')+' / '+t('cPlanApprA')}">
-              <i class="s1" data-bind="style:{width:buSegW(buTot('planApprovedYtd'), buTot('planApprovedAnnual'))}"></i><i class="s2" data-bind="style:{width:buSegW((buTot('planApprovedAnnual')||0)-(buTot('planApprovedYtd')||0), buTot('planApprovedAnnual'))}"></i>
-            </div>
+            <div class="bk-k" data-bind="text:t('cPlanPerf'), attr:{title:piVsHdrTip()}"></div>
+            <div class="bk-v mono"><span data-bind="text:piExecPct()!=null ? pct1(piExecPct())+'%' : '—'"></span> <span class="pi-hand" data-bind="text:piExecPct()!=null ? piHand(piExecState()) : ''"></span></div>
+            <div class="bk-sub" data-bind="text:t('piPerfSub').replace('{a}', buNum(buActualTot())).replace('{p}', buNum(buTot('planEffYtd')))"></div>
+            <div class="bk-bar"><i data-bind="style:{width:Math.max(0,Math.min(100,piExecPct()||0))+'%'}"></i></div>
             <div class="bk-duo-rows">
-              <div class="bk-duo-row" data-bind="click:function(){openBuPlanAgg('APPROVED',true)}, clickBubble:false, attr:{title:t('buCardHint')}">
-                <i class="dot d2"></i><span class="l" data-bind="text:t('cPlanApprA')"></span><span class="v mono" data-bind="text:buNum(buTot('planApprovedAnnual')), attr:{title:money(buTot('planApprovedAnnual'))}"></span><span class="pp mono"></span>
+              <div class="bk-duo-row" data-bind="click:function(){setPlanState('WITHIN')}, clickBubble:false, attr:{title:t('piTileHint')}">
+                <i class="dot" style="background:#2E7D5B"></i><span class="l">👍 <span data-bind="text:t('piWithin')"></span></span><span class="v mono" data-bind="text:fmt(buTot('planWithin')||0)"></span><span class="pp mono"></span>
+              </div>
+              <div class="bk-duo-row" data-bind="click:function(){setPlanState('BELOW')}, clickBubble:false, attr:{title:t('piTileHint')}">
+                <i class="dot" style="background:#D89A3E"></i><span class="l">👎 <span data-bind="text:t('piBelow')"></span></span><span class="v mono" data-bind="text:fmt(buTot('planBelow')||0)"></span><span class="pp mono" data-bind="text:buNum(buTot('planBelowAmt')), attr:{title:money(buTot('planBelowAmt'))}"></span>
+              </div>
+              <div class="bk-duo-row" data-bind="click:function(){setPlanState('AHEAD')}, clickBubble:false, attr:{title:t('piTileHint')}">
+                <i class="dot" style="background:#C0392B"></i><span class="l">✋ <span data-bind="text:t('piAhead')"></span></span><span class="v mono" data-bind="text:fmt(buTot('planAhead')||0)"></span><span class="pp mono" data-bind="text:buNum(buTot('planAheadAmt')), attr:{title:money(buTot('planAheadAmt'))}"></span>
               </div>
               <div class="bk-duo-row" data-bind="click:function(){openBuPlanAgg('APPROVED',false)}, clickBubble:false, attr:{title:t('buCardHint')}">
                 <i class="dot d1"></i><span class="l" data-bind="text:t('cPlanApprY')"></span><span class="v mono" data-bind="text:buNum(buTot('planApprovedYtd')), attr:{title:money(buTot('planApprovedYtd'))}"></span><span class="pp mono"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+        <!-- K1b Plan Coverage (v1.88.0): annual plan vs annual budget + the plan
+             balances rows (Annual keeps the monthly plan drill; gap + unplanned
+             rows filter the results to NOPLAN). -->
+        <div class="bk bk-plancov bk-duo">
+          <div class="bk-ico"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 2a10 10 0 0 1 10 10h-10z"/></svg></div>
+          <div class="bk-body">
+            <div class="bk-k" data-bind="text:t('cPlanCov'), attr:{title:piCovHdrTip()}"></div>
+            <div class="bk-v mono" data-bind="text:piCovPct()!=null ? pct1(piCovPct())+'%' : '—'"></div>
+            <div class="bk-sub" data-bind="text:t('piCovSub').replace('{p}', buNum(buTot('planEffAnnual'))).replace('{b}', buNum(buTot('budgetAnnual')))"></div>
+            <div class="bk-bar"><i data-bind="style:{width:Math.max(0,Math.min(100,piCovPct()||0))+'%'}"></i></div>
+            <div class="bk-duo-rows">
+              <div class="bk-duo-row" data-bind="click:function(){openBuPlanAgg('APPROVED',true)}, clickBubble:false, attr:{title:t('buCardHint')}">
+                <i class="dot d2"></i><span class="l" data-bind="text:t('cPlanApprA')"></span><span class="v mono" data-bind="text:buNum(buTot('planApprovedAnnual')), attr:{title:money(buTot('planApprovedAnnual'))}"></span><span class="pp mono"></span>
               </div>
               <!-- ko if: buPlanRevOn -->
               <div class="bk-duo-row" data-bind="click:function(){openBuPlanAgg('REVISED',false)}, clickBubble:false, attr:{title:t('buCardHint')}">
                 <i class="dot d1"></i><span class="l" data-bind="text:t('pfPlanRevY')"></span><span class="v mono" data-bind="text:buNum(buTot('planRevisedYtd')), attr:{title:money(buTot('planRevisedYtd'))}"></span><span class="pp mono"></span>
               </div>
               <!-- /ko -->
+              <div class="bk-duo-row" data-bind="click:function(){setPlanState('NOPLAN')}, clickBubble:false, attr:{title:t('piTileHint')}">
+                <i class="dot" style="background:#D89A3E"></i><span class="l" data-bind="text:t('piGap')"></span><span class="v mono" data-bind="text:buNum(buTot('planCovGap')), attr:{title:money(buTot('planCovGap'))}"></span><span class="pp mono" data-bind="text:fmt(buTot('planCovNone')||0)"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -1218,40 +1273,71 @@
         <div class="bu-sec-h bu-res-h">
           <span class="bu-sec-t" data-bind="text:t('buSecResults')"></span>
           <span class="bu-sec-sum" data-bind="text:buRange()"></span>
+          <!-- plan-insight verdict filter chip (click = clear + re-run) -->
+          <span class="pi-chip" data-bind="visible:buPlanState(), click:clearPlanState, clickBubble:false">
+            <span data-bind="text:t('piChip').replace('{s}', piLbl(buPlanState()))"></span><b>✕</b>
+          </span>
           <span class="grow"></span>
+          <!-- Manage columns (v1.96.0): choose / reorder / save the table columns -->
+          <button class="bu-maxbtn bu-colsbtn" data-bind="click:openColDrawer, attr:{title:t('colsBtnT')}" aria-label="Manage columns"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3.5" y="4.5" width="17" height="15" rx="1.5"/><line x1="9.5" y1="4.5" x2="9.5" y2="19.5"/><line x1="14.5" y1="4.5" x2="14.5" y2="19.5"/></svg></button>
           <button class="bu-maxbtn" data-bind="click:toggleBuMax, attr:{title:buMax()?t('buRestoreT'):t('buMaxT')}, text:buMax()?'⤡':'⤢'"></button>
         </div>
+        <!-- level tabs (v1.89.0, user layout pick B): segmented switcher +
+             live per-level summary strip. Budget Line = the untouched table;
+             Department / Sector = GET /butil/agg (GL/db/33). -->
+        <div class="bu-lvl-bar">
+          <div class="bu-lvl-seg" role="tablist">
+            <button type="button" class="bu-lvl-tab" role="tab" data-bind="click:function(){setBuLevel('line')}, css:{on:buLevel()==='line'}, attr:{'aria-selected':buLevel()==='line'?'true':'false', title:t('lvLineHint')}">
+              <svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg>
+              <span data-bind="text:t('lvLine')"></span>
+            </button>
+            <button type="button" class="bu-lvl-tab" role="tab" data-bind="click:function(){setBuLevel('dept')}, css:{on:buLevel()==='dept'}, attr:{'aria-selected':buLevel()==='dept'?'true':'false', title:t('lvDeptHint')}">
+              <svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="16" rx="1"/><line x1="9" y1="9" x2="10.5" y2="9"/><line x1="13.5" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="10.5" y2="13"/><line x1="13.5" y1="13" x2="15" y2="13"/><line x1="10" y1="20" x2="10" y2="17"/><line x1="14" y1="20" x2="14" y2="17"/></svg>
+              <span data-bind="text:t('lvDept')"></span>
+            </button>
+            <button type="button" class="bu-lvl-tab" role="tab" data-bind="click:function(){setBuLevel('sector')}, css:{on:buLevel()==='sector'}, attr:{'aria-selected':buLevel()==='sector'?'true':'false', title:t('lvSectorHint')}">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="6" r="2.6"/><circle cx="6" cy="17" r="2.6"/><circle cx="18" cy="17" r="2.6"/><line x1="12" y1="8.6" x2="6.8" y2="14.7"/><line x1="12" y1="8.6" x2="17.2" y2="14.7"/></svg>
+              <span data-bind="text:t('lvSector')"></span>
+            </button>
+          </div>
+          <!-- level KPI chips (v1.91.0): icon discs matching the Overview band's
+               iconography — count · Budget · Plan YTD · Actual · Encumbrance · Fund -->
+          <div class="bu-lvl-sum">
+            <div class="bu-lvl-kv kv-count" data-bind="attr:{title:buLvlSum().nl+': '+buLvlSum().n}">
+              <span class="kv-ico"><svg viewBox="0 0 24 24"><line x1="4" y1="6" x2="20" y2="6"/><line x1="4" y1="12" x2="20" y2="12"/><line x1="4" y1="18" x2="14" y2="18"/></svg></span>
+              <span class="kv-tx"><span class="k" data-bind="text:buLvlSum().nl"></span><span class="v mono" data-bind="text:buLvlSum().n"></span></span>
+            </div>
+            <div class="bu-lvl-kv kv-budget" data-bind="attr:{title:t('lvBudgetHint')+' '+money(buLvlSum().budget)}">
+              <span class="kv-ico"><svg viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="7.5" ry="2.8"/><path d="M4.5 5.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6"/><path d="M4.5 11.5v6c0 1.55 3.36 2.8 7.5 2.8s7.5-1.25 7.5-2.8v-6"/></svg></span>
+              <span class="kv-tx"><span class="k" data-bind="text:t('lvBudget')"></span><span class="v mono" data-bind="text:buNum(buLvlSum().budget)"></span></span>
+            </div>
+            <div class="bu-lvl-kv kv-plan" data-bind="attr:{title:t('lvPlanYtdHint')+' '+money(buLvlSum().plan)}">
+              <span class="kv-ico"><svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="16" rx="2"/><line x1="16" y1="3" x2="16" y2="7"/><line x1="8" y1="3" x2="8" y2="7"/><line x1="3.5" y1="10.5" x2="20.5" y2="10.5"/><path d="M8.5 15.5l2.3 2.3 4.4-4.2"/></svg></span>
+              <span class="kv-tx"><span class="k" data-bind="text:t('lvPlanYtd')"></span><span class="v mono" data-bind="text:buNum(buLvlSum().plan)"></span></span>
+            </div>
+            <div class="bu-lvl-kv kv-actual" data-bind="attr:{title:t('lvActualHint')+' '+money(buLvlSum().actual)}">
+              <span class="kv-ico"><svg viewBox="0 0 24 24"><line x1="12" y1="2.5" x2="12" y2="21.5"/><path d="M16.5 6.5H10a3 3 0 0 0 0 6h4a3 3 0 0 1 0 6H7"/></svg></span>
+              <span class="kv-tx"><span class="k" data-bind="text:t('lvActual')"></span><span class="v mono" data-bind="text:buNum(buLvlSum().actual)"></span></span>
+            </div>
+            <div class="bu-lvl-kv kv-enc" data-bind="attr:{title:t('lvEncHint')+' '+money(buLvlSum().enc)}">
+              <span class="kv-ico"><svg viewBox="0 0 24 24"><rect x="4.5" y="10.5" width="15" height="10" rx="2"/><path d="M8 10.5V7.5a4 4 0 0 1 8 0v3"/><circle cx="12" cy="15.5" r="1.4"/></svg></span>
+              <span class="kv-tx"><span class="k" data-bind="text:t('lvEnc')"></span><span class="v mono" data-bind="text:buNum(buLvlSum().enc)"></span></span>
+            </div>
+            <div class="bu-lvl-kv kv-fund" data-bind="attr:{title:t('chFund')+' '+money(buLvlSum().fund)}, css:{'kv-neg':(buLvlSum().fund||0)<0}">
+              <span class="kv-ico"><svg viewBox="0 0 24 24"><path d="M12 2.5l8 3v6c0 5-3.4 8.6-8 10-4.6-1.4-8-5-8-10v-6z"/><path d="M8.8 12l2.3 2.3 4.1-4.1"/></svg></span>
+              <span class="kv-tx"><span class="k" data-bind="text:t('lvFund')"></span><span class="v mono" data-bind="text:buNum(buLvlSum().fund)"></span></span>
+            </div>
+          </div>
+        </div>
+        <!-- ko if: buLevel()==='line' -->
         <div class="ldbar" data-bind="visible:buLoading()"><i></i></div>
       <div class="tbl-wrap">
         <table class="tbl actuals-tbl">
-          <thead><tr>
-            <th data-bind="text:t('fSectorL')"></th>
-            <th data-bind="text:t('cDept')"></th>
-            <th data-bind="text:t('cOrg')"></th>
-            <th data-bind="text:t('costCenter')"></th>
-            <th data-bind="text:t('cProject')"></th>
-            <th data-bind="text:t('cTask')"></th>
-            <th data-bind="text:t('cGlAccount')"></th>
-            <th data-bind="text:t('thAppr')"></th>
-            <th data-bind="text:t('cChapter')"></th>
-            <th data-bind="text:t('program')"></th>
-            <th data-bind="text:t('cEtype')"></th>
-            <th class="num" data-bind="text:t('cBudgetAnnual'), attr:{title:t('buDrillHint')}"></th>
-            <th class="num" data-bind="text:t('cBudgetYtd'), attr:{title:t('buDrillHint')}"></th>
-            <th class="num" data-bind="text:t('cPlanApprA'), attr:{title:t('buPlanHint')}"></th>
-            <th class="num" data-bind="text:t('cPlanApprY'), attr:{title:t('buPlanHint')}"></th>
-            <!-- ko if: buPlanRevOn -->
-            <th class="num" data-bind="text:t('cPlanRevA'), attr:{title:t('buPlanHint')}"></th>
-            <th class="num" data-bind="text:t('cPlanRevY'), attr:{title:t('buPlanHint')}"></th>
-            <!-- /ko -->
-            <th class="num" data-bind="text:t('cActualAp'), attr:{title:t('buDrillHint')}"></th>
-            <th class="num" data-bind="text:t('cActualGrn'), attr:{title:t('buDrillHint')}"></th>
-            <th class="num" data-bind="text:t('cProcash'), attr:{title:t('buProcashHint')}"></th>
-            <th class="num" data-bind="text:t('cCommitPr'), attr:{title:t('buDrillHint')}"></th>
-            <th class="num" data-bind="text:t('cObligPo'), attr:{title:t('buDrillHint')}"></th>
-            <th class="num" data-bind="text:t('cFundAvail')"></th>
-            <!-- ko if: buCmtDispMode()!=='NONE' --><th class="cmt-txt-th" data-bind="text:t('cmtTextCol')"></th><!-- /ko -->
-            <!-- ko if: buCmtOn --><th class="cmt-th" data-bind="text:t('cmtCol')"></th><!-- /ko -->
+          <!-- registry-driven columns (v1.96.0): header + cells render from the
+               ACTIVE Manage-columns view (BU_LINE_COLS in app.js); the cell
+               markup lives in the buc-* templates near the end of this file -->
+          <thead><tr data-bind="foreach: buColsLine">
+            <th data-bind="css:$data.cls||'', text:$root.t($data.l), attr:{title:$root.buColHint($data)}"></th>
           </tr></thead>
           <tbody>
             <!-- ko if: buLoading -->
@@ -1262,39 +1348,8 @@
             <!-- ko ifnot: buLoading -->
             <!-- ko foreach: buItems -->
             <tr>
-              <td><span class="adj-star" data-bind="visible:$data.hasAdj==='Y' && $root.buCadjOn(), attr:{title:$root.t('buAdjStarHint')}">(*)</span><span class="cmt-star" data-bind="visible:$data.hasCmt==='Y' && $root.buCmtOn(), attr:{title:$root.t('buCmtStarHint')}">(**)</span><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
-              <td data-bind="text:$data.department||'—'"></td>
-              <td data-bind="text:$data.organization||'—'"></td>
-              <td class="mono" data-bind="text:$data.costCentre||'—'"></td>
-              <td><b class="mono" data-bind="text:$data.projectNumber"></b><div class="sub-d" data-bind="text:$data.projectName||''"></div></td>
-              <td data-bind="text:$data.taskNumber||'—'"></td>
-              <td data-bind="text:$data.glAccount||'—'"></td>
-              <td data-bind="text:$data.appropriation||'—'"></td>
-              <td data-bind="text:$data.chapter||'—'"></td>
-              <td data-bind="text:$data.program||'—'"></td>
-              <td data-bind="text:$data.expenditureType||'—'"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.budgetAnnual), attr:{title:$root.money($data.budgetAnnual)}, click:function(d){$root.openBuDrill(d,'budgetannual')}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openBuDrill(d,'budget')}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planApprovedAnnual), attr:{title:$root.money($data.planApprovedAnnual)}, css:{dash:!$data.planApprovedAnnual}, click:function(d){$root.openBuPlanDrill(d,'APPROVED',true)}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planApprovedYtd), attr:{title:$root.money($data.planApprovedYtd)}, css:{dash:!$data.planApprovedYtd}, click:function(d){$root.openBuPlanDrill(d,'APPROVED',false)}"></td>
-              <!-- ko if: $root.buPlanRevOn -->
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planRevisedAnnual), attr:{title:$root.money($data.planRevisedAnnual)}, css:{dash:!$data.planRevisedAnnual}, click:function(d){$root.openBuPlanDrill(d,'REVISED',true)}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.planRevisedYtd), attr:{title:$root.money($data.planRevisedYtd)}, css:{dash:!$data.planRevisedYtd}, click:function(d){$root.openBuPlanDrill(d,'REVISED',false)}"></td>
-              <!-- /ko -->
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualAp), attr:{title:$root.money($data.actualAp)}, click:function(d){$root.openBuDrill(d,'ap')}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.actualGrn), attr:{title:$root.money($data.actualGrn)}, click:function(d){$root.openBuDrill(d,'grn')}"></td>
-              <td class="num mono" data-bind="text:$root.buNum($data.procash), attr:{title:$root.money($data.procash)}, css:{dash:!$data.procash}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}, click:function(d){$root.openBuDrill(d,'pr')}"></td>
-              <td class="num mono money-cell" data-bind="text:$root.buNum($data.obligationPo), attr:{title:$root.money($data.obligationPo)}, click:function(d){$root.openBuDrill(d,'po')}"></td>
-              <td class="num mono strong" data-bind="attr:{title:$data.fundAvailable<0 ? $root.t('buNegCellHint')+' — '+$root.money($data.fundAvailable) : $root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}">
-                <span class="nf-flag" data-bind="visible:$data.fundAvailable<0" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
-                <span data-bind="text:$root.buNum($data.fundAvailable)"></span>
-              </td>
-              <!-- ko if: $root.buCmtDispMode()!=='NONE' -->
-              <td class="cmt-txt-cell" data-bind="attr:{title:$data.commentsText||''}"><div class="cmt-txt-clamp" data-bind="text:$data.commentsText||''"></div></td>
-              <!-- /ko -->
-              <!-- ko if: $root.buCmtOn -->
-              <td class="cmt-cell"><button class="cmt-btn" data-bind="click:function(d){$root.openCmtLine(d)}, clickBubble:false, attr:{title:$root.t('cmtOpenT')}, css:{has:$data.hasCmt==='Y'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="cmt-n" data-bind="visible:($data.cmtCount||0)>0, text:$data.cmtCount"></span></button></td>
+              <!-- ko foreach: $root.buColsLine -->
+              <!-- ko template: { name: tpl, data: $parent } --><!-- /ko -->
               <!-- /ko -->
             </tr>
             <!-- /ko -->
@@ -1314,6 +1369,41 @@
         <button class="btn btn-sm" data-bind="click:function(){runButil(buOffset()-buLimit)}, enable:buOffset()>0, text:t('prev')"></button>
         <button class="btn btn-sm" data-bind="click:function(){runButil(buOffset()+buLimit)}, enable:(buOffset()+buLimit)<buTotal(), text:t('next')"></button>
       </div>
+      <!-- /ko -->
+      <!-- Department / Sector tab: the aggregated register (no pager — the
+           whole level fits; plan rows with no budget line ride the groups) -->
+      <!-- ko ifnot: buLevel()==='line' -->
+      <div class="ldbar" data-bind="visible:buAggLoading()"><i></i></div>
+      <div class="tbl-wrap">
+        <table class="tbl actuals-tbl bu-agg-tbl">
+          <thead><tr data-bind="foreach: buColsAgg">
+            <th data-bind="css:$data.cls||'', text:$root.t($data.l), attr:{title:$root.buColHint($data)}"></th>
+          </tr></thead>
+          <tbody>
+            <!-- ko if: buAggLoading -->
+            <!-- ko foreach: skRows -->
+            <tr class="sk-row"><!-- ko foreach: $root.skCols --><td><div class="sk"></div></td><!-- /ko --></tr>
+            <!-- /ko -->
+            <!-- /ko -->
+            <!-- ko ifnot: buAggLoading -->
+            <!-- ko foreach: buAggItems -->
+            <tr data-bind="css:{'tr-planonly':$data.planOnly==='Y', 'tr-noclass':!$root.buAggCanDrill($data)}, attr:{title:$root.buAggCanDrill($data) ? '' : $root.t('buMissCcHint')}">
+              <!-- ko foreach: $root.buColsAgg -->
+              <!-- ko template: { name: tpl, data: $parent } --><!-- /ko -->
+              <!-- /ko -->
+            </tr>
+            <!-- /ko -->
+            <!-- /ko -->
+          </tbody>
+        </table>
+        <div class="empty pad" data-bind="visible:!buAggLoading() && buAggItems().length===0, text:t('noButil')"></div>
+        <div class="cadj-note" data-bind="visible:buAggExtra()>0.005, text:t('lvExtraNote').replace('{amt}', money(buAggExtra()))"></div>
+        <!-- transfers attributed to a cost centre / sector with no group row (never dropped) -->
+        <div class="cadj-note" data-bind="visible:buFmAggExtra(), text:buFmAggExtra() ? t('fmExtraNote').replace('{n}', fmt(buFmAggExtra().n)).replace('{amt}', money(buFmAggExtra().amt)) : ''"></div>
+        <div class="cadj-note" data-bind="visible:buAggAnyPlanOnly(), text:t('lvPlanOnlyNote')"></div>
+        <div class="cadj-note" data-bind="visible:buAnyAggAdjNote(), text:t('buAdjNote')"></div>
+      </div>
+      <!-- /ko -->
       </div>
       </div><!-- /bu-body -->
 
@@ -3245,6 +3335,40 @@
       </div>
     </div>
 
+    <!-- ── REVENUE CATEGORIES (Settings) ── -->
+    <div id="pg-revcats" data-bind="visible:view()==='revcats'">
+      <div class="page-head">
+        <div><h1 class="greet" data-bind="text:t('revTitle')"></h1><div class="greet-sub" data-bind="text:t('revSub')"></div></div>
+        <div class="page-actions"><button class="btn btn-primary btn-sm" data-bind="click:rcNewForTab, visible:rcCanManage, text:rcTab()==='categories'?t('rcNewCategory'):(rcTab()==='rules'?t('rcNewRule'):t('rcNewAccess'))"></button></div>
+      </div>
+      <div class="rc-kpis">
+        <div class="rc-kpi"><span data-bind="text:t('rcActive')"></span><b data-bind="text:rcActiveCount"></b><small data-bind="text:rcMainCount()+' '+t('rcMain')+' · '+rcSubCount()+' '+t('rcSubcat')"></small></div>
+        <div class="rc-kpi"><span data-bind="text:t('rcRules')"></span><b data-bind="text:rcRules().length"></b><small data-bind="text:t('rcRuleHelp')"></small></div>
+        <div class="rc-kpi"><span data-bind="text:t('rcAccess')"></span><b data-bind="text:rcAccess().length"></b><small data-bind="text:t('rcAccessHelp')"></small></div>
+      </div>
+      <div class="coa-tabs rc-tabs" role="tablist">
+        <a data-bind="css:{on:rcTab()==='categories'},click:function(){rcTab('categories')},text:t('rcCategories')"></a>
+        <a data-bind="css:{on:rcTab()==='rules'},click:function(){rcTab('rules')},text:t('rcMapping')"></a>
+        <a data-bind="css:{on:rcTab()==='access'},click:function(){rcTab('access')},text:t('rcAccessControl')"></a>
+      </div>
+      <div class="bu-sec"><div class="bu-sec-h"><span class="bu-sec-t" data-bind="text:rcTab()==='categories'?t('rcHierarchy'):(rcTab()==='rules'?t('rcMapping'):t('rcAccessControl'))"></span></div>
+        <div class="bu-sec-b rc-body" style="position:relative">
+          <div class="toolbar"><input class="inp rc-search" data-bind="textInput:rcSearch,attr:{placeholder:t('rcSearch')}"><span style="flex:1"></span><span class="chip muted" data-bind="visible:!rcCanManage(),text:t('rcReadOnly')"></span></div>
+          <!-- ko if: rcTab()==='categories' -->
+          <div class="data-table-wrap"><table class="data-table rc-table"><thead><tr><th data-bind="text:t('code')"></th><th data-bind="text:t('rcCategory')"></th><th data-bind="text:t('rcLevel')"></th><th data-bind="text:t('rcSource')"></th><th data-bind="text:t('rcRules')"></th><th data-bind="text:t('rcAccess')"></th><th data-bind="text:t('active')"></th><th data-bind="text:t('rcCreatedBy')"></th><th data-bind="text:t('rcCreatedOn')"></th><th data-bind="text:t('rcUpdatedBy')"></th><th data-bind="text:t('rcUpdatedOn')"></th></tr></thead><tbody data-bind="foreach:rcFilteredCategories"><tr data-bind="css:{'rc-main':level==='MAIN','rc-child':level==='SUB'},click:function(){$root.rcEditCategory($data)}"><td class="mono" data-bind="text:$data.code||''"></td><td><span class="rc-branch" data-bind="visible:$data.level==='SUB'">└</span><b data-bind="text:$root.rcName($data)"></b><small class="rc-desc" data-bind="text:$data.description||''"></small></td><td><span class="st" data-bind="css:$data.level==='MAIN'?'st--info':'st--mute',text:$data.level==='MAIN'?$root.t('rcMain'):$root.t('rcSubcat')"></span></td><td data-bind="text:$root.rcSourceLabel($data.source)"></td><td class="mono" data-bind="text:$data.ruleCount||0"></td><td class="mono" data-bind="text:$data.accessCount||0"></td><td><span class="st" data-bind="css:$data.active==='Y'?'st--ok':'st--mute',text:$data.active==='Y'?$root.t('yes'):$root.t('no')"></span></td><td data-bind="text:$data.createdBy||''"></td><td class="mono" data-bind="text:$data.createdOn||''"></td><td data-bind="text:$data.updatedBy||''"></td><td class="mono" data-bind="text:$data.updatedOn||''"></td></tr></tbody></table></div>
+          <!-- /ko -->
+          <!-- ko if: rcTab()==='rules' -->
+          <div class="rc-note" data-bind="text:t('rcSpecific')"></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th data-bind="text:t('priority')"></th><th data-bind="text:t('rcCategory')"></th><th data-bind="text:t('rcSource')"></th><th data-bind="text:t('rcTransType')"></th><th data-bind="text:t('rcTransSource')"></th><th data-bind="text:t('rcRevenueType')"></th><th data-bind="text:t('rcCostCenter')"></th><th data-bind="text:t('rcGlAccount')"></th><th data-bind="text:t('rcProject')"></th><th data-bind="text:t('rcTask')"></th><th data-bind="text:t('rcCustomer')"></th><th data-bind="text:t('rcCreatedBy')"></th><th data-bind="text:t('rcCreatedOn')"></th><th data-bind="text:t('rcUpdatedBy')"></th><th data-bind="text:t('rcUpdatedOn')"></th><th></th></tr></thead><tbody data-bind="foreach:rcFilteredRules"><tr><td class="mono" data-bind="text:$data.priority"></td><td><small class="rc-path" data-bind="text:$data.parentName||''"></small><b data-bind="text:$data.categoryName||''"></b></td><td data-bind="text:$root.rcSourceLabel($data.source)"></td><td data-bind="text:$data.transactionType||'ALL'"></td><td data-bind="text:$data.transactionSource||'ALL'"></td><td data-bind="text:$data.revenueType||'ALL'"></td><td data-bind="text:$data.costCenter||'ALL'"></td><td data-bind="text:$data.glAccount||'ALL'"></td><td data-bind="text:$data.projectNumber||'ALL'"></td><td data-bind="text:$data.taskNumber||'ALL'"></td><td data-bind="text:$data.customerNumber||'ALL'"></td><td data-bind="text:$data.createdBy||''"></td><td class="mono" data-bind="text:$data.createdOn||''"></td><td data-bind="text:$data.updatedBy||''"></td><td class="mono" data-bind="text:$data.updatedOn||''"></td><td><button class="btn btn-sm danger" data-bind="click:$root.rcDeleteRule,visible:$root.rcCanManage">×</button></td></tr></tbody></table></div>
+          <!-- /ko -->
+          <!-- ko if: rcTab()==='access' -->
+          <div class="rc-note" data-bind="text:t('rcInheritance')"></div><div class="data-table-wrap"><table class="data-table"><thead><tr><th data-bind="text:t('rcPrincipal')"></th><th data-bind="text:t('rcType')"></th><th data-bind="text:t('rcCategory')"></th><th data-bind="text:t('rcScope')"></th><th data-bind="text:t('rcCreatedBy')"></th><th data-bind="text:t('rcCreatedOn')"></th><th data-bind="text:t('rcUpdatedBy')"></th><th data-bind="text:t('rcUpdatedOn')"></th><th></th></tr></thead><tbody data-bind="foreach:rcFilteredAccess"><tr><td><b data-bind="text:$data.principalName||''"></b></td><td data-bind="text:$data.principalType||''"></td><td><small class="rc-path" data-bind="text:$data.parentName||''"></small><span data-bind="text:$data.categoryName||''"></span></td><td><span class="st" data-bind="css:$data.includeChildren==='Y'?'st--info':'st--mute',text:$data.includeChildren==='Y'?$root.t('rcAllChildren'):$root.t('rcThisOnly')"></span></td><td data-bind="text:$data.createdBy||''"></td><td class="mono" data-bind="text:$data.createdOn||''"></td><td data-bind="text:$data.updatedBy||''"></td><td class="mono" data-bind="text:$data.updatedOn||''"></td><td><button class="btn btn-sm danger" data-bind="click:$root.rcDeleteAccess,visible:$root.rcCanManage">×</button></td></tr></tbody></table></div>
+          <!-- /ko -->
+          <div class="empty" data-bind="visible:rcLoaded()&&((rcTab()==='categories'&&rcFilteredCategories().length===0)||(rcTab()==='rules'&&rcFilteredRules().length===0)||(rcTab()==='access'&&rcFilteredAccess().length===0)),text:t('rcEmpty')"></div>
+          <div class="ldr sm" data-bind="visible:rcBusy"><div class="ldr-mark"><i class="ldr-ring"></i><i class="ldr-ring2"></i><i class="ldr-gem"></i></div><div class="ldr-t" data-bind="text:t('loadingData')"></div></div>
+        </div>
+      </div>
+    </div>
+
     <!-- ── REPORT RECIPIENTS (To/Cc/Bcc lists behind Generate and Send) ── -->
     <div id="pg-recipients" data-bind="visible:view()==='recipients'">
       <div class="page-head">
@@ -3302,6 +3426,12 @@
 </div>
 
 <!-- ═══════════ VALUE MODAL ═══════════ -->
+<div class="ov" data-bind="visible:rcCategoryModal" style="display:none"><div class="modal"><div class="modal-h"><h3 data-bind="text:t('rcCategory')"></h3><button class="btn btn-sm" data-bind="click:function(){rcCategoryModal(false)},text:t('cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:rcSaveCategory,text:t('save')"></button></div><div class="modal-b"><div class="grid2"><div class="field"><label class="lbl"><span data-bind="text:t('rcLevel')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcCatLevel"><option value="MAIN" data-bind="text:t('rcMain')"></option><option value="SUB" data-bind="text:t('rcSubcat')"></option></select></div><div class="field" data-bind="visible:rcCatLevel()==='SUB'"><label class="lbl"><span data-bind="text:t('rcParent')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcMainCategories,optionsText:function(c){return $root.rcName(c)},optionsValue:'categoryId',value:rcCatParent,optionsCaption:t('pickValue')"></select></div><div class="field"><label class="lbl"><span data-bind="text:t('code')"></span><i class="req">*</i></label><input class="inp mono" data-bind="value:rcCatCode"></div><div class="field"><label class="lbl"><span data-bind="text:t('rcSource')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcCatSource"><option value="AR_TRANSACTION">AR Transaction</option><option value="MISC_RECEIPT">Misc. Receipt</option><option value="BOTH">Both</option></select></div><div class="field full"><label class="lbl"><span data-bind="text:t('nameEn')"></span><i class="req">*</i></label><input class="inp" data-bind="value:rcCatNameEn"></div><div class="field full"><label class="lbl" data-bind="text:t('nameAr')"></label><input class="inp" dir="rtl" data-bind="value:rcCatNameAr"></div><div class="field"><label class="lbl"><span data-bind="text:t('priority')"></span><i class="req">*</i></label><input class="inp" type="number" data-bind="value:rcCatPriority"></div><div class="field"><label class="lbl"><span data-bind="text:t('active')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcCatActive"><option value="Y" data-bind="text:t('yes')"></option><option value="N" data-bind="text:t('no')"></option></select></div><div class="field full"><label class="lbl" data-bind="text:t('description')"></label><input class="inp" data-bind="value:rcCatDescription"></div></div><div class="rc-note" data-bind="text:t('rcHierarchyRule')"></div><div class="rc-audit" data-bind="visible:rcCatId"><b data-bind="text:t('rcTracking')"></b><dl><div><dt data-bind="text:t('rcCreatedBy')"></dt><dd data-bind="text:rcCatCreatedBy"></dd></div><div><dt data-bind="text:t('rcCreatedOn')"></dt><dd data-bind="text:rcCatCreatedOn"></dd></div><div><dt data-bind="text:t('rcUpdatedBy')"></dt><dd data-bind="text:rcCatUpdatedBy"></dd></div><div><dt data-bind="text:t('rcUpdatedOn')"></dt><dd data-bind="text:rcCatUpdatedOn"></dd></div></dl></div><button class="btn danger" data-bind="visible:rcCatId,click:rcDeleteCategory,text:t('delete')"></button></div></div></div>
+
+<div class="ov" data-bind="visible:rcRuleModal" style="display:none"><div class="modal wide"><div class="modal-h"><h3 data-bind="text:t('rcNewRule')"></h3><button class="btn btn-sm" data-bind="click:function(){rcRuleModal(false)},text:t('cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:rcSaveRule,text:t('save')"></button></div><div class="modal-b"><div class="rc-note" data-bind="text:t('rcAllHelp')"></div><div class="grid2"><div class="field"><label class="lbl"><span data-bind="text:t('rcCategory')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcSubCategories,optionsText:function(c){return $root.rcPath(c)},optionsValue:'categoryId',value:rcRuleCategory,optionsCaption:t('pickValue')"></select></div><div class="field"><label class="lbl"><span data-bind="text:t('rcSource')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcRuleSource"><option value="AR_TRANSACTION">AR Transaction</option><option value="MISC_RECEIPT">Misc. Receipt</option></select></div><div class="field"><label class="lbl"><span data-bind="text:t('priority')"></span><i class="req">*</i></label><input class="inp" type="number" data-bind="value:rcRulePriority"></div><!-- ko foreach:rcDimensions --><div class="field"><label class="lbl" data-bind="text:$root.t(label)"></label><input class="inp" data-bind="value:$root.rcRuleValues[key],attr:{placeholder:'ALL'}"></div><!-- /ko --></div></div></div></div>
+
+<div class="ov" data-bind="visible:rcAccessModal" style="display:none"><div class="modal"><div class="modal-h"><h3 data-bind="text:t('rcNewAccess')"></h3><button class="btn btn-sm" data-bind="click:function(){rcAccessModal(false)},text:t('cancel')"></button><button class="btn btn-sm btn-primary" data-bind="click:rcSaveAccess,text:t('save')"></button></div><div class="modal-b"><div class="grid2"><div class="field"><label class="lbl"><span data-bind="text:t('rcType')"></span><i class="req">*</i></label><select class="inp" data-bind="value:rcAccessType"><option value="ROLE">Role</option><option value="USER">User</option></select></div><div class="field"><label class="lbl"><span data-bind="text:t('rcPrincipal')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcAccessType()==='ROLE'?rcRoles:rcUsers,optionsText:'name',optionsValue:'id',value:rcAccessPrincipal,optionsCaption:t('pickValue')"></select></div><div class="field full"><label class="lbl"><span data-bind="text:t('rcCategory')"></span><i class="req">*</i></label><select class="inp" data-bind="options:rcCategories,optionsText:function(c){return $root.rcPath(c)},optionsValue:'categoryId',value:rcAccessCategory,optionsCaption:t('pickValue')"></select></div><label class="field full rc-check"><input type="checkbox" data-bind="checked:rcAccessChildren,enable:rcAccessSelectedIsMain"><span data-bind="text:t('rcIncludeChildren')"></span></label></div></div></div></div>
+
 <div class="ov" data-bind="visible:valueModal" style="display:none">
   <div class="modal">
     <div class="modal-h"><h3 data-bind="text:editingValueId()?t('editValue'):t('newValue')"></h3>
@@ -3626,6 +3756,12 @@
     <div class="dw-cap" data-bind="visible:drillCapNote(), text:drillCapNote"></div>
     <!-- sort-criteria hint + combination popover delegate (2026-08-08) -->
     <div class="dw-sort" data-bind="visible:drillSortNote(), text:drillSortNote"></div>
+    <!-- Fund Movement drill sort switch (v1.94.0): the two user-specified orders -->
+    <div class="dw-sort fm-sortbar" data-bind="visible:fmDrillOn">
+      <span data-bind="text:t('fmSortBy')"></span>
+      <button class="btn btn-sm" data-bind="click:function(){setFmDrillSort('default')}, css:{'btn-primary':fmDrillSort()==='default'}, text:t('fmSortDefault')"></button>
+      <button class="btn btn-sm" data-bind="click:function(){setFmDrillSort('date')}, css:{'btn-primary':fmDrillSort()==='date'}, text:t('fmSortDate')"></button>
+    </div>
     <div class="tbl-wrap" data-bind="visible:drillRows().length>0, event:{mouseover:drillGridOver, mousemove:drillGridMove, mouseout:enGridOut}">
       <table class="tbl drill-tbl">
         <thead><tr data-bind="foreach:drillCols">
@@ -3635,7 +3771,7 @@
           <!-- ko foreach: drillRows -->
           <tr>
             <!-- ko foreach: $root.drillCols -->
-            <td data-bind="css:{'num mono':$data.type==='money'||$data.type==='num', 'cmt-cell':$data.key==='_cmt'}">
+            <td data-bind="css:{'num mono':$data.type==='money'||$data.type==='num', 'cmt-cell':$data.key==='_cmt', 'fm-pos':$data.pn&&Number($parent[$data.key])>0, 'fm-neg':$data.pn&&Number($parent[$data.key])<0}">
               <!-- ko if: $data.key==='_cmt' -->
               <button class="cmt-btn" data-bind="click:function(){$root.openCmtDoc($parent)}, clickBubble:false, attr:{title:$root.t('cmtOpenT')}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>
               <!-- /ko -->
@@ -3659,7 +3795,12 @@
                  data-bind="attr:{href:$root.drillLink($parent,$data), title:$root.t('fusionOpen')}, text:$root.cell($parent,$data)"></a>
               <!-- /ko -->
               <!-- ko ifnot: $root.drillLink($parent,$data) -->
+              <!-- ko if: $data.type==='status' -->
+              <span data-bind="attr:{'class':$root.btStClass($parent[$data.key])}, text:$parent[$data.key]||''"></span>
+              <!-- /ko -->
+              <!-- ko ifnot: $data.type==='status' -->
               <span data-bind="text:$root.cell($parent,$data)"></span>
+              <!-- /ko -->
               <!-- /ko -->
               <!-- /ko -->
               <!-- /ko -->
@@ -4268,6 +4409,170 @@
   </div>
 </aside>
 
+<!-- ═══════════ MANAGE COLUMNS DRAWER (butil results tables, v1.96.0) ═══════════ -->
+<div class="dw-scrim" data-bind="css:{show:colDrOpen}, click:closeColDrawer" style="display:none"></div>
+<aside class="dw-drawer dw-cols" data-bind="css:{show:colDrOpen}" role="dialog" aria-modal="true">
+  <header class="dw-h">
+    <div class="dw-h-txt">
+      <div class="dw-eyebrow" data-bind="text:t('colsEyebrow')+' — '+t(colDrLevel()==='line'?'lvLine':colDrLevel()==='dept'?'lvDept':'lvSector')"></div>
+      <div class="dw-title" data-bind="text:t('colsTitle')"></div>
+    </div>
+    <div class="dw-acts">
+      <button class="btn btn-sm" data-bind="click:closeColDrawer, text:t('close')"></button>
+      <button class="btn btn-sm btn-primary" data-bind="click:colApply, text:t('colsApply')"></button>
+    </div>
+  </header>
+  <div class="dw-b">
+    <div class="dw-ctx" data-bind="text:t('colsCtx')"></div>
+    <div class="cols-views">
+      <div class="field"><label class="lbl" data-bind="text:t('colsViewLbl')"></label>
+        <select class="inp" data-bind="options:colDrViewNames, optionsCaption:t('colsNoViewCap'), value:colDrViewSel"></select></div>
+      <div class="field"><label class="lbl" data-bind="text:t('colsNameLbl')"></label>
+        <input class="inp" type="text" maxlength="40" data-bind="textInput:colDrName, attr:{placeholder:t('colsNamePh')}"></div>
+      <div class="cols-vbtns">
+        <button class="btn btn-sm" data-bind="click:colSaveView, text:t('colsSave')"></button>
+        <button class="btn btn-sm" data-bind="click:colSetDefault, enable:!!colDrViewSel(), text:t('colsDefault')"></button>
+        <button class="btn btn-sm" data-bind="click:colDeleteView, enable:!!colDrViewSel(), text:t('colsDelete')"></button>
+        <button class="btn btn-sm" data-bind="click:colReset, text:t('colsReset')"></button>
+      </div>
+      <div class="cols-def" data-bind="visible:colDrDef(), text:t('colsDefNote').replace('{v}', colDrDef())"></div>
+    </div>
+    <div class="cols-selbar">
+      <button class="btn btn-sm" data-bind="click:function(){colSetAll(true)}, text:t('colsSelAll')"></button>
+      <button class="btn btn-sm" data-bind="click:function(){colSetAll(false)}, text:t('colsClear')"></button>
+    </div>
+    <div class="cols-list" data-bind="foreach: colDrItems">
+      <div class="cols-row" data-bind="css:{off:!on()}">
+        <span class="cols-chk" data-bind="click:function(){on(!on());return true}, css:{on:on}"><i></i></span>
+        <span class="cols-lbl" data-bind="click:function(){on(!on());return true}, text:$root.t(c.l)"></span>
+        <span class="cols-gate" data-bind="visible:gated, text:$root.t('colsGate')"></span>
+        <span class="grow"></span>
+        <button class="cols-mv" data-bind="click:function(){$root.colMove($data,-1)}, attr:{title:$root.t('colsUp')}">↑</button>
+        <button class="cols-mv" data-bind="click:function(){$root.colMove($data,1)}, attr:{title:$root.t('colsDown')}">↓</button>
+      </div>
+    </div>
+  </div>
+</aside>
+
+<!-- ═══════════ BUTIL RESULTS CELL TEMPLATES (v1.96.0) ═══════════
+     One template per registry column (buc-* = Budget Line tab, bua-* = the
+     Department / Sector tabs). Inside a template $data = the ROW and $root =
+     the app VM, exactly as the cells were bound before the registry rework. -->
+<script type="text/html" id="buc-sector">
+  <td><span class="adj-star" data-bind="visible:$data.hasAdj==='Y' && $root.buCadjOn(), attr:{title:$root.t('buAdjStarHint')}">(*)</span><span class="cmt-star" data-bind="visible:$data.hasCmt==='Y' && $root.buCmtOn(), attr:{title:$root.t('buCmtStarHint')}">(**)</span><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
+</script>
+<script type="text/html" id="buc-department"><td data-bind="text:$data.department||'—'"></td></script>
+<script type="text/html" id="buc-organization"><td data-bind="text:$data.organization||'—'"></td></script>
+<script type="text/html" id="buc-costcentre"><td class="mono" data-bind="text:$data.costCentre||'—'"></td></script>
+<script type="text/html" id="buc-project"><td><b class="mono" data-bind="text:$data.projectNumber"></b><div class="sub-d" data-bind="text:$data.projectName||''"></div></td></script>
+<script type="text/html" id="buc-task"><td data-bind="text:$data.taskNumber||'—'"></td></script>
+<script type="text/html" id="buc-taskname"><td data-bind="text:$data.taskName||'—'"></td></script>
+<script type="text/html" id="buc-glaccount"><td data-bind="text:$data.glAccount||'—'"></td></script>
+<script type="text/html" id="buc-appropriation"><td data-bind="text:$data.appropriation||'—'"></td></script>
+<script type="text/html" id="buc-chapter"><td data-bind="text:$data.chapter||'—'"></td></script>
+<script type="text/html" id="buc-program"><td data-bind="text:$data.program||'—'"></td></script>
+<script type="text/html" id="buc-etype"><td data-bind="text:$data.expenditureType||'—'"></td></script>
+<script type="text/html" id="buc-budgetannual"><td class="num mono money-cell" data-bind="text:$root.buNum($data.budgetAnnual), attr:{title:$root.money($data.budgetAnnual)}, click:function(d){$root.openBuDrill(d,'budgetannual')}"></td></script>
+<script type="text/html" id="buc-budget"><td class="num mono money-cell" data-bind="text:$root.buNum($data.budget), attr:{title:$root.money($data.budget)}, click:function(d){$root.openBuDrill(d,'budget')}"></td></script>
+<script type="text/html" id="buc-vsbudget">
+  <!-- vs Budget (v1.96.0): Total Actual vs ANNUAL budget — hand verdict + % -->
+  <td class="pi-cell" data-bind="attr:{title:$root.bdRowTip($data)}, click:function(d){if(d.budState&&d.budState!=='NOBUDGET')$root.openBuDrill(d,'budgetannual')}">
+    <span class="vp" data-bind="css:$root.bdCls($data.budState)"><em data-bind="text:$root.bdHand($data.budState)"></em><span class="mono" data-bind="text:$root.bdTxt($data)"></span></span>
+  </td>
+</script>
+<script type="text/html" id="buc-planappra"><td class="num mono money-cell" data-bind="text:$root.buNum($data.planApprovedAnnual), attr:{title:$root.money($data.planApprovedAnnual)}, css:{dash:!$data.planApprovedAnnual}, click:function(d){$root.openBuPlanDrill(d,'APPROVED',true)}"></td></script>
+<script type="text/html" id="buc-planappry"><td class="num mono money-cell" data-bind="text:$root.buNum($data.planApprovedYtd), attr:{title:$root.money($data.planApprovedYtd)}, css:{dash:!$data.planApprovedYtd}, click:function(d){$root.openBuPlanDrill(d,'APPROVED',false)}"></td></script>
+<script type="text/html" id="buc-planreva"><td class="num mono money-cell" data-bind="text:$root.buNum($data.planRevisedAnnual), attr:{title:$root.money($data.planRevisedAnnual)}, css:{dash:!$data.planRevisedAnnual}, click:function(d){$root.openBuPlanDrill(d,'REVISED',true)}"></td></script>
+<script type="text/html" id="buc-planrevy"><td class="num mono money-cell" data-bind="text:$root.buNum($data.planRevisedYtd), attr:{title:$root.money($data.planRevisedYtd)}, css:{dash:!$data.planRevisedYtd}, click:function(d){$root.openBuPlanDrill(d,'REVISED',false)}"></td></script>
+<script type="text/html" id="buc-vsplan">
+  <!-- D1: vs Plan (hand + execution %) — cell drills to the plan month rows -->
+  <td class="pi-cell" data-bind="attr:{title:$root.piRowTip($data)}, click:function(d){if(d.planExecState!=='NOPLAN')$root.openBuPlanDrill(d, $root.buPlanRevOn()&&($data.planRevisedAnnual||0)!==0?'REVISED':'APPROVED', false)}">
+    <span class="vp" data-bind="css:$root.piCls($data.planExecState)"><em data-bind="text:$root.piHand($data.planExecState)"></em><span class="mono" data-bind="text:$root.piVsTxt($data)"></span></span>
+  </td>
+</script>
+<script type="text/html" id="buc-plancov">
+  <td class="pi-cell"><span class="pi-pill" data-bind="css:$root.piCovCls($data.planCovState), text:$root.piCovTxt($data), attr:{title:$root.piCovHdrTip()}"></span></td>
+</script>
+<script type="text/html" id="buc-planperf">
+  <!-- D2: plan-performance micro-chart (track = plan YTD, fill = actual, tick = YTD budget; thin bar = coverage) -->
+  <td class="pi-cell pi-d2">
+    <!-- ko if: $data.planExecState!=='NOPLAN' -->
+    <div class="bl-row"><span class="bl-hand" data-bind="text:$root.piHand($data.planExecState)"></span>
+      <span class="bl-track"><i class="bl-fill" data-bind="css:$root.piCls($data.planExecState), style:{width:$root.piFillW($data)}"></i><i class="bl-tick" data-bind="style:{insetInlineStart:$root.piTickW($data)}, attr:{title:$root.t('cBudgetYtd')}"></i></span></div>
+    <div class="bl-cap"><b class="mono" data-bind="text:$root.piVsTxt($data)"></b>&nbsp;<span data-bind="text:$root.t('piOfPlan')"></span></div>
+    <div class="bl-cov"><i data-bind="style:{width:$root.piCovW($data)}"></i></div>
+    <div class="bl-cap" data-bind="text:$root.piCovCapTxt($data)"></div>
+    <!-- /ko -->
+    <!-- ko if: $data.planExecState==='NOPLAN' --><span class="dash">—</span><!-- /ko -->
+  </td>
+</script>
+<script type="text/html" id="buc-plancomp">
+  <!-- D3: composite Plan / Actual / delta + coverage stack -->
+  <td class="pi-cell pi-d3">
+    <!-- ko if: $data.planExecState!=='NOPLAN' -->
+    <div class="sc-row"><i class="dot" style="background:#8E4585"></i><span class="l" data-bind="text:$root.t('cPlanApprY')"></span><span class="v mono" data-bind="text:$root.buNum($data.planEffYtd)"></span></div>
+    <div class="sc-row"><i class="dot" style="background:#3F6F5F"></i><span class="l" data-bind="text:$root.t('cTotalActual')"></span><span class="v mono" data-bind="text:$root.buNum(($data.actualAp||0)+($data.actualGrn||0))"></span></div>
+    <div class="sc-row"><span class="l" data-bind="text:$root.t('piDelta')"></span><span class="v mono" data-bind="css:$root.piCls($data.planExecState), text:(($data.planVariance||0)>0?'+':'')+$root.buNum($data.planVariance)+' · '+$root.piVsTxt($data)+' '+$root.piHand($data.planExecState)"></span></div>
+    <div class="sc-div"></div>
+    <div class="sc-row"><span class="l" data-bind="text:$root.t('cPlanCov')"></span><span class="v" data-bind="text:$root.piCovTxt($data)"></span></div>
+    <!-- /ko -->
+    <!-- ko if: $data.planExecState==='NOPLAN' --><span class="dash">—</span><!-- /ko -->
+  </td>
+</script>
+<script type="text/html" id="buc-actualap"><td class="num mono money-cell" data-bind="text:$root.buNum($data.actualAp), attr:{title:$root.money($data.actualAp)}, click:function(d){$root.openBuDrill(d,'ap')}"></td></script>
+<script type="text/html" id="buc-actualgrn"><td class="num mono money-cell" data-bind="text:$root.buNum($data.actualGrn), attr:{title:$root.money($data.actualGrn)}, click:function(d){$root.openBuDrill(d,'grn')}"></td></script>
+<script type="text/html" id="buc-procash"><td class="num mono" data-bind="text:$root.buNum($data.procash), attr:{title:$root.money($data.procash)}, css:{dash:!$data.procash}"></td></script>
+<script type="text/html" id="buc-commitmentpr"><td class="num mono money-cell" data-bind="text:$root.buNum($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}, click:function(d){$root.openBuDrill(d,'pr')}"></td></script>
+<script type="text/html" id="buc-obligationpo"><td class="num mono money-cell" data-bind="text:$root.buNum($data.obligationPo), attr:{title:$root.money($data.obligationPo)}, click:function(d){$root.openBuDrill(d,'po')}"></td></script>
+<script type="text/html" id="buc-fundavailable">
+  <td class="num mono strong" data-bind="attr:{title:$data.fundAvailable<0 ? $root.t('buNegCellHint')+' — '+$root.money($data.fundAvailable) : $root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}">
+    <span class="nf-flag" data-bind="visible:$data.fundAvailable<0" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+    <span data-bind="text:$root.buNum($data.fundAvailable)"></span>
+  </td>
+</script>
+<script type="text/html" id="buc-fmcnt"><td class="num mono" data-bind="text:$root.fmTxt($root.fmOfRow($data),'cnt'), css:$root.fmCls($root.fmOfRow($data),'cnt'), click:function(d){$root.openBuFmDrill(d)}, event:{mouseenter:function(d,e){return $root.fmHover($root.fmOfRow(d),e)}, mouseleave:$root.fmOut}"></td></script>
+<script type="text/html" id="buc-fmamt"><td class="num mono" data-bind="text:$root.fmTxt($root.fmOfRow($data),'amt'), css:$root.fmCls($root.fmOfRow($data),'amt'), click:function(d){$root.openBuFmDrill(d)}, event:{mouseenter:function(d,e){return $root.fmHover($root.fmOfRow(d),e)}, mouseleave:$root.fmOut}"></td></script>
+<script type="text/html" id="buc-cmttext"><td class="cmt-txt-cell" data-bind="attr:{title:$data.commentsText||''}"><div class="cmt-txt-clamp" data-bind="text:$data.commentsText||''"></div></td></script>
+<script type="text/html" id="buc-cmtbtn">
+  <td class="cmt-cell"><button class="cmt-btn" data-bind="click:function(d){$root.openCmtLine(d)}, clickBubble:false, attr:{title:$root.t('cmtOpenT')}, css:{has:$data.hasCmt==='Y'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="cmt-n" data-bind="visible:($data.cmtCount||0)>0, text:$data.cmtCount"></span></button></td>
+</script>
+<script type="text/html" id="bua-sector">
+  <td><span class="adj-star" data-bind="visible:$data.hasAdj==='Y' && $root.buCadjOn(), attr:{title:$root.t('buAdjStarHint')}">(*)</span><span class="chip" data-bind="visible:$data.sector, text:$data.sector||''"></span><span data-bind="visible:!$data.sector" class="dash">—</span></td>
+</script>
+<script type="text/html" id="bua-costcentre"><td class="mono" data-bind="text:$data.costCentre||'—'"></td></script>
+<script type="text/html" id="bua-department"><td><span data-bind="text:$data.department||'—'"></span> <span class="chip-po" data-bind="visible:$data.planOnly==='Y', text:$root.t('lvPlanOnly')"></span></td></script>
+<script type="text/html" id="bua-lines"><td class="num mono" data-bind="text:$data.lines ? $root.fmt($data.lines) : '—', css:{dash:!$data.lines}"></td></script>
+<script type="text/html" id="bua-budgetannual"><td class="num mono" data-bind="text:$root.buNum($data.budgetAnnual), attr:{title:$root.money($data.budgetAnnual)}, css:{'money-cell':true}, click:function(d){$root.openBuAggDrill(d,'budgetannual')}"></td></script>
+<script type="text/html" id="bua-budget"><td class="num mono" data-bind="text:$root.buNum($data.budget), attr:{title:$root.money($data.budget)}, css:{'money-cell':true}, click:function(d){$root.openBuAggDrill(d,'budget')}"></td></script>
+<script type="text/html" id="bua-vsbudget">
+  <td class="pi-cell" data-bind="attr:{title:$root.bdRowTip($data)}, click:function(d){if(d.budState&&d.budState!=='NOBUDGET'&&$root.buAggCanDrill(d))$root.openBuAggDrill(d,'budgetannual')}">
+    <span class="vp" data-bind="css:$root.bdCls($data.budState)"><em data-bind="text:$root.bdHand($data.budState)"></em><span class="mono" data-bind="text:$root.bdTxt($data)"></span></span>
+  </td>
+</script>
+<script type="text/html" id="bua-planappra"><td class="num mono" data-bind="text:$root.buNum($data.planApprovedAnnual), css:{dash:!$data.planApprovedAnnual, 'money-cell':true}, click:function(d){$root.openBuAggPlan(d,'APPROVED',true)}, attr:{title:($data.planExtra||0)>0.005 ? $root.t('lvExtraCell').replace('{amt}', $root.money($data.planExtra)) : $root.money($data.planApprovedAnnual)}"></td></script>
+<script type="text/html" id="bua-planappry"><td class="num mono" data-bind="text:$root.buNum($data.planApprovedYtd), css:{dash:!$data.planApprovedYtd, 'money-cell':true}, click:function(d){$root.openBuAggPlan(d,'APPROVED',false)}, attr:{title:$root.money($data.planApprovedYtd)}"></td></script>
+<script type="text/html" id="bua-planreva"><td class="num mono" data-bind="text:$root.buNum($data.planRevisedAnnual), css:{dash:!$data.planRevisedAnnual, 'money-cell':true}, click:function(d){$root.openBuAggPlan(d,'REVISED',true)}, attr:{title:$root.money($data.planRevisedAnnual)}"></td></script>
+<script type="text/html" id="bua-planrevy"><td class="num mono" data-bind="text:$root.buNum($data.planRevisedYtd), css:{dash:!$data.planRevisedYtd, 'money-cell':true}, click:function(d){$root.openBuAggPlan(d,'REVISED',false)}, attr:{title:$root.money($data.planRevisedYtd)}"></td></script>
+<script type="text/html" id="bua-vsplan">
+  <td class="pi-cell" data-bind="attr:{title:$root.piRowTip($data)}, click:function(d){if(d.planExecState!=='NOPLAN')$root.openBuAggPlan(d, ($data.planRevisedAnnual||0)!==0?'REVISED':'APPROVED', false)}">
+    <span class="vp" data-bind="css:$root.piCls($data.planExecState)"><em data-bind="text:$root.piHand($data.planExecState)"></em><span class="mono" data-bind="text:$root.piVsTxt($data)"></span></span>
+  </td>
+</script>
+<script type="text/html" id="bua-plancov">
+  <td class="pi-cell"><span class="pi-pill" data-bind="css:$root.piCovCls($data.planCovState), text:$root.piCovTxt($data), attr:{title:$root.piCovHdrTip()}"></span></td>
+</script>
+<script type="text/html" id="bua-actualap"><td class="num mono" data-bind="text:$root.buNum($data.actualAp), attr:{title:$root.money($data.actualAp)}, css:{'money-cell':true}, click:function(d){$root.openBuAggDrill(d,'ap')}"></td></script>
+<script type="text/html" id="bua-actualgrn"><td class="num mono" data-bind="text:$root.buNum($data.actualGrn), attr:{title:$root.money($data.actualGrn)}, css:{'money-cell':true}, click:function(d){$root.openBuAggDrill(d,'grn')}"></td></script>
+<script type="text/html" id="bua-procash"><td class="num mono" data-bind="text:$root.buNum($data.procash), attr:{title:$root.money($data.procash)}, css:{dash:!$data.procash}"></td></script>
+<script type="text/html" id="bua-commitmentpr"><td class="num mono" data-bind="text:$root.buNum($data.commitmentPr), attr:{title:$root.money($data.commitmentPr)}, css:{'money-cell':true}, click:function(d){$root.openBuAggDrill(d,'pr')}"></td></script>
+<script type="text/html" id="bua-obligationpo"><td class="num mono" data-bind="text:$root.buNum($data.obligationPo), attr:{title:$root.money($data.obligationPo)}, css:{'money-cell':true}, click:function(d){$root.openBuAggDrill(d,'po')}"></td></script>
+<script type="text/html" id="bua-fundavailable"><td class="num mono strong" data-bind="attr:{title:$root.money($data.fundAvailable)}, css:{neg:$data.fundAvailable<0}"><span data-bind="text:$root.buNum($data.fundAvailable)"></span></td></script>
+<script type="text/html" id="bua-fmcnt"><td class="num mono" data-bind="text:$root.fmTxt($root.fmOfGrp($data),'cnt'), css:$root.fmCls($root.fmOfGrp($data),'cnt'), click:function(d){$root.openBuAggFmDrill(d)}, event:{mouseenter:function(d,e){return $root.fmHover($root.fmOfGrp(d),e)}, mouseleave:$root.fmOut}"></td></script>
+<script type="text/html" id="bua-fmamt"><td class="num mono" data-bind="text:$root.fmTxt($root.fmOfGrp($data),'amt'), css:$root.fmCls($root.fmOfGrp($data),'amt'), click:function(d){$root.openBuAggFmDrill(d)}, event:{mouseenter:function(d,e){return $root.fmHover($root.fmOfGrp(d),e)}, mouseleave:$root.fmOut}"></td></script>
+<script type="text/html" id="bua-cmtbtn">
+  <td class="cmt-cell cmt-cell-agg"><div class="agg-cmt"><button class="cmt-btn" data-bind="click:function(d){$root.openCmtGroup(d)}, clickBubble:false, attr:{title:$root.t('chCmtGrp')}, css:{has:$data.hasCmt==='Y'}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><span class="cmt-n" data-bind="visible:($data.cmtCount||0)>0, text:$data.cmtCount"></span></button><div class="cmt-txt-clamp" data-bind="text:$data.commentsText||'', attr:{title:$data.commentsText||''}"></div></div></td>
+</script>
+
 <!-- ═══════════ BUDGET UTILIZATION COMMENTS DRAWER (thread + add/reply + attachments) ═══════════
      LAST drawer in the DOM on purpose: all drawers share z-index 71, so DOM
      order decides stacking and this one must open ABOVE the drill drawer
@@ -4431,6 +4736,16 @@
 </aside>
 
 <!-- combination segment popover -->
+<!-- Fund Movement cell breakdown popover (v1.94.0): additions green / deductions red / net -->
+<div class="fm-tip" data-bind="visible:fmTip, style:{left:fmTipX()+'px', top:fmTipY()+'px'}" style="display:none">
+  <!-- ko if: fmTip -->
+  <div class="fm-tip-h" data-bind="text:t('fmTipTitle')"></div>
+  <div class="fm-tip-r pos"><span class="s">&#9650;</span><span data-bind="text:fmt(fmTip().posCnt)+' '+t('fmAdds')"></span><b class="mono" data-bind="text:'+'+money(fmTip().posAmt)"></b></div>
+  <div class="fm-tip-r neg"><span class="s">&#9660;</span><span data-bind="text:fmt(fmTip().negCnt)+' '+t('fmDeds')"></span><b class="mono" data-bind="text:money(fmTip().negAmt)"></b></div>
+  <div class="fm-tip-d"></div>
+  <div class="fm-tip-r net"><span data-bind="text:t('fmNet')"></span><b class="mono" data-bind="text:money(fmTip().amt), css:{pos:fmTip().amt>0, neg:fmTip().amt<0}"></b></div>
+  <!-- /ko -->
+</div>
 <div class="combo-tip" data-bind="visible:tipShow, style:{left:tipX()+'px', top:tipY()+'px'}" style="display:none">
   <div class="ctip-h" data-bind="text:t('segments')"></div>
   <table><tbody data-bind="foreach:tipRows">

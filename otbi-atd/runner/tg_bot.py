@@ -33,6 +33,7 @@ import os
 import sys
 import time
 import pathlib
+import socket
 
 import httpx
 import config
@@ -66,6 +67,28 @@ _STATE_FILE = (
     pathlib.Path(os.environ.get("ATD_STATE_DIR", "/root/otbi-atd"))
     / "tgbot_offset.txt"
 )
+
+
+def _sd_notify(message):
+    """Best-effort systemd readiness/watchdog notification.
+
+    The bot normally completes one Telegram long-poll every 30 seconds.  If that
+    loop wedges while the process remains alive, systemd restarts it after the
+    configured WatchdogSec instead of leaving commands unprocessed indefinitely.
+    """
+    address = os.environ.get("NOTIFY_SOCKET")
+    if not address:
+        return False
+    if address.startswith("@"):  # abstract Unix socket notation used by systemd
+        address = "\0" + address[1:]
+    try:
+        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as sock:
+            sock.connect(address)
+            sock.sendall(message.encode("utf-8"))
+        return True
+    except OSError as exc:
+        print(f"[bot] systemd notify failed: {exc}")
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -447,10 +470,12 @@ def run():
 
     offset = _load_offset()
     print(f"[bot] polling from offset={offset} (long-poll timeout={_POLL_TIMEOUT}s)")
+    _sd_notify("READY=1\nSTATUS=Polling Telegram for commands")
 
     while True:
         try:
             data = _tg("getUpdates", offset=offset, timeout=_POLL_TIMEOUT)
+            _sd_notify("WATCHDOG=1\nSTATUS=Telegram poll healthy")
             for u in data.get("result", []):
                 uid = u.get("update_id", 0)
                 try:
@@ -467,7 +492,7 @@ def run():
                     offset = uid + 1
                     _save_offset(offset)
         except httpx.TimeoutException:
-            pass  # normal for long-poll with no messages
+            _sd_notify("WATCHDOG=1\nSTATUS=Telegram poll healthy (idle)")
         except Exception as exc:
             print(f"[bot] poll error: {exc} — retrying in {_RETRY_SLEEP}s")
             time.sleep(_RETRY_SLEEP)

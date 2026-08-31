@@ -210,6 +210,16 @@ BEGIN
   -- cmtmode is bound by the register's comments SQLs, so the key must ALWAYS
   -- ride the run params (a bind absent from the payload = datasource error)
   APEX_JSON.write('cmtmode', NVL(UPPER(APEX_JSON.get_varchar2(p_path=>'cmtmode')),'NONE'));
+  -- Manage-columns saved view (v1.96.0): the page's active column view as an
+  -- ordered register sheet-1 column list -- forwarded to the runner's per-run
+  -- sheet filter (runner.py _apply_sheet_cols reads sheet_cols_bu_lines)
+  DECLARE
+    l_cols VARCHAR2(2000) := APEX_JSON.get_varchar2(p_path=>'sheetcols');
+  BEGIN
+    IF l_cols IS NOT NULL AND REGEXP_LIKE(l_cols, '^[a-z0-9_,]+$') THEN
+      APEX_JSON.write('sheet_cols_bu_lines', l_cols);
+    END IF;
+  END;
   APEX_JSON.close_object;
   l_params := APEX_JSON.get_clob_output;
   APEX_JSON.free_output;

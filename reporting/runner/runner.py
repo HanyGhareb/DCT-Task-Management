@@ -35,6 +35,49 @@ DUBAI = timezone(timedelta(hours=4))           # Asia/Dubai (fixed +04:00, no DS
 HOSTNAME = os.environ.get("RPT_WORKER_NAME") or socket.gethostname() or "rpt"
 WORKER_ID = f"{HOSTNAME}/py{os.getpid()}"
 XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+
+
+def _apply_sheet_cols(sections, params):
+    """Per-run sheet column filter/order (XLSX path only).
+
+    A run parameter ``sheet_cols_<sectionkey>`` = comma-separated column names
+    keeps ONLY those columns, in that order, on the matching sheet -- the GL
+    Budget Utilization "Manage columns" saved view rides this (GL/db/11 sends
+    sheet_cols_bu_lines). Matching is case-insensitive and transparent to the
+    ``__pn`` sign-tint suffix; the row_kind styling column always survives;
+    unknown names are ignored; a spec matching nothing leaves the sheet as-is.
+    """
+    if not params:
+        return sections
+    out = []
+    for s in sections:
+        spec = params.get("sheet_cols_" + str(s.get("key") or "").lower())
+        if not spec:
+            out.append(s)
+            continue
+        cols = s["columns"]
+
+        def base(c):
+            c = str(c).strip().lower()
+            return c[:-4] if c.endswith("__pn") else c
+
+        idx = {}
+        for i, c in enumerate(cols):
+            idx.setdefault(base(c), i)
+        keep = [i for i, c in enumerate(cols) if base(c) == "row_kind"]
+        for w in str(spec).split(","):
+            i = idx.get(w.strip().lower())
+            if i is not None and i not in keep:
+                keep.append(i)
+        if not [i for i in keep if base(cols[i]) != "row_kind"]:
+            out.append(s)
+            continue
+        s2 = dict(s)
+        s2["columns"] = [cols[i] for i in keep]
+        s2["rows"] = [[r[i] for i in keep] for r in s["rows"]]
+        out.append(s2)
+    return out
+
 PPTX_MIME = "application/vnd.openxmlformats-officedocument.presentationml.presentation"
 
 # display labels for the run-parameter crumbs in the sheet/PDF meta band —
@@ -301,7 +344,8 @@ def process(conn, conf, job):
         attachments.append((fn, "application/pdf", pdf))
     if "XLSX" in formats:
         if sections is not None:
-            xlsx = render_xlsx.build_xlsx_multi(sections, title=name_en or code, meta=meta)
+            xlsx = render_xlsx.build_xlsx_multi(_apply_sheet_cols(sections, params),
+                                               title=name_en or code, meta=meta)
         else:
             xlsx = render_xlsx.build_xlsx(columns, rows, title=name_en or code, meta=meta,
                                           sheet_name=code)

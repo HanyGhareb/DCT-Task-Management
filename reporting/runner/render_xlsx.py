@@ -24,6 +24,15 @@ _SUBTOTAL_FONT = Font(bold=True, color="1F4E5F", name="Calibri", size=11)
 _GRAND_FILL = PatternFill("solid", fgColor=_BRAND)
 _GRAND_FONT = Font(bold=True, color="FFFFFF", name="Calibri", size=11)
 
+# signed-amount styling: a column whose name ends with __PN (case-insensitive)
+# renders its numbers GREEN when positive and RED when negative (Excel number
+# format sections), and the suffix is stripped from the printed header —
+# "AMOUNT__PN" shows as "Amount". Opt-in per column alias, like ROW_KIND, so
+# every existing report is unaffected. First consumer: BUDGET_UTIL_REGISTER
+# sheet 8 "Fund Movement" (reporting/db/25, 2026-08-30).
+_PN_SUFFIX = "__pn"
+_PN_FORMAT = "[Green]#,##0.00;[Red]-#,##0.00;#,##0.00"
+
 
 def _is_number(v):
     return isinstance(v, (int, float)) and not isinstance(v, bool)
@@ -67,6 +76,10 @@ def _fill_sheet(ws, columns, rows, title, meta, sheet_name):
     if kind_idx is not None:
         columns = [c for i, c in enumerate(columns) if i != kind_idx]
 
+    pn_cols = [str(c).strip().lower().endswith(_PN_SUFFIX) for c in columns]
+    columns = [str(c).strip()[: -len(_PN_SUFFIX)] if pn else c
+               for c, pn in zip(columns, pn_cols)]
+
     ncols = max(1, len(columns))
     # title + meta band
     ws.cell(row=1, column=1, value=title).font = _TITLE_FONT
@@ -99,7 +112,8 @@ def _fill_sheet(ws, columns, rows, title, meta, sheet_name):
             c = ws.cell(row=i, column=j, value=val)
             c.border = _BORDER
             if _is_number(val):
-                c.number_format = "#,##0.00"
+                c.number_format = (_PN_FORMAT if j - 1 < len(pn_cols)
+                                   and pn_cols[j - 1] else "#,##0.00")
                 c.alignment = Alignment(horizontal="right")
             if kind == "CHTOTAL":
                 c.fill = _SUBTOTAL_FILL

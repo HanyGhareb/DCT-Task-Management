@@ -244,3 +244,9 @@ over the Fusion-loaded `ATD_GL_*` tables + a Portal-style management UI.
   Chapter/Program enrichment to be added once it carries parseable segments).
 - **Sector seed** uses the latest cost-center column with a `2024-01-01` baseline start; historical
   closed ranges (2018–2023) can be added on the Mapping page when needed.
+## 2026-08-31 — Revenue Categories (v1.97.0)
+
+- LIVE under Settings → Revenue Categories.
+- GL/db/36 owns the category hierarchy, mapping rules, access assignments and
+  eight additive ORDS handlers. Production starts empty; no mockup data seeded.
+- Webtier release: `20260831232838`.

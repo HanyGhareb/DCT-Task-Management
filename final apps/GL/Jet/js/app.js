@@ -37,6 +37,18 @@
     grpProjects:{en:'Projects',ar:'المشاريع'},
     grpGl:{en:'General Ledger',ar:'دفتر الأستاذ العام'},
     grpSettings:{en:'Settings',ar:'الإعدادات'},
+    navRevenueCategories:{en:'Revenue Categories',ar:'فئات الإيرادات'},
+    revTitle:{en:'Revenue Categories',ar:'فئات الإيرادات'},revSub:{en:'Define a reporting hierarchy, revenue mapping rules and category-based access.',ar:'تعريف هيكل التقارير وقواعد تصنيف الإيرادات والصلاحيات حسب الفئة.'},
+    rcCategories:{en:'Categories',ar:'الفئات'},rcMapping:{en:'Define Mapping',ar:'تعريف الربط'},rcAccessControl:{en:'Access Control',ar:'التحكم بالصلاحيات'},rcHierarchy:{en:'Main and subcategory hierarchy',ar:'هيكل الفئات الرئيسية والفرعية'},
+    rcActive:{en:'Active categories',ar:'الفئات النشطة'},rcRules:{en:'Mapping rules',ar:'قواعد الربط'},rcAccess:{en:'Access grants',ar:'صلاحيات الوصول'},rcRuleHelp:{en:'Most specific rule wins',ar:'تُطبق القاعدة الأكثر تحديداً'},rcAccessHelp:{en:'Role and user assignments',ar:'تعيينات الأدوار والمستخدمين'},
+    rcMain:{en:'Main',ar:'رئيسية'},rcSubcat:{en:'Subcategory',ar:'فئة فرعية'},rcCategory:{en:'Revenue Category',ar:'فئة الإيراد'},rcLevel:{en:'Level',ar:'المستوى'},rcSource:{en:'Revenue Source',ar:'مصدر الإيراد'},rcParent:{en:'Parent Main Category',ar:'الفئة الرئيسية'},
+    rcNewCategory:{en:'+ New Category',ar:'+ فئة جديدة'},rcNewRule:{en:'+ New Mapping Rule',ar:'+ قاعدة ربط جديدة'},rcNewAccess:{en:'+ Assign Access',ar:'+ تعيين صلاحية'},rcSearch:{en:'Search categories, rules or access…',ar:'بحث في الفئات أو القواعد أو الصلاحيات…'},rcReadOnly:{en:'Read only',ar:'للقراءة فقط'},rcEmpty:{en:'No records yet.',ar:'لا توجد سجلات بعد.'},
+    rcSpecific:{en:'Exact dimension values take precedence over ALL; priority resolves equally specific rules.',ar:'تسبق القيم المحددة قيمة ALL، وتفصل الأولوية بين القواعد المتساوية.'},rcInheritance:{en:'A main-category grant can include all current and future subcategories.',ar:'يمكن لصلاحية الفئة الرئيسية أن تشمل كل الفئات الفرعية الحالية والمستقبلية.'},
+    rcTransType:{en:'Transaction Type',ar:'نوع المعاملة'},rcTransSource:{en:'Transaction Source',ar:'مصدر المعاملة'},rcRevenueType:{en:'Revenue Type',ar:'نوع الإيراد'},rcCostCenter:{en:'Cost Center',ar:'مركز التكلفة'},rcGlAccount:{en:'GL Account',ar:'حساب الأستاذ'},rcProject:{en:'Project Number',ar:'رقم المشروع'},rcTask:{en:'Task Number',ar:'رقم المهمة'},rcCustomer:{en:'Customer Number',ar:'رقم العميل'},
+    rcPrincipal:{en:'Role / User',ar:'الدور / المستخدم'},rcType:{en:'Type',ar:'النوع'},rcScope:{en:'Scope',ar:'النطاق'},rcAllChildren:{en:'All subcategories',ar:'كل الفئات الفرعية'},rcThisOnly:{en:'This category only',ar:'هذه الفئة فقط'},rcIncludeChildren:{en:'Include current and future subcategories',ar:'تضمين الفئات الفرعية الحالية والمستقبلية'},
+    rcHierarchyRule:{en:'Main categories have no parent. Each subcategory must have exactly one main parent.',ar:'الفئة الرئيسية بلا أصل، وكل فئة فرعية تتبع فئة رئيسية واحدة.'},rcAllHelp:{en:'Leave a dimension as ALL to match every value.',ar:'اترك البعد بقيمة ALL لمطابقة جميع القيم.'},
+    priority:{en:'Priority',ar:'الأولوية'},description:{en:'Description',ar:'الوصف'},delete:{en:'Delete',ar:'حذف'},required:{en:'Complete all required fields.',ar:'يرجى استكمال جميع الحقول المطلوبة.'},
+    rcCreatedBy:{en:'Created By',ar:'أنشأ بواسطة'},rcCreatedOn:{en:'Created On',ar:'تاريخ الإنشاء'},rcUpdatedBy:{en:'Updated By',ar:'حدّث بواسطة'},rcUpdatedOn:{en:'Updated On',ar:'تاريخ التحديث'},rcTracking:{en:'Tracking Information',ar:'معلومات التتبع'},
     navBudgetTrx:{en:'Budget Transactions',ar:'معاملات الموازنة'},
     navSectorPerf:{en:'Sector Performance',ar:'أداء القطاع'},
     spTitle:{en:'Sector Financial Performance',ar:'الأداء المالي للقطاع'},
@@ -158,6 +170,34 @@
     btSearchL:{en:'Search',ar:'بحث'},
     btSearchPh:{en:'Transaction, decree, project, task, expenditure type…',ar:'المعاملة، القرار، المشروع، المهمة، نوع الإنفاق…'},
     btLovHint:{en:'All — type to search…',ar:'الكل — اكتب للبحث…'},
+    cFmCnt:{en:'Fund Movement Count',ar:'عدد حركات التمويل'},
+    cFmAmt:{en:'Fund Movement Amount',ar:'مبلغ حركات التمويل'},
+    chFmCnt:{en:'How many APPROVED Additional Fund transfer lines hit this row in the budget year, up to the selected accounting period — additions and deductions alike (zero-amount lines excluded). Hover for the green/red split; click to list the transactions.',ar:'عدد سطور تحويلات التمويل الإضافي المعتمدة على هذا الصف خلال سنة الموازنة وحتى الفترة المحاسبية المحددة — الإضافات والخصومات معاً (تُستثنى السطور الصفرية). مرّر للتفصيل الأخضر/الأحمر، وانقر لعرض المعاملات.'},
+    chFmAmt:{en:'Net fund movement = additions − deductions (AED, APPROVED transactions only) on this row in the budget year, up to the selected period. Green = net addition, red = net deduction. Hover for the split; click to list the transactions.',ar:'صافي حركة التمويل = الإضافات − الخصومات (بالدرهم، للمعاملات المعتمدة فقط) على هذا الصف خلال سنة الموازنة وحتى الفترة المحددة. الأخضر = إضافة صافية والأحمر = خصم صافٍ. مرّر للتفصيل وانقر لعرض المعاملات.'},
+    fmTipTitle:{en:'Fund movement',ar:'حركات التمويل'},
+    fmAdds:{en:'additions',ar:'إضافات'},
+    fmDeds:{en:'deductions',ar:'خصومات'},
+    fmNet:{en:'Net',ar:'الصافي'},
+    buDrillFm:{en:'Fund Movement — transfer transactions',ar:'حركات التمويل — معاملات التحويل'},
+    fmSortBy:{en:'Sort:',ar:'الترتيب:'},
+    fmSortDefault:{en:'Project · Task · Type · Date',ar:'المشروع · المهمة · النوع · التاريخ'},
+    fmSortDate:{en:'Date · Project · Task · Type',ar:'التاريخ · المشروع · المهمة · النوع'},
+    fmExtraNote:{en:'{n} transfer lines (net {amt}) fall under cost centres / sectors with no row above (no budget line in the current scope).',ar:'{n} سطر تحويل (بصافي {amt}) تقع تحت مراكز تكلفة أو قطاعات بلا صف أعلاه (لا يوجد خط موازنة ضمن النطاق الحالي).'},
+    fmProjectNo:{en:'Project Number',ar:'رقم المشروع'},
+    fmProjectName:{en:'Project Name',ar:'اسم المشروع'},
+    fmTaskNo:{en:'Task Number',ar:'رقم المهمة'},
+    fmCommitment:{en:'Commitment',ar:'الالتزام'},
+    fmAnnBudget:{en:'Total Annual Budget',ar:'إجمالي الموازنة السنوية'},
+    fmFundAvail:{en:'Project Fund Available',ar:'المتاح من تمويل المشروع'},
+    fmTotActual:{en:'Total Actual',ar:'إجمالي الفعلي'},
+    fmTrxNum:{en:'Transaction Num',ar:'رقم المعاملة'},
+    fmTrxDate:{en:'Transaction Date',ar:'تاريخ المعاملة'},
+    fmTrxYear:{en:'Transaction Year',ar:'سنة المعاملة'},
+    fmTrxStatus:{en:'Transaction Status',ar:'حالة المعاملة'},
+    fmSubmittedBy:{en:'Submitted By',ar:'قدّمها'},
+    fmApprovedBy:{en:'Approved By',ar:'اعتمدها'},
+    fmApprState:{en:'Approval State',ar:'حالة الاعتماد'},
+    fmApprDate:{en:'Approval Date',ar:'تاريخ الاعتماد'},
     btLineHint:{en:'Line-level criterion: a transaction matches when one of its detail lines does.',ar:'معيار على مستوى السطر: تُطابق المعاملة عندما يُطابق أحد سطور تفاصيلها.'},
     btLineFilters:{en:'line criteria',ar:'معايير السطور'},
     btScopeRequired:{en:'Budget Type and Transaction Year are required.',ar:'نوع الموازنة وسنة المعاملة مطلوبان.'},
@@ -870,6 +910,71 @@
     pfColPlanRevA:{en:'Revised Plan Annual',ar:'الخطة المعدلة السنوية'},
     pfColPlanRevY:{en:'Revised Plan YTD',ar:'الخطة المعدلة منذ بداية السنة'},
     pfGrpPlan:{en:'Expenditure Plan',ar:'خطة الإنفاق'},
+    /* ── plan insights (v1.88.0, mockups D1+K1+K2): vs-plan verdicts + coverage ── */
+    piShowL:{en:'Show Plan',ar:'عرض الخطة'},
+    piShowHint:{en:'Yes = the plan columns (Plan Annual / Plan YTD) with the vs Plan and Plan Coverage indicators. No = no plan columns in the results table. Plan with insights = all plan columns plus the visual micro-chart and composite columns.',ar:'نعم = أعمدة الخطة (السنوية / منذ بداية السنة) مع مؤشري "مقابل الخطة" و"تغطية الخطة". لا = بدون أعمدة الخطة في جدول النتائج. الخطة مع المؤشرات = كل أعمدة الخطة بالإضافة إلى المخطط المصغر والعمود المركب.'},
+    piModeYes:{en:'Yes',ar:'نعم'},
+    piModeNo:{en:'No',ar:'لا'},
+    piModeIns:{en:'Plan with insights',ar:'الخطة مع المؤشرات'},
+    cVsPlan:{en:'vs Plan',ar:'مقابل الخطة'},
+    cPlanCov:{en:'Plan Coverage',ar:'تغطية الخطة'},
+    cPlanPerf:{en:'Plan Performance',ar:'أداء الخطة'},
+    cPlanComp:{en:'Plan vs Actual / Budget',ar:'الخطة مقابل الفعلي / الموازنة'},
+    piWithin:{en:'Within plan',ar:'ضمن الخطة'},
+    piBelow:{en:'Below plan',ar:'دون الخطة'},
+    piAhead:{en:'Ahead of plan',ar:'متجاوز للخطة'},
+    piNone:{en:'No plan',ar:'بلا خطة'},
+    piCovFull:{en:'Full',ar:'كاملة'},
+    piCovUnder:{en:'Under',ar:'ناقصة'},
+    piCovOver:{en:'Over',ar:'زائدة'},
+    piCovNone:{en:'Not planned',ar:'غير مخطط'},
+    piVsPlanHint:{en:'vs Plan = Total Actual (AP + GRN) ÷ Plan YTD × 100 — uses the revised plan when one exists. 👍 {lo}–{hi}% = within plan · 👎 below {lo}% = slower than planned · ✋ above {hi}% = faster than planned.',ar:'مقابل الخطة = إجمالي الفعلي (دائنون + استلام) ÷ الخطة منذ بداية السنة × 100 — تُستخدم الخطة المعدلة إن وجدت. 👍 {lo}–{hi}% ضمن الخطة · 👎 أقل من {lo}% أبطأ من المخطط · ✋ أعلى من {hi}% أسرع من المخطط.'},
+    piCovColHint:{en:'Plan Coverage = Plan Annual ÷ Annual Budget × 100. {lo}–{hi}% = fully planned · below {lo}% = under-planned (gap) · above {hi}% = over-planned.',ar:'تغطية الخطة = الخطة السنوية ÷ الموازنة السنوية × 100. {lo}–{hi}% مخطط بالكامل · أقل من {lo}% تخطيط ناقص (فجوة) · أعلى من {hi}% تخطيط زائد.'},
+    piOfPlan:{en:'of plan',ar:'من الخطة'},
+    piCovCap:{en:'plan covers {p}% of budget',ar:'الخطة تغطي {p}% من الموازنة'},
+    piDelta:{en:'Δ vs plan',ar:'الفرق عن الخطة'},
+    piPerfSub:{en:'Actual {a} vs plan {p}',ar:'الفعلي {a} مقابل الخطة {p}'},
+    piCovSub:{en:'Plan {p} of budget {b}',ar:'الخطة {p} من الموازنة {b}'},
+    piGap:{en:'Plan gap',ar:'فجوة الخطة'},
+    piExecBandT:{en:'Plan execution',ar:'تنفيذ الخطة'},
+    piExecBandMsg:{en:'{b} lines are below plan by {ba} and {a} lines are ahead of plan by {aa} for the selected criteria.',ar:'{b} بنداً دون الخطة بمقدار {ba} و{a} بنداً متجاوزاً للخطة بمقدار {aa} ضمن المعايير المحددة.'},
+    piCovBandT:{en:'Plan coverage',ar:'تغطية الخطة'},
+    piCovBandMsg:{en:'The expenditure plan covers {p}% of the annual budget — gap {amt} across {u} under-planned and {n} unplanned lines.',ar:'تغطي خطة الإنفاق {p}% من الموازنة السنوية — فجوة {amt} عبر {u} بنداً ناقص التخطيط و{n} بنداً غير مخطط.'},
+    piViewBelow:{en:'View below-plan',ar:'عرض ما دون الخطة'},
+    piViewAhead:{en:'View ahead-of-plan',ar:'عرض المتجاوز'},
+    piViewUnplanned:{en:'View unplanned',ar:'عرض غير المخطط'},
+    piChip:{en:'Plan filter: {s}',ar:'تصفية الخطة: {s}'},
+    piTileHint:{en:'Click a row to filter the results to those lines.',ar:'انقر صفاً لتصفية النتائج على تلك البنود.'},
+    /* ── vs Budget verdict + Manage columns (v1.96.0) ── */
+    cVsBudget:{en:'vs Budget',ar:'مقابل الموازنة'},
+    bdColHint:{en:'vs Budget = Total Actual (AP + GRN) ÷ ANNUAL Budget × 100 — always against the full-year budget, whatever accounting period is selected. 👍 below {n}% = on track · ✋ {n}–{o}% = near limit · 👎 above {o}% = over budget.',ar:'مقابل الموازنة = إجمالي الفعلي (دائنون + استلام) ÷ الموازنة السنوية × 100 — دائماً مقابل موازنة السنة الكاملة أياً كانت الفترة المحاسبية المحددة. 👍 أقل من {n}% ضمن الموازنة · ✋ {n}–{o}% قرب الحد · 👎 أعلى من {o}% تجاوز الموازنة.'},
+    bdOk:{en:'On track',ar:'ضمن الموازنة'},
+    bdNear:{en:'Near limit',ar:'قرب الحد'},
+    bdOver:{en:'Over budget',ar:'تجاوز الموازنة'},
+    bdNone:{en:'Not budgeted',ar:'بدون موازنة'},
+    bdDelta:{en:'Δ vs annual budget',ar:'الفرق عن الموازنة السنوية'},
+    colsBtnT:{en:'Manage columns — choose, reorder and save the columns shown in this table, its CSV export and the Excel Register',ar:'إدارة الأعمدة — اختر ورتّب واحفظ الأعمدة المعروضة في هذا الجدول وفي تصدير CSV وسجل الإكسل'},
+    colsTitle:{en:'Manage Columns',ar:'إدارة الأعمدة'},
+    colsEyebrow:{en:'Results table',ar:'جدول النتائج'},
+    colsCtx:{en:'Tick the columns to show and order them with the arrows. Apply uses the layout now; Save view keeps it under a name for future use. The active layout also drives the CSV export and the Excel Register (sheet 1). Columns tied to a page feature (plan, comments) appear only while that feature is on.',ar:'حدد الأعمدة المطلوب عرضها ورتبها بالأسهم. «تطبيق» يستخدم التخطيط الآن؛ و«حفظ العرض» يحفظه باسم للاستخدام لاحقاً. التخطيط النشط يتحكم أيضاً في تصدير CSV وسجل الإكسل (الورقة 1). الأعمدة المرتبطة بخاصية في الصفحة (الخطة، التعليقات) تظهر فقط عند تفعيل تلك الخاصية.'},
+    colsViewLbl:{en:'Saved views',ar:'العروض المحفوظة'},
+    colsNoViewCap:{en:'— select a saved view —',ar:'— اختر عرضاً محفوظاً —'},
+    colsNameLbl:{en:'View name',ar:'اسم العرض'},
+    colsNamePh:{en:'e.g. Monthly review',ar:'مثال: المراجعة الشهرية'},
+    colsApply:{en:'Apply',ar:'تطبيق'},
+    colsSave:{en:'Save view',ar:'حفظ العرض'},
+    colsDelete:{en:'Delete',ar:'حذف'},
+    colsDefault:{en:'Set as default',ar:'تعيين كافتراضي'},
+    colsReset:{en:'Reset to standard',ar:'إعادة للوضع القياسي'},
+    colsSelAll:{en:'Select all',ar:'تحديد الكل'},
+    colsClear:{en:'Clear all',ar:'إلغاء الكل'},
+    colsUp:{en:'Move up',ar:'تحريك لأعلى'},
+    colsDown:{en:'Move down',ar:'تحريك لأسفل'},
+    colsGate:{en:'needs its feature on',ar:'يتطلب تفعيل الخاصية'},
+    colsDefNote:{en:'Default view: {v} — applied automatically when the page opens.',ar:'العرض الافتراضي: {v} — يُطبق تلقائياً عند فتح الصفحة.'},
+    colsSavedToast:{en:'Column view saved',ar:'تم حفظ عرض الأعمدة'},
+    colsAppliedToast:{en:'Column layout applied',ar:'تم تطبيق تخطيط الأعمدة'},
+    colsNeedName:{en:'Enter a view name first',ar:'أدخل اسم العرض أولاً'},
     buDrillHint:{en:'Click a figure to see its supporting AP / GRN / PR / PO lines.',ar:'انقر رقماً لعرض بنود الدائنين / الاستلام / طلب الشراء / أمر الشراء الداعمة له.'},
     buCardHint:{en:'Click to see all supporting lines (current filters).',ar:'انقر لعرض كل البنود الداعمة (حسب عوامل التصفية الحالية).'},
     buAllLines:{en:'All budget lines',ar:'كل بنود الموازنة'},
@@ -929,7 +1034,7 @@
     buOvrHint:{en:'When on, the signed Budget Change entered by users is ADDED to the Fusion budget on this page — Annual Budget, YTD Budget, Fund Available and Utilization all move by it (a negative change subtracts). A change counts in YTD from its own accounting period onward.',ar:'عند التفعيل يُضاف تغيير الموازنة المُدخل من المستخدمين إلى موازنة فيوجن في هذه الصفحة — فتتغيّر الموازنة السنوية والموازنة منذ بداية السنة والمتاح ونسبة الاستخدام بمقداره (والقيمة السالبة تُخصم). ويُحتسب التغيير ضمن «منذ بداية السنة» ابتداءً من فترته المحاسبية.'},
     buOvrOn:{en:'Budget Override included',ar:'الموازنة المعدّلة مضمّنة'},
     buProcashInc:{en:'Include Procash',ar:'تضمين الدفع المباشر'},
-    buProcashHint:{en:'Procash records money already paid through the bank portal that has NOT reached Fusion as a payable invoice yet, so no AP, GRN, PR or PO figure includes it. When on, it is ADDED to Actual and SUBTRACTED from Fund Available. A procash transaction drops out the moment its Fusion invoice is linked, so nothing is counted twice.',ar:'يسجّل الدفع المباشر مبالغ دُفعت عبر بوابة البنك ولم تصل بعد إلى فيوجن كفاتورة دائنة، لذا لا يظهر ضمن أي من أرقام الحسابات الدائنة أو الاستلام أو طلبات وأوامر الشراء. عند التفعيل يُضاف إلى المصروف الفعلي ويُخصم من المتاح. وتخرج المعاملة فور ربط فاتورتها في فيوجن فلا يُحتسب المبلغ مرتين.'},
+    buProcashHint:{en:'Procash = payments made through the bank portal that are not in Fusion as AP invoices yet. When included: Actual + Procash and Fund Available − Procash. A transaction drops out once its invoice is linked, so it is never counted twice.',ar:'الدفع المباشر = مبالغ دُفعت عبر بوابة البنك ولم تصل بعد إلى فيوجن كفواتير دائنة. عند التضمين: يُضاف إلى الفعلي ويُخصم من المتاح. وتخرج المعاملة فور ربط فاتورتها فلا تُحتسب مرتين.'},
     buProcashOnL:{en:'Procash included',ar:'الدفع المباشر مضمّن'},
     buProcashOff:{en:'Select to include Procash',ar:'حدد لتضمين الدفع المباشر'},
     cProcash:{en:'Procash',ar:'الدفع المباشر'},
@@ -964,6 +1069,60 @@
     drillAdjSrc:{en:'Sourced from approved cost adjustment {ref}',ar:'مصدره تسوية التكاليف المعتمدة {ref}'},
     drillAdjNote:{en:'(**) This row is sourced from an approved cost adjustment — the Distribution (AED) column shows the adjustment amount; the other columns show the referenced invoice.',ar:'(**) هذا الصف مصدره تسوية تكاليف معتمدة — عمود التوزيع (درهم) يعرض مبلغ التسوية؛ بقية الأعمدة تعرض الفاتورة المرجعية.'},
     buAdjNote:{en:'(*) This line includes approved cost adjustments — Actual moves by the signed adjustment and Budget by its budget override.',ar:'(*) يتضمن هذا البند تسويات تكاليف معتمدة — يتغيّر الفعلي بمقدار التسوية والموازنة بمقدار تعديلها.'},
+
+    /* ── Results-region level tabs (v1.89.0, layout B): Budget Line / Department / Sector ── */
+    lvLine:{en:'Budget Line',ar:'بند الموازنة'},
+    lvDept:{en:'Department',ar:'الإدارة'},
+    lvSector:{en:'Sector',ar:'القطاع'},
+    lvLines:{en:'Lines',ar:'البنود'},
+    lvDepts:{en:'Departments',ar:'الإدارات'},
+    lvSectors:{en:'Sectors',ar:'القطاعات'},
+    lvBudget:{en:'Budget',ar:'الموازنة'},
+    lvPlanYtd:{en:'Plan YTD',ar:'الخطة حتى تاريخه'},
+    lvActual:{en:'Actual',ar:'الفعلي'},
+    lvFund:{en:'Fund',ar:'المتاح'},
+    lvEnc:{en:'Encumbrance',ar:'الارتباطات'},
+    lvActualHint:{en:'Total Actual = Actual AP + Actual GRN (+ Procash when included).',ar:'إجمالي الفعلي = فعلي الدائنين + فعلي الاستلام (+ الدفع المباشر عند تضمينه).'},
+    lvEncHint:{en:'Encumbrance = Commitment (PR) + Obligation (PO).',ar:'الارتباطات = الالتزام (طلب شراء) + التعهد (أمر شراء).'},
+    lvBudgetHint:{en:'YTD Budget of the current result set.',ar:'موازنة النتائج الحالية منذ بداية السنة.'},
+    lvPlanYtdHint:{en:'Effective YTD expenditure plan (revised when one exists).',ar:'خطة الإنفاق الفعّالة منذ بداية السنة (المعدلة إن وجدت).'},
+    lvPlanOnly:{en:'Plan only',ar:'خطة فقط'},
+    lvLineHint:{en:'The budget lines exactly as loaded — one row per project, task and expenditure type.',ar:'بنود الموازنة كما هي — صف لكل مشروع ومهمة ونوع مصروف.'},
+    lvDeptHint:{en:'The same figures grouped per cost centre, including uploaded plan with no budget line.',ar:'الأرقام نفسها مجمّعة على مستوى مركز التكلفة، شاملة الخطة المرفوعة بلا بند موازنة.'},
+    lvSectorHint:{en:'The same figures grouped per sector, including uploaded plan with no budget line.',ar:'الأرقام نفسها مجمّعة على مستوى القطاع، شاملة الخطة المرفوعة بلا بند موازنة.'},
+    lvPlanOnlyNote:{en:'Amber "Plan only" rows carry an uploaded expenditure plan with no budget line at this level — included so plan totals match the Cashflow upload.',ar:'الصفوف الكهرمانية "خطة فقط" تحمل خطة إنفاق مرفوعة بلا بند موازنة على هذا المستوى — أُدرجت لتطابق إجماليات الخطة ملف التدفق النقدي المرفوع.'},
+    lvExtraNote:{en:'Plan figures include {amt} of uploaded plan with no matching budget line.',ar:'تشمل أرقام الخطة {amt} من الخطة المرفوعة بلا بند موازنة مطابق.'},
+    lvExtraCell:{en:'Includes {amt} of plan outside the budget lines',ar:'يشمل {amt} من الخطة خارج بنود الموازنة'},
+
+    /* ── per-column hints, formula-first (2026-08-29 feedback round) ── */
+    chSector:{en:'Sector — the classification of the line\'s cost-centre segment (managed in Settings › Chart of Accounts).',ar:'القطاع — تصنيف مقطع مركز التكلفة للبند (يُدار في الإعدادات › شجرة الحسابات).'},
+    chDept:{en:'Department — the GL cost-centre description.',ar:'الإدارة — وصف مركز التكلفة في الأستاذ العام.'},
+    chOrg:{en:'Organization — the task-owning organization in Fusion PPM (can differ from Department).',ar:'المنظمة — الجهة المالكة للمهمة في إدارة المشاريع (قد تختلف عن الإدارة).'},
+    chCc:{en:'Cost centre — the GL cost-centre segment code.',ar:'مركز التكلفة — رمز مقطع مركز التكلفة.'},
+    chProject:{en:'Project number and name — from the Fusion projects budget.',ar:'رقم المشروع واسمه — من موازنة مشاريع فيوجن.'},
+    chTask:{en:'Task — the project task of this budget line.',ar:'المهمة — مهمة المشروع لهذا البند.'},
+    cTaskName:{en:'Task Name',ar:'اسم المهمة'},
+    chTaskName:{en:'Task Name — the name of the project task (from the Fusion tasks extract).',ar:'اسم المهمة — اسم مهمة المشروع (من مستخرج المهام في فيوجن).'},
+    chGlAccount:{en:'GL account — the expenditure type\'s account (its 6-digit prefix).',ar:'حساب الأستاذ — حساب نوع المصروف (البادئة المكوّنة من 6 أرقام).'},
+    chAppr:{en:'Appropriation — from the task\'s appropriation segment.',ar:'الاعتماد — من مقطع الاعتماد للمهمة.'},
+    chChapter:{en:'Chapter — the classification grouping of the appropriation.',ar:'الباب — التصنيف الذي يجمع الاعتمادات.'},
+    chProgram:{en:'DCT Program — from the program segment.',ar:'برنامج الدائرة — من مقطع البرنامج.'},
+    chEtype:{en:'Expenditure type — the budget line\'s expenditure type.',ar:'نوع المصروف — نوع المصروف لبند الموازنة.'},
+    chBudgetAnnual:{en:'Annual Budget = the full-year budget (all periods) — never cut by the Accounting Period. Includes the signed budget change / adjustment override when those options are on. Click for the budget period rows.',ar:'الموازنة السنوية = موازنة السنة كاملة (جميع الفترات) ولا تتأثر بالفترة المحاسبية. تشمل تغيير الموازنة/تعديل التسوية عند تفعيل الخيارين. انقر لعرض فترات الموازنة.'},
+    chBudgetYtd:{en:'YTD Budget = budget periods up to the selected Accounting Period (Full year = Annual Budget). Click for the period rows.',ar:'الموازنة منذ بداية السنة = فترات الموازنة حتى الفترة المحاسبية المحددة (السنة الكاملة = الموازنة السنوية). انقر لعرض الفترات.'},
+    chPlanA:{en:'Plan Annual = the uploaded expenditure plan for the whole year. Click for the monthly plan rows.',ar:'الخطة السنوية = خطة الإنفاق المرفوعة للسنة كاملة. انقر لعرض أشهر الخطة.'},
+    chPlanY:{en:'Plan YTD = plan months up to the selected Accounting Period (Full year = Plan Annual). Click for the monthly plan rows.',ar:'الخطة منذ بداية السنة = أشهر الخطة حتى الفترة المحاسبية المحددة (السنة الكاملة = الخطة السنوية). انقر لعرض أشهر الخطة.'},
+    chPlanRevA:{en:'Revised Plan Annual = the uploaded REVISED plan for the whole year (column appears only when a revised plan exists).',ar:'الخطة المعدلة السنوية = الخطة المعدلة المرفوعة للسنة كاملة (يظهر العمود فقط عند وجود خطة معدلة).'},
+    chPlanRevY:{en:'Revised Plan YTD = revised plan months up to the selected Accounting Period.',ar:'الخطة المعدلة منذ بداية السنة = أشهر الخطة المعدلة حتى الفترة المحددة.'},
+    chActualAp:{en:'Actual AP = validated direct AP invoices (no PO) up to the Accounting Period, + approved cost adjustments when included. Click for the invoices.',ar:'فعلي الدائنين = فواتير الدائنين المباشرة المدققة (بدون أمر شراء) حتى الفترة المحاسبية، مضافاً إليها تسويات التكاليف المعتمدة عند تضمينها. انقر لعرض الفواتير.'},
+    chActualGrn:{en:'Actual GRN = goods / services received (receipts) up to the Accounting Period. Click for the receipts.',ar:'فعلي الاستلام = السلع والخدمات المستلمة حتى الفترة المحاسبية. انقر لعرض الاستلامات.'},
+    chPr:{en:'Commitment (PR) = open funds-reserved purchase requisition lines (no PO yet). Click for the PR lines.',ar:'الالتزام (طلب شراء) = بنود طلبات الشراء المحجوزة المفتوحة (بدون أمر شراء بعد). انقر لعرض البنود.'},
+    chPo:{en:'Obligation (PO) = open reserved purchase order lines − received (GRN-netted). Click for the PO lines.',ar:'التعهد (أمر شراء) = بنود أوامر الشراء المحجوزة المفتوحة مخصوماً منها المستلم. انقر لعرض البنود.'},
+    chFund:{en:'Fund Available = YTD Budget − (Actual AP + Actual GRN + Commitment PR + Obligation PO); − Procash when included. Negative = over budget.',ar:'المتاح = الموازنة منذ بداية السنة − (فعلي الدائنين + فعلي الاستلام + الالتزام + التعهد)؛ ويُخصم الدفع المباشر عند تضمينه. السالب = تجاوز للموازنة.'},
+    chCmt:{en:'Comments recorded on this budget line — click to view or add.',ar:'التعليقات المسجلة على هذا البند — انقر للعرض أو الإضافة.'},
+    chCmtTxt:{en:'The recorded comment text — [period] author: text, newest first.',ar:'نص التعليقات المسجلة — [الفترة] الكاتب: النص، الأحدث أولاً.'},
+    chLines:{en:'Lines = how many budget lines roll up into this row under the current criteria.',ar:'البنود = عدد بنود الموازنة المجمعة في هذا الصف وفق المعايير الحالية.'},
+    chCmtGrp:{en:'Comments recorded for this department / sector at the selected Accounting Period (Full year = the whole year). Click the button to view or add.',ar:'التعليقات المسجلة لهذه الإدارة / هذا القطاع في الفترة المحاسبية المحددة (السنة الكاملة = كل السنة). انقر الزر للعرض أو الإضافة.'},
 
     /* ── Budget Utilization Comments (db/v2/125 + GL/db/26, 2026-08-23) ── */
     navComments:{en:'Comments',ar:'التعليقات'},
@@ -1332,6 +1491,7 @@
           { id: 'yoy',       labelKey: 'navYoy' } ] },
       { id: 'settings', labelKey: 'grpSettings', items: [
           { id: 'overview', labelKey: 'navOverview' },
+          { id: 'revcats', labelKey: 'navRevenueCategories' },
           { id: 'recipients', labelKey: 'navRecipients' },
           // capability-gated admin pages (Budget Utilization Comments):
           // hidden() is re-evaluated by the activeGroupItems computed, so the
@@ -1913,6 +2073,7 @@
         if (!self.elLoaded()) self.elRun();
       }
       else if (v === 'recipients') { if (!self.rlLoaded()) self.rlLoad(); }
+      else if (v === 'revcats') { if (!self.rcLoaded()) self.rcLoad(); }
       else if (v === 'cmtroles') { self.loadCmtRoles(); }
       else if (v === 'cmtperiods') {
         if (!self.buFiltersLoaded()) self.loadBuFilters();
@@ -2980,6 +3141,7 @@
         procash: self.buProcash() ? 'Y' : null,
         costadj: self.buCadj() ? 'Y' : 'N',     // server default is Y — send N explicitly
         cmtdisp: self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null,
+        planstate: self.buPlanState() || null,  // plan-insight verdict filter (GL/db/32)
         search: self.buSearch(), limit: limit || self.buLimit, offset: offset || 0 };
     };
     self.runButil = function (offset) {
@@ -2995,8 +3157,120 @@
         self.buCadjOn(d.includeCostAdj === 'Y');
         self.buCmtOn(d.commentsEnabled === 'Y');
         self.buCmtDispMode(d.commentsDisplay || 'NONE');
+        if (d.planThresholds) self.buPlanThr(d.planThresholds);
+        if (d.budgetThresholds) self.buBudThr(d.budgetThresholds);
         self.buLoading(false);
+        // Fund Movement per-key map (v1.94.0) — cheap no-op when year/period unchanged
+        self.runBuFm('line');
+        // keep the Department / Sector tab in step with the new criteria
+        // (no-op when the agg params are unchanged — the cache key matches)
+        if (self.buLevel() !== 'line') self.runBuAgg(self.buLevel());
       }).catch(function (e) { self.buLoading(false); fail(e); });
+    };
+    /* ── Results-region level tabs (v1.89.0, user layout pick B):
+       1 Budget Line (the untouched line table) · 2 Department (cost-centre
+       grain) · 3 Sector — Department/Sector come from GET /butil/agg
+       (GL/db/33): the SAME butil join + filters GROUPed server-side, plus
+       the uploaded plan rows with NO budget line folded into the group plan
+       figures (a group with plan but no lines ships planOnly='Y'), so every
+       tab figure reconciles to the Budget Line tab and the KPI band. */
+    self.buLevel = ko.observable('line');
+    self.buAggItems = ko.observableArray([]);
+    self.buAggTotals = ko.observable({});
+    self.buAggLoading = ko.observable(false);
+    var buAggKey = null;
+    self.buAggParams = function (level) {
+      var p = self.buParams(0, 1);
+      delete p.limit; delete p.offset; delete p.cmtdisp; delete p.planstate;
+      p.level = level;
+      return p;
+    };
+    self.runBuAgg = function (level) {
+      var key = JSON.stringify(self.buAggParams(level));
+      if (key === buAggKey && self.buAggItems().length) return;
+      self.buAggLoading(true);
+      return api('GET', '/butil/agg' + qs(self.buAggParams(level))).then(function (d) {
+        buAggKey = key;
+        self.buAggItems(d.items || []);
+        self.buAggTotals(d.totals || {});
+        self.buAggLoading(false);
+        self.runBuFm(level);   // group Fund Movement map (v1.94.0)
+      }).catch(function (e) { self.buAggLoading(false); fail(e); });
+    };
+    self.setBuLevel = function (lvl) {
+      self.buLevel(lvl);
+      if (lvl !== 'line') self.runBuAgg(lvl);
+    };
+    // a comment added/edited through the drawer must show up in the group's
+    // Comments cell — drop the cache so the next fetch is fresh
+    self.buAggInvalidate = function () { buAggKey = null; };
+    // the toolbar summary strip re-computes per level (mock B's live strip)
+    self.buLvlSum = ko.computed(function () {
+      var lvl = self.buLevel();
+      if (lvl === 'line') {
+        var t = self.buTotals() || {};
+        return { nl: self.t('lvLines'), n: self.fmt(self.buTotal() || 0),
+          budget: t.budget, plan: t.planEffYtd,
+          actual: (Number(t.actualAp) || 0) + (Number(t.actualGrn) || 0)
+                  + (self.buProcashOn() ? (Number(t.procash) || 0) : 0),
+          enc: (Number(t.commitmentPr) || 0) + (Number(t.obligationPo) || 0),
+          fund: t.fundAvailable };
+      }
+      var a = self.buAggTotals() || {};
+      return { nl: self.t(lvl === 'dept' ? 'lvDepts' : 'lvSectors'), n: self.fmt(a.groups || 0),
+        budget: a.budget, plan: a.planEffYtd,
+        actual: (Number(a.actualAp) || 0) + (Number(a.actualGrn) || 0)
+                + (self.buProcashOn() ? (Number(a.procash) || 0) : 0),
+        enc: (Number(a.commitmentPr) || 0) + (Number(a.obligationPo) || 0),
+        fund: a.fundAvailable };
+    });
+    // the REVISED plan pair appears on the agg tables the same way it does on
+    // the line table — only once any revised plan exists in the loaded set
+    self.buAggRevOn = ko.computed(function () {
+      var t = self.buAggTotals() || {};
+      return (Number(t.planRevisedAnnual) || 0) !== 0;
+    });
+    self.buAggAnyPlanOnly = ko.computed(function () {
+      return self.buAggItems().some(function (r) { return r.planOnly === 'Y'; });
+    });
+    self.buAnyAggAdjNote = ko.computed(function () {
+      return self.buCadjOn()
+        && self.buAggItems().some(function (r) { return r.hasAdj === 'Y'; });
+    });
+    self.buAggExtra = ko.computed(function () {
+      return Number((self.buAggTotals() || {}).planExtra) || 0;
+    });
+    // group comments: a Department row opens the COST_CENTER-level thread,
+    // a Sector row the SECTOR-level thread (db/v2/125 entity levels)
+    self.openCmtGroup = function (row) {
+      if (self.buLevel() === 'dept') {
+        self.openCmt({ level: 'COST_CENTER', year: self.buYear(), period: self.buPeriod() || '',
+          ekey: row.costCentre || '', name: row.department || '',
+          title: self.t('lvDept') + ' — ' + (row.costCentre || '') + (row.department ? ' · ' + row.department : ''), sub: '' });
+      } else {
+        self.openCmt({ level: 'SECTOR', year: self.buYear(), period: self.buPeriod() || '',
+          ekey: row.sector || '', name: row.sector || '',
+          title: self.t('lvSector') + ' — ' + (row.sector || ''), sub: '' });
+      }
+    };
+    // CSV for the aggregated tabs (client-side — the full set is loaded)
+    self.buAggExportCsv = function () {
+      var lvl = self.buLevel(), rows = self.buAggItems();
+      // columns follow the ACTIVE Manage-columns view for this tab
+      var cols = [];
+      self.buColsAgg().forEach(function (c) { (c.csv || []).forEach(function (p) { cols.push(p); }); });
+      cols = cols.concat([['planExtra', 'Plan Outside Budget Lines'], ['planOnly', 'Plan Only'], ['costAdj', 'Cost Adjustment']]);
+      rows.forEach(function (r) {
+        var fm = self.fmOfGrp(r);
+        r._fmCnt = fm ? fm.cnt : ''; r._fmAmt = fm ? fm.amt : '';
+      });
+      var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
+        return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
+      }).join('\n');
+      var blob = new Blob(['\ufeff' + csv], { type: 'text/csv' }); var u = URL.createObjectURL(blob);
+      var a = document.createElement('a'); a.href = u;
+      a.download = 'gl_budget_utilization_' + (lvl === 'dept' ? 'departments_' : 'sectors_') + self.buYear() + '.csv';
+      a.click(); URL.revokeObjectURL(u);
     };
     /* ── data-quality alert: budget lines (annual budget) with NO cost centre.
        Server counts them across the WHOLE filtered set on every /butil run;
@@ -3041,10 +3315,30 @@
         .replace('{n}', self.fmt(self.buNegFund()))
         .replace('{amt}', self.money(Math.abs(self.buNegFundTotal())));
     });
+    /* Cost centre is MANDATORY on every budget line (user rule 2026-08-30):
+       a Department/Sector group with NO key = lines missing that
+       classification. The warning band fires from EITHER source — the /butil
+       missingCc aggregate (any tab) or a keyless group on an agg tab — and
+       the message takes its count/amount from whichever one tripped it. */
+    self.buAggMissRow = ko.computed(function () {
+      if (self.buLevel() === 'line') return null;
+      var dept = self.buLevel() === 'dept';
+      return self.buAggItems().filter(function (r) {
+        return !(dept ? r.costCentre : r.sector);
+      })[0] || null;
+    });
+    self.buMissBandOn = ko.computed(function () {
+      return self.buMissCc() > 0 || !!self.buAggMissRow();
+    });
     self.buMissCcMsg = ko.computed(function () {
+      var n = self.buMissCc(), amt = self.buMissCcBudget();
+      if (!n) {
+        var m = self.buAggMissRow();
+        if (m) { n = m.lines || 0; amt = m.budgetAnnual || 0; }
+      }
       return self.t('buMissCcMsg')
-        .replace('{n}', self.fmt(self.buMissCc()))
-        .replace('{amt}', self.money(self.buMissCcBudget()));
+        .replace('{n}', self.fmt(n))
+        .replace('{amt}', self.money(amt));
     });
     self.openBuMissCc = function () {
       self.drillTitle(self.t('buMissCcDrill'));
@@ -3114,6 +3408,8 @@
       self.buOvr(false);
       self.buCadj(true);                        // cost adjustment is on by default
       self.buCmtDisp('NONE');                   // comments display off by default
+      self.buPlanState('');                     // plan-insight verdict filter off
+      self.buPlanMode('YES');                   // Show Plan defaults Yes
       if (self.buYears().length) self.buYear(self.buYears()[0]);
       self.buPeriod(buDefaultPeriod(self.buYear()));
       self.runButil(0);
@@ -3161,6 +3457,382 @@
       if (t.commitmentPr == null && t.obligationPo == null) return null;
       return (Number(t.commitmentPr) || 0) + (Number(t.obligationPo) || 0);
     });
+    /* ── Plan Insights (v1.88.0, GL/db/32 — mockups D1 + K1 + K2): the server
+       computes each row's Plan-vs-Actual verdict (planExecState WITHIN/BELOW/
+       AHEAD/NOPLAN + planExecPct/planVariance, effective plan = REVISED when
+       one exists) and Plan-vs-Budget coverage (planCovState FULL/UNDER/OVER/
+       NONE + planCovPct), plus full-filtered-set aggregates in totals. The
+       thresholds are echoed per response (GL module settings) so the page
+       colors rows EXACTLY as the server counted them. */
+    /* "Show Plan" LOV (v1.88.1, user feedback): YES (default) = plan columns +
+       vs Plan / Plan Coverage indicators; NO = no plan columns in the results
+       table; INSIGHTS = everything incl. the D2 micro-chart + D3 composite.
+       Frontend-only — rows always carry the data (CSV stays complete). */
+    self.buPlanMode = ko.observable('YES');
+    self.buPlanModeOpts = ko.computed(function () {
+      self.lang();
+      return [{ v: 'YES', l: self.t('piModeYes') },
+              { v: 'NO', l: self.t('piModeNo') },
+              { v: 'INSIGHTS', l: self.t('piModeIns') }];
+    });
+    self.buPlanOn = ko.computed(function () { return self.buPlanMode() !== 'NO'; });
+    self.buPlanIns = ko.computed(function () { return self.buPlanMode() === 'INSIGHTS'; });
+    self.buPlanState = ko.observable('');          // planstate verdict filter (K1/K2 drills)
+    self.buPlanThr = ko.observable({ execLow: 90, execHigh: 110, covLow: 95, covHigh: 105 });
+    self.piHand = function (s) { return s === 'WITHIN' ? '👍' : s === 'BELOW' ? '👎' : s === 'AHEAD' ? '✋' : '—'; };
+    self.piCls = function (s) { return s === 'WITHIN' ? 'ok' : s === 'BELOW' ? 'low' : s === 'AHEAD' ? 'high' : 'none'; };
+    self.piLbl = function (s) {
+      return s === 'WITHIN' ? self.t('piWithin') : s === 'BELOW' ? self.t('piBelow')
+           : s === 'AHEAD' ? self.t('piAhead') : self.t('piNone');
+    };
+    self.piCovCls = function (s) { return s === 'FULL' ? 'full' : s === 'UNDER' ? 'under' : s === 'OVER' ? 'over' : 'np'; };
+    self.piCovLbl = function (s) {
+      return s === 'FULL' ? self.t('piCovFull') : s === 'UNDER' ? self.t('piCovUnder')
+           : s === 'OVER' ? self.t('piCovOver') : self.t('piCovNone');
+    };
+    self.pct1 = function (p) { return p == null ? '' : '' + (Math.round(p * 10) / 10); };
+    self.piVsTxt = function (r) { return r.planExecPct != null ? self.pct1(r.planExecPct) + '%' : ''; };
+    self.piCovTxt = function (r) {
+      if (r.planCovState === 'NONE' || !r.planCovState) return self.t('piCovNone');
+      return (r.planCovPct != null ? self.pct1(r.planCovPct) + '% · ' : '') + self.piCovLbl(r.planCovState);
+    };
+    self.piRowTip = function (r) {
+      if (r.planExecState === 'NOPLAN' || !r.planExecState) return self.t('piNone');
+      return self.piLbl(r.planExecState) + ' — ' + self.t('piDelta') + ' ' + self.money(r.planVariance || 0);
+    };
+    // D2 micro-chart geometry: track = plan YTD (100%), fill = actual (capped),
+    // dark tick = YTD budget on the same scale, thin plum bar = coverage %
+    self.piFillW = function (r) { return Math.max(0, Math.min(100, Number(r.planExecPct) || 0)) + '%'; };
+    self.piTickW = function (r) {
+      var pl = Number(r.planEffYtd) || 0; if (pl <= 0) return '0%';
+      return Math.max(0, Math.min(100, 100 * (Number(r.budget) || 0) / pl)) + '%';
+    };
+    self.piCovW = function (r) { return Math.max(0, Math.min(100, Number(r.planCovPct) || 0)) + '%'; };
+    self.piCovCapTxt = function (r) {
+      return r.planCovPct != null ? self.t('piCovCap').replace('{p}', self.pct1(r.planCovPct)) : self.t('piCovNone');
+    };
+    // K1 tiles: overall execution / coverage over the WHOLE filtered set
+    self.piExecPct = ko.computed(function () {
+      var t = self.buTotals() || {}; var p = Number(t.planEffYtd) || 0;
+      if (!p) return null; return (self.buActualTot() || 0) / p * 100;
+    });
+    self.piExecState = ko.computed(function () {
+      var p = self.piExecPct(); var th = self.buPlanThr();
+      if (p == null) return 'NOPLAN';
+      return p < th.execLow ? 'BELOW' : p > th.execHigh ? 'AHEAD' : 'WITHIN';
+    });
+    self.piCovPct = ko.computed(function () {
+      var t = self.buTotals() || {}; var b = Number(t.budgetAnnual) || 0;
+      if (!b) return null; return (Number(t.planEffAnnual) || 0) / b * 100;
+    });
+    self.setPlanState = function (s) { self.buPlanState(s); self.runButil(0); };
+    self.clearPlanState = function () { self.buPlanState(''); self.runButil(0); };
+    self.piVsHdrTip = ko.computed(function () {
+      var th = self.buPlanThr();
+      return self.t('piVsPlanHint').replace('{lo}', th.execLow).replace('{hi}', th.execHigh);
+    });
+    self.piCovHdrTip = ko.computed(function () {
+      var th = self.buPlanThr();
+      return self.t('piCovColHint').replace('{lo}', th.covLow).replace('{hi}', th.covHigh);
+    });
+
+    /* ── vs Budget verdict (v1.96.0, GL/db/35): the server classifies each
+       row's displayed Total Actual against its ADJUSTED ANNUAL budget (user
+       rule 2026-08-31: Annual always, never the YTD slice) — OK below the
+       near threshold, NEAR up to the over threshold, OVER above it; spend on
+       a zero-budget line = OVER, nothing at all = NOBUDGET. Thresholds are
+       echoed per response (BUD_UTIL_NEAR_PCT / BUD_UTIL_OVER_PCT settings). */
+    self.buBudThr = ko.observable({ near: 90, over: 100 });
+    self.bdHand = function (s) { return s === 'OK' ? '👍' : s === 'NEAR' ? '✋' : s === 'OVER' ? '👎' : '—'; };
+    self.bdCls = function (s) { return s === 'OK' ? 'ok' : s === 'NEAR' ? 'low' : s === 'OVER' ? 'high' : 'none'; };
+    self.bdLbl = function (s) {
+      return s === 'OK' ? self.t('bdOk') : s === 'NEAR' ? self.t('bdNear')
+           : s === 'OVER' ? self.t('bdOver') : self.t('bdNone');
+    };
+    self.bdTxt = function (r) { return r.budUtilPct != null ? self.pct1(r.budUtilPct) + '%' : ''; };
+    self.bdRowTip = function (r) {
+      if (!r.budState || r.budState === 'NOBUDGET') return self.t('bdNone');
+      return self.bdLbl(r.budState)
+        + (r.budVariance != null ? ' — ' + self.t('bdDelta') + ' ' + self.money(r.budVariance) : '');
+    };
+    self.bdHdrTip = ko.computed(function () {
+      var th = self.buBudThr();
+      return self.t('bdColHint').replace(/\{n\}/g, th.near).replace(/\{o\}/g, th.over);
+    });
+
+    /* ── Manage columns (v1.96.0): both results tables are COLUMN-REGISTRY
+       driven — each column is one row below (key, label/hint keys, th css,
+       cell template id, optional feature gate, CSV expansion, Excel-Register
+       sheet-1 column mapping). The header and body render from the ACTIVE
+       view (order + hidden set); the same view drives the CSV export and,
+       for the Budget Line tab, the Excel Register sheet 1 (sheetcols →
+       runner _apply_sheet_cols). Views are NAMED, saved per level to the
+       user's server prefs (gl.butil.colviews via /dct/prefs — they roam
+       with the account; localStorage is the instant-boot mirror). */
+    var BU_LINE_COLS = [
+      { k: 'sector', l: 'fSectorL', h: 'chSector', tpl: 'buc-sector', csv: [['sector', 'Sector']], xls: ['sector'] },
+      { k: 'department', l: 'cDept', h: 'chDept', tpl: 'buc-department', csv: [['department', 'Department']], xls: ['department'] },
+      { k: 'organization', l: 'cOrg', h: 'chOrg', tpl: 'buc-organization', csv: [['organization', 'Organization']], xls: ['organization'] },
+      { k: 'costCentre', l: 'costCenter', h: 'chCc', tpl: 'buc-costcentre', csv: [['costCentre', 'Cost Centre']], xls: ['cost_centre'] },
+      { k: 'project', l: 'cProject', h: 'chProject', tpl: 'buc-project', csv: [['projectNumber', 'Project Number'], ['projectName', 'Project Name']], xls: ['project_number', 'project_name'] },
+      { k: 'task', l: 'cTask', h: 'chTask', tpl: 'buc-task', csv: [['taskNumber', 'Task']], xls: ['task_number'] },
+      { k: 'taskName', l: 'cTaskName', h: 'chTaskName', tpl: 'buc-taskname', csv: [['taskName', 'Task Name']], xls: ['task_name'] },
+      { k: 'glAccount', l: 'cGlAccount', h: 'chGlAccount', tpl: 'buc-glaccount', csv: [['glAccount', 'GL Account']], xls: ['account_number', 'ebs_account'] },
+      { k: 'appropriation', l: 'thAppr', h: 'chAppr', tpl: 'buc-appropriation', csv: [['appropriation', 'Appropriation']], xls: ['appropriation_code', 'appropriation_name'] },
+      { k: 'chapter', l: 'cChapter', h: 'chChapter', tpl: 'buc-chapter', csv: [['chapter', 'Chapter']], xls: ['chapter'] },
+      { k: 'program', l: 'program', h: 'chProgram', tpl: 'buc-program', csv: [['program', 'Program']], xls: ['dct_program_code', 'dct_program_name'] },
+      { k: 'etype', l: 'cEtype', h: 'chEtype', tpl: 'buc-etype', csv: [['expenditureType', 'Expenditure Type']], xls: ['expenditure_type'] },
+      { k: 'budgetAnnual', l: 'cBudgetAnnual', h: 'chBudgetAnnual', cls: 'num', tpl: 'buc-budgetannual', csv: [['budgetAnnual', 'Annual Budget']], xls: ['annual_budget'] },
+      { k: 'budget', l: 'cBudgetYtd', h: 'chBudgetYtd', cls: 'num', tpl: 'buc-budget', csv: [['budget', 'YTD Budget']], xls: ['ytd_budget'] },
+      { k: 'vsBudget', l: 'cVsBudget', hf: 'bdHdrTip', cls: 'pi-th', tpl: 'buc-vsbudget',
+        csv: [['budUtilPct', 'Budget Utilization %'], ['budVariance', 'Budget Variance'], ['budState', 'Budget Status']],
+        xls: ['budget_utilization_pct', 'budget_variance', 'budget_status'] },
+      { k: 'planApprA', l: 'cPlanApprA', h: 'chPlanA', cls: 'num', tpl: 'buc-planappra', gate: function () { return self.buPlanOn(); }, csv: [['planApprovedAnnual', 'Plan Annual']], xls: ['plan_annual'] },
+      { k: 'planApprY', l: 'cPlanApprY', h: 'chPlanY', cls: 'num', tpl: 'buc-planappry', gate: function () { return self.buPlanOn(); }, csv: [['planApprovedYtd', 'Plan YTD']], xls: ['plan_ytd'] },
+      { k: 'planRevA', l: 'cPlanRevA', h: 'chPlanRevA', cls: 'num', tpl: 'buc-planreva', gate: function () { return self.buPlanOn() && self.buPlanRevOn(); }, csv: [['planRevisedAnnual', 'Revised Plan Annual']], xls: ['revised_plan_annual'] },
+      { k: 'planRevY', l: 'cPlanRevY', h: 'chPlanRevY', cls: 'num', tpl: 'buc-planrevy', gate: function () { return self.buPlanOn() && self.buPlanRevOn(); }, csv: [['planRevisedYtd', 'Revised Plan YTD']], xls: ['revised_plan_ytd'] },
+      { k: 'vsPlan', l: 'cVsPlan', hf: 'piVsHdrTip', cls: 'pi-th', tpl: 'buc-vsplan', gate: function () { return self.buPlanOn(); },
+        csv: [['planEffYtd', 'Effective Plan YTD'], ['planExecPct', 'Plan Utilization %'], ['planVariance', 'Plan Variance'], ['planExecState', 'Plan Status']],
+        xls: ['plan_utilization_pct', 'plan_variance', 'plan_status'] },
+      { k: 'planCov', l: 'cPlanCov', hf: 'piCovHdrTip', cls: 'pi-th', tpl: 'buc-plancov', gate: function () { return self.buPlanOn(); },
+        csv: [['planCovPct', 'Plan Coverage %'], ['planCovState', 'Coverage Status']], xls: ['plan_coverage_pct', 'plan_coverage_status'] },
+      { k: 'planPerf', l: 'cPlanPerf', hf: 'piVsHdrTip', cls: 'pi-th pi-th-wide', tpl: 'buc-planperf', gate: function () { return self.buPlanIns(); }, csv: [], xls: [] },
+      { k: 'planComp', l: 'cPlanComp', hf: 'piVsHdrTip', cls: 'pi-th pi-th-wide', tpl: 'buc-plancomp', gate: function () { return self.buPlanIns(); }, csv: [], xls: [] },
+      { k: 'actualAp', l: 'cActualAp', h: 'chActualAp', cls: 'num', tpl: 'buc-actualap', csv: [['actualAp', 'Actual AP']], xls: ['actual_ap'] },
+      { k: 'actualGrn', l: 'cActualGrn', h: 'chActualGrn', cls: 'num', tpl: 'buc-actualgrn', csv: [['actualGrn', 'Actual GRN']], xls: ['actual_grn', 'actual_total'] },
+      { k: 'procash', l: 'cProcash', h: 'buProcashHint', cls: 'num', tpl: 'buc-procash', csv: [['procash', 'Procash']], xls: [] },
+      { k: 'commitmentPr', l: 'cCommitPr', h: 'chPr', cls: 'num', tpl: 'buc-commitmentpr', csv: [['commitmentPr', 'Commitment (PR)']], xls: ['commitment_pr'] },
+      { k: 'obligationPo', l: 'cObligPo', h: 'chPo', cls: 'num', tpl: 'buc-obligationpo', csv: [['obligationPo', 'Obligation (PO)']], xls: ['obligation_po', 'open_encumbrance'] },
+      { k: 'fundAvailable', l: 'cFundAvail', h: 'chFund', cls: 'num', tpl: 'buc-fundavailable', csv: [['fundAvailable', 'Fund Available']], xls: ['fund_available', 'utilization_pct'] },
+      { k: 'fmCnt', l: 'cFmCnt', h: 'chFmCnt', cls: 'num', tpl: 'buc-fmcnt', csv: [['_fmCnt', 'Fund Movement Count']], xls: ['fund_movement_count'] },
+      { k: 'fmAmt', l: 'cFmAmt', h: 'chFmAmt', cls: 'num', tpl: 'buc-fmamt', csv: [['_fmAmt', 'Fund Movement Amount']], xls: ['fund_movement_amount'] },
+      { k: 'cmtText', l: 'cmtTextCol', h: 'chCmtTxt', cls: 'cmt-txt-th', tpl: 'buc-cmttext', gate: function () { return self.buCmtDispMode() !== 'NONE'; }, csv: [['commentsText', 'Comments Text']], xls: ['comments'] },
+      { k: 'cmtBtn', l: 'cmtCol', h: 'chCmt', cls: 'cmt-th', tpl: 'buc-cmtbtn', gate: function () { return self.buCmtOn(); }, csv: [['cmtCount', 'Comments'], ['hasCmt', 'Has Comments']], xls: [] }
+    ];
+    var BU_AGG_COLS = [
+      { k: 'sector', l: 'fSectorL', h: 'chSector', tpl: 'bua-sector', csv: [['sector', 'Sector']] },
+      { k: 'costCentre', l: 'costCenter', h: 'chCc', tpl: 'bua-costcentre', gate: function () { return self.buLevel() === 'dept'; }, csv: [['costCentre', 'Cost Centre']] },
+      { k: 'department', l: 'cDept', h: 'chDept', tpl: 'bua-department', gate: function () { return self.buLevel() === 'dept'; }, csv: [['department', 'Department']] },
+      { k: 'lines', l: 'lvLines', h: 'chLines', cls: 'num', tpl: 'bua-lines', csv: [['lines', 'Lines']] },
+      { k: 'budgetAnnual', l: 'cBudgetAnnual', h: 'chBudgetAnnual', cls: 'num', tpl: 'bua-budgetannual', csv: [['budgetAnnual', 'Annual Budget']] },
+      { k: 'budget', l: 'cBudgetYtd', h: 'chBudgetYtd', cls: 'num', tpl: 'bua-budget', csv: [['budget', 'YTD Budget']] },
+      { k: 'vsBudget', l: 'cVsBudget', hf: 'bdHdrTip', cls: 'pi-th', tpl: 'bua-vsbudget',
+        csv: [['budUtilPct', 'Budget Utilization %'], ['budVariance', 'Budget Variance'], ['budState', 'Budget Status']] },
+      { k: 'planApprA', l: 'cPlanApprA', h: 'chPlanA', cls: 'num', tpl: 'bua-planappra', csv: [['planApprovedAnnual', 'Plan Annual']] },
+      { k: 'planApprY', l: 'cPlanApprY', h: 'chPlanY', cls: 'num', tpl: 'bua-planappry', csv: [['planApprovedYtd', 'Plan YTD']] },
+      { k: 'planRevA', l: 'cPlanRevA', h: 'chPlanRevA', cls: 'num', tpl: 'bua-planreva', gate: function () { return self.buAggRevOn(); }, csv: [['planRevisedAnnual', 'Revised Plan Annual']] },
+      { k: 'planRevY', l: 'cPlanRevY', h: 'chPlanRevY', cls: 'num', tpl: 'bua-planrevy', gate: function () { return self.buAggRevOn(); }, csv: [['planRevisedYtd', 'Revised Plan YTD']] },
+      { k: 'vsPlan', l: 'cVsPlan', hf: 'piVsHdrTip', cls: 'pi-th', tpl: 'bua-vsplan',
+        csv: [['planEffYtd', 'Effective Plan YTD'], ['planExecPct', 'Plan Utilization %'], ['planVariance', 'Plan Variance'], ['planExecState', 'Plan Status']] },
+      { k: 'planCov', l: 'cPlanCov', hf: 'piCovHdrTip', cls: 'pi-th', tpl: 'bua-plancov', csv: [['planCovPct', 'Plan Coverage %'], ['planCovState', 'Coverage Status']] },
+      { k: 'actualAp', l: 'cActualAp', h: 'chActualAp', cls: 'num', tpl: 'bua-actualap', csv: [['actualAp', 'Actual AP']] },
+      { k: 'actualGrn', l: 'cActualGrn', h: 'chActualGrn', cls: 'num', tpl: 'bua-actualgrn', csv: [['actualGrn', 'Actual GRN']] },
+      { k: 'procash', l: 'cProcash', h: 'buProcashHint', cls: 'num', tpl: 'bua-procash', csv: [['procash', 'Procash']] },
+      { k: 'commitmentPr', l: 'cCommitPr', h: 'chPr', cls: 'num', tpl: 'bua-commitmentpr', csv: [['commitmentPr', 'Commitment (PR)']] },
+      { k: 'obligationPo', l: 'cObligPo', h: 'chPo', cls: 'num', tpl: 'bua-obligationpo', csv: [['obligationPo', 'Obligation (PO)']] },
+      { k: 'fundAvailable', l: 'cFundAvail', h: 'chFund', cls: 'num', tpl: 'bua-fundavailable', csv: [['fundAvailable', 'Fund Available']] },
+      { k: 'fmCnt', l: 'cFmCnt', h: 'chFmCnt', cls: 'num', tpl: 'bua-fmcnt', csv: [['_fmCnt', 'Fund Movement Count']] },
+      { k: 'fmAmt', l: 'cFmAmt', h: 'chFmAmt', cls: 'num', tpl: 'bua-fmamt', csv: [['_fmAmt', 'Fund Movement Amount']] },
+      { k: 'cmtBtn', l: 'cmtCol', h: 'chCmtGrp', cls: 'cmt-th cmt-th-agg', tpl: 'bua-cmtbtn', gate: function () { return self.buCmtOn(); }, csv: [['cmtCount', 'Comments']] }
+    ];
+    var COLVIEW_PREF = 'gl.butil.colviews';
+    var COLVIEW_LS = 'gl_bu_colviews';
+    self.buColData = ko.observable((function () {
+      try { return JSON.parse(localStorage.getItem(COLVIEW_LS) || 'null') || {}; } catch (e) { return {}; }
+    })());
+    // server pref wins over the local mirror (views roam with the account)
+    fetch('/ords/admin/dct/prefs/', { headers: { 'Authorization': 'Bearer ' + TOKEN } })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (d) {
+        var hit = ((d && d.items) || []).filter(function (p) { return p.key === COLVIEW_PREF; })[0];
+        if (hit && hit.value) {
+          try {
+            self.buColData(JSON.parse(hit.value));
+            localStorage.setItem(COLVIEW_LS, hit.value);
+          } catch (e) { /* keep the local mirror */ }
+        }
+      }).catch(function () {});
+    function colPersist() {
+      var v = JSON.stringify(self.buColData());
+      try { localStorage.setItem(COLVIEW_LS, v); } catch (e) {}
+      fetch('/ords/admin/dct/prefs/' + COLVIEW_PREF, {
+        method: 'PUT',
+        headers: { 'Authorization': 'Bearer ' + TOKEN, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ value: v })
+      }).catch(function () {});
+    }
+    // the active state for a level: last applied layout, else its default view
+    self.buColState = function (lvl) {
+      var d = self.buColData()[lvl] || {};
+      if (d.active && d.active.order) return d.active;
+      if (d.def && d.views && d.views[d.def]) return d.views[d.def];
+      return null;
+    };
+    // registry keys ADDED after a view was saved slot in at their registry
+    // position (the shared-IR reconcile rule) instead of vanishing
+    function colReconcile(reg, st) {
+      if (!st || !st.order) return null;
+      var valid = {}; reg.forEach(function (c) { valid[c.k] = 1; });
+      var order = st.order.filter(function (k) { return valid[k]; });
+      reg.forEach(function (c, i) {
+        if (order.indexOf(c.k) >= 0 || (st.off || []).indexOf(c.k) >= 0) return;
+        var pos = -1;
+        for (var j = i - 1; j >= 0; j--) {
+          var p = order.indexOf(reg[j].k);
+          if (p >= 0) { pos = p; break; }
+        }
+        order.splice(pos + 1, 0, c.k);
+      });
+      return { order: order, off: (st.off || []).filter(function (k) { return valid[k]; }) };
+    }
+    function colActive(reg, lvl) {
+      var st = colReconcile(reg, self.buColState(lvl));
+      var order = st ? st.order : reg.map(function (c) { return c.k; });
+      var off = st ? st.off : [];
+      var byK = {}; reg.forEach(function (c) { byK[c.k] = c; });
+      return order.map(function (k) { return byK[k]; }).filter(function (c) {
+        return c && off.indexOf(c.k) < 0 && (!c.gate || c.gate());
+      });
+    }
+    self.buColsLine = ko.computed(function () { self.buColData(); return colActive(BU_LINE_COLS, 'line'); });
+    self.buColsAgg = ko.computed(function () {
+      self.buColData();
+      return colActive(BU_AGG_COLS, self.buLevel() === 'sector' ? 'sector' : 'dept');
+    });
+    self.buColHint = function (c) { return c.hf ? self[c.hf]() : (c.h ? self.t(c.h) : ''); };
+    // ordered register sheet-1 column list for the ACTIVE line view; null while
+    // the standard layout is untouched so a default run keeps the full sheet
+    self.buSheetCols = function () {
+      var st = colReconcile(BU_LINE_COLS, self.buColState('line'));
+      if (!st) return null;
+      var byK = {}; BU_LINE_COLS.forEach(function (c) { byK[c.k] = c; });
+      var out = ['budget_combination'], seen = { budget_combination: 1 };
+      st.order.forEach(function (k) {
+        var c = byK[k];
+        if (!c || st.off.indexOf(k) >= 0) return;
+        (c.xls || []).forEach(function (n) { if (!seen[n]) { seen[n] = 1; out.push(n); } });
+      });
+      return out.length > 1 ? out.join(',') : null;
+    };
+    /* ── Manage-columns drawer ── */
+    self.colDrOpen = ko.observable(false);
+    self.colDrLevel = ko.observable('line');
+    self.colDrItems = ko.observableArray([]);
+    self.colDrViewNames = ko.observableArray([]);
+    self.colDrViewSel = ko.observable('');
+    self.colDrName = ko.observable('');
+    self.colDrDef = ko.observable('');
+    function colReg(lvl) { return lvl === 'line' ? BU_LINE_COLS : BU_AGG_COLS; }
+    function colItemsFrom(reg, st) {
+      var order = st ? st.order : reg.map(function (c) { return c.k; });
+      var off = st ? st.off : [];
+      var byK = {}; reg.forEach(function (c) { byK[c.k] = c; });
+      return order.map(function (k) {
+        var c = byK[k];
+        return { k: k, c: c, on: ko.observable(off.indexOf(k) < 0), gated: !!(c.gate && !c.gate()) };
+      });
+    }
+    self.openColDrawer = function () {
+      var lvl = self.buLevel();
+      self.colDrLevel(lvl);
+      var reg = colReg(lvl);
+      self.colDrItems(colItemsFrom(reg, colReconcile(reg, self.buColState(lvl))));
+      var d = self.buColData()[lvl] || {};
+      self.colDrViewNames(Object.keys(d.views || {}));
+      self.colDrDef(d.def || '');
+      self.colDrViewSel(''); self.colDrName('');
+      self.colDrOpen(true);
+    };
+    self.closeColDrawer = function () { self.colDrOpen(false); };
+    self.colMove = function (it, dir) {
+      var a = self.colDrItems().slice();
+      var i = a.indexOf(it), j = i + dir;
+      if (i < 0 || j < 0 || j >= a.length) return;
+      a.splice(i, 1); a.splice(j, 0, it);
+      self.colDrItems(a);
+    };
+    self.colSetAll = function (on) { self.colDrItems().forEach(function (it) { it.on(on); }); };
+    function colDrState() {
+      return { order: self.colDrItems().map(function (it) { return it.k; }),
+               off: self.colDrItems().filter(function (it) { return !it.on(); }).map(function (it) { return it.k; }) };
+    }
+    function colDataFor(lvl) {
+      var d = self.buColData();
+      d[lvl] = d[lvl] || {}; d[lvl].views = d[lvl].views || {};
+      return d;
+    }
+    self.colApply = function () {
+      var lvl = self.colDrLevel(); var d = colDataFor(lvl);
+      d[lvl].active = colDrState();
+      self.buColData(Object.assign({}, d)); colPersist();
+      self.colDrOpen(false);
+      toast(self.t('colsAppliedToast'));
+    };
+    self.colSaveView = function () {
+      var name = (self.colDrName() || self.colDrViewSel() || '').trim();
+      if (!name) { toast(self.t('colsNeedName'), true); return; }
+      var lvl = self.colDrLevel(); var d = colDataFor(lvl);
+      d[lvl].views[name] = colDrState();
+      d[lvl].active = colDrState();
+      if (!d[lvl].def) d[lvl].def = name;
+      self.buColData(Object.assign({}, d)); colPersist();
+      self.colDrViewNames(Object.keys(d[lvl].views));
+      self.colDrViewSel(name); self.colDrDef(d[lvl].def || '');
+      toast(self.t('colsSavedToast'));
+    };
+    self.colDrViewSel.subscribe(function (name) {
+      if (!name) return;
+      var lvl = self.colDrLevel();
+      var d = self.buColData()[lvl] || {};
+      var v = (d.views || {})[name];
+      if (!v) return;
+      var reg = colReg(lvl);
+      self.colDrItems(colItemsFrom(reg, colReconcile(reg, v)));
+      self.colDrName(name);
+    });
+    self.colDeleteView = function () {
+      var name = self.colDrViewSel(); if (!name) return;
+      var lvl = self.colDrLevel(); var d = colDataFor(lvl);
+      delete d[lvl].views[name];
+      if (d[lvl].def === name) d[lvl].def = '';
+      self.buColData(Object.assign({}, d)); colPersist();
+      self.colDrViewNames(Object.keys(d[lvl].views));
+      self.colDrViewSel(''); self.colDrName(''); self.colDrDef(d[lvl].def || '');
+    };
+    self.colSetDefault = function () {
+      var name = self.colDrViewSel(); if (!name) { toast(self.t('colsNeedName'), true); return; }
+      var lvl = self.colDrLevel(); var d = colDataFor(lvl);
+      d[lvl].def = name;
+      self.buColData(Object.assign({}, d)); colPersist();
+      self.colDrDef(name);
+    };
+    self.colReset = function () {
+      var lvl = self.colDrLevel(); var d = colDataFor(lvl);
+      d[lvl].active = null;
+      self.buColData(Object.assign({}, d)); colPersist();
+      self.colDrItems(colItemsFrom(colReg(lvl), null));
+      self.colDrViewSel(''); self.colDrName('');
+    };
+    // K2 insight strips — hidden while a planstate filter is applied (the chip
+    // beside the Results header takes over)
+    self.piExecBandOn = ko.computed(function () {
+      return !self.buPlanState() && ((self.buTot('planBelow') || 0) > 0 || (self.buTot('planAhead') || 0) > 0);
+    });
+    self.piCovBandOn = ko.computed(function () {
+      return !self.buPlanState() && self.piCovPct() != null;
+    });
+    self.piExecBandMsg = ko.computed(function () {
+      return self.t('piExecBandMsg')
+        .replace('{b}', self.fmt(self.buTot('planBelow') || 0)).replace('{ba}', self.money(self.buTot('planBelowAmt') || 0))
+        .replace('{a}', self.fmt(self.buTot('planAhead') || 0)).replace('{aa}', self.money(self.buTot('planAheadAmt') || 0));
+    });
+    self.piCovBandMsg = ko.computed(function () {
+      return self.t('piCovBandMsg')
+        .replace('{p}', self.pct1(self.piCovPct()))
+        .replace('{amt}', self.money(self.buTot('planCovGap') || 0))
+        .replace('{u}', self.fmt(self.buTot('planCovUnder') || 0))
+        .replace('{n}', self.fmt(self.buTot('planCovNone') || 0));
+    });
     // width of one component inside the tile's stacked composition bar
     self.buSegW = function (part, total) {
       total = Number(total) || 0;
@@ -3188,20 +3860,19 @@
       return '(' + (p >= 99.95 ? Math.round(p) : p.toFixed(1)) + '%)';
     };
     self.buExportCsv = function () {
+      // the Department / Sector tab exports its own aggregated view
+      if (self.buLevel() !== 'line') { self.buAggExportCsv(); return; }
       api('GET', '/butil' + qs(self.buParams(0, 5000))).then(function (d) {
         var rows = d.items || [];
-        var cols = [['sector', 'Sector'], ['department', 'Department'],
-          ['organization', 'Organization'],
-          ['costCentre', 'Cost Centre'], ['projectNumber', 'Project Number'], ['projectName', 'Project Name'],
-          ['taskNumber', 'Task'], ['glAccount', 'GL Account'], ['appropriation', 'Appropriation'],
-          ['chapter', 'Chapter'], ['program', 'Program'], ['expenditureType', 'Expenditure Type'],
-          ['budgetAnnual', 'Annual Budget'], ['budget', 'YTD Budget'],
-          ['planApprovedAnnual', 'Plan Annual'], ['planApprovedYtd', 'Plan YTD'],
-          ['planRevisedAnnual', 'Revised Plan Annual'], ['planRevisedYtd', 'Revised Plan YTD'],
-          ['actualAp', 'Actual AP'], ['actualGrn', 'Actual GRN'],
-          ['commitmentPr', 'Commitment (PR)'], ['obligationPo', 'Obligation (PO)'], ['fundAvailable', 'Fund Available'],
-          ['costAdj', 'Cost Adjustment'], ['costAdjOvr', 'Budget Override (Adj)'], ['hasAdj', 'Has Adjustment'],
-          ['cmtCount', 'Comments'], ['hasCmt', 'Has Comments'], ['commentsText', 'Comments Text']];
+        // columns follow the ACTIVE Manage-columns view (order + hidden set);
+        // the audit tail (cost-adj components) always rides along
+        var cols = [];
+        self.buColsLine().forEach(function (c) { (c.csv || []).forEach(function (p) { cols.push(p); }); });
+        cols = cols.concat([['costAdj', 'Cost Adjustment'], ['costAdjOvr', 'Budget Override (Adj)'], ['hasAdj', 'Has Adjustment']]);
+        rows.forEach(function (r) {
+          var fm = self.buFmLineMap()[(r.projectNumber || '') + '|' + (r.taskNumber || '') + '|' + (r.expenditureType || '')];
+          r._fmCnt = fm ? fm.cnt : ''; r._fmAmt = fm ? fm.amt : '';
+        });
         var csv = cols.map(function (c) { return c[1]; }).join(',') + '\n' + rows.map(function (r) {
           return cols.map(function (c) { var v = (r[c[0]] == null ? '' : '' + r[c[0]]); return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
         }).join('\n');
@@ -3300,7 +3971,9 @@
         project: self.buProjParam() || null, task: self.buTask() || null,
         etype: self.buEtype() || null, search: self.buSearch() || null,
         ovr: self.buOvr() ? 'Y' : null,
-        cmtmode: self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null
+        cmtmode: self.buCmtDisp() !== 'NONE' ? self.buCmtDisp() : null,
+        // Manage-columns saved view -> register sheet-1 columns (GL/db/11 bridge)
+        sheetcols: self.buSheetCols()
       }).then(function (d) {
         var runId = d.runId;
         toast(self.t('buBookQueued') + runId);
@@ -3823,7 +4496,12 @@
     /* ── loading-state helpers: skeleton shimmer rows for the results table ── */
     function skArr(n) { var a = []; for (var i = 0; i < n; i++) a.push(i); return a; }
     self.skRows = skArr(8);   // shimmer rows shown while /butil runs
-    self.skCols = skArr(22);  // one cell per results-table column (+Plan pair 2026-08-26)
+    // one shimmer cell per ACTIVE results-table column (registry-driven v1.96.0)
+    self.skCols = ko.computed(function () {
+      var n = self.view() === 'butil' && self.buLevel() !== 'line'
+        ? self.buColsAgg().length : self.buColsLine().length;
+      return skArr(Math.max(n || 0, 8));
+    });
 
     /* ── collapsible regions (Search / Overview) + results maximize ── */
     var buUi = {};
@@ -3890,6 +4568,7 @@
     };
     document.addEventListener('keydown', function (e) {
       // Esc restores the table — unless a drawer/modal is open above it (it owns Esc-like close)
+      if (e.key === 'Escape' && self.colDrOpen()) { self.colDrOpen(false); return; }
       if (e.key === 'Escape' && self.buMax() && !self.drillDrawer() && !self.drillModal() && !self.ovDrawer()) self.toggleBuMax();
     });
 
@@ -3911,6 +4590,7 @@
     self.drillSortNote = ko.observable('');
     function fillDrill(d) {
       self.drillSortNote('');
+      self.fmDrillOn(false);      // only the Fund Movement drill re-sets it
       self.drillCmtLevel(null);   // only the butil AP/PR/PO drills re-set it
       self.drillCols(d.columns || []); self.drillRows(d.rows || []);
       self.drillTotalV(d.total || 0); self.drillCount(d.count || (d.rows || []).length);
@@ -3955,20 +4635,22 @@
       if (!ctx || !ctx.$data || !ctx.$parent) return null;
       return { td: td, col: ctx.$data, row: ctx.$parent };
     }
-    function drillIsCombo(info) {
-      return !!(info && info.col && info.col.key === 'combination' &&
-                info.row && acRowMap[info.row.combination]);
+    // the segment source differs by drill: Actuals rows resolve via acRowMap,
+    // Fund Movement rows via the drill response's own combos side-map (v1.95.0)
+    function drillComboRow(info) {
+      if (!(info && info.col && info.col.key === 'combination' && info.row)) return null;
+      return acRowMap[info.row.combination] || fmComboMap[info.row.combination] || null;
     }
     self.drillGridOver = function (d, e) {
-      var info = drillResolveCell(e.target);
-      if (drillIsCombo(info)) { info.td.style.cursor = 'help'; self.comboHover(acRowMap[info.row.combination], e); }
+      var info = drillResolveCell(e.target), cr = drillComboRow(info);
+      if (cr) { info.td.style.cursor = 'help'; self.comboHover(cr, e); }
       else self.comboOut();
       return true;
     };
     self.drillGridMove = function (d, e) {
       if (!self.tipShow()) return true;
       var info = drillResolveCell(e.target);
-      if (drillIsCombo(info)) self.comboMove(info.row, e); else self.comboOut();
+      if (drillComboRow(info)) self.comboMove(info.row, e); else self.comboOut();
       return true;
     };
     function drillFail(e) { self.drillLoading(false); self.drillDrawer(false); toast(e.message, true); }
@@ -4075,6 +4757,209 @@
       runPlanDrill({ year: self.buYear(), period: annual ? null : self.buPeriod(), type: type,
         projecttype: self.buType(), sector: self.buSector(), chapter: self.buChapterParam(), search: self.buSearch(),
         costcenter: self.buCcParam(), fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype() }, true);
+    };
+    /* ── Department / Sector tab figure drills (v1.92.0, 2026-08-30): every
+       money cell of a group row opens the SAME drill drawer as the Budget
+       Line tab, aggregate mode scoped to the group's cost centre / sector on
+       top of the page filters — so the drawer total ties to the cell. Plan
+       drills send extra=Y (GL/db/30) so the uploaded plan rows with NO budget
+       line, folded into the group figure by GL/db/33, appear in the drawer
+       too. A group with no key (unclassified sector / missing cost centre)
+       cannot be scoped server-side and stays non-drillable. */
+    self.buAggCanDrill = function (row) {
+      return self.buLevel() === 'dept' ? !!row.costCentre : !!row.sector;
+    };
+    function buAggGrpScope(row) {
+      var dept = self.buLevel() === 'dept';
+      return { year: self.buYear(), period: self.buPeriod(),
+        projecttype: self.buType(), chapter: self.buChapterParam(),
+        bu: self.buBuParam(), appropriation: self.buApprop() || null, program: self.buProgram() || null,
+        sector: row.sector || self.buSector() || null,
+        costcenter: dept ? row.costCentre : self.buCcParam(),
+        fproject: self.buProjParam(), ftask: self.buTask(), fetype: self.buEtype(),
+        search: self.buSearch() };
+    }
+    function buAggGrpLabel(row) {
+      return self.buLevel() === 'dept'
+        ? (row.costCentre || '') + (row.department ? ' · ' + row.department : '')
+        : (row.sector || '');
+    }
+    self.openBuAggDrill = function (row, metric) {
+      // keyless group = lines missing their mandatory cost-centre
+      // classification — every cell of that row opens the missing-lines list
+      if (!self.buAggCanDrill(row)) { self.openBuMissCc(); return; }
+      var cap = metric.charAt(0).toUpperCase() + metric.slice(1);
+      self.drillTitle(self.t('buDrill' + cap));
+      self.drillSub(buAggGrpLabel(row));
+      self.drillCtx(self.t(self.buLevel() === 'dept' ? 'lvDept' : 'lvSector') + ' · '
+        + (metric !== 'budgetannual' && self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      var p = buAggGrpScope(row);
+      p.metric = metric; p.ovr = self.buOvr() ? 'Y' : null;
+      drillWithCostAdj(p, metric,
+        CADJ_DRILL_METRICS[metric] && self.buCadjOn() && row.hasAdj === 'Y');
+    };
+    self.openBuAggPlan = function (row, type, annual) {
+      if (!self.buAggCanDrill(row)) { self.openBuMissCc(); return; }
+      if (!((type === 'REVISED' ? row.planRevisedAnnual : row.planApprovedAnnual) || 0)) return;
+      self.drillTitle(planDrillTitle(type, annual));
+      self.drillSub(buAggGrpLabel(row));
+      self.drillCtx(self.t(self.buLevel() === 'dept' ? 'lvDept' : 'lvSector') + ' · '
+        + (!annual && self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      var p = buAggGrpScope(row);
+      p.period = annual ? null : self.buPeriod(); p.type = type; p.extra = 'Y';
+      runPlanDrill(p, true);
+    };
+    /* ── Fund Movement columns (v1.94.0, GL/db/34): Additional Fund transfer
+       COUNT + NET signed AMOUNT on every tab — since 2026-08-31 (user, with
+       the sheet-8 rule) APPROVED transactions ONLY, server-side in db/34,
+       and the same pair rides the register's Budget Utilization Lines sheet
+       (fund_movement_count/_amount, reporting/db/25). Values come from
+       GET /butil/fundmove (grouped server-side per level) and merge
+       client-side: the Budget Line tab keys on the EXACT project|task|etype
+       (user pick — only exact matches land on a row), Department/Sector
+       attribute by the transfer's OWN cost centre / sector (the register
+       sheet's rule), so transfers under a cost centre with no budget line
+       surface in a note under the table, never dropped. Zero-amount lines
+       are excluded so a cell count always equals its drilldown row count. */
+    self.buFmLineMap = ko.observable({});
+    self.buFmAggMap = ko.observable({});
+    var buFmKeyLine = null, buFmKeyAgg = null;
+    function fmLineKey(r) { return (r.projectNumber || '') + '|' + (r.taskNumber || '') + '|' + (r.expenditureType || ''); }
+    self.runBuFm = function (level) {
+      if (level === 'line') {
+        var p = { year: self.buYear(), period: self.buPeriod() || null, level: 'line' };
+        var k = JSON.stringify(p);
+        if (k === buFmKeyLine) return;
+        api('GET', '/butil/fundmove' + qs(p)).then(function (d) {
+          buFmKeyLine = k;
+          var m = {};
+          (d.items || []).forEach(function (i) { m[(i.project || '') + '|' + (i.task || '') + '|' + (i.etype || '')] = i; });
+          self.buFmLineMap(m);
+        }).catch(function () {});
+        return;
+      }
+      var p2 = self.buAggParams(level), k2 = JSON.stringify(p2);
+      if (k2 === buFmKeyAgg) return;
+      api('GET', '/butil/fundmove' + qs(p2)).then(function (d) {
+        buFmKeyAgg = k2;
+        var m = {};
+        (d.items || []).forEach(function (i) { m[i.key || ''] = i; });
+        self.buFmAggMap(m);
+      }).catch(function () {});
+    };
+    self.fmOfRow = function (r) { return self.buFmLineMap()[fmLineKey(r)] || null; };
+    self.fmOfGrp = function (r) {
+      var key = self.buLevel() === 'dept' ? (r.costCentre || '') : (r.sector || '');
+      return self.buFmAggMap()[key] || null;
+    };
+    self.fmTxt = function (fm, kind) {
+      if (!fm) return '—';
+      return kind === 'cnt' ? self.fmt(fm.cnt) : self.buNum(fm.amt);
+    };
+    self.fmCls = function (fm, kind) {
+      return { 'money-cell': !!fm, dash: !fm,
+        'fm-pos': kind === 'amt' && !!fm && fm.amt > 0,
+        'fm-neg': kind === 'amt' && !!fm && fm.amt < 0 };
+    };
+    // transfers attributed to a cost centre / sector with no group row above
+    self.buFmAggExtra = ko.computed(function () {
+      var lvl = self.buLevel();
+      if (lvl === 'line') return null;
+      var m = self.buFmAggMap(), seen = {};
+      self.buAggItems().forEach(function (r) { seen[lvl === 'dept' ? (r.costCentre || '') : (r.sector || '')] = 1; });
+      var n = 0, amt = 0;
+      Object.keys(m).forEach(function (k) { if (!seen[k]) { n += m[k].cnt; amt += m[k].amt; } });
+      return n ? { n: n, amt: amt } : null;
+    });
+    /* green/red additions-vs-deductions breakdown popover on cell hover */
+    self.fmTip = ko.observable(null);
+    self.fmTipX = ko.observable(0); self.fmTipY = ko.observable(0);
+    self.fmHover = function (fm, e) {
+      if (!fm) { self.fmTip(null); return true; }
+      var w = 300, x = e.clientX + 14, y = e.clientY + 12;
+      if (x + w > window.innerWidth) x = e.clientX - w - 14;
+      if (y + 180 > window.innerHeight) y = Math.max(12, window.innerHeight - 190);
+      self.fmTipX(x); self.fmTipY(y); self.fmTip(fm);
+      return true;
+    };
+    self.fmOut = function () { self.fmTip(null); return true; };
+    /* drilldown: the transfer transactions behind a cell — SAME columns as
+       the register's Fund Movement sheet, two sort orders (user spec) */
+    function fmDrillCols() {
+      return [
+        { key: 'project', label: self.t('fmProjectNo'), type: 'text' },
+        { key: 'projectName', label: self.t('fmProjectName'), type: 'text' },
+        { key: 'task', label: self.t('fmTaskNo'), type: 'text' },
+        { key: 'etype', label: self.t('cEtype'), type: 'text' },
+        { key: 'combination', label: self.t('btCodeComb'), type: 'text' },
+        { key: 'amount', label: self.t('btAmount'), type: 'money', pn: true },
+        { key: 'commitment', label: self.t('fmCommitment'), type: 'money' },
+        { key: 'annualBudget', label: self.t('fmAnnBudget'), type: 'money' },
+        { key: 'fundAvailable', label: self.t('fmFundAvail'), type: 'money' },
+        { key: 'totalActual', label: self.t('fmTotActual'), type: 'money' },
+        { key: 'costCentre', label: self.t('btCostCenter'), type: 'text' },
+        { key: 'department', label: self.t('cDept'), type: 'text' },
+        { key: 'organization', label: self.t('btOrganization'), type: 'text' },
+        { key: 'sector', label: self.t('btSector'), type: 'text' },
+        { key: 'trxNum', label: self.t('fmTrxNum'), type: 'text' },
+        { key: 'decreeNo', label: self.t('btDecree'), type: 'text' },
+        { key: 'trxDate', label: self.t('fmTrxDate'), type: 'text' },
+        { key: 'trxYear', label: self.t('fmTrxYear'), type: 'text' },
+        { key: 'businessUnit', label: self.t('btBu'), type: 'text' },
+        { key: 'trxStatus', label: self.t('fmTrxStatus'), type: 'status' },
+        { key: 'lineStatus', label: self.t('btLineStatus'), type: 'status' },
+        { key: 'baselineStatus', label: self.t('btBaseline'), type: 'status' },
+        { key: 'journalStatus', label: self.t('btJournal'), type: 'status' },
+        { key: 'submittedBy', label: self.t('fmSubmittedBy'), type: 'text' },
+        { key: 'approvedBy', label: self.t('fmApprovedBy'), type: 'text' },
+        { key: 'approvalState', label: self.t('fmApprState'), type: 'status' },
+        { key: 'approvalDate', label: self.t('fmApprDate'), type: 'text' },
+        { key: 'notes', label: self.t('btNotes'), type: 'text' }
+      ];
+    }
+    self.fmDrillOn = ko.observable(false);
+    self.fmDrillSort = ko.observable('default');
+    var fmDrillParams = null, fmComboMap = {};
+    function runFmDrill(params) {
+      fmDrillParams = params;
+      var p = Object.assign({}, params, { sort: self.fmDrillSort() });
+      api('GET', '/butil/lines/fundmove' + qs(p)).then(function (d) {
+        // segment side-map for the Code Combination popover (10 code+desc pairs
+        // per distinct combination, resolved server-side against the COA snap)
+        fmComboMap = d.combos || {};
+        fillDrill({ columns: fmDrillCols(), rows: d.rows, total: d.total, count: d.count });
+        self.fmDrillOn(true);
+      }).catch(drillFail);
+    }
+    self.setFmDrillSort = function (s) {
+      if (s === self.fmDrillSort() || !fmDrillParams) return;
+      self.fmDrillSort(s); self.drillLoading(true);
+      runFmDrill(fmDrillParams);
+    };
+    self.openBuFmDrill = function (row) {
+      if (!self.fmOfRow(row)) return;
+      self.drillTitle(self.t('buDrillFm'));
+      self.drillSub((row.projectNumber || '') + (row.projectName ? ' · ' + row.projectName : ''));
+      self.drillCtx([row.taskNumber, row.expenditureType].filter(Boolean).join('   ·   '));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      runFmDrill({ year: self.buYear(), period: self.buPeriod() || null,
+        project: row.projectNumber, task: row.taskNumber, etype: row.expenditureType });
+    };
+    self.openBuAggFmDrill = function (row) {
+      if (!self.buAggCanDrill(row)) { self.openBuMissCc(); return; }
+      if (!self.fmOfGrp(row)) return;
+      self.drillTitle(self.t('buDrillFm'));
+      self.drillSub(buAggGrpLabel(row));
+      self.drillCtx(self.t(self.buLevel() === 'dept' ? 'lvDept' : 'lvSector') + ' · '
+        + (self.buPeriod() ? self.t('ytd') + ' ' + self.buPeriod() : self.buYear()));
+      self.drillCols([]); self.drillRows([]); self.drillTotalV(0); self.drillCount(0);
+      self.drillDrawer(true); self.drillLoading(true);
+      runFmDrill(buAggGrpScope(row));
     };
     self.closeDrawer = function () { self.drillDrawer(false); self.drillMax(false); self.drillSortNote(''); self.comboOut(); };
     // export the loaded drill lines — modal + drawer share drillCols/drillRows
@@ -5384,7 +6269,11 @@
       self.cmtDrawer(true);
       self.loadCmtThread();
     };
-    self.closeCmtDrawer = function () { self.cmtDrawer(false); };
+    self.closeCmtDrawer = function () {
+      self.cmtDrawer(false);
+      // refresh the Department / Sector tab's comment count + text
+      if (self.view() === 'butil' && self.buLevel() !== 'line') { self.buAggInvalidate(); self.runBuAgg(self.buLevel()); }
+    };
     self.loadCmtThread = function () {
       var c = self.cmtCtx(); if (!c) return;
       self.cmtLoading(true);
@@ -7514,6 +8403,50 @@
       return r.status === 'SUCCESS' ? (r.failedCount > 0 ? 'warn' : 'ok')
            : r.status === 'FAILED' ? 'err' : 'info';
     };
+
+    /* ── Revenue Categories (Settings) ─────────────────────────────── */
+    self.rcLoaded = ko.observable(false); self.rcBusy = ko.observable(false);
+    self.rcCanManage = ko.observable(false); self.rcTab = ko.observable('categories');
+    self.rcSearch = ko.observable(''); self.rcCategories = ko.observableArray([]);
+    self.rcRules = ko.observableArray([]); self.rcAccess = ko.observableArray([]);
+    self.rcRoles = ko.observableArray([]); self.rcUsers = ko.observableArray([]);
+    self.rcName = function(c){ return self.lang()==='ar' && c.nameAr ? c.nameAr : c.nameEn; };
+    self.rcPath = function(c){ return (c.parentName ? c.parentName+' › ' : '') + self.rcName(c); };
+    self.rcSourceLabel = function(s){ return s==='AR_TRANSACTION'?'AR Transaction':(s==='MISC_RECEIPT'?'Misc. Receipt':'Both'); };
+    self.rcActiveCount = ko.computed(function(){ return self.rcCategories().filter(function(c){return c.active==='Y';}).length; });
+    self.rcMainCount = ko.computed(function(){ return self.rcCategories().filter(function(c){return c.level==='MAIN';}).length; });
+    self.rcSubCount = ko.computed(function(){ return self.rcCategories().filter(function(c){return c.level==='SUB';}).length; });
+    self.rcMainCategories = ko.computed(function(){ return self.rcCategories().filter(function(c){return c.level==='MAIN'&&c.active==='Y';}); });
+    self.rcSubCategories = ko.computed(function(){ return self.rcCategories().filter(function(c){return c.level==='SUB'&&c.active==='Y';}); });
+    function rcMatch(row){ var q=self.rcSearch().trim().toLowerCase(); return !q||JSON.stringify(row).toLowerCase().indexOf(q)>=0; }
+    self.rcFilteredCategories=ko.computed(function(){return self.rcCategories().filter(rcMatch);});
+    self.rcFilteredRules=ko.computed(function(){return self.rcRules().filter(rcMatch);});
+    self.rcFilteredAccess=ko.computed(function(){return self.rcAccess().filter(rcMatch);});
+    self.rcLoad=function(){self.rcBusy(true);return api('GET','/revenue-categories').then(function(d){self.rcCanManage(d.canManage==='Y');self.rcCategories(d.categories||[]);self.rcRules(d.rules||[]);self.rcAccess(d.access||[]);self.rcRoles(d.roles||[]);self.rcUsers(d.users||[]);self.rcLoaded(true);}).catch(fail).then(function(){self.rcBusy(false);});};
+
+    self.rcCategoryModal=ko.observable(false); self.rcCatId=ko.observable(null);
+    self.rcCatLevel=ko.observable('MAIN');self.rcCatParent=ko.observable(null);self.rcCatCode=ko.observable('');
+    self.rcCatNameEn=ko.observable('');self.rcCatNameAr=ko.observable('');self.rcCatSource=ko.observable('AR_TRANSACTION');
+    self.rcCatPriority=ko.observable(100);self.rcCatActive=ko.observable('Y');self.rcCatDescription=ko.observable('');self.rcCatCreatedBy=ko.observable('');self.rcCatCreatedOn=ko.observable('');self.rcCatUpdatedBy=ko.observable('');self.rcCatUpdatedOn=ko.observable('');
+    self.rcEditCategory=function(c){if(!self.rcCanManage())return;self.rcCatId(c.categoryId);self.rcCatLevel(c.level);self.rcCatParent(c.parentId);self.rcCatCode(c.code);self.rcCatNameEn(c.nameEn);self.rcCatNameAr(c.nameAr||'');self.rcCatSource(c.source);self.rcCatPriority(c.priority);self.rcCatActive(c.active);self.rcCatDescription(c.description||'');self.rcCatCreatedBy(c.createdBy||'');self.rcCatCreatedOn(c.createdOn||'');self.rcCatUpdatedBy(c.updatedBy||'');self.rcCatUpdatedOn(c.updatedOn||'');self.rcCategoryModal(true);};
+    self.rcNewCategory=function(){self.rcCatId(null);self.rcCatLevel('MAIN');self.rcCatParent(null);self.rcCatCode('');self.rcCatNameEn('');self.rcCatNameAr('');self.rcCatSource('AR_TRANSACTION');self.rcCatPriority(100);self.rcCatActive('Y');self.rcCatDescription('');self.rcCatCreatedBy('');self.rcCatCreatedOn('');self.rcCatUpdatedBy('');self.rcCatUpdatedOn('');self.rcCategoryModal(true);};
+    self.rcSaveCategory=function(){var b={level:self.rcCatLevel(),parentId:self.rcCatLevel()==='SUB'?Number(self.rcCatParent()):null,code:self.rcCatCode().trim(),nameEn:self.rcCatNameEn().trim(),nameAr:self.rcCatNameAr().trim()||null,source:self.rcCatSource(),priority:Number(self.rcCatPriority())||100,active:self.rcCatActive(),description:self.rcCatDescription().trim()||null};if(!b.code||!b.nameEn||(b.level==='SUB'&&!b.parentId)){toast(self.t('required'),true);return;}var req=self.rcCatId()?api('PUT','/revenue-categories/'+self.rcCatId(),b):api('POST','/revenue-categories',b);req.then(function(){self.rcCategoryModal(false);toast(self.t('saved'));self.rcLoad();}).catch(fail);};
+    self.rcDeleteCategory=function(){if(!self.rcCatId()||!confirm(self.t('delete')+'?'))return;api('DELETE','/revenue-categories/'+self.rcCatId()).then(function(){self.rcCategoryModal(false);self.rcLoad();}).catch(fail);};
+
+    self.rcRuleModal=ko.observable(false);self.rcRuleCategory=ko.observable(null);self.rcRuleSource=ko.observable('AR_TRANSACTION');self.rcRulePriority=ko.observable(100);
+    self.rcDimensions=[{key:'transactionType',label:'rcTransType'},{key:'transactionSource',label:'rcTransSource'},{key:'revenueType',label:'rcRevenueType'},{key:'costCenter',label:'rcCostCenter'},{key:'glAccount',label:'rcGlAccount'},{key:'projectNumber',label:'rcProject'},{key:'taskNumber',label:'rcTask'},{key:'customerNumber',label:'rcCustomer'}];
+    self.rcRuleValues={};self.rcDimensions.forEach(function(d){self.rcRuleValues[d.key]=ko.observable('ALL');});
+    self.rcNewRule=function(){self.rcRuleCategory(null);self.rcRuleSource('AR_TRANSACTION');self.rcRulePriority(100);self.rcDimensions.forEach(function(d){self.rcRuleValues[d.key]('ALL');});self.rcRuleModal(true);};
+    self.rcSaveRule=function(){if(!self.rcRuleCategory()){toast(self.t('required'),true);return;}var b={categoryId:Number(self.rcRuleCategory()),source:self.rcRuleSource(),priority:Number(self.rcRulePriority())||100};self.rcDimensions.forEach(function(d){b[d.key]=self.rcRuleValues[d.key]().trim()||'ALL';});api('POST','/revenue-categories/rules',b).then(function(){self.rcRuleModal(false);self.rcLoad();}).catch(fail);};
+    self.rcDeleteRule=function(r,e){if(e)e.stopPropagation();if(!confirm(self.t('delete')+'?'))return;api('DELETE','/revenue-categories/rules/'+r.ruleId).then(self.rcLoad).catch(fail);};
+
+    self.rcAccessModal=ko.observable(false);self.rcAccessType=ko.observable('ROLE');self.rcAccessPrincipal=ko.observable(null);self.rcAccessCategory=ko.observable(null);self.rcAccessChildren=ko.observable(false);
+    self.rcAccessSelectedIsMain=ko.computed(function(){var id=Number(self.rcAccessCategory());return self.rcCategories().some(function(c){return c.categoryId===id&&c.level==='MAIN';});});
+    self.rcAccessType.subscribe(function(){self.rcAccessPrincipal(null);});self.rcAccessSelectedIsMain.subscribe(function(v){if(!v)self.rcAccessChildren(false);});
+    self.rcNewAccess=function(){self.rcAccessType('ROLE');self.rcAccessPrincipal(null);self.rcAccessCategory(null);self.rcAccessChildren(false);self.rcAccessModal(true);};
+    self.rcSaveAccess=function(){if(!self.rcAccessPrincipal()||!self.rcAccessCategory()){toast(self.t('required'),true);return;}api('POST','/revenue-categories/access',{principalType:self.rcAccessType(),principalId:Number(self.rcAccessPrincipal()),categoryId:Number(self.rcAccessCategory()),includeChildren:self.rcAccessChildren()?'Y':'N',active:'Y'}).then(function(){self.rcAccessModal(false);self.rcLoad();}).catch(fail);};
+    self.rcDeleteAccess=function(a,e){if(e)e.stopPropagation();if(!confirm(self.t('delete')+'?'))return;api('DELETE','/revenue-categories/access/'+a.accessId).then(self.rcLoad).catch(fail);};
+    self.rcNewForTab=function(){if(self.rcTab()==='categories')self.rcNewCategory();else if(self.rcTab()==='rules')self.rcNewRule();else self.rcNewAccess();};
 
     /* ── Report Recipients admin page ────────────────────────────────── */
     self.rlLoaded = ko.observable(false);

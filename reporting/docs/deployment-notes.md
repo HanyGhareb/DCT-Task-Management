@@ -5,6 +5,24 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
 
 ## History (most recent first)
 
+- **2026-08-30 — BUDGET_UTIL_REGISTER sheet 8 renamed "Fund Movement" + column rework (reporting/db/25 re-seed + render_xlsx.py, user request).**
+  ① Sheet title "Additional Fund Transfers" → **"Fund Movement"** (tab = "8. Fund Movement"). ② Columns
+  **Project Type / Period From / Period To / Task Name removed** (kept in the inner query — the
+  projecttype filter still binds). ③ Columns **re-ordered per the user's layout**: identity
+  (Project Number/Name, Task Number, Expenditure Type, Code Combination) → figures (**Amount**,
+  Commitment, Total Annual Budget, Project Fund Available, Total Actual) → org (Cost Centre,
+  Department, Organization, Sector) → transaction (Transaction Num, Decree No, Transaction
+  Date/Year, Business Unit) → statuses (Transaction/Line/Baseline/Journal) → approval (Submitted
+  By, **Assignee renamed "Approved By"**, Approval State/Date) → Notes. ④ **Amount = green
+  positive / red negative** via a NEW GENERIC `render_xlsx.py` hook: a column alias ending
+  **`__pn`** (case-insensitive) gets number format `[Green]#,##0.00;[Red]-#,##0.00;#,##0.00` and
+  the suffix stripped from the printed header (`AMOUNT__PN` → "Amount") — opt-in like the ROW_KIND
+  magic column, every existing report unaffected; **render_xlsx.py fleet-synced to
+  /opt/rpt-worker on vm180-182 + rpt-worker restarted ×3**. Gotcha (again):
+  `DCT_RPT_DEFINITION.DESCRIPTION` is VARCHAR2(1000) — ORA-12899 forced a shorter description
+  phrase. Deployed via python-oracledb on vm180; live run 802 (year 2026, period 08-2026, DCT
+  BU/OPEX, project 4511000346) verified: 8 sheets, exact header order, removed columns absent,
+  green/red format on all Amount cells (9 negatives in scope).
 - **2026-08-29 — BUDGET_UTIL_REGISTER: NEW sheet 8 "Additional Fund Transfers" (reporting/db/25 re-seed, user request).** The budget transfer transactions from the PBT extract (otbi-atd/db/77: `pa_budget_trx_headers` ⋈ `pa_additional_fund_lines` ⋈ `pa_budget_trx_approvals`) — **Additional Fund type ONLY** (`transaction_type='Additional'`, hard-coded) — one row per transfer LINE: header identity (transaction num, decree no, transaction date, trx year, BU, project type, header status), the full line detail (project/task/etype + names, organization, code combination, **signed Amount** = `additional_amount`, commitment, total annual budget, project fund available, total actual, period from/to, line/baseline/journal statuses, notes) and the approval trail **aggregated per transaction** (first submitter, `LISTAGG DISTINCT` assignees, last state via `KEEP DENSE_RANK LAST`, last action time — `dct_to_local` + `CHR(58)` mask). Sorted **project, task, etype, transaction date** (user spec). Scope: `trx_year = :year` + the run's YTD cut on `transaction_date` via `GL_CTX.BUTIL_END`; filters applied to the line's OWN attributes with segment-resolved Sector/Chapter/Cost-centre (the `V_PA_BUDGET_TRX_LINE` pattern: combination seg 3 else the COST_CENTER label's trailing digits; appropriation = seg 7) — **deliberately NOT the butil scope key join**: 987 of 4,561 live transfer lines have no exact butil line match and an inner scope join would silently drop them. No new params (missing binds resolve to None in datasource.py's `params.get`). Gotcha hit: `DCT_RPT_DEFINITION.DESCRIPTION` is VARCHAR2(1000) — ORA-12899 on a long description edit. Sections 7 → 8; sheet-tab titles truncate at 31 chars incl. the `"8. "` prefix, hence the short title. Deployed via python-oracledb (local wallet). Verified: assembled SQL = 4,561 rows unfiltered / trx 012945 reproduces the source screen byte-exact (−340,440, DCT-FD-3369-2026, submitter/assignee/approval 07:54); live run SUCCESS — 8 sheets, 4,561 sorted rows; scoped run (period 06-2026 + CC 4510210) narrows correctly. Generate-and-Send distributions pick the sheet up automatically (same definition).
 - **2026-08-29 — BUDGET_UTIL_REGISTER: costing-adjustment trx moved INTO sheet 2 "AP Invoices - Direct" as (**) rows; sheet 8 REMOVED (reporting/db/25 re-seed, user request).** The separate "Costing Adjustments" worksheet (added 2026-08-27) is gone — the APPROVED transactions now ride the AP register itself as a second UNION ALL leg shaped like an AP row: **Invoice Number prefixed `(**) `** (referenced invoice number → stored snapshot → PCA ref), invoice date/effective supplier from the referenced `ap_invoices`/`dct_ap_supplier_eff_v` headers (both deduped `GROUP BY invoice_id` so the leg can never fan out — GL/db/29 shape), currency AED, amount = the SIGNED adjustment, payment status computed from the header (`Cost Adjustment` when reference-less), plus a trailing **Cost Adjustment Ref** column (NULL on plain AP rows) so (**) rows are filterable without a legend. Scope join on the CORRECTED coding + the `DCT_PA_COST_ADJ_BUTIL_V` BUTIL_END period rule (NULL period counts always); zero-amount (override-only) adjustments excluded — they are budget rows, not AP rows. The shared scope CTE gained `MAX(s.project_name)` (harmless to the other sheets); `l_ap` → VARCHAR2(12000); sections 8 → 7. Deployed via python-oracledb on vm180 (`/tmp/deploy_db25.py`, worker env). Verified: assembled sheet-2 SQL = 5,258 rows / 40 (**) rows / adj total 3,118,877.54 = the live `/gl/butil` `totals.costAdj` exactly; live run 782 SUCCESS — 7 sheets, no Costing Adjustments sheet, AP sheet carries the 40 (**) rows w/ refs PCA-000xx. Generate-and-Send distributions pick this up automatically (same definition). (reporting/db/25, user report: PCA trx invisible on 4511000981).** Sheet 1 now reads the butil view through a nested inline view LEFT-JOINing **`dct_pa_cost_adj_butil_v`** (APPROVED rows at the butil key, BUTIL_END-aware — the register's pre_sql period hook applies for free): `actual_ap`/`actual_total` **+cost_adj**, `annual_budget`/`ytd_budget` **+budget_override**, `fund_available` **+ovr−adj**, `utilization_pct` + the plan-indicator expressions all on the ADJUSTED figures — matching the page's costadj=Y default — plus explicit **Cost Adjustment** and **Budget Override (Adj)** columns. NEW **sheet 8 "Costing Adjustments"** lists the APPROVED transactions in scope (adj_ref, period, butil key, classification, amounts, referenced invoice + original coding, reason, approved by/on — date-only, no `:MI` phantom-bind risk) via the shared scope CTE. `l_bu` bumped to VARCHAR2(12000). **SAME DAY (3): the Briefing Book folds them too (user request)** — l_ov/l_sec/l_prs + the three plan sections now read the butil view through the same nested cost-adj inline view (actual +adj, budgets +override, fund +ovr−adj, utilization + over-budget count + plan indicators all adjusted; document registers untouched). Verified: scoped book run (4511000981/08-2026) prints Actual Total 19,259,354 incl. the 2,368,623 PCA — byte-matching /gl/butil totals. No template change needed. Verified: run scoped to 4511000981/08-2026 shows MICE-Trade Shows-N actual_ap 2,368,623 (= PCA-00018) + the trx on sheet 8.
 - **2026-08-27 — Plan-insight indicators in the butil reports (reporting/db/21 + 25 + template, GL v1.88.0 round).** `BUDGET_UTIL_REGISTER` sheet 1 gains **Plan Utilization % / Plan Variance / Plan Status / Plan Coverage % / Plan Coverage Status** (effective plan = revised-when-exists; thresholds read live from the GL module settings `PLAN_EXEC_TOL_LOW/HIGH` + `PLAN_COV_LOW/HIGH` via a CROSS-JOINed aggregate, defaults 90/110/95/105). `BUDGET_UTIL_BOOK` gains **Part 6 "Expenditure Plan Performance"** — new MULTI sections `plan_sector` (plan vs actual + coverage per sector w/ status), `plan_dev` (top-15 absolute deviations among planned lines) and `plan_cov` (kv coverage + verdict-count summary); template adds the Part 6 page (KPI strip, execution + coverage sector bars, 6.1/6.2 tables, methodology note), the TOC row, and renumbers Observations to **Part 7**. **THREE glyph gotchas hit live:** `CHR(9660)` for ▼ emits an invalid UTF-8 byte pair (CHR is byte-based → the datasource dies with UnicodeDecodeError); `UNISTR('\25BC')` cannot ride the MULTI `source_ref` (the backslash is an illegal JSON escape → JSONDecodeError at claim time); bare `NCHR(9660)` in a VARCHAR2 CASE = ORA-12704 charset mismatch — the working form is **`TO_CHAR(NCHR(9660))`**. Deployed via python-oracledb on vm180 + template upload (61,552 bytes) + fleet fallback copies. Verified: register run 771 (4 columns, all 4 statuses incl. glyphs) + book run 767 (124-page PDF, Part 6 renders, Part 7 renumber).
@@ -575,3 +593,56 @@ SQLcl/ORDS rules in `final apps/Admin/docs/deployment-notes.md` §2.
   Legacy per-recipient path untouched. Fleet-synced vm180-182 + rpt-worker restarted.
 - Standing rule (user, 2026-08-24): **never send report emails to real recipients during
   testing — test mailbox only.** EMAIL_TEST_MODE must stay Y until Finance signs the lists off.
+
+## 2026-08-31 — BUDGET_UTIL_REGISTER budget-verdict columns + per-run sheet-column filter (GL v1.96.0)
+
+- **db/25 re-deployed** (python-oracledb on vm180): sheet 1 gains
+  `budget_utilization_pct` / `budget_variance` / `budget_status` right after
+  `ytd_budget` — Actual (AP incl. cost-adj + GRN) vs the ADJUSTED **ANNUAL** budget
+  (user rule 2026-08-31: Annual always). Status text via the verified
+  `TO_CHAR(NCHR())` glyph form: ● On track / ▲ Near limit / ▼ Over budget /
+  Not budgeted. Thresholds ride the `th` CROSS JOIN from GL module settings
+  `BUD_UTIL_NEAR_PCT` (90) / `BUD_UTIL_OVER_PCT` (100) — its WHERE is now
+  `(setting_key LIKE 'PLAN%' OR setting_key LIKE 'BUD_UTIL%')`; keep it in
+  lock-step with the GL/db/35 handler expressions.
+- **runner.py — NEW generic `_apply_sheet_cols(sections, params)`** (fleet-synced
+  vm180-182, rpt-workers restarted), applied ONLY in the `build_xlsx_multi` path:
+  a run param **`sheet_cols_<sectionkey>`** = comma-separated column names keeps
+  ONLY those columns, in that order, on the matching sheet. Case-insensitive,
+  transparent to the `__pn` sign-tint suffix, the `row_kind` styling column always
+  survives, unknown names are ignored, and a spec matching nothing leaves the sheet
+  untouched. First consumer: the GL Budget Utilization **Manage Columns** saved view
+  (GL/db/11 forwards body `sheetcols` as `sheet_cols_bu_lines`). PDF/book renders
+  are deliberately NOT filtered (fixed templates).
+- E2E verified via `final apps/GL/tests/vsbudget_cols_api_smoke.py` 13/13 — a
+  filtered run's sheet 1 = exactly the requested ordered columns (openpyxl), a
+  default run keeps the full 41-column sheet.
+
+## 2026-08-31 (2) — BUDGET_UTIL_REGISTER trims (GL v1.96.1)
+
+- **db/25 re-deployed**: sheet 1 `cost_adjustment` + `budget_override_adj`
+  columns REMOVED (user; 41 → 39 columns — adjustments still fold into the
+  figures, sheet 2's (**) rows keep `cost_adjustment_ref`), and sheet 8
+  "Fund Movement" now returns **Approval State = 'Approved' rows ONLY**
+  (`apr.approval_state = 'Approved'` in the l_bt outer WHERE; drops
+  Rejected/Withdraw + no-trail transactions). Verified: full 2026 run =
+  4,557 Fund Movement rows, all Approved.
+
+## 2026-08-31 (3) — BUDGET_UTIL_REGISTER sheet-1 Fund Movement pair (GL v1.96.2)
+
+- **db/25 re-deployed**: sheet 1 gains `fund_movement_count` +
+  `fund_movement_amount__pn` after Utilization Pct (41 columns) — Approved
+  Additional Fund transfer lines on the exact butil key (renamed `fm` inline
+  view; Approved = latest `pa_budget_trx_approvals.assignment_state`),
+  BUTIL_END cut, zero-amount lines excluded; values reconcile cell-for-cell
+  with GL `/butil/fundmove` (2,213 keys, 0 mismatch). **GOTCHA:
+  `DCT_RPT_DEFINITION.description` is VARCHAR2(1000) — ORA-12899 at 1,024;
+  keep catalog descriptions terse.** SRC_LEN 29,061.
+
+## 2026-08-31 (4) — BUDGET_UTIL_REGISTER sheet-1 Task Name (GL v1.96.3)
+
+- **db/25 re-deployed**: sheet 1 gains `task_name` right after `task_number`
+  (42 columns) — ATD_TASKS.task_name PROJECT-SCOPED via ATD_PROJECTS (task
+  numbers repeat across projects; the butil view has no name column and
+  DCT_TASKS names are empty). Renamed `tnm` inline view per the pf/fm
+  ambiguity rule. SRC_LEN 29,364.
